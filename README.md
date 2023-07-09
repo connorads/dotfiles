@@ -75,13 +75,14 @@ Follow these steps to recreate the setup for this repo from scratch.
 1. Create repository to store dotfiles
 
     ```sh
-    git init --bare $HOME/git/dotfiles
+    DOTFILES_DIR=$HOME/git/dotfiles
+    git init --bare $DOTFILES_DIR
     ```
 
 2. Change worktree to home directory
 
     ```sh
-    cd $HOME/git/dotfiles
+    cd $DOTFILES_DIR
     git config --unset core.bare
     git config core.worktree $HOME
     ```
@@ -99,6 +100,8 @@ Follow these steps to recreate the setup for this repo from scratch.
     ```sh
     echo "alias dotfiles='git --git-dir=$HOME/git/dotfiles/'" >> $HOME/.zshrc
     ```
+
+5. You can now start [tracking files](#usage)
 
 ## Credit
 
