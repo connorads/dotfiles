@@ -1,4 +1,4 @@
-# Setup antigen
+# https://github.com/zsh-users/antigen
 source /opt/homebrew/share/antigen/antigen.zsh
 antigen use oh-my-zsh
 antigen theme robbyrussell
