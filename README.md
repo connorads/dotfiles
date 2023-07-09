@@ -43,7 +43,7 @@ Follow these steps to recreate the setup for this repo from scratch.
     git init --bare $HOME/git/dotfiles
     ```
 
-2. Change worktree to home folder
+2. Change worktree to home directory
 
     ```sh
     cd $HOME/git/dotfiles
