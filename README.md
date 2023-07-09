@@ -31,7 +31,18 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
     git clone --bare https://github.com/connorads/dotfiles/ $HOME/git/dotfiles
     ```
 
-2. TBC
+2. Setup dotfiles (⚠️ this will overwrite existing dotfiles in home directory)
+
+    ```sh
+    $HOME/git/dotfiles/scripts/setup.sh
+    ```
+
+3. You can now reload shell and open Sublime Merge
+
+    ```sh
+    exec $SHELL
+    smerge
+    ```
 
 ## Setup (from scratch)
 
