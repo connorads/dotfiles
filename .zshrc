@@ -15,4 +15,4 @@ antigen apply
 eval "$(rtx activate zsh)"
 
 # https://github.com/connorads/dotfiles/
-alias dotfiles='git --git-dir=$HOME/dotfiles' # TODO update dir to /git/
+alias dotfiles='git --git-dir=$HOME/git/dotfiles'
