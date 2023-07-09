@@ -1,6 +1,6 @@
 # dotfiles
 
-@connorads dotfiles
+[@connorads](https://github.com/connorads) dotfiles
 
 - No symlinks
 - Works with Sublime Merge
