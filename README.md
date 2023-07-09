@@ -28,16 +28,34 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
 1. Clone repo
 
     ```sh
-    git clone --bare https://github.com/connorads/dotfiles/ $HOME/git/dotfiles
+    DOTFILES_REPO=https://github.com/connorads/dotfiles/
+    DOTFILES_DIR=$HOME/git/dotfiles
+    git clone --bare $DOTFILES_REPO $DOTFILES_DIR
     ```
 
-2. Setup dotfiles (⚠️ this will overwrite existing dotfiles in home directory)
+2. Change worktree to home directory
 
     ```sh
-    $HOME/git/dotfiles/scripts/setup.sh
+    cd $DOTFILES_DIR
+    git config --unset core.bare
+    git config core.worktree $HOME
     ```
 
-3. You can now reload shell and open Sublime Merge
+3. Put dotfiles from git into home directory (⚠️ this will overwrite existing dotfiles in home directory)
+
+    ```sh
+    cd $HOME
+    git --git-dir=$DOTFILES_DIR/ checkout -f
+    ```
+
+4. Setup brew and install packages
+
+    ```sh
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew bundle install
+    ```
+
+5. You can now reload shell and open Sublime Merge
 
     ```sh
     exec $SHELL
