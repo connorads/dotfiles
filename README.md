@@ -21,6 +21,12 @@ dotfiles add -f .somefile
 dotfiles rm --cached .somefile
 ```
 
+### Update Brewfile
+
+```sh
+brew bundle dump --force
+```
+
 ## Setup (from this repo)
 
 If you want to (fork and) clone this repo and use it for your own dotfiles, follow these steps.
