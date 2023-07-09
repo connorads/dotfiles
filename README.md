@@ -61,12 +61,7 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
     brew bundle install
     ```
 
-5. You can now reload shell and open Sublime Merge
-
-    ```sh
-    exec $SHELL
-    smerge
-    ```
+5. You can now reload your shell and open Sublime Merge
 
 ## Setup (from scratch)
 
