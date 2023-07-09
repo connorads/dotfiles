@@ -69,5 +69,5 @@ Follow these steps to recreate the setup for this repo from scratch.
 
 Inspired by
 
-- [StreakyCobra's comment on Hacker News for original idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
-- [zwyx's blog post for sublime merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo)
+- [StreakyCobra's comment on Hacker News for idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
+- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo)
