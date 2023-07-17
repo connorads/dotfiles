@@ -60,6 +60,10 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
 
 5. You can now reload your shell and open Sublime Merge
 
+    ```sh
+    smerge $DOTFILES_DIR
+    ```
+
 ## Setup (from scratch)
 
 Follow these steps to recreate the setup for this repo from scratch.
