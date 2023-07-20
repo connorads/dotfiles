@@ -1,5 +1,12 @@
 # https://github.com/zsh-users/antigen
-source /opt/homebrew/share/antigen/antigen.zsh
+case "$OSTYPE" in
+darwin*)
+    source /opt/homebrew/share/antigen/antigen.zsh
+    ;;
+linux*)
+    source /home/linuxbrew/.linuxbrew/share/antigen/antigen.zsh
+    ;;
+esac
 antigen use oh-my-zsh
 antigen theme robbyrussell
 antigen bundle brew
