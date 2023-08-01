@@ -55,6 +55,7 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
 
     ```sh
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    eval "$(/opt/homebrew/bin/brew shellenv)"
     brew bundle install
     ```
 
