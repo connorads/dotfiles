@@ -87,4 +87,5 @@ cask "zappy"
 cask "zoom"
 mas "Microsoft To Do", id: 1274495053
 mas "RunCat", id: 1429033973
+mas "Trello", id: 1278508951
 mas "Xcode", id: 497799835
