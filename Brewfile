@@ -84,6 +84,7 @@ cask "utm"
 cask "visual-studio-code"
 cask "vlc"
 cask "webex"
+cask "whatsapp"
 cask "zappy"
 cask "zoom"
 mas "Microsoft To Do", id: 1274495053
