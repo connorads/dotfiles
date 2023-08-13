@@ -8,7 +8,7 @@ linux*)
     ;;
 esac
 antigen use oh-my-zsh
-antigen theme robbyrussell
+antigen theme spaceship-prompt/spaceship-prompt
 antigen bundle brew
 antigen bundle git
 antigen bundle aws
