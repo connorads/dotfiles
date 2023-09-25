@@ -43,7 +43,6 @@ cask "android-file-transfer"
 cask "android-studio"
 cask "anydesk"
 cask "asix-ax88179"
-cask "bitwarden"
 cask "burp-suite"
 cask "cloudflare-warp"
 cask "cyberduck"
@@ -96,6 +95,7 @@ cask "webex"
 cask "whatsapp"
 cask "zappy"
 cask "zoom"
+mas "Bitwarden", id: 1352778147
 mas "RunCat", id: 1429033973
 mas "Trello", id: 1278508951
 mas "Xcode", id: 497799835
