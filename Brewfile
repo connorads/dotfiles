@@ -93,6 +93,7 @@ cask "vlc"
 cask "wacom-tablet"
 cask "webex"
 cask "whatsapp"
+cask "wireshark"
 cask "zappy"
 cask "zoom"
 mas "Bitwarden", id: 1352778147
