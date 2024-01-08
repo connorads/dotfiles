@@ -19,7 +19,7 @@ antigen bundle zsh-users/zsh-syntax-highlighting
 antigen apply
 
 # https://github.com/connorads/rtx/
-eval "$(rtx activate zsh)"
+eval "$(mise activate zsh)"
 
 # https://github.com/connorads/dotfiles/
 alias dotfiles='git --git-dir=$HOME/git/dotfiles'
