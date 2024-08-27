@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [brew](https://brew.sh/) to install software and [rtx](https://github.com/connorads/rtx/) to manage runtimes.
+Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [brew](https://brew.sh/) to install software and [mise](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Usage
 
