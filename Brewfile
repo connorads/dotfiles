@@ -13,7 +13,7 @@ brew "antigen"
 brew "awscli"
 brew "binwalk"
 brew "lima"
-brew "colima"
+brew "colima", restart_service: true
 brew "docker"
 brew "docker-buildx"
 brew "docker-compose"
