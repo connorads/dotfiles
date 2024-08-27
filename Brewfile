@@ -29,6 +29,7 @@ brew "mise"
 brew "ncdu"
 brew "neovim"
 brew "ollama", restart_service: true
+brew "pdm"
 brew "pipx"
 brew "pnpm"
 brew "pre-commit"
