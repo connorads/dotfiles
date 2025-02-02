@@ -36,6 +36,7 @@
           "chatgpt"
           "obsidian"
           "whatsapp"
+          "steam"
         ];
       };
 
