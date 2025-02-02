@@ -54,6 +54,10 @@
         dock = {
           autohide = true;
         };
+        controlcenter = {
+          Sound = true;
+          Bluetooth = true;
+        };
         NSGlobalDomain = {
           "com.apple.swipescrolldirection" = false;
         };
