@@ -2,8 +2,8 @@
   description = "Example nix-darwin system flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-24.11-darwin";
-    nix-darwin.url = "github:LnL7/nix-darwin/nix-darwin-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:LnL7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -18,7 +18,7 @@
           pkgs.raycast
           pkgs.pam_u2f
           pkgs.rectangle
-          pkgs.mise
+          pkgs.kitty
         ];
       
       homebrew = {
@@ -27,12 +27,15 @@
         # TODO can we use nix pkgs for these?
         brews = [
           "antigen"
+          "mise"
         ];
         casks = [
           "sublime-text"
           "sublime-merge"
           "bitwarden"
           "chatgpt"
+          "obsidian"
+          "whatsapp"
         ];
       };
 
