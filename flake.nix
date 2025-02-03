@@ -19,6 +19,7 @@
           pkgs.pam_u2f
           pkgs.rectangle
           pkgs.kitty
+          pkgs.vscode
         ];
       
       homebrew = {
