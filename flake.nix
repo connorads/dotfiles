@@ -51,6 +51,9 @@
               "whisky"
               "visual-studio-code@insiders"
             ];
+            masApps = {
+              RunCat = 1429033973;
+            };
           };
 
           system.activationScripts.postUserActivation.text = ''
