@@ -14,7 +14,6 @@
       nixpkgs,
     }:
     let
-      home = builtins.getEnv "HOME";
       configuration =
         { pkgs, ... }:
         {
