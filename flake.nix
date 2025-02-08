@@ -59,6 +59,7 @@
           system.defaults = {
             dock = {
               autohide = true;
+              show-recents = false;
               persistent-apps = [
                 "/run/current-system/Applications/kitty.app"
                 "/run/current-system/Applications/Google Chrome.app"
