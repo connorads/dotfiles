@@ -73,6 +73,9 @@
                 "/Applications/Sublime Text.app"
               ];
             };
+            finder = {
+              _FXShowPosixPathInTitle = true;
+            };
             controlcenter = {
               Sound = true;
               Bluetooth = true;
