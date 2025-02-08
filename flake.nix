@@ -14,6 +14,7 @@
       # $ nix-env -qaP | grep wget
       environment.systemPackages =
         [ pkgs.vim 
+          pkgs.nixfmt-rfc-style
           pkgs.google-chrome
           pkgs.raycast
           pkgs.pam_u2f
