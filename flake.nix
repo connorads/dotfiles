@@ -60,6 +60,7 @@
         controlcenter = {
           Sound = true;
           Bluetooth = true;
+          FocusModes = true;
         };
         NSGlobalDomain = {
           "com.apple.swipescrolldirection" = false;
