@@ -51,11 +51,6 @@
             ];
           };
 
-          system.activationScripts.pamU2F = ''
-            mkdir -p /etc/local/lib/security
-            ln -sf ${pkgs.libfido2}/lib/security/pam_u2f.so /etc/local/lib/security/pam_u2f.so
-          '';
-
           system.activationScripts.postUserActivation.text = ''
             # Following line should allow us to avoid a logout/login cycle when changing settings
             /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
@@ -100,8 +95,13 @@
             };
           };
 
-          # Allow touch ID from sudo
-          security.pam.enableSudoTouchIdAuth = true;
+          # Use TouchId and yubikey for sudo
+          environment.etc = {
+            "pam.d/sudo_local".text = ''
+              auth sufficient pam_tid.so
+              auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
+            '';
+          };
 
           # Necessary for using flakes on this system.
           nix.settings.experimental-features = "nix-command flakes";
