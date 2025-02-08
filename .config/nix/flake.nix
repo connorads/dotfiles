@@ -1,0 +1,151 @@
+{
+  description = "connorads nix configuration";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:LnL7/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs =
+    inputs@{
+      self,
+      nix-darwin,
+      nixpkgs,
+    }:
+    let
+      configuration =
+        { pkgs, ... }:
+        {
+          environment.systemPackages = [
+            # Tools
+            pkgs.mise
+            pkgs.antigen
+            pkgs.vim
+            pkgs.nixfmt-rfc-style
+            pkgs.pam_u2f
+            pkgs.docker
+            pkgs.colima
+
+            # Apps
+            pkgs.google-chrome
+            pkgs.raycast
+            pkgs.rectangle
+            pkgs.kitty
+            pkgs.vscode
+            pkgs.iina
+          ];
+
+          homebrew = {
+            enable = true;
+            onActivation.cleanup = "zap";
+            taps = [ ];
+            brews = [ ];
+            casks = [
+              "sublime-text"
+              "sublime-merge"
+              "bitwarden"
+              "chatgpt"
+              "obsidian"
+              "whatsapp"
+              "steam"
+              "whisky"
+              "visual-studio-code@insiders"
+            ];
+            masApps = {
+              RunCat = 1429033973;
+            };
+          };
+
+          system.activationScripts.postUserActivation.text = ''
+            # Following line should allow us to avoid a logout/login cycle when changing settings
+            /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+          '';
+
+          system.defaults = {
+            dock = {
+              autohide = true;
+              show-recents = false;
+              persistent-apps = [
+                "/run/current-system/Applications/kitty.app"
+                "/run/current-system/Applications/Google Chrome.app"
+                "/run/current-system/Applications/Visual Studio Code.app"
+                "/Applications/Steam.app"
+                "/Applications/Sublime Merge.app"
+                "/Applications/Sublime Text.app"
+              ];
+            };
+            finder = {
+              _FXShowPosixPathInTitle = true;
+              AppleShowAllExtensions = true;
+              QuitMenuItem = true;
+              ShowPathbar = true;
+              ShowStatusBar = true;
+            };
+            controlcenter = {
+              Sound = true;
+              Bluetooth = true;
+              FocusModes = true;
+            };
+            NSGlobalDomain = {
+              "com.apple.swipescrolldirection" = false;
+              AppleInterfaceStyle = "Dark";
+            };
+            CustomUserPreferences = {
+              "com.apple.symbolichotkeys" = {
+                AppleSymbolicHotKeys = {
+                  # Disable 'Cmd + Space' for Spotlight Search
+                  "64" = {
+                    enabled = false;
+                  };
+                  # Disable 'Cmd + Alt + Space' for Finder search window
+                  "65" = {
+                    enabled = false;
+                  };
+                };
+              };
+            };
+          };
+
+          # Use TouchId and yubikey for sudo
+          environment.etc = {
+            "pam.d/sudo_local".text = ''
+              auth sufficient pam_tid.so
+              auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
+            '';
+          };
+
+          # Necessary for using flakes on this system.
+          nix.settings.experimental-features = "nix-command flakes";
+
+          programs = {
+            zsh = {
+              enable = true;
+              shellInit = ''
+                source ${pkgs.antigen}/share/antigen/antigen.zsh
+              '';
+            };
+          };
+
+          # Set Git commit hash for darwin-version.
+          system.configurationRevision = self.rev or self.dirtyRev or null;
+
+          # Used for backwards compatibility, please read the changelog before changing.
+          # $ darwin-rebuild changelog
+          system.stateVersion = 5;
+
+          # The platform the configuration will be used on.
+          nixpkgs.hostPlatform = "aarch64-darwin";
+
+          # Allow unfree packages (like VS Code )
+          nixpkgs.config.allowUnfree = true;
+        };
+    in
+    {
+      # Build darwin flake using:
+      # $ darwin-rebuild build --flake .#Connors-Mac-mini
+      darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
+        modules = [ configuration ];
+      };
+    };
+}
