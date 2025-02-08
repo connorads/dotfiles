@@ -70,6 +70,7 @@
             };
             finder = {
               _FXShowPosixPathInTitle = true;
+              AppleShowAllExtensions = true;
             };
             controlcenter = {
               Sound = true;
