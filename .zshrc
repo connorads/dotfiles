@@ -1,8 +1,7 @@
 # https://github.com/zsh-users/antigen
 case "$OSTYPE" in
 darwin*)
-    # TODO support nix?
-    source /opt/homebrew/share/antigen/antigen.zsh
+    source "$(nix eval --raw 'nixpkgs#antigen')/share/antigen/antigen.zsh"
     ;;
 linux*)
     source /home/linuxbrew/.linuxbrew/share/antigen/antigen.zsh

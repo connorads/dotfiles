@@ -21,6 +21,8 @@
           # List packages installed in system profile. To search by name, run:
           # $ nix-env -qaP | grep wget
           environment.systemPackages = [
+            pkgs.mise
+            pkgs.antigen
             pkgs.vim
             pkgs.nixfmt-rfc-style
             pkgs.google-chrome
@@ -34,12 +36,9 @@
 
           homebrew = {
             enable = true;
+            onActivation.cleanup = "zap";
             taps = [ ];
-            # TODO can we use nix pkgs for these?
-            brews = [
-              "antigen"
-              "mise"
-            ];
+            brews = [ ];
             casks = [
               "sublime-text"
               "sublime-merge"
