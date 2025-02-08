@@ -38,6 +38,7 @@
           "obsidian"
           "whatsapp"
           "steam"
+          "visual-studio-code@insiders"
         ];
       };
 
