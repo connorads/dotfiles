@@ -72,6 +72,9 @@
             finder = {
               _FXShowPosixPathInTitle = true;
               AppleShowAllExtensions = true;
+              QuitMenuItem = true;
+              ShowPathbar = true;
+              ShowStatusBar = true;
             };
             controlcenter = {
               Sound = true;
