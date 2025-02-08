@@ -83,6 +83,7 @@
             };
             NSGlobalDomain = {
               "com.apple.swipescrolldirection" = false;
+              AppleInterfaceStyle = "Dark";
             };
             CustomUserPreferences = {
               "com.apple.symbolichotkeys" = {
