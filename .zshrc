@@ -19,7 +19,7 @@ antigen bundle zsh-users/zsh-completions
 antigen bundle zsh-users/zsh-syntax-highlighting
 antigen apply
 
-# https://github.com/connorads/rtx/
+# https://github.com/connorads/mise/
 eval "$(mise activate zsh)"
 
 # https://github.com/connorads/dotfiles/
