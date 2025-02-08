@@ -14,6 +14,7 @@
       nixpkgs,
     }:
     let
+      home = builtins.getEnv "HOME";
       configuration =
         { pkgs, ... }:
         {
@@ -28,6 +29,7 @@
             pkgs.rectangle
             pkgs.kitty
             pkgs.vscode
+            pkgs.iina
           ];
 
           homebrew = {

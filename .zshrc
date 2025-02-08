@@ -1,6 +1,7 @@
 # https://github.com/zsh-users/antigen
 case "$OSTYPE" in
 darwin*)
+    # TODO support nix?
     source /opt/homebrew/share/antigen/antigen.zsh
     ;;
 linux*)
