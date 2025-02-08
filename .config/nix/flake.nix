@@ -18,13 +18,16 @@
         { pkgs, ... }:
         {
           environment.systemPackages = [
+            # Tools
             pkgs.mise
             pkgs.antigen
             pkgs.vim
             pkgs.nixfmt-rfc-style
+            pkgs.pam_u2f
+
+            # Apps
             pkgs.google-chrome
             pkgs.raycast
-            pkgs.pam_u2f
             pkgs.rectangle
             pkgs.kitty
             pkgs.vscode
