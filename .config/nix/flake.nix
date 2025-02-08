@@ -24,6 +24,8 @@
             pkgs.vim
             pkgs.nixfmt-rfc-style
             pkgs.pam_u2f
+            pkgs.docker
+            pkgs.colima
 
             # Apps
             pkgs.google-chrome
