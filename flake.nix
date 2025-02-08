@@ -64,6 +64,14 @@
           system.defaults = {
             dock = {
               autohide = true;
+              persistent-apps = [
+                "/run/current-system/Applications/kitty.app"
+                "/run/current-system/Applications/Google Chrome.app"
+                "/run/current-system/Applications/Visual Studio Code.app"
+                "/Applications/Steam.app"
+                "/Applications/Sublime Merge.app"
+                "/Applications/Sublime Text.app"
+              ];
             };
             controlcenter = {
               Sound = true;
