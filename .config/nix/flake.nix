@@ -84,6 +84,7 @@
               QuitMenuItem = true;
               ShowPathbar = true;
               ShowStatusBar = true;
+              FXPreferredViewStyle = "clmv"; # Column view
             };
             controlcenter = {
               Sound = true;
