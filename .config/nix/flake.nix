@@ -54,6 +54,7 @@
               "steam"
               "whisky"
               "visual-studio-code@insiders"
+              "zappy"
             ];
             masApps = {
               RunCat = 1429033973;
