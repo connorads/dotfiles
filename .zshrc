@@ -15,3 +15,6 @@ eval "$(mise activate zsh)"
 
 # https://github.com/connorads/dotfiles/
 alias dotfiles='git --git-dir=$HOME/git/dotfiles'
+
+# https://github.com/LnL7/nix-darwin
+alias drs='darwin-rebuild switch --flake ~/.config/nix'
