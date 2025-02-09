@@ -29,6 +29,7 @@
             pkgs.colima
             pkgs.tree
             pkgs.tart
+            pkgs.yt-dlp
 
             # Apps
             pkgs.google-chrome
