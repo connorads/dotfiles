@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [brew](https://brew.sh/) to install software and [mise](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [nix-darwin](https://github.com/LnL7/nix-darwin) and [brew](https://brew.sh/) to setup and install software, and [mise](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Usage
 
@@ -18,10 +18,20 @@ dotfiles add -f .somefile
 dotfiles rm --cached .somefile
 ```
 
-### Update Brewfile
+### Build and activate nix-darwin config
+
+This will make changes to the system and update packages as per [`flake.nix`](.config/nix/flake.nix)
 
 ```sh
-brew bundle dump --force
+darwin-rebuild switch --flake ~/.config/nix
+```
+
+### Update nix packages
+
+This will update your non-homebrew packages and update [`flake.lock`](.config/nix/flake.lock)
+
+```sh
+nix flake update --flake ~/.config/nix
 ```
 
 ## Setup (from this repo)
@@ -51,12 +61,13 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
     git --git-dir=$DOTFILES_DIR/ checkout -f
     ```
 
-4. Setup brew and install packages
+4. Setup nix, brew and install software
 
     ```sh
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
-    brew bundle install
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    darwin-rebuild switch --flake ~/.config/nix
     ```
 
 5. You can now reload your shell and open Sublime Merge
