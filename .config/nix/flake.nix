@@ -36,6 +36,8 @@
             pkgs.iina
           ];
 
+          fonts.packages = with pkgs; [ fira-code ];
+
           homebrew = {
             enable = true;
             onActivation.cleanup = "zap";
