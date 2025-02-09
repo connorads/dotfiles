@@ -67,13 +67,13 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
     git --git-dir=$DOTFILES_DIR/ checkout -f
     ```
 
-4. Setup nix, brew and install software
+4. Setup nix, brew and install software (⚠️ skip the option to install Determinate Nix)
 
     ```sh
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
     curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-    darwin-rebuild switch --flake ~/.config/nix
+    nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
     ```
 
 5. You can now reload your shell and open Sublime Merge
