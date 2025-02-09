@@ -57,6 +57,7 @@
               "visual-studio-code@insiders"
               "zappy"
               "calibre"
+              "onedrive"
             ];
             masApps = {
               RunCat = 1429033973;
