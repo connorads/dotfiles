@@ -60,6 +60,7 @@
               "calibre"
               "onedrive"
               "macwhisper"
+              "native-access"
             ];
             masApps = {
               RunCat = 1429033973;
