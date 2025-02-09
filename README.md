@@ -1,24 +1,28 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [nix-darwin](https://github.com/LnL7/nix-darwin) and [brew](https://brew.sh/) to setup and install software, and [mise](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) and [`brew`](https://brew.sh/) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Usage
 
 If you've already got your dotfiles setup you can use the following commands to manage your dotfiles.
 
-### Track file
+### Updating dotfiles
+
+#### Track file
 
 ```sh
 dotfiles add -f .somefile
 ```
 
-### Untrack file
+#### Untrack file
 
 ```sh
 dotfiles rm --cached .somefile
 ```
 
-### Build and activate nix-darwin config
+### Managing system
+
+#### Build and activate nix-darwin config
 
 This will make changes to the system and update packages as per [`flake.nix`](.config/nix/flake.nix)
 
@@ -26,7 +30,7 @@ This will make changes to the system and update packages as per [`flake.nix`](.c
 darwin-rebuild switch --flake ~/.config/nix
 ```
 
-### Update nix packages
+#### Update nix packages
 
 This will update your non-homebrew packages and update [`flake.lock`](.config/nix/flake.lock)
 
@@ -34,7 +38,9 @@ This will update your non-homebrew packages and update [`flake.lock`](.config/ni
 nix flake update --flake ~/.config/nix
 ```
 
-## Setup (from this repo)
+## Setup
+
+### Setup (from this repo)
 
 If you want to (fork and) clone this repo and use it for your own dotfiles, follow these steps.
 
@@ -76,7 +82,22 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
     smerge $DOTFILES_DIR
     ```
 
-## Setup (from scratch)
+### Setup YubiKey for `sudo`
+
+macOS let's you use Touch ID for `sudo` but dem keyboards be expensive. Maybe you gots a YubiKey, this is how you set it up so you can touch your YubiKey instead of typing your password. The `sudo`/`pam` config is taken care of in [`flake.nix`](.config/nix/flake.nix).
+
+```sh
+mkdir ~/.config/Yubico
+pamu2fcfg > ~/.config/Yubico/u2f_keys
+```
+
+Add a second key if you like
+
+```sh
+pamu2fcfg -n >> ~/.config/Yubico/u2f_keys
+```
+
+### Setup (from scratch)
 
 Follow these steps to recreate the setup for this repo from scratch.
 
@@ -117,3 +138,4 @@ Inspired by
 
 - [StreakyCobra's comment on Hacker News for idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
 - [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo)
+- [Using a YubiKey (or other security key) for sudo via pam](https://neilzone.co.uk/2022/11/using-a-yubikey-or-other-security-key-for-sudo-via-pam/)
