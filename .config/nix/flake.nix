@@ -59,6 +59,7 @@
               "zappy"
               "calibre"
               "onedrive"
+              "macwhisper"
             ];
             masApps = {
               RunCat = 1429033973;
