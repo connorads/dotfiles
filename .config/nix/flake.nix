@@ -30,6 +30,7 @@
             pkgs.tree
             pkgs.tart
             pkgs.yt-dlp
+            pkgs.ncdu
 
             # Apps
             pkgs.google-chrome
