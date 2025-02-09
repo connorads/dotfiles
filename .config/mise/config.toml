@@ -3,5 +3,4 @@ experimental = true
 
 [tools]
 usage = "latest"
-"pipx:poetry" = "latest"
 "pipx:uv" = "latest"
