@@ -26,6 +26,7 @@
             pkgs.pam_u2f
             pkgs.docker
             pkgs.colima
+            pkgs.tree
 
             # Apps
             pkgs.google-chrome
