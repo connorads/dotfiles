@@ -27,6 +27,7 @@
             pkgs.docker
             pkgs.colima
             pkgs.tree
+            pkgs.tart
 
             # Apps
             pkgs.google-chrome
