@@ -49,6 +49,7 @@
             taps = [ ];
             brews = [ ];
             casks = [
+              # Apps
               "sublime-text"
               "sublime-merge"
               "bitwarden"
@@ -63,6 +64,10 @@
               "onedrive"
               "macwhisper"
               "native-access"
+
+              # Hardware
+              "logitech-camera-settings"
+              "wacom-tablet"
             ];
             masApps = {
               RunCat = 1429033973;
