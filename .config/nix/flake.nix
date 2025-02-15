@@ -64,6 +64,7 @@
               "onedrive"
               "macwhisper"
               "native-access"
+              "tor-browser"
 
               # Hardware
               "logitech-camera-settings"
