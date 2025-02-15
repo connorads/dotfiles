@@ -31,6 +31,7 @@
             pkgs.tart
             pkgs.yt-dlp
             pkgs.ncdu
+            pkgs.goku
 
             # Apps
             pkgs.google-chrome
@@ -40,6 +41,21 @@
             pkgs.vscode
             pkgs.iina
           ];
+
+          # https://github.com/LnL7/nix-darwin/issues/1041#issuecomment-2481680350
+          nixpkgs.overlays = [
+            (self: super: {
+              karabiner-elements = super.karabiner-elements.overrideAttrs (old: {
+                version = "14.13.0";
+
+                src = super.fetchurl {
+                  inherit (old.src) url;
+                  hash = "sha256-gmJwoht/Tfm5qMecmq1N6PSAIfWOqsvuHU8VDJY8bLw=";
+                };
+              });
+            })
+          ];
+          services.karabiner-elements.enable = true;
 
           fonts.packages = with pkgs; [ fira-code ];
 
