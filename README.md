@@ -38,6 +38,14 @@ This will update your non-homebrew packages and update [`flake.lock`](.config/ni
 nix flake update --flake ~/.config/nix
 ```
 
+#### Update brew packages
+
+This will update your homebrew packages
+
+```sh
+brew upgrade
+```
+
 ## Setup
 
 ### Setup (from this repo)
