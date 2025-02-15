@@ -65,6 +65,7 @@
               "macwhisper"
               "native-access"
               "tor-browser"
+              "discord"
 
               # Hardware
               "logitech-camera-settings"
