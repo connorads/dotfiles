@@ -86,7 +86,7 @@
               autohide = true;
               show-recents = false;
               persistent-apps = [
-                "${pkgs.kitty}/ Applications/kitty.app"
+                "${pkgs.kitty}/Applications/kitty.app"
                 "${pkgs.google-chrome}/Applications/Google Chrome.app"
                 "${pkgs.vscode}/Applications/Visual Studio Code.app"
                 "/Applications/Steam.app"
