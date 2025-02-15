@@ -84,9 +84,9 @@
               autohide = true;
               show-recents = false;
               persistent-apps = [
-                "/run/current-system/Applications/kitty.app"
-                "/run/current-system/Applications/Google Chrome.app"
-                "/run/current-system/Applications/Visual Studio Code.app"
+                "${pkgs.kitty}/ Applications/kitty.app"
+                "${pkgs.google-chrome}/Applications/Google Chrome.app"
+                "${pkgs.vscode}/Applications/Visual Studio Code.app"
                 "/Applications/Steam.app"
                 "/Applications/Sublime Merge.app"
                 "/Applications/Sublime Text.app"
