@@ -66,6 +66,7 @@
               "native-access"
               "tor-browser"
               "discord"
+              "libreoffice"
 
               # Hardware
               "logitech-camera-settings"
