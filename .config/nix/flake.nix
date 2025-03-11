@@ -33,7 +33,6 @@
             pkgs.ncdu
 
             # Apps
-            pkgs.google-chrome
             pkgs.raycast
             pkgs.rectangle
             pkgs.kitty
@@ -64,6 +63,7 @@
               "onedrive"
               "macwhisper"
               "native-access"
+              "google-chrome"
               "tor-browser"
               "discord"
               "libreoffice"
