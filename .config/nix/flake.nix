@@ -36,7 +36,6 @@
             pkgs.raycast
             pkgs.rectangle
             pkgs.kitty
-            pkgs.vscode
             pkgs.iina
           ];
 
@@ -57,6 +56,7 @@
               "whatsapp"
               "steam"
               "whisky"
+              "visual-studio-code"
               "visual-studio-code@insiders"
               "zappy"
               "calibre"
