@@ -58,6 +58,7 @@
               "whisky"
               "visual-studio-code"
               "visual-studio-code@insiders"
+              "cursor"
               "zappy"
               "calibre"
               "onedrive"
