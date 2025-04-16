@@ -52,6 +52,7 @@
               "sublime-merge"
               "bitwarden"
               "chatgpt"
+              "claude"
               "obsidian"
               "whatsapp"
               "steam"
