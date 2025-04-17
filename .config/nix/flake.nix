@@ -76,6 +76,7 @@
             ];
             masApps = {
               RunCat = 1429033973;
+              Perplexity = 6714467650;
             };
           };
 
