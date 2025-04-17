@@ -53,6 +53,7 @@
               "bitwarden"
               "chatgpt"
               "claude"
+              "comfyui"
               "obsidian"
               "whatsapp"
               "steam"
