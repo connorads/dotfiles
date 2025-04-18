@@ -31,6 +31,7 @@
             pkgs.tart
             pkgs.yt-dlp
             pkgs.ncdu
+            pkgs.nmap
 
             # Apps
             pkgs.raycast
