@@ -112,6 +112,10 @@
               Bluetooth = true;
               FocusModes = true;
             };
+            menuExtraClock = {
+              ShowSeconds = true;
+              Show24Hour = true;
+            };
             NSGlobalDomain = {
               "com.apple.swipescrolldirection" = false;
               AppleInterfaceStyle = "Dark";
