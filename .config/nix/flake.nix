@@ -71,6 +71,7 @@
               "discord"
               "libreoffice"
               "balenaetcher"
+              "raspberry-pi-imager"
 
               # Hardware
               "logitech-camera-settings"
