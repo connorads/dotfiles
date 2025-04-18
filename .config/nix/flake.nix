@@ -32,6 +32,7 @@
             pkgs.yt-dlp
             pkgs.ncdu
             pkgs.nmap
+            pkgs.rustscan
 
             # Apps
             pkgs.raycast
