@@ -70,6 +70,7 @@
               "tor-browser"
               "discord"
               "libreoffice"
+              "balenaetcher"
 
               # Hardware
               "logitech-camera-settings"
