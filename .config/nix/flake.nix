@@ -56,6 +56,7 @@
               "chatgpt"
               "claude"
               "comfyui"
+              "lm-studio"
               "obsidian"
               "whatsapp"
               "steam"
