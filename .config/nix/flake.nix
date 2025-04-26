@@ -34,6 +34,7 @@
             pkgs.nmap
             pkgs.rustscan
             pkgs.wgcf
+            pkgs.wireproxy
 
             # Apps
             pkgs.raycast
