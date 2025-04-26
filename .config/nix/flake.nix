@@ -33,6 +33,7 @@
             pkgs.ncdu
             pkgs.nmap
             pkgs.rustscan
+            pkgs.wgcf
 
             # Apps
             pkgs.raycast
