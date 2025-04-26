@@ -35,6 +35,7 @@
             pkgs.rustscan
             pkgs.wgcf
             pkgs.wireproxy
+            pkgs.coreutils
 
             # Apps
             pkgs.raycast
