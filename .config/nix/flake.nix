@@ -73,6 +73,7 @@
               "firefox"
               "tor-browser"
               "discord"
+              "zoom"
               "libreoffice"
               "balenaetcher"
               "raspberry-pi-imager"
