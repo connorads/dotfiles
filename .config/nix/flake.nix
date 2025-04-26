@@ -70,6 +70,7 @@
               "macwhisper"
               "native-access"
               "google-chrome"
+              "firefox"
               "tor-browser"
               "discord"
               "libreoffice"
