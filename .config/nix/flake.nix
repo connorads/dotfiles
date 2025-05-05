@@ -77,6 +77,7 @@
               "tor-browser"
               "discord"
               "zoom"
+              "handbrake"
               "libreoffice"
               "balenaetcher"
               "raspberry-pi-imager"
