@@ -37,6 +37,7 @@
             pkgs.wireproxy
             pkgs.coreutils
             pkgs.cloudflared
+            pkgs.presenterm
 
             # Apps
             pkgs.raycast
