@@ -36,6 +36,7 @@
             pkgs.wgcf
             pkgs.wireproxy
             pkgs.coreutils
+            pkgs.cloudflared
 
             # Apps
             pkgs.raycast
