@@ -17,5 +17,5 @@ eval "$(mise activate zsh)"
 alias dotfiles='git --git-dir=$HOME/git/dotfiles'
 
 # https://github.com/LnL7/nix-darwin
-alias drs='darwin-rebuild switch --flake ~/.config/nix'
+alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
 alias nfu='nix flake update --flake ~/.config/nix'

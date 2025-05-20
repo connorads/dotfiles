@@ -94,10 +94,7 @@
             };
           };
 
-          system.activationScripts.postUserActivation.text = ''
-            # Following line should allow us to avoid a logout/login cycle when changing settings
-            /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
-          '';
+          system.primaryUser = "connorads";
 
           system.defaults = {
             dock = {
