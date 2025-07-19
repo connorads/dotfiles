@@ -22,6 +22,7 @@
             pkgs.mise
             pkgs.antigen
             pkgs.vim
+            pkgs.tmux
             pkgs.pipx
             pkgs.nixfmt-rfc-style
             pkgs.pam_u2f
