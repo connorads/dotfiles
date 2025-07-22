@@ -70,6 +70,7 @@
               "visual-studio-code"
               "visual-studio-code@insiders"
               "cursor"
+              "kiro"
               "zappy"
               "calibre"
               "onedrive"
