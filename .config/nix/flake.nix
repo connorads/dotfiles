@@ -82,6 +82,7 @@
               "discord"
               "zoom"
               "handbrake"
+              "handbrake-app"
               "libreoffice"
               "balenaetcher"
               "raspberry-pi-imager"
