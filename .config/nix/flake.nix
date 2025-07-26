@@ -81,7 +81,7 @@
               "tor-browser"
               "discord"
               "zoom"
-              "handbrake"
+              "cyberduck"
               "handbrake-app"
               "libreoffice"
               "balenaetcher"
