@@ -39,6 +39,7 @@
             pkgs.coreutils
             pkgs.cloudflared
             pkgs.presenterm
+            pkgs.rclone
 
             # Apps
             pkgs.raycast
