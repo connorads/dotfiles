@@ -44,6 +44,7 @@
       "Bash(jq:*)",
       "Bash(diff:*)",
       "Bash(mkdir:*)",
+      "Bash(grep:*)",
       
       "Bash(npm run dev:*)",
       "Bash(npm run build:*)",
