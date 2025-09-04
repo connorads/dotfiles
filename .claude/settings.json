@@ -45,6 +45,7 @@
       "Bash(diff:*)",
       "Bash(mkdir:*)",
       "Bash(grep:*)",
+      "Bash(find:*)",
       
       "Bash(npm run dev:*)",
       "Bash(npm run build:*)",
