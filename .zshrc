@@ -1,5 +1,5 @@
 # https://github.com/zsh-users/antigen
-source "$(brew --prefix)/share/antigen/antigen.zsh"
+command -v antigen >/dev/null || source "$(brew --prefix)/share/antigen/antigen.zsh"
 antigen use oh-my-zsh
 antigen theme spaceship-prompt/spaceship-prompt
 antigen bundle brew
