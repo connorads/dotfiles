@@ -44,7 +44,6 @@
             # Apps
             pkgs.raycast
             pkgs.rectangle
-            pkgs.kitty
             pkgs.iina
           ];
 
@@ -57,6 +56,7 @@
             brews = [ ];
             casks = [
               # Apps
+              "kitty"
               "sublime-text"
               "sublime-merge"
               "bitwarden"
