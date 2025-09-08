@@ -20,6 +20,7 @@ alias dotfiles='git --git-dir=$HOME/git/dotfiles'
 # https://github.com/LnL7/nix-darwin
 alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
 alias nfu='nix flake update --flake ~/.config/nix'
+alias ncg='sudo nix-collect-garbage -d'
 
 # Function to create a prompt to review a GitHub PR
 pr-prompt() {
