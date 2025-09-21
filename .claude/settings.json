@@ -25,6 +25,7 @@
       "mcp__playwright__browser_resize",
       "mcp__playwright__browser_close",
       
+      "mcp__playwright__browser_press_key",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
       "mcp__cloudflare-docs__search_cloudflare_documentation",
