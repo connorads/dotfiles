@@ -32,6 +32,8 @@
       "mcp__chrome-devtools__get_network_request",
       "mcp__chrome-devtools__select_page",
       "mcp__chrome-devtools__evaluate_script",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__list_console_messages",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
       "mcp__cloudflare-docs__search_cloudflare_documentation",
