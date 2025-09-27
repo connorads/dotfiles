@@ -11,7 +11,6 @@
       "WebFetch(domain:docs.brew.sh)",
       "WebFetch(domain:formulae.brew.sh)",
       "WebFetch(domain:huggingface.co)",
-      
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
@@ -24,18 +23,14 @@
       "mcp__playwright__browser_wait_for",
       "mcp__playwright__browser_resize",
       "mcp__playwright__browser_close",
-      
       "mcp__playwright__browser_press_key",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
       "mcp__cloudflare-docs__search_cloudflare_documentation",
-      
       "mcp__ide__getDiagnostics",
-      
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-
       "Bash(ls:*)",
       "Bash(pwd)",
       "Bash(cat:*)",
@@ -47,7 +42,6 @@
       "Bash(mkdir:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      
       "Bash(npm view:*)",
       "Bash(npm audit:*)",
       "Bash(npm run dev:*)",
@@ -60,7 +54,6 @@
       "Bash(npm run preview:*)",
       "Bash(npm run fix:*)",
       "Bash(npm test:*)",
-      
       "Bash(pnpm run dev:*)",
       "Bash(pnpm run build:*)",
       "Bash(pnpm run lint:*)",
@@ -70,7 +63,6 @@
       "Bash(pnpm run format:*)",
       "Bash(pnpm run preview:*)",
       "Bash(pnpm run fix:*)",
-      
       "Bash(yarn run dev:*)",
       "Bash(yarn run build:*)",
       "Bash(yarn run lint:*)",
@@ -80,19 +72,15 @@
       "Bash(yarn run format:*)",
       "Bash(yarn run preview:*)",
       "Bash(yarn run fix:*)",
-      
       "Bash(pytest:*)",
       "Bash(ruff check:*)",
       "Bash(ruff format:*)",
       "Bash(uv sync:*)",
-      
       "Bash(gh pr view:*)",
       "Bash(gh pr list:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh repo list:*)",
-      
       "Bash(brew audit:*)",
-      
       "Bash(aws sts get-caller-identity:*)",
       "Bash(aws appconfig list-applications:*)",
       "Bash(aws appconfig list-environments:*)",
@@ -100,10 +88,8 @@
       "Bash(aws appconfig list-deployments:*)",
       "Bash(aws appconfig get-configuration:*)",
       "Bash(aws appconfig get-hosted-configuration-version:*)",
-      
       "Bash(granted ls)",
       "Bash(assume:*)",
-      
       "Bash(mise use:*)"
     ],
     "deny": [
