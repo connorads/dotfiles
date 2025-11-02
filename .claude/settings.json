@@ -11,6 +11,7 @@
       "WebFetch(domain:docs.brew.sh)",
       "WebFetch(domain:formulae.brew.sh)",
       "WebFetch(domain:huggingface.co)",
+      "WebFetch(domain:developers.cloudflare.com)",
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
