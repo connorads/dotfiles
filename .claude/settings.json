@@ -46,6 +46,7 @@
       "mcp__chrome-devtools__emulate_network",
       "mcp__chrome-devtools__performance_start_trace",
       "mcp__chrome-devtools__performance_analyze_insight",
+      "mcp__chrome-devtools__get_console_message",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
       "mcp__cloudflare-docs__search_cloudflare_documentation",
