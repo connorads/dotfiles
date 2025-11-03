@@ -103,6 +103,7 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh repo list:*)",
+      "Bash(gh search:*)",
       "Bash(brew audit:*)",
       "Bash(aws sts get-caller-identity:*)",
       "Bash(aws appconfig list-applications:*)",
