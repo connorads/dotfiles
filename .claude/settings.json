@@ -55,6 +55,7 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(ls:*)",
+      "Bash(tree:*)",
       "Bash(pwd)",
       "Bash(cat:*)",
       "Bash(echo:*)",
