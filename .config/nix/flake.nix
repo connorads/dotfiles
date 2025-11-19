@@ -40,6 +40,7 @@
             pkgs.cloudflared
             pkgs.presenterm
             pkgs.rclone
+            pkgs.ripgrep
 
             # Apps
             pkgs.raycast
