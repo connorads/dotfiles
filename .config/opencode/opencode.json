@@ -3,6 +3,9 @@
   "plugin": [
     "opencode-openai-codex-auth"
   ],
+  "tui": {
+    "scroll_speed": 10
+  },
   "provider": {
     "openai": {
       "options": {
