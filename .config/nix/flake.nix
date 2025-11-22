@@ -88,6 +88,7 @@
               "libreoffice"
               "balenaetcher"
               "raspberry-pi-imager"
+              "notion"
 
               # Hardware
               "logitech-camera-settings"
