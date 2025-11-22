@@ -73,6 +73,7 @@
               "visual-studio-code@insiders"
               "cursor"
               "kiro"
+              "antigravity"
               "zappy"
               "calibre"
               "onedrive"
