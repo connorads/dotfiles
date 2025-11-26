@@ -69,6 +69,8 @@
               "whatsapp"
               "steam"
               "whisky"
+              "android-studio"
+              "android-commandlinetools"
               "visual-studio-code"
               "visual-studio-code@insiders"
               "cursor"
