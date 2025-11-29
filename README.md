@@ -28,6 +28,7 @@ This will make changes to the system and update packages as per [`flake.nix`](.c
 
 ```sh
 darwin-rebuild switch --flake ~/.config/nix
+# alias: drs
 ```
 
 #### Update nix packages
@@ -36,6 +37,7 @@ This will update your non-homebrew packages and update [`flake.lock`](.config/ni
 
 ```sh
 nix flake update --flake ~/.config/nix
+# alias: nfu
 ```
 
 #### Update brew packages
