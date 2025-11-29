@@ -46,6 +46,14 @@ This will update your homebrew packages
 brew upgrade
 ```
 
+#### Update mise packages
+
+This will update your mise backages
+
+```sh
+mise upgrade
+```
+
 ## Setup
 
 ### Setup (from this repo)
