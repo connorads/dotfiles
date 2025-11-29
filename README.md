@@ -38,6 +38,7 @@ This will update your non-homebrew packages and update [`flake.lock`](.config/ni
 ```sh
 nix flake update --flake ~/.config/nix
 # alias: nfu
+# You need to run build and activate after i.e. drs
 ```
 
 #### Update brew packages
