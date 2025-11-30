@@ -6,6 +6,18 @@
   "tui": {
     "scroll_speed": 10
   },
+  "agent": {
+    "code-reviewer": {
+      "description": "Reviews code for best practices and potential issues",
+      "mode": "subagent",
+      "model": "openai/gpt-5.1-codex-max-high",
+      "prompt": "You are a code reviewer. Focus on correctness, maintainability, and security.",
+      "tools": {
+        "write": false,
+        "edit": false
+      }
+    }
+  },
   "provider": {
     "openai": {
       "options": {
