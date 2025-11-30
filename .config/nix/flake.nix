@@ -41,6 +41,7 @@
             pkgs.presenterm
             pkgs.rclone
             pkgs.ripgrep
+            pkgs.postgresql
 
             # Apps
             pkgs.raycast
