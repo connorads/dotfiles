@@ -9,24 +9,14 @@
 
 This machine uses [Granted](https://granted.dev) (`assume`) for AWS credential management.
 
-**Important:** `assume <profile>` does NOT work inside AI agent sessions (Claude Code, OpenCode, etc.) because each command runs in a new subprocess - environment variables don't persist between commands.
+To switch profiles mid-session, run:
+```bash
+assume triver-dev/PowerUserAccess --export
+```
 
-**Two options that work:**
+This exports credentials to `~/.aws/credentials`, then use `--profile` with AWS commands:
+```bash
+aws lambda list-functions --profile triver-dev/PowerUserAccess --region eu-west-1
+```
 
-1. **Pass `--profile` to each AWS command** (most flexible, allows switching profiles):
-   ```bash
-   aws s3 ls --profile dev
-   aws ec2 describe-instances --profile prod
-   ```
-
-2. **Assume before starting the session** (simpler if staying in one account):
-   ```bash
-   # In your terminal BEFORE starting the agent:
-   assume dev
-   opencode  # or claude
-   # All AWS commands now work without --profile
-   ```
-
-**If the user needs to switch profiles mid-session**, use option 1.
-
-**To check available profiles:** `aws configure list-profiles`
+To check available profiles: `aws configure list-profiles`
