@@ -6,7 +6,7 @@
       "git status": "allow",
       "git diff *": "allow",
       "git log *": "allow",
-      "git checkout *": "allow",
+      "git checkout *": "ask",
       "git fetch *": "allow",
       "git branch *": "ask",
       "git add *": "ask",

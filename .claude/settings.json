@@ -49,7 +49,6 @@
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(git checkout:*)",
       "Bash(git fetch:*)",
       "Bash(ls:*)",
       "Bash(tree:*)",
