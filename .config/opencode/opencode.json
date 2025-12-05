@@ -93,6 +93,7 @@
       "aws logs start-query *": "allow",
       "aws logs get-query-results *": "allow",
       "aws apigateway get-rest-apis *": "allow",
+      "aws lambda invoke *": "ask",
       "granted ls": "allow",
       "assume *": "allow",
       "mise use *": "allow",
