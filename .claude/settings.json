@@ -127,6 +127,7 @@
       "Bash(aws logs get-log-events:*)",
       "Bash(aws logs start-query:*)",
       "Bash(aws logs get-query-results:*)",
+      "Bash(aws apigateway get-rest-apis:*)",
       "Bash(aws configure list-profiles)",
       "Bash(assume:*)",
       "Bash(mise use:*)"

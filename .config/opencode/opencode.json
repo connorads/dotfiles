@@ -92,6 +92,7 @@
       "aws logs get-log-events *": "allow",
       "aws logs start-query *": "allow",
       "aws logs get-query-results *": "allow",
+      "aws apigateway get-rest-apis *": "allow",
       "granted ls": "allow",
       "assume *": "allow",
       "mise use *": "allow",
