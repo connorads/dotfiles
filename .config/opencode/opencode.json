@@ -89,7 +89,8 @@
     "external_directory": "ask"
   },
   "plugin": [
-    "opencode-openai-codex-auth@4.0.2"
+    "opencode-openai-codex-auth@4.0.2",
+    "opencode-gemini-auth@1.1.6"
   ],
   "tui": {
     "scroll_speed": 10
