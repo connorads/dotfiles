@@ -125,7 +125,7 @@
       "Bash(aws logs get-log-events:*)",
       "Bash(aws logs start-query:*)",
       "Bash(aws logs get-query-results:*)",
-      "Bash(granted ls)",
+      "Bash(aws configure list-profiles)",
       "Bash(assume:*)",
       "Bash(mise use:*)"
     ],
