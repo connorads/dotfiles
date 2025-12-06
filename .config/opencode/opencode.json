@@ -97,6 +97,7 @@
       "granted ls": "allow",
       "assume *": "allow",
       "mise use *": "allow",
+      "opencode auth list": "allow",
       "rm -rf /": "deny",
       "eval *": "deny"
     },
