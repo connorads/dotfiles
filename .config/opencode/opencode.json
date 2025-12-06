@@ -27,6 +27,8 @@
       "grep *": "allow",
       "find *": "allow",
       "head *": "allow",
+      "tail *": "allow",
+      "xargs *": "allow",
       "npm view *": "allow",
       "npm audit *": "allow",
       "npm run dev *": "allow",
