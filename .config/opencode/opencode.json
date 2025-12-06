@@ -114,6 +114,14 @@
     "scroll_speed": 10
   },
   "agent": {
+    "build": {
+      "mode": "primary",
+      "model": "anthropic/claude-sonnet-4-5"
+    },
+    "plan": {
+      "mode": "primary",
+      "model": "github-copilot/claude-opus-4.5"
+    },
     "code-reviewer": {
       "description": "Reviews code for best practices and potential issues",
       "mode": "subagent",
