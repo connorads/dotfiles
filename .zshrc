@@ -55,3 +55,8 @@ pr-prompt() {
 
   echo "✅ PR review prompt copied to clipboard"
 }
+
+# Source machine-specific configuration if it exists
+# Use .zshrc.local for PATH additions or other config
+# that shouldn't be committed to version control
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
