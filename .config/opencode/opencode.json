@@ -12,6 +12,7 @@
       "git add *": "ask",
       "git commit *": "ask",
       "git rebase *": "ask",
+      "git remote -v": "allow",
       "git reset *": "ask",
       "git push *": "ask",
       "ls *": "allow",
