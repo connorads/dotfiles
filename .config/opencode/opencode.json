@@ -79,6 +79,7 @@
       "gh pr list *": "allow",
       "gh pr diff *": "allow",
       "gh repo list *": "allow",
+      "gh repo view *": "allow",
       "gh search *": "allow",
       "brew audit *": "allow",
       "aws configure list-profiles": "allow",
