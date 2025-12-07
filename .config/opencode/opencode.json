@@ -75,6 +75,8 @@
       "uv run pytest *": "allow",
       "uv run ruff check *": "allow",
       "uv run ruff format *": "allow",
+      "gh issue list *": "allow",
+      "gh issue view *": "allow",
       "gh pr view *": "allow",
       "gh pr list *": "allow",
       "gh pr diff *": "allow",
