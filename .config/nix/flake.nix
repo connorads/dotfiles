@@ -93,6 +93,7 @@
               "balenaetcher"
               "raspberry-pi-imager"
               "notion"
+              "keka"
 
               # Hardware
               "logitech-camera-settings"
