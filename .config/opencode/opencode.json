@@ -77,6 +77,7 @@
       "pytest *": "allow",
       "ruff check *": "allow",
       "ruff format *": "allow",
+      "uv run mypy *": "allow",
       "uv sync *": "allow",
       "uv run pytest *": "allow",
       "uv run ruff check *": "allow",
