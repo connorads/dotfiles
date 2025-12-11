@@ -42,6 +42,7 @@
             pkgs.rclone
             pkgs.ripgrep
             pkgs.postgresql
+            pkgs.silicon
 
             # Apps
             pkgs.raycast
