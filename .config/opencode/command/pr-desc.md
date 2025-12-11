@@ -12,6 +12,8 @@ Based on the context of our conversation, update the PR title and/or body while:
 2. Filling in or updating sections based on what we discussed
 3. Keeping any existing content that's still relevant
 
+Additional instructions: $ARGUMENTS
+
 After generating the updated content, use `gh pr edit` to apply the changes.
 Use a HEREDOC to pass the body to ensure correct formatting:
 
