@@ -60,3 +60,5 @@ pr-prompt() {
 # Use .zshrc.local for PATH additions or other config
 # that shouldn't be committed to version control
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
+eval "$(zoxide init zsh)"
