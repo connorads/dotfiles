@@ -30,6 +30,7 @@
       "find *": "allow",
       "head *": "allow",
       "rg *": "allow",
+      "sleep *": "allow",
       "tail *": "allow",
       "cut *": "allow",
       "date *": "allow",
