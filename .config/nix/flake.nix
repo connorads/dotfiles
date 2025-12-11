@@ -28,6 +28,7 @@
             pkgs.pam_u2f
             pkgs.docker
             pkgs.colima
+            pkgs.zoxide
             pkgs.tree
             pkgs.tart
             pkgs.yt-dlp
