@@ -134,6 +134,7 @@
       "mise use *": "allow",
       "mise which *": "allow",
       "opencode auth list": "allow",
+      "opencode mcp list": "allow",
       "opencode models": "allow",
       "rm -rf /": "deny",
       "eval *": "deny"
