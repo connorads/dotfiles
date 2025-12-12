@@ -169,6 +169,12 @@
       "url": "https://mcp.sentry.dev/mcp",
       "enabled": false,
       "oauth": {}
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": false,
+      "oauth": {}
     }
   },
  "provider": {
