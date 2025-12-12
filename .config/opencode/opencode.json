@@ -148,7 +148,8 @@
     "opencode-gemini-auth@1.1.6"
   ],
   "tools": {
-    "sentry*": false
+    "sentry*": false,
+    "chrome-devtools*": false
   },
   "tui": {
     "scroll_speed": 10
@@ -168,13 +169,20 @@
       "tools": {
         "sentry*": true
       }
+    },
+    "chrome-devtools": {
+      "description": "Chrome DevTools workflows; enables local DevTools MCP",
+      "mode": "subagent",
+      "tools": {
+        "chrome-devtools*": true
+      }
     }
   },
   "mcp": {
     "chrome-devtools": {
       "type": "local",
       "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
-      "enabled": false
+      "enabled": true
     },
     "sentry": {
       "type": "remote",
