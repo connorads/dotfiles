@@ -157,11 +157,9 @@
   "agent": {
     "build": {
       "mode": "primary",
-      "model": "anthropic/claude-sonnet-4-5"
     },
     "plan": {
       "mode": "primary",
-      "model": "github-copilot/claude-opus-4.5"
     },
     "sentry": {
       "description": "Sentry-focused debugging and Seer workflows; enables Sentry MCP tools",
