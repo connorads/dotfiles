@@ -162,12 +162,12 @@
     "chrome-devtools": {
       "type": "local",
       "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
-      "enabled": true
+      "enabled": false
     },
     "sentry": {
       "type": "remote",
       "url": "https://mcp.sentry.dev/mcp",
-      "enabled": true,
+      "enabled": false,
       "oauth": {}
     }
   },
