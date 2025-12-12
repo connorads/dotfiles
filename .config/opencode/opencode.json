@@ -147,10 +147,6 @@
     "opencode-openai-codex-auth@4.1.0",
     "opencode-gemini-auth@1.1.6"
   ],
-  "tools": {
-    "sentry*": false,
-    "chrome-devtools*": false
-  },
   "tui": {
     "scroll_speed": 10
   },
@@ -160,20 +156,6 @@
     },
     "plan": {
       "mode": "primary",
-    },
-    "sentry": {
-      "description": "Sentry-focused debugging and Seer workflows; enables Sentry MCP tools",
-      "mode": "subagent",
-      "tools": {
-        "sentry*": true
-      }
-    },
-    "chrome-devtools": {
-      "description": "Chrome DevTools workflows; enables local DevTools MCP",
-      "mode": "subagent",
-      "tools": {
-        "chrome-devtools*": true
-      }
     }
   },
   "mcp": {
