@@ -63,3 +63,7 @@ pr-prompt() {
 
 # https://github.com/ajeetdsouza/zoxide
 eval "$(zoxide init zsh)"
+
+# Easily view usage limits
+alias claude-usage='open "https://claude.ai/settings/usage"'
+alias codex-usage='open "https://chatgpt.com/codex/settings/usage"'
