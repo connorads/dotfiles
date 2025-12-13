@@ -190,6 +190,12 @@
       "url": "https://mcp.notion.com/mcp",
       "enabled": false,
       "oauth": {}
+    },
+    "figma-remote": {
+      "type": "remote",
+      "url": "https://mcp.figma.com/mcp",
+      "enabled": false,
+      "oauth": {}
     }
   },
  "provider": {
