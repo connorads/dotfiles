@@ -61,4 +61,5 @@ pr-prompt() {
 # that shouldn't be committed to version control
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 
+# https://github.com/ajeetdsouza/zoxide
 eval "$(zoxide init zsh)"

@@ -196,6 +196,12 @@
       "url": "https://docs.mcp.cloudflare.com/mcp",
       "enabled": false
     },
+    "cloudflare-observability": {
+      "type": "remote",
+      "url": "https://observability.mcp.cloudflare.com/mcp",
+      "enabled": false,
+      "oauth": {}
+    },
     "figma-remote": {
       "type": "remote",
       "url": "https://mcp.figma.com/mcp",
