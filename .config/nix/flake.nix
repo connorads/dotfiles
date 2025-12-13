@@ -96,6 +96,7 @@
               "raspberry-pi-imager"
               "notion"
               "keka"
+              "figma"
 
               # Hardware
               "logitech-camera-settings"
