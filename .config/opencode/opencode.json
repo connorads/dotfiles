@@ -130,6 +130,7 @@
       "granted ls": "allow",
       "assume *": "allow",
       "mise --version": "allow",
+      "mise current": "allow",
       "mise current *": "allow",
       "mise ls *": "allow",
       "mise list *": "allow",
