@@ -66,6 +66,7 @@
       "pnpm run test:e2e *": "allow",
       "pnpm run test:int *": "allow",
       "pnpm test *": "allow",
+      "pnpm -v": "allow",
       "pnpm view *": "allow",
       "yarn run dev *": "allow",
       "yarn run build *": "allow",
