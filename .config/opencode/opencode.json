@@ -136,6 +136,7 @@
       "mise list *": "allow",
       "mise use *": "allow",
       "mise which *": "allow",
+      "node -v": "allow",
       "opencode auth list": "allow",
       "opencode mcp list": "allow",
       "opencode models": "allow",
