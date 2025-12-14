@@ -67,3 +67,4 @@ eval "$(zoxide init zsh)"
 # Easily view usage limits
 alias claude-usage='open "https://claude.ai/settings/usage"'
 alias codex-usage='open "https://chatgpt.com/codex/settings/usage"'
+alias copilot-usage='open "https://github.com/settings/copilot/features"'
