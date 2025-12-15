@@ -68,3 +68,9 @@ eval "$(zoxide init zsh)"
 alias claude-usage='open "https://claude.ai/settings/usage"'
 alias codex-usage='open "https://chatgpt.com/codex/settings/usage"'
 alias copilot-usage='open "https://github.com/settings/copilot/features"'
+
+# git helpers
+alias gom='gsta -m "auto-stash before gom" && gswm && ggpull'
+alias gomu='gom && gstp'
+alias gob='git switch -'
+alias gobu='gob && gstp'
