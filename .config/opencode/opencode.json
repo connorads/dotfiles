@@ -94,6 +94,8 @@
       "gh repo view *": "allow",
       "gh search *": "allow",
       "brew audit *": "allow",
+      "brew info *": "allow",
+      "brew log *": "allow",
       "aws configure list-profiles": "allow",
       "aws sts get-caller-identity *": "allow",
       "aws appconfig list-applications *": "allow",
