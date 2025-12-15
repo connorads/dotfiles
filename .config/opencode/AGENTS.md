@@ -11,10 +11,10 @@ This machine uses [Granted](https://granted.dev) (`assume`) for AWS credential m
 
 To switch profiles mid-session, run:
 ```bash
-assume triver-dev/PowerUserAccess --export
+assume triver-dev/PowerUserAccess
 ```
 
-This exports credentials to `~/.aws/credentials`, then use `--profile` with AWS commands:
+Then use `--profile` with AWS commands:
 ```bash
 aws lambda list-functions --profile triver-dev/PowerUserAccess --region eu-west-1
 ```
