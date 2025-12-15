@@ -20,4 +20,14 @@ DO NOT allow:
 - State-changing operations (git push, npm install, etc.)
 - Dangerous commands (eval, rm -rf, etc.)
 
+Important: The wildcard (*) in command patterns matches ANY characters including flags and arguments.
+For example, "brew info *" will match:
+- brew info (no arguments)
+- brew info package_name
+- brew info --cask (the --cask flag is matched by *)
+- brew info --cask package_name
+- brew info --json=v2 package_name
+
+You don't need separate patterns for different flags since the wildcard covers all variations.
+
 After identifying commands, update the config file by adding new entries to the bash permissions section, maintaining alphabetical ordering within each category.
