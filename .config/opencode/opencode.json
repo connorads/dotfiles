@@ -213,6 +213,11 @@
       "url": "https://mcp.figma.com/mcp",
       "enabled": false,
       "oauth": {}
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp",
+      "enabled": false
     }
   },
  "provider": {
