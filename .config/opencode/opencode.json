@@ -94,6 +94,7 @@
       "gh repo list *": "allow",
       "gh repo view *": "allow",
       "gh search *": "allow",
+      "brew --repository": "allow",
       "brew audit *": "allow",
       "brew info *": "allow",
       "brew log *": "allow",
