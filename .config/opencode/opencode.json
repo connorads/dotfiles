@@ -161,10 +161,10 @@
   },
   "agent": {
     "build": {
-      "mode": "primary",
+      "mode": "primary"
     },
     "plan": {
-      "mode": "primary",
+      "mode": "primary"
     }
   },
   "mcp": {
