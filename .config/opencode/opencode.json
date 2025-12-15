@@ -212,6 +212,11 @@
       "enabled": false,
       "oauth": {}
     },
+    "storybook-mcp": {
+      "type": "remote",
+      "url": "http://localhost:6006/mcp",
+      "enabled": false
+    },
     "figma-remote": {
       "type": "remote",
       "url": "https://mcp.figma.com/mcp",
