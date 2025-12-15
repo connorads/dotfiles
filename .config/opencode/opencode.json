@@ -111,6 +111,7 @@
       "aws apigateway get-rest-apis *": "allow",
       "aws cloudwatch get-metric-statistics *": "allow",
       "aws events describe-rule *": "allow",
+      "aws events list-event-buses *": "allow",
       "aws events list-rules *": "allow",
       "aws events list-targets-by-rule *": "allow",
       "aws iam get-role-policy *": "allow",
