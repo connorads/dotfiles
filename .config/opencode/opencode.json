@@ -21,6 +21,8 @@
       "pwd": "allow",
       "cat *": "allow",
       "echo *": "allow",
+      "readlink *": "allow",
+      "stat *": "allow",
       "which *": "allow",
       "shasum *": "allow",
       "jq *": "allow",
@@ -182,6 +184,12 @@
     "sentry": {
       "type": "remote",
       "url": "https://mcp.sentry.dev/mcp",
+      "enabled": false,
+      "oauth": {}
+    },
+    "clickup": {
+      "type": "remote",
+      "url": "https://mcp.clickup.com/mcp",
       "enabled": false,
       "oauth": {}
     },
