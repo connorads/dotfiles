@@ -74,3 +74,6 @@ alias gom='gsta -m "auto-stash before gom" && gswm && ggpull'
 alias gomu='gom && gstp'
 alias gob='git switch -'
 alias gobu='gob && gstp'
+
+# https://github.com/sst/opencode
+alias oc='opencode'
