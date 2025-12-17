@@ -1,4 +1,4 @@
-model = "gpt-5.1-codex-max"
+model = "gpt-5.2"
 model_reasoning_effort = "medium"
 
 [mcp_servers.context7]
