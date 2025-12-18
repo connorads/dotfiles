@@ -149,6 +149,9 @@
       "opencode auth list": "allow",
       "opencode mcp list": "allow",
       "opencode models": "allow",
+      "openskills read *": "allow",
+      "openskills list *": "allow",
+      "openskills help *": "allow",
       "rm -rf /": "deny",
       "eval *": "deny"
     },
