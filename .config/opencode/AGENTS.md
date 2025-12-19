@@ -21,3 +21,7 @@ Then use `--profile` with AWS commands:
 ```bash
 aws lambda list-functions --profile account-prod/ReadOnlyAccess --region eu-west-1
 ```
+
+## GitHub
+
+Use `gh` CLI to access and update issues and PRs etc.
