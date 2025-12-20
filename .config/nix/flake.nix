@@ -97,6 +97,7 @@
               "balenaetcher"
               "raspberry-pi-imager"
               "notion"
+              "virtual-desktop-streamer"
               "keka"
               "figma"
 
