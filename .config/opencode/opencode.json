@@ -249,7 +249,7 @@
     "exa": {
       "type": "remote",
       "url": "https://mcp.exa.ai/mcp",
-      "enabled": false
+      "enabled": true
     }
   },
   "provider": {
