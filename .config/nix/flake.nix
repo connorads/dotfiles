@@ -100,6 +100,7 @@
               "virtual-desktop-streamer"
               "keka"
               "figma"
+              "opencode-desktop"
 
               # Hardware
               "logitech-camera-settings"
