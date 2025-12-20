@@ -83,4 +83,5 @@ alias os='openskills'
 alias osocs='cd ~/.config/opencode && os sync'
 
 # https://github.com/jesseduffield/lazygit
+alias lg='lazygit'
 alias lgdf='lazygit --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
