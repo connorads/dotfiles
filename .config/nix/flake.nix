@@ -45,6 +45,7 @@
             pkgs.postgresql
             pkgs.silicon
             pkgs.lazygit
+            pkgs.jujutsu
 
             # Apps
             pkgs.raycast
