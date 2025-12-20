@@ -44,6 +44,7 @@
             pkgs.ripgrep
             pkgs.postgresql
             pkgs.silicon
+            pkgs.lazygit
 
             # Apps
             pkgs.raycast
