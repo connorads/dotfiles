@@ -261,6 +261,11 @@
       "type": "remote",
       "url": "https://mcp.exa.ai/mcp",
       "enabled": true
+    },
+    "grep-public-github": {
+      "type": "remote",
+      "url": "https://mcp.grep.app",
+      "enabled": false
     }
   },
   "provider": {
