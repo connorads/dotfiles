@@ -61,6 +61,7 @@
       "pnpm run lint *": "allow",
       "pnpm run test *": "allow",
       "pnpm run typecheck *": "allow",
+      "pnpm check *": "allow",
       "pnpm run check *": "allow",
       "pnpm run format *": "allow",
       "pnpm run preview *": "allow",
