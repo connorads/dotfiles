@@ -9,6 +9,7 @@
       "git show *": "allow",
       "git checkout *": "ask",
       "git fetch *": "allow",
+      "git branch --list": "allow",
       "git branch *": "ask",
       "git add *": "ask",
       "git commit *": "ask",
