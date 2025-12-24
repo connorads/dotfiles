@@ -10,16 +10,12 @@
 !/.claude/commands/
 !/.claude/commands/**
 
-# Allow new opencode skills
-!/.opencode/
-/.opencode/**
-!/.opencode/skill/
-!/.opencode/skill/**
-
-# Allow new opencode commands
+# Allow new opencode data
 !/.config/
 /.config/**
 !/.config/opencode/
 /.config/opencode/**
 !/.config/opencode/command/
 !/.config/opencode/command/**
+!/.config/opencode/skill/
+!/.config/opencode/skill/**
