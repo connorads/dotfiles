@@ -46,6 +46,7 @@
             pkgs.silicon
             pkgs.lazygit
             pkgs.jujutsu
+            pkgs.unison
 
             # Apps
             pkgs.raycast
