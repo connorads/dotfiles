@@ -75,6 +75,26 @@ alias gomu='gom && gstp'
 alias gob='git switch -'
 alias gobu='gob && gstp'
 
+# git worktrees
+wta() {
+  local branch=$1
+  local repo=$(basename $(git rev-parse --show-toplevel))
+  local worktree_path="$HOME/.trees/${repo}-${branch}"
+  
+  git worktree add -b "$branch" "$worktree_path" && cd "$worktree_path"
+}
+alias wtl='git worktree list'
+wtrm() {
+  local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
+  
+  if [[ -n "$worktree" ]]; then
+    echo "Removing: $worktree"
+    git worktree remove "$worktree" --force
+  else
+    echo "No worktree selected"
+  fi
+}
+
 # https://github.com/sst/opencode
 alias oc='opencode'
 alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
