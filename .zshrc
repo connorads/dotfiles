@@ -77,6 +77,7 @@ alias gobu='gob && gstp'
 
 # https://github.com/sst/opencode
 alias oc='opencode'
+alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
 
 # https://github.com/numman-ali/openskills
 alias os='openskills'
