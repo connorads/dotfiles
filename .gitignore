@@ -1,3 +1,25 @@
 /*
 
 !.gitignore
+
+# Allow new claude skills and commands
+!/.claude/
+/.claude/**
+!/.claude/skills/
+!/.claude/skills/**
+!/.claude/commands/
+!/.claude/commands/**
+
+# Allow new opencode skills
+!/.opencode/
+/.opencode/**
+!/.opencode/skill/
+!/.opencode/skill/**
+
+# Allow new opencode commands
+!/.config/
+/.config/**
+!/.config/opencode/
+/.config/opencode/**
+!/.config/opencode/command/
+!/.config/opencode/command/**
