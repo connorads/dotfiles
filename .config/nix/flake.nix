@@ -82,6 +82,7 @@
               "cursor"
               "kiro"
               "antigravity"
+              "zed"
               "zappy"
               "calibre"
               "onedrive"
