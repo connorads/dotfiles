@@ -103,6 +103,7 @@
               "keka"
               "figma"
               "opencode-desktop"
+              "conductor"
 
               # Hardware
               "logitech-camera-settings"
