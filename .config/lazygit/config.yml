@@ -1,5 +1,5 @@
 customCommands:
   - key: 't'
-    command: 'git stash && git pull && git stash pop'
+    command: 'git stash && git pull --rebase && git stash pop'
     context: 'files'
     description: 'Stash, pull, and pop'
