@@ -52,6 +52,7 @@
       "npm run preview *": "allow",
       "npm run fix *": "allow",
       "npm test *": "allow",
+      "npx tsc --noEmit": "allow",
       "pnpm run dev *": "allow",
       "pnpm dev *": "allow",
       "pnpm exec prettier --check *": "allow",
