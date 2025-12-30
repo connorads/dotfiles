@@ -17,6 +17,7 @@
       "git remote -v": "allow",
       "git reset *": "ask",
       "git push *": "ask",
+      "git worktree list": "allow",
       "ls *": "allow",
       "tree *": "allow",
       "pwd": "allow",
