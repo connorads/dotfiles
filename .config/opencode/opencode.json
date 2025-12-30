@@ -87,6 +87,7 @@
       "pnpm view *": "allow",
       "bun run build": "allow",
       "bun run typecheck": "allow",
+      "bun test": "allow",
       "yarn run dev *": "allow",
       "yarn run build *": "allow",
       "yarn run lint *": "allow",
