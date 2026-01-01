@@ -1,12 +1,4 @@
 # https://github.com/zsh-users/antigen
-if [[ -f ~/.nix-profile/share/antigen/antigen.zsh ]]; then
-  source ~/.nix-profile/share/antigen/antigen.zsh
-elif command -v brew >/dev/null 2>&1; then
-  source "$(brew --prefix)/share/antigen/antigen.zsh"
-elif [[ -f /usr/share/zsh-antigen/antigen.zsh ]]; then
-  source /usr/share/zsh-antigen/antigen.zsh
-fi
-
 antigen use oh-my-zsh
 antigen theme spaceship-prompt/spaceship-prompt
 antigen bundle git
