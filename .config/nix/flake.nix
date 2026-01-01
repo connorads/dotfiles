@@ -199,17 +199,22 @@
           programs = {
             zsh = {
               enable = true;
-              initContent = ''
+              interactiveShellInit = ''
                 source ${pkgs.antigen}/share/antigen/antigen.zsh
               '';
             };
           };
+
+          # User configuration - required for home-manager integration
+          users.users.connorads.home = "/Users/connorads";
 
           # Home Manager integration for macOS
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
             users.connorads = {
+              home.username = "connorads";
+              home.homeDirectory = "/Users/connorads";
               home.packages = sharedPackages pkgs;
               home.stateVersion = "24.11";
             };
