@@ -1,8 +1,0 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
-
-git:
-  # Disable background fetches (you can still fetch manually).
-  autoFetch: false
-
-  # Disable background refreshes of working tree/submodules.
-  autoRefresh: false
