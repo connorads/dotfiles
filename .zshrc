@@ -1,14 +1,21 @@
 # https://github.com/zsh-users/antigen
-command -v antigen >/dev/null || source "$(brew --prefix)/share/antigen/antigen.zsh"
+if [[ -f ~/.nix-profile/share/antigen/antigen.zsh ]]; then
+  source ~/.nix-profile/share/antigen/antigen.zsh
+elif command -v brew >/dev/null 2>&1; then
+  source "$(brew --prefix)/share/antigen/antigen.zsh"
+elif [[ -f /usr/share/zsh-antigen/antigen.zsh ]]; then
+  source /usr/share/zsh-antigen/antigen.zsh
+fi
+
 antigen use oh-my-zsh
 antigen theme spaceship-prompt/spaceship-prompt
-antigen bundle brew
 antigen bundle git
 antigen bundle aws
 antigen bundle command-not-found
 antigen bundle zsh-users/zsh-autosuggestions
 antigen bundle zsh-users/zsh-completions
 antigen bundle zsh-users/zsh-syntax-highlighting
+command -v brew >/dev/null 2>&1 && antigen bundle brew
 antigen apply
 
 # https://github.com/connorads/mise/
@@ -17,12 +24,19 @@ eval "$(mise activate zsh)"
 # https://github.com/connorads/dotfiles/
 alias dotfiles='git --git-dir=$HOME/git/dotfiles'
 
-# https://github.com/LnL7/nix-darwin
-alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
-alias nfu='nix flake update --flake ~/.config/nix'
-alias ncg='sudo nix-collect-garbage -d'
 
-alias up='mise upgrade && brew upgrade'
+# https://github.com/NixOS/nix
+alias nfu='nix flake update --flake ~/.config/nix'
+alias ncg='nix-collect-garbage -d'
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS - https://github.com/LnL7/nix-darwin
+  alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
+  alias up='mise upgrade && brew upgrade'
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  # Linux - https://github.com/nix-community/home-manager
+  alias hms='home-manager switch --flake ~/.config/nix'
+  alias up='mise upgrade'
+fi
 
 # Function to create a prompt to review a GitHub PR
 pr-prompt() {
