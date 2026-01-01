@@ -243,6 +243,18 @@
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
 
+          # SSH agent setup
+          services.ssh-agent.enable = true;
+          programs.ssh = {
+            enable = true;
+            enableDefaultConfig = false;
+            # Preserve existing SSH config
+            includes = [ "config.original" ];
+            matchBlocks."*" = {
+              addKeysToAgent = "yes";
+            };
+          };
+
           # Allow unfree packages
           nixpkgs.config.allowUnfree = true;
         };
