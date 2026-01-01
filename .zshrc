@@ -22,6 +22,8 @@ alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
 alias nfu='nix flake update --flake ~/.config/nix'
 alias ncg='sudo nix-collect-garbage -d'
 
+alias up='mise upgrade && brew upgrade'
+
 # Function to create a prompt to review a GitHub PR
 pr-prompt() {
   local url=$1
