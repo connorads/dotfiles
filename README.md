@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) and [`brew`](https://brew.sh/) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Usage
 
@@ -22,18 +22,16 @@ dotfiles rm --cached .somefile
 
 ### Managing system
 
-#### Build and activate nix-darwin config
+#### macOS (nix-darwin)
 
-This will make changes to the system and update packages as per [`flake.nix`](.config/nix/flake.nix)
+Build and activate nix-darwin config. This will make changes to the system and update packages as per [`flake.nix`](.config/nix/flake.nix)
 
 ```sh
 darwin-rebuild switch --flake ~/.config/nix
 # alias: drs
 ```
 
-#### Update nix packages
-
-This will update your non-homebrew packages and update [`flake.lock`](.config/nix/flake.lock)
+Update nix packages. This will update your non-homebrew packages and update [`flake.lock`](.config/nix/flake.lock)
 
 ```sh
 nix flake update --flake ~/.config/nix
@@ -41,17 +39,36 @@ nix flake update --flake ~/.config/nix
 # You need to run build and activate after i.e. drs
 ```
 
-#### Update brew packages
-
-This will update your homebrew packages
+Update brew packages
 
 ```sh
 brew upgrade
 ```
 
-#### Update mise packages
+Update mise packages
 
-This will update your mise backages
+```sh
+mise upgrade
+```
+
+#### Linux (home-manager)
+
+Build and activate home-manager config. This will update packages as per [`flake.nix`](.config/nix/flake.nix)
+
+```sh
+home-manager switch --flake ~/.config/nix
+# alias: hms
+```
+
+Update nix packages. This will update your packages and update [`flake.lock`](.config/nix/flake.lock)
+
+```sh
+nix flake update --flake ~/.config/nix
+# alias: nfu
+# You need to run home-manager switch after i.e. hms
+```
+
+Update mise packages
 
 ```sh
 mise upgrade
@@ -88,12 +105,30 @@ If you want to (fork and) clone this repo and use it for your own dotfiles, foll
 
 4. Setup nix, brew and install software (⚠️ skip the option to install Determinate Nix)
 
+    **macOS (nix-darwin):**
+
     ```sh
+    # Install Homebrew
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
+
+    # Install Nix
     curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+
+    # Build and activate nix-darwin configuration
     nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
+    ```
+
+    **Linux (home-manager):**
+
+    ```sh
+    # Install Nix
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    . ~/.nix-profile/etc/profile.d/nix.sh
+
+    # Build and activate home-manager configuration
+    nix run home-manager/master -- switch --flake ~/.config/nix
     ```
 
 5. You can now reload your shell and open Sublime Merge

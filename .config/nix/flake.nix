@@ -3,8 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
     nix-darwin.url = "github:LnL7/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -12,43 +16,56 @@
       self,
       nix-darwin,
       nixpkgs,
+      home-manager,
     }:
     let
-      configuration =
+      # Cross-platform packages (work on both macOS and Linux)
+      sharedPackages =
+        pkgs: with pkgs; [
+          # Tools
+          mise
+          antigen
+          vim
+          tmux
+          pipx
+          nixfmt-rfc-style
+          zoxide
+          tree
+          yt-dlp
+          ncdu
+          nmap
+          rustscan
+          wgcf
+          wireproxy
+          coreutils
+          cloudflared
+          presenterm
+          rclone
+          ripgrep
+          postgresql
+          (silicon.overrideAttrs (old: {
+            # Use system oniguruma instead of bundled version to fix build on linux
+            RUSTONIG_SYSTEM_LIBONIG = true;
+            buildInputs = (old.buildInputs or [ ]) ++ [ oniguruma ];
+          }))
+          lazygit
+          jujutsu
+          unison
+        ];
+
+      # macOS-specific configuration
+      darwinConfiguration =
         { pkgs, ... }:
         {
+          # macOS-specific system packages
           environment.systemPackages = [
-            # Tools
-            pkgs.mise
-            pkgs.antigen
-            pkgs.vim
-            pkgs.tmux
-            pkgs.pipx
-            pkgs.nixfmt-rfc-style
+            # macOS-specific tools
             pkgs.pam_u2f
             pkgs.docker
             pkgs.colima
-            pkgs.zoxide
-            pkgs.tree
             pkgs.tart
-            pkgs.yt-dlp
-            pkgs.ncdu
-            pkgs.nmap
-            pkgs.rustscan
-            pkgs.wgcf
-            pkgs.wireproxy
-            pkgs.coreutils
-            pkgs.cloudflared
-            pkgs.presenterm
-            pkgs.rclone
-            pkgs.ripgrep
-            pkgs.postgresql
-            pkgs.silicon
-            pkgs.lazygit
-            pkgs.jujutsu
-            pkgs.unison
 
-            # Apps
+            # macOS-specific apps
             pkgs.raycast
             pkgs.rectangle
             pkgs.iina
@@ -182,9 +199,19 @@
           programs = {
             zsh = {
               enable = true;
-              shellInit = ''
+              initContent = ''
                 source ${pkgs.antigen}/share/antigen/antigen.zsh
               '';
+            };
+          };
+
+          # Home Manager integration for macOS
+          home-manager = {
+            useGlobalPkgs = true;
+            useUserPackages = true;
+            users.connorads = {
+              home.packages = sharedPackages pkgs;
+              home.stateVersion = "24.11";
             };
           };
 
@@ -201,12 +228,43 @@
           # Allow unfree packages (like VS Code )
           nixpkgs.config.allowUnfree = true;
         };
+
+      # Linux home-manager configuration
+      linuxHomeConfiguration =
+        { pkgs, ... }:
+        {
+          home.username = "connor";
+          home.homeDirectory = "/home/connor";
+          home.stateVersion = "24.11";
+
+          # Cross-platform packages
+          home.packages = sharedPackages pkgs;
+
+          # Let Home Manager manage itself
+          programs.home-manager.enable = true;
+
+          # Allow unfree packages
+          nixpkgs.config.allowUnfree = true;
+        };
+
     in
     {
       # Build darwin flake using:
-      # $ darwin-rebuild build --flake .#Connors-Mac-mini
+      # $ darwin-rebuild switch --flake ~/.config/nix
+      # alias: drs
       darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
-        modules = [ configuration ];
+        modules = [
+          darwinConfiguration
+          home-manager.darwinModules.home-manager
+        ];
+      };
+
+      # Build home-manager flake using:
+      # $ home-manager switch --flake ~/.config/nix
+      # alias: hms
+      homeConfigurations."connor@penguin" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+        modules = [ linuxHomeConfiguration ];
       };
     };
 }
