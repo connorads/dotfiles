@@ -104,6 +104,7 @@
               "figma"
               "opencode-desktop"
               "conductor"
+              "tailscale-app"
 
               # Hardware
               "logitech-camera-settings"
