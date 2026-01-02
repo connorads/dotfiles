@@ -263,6 +263,18 @@
               home.homeDirectory = "/Users/connorads";
               home.packages = sharedPackages pkgs;
               home.stateVersion = "24.11";
+
+              # Git configuration
+              programs.git = {
+                enable = true;
+                lfs.enable = true;
+                settings = {
+                  user.name = "Connor Adams";
+                  user.email = "connorads@users.noreply.github.com";
+                  init.defaultBranch = "main";
+                  credential.helper = "osxkeychain";
+                };
+              };
             };
           };
 
@@ -293,6 +305,17 @@
 
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
+
+          # Git configuration
+          programs.git = {
+            enable = true;
+            lfs.enable = true;
+            settings = {
+              user.name = "Connor Adams";
+              user.email = "connorads@users.noreply.github.com";
+              init.defaultBranch = "main";
+            };
+          };
 
           # SSH agent setup
           services.ssh-agent.enable = true;
