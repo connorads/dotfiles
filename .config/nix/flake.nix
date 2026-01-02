@@ -196,12 +196,10 @@
           };
 
           # Use TouchId and yubikey for sudo
-          environment.etc = {
-            "pam.d/sudo_local".text = ''
-              auth sufficient pam_tid.so
-              auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
-            '';
-          };
+          environment.etc."pam.d/sudo_local".text = ''
+            auth sufficient pam_tid.so
+            auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
+          '';
 
           # Necessary for using flakes on this system.
           nix.settings.experimental-features = "nix-command flakes";
