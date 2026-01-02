@@ -158,6 +158,7 @@
               ShowPathbar = true;
               ShowStatusBar = true;
               FXPreferredViewStyle = "clmv"; # Column view
+              FXDefaultSearchScope = "SCcf"; # Search current folder by default
             };
             controlcenter = {
               Sound = true;
