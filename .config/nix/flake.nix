@@ -51,6 +51,7 @@
           lazygit
           jujutsu
           unison
+          witr
         ];
 
       # macOS-specific configuration
