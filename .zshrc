@@ -20,6 +20,7 @@ alias dotfiles='git --git-dir=$HOME/git/dotfiles'
 # https://github.com/NixOS/nix
 alias nfu='nix flake update --flake ~/.config/nix'
 alias ncg='nix-collect-garbage -d'
+alias nfm='(cd ~/.config/nix && nix fmt ./flake.nix)'
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS - https://github.com/LnL7/nix-darwin
   alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
