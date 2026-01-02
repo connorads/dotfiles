@@ -208,6 +208,25 @@
             };
           };
 
+          services.openssh = {
+            enable = true;
+            extraConfig = ''
+              AuthorizedKeysCommand none
+              AuthorizedKeysFile .ssh/authorized_keys
+              AuthenticationMethods publickey
+              PubkeyAuthentication yes
+              PasswordAuthentication no
+              KbdInteractiveAuthentication no
+              PermitRootLogin no
+              AllowUsers connorads
+              AllowTcpForwarding no
+              AllowAgentForwarding no
+              X11Forwarding no
+              MaxAuthTries 3
+              LoginGraceTime 20s
+            '';
+          };
+
           # User configuration - required for home-manager integration
           users.users.connorads.home = "/Users/connorads";
 
