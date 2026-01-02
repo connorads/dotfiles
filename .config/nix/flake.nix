@@ -188,6 +188,13 @@
             };
           };
 
+          networking.applicationFirewall = {
+            enable = true;
+            enableStealthMode = true;
+            allowSigned = true;
+            allowSignedApp = false;
+          };
+
           # Use TouchId and yubikey for sudo
           environment.etc = {
             "pam.d/sudo_local".text = ''
