@@ -78,7 +78,9 @@
             enable = true;
             onActivation.cleanup = "zap";
             taps = [ ];
-            brews = [ ];
+            brews = [
+              "mole"
+            ];
             casks = [
               # Apps
               "kitty"
