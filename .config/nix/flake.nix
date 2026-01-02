@@ -206,6 +206,25 @@
           # Necessary for using flakes on this system.
           nix.settings.experimental-features = "nix-command flakes";
 
+          # Automatic daily GC to keep the store tidy.
+          nix.gc = {
+            automatic = true;
+            options = "--delete-older-than 14d";
+            interval = {
+              Hour = 3;
+              Minute = 15;
+            };
+          };
+
+          # Daily store optimization to deduplicate the store.
+          nix.optimise = {
+            automatic = true;
+            interval = {
+              Hour = 3;
+              Minute = 30;
+            };
+          };
+
           programs = {
             zsh = {
               enable = true;
