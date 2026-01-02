@@ -199,6 +199,8 @@
       "mise use *": "allow",
       "mise which *": "allow",
       "node -v": "allow",
+      "nix --version": "allow",
+      "nix flake check --no-build *": "allow",
       "nix flake metadata *": "allow",
       "opencode --help": "allow",
       "opencode --version": "allow",
