@@ -49,6 +49,7 @@
             buildInputs = (old.buildInputs or [ ]) ++ [ oniguruma ];
           }))
           lazygit
+          lazysql
           jujutsu
           unison
           witr
