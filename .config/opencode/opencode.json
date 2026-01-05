@@ -238,10 +238,18 @@
     "opencode-gemini-auth@1.1.6"
   ],
   "lsp": {
-    "pyright": { "disabled": true },
+    "pyright": {
+      "disabled": true
+    },
     "ty": {
-      "command": ["ty", "server"],
-      "extensions": [".py", ".pyi"]
+      "command": [
+        "ty",
+        "server"
+      ],
+      "extensions": [
+        ".py",
+        ".pyi"
+      ]
     }
   },
   "tui": {
@@ -258,7 +266,11 @@
   "mcp": {
     "brave-search": {
       "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
       "environment": {
         "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
       },
@@ -274,7 +286,11 @@
     },
     "chrome-devtools": {
       "type": "local",
-      "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
       "enabled": false
     },
     "sentry": {
@@ -331,7 +347,11 @@
     },
     "exa": {
       "type": "local",
-      "command": ["npx", "-y", "exa-mcp-server"],
+      "command": [
+        "npx",
+        "-y",
+        "exa-mcp-server"
+      ],
       "environment": {
         "EXA_API_KEY": "{env:EXA_API_KEY}"
       },
