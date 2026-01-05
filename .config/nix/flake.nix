@@ -53,6 +53,7 @@
           jujutsu
           unison
           witr
+          telegram-desktop
         ];
 
       # macOS-specific configuration
