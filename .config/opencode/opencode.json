@@ -18,6 +18,7 @@
       "git ls-remote*": "allow",
       "git ls-tree*": "allow",
       "git branch --list": "allow",
+      "git branch --show-current": "allow",
       "git branch*": "ask",
       "git add*": "ask",
       "git commit*": "ask",
