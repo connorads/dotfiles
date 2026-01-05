@@ -314,8 +314,11 @@
       "oauth": {}
     },
     "exa": {
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp",
+      "type": "local",
+      "command": ["npx", "-y", "exa-mcp-server"],
+      "environment": {
+        "EXA_API_KEY": "{env:EXA_API_KEY}"
+      },
       "enabled": true
     },
     "grep-public-github": {
