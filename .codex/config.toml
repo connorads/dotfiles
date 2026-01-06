@@ -1,12 +1,16 @@
-model = "gpt-5.2"
-model_reasoning_effort = "medium"
-
-[mcp_servers.context7]
-args = ["-y", "@upstash/context7-mcp"]
-command = "npx"
+model = "gpt-5.2-codex"
+model_reasoning_effort = "high"
+tool_output_token_limit = 25000
+# Leave room for native compaction near the 272-273k context window
+# Formula: 273000 - (tool_output_token_limit + 15000)
+model_auto_compact_token_limit = 233000
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true
 
 [features]
+unified_exec = true
+apply_patch_freeform = true
 web_search_request = true
+skills = true
+shell_snapshot = true
