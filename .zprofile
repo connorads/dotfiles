@@ -1,6 +1,3 @@
-# Source Nix and home-manager session vars (if they exist)
-[[ -f ~/.nix-profile/etc/profile.d/hm-session-vars.sh ]] && source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
-
 # mise-en-place
 export PATH="$HOME/.local/share/mise/shims:$PATH"
 
