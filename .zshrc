@@ -115,6 +115,9 @@ wtrm() {
 
 # https://github.com/sst/opencode
 alias oc='opencode'
+alias ocy='config="$HOME/.config/opencode/opencode.json"; tmp="$(mktemp)"; jq ".permission.bash[\"*\"] = \"allow\"" "$config" > "$tmp" && mv "$tmp" "$config"'
+alias ocn='config="$HOME/.config/opencode/opencode.json"; tmp="$(mktemp)"; jq ".permission.bash[\"*\"] = \"ask\"" "$config" > "$tmp" && mv "$tmp" "$config"'
+
 alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
 
 # https://github.com/numman-ali/openskills
