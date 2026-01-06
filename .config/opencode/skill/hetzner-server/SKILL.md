@@ -124,6 +124,30 @@ hcloud image list --type system
 hcloud image list --type system --architecture arm
 ```
 
+## Cloning GitHub repos (SSH agent forwarding)
+
+Use SSH agent forwarding to clone private repos without copying keys to the server.
+
+```bash
+# First time only: add GitHub's host key
+ssh connor@$(hcloud server ip dev) "ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null"
+
+# Clone with agent forwarding (-A)
+ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git"
+
+# Clone specific branch
+ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
+
+# Push/pull with agent forwarding
+ssh -A connor@$(hcloud server ip dev) "cd repo && git push"
+```
+
+For interactive sessions (e.g., lazygit):
+```bash
+ssh -A connor@$(hcloud server ip dev)
+# Then on server: git clone/push/pull works with forwarded agent
+```
+
 ## Notes
 
 - ARM (cax*) servers are best value for dev work
