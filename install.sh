@@ -1,7 +1,7 @@
 #!/bin/bash
 # Dotfiles install script
 # Works on: GitHub Codespaces, Linux as root (creates connor user), Linux as regular user
-# Usage: curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 
 set -e
 
@@ -56,7 +56,7 @@ if [ "$(id -u)" = "0" ]; then
   fi
 
   echo "Re-running script as $TARGET_USER..."
-  exec sudo -u "$TARGET_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/main/install.sh | bash"
+  exec sudo -u "$TARGET_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash"
 fi
 
 # --- Linux as regular user ---
