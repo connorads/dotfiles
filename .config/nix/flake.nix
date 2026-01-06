@@ -305,6 +305,9 @@
           home.homeDirectory = "/home/connor";
           home.stateVersion = "24.11";
 
+          # Enable Nix PATH and environment for non-NixOS Linux
+          targets.genericLinux.enable = true;
+
           # Cross-platform packages
           home.packages = sharedPackages pkgs;
 
