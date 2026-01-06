@@ -32,3 +32,9 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Strongly typed code: No `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
 - Make illegal states unrepresentable Model domain with ADTs/discriminated unions; parse inputs at boundaries into typed structures; if state can't exist, code can't mishandle it
 - Quality Abstractions: Consciously constrained, pragmatically parameterised, doggedly documented
+
+## Testing
+
+- Write automated tests: Ideally first, in TDD manner. Test expected business behaviour, not implementation. Test through the public API, this helps create good abstractions.
+- Do e2e tests: CLI? Run some commands. Web - use a browser (chrome devtools or playwright) to test. Automate a couple e2e tests if advantageous.
+
