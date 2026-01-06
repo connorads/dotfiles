@@ -105,5 +105,12 @@ fi
 echo "Running home-manager switch..."
 nix run home-manager/master -- switch --flake ~/.config/nix
 
+# Set zsh as default shell
+ZSH_PATH="$HOME/.nix-profile/bin/zsh"
+if [[ -x "$ZSH_PATH" && "$SHELL" != "$ZSH_PATH" ]]; then
+  echo "Changing default shell to zsh..."
+  sudo chsh -s "$ZSH_PATH" "$USER"
+fi
+
 echo ""
 echo "Done! Restart your shell or run: exec zsh"
