@@ -23,6 +23,7 @@
       sharedPackages =
         pkgs: with pkgs; [
           # Tools
+          zsh
           mise
           antigen
           vim
@@ -331,14 +332,6 @@
             matchBlocks."*" = {
               addKeysToAgent = "yes";
             };
-          };
-
-          # Zsh configuration
-          programs.zsh = {
-            enable = true;
-            initContent = ''
-              source ${pkgs.antigen}/share/antigen/antigen.zsh
-            '';
           };
 
           # Allow unfree packages
