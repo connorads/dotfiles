@@ -19,5 +19,7 @@
 !/.config/opencode/command/**
 !/.config/opencode/skill/
 !/.config/opencode/skill/**
+!/.config/opencode/plugin/
+!/.config/opencode/plugin/**
 
 .DS_Store
