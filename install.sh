@@ -25,11 +25,6 @@ if [ "$CODESPACES" = "true" ]; then
     git clone --depth 1 https://github.com/zsh-users/antigen.git "$HOME/.antigen"
   fi
 
-  if ! grep -q "antigen.zsh" "$HOME/.zshrc" 2>/dev/null; then
-    echo "Adding antigen source to .zshrc..."
-    echo 'source ~/.antigen/antigen.zsh' | cat - "$HOME/.zshrc" > /tmp/.zshrc.tmp && mv /tmp/.zshrc.tmp "$HOME/.zshrc"
-  fi
-
   echo "Done! Restart your shell or run: exec zsh"
   exit 0
 fi
@@ -104,6 +99,11 @@ fi
 # Run home-manager
 echo "Running home-manager switch..."
 nix run home-manager/master -- switch --flake ~/.config/nix
+
+# Install tools via mise
+echo "Installing tools via mise..."
+export PATH="$HOME/.nix-profile/bin:$PATH"
+mise install
 
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
