@@ -31,6 +31,7 @@
           nixfmt-rfc-style
           zoxide
           tree
+          fzf
           yt-dlp
           ncdu
           nmap
