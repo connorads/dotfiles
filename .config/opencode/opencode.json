@@ -61,6 +61,8 @@
       "find*": "allow",
       "head*": "allow",
       "hostname": "allow",
+      "launchctl print *": "allow",
+      "launchctl print-disabled *": "allow",
       "pgrep*": "allow",
       "rg*": "allow",
       "sleep*": "allow",
