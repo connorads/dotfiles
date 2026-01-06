@@ -333,6 +333,14 @@
             };
           };
 
+          # Zsh configuration
+          programs.zsh = {
+            enable = true;
+            initContent = ''
+              source ${pkgs.antigen}/share/antigen/antigen.zsh
+            '';
+          };
+
           # Allow unfree packages
           nixpkgs.config.allowUnfree = true;
         };
