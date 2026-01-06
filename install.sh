@@ -102,7 +102,7 @@ nix run home-manager/master -- switch --flake ~/.config/nix
 
 # Install tools via mise
 echo "Installing tools via mise..."
-export PATH="$HOME/.nix-profile/bin:$PATH"
+export PATH="$HOME/.nix-profile/bin:$HOME/.local/share/mise/shims:$PATH"
 mise install
 
 # Set zsh as default shell
