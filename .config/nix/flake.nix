@@ -22,6 +22,9 @@
       # Cross-platform packages (work on both macOS and Linux)
       sharedPackages =
         pkgs: with pkgs; [
+          # Terminal
+          kitty.terminfo
+
           # Tools
           zsh
           mise
