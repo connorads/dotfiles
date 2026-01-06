@@ -1,3 +1,12 @@
+# Source antigen if not already loaded (nix-darwin sources it in /etc/zshrc)
+if ! typeset -f antigen > /dev/null; then
+  if [[ -f ~/.nix-profile/share/antigen/antigen.zsh ]]; then
+    source ~/.nix-profile/share/antigen/antigen.zsh
+  elif [[ -f ~/.antigen/antigen.zsh ]]; then
+    source ~/.antigen/antigen.zsh
+  fi
+fi
+
 # https://github.com/zsh-users/antigen
 antigen use oh-my-zsh
 antigen theme spaceship-prompt/spaceship-prompt
