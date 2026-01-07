@@ -183,10 +183,6 @@ alias ocn='git --git-dir=$HOME/git/dotfiles --work-tree=$HOME checkout HEAD -- .
 
 alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
 
-# https://github.com/numman-ali/openskills
-alias os='openskills'
-alias osocs='cd ~/.config/opencode && os sync'
-
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
 alias lgdf='lg --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
