@@ -130,6 +130,52 @@ wtrm() {
   fi
 }
 
+# tmux session management
+tma() {
+  local session_name="${1:-main}"
+  if tmux has-session -t="$session_name" 2>/dev/null; then
+    if [[ -z "$TMUX" ]]; then
+      tmux attach -t "$session_name"
+    else
+      tmux switch-client -t "$session_name"
+    fi
+  else
+    if [[ -z "$TMUX" ]]; then
+      tmux new-session -s "$session_name"
+    else
+      tmux new-session -ds "$session_name" && tmux switch-client -t "$session_name"
+    fi
+  fi
+}
+tmk() {
+  if ! tmux list-sessions &>/dev/null; then
+    echo "No tmux sessions running"
+    return 1
+  fi
+  echo "Current sessions:"
+  tmux list-sessions
+  echo
+  read "session_name?Enter session name to kill: "
+  if [[ -z "$session_name" ]]; then
+    echo "No session specified"
+    return 1
+  fi
+  if ! tmux has-session -t="$session_name" 2>/dev/null; then
+    echo "Session '$session_name' not found"
+    return 1
+  fi
+  read "confirm?Kill session '$session_name'? This will terminate all processes. [y/N]: "
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    tmux kill-session -t "$session_name"
+    echo "Session '$session_name' killed"
+  else
+    echo "Cancelled"
+  fi
+}
+tml() {
+  tmux list-sessions 2>/dev/null || echo "No tmux sessions running"
+}
+
 # https://github.com/sst/opencode
 alias oc='opencode'
 alias ocy='config="$HOME/.config/opencode/opencode.json"; tmp="$(mktemp)"; jq ".permission.bash = {\"*\": \"allow\"} | .permission.external_directory = \"allow\"" "$config" > "$tmp" && mv "$tmp" "$config"'
