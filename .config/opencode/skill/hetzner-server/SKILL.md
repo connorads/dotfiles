@@ -56,6 +56,22 @@ hcloud server create \
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash')
 ```
 
+The dotfiles installation takes ~5 minutes. To monitor progress:
+
+```bash
+# Quick status check
+ssh connor@$(hcloud server ip dev) "cloud-init status"
+
+# View recent installation logs
+ssh connor@$(hcloud server ip dev) "sudo journalctl -u cloud-final -n 50 --no-pager"
+
+# Follow installation in real-time
+ssh connor@$(hcloud server ip dev) "sudo journalctl -u cloud-final -f"
+
+# Check if tools are installed
+ssh connor@$(hcloud server ip dev) "which zsh mise && echo \$SHELL"
+```
+
 ### Common commands
 
 ```bash
