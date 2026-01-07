@@ -96,6 +96,31 @@ else
   echo "Nix already installed"
 fi
 
+# Install Docker if not present
+if ! command -v docker &>/dev/null; then
+  echo "Installing Docker..."
+  curl -fsSL https://get.docker.com | sudo sh
+
+  if ! groups "$USER" | grep -q docker; then
+    sudo usermod -aG docker "$USER"
+    echo "Added $USER to docker group (log out and back in to use docker without sudo)"
+  fi
+
+  echo "Optional: For rootless Docker (more secure), run: dockerd-rootless-setuptool.sh install"
+  echo "See: https://docs.docker.com/engine/security/rootless/"
+else
+  echo "Docker already installed: $(docker --version)"
+
+  if command -v systemctl &>/dev/null && ! sudo systemctl is-active --quiet docker; then
+    sudo systemctl start docker
+  fi
+
+  if ! groups "$USER" | grep -q docker; then
+    sudo usermod -aG docker "$USER"
+    echo "Added $USER to docker group (log out and back in to use docker without sudo)"
+  fi
+fi
+
 # Run home-manager
 echo "Running home-manager switch..."
 nix run home-manager/master -- switch --flake ~/.config/nix
