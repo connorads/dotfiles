@@ -24,7 +24,6 @@
       "git branch --list": "allow",
       "git branch --show-current": "allow",
       "git branch -a": "allow",
-      "git branch*": "ask",
       "git add*": "ask",
       "git commit*": "ask",
       "git rebase*": "ask",
