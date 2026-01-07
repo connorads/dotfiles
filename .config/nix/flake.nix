@@ -133,6 +133,7 @@
               "opencode-desktop"
               "conductor"
               "tailscale-app"
+              "knockknock"
 
               # Hardware
               "logitech-camera-settings"
