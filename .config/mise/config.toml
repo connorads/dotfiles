@@ -1,5 +1,6 @@
 [settings]
 experimental = true
+npm.package_manager = "bun"
 
 [tools]
 usage = "latest"
