@@ -1,3 +1,9 @@
+git:
+  pagers:
+    - colorArg: always
+      # Lazygit is the pager; prevent delta paging inside it.
+      pager: delta --paging=never
+      useConfig: false
 customCommands:
   - key: 't'
     command: 'git stash && git pull --rebase && git stash pop'
