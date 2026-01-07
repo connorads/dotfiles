@@ -17,7 +17,6 @@ hcloud = "latest"
 "github:anomalyco/opencode" = "latest"
 
 "npm:@github/copilot" = "latest"
-"npm:openskills" = "latest"
 "npm:apify-cli" = "latest"
 "npm:@hona/ralph-cli" = "latest"
 
