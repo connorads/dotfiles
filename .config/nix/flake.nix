@@ -48,6 +48,11 @@
           presenterm
           rclone
           ripgrep
+          bat
+          eza
+          delta
+          dust
+          usql
           postgresql
           (silicon.overrideAttrs (old: {
             # Use system oniguruma instead of bundled version to fix build on linux
