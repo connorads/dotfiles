@@ -112,9 +112,16 @@ wta() {
   fi
 }
 alias wtl='git worktree list'
+wts() {
+  local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Switch to worktree: ")
+
+  if [[ -n "$worktree" ]]; then
+    cd "$worktree"
+  fi
+}
 wtrm() {
   local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
-  
+
   if [[ -n "$worktree" ]]; then
     echo "Removing: $worktree"
     git worktree remove "$worktree" --force
