@@ -11,9 +11,10 @@ gh = "latest"
 claude = "latest"
 gemini = "latest"
 codex = "latest"
-opencode = "latest"
 usage = "latest"
 hcloud = "latest"
+
+"github:anomalyco/opencode" = "latest"
 
 "npm:@github/copilot" = "latest"
 "npm:openskills" = "latest"
