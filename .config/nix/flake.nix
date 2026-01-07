@@ -36,6 +36,7 @@
           zoxide
           tree
           fzf
+          jq
           yt-dlp
           ncdu
           nmap
