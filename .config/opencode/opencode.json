@@ -47,6 +47,7 @@
       "git --git-dir=* reflog*": "allow",
       "git config --list --show-origin*": "allow",
       "infocmp*": "allow",
+      "launchctl list*": "allow",
       "ls*": "allow",
       "tree*": "allow",
       "pwd": "allow",
