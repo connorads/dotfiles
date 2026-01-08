@@ -72,6 +72,46 @@ ssh connor@$(hcloud server ip dev) "sudo journalctl -u cloud-final -f"
 ssh connor@$(hcloud server ip dev) "which zsh mise && echo \$SHELL"
 ```
 
+### With swap (recommended for production)
+
+Ubuntu cloud images don't include swap by default. Add swap via cloud-init at creation:
+
+```bash
+# Create server with 16GB swap (1:1 ratio for 16GB RAM server)
+hcloud server create \
+  --name dev \
+  --type cax33 \
+  --image ubuntu-24.04 \
+  --location nbg1 \
+  --ssh-key connorads \
+  --user-data-from-file - <<'EOF'
+#cloud-config
+swap:
+  filename: /swapfile
+  size: 16G
+  maxsize: 16G
+EOF
+```
+
+**Recommended swap sizes:**
+- 4GB RAM → 4-8GB swap
+- 8GB RAM → 8GB swap  
+- 16GB+ RAM → 16GB swap (1:1 ratio)
+
+**Add swap to existing server:**
+
+```bash
+# Create 16GB swap file
+ssh connor@$(hcloud server ip dev) "sudo fallocate -l 16G /swapfile && \
+  sudo chmod 600 /swapfile && \
+  sudo mkswap /swapfile && \
+  sudo swapon /swapfile && \
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab"
+
+# Verify swap is active
+ssh connor@$(hcloud server ip dev) "free -h"
+```
+
 ### Common commands
 
 ```bash
