@@ -180,6 +180,17 @@ tml() {
 alias oc='opencode'
 alias ocy='config="$HOME/.config/opencode/opencode.json"; tmp="$(mktemp)"; jq ".permission.bash = {\"*\": \"allow\"} | .permission.external_directory = \"allow\"" "$config" > "$tmp" && mv "$tmp" "$config"'
 alias ocn='git --git-dir=$HOME/git/dotfiles --work-tree=$HOME checkout HEAD -- .config/opencode/opencode.json'
+ocm() {
+  local cfg="$HOME/.config/opencode/opencode.json"
+  local sel=$(jq -r '.mcp|keys[]' "$cfg" | fzf -m --prompt="MCPs to enable > ")
+  [[ -z "$sel" ]] && return
+  local tmp=$(mktemp)
+  local filter='.mcp |= with_entries(.value.enabled = false)'
+  while IFS= read -r mcp; do
+    filter="$filter | .mcp[\"$mcp\"].enabled = true"
+  done <<< "$sel"
+  jq "$filter" "$cfg" > "$tmp" && mv "$tmp" "$cfg"
+}
 
 alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
 
