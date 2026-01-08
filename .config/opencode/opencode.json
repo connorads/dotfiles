@@ -71,6 +71,7 @@
       "ps*": "allow",
       "python3 --version*": "allow",
       "ruby --version*": "allow",
+      "sw_vers": "allow",
       "test -d*": "allow",
       "test -f*": "allow",
       "test -x*": "allow",
