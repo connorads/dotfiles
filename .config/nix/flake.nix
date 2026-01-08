@@ -36,6 +36,7 @@
           zoxide
           tree
           fzf
+          gum
           jq
           yt-dlp
           ncdu
