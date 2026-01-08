@@ -3,6 +3,7 @@ experimental = true
 npm.package_manager = "bun"
 
 [tools]
+python = "3.14"
 node = "lts"
 pnpm = "10"
 bun = "1.3"
