@@ -13,7 +13,11 @@ Use `gh` CLI to access and update issues and PRs etc.
 
 # Guidance
 
-## Assumptions and reasearch
+## Secrets
+
+Do not echo or read secrets. If checking format combine with `| head -c 5` for example to see prefix.
+
+## Assumptions and research
 
 Don't assume, check: It's important to do research to get the latest code and information.
 
