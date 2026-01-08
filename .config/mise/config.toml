@@ -24,3 +24,4 @@ hcloud = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
+"pipx:batrachian-toad" = "latest"
