@@ -171,6 +171,7 @@
       "gh api * --method PUT*": "ask",
       "gh api * --method PATCH*": "ask",
       "gh api * --method DELETE*": "ask",
+      "gh api repos/*/contents/*": "allow",
       "gh api repos/*/pulls/*/comments": "allow",
       "gh api repos/*/pulls/*/reviews": "allow",
       "gh api --help": "allow",
