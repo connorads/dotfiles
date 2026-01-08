@@ -46,6 +46,7 @@
       "git -C * rev-parse --is-inside-work-tree": "allow",
       "git --git-dir=* reflog*": "allow",
       "git config --list --show-origin*": "allow",
+      "infocmp*": "allow",
       "ls*": "allow",
       "tree*": "allow",
       "pwd": "allow",
