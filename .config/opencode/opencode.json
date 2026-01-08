@@ -64,6 +64,7 @@
       "docker --version*": "allow",
       "docker system --help*": "allow",
       "mkdir*": "allow",
+      "openssl rand*": "allow",
       "ps*": "allow",
       "python3 --version*": "allow",
       "ruby --version*": "allow",
