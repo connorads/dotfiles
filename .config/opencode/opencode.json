@@ -65,6 +65,8 @@
       "docker system --help*": "allow",
       "mkdir*": "allow",
       "openssl rand*": "allow",
+      "pipx --version*": "allow",
+      "pipx environment*": "allow",
       "ps*": "allow",
       "python3 --version*": "allow",
       "ruby --version*": "allow",
