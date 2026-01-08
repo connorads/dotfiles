@@ -228,6 +228,8 @@
       "mise list*": "allow",
       "mise settings ls*": "allow",
       "mise use*": "allow",
+      "mise prune --help*": "allow",
+      "mise registry*": "allow",
       "mise which*": "allow",
       "node -v": "allow",
       "nix --version": "allow",
