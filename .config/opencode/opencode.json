@@ -67,6 +67,7 @@
       "openssl rand*": "allow",
       "pipx --version*": "allow",
       "pipx environment*": "allow",
+      "pmset -g*": "allow",
       "ps*": "allow",
       "python3 --version*": "allow",
       "ruby --version*": "allow",
