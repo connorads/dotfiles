@@ -5,6 +5,7 @@ import type {
   EventSessionUpdated,
   EventSessionIdle,
   EventSessionError,
+  EventPermissionAsked,
 } from "@opencode-ai/sdk"
 
 type MacOSSound =
@@ -29,11 +30,14 @@ type SessionEvent =
   | EventSessionIdle
   | EventSessionError
 
-const isSessionEvent = (event: Event): event is SessionEvent =>
+type NotifiableEvent = SessionEvent | EventPermissionAsked
+
+const isNotifiableEvent = (event: Event): event is NotifiableEvent =>
   event.type === "session.created" ||
   event.type === "session.updated" ||
   event.type === "session.idle" ||
-  event.type === "session.error"
+  event.type === "session.error" ||
+  event.type === "permission.asked"
 
 export const NotificationPlugin: Plugin = async ({ $, client }) => {
   const sessionTitles = new Map<string, string>()
@@ -98,7 +102,7 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
 
   return {
     event: async ({ event }) => {
-      if (!isSessionEvent(event)) {
+      if (!isNotifiableEvent(event)) {
         return
       }
 
@@ -117,6 +121,14 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
       if (event.type === "session.error") {
         const label = formatSessionLabel(event.properties.sessionID)
         await notify("OpenCode", `Session error: ${label}`, "Basso")
+        return
+      }
+
+      if (event.type === "permission.asked") {
+        const { sessionID, permission, patterns } = event.properties
+        const label = formatSessionLabel(sessionID)
+        const desc = `${permission} (${patterns.join(", ")})`
+        await notify("OpenCode", `Permission needed: ${desc} - ${label}`, "Blow")
       }
     },
   }
