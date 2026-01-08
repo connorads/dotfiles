@@ -48,6 +48,7 @@
       "git config --list --show-origin*": "allow",
       "command -v*": "allow",
       "du -sh*": "allow",
+      "free*": "allow",
       "infocmp*": "allow",
       "launchctl list*": "allow",
       "ls*": "allow",
