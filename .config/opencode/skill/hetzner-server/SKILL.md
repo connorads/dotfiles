@@ -23,7 +23,8 @@ hcloud server create \
   --type cax11 \
   --image ubuntu-24.04 \
   --location nbg1 \
-  --ssh-key connorads
+  --ssh-key connorads \
+  --ssh-key connor@penguin
 
 # x86 server
 hcloud server create \
@@ -31,7 +32,8 @@ hcloud server create \
   --type cpx11 \
   --image ubuntu-24.04 \
   --location nbg1 \
-  --ssh-key connorads
+  --ssh-key connorads \
+  --ssh-key connor@penguin
 
 # IPv6-only (saves ~$0.60/month on IPv4)
 hcloud server create \
@@ -40,6 +42,7 @@ hcloud server create \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
+  --ssh-key connor@penguin \
   --without-ipv4
 ```
 
@@ -52,6 +55,7 @@ hcloud server create \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
+  --ssh-key connor@penguin \
   --user-data-from-file <(echo '#!/bin/bash
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash')
 ```
@@ -84,6 +88,7 @@ hcloud server create \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
+  --ssh-key connor@penguin \
   --user-data-from-file - <<'EOF'
 #cloud-config
 swap:
