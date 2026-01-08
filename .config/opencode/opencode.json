@@ -113,7 +113,7 @@
       "npm run preview*": "allow",
       "npm run fix*": "allow",
       "npm test*": "allow",
-      "npx tsc --noEmit": "allow",
+      "npx tsc*": "allow",
       "npx eslint*": "allow",
       "pnpm run dev*": "allow",
       "pnpm dev*": "allow",
