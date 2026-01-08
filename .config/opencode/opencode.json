@@ -76,6 +76,7 @@
       "test -f*": "allow",
       "test -x*": "allow",
       "uname*": "allow",
+      "uptime*": "allow",
       "grep*": "allow",
       "find*": "allow",
       "head*": "allow",
