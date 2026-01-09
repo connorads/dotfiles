@@ -192,7 +192,7 @@ ocm() {
   jq "$filter" "$cfg" > "$tmp" && mv "$tmp" "$cfg"
 }
 
-alias syncskills='unison "$HOME/.claude/skills" "$HOME/.opencode/skill"'
+alias syncskills='unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store"'
 
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
