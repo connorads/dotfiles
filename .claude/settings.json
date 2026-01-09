@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Read(//tmp/**)",
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:docs.brew.sh)",
