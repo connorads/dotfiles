@@ -30,6 +30,7 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 
 - Use British English: analyse, favourite, realise, colour etc.
 - Be concise: Interactions, PRs and commit messages - be concise and sacrifice grammar for the sake of concision.
+- Don't mention model names like Claude in commit messages
 
 ## Coding and domain modelling
 
