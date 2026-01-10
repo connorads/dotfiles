@@ -298,9 +298,7 @@
     "edit": "allow",
     "external_directory": "ask"
   },
-  "plugin": [
-    "opencode-openai-codex-auth@4.3.0"
-  ],
+  "plugin": [],
   "lsp": {
     "pyright": {
       "disabled": true
