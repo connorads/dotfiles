@@ -43,3 +43,8 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Write automated tests: Ideally first, in TDD manner. Test expected business behaviour, not implementation. Test through the public API, this helps create good abstractions.
 - Do e2e tests: CLI? Run some commands. Web - use a browser (chrome devtools or playwright) to test. Automate a couple e2e tests if advantageous.
 
+## Have you finished?
+
+- Has our change been tested and validated? Also no linting or formatting errors?
+- Did we make a big change to functionality or architecture? Consider updating any `.md` file where appropriate and/or writing an ADR
+- Did we have any realisations or learnings? Consider updating `AGENTS.md` or `CLAUDE.md`
