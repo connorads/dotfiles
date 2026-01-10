@@ -8,6 +8,7 @@ node = "lts"
 pnpm = "10"
 bun = "1.3"
 uv = "0.9"
+"rust" = "1"
 
 gh = "latest"
 gemini = "latest"
@@ -25,3 +26,5 @@ hcloud = "latest"
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
 "pipx:batrachian-toad" = "latest"
+
+"cargo:lumen" = "latest"
