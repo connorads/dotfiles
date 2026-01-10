@@ -37,6 +37,7 @@
       "git merge-base*": "allow",
       "git remote -v": "allow",
       "git remote show*": "allow",
+      "git rev-parse --abbrev-ref HEAD": "allow",
       "git reset*": "ask",
       "git push*": "ask",
       "git worktree list": "allow",
