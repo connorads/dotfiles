@@ -289,6 +289,7 @@
                   user.email = "connorads@users.noreply.github.com";
                   init.defaultBranch = "main";
                   credential.helper = "osxkeychain";
+                  push.autoSetupRemote = true;
                 };
               };
             };
@@ -333,6 +334,7 @@
               user.name = "Connor Adams";
               user.email = "connorads@users.noreply.github.com";
               init.defaultBranch = "main";
+              push.autoSetupRemote = true;
             };
           };
 
