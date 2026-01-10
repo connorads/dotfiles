@@ -9,24 +9,10 @@ DOTFILES_REPO="https://github.com/connorads/dotfiles.git"
 DOTFILES_DIR="$HOME/git/dotfiles"
 TARGET_USER="connor"
 
-# --- Codespaces ---
-if [ "$CODESPACES" = "true" ]; then
-  echo "Setting up dotfiles for GitHub Codespaces..."
-
-  echo "Installing mise..."
-  curl -fsSL https://mise.run | sh
-  export PATH="$HOME/.local/bin:$PATH"
-
-  echo "Installing tools via mise..."
-  mise install
-
-  if [ ! -d "$HOME/.antigen" ]; then
-    echo "Installing antigen..."
-    git clone --depth 1 https://github.com/zsh-users/antigen.git "$HOME/.antigen"
-  fi
-
-  echo "Done! Restart your shell or run: exec zsh"
-  exit 0
+IN_CODESPACES=false
+if [ "${CODESPACES:-}" = "true" ]; then
+  IN_CODESPACES=true
+  echo "Setting up dotfiles for GitHub Codespaces (full Nix + home-manager)..."
 fi
 
 # --- Linux as root: create user and re-run ---
@@ -84,55 +70,111 @@ fi
 # Install Nix if not present
 if ! command -v nix &>/dev/null; then
   echo "Installing Nix..."
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
 
-  # Source nix for this session
+  if [ "$IN_CODESPACES" = "true" ]; then
+    # Codespaces has known ACL weirdness on /tmp that breaks Nix builds.
+    if command -v apt-get &>/dev/null; then
+      echo "Ensuring /tmp ACLs won't break Nix builds..."
+      sudo apt-get update -y
+      sudo apt-get install -y acl xz-utils
+      sudo setfacl -k /tmp || true
+    fi
+
+    # Codespaces: install single-user Nix (no daemon) to avoid systemd.
+    # Also disable sandbox to avoid seccomp/container issues.
+    tmp_nix_conf="$(mktemp)"
+    cat >"$tmp_nix_conf" <<'EOF'
+experimental-features = nix-command flakes
+sandbox = false
+EOF
+
+    curl -L https://nixos.org/nix/install | sh -s -- --no-daemon --yes --nix-extra-conf-file "$tmp_nix_conf"
+    rm -f "$tmp_nix_conf"
+
+    mkdir -p "$HOME/.config/nix"
+    if ! grep -q "^experimental-features = .*nix-command" "$HOME/.config/nix/nix.conf" 2>/dev/null; then
+      printf '%s\n' "experimental-features = nix-command flakes" >>"$HOME/.config/nix/nix.conf"
+    fi
+    if ! grep -q "^sandbox = false$" "$HOME/.config/nix/nix.conf" 2>/dev/null; then
+      printf '%s\n' "sandbox = false" >>"$HOME/.config/nix/nix.conf"
+    fi
+  else
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+  fi
+
+  # Source nix for this session (best-effort across install modes)
   if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  elif [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then
+    . /nix/var/nix/profiles/default/etc/profile.d/nix.sh
   elif [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
     . "$HOME/.nix-profile/etc/profile.d/nix.sh"
   fi
+
+  export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:$PATH"
 else
   echo "Nix already installed"
 fi
 
 # Install Docker if not present
-if ! command -v docker &>/dev/null; then
-  echo "Installing Docker..."
-  curl -fsSL https://get.docker.com | sudo sh
-
-  if ! groups "$USER" | grep -q docker; then
-    sudo usermod -aG docker "$USER"
-    echo "Added $USER to docker group (log out and back in to use docker without sudo)"
-  fi
-
-  echo "Optional: For rootless Docker (more secure), run: dockerd-rootless-setuptool.sh install"
-  echo "See: https://docs.docker.com/engine/security/rootless/"
+if [ "$IN_CODESPACES" = "true" ]; then
+  echo "Skipping Docker install in Codespaces"
 else
-  echo "Docker already installed: $(docker --version)"
+  if ! command -v docker &>/dev/null; then
+    echo "Installing Docker..."
+    curl -fsSL https://get.docker.com | sudo sh
 
-  if command -v systemctl &>/dev/null && ! sudo systemctl is-active --quiet docker; then
-    sudo systemctl start docker
-  fi
+    if ! groups "$USER" | grep -q docker; then
+      sudo usermod -aG docker "$USER"
+      echo "Added $USER to docker group (log out and back in to use docker without sudo)"
+    fi
 
-  if ! groups "$USER" | grep -q docker; then
-    sudo usermod -aG docker "$USER"
-    echo "Added $USER to docker group (log out and back in to use docker without sudo)"
+    echo "Optional: For rootless Docker (more secure), run: dockerd-rootless-setuptool.sh install"
+    echo "See: https://docs.docker.com/engine/security/rootless/"
+  else
+    echo "Docker already installed: $(docker --version)"
+
+    if command -v systemctl &>/dev/null && ! sudo systemctl is-active --quiet docker; then
+      sudo systemctl start docker
+    fi
+
+    if ! groups "$USER" | grep -q docker; then
+      sudo usermod -aG docker "$USER"
+      echo "Added $USER to docker group (log out and back in to use docker without sudo)"
+    fi
   fi
 fi
 
 # Run home-manager
 echo "Running home-manager switch..."
-nix run home-manager/master -- switch --flake ~/.config/nix
+if [ "$IN_CODESPACES" = "true" ]; then
+  nix run home-manager/master -- switch --flake ~/.config/nix#codespace
+else
+  nix run home-manager/master -- switch --flake ~/.config/nix
+fi
 
 # Install tools via mise
 echo "Installing tools via mise..."
-export PATH="$HOME/.nix-profile/bin:$HOME/.local/share/mise/shims:$PATH"
+export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
+if ! command -v mise &>/dev/null; then
+  echo "Installing mise..."
+  curl -fsSL https://mise.run | sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
 mise install
+
+if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then
+  echo "Installing antigen..."
+  git clone --depth 1 https://github.com/zsh-users/antigen.git "$HOME/.antigen"
+fi
 
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
-if [[ -x "$ZSH_PATH" && "$SHELL" != "$ZSH_PATH" ]]; then
+if [ "$IN_CODESPACES" = "true" ]; then
+  echo "Skipping default shell change in Codespaces"
+elif [[ -x "$ZSH_PATH" && "$SHELL" != "$ZSH_PATH" ]]; then
   echo "Changing default shell to zsh..."
   sudo chsh -s "$ZSH_PATH" "$USER"
 fi
