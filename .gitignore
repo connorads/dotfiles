@@ -2,7 +2,6 @@
 
 !.gitignore
 
-# Allow new claude skills and commands
 !/.claude/
 /.claude/**
 !/.claude/skills/
@@ -10,7 +9,6 @@
 !/.claude/commands/
 !/.claude/commands/**
 
-# Allow new opencode data
 !/.config/
 /.config/**
 !/.config/opencode/
@@ -22,13 +20,24 @@
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 
-# Allow nix
 !/.config/nix/
 !/.config/nix/**
 
-# Allow Neovim config + lockfile
 !/.config/nvim/
 !/.config/nvim/init.lua
 !/.config/nvim/lazy-lock.json
+ 
+!/.config/kitty/
+!/.config/kitty/**
+
+!/.config/tmux/
+!/.config/tmux/**
+
+!/.config/lazygit/
+!/.config/lazygit/**
+/.config/lazygit/state.yml
+
+!/.config/mise/
+!/.config/mise/**
 
 .DS_Store
