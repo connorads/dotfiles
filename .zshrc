@@ -23,22 +23,39 @@ antigen apply
 eval "$(mise activate zsh)"
 
 # https://github.com/connorads/dotfiles/
-alias dotfiles='git --git-dir=$HOME/git/dotfiles'
+dotfiles() {
+  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
+}
 
 
 # https://github.com/NixOS/nix
-alias nfu='nix flake update --flake ~/.config/nix'
-alias ncg='nix-collect-garbage -d'
-alias nfm='(cd ~/.config/nix && nix fmt ./flake.nix)'
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS - https://github.com/LnL7/nix-darwin
-  alias drs='sudo darwin-rebuild switch --flake ~/.config/nix'
-  alias up='mise upgrade && brew upgrade'
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  # Linux - https://github.com/nix-community/home-manager
-  alias hms='home-manager switch --flake ~/.config/nix'
-  alias up='mise upgrade'
-fi
+nfu() { nix flake update --flake ~/.config/nix; }
+ncg() { nix-collect-garbage -d; }
+nfm() { (cd ~/.config/nix && nix fmt ./flake.nix); }
+# macOS - https://github.com/LnL7/nix-darwin
+drs() { sudo darwin-rebuild switch --flake ~/.config/nix; }
+# Linux - https://github.com/nix-community/home-manager
+hms() { home-manager switch --flake ~/.config/nix; }
+
+up() {
+  mise upgrade
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    brew update && brew upgrade
+  fi
+
+  nfu
+
+  dotfiles add ~/.config/nix/flake.lock
+  if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
+    dotfiles commit -m "chore(nix): update flake lock"
+  fi
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    drs
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    hms
+  fi
+}
 
 # Function to create a prompt to review a GitHub PR
 pr-prompt() {
