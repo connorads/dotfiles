@@ -314,6 +314,32 @@
       # Linux home-manager configuration
       linuxHomeConfiguration =
         { pkgs, ... }:
+        let
+          vscodeOverride = pkgs.vscode.overrideAttrs (
+            _old:
+            let
+              version = "1.108.0";
+              rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
+            in
+            {
+              inherit version rev;
+              src = pkgs.fetchurl {
+                name = "VSCode_${version}_linux-x64.tar.gz";
+                url = "https://update.code.visualstudio.com/${version}/linux-x64/stable";
+                hash = "sha256-20ydDfHFhy3BNxC9bHG1JTgybFY9zxxc81EApOVh3wk=";
+              };
+              vscodeServer = pkgs.srcOnly {
+                name = "vscode-server-${rev}.tar.gz";
+                src = pkgs.fetchurl {
+                  name = "vscode-server-${rev}.tar.gz";
+                  url = "https://update.code.visualstudio.com/commit:${rev}/server-linux-x64/stable";
+                  hash = "sha256-VvwZaE1T5FTh/KJdLj9Br51VBMcYcyh4SgZILLS5hwQ=";
+                };
+                stdenv = pkgs.stdenvNoCC;
+              };
+            }
+          );
+        in
         {
           home.username = "connor";
           home.homeDirectory = "/home/connor";
@@ -323,7 +349,9 @@
           targets.genericLinux.enable = true;
 
           # Cross-platform packages
-          home.packages = sharedPackages pkgs;
+          home.packages = sharedPackages pkgs ++ [
+            vscodeOverride
+          ];
 
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
