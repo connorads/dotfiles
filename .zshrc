@@ -74,10 +74,37 @@ pr-prompt() {
   echo "✅ PR review prompt copied to clipboard"
 }
 
-# Source machine-specific configuration if it exists
-# Use .zshrc.local for PATH additions or other config
-# that shouldn't be committed to version control
+# Machine-local config + helpers
+# Use .zshrc.local for config that shouldn't be committed
+# (API keys, PATH additions, etc.)
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
+# Initialise/edit machine-local API keys quickly.
+# - Creates ~/.zshrc.local from ~/.zshrc.local.example if missing
+# - Opens in micro (or $EDITOR/vi)
+zshrc-local() {
+  local example_file="$HOME/.zshrc.local.example"
+  local local_file="$HOME/.zshrc.local"
+
+  if [[ ! -f "$local_file" ]]; then
+    if [[ ! -f "$example_file" ]]; then
+      echo "Missing $example_file" >&2
+      return 1
+    fi
+
+    umask 077
+    cp "$example_file" "$local_file" || return 1
+    chmod 600 "$local_file" || true
+  fi
+
+  if command -v micro >/dev/null 2>&1; then
+    micro "$local_file"
+  else
+    "${EDITOR:-vi}" "$local_file"
+  fi
+
+  source "$local_file"
+}
 
 # https://github.com/ajeetdsouza/zoxide
 eval "$(zoxide init zsh)"
