@@ -31,6 +31,7 @@
           antigen
           vim
           micro
+          fd
           tmux
           pipx
           nixfmt
