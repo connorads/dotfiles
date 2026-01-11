@@ -177,6 +177,21 @@ fi
 
 if [ "$IN_CODESPACES" = "true" ]; then
   export MISE_ENV=codespaces
+
+  echo "MISE_ENV=$MISE_ENV"
+
+  mise_env_config="$HOME/.config/mise/config.${MISE_ENV}.toml"
+  if [ -f "$mise_env_config" ]; then
+    echo "Using mise env config: $mise_env_config"
+  else
+    echo "Warning: missing mise env config: $mise_env_config"
+  fi
+
+  echo "Mise config files:"
+  mise config ls || true
+
+  echo "Mise disabled backends:"
+  mise config get settings.disable_backends || true
 fi
 
 mise install
