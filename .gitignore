@@ -22,4 +22,8 @@
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 
+# Allow nix
+!/.config/nix/
+!/.config/nix/**
+
 .DS_Store
