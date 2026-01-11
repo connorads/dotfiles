@@ -445,10 +445,13 @@
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         modules = [
           linuxHomeConfiguration
-          {
-            home.username = "codespace";
-            home.homeDirectory = "/home/codespace";
-          }
+          (
+            { lib, ... }:
+            {
+              home.username = lib.mkForce "codespace";
+              home.homeDirectory = lib.mkForce "/home/codespace";
+            }
+          )
         ];
       };
     };
