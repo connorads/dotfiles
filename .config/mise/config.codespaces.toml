@@ -1,0 +1,3 @@
+[settings]
+# Codespaces: avoid compiling rust crates via mise cargo backend
+disable_backends = ["cargo"]
