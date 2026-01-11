@@ -175,6 +175,10 @@ if ! command -v mise &>/dev/null; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
+if [ "$IN_CODESPACES" = "true" ]; then
+  export MISE_ENV=codespaces
+fi
+
 mise install
 
 if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then

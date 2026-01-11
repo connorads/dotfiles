@@ -314,35 +314,8 @@
         };
 
       # Linux home-manager configuration
-      linuxHomeConfiguration =
+      linuxHomeBaseConfiguration =
         { pkgs, ... }:
-        let
-          vscodeOverride = pkgs.vscode.overrideAttrs (
-            _old:
-            let
-              # Override while nixpkgs lags upstream VS Code releases.
-              version = "1.108.0";
-              rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
-            in
-            {
-              inherit version rev;
-              src = pkgs.fetchurl {
-                name = "VSCode_${version}_linux-x64.tar.gz";
-                url = "https://update.code.visualstudio.com/${version}/linux-x64/stable";
-                hash = "sha256-20ydDfHFhy3BNxC9bHG1JTgybFY9zxxc81EApOVh3wk=";
-              };
-              vscodeServer = pkgs.srcOnly {
-                name = "vscode-server-${rev}.tar.gz";
-                src = pkgs.fetchurl {
-                  name = "vscode-server-${rev}.tar.gz";
-                  url = "https://update.code.visualstudio.com/commit:${rev}/server-linux-x64/stable";
-                  hash = "sha256-VvwZaE1T5FTh/KJdLj9Br51VBMcYcyh4SgZILLS5hwQ=";
-                };
-                stdenv = pkgs.stdenvNoCC;
-              };
-            }
-          );
-        in
         {
           home.username = "connor";
           home.homeDirectory = "/home/connor";
@@ -358,12 +331,6 @@
 
           # Enable Nix PATH and environment for non-NixOS Linux
           targets.genericLinux.enable = true;
-
-          # Cross-platform packages
-          home.packages = sharedPackages pkgs ++ [
-            vscodeOverride
-            pkgs.libnotify
-          ];
 
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
@@ -406,6 +373,68 @@
           nixpkgs.config.allowUnfree = true;
         };
 
+      linuxHomePackagesConfiguration =
+        { pkgs, ... }:
+        let
+          vscodeOverride = pkgs.vscode.overrideAttrs (
+            _old:
+            let
+              # Override while nixpkgs lags upstream VS Code releases.
+              version = "1.108.0";
+              rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
+            in
+            {
+              inherit version rev;
+              src = pkgs.fetchurl {
+                name = "VSCode_${version}_linux-x64.tar.gz";
+                url = "https://update.code.visualstudio.com/${version}/linux-x64/stable";
+                hash = "sha256-20ydDfHFhy3BNxC9bHG1JTgybFY9zxxc81EApOVh3wk=";
+              };
+              vscodeServer = pkgs.srcOnly {
+                name = "vscode-server-${rev}.tar.gz";
+                src = pkgs.fetchurl {
+                  name = "vscode-server-${rev}.tar.gz";
+                  url = "https://update.code.visualstudio.com/commit:${rev}/server-linux-x64/stable";
+                  hash = "sha256-VvwZaE1T5FTh/KJdLj9Br51VBMcYcyh4SgZILLS5hwQ=";
+                };
+                stdenv = pkgs.stdenvNoCC;
+              };
+            }
+          );
+        in
+        {
+          # Apps we want to install on Linux but not on macOS
+          home.packages = sharedPackages pkgs ++ [
+            vscodeOverride
+            pkgs.libnotify
+          ];
+        };
+
+      linuxCodespacesPackagesConfiguration =
+        { pkgs, ... }:
+        {
+          # Codespaces-lite profile
+          home.packages = with pkgs; [
+            kitty.terminfo
+            zsh
+            mise
+            vim
+            micro
+            tmux
+            git
+            fd
+            ripgrep
+            bat
+            eza
+            delta
+            fzf
+            jq
+            zoxide
+            tree
+            coreutils
+          ];
+        };
+
     in
     {
       formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
@@ -427,18 +456,25 @@
       # alias: hms
       homeConfigurations."connor@penguin" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        modules = [ linuxHomeConfiguration ];
+        modules = [
+          linuxHomeBaseConfiguration
+          linuxHomePackagesConfiguration
+        ];
       };
 
       homeConfigurations."connor@dev" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.aarch64-linux;
-        modules = [ linuxHomeConfiguration ];
+        modules = [
+          linuxHomeBaseConfiguration
+          linuxHomePackagesConfiguration
+        ];
       };
 
       homeConfigurations."codespace" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         modules = [
-          linuxHomeConfiguration
+          linuxHomeBaseConfiguration
+          linuxCodespacesPackagesConfiguration
           (
             { lib, ... }:
             {
