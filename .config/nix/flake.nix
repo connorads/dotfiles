@@ -57,13 +57,7 @@
           dust
           usql
           postgresql
-          (silicon.overrideAttrs (old: {
-            # Use system oniguruma instead of bundled version to fix build on linux
-            env = (old.env or { }) // {
-              RUSTONIG_SYSTEM_LIBONIG = true;
-            };
-            buildInputs = (old.buildInputs or [ ]) ++ [ oniguruma ];
-          }))
+          charm-freeze
           lazygit
           lazysql
           jujutsu
