@@ -30,6 +30,7 @@
           mise
           antigen
           vim
+          micro
           tmux
           pipx
           nixfmt
