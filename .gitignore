@@ -22,4 +22,12 @@
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 
+# Allow kitty terminal config
+!/.config/kitty/
+!/.config/kitty/**
+
+# Allow tmux config
+!/.config/tmux/
+!/.config/tmux/**
+
 .DS_Store
