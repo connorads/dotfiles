@@ -390,9 +390,6 @@
 
           # SSH agent setup
           services.ssh-agent.enable = true;
-          home.sessionVariables = {
-            SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
-          };
           programs.ssh = {
             enable = true;
             enableDefaultConfig = false;
@@ -401,6 +398,12 @@
             matchBlocks."*" = {
               addKeysToAgent = "yes";
             };
+          };
+
+          home.sessionVariables = {
+            SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
+            EDITOR = "micro";
+            VISUAL = "micro";
           };
 
           # Allow unfree packages
