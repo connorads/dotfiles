@@ -46,6 +46,7 @@
           wgcf
           wireproxy
           coreutils
+          gcc
           cloudflared
           presenterm
           rclone
