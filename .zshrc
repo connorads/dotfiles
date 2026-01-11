@@ -238,6 +238,9 @@ ocm() {
 
 alias syncskills='unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store"'
 
+# claude code auth workaround for codespaces
+alias cda='claude config set authMethod device_code'
+
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
 alias lgdf='lg --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
