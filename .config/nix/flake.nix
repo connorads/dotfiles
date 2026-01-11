@@ -282,6 +282,12 @@
               home.packages = sharedPackages pkgs;
               home.stateVersion = "24.11";
 
+              manual = {
+                html.enable = false;
+                manpages.enable = false;
+                json.enable = false;
+              };
+
               # Git configuration
               programs.git = {
                 enable = true;
@@ -344,6 +350,12 @@
           home.username = "connor";
           home.homeDirectory = "/home/connor";
           home.stateVersion = "24.11";
+
+          manual = {
+            html.enable = false;
+            manpages.enable = false;
+            json.enable = false;
+          };
 
           # Enable Nix PATH and environment for non-NixOS Linux
           targets.genericLinux.enable = true;
