@@ -325,6 +325,7 @@
           vscodeOverride = pkgs.vscode.overrideAttrs (
             _old:
             let
+              # Override while nixpkgs lags upstream VS Code releases.
               version = "1.108.0";
               rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
             in
