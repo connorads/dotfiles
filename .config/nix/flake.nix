@@ -351,6 +351,7 @@
           # Cross-platform packages
           home.packages = sharedPackages pkgs ++ [
             vscodeOverride
+            pkgs.libnotify
           ];
 
           # Let Home Manager manage itself
