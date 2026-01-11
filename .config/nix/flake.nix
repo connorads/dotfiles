@@ -359,6 +359,8 @@
             json.enable = false;
           };
 
+          news.display = "silent";
+
           # Enable Nix PATH and environment for non-NixOS Linux
           targets.genericLinux.enable = true;
 
