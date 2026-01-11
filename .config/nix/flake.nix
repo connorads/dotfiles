@@ -398,6 +398,10 @@
             };
           };
 
+          programs.neovim = {
+            enable = true;
+          };
+
           home.sessionVariables = {
             SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
             EDITOR = "micro";
