@@ -1,3 +1,7 @@
 [settings]
 # Codespaces: avoid compiling rust crates via mise cargo backend
 disable_backends = ["cargo"]
+
+# Belt-and-braces: explicitly ignore any existing cargo tools
+# (tools merge additively across config files)
+disable_tools = ["cargo:lumen"]
