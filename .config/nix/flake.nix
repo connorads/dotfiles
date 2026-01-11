@@ -47,6 +47,7 @@
           wireproxy
           coreutils
           gcc
+          gnumake
           cloudflared
           presenterm
           rclone
