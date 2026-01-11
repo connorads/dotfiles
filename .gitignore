@@ -26,4 +26,9 @@
 !/.config/nix/
 !/.config/nix/**
 
+# Allow Neovim config + lockfile
+!/.config/nvim/
+!/.config/nvim/init.lua
+!/.config/nvim/lazy-lock.json
+
 .DS_Store
