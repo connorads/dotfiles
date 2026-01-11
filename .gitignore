@@ -37,6 +37,9 @@
 !/.config/lazygit/**
 /.config/lazygit/state.yml
 
+!/.config/micro/
+!/.config/micro/settings.json
+
 !/.config/mise/
 !/.config/mise/**
 
