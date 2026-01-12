@@ -1,3 +1,19 @@
+# ==============================================================================
+# connorads Nix Configuration
+# ==============================================================================
+#
+# Configurations:
+#   - darwinConfigurations."Connors-Mac-mini"  : macOS (nix-darwin + home-manager)
+#   - homeConfigurations."connor@penguin"      : Chromebook Linux container (x86_64)
+#   - homeConfigurations."connor@dev"          : Remote/cloud dev machine (aarch64)
+#   - homeConfigurations."codespace"           : GitHub Codespaces (minimal)
+#
+# Rebuild commands:
+#   macOS:  darwin-rebuild switch --flake ~/.config/nix  (alias: drs)
+#   Linux:  home-manager switch --flake ~/.config/nix    (alias: hms)
+#
+# ==============================================================================
+
 {
   description = "connorads nix configuration";
 
@@ -19,75 +35,146 @@
       home-manager,
     }:
     let
-      # Cross-platform packages (work on both macOS and Linux)
+      # ========================================================================
+      # Shared Packages (cross-platform: macOS and Linux)
+      # ========================================================================
       sharedPackages =
         pkgs: with pkgs; [
-          # Terminal
+          # Shell & terminal
+          zsh
+          antigen
+          tmux
           kitty.terminfo
 
-          # Tools
-          zsh
-          mise
-          antigen
+          # Text editors
           vim
           micro
+
+          # File navigation & search
           fd
-          tmux
-          pipx
-          nixfmt
+          ripgrep
+          fzf
           zoxide
           tree
-          fzf
-          gum
+          yazi
+          eza
+
+          # Git & version control
+          delta
+          lazygit
+          jujutsu
+
+          # Dev tools
+          mise
+          pipx
+          nixfmt
           jq
-          yt-dlp
+          gum
+          usql
+          postgresql
+          lazysql
+          witr
+
+          # System utilities
+          coreutils
+          bat
+          dust
           ncdu
           parallel-disk-usage
+
+          # Networking & security
           nmap
           rustscan
           wgcf
           wireproxy
-          coreutils
           cloudflared
+
+          # Media & presentation
+          yt-dlp
           presenterm
-          rclone
-          ripgrep
-          bat
-          eza
-          delta
-          dust
-          usql
-          postgresql
           charm-freeze
-          lazygit
-          lazysql
-          yazi
-          jujutsu
+
+          # Sync & backup
+          rclone
           unison
-          witr
+
+          # Apps
           telegram-desktop
         ];
 
-      # macOS-specific configuration
+      # Core packages for minimal environments (codespaces, containers)
+      corePackages =
+        pkgs: with pkgs; [
+          zsh
+          tmux
+          kitty.terminfo
+          vim
+          micro
+          fd
+          ripgrep
+          fzf
+          zoxide
+          tree
+          eza
+          bat
+          delta
+          jq
+          coreutils
+          mise
+        ];
+
+      # ========================================================================
+      # Shared Home-Manager Configuration
+      # ========================================================================
+      sharedHomeConfiguration = {
+        manual = {
+          html.enable = false;
+          manpages.enable = false;
+          json.enable = false;
+        };
+
+        programs.git = {
+          enable = true;
+          lfs.enable = true;
+          settings = {
+            user.name = "Connor Adams";
+            user.email = "connorads@users.noreply.github.com";
+            init.defaultBranch = "main";
+            push.autoSetupRemote = true;
+          };
+        };
+
+        programs.neovim.enable = true;
+
+        home.sessionVariables = {
+          EDITOR = "micro";
+          VISUAL = "micro";
+        };
+      };
+
+      # ========================================================================
+      # macOS (nix-darwin) Configuration
+      # ========================================================================
       darwinConfiguration =
         { pkgs, ... }:
         {
-          # macOS-specific system packages
+          # -- System Packages --
           environment.systemPackages = [
-            # macOS-specific tools
+            # Tools
             pkgs.pam_u2f
             pkgs.docker
             pkgs.colima
             pkgs.tart
-
-            # macOS-specific apps
+            # GUI Apps
             pkgs.raycast
             pkgs.rectangle
             pkgs.iina
           ];
 
+          # -- Fonts --
           fonts.packages = with pkgs; [ fira-code ];
 
+          # -- Homebrew --
           homebrew = {
             enable = true;
             onActivation.cleanup = "zap";
@@ -153,6 +240,7 @@
 
           system.primaryUser = "connorads";
 
+          # -- System Defaults (macOS preferences) --
           system.defaults = {
             dock = {
               autohide = true;
@@ -209,6 +297,7 @@
             };
           };
 
+          # -- Networking & Firewall --
           networking.applicationFirewall = {
             enable = true;
             enableStealthMode = true;
@@ -216,13 +305,14 @@
             allowSignedApp = false;
           };
 
-          # Use TouchId and yubikey for sudo
+          # -- PAM / sudo authentication --
+          # TouchID and YubiKey for sudo
           environment.etc."pam.d/sudo_local".text = ''
             auth sufficient pam_tid.so
             auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
           '';
 
-          # Necessary for using flakes on this system.
+          # -- Nix Settings --
           nix.settings.experimental-features = "nix-command flakes";
 
           # Automatic daily GC to keep the store tidy.
@@ -244,6 +334,7 @@
             };
           };
 
+          # -- Programs --
           programs = {
             zsh = {
               enable = true;
@@ -253,6 +344,7 @@
             };
           };
 
+          # -- Services --
           services.openssh = {
             enable = true;
             extraConfig = ''
@@ -272,46 +364,19 @@
             '';
           };
 
-          # User configuration - required for home-manager integration
+          # -- Users & Home Manager --
           users.users.connorads.home = "/Users/connorads";
-
-          # Home Manager integration for macOS
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            users.connorads = {
+            users.connorads = sharedHomeConfiguration // {
               home.username = "connorads";
               home.homeDirectory = "/Users/connorads";
               home.packages = sharedPackages pkgs;
               home.stateVersion = "24.11";
 
-              manual = {
-                html.enable = false;
-                manpages.enable = false;
-                json.enable = false;
-              };
-
-              # Git configuration
-              programs.git = {
-                enable = true;
-                lfs.enable = true;
-                settings = {
-                  user.name = "Connor Adams";
-                  user.email = "connorads@users.noreply.github.com";
-                  init.defaultBranch = "main";
-                  credential.helper = "osxkeychain";
-                  push.autoSetupRemote = true;
-                };
-              };
-
-              programs.neovim = {
-                enable = true;
-              };
-
-              home.sessionVariables = {
-                EDITOR = "micro";
-                VISUAL = "micro";
-              };
+              # macOS-specific: use Keychain for git credentials
+              programs.git.settings.credential.helper = "osxkeychain";
             };
           };
 
@@ -329,19 +394,15 @@
           nixpkgs.config.allowUnfree = true;
         };
 
-      # Linux home-manager configuration
+      # ========================================================================
+      # Linux Home-Manager Configuration
+      # ========================================================================
       linuxHomeBaseConfiguration =
         { pkgs, ... }:
-        {
+        sharedHomeConfiguration // {
           home.username = "connor";
           home.homeDirectory = "/home/connor";
           home.stateVersion = "24.11";
-
-          manual = {
-            html.enable = false;
-            manpages.enable = false;
-            json.enable = false;
-          };
 
           news.display = "silent";
 
@@ -351,38 +412,17 @@
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
 
-          # Git configuration
-          programs.git = {
-            enable = true;
-            lfs.enable = true;
-            settings = {
-              user.name = "Connor Adams";
-              user.email = "connorads@users.noreply.github.com";
-              init.defaultBranch = "main";
-              push.autoSetupRemote = true;
-            };
-          };
-
           # SSH agent setup
           services.ssh-agent.enable = true;
           programs.ssh = {
             enable = true;
             enableDefaultConfig = false;
-            # Preserve existing SSH config
-            includes = [ "config.original" ];
-            matchBlocks."*" = {
-              addKeysToAgent = "yes";
-            };
+            includes = [ "config.original" ]; # Preserve existing SSH config
+            matchBlocks."*".addKeysToAgent = "yes";
           };
 
-          programs.neovim = {
-            enable = true;
-          };
-
-          home.sessionVariables = {
+          home.sessionVariables = sharedHomeConfiguration.home.sessionVariables // {
             SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
-            EDITOR = "micro";
-            VISUAL = "micro";
           };
 
           # Allow unfree packages
@@ -392,10 +432,11 @@
       linuxHomePackagesConfiguration =
         { pkgs, ... }:
         let
+          # VS Code override: nixpkgs often lags the latest release.
+          # Update version/rev/hashes when a new release is needed.
           vscodeOverride = pkgs.vscode.overrideAttrs (
             _old:
             let
-              # Override while nixpkgs lags upstream VS Code releases.
               version = "1.108.0";
               rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
             in
@@ -429,37 +470,20 @@
       linuxCodespacesPackagesConfiguration =
         { pkgs, ... }:
         {
-          # Codespaces-lite profile
-          home.packages = with pkgs; [
-            kitty.terminfo
-            zsh
-            mise
-            vim
-            micro
-            tmux
-            git
-            fd
-            ripgrep
-            bat
-            eza
-            delta
-            fzf
-            jq
-            zoxide
-            tree
-            coreutils
-          ];
+          # Minimal package set for ephemeral environments (git provided by programs.git)
+          home.packages = corePackages pkgs;
         };
 
     in
+    # ==========================================================================
+    # Flake Outputs
+    # ==========================================================================
     {
       formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
       formatter.aarch64-linux = nixpkgs.legacyPackages.aarch64-linux.nixfmt;
 
-      # Build darwin flake using:
-      # $ darwin-rebuild switch --flake ~/.config/nix
-      # alias: drs
+      # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
       darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
         modules = [
           darwinConfiguration
@@ -467,9 +491,7 @@
         ];
       };
 
-      # Build home-manager flake using:
-      # $ home-manager switch --flake ~/.config/nix
-      # alias: hms
+      # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
       homeConfigurations."connor@penguin" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         modules = [
