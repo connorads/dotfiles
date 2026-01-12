@@ -61,6 +61,7 @@
           charm-freeze
           lazygit
           lazysql
+          yazi
           jujutsu
           unison
           witr
