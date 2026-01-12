@@ -307,6 +307,11 @@
               programs.neovim = {
                 enable = true;
               };
+
+              home.sessionVariables = {
+                EDITOR = "micro";
+                VISUAL = "micro";
+              };
             };
           };
 
