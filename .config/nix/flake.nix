@@ -42,6 +42,7 @@
           jq
           yt-dlp
           ncdu
+          parallel-disk-usage
           nmap
           rustscan
           wgcf
