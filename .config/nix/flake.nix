@@ -201,6 +201,11 @@
                   };
                 };
               };
+
+              # Finder > Settings > Advanced > "Remove items from the Trash after 30 days"
+              "com.apple.finder" = {
+                FXRemoveOldTrashItems = true;
+              };
             };
           };
 
