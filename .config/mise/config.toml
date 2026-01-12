@@ -16,8 +16,7 @@ codex = "latest"
 usage = "latest"
 hcloud = "latest"
 
-"github:anomalyco/opencode" = "latest"
-
+"npm:opencode-ai" = "latest"
 "npm:@github/copilot" = "latest"
 "npm:apify-cli" = "latest"
 "npm:@hona/ralph-cli" = "latest"
