@@ -303,6 +303,10 @@
                   push.autoSetupRemote = true;
                 };
               };
+
+              programs.neovim = {
+                enable = true;
+              };
             };
           };
 
