@@ -119,6 +119,8 @@
       "pnpm astro*": "allow",
       "pnpm run dev*": "allow",
       "pnpm dev*": "allow",
+      "pnpm run storybook*": "allow",
+      "pnpm storybook*": "allow",
       "pnpm exec prettier --check*": "allow",
       "pnpm build-storybook": "allow",
       "pnpm exec opennextjs-cloudflare build": "allow",
