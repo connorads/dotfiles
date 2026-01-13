@@ -1,3 +1,6 @@
+# Commands starting with a space are not saved to history.
+setopt HIST_IGNORE_SPACE
+
 # Source antigen if not already loaded (nix-darwin sources it in /etc/zshrc)
 if ! typeset -f antigen > /dev/null; then
   if [[ -f ~/.nix-profile/share/antigen/antigen.zsh ]]; then
