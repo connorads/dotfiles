@@ -25,6 +25,7 @@ antigen apply
 # https://github.com/connorads/mise/
 eval "$(mise activate zsh)"
 alias mt='mise trust'
+alias mi='mise install'
 
 # https://github.com/connorads/dotfiles/
 dotfiles() {
