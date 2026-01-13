@@ -126,6 +126,30 @@ zshrc-local() {
   source "$local_file"
 }
 
+# Export secrets without putting them on the command line.
+# Usage: secretexport GITHUB_TOKEN
+secretexport() {
+  emulate -L zsh
+  setopt localoptions noxtrace
+
+  local name="$1"
+  if [[ -z "$name" ]]; then
+    echo "usage: secretexport VAR_NAME" >&2
+    return 1
+  fi
+
+  if [[ ! "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "invalid variable name: $name" >&2
+    return 1
+  fi
+
+  local value
+  read -rs "value?${name}: "
+  echo
+  typeset -gx "$name=$value"
+  unset value
+}
+
 # https://github.com/ajeetdsouza/zoxide
 eval "$(zoxide init zsh)"
 
