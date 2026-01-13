@@ -38,8 +38,10 @@ ncg() { nix-collect-garbage -d; }
 nfm() { (cd ~/.config/nix && nix fmt ./flake.nix); }
 # macOS - https://github.com/LnL7/nix-darwin
 drs() { sudo darwin-rebuild switch --flake ~/.config/nix; }
+drsr() { drs --rollback; }
 # Linux - https://github.com/nix-community/home-manager
 hms() { home-manager switch --flake ~/.config/nix; }
+hmsr() { hms --rollback; }
 
 up() {
   mise upgrade
