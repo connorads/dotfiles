@@ -19,7 +19,7 @@ hcloud = "latest"
 "npm:opencode-ai" = "latest"
 "npm:@github/copilot" = "latest"
 "npm:apify-cli" = "latest"
-"npm:@hona/ralph-cli" = "latest"
+"npm:@iannuttall/ralph" = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
 
 "pipx:ty" = "latest"
