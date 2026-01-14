@@ -26,4 +26,4 @@ hcloud = "latest"
 "pipx:mistral-vibe" = "latest"
 "pipx:batrachian-toad" = "latest"
 
-"cargo:lumen" = "latest"
+# Cargo tools (Rust): think twice before adding; builds are slow.
