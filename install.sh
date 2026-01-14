@@ -145,6 +145,27 @@ else
   fi
 fi
 
+# Install Google Chrome (for Chrome Devtools MCP)
+if [ "$(uname -s)" = "Linux" ]; then
+  if command -v apt-get &>/dev/null; then
+    if [ ! -f /opt/google/chrome/chrome ]; then
+      echo "Installing Google Chrome..."
+      sudo apt-get update -y
+      sudo apt-get install -y ca-certificates curl gnupg
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+      sudo chmod a+r /etc/apt/keyrings/google-chrome.gpg
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null
+      sudo apt-get update -y
+      sudo apt-get install -y google-chrome-stable
+    else
+      echo "Google Chrome already installed"
+    fi
+  else
+    echo "apt-get not available; skipping Chrome install"
+  fi
+fi
+
 # Run home-manager
 echo "Running home-manager switch..."
 if [ "$IN_CODESPACES" = "true" ]; then
@@ -169,6 +190,14 @@ if [ "$IN_CODESPACES" = "true" ]; then
 fi
 
 mise install
+
+# Install Playwright browsers/deps (if available)
+if command -v npx &>/dev/null; then
+  echo "Installing Playwright browsers and system deps..."
+  npx -y playwright install --with-deps
+else
+  echo "npx not available; skipping Playwright install"
+fi
 
 if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then
   echo "Installing antigen..."
