@@ -43,18 +43,6 @@ fi
 # --- Linux as regular user ---
 echo "Setting up dotfiles for Linux..."
 
-IN_CROSTINI=false
-if grep -qiE "(cros|chromium)" /proc/version 2>/dev/null || grep -qiE "(cros|chromium)" /proc/sys/kernel/osrelease 2>/dev/null; then
-  IN_CROSTINI=true
-  echo "Detected Crostini environment"
-fi
-
-if [ "$IN_CROSTINI" = "true" ] && ! command -v cc &>/dev/null; then
-  echo "Installing build-essential for Crostini..."
-  sudo apt-get update -y
-  sudo apt-get install -y build-essential
-fi
-
 # Clone dotfiles if not present
 if [ ! -d "$DOTFILES_DIR" ]; then
   echo "Cloning dotfiles..."
