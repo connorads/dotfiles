@@ -112,7 +112,13 @@
   # ==========================================================================
   # Tailscale (manual auth - ssh in, run: sudo tailscale up --ssh)
   # ==========================================================================
-  services.tailscale.enable = true;
+  services.tailscale = {
+    enable = true;
+    extraSetFlags = [
+      "--operator=connor"
+      "--hostname=rpi5"
+    ];
+  };
 
   # ==========================================================================
   # Docker (rootless)

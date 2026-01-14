@@ -51,19 +51,31 @@ diskutil eject disk4
 
 ## Post-boot Setup
 
-Run install script as connor (clones dotfiles, runs mise install):
+Run install script as connor (clones dotfiles):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 ```
 
-The script detects NixOS and skips Nix/home-manager install (NixOS manages those).
+The script detects NixOS and skips Nix/home-manager/mise install (NixOS manages those).
 
-Set up Tailscale:
+## Tailscale Setup
+
+Set up Tailscale (opens auth link in browser):
 
 ```bash
 sudo tailscale up --ssh
 ```
+
+**Troubleshooting**: If auth link shows "expired" immediately, try:
+1. Restart tailscaled: `sudo systemctl restart tailscaled`
+2. Clear state and retry: `sudo rm /var/lib/tailscale/tailscaled.state && sudo systemctl restart tailscaled`
+3. Try incognito browser window
+
+After auth, operator and hostname are set automatically on next rebuild.
+To set manually: `sudo tailscale set --operator=connor --hostname=rpi5`
+
+Now `ts status`, `tsup` etc work without sudo, and the Pi is accessible as `rpi5` on the tailnet.
 
 ## Updating the Pi
 
