@@ -441,7 +441,6 @@
           programs.home-manager.enable = true;
 
           # SSH agent setup
-          services.ssh-agent.enable = true;
           programs.ssh = {
             enable = true;
             enableDefaultConfig = false;
@@ -449,9 +448,7 @@
             matchBlocks."*".addKeysToAgent = "yes";
           };
 
-          home.sessionVariables = sharedHomeConfiguration.home.sessionVariables // {
-            SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
-          };
+          home.sessionVariables = sharedHomeConfiguration.home.sessionVariables;
 
           # Allow unfree packages
           nixpkgs.config.allowUnfree = true;
@@ -551,6 +548,13 @@
           linuxHomeBaseConfiguration
           linuxTailscaleUserspaceConfiguration
           linuxHomePackagesConfiguration
+          (
+            { ... }:
+            {
+              services.ssh-agent.enable = true;
+              home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
+            }
+          )
         ];
       };
 
