@@ -1,5 +1,5 @@
-# Commands starting with a space are not saved to history.
 setopt HIST_IGNORE_SPACE
+# Commands starting with a space are not saved to history.
 
 # Source antigen if not already loaded (nix-darwin sources it in /etc/zshrc)
 if ! typeset -f antigen > /dev/null; then
@@ -337,3 +337,21 @@ alias cda='claude config set authMethod device_code'
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
 alias lgdf='lg --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
+
+# Type: cpcmd <what you want>
+# It will ask Copilot for ONE command and paste it into your prompt (so you can review before running).
+cpcmd() {
+  local q="$*"
+  if [[ -z "$q" ]]; then
+    echo "usage: cpcmd <task description>" >&2
+    return 1
+  fi
+
+  local cmd
+  cmd="$(copilot -p "Suggest a single zsh/bash command to: ${q}. Output ONLY the command. No backticks. No explanation.")"
+
+  # Insert into the current command line buffer
+  if [[ -n "$cmd" ]]; then
+    print -z -- "$cmd"
+  fi
+}
