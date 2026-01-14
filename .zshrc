@@ -22,10 +22,12 @@ antigen bundle zsh-users/zsh-syntax-highlighting
 command -v brew >/dev/null 2>&1 && antigen bundle brew
 antigen apply
 
-# https://github.com/connorads/mise/
-eval "$(mise activate zsh)"
-alias mt='mise trust'
-alias mi='mise install'
+# https://github.com/jdx/mise
+if command -v mise &>/dev/null; then
+  eval "$(mise activate zsh)"
+  alias mt='mise trust'
+  alias mi='mise install'
+fi
 
 # https://github.com/connorads/dotfiles/
 dotfiles() {
