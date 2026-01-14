@@ -25,11 +25,18 @@ Library/Application Support/Discord/
 Library/Application Support/zoom.us/
 Library/Application Support/Spotify/
 Library/Application Support/FileProvider/
+Library/Application Support/Steam/
+Library/Application Support/obsidian/
+Library/Application Support/Bitwarden/
+Library/Application Support/com.isaacmarovitz.Whisky/
+Library/pnpm/
+Library/Saved Application State/
 Library/Group Containers/group.com.apple.secure-control-center-preferences/
 
 # App sandbox data (often permission-denied/volatile)
 Library/Group Containers/
 Library/Containers/
+Library/Daemon Containers/
 Library/Application Scripts/
 Library/HTTPStorages/
 
@@ -47,6 +54,8 @@ Library/LaunchAgents/
 # -----------------------------
 .cache/
 .local/share/Trash/
+.local/share/mise/
+.local/state/mise/
 .Trash/
 
 # Browsers / automation profiles (often huge + volatile)
