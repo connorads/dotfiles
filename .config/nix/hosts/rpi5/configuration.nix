@@ -161,6 +161,7 @@
           coreutils
           htop
           ncdu
+          mise
         ];
       };
   };

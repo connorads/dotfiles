@@ -189,12 +189,16 @@ fi
 
 # Install tools via mise
 echo "Installing tools via mise..."
-export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
 if ! command -v mise &>/dev/null; then
-  echo "Installing mise..."
-  curl -fsSL https://mise.run | sh
-  export PATH="$HOME/.local/bin:$PATH"
+  if [ "$IN_NIXOS" = "true" ]; then
+    echo "mise not found - add it to your NixOS config and rebuild"
+  else
+    echo "Installing mise..."
+    curl -fsSL https://mise.run | sh
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
 fi
 
 if [ "$IN_CODESPACES" = "true" ]; then
