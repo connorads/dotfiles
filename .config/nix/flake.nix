@@ -81,6 +81,7 @@
           dust
           ncdu
           parallel-disk-usage
+          zstd
 
           # Networking & security
           tailscale
