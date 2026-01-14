@@ -40,16 +40,18 @@ diskutil eject disk4
    ```bash
    ssh nixos@<pi-ip>
    ```
-4. Deploy full config:
+4. Deploy full config directly from GitHub (no need to clone dotfiles first):
    ```bash
-   sudo nixos-rebuild switch --flake ~/.config/nix#rpi5
+   sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5'
    ```
 
-After rebuild, SSH as `connor@<pi-ip>` (the user in your config).
+   Note: The `?dir=` is needed because the flake is at `.config/nix/flake.nix`, not the repo root.
+
+5. SSH as `connor@<pi-ip>` (the user in your config) - passwordless sudo enabled.
 
 ## Post-boot Setup
 
-Run install script (clones dotfiles, installs mise tools):
+Run install script as connor (clones dotfiles, runs mise install):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
@@ -65,10 +67,16 @@ sudo tailscale up --ssh
 
 ## Updating the Pi
 
-### From the Pi itself
+### From the Pi itself (after dotfiles cloned)
 
 ```bash
 nrs  # alias for: sudo nixos-rebuild switch --flake ~/.config/nix
+```
+
+### From GitHub (before dotfiles cloned)
+
+```bash
+sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5'
 ```
 
 ### Remotely from Mac (once on Tailscale)
@@ -107,5 +115,5 @@ If you can't build the custom installer image:
 3. SSH in with those credentials, then:
    ```bash
    curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
-   sudo nixos-rebuild switch --flake ~/.config/nix#rpi5
+   sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5'
    ```
