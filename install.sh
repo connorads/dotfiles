@@ -15,6 +15,12 @@ if [ "${CODESPACES:-}" = "true" ]; then
   echo "Setting up dotfiles for GitHub Codespaces (full Nix + home-manager)..."
 fi
 
+IN_NIXOS=false
+if [ -f /etc/NIXOS ]; then
+  IN_NIXOS=true
+  echo "Detected NixOS - Nix already installed, skipping Nix/Docker install..."
+fi
+
 # --- Linux as root: create user and re-run ---
 if [ "$(id -u)" = "0" ]; then
   echo "Running as root, setting up $TARGET_USER user..."
@@ -67,8 +73,10 @@ else
   git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" pull || true
 fi
 
-# Install Nix if not present
-if ! command -v nix &>/dev/null; then
+# Install Nix if not present (skip on NixOS - already has Nix)
+if [ "$IN_NIXOS" = "true" ]; then
+  echo "NixOS detected - Nix already available"
+elif ! command -v nix &>/dev/null; then
   echo "Installing Nix..."
 
   if [ "$IN_CODESPACES" = "true" ]; then
@@ -116,9 +124,11 @@ else
   echo "Nix already installed"
 fi
 
-# Install Docker if not present
+# Install Docker if not present (skip on NixOS - managed by NixOS config)
 if [ "$IN_CODESPACES" = "true" ]; then
   echo "Skipping Docker install in Codespaces"
+elif [ "$IN_NIXOS" = "true" ]; then
+  echo "Skipping Docker install on NixOS - managed by NixOS config"
 else
   if ! command -v docker &>/dev/null; then
     echo "Installing Docker..."
@@ -166,11 +176,14 @@ if [ "$(uname -s)" = "Linux" ]; then
   fi
 fi
 
-# Run home-manager
-echo "Running home-manager switch..."
-if [ "$IN_CODESPACES" = "true" ]; then
+# Run home-manager (skip on NixOS - managed by nixos-rebuild)
+if [ "$IN_NIXOS" = "true" ]; then
+  echo "Skipping home-manager switch on NixOS - run 'nrs' (nixos-rebuild switch) instead"
+elif [ "$IN_CODESPACES" = "true" ]; then
+  echo "Running home-manager switch..."
   nix run home-manager/master -- switch --flake ~/.config/nix#codespace
 else
+  echo "Running home-manager switch..."
   nix run home-manager/master -- switch --flake ~/.config/nix
 fi
 

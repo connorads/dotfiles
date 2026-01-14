@@ -7,10 +7,15 @@
 #   - homeConfigurations."connor@penguin"      : Chromebook Linux container (x86_64)
 #   - homeConfigurations."connor@dev"          : Remote/cloud dev machine (aarch64)
 #   - homeConfigurations."codespace"           : GitHub Codespaces (minimal)
+#   - nixosConfigurations."rpi5"               : Raspberry Pi 5 (NixOS)
+#   - installerImages.rpi5                     : Pi 5 installer (SSH keys baked in)
 #
 # Rebuild commands:
 #   macOS:  darwin-rebuild switch --flake ~/.config/nix  (alias: drs)
 #   Linux:  home-manager switch --flake ~/.config/nix    (alias: hms)
+#   NixOS:  nixos-rebuild switch --flake ~/.config/nix   (alias: nrs)
+#
+# Build Pi installer: nix build .#installerImages.rpi5
 #
 # ==============================================================================
 
@@ -25,6 +30,8 @@
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
   };
 
   outputs =
@@ -33,6 +40,7 @@
       nix-darwin,
       nixpkgs,
       home-manager,
+      nixos-raspberrypi,
     }:
     let
       # ========================================================================
@@ -322,6 +330,26 @@
 
           # -- Nix Settings --
           nix.settings.experimental-features = "nix-command flakes";
+          nix.settings.trusted-users = [
+            "@admin"
+            "connorads"
+          ];
+
+          # Linux builder VM for building aarch64-linux (e.g., Pi images)
+          nix.linux-builder = {
+            enable = true;
+            ephemeral = true;
+            maxJobs = 4;
+            config = {
+              virtualisation = {
+                darwin-builder = {
+                  diskSize = 40 * 1024;
+                  memorySize = 8 * 1024;
+                };
+                cores = 6;
+              };
+            };
+          };
 
           # Automatic daily GC to keep the store tidy.
           nix.gc = {
@@ -587,5 +615,64 @@
           )
         ];
       };
+
+      # Raspberry Pi 5: nixos-rebuild switch --flake ~/.config/nix#rpi5
+      nixosConfigurations."rpi5" = nixos-raspberrypi.lib.nixosSystem {
+        specialArgs = {
+          inherit inputs nixos-raspberrypi;
+        };
+        modules = [
+          (
+            { ... }:
+            {
+              imports = with nixos-raspberrypi.nixosModules; [
+                raspberry-pi-5.base
+                raspberry-pi-5.bluetooth
+              ];
+            }
+          )
+          home-manager.nixosModules.home-manager
+          ./hosts/rpi5/configuration.nix
+        ];
+      };
+
+      # Pi 5 installer image with SSH keys baked in (no HDMI needed)
+      # Build: nix build .#installerImages.rpi5
+      installerImages.rpi5 =
+        let
+          installer = nixos-raspberrypi.lib.nixosInstaller {
+            specialArgs = {
+              inherit inputs nixos-raspberrypi;
+            };
+            modules = [
+              (
+                { ... }:
+                {
+                  imports = with nixos-raspberrypi.nixosModules; [
+                    raspberry-pi-5.base
+                    raspberry-pi-5.page-size-16k
+                  ];
+                }
+              )
+              (
+                { ... }:
+                let
+                  githubKeys = builtins.fetchurl {
+                    url = "https://github.com/connorads.keys";
+                    sha256 = "1alzqm1lijavww9rlrj7dy876jy50dfx0v3f4a813kyxz1273yi1";
+                  };
+                  keys = builtins.filter (k: builtins.isString k && k != "") (
+                    builtins.split "\n" (builtins.readFile githubKeys)
+                  );
+                in
+                {
+                  users.users.nixos.openssh.authorizedKeys.keys = keys;
+                  users.users.root.openssh.authorizedKeys.keys = keys;
+                }
+              )
+            ];
+          };
+        in
+        installer.config.system.build.sdImage;
     };
 }
