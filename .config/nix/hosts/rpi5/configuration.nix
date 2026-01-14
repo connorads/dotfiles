@@ -121,6 +121,22 @@
   };
 
   # ==========================================================================
+  # Automatic Updates (pulls from GitHub daily, rebuilds if changed)
+  # ==========================================================================
+  system.autoUpgrade = {
+    enable = true;
+    flake = "github:connorads/dotfiles?dir=.config/nix#rpi5";
+    flags = [ "--print-build-logs" ];
+    dates = "04:00";
+    randomizedDelaySec = "45min";
+    allowReboot = true;
+    rebootWindow = {
+      lower = "03:00";
+      upper = "06:00";
+    };
+  };
+
+  # ==========================================================================
   # Docker (rootless)
   # ==========================================================================
   virtualisation.docker = {
