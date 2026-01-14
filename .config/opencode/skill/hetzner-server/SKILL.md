@@ -199,10 +199,10 @@ ssh connor@$(hcloud server ip dev) "ssh-keyscan github.com >> ~/.ssh/known_hosts
 ssh -A connor@$(hcloud server ip dev) "ssh-add -l"
 
 # Clone with agent forwarding (-A)
-ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git"
+ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git"
 
 # Clone specific branch
-ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
+ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
 
 # Push/pull with agent forwarding
 ssh -A connor@$(hcloud server ip dev) "cd repo && git push"
