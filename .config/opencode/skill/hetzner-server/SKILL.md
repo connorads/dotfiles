@@ -189,11 +189,14 @@ hcloud image list --type system --architecture arm
 
 ## Cloning GitHub repos (SSH agent forwarding)
 
-Use SSH agent forwarding to clone private repos without copying keys to the server.
+Use SSH agent forwarding to clone private repos without copying keys to the server. If you hit host key errors, add GitHub's host key first.
 
 ```bash
 # First time only: add GitHub's host key
 ssh connor@$(hcloud server ip dev) "ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null"
+
+# Confirm forwarded agent is visible
+ssh -A connor@$(hcloud server ip dev) "ssh-add -l"
 
 # Clone with agent forwarding (-A)
 ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git"
