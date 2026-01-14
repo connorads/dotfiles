@@ -6,6 +6,7 @@ import type {
   EventSessionIdle,
   EventSessionError,
   EventPermissionAsked,
+  EventQuestionAsked,
 } from "@opencode-ai/sdk"
 
 type MacOSSound =
@@ -30,14 +31,15 @@ type SessionEvent =
   | EventSessionIdle
   | EventSessionError
 
-type NotifiableEvent = SessionEvent | EventPermissionAsked
+type NotifiableEvent = SessionEvent | EventPermissionAsked | EventQuestionAsked
 
 const isNotifiableEvent = (event: Event): event is NotifiableEvent =>
   event.type === "session.created" ||
   event.type === "session.updated" ||
   event.type === "session.idle" ||
   event.type === "session.error" ||
-  event.type === "permission.asked"
+  event.type === "permission.asked" ||
+  event.type === "question.asked"
 
 export const NotificationPlugin: Plugin = async ({ $, client }) => {
   const sessionTitles = new Map<string, string>()
@@ -57,6 +59,24 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
 
   const escapePowerShell = (value: string): string =>
     String(value).replace(/'/g, "''")
+
+  const formatQuestionMessage = (event: EventQuestionAsked): string => {
+    const { questions, sessionID } = event.properties
+    const label = formatSessionLabel(sessionID)
+
+    if (questions.length === 0) {
+      return `Question asked: ${label}`
+    }
+
+    const [firstQuestion] = questions
+    const header = firstQuestion.header.trim()
+    const summary = header
+      ? `${header} — ${firstQuestion.question}`
+      : firstQuestion.question
+    const countSuffix = questions.length > 1 ? ` (${questions.length})` : ""
+
+    return `Question asked${countSuffix}: ${summary} - ${label}`
+  }
 
   const notify = async (
     title: string,
@@ -121,6 +141,11 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
       if (event.type === "session.error") {
         const label = formatSessionLabel(event.properties.sessionID)
         await notify("OpenCode", `Session error: ${label}`, "Basso")
+        return
+      }
+
+      if (event.type === "question.asked") {
+        await notify("OpenCode", formatQuestionMessage(event), "Ping")
         return
       }
 
