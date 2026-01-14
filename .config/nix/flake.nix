@@ -83,6 +83,7 @@
           parallel-disk-usage
 
           # Networking & security
+          tailscale
           nmap
           rustscan
           wgcf
@@ -120,6 +121,7 @@
           delta
           jq
           coreutils
+          tailscale
           mise
         ];
 
@@ -165,6 +167,7 @@
             pkgs.docker
             pkgs.colima
             pkgs.tart
+            pkgs.tailscale
             # GUI Apps
             pkgs.raycast
             pkgs.rectangle
@@ -225,7 +228,6 @@
               "figma"
               "opencode-desktop"
               "conductor"
-              "tailscale-app"
               "knockknock"
 
               # Hardware
@@ -364,6 +366,31 @@
             '';
           };
 
+          # -- Tailscale (CLI, no GUI) --
+          # Runs open-source `tailscaled` at boot (launchd daemon).
+          system.activationScripts.tailscale = {
+            text = ''
+              mkdir -p /var/lib/tailscale
+              chown root:wheel /var/lib/tailscale || true
+              chmod 700 /var/lib/tailscale || true
+            '';
+          };
+
+          launchd.daemons.tailscaled = {
+            serviceConfig = {
+              Label = "com.tailscale.tailscaled";
+              ProgramArguments = [
+                "/bin/sh"
+                "-lc"
+                "mkdir -p /var/run/tailscale /var/lib/tailscale && exec ${pkgs.tailscale}/bin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock"
+              ];
+              RunAtLoad = true;
+              KeepAlive = true;
+              StandardOutPath = "/var/log/tailscaled.log";
+              StandardErrorPath = "/var/log/tailscaled.err.log";
+            };
+          };
+
           # -- Users & Home Manager --
           users.users.connorads.home = "/Users/connorads";
           home-manager = {
@@ -399,7 +426,8 @@
       # ========================================================================
       linuxHomeBaseConfiguration =
         { pkgs, ... }:
-        sharedHomeConfiguration // {
+        sharedHomeConfiguration
+        // {
           home.username = "connor";
           home.homeDirectory = "/home/connor";
           home.stateVersion = "24.11";
@@ -429,7 +457,32 @@
           nixpkgs.config.allowUnfree = true;
         };
 
+      linuxTailscaleUserspaceConfiguration =
+        { pkgs, ... }:
+        {
+          systemd.user.services.tailscaled = {
+            Unit = {
+              Description = "Tailscale (userspace)";
+              Wants = [ "network-online.target" ];
+              After = [ "network-online.target" ];
+            };
+
+            Service = {
+              ExecStart = "${pkgs.tailscale}/bin/tailscaled --tun=userspace-networking --state=%S/tailscale/tailscaled.state --socket=%t/tailscale/tailscaled.sock";
+              Restart = "on-failure";
+              RestartSec = 5;
+              RuntimeDirectory = "tailscale";
+              StateDirectory = "tailscale";
+            };
+
+            Install = {
+              WantedBy = [ "default.target" ];
+            };
+          };
+        };
+
       linuxHomePackagesConfiguration =
+
         { pkgs, ... }:
         let
           # VS Code override: nixpkgs often lags the latest release.
@@ -496,6 +549,7 @@
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
         modules = [
           linuxHomeBaseConfiguration
+          linuxTailscaleUserspaceConfiguration
           linuxHomePackagesConfiguration
         ];
       };
@@ -504,6 +558,7 @@
         pkgs = nixpkgs.legacyPackages.aarch64-linux;
         modules = [
           linuxHomeBaseConfiguration
+          linuxTailscaleUserspaceConfiguration
           linuxHomePackagesConfiguration
         ];
       };
