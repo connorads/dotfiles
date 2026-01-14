@@ -66,6 +66,8 @@
   # ==========================================================================
   # User
   # ==========================================================================
+  security.sudo.wheelNeedsPassword = false;
+
   users.users.connor = {
     isNormalUser = true;
     extraGroups = [
