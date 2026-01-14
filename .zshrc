@@ -43,6 +43,9 @@ drsr() { drs --rollback; }
 # Linux - https://github.com/nix-community/home-manager
 hms() { home-manager switch --flake ~/.config/nix; }
 hmsr() { hms --rollback; }
+# NixOS - https://nixos.org/
+nrs() { sudo nixos-rebuild switch --flake ~/.config/nix; }
+nrsr() { nrs --rollback; }
 
 # Tailscale helpers
 # - macOS uses /var/run/tailscale/tailscaled.sock
