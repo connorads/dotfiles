@@ -44,6 +44,68 @@ drsr() { drs --rollback; }
 hms() { home-manager switch --flake ~/.config/nix; }
 hmsr() { hms --rollback; }
 
+# Tailscale helpers
+# - macOS uses /var/run/tailscale/tailscaled.sock
+# - Linux user-mode uses $XDG_RUNTIME_DIR/tailscale/tailscaled.sock
+
+ts() {
+  if ! command -v tailscale >/dev/null 2>&1; then
+    echo "tailscale not installed" >&2
+    return 127
+  fi
+
+  if [[ "$OSTYPE" == "darwin"* ]] \
+    && [[ -S "/var/run/tailscale/tailscaled.sock" ]]; then
+    command tailscale --socket "/var/run/tailscale/tailscaled.sock" "$@"
+  elif [[ "$OSTYPE" == "linux-gnu"* ]] \
+    && [[ -n "$XDG_RUNTIME_DIR" ]] \
+    && [[ -S "$XDG_RUNTIME_DIR/tailscale/tailscaled.sock" ]]; then
+    command tailscale --socket "$XDG_RUNTIME_DIR/tailscale/tailscaled.sock" "$@"
+  else
+    command tailscale "$@"
+  fi
+}
+
+tsup() {
+  emulate -L zsh
+  setopt err_return
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    local socket_path="/var/run/tailscale/tailscaled.sock"
+
+    if command -v launchctl >/dev/null 2>&1; then
+      sudo launchctl kickstart -k system/com.tailscale.tailscaled 2>/dev/null || true
+    fi
+
+    for _ in {1..20}; do
+      [[ -S "$socket_path" ]] && break
+      sleep 0.2
+    done
+
+    if [[ ! -S "$socket_path" ]]; then
+      echo "tailscaled not running (missing $socket_path)" >&2
+      return 1
+    fi
+
+    sudo tailscale --socket "$socket_path" up --accept-dns=true --ssh "$@"
+    return
+  fi
+
+  if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v systemctl >/dev/null 2>&1; then
+    systemctl --user start tailscaled 2>/dev/null || true
+  fi
+
+  if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$XDG_RUNTIME_DIR" ]]; then
+    local socket_path="$XDG_RUNTIME_DIR/tailscale/tailscaled.sock"
+    for _ in {1..20}; do
+      [[ -S "$socket_path" ]] && break
+      sleep 0.2
+    done
+  fi
+
+  ts up --accept-dns=true --ssh "$@"
+}
+
 up() {
   mise upgrade
   if [[ "$OSTYPE" == "darwin"* ]]; then
