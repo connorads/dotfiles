@@ -1,6 +1,8 @@
 [settings]
 experimental = true
-npm.package_manager = "bun"
+
+[settings.npm]
+package_manager = "bun"
 
 [tools]
 python = "3.14"
