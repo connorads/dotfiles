@@ -631,20 +631,6 @@
               ];
             }
           )
-          # Overlay newer packages from nixpkgs-unstable (nixos-raspberrypi pins older nixpkgs)
-          (
-            { ... }:
-            {
-              nixpkgs.overlays = [
-                (final: prev: {
-                  # Add packages here to pull from nixpkgs-unstable instead of raspberrypi's nixpkgs
-                  inherit (nixpkgs.legacyPackages.aarch64-linux)
-                    mise
-                    ;
-                })
-              ];
-            }
-          )
           home-manager.nixosModules.home-manager
           ./hosts/rpi5/configuration.nix
         ];
