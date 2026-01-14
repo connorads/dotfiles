@@ -187,26 +187,26 @@ else
   nix run home-manager/master -- switch --flake ~/.config/nix
 fi
 
-# Install tools via mise
-echo "Installing tools via mise..."
-export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+# Install tools via mise (skip on NixOS - use Nix packages instead)
+if [ "$IN_NIXOS" = "true" ]; then
+  echo "Skipping mise install on NixOS - tools managed by NixOS config"
+else
+  echo "Installing tools via mise..."
+  export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
-if ! command -v mise &>/dev/null; then
-  if [ "$IN_NIXOS" = "true" ]; then
-    echo "mise not found - add it to your NixOS config and rebuild"
-  else
+  if ! command -v mise &>/dev/null; then
     echo "Installing mise..."
     curl -fsSL https://mise.run | sh
     export PATH="$HOME/.local/bin:$PATH"
   fi
-fi
 
-if [ "$IN_CODESPACES" = "true" ]; then
-  export MISE_ENV=codespaces
-  echo "mise: env=codespaces"
-fi
+  if [ "$IN_CODESPACES" = "true" ]; then
+    export MISE_ENV=codespaces
+    echo "mise: env=codespaces"
+  fi
 
-mise install
+  mise install
+fi
 
 # Install Playwright browsers/deps (if available)
 if command -v npx &>/dev/null; then

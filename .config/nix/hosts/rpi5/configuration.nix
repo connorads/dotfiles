@@ -163,7 +163,8 @@
           coreutils
           htop
           ncdu
-          mise
+          zsh
+          antigen
         ];
       };
   };
