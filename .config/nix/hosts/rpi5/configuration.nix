@@ -70,6 +70,7 @@
 
   users.users.connor = {
     isNormalUser = true;
+    shell = pkgs.zsh;
     extraGroups = [
       "wheel"
       "docker"
@@ -167,6 +168,16 @@
           antigen
         ];
       };
+  };
+
+  # ==========================================================================
+  # Zsh (system-wide, sources antigen for dotfiles)
+  # ==========================================================================
+  programs.zsh = {
+    enable = true;
+    interactiveShellInit = ''
+      source ${pkgs.antigen}/share/antigen/antigen.zsh
+    '';
   };
 
   # ==========================================================================
