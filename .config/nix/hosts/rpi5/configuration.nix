@@ -4,6 +4,7 @@
   config,
   pkgs,
   lib,
+  nix-clawdbot,
   ...
 }:
 
@@ -154,9 +155,14 @@
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
+    extraSpecialArgs = { inherit nix-clawdbot; };
     users.connor =
-      { pkgs, ... }:
+      { pkgs, nix-clawdbot, ... }:
       {
+        imports = [
+          nix-clawdbot.homeManagerModules.clawdbot
+        ];
+
         home.username = "connor";
         home.homeDirectory = "/home/connor";
         home.stateVersion = "24.11";
@@ -171,6 +177,42 @@
             init.defaultBranch = "main";
           };
         };
+
+        # ======================================================================
+        # Clawdbot (AI assistant gateway)
+        # ======================================================================
+        programs.clawdbot.instances.default = {
+          enable = true;
+
+          # Use OpenAI instead of Anthropic
+          agent.model = "openai/gpt-4o";
+
+          # Telegram provider (disabled until user ID is configured)
+          providers.telegram = {
+            enable = false;
+            botTokenFile = "/home/connor/.secrets/telegram-bot-token";
+            allowFrom = [ ]; # TODO: Add your Telegram user ID
+          };
+        };
+
+        # Disable first-party plugins (core gateway only)
+        programs.clawdbot.firstParty = {
+          summarize.enable = false;
+          peekaboo.enable = false;
+          oracle.enable = false;
+          poltergeist.enable = false;
+          sag.enable = false;
+          camsnap.enable = false;
+          gogcli.enable = false;
+          bird.enable = false;
+          sonoscli.enable = false;
+          imsg.enable = false;
+        };
+
+        # OpenAI API key via systemd EnvironmentFile
+        # (nix-clawdbot module is Anthropic-focused)
+        systemd.user.services.clawdbot-gateway.Service.EnvironmentFile =
+          "/home/connor/.secrets/clawdbot.env";
 
         home.packages = with pkgs; [
           vim

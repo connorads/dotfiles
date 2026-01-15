@@ -32,6 +32,11 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
+
+    # Clawdbot - fork with aarch64-linux support for RPi5
+    nix-clawdbot.url = "github:connorads/nix-clawdbot/feat/aarch64-linux";
+    nix-clawdbot.inputs.nixpkgs.follows = "nixpkgs";
+    nix-clawdbot.inputs.home-manager.follows = "home-manager";
   };
 
   outputs =
@@ -41,6 +46,7 @@
       nixpkgs,
       home-manager,
       nixos-raspberrypi,
+      nix-clawdbot,
     }:
     let
       # ========================================================================
@@ -619,7 +625,7 @@
       # Raspberry Pi 5: nixos-rebuild switch --flake ~/.config/nix#rpi5
       nixosConfigurations."rpi5" = nixos-raspberrypi.lib.nixosSystem {
         specialArgs = {
-          inherit inputs nixos-raspberrypi;
+          inherit inputs nixos-raspberrypi nix-clawdbot;
         };
         modules = [
           (
@@ -629,6 +635,8 @@
                 raspberry-pi-5.base
                 raspberry-pi-5.bluetooth
               ];
+              # Apply nix-clawdbot overlay
+              nixpkgs.overlays = [ nix-clawdbot.overlays.default ];
             }
           )
           home-manager.nixosModules.home-manager
