@@ -258,12 +258,13 @@ main() {
     if $RESTART_SERVICE && $deployed; then
         echo ""
         info "Restarting clawdbot-gateway service..."
-        ssh "${REMOTE_USER}@${HOST}" "systemctl --user restart clawdbot-gateway"
+        # Need XDG_RUNTIME_DIR for systemctl --user over SSH
+        ssh "${REMOTE_USER}@${HOST}" 'XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user restart clawdbot-gateway'
 
         # Brief wait then check status
         sleep 2
         info "Checking service status..."
-        ssh "${REMOTE_USER}@${HOST}" "systemctl --user status clawdbot-gateway --no-pager" || true
+        ssh "${REMOTE_USER}@${HOST}" 'XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user status clawdbot-gateway --no-pager' || true
     elif $RESTART_SERVICE && ! $deployed; then
         warn "No secrets deployed, skipping service restart"
     fi
