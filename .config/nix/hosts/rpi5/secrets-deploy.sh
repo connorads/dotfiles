@@ -6,6 +6,7 @@
 #   ./secrets-deploy.sh --openai           # Deploy only OpenAI API key
 #   ./secrets-deploy.sh --telegram         # Deploy only Telegram bot token
 #   ./secrets-deploy.sh --telegram-id      # Deploy only Telegram user ID
+#   ./secrets-deploy.sh --password         # Deploy only gateway web UI password
 #   ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
 #   ./secrets-deploy.sh --restart          # Restart clawdbot-gateway after deploy
 #
@@ -24,6 +25,7 @@ HOST="${RPI5_HOST:-$DEFAULT_HOST}"
 DEPLOY_OPENAI=false
 DEPLOY_TELEGRAM=false
 DEPLOY_TELEGRAM_ID=false
+DEPLOY_PASSWORD=false
 RESTART_SERVICE=false
 DEPLOY_ALL=true
 
@@ -48,18 +50,24 @@ while [[ $# -gt 0 ]]; do
             DEPLOY_ALL=false
             shift
             ;;
+        --password|-p)
+            DEPLOY_PASSWORD=true
+            DEPLOY_ALL=false
+            shift
+            ;;
         --restart|-r)
             RESTART_SERVICE=true
             shift
             ;;
         --help)
-            echo "Usage: $0 [--host HOST] [--openai] [--telegram] [--telegram-id] [--restart]"
+            echo "Usage: $0 [--host HOST] [--openai] [--telegram] [--telegram-id] [--password] [--restart]"
             echo ""
             echo "Options:"
             echo "  --host, -h HOST     Target host (default: rpi5, or RPI5_HOST env)"
             echo "  --openai, -o        Deploy only OpenAI API key"
             echo "  --telegram, -t      Deploy only Telegram bot token"
             echo "  --telegram-id, -i   Deploy only Telegram user ID"
+            echo "  --password, -p      Deploy only gateway web UI password"
             echo "  --restart, -r       Restart clawdbot-gateway after deploy"
             echo ""
             echo "With no secret flags, deploys all secrets."
@@ -77,6 +85,7 @@ if $DEPLOY_ALL; then
     DEPLOY_OPENAI=true
     DEPLOY_TELEGRAM=true
     DEPLOY_TELEGRAM_ID=true
+    DEPLOY_PASSWORD=true
 fi
 
 # Colours for output
@@ -252,6 +261,20 @@ main() {
             deployed=true
         fi
         unset telegram_id  # Clear from memory
+    fi
+
+    # Deploy gateway password
+    if $DEPLOY_PASSWORD; then
+        echo ""
+        info "Gateway web UI password deployment"
+        local password=""
+        if ! read_secret "Enter gateway web UI password" password; then
+            error "Aborted password deployment"
+        else
+            deploy_secret "clawdbot-gateway-password" "$password"
+            deployed=true
+        fi
+        unset password  # Clear from memory
     fi
 
     # Restart service if requested and something was deployed
