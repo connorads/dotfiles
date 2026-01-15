@@ -432,6 +432,20 @@
             };
           };
 
+          # MagicDNS resolver (OSS tailscaled doesn't create this automatically)
+          # See: https://github.com/tailscale/tailscale/issues/13461
+          # Dynamically creates /etc/resolver/<tailnet> at activation time
+          system.activationScripts.postActivation.text = ''
+            if ${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json 2>/dev/null | ${pkgs.jq}/bin/jq -e '.CurrentTailnet.MagicDNSSuffix' >/dev/null 2>&1; then
+              DOMAIN=$(${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json | ${pkgs.jq}/bin/jq -r '.CurrentTailnet.MagicDNSSuffix')
+              mkdir -p /etc/resolver
+              echo "nameserver 100.100.100.100" > "/etc/resolver/$DOMAIN"
+              echo "Created /etc/resolver/$DOMAIN for Tailscale MagicDNS"
+            else
+              echo "Tailscale not running, skipping MagicDNS resolver setup"
+            fi
+          '';
+
           # -- Users & Home Manager --
           users.users.connorads.home = "/Users/connorads";
           home-manager = {
