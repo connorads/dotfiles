@@ -192,6 +192,7 @@
           gatewayTailscale = "serve";
           gatewayAuth = "token";
           gatewayTokenFile = "/home/connor/.secrets/clawdbot-gateway-token";
+          gatewayAuthAllowTailscale = false;  # Require token even for Tailscale users
 
           # Telegram provider (user ID loaded at runtime via $include)
           providers.telegram = {
