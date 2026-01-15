@@ -64,9 +64,23 @@ journalctl --user -u clawdbot-gateway -f
 systemctl --user restart clawdbot-gateway
 ```
 
+**Note:** Over SSH, `systemctl --user` needs `XDG_RUNTIME_DIR`:
+```bash
+ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --user status clawdbot-gateway"
+```
+
+## Remote Rebuild from Mac
+
+Push dotfiles changes to GitHub, then rebuild the Pi:
+```bash
+ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5' --no-write-lock-file --refresh"
+```
+
+The `--refresh` flag ensures latest is pulled from GitHub.
+
 ## Web UI
 
-The gateway serves a web UI at `http://rpi5:18789` (or via Tailscale).
+Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net` (authenticated via Tailscale identity).
 
 ## Configuration
 
