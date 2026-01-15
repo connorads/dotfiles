@@ -81,16 +81,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1768438408,
-        "narHash": "sha256-LO/+eXVdN2t3IIbqGoP2AICW+zs0VtgBnn2HWzJmd2Q=",
+        "lastModified": 1768486027,
+        "narHash": "sha256-KOz0tZw3lkPjrrxGxrFliQFHc+4BrjodW3YlDJWkrEs=",
         "owner": "connorads",
         "repo": "nix-clawdbot",
-        "rev": "9f479e6476d0eb06aeb542dd61a1047f34b1be2f",
+        "rev": "6dbf4f4f9a0bbd357b5252825efd8f8ca019f8f1",
         "type": "github"
       },
       "original": {
         "owner": "connorads",
-        "ref": "feat/aarch64-linux",
+        "ref": "feat/rpi5-complete",
         "repo": "nix-clawdbot",
         "type": "github"
       }
