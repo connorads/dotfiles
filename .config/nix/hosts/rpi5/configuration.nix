@@ -191,6 +191,9 @@
           # Access at https://rpi5.<tailnet>.ts.net
           gatewayTailscale = "serve";
 
+          # Disable heartbeat (burns tokens)
+          configOverrides.agents.defaults.heartbeat.every = "0m";
+
           # Telegram provider (user ID loaded at runtime via $include)
           providers.telegram = {
             enable = true;
