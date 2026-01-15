@@ -187,6 +187,12 @@
           # Use OpenAI instead of Anthropic
           agent.model = "openai/gpt-4o";
 
+          # Web UI: Tailscale Serve + password auth
+          # Access at https://rpi5.<tailnet>.ts.net
+          gatewayTailscale = "serve";
+          gatewayAuth = "password";
+          gatewayPasswordFile = "/home/connor/.secrets/clawdbot-gateway-password";
+
           # Telegram provider (user ID loaded at runtime via $include)
           providers.telegram = {
             enable = true;
