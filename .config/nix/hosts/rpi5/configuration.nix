@@ -187,11 +187,11 @@
           # Use OpenAI instead of Anthropic
           agent.model = "openai/gpt-4o";
 
-          # Telegram provider (disabled until user ID is configured)
+          # Telegram provider (user ID loaded at runtime via $include)
           providers.telegram = {
-            enable = false;
+            enable = true;
             botTokenFile = "/home/connor/.secrets/telegram-bot-token";
-            allowFrom = [ ]; # TODO: Add your Telegram user ID
+            allowFromFile = "/home/connor/.secrets/telegram-users.json";
           };
         };
 
