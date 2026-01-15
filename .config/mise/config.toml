@@ -18,6 +18,7 @@ hcloud = "latest"
 
 "npm:opencode-ai" = "latest"
 "npm:@github/copilot" = "latest"
+"npm:@sourcegraph/amp" = "latest"
 "npm:apify-cli" = "latest"
 "npm:ralph-tui" = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
