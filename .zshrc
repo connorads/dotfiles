@@ -49,6 +49,9 @@ hmsr() { hms --rollback; }
 nrs() { sudo nixos-rebuild switch --flake ~/.config/nix; }
 nrsr() { nrs --rollback; }
 
+# https://github.com/clawdbot/clawdbot
+alias cbs='~/.config/nix/hosts/rpi5/nix-clawdbot-sync.sh'
+
 # Tailscale helpers
 # - macOS uses /var/run/tailscale/tailscaled.sock
 # - Linux user-mode uses $XDG_RUNTIME_DIR/tailscale/tailscaled.sock
