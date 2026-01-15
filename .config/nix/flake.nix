@@ -249,6 +249,7 @@
               "opencode-desktop"
               "conductor"
               "knockknock"
+              "slack"
 
               # Hardware
               "logitech-camera-settings"
