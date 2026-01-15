@@ -6,14 +6,14 @@
 #   ./nix-clawdbot-sync.sh --no-push    # Sync and rebase but don't push
 #
 # This script:
-# 1. Clones/updates the fork in /tmp/nix-clawdbot
+# 1. Clones/updates the fork in ~/git/nix-clawdbot
 # 2. Syncs main branch from upstream via gh repo sync
 # 3. Rebases feat/rpi5-complete on updated main
 # 4. Force pushes the rebased branch
 
 set -euo pipefail
 
-REPO_DIR="/tmp/nix-clawdbot"
+REPO_DIR="$HOME/git/nix-clawdbot"
 FEATURE_BRANCH="feat/rpi5-complete"
 PUSH=true
 
@@ -37,9 +37,12 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 if [[ ! -d "$REPO_DIR" ]]; then
     info "Cloning connorads/nix-clawdbot..."
     git clone git@github.com:connorads/nix-clawdbot.git "$REPO_DIR"
+    cd "$REPO_DIR"
+    info "Setting default repo for gh..."
+    gh repo set-default connorads/nix-clawdbot
+else
+    cd "$REPO_DIR"
 fi
-
-cd "$REPO_DIR"
 
 # Fetch all
 info "Fetching all branches..."
@@ -57,7 +60,7 @@ git rebase main
 
 # Show result
 info "Commits on $FEATURE_BRANCH:"
-git log --oneline main..HEAD
+git --no-pager log --oneline main..HEAD
 
 # Push if requested
 if $PUSH; then
