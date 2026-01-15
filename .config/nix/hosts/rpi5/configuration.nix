@@ -185,7 +185,7 @@
           enable = true;
 
           # Use OpenAI instead of Anthropic
-          agent.model = "openai/gpt-4o";
+          agent.model = "openai/gpt-5-nano";
 
           # Web UI: Tailscale Serve (Tailscale identity auth)
           # Access at https://rpi5.<tailnet>.ts.net

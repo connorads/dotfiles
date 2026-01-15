@@ -85,7 +85,7 @@ Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net` (authenticated via
 ## Configuration
 
 Current setup in `configuration.nix`:
-- **AI Provider**: OpenAI (`openai/gpt-4o`)
+- **AI Provider**: OpenAI (`openai/gpt-5-nano`)
 - **Messaging**: Telegram (user ID loaded at runtime via `$include`)
 - **Plugins**: All disabled (core gateway only)
 
