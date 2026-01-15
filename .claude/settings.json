@@ -375,6 +375,12 @@
       "Bash(npm list:*)",
       "Bash(df:*)",
       "Bash(od:*)"
+      "Bash(tailscale status:*)",
+      "Bash(ts status:*)",
+      "Bash(ts debug:*)",
+      "Bash(ts netcheck:*)",
+      "Bash(ts preferences:*)",
+      "Bash(ts up --help:*)",
     ],
     "deny": [
       "Bash(rm -rf /)",
