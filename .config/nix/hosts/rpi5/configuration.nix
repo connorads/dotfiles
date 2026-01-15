@@ -127,7 +127,7 @@
   system.autoUpgrade = {
     enable = true;
     flake = "github:connorads/dotfiles?dir=.config/nix#rpi5";
-    flags = [ "--print-build-logs" ];
+    flags = [ "--refresh" "--print-build-logs" ];
     dates = "04:00";
     randomizedDelaySec = "45min";
     allowReboot = true;
