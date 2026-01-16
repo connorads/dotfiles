@@ -238,42 +238,8 @@ alias gomu='gom && gstp'
 alias gob='git switch -'
 alias gobu='gob && gstp'
 
-# git worktrees
-wta() {
-  local branch=$1
-  local repo=$(basename $(git rev-parse --show-toplevel))
-  local worktree_path="$HOME/.trees/${repo}-${branch}"
-
-  # Check if branch exists locally or remotely
-  if git show-ref --verify --quiet refs/heads/$branch; then
-    # Local branch exists - checkout existing
-    git worktree add "$worktree_path" "$branch" && cd "$worktree_path"
-  elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
-    # Remote branch exists - track it
-    git worktree add "$worktree_path" -b "$branch" "origin/$branch" && cd "$worktree_path"
-  else
-    # New branch - create from current HEAD
-    git worktree add -b "$branch" "$worktree_path" && cd "$worktree_path"
-  fi
-}
-alias wtl='git worktree list'
-wts() {
-  local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Switch to worktree: ")
-
-  if [[ -n "$worktree" ]]; then
-    cd "$worktree"
-  fi
-}
-wtrm() {
-  local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
-
-  if [[ -n "$worktree" ]]; then
-    echo "Removing: $worktree"
-    git worktree remove "$worktree" --force
-  else
-    echo "No worktree selected"
-  fi
-}
+# https://github.com/chmouel/lazyworktree
+alias lwt='lazyworktree'
 
 # tmux session management
 tma() {
