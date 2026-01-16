@@ -76,6 +76,7 @@
           # Git & version control
           delta
           lazygit
+          lazyworktree
           jujutsu
 
           # Dev tools
