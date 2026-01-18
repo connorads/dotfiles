@@ -238,6 +238,9 @@ alias gomu='gom && gstp'
 alias gob='git switch -'
 alias gobu='gob && gstp'
 
+# https://github.com/chmouel/lazyworktree
+alias lwt='lazyworktree'
+
 # git worktrees
 wta() {
   local branch=$1
