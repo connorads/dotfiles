@@ -9,6 +9,12 @@
 !/.claude/commands/
 !/.claude/commands/**
 
+!/.codex/
+/.codex/**
+!/.codex/skills/
+!/.codex/skills/**
+/.codex/skills/.system
+
 !/.config/
 /.config/**
 !/.config/opencode/
