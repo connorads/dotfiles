@@ -3,11 +3,7 @@
     "allow": [
       "Read(//tmp/**)",
       "WebSearch",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:docs.brew.sh)",
-      "WebFetch(domain:formulae.brew.sh)",
-      "WebFetch(domain:huggingface.co)",
-      "WebFetch(domain:developers.cloudflare.com)",
+      "WebFetch",
       "mcp__context7",
       "mcp__chrome-devtools",
       "mcp__playwright",
