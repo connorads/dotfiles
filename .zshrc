@@ -341,8 +341,8 @@ ocm() {
 }
 
 skillsync() {
-  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" && \
-  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store"
+  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system" && \
+  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system"
 }
 
 # claude code auth workaround for codespaces
