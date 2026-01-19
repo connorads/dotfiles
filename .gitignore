@@ -21,8 +21,8 @@
 /.config/opencode/**
 !/.config/opencode/command/
 !/.config/opencode/command/**
-!/.config/opencode/skill/
-!/.config/opencode/skill/**
+!/.config/opencode/skills/
+!/.config/opencode/skills/**
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 
