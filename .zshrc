@@ -340,7 +340,10 @@ ocm() {
   jq "$filter" "$cfg" > "$tmp" && mv "$tmp" "$cfg"
 }
 
-alias syncskills='unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store"'
+skillsync() {
+  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" && \
+  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store"
+}
 
 # claude code auth workaround for codespaces
 alias cda='claude config set authMethod device_code'
