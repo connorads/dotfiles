@@ -341,8 +341,16 @@ ocm() {
 }
 
 skillsync() {
-  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system" && \
-  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system"
+  # conversation-analysis is OpenCode-only; do not sync it to other agents
+  echo "[skillsync] claude <-> opencode"
+  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help"
+  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system" -ignore "Name conversation-analysis" && \
+  echo "[skillsync] opencode <-> codex" && \
+  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help" && \
+  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skill" -ignore "Name .DS_Store" -ignore "Name .system" -ignore "Name conversation-analysis" && \
+  echo "[skillsync] codex <-> claude" && \
+  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help" && \
+  unison "$HOME/.codex/skills" "$HOME/.claude/skills" -ignore "Name .DS_Store" -ignore "Name .system"
 }
 
 # claude code auth workaround for codespaces
