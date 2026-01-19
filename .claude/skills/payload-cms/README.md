@@ -17,7 +17,7 @@ This skill transfers expert knowledge for building Payload CMS applications. It 
 ### Claude Code / OpenCode
 
 ```bash
-npx add-skill payload-cms
+npx add-skill https://github.com/connorads/dotfiles/tree/master/.claude/skills/payload-cms
 ```
 
 ### Claude.ai
