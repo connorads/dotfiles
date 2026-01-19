@@ -17,19 +17,19 @@ Create and manage Hetzner Cloud servers using the `hcloud` CLI.
 ### Create a server
 
 ```bash
-# ARM server (cheapest, recommended for dev)
+# Prefer ARM (best value)
 hcloud server create \
   --name dev \
-  --type cax11 \
+  --type cax21 \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin
 
-# x86 server
+# x86 fallback
 hcloud server create \
   --name dev \
-  --type cpx11 \
+  --type cpx21 \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
@@ -38,7 +38,7 @@ hcloud server create \
 # IPv6-only (saves ~$0.60/month on IPv4)
 hcloud server create \
   --name dev \
-  --type cax11 \
+  --type cax21 \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
@@ -51,12 +51,13 @@ hcloud server create \
 ```bash
 hcloud server create \
   --name dev \
-  --type cax11 \
+  --type cax21 \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin \
   --user-data-from-file <(echo '#!/bin/bash
+sudo apt-get update && sudo apt-get install -y build-essential
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash')
 ```
 
@@ -149,8 +150,9 @@ Prices in USD for EU regions (US regions ~20% higher):
 |------|------|------|-----|------|---------|
 | cax11 | ARM | 2 | 4GB | 40GB | $4.50 |
 | cax21 | ARM | 4 | 8GB | 80GB | $8 |
-| cpx11 | x86 | 2 | 2GB | 40GB | $5.60 |
+| cax31 | ARM | 8 | 16GB | 160GB | $16 |
 | cpx21 | x86 | 3 | 4GB | 80GB | $9 |
+| cpx31 | x86 | 4 | 8GB | 160GB | $18 |
 
 Full list: `hcloud server-type list`
 
@@ -187,17 +189,20 @@ hcloud image list --type system --architecture arm
 
 ## Cloning GitHub repos (SSH agent forwarding)
 
-Use SSH agent forwarding to clone private repos without copying keys to the server.
+Use SSH agent forwarding to clone private repos without copying keys to the server. If you hit host key errors, add GitHub's host key first.
 
 ```bash
 # First time only: add GitHub's host key
 ssh connor@$(hcloud server ip dev) "ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null"
 
+# Confirm forwarded agent is visible
+ssh -A connor@$(hcloud server ip dev) "ssh-add -l"
+
 # Clone with agent forwarding (-A)
-ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git"
+ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git"
 
 # Clone specific branch
-ssh -A connor@$(hcloud server ip dev) "git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
+ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
 
 # Push/pull with agent forwarding
 ssh -A connor@$(hcloud server ip dev) "cd repo && git push"
