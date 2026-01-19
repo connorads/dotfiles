@@ -223,6 +223,42 @@
         systemd.user.services.clawdbot-gateway.Service.EnvironmentFile =
           "/home/connor/.secrets/clawdbot.env";
 
+        # ======================================================================
+        # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
+        # ======================================================================
+        systemd.user.services.clawd-workspace-sync = {
+          Unit.Description = "Sync Clawdbot workspace to GitHub";
+          Service = {
+            Type = "oneshot";
+            ExecStart = pkgs.writeShellScript "clawd-workspace-sync" ''
+              set -euo pipefail
+              WORKSPACE="/home/connor/clawd"
+              cd "$WORKSPACE" || exit 0
+
+              # Init repo if not exists
+              if [ ! -d .git ]; then
+                ${pkgs.git}/bin/git init
+                ${pkgs.git}/bin/git remote add origin git@github.com-clawd:connorads/clawd-workspace.git
+              fi
+
+              # Commit and push if changes
+              ${pkgs.git}/bin/git add -A
+              ${pkgs.git}/bin/git diff --cached --quiet || \
+                ${pkgs.git}/bin/git commit -m "Auto-sync $(date -I)"
+              ${pkgs.git}/bin/git push -u origin main || true
+            '';
+          };
+        };
+
+        systemd.user.timers.clawd-workspace-sync = {
+          Unit.Description = "Sync Clawdbot workspace daily";
+          Timer = {
+            OnCalendar = "daily";
+            Persistent = true;
+          };
+          Install.WantedBy = [ "timers.target" ];
+        };
+
         home.packages = with pkgs; [
           vim
           micro
