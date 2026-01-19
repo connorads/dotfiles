@@ -96,6 +96,42 @@ Secrets are stored in `/home/connor/.secrets/` on the Pi:
 - `telegram-bot-token` - Telegram bot token
 - `telegram-users.json` - Telegram user ID as JSON (loaded by clawdbot at runtime)
 
+**Safe to reset**: These are external files - `clawdbot reset` won't touch them. The Nix config regenerates service configuration on rebuild, so Telegram/gateway settings are declarative.
+
+## Personality & Workspace
+
+Workspace lives at `~/clawd/` containing:
+- `SOUL.md` - Persona, tone, boundaries
+- `IDENTITY.md` - Name, creature, vibe, emoji
+- `AGENTS.md` - Operating instructions
+- `USER.md` - How to address you
+
+### Bootstrap Ritual
+
+Personality questions ("what's my name?", "pick an emoji") are **not** asked during `clawdbot onboard`. Instead:
+
+1. `clawdbot onboard` creates `BOOTSTRAP.md` (if workspace is brand new)
+2. At end of onboarding, it prompts "hatch your bot now?" and sends `Wake up, my friend!`
+3. Agent reads `BOOTSTRAP.md` and asks personality questions
+4. You answer, agent populates `IDENTITY.md`, `USER.md`, `SOUL.md`
+5. Delete `BOOTSTRAP.md` when done (or agent keeps trying to bootstrap)
+
+To re-trigger bootstrap manually, send `Wake up, my friend!` via TUI or Telegram (requires `BOOTSTRAP.md` to exist).
+
+### Workspace Backup
+
+Auto-syncs daily to [connorads/clawd-workspace](https://github.com/connorads/clawd-workspace) (private) via systemd timer. Uses deploy key at `~/.ssh/clawd_deploy`.
+
+## Resetting
+
+```bash
+ssh connor@rpi5
+clawdbot reset        # Wipes ~/.clawdbot/ (state, sessions)
+clawdbot onboard --install-daemon
+```
+
+To redo personality: delete `~/clawd/` before onboard, or manually recreate `BOOTSTRAP.md`.
+
 ## Links
 
 - [Clawdbot](https://github.com/clawdbot/clawdbot) - upstream project
