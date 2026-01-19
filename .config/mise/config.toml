@@ -22,6 +22,7 @@ hcloud = "latest"
 "npm:apify-cli" = "latest"
 "npm:ralph-tui" = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
+"npm:agent-browser" = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
