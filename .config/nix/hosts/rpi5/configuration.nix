@@ -194,7 +194,7 @@
             WorkingDirectory = "%h";
             EnvironmentFile = "%h/.clawdbot/.env";
             Environment = [
-              "PATH=%h/.npm-global/bin:/run/current-system/sw/bin"
+              "PATH=%h/.npm-global/bin:/etc/profiles/per-user/connor/bin:/run/current-system/sw/bin"
             ];
           };
           Install = {
