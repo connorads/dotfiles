@@ -2,25 +2,30 @@
 # nix-clawdbot-sync.sh - Sync nix-clawdbot fork and rebase feature branch
 #
 # Usage:
-#   ./nix-clawdbot-sync.sh              # Sync main + rebase feat/rpi5-complete
-#   ./nix-clawdbot-sync.sh --no-push    # Sync and rebase but don't push
+#   ./nix-clawdbot-sync.sh                   # Sync main + rebase feat/rpi5-complete
+#   ./nix-clawdbot-sync.sh --update-pins     # Sync main + update pins + rebase
+#   ./nix-clawdbot-sync.sh --no-push         # Sync and rebase but don't push
 #
 # This script:
 # 1. Clones/updates the fork in ~/git/nix-clawdbot
 # 2. Syncs main branch from upstream via gh repo sync
-# 3. Rebases feat/rpi5-complete on updated main
-# 4. Force pushes the rebased branch
+# 3. Optionally updates pins via scripts/update-pins.sh
+# 4. Rebases feat/rpi5-complete on updated main
+# 5. Force pushes the rebased branch
 
 set -euo pipefail
 
 REPO_DIR="$HOME/git/nix-clawdbot"
 FEATURE_BRANCH="feat/rpi5-complete"
 PUSH=true
+UPDATE_PINS=false
+SYSTEM_BASH="/run/current-system/sw/bin/bash"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-push) PUSH=false; shift ;;
+        --update-pins) UPDATE_PINS=true; shift ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -52,6 +57,16 @@ git fetch --all
 info "Syncing main from upstream (clawdbot/nix-clawdbot)..."
 git checkout main
 gh repo sync --branch main
+
+# Update pins when requested
+if $UPDATE_PINS; then
+    info "Updating clawdbot pins (scripts/update-pins.sh)..."
+    if [[ -x "$SYSTEM_BASH" ]]; then
+        "$SYSTEM_BASH" "$REPO_DIR/scripts/update-pins.sh"
+    else
+        bash "$REPO_DIR/scripts/update-pins.sh"
+    fi
+fi
 
 # Rebase feature branch
 info "Rebasing $FEATURE_BRANCH on main..."
