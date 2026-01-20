@@ -121,16 +121,21 @@ ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --us
 
 ## Timers
 
-| Timer | Schedule | Purpose |
-|-------|----------|---------|
-| `clawdbot-heartbeat` | 09:00 daily | Wake bot for proactive check-in |
-| `clawdbot-upgrade` | Sun 03:00 | Weekly npm update |
-| `dotfiles-sync` | 03:30 daily | Pull config from GitHub |
-| `clawd-workspace-sync` | daily | Backup workspace to GitHub |
+| Timer | Schedule | Purpose | Default |
+|-------|----------|---------|---------|
+| `clawdbot-heartbeat` | 09:00 daily | Wake bot for proactive check-in | disabled |
+| `clawdbot-upgrade` | Sun 03:00 | Weekly npm update | enabled |
+| `dotfiles-sync` | 03:30 daily | Pull config from GitHub | enabled |
+| `clawd-workspace-sync` | daily | Backup workspace to GitHub | enabled |
 
 Check timer status:
 ```bash
 systemctl --user list-timers
+```
+
+**Enable heartbeat** (once personality/workspace is set up):
+```bash
+systemctl --user enable --now clawdbot-heartbeat.timer
 ```
 
 ## Upgrade Clawdbot
@@ -167,25 +172,25 @@ Config file: `~/.clawdbot/clawdbot.json` (tracked in dotfiles)
 
 ### Auto-migration
 
-Clawdbot auto-migrates config on startup and when running `clawdbot doctor`. This modifies `clawdbot.json` in place and can cause git conflicts.
+Clawdbot auto-migrates config on startup and when running `clawdbot doctor`. This modifies `clawdbot.json` in place.
 
-**Warning:** Auto-migration may resolve env var references (like `${TELEGRAM_BOT_TOKEN}`) to their actual values, potentially exposing secrets in the config file. After running doctor or upgrades, restore config from git:
+**Warning:** Auto-migration resolves env var references (like `${TELEGRAM_BOT_TOKEN}`) to actual values, exposing secrets. Always review changes before committing.
+
+**Workflow for handling migrations:**
 
 ```bash
+# 1. Check what changed
 ssh connor@rpi5
+git --git-dir=/home/connor/git/dotfiles --work-tree=/home/connor diff ~/.clawdbot/clawdbot.json
+
+# 2. If migration added legitimate new fields (not just secrets):
+#    - Copy to Mac, manually remove any exposed secrets, keep structural changes
+#    - Commit and push
+
+# 3. Restore config from git (removes exposed secrets)
 git --git-dir=/home/connor/git/dotfiles --work-tree=/home/connor checkout -- ~/.clawdbot/clawdbot.json
 chmod 600 ~/.clawdbot/clawdbot.json
 systemctl --user restart clawdbot-gateway
-```
-
-**Syncing legitimate migrations** - if clawdbot adds new required fields:
-
-```bash
-# From your Mac
-scp connor@rpi5:~/.clawdbot/clawdbot.json ~/.clawdbot/
-dotfiles add -f ~/.clawdbot/clawdbot.json
-dotfiles commit -m "Update clawdbot config after migration"
-dotfiles push
 ```
 
 The `dotfiles-sync` timer uses `--ff-only || true` to handle conflicts gracefully on the Pi side.
