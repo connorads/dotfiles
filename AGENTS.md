@@ -2,6 +2,8 @@
 
 Configuration for this system is managed via a bare git repo for dotfiles (no symlinks).
 
+**Important:** Use `$HOME` not `~` in git commands - tilde doesn't expand in `--git-dir`.
+
 ## Key Documentation
 
 - [~/README.md](./README.md) - how the dotfiles system works (bare repo, nix-darwin, home-manager)
