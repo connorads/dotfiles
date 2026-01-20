@@ -97,9 +97,22 @@ git --git-dir=~/git/dotfiles --work-tree=$HOME push
 ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5' --refresh"
 ```
 
-## Web UI
+## Web UI / Dashboard
 
-Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net` (authenticated via Tailscale identity).
+Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net`.
+
+### Authentication
+
+Using token-based authentication (`gatewayAuth = "token"`). Tailscale identity headers (`tailscale-user-login`) weren't being forwarded by Tailscale Serve as of 2026-01-20.
+
+**Dashboard access:**
+```bash
+ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && clawdbot dashboard --no-open"
+```
+
+Outputs URL: `https://rpi5.<tailnet>.ts.net/?token=<token>`
+
+**Token location:** `/home/connor/.secrets/clawdbot-gateway-token`
 
 ## Configuration
 
@@ -114,6 +127,7 @@ Secrets are stored in `/home/connor/.secrets/` on the Pi:
 - `clawdbot.env` - OpenAI API key (`OPENAI_API_KEY=...`)
 - `telegram-bot-token` - Telegram bot token
 - `telegram-users.json` - Telegram user ID as JSON (loaded by clawdbot at runtime)
+- `clawdbot-gateway-token` - Token for dashboard/API authentication
 
 **Safe to reset**: These are external files - `clawdbot reset` won't touch them. The Nix config regenerates service configuration on rebuild, so Telegram/gateway settings are declarative.
 
