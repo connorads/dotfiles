@@ -228,6 +228,33 @@
         };
 
         # ======================================================================
+        # Clawdbot heartbeat (daily 9am wake for proactive check-in)
+        # ======================================================================
+        systemd.user.services.clawdbot-heartbeat = {
+          Unit = {
+            Description = "Clawdbot daily heartbeat";
+            After = [ "clawdbot-gateway.service" ];
+          };
+          Service = {
+            Type = "oneshot";
+            ExecStart = "%h/.npm-global/bin/clawdbot wake --channel telegram";
+            Environment = [
+              "PATH=%h/.npm-global/bin:/etc/profiles/per-user/connor/bin:/run/current-system/sw/bin"
+            ];
+            EnvironmentFile = "%h/.clawdbot/.env";
+          };
+        };
+
+        systemd.user.timers.clawdbot-heartbeat = {
+          Unit.Description = "Daily 9am Clawdbot heartbeat";
+          Timer = {
+            OnCalendar = "09:00";
+            Persistent = true;
+          };
+          Install.WantedBy = [ "timers.target" ];
+        };
+
+        # ======================================================================
         # Dotfiles sync (pulls config changes from GitHub before auto-upgrade)
         # ======================================================================
         systemd.user.services.dotfiles-sync = {
