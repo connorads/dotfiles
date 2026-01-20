@@ -136,6 +136,16 @@ Current setup:
 - **Messaging**: Telegram (user ID loaded at runtime)
 - **Plugins**: All disabled (core gateway only)
 
+### Auto-migration
+
+Clawdbot auto-migrates config on startup, modifying `clawdbot.json` in place. This can cause git conflicts when pulling dotfiles. The `dotfiles-sync` timer uses `--ff-only || true` to handle this gracefully.
+
+If you hit conflicts manually:
+```bash
+git --git-dir=$HOME/git/dotfiles --work-tree=$HOME checkout -- .clawdbot/clawdbot.json
+dotfiles pull
+```
+
 ## Secrets
 
 Secrets stored in `/home/connor/.secrets/` on the Pi:
