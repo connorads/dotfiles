@@ -8,6 +8,8 @@
 !/.claude/skills/**
 !/.claude/commands/
 !/.claude/commands/**
+!/.claude/hooks/
+!/.claude/hooks/**
 
 !/.codex/
 /.codex/**
