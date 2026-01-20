@@ -324,6 +324,31 @@ tml() {
   tmux list-sessions 2>/dev/null || echo "No tmux sessions running"
 }
 
+# Hetzner Cloud SSH helpers
+# hcs  = connect as connor (default)
+# hcsr = connect as root
+_hcloud_ssh() {
+  local user="$1"
+  shift
+  if [[ -n "$1" ]]; then
+    local ip=$(hcloud server list -o columns=name,ipv4 -o noheader | awk -v srv="$1" '$1==srv {print $2}')
+    if [[ -n "$ip" ]]; then
+      ssh "${user}@${ip}"
+    else
+      echo "Server '$1' not found" >&2
+      return 1
+    fi
+    return
+  fi
+  local line=$(hcloud server list -o columns=name,ipv4 -o noheader | fzf --prompt="SSH as ${user} to: ")
+  if [[ -n "$line" ]]; then
+    local ip=$(echo "$line" | awk '{print $2}')
+    ssh "${user}@${ip}"
+  fi
+}
+hcs()  { _hcloud_ssh connor "$@"; }
+hcsr() { _hcloud_ssh root "$@"; }
+
 # https://github.com/sst/opencode
 alias oc='opencode'
 alias ocy='config="$HOME/.config/opencode/opencode.json"; tmp="$(mktemp)"; jq ".permission.bash = {\"*\": \"allow\"} | .permission.external_directory = \"allow\"" "$config" > "$tmp" && mv "$tmp" "$config"'
