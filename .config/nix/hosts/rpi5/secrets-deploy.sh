@@ -245,7 +245,7 @@ main() {
         unset telegram_token  # Clear from memory
     fi
 
-    # Deploy Telegram user ID (as JSON for clawdbot $include)
+    # Deploy Telegram user ID (as env var in ~/.clawdbot/.env)
     if $DEPLOY_TELEGRAM_ID; then
         echo ""
         info "Telegram user ID deployment"
@@ -258,8 +258,19 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            # Format as JSON array for clawdbot $include directive
-            deploy_secret "${SECRETS_DIR}/telegram-users.json" "[\"tg:${telegram_id}\"]"
+            # Write TELEGRAM_ALLOW_FROM to .env (update if exists, append if not)
+            local env_file="${CLAWDBOT_DIR}/.env"
+            local env_line="TELEGRAM_ALLOW_FROM=tg:${telegram_id}"
+            info "Deploying Telegram user ID to .env..."
+            ssh "${REMOTE_USER}@${HOST}" "
+                if grep -q '^TELEGRAM_ALLOW_FROM=' '${env_file}' 2>/dev/null; then
+                    sed -i 's/^TELEGRAM_ALLOW_FROM=.*/${env_line}/' '${env_file}'
+                else
+                    echo '${env_line}' >> '${env_file}'
+                fi
+                chmod 600 '${env_file}'
+            "
+            info "Successfully deployed Telegram user ID"
             deployed=true
         fi
         unset telegram_id  # Clear from memory
