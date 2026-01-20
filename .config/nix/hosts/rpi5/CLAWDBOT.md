@@ -78,6 +78,25 @@ ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?di
 
 The `--refresh` flag ensures latest is pulled from GitHub.
 
+## Upgrade Clawdbot (version bump)
+
+Clawdbot versions are pinned in the `nix-clawdbot` fork. The sync script can now update pins when needed.
+
+```bash
+cd ~/.config/nix/hosts/rpi5
+./nix-clawdbot-sync.sh --update-pins
+```
+
+Then update the dotfiles lock and rebuild the Pi:
+
+```bash
+cd ~/.config/nix
+nix flake lock --update-input nix-clawdbot
+git --git-dir=~/git/dotfiles --work-tree=$HOME commit -am "bump nix-clawdbot pins"
+git --git-dir=~/git/dotfiles --work-tree=$HOME push
+ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5' --refresh"
+```
+
 ## Web UI
 
 Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net` (authenticated via Tailscale identity).
