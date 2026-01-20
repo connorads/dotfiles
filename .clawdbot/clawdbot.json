@@ -17,10 +17,10 @@
   },
   "channels": {
     "telegram": {
-      "enable": true,
+      "enabled": true,
       "dmPolicy": "allowlist",
-      "allowFromFile": "/home/connor/.secrets/telegram-users.json",
-      "botTokenFile": "/home/connor/.secrets/telegram-bot-token"
+      "allowFrom": ["${TELEGRAM_ALLOW_FROM}"],
+      "tokenFile": "/home/connor/.secrets/telegram-bot-token"
     }
   },
   "gateway": {
