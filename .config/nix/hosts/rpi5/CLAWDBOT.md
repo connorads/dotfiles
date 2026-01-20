@@ -167,9 +167,18 @@ Config file: `~/.clawdbot/clawdbot.json` (tracked in dotfiles)
 
 ### Auto-migration
 
-Clawdbot auto-migrates config on startup (e.g., after version upgrades), modifying `clawdbot.json` in place. This can cause git conflicts when pulling dotfiles.
+Clawdbot auto-migrates config on startup and when running `clawdbot doctor`. This modifies `clawdbot.json` in place and can cause git conflicts.
 
-**After upgrading clawdbot**, if logs show "Auto-migrated config", pull the changes back to dotfiles:
+**Warning:** Auto-migration may resolve env var references (like `${TELEGRAM_BOT_TOKEN}`) to their actual values, potentially exposing secrets in the config file. After running doctor or upgrades, restore config from git:
+
+```bash
+ssh connor@rpi5
+git --git-dir=/home/connor/git/dotfiles --work-tree=/home/connor checkout -- ~/.clawdbot/clawdbot.json
+chmod 600 ~/.clawdbot/clawdbot.json
+systemctl --user restart clawdbot-gateway
+```
+
+**Syncing legitimate migrations** - if clawdbot adds new required fields:
 
 ```bash
 # From your Mac
