@@ -104,13 +104,21 @@ ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --us
 
 ## Upgrade Clawdbot
 
-Simple npm upgrade:
+Auto-upgrades weekly (Sundays 03:00) via systemd timer.
 
+Check timer status:
+```bash
+systemctl --user status clawdbot-upgrade.timer
+```
+
+Manual upgrade:
 ```bash
 ssh connor@rpi5
 npm update -g clawdbot
 systemctl --user restart clawdbot-gateway
 ```
+
+After upgrades, check logs for "Auto-migrated config" and sync back if needed (see [Auto-migration](#auto-migration)).
 
 ## Web UI / Dashboard
 
