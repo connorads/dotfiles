@@ -1,0 +1,29 @@
+{
+  "agent": {
+    "model": "openai/gpt-5-nano"
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "~/clawd",
+      "heartbeat": { "every": "0m" },
+      "thinkingDefault": "off"
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enable": true,
+      "dmPolicy": "allowlist",
+      "allowFromFile": "/home/connor/.secrets/telegram-users.json",
+      "botTokenFile": "/home/connor/.secrets/telegram-bot-token"
+    }
+  },
+  "gateway": {
+    "auth": "token",
+    "tokenFile": "/home/connor/.secrets/clawdbot-gateway-token"
+  },
+  "plugins": {
+    "slots": {
+      "memory": ""
+    }
+  }
+}

@@ -4,7 +4,6 @@
   config,
   pkgs,
   lib,
-  nix-clawdbot,
   ...
 }:
 
@@ -127,7 +126,10 @@
   system.autoUpgrade = {
     enable = true;
     flake = "github:connorads/dotfiles?dir=.config/nix#rpi5";
-    flags = [ "--refresh" "--print-build-logs" ];
+    flags = [
+      "--refresh"
+      "--print-build-logs"
+    ];
     dates = "04:00";
     randomizedDelaySec = "45min";
     allowReboot = true;
@@ -155,14 +157,9 @@
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
-    extraSpecialArgs = { inherit nix-clawdbot; };
     users.connor =
-      { pkgs, nix-clawdbot, ... }:
+      { pkgs, ... }:
       {
-        imports = [
-          nix-clawdbot.homeManagerModules.clawdbot
-        ];
-
         home.username = "connor";
         home.homeDirectory = "/home/connor";
         home.stateVersion = "24.11";
@@ -179,55 +176,31 @@
         };
 
         # ======================================================================
-        # Clawdbot (AI assistant gateway)
+        # Clawdbot (AI assistant gateway - installed via npm)
         # ======================================================================
-        programs.clawdbot.instances.default = {
-          enable = true;
-
-          # Use OpenAI instead of Anthropic
-          agent.model = "openai/gpt-5-nano";
-
-          # Web UI: Tailscale Serve with token auth
-          # Access at https://rpi5.<tailnet>.ts.net
-          gatewayTailscale = "serve";
-          gatewayAuth = "token";
-          gatewayTokenFile = "/home/connor/.secrets/clawdbot-gateway-token";
-
-          # Disable heartbeat (burns tokens)
-          configOverrides.agents.defaults.heartbeat.every = "0m";
-          # Disable thinking (avoid OpenAI reasoning payload errors)
-          configOverrides.agents.defaults.thinkingDefault = "off";
-          # Disable memory plugin (not installed, empty string skips validation)
-          configOverrides.plugins.slots.memory = "";
-
-          # Telegram provider (user ID loaded at runtime via $include)
-          providers.telegram = {
-            enable = true;
-            botTokenFile = "/home/connor/.secrets/telegram-bot-token";
-            allowFromFile = "/home/connor/.secrets/telegram-users.json";
+        # Install: npm install -g clawdbot@latest
+        # Config:  ~/.clawdbot/clawdbot.json (tracked in dotfiles)
+        # Secrets: ~/.clawdbot/.env (OPENAI_API_KEY)
+        systemd.user.services.clawdbot-gateway = {
+          Unit = {
+            Description = "Clawdbot AI Gateway";
+            After = [ "network.target" ];
+          };
+          Service = {
+            Type = "simple";
+            ExecStart = "%h/.npm-global/bin/clawdbot gateway --port 18789";
+            Restart = "on-failure";
+            RestartSec = "10s";
+            WorkingDirectory = "%h";
+            EnvironmentFile = "%h/.clawdbot/.env";
+            Environment = [
+              "PATH=%h/.npm-global/bin:/run/current-system/sw/bin"
+            ];
+          };
+          Install = {
+            WantedBy = [ "default.target" ];
           };
         };
-
-        # Disable first-party plugins (core gateway only)
-        programs.clawdbot.firstParty = {
-          summarize.enable = false;
-          peekaboo.enable = false;
-          oracle.enable = false;
-          poltergeist.enable = false;
-          sag.enable = false;
-          camsnap.enable = false;
-          gogcli.enable = false;
-          bird.enable = false;
-          sonoscli.enable = false;
-          imsg.enable = false;
-        };
-
-        # OpenAI API key via systemd EnvironmentFile
-        # (nix-clawdbot module is Anthropic-focused)
-        systemd.user.services.clawdbot-gateway.Service.EnvironmentFile =
-          "/home/connor/.secrets/clawdbot.env";
-        systemd.user.services.clawdbot-gateway.Service.Environment =
-          "PATH=${lib.makeBinPath [ pkgs.tailscale ]}:/run/current-system/sw/bin";
 
         # ======================================================================
         # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
@@ -274,6 +247,7 @@
         };
 
         home.packages = with pkgs; [
+          nodejs_22
           vim
           micro
           fd

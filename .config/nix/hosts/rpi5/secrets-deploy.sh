@@ -6,7 +6,7 @@
 #   ./secrets-deploy.sh --openai           # Deploy only OpenAI API key
 #   ./secrets-deploy.sh --telegram         # Deploy only Telegram bot token
 #   ./secrets-deploy.sh --telegram-id      # Deploy only Telegram user ID
-#   ./secrets-deploy.sh --password         # Deploy only gateway web UI password
+#   ./secrets-deploy.sh --gateway-token    # Deploy only gateway auth token
 #   ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
 #   ./secrets-deploy.sh --restart          # Restart clawdbot-gateway after deploy
 #
@@ -19,13 +19,14 @@ set -euo pipefail
 DEFAULT_HOST="rpi5"
 REMOTE_USER="connor"
 SECRETS_DIR="/home/${REMOTE_USER}/.secrets"
+CLAWDBOT_DIR="/home/${REMOTE_USER}/.clawdbot"
 
 # Parse arguments
 HOST="${RPI5_HOST:-$DEFAULT_HOST}"
 DEPLOY_OPENAI=false
 DEPLOY_TELEGRAM=false
 DEPLOY_TELEGRAM_ID=false
-DEPLOY_PASSWORD=false
+DEPLOY_GATEWAY_TOKEN=false
 RESTART_SERVICE=false
 DEPLOY_ALL=true
 
@@ -50,8 +51,8 @@ while [[ $# -gt 0 ]]; do
             DEPLOY_ALL=false
             shift
             ;;
-        --password|-p)
-            DEPLOY_PASSWORD=true
+        --gateway-token|-g)
+            DEPLOY_GATEWAY_TOKEN=true
             DEPLOY_ALL=false
             shift
             ;;
@@ -60,15 +61,15 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help)
-            echo "Usage: $0 [--host HOST] [--openai] [--telegram] [--telegram-id] [--password] [--restart]"
+            echo "Usage: $0 [--host HOST] [--openai] [--telegram] [--telegram-id] [--gateway-token] [--restart]"
             echo ""
             echo "Options:"
-            echo "  --host, -h HOST     Target host (default: rpi5, or RPI5_HOST env)"
-            echo "  --openai, -o        Deploy only OpenAI API key"
-            echo "  --telegram, -t      Deploy only Telegram bot token"
-            echo "  --telegram-id, -i   Deploy only Telegram user ID"
-            echo "  --password, -p      Deploy only gateway web UI password"
-            echo "  --restart, -r       Restart clawdbot-gateway after deploy"
+            echo "  --host, -h HOST       Target host (default: rpi5, or RPI5_HOST env)"
+            echo "  --openai, -o          Deploy only OpenAI API key (~/.clawdbot/.env)"
+            echo "  --telegram, -t        Deploy only Telegram bot token"
+            echo "  --telegram-id, -i     Deploy only Telegram user ID"
+            echo "  --gateway-token, -g   Deploy only gateway auth token"
+            echo "  --restart, -r         Restart clawdbot-gateway after deploy"
             echo ""
             echo "With no secret flags, deploys all secrets."
             exit 0
@@ -85,7 +86,7 @@ if $DEPLOY_ALL; then
     DEPLOY_OPENAI=true
     DEPLOY_TELEGRAM=true
     DEPLOY_TELEGRAM_ID=true
-    DEPLOY_PASSWORD=true
+    DEPLOY_GATEWAY_TOKEN=true
 fi
 
 # Colours for output
@@ -111,10 +112,10 @@ check_ssh() {
     info "SSH connection successful"
 }
 
-# Ensure secrets directory exists on remote
-ensure_secrets_dir() {
-    info "Ensuring ${SECRETS_DIR} exists on remote..."
-    ssh "${REMOTE_USER}@${HOST}" "mkdir -p ${SECRETS_DIR} && chmod 700 ${SECRETS_DIR}"
+# Ensure secrets directories exist on remote
+ensure_secrets_dirs() {
+    info "Ensuring ${SECRETS_DIR} and ${CLAWDBOT_DIR} exist on remote..."
+    ssh "${REMOTE_USER}@${HOST}" "mkdir -p ${SECRETS_DIR} ${CLAWDBOT_DIR} && chmod 700 ${SECRETS_DIR} ${CLAWDBOT_DIR}"
 }
 
 # Read secret safely (no echo)
@@ -139,11 +140,12 @@ read_secret() {
 }
 
 # Deploy a secret file to remote
-# Usage: deploy_secret "filename" "content"
+# Usage: deploy_secret "remote_path" "content"
 deploy_secret() {
-    local filename="$1"
+    local remote_path="$1"
     local content="$2"
-    local remote_path="${SECRETS_DIR}/${filename}"
+    local filename
+    filename=$(basename "$remote_path")
 
     info "Deploying ${filename}..."
 
@@ -201,11 +203,11 @@ main() {
     echo ""
 
     check_ssh
-    ensure_secrets_dir
+    ensure_secrets_dirs
 
     local deployed=false
 
-    # Deploy OpenAI API key
+    # Deploy OpenAI API key to ~/.clawdbot/.env
     if $DEPLOY_OPENAI; then
         echo ""
         info "OpenAI API Key deployment"
@@ -218,7 +220,7 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            deploy_secret "clawdbot.env" "OPENAI_API_KEY=${openai_key}"
+            deploy_secret "${CLAWDBOT_DIR}/.env" "OPENAI_API_KEY=${openai_key}"
             deployed=true
         fi
         unset openai_key  # Clear from memory
@@ -237,7 +239,7 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            deploy_secret "telegram-bot-token" "$telegram_token"
+            deploy_secret "${SECRETS_DIR}/telegram-bot-token" "$telegram_token"
             deployed=true
         fi
         unset telegram_token  # Clear from memory
@@ -257,24 +259,24 @@ main() {
                 exit 1
             fi
             # Format as JSON array for clawdbot $include directive
-            deploy_secret "telegram-users.json" "[\"tg:${telegram_id}\"]"
+            deploy_secret "${SECRETS_DIR}/telegram-users.json" "[\"tg:${telegram_id}\"]"
             deployed=true
         fi
         unset telegram_id  # Clear from memory
     fi
 
-    # Deploy gateway password
-    if $DEPLOY_PASSWORD; then
+    # Deploy gateway auth token
+    if $DEPLOY_GATEWAY_TOKEN; then
         echo ""
-        info "Gateway web UI password deployment"
-        local password=""
-        if ! read_secret "Enter gateway web UI password" password; then
-            error "Aborted password deployment"
+        info "Gateway auth token deployment"
+        local token=""
+        if ! read_secret "Enter gateway auth token" token; then
+            error "Aborted token deployment"
         else
-            deploy_secret "clawdbot-gateway-password" "$password"
+            deploy_secret "${SECRETS_DIR}/clawdbot-gateway-token" "$token"
             deployed=true
         fi
-        unset password  # Clear from memory
+        unset token  # Clear from memory
     fi
 
     # Restart service if requested and something was deployed
