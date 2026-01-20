@@ -18,6 +18,7 @@
     }
   },
   "gateway": {
+    "mode": "local",
     "auth": {
       "type": "token",
       "tokenFile": "/home/connor/.secrets/clawdbot-gateway-token"
