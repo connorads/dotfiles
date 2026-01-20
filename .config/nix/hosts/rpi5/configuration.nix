@@ -222,6 +222,8 @@
         # (nix-clawdbot module is Anthropic-focused)
         systemd.user.services.clawdbot-gateway.Service.EnvironmentFile =
           "/home/connor/.secrets/clawdbot.env";
+        systemd.user.services.clawdbot-gateway.Service.Environment =
+          "PATH=${lib.makeBinPath [ pkgs.tailscale ]}:/run/current-system/sw/bin";
 
         # ======================================================================
         # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
