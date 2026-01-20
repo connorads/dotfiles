@@ -138,13 +138,19 @@ Current setup:
 
 ### Auto-migration
 
-Clawdbot auto-migrates config on startup, modifying `clawdbot.json` in place. This can cause git conflicts when pulling dotfiles. The `dotfiles-sync` timer uses `--ff-only || true` to handle this gracefully.
+Clawdbot auto-migrates config on startup (e.g., after version upgrades), modifying `clawdbot.json` in place. This can cause git conflicts when pulling dotfiles.
 
-If you hit conflicts manually:
+**After upgrading clawdbot**, if logs show "Auto-migrated config", pull the changes back to dotfiles:
+
 ```bash
-git --git-dir=$HOME/git/dotfiles --work-tree=$HOME checkout -- .clawdbot/clawdbot.json
-dotfiles pull
+# From your Mac
+scp connor@rpi5:~/.clawdbot/clawdbot.json ~/.clawdbot/
+dotfiles add -f ~/.clawdbot/clawdbot.json
+dotfiles commit -m "Update clawdbot config after migration"
+dotfiles push
 ```
+
+The `dotfiles-sync` timer uses `--ff-only || true` to handle conflicts gracefully on the Pi side.
 
 ## Secrets
 
