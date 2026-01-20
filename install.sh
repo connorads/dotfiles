@@ -187,12 +187,15 @@ else
   mise install
 fi
 
-# Install Playwright browsers/deps (if available)
-if command -v npx &>/dev/null; then
+# Install browser binaries for Playwright and agent-browser (if available via mise)
+if command -v playwright &>/dev/null; then
   echo "Installing Playwright browsers and system deps..."
-  npx -y playwright install --with-deps
-else
-  echo "npx not available; skipping Playwright install"
+  playwright install --with-deps
+fi
+
+if command -v agent-browser &>/dev/null; then
+  echo "Installing agent-browser browsers..."
+  agent-browser install --with-deps
 fi
 
 if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then
