@@ -1,10 +1,13 @@
 #!/bin/bash
 # secrets-deploy.sh - Deploy secrets to Raspberry Pi 5 for clawdbot
 #
+# All secrets are stored in ~/.clawdbot/.env for unified environment var loading.
+#
 # Usage:
 #   ./secrets-deploy.sh                    # Deploy all secrets (prompted)
 #   ./secrets-deploy.sh --openai           # Deploy only OpenAI API key
-#   ./secrets-deploy.sh --telegram         # Deploy only Telegram bot token
+#   ./secrets-deploy.sh --anthropic        # Deploy only Anthropic API key
+#   ./secrets-deploy.sh --telegram-token   # Deploy only Telegram bot token
 #   ./secrets-deploy.sh --telegram-id      # Deploy only Telegram user ID
 #   ./secrets-deploy.sh --gateway-token    # Deploy only gateway auth token
 #   ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
@@ -18,13 +21,14 @@ set -euo pipefail
 # Configuration
 DEFAULT_HOST="rpi5"
 REMOTE_USER="connor"
-SECRETS_DIR="/home/${REMOTE_USER}/.secrets"
 CLAWDBOT_DIR="/home/${REMOTE_USER}/.clawdbot"
+ENV_FILE="${CLAWDBOT_DIR}/.env"
 
 # Parse arguments
 HOST="${RPI5_HOST:-$DEFAULT_HOST}"
 DEPLOY_OPENAI=false
-DEPLOY_TELEGRAM=false
+DEPLOY_ANTHROPIC=false
+DEPLOY_TELEGRAM_TOKEN=false
 DEPLOY_TELEGRAM_ID=false
 DEPLOY_GATEWAY_TOKEN=false
 RESTART_SERVICE=false
@@ -41,8 +45,13 @@ while [[ $# -gt 0 ]]; do
             DEPLOY_ALL=false
             shift
             ;;
-        --telegram|-t)
-            DEPLOY_TELEGRAM=true
+        --anthropic|-a)
+            DEPLOY_ANTHROPIC=true
+            DEPLOY_ALL=false
+            shift
+            ;;
+        --telegram-token|-t)
+            DEPLOY_TELEGRAM_TOKEN=true
             DEPLOY_ALL=false
             shift
             ;;
@@ -61,17 +70,19 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help)
-            echo "Usage: $0 [--host HOST] [--openai] [--telegram] [--telegram-id] [--gateway-token] [--restart]"
+            echo "Usage: $0 [--host HOST] [--openai] [--anthropic] [--telegram-token] [--telegram-id] [--gateway-token] [--restart]"
             echo ""
             echo "Options:"
-            echo "  --host, -h HOST       Target host (default: rpi5, or RPI5_HOST env)"
-            echo "  --openai, -o          Deploy only OpenAI API key (~/.clawdbot/.env)"
-            echo "  --telegram, -t        Deploy only Telegram bot token"
-            echo "  --telegram-id, -i     Deploy only Telegram user ID"
-            echo "  --gateway-token, -g   Deploy only gateway auth token"
-            echo "  --restart, -r         Restart clawdbot-gateway after deploy"
+            echo "  --host, -h HOST         Target host (default: rpi5, or RPI5_HOST env)"
+            echo "  --openai, -o            Deploy OpenAI API key"
+            echo "  --anthropic, -a         Deploy Anthropic API key"
+            echo "  --telegram-token, -t    Deploy Telegram bot token"
+            echo "  --telegram-id, -i       Deploy Telegram user ID"
+            echo "  --gateway-token, -g     Deploy gateway auth token"
+            echo "  --restart, -r           Restart clawdbot-gateway after deploy"
             echo ""
             echo "With no secret flags, deploys all secrets."
+            echo "All secrets are stored in ~/.clawdbot/.env"
             exit 0
             ;;
         *)
@@ -84,7 +95,8 @@ done
 # If deploying all, set all flags
 if $DEPLOY_ALL; then
     DEPLOY_OPENAI=true
-    DEPLOY_TELEGRAM=true
+    DEPLOY_ANTHROPIC=true
+    DEPLOY_TELEGRAM_TOKEN=true
     DEPLOY_TELEGRAM_ID=true
     DEPLOY_GATEWAY_TOKEN=true
 fi
@@ -112,10 +124,10 @@ check_ssh() {
     info "SSH connection successful"
 }
 
-# Ensure secrets directories exist on remote
-ensure_secrets_dirs() {
-    info "Ensuring ${SECRETS_DIR} and ${CLAWDBOT_DIR} exist on remote..."
-    ssh "${REMOTE_USER}@${HOST}" "mkdir -p ${SECRETS_DIR} ${CLAWDBOT_DIR} && chmod 700 ${SECRETS_DIR} ${CLAWDBOT_DIR}"
+# Ensure clawdbot directory exists on remote
+ensure_clawdbot_dir() {
+    info "Ensuring ${CLAWDBOT_DIR} exists on remote..."
+    ssh "${REMOTE_USER}@${HOST}" "mkdir -p ${CLAWDBOT_DIR} && chmod 700 ${CLAWDBOT_DIR}"
 }
 
 # Read secret safely (no echo)
@@ -139,24 +151,31 @@ read_secret() {
     printf -v "$varname" '%s' "$value"
 }
 
-# Deploy a secret file to remote
-# Usage: deploy_secret "remote_path" "content"
-deploy_secret() {
-    local remote_path="$1"
-    local content="$2"
-    local filename
-    filename=$(basename "$remote_path")
+# Set or update an env var in the remote .env file
+# Usage: set_env_var "VAR_NAME" "value"
+set_env_var() {
+    local var_name="$1"
+    local var_value="$2"
 
-    info "Deploying ${filename}..."
-
-    # Write secret via SSH stdin (avoids command line exposure)
-    printf '%s' "$content" | ssh "${REMOTE_USER}@${HOST}" \
-        "cat > '${remote_path}' && chmod 600 '${remote_path}'"
+    info "Setting ${var_name} in .env..."
+    ssh "${REMOTE_USER}@${HOST}" "
+        touch '${ENV_FILE}'
+        chmod 600 '${ENV_FILE}'
+        if grep -q '^${var_name}=' '${ENV_FILE}' 2>/dev/null; then
+            # Use a temp file to avoid issues with special chars in sed
+            grep -v '^${var_name}=' '${ENV_FILE}' > '${ENV_FILE}.tmp' || true
+            echo '${var_name}=${var_value}' >> '${ENV_FILE}.tmp'
+            mv '${ENV_FILE}.tmp' '${ENV_FILE}'
+        else
+            echo '${var_name}=${var_value}' >> '${ENV_FILE}'
+        fi
+        chmod 600 '${ENV_FILE}'
+    "
 
     if [[ $? -eq 0 ]]; then
-        info "Successfully deployed ${filename}"
+        info "Successfully set ${var_name}"
     else
-        error "Failed to deploy ${filename}"
+        error "Failed to set ${var_name}"
         return 1
     fi
 }
@@ -166,6 +185,19 @@ validate_openai_key() {
     local key="$1"
     if [[ ! "$key" =~ ^sk- ]]; then
         warn "OpenAI API key does not start with 'sk-' - are you sure this is correct?"
+        echo -n "Continue anyway? [y/N]: "
+        read -r confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            return 1
+        fi
+    fi
+}
+
+# Validate Anthropic API key format (starts with sk-ant-)
+validate_anthropic_key() {
+    local key="$1"
+    if [[ ! "$key" =~ ^sk-ant- ]]; then
+        warn "Anthropic API key does not start with 'sk-ant-' - are you sure this is correct?"
         echo -n "Continue anyway? [y/N]: "
         read -r confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
@@ -200,14 +232,15 @@ validate_telegram_id() {
 main() {
     echo "=== Secrets Deploy for Raspberry Pi 5 ==="
     echo "Target: ${REMOTE_USER}@${HOST}"
+    echo "All secrets stored in: ${ENV_FILE}"
     echo ""
 
     check_ssh
-    ensure_secrets_dirs
+    ensure_clawdbot_dir
 
     local deployed=false
 
-    # Deploy OpenAI API key to ~/.clawdbot/.env
+    # Deploy OpenAI API key
     if $DEPLOY_OPENAI; then
         echo ""
         info "OpenAI API Key deployment"
@@ -220,14 +253,33 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            deploy_secret "${CLAWDBOT_DIR}/.env" "OPENAI_API_KEY=${openai_key}"
+            set_env_var "OPENAI_API_KEY" "$openai_key"
             deployed=true
         fi
         unset openai_key  # Clear from memory
     fi
 
+    # Deploy Anthropic API key
+    if $DEPLOY_ANTHROPIC; then
+        echo ""
+        info "Anthropic API Key deployment"
+        local anthropic_key=""
+        if ! read_secret "Enter Anthropic API key" anthropic_key; then
+            error "Aborted Anthropic key deployment"
+        else
+            if ! validate_anthropic_key "$anthropic_key"; then
+                unset anthropic_key
+                error "Aborted"
+                exit 1
+            fi
+            set_env_var "ANTHROPIC_API_KEY" "$anthropic_key"
+            deployed=true
+        fi
+        unset anthropic_key  # Clear from memory
+    fi
+
     # Deploy Telegram bot token
-    if $DEPLOY_TELEGRAM; then
+    if $DEPLOY_TELEGRAM_TOKEN; then
         echo ""
         info "Telegram bot token deployment"
         local telegram_token=""
@@ -239,13 +291,13 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            deploy_secret "${SECRETS_DIR}/telegram-bot-token" "$telegram_token"
+            set_env_var "TELEGRAM_BOT_TOKEN" "$telegram_token"
             deployed=true
         fi
         unset telegram_token  # Clear from memory
     fi
 
-    # Deploy Telegram user ID (as env var in ~/.clawdbot/.env)
+    # Deploy Telegram user ID
     if $DEPLOY_TELEGRAM_ID; then
         echo ""
         info "Telegram user ID deployment"
@@ -258,19 +310,7 @@ main() {
                 error "Aborted"
                 exit 1
             fi
-            # Write TELEGRAM_ALLOW_FROM to .env (update if exists, append if not)
-            local env_file="${CLAWDBOT_DIR}/.env"
-            local env_line="TELEGRAM_ALLOW_FROM=tg:${telegram_id}"
-            info "Deploying Telegram user ID to .env..."
-            ssh "${REMOTE_USER}@${HOST}" "
-                if grep -q '^TELEGRAM_ALLOW_FROM=' '${env_file}' 2>/dev/null; then
-                    sed -i 's/^TELEGRAM_ALLOW_FROM=.*/${env_line}/' '${env_file}'
-                else
-                    echo '${env_line}' >> '${env_file}'
-                fi
-                chmod 600 '${env_file}'
-            "
-            info "Successfully deployed Telegram user ID"
+            set_env_var "TELEGRAM_ALLOW_FROM" "tg:${telegram_id}"
             deployed=true
         fi
         unset telegram_id  # Clear from memory
@@ -284,7 +324,7 @@ main() {
         if ! read_secret "Enter gateway auth token" token; then
             error "Aborted token deployment"
         else
-            deploy_secret "${SECRETS_DIR}/clawdbot-gateway-token" "$token"
+            set_env_var "CLAWDBOT_GATEWAY_TOKEN" "$token"
             deployed=true
         fi
         unset token  # Clear from memory
