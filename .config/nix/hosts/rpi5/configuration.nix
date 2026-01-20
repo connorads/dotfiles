@@ -222,6 +222,8 @@
         # (nix-clawdbot module is Anthropic-focused)
         systemd.user.services.clawdbot-gateway.Service.EnvironmentFile =
           "/home/connor/.secrets/clawdbot.env";
+        # Ensure tailscale is on PATH for --tailscale serve
+        systemd.user.services.clawdbot-gateway.path = [ pkgs.tailscale ];
 
         # ======================================================================
         # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
