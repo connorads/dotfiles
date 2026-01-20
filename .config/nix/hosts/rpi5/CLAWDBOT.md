@@ -173,6 +173,20 @@ Check timer status:
 systemctl --user status clawd-workspace-sync.timer
 ```
 
+### Dotfiles Sync
+
+Config changes (like `~/.clawdbot/clawdbot.json`) are pulled automatically at 03:30 daily, before the NixOS auto-upgrade at 04:00.
+
+Check timer status:
+```bash
+systemctl --user status dotfiles-sync.timer
+```
+
+Manual pull:
+```bash
+dotfiles pull
+```
+
 ## Resetting
 
 ```bash

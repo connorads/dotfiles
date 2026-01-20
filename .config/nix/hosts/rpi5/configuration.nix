@@ -203,6 +203,29 @@
         };
 
         # ======================================================================
+        # Dotfiles sync (pulls config changes from GitHub before auto-upgrade)
+        # ======================================================================
+        systemd.user.services.dotfiles-sync = {
+          Unit.Description = "Pull dotfiles from GitHub";
+          Service = {
+            Type = "oneshot";
+            ExecStart = pkgs.writeShellScript "dotfiles-sync" ''
+              set -euo pipefail
+              ${pkgs.git}/bin/git --git-dir=/home/connor/git/dotfiles --work-tree=/home/connor pull --ff-only || true
+            '';
+          };
+        };
+
+        systemd.user.timers.dotfiles-sync = {
+          Unit.Description = "Pull dotfiles daily before auto-upgrade";
+          Timer = {
+            OnCalendar = "03:30";
+            Persistent = true;
+          };
+          Install.WantedBy = [ "timers.target" ];
+        };
+
+        # ======================================================================
         # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
         # ======================================================================
         systemd.user.services.clawd-workspace-sync = {
