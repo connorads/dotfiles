@@ -12,15 +12,24 @@ Clawdbot AI assistant gateway running on NixOS (aarch64-linux), installed via np
 NixOS (base system)
 ├── Node.js 22 (via nixpkgs)
 ├── Tailscale (unchanged)
-├── systemd user service for clawdbot
+├── systemd user services for clawdbot
 └── Home Manager for user config
 
 Clawdbot (managed via npm)
 ├── ~/.clawdbot/clawdbot.json   (config - tracked in dotfiles)
-├── ~/.clawdbot/.env            (API keys, user IDs - NOT tracked)
-├── ~/clawd/                    (workspace - backed up to GitHub)
-└── ~/.secrets/                 (tokens - telegram-bot-token, gateway-token)
+├── ~/.clawdbot/.env            (all secrets - NOT tracked)
+└── ~/clawd/                    (workspace - backed up to GitHub)
 ```
+
+## Features
+
+Current configuration:
+- **AI Provider**: OpenAI (`openai/gpt-5-nano` primary)
+- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-3.5-haiku`
+- **Thinking**: Medium level (better reasoning)
+- **Memory**: `memory-core` plugin (lightweight semantic search)
+- **Messaging**: Telegram (allowlist policy)
+- **Heartbeat**: Daily 9am check-in via systemd timer
 
 ## Setup
 
@@ -46,15 +55,19 @@ cd ~/.config/nix/hosts/rpi5
 
 This will prompt for:
 - OpenAI API key (`sk-...`)
+- Anthropic API key (`sk-ant-...`) - for fallback models
 - Telegram bot token (`123456:ABC-xyz`)
-- Telegram user ID (numeric, stored as env var)
+- Telegram user ID (numeric)
+- Gateway auth token (for dashboard/API)
 
 You can also deploy individual secrets:
 
 ```bash
 ./secrets-deploy.sh --openai           # Just OpenAI key
-./secrets-deploy.sh --telegram         # Just Telegram token
+./secrets-deploy.sh --anthropic        # Just Anthropic key
+./secrets-deploy.sh --telegram-token   # Just Telegram token
 ./secrets-deploy.sh --telegram-id      # Just Telegram user ID
+./secrets-deploy.sh --gateway-token    # Just gateway token
 ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
 ```
 
@@ -79,6 +92,7 @@ tailscale serve --bg 18789
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable --now clawdbot-gateway
+systemctl --user enable --now clawdbot-heartbeat.timer
 ```
 
 ## Verify
@@ -95,6 +109,9 @@ systemctl --user restart clawdbot-gateway
 
 # Health check
 curl http://localhost:18789/health
+
+# Check memory plugin
+clawdbot memory status
 ```
 
 **Note:** Over SSH, `systemctl --user` needs `XDG_RUNTIME_DIR`:
@@ -102,14 +119,23 @@ curl http://localhost:18789/health
 ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --user status clawdbot-gateway"
 ```
 
-## Upgrade Clawdbot
+## Timers
 
-Auto-upgrades weekly (Sundays 03:00) via systemd timer.
+| Timer | Schedule | Purpose |
+|-------|----------|---------|
+| `clawdbot-heartbeat` | 09:00 daily | Wake bot for proactive check-in |
+| `clawdbot-upgrade` | Sun 03:00 | Weekly npm update |
+| `dotfiles-sync` | 03:30 daily | Pull config from GitHub |
+| `clawd-workspace-sync` | daily | Backup workspace to GitHub |
 
 Check timer status:
 ```bash
-systemctl --user status clawdbot-upgrade.timer
+systemctl --user list-timers
 ```
+
+## Upgrade Clawdbot
+
+Auto-upgrades weekly (Sundays 03:00) via systemd timer.
 
 Manual upgrade:
 ```bash
@@ -126,7 +152,7 @@ Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net`.
 
 ### Authentication
 
-Using token-based authentication. Token stored at `/home/connor/.secrets/clawdbot-gateway-token`.
+Using token-based authentication. Token stored in `~/.clawdbot/.env` as `CLAWDBOT_GATEWAY_TOKEN`.
 
 **Dashboard access:**
 ```bash
@@ -138,11 +164,6 @@ Outputs URL: `https://rpi5.<tailnet>.ts.net/?token=<token>`
 ## Configuration
 
 Config file: `~/.clawdbot/clawdbot.json` (tracked in dotfiles)
-
-Current setup:
-- **AI Provider**: OpenAI (`openai/gpt-5-nano`)
-- **Messaging**: Telegram (user ID loaded at runtime)
-- **Plugins**: All disabled (core gateway only)
 
 ### Auto-migration
 
@@ -162,15 +183,41 @@ The `dotfiles-sync` timer uses `--ff-only || true` to handle conflicts gracefull
 
 ## Secrets
 
-Secrets on the Pi:
+All secrets stored in `~/.clawdbot/.env`:
 
-`~/.clawdbot/.env`:
-- `OPENAI_API_KEY` - OpenAI API key
-- `TELEGRAM_ALLOW_FROM` - Telegram user ID (e.g. `tg:123456789`)
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | OpenAI API key |
+| `ANTHROPIC_API_KEY` | Anthropic API key (for fallback models) |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `TELEGRAM_ALLOW_FROM` | Telegram user ID (e.g. `tg:123456789`) |
+| `CLAWDBOT_GATEWAY_TOKEN` | Token for dashboard/API auth |
 
-`~/.secrets/`:
-- `telegram-bot-token` - Telegram bot token
-- `clawdbot-gateway-token` - Token for dashboard/API auth
+## Heartbeat
+
+Daily 9am heartbeat wakes the bot for proactive check-ins. The heartbeat reads `~/clawd/HEARTBEAT.md` if present.
+
+Create a heartbeat checklist:
+```bash
+ssh connor@rpi5
+cat > ~/clawd/HEARTBEAT.md << 'EOF'
+# Heartbeat Checklist
+
+Review these items and only message if something needs attention:
+
+- [ ] Any pending reminders or tasks?
+- [ ] Any scheduled events today?
+- [ ] Weather alerts for the day?
+- [ ] Any messages that need follow-up?
+
+If everything is fine, return HEARTBEAT_OK silently.
+EOF
+```
+
+Check timer status:
+```bash
+systemctl --user status clawdbot-heartbeat.timer
+```
 
 ## Personality & Workspace
 
@@ -179,6 +226,7 @@ Workspace lives at `~/clawd/` containing:
 - `IDENTITY.md` - Name, creature, vibe, emoji
 - `AGENTS.md` - Operating instructions
 - `USER.md` - How to address you
+- `HEARTBEAT.md` - Daily check-in instructions (optional)
 
 ### Bootstrap Ritual
 
@@ -193,25 +241,6 @@ Personality questions are **not** asked during `clawdbot onboard`. Instead:
 ### Workspace Backup
 
 Auto-syncs daily to [connorads/clawd-workspace](https://github.com/connorads/clawd-workspace) (private) via systemd timer. Uses deploy key at `~/.ssh/clawd_deploy`.
-
-Check timer status:
-```bash
-systemctl --user status clawd-workspace-sync.timer
-```
-
-### Dotfiles Sync
-
-Config changes (like `~/.clawdbot/clawdbot.json`) are pulled automatically at 03:30 daily, before the NixOS auto-upgrade at 04:00.
-
-Check timer status:
-```bash
-systemctl --user status dotfiles-sync.timer
-```
-
-Manual pull:
-```bash
-dotfiles pull
-```
 
 ## Resetting
 
