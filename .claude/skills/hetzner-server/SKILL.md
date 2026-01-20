@@ -49,6 +49,7 @@ hcloud server create \
 ### With user-data (auto-run install script)
 
 ```bash
+# Use heredoc - process substitution <(echo '...') escapes the shebang incorrectly
 hcloud server create \
   --name dev \
   --type cax21 \
@@ -56,8 +57,10 @@ hcloud server create \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin \
-  --user-data-from-file <(echo '#!/bin/bash
-curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash')
+  --user-data-from-file - <<'EOF'
+#!/bin/bash
+curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
+EOF
 ```
 
 The dotfiles installation takes ~5 minutes. To monitor progress:
