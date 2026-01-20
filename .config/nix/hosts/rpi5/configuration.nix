@@ -197,6 +197,8 @@
           configOverrides.agents.defaults.heartbeat.every = "0m";
           # Disable thinking (avoid OpenAI reasoning payload errors)
           configOverrides.agents.defaults.thinkingDefault = "off";
+          # Disable memory plugin (not installed)
+          configOverrides.plugins.slots.memory = "none";
 
           # Telegram provider (user ID loaded at runtime via $include)
           providers.telegram = {
