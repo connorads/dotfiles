@@ -17,9 +17,9 @@ NixOS (base system)
 
 Clawdbot (managed via npm)
 ├── ~/.clawdbot/clawdbot.json   (config - tracked in dotfiles)
-├── ~/.clawdbot/.env            (secrets - NOT tracked)
+├── ~/.clawdbot/.env            (API keys, user IDs - NOT tracked)
 ├── ~/clawd/                    (workspace - backed up to GitHub)
-└── ~/.secrets/                 (existing secrets - reused)
+└── ~/.secrets/                 (tokens - telegram-bot-token, gateway-token)
 ```
 
 ## Setup
@@ -47,7 +47,7 @@ cd ~/.config/nix/hosts/rpi5
 This will prompt for:
 - OpenAI API key (`sk-...`)
 - Telegram bot token (`123456:ABC-xyz`)
-- Telegram user ID (numeric, stored as JSON for runtime loading)
+- Telegram user ID (numeric, stored as env var)
 
 You can also deploy individual secrets:
 
@@ -162,13 +162,15 @@ The `dotfiles-sync` timer uses `--ff-only || true` to handle conflicts gracefull
 
 ## Secrets
 
-Secrets stored in `/home/connor/.secrets/` on the Pi:
-- `telegram-bot-token` - Telegram bot token
-- `telegram-users.json` - Telegram user ID as JSON
-- `clawdbot-gateway-token` - Token for dashboard/API auth
+Secrets on the Pi:
 
-And in `~/.clawdbot/`:
-- `.env` - OpenAI API key (`OPENAI_API_KEY=...`)
+`~/.clawdbot/.env`:
+- `OPENAI_API_KEY` - OpenAI API key
+- `TELEGRAM_ALLOW_FROM` - Telegram user ID (e.g. `tg:123456789`)
+
+`~/.secrets/`:
+- `telegram-bot-token` - Telegram bot token
+- `clawdbot-gateway-token` - Token for dashboard/API auth
 
 ## Personality & Workspace
 
