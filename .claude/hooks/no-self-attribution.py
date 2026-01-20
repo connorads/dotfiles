@@ -30,7 +30,7 @@ GH_PATTERNS = [
 
 def check_git_commit(command: str) -> str | None:
     """Check if a git commit command contains blocked attribution patterns."""
-    if "git commit" not in command:
+    if not re.search(r"\bgit\b.*\bcommit\b", command):
         return None
 
     for pattern in COMMIT_PATTERNS:
