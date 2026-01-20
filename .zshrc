@@ -247,6 +247,8 @@ wta() {
   local repo=$(basename $(git rev-parse --show-toplevel))
   local worktree_path="$HOME/.trees/${repo}-${branch}"
 
+  git fetch origin
+
   # Check if branch exists locally or remotely
   if git show-ref --verify --quiet refs/heads/$branch; then
     # Local branch exists - checkout existing
