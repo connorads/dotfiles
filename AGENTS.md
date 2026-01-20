@@ -14,6 +14,7 @@ Configuration for this system is managed via a bare git repo for dotfiles (no sy
 |------|---------|
 | [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager), NixOS (rpi5) |
 | [configuration.nix](./.config/nix/hosts/rpi5/configuration.nix) | RPi5 NixOS system config with Clawdbot, Tailscale, auto-updates |
+| [clawdbot.json](./.clawdbot/clawdbot.json) | Clawdbot AI gateway config (RPi5) |
 | [config.toml](./.config/mise/config.toml) | mise tools (gh, opencode, etc.) |
 | [.zshrc](./.zshrc) | Shell config with aliases like `drs`, `hms`, `nrs`, tailscale helpers |
 | [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
@@ -24,7 +25,6 @@ Configuration for this system is managed via a bare git repo for dotfiles (no sy
 
 - [install.sh](./install.sh) - Bootstrap script for new machines
 - [secrets-deploy.sh](./.config/nix/hosts/rpi5/secrets-deploy.sh) - Deploy secrets to RPi5 securely
-- [nix-clawdbot-sync.sh](./.config/nix/hosts/rpi5/nix-clawdbot-sync.sh) - Sync nix-clawdbot fork with upstream
 
 ## Nix Targets
 

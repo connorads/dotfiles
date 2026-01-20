@@ -1,10 +1,26 @@
 # Clawdbot on Raspberry Pi 5
 
-Clawdbot AI assistant gateway running on NixOS (aarch64-linux).
+Clawdbot AI assistant gateway running on NixOS (aarch64-linux), installed via npm.
 
 ## What is Clawdbot?
 
 [Clawdbot](https://github.com/clawdbot/clawdbot) is an AI assistant gateway that connects messaging providers (Telegram, Discord) to AI backends (OpenAI, Anthropic). You message a bot, your machine does things.
+
+## Architecture
+
+```
+NixOS (base system)
+├── Node.js 22 (via nixpkgs)
+├── Tailscale (unchanged)
+├── systemd user service for clawdbot
+└── Home Manager for user config
+
+Clawdbot (managed via npm)
+├── ~/.clawdbot/clawdbot.json   (config - tracked in dotfiles)
+├── ~/.clawdbot/.env            (secrets - NOT tracked)
+├── ~/clawd/                    (workspace - backed up to GitHub)
+└── ~/.secrets/                 (existing secrets - reused)
+```
 
 ## Setup
 
@@ -42,13 +58,27 @@ You can also deploy individual secrets:
 ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
 ```
 
-### 4. Rebuild on Pi
-
-After deploying secrets, rebuild the NixOS config:
+### 4. Install Clawdbot on Pi
 
 ```bash
 ssh connor@rpi5
-sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5'
+
+# Configure npm to use local prefix (no sudo needed)
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+
+# Install clawdbot
+npm install -g clawdbot@latest
+
+# Setup Tailscale Serve (if not already done)
+tailscale serve --bg 18789
+```
+
+### 5. Start the service
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now clawdbot-gateway
 ```
 
 ## Verify
@@ -62,6 +92,9 @@ journalctl --user -u clawdbot-gateway -f
 
 # Restart if needed
 systemctl --user restart clawdbot-gateway
+
+# Health check
+curl http://localhost:18789/health
 ```
 
 **Note:** Over SSH, `systemctl --user` needs `XDG_RUNTIME_DIR`:
@@ -69,32 +102,14 @@ systemctl --user restart clawdbot-gateway
 ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --user status clawdbot-gateway"
 ```
 
-## Remote Rebuild from Mac
+## Upgrade Clawdbot
 
-Push dotfiles changes to GitHub, then rebuild the Pi:
-```bash
-ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5' --no-write-lock-file --refresh"
-```
-
-The `--refresh` flag ensures latest is pulled from GitHub.
-
-## Upgrade Clawdbot (version bump)
-
-Clawdbot versions are pinned in the `nix-clawdbot` fork. The sync script can now update pins when needed.
+Simple npm upgrade:
 
 ```bash
-cd ~/.config/nix/hosts/rpi5
-./nix-clawdbot-sync.sh --update-pins
-```
-
-Then update the dotfiles lock and rebuild the Pi:
-
-```bash
-cd ~/.config/nix
-nix flake lock --update-input nix-clawdbot
-git --git-dir=~/git/dotfiles --work-tree=$HOME commit -am "bump nix-clawdbot pins"
-git --git-dir=~/git/dotfiles --work-tree=$HOME push
-ssh connor@rpi5 "sudo nixos-rebuild switch --flake 'github:connorads/dotfiles?dir=.config/nix#rpi5' --refresh"
+ssh connor@rpi5
+npm update -g clawdbot
+systemctl --user restart clawdbot-gateway
 ```
 
 ## Web UI / Dashboard
@@ -103,7 +118,7 @@ Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net`.
 
 ### Authentication
 
-Using token-based authentication (`gatewayAuth = "token"`). Tailscale identity headers (`tailscale-user-login`) weren't being forwarded by Tailscale Serve as of 2026-01-20.
+Using token-based authentication. Token stored at `/home/connor/.secrets/clawdbot-gateway-token`.
 
 **Dashboard access:**
 ```bash
@@ -112,24 +127,24 @@ ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && clawdbot dashb
 
 Outputs URL: `https://rpi5.<tailnet>.ts.net/?token=<token>`
 
-**Token location:** `/home/connor/.secrets/clawdbot-gateway-token`
-
 ## Configuration
 
-Current setup in `configuration.nix`:
+Config file: `~/.clawdbot/clawdbot.json` (tracked in dotfiles)
+
+Current setup:
 - **AI Provider**: OpenAI (`openai/gpt-5-nano`)
-- **Messaging**: Telegram (user ID loaded at runtime via `$include`)
+- **Messaging**: Telegram (user ID loaded at runtime)
 - **Plugins**: All disabled (core gateway only)
 
 ## Secrets
 
-Secrets are stored in `/home/connor/.secrets/` on the Pi:
-- `clawdbot.env` - OpenAI API key (`OPENAI_API_KEY=...`)
+Secrets stored in `/home/connor/.secrets/` on the Pi:
 - `telegram-bot-token` - Telegram bot token
-- `telegram-users.json` - Telegram user ID as JSON (loaded by clawdbot at runtime)
-- `clawdbot-gateway-token` - Token for dashboard/API authentication
+- `telegram-users.json` - Telegram user ID as JSON
+- `clawdbot-gateway-token` - Token for dashboard/API auth
 
-**Safe to reset**: These are external files - `clawdbot reset` won't touch them. The Nix config regenerates service configuration on rebuild, so Telegram/gateway settings are declarative.
+And in `~/.clawdbot/`:
+- `.env` - OpenAI API key (`OPENAI_API_KEY=...`)
 
 ## Personality & Workspace
 
@@ -141,19 +156,22 @@ Workspace lives at `~/clawd/` containing:
 
 ### Bootstrap Ritual
 
-Personality questions ("what's my name?", "pick an emoji") are **not** asked during `clawdbot onboard`. Instead:
+Personality questions are **not** asked during `clawdbot onboard`. Instead:
 
 1. `clawdbot onboard` creates `BOOTSTRAP.md` (if workspace is brand new)
 2. At end of onboarding, it prompts "hatch your bot now?" and sends `Wake up, my friend!`
 3. Agent reads `BOOTSTRAP.md` and asks personality questions
 4. You answer, agent populates `IDENTITY.md`, `USER.md`, `SOUL.md`
-5. Delete `BOOTSTRAP.md` when done (or agent keeps trying to bootstrap)
-
-To re-trigger bootstrap manually, send `Wake up, my friend!` via TUI or Telegram (requires `BOOTSTRAP.md` to exist).
+5. Delete `BOOTSTRAP.md` when done
 
 ### Workspace Backup
 
 Auto-syncs daily to [connorads/clawd-workspace](https://github.com/connorads/clawd-workspace) (private) via systemd timer. Uses deploy key at `~/.ssh/clawd_deploy`.
+
+Check timer status:
+```bash
+systemctl --user status clawd-workspace-sync.timer
+```
 
 ## Resetting
 
@@ -168,5 +186,3 @@ To redo personality: delete `~/clawd/` before onboard, or manually recreate `BOO
 ## Links
 
 - [Clawdbot](https://github.com/clawdbot/clawdbot) - upstream project
-- [nix-clawdbot](https://github.com/clawdbot/nix-clawdbot) - Nix packaging
-- [Fork with RPi5 support](https://github.com/connorads/nix-clawdbot/tree/feat/rpi5-complete) - aarch64-linux + allowFromFile
