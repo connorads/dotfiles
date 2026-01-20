@@ -57,7 +57,6 @@ hcloud server create \
   --ssh-key connorads \
   --ssh-key connor@penguin \
   --user-data-from-file <(echo '#!/bin/bash
-sudo apt-get update && sudo apt-get install -y build-essential
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash')
 ```
 
