@@ -187,9 +187,11 @@
           # Use OpenAI instead of Anthropic
           agent.model = "openai/gpt-5-nano";
 
-          # Web UI: Tailscale Serve (Tailscale identity auth)
+          # Web UI: Tailscale Serve with token auth
           # Access at https://rpi5.<tailnet>.ts.net
           gatewayTailscale = "serve";
+          gatewayAuth = "token";
+          gatewayTokenFile = "/home/connor/.secrets/clawdbot-gateway-token";
 
           # Disable heartbeat (burns tokens)
           configOverrides.agents.defaults.heartbeat.every = "0m";
