@@ -203,6 +203,31 @@
         };
 
         # ======================================================================
+        # Clawdbot upgrade (weekly npm update)
+        # ======================================================================
+        systemd.user.services.clawdbot-upgrade = {
+          Unit.Description = "Upgrade Clawdbot via npm";
+          Service = {
+            Type = "oneshot";
+            ExecStart = pkgs.writeShellScript "clawdbot-upgrade" ''
+              set -euo pipefail
+              export PATH="/etc/profiles/per-user/connor/bin:$HOME/.npm-global/bin:$PATH"
+              npm update -g clawdbot
+            '';
+            ExecStartPost = "${pkgs.systemd}/bin/systemctl --user restart clawdbot-gateway";
+          };
+        };
+
+        systemd.user.timers.clawdbot-upgrade = {
+          Unit.Description = "Upgrade Clawdbot weekly";
+          Timer = {
+            OnCalendar = "Sun 03:00";
+            Persistent = true;
+          };
+          Install.WantedBy = [ "timers.target" ];
+        };
+
+        # ======================================================================
         # Dotfiles sync (pulls config changes from GitHub before auto-upgrade)
         # ======================================================================
         systemd.user.services.dotfiles-sync = {
