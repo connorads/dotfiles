@@ -237,17 +237,25 @@
               WORKSPACE="/home/connor/clawd"
               cd "$WORKSPACE" || exit 0
 
-              # Init repo if not exists
+              # Use deploy key explicitly (systemd doesn't read ~/.ssh/config)
+              export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/connor/.ssh/clawd_deploy -o IdentitiesOnly=yes"
+
+              # Ensure remote uses correct URL (migrate from host alias if needed)
+              EXPECTED_REMOTE="git@github.com:connorads/clawd-workspace.git"
               if [ ! -d .git ]; then
                 ${pkgs.git}/bin/git init
-                ${pkgs.git}/bin/git remote add origin git@github.com-clawd:connorads/clawd-workspace.git
+                ${pkgs.git}/bin/git remote add origin "$EXPECTED_REMOTE"
+              else
+                ${pkgs.git}/bin/git remote set-url origin "$EXPECTED_REMOTE"
               fi
 
-              # Commit and push if changes
+              # Commit if changes
               ${pkgs.git}/bin/git add -A
               ${pkgs.git}/bin/git diff --cached --quiet || \
                 ${pkgs.git}/bin/git commit -m "Auto-sync $(date -I)"
-              ${pkgs.git}/bin/git push -u origin main || true
+
+              # Push (fail visibly if broken)
+              ${pkgs.git}/bin/git push -u origin main
             '';
           };
         };
