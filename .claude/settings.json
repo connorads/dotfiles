@@ -309,6 +309,7 @@
       "Bash(supabase status:*)",
       "Bash(act --list:*)",
       "Bash(act --version:*)",
+      "Bash(agent-browser:*)",
       "Bash(arp -a:*)",
       "Bash(curl --version:*)",
       "Bash(curl -sI:*)",
