@@ -18,8 +18,10 @@
     }
   },
   "gateway": {
-    "auth": "token",
-    "tokenFile": "/home/connor/.secrets/clawdbot-gateway-token"
+    "auth": {
+      "type": "token",
+      "tokenFile": "/home/connor/.secrets/clawdbot-gateway-token"
+    }
   },
   "plugins": {
     "slots": {
