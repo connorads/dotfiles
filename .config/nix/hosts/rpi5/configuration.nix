@@ -332,6 +332,7 @@
           tree
           eza
           bat
+          bc
           jq
           coreutils
           htop
