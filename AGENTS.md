@@ -67,6 +67,28 @@ To list all tracked dotfiles:
 git --git-dir=$HOME/git/dotfiles --work-tree=$HOME ls-files
 ```
 
+## Remote Shell Execution
+
+When executing commands on remote hosts (SSH, codespaces) where mise tools are needed:
+
+### Pattern for non-interactive commands
+
+```bash
+ssh host 'zsh -c "source ~/.zshrc; your-command"'
+gh codespace ssh -c name -- 'zsh -c "source ~/.zshrc; tmux capture-pane -t session -p"'
+```
+
+### Pattern for interactive sessions (needs TTY)
+
+```bash
+ssh host -t 'zsh -ilc "tmux attach -t session"'
+gh codespace ssh -c name -- -t 'zsh -ilc "tmux attach -t session"'
+```
+
+**Why**: Default shell is often bash which doesn't have mise in PATH. Sourcing `~/.zshrc` activates mise shims.
+
+**Avoid**: `zsh -lc` on its own can hang on some systems.
+
 ## Keeping Docs Updated
 
 After making significant changes (new config files, architectural changes, new scripts), update the relevant documentation:
