@@ -86,6 +86,7 @@
 
           # System utilities
           coreutils
+          bc
           bat
           dust
           ncdu
