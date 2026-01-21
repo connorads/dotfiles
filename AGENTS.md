@@ -1,8 +1,18 @@
 # AGENTS.md
 
-Configuration for this system is managed via a bare git repo for dotfiles (no symlinks).
+## Bare Git Repo for Dotfiles
 
-**Important:** Use `$HOME` not `~` in git commands - tilde doesn't expand in `--git-dir`.
+Dotfiles tracked via bare repo at `$HOME/git/dotfiles` with work-tree `$HOME`.
+
+**Command pattern** (use exactly):
+```bash
+git --git-dir=$HOME/git/dotfiles --work-tree=$HOME <command>
+```
+
+**Rules:**
+- `$HOME` not `~` — tilde doesn't expand after `=` in `--git-dir=~/path`
+- Flags **before** subcommand — `git --git-dir=... status` not `git status --git-dir=...`
+- Always both flags — no `.git` directory exists for git to discover
 
 ## Key Documentation
 
@@ -54,7 +64,7 @@ dotfiles status        # See changes
 
 To list all tracked dotfiles:
 ```bash
-git --git-dir=~/git/dotfiles --work-tree=$HOME ls-files
+git --git-dir=$HOME/git/dotfiles --work-tree=$HOME ls-files
 ```
 
 ## Keeping Docs Updated
