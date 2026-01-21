@@ -297,30 +297,22 @@ tma() {
     fi
   fi
 }
+_tmux_sessions() {
+  local sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"})
+  compadd -a sessions
+}
+_register_tmux_completions() {
+  compdef _tmux_sessions tma
+  add-zsh-hook -D precmd _register_tmux_completions
+}
+add-zsh-hook precmd _register_tmux_completions
+tms() {
+  local session=$(tmux list-sessions -F "#{session_name}" 2>/dev/null | fzf --prompt="Switch to: ")
+  [[ -n "$session" ]] && tma "$session"
+}
 tmk() {
-  if ! tmux list-sessions &>/dev/null; then
-    echo "No tmux sessions running"
-    return 1
-  fi
-  echo "Current sessions:"
-  tmux list-sessions
-  echo
-  read "session_name?Enter session name to kill: "
-  if [[ -z "$session_name" ]]; then
-    echo "No session specified"
-    return 1
-  fi
-  if ! tmux has-session -t="$session_name" 2>/dev/null; then
-    echo "Session '$session_name' not found"
-    return 1
-  fi
-  read "confirm?Kill session '$session_name'? This will terminate all processes. [y/N]: "
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    tmux kill-session -t "$session_name"
-    echo "Session '$session_name' killed"
-  else
-    echo "Cancelled"
-  fi
+  local session=$(tmux list-sessions -F "#{session_name}" 2>/dev/null | fzf --prompt="Kill session: ")
+  [[ -n "$session" ]] && tmux kill-session -t "$session" && echo "Killed $session"
 }
 tml() {
   tmux list-sessions 2>/dev/null || echo "No tmux sessions running"
