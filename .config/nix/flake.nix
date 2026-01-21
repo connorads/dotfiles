@@ -538,22 +538,22 @@
           vscodeOverride = pkgs.vscode.overrideAttrs (
             _old:
             let
-              version = "1.108.0";
-              rev = "94e8ae2b28cb5cc932b86e1070569c4463565c37";
+              version = "1.108.1";
+              rev = "585eba7c0c34fd6b30faac7c62a42050bfbc0086";
             in
             {
               inherit version rev;
               src = pkgs.fetchurl {
                 name = "VSCode_${version}_linux-x64.tar.gz";
                 url = "https://update.code.visualstudio.com/${version}/linux-x64/stable";
-                hash = "sha256-20ydDfHFhy3BNxC9bHG1JTgybFY9zxxc81EApOVh3wk=";
+                hash = "sha256-s4Q2Cqzt1lqUwF9Fgk7dUf4jMhLPHS5DvILAKq3qBlY=";
               };
               vscodeServer = pkgs.srcOnly {
                 name = "vscode-server-${rev}.tar.gz";
                 src = pkgs.fetchurl {
                   name = "vscode-server-${rev}.tar.gz";
                   url = "https://update.code.visualstudio.com/commit:${rev}/server-linux-x64/stable";
-                  hash = "sha256-VvwZaE1T5FTh/KJdLj9Br51VBMcYcyh4SgZILLS5hwQ=";
+                  hash = "sha256-etez0OaJJtW7FTf0TDc140t3lWJ6Qsdkx9v8SDkvUlc=";
                 };
                 stdenv = pkgs.stdenvNoCC;
               };
