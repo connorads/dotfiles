@@ -40,6 +40,7 @@
 
 !/.config/tmux/
 !/.config/tmux/**
+/.config/tmux/plugins/
 
 !/.config/lazygit/
 !/.config/lazygit/**
