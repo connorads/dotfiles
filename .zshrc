@@ -359,6 +359,10 @@ ocm() {
   jq "$filter" "$cfg" > "$tmp" && mv "$tmp" "$cfg"
 }
 
+# https://github.com/anthropics/claude-code
+alias c='claude'
+alias cy='claude --dangerously-skip-permissions'
+
 skillsync() {
   # conversation-analysis is OpenCode-only; do not sync it to other agents
   echo "[skillsync] claude <-> opencode"
