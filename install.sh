@@ -203,6 +203,12 @@ if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then
   git clone --depth 1 https://github.com/zsh-users/antigen.git "$HOME/.antigen"
 fi
 
+# Install TPM (tmux plugin manager)
+if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
+  echo "Installing TPM (tmux plugin manager)..."
+  git clone --depth 1 https://github.com/tmux-plugins/tpm "$HOME/.config/tmux/plugins/tpm"
+fi
+
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
 if [ "$IN_CODESPACES" = "true" ]; then
