@@ -404,5 +404,6 @@
     "type": "command",
     "command": "input=$(cat); printf '\\033[32m%s@%s\\033[0m \\033[34m%s\\033[0m [%s]' \"$(whoami)\" \"$(hostname -s)\" \"$(echo \"$input\" | jq -r '.workspace.current_dir')\" \"$(echo \"$input\" | jq -r '.model.display_name')\""
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "model": "opus"
 }
