@@ -2,17 +2,19 @@
 
 ## Bare Git Repo for Dotfiles
 
-Dotfiles tracked via bare repo at `$HOME/git/dotfiles` with work-tree `$HOME`.
+Dotfiles tracked via bare repo at `~/git/dotfiles` with work-tree `~`.
 
-**Command pattern** (use exactly):
+**Command pattern:**
 ```bash
-git --git-dir=$HOME/git/dotfiles --work-tree=$HOME <command>
+dotfiles <command>
 ```
 
-**Rules:**
-- `$HOME` not `~` — tilde doesn't expand after `=` in `--git-dir=~/path`
-- Flags **before** subcommand — `git --git-dir=... status` not `git status --git-dir=...`
-- Always both flags — no `.git` directory exists for git to discover
+Examples:
+- `dotfiles status`
+- `dotfiles add -f .file`
+- `dotfiles commit -m "message"`
+
+The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resolves home directory reliably even in sanitised environments.
 
 ## Key Documentation
 
@@ -64,7 +66,7 @@ dotfiles status        # See changes
 
 To list all tracked dotfiles:
 ```bash
-git --git-dir=$HOME/git/dotfiles --work-tree=$HOME ls-files
+dotfiles ls-files
 ```
 
 ## Remote Shell Execution
