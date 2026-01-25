@@ -224,6 +224,16 @@ secretexport() {
 # https://github.com/ajeetdsouza/zoxide
 eval "$(zoxide init zsh)"
 
+# https://github.com/sxyazi/yazi - change directory on exit
+y() {
+  local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+  yazi "$@" --cwd-file="$tmp"
+  if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+    builtin cd -- "$cwd"
+  fi
+  rm -f -- "$tmp"
+}
+
 # Easily view usage limits
 alias claude-usage='open "https://claude.ai/settings/usage"'
 alias codex-usage='open "https://chatgpt.com/codex/settings/usage"'
