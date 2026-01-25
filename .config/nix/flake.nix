@@ -546,14 +546,14 @@
               src = pkgs.fetchurl {
                 name = "VSCode_${version}_linux-x64.tar.gz";
                 url = "https://update.code.visualstudio.com/${version}/linux-x64/stable";
-                hash = "sha256-s4Q2Cqzt1lqUwF9Fgk7dUf4jMhLPHS5DvILAKq3qBlY=";
+                hash = "sha256-qYthiZlioD6fWCyDPfg7Yfo5PqCHzcenk8NjgobLW7c=";
               };
               vscodeServer = pkgs.srcOnly {
                 name = "vscode-server-${rev}.tar.gz";
                 src = pkgs.fetchurl {
                   name = "vscode-server-${rev}.tar.gz";
                   url = "https://update.code.visualstudio.com/commit:${rev}/server-linux-x64/stable";
-                  hash = "sha256-etez0OaJJtW7FTf0TDc140t3lWJ6Qsdkx9v8SDkvUlc=";
+                  hash = "sha256-YilQLV1vQ1vHLa9pztvDIsaRz1CKzxcjT/INETrJy1I=";
                 };
                 stdenv = pkgs.stdenvNoCC;
               };
