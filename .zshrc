@@ -364,16 +364,8 @@ alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
 skillsync() {
-  # conversation-analysis is OpenCode-only; do not sync it to other agents
-  echo "[skillsync] claude <-> opencode"
-  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help"
-  unison "$HOME/.claude/skills" "$HOME/.config/opencode/skills" -ignore "Name .DS_Store" -ignore "Name .system" -ignore "Name conversation-analysis" && \
-  echo "[skillsync] opencode <-> codex" && \
-  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help" && \
-  unison "$HOME/.codex/skills" "$HOME/.config/opencode/skills" -ignore "Name .DS_Store" -ignore "Name .system" -ignore "Name conversation-analysis" && \
-  echo "[skillsync] codex <-> claude" && \
-  echo "[skillsync] tips: l=left r=right d=delete s=skip ?=help" && \
-  unison "$HOME/.codex/skills" "$HOME/.claude/skills" -ignore "Name .DS_Store" -ignore "Name .system"
+  echo "Skills symlinked to ~/.agents/skills - no sync needed"
+  ls -la ~/.claude/skills ~/.codex/skills ~/.config/opencode/skills 2>/dev/null | grep -E "^l"
 }
 
 # claude code auth for codespaces (uses tmux to handle interactive auth)
