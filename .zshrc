@@ -12,7 +12,6 @@ fi
 
 # https://github.com/zsh-users/antigen
 antigen use oh-my-zsh
-antigen theme spaceship-prompt/spaceship-prompt
 antigen bundle git
 antigen bundle aws
 antigen bundle command-not-found
@@ -22,6 +21,9 @@ antigen bundle Aloxaf/fzf-tab
 antigen bundle zsh-users/zsh-syntax-highlighting
 command -v brew >/dev/null 2>&1 && antigen bundle brew
 antigen apply
+
+# https://github.com/starship/starship
+eval "$(starship init zsh)"
 
 # https://github.com/jdx/mise
 if command -v mise &>/dev/null; then

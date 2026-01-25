@@ -1,0 +1,23 @@
+# Starship prompt config
+# https://starship.rs/config/
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+format = "[$branch]($style) "
+
+[cmd_duration]
+min_time = 2_000
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+
+# Disable modules that need external auth/slow APIs
+[gcloud]
+disabled = true
+
+[kubernetes]
+disabled = true
