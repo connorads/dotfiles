@@ -73,6 +73,12 @@
           lazyworktree
           jujutsu
 
+          # Dotfiles (bare repo wrapper that works even with empty $HOME)
+          (writeShellScriptBin "dotfiles" ''
+            home="''${HOME:-$(eval echo ~)}"
+            exec ${git}/bin/git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
+          '')
+
           # Dev tools
           mise
           pipx

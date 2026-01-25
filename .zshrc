@@ -29,12 +29,6 @@ if command -v mise &>/dev/null; then
   alias mi='mise install'
 fi
 
-# https://github.com/connorads/dotfiles/
-dotfiles() {
-  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
-}
-
-
 # https://github.com/NixOS/nix
 nfu() { nix flake update --flake ~/.config/nix; }
 ncg() { nix-collect-garbage -d; }
