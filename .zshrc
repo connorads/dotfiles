@@ -18,6 +18,7 @@ antigen bundle aws
 antigen bundle command-not-found
 antigen bundle zsh-users/zsh-autosuggestions
 antigen bundle zsh-users/zsh-completions
+antigen bundle Aloxaf/fzf-tab
 antigen bundle zsh-users/zsh-syntax-highlighting
 command -v brew >/dev/null 2>&1 && antigen bundle brew
 antigen apply
