@@ -53,6 +53,7 @@
           antigen
           tmux
           kitty.terminfo
+          starship
 
           # Text editors
           vim
@@ -126,6 +127,7 @@
           zsh
           tmux
           kitty.terminfo
+          starship
           vim
           micro
           fd
