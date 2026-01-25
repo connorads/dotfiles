@@ -2,10 +2,15 @@
 
 !.gitignore
 
+!/.agents/
+/.agents/**
+!/.agents/skills/
+!/.agents/skills/**
+/.agents/skills/.system/
+
 !/.claude/
 /.claude/**
-!/.claude/skills/
-!/.claude/skills/**
+!/.claude/skills
 !/.claude/commands/
 !/.claude/commands/**
 !/.claude/hooks/
@@ -13,9 +18,7 @@
 
 !/.codex/
 /.codex/**
-!/.codex/skills/
-!/.codex/skills/**
-/.codex/skills/.system
+!/.codex/skills
 
 !/.config/
 /.config/**
@@ -23,8 +26,7 @@
 /.config/opencode/**
 !/.config/opencode/command/
 !/.config/opencode/command/**
-!/.config/opencode/skills/
-!/.config/opencode/skills/**
+!/.config/opencode/skills
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 
