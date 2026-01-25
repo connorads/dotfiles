@@ -1,0 +1,9 @@
+[manager]
+ratio = [1, 2, 3]
+sort_by = "natural"
+show_hidden = false
+
+[opener]
+edit = [
+  { run = '$EDITOR "$@"', block = true, for = "unix" }
+]
