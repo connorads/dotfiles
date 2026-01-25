@@ -1,0 +1,9 @@
+[[manager.prepend_keymap]]
+on = ["g", "d"]
+run = "cd ~/.config"
+desc = "Go to dotfiles config"
+
+[[manager.prepend_keymap]]
+on = ["g", "h"]
+run = "cd ~"
+desc = "Go to home"
