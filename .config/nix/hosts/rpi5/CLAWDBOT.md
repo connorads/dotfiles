@@ -58,7 +58,6 @@ This will prompt for:
 - Anthropic API key (`sk-ant-...`) - for fallback models
 - Telegram bot token (`123456:ABC-xyz`)
 - Telegram user ID (numeric)
-- Gateway auth token (for dashboard/API)
 
 You can also deploy individual secrets:
 
@@ -67,7 +66,6 @@ You can also deploy individual secrets:
 ./secrets-deploy.sh --anthropic        # Just Anthropic key
 ./secrets-deploy.sh --telegram-token   # Just Telegram token
 ./secrets-deploy.sh --telegram-id      # Just Telegram user ID
-./secrets-deploy.sh --gateway-token    # Just gateway token
 ./secrets-deploy.sh --host 192.168.1.x # Use specific host/IP
 ```
 
@@ -82,10 +80,9 @@ npm config set prefix ~/.npm-global
 
 # Install clawdbot
 npm install -g clawdbot@latest
-
-# Setup Tailscale Serve (if not already done)
-tailscale serve --bg 18789
 ```
+
+**Note:** Tailscale Serve is managed automatically by Clawdbot's native Tailscale integration.
 
 ### 5. Start the service
 
@@ -157,14 +154,14 @@ Access via Tailscale Serve at `https://rpi5.<tailnet>.ts.net`.
 
 ### Authentication
 
-Using token-based authentication. Token stored in `~/.clawdbot/.env` as `CLAWDBOT_GATEWAY_TOKEN`.
+Using native Tailscale identity authentication. Clawdbot verifies client identity via `tailscale whois` - only devices authenticated to your tailnet can access the gateway.
 
 **Dashboard access:**
 ```bash
 ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && clawdbot dashboard --no-open"
 ```
 
-Outputs URL: `https://rpi5.<tailnet>.ts.net/?token=<token>`
+Outputs URL: `https://rpi5.<tailnet>.ts.net/`
 
 ## Configuration
 
@@ -205,7 +202,8 @@ All secrets stored in `~/.clawdbot/.env`:
 | `ANTHROPIC_API_KEY` | Anthropic API key (for fallback models) |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
 | `TELEGRAM_ALLOW_FROM` | Telegram user ID (e.g. `tg:123456789`) |
-| `CLAWDBOT_GATEWAY_TOKEN` | Token for dashboard/API auth |
+
+**Note:** Gateway auth token no longer needed - using native Tailscale identity verification.
 
 ## Heartbeat
 
@@ -255,6 +253,14 @@ Personality questions are **not** asked during `clawdbot onboard`. Instead:
 ### Workspace Backup
 
 Auto-syncs daily to [connorads/clawd-workspace](https://github.com/connorads/clawd-workspace) (private) via systemd timer. Uses deploy key at `~/.ssh/clawd_deploy`.
+
+**What's backed up:**
+- `~/clawd/` workspace (personality, SOUL.md, etc.)
+- `~/.clawdbot/memory/main.sqlite` (semantic memory database, copied to `~/clawd/memory/`)
+
+**Not backed up (correct):**
+- `~/.clawdbot/.env` (secrets)
+- `~/.clawdbot/{devices,telegram,cron,...}` (transient runtime state)
 
 ## Resetting
 
