@@ -25,7 +25,7 @@ Clawdbot (managed via npm)
 
 Current configuration:
 - **AI Provider**: OpenAI (`openai/gpt-5-nano` primary)
-- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-3.5-haiku`
+- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-4.5-haiku`
 - **Thinking**: Medium level (better reasoning)
 - **Memory**: `memory-core` plugin (lightweight semantic search)
 - **Messaging**: Telegram (allowlist policy)
@@ -111,9 +111,9 @@ curl http://localhost:18789/health
 clawdbot memory status
 ```
 
-**Note:** Over SSH, `systemctl --user` needs `XDG_RUNTIME_DIR`:
+**Note:** Over SSH, `systemctl --user` needs `XDG_RUNTIME_DIR`. Use `ts ssh` (Tailscale wrapper):
 ```bash
-ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && systemctl --user status clawdbot-gateway"
+ts ssh connor@rpi5 'XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user status clawdbot-gateway'
 ```
 
 ## Timers
@@ -158,7 +158,7 @@ Using native Tailscale identity authentication. Clawdbot verifies client identit
 
 **Dashboard access:**
 ```bash
-ssh -t connor@rpi5 "export XDG_RUNTIME_DIR=/run/user/\$(id -u) && clawdbot dashboard --no-open"
+ts ssh connor@rpi5 'XDG_RUNTIME_DIR=/run/user/$(id -u) clawdbot dashboard --no-open'
 ```
 
 Outputs URL: `https://rpi5.<tailnet>.ts.net/`
