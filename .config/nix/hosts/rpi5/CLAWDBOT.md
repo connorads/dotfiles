@@ -25,7 +25,7 @@ Clawdbot (managed via npm)
 
 Current configuration:
 - **AI Provider**: OpenAI (`openai/gpt-5-nano` primary)
-- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-4.5-haiku`
+- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-haiku-4.5`
 - **Thinking**: Medium level (better reasoning)
 - **Memory**: `memory-core` plugin (lightweight semantic search)
 - **Messaging**: Telegram (allowlist policy)
