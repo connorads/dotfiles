@@ -60,6 +60,7 @@ nrs                    # nixos-rebuild switch (NixOS)
 nfu                    # nix flake update
 dotfiles add -f .file  # Track new file
 dotfiles status        # See changes
+ts                     # Tailscale wrapper (defined in .zshrc)
 ```
 
 ## Tracked Files
