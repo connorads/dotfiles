@@ -216,6 +216,23 @@ ssh -A connor@$(hcloud server ip dev)
 # Then on server: git clone/push/pull works with forwarded agent
 ```
 
+## VS Code / SSH Config
+
+After creating a server, offer to add/update `~/.ssh/config`:
+
+```
+# Hetzner: <server-name>
+Host hetzner-<server-name> <server-name>
+    HostName <ip-address>
+    User connor
+    ForwardAgent yes
+```
+
+- Get IP: `hcloud server ip <name>`
+- If entry exists (check for `# Hetzner: <server-name>`), update the HostName
+- Dual aliases (`hetzner-dev dev`) let users use either name
+- This enables VS Code Remote-SSH to show the server in the dropdown
+
 ## Notes
 
 - ARM (cax*) servers are best value for dev work

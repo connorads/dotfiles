@@ -491,14 +491,6 @@
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
 
-          # SSH agent setup
-          programs.ssh = {
-            enable = true;
-            enableDefaultConfig = false;
-            includes = [ "config.original" ]; # Preserve existing SSH config
-            matchBlocks."*".addKeysToAgent = "yes";
-          };
-
           home.sessionVariables = sharedHomeConfiguration.home.sessionVariables;
 
           # Allow unfree packages
