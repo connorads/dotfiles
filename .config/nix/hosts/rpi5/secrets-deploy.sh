@@ -164,9 +164,13 @@ set_env_var() {
         if grep -q '^${var_name}=' '${ENV_FILE}' 2>/dev/null; then
             # Use a temp file to avoid issues with special chars in sed
             grep -v '^${var_name}=' '${ENV_FILE}' > '${ENV_FILE}.tmp' || true
+            # Ensure file ends with newline before appending
+            [ -s '${ENV_FILE}.tmp' ] && [ -n \"\$(tail -c1 '${ENV_FILE}.tmp')\" ] && echo >> '${ENV_FILE}.tmp'
             echo '${var_name}=${var_value}' >> '${ENV_FILE}.tmp'
             mv '${ENV_FILE}.tmp' '${ENV_FILE}'
         else
+            # Ensure file ends with newline before appending
+            [ -s '${ENV_FILE}' ] && [ -n \"\$(tail -c1 '${ENV_FILE}')\" ] && echo >> '${ENV_FILE}'
             echo '${var_name}=${var_value}' >> '${ENV_FILE}'
         fi
         chmod 600 '${ENV_FILE}'
