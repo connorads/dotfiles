@@ -301,6 +301,10 @@
                 ${pkgs.git}/bin/git remote set-url origin "$EXPECTED_REMOTE"
               fi
 
+              # Copy memory database to workspace for backup
+              mkdir -p "$WORKSPACE/memory"
+              cp -f /home/connor/.clawdbot/memory/main.sqlite "$WORKSPACE/memory/" 2>/dev/null || true
+
               # Commit if changes
               ${pkgs.git}/bin/git add -A
               ${pkgs.git}/bin/git diff --cached --quiet || \
