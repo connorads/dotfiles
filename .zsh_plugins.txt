@@ -1,0 +1,17 @@
+# Powerlevel10k (load first for instant prompt)
+romkatv/powerlevel10k
+
+# OMZ libs
+ohmyzsh/ohmyzsh path:lib/git.zsh
+ohmyzsh/ohmyzsh path:lib/clipboard.zsh
+
+# OMZ plugins
+ohmyzsh/ohmyzsh path:plugins/git
+ohmyzsh/ohmyzsh path:plugins/command-not-found
+ohmyzsh/ohmyzsh path:plugins/brew
+
+# Community plugins
+zsh-users/zsh-autosuggestions
+zsh-users/zsh-completions
+Aloxaf/fzf-tab
+zsh-users/zsh-syntax-highlighting

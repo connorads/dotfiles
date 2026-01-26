@@ -338,21 +338,15 @@
           htop
           ncdu
           zsh
-          antigen
           tailscale
         ];
       };
   };
 
   # ==========================================================================
-  # Zsh (system-wide, sources antigen for dotfiles)
+  # Zsh (system-wide)
   # ==========================================================================
-  programs.zsh = {
-    enable = true;
-    interactiveShellInit = ''
-      source ${pkgs.antigen}/share/antigen/antigen.zsh
-    '';
-  };
+  programs.zsh.enable = true;
 
   # ==========================================================================
   # System Packages

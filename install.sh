@@ -198,11 +198,6 @@ if command -v agent-browser &>/dev/null; then
   agent-browser install --with-deps
 fi
 
-if [ "$IN_CODESPACES" = "true" ] && [ ! -d "$HOME/.antigen" ]; then
-  echo "Installing antigen..."
-  git clone --depth 1 https://github.com/zsh-users/antigen.git "$HOME/.antigen"
-fi
-
 # Install TPM (tmux plugin manager)
 if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
   echo "Installing TPM (tmux plugin manager)..."
