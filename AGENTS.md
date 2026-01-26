@@ -63,6 +63,17 @@ dotfiles status        # See changes
 ts                     # Tailscale wrapper (defined in .zshrc)
 ```
 
+## Tailscale
+
+Always use `ts` wrapper for Tailscale operations (not raw `tailscale` command):
+
+```bash
+ts status                    # List devices
+ts ssh connor@rpi5 'cmd'     # SSH via Tailscale
+```
+
+For RPi5-specific commands (clawdbot, user services), see [CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md).
+
 ## Tracked Files
 
 To list all tracked dotfiles:
