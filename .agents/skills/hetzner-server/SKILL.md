@@ -191,28 +191,28 @@ hcloud image list --type system --architecture arm
 
 ## Cloning GitHub repos (SSH agent forwarding)
 
-Use SSH agent forwarding to clone private repos without copying keys to the server. If you hit host key errors, add GitHub's host key first.
+Use the `<name>-agent` SSH host (which has agent forwarding enabled) to clone private repos without copying keys to the server. If you hit host key errors, add GitHub's host key first.
 
 ```bash
 # First time only: add GitHub's host key
-ssh connor@$(hcloud server ip dev) "ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null"
+ssh dev "ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null"
 
 # Confirm forwarded agent is visible
-ssh -A connor@$(hcloud server ip dev) "ssh-add -l"
+ssh dev-agent "ssh-add -l"
 
-# Clone with agent forwarding (-A)
-ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git"
+# Clone with agent forwarding (use -agent suffix)
+ssh dev-agent "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git"
 
 # Clone specific branch
-ssh -A connor@$(hcloud server ip dev) "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
+ssh dev-agent "mkdir -p ~/git && cd ~/git && git clone git@github.com:you/repo.git && cd repo && git checkout branch-name"
 
 # Push/pull with agent forwarding
-ssh -A connor@$(hcloud server ip dev) "cd repo && git push"
+ssh dev-agent "cd repo && git push"
 ```
 
 For interactive sessions (e.g., lazygit):
 ```bash
-ssh -A connor@$(hcloud server ip dev)
+ssh dev-agent
 # Then on server: git clone/push/pull works with forwarded agent
 ```
 
@@ -225,19 +225,26 @@ ssh-keygen -R $(hcloud server ip dev) 2>/dev/null
 ssh-keyscan $(hcloud server ip dev) >> ~/.ssh/known_hosts 2>/dev/null
 ```
 
-Then add/update `~/.ssh/config`:
+Then add/update `~/.ssh/config` with two profiles:
 
 ```
-# Hetzner: <server-name>
-Host hetzner-<server-name> <server-name>
+# Hetzner <name> - no agent forwarding (safe for AI agents)
+Host <name>
+    HostName <ip-address>
+    User connor
+    ForwardAgent no
+
+# Hetzner <name> - with agent forwarding (for git push/pull)
+Host <name>-agent
     HostName <ip-address>
     User connor
     ForwardAgent yes
 ```
 
 - Get IP: `hcloud server ip <name>`
-- If entry exists (check for `# Hetzner: <server-name>`), update the HostName
-- Dual aliases (`hetzner-dev dev`) let users use either name
+- If entry exists, update the HostName in both profiles
+- Default profile (`<name>`) has no agent forwarding - safer for AI agents
+- Use `<name>-agent` when you need to push/pull to GitHub
 - This enables VS Code Remote-SSH to show the server in the dropdown
 
 ## Notes
