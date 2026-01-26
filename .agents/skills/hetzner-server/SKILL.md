@@ -216,9 +216,16 @@ ssh -A connor@$(hcloud server ip dev)
 # Then on server: git clone/push/pull works with forwarded agent
 ```
 
-## VS Code / SSH Config
+## Post-creation setup
 
-After creating a server, offer to add/update `~/.ssh/config`:
+After creating a server, **always** clear any old host keys for that IP (Hetzner reuses IPs):
+
+```bash
+ssh-keygen -R $(hcloud server ip dev) 2>/dev/null
+ssh-keyscan $(hcloud server ip dev) >> ~/.ssh/known_hosts 2>/dev/null
+```
+
+Then add/update `~/.ssh/config`:
 
 ```
 # Hetzner: <server-name>
