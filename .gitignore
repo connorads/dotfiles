@@ -55,3 +55,7 @@
 !/.config/mise/**
 
 .DS_Store
+
+!/.clawdbot/
+/.clawdbot/**
+!/.clawdbot/clawdbot.json

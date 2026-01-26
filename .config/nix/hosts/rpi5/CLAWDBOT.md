@@ -25,7 +25,7 @@ Clawdbot (managed via npm)
 
 Current configuration:
 - **AI Provider**: OpenAI (`openai/gpt-5-nano` primary)
-- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-haiku-4.5`
+- **Fallbacks**: `openai/gpt-4.1-mini`, `anthropic/claude-haiku-4-5`
 - **Thinking**: Medium level (better reasoning)
 - **Memory**: `memory-core` plugin (lightweight semantic search)
 - **Messaging**: Telegram (allowlist policy)
@@ -191,6 +191,15 @@ systemctl --user restart clawdbot-gateway
 ```
 
 The `dotfiles-sync` timer uses `--ff-only || true` to handle conflicts gracefully on the Pi side.
+
+**Remote sync with dirty config:**
+
+Config can be dirtied by auto-migration, causing pull conflicts. Reset before pull:
+
+```bash
+# One-liner: checkout config, pull, restart
+ts ssh connor@rpi5 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME checkout -- ~/.clawdbot/clawdbot.json && git --git-dir=$HOME/git/dotfiles --work-tree=$HOME pull && XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user restart clawdbot-gateway'
+```
 
 ## Secrets
 

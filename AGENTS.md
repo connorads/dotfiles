@@ -103,6 +103,14 @@ gh codespace ssh -c name -- -t 'zsh -ilc "tmux attach -t session"'
 
 **Avoid**: `zsh -lc` on its own can hang on some systems.
 
+### Pattern for bare repo git commands over SSH
+
+```bash
+# Dotfiles commands on remote hosts (works in non-interactive SSH)
+ssh host 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME <cmd>'
+ts ssh connor@rpi5 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME pull'
+```
+
 ## Keeping Docs Updated
 
 After making significant changes (new config files, architectural changes, new scripts), update the relevant documentation:
