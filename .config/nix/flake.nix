@@ -50,7 +50,6 @@
         pkgs: with pkgs; [
           # Shell & terminal
           zsh
-          antigen
           tmux
           kitty.terminfo
           starship
@@ -382,14 +381,7 @@
           };
 
           # -- Programs --
-          programs = {
-            zsh = {
-              enable = true;
-              interactiveShellInit = ''
-                source ${pkgs.antigen}/share/antigen/antigen.zsh
-              '';
-            };
-          };
+          programs.zsh.enable = true;
 
           # -- Services --
           services.openssh = {
