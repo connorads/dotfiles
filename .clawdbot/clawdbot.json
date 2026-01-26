@@ -29,6 +29,9 @@
     "bind": "loopback",
     "tailscale": {
       "mode": "serve"
+    },
+    "auth": {
+      "allowTailscale": true
     }
   },
   "plugins": {
