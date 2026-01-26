@@ -1,29 +1,16 @@
+# Powerlevel10k instant prompt (must be at very top)
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
 setopt HIST_IGNORE_SPACE
 # Commands starting with a space are not saved to history.
 
-# Source antigen if not already loaded (nix-darwin sources it in /etc/zshrc)
-if ! typeset -f antigen > /dev/null; then
-  if [[ -f ~/.nix-profile/share/antigen/antigen.zsh ]]; then
-    source ~/.nix-profile/share/antigen/antigen.zsh
-  elif [[ -f ~/.antigen/antigen.zsh ]]; then
-    source ~/.antigen/antigen.zsh
-  fi
-fi
-
-# https://github.com/zsh-users/antigen
-antigen use oh-my-zsh
-antigen bundle git
-antigen bundle aws
-antigen bundle command-not-found
-antigen bundle zsh-users/zsh-autosuggestions
-antigen bundle zsh-users/zsh-completions
-antigen bundle Aloxaf/fzf-tab
-antigen bundle zsh-users/zsh-syntax-highlighting
-command -v brew >/dev/null 2>&1 && antigen bundle brew
-antigen apply
-
-# https://github.com/starship/starship
-eval "$(starship init zsh)"
+# https://github.com/mattmc3/antidote
+ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
+[[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
+source "$ANTIDOTE_HOME"/antidote.zsh
+antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
 # https://github.com/jdx/mise
 if command -v mise &>/dev/null; then
@@ -459,3 +446,6 @@ cpcmd() {
     print -z -- "$cmd"
   fi
 }
+
+# Powerlevel10k config (run `p10k configure` to regenerate)
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
