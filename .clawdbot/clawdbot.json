@@ -22,8 +22,7 @@
     "telegram": {
       "enabled": true,
       "dmPolicy": "allowlist",
-      "allowFrom": ["${TELEGRAM_ALLOW_FROM}"],
-      "token": "${TELEGRAM_BOT_TOKEN}"
+      "allowFrom": ["${TELEGRAM_ALLOW_FROM}"]
     }
   },
   "gateway": {
