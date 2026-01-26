@@ -10,6 +10,10 @@ setopt HIST_IGNORE_SPACE
 ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
 [[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
 source "$ANTIDOTE_HOME"/antidote.zsh
+
+# Initialise completion system before loading plugins that use compdef
+autoload -Uz compinit && compinit
+
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
 # https://github.com/jdx/mise
