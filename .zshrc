@@ -468,3 +468,7 @@ cpcmd() {
 
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+
+# LM Studio CLI
+[[ -d "$HOME/.lmstudio/bin" ]] && export PATH="$PATH:$HOME/.lmstudio/bin"
+
