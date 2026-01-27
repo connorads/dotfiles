@@ -1,0 +1,88 @@
+# Sync skill symlinks across all agents
+# Usage: skillsync [-v|--verbose] [-n|--dry-run]
+
+local verbose=0 dry_run=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v|--verbose) verbose=1; shift ;;
+    -n|--dry-run) dry_run=1; verbose=1; shift ;;
+    *) echo "Unknown option: $1" >&2; return 1 ;;
+  esac
+done
+
+local canonical="$HOME/.agents/skills"
+[[ -d "$canonical" ]] || { echo "No skills at $canonical" >&2; return 1; }
+
+typeset -A paths=(
+  [amp]="$HOME/.config/agents/skills"
+  [antigravity]="$HOME/.gemini/antigravity/global_skills"
+  [claude-code]="$HOME/.claude/skills"
+  [codex]="$HOME/.codex/skills"
+  [cursor]="$HOME/.cursor/skills"
+  [gemini-cli]="$HOME/.gemini/skills"
+  [github-copilot]="$HOME/.copilot/skills"
+  [kiro-cli]="$HOME/.kiro/skills"
+  [opencode]="$HOME/.config/opencode/skills"
+)
+
+local skills=("$canonical"/*(/:t))
+local created=0
+
+# Calculate relative path from $1 to $2
+_relpath() {
+  local from="${1:A}" to="${2:A}"
+  local -a from_parts to_parts
+  from_parts=("${(@s:/:)from}")
+  to_parts=("${(@s:/:)to}")
+
+  # Find common prefix length
+  local i=1 common=0
+  while (( i <= $#from_parts && i <= $#to_parts )); do
+    [[ "${from_parts[i]}" == "${to_parts[i]}" ]] || break
+    ((common++))
+    ((i++))
+  done
+
+  # Build relative path
+  local -a rel_parts
+  local j
+  for (( j = common + 1; j <= $#from_parts; j++ )); do
+    rel_parts+=("..")
+  done
+  for (( j = common + 1; j <= $#to_parts; j++ )); do
+    rel_parts+=("${to_parts[j]}")
+  done
+
+  print -r -- "${(j:/:)rel_parts}"
+}
+
+for agent dir in "${(@kv)paths}"; do
+  # Remove legacy directory symlink
+  if [[ -L "$dir" ]]; then
+    (( verbose )) && echo "Removing directory symlink: $dir"
+    if (( ! dry_run )); then
+      command rm "$dir"
+    fi
+  fi
+
+  # Create skills dir
+  if (( ! dry_run )); then
+    command mkdir -p "$dir"
+  fi
+
+  # Create per-skill symlinks
+  for skill in "${skills[@]}"; do
+    local target="$dir/$skill"
+    [[ -e "$target" || -L "$target" ]] && continue
+
+    local rel
+    rel=$(_relpath "$dir" "$canonical/$skill")
+    (( verbose )) && echo "Creating: $target -> $rel"
+    if (( ! dry_run )); then
+      command ln -s "$rel" "$target"
+    fi
+    ((created++))
+  done
+done
+
+echo "Created $created symlinks"
