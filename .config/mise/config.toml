@@ -24,6 +24,7 @@ claude = "latest"
 "npm:ralph-tui" = "latest"
 "npm:playwright" = "latest"
 "npm:agent-browser" = "latest"
+"npm:ctx7" = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
