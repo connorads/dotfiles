@@ -25,6 +25,7 @@ claude = "latest"
 "npm:playwright" = "latest"
 "npm:agent-browser" = "latest"
 "npm:ctx7" = "latest"
+"npm:skills" = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
