@@ -64,6 +64,21 @@ dotfiles status        # See changes
 ts                     # Tailscale wrapper (defined in .zshrc)
 ```
 
+## Agent Skills
+
+Skills stored canonically in `~/.agents/skills/` and symlinked to all agent tools via `skillsync`. Both canonical files and symlinks are tracked in dotfiles.
+
+**Installing skills:**
+```bash
+# Via CLI (preferred)
+skills add vercel-labs/agent-skills -g  # Install from repo globally
+
+# Manual (when skill isn't packaged or needs fetching)
+mkdir -p ~/.agents/skills/<skill-name>
+# Fetch/write SKILL.md (and any referenced files) to that directory
+skillsync  # Creates symlinks to claude, cursor, codex, gemini, opencode, etc.
+```
+
 ## Tailscale
 
 Always use `ts` wrapper for Tailscale operations (not raw `tailscale` command):
