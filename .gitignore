@@ -54,6 +54,10 @@
 !/.config/mise/
 !/.config/mise/**
 
+!/.config/zsh/
+!/.config/zsh/functions/
+!/.config/zsh/functions/**
+
 .DS_Store
 
 !/.clawdbot/

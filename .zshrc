@@ -16,6 +16,11 @@ autoload -Uz compinit && compinit
 
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
+# Custom functions (lazy-loaded via autoload)
+typeset -U fpath
+fpath=(~/.config/zsh/functions $fpath)
+autoload -Uz ~/.config/zsh/functions/*(:t)
+
 # https://github.com/jdx/mise
 if command -v mise &>/dev/null; then
   eval "$(mise activate zsh)"
