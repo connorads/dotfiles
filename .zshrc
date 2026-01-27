@@ -366,7 +366,10 @@ ocm() {
 alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
-# Install skills to ~/.agents/skills (symlinked to other tools)
+# Install skills to ~/.agents/skills via skills CLI (vercel-labs/skills)
+# Uses -a amp to avoid CLI bug with directory-symlinked agent paths
+# Claude/OpenCode see skills via their directory symlinks to ~/.agents/skills
+# Amp gets per-skill symlinks (valid, provides amp compatibility)
 # Usage: skill owner/repo [skill-name...]
 skill() {
   if [[ $# -lt 1 ]]; then
