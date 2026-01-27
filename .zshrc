@@ -363,6 +363,8 @@ ocm() {
 }
 
 # https://github.com/anthropics/claude-code
+export DISABLE_TELEMETRY=1
+export DISABLE_ERROR_REPORTING=1
 alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
