@@ -366,6 +366,21 @@ ocm() {
 alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
+# Install skills to ~/.agents/skills (symlinked to other tools)
+# Usage: skill owner/repo [skill-name...]
+skill() {
+  if [[ $# -lt 1 ]]; then
+    echo "usage: skill owner/repo [skill-name...]" >&2
+    return 1
+  fi
+  local repo="$1"; shift
+  if [[ $# -gt 0 ]]; then
+    skills add "$repo" -s "$@" -a amp -g -y
+  else
+    skills add "$repo" -a amp -g
+  fi
+}
+
 # claude code auth for codespaces (uses tmux to handle interactive auth)
 cda() {
   # Select codespace via fzf
