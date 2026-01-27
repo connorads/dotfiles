@@ -366,11 +366,6 @@ ocm() {
 alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
-skillsync() {
-  echo "Skills symlinked to ~/.agents/skills - no sync needed"
-  ls -la ~/.claude/skills ~/.codex/skills ~/.config/opencode/skills 2>/dev/null | grep -E "^l"
-}
-
 # claude code auth for codespaces (uses tmux to handle interactive auth)
 cda() {
   # Select codespace via fzf
