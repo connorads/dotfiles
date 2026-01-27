@@ -34,6 +34,7 @@ The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resol
 | [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
 | [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
+| [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
 
 ## Scripts
 
