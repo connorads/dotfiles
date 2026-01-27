@@ -366,10 +366,9 @@ ocm() {
 alias c='claude'
 alias cy='claude --dangerously-skip-permissions'
 
-# Install skills to ~/.agents/skills via skills CLI (vercel-labs/skills)
-# Uses -a amp to avoid CLI bug with directory-symlinked agent paths
-# Claude/OpenCode see skills via their directory symlinks to ~/.agents/skills
-# Amp gets per-skill symlinks (valid, provides amp compatibility)
+# Install skills to preferred agents via skills CLI
+# Canonical: ~/.agents/skills/<skill>/ | Symlinks per agent
+# Agents: amp, antigravity, claude-code, codex, cursor, gemini-cli, github-copilot, kiro-cli, opencode
 # Usage: skill owner/repo [skill-name...]
 skill() {
   if [[ $# -lt 1 ]]; then
@@ -377,10 +376,21 @@ skill() {
     return 1
   fi
   local repo="$1"; shift
+  local agents=(
+    -a amp
+    -a antigravity
+    -a claude-code
+    -a codex
+    -a cursor
+    -a gemini-cli
+    -a github-copilot
+    -a kiro-cli
+    -a opencode
+  )
   if [[ $# -gt 0 ]]; then
-    skills add "$repo" -s "$@" -a amp -g -y
+    skills add "$repo" -s "$@" "${agents[@]}" -g -y
   else
-    skills add "$repo" -a amp -g
+    skills add "$repo" "${agents[@]}" -g
   fi
 }
 
