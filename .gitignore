@@ -10,7 +10,9 @@
 
 !/.claude/
 /.claude/**
-!/.claude/skills
+!/.claude/skills/
+/.claude/skills/**
+!/.claude/skills/*/
 !/.claude/commands/
 !/.claude/commands/**
 !/.claude/hooks/
@@ -18,7 +20,9 @@
 
 !/.codex/
 /.codex/**
-!/.codex/skills
+!/.codex/skills/
+/.codex/skills/**
+!/.codex/skills/*/
 
 !/.config/
 /.config/**
@@ -26,9 +30,46 @@
 /.config/opencode/**
 !/.config/opencode/command/
 !/.config/opencode/command/**
-!/.config/opencode/skills
+!/.config/opencode/skills/
+/.config/opencode/skills/**
+!/.config/opencode/skills/*/
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
+
+!/.config/agents/
+/.config/agents/**
+!/.config/agents/skills/
+/.config/agents/skills/**
+!/.config/agents/skills/*/
+
+!/.gemini/
+/.gemini/**
+!/.gemini/skills/
+/.gemini/skills/**
+!/.gemini/skills/*/
+!/.gemini/antigravity/
+/.gemini/antigravity/**
+!/.gemini/antigravity/global_skills/
+/.gemini/antigravity/global_skills/**
+!/.gemini/antigravity/global_skills/*/
+
+!/.cursor/
+/.cursor/**
+!/.cursor/skills/
+/.cursor/skills/**
+!/.cursor/skills/*/
+
+!/.copilot/
+/.copilot/**
+!/.copilot/skills/
+/.copilot/skills/**
+!/.copilot/skills/*/
+
+!/.kiro/
+/.kiro/**
+!/.kiro/skills/
+/.kiro/skills/**
+!/.kiro/skills/*/
 
 !/.config/nix/
 !/.config/nix/**
