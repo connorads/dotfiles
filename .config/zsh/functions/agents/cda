@@ -1,0 +1,60 @@
+# cda: run Claude auth in codespace via tmux
+# Select codespace via fzf
+local cs=$(gh codespace list --json name,repository,state \
+  --jq '.[] | select(.state=="Available") | "\(.name)\t\(.repository)"' \
+  | fzf --prompt="Codespace for Claude auth: " --with-nth=1..)
+
+[[ -z "$cs" ]] && return
+
+local name=$(echo "$cs" | cut -f1)
+
+echo "Starting Claude auth in codespace tmux session..."
+
+# Start claude in a tmux session (source zshrc for mise PATH)
+gh codespace ssh -c "$name" -- 'zsh -c "source ~/.zshrc; tmux kill-session -t claude-auth 2>/dev/null; tmux new-session -d -s claude-auth -x 120 -y 40 zsh; tmux send-keys -t claude-auth claude Enter"'
+
+# Wait for auth URL to appear (poll tmux output)
+local auth_url=""
+echo "Waiting for auth URL..."
+for i in {1..30}; do
+  sleep 1
+  local output=$(gh codespace ssh -c "$name" -- 'zsh -c "source ~/.zshrc; tmux capture-pane -t claude-auth -p"' 2>/dev/null)
+
+  # Check if we need to press Enter for theme/login selection
+  if echo "$output" | grep -q "Choose the text style"; then
+    gh codespace ssh -c "$name" -- 'zsh -c "source ~/.zshrc; tmux send-keys -t claude-auth Enter"' 2>/dev/null
+    continue
+  fi
+  if echo "$output" | grep -q "Select login method"; then
+    gh codespace ssh -c "$name" -- 'zsh -c "source ~/.zshrc; tmux send-keys -t claude-auth Enter"' 2>/dev/null
+    continue
+  fi
+
+  # Look for the auth URL (join wrapped lines first)
+  auth_url=$(echo "$output" | tr -d '\n' | grep -oE 'https://claude\.ai/oauth/authorize\?[^[:space:]]+' | head -1)
+  if [[ -n "$auth_url" ]]; then
+    break
+  fi
+
+  # Check if already logged in
+  if echo "$output" | grep -q "What can I help you with"; then
+    echo "Claude is already logged in!"
+    gh codespace ssh -c "$name" -- 'zsh -c "source ~/.zshrc; tmux kill-session -t claude-auth"' 2>/dev/null
+    return 0
+  fi
+done
+
+if [[ -z "$auth_url" ]]; then
+  echo "Could not detect auth URL. Check tmux session manually:"
+  echo "  gh codespace ssh -c '$name' -- 'tmux attach -t claude-auth'"
+  return 1
+fi
+
+# Open auth URL in local browser
+echo "Opening auth URL..."
+open "$auth_url" 2>/dev/null || xdg-open "$auth_url" 2>/dev/null || echo "Open: $auth_url"
+
+echo ""
+echo "Complete auth in browser. You'll get a code to paste."
+echo "To paste the code, run:"
+echo "  gh codespace ssh -c '$name' -- -t 'zsh -ilc \"tmux attach -t claude-auth\"'"

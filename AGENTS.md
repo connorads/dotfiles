@@ -30,11 +30,13 @@ The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resol
 | [configuration.nix](./.config/nix/hosts/rpi5/configuration.nix) | RPi5 NixOS system config with Clawdbot, Tailscale, auto-updates |
 | [clawdbot.json](./.clawdbot/clawdbot.json) | Clawdbot AI gateway config (RPi5) |
 | [config.toml](./.config/mise/config.toml) | mise tools (gh, opencode, etc.) |
-| [.zshrc](./.zshrc) | Shell config with aliases like `drs`, `hms`, `nrs`, tailscale helpers |
+| [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers (nix/git/tailscale) |
+| [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
 | [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
 | [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
 | [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
+| [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 
 ## Scripts
 

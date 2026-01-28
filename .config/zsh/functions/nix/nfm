@@ -1,0 +1,2 @@
+# nfm: format flake.nix in ~/.config/nix
+(cd ~/.config/nix && nix fmt ./flake.nix)

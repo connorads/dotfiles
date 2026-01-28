@@ -1,0 +1,2 @@
+# nrs: nixos-rebuild switch using ~/.config/nix flake
+sudo nixos-rebuild switch --flake ~/.config/nix

@@ -1,0 +1,22 @@
+# zshrc-local: edit ~/.zshrc.local (create from example)
+local example_file="$HOME/.zshrc.local.example"
+local local_file="$HOME/.zshrc.local"
+
+if [[ ! -f "$local_file" ]]; then
+  if [[ ! -f "$example_file" ]]; then
+    echo "Missing $example_file" >&2
+    return 1
+  fi
+
+  umask 077
+  cp "$example_file" "$local_file" || return 1
+  chmod 600 "$local_file" || true
+fi
+
+if command -v micro >/dev/null 2>&1; then
+  micro "$local_file"
+else
+  "${EDITOR:-vi}" "$local_file"
+fi
+
+source "$local_file"

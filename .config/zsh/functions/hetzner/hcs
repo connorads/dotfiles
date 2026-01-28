@@ -1,0 +1,2 @@
+# hcs: ssh as connor to a Hetzner Cloud server
+_hcloud_ssh connor "$@"
