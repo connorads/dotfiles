@@ -1,0 +1,69 @@
+# Package skills as .skill (zip) files
+# Usage: skillspackage [skill-name...] [-o|--output DIR]
+
+local output_dir="${TMPDIR:-/tmp}/skills"
+local -a skills_to_package missing
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o|--output)
+      if [[ -z "${2:-}" ]]; then
+        print -r -- "Missing value for $1" >&2
+        return 1
+      fi
+      output_dir="$2"
+      shift 2
+      ;;
+    -h|--help)
+      print -r -- "Usage: skillspackage [skill-name...] [-o|--output DIR]"
+      return 0
+      ;;
+    -*)
+      print -r -- "Unknown option: $1" >&2
+      return 1
+      ;;
+    *)
+      skills_to_package+=("$1")
+      shift
+      ;;
+  esac
+done
+
+local canonical="$HOME/.agents/skills"
+[[ -d "$canonical" ]] || { print -r -- "No skills at $canonical" >&2; return 1; }
+
+if (( ${#skills_to_package} == 0 )); then
+  skills_to_package=("$canonical"/*(/:t))
+fi
+
+if (( ${#skills_to_package} == 0 )); then
+  print -r -- "No skills found in $canonical" >&2
+  return 1
+fi
+
+if ! command -v zip >/dev/null 2>&1; then
+  print -r -- "zip is required to package skills" >&2
+  return 1
+fi
+
+command mkdir -p "$output_dir"
+
+local packaged=0
+for skill in "${skills_to_package[@]}"; do
+  local skill_path="$canonical/$skill"
+  if [[ ! -d "$skill_path" ]]; then
+    missing+=("$skill")
+    continue
+  fi
+
+  local out_file="$output_dir/$skill.skill"
+  (cd "$canonical" && command zip -rq "$out_file" "$skill") || return 1
+  print -r -- "Packed $out_file"
+  ((packaged++))
+done
+
+if (( ${#missing} > 0 )); then
+  print -r -- "Skipped missing skills: ${missing[*]}" >&2
+fi
+
+print -r -- "Generated $packaged skill file(s) in $output_dir"
