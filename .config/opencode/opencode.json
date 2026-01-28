@@ -297,6 +297,8 @@
       "hcloud server-type list": "allow",
       "hcloud ssh-key list": "allow",
       "hcloud version": "allow",
+      "hk --help*": "allow",
+      "hk run --help*": "allow",
       "mise --help*": "allow",
       "mise --version": "allow",
       "mise current": "allow",
