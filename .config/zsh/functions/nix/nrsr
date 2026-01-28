@@ -1,0 +1,2 @@
+# nrsr: rollback nixos-rebuild (uses nrs)
+nrs --rollback

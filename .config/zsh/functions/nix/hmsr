@@ -1,0 +1,2 @@
+# hmsr: rollback home-manager (uses hms)
+hms --rollback

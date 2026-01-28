@@ -1,0 +1,2 @@
+# ncg: collect nix store garbage (delete old generations)
+nix-collect-garbage -d

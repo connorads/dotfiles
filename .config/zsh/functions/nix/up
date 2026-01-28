@@ -1,0 +1,18 @@
+# up: update tools, flake lock, and rebuild for current OS
+mise upgrade
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  brew update && brew upgrade
+fi
+
+nfu
+
+dotfiles add ~/.config/nix/flake.lock
+if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
+  dotfiles commit -m "chore(nix): update flake lock"
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  drs
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  hms
+fi

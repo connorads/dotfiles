@@ -1,0 +1,18 @@
+# _hcloud_ssh: pick or resolve a server IP, then ssh
+local user="$1"
+shift
+if [[ -n "$1" ]]; then
+  local ip=$(hcloud server list -o columns=name,ipv4 -o noheader | awk -v srv="$1" '$1==srv {print $2}')
+  if [[ -n "$ip" ]]; then
+    ssh "${user}@${ip}"
+  else
+    echo "Server '$1' not found" >&2
+    return 1
+  fi
+  return
+fi
+local line=$(hcloud server list -o columns=name,ipv4 -o noheader | fzf --prompt="SSH as ${user} to: ")
+if [[ -n "$line" ]]; then
+  local ip=$(echo "$line" | awk '{print $2}')
+  ssh "${user}@${ip}"
+fi

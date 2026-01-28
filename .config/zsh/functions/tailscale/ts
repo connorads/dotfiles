@@ -1,0 +1,16 @@
+# ts: tailscale wrapper that selects the correct socket
+if ! command -v tailscale >/dev/null 2>&1; then
+  echo "tailscale not installed" >&2
+  return 127
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]] \
+  && [[ -S "/var/run/tailscale/tailscaled.sock" ]]; then
+  command tailscale --socket "/var/run/tailscale/tailscaled.sock" "$@"
+elif [[ "$OSTYPE" == "linux-gnu"* ]] \
+  && [[ -n "$XDG_RUNTIME_DIR" ]] \
+  && [[ -S "$XDG_RUNTIME_DIR/tailscale/tailscaled.sock" ]]; then
+  command tailscale --socket "$XDG_RUNTIME_DIR/tailscale/tailscaled.sock" "$@"
+else
+  command tailscale "$@"
+fi

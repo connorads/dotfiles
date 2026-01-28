@@ -1,0 +1,14 @@
+# cpcmd: ask Copilot for one command and paste it
+local q="$*"
+if [[ -z "$q" ]]; then
+  echo "usage: cpcmd <task description>" >&2
+  return 1
+fi
+
+local cmd
+cmd="$(copilot -p "Suggest a single zsh/bash command to: ${q}. Output ONLY the command. No backticks. No explanation.")"
+
+# Insert into the current command line buffer
+if [[ -n "$cmd" ]]; then
+  print -z -- "$cmd"
+fi

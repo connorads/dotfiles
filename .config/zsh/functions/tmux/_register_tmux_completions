@@ -1,0 +1,3 @@
+# _register_tmux_completions: register tma completions
+compdef _tmux_sessions tma
+add-zsh-hook -D precmd _register_tmux_completions

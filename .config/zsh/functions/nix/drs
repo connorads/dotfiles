@@ -1,0 +1,2 @@
+# drs: darwin-rebuild switch using ~/.config/nix flake
+sudo darwin-rebuild switch --flake ~/.config/nix

@@ -1,0 +1,18 @@
+# API Keys and secrets for local machine
+# This file is gitignored and won't be committed to dotfiles
+
+# Brave Search API - https://brave.com/search/api/
+export BRAVE_API_KEY=
+
+# Context7 API - https://context7.com/
+export CONTEXT7_API_KEY=
+
+# Exa API - https://exa.ai/
+export EXA_API_KEY=
+
+# Gemini API - https://ai.google.dev/
+export GEMINI_API_KEY=
+
+# Add more API keys as needed:
+# export FIGMA_API_KEY="..."
+# export SENTRY_API_KEY="..."

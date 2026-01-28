@@ -1,0 +1,2 @@
+# hcsr: ssh as root to a Hetzner Cloud server
+_hcloud_ssh root "$@"
