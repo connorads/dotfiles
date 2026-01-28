@@ -1,0 +1,2 @@
+# nfu: update nix flake inputs for ~/.config/nix
+nix flake update --flake ~/.config/nix

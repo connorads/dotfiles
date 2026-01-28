@@ -1,0 +1,2 @@
+# hms: home-manager switch using ~/.config/nix flake
+home-manager switch --flake ~/.config/nix
