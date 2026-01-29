@@ -7,11 +7,14 @@ Blocks specific attribution patterns while allowing legitimate mentions of "Clau
 Exit codes:
   0 - Allow the command
   2 - Block the command (with error message to stderr)
+
+Tests: uv run --with pytest pytest ~/.claude/hooks/test_no_self_attribution.py -v
 """
 
 import json
 import re
 import sys
+from pathlib import Path
 
 # Patterns that indicate self-attribution in commits
 COMMIT_PATTERNS = [
@@ -28,14 +31,42 @@ GH_PATTERNS = [
 ]
 
 
+def _check_patterns_in_text(text: str, patterns: list[str]) -> str | None:
+    """Return first matching pattern found in text, or None."""
+    for pattern in patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            return pattern
+    return None
+
+
+def _read_file_arg(command: str, flag_pattern: str) -> str | None:
+    """Extract and read content from a file referenced by a CLI flag."""
+    match = re.search(flag_pattern, command)
+    if not match:
+        return None
+    try:
+        return Path(match.group(1)).expanduser().read_text()
+    except (OSError, ValueError):
+        return None
+
+
+# NOTE: A commit bypassed this hook in Jan 2025 — root cause unclear
+# (conversation context was compacted). Adding -F file checks as defence in depth.
+
+
 def check_git_commit(command: str) -> str | None:
     """Check if a git commit command contains blocked attribution patterns."""
     if not re.search(r"\b(git|dotfiles)\b.*\bcommit\b", command):
         return None
 
-    for pattern in COMMIT_PATTERNS:
-        if re.search(pattern, command, re.IGNORECASE):
-            return f"Blocked: Self-attribution pattern detected: {pattern}"
+    # Check command string itself
+    if p := _check_patterns_in_text(command, COMMIT_PATTERNS):
+        return f"Blocked: Self-attribution pattern detected: {p}"
+
+    # Check -F / --file referenced commit message file
+    content = _read_file_arg(command, r'(?:-F|--file)[=\s]+["\']?([^\s"\']+)')
+    if content and (p := _check_patterns_in_text(content, COMMIT_PATTERNS)):
+        return f"Blocked: Self-attribution in commit file: {p}"
 
     return None
 
@@ -45,9 +76,14 @@ def check_gh_command(command: str) -> str | None:
     if not re.search(r"\bgh\s+(pr|issue)\s+(create|edit|comment)", command):
         return None
 
-    for pattern in GH_PATTERNS:
-        if re.search(pattern, command, re.IGNORECASE):
-            return f"Blocked: Self-attribution pattern detected: {pattern}"
+    # Check command string itself
+    if p := _check_patterns_in_text(command, GH_PATTERNS):
+        return f"Blocked: Self-attribution pattern detected: {p}"
+
+    # Check --body-file referenced file
+    content = _read_file_arg(command, r'--body-file[=\s]+["\']?([^\s"\']+)')
+    if content and (p := _check_patterns_in_text(content, GH_PATTERNS)):
+        return f"Blocked: Self-attribution in body file: {p}"
 
     return None
 
