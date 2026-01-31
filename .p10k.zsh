@@ -50,9 +50,11 @@
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
     context                   # user@host
+    nix_shell                 # nix shell/develop indicator
     dir                       # current directory
     vcs                       # git status
     command_execution_time    # previous command duration
+    background_jobs           # backgrounded/suspended job count
     # =========================[ Line #2 ]=========================
     newline                   # \n
     virtualenv                # python virtual environment
@@ -99,6 +101,12 @@
   typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION=false
   typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
 
+  # Cyan Nix shell indicator.
+  typeset -g POWERLEVEL9K_NIX_SHELL_FOREGROUND=$cyan
+
+  # Grey background jobs count.
+  typeset -g POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND=$grey
+
   # Blue current directory.
   typeset -g POWERLEVEL9K_DIR_FOREGROUND=$blue
 
@@ -110,16 +118,18 @@
   typeset -g POWERLEVEL9K_CONTEXT_{DEFAULT,SUDO}_CONTENT_EXPANSION=
 
   # Show previous command duration only if it's >= 5s.
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD=5
-  # Don't show fractional seconds. Thus, 7s rather than 7.3s.
-  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=0
+  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD=3
+  # Show one decimal place. Thus, 7.3s rather than 7s.
+  typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=1
   # Duration format: 1d 2h 3m 4s.
   typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT='d h m s'
   # Yellow previous command duration.
   typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=$yellow
 
   # Grey Git prompt. This makes stale prompts indistinguishable from up-to-date ones.
-  typeset -g POWERLEVEL9K_VCS_FOREGROUND=$grey
+  typeset -g POWERLEVEL9K_VCS_CLEAN_FOREGROUND=$grey
+  typeset -g POWERLEVEL9K_VCS_MODIFIED_FOREGROUND=$yellow
+  typeset -g POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND=$yellow
 
   # Disable async loading indicator to make directories that aren't Git repositories
   # indistinguishable from large Git repositories without known state.
@@ -132,7 +142,7 @@
   # Cyan ahead/behind arrows.
   typeset -g POWERLEVEL9K_VCS_{INCOMING,OUTGOING}_CHANGESFORMAT_FOREGROUND=$cyan
   # Don't show remote branch, current tag or stashes.
-  typeset -g POWERLEVEL9K_VCS_GIT_HOOKS=(vcs-detect-changes git-untracked git-aheadbehind)
+  typeset -g POWERLEVEL9K_VCS_GIT_HOOKS=(vcs-detect-changes git-untracked git-aheadbehind git-stash)
   # Don't show the branch icon.
   typeset -g POWERLEVEL9K_VCS_BRANCH_ICON=
   # When in detached HEAD state, show @commit where branch normally goes.
@@ -146,7 +156,9 @@
   # Show '⇡' if local branch is ahead of remote.
   typeset -g POWERLEVEL9K_VCS_OUTGOING_CHANGES_ICON=':⇡'
   # Don't show the number of commits next to the ahead/behind arrows.
-  typeset -g POWERLEVEL9K_VCS_{COMMITS_AHEAD,COMMITS_BEHIND}_MAX_NUM=1
+  typeset -g POWERLEVEL9K_VCS_{COMMITS_AHEAD,COMMITS_BEHIND}_MAX_NUM=-1
+  # Stash icon.
+  typeset -g POWERLEVEL9K_VCS_STASH_ICON='≡'
   # Remove space between '⇣' and '⇡' and all trailing spaces.
   typeset -g POWERLEVEL9K_VCS_CONTENT_EXPANSION='${${${P9K_CONTENT/⇣* :⇡/⇣⇡}// }//:/ }'
 
