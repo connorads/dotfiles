@@ -96,6 +96,8 @@
 !/.config/mise/**
 
 !/.config/zsh/
+!/.config/zsh/aliases/
+!/.config/zsh/aliases/**
 !/.config/zsh/functions/
 !/.config/zsh/functions/**
 
