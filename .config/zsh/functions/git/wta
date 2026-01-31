@@ -4,7 +4,7 @@ local branch=$1
 local repo=$(basename $(git rev-parse --show-toplevel))
 local worktree_path="$HOME/.trees/${repo}-${branch}"
 
-git fetch origin
+git fetch origin 2>/dev/null || echo "warning: fetch failed, using local refs only"
 
 # Check if branch exists locally or remotely
 if git show-ref --verify --quiet refs/heads/$branch; then
