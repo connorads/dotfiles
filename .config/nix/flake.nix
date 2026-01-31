@@ -69,6 +69,7 @@
 
           # Git & version control
           delta
+          difftastic
           lazygit
           lazyworktree
           jujutsu

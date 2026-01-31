@@ -9,3 +9,8 @@ customCommands:
     command: 'git stash && git pull --rebase && git stash pop'
     context: 'files'
     description: 'Stash, pull, and pop'
+  - key: 'D'
+    command: "GIT_EXTERNAL_DIFF=difft git diff --color=always | less -R"
+    context: 'files'
+    description: 'Difftastic: structural diff'
+    subprocess: true
