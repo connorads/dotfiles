@@ -1,0 +1,4 @@
+local port=${1:-7681}
+pkill -f "ttyd.*--port $port" 2>/dev/null
+ts serve reset 2>/dev/null
+echo "Web terminal stopped"
