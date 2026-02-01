@@ -166,6 +166,51 @@ else
   nix run home-manager/master -- switch --flake ~/.config/nix
 fi
 
+# Install system-level tailscaled (kernel TUN mode, needed for ts serve)
+# Skip on NixOS (managed by NixOS config) and Codespaces (no systemd)
+if [ "$IN_NIXOS" = "false" ] && [ "$IN_CODESPACES" = "false" ] && command -v systemctl &>/dev/null; then
+  TAILSCALED_BIN="$HOME/.nix-profile/bin/tailscaled"
+  UNIT_FILE="/etc/systemd/system/tailscaled.service"
+
+  if [ -x "$TAILSCALED_BIN" ] && [ ! -f "$UNIT_FILE" ]; then
+    echo "Installing system tailscaled service (kernel TUN mode)..."
+
+    # Stop userspace tailscaled if running
+    systemctl --user stop tailscaled 2>/dev/null || true
+    systemctl --user disable tailscaled 2>/dev/null || true
+
+    sudo tee "$UNIT_FILE" > /dev/null << EOF
+[Unit]
+Description=Tailscale node agent
+Documentation=https://tailscale.com/kb/
+Wants=network-pre.target
+After=network-pre.target NetworkManager.service systemd-resolved.service
+
+[Service]
+ExecStart=$TAILSCALED_BIN --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock
+ExecStopPost=$TAILSCALED_BIN --cleanup
+Restart=on-failure
+RuntimeDirectory=tailscale
+RuntimeDirectoryMode=0755
+StateDirectory=tailscale
+StateDirectoryMode=0700
+CacheDirectory=tailscale
+CacheDirectoryMode=0750
+Type=notify
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now tailscaled
+    sudo "$TAILSCALED_BIN/../tailscale" set --operator="$USER"
+    echo "tailscaled running with TUN. Run 'tsup' to authenticate."
+  elif [ -f "$UNIT_FILE" ]; then
+    echo "System tailscaled already installed"
+  fi
+fi
+
 # Install tools via mise (skip on NixOS - use Nix packages instead)
 if [ "$IN_NIXOS" = "true" ]; then
   echo "Skipping mise install on NixOS - tools managed by NixOS config"

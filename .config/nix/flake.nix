@@ -107,6 +107,7 @@
           wgcf
           wireproxy
           cloudflared
+          ttyd
 
           # Media & presentation
           yt-dlp
@@ -638,7 +639,6 @@
         pkgs = nixpkgs.legacyPackages.aarch64-linux;
         modules = [
           linuxHomeBaseConfiguration
-          linuxTailscaleUserspaceConfiguration
           linuxHomePackagesConfiguration
         ];
       };
