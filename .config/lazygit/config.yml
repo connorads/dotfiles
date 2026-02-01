@@ -13,4 +13,4 @@ customCommands:
     command: "GIT_EXTERNAL_DIFF=difft git diff --color=always | less -R"
     context: 'files'
     description: 'Difftastic: structural diff'
-    subprocess: true
+    output: terminal
