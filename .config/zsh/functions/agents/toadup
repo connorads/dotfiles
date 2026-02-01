@@ -1,3 +1,4 @@
+# toadup: start toad web UI via Tailscale serve
 local port=${1:-8000}
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
 tmux kill-session -t toad 2>/dev/null
