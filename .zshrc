@@ -3,6 +3,12 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Fix SSH agent forwarding inside tmux (symlink to stable path on each connect)
+if [[ -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent.sock" ]]; then
+  ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/agent.sock"
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+fi
+
 setopt HIST_IGNORE_SPACE
 # Commands starting with a space are not saved to history.
 
