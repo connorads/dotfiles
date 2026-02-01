@@ -64,6 +64,10 @@ nfu                    # nix flake update
 dotfiles add -f .file  # Track new file
 dotfiles status        # See changes
 ts                     # Tailscale wrapper (defined in .zshrc)
+toadup [port]          # Start toad web UI via Tailscale (default :8000)
+toaddown               # Stop toad web UI
+webterm [session] [port] # Expose tmux session via web (default: main :7681)
+webtermdown [port]     # Stop web terminal
 ```
 
 ## Agent Skills
@@ -83,7 +87,7 @@ skillsync  # Creates symlinks to claude, cursor, codex, gemini, opencode, etc.
 
 ## Tailscale
 
-Always use `ts` wrapper for Tailscale operations (not raw `tailscale` command):
+**Always use `ts` wrapper, never raw `tailscale`** — it handles socket paths across platforms:
 
 ```bash
 ts status                    # List devices

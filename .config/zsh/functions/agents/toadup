@@ -1,0 +1,9 @@
+local port=${1:-8000}
+local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
+tmux kill-session -t toad 2>/dev/null
+ts serve reset 2>/dev/null
+tmux new-session -d -s toad -x 200 -y 50 \
+  "toad serve --host 127.0.0.1 --port $port --public-url https://$hostname"
+ts serve --bg $port
+echo "Toad: https://$hostname"
+echo "Attach: tmux attach -t toad"
