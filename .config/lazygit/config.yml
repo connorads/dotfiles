@@ -10,7 +10,7 @@ customCommands:
     context: 'files'
     description: 'Stash, pull, and pop'
   - key: 'D'
-    command: "GIT_EXTERNAL_DIFF=difft git diff --color=always | less -R"
+    command: "GIT_EXTERNAL_DIFF=difft git diff"
     context: 'files'
     description: 'Difftastic: structural diff'
     output: terminal
