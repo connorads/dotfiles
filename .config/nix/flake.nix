@@ -84,6 +84,7 @@
           mise
           pipx
           nixfmt
+          tree-sitter
           jq
           gum
           usql
