@@ -86,6 +86,7 @@
           nixfmt
           tree-sitter
           jq
+          yq-go
           gum
           usql
           postgresql
