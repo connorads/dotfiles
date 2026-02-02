@@ -219,7 +219,7 @@
           };
 
           # -- Fonts --
-          fonts.packages = with pkgs; [ fira-code ];
+          fonts.packages = with pkgs; [ fira-code nerd-fonts.fira-code ];
 
           # -- Homebrew --
           homebrew = {
@@ -510,6 +510,12 @@
 
           # Enable Nix PATH and environment for non-NixOS Linux
           targets.genericLinux.enable = true;
+
+          # Fonts (Nerd Font for terminal icons)
+          fonts.fontconfig.enable = true;
+          home.packages = [
+            pkgs.nerd-fonts.fira-code
+          ];
 
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
