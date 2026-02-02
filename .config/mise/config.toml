@@ -26,6 +26,7 @@ claude = "latest"
 "npm:agent-browser" = "latest"
 "npm:ctx7" = "latest"
 "npm:skills" = "latest"
+"npm:@mariozechner/pi-coding-agent" = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
