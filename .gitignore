@@ -77,7 +77,12 @@
 !/.config/nvim/
 !/.config/nvim/init.lua
 !/.config/nvim/lazy-lock.json
- 
+!/.config/nvim/lua/
+!/.config/nvim/lua/**
+
+!/.config/tealdeer/
+!/.config/tealdeer/config.toml
+
 !/.config/kitty/
 !/.config/kitty/**
 
