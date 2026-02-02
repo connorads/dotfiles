@@ -91,6 +91,9 @@
           lazysql
           witr
 
+          # Command reference
+          tealdeer
+
           # System utilities
           coreutils
           bc
