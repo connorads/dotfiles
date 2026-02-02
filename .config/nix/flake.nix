@@ -168,6 +168,21 @@
 
         programs.neovim.enable = true;
 
+        programs.atuin = {
+          enable = true;
+          enableZshIntegration = true;
+          flags = [ "--disable-up-arrow" ];
+          settings = {
+            dialect = "uk";
+            update_check = false;
+            filter_mode_shell_up_arrow = "session";
+            style = "compact";
+            inline_height = 20;
+            show_help = false;
+            enter_accept = true;
+          };
+        };
+
         home.sessionVariables = {
           EDITOR = "micro";
           VISUAL = "micro";
@@ -449,7 +464,8 @@
           home-manager = {
             useGlobalPkgs = true;
             useUserPackages = true;
-            users.connorads = sharedHomeConfiguration // {
+            users.connorads = {
+              imports = [ sharedHomeConfiguration ];
               home.username = "connorads";
               home.homeDirectory = "/Users/connorads";
               home.packages = sharedPackages pkgs;
@@ -479,8 +495,9 @@
       # ========================================================================
       linuxHomeBaseConfiguration =
         { pkgs, ... }:
-        sharedHomeConfiguration
-        // {
+        {
+          imports = [ sharedHomeConfiguration ];
+
           home.username = "connor";
           home.homeDirectory = "/home/connor";
           home.stateVersion = "24.11";
@@ -492,8 +509,6 @@
 
           # Let Home Manager manage itself
           programs.home-manager.enable = true;
-
-          home.sessionVariables = sharedHomeConfiguration.home.sessionVariables;
 
           # Allow unfree packages
           nixpkgs.config.allowUnfree = true;
