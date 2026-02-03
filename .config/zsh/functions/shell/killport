@@ -1,0 +1,20 @@
+# killport: kill process(es) using a port
+# alias: kp
+emulate -L zsh
+
+local port="$1"
+if [[ -z "$port" ]]; then
+  echo "usage: killport <port>" >&2
+  return 1
+fi
+
+local pids
+pids=(${(f)"$(lsof -ti :"$port" 2>/dev/null)"})
+
+if [[ ${#pids[@]} -eq 0 ]]; then
+  echo "no process found on port $port" >&2
+  return 1
+fi
+
+echo "killing ${#pids[@]} process(es) on port $port: ${pids[*]}"
+kill -9 "${pids[@]}"
