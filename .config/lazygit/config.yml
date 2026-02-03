@@ -9,8 +9,3 @@ customCommands:
     command: 'git stash && git pull --rebase && git stash pop'
     context: 'files'
     description: 'Stash, pull, and pop'
-  - key: 'D'
-    command: "GIT_EXTERNAL_DIFF=difft git diff"
-    context: 'files'
-    description: 'Difftastic: structural diff'
-    output: terminal
