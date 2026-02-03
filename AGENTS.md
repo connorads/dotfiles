@@ -38,6 +38,10 @@ The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resol
 | [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 
+## Shell Function Conventions
+
+- Add a top-of-function comment in `~/.config/zsh/functions/**` using `# <name>: <purpose>` (and `# alias: ...` when needed).
+
 ## Scripts
 
 - [install.sh](./install.sh) - Bootstrap script for new machines
