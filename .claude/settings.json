@@ -481,7 +481,18 @@
       "Bash(zoxide --version:*)",
       "Bash(zoxide init:*)",
       "Bash(zoxide query:*)",
-      "Bash(zstd -d:*)"
+      "Bash(zstd -d:*)",
+      "Bash(git -C * stash list)",
+      "Bash(git -C * config --local --list)",
+      "Bash(git -C * rev-parse --is-inside-work-tree)",
+      "Bash(alias rg:*)",
+      "Bash(free:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(cloud-init status:*)",
+      "Bash(pipx --version:*)",
+      "Bash(pipx environment:*)",
+      "Bash(hk run --help:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
