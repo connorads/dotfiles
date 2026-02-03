@@ -11,7 +11,11 @@ model=$(echo "$input" | jq -r '.model.display_name // "Claude"')
 cost=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0')
 cache_read=$(echo "$input" | jq -r '.context_window.current_usage.cache_read_input_tokens // 0')
-total_input=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
+cache_create=$(echo "$input" | jq -r '.context_window.current_usage.cache_creation_input_tokens // 0')
+input_tokens=$(echo "$input" | jq -r '.context_window.current_usage.input_tokens // 0')
+
+# Total = all input token types
+total_input=$((cache_read + cache_create + input_tokens))
 
 # Shorten directory (replace $HOME with ~)
 dir="${dir/#$HOME/\~}"
