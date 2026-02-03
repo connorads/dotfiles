@@ -215,6 +215,41 @@ fi
 if [ "$IN_NIXOS" = "true" ]; then
   echo "Skipping mise install on NixOS - tools managed by NixOS config"
 else
+  # Ensure common build deps exist so mise/python-build can compile CPython with
+  # core stdlib modules enabled (notably zlib, which is required for ensurepip).
+  if command -v apt-get &>/dev/null && command -v dpkg &>/dev/null; then
+    pkgs=(
+      build-essential
+      pkg-config
+      zlib1g-dev
+      libssl-dev
+      libbz2-dev
+      libreadline-dev
+      libsqlite3-dev
+      libffi-dev
+      liblzma-dev
+      libncursesw5-dev
+      libgdbm-dev
+      libgdbm-compat-dev
+      uuid-dev
+      tk-dev
+      xz-utils
+    )
+
+    missing=()
+    for pkg in "${pkgs[@]}"; do
+      if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        missing+=("$pkg")
+      fi
+    done
+
+    if [ "${#missing[@]}" -gt 0 ]; then
+      echo "Installing system packages required for building Python (apt-get)..."
+      sudo apt-get update -y
+      sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+    fi
+  fi
+
   echo "Installing tools via mise..."
   export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
