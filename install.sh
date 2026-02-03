@@ -243,11 +243,14 @@ if command -v agent-browser &>/dev/null; then
   agent-browser install --with-deps
 fi
 
-# Install TPM (tmux plugin manager)
+# Install TPM (tmux plugin manager) and plugins
 if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
   echo "Installing TPM (tmux plugin manager)..."
   git clone --depth 1 https://github.com/tmux-plugins/tpm "$HOME/.config/tmux/plugins/tpm"
 fi
+
+echo "Installing tmux plugins via TPM..."
+"$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
 
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
