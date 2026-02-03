@@ -17,8 +17,13 @@ ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
 [[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
 source "$ANTIDOTE_HOME"/antidote.zsh
 
-# Initialise completion system before loading plugins that use compdef
-autoload -Uz compinit && compinit
+# Initialise completion system (cached, regenerates every 24h)
+autoload -Uz compinit
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
 
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
