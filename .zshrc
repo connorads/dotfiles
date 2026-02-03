@@ -76,6 +76,9 @@ eval "$(atuin init zsh --disable-up-arrow)"
 export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
 
+# micro editor true colour support
+export MICRO_TRUECOLOR=1
+
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
