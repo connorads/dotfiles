@@ -14,4 +14,4 @@ ohmyzsh/ohmyzsh path:plugins/brew
 zsh-users/zsh-autosuggestions
 zsh-users/zsh-completions
 Aloxaf/fzf-tab
-zsh-users/zsh-syntax-highlighting
+zdharma-continuum/fast-syntax-highlighting
