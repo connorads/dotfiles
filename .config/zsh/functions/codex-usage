@@ -5,7 +5,7 @@ local age=9999
 
 if [[ $age -ge $ttl ]]; then
     local auth_file="$HOME/.codex/auth.json"
-    [[ ! -f "$auth_file" ]] && { echo "Not logged in (run: codex --login)"; return 1; }
+    [[ ! -f "$auth_file" ]] && { echo "Not logged in (run: codex login)"; return 1; }
     local token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
     [[ -z "$token" ]] && { echo "No access token found in $auth_file"; return 1; }
     local resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
