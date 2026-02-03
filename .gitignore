@@ -96,6 +96,8 @@
 
 !/.config/micro/
 !/.config/micro/settings.json
+!/.config/micro/colorschemes/
+!/.config/micro/colorschemes/**
 
 !/.config/mise/
 !/.config/mise/**
