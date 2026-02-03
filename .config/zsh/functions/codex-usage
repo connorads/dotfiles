@@ -1,0 +1,31 @@
+# Query Codex API usage limits (cached 60s)
+local cache="$HOME/.cache/codex-usage.json" ttl=60
+local age=9999
+[[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
+
+if [[ $age -ge $ttl ]]; then
+    local auth_file="$HOME/.codex/auth.json"
+    [[ ! -f "$auth_file" ]] && { echo "Not logged in (run: codex --login)"; return 1; }
+    local token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
+    [[ -z "$token" ]] && { echo "No access token found in $auth_file"; return 1; }
+    local resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
+        -H "Authorization: Bearer $token")
+    [[ -n "$resp" ]] && echo "$resp" | jq -e '.rate_limit' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
+fi
+
+[[ ! -f "$cache" ]] && { echo "Failed to fetch usage"; return 1; }
+
+local u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache")
+local u7=$(jq -r '.rate_limit.secondary_window.used_percent // 0' "$cache")
+local r5=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache")
+local r7=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // 0' "$cache")
+
+# Format seconds as human-readable duration
+_fmt_duration() {
+    local secs=$1
+    local d=$((secs / 86400)) h=$(((secs % 86400) / 3600)) m=$(((secs % 3600) / 60))
+    [[ $d -gt 0 ]] && echo "${d}d ${h}h" || echo "${h}h ${m}m"
+}
+
+printf "5-hour:  %3d%%  resets in %s\n" "$u5" "$(_fmt_duration "$r5")"
+printf "7-day:   %3d%%  resets in %s\n" "$u7" "$(_fmt_duration "$r7")"
