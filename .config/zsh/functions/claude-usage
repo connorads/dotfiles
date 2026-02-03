@@ -1,0 +1,32 @@
+# Query Claude API usage limits (cached 60s)
+local cache="$HOME/.cache/claude-usage.json" ttl=60
+local age=9999
+[[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
+
+if [[ $age -ge $ttl ]]; then
+    local token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+    [[ -z "$token" ]] && { echo "Not logged in (run: claude --login)"; return 1; }
+    local resp=$(curl -s --max-time 5 "https://api.anthropic.com/api/oauth/usage" \
+        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/2.0.32")
+    [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
+fi
+
+[[ ! -f "$cache" ]] && { echo "Failed to fetch usage"; return 1; }
+
+local u5=$(jq -r '.five_hour.utilization // 0' "$cache")
+local u7=$(jq -r '.seven_day.utilization // 0' "$cache")
+local r5=$(jq -r '.five_hour.resets_at // empty' "$cache")
+local r7=$(jq -r '.seven_day.resets_at // empty' "$cache")
+
+# Time remaining
+_remaining() {
+    local ts=$(date -d "$1" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${1%%.*}" +%s 2>/dev/null)
+    [[ -z "$ts" ]] && return
+    local diff=$((ts - $(date +%s)))
+    [[ $diff -lt 0 ]] && diff=0
+    local d=$((diff / 86400)) h=$(((diff % 86400) / 3600)) m=$(((diff % 3600) / 60))
+    [[ $d -gt 0 ]] && echo "${d}d ${h}h" || echo "${h}h ${m}m"
+}
+
+printf "5-hour:  %3.0f%%  resets in %s\n" "$u5" "$(_remaining "$r5")"
+printf "7-day:   %3.0f%%  resets in %s\n" "$u7" "$(_remaining "$r7")"
