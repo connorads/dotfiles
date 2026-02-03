@@ -27,6 +27,12 @@ fi
 
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
+# fzf-tab configuration
+zstyle ':completion:*:git-checkout:*' sort false
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+
 # Custom functions (lazy-loaded via autoload)
 typeset -U fpath
 fpath=(
