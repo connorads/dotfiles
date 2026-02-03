@@ -49,6 +49,7 @@
       "bitwarden"
       "chatgpt"
       "claude"
+      "codex-app"
       "comfyui"
       "lm-studio"
       "obsidian"
