@@ -5,6 +5,7 @@ tool_output_token_limit = 25000
 # Formula: 273000 - (tool_output_token_limit + 15000)
 model_auto_compact_token_limit = 233000
 personality = "pragmatic"
+web_search = "live"
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true
@@ -12,6 +13,5 @@ personality = "pragmatic"
 [features]
 unified_exec = true
 apply_patch_freeform = true
-web_search_request = true
 skills = true
 shell_snapshot = true
