@@ -1,0 +1,3 @@
+# tmremindrm: clear tmux reminder message
+rm -f "$HOME/.tmux-reminder"
+echo "tmux reminder cleared"
