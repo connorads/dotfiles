@@ -1,0 +1,8 @@
+# tmremind: set tmux reminder message
+if [[ $# -eq 0 ]]; then
+  echo "Usage: tmremind <message>"
+  return 1
+fi
+
+printf '%s\n' "$*" > "$HOME/.tmux-reminder"
+echo "tmux reminder set"
