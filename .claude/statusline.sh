@@ -73,6 +73,29 @@ time_remaining() {
     fi
 }
 
+remaining_seconds() {
+    local reset_iso="$1"
+    [[ -z "$reset_iso" ]] && return
+    # Try GNU date first, then BSD date
+    local reset_ts=$(date -d "$reset_iso" "+%s" 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${reset_iso%%.*}" "+%s" 2>/dev/null)
+    [[ -z "$reset_ts" ]] && return
+    local now=$(date +%s)
+    local diff=$((reset_ts - now))
+    [[ $diff -lt 0 ]] && diff=0
+    echo "$diff"
+}
+
+elapsed_pct() {
+    local window_seconds="$1"
+    local reset_iso="$2"
+    [[ -z "$window_seconds" || -z "$reset_iso" ]] && return
+    local rem=$(remaining_seconds "$reset_iso")
+    [[ -z "$rem" ]] && return
+    [[ $rem -gt $window_seconds ]] && rem=$window_seconds
+    local elapsed=$((window_seconds - rem))
+    echo $((elapsed * 100 / window_seconds))
+}
+
 reset_5h_str=$(time_remaining "$reset_5h")
 reset_7d_str=$(time_remaining "$reset_7d")
 
@@ -148,16 +171,35 @@ output+=" | ${ctx_colour}${ctx_int:-0}% ctx${RESET}"
 output+=" | ${WHITE}${duration_str}${RESET}"
 output+=" | ${GREEN}+${lines_added}${RESET} ${RED}-${lines_removed}${RESET}"
 
-# API usage limits (colour: white < 50%, yellow 50-80%, red > 80%)
+# API usage limits (colour based on usage pace vs elapsed time)
 if [[ -n "$usage_5h" ]]; then
     usage_5h_int=${usage_5h%.*}
     usage_7d_int=${usage_7d%.*}
 
+    elapsed_5h_pct=$(elapsed_pct 18000 "$reset_5h")
+    elapsed_7d_pct=$(elapsed_pct 604800 "$reset_7d")
+
     limit_5h_colour="$WHITE"
-    [[ "${usage_5h_int:-0}" -gt 80 ]] && limit_5h_colour="$RED" || [[ "${usage_5h_int:-0}" -gt 50 ]] && limit_5h_colour="$YELLOW"
+    if [[ -n "$elapsed_5h_pct" ]]; then
+        [[ "$elapsed_5h_pct" -lt 1 ]] && elapsed_5h_pct=1
+        pace_5h=$(echo "scale=3; $usage_5h / $elapsed_5h_pct" | bc -l 2>/dev/null || echo 0)
+        if (( $(echo "$pace_5h >= 1.4" | bc -l 2>/dev/null || echo 0) )); then
+            limit_5h_colour="$RED"
+        elif (( $(echo "$pace_5h >= 1.2" | bc -l 2>/dev/null || echo 0) )); then
+            limit_5h_colour="$YELLOW"
+        fi
+    fi
 
     limit_7d_colour="$WHITE"
-    [[ "${usage_7d_int:-0}" -gt 80 ]] && limit_7d_colour="$RED" || [[ "${usage_7d_int:-0}" -gt 50 ]] && limit_7d_colour="$YELLOW"
+    if [[ -n "$elapsed_7d_pct" ]]; then
+        [[ "$elapsed_7d_pct" -lt 1 ]] && elapsed_7d_pct=1
+        pace_7d=$(echo "scale=3; $usage_7d / $elapsed_7d_pct" | bc -l 2>/dev/null || echo 0)
+        if (( $(echo "$pace_7d >= 1.4" | bc -l 2>/dev/null || echo 0) )); then
+            limit_7d_colour="$RED"
+        elif (( $(echo "$pace_7d >= 1.2" | bc -l 2>/dev/null || echo 0) )); then
+            limit_7d_colour="$YELLOW"
+        fi
+    fi
 
     # Format: 5h:59%(2h30m) 7d:22%(4d12h)
     output+=" | ${limit_5h_colour}5h:${usage_5h_int:-0}%"
