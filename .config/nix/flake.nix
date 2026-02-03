@@ -368,8 +368,9 @@
           ];
 
           # Linux builder VM for building aarch64-linux (e.g., Pi images)
+          # Start manually when needed: sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.linux-builder.plist
           nix.linux-builder = {
-            enable = true;
+            enable = false;
             ephemeral = true;
             maxJobs = 4;
             config = {
