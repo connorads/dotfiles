@@ -35,6 +35,7 @@ in
   # Apps we want to install on Linux but not on macOS
   home.packages = packages.sharedPackages ++ [
     vscodeOverride
+    pkgs.bind
     pkgs.libnotify
   ];
 }
