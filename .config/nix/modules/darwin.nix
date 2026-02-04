@@ -165,6 +165,60 @@
     allowSignedApp = false;
   };
 
+  # -- pf Firewall: Block External Access to Dev Server Ports --
+  #
+  # Problem: Many dev servers (Next.js, Vite, etc.) bind to 0.0.0.0 by default,
+  # exposing your development environment to all devices on your local network.
+  # This is a security risk - source maps, API keys in env vars, and debug
+  # endpoints become accessible to anyone on your WiFi/LAN.
+  #
+  # Solution: Use macOS's pf (packet filter) to block incoming connections to
+  # common dev ports from external sources. Localhost access still works because
+  # macOS's default pf.conf includes 'set skip on lo0' (skip filtering on loopback).
+  #
+  # How it works:
+  # - Creates /etc/pf.anchors/dev-firewall with blocking rules
+  # - LaunchDaemon loads rules on boot via pfctl
+  # - Rules block incoming TCP on dev ports from any source
+  # - Loopback (localhost) traffic bypasses pf entirely
+  #
+  # To temporarily disable (e.g., for LAN testing):
+  #   sudo pfctl -a 'com.apple/dev-firewall' -F rules
+  #
+  # To re-enable:
+  #   sudo pfctl -a 'com.apple/dev-firewall' -f /etc/pf.anchors/dev-firewall
+  #
+  # Tailscale note: These rules also block Tailscale peers (traffic via utun+).
+  # This is intentional - use 'ts serve <port>' for explicit, authenticated
+  # sharing to your tailnet. If you want to allow all Tailscale peers, add:
+  #   pass in quick on utun+ proto tcp from any to any port { 3000, 4321, 5173, 8787 }
+  #
+  environment.etc."pf.anchors/dev-firewall".text = ''
+    # Block external access to common dev server ports
+    # Localhost bypasses these rules (macOS 'set skip on lo0')
+    # Ports: Next.js/React (3000-3003), Astro (4321), Vite (5173), Wrangler (8787)
+    block return in proto tcp from any to any port 3000
+    block return in proto tcp from any to any port 3001
+    block return in proto tcp from any to any port 3002
+    block return in proto tcp from any to any port 3003
+    block return in proto tcp from any to any port 4321
+    block return in proto tcp from any to any port 5173
+    block return in proto tcp from any to any port 8787
+  '';
+
+  launchd.daemons.dev-firewall = {
+    serviceConfig = {
+      Label = "dev.pfctl.dev-firewall";
+      ProgramArguments = [
+        "/sbin/pfctl"
+        "-a" "com.apple/dev-firewall"
+        "-f" "/etc/pf.anchors/dev-firewall"
+        "-E"
+      ];
+      RunAtLoad = true;
+    };
+  };
+
   # -- PAM / sudo authentication --
   # TouchID and YubiKey for sudo
   environment.etc."pam.d/sudo_local".text = ''
