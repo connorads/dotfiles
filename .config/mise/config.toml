@@ -15,7 +15,8 @@ gemini = "latest"
 codex = "latest"
 usage = "latest"
 hcloud = "latest"
-claude = "latest"
+
+"aqua:anthropics/claude-code" = "latest"
 
 "npm:opencode-ai" = "latest"
 "npm:@github/copilot" = "latest"
