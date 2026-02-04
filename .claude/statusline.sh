@@ -25,13 +25,19 @@ if $cache_fresh; then
     reset_5h=$(jq -r '.five_hour.resets_at // empty' "$CACHE" 2>/dev/null)
     reset_7d=$(jq -r '.seven_day.resets_at // empty' "$CACHE" 2>/dev/null)
 else
-    # Get token from macOS Keychain
-    token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+    # Get token (cross-platform: macOS keychain or Linux JSON file)
+    token=""
+    if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
+        token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+    elif [[ -f "$HOME/.claude/.credentials.json" ]]; then
+        token=$(jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null)
+    fi
+
     if [[ -n "$token" ]]; then
         resp=$(curl -s --max-time 2 "https://api.anthropic.com/api/oauth/usage" \
             -H "Authorization: Bearer $token" \
             -H "anthropic-beta: oauth-2025-04-20" \
-            -H "User-Agent: claude-code/2.0.32" 2>/dev/null)
+            -H "User-Agent: claude-code/2.1.30" 2>/dev/null)
         if [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' >/dev/null 2>&1; then
             mkdir -p "$(dirname "$CACHE")"
             echo "$resp" > "$CACHE"
