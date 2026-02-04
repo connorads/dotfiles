@@ -4,6 +4,7 @@
 
 !/.agents/
 /.agents/**
+!/.agents/README.md
 !/.agents/skills/
 !/.agents/skills/**
 /.agents/skills/.system/
