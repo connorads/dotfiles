@@ -35,6 +35,8 @@
 !/.config/opencode/skills/*
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
+!/.config/opencode/plugin-disabled/
+!/.config/opencode/plugin-disabled/**
 
 !/.config/agents/
 /.config/agents/**
