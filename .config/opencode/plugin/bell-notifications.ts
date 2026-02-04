@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import type { Event } from "@opencode-ai/sdk"
+import { writeFile } from "node:fs/promises"
 
 const shouldRing = (event: Event): boolean => {
   switch (event.type) {
@@ -13,10 +14,10 @@ const shouldRing = (event: Event): boolean => {
   }
 }
 
-export const BellNotifications: Plugin = async ({ $, client }) => {
+export const BellNotifications: Plugin = async ({ client }) => {
   const ringBell = async (): Promise<void> => {
     try {
-      await $`printf '\\a' > /dev/tty`
+      await writeFile("/dev/tty", "\u0007")
     } catch (error) {
       await client.app.log({
         body: {
