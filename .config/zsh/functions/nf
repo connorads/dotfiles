@@ -1,0 +1,72 @@
+# nf: search nerd font icons with fzf, copy to clipboard
+# alias: nerdfont, nerd-font
+# Usage: nf [query]
+#   -r, --refresh  Force refresh cache
+
+local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nerd-fonts"
+local cache_file="$cache_dir/glyphs.txt"
+local cache_max_age=$((7 * 24 * 60 * 60))  # 7 days in seconds
+local refresh=0 query=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -r|--refresh) refresh=1; shift ;;
+    *) query="$1"; shift ;;
+  esac
+done
+
+# Check dependencies
+command -v jq &>/dev/null || { echo "jq required" >&2; return 1; }
+command -v fzf &>/dev/null || { echo "fzf required" >&2; return 1; }
+
+# Create cache dir
+[[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
+
+# Refresh cache if needed
+local need_refresh=0
+if [[ ! -f "$cache_file" ]] || (( refresh )); then
+  need_refresh=1
+else
+  # Use zsh stat module for portability
+  zmodload -F zsh/stat b:zstat
+  local file_mtime
+  zstat -A file_mtime +mtime "$cache_file"
+  local file_age=$(( $(date +%s) - file_mtime ))
+  (( file_age > cache_max_age )) && need_refresh=1
+fi
+
+if (( need_refresh )); then
+  echo "Fetching nerd font glyphs..." >&2
+  curl -sL https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/glyphnames.json \
+    | jq -r 'to_entries | map(select(.key != "METADATA")) | .[] | "\(.value.char) \(.key)"' \
+    > "$cache_file" || { echo "Failed to fetch glyphs" >&2; return 1; }
+  echo "Cached $(wc -l < "$cache_file" | tr -d ' ') glyphs" >&2
+fi
+
+# Search with fzf
+local selected
+selected=$(fzf --query="$query" \
+  --preview='echo {} | cut -d" " -f1 | figlet -f banner 2>/dev/null || echo {} | cut -d" " -f1' \
+  --preview-window=up:3:wrap \
+  --prompt="nerd font> " \
+  < "$cache_file")
+
+[[ -z "$selected" ]] && return 0
+
+local glyph="${selected%% *}"
+local name="${selected#* }"
+
+# Get unicode codepoint
+local codepoint
+printf -v codepoint 'U+%04X' "'$glyph"
+
+# Copy to clipboard
+if [[ "$(uname)" == "Darwin" ]]; then
+  printf '%s' "$glyph" | pbcopy
+else
+  printf '%s' "$glyph" | xclip -selection clipboard 2>/dev/null \
+    || printf '%s' "$glyph" | xsel -b 2>/dev/null \
+    || { echo "No clipboard tool found" >&2; return 1; }
+fi
+
+echo "Copied: $glyph $name ($codepoint)"
