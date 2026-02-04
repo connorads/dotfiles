@@ -78,6 +78,8 @@ webtermdown [port]     # Stop web terminal
 
 Skills stored canonically in `~/.agents/skills/` and symlinked to all agent tools via `skillsync`. Both canonical files and symlinks are tracked in dotfiles.
 
+Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
+
 **Installing skills:**
 ```bash
 # Via CLI (preferred)
