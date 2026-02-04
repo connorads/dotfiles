@@ -28,6 +28,7 @@ hcloud = "latest"
 "npm:ctx7" = "latest"
 "npm:skills" = "latest"
 "npm:vercel" = "latest"
+"npm:wrangler" = "latest"
 "npm:@mariozechner/pi-coding-agent" = "latest"
 
 "pipx:ty" = "latest"
