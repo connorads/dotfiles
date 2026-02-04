@@ -172,15 +172,15 @@
   # This is a security risk - source maps, API keys in env vars, and debug
   # endpoints become accessible to anyone on your WiFi/LAN.
   #
-  # Solution: Use macOS's pf (packet filter) to block incoming connections to
-  # common dev ports from external sources. Localhost access still works because
-  # macOS's default pf.conf includes 'set skip on lo0' (skip filtering on loopback).
+  # Solution: Use macOS's pf (packet filter) to block incoming connections on
+  # the WiFi/Ethernet interface (en0). Localhost still works because we only
+  # block on en0, not lo0 (loopback).
   #
   # How it works:
-  # - Creates /etc/pf.anchors/dev-firewall with blocking rules
+  # - Creates /etc/pf.anchors/dev-firewall with blocking rules for en0
   # - LaunchDaemon loads rules on boot via pfctl
-  # - Rules block incoming TCP on dev ports from any source
-  # - Loopback (localhost) traffic bypasses pf entirely
+  # - Rules block incoming TCP on dev ports from external network only
+  # - Loopback (localhost) is unaffected - rules only apply to en0
   #
   # To temporarily disable (e.g., for LAN testing):
   #   sudo pfctl -a 'com.apple/dev-firewall' -F rules
@@ -188,22 +188,21 @@
   # To re-enable:
   #   sudo pfctl -a 'com.apple/dev-firewall' -f /etc/pf.anchors/dev-firewall
   #
-  # Tailscale note: These rules also block Tailscale peers (traffic via utun+).
-  # This is intentional - use 'ts serve <port>' for explicit, authenticated
-  # sharing to your tailnet. If you want to allow all Tailscale peers, add:
-  #   pass in quick on utun+ proto tcp from any to any port { 3000, 4321, 5173, 8787 }
+  # Tailscale note: These rules block WiFi/Ethernet (en0) only. Tailscale uses
+  # utun+ interfaces, so Tailscale peers CAN access dev ports by default.
+  # If you want to block Tailscale too, use 'ts serve <port>' for explicit
+  # sharing, or add: block return in on utun+ proto tcp from any to any port { ... }
   #
   environment.etc."pf.anchors/dev-firewall".text = ''
-    # Block external access to common dev server ports
-    # Localhost bypasses these rules (macOS 'set skip on lo0')
+    # Block external access to common dev server ports on LAN interfaces
+    # Localhost (lo0) and Tailscale (utun+) are unaffected
     # Ports: Next.js/React (3000-3003), Astro (4321), Vite (5173), Wrangler (8787)
-    block return in proto tcp from any to any port 3000
-    block return in proto tcp from any to any port 3001
-    block return in proto tcp from any to any port 3002
-    block return in proto tcp from any to any port 3003
-    block return in proto tcp from any to any port 4321
-    block return in proto tcp from any to any port 5173
-    block return in proto tcp from any to any port 8787
+    #
+    # Blocked interfaces: en0 (Ethernet), en1 (WiFi/secondary)
+    # Mac Mini has multiple en* interfaces - add more if needed
+    dev_ports = "{ 3000, 3001, 3002, 3003, 4321, 5173, 8787 }"
+    block return in on en0 proto tcp from any to any port $dev_ports
+    block return in on en1 proto tcp from any to any port $dev_ports
   '';
 
   launchd.daemons.dev-firewall = {
