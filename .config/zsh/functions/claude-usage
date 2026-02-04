@@ -1,17 +1,59 @@
-# Query Claude API usage limits (cached 60s)
+# claude-usage: Show Claude API usage limits (5-hour/7-day windows, cached 60s)
+# Usage: claude-usage [-h|--help]
+#
+# Shows current Claude API usage percentage and reset times for:
+#   - 5-hour rolling window
+#   - 7-day rolling window
+#
+# Note: If you see "Not logged in", run `/login` in Claude CLI or `claude setup-token`
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "Usage: claude-usage [-h|--help]"
+    echo
+    echo "Shows Claude API usage limits (5-hour and 7-day windows)"
+    echo
+    echo "If not logged in:"
+    echo "  - In Claude CLI: /login"
+    echo "  - In terminal: claude setup-token"
+    return 0
+fi
+
 local cache="$HOME/.cache/claude-usage.json" ttl=60
 local age=9999
 [[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
 
 if [[ $age -ge $ttl ]]; then
-    local token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-    [[ -z "$token" ]] && { echo "Not logged in (run: claude --login)"; return 1; }
+    # Get token (cross-platform: macOS keychain or Linux JSON file)
+    local token
+    if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
+        token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+    elif [[ -f "$HOME/.claude/.credentials.json" ]]; then
+        token=$(jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null)
+    fi
+
+    if [[ -z "$token" ]]; then
+        echo "Not logged in"
+        echo
+        echo "To login:"
+        echo "  - In Claude CLI: /login"
+        echo "  - In terminal: claude setup-token"
+        return 1
+    fi
+
     local resp=$(curl -s --max-time 5 "https://api.anthropic.com/api/oauth/usage" \
-        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/2.0.32")
+        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/2.1.30")
     [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
 fi
 
-[[ ! -f "$cache" ]] && { echo "Failed to fetch usage"; return 1; }
+if [[ ! -f "$cache" ]]; then
+    echo "Failed to fetch usage data"
+    echo
+    echo "Possible causes:"
+    echo "  - Not logged in (try /login in Claude CLI)"
+    echo "  - Network error"
+    echo "  - API temporarily unavailable"
+    return 1
+fi
 
 local u5=$(jq -r '.five_hour.utilization // 0' "$cache")
 local u7=$(jq -r '.seven_day.utilization // 0' "$cache")
