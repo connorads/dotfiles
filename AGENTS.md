@@ -11,10 +11,21 @@ dotfiles <command>
 
 Examples:
 - `dotfiles status`
-- `dotfiles add -f .file`
+- `dotfiles add .file`
 - `dotfiles commit -m "message"`
 
 The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resolves home directory reliably even in sanitised environments.
+
+**Adding new files:** The `~/.gitignore` ignores everything (`/*`) then un-ignores specific paths. Before tracking a new file, add an un-ignore pattern to `~/.gitignore`:
+```bash
+# For a single file
+!/.newfile
+
+# For a directory (un-ignore dir, then its contents)
+!/.config/newdir/
+!/.config/newdir/**
+```
+Then `dotfiles add .newfile` works without `-f`.
 
 ## Key Documentation
 
@@ -65,7 +76,7 @@ drs                    # darwin-rebuild switch (macOS)
 hms                    # home-manager switch (Linux)
 nrs                    # nixos-rebuild switch (NixOS)
 nfu                    # nix flake update
-dotfiles add -f .file  # Track new file
+dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 ts                     # Tailscale wrapper (defined in .zshrc)
 toadup [port]          # Start toad web UI via Tailscale (default :8000)
