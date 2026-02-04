@@ -75,6 +75,7 @@
     yt-dlp
     presenterm
     charm-freeze
+    rembg
 
     # Sync & backup
     rclone
