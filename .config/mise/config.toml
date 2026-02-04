@@ -17,8 +17,8 @@ usage = "latest"
 hcloud = "latest"
 
 "aqua:anthropics/claude-code" = "latest"
+"aqua:anomalyco/opencode" = "latest"
 
-"npm:opencode-ai" = "latest"
 "npm:@github/copilot" = "latest"
 "npm:@sourcegraph/amp" = "latest"
 "npm:apify-cli" = "latest"
