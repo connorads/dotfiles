@@ -13,3 +13,18 @@ if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
         launchctl setenv SSH_AUTH_SOCK "$HOME/.bitwarden-ssh-agent.sock"
     fi
 fi
+
+# Custom functions (lazy-loaded via autoload)
+typeset -U fpath
+fpath=(
+  ~/.config/zsh/functions
+  ~/.config/zsh/functions/nix
+  ~/.config/zsh/functions/git
+  ~/.config/zsh/functions/tmux
+  ~/.config/zsh/functions/tailscale
+  ~/.config/zsh/functions/hetzner
+  ~/.config/zsh/functions/agents
+  ~/.config/zsh/functions/shell
+  $fpath
+)
+autoload -Uz ~/.config/zsh/functions/*(.N:t) ~/.config/zsh/functions/*/*(.N:t)
