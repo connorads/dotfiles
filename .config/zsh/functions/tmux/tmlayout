@@ -1,0 +1,45 @@
+# tmlayout: create a pane layout preset in current window
+# NOTE: layout names/descriptions are duplicated in tmux.conf (bind L fzf picker) — keep in sync
+local layout="${1:-dev}"
+
+case "$layout" in
+  dev)
+    # large left (65%) + top-right + bottom-right
+    tmux split-window -h -p 35 -c "#{pane_current_path}"
+    tmux split-window -v -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 0
+    ;;
+  monitor)
+    # large top (70%) + bottom-left + bottom-right
+    tmux split-window -v -p 30 -c "#{pane_current_path}"
+    tmux split-window -h -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 0
+    ;;
+  triple)
+    # three equal columns
+    tmux split-window -h -p 66 -c "#{pane_current_path}"
+    tmux split-window -h -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 0
+    ;;
+  quad)
+    # 2x2 grid
+    tmux split-window -h -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 0
+    tmux split-window -v -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 2
+    tmux split-window -v -p 50 -c "#{pane_current_path}"
+    tmux select-pane -t 0
+    ;;
+  list)
+    echo "dev      large left (65%) + top-right + bottom-right"
+    echo "monitor  large top (70%) + bottom-left + bottom-right"
+    echo "triple   three equal columns"
+    echo "quad     2x2 grid"
+    return 0
+    ;;
+  *)
+    echo "Unknown layout: $layout" >&2
+    echo "Run 'tmlayout list' for available layouts" >&2
+    return 1
+    ;;
+esac
