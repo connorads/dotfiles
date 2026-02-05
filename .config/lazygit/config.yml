@@ -9,3 +9,61 @@ customCommands:
     command: 'git stash && git pull --rebase && git stash pop'
     context: 'files'
     description: 'Stash, pull, and pop'
+  - key: '!'
+    context: 'global'
+    description: 'Cheatsheet'
+    command: |
+      cat <<'EOF' | less -R --mouse
+        NAVIGATION
+        1-5              switch panels (status/files/branches/commits/stash)
+        [ / ]            prev/next panel
+        h / l            collapse/expand or scroll left/right
+        { / }            prev/next tab within panel
+
+        FILES
+        space            stage/unstage
+        a                stage all
+        c                commit
+        A                amend last commit
+        p                pull
+        P                push
+        f                fetch
+        t                stash + pull rebase + pop (custom)
+        d                discard changes
+        e                edit file
+        o                open file in default editor
+
+        BRANCHES
+        space            checkout
+        n                new branch
+        d                delete
+        r                rebase onto
+        M                merge into current
+        R                rename
+
+        COMMITS
+        s                squash down
+        r                reword
+        f                fixup
+        d                drop
+        p                pick (cherry-pick)
+        g                reset to commit (soft/mixed/hard)
+        ctrl+j / ctrl+k  move commit up/down
+
+        STASH
+        space            apply
+        g                pop
+        d                drop
+        n                new stash
+
+        GENERAL
+        ?                panel keybindings (built-in)
+        /                filter/search
+        x                menu (context actions)
+        + / _            expand/collapse diff context
+        z                undo (via reflog)
+        ctrl+z           redo
+        @                command log
+        !                this cheatsheet
+      EOF
+    output: terminal
