@@ -11,6 +11,8 @@ uv = "0.9"
 "rust" = "1"
 
 gh = "latest"
+gcloud = "latest"
+aws = "latest"
 gemini = "latest"
 codex = "latest"
 usage = "latest"
