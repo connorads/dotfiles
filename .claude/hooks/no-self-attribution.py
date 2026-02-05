@@ -11,6 +11,8 @@ Exit codes:
 Tests: uv run --with pytest pytest ~/.claude/hooks/test_no_self_attribution.py -v
 """
 
+from __future__ import annotations
+
 import json
 import re
 import sys
