@@ -73,6 +73,7 @@
 
     # Media & presentation
     yt-dlp
+    ffmpeg
     presenterm
     charm-freeze
     rembg
