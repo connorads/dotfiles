@@ -1,0 +1,18 @@
+# cfork: fzf pick a Claude session and fork it
+local sid="${1:-}"
+
+if [[ -z "$sid" ]]; then
+  local selection
+  selection=$(jq -rs '
+    [.[] | .entries[]]
+    | sort_by(.modified) | reverse
+    | .[]
+    | "\(.sessionId)\t\(.summary)\t\(.projectPath | split("/") | last)\t\(.messageCount) msgs"
+  ' ~/.claude/projects/*/sessions-index.json 2>/dev/null \
+    | fzf --prompt="Fork session: " --with-nth=2.. --delimiter=$'\t')
+
+  [[ -z "$selection" ]] && return
+  sid=$(echo "$selection" | cut -f1)
+fi
+
+claude --resume "$sid" --fork-session
