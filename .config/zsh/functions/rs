@@ -1,0 +1,44 @@
+# rs (repo setup): trust mise, install tools, and install deps for current repo
+
+# mise trust + install
+if [[ -f mise.toml ]] || [[ -f .mise.toml ]]; then
+  echo "=> mise trust + install"
+  mise trust && mise install || return 1
+fi
+
+# install dependencies
+if [[ -f bun.lock ]] || [[ -f bun.lockb ]]; then
+  echo "=> bun install"
+  bun install || return 1
+elif [[ -f pnpm-lock.yaml ]]; then
+  echo "=> pnpm install"
+  pnpm install || return 1
+elif [[ -f yarn.lock ]]; then
+  echo "=> yarn install"
+  yarn install || return 1
+elif [[ -f package-lock.json ]]; then
+  echo "=> npm install"
+  npm install || return 1
+elif [[ -f Gemfile.lock ]]; then
+  echo "=> bundle install"
+  bundle install || return 1
+elif [[ -f go.sum ]]; then
+  echo "=> go mod download"
+  go mod download || return 1
+elif [[ -f Cargo.lock ]]; then
+  echo "=> cargo fetch"
+  cargo fetch || return 1
+elif [[ -f requirements.txt ]]; then
+  echo "=> pip install -r requirements.txt"
+  pip install -r requirements.txt || return 1
+elif [[ -f pyproject.toml ]]; then
+  if command -v uv &>/dev/null; then
+    echo "=> uv sync"
+    uv sync || return 1
+  elif [[ -f poetry.lock ]]; then
+    echo "=> poetry install"
+    poetry install || return 1
+  fi
+fi
+
+echo "=> done"
