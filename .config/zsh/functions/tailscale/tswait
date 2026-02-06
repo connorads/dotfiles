@@ -1,0 +1,28 @@
+# tswait: wait for a tailscale device to come online with tty bell alert
+emulate -L zsh
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "Usage: tswait <device> [interval-seconds]" >&2
+  return 1
+fi
+
+local device="$1"
+local interval="${2:-15}"
+
+if [[ ! "$interval" =~ '^[0-9]+([.][0-9]+)?$' ]]; then
+  echo "interval must be a positive number" >&2
+  return 1
+fi
+
+echo "Waiting for $device on Tailscale (checking every ${interval}s)..."
+until ts ping -c 1 "$device" >/dev/null 2>&1; do
+  sleep "$interval"
+done
+
+if [[ -w /dev/tty ]]; then
+  printf '\a' > /dev/tty
+elif [[ -t 1 ]]; then
+  printf '\a'
+fi
+
+echo "$device is online on Tailscale"
