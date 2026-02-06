@@ -10,6 +10,7 @@
 ## GitHub
 
 Use `gh` CLI to access and update issues and PRs etc. Use heredoc for updating posting text to PRs.
+If the user mentions a GitHub issue, remember to close the issue if you fix it.
 
 # Guidance
 
