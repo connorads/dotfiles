@@ -1,0 +1,39 @@
+# nosleep: keep mac awake while allowing display sleep
+emulate -L zsh
+
+if ! command -v caffeinate >/dev/null 2>&1; then
+  echo "caffeinate not found (macOS only)" >&2
+  return 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  caffeinate -i
+  return $?
+fi
+
+local duration="$1"
+local seconds=""
+
+if [[ "$duration" =~ ^[0-9]+$ ]]; then
+  seconds="$duration"
+elif [[ "$duration" =~ ^([0-9]+)([smh])$ ]]; then
+  local value="${match[1]}"
+  local unit="${match[2]}"
+  case "$unit" in
+    s) seconds="$value" ;;
+    m) seconds="$(( value * 60 ))" ;;
+    h) seconds="$(( value * 3600 ))" ;;
+  esac
+fi
+
+if [[ -n "$seconds" ]]; then
+  shift
+  if [[ $# -eq 0 ]]; then
+    caffeinate -i -t "$seconds"
+  else
+    caffeinate -i -t "$seconds" "$@"
+  fi
+  return $?
+fi
+
+caffeinate -i "$@"
