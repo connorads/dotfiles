@@ -27,6 +27,10 @@ The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resol
 ```
 Then `dotfiles add .newfile` works without `-f`.
 
+## Git Hygiene
+
+- Ignore unrelated git changes; do not reset/revert/discard them.
+
 ## Key Documentation
 
 - [~/README.md](./README.md) - how the dotfiles system works (bare repo, nix-darwin, home-manager)
