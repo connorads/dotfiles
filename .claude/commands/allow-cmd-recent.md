@@ -29,6 +29,7 @@ DO NOT allow:
 - Write operations (rm, mv, cp, etc.)
 - State-changing operations (git push, npm install, etc.)
 - Dangerous commands (eval, rm -rf, etc.)
+- Commands where the prefix could match mutating flags/subcommands (e.g. `gh api` accepts `--method POST` so `Bash(gh api:*)` would allow writes — do NOT allow it)
 
 Important: The wildcard `*` in command patterns matches ANY characters including flags and arguments.
 For example, `Bash(brew info:*)` will match:
