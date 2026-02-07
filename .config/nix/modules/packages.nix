@@ -57,6 +57,7 @@
     coreutils
     bc
     bat
+    bottom
     dust
     ncdu
     parallel-disk-usage
