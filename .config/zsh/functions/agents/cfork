@@ -5,11 +5,12 @@ if [[ -z "$sid" ]]; then
   local selection
   selection=$(jq -rs '
     [.[] | .entries[]]
-    | sort_by(.modified) | reverse
+    | map(. + {lastSeen: (.modified // .created // "")})
+    | sort_by(.lastSeen) | reverse
     | .[]
-    | "\(.sessionId)\t\(.summary)\t\(.projectPath | split("/") | last)\t\(.messageCount) msgs"
+    | "\(.sessionId)\t\(.lastSeen | sub("T"; " ") | sub("\\..*Z$"; "Z"))\t\(.summary)\t\(.projectPath | split("/") | last)\t\(.messageCount) msgs"
   ' ~/.claude/projects/*/sessions-index.json 2>/dev/null \
-    | fzf --prompt="Fork session: " --with-nth=2.. --delimiter=$'\t')
+    | fzf --prompt="Fork session: " --with-nth=2.. --delimiter=$'\t' --no-sort)
 
   [[ -z "$selection" ]] && return
   sid=$(echo "$selection" | cut -f1)
