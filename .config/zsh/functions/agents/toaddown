@@ -1,4 +1,3 @@
 # toaddown: stop toad web UI and Tailscale serve
 tmux kill-session -t toad 2>/dev/null
-ts serve reset 2>/dev/null
 echo "Toad stopped"
