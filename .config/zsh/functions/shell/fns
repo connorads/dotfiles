@@ -3,41 +3,36 @@
 emulate -L zsh
 
 local query="$1"
-local -a entries
 
-# Collect functions from fpath subdirectories
-local dir file name desc
-for dir in ~/.config/zsh/functions ~/.config/zsh/functions/*(N/); do
-  for file in "$dir"/*(N.); do
-    name="${file:t}"
-    [[ "$name" == _* ]] && continue
-    desc=""
-    local header
-    header=$(head -1 "$file" 2>/dev/null)
-    if [[ "$header" == \#\ * ]]; then
-      desc="${header#\# }"
-      # Strip "name: " prefix if present
-      desc="${desc#*: }"
-    fi
-    entries+=("fn  ${name}  ${desc}")
-  done
-done
-
-# Collect all loaded aliases (custom, oh-my-zsh plugins, etc.)
-local aline aname aval
-for aline in ${(f)"$(alias)"}; do
-  aname="${aline%%=*}"
-  aval="${aline#*=}"
-  # Strip surrounding quotes
-  aval="${aval#[\'\"]}"
-  aval="${aval%[\'\"]}"
-  entries+=("al  ${aname}  -> ${aval}")
-done
-
-[[ ${#entries[@]} -eq 0 ]] && { echo "no functions or aliases found" >&2; return 1; }
-
+# Stream entries directly to fzf (no array, no subprocesses)
 local selected
-selected=$(printf '%s\n' "${entries[@]}" | sort -k2 | fzf --reverse \
+selected=$({
+  # Functions: read first line with builtin, no head/fork per file
+  local dir file name header desc
+  for dir in ~/.config/zsh/functions ~/.config/zsh/functions/*(N/); do
+    for file in "$dir"/*(N.); do
+      name="${file:t}"
+      [[ "$name" == _* ]] && continue
+      IFS= read -r header < "$file"
+      desc=""
+      if [[ "$header" == \#\ * ]]; then
+        desc="${header#\# }"
+        desc="${desc#*: }"
+      fi
+      print -r "fn  ${name}  ${desc}"
+    done
+  done
+  # Aliases: single alias call, pure string ops
+  local aline aname aval
+  for aline in ${(f)"$(alias)"}; do
+    aname="${aline%%=*}"
+    [[ "$aname" == [a-zA-Z_]* ]] || continue
+    aval="${aline#*=}"
+    aval="${aval#[\'\"]}"
+    aval="${aval%[\'\"]}"
+    print -r "al  ${aname}  -> ${aval}"
+  done
+} 2>/dev/null | sort -k2 | fzf --reverse \
   --query="$query" \
   --header='functions & aliases (enter to paste)' \
   --preview='
@@ -49,13 +44,9 @@ selected=$(printf '%s\n' "${entries[@]}" | sort -k2 | fzf --reverse \
         [ -f "$f" ] && { cat "$f"; exit; }
       done
     fi
-    # Alias: show expansion
     echo {} | cut -d" " -f3-
   ' \
   --preview-window=right:60%:wrap)
 
 [[ -z "$selected" ]] && return 0
-
-local selected_name
-selected_name=$(echo "$selected" | awk '{print $2}')
-print -z "$selected_name"
+print -z "${${=selected}[2]}"
