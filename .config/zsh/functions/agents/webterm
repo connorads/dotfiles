@@ -4,7 +4,6 @@ local port=${2:-7681}
 
 # Kill existing webterm if running
 pkill -f "ttyd.*--port $port" 2>/dev/null
-ts serve reset 2>/dev/null
 
 # Start ttyd pointing at tmux session (writable, with auth from Tailscale)
 ttyd -i lo0 --port $port --writable tmux new-session -A -s "$session" &!
