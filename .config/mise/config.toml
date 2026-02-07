@@ -10,7 +10,6 @@ bun = "1.3"
 uv = "0.9"
 "rust" = "1"
 
-gh = "latest"
 gcloud = "latest"
 aws = "latest"
 gemini = "latest"

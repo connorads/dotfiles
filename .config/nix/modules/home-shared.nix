@@ -2,7 +2,7 @@
 # Shared Home-Manager Configuration
 # ==============================================================================
 # Common settings for all users across macOS and Linux
-{ ... }:
+{ pkgs, ... }:
 {
   manual = {
     html.enable = false;
@@ -37,6 +37,18 @@
       enter_accept = true;
     };
   };
+
+  programs.gh = {
+    enable = true;
+    settings = {
+      git_protocol = "ssh";
+      aliases = {
+        co = "pr checkout";
+      };
+    };
+  };
+
+  programs.gh-dash.enable = true;
 
   home.sessionVariables = {
     EDITOR = "micro";
