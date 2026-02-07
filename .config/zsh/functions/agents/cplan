@@ -1,0 +1,26 @@
+# cplan: fzf pick a Claude plan and open in editor
+local plandir="${HOME}/.claude/plans"
+
+[[ -d "$plandir" ]] || { echo "No plans directory"; return 1; }
+
+local selection
+selection=$(for f in "$plandir"/*.md; do
+  [[ -f "$f" ]] || continue
+  local title=$(head -1 "$f" | sed 's/^#\+ *//')
+  local mod
+  if [[ "$(uname)" == "Darwin" ]]; then
+    mod=$(stat -f '%m' "$f")
+  else
+    mod=$(stat --format='%Y' "$f")
+  fi
+  local date=$(date -d "@$mod" '+%Y-%m-%d %H:%M' 2>/dev/null \
+    || date -r "$mod" '+%Y-%m-%d %H:%M')
+  local name=$(basename "$f" .md)
+  printf '%s\t%s\t%s\t%s\n' "$f" "$date" "$title" "$name"
+done | sort -t$'\t' -k2 -rn \
+  | fzf --prompt="Open plan: " --with-nth=2.. --delimiter=$'\t' --no-sort)
+
+[[ -z "$selection" ]] && return
+
+local file=$(echo "$selection" | cut -f1)
+${EDITOR:-nvim} "$file"
