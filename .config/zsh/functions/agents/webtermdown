@@ -1,4 +1,5 @@
 # webtermdown: stop ttyd web terminal and Tailscale serve
 local port=${1:-7681}
 pkill -f "ttyd.*--port $port" 2>/dev/null
+ts serve --https=443 off 2>/dev/null
 echo "Web terminal stopped"
