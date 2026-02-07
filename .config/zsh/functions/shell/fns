@@ -23,21 +23,15 @@ for dir in ~/.config/zsh/functions ~/.config/zsh/functions/*(N/); do
   done
 done
 
-# Collect aliases from alias files
-local alias_file line
-for alias_file in ~/.config/zsh/aliases/*.zsh(N); do
-  while IFS= read -r line; do
-    if [[ "$line" == alias\ * ]]; then
-      # Parse: alias name='value'
-      local alias_def="${line#alias }"
-      local alias_name="${alias_def%%=*}"
-      local alias_val="${alias_def#*=}"
-      # Strip quotes
-      alias_val="${alias_val#[\'\"]}"
-      alias_val="${alias_val%[\'\"]}"
-      entries+=("al  ${alias_name}  -> ${alias_val}")
-    fi
-  done < "$alias_file"
+# Collect all loaded aliases (custom, oh-my-zsh plugins, etc.)
+local aline aname aval
+for aline in ${(f)"$(alias)"}; do
+  aname="${aline%%=*}"
+  aval="${aline#*=}"
+  # Strip surrounding quotes
+  aval="${aval#[\'\"]}"
+  aval="${aval%[\'\"]}"
+  entries+=("al  ${aname}  -> ${aval}")
 done
 
 [[ ${#entries[@]} -eq 0 ]] && { echo "no functions or aliases found" >&2; return 1; }
@@ -47,14 +41,16 @@ selected=$(printf '%s\n' "${entries[@]}" | sort -k2 | fzf --reverse \
   --query="$query" \
   --header='functions & aliases (enter to paste)' \
   --preview='
+    type=$(echo {} | awk "{print \$1}")
     name=$(echo {} | awk "{print \$2}")
-    # Try to find function file
-    for d in ~/.config/zsh/functions ~/.config/zsh/functions/*/; do
-      f="$d/$name"
-      [ -f "$f" ] && { cat "$f"; exit; }
-    done
-    # Fall back: show alias definition
-    echo "alias: $(echo {} | cut -d" " -f3-)"
+    if [ "$type" = "fn" ]; then
+      for d in ~/.config/zsh/functions ~/.config/zsh/functions/*/; do
+        f="$d/$name"
+        [ -f "$f" ] && { cat "$f"; exit; }
+      done
+    fi
+    # Alias: show expansion
+    echo {} | cut -d" " -f3-
   ' \
   --preview-window=right:60%:wrap)
 
