@@ -1,16 +1,12 @@
 ---
 description: Review recent bash tool calls for whitelist candidates
-allowed-tools: Bash(/Users/connorads/.claude/commands/allow-cmd-recent.sh:*)
-# TODO: Hardcoded path is workaround for Claude Code bug - $HOME not expanded in allowed-tools
-# See: https://github.com/anthropics/claude-code/issues/3662
-# When fixed, change to: allowed-tools: Bash(bash "$HOME/.claude/commands/allow-cmd-recent.sh":*)
-# and restore !`bash "$HOME/.claude/commands/allow-cmd-recent.sh" $ARGUMENTS` syntax
+allowed-tools: Bash(~/.claude/commands/allow-cmd-recent.sh:*)
 ---
 
 First, run this command to extract recent bash commands (default 7 days, or pass a number for different window):
 
 ```
-/Users/connorads/.claude/commands/allow-cmd-recent.sh $ARGUMENTS
+~/.claude/commands/allow-cmd-recent.sh $ARGUMENTS
 ```
 
 Then analyse the output and identify commands that are:
