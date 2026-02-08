@@ -91,15 +91,7 @@
 
 !/.config/tmux/
 !/.config/tmux/**
-!/.config/tmux/plugins/
-/.config/tmux/plugins/**
-!/.config/tmux/plugins/tmux-resurrect/
-/.config/tmux/plugins/tmux-resurrect/**
-!/.config/tmux/plugins/tmux-resurrect/strategies/
-/.config/tmux/plugins/tmux-resurrect/strategies/**
-!/.config/tmux/plugins/tmux-resurrect/strategies/claude_session_id.sh
-!/.config/tmux/plugins/tmux-resurrect/strategies/opencode_session_id.sh
-!/.config/tmux/plugins/tmux-resurrect/strategies/nvim_persistence.sh
+/.config/tmux/plugins/
 
 !/.config/lazygit/
 !/.config/lazygit/**
