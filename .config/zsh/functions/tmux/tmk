@@ -1,3 +1,5 @@
-# tmk: fzf kill tmux session
-local session=$(tmux list-sessions -F "#{session_name}" 2>/dev/null | fzf --prompt="Kill session: ")
-[[ -n "$session" ]] && tmux kill-session -t "$session" && echo "Killed $session"
+# tmk: fzf kill tmux sessions (multi-select with Tab)
+local sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null | fzf --multi --prompt='Kill session(s): ')"})
+for session in "${sessions[@]}"; do
+  [[ -n "$session" ]] && tmux kill-session -t "$session" && echo "Killed $session"
+done
