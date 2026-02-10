@@ -85,6 +85,8 @@ dotfiles status        # See changes
 ts                     # Tailscale wrapper (defined in .zshrc)
 toadup [port]          # Start toad web UI via Tailscale (default :8000)
 toaddown               # Stop toad web UI
+gigaup [port]              # Start gigacode server via Tailscale (default :2468, inspector at /ui/)
+gigadown                   # Stop gigacode server
 webterm [session] [port] # Expose tmux session via web (default: main :7681)
 webtermdown [port]     # Stop web terminal
 ```
