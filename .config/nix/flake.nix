@@ -43,22 +43,12 @@
       nixos-raspberrypi,
     }:
     let
-      # Workaround: curl-impersonate 1.4.2 needs darwin.ICU for AppleIDN.
-      # Fixed upstream in nixpkgs PR #487537 — remove after next `nix flake update`.
-      curlImpersonateFix = final: prev: {
-        curl-impersonate = prev.curl-impersonate.overrideAttrs (old: {
-          buildInputs = old.buildInputs
-            ++ prev.lib.optionals prev.stdenv.hostPlatform.isDarwin [ prev.darwin.ICU ];
-        });
-      };
-
       # Apply overlays to a pkgs set
       mkPkgs =
         system:
         import nixpkgs {
           inherit system;
           config.allowUnfree = true;
-          overlays = [ curlImpersonateFix ];
         };
 
       # Helper to create packages module for a given pkgs
