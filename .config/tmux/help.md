@@ -35,6 +35,7 @@
 | `Ctrl+b P` | port inspector (kill mode) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b b` | system monitor (bottom) |
+| `Ctrl+b O` | open cwd in file manager |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
