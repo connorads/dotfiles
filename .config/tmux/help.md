@@ -41,9 +41,8 @@
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
 | `Ctrl+b D` | difftastic git diff |
 | `Ctrl+b v` | neovim |
-| `Ctrl+b u` | fzf-url (open URL from pane) |
-| `Ctrl+b Space` | thumbs (quick-copy URLs/paths/hashes) |
-| `Ctrl+b e` | extrakto (fzf text from pane/scrollback) |
+| `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
+| `Ctrl+b Space` | thumbs (quick-copy text with hints) |
 
 ## Other
 
