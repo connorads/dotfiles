@@ -57,6 +57,7 @@ Then `dotfiles add .newfile` works without `-f`.
 ## Shell Function Conventions
 
 - Add a top-of-function comment in `~/.config/zsh/functions/**` using `# <name>: <purpose>` (and `# alias: ...` when needed).
+- oh-my-zsh git plugin defines ~200 `g*` aliases (e.g. `gcl`, `gco`, `gca`). Run `alias <name>` before creating new `g*` functions/aliases to avoid conflicts.
 
 ## Scripts
 
@@ -90,6 +91,7 @@ gigaup [port]              # Start gigacode server via Tailscale (default :2468,
 gigadown                   # Stop gigacode server
 webterm [session] [port] # Expose tmux session via web (default: main :7681)
 webtermdown [port]     # Stop web terminal
+ghcl [owner]           # fzf clone from GitHub (SSH)
 ```
 
 ## Agent Skills
