@@ -57,6 +57,7 @@
     coreutils
     bc
     bat
+    glow
     bottom
     dust
     ncdu
