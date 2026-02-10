@@ -88,6 +88,18 @@ class TestIsMutatingGhApi:
     def test_ignores_non_gh_api_commands(self, command: str) -> None:
         assert is_mutating_gh_api(command) is False
 
+    @pytest.mark.parametrize(
+        "command",
+        [
+            # Commit messages mentioning gh api flags should not trigger
+            'git commit -m "allow gh api, gate -f and --field flags"',
+            'dotfiles commit -m "hook for gh api -X POST and --input"',
+            "git commit -m \"$(cat <<'EOF'\nallow gh api, gate -f and --raw-field\nEOF\n)\"",
+        ],
+    )
+    def test_ignores_gh_api_in_commit_messages(self, command: str) -> None:
+        assert is_mutating_gh_api(command) is False
+
 
 # --- Integration test via subprocess ---
 
