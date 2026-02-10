@@ -1,0 +1,69 @@
+# tmux-upstream: check forked tmux plugins for upstream updates
+local verbose=false
+[[ "$1" == "-v" || "$1" == "--verbose" ]] && verbose=true
+
+local conf="$HOME/.config/tmux/tmux.conf"
+if [[ ! -f "$conf" ]]; then
+  echo "tmux.conf not found at $conf" >&2
+  return 1
+fi
+
+# Parse plugin forks from tmux.conf (connorads/* only)
+local -a plugins
+plugins=("${(@f)$(grep "^set -g @plugin" "$conf" | grep -o "connorads/[^']*")}")
+
+if [[ ${#plugins} -eq 0 ]]; then
+  echo "No connorads/ plugins found in $conf" >&2
+  return 1
+fi
+
+local max_name=0 name
+for plugin in "${plugins[@]}"; do
+  name="${plugin#connorads/}"
+  (( ${#name} > max_name )) && max_name=${#name}
+done
+
+local has_behind=false
+local meta branch parent parent_branch compare behind commits
+
+for plugin in "${plugins[@]}"; do
+  name="${plugin#connorads/}"
+
+  # Get fork metadata: parent repo and default branches
+  meta=$(gh api "repos/$plugin" --jq '{db: .default_branch, pn: .parent.full_name, pdb: .parent.default_branch}' 2>/dev/null)
+  if [[ -z "$meta" ]]; then
+    printf "  %-${max_name}s   ? could not query fork\n" "$name"
+    continue
+  fi
+
+  branch=$(echo "$meta" | jq -r '.db')
+  parent=$(echo "$meta" | jq -r '.pn')
+  parent_branch=$(echo "$meta" | jq -r '.pdb')
+
+  # Compare: base=fork, head=upstream → ahead_by = commits fork is behind
+  compare=$(gh api "repos/$parent/compare/connorads:${branch}...${parent_branch}" \
+    --jq '{behind: .ahead_by, commits: [.commits[] | .commit.message | split("\n")[0]]}' 2>/dev/null)
+  if [[ -z "$compare" ]]; then
+    printf "  %-${max_name}s   ? compare failed\n" "$name"
+    continue
+  fi
+
+  behind=$(echo "$compare" | jq -r '.behind')
+
+  if [[ "$behind" -eq 0 ]]; then
+    printf "  %-${max_name}s   ✓ up to date\n" "$name"
+  else
+    has_behind=true
+    printf "  %-${max_name}s   ⚠ %d commit%s behind\n" "$name" "$behind" "$( (( behind > 1 )) && echo s)"
+    if $verbose; then
+      commits=$(echo "$compare" | jq -r '.commits[] | "      · " + .')
+      echo "$commits"
+    fi
+  fi
+done
+
+if $has_behind; then
+  echo ""
+  echo "Sync a fork:  gh repo sync connorads/<plugin>"
+  echo "Then update:  prefix + U (in tmux)"
+fi
