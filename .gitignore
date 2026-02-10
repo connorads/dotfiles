@@ -112,6 +112,7 @@
 !/.config/zsh/functions/**
 
 .DS_Store
+__pycache__/
 
 !/.clawdbot/
 /.clawdbot/**
