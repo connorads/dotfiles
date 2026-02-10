@@ -1,0 +1,12 @@
+# o: open path in native file manager (Finder, Files, etc.)
+# Usage: o [path]  (defaults to current directory)
+local target="${1:-.}"
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  open "$target"
+elif command -v xdg-open &>/dev/null; then
+  xdg-open "$target"
+else
+  echo "no file manager opener found" >&2
+  return 1
+fi
