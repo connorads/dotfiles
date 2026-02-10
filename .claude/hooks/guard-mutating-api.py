@@ -28,6 +28,9 @@ import sys
 # HTTP methods considered mutating
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
+# Commands where `gh api` may appear in quoted args (e.g. commit messages) — skip these.
+NOT_GH_API_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
+
 # Pattern to detect `gh api` (with optional flags before `api`)
 GH_API_RE = re.compile(r"\bgh\s+api\b")
 
@@ -52,6 +55,8 @@ def is_mutating_gh_api(command: str) -> bool:
     Detects both explicit methods (-X POST, --method DELETE) and implicit POST
     via body-param flags (-f, -F, --field, --raw-field, --input).
     """
+    if NOT_GH_API_CMD_RE.search(command):
+        return False
     if not GH_API_RE.search(command):
         return False
     if METHOD_FLAG_RE.search(command) is not None:
