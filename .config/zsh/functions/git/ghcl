@@ -1,0 +1,37 @@
+# ghcl: fuzzy clone a GitHub repo via gh + fzf
+# usage: ghcl [owner|owner/repo]
+local arg=$1
+
+# Direct clone if arg looks like owner/repo
+if [[ $arg == */* ]]; then
+  gh repo clone "$arg"
+  return $?
+fi
+
+# Build gh repo list command
+local owner_flag=()
+if [[ -n $arg ]]; then
+  owner_flag=("$arg")
+fi
+
+local selection
+selection=$(
+  gh repo list "${owner_flag[@]}" \
+    --limit 200 \
+    --json nameWithOwner,visibility,description \
+    --jq '.[] | [.nameWithOwner, (.visibility | ascii_downcase), (.description // "")] | @tsv' |
+  fzf --delimiter='\t' \
+    --with-nth=1,2,3 \
+    --header='Select a repo to clone' \
+    --preview='gh repo view {1}' \
+    --preview-window=right:50%:wrap
+) || return 0
+
+local repo
+repo=$(echo "$selection" | cut -f1)
+
+if [[ -z $repo ]]; then
+  return 0
+fi
+
+gh repo clone "$repo"
