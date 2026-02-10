@@ -48,7 +48,8 @@ Then `dotfiles add .newfile` works without `-f`.
 | [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers (nix/git/tailscale) |
 | [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
 | [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
-| [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration |
+| [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration (update `help.md` when changing bindings) |
+| [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
 | [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
