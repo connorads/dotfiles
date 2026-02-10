@@ -35,6 +35,7 @@ hcloud = "latest"
 "npm:wrangler" = "latest"
 "npm:@mariozechner/pi-coding-agent" = "latest"
 "npm:@sandbox-agent/gigacode" = "latest"
+"npm:the-vibe-companion" = "latest"
 
 "pipx:ty" = "latest"
 "pipx:mistral-vibe" = "latest"
