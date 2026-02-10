@@ -130,7 +130,7 @@
       "Bash(gcloud config get-value:*)",
       "Bash(gcloud services list:*)",
       "Bash(getent:*)",
-      "Bash(gh api --help)",
+      "Bash(gh api *)",
       "Bash(gh auth status:*)",
       "Bash(gh codespace list:*)",
       "Bash(gh gist view:*)",
@@ -581,6 +581,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/no-self-attribution.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/guard-mutating-api.py"
           }
         ]
       }
