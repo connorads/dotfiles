@@ -5,8 +5,11 @@ local port=${2:-7681}
 # Kill existing webterm if running
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
+# Catppuccin Mocha theme for xterm.js
+local theme='theme={"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#45475a","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
+
 # Start ttyd pointing at tmux session (writable, with auth from Tailscale)
-ttyd -i 127.0.0.1 --port $port --writable tmux new-session -A -s "$session" &!
+ttyd -i 127.0.0.1 --port $port --writable -t "$theme" tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
