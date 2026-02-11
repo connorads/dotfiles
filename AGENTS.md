@@ -91,8 +91,8 @@ gigaup [port]              # Start gigacode server via Tailscale (default :2468,
 gigadown                   # Stop gigacode server
 companionup [port]         # Start Vibe Companion via Tailscale (default :3456)
 companiondown              # Stop Vibe Companion
-webterm [session] [port] # Expose tmux session via web (default: main :7681)
-webtermdown [port]     # Stop web terminal
+webtermup [session] [port] # Expose tmux session via web (default: main :7681)
+webtermdown [port]         # Stop web terminal
 ghcl [owner]           # fzf clone from GitHub (SSH)
 ```
 
