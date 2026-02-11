@@ -290,7 +290,7 @@ fi
 # Install TPM (tmux plugin manager) and plugins
 if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
   echo "Installing TPM (tmux plugin manager)..."
-  git clone --depth 1 https://github.com/tmux-plugins/tpm "$HOME/.config/tmux/plugins/tpm"
+  git clone --depth 1 https://github.com/connorads/tpm "$HOME/.config/tmux/plugins/tpm"
 fi
 
 echo "Installing tmux plugins via TPM..."
