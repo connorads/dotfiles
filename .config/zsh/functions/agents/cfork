@@ -3,13 +3,53 @@ local sid="${1:-}"
 
 if [[ -z "$sid" ]]; then
   local selection
-  selection=$(jq -rs '
-    [.[] | .entries[]]
-    | map(. + {lastSeen: (.modified // .created // "")})
-    | sort_by(.lastSeen) | reverse
-    | .[]
-    | "\(.sessionId)\t\(.lastSeen | sub("T"; " ") | sub("\\..*Z$"; "Z"))\t\(.summary)\t\(.projectPath | split("/") | last)\t\(.messageCount) msgs"
-  ' ~/.claude/projects/*/sessions-index.json 2>/dev/null \
+  selection=$(python3 -c '
+import json, os, glob
+from datetime import datetime
+
+sessions = []
+for f in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
+    if "/subagents/" in f:
+        continue
+    sid = os.path.basename(f).replace(".jsonl", "")
+    if len(sid) < 20:
+        continue
+    mtime = os.path.getmtime(f)
+    project_dir = os.path.basename(os.path.dirname(f))
+    project = project_dir.lstrip("-").replace("-", "/")
+    summary = ""
+    msg_count = 0
+    try:
+        with open(f) as fh:
+            for line in fh:
+                try:
+                    d = json.loads(line)
+                    t = d.get("type")
+                    if t in ("user", "assistant"):
+                        msg_count += 1
+                    if not summary and t == "user":
+                        c = d.get("message", {}).get("content", "")
+                        if isinstance(c, list):
+                            for item in c:
+                                if isinstance(item, dict):
+                                    summary = item.get("text", "")
+                                elif isinstance(item, str):
+                                    summary = item
+                                if summary:
+                                    break
+                        elif isinstance(c, str):
+                            summary = c
+                except (json.JSONDecodeError, KeyError):
+                    continue
+    except Exception:
+        continue
+    sessions.append((mtime, sid, summary[:80], project, msg_count))
+
+sessions.sort(key=lambda x: x[0], reverse=True)
+for mtime, sid, summary, project, msgs in sessions:
+    ts = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{sid}\t{ts}\t{summary}\t{project}\t{msgs} msgs")
+' 2>/dev/null \
     | fzf --prompt="Fork session: " --with-nth=2.. --delimiter=$'\t' --no-sort)
 
   [[ -z "$selection" ]] && return
