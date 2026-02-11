@@ -6,7 +6,7 @@ local port=${2:-7681}
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
 # Start ttyd pointing at tmux session (writable, with auth from Tailscale)
-ttyd -i lo0 --port $port --writable tmux new-session -A -s "$session" &!
+ttyd -i 127.0.0.1 --port $port --writable tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
