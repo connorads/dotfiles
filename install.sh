@@ -204,7 +204,16 @@ EOF
 
     sudo systemctl daemon-reload
     sudo systemctl enable --now tailscaled
-    sudo "$TAILSCALED_BIN/../tailscale" set --operator="$USER"
+
+    TAILSCALE_BIN="$HOME/.nix-profile/bin/tailscale"
+    if [ -x "$TAILSCALE_BIN" ]; then
+      # Wait for tailscaled socket to be ready
+      for i in $(seq 1 10); do
+        [ -S /run/tailscale/tailscaled.sock ] && break
+        sleep 1
+      done
+      sudo "$TAILSCALE_BIN" set --operator="$USER"
+    fi
     echo "tailscaled running with TUN. Run 'tsup' to authenticate."
   elif [ -f "$UNIT_FILE" ]; then
     echo "System tailscaled already installed"
