@@ -32,6 +32,13 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Use British English: analyse, favourite, realise, colour etc.
 - Be concise: Interactions, PRs and commit messages - be concise and sacrifice grammar for the sake of concision.
 
+## Git
+
+- Atomic commits: one logical change per commit — if the message needs "and", split it
+- Renames/moves always in a separate commit from content changes (preserves blame/history)
+- Separate refactors from features/fixes when non-trivial; tiny incidental cleanups can ride along
+- Each commit should ideally build and pass tests; enforce on main, best effort on WIP branches
+
 ## Coding and domain modelling
 
 - Strongly typed code: No `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
