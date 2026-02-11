@@ -1,4 +1,4 @@
-# webterm: expose tmux session via ttyd + Tailscale serve
+# webtermup: expose tmux session via ttyd + Tailscale serve
 local session=${1:-main}
 local port=${2:-7681}
 
