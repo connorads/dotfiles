@@ -100,6 +100,9 @@
       PubkeyAuthentication = true;
       MaxAuthTries = 3;
       LoginGraceTime = 20;
+      AllowTcpForwarding = false;
+      AllowAgentForwarding = false;
+      X11Forwarding = false;
     };
   };
 
