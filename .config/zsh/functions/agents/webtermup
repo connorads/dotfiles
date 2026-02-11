@@ -5,11 +5,35 @@ local port=${2:-7681}
 # Kill existing webterm if running
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
+# Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
+local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
+local ttyd_version=$(ttyd --version 2>&1 | head -1)
+local version_hash=$(echo "$ttyd_version" | md5sum | cut -d' ' -f1)
+local patched_index="$cache_dir/index-$version_hash.html"
+
+if [[ ! -f "$patched_index" ]]; then
+  mkdir -p "$cache_dir"
+  local tmp_port=19999
+  ttyd --port $tmp_port -i 127.0.0.1 echo noop &
+  local tmp_pid=$!
+  sleep 1
+  curl -sf "http://127.0.0.1:$tmp_port/" > "$patched_index"
+  kill $tmp_pid 2>/dev/null; wait $tmp_pid 2>/dev/null
+  # Inject Nerd Font CSS before </head>
+  local font_css='<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mshaugh/nerdfont-webfonts@latest/build/jetbrainsmono-nfm.css">'
+  sed -i "s|</head>|${font_css}</head>|" "$patched_index"
+  echo "Cached patched ttyd index with Nerd Font"
+fi
+
 # Catppuccin Mocha theme for xterm.js
 local theme='theme={"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#45475a","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
 
-# Start ttyd pointing at tmux session (writable, with auth from Tailscale)
-ttyd -i 127.0.0.1 --port $port --writable -t "$theme" tmux new-session -A -s "$session" &!
+# Start ttyd with patched index + Nerd Font family
+ttyd -i 127.0.0.1 --port $port --writable \
+  --index "$patched_index" \
+  -t "$theme" \
+  -t 'fontFamily="JetBrainsMono NFM, monospace"' \
+  tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
