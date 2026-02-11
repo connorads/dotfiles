@@ -601,6 +601,15 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/allow-global-skills.py"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
