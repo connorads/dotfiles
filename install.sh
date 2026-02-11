@@ -294,7 +294,7 @@ if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
 fi
 
 echo "Installing tmux plugins via TPM..."
-"$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
+TMUX_PLUGIN_MANAGER_PATH="$HOME/.config/tmux/plugins/" "$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
 
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
