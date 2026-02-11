@@ -38,6 +38,7 @@
     '')
 
     # Dev tools
+    gcc
     mise
     pipx
     nixfmt
