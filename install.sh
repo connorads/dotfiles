@@ -220,6 +220,88 @@ EOF
   fi
 fi
 
+# --- Security hardening (non-NixOS Linux only) ---
+# NixOS handles this in configuration.nix; Codespaces are ephemeral
+if [ "$IN_NIXOS" = "false" ] && [ "$IN_CODESPACES" = "false" ] && command -v apt-get &>/dev/null; then
+  echo "Applying security hardening..."
+
+  # SSH hardening — drop-in config
+  SSHD_HARDENING="/etc/ssh/sshd_config.d/90-hardening.conf"
+  if [ ! -f "$SSHD_HARDENING" ]; then
+    if [ ! -s "$HOME/.ssh/authorized_keys" ]; then
+      echo "WARNING: No authorized_keys found — skipping SSH hardening to avoid lockout"
+    else
+      echo "Hardening SSH config..."
+      sudo tee "$SSHD_HARDENING" > /dev/null << 'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+MaxAuthTries 3
+LoginGraceTime 20
+AllowTcpForwarding no
+AllowAgentForwarding no
+X11Forwarding no
+AllowUsers connor
+EOF
+      sudo systemctl reload sshd 2>/dev/null || sudo systemctl reload ssh 2>/dev/null || true
+    fi
+  else
+    echo "SSH hardening already applied"
+  fi
+
+  # fail2ban
+  if ! command -v fail2ban-client &>/dev/null; then
+    echo "Installing fail2ban..."
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y fail2ban
+  fi
+  if [ ! -f /etc/fail2ban/jail.local ]; then
+    echo "Configuring fail2ban..."
+    sudo tee /etc/fail2ban/jail.local > /dev/null << 'EOF'
+[sshd]
+enabled = true
+maxretry = 3
+bantime = 3600
+EOF
+  fi
+  sudo systemctl enable --now fail2ban 2>/dev/null || true
+
+  # UFW firewall
+  if ! command -v ufw &>/dev/null; then
+    echo "Installing UFW..."
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y ufw
+  fi
+  if ! sudo ufw status | grep -q "Status: active"; then
+    echo "Configuring UFW firewall..."
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow 22/tcp comment 'SSH'
+    sudo ufw allow in on tailscale0 comment 'Tailscale'
+
+    # Auto-detect Tailscale WireGuard UDP port from iptables rules
+    TS_UDP_PORT=$(sudo iptables -S ts-input 2>/dev/null | grep -oP 'udp --dport \K[0-9]+' | head -1)
+    if [ -n "$TS_UDP_PORT" ]; then
+      sudo ufw allow "$TS_UDP_PORT"/udp comment 'Tailscale WireGuard'
+    fi
+
+    sudo ufw --force enable
+  else
+    echo "UFW already active"
+  fi
+
+  # Unattended-upgrades
+  if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
+    echo "Installing unattended-upgrades..."
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y unattended-upgrades
+    sudo env DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -plow unattended-upgrades
+  fi
+  sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+
+  # Apply pending package updates
+  echo "Applying pending package updates..."
+  sudo apt-get update -y
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+fi
+
 # Install tools via mise (skip on NixOS - use Nix packages instead)
 if [ "$IN_NIXOS" = "true" ]; then
   echo "Skipping mise install on NixOS - tools managed by NixOS config"
