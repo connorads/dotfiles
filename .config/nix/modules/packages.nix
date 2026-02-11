@@ -64,6 +64,17 @@
     parallel-disk-usage
     zstd
 
+    # Clipboard (OSC 52 over SSH)
+    osc # OSC 52 clipboard tool (osc copy / osc paste)
+    (writeShellScriptBin "xclip" ''
+      # xclip shim: delegates to osc for headless/SSH environments
+      # Falls back to real xclip when a display server is available
+      for arg in "$@"; do
+        case "$arg" in -o|-out) exit 1 ;; esac
+      done
+      exec ${osc}/bin/osc copy
+    '')
+
     # Networking & security
     tailscale
     nmap
