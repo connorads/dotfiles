@@ -1,0 +1,68 @@
+# tsdns: manage Tailscale DNS preference on this device
+emulate -L zsh
+setopt err_return
+
+if [[ $# -gt 1 ]]; then
+  echo "Usage: tsdns [status|info|on|off|toggle]" >&2
+  return 1
+fi
+
+local action="${1:-status}"
+local prefs
+
+get_prefs() {
+  prefs="$(ts debug prefs 2>/dev/null)" || {
+    echo "Could not read Tailscale preferences. Is tailscaled running?" >&2
+    return 1
+  }
+}
+
+print_state() {
+  if [[ "$prefs" =~ '"CorpDNS":[[:space:]]*true' ]]; then
+    echo "Tailscale DNS: on (accept-dns=true)"
+  elif [[ "$prefs" =~ '"CorpDNS":[[:space:]]*false' ]]; then
+    echo "Tailscale DNS: off (accept-dns=false)"
+  else
+    echo "Tailscale DNS: unknown"
+  fi
+}
+
+case "$action" in
+  status)
+    get_prefs || return 1
+    print_state
+    echo "Use: tsdns on | off | toggle | info"
+    ;;
+  info)
+    get_prefs || return 1
+    print_state
+    ts dns status
+    ;;
+  on)
+    ts set --accept-dns=true
+    get_prefs || return 1
+    print_state
+    ;;
+  off)
+    ts set --accept-dns=false
+    get_prefs || return 1
+    print_state
+    ;;
+  toggle)
+    get_prefs || return 1
+    if [[ "$prefs" =~ '"CorpDNS":[[:space:]]*true' ]]; then
+      ts set --accept-dns=false
+    elif [[ "$prefs" =~ '"CorpDNS":[[:space:]]*false' ]]; then
+      ts set --accept-dns=true
+    else
+      echo "Could not determine current Tailscale DNS setting" >&2
+      return 1
+    fi
+    get_prefs || return 1
+    print_state
+    ;;
+  *)
+    echo "Usage: tsdns [status|info|on|off|toggle]" >&2
+    return 1
+    ;;
+esac
