@@ -8,7 +8,8 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local version_hash=$(echo "$ttyd_version" | md5sum | cut -d' ' -f1)
+local patch_version=2  # bump to bust cache when changing injected HTML/JS
+local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
 if [[ ! -f "$patched_index" ]]; then
@@ -19,21 +20,201 @@ if [[ ! -f "$patched_index" ]]; then
   sleep 1
   curl -sf "http://127.0.0.1:$tmp_port/" > "$patched_index"
   kill $tmp_pid 2>/dev/null; wait $tmp_pid 2>/dev/null
-  # Inject Nerd Font CSS + resize-after-load script before </head>
+
+  # Build injection payload: Nerd Font CSS + viewport + mobile helper
   local font_css='<link rel="preload" href="https://cdn.jsdelivr.net/gh/mshaugh/nerdfont-webfonts@latest/build/jetbrainsmono-nfm.css" as="style" onload="this.rel='"'"'stylesheet'"'"'">'
-  local font_fix='<script>document.fonts.ready.then(()=>window.dispatchEvent(new Event("resize")))</script>'
-  sed -i "s|</head>|${font_css}${font_fix}</head>|" "$patched_index"
-  echo "Cached patched ttyd index with Nerd Font"
+  local viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+
+  # Mobile helper: touch toolbar, font size controls, auto-resize
+  local mobile_script
+  read -r -d '' mobile_script << 'SCRIPTEOF'
+<script>
+(function(){
+  function waitForTerm(cb){
+    if(window.term)return cb(window.term);
+    setTimeout(function(){waitForTerm(cb)},100);
+  }
+  waitForTerm(function(term){
+    // Resize after fonts load (preserves existing behaviour)
+    document.fonts.ready.then(function(){window.dispatchEvent(new Event("resize"))});
+
+    var isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+    if(!isMobile)return;
+
+    // Bump font size for readability on mobile
+    term.options.fontSize=16;
+    if(term.fit)term.fit();else if(term._addonManager){
+      // xterm-addon-fit may be loaded by ttyd
+      try{var f=term._addonManager._addons.find(function(a){return a.instance&&a.instance.fit});if(f)f.instance.fit();}catch(e){}
+    }
+    window.dispatchEvent(new Event("resize"));
+
+    // Helper: send data to terminal (public API since xterm.js 5.4.0 / ttyd 1.7.5+)
+    function sendData(data){
+      term.input(data,true);
+    }
+
+    // --- Ctrl sticky modifier state ---
+    var ctrlActive=false;
+    var origOnData=null;
+
+    function activateCtrl(btn){
+      ctrlActive=true;
+      btn.style.background='#89b4fa';
+      btn.style.color='#1e1e2e';
+      // Intercept next keypress via onData
+      if(!origOnData){
+        origOnData=term.onData(function(data){
+          if(ctrlActive&&data.length===1){
+            var code=data.charCodeAt(0);
+            // Deactivate first to prevent re-entry from sendData → onData
+            deactivateCtrl(btn);
+            // a-z or A-Z → send Ctrl char; otherwise char sent normally by xterm
+            if((code>=65&&code<=90)||(code>=97&&code<=122)){
+              sendData(String.fromCharCode(code&0x1f));
+            }
+          }
+        });
+      }
+    }
+    function deactivateCtrl(btn){
+      ctrlActive=false;
+      btn.style.background='#45475a';
+      btn.style.color='#cdd6f4';
+      if(origOnData){origOnData.dispose();origOnData=null;}
+    }
+
+    // --- Style injection ---
+    var style=document.createElement('style');
+    style.textContent=
+      '#wt-toolbar{display:none;position:fixed;bottom:0;left:0;right:0;'+
+      'background:#313244;padding:6px 4px;z-index:9999;'+
+      'justify-content:center;gap:4px;flex-wrap:wrap;-webkit-user-select:none;user-select:none;}'+
+      '@media(pointer:coarse){#wt-toolbar{display:flex;}}'+
+      '#wt-toolbar button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
+      'min-width:44px;min-height:44px;font-size:15px;font-weight:600;'+
+      'padding:4px 10px;cursor:pointer;touch-action:manipulation;}'+
+      '#wt-toolbar button:active{background:#585b70;}'+
+      '#wt-font-controls{display:none;position:fixed;top:8px;right:8px;z-index:9999;gap:4px;'+
+      '-webkit-user-select:none;user-select:none;}'+
+      '@media(pointer:coarse){#wt-font-controls{display:flex;}}'+
+      '#wt-font-controls button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
+      'min-width:44px;min-height:44px;font-size:18px;font-weight:700;'+
+      'cursor:pointer;touch-action:manipulation;opacity:0.8;}'+
+      '#wt-font-controls button:active{opacity:1;background:#585b70;}';
+    document.head.appendChild(style);
+
+    // --- Font size controls ---
+    var fontCtrl=document.createElement('div');
+    fontCtrl.id='wt-font-controls';
+    var btnMinus=document.createElement('button');
+    btnMinus.textContent='\u2212';  // minus sign
+    btnMinus.setAttribute('aria-label','Decrease font size');
+    var btnPlus=document.createElement('button');
+    btnPlus.textContent='+';
+    btnPlus.setAttribute('aria-label','Increase font size');
+    fontCtrl.appendChild(btnMinus);
+    fontCtrl.appendChild(btnPlus);
+    document.body.appendChild(fontCtrl);
+
+    function resizeTerm(){
+      window.dispatchEvent(new Event("resize"));
+    }
+    btnMinus.addEventListener('click',function(e){
+      e.preventDefault();
+      var s=term.options.fontSize;
+      if(s>8){term.options.fontSize=s-2;resizeTerm();}
+    });
+    btnPlus.addEventListener('click',function(e){
+      e.preventDefault();
+      var s=term.options.fontSize;
+      if(s<32){term.options.fontSize=s+2;resizeTerm();}
+    });
+
+    // --- On-screen key toolbar ---
+    var toolbar=document.createElement('div');
+    toolbar.id='wt-toolbar';
+
+    var ctrlBtnRef=null;
+    var buttons=[
+      {label:'Esc',  data:'\x1b'},
+      {label:'Ctrl', data:null, isCtrl:true},
+      {label:'Tab',  data:'\t'},
+      {label:'\u2190', data:'\x1b[D'},  // left arrow
+      {label:'\u2191', data:'\x1b[A'},  // up arrow
+      {label:'\u2193', data:'\x1b[B'},  // down arrow
+      {label:'\u2192', data:'\x1b[C'},  // right arrow
+      {label:'C-b',  data:'\x02'},      // tmux prefix
+      {label:'C-c',  data:'\x03'}
+    ];
+
+    buttons.forEach(function(def){
+      var btn=document.createElement('button');
+      btn.textContent=def.label;
+      if(def.isCtrl){
+        ctrlBtnRef=btn;
+        btn.addEventListener('click',function(e){
+          e.preventDefault();
+          if(ctrlActive){deactivateCtrl(btn);}
+          else{activateCtrl(btn);}
+          term.focus();
+        });
+      }else{
+        btn.addEventListener('click',function(e){
+          e.preventDefault();
+          if(ctrlActive){
+            deactivateCtrl(ctrlBtnRef);
+            // Apply ctrl to first char if it's a letter
+            if(def.data.length===1){
+              var code=def.data.charCodeAt(0);
+              if((code>=65&&code<=90)||(code>=97&&code<=122)){
+                sendData(String.fromCharCode(code&0x1f));
+                term.focus();
+                return;
+              }
+            }
+          }
+          sendData(def.data);
+          term.focus();
+        });
+      }
+      toolbar.appendChild(btn);
+    });
+
+    document.body.appendChild(toolbar);
+
+    // Give terminal some bottom margin so toolbar doesn't cover last lines
+    var termEl=document.querySelector('.xterm');
+    if(termEl)termEl.style.paddingBottom='60px';
+    resizeTerm();
+  });
+})();
+</script>
+SCRIPTEOF
+
+  # Use python3 for injection — sed delimiter conflicts with JS operators (||, &)
+  local inject_file=$(mktemp)
+  printf '%s' "${font_css}${viewport}${mobile_script}" > "$inject_file"
+  python3 -c "
+import sys
+with open(sys.argv[1]) as f: c=f.read()
+with open(sys.argv[2]) as f: inj=f.read()
+with open(sys.argv[1],'w') as f: f.write(c.replace('</head>',inj+'</head>',1))
+" "$patched_index" "$inject_file"
+  rm -f "$inject_file"
+  echo "Cached patched ttyd index (v$patch_version) with Nerd Font + mobile support"
 fi
 
 # Catppuccin Mocha theme for xterm.js
 local theme='theme={"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#45475a","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
 
-# Start ttyd with patched index + Nerd Font family
+# Start ttyd with patched index + Nerd Font family + mobile-friendly flags
 ttyd -i 127.0.0.1 --port $port --writable \
   --index "$patched_index" \
   -t "$theme" \
   -t 'fontFamily="JetBrainsMono NFM, monospace"' \
+  -t 'scrollSensitivity=3' \
+  -t 'disableLeaveAlert=true' \
   tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
