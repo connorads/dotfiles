@@ -8,7 +8,7 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local patch_version=3  # bump to bust cache when changing injected HTML/JS
+local patch_version=4  # bump to bust cache when changing injected HTML/JS
 local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
@@ -184,14 +184,13 @@ if [[ ! -f "$patched_index" ]]; then
     document.body.appendChild(toolbar);
 
     // Shrink terminal so toolbar doesn't cover tmux status bar / last rows
-    // Wait a frame for toolbar to render, then measure its actual height
+    // ttyd sets `body,html { height:100%; min-height:100% }` — must override
+    // min-height too, otherwise the body can't shrink below viewport height
     requestAnimationFrame(function(){
       var tbH=toolbar.offsetHeight||52;
-      var container=document.querySelector('.xterm');
-      if(container){
-        container.style.height='calc(100vh - '+tbH+'px)';
-        container.style.overflow='hidden';
-      }
+      var h='calc(100vh - '+tbH+'px)';
+      document.body.style.setProperty('min-height','0','important');
+      document.body.style.setProperty('height',h,'important');
       resizeTerm();
     });
   });
