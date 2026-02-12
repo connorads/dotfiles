@@ -107,6 +107,13 @@
 !/.config/mise/
 !/.config/mise/**
 
+!/.config/webmux/
+!/.config/webmux/**
+/.config/webmux/node_modules/
+/.config/webmux/dist/
+/.config/webmux/bun.lock
+/.config/webmux/.tmp-entry.ts
+
 !/.config/zsh/
 !/.config/zsh/aliases/
 !/.config/zsh/aliases/**
