@@ -8,7 +8,7 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local patch_version=6  # bump to bust cache when changing injected HTML/JS
+local patch_version=7  # bump to bust cache when changing injected HTML/JS
 local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
@@ -44,32 +44,27 @@ if [[ ! -f "$patched_index" ]]; then
     // Bump font size for readability on mobile
     term.options.fontSize=16;
     if(term.fit)term.fit();else if(term._addonManager){
-      // xterm-addon-fit may be loaded by ttyd
       try{var f=term._addonManager._addons.find(function(a){return a.instance&&a.instance.fit});if(f)f.instance.fit();}catch(e){}
     }
     window.dispatchEvent(new Event("resize"));
 
-    // Helper: send data to terminal (public API since xterm.js 5.4.0 / ttyd 1.7.5+)
-    function sendData(data){
-      term.input(data,true);
-    }
+    // Helper: send data to terminal
+    function sendData(data){term.input(data,true);}
+    // Helper: haptic buzz (no-op on iOS)
+    function haptic(){if(navigator.vibrate)navigator.vibrate(10);}
 
     // --- Ctrl sticky modifier state ---
     var ctrlActive=false;
     var origOnData=null;
-
     function activateCtrl(btn){
       ctrlActive=true;
-      btn.style.background='#89b4fa';
-      btn.style.color='#1e1e2e';
-      // Intercept next keypress via onData
+      btn.style.background='#89b4fa';btn.style.color='#1e1e2e';
       if(!origOnData){
         origOnData=term.onData(function(data){
           if(ctrlActive&&data.length===1){
             var code=data.charCodeAt(0);
             // Deactivate first to prevent re-entry from sendData → onData
             deactivateCtrl(btn);
-            // a-z or A-Z → send Ctrl char; otherwise char sent normally by xterm
             if((code>=65&&code<=90)||(code>=97&&code<=122)){
               sendData(String.fromCharCode(code&0x1f));
             }
@@ -79,126 +74,393 @@ if [[ ! -f "$patched_index" ]]; then
     }
     function deactivateCtrl(btn){
       ctrlActive=false;
-      btn.style.background='#45475a';
-      btn.style.color='#cdd6f4';
+      btn.style.background='#45475a';btn.style.color='#cdd6f4';
       if(origOnData){origOnData.dispose();origOnData=null;}
     }
 
     // --- Style injection ---
     var style=document.createElement('style');
-    style.textContent=
-      '#wt-toolbar{display:none;position:fixed;bottom:0;left:0;right:0;'+
-      'background:#313244;padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;z-index:9999;'+
-      'justify-content:center;gap:2px;flex-wrap:nowrap;-webkit-user-select:none;user-select:none;}'+
-      '@media(pointer:coarse){#wt-toolbar{display:flex;}}'+
-      '#wt-toolbar button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
-      'min-width:32px;min-height:40px;font-size:13px;font-weight:600;'+
-      'padding:4px 4px;cursor:pointer;touch-action:manipulation;flex-shrink:1;}'+
-      '#wt-toolbar button:active{background:#585b70;}'+
-      '#wt-font-controls{display:none;position:fixed;top:8px;right:8px;z-index:9999;gap:4px;'+
-      '-webkit-user-select:none;user-select:none;}'+
-      '@media(pointer:coarse){#wt-font-controls{display:flex;}}'+
-      '#wt-font-controls button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
-      'min-width:44px;min-height:44px;font-size:18px;font-weight:700;'+
-      'cursor:pointer;touch-action:manipulation;opacity:0.8;}'+
-      '#wt-font-controls button:active{opacity:1;background:#585b70;}'+
-      '#wt-toolbar .wt-winnav{background:#585b70;min-width:28px;font-size:11px;padding:4px 2px;}';
+    style.textContent=[
+      /* Toolbar: two-row layout */
+      '#wt-toolbar{display:none;position:fixed;bottom:0;left:0;right:0;',
+      'background:#313244;padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;z-index:9999;',
+      'flex-direction:column;gap:4px;-webkit-user-select:none;user-select:none;}',
+      '@media(pointer:coarse){#wt-toolbar{display:flex;}}',
+      '.wt-row{display:flex;gap:4px;justify-content:center;}',
+      '#wt-toolbar button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;',
+      'min-height:44px;font-size:13px;font-weight:600;',
+      'padding:4px 6px;cursor:pointer;touch-action:manipulation;flex-shrink:1;}',
+      '#wt-toolbar .wt-row:first-child button{min-width:38px;}',
+      '#wt-toolbar .wt-row:last-child button{flex:1;}',
+      '#wt-toolbar button:active{background:#585b70;}',
+
+      /* Font controls + help button */
+      '#wt-font-controls{display:none;position:fixed;top:8px;right:8px;z-index:9999;gap:4px;',
+      '-webkit-user-select:none;user-select:none;}',
+      '@media(pointer:coarse){#wt-font-controls{display:flex;}}',
+      '#wt-font-controls button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;',
+      'min-width:44px;min-height:44px;font-size:18px;font-weight:700;',
+      'cursor:pointer;touch-action:manipulation;opacity:0.8;}',
+      '#wt-font-controls button:active{opacity:1;background:#585b70;}',
+
+      /* Tmux drawer */
+      '#wt-backdrop{display:none;position:fixed;top:0;left:0;right:0;bottom:0;',
+      'background:rgba(0,0,0,0.5);z-index:10000;}',
+      '#wt-drawer{position:fixed;bottom:0;left:0;right:0;',
+      'background:#313244;border-radius:16px 16px 0 0;',
+      'padding:8px 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;',
+      'z-index:10001;transform:translateY(100%);transition:transform 0.25s ease-out;',
+      '-webkit-user-select:none;user-select:none;}',
+      '#wt-drawer.open{transform:translateY(0);}',
+      '#wt-drawer-handle{width:40px;height:4px;background:#585b70;border-radius:2px;',
+      'margin:0 auto 12px auto;}',
+      '#wt-drawer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}',
+      '#wt-drawer-grid button{background:#45475a;color:#cdd6f4;border:none;border-radius:8px;',
+      'min-height:48px;font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;}',
+      '#wt-drawer-grid button:active{background:#585b70;}',
+
+      /* Swipe indicator */
+      '#wt-swipe-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);',
+      'font-size:48px;color:rgba(205,214,244,0.6);pointer-events:none;z-index:9998;',
+      'opacity:0;transition:opacity 0.3s ease;}',
+
+      /* Help overlay */
+      '#wt-help{display:none;position:fixed;top:0;left:0;right:0;bottom:0;',
+      'background:rgba(30,30,46,0.95);z-index:10002;overflow-y:auto;',
+      'padding:52px 20px 20px 20px;color:#cdd6f4;font-family:system-ui,sans-serif;',
+      '-webkit-user-select:none;user-select:none;}',
+      '#wt-help h2{color:#89b4fa;font-size:18px;margin:16px 0 8px 0;}',
+      '#wt-help h2:first-child{margin-top:0;}',
+      '#wt-help table{width:100%;border-collapse:collapse;margin-bottom:12px;}',
+      '#wt-help td{padding:6px 8px;border-bottom:1px solid #313244;font-size:13px;}',
+      '#wt-help td:first-child{color:#f9e2af;white-space:nowrap;width:30%;}',
+      '#wt-help .wt-help-close{position:fixed;top:12px;right:12px;background:#45475a;',
+      'color:#cdd6f4;border:none;border-radius:50%;width:36px;height:36px;',
+      'font-size:20px;cursor:pointer;z-index:10003;}',
+
+      /* Landscape + keyboard: hide row 2, shrink buttons */
+      '@media(orientation:landscape){',
+      '#wt-toolbar.wt-kb-open .wt-row:last-child{display:none;}',
+      '#wt-toolbar.wt-kb-open button{min-height:36px;}',
+      '}'
+    ].join('');
     document.head.appendChild(style);
 
-    // --- Font size controls ---
+    // --- Font size helpers ---
+    function resizeTerm(){window.dispatchEvent(new Event("resize"));}
+    function changeFontSize(delta){
+      var s=term.options.fontSize;
+      var n=Math.max(8,Math.min(32,s+delta));
+      if(n!==s){term.options.fontSize=n;resizeTerm();}
+    }
+
+    // --- Font size controls + help button ---
     var fontCtrl=document.createElement('div');
     fontCtrl.id='wt-font-controls';
     var btnMinus=document.createElement('button');
-    btnMinus.textContent='\u2212';  // minus sign
+    btnMinus.textContent='\u2212';
     btnMinus.setAttribute('aria-label','Decrease font size');
     var btnPlus=document.createElement('button');
     btnPlus.textContent='+';
     btnPlus.setAttribute('aria-label','Increase font size');
+    var btnHelp=document.createElement('button');
+    btnHelp.textContent='?';
+    btnHelp.setAttribute('aria-label','Help');
     fontCtrl.appendChild(btnMinus);
     fontCtrl.appendChild(btnPlus);
+    fontCtrl.appendChild(btnHelp);
     document.body.appendChild(fontCtrl);
 
-    function resizeTerm(){
-      window.dispatchEvent(new Event("resize"));
-    }
-    btnMinus.addEventListener('click',function(e){
-      e.preventDefault();
-      var s=term.options.fontSize;
-      if(s>8){term.options.fontSize=s-2;resizeTerm();}
-    });
-    btnPlus.addEventListener('click',function(e){
-      e.preventDefault();
-      var s=term.options.fontSize;
-      if(s<32){term.options.fontSize=s+2;resizeTerm();}
-    });
+    btnMinus.addEventListener('click',function(e){e.preventDefault();haptic();changeFontSize(-2);});
+    btnPlus.addEventListener('click',function(e){e.preventDefault();haptic();changeFontSize(2);});
 
-    // --- On-screen key toolbar ---
+    // --- Two-row toolbar ---
     var toolbar=document.createElement('div');
     toolbar.id='wt-toolbar';
 
+    var row1=document.createElement('div');row1.className='wt-row';
+    var row2=document.createElement('div');row2.className='wt-row';
+
     var ctrlBtnRef=null;
-    var buttons=[
-      {label:'\u25C0', data:'\x02p', cls:'wt-winnav'},  // tmux prefix+p (prev window)
+    var row1Buttons=[
       {label:'Esc',  data:'\x1b'},
       {label:'Ctrl', data:null, isCtrl:true},
       {label:'Tab',  data:'\t'},
-      {label:'\u2190', data:'\x1b[D'},  // left arrow
-      {label:'\u2191', data:'\x1b[A'},  // up arrow
-      {label:'\u2193', data:'\x1b[B'},  // down arrow
-      {label:'\u2192', data:'\x1b[C'},  // right arrow
-      {label:'C-b',  data:'\x02'},      // tmux prefix
-      {label:'C-c',  data:'\x03'},
-      {label:'\u25B6', data:'\x02n', cls:'wt-winnav'}   // tmux prefix+n (next window)
+      {label:'\u2190', data:'\x1b[D'},
+      {label:'\u2191', data:'\x1b[A'},
+      {label:'\u2193', data:'\x1b[B'},
+      {label:'\u2192', data:'\x1b[C'},
+      {label:'C-c',  data:'\x03'}
+    ];
+    var row2Buttons=[
+      {label:'\u25C0 Prev', data:'\x02p'},
+      {label:'\u25B6 Next', data:'\x02n'},
+      {label:'Zoom',  data:'\x02z'},
+      {label:'Paste', data:null, isPaste:true},
+      {label:'\u2318 tmux', data:null, isDrawer:true}
     ];
 
-    buttons.forEach(function(def){
+    function makeButton(def,container){
       var btn=document.createElement('button');
       btn.textContent=def.label;
-      if(def.cls)btn.className=def.cls;
       if(def.isCtrl){
         ctrlBtnRef=btn;
         btn.addEventListener('click',function(e){
-          e.preventDefault();
+          e.preventDefault();haptic();
           if(ctrlActive){deactivateCtrl(btn);}
           else{activateCtrl(btn);}
           term.focus();
         });
+      }else if(def.isPaste){
+        btn.addEventListener('click',function(e){
+          e.preventDefault();haptic();
+          if(navigator.clipboard&&navigator.clipboard.readText){
+            navigator.clipboard.readText().then(function(text){
+              if(text)sendData(text);
+              term.focus();
+            }).catch(function(){term.focus();});
+          }else{term.focus();}
+        });
+      }else if(def.isDrawer){
+        btn.addEventListener('click',function(e){
+          e.preventDefault();haptic();openDrawer();
+        });
       }else{
         btn.addEventListener('click',function(e){
-          e.preventDefault();
+          e.preventDefault();haptic();
           if(ctrlActive){
             deactivateCtrl(ctrlBtnRef);
-            // Apply ctrl to first char if it's a letter
             if(def.data.length===1){
               var code=def.data.charCodeAt(0);
               if((code>=65&&code<=90)||(code>=97&&code<=122)){
                 sendData(String.fromCharCode(code&0x1f));
-                term.focus();
-                return;
+                term.focus();return;
               }
             }
           }
-          sendData(def.data);
-          term.focus();
+          sendData(def.data);term.focus();
         });
       }
-      toolbar.appendChild(btn);
-    });
-
+      container.appendChild(btn);
+    }
+    row1Buttons.forEach(function(d){makeButton(d,row1);});
+    row2Buttons.forEach(function(d){makeButton(d,row2);});
+    toolbar.appendChild(row1);
+    toolbar.appendChild(row2);
     document.body.appendChild(toolbar);
 
-    // Shrink terminal so toolbar doesn't cover tmux status bar / last rows
-    // ttyd sets `body,html { height:100%; min-height:100% }` — must override
-    // min-height too, otherwise the body can't shrink below viewport height
-    // Use visualViewport API for accurate height on mobile (handles browser
-    // chrome, virtual keyboard, orientation changes). Falls back to innerHeight.
+    // --- Tmux command drawer ---
+    var backdrop=document.createElement('div');
+    backdrop.id='wt-backdrop';
+    var drawer=document.createElement('div');
+    drawer.id='wt-drawer';
+    var handle=document.createElement('div');
+    handle.id='wt-drawer-handle';
+    var grid=document.createElement('div');
+    grid.id='wt-drawer-grid';
+    drawer.appendChild(handle);
+    drawer.appendChild(grid);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(drawer);
+
+    var drawerCmds=[
+      {label:'+ Win',    seq:'\x02c'},
+      {label:'Split |',  seq:'\x02|'},
+      {label:'Split \u2014', seq:'\x02-'},
+      {label:'Zoom',     seq:'\x02z'},
+      {label:'Sessions', seq:'\x02S'},
+      {label:'Windows',  seq:'\x02W'},
+      {label:'Git',      seq:'\x02g'},
+      {label:'Files',    seq:'\x02y'},
+      {label:'Links',    seq:'\x02u'},
+      {label:'Copy',     seq:'\x02 '},
+      {label:'Help',     seq:'\x02?'},
+      {label:'Kill',     seq:'\x02x'}
+    ];
+    drawerCmds.forEach(function(cmd){
+      var btn=document.createElement('button');
+      btn.textContent=cmd.label;
+      btn.addEventListener('click',function(e){
+        e.preventDefault();haptic();
+        closeDrawer();
+        sendData(cmd.seq);
+        term.focus();
+      });
+      grid.appendChild(btn);
+    });
+
+    var drawerOpen=false;
+    function openDrawer(){
+      backdrop.style.display='block';
+      drawer.classList.add('open');
+      drawerOpen=true;
+    }
+    function closeDrawer(){
+      drawer.classList.remove('open');
+      backdrop.style.display='none';
+      drawerOpen=false;
+    }
+    backdrop.addEventListener('click',function(){haptic();closeDrawer();term.focus();});
+
+    // Swipe-to-dismiss on drawer handle
+    var handleStartY=0;
+    handle.addEventListener('touchstart',function(e){
+      handleStartY=e.touches[0].clientY;
+    },{passive:true});
+    handle.addEventListener('touchmove',function(e){
+      var dy=e.touches[0].clientY-handleStartY;
+      if(dy>0)drawer.style.transform='translateY('+dy+'px)';
+    },{passive:true});
+    handle.addEventListener('touchend',function(e){
+      var dy=e.changedTouches[0].clientY-handleStartY;
+      drawer.style.transform='';
+      if(dy>60){closeDrawer();term.focus();}
+    },{passive:true});
+
+    // --- Swipe gestures for window switching ---
+    var swipeIndicator=document.createElement('div');
+    swipeIndicator.id='wt-swipe-indicator';
+    document.body.appendChild(swipeIndicator);
+    var swipeTimer=0;
+    function showSwipeIndicator(arrow){
+      swipeIndicator.textContent=arrow;
+      swipeIndicator.style.opacity='1';
+      clearTimeout(swipeTimer);
+      swipeTimer=setTimeout(function(){swipeIndicator.style.opacity='0';},300);
+    }
+
+    var touchStartX=0,touchStartY=0,touchStartTime=0;
+    function onTouchStart(e){
+      if(drawerOpen||e.touches.length!==1)return;
+      touchStartX=e.touches[0].clientX;
+      touchStartY=e.touches[0].clientY;
+      touchStartTime=Date.now();
+    }
+    function onTouchEnd(e){
+      if(drawerOpen||e.changedTouches.length!==1)return;
+      var dx=e.changedTouches[0].clientX-touchStartX;
+      var dy=e.changedTouches[0].clientY-touchStartY;
+      var dt=Date.now()-touchStartTime;
+      var absDx=Math.abs(dx),absDy=Math.abs(dy);
+      if(absDx>80&&dt<400&&absDx>absDy*2){
+        if(dx>0){sendData('\x02p');showSwipeIndicator('\u25C0');haptic();}
+        else{sendData('\x02n');showSwipeIndicator('\u25B6');haptic();}
+      }
+    }
+    // --- Pinch-to-zoom font size ---
+    var pinchStartDist=0;
+    var pinchBaseFontSize=0;
+    function onPinchStart(e){
+      if(e.touches.length===2){
+        var dx=e.touches[0].clientX-e.touches[1].clientX;
+        var dy=e.touches[0].clientY-e.touches[1].clientY;
+        pinchStartDist=Math.sqrt(dx*dx+dy*dy);
+        pinchBaseFontSize=term.options.fontSize;
+      }
+    }
+    function onPinchMove(e){
+      if(e.touches.length===2){
+        e.preventDefault();
+        if(pinchStartDist===0)return;
+        var dx=e.touches[0].clientX-e.touches[1].clientX;
+        var dy=e.touches[0].clientY-e.touches[1].clientY;
+        var dist=Math.sqrt(dx*dx+dy*dy);
+        var ratio=dist/pinchStartDist;
+        var newSize=Math.round(pinchBaseFontSize*ratio);
+        newSize=Math.max(8,Math.min(32,newSize));
+        if(newSize!==term.options.fontSize){
+          term.options.fontSize=newSize;
+          resizeTerm();
+        }
+      }
+    }
+
+    // Attach swipe + pinch gestures to xterm screen once it exists
+    function attachGestures(){
+      var el=document.querySelector('.xterm-screen');
+      if(!el){setTimeout(attachGestures,200);return;}
+      el.addEventListener('touchstart',onTouchStart,{passive:true});
+      el.addEventListener('touchend',onTouchEnd,{passive:true});
+      el.addEventListener('touchstart',onPinchStart,{passive:true});
+      el.addEventListener('touchmove',onPinchMove,{passive:false});
+    }
+    attachGestures();
+
+    // --- Help overlay ---
+    var helpEl=document.createElement('div');
+    helpEl.id='wt-help';
+    helpEl.innerHTML=[
+      '<button class="wt-help-close">\u00d7</button>',
+      '<h2>Toolbar \u2014 Row 1</h2>',
+      '<table>',
+      '<tr><td>Esc</td><td>Send Escape key</td></tr>',
+      '<tr><td>Ctrl</td><td>Sticky Ctrl modifier \u2014 next key sent as Ctrl+key</td></tr>',
+      '<tr><td>Tab</td><td>Send Tab key</td></tr>',
+      '<tr><td>\u2190 \u2191 \u2193 \u2192</td><td>Arrow keys</td></tr>',
+      '<tr><td>C-c</td><td>Send Ctrl-C (interrupt)</td></tr>',
+      '</table>',
+      '<h2>Toolbar \u2014 Row 2</h2>',
+      '<table>',
+      '<tr><td>\u25C0 Prev</td><td>Previous tmux window</td></tr>',
+      '<tr><td>\u25B6 Next</td><td>Next tmux window</td></tr>',
+      '<tr><td>Zoom</td><td>Toggle tmux pane zoom</td></tr>',
+      '<tr><td>Paste</td><td>Paste from clipboard</td></tr>',
+      '<tr><td>\u2318 tmux</td><td>Open tmux command drawer</td></tr>',
+      '</table>',
+      '<h2>Tmux Drawer Commands</h2>',
+      '<table>',
+      '<tr><td>+ Win</td><td>New window</td></tr>',
+      '<tr><td>Split | / \u2014</td><td>Vertical / horizontal split</td></tr>',
+      '<tr><td>Zoom</td><td>Toggle pane zoom</td></tr>',
+      '<tr><td>Sessions</td><td>fzf session picker</td></tr>',
+      '<tr><td>Windows</td><td>fzf window picker</td></tr>',
+      '<tr><td>Git</td><td>Lazygit popup</td></tr>',
+      '<tr><td>Files</td><td>Yazi popup</td></tr>',
+      '<tr><td>Links</td><td>fzf-links</td></tr>',
+      '<tr><td>Copy</td><td>tmux-thumbs (copy mode)</td></tr>',
+      '<tr><td>Help</td><td>tmux help popup</td></tr>',
+      '<tr><td>Kill</td><td>Kill pane (with confirm)</td></tr>',
+      '</table>',
+      '<h2>Gestures</h2>',
+      '<table>',
+      '<tr><td>Swipe right</td><td>Previous tmux window</td></tr>',
+      '<tr><td>Swipe left</td><td>Next tmux window</td></tr>',
+      '<tr><td>Pinch in/out</td><td>Decrease/increase font size</td></tr>',
+      '</table>',
+      '<h2>Top-Right Controls</h2>',
+      '<table>',
+      '<tr><td>\u2212 / +</td><td>Decrease / increase font size</td></tr>',
+      '<tr><td>?</td><td>This help screen</td></tr>',
+      '</table>'
+    ].join('');
+    document.body.appendChild(helpEl);
+
+    function openHelp(){helpEl.style.display='block';}
+    function closeHelp(){helpEl.style.display='none';}
+    helpEl.addEventListener('click',function(e){
+      if(e.target===helpEl||e.target.classList.contains('wt-help-close')){
+        haptic();closeHelp();term.focus();
+      }
+    });
+    btnHelp.addEventListener('click',function(e){e.preventDefault();haptic();openHelp();});
+
+    // --- Landscape + keyboard detection ---
+    function checkLandscapeKb(){
+      if(!window.visualViewport)return;
+      var kbOpen=window.innerHeight-window.visualViewport.height>150;
+      var landscape=window.innerWidth>window.innerHeight;
+      if(kbOpen&&landscape){toolbar.classList.add('wt-kb-open');}
+      else{toolbar.classList.remove('wt-kb-open');}
+    }
+
+    // --- Height management ---
     var pendingResize=0;
     function updateHeight(){
       pendingResize=0;
+      checkLandscapeKb();
       var vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-      // When virtual keyboard is open the fixed toolbar is behind it — don't subtract
       var kbOpen=window.visualViewport&&(window.innerHeight-vh>150);
-      var tbH=kbOpen?0:(toolbar.offsetHeight||52);
+      var tbH=kbOpen?0:(toolbar.offsetHeight||90);
       var h=(vh-tbH)+'px';
       document.body.style.setProperty('min-height','0','important');
       document.body.style.setProperty('height',h,'important');
