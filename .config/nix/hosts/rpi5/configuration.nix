@@ -113,7 +113,7 @@
   };
 
   # ==========================================================================
-  # Tailscale (manual auth - ssh in, run: sudo tailscale up --ssh)
+  # Tailscale (manual auth - ssh in, run: sudo tailscale up)
   # ==========================================================================
   services.tailscale = {
     enable = true;

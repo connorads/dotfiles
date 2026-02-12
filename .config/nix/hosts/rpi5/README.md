@@ -64,7 +64,7 @@ The script detects NixOS and skips Nix/home-manager/mise install (NixOS manages 
 Set up Tailscale (opens auth link in browser):
 
 ```bash
-sudo tailscale up --ssh
+sudo tailscale up
 ```
 
 **Troubleshooting**: If auth link shows "expired" immediately, try:
@@ -75,7 +75,7 @@ sudo tailscale up --ssh
 After auth, operator and hostname are set automatically on next rebuild.
 To set manually: `sudo tailscale set --operator=connor --hostname=rpi5`
 
-Now `ts status`, `tsup` etc work without sudo, and the Pi is accessible as `rpi5` on the tailnet.
+Now `ts status`, `ts up` etc work without sudo, and the Pi is accessible as `rpi5` on the tailnet.
 
 ## Updating the Pi
 
