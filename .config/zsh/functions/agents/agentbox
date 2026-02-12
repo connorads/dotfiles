@@ -1,0 +1,159 @@
+# agentbox: run coding agents in an isolated Docker container
+# usage: agentbox [flags] [dir] | agentbox <subcommand> [name]
+#   start:   agentbox [--claude "prompt"] [--opencode "prompt"] [--firewall] [--name NAME] [dir]
+#   attach:  agentbox attach [name]
+#   shell:   agentbox shell [name]
+#   stop:    agentbox stop [name]
+#   build:   agentbox build
+#   list:    agentbox list
+emulate -L zsh
+
+local IMAGE="agentbox:latest"
+local CONFIG_DIR="${HOME}/.config/agentbox"
+
+# --- subcommands ---
+case "${1:-}" in
+  build)
+    echo "Building agentbox image..."
+    docker build -t "$IMAGE" "$CONFIG_DIR"
+    return $?
+    ;;
+  list)
+    docker ps --filter "label=agentbox" --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
+    return $?
+    ;;
+  attach)
+    local name="${2:-agentbox}"
+    docker exec -it "$name" tmux attach -t main
+    return $?
+    ;;
+  shell)
+    local name="${2:-agentbox}"
+    docker exec -it "$name" zsh
+    return $?
+    ;;
+  stop)
+    local name="${2:-agentbox}"
+    echo "Stopping $name..."
+    docker rm -f "$name" 2>/dev/null
+    return $?
+    ;;
+  -h|--help|help)
+    echo "usage: agentbox [flags] [dir]"
+    echo ""
+    echo "subcommands:"
+    echo "  attach [name]   attach to running container's tmux"
+    echo "  shell  [name]   open shell in running container"
+    echo "  stop   [name]   stop and remove container"
+    echo "  build           force rebuild the image"
+    echo "  list            list running agentbox containers"
+    echo ""
+    echo "flags (start):"
+    echo "  -c, --claude \"prompt\"    run Claude Code with prompt"
+    echo "  -o, --opencode \"prompt\"  run OpenCode with prompt"
+    echo "  --firewall               enable network firewall"
+    echo "  --name NAME              container name (default: agentbox)"
+    return 0
+    ;;
+esac
+
+# --- start mode: parse flags ---
+local container_name="agentbox"
+local firewall=0
+local agent_cmd=""
+local project_dir=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c|--claude)
+      agent_cmd="claude --dangerously-skip-permissions -p \"$2\""
+      shift 2
+      ;;
+    -o|--opencode)
+      agent_cmd="opencode -p \"$2\""
+      shift 2
+      ;;
+    --firewall)
+      firewall=1
+      shift
+      ;;
+    --name)
+      container_name="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      return 1
+      ;;
+    *)
+      project_dir="$1"
+      shift
+      ;;
+  esac
+done
+
+# Default to current directory
+project_dir="${project_dir:-$(pwd)}"
+project_dir="$(cd "$project_dir" && pwd)"
+
+if [[ ! -d "$project_dir" ]]; then
+  echo "Directory not found: $project_dir" >&2
+  return 1
+fi
+
+# Build image if missing
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "Image not found, building..."
+  docker build -t "$IMAGE" "$CONFIG_DIR" || return 1
+fi
+
+# Stop existing container with same name
+if docker ps -a --format '{{.Names}}' | grep -qx "$container_name"; then
+  echo "Removing existing container: $container_name"
+  docker rm -f "$container_name" >/dev/null
+fi
+
+# Construct docker run args
+local -a run_args=(
+  --name "$container_name"
+  --label agentbox
+  --rm
+  -d
+  -v "$project_dir:/workspace"
+  -v "${HOME}/.claude:/home/agent/.claude"
+  -v "${HOME}/.gitconfig:/home/agent/.gitconfig:ro"
+  -v "agentbox-history:/commandhistory"
+)
+
+# Optional mounts (only if source exists)
+[[ -d "${HOME}/.config/opencode" ]] && \
+  run_args+=(-v "${HOME}/.config/opencode:/home/agent/.config/opencode:ro")
+[[ -d "${HOME}/.local/share/opencode" ]] && \
+  run_args+=(-v "${HOME}/.local/share/opencode:/home/agent/.local/share/opencode:ro")
+
+# Environment
+[[ -n "${ANTHROPIC_API_KEY:-}" ]] && run_args+=(-e "ANTHROPIC_API_KEY")
+[[ -n "${OPENAI_API_KEY:-}" ]] && run_args+=(-e "OPENAI_API_KEY")
+[[ -n "$agent_cmd" ]] && run_args+=(-e "AGENTBOX_CMD=$agent_cmd")
+
+# Firewall requires NET_ADMIN + NET_RAW
+if (( firewall )); then
+  run_args+=(
+    --cap-add=NET_ADMIN
+    --cap-add=NET_RAW
+    -e "AGENTBOX_FIREWALL=1"
+  )
+fi
+
+echo "Starting agentbox: $container_name"
+echo "  project: $project_dir"
+[[ -n "$agent_cmd" ]] && echo "  command: $agent_cmd"
+(( firewall )) && echo "  firewall: enabled"
+
+docker run "${run_args[@]}" "$IMAGE" || return 1
+
+# Brief wait for tmux to initialise
+sleep 1
+
+# Attach to tmux session
+docker exec -it "$container_name" tmux attach -t main
