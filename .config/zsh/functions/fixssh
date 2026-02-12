@@ -1,0 +1,35 @@
+# fixssh: repoint ~/.ssh/agent.sock to the newest live forwarded socket
+
+local stable="$HOME/.ssh/agent.sock"
+local best=""
+local best_mtime=0
+
+for sock in /tmp/ssh-*/agent.*(.N); do
+  [[ -S "$sock" ]] || continue
+  [[ "$sock" == "$stable" ]] && continue
+  SSH_AUTH_SOCK="$sock" ssh-add -l &>/dev/null || continue
+  local mtime
+  mtime=$(stat -c %Y "$sock" 2>/dev/null || stat -f %m "$sock" 2>/dev/null) || continue
+  if (( mtime > best_mtime )); then
+    best_mtime=$mtime
+    best="$sock"
+  fi
+done
+
+if [[ -z "$best" ]]; then
+  echo "fixssh: no live agent sockets found in /tmp/ssh-*" >&2
+  return 1
+fi
+
+local current
+current=$(readlink "$stable" 2>/dev/null)
+
+if [[ "$current" == "$best" ]]; then
+  echo "fixssh: already pointing to $best"
+else
+  mkdir -p "${stable:h}"
+  ln -sf "$best" "$stable"
+  echo "fixssh: relinked $stable -> $best"
+fi
+
+SSH_AUTH_SOCK="$stable" ssh-add -l
