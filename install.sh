@@ -214,7 +214,7 @@ EOF
       done
       sudo "$TAILSCALE_BIN" set --operator="$USER"
     fi
-    echo "tailscaled running with TUN. Run 'tsup' to authenticate."
+    echo "tailscaled running with TUN. Run 'ts up' to authenticate."
   elif [ -f "$UNIT_FILE" ]; then
     echo "System tailscaled already installed"
   fi
