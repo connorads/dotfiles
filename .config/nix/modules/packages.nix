@@ -88,6 +88,7 @@
     # Media & presentation
     yt-dlp
     ffmpeg
+    imagemagick
     presenterm
     charm-freeze
     rembg
