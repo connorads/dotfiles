@@ -104,6 +104,9 @@
 !/.config/micro/colorschemes/
 !/.config/micro/colorschemes/**
 
+!/.config/agentbox/
+!/.config/agentbox/**
+
 !/.config/mise/
 !/.config/mise/**
 
