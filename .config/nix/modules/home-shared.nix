@@ -17,6 +17,7 @@
       user.name = "Connor Adams";
       user.email = "connorads@users.noreply.github.com";
       init.defaultBranch = "main";
+      pull.rebase = true;
       push.autoSetupRemote = true;
     };
   };
