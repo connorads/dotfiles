@@ -52,6 +52,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
 | [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
+| [~/.config/webmux/](./.config/webmux/) | webmux: mobile terminal overlay for ttyd + tmux |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 
 ## Shell Function Conventions
