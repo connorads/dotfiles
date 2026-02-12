@@ -80,6 +80,8 @@
 !/.config/nvim/
 !/.config/nvim/init.lua
 !/.config/nvim/lazy-lock.json
+!/.config/nvim/help.md
+!/.config/nvim/practice.md
 !/.config/nvim/lua/
 !/.config/nvim/lua/**
 
