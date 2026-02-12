@@ -1,0 +1,148 @@
+# ghimg: download images from GitHub issues/PRs (handles private repo auth)
+# usage: ghimg <github-url|owner/repo> [number] [-o outdir] [--urls-only]
+local owner_repo number outdir urls_only=0
+local -a args=()
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o|--output) outdir=$2; shift 2 ;;
+    --urls-only) urls_only=1; shift ;;
+    -h|--help)
+      print -r "Usage: ghimg <github-url|owner/repo> [number] [-o outdir] [--urls-only]"
+      print -r ""
+      print -r "Download images from GitHub issues and pull requests."
+      print -r ""
+      print -r "Examples:"
+      print -r "  ghimg https://github.com/owner/repo/issues/39"
+      print -r "  ghimg https://github.com/owner/repo/pull/42"
+      print -r "  ghimg owner/repo 39 -o ./screenshots"
+      print -r "  ghimg owner/repo 39 --urls-only"
+      print -r ""
+      print -r "Options:"
+      print -r "  -o, --output DIR   Output directory (default: /tmp/ghimg/<owner>/<repo>/<number>/)"
+      print -r "  --urls-only        Print signed URLs to stdout instead of downloading"
+      print -r "  -h, --help         Show this help"
+      return 0
+      ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+
+# Parse positional args
+if [[ ${#args[@]} -eq 0 ]]; then
+  print -r "Error: no URL or owner/repo provided" >&2
+  print -r "Usage: ghimg <github-url|owner/repo> [number] [-o outdir] [--urls-only]" >&2
+  return 1
+fi
+
+local first=${args[1]}
+
+if [[ $first == https://github.com/* ]]; then
+  # Full URL: extract owner/repo and number
+  owner_repo=${first#https://github.com/}
+  number=${owner_repo##*/}
+  owner_repo=${owner_repo%/*}    # strip /N
+  owner_repo=${owner_repo%/*}    # strip /issues or /pull
+elif [[ $first == */* ]]; then
+  # owner/repo form
+  owner_repo=$first
+  number=${args[2]}
+else
+  print -r "Error: expected a GitHub URL or owner/repo" >&2
+  return 1
+fi
+
+if [[ -z $number ]]; then
+  print -r "Error: could not determine issue/PR number" >&2
+  return 1
+fi
+
+# Validate number is numeric
+if [[ ! $number =~ ^[0-9]+$ ]]; then
+  print -r "Error: '$number' is not a valid issue/PR number" >&2
+  return 1
+fi
+
+# Set default output dir
+if [[ -z $outdir ]]; then
+  outdir="/tmp/ghimg/${owner_repo}/${number}"
+fi
+
+local accept="Accept: application/vnd.github.full+json"
+local -a all_urls=()
+
+# Extract image URLs from HTML body
+_ghimg_extract_urls() {
+  local html=$1
+  # Match src/href attributes pointing to GitHub image hosts
+  print -r -- "$html" | command grep -oE 'https://[^"'"'"' ]+' | command grep -E \
+    '(private-user-images\.githubusercontent\.com|user-images\.githubusercontent\.com|github\.com/user-attachments)' | \
+    command grep -vE '\.(css|js)(\?|$)'
+}
+
+# Fetch body from the issue/PR itself
+local body_html
+body_html=$(gh api "repos/${owner_repo}/issues/${number}" \
+  -H "$accept" --jq '.body_html // ""' 2>/dev/null)
+
+if [[ $? -ne 0 ]]; then
+  print -r "Error: failed to fetch issue/PR #${number} from ${owner_repo}" >&2
+  print -r "Check that 'gh' is authenticated and the repo exists" >&2
+  return 1
+fi
+
+local -a body_urls
+body_urls=("${(@f)$(_ghimg_extract_urls "$body_html")}")
+all_urls+=("${(@)body_urls:#}")
+
+# Fetch all comments (paginated)
+local comments_html
+comments_html=$(gh api "repos/${owner_repo}/issues/${number}/comments" \
+  -H "$accept" --paginate --jq '.[].body_html // ""' 2>/dev/null)
+
+local -a comment_urls
+comment_urls=("${(@f)$(_ghimg_extract_urls "$comments_html")}")
+all_urls+=("${(@)comment_urls:#}")
+
+# Deduplicate URLs by filename
+local -A seen
+local -a unique_urls=()
+local url filename
+for url in "${all_urls[@]}"; do
+  [[ -z $url ]] && continue
+  # Extract filename: strip query string, take basename
+  filename=${url%%\?*}
+  filename=${filename##*/}
+  if [[ -z ${seen[$filename]+x} ]]; then
+    seen[$filename]=1
+    unique_urls+=("$url")
+  fi
+done
+
+if [[ ${#unique_urls[@]} -eq 0 ]]; then
+  print -r "No images found in ${owner_repo}#${number}"
+  return 0
+fi
+
+# --urls-only: just print and exit
+if (( urls_only )); then
+  for url in "${unique_urls[@]}"; do
+    print -r -- "$url"
+  done
+  return 0
+fi
+
+# Download images
+command mkdir -p "$outdir"
+
+local count=0
+for url in "${unique_urls[@]}"; do
+  filename=${url%%\?*}
+  filename=${filename##*/}
+  print -r "Downloading ${filename}..."
+  command curl -sL -o "${outdir}/${filename}" "$url"
+  ((count++))
+done
+
+print -r "Downloaded ${count} image(s) to ${outdir}"
