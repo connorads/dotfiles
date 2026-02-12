@@ -239,7 +239,7 @@ PermitRootLogin no
 MaxAuthTries 3
 LoginGraceTime 20
 AllowTcpForwarding no
-AllowAgentForwarding no
+AllowAgentForwarding yes
 X11Forwarding no
 AllowUsers connor
 EOF
