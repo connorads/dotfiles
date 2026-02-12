@@ -6,15 +6,19 @@ local port=${2:-7681}
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
 # Build webmux overlay (cached by ttyd + webmux version hash)
+local webmux_dir="$HOME/.config/webmux"
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
 local ttyd_v=$(ttyd --version 2>&1 | head -1)
-local wm_v=$(webmux --version 2>&1)
+local wm_v=$(bun --cwd "$webmux_dir" cli.ts --version 2>&1)
 local hash=$(echo "$ttyd_v:$wm_v" | md5sum | cut -d' ' -f1)
 local idx="$cache_dir/index-$hash.html"
 
 if [[ ! -f "$idx" ]]; then
   mkdir -p "$cache_dir"
-  webmux build --output "$idx"
+  if ! bun --cwd "$webmux_dir" cli.ts build --output "$idx"; then
+    echo "webmux build failed" >&2
+    return 1
+  fi
   echo "Built webmux overlay → $idx"
 fi
 
