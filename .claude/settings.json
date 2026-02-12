@@ -1,4 +1,7 @@
 {
+  "env": {
+    "DISABLE_INSTALLATION_CHECKS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(act --list:*)",
@@ -218,11 +221,13 @@
       "Bash(git remote show:*)",
       "Bash(git rev-list:*)",
       "Bash(git rev-parse:*)",
+      "Bash(git shortlog:*)",
       "Bash(git show:*)",
       "Bash(git status:*)",
       "Bash(git worktree list)",
       "Bash(gitleaks detect:*)",
       "Bash(gitleaks version:*)",
+      "Bash(go doc:*)",
       "Bash(granted ls)",
       "Bash(grep:*)",
       "Bash(gum choose --help:*)",
@@ -369,9 +374,11 @@
       "Bash(npx wrangler whoami:*)",
       "Bash(od:*)",
       "Bash(opencode --help)",
+      "Bash(opencode -v)",
       "Bash(opencode attach --help:*)",
       "Bash(opencode serve --help)",
       "Bash(opencode session --help:*)",
+      "Bash(opencode version)",
       "Bash(opencode web --help)",
       "Bash(opencode --version)",
       "Bash(opencode auth list)",
@@ -646,8 +653,5 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "alwaysThinkingEnabled": true,
-  "env": {
-    "DISABLE_INSTALLATION_CHECKS": "1"
-  }
+  "alwaysThinkingEnabled": true
 }
