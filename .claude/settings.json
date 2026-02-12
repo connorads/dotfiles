@@ -634,5 +634,8 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "env": {
+    "DISABLE_INSTALLATION_CHECKS": "1"
+  }
 }
