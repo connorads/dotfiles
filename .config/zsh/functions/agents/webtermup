@@ -8,7 +8,7 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local patch_version=2  # bump to bust cache when changing injected HTML/JS
+local patch_version=3  # bump to bust cache when changing injected HTML/JS
 local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
@@ -89,11 +89,11 @@ if [[ ! -f "$patched_index" ]]; then
     style.textContent=
       '#wt-toolbar{display:none;position:fixed;bottom:0;left:0;right:0;'+
       'background:#313244;padding:6px 4px;z-index:9999;'+
-      'justify-content:center;gap:4px;flex-wrap:wrap;-webkit-user-select:none;user-select:none;}'+
+      'justify-content:center;gap:3px;flex-wrap:nowrap;-webkit-user-select:none;user-select:none;}'+
       '@media(pointer:coarse){#wt-toolbar{display:flex;}}'+
       '#wt-toolbar button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
-      'min-width:44px;min-height:44px;font-size:15px;font-weight:600;'+
-      'padding:4px 10px;cursor:pointer;touch-action:manipulation;}'+
+      'min-width:38px;min-height:44px;font-size:14px;font-weight:600;'+
+      'padding:4px 6px;cursor:pointer;touch-action:manipulation;flex-shrink:1;}'+
       '#wt-toolbar button:active{background:#585b70;}'+
       '#wt-font-controls{display:none;position:fixed;top:8px;right:8px;z-index:9999;gap:4px;'+
       '-webkit-user-select:none;user-select:none;}'+
@@ -183,10 +183,17 @@ if [[ ! -f "$patched_index" ]]; then
 
     document.body.appendChild(toolbar);
 
-    // Give terminal some bottom margin so toolbar doesn't cover last lines
-    var termEl=document.querySelector('.xterm');
-    if(termEl)termEl.style.paddingBottom='60px';
-    resizeTerm();
+    // Shrink terminal so toolbar doesn't cover tmux status bar / last rows
+    // Wait a frame for toolbar to render, then measure its actual height
+    requestAnimationFrame(function(){
+      var tbH=toolbar.offsetHeight||52;
+      var container=document.querySelector('.xterm');
+      if(container){
+        container.style.height='calc(100vh - '+tbH+'px)';
+        container.style.overflow='hidden';
+      }
+      resizeTerm();
+    });
   });
 })();
 </script>
