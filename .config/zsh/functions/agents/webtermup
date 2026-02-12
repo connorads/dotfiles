@@ -8,7 +8,7 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local patch_version=4  # bump to bust cache when changing injected HTML/JS
+local patch_version=5  # bump to bust cache when changing injected HTML/JS
 local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
@@ -23,7 +23,7 @@ if [[ ! -f "$patched_index" ]]; then
 
   # Build injection payload: Nerd Font CSS + viewport + mobile helper
   local font_css='<link rel="preload" href="https://cdn.jsdelivr.net/gh/mshaugh/nerdfont-webfonts@latest/build/jetbrainsmono-nfm.css" as="style" onload="this.rel='"'"'stylesheet'"'"'">'
-  local viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+  local viewport='<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">'
 
   # Mobile helper: touch toolbar, font size controls, auto-resize
   local mobile_script
@@ -88,7 +88,7 @@ if [[ ! -f "$patched_index" ]]; then
     var style=document.createElement('style');
     style.textContent=
       '#wt-toolbar{display:none;position:fixed;bottom:0;left:0;right:0;'+
-      'background:#313244;padding:6px 4px;z-index:9999;'+
+      'background:#313244;padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) 4px;z-index:9999;'+
       'justify-content:center;gap:3px;flex-wrap:nowrap;-webkit-user-select:none;user-select:none;}'+
       '@media(pointer:coarse){#wt-toolbar{display:flex;}}'+
       '#wt-toolbar button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
@@ -101,7 +101,8 @@ if [[ ! -f "$patched_index" ]]; then
       '#wt-font-controls button{background:#45475a;color:#cdd6f4;border:none;border-radius:6px;'+
       'min-width:44px;min-height:44px;font-size:18px;font-weight:700;'+
       'cursor:pointer;touch-action:manipulation;opacity:0.8;}'+
-      '#wt-font-controls button:active{opacity:1;background:#585b70;}';
+      '#wt-font-controls button:active{opacity:1;background:#585b70;}'+
+      '#wt-toolbar .wt-winnav{background:#585b70;min-width:32px;font-size:12px;padding:4px 4px;}';
     document.head.appendChild(style);
 
     // --- Font size controls ---
@@ -137,6 +138,7 @@ if [[ ! -f "$patched_index" ]]; then
 
     var ctrlBtnRef=null;
     var buttons=[
+      {label:'\u25C0', data:'\x02p', cls:'wt-winnav'},  // tmux prefix+p (prev window)
       {label:'Esc',  data:'\x1b'},
       {label:'Ctrl', data:null, isCtrl:true},
       {label:'Tab',  data:'\t'},
@@ -145,12 +147,14 @@ if [[ ! -f "$patched_index" ]]; then
       {label:'\u2193', data:'\x1b[B'},  // down arrow
       {label:'\u2192', data:'\x1b[C'},  // right arrow
       {label:'C-b',  data:'\x02'},      // tmux prefix
-      {label:'C-c',  data:'\x03'}
+      {label:'C-c',  data:'\x03'},
+      {label:'\u25B6', data:'\x02n', cls:'wt-winnav'}   // tmux prefix+n (next window)
     ];
 
     buttons.forEach(function(def){
       var btn=document.createElement('button');
       btn.textContent=def.label;
+      if(def.cls)btn.className=def.cls;
       if(def.isCtrl){
         ctrlBtnRef=btn;
         btn.addEventListener('click',function(e){
@@ -186,13 +190,28 @@ if [[ ! -f "$patched_index" ]]; then
     // Shrink terminal so toolbar doesn't cover tmux status bar / last rows
     // ttyd sets `body,html { height:100%; min-height:100% }` — must override
     // min-height too, otherwise the body can't shrink below viewport height
-    requestAnimationFrame(function(){
+    // Use visualViewport API for accurate height on mobile (handles browser
+    // chrome, virtual keyboard, orientation changes). Falls back to innerHeight.
+    var pendingResize=0;
+    function updateHeight(){
+      pendingResize=0;
       var tbH=toolbar.offsetHeight||52;
-      var h='calc(100vh - '+tbH+'px)';
+      var vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+      var h=(vh-tbH)+'px';
       document.body.style.setProperty('min-height','0','important');
       document.body.style.setProperty('height',h,'important');
       resizeTerm();
-    });
+    }
+    function scheduleResize(){
+      if(!pendingResize)pendingResize=requestAnimationFrame(updateHeight);
+    }
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize',scheduleResize);
+      window.visualViewport.addEventListener('scroll',scheduleResize);
+    }
+    window.addEventListener('resize',scheduleResize);
+    window.addEventListener('orientationchange',function(){setTimeout(scheduleResize,200);});
+    scheduleResize();
   });
 })();
 </script>
