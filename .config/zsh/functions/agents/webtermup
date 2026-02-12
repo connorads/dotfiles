@@ -8,7 +8,7 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 # Nerd Font: extract + patch ttyd's index.html with CDN web font (cached per ttyd version)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ttyd"
 local ttyd_version=$(ttyd --version 2>&1 | head -1)
-local patch_version=7  # bump to bust cache when changing injected HTML/JS
+local patch_version=8  # bump to bust cache when changing injected HTML/JS
 local version_hash=$(echo "$ttyd_version:$patch_version" | md5sum | cut -d' ' -f1)
 local patched_index="$cache_dir/index-$version_hash.html"
 
@@ -190,7 +190,8 @@ if [[ ! -f "$patched_index" ]]; then
       {label:'\u2191', data:'\x1b[A'},
       {label:'\u2193', data:'\x1b[B'},
       {label:'\u2192', data:'\x1b[C'},
-      {label:'C-c',  data:'\x03'}
+      {label:'C-c',  data:'\x03'},
+      {label:'\u23CE',  data:'\r'}
     ];
     var row2Buttons=[
       {label:'\u25C0 Prev', data:'\x02p'},
@@ -398,6 +399,7 @@ if [[ ! -f "$patched_index" ]]; then
       '<tr><td>Tab</td><td>Send Tab key</td></tr>',
       '<tr><td>\u2190 \u2191 \u2193 \u2192</td><td>Arrow keys</td></tr>',
       '<tr><td>C-c</td><td>Send Ctrl-C (interrupt)</td></tr>',
+      '<tr><td>\u23CE</td><td>Send Enter/Return</td></tr>',
       '</table>',
       '<h2>Toolbar \u2014 Row 2</h2>',
       '<table>',
