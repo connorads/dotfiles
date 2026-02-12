@@ -19,9 +19,10 @@ if [[ ! -f "$patched_index" ]]; then
   sleep 1
   curl -sf "http://127.0.0.1:$tmp_port/" > "$patched_index"
   kill $tmp_pid 2>/dev/null; wait $tmp_pid 2>/dev/null
-  # Inject Nerd Font CSS before </head>
-  local font_css='<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mshaugh/nerdfont-webfonts@latest/build/jetbrainsmono-nfm.css">'
-  sed -i "s|</head>|${font_css}</head>|" "$patched_index"
+  # Inject Nerd Font CSS + resize-after-load script before </head>
+  local font_css='<link rel="preload" href="https://cdn.jsdelivr.net/gh/mshaugh/nerdfont-webfonts@latest/build/jetbrainsmono-nfm.css" as="style" onload="this.rel='"'"'stylesheet'"'"'">'
+  local font_fix='<script>document.fonts.ready.then(()=>window.dispatchEvent(new Event("resize")))</script>'
+  sed -i "s|</head>|${font_css}${font_fix}</head>|" "$patched_index"
   echo "Cached patched ttyd index with Nerd Font"
 fi
 
