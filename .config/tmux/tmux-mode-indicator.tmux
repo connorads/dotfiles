@@ -8,13 +8,18 @@ declare -r mode_indicator_placeholder_raw="#{tmux_mode_indicator}"
 declare -r prefix_prompt_config='@mode_indicator_prefix_prompt'
 declare -r copy_prompt_config='@mode_indicator_copy_prompt'
 declare -r sync_prompt_config='@mode_indicator_sync_prompt'
+declare -r ssh_prompt_config='@mode_indicator_ssh_prompt'
 declare -r empty_prompt_config='@mode_indicator_empty_prompt'
 declare -r custom_prompt_config="@mode_indicator_custom_prompt"
 declare -r prefix_mode_style_config='@mode_indicator_prefix_mode_style'
 declare -r copy_mode_style_config='@mode_indicator_copy_mode_style'
 declare -r sync_mode_style_config='@mode_indicator_sync_mode_style'
+declare -r ssh_mode_style_config='@mode_indicator_ssh_mode_style'
 declare -r empty_mode_style_config='@mode_indicator_empty_mode_style'
 declare -r custom_mode_style_config="@mode_indicator_custom_mode_style"
+
+# Detect when the active pane is running ssh or tailscale
+declare -r ssh_detect='#{||:#{m:ssh,#{pane_current_command}},#{m:tailscale,#{pane_current_command}}}'
 
 tmux_option() {
   local -r option=$(tmux show-option -gqv "$1")
@@ -32,10 +37,12 @@ init_tmux_mode_indicator() {
     prefix_prompt=$(tmux_option "$prefix_prompt_config" " WAIT ") \
     copy_prompt=$(tmux_option "$copy_prompt_config" " COPY ") \
     sync_prompt=$(tmux_option "$sync_prompt_config" " SYNC ") \
+    ssh_prompt=$(tmux_option "$ssh_prompt_config" " HOST ") \
     empty_prompt=$(tmux_option "$empty_prompt_config" " TMUX ") \
     prefix_style=$(indicator_style "$prefix_mode_style_config" "bg=blue,fg=black") \
     copy_style=$(indicator_style "$copy_mode_style_config" "bg=yellow,fg=black") \
     sync_style=$(indicator_style "$sync_mode_style_config" "bg=red,fg=black") \
+    ssh_style=$(indicator_style "$ssh_mode_style_config" "bg=#f38ba8,fg=#1e1e2e") \
     empty_style=$(indicator_style "$empty_mode_style_config" "bg=cyan,fg=black")
 
   local -r \
@@ -43,8 +50,8 @@ init_tmux_mode_indicator() {
     custom_style="#(tmux show-option -qv $custom_mode_style_config)"
 
   local -r \
-    mode_prompt="#{?#{!=:$custom_prompt,},$custom_prompt,#{?client_prefix,$prefix_prompt,#{?pane_in_mode,$copy_prompt,#{?pane_synchronized,$sync_prompt,$empty_prompt}}}}" \
-    mode_style="#{?#{!=:$custom_style,},#[$custom_style],#{?client_prefix,$prefix_style,#{?pane_in_mode,$copy_style,#{?pane_synchronized,$sync_style,$empty_style}}}}"
+    mode_prompt="#{?#{!=:$custom_prompt,},$custom_prompt,#{?client_prefix,$prefix_prompt,#{?pane_in_mode,$copy_prompt,#{?pane_synchronized,$sync_prompt,#{?${ssh_detect},$ssh_prompt,$empty_prompt}}}}}" \
+    mode_style="#{?#{!=:$custom_style,},#[$custom_style],#{?client_prefix,$prefix_style,#{?pane_in_mode,$copy_style,#{?pane_synchronized,$sync_style,#{?${ssh_detect},$ssh_style,$empty_style}}}}}"
 
   local -r mode_indicator="#[default]$mode_style$mode_prompt#[default]"
 
