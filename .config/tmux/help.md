@@ -52,6 +52,7 @@
 
 | Key | Action |
 |-----|--------|
+| `Ctrl+b F` | fix SSH agent socket |
 | `F10` | suspend/resume tmux client |
 | `Ctrl+b d` | detach |
 | `Ctrl+b [` | scroll/copy mode |
