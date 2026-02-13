@@ -34,10 +34,13 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 
 ## Git
 
-- Atomic commits: one logical change per commit — if the message needs "and", split it
-- Renames/moves always in a separate commit from content changes (preserves blame/history)
-- Separate refactors from features/fixes when non-trivial; tiny incidental cleanups can ride along
-- Each commit should ideally build and pass tests; enforce on main, best effort on WIP branches
+- **MVP commits**: each commit is the smallest complete, coherent change — code + tests + wiring together. Would you send it as a standalone PR? If not, it's too small.
+- **Revert test**: could this commit be reverted cleanly, removing exactly one meaningful thing? If reverting orphans code or breaks something unrelated, it's not self-contained.
+- **Review test**: can a reviewer understand this commit without reading other commits in the series? If context is missing, fold the pieces together.
+- Split when the *concern* changes, not the *file type* — "add feature X with tests" is one commit; "refactor auth then add feature X" is two.
+- Renames/moves in a separate commit from content changes (git rename detection breaks otherwise) — but include reference/import updates so the build passes.
+- Commit after each coherent unit. Don't batch everything into one mega-commit at the end.
+- Plan steps map to commits when they pass the revert and review tests. Multiple small steps may merge into one commit; one large step may split into several.
 
 ## Coding and domain modelling
 
