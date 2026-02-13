@@ -1,18 +1,15 @@
 # ports: inspect listening ports with fzf
 # Usage: ports [-k]
-#   -k  kill mode (select a port to kill via killport)
+#   -k  kill mode (select one or more ports to stop via killport)
 emulate -L zsh
 
 local kill_mode=0
 [[ "$1" == "-k" ]] && kill_mode=1
 
-# Cross-platform: list listening TCP ports
 local -a lines
 if [[ "$OSTYPE" == darwin* ]]; then
-  # macOS: lsof
   lines=("${(@f)$(lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2)}")
 else
-  # Linux: ss
   lines=("${(@f)$(ss -tlnp 2>/dev/null | tail -n +2)}")
 fi
 
@@ -21,59 +18,95 @@ if [[ ${#lines[@]} -eq 0 || (${#lines[@]} -eq 1 && -z "${lines[1]}") ]]; then
   return 0
 fi
 
-# Normalise to PORT  PID  PROCESS  ADDRESS
 local -a rows
 local line
 for line in "${lines[@]}"; do
   [[ -z "$line" ]] && continue
+
+  local cmd pid addr port bind_addr exposure pid_info
   if [[ "$OSTYPE" == darwin* ]]; then
-    # lsof format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME
-    local cmd pid addr port
     cmd=$(echo "$line" | awk '{print $1}')
     pid=$(echo "$line" | awk '{print $2}')
     addr=$(echo "$line" | awk '{print $9}')
-    port="${addr##*:}"
-    rows+=("$(printf '%-7s %-7s %-20s %s' "$port" "$pid" "$cmd" "$addr")")
   else
-    # ss format: State Recv-Q Send-Q Local Address:Port Peer Address:Port Process
-    local addr port proc pid_info cmd pid
     addr=$(echo "$line" | awk '{print $4}')
-    port="${addr##*:}"
     pid_info=$(echo "$line" | awk '{print $6}')
-    # Extract pid and process from users:(("name",pid=123,fd=4))
-    pid=$(echo "$pid_info" | grep -oP 'pid=\K[0-9]+' | head -1)
-    cmd=$(echo "$pid_info" | grep -oP '"\K[^"]+' | head -1)
-    [[ -z "$pid" ]] && pid="-"
-    [[ -z "$cmd" ]] && cmd="-"
-    rows+=("$(printf '%-7s %-7s %-20s %s' "$port" "$pid" "$cmd" "$addr")")
+
+    cmd="-"
+    if [[ "$pid_info" == *\"* ]]; then
+      cmd="${pid_info#*\"}"
+      cmd="${cmd%%\"*}"
+    fi
+
+    pid="-"
+    if [[ "$pid_info" == *"pid="* ]]; then
+      pid="${pid_info#*pid=}"
+      pid="${pid%%,*}"
+    fi
   fi
+
+  port="${addr##*:}"
+  bind_addr="${addr%:*}"
+
+  exposure="PUBLIC"
+  case "$bind_addr" in
+    127.*|"[::1]"|"::1"|localhost|"[localhost]"|"127.0.0.53%lo"|"127.0.0.54")
+      exposure="LOCAL"
+      ;;
+    100.*|"[fd7a:115c:a1e0"*|"fd7a:115c:a1e0"*)
+      exposure="TAILNET"
+      ;;
+  esac
+
+  [[ -z "$pid" ]] && pid="-"
+  [[ -z "$cmd" ]] && cmd="-"
+  rows+=("$(printf '%-7s %-7s %-20s %-8s %s' "$port" "$pid" "$cmd" "$exposure" "$addr")")
 done
 
 [[ ${#rows[@]} -eq 0 ]] && { echo "no listening ports found" >&2; return 0; }
 
-local header="PORT    PID     PROCESS              ADDRESS"
+local mode_hint="enter: select"
+if (( kill_mode )); then
+  mode_hint="enter: TERM->KILL selected"
+fi
+
+local header="PORT    PID     PROCESS              EXPOSED  ADDRESS    | tab: mark  ${mode_hint}"
 local selected
-selected=$(printf '%s\n' "${rows[@]}" | sort -n | uniq | fzf --reverse \
+selected=$(printf '%s\n' "${rows[@]}" | sort -n -k1,1 | uniq | fzf --reverse --multi \
   --header="$header" \
+  --bind='tab:toggle+down,btab:toggle+up' \
   --preview='
     port=$(echo {} | awk "{print \$1}")
     pid=$(echo {} | awk "{print \$2}")
-    echo "Port: $port"
-    echo "PID:  $pid"
-    echo ""
+    exposure=$(echo {} | awk "{print \$4}")
+    addr=$(echo {} | awk "{print \$5}")
+
+    echo "Port:      $port"
+    echo "PID:       $pid"
+    echo "Exposure:  $exposure"
+    echo "Address:   $addr"
+
+    case "$port" in
+      7681) echo "Hint: webterm service (try: webtermdown $port)" ;;
+      2468) echo "Hint: gigacode service (try: gigadown)" ;;
+      3456) echo "Hint: companion service (try: companiondown)" ;;
+      8000) echo "Hint: toad service (try: toaddown)" ;;
+    esac
+
     if [ "$pid" != "-" ] && command -v ps >/dev/null 2>&1; then
-      ps -p "$pid" -o pid,ppid,user,%cpu,%mem,start,command 2>/dev/null
+      echo
+      ps -p "$pid" -o pid,ppid,user,%cpu,%mem,etime,command 2>/dev/null
     fi
   ' \
-  --preview-window=right:50%:wrap)
+  --preview-window=right:55%:wrap)
 
 [[ -z "$selected" ]] && return 0
 
-local sel_port
-sel_port=$(echo "$selected" | awk '{print $1}')
+local -a sel_ports
+sel_ports=(${(u)${(f)"$(printf '%s\n' "$selected" | awk '{print $1}')"}})
 
 if (( kill_mode )); then
-  killport "$sel_port"
+  killport "${sel_ports[@]}"
 else
-  echo "$sel_port"
+  printf '%s\n' "${sel_ports[@]}"
 fi

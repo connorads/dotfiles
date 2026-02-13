@@ -1,20 +1,113 @@
-# killport: kill process(es) using a port
+# killport: stop listeners on one or more ports (TERM first)
 # alias: kp
 emulate -L zsh
 
-local port="$1"
-if [[ -z "$port" ]]; then
-  echo "usage: killport <port>" >&2
+local force_kill=0
+local assume_yes=0
+local -a ports
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -9|--force)
+      force_kill=1
+      ;;
+    -y|--yes)
+      assume_yes=1
+      ;;
+    -h|--help)
+      echo "usage: killport [--force] [--yes] <port> [port ...]" >&2
+      return 0
+      ;;
+    *)
+      ports+=("$1")
+      ;;
+  esac
+  shift
+done
+
+if [[ ${#ports[@]} -eq 0 ]]; then
+  echo "usage: killport [--force] [--yes] <port> [port ...]" >&2
   return 1
 fi
 
-local pids
-pids=(${(f)"$(lsof -ti :"$port" 2>/dev/null)"})
+local port
+for port in "${ports[@]}"; do
+  if [[ ! "$port" =~ '^[0-9]+$' ]]; then
+    echo "invalid port: $port" >&2
+    return 1
+  fi
+done
 
-if [[ ${#pids[@]} -eq 0 ]]; then
-  echo "no process found on port $port" >&2
+local -a pids all_pids protected_selected
+
+for port in "${ports[@]}"; do
+  pids=(${(f)"$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null)"})
+  if [[ ${#pids[@]} -eq 0 ]]; then
+    echo "no listener found on port $port" >&2
+    continue
+  fi
+
+  local pid
+  for pid in "${pids[@]}"; do
+    all_pids+=("$pid")
+  done
+done
+
+all_pids=(${(u)all_pids})
+if [[ ${#all_pids[@]} -eq 0 ]]; then
   return 1
 fi
 
-echo "killing ${#pids[@]} process(es) on port $port: ${pids[*]}"
-kill -9 "${pids[@]}"
+local -a protected_ports=(22 53 80 443)
+for port in "${ports[@]}"; do
+  if (( ${protected_ports[(I)$port]} )); then
+    protected_selected+=("$port")
+  fi
+done
+protected_selected=(${(u)protected_selected})
+
+if [[ ${#protected_selected[@]} -gt 0 && $assume_yes -eq 0 ]]; then
+  if [[ -t 0 ]]; then
+    echo "warning: protected port(s) selected: ${protected_selected[*]}" >&2
+    read -r "reply?continue? [y/N] "
+    [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]] || return 1
+  else
+    echo "refusing to kill protected port(s) without --yes: ${protected_selected[*]}" >&2
+    return 1
+  fi
+fi
+
+echo "sending TERM to ${#all_pids[@]} process(es): ${all_pids[*]}"
+kill -TERM "${all_pids[@]}" 2>/dev/null
+
+local wait_seconds=${KILLPORT_TERM_WAIT:-2}
+sleep "$wait_seconds"
+
+local -a survivors
+local pid
+for pid in "${all_pids[@]}"; do
+  if kill -0 "$pid" 2>/dev/null; then
+    survivors+=("$pid")
+  fi
+done
+
+if [[ ${#survivors[@]} -eq 0 ]]; then
+  echo "all processes exited after TERM"
+  return 0
+fi
+
+echo "still running after TERM: ${survivors[*]}"
+
+if [[ $force_kill -eq 0 && $assume_yes -eq 0 && -t 0 ]]; then
+  local answer
+  read -r "answer?send KILL to survivors? [y/N] "
+  if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
+    return 1
+  fi
+elif [[ $force_kill -eq 0 && $assume_yes -eq 0 ]]; then
+  echo "non-interactive mode: refusing KILL without --force or --yes" >&2
+  return 1
+fi
+
+echo "sending KILL to ${#survivors[@]} process(es): ${survivors[*]}"
+kill -KILL "${survivors[@]}" 2>/dev/null
