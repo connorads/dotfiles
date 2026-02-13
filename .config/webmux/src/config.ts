@@ -30,13 +30,13 @@ const defaultRow1: WebmuxConfig['toolbar']['row1'] = [
 	{ label: '\u23CE', action: { type: 'send', data: '\r' } },
 ]
 
-/** Default row 2 buttons (context shortcuts) */
+/** Default row 2 buttons (tmux fallback — shown when no context detected) */
 const defaultRow2: WebmuxConfig['toolbar']['row2'] = [
 	{ label: '\u25C0 Prev', action: { type: 'send', data: '\x02p' } },
 	{ label: '\u25B6 Next', action: { type: 'send', data: '\x02n' } },
-	{ label: '\u2318 claude', action: { type: 'drawer-open', contextId: 'claude' } },
+	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
 	{ label: 'Paste', action: { type: 'paste' } },
-	{ label: '\u2318 tmux', action: { type: 'drawer-open', contextId: 'tmux' } },
+	{ label: 'Git', action: { type: 'send', data: '\x02g' } },
 ]
 
 /** Default tmux drawer commands */
@@ -74,12 +74,22 @@ export const defaultTmuxContext: DrawerContext = {
 	commands: defaultTmuxCommands,
 }
 
+/** Default Claude Code toolbar buttons */
+export const defaultClaudeToolbarButtons: DrawerContext['toolbarButtons'] = [
+	{ label: 'Mode', action: { type: 'send', data: '\x1b[Z' } },
+	{ label: 'Yes', action: { type: 'send', data: 'y' } },
+	{ label: 'No', action: { type: 'send', data: 'n' } },
+	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
+	{ label: 'Paste', action: { type: 'paste' } },
+]
+
 /** Default Claude Code drawer context */
 export const defaultClaudeContext: DrawerContext = {
 	id: 'claude',
 	label: 'claude',
 	commands: defaultClaudeCommands,
 	titlePatterns: ['claude'],
+	toolbarButtons: defaultClaudeToolbarButtons,
 }
 
 /** Default lazygit drawer commands */
@@ -99,12 +109,22 @@ export const defaultLazygitCommands: DrawerContext['commands'] = [
 	{ label: 'Quit', seq: 'q' },
 ]
 
+/** Default lazygit toolbar buttons */
+export const defaultLazygitToolbarButtons: DrawerContext['toolbarButtons'] = [
+	{ label: 'Stage', action: { type: 'send', data: ' ' } },
+	{ label: 'Commit', action: { type: 'send', data: 'c' } },
+	{ label: 'Push', action: { type: 'send', data: 'P' } },
+	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
+	{ label: 'Quit', action: { type: 'send', data: 'q' } },
+]
+
 /** Default lazygit drawer context */
 export const defaultLazygitContext: DrawerContext = {
 	id: 'lazygit',
 	label: 'lazygit',
 	commands: defaultLazygitCommands,
 	titlePatterns: ['lazygit'],
+	toolbarButtons: defaultLazygitToolbarButtons,
 }
 
 /** Complete default configuration */

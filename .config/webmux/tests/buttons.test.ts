@@ -33,20 +33,16 @@ describe('defaultRow2', () => {
 		expect(paste?.label).toBe('Paste')
 	})
 
-	test('has drawer-open for tmux', () => {
-		const tmux = defaultRow2.find(
-			(b) => b.action.type === 'drawer-open' && b.action.contextId === 'tmux',
-		)
-		expect(tmux).toBeDefined()
-		expect(tmux?.label).toContain('tmux')
+	test('has drawer-toggle button', () => {
+		const toggle = defaultRow2.find((b) => b.action.type === 'drawer-toggle')
+		expect(toggle).toBeDefined()
+		expect(toggle?.label).toContain('More')
 	})
 
-	test('has drawer-open for claude', () => {
-		const claude = defaultRow2.find(
-			(b) => b.action.type === 'drawer-open' && b.action.contextId === 'claude',
-		)
-		expect(claude).toBeDefined()
-		expect(claude?.label).toContain('claude')
+	test('has Git shortcut', () => {
+		const git = defaultRow2.find((b) => b.label === 'Git')
+		expect(git).toBeDefined()
+		expect(git?.action).toEqual({ type: 'send', data: '\x02g' })
 	})
 
 	test('has tmux prev/next as send actions', () => {

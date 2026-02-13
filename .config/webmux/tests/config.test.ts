@@ -83,6 +83,11 @@ describe('defaultConfig', () => {
 		expect(lazygit?.titlePatterns).toContain('lazygit')
 	})
 
+	test('lazygit context has 5 toolbarButtons', () => {
+		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
+		expect(lazygit?.toolbarButtons).toHaveLength(5)
+	})
+
 	test('claude context has 6 commands', () => {
 		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
 		expect(claude?.commands).toHaveLength(6)
@@ -91,6 +96,16 @@ describe('defaultConfig', () => {
 	test('claude context has titlePatterns', () => {
 		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
 		expect(claude?.titlePatterns).toContain('claude')
+	})
+
+	test('claude context has 5 toolbarButtons', () => {
+		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
+		expect(claude?.toolbarButtons).toHaveLength(5)
+	})
+
+	test('tmux context has no toolbarButtons', () => {
+		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
+		expect(tmux?.toolbarButtons).toBeUndefined()
 	})
 
 	test('font size range is [8, 32]', () => {
