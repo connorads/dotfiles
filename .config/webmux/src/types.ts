@@ -74,10 +74,17 @@ export interface PinchConfig {
 	readonly enabled: boolean
 }
 
+/** Scroll gesture configuration */
+export interface ScrollConfig {
+	readonly enabled: boolean
+	readonly sensitivity: number
+}
+
 /** Gesture configuration */
 export interface GestureConfig {
 	readonly swipe: SwipeConfig
 	readonly pinch: PinchConfig
+	readonly scroll: ScrollConfig
 }
 
 /** Full webmux configuration */

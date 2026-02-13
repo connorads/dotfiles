@@ -3,7 +3,9 @@ import { createFontControls } from './controls/font-size'
 import { createHelpOverlay } from './controls/help'
 import { setupAutoDetect } from './drawer/auto-detect'
 import { createDrawer } from './drawer/drawer'
+import { createGestureLock } from './gestures/lock'
 import { attachPinchGestures } from './gestures/pinch'
+import { attachScrollGesture } from './gestures/scroll'
 import { attachSwipeGestures } from './gestures/swipe'
 import { applyTheme } from './theme/apply'
 import { createToolbar } from './toolbar/toolbar'
@@ -67,12 +69,16 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		document.body.appendChild(helpOverlay)
 
 		// Gestures
+		const gestureLock = createGestureLock()
 		if (config.gestures.swipe.enabled) {
 			const indicator = attachSwipeGestures(term, config.gestures.swipe, drawer.isOpen)
 			document.body.appendChild(indicator)
 		}
 		if (config.gestures.pinch.enabled) {
-			attachPinchGestures(term, config.font)
+			attachPinchGestures(term, config.font, gestureLock)
+		}
+		if (config.gestures.scroll.enabled) {
+			attachScrollGesture(term, config.gestures.scroll, gestureLock)
 		}
 
 		// Title-based context auto-detection

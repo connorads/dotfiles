@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
+import { createGestureLock, resetLock, tryLock } from '../src/gestures/lock'
 import { clampFontSize, touchDistance } from '../src/gestures/pinch'
+import { averageY, scrollSeq } from '../src/gestures/scroll'
 import { isValidSwipe } from '../src/gestures/swipe'
 
 describe('isValidSwipe', () => {
@@ -69,5 +71,74 @@ describe('clampFontSize', () => {
 	test('handles boundary values', () => {
 		expect(clampFontSize(8, [8, 32])).toBe(8)
 		expect(clampFontSize(32, [8, 32])).toBe(32)
+	})
+})
+
+describe('createGestureLock', () => {
+	test('starts unclaimed', () => {
+		const lock = createGestureLock()
+		expect(lock.current).toBe('none')
+	})
+})
+
+describe('tryLock', () => {
+	test('claims when unclaimed', () => {
+		const lock = createGestureLock()
+		expect(tryLock(lock, 'scroll')).toBe(true)
+		expect(lock.current).toBe('scroll')
+	})
+
+	test('rejects when already claimed', () => {
+		const lock = createGestureLock()
+		tryLock(lock, 'scroll')
+		expect(tryLock(lock, 'pinch')).toBe(false)
+		expect(lock.current).toBe('scroll')
+	})
+
+	test('rejects same type when already claimed', () => {
+		const lock = createGestureLock()
+		tryLock(lock, 'pinch')
+		expect(tryLock(lock, 'pinch')).toBe(false)
+	})
+})
+
+describe('resetLock', () => {
+	test('clears to none', () => {
+		const lock = createGestureLock()
+		tryLock(lock, 'scroll')
+		resetLock(lock)
+		expect(lock.current).toBe('none')
+	})
+
+	test('allows re-claim after reset', () => {
+		const lock = createGestureLock()
+		tryLock(lock, 'scroll')
+		resetLock(lock)
+		expect(tryLock(lock, 'pinch')).toBe(true)
+		expect(lock.current).toBe('pinch')
+	})
+})
+
+describe('averageY', () => {
+	test('calculates average of two Y values', () => {
+		expect(averageY({ clientY: 100 }, { clientY: 200 })).toBe(150)
+	})
+
+	test('handles equal values', () => {
+		expect(averageY({ clientY: 50 }, { clientY: 50 })).toBe(50)
+	})
+
+	test('handles negative values', () => {
+		expect(averageY({ clientY: -10 }, { clientY: 30 })).toBe(10)
+	})
+})
+
+describe('scrollSeq', () => {
+	test('returns SGR mouse wheel up sequence', () => {
+		expect(scrollSeq('up')).toBe('\x1b[<64;1;1M')
+	})
+
+	test('returns SGR mouse wheel down sequence', () => {
+		expect(scrollSeq('down')).toBe('\x1b[<65;1;1M')
 	})
 })

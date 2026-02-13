@@ -14,6 +14,7 @@ const defaultFont: WebmuxConfig['font'] = {
 const defaultGestures: WebmuxConfig['gestures'] = {
 	swipe: { enabled: true, threshold: 80, maxDuration: 400 },
 	pinch: { enabled: true },
+	scroll: { enabled: true, sensitivity: 40 },
 }
 
 /** Default row 1 buttons (modifiers + nav) */
