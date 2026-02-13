@@ -19,14 +19,9 @@ describe('defaultCommands (tmux)', () => {
 		}
 	})
 
-	test('tmux-prefixed seqs start with Ctrl-b (except PgUp/PgDn)', () => {
-		const rawSeqs = ['PgUp', 'PgDn']
+	test('all seqs start with tmux prefix (Ctrl-b)', () => {
 		for (const cmd of defaultCommands) {
-			if (rawSeqs.includes(cmd.label)) {
-				expect(cmd.seq.startsWith('\x1b[')).toBe(true)
-			} else {
-				expect(cmd.seq.startsWith('\x02')).toBe(true)
-			}
+			expect(cmd.seq.startsWith('\x02')).toBe(true)
 		}
 	})
 
