@@ -83,7 +83,7 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 			attachPinchGestures(term, config.font, gestureLock)
 		}
 		if (config.gestures.scroll.enabled) {
-			attachScrollGesture(term, config.gestures.scroll, gestureLock)
+			attachScrollGesture(term, config.gestures.scroll, gestureLock, drawer.isOpen)
 		}
 
 		// Title-based context auto-detection
