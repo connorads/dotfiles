@@ -143,6 +143,7 @@ function buildRow(
 export interface ToolbarResult {
 	readonly element: HTMLDivElement
 	readonly ctrlState: CtrlState
+	readonly updateRow2: (buttons: readonly ButtonDef[]) => void
 }
 
 /** Create the two-row toolbar */
@@ -156,10 +157,16 @@ export function createToolbar(
 	const ctrlState = createCtrlState()
 
 	const row1 = buildRow(config.toolbar.row1, term, ctrlState, config, openDrawer, openDrawerTo)
-	const row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer, openDrawerTo)
+	let row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer, openDrawerTo)
 
 	toolbar.appendChild(row1)
 	toolbar.appendChild(row2)
 
-	return { element: toolbar, ctrlState }
+	function updateRow2(buttons: readonly ButtonDef[]): void {
+		const newRow2 = buildRow(buttons, term, ctrlState, config, openDrawer, openDrawerTo)
+		toolbar.replaceChild(newRow2, row2)
+		row2 = newRow2
+	}
+
+	return { element: toolbar, ctrlState, updateRow2 }
 }

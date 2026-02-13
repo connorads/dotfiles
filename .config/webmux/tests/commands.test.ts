@@ -99,6 +99,13 @@ describe('defaultLazygitContext', () => {
 	test('has titlePatterns for auto-detection', () => {
 		expect(defaultLazygitContext.titlePatterns).toContain('lazygit')
 	})
+
+	test('has toolbarButtons with Stage, Commit, Push', () => {
+		const labels = defaultLazygitContext.toolbarButtons?.map((b) => b.label) ?? []
+		expect(labels).toContain('Stage')
+		expect(labels).toContain('Commit')
+		expect(labels).toContain('Push')
+	})
 })
 
 describe('defaultClaudeContext', () => {
@@ -134,5 +141,12 @@ describe('defaultClaudeContext', () => {
 
 	test('has titlePatterns for auto-detection', () => {
 		expect(defaultClaudeContext.titlePatterns).toContain('claude')
+	})
+
+	test('has toolbarButtons with Mode, Yes, No', () => {
+		const labels = defaultClaudeContext.toolbarButtons?.map((b) => b.label) ?? []
+		expect(labels).toContain('Mode')
+		expect(labels).toContain('Yes')
+		expect(labels).toContain('No')
 	})
 })
