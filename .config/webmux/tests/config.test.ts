@@ -39,12 +39,14 @@ describe('defineConfig', () => {
 		expect(config.toolbar.row2.length).toBeGreaterThan(0)
 	})
 
-	test('replaces drawer commands array', () => {
-		const customCmds = [{ label: 'Test', seq: '\x02t' }]
+	test('replaces drawer contexts array', () => {
+		const customContexts = [
+			{ id: 'custom', label: 'Custom', commands: [{ label: 'Test', seq: '\x02t' }] },
+		]
 		const config = defineConfig({
-			drawer: { commands: customCmds },
+			drawer: { contexts: customContexts },
 		})
-		expect(config.drawer.commands).toEqual(customCmds)
+		expect(config.drawer.contexts).toEqual(customContexts)
 	})
 })
 
@@ -62,8 +64,23 @@ describe('defaultConfig', () => {
 		expect(defaultConfig.toolbar.row2).toHaveLength(5)
 	})
 
-	test('has 12 drawer commands', () => {
-		expect(defaultConfig.drawer.commands).toHaveLength(12)
+	test('has 2 drawer contexts', () => {
+		expect(defaultConfig.drawer.contexts).toHaveLength(2)
+	})
+
+	test('tmux context has 12 commands', () => {
+		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
+		expect(tmux?.commands).toHaveLength(12)
+	})
+
+	test('claude context has 6 commands', () => {
+		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
+		expect(claude?.commands).toHaveLength(6)
+	})
+
+	test('claude context has titlePatterns', () => {
+		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
+		expect(claude?.titlePatterns).toContain('claude')
 	})
 
 	test('font size range is [8, 32]', () => {

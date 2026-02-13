@@ -2,12 +2,14 @@
 
 Mobile-friendly terminal overlay for [ttyd](https://github.com/tsl0922/ttyd) + [tmux](https://github.com/tmux/tmux).
 
-Turns a ttyd web terminal into a touch-optimised tmux client with toolbar, gesture support, and a tmux command drawer.
+Turns a ttyd web terminal into a touch-optimised tmux client with toolbar, gesture support, and context-aware command drawers.
 
 ## Features
 
-- **Two-row toolbar** — Esc, Ctrl (sticky modifier), Tab, arrows, C-c, Enter, tmux prev/next/zoom, paste, drawer toggle
-- **Tmux command drawer** — slide-up panel with new window, splits, session/window pickers, lazygit, yazi, etc.
+- **Two-row toolbar** — Esc, Ctrl (sticky modifier), Tab, arrows, C-c, Enter, tmux prev/next, paste, context drawer buttons
+- **Context-aware drawers** — tab-based drawer with tmux commands and Claude Code commands (Mode, Yes/No, slash commands)
+- **Title-based auto-detection** — automatically switches active drawer tab based on terminal title (e.g. detects Claude Code)
+- **Keyboard state preservation** — toolbar buttons don't open the virtual keyboard when it was closed
 - **Swipe gestures** — swipe left/right to switch tmux windows
 - **Pinch-to-zoom** — adjust font size with two-finger pinch
 - **Font controls** — dedicated +/- buttons, top-right overlay
@@ -68,11 +70,33 @@ export default defineConfig({
       { label: 'Ctrl', action: { type: 'ctrl-modifier' } },
       // ...
     ],
+    row2: [
+      { label: '◀ Prev', action: { type: 'send', data: '\x02p' } },
+      { label: '⌘ claude', action: { type: 'drawer-open', contextId: 'claude' } },
+      { label: '⌘ tmux', action: { type: 'drawer-open', contextId: 'tmux' } },
+      // ...
+    ],
   },
   drawer: {
-    commands: [
-      { label: '+ Win', seq: '\x02c' },
-      // ...
+    contexts: [
+      {
+        id: 'tmux',
+        label: 'tmux',
+        commands: [
+          { label: '+ Win', seq: '\x02c' },
+          // ...
+        ],
+      },
+      {
+        id: 'claude',
+        label: 'claude',
+        titlePatterns: ['claude'],
+        commands: [
+          { label: 'Mode', seq: '\x1b[Z' },
+          { label: 'Yes', seq: 'y' },
+          // ...
+        ],
+      },
     ],
   },
   gestures: {
@@ -86,11 +110,13 @@ export default defineConfig({
 
 Pure TypeScript + DOM API — no framework. The build produces a single HTML file containing all JS/CSS inlined. ttyd handles all WebSocket/PTY bridging; webmux only adds the mobile UI overlay.
 
+The drawer supports multiple contexts (tmux, claude, custom) with a tab bar for switching. Title-based auto-detection watches `document.title` to switch the active tab automatically.
+
 ## Development
 
 ```bash
 bun install
-bun test          # 60 tests
+bun test          # Run tests
 bun run check     # biome lint + format
 bun run build     # build dist/index.html
 ```

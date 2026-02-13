@@ -1,6 +1,7 @@
-import type { ButtonDef, WebmuxConfig, XTerminal } from '../types'
+import type { ButtonDef, DrawerContextId, WebmuxConfig, XTerminal } from '../types'
 import { el } from '../util/dom'
 import { haptic } from '../util/haptic'
+import { conditionalFocus, isKeyboardOpen } from '../util/keyboard'
 import { sendData } from '../util/terminal'
 
 /** Ctrl sticky modifier state */
@@ -56,9 +57,11 @@ function wireButton(
 	ctrlState: CtrlState,
 	config: WebmuxConfig,
 	openDrawer: () => void,
+	openDrawerTo: (id: DrawerContextId) => void,
 ): void {
 	button.addEventListener('click', (e: Event) => {
 		e.preventDefault()
+		const kbWasOpen = isKeyboardOpen()
 		haptic()
 
 		switch (def.action.type) {
@@ -68,7 +71,7 @@ function wireButton(
 				} else {
 					activateCtrl(ctrlState, term, config.theme)
 				}
-				term.focus()
+				conditionalFocus(term, kbWasOpen)
 				break
 
 			case 'paste':
@@ -77,16 +80,20 @@ function wireButton(
 						.readText()
 						.then((text: string) => {
 							if (text) sendData(term, text)
-							term.focus()
+							conditionalFocus(term, kbWasOpen)
 						})
-						.catch(() => term.focus())
+						.catch(() => conditionalFocus(term, kbWasOpen))
 				} else {
-					term.focus()
+					conditionalFocus(term, kbWasOpen)
 				}
 				break
 
 			case 'drawer-toggle':
 				openDrawer()
+				break
+
+			case 'drawer-open':
+				openDrawerTo(def.action.contextId)
 				break
 
 			case 'send': {
@@ -96,13 +103,13 @@ function wireButton(
 						const code = def.action.data.charCodeAt(0)
 						if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
 							sendData(term, String.fromCharCode(code & 0x1f))
-							term.focus()
+							conditionalFocus(term, kbWasOpen)
 							return
 						}
 					}
 				}
 				sendData(term, def.action.data)
-				term.focus()
+				conditionalFocus(term, kbWasOpen)
 				break
 			}
 		}
@@ -116,6 +123,7 @@ function buildRow(
 	ctrlState: CtrlState,
 	config: WebmuxConfig,
 	openDrawer: () => void,
+	openDrawerTo: (id: DrawerContextId) => void,
 ): HTMLDivElement {
 	const row = el('div', { class: 'wt-row' })
 
@@ -125,7 +133,7 @@ function buildRow(
 		if (def.action.type === 'ctrl-modifier') {
 			ctrlState.buttonEl = button
 		}
-		wireButton(button, def, term, ctrlState, config, openDrawer)
+		wireButton(button, def, term, ctrlState, config, openDrawer, openDrawerTo)
 		row.appendChild(button)
 	}
 
@@ -142,12 +150,13 @@ export function createToolbar(
 	term: XTerminal,
 	config: WebmuxConfig,
 	openDrawer: () => void,
+	openDrawerTo: (id: DrawerContextId) => void,
 ): ToolbarResult {
 	const toolbar = el('div', { id: 'wt-toolbar' })
 	const ctrlState = createCtrlState()
 
-	const row1 = buildRow(config.toolbar.row1, term, ctrlState, config, openDrawer)
-	const row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer)
+	const row1 = buildRow(config.toolbar.row1, term, ctrlState, config, openDrawer, openDrawerTo)
+	const row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer, openDrawerTo)
 
 	toolbar.appendChild(row1)
 	toolbar.appendChild(row2)
