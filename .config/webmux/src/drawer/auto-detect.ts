@@ -1,14 +1,16 @@
-import type { DrawerContext, DrawerContextId } from '../types'
+import type { DrawerContext, DrawerContextId, XTerminal } from '../types'
 
 /**
- * Watch `document.title` and switch the active drawer context
- * when the title matches a context's `titlePatterns`.
+ * Watch `document.title` and OSC 7777 escape sequences to switch
+ * the active drawer context automatically.
  */
 export function setupAutoDetect(
+	term: XTerminal,
 	contexts: readonly DrawerContext[],
 	setContext: (id: DrawerContextId) => void,
 ): void {
 	const fallbackId = contexts[0]?.id
+	const contextIds = new Set(contexts.map((c) => c.id))
 
 	function matchTitle(): void {
 		const title = document.title.toLowerCase()
@@ -34,6 +36,19 @@ export function setupAutoDetect(
 	if (titleEl) {
 		const observer = new MutationObserver(matchTitle)
 		observer.observe(titleEl, { childList: true, characterData: true, subtree: true })
+	}
+
+	// OSC 7777 detection (explicit signal from tmux bindings via DCS passthrough)
+	if (term.parser) {
+		term.parser.registerOscHandler(7777, (data: string) => {
+			const id = data.trim()
+			if (id && contextIds.has(id)) {
+				setContext(id)
+			} else if (fallbackId) {
+				matchTitle()
+			}
+			return true
+		})
 	}
 
 	// Run once on init
