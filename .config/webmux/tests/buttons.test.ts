@@ -33,9 +33,20 @@ describe('defaultRow2', () => {
 		expect(paste?.label).toBe('Paste')
 	})
 
-	test('has drawer toggle', () => {
-		const drawer = defaultRow2.find((b) => b.action.type === 'drawer-toggle')
-		expect(drawer).toBeDefined()
+	test('has drawer-open for tmux', () => {
+		const tmux = defaultRow2.find(
+			(b) => b.action.type === 'drawer-open' && b.action.contextId === 'tmux',
+		)
+		expect(tmux).toBeDefined()
+		expect(tmux?.label).toContain('tmux')
+	})
+
+	test('has drawer-open for claude', () => {
+		const claude = defaultRow2.find(
+			(b) => b.action.type === 'drawer-open' && b.action.contextId === 'claude',
+		)
+		expect(claude).toBeDefined()
+		expect(claude?.label).toContain('claude')
 	})
 
 	test('has tmux prev/next as send actions', () => {

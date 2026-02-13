@@ -1,6 +1,7 @@
 import { defaultConfig } from './config'
 import { createFontControls } from './controls/font-size'
 import { createHelpOverlay } from './controls/help'
+import { setupAutoDetect } from './drawer/auto-detect'
 import { createDrawer } from './drawer/drawer'
 import { attachPinchGestures } from './gestures/pinch'
 import { attachSwipeGestures } from './gestures/swipe'
@@ -12,7 +13,15 @@ import { initHeightManager } from './viewport/height'
 
 // Re-export for package consumers
 export { defineConfig } from './config'
-export type { WebmuxConfig, ButtonAction, ButtonDef, DrawerCommand, TermTheme } from './types'
+export type {
+	WebmuxConfig,
+	ButtonAction,
+	ButtonDef,
+	DrawerCommand,
+	DrawerContext,
+	DrawerContextId,
+	TermTheme,
+} from './types'
 
 /** Detect touch device */
 function isMobile(): boolean {
@@ -40,12 +49,12 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		// CSS is injected as a <style> tag by the build script (build.ts)
 
 		// Create drawer (needed by toolbar for toggle)
-		const drawer = createDrawer(term, config.drawer.commands)
+		const drawer = createDrawer(term, config.drawer.contexts)
 		document.body.appendChild(drawer.backdrop)
 		document.body.appendChild(drawer.drawer)
 
 		// Create toolbar
-		const { element: toolbar } = createToolbar(term, config, drawer.open)
+		const { element: toolbar } = createToolbar(term, config, drawer.open, drawer.openTo)
 		document.body.appendChild(toolbar)
 
 		// Font controls + help
@@ -63,6 +72,9 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		if (config.gestures.pinch.enabled) {
 			attachPinchGestures(term, config.font)
 		}
+
+		// Title-based context auto-detection
+		setupAutoDetect(config.drawer.contexts, drawer.setContext)
 
 		// Height management
 		initHeightManager(toolbar)

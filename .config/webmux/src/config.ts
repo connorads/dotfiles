@@ -1,5 +1,5 @@
 import { catppuccinMocha } from './theme/catppuccin-mocha'
-import type { DeepPartial, WebmuxConfig } from './types'
+import type { DeepPartial, DrawerContext, WebmuxConfig } from './types'
 
 /** Default font configuration */
 const defaultFont: WebmuxConfig['font'] = {
@@ -29,17 +29,17 @@ const defaultRow1: WebmuxConfig['toolbar']['row1'] = [
 	{ label: '\u23CE', action: { type: 'send', data: '\r' } },
 ]
 
-/** Default row 2 buttons (tmux shortcuts) */
+/** Default row 2 buttons (context shortcuts) */
 const defaultRow2: WebmuxConfig['toolbar']['row2'] = [
 	{ label: '\u25C0 Prev', action: { type: 'send', data: '\x02p' } },
 	{ label: '\u25B6 Next', action: { type: 'send', data: '\x02n' } },
-	{ label: 'Zoom', action: { type: 'send', data: '\x02z' } },
+	{ label: '\u2318 claude', action: { type: 'drawer-open', contextId: 'claude' } },
 	{ label: 'Paste', action: { type: 'paste' } },
-	{ label: '\u2318 tmux', action: { type: 'drawer-toggle' } },
+	{ label: '\u2318 tmux', action: { type: 'drawer-open', contextId: 'tmux' } },
 ]
 
-/** Default drawer commands */
-const defaultDrawerCommands: WebmuxConfig['drawer']['commands'] = [
+/** Default tmux drawer commands */
+export const defaultTmuxCommands: DrawerContext['commands'] = [
 	{ label: '+ Win', seq: '\x02c' },
 	{ label: 'Split |', seq: '\x02|' },
 	{ label: 'Split \u2014', seq: '\x02-' },
@@ -54,12 +54,37 @@ const defaultDrawerCommands: WebmuxConfig['drawer']['commands'] = [
 	{ label: 'Kill', seq: '\x02x' },
 ]
 
+/** Default Claude Code drawer commands */
+export const defaultClaudeCommands: DrawerContext['commands'] = [
+	{ label: 'Mode', seq: '\x1b[Z' },
+	{ label: 'Yes', seq: 'y' },
+	{ label: 'No', seq: 'n' },
+	{ label: '/compact', seq: '/compact\r' },
+	{ label: '/clear', seq: '/clear\r' },
+	{ label: '/help', seq: '/help\r' },
+]
+
+/** Default tmux drawer context */
+export const defaultTmuxContext: DrawerContext = {
+	id: 'tmux',
+	label: 'tmux',
+	commands: defaultTmuxCommands,
+}
+
+/** Default Claude Code drawer context */
+export const defaultClaudeContext: DrawerContext = {
+	id: 'claude',
+	label: 'claude',
+	commands: defaultClaudeCommands,
+	titlePatterns: ['claude'],
+}
+
 /** Complete default configuration */
 export const defaultConfig: WebmuxConfig = {
 	theme: catppuccinMocha,
 	font: defaultFont,
 	toolbar: { row1: defaultRow1, row2: defaultRow2 },
-	drawer: { commands: defaultDrawerCommands },
+	drawer: { contexts: [defaultTmuxContext, defaultClaudeContext] },
 	gestures: defaultGestures,
 }
 
