@@ -193,6 +193,27 @@ describe('help overlay integration', () => {
 })
 
 describe('build output', () => {
+	test('inline script contains no HTML-breaking < chars', async () => {
+		const { injectOverlay } = await import('../build')
+		const js = 'var x = "\\x1b[<64;1;1M"; var y = "</script>"'
+		const result = injectOverlay('<html><head></head><body></body></html>', js, '', defaultConfig)
+
+		const scriptMatch = result.match(/<script type="module">([\s\S]*?)<\/script>/)
+		const scriptContent = scriptMatch?.[1] ?? ''
+		// No < followed by a letter or / inside the script (would break HTML parsing)
+		const dangerousLt = scriptContent.match(/<(?=[a-zA-Z/])/g)
+		expect(dangerousLt).toBeNull()
+	})
+
+	test('JS containing $& is not corrupted by replacement patterns', async () => {
+		const { injectOverlay } = await import('../build')
+		const js = 'String.fromCharCode($&31)'
+		const result = injectOverlay('<html><head></head><body></body></html>', js, '', defaultConfig)
+
+		expect(result).toContain('String.fromCharCode($&31)')
+		expect(result).not.toContain('String.fromCharCode(</head>31)')
+	})
+
 	test('injectOverlay produces valid HTML with overlay', async () => {
 		const { injectOverlay } = await import('../build')
 		const baseHtml = '<html><head></head><body></body></html>'
