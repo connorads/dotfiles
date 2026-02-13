@@ -111,6 +111,7 @@ if [ "$width_raw" -ge 120 ]; then
   print_full
 elif [ "$width_raw" -ge 90 ]; then
   print_medium
-else
+elif [ "$width_raw" -ge 60 ]; then
   print_compact
 fi
+# < 60: output nothing (mobile — maximise window tab space)
