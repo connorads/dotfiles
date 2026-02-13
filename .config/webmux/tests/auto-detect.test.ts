@@ -9,6 +9,13 @@ const tmuxContext: DrawerContext = {
 	commands: [],
 }
 
+const lazygitContext: DrawerContext = {
+	id: 'lazygit',
+	label: 'lazygit',
+	commands: [],
+	titlePatterns: ['lazygit'],
+}
+
 const claudeContext: DrawerContext = {
 	id: 'claude',
 	label: 'claude',
@@ -16,7 +23,7 @@ const claudeContext: DrawerContext = {
 	titlePatterns: ['claude'],
 }
 
-const contexts: readonly DrawerContext[] = [tmuxContext, claudeContext]
+const contexts: readonly DrawerContext[] = [tmuxContext, lazygitContext, claudeContext]
 
 beforeEach(() => {
 	GlobalRegistrator.register()
@@ -52,6 +59,15 @@ describe('setupAutoDetect', () => {
 			lastContextId = id
 		})
 		expect(lastContextId).toBe('claude')
+	})
+
+	test('matches lazygit title', () => {
+		document.title = 'lazygit'
+		let lastContextId = ''
+		setupAutoDetect(contexts, (id) => {
+			lastContextId = id
+		})
+		expect(lastContextId).toBe('lazygit')
 	})
 
 	test('falls back for empty title', () => {

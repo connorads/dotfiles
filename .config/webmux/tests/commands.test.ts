@@ -3,6 +3,8 @@ import {
 	defaultClaudeCommands,
 	defaultClaudeContext,
 	defaultCommands,
+	defaultLazygitCommands,
+	defaultLazygitContext,
 	defaultTmuxCommands,
 	defaultTmuxContext,
 } from '../src/drawer/commands'
@@ -58,6 +60,44 @@ describe('defaultTmuxContext', () => {
 
 	test('commands match defaultTmuxCommands', () => {
 		expect(defaultTmuxContext.commands).toBe(defaultTmuxCommands)
+	})
+})
+
+describe('defaultLazygitContext', () => {
+	test('has id lazygit', () => {
+		expect(defaultLazygitContext.id).toBe('lazygit')
+	})
+
+	test('has 13 commands', () => {
+		expect(defaultLazygitCommands).toHaveLength(13)
+	})
+
+	test('commands match defaultLazygitCommands', () => {
+		expect(defaultLazygitContext.commands).toBe(defaultLazygitCommands)
+	})
+
+	test('no commands start with tmux prefix', () => {
+		for (const cmd of defaultLazygitCommands) {
+			expect(cmd.seq.startsWith('\x02')).toBe(false)
+		}
+	})
+
+	test('includes git workflow commands', () => {
+		const labels = defaultLazygitCommands.map((c) => c.label)
+		expect(labels).toContain('Stage')
+		expect(labels).toContain('Commit')
+		expect(labels).toContain('Push')
+		expect(labels).toContain('Pull')
+	})
+
+	test('includes panel navigation commands', () => {
+		const labels = defaultLazygitCommands.map((c) => c.label)
+		expect(labels).toContain('Files')
+		expect(labels).toContain('Branch')
+	})
+
+	test('has titlePatterns for auto-detection', () => {
+		expect(defaultLazygitContext.titlePatterns).toContain('lazygit')
 	})
 })
 

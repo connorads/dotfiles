@@ -74,7 +74,7 @@ describe('drawer integration', () => {
 
 		const tabs = drawer.querySelector('#wt-drawer-tabs')
 		const tabButtons = tabs?.querySelectorAll('button')
-		expect(tabButtons?.length).toBe(2)
+		expect(tabButtons?.length).toBe(3)
 	})
 
 	test('first context commands rendered by default', () => {

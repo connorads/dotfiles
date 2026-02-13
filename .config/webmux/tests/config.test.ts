@@ -64,13 +64,23 @@ describe('defaultConfig', () => {
 		expect(defaultConfig.toolbar.row2).toHaveLength(5)
 	})
 
-	test('has 2 drawer contexts', () => {
-		expect(defaultConfig.drawer.contexts).toHaveLength(2)
+	test('has 3 drawer contexts', () => {
+		expect(defaultConfig.drawer.contexts).toHaveLength(3)
 	})
 
 	test('tmux context has 14 commands', () => {
 		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
 		expect(tmux?.commands).toHaveLength(14)
+	})
+
+	test('lazygit context has 13 commands', () => {
+		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
+		expect(lazygit?.commands).toHaveLength(13)
+	})
+
+	test('lazygit context has titlePatterns', () => {
+		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
+		expect(lazygit?.titlePatterns).toContain('lazygit')
 	})
 
 	test('claude context has 6 commands', () => {

@@ -82,12 +82,37 @@ export const defaultClaudeContext: DrawerContext = {
 	titlePatterns: ['claude'],
 }
 
+/** Default lazygit drawer commands */
+export const defaultLazygitCommands: DrawerContext['commands'] = [
+	{ label: 'Stage', seq: ' ' },
+	{ label: 'All', seq: 'a' },
+	{ label: 'Commit', seq: 'c' },
+	{ label: 'Push', seq: 'P' },
+	{ label: 'Pull', seq: 'p' },
+	{ label: 'Fetch', seq: 'f' },
+	{ label: '\u21B5', seq: '\r' },
+	{ label: 'Undo', seq: 'z' },
+	{ label: 'Amend', seq: 'A' },
+	{ label: 'Menu', seq: 'x' },
+	{ label: 'Files', seq: '2' },
+	{ label: 'Branch', seq: '3' },
+	{ label: 'Quit', seq: 'q' },
+]
+
+/** Default lazygit drawer context */
+export const defaultLazygitContext: DrawerContext = {
+	id: 'lazygit',
+	label: 'lazygit',
+	commands: defaultLazygitCommands,
+	titlePatterns: ['lazygit'],
+}
+
 /** Complete default configuration */
 export const defaultConfig: WebmuxConfig = {
 	theme: catppuccinMocha,
 	font: defaultFont,
 	toolbar: { row1: defaultRow1, row2: defaultRow2 },
-	drawer: { contexts: [defaultTmuxContext, defaultClaudeContext] },
+	drawer: { contexts: [defaultTmuxContext, defaultLazygitContext, defaultClaudeContext] },
 	gestures: defaultGestures,
 }
 
