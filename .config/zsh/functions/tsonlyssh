@@ -1,0 +1,23 @@
+# tsonlyssh: Restrict SSH to Tailscale interface only (removes public port 22)
+if ! command -v ufw >/dev/null 2>&1; then
+  echo "ufw not installed" >&2
+  return 1
+fi
+
+if ! ip link show tailscale0 &>/dev/null; then
+  echo "tailscale0 interface not found — is Tailscale running?" >&2
+  return 1
+fi
+
+echo "Restricting SSH to Tailscale only..."
+
+# Remove public SSH rules (both v4 and v6)
+sudo ufw delete allow 22/tcp 2>/dev/null || true
+
+# Allow SSH only on Tailscale interface
+sudo ufw allow in on tailscale0 to any port 22 proto tcp comment 'SSH via Tailscale' 2>/dev/null || true
+
+sudo ufw reload
+
+echo "Done. SSH now only accessible via Tailscale."
+echo "Fallback: Hetzner Cloud Console > Server > VNC if locked out."

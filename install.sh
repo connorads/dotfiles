@@ -242,6 +242,10 @@ AllowTcpForwarding no
 AllowAgentForwarding yes
 X11Forwarding no
 AllowUsers connor
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com
 EOF
       sudo systemctl reload sshd 2>/dev/null || sudo systemctl reload ssh 2>/dev/null || true
     fi
@@ -295,6 +299,87 @@ EOF
     sudo env DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -plow unattended-upgrades
   fi
   sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
+
+  # Kernel hardening (sysctl)
+  SYSCTL_HARDENING="/etc/sysctl.d/99-hardening.conf"
+  if [ ! -f "$SYSCTL_HARDENING" ]; then
+    echo "Applying kernel hardening (sysctl)..."
+    sudo tee "$SYSCTL_HARDENING" > /dev/null << 'EOF'
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+kernel.yama.ptrace_scope = 2
+fs.protected_fifos = 2
+fs.protected_regular = 2
+fs.suid_dumpable = 0
+EOF
+    sudo sysctl --system > /dev/null
+  else
+    echo "Kernel hardening already applied"
+  fi
+
+  # Audit logging (auditd)
+  if ! command -v auditctl &>/dev/null; then
+    echo "Installing auditd..."
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y auditd
+  fi
+  AUDIT_RULES="/etc/audit/rules.d/hardening.rules"
+  if [ ! -f "$AUDIT_RULES" ]; then
+    echo "Configuring auditd rules..."
+    sudo tee "$AUDIT_RULES" > /dev/null << 'AUDITEOF'
+# Identity and authentication
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k identity
+-w /etc/sudoers.d/ -p wa -k identity
+-w /etc/pam.d/ -p wa -k identity
+
+# SSH configuration
+-w /etc/ssh/ -p wa -k sshconfig
+-w /home/connor/.ssh/ -p wa -k sshconfig
+
+# Persistence mechanisms
+-w /etc/cron.d/ -p wa -k persistence
+-w /etc/crontab -p wa -k persistence
+-w /var/spool/cron/ -p wa -k persistence
+-w /etc/systemd/system/ -p wa -k persistence
+
+# Network configuration
+-w /etc/hosts -p wa -k network
+
+# Audit log tampering
+-w /var/log/audit/ -p wa -k audit-log
+
+# Kernel modules (aarch64-compatible syscalls)
+-a always,exit -F arch=b64 -S init_module,delete_module,finit_module -k modules
+AUDITEOF
+  fi
+
+  # Configure auditd log rotation (200MB cap: 20MB x 10 files)
+  AUDITD_CONF="/etc/audit/auditd.conf"
+  if ! grep -q "^max_log_file = 20$" "$AUDITD_CONF" 2>/dev/null; then
+    echo "Configuring auditd log rotation..."
+    sudo sed -i 's/^max_log_file = .*/max_log_file = 20/' "$AUDITD_CONF"
+    sudo sed -i 's/^num_logs = .*/num_logs = 10/' "$AUDITD_CONF"
+    sudo sed -i 's/^max_log_file_action = .*/max_log_file_action = ROTATE/' "$AUDITD_CONF"
+    sudo sed -i 's/^space_left_action = .*/space_left_action = SUSPEND/' "$AUDITD_CONF"
+  fi
+
+  sudo systemctl enable --now auditd 2>/dev/null || true
+  sudo augenrules --load 2>/dev/null || true
 
   # Apply pending package updates
   echo "Applying pending package updates..."
