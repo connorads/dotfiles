@@ -26,7 +26,7 @@ describe('defineConfig', () => {
 		expect(config.gestures.swipe.enabled).toBe(true)
 		expect(config.gestures.swipe.maxDuration).toBe(400)
 		// Pinch defaults preserved
-		expect(config.gestures.pinch.enabled).toBe(true)
+		expect(config.gestures.pinch.enabled).toBe(false)
 	})
 
 	test('replaces arrays entirely (toolbar row1)', () => {

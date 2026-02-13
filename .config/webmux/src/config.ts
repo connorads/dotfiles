@@ -13,7 +13,7 @@ const defaultFont: WebmuxConfig['font'] = {
 /** Default gesture configuration */
 const defaultGestures: WebmuxConfig['gestures'] = {
 	swipe: { enabled: true, threshold: 80, maxDuration: 400 },
-	pinch: { enabled: true },
+	pinch: { enabled: false },
 	scroll: { enabled: true, sensitivity: 40 },
 }
 
@@ -51,7 +51,7 @@ export const defaultTmuxCommands: DrawerContext['commands'] = [
 	{ label: 'Files', seq: '\x02y' },
 	{ label: 'Links', seq: '\x02u' },
 	{ label: 'PgUp', seq: '\x02\x1b[5~' },
-	{ label: 'PgDn', seq: '\x02\x1b[6~' },
+	{ label: 'PgDn', seq: '\x1b[6~' },
 	{ label: 'Copy', seq: '\x02 ' },
 	{ label: 'Help', seq: '\x02?' },
 	{ label: 'Kill', seq: '\x02x' },

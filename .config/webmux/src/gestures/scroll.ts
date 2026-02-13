@@ -10,7 +10,7 @@ export function averageY(t0: { clientY: number }, t1: { clientY: number }): numb
 
 /** SGR mouse wheel escape sequence for a given direction */
 export function scrollSeq(direction: 'up' | 'down'): string {
-	return direction === 'up' ? '\x1b[<64;1;1M' : '\x1b[<65;1;1M'
+	return direction === 'up' ? '\x1b[\x3c64;1;1M' : '\x1b[\x3c65;1;1M'
 }
 
 /** Attach two-finger vertical scroll to the xterm screen */
@@ -60,7 +60,7 @@ export function attachScrollGesture(
 
 		// Send one wheel event per sensitivity-worth of pixels
 		while (Math.abs(accDelta) >= config.sensitivity) {
-			const dir = accDelta < 0 ? 'up' : 'down'
+			const dir = accDelta < 0 ? 'down' : 'up'
 			sendData(term, scrollSeq(dir))
 			accDelta -= (accDelta < 0 ? -1 : 1) * config.sensitivity
 		}
