@@ -19,9 +19,14 @@ describe('defaultCommands (tmux)', () => {
 		}
 	})
 
-	test('all seqs start with tmux prefix (Ctrl-b)', () => {
+	test('all seqs except PgDn start with tmux prefix (Ctrl-b)', () => {
 		for (const cmd of defaultCommands) {
-			expect(cmd.seq.startsWith('\x02')).toBe(true)
+			if (cmd.label === 'PgDn') {
+				// PgDn sends raw escape — works inside copy mode without prefix
+				expect(cmd.seq.startsWith('\x02')).toBe(false)
+			} else {
+				expect(cmd.seq.startsWith('\x02')).toBe(true)
+			}
 		}
 	})
 

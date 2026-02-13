@@ -77,6 +77,6 @@ describe('createScrollButtons', () => {
 		downBtn?.click()
 
 		expect(term.sent).toHaveLength(1)
-		expect(term.sent[0]).toBe('\x02\x1b[6~')
+		expect(term.sent[0]).toBe('\x1b[6~')
 	})
 })

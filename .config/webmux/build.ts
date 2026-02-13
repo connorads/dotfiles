@@ -90,13 +90,18 @@ async function fetchTtydHtml(): Promise<string> {
 export function injectOverlay(html: string, js: string, css: string, config: WebmuxConfig): string {
 	const fontLink = `<link rel="preload" href="${config.font.cdnUrl}" as="style" onload="this.rel='stylesheet'">`
 	const viewport =
-		'<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">'
+		'<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">'
 	const styleTag = `<style>${css}</style>`
-	const scriptTag = `<script type="module">${js}</script>`
+	const safeJs = js.replace(/<(?=\/script)/gi, '\\x3c')
+	const scriptTag = `<script type="module">${safeJs}</script>`
 
 	const injection = `${fontLink}\n${viewport}\n${styleTag}\n${scriptTag}\n`
 
-	return html.replace('</head>', `${injection}</head>`)
+	// Avoid String.replace() — minified JS may contain $& which .replace()
+	// interprets as a special replacement pattern, corrupting the output
+	const idx = html.indexOf('</head>')
+	if (idx === -1) throw new Error('No </head> found in base HTML')
+	return html.slice(0, idx) + injection + html.slice(idx)
 }
 
 /** Full build pipeline: bundle → fetch ttyd HTML → inject → write output */
