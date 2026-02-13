@@ -10,7 +10,8 @@ local webmux_dir="$HOME/.config/webmux"
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
 local ttyd_v=$(ttyd --version 2>&1 | head -1)
 local wm_v=$(bun --cwd "$webmux_dir" cli.ts --version 2>&1)
-local hash=$(echo "$ttyd_v:$wm_v" | md5sum | cut -d' ' -f1)
+local src_hash=$(cat "$webmux_dir"/src/**/*.ts "$webmux_dir"/styles/*.css 2>/dev/null | md5sum | cut -d' ' -f1)
+local hash=$(echo "$ttyd_v:$wm_v:$src_hash" | md5sum | cut -d' ' -f1)
 local idx="$cache_dir/index-$hash.html"
 
 if [[ ! -f "$idx" ]]; then
