@@ -1,5 +1,7 @@
 import type { FontConfig, XTerminal } from '../types'
 import { resizeTerm } from '../util/terminal'
+import type { GestureLock } from './lock'
+import { resetLock, tryLock } from './lock'
 
 /** Calculate distance between two touch points */
 export function touchDistance(
@@ -17,7 +19,7 @@ export function clampFontSize(size: number, range: readonly [number, number]): n
 }
 
 /** Attach pinch-to-zoom gesture to the xterm screen */
-export function attachPinchGestures(term: XTerminal, font: FontConfig): void {
+export function attachPinchGestures(term: XTerminal, font: FontConfig, lock: GestureLock): void {
 	let pinchStartDist = 0
 	let pinchBaseFontSize = 0
 
@@ -32,19 +34,35 @@ export function attachPinchGestures(term: XTerminal, font: FontConfig): void {
 	}
 
 	function onPinchMove(e: TouchEvent): void {
-		if (e.touches.length === 2) {
-			e.preventDefault()
-			if (pinchStartDist === 0) return
-			const t0 = e.touches[0]
-			const t1 = e.touches[1]
-			if (!t0 || !t1) return
-			const dist = touchDistance(t0, t1)
-			const ratio = dist / pinchStartDist
-			const newSize = clampFontSize(Math.round(pinchBaseFontSize * ratio), font.sizeRange)
-			if (newSize !== term.options.fontSize) {
-				term.options.fontSize = newSize
-				resizeTerm()
-			}
+		if (e.touches.length !== 2) return
+		if (lock.current === 'scroll') return
+		if (pinchStartDist === 0) return
+
+		const t0 = e.touches[0]
+		const t1 = e.touches[1]
+		if (!t0 || !t1) return
+
+		const dist = touchDistance(t0, t1)
+		const ratio = dist / pinchStartDist
+
+		// Try to claim lock once ratio diverges enough
+		if (lock.current === 'none' && Math.abs(ratio - 1) > 0.05) {
+			if (!tryLock(lock, 'pinch')) return
+		}
+
+		if (lock.current !== 'pinch') return
+
+		e.preventDefault()
+		const newSize = clampFontSize(Math.round(pinchBaseFontSize * ratio), font.sizeRange)
+		if (newSize !== term.options.fontSize) {
+			term.options.fontSize = newSize
+			resizeTerm()
+		}
+	}
+
+	function onTouchEnd(): void {
+		if (lock.current === 'pinch') {
+			resetLock(lock)
 		}
 	}
 
@@ -61,6 +79,7 @@ export function attachPinchGestures(term: XTerminal, font: FontConfig): void {
 		screen.addEventListener('touchmove', (e: Event) => onPinchMove(e as TouchEvent), {
 			passive: false,
 		})
+		screen.addEventListener('touchend', () => onTouchEnd(), { passive: true })
 	}
 
 	attach()
