@@ -38,6 +38,8 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		// Resize after fonts load
 		document.fonts.ready.then(() => resizeTerm())
 
+		document.title = `webmux · ${location.hostname.replace(/\..*/, '')}`
+
 		if (!isMobile()) return
 
 		// Apply theme and font

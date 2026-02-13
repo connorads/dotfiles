@@ -68,9 +68,9 @@ describe('defaultConfig', () => {
 		expect(defaultConfig.drawer.contexts).toHaveLength(2)
 	})
 
-	test('tmux context has 12 commands', () => {
+	test('tmux context has 14 commands', () => {
 		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
-		expect(tmux?.commands).toHaveLength(12)
+		expect(tmux?.commands).toHaveLength(14)
 	})
 
 	test('claude context has 6 commands', () => {

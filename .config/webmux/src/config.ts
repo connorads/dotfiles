@@ -49,6 +49,8 @@ export const defaultTmuxCommands: DrawerContext['commands'] = [
 	{ label: 'Git', seq: '\x02g' },
 	{ label: 'Files', seq: '\x02y' },
 	{ label: 'Links', seq: '\x02u' },
+	{ label: 'PgUp', seq: '\x1b[5~' },
+	{ label: 'PgDn', seq: '\x1b[6~' },
 	{ label: 'Copy', seq: '\x02 ' },
 	{ label: 'Help', seq: '\x02?' },
 	{ label: 'Kill', seq: '\x02x' },

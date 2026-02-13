@@ -8,8 +8,8 @@ import {
 } from '../src/drawer/commands'
 
 describe('defaultCommands (tmux)', () => {
-	test('has 12 commands', () => {
-		expect(defaultCommands).toHaveLength(12)
+	test('has 14 commands', () => {
+		expect(defaultCommands).toHaveLength(14)
 	})
 
 	test('all commands have label and seq', () => {
@@ -19,9 +19,14 @@ describe('defaultCommands (tmux)', () => {
 		}
 	})
 
-	test('all seqs start with tmux prefix (Ctrl-b)', () => {
+	test('tmux-prefixed seqs start with Ctrl-b (except PgUp/PgDn)', () => {
+		const rawSeqs = ['PgUp', 'PgDn']
 		for (const cmd of defaultCommands) {
-			expect(cmd.seq.startsWith('\x02')).toBe(true)
+			if (rawSeqs.includes(cmd.label)) {
+				expect(cmd.seq.startsWith('\x1b[')).toBe(true)
+			} else {
+				expect(cmd.seq.startsWith('\x02')).toBe(true)
+			}
 		}
 	})
 
@@ -37,6 +42,12 @@ describe('defaultCommands (tmux)', () => {
 		const labels = defaultCommands.map((c) => c.label)
 		expect(labels).toContain('Sessions')
 		expect(labels).toContain('Windows')
+	})
+
+	test('includes scroll commands', () => {
+		const labels = defaultCommands.map((c) => c.label)
+		expect(labels).toContain('PgUp')
+		expect(labels).toContain('PgDn')
 	})
 })
 
