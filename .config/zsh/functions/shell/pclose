@@ -1,0 +1,189 @@
+# pclose: interactive process closer (TERM first, optional KILL)
+emulate -L zsh
+
+local use_sudo=0
+local force_kill=0
+local assume_yes=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --sudo)
+      use_sudo=1
+      ;;
+    -9|--force)
+      force_kill=1
+      ;;
+    -y|--yes)
+      assume_yes=1
+      ;;
+    -h|--help)
+      echo "usage: pclose [--sudo] [--force] [--yes]" >&2
+      return 0
+      ;;
+    *)
+      echo "unknown option: $1" >&2
+      echo "usage: pclose [--sudo] [--force] [--yes]" >&2
+      return 1
+      ;;
+  esac
+  shift
+done
+
+local -a ps_cmd
+if (( use_sudo )); then
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "sudo not found" >&2
+    return 1
+  fi
+
+  if ! sudo -n true 2>/dev/null; then
+    if [[ -t 0 ]]; then
+      echo "sudo auth may be required..." >&2
+    else
+      echo "sudo required for --sudo in non-interactive mode" >&2
+      return 1
+    fi
+  fi
+  ps_cmd=(sudo ps -eo pid=,ppid=,%cpu=,%mem=,etime=,user=,comm=,args=)
+else
+  ps_cmd=(ps -u "$USER" -o pid=,ppid=,%cpu=,%mem=,etime=,user=,comm=,args=)
+fi
+
+local ps_output
+ps_output=$("${ps_cmd[@]}" 2>/dev/null)
+if [[ -z "$ps_output" ]]; then
+  echo "no processes found" >&2
+  return 1
+fi
+
+local -a protected_pids
+protected_pids+=("$$" "$PPID" 1)
+
+if [[ -n "$TMUX" ]] && command -v tmux >/dev/null 2>&1; then
+  local tmux_server_pid
+  tmux_server_pid=$(tmux display-message -p '#{pid}' 2>/dev/null)
+  [[ -n "$tmux_server_pid" ]] && protected_pids+=("$tmux_server_pid")
+fi
+protected_pids=(${(u)protected_pids})
+
+local -a rows
+local line pid ppid cpu mem etime user comm args mark
+while IFS= read -r line; do
+  [[ -z "$line" ]] && continue
+  read -r pid ppid cpu mem etime user comm args <<< "$line"
+  [[ -z "$pid" || ! "$pid" =~ '^[0-9]+$' ]] && continue
+  [[ -z "$args" ]] && args="$comm"
+
+  mark=" "
+  if (( ${protected_pids[(I)$pid]} )); then
+    mark="!"
+  fi
+
+  rows+=("$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' "$mark" "$pid" "$ppid" "$cpu" "$mem" "$etime" "$user" "$comm" "$args")")
+done <<< "$ps_output"
+
+if [[ ${#rows[@]} -eq 0 ]]; then
+  echo "no processes found" >&2
+  return 1
+fi
+
+local scope_label="user"
+(( use_sudo )) && scope_label="all (sudo)"
+
+local selected
+selected=$(printf '%s\n' "${rows[@]}" | fzf --multi --reverse --delimiter=$'\t' \
+  --with-nth=1,2,3,4,5,6,7,8,9 \
+  --header="scope: ${scope_label} | tab: mark | ! protected | enter: TERM->KILL" \
+  --bind='tab:toggle+down,btab:toggle+up' \
+  --preview='
+    mark=$(printf "%s" {} | awk -F "\t" "{print \$1}")
+    pid=$(printf "%s" {} | awk -F "\t" "{print \$2}")
+    ppid=$(printf "%s" {} | awk -F "\t" "{print \$3}")
+    cpu=$(printf "%s" {} | awk -F "\t" "{print \$4}")
+    mem=$(printf "%s" {} | awk -F "\t" "{print \$5}")
+    etime=$(printf "%s" {} | awk -F "\t" "{print \$6}")
+    user=$(printf "%s" {} | awk -F "\t" "{print \$7}")
+    comm=$(printf "%s" {} | awk -F "\t" "{print \$8}")
+    args=$(printf "%s" {} | awk -F "\t" "{print \$9}")
+
+    echo "Protected: ${mark:- }"
+    echo "PID:       $pid"
+    echo "PPID:      $ppid"
+    echo "User:      $user"
+    echo "CPU/MEM:   $cpu / $mem"
+    echo "Elapsed:   $etime"
+    echo "Command:   $comm"
+    echo "Args:      $args"
+
+    if command -v lsof >/dev/null 2>&1; then
+      ports=$(lsof -Pan -p "$pid" -iTCP -sTCP:LISTEN 2>/dev/null | awk "NR>1 {print \$9}")
+      if [ -n "$ports" ]; then
+        echo
+        echo "Listening:"
+        printf "%s\n" "$ports"
+      fi
+    fi
+  ' \
+  --preview-window=right:55%:wrap)
+
+[[ -z "$selected" ]] && return 0
+
+local -a selected_pids selected_protected
+selected_pids=(${(u)${(f)"$(printf '%s\n' "$selected" | awk -F '\t' '{print $2}')"}})
+
+for pid in "${selected_pids[@]}"; do
+  if (( ${protected_pids[(I)$pid]} )); then
+    selected_protected+=("$pid")
+  fi
+done
+selected_protected=(${(u)selected_protected})
+
+if [[ ${#selected_protected[@]} -gt 0 && $assume_yes -eq 0 ]]; then
+  if [[ -t 0 ]]; then
+    echo "warning: protected process(es) selected: ${selected_protected[*]}" >&2
+    read -r "reply?continue? [y/N] "
+    [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]] || return 1
+  else
+    echo "refusing protected process(es) without --yes: ${selected_protected[*]}" >&2
+    return 1
+  fi
+fi
+
+local -a kill_prefix
+(( use_sudo )) && kill_prefix=(sudo)
+
+echo "sending TERM to ${#selected_pids[@]} process(es): ${selected_pids[*]}"
+"${kill_prefix[@]}" kill -TERM "${selected_pids[@]}" 2>/dev/null
+
+local wait_seconds=${PCLOSE_TERM_WAIT:-2}
+sleep "$wait_seconds"
+
+local -a survivors
+for pid in "${selected_pids[@]}"; do
+  if (( use_sudo )); then
+    sudo kill -0 "$pid" 2>/dev/null && survivors+=("$pid")
+  else
+    kill -0 "$pid" 2>/dev/null && survivors+=("$pid")
+  fi
+done
+
+if [[ ${#survivors[@]} -eq 0 ]]; then
+  echo "all processes exited after TERM"
+  return 0
+fi
+
+echo "still running after TERM: ${survivors[*]}"
+
+if [[ $force_kill -eq 0 && $assume_yes -eq 0 && -t 0 ]]; then
+  local answer
+  read -r "answer?send KILL to survivors? [y/N] "
+  if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
+    return 1
+  fi
+elif [[ $force_kill -eq 0 && $assume_yes -eq 0 ]]; then
+  echo "non-interactive mode: refusing KILL without --force or --yes" >&2
+  return 1
+fi
+
+echo "sending KILL to ${#survivors[@]} process(es): ${survivors[*]}"
+"${kill_prefix[@]}" kill -KILL "${survivors[@]}" 2>/dev/null

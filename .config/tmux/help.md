@@ -36,6 +36,8 @@
 | `Ctrl+b W` | fzf window picker |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
+| `Ctrl+b K` | process closer (user processes) |
+| `Alt+Shift+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b O` | open cwd in file manager |
