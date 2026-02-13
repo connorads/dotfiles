@@ -63,6 +63,33 @@ describe('toolbar integration', () => {
 		const buttons = row2?.querySelectorAll('button')
 		expect(buttons?.length).toBe(defaultConfig.toolbar.row2.length)
 	})
+
+	test('updateRow2 replaces row2 buttons', () => {
+		const term = mockTerminal()
+		const drawer = createDrawer(term, defaultConfig.drawer.contexts)
+		const { element: toolbar, updateRow2 } = createToolbar(
+			term,
+			defaultConfig,
+			drawer.open,
+			drawer.openTo,
+		)
+
+		document.body.appendChild(toolbar)
+
+		const newButtons = [
+			{ label: 'A', action: { type: 'send' as const, data: 'a' } },
+			{ label: 'B', action: { type: 'send' as const, data: 'b' } },
+		]
+		updateRow2(newButtons)
+
+		const rows = toolbar.querySelectorAll('.wt-row')
+		expect(rows).toHaveLength(2)
+		const row2 = rows[1]
+		const buttons = row2?.querySelectorAll('button')
+		expect(buttons?.length).toBe(2)
+		expect(buttons?.[0]?.textContent).toBe('A')
+		expect(buttons?.[1]?.textContent).toBe('B')
+	})
 })
 
 describe('drawer integration', () => {

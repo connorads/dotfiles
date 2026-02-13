@@ -59,7 +59,7 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		document.body.appendChild(drawer.drawer)
 
 		// Create toolbar
-		const { element: toolbar } = createToolbar(term, config, drawer.open, drawer.openTo)
+		const { element: toolbar, updateRow2 } = createToolbar(term, config, drawer.open, drawer.openTo)
 		document.body.appendChild(toolbar)
 
 		// Font controls + help
@@ -86,8 +86,12 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 			attachScrollGesture(term, config.gestures.scroll, gestureLock, drawer.isOpen)
 		}
 
-		// Title-based context auto-detection
-		setupAutoDetect(config.drawer.contexts, drawer.setContext)
+		// Title-based context auto-detection → update drawer + toolbar row2
+		setupAutoDetect(config.drawer.contexts, (id) => {
+			drawer.setContext(id)
+			const ctx = config.drawer.contexts.find((c) => c.id === id)
+			updateRow2(ctx?.toolbarButtons ?? config.toolbar.row2)
+		})
 
 		// Height management
 		initHeightManager(toolbar)
