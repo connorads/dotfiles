@@ -86,8 +86,8 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 			attachScrollGesture(term, config.gestures.scroll, gestureLock, drawer.isOpen)
 		}
 
-		// Title-based context auto-detection → update drawer + toolbar row2
-		setupAutoDetect(config.drawer.contexts, (id) => {
+		// Context auto-detection (title + OSC 7777) → update drawer + toolbar row2
+		setupAutoDetect(term, config.drawer.contexts, (id) => {
 			drawer.setContext(id)
 			const ctx = config.drawer.contexts.find((c) => c.id === id)
 			updateRow2(ctx?.toolbarButtons ?? config.toolbar.row2)
