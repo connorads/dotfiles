@@ -37,5 +37,6 @@ in
     vscodeOverride
     pkgs.bind
     pkgs.libnotify
+    pkgs.lynis
   ];
 }

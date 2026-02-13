@@ -12,6 +12,23 @@ Create and manage Hetzner Cloud servers using the `hcloud` CLI.
 - `hcloud` CLI installed (via mise: `hcloud = "latest"`)
 - Authenticated: `hcloud context create <name>` with API token from https://console.hetzner.cloud
 
+## Cloud Firewalls
+
+Reusable firewall profiles applied at server creation. Firewalls can be swapped on running servers — use `apply-to-resource` / `remove-from-resource`.
+
+| Firewall | Rules | Use case |
+|----------|-------|----------|
+| `ts-ssh` | UDP 41641 (Tailscale) + TCP 22 (SSH) | Dev boxes — initial setup, swap to `ts-only` after `tsonlyssh` |
+| `ts-only` | UDP 41641 (Tailscale) | Tailscale-only access, no public ports |
+| `ts-web` | UDP 41641 (Tailscale) + TCP 80,443 (HTTP/S) | Servers accepting public web traffic |
+
+### Swapping firewalls on a running server
+
+```bash
+hcloud firewall remove-from-resource ts-ssh --type server --server dev
+hcloud firewall apply-to-resource ts-only --type server --server dev
+```
+
 ## Quick Reference
 
 ### Create a server
@@ -24,7 +41,8 @@ hcloud server create \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
-  --ssh-key connor@penguin
+  --ssh-key connor@penguin \
+  --firewall ts-ssh
 
 # x86 fallback
 hcloud server create \
@@ -33,7 +51,8 @@ hcloud server create \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
-  --ssh-key connor@penguin
+  --ssh-key connor@penguin \
+  --firewall ts-ssh
 
 # IPv6-only (saves ~$0.60/month on IPv4)
 hcloud server create \
@@ -43,6 +62,7 @@ hcloud server create \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin \
+  --firewall ts-ssh \
   --without-ipv4
 ```
 
@@ -57,6 +77,7 @@ hcloud server create \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin \
+  --firewall ts-ssh \
   --user-data-from-file - <<'EOF'
 #!/bin/bash
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
@@ -92,6 +113,7 @@ hcloud server create \
   --location nbg1 \
   --ssh-key connorads \
   --ssh-key connor@penguin \
+  --firewall ts-ssh \
   --user-data-from-file - <<'EOF'
 #cloud-config
 swap:
@@ -246,6 +268,12 @@ Host <name>-agent
 - Default profile (`<name>`) has no agent forwarding - safer for AI agents
 - Use `<name>-agent` when you need to push/pull to GitHub
 - This enables VS Code Remote-SSH to show the server in the dropdown
+
+## Optional: Restrict SSH to Tailscale only
+
+After `ts up` and confirming SSH works via Tailscale (`ts ssh connor@dev`), run `tsonlyssh` on the server to remove public port 22 from UFW. This leaves SSH accessible only via the Tailscale interface.
+
+Fallback: Hetzner Cloud Console VNC if locked out.
 
 ## Notes
 
