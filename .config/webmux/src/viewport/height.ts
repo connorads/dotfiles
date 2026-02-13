@@ -1,3 +1,4 @@
+import { isKeyboardOpen } from '../util/keyboard'
 import { resizeTerm } from '../util/terminal'
 import { checkLandscapeKeyboard } from './landscape'
 
@@ -14,7 +15,7 @@ export function initHeightManager(toolbar: HTMLDivElement): void {
 
 		const vp = window.visualViewport
 		const vh = vp ? vp.height : window.innerHeight
-		const kbOpen = vp !== null && vp !== undefined && window.innerHeight - vh > 150
+		const kbOpen = isKeyboardOpen()
 		const tbH = kbOpen ? 0 : toolbar.offsetHeight || 90
 		const h = `${vh - tbH}px`
 
