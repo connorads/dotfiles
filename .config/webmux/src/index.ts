@@ -1,6 +1,7 @@
 import { defaultConfig } from './config'
 import { createFontControls } from './controls/font-size'
 import { createHelpOverlay } from './controls/help'
+import { createScrollButtons } from './controls/scroll-buttons'
 import { setupAutoDetect } from './drawer/auto-detect'
 import { createDrawer } from './drawer/drawer'
 import { createGestureLock } from './gestures/lock'
@@ -67,6 +68,10 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 
 		const { element: helpOverlay } = createHelpOverlay(term, helpButton)
 		document.body.appendChild(helpOverlay)
+
+		// Scroll buttons
+		const { element: scrollButtons } = createScrollButtons(term)
+		document.body.appendChild(scrollButtons)
 
 		// Gestures
 		const gestureLock = createGestureLock()
