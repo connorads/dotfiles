@@ -141,4 +141,22 @@ describe('scrollSeq', () => {
 	test('returns SGR mouse wheel down sequence', () => {
 		expect(scrollSeq('down')).toBe('\x1b[<65;1;1M')
 	})
+
+	test('uses natural scroll direction (negative delta → down)', async () => {
+		// Fingers up → negative accDelta → 'down' (content scrolls up, showing history)
+		const { readFileSync } = await import('node:fs')
+		const { resolve } = await import('node:path')
+		const source = readFileSync(resolve(import.meta.dir, '../src/gestures/scroll.ts'), 'utf-8')
+		expect(source).toContain("accDelta < 0 ? 'down' : 'up'")
+	})
+
+	test('source uses \\x3c instead of literal < in SGR sequences', async () => {
+		const { readFileSync } = await import('node:fs')
+		const { resolve } = await import('node:path')
+		const source = readFileSync(resolve(import.meta.dir, '../src/gestures/scroll.ts'), 'utf-8')
+		// Source must use \x3c (hex escape) not literal < in SGR sequences
+		// to avoid breaking HTML parsing when bundled into inline <script>
+		expect(source).toContain('\\x3c64;1;1M')
+		expect(source).toContain('\\x3c65;1;1M')
+	})
 })

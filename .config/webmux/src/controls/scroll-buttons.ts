@@ -4,7 +4,7 @@ import { conditionalFocus, isKeyboardOpen } from '../util/keyboard'
 import { sendData } from '../util/terminal'
 
 const PGUP_SEQ = '\x02\x1b[5~'
-const PGDN_SEQ = '\x02\x1b[6~'
+const PGDN_SEQ = '\x1b[6~'
 
 const LONG_PRESS_DELAY = 300
 const REPEAT_INTERVAL = 100
