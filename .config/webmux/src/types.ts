@@ -120,4 +120,7 @@ export interface XTerminal {
 	input(data: string, wasUserInput: boolean): void
 	focus(): void
 	onData(handler: (data: string) => void): { dispose(): void }
+	parser?: {
+		registerOscHandler(ident: number, callback: (data: string) => boolean): { dispose(): void }
+	}
 }
