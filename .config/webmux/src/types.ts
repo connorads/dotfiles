@@ -1,5 +1,5 @@
 /** Drawer context identifier */
-export type DrawerContextId = 'tmux' | 'claude' | (string & {})
+export type DrawerContextId = 'tmux' | 'claude' | 'lazygit' | (string & {})
 
 /** A drawer context — a named group of commands with optional title-based auto-detection */
 export interface DrawerContext {
@@ -7,6 +7,7 @@ export interface DrawerContext {
 	readonly label: string
 	readonly commands: readonly DrawerCommand[]
 	readonly titlePatterns?: readonly string[]
+	readonly toolbarButtons?: readonly ButtonDef[]
 }
 
 /** Action types for toolbar buttons — discriminated union, no boolean flags */

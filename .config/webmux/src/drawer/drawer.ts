@@ -27,25 +27,40 @@ export function createDrawer(term: XTerminal, contexts: readonly DrawerContext[]
 	drawer.appendChild(grid)
 
 	let drawerOpen = false
-	let activeContextId: DrawerContextId = contexts[0]?.id ?? 'tmux'
+	/** Set by auto-detect only — drives tab visibility and toolbar row2 */
+	let detectedId: DrawerContextId = contexts[0]?.id ?? 'tmux'
+	/** Set by auto-detect OR tab click — drives tab highlight and grid content */
+	let activeId: DrawerContextId = detectedId
 
-	// Hide tab bar when only 1 context
-	if (contexts.length <= 1) {
-		tabs.style.display = 'none'
+	/** Contexts visible given the current detected context */
+	function visibleContexts(): readonly DrawerContext[] {
+		const seen = new Set<DrawerContextId>()
+		const result: DrawerContext[] = []
+		for (const ctx of contexts) {
+			if (!ctx.titlePatterns || ctx.id === detectedId) {
+				if (!seen.has(ctx.id)) {
+					seen.add(ctx.id)
+					result.push(ctx)
+				}
+			}
+		}
+		return result
 	}
 
 	function renderTabs(): void {
 		tabs.innerHTML = ''
-		for (const ctx of contexts) {
+		const visible = visibleContexts()
+		tabs.style.display = visible.length <= 1 ? 'none' : ''
+		for (const ctx of visible) {
 			const tabBtn = el('button')
 			tabBtn.textContent = ctx.label
-			if (ctx.id === activeContextId) {
+			if (ctx.id === activeId) {
 				tabBtn.classList.add('active')
 			}
 			tabBtn.addEventListener('click', (e: Event) => {
 				e.preventDefault()
 				haptic()
-				setContext(ctx.id)
+				selectContext(ctx.id)
 			})
 			tabs.appendChild(tabBtn)
 		}
@@ -53,7 +68,7 @@ export function createDrawer(term: XTerminal, contexts: readonly DrawerContext[]
 
 	function renderGrid(): void {
 		grid.innerHTML = ''
-		const ctx = contexts.find((c) => c.id === activeContextId)
+		const ctx = contexts.find((c) => c.id === activeId)
 		if (!ctx) return
 
 		for (const cmd of ctx.commands) {
@@ -87,8 +102,17 @@ export function createDrawer(term: XTerminal, contexts: readonly DrawerContext[]
 		return drawerOpen
 	}
 
+	/** Tab click — only updates activeId, not tab visibility */
+	function selectContext(id: DrawerContextId): void {
+		activeId = id
+		renderTabs()
+		renderGrid()
+	}
+
+	/** Auto-detect — updates both detectedId and activeId */
 	function setContext(id: DrawerContextId): void {
-		activeContextId = id
+		detectedId = id
+		activeId = id
 		renderTabs()
 		renderGrid()
 	}
