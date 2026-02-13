@@ -10,7 +10,7 @@ local webmux_dir="$HOME/.config/webmux"
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
 local ttyd_v=$(ttyd --version 2>&1 | head -1)
 local wm_v=$(bun --cwd "$webmux_dir" cli.ts --version 2>&1)
-local src_hash=$(cat "$webmux_dir"/src/**/*.ts "$webmux_dir"/styles/*.css 2>/dev/null | md5sum | cut -d' ' -f1)
+local src_hash=$(cat "$webmux_dir"/src/**/*.ts "$webmux_dir"/styles/*.css "$webmux_dir"/build.ts "$webmux_dir"/cli.ts 2>/dev/null | md5sum | cut -d' ' -f1)
 local hash=$(echo "$ttyd_v:$wm_v:$src_hash" | md5sum | cut -d' ' -f1)
 local idx="$cache_dir/index-$hash.html"
 
@@ -20,6 +20,10 @@ if [[ ! -f "$idx" ]]; then
     echo "webmux build failed" >&2
     return 1
   fi
+  # Prune stale cached builds
+  for f in "$cache_dir"/index-*.html; do
+    [[ "$f" != "$idx" ]] && rm -f "$f"
+  done
   echo "Built webmux overlay → $idx"
 fi
 
