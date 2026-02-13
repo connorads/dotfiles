@@ -1,6 +1,7 @@
 import type { XTerminal } from '../types'
 import { el } from '../util/dom'
 import { haptic } from '../util/haptic'
+import { conditionalFocus, isKeyboardOpen } from '../util/keyboard'
 
 /** Build the help overlay HTML */
 function buildHelpContent(): string {
@@ -19,9 +20,9 @@ function buildHelpContent(): string {
 		'<table>',
 		'<tr><td>\u25C0 Prev</td><td>Previous tmux window</td></tr>',
 		'<tr><td>\u25B6 Next</td><td>Next tmux window</td></tr>',
-		'<tr><td>Zoom</td><td>Toggle tmux pane zoom</td></tr>',
+		'<tr><td>\u2318 claude</td><td>Open drawer \u2014 Claude tab</td></tr>',
 		'<tr><td>Paste</td><td>Paste from clipboard</td></tr>',
-		'<tr><td>\u2318 tmux</td><td>Open tmux command drawer</td></tr>',
+		'<tr><td>\u2318 tmux</td><td>Open drawer \u2014 tmux tab</td></tr>',
 		'</table>',
 		'<h2>Tmux Drawer Commands</h2>',
 		'<table>',
@@ -36,6 +37,14 @@ function buildHelpContent(): string {
 		'<tr><td>Copy</td><td>tmux-thumbs (copy mode)</td></tr>',
 		'<tr><td>Help</td><td>tmux help popup</td></tr>',
 		'<tr><td>Kill</td><td>Kill pane (with confirm)</td></tr>',
+		'</table>',
+		'<h2>Claude Drawer Commands</h2>',
+		'<table>',
+		'<tr><td>Mode</td><td>Cycle permission mode (Shift+Tab)</td></tr>',
+		'<tr><td>Yes / No</td><td>Confirm or reject at permission prompt</td></tr>',
+		'<tr><td>/compact</td><td>Switch to compact mode</td></tr>',
+		'<tr><td>/clear</td><td>Clear conversation</td></tr>',
+		'<tr><td>/help</td><td>Show Claude Code help</td></tr>',
 		'</table>',
 		'<h2>Gestures</h2>',
 		'<table>',
@@ -77,9 +86,10 @@ export function createHelpOverlay(
 		const target = e.target
 		if (!(target instanceof HTMLElement)) return
 		if (target === overlay || target.classList.contains('wt-help-close')) {
+			const kbWasOpen = isKeyboardOpen()
 			haptic()
 			close()
-			term.focus()
+			conditionalFocus(term, kbWasOpen)
 		}
 	})
 

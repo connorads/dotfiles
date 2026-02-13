@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { defaultCommands } from '../src/drawer/commands'
+import {
+	defaultClaudeCommands,
+	defaultClaudeContext,
+	defaultCommands,
+	defaultTmuxCommands,
+	defaultTmuxContext,
+} from '../src/drawer/commands'
 
-describe('defaultCommands', () => {
+describe('defaultCommands (tmux)', () => {
 	test('has 12 commands', () => {
 		expect(defaultCommands).toHaveLength(12)
 	})
@@ -31,5 +37,51 @@ describe('defaultCommands', () => {
 		const labels = defaultCommands.map((c) => c.label)
 		expect(labels).toContain('Sessions')
 		expect(labels).toContain('Windows')
+	})
+})
+
+describe('defaultTmuxContext', () => {
+	test('has id tmux', () => {
+		expect(defaultTmuxContext.id).toBe('tmux')
+	})
+
+	test('commands match defaultTmuxCommands', () => {
+		expect(defaultTmuxContext.commands).toBe(defaultTmuxCommands)
+	})
+})
+
+describe('defaultClaudeContext', () => {
+	test('has id claude', () => {
+		expect(defaultClaudeContext.id).toBe('claude')
+	})
+
+	test('has 6 commands', () => {
+		expect(defaultClaudeCommands).toHaveLength(6)
+	})
+
+	test('commands match defaultClaudeCommands', () => {
+		expect(defaultClaudeContext.commands).toBe(defaultClaudeCommands)
+	})
+
+	test('includes Mode command with Shift+Tab', () => {
+		const mode = defaultClaudeCommands.find((c) => c.label === 'Mode')
+		expect(mode?.seq).toBe('\x1b[Z')
+	})
+
+	test('includes Yes/No commands', () => {
+		const labels = defaultClaudeCommands.map((c) => c.label)
+		expect(labels).toContain('Yes')
+		expect(labels).toContain('No')
+	})
+
+	test('includes slash commands', () => {
+		const labels = defaultClaudeCommands.map((c) => c.label)
+		expect(labels).toContain('/compact')
+		expect(labels).toContain('/clear')
+		expect(labels).toContain('/help')
+	})
+
+	test('has titlePatterns for auto-detection', () => {
+		expect(defaultClaudeContext.titlePatterns).toContain('claude')
 	})
 })

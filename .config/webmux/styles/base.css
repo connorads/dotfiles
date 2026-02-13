@@ -128,6 +128,30 @@
 	margin: 0 auto 12px auto;
 }
 
+#wt-drawer-tabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 8px;
+}
+
+#wt-drawer-tabs button {
+	flex: 1;
+	background: #45475a;
+	color: #a6adc8;
+	border: none;
+	border-radius: 6px;
+	min-height: 36px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	touch-action: manipulation;
+}
+
+#wt-drawer-tabs button.active {
+	background: #89b4fa;
+	color: #1e1e2e;
+}
+
 #wt-drawer-grid {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
