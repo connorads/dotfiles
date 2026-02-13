@@ -66,15 +66,84 @@ describe('toolbar integration', () => {
 })
 
 describe('drawer integration', () => {
-	test('creates drawer with tab bar', () => {
+	test('initially only shows tmux tab (no titlePatterns), tab bar hidden', () => {
 		const term = mockTerminal()
 		const { drawer } = createDrawer(term, defaultConfig.drawer.contexts)
 
 		document.body.appendChild(drawer)
 
-		const tabs = drawer.querySelector('#wt-drawer-tabs')
+		const tabs = drawer.querySelector('#wt-drawer-tabs') as HTMLElement
 		const tabButtons = tabs?.querySelectorAll('button')
-		expect(tabButtons?.length).toBe(3)
+		// Only tmux visible initially (lazygit + claude have titlePatterns)
+		expect(tabButtons?.length).toBe(1)
+		expect(tabs.style.display).toBe('none')
+	})
+
+	test('setContext makes detected context tab visible', () => {
+		const term = mockTerminal()
+		const result = createDrawer(term, defaultConfig.drawer.contexts)
+
+		document.body.appendChild(result.drawer)
+
+		result.setContext('claude')
+
+		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
+		const tabButtons = tabs?.querySelectorAll('button')
+		// tmux (no titlePatterns) + claude (detected)
+		expect(tabButtons?.length).toBe(2)
+		expect(tabs.style.display).not.toBe('none')
+	})
+
+	test('tab bar shows/hides dynamically based on detected context', () => {
+		const term = mockTerminal()
+		const result = createDrawer(term, defaultConfig.drawer.contexts)
+
+		document.body.appendChild(result.drawer)
+
+		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
+
+		// Initially hidden (only tmux visible)
+		expect(tabs.style.display).toBe('none')
+
+		// Detect lazygit → tmux + lazygit visible
+		result.setContext('lazygit')
+		expect(tabs.style.display).not.toBe('none')
+		expect(tabs.querySelectorAll('button')).toHaveLength(2)
+
+		// Back to tmux → only tmux visible, hidden again
+		result.setContext('tmux')
+		expect(tabs.style.display).toBe('none')
+		expect(tabs.querySelectorAll('button')).toHaveLength(1)
+	})
+
+	test('tab click changes grid but not tab visibility', () => {
+		const term = mockTerminal()
+		const result = createDrawer(term, defaultConfig.drawer.contexts)
+
+		document.body.appendChild(result.drawer)
+
+		// Detect claude → tmux + claude tabs visible
+		result.setContext('claude')
+
+		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
+		expect(tabs.querySelectorAll('button')).toHaveLength(2)
+
+		// Click the tmux tab
+		const tmuxTab = tabs.querySelector('button')
+		tmuxTab?.click()
+
+		// Tab visibility unchanged (still tmux + claude)
+		expect(tabs.querySelectorAll('button')).toHaveLength(2)
+
+		// But grid now shows tmux commands
+		const grid = result.drawer.querySelector('#wt-drawer-grid')
+		const buttons = grid?.querySelectorAll('button')
+		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
+		expect(buttons?.length).toBe(tmux?.commands.length)
+
+		// Active tab is now tmux
+		const activeTab = tabs.querySelector('button.active')
+		expect(activeTab?.textContent).toBe('tmux')
 	})
 
 	test('first context commands rendered by default', () => {
