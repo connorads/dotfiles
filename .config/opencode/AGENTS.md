@@ -9,7 +9,7 @@
 
 ## GitHub
 
-Use `gh` CLI to access and update issues and PRs etc. Use heredoc for updating posting text to PRs.
+Use `gh` CLI to access and update issues and PRs etc. Use `--body-file - <<'EOF'` for multi-line text.
 If the user mentions a GitHub issue, remember to close the issue if you fix it.
 
 # Guidance
