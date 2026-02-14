@@ -7,6 +7,7 @@
       "Bash(act --list:*)",
       "Bash(act --version:*)",
       "Bash(agent-browser:*)",
+      "Bash(playwright-cli:*)",
       "Bash(alias rg:*)",
       "Bash(apt list:*)",
       "Bash(arp -a:*)",
