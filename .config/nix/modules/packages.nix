@@ -76,6 +76,9 @@
       exec ${osc}/bin/osc copy
     '')
 
+    # Web browsing
+    w3m
+
     # Networking & security
     tailscale
     nmap
