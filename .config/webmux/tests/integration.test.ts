@@ -29,8 +29,8 @@ afterEach(() => {
 describe('toolbar integration', () => {
 	test('creates toolbar with two rows', () => {
 		const term = mockTerminal()
-		const drawer = createDrawer(term, defaultConfig.drawer.contexts)
-		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open, drawer.openTo)
+		const drawer = createDrawer(term, defaultConfig.drawer.commands)
+		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open)
 
 		document.body.appendChild(toolbar)
 
@@ -41,8 +41,8 @@ describe('toolbar integration', () => {
 
 	test('row1 has correct number of buttons', () => {
 		const term = mockTerminal()
-		const drawer = createDrawer(term, defaultConfig.drawer.contexts)
-		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open, drawer.openTo)
+		const drawer = createDrawer(term, defaultConfig.drawer.commands)
+		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open)
 
 		document.body.appendChild(toolbar)
 
@@ -53,8 +53,8 @@ describe('toolbar integration', () => {
 
 	test('row2 has correct number of buttons', () => {
 		const term = mockTerminal()
-		const drawer = createDrawer(term, defaultConfig.drawer.contexts)
-		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open, drawer.openTo)
+		const drawer = createDrawer(term, defaultConfig.drawer.commands)
+		const { element: toolbar } = createToolbar(term, defaultConfig, drawer.open)
 
 		document.body.appendChild(toolbar)
 
@@ -63,131 +63,23 @@ describe('toolbar integration', () => {
 		const buttons = row2?.querySelectorAll('button')
 		expect(buttons?.length).toBe(defaultConfig.toolbar.row2.length)
 	})
-
-	test('updateRow2 replaces row2 buttons', () => {
-		const term = mockTerminal()
-		const drawer = createDrawer(term, defaultConfig.drawer.contexts)
-		const { element: toolbar, updateRow2 } = createToolbar(
-			term,
-			defaultConfig,
-			drawer.open,
-			drawer.openTo,
-		)
-
-		document.body.appendChild(toolbar)
-
-		const newButtons = [
-			{ label: 'A', action: { type: 'send' as const, data: 'a' } },
-			{ label: 'B', action: { type: 'send' as const, data: 'b' } },
-		]
-		updateRow2(newButtons)
-
-		const rows = toolbar.querySelectorAll('.wt-row')
-		expect(rows).toHaveLength(2)
-		const row2 = rows[1]
-		const buttons = row2?.querySelectorAll('button')
-		expect(buttons?.length).toBe(2)
-		expect(buttons?.[0]?.textContent).toBe('A')
-		expect(buttons?.[1]?.textContent).toBe('B')
-	})
 })
 
 describe('drawer integration', () => {
-	test('initially only shows tmux tab (no titlePatterns), tab bar hidden', () => {
+	test('renders all commands as buttons', () => {
 		const term = mockTerminal()
-		const { drawer } = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(drawer)
-
-		const tabs = drawer.querySelector('#wt-drawer-tabs') as HTMLElement
-		const tabButtons = tabs?.querySelectorAll('button')
-		// Only tmux visible initially (lazygit + claude have titlePatterns)
-		expect(tabButtons?.length).toBe(1)
-		expect(tabs.style.display).toBe('none')
-	})
-
-	test('setContext makes detected context tab visible', () => {
-		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(result.drawer)
-
-		result.setContext('claude')
-
-		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
-		const tabButtons = tabs?.querySelectorAll('button')
-		// tmux (no titlePatterns) + claude (detected)
-		expect(tabButtons?.length).toBe(2)
-		expect(tabs.style.display).not.toBe('none')
-	})
-
-	test('tab bar shows/hides dynamically based on detected context', () => {
-		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(result.drawer)
-
-		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
-
-		// Initially hidden (only tmux visible)
-		expect(tabs.style.display).toBe('none')
-
-		// Detect lazygit → tmux + lazygit visible
-		result.setContext('lazygit')
-		expect(tabs.style.display).not.toBe('none')
-		expect(tabs.querySelectorAll('button')).toHaveLength(2)
-
-		// Back to tmux → only tmux visible, hidden again
-		result.setContext('tmux')
-		expect(tabs.style.display).toBe('none')
-		expect(tabs.querySelectorAll('button')).toHaveLength(1)
-	})
-
-	test('tab click changes grid but not tab visibility', () => {
-		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(result.drawer)
-
-		// Detect claude → tmux + claude tabs visible
-		result.setContext('claude')
-
-		const tabs = result.drawer.querySelector('#wt-drawer-tabs') as HTMLElement
-		expect(tabs.querySelectorAll('button')).toHaveLength(2)
-
-		// Click the tmux tab
-		const tmuxTab = tabs.querySelector('button')
-		tmuxTab?.click()
-
-		// Tab visibility unchanged (still tmux + claude)
-		expect(tabs.querySelectorAll('button')).toHaveLength(2)
-
-		// But grid now shows tmux commands
-		const grid = result.drawer.querySelector('#wt-drawer-grid')
-		const buttons = grid?.querySelectorAll('button')
-		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
-		expect(buttons?.length).toBe(tmux?.commands.length)
-
-		// Active tab is now tmux
-		const activeTab = tabs.querySelector('button.active')
-		expect(activeTab?.textContent).toBe('tmux')
-	})
-
-	test('first context commands rendered by default', () => {
-		const term = mockTerminal()
-		const { drawer } = createDrawer(term, defaultConfig.drawer.contexts)
+		const { drawer } = createDrawer(term, defaultConfig.drawer.commands)
 
 		document.body.appendChild(drawer)
 
 		const grid = drawer.querySelector('#wt-drawer-grid')
 		const buttons = grid?.querySelectorAll('button')
-		const firstContext = defaultConfig.drawer.contexts[0]
-		expect(buttons?.length).toBe(firstContext?.commands.length)
+		expect(buttons?.length).toBe(defaultConfig.drawer.commands.length)
 	})
 
 	test('open/close toggles state', () => {
 		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
+		const result = createDrawer(term, defaultConfig.drawer.commands)
 
 		document.body.appendChild(result.backdrop)
 		document.body.appendChild(result.drawer)
@@ -203,56 +95,14 @@ describe('drawer integration', () => {
 		expect(result.drawer.classList.contains('open')).toBe(false)
 	})
 
-	test('setContext switches active tab and re-renders grid', () => {
+	test('has no tab bar', () => {
 		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(result.drawer)
-
-		// Switch to claude context
-		result.setContext('claude')
-
-		const grid = result.drawer.querySelector('#wt-drawer-grid')
-		const buttons = grid?.querySelectorAll('button')
-		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
-		expect(buttons?.length).toBe(claude?.commands.length)
-
-		// Check active tab
-		const tabs = result.drawer.querySelector('#wt-drawer-tabs')
-		const activeTab = tabs?.querySelector('button.active')
-		expect(activeTab?.textContent).toBe('claude')
-	})
-
-	test('openTo opens drawer and switches context', () => {
-		const term = mockTerminal()
-		const result = createDrawer(term, defaultConfig.drawer.contexts)
-
-		document.body.appendChild(result.backdrop)
-		document.body.appendChild(result.drawer)
-
-		expect(result.isOpen()).toBe(false)
-
-		result.openTo('claude')
-
-		expect(result.isOpen()).toBe(true)
-
-		const grid = result.drawer.querySelector('#wt-drawer-grid')
-		const buttons = grid?.querySelectorAll('button')
-		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
-		expect(buttons?.length).toBe(claude?.commands.length)
-	})
-
-	test('hides tab bar when only 1 context', () => {
-		const term = mockTerminal()
-		const first = defaultConfig.drawer.contexts[0]
-		if (!first) throw new Error('expected at least one context')
-		const singleContext = [first]
-		const { drawer } = createDrawer(term, singleContext)
+		const { drawer } = createDrawer(term, defaultConfig.drawer.commands)
 
 		document.body.appendChild(drawer)
 
-		const tabs = drawer.querySelector('#wt-drawer-tabs') as HTMLElement
-		expect(tabs.style.display).toBe('none')
+		const tabs = drawer.querySelector('#wt-drawer-tabs')
+		expect(tabs).toBeNull()
 	})
 })
 

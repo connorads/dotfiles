@@ -1,4 +1,4 @@
-import type { ButtonDef, DrawerContextId, WebmuxConfig, XTerminal } from '../types'
+import type { ButtonDef, WebmuxConfig, XTerminal } from '../types'
 import { el } from '../util/dom'
 import { haptic } from '../util/haptic'
 import { conditionalFocus, isKeyboardOpen } from '../util/keyboard'
@@ -57,7 +57,6 @@ function wireButton(
 	ctrlState: CtrlState,
 	config: WebmuxConfig,
 	openDrawer: () => void,
-	openDrawerTo: (id: DrawerContextId) => void,
 ): void {
 	button.addEventListener('click', (e: Event) => {
 		e.preventDefault()
@@ -92,10 +91,6 @@ function wireButton(
 				openDrawer()
 				break
 
-			case 'drawer-open':
-				openDrawerTo(def.action.contextId)
-				break
-
 			case 'send': {
 				if (ctrlState.active && ctrlState.buttonEl) {
 					deactivateCtrl(ctrlState, config.theme)
@@ -123,7 +118,6 @@ function buildRow(
 	ctrlState: CtrlState,
 	config: WebmuxConfig,
 	openDrawer: () => void,
-	openDrawerTo: (id: DrawerContextId) => void,
 ): HTMLDivElement {
 	const row = el('div', { class: 'wt-row' })
 
@@ -133,7 +127,7 @@ function buildRow(
 		if (def.action.type === 'ctrl-modifier') {
 			ctrlState.buttonEl = button
 		}
-		wireButton(button, def, term, ctrlState, config, openDrawer, openDrawerTo)
+		wireButton(button, def, term, ctrlState, config, openDrawer)
 		row.appendChild(button)
 	}
 
@@ -143,7 +137,6 @@ function buildRow(
 export interface ToolbarResult {
 	readonly element: HTMLDivElement
 	readonly ctrlState: CtrlState
-	readonly updateRow2: (buttons: readonly ButtonDef[]) => void
 }
 
 /** Create the two-row toolbar */
@@ -151,22 +144,15 @@ export function createToolbar(
 	term: XTerminal,
 	config: WebmuxConfig,
 	openDrawer: () => void,
-	openDrawerTo: (id: DrawerContextId) => void,
 ): ToolbarResult {
 	const toolbar = el('div', { id: 'wt-toolbar' })
 	const ctrlState = createCtrlState()
 
-	const row1 = buildRow(config.toolbar.row1, term, ctrlState, config, openDrawer, openDrawerTo)
-	let row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer, openDrawerTo)
+	const row1 = buildRow(config.toolbar.row1, term, ctrlState, config, openDrawer)
+	const row2 = buildRow(config.toolbar.row2, term, ctrlState, config, openDrawer)
 
 	toolbar.appendChild(row1)
 	toolbar.appendChild(row2)
 
-	function updateRow2(buttons: readonly ButtonDef[]): void {
-		const newRow2 = buildRow(buttons, term, ctrlState, config, openDrawer, openDrawerTo)
-		toolbar.replaceChild(newRow2, row2)
-		row2 = newRow2
-	}
-
-	return { element: toolbar, ctrlState, updateRow2 }
+	return { element: toolbar, ctrlState }
 }

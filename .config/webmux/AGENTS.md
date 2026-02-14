@@ -28,9 +28,8 @@ bun run build         # Build dist/index.html
 - `src/config.ts` — config schema, defaults, defineConfig
 - `src/types.ts` — all shared types
 - `src/toolbar/` — toolbar DOM + button definitions
-- `src/drawer/drawer.ts` — multi-context command drawer with tab bar
-- `src/drawer/commands.ts` — default command arrays (tmux + claude)
-- `src/drawer/auto-detect.ts` — title-based context auto-detection
+- `src/drawer/drawer.ts` — command drawer with flat grid
+- `src/drawer/commands.ts` — re-exports defaultDrawerCommands from config
 - `src/gestures/` — swipe + pinch detection
 - `src/controls/` — font size, help overlay
 - `src/theme/` — catppuccin-mocha + apply
@@ -45,10 +44,9 @@ bun run build         # Build dist/index.html
 
 ## Conventions
 
-- Button actions use discriminated unions (`type: 'send' | 'ctrl-modifier' | 'paste' | 'drawer-toggle' | 'drawer-open'`)
-- `drawer-open` action takes a `contextId` to open the drawer on a specific tab
+- Button actions use discriminated unions (`type: 'send' | 'ctrl-modifier' | 'paste' | 'drawer-toggle'`)
 - Config via `defineConfig()` — typed, with sensible defaults
-- Drawer contexts: `{ id, label, commands, titlePatterns? }` — each context is a tab in the drawer
+- Drawer takes a flat `readonly DrawerCommand[]` — rendered as a single grid
 - All DOM creation in `util/dom.ts` helpers
 - Keyboard state preserved: capture `isKeyboardOpen()` before action, use `conditionalFocus()` after
 - Tests use happy-dom for DOM environment
