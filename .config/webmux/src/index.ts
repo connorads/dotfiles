@@ -2,7 +2,6 @@ import { defaultConfig } from './config'
 import { createFontControls } from './controls/font-size'
 import { createHelpOverlay } from './controls/help'
 import { createScrollButtons } from './controls/scroll-buttons'
-import { setupAutoDetect } from './drawer/auto-detect'
 import { createDrawer } from './drawer/drawer'
 import { createGestureLock } from './gestures/lock'
 import { attachPinchGestures } from './gestures/pinch'
@@ -16,15 +15,7 @@ import { initHeightManager } from './viewport/height'
 
 // Re-export for package consumers
 export { defineConfig } from './config'
-export type {
-	WebmuxConfig,
-	ButtonAction,
-	ButtonDef,
-	DrawerCommand,
-	DrawerContext,
-	DrawerContextId,
-	TermTheme,
-} from './types'
+export type { WebmuxConfig, ButtonAction, ButtonDef, DrawerCommand, TermTheme } from './types'
 
 /** Detect touch device */
 function isMobile(): boolean {
@@ -54,12 +45,12 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		// CSS is injected as a <style> tag by the build script (build.ts)
 
 		// Create drawer (needed by toolbar for toggle)
-		const drawer = createDrawer(term, config.drawer.contexts)
+		const drawer = createDrawer(term, config.drawer.commands)
 		document.body.appendChild(drawer.backdrop)
 		document.body.appendChild(drawer.drawer)
 
 		// Create toolbar
-		const { element: toolbar, updateRow2 } = createToolbar(term, config, drawer.open, drawer.openTo)
+		const { element: toolbar } = createToolbar(term, config, drawer.open)
 		document.body.appendChild(toolbar)
 
 		// Font controls + help
@@ -85,13 +76,6 @@ export function init(config: WebmuxConfig = defaultConfig): void {
 		if (config.gestures.scroll.enabled) {
 			attachScrollGesture(term, config.gestures.scroll, gestureLock, drawer.isOpen)
 		}
-
-		// Context auto-detection (title + OSC 7777) → update drawer + toolbar row2
-		setupAutoDetect(term, config.drawer.contexts, (id) => {
-			drawer.setContext(id)
-			const ctx = config.drawer.contexts.find((c) => c.id === id)
-			updateRow2(ctx?.toolbarButtons ?? config.toolbar.row2)
-		})
 
 		// Height management
 		initHeightManager(toolbar)

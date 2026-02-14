@@ -1,22 +1,9 @@
-/** Drawer context identifier */
-export type DrawerContextId = 'tmux' | 'claude' | 'lazygit' | (string & {})
-
-/** A drawer context — a named group of commands with optional title-based auto-detection */
-export interface DrawerContext {
-	readonly id: DrawerContextId
-	readonly label: string
-	readonly commands: readonly DrawerCommand[]
-	readonly titlePatterns?: readonly string[]
-	readonly toolbarButtons?: readonly ButtonDef[]
-}
-
 /** Action types for toolbar buttons — discriminated union, no boolean flags */
 export type ButtonAction =
 	| { readonly type: 'send'; readonly data: string }
 	| { readonly type: 'ctrl-modifier' }
 	| { readonly type: 'paste' }
 	| { readonly type: 'drawer-toggle' }
-	| { readonly type: 'drawer-open'; readonly contextId: DrawerContextId }
 
 /** A toolbar button definition */
 export interface ButtonDef {
@@ -97,7 +84,7 @@ export interface WebmuxConfig {
 		readonly row2: readonly ButtonDef[]
 	}
 	readonly drawer: {
-		readonly contexts: readonly DrawerContext[]
+		readonly commands: readonly DrawerCommand[]
 	}
 	readonly gestures: GestureConfig
 }
@@ -120,7 +107,4 @@ export interface XTerminal {
 	input(data: string, wasUserInput: boolean): void
 	focus(): void
 	onData(handler: (data: string) => void): { dispose(): void }
-	parser?: {
-		registerOscHandler(ident: number, callback: (data: string) => boolean): { dispose(): void }
-	}
 }
