@@ -39,14 +39,12 @@ describe('defineConfig', () => {
 		expect(config.toolbar.row2.length).toBeGreaterThan(0)
 	})
 
-	test('replaces drawer contexts array', () => {
-		const customContexts = [
-			{ id: 'custom', label: 'Custom', commands: [{ label: 'Test', seq: '\x02t' }] },
-		]
+	test('replaces drawer commands array', () => {
+		const customCommands = [{ label: 'Test', seq: '\x02t' }]
 		const config = defineConfig({
-			drawer: { contexts: customContexts },
+			drawer: { commands: customCommands },
 		})
-		expect(config.drawer.contexts).toEqual(customContexts)
+		expect(config.drawer.commands).toEqual(customCommands)
 	})
 })
 
@@ -56,56 +54,27 @@ describe('defaultConfig', () => {
 		expect(defaultConfig.theme.foreground).toBe('#cdd6f4')
 	})
 
-	test('has 9 row1 buttons', () => {
-		expect(defaultConfig.toolbar.row1).toHaveLength(9)
+	test('has 10 row1 buttons', () => {
+		expect(defaultConfig.toolbar.row1).toHaveLength(10)
 	})
 
 	test('has 5 row2 buttons', () => {
 		expect(defaultConfig.toolbar.row2).toHaveLength(5)
 	})
 
-	test('has 3 drawer contexts', () => {
-		expect(defaultConfig.drawer.contexts).toHaveLength(3)
+	test('has 14 drawer commands', () => {
+		expect(defaultConfig.drawer.commands).toHaveLength(14)
 	})
 
-	test('tmux context has 14 commands', () => {
-		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
-		expect(tmux?.commands).toHaveLength(14)
+	test('row1 includes S-Tab after Tab', () => {
+		const tabIdx = defaultConfig.toolbar.row1.findIndex((b) => b.label === 'Tab')
+		const sTabIdx = defaultConfig.toolbar.row1.findIndex((b) => b.label === 'S-Tab')
+		expect(sTabIdx).toBe(tabIdx + 1)
 	})
 
-	test('lazygit context has 13 commands', () => {
-		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
-		expect(lazygit?.commands).toHaveLength(13)
-	})
-
-	test('lazygit context has titlePatterns', () => {
-		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
-		expect(lazygit?.titlePatterns).toContain('lazygit')
-	})
-
-	test('lazygit context has 5 toolbarButtons', () => {
-		const lazygit = defaultConfig.drawer.contexts.find((c) => c.id === 'lazygit')
-		expect(lazygit?.toolbarButtons).toHaveLength(5)
-	})
-
-	test('claude context has 6 commands', () => {
-		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
-		expect(claude?.commands).toHaveLength(6)
-	})
-
-	test('claude context has titlePatterns', () => {
-		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
-		expect(claude?.titlePatterns).toContain('claude')
-	})
-
-	test('claude context has 5 toolbarButtons', () => {
-		const claude = defaultConfig.drawer.contexts.find((c) => c.id === 'claude')
-		expect(claude?.toolbarButtons).toHaveLength(5)
-	})
-
-	test('tmux context has no toolbarButtons', () => {
-		const tmux = defaultConfig.drawer.contexts.find((c) => c.id === 'tmux')
-		expect(tmux?.toolbarButtons).toBeUndefined()
+	test('row2 has q, C-d, More, Paste, Space', () => {
+		const labels = defaultConfig.toolbar.row2.map((b) => b.label)
+		expect(labels).toEqual(['q', 'C-d', '\u2630 More', 'Paste', 'Space'])
 	})
 
 	test('font size range is [8, 32]', () => {

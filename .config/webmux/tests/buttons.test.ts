@@ -13,9 +13,18 @@ describe('defaultRow1', () => {
 		expect(ctrl?.label).toBe('Ctrl')
 	})
 
+	test('has S-Tab after Tab', () => {
+		const tabIdx = defaultRow1.findIndex((b) => b.label === 'Tab')
+		const sTabIdx = defaultRow1.findIndex((b) => b.label === 'S-Tab')
+		expect(tabIdx).toBeGreaterThanOrEqual(0)
+		expect(sTabIdx).toBe(tabIdx + 1)
+		expect(defaultRow1[sTabIdx]?.action).toEqual({ type: 'send', data: '\x1b[Z' })
+	})
+
 	test('has arrow keys', () => {
 		const arrows = defaultRow1.filter(
-			(b) => b.action.type === 'send' && b.action.data.startsWith('\x1b['),
+			(b) =>
+				b.action.type === 'send' && b.action.data.startsWith('\x1b[') && b.action.data !== '\x1b[Z',
 		)
 		expect(arrows).toHaveLength(4)
 	})
@@ -39,16 +48,21 @@ describe('defaultRow2', () => {
 		expect(toggle?.label).toContain('More')
 	})
 
-	test('has Git shortcut', () => {
-		const git = defaultRow2.find((b) => b.label === 'Git')
-		expect(git).toBeDefined()
-		expect(git?.action).toEqual({ type: 'send', data: '\x02g' })
+	test('has q button', () => {
+		const q = defaultRow2.find((b) => b.label === 'q')
+		expect(q).toBeDefined()
+		expect(q?.action).toEqual({ type: 'send', data: 'q' })
 	})
 
-	test('has tmux prev/next as send actions', () => {
-		const prev = defaultRow2.find((b) => b.label.includes('Prev'))
-		const next = defaultRow2.find((b) => b.label.includes('Next'))
-		expect(prev?.action).toEqual({ type: 'send', data: '\x02p' })
-		expect(next?.action).toEqual({ type: 'send', data: '\x02n' })
+	test('has C-d button', () => {
+		const cd = defaultRow2.find((b) => b.label === 'C-d')
+		expect(cd).toBeDefined()
+		expect(cd?.action).toEqual({ type: 'send', data: '\x04' })
+	})
+
+	test('has Space button', () => {
+		const space = defaultRow2.find((b) => b.label === 'Space')
+		expect(space).toBeDefined()
+		expect(space?.action).toEqual({ type: 'send', data: ' ' })
 	})
 })

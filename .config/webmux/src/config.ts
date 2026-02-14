@@ -1,5 +1,5 @@
 import { catppuccinMocha } from './theme/catppuccin-mocha'
-import type { DeepPartial, DrawerContext, WebmuxConfig } from './types'
+import type { DeepPartial, DrawerCommand, WebmuxConfig } from './types'
 
 /** Default font configuration */
 const defaultFont: WebmuxConfig['font'] = {
@@ -22,6 +22,7 @@ const defaultRow1: WebmuxConfig['toolbar']['row1'] = [
 	{ label: 'Esc', action: { type: 'send', data: '\x1b' } },
 	{ label: 'Ctrl', action: { type: 'ctrl-modifier' } },
 	{ label: 'Tab', action: { type: 'send', data: '\t' } },
+	{ label: 'S-Tab', action: { type: 'send', data: '\x1b[Z' } },
 	{ label: '\u2190', action: { type: 'send', data: '\x1b[D' } },
 	{ label: '\u2191', action: { type: 'send', data: '\x1b[A' } },
 	{ label: '\u2193', action: { type: 'send', data: '\x1b[B' } },
@@ -30,17 +31,17 @@ const defaultRow1: WebmuxConfig['toolbar']['row1'] = [
 	{ label: '\u23CE', action: { type: 'send', data: '\r' } },
 ]
 
-/** Default row 2 buttons (tmux fallback — shown when no context detected) */
+/** Default row 2 buttons */
 const defaultRow2: WebmuxConfig['toolbar']['row2'] = [
-	{ label: '\u25C0 Prev', action: { type: 'send', data: '\x02p' } },
-	{ label: '\u25B6 Next', action: { type: 'send', data: '\x02n' } },
+	{ label: 'q', action: { type: 'send', data: 'q' } },
+	{ label: 'C-d', action: { type: 'send', data: '\x04' } },
 	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
 	{ label: 'Paste', action: { type: 'paste' } },
-	{ label: 'Git', action: { type: 'send', data: '\x02g' } },
+	{ label: 'Space', action: { type: 'send', data: ' ' } },
 ]
 
-/** Default tmux drawer commands */
-export const defaultTmuxCommands: DrawerContext['commands'] = [
+/** Default drawer commands */
+export const defaultDrawerCommands: readonly DrawerCommand[] = [
 	{ label: '+ Win', seq: '\x02c' },
 	{ label: 'Split |', seq: '\x02|' },
 	{ label: 'Split \u2014', seq: '\x02-' },
@@ -57,82 +58,12 @@ export const defaultTmuxCommands: DrawerContext['commands'] = [
 	{ label: 'Kill', seq: '\x02x' },
 ]
 
-/** Default Claude Code drawer commands */
-export const defaultClaudeCommands: DrawerContext['commands'] = [
-	{ label: 'Mode', seq: '\x1b[Z' },
-	{ label: 'Yes', seq: 'y' },
-	{ label: 'No', seq: 'n' },
-	{ label: '/compact', seq: '/compact\r' },
-	{ label: '/clear', seq: '/clear\r' },
-	{ label: '/help', seq: '/help\r' },
-]
-
-/** Default tmux drawer context */
-export const defaultTmuxContext: DrawerContext = {
-	id: 'tmux',
-	label: 'tmux',
-	commands: defaultTmuxCommands,
-}
-
-/** Default Claude Code toolbar buttons */
-export const defaultClaudeToolbarButtons: DrawerContext['toolbarButtons'] = [
-	{ label: 'Mode', action: { type: 'send', data: '\x1b[Z' } },
-	{ label: 'Yes', action: { type: 'send', data: 'y' } },
-	{ label: 'No', action: { type: 'send', data: 'n' } },
-	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
-	{ label: 'Paste', action: { type: 'paste' } },
-]
-
-/** Default Claude Code drawer context */
-export const defaultClaudeContext: DrawerContext = {
-	id: 'claude',
-	label: 'claude',
-	commands: defaultClaudeCommands,
-	titlePatterns: ['claude'],
-	toolbarButtons: defaultClaudeToolbarButtons,
-}
-
-/** Default lazygit drawer commands */
-export const defaultLazygitCommands: DrawerContext['commands'] = [
-	{ label: 'Stage', seq: ' ' },
-	{ label: 'All', seq: 'a' },
-	{ label: 'Commit', seq: 'c' },
-	{ label: 'Push', seq: 'P' },
-	{ label: 'Pull', seq: 'p' },
-	{ label: 'Fetch', seq: 'f' },
-	{ label: '\u21B5', seq: '\r' },
-	{ label: 'Undo', seq: 'z' },
-	{ label: 'Amend', seq: 'A' },
-	{ label: 'Menu', seq: 'x' },
-	{ label: 'Files', seq: '2' },
-	{ label: 'Branch', seq: '3' },
-	{ label: 'Quit', seq: 'q' },
-]
-
-/** Default lazygit toolbar buttons */
-export const defaultLazygitToolbarButtons: DrawerContext['toolbarButtons'] = [
-	{ label: 'Stage', action: { type: 'send', data: ' ' } },
-	{ label: 'Commit', action: { type: 'send', data: 'c' } },
-	{ label: 'Push', action: { type: 'send', data: 'P' } },
-	{ label: '\u2630 More', action: { type: 'drawer-toggle' } },
-	{ label: 'Quit', action: { type: 'send', data: 'q' } },
-]
-
-/** Default lazygit drawer context */
-export const defaultLazygitContext: DrawerContext = {
-	id: 'lazygit',
-	label: 'lazygit',
-	commands: defaultLazygitCommands,
-	titlePatterns: ['lazygit'],
-	toolbarButtons: defaultLazygitToolbarButtons,
-}
-
 /** Complete default configuration */
 export const defaultConfig: WebmuxConfig = {
 	theme: catppuccinMocha,
 	font: defaultFont,
 	toolbar: { row1: defaultRow1, row2: defaultRow2 },
-	drawer: { contexts: [defaultTmuxContext, defaultLazygitContext, defaultClaudeContext] },
+	drawer: { commands: defaultDrawerCommands },
 	gestures: defaultGestures,
 }
 
