@@ -15,6 +15,12 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
+-- Auto-reload files changed externally (e.g. AI edits)
+vim.o.autoread = true
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
+  command = "checktime",
+})
+
 require("lazy").setup({
   {
     "LazyVim/LazyVim",
