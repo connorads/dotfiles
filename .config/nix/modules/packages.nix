@@ -92,6 +92,7 @@
     yt-dlp
     ffmpeg
     imagemagick
+    libwebp
     presenterm
     charm-freeze
     rembg
