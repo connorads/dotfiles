@@ -1,0 +1,47 @@
+# tsserve: show current Tailscale serve/funnel status
+emulate -L zsh
+
+local hostname
+hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
+if [[ -z "$hostname" || "$hostname" == "null" ]]; then
+  echo "tailscale not connected" >&2
+  return 1
+fi
+
+local serve_json
+serve_json=$(ts serve status --json 2>/dev/null)
+
+if [[ -z "$serve_json" || "$serve_json" == "null" || "$serve_json" == "{}" ]]; then
+  echo "not serving"
+  return 0
+fi
+
+# Parse all served external ports
+local -a eports
+eports=(${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)})
+
+if [[ ${#eports[@]} -eq 0 ]]; then
+  echo "not serving"
+  return 0
+fi
+
+local ep proxy_url funnel_state url
+for ep in "${eports[@]}"; do
+  [[ -z "$ep" ]] && continue
+
+  proxy_url=$(echo "$serve_json" | jq -r "
+    .Web | to_entries[] | select(.key | endswith(\":$ep\")) |
+    .value.Handlers // {} | to_entries[0].value.Proxy // \"unknown\"
+  " 2>/dev/null)
+
+  if echo "$serve_json" | jq -e ".TCP[\"$ep\"].AllowFunnel == true" >/dev/null 2>&1; then
+    funnel_state="Funnel (public)"
+  else
+    funnel_state="Tailnet only"
+  fi
+
+  url="https://$hostname"
+  [[ "$ep" != "443" ]] && url="https://$hostname:$ep"
+
+  echo ":$ep  $url  →  ${proxy_url:-unknown}  [$funnel_state]"
+done
