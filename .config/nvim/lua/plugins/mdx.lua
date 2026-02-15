@@ -2,7 +2,7 @@
 -- LazyVim's markdown extra sets mdx filetype to "markdown.mdx"; mdx.nvim sets it to "mdx".
 -- Loading order determines which wins, so we configure both filetypes defensively.
 return {
-  { "connorads/mdx.nvim", config = true, dependencies = { "nvim-treesitter/nvim-treesitter" } },
+  { "connorads/mdx.nvim", dependencies = { "nvim-treesitter/nvim-treesitter" } },
   { "nvim-treesitter/nvim-treesitter", opts = { ensure_installed = { "tsx", "typescript" } } },
   -- Disable markdownlint for MDX (rules aren't designed for JSX/imports)
   {
