@@ -18,7 +18,7 @@ fi
 
 # Parse all served external ports
 local -a eports
-eports=(${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)})
+eports=("${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)}")
 
 if [[ ${#eports[@]} -eq 0 ]]; then
   echo "not serving"
@@ -34,7 +34,7 @@ for ep in "${eports[@]}"; do
     .value.Handlers // {} | to_entries[0].value.Proxy // \"unknown\"
   " 2>/dev/null)
 
-  if echo "$serve_json" | jq -e ".TCP[\"$ep\"].AllowFunnel == true" >/dev/null 2>&1; then
+  if echo "$serve_json" | jq -e ".AllowFunnel[\"$hostname:$ep\"] == true" >/dev/null 2>&1; then
     funnel_state="Funnel (public)"
   else
     funnel_state="Tailnet only"

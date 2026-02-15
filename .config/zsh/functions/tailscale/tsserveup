@@ -46,11 +46,11 @@ serve_json=$(ts serve status --json 2>/dev/null)
 local -A served_ports
 if [[ -n "$serve_json" && "$serve_json" != "null" && "$serve_json" != "{}" ]]; then
   local -a _eports
-  _eports=(${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)})
+  _eports=("${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)}")
   local _ep
   for _ep in "${_eports[@]}"; do
     [[ -z "$_ep" ]] && continue
-    if echo "$serve_json" | jq -e ".TCP[\"$_ep\"].AllowFunnel == true" >/dev/null 2>&1; then
+    if echo "$serve_json" | jq -e ".AllowFunnel[\"$hostname:$_ep\"] == true" >/dev/null 2>&1; then
       served_ports[$_ep]="F"
     else
       served_ports[$_ep]="*"
