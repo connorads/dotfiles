@@ -45,6 +45,7 @@
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
 | `Ctrl+b D` | difftastic git diff |
+| `Ctrl+b C` | critique git diff |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
