@@ -36,8 +36,10 @@
 | `Ctrl+b W` | fzf window picker |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
+| `Ctrl+b T` | Tailscale serve (expose port on Tailnet) |
+| `Ctrl+b Alt+T` | Tailscale serve down (per-port teardown) |
 | `Ctrl+b K` | process closer (user processes) |
-| `Alt+Shift+K` | process closer (all processes via sudo) |
+| `Ctrl+b Alt+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b O` | open cwd in file manager |

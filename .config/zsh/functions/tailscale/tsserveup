@@ -1,0 +1,273 @@
+# tsserveup: expose a local port on the Tailnet (or publicly via funnel)
+# Usage: tsserveup [--public|-p] [--apex|-a] [--port EPORT] [port]
+#   no args     → fzf picker of listening ports + custom entry
+#   <port>      → serve that port directly (skip fzf)
+#   --public/-p → use funnel (public internet) instead of serve (Tailnet only)
+#   --apex/-a   → serve on :443 instead of matching the local port
+#   --port N    → explicit external HTTPS port
+emulate -L zsh
+
+local public=0 apex=0 eport="" port=""
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --public|-p) public=1; shift ;;
+    --apex|-a) apex=1; shift ;;
+    --port)
+      if [[ -z "$2" || ! "$2" =~ '^[0-9]+$' ]]; then
+        echo "error: --port requires a numeric argument" >&2
+        return 1
+      fi
+      eport="$2"; shift 2
+      ;;
+    *)
+      if [[ "$1" =~ '^[0-9]+$' ]]; then
+        port="$1"; shift
+      else
+        echo "usage: tsserveup [--public|-p] [--apex|-a] [--port EPORT] [port]" >&2
+        return 1
+      fi
+      ;;
+  esac
+done
+
+# Resolve Tailscale hostname
+local hostname
+hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
+if [[ -z "$hostname" || "$hostname" == "null" ]]; then
+  echo "error: could not resolve Tailscale hostname (is Tailscale running?)" >&2
+  return 1
+fi
+
+# Get current serve status — build map of served external ports
+local serve_json
+serve_json=$(ts serve status --json 2>/dev/null)
+local -A served_ports
+if [[ -n "$serve_json" && "$serve_json" != "null" && "$serve_json" != "{}" ]]; then
+  local -a _eports
+  _eports=(${(f)$(echo "$serve_json" | jq -r '.TCP // {} | keys[]' 2>/dev/null)})
+  local _ep
+  for _ep in "${_eports[@]}"; do
+    [[ -z "$_ep" ]] && continue
+    if echo "$serve_json" | jq -e ".TCP[\"$_ep\"].AllowFunnel == true" >/dev/null 2>&1; then
+      served_ports[$_ep]="F"
+    else
+      served_ports[$_ep]="*"
+    fi
+  done
+fi
+
+# Resolve proxy target for a port — use IPv6 address if only listening on [::1]
+_tsserve_target() {
+  local p=$1
+  local has_v4=0 has_v6only=0
+  if [[ "$OSTYPE" == darwin* ]]; then
+    lsof -iTCP:"$p" -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2 | while read -r line; do
+      local a=$(echo "$line" | awk '{print $9}')
+      local bind="${a%:*}"
+      case "$bind" in
+        "["*"]"|"::1"|"[::1]") has_v6only=1 ;;
+        *) has_v4=1 ;;
+      esac
+    done
+  else
+    ss -tlnp "sport = :$p" 2>/dev/null | tail -n +2 | while read -r line; do
+      local a=$(echo "$line" | awk '{print $4}')
+      local bind="${a%:*}"
+      case "$bind" in
+        "["*"]"|"::1"|"[::1]") has_v6only=1 ;;
+        *) has_v4=1 ;;
+      esac
+    done
+  fi
+  if (( has_v4 == 0 && has_v6only )); then
+    echo "http://[::1]:$p"
+  else
+    echo "$p"
+  fi
+}
+
+# Helper: run serve or funnel with explicit external port
+_tsserve_run() {
+  local target=$1 is_public=$2 ep=$3
+  local display_port="${target##*:}"
+  local url="https://$hostname"
+  [[ "$ep" != "443" ]] && url="https://$hostname:$ep"
+  if (( is_public )); then
+    ts funnel --bg --yes --https="$ep" "$target" || return 1
+    echo "Funnel (public): $url  →  localhost:$display_port"
+  else
+    ts serve --bg --https="$ep" "$target" || return 1
+    echo "Serve (Tailnet): $url  →  localhost:$display_port"
+  fi
+}
+
+# Direct mode: port given on command line
+if [[ -n "$port" ]]; then
+  # Resolve external port: --port > --apex > match local port
+  if [[ -z "$eport" ]]; then
+    if (( apex )); then
+      eport=443
+    else
+      eport="$port"
+    fi
+  fi
+  local target
+  target=$(_tsserve_target "$port")
+  _tsserve_run "$target" "$public" "$eport"
+  local rc=$?
+  unfunction _tsserve_target _tsserve_run 2>/dev/null
+  return $rc
+fi
+
+# --- fzf picker mode ---
+
+# Discover listening ports (same parsing as `ports` function)
+local -a lines
+if [[ "$OSTYPE" == darwin* ]]; then
+  lines=("${(@f)$(lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2)}")
+else
+  lines=("${(@f)$(ss -tlnp 2>/dev/null | tail -n +2)}")
+fi
+
+local -a rows
+local line cmd pid addr lport bind_addr pid_info marker
+for line in "${lines[@]}"; do
+  [[ -z "$line" ]] && continue
+
+  if [[ "$OSTYPE" == darwin* ]]; then
+    cmd=$(echo "$line" | awk '{print $1}')
+    pid=$(echo "$line" | awk '{print $2}')
+    addr=$(echo "$line" | awk '{print $9}')
+  else
+    addr=$(echo "$line" | awk '{print $4}')
+    pid_info=$(echo "$line" | awk '{print $6}')
+    cmd="-"
+    if [[ "$pid_info" == *\"* ]]; then
+      cmd="${pid_info#*\"}"
+      cmd="${cmd%%\"*}"
+    fi
+    pid="-"
+    if [[ "$pid_info" == *"pid="* ]]; then
+      pid="${pid_info#*pid=}"
+      pid="${pid%%,*}"
+    fi
+  fi
+
+  lport="${addr##*:}"
+  bind_addr="${addr%:*}"
+  [[ -z "$pid" ]] && pid="-"
+  [[ -z "$cmd" ]] && cmd="-"
+
+  # Mark ports currently served
+  marker="·"
+  if [[ -n "${served_ports[$lport]}" ]]; then
+    marker="${served_ports[$lport]}"
+  fi
+
+  rows+=("$(printf '%s %-7s %-7s %-20s %s' "$marker" "$lport" "$pid" "$cmd" "$bind_addr")")
+done
+
+# Deduplicate by port (keep first occurrence)
+local -A seen_ports
+local -a unique_rows
+local p
+for line in "${rows[@]}"; do
+  p=$(echo "$line" | awk '{print $2}')
+  if [[ -z "${seen_ports[$p]}" ]]; then
+    unique_rows+=("$line")
+    seen_ports[$p]=1
+  fi
+done
+
+# Add custom port entry at top
+unique_rows=("· [custom port]" "${unique_rows[@]}")
+
+local status_hint=""
+if (( ${#served_ports} > 0 )); then
+  local -a hints
+  local _sp
+  for _sp in ${(ko)served_ports}; do
+    if [[ "${served_ports[$_sp]}" == "F" ]]; then
+      hints+=(":$_sp (Funnel)")
+    else
+      hints+=(":$_sp (Tailnet)")
+    fi
+  done
+  status_hint="  active: ${(j:, :)hints}"
+fi
+
+local header="  PORT    PID     PROCESS              BIND${status_hint}
+  enter: serve (matching port)  |  ctrl-a: serve (:443)  |  ctrl-f: funnel"
+
+local selection
+selection=$(printf '%s\n' "${unique_rows[@]}" | fzf --reverse \
+  --header="$header" \
+  --expect=ctrl-a,ctrl-f \
+  --preview='
+    line={}
+    port=$(echo "$line" | awk "{print \$2}")
+    pid=$(echo "$line" | awk "{print \$3}")
+    bind=$(echo "$line" | awk "{print \$5}")
+    marker=$(echo "$line" | awk "{print \$1}")
+
+    if [ "$port" = "[custom" ]; then
+      echo "Enter a custom port number"
+      exit 0
+    fi
+
+    echo "Port:    $port"
+    echo "PID:     $pid"
+    echo "Bind:    $bind"
+
+    case "$marker" in
+      "*") echo; echo "★ Currently served on Tailnet" ;;
+      "F") echo; echo "★ Currently funnelled (public)" ;;
+    esac
+
+    if [ "$pid" != "-" ] && command -v ps >/dev/null 2>&1; then
+      echo
+      ps -p "$pid" -o pid,ppid,user,%cpu,%mem,etime,command 2>/dev/null
+    fi
+  ' \
+  --preview-window=right:50%:wrap)
+
+[[ -z "$selection" ]] && { unfunction _tsserve_target _tsserve_run 2>/dev/null; return 0; }
+
+# Parse fzf output: first line is the key pressed, second is the selected item
+local key chosen chosen_port is_public_fzf eport_fzf
+key=$(echo "$selection" | head -n1)
+chosen=$(echo "$selection" | tail -n1)
+
+# Extract port from selection
+chosen_port=$(echo "$chosen" | awk '{print $2}')
+
+# Handle custom port entry
+if [[ "$chosen_port" == "[custom" || "$chosen" == *"[custom port]"* ]]; then
+  local custom_port
+  printf "port: "
+  read -r custom_port
+  if [[ ! "$custom_port" =~ '^[0-9]+$' ]]; then
+    echo "error: invalid port number" >&2
+    unfunction _tsserve_target _tsserve_run 2>/dev/null
+    return 1
+  fi
+  chosen_port="$custom_port"
+fi
+
+# Determine mode from keybinding
+is_public_fzf=0
+case "$key" in
+  ctrl-a) eport_fzf=443 ;;
+  ctrl-f) is_public_fzf=1; eport_fzf="$chosen_port" ;;
+  *)      eport_fzf="$chosen_port" ;;
+esac
+
+# Resolve IPv6 target and run
+local target
+target=$(_tsserve_target "$chosen_port")
+_tsserve_run "$target" "$is_public_fzf" "$eport_fzf"
+local rc=$?
+unfunction _tsserve_target _tsserve_run 2>/dev/null
+return $rc
