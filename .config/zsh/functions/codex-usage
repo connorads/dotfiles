@@ -1,4 +1,6 @@
-# Query Codex API usage limits (cached 60s)
+# codex-usage: Query Codex API usage limits (cached 60s, auto-refreshes expired tokens)
+emulate -L zsh
+
 local cache="$HOME/.cache/codex-usage.json" ttl=60
 local age=9999
 [[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
@@ -8,8 +10,53 @@ if [[ $age -ge $ttl ]]; then
     [[ ! -f "$auth_file" ]] && { echo "Not logged in (run: codex login)"; return 1; }
     local token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
     [[ -z "$token" ]] && { echo "No access token found in $auth_file"; return 1; }
+
     local resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
         -H "Authorization: Bearer $token")
+
+    # Token expired — refresh via OpenAI OAuth (same endpoint Codex CLI uses)
+    if ! echo "$resp" | jq -e '.rate_limit' >/dev/null 2>&1; then
+        local refresh_token=$(jq -r '.tokens.refresh_token // empty' "$auth_file" 2>/dev/null)
+        if [[ -n "$refresh_token" ]]; then
+            local payload
+            payload=$(jq -n --arg rt "$refresh_token" '{
+                client_id: "app_EMoamEEZ73f0CkXaXp7hrann",
+                grant_type: "refresh_token",
+                refresh_token: $rt,
+                scope: "openid profile email"
+            }')
+            local refresh_resp=$(curl -s --max-time 5 -X POST "https://auth.openai.com/oauth/token" \
+                -H "Content-Type: application/json" -d "$payload")
+
+            local new_access=$(echo "$refresh_resp" | jq -r '.access_token // empty' 2>/dev/null)
+            if [[ -n "$new_access" ]]; then
+                # Write new tokens back to auth.json (rotating refresh tokens)
+                local new_refresh=$(echo "$refresh_resp" | jq -r '.refresh_token // empty' 2>/dev/null)
+                local new_id=$(echo "$refresh_resp" | jq -r '.id_token // empty' 2>/dev/null)
+                local tmp=$(mktemp)
+                jq --arg at "$new_access" \
+                   --arg rt "${new_refresh:-$refresh_token}" \
+                   --arg it "$new_id" \
+                   --arg lr "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                   '.tokens.access_token = $at | .tokens.refresh_token = $rt |
+                    (if $it != "" then .tokens.id_token = $it else . end) |
+                    .last_refresh = $lr' "$auth_file" > "$tmp" && mv "$tmp" "$auth_file"
+                chmod 600 "$auth_file"
+                token="$new_access"
+
+                # Retry with refreshed token
+                resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
+                    -H "Authorization: Bearer $token")
+            else
+                echo "Token expired — refresh failed (run: codex login)"
+                return 1
+            fi
+        else
+            echo "Token expired — no refresh token (run: codex login)"
+            return 1
+        fi
+    fi
+
     [[ -n "$resp" ]] && echo "$resp" | jq -e '.rate_limit' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
 fi
 
