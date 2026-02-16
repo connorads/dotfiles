@@ -10,7 +10,7 @@
 ## GitHub
 
 Use `gh` CLI to access and update issues and PRs etc. Use `--body-file - <<'EOF'` for multi-line text.
-If the user mentions a GitHub issue, remember to close the issue if you fix it.
+If the user mentions a GitHub issue, remember to close the issue if you fix it - mention "Closes #NO" in commit message.
 
 # Guidance
 
