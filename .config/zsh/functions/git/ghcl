@@ -8,18 +8,23 @@ if [[ $arg == */* ]]; then
   return $?
 fi
 
-# Build gh repo list command
-local owner_flag=()
-if [[ -n $arg ]]; then
-  owner_flag=("$arg")
-fi
-
+# Fetch repo list, piped directly into fzf for streaming
 local selection
 selection=$(
-  gh repo list "${owner_flag[@]}" \
-    --limit 200 \
-    --json nameWithOwner,visibility,description \
-    --jq '.[] | [.nameWithOwner, (.visibility | ascii_downcase), (.description // "")] | @tsv' |
+  if [[ -n $arg ]]; then
+    gh repo list "$arg" \
+      --limit 200 \
+      --json nameWithOwner,visibility,description \
+      --jq '.[] | [.nameWithOwner, (.visibility | ascii_downcase), (.description // "")] | @tsv'
+  else
+    gh api /user/repos \
+      --method GET \
+      --paginate \
+      -f per_page=100 \
+      -f affiliation=owner,collaborator,organization_member \
+      -f sort=updated \
+      -q '.[] | [.full_name, (.visibility // "private"), (.description // "")] | @tsv'
+  fi |
   fzf --delimiter='\t' \
     --with-nth=1,2,3 \
     --header='Select a repo to clone' \
