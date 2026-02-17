@@ -51,6 +51,7 @@
       "claude"
       "codex-app"
       "comfyui"
+      "gimp"
       "lm-studio"
       "obsidian"
       "whatsapp"
