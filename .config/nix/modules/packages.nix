@@ -51,6 +51,10 @@
     lazysql
     witr
 
+    # PHP & WordPress
+    php84
+    php84Packages.composer
+
     # Command reference
     tealdeer
 
