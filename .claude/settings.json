@@ -674,6 +674,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/guard-mutating-api.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/allow-local-curl.py"
           }
         ]
       }
