@@ -1,4 +1,8 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "env": {
     "DISABLE_INSTALLATION_CHECKS": "1"
   },
