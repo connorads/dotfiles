@@ -36,6 +36,7 @@
 | `Ctrl+b W` | fzf window picker |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
+| `Ctrl+b Alt+t` | Tailscale serve status (observe active serves) |
 | `Ctrl+b T` | Tailscale serve (expose port on Tailnet) |
 | `Ctrl+b Alt+T` | Tailscale serve down (per-port teardown) |
 | `Ctrl+b K` | process closer (user processes) |
