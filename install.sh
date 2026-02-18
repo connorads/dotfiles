@@ -300,6 +300,48 @@ EOF
   fi
   sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer 2>/dev/null || true
 
+  # Unattended-upgrades drop-in: enable -updates pocket, auto-reboot, kernel cleanup
+  UA_DROPIN="/etc/apt/apt.conf.d/52unattended-upgrades-local"
+  if [ ! -f "$UA_DROPIN" ]; then
+    echo "Configuring unattended-upgrades drop-in..."
+    sudo tee "$UA_DROPIN" > /dev/null << 'EOF'
+// Managed by install.sh
+Unattended-Upgrade::Allowed-Origins { "${distro_id}:${distro_codename}-updates"; };
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::SyslogEnable "true";
+EOF
+  else
+    echo "Unattended-upgrades drop-in already configured"
+  fi
+
+  # needrestart: explicit auto-restart mode
+  if [ -d /etc/needrestart ]; then
+    NR_CONF="/etc/needrestart/conf.d/90-auto.conf"
+    if [ ! -f "$NR_CONF" ]; then
+      echo "Configuring needrestart auto mode..."
+      sudo mkdir -p /etc/needrestart/conf.d
+      sudo tee "$NR_CONF" > /dev/null << 'EOF'
+# Managed by install.sh — auto-restart services after library updates
+$nrconf{restart} = 'a';
+EOF
+    else
+      echo "needrestart auto mode already configured"
+    fi
+  fi
+
+  # Ubuntu Pro advisory
+  if command -v pro &>/dev/null; then
+    if ! pro status 2>&1 | grep -q "Attached: True"; then
+      echo "NOTE: Ubuntu Pro not attached. For extra security patches run:"
+      echo "  sudo pro attach <TOKEN>  (free: https://ubuntu.com/pro)"
+    fi
+  fi
+
   # Kernel hardening (sysctl)
   SYSCTL_HARDENING="/etc/sysctl.d/99-hardening.conf"
   if [ ! -f "$SYSCTL_HARDENING" ]; then
@@ -385,6 +427,7 @@ AUDITEOF
   echo "Applying pending package updates..."
   sudo apt-get update -y
   sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 fi
 
 # Install tools via mise (skip on NixOS - use Nix packages instead)
