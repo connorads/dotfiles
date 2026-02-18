@@ -4,6 +4,14 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi
 
+# apt updates (non-NixOS Linux)
+if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+  echo "=> apt update + upgrade"
+  sudo apt-get update -y
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
+fi
+
 nfu
 
 dotfiles add ~/.config/nix/flake.lock
@@ -15,4 +23,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   drs
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   hms
+fi
+
+# Reboot notification (apt-based Linux)
+if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then
+  echo ""
+  echo "*** Reboot required ***"
+  cat /var/run/reboot-required.pkgs 2>/dev/null
+  echo "Run: sudo reboot"
 fi
