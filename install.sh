@@ -307,9 +307,7 @@ EOF
     sudo tee "$UA_DROPIN" > /dev/null << 'EOF'
 // Managed by install.sh
 Unattended-Upgrade::Allowed-Origins { "${distro_id}:${distro_codename}-updates"; };
-Unattended-Upgrade::Automatic-Reboot "true";
-Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
-Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+Unattended-Upgrade::Automatic-Reboot "false";
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
