@@ -1,1 +1,0 @@
-export { defaultDrawerCommands } from '../config'
