@@ -3,11 +3,11 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-# Fix SSH agent forwarding inside tmux (symlink to stable path on each connect)
-if [[ -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent.sock" ]]; then
-  ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/agent.sock"
+# Use stable SSH agent socket inside tmux.
+# Symlink management is handled by tmux hooks/scripts to keep shell startup quiet.
+if [[ -n "$TMUX" ]]; then
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
 fi
-export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
 
 setopt HIST_IGNORE_SPACE
 # Commands starting with a space are not saved to history.
