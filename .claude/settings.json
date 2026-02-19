@@ -657,6 +657,7 @@
       "Bash(eval:*)"
     ]
   },
+  "model": "opusplan",
   "hooks": {
     "PreToolUse": [
       {
@@ -692,5 +693,4 @@
     "command": "~/.claude/statusline.sh"
   },
   "alwaysThinkingEnabled": true,
-  "model": "opusplan"
 }
