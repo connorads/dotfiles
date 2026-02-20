@@ -1,0 +1,24 @@
+# dhk: run hk commands in the dotfiles repo
+emulate -L zsh
+setopt localtraps
+
+local hk_bin=""
+if (( $+commands[hk] )); then
+  hk_bin="${commands[hk]}"
+elif (( $+commands[mise] )); then
+  hk_bin="$(mise which hk 2>/dev/null)"
+fi
+
+if [[ -z "$hk_bin" ]]; then
+  echo "hk not found. Install tools with: mise install" >&2
+  return 127
+fi
+
+local tmpdir
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/dhk.XXXXXX")" || return 1
+trap 'rm -rf -- "$tmpdir"' EXIT
+
+printf 'gitdir: %s\n' "$HOME/git/dotfiles" > "$tmpdir/.git" || return 1
+ln -s "$HOME/hk.pkl" "$tmpdir/hk.pkl" || return 1
+
+(cd "$tmpdir" && "$hk_bin" "$@")

@@ -22,6 +22,18 @@ dotfiles add .somefile
 dotfiles rm --cached .somefile
 ```
 
+### Code quality hooks (hk)
+
+Dotfiles use [`hk`](https://hk.jdx.dev/) for fast staged-file checks on commit.
+
+```sh
+dotfiles config core.hooksPath .hk-hooks
+mise install
+dhk check
+```
+
+`dotfiles commit` then runs `.hk-hooks/pre-commit`, which calls `hk run pre-commit`.
+
 ### Managing system
 
 #### macOS (nix-darwin)
