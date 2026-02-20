@@ -1,1 +1,10 @@
-mkdir -p "$@" && cd "${@:$#}"
+# takedir: create directories and cd into the last one
+emulate -L zsh
+
+if [[ $# -eq 0 ]]; then
+  echo "usage: takedir <dir> [dir ...]" >&2
+  return 1
+fi
+
+mkdir -p "$@" || return 1
+cd "${@[-1]}" || return 1

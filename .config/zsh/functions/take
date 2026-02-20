@@ -1,3 +1,11 @@
+# take: clone repo, extract URL archive, or make directory and cd
+emulate -L zsh
+
+if [[ $# -eq 0 ]]; then
+  echo "usage: take <git-url|archive-url|dir> [dir ...]" >&2
+  return 1
+fi
+
 if [[ $1 =~ ^(https?|ftp).*\.(tar\.(gz|bz2|xz)|tgz)$ ]]; then
   takeurl "$1"
 elif [[ $1 =~ ^(https?|ftp).*\.(zip)$ ]]; then

@@ -1,7 +1,30 @@
-local data thedir
-data="$(mktemp)"
-curl -L "$1" > "$data"
-tar xf "$data"
-thedir="$(tar tf "$data" | head -n 1)"
-rm "$data"
-cd "$thedir"
+# takeurl: download a tar archive, extract it, and cd into top directory
+emulate -L zsh
+setopt localtraps
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: takeurl <archive-url>" >&2
+  return 1
+fi
+
+local data
+data="$(mktemp)" || return 1
+trap 'rm -f "$data"' RETURN
+
+curl -fL "$1" -o "$data" || {
+  echo "failed to download archive: $1" >&2
+  return 1
+}
+
+tar xf "$data" || {
+  echo "failed to extract tar archive" >&2
+  return 1
+}
+
+local first_entry first_dir
+first_entry="$(tar tf "$data" 2>/dev/null | head -n 1)"
+first_dir="${first_entry%%/*}"
+
+if [[ -n "$first_dir" && -d "$first_dir" ]]; then
+  cd "$first_dir" || return 1
+fi
