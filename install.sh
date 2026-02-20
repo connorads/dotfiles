@@ -73,6 +73,9 @@ else
   git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" pull || true
 fi
 
+# Use tracked hooks in ~/.hk-hooks
+git --git-dir="$DOTFILES_DIR/" config core.hooksPath .hk-hooks
+
 # Install Nix if not present (skip on NixOS - already has Nix)
 if [ "$IN_NIXOS" = "true" ]; then
   echo "NixOS detected - Nix already available"

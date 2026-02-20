@@ -86,6 +86,8 @@ nrs                    # nixos-rebuild switch (NixOS)
 nfu                    # nix flake update
 dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
+dhk check              # Run hk checks in dotfiles repo
+dhk fix                # Run hk fixes in dotfiles repo
 ts                     # Tailscale wrapper (defined in .zshrc)
 toadup [port]          # Start toad web UI via Tailscale (default :8000)
 toaddown               # Stop toad web UI
@@ -97,6 +99,16 @@ webtermup [session] [port] # Expose tmux session via web (default: main :7681)
 webtermdown [port]         # Stop web terminal
 ghcl [owner]           # fzf clone from GitHub (SSH)
 ```
+
+## Git Hooks (hk)
+
+Dotfiles commit hooks are tracked in `~/.hk-hooks/` and configured via:
+
+```bash
+dotfiles config core.hooksPath .hk-hooks
+```
+
+The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 
 ## Agent Skills
 

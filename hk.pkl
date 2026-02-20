@@ -1,0 +1,55 @@
+// Dotfiles hk configuration - fast pre-commit checks for staged files.
+amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+
+exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
+
+display_skip_reasons = List()
+terminal_progress = false
+
+local fast_steps = new Mapping<String, Step> {
+    ["trailing-whitespace"] = (Builtins.trailing_whitespace) {}
+    ["newlines"] = (Builtins.newlines) {}
+    ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
+
+    ["shfmt"] = (Builtins.shfmt) {
+        batch = true
+    }
+
+    ["shellcheck"] = (Builtins.shellcheck) {
+        batch = true
+    }
+
+    ["zsh-syntax"] {
+        glob = List(".zshrc", ".zprofile", ".zshenv", ".config/zsh/functions/**")
+        check = "zsh -n {{files}}"
+    }
+
+    ["alejandra"] = (Builtins.alejandra) {
+        batch = true
+    }
+
+    ["rumdl"] = (Builtins.rumdl) {
+        batch = true
+    }
+
+    ["mise"] = Builtins.mise
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = fast_steps
+    }
+
+    ["fix"] {
+        fix = true
+        stash = "git"
+        steps = fast_steps
+    }
+
+    ["check"] {
+        steps = fast_steps
+    }
+}

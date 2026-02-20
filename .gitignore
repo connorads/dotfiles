@@ -1,6 +1,10 @@
 /*
 
 !.gitignore
+!/hk.pkl
+
+!/.hk-hooks/
+!/.hk-hooks/**
 
 !/.agents/
 /.agents/**

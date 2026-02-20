@@ -1,0 +1,34 @@
+#!/bin/sh
+
+if [ "${HK:-1}" = "0" ]; then
+  exit 0
+fi
+
+HK_BIN=""
+if command -v hk >/dev/null 2>&1; then
+  HK_BIN="$(command -v hk)"
+elif command -v mise >/dev/null 2>&1; then
+  HK_BIN="$(mise which hk 2>/dev/null || true)"
+elif [ -x "$HOME/.nix-profile/bin/mise" ]; then
+  HK_BIN="$($HOME/.nix-profile/bin/mise which hk 2>/dev/null || true)"
+elif [ -x "$HOME/.local/bin/mise" ]; then
+  HK_BIN="$($HOME/.local/bin/mise which hk 2>/dev/null || true)"
+fi
+
+if [ -z "$HK_BIN" ]; then
+  echo "hk not found. Install tools with: mise install" >&2
+  exit 1
+fi
+
+TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-hk.XXXXXX")" || exit 1
+
+cleanup() {
+  rm -rf "$TMP_REPO"
+}
+trap cleanup EXIT INT TERM
+
+printf 'gitdir: %s\n' "$HOME/git/dotfiles" > "$TMP_REPO/.git" || exit 1
+ln -s "$HOME/hk.pkl" "$TMP_REPO/hk.pkl" || exit 1
+
+cd "$TMP_REPO" || exit 1
+exec "$HK_BIN" run pre-commit "$@"
