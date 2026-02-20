@@ -26,6 +26,7 @@
 | `Ctrl+b z` | zoom pane |
 | `Ctrl+d` | close pane (exit shell) |
 | `Ctrl+b L` | layout presets (fzf picker) |
+| `Ctrl+b N` | prompt for total panes, then build two-row grid |
 | `Ctrl+b x` | kill pane |
 
 ## Popups

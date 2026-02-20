@@ -2,6 +2,8 @@
 
 These files are loaded by `Ctrl+b L` from `~/.config/tmux/layouts/*.conf`.
 
+For ad-hoc grids, use `Ctrl+b N` to enter a total pane count (for example `8`), then build a balanced two-row grid.
+
 ## Naming and picker format
 
 - Use one file per preset, for example `6x2.conf`.
