@@ -1,7 +1,33 @@
-local data thedir
-data="$(mktemp)"
-curl -L "$1" > "$data"
-unzip "$data" -d "./"
-thedir="$(unzip -l "$data" | awk 'NR==4 {print $4}' | sed 's/\/.*//')"
-rm "$data"
-cd "$thedir"
+# takezip: download a zip archive, extract it, and cd into top directory
+emulate -L zsh
+setopt localtraps
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: takezip <archive-url>" >&2
+  return 1
+fi
+
+local data
+data="$(mktemp)" || return 1
+trap 'rm -f "$data"' RETURN
+
+curl -fL "$1" -o "$data" || {
+  echo "failed to download archive: $1" >&2
+  return 1
+}
+
+unzip -q "$data" || {
+  echo "failed to extract zip archive" >&2
+  return 1
+}
+
+local first_entry first_dir
+first_entry="$(unzip -Z1 "$data" 2>/dev/null | head -n 1)"
+if [[ -z "$first_entry" ]]; then
+  first_entry="$(unzip -l "$data" 2>/dev/null | awk 'NR==4 {print $4}')"
+fi
+first_dir="${first_entry%%/*}"
+
+if [[ -n "$first_dir" && -d "$first_dir" ]]; then
+  cd "$first_dir" || return 1
+fi

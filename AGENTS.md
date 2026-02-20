@@ -1,8 +1,9 @@
 # AGENTS.md
 
-## Bare Git Repo for Dotfiles
+## Dotfiles Git Dir + Work-tree
 
-Dotfiles tracked via bare repo at `~/git/dotfiles` with work-tree `~`.
+Dotfiles are tracked with a dedicated git dir at `~/git/dotfiles` and work-tree `~`.
+This is the same no-symlink pattern, exposed via the `dotfiles` wrapper.
 
 **Command pattern:**
 ```bash
@@ -14,7 +15,7 @@ Examples:
 - `dotfiles add .file`
 - `dotfiles commit -m "message"`
 
-The `dotfiles` wrapper (installed via Nix) handles the bare repo flags and resolves home directory reliably even in sanitised environments.
+The `dotfiles` wrapper (installed via Nix) handles the git-dir/work-tree flags and resolves home directory reliably even in sanitised environments.
 
 **Adding new files:** The `~/.gitignore` ignores everything (`/*`) then un-ignores specific paths. Before tracking a new file, add an un-ignore pattern to `~/.gitignore`:
 ```bash

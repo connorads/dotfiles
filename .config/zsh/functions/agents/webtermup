@@ -9,7 +9,20 @@ pkill -f "ttyd.*--port $port" 2>/dev/null
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
 local ttyd_v=$(ttyd --version 2>&1 | head -1)
 local wm_v=$(webmux --version 2>&1)
-local hash=$(echo "$ttyd_v:$wm_v" | md5sum | cut -d' ' -f1)
+local hash_input="$ttyd_v:$wm_v"
+local hash=""
+
+if command -v md5sum >/dev/null 2>&1; then
+  hash=$(printf '%s' "$hash_input" | md5sum | cut -d' ' -f1)
+elif command -v md5 >/dev/null 2>&1; then
+  hash=$(printf '%s' "$hash_input" | md5 -q)
+elif command -v shasum >/dev/null 2>&1; then
+  hash=$(printf '%s' "$hash_input" | shasum -a 256 | cut -d' ' -f1)
+else
+  echo "no supported hash tool found (md5sum, md5, or shasum)" >&2
+  return 1
+fi
+
 local idx="$cache_dir/index-$hash.html"
 
 if [[ ! -f "$idx" ]]; then
