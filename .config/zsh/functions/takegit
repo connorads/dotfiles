@@ -1,2 +1,14 @@
-git clone "$1"
-cd "$(basename ${1%%.git})"
+# takegit: clone a git repo and cd into it
+emulate -L zsh
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: takegit <git-url>" >&2
+  return 1
+fi
+
+local src="${1%/}"
+local repo_dir="${src:t}"
+repo_dir="${repo_dir%.git}"
+
+git clone "$1" || return 1
+cd "$repo_dir" || return 1

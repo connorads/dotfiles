@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without using symlinks. Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Usage
 
@@ -10,8 +10,10 @@ If you've already got your dotfiles setup you can use the following commands to 
 
 #### Track file
 
+First un-ignore the file/path in `~/.gitignore`, then add it:
+
 ```sh
-dotfiles add -f .somefile
+dotfiles add .somefile
 ```
 
 #### Untrack file
