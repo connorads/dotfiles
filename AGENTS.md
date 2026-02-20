@@ -134,7 +134,28 @@ skillsync  # Creates symlinks to claude, cursor, codex, gemini, opencode, etc.
 ```bash
 ts status                    # List devices
 ts ssh connor@rpi5 'cmd'     # SSH via Tailscale
+tsserve                      # Show active serve/funnel status
+tsserveup [--public] [port]  # Serve port on Tailnet (or publicly with --public)
+tsservedown [port]           # Tear down a served port
 ```
+
+### Serve port registry
+
+Each service uses a dedicated external HTTPS port so multiple services can coexist:
+
+| Service | Function | Local port | External HTTPS |
+|---------|----------|-----------|----------------|
+| webterm | `webtermup` | 7681 | **443** (apex) |
+| toad | `toadup` | 8000 | 8000 |
+| gigacode | `gigaup` | 2468 | 2468 |
+| companion | `companionup` | 3456 | 3456 |
+
+Pattern: `ts serve --bg --https=$port $port` — `webtermup` is the exception, omitting `--https=` to claim the apex `:443`.
+
+### Public access options
+
+- **Tailscale funnel** (public internet): `tsserveup --public [port]`
+- **Cloudflared quick tunnel** (unauthenticated, ephemeral): `cloudflared tunnel --url http://localhost:PORT`
 
 For RPi5-specific commands (clawdbot, user services), see [CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md).
 
