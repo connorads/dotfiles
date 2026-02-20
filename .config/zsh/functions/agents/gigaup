@@ -4,7 +4,7 @@ local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//'
 tmux kill-session -t gigacode 2>/dev/null
 tmux new-session -d -s gigacode -x 200 -y 50 \
   "gigacode server --host 127.0.0.1 --port $port --no-token"
-ts serve --bg $port
-echo "Gigacode: https://$hostname"
-echo "Inspector: https://$hostname/ui/"
+ts serve --bg --https=$port $port
+echo "Gigacode: https://$hostname:$port"
+echo "Inspector: https://$hostname:$port/ui/"
 echo "Attach: tmux attach -t gigacode"

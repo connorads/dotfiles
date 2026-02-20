@@ -4,6 +4,6 @@ local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//'
 tmux kill-session -t companion 2>/dev/null
 tmux new-session -d -s companion -x 200 -y 50 \
   "PORT=$port the-vibe-companion"
-ts serve --bg $port
-echo "Companion: https://$hostname"
+ts serve --bg --https=$port $port
+echo "Companion: https://$hostname:$port"
 echo "Attach: tmux attach -t companion"
