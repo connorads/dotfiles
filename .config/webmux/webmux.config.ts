@@ -6,10 +6,15 @@ export default {
 	},
 	floatingButtons: [
 		{
-			id: 'zoom',
-			label: 'Zoom',
-			description: 'Toggle pane zoom',
-			action: { type: 'send', data: '\x02z' },
+			position: 'top-left',
+			buttons: [
+				{
+					id: 'zoom',
+					label: 'Zoom',
+					description: 'Toggle pane zoom',
+					action: { type: 'send', data: '\x02z' },
+				},
+			],
 		},
 	],
 }
