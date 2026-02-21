@@ -39,6 +39,7 @@ hcloud = "latest"
 "npm:@elevenlabs/cli" = "latest"
 "npm:vercel" = "latest"
 "npm:wrangler" = "latest"
+"npm:flarepilot" = "latest"
 "npm:@mariozechner/pi-coding-agent" = "latest"
 "npm:@sandbox-agent/gigacode" = "latest"
 
