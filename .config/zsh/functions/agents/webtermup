@@ -1,34 +1,13 @@
 #!/usr/bin/env zsh
-# webtermup: expose tmux session via ttyd + Tailscale serve
+# webtermup: expose tmux session via webmux serve + Tailscale serve
 emulate -L zsh
-
 local session=${1:-main}
 local port=${2:-7681}
 
-# Kill existing webterm if running
+pkill -f "webmux serve.*--port $port" 2>/dev/null
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
-# Build webmux overlay every start (avoid stale cache bugs)
-local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
-local idx="$cache_dir/index.html"
-
-mkdir -p "$cache_dir"
-if ! webmux build --output "$idx"; then
-  echo "webmux build failed" >&2
-  return 1
-fi
-echo "Built webmux overlay → $idx"
-
-# Theme + font passed as ttyd -t flags to avoid flash of unstyled terminal
-local theme='theme={"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#45475a","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
-
-ttyd -i 127.0.0.1 --port $port --writable \
-  --index "$idx" \
-  -t "$theme" \
-  -t 'fontFamily="JetBrainsMono NFM, monospace"' \
-  -t 'scrollSensitivity=3' \
-  -t 'disableLeaveAlert=true' \
-  tmux new-session -A -s "$session" &!
+webmux serve --port $port -- tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
