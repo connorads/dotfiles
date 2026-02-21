@@ -1,4 +1,0 @@
-# tmka: clear tmux resurrect save so nothing auto-restores
-# alias: nuke saved state — next tma starts fresh
-rm -f ~/.local/share/tmux/resurrect/last
-echo "Cleared resurrect save — next tmux start will be fresh"

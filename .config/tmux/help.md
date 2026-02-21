@@ -61,6 +61,8 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+b F` | fix SSH agent socket |
+| `Ctrl+b Ctrl+s` | save tmux session state |
+| `Ctrl+b Ctrl+r` | restore saved tmux session state |
 | `F10` | suspend/resume tmux client |
 | `Ctrl+b d` | detach |
 | `Ctrl+b [` | scroll/copy mode |
