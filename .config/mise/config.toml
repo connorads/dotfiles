@@ -14,8 +14,6 @@ pkl = "latest"
 shfmt = "latest"
 shellcheck = "latest"
 rumdl = "latest"
-"aqua:kamadorueda/alejandra" = "latest"
-
 gcloud = "latest"
 aws = "latest"
 gemini = "latest"
