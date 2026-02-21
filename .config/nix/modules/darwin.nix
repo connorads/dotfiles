@@ -337,13 +337,27 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     users.connorads =
-      { ... }:
+      { lib, ... }:
       {
         imports = [ ./home-shared.nix ];
         home.username = "connorads";
         home.homeDirectory = "/Users/connorads";
-        home.packages = packages.sharedPackages;
+        home.packages = packages.sharedPackages ++ [ pkgs.duti ];
         home.stateVersion = "24.11";
+
+        # Keep editor file associations declarative without replacing the full
+        # LaunchServices LSHandlers array: duti updates only the targeted types.
+        home.activation.defaultAppAssociations = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          app_id="com.sublimetext.4"
+
+          for ext in md markdown mdown mkd txt json yaml yml toml env; do
+            ${pkgs.duti}/bin/duti -s "$app_id" "$ext" all
+          done
+
+          for uti in net.daringfireball.markdown public.plain-text public.json public.yaml; do
+            ${pkgs.duti}/bin/duti -s "$app_id" "$uti" all
+          done
+        '';
 
         # macOS-specific: use Keychain for git credentials
         programs.git.settings.credential.helper = "osxkeychain";
