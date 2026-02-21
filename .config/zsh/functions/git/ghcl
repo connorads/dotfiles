@@ -1,11 +1,57 @@
 # ghcl: fuzzy clone a GitHub repo via gh + fzf
-# usage: ghcl [owner|owner/repo]
-local arg=$1
+# usage: ghcl [-c|--cd|-n|--no-cd] [owner|owner/repo]
+emulate -L zsh
+
+local do_cd=1
+local arg=""
+local usage="usage: ghcl [-c|--cd|-n|--no-cd] [owner|owner/repo]"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c|--cd)
+      do_cd=1
+      shift
+      ;;
+    -n|--no-cd)
+      do_cd=0
+      shift
+      ;;
+    -h|--help)
+      print -r -- "$usage"
+      print -r -- ""
+      print -r -- "Clone a GitHub repo via gh + fzf."
+      print -r -- "Default: clone and cd into the repo directory."
+      return 0
+      ;;
+    -*)
+      print -r -- "error: unknown option: $1" >&2
+      print -r -- "$usage" >&2
+      return 1
+      ;;
+    *)
+      if [[ -n $arg ]]; then
+        print -r -- "error: too many arguments" >&2
+        print -r -- "$usage" >&2
+        return 1
+      fi
+      arg=$1
+      shift
+      ;;
+  esac
+done
+
+local repo
 
 # Direct clone if arg looks like owner/repo
 if [[ $arg == */* ]]; then
-  gh repo clone "$arg"
-  return $?
+  repo=$arg
+  gh repo clone "$repo" || return $?
+  if (( do_cd )); then
+    local repo_dir="${repo:t}"
+    repo_dir="${repo_dir%.git}"
+    cd "$repo_dir" || return 1
+  fi
+  return 0
 fi
 
 # Fetch repo list, piped directly into fzf for streaming
@@ -32,11 +78,16 @@ selection=$(
     --preview-window=right:50%:wrap
 ) || return 0
 
-local repo
-repo=$(echo "$selection" | cut -f1)
+repo="${selection%%$'\t'*}"
 
 if [[ -z $repo ]]; then
   return 0
 fi
 
-gh repo clone "$repo"
+gh repo clone "$repo" || return $?
+
+if (( do_cd )); then
+  local repo_dir="${repo:t}"
+  repo_dir="${repo_dir%.git}"
+  cd "$repo_dir" || return 1
+fi
