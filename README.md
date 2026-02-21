@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to setup and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to set up and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
 
 ## Why this setup
 
@@ -9,12 +9,7 @@ Use `git` (and [Sublime Merge](https://www.sublimemerge.com/)) to manage [dotfil
 - Bootstrap is safer on existing machines where dotfiles may already exist.
 - Day-to-day Git UX stays reliable, including ahead-behind and push state in LazyGit.
 
-Implementation detail: bootstrap uses `git clone --bare`, then switches to `work-tree=$HOME` and restores normal `origin/*` tracking refs.
-
-### Could we skip `clone --bare`?
-
-Yes, but this repo keeps the current approach because it is already wired into scripts/tooling and avoids a larger migration.
-The practical fix is to keep this layout and restore normal tracking refs during setup.
+Under the hood, git metadata is stored at `~/git/dotfiles`, and `core.worktree` points at `$HOME`.
 
 ## Usage
 
@@ -112,48 +107,54 @@ If you are setting up this exact repo on Linux/Codespaces, use the bootstrap scr
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 ```
 
-It installs dotfiles and restores upstream tracking so `git status`/LazyGit show ahead-behind correctly.
+It installs dotfiles and sets upstream tracking so `git status`/LazyGit show ahead-behind correctly.
 
-### Advanced manual setup (from this repo)
+### Manual setup (from this repo)
 
 If you want to follow the manual path (or fork this repo), use this.
 
-1. Clone repo
+1. Clone using a separate git dir
 
     ```sh
-    DOTFILES_REPO=https://github.com/connorads/dotfiles/
+    DOTFILES_REPO=https://github.com/connorads/dotfiles.git
     DOTFILES_DIR=$HOME/git/dotfiles
-    git clone --bare $DOTFILES_REPO $DOTFILES_DIR
+    BOOTSTRAP_WORKTREE=$(mktemp -d "$HOME/.dotfiles-bootstrap.XXXXXX")
+
+    git clone --separate-git-dir="$DOTFILES_DIR" "$DOTFILES_REPO" "$BOOTSTRAP_WORKTREE"
+    rm -rf "$BOOTSTRAP_WORKTREE"
     ```
 
-2. Switch repo to work-tree mode and restore remote-tracking refs
+    Why the temporary `BOOTSTRAP_WORKTREE` dir? `git clone` needs a checkout target path, and `$HOME` is non-empty. The temp dir keeps bootstrap safe and disposable.
+
+2. Point the repo at `$HOME` and ensure tracking refs
 
     ```sh
-    cd $DOTFILES_DIR
-    git config --unset core.bare
-    git config core.worktree $HOME
-
-    # Needed after clone --bare so origin/* tracking exists.
-    # This enables ahead-behind in git status/LazyGit.
-    git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-    git fetch origin --prune
+    git --git-dir="$DOTFILES_DIR" config core.bare false
+    git --git-dir="$DOTFILES_DIR" config core.worktree "$HOME"
+    git --git-dir="$DOTFILES_DIR" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+    git --git-dir="$DOTFILES_DIR" fetch origin --prune
     ```
 
 3. Check out dotfiles into `$HOME` (⚠️ this overwrites conflicting files)
 
     ```sh
-    cd $HOME
-    git --git-dir=$DOTFILES_DIR/ checkout -f
+    git --git-dir="$DOTFILES_DIR" checkout 2>&1 | sed -n 's/^[[:space:]]\+//p' | while IFS= read -r file; do
+      if [ -f "$file" ]; then
+        mv "$file" "$file.bak"
+      fi
+    done
+
+    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" checkout -f
     ```
 
 4. Set upstream for the current branch
 
     ```sh
-    CURRENT_BRANCH=$(git --git-dir=$DOTFILES_DIR/ symbolic-ref --quiet --short HEAD)
-    git --git-dir=$DOTFILES_DIR/ --work-tree=$HOME branch --set-upstream-to=origin/$CURRENT_BRANCH $CURRENT_BRANCH
+    CURRENT_BRANCH=$(git --git-dir="$DOTFILES_DIR" symbolic-ref --quiet --short HEAD)
+    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" branch --set-upstream-to="origin/$CURRENT_BRANCH" "$CURRENT_BRANCH"
     ```
 
-5. Setup nix, brew and install software (⚠️ skip the option to install Determinate Nix)
+5. Set up nix, brew and install software (⚠️ skip the option to install Determinate Nix)
 
     **macOS (nix-darwin):**
 
@@ -181,23 +182,69 @@ If you want to follow the manual path (or fork this repo), use this.
     nix run home-manager/master -- switch --flake ~/.config/nix
     ```
 
-6. Reload your shell and open Sublime Merge
+6. Reload your shell
 
     ```sh
-    smerge $DOTFILES_DIR
+    exec zsh
     ```
 
-### Troubleshooting: no ahead-behind in LazyGit
+### Migration helper (if needed)
 
-Run:
+If an existing machine has an older setup, run:
 
 ```sh
 DOTFILES_DIR=$HOME/git/dotfiles
+if [ "$(git --git-dir=$DOTFILES_DIR rev-parse --is-bare-repository 2>/dev/null || true)" = "true" ]; then
+  git --git-dir=$DOTFILES_DIR config --unset core.bare || true
+fi
+git --git-dir=$DOTFILES_DIR config core.worktree $HOME
 CURRENT_BRANCH=$(git --git-dir=$DOTFILES_DIR/ symbolic-ref --quiet --short HEAD)
 git --git-dir=$DOTFILES_DIR/ config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 git --git-dir=$DOTFILES_DIR/ fetch origin --prune
 git --git-dir=$DOTFILES_DIR/ --work-tree=$HOME branch --set-upstream-to=origin/$CURRENT_BRANCH $CURRENT_BRANCH
 ```
+
+### Create from scratch (optional)
+
+This section is for anyone who wants to build their own dotfiles repo using the same git-dir + work-tree technique (not specifically this repo).
+
+<details>
+<summary>Show from-scratch setup</summary>
+
+1. Create the git dir and point work-tree at `$HOME`
+
+    ```sh
+    DOTFILES_DIR=$HOME/git/dotfiles
+    mkdir -p "$DOTFILES_DIR"
+    git init "$DOTFILES_DIR"
+    git --git-dir="$DOTFILES_DIR" config core.worktree "$HOME"
+    git --git-dir="$DOTFILES_DIR" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+    ```
+
+2. Add a safe default ignore policy (ignore everything, then un-ignore specific files)
+
+    ```sh
+    touch "$HOME/.gitignore"
+    grep -qxF '/*' "$HOME/.gitignore" || printf '%s\n' '/*' >> "$HOME/.gitignore"
+    grep -qxF '!.gitignore' "$HOME/.gitignore" || printf '%s\n' '!.gitignore' >> "$HOME/.gitignore"
+    ```
+
+3. Start tracking files by un-ignoring paths in `~/.gitignore`, then adding them
+
+    ```sh
+    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" add .gitignore
+    git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" commit -m "chore(dotfiles): initialise from scratch"
+    ```
+
+4. Optional: connect a remote and push
+
+    ```sh
+    DOTFILES_REPO=git@github.com:your-user/dotfiles.git
+    dotfiles remote add origin "$DOTFILES_REPO"
+    dotfiles push -u origin HEAD
+    ```
+
+</details>
 
 ### Setup YubiKey for `sudo`
 
@@ -214,51 +261,10 @@ Add a second key if you like
 pamu2fcfg -n >> ~/.config/Yubico/u2f_keys
 ```
 
-### Setup (from scratch)
-
-Follow these steps to recreate the setup for this repo from scratch.
-
-1. Create repository to store dotfiles
-
-    ```sh
-    DOTFILES_DIR=$HOME/git/dotfiles
-    git init --bare $DOTFILES_DIR
-    ```
-
-2. Change worktree to home directory
-
-    ```sh
-    cd $DOTFILES_DIR
-    git config --unset core.bare
-    git config core.worktree $HOME
-    ```
-
-    If you later add an `origin` remote, make sure fetch mapping uses `refs/remotes/origin/*` so ahead-behind works:
-
-    ```sh
-    git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-    ```
-
-3. Ignore all files except `.gitignore` ([Sublime merge doesn't support status.showUntrackedFiles=no](https://github.com/sublimehq/sublime_merge/issues/1544))
-
-    ```sh
-    cd $HOME
-    echo "/*" >> .gitignore
-    echo "!.gitignore" >> .gitignore
-    ```
-
-4. Add alias to `.zshrc`
-
-    ```sh
-    echo "alias dotfiles='git --git-dir=$HOME/git/dotfiles/'" >> $HOME/.zshrc
-    ```
-
-5. You can now start [tracking files](#usage)
-
 ## Credit
 
 Inspired by
 
 - [StreakyCobra's comment on Hacker News for idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
-- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo)
+- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo) (historical reference; I now use LazyGit day-to-day)
 - [Using a YubiKey (or other security key) for sudo via pam](https://neilzone.co.uk/2022/11/using-a-yubikey-or-other-security-key-for-sudo-via-pam/)
