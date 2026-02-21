@@ -211,8 +211,10 @@
       Label = "dev.pfctl.dev-firewall";
       ProgramArguments = [
         "/sbin/pfctl"
-        "-a" "com.apple/dev-firewall"
-        "-f" "/etc/pf.anchors/dev-firewall"
+        "-a"
+        "com.apple/dev-firewall"
+        "-f"
+        "/etc/pf.anchors/dev-firewall"
         "-E"
       ];
       RunAtLoad = true;
