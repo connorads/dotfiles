@@ -5,38 +5,16 @@ local port=${2:-7681}
 # Kill existing webterm if running
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
-# Build webmux overlay (cached by ttyd + webmux version hash)
+# Build webmux overlay every start (avoid stale cache bugs)
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/webmux"
-local ttyd_v=$(ttyd --version 2>&1 | head -1)
-local wm_v=$(webmux --version 2>&1)
-local hash_input="$ttyd_v:$wm_v"
-local hash=""
+local idx="$cache_dir/index.html"
 
-if command -v md5sum >/dev/null 2>&1; then
-  hash=$(printf '%s' "$hash_input" | md5sum | cut -d' ' -f1)
-elif command -v md5 >/dev/null 2>&1; then
-  hash=$(printf '%s' "$hash_input" | md5 -q)
-elif command -v shasum >/dev/null 2>&1; then
-  hash=$(printf '%s' "$hash_input" | shasum -a 256 | cut -d' ' -f1)
-else
-  echo "no supported hash tool found (md5sum, md5, or shasum)" >&2
+mkdir -p "$cache_dir"
+if ! webmux build --output "$idx"; then
+  echo "webmux build failed" >&2
   return 1
 fi
-
-local idx="$cache_dir/index-$hash.html"
-
-if [[ ! -f "$idx" ]]; then
-  mkdir -p "$cache_dir"
-  if ! webmux build --output "$idx"; then
-    echo "webmux build failed" >&2
-    return 1
-  fi
-  # Prune stale cached builds
-  for f in "$cache_dir"/index-*.html; do
-    [[ "$f" != "$idx" ]] && rm -f "$f"
-  done
-  echo "Built webmux overlay → $idx"
-fi
+echo "Built webmux overlay → $idx"
 
 # Theme + font passed as ttyd -t flags to avoid flash of unstyled terminal
 local theme='theme={"background":"#1e1e2e","foreground":"#cdd6f4","cursor":"#f5e0dc","cursorAccent":"#1e1e2e","selectionBackground":"#45475a","black":"#45475a","red":"#f38ba8","green":"#a6e3a1","yellow":"#f9e2af","blue":"#89b4fa","magenta":"#cba6f7","cyan":"#94e2d5","white":"#bac2de","brightBlack":"#585b70","brightRed":"#f38ba8","brightGreen":"#a6e3a1","brightYellow":"#f9e2af","brightBlue":"#89b4fa","brightMagenta":"#cba6f7","brightCyan":"#94e2d5","brightWhite":"#a6adc8"}'
