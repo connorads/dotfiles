@@ -34,7 +34,7 @@ Then `dotfiles add .newfile` works without `-f`.
 
 ## Key Documentation
 
-- [~/README.md](./README.md) - how the dotfiles system works (bare repo, nix-darwin, home-manager)
+- [~/README.md](./README.md) - how the dotfiles system works (git-dir + work-tree, nix-darwin, home-manager)
 - [~/.config/nix/hosts/rpi5/README.md](./.config/nix/hosts/rpi5/README.md) - RPi5 NixOS installation & management
 - [~/.config/nix/hosts/rpi5/CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md) - Clawdbot AI gateway setup on RPi5
 
@@ -188,7 +188,7 @@ gh codespace ssh -c name -- -t 'zsh -ilc "tmux attach -t session"'
 
 **Avoid**: `zsh -lc` on its own can hang on some systems.
 
-### Pattern for bare repo git commands over SSH
+### Pattern for dotfiles git commands over SSH
 
 ```bash
 # Dotfiles commands on remote hosts (works in non-interactive SSH)

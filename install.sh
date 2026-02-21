@@ -53,17 +53,18 @@ echo "Setting up dotfiles for Linux..."
 if [ ! -d "$DOTFILES_DIR" ]; then
 	echo "Cloning dotfiles..."
 	mkdir -p "$(dirname "$DOTFILES_DIR")"
-	git clone --bare "$DOTFILES_REPO" "$DOTFILES_DIR"
+	BOOTSTRAP_WORKTREE="$(mktemp -d "$HOME/.dotfiles-bootstrap.XXXXXX")"
+	git clone --separate-git-dir="$DOTFILES_DIR" "$DOTFILES_REPO" "$BOOTSTRAP_WORKTREE"
+	rm -rf "$BOOTSTRAP_WORKTREE"
 
-	cd "$DOTFILES_DIR"
-	git config --unset core.bare
-	git config core.worktree "$HOME"
-	git config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-	git fetch origin --prune
+	git --git-dir="$DOTFILES_DIR/" config core.bare false
+	git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
+	git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+	git --git-dir="$DOTFILES_DIR/" fetch origin --prune
 
 	cd "$HOME"
 	# Backup any conflicting files
-	git --git-dir="$DOTFILES_DIR/" checkout 2>&1 | grep -E "^\s+" | awk '{print $1}' | while read -r file; do
+	git --git-dir="$DOTFILES_DIR/" checkout 2>&1 | sed -n 's/^[[:space:]]\+//p' | while IFS= read -r file; do
 		if [ -f "$file" ]; then
 			echo "Backing up $file to $file.bak"
 			mv "$file" "$file.bak"
@@ -77,6 +78,10 @@ if [ ! -d "$DOTFILES_DIR" ]; then
 	fi
 else
 	echo "Dotfiles already present, pulling latest..."
+	if [ "$(git --git-dir="$DOTFILES_DIR/" rev-parse --is-bare-repository 2>/dev/null || true)" = "true" ]; then
+		git --git-dir="$DOTFILES_DIR/" config --unset core.bare || true
+	fi
+	git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
 	git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 	git --git-dir="$DOTFILES_DIR/" fetch origin --prune || true
 
