@@ -1,6 +1,6 @@
-import { defineConfig } from 'webmux'
-
-export default defineConfig({
+// webmux configuration — see https://github.com/connorads/webmux
+// Uses partial override syntax (no import needed — validated at build time)
+export default {
 	mobile: {
 		initData: '\x02z', // auto-zoom current pane on mobile load
 	},
@@ -12,4 +12,4 @@ export default defineConfig({
 			action: { type: 'send', data: '\x02z' },
 		},
 	],
-})
+}
