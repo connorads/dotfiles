@@ -83,7 +83,7 @@ Four files to create/update:
 
 1. `mise.toml` — add hk, pkl, tool binaries
 2. `hk.pkl` — configuration
-3. `scripts/quiet-on-success.sh` — noise suppressor (copy from `files/quiet-on-success.sh` in this skill)
+3. `scripts/quiet-on-success.sh` — noise suppressor (copy from `assets/quiet-on-success.sh` in this skill)
 4. `.hk-hooks/pre-commit` — tracked hook wrapper
 
 Then:
@@ -155,7 +155,7 @@ Wrap noisy commands so output only appears on failure:
 }
 ```
 
-Copy `files/quiet-on-success.sh` from this skill directory into `scripts/` in the target repo.
+Copy `assets/quiet-on-success.sh` from this skill directory into `scripts/` in the target repo.
 
 ### The .hk-hooks/pre-commit wrapper
 
@@ -382,6 +382,6 @@ hooks {
 
 - `references/builtins-by-language.md` — step selection by ecosystem
 - `references/complete-examples.md` — full hk.pkl configs for different stacks
-- `files/quiet-on-success.sh` — copy into `scripts/` in target repo
+- `assets/quiet-on-success.sh` — copy into `scripts/` in target repo
 - [hk docs](https://hk.jdx.dev) — official documentation
 - `hk builtins` — list all 90+ available built-in linters
