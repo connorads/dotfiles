@@ -71,13 +71,12 @@ for file in "${shebang_files[@]}"; do
 done
 
 # Remove stale symlinks: dangling or pointing to files without shebang
-local link target
+local link target name abs_target
 for link in "$bin_dir"/*(N@); do
-  local name="${link:t}"
+  name="${link:t}"
   target=$(readlink "$link")
 
   # Resolve target relative to bin_dir
-  local abs_target
   if [[ "$target" == /* ]]; then
     abs_target="$target"
   else
