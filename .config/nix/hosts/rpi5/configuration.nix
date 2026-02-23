@@ -179,85 +179,6 @@
         };
 
         # ======================================================================
-        # Clawdbot (AI assistant gateway - installed via npm)
-        # ======================================================================
-        # Install: npm install -g clawdbot@latest
-        # Config:  ~/.clawdbot/clawdbot.json (tracked in dotfiles)
-        # Secrets: ~/.clawdbot/.env (OPENAI_API_KEY)
-        systemd.user.services.clawdbot-gateway = {
-          Unit = {
-            Description = "Clawdbot AI Gateway";
-            After = [ "network.target" ];
-          };
-          Service = {
-            Type = "simple";
-            ExecStart = "%h/.npm-global/bin/clawdbot gateway --port 18789";
-            Restart = "on-failure";
-            RestartSec = "10s";
-            WorkingDirectory = "%h";
-            EnvironmentFile = "%h/.clawdbot/.env";
-            Environment = [
-              "PATH=%h/.npm-global/bin:/etc/profiles/per-user/connor/bin:/run/current-system/sw/bin"
-            ];
-          };
-          Install = {
-            WantedBy = [ "default.target" ];
-          };
-        };
-
-        # ======================================================================
-        # Clawdbot upgrade (weekly npm update)
-        # ======================================================================
-        systemd.user.services.clawdbot-upgrade = {
-          Unit.Description = "Upgrade Clawdbot via npm";
-          Service = {
-            Type = "oneshot";
-            ExecStart = pkgs.writeShellScript "clawdbot-upgrade" ''
-              set -euo pipefail
-              export PATH="/etc/profiles/per-user/connor/bin:$HOME/.npm-global/bin:$PATH"
-              npm update -g clawdbot
-            '';
-            ExecStartPost = "${pkgs.systemd}/bin/systemctl --user restart clawdbot-gateway";
-          };
-        };
-
-        systemd.user.timers.clawdbot-upgrade = {
-          Unit.Description = "Upgrade Clawdbot weekly";
-          Timer = {
-            OnCalendar = "Sun 03:00";
-            Persistent = true;
-          };
-          Install.WantedBy = [ "timers.target" ];
-        };
-
-        # ======================================================================
-        # Clawdbot heartbeat (daily 9am wake for proactive check-in)
-        # ======================================================================
-        systemd.user.services.clawdbot-heartbeat = {
-          Unit = {
-            Description = "Clawdbot daily heartbeat";
-            After = [ "clawdbot-gateway.service" ];
-          };
-          Service = {
-            Type = "oneshot";
-            ExecStart = "%h/.npm-global/bin/clawdbot wake --channel telegram";
-            Environment = [
-              "PATH=%h/.npm-global/bin:/etc/profiles/per-user/connor/bin:/run/current-system/sw/bin"
-            ];
-            EnvironmentFile = "%h/.clawdbot/.env";
-          };
-        };
-
-        systemd.user.timers.clawdbot-heartbeat = {
-          Unit.Description = "Daily 9am Clawdbot heartbeat";
-          Timer = {
-            OnCalendar = "09:00";
-            Persistent = true;
-          };
-          Install.WantedBy = [ "timers.target" ];
-        };
-
-        # ======================================================================
         # Dotfiles sync (pulls config changes from GitHub before auto-upgrade)
         # ======================================================================
         systemd.user.services.dotfiles-sync = {
@@ -280,56 +201,7 @@
           Install.WantedBy = [ "timers.target" ];
         };
 
-        # ======================================================================
-        # Clawdbot workspace backup (syncs ~/clawd to GitHub daily)
-        # ======================================================================
-        systemd.user.services.clawd-workspace-sync = {
-          Unit.Description = "Sync Clawdbot workspace to GitHub";
-          Service = {
-            Type = "oneshot";
-            ExecStart = pkgs.writeShellScript "clawd-workspace-sync" ''
-              set -euo pipefail
-              WORKSPACE="/home/connor/clawd"
-              cd "$WORKSPACE" || exit 0
-
-              # Use deploy key explicitly (systemd doesn't read ~/.ssh/config)
-              export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/connor/.ssh/clawd_deploy -o IdentitiesOnly=yes"
-
-              # Ensure remote uses correct URL (migrate from host alias if needed)
-              EXPECTED_REMOTE="git@github.com:connorads/clawd-workspace.git"
-              if [ ! -d .git ]; then
-                ${pkgs.git}/bin/git init
-                ${pkgs.git}/bin/git remote add origin "$EXPECTED_REMOTE"
-              else
-                ${pkgs.git}/bin/git remote set-url origin "$EXPECTED_REMOTE"
-              fi
-
-              # Copy memory database to workspace for backup
-              mkdir -p "$WORKSPACE/memory"
-              cp -f /home/connor/.clawdbot/memory/main.sqlite "$WORKSPACE/memory/" 2>/dev/null || true
-
-              # Commit if changes
-              ${pkgs.git}/bin/git add -A
-              ${pkgs.git}/bin/git diff --cached --quiet || \
-                ${pkgs.git}/bin/git commit -m "Auto-sync $(date -I)"
-
-              # Push (fail visibly if broken)
-              ${pkgs.git}/bin/git push -u origin main
-            '';
-          };
-        };
-
-        systemd.user.timers.clawd-workspace-sync = {
-          Unit.Description = "Sync Clawdbot workspace daily";
-          Timer = {
-            OnCalendar = "daily";
-            Persistent = true;
-          };
-          Install.WantedBy = [ "timers.target" ];
-        };
-
         home.packages = with pkgs; [
-          nodejs_22
           vim
           micro
           fd

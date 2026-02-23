@@ -101,10 +101,6 @@ nixos-rebuild switch \
   --use-remote-sudo
 ```
 
-## Upgrading Clawdbot
-
-Clawdbot upgrade steps live in `CLAWDBOT.md` under **Upgrade Clawdbot (version bump)**.
-
 ## SSH Key Updates
 
 SSH keys are fetched from `github.com/connorads.keys` at build time.
