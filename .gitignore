@@ -126,10 +126,6 @@
 .DS_Store
 __pycache__/
 
-!/.clawdbot/
-/.clawdbot/**
-!/.clawdbot/clawdbot.json
-
 !/.local/
 /.local/**
 !/.local/bin/
