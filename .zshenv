@@ -9,3 +9,6 @@
 # 3. Source home-manager session vars (LOCALE_ARCHIVE, XDG_DATA_DIRS, XCURSOR_PATH)
 [[ -f ~/.nix-profile/etc/profile.d/hm-session-vars.sh ]] && \
   source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
+
+# 4. ~/.local/bin for user executables (XDG standard, zsh function symlinks)
+[[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
