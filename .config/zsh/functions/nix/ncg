@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # ncg: collect nix store garbage (delete old generations)
+emulate -L zsh
+
 nix-collect-garbage -d

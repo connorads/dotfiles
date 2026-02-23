@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # tmk: fzf kill tmux sessions (multi-select with Tab)
+emulate -L zsh
+
 local sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null | fzf --multi --prompt='Kill session(s): ')"})
 for session in "${sessions[@]}"; do
   [[ -n "$session" ]] && tmux kill-session -t "$session" && echo "Killed $session"

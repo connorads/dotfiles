@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # tma: attach or create a tmux session (default: main)
+emulate -L zsh
+
 local session_name="${1:-main}"
 if tmux has-session -t="$session_name" 2>/dev/null; then
   if [[ -z "$TMUX" ]]; then

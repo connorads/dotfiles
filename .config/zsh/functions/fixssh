@@ -1,4 +1,6 @@
+#!/usr/bin/env zsh
 # fixssh: repoint ~/.ssh/agent.sock to the newest live forwarded socket
+emulate -L zsh
 
 local stable="$HOME/.ssh/agent.sock"
 local best=""

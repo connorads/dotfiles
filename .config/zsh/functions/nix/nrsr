@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # nrsr: rollback nixos-rebuild (uses nrs)
+emulate -L zsh
+
 nrs --rollback

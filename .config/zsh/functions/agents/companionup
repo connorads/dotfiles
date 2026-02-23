@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # companionup: start Vibe Companion web UI via Tailscale serve
+emulate -L zsh
+
 local port=${1:-3456}
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
 tmux kill-session -t companion 2>/dev/null

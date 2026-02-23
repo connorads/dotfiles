@@ -1,5 +1,8 @@
+#!/usr/bin/env zsh
 # ghimg: download images from GitHub issues/PRs (handles private repo auth)
 # usage: ghimg <github-url|owner/repo> [number] [-o outdir] [--urls-only]
+emulate -L zsh
+
 local owner_repo number outdir urls_only=0
 local -a args=()
 

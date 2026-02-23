@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tsservedown: tear down a Tailscale serve/funnel port
 # Usage: tsservedown [port]
 #   <port>   → tear down that specific external HTTPS port
