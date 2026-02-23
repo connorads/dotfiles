@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # tml: list tmux sessions
+emulate -L zsh
+
 tmux list-sessions 2>/dev/null || echo "No tmux sessions running"

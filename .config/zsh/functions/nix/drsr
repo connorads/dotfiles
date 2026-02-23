@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # drsr: rollback darwin-rebuild (uses drs)
+emulate -L zsh
+
 drs --rollback

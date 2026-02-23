@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # wtrm: remove a worktree under ~/.trees via fzf
+emulate -L zsh
+
 local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
 
 if [[ -n "$worktree" ]]; then

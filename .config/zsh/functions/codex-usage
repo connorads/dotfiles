@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # codex-usage: Query Codex API usage limits (cached 60s, auto-refreshes expired tokens)
 emulate -L zsh
 

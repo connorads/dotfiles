@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # agentbox: run coding agents in an isolated Docker container
 # usage: agentbox [flags] [dir] | agentbox <subcommand> [name]
 #   start:   agentbox [--claude "prompt"] [--opencode "prompt"] [--firewall] [--name NAME] [dir]

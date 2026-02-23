@@ -1,5 +1,7 @@
+#!/usr/bin/env zsh
 # Sync skill symlinks across all agents
 # Usage: skillsync [-v|--verbose] [-n|--dry-run]
+emulate -L zsh
 
 local verbose=0 dry_run=0
 while [[ $# -gt 0 ]]; do

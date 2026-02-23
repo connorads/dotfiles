@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tsserveup: expose a local port on the Tailnet (or publicly via funnel)
 # Usage: tsserveup [--public|-p] [--apex|-a] [--port EPORT] [port]
 #   no args     → fzf picker of listening ports + custom entry

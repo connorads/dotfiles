@@ -1,4 +1,6 @@
+#!/usr/bin/env zsh
 # rs (repo setup): trust mise, install tools, and install deps for current repo
+emulate -L zsh
 
 # mise trust + install
 if [[ -f mise.toml ]] || [[ -f .mise.toml ]]; then

@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # cfork: fzf pick a Claude session and fork it
+emulate -L zsh
+
 local sid="${1:-}"
 
 if [[ -z "$sid" ]]; then

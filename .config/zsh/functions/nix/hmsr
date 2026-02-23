@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # hmsr: rollback home-manager (uses hms)
+emulate -L zsh
+
 hms --rollback

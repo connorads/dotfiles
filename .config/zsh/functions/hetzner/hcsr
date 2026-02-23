@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # hcsr: ssh as root to a Hetzner Cloud server
+emulate -L zsh
+
 _hcloud_ssh root "$@"

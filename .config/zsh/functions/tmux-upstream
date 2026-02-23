@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # tmux-upstream: check forked tmux plugins for upstream updates
+emulate -L zsh
+
 local verbose=false
 [[ "$1" == "-v" || "$1" == "--verbose" ]] && verbose=true
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tsserve: show current Tailscale serve/funnel status
 emulate -L zsh
 

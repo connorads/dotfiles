@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # drs: darwin-rebuild switch using ~/.config/nix flake
+emulate -L zsh
+
 sudo darwin-rebuild switch --flake ~/.config/nix

@@ -1,5 +1,7 @@
+#!/usr/bin/env zsh
 # Package skills as .skill (zip) files
 # Usage: skillspackage [skill-name...] [-o|--output DIR]
+emulate -L zsh
 
 local output_dir="${TMPDIR:-/tmp}/skills"
 local -a skills_to_package missing

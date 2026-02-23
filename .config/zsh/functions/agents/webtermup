@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # webtermup: expose tmux session via ttyd + Tailscale serve
+emulate -L zsh
+
 local session=${1:-main}
 local port=${2:-7681}
 

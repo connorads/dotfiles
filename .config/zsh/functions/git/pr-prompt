@@ -1,5 +1,8 @@
+#!/usr/bin/env zsh
 # pr-prompt: copy a PR review prompt to clipboard
 # usage: pr-prompt <pr-url>
+emulate -L zsh
+
 local url=$1
 if [[ $url != https://github.com/*/pull/* ]]; then
   echo "usage: gh-pr-prompt <PR-url>" >&2

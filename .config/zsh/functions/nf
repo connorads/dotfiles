@@ -1,7 +1,9 @@
+#!/usr/bin/env zsh
 # nf: search nerd font icons with fzf, copy to clipboard
 # alias: nerdfont, nerd-font
 # Usage: nf [query]
 #   -r, --refresh  Force refresh cache
+emulate -L zsh
 
 local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/nerd-fonts"
 local cache_file="$cache_dir/glyphs.txt"

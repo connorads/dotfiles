@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # hcs: ssh as connor to a Hetzner Cloud server
+emulate -L zsh
+
 _hcloud_ssh connor "$@"

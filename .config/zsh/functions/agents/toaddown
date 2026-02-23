@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # toaddown: stop toad web UI and Tailscale serve
+emulate -L zsh
+
 tmux kill-session -t toad 2>/dev/null
 ts serve --https=8000 off 2>/dev/null
 echo "Toad stopped"

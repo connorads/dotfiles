@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # dhk: run hk commands in the dotfiles repo
 emulate -L zsh
 setopt localtraps
