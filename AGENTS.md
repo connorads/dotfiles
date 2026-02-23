@@ -91,7 +91,7 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 | `secretexport` | `export` |
 | `zshrc-local` | `source` |
 | `fns`, `cpcmd` | `print -z` |
-| `_register_tmux_completions`, `_tmux_sessions`, `_hcloud_ssh` | completion/hook |
+| `_register_tmux_completions`, `_tmux_sessions` | completion/hook |
 
 ### Managing symlinks
 
