@@ -52,11 +52,68 @@ Then `dotfiles add .newfile` works without `-f`.
 | [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration (update `help.md` when changing bindings) |
 | [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
-| [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded) |
-| [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux)) |
+| [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded in zsh, also on PATH as executables) |
+| [~/.local/bin/](./.local/bin/) | Symlinks to dual-mode zsh functions (callable from any shell/agent) |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
+| [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux)) |
 
 ## Shell Function Conventions
+
+### Dual-mode functions (PATH commands)
+
+Most functions in `~/.config/zsh/functions/` are **dual-mode**: they work as zsh autoload functions in interactive shells AND as regular executables callable from any shell (bash, agent subprocesses, scripts).
+
+**Shebang = opt-in to PATH**: a `#!/usr/bin/env zsh` shebang on line 1 marks a function as dual-mode. `zfn-link` creates symlinks in `~/.local/bin/` for every file with this shebang, so agents can call them directly without `zsh -lc`.
+
+**File structure:**
+```
+#!/usr/bin/env zsh           # ← present = dual-mode (PATH command)
+# <name>: <purpose>
+# alias: <alias>             # if applicable
+emulate -L zsh               # ← ensures consistent zsh behaviour as script
+...
+```
+
+**When to add shebang (dual-mode):** Add when the function does NOT:
+- `cd` into a directory (would affect calling script, not caller's shell)
+- `export` variables into the caller's environment
+- `source` files into the caller's shell
+- Use `print -z` (zsh command buffer injection)
+- Define completions (`compdef`, `compadd`, `add-zsh-hook`, `_*` prefix)
+
+**Zsh-only functions** (no shebang, autoload only):
+
+| Function | Reason |
+|----------|--------|
+| `takedir`, `takegit`, `takeurl`, `takezip`, `take`, `mkcd` | `cd` |
+| `ghcl`, `wta`, `wts` | `cd` |
+| `y` | `cd` |
+| `secretexport` | `export` |
+| `zshrc-local` | `source` |
+| `fns`, `cpcmd` | `print -z` |
+| `_register_tmux_completions`, `_tmux_sessions`, `_hcloud_ssh` | completion/hook |
+
+### Managing symlinks
+
+```bash
+zfn-link              # sync ~/.local/bin/ symlinks (after adding/removing shebangs)
+zfn-link --dry-run    # preview changes without applying
+zfn-link --verbose    # show each created/removed/unchanged symlink
+```
+
+Run `zfn-link` and commit after adding a shebang to a new function.
+
+### Agent usage
+
+Agents can call these commands directly — no `zsh -lc` wrapper needed:
+```bash
+bash -c 'ts status'       # works via ~/.local/bin/ts
+bash -c 'killport 3000'   # works via ~/.local/bin/killport
+```
+
+Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `function`).
+
+### Other conventions
 
 - Add a top-of-function comment in `~/.config/zsh/functions/**` using `# <name>: <purpose>` (and `# alias: ...` when needed).
 - oh-my-zsh git plugin defines ~200 `g*` aliases (e.g. `gcl`, `gco`, `gca`). Run `alias <name>` before creating new `g*` functions/aliases to avoid conflicts.
