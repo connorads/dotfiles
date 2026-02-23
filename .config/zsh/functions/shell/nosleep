@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # nosleep: keep mac awake while allowing display sleep
 emulate -L zsh
 

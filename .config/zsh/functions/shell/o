@@ -1,5 +1,8 @@
+#!/usr/bin/env zsh
 # o: open path in native file manager (Finder, Files, etc.)
 # Usage: o [path]  (defaults to current directory)
+emulate -L zsh
+
 local target="${1:-.}"
 
 if [[ "$OSTYPE" == darwin* ]]; then

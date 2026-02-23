@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tsdns: manage Tailscale DNS preference on this device
 emulate -L zsh
 setopt localoptions

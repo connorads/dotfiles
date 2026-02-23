@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # ports: inspect listening ports with fzf
 # Usage: ports [-k]
 #   -k  kill mode (select one or more ports to stop via killport)

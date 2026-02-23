@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # pclose: interactive process closer (TERM first, optional KILL)
 emulate -L zsh
 

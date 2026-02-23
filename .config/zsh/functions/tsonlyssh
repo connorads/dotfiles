@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # tsonlyssh: Restrict SSH to Tailscale interface only (removes public port 22)
+emulate -L zsh
+
 if ! command -v ufw >/dev/null 2>&1; then
   echo "ufw not installed" >&2
   return 1

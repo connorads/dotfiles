@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # ai-usage: combined Claude + Codex API usage
 # alias: aiu
 emulate -L zsh

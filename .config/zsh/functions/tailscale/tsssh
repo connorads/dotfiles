@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tsssh: manage Tailscale SSH preference on this device
 emulate -L zsh
 setopt localoptions

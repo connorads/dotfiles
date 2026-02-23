@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # hms: home-manager switch using ~/.config/nix flake
+emulate -L zsh
+
 home-manager switch --flake ~/.config/nix

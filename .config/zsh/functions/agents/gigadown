@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # gigadown: stop gigacode server and Tailscale serve
+emulate -L zsh
+
 tmux kill-session -t gigacode 2>/dev/null
 ts serve --https=2468 off 2>/dev/null
 echo "Gigacode stopped"

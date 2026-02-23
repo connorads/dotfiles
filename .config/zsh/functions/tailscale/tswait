@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # tswait: wait for a tailscale device to come online with tty bell alert
 emulate -L zsh
 

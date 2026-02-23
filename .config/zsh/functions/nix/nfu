@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # nfu: update nix flake inputs for ~/.config/nix
+emulate -L zsh
+
 nix flake update --flake ~/.config/nix

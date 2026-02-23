@@ -1,5 +1,8 @@
+#!/usr/bin/env zsh
 # cda: run Claude auth in codespace via tmux
 # Select codespace via fzf
+emulate -L zsh
+
 local cs=$(gh codespace list --json name,repository,state \
   --jq '.[] | select(.state=="Available") | "\(.name)\t\(.repository)"' \
   | fzf --prompt="Codespace for Claude auth: " --with-nth=1..)

@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # claude-usage: Show Claude API usage limits (5-hour/7-day windows, cached 60s)
 # Usage: claude-usage [-h|--help]
 #
@@ -6,6 +7,7 @@
 #   - 7-day rolling window
 #
 # Note: If you see "Not logged in", run `/login` in Claude CLI or `claude setup-token`
+emulate -L zsh
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     echo "Usage: claude-usage [-h|--help]"

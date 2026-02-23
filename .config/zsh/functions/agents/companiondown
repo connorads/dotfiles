@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # companiondown: stop Vibe Companion and Tailscale serve
+emulate -L zsh
+
 tmux kill-session -t companion 2>/dev/null
 ts serve --https=3456 off 2>/dev/null
 echo "Companion stopped"

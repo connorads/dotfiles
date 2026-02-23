@@ -1,3 +1,4 @@
+#!/usr/bin/env zsh
 # killport: stop listeners on one or more ports (TERM first)
 # alias: kp
 emulate -L zsh

@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # gigaup: start gigacode server via Tailscale serve
+emulate -L zsh
+
 local port=${1:-2468}
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
 tmux kill-session -t gigacode 2>/dev/null

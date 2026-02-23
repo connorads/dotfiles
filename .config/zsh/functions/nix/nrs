@@ -1,2 +1,5 @@
+#!/usr/bin/env zsh
 # nrs: nixos-rebuild switch using ~/.config/nix flake
+emulate -L zsh
+
 sudo nixos-rebuild switch --flake ~/.config/nix

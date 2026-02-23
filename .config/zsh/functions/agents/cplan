@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # cplan: fzf pick a Claude plan and open in editor
+emulate -L zsh
+
 local plandir="${HOME}/.claude/plans"
 local projdir="${HOME}/.claude/projects"
 

@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # up: update tools, flake lock, and rebuild for current OS
+emulate -L zsh
+
 mise upgrade
 if [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade

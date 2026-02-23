@@ -1,4 +1,7 @@
+#!/usr/bin/env zsh
 # ocm: enable selected MCPs in opencode config
+emulate -L zsh
+
 local cfg="$HOME/.config/opencode/opencode.json"
 local sel=$(jq -r '.mcp|keys[]' "$cfg" | fzf -m --prompt="MCPs to enable > ")
 [[ -z "$sel" ]] && return
