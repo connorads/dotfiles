@@ -94,9 +94,10 @@ for link in "$bin_dir"/*(N@); do
 done
 
 # Create missing symlinks
+local dest rel
 for file in "${shebang_files[@]}"; do
-  local name="${file:t}"
-  local dest="$bin_dir/$name"
+  name="${file:t}"
+  dest="$bin_dir/$name"
 
   if [[ -e "$dest" || -L "$dest" ]]; then
     (( verbose )) && echo "Unchanged: $dest"
@@ -104,7 +105,6 @@ for file in "${shebang_files[@]}"; do
     continue
   fi
 
-  local rel
   rel=$(_zfn_relpath "$bin_dir" "$file")
   (( verbose )) && echo "Creating: $dest -> $rel"
   if (( ! dry_run )); then
@@ -113,4 +113,5 @@ for file in "${shebang_files[@]}"; do
   (( created++ ))
 done
 
+unfunction _zfn_relpath 2>/dev/null
 echo "Created $created, removed $removed, unchanged $unchanged"

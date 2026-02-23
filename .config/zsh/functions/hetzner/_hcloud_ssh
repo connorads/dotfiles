@@ -1,4 +1,6 @@
+#!/usr/bin/env zsh
 # _hcloud_ssh: pick or resolve a server IP, then ssh
+emulate -L zsh
 local user="$1"
 shift
 if [[ -n "$1" ]]; then
