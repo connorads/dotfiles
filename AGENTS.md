@@ -36,15 +36,13 @@ Then `dotfiles add .newfile` works without `-f`.
 
 - [~/README.md](./README.md) - how the dotfiles system works (git-dir + work-tree, nix-darwin, home-manager)
 - [~/.config/nix/hosts/rpi5/README.md](./.config/nix/hosts/rpi5/README.md) - RPi5 NixOS installation & management
-- [~/.config/nix/hosts/rpi5/CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md) - Clawdbot AI gateway setup on RPi5
 
 ## Configuration Files
 
 | File | Purpose |
 |------|---------|
 | [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager), NixOS (rpi5) |
-| [configuration.nix](./.config/nix/hosts/rpi5/configuration.nix) | RPi5 NixOS system config with Clawdbot, Tailscale, auto-updates |
-| [clawdbot.json](./.clawdbot/clawdbot.json) | Clawdbot AI gateway config (RPi5) |
+| [configuration.nix](./.config/nix/hosts/rpi5/configuration.nix) | RPi5 NixOS system config with Tailscale, auto-updates |
 | [config.toml](./.config/mise/config.toml) | mise tools (gh, opencode, etc.) |
 | [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers (nix/git/tailscale) |
 | [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
@@ -121,7 +119,6 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 ## Scripts
 
 - [install.sh](./install.sh) - Bootstrap script for new machines
-- [secrets-deploy.sh](./.config/nix/hosts/rpi5/secrets-deploy.sh) - Deploy secrets to RPi5 securely
 
 ## Nix Targets
 
@@ -214,8 +211,6 @@ Pattern: `ts serve --bg --https=$port $port` — `webtermup` is the exception, o
 - **Tailscale funnel** (public internet): `tsserveup --public [port]`
 - **Cloudflared quick tunnel** (unauthenticated, ephemeral): `cloudflared tunnel --url http://localhost:PORT`
 
-For RPi5-specific commands (clawdbot, user services), see [CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md).
-
 ## Tracked Files
 
 To list all tracked dotfiles:
@@ -259,4 +254,3 @@ After making significant changes (new config files, architectural changes, new s
 - This file (`AGENTS.md`) - for new key files or commands
 - [README.md](./README.md) - for changes to the dotfiles system itself
 - [hosts/rpi5/README.md](./.config/nix/hosts/rpi5/README.md) - for RPi5 setup/management changes
-- [hosts/rpi5/CLAWDBOT.md](./.config/nix/hosts/rpi5/CLAWDBOT.md) - for Clawdbot configuration changes
