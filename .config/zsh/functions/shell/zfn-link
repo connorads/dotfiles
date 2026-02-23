@@ -1,0 +1,117 @@
+#!/usr/bin/env zsh
+# zfn-link: sync ~/.local/bin symlinks for dual-mode zsh functions
+# Usage: zfn-link [-v|--verbose] [-n|--dry-run]
+#
+# Scans ~/.config/zsh/functions/**/ for files with #!/usr/bin/env zsh on
+# line 1, creates relative symlinks in ~/.local/bin/, and removes stale ones.
+emulate -L zsh
+
+local verbose=0 dry_run=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v|--verbose) verbose=1; shift ;;
+    -n|--dry-run) dry_run=1; verbose=1; shift ;;
+    -h|--help)
+      echo "Usage: zfn-link [-v|--verbose] [-n|--dry-run]" >&2
+      return 0
+      ;;
+    *) echo "Unknown option: $1" >&2; return 1 ;;
+  esac
+done
+
+local fn_dir="$HOME/.config/zsh/functions"
+local bin_dir="$HOME/.local/bin"
+
+[[ -d "$fn_dir" ]] || { echo "No functions dir at $fn_dir" >&2; return 1; }
+
+if (( ! dry_run )); then
+  command mkdir -p "$bin_dir"
+fi
+
+# Calculate relative path from directory $1 to file $2
+_zfn_relpath() {
+  local from="${1:A}" to="${2:A}"
+  local -a from_parts to_parts
+  from_parts=("${(@s:/:)from}")
+  to_parts=("${(@s:/:)to}")
+
+  local i=1 common=0
+  while (( i <= $#from_parts && i <= $#to_parts )); do
+    [[ "${from_parts[i]}" == "${to_parts[i]}" ]] || break
+    (( common++ ))
+    (( i++ ))
+  done
+
+  local -a rel_parts
+  local j
+  for (( j = common + 1; j <= $#from_parts; j++ )); do
+    rel_parts+=("..")
+  done
+  for (( j = common + 1; j <= $#to_parts; j++ )); do
+    rel_parts+=("${to_parts[j]}")
+  done
+
+  print -r -- "${(j:/:)rel_parts}"
+}
+
+local created=0 removed=0 unchanged=0
+
+# Find all function files with #!/usr/bin/env zsh on line 1
+local -a shebang_files
+local file first_line
+for file in "$fn_dir"/**/*(.N); do
+  IFS= read -r first_line < "$file"
+  [[ "$first_line" == '#!/usr/bin/env zsh' ]] && shebang_files+=("$file")
+done
+
+# Build a set of names that should be in ~/.local/bin
+local -A expected
+for file in "${shebang_files[@]}"; do
+  expected[${file:t}]="$file"
+done
+
+# Remove stale symlinks: dangling or pointing to files without shebang
+local link target
+for link in "$bin_dir"/*(N@); do
+  local name="${link:t}"
+  target=$(readlink "$link")
+
+  # Resolve target relative to bin_dir
+  local abs_target
+  if [[ "$target" == /* ]]; then
+    abs_target="$target"
+  else
+    abs_target="$bin_dir/$target"
+  fi
+
+  # Stale if dangling or name not in expected set
+  if [[ ! -e "$abs_target" ]] || [[ -z "${expected[$name]+x}" ]]; then
+    (( verbose )) && echo "Removing stale: $link"
+    if (( ! dry_run )); then
+      command rm "$link"
+    fi
+    (( removed++ ))
+  fi
+done
+
+# Create missing symlinks
+for file in "${shebang_files[@]}"; do
+  local name="${file:t}"
+  local dest="$bin_dir/$name"
+
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    (( verbose )) && echo "Unchanged: $dest"
+    (( unchanged++ ))
+    continue
+  fi
+
+  local rel
+  rel=$(_zfn_relpath "$bin_dir" "$file")
+  (( verbose )) && echo "Creating: $dest -> $rel"
+  if (( ! dry_run )); then
+    command ln -s "$rel" "$dest"
+  fi
+  (( created++ ))
+done
+
+echo "Created $created, removed $removed, unchanged $unchanged"
