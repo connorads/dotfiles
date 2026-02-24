@@ -45,8 +45,10 @@
     tree-sitter
     jq
     yq-go
+    miller
     gum
     usql
+    duckdb
     postgresql
     lazysql
     witr
