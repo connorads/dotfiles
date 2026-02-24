@@ -48,6 +48,11 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Make illegal states unrepresentable Model domain with ADTs/discriminated unions; parse inputs at boundaries into typed structures; if state can't exist, code can't mishandle it
 - Quality Abstractions: Consciously constrained, pragmatically parameterised, doggedly documented
 
+## Commits, comments and docs
+
+- Document the *why* and *intent*, the what and how can usually be deduced but the *why* and *intent* will get lost otherwise.
+- If you're ever unsure why the user might be doing something then ask - they will appreciate your questioning and clarify.
+
 ## Testing
 
 - Write automated tests: Ideally first, in TDD manner. Test expected business behaviour, not implementation. Test through the public API, this helps create good abstractions.
