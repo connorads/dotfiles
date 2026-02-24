@@ -20,6 +20,7 @@ gemini = "latest"
 codex = "latest"
 usage = "latest"
 hcloud = "latest"
+deno = "latest"
 
 "aqua:anthropics/claude-code" = "latest"
 "aqua:anomalyco/opencode" = "latest"
