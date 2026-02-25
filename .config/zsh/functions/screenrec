@@ -11,7 +11,7 @@ echo "Make sure sound output is set to your Multi-Output Device"
 echo "(System Settings > Sound > Output > Loopback)"
 echo ""
 
-ffmpeg -f avfoundation -framerate 30 -i "Capture screen 0:BlackHole 16ch" \
-  -c:v h264 -crf 23 -preset medium \
-  -c:a aac -b:a 128k \
+ffmpeg -f avfoundation -pixel_format nv12 -framerate 30 -i "Capture screen 0:BlackHole 16ch" \
+  -vf scale=1920:1080 -c:v libx264 -crf 23 -preset ultrafast \
+  -ac 2 -c:a aac -b:a 128k \
   "$output"
