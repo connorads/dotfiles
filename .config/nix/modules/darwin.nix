@@ -90,6 +90,7 @@
       "slack"
 
       # Hardware
+      "blackhole-16ch"
       "logitech-camera-settings"
       "wacom-tablet"
     ];
