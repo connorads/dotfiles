@@ -1,0 +1,16 @@
+#!/usr/bin/env zsh
+# critique: workaround for jsxImportSource conflict (remorses/critique#32)
+# Calls bun directly with --tsconfig-override so the project's jsxImportSource
+# doesn't bleed into critique's own TSX compilation.
+emulate -L zsh
+
+local cli
+cli="$(mise where npm:critique 2>/dev/null)/node_modules/critique/src/cli.tsx"
+
+if [[ ! -f "$cli" ]]; then
+  echo "critique: cannot find cli.tsx — is npm:critique installed?" >&2
+  return 1
+fi
+
+exec bun run --tsconfig-override "${HOME}/.config/bun/critique-tsconfig.json" \
+  "$cli" "$@"
