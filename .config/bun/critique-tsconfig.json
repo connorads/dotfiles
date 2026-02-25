@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "jsxImportSource": "@opentuah/react",
+    "jsx": "react-jsx"
+  }
+}
