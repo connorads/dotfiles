@@ -24,6 +24,8 @@
 | `Ctrl+b !` | break pane into new window |
 | `Ctrl+b \` | join pane from picker (left/right) |
 | `Ctrl+b _` | join pane from picker (top/bottom) |
+| `Ctrl+b J` | join ALL windows into panes (tiled) |
+| `Ctrl+b B` | burst ALL panes into own windows |
 | `Ctrl+b z` | zoom pane |
 | `Ctrl+d` | close pane (exit shell) |
 | `Ctrl+b L` | layout presets (fzf picker) |
