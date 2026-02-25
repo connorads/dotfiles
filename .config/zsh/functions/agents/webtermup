@@ -7,7 +7,7 @@ local port=${2:-7681}
 pkill -f "webmux serve.*--port $port" 2>/dev/null
 pkill -f "ttyd.*--port $port" 2>/dev/null
 
-webmux serve --port $port -- tmux new-session -A -s "$session" &!
+webmux serve --no-sleep --port $port -- tmux new-session -A -s "$session" &!
 
 ts serve --bg $port
 local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
