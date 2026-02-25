@@ -133,3 +133,4 @@ __pycache__/
 /.local/**
 !/.local/bin/
 !/.local/bin/**
+/.local/bin/claude
