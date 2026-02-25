@@ -42,8 +42,9 @@ if [[ $age -ge $ttl ]]; then
         return 1
     fi
 
+    local claude_ver; claude_ver=$(claude --version 2>/dev/null | awk '{print $1}')
     local resp=$(curl -s --max-time 5 "https://api.anthropic.com/api/oauth/usage" \
-        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/2.1.30")
+        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/${claude_ver:-unknown}")
     [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
 fi
 
