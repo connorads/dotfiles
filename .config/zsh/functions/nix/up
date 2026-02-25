@@ -1,6 +1,14 @@
 #!/usr/bin/env zsh
 # up: update tools, flake lock, and rebuild for current OS
+# flags: --skip-flake / -s  skip nix flake update and commit
 emulate -L zsh
+
+local skip_flake=0
+for arg in "$@"; do
+  case "$arg" in
+    --skip-flake|-s) skip_flake=1 ;;
+  esac
+done
 
 mise upgrade
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -15,11 +23,12 @@ if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f 
   sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 fi
 
-nfu
-
-dotfiles add ~/.config/nix/flake.lock
-if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
-  dotfiles commit -m "chore(nix): update flake lock"
+if (( !skip_flake )); then
+  nfu
+  dotfiles add ~/.config/nix/flake.lock
+  if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
+    dotfiles commit -m "chore(nix): update flake lock"
+  fi
 fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
