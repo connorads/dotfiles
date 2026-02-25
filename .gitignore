@@ -95,6 +95,9 @@
 !/.config/kitty/
 !/.config/kitty/**
 
+!/.config/zed/
+!/.config/zed/settings.json
+
 !/.config/tmux/
 !/.config/tmux/**
 /.config/tmux/plugins/
