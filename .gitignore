@@ -117,6 +117,9 @@
 !/.config/webmux/
 !/.config/webmux/webmux.config.ts
 
+!/.config/bun/
+!/.config/bun/critique-tsconfig.json
+
 !/.config/zsh/
 !/.config/zsh/aliases/
 !/.config/zsh/aliases/**
