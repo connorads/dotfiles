@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# nosleep: keep mac awake while allowing display sleep
+# nosleep: keep mac awake (prevents system sleep on AC power)
 emulate -L zsh
 
 if ! command -v caffeinate >/dev/null 2>&1; then
@@ -7,8 +7,16 @@ if ! command -v caffeinate >/dev/null 2>&1; then
   return 1
 fi
 
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+  echo "Usage: nosleep [duration] [-- command...]"
+  echo "  Prevents system sleep on AC power (caffeinate -s)"
+  echo "  Duration: 30, 5m, 2h"
+  echo "  Command:  nosleep -- long-running-task"
+  return 0
+fi
+
 if [[ $# -eq 0 ]]; then
-  caffeinate -i
+  caffeinate -s
   return $?
 fi
 
@@ -30,11 +38,11 @@ fi
 if [[ -n "$seconds" ]]; then
   shift
   if [[ $# -eq 0 ]]; then
-    caffeinate -i -t "$seconds"
+    caffeinate -s -t "$seconds"
   else
-    caffeinate -i -t "$seconds" "$@"
+    caffeinate -s -t "$seconds" "$@"
   fi
   return $?
 fi
 
-caffeinate -i "$@"
+caffeinate -s "$@"
