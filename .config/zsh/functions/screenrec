@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+# screenrec: record screen + system audio via BlackHole
+emulate -L zsh
+
+local output="${1:-$HOME/Desktop/screenrec-$(date +%Y%m%d-%H%M%S).mp4}"
+
+echo "Recording to: $output"
+echo "Press 'q' to stop recording"
+echo ""
+echo "Make sure sound output is set to your Multi-Output Device"
+echo "(System Settings > Sound > Output > Loopback)"
+echo ""
+
+ffmpeg -f avfoundation -framerate 30 -i "Capture screen 0:BlackHole 16ch" \
+  -c:v h264 -crf 23 -preset medium \
+  -c:a aac -b:a 128k \
+  "$output"
