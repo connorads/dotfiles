@@ -1,0 +1,28 @@
+#!/usr/bin/env zsh
+# tmburst: break all panes in the current window into individual windows
+emulate -L zsh
+
+if [[ -z "${TMUX:-}" ]]; then
+  print -u2 "tmburst: not inside tmux"
+  return 1
+fi
+
+local target_window
+target_window=$(tmux display-message -p '#{window_index}')
+
+local pane_count
+pane_count=$(tmux list-panes -t ":${target_window}" | wc -l | tr -d ' ')
+
+if (( pane_count <= 1 )); then
+  tmux display-message "tmburst: only 1 pane, nothing to break out"
+  return 0
+fi
+
+# Break from highest index downward to avoid index shifting
+local last_pane
+while (( $(tmux list-panes -t ":${target_window}" | wc -l | tr -d ' ') > 1 )); do
+  last_pane=$(tmux list-panes -t ":${target_window}" -F '#{pane_index}' | tail -1)
+  tmux break-pane -d -s ":${target_window}.${last_pane}"
+done
+
+tmux display-message "tmburst: broke ${pane_count} panes into individual windows"
