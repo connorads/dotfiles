@@ -1,0 +1,36 @@
+#!/usr/bin/env zsh
+# tmjoin: merge all windows in the current session into one window with tiled layout
+emulate -L zsh
+
+if [[ -z "${TMUX:-}" ]]; then
+  print -u2 "tmjoin: not inside tmux"
+  return 1
+fi
+
+local win_count
+win_count=$(tmux list-windows -F '#{window_index}' | wc -l | tr -d ' ')
+
+if (( win_count <= 1 )); then
+  tmux display-message "tmjoin: only 1 window, nothing to join"
+  return 0
+fi
+
+# Use stable window IDs (@N) rather than indices — renumber-windows on shifts
+# indices as windows are destroyed, making a pre-captured index list stale.
+local target_id
+target_id=$(tmux display-message -p '#{window_id}')
+
+local win_id
+tmux list-windows -F '#{window_id}' | while read -r win_id; do
+  [[ "$win_id" == "$target_id" ]] && continue
+  # A window may have multiple panes — join them one at a time until gone
+  while tmux join-pane -d -s "${win_id}" -t "${target_id}" 2>/dev/null; do
+    tmux select-layout -t "${target_id}" tiled
+  done
+done
+
+tmux select-layout -t "${target_id}" tiled
+
+local pane_count
+pane_count=$(tmux list-panes -t "${target_id}" | wc -l | tr -d ' ')
+tmux display-message "tmjoin: merged ${win_count} windows into ${pane_count} panes (tiled)"
