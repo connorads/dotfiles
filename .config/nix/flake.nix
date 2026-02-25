@@ -49,18 +49,33 @@
         import nixpkgs {
           inherit system;
           config.allowUnfree = true;
+          # Temporary workarounds for upstream nixpkgs-unstable regressions.
+          # TODO: after each `nfu`, check if the linked issue is closed and delete the block.
+          # Once all three are gone, delete the entire `overlays = [ ... ];` argument too.
           overlays = [
-            # HACK: asyncer 0.0.17 missing sniffio dep (nixpkgs#493003)
-            # HACK: jeepney 0.9 installCheck requires D-Bus, unavailable on darwin (nixpkgs#493775)
             (final: prev: {
               pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
                 (pyFinal: pyPrev: {
+                  # TODO: remove once https://github.com/NixOS/nixpkgs/issues/494024 is fixed
+                  # (gradio relaxes tomlkit upper bound; opened 2026-02-25)
+                  gradio =
+                    let orig = pyPrev.gradio;
+                    in orig.overridePythonAttrs (old: {
+                      pythonRelaxDeps = (old.pythonRelaxDeps or [ ]) ++ [ "tomlkit" ];
+                      doCheck = false; # tests need CUDA + network, unavailable in sandbox
+                    }) // { inherit (orig) override; }; # preserve override for passthru.tests self-ref
+
+                  # TODO: remove once https://github.com/NixOS/nixpkgs/pull/493003 is merged
+                  # (asyncer declares sniffio as runtime dep; opened 2026-02-22)
                   asyncer = pyPrev.asyncer.overridePythonAttrs (old: {
                     dependencies = (old.dependencies or [ ]) ++ [ pyFinal.sniffio ];
                   });
+
+                  # TODO: remove once https://github.com/NixOS/nixpkgs/issues/493775 is fixed
+                  # (jeepney skips D-Bus installCheck on darwin; opened 2026-02-24)
                   jeepney = pyPrev.jeepney.overrideAttrs (_: {
-                    doInstallCheck = false;
-                    # trio support is optional; outcome (trio dep) not in propagatedBuildInputs
+                    doInstallCheck = false; # dbus-run-session unavailable on darwin
+                    # jeepney.io.trio needs outcome (trio dep), but trio support is optional
                     pythonImportsCheck = [
                       "jeepney"
                       "jeepney.auth"
