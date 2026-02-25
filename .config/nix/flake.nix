@@ -49,6 +49,31 @@
         import nixpkgs {
           inherit system;
           config.allowUnfree = true;
+          overlays = [
+            # HACK: asyncer 0.0.17 missing sniffio dep (nixpkgs#493003)
+            # HACK: jeepney 0.9 installCheck requires D-Bus, unavailable on darwin (nixpkgs#493775)
+            (final: prev: {
+              pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+                (pyFinal: pyPrev: {
+                  asyncer = pyPrev.asyncer.overridePythonAttrs (old: {
+                    dependencies = (old.dependencies or [ ]) ++ [ pyFinal.sniffio ];
+                  });
+                  jeepney = pyPrev.jeepney.overrideAttrs (_: {
+                    doInstallCheck = false;
+                    # trio support is optional; outcome (trio dep) not in propagatedBuildInputs
+                    pythonImportsCheck = [
+                      "jeepney"
+                      "jeepney.auth"
+                      "jeepney.io"
+                      "jeepney.io.asyncio"
+                      "jeepney.io.blocking"
+                      "jeepney.io.threading"
+                    ];
+                  });
+                })
+              ];
+            })
+          ];
         };
 
       # Helper to create packages module for a given pkgs
