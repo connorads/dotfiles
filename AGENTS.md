@@ -35,14 +35,13 @@ Then `dotfiles add .newfile` works without `-f`.
 ## Key Documentation
 
 - [~/README.md](./README.md) - how the dotfiles system works (git-dir + work-tree, nix-darwin, home-manager)
-- [~/.config/nix/hosts/rpi5/README.md](./.config/nix/hosts/rpi5/README.md) - RPi5 NixOS installation & management
+- [connorads/rpi5](https://github.com/connorads/rpi5) - RPi5 NixOS configuration (standalone repo)
 
 ## Configuration Files
 
 | File | Purpose |
 |------|---------|
-| [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager), NixOS (rpi5) |
-| [configuration.nix](./.config/nix/hosts/rpi5/configuration.nix) | RPi5 NixOS system config with Tailscale, auto-updates |
+| [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager) |
 | [config.toml](./.config/mise/config.toml) | mise tools (gh, opencode, etc.) |
 | [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers (nix/git/tailscale) |
 | [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
@@ -127,8 +126,7 @@ darwinConfigurations."Connors-Mac-mini"  # macOS via nix-darwin + home-manager
 homeConfigurations."connor@penguin"      # Chromebook Linux
 homeConfigurations."connor@dev"          # Remote aarch64 Linux
 homeConfigurations."codespace"           # GitHub Codespaces (minimal)
-nixosConfigurations."rpi5"               # Raspberry Pi 5 NixOS
-installerImages.rpi5                     # Pi 5 installer image
+# RPi5 NixOS config: github.com/connorads/rpi5
 ```
 
 ## Common Commands
@@ -136,7 +134,6 @@ installerImages.rpi5                     # Pi 5 installer image
 ```bash
 drs                    # darwin-rebuild switch (macOS)
 hms                    # home-manager switch (Linux)
-nrs                    # nixos-rebuild switch (NixOS)
 nfu                    # nix flake update
 dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
@@ -253,4 +250,3 @@ ts ssh connor@rpi5 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME pull'
 After making significant changes (new config files, architectural changes, new scripts), update the relevant documentation:
 - This file (`AGENTS.md`) - for new key files or commands
 - [README.md](./README.md) - for changes to the dotfiles system itself
-- [hosts/rpi5/README.md](./.config/nix/hosts/rpi5/README.md) - for RPi5 setup/management changes
