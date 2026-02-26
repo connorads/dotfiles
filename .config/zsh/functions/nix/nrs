@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# nrs: nixos-rebuild switch using ~/.config/nix flake
+# nrs: nixos-rebuild switch using $NIXOS_FLAKE (default: ~/.config/nix)
 emulate -L zsh
 
-sudo nixos-rebuild switch --flake ~/.config/nix
+sudo nixos-rebuild switch --flake "${NIXOS_FLAKE:-$HOME/.config/nix}" "$@"
