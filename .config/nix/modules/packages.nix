@@ -49,6 +49,7 @@
     gum
     usql
     duckdb
+    ollama
     postgresql
     lazysql
     witr
