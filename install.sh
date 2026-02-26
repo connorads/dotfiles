@@ -178,10 +178,8 @@ else
 	fi
 fi
 
-# Run home-manager (skip on NixOS - managed by nixos-rebuild)
-if [ "$IN_NIXOS" = "true" ]; then
-	echo "Skipping home-manager switch on NixOS - run 'nrs' (nixos-rebuild switch) instead"
-elif [ "$IN_CODESPACES" = "true" ]; then
+# Run home-manager (standalone on NixOS for user env, system config is separate)
+if [ "$IN_CODESPACES" = "true" ]; then
 	echo "Running home-manager switch..."
 	nix run home-manager/master -- switch --flake ~/.config/nix#codespace
 else
