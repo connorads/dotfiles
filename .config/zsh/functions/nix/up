@@ -33,6 +33,9 @@ fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   drs
+elif [[ -f /etc/NIXOS ]]; then
+  nrs    # system rebuild (reads NIXOS_FLAKE)
+  hms    # user env rebuild (reads ~/.config/nix)
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   hms
 fi
