@@ -117,7 +117,7 @@
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
       homeConfigurations."connor@penguin" =
         let
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs = mkPkgs "x86_64-linux";
         in
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -172,7 +172,7 @@
 
       homeConfigurations."connor@dev" =
         let
-          pkgs = nixpkgs.legacyPackages.aarch64-linux;
+          pkgs = mkPkgs "aarch64-linux";
         in
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -187,7 +187,7 @@
 
       homeConfigurations."codespace" =
         let
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs = mkPkgs "x86_64-linux";
         in
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
