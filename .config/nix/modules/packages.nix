@@ -105,9 +105,9 @@
     # rembg CLI without gradio (rembg s server won't work; rembg i/p/b still work)
     (pkgs.python3Packages.toPythonApplication (
       (pkgs.python3Packages.rembg.override { withCli = true; }).overrideAttrs (old: {
-        propagatedBuildInputs = builtins.filter
-          (p: (p.pname or p.name or "") != "gradio")
-          old.propagatedBuildInputs;
+        propagatedBuildInputs = builtins.filter (
+          p: (p.pname or p.name or "") != "gradio"
+        ) old.propagatedBuildInputs;
       })
     ))
 
@@ -117,6 +117,74 @@
 
     # Apps
     telegram-desktop
+  ];
+
+  # Server/headless: "feels like home" over SSH, no desktop/media/heavy-dev
+  serverPackages = with pkgs; [
+    # Shell & terminal
+    zsh
+    tmux
+    kitty.terminfo
+    starship
+
+    # Editors
+    vim
+    micro
+
+    # Navigation & search
+    fd
+    ripgrep
+    fzf
+    zoxide
+    tree
+    yazi
+    eza
+
+    # Git & VCS
+    delta
+    difftastic
+    lazygit
+    lazyworktree
+    jujutsu
+    (writeShellScriptBin "dotfiles" ''
+      home="''${HOME:-$(eval echo ~)}"
+      exec ${git}/bin/git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
+    '')
+
+    # CLI utilities
+    coreutils
+    bc
+    bat
+    glow
+    bottom
+    dust
+    ncdu
+    tealdeer
+    jq
+    yq-go
+    gum
+    zstd
+
+    # Dev tools
+    gcc
+    mise
+    nixfmt
+    tree-sitter
+
+    # Clipboard (OSC 52)
+    osc
+    (writeShellScriptBin "xclip" ''
+      for arg in "$@"; do
+        case "$arg" in -o|-out) exit 1 ;; esac
+      done
+      exec ${osc}/bin/osc copy
+    '')
+
+    # Networking
+    tailscale
+    nmap
+    cloudflared
+    ttyd
   ];
 
   # Minimal package set for ephemeral environments (codespaces, containers)
