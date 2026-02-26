@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Dotfiles install script
 # Works on: GitHub Codespaces, Linux as root (creates connor user), Linux as regular user
 # Usage: curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
