@@ -139,5 +139,6 @@
     coreutils
     tailscale
     mise
+    atuin
   ];
 }
