@@ -125,15 +125,27 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 darwinConfigurations."Connors-Mac-mini"  # macOS via nix-darwin + home-manager
 homeConfigurations."connor@penguin"      # Chromebook Linux
 homeConfigurations."connor@dev"          # Remote aarch64 Linux
+homeConfigurations."connor@rpi5"         # Raspberry Pi 5 (aarch64, server packages, user env only)
 homeConfigurations."codespace"           # GitHub Codespaces (minimal)
-# RPi5 NixOS config: github.com/connorads/rpi5
+# RPi5 NixOS system config: github.com/connorads/rpi5
 ```
+
+### Hybrid NixOS (rpi5)
+
+The rpi5 uses a hybrid setup — two repos, two rebuilds:
+- **System** (`nrs`): NixOS config from `~/git/rpi5` (set via `NIXOS_FLAKE` in `.zshrc.local`)
+- **User env** (`hms`): shell, tools, git, tmux etc. from dotfiles (`~/.config/nix`)
+
+The `up` function runs both on NixOS. An agent on rpi5 can modify the system config (rpi5 repo) without touching dotfiles.
 
 ## Common Commands
 
 ```bash
 drs                    # darwin-rebuild switch (macOS)
 hms                    # home-manager switch (Linux)
+nrs                    # nixos-rebuild switch (reads $NIXOS_FLAKE, default: ~/.config/nix)
+nrsr                   # nixos-rebuild switch --rollback
+up                     # update everything: mise, brew/apt, flake lock, rebuild (NixOS: nrs + hms)
 nfu                    # nix flake update
 dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
