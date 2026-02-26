@@ -22,11 +22,6 @@
     pkgs.iina
   ];
 
-  environment.variables = {
-    EDITOR = "micro";
-    VISUAL = "micro";
-  };
-
   # -- Fonts --
   fonts.packages = with pkgs; [
     fira-code
