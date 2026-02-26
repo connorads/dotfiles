@@ -7,15 +7,12 @@
 #   - homeConfigurations."connor@penguin"      : Chromebook Linux container (x86_64)
 #   - homeConfigurations."connor@dev"          : Remote/cloud dev machine (aarch64)
 #   - homeConfigurations."codespace"           : GitHub Codespaces (minimal)
-#   - nixosConfigurations."rpi5"               : Raspberry Pi 5 (NixOS)
-#   - installerImages.rpi5                     : Pi 5 installer (SSH keys baked in)
+#
+# RPi5 config: github.com/connorads/rpi5
 #
 # Rebuild commands:
 #   macOS:  darwin-rebuild switch --flake ~/.config/nix  (alias: drs)
 #   Linux:  home-manager switch --flake ~/.config/nix    (alias: hms)
-#   NixOS:  nixos-rebuild switch --flake ~/.config/nix   (alias: nrs)
-#
-# Build Pi installer: nix build .#installerImages.rpi5
 #
 # ==============================================================================
 
@@ -30,8 +27,6 @@
 
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-
-    nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/main";
   };
 
   outputs =
@@ -40,7 +35,6 @@
       nix-darwin,
       nixpkgs,
       home-manager,
-      nixos-raspberrypi,
     }:
     let
       # Apply overlays to a pkgs set
@@ -59,11 +53,16 @@
                   # TODO: remove once https://github.com/NixOS/nixpkgs/issues/494024 is fixed
                   # (gradio relaxes tomlkit upper bound; opened 2026-02-25)
                   gradio =
-                    let orig = pyPrev.gradio;
-                    in orig.overridePythonAttrs (old: {
+                    let
+                      orig = pyPrev.gradio;
+                    in
+                    orig.overridePythonAttrs (old: {
                       pythonRelaxDeps = (old.pythonRelaxDeps or [ ]) ++ [ "tomlkit" ];
                       doCheck = false; # tests need CUDA + network, unavailable in sandbox
-                    }) // { inherit (orig) override; }; # preserve override for passthru.tests self-ref
+                    })
+                    // {
+                      inherit (orig) override;
+                    }; # preserve override for passthru.tests self-ref
 
                   # TODO: remove once https://github.com/NixOS/nixpkgs/pull/493003 is merged
                   # (asyncer declares sniffio as runtime dep; opened 2026-02-22)
@@ -100,7 +99,6 @@
     {
       formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
-      formatter.aarch64-linux = nixpkgs.legacyPackages.aarch64-linux.nixfmt;
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
       darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
@@ -207,63 +205,5 @@
           ];
         };
 
-      # Raspberry Pi 5: nixos-rebuild switch --flake ~/.config/nix#rpi5
-      nixosConfigurations."rpi5" = nixos-raspberrypi.lib.nixosSystem {
-        specialArgs = {
-          inherit inputs nixos-raspberrypi;
-        };
-        modules = [
-          (
-            { ... }:
-            {
-              imports = with nixos-raspberrypi.nixosModules; [
-                raspberry-pi-5.base
-                raspberry-pi-5.bluetooth
-              ];
-            }
-          )
-          home-manager.nixosModules.home-manager
-          ./hosts/rpi5/configuration.nix
-        ];
-      };
-
-      # Pi 5 installer image with SSH keys baked in (no HDMI needed)
-      # Build: nix build .#installerImages.rpi5
-      installerImages.rpi5 =
-        let
-          installer = nixos-raspberrypi.lib.nixosInstaller {
-            specialArgs = {
-              inherit inputs nixos-raspberrypi;
-            };
-            modules = [
-              (
-                { ... }:
-                {
-                  imports = with nixos-raspberrypi.nixosModules; [
-                    raspberry-pi-5.base
-                    raspberry-pi-5.page-size-16k
-                  ];
-                }
-              )
-              (
-                { ... }:
-                let
-                  githubKeys = builtins.fetchurl {
-                    url = "https://github.com/connorads.keys";
-                    sha256 = "1alzqm1lijavww9rlrj7dy876jy50dfx0v3f4a813kyxz1273yi1";
-                  };
-                  keys = builtins.filter (k: builtins.isString k && k != "") (
-                    builtins.split "\n" (builtins.readFile githubKeys)
-                  );
-                in
-                {
-                  users.users.nixos.openssh.authorizedKeys.keys = keys;
-                  users.users.root.openssh.authorizedKeys.keys = keys;
-                }
-              )
-            ];
-          };
-        in
-        installer.config.system.build.sdImage;
     };
 }
