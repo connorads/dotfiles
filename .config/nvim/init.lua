@@ -15,6 +15,9 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
+-- Word wrap on by default
+vim.opt.wrap = true
+
 -- Auto-reload files changed externally (e.g. AI edits)
 vim.o.autoread = true
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold" }, {
