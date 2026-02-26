@@ -8,7 +8,7 @@
 #   - homeConfigurations."connor@dev"          : Remote/cloud dev machine (aarch64)
 #   - homeConfigurations."codespace"           : GitHub Codespaces (minimal)
 #
-# RPi5 config: github.com/connorads/rpi5
+# RPi5 config: github.com/connorads/rpi5 (system) + homeConfigurations."connor@rpi5" (user env)
 #
 # Rebuild commands:
 #   macOS:  darwin-rebuild switch --flake ~/.config/nix  (alias: drs)
@@ -180,6 +180,27 @@
           modules = [
             ./modules/linux-base.nix
             ./modules/linux-packages.nix
+          ];
+        };
+
+      # RPi5 user env: home-manager switch --flake ~/.config/nix (alias: hms)
+      homeConfigurations."connor@rpi5" =
+        let
+          pkgs = mkPkgs "aarch64-linux";
+        in
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          extraSpecialArgs = {
+            packages = mkPackages pkgs;
+          };
+          modules = [
+            ./modules/linux-base.nix
+            (
+              { packages, ... }:
+              {
+                home.packages = packages.serverPackages;
+              }
+            )
           ];
         };
 
