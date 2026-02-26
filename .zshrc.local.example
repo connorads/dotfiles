@@ -22,3 +22,6 @@ export XAI_API_KEY=
 # Add more API keys as needed:
 # export FIGMA_API_KEY="..."
 # export SENTRY_API_KEY="..."
+
+# NixOS only: path to the NixOS flake for this machine
+# export NIXOS_FLAKE="$HOME/git/rpi5"

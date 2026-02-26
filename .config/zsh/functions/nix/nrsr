@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# nrsr: rollback nixos-rebuild (uses nrs)
+# nrsr: nixos-rebuild switch --rollback using $NIXOS_FLAKE (default: ~/.config/nix)
 emulate -L zsh
 
-nrs --rollback
+sudo nixos-rebuild switch --flake "${NIXOS_FLAKE:-$HOME/.config/nix}" --rollback "$@"
