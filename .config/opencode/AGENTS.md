@@ -42,6 +42,11 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Commit after each coherent unit. Don't batch everything into one mega-commit at the end.
 - Plan steps map to commits when they pass the revert and review tests. Multiple small steps may merge into one commit; one large step may split into several.
 
+## Selective Staging
+
+`git hunks list` shows diff hunks with unique IDs. `git hunks add <id>` stages specific hunks non-interactively.
+Use for granular commits when a file contains changes for multiple concerns.
+
 ## Coding and domain modelling
 
 - Strongly typed code: No `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
