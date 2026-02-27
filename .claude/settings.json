@@ -723,7 +723,13 @@
     ],
     "deny": [
       "Bash(rm -rf /)",
-      "Bash(eval:*)"
+      "Bash(rm -rf:*)",
+      "Bash(eval:*)",
+      "Bash(git add -A:*)",
+      "Bash(git add --all:*)",
+      "Bash(git add .:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
     ]
   },
   "model": "opusplan",
