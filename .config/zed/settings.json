@@ -14,5 +14,8 @@
     "mode": "system",
     "light": "Ayu Light",
     "dark": "Ayu Dark"
+  },
+  "terminal": {
+    "option_as_meta": true
   }
 }
