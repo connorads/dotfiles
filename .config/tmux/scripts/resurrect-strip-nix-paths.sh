@@ -4,8 +4,6 @@
 # session restore works after nix-collect-garbage or flake updates.
 # Without this, tmux-resurrect can't find executables whose store paths changed.
 # ref: https://discourse.nixos.org/t/30819
-set -euo pipefail
-
 SAVE_FILE="$1"
 [[ -f "$SAVE_FILE" ]] || exit 0
 

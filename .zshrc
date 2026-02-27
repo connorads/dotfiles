@@ -75,9 +75,14 @@ eval "$(atuin init zsh --disable-up-arrow)"
 # Log commands run inside AI agent sessions to a separate file.
 # Lets you grep what agents actually ran: grep '' ~/.local/state/agent-history.log
 _agent_history_preexec() {
-  if [[ -n "${CLAUDECODE:-}" ]]; then
+  local agent=""
+  if [[ -n "${CLAUDECODE:-}" ]]; then agent="claude"
+  elif [[ -n "${OPENCODE:-}" ]]; then agent="opencode"
+  fi
+  if [[ -n "$agent" ]]; then
     local log="${XDG_STATE_HOME:-$HOME/.local/state}/agent-history.log"
-    printf '%s\tagent=claude\tcmd=%s\n' "$(date -Iseconds)" "$1" >> "$log"
+    [[ -d "${log:h}" ]] || mkdir -p "${log:h}"
+    printf '%s\tagent=%s\tcmd=%s\n' "$(date -Iseconds)" "$agent" "$1" >> "$log"
   fi
 }
 add-zsh-hook preexec _agent_history_preexec
