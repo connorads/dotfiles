@@ -1,0 +1,9 @@
+[
+  {
+    "context": "Terminal",
+    "bindings": {
+      // Pass Alt+Enter through to tmux/apps as ESC + Enter (newline in Claude/OpenCode)
+      "alt-enter": ["terminal::SendText", "\u001b\r"]
+    }
+  }
+]
