@@ -50,7 +50,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
 | [init.lua](./.config/nvim/init.lua) | Neovim configuration |
 | [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded in zsh, also on PATH as executables) |
-| [~/.local/bin/](./.local/bin/) | Symlinks to dual-mode zsh functions (callable from any shell/agent) |
+| [~/.local/bin/](./.local/bin/) | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
 | [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux)) |
 
