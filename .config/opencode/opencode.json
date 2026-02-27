@@ -1,6 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "theme": "system",
   "permission": {
     "bash": {
       "*": "ask",
@@ -652,9 +651,6 @@
         ".pyi"
       ]
     }
-  },
-  "tui": {
-    "scroll_speed": 10
   },
   "agent": {
     "build": {
