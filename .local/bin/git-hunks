@@ -1,0 +1,245 @@
+#!/bin/sh
+set -e
+
+usage() {
+    printf '%s\n' "Usage: git hunks <command> [options]"
+    printf '%s\n' ""
+    printf '%s\n' "Non-interactive selective hunk staging."
+    printf '%s\n' ""
+    printf '%s\n' "Commands:"
+    printf '%s\n' "  list    List all hunks with unique IDs"
+    printf '%s\n' "  add     Stage specific hunks by ID"
+    printf '%s\n' ""
+    printf '%s\n' "Run 'git hunks <command> -h' for command-specific help."
+    exit 0
+}
+
+usage_list() {
+    printf '%s\n' "Usage: git hunks list [--staged]"
+    printf '%s\n' ""
+    printf '%s\n' "List all hunks with unique IDs for selective staging."
+    printf '%s\n' ""
+    printf '%s\n' "Options:"
+    printf '%s\n' "  --staged    List staged hunks instead of unstaged"
+    printf '%s\n' "  -h          Show this help message"
+    exit 0
+}
+
+usage_add() {
+    printf '%s\n' "Usage: git hunks add <hunk-id> [<hunk-id> ...]"
+    printf '%s\n' ""
+    printf '%s\n' "Stage specific hunks by their ID."
+    printf '%s\n' ""
+    printf '%s\n' "Hunk IDs are in the format: file:@-old,len+new,len"
+    printf '%s\n' "Use 'git hunks list' to see available hunk IDs."
+    printf '%s\n' ""
+    printf '%s\n' "Examples:"
+    printf '%s\n' "  git hunks add src/main.c:@-10,6+10,7"
+    printf '%s\n' "  git hunks add 'src/main.c:@-10,6+10,7' 'src/util.c:@-5,3+5,4'"
+    exit 0
+}
+
+cmd_list() {
+    STAGED=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --staged)
+                STAGED="--cached"
+                shift
+                ;;
+            -h)
+                usage_list
+                ;;
+            *)
+                printf '%s\n' "Unknown option: $1" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    diff_tmp="${TMPDIR:-/tmp}/git-hunks-diff.$$"
+    trap 'rm -f "$diff_tmp"' 0 HUP INT TERM
+
+    if ! git -c color.ui=false diff --no-ext-diff $STAGED >"$diff_tmp"; then
+        printf '%s\n' "git diff failed" >&2
+        exit 1
+    fi
+
+    awk '
+    BEGIN {
+        file = ""
+        oldfile = ""
+        in_hunk = 0
+        hunk_id = ""
+        hunk_header = ""
+        hunk_content = ""
+    }
+
+    /^diff --git/ {
+        if (in_hunk && hunk_content != "") {
+            print file ":" hunk_id
+            print hunk_header
+            printf "%s", hunk_content
+            print "---"
+        }
+        in_hunk = 0
+        file = ""
+        oldfile = ""
+        hunk_id = ""
+        hunk_content = ""
+    }
+
+    /^--- / {
+        oldfile = substr($0, 5)
+        sub(/^a\//, "", oldfile)
+        next
+    }
+
+    /^\+\+\+ / {
+        file = substr($0, 5)
+        if (file == "/dev/null") file = oldfile
+        sub(/^b\//, "", file)
+        next
+    }
+
+    /^@@ / {
+        if (in_hunk && hunk_content != "") {
+            print file ":" hunk_id
+            print hunk_header
+            printf "%s", hunk_content
+            print "---"
+        }
+        in_hunk = 1
+        hunk_header = $0
+        hunk_content = ""
+        
+        # Extract @@ -old,len +new,len @@ into @-old,len+new,len
+        if (match($0, /@@ -[0-9,]+ \+[0-9,]+ @@/) == 0) {
+            next
+        }
+        raw = substr($0, RSTART + 3, RLENGTH - 6)
+        gsub(/ \+/, "+", raw)
+        hunk_id = "@" raw
+        next
+    }
+
+    in_hunk {
+        hunk_content = hunk_content $0 "\n"
+    }
+
+    END {
+        if (in_hunk && hunk_content != "") {
+            print file ":" hunk_id
+            print hunk_header
+            printf "%s", hunk_content
+            print "---"
+        }
+    }
+    ' <"$diff_tmp"
+}
+
+cmd_add() {
+    if [ $# -eq 0 ] || [ "$1" = "-h" ]; then
+        usage_add
+    fi
+
+    tmp="${TMPDIR:-/tmp}/git-hunks.$$"
+    diff_tmp="${TMPDIR:-/tmp}/git-hunks-diff.$$"
+    trap 'rm -f "$tmp" "$diff_tmp"' 0 HUP INT TERM
+
+    extract_hunk() {
+        target_file="$1"
+        target_id="$2"
+        
+        if ! git -c color.ui=false diff --no-ext-diff -- "$target_file" >"$diff_tmp"; then
+            printf '%s\n' "git diff failed for file: $target_file" >&2
+            exit 1
+        fi
+
+        awk -v target="$target_id" '
+        BEGIN {
+            in_header = 1
+            header = ""
+            in_target = 0
+        }
+        
+        /^diff --git/ {
+            header = $0 "\n"
+            in_header = 1
+            next
+        }
+        
+        in_header {
+            header = header $0 "\n"
+            if (/^\+\+\+ /) {
+                in_header = 0
+            }
+            next
+        }
+        
+        /^@@ / {
+            # Extract @@ -old,len +new,len @@ into @-old,len+new,len
+            if (match($0, /@@ -[0-9,]+ \+[0-9,]+ @@/) == 0) {
+                next
+            }
+            raw = substr($0, RSTART + 3, RLENGTH - 6)
+            gsub(/ \+/, "+", raw)
+            hunk_id = "@" raw
+            
+            if (hunk_id == target) {
+                printf "%s", header
+                in_target = 1
+            } else {
+                in_target = 0
+            }
+        }
+        
+        in_target {
+            print
+        }
+        ' <"$diff_tmp"
+    }
+
+    for hunk_id in "$@"; do
+        # Split on last colon that precedes @
+        file="${hunk_id%:@*}"
+        id="@${hunk_id##*:@}"
+        
+        if [ "$file" = "$hunk_id" ] || [ "$id" = "@" ]; then
+            printf '%s\n' "Invalid hunk ID format: $hunk_id" >&2
+            printf '%s\n' "Expected format: file:@-old,len+new,len" >&2
+            exit 1
+        fi
+        
+        extract_hunk "$file" "$id" > "$tmp"
+        
+        if [ ! -s "$tmp" ]; then
+            printf '%s\n' "Hunk not found: $hunk_id" >&2
+            exit 1
+        fi
+        
+        git apply --cached < "$tmp"
+        printf '%s\n' "Staged: $hunk_id"
+    done
+}
+
+if [ $# -eq 0 ] || [ "$1" = "-h" ]; then
+    usage
+fi
+
+command="$1"
+shift
+
+case "$command" in
+    list)
+        cmd_list "$@"
+        ;;
+    add)
+        cmd_add "$@"
+        ;;
+    *)
+        printf '%s\n' "Unknown command: $command" >&2
+        printf '%s\n' "Run 'git hunks -h' for usage." >&2
+        exit 1
+        ;;
+esac
