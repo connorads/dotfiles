@@ -2,6 +2,29 @@
 # Shared Package Sets
 # ==============================================================================
 { pkgs }:
+let
+  # Bare repo wrapper that works even with empty $HOME
+  dotfiles = pkgs.writeShellApplication {
+    name = "dotfiles";
+    runtimeInputs = [ pkgs.git ];
+    text = ''
+      home="''${HOME:-$(eval echo ~)}"
+      exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
+    '';
+  };
+
+  # xclip shim: delegates to osc for headless/SSH environments
+  xclip-osc = pkgs.writeShellApplication {
+    name = "xclip";
+    runtimeInputs = [ pkgs.osc ];
+    text = ''
+      for arg in "$@"; do
+        case "$arg" in -o|-out) exit 1 ;; esac
+      done
+      exec osc copy
+    '';
+  };
+in
 {
   # Full package set for macOS and Linux workstations
   sharedPackages = with pkgs; [
@@ -32,14 +55,7 @@
     jujutsu
 
     # Dotfiles (bare repo wrapper that works even with empty $HOME)
-    (writeShellApplication {
-      name = "dotfiles";
-      runtimeInputs = [ git ];
-      text = ''
-        home="''${HOME:-$(eval echo ~)}"
-        exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
-      '';
-    })
+    dotfiles
 
     # Dev tools
     gcc
@@ -78,18 +94,7 @@
 
     # Clipboard (OSC 52 over SSH)
     osc # OSC 52 clipboard tool (osc copy / osc paste)
-    (writeShellApplication {
-      name = "xclip";
-      runtimeInputs = [ osc ];
-      # xclip shim: delegates to osc for headless/SSH environments
-      # Falls back to real xclip when a display server is available
-      text = ''
-        for arg in "$@"; do
-          case "$arg" in -o|-out) exit 1 ;; esac
-        done
-        exec osc copy
-      '';
-    })
+    xclip-osc
 
     # Web browsing
     w3m
@@ -154,14 +159,7 @@
     lazygit
     lazyworktree
     jujutsu
-    (writeShellApplication {
-      name = "dotfiles";
-      runtimeInputs = [ git ];
-      text = ''
-        home="''${HOME:-$(eval echo ~)}"
-        exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
-      '';
-    })
+    dotfiles
 
     # CLI utilities
     coreutils
@@ -185,16 +183,7 @@
 
     # Clipboard (OSC 52)
     osc
-    (writeShellApplication {
-      name = "xclip";
-      runtimeInputs = [ osc ];
-      text = ''
-        for arg in "$@"; do
-          case "$arg" in -o|-out) exit 1 ;; esac
-        done
-        exec osc copy
-      '';
-    })
+    xclip-osc
 
     # Networking
     tailscale

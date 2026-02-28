@@ -15,6 +15,9 @@
   # Enable Nix PATH and environment for non-NixOS Linux
   targets.genericLinux.enable = true;
 
+  # Ensure XDG base directories are set
+  xdg.enable = true;
+
   # Fonts (Nerd Font for terminal icons)
   fonts.fontconfig.enable = true;
   home.packages = [
