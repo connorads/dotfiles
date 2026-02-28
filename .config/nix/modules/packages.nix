@@ -1,5 +1,9 @@
 # ==============================================================================
-# Shared Package Sets
+# Shared Package Sets — additive tiers
+#
+# corePackages   = core                              (ephemeral/codespaces)
+# serverPackages = core + serverExtras               (headless/SSH)
+# sharedPackages = core + serverExtras + workstation  (macOS/Linux desktop)
 # ==============================================================================
 { pkgs }:
 let
@@ -24,49 +28,93 @@ let
       exec osc copy
     '';
   };
-in
-{
-  # Full package set for macOS and Linux workstations
-  sharedPackages = with pkgs; [
+
+  # ---------------------------------------------------------------------------
+  # Tier 1: Minimal — ephemeral environments (codespaces, containers)
+  # ---------------------------------------------------------------------------
+  corePackages = with pkgs; [
     # Shell & terminal
     zsh
     tmux
     kitty.terminfo
     starship
 
-    # Text editors
+    # Editors
     vim
     micro
 
-    # File navigation & search
+    # Navigation & search
     fd
     ripgrep
     fzf
     zoxide
     tree
-    yazi
     eza
 
-    # Git & version control
+    # Git
     delta
+
+    # Data
+    jq
+
+    # System
+    coreutils
+    bat
+
+    # Networking
+    tailscale
+
+    # Dev tools
+    mise
+  ];
+
+  # ---------------------------------------------------------------------------
+  # Tier 2 extras: Server/headless — "feels like home" over SSH
+  # ---------------------------------------------------------------------------
+  serverExtras = with pkgs; [
+    # Navigation
+    yazi
+
+    # Git & VCS
     difftastic
     lazygit
     lazyworktree
     jujutsu
-
-    # Dotfiles (bare repo wrapper that works even with empty $HOME)
     dotfiles
+
+    # CLI utilities
+    bc
+    glow
+    bottom
+    dust
+    ncdu
+    tealdeer
+    yq-go
+    gum
+    zstd
 
     # Dev tools
     gcc
-    mise
-    pipx
     nixfmt
     tree-sitter
-    jq
-    yq-go
+
+    # Clipboard (OSC 52)
+    osc
+    xclip-osc
+
+    # Networking
+    nmap
+    cloudflared
+    ttyd
+  ];
+
+  # ---------------------------------------------------------------------------
+  # Tier 3 extras: Workstation — desktop, media, heavy-dev
+  # ---------------------------------------------------------------------------
+  workstationExtras = with pkgs; [
+    # Dev tools
+    pipx
     miller
-    gum
     usql
     duckdb
     ollama
@@ -78,35 +126,16 @@ in
     php84
     php84Packages.composer
 
-    # Command reference
-    tealdeer
-
     # System utilities
-    coreutils
-    bc
-    bat
-    glow
-    bottom
-    dust
-    ncdu
     parallel-disk-usage
-    zstd
-
-    # Clipboard (OSC 52 over SSH)
-    osc # OSC 52 clipboard tool (osc copy / osc paste)
-    xclip-osc
 
     # Web browsing
     w3m
 
     # Networking & security
-    tailscale
-    nmap
     rustscan
     wgcf
     wireproxy
-    cloudflared
-    ttyd
 
     # Media & presentation
     (yt-dlp.override { javascriptSupport = false; }) # deno (Rust) is slow to build; yt-dlp finds deno on PATH (mise) at runtime
@@ -131,87 +160,9 @@ in
     # Apps
     telegram-desktop
   ];
-
-  # Server/headless: "feels like home" over SSH, no desktop/media/heavy-dev
-  serverPackages = with pkgs; [
-    # Shell & terminal
-    zsh
-    tmux
-    kitty.terminfo
-    starship
-
-    # Editors
-    vim
-    micro
-
-    # Navigation & search
-    fd
-    ripgrep
-    fzf
-    zoxide
-    tree
-    yazi
-    eza
-
-    # Git & VCS
-    delta
-    difftastic
-    lazygit
-    lazyworktree
-    jujutsu
-    dotfiles
-
-    # CLI utilities
-    coreutils
-    bc
-    bat
-    glow
-    bottom
-    dust
-    ncdu
-    tealdeer
-    jq
-    yq-go
-    gum
-    zstd
-
-    # Dev tools
-    gcc
-    mise
-    nixfmt
-    tree-sitter
-
-    # Clipboard (OSC 52)
-    osc
-    xclip-osc
-
-    # Networking
-    tailscale
-    nmap
-    cloudflared
-    ttyd
-  ];
-
-  # Minimal package set for ephemeral environments (codespaces, containers)
-  corePackages = with pkgs; [
-    zsh
-    tmux
-    kitty.terminfo
-    starship
-    vim
-    micro
-    fd
-    ripgrep
-    fzf
-    zoxide
-    tree
-    eza
-    bat
-    delta
-    jq
-    coreutils
-    tailscale
-    mise
-    atuin
-  ];
+in
+{
+  inherit corePackages;
+  serverPackages = corePackages ++ serverExtras;
+  sharedPackages = corePackages ++ serverExtras ++ workstationExtras;
 }
