@@ -8,12 +8,12 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -v|--verbose) verbose=1; shift ;;
     -n|--dry-run) dry_run=1; verbose=1; shift ;;
-    *) echo "Unknown option: $1" >&2; return 1 ;;
+    *) print -u2 "Unknown option: $1"; return 1 ;;
   esac
 done
 
 local canonical="$HOME/.agents/skills"
-[[ -d "$canonical" ]] || { echo "No skills at $canonical" >&2; return 1; }
+[[ -d "$canonical" ]] || { print -u2 "No skills at $canonical"; return 1; }
 
 typeset -A paths=(
   [amp]="$HOME/.config/agents/skills"

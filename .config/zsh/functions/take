@@ -2,7 +2,7 @@
 emulate -L zsh
 
 if [[ $# -eq 0 ]]; then
-  echo "usage: take <git-url|archive-url|dir> [dir ...]" >&2
+  print -u2 "usage: take <git-url|archive-url|dir> [dir ...]"
   return 1
 fi
 

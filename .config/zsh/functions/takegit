@@ -2,7 +2,7 @@
 emulate -L zsh
 
 if [[ $# -ne 1 ]]; then
-  echo "usage: takegit <git-url>" >&2
+  print -u2 "usage: takegit <git-url>"
   return 1
 fi
 

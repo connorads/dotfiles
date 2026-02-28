@@ -18,12 +18,12 @@ while [[ $# -gt 0 ]]; do
       assume_yes=1
       ;;
     -h|--help)
-      echo "usage: pclose [--sudo] [--force] [--yes]" >&2
+      print -u2 "usage: pclose [--sudo] [--force] [--yes]"
       return 0
       ;;
     *)
-      echo "unknown option: $1" >&2
-      echo "usage: pclose [--sudo] [--force] [--yes]" >&2
+      print -u2 "unknown option: $1"
+      print -u2 "usage: pclose [--sudo] [--force] [--yes]"
       return 1
       ;;
   esac
@@ -33,15 +33,15 @@ done
 local -a ps_cmd
 if (( use_sudo )); then
   if ! command -v sudo >/dev/null 2>&1; then
-    echo "sudo not found" >&2
+    print -u2 "sudo not found"
     return 1
   fi
 
   if ! sudo -n true 2>/dev/null; then
     if [[ -t 0 ]]; then
-      echo "sudo auth may be required..." >&2
+      print -u2 "sudo auth may be required..."
     else
-      echo "sudo required for --sudo in non-interactive mode" >&2
+      print -u2 "sudo required for --sudo in non-interactive mode"
       return 1
     fi
   fi
@@ -53,7 +53,7 @@ fi
 local ps_output
 ps_output=$("${ps_cmd[@]}" 2>/dev/null)
 if [[ -z "$ps_output" ]]; then
-  echo "no processes found" >&2
+  print -u2 "no processes found"
   return 1
 fi
 
@@ -84,7 +84,7 @@ while IFS= read -r line; do
 done <<< "$ps_output"
 
 if [[ ${#rows[@]} -eq 0 ]]; then
-  echo "no processes found" >&2
+  print -u2 "no processes found"
   return 1
 fi
 
@@ -141,11 +141,11 @@ selected_protected=(${(u)selected_protected})
 
 if [[ ${#selected_protected[@]} -gt 0 && $assume_yes -eq 0 ]]; then
   if [[ -t 0 ]]; then
-    echo "warning: protected process(es) selected: ${selected_protected[*]}" >&2
+    print -u2 "warning: protected process(es) selected: ${selected_protected[*]}"
     read -r "reply?continue? [y/N] "
     [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]] || return 1
   else
-    echo "refusing protected process(es) without --yes: ${selected_protected[*]}" >&2
+    print -u2 "refusing protected process(es) without --yes: ${selected_protected[*]}"
     return 1
   fi
 fi
@@ -182,7 +182,7 @@ if [[ $force_kill -eq 0 && $assume_yes -eq 0 && -t 0 ]]; then
     return 1
   fi
 elif [[ $force_kill -eq 0 && $assume_yes -eq 0 ]]; then
-  echo "non-interactive mode: refusing KILL without --force or --yes" >&2
+  print -u2 "non-interactive mode: refusing KILL without --force or --yes"
   return 1
 fi
 

@@ -24,14 +24,14 @@ while [[ $# -gt 0 ]]; do
       return 0
       ;;
     -*)
-      print -r -- "error: unknown option: $1" >&2
-      print -r -- "$usage" >&2
+      print -u2 "error: unknown option: $1"
+      print -u2 "$usage"
       return 1
       ;;
     *)
       if [[ -n $arg ]]; then
-        print -r -- "error: too many arguments" >&2
-        print -r -- "$usage" >&2
+        print -u2 "error: too many arguments"
+        print -u2 "$usage"
         return 1
       fi
       arg=$1

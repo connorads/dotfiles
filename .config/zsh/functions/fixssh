@@ -19,7 +19,7 @@ for sock in /tmp/ssh-*/agent.*(.N); do
 done
 
 if [[ -z "$best" ]]; then
-  echo "fixssh: no live agent sockets found in /tmp/ssh-*" >&2
+  print -u2 "fixssh: no live agent sockets found in /tmp/ssh-*"
   return 1
 fi
 
