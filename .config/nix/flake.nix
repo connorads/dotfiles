@@ -155,5 +155,21 @@
         )
       ];
 
+      # Force-evaluate all configurations to catch typos and broken imports
+      # without a full rebuild: nix flake check --flake ~/.config/nix
+      checks = {
+        aarch64-darwin = {
+          darwin = self.darwinConfigurations."Connors-Mac-mini".system;
+        };
+        x86_64-linux = {
+          penguin = self.homeConfigurations."connor@penguin".activationPackage;
+          codespace = self.homeConfigurations."codespace".activationPackage;
+        };
+        aarch64-linux = {
+          dev = self.homeConfigurations."connor@dev".activationPackage;
+          rpi5 = self.homeConfigurations."connor@rpi5".activationPackage;
+        };
+      };
+
     };
 }
