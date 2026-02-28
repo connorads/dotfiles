@@ -32,10 +32,14 @@
     jujutsu
 
     # Dotfiles (bare repo wrapper that works even with empty $HOME)
-    (writeShellScriptBin "dotfiles" ''
-      home="''${HOME:-$(eval echo ~)}"
-      exec ${git}/bin/git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
-    '')
+    (writeShellApplication {
+      name = "dotfiles";
+      runtimeInputs = [ git ];
+      text = ''
+        home="''${HOME:-$(eval echo ~)}"
+        exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
+      '';
+    })
 
     # Dev tools
     gcc
@@ -74,14 +78,18 @@
 
     # Clipboard (OSC 52 over SSH)
     osc # OSC 52 clipboard tool (osc copy / osc paste)
-    (writeShellScriptBin "xclip" ''
+    (writeShellApplication {
+      name = "xclip";
+      runtimeInputs = [ osc ];
       # xclip shim: delegates to osc for headless/SSH environments
       # Falls back to real xclip when a display server is available
-      for arg in "$@"; do
-        case "$arg" in -o|-out) exit 1 ;; esac
-      done
-      exec ${osc}/bin/osc copy
-    '')
+      text = ''
+        for arg in "$@"; do
+          case "$arg" in -o|-out) exit 1 ;; esac
+        done
+        exec osc copy
+      '';
+    })
 
     # Web browsing
     w3m
@@ -146,10 +154,14 @@
     lazygit
     lazyworktree
     jujutsu
-    (writeShellScriptBin "dotfiles" ''
-      home="''${HOME:-$(eval echo ~)}"
-      exec ${git}/bin/git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
-    '')
+    (writeShellApplication {
+      name = "dotfiles";
+      runtimeInputs = [ git ];
+      text = ''
+        home="''${HOME:-$(eval echo ~)}"
+        exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
+      '';
+    })
 
     # CLI utilities
     coreutils
@@ -173,12 +185,16 @@
 
     # Clipboard (OSC 52)
     osc
-    (writeShellScriptBin "xclip" ''
-      for arg in "$@"; do
-        case "$arg" in -o|-out) exit 1 ;; esac
-      done
-      exec ${osc}/bin/osc copy
-    '')
+    (writeShellApplication {
+      name = "xclip";
+      runtimeInputs = [ osc ];
+      text = ''
+        for arg in "$@"; do
+          case "$arg" in -o|-out) exit 1 ;; esac
+        done
+        exec osc copy
+      '';
+    })
 
     # Networking
     tailscale
