@@ -5,7 +5,7 @@ emulate -L zsh
 
 local url=$1
 if [[ $url != https://github.com/*/pull/* ]]; then
-  echo "usage: gh-pr-prompt <PR-url>" >&2
+  print -u2 "usage: gh-pr-prompt <PR-url>"
   return 1
 fi
 
@@ -30,6 +30,6 @@ pr_number=${url##*/}
   gh api "repos/$owner_repo/issues/$pr_number/comments?per_page=100" --paginate \
     --jq '.[] | "\(.user.login) (\(.created_at)):\n\(.body)\n---"' 2>/dev/null || true
 
-} | pbcopy
+} | if [[ "$(uname)" == "Darwin" ]]; then pbcopy; else xclip -selection clipboard; fi
 
-echo "✅ PR review prompt copied to clipboard"
+echo "PR review prompt copied to clipboard"

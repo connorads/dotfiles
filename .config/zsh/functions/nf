@@ -1,6 +1,5 @@
 #!/usr/bin/env zsh
 # nf: search nerd font icons with fzf, copy to clipboard
-# alias: nerdfont, nerd-font
 # Usage: nf [query]
 #   -r, --refresh  Force refresh cache
 emulate -L zsh
@@ -18,8 +17,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check dependencies
-command -v jq &>/dev/null || { echo "jq required" >&2; return 1; }
-command -v fzf &>/dev/null || { echo "fzf required" >&2; return 1; }
+command -v jq &>/dev/null || { print -u2 "jq required"; return 1; }
+command -v fzf &>/dev/null || { print -u2 "fzf required"; return 1; }
 
 # Create cache dir
 [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
@@ -38,11 +37,11 @@ else
 fi
 
 if (( need_refresh )); then
-  echo "Fetching nerd font glyphs..." >&2
+  print -u2 "Fetching nerd font glyphs..."
   curl -sL https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/glyphnames.json \
     | jq -r 'to_entries | map(select(.key != "METADATA")) | .[] | "\(.value.char) \(.key)"' \
-    > "$cache_file" || { echo "Failed to fetch glyphs" >&2; return 1; }
-  echo "Cached $(wc -l < "$cache_file" | tr -d ' ') glyphs" >&2
+    > "$cache_file" || { print -u2 "Failed to fetch glyphs"; return 1; }
+  print -u2 "Cached $(wc -l < "$cache_file" | tr -d ' ') glyphs"
 fi
 
 # Search with fzf
@@ -68,7 +67,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
 else
   printf '%s' "$glyph" | xclip -selection clipboard 2>/dev/null \
     || printf '%s' "$glyph" | xsel -b 2>/dev/null \
-    || { echo "No clipboard tool found" >&2; return 1; }
+    || { print -u2 "No clipboard tool found"; return 1; }
 fi
 
 echo "Copied: $glyph $name ($codepoint)"

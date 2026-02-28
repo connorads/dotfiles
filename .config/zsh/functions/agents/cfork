@@ -6,57 +6,39 @@ local sid="${1:-}"
 
 if [[ -z "$sid" ]]; then
   local selection
-  selection=$(python3 -c '
-import json, os, glob
-from datetime import datetime
-
-sessions = []
-for f in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
-    if "/subagents/" in f:
-        continue
-    sid = os.path.basename(f).replace(".jsonl", "")
-    if len(sid) < 20:
-        continue
-    mtime = os.path.getmtime(f)
-    project_dir = os.path.basename(os.path.dirname(f))
-    project = project_dir.lstrip("-").replace("-", "/")
-    summary = ""
-    msg_count = 0
-    try:
-        with open(f) as fh:
-            for line in fh:
-                try:
-                    d = json.loads(line)
-                    t = d.get("type")
-                    if t in ("user", "assistant"):
-                        msg_count += 1
-                    if not summary and t == "user":
-                        c = d.get("message", {}).get("content", "")
-                        if isinstance(c, list):
-                            for item in c:
-                                if isinstance(item, dict):
-                                    summary = item.get("text", "")
-                                elif isinstance(item, str):
-                                    summary = item
-                                if summary:
-                                    break
-                        elif isinstance(c, str):
-                            summary = c
-                except (json.JSONDecodeError, KeyError):
-                    continue
-    except Exception:
-        continue
-    sessions.append((mtime, sid, summary[:80], project, msg_count))
-
-sessions.sort(key=lambda x: x[0], reverse=True)
-for mtime, sid, summary, project, msgs in sessions:
-    ts = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{sid}\t{ts}\t{summary}\t{project}\t{msgs} msgs")
-' 2>/dev/null \
+  selection=$({
+    local f sid_name mtime project_dir project info count summary ts_fmt
+    for f in ~/.claude/projects/*/*.jsonl(N); do
+      [[ "$f" == */subagents/* ]] && continue
+      sid_name=${f:t:r}
+      (( ${#sid_name} < 20 )) && continue
+      mtime=$(stat --format='%Y' "$f" 2>/dev/null || stat -f '%m' "$f")
+      project_dir=${${f:h}:t}
+      project=${project_dir#-}
+      project=${project//-/\/}
+      info=$(jq -n -r '
+        reduce (inputs | objects) as $d ({c: 0, s: ""};
+          if ($d.type == "user" or $d.type == "assistant") then .c += 1 else . end |
+          if (.s == "" and $d.type == "user") then
+            .s = (($d.message.content // "") |
+              if type == "array" then
+                [.[] | if type == "object" then .text // empty elif type == "string" then . else empty end][0] // ""
+              elif type == "string" then .
+              else "" end)[:80]
+          else . end
+        ) | "\(.c)\t\(.s)"
+      ' < "$f" 2>/dev/null) || continue
+      count=${info%%$'\t'*}
+      summary=${info#*$'\t'}
+      ts_fmt=$(date -d "@$mtime" '+%Y-%m-%d %H:%M:%S' 2>/dev/null \
+        || date -r "$mtime" '+%Y-%m-%d %H:%M:%S')
+      printf '%s\t%s\t%s\t%s\t%s\t%s msgs\n' "$mtime" "$sid_name" "$ts_fmt" "$summary" "$project" "$count"
+    done | sort -t$'\t' -k1 -rn | cut -f2-
+  } 2>/dev/null \
     | fzf --prompt="Fork session: " --with-nth=2.. --delimiter=$'\t' --no-sort)
 
   [[ -z "$selection" ]] && return
-  sid=$(echo "$selection" | cut -f1)
+  sid=$(printf '%s' "$selection" | cut -f1)
 fi
 
 claude --resume "$sid" --fork-session
