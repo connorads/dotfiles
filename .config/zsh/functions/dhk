@@ -11,12 +11,12 @@ elif (( $+commands[mise] )); then
 fi
 
 if [[ -z "$hk_bin" ]]; then
-  echo "hk not found. Install tools with: mise install" >&2
+  print -u2 "hk not found. Install tools with: mise install"
   return 127
 fi
 
 local tmpdir
-tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/dhk.XXXXXX")" || return 1
+tmpdir="$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/dhk.XXXXXX")" || return 1
 trap 'rm -rf -- "$tmpdir"' EXIT
 
 printf 'gitdir: %s\n' "$HOME/git/dotfiles" > "$tmpdir/.git" || return 1
