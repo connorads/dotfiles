@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+# listening-lines: print raw listening TCP socket lines (platform-aware)
+# Output: lsof lines on macOS, ss lines on Linux (header stripped)
+emulate -L zsh
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2
+else
+  ss -tlnp 2>/dev/null | tail -n +2
+fi

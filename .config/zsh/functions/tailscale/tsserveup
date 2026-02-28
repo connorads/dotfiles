@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
     --apex|-a) apex=1; shift ;;
     --port)
       if [[ -z "$2" || ! "$2" =~ '^[0-9]+$' ]]; then
-        echo "error: --port requires a numeric argument" >&2
+        print -u2 "error: --port requires a numeric argument"
         return 1
       fi
       eport="$2"; shift 2
@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
       if [[ "$1" =~ '^[0-9]+$' ]]; then
         port="$1"; shift
       else
-        echo "usage: tsserveup [--public|-p] [--apex|-a] [--port EPORT] [port]" >&2
+        print -u2 "usage: tsserveup [--public|-p] [--apex|-a] [--port EPORT] [port]"
         return 1
       fi
       ;;
@@ -35,11 +35,7 @@ done
 
 # Resolve Tailscale hostname
 local hostname
-hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
-if [[ -z "$hostname" || "$hostname" == "null" ]]; then
-  echo "error: could not resolve Tailscale hostname (is Tailscale running?)" >&2
-  return 1
-fi
+hostname=$(ts-hostname) || return 1
 
 # Get current serve status — build map of served external ports
 local serve_json
@@ -126,11 +122,7 @@ fi
 
 # Discover listening ports (same parsing as `ports` function)
 local -a lines
-if [[ "$OSTYPE" == darwin* ]]; then
-  lines=("${(@f)$(lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2)}")
-else
-  lines=("${(@f)$(ss -tlnp 2>/dev/null | tail -n +2)}")
-fi
+lines=("${(@f)$(listening-lines)}")
 
 local -a rows
 local line cmd pid addr lport bind_addr pid_info marker
@@ -250,7 +242,7 @@ if [[ "$chosen_port" == "[custom" || "$chosen" == *"[custom port]"* ]]; then
   printf "port: "
   read -r custom_port
   if [[ ! "$custom_port" =~ '^[0-9]+$' ]]; then
-    echo "error: invalid port number" >&2
+    print -u2 "error: invalid port number"
     unfunction _tsserve_target _tsserve_run 2>/dev/null
     return 1
   fi

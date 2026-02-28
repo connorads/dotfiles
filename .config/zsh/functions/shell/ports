@@ -8,14 +8,10 @@ local kill_mode=0
 [[ "$1" == "-k" ]] && kill_mode=1
 
 local -a lines
-if [[ "$OSTYPE" == darwin* ]]; then
-  lines=("${(@f)$(lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2)}")
-else
-  lines=("${(@f)$(ss -tlnp 2>/dev/null | tail -n +2)}")
-fi
+lines=("${(@f)$(listening-lines)}")
 
 if [[ ${#lines[@]} -eq 0 || (${#lines[@]} -eq 1 && -z "${lines[1]}") ]]; then
-  echo "no listening ports found" >&2
+  print -u2 "no listening ports found"
   return 0
 fi
 
@@ -64,7 +60,7 @@ for line in "${lines[@]}"; do
   rows+=("$(printf '%-7s %-7s %-20s %-8s %s' "$port" "$pid" "$cmd" "$exposure" "$addr")")
 done
 
-[[ ${#rows[@]} -eq 0 ]] && { echo "no listening ports found" >&2; return 0; }
+[[ ${#rows[@]} -eq 0 ]] && { print -u2 "no listening ports found"; return 0; }
 
 local mode_hint="enter: select"
 if (( kill_mode )); then

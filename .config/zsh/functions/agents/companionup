@@ -3,7 +3,8 @@
 emulate -L zsh
 
 local port=${1:-3456}
-local hostname=$(ts status --self --json | jq -r '.Self.DNSName' | sed 's/\.$//')
+local hostname
+hostname=$(ts-hostname) || return 1
 tmux kill-session -t companion 2>/dev/null
 tmux new-session -d -s companion -x 200 -y 50 \
   "PORT=$port the-vibe-companion"
