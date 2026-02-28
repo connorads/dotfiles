@@ -8,7 +8,7 @@ local action="${1:-status}"
 local prefs compact
 
 if [[ $# -gt 1 ]]; then
-  echo "$usage" >&2
+  print -u2 "$usage"
   return 1
 fi
 
@@ -20,7 +20,7 @@ case "$action" in
   status|info|on|off|toggle)
     ;;
   *)
-    echo "$usage" >&2
+    print -u2 "$usage"
     return 1
     ;;
 esac
@@ -31,7 +31,7 @@ elif [[ "$action" == off ]]; then
   ts set --accept-dns=false || return 1
 elif [[ "$action" == toggle ]]; then
   prefs="$(ts debug prefs 2>/dev/null)" || {
-    echo "Could not read Tailscale preferences. Is tailscaled running?" >&2
+    print -u2 "Could not read Tailscale preferences. Is tailscaled running?"
     return 1
   }
   compact="${prefs//[[:space:]]/}"
@@ -40,13 +40,13 @@ elif [[ "$action" == toggle ]]; then
   elif [[ "$compact" == *'"CorpDNS":false'* ]]; then
     ts set --accept-dns=true || return 1
   else
-    echo "Could not determine current Tailscale DNS setting" >&2
+    print -u2 "Could not determine current Tailscale DNS setting"
     return 1
   fi
 fi
 
 prefs="$(ts debug prefs 2>/dev/null)" || {
-  echo "Could not read Tailscale preferences. Is tailscaled running?" >&2
+  print -u2 "Could not read Tailscale preferences. Is tailscaled running?"
   return 1
 }
 compact="${prefs//[[:space:]]/}"

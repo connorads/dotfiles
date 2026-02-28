@@ -20,4 +20,4 @@ if command -v codex-usage &>/dev/null || typeset -f codex-usage &>/dev/null || [
   has_output=1
 fi
 
-(( has_output )) || { echo "no usage tools available" >&2; return 1; }
+(( has_output )) || { print -u2 "no usage tools available"; return 1; }

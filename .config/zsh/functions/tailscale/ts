@@ -3,7 +3,7 @@
 emulate -L zsh
 
 if ! command -v tailscale >/dev/null 2>&1; then
-  echo "tailscale not installed" >&2
+  print -u2 "tailscale not installed"
   return 127
 fi
 

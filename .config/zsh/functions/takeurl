@@ -3,7 +3,7 @@ emulate -L zsh
 setopt localtraps
 
 if [[ $# -ne 1 ]]; then
-  echo "usage: takeurl <archive-url>" >&2
+  print -u2 "usage: takeurl <archive-url>"
   return 1
 fi
 
@@ -12,12 +12,12 @@ data="$(mktemp)" || return 1
 trap 'rm -f "$data"' RETURN
 
 curl -fL "$1" -o "$data" || {
-  echo "failed to download archive: $1" >&2
+  print -u2 "failed to download archive: $1"
   return 1
 }
 
 tar xf "$data" || {
-  echo "failed to extract tar archive" >&2
+  print -u2 "failed to extract tar archive"
   return 1
 }
 
