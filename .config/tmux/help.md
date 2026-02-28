@@ -69,6 +69,7 @@
 | `F10` | suspend/resume tmux client |
 | `Ctrl+b d` | detach |
 | `Ctrl+b [` | scroll/copy mode |
+| `]` / `[` (in copy mode) | jump to next/previous shell prompt |
 | `Ctrl+b r` | reload config |
 | `Ctrl+b H` | toggle hostname |
 | `Ctrl+b ?` | this help |
