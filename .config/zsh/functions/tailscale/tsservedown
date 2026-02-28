@@ -9,7 +9,7 @@ local serve_json
 serve_json=$(ts serve status --json 2>/dev/null)
 
 if [[ -z "$serve_json" || "$serve_json" == "null" || "$serve_json" == "{}" ]]; then
-  echo "no active serve config" >&2
+  print -u2 "no active serve config"
   return 0
 fi
 
@@ -26,7 +26,7 @@ done
 eports=("${valid_ports[@]}")
 
 if [[ ${#eports[@]} -eq 0 ]]; then
-  echo "no active serve config" >&2
+  print -u2 "no active serve config"
   return 0
 fi
 
@@ -35,7 +35,7 @@ _tsserve_desc() {
   local ep=$1
   local proxy_url funnel=""
   local hostname
-  hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
+  hostname=$(ts-hostname 2>/dev/null)
   proxy_url=$(echo "$serve_json" | jq -r "
     .Web | to_entries[] | select(.key | endswith(\":$ep\")) |
     .value.Handlers // {} | to_entries[0].value.Proxy // \"unknown\"
@@ -49,7 +49,7 @@ _tsserve_desc() {
 # Direct mode: port given on command line
 if [[ -n "$1" ]]; then
   if [[ ! "$1" =~ '^[0-9]+$' ]]; then
-    echo "usage: tsservedown [port]" >&2
+    print -u2 "usage: tsservedown [port]"
     unfunction _tsserve_desc 2>/dev/null
     return 1
   fi
@@ -75,7 +75,7 @@ fi
 # Multiple ports — fzf picker
 local -a rows
 local _hostname
-_hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
+_hostname=$(ts-hostname 2>/dev/null)
 for _ep in "${eports[@]}"; do
   local proxy_url funnel_marker=""
   proxy_url=$(echo "$serve_json" | jq -r "

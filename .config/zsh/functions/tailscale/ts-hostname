@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+# ts-hostname: print the Tailscale DNS hostname (without trailing dot)
+emulate -L zsh
+
+local hostname
+hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
+if [[ -z "$hostname" || "$hostname" == "null" ]]; then
+  print -u2 "error: could not resolve Tailscale hostname (is Tailscale running?)"
+  return 1
+fi
+print -r "$hostname"
