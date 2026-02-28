@@ -1,7 +1,7 @@
 ---
 name: opencode-conversation-analysis
 description: Analyze OpenCode conversation history to identify themes and patterns in user messages. Use when asked to analyze conversations, find themes, review how a user steers agents, or extract insights from session history.
-compatibility: OpenCode-specific (relies on OpenCode session storage format). Requires jq, bash.
+compatibility: OpenCode-specific. Supports SQLite-backed storage (`opencode.db`) with fallback to legacy JSON storage. Requires bash and python3.
 ---
 
 # Conversation Analysis
@@ -24,8 +24,9 @@ Analyze user messages from OpenCode sessions to identify recurring themes, commu
 ```
 
 This script:
-- Finds all main sessions (excludes subagent child sessions)
-- Extracts user messages with metadata (session_id, title, timestamp, text)
+- Reads from `~/.local/share/opencode/opencode.db` (SQLite) when available
+- Falls back to `~/.local/share/opencode/storage/` for older OpenCode installs
+- Extracts user messages from main sessions with metadata (session_id, title, timestamp, text)
 - Filters out messages < 10 characters
 - Chunks into ~320k char files (~80k tokens each)
 - Outputs to `/tmp/opencode-analysis/chunk_*.jsonl`
@@ -107,8 +108,8 @@ Output directly to the user - don't write to a file unless asked.
 
 The user may request:
 - **Different chunk sizes**: Edit `CHUNK_SIZE` in extract.sh (default 320000 chars)
-- **Different message filter**: Edit the `${#text} -ge 10` check in extract.sh
-- **Include subagent sessions**: Remove the `parentID == null` filter in extract.sh
+- **Different message filter**: Edit `MIN_TEXT_LEN` in `extract.sh` (default 10 chars)
+- **Include subagent sessions**: Remove the `parent_id IS NULL` (SQLite) and `parentID` (legacy) filters in extract.sh
 - **Time period filtering**: Add timestamp filtering in extract.sh
 
 ## Storage Format Reference
