@@ -1,4 +1,6 @@
 # y: launch yazi and cd to the last cwd on exit
+emulate -L zsh
+(( $+commands[yazi] )) || { print -u2 "yazi not found"; return 127; }
 local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
 yazi "$@" --cwd-file="$tmp"
 if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then

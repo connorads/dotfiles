@@ -1,4 +1,5 @@
 # wts: fzf switch to a worktree under ~/.trees
+emulate -L zsh
 local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Switch to worktree: ")
 
 if [[ -n "$worktree" ]]; then
