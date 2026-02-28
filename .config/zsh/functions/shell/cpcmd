@@ -1,7 +1,9 @@
 # cpcmd: ask Copilot for one command and paste it
+emulate -L zsh
+(( $+commands[copilot] )) || { print -u2 "copilot not found"; return 127; }
 local q="$*"
 if [[ -z "$q" ]]; then
-  echo "usage: cpcmd <task description>" >&2
+  print -u2 "usage: cpcmd <task description>"
   return 1
 fi
 
