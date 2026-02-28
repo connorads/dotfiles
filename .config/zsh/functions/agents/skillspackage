@@ -10,7 +10,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -o|--output)
       if [[ -z "${2:-}" ]]; then
-        print -r -- "Missing value for $1" >&2
+        print -u2 "Missing value for $1"
         return 1
       fi
       output_dir="$2"
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
       return 0
       ;;
     -*)
-      print -r -- "Unknown option: $1" >&2
+      print -u2 "Unknown option: $1"
       return 1
       ;;
     *)
@@ -32,19 +32,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 local canonical="$HOME/.agents/skills"
-[[ -d "$canonical" ]] || { print -r -- "No skills at $canonical" >&2; return 1; }
+[[ -d "$canonical" ]] || { print -u2 "No skills at $canonical"; return 1; }
 
 if (( ${#skills_to_package} == 0 )); then
   skills_to_package=("$canonical"/*(/:t))
 fi
 
 if (( ${#skills_to_package} == 0 )); then
-  print -r -- "No skills found in $canonical" >&2
+  print -u2 "No skills found in $canonical"
   return 1
 fi
 
 if ! command -v zip >/dev/null 2>&1; then
-  print -r -- "zip is required to package skills" >&2
+  print -u2 "zip is required to package skills"
   return 1
 fi
 
@@ -65,7 +65,7 @@ for skill in "${skills_to_package[@]}"; do
 done
 
 if (( ${#missing} > 0 )); then
-  print -r -- "Skipped missing skills: ${missing[*]}" >&2
+  print -u2 "Skipped missing skills: ${missing[*]}"
 fi
 
 print -r -- "Generated $packaged skill file(s) in $output_dir"

@@ -3,7 +3,7 @@
 emulate -L zsh
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "Usage: tswait <device> [interval-seconds]" >&2
+  print -u2 "Usage: tswait <device> [interval-seconds]"
   return 1
 fi
 
@@ -11,7 +11,7 @@ local device="$1"
 local interval="${2:-15}"
 
 if [[ ! "$interval" =~ '^[0-9]+([.][0-9]+)?$' ]]; then
-  echo "interval must be a positive number" >&2
+  print -u2 "interval must be a positive number"
   return 1
 fi
 

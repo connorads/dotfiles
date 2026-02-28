@@ -5,7 +5,7 @@ emulate -L zsh
 local hostname
 hostname=$(ts status --self --json 2>/dev/null | jq -r '.Self.DNSName' 2>/dev/null | sed 's/\.$//')
 if [[ -z "$hostname" || "$hostname" == "null" ]]; then
-  echo "tailscale not connected" >&2
+  print -u2 "tailscale not connected"
   return 1
 fi
 

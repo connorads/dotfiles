@@ -3,12 +3,12 @@
 emulate -L zsh
 
 if ! command -v ufw >/dev/null 2>&1; then
-  echo "ufw not installed" >&2
+  print -u2 "ufw not installed"
   return 1
 fi
 
 if ! ip link show tailscale0 &>/dev/null; then
-  echo "tailscale0 interface not found — is Tailscale running?" >&2
+  print -u2 "tailscale0 interface not found — is Tailscale running?"
   return 1
 fi
 

@@ -83,7 +83,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -*)
-      echo "Unknown option: $1" >&2
+      print -u2 "Unknown option: $1"
       return 1
       ;;
     *)
@@ -98,7 +98,7 @@ project_dir="${project_dir:-$(pwd)}"
 project_dir="$(cd "$project_dir" && pwd)"
 
 if [[ ! -d "$project_dir" ]]; then
-  echo "Directory not found: $project_dir" >&2
+  print -u2 "Directory not found: $project_dir"
   return 1
 fi
 

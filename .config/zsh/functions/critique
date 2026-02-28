@@ -8,7 +8,7 @@ local cli
 cli="$(mise where npm:critique 2>/dev/null)/node_modules/critique/src/cli.tsx"
 
 if [[ ! -f "$cli" ]]; then
-  echo "critique: cannot find cli.tsx — is npm:critique installed?" >&2
+  print -u2 "critique: cannot find cli.tsx — is npm:critique installed?"
   return 1
 fi
 

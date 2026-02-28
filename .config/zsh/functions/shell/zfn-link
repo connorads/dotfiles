@@ -12,17 +12,17 @@ while [[ $# -gt 0 ]]; do
     -v|--verbose) verbose=1; shift ;;
     -n|--dry-run) dry_run=1; verbose=1; shift ;;
     -h|--help)
-      echo "Usage: zfn-link [-v|--verbose] [-n|--dry-run]" >&2
+      print -u2 "Usage: zfn-link [-v|--verbose] [-n|--dry-run]"
       return 0
       ;;
-    *) echo "Unknown option: $1" >&2; return 1 ;;
+    *) print -u2 "Unknown option: $1"; return 1 ;;
   esac
 done
 
 local fn_dir="$HOME/.config/zsh/functions"
 local bin_dir="$HOME/.local/bin"
 
-[[ -d "$fn_dir" ]] || { echo "No functions dir at $fn_dir" >&2; return 1; }
+[[ -d "$fn_dir" ]] || { print -u2 "No functions dir at $fn_dir"; return 1; }
 
 if (( ! dry_run )); then
   command mkdir -p "$bin_dir"

@@ -16,7 +16,7 @@ while [[ $# -gt 0 ]]; do
       assume_yes=1
       ;;
     -h|--help)
-      echo "usage: killport [--force] [--yes] <port> [port ...]" >&2
+      print -u2 "usage: killport [--force] [--yes] <port> [port ...]"
       return 0
       ;;
     *)
@@ -27,14 +27,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#ports[@]} -eq 0 ]]; then
-  echo "usage: killport [--force] [--yes] <port> [port ...]" >&2
+  print -u2 "usage: killport [--force] [--yes] <port> [port ...]"
   return 1
 fi
 
 local port
 for port in "${ports[@]}"; do
   if [[ ! "$port" =~ '^[0-9]+$' ]]; then
-    echo "invalid port: $port" >&2
+    print -u2 "invalid port: $port"
     return 1
   fi
 done
@@ -44,7 +44,7 @@ local -a pids all_pids protected_selected
 for port in "${ports[@]}"; do
   pids=(${(f)"$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null)"})
   if [[ ${#pids[@]} -eq 0 ]]; then
-    echo "no listener found on port $port" >&2
+    print -u2 "no listener found on port $port"
     continue
   fi
 
@@ -69,11 +69,11 @@ protected_selected=(${(u)protected_selected})
 
 if [[ ${#protected_selected[@]} -gt 0 && $assume_yes -eq 0 ]]; then
   if [[ -t 0 ]]; then
-    echo "warning: protected port(s) selected: ${protected_selected[*]}" >&2
+    print -u2 "warning: protected port(s) selected: ${protected_selected[*]}"
     read -r "reply?continue? [y/N] "
     [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]] || return 1
   else
-    echo "refusing to kill protected port(s) without --yes: ${protected_selected[*]}" >&2
+    print -u2 "refusing to kill protected port(s) without --yes: ${protected_selected[*]}"
     return 1
   fi
 fi
@@ -106,7 +106,7 @@ if [[ $force_kill -eq 0 && $assume_yes -eq 0 && -t 0 ]]; then
     return 1
   fi
 elif [[ $force_kill -eq 0 && $assume_yes -eq 0 ]]; then
-  echo "non-interactive mode: refusing KILL without --force or --yes" >&2
+  print -u2 "non-interactive mode: refusing KILL without --force or --yes"
   return 1
 fi
 

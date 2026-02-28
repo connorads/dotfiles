@@ -7,7 +7,7 @@ local verbose=false
 
 local conf="$HOME/.config/tmux/tmux.conf"
 if [[ ! -f "$conf" ]]; then
-  echo "tmux.conf not found at $conf" >&2
+  print -u2 "tmux.conf not found at $conf"
   return 1
 fi
 
@@ -16,7 +16,7 @@ local -a plugins
 plugins=("${(@f)$(grep "^set -g @plugin" "$conf" | grep -o "connorads/[^']*")}")
 
 if [[ ${#plugins} -eq 0 ]]; then
-  echo "No connorads/ plugins found in $conf" >&2
+  print -u2 "No connorads/ plugins found in $conf"
   return 1
 fi
 

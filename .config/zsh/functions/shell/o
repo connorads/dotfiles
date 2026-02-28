@@ -10,6 +10,6 @@ if [[ "$OSTYPE" == darwin* ]]; then
 elif command -v xdg-open &>/dev/null; then
   xdg-open "$target"
 else
-  echo "no file manager opener found" >&2
+  print -u2 "no file manager opener found"
   return 1
 fi
