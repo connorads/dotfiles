@@ -82,7 +82,7 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 
 | Function | Reason |
 |----------|--------|
-| `takedir`, `takegit`, `takeurl`, `takezip`, `take`, `mkcd` | `cd` |
+| `takedir`, `takegit`, `takeurl`, `takezip`, `take` | `cd` |
 | `ghcl`, `wta`, `wts` | `cd` |
 | `y` | `cd` |
 | `secretexport` | `export` |

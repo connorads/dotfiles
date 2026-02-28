@@ -1,10 +1,11 @@
 # zshrc-local: edit ~/.zshrc.local (create from example)
+emulate -L zsh
 local example_file="$HOME/.zshrc.local.example"
 local local_file="$HOME/.zshrc.local"
 
 if [[ ! -f "$local_file" ]]; then
   if [[ ! -f "$example_file" ]]; then
-    echo "Missing $example_file" >&2
+    print -u2 "Missing $example_file"
     return 1
   fi
 

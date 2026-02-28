@@ -1,5 +1,6 @@
 # wta: add a worktree under ~/.trees for a branch
 # usage: wta <branch>
+emulate -L zsh
 local branch=$1
 local repo=$(basename $(git rev-parse --show-toplevel))
 local worktree_path="$HOME/.trees/${repo}-${branch}"
