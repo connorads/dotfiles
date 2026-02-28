@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# nfm: format flake.nix in ~/.config/nix
+# nfm: format all nix files in ~/.config/nix
 emulate -L zsh
 
-(cd ~/.config/nix && nix fmt ./flake.nix)
+(cd ~/.config/nix && nix fmt ./*.nix ./modules/*.nix)
