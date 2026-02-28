@@ -97,8 +97,9 @@
     # Flake Outputs
     # ==========================================================================
     {
-      formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt;
-      formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt;
+      formatter = nixpkgs.lib.genAttrs [ "aarch64-darwin" "x86_64-linux" "aarch64-linux" ] (
+        system: nixpkgs.legacyPackages.${system}.nixfmt
+      );
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
       darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
