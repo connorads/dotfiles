@@ -77,6 +77,20 @@
 
       # Helper to create packages module for a given pkgs
       mkPackages = pkgs: import ./modules/packages.nix { inherit pkgs; };
+
+      # Helper to reduce homeConfiguration boilerplate
+      mkHome =
+        system: modules:
+        let
+          pkgs = mkPkgs system;
+        in
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          extraSpecialArgs = {
+            packages = mkPackages pkgs;
+          };
+          inherit modules;
+        };
     in
     # ==========================================================================
     # Flake Outputs
@@ -99,87 +113,47 @@
       };
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
-      homeConfigurations."connor@penguin" =
-        let
-          pkgs = mkPkgs "x86_64-linux";
-        in
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = {
-            packages = mkPackages pkgs;
-          };
-          modules = [
-            ./modules/linux-base.nix
-            ./modules/linux-tailscale.nix
-            ./modules/linux-packages.nix
-            ./modules/linux-crostini.nix
-            (
-              { ... }:
-              {
-                services.ssh-agent.enable = true;
-                home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
-              }
-            )
-          ];
-        };
+      homeConfigurations."connor@penguin" = mkHome "x86_64-linux" [
+        ./modules/linux-base.nix
+        ./modules/linux-tailscale.nix
+        ./modules/linux-packages.nix
+        ./modules/linux-crostini.nix
+        (
+          { ... }:
+          {
+            services.ssh-agent.enable = true;
+            home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
+          }
+        )
+      ];
 
-      homeConfigurations."connor@dev" =
-        let
-          pkgs = mkPkgs "aarch64-linux";
-        in
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = {
-            packages = mkPackages pkgs;
-          };
-          modules = [
-            ./modules/linux-base.nix
-            ./modules/linux-packages.nix
-          ];
-        };
+      homeConfigurations."connor@dev" = mkHome "aarch64-linux" [
+        ./modules/linux-base.nix
+        ./modules/linux-packages.nix
+      ];
 
       # RPi5 user env: home-manager switch --flake ~/.config/nix (alias: hms)
-      homeConfigurations."connor@rpi5" =
-        let
-          pkgs = mkPkgs "aarch64-linux";
-        in
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = {
-            packages = mkPackages pkgs;
-          };
-          modules = [
-            ./modules/linux-base.nix
-            (
-              { packages, ... }:
-              {
-                home.packages = packages.serverPackages;
-              }
-            )
-          ];
-        };
+      homeConfigurations."connor@rpi5" = mkHome "aarch64-linux" [
+        ./modules/linux-base.nix
+        (
+          { packages, ... }:
+          {
+            home.packages = packages.serverPackages;
+          }
+        )
+      ];
 
-      homeConfigurations."codespace" =
-        let
-          pkgs = mkPkgs "x86_64-linux";
-        in
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = {
-            packages = mkPackages pkgs;
-          };
-          modules = [
-            ./modules/linux-base.nix
-            ./modules/linux-codespaces.nix
-            (
-              { lib, ... }:
-              {
-                home.username = lib.mkForce "codespace";
-                home.homeDirectory = lib.mkForce "/home/codespace";
-              }
-            )
-          ];
-        };
+      homeConfigurations."codespace" = mkHome "x86_64-linux" [
+        ./modules/linux-base.nix
+        ./modules/linux-codespaces.nix
+        (
+          { lib, ... }:
+          {
+            home.username = lib.mkForce "codespace";
+            home.homeDirectory = lib.mkForce "/home/codespace";
+          }
+        )
+      ];
 
     };
 }
