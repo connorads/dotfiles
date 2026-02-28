@@ -1,5 +1,10 @@
 #!/usr/bin/env zsh
-# ncg: collect nix store garbage (delete old generations)
+# ncg: collect nix store garbage (default: keep last 14 days)
+# usage: ncg [--all]
 emulate -L zsh
 
-nix-collect-garbage -d
+if [[ "$1" == "--all" ]]; then
+  nix-collect-garbage -d
+else
+  nix-collect-garbage --delete-older-than 14d
+fi
