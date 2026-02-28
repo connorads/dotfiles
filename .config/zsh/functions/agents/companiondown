@@ -2,6 +2,7 @@
 # companiondown: stop Vibe Companion and Tailscale serve
 emulate -L zsh
 
+local port=${1:-3456}
 tmux kill-session -t companion 2>/dev/null
-ts serve --https=3456 off 2>/dev/null
+ts serve --https=$port off 2>/dev/null
 echo "Companion stopped"
