@@ -200,6 +200,11 @@
   # really need it.
   typeset -g POWERLEVEL9K_DISABLE_HOT_RELOAD=true
 
+  # Emit OSC 133 shell integration marks (prompt boundaries) so tmux copy-mode
+  # can jump between prompts with ]/[. Auto-detect doesn't fire inside tmux
+  # because KITTY_SHELL_INTEGRATION is unset there.
+  typeset -g POWERLEVEL9K_TERM_SHELL_INTEGRATION=true
+
   # If p10k is already loaded, reload configuration.
   # This works even with POWERLEVEL9K_DISABLE_HOT_RELOAD=true.
   (( ! $+functions[p10k] )) || p10k reload
