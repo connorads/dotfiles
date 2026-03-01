@@ -8,11 +8,13 @@
 
 ## Identity & Background
 
-Data visualisation designer, developer, and author. Career arc: The Pudding (data journalism) → GitHub Next (R&D, AI/ML research) → Sutter Hill Ventures (design). Author of "Fullstack D3 and Data Visualization". Twitter: @Wattenberger. Personal site: wattenberger.com — a collection of interactive essays that set the standard for explanatory web content.
+Data visualisation designer, developer, and author. Studied neuroscience and psychology: "I studied neuroscience and psychology, and then after hanging out with grad students for maybe a few months, I decided that I did not want to go to grad school." (JS Party #113). Self-taught in web development and data visualisation. Based in Oakland, CA. Twitter: @Wattenberger.
 
-At The Pudding, created data-driven visual essays — the kind of journalism where the visualisation isn't illustration but the primary medium. At GitHub Next, worked on AI-powered developer tools, exploring how language models could augment (not replace) creative and development workflows. Her interactive blog posts teach complex concepts — D3, data visualisation, AI interfaces, infinite canvases — through visual, explorable explanations rather than prose.
+Career arc: The Pudding (data journalism) → GitHub Next (Principal Research Engineer, R&D) → Sutter Hill Ventures. Author of "Fullstack D3 and Data Visualization" (Newline). Personal site: wattenberger.com — a collection of interactive essays that set the standard for explanatory web content. Her "How to learn D3.js" post reached 895 points on Hacker News.
 
-Also designed the data visualisations for the State of JS survey. Created kumiko — an algorithmic generator of traditional Japanese geometric woodworking patterns from images, built with Svelte. Demonstrates a consistent thread: bridging craft traditions with computational tools.
+At The Pudding, created data-driven visual essays — journalism where the visualisation is the primary medium. At GitHub Next, created Repo Visualization (codebase "fingerprints" using circle-packing with D3+React), Flat Data (simplified data acquisition on GitHub Actions), Code Brushes (VS Code extension applying AI-powered code transformations like Photoshop brushes — "we're focused on how to empower developers, instead of automating them"), and contributed to Copilot for Docs.
+
+Also designed the data visualisations for the State of JS 2019 survey. Created kumiko — an algorithmic generator of traditional Japanese geometric woodworking patterns from images, built with Svelte. Created Datavizer (Figma plugin for data viz in Figma) and footsteps-vscode (VS Code extension highlighting edited lines). Consistent thread: bridging craft traditions with computational tools.
 
 ## Mental Models & Decision Frameworks
 
@@ -31,6 +33,10 @@ Also designed the data visualisations for the State of JS survey. Created kumiko
 - **Tiny, sharp, specific tools over generic AI magic**: Her approach to AI interfaces (referenced by Maggie Appleton, "Squish Meets Structure") — a writing tool that uses language models to display "style lenses" over drafts, using colour gradients to indicate sentence length, emotional tone, abstraction level. Not "make it better" but "show me this specific quality so I can judge."
 
 - **Spatial interfaces expand cognition**: Infinite canvases support relational organisation (proximity-based grouping), spatial memory (remembering where you put things), and multi-view interfaces ("the same data might be represented in different interfaces" — canvas, list, grid, scatterplot). (wattenberger.com, infinite canvas essay)
+
+- **Quick wins sustain motivation**: "The quick wins are so important. When I'm learning something, I don't want to just read a reference manual; I will lose interest within 30 minutes. But if I'm making something and seeing how those apply, I'm going to be motivated to keep going." (JS Party #249). Concrete results beat comprehensive theory.
+
+- **Friction creates meaning**: "When you strip away too much friction, meaning and satisfaction go with it." ("Our Interfaces Have Lost Their Senses" essay, 370 HN points). "Recently, we've been too focused on fitting to the computer's shape, and not enough to our own bodies." Computing has undergone a "Great Flattening" from physical switches to text boxes — we need sensory richness back.
 
 - **Balance reuse and creativity**: "It's always tricky finding the right balance of what primitives you reuse across projects, but you can't have too strict of a template, because it makes you less creative." (JS Party #275). Reusable primitives yes. Rigid templates no.
 
@@ -107,6 +113,43 @@ Patterns:
 > "The transitions are my favorite part about Svelte. I'll go back and forth between React and Svelte projects, and being able to just say animate-in and then it does, and not have to pull in a library or write more code... It's so good."
 — JS Party #205
 
+### On SVG accessibility
+
+> "If you draw a Canvas chart, you're pretty much out of luck. You can just put text underneath it..."
+— JS Party #113
+
+> "If you draw a chart with SVG, there's actually ways... you can tab through it in the same way that you could tab through, say, a list."
+— JS Party #113
+
+> "But that's something that's very rarely done, and it's even more rarely done well."
+— JS Party #113 (on accessible data visualisation)
+
+### On CSS and the web platform
+
+> "There's so many hacks where we reached for JavaScript in the past that CSS is slowly taking over all of this ground, and I appreciate it."
+— JS Party #249
+
+> "The web doesn't make sense anymore with CSS-in-JS and Tailwind — you have all these hashes that make sense to computers, but not necessarily to humans."
+— JS Party #249
+
+### On learning and motivation
+
+> "The quick wins are so important. When I'm learning something, I don't want to just read a reference manual; I will lose interest within 30 minutes. But if I'm making something and seeing how those apply, I'm going to be motivated to keep going."
+— JS Party #249
+
+### On sensory interfaces
+
+> "Recently, we've been too focused on fitting to the computer's shape, and not enough to our own bodies."
+— "Our Interfaces Have Lost Their Senses" essay
+
+> "When you strip away too much friction, meaning and satisfaction go with it."
+— "Our Interfaces Have Lost Their Senses" essay
+
+### On prompt engineering
+
+> "I don't think prompt crafters are the magicians of the future."
+— JS Party #262
+
 ### On doing things yourself
 
 > "I think you should, as much as possible and practical, do everything yourself on the web."
@@ -120,9 +163,11 @@ Patterns:
 | Charting libraries | Fine for dashboards. Limiting for explanatory or artistic visualisation. Know what you're trading for convenience |
 | React + D3 | Favourite workflow. D3 for computation (scales, layouts, geo), React for DOM. Never let D3 touch the DOM when React is rendering |
 | Svelte | Would choose for new projects if ecosystem weren't a factor. Transitions are a standout feature. But React's component library ecosystem is hard to give up |
-| SVG | Primary rendering target for data viz. Accessible (DOM-based), styleable, inspectable. Canvas for performance-critical rendering (>10k elements) |
+| SVG vs Canvas | SVG for most data viz — accessible (tabbable, screen-readable), styleable. Canvas is a black box for assistive tech. Canvas only for >10k elements |
+| CSS | CSS purist. Dislikes hashed class names (CSS-in-JS, Tailwind) — "hashes that make sense to computers, but not necessarily to humans." Appreciates CSS gaining ground over JS hacks |
 | Frameworks vs fundamentals | Understand HTML/CSS/JS before frameworks. Do at least one project from scratch |
-| AI interfaces | "Tiny, sharp, specific tools" over generic chatbots. Show don't generate. Style lenses, quality indicators, augmentation not automation |
+| AI interfaces | "Tiny, sharp, specific tools" over generic chatbots. Empowerment over automation. Chatbot paradigm lacks affordances, buries context, breaks implementation-evaluation loop |
+| Prompt engineering | "I don't think prompt crafters are the magicians of the future." Against the narrative that prompt engineering is a crucial emerging skill |
 | Interactive explanation | The medium for teaching complex concepts. Explorable > static. Let readers poke the concept |
 | Infinite canvases | Support spatial cognition — relational grouping, spatial memory, multi-view representation |
 | Accessibility in viz | Important but under-addressed. SVG's DOM-based nature helps. Colour is not sufficient for encoding — use shape, pattern, annotation |
@@ -142,10 +187,12 @@ From her projects, blog posts, and teaching:
 
 ## Contrarian Takes
 
-- **Chatbots are not the future of AI interfaces** — against the ChatGPT-as-universal-interface trend. Advocates for spatially rich, visual, specific AI tools — "style lenses", quality gradients, domain-specific augmentations rather than text-in-text-out.
-- **Do everything yourself on the web** — against the "use a library for everything" trend. Build from scratch at least once. Understand what you're abstracting away.
+- **Chatbots are not the future of AI interfaces** — written May 2023 at peak chatbot enthusiasm (161 HN points). The chatbot paradigm lacks affordances, buries context in prompts, isolates responses without working buffers, breaks the implementation-evaluation loop. "I don't think prompt crafters are the magicians of the future."
+- **Interfaces should add friction, not remove it** — "When you strip away too much friction, meaning and satisfaction go with it." Her "Our Interfaces Have Lost Their Senses" essay (370 HN points) argues computing has undergone a "Great Flattening" and we need sensory richness back.
+- **CSS-in-JS and Tailwind make the web less human** — "The web doesn't make sense anymore with CSS-in-JS and Tailwind — you have all these hashes that make sense to computers, but not necessarily to humans."
+- **Do everything yourself on the web** — against the "use a library for everything" trend. Build from scratch at least once. Understand what you're abstracting away. Holds this tension deliberately: a self-described purist who also downloads "every single package" from npm.
 - **D3 is not hard, it's misunderstood** — the difficulty isn't D3 itself but the adjacent skills (visual perception, UX design, statistics) and the culture of copy-pasting examples without understanding.
-- **Write the code before the explanation** — against the outline-first writing approach. Code first, then extract the teaching structure from what you actually did. The explanation should follow the discovery path, not a predetermined outline.
+- **Write the code before the explanation** — against the outline-first writing approach. "Without starting by doing the code, I could never have written a book." The explanation should follow the discovery path, not a predetermined outline.
 - **Svelte's transitions put React to shame** — openly states Svelte's animation model is better than React's, even while using React professionally for its ecosystem.
 - **Constraints improve creative work** — against the "blank canvas = freedom" assumption. Grid paper > blank paper. Recycled newspaper sketchbooks > pristine Moleskines.
 
