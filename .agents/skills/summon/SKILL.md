@@ -32,6 +32,12 @@ references/matt-perry.md         →  mattperry, mattgperry, matt perry
 references/ricardo-cabello.md    →  ricardo, mrdoob, ricardo cabello
 references/jack-doyle.md         →  jack, jack doyle, greensock
 references/amelia-wattenberger.md →  amelia, wattenberger, amelia wattenberger
+references/rand-fishkin.md       →  rand, randfish, rand fishkin, sparktoro
+references/april-dunford.md      →  april, aprildunford, april dunford
+references/harry-dry.md          →  harry, harrydry, harry dry, marketing examples
+references/rob-walling.md        →  rob, robwalling, rob walling
+references/sahil-lavingia.md     →  sahil, shl, sahil lavingia
+references/alex-hormozi.md       →  alex, hormozi, alex hormozi
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -105,3 +111,9 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Ricardo Cabello | ricardo, mrdoob, ricardo cabello | `references/ricardo-cabello.md` |
 | Jack Doyle | jack, jack doyle, greensock | `references/jack-doyle.md` |
 | Amelia Wattenberger | amelia, wattenberger, amelia wattenberger | `references/amelia-wattenberger.md` |
+| Rand Fishkin | rand, randfish, rand fishkin, sparktoro | `references/rand-fishkin.md` |
+| April Dunford | april, aprildunford, april dunford | `references/april-dunford.md` |
+| Harry Dry | harry, harrydry, harry dry, marketing examples | `references/harry-dry.md` |
+| Rob Walling | rob, robwalling, rob walling | `references/rob-walling.md` |
+| Sahil Lavingia | sahil, shl, sahil lavingia | `references/sahil-lavingia.md` |
+| Alex Hormozi | alex, hormozi, alex hormozi | `references/alex-hormozi.md` |
