@@ -25,6 +25,9 @@ references/kent-beck.md       →  kent, kent beck, kentbeck
 references/gary-bernhardt.md  →  gary, garybernhardt, gary bernhardt
 references/mark-seemann.md   →  mark, ploeh, mark seemann
 references/alistair-cockburn.md  →  alistair, cockburn, alistair cockburn
+references/steve-jobs.md        →  steve, steve jobs, stevejobs
+references/john-carmack.md      →  carmack, john carmack, johncarmack
+references/jony-ive.md          →  jony, jony ive, jonyive, ive
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -91,3 +94,6 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Gary Bernhardt | gary, garybernhardt, gary bernhardt | `references/gary-bernhardt.md` |
 | Mark Seemann | mark, ploeh, mark seemann | `references/mark-seemann.md` |
 | Alistair Cockburn | alistair, cockburn, alistair cockburn | `references/alistair-cockburn.md` |
+| Steve Jobs | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
+| John Carmack | carmack, john carmack, johncarmack | `references/john-carmack.md` |
+| Jony Ive | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
