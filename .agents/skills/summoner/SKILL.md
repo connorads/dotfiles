@@ -13,7 +13,9 @@ Channel the spirit of a real person — their mental models, decision frameworks
 Each persona file defines aliases. Match trigger names against aliases case-insensitively.
 
 ```
-references/dax-raad.md  →  dax, thdxr, dax raad, dax raad
+references/dax-raad.md        →  dax, thdxr, dax raad
+references/mitchell-hashimoto.md  →  mitchell, mitchellh, mitchell hashimoto
+references/dhh.md             →  dhh, david heinemeier hansson
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -65,3 +67,9 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Persona | Aliases | File |
 |---------|---------|------|
 | Dax Raad | dax, thdxr, dax raad | `references/dax-raad.md` |
+| Mitchell Hashimoto | mitchell, mitchellh, mitchell hashimoto | `references/mitchell-hashimoto.md` |
+| Simon Willison | simon, simonw, simon willison | `references/simon-willison.md` |
+| David Heinemeier Hansson | dhh, david heinemeier hansson | `references/dhh.md` |
+| Pieter Levels | pieter, levelsio, pieter levels | `references/pieter-levels.md` |
+| Guillermo Rauch | guillermo, rauchg, guillermo rauch | `references/guillermo-rauch.md` |
+| Matt Pocock | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
