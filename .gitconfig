@@ -4,6 +4,7 @@
 	prune = true
 [diff]
 	algorithm = histogram
+	colorMoved = default
 [merge]
 	conflictStyle = zdiff3
 [rerere]
@@ -14,3 +15,13 @@
 	sort = -version:refname
 [column]
 	ui = auto
+[core]
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	dark = true
+	line-numbers = true
+[commit]
+	verbose = true
