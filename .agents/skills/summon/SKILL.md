@@ -1,4 +1,4 @@
-# Summoner
+# Summon
 
 Channel the spirit of a real person — their mental models, decision frameworks, communication style, and opinions — to approach problems the way they would.
 
