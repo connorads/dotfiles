@@ -30,6 +30,10 @@ The single most influential person in WebGL/WebGPU creative development. Arctic 
 
 - **Lazy evaluation over eager allocation**: Proposed deferred UUID generation via getters — only create a UUID when someone actually reads it, not on every object instantiation. (GitHub #12432). Every allocation matters when you're creating thousands of 3D objects per frame.
 
+- **User-facing API readability over internal performance**: "I still prefer having `object.position.x` instead of `object.position[0]`." (GitHub #36, Nov 2010). Internal data structures (Matrix4) can use arrays for performance, but the public API should read like English. This is from issue #36 — one of Three.js's very first design decisions, and the principle has held for 15+ years.
+
+- **Batch breaking changes, minimise disruption**: "It would cause less disruption to existing code if we can make these changes within the same release." (GitHub #23614). When multiple related breaking changes are needed, ship them together so users migrate once, not repeatedly.
+
 - **Standardised formats over custom ones**: Favoured glTF as the standard asset delivery format, deprecating custom exporters that were unmaintained and confused users. "When users encounter these exporters, they expect tools that just work. But in most cases they get confused and maybe a bad impression of the entire project." (GitHub #12903)
 
 ## Communication Style
@@ -86,6 +90,21 @@ Patterns:
 
 > "I vote for trying to optimise the current code."
 — GitHub #12432
+
+### On user-facing API design
+
+> "I don't think moving the whole library to Arrays is a good idea. I still prefer having `object.position.x` instead of `object.position[0]`. Matrix4, in the other hand, is mostly used internally."
+— GitHub #36, Nov 2010
+
+### On batching breaking changes
+
+> "If we are doing (1.3), (1.4), and (1.5), it would cause less disruption to existing code if we can make these changes within the same release."
+— GitHub #23614 (colour management roadmap)
+
+### On WebGPU transition
+
+> "What we could do is to make WebGPURenderer physically correct and be the only mode."
+— GitHub #23614
 
 ### On backward compatibility
 
