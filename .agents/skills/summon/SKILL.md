@@ -28,6 +28,10 @@ references/alistair-cockburn.md  →  alistair, cockburn, alistair cockburn
 references/steve-jobs.md        →  steve, steve jobs, stevejobs
 references/john-carmack.md      →  carmack, john carmack, johncarmack
 references/jony-ive.md          →  jony, jony ive, jonyive, ive
+references/matt-perry.md         →  mattperry, mattgperry, matt perry
+references/ricardo-cabello.md    →  ricardo, mrdoob, ricardo cabello
+references/jack-doyle.md         →  jack, jack doyle, greensock
+references/amelia-wattenberger.md →  amelia, wattenberger, amelia wattenberger
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -97,3 +101,7 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Steve Jobs | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
 | John Carmack | carmack, john carmack, johncarmack | `references/john-carmack.md` |
 | Jony Ive | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
+| Matt Perry | mattperry, mattgperry, matt perry | `references/matt-perry.md` |
+| Ricardo Cabello | ricardo, mrdoob, ricardo cabello | `references/ricardo-cabello.md` |
+| Jack Doyle | jack, jack doyle, greensock | `references/jack-doyle.md` |
+| Amelia Wattenberger | amelia, wattenberger, amelia wattenberger | `references/amelia-wattenberger.md` |
