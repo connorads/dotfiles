@@ -28,6 +28,10 @@ references/alistair-cockburn.md  →  alistair, cockburn, alistair cockburn
 references/steve-jobs.md        →  steve, steve jobs, stevejobs
 references/john-carmack.md      →  carmack, john carmack, johncarmack
 references/jony-ive.md          →  jony, jony ive, jonyive, ive
+references/simon-willison.md    →  simon, simonw, simon willison
+references/pieter-levels.md     →  pieter, levelsio, pieter levels
+references/guillermo-rauch.md   →  guillermo, rauchg, guillermo rauch
+references/matt-pocock.md       →  matt, mattpocockuk, matt pocock
 references/matt-perry.md         →  mattperry, mattgperry, matt perry
 references/ricardo-cabello.md    →  ricardo, mrdoob, ricardo cabello
 references/jack-doyle.md         →  jack, jack doyle, greensock
@@ -41,6 +45,8 @@ references/alex-hormozi.md       →  alex, hormozi, alex hormozi
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
+
+If the user asks a question without naming a persona, consult the Domain column to suggest the most relevant expert(s).
 
 ## Channelling Modes
 
@@ -86,34 +92,34 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 
 ## Available Personas
 
-| Persona | Aliases | File |
-|---------|---------|------|
-| Dax Raad | dax, thdxr, dax raad | `references/dax-raad.md` |
-| Mitchell Hashimoto | mitchell, mitchellh, mitchell hashimoto | `references/mitchell-hashimoto.md` |
-| Simon Willison | simon, simonw, simon willison | `references/simon-willison.md` |
-| David Heinemeier Hansson | dhh, david heinemeier hansson | `references/dhh.md` |
-| Pieter Levels | pieter, levelsio, pieter levels | `references/pieter-levels.md` |
-| Guillermo Rauch | guillermo, rauchg, guillermo rauch | `references/guillermo-rauch.md` |
-| Matt Pocock | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
-| Scott Wlaschin | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
-| Eric Evans | eric, eric evans, ericevans | `references/eric-evans.md` |
-| Alberto Brandolini | alberto, brandolini, ziobrando | `references/alberto-brandolini.md` |
-| Greg Young | greg, greg young, gregyoung | `references/greg-young.md` |
-| Rich Hickey | rich, rich hickey, richhickey | `references/rich-hickey.md` |
-| Kent Beck | kent, kent beck, kentbeck | `references/kent-beck.md` |
-| Gary Bernhardt | gary, garybernhardt, gary bernhardt | `references/gary-bernhardt.md` |
-| Mark Seemann | mark, ploeh, mark seemann | `references/mark-seemann.md` |
-| Alistair Cockburn | alistair, cockburn, alistair cockburn | `references/alistair-cockburn.md` |
-| Steve Jobs | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
-| John Carmack | carmack, john carmack, johncarmack | `references/john-carmack.md` |
-| Jony Ive | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
-| Matt Perry | mattperry, mattgperry, matt perry | `references/matt-perry.md` |
-| Ricardo Cabello | ricardo, mrdoob, ricardo cabello | `references/ricardo-cabello.md` |
-| Jack Doyle | jack, jack doyle, greensock | `references/jack-doyle.md` |
-| Amelia Wattenberger | amelia, wattenberger, amelia wattenberger | `references/amelia-wattenberger.md` |
-| Rand Fishkin | rand, randfish, rand fishkin, sparktoro | `references/rand-fishkin.md` |
-| April Dunford | april, aprildunford, april dunford | `references/april-dunford.md` |
-| Harry Dry | harry, harrydry, harry dry, marketing examples | `references/harry-dry.md` |
-| Rob Walling | rob, robwalling, rob walling | `references/rob-walling.md` |
-| Sahil Lavingia | sahil, shl, sahil lavingia | `references/sahil-lavingia.md` |
-| Alex Hormozi | alex, hormozi, alex hormozi | `references/alex-hormozi.md` |
+| Persona | Domain | Aliases | File |
+|---------|--------|---------|------|
+| Alberto Brandolini | EventStorming, domain modelling facilitation | alberto, brandolini, ziobrando | `references/alberto-brandolini.md` |
+| Alex Hormozi | Offer design, business scaling, lead gen | alex, hormozi, alex hormozi | `references/alex-hormozi.md` |
+| Alistair Cockburn | Agile methodology, hexagonal architecture | alistair, cockburn, alistair cockburn | `references/alistair-cockburn.md` |
+| Amelia Wattenberger | Data visualisation, D3.js, interactive essays | amelia, wattenberger, amelia wattenberger | `references/amelia-wattenberger.md` |
+| April Dunford | Product positioning, go-to-market strategy | april, april dunford, aprildunford | `references/april-dunford.md` |
+| Dax Raad | SST, IaC, developer experience, open source | dax, thdxr, dax raad | `references/dax-raad.md` |
+| David Heinemeier Hansson | Rails, monoliths, HTML-over-the-wire | dhh, david heinemeier hansson | `references/dhh.md` |
+| Eric Evans | Domain-Driven Design, bounded contexts | eric, eric evans, ericevans | `references/eric-evans.md` |
+| Gary Bernhardt | TDD, functional core / imperative shell | gary, garybernhardt, gary bernhardt | `references/gary-bernhardt.md` |
+| Greg Young | CQRS, event sourcing, temporal modelling | greg, greg young, gregyoung | `references/greg-young.md` |
+| Guillermo Rauch | Next.js, Vercel, frontend deployment, AI cloud | guillermo, rauchg, guillermo rauch | `references/guillermo-rauch.md` |
+| Harry Dry | Marketing copywriting, show-don't-tell | harry, harry dry, harrydry, marketing examples | `references/harry-dry.md` |
+| Jack Doyle | GSAP, web animation, JS performance | jack, jack doyle, greensock | `references/jack-doyle.md` |
+| John Carmack | Graphics engines, optimisation, VR/latency | carmack, john carmack, johncarmack | `references/john-carmack.md` |
+| Jony Ive | Industrial design, Apple design philosophy | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
+| Kent Beck | XP, TDD, refactoring, simple design | kent, kent beck, kentbeck | `references/kent-beck.md` |
+| Mark Seemann | DI, functional programming, clean architecture | mark, ploeh, mark seemann | `references/mark-seemann.md` |
+| Matt Perry | Motion library, spring physics, layout animation | mattperry, mattgperry, matt perry | `references/matt-perry.md` |
+| Matt Pocock | TypeScript, type inference, advanced patterns | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
+| Mitchell Hashimoto | Terraform, infrastructure automation, Ghostty | mitchell, mitchellh, mitchell hashimoto | `references/mitchell-hashimoto.md` |
+| Pieter Levels | Solo bootstrapping, radical simplicity, shipping | pieter, levelsio, pieter levels | `references/pieter-levels.md` |
+| Rand Fishkin | SEO, audience research, zero-click content | rand, rand fishkin, randfish, sparktoro | `references/rand-fishkin.md` |
+| Ricardo Cabello | Three.js, WebGL, 3D graphics on the web | ricardo, mrdoob, ricardo cabello | `references/ricardo-cabello.md` |
+| Rich Hickey | Clojure, simplicity, values vs places | rich, rich hickey, richhickey | `references/rich-hickey.md` |
+| Rob Walling | SaaS bootstrapping, TinySeed, stair-step approach | rob, robwalling, rob walling | `references/rob-walling.md` |
+| Sahil Lavingia | Gumroad, creator economy, bootstrapping | sahil, shl, sahil lavingia | `references/sahil-lavingia.md` |
+| Scott Wlaschin | F#, FP, railway-oriented programming | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
+| Simon Willison | Django, Datasette, SQLite, AI tooling | simon, simonw, simon willison | `references/simon-willison.md` |
+| Steve Jobs | Product vision, focus, technology × liberal arts | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
