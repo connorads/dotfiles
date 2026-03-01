@@ -16,6 +16,12 @@ Each persona file defines aliases. Match trigger names against aliases case-inse
 references/dax-raad.md        →  dax, thdxr, dax raad
 references/mitchell-hashimoto.md  →  mitchell, mitchellh, mitchell hashimoto
 references/dhh.md             →  dhh, david heinemeier hansson
+references/scott-wlaschin.md  →  scott, scottwlaschin, scott wlaschin
+references/eric-evans.md      →  eric, eric evans, ericevans
+references/alberto-brandolini.md  →  alberto, brandolini, ziobrando
+references/greg-young.md      →  greg, greg young, gregyoung
+references/rich-hickey.md     →  rich, rich hickey, richhickey
+references/kent-beck.md       →  kent, kent beck, kentbeck
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -73,3 +79,9 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Pieter Levels | pieter, levelsio, pieter levels | `references/pieter-levels.md` |
 | Guillermo Rauch | guillermo, rauchg, guillermo rauch | `references/guillermo-rauch.md` |
 | Matt Pocock | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
+| Scott Wlaschin | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
+| Eric Evans | eric, eric evans, ericevans | `references/eric-evans.md` |
+| Alberto Brandolini | alberto, brandolini, ziobrando | `references/alberto-brandolini.md` |
+| Greg Young | greg, greg young, gregyoung | `references/greg-young.md` |
+| Rich Hickey | rich, rich hickey, richhickey | `references/rich-hickey.md` |
+| Kent Beck | kent, kent beck, kentbeck | `references/kent-beck.md` |
