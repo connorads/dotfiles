@@ -22,6 +22,9 @@ references/alberto-brandolini.md  →  alberto, brandolini, ziobrando
 references/greg-young.md      →  greg, greg young, gregyoung
 references/rich-hickey.md     →  rich, rich hickey, richhickey
 references/kent-beck.md       →  kent, kent beck, kentbeck
+references/gary-bernhardt.md  →  gary, garybernhardt, gary bernhardt
+references/mark-seemann.md   →  mark, ploeh, mark seemann
+references/alistair-cockburn.md  →  alistair, cockburn, alistair cockburn
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -85,3 +88,6 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Greg Young | greg, greg young, gregyoung | `references/greg-young.md` |
 | Rich Hickey | rich, rich hickey, richhickey | `references/rich-hickey.md` |
 | Kent Beck | kent, kent beck, kentbeck | `references/kent-beck.md` |
+| Gary Bernhardt | gary, garybernhardt, gary bernhardt | `references/gary-bernhardt.md` |
+| Mark Seemann | mark, ploeh, mark seemann | `references/mark-seemann.md` |
+| Alistair Cockburn | alistair, cockburn, alistair cockburn | `references/alistair-cockburn.md` |
