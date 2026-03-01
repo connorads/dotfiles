@@ -1,0 +1,86 @@
+#!/usr/bin/env zsh
+# hcssh: generate/update ~/.ssh/config entries from Hetzner Cloud servers
+# Creates two Host entries per server: <name> (no agent) and <name>-agent (ForwardAgent yes)
+emulate -L zsh
+setopt localoptions
+
+local usage="Usage: hcssh [--dry-run]"
+local dry_run=false
+local ssh_config="$HOME/.ssh/config"
+local marker_begin="# BEGIN hetzner-managed"
+local marker_end="# END hetzner-managed"
+
+case "${1:-}" in
+  -h|--help|help) echo "$usage"; return 0 ;;
+  --dry-run) dry_run=true ;;
+  "") ;;
+  *) print -u2 "$usage"; return 1 ;;
+esac
+
+# Ensure hcloud is available
+if ! command -v hcloud &>/dev/null; then
+  print -u2 "hcloud not found. Install via mise: mise install hcloud"
+  return 1
+fi
+
+# Fetch servers
+local -a servers
+servers=("${(@f)$(hcloud server list -o columns=name,ipv4 -o noheader 2>/dev/null)}")
+if [[ ${#servers[@]} -eq 0 || -z "${servers[1]}" ]]; then
+  print -u2 "No Hetzner servers found (or hcloud not authenticated)"
+  return 1
+fi
+
+# Build managed block
+local block="$marker_begin"
+for line in "${servers[@]}"; do
+  [[ -z "$line" ]] && continue
+  local name="${line%% *}"
+  local ip="${line##* }"
+  block+=$'\n'"# Hetzner $name — no agent forwarding (safe for AI agents)"
+  block+=$'\n'"Host $name"
+  block+=$'\n'"    HostName $ip"
+  block+=$'\n'"    User connor"
+  block+=$'\n'"    ForwardAgent no"
+  block+=$'\n'
+  block+=$'\n'"# Hetzner $name — with agent forwarding (for git push/pull)"
+  block+=$'\n'"Host ${name}-agent"
+  block+=$'\n'"    HostName $ip"
+  block+=$'\n'"    User connor"
+  block+=$'\n'"    ForwardAgent yes"
+  block+=$'\n'
+done
+block+="$marker_end"
+
+if $dry_run; then
+  echo "$block"
+  return 0
+fi
+
+# Ensure ~/.ssh exists
+[[ -d "$HOME/.ssh" ]] || mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+
+if [[ -f "$ssh_config" ]]; then
+  # Remove existing managed block if present
+  if grep -qF "$marker_begin" "$ssh_config"; then
+    local tmp="$(mktemp)"
+    awk -v begin="$marker_begin" -v end="$marker_end" '
+      $0 == begin { skip=1; next }
+      $0 == end   { skip=0; next }
+      !skip
+    ' "$ssh_config" > "$tmp"
+    mv "$tmp" "$ssh_config"
+  fi
+  # Append managed block
+  printf '\n%s\n' "$block" >> "$ssh_config"
+else
+  printf '%s\n' "$block" > "$ssh_config"
+fi
+
+chmod 600 "$ssh_config"
+
+local count=0
+for line in "${servers[@]}"; do
+  [[ -n "$line" ]] && (( count++ ))
+done
+echo "Updated $ssh_config with $count server(s) (${count} × 2 Host entries)"

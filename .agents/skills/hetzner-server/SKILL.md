@@ -247,27 +247,19 @@ ssh-keygen -R $(hcloud server ip dev) 2>/dev/null
 ssh-keyscan $(hcloud server ip dev) >> ~/.ssh/known_hosts 2>/dev/null
 ```
 
-Then add/update `~/.ssh/config` with two profiles:
+Then generate/update SSH config entries:
 
-```
-# Hetzner <name> - no agent forwarding (safe for AI agents)
-Host <name>
-    HostName <ip-address>
-    User connor
-    ForwardAgent no
-
-# Hetzner <name> - with agent forwarding (for git push/pull)
-Host <name>-agent
-    HostName <ip-address>
-    User connor
-    ForwardAgent yes
+```bash
+hcssh              # update ~/.ssh/config with all Hetzner servers
+hcssh --dry-run    # preview without writing
 ```
 
-- Get IP: `hcloud server ip <name>`
-- If entry exists, update the HostName in both profiles
-- Default profile (`<name>`) has no agent forwarding - safer for AI agents
-- Use `<name>-agent` when you need to push/pull to GitHub
-- This enables VS Code Remote-SSH to show the server in the dropdown
+This creates two Host entries per server inside a managed block (`# BEGIN/END hetzner-managed`):
+- `<name>` — no agent forwarding (safe for AI agents)
+- `<name>-agent` — with agent forwarding (for git push/pull to GitHub)
+
+Run `hcssh` again after creating/deleting servers to keep SSH config in sync.
+This enables VS Code Remote-SSH to show the server in the dropdown.
 
 ## Optional: Restrict SSH to Tailscale only
 
