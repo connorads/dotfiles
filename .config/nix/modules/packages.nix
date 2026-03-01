@@ -37,7 +37,6 @@ let
     zsh
     tmux
     kitty.terminfo
-    starship
 
     # Editors
     vim
