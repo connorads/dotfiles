@@ -72,6 +72,18 @@
                 })
               ];
             })
+
+            # Temporary fix for nixpkgs-unstable rev 42bbf3e1...
+            # TODO: remove once nixpkgs includes NixOS/nixpkgs@b0c90563d3f89a097b03379113c6155a1f885ed6
+            (final: prev: {
+              ollama = prev.ollama.overrideAttrs (old: {
+                postPatch =
+                  builtins.replaceStrings
+                    [ "rm model/models/qwen3next/checkpoints_test.go" ]
+                    [ "rm -f model/models/qwen3next/checkpoints_test.go" ]
+                    old.postPatch;
+              });
+            })
           ];
         };
 
