@@ -740,7 +740,6 @@
       "Bash(git push -f:*)"
     ]
   },
-  "model": "opusplan",
   "hooks": {
     "PreToolUse": [
       {
