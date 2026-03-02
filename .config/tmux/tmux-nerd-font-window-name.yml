@@ -1,3 +1,5 @@
+config:
+  show-name: false
 icons:
   bun: ""
   claude: "󰗋"
