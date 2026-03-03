@@ -98,8 +98,10 @@ ai_usage() {
     fi
   done
 
-  # Read percentages and reset times from cache
-  local claude_pct="" codex_pct="" claude_reset="" codex_reset=""
+  # Read percentages and remaining seconds from cache
+  local claude_pct="" codex_pct=""
+  local claude_remaining_secs="" codex_remaining_secs=""
+  local claude_reset="" codex_reset=""
 
   if [ -f "$claude_cache" ]; then
     claude_pct=$(jq -r '.five_hour.utilization // empty' "$claude_cache" 2>/dev/null)
@@ -107,9 +109,9 @@ ai_usage() {
     if [ -n "$resets_at" ]; then
       local reset_ts; reset_ts=$(date -d "$resets_at" +%s 2>/dev/null \
         || date -j -f "%Y-%m-%dT%H:%M:%S" "${resets_at%%.*}" +%s 2>/dev/null || echo 0)
-      local secs=$(( reset_ts - now )); [ "$secs" -lt 0 ] && secs=0
-      if [ "$secs" -ge 3600 ]; then claude_reset="$(( secs / 3600 ))h"
-      else claude_reset="$(( secs / 60 ))m"; fi
+      claude_remaining_secs=$(( reset_ts - now )); [ "$claude_remaining_secs" -lt 0 ] && claude_remaining_secs=0
+      if [ "$claude_remaining_secs" -ge 3600 ]; then claude_reset="$(( (claude_remaining_secs + 1800) / 3600 ))h"
+      else claude_reset="$(( claude_remaining_secs / 60 ))m"; fi
     fi
   fi
 
@@ -120,19 +122,34 @@ ai_usage() {
       # reset_after_seconds is relative to cache write time — subtract elapsed
       local cache_mt; cache_mt=$(stat -c '%Y' "$codex_cache" 2>/dev/null \
         || stat -f%m "$codex_cache" 2>/dev/null || echo "$now")
-      local secs=$(( reset_secs - (now - cache_mt) )); [ "$secs" -lt 0 ] && secs=0
-      if [ "$secs" -ge 3600 ]; then codex_reset="$(( secs / 3600 ))h"
-      else codex_reset="$(( secs / 60 ))m"; fi
+      codex_remaining_secs=$(( reset_secs - (now - cache_mt) )); [ "$codex_remaining_secs" -lt 0 ] && codex_remaining_secs=0
+      if [ "$codex_remaining_secs" -ge 3600 ]; then codex_reset="$(( (codex_remaining_secs + 1800) / 3600 ))h"
+      else codex_reset="$(( codex_remaining_secs / 60 ))m"; fi
     fi
   fi
 
   [ -z "$claude_pct" ] && [ -z "$codex_pct" ] && return
 
-  # Colour by usage tier: green <50%, yellow 50-79%, red >=80%
+  # Pace-based colour: compare usage% against elapsed% of 5h window
+  # pace = usage% / elapsed%, green <1.2, yellow 1.2-1.4, red >=1.4
   _usage_colour() {
-    local v=${1%.*}
-    if [ "${v:-0}" -ge 80 ] 2>/dev/null; then echo "f38ba8"
-    elif [ "${v:-0}" -ge 50 ] 2>/dev/null; then echo "f9e2af"
+    local usage_pct=$1 remaining_secs=$2
+    local usage_int=${usage_pct%.*}
+    usage_int=${usage_int:-0}
+
+    # No usage → green
+    if [ "$usage_int" -le 0 ] 2>/dev/null; then echo "a6e3a1"; return; fi
+
+    local elapsed_secs=$(( 18000 - remaining_secs ))
+    # Early window (<3min elapsed) → green (pace too unstable)
+    if [ "$elapsed_secs" -lt 180 ]; then echo "a6e3a1"; return; fi
+
+    local elapsed_pct=$(( elapsed_secs * 100 / 18000 ))
+    [ "$elapsed_pct" -le 0 ] && elapsed_pct=1
+
+    local pace_x100=$(( usage_int * 100 / elapsed_pct ))
+    if [ "$pace_x100" -ge 140 ]; then echo "f38ba8"
+    elif [ "$pace_x100" -ge 120 ]; then echo "f9e2af"
     else echo "a6e3a1"; fi
   }
 
@@ -142,13 +159,13 @@ ai_usage() {
   local out="#[fg=#232334]#[bg=#232334]"
 
   if [ -n "$claude_pct" ]; then
-    local cc; cc=$(_usage_colour "$claude_pct")
+    local cc; cc=$(_usage_colour "$claude_pct" "${claude_remaining_secs:-18000}")
     local ci; ci=$(printf "%.0f" "$claude_pct" 2>/dev/null || echo "$claude_pct")
     out+="#[fg=#${cc}] C:${ci}%"
     [ -n "$claude_reset" ] && out+="#[fg=${dim}]·${claude_reset}"
   fi
   if [ -n "$codex_pct" ]; then
-    local xc; xc=$(_usage_colour "$codex_pct")
+    local xc; xc=$(_usage_colour "$codex_pct" "${codex_remaining_secs:-18000}")
     local xi; xi=$(printf "%.0f" "$codex_pct" 2>/dev/null || echo "$codex_pct")
     out+="#[fg=#${xc}] X:${xi}%"
     [ -n "$codex_reset" ] && out+="#[fg=${dim}]·${codex_reset}"
