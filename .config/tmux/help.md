@@ -38,6 +38,7 @@
 |-----|--------|
 | `Ctrl+b S` | fzf session picker |
 | `Ctrl+b W` | fzf window picker |
+| `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
 | `Ctrl+b Alt+t` | Tailscale serve status (observe active serves) |
