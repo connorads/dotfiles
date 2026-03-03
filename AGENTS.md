@@ -6,11 +6,13 @@ Dotfiles are tracked with a dedicated git dir at `~/git/dotfiles` and work-tree 
 This is the same no-symlink pattern, exposed via the `dotfiles` wrapper.
 
 **Command pattern:**
+
 ```bash
 dotfiles <command>
 ```
 
 Examples:
+
 - `dotfiles status`
 - `dotfiles add .file`
 - `dotfiles commit -m "message"`
@@ -18,6 +20,7 @@ Examples:
 The `dotfiles` wrapper (installed via Nix) handles the git-dir/work-tree flags and resolves home directory reliably even in sanitised environments.
 
 **Adding new files:** The `~/.gitignore` ignores everything (`/*`) then un-ignores specific paths. Before tracking a new file, add an un-ignore pattern to `~/.gitignore`:
+
 ```bash
 # For a single file
 !/.newfile
@@ -26,6 +29,7 @@ The `dotfiles` wrapper (installed via Nix) handles the git-dir/work-tree flags a
 !/.config/newdir/
 !/.config/newdir/**
 ```
+
 Then `dotfiles add .newfile` works without `-f`.
 
 ## Git Hygiene
@@ -39,20 +43,20 @@ Then `dotfiles add .newfile` works without `-f`.
 
 ## Configuration Files
 
-| File | Purpose |
-|------|---------|
-| [flake.nix](./.config/nix/flake.nix) | Main Nix config: macOS (nix-darwin), Linux (home-manager) |
-| [config.toml](./.config/mise/config.toml) | mise tools (gh, opencode, etc.) |
-| [.zshrc](./.zshrc) | Shell config with aliases and autoloaded helpers (nix/git/tailscale) |
-| [.zshrc.local.example](./.zshrc.local.example) | Template for machine-local secrets in `~/.zshrc.local` |
-| [kitty.conf](./.config/kitty/kitty.conf) | Terminal emulator config |
-| [tmux.conf](./.config/tmux/tmux.conf) | tmux configuration (update `help.md` when changing bindings) |
-| [help.md](./.config/tmux/help.md) | tmux keybindings cheatsheet (`Ctrl+b ?`) |
-| [init.lua](./.config/nvim/init.lua) | Neovim configuration |
-| [~/.config/zsh/functions/](./.config/zsh/functions/) | Custom shell functions (autoloaded in zsh, also on PATH as executables) |
-| [~/.local/bin/](./.local/bin/) | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
-| [~/.config/zsh/aliases/](./.config/zsh/aliases/) | Tool-specific aliases (sourced from `.zshrc`) |
-| [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux)) |
+| File                                                                   | Purpose                                                                                   |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
+| [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
+| [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers (nix/git/tailscale)                      |
+| [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
+| [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
+| [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration (update `help.md` when changing bindings)                              |
+| [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
+| [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
+| [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
+| [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
+| [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
+| [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux))          |
 
 ## Shell Function Conventions
 
@@ -63,6 +67,7 @@ Most functions in `~/.config/zsh/functions/` are **dual-mode**: they work as zsh
 **Shebang = opt-in to PATH**: a `#!/usr/bin/env zsh` shebang on line 1 marks a function as dual-mode. `zfn-link` creates symlinks in `~/.local/bin/` for every file with this shebang, so agents can call them directly without `zsh -lc`.
 
 **File structure:**
+
 ```
 #!/usr/bin/env zsh           # ← present = dual-mode (PATH command)
 # <name>: <purpose>
@@ -72,6 +77,7 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 ```
 
 **When to add shebang (dual-mode):** Add when the function does NOT:
+
 - `cd` into a directory (would affect calling script, not caller's shell)
 - `export` variables into the caller's environment
 - `source` files into the caller's shell
@@ -80,15 +86,15 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 
 **Zsh-only functions** (no shebang, autoload only):
 
-| Function | Reason |
-|----------|--------|
-| `takedir`, `takegit`, `takeurl`, `takezip`, `take` | `cd` |
-| `ghcl`, `wta`, `wts` | `cd` |
-| `y` | `cd` |
-| `secretexport` | `export` |
-| `zshrc-local` | `source` |
-| `fns`, `cpcmd` | `print -z` |
-| `_register_tmux_completions`, `_tmux_sessions` | completion/hook |
+| Function                                           | Reason          |
+| -------------------------------------------------- | --------------- |
+| `takedir`, `takegit`, `takeurl`, `takezip`, `take` | `cd`            |
+| `ghcl`, `wta`, `wts`                               | `cd`            |
+| `y`                                                | `cd`            |
+| `secretexport`                                     | `export`        |
+| `zshrc-local`                                      | `source`        |
+| `fns`, `cpcmd`                                     | `print -z`      |
+| `_register_tmux_completions`, `_tmux_sessions`     | completion/hook |
 
 ### Managing symlinks
 
@@ -103,6 +109,7 @@ Run `zfn-link` and commit after adding a shebang to a new function.
 ### Agent usage
 
 Agents can call these commands directly — no `zsh -lc` wrapper needed:
+
 ```bash
 bash -c 'ts status'       # works via ~/.local/bin/ts
 bash -c 'killport 3000'   # works via ~/.local/bin/killport
@@ -133,6 +140,7 @@ homeConfigurations."codespace"           # GitHub Codespaces (minimal)
 ### Hybrid NixOS (rpi5)
 
 The rpi5 uses a hybrid setup — two repos, two rebuilds:
+
 - **System** (`nrs`): NixOS config from `~/git/rpi5` (set via `NIXOS_FLAKE` in `.zshrc.local`)
 - **User env** (`hms`): shell, tools, git, tmux etc. from dotfiles (`~/.config/nix`)
 
@@ -180,6 +188,7 @@ Skills stored canonically in `~/.agents/skills/` and symlinked to all agent tool
 Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
 
 **Installing skills:**
+
 ```bash
 # Via CLI (preferred)
 skills add vercel-labs/agent-skills -g  # Install from repo globally
@@ -262,5 +271,6 @@ ts ssh connor@rpi5 'git --git-dir=$HOME/git/dotfiles --work-tree=$HOME pull'
 ## Keeping Docs Updated
 
 After making significant changes (new config files, architectural changes, new scripts), update the relevant documentation:
+
 - This file (`AGENTS.md`) - for new key files or commands
 - [README.md](./README.md) - for changes to the dotfiles system itself
