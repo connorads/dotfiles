@@ -77,6 +77,87 @@ host_label() {
   fi
 }
 
+ai_usage() {
+  local claude_cache="$HOME/.cache/claude-usage.json"
+  local codex_cache="$HOME/.cache/codex-usage.json"
+  local ttl=60 now bin="$HOME/.local/bin"
+  now=$(date +%s)
+
+  # Background refresh if cache is stale
+  local mtime age
+  for cf in "$claude_cache" "$codex_cache"; do
+    if [ -f "$cf" ]; then
+      mtime=$(stat -c '%Y' "$cf" 2>/dev/null || stat -f%m "$cf" 2>/dev/null || echo 0)
+      age=$(( now - mtime ))
+      if [ "$age" -ge "$ttl" ]; then
+        case "$cf" in
+          *claude*) [ -x "$bin/claude-usage" ] && "$bin/claude-usage" >/dev/null 2>&1 & ;;
+          *codex*)  [ -x "$bin/codex-usage" ]  && "$bin/codex-usage"  >/dev/null 2>&1 & ;;
+        esac
+      fi
+    fi
+  done
+
+  # Read percentages and reset times from cache
+  local claude_pct="" codex_pct="" claude_reset="" codex_reset=""
+
+  if [ -f "$claude_cache" ]; then
+    claude_pct=$(jq -r '.five_hour.utilization // empty' "$claude_cache" 2>/dev/null)
+    local resets_at; resets_at=$(jq -r '.five_hour.resets_at // empty' "$claude_cache" 2>/dev/null)
+    if [ -n "$resets_at" ]; then
+      local reset_ts; reset_ts=$(date -d "$resets_at" +%s 2>/dev/null \
+        || date -j -f "%Y-%m-%dT%H:%M:%S" "${resets_at%%.*}" +%s 2>/dev/null || echo 0)
+      local secs=$(( reset_ts - now )); [ "$secs" -lt 0 ] && secs=0
+      if [ "$secs" -ge 3600 ]; then claude_reset="$(( secs / 3600 ))h"
+      else claude_reset="$(( secs / 60 ))m"; fi
+    fi
+  fi
+
+  if [ -f "$codex_cache" ]; then
+    codex_pct=$(jq -r '.rate_limit.primary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
+    local reset_secs; reset_secs=$(jq -r '.rate_limit.primary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
+    if [ -n "$reset_secs" ]; then
+      # reset_after_seconds is relative to cache write time — subtract elapsed
+      local cache_mt; cache_mt=$(stat -c '%Y' "$codex_cache" 2>/dev/null \
+        || stat -f%m "$codex_cache" 2>/dev/null || echo "$now")
+      local secs=$(( reset_secs - (now - cache_mt) )); [ "$secs" -lt 0 ] && secs=0
+      if [ "$secs" -ge 3600 ]; then codex_reset="$(( secs / 3600 ))h"
+      else codex_reset="$(( secs / 60 ))m"; fi
+    fi
+  fi
+
+  [ -z "$claude_pct" ] && [ -z "$codex_pct" ] && return
+
+  # Colour by usage tier: green <50%, yellow 50-79%, red >=80%
+  _usage_colour() {
+    local v=${1%.*}
+    if [ "${v:-0}" -ge 80 ] 2>/dev/null; then echo "f38ba8"
+    elif [ "${v:-0}" -ge 50 ] 2>/dev/null; then echo "f9e2af"
+    else echo "a6e3a1"; fi
+  }
+
+  local dim="#7f849c"
+
+  # Build segment: powerline separator then colour-coded labels
+  local out="#[fg=#232334]#[bg=#232334]"
+
+  if [ -n "$claude_pct" ]; then
+    local cc; cc=$(_usage_colour "$claude_pct")
+    local ci; ci=$(printf "%.0f" "$claude_pct" 2>/dev/null || echo "$claude_pct")
+    out+="#[fg=#${cc}] C:${ci}%"
+    [ -n "$claude_reset" ] && out+="#[fg=${dim}]·${claude_reset}"
+  fi
+  if [ -n "$codex_pct" ]; then
+    local xc; xc=$(_usage_colour "$codex_pct")
+    local xi; xi=$(printf "%.0f" "$codex_pct" 2>/dev/null || echo "$codex_pct")
+    out+="#[fg=#${xc}] X:${xi}%"
+    [ -n "$codex_reset" ] && out+="#[fg=${dim}]·${codex_reset}"
+  fi
+  out+=" "
+
+  printf "%s" "$out"
+}
+
 print_full() {
   local cpu ram disk git_ref host
   cpu="$(cpu_percentage)"
@@ -85,6 +166,7 @@ print_full() {
   git_ref="$(git_branch_and_dirty)"
   host="$(host_label)"
 
+  ai_usage
   printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
   printf "#[fg=#45475a]#[bg=#45475a]#[fg=#cba6f7]#[bold]  %s " "$ram"
   printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
