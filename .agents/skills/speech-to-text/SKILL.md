@@ -17,7 +17,7 @@ Transcribe audio to text with Scribe v2 - supports 90+ languages, speaker diariz
 ### Python
 
 ```python
-from elevenlabs.client import ElevenLabs
+from elevenlabs import ElevenLabs
 
 client = ElevenLabs()
 
@@ -158,6 +158,7 @@ Monitor usage via `request-id` response header:
 response = client.speech_to_text.convert.with_raw_response(file=audio_file, model_id="scribe_v2")
 result = response.parse()
 print(f"Request ID: {response.headers.get('request-id')}")
+```
 
 ## Real-Time Streaming
 
@@ -172,7 +173,7 @@ A "commit" tells the model to finalize the current segment. You can commit manua
 
 ```python
 import asyncio
-from elevenlabs.client import ElevenLabs
+from elevenlabs import ElevenLabs
 
 client = ElevenLabs()
 
@@ -195,13 +196,14 @@ asyncio.run(transcribe_realtime())
 ### JavaScript (Client-Side with React)
 
 ```typescript
-import { useScribe } from "@elevenlabs/react";
+import { useScribe, CommitStrategy } from "@elevenlabs/react";
 
 function TranscriptionComponent() {
   const [transcript, setTranscript] = useState("");
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
+    commitStrategy: CommitStrategy.VAD, // Auto-commit on silence for mic input
     onPartialTranscript: (data) => console.log("Partial:", data.text),
     onCommittedTranscript: (data) => setTranscript((prev) => prev + data.text),
   });
@@ -227,8 +229,21 @@ function TranscriptionComponent() {
 | **Manual** | You call `commit()` when ready - use for file processing or when you control the audio segments |
 | **VAD** | Voice Activity Detection auto-commits when silence is detected - use for live microphone input |
 
+```typescript
+// React: set commitStrategy on the hook (recommended for mic input)
+import { useScribe, CommitStrategy } from "@elevenlabs/react";
+
+const scribe = useScribe({
+  modelId: "scribe_v2_realtime",
+  commitStrategy: CommitStrategy.VAD,
+  // Optional VAD tuning:
+  vadSilenceThresholdSecs: 1.5,
+  vadThreshold: 0.4,
+});
+```
+
 ```javascript
-// VAD configuration
+// JavaScript client: pass vad config on connect
 const connection = await client.speechToText.realtime.connect({
   modelId: "scribe_v2_realtime",
   vad: {

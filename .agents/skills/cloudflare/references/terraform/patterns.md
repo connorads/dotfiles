@@ -2,6 +2,27 @@
 
 Architecture patterns, multi-environment setups, and real-world use cases.
 
+## Recommended Directory Structure
+
+```
+terraform/
+├── environments/
+│   ├── production/
+│   │   ├── main.tf
+│   │   └── terraform.tfvars
+│   └── staging/
+│       ├── main.tf
+│       └── terraform.tfvars
+├── modules/
+│   ├── zone/
+│   ├── worker/
+│   └── dns/
+└── shared/          # Shared resources across envs
+    └── main.tf
+```
+
+**Note:** Cloudflare recommends avoiding modules for provider resources due to v5 auto-generation complexity. Prefer environment directories + shared state instead.
+
 ## Multi-Environment Setup
 
 ```hcl
@@ -12,6 +33,24 @@ module "zone" {
 module "api_worker" {
   source = "../../modules/worker"; account_id = var.account_id; zone_id = module.zone.zone_id
   name = "api-worker-prod"; script = file("../../workers/api.js"); environment = "production"
+}
+```
+
+## R2 State Backend
+
+```hcl
+terraform {
+  backend "s3" {
+    bucket = "terraform-state"
+    key = "cloudflare.tfstate"
+    region = "auto"
+    endpoints = { s3 = "https://<account_id>.r2.cloudflarestorage.com" }
+    skip_credentials_validation = true
+    skip_region_validation = true
+    skip_requesting_account_id = true
+    skip_metadata_api_check = true
+    skip_s3_checksum = true
+  }
 }
 ```
 

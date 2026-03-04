@@ -1,6 +1,6 @@
 # CNI Patterns
 
-See [README.md](./README.md) for overview.
+See [README.md](README.md) for overview.
 
 ## High Availability
 
@@ -66,20 +66,15 @@ await configureStaticRoutes(id, {
 ```
 
 **GCP Cloud Interconnect:**
-```typescript
-// 1. Get VLAN pairing key from GCP
-// 2. Create via Dashboard (no SDK yet)
-// 3. Configure static routes in Magic WAN
-// 4. Configure BGP in GCP Cloud Router
-
-const ic = await client.networkInterconnects.interconnects.create({
-  account_id: id,
-  type: 'cloud',
-  cloud_provider: 'gcp',
-  pairing_key: 'gcp_key',
-  name: 'gcp-interconnect',
-});
 ```
+1. Get VLAN attachment pairing key from GCP Console
+2. Create via Dashboard: Interconnects → Create → Cloud Interconnect → Google
+   - Enter pairing key, name, MTU, speed
+3. Configure static routes in Magic WAN (BGP routes from GCP ignored)
+4. Configure custom learned routes in GCP Cloud Router
+```
+
+**Note:** Dashboard-only. No API/SDK support yet.
 
 ## Pattern: Multi-Location HA
 

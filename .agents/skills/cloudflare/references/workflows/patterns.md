@@ -9,7 +9,7 @@ export class ImageProcessingWorkflow extends WorkflowEntrypoint<Env, Params> {
     const description = await step.do('generate description', async () => 
       await this.env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {image: Array.from(new Uint8Array(imageData)), prompt: 'Describe this image', max_tokens: 50})
     );
-    await step.waitForEvent('await approval', { type: 'approved', timeout: '24h' });
+    await step.waitForEvent('await approval', { event: 'approved', timeout: '24h' });
     await step.do('publish', async () => await this.env.BUCKET.put(`public/${event.payload.imageKey}`, imageData));
   }
 }
@@ -36,21 +36,25 @@ export class UserLifecycleWorkflow extends WorkflowEntrypoint<Env, Params> {
 ```typescript
 export class DataPipelineWorkflow extends WorkflowEntrypoint<Env, Params> {
   async run(event, step) {
-    const rawData = await step.do('extract', {retries: { limit: 10, delay: '30s', backoff: 'exponential' }, timeout: '5 minutes'}, async () => {
+    const rawData = await step.do('extract', {retries: { limit: 10, delay: '30s', backoff: 'exponential' }}, async () => {
       const res = await fetch(event.payload.sourceUrl);
       if (!res.ok) throw new Error('Fetch failed');
       return res.json();
     });
-    const transformed = await step.do('transform', async () => rawData.map(item => ({ id: item.id, normalized: normalizeData(item) })));
+    const transformed = await step.do('transform', async () => 
+      rawData.map(item => ({ id: item.id, normalized: normalizeData(item) }))
+    );
     const dataRef = await step.do('store', async () => {
       const key = `processed/${Date.now()}.json`;
       await this.env.BUCKET.put(key, JSON.stringify(transformed));
       return { key };
     });
-    await step.do('load', {retries: { limit: 5, delay: '1m', backoff: 'linear' }}, async () => {
+    await step.do('load', async () => {
       const data = await (await this.env.BUCKET.get(dataRef.key)).json();
       for (let i = 0; i < data.length; i += 100) {
-        await this.env.DB.batch(data.slice(i, i + 100).map(item => this.env.DB.prepare('INSERT INTO records VALUES (?, ?)').bind(item.id, item.normalized)));
+        await this.env.DB.batch(data.slice(i, i + 100).map(item => 
+          this.env.DB.prepare('INSERT INTO records VALUES (?, ?)').bind(item.id, item.normalized)
+        ));
       }
     });
   }
@@ -64,7 +68,7 @@ export class ApprovalWorkflow extends WorkflowEntrypoint<Env, Params> {
   async run(event, step) {
     await step.do('create approval', async () => await this.env.DB.prepare('INSERT INTO approvals (id, user_id, status) VALUES (?, ?, ?)').bind(event.instanceId, event.payload.userId, 'pending').run());
     try {
-      const approval = await step.waitForEvent<{ approved: boolean }>('wait for approval', { type: 'approval-response', timeout: '48h' });
+      const approval = await step.waitForEvent<{ approved: boolean }>('wait for approval', { event: 'approval-response', timeout: '48h' });
       if (approval.approved) { await step.do('process approval', async () => {}); } 
       else { await step.do('handle rejection', async () => {}); }
     } catch (e) {
@@ -72,6 +76,42 @@ export class ApprovalWorkflow extends WorkflowEntrypoint<Env, Params> {
     }
   }
 }
+```
+
+## Testing Workflows
+
+### Setup
+
+```typescript
+// vitest.config.ts
+import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+
+export default defineWorkersConfig({
+  test: {
+    poolOptions: {
+      workers: {
+        wrangler: { configPath: './wrangler.jsonc' }
+      }
+    }
+  }
+});
+```
+
+### Introspection API
+
+```typescript
+import { introspectWorkflowInstance } from 'cloudflare:test';
+
+const instance = await env.MY_WORKFLOW.create({ params: { userId: '123' } });
+const introspector = await introspectWorkflowInstance(env.MY_WORKFLOW, instance.id);
+
+// Wait for step completion
+const result = await introspector.waitForStepResult({ name: 'fetch user', index: 0 });
+
+// Mock step behavior
+await introspector.modify(async (m) => {
+  await m.mockStepResult({ name: 'api call' }, { mocked: true });
+});
 ```
 
 ## Best Practices
@@ -112,9 +152,12 @@ const child = await step.do('start child', async () => await this.env.CHILD_WORK
 await step.do('other work', async () => console.log(`Child started: ${child.id}`));
 ```
 
-### Promise.race
+### Race Pattern
 ```typescript
-const result = await step.do('race', async () => await Promise.race([step.do('option A', async () => { await sleep(1000); return 'A'; }), step.do('option B', async () => 'B')]));
+const winner = await Promise.race([
+  step.do('option A', async () => slowOperation()),
+  step.do('option B', async () => fastOperation())
+]);
 ```
 
 ### Scheduled Workflow Chain

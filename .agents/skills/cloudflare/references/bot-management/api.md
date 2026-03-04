@@ -16,10 +16,15 @@ interface BotManagement {
   corporateProxy?: boolean;   // From corporate proxy (Enterprise)
 }
 
+// DEPRECATED: Use botManagement.score instead
+// request.cf.clientTrustScore (legacy, duplicate of botManagement.score)
+
 // Access via request.cf
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
+
 export default {
   async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
+    const cf = request.cf as IncomingRequestCfProperties | undefined;
     const botMgmt = cf?.botManagement;
     
     if (!botMgmt) return fetch(request);
@@ -58,14 +63,33 @@ request.cf.verifiedBotCategory
 ## JA4 Signals (Enterprise)
 
 ```typescript
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
+
+interface JA4Signals {
+  // Ratios (0.0-1.0)
+  heuristic_ratio_1h?: number;  // Fraction flagged by heuristics
+  browser_ratio_1h?: number;    // Fraction from real browsers  
+  cache_ratio_1h?: number;      // Fraction hitting cache
+  h2h3_ratio_1h?: number;       // Fraction using HTTP/2 or HTTP/3
+  // Ranks (relative position in distribution)
+  uas_rank_1h?: number;         // User-Agent diversity rank
+  paths_rank_1h?: number;       // Path diversity rank
+  reqs_rank_1h?: number;        // Request volume rank
+  ips_rank_1h?: number;         // IP diversity rank
+  // Quantiles (0.0-1.0, percentile in distribution)
+  reqs_quantile_1h?: number;    // Request volume quantile
+  ips_quantile_1h?: number;     // IP count quantile
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
-    const ja4Signals = cf?.ja4Signals;
+    const cf = request.cf as IncomingRequestCfProperties | undefined;
+    const ja4Signals = cf?.ja4Signals as JA4Signals | undefined;
     
     if (!ja4Signals) return fetch(request); // Not available for HTTP or Worker routing
     
     // Check for anomalous behavior
+    // High heuristic_ratio or low browser_ratio = suspicious
     const heuristicRatio = ja4Signals.heuristic_ratio_1h ?? 0;
     const browserRatio = ja4Signals.browser_ratio_1h ?? 0;
     
@@ -80,61 +104,7 @@ export default {
 
 ## Common Patterns
 
-### Mobile App Pattern
-```typescript
-const MOBILE_APP_JA4 = 'your_mobile_app_ja4_fingerprint';
-
-export default {
-  async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
-    const botMgmt = cf?.botManagement;
-    
-    if (botMgmt?.ja4 === MOBILE_APP_JA4) return fetch(request); // Allow mobile app
-    if (botMgmt?.score && botMgmt.score < 30) return new Response('Bot detected', { status: 403 });
-    
-    return fetch(request);
-  }
-};
-```
-
-### Corporate Proxy Exemption
-```typescript
-export default {
-  async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
-    const botMgmt = cf?.botManagement;
-    
-    if (botMgmt?.corporateProxy) return fetch(request); // Exempt corporate proxy traffic
-    if (botMgmt?.score && botMgmt.score < 30 && !botMgmt.verifiedBot) {
-      return new Response('Bot detected', { status: 403 });
-    }
-    
-    return fetch(request);
-  }
-};
-```
-
-### Log Bot Data
-```typescript
-export default {
-  async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
-    const botMgmt = cf?.botManagement;
-    
-    console.log({
-      score: botMgmt?.score,
-      verifiedBot: botMgmt?.verifiedBot,
-      ja3Hash: botMgmt?.ja3Hash,
-      ja4: botMgmt?.ja4,
-      detectionIds: botMgmt?.detectionIds,
-      jsDetection: botMgmt?.jsDetection?.passed,
-      corporateProxy: botMgmt?.corporateProxy,
-    });
-    
-    return fetch(request);
-  }
-};
-```
+See [patterns.md](./patterns.md) for Workers examples: mobile app allowlisting, corporate proxy exemption, datacenter detection, conditional delay, and more.
 
 ## Bot Analytics
 
@@ -165,4 +135,35 @@ BotTags               # Classification tags
 BotDetectionIDs       # Heuristic detection IDs
 ```
 
+**BotScoreSrc values:**
+- `"Heuristics"` - Known fingerprint
+- `"Machine Learning"` - ML model
+- `"Anomaly Detection"` - Baseline anomaly
+- `"JS Detection"` - JavaScript check
+- `"Cloudflare Service"` - Zero Trust
+- `"Not Computed"` - Score = 0
+
 Access via Logpush (stream to cloud storage/SIEM), Logpull (API to fetch logs), or GraphQL API (query analytics data).
+
+## Testing with Miniflare
+
+Miniflare provides mock botManagement data for local development:
+
+**Default values:**
+- `score: 99` (human)
+- `verifiedBot: false`
+- `corporateProxy: false`
+- `ja3Hash: "25b4882c2bcb50cd6b469ff28c596742"`
+- `staticResource: false`
+- `detectionIds: []`
+
+**Override in tests:**
+```typescript
+import { getPlatformProxy } from 'wrangler';
+
+const { cf, dispose } = await getPlatformProxy();
+// cf.botManagement is frozen mock object
+expect(cf.botManagement.score).toBe(99);
+```
+
+For custom test data, mock request.cf in your test setup.

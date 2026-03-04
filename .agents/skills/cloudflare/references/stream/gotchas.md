@@ -1,33 +1,31 @@
 # Stream Gotchas
 
-Common issues, troubleshooting, and limits.
-
 ## Common Errors
 
-### ERR_NON_VIDEO
-**Cause**: Uploaded file is not a valid video format
+### "ERR_NON_VIDEO"
 
-**Solution**: Ensure file is in supported format (MP4, MKV, MOV, AVI, FLV, MPEG-2 TS/PS, MXF, LXF, GXF, 3GP, WebM, MPG, QuickTime)
+**Cause:** Uploaded file is not a valid video format
+**Solution:** Ensure file is in supported format (MP4, MKV, MOV, AVI, FLV, MPEG-2 TS/PS, MXF, LXF, GXF, 3GP, WebM, MPG, QuickTime)
 
-### ERR_DURATION_EXCEED_CONSTRAINT
-**Cause**: Video duration exceeds `maxDurationSeconds` constraint
+### "ERR_DURATION_EXCEED_CONSTRAINT"
 
-**Solution**: Increase `maxDurationSeconds` in direct upload config or trim video before upload
+**Cause:** Video duration exceeds `maxDurationSeconds` constraint
+**Solution:** Increase `maxDurationSeconds` in direct upload config or trim video before upload
 
-### ERR_FETCH_ORIGIN_ERROR
-**Cause**: Failed to download video from URL (upload from URL)
+### "ERR_FETCH_ORIGIN_ERROR"
 
-**Solution**: Ensure URL is publicly accessible, uses HTTPS, and video file is available
+**Cause:** Failed to download video from URL (upload from URL)
+**Solution:** Ensure URL is publicly accessible, uses HTTPS, and video file is available
 
-### ERR_MALFORMED_VIDEO
-**Cause**: Video file is corrupted or improperly encoded
+### "ERR_MALFORMED_VIDEO"
 
-**Solution**: Re-encode video using FFmpeg or check source file integrity
+**Cause:** Video file is corrupted or improperly encoded
+**Solution:** Re-encode video using FFmpeg or check source file integrity
 
-### ERR_DURATION_TOO_SHORT
-**Cause**: Video must be at least 0.1 seconds long
+### "ERR_DURATION_TOO_SHORT"
 
-**Solution**: Ensure video has valid duration (not a single frame)
+**Cause:** Video must be at least 0.1 seconds long
+**Solution:** Ensure video has valid duration (not a single frame)
 
 ## Troubleshooting
 
@@ -123,7 +121,8 @@ async function uploadWithErrorHandling(url: string, file: File) {
 
 - [README.md](./README.md) - Overview and quick start
 - [configuration.md](./configuration.md) - Setup and config
-- [api.md](./api.md) - Upload, playback, live streaming APIs
+- [api.md](./api.md) - On-demand video APIs
+- [api-live.md](./api-live.md) - Live streaming APIs
 - [patterns.md](./patterns.md) - Full-stack flows, best practices
 
 ## See Also

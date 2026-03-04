@@ -1,151 +1,57 @@
 # Durable Objects Patterns
 
-## Parent-Child Relationships
+## When to Use Which Pattern
 
-Don't put all data in a single DO. For hierarchical data (workspaces → projects, game servers → matches), create separate child DOs. Parent coordinates and tracks children; children handle own state independently.
+| Need | Pattern | ID Strategy |
+|------|---------|-------------|
+| Rate limit per user/IP | Rate Limiting | `idFromName(identifier)` |
+| Mutual exclusion | Distributed Lock | `idFromName(resource)` |
+| >1K req/s throughput | Sharding | `newUniqueId()` or hash |
+| Real-time updates | WebSocket Collab | `idFromName(room)` |
+| User sessions | Session Management | `idFromName(sessionId)` |
+| Background cleanup | Alarm-based | Any |
 
-```typescript
-export class GameServer extends DurableObject<Env> {
-  async createMatch(matchId: string): Promise<string> {
-    // Store child reference in parent
-    this.ctx.storage.sql.exec(
-      "INSERT INTO matches (id, created_at, status) VALUES (?, ?, ?)",
-      matchId, Date.now(), "active"
-    );
-    return matchId;
-  }
+## RPC vs fetch()
 
-  async routeToMatch(matchId: string, playerId: string, action: string) {
-    // Route to child DO - operations on different children run in parallel
-    const childId = this.env.MATCH.idFromName(matchId);
-    const child = this.env.MATCH.get(childId);
-    return await child.handleAction(playerId, action);
-  }
-
-  async listMatches(): Promise<string[]> {
-    // Query parent only - children stay hibernated
-    return this.ctx.storage.sql
-      .exec<{ id: string }>("SELECT id FROM matches WHERE status = ?", "active")
-      .toArray()
-      .map(r => r.id);
-  }
-}
-```
-
-Benefits: parallelism across children, each child has own SQLite database, listing doesn't wake children.
-
-## Fleet Pattern (Hierarchical DOs)
-
-URL-based hierarchy creates infinite nesting of manager/agent relationships. Each path segment (`/team/project/task`) maps to a unique DO via `idFromName()`.
+**RPC** (compat ≥2024-04-03): Type-safe, simpler, default for new projects  
+**fetch()**: Legacy compat, HTTP semantics, proxying
 
 ```typescript
-// Worker: Route all requests based on URL path
-app.all('*', async (c) => {
-  const path = new URL(c.req.url).pathname;
-  const parts = path.split('/').filter(Boolean);
-  const doName = parts.length === 0 ? '/' : `/${parts.join('/')}`;
-  
-  const id = c.env.FLEET_DO.idFromName(doName);
-  return c.env.FLEET_DO.get(id).fetch(c.req.raw);
-});
-
-// Single unified DO class handles both manager and agent roles
-export class FleetDO extends DurableObject<Env> {
-  async deleteWithCascade() {
-    const data = await this.ctx.storage.get<{ agents: string[] }>('data');
-    const myPath = /* derive from context */;
-    
-    // Cascade delete to all children
-    for (const agent of data?.agents || []) {
-      const childPath = myPath === '/' ? `/${agent}` : `${myPath}/${agent}`;
-      const child = this.env.FLEET_DO.get(this.env.FLEET_DO.idFromName(childPath));
-      await child.fetch(new Request('https://internal' + childPath, { method: 'DELETE' }));
-    }
-    
-    await this.ctx.storage.deleteAll();
-  }
-}
+const count = await stub.increment();  // RPC
+const count = await (await stub.fetch(req)).json();  // fetch()
 ```
 
-Use cases: collaborative IDEs (file per DO), distributed task runners, IoT device management, game server infrastructure.
+## Sharding (High Throughput)
 
-## Per-User DO Pattern
-
-One DO per user for settings, presence, inbox, profile data. Deterministic routing via `idFromName(userId)`.
-
-```typescript
-export class UserDO extends DurableObject<Env> {
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => {
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS profile (key TEXT PRIMARY KEY, value TEXT);
-        CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, data TEXT, created_at INTEGER);
-      `);
-    });
-  }
-
-  async getProfile(): Promise<Record<string, string>> {
-    return Object.fromEntries(
-      this.ctx.storage.sql.exec<{ key: string; value: string }>("SELECT * FROM profile").toArray()
-        .map(r => [r.key, r.value])
-    );
-  }
-
-  async updateProfile(updates: Record<string, string>) {
-    for (const [key, value] of Object.entries(updates)) {
-      this.ctx.storage.sql.exec(
-        "INSERT OR REPLACE INTO profile (key, value) VALUES (?, ?)", key, value
-      );
-    }
-    this.broadcast({ type: 'profile_updated', data: updates });
-  }
-
-  private broadcast(msg: object) {
-    const payload = JSON.stringify(msg);
-    for (const ws of this.ctx.getWebSockets()) ws.send(payload);
-  }
-}
-
-// Worker
-const id = env.USER_DO.idFromName(userId); // deterministic per-user routing
-const user = env.USER_DO.get(id);
-```
-
-Benefits: natural ownership boundary, hibernates between user activity, WebSocket for real-time updates.
-
-## Colo-Aware Sharding
-
-Use `request.cf.colo` for geographic distribution. Rate limit per-colo before hitting DO.
+Single DO ~1K req/s max. Shard for higher throughput:
 
 ```typescript
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const userId = new URL(request.url).searchParams.get("userId") || "unknown";
-    const colo = request.cf?.colo || "unknown";
-    const shardKey = `${colo}:${userId}`;
-    
-    // Rate limit per-colo (counters not shared across datacenters)
-    const { success } = await env.RATE_LIMITER.limit({ key: shardKey });
-    if (!success) return new Response("Rate limited", { status: 429 });
-    
-    // Route to colo-aware DO shard
-    const stub = env.MY_DO.get(env.MY_DO.idFromName(shardKey));
-    return await stub.fetch(request);
+  async fetch(req: Request, env: Env): Promise<Response> {
+    const userId = new URL(req.url).searchParams.get("user");
+    const hash = hashCode(userId) % 100;  // 100 shards
+    const id = env.COUNTER.idFromName(`shard:${hash}`);
+    return env.COUNTER.get(id).fetch(req);
   }
+};
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i);
+  return Math.abs(hash);
 }
 ```
 
-`request.cf.colo` returns IATA airport code (e.g., "SFO", "LHR"). Useful for high-throughput systems needing geographic awareness.
+**Decisions:**
+- **Shard count**: 10-1000 typical (start with 100, measure, adjust)
+- **Shard key**: User ID, IP, session - must distribute evenly (use hash)
+- **Aggregation**: Coordinator DO or external system (D1, R2)
 
 ## Rate Limiting
 
 ```typescript
 async checkLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
-  const req = await this.ctx.storage.sql.exec(
-    "SELECT COUNT(*) as count FROM requests WHERE key = ? AND timestamp > ?",
-    key, Date.now() - windowMs
-  ).one();
+  const req = this.ctx.storage.sql.exec("SELECT COUNT(*) as count FROM requests WHERE key = ? AND timestamp > ?", key, Date.now() - windowMs).one();
   if (req.count >= limit) return false;
   this.ctx.storage.sql.exec("INSERT INTO requests (key, timestamp) VALUES (?, ?)", key, Date.now());
   return true;
@@ -163,25 +69,66 @@ async acquire(timeoutMs = 5000): Promise<boolean> {
   return true;
 }
 async release() { this.held = false; await this.ctx.storage.deleteAlarm(); }
-async alarm() { this.held = false; }
+async alarm() { this.held = false; }  // Auto-release on timeout
 ```
 
-## Real-time Collaboration
+## Hibernation-Aware Pattern
+
+Preserve state across hibernation:
 
 ```typescript
 async fetch(req: Request): Promise<Response> {
   const [client, server] = Object.values(new WebSocketPair());
-  this.ctx.acceptWebSocket(server);
-  server.send(JSON.stringify({ type: "init", content: this.ctx.storage.kv.get("doc") || "" }));
+  const userId = new URL(req.url).searchParams.get("user");
+  server.serializeAttachment({ userId });  // Survives hibernation
+  this.ctx.acceptWebSocket(server, ["room:lobby"]);
+  server.send(JSON.stringify({ type: "init", state: this.ctx.storage.kv.get("state") }));
   return new Response(null, { status: 101, webSocket: client });
 }
 
 async webSocketMessage(ws: WebSocket, msg: string) {
+  const { userId } = ws.deserializeAttachment();  // Retrieve after wake
+  const state = this.ctx.storage.kv.get("state") || {};
+  state[userId] = JSON.parse(msg);
+  this.ctx.storage.kv.put("state", state);
+  for (const c of this.ctx.getWebSockets("room:lobby")) c.send(msg);
+}
+```
+
+## Real-time Collaboration
+
+Broadcast updates to all connected clients:
+
+```typescript
+async webSocketMessage(ws: WebSocket, msg: string) {
   const data = JSON.parse(msg);
-  if (data.type === "edit") {
-    this.ctx.storage.kv.put("doc", data.content);
-    for (const c of this.ctx.getWebSockets()) if (c !== ws) c.send(msg);
+  this.ctx.storage.kv.put("doc", data.content);  // Persist
+  for (const c of this.ctx.getWebSockets()) if (c !== ws) c.send(msg);  // Broadcast
+}
+```
+
+### WebSocket Reconnection
+
+**Client-side** (exponential backoff):
+```typescript
+class ResilientWS {
+  private delay = 1000;
+  connect(url: string) {
+    const ws = new WebSocket(url);
+    ws.onclose = () => setTimeout(() => {
+      this.connect(url);
+      this.delay = Math.min(this.delay * 2, 30000);
+    }, this.delay);
   }
+}
+```
+
+**Server-side** (cleanup on close):
+```typescript
+async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  const { userId } = ws.deserializeAttachment();
+  this.ctx.storage.sql.exec("UPDATE users SET online = false WHERE id = ?", userId);
+  for (const c of this.ctx.getWebSockets()) c.send(JSON.stringify({ type: "user_left", userId }));
 }
 ```
 
@@ -203,53 +150,52 @@ async getSession(id: string): Promise<object | null> {
 async alarm() { this.ctx.storage.sql.exec("DELETE FROM sessions WHERE expires_at <= ?", Date.now()); }
 ```
 
-## Deduplication
-
-```typescript
-private pending = new Map<string, Promise<Response>>();
-async deduplicatedFetch(url: string): Promise<Response> {
-  if (this.pending.has(url)) return this.pending.get(url)!;
-  const p = fetch(url).finally(() => this.pending.delete(url));
-  this.pending.set(url, p);
-  return p;
-}
-```
-
 ## Multiple Events (Single Alarm)
 
+Queue pattern to schedule multiple events:
+
 ```typescript
-async scheduleEvent(id: string, runAt: number, repeatMs?: number) {
-  await this.ctx.storage.put(`event:${id}`, { id, runAt, repeatMs });
+async scheduleEvent(id: string, runAt: number) {
+  await this.ctx.storage.put(`event:${id}`, { id, runAt });
   const curr = await this.ctx.storage.getAlarm();
   if (!curr || runAt < curr) await this.ctx.storage.setAlarm(runAt);
 }
 
 async alarm() {
-  const now = Date.now(), events = await this.ctx.storage.list({ prefix: "event:" });
-  let next: number | null = null;
+  const events = await this.ctx.storage.list({ prefix: "event:" }), now = Date.now();
+  let next = null;
   for (const [key, ev] of events) {
     if (ev.runAt <= now) {
       await this.processEvent(ev);
-      ev.repeatMs ? await this.ctx.storage.put(key, { ...ev, runAt: now + ev.repeatMs }) : await this.ctx.storage.delete(key);
-    }
-    if (ev.runAt > now && (!next || ev.runAt < next)) next = ev.runAt;
+      await this.ctx.storage.delete(key);
+    } else if (!next || ev.runAt < next) next = ev.runAt;
   }
   if (next) await this.ctx.storage.setAlarm(next);
 }
 ```
 
+## Graceful Cleanup
+
+Use `ctx.waitUntil()` to complete work after response:
+
+```typescript
+async myMethod() {
+  const response = { success: true };
+  this.ctx.waitUntil(this.ctx.storage.sql.exec("DELETE FROM old_data WHERE timestamp < ?", cutoff));
+  return response;
+}
+```
+
 ## Best Practices
 
-**Design for Hibernation**: DOs should sleep by default, wake for meaningful work, then sleep again. All important state must persist to storage—in-memory state is lost on eviction. Use `blockConcurrencyWhile()` in constructor to reload state on wake. Design so any instance could disappear and reconstruct from storage.
+- **Design**: Use `idFromName()` for coordination, `newUniqueId()` for sharding, minimize constructor work
+- **Storage**: Prefer SQLite, batch with transactions, set alarms for cleanup, use PITR before risky ops
+- **Performance**: ~1K req/s per DO max - shard for more, cache in memory, use alarms for deferred work
+- **Reliability**: Handle 503 with retry+backoff, design for cold starts, test migrations with `--dry-run`
+- **Security**: Validate inputs in Workers, rate limit DO creation, use jurisdiction for compliance
 
-**Atom of Coordination**: Each DO should own ONE logical unit (user, room, document, session). If data spans multiple boundaries or doesn't have natural ownership, DO may be wrong choice.
+## See Also
 
-**Design**: Keep objects focused, use `idFromName()` for coordination, `newUniqueId()` for sharding, minimize constructor work, leverage WebSocket hibernation
-
-**Storage**: Prefer SQLite, create indexes judiciously, batch with transactions, set alarms for cleanup, use PITR before risky ops
-
-**Performance**: One DO ~1000 req/s max - shard for more, cache in memory, avoid long ops, use alarms for deferred work
-
-**Reliability**: Handle 503 with retry+backoff, design for cold starts, test migrations, monitor alarm retries
-
-**Security**: Validate inputs in Workers, don't trust user names, rate limit DO creation, use jurisdiction tags, encrypt sensitive data
+- **[API](./api.md)** - ctx methods, WebSocket handlers
+- **[Gotchas](./gotchas.md)** - Hibernation caveats, common errors
+- **[DO Storage](../do-storage/README.md)** - Storage patterns and transactions

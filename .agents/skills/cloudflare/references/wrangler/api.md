@@ -2,12 +2,12 @@
 
 Node.js APIs for testing and development.
 
-## unstable_startWorker (Testing)
+## startWorker (Testing)
 
-Starts Worker with real local bindings for integration tests.
+Starts Worker with real local bindings for integration tests. Stable API (replaces `unstable_startWorker`).
 
 ```typescript
-import { unstable_startWorker } from "wrangler";
+import { startWorker } from "wrangler";
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert";
 
@@ -15,7 +15,10 @@ describe("worker", () => {
   let worker;
   
   before(async () => {
-    worker = await unstable_startWorker({ config: "wrangler.jsonc" });
+    worker = await startWorker({
+      config: "wrangler.jsonc",
+      environment: "development"
+    });
   });
   
   after(async () => {
@@ -29,7 +32,34 @@ describe("worker", () => {
 });
 ```
 
-Options: `config`, `environment`, `persist`, `bundle`
+### Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `config` | `string` | Path to wrangler.jsonc |
+| `environment` | `string` | Environment name from config |
+| `persist` | `boolean \| { path: string }` | Enable persistent state |
+| `bundle` | `boolean` | Enable bundling (default: true) |
+| `remote` | `false \| true \| "minimal"` | Remote mode: `false` (local), `true` (full remote), `"minimal"` (remote bindings only) |
+
+### Remote Mode
+
+```typescript
+// Local mode (default) - fast, simulated
+const worker = await startWorker({ config: "wrangler.jsonc" });
+
+// Full remote mode - production-like, slower
+const worker = await startWorker({ 
+  config: "wrangler.jsonc",
+  remote: true 
+});
+
+// Minimal remote mode - remote bindings, local Worker
+const worker = await startWorker({ 
+  config: "wrangler.jsonc",
+  remote: "minimal"
+});
+```
 
 ## getPlatformProxy
 
@@ -55,83 +85,101 @@ await caches.default.put("https://example.com", new Response("cached"));
 await dispose();
 ```
 
-### Use Cases
-
-**Unit Tests**
-```typescript
-const { env, dispose } = await getPlatformProxy();
-
-describe("database", () => {
-  after(async () => await dispose());
-  
-  it("inserts user", async () => {
-    const result = await env.DB.prepare(
-      "INSERT INTO users (name) VALUES (?)"
-    ).bind("Alice").run();
-    assert.strictEqual(result.meta.changes, 1);
-  });
-});
-```
-
-**Scripts**
-```typescript
-const { env, dispose } = await getPlatformProxy({
-  persist: { path: ".wrangler/state" }
-});
-
-await env.DB.batch([
-  env.DB.prepare("CREATE TABLE users (id INTEGER PRIMARY KEY)"),
-  env.DB.prepare("INSERT INTO users (id) VALUES (1)")
-]);
-
-await dispose();
-```
+Use for unit tests (test functions, not full Worker) or scripts that need bindings.
 
 ## Type Generation
 
-```bash
-wrangler types
-```
+Generate types from config: `wrangler types` → creates `worker-configuration.d.ts`
 
-Creates `worker-configuration.d.ts`:
+## Event System
 
-```typescript
-interface Env {
-  MY_KV: KVNamespace;
-  DB: D1Database;
-  API_KEY: string;
-}
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const value = await env.MY_KV.get("key");  // Type-safe
-    return Response.json({ value });
-  }
-} satisfies ExportedHandler<Env>;
-```
-
-## unstable_dev (Legacy)
-
-Use `unstable_startWorker` instead.
+Listen to Worker lifecycle events for advanced workflows.
 
 ```typescript
-import { unstable_dev } from "wrangler";
+import { startWorker } from "wrangler";
 
-const worker = await unstable_dev("src/index.ts", {
-  config: "wrangler.jsonc"
+const worker = await startWorker({
+  config: "wrangler.jsonc",
+  bundle: true
 });
 
-const response = await worker.fetch();
-await worker.stop();
+// Bundle events
+worker.on("bundleStart", (details) => {
+  console.log("Bundling started:", details.config);
+});
+
+worker.on("bundleComplete", (details) => {
+  console.log("Bundle ready:", details.duration);
+});
+
+// Reconfiguration events
+worker.on("reloadStart", () => {
+  console.log("Worker reloading...");
+});
+
+worker.on("reloadComplete", () => {
+  console.log("Worker reloaded");
+});
+
+await worker.dispose();
+```
+
+### Dynamic Reconfiguration
+
+```typescript
+import { startWorker } from "wrangler";
+
+const worker = await startWorker({ config: "wrangler.jsonc" });
+
+// Replace entire config
+await worker.setConfig({
+  config: "wrangler.staging.jsonc",
+  environment: "staging"
+});
+
+// Patch specific fields
+await worker.patchConfig({
+  vars: { DEBUG: "true" }
+});
+
+await worker.dispose();
+```
+
+## unstable_dev (Deprecated)
+
+Use `startWorker` instead.
+
+## Multi-Worker Registry
+
+Test multiple Workers with service bindings.
+
+```typescript
+import { startWorker } from "wrangler";
+
+const auth = await startWorker({ config: "./auth/wrangler.jsonc" });
+const api = await startWorker({
+  config: "./api/wrangler.jsonc",
+  bindings: { AUTH: auth }  // Service binding
+});
+
+const response = await api.fetch("http://example.com/api/login");
+// API Worker calls AUTH Worker via env.AUTH.fetch()
+
+await api.dispose();
+await auth.dispose();
 ```
 
 ## Best Practices
 
-- Use `unstable_startWorker` for integration tests (tests full Worker)
+- Use `startWorker` for integration tests (tests full Worker)
 - Use `getPlatformProxy` for unit tests (tests individual functions)
+- Use `remote: true` when debugging production-specific issues
+- Use `remote: "minimal"` for faster tests with real bindings
 - Enable `persist: true` for debugging (state survives runs)
 - Run `wrangler types` after config changes
 - Always `dispose()` to prevent resource leaks
+- Listen to bundle events for build monitoring
+- Use multi-worker registry for testing service bindings
 
 ## See Also
 

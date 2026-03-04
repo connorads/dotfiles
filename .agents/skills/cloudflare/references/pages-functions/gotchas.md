@@ -1,151 +1,94 @@
 # Gotchas & Debugging
 
-## Common Issues
+## Error Diagnosis
 
-### Functions Not Invoking
+| Symptom | Likely Cause | Solution |
+|---------|--------------|----------|
+| **Function not invoking** | Wrong `/functions` location, wrong extension, or `_routes.json` excludes path | Check `pages_build_output_dir`, use `.js`/`.ts`, verify `_routes.json` |
+| **`ctx.env.BINDING` undefined** | Binding not configured or name mismatch | Add to `wrangler.jsonc`, verify exact name (case-sensitive), redeploy |
+| **TypeScript errors on `ctx.env`** | Missing type definition | Run `wrangler types` or define `interface Env {}` |
+| **Middleware not running** | Wrong filename/location or missing `ctx.next()` | Name exactly `_middleware.js`, export `onRequest`, call `ctx.next()` |
+| **Secrets missing in production** | `.dev.vars` not deployed | `.dev.vars` is local only - set production secrets via dashboard or `wrangler secret put` |
+| **Type mismatch on binding** | Wrong interface type | See [api.md](./api.md) bindings table for correct types |
+| **"KV key not found" but exists** | Key in wrong namespace or env | Verify namespace binding, check preview vs production env |
+| **Function times out** | Synchronous wait or missing `await` | All I/O must be async/await, use `ctx.waitUntil()` for background tasks |
 
-All requests serve static, functions never run.
+## Common Errors
 
-**Fix:**
-- `/functions` in correct location (project root)
-- Check `pages_build_output_dir` in wrangler.json
-- Files have `.js` or `.ts` extension
-- `_routes.json` not excluding paths
+### TypeScript type errors
 
-### Binding Not Available
-
-`context.env.MY_BINDING is undefined`
-
-**Fix:**
-- Binding in wrangler.json or dashboard
-- Name matches exactly (case-sensitive)
-- Local dev: pass flags OR configure wrangler.json
-- Redeploy after changes
-
-### TypeScript Errors
-
-Type errors for `context.env`
-
-**Fix:**
+**Problem:** `ctx.env.MY_BINDING` shows type error  
+**Cause:** No type definition for `Env`  
+**Solution:** Run `npx wrangler types` or manually define:
 ```typescript
 interface Env { MY_BINDING: KVNamespace; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  // context.env.MY_BINDING now typed
-};
+export const onRequest: PagesFunction<Env> = async (ctx) => { /* ... */ };
 ```
 
-### Middleware Not Running
+### Secrets not available in production
 
-`_middleware.js` not executing
-
-**Fix:**
-- Named exactly `_middleware.js`
-- In correct directory for route scope
-- `onRequest` or method handler exported
-- Use `context.next()` to pass control
-
-### Environment Variables Missing
-
-`context.env.VAR_NAME is undefined`
-
-**Fix:**
-- `vars` in wrangler.json
-- Secrets: `.dev.vars` locally, dashboard/wrangler.json for prod
-- Redeploy after changes
+**Problem:** `ctx.env.SECRET_KEY` is undefined in production  
+**Cause:** `.dev.vars` is local-only, not deployed  
+**Solution:** Set production secrets:
+```bash
+echo "value" | npx wrangler pages secret put SECRET_KEY --project-name=my-app
+```
 
 ## Debugging
 
-### Console Logging
-
 ```typescript
-export async function onRequest(context) {
-  console.log('Request:', context.request.method, context.request.url);
-  console.log('Headers:', Object.fromEntries(context.request.headers));
-  
-  const response = await context.next();
-  console.log('Response status:', response.status);
-  return response;
+// Console logging
+export async function onRequest(ctx) {
+  console.log('Request:', ctx.request.method, ctx.request.url);
+  const res = await ctx.next();
+  console.log('Status:', res.status);
+  return res;
 }
 ```
-
-### Wrangler Tail
 
 ```bash
 # Stream real-time logs
 npx wrangler pages deployment tail
-
-# Filter
 npx wrangler pages deployment tail --status error
 ```
 
-### Source Maps
-
 ```jsonc
-// wrangler.json
+// Source maps (wrangler.jsonc)
 { "upload_source_maps": true }
 ```
 
 ## Limits
 
-- **CPU:** 10ms (Free), 50ms (Paid)
-- **Memory:** 128 MB
-- **Script size:** 10 MB compressed
-- **Env vars:** 5 KB per var, 64 max
-- **Requests:** 100k free/day, $0.50/million after
+| Resource | Free | Paid |
+|----------|------|------|
+| CPU time | 10ms | 50ms |
+| Memory | 128 MB | 128 MB |
+| Script size | 10 MB compressed | 10 MB compressed |
+| Env vars | 5 KB per var, 64 max | 5 KB per var, 64 max |
+| Requests | 100k/day | Unlimited ($0.50/million) |
 
 ## Best Practices
 
-**Performance:**
-- Minimize deps for cold starts
-- KV for infrequent reads, D1 for relational, R2 for large files
-- Set `Cache-Control` headers
-- Use prepared statements, batch operations
-- Handle errors gracefully
+**Performance:** Minimize deps (cold start), use KV for cache/D1 for relational/R2 for large files, set `Cache-Control` headers, batch DB ops, handle errors gracefully
 
-**Security:**
-- Never commit secrets
-- Use secrets (encrypted) not vars for sensitive data
-- Validate all input
-- Sanitize before DB ops
-- Implement auth middleware
-- Set appropriate CORS headers
-- Rate limit per-IP
+**Security:** Never commit secrets (use `.dev.vars` + gitignore), validate input, sanitize before DB, implement auth middleware, set CORS headers, rate limit per-IP
 
 ## Migration
 
-### From Workers
+**Workers → Pages Functions:**
+- `export default { fetch(req, env) {} }` → `export function onRequest(ctx) { const { request, env } = ctx; }`
+- Use `_worker.js` for complex routing: `env.ASSETS.fetch(request)` for static files
 
-```typescript
-// Worker
-export default {
-  fetch(request, env) { }
-}
-
-// Pages Function
-export function onRequest(context) {
-  const { request, env } = context;
-}
-```
-
-In `_worker.js`: `return env.ASSETS.fetch(request)` for static assets.
-
-### From Other Platforms
-
-- `/functions/api/users.js` → `/api/users`
+**Other platforms → Pages:**
+- File-based routing: `/functions/api/users.js` → `/api/users`
 - Dynamic routes: `[param]` not `:param`
-- Replace deps with Workers APIs or `nodejs_compat` flag
+- Replace Node.js deps with Workers APIs or add `nodejs_compat` flag
 
 ## Resources
 
-- [Docs](https://developers.cloudflare.com/pages/functions/)
+- [Official Docs](https://developers.cloudflare.com/pages/functions/)
 - [Workers APIs](https://developers.cloudflare.com/workers/runtime-apis/)
 - [Examples](https://github.com/cloudflare/pages-example-projects)
 - [Discord](https://discord.gg/cloudflaredev)
 
-## See Also
-
-- [README.md](./README.md) - Overview
-- [configuration.md](./configuration.md) - wrangler.json
-- [api.md](./api.md) - EventContext, bindings
-- [patterns.md](./patterns.md) - Common patterns
+**See also:** [configuration.md](./configuration.md) for TypeScript setup | [patterns.md](./patterns.md) for middleware/auth | [api.md](./api.md) for bindings

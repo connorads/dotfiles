@@ -25,6 +25,48 @@ Publisher -> Edge A -> Edge B -> Sub1
 **1:N:** Publisher creates+publishes, viewers each create+subscribe (no fan-out limit)
 **Breakout:** Same PeerConnection! Backend closes/adds tracks, no recreation
 
+## PartyTracks (Recommended)
+
+Observable-based client with automatic device/network handling:
+
+```typescript
+import {PartyTracks} from 'partytracks';
+
+// Create client
+const pt = new PartyTracks({
+  apiUrl: '/api/calls',
+  sessionId: 'my-session',
+  onTrack: (track, peer) => {
+    const video = document.getElementById(`video-${peer.id}`) as HTMLVideoElement;
+    video.srcObject = new MediaStream([track]);
+  }
+});
+
+// Publish camera (push API)
+const camera = await pt.getCamera(); // Auto-requests permissions, handles device changes
+await pt.publishTrack(camera, {trackName: 'my-camera'});
+
+// Subscribe to remote track (pull API)
+await pt.subscribeToTrack({trackName: 'remote-camera', sessionId: 'other-session'});
+
+// React hook example
+import {useObservableAsValue} from 'observable-hooks';
+
+function VideoCall() {
+  const localTracks = useObservableAsValue(pt.localTracks$);
+  const remoteTracks = useObservableAsValue(pt.remoteTracks$);
+  
+  return <div>{/* Render tracks */}</div>;
+}
+
+// Screenshare
+const screen = await pt.getScreenshare();
+await pt.publishTrack(screen, {trackName: 'my-screen'});
+
+// Handle device changes (automatic)
+// PartyTracks detects device changes (e.g., Bluetooth headset) and renegotiates
+```
+
 ## Backend
 
 Express:
@@ -36,37 +78,65 @@ app.post('/api/new-session', async (req, res) => {
 });
 ```
 
-Workers:
-```ts
-export default {
-  async fetch(req: Request, env: Env) {
-    return fetch(`https://rtc.live/v1/apps/${env.CALLS_APP_ID}/sessions/new`,
-      {method: 'POST', headers: {'Authorization': `Bearer ${env.CALLS_APP_SECRET}`}});
-  }
-};
+Workers: Same pattern, use `env.CALLS_APP_ID` and `env.CALLS_APP_SECRET`
+
+DO Presence: See configuration.md for boilerplate
+
+## Audio Level Detection
+
+```typescript
+// Attach analyzer to audio track
+function attachAudioLevelDetector(track: MediaStreamTrack) {
+  const ctx = new AudioContext();
+  const analyzer = ctx.createAnalyser();
+  const src = ctx.createMediaStreamSource(new MediaStream([track]));
+  src.connect(analyzer);
+  
+  const data = new Uint8Array(analyzer.frequencyBinCount);
+  const checkLevel = () => {
+    analyzer.getByteFrequencyData(data);
+    const level = data.reduce((a, b) => a + b) / data.length;
+    if (level > 30) console.log('Speaking:', level); // Trigger UI update
+    requestAnimationFrame(checkLevel);
+  };
+  checkLevel();
+}
 ```
 
-DO Presence:
-```ts
-export class Room {
-  sessions = new Map(); // sessionId -> {userId, tracks: [{trackName, kind}]}
+## Connection Quality Monitoring
 
-  async fetch(req: Request) {
-    const {pathname} = new URL(req.url);
-    if (pathname === '/join') {
-      const {sessionId, userId} = await req.json();
-      this.sessions.set(sessionId, {userId, tracks: []});
-      const existingTracks = Array.from(this.sessions.entries())
-        .filter(([id]) => id !== sessionId)
-        .flatMap(([id, data]) => data.tracks.map(t => ({...t, sessionId: id})));
-      return Response.json({existingTracks});
+```typescript
+pc.getStats().then(stats => {
+  stats.forEach(report => {
+    if (report.type === 'inbound-rtp' && report.kind === 'video') {
+      const {packetsLost, packetsReceived, jitter} = report;
+      const lossRate = packetsLost / (packetsLost + packetsReceived);
+      if (lossRate > 0.05) console.warn('High packet loss:', lossRate);
+      if (jitter > 100) console.warn('High jitter:', jitter);
     }
-    if (pathname === '/publish') {
-      const {sessionId, tracks} = await req.json();
-      this.sessions.get(sessionId)?.tracks.push(...tracks); // Notify others via WS
-      return new Response('OK');
-    }
-  }
+  });
+});
+```
+
+## Stage Management (Limit Visible Participants)
+
+```typescript
+// Subscribe to top 6 active speakers only
+let activeSubscriptions = new Set<string>();
+
+function updateStage(topSpeakers: string[]) {
+  const toAdd = topSpeakers.filter(id => !activeSubscriptions.has(id)).slice(0, 6);
+  const toRemove = [...activeSubscriptions].filter(id => !topSpeakers.includes(id));
+  
+  toRemove.forEach(id => {
+    pc.getSenders().find(s => s.track?.id === id)?.track?.stop();
+    activeSubscriptions.delete(id);
+  });
+  
+  toAdd.forEach(async id => {
+    await fetch(`/api/subscribe`, {method: 'POST', body: JSON.stringify({trackId: id})});
+    activeSubscriptions.add(id);
+  });
 }
 ```
 
@@ -96,6 +166,8 @@ const dc = pc.createDataChannel('chat', {ordered: true, maxRetransmits: 3});
 dc.onopen = () => dc.send(JSON.stringify({type: 'chat', text: 'Hi'}));
 dc.onmessage = (e) => console.log('RX:', JSON.parse(e.data));
 ```
+
+**WHIP/WHEP:** For streaming interop (OBS → SFU, SFU → video players), use WHIP (ingest) and WHEP (egress) protocols. See Cloudflare Stream integration docs.
 
 Integrations: R2 for recording `env.R2_BUCKET.put(...)`, Queues for analytics
 

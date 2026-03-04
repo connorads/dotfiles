@@ -2,6 +2,26 @@
 
 ## Product Tiers
 
+**Note:** Dashboard paths differ between old and new UI:
+- **New:** Security > Settings > Filter "Bot traffic"
+- **Old:** Security > Bots
+
+Both UIs access same settings.
+
+### Bot Score Groupings (Pro/Business)
+
+Pro/Business users see bot score groupings instead of granular 1-99 scores:
+
+| Score | Grouping | Meaning |
+|-------|----------|---------|
+| 0 | Not computed | Bot Management didn't run |
+| 1 | Automated | Definite bot (heuristic match) |
+| 2-29 | Likely automated | Probably bot (ML detection) |
+| 30-99 | Likely human | Probably human |
+| N/A | Verified bot | Allowlisted good bot |
+
+Enterprise plans get granular 1-99 scores for custom thresholds.
+
 ### Bot Fight Mode (Free)
 - Auto-blocks definite bots (score=1), excludes verified bots by default
 - JavaScript Detections always enabled, no configuration options
@@ -66,6 +86,18 @@ Action: Managed Challenge (always use Managed Challenge, not Block)
 - Native mobile apps won't pass
 - cf_clearance cookie: 15-minute lifespan, max 4096 bytes
 
+## __cf_bm Cookie
+
+Cloudflare sets `__cf_bm` cookie to smooth bot scores across user sessions:
+
+- **Purpose:** Reduces false positives from score volatility
+- **Scope:** Per-domain, HTTP-only
+- **Lifespan:** Session duration
+- **Privacy:** No PII—only session classification
+- **Automatic:** No configuration required
+
+Bot scores for repeat visitors consider session history via this cookie.
+
 ## Static Resource Protection
 
 **File Extensions**: ico, jpg, png, jpeg, gif, css, js, tif, tiff, bmp, pict, webp, svg, svgz, class, jar, txt, csv, doc, docx, xls, xlsx, pdf, ps, pls, ppt, pptx, ttf, otf, woff, woff2, eot, eps, ejs, swf, torrent, midi, mid, m3u8, m4a, mp3, ogg, ts  
@@ -103,7 +135,24 @@ Action: Block
 # Or use dashboard: Security > Settings > Bot Management > Block AI Bots
 ```
 
-Categories: Search Engine Crawler, AI Crawler, Monitoring & Analytics, Aggregator, Security Intelligence, Academic Research
+| Category | String Value | Example |
+|----------|--------------|---------|
+| AI Crawler | `AI Crawler` | GPTBot, Claude-Web |
+| AI Assistant | `AI Assistant` | Perplexity-User, DuckAssistBot |
+| AI Search | `AI Search` | OAI-SearchBot |
+| Accessibility | `Accessibility` | Accessible Web Bot |
+| Academic Research | `Academic Research` | Library of Congress |
+| Advertising & Marketing | `Advertising & Marketing` | Google Adsbot |
+| Aggregator | `Aggregator` | Pinterest, Indeed |
+| Archiver | `Archiver` | Internet Archive, CommonCrawl |
+| Feed Fetcher | `Feed Fetcher` | RSS/Podcast updaters |
+| Monitoring & Analytics | `Monitoring & Analytics` | Uptime monitors |
+| Page Preview | `Page Preview` | Facebook/Slack link preview |
+| SEO | `Search Engine Optimization` | Google Lighthouse |
+| Security | `Security` | Vulnerability scanners |
+| Social Media Marketing | `Social Media Marketing` | Brandwatch |
+| Webhooks | `Webhooks` | Payment processors |
+| Other | `Other` | Uncategorized bots |
 
 ## Best Practices
 

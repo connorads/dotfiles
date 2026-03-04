@@ -26,7 +26,7 @@ Run `firecrawl --help` or `firecrawl <command> --help` for full option details.
 Must be installed and authenticated. Check with `firecrawl --status`.
 
 ```
-  🔥 firecrawl cli v1.4.0
+  🔥 firecrawl cli v1.8.0
 
   ● Authenticated via FIRECRAWL_API_KEY
   Concurrency: 0/100 jobs (parallel scrape limit)
@@ -66,7 +66,7 @@ See also: [`download`](#download) -- a convenience command that combines `map` +
 **Scrape vs browser:**
 
 - Use `scrape` first. It handles static pages and JS-rendered SPAs.
-- Use `browser` only when scrape fails because content is behind interaction: pagination buttons, modals, dropdowns, multi-step navigation, or infinite scroll.
+- Use `browser` when you need to interact with a page, such as clicking buttons, filling out forms, navigating through a complex site, infinite scroll, or when scrape fails to grab all the content you need.
 - Never use browser for web searches - use `search` instead.
 
 **Avoid redundant fetches:**
@@ -87,9 +87,26 @@ scrape https://docs.example.com/docs/api/auth...    →  got the content
 ```
 scrape https://example.com/products                 →  only shows first 10 items, no next-page links
 browser "open https://example.com/products"         →  open in browser
-browser "snapshot"                                  →  find the pagination button
+browser "snapshot -i"                               →  find the pagination button
 browser "click @e12"                                →  click "Next Page"
 browser "scrape" -o .firecrawl/products-p2.md       →  extract page 2 content
+```
+
+**Example: login then scrape authenticated content**
+
+```
+browser launch-session --profile my-app  →  create a named profile
+browser "open https://app.example.com/login"        →  navigate to login
+browser "snapshot -i"                               →  find form fields
+browser "fill @e3 'user@example.com'"               →  fill email
+browser "click @e7"                                 →  click Login
+browser "wait 2"                                    →  wait for redirect
+browser close                                       →  disconnect, state persisted
+
+browser launch-session --profile my-app  →  reconnect, cookies intact
+browser "open https://app.example.com/dashboard"    →  already logged in
+browser "scrape" -o .firecrawl/dashboard.md         →  extract authenticated content
+browser close
 ```
 
 **Example: research task**
@@ -227,7 +244,7 @@ Cloud Chromium sessions in Firecrawl's remote sandboxed environment. Run `firecr
 ```bash
 # Typical browser workflow
 firecrawl browser "open <url>"
-firecrawl browser "snapshot"                          # see the page structure with @ref IDs
+firecrawl browser "snapshot -i"                       # see interactive elements with @ref IDs
 firecrawl browser "click @e5"                         # interact with elements
 firecrawl browser "fill @e3 'search query'"           # fill form fields
 firecrawl browser "scrape" -o .firecrawl/page.md      # extract content
@@ -238,22 +255,55 @@ Shorthand auto-launches a session if none exists - no setup required.
 
 **Core agent-browser commands:**
 
-| Command              | Description                            |
-| -------------------- | -------------------------------------- |
-| `open <url>`         | Navigate to a URL                      |
-| `snapshot`           | Get accessibility tree with `@ref` IDs |
-| `screenshot`         | Capture a PNG screenshot               |
-| `click <@ref>`       | Click an element by ref                |
-| `type <@ref> <text>` | Type into an element                   |
-| `fill <@ref> <text>` | Fill a form field (clears first)       |
-| `scrape`             | Extract page content as markdown       |
-| `scroll <direction>` | Scroll up/down/left/right              |
-| `wait <seconds>`     | Wait for a duration                    |
-| `eval <js>`          | Evaluate JavaScript on the page        |
+| Command              | Description                              |
+| -------------------- | ---------------------------------------- |
+| `open <url>`         | Navigate to a URL                        |
+| `snapshot -i`        | Get interactive elements with `@ref` IDs |
+| `screenshot`         | Capture a PNG screenshot                 |
+| `click <@ref>`       | Click an element by ref                  |
+| `type <@ref> <text>` | Type into an element                     |
+| `fill <@ref> <text>` | Fill a form field (clears first)         |
+| `scrape`             | Extract page content as markdown         |
+| `scroll <direction>` | Scroll up/down/left/right                |
+| `wait <seconds>`     | Wait for a duration                      |
+| `eval <js>`          | Evaluate JavaScript on the page          |
 
 Session management: `launch-session --ttl 600`, `list`, `close`
 
-Options: `--ttl <seconds>`, `--ttl-inactivity <seconds>`, `--session <id>`, `-o`
+Options: `--ttl <seconds>`, `--ttl-inactivity <seconds>`, `--session <id>`, `--profile <name>`, `--no-save-changes`, `-o`
+
+**Profiles** survive close and can be reconnected by name. Use them when you need to login first, then come back later to do work while already authenticated:
+
+```bash
+# Session 1: Login and save state
+firecrawl browser launch-session --profile my-app
+firecrawl browser "open https://app.example.com/login"
+firecrawl browser "snapshot -i"
+firecrawl browser "fill @e3 'user@example.com'"
+firecrawl browser "click @e7"
+firecrawl browser "wait 2"
+firecrawl browser close
+
+# Session 2: Come back authenticated
+firecrawl browser launch-session --profile my-app
+firecrawl browser "open https://app.example.com/dashboard"
+firecrawl browser "scrape" -o .firecrawl/dashboard.md
+firecrawl browser close
+```
+
+Read-only reconnect (no writes to session state):
+
+```bash
+firecrawl browser launch-session --profile my-app --no-save-changes
+```
+
+Shorthand with profile:
+
+```bash
+firecrawl browser --profile my-app "open https://example.com"
+```
+
+If you get forbidden errors in the browser, you may need to create a new session as the old one may have expired.
 
 ### credit-usage
 

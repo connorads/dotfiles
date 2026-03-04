@@ -43,22 +43,24 @@ if (req.method === "POST") {
 const client = new Client({connectionString: env.HYPERDRIVE.connectionString});
 await client.connect();
 
-// Aggregate queries cached
+// Aggregate queries cached (use fixed timestamps for caching)
+const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 const dailyStats = await client.query(`
   SELECT DATE(created_at) as date, COUNT(*) as orders, SUM(amount) as revenue
-  FROM orders WHERE created_at >= NOW() - INTERVAL '30 days'
+  FROM orders WHERE created_at >= $1
   GROUP BY DATE(created_at) ORDER BY date DESC
-`);
+`, [thirtyDaysAgo]);
 
+const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 const topProducts = await client.query(`
   SELECT p.name, COUNT(oi.id) as count, SUM(oi.quantity * oi.price) as revenue
   FROM order_items oi JOIN products p ON oi.product_id = p.id
-  WHERE oi.created_at >= NOW() - INTERVAL '7 days'
+  WHERE oi.created_at >= $1
   GROUP BY p.id, p.name ORDER BY revenue DESC LIMIT 10
-`);
+`, [sevenDaysAgo]);
 ```
 
-**Benefits:** Expensive aggregations cached, dashboard instant, reduced DB load.
+**Benefits:** Expensive aggregations cached (avoid NOW() for cacheability), dashboard instant, reduced DB load.
 
 ## Multi-Tenant
 
@@ -91,6 +93,31 @@ return Response.json({
 ```
 
 **Benefits:** Edge setup + DB pooling = global → single-region DB without replication.
+
+## Multi-Query + Smart Placement
+
+For Workers making **multiple queries** per request, enable Smart Placement to execute near DB:
+
+```jsonc
+// wrangler.jsonc
+{
+  "placement": {"mode": "smart"},
+  "hyperdrive": [{"binding": "HYPERDRIVE", "id": "<ID>"}]
+}
+```
+
+```typescript
+const sql = postgres(env.HYPERDRIVE.connectionString, {prepare: true});
+
+// Multiple queries benefit from Smart Placement
+const [user] = await sql`SELECT * FROM users WHERE id = ${userId}`;
+const orders = await sql`SELECT * FROM orders WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 10`;
+const stats = await sql`SELECT COUNT(*) as total, SUM(amount) as spent FROM orders WHERE user_id = ${userId}`;
+
+return Response.json({user, orders, stats});
+```
+
+**Benefits:** Worker executes near DB → reduces latency for each query. Without Smart Placement, each query round-trips from edge.
 
 ## Connection Pooling
 
@@ -133,44 +160,31 @@ await client.query("COMMIT");
 
 ## Performance Tips
 
-**1. Enable prepared statements:**
+**Enable prepared statements (required for caching):**
 ```typescript
-// ✅ Best
-const sql = postgres(connectionString, {prepare: true});  // Caching enabled
-
-// ❌ Slower
-const sql = postgres(connectionString, {prepare: false}); // Extra round-trips
+const sql = postgres(connectionString, {prepare: true});  // Default, enables caching
 ```
 
-**2. Optimize settings:**
+**Optimize connection settings:**
 ```typescript
 const sql = postgres(connectionString, {
-  max: 5,             // Limit per Worker
-  fetch_types: false, // Skip if not using arrays
-  prepare: true,
+  max: 5,             // Stay under Workers' 6 connection limit
+  fetch_types: false, // Reduce latency if not using arrays
   idle_timeout: 60,   // Match Worker lifetime
 });
 ```
 
-**3. Cache-friendly queries:**
+**Write cache-friendly queries:**
 ```typescript
 // ✅ Cacheable (deterministic)
 await sql`SELECT * FROM products WHERE category = 'electronics' LIMIT 10`;
 
-// ❌ Not cacheable (volatile)
+// ❌ Not cacheable (volatile NOW())
 await sql`SELECT * FROM logs WHERE created_at > NOW()`;
 
-// ✅ Make cacheable (parameterize)
+// ✅ Cacheable (parameterized timestamp)
 const ts = Date.now();
 await sql`SELECT * FROM logs WHERE created_at > ${ts}`;
-```
-
-**4. Monitor cache hits:**
-```typescript
-const start = Date.now();
-const result = await sql`SELECT * FROM users LIMIT 10`;
-const duration = Date.now() - start;
-console.log({duration, likelyCached: duration < 10});  // <10ms = cache hit
 ```
 
 See [gotchas.md](./gotchas.md) for limits, troubleshooting.

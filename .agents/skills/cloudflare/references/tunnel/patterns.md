@@ -2,24 +2,16 @@
 
 ## Docker Deployment
 
-### Quick Tunnel
-```dockerfile
-FROM cloudflare/cloudflared:latest
-CMD ["tunnel", "--url", "http://app:8080"]
-```
-
-### Named Tunnel
+### Token-Based (Recommended)
 ```yaml
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     restart: unless-stopped
-  app:
-    image: myapp:latest
 ```
 
-### With Config File
+### Local Config
 ```yaml
 services:
   cloudflared:
@@ -27,7 +19,7 @@ services:
     volumes:
       - ./config.yml:/etc/cloudflared/config.yml:ro
       - ./credentials.json:/etc/cloudflared/credentials.json:ro
-    command: tunnel --config /etc/cloudflared/config.yml run
+    command: tunnel run
 ```
 
 ## Kubernetes Deployment
@@ -77,16 +69,7 @@ ingress:
   - service: http_status:404
 ```
 
-Run on multiple machines:
-```bash
-# Server 1
-cloudflared tunnel run my-tunnel
-
-# Server 2 (same config)
-cloudflared tunnel run my-tunnel
-```
-
-Cloudflare automatically load balances. Long-lived connections (WebSocket, SSH) will drop during updates.
+Run same config on multiple machines. Cloudflare automatically load balances. Long-lived connections (WebSocket, SSH) may drop during updates.
 
 ## Use Cases
 
@@ -106,10 +89,7 @@ ingress:
   - service: http_status:404
 ```
 
-Client:
-```bash
-cloudflared access ssh --hostname ssh.example.com
-```
+Client: `cloudflared access ssh --hostname ssh.example.com`
 
 ### gRPC Service
 ```yaml
@@ -121,16 +101,79 @@ ingress:
   - service: http_status:404
 ```
 
-### Multiple Environments
-```yaml
-ingress:
-  - hostname: prod.example.com
-    service: http://localhost:8001
-  - hostname: staging.example.com
-    service: http://localhost:8002
-  - hostname: dev.example.com
-    service: http://localhost:8003
-  - service: http_status:404
+## Infrastructure as Code
+
+### Terraform
+
+```hcl
+resource "random_id" "tunnel_secret" {
+  byte_length = 32
+}
+
+resource "cloudflare_tunnel" "app" {
+  account_id = var.cloudflare_account_id
+  name       = "app-tunnel"
+  secret     = random_id.tunnel_secret.b64_std
+}
+
+resource "cloudflare_tunnel_config" "app" {
+  account_id = var.cloudflare_account_id
+  tunnel_id  = cloudflare_tunnel.app.id
+  config {
+    ingress_rule {
+      hostname = "app.example.com"
+      service  = "http://localhost:8000"
+    }
+    ingress_rule { service = "http_status:404" }
+  }
+}
+
+resource "cloudflare_record" "app" {
+  zone_id = var.cloudflare_zone_id
+  name    = "app"
+  value   = cloudflare_tunnel.app.cname
+  type    = "CNAME"
+  proxied = true
+}
+
+output "tunnel_token" {
+  value     = cloudflare_tunnel.app.tunnel_token
+  sensitive = true
+}
+```
+
+### Pulumi
+
+```typescript
+import * as cloudflare from "@pulumi/cloudflare";
+import * as random from "@pulumi/random";
+
+const secret = new random.RandomId("secret", { byteLength: 32 });
+
+const tunnel = new cloudflare.ZeroTrustTunnelCloudflared("tunnel", {
+  accountId: accountId,
+  name: "app-tunnel",
+  secret: secret.b64Std,
+});
+
+const config = new cloudflare.ZeroTrustTunnelCloudflaredConfig("config", {
+  accountId: accountId,
+  tunnelId: tunnel.id,
+  config: {
+    ingressRules: [
+      { hostname: "app.example.com", service: "http://localhost:8000" },
+      { service: "http_status:404" },
+    ],
+  },
+});
+
+new cloudflare.Record("dns", {
+  zoneId: zoneId,
+  name: "app",
+  value: tunnel.cname,
+  type: "CNAME",
+  proxied: true,
+});
 ```
 
 ## Service Installation
@@ -138,20 +181,12 @@ ingress:
 ### Linux systemd
 ```bash
 cloudflared service install
-systemctl start cloudflared
-systemctl enable cloudflared
-systemctl status cloudflared
-
-# Logs
-journalctl -u cloudflared -f
+systemctl start cloudflared && systemctl enable cloudflared
+journalctl -u cloudflared -f  # Logs
 ```
 
 ### macOS launchd
 ```bash
 sudo cloudflared service install
 sudo launchctl start com.cloudflare.cloudflared
-sudo launchctl load -w /Library/LaunchDaemons/com.cloudflare.cloudflared.plist
-
-# Logs
-tail -f /Library/Logs/com.cloudflare.cloudflared.err.log
 ```

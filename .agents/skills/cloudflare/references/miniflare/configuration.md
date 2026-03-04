@@ -2,18 +2,14 @@
 
 ## Script Loading
 
-**Inline:**
 ```js
+// Inline
 new Miniflare({ modules: true, script: `export default { ... }` });
-```
 
-**File-based:**
-```js
+// File-based
 new Miniflare({ scriptPath: "worker.js" });
-```
 
-**Multi-module auto-crawl:**
-```js
+// Multi-module
 new Miniflare({
   scriptPath: "src/index.js",
   modules: true,
@@ -24,180 +20,154 @@ new Miniflare({
 });
 ```
 
-**Explicit modules:**
-```js
-new Miniflare({
-  modules: [
-    { type: "ESModule", path: "src/index.js" },
-    { type: "Text", path: "data.txt" },
-  ],
-});
-```
-
 ## Compatibility
 
 ```js
 new Miniflare({
-  compatibilityDate: "2021-11-23",
-  compatibilityFlags: ["formdata_parser_supports_files"],
-  upstream: "https://example.com",
+  compatibilityDate: "2026-01-01", // Use recent date for latest features
+  compatibilityFlags: [
+    "nodejs_compat",        // Node.js APIs (process, Buffer, etc)
+    "streams_enable_constructors", // Stream constructors
+  ],
+  upstream: "https://example.com", // Fallback for unhandled requests
 });
 ```
 
-## Server Options
+**Critical:** Use `compatibilityDate: "2026-01-01"` or latest to match production runtime. Old dates limit available APIs.
+
+## HTTP Server & Request.cf
 
 ```js
 new Miniflare({
-  port: 8787,
+  port: 8787,              // Default: 8787
   host: "127.0.0.1",
-  https: true, // Self-signed cert
-  httpsKeyPath: "./key.pem",
-  httpsCertPath: "./cert.pem",
+  https: true,             // Self-signed cert
+  liveReload: true,        // Auto-reload HTML
+  
+  cf: true,                // Fetch live Request.cf data (cached)
+  // cf: "./cf.json",      // Or load from file
+  // cf: { colo: "DFW" },  // Or inline mock
 });
 ```
 
-**Request.cf:**
-```js
-cf: true,        // Fetch from Cloudflare
-cf: "cf.json",   // Load from file
-cf: false,       // Disable
-```
+**Note:** For tests, use `dispatchFetch()` (no port conflicts).
 
 ## Storage Bindings
 
-**KV:**
 ```js
-kvNamespaces: ["TEST_NAMESPACE", "CACHE"],
-kvPersist: "./kv-data", // Optional: persist to disk
-```
-
-**R2:**
-```js
-r2Buckets: ["BUCKET", "IMAGES"],
-r2Persist: "./r2-data",
-```
-
-**Durable Objects:**
-```js
-modules: true,
-durableObjects: {
-  COUNTER: "Counter", // className
-  API_OBJECT: { className: "ApiObject", scriptName: "api-worker" },
-},
-durableObjectsPersist: "./do-data",
-```
-
-**D1:**
-```js
-d1Databases: ["DB"],
-d1Persist: "./d1-data",
-```
-
-**Cache:**
-```js
-cache: true, // Default
-cachePersist: "./cache-data",
-cacheWarnUsage: true,
+new Miniflare({
+  // KV
+  kvNamespaces: ["TEST_NAMESPACE", "CACHE"],
+  kvPersist: "./kv-data", // Optional: persist to disk
+  
+  // R2
+  r2Buckets: ["BUCKET", "IMAGES"],
+  r2Persist: "./r2-data",
+  
+  // Durable Objects
+  modules: true,
+  durableObjects: {
+    COUNTER: "Counter", // className
+    API_OBJECT: { className: "ApiObject", scriptName: "api-worker" },
+  },
+  durableObjectsPersist: "./do-data",
+  
+  // D1
+  d1Databases: ["DB"],
+  d1Persist: "./d1-data",
+  
+  // Cache
+  cache: true, // Default
+  cachePersist: "./cache-data",
+});
 ```
 
 ## Bindings
 
-**Environment variables:**
 ```js
-bindings: {
-  SECRET_KEY: "my-secret-value",
-  API_URL: "https://api.example.com",
-  DEBUG: true,
-},
-```
-
-**WASM:**
-```js
-wasmBindings: { ADD_MODULE: "./add.wasm" },
-```
-
-**Text/Data blobs:**
-```js
-textBlobBindings: { TEXT: "./data.txt" },
-dataBlobBindings: { DATA: "./data.bin" },
-```
-
-**Queue producers:**
-```js
-queueProducers: ["QUEUE"],
+new Miniflare({
+  // Environment variables
+  bindings: {
+    SECRET_KEY: "my-secret-value",
+    API_URL: "https://api.example.com",
+    DEBUG: true,
+  },
+  
+  // Other bindings
+  wasmBindings: { ADD_MODULE: "./add.wasm" },
+  textBlobBindings: { TEXT: "./data.txt" },
+  queueProducers: ["QUEUE"],
+});
 ```
 
 ## Multiple Workers
 
 ```js
 new Miniflare({
-  host: "0.0.0.0",
-  port: 8787,
-  kvPersist: true,
-  
   workers: [
     {
-      name: "main-worker",
-      kvNamespaces: { DATA: "shared-data" },
-      serviceBindings: {
-        API: "api-worker",
-        async EXTERNAL(request) {
-          return new Response("External response");
-        },
-      },
-      modules: true,
+      name: "main",
+      kvNamespaces: { DATA: "shared" },
+      serviceBindings: { API: "api-worker" },
       script: `export default { ... }`,
     },
     {
       name: "api-worker",
-      kvNamespaces: { DATA: "shared-data" }, // Shared
-      script: `addEventListener("fetch", ...)`,
+      kvNamespaces: { DATA: "shared" }, // Shared storage
+      script: `export default { ... }`,
     },
   ],
 });
 ```
 
-## Routing
-
+**With routing:**
 ```js
 workers: [
-  {
-    name: "api",
-    scriptPath: "./api/worker.js",
-    routes: ["http://127.0.0.1/api/*", "api.example.com/*"],
-  },
-  {
-    name: "web",
-    scriptPath: "./web/worker.js",
-    routes: ["example.com/*"],
-  },
+  { name: "api", scriptPath: "./api.js", routes: ["api.example.com/*"] },
+  { name: "web", scriptPath: "./web.js", routes: ["example.com/*"] },
 ],
 ```
 
-Update `/etc/hosts`: `127.0.0.1 api.example.com`
+## Logging & Performance
 
-## Advanced
-
-**Logging:**
 ```js
 import { Log, LogLevel } from "miniflare";
-new Miniflare({ log: new Log(LogLevel.DEBUG) }); // DEBUG, INFO, WARN, ERROR
+
+new Miniflare({
+  log: new Log(LogLevel.DEBUG), // DEBUG | INFO | WARN | ERROR | NONE
+  scriptTimeout: 30000,         // CPU limit (ms)
+  workersConcurrencyLimit: 10,  // Max concurrent workers
+});
 ```
 
-**Live reload:**
+## Workers Sites
+
 ```js
-liveReload: true, // Auto-reload HTML on worker reload
+new Miniflare({
+  sitePath: "./public",
+  siteInclude: ["**/*.html", "**/*.css"],
+  siteExclude: ["**/*.map"],
+});
 ```
 
-**Workers Site:**
+## From wrangler.toml
+
+Miniflare doesn't auto-read `wrangler.toml`:
+
+```toml
+# wrangler.toml
+name = "my-worker"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+[[kv_namespaces]]
+binding = "KV"
+```
+
 ```js
-sitePath: "./public",
-siteInclude: ["**/*.html", "**/*.css"],
-siteExclude: ["node_modules/**"],
+// Miniflare equivalent
+new Miniflare({
+  scriptPath: "src/index.ts",
+  compatibilityDate: "2026-01-01",
+  kvNamespaces: ["KV"],
+});
 ```
-
-## CLI Options
-
-Miniflare doesn't read `wrangler.toml` - configure via API. For wrangler.toml configs, manually translate to Miniflare options.
-
-See [api.md](./api.md) for full API reference.

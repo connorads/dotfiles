@@ -45,10 +45,12 @@ export const RemotionRoot = () => {
       fps={30}
       width={1080}
       height={1080}
-      defaultProps={{
-        title: "Hello World",
-        color: "#ff0000",
-      } satisfies MyCompositionProps}
+      defaultProps={
+        {
+          title: "Hello World",
+          color: "#ff0000",
+        } satisfies MyCompositionProps
+      }
     />
   );
 };
@@ -92,12 +94,7 @@ import { Thumbnail } from "./Thumbnail";
 
 export const RemotionRoot = () => {
   return (
-    <Still
-      id="Thumbnail"
-      component={Thumbnail}
-      width={1280}
-      height={720}
-    />
+    <Still id="Thumbnail" component={Thumbnail} width={1280} height={720} />
   );
 };
 ```
@@ -110,10 +107,9 @@ Use `calculateMetadata` to make dimensions, duration, or props dynamic based on 
 import { Composition, CalculateMetadataFunction } from "remotion";
 import { MyComposition, MyCompositionProps } from "./MyComposition";
 
-const calculateMetadata: CalculateMetadataFunction<MyCompositionProps> = async ({
-  props,
-  abortSignal,
-}) => {
+const calculateMetadata: CalculateMetadataFunction<
+  MyCompositionProps
+> = async ({ props, abortSignal }) => {
   const data = await fetch(`https://api.example.com/video/${props.videoId}`, {
     signal: abortSignal,
   }).then((res) => res.json());
@@ -144,3 +140,15 @@ export const RemotionRoot = () => {
 ```
 
 The function can return `props`, `durationInFrames`, `width`, `height`, `fps`, and codec-related defaults. It runs once before rendering begins.
+
+## Nesting compositions within another
+
+To add a composition within another composition, you can use the `<Sequence>` component with a `width` and `height` prop to specify the size of the composition.
+
+```tsx
+<AbsoluteFill>
+  <Sequence width={COMPOSITION_WIDTH} height={COMPOSITION_HEIGHT}>
+    <CompositionComponent />
+  </Sequence>
+</AbsoluteFill>
+```

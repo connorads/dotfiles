@@ -66,6 +66,43 @@ const results = await env.DB.batch([
 ]);
 ```
 
+## Sessions API (Paid Plans)
+
+Long-running sessions for operations exceeding 30s timeout (up to 15 min).
+
+```typescript
+const session = env.DB.withSession({ timeout: 600 }); // 10 min (1-900s)
+try {
+  await session.prepare('CREATE INDEX idx_large ON big_table(column)').run();
+  await session.prepare('ANALYZE').run();
+} finally {
+  session.close(); // CRITICAL: always close to prevent leaks
+}
+```
+
+**Use cases**: Migrations, ANALYZE, large index creation, bulk transformations
+
+## Read Replication (Paid Plans)
+
+Routes queries to nearest replica for lower latency. Writes always go to primary.
+
+```typescript
+interface Env {
+  DB: D1Database;          // Primary (writes)
+  DB_REPLICA: D1Database;  // Replica (reads)
+}
+
+// Reads: use replica
+const user = await env.DB_REPLICA.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+
+// Writes: use primary
+await env.DB.prepare('UPDATE users SET last_login = ? WHERE id = ?').bind(Date.now(), userId).run();
+
+// Read-after-write: use primary for consistency (replication lag <100ms-2s)
+await env.DB.prepare('INSERT INTO posts (title) VALUES (?)').bind(title).run();
+const post = await env.DB.prepare('SELECT * FROM posts WHERE title = ?').bind(title).first(); // Primary
+```
+
 ## Error Handling
 
 ```typescript
@@ -91,8 +128,10 @@ try {
 
 ## REST API (HTTP) Access
 
+Access D1 from external services (non-Worker contexts) using Cloudflare API.
+
 ```typescript
-// Access D1 via Cloudflare REST API (external to Workers)
+// Single query
 const response = await fetch(
   `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
   {
@@ -108,34 +147,50 @@ const response = await fetch(
   }
 );
 
-const data = await response.json();
+const { result, success, errors } = await response.json();
+// result: [{ results: [...], success: true, meta: {...} }]
+
+// Batch queries via HTTP
+const response = await fetch(
+  `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/d1/database/${DATABASE_ID}/query`,
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${CLOUDFLARE_API_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify([
+      { sql: 'SELECT * FROM users WHERE id = ?', params: [1] },
+      { sql: 'SELECT * FROM posts WHERE author_id = ?', params: [1] }
+    ])
+  }
+);
 ```
 
-## Testing
+**Use cases**: Server-side scripts, CI/CD migrations, administrative tools, non-Worker integrations
+
+## Testing & Debugging
 
 ```typescript
+// Vitest with unstable_dev
 import { unstable_dev } from 'wrangler';
-
-describe('D1 Tests', () => {
+describe('D1', () => {
   let worker: Awaited<ReturnType<typeof unstable_dev>>;
-  beforeAll(async () => { worker = await unstable_dev('src/index.ts', { experimental: { disableExperimentalWarning: true } }); });
+  beforeAll(async () => { worker = await unstable_dev('src/index.ts'); });
   afterAll(async () => { await worker.stop(); });
-  it('should query users', async () => { expect((await worker.fetch('/api/users')).status).toBe(200); });
+  it('queries users', async () => { expect((await worker.fetch('/users')).status).toBe(200); });
 });
-```
 
-## Debugging
-
-```typescript
-// Log query metadata
+// Debug query performance
 const result = await env.DB.prepare('SELECT * FROM users').all();
-console.log('Duration:', result.meta.duration, 'ms', 'Rows:', result.meta.rows_read);
+console.log('Duration:', result.meta.duration, 'ms');
 
-// EXPLAIN for query plans
+// Query plan analysis
 const plan = await env.DB.prepare('EXPLAIN QUERY PLAN SELECT * FROM users WHERE email = ?').bind(email).all();
 ```
 
 ```bash
-sqlite3 .wrangler/state/v3/d1/<database-id>.sqlite  # Inspect local DB
-.tables; .schema users; .indexes users; PRAGMA table_info(users);
+# Inspect local database
+sqlite3 .wrangler/state/v3/d1/<database-id>.sqlite
+.tables; .schema users; PRAGMA table_info(users);
 ```

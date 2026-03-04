@@ -153,3 +153,68 @@ async queue(batch: MessageBatch, env: Env): Promise<void> {
   }
 }
 ```
+
+## Integration: D1 Batch Writes
+
+```typescript
+async queue(batch: MessageBatch, env: Env): Promise<void> {
+  // Collect all inserts for single D1 batch
+  const statements = batch.messages.map(msg => 
+    env.DB.prepare('INSERT INTO events (id, data, created) VALUES (?, ?, ?)')
+      .bind(msg.id, JSON.stringify(msg.body), Date.now())
+  );
+  
+  try {
+    await env.DB.batch(statements);
+    batch.ackAll();
+  } catch (error) {
+    console.error('D1 batch failed:', error);
+    batch.retryAll({ delaySeconds: 60 });
+  }
+}
+```
+
+## Integration: Workflows
+
+```typescript
+// Queue triggers Workflow for long-running tasks
+async queue(batch: MessageBatch, env: Env): Promise<void> {
+  for (const msg of batch.messages) {
+    try {
+      const instance = await env.MY_WORKFLOW.create({
+        id: msg.id,
+        params: msg.body
+      });
+      console.log('Workflow started:', instance.id);
+      msg.ack();
+    } catch (error) {
+      msg.retry({ delaySeconds: 30 });
+    }
+  }
+}
+```
+
+## Integration: Durable Objects
+
+```typescript
+// Queue distributes work to Durable Objects by ID
+async queue(batch: MessageBatch, env: Env): Promise<void> {
+  for (const msg of batch.messages) {
+    const { userId, action } = msg.body;
+    
+    // Route to user-specific DO
+    const id = env.USER_DO.idFromName(userId);
+    const stub = env.USER_DO.get(id);
+    
+    try {
+      await stub.fetch(new Request('https://do/process', {
+        method: 'POST',
+        body: JSON.stringify({ action, messageId: msg.id })
+      }));
+      msg.ack();
+    } catch (error) {
+      msg.retry({ delaySeconds: 60 });
+    }
+  }
+}
+```

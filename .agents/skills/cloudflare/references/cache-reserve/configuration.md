@@ -12,39 +12,116 @@ https://dash.cloudflare.com/caching/cache-reserve
 ```
 
 **Prerequisites:**
-- Paid Cache Reserve plan required
-- Tiered Cache strongly recommended (Cache Reserve checks for this)
+- Paid Cache Reserve plan or Smart Shield Advanced required
+- Tiered Cache **required** for Cache Reserve to function optimally
 
 ## API Configuration
 
-```typescript
-// Enable Cache Reserve
-const enableCacheReserve = async (zoneId: string, apiToken: string) => {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ value: 'on' })
-    }
-  );
-  return await response.json();
-};
+### REST API
 
-// Check Cache Reserve status
-const getCacheReserveStatus = async (zoneId: string, apiToken: string) => {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve`,
-    {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${apiToken}` }
+```bash
+# Enable
+curl -X PATCH "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/cache/cache_reserve" \
+  -H "Authorization: Bearer $API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"value": "on"}'
+
+# Check status
+curl -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/cache/cache_reserve" \
+  -H "Authorization: Bearer $API_TOKEN"
+```
+
+### TypeScript SDK
+
+```bash
+npm install cloudflare
+```
+
+```typescript
+import Cloudflare from 'cloudflare';
+
+const client = new Cloudflare({
+  apiToken: process.env.CLOUDFLARE_API_TOKEN,
+});
+
+// Enable Cache Reserve
+await client.cache.cacheReserve.edit({
+  zone_id: 'abc123',
+  value: 'on',
+});
+
+// Get Cache Reserve status
+const status = await client.cache.cacheReserve.get({
+  zone_id: 'abc123',
+});
+console.log(status.value); // 'on' or 'off'
+```
+
+### Python SDK
+
+```bash
+pip install cloudflare
+```
+
+```python
+from cloudflare import Cloudflare
+
+client = Cloudflare(api_token=os.environ.get("CLOUDFLARE_API_TOKEN"))
+
+# Enable Cache Reserve
+client.cache.cache_reserve.edit(
+    zone_id="abc123",
+    value="on"
+)
+
+# Get Cache Reserve status
+status = client.cache.cache_reserve.get(zone_id="abc123")
+print(status.value)  # 'on' or 'off'
+```
+
+### Terraform
+
+```hcl
+terraform {
+  required_providers {
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
     }
-  );
-  return await response.json();
-};
+  }
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+resource "cloudflare_zone_cache_reserve" "example" {
+  zone_id = var.zone_id
+  enabled = true
+}
+
+# Tiered Cache is required for Cache Reserve
+resource "cloudflare_tiered_cache" "example" {
+  zone_id    = var.zone_id
+  cache_type = "smart"
+}
+```
+
+### Pulumi
+
+```typescript
+import * as cloudflare from "@pulumi/cloudflare";
+
+// Enable Cache Reserve
+const cacheReserve = new cloudflare.ZoneCacheReserve("example", {
+  zoneId: zoneId,
+  enabled: true,
+});
+
+// Enable Tiered Cache (required)
+const tieredCache = new cloudflare.TieredCache("example", {
+  zoneId: zoneId,
+  cacheType: "smart",
+});
 ```
 
 ### Required API Token Permissions
@@ -59,102 +136,30 @@ const getCacheReserveStatus = async (zoneId: string, apiToken: string) => {
 Control Cache Reserve eligibility via Cache Rules:
 
 ```typescript
-// Enable Cache Reserve for static assets with long TTL
-const staticAssetRule = {
+// Enable for static assets
+{
   action: 'set_cache_settings',
   action_parameters: {
-    cache_reserve: {
-      eligible: true,
-      minimum_file_ttl: 86400 // 24 hours
-    },
-    edge_ttl: {
-      mode: 'override_origin',
-      default: 86400
-    },
+    cache_reserve: { eligible: true, minimum_file_ttl: 86400 },
+    edge_ttl: { mode: 'override_origin', default: 86400 },
     cache: true
   },
-  expression: '(http.request.uri.path matches "\\.(jpg|jpeg|png|gif|webp|pdf|zip)$")'
-};
+  expression: '(http.request.uri.path matches "\\.(jpg|png|webp|pdf|zip)$")'
+}
 
-// Disable Cache Reserve for frequently updated content
-const dynamicContentRule = {
+// Disable for APIs
+{
   action: 'set_cache_settings',
-  action_parameters: {
-    cache_reserve: { eligible: false }
-  },
+  action_parameters: { cache_reserve: { eligible: false } },
   expression: '(http.request.uri.path matches "^/api/")'
-};
+}
 
-// Cache Reserve for specific origin with minimum 12-hour TTL
-const specificOriginRule = {
-  action: 'set_cache_settings',
-  action_parameters: {
-    cache_reserve: {
-      eligible: true,
-      minimum_file_ttl: 43200 // 12 hours
-    },
-    edge_ttl: { mode: 'override_origin', default: 43200 },
-    cache: true
-  },
-  expression: '(http.host eq "cdn.example.com")'
-};
-```
-
-### Creating Rules via API
-
-```typescript
-const createCacheRule = async (
-  zoneId: string,
-  apiToken: string,
-  rule: CacheRuleWithReserve
-) => {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/rulesets/phases/http_request_cache_settings/entrypoint`,
-    {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ rules: [rule] })
-    }
-  );
-  return await response.json();
-};
+// Create via API: PUT to zones/{zone_id}/rulesets/phases/http_request_cache_settings/entrypoint
 ```
 
 ## Wrangler Integration
 
-Cache Reserve works automatically with Workers deployed via Wrangler. No special configuration needed.
-
-```jsonc
-// wrangler.jsonc
-{
-  "name": "cache-reserve-worker",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-01-11", // Use current date for new projects
-  
-  // Cache Reserve works automatically with standard routes
-  "routes": [
-    { "pattern": "example.com/*", "zone_name": "example.com" }
-  ]
-  // No special Cache Reserve configuration needed
-  // Enable via Dashboard or API
-}
-```
-
-### Development and Testing
-
-```bash
-# Local development (Cache Reserve not active locally)
-npx wrangler dev
-
-# Deploy to production (Cache Reserve active if enabled for zone)
-npx wrangler deploy
-
-# View logs (including cache behavior)
-npx wrangler tail
-```
+Cache Reserve works automatically with Workers deployed via Wrangler. No special wrangler.jsonc configuration needed - enable Cache Reserve via Dashboard or API for the zone.
 
 ## See Also
 

@@ -1,31 +1,76 @@
+# Configuration
+
 ## Setup Methods
 
-### 1. Sites Proxied Through Cloudflare (Automatic)
+### Proxied Sites (Automatic)
 
-For sites already on Cloudflare's proxy:
+Dashboard → Web Analytics → Add site → Select hostname → Done
 
-1. **Dashboard setup:**
-   - Navigate to Web Analytics in Cloudflare dashboard
-   - Click "Add a site"
-   - Select hostname from dropdown → "Done"
-   - Analytics enabled by default (beacon auto-injected)
+| Injection Option | Description |
+|------------------|-------------|
+| Enable | Auto-inject for all visitors (default) |
+| Enable, excluding EU | No injection for EU (GDPR) |
+| Enable with manual snippet | You add beacon manually |
+| Disable | Pause tracking |
 
-2. **Configuration options:**
-   - **Enable** - Full auto-injection for all visitors
-   - **Enable, excluding visitor data in the EU** - No injection for EU visitors
-   - **Enable with JS Snippet installation** - Manual snippet required
-   - **Disable** - Turn off analytics
+**Fails if response has:** `Cache-Control: public, no-transform`
 
-**Important:** If `Cache-Control: public, no-transform` header is set, auto-injection fails. Beacon must be added manually.
+**CSP required:**
+```
+script-src https://static.cloudflareinsights.com https://cloudflareinsights.com;
+```
 
-### 2. Sites Not Proxied Through Cloudflare (Manual)
+### Non-Proxied Sites (Manual)
 
-For non-proxied sites (limit: 10 sites):
-
-1. Dashboard: Web Analytics → "Add a site"
-2. Enter hostname manually → "Done"
-3. Copy JS snippet from "Manage site"
-4. Add snippet before closing `</body>` tag:
+Dashboard → Web Analytics → Add site → Enter hostname → Copy snippet
 
 ```html
-<!-- Cloudflar
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' 
+        data-cf-beacon='{"token": "YOUR_TOKEN", "spa": true}'></script>
+```
+
+**Limits:** 10 non-proxied sites per account
+
+## SPA Mode
+
+**Enable `spa: true` for:** React Router, Next.js, Vue Router, Nuxt, SvelteKit, Angular
+
+**Keep `spa: false` for:** Traditional multi-page apps, static sites, WordPress
+
+**Hash routing (`#/path`) NOT supported** - use History API routing.
+
+## Token Management
+
+- Found in: Dashboard → Web Analytics → Manage site
+- **Not secrets** - domain-locked, safe to expose in HTML
+- Each site gets unique token
+
+## Environment Config
+
+```typescript
+// Only load in production
+if (process.env.NODE_ENV === 'production') {
+  // Load beacon
+}
+```
+
+Or use environment-specific tokens via env vars.
+
+## Verify Installation
+
+1. DevTools Network → filter `cloudflareinsights` → see `beacon.min.js` + data request
+2. No CSP/CORS errors in console
+3. Dashboard shows pageviews after 5-10 min delay
+
+## Rules (Plan-dependent)
+
+Configure in dashboard for:
+- **Sample rate** - reduce collection % for high-traffic
+- **Path-based** - different behavior per route
+- **Host-based** - separate tracking per domain
+
+## Data Retention
+
+- 6 months rolling window
+- 1-hour bucket granularity
+- No raw export, dashboard only

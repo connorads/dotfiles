@@ -1,19 +1,32 @@
 # Configuration
 
-## Schema Validation Setup
+## Schema Validation 2.0 Setup
+
+> ⚠️ **Classic Schema Validation deprecated.** Use Schema Validation 2.0.
 
 **Upload schema (Dashboard):**
 ```
-Security > API Shield > Schema validation > Add validation
+Security > API Shield > Schema Validation > Add validation
 - Upload .yml/.yaml/.json (OpenAPI v3.0)
 - Endpoints auto-added to Endpoint Management
-- Action: Log/Block/None
+- Action: Log | Block | None
+- Body inspection: JSON payloads
 ```
 
-**Change default action:**
+**Change validation action:**
 ```
-Security > API Shield > Settings > Schema validation
+Security > API Shield > Settings > Schema Validation
 Per-endpoint: Filter → ellipses → Change action
+Default action: Set global mitigation action
+```
+
+**Migration from Classic:**
+```
+1. Export existing schema (if available)
+2. Delete all Classic schema validation rules
+3. Wait 5 min for cache clear
+4. Re-upload via Schema Validation 2.0 interface
+5. Verify in Security > Events
 ```
 
 **Fallthrough rule** (catch-all unknown endpoints):
@@ -21,6 +34,7 @@ Per-endpoint: Filter → ellipses → Change action
 Security > API Shield > Settings > Fallthrough > Use Template
 - Select hostnames
 - Create rule with cf.api_gateway.fallthrough_triggered
+- Action: Log (discover) or Block (strict)
 ```
 
 **Body inspection:** Supports `application/json`, `*/*`, `application/*`. Disable origin MIME sniffing to prevent bypasses.
@@ -81,7 +95,7 @@ curl https://api.example.com/endpoint --cert client-cert.pem --key client-key.pe
 
 ## Session Identifiers
 
-Critical for Sequence Mitigation + analytics. Configure header/cookie that uniquely IDs API users.
+Critical for BOLA Detection, Sequence Mitigation, and analytics. Configure header/cookie that uniquely IDs API users.
 
 **Examples:** JWT sub claim, session token, API key, custom user ID header
 
@@ -91,6 +105,50 @@ Security > API Shield > Settings > Session Identifiers
 - Type: Header/Cookie
 - Name: "X-User-ID" or "Authorization"
 ```
+
+## BOLA Detection
+
+Detects Broken Object Level Authorization attacks (enumeration + parameter pollution).
+
+**Enable:**
+```
+Security > API Shield > Schema Validation > [Select Schema] > BOLA Detection
+- Enable detection
+- Threshold: Sensitivity level (Low/Medium/High)
+- Action: Log or Block
+```
+
+**Requirements:**
+- Schema Validation 2.0 enabled
+- Session identifiers configured
+- Minimum traffic: 1000+ requests/day per endpoint
+
+## Authentication Posture
+
+Identifies unprotected or inconsistently protected endpoints.
+
+**View report:**
+```
+Security > API Shield > Authentication Posture
+- Shows endpoints lacking JWT/mTLS
+- Highlights mixed authentication patterns
+```
+
+**Remediate:**
+1. Review flagged endpoints
+2. Add JWT validation rules
+3. Configure mTLS for sensitive endpoints
+4. Monitor posture score
+
+## Volumetric Abuse + GraphQL
+
+**Volumetric Abuse Detection:**
+`Security > API Shield > Settings > Volumetric Abuse Detection`
+- Enable per-endpoint monitoring, set thresholds, action: Log | Challenge | Block
+
+**GraphQL Protection:**
+`Security > API Shield > Settings > GraphQL Protection`
+- Max query depth: 10, max size: 100KB, block introspection (production)
 
 ## Terraform
 
@@ -121,8 +179,14 @@ resource "cloudflare_ruleset" "jwt_validation" {
 
   rules {
     action = "block"
-    expression = "(http.host eq \"api.example.com\" and not cf.api_gateway.jwt_claims_valid)"
+    expression = "(http.host eq \"api.example.com\" and not is_jwt_valid(http.request.jwt.payload[\"{config_id}\"][0]))"
     description = "Block invalid JWTs"
   }
 }
 ```
+
+## See Also
+
+- [api.md](api.md) - API endpoints and Workers integration
+- [patterns.md](patterns.md) - Firewall rules and deployment patterns
+- [gotchas.md](gotchas.md) - Troubleshooting and limits

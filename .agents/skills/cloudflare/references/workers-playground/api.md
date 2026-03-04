@@ -1,20 +1,101 @@
-### HTTP Test Panel
+# Workers Playground API
 
-Switch to **HTTP** tab to test raw HTTP requests:
-- Change HTTP method (GET, POST, PUT, DELETE, etc.)
-- Add/edit headers
-- Modify request body
-- Send request to Worker
+## Handler
 
-### Sharing Code
+```javascript
+export default {
+  async fetch(request, env, ctx) {
+    // request: Request, env: {} (empty in playground), ctx: ExecutionContext
+    return new Response('Hello');
+  }
+};
+```
 
-Click **Copy Link** to generate shareable URL with embedded code. Links never expire and can be bookmarked.
+## Request
 
-### Deploy from Playground
+```javascript
+const method = request.method;       // "GET", "POST"
+const url = new URL(request.url);    // Parse URL
+const headers = request.headers;     // Headers object
+const body = await request.json();   // Read body (consumes stream)
+const clone = request.clone();       // Clone before reading body
 
-Click **Deploy** button to:
-1. Log in to Cloudflare account (if not already)
-2. Review Worker code
-3. Deploy to Cloudflare's global network
-4. Get unique `*.workers.dev` URL
-5. Add custom domains, bindings, etc. from dashboard
+// Query params
+url.searchParams.get('page');        // Single value
+url.searchParams.getAll('tag');      // Array
+
+// Cloudflare metadata
+request.cf.country;                  // "US"
+request.cf.colo;                     // "SFO"
+```
+
+## Response
+
+```javascript
+// Text
+return new Response('Hello', { status: 200 });
+
+// JSON
+return Response.json({ data }, { status: 200, headers: {...} });
+
+// Redirect
+return Response.redirect('/new-path', 301);
+
+// Modify existing
+const modified = new Response(response.body, response);
+modified.headers.set('X-Custom', 'value');
+```
+
+## ExecutionContext
+
+```javascript
+// Background work (after response sent)
+ctx.waitUntil(fetch('https://logs.example.com', { method: 'POST', body: '...' }));
+return new Response('OK'); // Returns immediately
+```
+
+## Fetch
+
+```javascript
+const response = await fetch('https://api.example.com');
+const data = await response.json();
+
+// With options
+await fetch(url, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Alice' })
+});
+```
+
+## Cache
+
+```javascript
+const cache = caches.default;
+
+// Check cache
+let response = await cache.match(request);
+if (!response) {
+  response = await fetch(origin);
+  await cache.put(request, response.clone()); // Clone before put!
+}
+return response;
+```
+
+## Crypto
+
+```javascript
+crypto.randomUUID();                 // UUID v4
+crypto.getRandomValues(new Uint8Array(16));
+
+// SHA-256 hash
+const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+```
+
+## Limits (Playground = Free Plan)
+
+| Resource | Limit |
+|----------|-------|
+| CPU time | 10ms |
+| Subrequests | 50 |
+| Memory | 128 MB |

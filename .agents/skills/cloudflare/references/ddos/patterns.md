@@ -3,7 +3,6 @@
 ## Allowlist Trusted IPs
 
 ```typescript
-// Account-level override with custom expression
 const config = {
   description: "Allowlist trusted IPs",
   rules: [{
@@ -11,21 +10,20 @@ const config = {
     action: "execute",
     action_parameters: {
       id: managedRulesetId,
-      overrides: { sensitivity_level: "eoff" }, // Effectively off
+      overrides: { sensitivity_level: "eoff" },
     },
   }],
 };
 
-await fetch(
-  `https://api.cloudflare.com/client/v4/accounts/${accountId}/rulesets/phases/ddos_l7/entrypoint`,
-  { method: "PUT", headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" }, body: JSON.stringify(config) }
-);
+await client.accounts.rulesets.phases.entrypoint.update("ddos_l7", {
+  account_id: accountId,
+  ...config,
+});
 ```
 
 ## Route-specific Sensitivity
 
 ```typescript
-// Lower sensitivity for bursty API endpoints
 const config = {
   description: "Route-specific protection",
   rules: [
@@ -54,64 +52,47 @@ const config = {
 ```typescript
 enum ProtectionLevel { MONITORING = "monitoring", LOW = "low", MEDIUM = "medium", HIGH = "high" }
 
-async function setProtectionLevel(zoneId: string, level: ProtectionLevel, managedRulesetId: string, apiToken: string) {
-  const levelConfig = {
-    [ProtectionLevel.MONITORING]: { action: "log", sensitivity: "eoff" },
-    [ProtectionLevel.LOW]: { action: "managed_challenge", sensitivity: "low" },
-    [ProtectionLevel.MEDIUM]: { action: "managed_challenge", sensitivity: "medium" },
-    [ProtectionLevel.HIGH]: { action: "block", sensitivity: "default" },
-  } as const;
+const levelConfig = {
+  [ProtectionLevel.MONITORING]: { action: "log", sensitivity: "eoff" },
+  [ProtectionLevel.LOW]: { action: "managed_challenge", sensitivity: "low" },
+  [ProtectionLevel.MEDIUM]: { action: "managed_challenge", sensitivity: "medium" },
+  [ProtectionLevel.HIGH]: { action: "block", sensitivity: "default" },
+} as const;
 
+async function setProtectionLevel(zoneId: string, level: ProtectionLevel, rulesetId: string, client: Cloudflare) {
   const settings = levelConfig[level];
-  const config = {
-    description: `DDoS protection level: ${level}`,
+  return client.zones.rulesets.phases.entrypoint.update("ddos_l7", {
+    zone_id: zoneId,
     rules: [{
       expression: "true",
       action: "execute",
-      action_parameters: {
-        id: managedRulesetId,
-        overrides: { action: settings.action, sensitivity_level: settings.sensitivity },
-      },
+      action_parameters: { id: rulesetId, overrides: { action: settings.action, sensitivity_level: settings.sensitivity } },
     }],
-  };
-
-  return fetch(/* ... */);
+  });
 }
-
-// Gradual rollout: Week 1 MONITORING → Week 2 LOW → Week 3 MEDIUM → Week 4 HIGH
 ```
 
 ## Dynamic Response to Attacks
 
 ```typescript
-// Worker adjusts settings based on attack patterns
-interface Env {
-  CLOUDFLARE_API_TOKEN: string;
-  ZONE_ID: string;
-  KV_NAMESPACE: KVNamespace;
-}
+interface Env { CLOUDFLARE_API_TOKEN: string; ZONE_ID: string; KV: KVNamespace; }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.url.includes("/attack-detected")) {
       const attackData = await request.json();
-      await env.KV_NAMESPACE.put(`attack:${Date.now()}`, JSON.stringify(attackData), { expirationTtl: 86400 });
-
-      const recentAttacks = await getRecentAttacks(env.KV_NAMESPACE);
+      await env.KV.put(`attack:${Date.now()}`, JSON.stringify(attackData), { expirationTtl: 86400 });
+      const recentAttacks = await getRecentAttacks(env.KV);
       if (recentAttacks.length > 5) {
-        await increaseProtection(env.ZONE_ID, "managed-ruleset-id", env.CLOUDFLARE_API_TOKEN);
-        return new Response("Protection increased", { status: 200 });
+        await setProtectionLevel(env.ZONE_ID, ProtectionLevel.HIGH, managedRulesetId, client);
+        return new Response("Protection increased");
       }
     }
     return new Response("OK");
   },
-
-  // Cron: auto-decrease after quiet period
   async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
-    const recentAttacks = await getRecentAttacks(env.KV_NAMESPACE);
-    if (recentAttacks.length === 0) {
-      await normalizeProtection(env.ZONE_ID, "managed-ruleset-id", env.CLOUDFLARE_API_TOKEN);
-    }
+    const recentAttacks = await getRecentAttacks(env.KV);
+    if (recentAttacks.length === 0) await setProtectionLevel(env.ZONE_ID, ProtectionLevel.MEDIUM, managedRulesetId, client);
   },
 };
 ```
@@ -119,33 +100,23 @@ export default {
 ## Multi-rule Tiered Protection (Enterprise Advanced)
 
 ```typescript
-// Up to 10 rules with different conditions
 const config = {
   description: "Multi-tier DDoS protection",
   rules: [
-    { // Strictest for unknown traffic
+    {
       expression: "not ip.src in $known_ips and not cf.bot_management.score gt 30",
       action: "execute",
-      action_parameters: {
-        id: managedRulesetId,
-        overrides: { sensitivity_level: "default", action: "block" },
-      },
+      action_parameters: { id: managedRulesetId, overrides: { sensitivity_level: "default", action: "block" } },
     },
-    { // Medium for verified bots
+    {
       expression: "cf.bot_management.verified_bot",
       action: "execute",
-      action_parameters: {
-        id: managedRulesetId,
-        overrides: { sensitivity_level: "medium", action: "managed_challenge" },
-      },
+      action_parameters: { id: managedRulesetId, overrides: { sensitivity_level: "medium", action: "managed_challenge" } },
     },
-    { // Low for trusted IPs
+    {
       expression: "ip.src in $trusted_ips",
       action: "execute",
-      action_parameters: {
-        id: managedRulesetId,
-        overrides: { sensitivity_level: "low" },
-      },
+      action_parameters: { id: managedRulesetId, overrides: { sensitivity_level: "low" } },
     },
   ],
 };
@@ -153,6 +124,51 @@ const config = {
 
 ## Defense in Depth
 
-Combine DDoS with WAF, Rate Limiting, Bot Management. Layer protections at different levels.
+Layered security stack: DDoS + WAF + Rate Limiting + Bot Management.
+
+```typescript
+// Layer 1: DDoS (volumetric attacks)
+await client.zones.rulesets.phases.entrypoint.update("ddos_l7", {
+  zone_id: zoneId,
+  rules: [{ expression: "true", action: "execute", action_parameters: { id: ddosRulesetId, overrides: { sensitivity_level: "medium" } } }],
+});
+
+// Layer 2: WAF (exploit protection)
+await client.zones.rulesets.phases.entrypoint.update("http_request_firewall_managed", {
+  zone_id: zoneId,
+  rules: [{ expression: "true", action: "execute", action_parameters: { id: wafRulesetId } }],
+});
+
+// Layer 3: Rate Limiting (abuse prevention)
+await client.zones.rulesets.phases.entrypoint.update("http_ratelimit", {
+  zone_id: zoneId,
+  rules: [{ expression: "http.request.uri.path eq \"/api/login\"", action: "block", ratelimit: { characteristics: ["ip.src"], period: 60, requests_per_period: 5 } }],
+});
+
+// Layer 4: Bot Management (automation detection)
+await client.zones.rulesets.phases.entrypoint.update("http_request_sbfm", {
+  zone_id: zoneId,
+  rules: [{ expression: "cf.bot_management.score lt 30", action: "managed_challenge" }],
+});
+```
+
+## Cache Strategy for DDoS Mitigation
+
+Exclude query strings from cache key to counter randomized query parameter attacks.
+
+```typescript
+const cacheRule = {
+  expression: "http.request.uri.path matches \"^/api/\"",
+  action: "set_cache_settings",
+  action_parameters: {
+    cache: true,
+    cache_key: { ignore_query_strings_order: true, custom_key: { query_string: { exclude: { all: true } } } },
+  },
+};
+
+await client.zones.rulesets.phases.entrypoint.update("http_request_cache_settings", { zone_id: zoneId, rules: [cacheRule] });
+```
+
+**Rationale**: Attackers randomize query strings (`?random=123456`) to bypass cache. Excluding query params ensures cache hits absorb attack traffic.
 
 See [configuration.md](./configuration.md) for rule structure details.

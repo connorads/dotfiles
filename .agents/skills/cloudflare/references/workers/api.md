@@ -40,6 +40,11 @@ await env.MY_BUCKET.put('file.txt', 'content');
 // D1
 const result = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(1).first();
 
+// D1 Sessions (2024+) - read-after-write consistency
+const session = env.DB.withSession();
+await session.prepare('INSERT INTO users (name) VALUES (?)').bind('Alice').run();
+const user = await session.prepare('SELECT * FROM users WHERE name = ?').bind('Alice').first(); // Guaranteed fresh
+
 // Queues
 await env.MY_QUEUE.send({ timestamp: Date.now() });
 
@@ -80,6 +85,8 @@ return new HTMLRewriter()
 
 ## WebSockets
 
+### Standard WebSocket
+
 ```typescript
 const [client, server] = Object.values(new WebSocketPair());
 
@@ -91,7 +98,30 @@ server.addEventListener('message', event => {
 return new Response(null, { status: 101, webSocket: client });
 ```
 
+### WebSocket Hibernation (Recommended for idle connections)
+
+```typescript
+// In Durable Object
+export class WebSocketDO {
+  async webSocketMessage(ws: WebSocket, message: string) {
+    ws.send(`Echo: ${message}`);
+  }
+  
+  async webSocketClose(ws: WebSocket, code: number, reason: string) {
+    // Cleanup on close
+  }
+  
+  async webSocketError(ws: WebSocket, error: Error) {
+    console.error('WebSocket error:', error);
+  }
+}
+```
+
+Hibernation automatically suspends inactive connections (no CPU cost), wakes on events
+
 ## Durable Objects
+
+### RPC Pattern (Recommended 2024+)
 
 ```typescript
 export class Counter {
@@ -103,18 +133,37 @@ export class Counter {
     });
   }
   
-  async fetch(request: Request): Promise<Response> {
-    if (new URL(request.url).pathname === '/increment') {
-      await this.state.storage.put('value', ++this.value);
-    }
-    return new Response(String(this.value));
+  // Export methods directly - called via RPC (type-safe, zero serialization)
+  async increment(): Promise<number> {
+    this.value++;
+    await this.state.storage.put('value', this.value);
+    return this.value;
+  }
+  
+  async getValue(): Promise<number> {
+    return this.value;
   }
 }
 
-// Usage: const stub = env.COUNTER.get(env.COUNTER.idFromName('global'));
+// Worker usage:
+const stub = env.COUNTER.get(env.COUNTER.idFromName('global'));
+const count = await stub.increment(); // Direct method call, full type safety
 ```
 
-**When to use**: Real-time collaboration, rate limiting, strongly consistent state
+### Legacy Fetch Pattern (Pre-2024)
+
+```typescript
+async fetch(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname === '/increment') {
+    await this.state.storage.put('value', ++this.value);
+  }
+  return new Response(String(this.value));
+}
+// Usage: await stub.fetch('http://x/increment')
+```
+
+**When to use DOs**: Real-time collaboration, rate limiting, strongly consistent state
 
 ## Other Handlers
 
@@ -127,8 +176,17 @@ export class Counter {
 ## Service Bindings
 
 ```typescript
-return env.SERVICE_B.fetch(request);  // Worker-to-worker RPC, zero latency
+// Worker-to-worker RPC (zero latency, no internet round-trip)
+return env.SERVICE_B.fetch(request);
+
+// With RPC (2024+) - same as Durable Objects RPC
+export class ServiceWorker {
+  async getData() { return { data: 'value' }; }
+}
+// Usage: const data = await env.SERVICE_B.getData();
 ```
+
+**Benefits**: Type-safe method calls, no HTTP overhead, share code between Workers
 
 ## See Also
 

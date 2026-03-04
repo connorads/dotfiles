@@ -1,99 +1,136 @@
 # Workers Gotchas
 
-## CPU Time Limits
+## Common Errors
 
-**Standard**: 10ms CPU time  
-**Unbound**: 30ms CPU time
+### "Too much CPU time used"
 
-**Solutions**:
-- Use `ctx.waitUntil()` for background work
-- Offload heavy compute to Durable Objects
-- Consider Workers AI for ML workloads
+**Cause:** Worker exceeded CPU time limit (10ms standard, 30ms unbound)  
+**Solution:** Use `ctx.waitUntil()` for background work, offload heavy compute to Durable Objects, or consider Workers AI for ML workloads
 
-## No Persistent State in Worker
+### "Module-Level State Lost"
 
-Workers are stateless between requests - module-level variables reset unpredictably.
+**Cause:** Workers are stateless between requests; module-level variables reset unpredictably  
+**Solution:** Use KV, D1, or Durable Objects for persistent state; don't rely on module-level variables
 
-**Solution**: Use KV, D1, or Durable Objects for persistent state.
+### "Body has already been used"
 
-## Response Bodies Are Streams
+**Cause:** Attempting to read response body twice (bodies are streams)  
+**Solution:** Clone response before reading: `response.clone()` or read once and create new Response with the text
 
-```typescript
-// ❌ BAD
-const response = await fetch(url);
-await logBody(response.text());  // First read
-return response;  // Body already consumed!
+### "Node.js module not found"
 
-// ✅ GOOD
-const response = await fetch(url);
-const text = await response.text();
-await logBody(text);
-return new Response(text, response);
-```
+**Cause:** Node.js built-ins not available by default  
+**Solution:** Use Workers APIs (e.g., R2 for file storage) or enable Node.js compat with `"compatibility_flags": ["nodejs_compat_v2"]`
 
-## No Node.js Built-ins (by default)
+### "Cannot fetch in global scope"
 
-```typescript
-// ❌ BAD
-import fs from 'fs';  // Not available
+**Cause:** Attempting to use fetch during module initialization  
+**Solution:** Move fetch calls inside handler functions (fetch, scheduled, etc.) where they're allowed
 
-// ✅ GOOD - use Workers APIs
-const data = await env.MY_BUCKET.get('file.txt');
+### "Subrequest depth limit exceeded"
 
-// OR enable Node.js compat
-{ "compatibility_flags": ["nodejs_compat_v2"] }
-```
+**Cause:** Too many nested subrequests creating deep call chain  
+**Solution:** Flatten request chain or use service bindings for direct Worker-to-Worker communication
 
-## Fetch in Global Scope Forbidden
+### "D1 read-after-write inconsistency"
+
+**Cause:** D1 is eventually consistent; reads may not reflect recent writes  
+**Solution:** Use D1 Sessions (2024+) to guarantee read-after-write consistency within a session:
 
 ```typescript
-// ❌ BAD
-const config = await fetch('/config.json');  // Error!
-
-export default {
-  async fetch() { return new Response('OK'); },
-};
-
-// ✅ GOOD
-export default {
-  async fetch() {
-    const config = await fetch('/config.json');  // OK
-    return new Response('OK');
-  },
-};
+const session = env.DB.withSession();
+await session.prepare('INSERT INTO users (name) VALUES (?)').bind('Alice').run();
+const user = await session.prepare('SELECT * FROM users WHERE name = ?').bind('Alice').first(); // Guaranteed to see Alice
 ```
+
+**When to use sessions:** Write → Read patterns, transactions requiring consistency
+
+### "wrangler types not generating TypeScript definitions"
+
+**Cause:** Type generation not configured or outdated  
+**Solution:** Run `npx wrangler types` after changing bindings in wrangler.jsonc:
+
+```bash
+npx wrangler types  # Generates .wrangler/types/runtime.d.ts
+```
+
+Add to `tsconfig.json`: `"include": [".wrangler/types/**/*.ts"]`
+
+Then import: `import type { Env } from './.wrangler/types/runtime';`
+
+### "Durable Object RPC errors with deprecated fetch pattern"
+
+**Cause:** Using old `stub.fetch()` pattern instead of RPC (2024+)  
+**Solution:** Export methods directly, call via RPC:
+
+```typescript
+// ❌ Old fetch pattern
+export class MyDO {
+  async fetch(request: Request) {
+    const { method } = await request.json();
+    if (method === 'increment') return new Response(String(await this.increment()));
+  }
+  async increment() { return ++this.value; }
+}
+const stub = env.DO.get(id);
+const res = await stub.fetch('http://x', { method: 'POST', body: JSON.stringify({ method: 'increment' }) });
+
+// ✅ RPC pattern (type-safe, no serialization overhead)
+export class MyDO {
+  async increment() { return ++this.value; }
+}
+const stub = env.DO.get(id);
+const count = await stub.increment(); // Direct method call
+```
+
+### "WebSocket connection closes unexpectedly"
+
+**Cause:** Worker reaches CPU limit while maintaining WebSocket connection  
+**Solution:** Use WebSocket hibernation (2024+) to offload idle connections:
+
+```typescript
+export class WebSocketDO {
+  async webSocketMessage(ws: WebSocket, message: string) {
+    // Handle message
+  }
+  async webSocketClose(ws: WebSocket, code: number) {
+    // Cleanup
+  }
+}
+```
+
+Hibernation automatically suspends inactive connections, wakes on events
+
+### "Framework middleware not working with Workers"
+
+**Cause:** Framework expects Node.js primitives (e.g., Express uses Node streams)  
+**Solution:** Use Workers-native frameworks (Hono, itty-router, Worktop) or adapt middleware:
+
+```typescript
+// ✅ Hono (Workers-native)
+import { Hono } from 'hono';
+const app = new Hono();
+app.use('*', async (c, next) => { /* middleware */ await next(); });
+```
+
+See [frameworks.md](./frameworks.md) for full patterns
 
 ## Limits
 
-| Resource | Limit |
-|----------|-------|
-| Request size | 100 MB |
-| Response size | Unlimited (streaming) |
-| CPU time | 10ms (standard) / 30ms (unbound) |
-| Subrequests | 1000 per request |
-| KV reads | 1000 per request |
-| KV write size | 25 MB |
-| Environment size | 5 MB |
-
-## Common Errors
-
-### "Error: Body has already been used"
-
-**Cause**: Response body read twice  
-**Solution**: Clone response before reading: `response.clone()`
-
-### "Error: Too much CPU time used"
-
-**Cause**: Exceeded CPU limit  
-**Solution**: Use `ctx.waitUntil()` for background work
-
-### "Error: Subrequest depth limit exceeded"
-
-**Cause**: Too many nested subrequests  
-**Solution**: Flatten request chain, use service bindings
+| Limit | Value | Notes |
+|-------|-------|-------|
+| Request size | 100 MB | Maximum incoming request size |
+| Response size | Unlimited | Supports streaming |
+| CPU time (standard) | 10ms | Standard Workers |
+| CPU time (unbound) | 30ms | Unbound Workers |
+| Subrequests | 10,000 | Per request |
+| KV reads | 1000 | Per request |
+| KV write size | 25 MB | Maximum per write |
+| Environment size | 5 MB | Total size of env bindings |
 
 ## See Also
 
 - [Patterns](./patterns.md) - Best practices
 - [API](./api.md) - Runtime APIs
 - [Configuration](./configuration.md) - Setup
+- [Frameworks](./frameworks.md) - Hono, routing, validation

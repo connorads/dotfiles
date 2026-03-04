@@ -1,6 +1,6 @@
 # CNI Configuration
 
-See [README.md](./README.md) for overview.
+See [README.md](README.md) for overview.
 
 ## Workflow (2-4 weeks)
 
@@ -24,6 +24,8 @@ See [README.md](./README.md) for overview.
 - Optional: BGP password
 
 **v2:** Simplified, less BGP config needed.
+
+**BGP over CNI (Dec 2024):** Magic WAN/Transit can now peer BGP directly over CNI v2 (no GRE tunnel required).
 
 **Example v1 BGP:**
 ```
@@ -55,7 +57,7 @@ VLAN: 100
 
 **Setup via Dashboard:**
 1. Interconnects → Create → Cloud Interconnect → Google
-2. Provide name, MTU (match GCP VLAN attachment), speed
+2. Provide name, MTU (match GCP VLAN attachment), speed (50M-50G granular options available for partner interconnects)
 3. Enter VLAN attachment pairing key
 4. Confirm order
 
@@ -66,9 +68,14 @@ VLAN: 100
 ## Monitoring
 
 **Dashboard Status:**
-- **Active**: Link up, sufficient light, Ethernet negotiated
-- **Unhealthy**: Link down, no/low light (<-20 dBm), can't negotiate
-- **Pending**: Cross-connect incomplete, device unresponsive, RX/TX swapped
+
+| Status | Meaning |
+|--------|---------|
+| **Healthy** | Link operational, traffic flowing, health checks passing |
+| **Active** | Link up, sufficient light, Ethernet negotiated |
+| **Unhealthy** | Link down, no/low light (<-20 dBm), can't negotiate |
+| **Pending** | Cross-connect incomplete, device unresponsive, RX/TX swapped |
+| **Down** | Physical link down, no connectivity |
 
 **Alerts:**
 
@@ -96,32 +103,12 @@ Use first 3 letters: "gru"
 
 ## Best Practices
 
-**Design:**
-- Choose locations with device diversity
-- Plan redundancy from start
-- Select appropriate dataplane for use case
-- Document capacity + growth
+**Critical config-specific practices:**
+- /31 subnets required for BGP
+- BGP passwords recommended
+- BFD for fast failover (v1 only)
+- Test ping connectivity before BGP
+- Enable maintenance notifications immediately after activation
+- Monitor status programmatically via API
 
-**Ordering:**
-- Verify facility codes match LOA
-- Confirm single-mode fiber
-- Check optic types (10GBASE-LR/100GBASE-LR4)
-
-**Config:**
-- /31 subnets
-- BGP passwords
-- BFD for v1
-- Test ping before BGP
-
-**Production:**
-- Enable maintenance notifications immediately
-- Monitor status programmatically
-- Test backup connectivity regularly
-- Document escalation paths
-
-**Security:**
-- Minimum API token permissions
-- Rotate BGP passwords
-- BGP route filtering
-- Monitor unexpected advertisements
-- Use Magic Firewall
+For design patterns, HA architecture, and security best practices, see [patterns.md](./patterns.md).

@@ -6,54 +6,64 @@
 interface EventContext<Env = any> {
   request: Request;              // Incoming request
   functionPath: string;          // Request path
-  waitUntil(promise: Promise<any>): void;  // Background work
-  passThroughOnException(): void;          // Fallback on error
+  waitUntil(promise: Promise<any>): void;  // Background tasks (non-blocking)
+  passThroughOnException(): void;          // Fallback to static on error
   next(input?: Request | string, init?: RequestInit): Promise<Response>;
   env: Env;                      // Bindings, vars, secrets
-  params: Record<string, string | string[]>;  // Route params
-  data: any;                     // Middleware shared data
+  params: Record<string, string | string[]>;  // Route params ([user] or [[catchall]])
+  data: any;                     // Middleware shared state
 }
 ```
+
+**TypeScript:** See [configuration.md](./configuration.md) for `wrangler types` setup
 
 ## Handlers
 
 ```typescript
-// Generic (fallback)
-export async function onRequest(context: EventContext): Promise<Response> {
+// Generic (fallback for any method)
+export async function onRequest(ctx: EventContext): Promise<Response> {
   return new Response('Any method');
 }
 
-// Method-specific (takes precedence)
-export async function onRequestGet(context: EventContext): Promise<Response> {
-  return new Response('GET request');
+// Method-specific (takes precedence over generic)
+export async function onRequestGet(ctx: EventContext): Promise<Response> {
+  return Response.json({ message: 'GET' });
 }
 
-export async function onRequestPost(context: EventContext): Promise<Response> {
-  const body = await context.request.json();
+export async function onRequestPost(ctx: EventContext): Promise<Response> {
+  const body = await ctx.request.json();
   return Response.json({ received: body });
 }
-
 // Also: onRequestPut, onRequestPatch, onRequestDelete, onRequestHead, onRequestOptions
 ```
+
+## Bindings Reference
+
+| Binding Type | Interface | Config Key | Use Case |
+|--------------|-----------|------------|----------|
+| KV | `KVNamespace` | `kv_namespaces` | Key-value cache, sessions, config |
+| D1 | `D1Database` | `d1_databases` | Relational data, SQL queries |
+| R2 | `R2Bucket` | `r2_buckets` | Large files, user uploads, assets |
+| Durable Objects | `DurableObjectNamespace` | `durable_objects.bindings` | Stateful coordination, websockets |
+| Workers AI | `Ai` | `ai.binding` | LLM inference, embeddings |
+| Vectorize | `VectorizeIndex` | `vectorize` | Vector search, embeddings |
+| Service Binding | `Fetcher` | `services` | Worker-to-worker RPC |
+| Analytics Engine | `AnalyticsEngineDataset` | `analytics_engine_datasets` | Event logging, metrics |
+| Environment Vars | `string` | `vars` | Non-sensitive config |
+
+See [configuration.md](./configuration.md) for wrangler.jsonc examples.
 
 ## Bindings
 
 ### KV
 
 ```typescript
-interface Env { TODO_LIST: KVNamespace; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  await context.env.TODO_LIST.put('Task:123', 'Buy milk');
-  const task = await context.env.TODO_LIST.get('Task:123');
-  await context.env.TODO_LIST.delete('Task:123');
-  const keys = await context.env.TODO_LIST.list({ prefix: 'Task:' });
-  
-  // With options
-  await context.env.TODO_LIST.put('session', data, { expirationTtl: 3600 });
-  const value = await context.env.TODO_LIST.get('key', { type: 'json' });
-  
-  return new Response(task);
+interface Env { KV: KVNamespace; }
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  await ctx.env.KV.put('key', 'value', { expirationTtl: 3600 });
+  const val = await ctx.env.KV.get('key', { type: 'json' });
+  const keys = await ctx.env.KV.list({ prefix: 'user:' });
+  return Response.json({ val });
 };
 ```
 
@@ -61,20 +71,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
 ```typescript
 interface Env { DB: D1Database; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  // Prepared statements
-  const result = await context.env.DB.prepare('SELECT * FROM users WHERE id = ?')
-    .bind(123)
-    .first();
-  
-  // Batch
-  const data = await context.env.DB.batch([
-    context.env.DB.prepare('SELECT * FROM users'),
-    context.env.DB.prepare('SELECT * FROM posts')
-  ]);
-  
-  return Response.json(result);
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const user = await ctx.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(123).first();
+  return Response.json(user);
 };
 ```
 
@@ -82,23 +81,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
 ```typescript
 interface Env { BUCKET: R2Bucket; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const url = new URL(context.request.url);
-  const key = url.pathname.slice(1);
-  
-  // GET
-  const obj = await context.env.BUCKET.get(key);
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const obj = await ctx.env.BUCKET.get('file.txt');
   if (!obj) return new Response('Not found', { status: 404 });
-  
-  // PUT
-  await context.env.BUCKET.put(key, context.request.body, {
-    httpMetadata: { contentType: 'application/octet-stream' }
-  });
-  
-  // DELETE
-  await context.env.BUCKET.delete(key);
-  
+  await ctx.env.BUCKET.put('file.txt', ctx.request.body);
   return new Response(obj.body);
 };
 ```
@@ -107,11 +93,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
 ```typescript
 interface Env { COUNTER: DurableObjectNamespace; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const id = context.env.COUNTER.idFromName('global-counter');
-  const stub = context.env.COUNTER.get(id);
-  return stub.fetch(context.request);
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const stub = ctx.env.COUNTER.get(ctx.env.COUNTER.idFromName('global'));
+  return stub.fetch(ctx.request);
 };
 ```
 
@@ -119,83 +103,41 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
 ```typescript
 interface Env { AI: Ai; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const answer = await context.env.AI.run(
-    '@cf/meta/llama-3.1-8b-instruct',
-    { prompt: 'Hello, World?' }
-  );
-  return Response.json(answer);
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  const resp = await ctx.env.AI.run('@cf/meta/llama-3.1-8b-instruct', { prompt: 'Hello' });
+  return Response.json(resp);
 };
 ```
 
-### Service Bindings
+### Service Bindings & Env Vars
 
 ```typescript
-interface Env { AUTH_SERVICE: Fetcher; }
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  // Forward request
-  return context.env.AUTH_SERVICE.fetch(context.request);
+interface Env { AUTH: Fetcher; API_KEY: string; }
+export const onRequest: PagesFunction<Env> = async (ctx) => {
+  // Service binding: forward to another Worker
+  return ctx.env.AUTH.fetch(ctx.request);
   
-  // Custom request
-  const req = new Request('https://internal/verify', {
-    method: 'POST',
-    body: JSON.stringify({ token: 'xyz' })
-  });
-  return context.env.AUTH_SERVICE.fetch(req);
+  // Environment variable
+  return Response.json({ key: ctx.env.API_KEY });
 };
 ```
 
-### Environment Variables
+## Advanced Mode (env.ASSETS)
+
+When using `_worker.js`, access static assets via `env.ASSETS.fetch()`:
 
 ```typescript
-interface Env {
-  API_KEY: string;
-  ENVIRONMENT: string;
-}
+interface Env { ASSETS: Fetcher; KV: KVNamespace; }
 
-export const onRequest: PagesFunction<Env> = async (context) => {
-  const apiKey = context.env.API_KEY;
-  const isProd = context.env.ENVIRONMENT === 'production';
-  return new Response('OK');
-};
-```
-
-## TypeScript
-
-```bash
-npm install -D @cloudflare/workers-types
-```
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "target": "ES2021",
-    "module": "ES2022",
-    "lib": ["ES2021"],
-    "types": ["@cloudflare/workers-types"]
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) {
+      return Response.json({ data: await env.KV.get('key') });
+    }
+    return env.ASSETS.fetch(request); // Fallback to static
   }
-}
+} satisfies ExportedHandler<Env>;
 ```
 
-```typescript
-import type { PagesFunction, EventContext } from '@cloudflare/workers-types';
-
-interface Env {
-  KV: KVNamespace;
-  DB: D1Database;
-}
-
-export const onRequest: PagesFunction<Env> = async (context) => {
-  // context.env fully typed
-  return new Response('OK');
-};
-```
-
-## See Also
-
-- [README.md](./README.md) - Overview
-- [configuration.md](./configuration.md) - wrangler.json
-- [patterns.md](./patterns.md) - Common patterns
+**See also:** [configuration.md](./configuration.md) for TypeScript setup and wrangler.jsonc | [patterns.md](./patterns.md) for middleware and auth patterns

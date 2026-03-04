@@ -2,154 +2,196 @@
 
 ## Functions Not Running
 
-1. **Check `_routes.json`**: May be excluding Function routes
-2. **Verify file naming**: Must be `.js` or `.ts`, NOT `.jsx` or `.tsx`
-3. **Check build output**: Functions dir must be at root of output dir
-4. **Functions precedence**: Functions always override redirects/static
+**Problem**: Function endpoints return 404 or don't execute  
+**Causes**: `_routes.json` excludes path; wrong file extension (`.jsx`/`.tsx`); Functions dir not at output root  
+**Solution**: Check `_routes.json`, rename to `.ts`/`.js`, verify build output structure
 
 ## 404 on Static Assets
 
-1. **Build output dir**: Verify setting matches actual build output
-2. **Functions catching requests**: Use `_routes.json` to exclude static paths
-3. **Advanced mode**: Must call `env.ASSETS.fetch()` or static won't serve
+**Problem**: Static files not serving  
+**Causes**: Build output dir misconfigured; Functions catching requests; Advanced mode missing `env.ASSETS.fetch()`  
+**Solution**: Verify output dir, add exclusions to `_routes.json`, call `env.ASSETS.fetch()` in `_worker.js`
 
 ## Bindings Not Working
 
-1. **wrangler.toml syntax**: Check for TOML errors
-2. **Binding IDs**: Verify correct (especially for KV/D1/R2)
-3. **Local dev**: Check `.dev.vars` exists and has correct values
-4. **Regenerate types**: `npx wrangler types --path='./functions/types.d.ts'`
-5. **Environment**: Production bindings ≠ preview bindings (set separately)
+**Problem**: `env.BINDING` undefined or errors  
+**Causes**: wrangler.jsonc syntax error; wrong binding IDs; missing `.dev.vars`; out-of-sync types  
+**Solution**: Validate config, verify IDs, create `.dev.vars`, run `npx wrangler types`
 
 ## Build Failures
 
-1. **Build logs**: Check in Dashboard → Deployments → Build log
-2. **Build command**: Verify correct for framework
-3. **Output directory**: Must match actual build output
-4. **Node version**: Check compatibility (set via `.nvmrc` or env var)
-5. **Environment variables**: Review in Settings → Environment variables
-6. **Timeout**: 20min max. Long builds may fail.
-7. **Memory**: Build can OOM on large projects
-
-## Deployment Fails
-
-1. **File count**: Max 20,000 files per deployment
-2. **File size**: Max 25MB per file
-3. **Build errors**: Check build output in logs
-4. **wrangler.toml validation**: `npx wrangler pages project validate`
-5. **Bindings**: Verify all referenced bindings exist
+**Problem**: Deployment fails during build  
+**Causes**: Wrong build command/output dir; Node version incompatibility; missing env vars; 20min timeout; OOM  
+**Solution**: Check Dashboard → Deployments → Build log; verify settings; add `.nvmrc`; optimize build
 
 ## Middleware Not Running
 
-1. **File location**: Must be `_middleware.ts` (underscore prefix)
-2. **Export**: Must export `onRequest` or method-specific handlers
-3. **Must call `next()`**: Or return Response directly
-4. **Scope**: `functions/_middleware.ts` applies to ALL (including static)
-5. **Order**: Array order matters: `[errorHandler, auth, logging]`
+**Problem**: Middleware doesn't execute  
+**Causes**: Wrong filename (not `_middleware.ts`); missing `onRequest` export; didn't call `next()`  
+**Solution**: Rename file with underscore prefix; export handler; call `next()` or return Response
 
-## Headers Not Applied
+## Headers/Redirects Not Working
 
-1. **Functions responses**: `_headers` only applies to static assets
-2. **Set in code**: Functions must set headers via Response object
-3. **Syntax**: Check `_headers` file syntax (path, then indented headers)
-4. **Limits**: Max 100 header rules
-
-## Redirects Not Working
-
-1. **Functions take precedence**: Redirects don't apply to Function routes
-2. **Syntax**: Check `_redirects` file format
-3. **Limits**: Max 2,100 redirects (2,000 static + 100 dynamic)
-4. **Query strings**: Preserved automatically
-5. **Testing**: Preview deployments to test before production
+**Problem**: `_headers` or `_redirects` not applying  
+**Causes**: Only work for static assets; Functions override; syntax errors; exceeded limits  
+**Solution**: Set headers in Response object for Functions; verify syntax; check limits (100 headers, 2,100 redirects)
 
 ## TypeScript Errors
 
-1. **Generate types**: `npx wrangler types` before dev
-2. **tsconfig**: Point `types` to generated file
-3. **Env interface**: Must match wrangler.toml bindings
-4. **Type imports**: `import type { PagesFunction } from '@cloudflare/workers-types'`
+**Problem**: Type errors in Functions code  
+**Causes**: Types not generated; Env interface doesn't match wrangler.jsonc  
+**Solution**: Run `npx wrangler types --path='./functions/types.d.ts'`; update Env interface
 
 ## Local Dev Issues
 
-1. **Port conflicts**: Use `--port=3000` to change
-2. **Bindings**: Must pass via CLI flags or wrangler.toml
-3. **Persistence**: Use `--persist-to` to keep data between restarts
-4. **Hot reload**: May need manual restart for some changes
-5. **HTTPS**: Local dev uses HTTP, production uses HTTPS (affects cookies, etc.)
-
-## Preview vs Production
-
-1. **Different bindings**: Set separately in Dashboard
-2. **Different env vars**: Configure per environment
-3. **Branch deploys**: Every branch gets preview deployment
-4. **URLs**: `https://branch.project.pages.dev` vs `https://project.pages.dev`
+**Problem**: Dev server errors or bindings don't work  
+**Causes**: Port conflict; bindings not passed; local vs HTTPS differences  
+**Solution**: Use `--port=3000`; pass bindings via CLI or wrangler.jsonc; account for HTTP/HTTPS differences
 
 ## Performance Issues
 
-1. **Function invocations**: Exclude static assets via `_routes.json`
-2. **Cold starts**: First request after deploy may be slower
-3. **CPU time**: 10ms limit per request (can hit on complex operations)
-4. **Memory**: 128MB limit (watch for large JSON parsing)
-5. **Bundle size**: Keep Functions < 1MB compressed
+**Problem**: Slow responses or CPU limit errors  
+**Causes**: Functions invoked for static assets; cold starts; 10ms CPU limit; large bundle  
+**Solution**: Exclude static via `_routes.json`; optimize hot paths; keep bundle < 1MB
 
 ## Framework-Specific
 
-### Next.js
-- Use `@cloudflare/next-on-pages` adapter
-- Some features unsupported (ISR, Middleware with waitUntil in body)
-- Check [compatibility](https://github.com/cloudflare/next-on-pages/blob/main/docs/compatibility.md)
+### ⚠️ Deprecated Frameworks
 
-### SvelteKit
+**Next.js**: Official adapter (`@cloudflare/next-on-pages`) **deprecated** and unmaintained.
+- **Problem**: No updates since 2024; incompatible with Next.js 15+; missing App Router features
+- **Cause**: Cloudflare discontinued official support; community fork exists but limited
+- **Solutions**:
+  1. **Recommended**: Use Vercel (official Next.js host)
+  2. **Advanced**: Self-host on Workers using custom adapter (complex, unsupported)
+  3. **Migration**: Switch to SvelteKit/Nuxt (similar DX, full Pages support)
+
+**Remix**: Official adapter (`@remix-run/cloudflare-pages`) **deprecated**.
+- **Problem**: No maintenance from Remix team; compatibility issues with Remix v2+
+- **Cause**: Remix team deprecated all framework adapters
+- **Solutions**:
+  1. **Recommended**: Migrate to SvelteKit (similar file-based routing, better DX)
+  2. **Alternative**: Use Astro (static-first with optional SSR)
+  3. **Workaround**: Continue using deprecated adapter (no future support)
+
+### ✅ Supported Frameworks
+
+**SvelteKit**:
 - Use `@sveltejs/adapter-cloudflare`
-- Set `platform: 'cloudflare'` in svelte.config.js
+- Access bindings via `platform.env` in server load functions
+- Set `platform: 'cloudflare'` in `svelte.config.js`
 
-### Remix
-- Use `@remix-run/cloudflare-pages`
-- Check server context for bindings
+**Astro**:
+- Built-in Cloudflare adapter
+- Access bindings via `Astro.locals.runtime.env`
+
+**Nuxt**:
+- Set `nitro.preset: 'cloudflare-pages'` in `nuxt.config.ts`
+- Access bindings via `event.context.cloudflare.env`
+
+**Qwik, Solid Start**:
+- Built-in or official Cloudflare adapters available
+- Check respective framework docs for binding access
 
 ## Debugging
 
 ```typescript
-// Log everything
-console.log('Request:', {
-  method: request.method,
-  url: request.url,
-  headers: Object.fromEntries(request.headers),
-});
+// Log request details
+console.log('Request:', { method: request.method, url: request.url });
 console.log('Env:', Object.keys(env));
 console.log('Params:', params);
-console.log('Data:', data);
 ```
 
-**View logs**:
-```bash
-npx wrangler pages deployment tail --project-name=my-project
-```
+**View logs**: `npx wrangler pages deployment tail --project-name=my-project`
+
+## Smart Placement Issues
+
+### Increased Cold Start Latency
+
+**Problem**: First requests slower after enabling Smart Placement  
+**Cause**: Initial optimization period while system learns traffic patterns  
+**Solution**: Expected behavior during first 24-48 hours; monitor latency trends over time
+
+### Inconsistent Response Times
+
+**Problem**: Latency varies significantly across requests during initial deployment  
+**Cause**: Smart Placement testing different execution locations to find optimal placement  
+**Solution**: Normal during learning phase; stabilizes after traffic patterns emerge (1-2 days)
+
+### No Performance Improvement
+
+**Problem**: Smart Placement enabled but no latency reduction observed  
+**Cause**: Traffic evenly distributed globally, or no data locality constraints  
+**Solution**: Smart Placement most effective with centralized data (D1/DO) or regional traffic; disable if no benefit
+
+## Remote Bindings Issues
+
+### Accidentally Modified Production Data
+
+**Problem**: Local dev with `--remote` altered production database/KV  
+**Cause**: Remote bindings connect directly to production resources; writes are real  
+**Solution**: 
+- Use `--remote` only for read-heavy debugging
+- Create separate preview environments for testing
+- Never use `--remote` for write operations during development
+
+### Remote Binding Auth Errors
+
+**Problem**: `npx wrangler pages dev --remote` fails with "Unauthorized" or auth error  
+**Cause**: Not logged in, session expired, or insufficient account permissions  
+**Solution**: 
+1. Run `npx wrangler login` to re-authenticate
+2. Verify account has access to project and bindings
+3. Check binding IDs match production configuration
+
+### Slow Local Dev with Remote Bindings
+
+**Problem**: Local dev server slow when using `--remote`  
+**Cause**: Every request makes network calls to production bindings  
+**Solution**: Use local bindings for development; reserve `--remote` for final validation
 
 ## Common Errors
 
-**"Module not found"**: Check build output, ensure dependencies bundled
+### "Module not found"
+**Cause**: Dependencies not bundled or build output incorrect  
+**Solution**: Check build output directory, ensure dependencies bundled
 
-**"Binding not found"**: Verify wrangler.toml and regenerate types
+### "Binding not found"
+**Cause**: Binding not configured or types out of sync  
+**Solution**: Verify wrangler.jsonc, run `npx wrangler types`
 
-**"Request exceeded CPU limit"**: Optimize hot paths, use Workers for heavy compute
+### "Request exceeded CPU limit"
+**Cause**: Code execution too slow or heavy compute  
+**Solution**: Optimize hot paths, upgrade to Workers Paid
 
-**"Script too large"**: Tree-shake, dynamic imports, code-split
+### "Script too large"
+**Cause**: Bundle size exceeds limit  
+**Solution**: Tree-shake, use dynamic imports, code-split
 
-**"Too many subrequests"**: Max 50 subreqs per request, batch where possible
+### "Too many subrequests"
+**Cause**: Exceeded 50 subrequest limit  
+**Solution**: Batch or reduce fetch calls
 
-**"KV key not found"**: Check namespaces match (production vs preview)
+### "KV key not found"
+**Cause**: Key doesn't exist or wrong namespace  
+**Solution**: Check namespace matches environment
 
-**"D1 error"**: Verify database_id, check migrations applied
+### "D1 error"
+**Cause**: Wrong database_id or missing migrations  
+**Solution**: Verify config, run `wrangler d1 migrations list`
 
-## Limits Reference
+## Limits Reference (Jan 2026)
 
-- **Functions**: 100k req/day (Free), 10ms CPU, 128MB memory, 1MB script
-- **Deployments**: 500/month (Free), 20k files, 25MB/file
-- **Config**: 2,100 redirects, 100 headers, 100 routes
-- **Build**: 20min timeout
-- **Subrequests**: 50/request
-- **Request size**: 100MB
+| Resource | Free | Paid |
+|----------|------|------|
+| Functions Requests | 100k/day | Unlimited |
+| CPU Time | 10ms/req | 30ms/req |
+| Memory | 128MB | 128MB |
+| Script Size | 1MB | 10MB |
+| Subrequests | 50/req | 10,000/req |
+| Deployments | 500/month | 5,000/month |
+
+**Tip**: Hitting CPU limit? Optimize hot paths or upgrade to Workers Paid plan.
 
 [Full limits](https://developers.cloudflare.com/pages/platform/limits/)
 
