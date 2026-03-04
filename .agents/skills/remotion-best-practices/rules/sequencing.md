@@ -15,7 +15,7 @@ const {fps} = useVideoConfig();
 <Sequence from={1 * fps} durationInFrames={2 * fps} premountFor={1 * fps}>
   <Title />
 </Sequence>
-<Sequence from={2 * fps} durationInFrames={2 * fps} preMountFor={1 * fps}>
+<Sequence from={2 * fps} durationInFrames={2 * fps} premountFor={1 * fps}>
   <Subtitle />
 </Sequence>
 ```
@@ -45,7 +45,7 @@ Always premount any `<Sequence>`!
 Use `<Series>` when elements should play one after another without overlap.
 
 ```tsx
-import {Series} from 'remotion';
+import { Series } from "remotion";
 
 <Series>
   <Series.Sequence durationInFrames={45}>
@@ -57,7 +57,7 @@ import {Series} from 'remotion';
   <Series.Sequence durationInFrames={30}>
     <Outro />
   </Series.Sequence>
-</Series>
+</Series>;
 ```
 
 Same as with `<Sequence>`, the items will be wrapped in an absolute fill element by default when using `<Series.Sequence>`, unless the `layout` prop is set to `none`.
@@ -105,4 +105,14 @@ Sequences can be nested for complex timing:
 </Sequence>
 ```
 
+## Nesting compositions within another
 
+To add a composition within another composition, you can use the `<Sequence>` component with a `width` and `height` prop to specify the size of the composition.
+
+```tsx
+<AbsoluteFill>
+  <Sequence width={COMPOSITION_WIDTH} height={COMPOSITION_HEIGHT}>
+    <CompositionComponent />
+  </Sequence>
+</AbsoluteFill>
+```

@@ -27,8 +27,16 @@ Action: Managed Challenge
 ## Block AI Scrapers
 
 ```txt
-# Block AI training bots
+# Block training crawlers only (allow AI assistants/search)
 (cf.verified_bot_category eq "AI Crawler")
+Action: Block
+
+# Block all AI-related bots (training + assistants + search)
+(cf.verified_bot_category in {"AI Crawler" "AI Assistant" "AI Search"})
+Action: Block
+
+# Allow AI Search, block AI Crawler and AI Assistant
+(cf.verified_bot_category in {"AI Crawler" "AI Assistant"})
 Action: Block
 
 # Or use dashboard: Security > Settings > Bot Management > Block AI Bots
@@ -51,6 +59,49 @@ Rate: 100 requests per 10 seconds
 # Identify mobile app by JA3/JA4
 (cf.bot_management.ja4 in {"fingerprint1" "fingerprint2"})
 Action: Skip (all remaining rules)
+```
+
+## Datacenter Detection
+
+```typescript
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
+
+// Low score + not corporate proxy = likely datacenter bot
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const cf = request.cf as IncomingRequestCfProperties | undefined;
+    const botMgmt = cf?.botManagement;
+    
+    if (botMgmt?.score && botMgmt.score < 30 && 
+        !botMgmt.corporateProxy && !botMgmt.verifiedBot) {
+      return new Response('Datacenter traffic blocked', { status: 403 });
+    }
+    
+    return fetch(request);
+  }
+};
+```
+
+## Conditional Delay (Tarpit)
+
+```typescript
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
+
+// Add delay proportional to bot suspicion
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const cf = request.cf as IncomingRequestCfProperties | undefined;
+    const botMgmt = cf?.botManagement;
+    
+    if (botMgmt?.score && botMgmt.score < 50 && !botMgmt.verifiedBot) {
+      // Delay: 0-2 seconds for scores 50-0
+      const delayMs = Math.max(0, (50 - botMgmt.score) * 40);
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+    
+    return fetch(request);
+  }
+};
 ```
 
 ## Layered Defense
@@ -83,9 +134,11 @@ Sensitive: Low threshold (score < 50) + JSD
 ## Workers: Score + JS Detection
 
 ```typescript
+import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
+
 export default {
   async fetch(request: Request): Promise<Response> {
-    const cf = request.cf as any;
+    const cf = request.cf as IncomingRequestCfProperties | undefined;
     const botMgmt = cf?.botManagement;
     const url = new URL(request.url);
     
@@ -123,3 +176,7 @@ Rate limiting > Custom rules
 - **Transform Rules**: Pass score to origin via custom header
 - **Workers**: Programmatic bot logic, custom scoring algorithms
 - **Page Rules / Configuration Rules**: Zone-level overrides, path-specific settings
+
+## See Also
+
+- [gotchas.md](./gotchas.md) - Common errors, false positives/negatives, limitations

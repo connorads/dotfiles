@@ -1,5 +1,17 @@
 # Tunnel Configuration
 
+## Config Source
+
+Tunnels use one of two config sources:
+
+| Config Source | Storage | Updates | Use Case |
+|---------------|---------|---------|----------|
+| Local | `config.yml` file | Edit file, restart | Dev, multi-env, version control |
+| Cloudflare | Dashboard/API | Instant, no restart | Production, centralized management |
+
+**Token-based tunnels** = config source: Cloudflare
+**Locally-managed tunnels** = config source: local
+
 ## Config File Location
 
 ```
@@ -103,11 +115,43 @@ cloudflared tunnel route ip add 10.0.0.0/8 my-tunnel
 cloudflared tunnel route ip add 192.168.1.100/32 my-tunnel
 ```
 
+## Config Source Comparison
+
+### Local Config
+```yaml
+# config.yml
+tunnel: <UUID>
+credentials-file: /path/to/<UUID>.json
+
+ingress:
+  - hostname: app.example.com
+    service: http://localhost:8000
+  - service: http_status:404
+```
+
+```bash
+cloudflared tunnel run my-tunnel
+```
+
+**Pros:** Version control, multi-environment, offline edits
+**Cons:** Requires file distribution, manual restarts
+
+### Cloudflare Config (Token-Based)
+```bash
+# No config file needed
+cloudflared tunnel --no-autoupdate run --token <TOKEN>
+```
+
+Configure routes in dashboard: **Zero Trust** > **Networks** > **Tunnels** > [Tunnel] > **Public Hostname**
+
+**Pros:** Centralized updates, no file management, instant route changes
+**Cons:** Requires dashboard/API access, less portable
+
 ## Environment Variables
 
 ```bash
-TUNNEL_TOKEN=<token>                    # Remotely-managed token
-TUNNEL_ORIGIN_CERT=/path/to/cert.pem   # Override cert path
+TUNNEL_TOKEN=<token>                    # Token for config source: cloudflare
+TUNNEL_ORIGIN_CERT=/path/to/cert.pem   # Override cert path (local config)
 NO_AUTOUPDATE=true                      # Disable auto-updates
 TUNNEL_LOGLEVEL=debug                   # Log level
 ```

@@ -9,18 +9,7 @@ metadata:
 
 ## The public folder
 
-Place assets in the `public/` folder at your project root:
-
-```
-my-video/
-├─ public/
-│  ├─ logo.png
-│  ├─ background.mp4
-│  ├─ music.mp3
-│  ├─ font.woff2
-├─ src/
-├─ package.json
-```
+Place assets in the `public/` folder at your project root.
 
 ## Using staticFile()
 
@@ -36,13 +25,6 @@ export const MyComposition = () => {
 
 The function returns an encoded URL that works correctly when deploying to subdirectories.
 
-## Supported formats
-
-**Images:** PNG, SVG, JPG, JPEG, WEBP, GIF, BMP
-**Videos:** WEBM, MOV, MP4
-**Audio:** MP3, WAV, AAC, M4A
-**Fonts:** WOFF, WOFF2, OTF, TTF, EOT
-
 ## Using with components
 
 **Images:**
@@ -50,7 +32,7 @@ The function returns an encoded URL that works correctly when deploying to subdi
 ```tsx
 import { Img, staticFile } from "remotion";
 
-<Img src={staticFile("photo.png")} />
+<Img src={staticFile("photo.png")} />;
 ```
 
 **Videos:**
@@ -59,7 +41,7 @@ import { Img, staticFile } from "remotion";
 import { Video } from "@remotion/media";
 import { staticFile } from "remotion";
 
-<Video src={staticFile("clip.mp4")} />
+<Video src={staticFile("clip.mp4")} />;
 ```
 
 **Audio:**
@@ -68,7 +50,7 @@ import { staticFile } from "remotion";
 import { Audio } from "@remotion/media";
 import { staticFile } from "remotion";
 
-<Audio src={staticFile("music.mp3")} />
+<Audio src={staticFile("music.mp3")} />;
 ```
 
 **Fonts:**
@@ -87,11 +69,10 @@ Remote URLs can be used directly without `staticFile()`:
 
 ```tsx
 <Img src="https://example.com/image.png" />
-<Video src="https://example.com/video.mp4" />
+<Video src="https://remotion.media/video.mp4" />
 ```
 
 ## Important notes
 
-- Assets must exist in `public/` before bundling - files added after bundling are not accessible
 - Remotion components (`<Img>`, `<Video>`, `<Audio>`) ensure assets are fully loaded before rendering
 - Special characters in filenames (`#`, `?`, `&`) are automatically encoded

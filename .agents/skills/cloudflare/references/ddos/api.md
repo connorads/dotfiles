@@ -24,17 +24,27 @@ GET /accounts/{accountId}/rulesets/phases/ddos_l4/entrypoint
 
 ## TypeScript SDK
 
+**SDK Version**: Requires `cloudflare` >= 3.0.0 for ruleset phase methods.
+
 ```typescript
 import Cloudflare from "cloudflare";
 
 const client = new Cloudflare({ apiToken: process.env.CLOUDFLARE_API_TOKEN });
 
-// Get HTTP DDoS ruleset
-const ruleset = await client.zones.rulesets.phases.entrypoint.get("ddos_l7", {
+// STEP 1: Discover managed ruleset ID (required for overrides)
+const allRulesets = await client.rulesets.list({ zone_id: zoneId });
+const ddosRuleset = allRulesets.result.find(
+  (r) => r.kind === "managed" && r.phase === "ddos_l7"
+);
+if (!ddosRuleset) throw new Error("DDoS managed ruleset not found");
+const managedRulesetId = ddosRuleset.id;
+
+// STEP 2: Get current HTTP DDoS configuration
+const entrypointRuleset = await client.zones.rulesets.phases.entrypoint.get("ddos_l7", {
   zone_id: zoneId,
 });
 
-// Update HTTP DDoS ruleset
+// STEP 3: Update HTTP DDoS ruleset with overrides
 await client.zones.rulesets.phases.entrypoint.update("ddos_l7", {
   zone_id: zoneId,
   rules: [
@@ -42,7 +52,7 @@ await client.zones.rulesets.phases.entrypoint.update("ddos_l7", {
       action: "execute",
       expression: "true",
       action_parameters: {
-        id: managedRulesetId,
+        id: managedRulesetId, // From discovery step
         overrides: {
           sensitivity_level: "medium",
           action: "managed_challenge",
@@ -52,7 +62,11 @@ await client.zones.rulesets.phases.entrypoint.update("ddos_l7", {
   ],
 });
 
-// Network DDoS (account level)
+// Network DDoS (account level, L3/4)
+const l4Rulesets = await client.rulesets.list({ account_id: accountId });
+const l4DdosRuleset = l4Rulesets.result.find(
+  (r) => r.kind === "managed" && r.phase === "ddos_l4"
+);
 const l4Ruleset = await client.accounts.rulesets.phases.entrypoint.get("ddos_l4", {
   account_id: accountId,
 });
@@ -97,40 +111,54 @@ await fetch(
 );
 ```
 
-## Worker Integration
+## Typed Override Examples
 
 ```typescript
-// DDoS config management worker
-interface Env {
-  CLOUDFLARE_API_TOKEN: string;
-  ZONE_ID: string;
+// Override by category
+interface CategoryOverride {
+  action: "execute";
+  expression: string;
+  action_parameters: {
+    id: string;
+    overrides: {
+      categories?: Array<{
+        category: "http-flood" | "http-anomaly" | "udp-flood" | "syn-flood";
+        sensitivity_level?: "default" | "medium" | "low" | "eoff";
+        action?: "block" | "managed_challenge" | "challenge" | "log";
+      }>;
+    };
+  };
 }
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+// Override by rule ID
+interface RuleOverride {
+  action: "execute";
+  expression: string;
+  action_parameters: {
+    id: string;
+    overrides: {
+      rules?: Array<{
+        id: string;
+        action?: "block" | "managed_challenge" | "challenge" | "log";
+        sensitivity_level?: "default" | "medium" | "low" | "eoff";
+      }>;
+    };
+  };
+}
 
-    if (url.pathname === "/configure") {
-      const response = await fetch(
-        `https://api.cloudflare.com/client/v4/zones/${env.ZONE_ID}/rulesets/phases/ddos_l7/entrypoint`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            description: "Dynamic DDoS config",
-            rules: [/* ... */],
-          }),
-        }
-      );
-      return response;
-    }
-
-    return new Response("Not found", { status: 404 });
+// Example: Override specific adaptive rule
+const adaptiveOverride: RuleOverride = {
+  action: "execute",
+  expression: "true",
+  action_parameters: {
+    id: managedRulesetId,
+    overrides: {
+      rules: [
+        { id: "...adaptive-origins-rule-id...", sensitivity_level: "low" },
+      ],
+    },
   },
 };
 ```
 
-See [patterns.md](./patterns.md) for complete worker examples.
+See [patterns.md](./patterns.md) for complete implementation patterns.

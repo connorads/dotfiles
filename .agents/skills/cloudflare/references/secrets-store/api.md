@@ -6,6 +6,8 @@
 
 **CRITICAL**: Async `.get()` required - secrets NOT directly available.
 
+**`.get()` throws on error** - does NOT return null. Always use try/catch.
+
 ```typescript
 interface Env {
   API_KEY: { get(): Promise<string> };
@@ -21,18 +23,33 @@ export default {
 }
 ```
 
-### Multiple Secrets
+### Error Handling
 
 ```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    try {
+      const apiKey = await env.API_KEY.get();
+      return fetch("https://api.example.com", {
+        headers: { "Authorization": `Bearer ${apiKey}` }
+      });
+    } catch (error) {
+      console.error("Secret access failed:", error);
+      return new Response("Configuration error", { status: 500 });
+    }
+  }
+}
+```
+
+### Multiple Secrets & Patterns
+
+```typescript
+// Parallel fetch
 const [stripeKey, sendgridKey] = await Promise.all([
   env.STRIPE_KEY.get(),
   env.SENDGRID_KEY.get()
 ]);
-```
 
-### Anti-Patterns
-
-```typescript
 // ❌ Missing .get()
 const key = env.API_KEY;
 
@@ -40,14 +57,7 @@ const key = env.API_KEY;
 const CACHED_KEY = await env.API_KEY.get(); // Fails
 
 // ✅ Request-scope cache
-export default {
-  async fetch(request: Request, env: Env) {
-    const key = await env.API_KEY.get(); // OK - reuse in request
-    const r1 = await fetchWithAuth(key, "/ep1");
-    const r2 = await fetchWithAuth(key, "/ep2");
-    return Response.json({ r1, r2 });
-  }
-}
+const key = await env.API_KEY.get(); // OK - reuse within request
 ```
 
 ## REST API
@@ -144,15 +154,23 @@ Error:
 
 ## TypeScript Helpers
 
+Official types available via `@cloudflare/workers-types`:
+
+```typescript
+import type { SecretsStoreSecret } from "@cloudflare/workers-types";
+
+interface Env {
+  STRIPE_API_KEY: SecretsStoreSecret;
+  DATABASE_URL: SecretsStoreSecret;
+  WORKER_SECRET: string; // Regular Worker secret (direct access)
+}
+```
+
+Custom helper type:
+
 ```typescript
 interface SecretsStoreBinding {
   get(): Promise<string>;
-}
-
-interface Env {
-  STRIPE_API_KEY: SecretsStoreBinding;
-  DATABASE_URL: SecretsStoreBinding;
-  WORKER_SECRET: string; // Regular Worker secret (direct access)
 }
 
 // Fallback helper

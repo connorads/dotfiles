@@ -1,6 +1,75 @@
 # Testing Patterns
 
-## Basic Test Setup (node:test)
+## Choosing a Testing Approach
+
+| Approach | Use Case | Speed | Setup | Runtime |
+|----------|----------|-------|-------|---------|
+| **getPlatformProxy** | Unit tests, logic testing | Fast | Low | Miniflare |
+| **Miniflare API** | Integration tests, full control | Medium | Medium | Miniflare |
+| **vitest-pool-workers** | Vitest runner integration | Medium | Medium | workerd |
+
+**Quick guide:**
+- Unit tests → getPlatformProxy
+- Integration tests → Miniflare API
+- Vitest workflows → vitest-pool-workers
+
+## getPlatformProxy
+
+Lightweight unit testing - provides bindings without full Worker runtime.
+
+```js
+// vitest.config.js
+export default { test: { environment: "node" } };
+```
+
+```js
+import { env } from "cloudflare:test";
+import { describe, it, expect } from "vitest";
+
+describe("Business logic", () => {
+  it("processes data with KV", async () => {
+    await env.KV.put("test", "value");
+    expect(await env.KV.get("test")).toBe("value");
+  });
+});
+```
+
+**Pros:** Fast, simple  
+**Cons:** No full runtime, can't test fetch handler
+
+## vitest-pool-workers
+
+Full Workers runtime in Vitest. Reads `wrangler.toml`.
+
+```bash
+npm i -D @cloudflare/vitest-pool-workers
+```
+
+```js
+// vitest.config.js
+import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+
+export default defineWorkersConfig({
+  test: {
+    poolOptions: { workers: { wrangler: { configPath: "./wrangler.toml" } } },
+  },
+});
+```
+
+```js
+import { env, SELF } from "cloudflare:test";
+import { it, expect } from "vitest";
+
+it("handles fetch", async () => {
+  const res = await SELF.fetch("http://example.com/");
+  expect(res.status).toBe(200);
+});
+```
+
+**Pros:** Full runtime, uses wrangler.toml  
+**Cons:** Requires Wrangler config
+
+## Miniflare API (node:test)
 
 ```js
 import assert from "node:assert";
@@ -8,204 +77,105 @@ import test, { after, before } from "node:test";
 import { Miniflare } from "miniflare";
 
 let mf;
-
-before(async () => {
-  mf = new Miniflare({
-    modules: true,
-    scriptPath: "src/index.js",
-    kvNamespaces: ["TEST_KV"],
-    bindings: { API_KEY: "test-key" },
-  });
-  await mf.ready;
-});
-
-test("fetch returns hello", async () => {
-  const res = await mf.dispatchFetch("http://localhost/");
-  assert.strictEqual(await res.text(), "Hello World");
-});
-
-test("kv operations", async () => {
-  const kv = await mf.getKVNamespace("TEST_KV");
-  await kv.put("key", "value");
-  
-  const res = await mf.dispatchFetch("http://localhost/kv");
-  assert.strictEqual(await res.text(), "value");
-});
-
-after(async () => {
-  await mf.dispose();
-});
-```
-
-## Build Before Tests
-
-```js
-import { spawnSync } from "node:child_process";
-
 before(() => {
-  spawnSync("npx wrangler build", { shell: true, stdio: "pipe" });
+  mf = new Miniflare({ scriptPath: "src/index.js", kvNamespaces: ["TEST_KV"] });
 });
+
+test("fetch", async () => {
+  const res = await mf.dispatchFetch("http://localhost/");
+  assert.strictEqual(await res.text(), "Hello");
+});
+
+after(() => mf.dispose());
 ```
 
-## Testing Durable Objects
+## Testing Durable Objects & Events
 
 ```js
-test("durable object state", async () => {
-  const ns = await mf.getDurableObjectNamespace("COUNTER");
-  const id = ns.idFromName("test-counter");
-  const stub = ns.get(id);
-  
-  const res1 = await stub.fetch("http://localhost/increment");
-  assert.strictEqual(await res1.text(), "1");
-  
-  const res2 = await stub.fetch("http://localhost/increment");
-  assert.strictEqual(await res2.text(), "2");
-  
-  // Direct storage access
-  const storage = await mf.getDurableObjectStorage(id);
-  const count = await storage.get("count");
-  assert.strictEqual(count, 2);
-});
+// Durable Objects
+const ns = await mf.getDurableObjectNamespace("COUNTER");
+const stub = ns.get(ns.idFromName("test-counter"));
+await stub.fetch("http://localhost/increment");
+
+// Direct storage
+const storage = await mf.getDurableObjectStorage(ns.idFromName("test-counter"));
+const count = await storage.get("count");
+
+// Queue
+const worker = await mf.getWorker();
+await worker.queue("my-queue", [
+  { id: "msg1", timestamp: new Date(), body: { userId: 123 }, attempts: 1 },
+]);
+
+// Scheduled
+await worker.scheduled({ cron: "0 0 * * *" });
 ```
 
-## Testing Queue Handlers
+## Test Isolation & Mocking
 
 ```js
-test("queue message processing", async () => {
-  const worker = await mf.getWorker();
-  
-  const result = await worker.queue("my-queue", [
-    { id: "msg1", timestamp: new Date(), body: { userId: 123 }, attempts: 1 },
-  ]);
-  
-  assert.strictEqual(result.outcome, "ok");
-  
-  // Verify side effects
-  const kv = await mf.getKVNamespace("QUEUE_LOG");
-  const log = await kv.get("msg1");
-  assert.ok(log);
-});
-```
+// Per-test isolation
+beforeEach(() => { mf = new Miniflare({ kvNamespaces: ["TEST"] }); });
+afterEach(() => mf.dispose());
 
-## Testing Scheduled Events
-
-```js
-test("scheduled cron handler", async () => {
-  const worker = await mf.getWorker();
-  
-  const result = await worker.scheduled({
-    scheduledTime: new Date("2024-01-01T00:00:00Z"),
-    cron: "0 0 * * *",
-  });
-  
-  assert.strictEqual(result.outcome, "ok");
-});
-```
-
-## Isolated Test Data
-
-```js
-describe("user tests", () => {
-  let mf;
-  
-  beforeEach(async () => {
-    mf = new Miniflare({
-      scriptPath: "worker.js",
-      kvNamespaces: ["USERS"],
-      // In-memory: no persist
-    });
-  });
-  
-  afterEach(async () => {
-    await mf.dispose();
-  });
-  
-  test("create user", async () => {
-    // Fresh KV per test
-  });
-});
-```
-
-## Mock External Services
-
-```js
+// Mock external APIs
 new Miniflare({
   workers: [
-    {
-      name: "main",
-      serviceBindings: { EXTERNAL_API: "mock-api" },
-      script: `/* main worker */`,
-    },
-    {
-      name: "mock-api",
-      script: `
-        addEventListener("fetch", (event) => {
-          event.respondWith(Response.json({ mocked: true }));
-        })
-      `,
-    },
+    { name: "main", serviceBindings: { API: "mock-api" }, script: `...` },
+    { name: "mock-api", script: `export default { async fetch() { return Response.json({mock: true}); } }` },
   ],
 });
 ```
 
-## Shared Storage Between Workers
+## Type Safety
 
-```js
-new Miniflare({
-  kvPersist: "./data",
-  workers: [
-    { name: "writer", kvNamespaces: { DATA: "shared" }, script: `...` },
-    { name: "reader", kvNamespaces: { DATA: "shared" }, script: `...` },
-  ],
-});
-```
+```ts
+import type { KVNamespace } from "@cloudflare/workers-types";
 
-## Test Utils Pattern
-
-```js
-// test-utils.js
-export async function createTestWorker(overrides = {}) {
-  const mf = new Miniflare({
-    scriptPath: "dist/worker.js",
-    kvNamespaces: ["TEST_KV"],
-    bindings: { ENVIRONMENT: "test", ...overrides.bindings },
-    ...overrides,
-  });
-  await mf.ready;
-  return mf;
+interface Env {
+  KV: KVNamespace;
+  API_KEY: string;
 }
 
-// test.js
-test("my test", async () => {
-  const mf = await createTestWorker({ bindings: { CUSTOM: "value" } });
-  try {
-    const res = await mf.dispatchFetch("http://localhost/");
-    assert.ok(res.ok);
-  } finally {
-    await mf.dispose();
+const env = await mf.getBindings<Env>();
+await env.KV.put("key", "value"); // Typed!
+
+export default {
+  async fetch(req: Request, env: Env) {
+    return new Response(await env.KV.get("key"));
   }
-});
+} satisfies ExportedHandler<Env>;
 ```
 
-## Error Handling Tests
+## WebSocket Testing
 
 ```js
-test("handles 404", async () => {
-  const res = await mf.dispatchFetch("http://localhost/not-found");
-  assert.strictEqual(res.status, 404);
+const res = await mf.dispatchFetch("http://localhost/ws", {
+  headers: { Upgrade: "websocket" },
 });
-
-test("handles invalid input", async () => {
-  const res = await mf.dispatchFetch("http://localhost/api", {
-    method: "POST",
-    body: "invalid json",
-  });
-  assert.strictEqual(res.status, 400);
-});
+assert.strictEqual(res.status, 101);
 ```
 
-## CI Integration
+## Migration from unstable_dev
 
-Use in-memory storage (omit persist options) for CI speed. Use `dispatchFetch` instead of HTTP server to avoid port conflicts.
+```js
+// Old (deprecated)
+import { unstable_dev } from "wrangler";
+const worker = await unstable_dev("src/index.ts");
 
-See [gotchas.md](./gotchas.md) for troubleshooting common issues.
+// New
+import { Miniflare } from "miniflare";
+const mf = new Miniflare({ scriptPath: "src/index.ts" });
+```
+
+## CI/CD Tips
+
+```js
+// In-memory storage (faster)
+new Miniflare({ kvNamespaces: ["TEST"] }); // No persist = in-memory
+
+// Use dispatchFetch (no port conflicts)
+await mf.dispatchFetch("http://localhost/");
+```
+
+See [gotchas.md](./gotchas.md) for troubleshooting.

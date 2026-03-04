@@ -7,42 +7,30 @@
 const result = await sandbox.exec('python3 script.py');
 // Returns: { stdout, stderr, exitCode, success, duration }
 
-// Streaming
-await sandbox.exec('npm install', {
-  stream: true,
-  onOutput: (stream, data) => console.log(`[${stream}]`, data),
-  onComplete: (result) => console.log('Exit:', result.exitCode),
-  onError: (error) => console.error(error)
-});
-
-// With env & cwd
+// With options
 await sandbox.exec('python3 test.py', {
   cwd: '/workspace/project',
-  env: { API_KEY: 'secret', DEBUG: 'true' }
+  env: { API_KEY: 'secret' },
+  stream: true,
+  onOutput: (stream, data) => console.log(data)
 });
 ```
 
 ## File Operations
 
 ```typescript
-// Read
-const file = await sandbox.readFile('/workspace/data.txt');
-// Returns: { content, path }
+// Read/Write
+const { content } = await sandbox.readFile('/workspace/data.txt');
+await sandbox.writeFile('/workspace/file.txt', 'content');  // Auto-creates dirs
 
-// Write (creates dirs automatically)
-await sandbox.writeFile('/workspace/deep/nested/file.txt', 'content');
-
-// List
+// List/Delete
 const files = await sandbox.listFiles('/workspace');
-// Returns: [{ name, path, type: 'file'|'directory', size, modified }]
-
-// Delete
 await sandbox.deleteFile('/workspace/temp.txt');
-await sandbox.deleteFile('/workspace/temp-dir', { recursive: true });
+await sandbox.deleteFile('/workspace/dir', { recursive: true });
 
-// Directory ops
-await sandbox.mkdir('/workspace/new-dir', { recursive: true });
-const exists = await sandbox.pathExists('/workspace/file.txt');
+// Utils
+await sandbox.mkdir('/workspace/dir', { recursive: true });
+await sandbox.pathExists('/workspace/file.txt');
 ```
 
 ## Background Processes
@@ -56,6 +44,11 @@ const process = await sandbox.startProcess('python3 -m http.server 8080', {
 });
 // Returns: { id, pid, command }
 
+// Wait for readiness
+await process.waitForPort(8080);  // Wait for port to listen
+await process.waitForLog(/Server running/);  // Wait for log pattern
+await process.waitForExit();  // Wait for completion
+
 // Management
 const processes = await sandbox.listProcesses();
 const info = await sandbox.getProcess('web-server');
@@ -66,19 +59,15 @@ const logs = await sandbox.getProcessLogs('web-server');
 ## Port Exposure
 
 ```typescript
-// Expose
-const exposed = await sandbox.exposePort(8080, {
+// Expose port
+const { url } = await sandbox.exposePort(8080, {
   name: 'web-app',
   hostname: request.hostname
 });
-// Returns: { url, port, name, status }
 
-// Check
-const isExposed = await sandbox.isPortExposed(8080);
-const portInfo = await sandbox.getExposedPort(8080);
-const allPorts = await sandbox.getExposedPorts(request.hostname);
-
-// Unexpose
+// Management
+await sandbox.isPortExposed(8080);
+await sandbox.getExposedPorts(request.hostname);
 await sandbox.unexposePort(8080);
 ```
 
@@ -87,43 +76,102 @@ await sandbox.unexposePort(8080);
 Each session maintains own shell state, env vars, cwd, process namespace.
 
 ```typescript
-// Create
+// Create with context
 const session = await sandbox.createSession({
   id: 'user-123',
-  name: 'User Workspace',
   cwd: '/workspace/user123',
-  env: { USER_ID: '123', API_KEY: 'secret' }
+  env: { USER_ID: '123' }
 });
 
-// Use (full sandbox API bound to session context)
+// Use (full sandbox API)
 await session.exec('echo $USER_ID');
 await session.writeFile('config.txt', 'data');
-await session.startProcess('python3 worker.py', { processId: 'worker-1' });
 
-// Retrieve
-const session = await sandbox.getSession('user-123');
-const sessions = await sandbox.listSessions();
-
-// Delete
+// Manage
+await sandbox.getSession('user-123');
 await sandbox.deleteSession('user-123');
 ```
 
 ## Code Interpreter
 
 ```typescript
-const result = await sandbox.interpret('python', {
-  code: `
-import matplotlib.pyplot as plt
-plt.plot([1, 2, 3], [4, 5, 6])
-plt.savefig('plot.png')
-print("Chart created")
-  `,
-  files: {
-    'data.csv': 'name,value\nalice,10\nbob,20'
+// Create context with variables
+const ctx = await sandbox.createCodeContext({
+  language: 'python',
+  variables: {
+    data: [1, 2, 3, 4, 5],
+    config: { verbose: true }
   }
 });
-// Returns: { outputs: [{ type, content }], files, error }
+
+// Execute code with rich outputs
+const result = await ctx.runCode(`
+import matplotlib.pyplot as plt
+plt.plot(data, [x**2 for x in data])
+plt.savefig('plot.png')
+print(f"Processed {len(data)} points")
+`);
+// Returns: { outputs: [{ type: 'text'|'image'|'html', content }], error }
+
+// Context persists variables across runs
+const result2 = await ctx.runCode('print(data[0])');  // Still has 'data'
 ```
+
+## WebSocket Connections
+
+```typescript
+// Proxy WebSocket to sandbox service
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const proxyResponse = await proxyToSandbox(request, env);
+    if (proxyResponse) return proxyResponse;
+
+    if (request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
+      const sandbox = getSandbox(env.Sandbox, 'realtime');
+      return await sandbox.wsConnect(request, 8080);
+    }
+    
+    return new Response('Not a WebSocket request', { status: 400 });
+  }
+};
+```
+
+## Bucket Mounting (S3 Storage)
+
+```typescript
+// Mount R2 bucket (production only, not wrangler dev)
+await sandbox.mountBucket(env.DATA_BUCKET, '/data', {
+  readOnly: false
+});
+
+// Access files in mounted bucket
+await sandbox.exec('ls /data');
+await sandbox.writeFile('/data/output.txt', 'result');
+
+// Unmount
+await sandbox.unmountBucket('/data');
+```
+
+**Note**: Bucket mounting only works in production. Mounted buckets are sandbox-scoped (visible to all sessions in that sandbox).
+
+## Lifecycle Management
+
+```typescript
+// Terminate container immediately
+await sandbox.destroy();
+
+// REQUIRED when using keepAlive: true
+const sandbox = getSandbox(env.Sandbox, 'temp', { keepAlive: true });
+try {
+  await sandbox.writeFile('/tmp/code.py', code);
+  const result = await sandbox.exec('python /tmp/code.py');
+  return result.stdout;
+} finally {
+  await sandbox.destroy();  // Free resources
+}
+```
+
+Deletes: files, processes, sessions, network connections, exposed ports.
 
 ## Error Handling
 
@@ -144,35 +192,7 @@ try {
   else if (error.code === 'TIMEOUT') { /* ... */ }
 }
 
-// Retry pattern
-async function execWithRetry(sandbox, cmd, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await sandbox.exec(cmd);
-    } catch (error) {
-      if (error.code === 'CONTAINER_NOT_READY' && i < maxRetries - 1) {
-        await new Promise(r => setTimeout(r, 2000));
-        continue;
-      }
-      throw error;
-    }
-  }
-}
+// Retry pattern (see gotchas.md for full implementation)
 ```
 
-## Client Architecture
 
-```
-SandboxClient (aggregator)
-├── CommandClient     → exec(), streaming
-├── FileClient        → read/write/list/delete
-├── ProcessClient     → background processes
-├── PortClient        → expose services, preview URLs
-├── GitClient         → clone repos
-├── UtilityClient     → health, sessions
-└── InterpreterClient → code execution (Python/JS)
-```
-
-**Execution Modes**:
-1. **Foreground** (exec): Blocking, captures output
-2. **Background** (execStream/startProcess): Non-blocking, uses FIFOs, concurrent

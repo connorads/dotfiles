@@ -1,45 +1,36 @@
 # Workflow Configuration
 
-## Wrangler Setup
+## wrangler.jsonc Setup
 
-**wrangler.toml:**
-```toml
-name = "my-worker"
-main = "src/index.ts"
-compatibility_date = "2024-10-22"
-
-[[workflows]]
-name = "my-workflow"           # Workflow name
-binding = "MY_WORKFLOW"        # Env binding
-class_name = "MyWorkflow"      # TS class name
-# script_name = "other-worker" # For cross-script calls
-
-[limits]
-cpu_ms = 300_000  # 5 min max (default 30s)
-```
-
-**wrangler.jsonc:**
 ```jsonc
 {
   "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",  // Use current date for new projects
+  "observability": {
+    "enabled": true  // Enables Workflows dashboard + structured logs
+  },
   "workflows": [
-    { "name": "my-workflow", "binding": "MY_WORKFLOW", "class_name": "MyWorkflow" }
+    {
+      "name": "my-workflow",           // Workflow name
+      "binding": "MY_WORKFLOW",        // Env binding
+      "class_name": "MyWorkflow"      // TS class name
+      // "script_name": "other-worker" // For cross-script calls
+    }
   ],
-  "limits": { "cpu_ms": 300000 }
+  "limits": {
+    "cpu_ms": 300000  // 5 min max (default 30s)
+  }
 }
 ```
 
 ## Step Configuration
 
-### Basic Step
 ```typescript
-const data = await step.do('step name', async () => {
-  return { result: 'value' };
-});
-```
+// Basic step
+const data = await step.do('step name', async () => ({ result: 'value' }));
 
-### Retry Config
-```typescript
+// With retry config
 await step.do('api call', {
   retries: {
     limit: 10,              // Default: 5, or Infinity
@@ -91,87 +82,70 @@ for (const file of files.objects) {
 }
 ```
 
-## Sleep & Scheduling
-
-```typescript
-// Relative
-await step.sleep('wait 1 hour', '1 hour');
-await step.sleep('wait 30 days', '30 days');
-await step.sleep('wait 5s', 5000); // ms
-
-// Absolute
-await step.sleepUntil('launch date', Date.parse('24 Oct 2024 13:00:00 UTC'));
-await step.sleepUntil('deadline', new Date('2024-12-31T23:59:59Z'));
-```
-
-Units: second, minute, hour, day, week, month, year. Max: 365 days.
-Sleeping instances don't count toward concurrency.
-
-## Parameters
-
-**Pass from Worker:**
-```typescript
-const instance = await env.MY_WORKFLOW.create({
-  id: crypto.randomUUID(),
-  params: { userId: 'user123', email: 'user@example.com' }
-});
-```
-
-**Access in Workflow:**
-```typescript
-async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
-  const userId = event.payload.userId;
-  const instanceId = event.instanceId;
-  const createdAt = event.timestamp;
-}
-```
-
-**CLI Trigger:**
-```bash
-npx wrangler workflows trigger my-workflow '{"userId":"user123"}'
-```
-
 ## Multiple Workflows
 
-```typescript
-export class UserOnboarding extends WorkflowEntrypoint<Env, UserParams> {
-  async run(event, step) { /* ... */ }
-}
-
-export class DataProcessing extends WorkflowEntrypoint<Env, DataParams> {
-  async run(event, step) { /* ... */ }
+```jsonc
+{
+  "workflows": [
+    {"name": "user-onboarding", "binding": "USER_ONBOARDING", "class_name": "UserOnboarding"},
+    {"name": "data-processing", "binding": "DATA_PROCESSING", "class_name": "DataProcessing"}
+  ]
 }
 ```
 
-```toml
-[[workflows]]
-name = "user-onboarding"
-binding = "USER_ONBOARDING"
-class_name = "UserOnboarding"
-
-[[workflows]]
-name = "data-processing"
-binding = "DATA_PROCESSING"
-class_name = "DataProcessing"
-```
+Each class extends `WorkflowEntrypoint` with its own `Params` type.
 
 ## Cross-Script Bindings
 
-**billing-worker** defines workflow:
-```toml
-[[workflows]]
-name = "billing-workflow"
-binding = "BILLING"
-class_name = "BillingWorkflow"
+Worker A defines workflow. Worker B calls it by adding `script_name`:
+
+```jsonc
+// Worker B (caller)
+{
+  "workflows": [{
+    "name": "billing-workflow",
+    "binding": "BILLING",
+    "script_name": "billing-worker"  // Points to Worker A
+  }]
+}
 ```
 
-**web-api-worker** calls it:
-```toml
-[[workflows]]
-name = "billing-workflow"
-binding = "BILLING"
-class_name = "BillingWorkflow"
-script_name = "billing-worker"
+## Bindings
+
+Workflows access Cloudflare bindings via `this.env`:
+
+```typescript
+type Env = {
+  MY_WORKFLOW: Workflow;
+  KV: KVNamespace;
+  DB: D1Database;
+  BUCKET: R2Bucket;
+  AI: Ai;
+  VECTORIZE: VectorizeIndex;
+};
+
+await step.do('use bindings', async () => {
+  const kv = await this.env.KV.get('key');
+  const db = await this.env.DB.prepare('SELECT * FROM users').first();
+  const file = await this.env.BUCKET.get('file.txt');
+  const ai = await this.env.AI.run('@cf/meta/llama-2-7b-chat-int8', { prompt: 'Hi' });
+});
 ```
+
+## Pages Functions Binding
+
+Pages Functions can trigger Workflows via service bindings:
+
+```typescript
+// functions/_middleware.ts
+export const onRequest: PagesFunction<Env> = async ({ env, request }) => {
+  const instance = await env.MY_WORKFLOW.create({
+    params: { url: request.url }
+  });
+  return new Response(`Started ${instance.id}`);
+};
+```
+
+Configure in wrangler.jsonc under `service_bindings`.
 
 See: [api.md](./api.md), [patterns.md](./patterns.md)

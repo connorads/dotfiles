@@ -5,16 +5,19 @@
 ```typescript
 class Miniflare {
   constructor(options: MiniflareOptions);
-  ready: Promise<void>;
-  dispose(): Promise<void>;
-  setOptions(options: MiniflareOptions): Promise<void>;
+  
+  // Lifecycle
+  ready: Promise<URL>; // Resolves when server ready, returns URL
+  dispose(): Promise<void>; // Cleanup resources
+  setOptions(options: MiniflareOptions): Promise<void>; // Reload config
   
   // Event dispatching
-  dispatchFetch(url: string, init?: RequestInit): Promise<Response>;
-  getWorker(): Promise<Worker>;
+  dispatchFetch(url: string | URL | Request, init?: RequestInit): Promise<Response>;
+  getWorker(name?: string): Promise<Worker>;
   
   // Bindings access
-  getBindings(): Promise<Record<string, any>>;
+  getBindings<Bindings = Record<string, unknown>>(name?: string): Promise<Bindings>;
+  getCf(name?: string): Promise<IncomingRequestCfProperties | undefined>;
   getKVNamespace(name: string): Promise<KVNamespace>;
   getR2Bucket(name: string): Promise<R2Bucket>;
   getDurableObjectNamespace(name: string): Promise<DurableObjectNamespace>;
@@ -22,6 +25,9 @@ class Miniflare {
   getD1Database(name: string): Promise<D1Database>;
   getCaches(): Promise<CacheStorage>;
   getQueueProducer(name: string): Promise<QueueProducer>;
+  
+  // Debugging
+  getInspectorURL(): Promise<URL>; // Chrome DevTools inspector URL
 }
 ```
 
@@ -63,8 +69,26 @@ const result = await worker.queue("queue-name", [
 
 **Environment variables:**
 ```js
+// Basic usage
 const bindings = await mf.getBindings();
 console.log(bindings.SECRET_KEY);
+
+// With type safety (recommended):
+interface Env {
+  SECRET_KEY: string;
+  API_URL: string;
+  KV: KVNamespace;
+}
+const env = await mf.getBindings<Env>();
+env.SECRET_KEY; // string (typed!)
+env.KV.get("key"); // KVNamespace methods available
+```
+
+**Request.cf object:**
+```js
+const cf = await mf.getCf();
+console.log(cf?.colo); // "DFW"
+console.log(cf?.country); // "US"
 ```
 
 **KV:**
@@ -139,6 +163,25 @@ watch("worker.js", async () => {
 **Cleanup:**
 ```js
 await mf.dispose();
+```
+
+## Debugging
+
+**Inspector URL for DevTools:**
+```js
+const url = await mf.getInspectorURL();
+console.log(`DevTools: ${url}`);
+// Open in Chrome DevTools for breakpoints, profiling
+```
+
+**Wait for server ready:**
+```js
+const mf = new Miniflare({ scriptPath: "worker.js" });
+const url = await mf.ready; // Promise<URL>
+console.log(`Server running at ${url}`); // http://127.0.0.1:8787
+
+// Note: dispatchFetch() waits automatically, no need to await ready
+const res = await mf.dispatchFetch("http://localhost/"); // Works immediately
 ```
 
 See [configuration.md](./configuration.md) for all constructor options.

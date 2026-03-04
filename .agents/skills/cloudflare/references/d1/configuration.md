@@ -1,19 +1,33 @@
 # D1 Configuration
 
-## wrangler.toml Setup
+## wrangler.jsonc Setup
 
-```toml
-name = "your-worker-name"; main = "src/index.ts"; compatibility_date = "2024-01-01"
-
-[[d1_databases]]
-binding = "DB"                    # Env variable name
-database_name = "your-db-name"    # Human-readable name
-database_id = "your-database-id"  # UUID from dashboard/CLI
-migrations_dir = "migrations"     # Optional
-
-# Multiple databases
-[[d1_databases]]
-binding = "ANALYTICS_DB"; database_name = "analytics-db"; database_id = "yyy-yyy-yyy"
+```jsonc
+{
+  "name": "your-worker-name",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01", // Use current date for new projects
+  "d1_databases": [
+    {
+      "binding": "DB",                    // Env variable name
+      "database_name": "your-db-name",    // Human-readable name
+      "database_id": "your-database-id",  // UUID from dashboard/CLI
+      "migrations_dir": "migrations"      // Optional: default is "migrations"
+    },
+    // Read replica (paid plans only)
+    {
+      "binding": "DB_REPLICA",
+      "database_name": "your-db-name",
+      "database_id": "your-database-id"   // Same ID, different binding
+    },
+    // Multiple databases
+    {
+      "binding": "ANALYTICS_DB",
+      "database_name": "analytics-db",
+      "database_id": "yyy-yyy-yyy"
+    }
+  ]
+}
 ```
 
 ## TypeScript Types
@@ -64,12 +78,23 @@ CREATE INDEX idx_posts_published ON posts(published);
 ### Running Migrations
 
 ```bash
-wrangler d1 execute <db-name> --local --file=./migrations/0001_schema.sql    # Local
-wrangler d1 execute <db-name> --remote --file=./migrations/0001_schema.sql   # Production
-wrangler d1 execute <db-name> --remote --command="SELECT * FROM users"      # Direct
+# Create new migration file
+wrangler d1 migrations create <db-name> add_users_table
+# Creates: migrations/0001_add_users_table.sql
 
-# Track migrations: CREATE TABLE schema_version (version INT PRIMARY KEY, name TEXT, applied_at INT)
+# Apply migrations
+wrangler d1 migrations apply <db-name> --local     # Apply to local DB
+wrangler d1 migrations apply <db-name> --remote    # Apply to production DB
+
+# List applied migrations
+wrangler d1 migrations list <db-name> --remote
+
+# Direct SQL execution (bypasses migration tracking)
+wrangler d1 execute <db-name> --remote --command="SELECT * FROM users"
+wrangler d1 execute <db-name> --local --file=./schema.sql
 ```
+
+**Migration tracking**: Wrangler creates `d1_migrations` table automatically to track applied migrations
 
 ## Indexing Strategy
 
@@ -118,10 +143,46 @@ export default {
 }
 ```
 
+## Import & Export
+
+```bash
+# Export full database (schema + data)
+wrangler d1 export <db-name> --remote --output=./backup.sql
+
+# Export data only (no schema)
+wrangler d1 export <db-name> --remote --no-schema --output=./data-only.sql
+
+# Export with foreign key constraints preserved
+# (Default: foreign keys are disabled during export for import compatibility)
+
+# Import SQL file
+wrangler d1 execute <db-name> --remote --file=./backup.sql
+
+# Limitations
+# - BLOB data may not export correctly (use R2 for binary files)
+# - Very large exports (>1GB) may timeout (split into chunks)
+# - Import is NOT atomic (use batch() for transactional imports in Workers)
+```
+
+## Plan Tiers
+
+| Feature | Free | Paid |
+|---------|------|------|
+| Database size | 500 MB | 10 GB |
+| Batch size | 1,000 statements | 10,000 statements |
+| Time Travel | 7 days | 30 days |
+| Read replicas | ❌ | ✅ |
+| Sessions API | ❌ | ✅ (up to 15 min) |
+| Pricing | Free | $5/mo + usage |
+
+**Usage pricing** (paid plans): $0.001 per 1K reads + $1 per 1M writes + $0.75/GB storage/month
+
 ## Local Development
 
 ```bash
 wrangler dev --persist-to=./.wrangler/state  # Persist across restarts
 # Local DB: .wrangler/state/v3/d1/<database-id>.sqlite
 sqlite3 .wrangler/state/v3/d1/<database-id>.sqlite  # Inspect
+
+# Local dev uses free tier limits by default
 ```

@@ -101,13 +101,42 @@ Bindings without IDs are auto-created:
 
 ## TypeScript Setup
 
+### Automatic Type Generation (Recommended)
+
 ```bash
 npm install -D @cloudflare/workers-types
+npx wrangler types  # Generates .wrangler/types/runtime.d.ts from wrangler.jsonc
 ```
 
-`tsconfig.json`: `{ "compilerOptions": { "target": "ES2022", "lib": ["ES2022"], "types": ["@cloudflare/workers-types"] } }`
+`tsconfig.json`:
 
-Define environment interface:
+```jsonc
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": [".wrangler/types/**/*.ts", "src/**/*"]
+}
+```
+
+Import generated types:
+
+```typescript
+import type { Env } from './.wrangler/types/runtime';
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    await env.MY_KV.get('key');  // Fully typed, autocomplete works
+    return new Response('OK');
+  },
+};
+```
+
+Re-run `npx wrangler types` after changing bindings in wrangler.jsonc
+
+### Manual Type Definition (Legacy)
 
 ```typescript
 interface Env {
@@ -124,13 +153,22 @@ interface Env {
   // Auto-locate compute near data sources
   "placement": { "mode": "smart" },
   
-  // Enable Node.js built-ins
+  // Enable Node.js built-ins (Buffer, process, path, etc.)
   "compatibility_flags": ["nodejs_compat_v2"],
   
   // Observability (10% sampling)
   "observability": { "enabled": true, "head_sampling_rate": 0.1 }
 }
 ```
+
+### Node.js Compatibility
+
+`nodejs_compat_v2` enables:
+- `Buffer`, `process.env`, `path`, `stream`
+- CommonJS `require()` for Node modules
+- `node:` imports (e.g., `import { Buffer } from 'node:buffer'`)
+
+**Note:** Adds ~1-2ms cold start overhead. Use Workers APIs (R2, KV) when possible
 
 ## Deployment Commands
 

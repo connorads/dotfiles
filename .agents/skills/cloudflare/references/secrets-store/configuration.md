@@ -4,18 +4,27 @@
 
 ### Basic Binding
 
-```toml
-# wrangler.toml
-secrets_store_secrets = [
-  { binding = "API_KEY", store_id = "abc123", secret_name = "stripe_api_key" }
-]
-```
+**wrangler.jsonc**:
 
 ```jsonc
-// wrangler.jsonc
-"secrets_store_secrets": [
-  { "binding": "API_KEY", "store_id": "abc123", "secret_name": "stripe_api_key" }
-]
+{
+  "secrets_store_secrets": [
+    {
+      "binding": "API_KEY",
+      "store_id": "abc123",
+      "secret_name": "stripe_api_key"
+    }
+  ]
+}
+```
+
+**wrangler.toml** (alternative):
+
+```toml
+[[secrets_store_secrets]]
+binding = "API_KEY"
+store_id = "abc123"
+secret_name = "stripe_api_key"
 ```
 
 Fields:
@@ -25,16 +34,47 @@ Fields:
 
 ### Environment-Specific
 
+**wrangler.jsonc**:
+
+```jsonc
+{
+  "env": {
+    "production": {
+      "secrets_store_secrets": [
+        {
+          "binding": "API_KEY",
+          "store_id": "prod-store",
+          "secret_name": "prod_api_key"
+        }
+      ]
+    },
+    "staging": {
+      "secrets_store_secrets": [
+        {
+          "binding": "API_KEY",
+          "store_id": "staging-store",
+          "secret_name": "staging_api_key"
+        }
+      ]
+    }
+  }
+}
+```
+
+**wrangler.toml** (alternative):
+
 ```toml
 [env.production]
-secrets_store_secrets = [
-  { binding = "API_KEY", store_id = "prod-store", secret_name = "prod_api_key" }
-]
+[[env.production.secrets_store_secrets]]
+binding = "API_KEY"
+store_id = "prod-store"
+secret_name = "prod_api_key"
 
 [env.staging]
-secrets_store_secrets = [
-  { binding = "API_KEY", store_id = "staging-store", secret_name = "staging_api_key" }
-]
+[[env.staging.secrets_store_secrets]]
+binding = "API_KEY"
+store_id = "staging-store"
+secret_name = "staging_api_key"
 ```
 
 ## Wrangler Commands
@@ -83,16 +123,21 @@ wrangler deploy # Uses production secrets
 
 Best practice: Separate names for local/prod:
 
-```toml
-[env.development]
-secrets_store_secrets = [
-  { binding = "API_KEY", store_id = "store", secret_name = "dev_api_key" }
-]
-
-[env.production]
-secrets_store_secrets = [
-  { binding = "API_KEY", store_id = "store", secret_name = "prod_api_key" }
-]
+```jsonc
+{
+  "env": {
+    "development": {
+      "secrets_store_secrets": [
+        { "binding": "API_KEY", "store_id": "store", "secret_name": "dev_api_key" }
+      ]
+    },
+    "production": {
+      "secrets_store_secrets": [
+        { "binding": "API_KEY", "store_id": "store", "secret_name": "prod_api_key" }
+      ]
+    }
+  }
+}
 ```
 
 ## Dashboard

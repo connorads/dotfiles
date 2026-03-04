@@ -43,38 +43,20 @@ const mainWorker :Workerd.Worker = (
 
 ## Sockets
 ```capnp
-# HTTP
 (name = "http", address = "*:8080", http = (), service = "main")
-
-# HTTPS
-(name = "https", address = "*:443",
-  https = (options = (), tlsOptions = (
-    keypair = (privateKey = embed "key.pem", certificateChain = embed "cert.pem")
-  )),
-  service = "main"
-)
-
-# Unix socket
+(name = "https", address = "*:443", https = (options = (), tlsOptions = (keypair = (...))), service = "main")
 (name = "app", address = "unix:/tmp/app.sock", http = (), service = "main")
 ```
 
 ## Worker Formats
-**ES Modules** (recommended):
 ```capnp
-modules = [
-  (name = "index.js", esModule = embed "src/index.js"),
-  (name = "wasm.wasm", wasm = embed "build/module.wasm"),
-  (name = "data.json", json = embed "data.json"),
-]
-```
+# ES Modules (recommended)
+modules = [(name = "index.js", esModule = embed "src/index.js"), (name = "wasm.wasm", wasm = embed "build/module.wasm")]
 
-**Service Worker**:
-```capnp
+# Service Worker (legacy)
 serviceWorkerScript = embed "worker.js"
-```
 
-**CommonJS**:
-```capnp
+# CommonJS
 (name = "legacy.js", commonJsModule = embed "legacy.js", namedExports = ["foo"])
 ```
 
@@ -115,21 +97,11 @@ Bindings expose resources to workers. ES modules: `env.BINDING`, Service workers
 
 ### Other
 ```capnp
-(name = "TASKS", queue = "queue-service")              # Queue
-(name = "ANALYTICS", analyticsEngine = "analytics")    # Analytics
-(name = "LOADER", workerLoader = (id = "dynamic"))     # Dynamic workers
-(name = "KEY", cryptoKey = (
-  format = raw,
-  algorithm = (name = "HMAC", hash = "SHA-256"),
-  keyData = embed "key.bin",
-  usages = [sign, verify],
-  extractable = false
-))
-(name = "TRACED", wrapped = (                          # Middleware
-  moduleName = "tracing",
-  entrypoint = "makeTracer",
-  innerBindings = [(name = "backend", service = "backend")]
-))
+(name = "TASKS", queue = "queue-service")
+(name = "ANALYTICS", analyticsEngine = "analytics")
+(name = "LOADER", workerLoader = (id = "dynamic"))
+(name = "KEY", cryptoKey = (format = raw, algorithm = (name = "HMAC", hash = "SHA-256"), keyData = embed "key.bin", usages = [sign, verify], extractable = false))
+(name = "TRACED", wrapped = (moduleName = "tracing", entrypoint = "makeTracer", innerBindings = [(name = "backend", service = "backend")]))
 ```
 
 ## Compatibility
@@ -143,20 +115,13 @@ Version = max compat date. Update carefully after testing.
 ## Parameter Bindings (Inheritance)
 ```capnp
 const base :Workerd.Worker = (
-  modules = [...],
-  compatibilityDate = "2024-01-15",
-  bindings = [
-    (name = "API_URL", parameter = (type = text)),
-    (name = "DB", parameter = (type = service)),
-  ]
+  modules = [...], compatibilityDate = "2024-01-15",
+  bindings = [(name = "API_URL", parameter = (type = text)), (name = "DB", parameter = (type = service))]
 );
 
 const derived :Workerd.Worker = (
   inherit = "base-service",
-  bindings = [
-    (name = "API_URL", text = "https://api.com"),
-    (name = "DB", service = "postgres"),
-  ]
+  bindings = [(name = "API_URL", text = "https://api.com"), (name = "DB", service = "postgres")]
 );
 ```
 
@@ -171,15 +136,48 @@ const worker :Workerd.Worker = (
 );
 ```
 
+## Remote Bindings (Development)
+
+Connect local workerd to production Cloudflare resources:
+
+```capnp
+bindings = [
+  # Remote KV (requires API token)
+  (name = "PROD_KV", kvNamespace = (
+    remote = (
+      accountId = "your-account-id",
+      namespaceId = "your-namespace-id",
+      apiToken = .envVar("CF_API_TOKEN")
+    )
+  )),
+  
+  # Remote R2
+  (name = "PROD_R2", r2Bucket = (
+    remote = (
+      accountId = "your-account-id",
+      bucketName = "my-bucket",
+      apiToken = .envVar("CF_API_TOKEN")
+    )
+  )),
+  
+  # Remote Durable Object
+  (name = "PROD_DO", durableObjectNamespace = (
+    remote = (
+      accountId = "your-account-id",
+      scriptName = "my-worker",
+      className = "MyDO",
+      apiToken = .envVar("CF_API_TOKEN")
+    )
+  ))
+]
+```
+
+**Note:** Remote bindings require network access and valid Cloudflare API credentials.
+
 ## Logging & Debugging
 ```capnp
-logging = (
-  structuredLogging = true,
-  stdoutPrefix = "OUT: ",
-  stderrPrefix = "ERR: "
-)
-
-v8Flags = ["--expose-gc", "--max-old-space-size=2048"]  # Use at own risk
+logging = (structuredLogging = true, stdoutPrefix = "OUT: ", stderrPrefix = "ERR: ")
+v8Flags = ["--expose-gc", "--max-old-space-size=2048"]  # ⚠️ Unsupported in production
 ```
 
 See [patterns.md](./patterns.md) for multi-service examples, [gotchas.md](./gotchas.md) for config errors.

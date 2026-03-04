@@ -3,17 +3,14 @@
 ## File-Based Routing
 
 ```
-/functions
-  /index.ts                    → example.com/
-  /api
-    /users.ts                  → example.com/api/users
-    /users
-      /[id].ts                 → example.com/api/users/:id
-      /[[catchall]].ts         → example.com/api/users/*
-  /_middleware.ts              → Runs before all routes
+/functions/index.ts              → example.com/
+/functions/api/users.ts          → example.com/api/users
+/functions/api/users/[id].ts     → example.com/api/users/:id
+/functions/api/users/[[path]].ts → example.com/api/users/* (catchall)
+/functions/_middleware.ts        → Runs before all routes
 ```
 
-**Rules**: `[param]` = single segment, `[[param]]` = multi-segment wildcard, more specific wins, falls back to static assets.
+**Rules**: `[param]` = single segment, `[[param]]` = multi-segment catchall, more specific wins.
 
 ## Request Handlers
 
@@ -53,31 +50,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
 ```typescript
 interface EventContext<Env, Params, Data> {
-  request: Request;              // Incoming HTTP request
+  request: Request;              // HTTP request
   env: Env;                      // Bindings (KV, D1, R2, etc.)
-  params: Params;                // Dynamic route parameters
-  data: Data;                    // Shared data from middleware
-  functionPath: string;          // Current function path
+  params: Params;                // Route parameters
+  data: Data;                    // Middleware-shared data
   waitUntil: (promise: Promise<any>) => void;  // Background tasks
-  next: (input?: RequestInfo, init?: RequestInit) => Promise<Response>;
-  passThroughOnException: () => void;  // Fallback on error (not in advanced mode)
+  next: () => Promise<Response>; // Next handler
+  passThroughOnException: () => void;  // Error fallback (not in advanced mode)
 }
 ```
 
 ## Dynamic Routes
 
-### Single Segment
 ```typescript
-// functions/users/[id].ts
+// Single segment: functions/users/[id].ts
 export const onRequestGet: PagesFunction = async ({ params }) => {
   // /users/123 → params.id = "123"
   return Response.json({ userId: params.id });
 };
-```
 
-### Multi-Segment
-```typescript
-// functions/files/[[path]].ts
+// Multi-segment: functions/files/[[path]].ts
 export const onRequestGet: PagesFunction = async ({ params }) => {
   // /files/docs/api/v1.md → params.path = ["docs", "api", "v1.md"]
   const filePath = (params.path as string[]).join('/');
@@ -89,8 +81,6 @@ export const onRequestGet: PagesFunction = async ({ params }) => {
 
 ```typescript
 // functions/_middleware.ts
-import type { PagesFunction } from '@cloudflare/workers-types';
-
 // Single
 export const onRequest: PagesFunction = async (context) => {
   const response = await context.next();
@@ -110,7 +100,6 @@ const errorHandler: PagesFunction = async (context) => {
 const auth: PagesFunction = async (context) => {
   const token = context.request.headers.get('Authorization');
   if (!token) return new Response('Unauthorized', { status: 401 });
-  
   context.data.userId = await verifyToken(token);
   return context.next();
 };
@@ -118,38 +107,22 @@ const auth: PagesFunction = async (context) => {
 export const onRequest = [errorHandler, auth];
 ```
 
-**Scope**:
-- `functions/_middleware.ts` → ALL requests (including static)
-- `functions/api/_middleware.ts` → `/api/*` only
+**Scope**: `functions/_middleware.ts` → all; `functions/api/_middleware.ts` → `/api/*` only
 
 ## Bindings Usage
 
 ```typescript
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   // KV
   const cached = await env.KV.get('key', 'json');
-  await env.KV.put('key', JSON.stringify({ data: 'value' }), {
-    expirationTtl: 3600
-  });
+  await env.KV.put('key', JSON.stringify({data: 'value'}), {expirationTtl: 3600});
   
   // D1
-  const result = await env.DB.prepare(
-    'SELECT * FROM users WHERE id = ?'
-  ).bind(userId).first();
+  const result = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
   
-  // R2
-  const object = await env.BUCKET.get('file.txt');
-  const content = await object?.text();
+  // R2, Queue, AI - see respective reference docs
   
-  // Queue
-  await env.QUEUE.send({ event: 'user.signup', userId: 123 });
-  
-  // AI
-  const aiResponse = await env.AI.run('@cf/meta/llama-2-7b-chat-int8', {
-    prompt: 'Hello world'
-  });
-  
-  return Response.json({ success: true });
+  return Response.json({success: true});
 };
 ```
 
@@ -176,25 +149,56 @@ export default {
 
 **When to use**: WebSockets, complex routing, scheduled handlers, email handlers.
 
-## getRequestContext (Framework SSR)
+## Smart Placement
 
-Access bindings in framework code (Next.js, SvelteKit, etc.):
+Automatically optimizes function execution location based on traffic patterns.
 
-```typescript
-import { getRequestContext } from '@cloudflare/next-on-pages';
-
-export async function GET(request: Request) {
-  const { env, cf, ctx } = getRequestContext();
-  
-  const data = await env.DB.prepare(
-    'SELECT * FROM users'
-  ).all();
-  
-  return Response.json(data);
+**Configuration** (in wrangler.jsonc):
+```jsonc
+{
+  "placement": {
+    "mode": "smart"  // Enables optimization (default: off)
+  }
 }
 ```
 
-**Note**: Adapter-specific. Check framework docs:
-- Next.js: `@cloudflare/next-on-pages`
-- SvelteKit: `@sveltejs/adapter-cloudflare`
-- Remix: `@remix-run/cloudflare-pages`
+**How it works**: Analyzes traffic patterns over time and places functions closer to users or data sources (e.g., D1 databases). Requires no code changes.
+
+**Trade-offs**: Initial requests may see slightly higher latency during learning period (hours-days). Performance improves as system optimizes.
+
+**When to use**: Global apps with centralized databases or geographically concentrated traffic sources.
+
+## getRequestContext (Framework SSR)
+
+Access bindings in framework code:
+
+```typescript
+// SvelteKit
+import type { RequestEvent } from '@sveltejs/kit';
+export async function load({ platform }: RequestEvent) {
+  const data = await platform.env.DB.prepare('SELECT * FROM users').all();
+  return { users: data.results };
+}
+
+// Astro
+const { DB } = Astro.locals.runtime.env;
+const data = await DB.prepare('SELECT * FROM users').all();
+
+// Solid Start (server function)
+import { getRequestEvent } from 'solid-js/web';
+const event = getRequestEvent();
+const data = await event.locals.runtime.env.DB.prepare('SELECT * FROM users').all();
+```
+
+**✅ Supported adapters** (2026):
+- **SvelteKit**: `@sveltejs/adapter-cloudflare`
+- **Astro**: Built-in Cloudflare adapter
+- **Nuxt**: Set `nitro.preset: 'cloudflare-pages'` in `nuxt.config.ts`
+- **Qwik**: Built-in Cloudflare adapter
+- **Solid Start**: `@solidjs/start-cloudflare-pages`
+
+**❌ Deprecated/Unsupported**:
+- **Next.js**: Official adapter (`@cloudflare/next-on-pages`) deprecated. Use Vercel or self-host on Workers.
+- **Remix**: Official adapter (`@remix-run/cloudflare-pages`) deprecated. Migrate to supported frameworks.
+
+See [gotchas.md](./gotchas.md#framework-specific) for migration guidance.

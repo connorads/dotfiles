@@ -7,6 +7,11 @@ const cursor = this.sql.exec('SELECT * FROM users WHERE email = ?', email);
 for (let row of cursor) {} // Objects: { id, name, email }
 cursor.toArray(); cursor.one(); // Single row (throws if != 1)
 for (let row of cursor.raw()) {} // Arrays: [1, "Alice", "..."]
+
+// Manual iteration
+const iter = cursor[Symbol.iterator]();
+const first = iter.next(); // { value: {...}, done: false }
+
 cursor.columnNames; // ["id", "name", "email"]
 cursor.rowsRead; cursor.rowsWritten; // Billing
 
@@ -43,6 +48,14 @@ await this.ctx.storage.list({ prefix: "user:", limit: 100 });
 await this.ctx.storage.get("key", { allowConcurrency: true, noCache: true });
 await this.ctx.storage.put("key", value, { allowUnconfirmed: true, noCache: true });
 ```
+
+### Storage Options
+
+| Option | Methods | Effect | Use Case |
+|--------|---------|--------|----------|
+| `allowConcurrency` | get, list | Skip input gate; allow concurrent requests during read | Read-heavy metrics that don't need strict consistency |
+| `noCache` | get, put, list | Skip in-memory cache; always read from disk | Rarely-accessed data or testing storage directly |
+| `allowUnconfirmed` | put, delete | Return before write confirms (still protected by output gate) | Non-critical writes where latency matters more than confirmation |
 
 ## Transactions
 

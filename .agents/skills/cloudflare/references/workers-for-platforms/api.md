@@ -30,6 +30,32 @@ await client.workersForPlatforms.dispatch.namespaces.scripts.update(
 );
 ```
 
+## TypeScript Types
+
+```typescript
+import type { DispatchNamespace } from '@cloudflare/workers-types';
+
+interface DispatchNamespace {
+  get(name: string, options?: Record<string, unknown>, dispatchOptions?: DynamicDispatchOptions): Fetcher;
+}
+
+interface DynamicDispatchOptions {
+  limits?: DynamicDispatchLimits;
+  outbound?: Record<string, unknown>;
+}
+
+interface DynamicDispatchLimits {
+  cpuMs?: number;        // Max CPU milliseconds
+  subRequests?: number;  // Max fetch() calls
+}
+
+// Usage
+const userWorker = env.DISPATCHER.get('customer-123', {}, {
+  limits: { cpuMs: 50, subRequests: 20 },
+  outbound: { customerId: '123', url: request.url }
+});
+```
+
 ## Deploy with Bindings
 ```bash
 curl -X PUT ".../scripts/$SCRIPT_NAME" \
@@ -39,7 +65,7 @@ curl -X PUT ".../scripts/$SCRIPT_NAME" \
       {"type": "kv_namespace", "name": "MY_KV", "namespace_id": "'$KV_ID'"}
     ],
     "tags": ["customer-123", "production"],
-    "compatibility_date": "2024-01-01"
+    "compatibility_date": "2026-01-01"  // Use current date for new projects
   };type=application/json' \
   -F 'worker.mjs=@worker.mjs;type=application/javascript+module'
 ```
@@ -58,6 +84,8 @@ curl -X DELETE ".../scripts/$SCRIPT_NAME" -H "Authorization: Bearer $API_TOKEN"
 curl -X DELETE ".../scripts?tags=customer-123%3Ayes" -H "Authorization: Bearer $API_TOKEN"
 ```
 
+**Pagination:** SDK supports async iteration. Manual: add `?per_page=100&page=1` query params.
+
 ## Static Assets
 
 **3-step process:** Create session → Upload files → Deploy Worker
@@ -74,7 +102,7 @@ curl -X POST ".../scripts/$SCRIPT_NAME/assets-upload-session" \
 # Returns: jwt, buckets
 ```
 
-**Hash:** First 16 bytes (32 hex chars) of SHA-256
+**Hash:** SHA-256 truncated to first 16 bytes (32 hex characters)
 
 ### 2. Upload Files
 ```bash
@@ -83,6 +111,8 @@ curl -X POST ".../workers/assets/upload?base64=true" \
   -F '08f1dfda4574284ab3c21666d1ee8c7d4=<BASE64_CONTENT>'
 # Returns: completion jwt
 ```
+
+**Multiple buckets:** Upload to all returned bucket URLs (typically 2 for redundancy) using same JWT and hash.
 
 ### 3. Deploy with Assets
 ```bash
@@ -95,10 +125,7 @@ curl -X PUT ".../scripts/$SCRIPT_NAME" \
   -F 'index.js=export default {...};type=application/javascript+module'
 ```
 
-**Asset Isolation:** Assets shared across namespace. For strict isolation, salt hash:
-```typescript
-const hash = sha256(accountId + fileContents).slice(0, 32);
-```
+**Asset Isolation:** Assets shared across namespace by default. For customer isolation, salt hash: `sha256(customerId + fileContents).slice(0, 32)`
 
 ## Dispatch Workers
 

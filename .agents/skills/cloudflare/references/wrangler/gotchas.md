@@ -1,29 +1,48 @@
 # Wrangler Common Issues
 
-Pitfalls, limits, and troubleshooting.
+## Common Errors
 
-## Common Gotchas
+### "Binding ID vs name mismatch"
 
-### Binding IDs vs Names
-- Bindings use `binding` (code name) and `id`/`database_id`/`bucket_name` (resource ID)
-- Preview bindings need separate IDs: `preview_id`, `preview_database_id`
+**Cause:** Confusion between binding name (code) and resource ID
+**Solution:** Bindings use `binding` (code name) and `id`/`database_id`/`bucket_name` (resource ID). Preview bindings need separate IDs: `preview_id`, `preview_database_id`
 
-### Environment Inheritance
-- Non-inheritable keys (bindings, vars) must be redefined per environment
-- Inheritable keys (routes, compatibility_date) can be overridden
+### "Environment not inheriting config"
 
-### Local vs Remote Dev
+**Cause:** Non-inheritable keys not redefined per environment
+**Solution:** Non-inheritable keys (bindings, vars) must be redefined per environment. Inheritable keys (routes, compatibility_date) can be overridden
+
+### "Local dev behavior differs from production"
+
+**Cause:** Using local simulation instead of remote execution
+**Solution:** Choose appropriate remote mode:
 - `wrangler dev` (default): Local simulation, fast, limited accuracy
-- `wrangler dev --remote`: Remote execution, slower, production-accurate
+- `wrangler dev --remote`: Full remote execution, production-accurate, slower
+- Use `remote: "minimal"` in tests for fast tests with real remote bindings
 
-### Compatibility Dates
-Always set `compatibility_date` to avoid unexpected runtime changes:
+### "startWorker doesn't match production"
+
+**Cause:** Using local mode when remote resources needed
+**Solution:** Use `remote` option:
+```typescript
+const worker = await startWorker({ 
+  config: "wrangler.jsonc",
+  remote: true  // or "minimal" for faster tests
+});
+```
+
+### "Unexpected runtime changes"
+
+**Cause:** Missing compatibility_date
+**Solution:** Always set `compatibility_date`:
 ```jsonc
 { "compatibility_date": "2025-01-01" }
 ```
 
-### Durable Objects Need script_name
-With `getPlatformProxy`, always specify `script_name`:
+### "Durable Object binding not working"
+
+**Cause:** Missing script_name for external DOs
+**Solution:** Always specify `script_name` for external Durable Objects:
 ```jsonc
 {
   "durable_objects": {
@@ -34,14 +53,86 @@ With `getPlatformProxy`, always specify `script_name`:
 }
 ```
 
-### Secrets in Local Dev
-Secrets set with `wrangler secret put` only work in deployed Workers. For local dev, use `.dev.vars`.
+For local DOs in same Worker, `script_name` is optional.
 
-### Node.js Compatibility
-Some bindings (Hyperdrive with `pg`) require Node.js compatibility:
+### "Auto-provisioned resources not appearing"
+
+**Cause:** IDs written back to config on first deploy, but config not reloaded
+**Solution:** After first deploy with auto-provisioning, config file is updated with IDs. Commit the updated config. On subsequent deploys, existing resources are reused.
+
+### "Secrets not available in local dev"
+
+**Cause:** Secrets set with `wrangler secret put` only work in deployed Workers
+**Solution:** For local dev, use `.dev.vars`
+
+### "Node.js compatibility error"
+
+**Cause:** Missing Node.js compatibility flag
+**Solution:** Some bindings (Hyperdrive with `pg`) require:
 ```jsonc
 { "compatibility_flags": ["nodejs_compat_v2"] }
 ```
+
+### "Workers Assets 404 errors"
+
+**Cause:** Asset path mismatch or incorrect `html_handling`
+**Solution:** 
+- Check `assets.directory` points to correct build output
+- Set `html_handling: "auto-trailing-slash"` for SPAs
+- Use `not_found_handling: "single-page-application"` to serve index.html for 404s
+```jsonc
+{
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  }
+}
+```
+
+### "Placement not reducing latency"
+
+**Cause:** Misunderstanding of Smart Placement
+**Solution:** Smart Placement only helps when Worker accesses D1 or Durable Objects. It doesn't affect KV, R2, or external API latency.
+```jsonc
+{ "placement": { "mode": "smart" } }  // Only beneficial with D1/DOs
+```
+
+### "unstable_startWorker not found"
+
+**Cause:** Using outdated API
+**Solution:** Use stable `startWorker` instead:
+```typescript
+import { startWorker } from "wrangler";  // Not unstable_startWorker
+```
+
+### "outboundService not mocking fetch"
+
+**Cause:** Mock function not returning Response
+**Solution:** Always return Response, use `fetch(req)` for passthrough:
+```typescript
+const worker = await startWorker({
+  outboundService: (req) => {
+    if (shouldMock(req)) {
+      return new Response("mocked");
+    }
+    return fetch(req);  // Required for non-mocked requests
+  }
+});
+```
+
+## Limits
+
+| Resource/Limit | Value | Notes |
+|----------------|-------|-------|
+| Bindings per Worker | 64 | Total across all types |
+| Environments | Unlimited | Named envs in config |
+| Config file size | ~1MB | Keep reasonable |
+| Workers Assets size | 25 MB | Per deployment |
+| Workers Assets files | 20,000 | Max number of files |
+| Script size (compressed) | 1 MB | Free, 10 MB paid |
+| CPU time | 10-50ms | Free, 50-500ms paid |
+| Subrequest limit | 50 | Free, 10,000 paid |
 
 ## Troubleshooting
 
@@ -75,6 +166,19 @@ wrangler whoami            # Check account limits
 rm -rf .wrangler/state     # Clear local state
 wrangler dev --remote      # Use remote bindings
 wrangler dev --persist-to ./local-state  # Custom persist location
+wrangler dev --inspector-port 9229  # Enable debugging
+```
+
+### Testing Issues
+```bash
+# If tests hang, ensure dispose() is called
+worker.dispose()  // Always cleanup
+
+# If bindings don't work in tests
+const worker = await startWorker({ 
+  config: "wrangler.jsonc",
+  remote: "minimal"  // Use remote bindings
+});
 ```
 
 ## Resources

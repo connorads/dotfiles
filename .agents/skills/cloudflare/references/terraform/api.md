@@ -2,6 +2,14 @@
 
 Query existing Cloudflare resources to reference in your configurations.
 
+## v5 Data Source Names
+
+| v4 Name | v5 Name | Notes |
+|---------|---------|-------|
+| `cloudflare_record` | `cloudflare_dns_record` | |
+| `cloudflare_worker_script` | `cloudflare_workers_script` | Note: plural |
+| `cloudflare_access_*` | `cloudflare_zero_trust_*` | Access → Zero Trust |
+
 ## Zone Data Sources
 
 ```hcl
@@ -36,17 +44,17 @@ resource "cloudflare_worker_script" "api" {
 ## Worker Data Sources
 
 ```hcl
-# Get existing worker script
-data "cloudflare_worker_script" "existing" {
+# Get existing worker script (v5: cloudflare_workers_script)
+data "cloudflare_workers_script" "existing" {
   account_id = var.account_id
   name = "existing-worker"
 }
 
 # Reference in service bindings
-resource "cloudflare_worker_script" "consumer" {
+resource "cloudflare_workers_script" "consumer" {
   service_binding {
     name = "UPSTREAM"
-    service = data.cloudflare_worker_script.existing.name
+    service = data.cloudflare_workers_script.existing.name
   }
 }
 ```
@@ -61,11 +69,21 @@ data "cloudflare_workers_kv_namespace" "existing" {
 }
 
 # Use in worker binding
-resource "cloudflare_worker_script" "api" {
+resource "cloudflare_workers_script" "api" {
   kv_namespace_binding {
     name = "KV"
     namespace_id = data.cloudflare_workers_kv_namespace.existing.id
   }
+}
+```
+
+## Lists Data Source
+
+```hcl
+# Get IP lists for WAF rules
+data "cloudflare_list" "blocked_ips" {
+  account_id = var.account_id
+  name = "blocked_ips"
 }
 ```
 
@@ -96,20 +114,21 @@ resource "aws_security_group_rule" "allow_cloudflare" {
 
 ## Common Patterns
 
-### Import Existing Resources
+### Import ID Formats
+
+| Resource | Import ID Format |
+|----------|------------------|
+| `cloudflare_zone` | `<zone-id>` |
+| `cloudflare_dns_record` | `<zone-id>/<record-id>` |
+| `cloudflare_workers_script` | `<account-id>/<script-name>` |
+| `cloudflare_workers_kv_namespace` | `<account-id>/<namespace-id>` |
+| `cloudflare_r2_bucket` | `<account-id>/<bucket-name>` |
+| `cloudflare_d1_database` | `<account-id>/<database-id>` |
+| `cloudflare_pages_project` | `<account-id>/<project-name>` |
 
 ```bash
-# Find zone ID in dashboard
-terraform import cloudflare_zone.example <zone-id>
-
-# Import DNS record
+# Example: Import DNS record
 terraform import cloudflare_dns_record.example <zone-id>/<record-id>
-
-# Import worker script
-terraform import cloudflare_worker_script.api <account-id>/<script-name>
-
-# Import KV namespace
-terraform import cloudflare_workers_kv_namespace.cache <account-id>/<namespace-id>
 ```
 
 ### Reference Across Modules

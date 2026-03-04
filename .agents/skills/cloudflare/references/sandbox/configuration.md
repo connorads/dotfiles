@@ -5,20 +5,20 @@
 ```typescript
 const sandbox = getSandbox(env.Sandbox, 'sandbox-id', {
   normalizeId: true,         // lowercase ID (required for preview URLs)
-  sleepAfter: '30m',         // sleep after inactivity: '5m', '1h', '2d'
+  sleepAfter: '10m',         // sleep after inactivity: '5m', '1h', '2d' (default: '10m')
   keepAlive: false,          // false = auto-timeout, true = never sleep
   
   containerTimeouts: {
-    instanceGetTimeoutMS: 30000,  // 30s for provisioning
-    portReadyTimeoutMS: 90000     // 90s for container startup
+    instanceGetTimeoutMS: 30000,  // 30s for provisioning (default: 30000)
+    portReadyTimeoutMS: 90000     // 90s for container startup (default: 90000)
   }
 });
 ```
 
 **Sleep Config**:
-- `sleepAfter`: Duration string (e.g., '5m', '30m', '1h')
+- `sleepAfter`: Duration string (e.g., '5m', '10m', '1h') - default: '10m'
 - `keepAlive: false`: Auto-sleep (default, cost-optimized)
-- `keepAlive: true`: Never sleep (higher cost, faster response)
+- `keepAlive: true`: Never sleep (higher cost, requires explicit `destroy()`)
 - Sleeping sandboxes wake automatically (cold start)
 
 ## Instance Types
@@ -115,17 +115,29 @@ export default {
 };
 ```
 
-## R2 Storage Integration
+## Logging Configuration
 
-```typescript
-await sandbox.mountStorage({
-  type: 'r2',
-  bucket: env.DATA_BUCKET,
-  mountPoint: '/data',
-  readOnly: false
-});
+**wrangler.jsonc**:
+```jsonc
+{
+  "vars": {
+    "SANDBOX_LOG_LEVEL": "debug",  // debug | info | warn | error (default: info)
+    "SANDBOX_LOG_FORMAT": "pretty" // json | pretty (default: json)
+  }
+}
+```
 
-// Access mounted storage
-await sandbox.exec('python3 process.py', { cwd: '/data/datasets' });
-await sandbox.writeFile('/data/output/results.csv', csvData);
+**Dev**: `debug` + `pretty`. **Production**: `info`/`warn` + `json`.
+
+## Timeout Environment Overrides
+
+Override default timeouts via environment variables:
+
+```jsonc
+{
+  "vars": {
+    "SANDBOX_INSTANCE_TIMEOUT_MS": "60000",  // Override instanceGetTimeoutMS
+    "SANDBOX_PORT_TIMEOUT_MS": "120000"      // Override portReadyTimeoutMS
+  }
+}
 ```

@@ -1,75 +1,56 @@
 # RealtimeKit Gotchas & Troubleshooting
 
-## Common Issues
+## Common Errors
 
-### Issue: Cannot connect to meeting
-**Causes**:
-- Auth token invalid or expired
-- API credentials lack correct permissions
-- Network blocks WebRTC traffic (firewall/proxy)
+### "Cannot connect to meeting"
 
-**Solutions**:
-- Verify token validity
-- Check API token has **Realtime / Realtime Admin** permissions
-- Enable TURN service for restrictive networks
+**Cause:** Auth token invalid/expired, API credentials lack permissions, or network blocks WebRTC
+**Solution:**
+Verify token validity, check API token has **Realtime / Realtime Admin** permissions, enable TURN service for restrictive networks
 
-### Issue: No video/audio tracks
-**Causes**:
-- Browser permissions not granted
-- `video: true, audio: true` not set in initialization
-- Device in use by another app
-- Device not available
+### "No video/audio tracks"
 
-**Solutions**:
-- Request browser permissions explicitly
-- Verify initialization config
-- Use `meeting.self.getAllDevices()` to debug device availability
-- Close other apps using the device
+**Cause:** Browser permissions not granted, video/audio not enabled, device in use, or device unavailable
+**Solution:**
+Request browser permissions explicitly, verify initialization config, use `meeting.self.getAllDevices()` to debug, close other apps using device
 
-### Issue: Participant count mismatched
-**Cause**: `meeting.participants` doesn't include `meeting.self`
+### "Participant count mismatched"
 
-**Solution**: Total count = `meeting.participants.joined.size() + 1`
+**Cause:** `meeting.participants` doesn't include `meeting.self`
+**Solution:** Total count = `meeting.participants.joined.size() + 1`
 
-### Issue: Events not firing
-**Causes**:
-- Event listeners registered after actions occur
-- Incorrect event name spelling
-- Wrong namespace (e.g., `meeting.self` vs `meeting.participants`)
+### "Events not firing"
 
-**Solutions**:
-- Register listeners before calling `meeting.join()`
-- Check event names against API documentation
-- Verify correct namespace for events
+**Cause:** Listeners registered after actions, incorrect event name, or wrong namespace
+**Solution:**
+Register listeners before calling `meeting.join()`, check event names against docs, verify correct namespace
 
-### Issue: CORS errors in API calls
-**Cause**: Making REST API calls from client-side
+### "CORS errors in API calls"
 
-**Solution**: All REST API calls **must** be server-side (Workers, backend). Never expose API tokens to clients.
+**Cause:** Making REST API calls from client-side
+**Solution:** All REST API calls **must** be server-side (Workers, backend). Never expose API tokens to clients.
 
-### Issue: Preset not applying
-**Causes**:
-- Preset doesn't exist in App
-- `preset_name` doesn't match exactly (case-sensitive)
-- Participant created before preset
+### "Preset not applying"
 
-**Solutions**:
-- Verify preset exists via Dashboard or API
-- Check exact spelling and case
-- Create preset before adding participants
+**Cause:** Preset doesn't exist, name mismatch (case-sensitive), or participant created before preset
+**Solution:**
+Verify preset exists via Dashboard or API, check exact spelling and case, create preset before adding participants
 
-### Issue: Token reuse errors
-**Cause**: Reusing participant tokens across sessions
+### "Token reuse error"
 
-**Solution**: Generate fresh token per session. Use refresh endpoint if token expires during session.
+**Cause:** Reusing participant tokens across sessions
+**Solution:** Generate fresh token per session. Use refresh endpoint if token expires during session.
 
-### Issue: Video quality poor
-**Causes**:
-- Network bandwidth insufficient
-- Resolution/bitrate too high for connection
-- CPU overload
+### "Video quality poor"
 
-**Solutions**:
+**Cause:** Insufficient bandwidth, resolution/bitrate too high, or CPU overload
+**Solution:**
+Lower `mediaConfiguration.video` resolution/frameRate, monitor network conditions, reduce participant count or grid size
+
+### "Echo or audio feedback"
+
+**Cause:** Multiple devices picking up same audio source
+**Solution:**
 - Lower `mediaConfiguration.video` resolution/frameRate
 - Monitor network conditions
 - Reduce participant count or grid size
@@ -78,20 +59,36 @@
 **Cause**: Multiple devices picking up same audio source
 
 **Solutions**:
-- Enable `echoCancellation: true` in `mediaConfiguration.audio`
-- Use headphones
-- Mute when not speaking
+Enable `echoCancellation: true` in `mediaConfiguration.audio`, use headphones, mute when not speaking
 
-### Issue: Screen share not working
-**Causes**:
-- Browser doesn't support screen sharing API
-- Permission denied by user
-- Wrong `displaySurface` configuration
+### "Screen share not working"
 
-**Solutions**:
-- Use Chrome/Edge/Firefox (Safari limited support)
-- Check browser permissions
-- Try different `displaySurface` values ('window', 'monitor', 'browser')
+**Cause:** Browser doesn't support screen sharing API, permission denied, or wrong `displaySurface` config
+**Solution:**
+Use Chrome/Edge/Firefox (Safari limited support), check browser permissions, try different `displaySurface` values ('window', 'monitor', 'browser')
+
+### "How do I schedule meetings?"
+
+**Cause:** RealtimeKit has no built-in scheduling system
+**Solution:**
+Store meeting IDs in your database with timestamps. Generate participant tokens only when user should join. Example:
+```typescript
+// Store in DB
+{ meetingId: 'abc123', scheduledFor: '2026-02-15T10:00:00Z', userId: 'user456' }
+
+// Generate token when user clicks "Join" near scheduled time
+const response = await fetch('/api/join-meeting', {
+  method: 'POST',
+  body: JSON.stringify({ meetingId: 'abc123' })
+});
+const { authToken } = await response.json();
+```
+
+### "Recording not starting"
+
+**Cause:** Preset lacks recording permissions, no active session, or API call from client
+**Solution:**
+Verify preset has `canRecord: true` and `canStartStopRecording: true`, ensure session is active (at least one participant), make recording API calls server-side only
 
 ## Limits
 
@@ -166,7 +163,7 @@ meeting.chat.on('chatUpdate', (data) => console.log('[chat] chatUpdate:', data))
 - **Memory**: Clean up event listeners on unmount, call `meeting.leave()` when done, don't store large participant arrays
 
 ## In This Reference
-- [README.md](./README.md) - Overview, core concepts, quick start
-- [configuration.md](./configuration.md) - SDK config, presets, wrangler setup
-- [api.md](./api.md) - Client SDK APIs, REST endpoints
-- [patterns.md](./patterns.md) - Common patterns, React hooks, backend integration
+- [README.md](README.md) - Overview, core concepts, quick start
+- [configuration.md](configuration.md) - SDK config, presets, wrangler setup
+- [api.md](api.md) - Client SDK APIs, REST endpoints
+- [patterns.md](patterns.md) - Common patterns, React hooks, backend integration

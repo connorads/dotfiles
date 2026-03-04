@@ -2,7 +2,18 @@
 
 ## Workers Integration
 
-Cache Reserve works automatically with Workers Cache API, but requires specific patterns:
+```
+┌────────────────────────────────────────────────────────────────┐
+│ CRITICAL: Workers Cache API ≠ Cache Reserve                   │
+│                                                                │
+│ • Workers caches.default / cache.put() → edge cache ONLY      │
+│ • Cache Reserve → zone-level setting, automatic, no per-req   │
+│ • You CANNOT selectively write to Cache Reserve from Workers  │
+│ • Cache Reserve works with standard fetch(), not cache.put()  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+Cache Reserve is a **zone-level configuration**, not a per-request API. It works automatically when enabled for the zone:
 
 ### Standard Fetch (Recommended)
 
@@ -77,88 +88,95 @@ await purgeCacheReserveByURL('zone123', 'token456', [
 
 ```typescript
 // Purge by cache tag - forces revalidation, not immediate removal
-const purgeCacheReserveByTag = async (
-  zoneId: string,
-  apiToken: string,
-  tags: string[]
-) => {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ tags })
-    }
-  );
-  return await response.json();
-};
-
-// Note: Assets remain in Cache Reserve but will revalidate on next request
-// Storage costs continue until retention TTL expires
+await fetch(
+  `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
+  {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tags: ['tag1', 'tag2'] })
+  }
+);
 ```
 
-**Important purge behavior differences:**
-
-- **Purge by URL**: Immediately removes from Cache Reserve + edge cache
-- **Purge by tag/host/prefix**: Forces revalidation but assets remain in storage
-- **Storage costs**: Continue for tag/host/prefix purges until TTL expiry
+**Purge behavior:**
+- **By URL**: Immediate removal from Cache Reserve + edge cache
+- **By tag/host/prefix**: Revalidation only, assets remain in storage (costs continue)
 
 ### Clear All Cache Reserve Data
 
 ```typescript
-// Clear ALL Cache Reserve data (requires Cache Reserve to be OFF)
-const clearAllCacheReserve = async (zoneId: string, apiToken: string) => {
-  // Step 1: Verify Cache Reserve is off
-  const statusResponse = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve`,
-    { method: 'GET', headers: { 'Authorization': `Bearer ${apiToken}` } }
-  );
-  const status = await statusResponse.json();
-  
-  if (status.result.value !== 'off') {
-    throw new Error('Cache Reserve must be OFF before clearing data');
-  }
-  
-  // Step 2: Clear Cache Reserve data
-  const clearResponse = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve_clear`,
-    { method: 'POST', headers: { 'Authorization': `Bearer ${apiToken}` } }
-  );
-  return await clearResponse.json();
-};
+// Requires Cache Reserve OFF first
+await fetch(
+  `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve_clear`,
+  { method: 'POST', headers: { 'Authorization': `Bearer ${apiToken}` } }
+);
 
-// Check clear status
-const getClearStatus = async (zoneId: string, apiToken: string) => {
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/cache/cache_reserve_clear`,
-    { method: 'GET', headers: { 'Authorization': `Bearer ${apiToken}` } }
-  );
-  return await response.json();
-  // Returns: { state: "In-progress" | "Completed", start_ts: "..." }
-};
+// Check status: GET same endpoint returns { state: "In-progress" | "Completed" }
 ```
 
-**Clear process:**
-1. Disable Cache Reserve (`value: 'off'`)
-2. Call cache_reserve_clear endpoint
-3. Deletion takes up to 24 hours
-4. Re-enable Cache Reserve when ready
+**Process**: Disable Cache Reserve → Call clear endpoint → Wait up to 24hr → Re-enable
 
 ## Monitoring and Analytics
 
-```typescript
-// Dashboard: egress savings, requests served (hits/misses), storage, operations (A/B)
-// Logpush field: CacheReserveUsed (boolean) - filter for Cache Reserve hits
+### Dashboard Analytics
 
-// Query Cache Reserve hits
-const query = `
-  SELECT ClientRequestHost, COUNT(*) as requests, SUM(EdgeResponseBytes) as bytes
-  FROM http_requests WHERE CacheReserveUsed = true
-  GROUP BY ClientRequestHost ORDER BY requests DESC
+Navigate to **Caching > Cache Reserve** to view:
+
+- **Egress Savings**: Total bytes served from Cache Reserve vs origin egress cost saved
+- **Requests Served**: Cache Reserve hits vs misses breakdown
+- **Storage Used**: Current GB stored in Cache Reserve (billed monthly)
+- **Operations**: Class A (writes) and Class B (reads) operation counts
+- **Cost Tracking**: Estimated monthly costs based on current usage
+
+### Logpush Integration
+
+```typescript
+// Logpush field: CacheReserveUsed (boolean) - filter for Cache Reserve hits
+// Query Cache Reserve hits in analytics
+const logpushQuery = `
+  SELECT 
+    ClientRequestHost, 
+    COUNT(*) as requests, 
+    SUM(EdgeResponseBytes) as bytes_served,
+    COUNT(CASE WHEN CacheReserveUsed = true THEN 1 END) as cache_reserve_hits,
+    COUNT(CASE WHEN CacheReserveUsed = false THEN 1 END) as cache_reserve_misses
+  FROM http_requests 
+  WHERE Timestamp >= NOW() - INTERVAL '24 hours'
+  GROUP BY ClientRequestHost 
+  ORDER BY requests DESC
 `;
+
+// Filter only Cache Reserve hits
+const crHitsQuery = `
+  SELECT ClientRequestHost, COUNT(*) as requests, SUM(EdgeResponseBytes) as bytes
+  FROM http_requests 
+  WHERE CacheReserveUsed = true AND Timestamp >= NOW() - INTERVAL '7 days'
+  GROUP BY ClientRequestHost 
+  ORDER BY bytes DESC
+`;
+```
+
+### GraphQL Analytics
+
+```graphql
+query CacheReserveAnalytics($zoneTag: string, $since: string, $until: string) {
+  viewer {
+    zones(filter: { zoneTag: $zoneTag }) {
+      httpRequests1dGroups(
+        filter: { datetime_geq: $since, datetime_leq: $until }
+        limit: 1000
+      ) {
+        dimensions { date }
+        sum {
+          cachedBytes
+          cachedRequests
+          bytes
+          requests
+        }
+      }
+    }
+  }
+}
 ```
 
 ## Pricing

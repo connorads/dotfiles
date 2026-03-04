@@ -2,6 +2,19 @@
 
 Setup, environment variables, and wrangler configuration.
 
+## Installation
+
+```bash
+# Official Cloudflare SDK (Node.js, Workers, Pages)
+npm install cloudflare
+
+# React component library
+npm install @cloudflare/stream-react
+
+# TUS resumable uploads (large files)
+npm install tus-js-client
+```
+
 ## Environment Variables
 
 ```bash
@@ -117,7 +130,8 @@ const playerParams = new URLSearchParams({
 ## In This Reference
 
 - [README.md](./README.md) - Overview and quick start
-- [api.md](./api.md) - Upload, playback, live streaming APIs
+- [api.md](./api.md) - On-demand video APIs
+- [api-live.md](./api-live.md) - Live streaming APIs
 - [patterns.md](./patterns.md) - Full-stack flows, best practices
 - [gotchas.md](./gotchas.md) - Error codes, troubleshooting
 
