@@ -1,9 +1,9 @@
 ---
-name: skill-creator-v2
-description: Create high-quality agent skills using a principle-driven approach. Use this when you need to create a new skill or improve an existing one, focusing on expertise transfer rather than mechanical instructions. This skill emphasizes research, synthesis, critique, and the four core truths of skill design.
+name: expertise-distiller
+description: Distil domain expertise into high-quality agent skills using a principle-driven approach. Use this when you need to create a new skill or improve an existing one, focusing on expertise transfer rather than mechanical instructions. This skill emphasises research, synthesis, critique, and the four core truths of skill design.
 ---
 
-# Skill Creator v2: Principle-Driven Skill Design
+# Expertise Distiller: Principle-Driven Skill Design
 
 This skill guides you through creating skills that **transfer expertise**, not just list instructions.
 
