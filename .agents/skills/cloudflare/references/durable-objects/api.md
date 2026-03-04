@@ -8,145 +8,180 @@ import { DurableObject } from "cloudflare:workers";
 export class MyDO extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    // Initialize storage/run migrations before any requests
-    ctx.blockConcurrencyWhile(async () => {
-      await this.migrate();
-    });
+    // Runs on EVERY wake - keep light!
   }
-  async myMethod(arg: string): Promise<string> { return arg; }
-  async alarm() { }
-  async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) { }
-}
-```
-
-## Concurrency Model
-
-### Input/Output Gates
-
-DOs are single-threaded but async/await allows request interleaving. The runtime uses **gates** to prevent data races:
-
-**Input gates** block new events while synchronous JS executes. Awaiting async ops opens the gate, allowing interleaving. Storage operations provide special protection.
-
-**Output gates** hold outgoing network messages until pending storage writes complete—clients never see confirmation of unpersisted data.
-
-### Write Coalescing
-
-Multiple storage writes without intervening `await` are automatically batched into a single atomic transaction:
-
-```typescript
-async transfer(fromId: string, toId: string, amount: number) {
-  // All three writes commit together atomically
-  this.ctx.storage.sql.exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", amount, fromId);
-  this.ctx.storage.sql.exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", amount, toId);
-  this.ctx.storage.sql.exec("INSERT INTO transfers (from_id, to_id, amount) VALUES (?, ?, ?)", fromId, toId, amount);
-}
-```
-
-### blockConcurrencyWhile()
-
-Guarantees no other events process until callback completes. **Use sparingly**—only for initialization/migrations.
-
-```typescript
-constructor(ctx: DurableObjectState, env: Env) {
-  super(ctx, env);
-  ctx.blockConcurrencyWhile(async () => {
-    const version = this.ctx.storage.sql.exec<{ version: number }>("PRAGMA user_version").one()?.version ?? 0;
-    if (version < 1) {
-      this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS data (...); PRAGMA user_version = 1;`);
-    }
-  });
-}
-```
-
-**Anti-pattern**: Using `blockConcurrencyWhile()` on every request or across I/O (fetch, KV, R2) severely degrades throughput. For regular requests, rely on input/output gates and write coalescing.
-
-### Optimistic Locking (Non-Storage I/O)
-
-Input gates only protect during storage ops. External I/O like `fetch()` allows interleaving. Use check-and-set:
-
-```typescript
-async updateFromExternal(key: string) {
-  const version = this.ctx.storage.sql.exec<{ v: number }>("SELECT version as v FROM data WHERE key = ?", key).one()?.v;
-  const externalData = await fetch("https://api.example.com/data");  // Other requests can interleave here
-  const newVersion = this.ctx.storage.sql.exec<{ v: number }>("SELECT version as v FROM data WHERE key = ?", key).one()?.v;
   
-  if (version !== newVersion) throw new Error("Concurrent modification");
-  this.ctx.storage.sql.exec("UPDATE data SET value = ?, version = version + 1 WHERE key = ?", await externalData.text(), key);
+  // RPC methods (called directly from worker)
+  async myMethod(arg: string): Promise<string> { return arg; }
+  
+  // fetch handler (legacy/HTTP semantics)
+  async fetch(req: Request): Promise<Response> { /* ... */ }
+  
+  // Lifecycle handlers
+  async alarm() { /* alarm fired */ }
+  async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) { /* ... */ }
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) { /* ... */ }
+  async webSocketError(ws: WebSocket, error: unknown) { /* ... */ }
 }
 ```
 
-## SQLite Storage
+## DurableObjectState Context Methods
+
+### Concurrency Control
 
 ```typescript
-// Query
-const cursor = this.ctx.storage.sql.exec("SELECT * FROM users WHERE age > ?", 18);
-cursor.toArray()          // All rows
-cursor.one()              // 1 row or throw
-cursor.raw().toArray()    // [[1, 'Alice']]
-cursor.rowsRead, cursor.rowsWritten, cursor.columnNames
-this.ctx.storage.sql.databaseSize
+// Complete work after response sent (e.g., cleanup, logging)
+this.ctx.waitUntil(promise: Promise<any>): void
 
-// Schema
-this.ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)");
+// Critical section - blocks all other requests until complete
+await this.ctx.blockConcurrencyWhile(async () => {
+  // No other requests processed during this block
+  // Use for initialization or critical operations
+})
 ```
 
-## KV Storage
+**When to use:**
+- `waitUntil()`: Background cleanup, logging, non-critical work after response
+- `blockConcurrencyWhile()`: First-time init, schema migration, critical state setup
+
+### Lifecycle
 
 ```typescript
-// Sync (SQLite only)
-this.ctx.storage.kv.get/put/delete("key", value)
-this.ctx.storage.kv.list({ prefix: "user:" })
-
-// Async
-await this.ctx.storage.get/put/delete("key", value)
-await this.ctx.storage.put({ k1: "a", k2: "b" })  // Batch 128 max
-await this.ctx.storage.list({ prefix: "user:", start: "user:100", limit: 50 })
-await this.ctx.storage.deleteAll()
+this.ctx.id              // DurableObjectId of this instance
+this.ctx.abort()         // Force eviction (use after PITR restore to reload state)
 ```
 
-## Transactions
+### Storage Access
 
 ```typescript
-// Sync
-this.ctx.storage.transactionSync(() => { /* SQL ops */ });
-
-// Async
-await this.ctx.storage.transaction(async (txn) => {
-  await txn.get/put/delete("key", value);  // Throw to rollback
-});
+this.ctx.storage.sql     // SQLite API (recommended)
+this.ctx.storage.kv      // Sync KV API (SQLite DOs only)
+this.ctx.storage         // Async KV API (legacy/KV-only DOs)
 ```
 
-## Point-in-Time Recovery
+See **[DO Storage](../do-storage/README.md)** for complete storage API reference.
+
+### WebSocket Management
 
 ```typescript
-await this.ctx.storage.getCurrentBookmark()
-await this.ctx.storage.getBookmarkForTime(Date.now() - 86400000)
-await this.ctx.storage.onNextSessionRestoreBookmark(bookmark)  // Call ctx.abort() after
+this.ctx.acceptWebSocket(ws: WebSocket, tags?: string[])  // Enable hibernation
+this.ctx.getWebSockets(tag?: string): WebSocket[]         // Get by tag or all
+this.ctx.getTags(ws: WebSocket): string[]                 // Get tags for connection
+```
+
+### Alarms
+
+```typescript
+await this.ctx.storage.setAlarm(timestamp: number | Date)  // Schedule (overwrites existing)
+await this.ctx.storage.getAlarm(): number | null           // Get next alarm time
+await this.ctx.storage.deleteAlarm(): void                 // Cancel alarm
+```
+
+**Limit:** 1 alarm per DO. Use queue pattern for multiple events (see [Patterns](./patterns.md)).
+
+## Storage APIs
+
+For detailed storage documentation including SQLite queries, KV operations, transactions, and Point-in-Time Recovery, see **[DO Storage](../do-storage/README.md)**.
+
+Quick reference:
+
+```typescript
+// SQLite (recommended)
+this.ctx.storage.sql.exec("SELECT * FROM users WHERE id = ?", userId).one()
+
+// Sync KV (SQLite DOs only)
+this.ctx.storage.kv.get("key")
+
+// Async KV (legacy)
+await this.ctx.storage.get("key")
 ```
 
 ## Alarms
 
+Schedule future work that survives eviction:
+
 ```typescript
-await this.ctx.storage.setAlarm(Date.now() + 3600000)
-await this.ctx.storage.getAlarm()
+// Set alarm (overwrites any existing alarm)
+await this.ctx.storage.setAlarm(Date.now() + 3600000)  // 1 hour from now
+await this.ctx.storage.setAlarm(new Date("2026-02-01"))  // Absolute time
+
+// Check next alarm
+const nextRun = await this.ctx.storage.getAlarm()  // null if none
+
+// Cancel alarm
 await this.ctx.storage.deleteAlarm()
-async alarm() { /* runs when fires */ }
+
+// Handler called when alarm fires
+async alarm() {
+  // Runs once alarm triggers
+  // DO wakes from hibernation if needed
+  // Use for cleanup, notifications, scheduled tasks
+}
 ```
 
-## WebSockets
+**Limitations:**
+- 1 alarm per DO maximum
+- Overwrites previous alarm when set
+- Use queue pattern for multiple scheduled events (see [Patterns](./patterns.md))
+
+**Reliability:**
+- Alarms survive DO eviction/restart
+- Cloudflare retries failed alarms automatically
+- Not guaranteed exactly-once (handle idempotently)
+
+## WebSocket Hibernation
+
+Hibernation allows DOs with open WebSocket connections to consume zero compute/memory until message arrives.
 
 ```typescript
 async fetch(req: Request): Promise<Response> {
   const [client, server] = Object.values(new WebSocketPair());
-  this.ctx.acceptWebSocket(server, ["room:123"]);
-  server.serializeAttachment({ userId: "abc" });
+  this.ctx.acceptWebSocket(server, ["room:123"]);  // Tags for filtering
+  server.serializeAttachment({ userId: "abc" });    // Persisted metadata
   return new Response(null, { status: 101, webSocket: client });
 }
 
+// Called when message arrives (DO wakes from hibernation)
 async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) {
-  const data = ws.deserializeAttachment();
-  for (const c of this.ctx.getWebSockets()) c.send(msg);
+  const data = ws.deserializeAttachment();          // Retrieve metadata
+  for (const c of this.ctx.getWebSockets("room:123")) c.send(msg);
 }
 
-// Management: getWebSockets(), getTags(ws), ws.send/close()
+// Called on close (optional handler)
+async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+  // Cleanup logic, remove from lists, etc.
+}
+
+// Called on error (optional handler)
+async webSocketError(ws: WebSocket, error: unknown) {
+  console.error("WebSocket error:", error);
+  // Handle error, close connection, etc.
+}
 ```
+
+**Key concepts:**
+- **Auto-hibernation:** DO hibernates when no active requests/alarms
+- **Zero cost:** Hibernated DOs incur no charges while preserving connections
+- **Memory cleared:** All in-memory state lost on hibernation
+- **Attachment persistence:** Use `serializeAttachment()` for per-connection metadata that survives hibernation
+- **Tags for filtering:** Group connections by room/channel/user for targeted broadcasts
+
+**Handler lifecycle:**
+- `webSocketMessage`: DO wakes, processes message, may hibernate after
+- `webSocketClose`: Called when client closes (optional - implement for cleanup)
+- `webSocketError`: Called on connection error (optional - implement for error handling)
+
+**Metadata persistence:**
+```typescript
+// Store connection metadata (survives hibernation)
+ws.serializeAttachment({ userId: "abc", room: "lobby" })
+
+// Retrieve after hibernation
+const { userId, room } = ws.deserializeAttachment()
+```
+
+## See Also
+
+- **[DO Storage](../do-storage/README.md)** - Complete storage API reference
+- **[Patterns](./patterns.md)** - Real-world usage patterns
+- **[Gotchas](./gotchas.md)** - Hibernation caveats and limits

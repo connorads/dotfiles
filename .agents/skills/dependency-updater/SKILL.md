@@ -1,11 +1,16 @@
 ---
 name: dependency-updater
 description: Smart dependency management for any language. Auto-detects project type, applies safe updates automatically, prompts for major versions, diagnoses and fixes dependency issues.
+license: MIT
+metadata:
+  version: 1.0.0
 ---
 
 # Dependency Updater
 
 Smart dependency management for any language with automatic detection and safe updates.
+
+---
 
 ## Quick Start
 
@@ -14,6 +19,8 @@ update my dependencies
 ```
 
 The skill auto-detects your project type and handles the rest.
+
+---
 
 ## Triggers
 
@@ -25,38 +32,23 @@ The skill auto-detects your project type and handles the rest.
 | Security audit | "audit dependencies for vulnerabilities" |
 | Diagnose deps | "diagnose dependency issues" |
 
+---
+
 ## Supported Languages
 
 | Language | Package File | Update Tool | Audit Tool |
 |----------|--------------|-------------|------------|
 | **Node.js** | package.json | `taze` | `npm audit` |
-| **Python** | requirements.txt, pyproject.toml | `pip-review` | `pip-audit` |
+| **Python** | requirements.txt, pyproject.toml | `pip-review` | `safety`, `pip-audit` |
 | **Go** | go.mod | `go get -u` | `govulncheck` |
 | **Rust** | Cargo.toml | `cargo update` | `cargo audit` |
 | **Ruby** | Gemfile | `bundle update` | `bundle audit` |
 | **Java** | pom.xml, build.gradle | `mvn versions:*` | `mvn dependency:*` |
 | **.NET** | *.csproj | `dotnet outdated` | `dotnet list package --vulnerable` |
 
-## Tool Installation (mise)
+---
 
-Install tools on-demand when needed:
-
-```bash
-# Node.js
-mise use npm:taze@latest
-
-# Python
-mise use pipx:pip-audit@latest
-mise use pipx:pip-review@latest
-
-# Go
-mise use go:golang.org/x/vuln/cmd/govulncheck@latest
-
-# Rust
-mise use cargo:cargo-audit@latest
-```
-
-## Update Strategy
+## Quick Reference
 
 | Update Type | Version Change | Action |
 |-------------|----------------|--------|
@@ -64,6 +56,8 @@ mise use cargo:cargo-audit@latest
 | **PATCH** | `x.y.z` → `x.y.Z` | Auto-apply |
 | **MINOR** | `x.y.z` → `x.Y.0` | Auto-apply |
 | **MAJOR** | `x.y.z` → `X.0.0` | Prompt user individually |
+
+---
 
 ## Workflow
 
@@ -82,7 +76,7 @@ User Request
 ├─────────────────────────────────────────────────────┤
 │ Step 3: SCAN FOR UPDATES                            │
 │ • Run language-specific outdated check              │
-│ • Categorise: MAJOR / MINOR / PATCH / Fixed         │
+│ • Categorize: MAJOR / MINOR / PATCH / Fixed         │
 ├─────────────────────────────────────────────────────┤
 │ Step 4: AUTO-APPLY SAFE UPDATES                     │
 │ • Apply MINOR and PATCH automatically               │
@@ -95,28 +89,33 @@ User Request
 │ Step 6: APPLY APPROVED MAJORS                       │
 │ • Update only approved packages                     │
 ├─────────────────────────────────────────────────────┤
-│ Step 7: FINALISE                                    │
+│ Step 7: FINALIZE                                    │
 │ • Run install command                               │
 │ • Run security audit                                │
 └─────────────────────────────────────────────────────┘
 ```
 
+---
+
 ## Commands by Language
 
-### Node.js (taze)
+### Node.js (npm/yarn/pnpm)
 
 ```bash
+# Check prerequisites
+scripts/check-tool.sh taze "npm install -g taze"
+
 # Scan for updates
 taze
 
 # Apply minor/patch
 taze minor --write
 
-# Apply specific majors (after user approval)
+# Apply specific majors
 taze major --write --include pkg1,pkg2
 
-# Monorepo
-taze -r
+# Monorepo support
+taze -r  # recursive
 
 # Security
 npm audit
@@ -129,7 +128,7 @@ npm audit fix
 # Check outdated
 pip list --outdated
 
-# Update all
+# Update all (careful!)
 pip-review --auto
 
 # Update specific
@@ -137,6 +136,7 @@ pip install --upgrade package-name
 
 # Security
 pip-audit
+safety check
 ```
 
 ### Go
@@ -148,7 +148,7 @@ go list -m -u all
 # Update all
 go get -u ./...
 
-# Tidy
+# Tidy up
 go mod tidy
 
 # Security
@@ -211,7 +211,11 @@ dotnet add package PackageName
 dotnet list package --vulnerable
 ```
 
+---
+
 ## Diagnosis Mode
+
+When dependencies are broken, run diagnosis:
 
 ### Common Issues & Fixes
 
@@ -219,7 +223,7 @@ dotnet list package --vulnerable
 |-------|----------|-----|
 | **Version Conflict** | "Cannot resolve dependency tree" | Clean install, use overrides/resolutions |
 | **Peer Dependency** | "Peer dependency not satisfied" | Install required peer version |
-| **Security Vuln** | audit shows issues | `npm audit fix` or manual update |
+| **Security Vuln** | `npm audit` shows issues | `npm audit fix` or manual update |
 | **Unused Deps** | Bloated bundle | Run `depcheck` (Node) or equivalent |
 | **Duplicate Deps** | Multiple versions installed | Run `npm dedupe` or equivalent |
 
@@ -242,6 +246,8 @@ rm go.sum
 go mod tidy
 ```
 
+---
+
 ## Security Audit
 
 Run security checks for any project:
@@ -249,9 +255,11 @@ Run security checks for any project:
 ```bash
 # Node.js
 npm audit
+npm audit --json | jq '.metadata.vulnerabilities'
 
 # Python
 pip-audit
+safety check
 
 # Go
 govulncheck ./...
@@ -275,6 +283,8 @@ dotnet list package --vulnerable
 | **Moderate** | Fix within 1 week |
 | **Low** | Fix in next release |
 
+---
+
 ## Anti-Patterns
 
 | Avoid | Why | Instead |
@@ -284,6 +294,8 @@ dotnet list package --vulnerable
 | Batch MAJOR prompts | Loses context | Prompt individually |
 | Skip lock file | Irreproducible builds | Always commit lock files |
 | Ignore security alerts | Vulnerabilities | Address by severity |
+
+---
 
 ## Verification Checklist
 
@@ -327,6 +339,16 @@ The skill auto-detects project type by scanning for package files:
 <details>
 <summary><strong>Deep Dive: Node.js with taze</strong></summary>
 
+### Prerequisites
+
+```bash
+# Install taze globally (recommended)
+npm install -g taze
+
+# Or use npx
+npx taze
+```
+
 ### Smart Update Flow
 
 ```bash
@@ -347,12 +369,13 @@ taze major --write --include approved-pkg1,approved-pkg2
 npm install  # or pnpm install / yarn
 ```
 
-### Auto-Approve Candidates
+### Auto-Approve List
 
-Some packages have frequent major bumps but are typically backward-compatible:
+Some packages have frequent major bumps but are backward-compatible:
 
 | Package | Reason |
 |---------|--------|
+| `lucide-react` | Icon library, majors are additive |
 | `@types/*` | Type definitions, usually safe |
 
 </details>
@@ -445,6 +468,15 @@ pip install -c constraints.txt -r requirements.txt
 ```
 
 </details>
+
+---
+
+## Script Reference
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/check-tool.sh` | Verify tool is installed |
+| `scripts/run-taze.sh` | Run taze with proper flags |
 
 ---
 

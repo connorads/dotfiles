@@ -1,89 +1,192 @@
 # Patterns & Use Cases
 
-## Chat
+## AI Chat w/Tools
+
+**Server (AIChatAgent):**
 
 ```ts
-export class ChatAgent extends Agent<Env, ChatState> {
-  initialState = {messages: [], participants: []};
-  async onConnect(conn: Connection, ctx: ConnectionContext) {
-    conn.accept();
-    const userId = ctx.request.headers.get("X-User-ID");
-    conn.setState({userId});
-    this.setState({...this.state, participants: [...this.state.participants, userId]});
-    conn.send(JSON.stringify({type: "history", messages: this.state.messages}));
-  }
-  async onMessage(conn: Connection, msg: WSMessage) {
-    const m = JSON.parse(msg as string);
-    if (m.type === "chat")
-      this.setState({...this.state, messages: [...this.state.messages, {userId: conn.state.userId, text: m.text, timestamp: Date.now()}]});
+import { AIChatAgent } from "agents";
+import { openai } from "@ai-sdk/openai";
+import { tool } from "ai";
+import { z } from "zod";
+
+export class ChatAgent extends AIChatAgent<Env> {
+  async onChatMessage(onFinish) {
+    return this.streamText({
+      model: openai("gpt-4"),
+      messages: this.messages, // Auto-managed
+      tools: {
+        getWeather: tool({
+          description: "Get current weather",
+          parameters: z.object({ city: z.string() }),
+          execute: async ({ city }) => `Weather in ${city}: Sunny, 72°F`
+        }),
+        searchDocs: tool({
+          description: "Search documentation",
+          parameters: z.object({ query: z.string() }),
+          execute: async ({ query }) => JSON.stringify(
+            this.sql<{title, content}>`SELECT title, content FROM docs WHERE content LIKE ${'%' + query + '%'}`
+          )
+        })
+      },
+      onFinish,
+    });
   }
 }
 ```
 
-## AI w/Tools
+**Client (React):**
 
-```ts
-import {tool} from "ai"; import {z} from "zod";
-const weatherTool = tool({description: "Get weather", inputSchema: z.object({city: z.string()}), execute: async ({city}) => `Weather: ${city} Sunny 72°F`});
-export class AIAgent extends Agent<Env> {
-  tools = {getWeather: weatherTool};
-  async onMessage(conn: Connection, msg: WSMessage) {
-    const m = JSON.parse(msg as string);
-    conn.send(JSON.stringify({response: await this.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {prompt: m.prompt, tools: this.tools})}));
-  }
+```tsx
+import { useAgent } from "agents/react";
+import { useAgentChat } from "agents/ai-react";
+
+function ChatUI() {
+  const agent = useAgent({ agent: "ChatAgent" });
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useAgentChat({ agent });
+  
+  return (
+    <div>
+      {messages.map(m => <div key={m.id}>{m.role}: {m.content}</div>)}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={handleInputChange} disabled={isLoading} />
+        <button disabled={isLoading}>Send</button>
+      </form>
+    </div>
+  );
 }
 ```
 
-## Streaming
+## Human-in-the-Loop (Client Tools)
+
+Server defines tool, client executes:
 
 ```ts
-import {OpenAI} from "openai";
-export class StreamingAgent extends Agent<Env> {
-  async onMessage(conn: Connection, msg: WSMessage) {
-    const m = JSON.parse(msg as string);
-    const stream = await new OpenAI({apiKey: this.env.OPENAI_API_KEY}).chat.completions.create({model: "gpt-4", messages: [{role: "user", content: m.prompt}], stream: true});
-    for await (const chunk of stream) { const c = chunk.choices[0]?.delta?.content || ""; if (c) conn.send(JSON.stringify({type: "chunk", content: c})); }
-    conn.send(JSON.stringify({type: "done"}));
+// Server
+export class ChatAgent extends AIChatAgent<Env> {
+  async onChatMessage(onFinish) {
+    return this.streamText({
+      model: openai("gpt-4"),
+      messages: this.messages,
+      tools: {
+        confirmAction: tool({
+          description: "Ask user to confirm",
+          parameters: z.object({ action: z.string() }),
+          execute: "client", // Client-side execution
+        })
+      },
+      onFinish,
+    });
   }
 }
+
+// Client
+const { messages } = useAgentChat({
+  agent,
+  onToolCall: async (toolCall) => {
+    if (toolCall.toolName === "confirmAction") {
+      return { confirmed: window.confirm(`Confirm: ${toolCall.args.action}?`) };
+    }
+  }
+});
 ```
 
-## Cron/Scheduled
+## Task Queue & Scheduled Processing
 
 ```ts
 export class TaskAgent extends Agent<Env> {
-  onStart() { this.schedule("0 0 * * *", "dailyCleanup", {}); this.schedule("0 * * * *", "syncData", {}); }
-  async dailyCleanup() { this.sql`DELETE FROM logs WHERE created_at < ${Date.now() - 86400000}`; }
-  async syncData() { const data = await (await fetch(this.env.API_URL)).json(); this.sql`INSERT INTO cache (data,updated_at) VALUES (${JSON.stringify(data)},${Date.now()})`; }
+  onStart() { 
+    this.schedule("*/5 * * * *", "processQueue", {}); // Every 5 min
+    this.schedule("0 0 * * *", "dailyCleanup", {}); // Daily
+  }
+  
+  async onRequest(req: Request) {
+    await this.queue("processVideo", { videoId: (await req.json()).videoId });
+    return Response.json({ queued: true });
+  }
+  
+  async processQueue() {
+    const tasks = await this.dequeue(10);
+    for (const task of tasks) {
+      if (task.name === "processVideo") await this.processVideo(task.data.videoId);
+    }
+  }
+  
+  async dailyCleanup() {
+    this.sql`DELETE FROM logs WHERE created_at < ${Date.now() - 86400000}`;
+  }
 }
 ```
 
-## Email+AI
+## Manual WebSocket Chat
+
+Custom protocols (non-AI):
+
+```ts
+export class ChatAgent extends Agent<Env> {
+  async onConnect(conn: Connection, ctx: ConnectionContext) {
+    conn.accept();
+    conn.setState({userId: ctx.request.headers.get("X-User-ID") || "anon"});
+    conn.send(JSON.stringify({type: "history", messages: this.state.messages}));
+  }
+  
+  async onMessage(conn: Connection, msg: WSMessage) {
+    const newMsg = {userId: conn.state.userId, text: JSON.parse(msg as string).text, timestamp: Date.now()};
+    this.setState({messages: [...this.state.messages, newMsg]});
+    this.connections.forEach(c => c.send(JSON.stringify(newMsg)));
+  }
+}
+```
+
+## Email Processing w/AI
 
 ```ts
 export class EmailAgent extends Agent<Env> {
   async onEmail(email: AgentEmail) {
-    const [text, from, subject] = [await email.text(), email.from, email.headers.get("subject")];
-    this.sql`INSERT INTO emails (from_addr,subject,body,received_at) VALUES (${from},${subject},${text},${Date.now()})`;
-    const r = await this.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {prompt: `Summarize: ${text}`});
-    this.setState({...this.state, lastEmail: {from, subject, summary: r}});
-    this.connections.forEach(c => c.send(JSON.stringify({type: "new_email", from, subject})));
+    const [text, from, subject] = [await email.text(), email.from, email.headers.get("subject") || ""];
+    this.sql`INSERT INTO emails (from_addr, subject, body) VALUES (${from}, ${subject}, ${text})`;
+    
+    const { text: summary } = await generateText({
+      model: openai("gpt-4o-mini"), prompt: `Summarize: ${subject}\n\n${text}`
+    });
+    
+    this.connections.forEach(c => c.send(JSON.stringify({type: "new_email", from, summary})));
+    if (summary.includes("urgent")) await this.schedule(0, "sendAutoReply", { to: from });
   }
 }
 ```
 
-## Game
+## Real-time Collaboration
 
 ```ts
-export class GameAgent extends Agent<Env, GameState> {
-  initialState = {players: [], score: 0, round: 1};
+export class GameAgent extends Agent<Env> {
+  initialState = { players: [], gameStarted: false };
+  
   async onConnect(conn: Connection, ctx: ConnectionContext) {
-    conn.accept(); const playerId = ctx.request.headers.get("X-Player-ID"); conn.setState({playerId});
-    this.setState({...this.state, players: [...this.state.players, {id: playerId, score: 0}]});
+    conn.accept();
+    const playerId = ctx.request.headers.get("X-Player-ID") || crypto.randomUUID();
+    conn.setState({ playerId });
+    
+    const newPlayer = { id: playerId, score: 0 };
+    this.setState({...this.state, players: [...this.state.players, newPlayer]});
+    this.connections.forEach(c => c.send(JSON.stringify({type: "player_joined", player: newPlayer})));
   }
+  
   async onMessage(conn: Connection, msg: WSMessage) {
     const m = JSON.parse(msg as string);
-    if (m.type === "move") this.setState({...this.state, players: this.state.players.map(p => p.id === conn.state.playerId ? {...p, score: p.score + m.points} : p)});
+    
+    if (m.type === "move") {
+      this.setState({
+        ...this.state,
+        players: this.state.players.map(p => p.id === conn.state.playerId ? {...p, score: p.score + m.points} : p)
+      });
+      this.connections.forEach(c => c.send(JSON.stringify({type: "player_moved", playerId: conn.state.playerId})));
+    }
+    
+    if (m.type === "start" && this.state.players.length >= 2) {
+      this.setState({...this.state, gameStarted: true});
+      this.connections.forEach(c => c.send(JSON.stringify({type: "game_started"})));
+    }
   }
 }
 ```

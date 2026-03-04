@@ -15,8 +15,8 @@ await step.sleep('description', 5000); // ms
 await step.sleepUntil('description', Date.parse('2024-12-31'));
 
 // step.waitForEvent()
-const data = await step.waitForEvent<PayloadType>('wait', {type: 'webhook-type', timeout: '24h'}); // Default 24h, max 365d
-try { const event = await step.waitForEvent('wait', { type: 'approval', timeout: '1h' }); } catch (e) { /* Timeout */ }
+const data = await step.waitForEvent<PayloadType>('wait', {event: 'webhook-type', timeout: '24h'}); // Default 24h, max 365d
+try { const event = await step.waitForEvent('wait', { event: 'approval', timeout: '1h' }); } catch (e) { /* Timeout */ }
 ```
 
 ## Instance Management
@@ -24,6 +24,13 @@ try { const event = await step.waitForEvent('wait', { type: 'approval', timeout:
 ```typescript
 // Create single
 const instance = await env.MY_WORKFLOW.create({id: crypto.randomUUID(), params: { userId: 'user123' }}); // id optional, auto-generated if omitted
+
+// Create with custom retention (default: 3 days free, 30 days paid)
+const instance = await env.MY_WORKFLOW.create({
+  id: crypto.randomUUID(),
+  params: { userId: 'user123' },
+  retention: '30 days'  // Override default retention period
+});
 
 // Batch (max 100, idempotent: skips existing IDs)
 const instances = await env.MY_WORKFLOW.createBatch([{id: 'user1', params: {name: 'John'}}, {id: 'user2', params: {name: 'Jane'}}]);
@@ -62,7 +69,7 @@ export class ParentWorkflow extends WorkflowEntrypoint<Env, Params> {
 ## Error Handling
 
 ```typescript
-import { NonRetryableError } from 'cloudflare:workflows';
+import { NonRetryableError } from 'cloudflare:workers';
 
 // NonRetryableError
 await step.do('validate', async () => {
@@ -82,6 +89,72 @@ await step.do('charge', async () => {
   if (sub.charged) return sub; // Already done
   return await fetch(`https://api/subscriptions/${id}`, {method: 'POST', body: JSON.stringify({ amount: 10.0 })}).then(r => r.json());
 });
+```
+
+## Type Constraints
+
+Params and step returns must be `Rpc.Serializable<T>`:
+
+```typescript
+// ✅ Valid types
+type ValidParams = {
+  userId: string;
+  count: number;
+  tags: string[];
+  metadata: Record<string, unknown>;
+};
+
+// ❌ Invalid types
+type InvalidParams = {
+  callback: () => void;      // Functions not serializable
+  symbol: symbol;            // Symbols not serializable
+  circular: any;             // Circular references not allowed
+};
+
+// Step returns follow same rules
+const result = await step.do('fetch', async () => {
+  return { userId: '123', data: [1, 2, 3] }; // ✅ Plain object
+});
+```
+
+## Sleep & Scheduling
+
+```typescript
+// Relative
+await step.sleep('wait 1 hour', '1 hour');
+await step.sleep('wait 30 days', '30 days');
+await step.sleep('wait 5s', 5000); // ms
+
+// Absolute
+await step.sleepUntil('launch date', Date.parse('24 Oct 2024 13:00:00 UTC'));
+await step.sleepUntil('deadline', new Date('2024-12-31T23:59:59Z'));
+```
+
+Units: second, minute, hour, day, week, month, year. Max: 365 days.
+Sleeping instances don't count toward concurrency.
+
+## Parameters
+
+**Pass from Worker:**
+```typescript
+const instance = await env.MY_WORKFLOW.create({
+  id: crypto.randomUUID(),
+  params: { userId: 'user123', email: 'user@example.com' }
+});
+```
+
+**Access in Workflow:**
+```typescript
+async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
+  const userId = event.payload.userId;
+  const instanceId = event.instanceId;
+  const createdAt = event.timestamp;
+}
+```
+
+**CLI Trigger:**
+```bash
+npx wrangler workflows trigger my-workflow '{"userId":"user123"}'
 ```
 
 ## Wrangler CLI
@@ -107,19 +180,6 @@ curl "https://api.cloudflare.com/client/v4/accounts/{account_id}/workflows/{work
 
 # Send Event
 curl -X POST "https://api.cloudflare.com/client/v4/accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events" -H "Authorization: Bearer {token}" -d '{"type":"approval","payload":{"approved":true}}'
-```
-
-## Bindings
-
-```typescript
-type Env = {MY_WORKFLOW: Workflow; KV: KVNamespace; DB: D1Database; BUCKET: R2Bucket; AI: Ai; VECTORIZE: VectorizeIndex;};
-
-await step.do('use bindings', async () => {
-  const kv = await this.env.KV.get('key');
-  const db = await this.env.DB.prepare('SELECT * FROM users').first();
-  const file = await this.env.BUCKET.get('file.txt');
-  const ai = await this.env.AI.run('@cf/meta/llama-2-7b-chat-int8', { prompt: 'Hi' });
-});
 ```
 
 See: [configuration.md](./configuration.md), [patterns.md](./patterns.md)

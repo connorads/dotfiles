@@ -19,10 +19,32 @@ const stream = await env.MY_KV.get("large-file", "stream");
 const value = await env.MY_KV.get("key", { type: "text", cacheTtl: 300 });
 
 // Bulk get (max 100 keys, counts as 1 operation)
-const values = await env.MY_KV.get(["user:1", "user:2", "user:3"]);
+const keys = ["user:1", "user:2", "user:3", "missing:key"];
+const results = await env.MY_KV.get(keys);
 // Returns Map<string, string | null>
 
+console.log(results.get("user:1"));     // "John" (if exists)
+console.log(results.get("missing:key")); // null
+
+// Process results with null handling
+for (const [key, value] of results) {
+  if (value !== null) {
+    // Handle found keys
+    console.log(`${key}: ${value}`);
+  }
+}
+
+// TypeScript with generics (type-safe JSON parsing)
+interface UserProfile { name: string; email: string; }
+const profile = await env.USERS.get<UserProfile>("user:123", "json");
+// profile is typed as UserProfile | null
+if (profile) {
+  console.log(profile.name); // Type-safe access
+}
+
+// Bulk get with type
 const configs = await env.MY_KV.get<Config>(["config:app", "config:feature"], "json");
+// Map<string, Config | null>
 ```
 
 ## Write Operations
@@ -63,12 +85,22 @@ if (result.value && result.metadata) {
   const { version, lastUpdated } = result.metadata;
 }
 
-// Multiple keys
-const results = await env.MY_KV.getWithMetadata(["key1", "key2"]);
-// Returns Map<string, { value, metadata }>
+// Multiple keys (bulk)
+const keys = ["key1", "key2", "key3"];
+const results = await env.MY_KV.getWithMetadata(keys);
+// Returns Map<string, { value, metadata, cacheStatus? }>
+
+for (const [key, result] of results) {
+  if (result.value) {
+    console.log(`${key}: ${result.value}`);
+    console.log(`Metadata: ${JSON.stringify(result.metadata)}`);
+    // cacheStatus field indicates cache hit/miss (when available)
+  }
+}
 
 // With type
 const result = await env.MY_KV.getWithMetadata<UserData>("user:123", "json");
+// result: { value: UserData | null, metadata: any | null, cacheStatus?: string }
 ```
 
 ## Delete Operations
@@ -97,18 +129,32 @@ do {
 } while (!result.list_complete);
 ```
 
-## Limits
+## Performance Considerations
 
-| Limit | Free | Paid |
-|-------|------|------|
-| Reads/day | 100,000 | Unlimited |
-| Writes/day | 1,000 | Unlimited |
-| Writes/second per key | 1 | 1 |
-| Operations per Worker | 1,000 | 1,000 |
-| Key size | 512 bytes | 512 bytes |
-| Value size | 25 MiB | 25 MiB |
-| Metadata size | 1024 bytes | 1024 bytes |
-| Min cacheTtl | 60s | 60s |
-| Bulk get max | 100 keys | 100 keys |
+### Type Selection
 
-**Note:** Bulk requests count as 1 operation against 1,000 limit.
+| Type | Use Case | Performance |
+|------|----------|-------------|
+| `stream` | Large values (>1MB) | Fastest - no buffering |
+| `arrayBuffer` | Binary data | Fast - single allocation |
+| `text` | String values | Medium |
+| `json` | Objects (parse overhead) | Slowest - parsing cost |
+
+### Parallel Reads
+
+```typescript
+// Efficient parallel reads with Promise.all()
+const [user, settings, cache] = await Promise.all([
+  env.USERS.get("user:123", "json"),
+  env.SETTINGS.get("config:app", "json"),
+  env.CACHE.get("data:latest")
+]);
+```
+
+## Error Handling
+
+- **Missing keys:** Return `null` (not an error)
+- **Rate limit (429):** Retry with exponential backoff (see gotchas.md)
+- **Response too large (413):** Values >25MB fail with 413 error
+
+See [gotchas.md](./gotchas.md) for detailed error patterns and solutions.

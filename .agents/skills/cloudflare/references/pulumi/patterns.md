@@ -72,66 +72,118 @@ const apiWorker = new cloudflare.WorkerScript("api", {
     accountId, name: "api-service", content: apiCode,
     serviceBindings: [{name: "AUTH", service: authWorker.name}],
 });
-// In worker: await env.AUTH.fetch("/verify", {...});
 ```
 
 ## Event-Driven Architecture
 
 ```typescript
 const eventQueue = new cloudflare.Queue("events", {accountId, name: "event-bus"});
-const producers = ["api", "webhook"].map(name =>
-    new cloudflare.WorkerScript(`${name}-producer`, {
-        accountId, name: `${name}-producer`, content: producerCode,
-        queueBindings: [{name: "EVENTS", queue: eventQueue.id}],
-    })
-);
-const consumers = ["email", "analytics"].map(name =>
-    new cloudflare.WorkerScript(`${name}-consumer`, {
-        accountId, name: `${name}-consumer`, content: consumerCode,
-        queueConsumers: [{queue: eventQueue.name, maxBatchSize: 10}],
-    })
-);
-```
-
-## CDN with Dynamic Content
-
-```typescript
-const staticBucket = new cloudflare.R2Bucket("static", {accountId, name: "static-assets"});
-const appWorker = new cloudflare.WorkerScript("app", {
-    accountId, name: "app-worker", content: appCode,
-    r2BucketBindings: [{name: "STATIC", bucketName: staticBucket.name}],
+const producer = new cloudflare.WorkerScript("producer", {
+    accountId, name: "api-producer", content: producerCode,
+    queueBindings: [{name: "EVENTS", queue: eventQueue.id}],
 });
-const route = new cloudflare.WorkerRoute("route", {zoneId, pattern: `${domain}/*`, scriptName: appWorker.name});
-```
-
-## Wrangler Integration
-
-```typescript
-// Match wrangler.toml bindings in Pulumi
-const worker = new cloudflare.WorkerScript("worker", {
-    accountId, name: "my-worker", content: code,
-    compatibilityDate: "2024-01-01", compatibilityFlags: ["nodejs_compat"],
-    kvNamespaceBindings: [{name: "MY_KV", namespaceId: kv.id}], // Must match wrangler.toml
+const consumer = new cloudflare.WorkerScript("consumer", {
+    accountId, name: "email-consumer", content: consumerCode,
+    queueConsumers: [{queue: eventQueue.name, maxBatchSize: 10}],
 });
 ```
 
-## Dynamic Worker Content
+## v6.x Versioned Deployments (Blue-Green/Canary)
+
+```typescript
+const worker = new cloudflare.Worker("api", {accountId, name: "api-worker"});
+const v1 = new cloudflare.WorkerVersion("v1", {accountId, workerId: worker.id, content: fs.readFileSync("./dist/v1.js", "utf8"), compatibilityDate: "2025-01-01"});
+const v2 = new cloudflare.WorkerVersion("v2", {accountId, workerId: worker.id, content: fs.readFileSync("./dist/v2.js", "utf8"), compatibilityDate: "2025-01-01"});
+
+// Gradual rollout: 10% v2, 90% v1
+const deployment = new cloudflare.WorkersDeployment("canary", {
+    accountId, workerId: worker.id,
+    versions: [{versionId: v2.id, percentage: 10}, {versionId: v1.id, percentage: 90}],
+    kvNamespaceBindings: [{name: "MY_KV", namespaceId: kv.id}],
+});
+```
+
+**Use:** Canary releases, A/B testing, blue-green. Most apps use `WorkerScript` (auto-versioning).
+
+## Wrangler.toml Generation (Bridge IaC with Local Dev)
+
+Generate wrangler.toml from Pulumi config to keep local dev in sync:
 
 ```typescript
 import * as command from "@pulumi/command";
-const build = new command.local.Command("build-worker", {create: "npm run build", dir: "./worker"});
-const workerContent = build.stdout.apply(() => fs.readFileSync("./worker/dist/index.js", "utf8"));
-const worker = new cloudflare.WorkerScript("worker", {accountId, name: "my-worker", content: workerContent}, {dependsOn: [build]});
+
+const workerConfig = {
+    name: "my-worker",
+    compatibilityDate: "2025-01-01",
+    compatibilityFlags: ["nodejs_compat"],
+};
+
+// Create resources
+const kv = new cloudflare.WorkersKvNamespace("kv", {accountId, title: "my-kv"});
+const db = new cloudflare.D1Database("db", {accountId, name: "my-db"});
+const bucket = new cloudflare.R2Bucket("bucket", {accountId, name: "my-bucket"});
+
+// Generate wrangler.toml after resources created
+const wranglerGen = new command.local.Command("gen-wrangler", {
+    create: pulumi.interpolate`cat > wrangler.toml <<EOF
+name = "${workerConfig.name}"
+main = "src/index.ts"
+compatibility_date = "${workerConfig.compatibilityDate}"
+compatibility_flags = ${JSON.stringify(workerConfig.compatibilityFlags)}
+
+[[kv_namespaces]]
+binding = "MY_KV"
+id = "${kv.id}"
+
+[[d1_databases]]
+binding = "DB"
+database_id = "${db.id}"
+database_name = "${db.name}"
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "${bucket.name}"
+EOF`,
+}, {dependsOn: [kv, db, bucket]});
+
+// Deploy worker after wrangler.toml generated
+const worker = new cloudflare.WorkerScript("worker", {
+    accountId, name: workerConfig.name, content: code,
+    compatibilityDate: workerConfig.compatibilityDate,
+    compatibilityFlags: workerConfig.compatibilityFlags,
+    kvNamespaceBindings: [{name: "MY_KV", namespaceId: kv.id}],
+    d1DatabaseBindings: [{name: "DB", databaseId: db.id}],
+    r2BucketBindings: [{name: "MY_BUCKET", bucketName: bucket.name}],
+}, {dependsOn: [wranglerGen]});
 ```
 
-## Conditional Resources
+**Benefits:**
+- `wrangler dev` uses same bindings as production
+- No config drift between Pulumi and local dev
+- Single source of truth (Pulumi config)
+
+**Alternative:** Read wrangler.toml in Pulumi (reverse direction) if wrangler is source of truth
+
+## Build + Deploy Pattern
 
 ```typescript
-const isProd = pulumi.getStack() === "prod";
-const analytics = isProd ? new cloudflare.WorkersKvNamespace("analytics", {accountId, title: "analytics"}) : undefined;
+import * as command from "@pulumi/command";
+const build = new command.local.Command("build", {create: "npm run build", dir: "./worker"});
 const worker = new cloudflare.WorkerScript("worker", {
-    accountId, name: "worker", content: code,
-    kvNamespaceBindings: analytics ? [{name: "ANALYTICS", namespaceId: analytics.id}] : [],
+    accountId, name: "my-worker",
+    content: build.stdout.apply(() => fs.readFileSync("./worker/dist/index.js", "utf8")),
+}, {dependsOn: [build]});
+```
+
+## Content SHA Pattern (Force Updates)
+
+Prevent false "no changes" detections:
+
+```typescript
+const version = Date.now().toString();
+const worker = new cloudflare.WorkerScript("worker", {
+    accountId, name: "my-worker", content: code,
+    plainTextBindings: [{name: "VERSION", text: version}], // Forces deployment
 });
 ```
 

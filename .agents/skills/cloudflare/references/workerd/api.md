@@ -6,31 +6,25 @@
 ```javascript
 export default {
   async fetch(request, env, ctx) {
-    // env: bindings, ctx: ExecutionContext
-    const value = await env.KV.get("key");
-    const response = await env.API.fetch(request);
-    
-    ctx.waitUntil(logRequest(request));  // Background task
+    const value = await env.KV.get("key");           // Bindings in env
+    const response = await env.API.fetch(request);   // Service binding
+    ctx.waitUntil(logRequest(request));              // Background task
     return new Response("OK");
   },
-  
-  async adminApi(request, env, ctx) {   // Named entrypoint
-    return new Response("Admin");
-  },
-  
-  async queue(batch, env, ctx) {        // Queue consumer
-    for (const msg of batch.messages) {
-      await processMessage(msg.body);
-    }
-  },
-  
-  async scheduled(event, env, ctx) {    // Cron
-    ctx.waitUntil(runTask(env));
-  }
+  async adminApi(request, env, ctx) { /* Named entrypoint */ },
+  async queue(batch, env, ctx) { /* Queue consumer */ },
+  async scheduled(event, env, ctx) { /* Cron handler */ }
 };
 ```
 
 ### TypeScript Types
+
+**Generate from wrangler.toml (Recommended):**
+```bash
+wrangler types  # Output: worker-configuration.d.ts
+```
+
+**Manual types:**
 ```typescript
 interface Env {
   API: Fetcher;
@@ -38,26 +32,33 @@ interface Env {
   STORAGE: R2Bucket;
   ROOMS: DurableObjectNamespace;
   API_KEY: string;
-  CONFIG: {apiUrl: string};
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const data = await env.CACHE.get("key");
-    return new Response(data);
+    return new Response(await env.CACHE.get("key"));
   }
 };
 ```
 
-### Service Worker Syntax
+**Setup:**
+```bash
+npm install -D @cloudflare/workers-types
+```
+
+```json
+// tsconfig.json
+{"compilerOptions": {"types": ["@cloudflare/workers-types"]}}
+```
+
+### Service Worker Syntax (Legacy)
 ```javascript
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
 
 async function handleRequest(request) {
-  // Bindings as globals
-  const value = await KV.get("key");
+  const value = await KV.get("key");  // Bindings as globals
   return new Response("OK");
 }
 ```
@@ -65,25 +66,15 @@ async function handleRequest(request) {
 ### Durable Objects
 ```javascript
 export class Room {
-  constructor(state, env) {
-    this.state = state;
-    this.env = env;
-  }
+  constructor(state, env) { this.state = state; this.env = env; }
   
   async fetch(request) {
     const url = new URL(request.url);
-    
-    if (url.pathname === "/state") {
-      const value = await this.state.storage.get("counter");
-      return new Response(value || "0");
-    }
-    
     if (url.pathname === "/increment") {
       const value = (await this.state.storage.get("counter")) || 0;
       await this.state.storage.put("counter", value + 1);
       return new Response(String(value + 1));
     }
-    
     return new Response("Not found", {status: 404});
   }
 }
@@ -91,19 +82,12 @@ export class Room {
 
 ### RPC Between Services
 ```javascript
-// Caller
-export default {
-  async fetch(request, env, ctx) {
-    const user = await env.AUTH.validateToken(request.headers.get("Authorization"));
-    return new Response(`Hello ${user.name}`);
-  }
-};
+// Caller: env.AUTH.validateToken(token) returns structured data
+const user = await env.AUTH.validateToken(request.headers.get("Authorization"));
 
-// Callee
+// Callee: export methods that return data
 export default {
-  async validateToken(token) {
-    return {id: 123, name: "Alice"};  // Return structured data
-  }
+  async validateToken(token) { return {id: 123, name: "Alice"}; }
 };
 ```
 
@@ -128,8 +112,39 @@ export default {
 ### Web Standards
 - `URL`, `URLSearchParams`
 - `Blob`, `File`, `FormData`
-- `WebSocket`, `EventSource` (SSE)
-- `HTMLRewriter`
+- `WebSocket`
+
+### Server-Sent Events (EventSource)
+```javascript
+// Server-side SSE
+const { readable, writable } = new TransformStream();
+const writer = writable.getWriter();
+writer.write(new TextEncoder().encode('data: Hello\n\n'));
+return new Response(readable, {headers: {'Content-Type': 'text/event-stream'}});
+```
+
+### HTMLRewriter (HTML Parsing/Transformation)
+```javascript
+const response = await fetch('https://example.com');
+return new HTMLRewriter()
+  .on('a[href]', {
+    element(el) {
+      el.setAttribute('href', `/proxy?url=${encodeURIComponent(el.getAttribute('href'))}`);
+    }
+  })
+  .on('script', { element(el) { el.remove(); } })
+  .transform(response);
+```
+
+### TCP Sockets (Experimental)
+```javascript
+const socket = await connect({ hostname: 'example.com', port: 80 });
+const writer = socket.writable.getWriter();
+await writer.write(new TextEncoder().encode('GET / HTTP/1.1\r\n\r\n'));
+const reader = socket.readable.getReader();
+const { value } = await reader.read();
+return new Response(value);
+```
 
 ### Performance
 - `performance.now()`, `performance.timeOrigin`
@@ -139,61 +154,32 @@ export default {
 - `console.log()`, `console.error()`, `console.warn()`
 
 ### Node.js Compat (`nodejs_compat` flag)
-- `node:*` imports
-- `process.env`, `Buffer`
-- Subset of Node.js APIs
+```javascript
+import { Buffer } from 'node:buffer';
+import { randomBytes } from 'node:crypto';
+
+const buf = Buffer.from('Hello');
+const random = randomBytes(16);
+```
+
+**Available:** `node:buffer`, `node:crypto`, `node:stream`, `node:util`, `node:events`, `node:assert`, `node:path`, `node:querystring`, `node:url`
+**NOT available:** `node:fs`, `node:http`, `node:net`, `node:child_process`
 
 ## CLI Commands
 
-### Serve
 ```bash
-workerd serve config.capnp [constantName]
-workerd serve config.capnp --socket-addr http=*:3000
-workerd serve config.capnp --socket-fd http=3       # Systemd
-workerd serve config.capnp --verbose
-workerd serve config.capnp --compat-date=2024-01-15
-```
-
-### Compile
-```bash
-workerd compile config.capnp constantName -o binary
-./binary
-```
-
-### Test
-```bash
-workerd test config.capnp
-workerd test config.capnp --test-only=my-test.js
+workerd serve config.capnp [constantName]          # Start server
+workerd serve config.capnp --socket-addr http=*:3000 --verbose
+workerd compile config.capnp constantName -o binary  # Compile to binary
+workerd test config.capnp [--test-only=test.js]    # Run tests
 ```
 
 ## Wrangler Integration
+
+Use Wrangler for development:
 ```bash
-export MINIFLARE_WORKERD_PATH="/path/to/workerd"
-wrangler dev
+wrangler dev     # Uses workerd internally
+wrangler types   # Generate TypeScript types from wrangler.toml
 ```
-
-**wrangler.toml**:
-```toml
-name = "my-worker"
-main = "src/index.js"
-compatibility_date = "2024-01-15"
-compatibility_flags = ["nodejs_compat"]
-
-[[kv_namespaces]]
-binding = "CACHE"
-id = "abc123"
-
-[[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "my-bucket"
-
-[[durable_objects.bindings]]
-name = "ROOMS"
-class_name = "Room"
-script_name = "my-worker"
-```
-
-## C++ Embedder API
-Not covered here. See [workerd source](https://github.com/cloudflare/workerd) for embedding runtime in C++ applications.
 
 See [patterns.md](./patterns.md) for usage examples, [configuration.md](./configuration.md) for config details.

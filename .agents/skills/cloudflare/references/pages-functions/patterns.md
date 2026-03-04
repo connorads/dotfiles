@@ -1,190 +1,137 @@
 # Common Patterns
 
-## Middleware
+## Background Tasks (waitUntil)
 
-```javascript
-// functions/_middleware.js - global
-// functions/users/_middleware.js - scoped to /users/*
-
-// Single
-export async function onRequest(context) {
-  try {
-    return await context.next();
-  } catch (err) {
-    return new Response(`${err.message}\n${err.stack}`, { status: 500 });
-  }
-}
-
-// Chained (runs in array order)
-export const onRequest = [errorHandling, authentication, logging];
-```
-
-**Best practices:**
-- First middleware = error handler (wraps others)
-- Use `context.next()` to pass control
-- Share state via `context.data`
-
-## Authentication
+Non-blocking tasks after response sent (analytics, cleanup, webhooks):
 
 ```typescript
-async function authMiddleware(context: EventContext<Env>) {
-  const token = context.request.headers.get('authorization')?.replace('Bearer ', '');
+export async function onRequest(ctx: EventContext<Env>) {
+  const res = Response.json({ success: true });
+  
+  ctx.waitUntil(ctx.env.KV.put('last-visit', new Date().toISOString()));
+  ctx.waitUntil(Promise.all([
+    ctx.env.ANALYTICS.writeDataPoint({ event: 'view' }),
+    fetch('https://webhook.site/...', { method: 'POST' })
+  ]));
+  
+  return res; // Returned immediately
+}
+```
+
+## Middleware & Auth
+
+```typescript
+// functions/_middleware.js (global) or functions/users/_middleware.js (scoped)
+export async function onRequest(ctx) {
+  try { return await ctx.next(); } 
+  catch (err) { return new Response(err.message, { status: 500 }); }
+}
+
+// Chained: export const onRequest = [errorHandler, auth, logger];
+
+// Auth
+async function auth(ctx: EventContext<Env>) {
+  const token = ctx.request.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) return new Response('Unauthorized', { status: 401 });
-  
-  const session = await context.env.KV.get(`session:${token}`);
-  if (!session) return new Response('Invalid token', { status: 401 });
-  
-  context.data.user = JSON.parse(session);
-  return context.next();
+  const session = await ctx.env.KV.get(`session:${token}`);
+  if (!session) return new Response('Invalid', { status: 401 });
+  ctx.data.user = JSON.parse(session);
+  return ctx.next();
 }
-
-export const onRequest = [authMiddleware];
 ```
 
-## CORS
+## CORS & Rate Limiting
 
 ```typescript
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
-};
-
-export async function onRequestOptions(context) {
-  return new Response(null, { headers: corsHeaders });
+// CORS middleware
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST' };
+export async function onRequestOptions() { return new Response(null, { headers: cors }); }
+export async function onRequest(ctx) {
+  const res = await ctx.next();
+  Object.entries(cors).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
 }
 
-export async function onRequest(context) {
-  const response = await context.next();
-  Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
-  return response;
+// Rate limiting (KV-based)
+async function rateLimit(ctx: EventContext<Env>) {
+  const ip = ctx.request.headers.get('CF-Connecting-IP') || 'unknown';
+  const count = parseInt(await ctx.env.KV.get(`rate:${ip}`) || '0');
+  if (count >= 100) return new Response('Rate limited', { status: 429 });
+  await ctx.env.KV.put(`rate:${ip}`, (count + 1).toString(), { expirationTtl: 3600 });
+  return ctx.next();
 }
 ```
 
-## Rate Limiting
+## Forms, Caching, Redirects
 
 ```typescript
-interface Env { RATE_LIMIT: KVNamespace; }
+// JSON & file upload
+export async function onRequestPost(ctx) {
+  const ct = ctx.request.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return Response.json(await ctx.request.json());
+  if (ct.includes('multipart/form-data')) {
+    const file = (await ctx.request.formData()).get('file') as File;
+    await ctx.env.BUCKET.put(file.name, file.stream());
+    return Response.json({ uploaded: file.name });
+  }
+}
 
-async function rateLimitMiddleware(context: EventContext<Env>) {
-  const clientIP = context.request.headers.get('CF-Connecting-IP') || 'unknown';
-  const key = `ratelimit:${clientIP}`;
-  const count = parseInt(await context.env.RATE_LIMIT.get(key) || '0');
-  
-  if (count >= 100) return new Response('Rate limit exceeded', { status: 429 });
-  
-  await context.env.RATE_LIMIT.put(key, (count + 1).toString(), { expirationTtl: 3600 });
-  return context.next();
+// Cache API
+export async function onRequest(ctx) {
+  let res = await caches.default.match(ctx.request);
+  if (!res) {
+    res = new Response('Data');
+    res.headers.set('Cache-Control', 'public, max-age=3600');
+    ctx.waitUntil(caches.default.put(ctx.request, res.clone()));
+  }
+  return res;
+}
+
+// Redirects
+export async function onRequest(ctx) {
+  if (new URL(ctx.request.url).pathname === '/old') {
+    return Response.redirect(new URL('/new', ctx.request.url), 301);
+  }
+  return ctx.next();
 }
 ```
 
-## Forms
+## Testing
 
+**Unit tests** (Vitest + cloudflare:test):
 ```typescript
-export async function onRequestPost(context) {
-  const contentType = context.request.headers.get('content-type') || '';
-  
-  if (contentType.includes('application/json')) {
-    const data = await context.request.json();
-    return Response.json({ received: data });
-  }
-  
-  if (contentType.includes('application/x-www-form-urlencoded')) {
-    const formData = await context.request.formData();
-    return Response.json({ received: Object.fromEntries(formData) });
-  }
-  
-  if (contentType.includes('multipart/form-data')) {
-    const formData = await context.request.formData();
-    const file = formData.get('file') as File;
-    if (file) {
-      await context.env.BUCKET.put(file.name, file.stream());
-      return Response.json({ uploaded: file.name });
-    }
-  }
-  
-  return new Response('Unsupported content type', { status: 400 });
-}
+import { env } from 'cloudflare:test';
+import { it, expect } from 'vitest';
+import { onRequest } from '../functions/api';
+
+it('returns JSON', async () => {
+  const req = new Request('http://localhost/api');
+  const ctx = { request: req, env, params: {}, data: {} } as EventContext;
+  const res = await onRequest(ctx);
+  expect(res.status).toBe(200);
+});
 ```
 
-## Caching
-
-```typescript
-export async function onRequest(context) {
-  const cache = caches.default;
-  const cacheKey = new Request(context.request.url, context.request);
-  
-  let response = await cache.match(cacheKey);
-  if (!response) {
-    response = new Response('Hello World');
-    response.headers.set('Cache-Control', 'public, max-age=3600');
-    context.waitUntil(cache.put(cacheKey, response.clone()));
-  }
-  
-  return response;
-}
-```
-
-## Redirects
-
-```typescript
-export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  
-  // Old paths
-  if (url.pathname === '/old-page') {
-    return Response.redirect(`${url.origin}/new-page`, 301);
-  }
-  
-  // Force HTTPS
-  if (url.protocol === 'http:') {
-    url.protocol = 'https:';
-    return Response.redirect(url.toString(), 301);
-  }
-  
-  return context.next();
-}
-```
+**Integration:** `wrangler pages dev` + Playwright/Cypress
 
 ## Advanced Mode (_worker.js)
 
-For complex routing, replace `/functions` with `_worker.js`:
+Use `_worker.js` for complex routing (replaces `/functions`):
 
 ```typescript
-interface Env {
-  ASSETS: Fetcher;
-  KV: KVNamespace;
-}
+interface Env { ASSETS: Fetcher; KV: KVNamespace; }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    
-    // Custom API
     if (url.pathname.startsWith('/api/')) {
-      return new Response('API response');
+      return Response.json({ data: await env.KV.get('key') });
     }
-    
-    // Static assets
-    return env.ASSETS.fetch(request);
+    return env.ASSETS.fetch(request); // Static files
   }
 } satisfies ExportedHandler<Env>;
 ```
 
-**When to use:**
-- Existing Worker too complex for file-based routing
-- Need full routing control
-- Framework-generated Workers (Next.js, SvelteKit)
+**When:** Existing Worker, framework-generated (Next.js/SvelteKit), custom routing logic
 
-**Important:**
-- Module Worker syntax required
-- `/functions` ignored
-- Manually call `env.ASSETS.fetch()` for static files
-- `passThroughOnException()` unavailable
-
-## See Also
-
-- [README.md](./README.md) - Overview
-- [api.md](./api.md) - EventContext, bindings
-- [gotchas.md](./gotchas.md) - Common issues
+**See also:** [api.md](./api.md) for `env.ASSETS.fetch()` | [gotchas.md](./gotchas.md) for debugging

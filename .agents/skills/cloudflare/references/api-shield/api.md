@@ -37,21 +37,36 @@ POST /token_validation                 # Create: {name,location:{header:"..."},j
 POST /jwt_validation_rules             # Rule: {name,hostname,token_validation_id,action:"block"}
 ```
 
-## Workers
+## Workers Integration
 
-API client:
+### Access JWT Claims
 ```js
 export default {
   async fetch(req, env) {
-    const jwt = await generateJWT(env.JWT_SECRET);
-    return fetch('https://api.example.com/data', {
-      headers: {'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json'}
-    });
+    // Access validated JWT payload
+    const jwt = req.cf?.jwt?.payload?.[env.JWT_CONFIG_ID]?.[0];
+    if (jwt) {
+      const userId = jwt.sub;
+      const role = jwt.role;
+    }
   }
 }
 ```
 
-Dynamic JWKS:
+### Access mTLS Info
+```js
+export default {
+  async fetch(req, env) {
+    const tls = req.cf?.tlsClientAuth;
+    if (tls?.certVerified === 'SUCCESS') {
+      const fingerprint = tls.certFingerprintSHA256;
+      // Authenticated client
+    }
+  }
+}
+```
+
+### Dynamic JWKS Update
 ```js
 export default {
   async scheduled(event, env) {
@@ -67,12 +82,60 @@ export default {
 
 ## Firewall Fields
 
+### Core Fields
 ```js
 cf.api_gateway.auth_id_present           // Session ID present
 cf.api_gateway.request_violates_schema   // Schema violation
 cf.api_gateway.fallthrough_triggered     // No endpoint match
-cf.api_gateway.jwt_claims_valid          // JWT valid
-lookup_json_string(http.request.jwt.claims["{config_id}"][0], "claim_name")
 cf.tls_client_auth.cert_verified         // mTLS cert valid
 cf.tls_client_auth.cert_fingerprint_sha256
 ```
+
+### JWT Validation (2026)
+```js
+// Modern validation syntax
+is_jwt_valid(http.request.jwt.payload["{config_id}"][0])
+
+// Legacy (still supported)
+cf.api_gateway.jwt_claims_valid
+
+// Extract claims
+lookup_json_string(http.request.jwt.payload["{config_id}"][0], "claim_name")
+```
+
+### Risk Labels (2026)
+```js
+// BOLA detection
+cf.api_gateway.cf-risk-bola-enumeration  // Sequential resource access detected
+cf.api_gateway.cf-risk-bola-pollution    // Parameter pollution detected
+
+// Authentication posture
+cf.api_gateway.cf-risk-missing-auth      // Endpoint lacks authentication
+cf.api_gateway.cf-risk-mixed-auth        // Inconsistent auth patterns
+```
+
+## BOLA Detection
+
+```bash
+GET /user_schemas/{schema_id}/bola             # Get BOLA config
+PATCH /user_schemas/{schema_id}/bola           # Update: {enabled:true}
+```
+
+## Auth Posture
+
+```bash
+GET /discovery/authentication_posture          # List unprotected endpoints
+```
+
+## GraphQL Protection
+
+```bash
+GET /settings/graphql_protection               # Get limits
+PUT /settings/graphql_protection               # Set: {max_depth,max_size}
+```
+
+## See Also
+
+- [configuration.md](configuration.md) - Setup guides for all features
+- [patterns.md](patterns.md) - Firewall rules and common patterns
+- [API Gateway API Docs](https://developers.cloudflare.com/api/resources/api_gateway/)

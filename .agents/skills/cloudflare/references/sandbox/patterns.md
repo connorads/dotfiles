@@ -1,21 +1,26 @@
 # Common Patterns
 
-## AI Code Execution Agent
+## AI Code Execution with Code Context
 
 ```typescript
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const { code } = await request.json();
+    const { code, variables } = await request.json();
     const sandbox = getSandbox(env.Sandbox, 'ai-agent');
     
-    // Execute user code safely
-    await sandbox.writeFile('/workspace/user_code.py', code);
-    const result = await sandbox.exec('python3 /workspace/user_code.py');
+    // Create context with persistent variables
+    const ctx = await sandbox.createCodeContext({
+      language: 'python',
+      variables: variables || {}
+    });
+    
+    // Execute with rich outputs (text, images, HTML)
+    const result = await ctx.runCode(code);
     
     return Response.json({
-      output: result.stdout,
-      error: result.stderr,
-      success: result.success
+      outputs: result.outputs,  // [{ type: 'text'|'image'|'html', content }]
+      error: result.error,
+      success: !result.error
     });
   }
 };
@@ -42,6 +47,82 @@ export default {
     }
     
     return new Response('Try /start');
+  }
+};
+```
+
+## WebSocket Real-Time Service
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const proxyResponse = await proxyToSandbox(request, env);
+    if (proxyResponse) return proxyResponse;
+
+    if (request.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
+      const sandbox = getSandbox(env.Sandbox, 'realtime-service');
+      return await sandbox.wsConnect(request, 8080);
+    }
+
+    // Non-WebSocket: expose preview URL
+    const sandbox = getSandbox(env.Sandbox, 'realtime-service');
+    const { url } = await sandbox.exposePort(8080, {
+      hostname: new URL(request.url).hostname
+    });
+    return Response.json({ wsUrl: url.replace('https', 'wss') });
+  }
+};
+```
+
+**Dockerfile**:
+```dockerfile
+FROM docker.io/cloudflare/sandbox:latest
+RUN npm install -g ws
+EXPOSE 8080
+```
+
+## Process Readiness Pattern
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const sandbox = getSandbox(env.Sandbox, 'app-server');
+    
+    // Start server
+    const process = await sandbox.startProcess(
+      'node server.js',
+      { processId: 'server' }
+    );
+    
+    // Wait for server to be ready
+    await process.waitForPort(8080);  // Wait for port listening
+    
+    // Now safe to expose
+    const { url } = await sandbox.exposePort(8080);
+    return Response.json({ url });
+  }
+};
+```
+
+## Persistent Data with Bucket Mounting
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const sandbox = getSandbox(env.Sandbox, 'data-processor');
+    
+    // Mount R2 bucket (production only)
+    await sandbox.mountBucket(env.DATA_BUCKET, '/data', {
+      readOnly: false
+    });
+    
+    // Process files in bucket
+    const result = await sandbox.exec('python3 /workspace/process.py', {
+      env: { DATA_DIR: '/data/input' }
+    });
+    
+    // Results written to /data/output are persisted in R2
+    return Response.json({ success: result.success });
   }
 };
 ```
@@ -77,64 +158,9 @@ export default {
 };
 ```
 
-## Data Analysis Platform
 
-```typescript
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const { notebook } = await request.json();
-    const sandbox = getSandbox(env.Sandbox, 'data-analysis');
-    
-    await sandbox.writeFile('/workspace/analysis.ipynb', JSON.stringify(notebook));
-    
-    const result = await sandbox.exec(
-      'jupyter nbconvert --to notebook --execute analysis.ipynb --output results.ipynb',
-      { cwd: '/workspace' }
-    );
-    
-    const output = await sandbox.readFile('/workspace/results.ipynb');
-    
-    return Response.json({
-      success: result.success,
-      notebook: JSON.parse(output.content)
-    });
-  }
-};
-```
 
-## Multi-Language Code Runner
 
-```typescript
-const languageConfigs = {
-  python: { cmd: 'python3', ext: 'py' },
-  javascript: { cmd: 'node', ext: 'js' },
-  typescript: { cmd: 'ts-node', ext: 'ts' },
-  bash: { cmd: 'bash', ext: 'sh' }
-};
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const { language, code } = await request.json();
-    const config = languageConfigs[language];
-    
-    if (!config) {
-      return Response.json({ error: 'Unsupported language' }, { status: 400 });
-    }
-    
-    const sandbox = getSandbox(env.Sandbox, 'code-runner');
-    const filename = `/workspace/script.${config.ext}`;
-    
-    await sandbox.writeFile(filename, code);
-    const result = await sandbox.exec(`${config.cmd} ${filename}`);
-    
-    return Response.json({
-      output: result.stdout,
-      error: result.stderr,
-      exitCode: result.exitCode
-    });
-  }
-};
-```
 
 ## Multi-Tenant Pattern
 
@@ -164,40 +190,12 @@ export default {
 };
 ```
 
-## Jupyter Integration
-
-**Dockerfile**:
-```dockerfile
-FROM docker.io/cloudflare/sandbox:latest
-RUN pip3 install --no-cache-dir jupyter-server ipykernel matplotlib pandas
-EXPOSE 8888
-```
-
-**Worker**:
-```typescript
-await sandbox.startProcess('jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser', {
-  processId: 'jupyter',
-  cwd: '/workspace'
-});
-
-const exposed = await sandbox.exposePort(8888, { name: 'jupyter' });
-return Response.json({ url: exposed.url });
-```
-
 ## Git Operations
 
 ```typescript
-// Clone
+// Clone repo
 await sandbox.exec('git clone https://github.com/user/repo.git /workspace/repo');
 
-// Clone specific branch
-await sandbox.exec('git clone -b main --single-branch https://github.com/user/repo.git /workspace/repo');
-
-// Authenticated clone
-const token = env.GITHUB_TOKEN;
-await sandbox.exec(`git clone https://${token}@github.com/user/private-repo.git`);
-
-// Git ops
-await sandbox.exec('git pull', { cwd: '/workspace/repo' });
-await sandbox.exec('git checkout -b feature', { cwd: '/workspace/repo' });
+// Authenticated (use env secrets)
+await sandbox.exec(`git clone https://${env.GITHUB_TOKEN}@github.com/user/repo.git`);
 ```

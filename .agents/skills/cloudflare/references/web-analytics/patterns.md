@@ -1,52 +1,91 @@
-## Common Use Cases
+# Web Analytics Patterns
 
-### 1. Performance Monitoring
+## Core Web Vitals Debugging
 
-Track Core Web Vitals to identify slow-loading elements:
+Dashboard → Core Web Vitals → Click metric → Debug View shows top 5 problematic elements.
+
+### LCP Fixes
+
+```html
+<!-- Priority hints -->
+<img src="hero.jpg" loading="eager" fetchpriority="high" />
+<link rel="preload" as="image" href="/hero.jpg" fetchpriority="high" />
+```
+
+### CLS Fixes
+
+```css
+/* Reserve space */
+.ad-container { min-height: 250px; }
+img { width: 400px; height: 300px; } /* Explicit dimensions */
+```
+
+### INP Fixes
 
 ```typescript
-// Debug poor LCP scores
-// 1. Enable Web Analytics
-// 2. Dashboard → Core Web Vitals → LCP section
-// 3. Debug View shows top 5 problematic elements
-// 4. Use element CSS selector in browser console:
-document.querySelector('.hero-image') // Example element
-// 5. Optimize identified elements (lazy loading, compression, etc.)
+// Debounce expensive operations
+const handleInput = debounce(search, 300);
+
+// Yield to main thread
+await task(); await new Promise(r => setTimeout(r, 0)); await task2();
+
+// Move to Web Worker for heavy computation
 ```
 
-### 2. Bot Traffic Filtering
+| Metric | Good | Poor |
+|--------|------|------|
+| LCP | ≤2.5s | >4s |
+| INP | ≤200ms | >500ms |
+| CLS | ≤0.1 | >0.25 |
 
-Exclude bots to see real user metrics:
+## GDPR Consent
 
-```
-Dashboard filters:
-- Exclude Bots: Yes
-→ Shows human traffic only
-```
-
-### 3. Multi-Site Analytics
-
-Track multiple properties under one account:
-
-```
-Proxied sites: Unlimited
-Non-proxied: Up to 10 sites
-
-View by dimension:
-- Site: example.com
-- Site: blog.example.com
-→ Compare traffic across properties
+```typescript
+// Load beacon only after consent
+const consent = localStorage.getItem('analytics-consent');
+if (consent === 'accepted') {
+  const script = document.createElement('script');
+  script.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+  script.setAttribute('data-cf-beacon', '{"token": "TOKEN", "spa": true}');
+  document.body.appendChild(script);
+}
 ```
 
-### 4. Geographic Analysis
+Alternative: Dashboard → "Enable, excluding visitor data in the EU"
 
-Understand visitor distribution:
+## SPA Navigation
 
-```
-Filter by:
-- Country: United States
-- Device type: Mobile
-→ Mobile traffic from US
+```html
+<!-- REQUIRED for React/Vue/etc routing -->
+<script data-cf-beacon='{"token": "TOKEN", "spa": true}' ...></script>
 ```
 
-### 5. 
+Without `spa: true`: only initial pageload tracked.
+
+## Staging/Production Separation
+
+```typescript
+// Use env-specific tokens
+const token = process.env.NEXT_PUBLIC_CF_ANALYTICS_TOKEN;
+// .env.production: production token
+// .env.staging: staging token (or empty to disable)
+```
+
+## Bot Filtering
+
+Dashboard → Filters → "Exclude Bot Traffic"
+
+Filters: Search crawlers, monitoring services, known bots.  
+Not filtered: Headless browsers (Playwright/Puppeteer).
+
+## Ad-Blocker Impact
+
+~25-40% of users may block `cloudflareinsights.com`. No official workaround.
+Dashboard shows minimum baseline; use server logs for complete picture.
+
+## Limitations
+
+- No UTM parameter tracking
+- No webhooks/alerts/API
+- No custom beacon domains
+- Max 10 non-proxied sites

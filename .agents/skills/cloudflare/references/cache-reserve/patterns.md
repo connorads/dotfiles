@@ -24,15 +24,11 @@ const configuration = {
 ```typescript
 // Origin response headers for Cache Reserve eligibility
 const originHeaders = {
-  'Cache-Control': 'public, max-age=86400', // 24 hours minimum 10 hours
-  'Content-Length': '1024000', // Required for eligibility
-  'Cache-Tag': 'images,product-123', // Optional: For purging
-  'ETag': '"abc123"', // Optional: Support revalidation
-  'Last-Modified': 'Wed, 21 Oct 2025 07:28:00 GMT',
-  
-  // Avoid: Prevents caching
-  // 'Set-Cookie': 'session=xyz',  // Remove or use private directive
-  // 'Vary': '*',                  // Not compatible
+  'Cache-Control': 'public, max-age=86400', // 24hr (minimum 10hr)
+  'Content-Length': '1024000', // Required
+  'Cache-Tag': 'images,product-123', // Optional: purging
+  'ETag': '"abc123"', // Optional: revalidation
+  // Avoid: 'Set-Cookie' and 'Vary: *' prevent caching
 };
 ```
 
@@ -67,65 +63,35 @@ const cacheRules = [
 ];
 ```
 
-### 4. Ensuring Cache Reserve Eligibility in Workers
+### 4. Making Assets Cache Reserve Eligible from Workers
+
+**Note**: This modifies response headers to meet eligibility criteria but does NOT directly control Cache Reserve storage (which is zone-level automatic).
 
 ```typescript
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const response = await fetch(request);
+    if (!response.ok) return response;
     
-    if (response.ok) {
-      const headers = new Headers(response.headers);
-      
-      // Set minimum 10-hour cache
-      headers.set('Cache-Control', 'public, max-age=36000');
-      
-      // Remove Set-Cookie if present (prevents caching)
-      headers.delete('Set-Cookie');
-      
-      // Ensure Content-Length is present
-      if (!headers.has('Content-Length')) {
-        const blob = await response.blob();
-        headers.set('Content-Length', blob.size.toString());
-        
-        return new Response(blob, {
-          status: response.status,
-          statusText: response.statusText,
-          headers
-        });
-      }
-      
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers
-      });
+    const headers = new Headers(response.headers);
+    headers.set('Cache-Control', 'public, max-age=36000'); // 10hr minimum
+    headers.delete('Set-Cookie'); // Blocks caching
+    
+    // Ensure Content-Length present
+    if (!headers.has('Content-Length')) {
+      const blob = await response.blob();
+      headers.set('Content-Length', blob.size.toString());
+      return new Response(blob, { status: response.status, headers });
     }
     
-    return response;
+    return new Response(response.body, { status: response.status, headers });
   }
 };
 ```
 
 ### 5. Hostname Best Practices
 
-```typescript
-// ✅ CORRECT: Use Worker's hostname for efficient caching
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    return await fetch(request); // Keep the Worker's hostname
-  }
-};
-
-// ❌ WRONG: Overriding hostname causes unnecessary DNS lookups
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    url.hostname = 'different-host.com'; // Avoid this!
-    return await fetch(url.toString());
-  }
-};
-```
+Use Worker's hostname for efficient caching - avoid overriding hostname unnecessarily.
 
 ## Architecture Patterns
 
@@ -133,22 +99,17 @@ export default {
 
 ```typescript
 // Optimal: L1 (visitor) → L2 (region) → L3 (Cache Reserve) → Origin
-// Each miss backfills all upstream layers
-
-// Immutable asset optimization with content hashing
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const isImmutable = /\.[a-f0-9]{8,}\.(js|css|jpg|png|woff2)$/.test(url.pathname);
-    
     const response = await fetch(request);
     
     if (isImmutable) {
       const headers = new Headers(response.headers);
-      headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // 1 year
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
       return new Response(response.body, { status: response.status, headers });
     }
-    
     return response;
   }
 };
@@ -156,21 +117,77 @@ export default {
 
 ## Cost Optimization
 
+### Cost Calculator
+
 ```typescript
-// Typical savings: 50-80% reduction in origin egress
-// Origin cost (AWS: $0.09/GB) vs Cache Reserve ($0.015/GB-month + $0.36/M reads)
+interface CacheReserveEstimate {
+  avgAssetSizeGB: number;
+  uniqueAssets: number;
+  monthlyReads: number;
+  monthlyWrites: number;
+  originEgressCostPerGB: number; // e.g., AWS: $0.09/GB
+}
 
-// 1. Set appropriate TTLs
-const optimizeTTL = {
-  tooShort: 3600,    // 1 hour - not eligible
-  optimal: 86400,    // 24 hours - reduces rewrites
-  tooLong: 2592000   // 30 days - use cautiously
-};
+function estimateMonthlyCost(input: CacheReserveEstimate) {
+  // Cache Reserve pricing
+  const storageCostPerGBMonth = 0.015;
+  const classAPerMillion = 4.50; // writes
+  const classBPerMillion = 0.36; // reads
+  
+  // Calculate Cache Reserve costs
+  const totalStorageGB = input.avgAssetSizeGB * input.uniqueAssets;
+  const storageCost = totalStorageGB * storageCostPerGBMonth;
+  const writeCost = (input.monthlyWrites / 1_000_000) * classAPerMillion;
+  const readCost = (input.monthlyReads / 1_000_000) * classBPerMillion;
+  
+  const cacheReserveCost = storageCost + writeCost + readCost;
+  
+  // Calculate origin egress cost (what you'd pay without Cache Reserve)
+  const totalTrafficGB = (input.monthlyReads * input.avgAssetSizeGB);
+  const originEgressCost = totalTrafficGB * input.originEgressCostPerGB;
+  
+  // Savings calculation
+  const savings = originEgressCost - cacheReserveCost;
+  const savingsPercent = ((savings / originEgressCost) * 100).toFixed(1);
+  
+  return {
+    cacheReserveCost: `$${cacheReserveCost.toFixed(2)}`,
+    originEgressCost: `$${originEgressCost.toFixed(2)}`,
+    monthlySavings: `$${savings.toFixed(2)}`,
+    savingsPercent: `${savingsPercent}%`,
+    breakdown: {
+      storage: `$${storageCost.toFixed(2)}`,
+      writes: `$${writeCost.toFixed(2)}`,
+      reads: `$${readCost.toFixed(2)}`,
+    }
+  };
+}
 
-// 2. Cache high-value, stable assets: images, media, fonts, archives
-// 3. Exclude frequently changing: /api/, user-specific, JSON data
-// 4. Note: Cache Reserve requests uncompressed from origin, compresses for visitors
+// Example: Media library
+const mediaLibrary = estimateMonthlyCost({
+  avgAssetSizeGB: 0.005, // 5MB images
+  uniqueAssets: 10_000,
+  monthlyReads: 5_000_000,
+  monthlyWrites: 50_000,
+  originEgressCostPerGB: 0.09, // AWS S3
+});
+
+console.log(mediaLibrary);
+// {
+//   cacheReserveCost: "$9.98",
+//   originEgressCost: "$25.00",
+//   monthlySavings: "$15.02",
+//   savingsPercent: "60.1%",
+//   breakdown: { storage: "$0.75", writes: "$0.23", reads: "$9.00" }
+// }
 ```
+
+### Optimization Guidelines
+
+- **Set appropriate TTLs**: 10hr minimum, 24hr+ optimal for stable content, 30d max cautiously
+- **Cache high-value stable assets**: Images, media, fonts, archives, documentation
+- **Exclude frequently changing**: APIs, user-specific content, real-time data
+- **Compression note**: Cache Reserve fetches uncompressed from origin, serves compressed to visitors - factor in origin egress costs
 
 ## See Also
 

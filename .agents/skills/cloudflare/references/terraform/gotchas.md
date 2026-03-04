@@ -2,189 +2,132 @@
 
 Common issues, security considerations, and best practices.
 
-## Common Errors
+## State Drift Issues
 
-### "Error: couldn't find resource"
+Some resources have known state drift. Add lifecycle blocks to prevent perpetual diffs:
 
-**Cause**: Resource deleted outside Terraform  
-**Solution**:
-```bash
-terraform import cloudflare_zone.example <zone-id>
-# Or remove from state:
-terraform state rm cloudflare_zone.example
-```
-
-### "409 Conflict" on worker deployment
-
-**Cause**: Worker deployed by both Terraform and wrangler  
-**Solution**: Choose one deployment method. If using Terraform, remove wrangler deployments.
-
-### DNS record already exists
-
-**Cause**: Existing record not imported into Terraform  
-**Solution**:
-```bash
-# Find record ID in Cloudflare dashboard
-terraform import cloudflare_dns_record.example <zone-id>/<record-id>
-```
-
-### "Invalid provider configuration"
-
-**Cause**: API token missing or invalid  
-**Solution**:
-```bash
-export CLOUDFLARE_API_TOKEN="your-token"
-# Or check token permissions in dashboard
-```
-
-### State locking errors
-
-**Cause**: Multiple Terraform runs or stale lock  
-**Solution**:
-```bash
-# Remove stale lock (with caution!)
-terraform force-unlock <lock-id>
-```
-
-## Best Practices
-
-### 1. Resource Naming
+| Resource | Drift Attributes | Workaround |
+|----------|------------------|------------|
+| `cloudflare_pages_project` | `deployment_configs.*` | `ignore_changes = [deployment_configs]` |
+| `cloudflare_workers_script` | secrets returned as REDACTED | `ignore_changes = [secret_text_binding]` |
+| `cloudflare_load_balancer` | `adaptive_routing`, `random_steering` | `ignore_changes = [adaptive_routing, random_steering]` |
+| `cloudflare_workers_kv` | special chars in keys (< 5.16.0) | Upgrade to 5.16.0+ |
 
 ```hcl
-# Good: Consistent naming with environment
-locals { env_prefix = "${var.environment}-${var.project_name}" }
-
-resource "cloudflare_worker_script" "api" { name = "${local.env_prefix}-api" }
-resource "cloudflare_workers_kv_namespace" "cache" { title = "${local.env_prefix}-cache" }
-```
-
-### 2. Output Important Values
-
-```hcl
-output "zone_id" { value = cloudflare_zone.main.id; description = "Zone ID for DNS management" }
-output "worker_url" { value = "https://${cloudflare_worker_domain.api.hostname}"; description = "Worker API endpoint" }
-output "kv_namespace_id" { value = cloudflare_workers_kv_namespace.app.id; sensitive = false }
-```
-
-### 3. Use Data Sources for Existing Resources
-
-```hcl
-# Reference existing zone
-data "cloudflare_zone" "main" { name = var.domain }
-
-# Reference existing account
-data "cloudflare_accounts" "main" { name = var.account_name }
-
-# Use in resources
-resource "cloudflare_worker_route" "api" {
-  zone_id = data.cloudflare_zone.main.id
-  # ...
-}
-```
-
-### 4. Separate Secrets from Code
-
-```hcl
-# variables.tf
-variable "cloudflare_api_token" {
-  type = string; sensitive = true; description = "Cloudflare API token"
-}
-
-# terraform.tfvars (gitignored)
-cloudflare_api_token = "actual-token-here"
-
-# Or use environment variables
-# export TF_VAR_cloudflare_api_token="actual-token-here"
-```
-
-### 5. Use Separate Directories per Environment (RECOMMENDED)
-
-```
-environments/
-  production/    # Separate state, separate vars
-  staging/
-  development/
-```
-
-Better than workspaces for isolation and clarity.
-
-### 6. Version Control State Locking
-
-```hcl
-# S3 backend with DynamoDB locking
-terraform {
-  backend "s3" {
-    bucket = "terraform-state"; key = "cloudflare/terraform.tfstate"; region = "us-east-1"
-    dynamodb_table = "terraform-locks"; encrypt = true
+# Example: Ignore secret drift
+resource "cloudflare_workers_script" "api" {
+  account_id = var.account_id
+  name = "api-worker"
+  content = file("worker.js")
+  secret_text_binding { name = "API_KEY"; text = var.api_key }
+  
+  lifecycle {
+    ignore_changes = [secret_text_binding]
   }
 }
 ```
 
-## Security Considerations
+## v5 Breaking Changes
 
-1. **Never commit secrets**: Use variables + environment vars or secret management tools
-2. **Scope API tokens**: Create tokens with minimal required permissions
-3. **Enable state encryption**: Use encrypted S3 backend or Terraform Cloud
-4. **Use separate tokens per environment**: Different tokens for prod/staging
-5. **Rotate tokens regularly**: Update tokens in CI/CD systems
-6. **Review terraform plans**: Always review before applying
-7. **Use Access for sensitive applications**: Don't expose admin panels publicly
+Provider v5 is current (auto-generated from OpenAPI). v4→v5 has breaking changes:
 
-## Common Commands Reference
+**Resource Renames:**
 
-```bash
-terraform init                    # Initialize provider
-terraform plan                    # Plan changes
-terraform apply                   # Apply changes
-terraform apply -auto-approve     # Apply without confirmation
-terraform destroy                 # Destroy resources
-terraform import cloudflare_zone.example <zone-id>  # Import existing
-terraform show                    # Show current state
-terraform state list              # List resources in state
-terraform state rm cloudflare_zone.example  # Remove from state (no destroy)
-terraform refresh                 # Refresh state from infrastructure
-terraform fmt -recursive          # Format code
-terraform validate                # Validate configuration
-terraform output                  # Show outputs
-terraform output zone_id          # Show specific output
-```
+| v4 Resource | v5 Resource | Notes |
+|-------------|-------------|-------|
+| `cloudflare_record` | `cloudflare_dns_record` | |
+| `cloudflare_worker_script` | `cloudflare_workers_script` | Note: plural |
+| `cloudflare_worker_*` | `cloudflare_workers_*` | All worker resources |
+| `cloudflare_access_*` | `cloudflare_zero_trust_*` | Access → Zero Trust |
 
-## Workspace Management
+**Attribute Changes:**
+
+| v4 Attribute | v5 Attribute | Resources |
+|--------------|--------------|-----------|
+| `zone` | `name` | zone |
+| `account_id` | `account.id` | zone (object syntax) |
+| `key` | `key_name` | KV |
+| `location_hint` | `location` | R2 |
+
+**State Migration:**
 
 ```bash
-# Create workspace
-terraform workspace new production
-
-# List workspaces
-terraform workspace list
-
-# Switch workspace
-terraform workspace select staging
-
-# Note: Separate directories recommended over workspaces for production
+# Rename resources in state after v5 upgrade
+terraform state mv cloudflare_record.example cloudflare_dns_record.example
+terraform state mv cloudflare_worker_script.api cloudflare_workers_script.api
 ```
 
-## State Management
+## Resource-Specific Gotchas
+
+### R2 Location Case Sensitivity
+
+**Problem:** Terraform creates R2 bucket but fails on subsequent applies  
+**Cause:** Location must be UPPERCASE  
+**Solution:** Use `WNAM`, `ENAM`, `WEUR`, `EEUR`, `APAC` (not `wnam`, `enam`, etc.)
+
+```hcl
+resource "cloudflare_r2_bucket" "assets" {
+  account_id = var.account_id
+  name = "assets"
+  location = "WNAM"  # UPPERCASE required
+}
+```
+
+### KV Special Characters (< 5.16.0)
+
+**Problem:** Keys with `+`, `#`, `%` cause encoding issues  
+**Cause:** URL encoding bug in provider < 5.16.0  
+**Solution:** Upgrade to 5.16.0+ or avoid special chars in keys
+
+### D1 Migrations
+
+**Problem:** Terraform creates database but schema is empty  
+**Cause:** Terraform only creates D1 resource, not schema  
+**Solution:** Run migrations via wrangler after Terraform apply
 
 ```bash
-# List state resources
-terraform state list
-
-# Show resource details
-terraform state show cloudflare_zone.example
-
-# Move resource in state
-terraform state mv cloudflare_zone.old cloudflare_zone.new
-
-# Remove from state (no destroy)
-terraform state rm cloudflare_zone.example
-
-# Pull state to local file
-terraform state pull > terraform.tfstate.backup
-
-# Push state from local file
-terraform state push terraform.tfstate
+# After terraform apply
+wrangler d1 migrations apply <db-name>
 ```
+
+### Worker Script Size Limit
+
+**Problem:** Worker deployment fails with "script too large"  
+**Cause:** Worker script + dependencies exceed 10 MB limit  
+**Solution:** Use code splitting, external dependencies, or minification
+
+### Pages Project Drift
+
+**Problem:** Pages project shows perpetual diff on `deployment_configs`  
+**Cause:** Cloudflare API adds default values not in Terraform state  
+**Solution:** Add lifecycle ignore block (see State Drift table above)
+
+## Common Errors
+
+### "Error: couldn't find resource"
+
+**Cause:** Resource was deleted outside Terraform  
+**Solution:** Import resource back into state with `terraform import cloudflare_zone.example <zone-id>` or remove from state with `terraform state rm cloudflare_zone.example`
+
+### "409 Conflict on worker deployment"
+
+**Cause:** Worker being deployed by both Terraform and wrangler simultaneously  
+**Solution:** Choose one deployment method; if using Terraform, remove wrangler deployments
+
+### "DNS record already exists"
+
+**Cause:** Existing DNS record not imported into Terraform state  
+**Solution:** Find record ID in Cloudflare dashboard and import with `terraform import cloudflare_dns_record.example <zone-id>/<record-id>`
+
+### "Invalid provider configuration"
+
+**Cause:** API token missing, invalid, or lacking required permissions  
+**Solution:** Set `CLOUDFLARE_API_TOKEN` environment variable or check token permissions in dashboard
+
+### "State locking errors"
+
+**Cause:** Multiple concurrent Terraform runs or stale lock from crashed process  
+**Solution:** Remove stale lock with `terraform force-unlock <lock-id>` (use with caution)
 
 ## Limits
 

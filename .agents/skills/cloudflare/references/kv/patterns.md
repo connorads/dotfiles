@@ -1,5 +1,38 @@
 # KV Patterns & Best Practices
 
+## Multi-Tier Caching
+
+```typescript
+// Memory → KV → Origin (3-tier cache)
+const memoryCache = new Map<string, { data: any; expires: number }>();
+
+async function getCached(env: Env, key: string): Promise<any> {
+  const now = Date.now();
+  
+  // L1: Memory cache (fastest)
+  const cached = memoryCache.get(key);
+  if (cached && cached.expires > now) {
+    return cached.data;
+  }
+  
+  // L2: KV cache (fast)
+  const kvValue = await env.CACHE.get(key, "json");
+  if (kvValue) {
+    memoryCache.set(key, { data: kvValue, expires: now + 60000 }); // 1min in memory
+    return kvValue;
+  }
+  
+  // L3: Origin (slow)
+  const origin = await fetch(`https://api.example.com/${key}`).then(r => r.json());
+  
+  // Backfill caches
+  await env.CACHE.put(key, JSON.stringify(origin), { expirationTtl: 300 }); // 5min in KV
+  memoryCache.set(key, { data: origin, expires: now + 60000 });
+  
+  return origin;
+}
+```
+
 ## API Response Caching
 
 ```typescript
@@ -44,69 +77,6 @@ async function getSession(env: Env, sessionId: string): Promise<Session | null> 
 }
 ```
 
-## Feature Flags
-
-```typescript
-async function getFeatureFlags(env: Env): Promise<Record<string, boolean>> {
-  return await env.CONFIG.get<Record<string, boolean>>(
-    "features:flags",
-    { type: "json", cacheTtl: 600 }
-  ) || {};
-}
-
-export default {
-  async fetch(request, env): Promise<Response> {
-    const flags = await getFeatureFlags(env);
-    if (flags.beta_feature) return handleBetaFeature(request);
-    return handleStandardFlow(request);
-  }
-};
-```
-
-## Rate Limiting
-
-```typescript
-async function rateLimit(env: Env, identifier: string, limit: number, windowSeconds: number): Promise<boolean> {
-  const key = `ratelimit:${identifier}`;
-  const now = Date.now();
-  const data = await env.MY_KV.get<{ count: number, resetAt: number }>(key, "json");
-  
-  if (!data || data.resetAt < now) {
-    await env.MY_KV.put(key, JSON.stringify({ count: 1, resetAt: now + windowSeconds * 1000 }), { expirationTtl: windowSeconds });
-    return true;
-  }
-  
-  if (data.count >= limit) return false;
-  
-  await env.MY_KV.put(key, JSON.stringify({ count: data.count + 1, resetAt: data.resetAt }), { expirationTtl: Math.ceil((data.resetAt - now) / 1000) });
-  return true;
-}
-```
-
-## A/B Testing
-
-```typescript
-async function getVariant(env: Env, userId: string, testName: string): Promise<string> {
-  const assigned = await env.AB_TESTS.get(`test:${testName}:user:${userId}`);
-  if (assigned) return assigned;
-  
-  const test = await env.AB_TESTS.get<{ variants: string[], weights: number[] }>(`test:${testName}:config`, { type: "json", cacheTtl: 3600 });
-  if (!test) return "control";
-  
-  const hash = await hashString(userId);
-  const random = (hash % 100) / 100;
-  let cumulative = 0, variant = test.variants[0];
-  
-  for (let i = 0; i < test.variants.length; i++) {
-    cumulative += test.weights[i];
-    if (random < cumulative) { variant = test.variants[i]; break; }
-  }
-  
-  await env.AB_TESTS.put(`test:${testName}:user:${userId}`, variant, { expirationTtl: 2592000 });
-  return variant;
-}
-```
-
 ## Coalesce Cold Keys
 
 ```typescript
@@ -125,15 +95,102 @@ await env.USERS.put("user:123:profile", JSON.stringify({
 // Trade-off: Harder to update individual fields
 ```
 
-## Hierarchical Keys
+## Prefix-Based Namespacing
 
 ```typescript
-// Use prefixes for organization
+// Logical partitioning within single namespace
+const PREFIXES = {
+  users: "user:",
+  sessions: "session:",
+  cache: "cache:",
+  features: "feature:"
+} as const;
+
+// Write with prefix
+async function setUser(env: Env, id: string, data: any) {
+  await env.KV.put(`${PREFIXES.users}${id}`, JSON.stringify(data));
+}
+
+// Read with prefix
+async function getUser(env: Env, id: string) {
+  return await env.KV.get(`${PREFIXES.users}${id}`, "json");
+}
+
+// List by prefix
+async function listUserIds(env: Env): Promise<string[]> {
+  const result = await env.KV.list({ prefix: PREFIXES.users });
+  return result.keys.map(k => k.name.replace(PREFIXES.users, ""));
+}
+
+// Example hierarchy
 "user:123:profile"
 "user:123:settings"
 "cache:api:users"
 "session:abc-def"
 "feature:flags:beta"
+```
 
-const userKeys = await env.MY_KV.list({ prefix: "user:123:" });
+## Metadata Versioning
+
+```typescript
+interface VersionedData {
+  version: number;
+  data: any;
+}
+
+async function migrateIfNeeded(env: Env, key: string) {
+  const result = await env.DATA.getWithMetadata(key, "json");
+  
+  if (!result.value) return null;
+  
+  const currentVersion = result.metadata?.version || 1;
+  const targetVersion = 2;
+  
+  if (currentVersion < targetVersion) {
+    // Migrate data format
+    const migrated = migrate(result.value, currentVersion, targetVersion);
+    
+    // Store with new version
+    await env.DATA.put(key, JSON.stringify(migrated), {
+      metadata: { version: targetVersion, migratedAt: Date.now() }
+    });
+    
+    return migrated;
+  }
+  
+  return result.value;
+}
+
+function migrate(data: any, from: number, to: number): any {
+  if (from === 1 && to === 2) {
+    // V1 → V2: Rename field
+    return { ...data, userName: data.name };
+  }
+  return data;
+}
+```
+
+## Error Boundary Pattern
+
+```typescript
+// Resilient get with fallback
+async function resilientGet<T>(
+  env: Env,
+  key: string,
+  fallback: T
+): Promise<T> {
+  try {
+    const value = await env.KV.get<T>(key, "json");
+    return value ?? fallback;
+  } catch (err) {
+    console.error(`KV error for ${key}:`, err);
+    return fallback;
+  }
+}
+
+// Usage
+const config = await resilientGet(env, "config:app", {
+  theme: "light",
+  maxItems: 10
+});
 ```

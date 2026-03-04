@@ -31,7 +31,7 @@ npx wrangler hyperdrive create my-db \
 
 ```jsonc
 {
-  "compatibility_date": "2024-09-23",
+  "compatibility_date": "2025-01-01", // Use latest for new projects
   "compatibility_flags": ["nodejs_compat"],
   "hyperdrive": [
     {
@@ -42,6 +42,8 @@ npx wrangler hyperdrive create my-db \
   ]
 }
 ```
+
+**Generate TypeScript types:** Run `npx wrangler types` to auto-generate `worker-configuration.d.ts` from your wrangler.jsonc.
 
 **Multiple configs:**
 ```jsonc
@@ -64,6 +66,8 @@ npx wrangler hyperdrive delete <ID>
 
 ## Config Options
 
+Hyperdrive create/update CLI flags:
+
 | Option | Default | Notes |
 |--------|---------|-------|
 | `--caching-disabled` | `false` | Disable caching |
@@ -73,6 +77,28 @@ npx wrangler hyperdrive delete <ID>
 | `--access-client-id` | - | Tunnel auth |
 | `--access-client-secret` | - | Tunnel auth |
 | `--sslmode` | `require` | PostgreSQL only |
+
+## Smart Placement Integration
+
+For Workers making **multiple queries** per request, enable Smart Placement to execute near your database:
+
+```jsonc
+{
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "placement": {
+    "mode": "smart"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<HYPERDRIVE_ID>"
+    }
+  ]
+}
+```
+
+**Benefits:** Multi-query Workers run closer to DB, reducing round-trip latency. See [patterns.md](./patterns.md) for examples.
 
 ## Private DB via Tunnel
 

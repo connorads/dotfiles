@@ -13,6 +13,16 @@ curl -X POST 'https://rtc.live/v1/apps/${CALLS_APP_ID}/sessions/new' \
 **Tracks:** Media/data channels (audio/video/datachannel)  
 **No rooms:** Build presence via track sharing
 
+## Client Libraries
+
+**PartyTracks (Recommended):** Observable-based client library for production use. Handles device changes, network switches, ICE restarts automatically. Push/pull API with React hooks. See patterns.md for full examples.
+
+```bash
+npm install partytracks @cloudflare/calls
+```
+
+**Raw API:** Direct HTTP + WebRTC for custom requirements (documented below).
+
 ## Endpoints
 
 ### Create Session
@@ -54,11 +64,24 @@ Body: {sessionDescription: {sdp, type: "answer"}}
 ```http
 PUT /v1/apps/{appId}/sessions/{sessionId}/tracks/close
 Body: {tracks: [{trackName}]}
+→ {requiresImmediateRenegotiation: boolean}
 ```
 
 ### Get Session
 ```http
 GET /v1/apps/{appId}/sessions/{sessionId}
+→ {sessionId, tracks: TrackMetadata[]}
+```
+
+## TypeScript Types
+
+```typescript
+interface TrackMetadata {
+  trackName: string;
+  location: "local" | "remote";
+  sessionId?: string; // For remote tracks
+  mid?: string; // WebRTC mid
+}
 ```
 
 ## WebRTC Flow

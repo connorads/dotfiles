@@ -6,6 +6,7 @@
 2. Select HTTP DDoS or Network-layer DDoS
 3. Configure sensitivity & action per ruleset/category/rule
 4. Apply overrides with optional expressions (Enterprise Advanced)
+5. Enable Adaptive DDoS toggle (Enterprise/Enterprise Advanced, requires 7 days traffic history)
 
 ## Rule Structure
 
@@ -14,17 +15,17 @@ interface DDoSOverride {
   description: string;
   rules: Array<{
     action: "execute";
-    expression: string; // Filter traffic, "true" for all
+    expression: string; // Custom expression (Enterprise Advanced) or "true" for all
     action_parameters: {
-      id: string; // Managed ruleset ID
+      id: string; // Managed ruleset ID (discover via api.md)
       overrides: {
         sensitivity_level?: "default" | "medium" | "low" | "eoff";
-        action?: "block" | "managed_challenge" | "challenge" | "log";
-        categories?: Array<{ // Override by category
+        action?: "block" | "managed_challenge" | "challenge" | "log"; // log = Enterprise Advanced only
+        categories?: Array<{
           category: string; // e.g., "http-flood", "udp-flood"
           sensitivity_level?: string;
         }>;
-        rules?: Array<{ // Override by rule ID
+        rules?: Array<{
           id: string;
           action?: string;
           sensitivity_level?: string;
@@ -34,6 +35,14 @@ interface DDoSOverride {
   }>;
 }
 ```
+
+## Expression Availability
+
+| Plan | Custom Expressions | Example |
+|------|-------------------|---------|
+| Free/Pro/Business | ✗ | Use `"true"` only |
+| Enterprise | ✗ | Use `"true"` only |
+| Enterprise Advanced | ✓ | `ip.src in {...}`, `http.request.uri.path matches "..."` |
 
 ## Sensitivity Mapping
 
@@ -49,13 +58,30 @@ interface DDoSOverride {
 - `http-flood`, `http-anomaly` (L7)
 - `udp-flood`, `syn-flood`, `dns-flood` (L3/4)
 
-## Adaptive Rules
+## Override Precedence
 
-Configure by targeting specific rule IDs. Check dashboard for IDs:
-- HTTP: origins, user-agents, locations
-- L4: protocols
+Multiple override layers apply in this order (higher precedence wins):
 
-Requires 7 days of traffic history to learn baseline.
+```
+Zone-level > Account-level
+Individual Rule > Category > Global sensitivity/action
+```
+
+**Example**: Zone rule for `/api/*` overrides account-level global settings.
+
+## Adaptive DDoS Profiles
+
+**Availability**: Enterprise, Enterprise Advanced  
+**Learning period**: 7 days of traffic history required
+
+| Profile Type | Description | Detects |
+|--------------|-------------|---------|
+| **Origins** | Traffic patterns per origin server | Anomalous requests to specific origins |
+| **User-Agents** | Traffic patterns per User-Agent | Malicious/anomalous user agent strings |
+| **Locations** | Traffic patterns per geo-location | Attacks from specific countries/regions |
+| **Protocols** | Traffic patterns per protocol (L3/4) | Protocol-specific flood attacks |
+
+Configure by targeting specific adaptive rule IDs via API (see api.md#typed-override-examples).
 
 ## Alerting
 

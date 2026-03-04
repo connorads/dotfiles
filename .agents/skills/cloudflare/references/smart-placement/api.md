@@ -62,6 +62,8 @@ Format: `{placement-type}-{IATA-code}`
 
 ## Detecting Smart Placement in Code
 
+**Note:** `cf-placement` header is a beta feature and may change or be removed.
+
 ```typescript
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -77,7 +79,7 @@ export default {
     
     return new Response('OK');
   }
-};
+} satisfies ExportedHandler<Env>;
 ```
 
 ## Request Duration Metrics
@@ -95,6 +97,25 @@ Shows histogram comparing:
 - **Execution duration:** Time Worker code actively executing (excludes network waits)
 
 Use request duration to measure Smart Placement impact.
+
+### Interpreting Metrics
+
+| Metric Comparison | Interpretation | Action |
+|-------------------|----------------|--------|
+| WITH < WITHOUT | Smart Placement helping | Keep enabled |
+| WITH ≈ WITHOUT | Neutral impact | Consider disabling to free resources |
+| WITH > WITHOUT | Smart Placement hurting | Disable with `mode: "off"` |
+
+**Why Smart Placement might hurt performance:**
+- Worker primarily serves static assets or cached content
+- Backend services are globally distributed (no single optimal location)
+- Worker has minimal backend communication
+- Using Pages with `assets.run_worker_first = true`
+
+**Typical improvements when Smart Placement helps:**
+- 20-50% reduction in request duration for database-heavy Workers
+- 30-60% reduction for Workers making multiple backend API calls
+- Larger improvements when backend is geographically concentrated
 
 ## Monitoring Commands
 
@@ -115,23 +136,46 @@ curl -H "Authorization: Bearer $TOKEN" \
 ## TypeScript Types
 
 ```typescript
+// Placement status returned by API (field may be absent)
 type PlacementStatus = 
   | 'SUCCESS'
   | 'INSUFFICIENT_INVOCATIONS'
   | 'UNSUPPORTED_APPLICATION'
   | undefined;
 
+// Placement configuration in wrangler.jsonc
+type PlacementMode = 'smart' | 'off';
+
+interface PlacementConfig {
+  mode: PlacementMode;
+  // Legacy fields (deprecated/removed):
+  // hint?: string;  // REMOVED - no longer supported
+}
+
+// Explicit placement (separate feature from Smart Placement)
+interface ExplicitPlacementConfig {
+  region?: string;
+  host?: string;
+  hostname?: string;
+  // Cannot combine with mode field
+}
+
+// Worker metadata from API response
 interface WorkerMetadata {
-  placement_mode?: 'smart';
+  placement?: PlacementConfig | ExplicitPlacementConfig;
   placement_status?: PlacementStatus;
 }
 
+// Service Binding for backend Worker
 interface Env {
-  BACKEND_SERVICE: Fetcher;
+  BACKEND_SERVICE: Fetcher;  // Service Binding to backend Worker
+  DATABASE: D1Database;
 }
 
+// Example Worker with Service Binding
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // Forward to backend Worker with Smart Placement enabled
     const response = await env.BACKEND_SERVICE.fetch(request);
     return response;
   }

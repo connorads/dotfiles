@@ -1,117 +1,131 @@
 # KV Gotchas & Troubleshooting
 
-## Eventual Consistency
+## Common Errors
+
+### "Stale Read After Write"
+
+**Cause:** Eventual consistency means writes may not be immediately visible in other regions  
+**Solution:** Don't read immediately after write; return confirmation without reading or use the local value you just wrote. Writes visible immediately in same location, ≤60s globally
 
 ```typescript
-// ❌ BAD: Read immediately after write (may see stale globally)
-await env.MY_KV.put("key", "value");
-const value = await env.MY_KV.get("key"); // May be null in other regions
+// ❌ BAD: Read immediately after write
+await env.KV.put("key", "value");
+const value = await env.KV.get("key"); // May be null in other regions!
 
-// ✅ GOOD: Return confirmation without reading
-await env.MY_KV.put("key", "value");
-return new Response("Updated", { status: 200 });
-
-// ✅ GOOD: Use local value
-const newValue = "updated";
-await env.MY_KV.put("key", newValue);
-return new Response(newValue);
+// ✅ GOOD: Use the value you just wrote
+const newValue = "value";
+await env.KV.put("key", newValue);
+return new Response(newValue); // Don't re-read
 ```
 
-**Propagation:** Writes visible immediately in same location, ≤60s globally.
+### "429 Rate Limit on Concurrent Writes"
 
-## Concurrent Writes
+**Cause:** Multiple concurrent writes to same key exceeding 1 write/second limit  
+**Solution:** Use sequential writes, unique keys for concurrent operations, or implement retry with exponential backoff
 
 ```typescript
-// ❌ BAD: Concurrent writes to same key (429 rate limit)
-await Promise.all([
-  env.MY_KV.put("counter", "1"),
-  env.MY_KV.put("counter", "2")
-]); // 429 error
-
-// ✅ GOOD: Sequential writes
-await env.MY_KV.put("counter", "3");
-
-// ✅ GOOD: Unique keys for concurrent writes
-await Promise.all([
-  env.MY_KV.put("counter:1", "1"),
-  env.MY_KV.put("counter:2", "2")
-]);
-
-// ✅ GOOD: Retry with backoff
-async function putWithRetry(kv: KVNamespace, key: string, value: string) {
+async function putWithRetry(
+  kv: KVNamespace,
+  key: string,
+  value: string,
+  maxAttempts = 5
+): Promise<void> {
   let delay = 1000;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < maxAttempts; i++) {
     try {
       await kv.put(key, value);
       return;
     } catch (err) {
-      if (err.message.includes("429") && i < 4) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
-      } else throw err;
+      if (err instanceof Error && err.message.includes("429")) {
+        if (i === maxAttempts - 1) throw err;
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2; // Exponential backoff
+      } else {
+        throw err;
+      }
     }
   }
 }
 ```
 
-**Limit:** 1 write/second per key (all plans).
+### "Inefficient Multiple Gets"
 
-## Bulk Operations
+**Cause:** Making multiple individual get() calls instead of bulk operation  
+**Solution:** Use bulk get with array of keys: `env.USERS.get(["user:1", "user:2", "user:3"])` to reduce to 1 operation
 
-```typescript
-// ❌ BAD: Multiple individual gets (uses 3 operations)
-const user1 = await env.USERS.get("user:1");
-const user2 = await env.USERS.get("user:2");
-const user3 = await env.USERS.get("user:3");
+### "Null Reference Error"
 
-// ✅ GOOD: Single bulk get (uses 1 operation)
-const users = await env.USERS.get(["user:1", "user:2", "user:3"]);
-```
-
-**Note:** Bulk write NOT available in Workers (only via CLI/API).
-
-## Null Handling
+**Cause:** Attempting to use value without checking for null when key doesn't exist  
+**Solution:** Always handle null returns - KV returns `null` for missing keys, not undefined
 
 ```typescript
-// ❌ BAD: No null check
-const value = await env.MY_KV.get("key");
-const result = value.toUpperCase(); // Error if null
+// ❌ BAD: Assumes value exists
+const config = await env.KV.get("config", "json");
+return config.theme; // TypeError if null!
 
-// ✅ GOOD: Check for null
-const value = await env.MY_KV.get("key");
-if (value === null) return new Response("Not found", { status: 404 });
-return new Response(value);
+// ✅ GOOD: Null checks
+const config = await env.KV.get("config", "json");
+return config?.theme ?? "default";
 
-// ✅ GOOD: Provide default
-const value = (await env.MY_KV.get("config")) ?? "default-config";
+// ✅ GOOD: Early return
+const config = await env.KV.get("config", "json");
+if (!config) return new Response("Not found", { status: 404 });
+return new Response(config.theme);
 ```
 
-## Value Limits
+### "Negative Lookup Caching"
 
-- Key size: 512 bytes max
-- Value size: 25 MiB max
-- Metadata: 1024 bytes max
-- cacheTtl: 60s minimum
+**Cause:** Keys that don't exist are cached as "not found" for up to 60s  
+**Solution:** Creating a key after checking won't be visible until cache expires
 
-## Pricing
+```typescript
+// Check → create pattern has race condition
+const exists = await env.KV.get("key"); // null, cached as "not found"
+if (!exists) {
+  await env.KV.put("key", "value");
+  // Next get() may still return null for ~60s due to negative cache
+}
 
-- **Reads:** $0.50 per 10M
-- **Writes:** $5.00 per 1M
-- **Deletes:** $5.00 per 1M
-- **Storage:** $0.50 per GB-month
+// Alternative: Always assume key may not exist, use defaults
+const value = await env.KV.get("key") ?? "default-value";
+```
 
-## When NOT to Use
+## Performance Tips
 
-- ❌ Strong consistency required → Durable Objects
-- ❌ Write-heavy workloads → D1 or Durable Objects
-- ❌ Relational queries → D1
-- ❌ Large files (>25 MiB) → R2
-- ❌ Atomic operations → Durable Objects
+| Scenario | Recommendation | Why |
+|----------|----------------|-----|
+| Large values (>1MB) | Use `stream` type | Avoids buffering entire value in memory |
+| Many small keys | Coalesce into one JSON object | Reduces operations, improves cache hit rate |
+| High write volume | Spread across different keys | Avoid 1 write/second per-key limit |
+| Cold reads | Increase `cacheTtl` parameter | Reduces latency for frequently-read data |
+| Bulk operations | Use array form of get() | Single operation, better performance |
 
-## When TO Use
+## Cost Examples
 
-- ✅ Read-heavy workloads
-- ✅ Global distribution needed
-- ✅ Eventually consistent acceptable
-- ✅ Key-value access patterns
-- ✅ Low-latency reads critical
+**Free tier:**
+- 100K reads/day = 3M/month ✅
+- 1K writes/day = 30K/month ✅
+- 1GB storage ✅
+
+**Example paid workload:**
+- 10M reads/month = $5.00
+- 100K writes/month = $0.50
+- 1GB storage = $0.50
+- **Total: ~$6/month**
+
+## Limits
+
+| Limit | Value | Notes |
+|-------|-------|-------|
+| Key size | 512 bytes | Maximum key length |
+| Value size | 25 MiB | Maximum value; 413 error if exceeded |
+| Metadata size | 1024 bytes | Maximum metadata per key |
+| cacheTtl minimum | 60s | Minimum cache TTL |
+| Write rate per key | 1 write/second | All plans; 429 error if exceeded |
+| Propagation time | ≤60s | Global propagation time |
+| Bulk get max | 100 keys | Maximum keys per bulk operation |
+| Operations per Worker | 1,000 | Per request (bulk counts as 1) |
+| Reads pricing | $0.50 per 10M | Per million reads |
+| Writes pricing | $5.00 per 1M | Per million writes |
+| Deletes pricing | $5.00 per 1M | Per million deletes |
+| Storage pricing | $0.50 per GB-month | Per GB per month |

@@ -9,151 +9,83 @@ const config :Workerd.Config = (
       compatibilityDate = "2024-01-15",
       bindings = [(name = "API", service = "api")]
     )),
-    
     (name = "api", worker = (
       modules = [(name = "index.js", esModule = embed "api/index.js")],
       compatibilityDate = "2024-01-15",
-      bindings = [
-        (name = "DB", service = "postgres"),
-        (name = "CACHE", kvNamespace = "kv"),
-      ]
+      bindings = [(name = "DB", service = "postgres"), (name = "CACHE", kvNamespace = "kv")]
     )),
-    
     (name = "postgres", external = (address = "db.internal:5432", http = ())),
-    (name = "kv", disk = (path = "/var/kv", writable = true)),
+    (name = "kv", disk = (path = "/var/kv", writable = true))
   ],
-  
   sockets = [(name = "http", address = "*:8080", http = (), service = "frontend")]
 );
 ```
 
 ## Durable Objects
 ```capnp
-const config :Workerd.Config = (
-  services = [
-    (name = "app", worker = (
-      modules = [
-        (name = "index.js", esModule = embed "index.js"),
-        (name = "room.js", esModule = embed "room.js"),
-      ],
-      compatibilityDate = "2024-01-15",
-      bindings = [(name = "ROOMS", durableObjectNamespace = "Room")],
-      durableObjectNamespaces = [(className = "Room", uniqueKey = "v1")],
-      durableObjectStorage = (localDisk = "/var/do")
-    ))
-  ],
-  sockets = [(name = "http", address = "*:8080", http = (), service = "app")]
+const worker :Workerd.Worker = (
+  modules = [(name = "index.js", esModule = embed "index.js"), (name = "room.js", esModule = embed "room.js")],
+  compatibilityDate = "2024-01-15",
+  bindings = [(name = "ROOMS", durableObjectNamespace = "Room")],
+  durableObjectNamespaces = [(className = "Room", uniqueKey = "v1")],
+  durableObjectStorage = (localDisk = "/var/do")
 );
 ```
 
 ## Dev vs Prod Configs
 ```capnp
-const devWorker :Workerd.Worker = (
+# Use parameter bindings for env-specific config
+const baseWorker :Workerd.Worker = (
   modules = [(name = "index.js", esModule = embed "src/index.js")],
   compatibilityDate = "2024-01-15",
-  bindings = [
-    (name = "API_URL", text = "http://localhost:3000"),
-    (name = "DEBUG", text = "true"),
-  ]
+  bindings = [(name = "API_URL", parameter = (type = text))]
 );
 
 const prodWorker :Workerd.Worker = (
-  inherit = "dev-service",
-  bindings = [
-    (name = "API_URL", text = "https://api.prod.com"),
-    (name = "DEBUG", text = "false"),
-  ]
+  inherit = "base-service",
+  bindings = [(name = "API_URL", text = "https://api.prod.com")]
 );
 ```
 
 ## HTTP Reverse Proxy
 ```capnp
-const config :Workerd.Config = (
-  services = [
-    (name = "proxy", worker = (
-      serviceWorkerScript = embed "proxy.js",
-      compatibilityDate = "2024-01-15",
-      bindings = [(name = "BACKEND", service = "backend")]
-    )),
-    (name = "backend", external = (address = "internal:8080", http = ()))
-  ],
-  sockets = [(name = "http", address = "*:80", http = (), service = "proxy")]
-);
+services = [
+  (name = "proxy", worker = (serviceWorkerScript = embed "proxy.js", compatibilityDate = "2024-01-15", bindings = [(name = "BACKEND", service = "backend")])),
+  (name = "backend", external = (address = "internal:8080", http = ()))
+]
 ```
 
 ## Local Development
 
-### Using Wrangler
+**Recommended:** Use Wrangler
 ```bash
-export MINIFLARE_WORKERD_PATH="/path/to/workerd"
-wrangler dev
+wrangler dev  # Uses workerd internally
 ```
 
-### Direct Workerd
+**Direct workerd:**
 ```bash
 workerd serve config.capnp --socket-addr http=*:3000 --verbose
 ```
 
-### Environment Variables
+**Environment variables:**
 ```capnp
-bindings = [
-  (name = "DATABASE_URL", fromEnvironment = "DATABASE_URL"),
-  (name = "API_KEY", fromEnvironment = "API_KEY"),
-]
-```
-
-```bash
-export DATABASE_URL="postgres://..."
-export API_KEY="secret"
-workerd serve config.capnp
+bindings = [(name = "DATABASE_URL", fromEnvironment = "DATABASE_URL")]
 ```
 
 ## Testing
-
-### Test Config
-```capnp
-const testWorker :Workerd.Worker = (
-  modules = [
-    (name = "index.js", esModule = embed "src/index.js"),
-    (name = "test.js", esModule = embed "tests/test.js"),
-  ],
-  compatibilityDate = "2024-01-15"
-);
-```
-
 ```bash
 workerd test config.capnp
 workerd test config.capnp --test-only=test.js
 ```
 
+Test files must be included in `modules = [...]` config.
+
 ## Production Deployment
 
-### Systemd
-```ini
-# /etc/systemd/system/workerd.service
-[Unit]
-Description=workerd runtime
-After=network-online.target
-Requires=workerd.socket
-
-[Service]
-Type=exec
-ExecStart=/usr/bin/workerd serve /etc/workerd/config.capnp --socket-fd http=3
-Restart=always
-User=nobody
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```ini
-# /etc/systemd/system/workerd.socket
-[Socket]
-ListenStream=0.0.0.0:80
-
-[Install]
-WantedBy=sockets.target
+### Compiled Binary (Recommended)
+```bash
+workerd compile config.capnp myConfig -o production-server
+./production-server
 ```
 
 ### Docker
@@ -167,24 +99,67 @@ EXPOSE 8080
 CMD ["workerd", "serve", "/etc/workerd/config.capnp"]
 ```
 
-### Compiled Binary
-```bash
-workerd compile config.capnp myConfig -o production-server
-./production-server
+### Systemd
+```ini
+# /etc/systemd/system/workerd.service
+[Service]
+ExecStart=/usr/bin/workerd serve /etc/workerd/config.capnp --socket-fd http=3
+Restart=always
+User=nobody
+```
+
+See systemd socket activation docs for complete setup.
+
+## Framework Integration
+
+### Hono
+```javascript
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.get('/', (c) => c.text('Hello Hono!'));
+app.get('/api/:id', async (c) => {
+  const id = c.req.param('id');
+  const data = await c.env.KV.get(id);
+  return c.json({ id, data });
+});
+
+export default app;
+```
+
+### itty-router
+```javascript
+import { Router } from 'itty-router';
+
+const router = Router();
+
+router.get('/', () => new Response('Hello itty!'));
+router.get('/api/:id', async (request, env) => {
+  const { id } = request.params;
+  const data = await env.KV.get(id);
+  return Response.json({ id, data });
+});
+
+export default {
+  fetch: (request, env, ctx) => router.handle(request, env, ctx)
+};
 ```
 
 ## Best Practices
 
 1. **Use ES modules** over service worker syntax
 2. **Explicit bindings** - no global namespace assumptions
-3. **Type safety** - define `Env` interfaces
-4. **Service isolation** - split concerns
+3. **Type safety** - define `Env` interfaces (use `wrangler types`)
+4. **Service isolation** - split concerns into multiple services
 5. **Pin compat date** in production after testing
 6. **Use ctx.waitUntil()** for background tasks
 7. **Handle errors gracefully** with try/catch
 8. **Configure resource limits** on caches/storage
 
-## Error Handling Pattern
+## Common Patterns
+
+### Error Handling
 ```javascript
 export default {
   async fetch(request, env, ctx) {
@@ -198,17 +173,18 @@ export default {
 };
 ```
 
-## Logging Pattern
+### Background Tasks
 ```javascript
 export default {
   async fetch(request, env, ctx) {
-    console.log("Request", {method: request.method, url: request.url});
+    const response = new Response("OK");
     
+    // Fire-and-forget background work
     ctx.waitUntil(
-      logToAnalytics(request, env)
+      env.ANALYTICS.put(request.url, Date.now())
     );
     
-    return new Response("OK");
+    return response;
   }
 };
 ```

@@ -20,10 +20,12 @@ interface Env {
 }
 ```
 
+**Generate types:** `npx wrangler types` (auto-creates worker-configuration.d.ts from wrangler.jsonc)
+
 ## PostgreSQL (node-postgres) - RECOMMENDED
 
 ```typescript
-import { Client } from "pg";  // pg@^8.16.3, @types/pg
+import { Client } from "pg";  // pg@^8.17.2
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -39,26 +41,28 @@ export default {
 };
 ```
 
+**⚠️ Workers connection limit: 6 per Worker invocation** - use connection pooling wisely.
+
 ## PostgreSQL (postgres.js)
 
 ```typescript
-import postgres from "postgres";  // postgres@^3.4.5
+import postgres from "postgres";  // postgres@^3.4.8
 
 const sql = postgres(env.HYPERDRIVE.connectionString, {
-  max: 5,             // Limit per Worker
-  prepare: true,      // ⚠️ CRITICAL for caching
+  max: 5,             // Limit per Worker (Workers max: 6)
+  prepare: true,      // Enabled by default, required for caching
   fetch_types: false, // Reduce latency if not using arrays
 });
 
 const users = await sql`SELECT * FROM users WHERE active = ${true} LIMIT 10`;
 ```
 
-**⚠️ `prepare: true` required for Hyperdrive caching.** `false` disables prepared statements + cache.
+**⚠️ `prepare: true` is enabled by default and required for Hyperdrive caching.** Setting to `false` disables prepared statements + cache.
 
 ## MySQL (mysql2)
 
 ```typescript
-import { createConnection } from "mysql2/promise";  // mysql2@^3.13.0
+import { createConnection } from "mysql2/promise";  // mysql2@^3.16.2
 
 const conn = await createConnection({
   host: env.HYPERDRIVE.host,
@@ -72,6 +76,8 @@ const conn = await createConnection({
 const [results] = await conn.query("SELECT * FROM users WHERE active = ? LIMIT ?", [true, 10]);
 ctx.waitUntil(conn.end());
 ```
+
+**⚠️ MySQL support is less mature than PostgreSQL** - expect fewer optimizations and potential edge cases.
 
 ## Query Caching
 
@@ -113,7 +119,7 @@ const orders = await sqlNoCache`SELECT * FROM orders WHERE created_at > NOW() - 
 
 **Drizzle:**
 ```typescript
-import { drizzle } from "drizzle-orm/postgres-js";  // drizzle-orm@^0.26.2
+import { drizzle } from "drizzle-orm/postgres-js";  // drizzle-orm@^0.45.1
 import postgres from "postgres";
 
 const client = postgres(env.HYPERDRIVE.connectionString, {max: 5, prepare: true});
@@ -123,7 +129,7 @@ const users = await db.select().from(users).where(eq(users.active, true)).limit(
 
 **Kysely:**
 ```typescript
-import { Kysely, PostgresDialect } from "kysely";  // kysely@^0.26.3
+import { Kysely, PostgresDialect } from "kysely";  // kysely@^0.27+
 import postgres from "postgres";
 
 const db = new Kysely({

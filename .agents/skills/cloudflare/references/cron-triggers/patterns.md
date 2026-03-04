@@ -76,43 +76,111 @@ export default {
 };
 ```
 
-## Monitoring & Logging
+## Queue Integration
+
+```typescript
+export default {
+  async scheduled(controller, env, ctx) {
+    const batch = await env.MY_QUEUE.receive({ batchSize: 100 });
+    const results = await Promise.allSettled(batch.messages.map(async (msg) => {
+      await processMessage(msg.body, env);
+      await msg.ack();
+    }));
+    console.log(`Processed ${results.filter(r => r.status === "fulfilled").length}/${batch.messages.length}`);
+  },
+};
+```
+
+## Monitoring & Observability
 
 ```typescript
 export default {
   async scheduled(controller, env, ctx) {
     const startTime = Date.now();
-    console.log(`[START] Cron ${controller.cron} at ${new Date(controller.scheduledTime).toISOString()}`);
+    const meta = { cron: controller.cron, scheduledTime: controller.scheduledTime };
+    console.log("[START]", meta);
     try {
       const result = await performTask(env);
-      const duration = Date.now() - startTime;
-      console.log(`[SUCCESS] Completed in ${duration}ms`, {cron: controller.cron, recordsProcessed: result.count});
-      ctx.waitUntil(logToExternal(env.ANALYTICS_ENDPOINT, {event: "cron_success", duration, cron: controller.cron}));
+      console.log("[SUCCESS]", { ...meta, duration: Date.now() - startTime, count: result.count });
+      ctx.waitUntil(env.METRICS.put(`cron:${controller.scheduledTime}`, JSON.stringify({ ...meta, status: "success" }), { expirationTtl: 2592000 }));
     } catch (error) {
-      const duration = Date.now() - startTime;
-      console.error(`[ERROR] Failed after ${duration}ms`, {cron: controller.cron, error: error.message});
-      ctx.waitUntil(notifyFailure(env.ALERT_WEBHOOK, {cron: controller.cron, error: error.message}));
+      console.error("[ERROR]", { ...meta, duration: Date.now() - startTime, error: error.message });
+      ctx.waitUntil(fetch(env.ALERT_WEBHOOK, { method: "POST", body: JSON.stringify({ text: `Cron failed: ${controller.cron}`, error: error.message }) }));
       throw error;
     }
   },
 };
 ```
 
-## View Past Events
+**View logs:** `npx wrangler tail` or Dashboard → Workers & Pages → Worker → Logs
 
-**Dashboard:** Workers & Pages → Select Worker → Settings → Triggers → Cron Events
+## Durable Objects Coordination
 
-**Wrangler:**
-```bash
-npx wrangler tail
-npx wrangler tail --format json | jq 'select(.event.cron != null)'
+```typescript
+export default {
+  async scheduled(controller, env, ctx) {
+    const stub = env.COORDINATOR.get(env.COORDINATOR.idFromName("cron-lock"));
+    const acquired = await stub.tryAcquireLock(controller.scheduledTime);
+    if (!acquired) {
+      controller.noRetry();
+      return;
+    }
+    try {
+      await performTask(env);
+    } finally {
+      await stub.releaseLock();
+    }
+  },
+};
 ```
 
-**GraphQL:**
-```graphql
-query CronMetrics($accountTag: string!, $workerName: string!) {
-  viewer { accounts(filter: { accountTag: $accountTag }) { workersInvocationsAdaptive(filter: {scriptName: $workerName, eventType: "scheduled"}, limit: 100) { dimensions { datetime, status }, sum { requests, errors } } } }
-}
+## Python Handler
+
+```python
+from workers import WorkerEntrypoint
+
+class Default(WorkerEntrypoint):
+    async def scheduled(self, controller, env, ctx):
+        data = await env.MY_KV.get("key")
+        ctx.waitUntil(env.DB.execute("DELETE FROM logs WHERE created_at < datetime('now', '-7 days')"))
+```
+
+## Testing Patterns
+
+**Local testing with /__scheduled:**
+```bash
+# Start dev server
+npx wrangler dev
+
+# Test specific cron
+curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
+
+# Test with specific time
+curl "http://localhost:8787/__scheduled?cron=0+2+*+*+*&scheduledTime=1704067200000"
+```
+
+**Unit tests:**
+```typescript
+// test/scheduled.test.ts
+import { describe, it, expect, vi } from "vitest";
+import { env } from "cloudflare:test";
+import worker from "../src/index";
+
+describe("Scheduled Handler", () => {
+  it("executes cron", async () => {
+    const controller = { scheduledTime: Date.now(), cron: "*/5 * * * *", type: "scheduled" as const, noRetry: vi.fn() };
+    const ctx = { waitUntil: vi.fn(), passThroughOnException: vi.fn() };
+    await worker.scheduled(controller, env, ctx);
+    expect(await env.MY_KV.get("last_run")).toBeDefined();
+  });
+  
+  it("calls noRetry on duplicate", async () => {
+    const controller = { scheduledTime: 1704067200000, cron: "0 2 * * *", type: "scheduled" as const, noRetry: vi.fn() };
+    await env.EXECUTIONS.put("0 2 * * *-1704067200000", "1");
+    await worker.scheduled(controller, env, { waitUntil: vi.fn(), passThroughOnException: vi.fn() });
+    expect(controller.noRetry).toHaveBeenCalled();
+  });
+});
 ```
 
 ## See Also

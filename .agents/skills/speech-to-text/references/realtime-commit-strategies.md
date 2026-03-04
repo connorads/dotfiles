@@ -80,6 +80,26 @@ VAD listens for silence and automatically commits when the speaker pauses. This 
 
 ### Configuration
 
+#### React (`useScribe`)
+
+```typescript
+import { useScribe, CommitStrategy } from "@elevenlabs/react";
+
+const scribe = useScribe({
+  modelId: "scribe_v2_realtime",
+  commitStrategy: CommitStrategy.VAD,
+  // Optional VAD tuning:
+  vadSilenceThresholdSecs: 1.5,    // Silence duration before commit
+  vadThreshold: 0.4,               // Speech detection sensitivity (0-1)
+  minSpeechDurationMs: 100,        // Minimum speech length required
+  minSilenceDurationMs: 100,       // Minimum silence length required
+});
+```
+
+> **Important:** The default is `CommitStrategy.MANUAL`. For microphone input, always set `CommitStrategy.VAD` — without it, committed transcripts will never fire and the connection may drop.
+
+#### JavaScript client
+
 ```javascript
 const connection = await client.speechToText.realtime.connect({
   modelId: "scribe_v2_realtime",

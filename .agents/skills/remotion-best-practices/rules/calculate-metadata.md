@@ -17,23 +17,23 @@ Use `calculateMetadata` on a `<Composition>` to dynamically set duration, dimens
   fps={30}
   width={1920}
   height={1080}
-  defaultProps={{ videoSrc: "https://example.com/video.mp4" }}
+  defaultProps={{ videoSrc: "https://remotion.media/video.mp4" }}
   calculateMetadata={calculateMetadata}
 />
 ```
 
 ## Setting duration based on a video
 
-Use the `getMediaMetadata()` function from the mediabunny/metadata skill to get the video duration:
+Use the [`getVideoDuration`](./get-video-duration.md) and [`getVideoDimensions`](./get-video-dimensions.md) skills to get the video duration and dimensions:
 
 ```tsx
 import { CalculateMetadataFunction } from "remotion";
-import { getMediaMetadata } from "../get-media-metadata";
+import { getVideoDuration } from "./get-video-duration";
 
 const calculateMetadata: CalculateMetadataFunction<Props> = async ({
   props,
 }) => {
-  const { durationInSeconds } = await getMediaMetadata(props.videoSrc);
+  const durationInSeconds = await getVideoDuration(props.videoSrc);
 
   return {
     durationInFrames: Math.ceil(durationInSeconds * 30),
@@ -43,18 +43,21 @@ const calculateMetadata: CalculateMetadataFunction<Props> = async ({
 
 ## Matching dimensions of a video
 
+Use the [`getVideoDimensions`](./get-video-dimensions.md) skill to get the video dimensions:
+
 ```tsx
+import { CalculateMetadataFunction } from "remotion";
+import { getVideoDuration } from "./get-video-duration";
+import { getVideoDimensions } from "./get-video-dimensions";
+
 const calculateMetadata: CalculateMetadataFunction<Props> = async ({
   props,
 }) => {
-  const { durationInSeconds, dimensions } = await getMediaMetadata(
-    props.videoSrc
-  );
+  const dimensions = await getVideoDimensions(props.videoSrc);
 
   return {
-    durationInFrames: Math.ceil(durationInSeconds * 30),
-    width: dimensions?.width ?? 1920,
-    height: dimensions?.height ?? 1080,
+    width: dimensions.width,
+    height: dimensions.height,
   };
 };
 ```
@@ -66,13 +69,13 @@ const calculateMetadata: CalculateMetadataFunction<Props> = async ({
   props,
 }) => {
   const metadataPromises = props.videos.map((video) =>
-    getMediaMetadata(video.src)
+    getVideoDuration(video.src),
   );
   const allMetadata = await Promise.all(metadataPromises);
 
   const totalDuration = allMetadata.reduce(
-    (sum, meta) => sum + meta.durationInSeconds,
-    0
+    (sum, durationInSeconds) => sum + durationInSeconds,
+    0,
   );
 
   return {

@@ -13,26 +13,22 @@ wrangler deploy           # Deploy
 ## Local Development
 
 ```bash
-wrangler dev              # Local (fast, limited accuracy)
-wrangler dev --remote     # Remote (slower, production-accurate)
-wrangler dev --env staging
-wrangler dev --port 8787
+wrangler dev              # Local mode (fast, simulated)
+wrangler dev --remote     # Remote mode (production-accurate)
+wrangler dev --env staging --port 8787
+wrangler dev --inspector-port 9229  # Enable debugging
 ```
 
-## Secrets
+Debug: chrome://inspect → Configure → localhost:9229
 
-**Never commit secrets.** Use `wrangler secret put` for production, `.dev.vars` for local.
+## Secrets
 
 ```bash
 # Production
 echo "secret-value" | wrangler secret put SECRET_KEY
-wrangler secret list
-wrangler secret delete SECRET_KEY
-```
 
-`.dev.vars` (gitignored):
-```
-SECRET_KEY=local-dev-key
+# Local: use .dev.vars (gitignored)
+# SECRET_KEY=local-dev-key
 ```
 
 ## Adding KV
@@ -49,10 +45,13 @@ wrangler deploy
 ```bash
 wrangler d1 create my-db
 wrangler d1 migrations create my-db "initial_schema"
-# Edit migration file, then:
+# Edit migration file in migrations/, then:
 wrangler d1 migrations apply my-db --local
 wrangler deploy
 wrangler d1 migrations apply my-db --remote
+
+# Time Travel (restore to point in time)
+wrangler d1 time-travel restore my-db --timestamp 2025-01-01T12:00:00Z
 ```
 
 ## Multi-Environment
@@ -68,28 +67,105 @@ wrangler deploy --env production
 
 ## Testing
 
-```typescript
-import { unstable_startWorker } from "wrangler";
+### Integration Tests with Node.js Test Runner
 
-const worker = await unstable_startWorker({ config: "wrangler.jsonc" });
-const response = await worker.fetch("/api/users");
-await worker.dispose();
+```typescript
+import { startWorker } from "wrangler";
+import { describe, it, before, after } from "node:test";
+import assert from "node:assert";
+
+describe("API", () => {
+  let worker;
+  
+  before(async () => {
+    worker = await startWorker({ 
+      config: "wrangler.jsonc",
+      remote: "minimal"  // Fast tests with real bindings
+    });
+  });
+  
+  after(async () => await worker.dispose());
+  
+  it("creates user", async () => {
+    const response = await worker.fetch("http://example.com/api/users", {
+      method: "POST",
+      body: JSON.stringify({ name: "Alice" })
+    });
+    assert.strictEqual(response.status, 201);
+  });
+});
 ```
 
-## Monitoring
+### Testing with Vitest
+
+Install: `npm install -D vitest @cloudflare/vitest-pool-workers`
+
+**vitest.config.ts:**
+```typescript
+import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+export default defineWorkersConfig({
+  test: { poolOptions: { workers: { wrangler: { configPath: "./wrangler.jsonc" } } } }
+});
+```
+
+**tests/api.test.ts:**
+```typescript
+import { env, SELF } from "cloudflare:test";
+import { describe, it, expect } from "vitest";
+
+it("fetches users", async () => {
+  const response = await SELF.fetch("https://example.com/api/users");
+  expect(response.status).toBe(200);
+});
+
+it("uses bindings", async () => {
+  await env.MY_KV.put("key", "value");
+  expect(await env.MY_KV.get("key")).toBe("value");
+});
+```
+
+### Multi-Worker Development (Service Bindings)
+
+```typescript
+const authWorker = await startWorker({ config: "./auth/wrangler.jsonc" });
+const apiWorker = await startWorker({
+  config: "./api/wrangler.jsonc",
+  bindings: { AUTH: authWorker }  // Service binding
+});
+
+// Test API calling AUTH
+const response = await apiWorker.fetch("http://example.com/api/protected");
+await authWorker.dispose();
+await apiWorker.dispose();
+```
+
+### Mock External APIs
+
+```typescript
+const worker = await startWorker({ 
+  config: "wrangler.jsonc",
+  outboundService: (req) => {
+    const url = new URL(req.url);
+    if (url.hostname === "api.external.com") {
+      return new Response(JSON.stringify({ mocked: true }), {
+        headers: { "content-type": "application/json" }
+      });
+    }
+    return fetch(req);  // Pass through other requests
+  }
+});
+
+// Test Worker that calls external API
+const response = await worker.fetch("http://example.com/proxy");
+// Worker internally fetches api.external.com - gets mocked response
+```
+
+## Monitoring & Versions
 
 ```bash
 wrangler tail                 # Real-time logs
 wrangler tail --status error  # Filter errors
-wrangler tail --env production
-wrangler whoami               # Check auth
-```
-
-## Version Control
-
-```bash
 wrangler versions list
-wrangler deployments list
 wrangler rollback [id]
 ```
 
@@ -100,46 +176,29 @@ wrangler types  # Generate types from config
 ```
 
 ```typescript
-interface Env {
-  MY_KV: KVNamespace;
-  DB: D1Database;
-  API_KEY: string;
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const value = await env.MY_KV.get("key");
-    return Response.json({ value });
+    return Response.json({ value: await env.MY_KV.get("key") });
   }
 } satisfies ExportedHandler<Env>;
 ```
 
-## Durable Objects Migration
+## Workers Assets
 
 ```jsonc
-{ "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Counter"] }] }
-```
-
-## Performance
-
-```jsonc
-{ "minify": true }
+{ "assets": { "directory": "./dist", "binding": "ASSETS" } }
 ```
 
 ```typescript
-// KV caching
-const cached = await env.CACHE.get("key", { cacheTtl: 3600 });
-
-// Batch DB
-await env.DB.batch([
-  env.DB.prepare("SELECT * FROM users"),
-  env.DB.prepare("SELECT * FROM posts")
-]);
-
-// Edge caching
-return new Response(data, {
-  headers: { "Cache-Control": "public, max-age=3600" }
-});
+export default {
+  async fetch(request, env) {
+    // API routes first
+    if (new URL(request.url).pathname.startsWith("/api/")) {
+      return Response.json({ data: "from API" });
+    }
+    return env.ASSETS.fetch(request);  // Static assets
+  }
+}
 ```
 
 ## See Also
