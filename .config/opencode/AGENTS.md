@@ -24,7 +24,7 @@ If the user mentions a GitHub issue, remember to close the issue if you fix it -
 
 ## Secrets
 
-Do not echo or read secrets. If checking format combine with `| head -c 5` for example to see prefix.
+Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
 ## Assumptions and research
 
