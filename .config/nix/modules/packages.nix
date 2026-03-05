@@ -137,6 +137,7 @@ let
     wireproxy
 
     # Media & presentation
+    qrencode
     (yt-dlp.override { javascriptSupport = false; }) # deno (Rust) is slow to build; yt-dlp finds deno on PATH (mise) at runtime
     ffmpeg
     imagemagick
