@@ -442,6 +442,33 @@ AUDITEOF
 	sudo systemctl enable --now auditd 2>/dev/null || true
 	sudo augenrules --load 2>/dev/null || true
 
+	# Docker daemon hardening
+	DOCKER_DAEMON="/etc/docker/daemon.json"
+	if [ ! -f "$DOCKER_DAEMON" ] && command -v docker &>/dev/null; then
+		echo "Configuring Docker daemon hardening..."
+		sudo tee "$DOCKER_DAEMON" >/dev/null <<'EOF'
+{
+  "no-new-privileges": true,
+  "live-restore": true,
+  "userland-proxy": false,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+EOF
+		sudo systemctl restart docker
+	fi
+
+	# Tighten .env file permissions in project dirs
+	find "$HOME/git" -maxdepth 3 -name '.env' -o -name '.env.local' -o -name '.env.production' 2>/dev/null | while read -r envfile; do
+		if [ "$(stat -c '%a' "$envfile")" != "600" ]; then
+			chmod 600 "$envfile"
+			echo "Tightened permissions on $envfile"
+		fi
+	done
+
 	# Apply pending package updates
 	echo "Applying pending package updates..."
 	sudo apt-get update -y
