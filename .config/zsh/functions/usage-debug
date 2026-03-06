@@ -1,0 +1,176 @@
+#!/usr/bin/env zsh
+# usage-debug: inspect Claude/Codex usage cache, backoff, and trigger state
+# Usage: usage-debug [-h|--help]
+emulate -L zsh
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  echo "Usage: usage-debug [-h|--help]"
+  echo
+  echo "Shows cache, backoff, lock, and refresh trigger state for:"
+  echo "  - claude-usage"
+  echo "  - codex-usage"
+  return 0
+fi
+
+local now ttl
+now=$(date +%s)
+ttl=300
+
+_mtime() {
+  local file="$1"
+  stat -f%m "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || echo 0
+}
+
+_age() {
+  local file="$1"
+  [[ -f "$file" ]] || { echo -1; return; }
+  local m
+  m=$(_mtime "$file")
+  echo $((now - m))
+}
+
+_fmt_secs() {
+  local secs="$1"
+  [[ "$secs" -lt 0 ]] && { echo "-"; return; }
+  local d=$((secs / 86400))
+  local h=$(((secs % 86400) / 3600))
+  local m=$(((secs % 3600) / 60))
+  if [[ "$d" -gt 0 ]]; then
+    echo "${d}d ${h}h"
+  elif [[ "$h" -gt 0 ]]; then
+    echo "${h}h ${m}m"
+  else
+    echo "${m}m"
+  fi
+}
+
+_fmt_epoch() {
+  local ts="$1"
+  [[ -z "$ts" || "$ts" -le 0 ]] && { echo "-"; return; }
+  date -d "@$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || date -r "$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || echo "$ts"
+}
+
+_parse_iso_to_epoch() {
+  local iso="$1"
+  [[ -z "$iso" ]] && { echo 0; return; }
+  date -d "$iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${iso%%.*}" +%s 2>/dev/null || echo 0
+}
+
+_print_provider() {
+  local name="$1"
+  local cache="$2"
+  local meta="$3"
+  local lockdir="$4"
+  local trigger="$5"
+  local kind="$6"
+
+  local cache_age trigger_age
+  cache_age=$(_age "$cache")
+  trigger_age=$(_age "$trigger")
+
+  local next_retry=0 fail_count=0 http_status="-" last_error="-" last_success=0
+  if [[ -f "$meta" ]]; then
+    next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+    fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
+    http_status=$(jq -r 'if (.last_http_status // "") == "" then "-" else .last_http_status end' "$meta" 2>/dev/null || echo "-")
+    last_error=$(jq -r 'if (.last_error // "") == "" then "-" else .last_error end' "$meta" 2>/dev/null || echo "-")
+    last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
+  fi
+
+  local retry_in=$((next_retry - now))
+  [[ "$retry_in" -lt 0 ]] && retry_in=0
+
+  local cache_state="missing"
+  if [[ "$cache_age" -ge 0 ]]; then
+    if [[ "$cache_age" -lt "$ttl" ]]; then
+      cache_state="fresh"
+    else
+      cache_state="stale"
+    fi
+  fi
+
+  local can_refresh="yes"
+  [[ "$next_retry" -gt "$now" ]] && can_refresh="no (backoff)"
+  [[ -d "$lockdir" ]] && can_refresh="no (locked)"
+
+  echo "$name"
+  if [[ "$cache_age" -ge 0 ]]; then
+    echo "  cache: $cache_state, age=$(_fmt_secs "$cache_age") ($cache)"
+  else
+    echo "  cache: missing ($cache)"
+  fi
+
+  local next_retry_str="-"
+  local last_success_str="-"
+  if [[ "$next_retry" -gt 0 ]]; then
+    next_retry_str=$(_fmt_epoch "$next_retry")
+  fi
+  if [[ "$last_success" -gt 0 ]]; then
+    last_success_str=$(_fmt_epoch "$last_success")
+  fi
+
+  if [[ -f "$meta" ]]; then
+    echo "  backoff: fail_count=$fail_count, next_retry=$next_retry_str (in $(_fmt_secs "$retry_in"))"
+    echo "  last: status=$http_status, error=$last_error, success=$last_success_str"
+  else
+    echo "  backoff: missing meta ($meta)"
+  fi
+
+  if [[ -d "$lockdir" ]]; then
+    echo "  lock: active ($lockdir)"
+  else
+    echo "  lock: none"
+  fi
+
+  if [[ "$trigger_age" -ge 0 ]]; then
+    echo "  trigger: age=$(_fmt_secs "$trigger_age") ($trigger)"
+  else
+    echo "  trigger: none"
+  fi
+
+  if [[ -f "$cache" ]]; then
+    if [[ "$kind" == "claude" ]]; then
+      local u5 reset_iso reset_ts rem
+      u5=$(jq -r '.five_hour.utilization // 0' "$cache" 2>/dev/null)
+      reset_iso=$(jq -r '.five_hour.resets_at // empty' "$cache" 2>/dev/null)
+      reset_ts=$(_parse_iso_to_epoch "$reset_iso")
+      rem=$((reset_ts - now))
+      if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
+        echo "  usage: 5h=${u5}% reset=stale"
+      else
+        [[ "$rem" -lt 0 ]] && rem=0
+        echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
+      fi
+    else
+      local u5 reset_after rem
+      u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache" 2>/dev/null)
+      reset_after=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache" 2>/dev/null)
+      rem=$((reset_after - cache_age))
+      if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
+        echo "  usage: 5h=${u5}% reset=stale"
+      else
+        [[ "$rem" -lt 0 ]] && rem=0
+        echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
+      fi
+    fi
+  fi
+
+  echo "  refresh_allowed: $can_refresh"
+  echo
+}
+
+_print_provider \
+  "Claude" \
+  "$HOME/.cache/claude-usage.json" \
+  "$HOME/.cache/claude-usage.meta.json" \
+  "$HOME/.cache/claude-usage.lock" \
+  "$HOME/.cache/claude-usage.trigger" \
+  "claude"
+
+_print_provider \
+  "Codex" \
+  "$HOME/.cache/codex-usage.json" \
+  "$HOME/.cache/codex-usage.meta.json" \
+  "$HOME/.cache/codex-usage.lock" \
+  "$HOME/.cache/codex-usage.trigger" \
+  "codex"
