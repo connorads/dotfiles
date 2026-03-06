@@ -1,4 +1,4 @@
-model = "gpt-5.2-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 tool_output_token_limit = 25000
 # Leave room for native compaction near the 272-273k context window
@@ -6,6 +6,7 @@ tool_output_token_limit = 25000
 model_auto_compact_token_limit = 233000
 personality = "pragmatic"
 web_search = "live"
+plan_mode_reasoning_effort = "high"
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true
