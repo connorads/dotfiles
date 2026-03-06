@@ -1,40 +1,137 @@
 #!/usr/bin/env zsh
-# codex-usage: Query Codex API usage limits (cached 60s, auto-refreshes expired tokens)
+# codex-usage: Query Codex API usage limits with cache/backoff protection
 emulate -L zsh
+setopt pipefail
 
-local cache="$HOME/.cache/codex-usage.json" ttl=60
-local age=9999
-[[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
+local cache="$HOME/.cache/codex-usage.json"
+local meta="$HOME/.cache/codex-usage.meta.json"
+local lockdir="$HOME/.cache/codex-usage.lock"
+local ttl=300
+local backoff_base=120
+local backoff_max=1800
+local now age next_retry fail_count last_success
+now=$(date +%s)
 
-if [[ $age -ge $ttl ]]; then
+_mtime() {
+    local file="$1"
+    stat -f%m "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || echo 0
+}
+
+_cache_age() {
+    local file="$1"
+    [[ -f "$file" ]] || { echo 999999; return; }
+    local mtime
+    mtime=$(_mtime "$file")
+    echo $((now - mtime))
+}
+
+_fmt_secs() {
+    local diff="$1"
+    [[ "$diff" -lt 0 ]] && diff=0
+    local d=$((diff / 86400))
+    local h=$(((diff % 86400) / 3600))
+    local m=$(((diff % 3600) / 60))
+    if [[ $d -gt 0 ]]; then
+        echo "${d}d ${h}h"
+    else
+        echo "${h}h ${m}m"
+    fi
+}
+
+_write_meta() {
+    local next="$1"
+    local fails="$2"
+    local http_status="$3"
+    local err="$4"
+    local success="$5"
+    local tmp
+    tmp="${meta}.tmp.$$"
+    mkdir -p "$(dirname "$meta")"
+    jq -n \
+      --argjson next_retry_at "$next" \
+      --argjson fail_count "$fails" \
+      --arg last_http_status "$http_status" \
+      --arg last_error "$err" \
+      --argjson last_success_at "$success" \
+      '{
+        next_retry_at: $next_retry_at,
+        fail_count: $fail_count,
+        last_http_status: $last_http_status,
+        last_error: $last_error,
+        last_success_at: $last_success_at
+      }' > "$tmp" && mv "$tmp" "$meta"
+}
+
+if [[ ! -f "$meta" ]]; then
+    _write_meta 0 0 "" "" 0
+fi
+
+next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
+last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
+age=$(_cache_age "$cache")
+
+local should_fetch=0
+if [[ ! -f "$cache" ]]; then
+    [[ "$now" -ge "$next_retry" ]] && should_fetch=1
+elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
+    should_fetch=1
+fi
+
+if [[ "$should_fetch" -eq 1 ]] && mkdir "$lockdir" 2>/dev/null; then
+    trap 'rmdir "$lockdir" 2>/dev/null' EXIT INT TERM
+
     local auth_file="$HOME/.codex/auth.json"
-    [[ ! -f "$auth_file" ]] && { echo "Not logged in (run: codex login)"; return 1; }
-    local token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
-    [[ -z "$token" ]] && { echo "No access token found in $auth_file"; return 1; }
+    if [[ ! -f "$auth_file" ]]; then
+        rmdir "$lockdir" 2>/dev/null
+        trap - EXIT INT TERM
+        echo "Not logged in (run: codex login)"
+        return 1
+    fi
 
-    local resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
-        -H "Authorization: Bearer $token")
+    local token usage_resp usage_http usage_retry usage_ok=0
+    token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
+    [[ -z "$token" ]] && { rmdir "$lockdir" 2>/dev/null; trap - EXIT INT TERM; echo "No access token found in $auth_file"; return 1; }
 
-    # Token expired — refresh via OpenAI OAuth (same endpoint Codex CLI uses)
-    if ! echo "$resp" | jq -e '.rate_limit' >/dev/null 2>&1; then
-        local refresh_token=$(jq -r '.tokens.refresh_token // empty' "$auth_file" 2>/dev/null)
+    _fetch_usage() {
+        local tk="$1"
+        local hdr body
+        hdr=$(mktemp)
+        body=$(mktemp)
+        if curl -sS --max-time 8 -D "$hdr" -o "$body" "https://chatgpt.com/backend-api/wham/usage" -H "Authorization: Bearer $tk"; then
+            usage_http=$(awk 'BEGIN{IGNORECASE=1} /^HTTP/{code=$2} END{print code+0}' "$hdr")
+            usage_retry=$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {print $2; exit}' "$hdr" | tr -d '\r')
+            usage_resp=$(<"$body")
+            if [[ "$usage_http" -eq 200 ]] && jq -e '.rate_limit' "$body" >/dev/null 2>&1; then
+                usage_ok=1
+            fi
+        else
+            usage_http=0
+            usage_resp='{"message":"network_error"}'
+            usage_retry=""
+        fi
+        rm -f "$hdr" "$body"
+    }
+
+    _fetch_usage "$token"
+
+    if [[ "$usage_ok" -ne 1 ]]; then
+        local refresh_token new_access new_refresh new_id payload refresh_resp
+        refresh_token=$(jq -r '.tokens.refresh_token // empty' "$auth_file" 2>/dev/null)
         if [[ -n "$refresh_token" ]]; then
-            local payload
             payload=$(jq -n --arg rt "$refresh_token" '{
                 client_id: "app_EMoamEEZ73f0CkXaXp7hrann",
                 grant_type: "refresh_token",
                 refresh_token: $rt,
                 scope: "openid profile email"
             }')
-            local refresh_resp=$(curl -s --max-time 5 -X POST "https://auth.openai.com/oauth/token" \
-                -H "Content-Type: application/json" -d "$payload")
-
-            local new_access=$(echo "$refresh_resp" | jq -r '.access_token // empty' 2>/dev/null)
+            refresh_resp=$(curl -sS --max-time 8 -X POST "https://auth.openai.com/oauth/token" -H "Content-Type: application/json" -d "$payload")
+            new_access=$(print -r -- "$refresh_resp" | jq -r '.access_token // empty' 2>/dev/null)
             if [[ -n "$new_access" ]]; then
-                # Write new tokens back to auth.json (rotating refresh tokens)
-                local new_refresh=$(echo "$refresh_resp" | jq -r '.refresh_token // empty' 2>/dev/null)
-                local new_id=$(echo "$refresh_resp" | jq -r '.id_token // empty' 2>/dev/null)
-                local tmp=$(mktemp)
+                new_refresh=$(print -r -- "$refresh_resp" | jq -r '.refresh_token // empty' 2>/dev/null)
+                new_id=$(print -r -- "$refresh_resp" | jq -r '.id_token // empty' 2>/dev/null)
+                local tmp
+                tmp=$(mktemp)
                 jq --arg at "$new_access" \
                    --arg rt "${new_refresh:-$refresh_token}" \
                    --arg it "$new_id" \
@@ -43,37 +140,70 @@ if [[ $age -ge $ttl ]]; then
                     (if $it != "" then .tokens.id_token = $it else . end) |
                     .last_refresh = $lr' "$auth_file" > "$tmp" && mv "$tmp" "$auth_file"
                 chmod 600 "$auth_file"
-                token="$new_access"
-
-                # Retry with refreshed token
-                resp=$(curl -s --max-time 5 "https://chatgpt.com/backend-api/wham/usage" \
-                    -H "Authorization: Bearer $token")
-            else
-                echo "Token expired — refresh failed (run: codex login)"
-                return 1
+                usage_ok=0
+                _fetch_usage "$new_access"
             fi
-        else
-            echo "Token expired — no refresh token (run: codex login)"
-            return 1
         fi
     fi
 
-    [[ -n "$resp" ]] && echo "$resp" | jq -e '.rate_limit' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
+    if [[ "$usage_ok" -eq 1 ]]; then
+        mkdir -p "$(dirname "$cache")"
+        print -r -- "$usage_resp" > "${cache}.tmp.$$"
+        mv "${cache}.tmp.$$" "$cache"
+        _write_meta 0 0 "${usage_http:-200}" "" "$now"
+        age=0
+    else
+        local next_fail_count cooldown i=1 err
+        next_fail_count=$((fail_count + 1))
+        cooldown=$backoff_base
+        while [[ $i -lt $next_fail_count ]]; do
+            cooldown=$((cooldown * 2))
+            [[ "$cooldown" -ge "$backoff_max" ]] && { cooldown=$backoff_max; break; }
+            i=$((i + 1))
+        done
+        if [[ "$usage_retry" == <-> ]] && [[ "$usage_retry" -gt 0 ]]; then
+            cooldown="$usage_retry"
+        fi
+        [[ "$cooldown" -gt "$backoff_max" ]] && cooldown=$backoff_max
+        err=$(print -r -- "$usage_resp" | jq -r '.error.message? // .message? // "fetch_failed"' 2>/dev/null)
+        _write_meta $((now + cooldown)) "$next_fail_count" "${usage_http:-0}" "${err:-fetch_failed}" "$last_success"
+    fi
+
+    rmdir "$lockdir" 2>/dev/null
+    trap - EXIT INT TERM
 fi
 
-[[ ! -f "$cache" ]] && { echo "Failed to fetch usage"; return 1; }
+if [[ ! -f "$cache" ]]; then
+    next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+    if [[ "$next_retry" -gt "$now" ]]; then
+        echo "Usage refresh paused for $(_fmt_secs $((next_retry - now)))"
+    else
+        echo "Failed to fetch usage"
+    fi
+    return 1
+fi
 
-local u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache")
-local u7=$(jq -r '.rate_limit.secondary_window.used_percent // 0' "$cache")
-local r5=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache")
-local r7=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // 0' "$cache")
+age=$(_cache_age "$cache")
+local cache_stale=0
+[[ "$age" -ge "$ttl" ]] && cache_stale=1
 
-# Format seconds as human-readable duration
-_fmt_duration() {
-    local secs=$1
-    local d=$((secs / 86400)) h=$(((secs % 86400) / 3600)) m=$(((secs % 3600) / 60))
-    [[ $d -gt 0 ]] && echo "${d}d ${h}h" || echo "${h}h ${m}m"
+local u5 u7 r5_raw r7_raw r5 r7
+u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache")
+u7=$(jq -r '.rate_limit.secondary_window.used_percent // 0' "$cache")
+r5_raw=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache")
+r7_raw=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // 0' "$cache")
+r5=$((r5_raw - age))
+r7=$((r7_raw - age))
+
+_fmt_remaining() {
+    local secs="$1"
+    if [[ "$secs" -le 0 ]]; then
+        [[ "$cache_stale" -eq 1 ]] && { echo "stale"; return; }
+        echo "0h 0m"
+        return
+    fi
+    _fmt_secs "$secs"
 }
 
-printf "5-hour:  %3d%%  resets in %s\n" "$u5" "$(_fmt_duration "$r5")"
-printf "7-day:   %3d%%  resets in %s\n" "$u7" "$(_fmt_duration "$r7")"
+printf "5-hour:  %3d%%  resets in %s\n" "$u5" "$(_fmt_remaining "$r5")"
+printf "7-day:   %3d%%  resets in %s\n" "$u7" "$(_fmt_remaining "$r7")"

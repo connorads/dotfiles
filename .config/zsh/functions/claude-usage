@@ -1,18 +1,14 @@
 #!/usr/bin/env zsh
-# claude-usage: Show Claude API usage limits (5-hour/7-day windows, cached 60s)
+# claude-usage: Show Claude API usage limits with cache/backoff protection
 # Usage: claude-usage [-h|--help]
-#
-# Shows current Claude API usage percentage and reset times for:
-#   - 5-hour rolling window
-#   - 7-day rolling window
-#
-# Note: If you see "Not logged in", run `/login` in Claude CLI or `claude setup-token`
 emulate -L zsh
+setopt pipefail
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     echo "Usage: claude-usage [-h|--help]"
     echo
     echo "Shows Claude API usage limits (5-hour and 7-day windows)"
+    echo "Uses cache + retry backoff to avoid API hammering"
     echo
     echo "If not logged in:"
     echo "  - In Claude CLI: /login"
@@ -20,13 +16,85 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     return 0
 fi
 
-local cache="$HOME/.cache/claude-usage.json" ttl=60
-local age=9999
-[[ -f "$cache" ]] && age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || stat -c '%Y' "$cache" 2>/dev/null || echo 0)))
+local cache="$HOME/.cache/claude-usage.json"
+local meta="$HOME/.cache/claude-usage.meta.json"
+local lockdir="$HOME/.cache/claude-usage.lock"
+local ttl=300
+local backoff_base=120
+local backoff_max=1800
+local now age next_retry fail_count last_success
+now=$(date +%s)
 
-if [[ $age -ge $ttl ]]; then
-    # Get token (cross-platform: macOS keychain or Linux JSON file)
-    local token
+_mtime() {
+    local file="$1"
+    stat -f%m "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || echo 0
+}
+
+_cache_age() {
+    local file="$1"
+    [[ -f "$file" ]] || { echo 999999; return; }
+    local mtime
+    mtime=$(_mtime "$file")
+    echo $((now - mtime))
+}
+
+_fmt_secs() {
+    local diff="$1"
+    [[ "$diff" -lt 0 ]] && diff=0
+    local d=$((diff / 86400))
+    local h=$(((diff % 86400) / 3600))
+    local m=$(((diff % 3600) / 60))
+    if [[ $d -gt 0 ]]; then
+        echo "${d}d ${h}h"
+    else
+        echo "${h}h ${m}m"
+    fi
+}
+
+_write_meta() {
+    local next="$1"
+    local fails="$2"
+    local http_status="$3"
+    local err="$4"
+    local success="$5"
+    local tmp
+    tmp="${meta}.tmp.$$"
+    mkdir -p "$(dirname "$meta")"
+    jq -n \
+      --argjson next_retry_at "$next" \
+      --argjson fail_count "$fails" \
+      --arg last_http_status "$http_status" \
+      --arg last_error "$err" \
+      --argjson last_success_at "$success" \
+      '{
+        next_retry_at: $next_retry_at,
+        fail_count: $fail_count,
+        last_http_status: $last_http_status,
+        last_error: $last_error,
+        last_success_at: $last_success_at
+      }' > "$tmp" && mv "$tmp" "$meta"
+}
+
+if [[ ! -f "$meta" ]]; then
+    _write_meta 0 0 "" "" 0
+fi
+
+next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
+last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
+age=$(_cache_age "$cache")
+
+local should_fetch=0
+if [[ ! -f "$cache" ]]; then
+    [[ "$now" -ge "$next_retry" ]] && should_fetch=1
+elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
+    should_fetch=1
+fi
+
+if [[ "$should_fetch" -eq 1 ]] && mkdir "$lockdir" 2>/dev/null; then
+    trap 'rmdir "$lockdir" 2>/dev/null' EXIT INT TERM
+
+    local token=""
     if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
         token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
     elif [[ -f "$HOME/.claude/.credentials.json" ]]; then
@@ -34,6 +102,8 @@ if [[ $age -ge $ttl ]]; then
     fi
 
     if [[ -z "$token" ]]; then
+        rmdir "$lockdir" 2>/dev/null
+        trap - EXIT INT TERM
         echo "Not logged in"
         echo
         echo "To login:"
@@ -42,14 +112,69 @@ if [[ $age -ge $ttl ]]; then
         return 1
     fi
 
-    local claude_ver; claude_ver=$(claude --version 2>/dev/null | awk '{print $1}')
-    local resp=$(curl -s --max-time 5 "https://api.anthropic.com/api/oauth/usage" \
-        -H "Authorization: Bearer $token" -H "anthropic-beta: oauth-2025-04-20" -H "User-Agent: claude-code/${claude_ver:-unknown}")
-    [[ -n "$resp" ]] && echo "$resp" | jq -e '.five_hour' >/dev/null 2>&1 && { mkdir -p "$(dirname "$cache")"; echo "$resp" > "$cache"; }
+    local claude_ver hdr body http_code retry_after resp err
+    claude_ver=$(claude --version 2>/dev/null | awk '{print $1}')
+    hdr=$(mktemp)
+    body=$(mktemp)
+
+    if curl -sS --max-time 8 \
+        -D "$hdr" \
+        -o "$body" \
+        "https://api.anthropic.com/api/oauth/usage" \
+        -H "Authorization: Bearer $token" \
+        -H "anthropic-beta: oauth-2025-04-20" \
+        -H "User-Agent: claude-code/${claude_ver:-unknown}"; then
+        http_code=$(awk 'BEGIN{IGNORECASE=1} /^HTTP/{code=$2} END{print code+0}' "$hdr")
+        retry_after=$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {print $2; exit}' "$hdr" | tr -d '\r')
+        resp=$(<"$body")
+
+        if [[ "$http_code" -eq 200 ]] && jq -e '.five_hour' "$body" >/dev/null 2>&1; then
+            mkdir -p "$(dirname "$cache")"
+            print -r -- "$resp" > "${cache}.tmp.$$"
+            mv "${cache}.tmp.$$" "$cache"
+            _write_meta 0 0 "$http_code" "" "$now"
+            age=0
+        else
+            local next_fail_count cooldown i=1
+            next_fail_count=$((fail_count + 1))
+            cooldown=$backoff_base
+            while [[ $i -lt $next_fail_count ]]; do
+                cooldown=$((cooldown * 2))
+                [[ "$cooldown" -ge "$backoff_max" ]] && { cooldown=$backoff_max; break; }
+                i=$((i + 1))
+            done
+            if [[ "$retry_after" == <-> ]] && [[ "$retry_after" -gt 0 ]]; then
+                cooldown="$retry_after"
+            fi
+            [[ "$cooldown" -gt "$backoff_max" ]] && cooldown=$backoff_max
+            err=$(jq -r '.error.message? // .message? // "fetch_failed"' "$body" 2>/dev/null)
+            _write_meta $((now + cooldown)) "$next_fail_count" "${http_code:-0}" "${err:-fetch_failed}" "$last_success"
+        fi
+    else
+        local next_fail_count cooldown i=1
+        next_fail_count=$((fail_count + 1))
+        cooldown=$backoff_base
+        while [[ $i -lt $next_fail_count ]]; do
+            cooldown=$((cooldown * 2))
+            [[ "$cooldown" -ge "$backoff_max" ]] && { cooldown=$backoff_max; break; }
+            i=$((i + 1))
+        done
+        [[ "$cooldown" -gt "$backoff_max" ]] && cooldown=$backoff_max
+        _write_meta $((now + cooldown)) "$next_fail_count" "0" "network_error" "$last_success"
+    fi
+
+    rm -f "$hdr" "$body"
+    rmdir "$lockdir" 2>/dev/null
+    trap - EXIT INT TERM
 fi
 
 if [[ ! -f "$cache" ]]; then
-    echo "Failed to fetch usage data"
+    next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+    if [[ "$next_retry" -gt "$now" ]]; then
+        echo "Usage refresh paused for $(_fmt_secs $((next_retry - now)))"
+    else
+        echo "Failed to fetch usage data"
+    fi
     echo
     echo "Possible causes:"
     echo "  - Not logged in (try /login in Claude CLI)"
@@ -58,19 +183,29 @@ if [[ ! -f "$cache" ]]; then
     return 1
 fi
 
-local u5=$(jq -r '.five_hour.utilization // 0' "$cache")
-local u7=$(jq -r '.seven_day.utilization // 0' "$cache")
-local r5=$(jq -r '.five_hour.resets_at // empty' "$cache")
-local r7=$(jq -r '.seven_day.resets_at // empty' "$cache")
+age=$(_cache_age "$cache")
+local cache_stale=0
+[[ "$age" -ge "$ttl" ]] && cache_stale=1
 
-# Time remaining
+local u5 u7 r5 r7
+u5=$(jq -r '.five_hour.utilization // 0' "$cache")
+u7=$(jq -r '.seven_day.utilization // 0' "$cache")
+r5=$(jq -r '.five_hour.resets_at // empty' "$cache")
+r7=$(jq -r '.seven_day.resets_at // empty' "$cache")
+
 _remaining() {
-    local ts=$(date -d "$1" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${1%%.*}" +%s 2>/dev/null)
-    [[ -z "$ts" ]] && return
-    local diff=$((ts - $(date +%s)))
-    [[ $diff -lt 0 ]] && diff=0
-    local d=$((diff / 86400)) h=$(((diff % 86400) / 3600)) m=$(((diff % 3600) / 60))
-    [[ $d -gt 0 ]] && echo "${d}d ${h}h" || echo "${h}h ${m}m"
+    local reset_iso="$1"
+    [[ -z "$reset_iso" ]] && { echo "-"; return; }
+    local ts
+    ts=$(date -d "$reset_iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${reset_iso%%.*}" +%s 2>/dev/null)
+    [[ -z "$ts" ]] && { echo "-"; return; }
+    local diff=$((ts - now))
+    if [[ "$diff" -le 0 ]]; then
+        [[ "$cache_stale" -eq 1 ]] && { echo "stale"; return; }
+        echo "0h 0m"
+        return
+    fi
+    _fmt_secs "$diff"
 }
 
 printf "5-hour:  %3.0f%%  resets in %s\n" "$u5" "$(_remaining "$r5")"
