@@ -1,6 +1,7 @@
 /*
 
 !.gitignore
+!/.gitattributes
 !/hk.pkl
 
 !/.hk-hooks/
@@ -25,6 +26,7 @@
 
 !/.codex/
 /.codex/**
+!/.codex/config.toml
 !/.codex/skills/
 /.codex/skills/**
 !/.codex/skills/*
