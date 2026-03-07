@@ -27,12 +27,23 @@ Collect:
 
 If any of these are unknown, propose a short plan to discover them.
 
+## Pre-flight checks (before writing the cask)
+
+Before investing effort in a new cask, verify:
+
+1. **Notability**: The app must have meaningful public presence. GitHub projects with <30 forks/watchers or <75 stars are likely to be rejected. See [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks).
+2. **Repo age**: GitHub repos less than 30 days old cause a hard `brew audit --new` failure. Wait until the repo is old enough.
+3. **Previously refused**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token. If previously rejected for unfixable reasons, do not re-submit.
+4. **Existing PRs**: Check [open PRs](https://github.com/Homebrew/homebrew-cask/pulls) to avoid duplicating work.
+
 ## Workflow: create or update a cask
 
 ### 1) Choose the token
 
 - Start from the `.app` bundle name.
-- Remove `.app` and common suffixes: “App”, “Mac”, “Desktop”, “for macOS”, version numbers.
+- Remove `.app` and common suffixes: "App", "for macOS", version numbers.
+- Remove "Mac" unless it distinguishes the product (e.g., "WinZip Mac" vs "WinZip").
+- Remove "Desktop" only when it's a generic suffix, **not** when it's intrinsic to the product name. Keep it for products branded as "X Desktop" (e.g., `Docker Desktop` → `docker-desktop`, `LTX Desktop` → `ltx-desktop`). When in doubt, keep "Desktop".
 - Downcase; replace spaces/underscores with hyphens.
 - Remove non-alphanumerics except hyphens.
 - Use `@beta`, `@nightly`, or `@<major>` for variants.
@@ -68,10 +79,11 @@ If URLs and/or sha256 differ by CPU:
 - Use `arch` + `sha256 arm: ..., intel: ...` when versions match.
 - Use `on_arm` / `on_intel` blocks when versions differ.
 
-### 4) Add required uninstall/zap
+### 4) Add uninstall/zap stanzas
 
-- Add `uninstall` for `pkg` installs (include `pkgutil:` identifiers).
-- Add `zap` for user data cleanup (support directories, preferences, caches), but keep it accurate.
+- **`uninstall`**: Required for `pkg` and `installer` artifacts. Include `pkgutil:` identifiers, launch agents, etc.
+- **`zap`**: Recommended for thorough cleanup (support dirs, preferences, caches) but not enforced by `brew audit`. Reviewers expect it for new casks — verify paths are accurate.
+- **`depends_on`**: Optional. Only add when genuinely needed (e.g., specific macOS version, another cask dependency).
 
 ### 5) Validate and test locally
 
@@ -90,6 +102,11 @@ HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask <token>
 brew uninstall --cask <token>
 ```
 
+**Important notes:**
+- Always install/uninstall by **token name**, not file path. Running `brew install ./Casks/t/token.rb` will fail when using a tap symlink — use `brew install --cask token` instead.
+- `HOMEBREW_NO_INSTALL_FROM_API=1` forces Homebrew to use your local cask file rather than the API.
+- `brew audit --cask --new` checks GitHub repo age (must be >30 days) and notability — if the repo is too new, this will fail regardless of cask quality.
+
 If install fails:
 - Re-check URL reachability, `sha256`, and artifact name.
 - Re-run with verbosity: `brew install --cask --verbose <token>`.
@@ -99,6 +116,20 @@ If install fails:
 Before suggesting submission:
 - Ensure `brew style` and all relevant `brew audit` commands pass.
 - For new casks, check the token has not been previously refused/unmerged.
+- One cask change per PR, minimal diffs, no drive-by formatting.
+- Target the `main` branch (not `master`).
+
+Commit message format (first line <=50 chars):
+- New cask: `token version (new cask)`
+- Version update: `token version`
+- Fix/change: `token: description`
+
+### 7) AI disclosure
+
+The PR template includes an AI disclosure section. If AI assisted with the PR:
+- Check the AI checkbox in the template.
+- Briefly describe how AI was used.
+- Confirm manual verification was performed, especially for `zap` stanza paths.
 
 ## Local development patterns
 
