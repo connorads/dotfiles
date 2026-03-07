@@ -30,6 +30,8 @@
 !/.codex/skills/
 /.codex/skills/**
 !/.codex/skills/*
+!/.codex/skills/playwright-interactive/
+!/.codex/skills/playwright-interactive/**
 
 !/.config/
 /.config/**
