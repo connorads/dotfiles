@@ -39,6 +39,15 @@ brew tap homebrew/cask
 
 ## Creating a New Cask
 
+### Pre-flight Checks
+
+Before creating a new cask, verify the app meets Homebrew's acceptance criteria:
+
+1. **Notability**: GitHub projects with <30 forks/watchers or <75 stars are likely rejected. The app must have meaningful public presence beyond "just `brew install`". See [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks).
+2. **Repo age**: GitHub repos less than 30 days old cause a hard `brew audit --new` failure.
+3. **Previously refused**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token.
+4. **Existing PRs**: Check [open PRs](https://github.com/Homebrew/homebrew-cask/pulls) to avoid duplicates.
+
 ### 1. Determine the Token
 
 The token is the unique identifier for your cask. Follow these rules:
@@ -47,7 +56,9 @@ The token is the unique identifier for your cask. Follow these rules:
 
 - Start with app bundle name (e.g., `Google Chrome.app`)
 - Remove `.app` extension
-- Remove suffixes: "App", version numbers, "Mac", "Desktop", "for macOS"
+- Remove suffixes: "App", version numbers, "for macOS"
+- Remove "Mac" unless it distinguishes the product
+- Remove "Desktop" only when it's a generic suffix — **keep it** when intrinsic to the product name (e.g., `Docker Desktop.app` → `docker-desktop`, `LTX Desktop.app` → `ltx-desktop`). When in doubt, keep "Desktop".
 - Convert to lowercase
 - Replace spaces/underscores with hyphens
 - Remove non-alphanumeric characters (except hyphens)
@@ -57,6 +68,7 @@ The token is the unique identifier for your cask. Follow these rules:
 - `Google Chrome.app` → `google-chrome`
 - `VLC Media Player.app` → `vlc`
 - `Sublime Text 2.app` → `sublime-text`
+- `Docker Desktop.app` → `docker-desktop`
 
 **Special cases:**
 
@@ -78,7 +90,7 @@ vim <first-char>/<token>.rb
 
 ### 3. Write the Cask Definition
 
-**Required stanzas (in order):**
+**Required stanzas** (in canonical order):
 
 ```ruby
 cask "token-name" do
@@ -94,6 +106,14 @@ cask "token-name" do
 end
 ```
 
+Every cask must have: `version`, `sha256`, `url`, `name`, `desc`, `homepage`, and at least one artifact stanza (`app`, `pkg`, `installer`, `suite`, etc.).
+
+**Canonical stanza order:**
+
+`version` → `sha256` → `url` → `name` → `desc` → `homepage` → `livecheck` → `auto_updates` → `depends_on` → artifacts → `uninstall` → `zap`
+
+Run `brew style --fix <token>` to auto-correct ordering.
+
 **Key points:**
 
 - `version`: Use interpolation (`#{version}`) in URL when possible
@@ -104,11 +124,11 @@ end
 
 **Common optional stanzas:**
 
-- `depends_on macos:` - OS requirements
-- `depends_on cask:` - Other required casks
+- `depends_on macos:` - OS requirements (only when genuinely needed)
+- `depends_on cask:` - Other required casks (only when genuinely needed)
 - `livecheck` - Version checking automation
-- `uninstall` - Required for `pkg` artifacts
-- `zap` - Complete cleanup (user files)
+- `uninstall` - Required for `pkg`/`installer` artifacts; optional otherwise
+- `zap` - Thorough cleanup (user files, preferences, caches). Recommended for new casks but not enforced by `brew audit`. Reviewers expect accurate paths — verify them manually.
 
 ### 4. Handle Different Architectures
 
@@ -175,7 +195,7 @@ Both commands must pass with no errors before proceeding.
 # 3. Run new cask audit
 brew audit --cask --new <token>
 
-# 4. Test installation (CRITICAL - forces use of your local file)
+# 4. Test installation — always use TOKEN, never file path
 HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask <token>
 
 # 5. Verify the app works
@@ -188,12 +208,16 @@ brew uninstall --cask <token>
 ls /Applications/ | grep AppName  # Should return nothing
 ```
 
+**Important:** Always install by token name (e.g., `brew install --cask my-app`), never by file path (e.g., `./Casks/m/my-app.rb`). File path installs fail when using the tap symlink workflow.
+
 **Common audit issues:**
 
 - Missing `verified:` when URL domain ≠ homepage domain
 - Description too long (>80 chars) or contains marketing fluff
 - Token doesn't follow naming conventions
 - SHA256 mismatch
+- GitHub repo less than 30 days old (hard failure for `--new` audit)
+- App doesn't meet notability thresholds (<30 forks/watchers or <75 stars)
 
 ## Testing Tips
 
@@ -278,8 +302,11 @@ git diff
 # Stage the new/modified cask
 git add Casks/<letter>/<token>.rb
 
-# Commit with descriptive message
-git commit -m "Add my-app cask" # or "Update my-app to version X.Y.Z"
+# Commit with correct message format (first line <=50 chars)
+# New cask:        "token version (new cask)"
+# Version update:  "token version"
+# Fix/change:      "token: description"
+git commit -m "my-app 1.0.0 (new cask)"
 ```
 
 ### 2. Push to Your Fork
@@ -290,15 +317,29 @@ git push origin <your-branch-name>
 
 ### 3. Create Pull Request
 
-1. Go to your fork on GitHub
-2. Click "Pull Request"
-3. Fill in the PR template with:
-   - Brief description
-   - Link to official website
-   - Checkboxes ticked ONLY if you completed each step
-4. Submit
+Target the `main` branch (not `master`):
 
-### 4. Respond to Review
+```bash
+gh pr create --base main --title "my-app 1.0.0 (new cask)" --body-file - <<'EOF'
+Built and tested locally on macOS [version].
+
+[One sentence if not obvious from title.]
+EOF
+```
+
+Or via the GitHub web UI — fill in the PR template with:
+- Brief description
+- Checkboxes ticked ONLY if you completed each step
+- AI disclosure (see below)
+
+### 4. AI Disclosure
+
+The PR template includes an AI disclosure section. If AI assisted with the PR:
+- Check the AI checkbox in the template.
+- Briefly describe how AI was used.
+- Confirm that all changes were personally reviewed, tested, and verified — especially `zap` stanza paths.
+
+### 5. Respond to Review
 
 Maintainers may request changes. To update:
 
@@ -313,7 +354,7 @@ brew audit --cask --online <token>
 # Test again
 brew reinstall --cask <token>
 
-# Commit and push
+# Commit and push (do not squash after opening PR)
 git add Casks/<letter>/<token>.rb
 git commit -m "Address review feedback: <what you changed>"
 git push origin <your-branch-name>
@@ -327,6 +368,14 @@ Ensure you're using `HOMEBREW_NO_INSTALL_FROM_API=1` to force local file usage:
 
 ```bash
 HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask <token>
+```
+
+### File Path Install Fails
+
+Do **not** install by file path (e.g., `brew install ./Casks/t/token.rb`). This fails with the tap symlink workflow. Always use the token name:
+
+```bash
+brew install --cask <token>
 ```
 
 ### Symlink Issues
@@ -346,6 +395,8 @@ Common fixes:
 - Check `verified:` parameter if URL/homepage domains differ
 - Ensure `desc` is concise (<80 chars)
 - Verify SHA256: `shasum -a 256 <file>`
+- GitHub repo <30 days old: wait until the repo ages past 30 days
+- Notability thresholds not met: check [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks) criteria
 
 ### Installation Failures
 
@@ -368,7 +419,7 @@ brew style --fix <token>
 brew audit --cask --online <token>
 brew audit --cask --new <token>  # New casks only
 
-# Testing
+# Testing (always use token, never file path)
 HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask <token>
 brew uninstall --cask <token>
 brew reinstall --cask <token>
@@ -382,6 +433,10 @@ brew tap homebrew/cask
 
 - Casks: `Casks/<first-char>/<token>.rb`
 - Helper scripts: `developer/bin/`
+
+**PR Target:**
+
+- Base branch: `main` (not `master`)
 
 **Key Documentation:**
 
