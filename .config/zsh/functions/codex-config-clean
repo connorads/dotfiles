@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+# codex-config-clean: strip [projects.*] blocks from codex config.toml for clean git commits
+emulate -L zsh
+
+# Read stdin, remove [projects."..."] sections (header + key-value lines until next section or EOF)
+awk '
+  /^\[projects\./ { skip=1; next }
+  /^\[/            { skip=0 }
+  !skip
+' | sed -e :a -e '/^\n*$/{$d;N;ba}'
