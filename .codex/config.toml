@@ -8,6 +8,14 @@ personality = "pragmatic"
 web_search = "live"
 plan_mode_reasoning_effort = "high"
 
+# Defaults made explicit — sandbox is read-only (upgrades to workspace-write
+# after trust prompt), network blocked, approval based on trust decision
+sandbox_mode = "read-only"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = false
+
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true
 
