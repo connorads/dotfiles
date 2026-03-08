@@ -76,4 +76,12 @@
 | `Ctrl+b ?` | this help |
 | `Ctrl+b /` | search help (fzf) |
 
+## Usage Tracking
+
+Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
+
+| Command | Action |
+|---------|--------|
+| `tmux-usage` | Show most-used bindings by period (1d/7d/30d/all) |
+
 Mouse: click, scroll, drag borders

@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+# tmux-usage: summarise tmux keybinding usage by period
+emulate -L zsh
+
+local file="$HOME/.local/state/tmux/usage.jsonl"
+if [[ ! -f "$file" ]]; then
+  echo "No usage data yet. Use some tmux prefix bindings first."
+  return 0
+fi
+
+if ! command -v jq &>/dev/null; then
+  echo "jq is required but not found" >&2
+  return 1
+fi
+
+# Compute epoch cutoffs (handles GNU and BSD date)
+local now
+now=$(date +%s)
+local d1=$((now - 86400))
+local d7=$((now - 604800))
+local d30=$((now - 2592000))
+
+jq -r --argjson d1 "$d1" --argjson d7 "$d7" --argjson d30 "$d30" '
+  .ts as $ts | .name as $name |
+  ($ts | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) as $epoch |
+  { name: $name, all: 1,
+    d1:  (if $epoch >= $d1  then 1 else 0 end),
+    d7:  (if $epoch >= $d7  then 1 else 0 end),
+    d30: (if $epoch >= $d30 then 1 else 0 end) }
+' "$file" | jq -rs '
+  group_by(.name) | map({
+    name: .[0].name,
+    d1:  (map(.d1)  | add),
+    d7:  (map(.d7)  | add),
+    d30: (map(.d30) | add),
+    all: (map(.all) | add)
+  }) | sort_by(-.all) | .[] |
+  [.name, (.d1|tostring), (.d7|tostring), (.d30|tostring), (.all|tostring)] | @tsv
+' | column -t -N "BINDING,1D,7D,30D,ALL" -s $'\t'
