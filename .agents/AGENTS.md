@@ -77,7 +77,6 @@ Use for granular commits when a file contains changes for multiple concerns.
 - Wrapper types for primitives: EmailAddress, OrderId, CustomerId as distinct types — not raw strings/numbers
 - Parse don't validate: transform untyped input at boundaries into typed structures; never re-check validity internally
 - Ubiquitous language: code names must match domain language; no generic names (data, info, manager, helper)
-- Workflows as functions: each use case is a function — command in, events out; type signatures document the workflow
 - Bounded contexts: separate models per domain area with explicit translation at boundaries
 - Quality abstractions: consciously constrained, pragmatically parameterised, doggedly documented
 
