@@ -9,6 +9,7 @@
 
 !/.agents/
 /.agents/**
+!/.agents/AGENTS.md
 !/.agents/README.md
 !/.agents/skills/
 !/.agents/skills/**
