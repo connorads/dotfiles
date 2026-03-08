@@ -55,11 +55,35 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 `git hunks list` shows diff hunks with unique IDs. `git hunks add <id>` stages specific hunks non-interactively.
 Use for granular commits when a file contains changes for multiple concerns.
 
-## Coding and domain modelling
+## Design approach
 
-- Strongly typed code: No `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
-- Make illegal states unrepresentable Model domain with ADTs/discriminated unions; parse inputs at boundaries into typed structures; if state can't exist, code can't mishandle it
-- Quality Abstractions: Consciously constrained, pragmatically parameterised, doggedly documented
+- Design before building: sketch domain types and key workflows before writing implementation
+- Make the change easy, then make the easy change — restructure first if the code fights you
+- 3X awareness: know whether you're exploring, expanding, or extracting. Explore = lighter touch, experiment fast. Expand/extract = full discipline (types, tests, architecture)
+
+## Architecture
+
+- **Functional core, imperative shell**: pure business logic in the centre (no I/O, no side effects, no mutation); thin imperative shell at the edges (HTTP handlers, DB access, CLI parsing)
+- **Impureim sandwich**: gather data (impure) → make decisions (pure) → act on results (impure). Challenge assumptions that effects must be interleaved — fetch eagerly, decide purely
+- **Values at boundaries**: pass simple values between components, not objects with behaviour
+- **Ports and adapters**: define interfaces (ports) in the application's own terms; implement with technology-specific adapters. If tests need real infrastructure, you're missing a port. Name ports by purpose ("for ordering") not technology ("for postgres")
+- **Walking skeleton**: start new projects with the thinnest end-to-end slice proving the architecture works — one use case traversing all layers
+- For substantial domains, apply full DDD and ports/adapters. For simple scripts/tools, strong types and impureim sandwich are sufficient
+
+## Domain modelling
+
+- Strongly typed code: no `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
+- Make illegal states unrepresentable: model domain with ADTs/discriminated unions; if state can't exist, code can't mishandle it
+- Wrapper types for primitives: EmailAddress, OrderId, CustomerId as distinct types — not raw strings/numbers
+- Parse don't validate: transform untyped input at boundaries into typed structures; never re-check validity internally
+- Ubiquitous language: code names must match domain language; no generic names (data, info, manager, helper)
+- Workflows as functions: each use case is a function — command in, events out; type signatures document the workflow
+- Bounded contexts: separate models per domain area with explicit translation at boundaries
+- Quality abstractions: consciously constrained, pragmatically parameterised, doggedly documented
+
+## Observability
+
+- Design for observability: instrument at system boundaries (HTTP, DB, queues), prefer structured logging over unstructured, include context (request ID, operation, entity)
 
 ## Commits, comments and docs
 
@@ -68,8 +92,24 @@ Use for granular commits when a file contains changes for multiple concerns.
 
 ## Testing
 
-- Write automated tests: Ideally first, in TDD manner. Test expected business behaviour, not implementation. Test through the public API, this helps create good abstractions.
-- Do e2e tests: CLI? Run some commands. Web - use a browser (chrome devtools or playwright) to test. Automate a couple e2e tests if advantageous.
+**TDD is the default discipline**, not a suggestion:
+
+- Red-green-refactor: write a failing test, make it pass with simplest code, refactor. This is the rhythm
+- Tests are design feedback: if it's hard to test, the design is wrong — redesign, don't add mocks
+- Test business behaviour through public APIs, not implementation details
+
+**Testing taxonomy** — architecture dictates where tests go:
+
+| Layer | What | How | Volume |
+|-------|------|-----|--------|
+| Pure core | Business logic, domain rules | Unit tests with real values, no test doubles. Property-based tests for large input spaces | Most tests |
+| Adapter contracts | Each adapter fulfils its port | Fakes (in-memory port implementations) for fast tests; few integration tests per adapter against real infra | Some tests |
+| Composition | Wiring works end-to-end | Walking skeleton first, then key user journeys through composed system | Few tests |
+| E2e | Critical paths through real UI/CLI | CLI: run commands. Web: playwright. Critical journeys only | Minimal |
+
+**No mocks** — the architecture eliminates the need. Pure core needs no doubles; adapters use fakes (in-memory implementations of the port interface) or real infrastructure. If you reach for a mock, reconsider the design.
+
+**Property-based testing**: use for pure functions where the input space is large or combinatorial — describe the properties that must hold, not individual examples.
 
 ## Have you finished?
 
