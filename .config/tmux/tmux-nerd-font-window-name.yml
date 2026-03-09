@@ -3,6 +3,7 @@ config:
 icons:
   bun: ""
   claude: "󰗋"
+  codex: "󰧑"
   node: ""
   opencode: "󰏦"
   micro: "󰏫"
