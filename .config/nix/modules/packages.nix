@@ -93,7 +93,6 @@ let
     zstd
 
     # Dev tools
-    gcc
     nixfmt
     tree-sitter
 
