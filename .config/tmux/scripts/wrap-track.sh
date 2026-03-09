@@ -15,35 +15,44 @@ tmux list-keys -N -T prefix | while IFS= read -r line; do
   printf '%s\t%s\n' "$key" "$name"
 done > "$NOTEFILE"
 
-tmux list-keys -T prefix | while IFS= read -r line; do
-  # Skip if already wrapped (idempotent)
-  case "$line" in *track-bind.sh*) continue ;; esac
+# Parse each prefix binding using awk to preserve backslash-escaped keys
+tmux list-keys -T prefix | awk '
+  {
+    # Skip already wrapped (idempotent)
+    if (index($0, "track-bind.sh")) next
 
-  # Extract key: field immediately after "-T prefix"
-  key=$(echo "$line" | sed -n 's/.*-T prefix  *\([^ ]*\).*/\1/p')
+    # Find key and command: fields after "-T prefix"
+    for (i = 1; i <= NF; i++) {
+      if ($i == "-T" && $(i+1) == "prefix") {
+        key = $(i+2)
+        cmd = ""
+        for (j = i+3; j <= NF; j++) cmd = cmd (j > i+3 ? " " : "") $j
+        break
+      }
+    }
+    if (key == "" || cmd == "") next
+
+    # Skip \; key — ambiguous with \; command separator
+    if (key == "\\;") next
+
+    print key "\t" cmd
+  }
+' | while IFS=$(printf '\t') read -r key cmd; do
   [ -z "$key" ] && continue
-
-  # Look up friendly name from notes, fall back to key
-  name=$(grep -F "$key" "$NOTEFILE" | head -1 | cut -f2)
-  # Sanitise key for use as fallback name (strip backslashes, keep alphanumeric + -)
-  [ -z "$name" ] && name=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
-  [ -z "$name" ] && name="unknown"
-
-  # Sanitise key for shell arg: strip backslash, replace quotes with safe tokens
-  safe_key=$(printf '%s' "$key" | sed "s/\\\\//g; s/'/sq/g; s/\"/dq/g")
-  [ -z "$safe_key" ] && safe_key="backslash"
-
-  # Extract the command portion (everything after the key)
-  cmd=$(echo "$line" | sed "s/.*-T prefix  *[^ ]* *//")
   [ -z "$cmd" ] && continue
 
-  # Re-escape key for tmux config (backslashes need doubling)
-  tmux_key=$(printf '%s' "$key" | sed 's/\\/\\\\/g')
+  # Look up friendly name from notes, fall back to sanitised key
+  name=$(grep -F "$key" "$NOTEFILE" | head -1 | cut -f2)
+  [ -z "$name" ] && name=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
+  [ -z "$name" ] && name="special"
 
-  # Write wrapped bind: track async then run original command
-  # Use double quotes for run-shell arg to avoid single-quote issues with keys like \'
+  # Sanitise key for shell arg: keep only alphanumeric + hyphen
+  safe_key=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
+  [ -z "$safe_key" ] && safe_key="special"
+
+  # Key is used as-is from list-keys (already in tmux-config format)
   printf 'bind-key -T prefix %s run-shell -b "sh %s %s %s #{session_name} #{window_index} #{pane_index} #{pane_current_path} #{host_short}" \\; %s\n' \
-    "$tmux_key" "$TRACKER" "$safe_key" "$name" "$cmd" >> "$TMPFILE"
+    "$key" "$TRACKER" "$safe_key" "$name" "$cmd" >> "$TMPFILE"
 done
 
 # Apply all wrapped bindings at once (no-op if everything already wrapped)
