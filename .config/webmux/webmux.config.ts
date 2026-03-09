@@ -2,6 +2,72 @@
 
 const customDrawerButtons = [
 	{
+		id: 'tmux-split-vertical',
+		label: 'Split |',
+		description: 'Split pane vertically in cwd',
+		action: { type: 'send', data: '\x02|' },
+	},
+	{
+		id: 'tmux-split-horizontal',
+		label: 'Split —',
+		description: 'Split pane horizontally in cwd',
+		action: { type: 'send', data: '\x02-' },
+	},
+	{
+		id: 'tmux-sessions',
+		label: 'Sessions',
+		description: 'Open tmux session picker',
+		action: { type: 'send', data: '\x02S' },
+	},
+	{
+		id: 'tmux-windows',
+		label: 'Windows',
+		description: 'Open tmux window picker',
+		action: { type: 'send', data: '\x02W' },
+	},
+	{
+		id: 'tmux-git',
+		label: 'Git',
+		description: 'Open Lazygit popup',
+		action: { type: 'send', data: '\x02g' },
+	},
+	{
+		id: 'tmux-files',
+		label: 'Yazi',
+		description: 'Open Yazi file manager popup',
+		action: { type: 'send', data: '\x02y' },
+	},
+	{
+		id: 'tmux-links',
+		label: 'Links',
+		description: 'Open tmux links picker',
+		action: { type: 'send', data: '\x02u' },
+	},
+	{
+		id: 'scratch-shell',
+		label: 'Scratch',
+		description: 'Open scratch shell popup',
+		action: { type: 'send', data: '\x02`' },
+	},
+	{
+		id: 'neovim',
+		label: 'Neovim',
+		description: 'Open Neovim popup',
+		action: { type: 'send', data: '\x02v' },
+	},
+	{
+		id: 'detach',
+		label: 'Detach',
+		description: 'Detach tmux client',
+		action: { type: 'send', data: '\x02d' },
+	},
+	{
+		id: 'thumbs',
+		label: 'Thumbs',
+		description: 'Open tmux-thumbs picker',
+		action: { type: 'send', data: '\x02 ' },
+	},
+	{
 		id: 'ai-usage',
 		label: 'AI Usage',
 		description: 'Open AI usage popup',
@@ -51,6 +117,10 @@ const preferredDrawerOrder = [
 	'tmux-git',
 	'tmux-files',
 	'tmux-links',
+	'scratch-shell',
+	'neovim',
+	'detach',
+	'thumbs',
 	'diff',
 	'gh-dash',
 	'ports',
@@ -87,21 +157,9 @@ export default {
 	],
 	drawer: {
 		buttons: (defaults) => {
-			const relabelledDefaults = defaults.map((button) => {
-				if (button.id === 'tmux-files') {
-					return {
-						...button,
-						label: 'Yazi',
-						description: 'Open Yazi file manager popup',
-					}
-				}
-
-				return button
-			})
-
 			const buttonsById = new Map()
 
-			for (const button of relabelledDefaults) {
+			for (const button of defaults) {
 				buttonsById.set(button.id, button)
 			}
 
