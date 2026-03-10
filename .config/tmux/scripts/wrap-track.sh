@@ -7,53 +7,62 @@ TMPFILE="$(mktemp)"
 NOTEFILE="$(mktemp)"
 trap 'rm -f "$TMPFILE" "$NOTEFILE"' EXIT
 
-# Build note lookup: key → name (from -N annotations)
+# Build note lookup: key<TAB>name<TAB>note (from -N annotations)
+# list-keys -N -T prefix format: "<key>  <note text>"
 tmux list-keys -N -T prefix | while IFS= read -r line; do
-  key=$(echo "$line" | awk '{print $1}')
-  note=$(echo "$line" | sed 's/^[^ ]* *//')
-  name=$(echo "$note" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
-  printf '%s\t%s\n' "$key" "$name"
+  key=$(printf '%s' "$line" | awk '{print $1}')
+  note=$(printf '%s' "$line" | sed 's/^[^ ]* *//')
+  name=$(printf '%s' "$note" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
+  printf '%s\t%s\t%s\n' "$key" "$name" "$note"
 done > "$NOTEFILE"
 
-# Parse each prefix binding using awk to preserve backslash-escaped keys
-tmux list-keys -T prefix | awk '
-  {
-    # Skip already wrapped (idempotent)
-    if (index($0, "track-bind.sh")) next
+# Parse each prefix binding; sed prefix-stripping preserves all quoting
+tmux list-keys -T prefix | while IFS= read -r line; do
+  # Skip already wrapped (idempotent)
+  case "$line" in *track-bind.sh*) continue ;; esac
 
-    # Find key and command: fields after "-T prefix"
-    for (i = 1; i <= NF; i++) {
-      if ($i == "-T" && $(i+1) == "prefix") {
-        key = $(i+2)
-        cmd = ""
-        for (j = i+3; j <= NF; j++) cmd = cmd (j > i+3 ? " " : "") $j
-        break
-      }
-    }
-    if (key == "" || cmd == "") next
+  # Detect -r flag and strip fixed prefix
+  case "$line" in
+    "bind-key -r -T prefix "*)
+      rflag="-r "
+      rest="${line#bind-key -r -T prefix }"
+      ;;
+    "bind-key -T prefix "*)
+      rflag=""
+      rest="${line#bind-key -T prefix }"
+      ;;
+    *) continue ;;
+  esac
 
-    # Skip \; key — ambiguous with \; command separator
-    if (key == "\\;") next
+  # Extract key (first token) and command (remainder, opaque)
+  key="${rest%% *}"
+  cmd="${rest#* }"
 
-    print key "\t" cmd
-  }
-' | while IFS=$(printf '\t') read -r key cmd; do
-  [ -z "$key" ] && continue
-  [ -z "$cmd" ] && continue
+  # Skip \; key (ambiguous with command separator)
+  [ "$key" = '\;' ] && continue
 
-  # Look up friendly name from notes, fall back to sanitised key
-  name=$(grep -F "$key" "$NOTEFILE" | head -1 | cut -f2)
+  # Skip if no command
+  [ -z "$cmd" ] || [ "$cmd" = "$key" ] && continue
+
+  # Look up friendly name (exact key match)
+  name=$(awk -F'\t' -v k="$key" '$1 == k {print $2; exit}' "$NOTEFILE")
   [ -z "$name" ] && name=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
   [ -z "$name" ] && name="special"
 
-  # Sanitise key for shell arg: keep only alphanumeric + hyphen
+  # Look up original note text for -N preservation
+  note=$(awk -F'\t' -v k="$key" '$1 == k {print $3; exit}' "$NOTEFILE")
+
+  # Sanitise key for shell arg
   safe_key=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
   [ -z "$safe_key" ] && safe_key="special"
 
-  # Key is used as-is from list-keys (already in tmux-config format)
-  printf 'bind-key -T prefix %s run-shell -b "sh %s %s %s #{session_name} #{window_index} #{pane_index} #{pane_current_path} #{host_short}" \\; %s\n' \
-    "$key" "$TRACKER" "$safe_key" "$name" "$cmd" >> "$TMPFILE"
+  # Build -N flag if annotation exists
+  nflag=""
+  [ -n "$note" ] && nflag="-N \"$note\" "
+
+  printf 'bind-key %s%s-T prefix %s run-shell -b "sh %s %s %s #{session_name} #{window_index} #{pane_index} #{pane_current_path} #{host_short}" \\; %s\n' \
+    "$nflag" "$rflag" "$key" "$TRACKER" "$safe_key" "$name" "$cmd" >> "$TMPFILE"
 done
 
-# Apply all wrapped bindings at once (no-op if everything already wrapped)
+# Apply all wrapped bindings at once
 [ -s "$TMPFILE" ] && tmux source-file "$TMPFILE" || true
