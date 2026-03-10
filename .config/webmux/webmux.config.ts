@@ -139,6 +139,7 @@ const preferredDrawerOrder = [
 ] as const
 
 export default {
+	font: { mobileSizeDefault: 12 },
 	mobile: {
 		initData: '\x02z',
 	},
