@@ -163,21 +163,18 @@ elif [ "$ctx_int" -gt 50 ] 2>/dev/null; then
 	ctx_colour="$YELLOW"
 fi
 
-# Build output
-output="${CYAN}${dir}${RESET}"
+# Build output - 3 lines for better visibility in thin panes
+line1="${CYAN}${dir}${RESET}"
+[ -n "$branch" ] && line1+=" on ${GREEN}${branch}${RESET}"
+line1+=" | ${MAGENTA}${model}${RESET}"
 
-if [ -n "$branch" ]; then
-	output+=" on ${GREEN}${branch}${RESET}"
-fi
+line2="${cost_colour}\$$(printf '%.2f' "$cost")${RESET}"
+line2+=" | ${ctx_colour}${ctx_int:-0}% ctx${RESET}"
+line2+=" | ${WHITE}${duration_str}${RESET}"
+line2+=" | ${GREEN}+${lines_added}${RESET} ${RED}-${lines_removed}${RESET}"
 
-output+=" | ${MAGENTA}${model}${RESET}"
-output+=" | ${cost_colour}\$$(printf '%.2f' "$cost")${RESET}"
-output+=" | ${ctx_colour}${ctx_int:-0}% ctx${RESET}"
-output+=" | ${WHITE}${duration_str}${RESET}"
-output+=" | ${GREEN}+${lines_added}${RESET} ${RED}-${lines_removed}${RESET}"
-
-# API usage limits (colour based on usage pace vs elapsed time)
-if [[ -n "$usage_5h" ]]; then
+line3=""
+if [ -n "$usage_5h" ]; then
 	usage_5h_int=${usage_5h%.*}
 	usage_7d_int=${usage_7d%.*}
 
@@ -185,8 +182,8 @@ if [[ -n "$usage_5h" ]]; then
 	elapsed_7d_pct=$(elapsed_pct 604800 "$reset_7d")
 
 	limit_5h_colour="$WHITE"
-	if [[ -n "$elapsed_5h_pct" ]]; then
-		[[ "$elapsed_5h_pct" -lt 1 ]] && elapsed_5h_pct=1
+	if [ -n "$elapsed_5h_pct" ]; then
+		[ "$elapsed_5h_pct" -lt 1 ] && elapsed_5h_pct=1
 		pace_5h=$(echo "scale=3; $usage_5h / $elapsed_5h_pct" | bc -l 2>/dev/null || echo 0)
 		if (($(echo "$pace_5h >= 1.4" | bc -l 2>/dev/null || echo 0))); then
 			limit_5h_colour="$RED"
@@ -196,8 +193,8 @@ if [[ -n "$usage_5h" ]]; then
 	fi
 
 	limit_7d_colour="$WHITE"
-	if [[ -n "$elapsed_7d_pct" ]]; then
-		[[ "$elapsed_7d_pct" -lt 1 ]] && elapsed_7d_pct=1
+	if [ -n "$elapsed_7d_pct" ]; then
+		[ "$elapsed_7d_pct" -lt 1 ] && elapsed_7d_pct=1
 		pace_7d=$(echo "scale=3; $usage_7d / $elapsed_7d_pct" | bc -l 2>/dev/null || echo 0)
 		if (($(echo "$pace_7d >= 1.4" | bc -l 2>/dev/null || echo 0))); then
 			limit_7d_colour="$RED"
@@ -206,12 +203,11 @@ if [[ -n "$usage_5h" ]]; then
 		fi
 	fi
 
-	# Format: 5h:59%(2h30m) 7d:22%(4d12h)
-	output+=" | ${limit_5h_colour}5h:${usage_5h_int:-0}%"
-	[[ -n "$reset_5h_str" ]] && output+="(${reset_5h_str})"
-	output+="${RESET} ${limit_7d_colour}7d:${usage_7d_int:-0}%"
-	[[ -n "$reset_7d_str" ]] && output+="(${reset_7d_str})"
-	output+="${RESET}"
+	line3="${limit_5h_colour}5h:${usage_5h_int:-0}%"
+	[ -n "$reset_5h_str" ] && line3+="(${reset_5h_str})"
+	line3+="${RESET} ${limit_7d_colour}7d:${usage_7d_int:-0}%"
+	[ -n "$reset_7d_str" ] && line3+="(${reset_7d_str})"
+	line3+="${RESET}"
 fi
 
-echo -e "$output"
+echo -e "$line1\n$line2\n$line3"
