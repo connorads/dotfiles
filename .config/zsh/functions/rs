@@ -8,7 +8,7 @@ if [[ -f mise.toml ]] || [[ -f .mise.toml ]]; then
   mise trust && mise install || return 1
 fi
 
-# install dependencies
+# JS/TS (mutually exclusive — a repo uses one JS package manager)
 if [[ -f bun.lock ]] || [[ -f bun.lockb ]]; then
   echo "=> bun install"
   bun install || return 1
@@ -21,26 +21,63 @@ elif [[ -f yarn.lock ]]; then
 elif [[ -f package-lock.json ]]; then
   echo "=> npm install"
   npm install || return 1
-elif [[ -f Gemfile.lock ]]; then
+fi
+
+# Ruby
+if [[ -f Gemfile.lock ]]; then
   echo "=> bundle install"
   bundle install || return 1
-elif [[ -f go.sum ]]; then
+fi
+
+# Go
+if [[ -f go.sum ]]; then
   echo "=> go mod download"
   go mod download || return 1
-elif [[ -f Cargo.lock ]]; then
+fi
+
+# Rust
+if [[ -f Cargo.lock ]]; then
   echo "=> cargo fetch"
   cargo fetch || return 1
-elif [[ -f requirements.txt ]]; then
+fi
+
+# Python (most specific lockfile first)
+if [[ -f requirements.txt ]]; then
   echo "=> pip install -r requirements.txt"
   pip install -r requirements.txt || return 1
-elif [[ -f pyproject.toml ]]; then
-  if command -v uv &>/dev/null; then
-    echo "=> uv sync"
-    uv sync || return 1
-  elif [[ -f poetry.lock ]]; then
-    echo "=> poetry install"
-    poetry install || return 1
-  fi
+elif [[ -f uv.lock ]]; then
+  echo "=> uv sync"
+  uv sync || return 1
+elif [[ -f poetry.lock ]]; then
+  echo "=> poetry install"
+  poetry install || return 1
+elif [[ -f pyproject.toml ]] && command -v uv &>/dev/null; then
+  echo "=> uv sync"
+  uv sync || return 1
+fi
+
+# PHP
+if [[ -f composer.lock ]]; then
+  echo "=> composer install"
+  composer install || return 1
+fi
+
+# Elixir
+if [[ -f mix.lock ]]; then
+  echo "=> mix deps.get"
+  mix deps.get || return 1
+fi
+
+# Swift
+if [[ -f Package.resolved ]]; then
+  echo "=> swift package resolve"
+  swift package resolve || return 1
+fi
+
+# Dart/Flutter
+if [[ -f pubspec.lock ]]; then
+  echo "=> dart pub get"
+  dart pub get || return 1
 fi
 
 echo "=> done"
