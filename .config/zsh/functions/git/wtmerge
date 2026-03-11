@@ -1,0 +1,76 @@
+#!/usr/bin/env zsh
+# wtmerge: two-phase merge worktree branch back to main
+emulate -L zsh
+
+# Detect main branch
+local main
+if git show-ref --verify --quiet refs/heads/main; then
+  main=main
+elif git show-ref --verify --quiet refs/heads/master; then
+  main=master
+else
+  echo "error: no main or master branch found" >&2
+  return 1
+fi
+
+local branch=$(git branch --show-current)
+if [[ -z "$branch" || "$branch" == "$main" ]]; then
+  echo "error: must be on a feature branch, not $main" >&2
+  return 1
+fi
+
+# Guard: must be in a ~/.trees/ worktree
+local wt_path=$(git rev-parse --show-toplevel)
+if [[ "$wt_path" != "$HOME/.trees/"* ]]; then
+  echo "error: must be run from inside a ~/.trees/ worktree" >&2
+  echo "  current: $wt_path" >&2
+  return 1
+fi
+
+# Find main worktree path
+local main_wt=$(git worktree list --porcelain | awk '/^worktree /{wt=$2} /^branch refs\/heads\/'"$main"'$/{print wt}')
+if [[ -z "$main_wt" ]]; then
+  echo "error: no worktree found for $main branch" >&2
+  return 1
+fi
+
+# Auto-commit uncommitted changes
+if ! git diff --quiet || ! git diff --cached --quiet || [[ -n $(git ls-files --others --exclude-standard) ]]; then
+  echo "Uncommitted changes detected on $branch."
+  local summary=$(git diff --stat 2>/dev/null; git diff --cached --stat 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null | head -5)
+  echo "$summary"
+  echo
+  read -q "?Auto-commit these changes? [y/N] " || { echo "\nAborted."; return 1; }
+  echo
+  git add -A
+  local msg="wip: changes on $branch"
+  read "?Commit message [$msg]: " custom_msg
+  [[ -n "$custom_msg" ]] && msg="$custom_msg"
+  git commit -m "$msg" || { echo "error: commit failed" >&2; return 1; }
+fi
+
+# Phase 1: merge main → worktree (catch up with main)
+echo "\n--- Phase 1: merge $main → $branch ---"
+git fetch origin "$main" 2>/dev/null
+if ! git merge "$main"; then
+  echo "\nerror: conflicts merging $main into $branch" >&2
+  echo "Resolve conflicts, commit, then re-run wtmerge." >&2
+  return 1
+fi
+echo "Phase 1 complete."
+
+# Phase 2: merge worktree → main
+echo "\n--- Phase 2: merge $branch → $main ---"
+read -q "?Merge $branch into $main? [y/N] " || { echo "\nAborted."; return 0; }
+echo
+(cd "$main_wt" && git merge "$branch") || { echo "error: merge into $main failed" >&2; return 1; }
+echo "Phase 2 complete. $branch merged into $main."
+
+# Cleanup
+echo
+read -q "?Remove worktree and delete branch $branch? [y/N] " || { echo "\nDone (kept worktree)."; return 0; }
+echo
+cd "$main_wt"
+git worktree remove "$wt_path" --force
+git branch -d "$branch" 2>/dev/null || git branch -D "$branch"
+echo "Cleaned up worktree and branch $branch."
