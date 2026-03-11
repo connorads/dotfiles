@@ -15,3 +15,6 @@ alias lgdf='lg --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
 # https://github.com/Wilfred/difftastic
 alias gdd='GIT_EXTERNAL_DIFF=difft git diff'
 alias gdds='GIT_EXTERNAL_DIFF=difft git diff --staged'
+
+# wtmerge — two-phase worktree merge
+alias wtm='wtmerge'
