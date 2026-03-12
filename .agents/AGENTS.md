@@ -95,7 +95,10 @@ Use for granular commits when a file contains changes for multiple concerns.
 
 - Red-green-refactor: write a failing test, make it pass with simplest code, refactor. This is the rhythm
 - Tests are design feedback: if it's hard to test, the design is wrong — redesign, don't add mocks
-- Test business behaviour through public APIs, not implementation details
+- Test business behaviour through public APIs, not implementation details. Tests should break when behaviour changes, not when code is refactored
+- Each test should make its *why* obvious to the reader — not just what's being tested but the motivation
+- When a test fails, the cause should be immediately obvious. If you have to debug a test failure, the test isn't specific enough
+- Tests must be deterministic and order-independent. Flaky or sequence-dependent tests erode all confidence
 
 **Testing taxonomy** — architecture dictates where tests go:
 
