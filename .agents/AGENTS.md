@@ -100,7 +100,7 @@ Use for granular commits when a file contains changes for multiple concerns.
 - When a test fails, the cause should be immediately obvious. If you have to debug a test failure, the test isn't specific enough
 - Tests must be deterministic and order-independent. Flaky or sequence-dependent tests erode all confidence
 
-**Testing taxonomy** — architecture dictates where tests go:
+**Testing taxonomy** — the architecture *is* the test strategy. Pure core → unit tests, adapters → contract tests, composition → integration:
 
 | Layer | What | How | Volume |
 |-------|------|-----|--------|
