@@ -50,6 +50,12 @@ references/harry-dry.md          →  harry, harrydry, harry dry, marketing exam
 references/rob-walling.md        →  rob, robwalling, rob walling
 references/sahil-lavingia.md     →  sahil, shl, sahil lavingia
 references/alex-hormozi.md       →  alex, hormozi, alex hormozi
+references/jonny-burger.md       →  jonny, jonnyburger, jonny burger
+references/tony-zhou.md          →  tony, tony zhou, everyframeapainting
+references/bret-victor.md        →  bret, bret victor, worrydream
+references/des-traynor.md        →  des, des traynor, destraynor
+references/walter-murch.md       →  walter, walter murch, waltermurch
+references/grant-sanderson.md    →  grant, 3b1b, grant sanderson, 3blue1brown
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -131,3 +137,9 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Scott Wlaschin | F#, FP, railway-oriented programming | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
 | Simon Willison | Django, Datasette, SQLite, AI tooling | simon, simonw, simon willison | `references/simon-willison.md` |
 | Steve Jobs | Product vision, focus, technology × liberal arts | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
+| Bret Victor | Interactive media, progressive revelation, dev tool demos | bret, bret victor, worrydream | `references/bret-victor.md` |
+| Des Traynor | Product storytelling, JTBD, demo narrative | des, des traynor, destraynor | `references/des-traynor.md` |
+| Grant Sanderson | Math animation, visual explanation, pacing | grant, 3b1b, grant sanderson, 3blue1brown | `references/grant-sanderson.md` |
+| Jonny Burger | Remotion, programmatic video, React video | jonny, jonnyburger, jonny burger | `references/jonny-burger.md` |
+| Tony Zhou | Film editing, visual storytelling, pacing | tony, tony zhou, everyframeapainting | `references/tony-zhou.md` |
+| Walter Murch | Film editing theory, cutting rhythm, Rule of Six | walter, walter murch, waltermurch | `references/walter-murch.md` |
