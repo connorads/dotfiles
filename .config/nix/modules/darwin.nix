@@ -83,6 +83,7 @@
       "conductor"
       "knockknock"
       "slack"
+      "linear-linear"
 
       # Hardware
       "blackhole-16ch"
