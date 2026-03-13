@@ -83,6 +83,15 @@
 /.kiro/skills/**
 !/.kiro/skills/*
 
+!/.pi/
+/.pi/**
+!/.pi/agent/
+/.pi/agent/**
+!/.pi/agent/AGENTS.md
+!/.pi/agent/skills/
+/.pi/agent/skills/**
+!/.pi/agent/skills/*
+
 !/.config/nix/
 !/.config/nix/**
 

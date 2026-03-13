@@ -25,6 +25,7 @@ typeset -A paths=(
   [github-copilot]="$HOME/.copilot/skills"
   [kiro-cli]="$HOME/.kiro/skills"
   [opencode]="$HOME/.config/opencode/skills"
+  [pi]="$HOME/.pi/agent/skills"
 )
 
 local skills=("$canonical"/*(/:t))
