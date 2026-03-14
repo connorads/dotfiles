@@ -174,14 +174,14 @@ _gh_gate_init() {
 
   print -r ""
   print -r "Deploying read-only token to ${target}..."
-  print -r -- "$token" | ts ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/readonly-token' || {
+  print -r -- "$token" | ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/readonly-token' || {
     print -r "Error: failed to deploy token to ${target}" >&2
     return 1
   }
 
   # Verify the token works
   local verify
-  verify=$(ts ssh "$target" "GH_TOKEN='$token' gh api /rate_limit --jq '.rate.limit' 2>/dev/null") 2>/dev/null
+  verify=$(ssh "$target" "GH_TOKEN='$token' gh api /rate_limit --jq '.rate.limit' 2>/dev/null") 2>/dev/null
   if [[ -n "$verify" ]]; then
     print -r "Read-only token deployed to ${target} (verified, rate limit: ${verify})"
   else
@@ -226,7 +226,7 @@ _gh_gate_grant() {
   fi
 
   print -r "Pushing write token to ${target}..."
-  print -r -- "$token" | ts ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/active-token' || {
+  print -r -- "$token" | ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/active-token' || {
     print -r "Error: failed to push token to ${target}" >&2
     return 1
   }
@@ -242,7 +242,7 @@ _gh_gate_revoke() {
 
   # Try to revoke the token via API first (best-effort)
   local remote_token
-  remote_token=$(ts ssh "$target" 'cat ~/.config/gh-gate/active-token 2>/dev/null') 2>/dev/null
+  remote_token=$(ssh "$target" 'cat ~/.config/gh-gate/active-token 2>/dev/null') 2>/dev/null
   if [[ -n "$remote_token" ]]; then
     local pem jwt
     pem=$(_gh_gate_get_pem 2>/dev/null)
@@ -260,7 +260,7 @@ _gh_gate_revoke() {
   fi
 
   print -r "Removing write token from ${target}..."
-  ts ssh "$target" 'rm -f ~/.config/gh-gate/active-token' || {
+  ssh "$target" 'rm -f ~/.config/gh-gate/active-token' || {
     print -r "Error: failed to remove token from ${target}" >&2
     return 1
   }
@@ -273,7 +273,7 @@ _gh_gate_status() {
   _gh_gate_resolve_target "${1:-}" || return 1
 
   local result
-  result=$(ts ssh "$target" '
+  result=$(ssh "$target" '
     if [[ -r ~/.config/gh-gate/active-token ]]; then
       token=$(<~/.config/gh-gate/active-token)
       # Test token validity
