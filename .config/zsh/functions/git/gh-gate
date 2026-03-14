@@ -32,10 +32,11 @@ Setup:
   2. Store the private key:
      macOS:  security add-generic-password -a "$USER" -s "gh-gate" \
                -w "$(base64 < gh-gate-private-key.pem)" -T "" -U
-     Linux:  cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
+     Linux:  mkdir -p ~/.config/gh-gate && chmod 700 ~/.config/gh-gate
+             cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
              chmod 600 ~/.config/gh-gate/private-key.pem
 
-  3. Create ~/.config/gh-gate/config:
+  3. Create ~/.config/gh-gate/config (mkdir -p ~/.config/gh-gate first):
        APP_ID=123456
        INSTALLATION_ID=789012
        DEFAULT_TARGET=connor@dev
