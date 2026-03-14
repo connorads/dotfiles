@@ -79,6 +79,13 @@ export DISABLE_ERROR_REPORTING=1
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
+# gh-gate: use scoped token instead of gh auth
+if [[ -r ~/.config/gh-gate/active-token ]]; then
+  export GH_TOKEN=$(<~/.config/gh-gate/active-token)
+elif [[ -r ~/.config/gh-gate/readonly-token ]]; then
+  export GH_TOKEN=$(<~/.config/gh-gate/readonly-token)
+fi
+
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 

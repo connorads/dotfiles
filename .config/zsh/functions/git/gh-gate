@@ -1,0 +1,276 @@
+#!/usr/bin/env zsh
+# gh-gate: manage scoped gh CLI tokens on remote machines via GitHub App
+# usage: gh-gate <grant|revoke|status> [user@host]
+emulate -L zsh
+
+local cmd=${1:-}
+local target
+local config_dir="${HOME}/.config/gh-gate"
+local config_file="${config_dir}/config"
+
+_gh_gate_help() {
+  cat <<'HELP'
+Usage: gh-gate <command> [user@host]
+
+Manage scoped gh CLI tokens on remote dev machines. Uses a GitHub App to
+generate time-boxed write tokens; the remote machine defaults to read-only.
+
+Commands:
+  grant   [user@host]   Generate a 1-hour write token and push to target
+  revoke  [user@host]   Remove write token, restore read-only on target
+  status  [user@host]   Check which token is active on target
+
+Default target comes from DEFAULT_TARGET in ~/.config/gh-gate/config.
+
+Setup:
+  1. Create a GitHub App (github.com/settings/apps/new):
+     - Webhook: uncheck "Active"
+     - Permissions: Contents, Issues, Pull requests (Read & write)
+     - Install on your account
+     - Note the App ID and Installation ID
+
+  2. Store the private key:
+     macOS:  security add-generic-password -a "$USER" -s "gh-gate" \
+               -w "$(base64 < gh-gate-private-key.pem)" -T "" -U
+     Linux:  cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
+             chmod 600 ~/.config/gh-gate/private-key.pem
+
+  3. Create ~/.config/gh-gate/config:
+       APP_ID=123456
+       INSTALLATION_ID=789012
+       DEFAULT_TARGET=connor@dev
+
+  4. On the remote machine:
+     - Create a read-only fine-grained PAT (Contents, Issues, PRs: Read)
+     - Store at ~/.config/gh-gate/readonly-token (mode 0600)
+     - Add GH_TOKEN sourcing block to ~/.zshrc
+     - Run: gh auth logout
+
+Config: ~/.config/gh-gate/config
+  APP_ID=<number>            GitHub App ID
+  INSTALLATION_ID=<number>   App installation ID
+  DEFAULT_TARGET=<user@host> Default SSH target (via Tailscale)
+
+Security:
+  - Private key never leaves the host machine (macOS Keychain / local file)
+  - Write tokens expire after 1 hour automatically
+  - App permissions are an absolute ceiling for generated tokens
+  - Emergency: uninstall the app at github.com/settings/installations
+    to immediately invalidate ALL tokens
+HELP
+}
+
+_gh_gate_load_config() {
+  if [[ ! -r "$config_file" ]]; then
+    print -r "Error: config not found at ${config_file}" >&2
+    print -r "Run 'gh-gate --help' for setup instructions" >&2
+    return 1
+  fi
+  source "$config_file"
+  if [[ -z "${APP_ID:-}" || -z "${INSTALLATION_ID:-}" ]]; then
+    print -r "Error: APP_ID and INSTALLATION_ID must be set in ${config_file}" >&2
+    return 1
+  fi
+}
+
+_gh_gate_resolve_target() {
+  if [[ -n "${1:-}" ]]; then
+    target=$1
+  elif [[ -n "${DEFAULT_TARGET:-}" ]]; then
+    target=$DEFAULT_TARGET
+  else
+    print -r "Error: no target specified and DEFAULT_TARGET not set in config" >&2
+    return 1
+  fi
+}
+
+_gh_gate_get_pem() {
+  local pem
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    # macOS: retrieve from Keychain (triggers Touch ID / password prompt)
+    local b64
+    b64=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
+      print -r "Error: PEM not found in Keychain (service: gh-gate)" >&2
+      print -r "Store with: security add-generic-password -a \"\$USER\" -s \"gh-gate\" -w \"\$(base64 < key.pem)\" -T \"\" -U" >&2
+      return 1
+    }
+    pem=$(print -r -- "$b64" | base64 --decode) || {
+      print -r "Error: failed to decode PEM from Keychain" >&2
+      return 1
+    }
+  else
+    # Linux: read from file
+    local pem_file="${config_dir}/private-key.pem"
+    if [[ ! -r "$pem_file" ]]; then
+      print -r "Error: PEM not found at ${pem_file}" >&2
+      return 1
+    fi
+    pem=$(<"$pem_file")
+  fi
+  print -r -- "$pem"
+}
+
+_gh_gate_base64url() {
+  # Base64url encode from stdin (no padding)
+  openssl base64 -A | tr '+/' '-_' | tr -d '='
+}
+
+_gh_gate_generate_jwt() {
+  local pem=$1
+  local now=$EPOCHSECONDS
+  local iat=$((now - 60))
+  local exp=$((now + 600))
+
+  local header
+  header=$(printf '{"alg":"RS256","typ":"JWT"}' | _gh_gate_base64url)
+
+  local payload
+  payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$iat" "$exp" "$APP_ID" | _gh_gate_base64url)
+
+  local unsigned="${header}.${payload}"
+  local signature
+  signature=$(printf '%s' "$unsigned" | openssl dgst -sha256 -sign <(printf '%s' "$pem") | _gh_gate_base64url)
+
+  printf '%s.%s' "$unsigned" "$signature"
+}
+
+_gh_gate_grant() {
+  _gh_gate_load_config || return 1
+  _gh_gate_resolve_target "${1:-}" || return 1
+
+  print -r "Retrieving private key..."
+  local pem
+  pem=$(_gh_gate_get_pem) || return 1
+
+  print -r "Generating JWT..."
+  local jwt
+  jwt=$(_gh_gate_generate_jwt "$pem")
+  unset pem
+
+  print -r "Requesting installation access token..."
+  local response
+  response=$(curl -sf -X POST \
+    -H "Authorization: Bearer ${jwt}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -d '{"permissions":{"contents":"write","issues":"write","pull_requests":"write"}}' \
+    "https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens") || {
+    print -r "Error: GitHub API call failed" >&2
+    print -r "Check APP_ID (${APP_ID}) and INSTALLATION_ID (${INSTALLATION_ID})" >&2
+    return 1
+  }
+
+  local token expires_at
+  token=$(print -r -- "$response" | jq -r '.token // empty')
+  expires_at=$(print -r -- "$response" | jq -r '.expires_at // empty')
+
+  if [[ -z "$token" ]]; then
+    print -r "Error: no token in API response" >&2
+    print -r "$response" | jq . >&2 2>/dev/null || print -r "$response" >&2
+    return 1
+  fi
+
+  print -r "Pushing write token to ${target}..."
+  print -r -- "$token" | ts ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/active-token' || {
+    print -r "Error: failed to push token to ${target}" >&2
+    return 1
+  }
+
+  print -r "Write access granted on ${target}"
+  print -r "Expires: ${expires_at}"
+  print -r "Revoke with: gh-gate revoke"
+}
+
+_gh_gate_revoke() {
+  _gh_gate_load_config || return 1
+  _gh_gate_resolve_target "${1:-}" || return 1
+
+  # Try to revoke the token via API first (best-effort)
+  local remote_token
+  remote_token=$(ts ssh "$target" 'cat ~/.config/gh-gate/active-token 2>/dev/null') 2>/dev/null
+  if [[ -n "$remote_token" ]]; then
+    local pem jwt
+    pem=$(_gh_gate_get_pem 2>/dev/null)
+    if [[ -n "$pem" ]]; then
+      jwt=$(_gh_gate_generate_jwt "$pem")
+      unset pem
+      curl -sf -X DELETE \
+        -H "Authorization: Bearer ${jwt}" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/installation/token" \
+        -d "{\"token\":\"${remote_token}\"}" 2>/dev/null && \
+        print -r "Token revoked via GitHub API"
+    fi
+  fi
+
+  print -r "Removing write token from ${target}..."
+  ts ssh "$target" 'rm -f ~/.config/gh-gate/active-token' || {
+    print -r "Error: failed to remove token from ${target}" >&2
+    return 1
+  }
+
+  print -r "Write access revoked on ${target} (read-only restored)"
+}
+
+_gh_gate_status() {
+  _gh_gate_load_config || return 1
+  _gh_gate_resolve_target "${1:-}" || return 1
+
+  local result
+  result=$(ts ssh "$target" '
+    if [[ -r ~/.config/gh-gate/active-token ]]; then
+      token=$(<~/.config/gh-gate/active-token)
+      # Test token validity
+      if GH_TOKEN="$token" gh api /rate_limit >/dev/null 2>&1; then
+        echo "write:active"
+      else
+        echo "write:expired"
+      fi
+    elif [[ -r ~/.config/gh-gate/readonly-token ]]; then
+      echo "readonly"
+    else
+      echo "none"
+    fi
+  ') || {
+    print -r "Error: failed to check status on ${target}" >&2
+    return 1
+  }
+
+  case "$result" in
+    write:active)
+      print -r "${target}: WRITE access (token valid)"
+      ;;
+    write:expired)
+      print -r "${target}: write token EXPIRED (read-only effective)"
+      print -r "Run 'gh-gate revoke' to clean up"
+      ;;
+    readonly)
+      print -r "${target}: read-only (default)"
+      ;;
+    none)
+      print -r "${target}: no gh-gate tokens configured"
+      ;;
+    *)
+      print -r "${target}: unknown state: ${result}"
+      ;;
+  esac
+}
+
+# Main dispatch
+case "$cmd" in
+  grant)   _gh_gate_grant "${2:-}" ;;
+  revoke)  _gh_gate_revoke "${2:-}" ;;
+  status)  _gh_gate_status "${2:-}" ;;
+  -h|--help|help) _gh_gate_help ;;
+  "")
+    print -r "Usage: gh-gate <grant|revoke|status> [user@host]" >&2
+    print -r "Run 'gh-gate --help' for full documentation" >&2
+    return 1
+    ;;
+  *)
+    print -r "Unknown command: ${cmd}" >&2
+    print -r "Usage: gh-gate <grant|revoke|status> [user@host]" >&2
+    return 1
+    ;;
+esac

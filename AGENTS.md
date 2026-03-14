@@ -47,7 +47,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
-| [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers (nix/git/tailscale)                      |
+| [.zshrc](./.zshrc)                                                     | Shell config with aliases, autoloaded helpers, and `GH_TOKEN` sourcing (gh-gate)          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration (update `help.md` when changing bindings)                              |
@@ -57,6 +57,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux))          |
+| [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup)                     |
 
 ## Shell Function Conventions
 
@@ -169,6 +170,9 @@ companiondown              # Stop Vibe Companion
 webtermup [session] [port] # Expose tmux session via web (default: main :7681)
 webtermdown [port]         # Stop web terminal
 ghcl [owner]           # fzf clone from GitHub (SSH)
+gh-gate grant          # Push 1-hour write token to dev (from host machine)
+gh-gate revoke         # Revoke write token, restore read-only on dev
+gh-gate status         # Check token state on dev
 ```
 
 ## Git Hooks (hk)
