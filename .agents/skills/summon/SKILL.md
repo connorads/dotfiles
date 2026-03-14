@@ -37,12 +37,15 @@ references/steve-jobs.md        →  steve, steve jobs, stevejobs
 references/john-carmack.md      →  carmack, john carmack, johncarmack
 references/jony-ive.md          →  jony, jony ive, jonyive, ive
 references/simon-willison.md    →  simon, simonw, simon willison
+references/swyx.md              →  swyx, shawn wang, shawn
 references/pieter-levels.md     →  pieter, levelsio, pieter levels
 references/guillermo-rauch.md   →  guillermo, rauchg, guillermo rauch
 references/matt-pocock.md       →  matt, mattpocockuk, matt pocock
 references/matt-perry.md         →  mattperry, mattgperry, matt perry
 references/ricardo-cabello.md    →  ricardo, mrdoob, ricardo cabello
 references/jack-doyle.md         →  jack, jack doyle, greensock
+references/josh-comeau.md        →  josh, joshwcomeau, josh comeau
+references/julia-evans.md        →  julia, b0rk, julia evans, jvns
 references/amelia-wattenberger.md →  amelia, wattenberger, amelia wattenberger
 references/rand-fishkin.md       →  rand, randfish, rand fishkin, sparktoro
 references/april-dunford.md      →  april, aprildunford, april dunford
@@ -50,6 +53,7 @@ references/harry-dry.md          →  harry, harrydry, harry dry, marketing exam
 references/rob-walling.md        →  rob, robwalling, rob walling
 references/sahil-lavingia.md     →  sahil, shl, sahil lavingia
 references/alex-hormozi.md       →  alex, hormozi, alex hormozi
+references/maggie-appleton.md    →  maggie, maggie appleton, maggieappleton, mappletons
 references/jonny-burger.md       →  jonny, jonnyburger, jonny burger
 references/tony-zhou.md          →  tony, tony zhou, everyframeapainting
 references/bret-victor.md        →  bret, bret victor, worrydream
@@ -122,8 +126,11 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Harry Dry | Marketing copywriting, show-don't-tell | harry, harry dry, harrydry, marketing examples | `references/harry-dry.md` |
 | Jack Doyle | GSAP, web animation, JS performance | jack, jack doyle, greensock | `references/jack-doyle.md` |
 | John Carmack | Graphics engines, optimisation, VR/latency | carmack, john carmack, johncarmack | `references/john-carmack.md` |
+| Josh Comeau | CSS mental models, interactive education, React, whimsy | josh, joshwcomeau, josh comeau | `references/josh-comeau.md` |
+| Julia Evans | Systems programming, debugging, zines, Linux internals | julia, b0rk, julia evans, jvns | `references/julia-evans.md` |
 | Jony Ive | Industrial design, Apple design philosophy | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
 | Kent Beck | XP, TDD, refactoring, simple design | kent, kent beck, kentbeck | `references/kent-beck.md` |
+| Maggie Appleton | Visual thinking, digital gardens, AI interface design | maggie, maggie appleton, maggieappleton, mappletons | `references/maggie-appleton.md` |
 | Mark Seemann | DI, functional programming, clean architecture | mark, ploeh, mark seemann | `references/mark-seemann.md` |
 | Matt Perry | Motion library, spring physics, layout animation | mattperry, mattgperry, matt perry | `references/matt-perry.md` |
 | Matt Pocock | TypeScript, type inference, advanced patterns | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
@@ -137,6 +144,7 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Scott Wlaschin | F#, FP, railway-oriented programming | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
 | Simon Willison | Django, Datasette, SQLite, AI tooling | simon, simonw, simon willison | `references/simon-willison.md` |
 | Steve Jobs | Product vision, focus, technology × liberal arts | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
+| Swyx | AI engineering, learning in public, developer experience | swyx, shawn wang, shawn | `references/swyx.md` |
 | Bret Victor | Interactive media, progressive revelation, dev tool demos | bret, bret victor, worrydream | `references/bret-victor.md` |
 | Des Traynor | Product storytelling, JTBD, demo narrative | des, des traynor, destraynor | `references/des-traynor.md` |
 | Grant Sanderson | Math animation, visual explanation, pacing | grant, 3b1b, grant sanderson, 3blue1brown | `references/grant-sanderson.md` |
