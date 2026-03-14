@@ -26,7 +26,7 @@ Default target comes from DEFAULT_TARGET in ~/.config/gh-gate/config.
 Setup:
   1. Create a GitHub App (github.com/settings/apps/new):
      - Webhook: uncheck "Active"
-     - Permissions: Contents, Issues, Pull requests (Read & write)
+     - Permissions (Read & write): Actions, Contents, Issues, Pull requests
      - Install on your account
      - Note the App ID and Installation ID
 
@@ -50,6 +50,11 @@ Config: ~/.config/gh-gate/config
   APP_ID=<number>            GitHub App ID
   INSTALLATION_ID=<number>   App installation ID
   DEFAULT_TARGET=<user@host> Default SSH target (via Tailscale)
+
+Permissions:
+  Read-only PAT (init):    actions:read  contents:read  issues:read  pull_requests:read
+  Write token (grant):     actions:write contents:write issues:write pull_requests:write
+  GitHub App ceiling:      actions:rw    contents:rw    issues:rw    pull_requests:rw
 
 Security:
   - Private key never leaves the host machine (macOS Keychain / local file)
@@ -138,10 +143,10 @@ _gh_gate_init() {
   _gh_gate_load_config || return 1
   _gh_gate_resolve_target "${1:-}" || return 1
 
-  local pat_url="https://github.com/settings/personal-access-tokens/new?name=dev-readonly&expires_in=90&contents=read&issues=read&pull_requests=read"
+  local pat_url="https://github.com/settings/personal-access-tokens/new?name=dev-readonly&expires_in=90&actions=read&contents=read&issues=read&pull_requests=read"
 
   print -r "Opening GitHub to create a read-only fine-grained PAT..."
-  print -r "Permissions: contents:read, issues:read, pull_requests:read"
+  print -r "Permissions: actions:read, contents:read, issues:read, pull_requests:read"
   print -r "Expiry: 90 days"
   print -r ""
 
@@ -203,7 +208,7 @@ _gh_gate_grant() {
     -H "Authorization: Bearer ${jwt}" \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
-    -d '{"permissions":{"contents":"write","issues":"write","pull_requests":"write"}}' \
+    -d '{"permissions":{"actions":"write","contents":"write","issues":"write","pull_requests":"write"}}' \
     "https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens") || {
     print -r "Error: GitHub API call failed" >&2
     print -r "Check APP_ID (${APP_ID}) and INSTALLATION_ID (${INSTALLATION_ID})" >&2
