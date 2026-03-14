@@ -72,21 +72,6 @@ eval "$(zoxide init zsh)"
 # https://github.com/atuinsh/atuin
 eval "$(atuin init zsh --disable-up-arrow)"
 
-# Log commands run inside AI agent sessions to a separate file.
-# Lets you grep what agents actually ran: grep '' ~/.local/state/agent-history.log
-_agent_history_preexec() {
-  local agent=""
-  if [[ -n "${CLAUDECODE:-}" ]]; then agent="claude"
-  elif [[ -n "${OPENCODE:-}" ]]; then agent="opencode"
-  fi
-  if [[ -n "$agent" ]]; then
-    local log="${XDG_STATE_HOME:-$HOME/.local/state}/agent-history.log"
-    [[ -d "${log:h}" ]] || mkdir -p "${log:h}"
-    printf '%s\tagent=%s\tcmd=%s\n' "$(date -Iseconds)" "$agent" "$1" >> "$log"
-  fi
-}
-add-zsh-hook preexec _agent_history_preexec
-
 # https://github.com/anthropics/claude-code
 export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
