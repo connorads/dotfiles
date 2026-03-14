@@ -170,6 +170,7 @@ companiondown              # Stop Vibe Companion
 webtermup [session] [port] # Expose tmux session via web (default: main :7681)
 webtermdown [port]         # Stop web terminal
 ghcl [owner]           # fzf clone from GitHub (SSH)
+gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
 gh-gate grant          # Push 1-hour write token to dev (from host machine)
 gh-gate revoke         # Revoke write token, restore read-only on dev
 gh-gate status         # Check token state on dev

@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # gh-gate: manage scoped gh CLI tokens on remote machines via GitHub App
-# usage: gh-gate <grant|revoke|status> [user@host]
+# usage: gh-gate <init|grant|revoke|status> [user@host]
 emulate -L zsh
 
 local cmd=${1:-}
@@ -16,6 +16,7 @@ Manage scoped gh CLI tokens on remote dev machines. Uses a GitHub App to
 generate time-boxed write tokens; the remote machine defaults to read-only.
 
 Commands:
+  init    [user@host]   Create read-only PAT and deploy to target
   grant   [user@host]   Generate a 1-hour write token and push to target
   revoke  [user@host]   Remove write token, restore read-only on target
   status  [user@host]   Check which token is active on target
@@ -41,11 +42,9 @@ Setup:
        INSTALLATION_ID=789012
        DEFAULT_TARGET=connor@dev
 
-  4. On the remote machine:
-     - Create a read-only fine-grained PAT (Contents, Issues, PRs: Read)
-     - Store at ~/.config/gh-gate/readonly-token (mode 0600)
-     - Add GH_TOKEN sourcing block to ~/.zshrc
-     - Run: gh auth logout
+  4. Deploy read-only token to remote machine:
+     gh-gate init [user@host]
+     (Opens browser to pre-filled PAT form, prompts for token, deploys via SSH)
 
 Config: ~/.config/gh-gate/config
   APP_ID=<number>            GitHub App ID
@@ -133,6 +132,56 @@ _gh_gate_generate_jwt() {
   signature=$(printf '%s' "$unsigned" | openssl dgst -sha256 -sign <(printf '%s' "$pem") | _gh_gate_base64url)
 
   printf '%s.%s' "$unsigned" "$signature"
+}
+
+_gh_gate_init() {
+  _gh_gate_load_config || return 1
+  _gh_gate_resolve_target "${1:-}" || return 1
+
+  local pat_url="https://github.com/settings/personal-access-tokens/new?name=dev-readonly&expires_in=90&contents=read&issues=read&pull_requests=read"
+
+  print -r "Opening GitHub to create a read-only fine-grained PAT..."
+  print -r "Permissions: contents:read, issues:read, pull_requests:read"
+  print -r "Expiry: 90 days"
+  print -r ""
+
+  # Open browser (macOS or Linux)
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    open "$pat_url"
+  elif command -v xdg-open &>/dev/null; then
+    xdg-open "$pat_url"
+  else
+    print -r "Open this URL in your browser:"
+    print -r "$pat_url"
+  fi
+
+  print -r ""
+  print -r "After creating the token, paste it here."
+  print -rn "Token: "
+  local token
+  read -rs token
+
+  if [[ -z "$token" ]]; then
+    print -r ""
+    print -r "Error: no token provided" >&2
+    return 1
+  fi
+
+  print -r ""
+  print -r "Deploying read-only token to ${target}..."
+  print -r -- "$token" | ts ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/readonly-token' || {
+    print -r "Error: failed to deploy token to ${target}" >&2
+    return 1
+  }
+
+  # Verify the token works
+  local verify
+  verify=$(ts ssh "$target" "GH_TOKEN='$token' gh api /rate_limit --jq '.rate.limit' 2>/dev/null") 2>/dev/null
+  if [[ -n "$verify" ]]; then
+    print -r "Read-only token deployed to ${target} (verified, rate limit: ${verify})"
+  else
+    print -r "Read-only token deployed to ${target} (could not verify — check gh is installed on target)"
+  fi
 }
 
 _gh_gate_grant() {
@@ -260,18 +309,19 @@ _gh_gate_status() {
 
 # Main dispatch
 case "$cmd" in
+  init)    _gh_gate_init "${2:-}" ;;
   grant)   _gh_gate_grant "${2:-}" ;;
   revoke)  _gh_gate_revoke "${2:-}" ;;
   status)  _gh_gate_status "${2:-}" ;;
   -h|--help|help) _gh_gate_help ;;
   "")
-    print -r "Usage: gh-gate <grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <init|grant|revoke|status> [user@host]" >&2
     print -r "Run 'gh-gate --help' for full documentation" >&2
     return 1
     ;;
   *)
     print -r "Unknown command: ${cmd}" >&2
-    print -r "Usage: gh-gate <grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <init|grant|revoke|status> [user@host]" >&2
     return 1
     ;;
 esac
