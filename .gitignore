@@ -144,6 +144,9 @@
 !/.config/zsh/functions/
 !/.config/zsh/functions/**
 
+# gh-gate secrets (tokens, PEM, config with IDs)
+/.config/gh-gate/
+
 .DS_Store
 __pycache__/
 
