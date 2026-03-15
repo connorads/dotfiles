@@ -341,7 +341,7 @@
         imports = [ ./home-shared.nix ];
         home.username = "connorads";
         home.homeDirectory = "/Users/connorads";
-        home.packages = packages.sharedPackages ++ [ pkgs.duti ];
+        home.packages = packages.sharedPackages ++ [ pkgs.duti pkgs.pngpaste ];
         home.stateVersion = "24.11";
 
         # Keep editor file associations declarative without replacing the full
