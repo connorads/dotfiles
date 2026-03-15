@@ -56,7 +56,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
-| [~/.config/webmux/webmux.config.ts](./.config/webmux/webmux.config.ts) | webmux config (package: [connorads/webmux](https://github.com/connorads/webmux))          |
+| [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup)                     |
 
 ## Shell Function Conventions
