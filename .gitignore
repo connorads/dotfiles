@@ -132,8 +132,8 @@
 !/.config/mise/
 !/.config/mise/**
 
-!/.config/webmux/
-!/.config/webmux/webmux.config.ts
+!/.config/remobi/
+!/.config/remobi/remobi.config.ts
 
 !/.config/bun/
 !/.config/bun/critique-tsconfig.json
