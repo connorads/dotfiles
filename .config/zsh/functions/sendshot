@@ -1,0 +1,58 @@
+#!/usr/bin/env zsh
+# sendshot: transfer screenshot to remote machine over SSH
+emulate -L zsh
+
+local host="${1:-$SENDSHOT_HOST}"
+local file="$2"
+
+if [[ -z "$host" ]]; then
+  echo "Usage: sendshot <host> [file]" >&2
+  echo "  or set SENDSHOT_HOST env var" >&2
+  return 1
+fi
+
+local tmpfile
+if [[ -n "$file" ]]; then
+  # Explicit file provided
+  if [[ ! -f "$file" ]]; then
+    echo "File not found: $file" >&2
+    return 1
+  fi
+  tmpfile="$file"
+elif [[ "$(uname)" == "Darwin" ]]; then
+  # macOS: grab from clipboard via pngpaste
+  if ! command -v pngpaste &>/dev/null; then
+    echo "pngpaste not found — install via nix (darwin config)" >&2
+    return 1
+  fi
+  tmpfile="/tmp/sendshot-$$.png"
+  if ! pngpaste "$tmpfile"; then
+    echo "No image in clipboard" >&2
+    return 1
+  fi
+else
+  # Crostini: Chrome OS screenshots land in shared Downloads, not ~/Downloads
+  local screenshots_dir="/mnt/chromeos/MyFiles/Downloads"
+  [[ -d "$screenshots_dir" ]] || screenshots_dir="$HOME/Downloads"
+  # (N) = nullglob, (om) = sort by mtime desc, [1] = newest
+  tmpfile=( ${screenshots_dir}/*.png(Nom[1]) )
+  if [[ -z "$tmpfile" ]]; then
+    echo "No PNG files found in ~/Downloads" >&2
+    return 1
+  fi
+fi
+
+local filename="${tmpfile:t}"
+# Use timestamp-based name for clipboard grabs (no meaningful original name)
+if [[ "$filename" == sendshot-*.png ]]; then
+  filename="sendshot-$(date +%s).png"
+fi
+# Sanitise spaces for clean remote paths (Chrome OS: "Screenshot 2026-03-15 21.09.47.png")
+filename="${filename// /-}"
+
+local remote_dir="/tmp/screenshots"
+local remote_path="$remote_dir/$filename"
+
+ssh "${host}" "mkdir -p ${remote_dir}" && \
+  scp -q "$tmpfile" "${host}:${remote_path}" && \
+  echo "$remote_path"
