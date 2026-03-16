@@ -225,9 +225,21 @@ _gh_gate_grant() {
     return 1
   fi
 
+  # Convert ISO 8601 expires_at to epoch (portable: macOS + GNU date)
+  local expires_epoch
+  expires_epoch=$(date -d "$expires_at" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null)
+
   print -r "Pushing write token to ${target}..."
-  print -r -- "$token" | ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate && cat > ~/.config/gh-gate/active-token' || {
+  ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate' || {
+    print -r "Error: failed to prepare config dir on ${target}" >&2
+    return 1
+  }
+  print -r -- "$token" | ssh "$target" 'cat > ~/.config/gh-gate/active-token' || {
     print -r "Error: failed to push token to ${target}" >&2
+    return 1
+  }
+  print -r -- "$expires_epoch" | ssh "$target" 'cat > ~/.config/gh-gate/active-token-expires' || {
+    print -r "Error: failed to push expiry to ${target}" >&2
     return 1
   }
 
@@ -260,7 +272,7 @@ _gh_gate_revoke() {
   fi
 
   print -r "Removing write token from ${target}..."
-  ssh "$target" 'rm -f ~/.config/gh-gate/active-token' || {
+  ssh "$target" 'rm -f ~/.config/gh-gate/active-token ~/.config/gh-gate/active-token-expires' || {
     print -r "Error: failed to remove token from ${target}" >&2
     return 1
   }
@@ -275,9 +287,7 @@ _gh_gate_status() {
   local result
   result=$(ssh "$target" '
     if [[ -r ~/.config/gh-gate/active-token ]]; then
-      token=$(<~/.config/gh-gate/active-token)
-      # Test token validity
-      if GH_TOKEN="$token" gh api /rate_limit >/dev/null 2>&1; then
+      if [[ -r ~/.config/gh-gate/active-token-expires ]] && (( EPOCHSECONDS < $(<~/.config/gh-gate/active-token-expires) )); then
         echo "write:active"
       else
         echo "write:expired"
