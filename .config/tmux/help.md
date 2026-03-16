@@ -47,6 +47,7 @@
 | `Ctrl+b K` | process closer (user processes) |
 | `Ctrl+b Alt+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
+| `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b O` | open cwd in file manager |
 | `Ctrl+b y` | yazi file manager |
