@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
-# webtermdown: stop webmux serve and Tailscale serve
+# webtermdown: stop remobi serve and Tailscale serve
 emulate -L zsh
 local port=${1:-7681}
-pkill -f "webmux serve.*--port $port" 2>/dev/null
+pkill -f "remobi serve.*--port $port" 2>/dev/null
 pkill -f "ttyd.*--port $port" 2>/dev/null
 ts serve --https=443 off 2>/dev/null
 echo "Web terminal stopped"
