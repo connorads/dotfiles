@@ -232,7 +232,8 @@
     "connorads"
   ];
 
-  # Linux builder VM for building aarch64-linux (e.g., Pi images)
+  # Linux builder VM for building aarch64-linux (e.g., Pi images).
+  # Kept as a reference template — enable when cross-building.
   # Start manually when needed: sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.linux-builder.plist
   nix.linux-builder = {
     enable = false;
