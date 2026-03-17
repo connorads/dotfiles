@@ -1,0 +1,232 @@
+#!/usr/bin/env zsh
+# svc: manage agent services (start, stop, status)
+#
+# Subcommands:
+#   svc up <name> [port]     start service + expose via Tailscale
+#   svc down <name>          stop service + teardown Tailscale route
+#   svc restart <name> [port]  down then up
+#   svc ls                   list all services with status
+#   svc ui                   fzf picker for service management
+#   svc                      TTY: ui, else: ls
+emulate -L zsh
+
+# --- service registry ---
+# Each service: name -> "cmd_template|default_port|https_port|process_type|session_name"
+# process_type: tmux (tmux session) or remobi (background job)
+# In cmd_template: $port and $session are interpolated; $hostname for public URL
+typeset -A SVC_REGISTRY
+SVC_REGISTRY=(
+  remobi  'remobi serve --no-sleep --port $port -- tmux new-session -A -s $session|7681|443|remobi|main'
+  toad    'toad serve --host 127.0.0.1 --port $port --public-url https://$hostname:$https_port|8000|8000|tmux|toad'
+  gigacode 'gigacode server --host 127.0.0.1 --port $port --no-token|2468|2468|tmux|gigacode'
+  companion 'PORT=$port the-vibe-companion|3456|3456|tmux|companion'
+)
+
+# Ordered list for display
+typeset -a SVC_NAMES=(remobi toad gigacode companion)
+
+_svc_parse_entry() {
+  local entry=$1
+  SVC_CMD="${entry%%|*}"; entry="${entry#*|}"
+  SVC_DEFAULT_PORT="${entry%%|*}"; entry="${entry#*|}"
+  SVC_HTTPS_PORT="${entry%%|*}"; entry="${entry#*|}"
+  SVC_PROC_TYPE="${entry%%|*}"; entry="${entry#*|}"
+  SVC_SESSION="${entry}"
+}
+
+_svc_usage() {
+  cat <<'EOF'
+Usage:
+  svc up <name> [port]       start service + expose via Tailscale
+  svc down <name>            stop service + teardown Tailscale route
+  svc restart <name> [port]  down then up
+  svc ls                     list all services with status
+  svc ui                     fzf picker for service management
+
+Services: remobi, toad, gigacode, companion
+EOF
+}
+
+_svc_validate_name() {
+  local name=$1
+  if [[ -z "${SVC_REGISTRY[$name]}" ]]; then
+    print -u2 "error: unknown service '$name'"
+    print -u2 "available: ${(j:, :)SVC_NAMES}"
+    return 1
+  fi
+}
+
+_svc_is_running() {
+  local name=$1
+  _svc_parse_entry "${SVC_REGISTRY[$name]}"
+  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
+    pgrep -f "remobi serve.*--port ${SVC_DEFAULT_PORT}" >/dev/null 2>&1
+  else
+    tmux has-session -t "$SVC_SESSION" 2>/dev/null
+  fi
+}
+
+_svc_status_label() {
+  local name=$1
+  if _svc_is_running "$name"; then
+    echo "running"
+  else
+    echo "stopped"
+  fi
+}
+
+_svc_up() {
+  local name=$1; shift
+  _svc_validate_name "$name" || return 1
+  _svc_parse_entry "${SVC_REGISTRY[$name]}"
+
+  local port=${1:-$SVC_DEFAULT_PORT}
+  local https_port=$SVC_HTTPS_PORT
+  local session=$SVC_SESSION
+
+  local hostname
+  hostname=$(ts-hostname) || return 1
+
+  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
+    # Kill existing remobi process on this port
+    if pkill -f "remobi serve.*--port $port" 2>/dev/null || pkill -f "ttyd.*--port $port" 2>/dev/null; then
+      print -u2 "stopped previous remobi on :$port"
+    fi
+    # Start as background job
+    eval "$SVC_CMD" &!
+    # Serve on apex (no --https= flag)
+    ts serve --bg $port
+    echo "Terminal ($session): https://$hostname"
+  else
+    # Kill existing tmux session
+    tmux kill-session -t "$session" 2>/dev/null
+    # Interpolate command
+    local cmd
+    eval "cmd=\"$SVC_CMD\""
+    tmux new-session -d -s "$session" -x 200 -y 50 "$cmd"
+    ts serve --bg --https=$https_port $port
+    local url="https://$hostname"
+    [[ "$https_port" != "443" ]] && url="https://$hostname:$https_port"
+    echo "$name: $url"
+    echo "Attach: tmux attach -t $session"
+  fi
+}
+
+_svc_down() {
+  local name=$1
+  _svc_validate_name "$name" || return 1
+  _svc_parse_entry "${SVC_REGISTRY[$name]}"
+
+  local port=$SVC_DEFAULT_PORT
+  local https_port=$SVC_HTTPS_PORT
+
+  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
+    pkill -f "remobi serve.*--port $port" 2>/dev/null
+    pkill -f "ttyd.*--port $port" 2>/dev/null
+    ts serve --https=443 off 2>/dev/null
+  else
+    tmux kill-session -t "$SVC_SESSION" 2>/dev/null
+    ts serve --https=$https_port off 2>/dev/null
+  fi
+  echo "$name stopped"
+}
+
+_svc_ls() {
+  printf '%-12s %-8s %-7s %-6s %s\n' "SERVICE" "STATUS" "PORT" "HTTPS" "TYPE"
+  local name
+  for name in "${SVC_NAMES[@]}"; do
+    _svc_parse_entry "${SVC_REGISTRY[$name]}"
+    local status
+    status=$(_svc_status_label "$name")
+    printf '%-12s %-8s %-7s %-6s %s\n' \
+      "$name" "$status" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE"
+  done
+}
+
+_svc_ui() {
+  command -v fzf >/dev/null 2>&1 || { print -u2 "fzf required"; return 1; }
+
+  while true; do
+    local -a rows
+    local name
+    for name in "${SVC_NAMES[@]}"; do
+      _svc_parse_entry "${SVC_REGISTRY[$name]}"
+      local status
+      status=$(_svc_status_label "$name")
+      rows+=("$(printf '%s\t%s\t%s\t%s\t%s' "$name" "$status" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE")")
+    done
+
+    local header="SERVICE      STATUS   PORT    HTTPS   TYPE
+enter: up  ctrl-d: down  ctrl-r: restart  ctrl-a: attach  esc: quit"
+
+    local selection
+    selection=$(printf '%s\n' "${rows[@]}" | column -t -s$'\t' | \
+      fzf --reverse \
+        --expect=ctrl-d,ctrl-r,ctrl-a \
+        --header="$header")
+
+    [[ -z "$selection" ]] && return 0
+
+    local key chosen
+    key=$(printf '%s\n' "$selection" | head -n1)
+    chosen=$(printf '%s\n' "$selection" | tail -n1)
+    [[ -z "$chosen" ]] && continue
+
+    local svc_name
+    svc_name=$(echo "$chosen" | awk '{print $1}')
+    _svc_validate_name "$svc_name" || continue
+
+    case "$key" in
+      ctrl-d)
+        _svc_down "$svc_name"
+        ;;
+      ctrl-r)
+        _svc_down "$svc_name"
+        _svc_up "$svc_name"
+        ;;
+      ctrl-a)
+        _svc_parse_entry "${SVC_REGISTRY[$svc_name]}"
+        if [[ "$SVC_PROC_TYPE" == "tmux" ]]; then
+          tmux attach -t "$SVC_SESSION" 2>/dev/null || print -u2 "$svc_name not running"
+        else
+          print -u2 "remobi services have no tmux session to attach"
+        fi
+        return 0
+        ;;
+      *)
+        _svc_up "$svc_name"
+        ;;
+    esac
+  done
+}
+
+# --- main dispatch ---
+local subcommand=""
+if [[ $# -gt 0 ]]; then
+  subcommand="$1"
+  shift
+else
+  if [[ -t 0 && -t 1 ]]; then
+    subcommand="ui"
+  else
+    subcommand="ls"
+  fi
+fi
+
+case "$subcommand" in
+  up)      _svc_up "$@" ;;
+  down)    _svc_down "$@" ;;
+  restart)
+    local name=$1; shift
+    _svc_down "$name"
+    _svc_up "$name" "$@"
+    ;;
+  ls|list|status) _svc_ls ;;
+  ui)      _svc_ui ;;
+  help|-h|--help) _svc_usage ;;
+  *)
+    print -u2 "unknown subcommand: $subcommand"
+    _svc_usage
+    return 1
+    ;;
+esac
