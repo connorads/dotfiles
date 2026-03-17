@@ -56,7 +56,7 @@ Leader key: `Space`
 
 | Key | Action |
 |-----|--------|
-| `<leader><space>` | find files (root) |
+| `<leader><leader>` | find files (root) |
 | `<leader>/` | grep (root) |
 | `<leader>e` | file explorer |
 | `<leader>sk` | show keymaps |
