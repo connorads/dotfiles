@@ -40,6 +40,12 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   hms
 fi
 
+# Check tmux plugin forks for upstream updates
+if command -v tmux-upstream &>/dev/null && command -v tmux &>/dev/null; then
+  echo "=> tmux plugin upstream check"
+  tmux-upstream
+fi
+
 # Reboot notification (apt-based Linux)
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then
   echo ""
