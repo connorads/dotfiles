@@ -5,6 +5,9 @@ npm.package_manager = "bun"
 node.compile = false
 python.compile = false
 
+[env]
+PNPM_HOME = "{{env.HOME}}/.local/share/pnpm"
+
 [tools]
 python = "3.14"
 node = "lts"

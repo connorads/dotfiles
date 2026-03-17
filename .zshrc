@@ -96,6 +96,9 @@ fi
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
+# pnpm global bin (pnpm link --global)
+[[ -d "$HOME/.local/share/pnpm" ]] && export PATH="$PATH:$HOME/.local/share/pnpm"
+
 # Bun global bin (bun add -g)
 [[ -d "$HOME/.bun/bin" ]] && export PATH="$PATH:$HOME/.bun/bin"
 
