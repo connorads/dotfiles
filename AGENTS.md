@@ -161,14 +161,11 @@ dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 ts                     # Tailscale wrapper (defined in .zshrc)
-toadup [port]          # Start toad web UI via Tailscale (default :8000)
-toaddown               # Stop toad web UI
-gigaup [port]              # Start gigacode server via Tailscale (default :2468, inspector at /ui/)
-gigadown                   # Stop gigacode server
-companionup [port]         # Start Vibe Companion via Tailscale (default :3456)
-companiondown              # Stop Vibe Companion
-webtermup [session] [port] # Expose tmux session via web (default: main :7681)
-webtermdown [port]         # Stop web terminal
+svc ls                 # List agent services with status
+svc up <name> [port]   # Start service + expose via Tailscale
+svc down <name>        # Stop service + teardown Tailscale route
+svc restart <name>     # Restart a service
+svc ui                 # fzf service picker (default in TTY)
 ghcl [owner]           # fzf clone from GitHub (SSH)
 gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
 gh-gate grant          # Push 1-hour write token to dev (from host machine)
@@ -221,14 +218,14 @@ tsp prune --dry-run          # Preview stale served routes
 
 Each service uses a dedicated external HTTPS port so multiple services can coexist:
 
-| Service   | Function      | Local port | External HTTPS |
-| --------- | ------------- | ---------- | -------------- |
-| webterm   | `webtermup`   | 7681       | **443** (apex) |
-| toad      | `toadup`      | 8000       | 8000           |
-| gigacode  | `gigaup`      | 2468       | 2468           |
-| companion | `companionup` | 3456       | 3456           |
+| Service   | `svc` name  | Local port | External HTTPS |
+| --------- | ----------- | ---------- | -------------- |
+| remobi    | `remobi`    | 7681       | **443** (apex) |
+| toad      | `toad`      | 8000       | 8000           |
+| gigacode  | `gigacode`  | 2468       | 2468           |
+| companion | `companion` | 3456       | 3456           |
 
-Pattern: `ts serve --bg --https=$port $port` — `webtermup` is the exception, omitting `--https=` to claim the apex `:443`.
+Pattern: `ts serve --bg --https=$port $port` — remobi is the exception, omitting `--https=` to claim the apex `:443`.
 
 ### Public access options
 
