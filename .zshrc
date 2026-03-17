@@ -51,8 +51,9 @@ fpath=(
 )
 autoload -Uz ~/.config/zsh/functions/*(.N:t) ~/.config/zsh/functions/*/*(.N:t)
 
-# tmux completions
+# Deferred completions (register on first prompt, then self-remove)
 add-zsh-hook precmd _register_tmux_completions
+add-zsh-hook precmd _register_completions
 
 # https://github.com/jdx/mise
 if command -v mise &>/dev/null; then
