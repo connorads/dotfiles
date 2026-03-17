@@ -61,6 +61,13 @@
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Space` | thumbs (quick-copy text with hints) |
 
+## Copy mode navigation
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+h/j/k/l` | navigate panes (also works in copy mode) |
+| `]` / `[` | jump to next/prev shell prompt (requires OSC 133 shell integration) |
+
 ## Other
 
 | Key | Action |
