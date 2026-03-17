@@ -92,8 +92,8 @@ _svc_up() {
     if pkill -f "remobi serve.*--port $port" 2>/dev/null || pkill -f "ttyd.*--port $port" 2>/dev/null; then
       print -u2 "stopped previous remobi on :$port"
     fi
-    # Start as background job
-    eval "$SVC_CMD" &!
+    # Start as background job (suppress output to avoid terminal corruption)
+    eval "$SVC_CMD" &>/dev/null &!
     # Serve on apex (no --https= flag)
     ts serve --bg $port
     echo "Terminal ($session): https://$hostname"
@@ -133,33 +133,31 @@ _svc_down() {
 
 _svc_ls() {
   printf '%-12s %-8s %-7s %-6s %s\n' "SERVICE" "STATUS" "PORT" "HTTPS" "TYPE"
-  local name
+  local name state
   for name in "${SVC_NAMES[@]}"; do
     _svc_parse_entry "${SVC_REGISTRY[$name]}"
-    local status
-    status=$(_svc_status_label "$name")
+    state=$(_svc_status_label "$name")
     printf '%-12s %-8s %-7s %-6s %s\n' \
-      "$name" "$status" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE"
+      "$name" "$state" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE"
   done
 }
 
 _svc_ui() {
   command -v fzf >/dev/null 2>&1 || { print -u2 "fzf required"; return 1; }
 
-  while true; do
-    local -a rows
-    local name
-    for name in "${SVC_NAMES[@]}"; do
-      _svc_parse_entry "${SVC_REGISTRY[$name]}"
-      local status
-      status=$(_svc_status_label "$name")
-      rows+=("$(printf '%s\t%s\t%s\t%s\t%s' "$name" "$status" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE")")
-    done
-
-    local header="SERVICE      STATUS   PORT    HTTPS   TYPE
+  local -a rows
+  local name state selection key chosen svc_name
+  local header="SERVICE      STATUS   PORT    HTTPS   TYPE
 enter: up  ctrl-d: down  ctrl-r: restart  ctrl-a: attach  esc: quit"
 
-    local selection
+  while true; do
+    rows=()
+    for name in "${SVC_NAMES[@]}"; do
+      _svc_parse_entry "${SVC_REGISTRY[$name]}"
+      state=$(_svc_status_label "$name")
+      rows+=("$(printf '%s\t%s\t%s\t%s\t%s' "$name" "$state" "$SVC_DEFAULT_PORT" "$SVC_HTTPS_PORT" "$SVC_PROC_TYPE")")
+    done
+
     selection=$(printf '%s\n' "${rows[@]}" | column -t -s$'\t' | \
       fzf --reverse \
         --expect=ctrl-d,ctrl-r,ctrl-a \
@@ -167,12 +165,10 @@ enter: up  ctrl-d: down  ctrl-r: restart  ctrl-a: attach  esc: quit"
 
     [[ -z "$selection" ]] && return 0
 
-    local key chosen
     key=$(printf '%s\n' "$selection" | head -n1)
     chosen=$(printf '%s\n' "$selection" | tail -n1)
     [[ -z "$chosen" ]] && continue
 
-    local svc_name
     svc_name=$(echo "$chosen" | awk '{print $1}')
     _svc_validate_name "$svc_name" || continue
 
