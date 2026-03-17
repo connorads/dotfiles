@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+# zsh-profile: measure shell startup performance
+emulate -L zsh
+
+local runs=${1:-5}
+local detailed=false
+[[ "$1" == "--detailed" || "$1" == "-d" ]] && { detailed=true; runs=${2:-1}; }
+
+if $detailed; then
+  echo "=== zprof breakdown (1 run) ==="
+  ZSH_PROFILE=1 zsh -i -c exit
+  return 0
+fi
+
+echo "Timing $runs startup(s)..."
+local total=0 i elapsed
+for (( i = 1; i <= runs; i++ )); do
+  elapsed=$( { TIMEFMT='%mE'; time zsh -i -c exit; } 2>&1 | tail -1 )
+  # Strip trailing units, keep number
+  elapsed="${elapsed//[^0-9.]/}"
+  printf "  run %d: %sms\n" "$i" "$elapsed"
+  total=$(( total + elapsed ))
+done
+
+printf "average: %.0fms (%d runs)\n" "$(( total / runs ))" "$runs"

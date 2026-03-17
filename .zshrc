@@ -3,6 +3,9 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Optional startup profiling: ZSH_PROFILE=1 zsh -i -c exit
+[[ -n "${ZSH_PROFILE+1}" ]] && zmodload zsh/zprof
+
 # Use stable SSH agent socket inside tmux.
 # Symlink management is handled by tmux hooks/scripts to keep shell startup quiet.
 if [[ -n "$TMUX" ]]; then
@@ -85,6 +88,9 @@ if [[ -r ~/.config/gh-gate/active-token && -r ~/.config/gh-gate/active-token-exp
 elif [[ -r ~/.config/gh-gate/readonly-token ]]; then
   export GH_TOKEN=$(<~/.config/gh-gate/readonly-token)
 fi
+
+# Startup profiling output (before p10k to avoid noise)
+[[ -n "${ZSH_PROFILE+1}" ]] && zprof
 
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
