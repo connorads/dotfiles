@@ -45,7 +45,7 @@
           config.allowUnfree = true;
           # Temporary workarounds for upstream nixpkgs-unstable regressions.
           # TODO: after each `nfu`, check if the linked issue is closed and delete the block.
-          # Once both are gone, delete the entire `overlays = [ ... ];` argument too.
+          # Once all are gone, delete the entire `overlays = [ ... ];` argument too.
           overlays = [
             (final: prev: {
               pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
@@ -63,26 +63,8 @@
                     // {
                       inherit (orig) override;
                     }; # preserve override for passthru.tests self-ref
-
-                  # TODO: remove once https://github.com/NixOS/nixpkgs/pull/493003 is merged
-                  # (asyncer declares sniffio as runtime dep; opened 2026-02-22)
-                  asyncer = pyPrev.asyncer.overridePythonAttrs (old: {
-                    dependencies = (old.dependencies or [ ]) ++ [ pyFinal.sniffio ];
-                  });
                 })
               ];
-            })
-
-            # Temporary fix for nixpkgs-unstable rev 42bbf3e1...
-            # TODO: remove once nixpkgs includes NixOS/nixpkgs@b0c90563d3f89a097b03379113c6155a1f885ed6
-            (final: prev: {
-              ollama = prev.ollama.overrideAttrs (old: {
-                postPatch =
-                  builtins.replaceStrings
-                    [ "rm model/models/qwen3next/checkpoints_test.go" ]
-                    [ "rm -f model/models/qwen3next/checkpoints_test.go" ]
-                    old.postPatch;
-              });
             })
           ];
         };
