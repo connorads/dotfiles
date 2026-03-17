@@ -6,6 +6,7 @@
 let
   # VS Code override: nixpkgs often lags the latest release.
   # Update version/rev/hashes when a new release is needed.
+  # Last updated: 2026-02-13 — check https://code.visualstudio.com/updates for newer releases
   vscodeOverride = pkgs.vscode.overrideAttrs (
     _old:
     let
