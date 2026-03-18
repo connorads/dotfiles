@@ -1,0 +1,41 @@
+#!/bin/sh
+# gh: wrapper that reads gh-gate token files dynamically
+# Ensures gh-gate grant/revoke take effect in already-running sessions
+
+config_dir="$HOME/.config/gh-gate"
+
+# Clear any stale GH_TOKEN from parent env (e.g. shell snapshot)
+# so only file-based tokens are used when gh-gate is configured
+if [ -d "$config_dir" ]; then
+  unset GH_TOKEN
+
+  if [ -r "$config_dir/active-token" ] && [ -r "$config_dir/active-token-expires" ]; then
+    expires=$(cat "$config_dir/active-token-expires")
+    now=$(date +%s)
+    if [ "$now" -lt "$expires" ] 2>/dev/null; then
+      export GH_TOKEN=$(cat "$config_dir/active-token")
+    elif [ -r "$config_dir/readonly-token" ]; then
+      export GH_TOKEN=$(cat "$config_dir/readonly-token")
+    fi
+  elif [ -r "$config_dir/readonly-token" ]; then
+    export GH_TOKEN=$(cat "$config_dir/readonly-token")
+  fi
+fi
+
+# Find real gh by skipping this wrapper's directory
+real_gh=""
+OLDIFS="$IFS"; IFS=':'
+for dir in $PATH; do
+  case "$dir" in
+    "$HOME/.local/bin"|"$HOME/.local/bin/") continue ;;
+  esac
+  [ -x "$dir/gh" ] && real_gh="$dir/gh" && break
+done
+IFS="$OLDIFS"
+
+if [ -z "$real_gh" ]; then
+  echo "gh wrapper: cannot find real gh in PATH" >&2
+  exit 127
+fi
+
+exec "$real_gh" "$@"
