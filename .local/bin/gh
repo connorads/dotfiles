@@ -28,6 +28,7 @@ OLDIFS="$IFS"; IFS=':'
 for dir in $PATH; do
   case "$dir" in
     "$HOME/.local/bin"|"$HOME/.local/bin/") continue ;;
+    "$HOME/.local/share/mise/shims"|"$HOME/.local/share/mise/shims/") continue ;;
   esac
   [ -x "$dir/gh" ] && real_gh="$dir/gh" && break
 done
