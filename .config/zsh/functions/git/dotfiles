@@ -1,0 +1,8 @@
+# dotfiles: shadow nix wrapper to renormalise clean-filtered files before read commands
+emulate -L zsh
+case ${1:-} in
+  status|diff|stash)
+    command dotfiles add --renormalize .codex/config.toml 2>/dev/null
+    ;;
+esac
+command dotfiles "$@"
