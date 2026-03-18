@@ -83,13 +83,6 @@ export DISABLE_ERROR_REPORTING=1
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
-# gh-gate: use scoped token instead of gh auth (check expiry for write tokens)
-if [[ -r ~/.config/gh-gate/active-token && -r ~/.config/gh-gate/active-token-expires ]] && (( EPOCHSECONDS < $(<~/.config/gh-gate/active-token-expires) )); then
-  export GH_TOKEN=$(<~/.config/gh-gate/active-token)
-elif [[ -r ~/.config/gh-gate/readonly-token ]]; then
-  export GH_TOKEN=$(<~/.config/gh-gate/readonly-token)
-fi
-
 # Startup profiling output (before p10k to avoid noise)
 [[ -n "${ZSH_PROFILE+1}" ]] && zprof
 
