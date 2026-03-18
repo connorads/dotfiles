@@ -47,7 +47,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
-| [.zshrc](./.zshrc)                                                     | Shell config with aliases, autoloaded helpers, and `GH_TOKEN` sourcing (gh-gate)          |
+| [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration (update `help.md` when changing bindings)                              |
@@ -55,6 +55,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
 | [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
+| [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper that reads gh-gate tokens dynamically (not a symlink)                        |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup)                     |
