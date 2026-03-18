@@ -118,6 +118,7 @@ let
     ollama
     postgresql
     lazysql
+    sqlite
     witr
 
     # PHP & WordPress
