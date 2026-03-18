@@ -59,6 +59,7 @@
       "cursor"
       "kiro"
       "antigravity"
+      "t3-code"
       "zed"
       "zappy"
       "calibre"
