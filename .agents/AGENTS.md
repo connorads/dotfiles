@@ -50,6 +50,15 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Commit after each coherent unit. Don't batch everything into one mega-commit at the end.
 - Plan steps map to commits when they pass the revert and review tests. Multiple small steps may merge into one commit; one large step may split into several.
 
+## Verification
+
+**Every commit must be verified before moving on.** Writing code is not enough - prove it works.
+
+- **Run what exists**: test suite, linter/formatter, pre-commit hooks (`hk`). Let automated checks catch the obvious
+- **No automated checks?** Still verify: run the app, execute the command, use browser automation for UI, curl the endpoint
+- **Proportional to risk**: config tweak -> smoke test. New feature -> full suite + manual confirmation if coverage is thin
+- **Fix before proceeding**: if verification fails, amend the commit if not pushed - don't add a follow-up "fix" commit
+
 ## Selective Staging
 
 `git hunks list` shows diff hunks with unique IDs. `git hunks add <id>` stages specific hunks non-interactively.
@@ -115,6 +124,6 @@ Use for granular commits when a file contains changes for multiple concerns.
 
 ## Have you finished?
 
-- Has our change been tested and validated? Also no linting or formatting errors?
+- **Verified?** Tests pass, linter/formatter clean, no regressions - see [Verification](#verification)
 - Did we make a big change to functionality or architecture? Consider updating any `.md` file where appropriate and/or writing an ADR
 - Did we have any realisations or learnings? Consider updating `AGENTS.md` or `CLAUDE.md`
