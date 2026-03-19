@@ -123,8 +123,10 @@ Use for granular commits when a file contains changes for multiple concerns.
 
 **Property-based testing**: use for pure functions where the input space is large or combinatorial — describe the properties that must hold, not individual examples.
 
-## Have you finished?
+## Capturing intent
 
-- **Verified?** Tests pass, linter/formatter clean, no regressions - see [Verification](#verification)
-- Did we make a big change to functionality or architecture? Consider updating any `.md` file where appropriate and/or writing an ADR
-- Did we have any realisations or learnings? Consider updating `AGENTS.md` or `CLAUDE.md`
+Intent from conversations gets lost between sessions. After making changes, ask: would a future agent (or human) understand *why* this was done?
+
+- Update docs, comments, commit messages, and ADRs to preserve the *why* - not just what changed
+- Keep `AGENTS.md`, `CLAUDE.md`, and code comments in sync with reality - stale docs poison future context
+- Write an ADR when a decision involved trade-offs or rejected alternatives worth remembering
