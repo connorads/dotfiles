@@ -56,6 +56,7 @@
 | `Ctrl+b D` | difftastic git diff |
 | `Ctrl+b C` | critique git diff |
 | `Ctrl+b R` | critique AI review (choose agent) |
+| `Ctrl+b Alt+g` | review commits (fzf + critique) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
