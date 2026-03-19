@@ -102,6 +102,7 @@ let
 
     # Networking
     nmap
+    bandwhich
     cloudflared
     ttyd
   ];
