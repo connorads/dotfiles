@@ -50,6 +50,8 @@
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b b` | system monitor (bottom) |
+| `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
+| `Ctrl+b Alt+c` | connections overview |
 | `Ctrl+b O` | open cwd in file manager |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
