@@ -62,6 +62,24 @@ git_branch_and_dirty() {
 	printf "%s%s" "$branch" "$dirty"
 }
 
+ssh_info() {
+	local count=0
+	if [ "$(uname)" = "Darwin" ]; then
+		count="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+	else
+		count="$(ss -tn state established '( sport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+	fi
+
+	[ "$count" -eq 0 ] 2>/dev/null && return
+
+	local agent=""
+	if SSH_AUTH_SOCK="$HOME/.ssh/agent.sock" timeout 1 ssh-add -l >/dev/null 2>&1; then
+		agent="#[fg=#a6e3a1]🔑"
+	fi
+
+	printf "#[fg=#fab387]%s↓%s " "$count" "$agent"
+}
+
 host_label() {
 	local short
 	if [ -n "$hostname_full_flag" ]; then
@@ -263,6 +281,7 @@ print_full() {
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#cba6f7]#[bold]  %s " "$ram"
 	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
+	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
 }
 
@@ -272,12 +291,14 @@ print_medium() {
 	host="$(host_label)"
 
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
+	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
 }
 
 print_compact() {
 	local host
 	host="$(host_label)"
+	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
 }
 
