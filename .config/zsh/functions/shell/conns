@@ -1,0 +1,106 @@
+#!/usr/bin/env zsh
+# conns: show active network connections grouped by process
+emulate -L zsh
+
+local listen_only=0
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -l|--listen) listen_only=1; shift ;;
+    -h|--help) print "Usage: conns [-l|--listen]"; return 0 ;;
+    *) print "Unknown option: $1" >&2; return 1 ;;
+  esac
+done
+
+local use_colour=0
+[[ -t 1 ]] && use_colour=1
+
+_highlight_tailscale() {
+  if (( use_colour )); then
+    sed -E 's/(100\.[0-9]+\.[0-9]+\.[0-9]+(:[0-9]+)?)/\x1b[36m\1\x1b[0m/g'
+  else
+    cat
+  fi
+}
+
+if (( listen_only )); then
+  if [[ "$OSTYPE" == darwin* ]]; then
+    {
+      print "PROCESS\tPID\tLOCAL ADDRESS"
+      lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | tail -n +2 |
+        awk '{ printf "%s\t%s\t%s\n", $1, $2, $9 }' | sort -t$'\t' -k1,1 -k3,3
+    } | _highlight_tailscale | column -t -s $'\t'
+  else
+    {
+      print "PROCESS\tPID\tLOCAL ADDRESS"
+      ss -tlnp 2>/dev/null | tail -n +2 |
+        awk '{
+          local_addr = $4
+          pid = "-"; proc = "-"
+          for (i=1; i<=NF; i++) {
+            if ($i ~ /users:/) {
+              match($i, /"([^"]+)",pid=([0-9]+)/, m)
+              if (m[1]) proc = m[1]
+              if (m[2]) pid = m[2]
+            }
+          }
+          printf "%s\t%s\t%s\n", proc, pid, local_addr
+        }' | sort -t$'\t' -k1,1 -k3,3
+    } | _highlight_tailscale | column -t -s $'\t'
+  fi
+  return
+fi
+
+# Collapse duplicate remote addresses per process — show count when > 1
+_collapse() {
+  awk -F'\t' '
+    { key = $1 "\t" $3 "\t" $4; count[key]++; pid[key] = $2 }
+    END {
+      for (k in count) {
+        split(k, a, "\t")
+        c = count[k]
+        if (c > 1)
+          printf "%s\t%s\t%s\t%s\t%dx\n", a[1], pid[k], a[2], a[3], c
+        else
+          printf "%s\t%s\t%s\t%s\t\n", a[1], pid[k], a[2], a[3]
+      }
+    }' | sort -t$'\t' -k1,1 -k3,3
+}
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  {
+    print "PROCESS\tPID\tREMOTE\tSTATE\tCOUNT"
+    lsof -i -n -P 2>/dev/null | tail -n +2 |
+      awk '{
+        state = ""
+        if ($8 ~ /\(/) state = $8
+        else if ($9 ~ /\(/) state = $9
+        else if ($10 ~ /\(/) state = $10
+        gsub(/[()]/, "", state)
+        split($9, a, "->")
+        if (a[2] == "") a[2] = "-"
+        # Strip port from remote for grouping
+        remote = a[2]; sub(/:[0-9]+$/, "", remote)
+        printf "%s\t%s\t%s\t%s\n", $1, $2, remote, state
+      }' | _collapse
+  } | _highlight_tailscale | column -t -s $'\t'
+else
+  {
+    print "PROCESS\tPID\tREMOTE\tSTATE\tCOUNT"
+    ss -tunp 2>/dev/null | tail -n +2 |
+      awk '{
+        state = $2
+        remote_addr = $6
+        # Strip port for grouping
+        sub(/:[0-9]+$/, "", remote_addr)
+        pid = "-"; proc = "-"
+        for (i=1; i<=NF; i++) {
+          if ($i ~ /users:/) {
+            match($i, /"([^"]+)",pid=([0-9]+)/, m)
+            if (m[1]) proc = m[1]
+            if (m[2]) pid = m[2]
+          }
+        }
+        printf "%s\t%s\t%s\t%s\n", proc, pid, remote_addr, state
+      }' | _collapse
+  } | _highlight_tailscale | column -t -s $'\t'
+fi
