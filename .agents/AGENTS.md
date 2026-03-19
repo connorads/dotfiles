@@ -49,6 +49,7 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - Renames/moves in a separate commit from content changes (git rename detection breaks otherwise) — but include reference/import updates so the build passes.
 - Commit after each coherent unit. Don't batch everything into one mega-commit at the end.
 - Plan steps map to commits when they pass the revert and review tests. Multiple small steps may merge into one commit; one large step may split into several.
+- **Amending commits**: before amending, always check if the commit has been pushed (`git log @{u}.. --oneline` — if empty, it's pushed). Only amend unpushed commits; if already pushed, create a new commit instead.
 
 ## Verification
 
@@ -57,7 +58,7 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - **Run what exists**: test suite, linter/formatter, pre-commit hooks (`hk`). Let automated checks catch the obvious
 - **No automated checks?** Still verify: run the app, execute the command, use browser automation for UI, curl the endpoint
 - **Proportional to risk**: config tweak -> smoke test. New feature -> full suite + manual confirmation if coverage is thin
-- **Fix before proceeding**: if verification fails, amend the commit if not pushed - don't add a follow-up "fix" commit
+- **Fix before proceeding**: if verification fails, amend the commit (see amending rule in Git section) rather than adding a follow-up "fix" commit
 - **Plans must include verification**: when writing a plan, specify how each step will be verified - don't leave it implicit
 
 ## Selective Staging
