@@ -58,6 +58,7 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 - **No automated checks?** Still verify: run the app, execute the command, use browser automation for UI, curl the endpoint
 - **Proportional to risk**: config tweak -> smoke test. New feature -> full suite + manual confirmation if coverage is thin
 - **Fix before proceeding**: if verification fails, amend the commit if not pushed - don't add a follow-up "fix" commit
+- **Plans must include verification**: when writing a plan, specify how each step will be verified - don't leave it implicit
 
 ## Selective Staging
 
