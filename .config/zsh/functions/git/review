@@ -1,0 +1,139 @@
+#!/usr/bin/env zsh
+# review: browse commits with fzf, view diffs in critique
+emulate -L zsh
+
+local range= count= base_ref= env_prefix= help=0
+local -a gitcmd=(git)
+
+# Help
+local usage="Usage: review [options]
+  (no args)       unpushed commits (@{upstream}..HEAD)
+  --range <range> arbitrary git range (e.g. main..feature, HEAD~10..HEAD)
+  -n <count>      last N commits
+  -h, --help      show this help"
+
+# Flag parsing
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --range) range=$2; shift 2 ;;
+    -n) count=$2; shift 2 ;;
+    -h|--help) print -r "$usage"; return 0 ;;
+    *) print -ru2 "review: unknown option: $1"; print -r "$usage"; return 1 ;;
+  esac
+done
+
+# Dotfiles detection
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  if [[ ${PWD%/} == ${HOME%/} ]] && [[ -d $HOME/git/dotfiles ]]; then
+    gitcmd=(git --git-dir=$HOME/git/dotfiles --work-tree=$HOME)
+    env_prefix="GIT_DIR=$HOME/git/dotfiles GIT_WORK_TREE=$HOME "
+  else
+    print -ru2 "review: not in a git work tree"
+    return 1
+  fi
+fi
+
+# Determine range/count args and base_ref
+local -a log_args=()
+local all_unpushed=0
+
+if [[ -n $range ]]; then
+  log_args=($range)
+  # Extract base from range for cumulative diff (part before ..)
+  if [[ $range == *..* ]]; then
+    base_ref=${range%%..* }
+  fi
+elif [[ -n $count ]]; then
+  log_args=(-n $count)
+  # Try to get upstream for pushed/unpushed detection
+  if "${gitcmd[@]}" rev-parse --verify '@{upstream}' &>/dev/null; then
+    base_ref=$("${gitcmd[@]}" rev-parse --short '@{upstream}')
+  fi
+else
+  # Default: unpushed commits
+  if "${gitcmd[@]}" rev-parse --verify '@{upstream}' &>/dev/null; then
+    base_ref=$("${gitcmd[@]}" merge-base '@{upstream}' HEAD 2>/dev/null || "${gitcmd[@]}" rev-parse --short '@{upstream}')
+    log_args=('@{upstream}..HEAD')
+    all_unpushed=1
+  elif "${gitcmd[@]}" rev-parse --verify 'origin/HEAD' &>/dev/null; then
+    base_ref=$("${gitcmd[@]}" rev-parse --short 'origin/HEAD')
+    log_args=('origin/HEAD..HEAD')
+    all_unpushed=1
+  else
+    print -ru2 "review: no upstream — use --range or -n"
+    return 1
+  fi
+fi
+
+# Build commit list
+local commits
+commits=$("${gitcmd[@]}" log --oneline --color=always \
+  --format='%C(yellow)%h%C(reset) %s %C(dim)%cr%C(reset)' "${log_args[@]}" 2>/dev/null)
+
+if [[ -z $commits ]]; then
+  print "no commits to review"
+  return 0
+fi
+
+# Pushed/unpushed markers
+local marked
+if (( all_unpushed )); then
+  marked=$(print -r "$commits" | awk '{print "* " $0}')
+else
+  # Get unpushed SHA set
+  local -A unpushed_set=()
+  if "${gitcmd[@]}" rev-parse --verify '@{upstream}' &>/dev/null; then
+    local sha
+    for sha in $("${gitcmd[@]}" log --format=%h '@{upstream}..HEAD' 2>/dev/null); do
+      unpushed_set[$sha]=1
+    done
+  fi
+
+  if (( ${#unpushed_set} == 0 )); then
+    # No upstream or all pushed — mark all with +
+    marked=$(print -r "$commits" | awk '{print "+ " $0}')
+  else
+    # Mark each line based on SHA membership
+    marked=$(print -r "$commits" | while IFS= read -r line; do
+      local sha=${${line##*\[0m }%% *}
+      # Strip ANSI to get raw SHA (field after first reset)
+      sha=$(print -r "$line" | sed 's/\x1b\[[0-9;]*m//g' | awk '{print $1}')
+      if (( ${+unpushed_set[$sha]} )); then
+        print -r "* $line"
+      else
+        print -r "+ $line"
+      fi
+    done)
+  fi
+fi
+
+# Build fzf header
+local header='enter: view commit | esc: quit'
+if [[ -n $base_ref ]]; then
+  header="enter: view commit | ctrl-a: cumulative diff | esc: quit"
+fi
+
+# Build critique command prefix
+local critique_prefix="${env_prefix}"
+# Resolve critique path — prefer direct, fallback to mise
+local critique_cmd
+if command -v critique &>/dev/null; then
+  critique_cmd="critique"
+else
+  critique_cmd="mise x -- critique"
+fi
+
+# fzf bindings
+local -a fzf_args=(
+  --ansi --reverse --no-sort
+  --header="$header"
+  --preview="${env_prefix}git show --stat --color=always {2}"
+  --preview-window='right:50%:wrap'
+  --bind "enter:execute(${env_prefix}${critique_cmd} --commit {2})"
+)
+
+if [[ -n $base_ref ]]; then
+  fzf_args+=(--bind "ctrl-a:execute(${env_prefix}${critique_cmd} ${base_ref} {2})")
+fi
+
+print -r "$marked" | fzf "${fzf_args[@]}"
