@@ -1,0 +1,50 @@
+#!/bin/sh
+# .rtk-shim: transparent RTK wrapper for agent contexts
+# Symlinked under command names in ~/.local/lib/rtk-shims/
+# Agent context: delegates to rtk for token-reduced output
+# Interactive: passthrough with negligible overhead (~1ms)
+
+cmd="${0##*/}"
+shim_dir="${0%/*}"
+
+# Command name remapping (where rtk subcommand differs from the tool name)
+# Verified against rtk src/discover/rules.rs
+case "$cmd" in
+  cat|head|tail) rtk_cmd="read" ;;
+  rg)            rtk_cmd="grep" ;;
+  jest)          rtk_cmd="vitest" ;;
+  pip3)          rtk_cmd="pip" ;;
+  golangci)      rtk_cmd="golangci-lint" ;;
+  eslint|biome)  rtk_cmd="lint" ;;
+  *)             rtk_cmd="$cmd" ;;
+esac
+
+# Remove shim dir from PATH to find real commands (prevents infinite recursion)
+_clean_path() {
+  _p="" _ifs="$IFS"; IFS=':'
+  for _d in $PATH; do
+    case "$_d" in "$shim_dir"|"$shim_dir/") continue ;; esac
+    _p="${_p:+$_p:}$_d"
+  done
+  IFS="$_ifs"; printf '%s' "$_p"
+}
+
+# Fast agent detection: single compound test (~nanoseconds)
+# CLAUDECODE: Claude Code, AGENT: Goose/Amp/Bun, AI_AGENT: Vercel
+# COPILOT_CLI: GitHub Copilot, GEMINI_CLI: Gemini, RTK_AGENT: opt-in
+if [ -n "${CLAUDECODE:-}" ] || [ -n "${AGENT:-}" ] || [ -n "${AI_AGENT:-}" ] \
+|| [ -n "${COPILOT_CLI:-}" ] || [ -n "${GEMINI_CLI:-}" ] || [ -n "${RTK_AGENT:-}" ]; then
+  clean=$(_clean_path)
+  # Find rtk on clean PATH
+  _ifs="$IFS"; IFS=':'
+  for _d in $clean; do
+    [ -x "$_d/rtk" ] && { IFS="$_ifs"; PATH="$clean" exec "$_d/rtk" "$rtk_cmd" "$@"; }
+  done
+  IFS="$_ifs"
+  # rtk not found: fall through to real command (safe fallback)
+  PATH="$clean" exec "$cmd" "$@"
+fi
+
+# Interactive: passthrough (no agent env var detected)
+clean=$(_clean_path)
+PATH="$clean" exec "$cmd" "$@"
