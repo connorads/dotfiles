@@ -7,16 +7,6 @@
 # ==============================================================================
 { pkgs }:
 let
-  # Bare repo wrapper that works even with empty $HOME
-  dotfiles = pkgs.writeShellApplication {
-    name = "dotfiles";
-    runtimeInputs = [ pkgs.git ];
-    text = ''
-      home="''${HOME:-$(eval echo ~)}"
-      exec git --git-dir="$home/git/dotfiles" --work-tree="$home" "$@"
-    '';
-  };
-
   # xclip shim: delegates to osc for headless/SSH environments
   xclip-osc = pkgs.writeShellApplication {
     name = "xclip";
@@ -79,8 +69,6 @@ let
     lazygit
     lazyworktree
     jujutsu
-    dotfiles
-
     # CLI utilities
     bc
     glow

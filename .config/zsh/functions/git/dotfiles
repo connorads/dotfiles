@@ -1,8 +1,9 @@
-# dotfiles: shadow nix wrapper to renormalise clean-filtered files before read commands
+#!/usr/bin/env zsh
+# dotfiles: git wrapper for bare-repo dotfiles with codex config renormalisation
 emulate -L zsh
 case ${1:-} in
   status|diff|stash)
-    command dotfiles add --renormalize .codex/config.toml 2>/dev/null
+    command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" add --renormalize .codex/config.toml 2>/dev/null
     ;;
 esac
-command dotfiles "$@"
+command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
