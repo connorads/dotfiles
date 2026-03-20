@@ -10,7 +10,7 @@ shim_dir="${0%/*}"
 # Command name remapping (where rtk subcommand differs from the tool name)
 # Verified against rtk src/discover/rules.rs
 case "$cmd" in
-  cat|head|tail) rtk_cmd="read" ;;
+  cat)           rtk_cmd="read" ;;
   rg)            rtk_cmd="grep" ;;
   jest)          rtk_cmd="vitest" ;;
   pip3)          rtk_cmd="pip" ;;

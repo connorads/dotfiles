@@ -41,7 +41,7 @@ local shim_source="$HOME/.config/zsh/functions/agents/.rtk-shim"
 
 # Full command list from RTK src/discover/rules.rs (v0.31.0)
 local -a RTK_COMMANDS=(
-  git gh cargo pnpm npm npx cat head tail rg grep ls find tsc eslint biome prettier
+  git gh cargo pnpm npm npx cat rg grep ls find tsc eslint biome prettier
   vitest jest playwright prisma docker kubectl tree diff curl wget mypy ruff pytest
   pip pip3 uv go golangci golangci-lint aws psql ansible-playbook brew composer df
   dotnet du fail2ban-client gcloud hadolint helm iptables make markdownlint mix mvn
