@@ -131,3 +131,19 @@ Intent from conversations gets lost between sessions. After making changes, ask:
 - Update docs, comments, commit messages, and ADRs to preserve the *why* - not just what changed
 - Keep `AGENTS.md`, `CLAUDE.md`, and code comments in sync with reality - stale docs poison future context
 - Write an ADR when a decision involved trade-offs or rejected alternatives worth remembering
+
+### Surprise = write it down
+
+The gap between expectation and reality is the most valuable and perishable knowledge. When something surprises you, **stop and capture it** before continuing.
+
+**Triggers** - pause and document when:
+- You changed your hypothesis (thought the problem was X, it's actually Y)
+- You abandoned an approach (tried X, it didn't work because Y)
+- The fix is non-obvious (someone reading the code wouldn't guess why)
+- The user corrected your understanding
+
+**Where to capture it:**
+- Dead-ends and rejected approaches go in commit messages or ADRs
+- Non-obvious fixes get inline code comments explaining the constraint
+- Tests guarding subtle bugs get a comment explaining the failure mode, not just what's asserted
+- Decisions with trade-offs get an ADR
