@@ -22,7 +22,7 @@
     };
   };
 
-  programs.neovim.enable = true;
+  home.packages = [ pkgs.neovim ];
 
   programs.atuin = {
     enable = true;
