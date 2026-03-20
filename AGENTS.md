@@ -59,6 +59,8 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup)                     |
+| [.rtk-shim](./.config/zsh/functions/agents/.rtk-shim)                  | RTK shim script: intercepts commands in agent contexts for token reduction                |
+| [rtk-shims](./.config/zsh/functions/agents/rtk-shims)                  | Manager for RTK shim symlinks in `~/.local/lib/rtk-shims/`                               |
 
 ## Shell Function Conventions
 
@@ -172,6 +174,9 @@ gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
 gh-gate grant          # Push 1-hour write token to dev (from host machine)
 gh-gate revoke         # Revoke write token, restore read-only on dev
 gh-gate status         # Check token state on dev
+rtk-shims sync         # Create/update RTK agent shims (default)
+rtk-shims list         # Show current shims with status
+rtk-shims clean        # Remove all shims and the directory
 ```
 
 ## Git Hooks (hk)
