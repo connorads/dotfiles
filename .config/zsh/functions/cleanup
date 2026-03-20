@@ -1,0 +1,253 @@
+#!/usr/bin/env zsh
+# cleanup: reclaim disk space by cleaning caches, build artefacts, and garbage
+# flags: --force / -f  execute (default is dry-run)
+#        --volumes     also prune docker volumes
+emulate -L zsh
+
+local dry=1 volumes=0
+for arg in "$@"; do
+  case "$arg" in
+    --force|-f) dry=0 ;;
+    --volumes)  volumes=1 ;;
+  esac
+done
+
+# Nix
+if command -v nix-collect-garbage &>/dev/null; then
+  echo "=> nix garbage collect"
+  if (( dry )); then
+    du -sh /nix/store 2>/dev/null
+    echo "   [dry-run] nix-collect-garbage --delete-older-than 30d"
+    echo "   [dry-run] nix-store --optimise"
+  else
+    nix-collect-garbage --delete-older-than 30d
+    nix-store --optimise
+  fi
+fi
+
+# Docker
+if command -v docker &>/dev/null; then
+  echo "=> docker prune"
+  if (( dry )); then
+    docker system df 2>/dev/null
+    echo "   [dry-run] docker system prune -af"
+    echo "   [dry-run] docker builder prune -af"
+    if (( volumes )); then
+      echo "   [dry-run] docker volume prune -af"
+    else
+      echo "   [skip] docker volumes (pass --volumes to include)"
+    fi
+  else
+    docker system prune -af
+    docker builder prune -af
+    if (( volumes )); then
+      docker volume prune -af
+    fi
+  fi
+fi
+
+# Podman
+if command -v podman &>/dev/null; then
+  echo "=> podman prune"
+  if (( dry )); then
+    podman system df 2>/dev/null
+    echo "   [dry-run] podman system prune -af"
+    echo "   [dry-run] podman builder prune --all"
+    if (( volumes )); then
+      echo "   [dry-run] podman volume prune -af"
+    else
+      echo "   [skip] podman volumes (pass --volumes to include)"
+    fi
+  else
+    podman system prune -af
+    podman builder prune --all
+    if (( volumes )); then
+      podman volume prune -af
+    fi
+  fi
+fi
+
+# Homebrew (macOS)
+if [[ "$OSTYPE" == "darwin"* ]] && command -v brew &>/dev/null; then
+  echo "=> brew cleanup"
+  if (( dry )); then
+    brew cleanup -n --prune=30 2>/dev/null
+  else
+    brew cleanup --prune=30
+  fi
+fi
+
+# Xcode (macOS)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  local dd="$HOME/Library/Developer/Xcode/DerivedData"
+  if [[ -d "$dd" ]]; then
+    echo "=> xcode derived data"
+    if (( dry )); then
+      du -sh "$dd"
+      echo "   [dry-run] rm -rf $dd"
+    else
+      rm -rf "$dd"
+    fi
+  fi
+  for modcache in "$HOME/Library/Developer/Xcode/ModuleCache"*(N) "$HOME/Library/Developer/Xcode/ModuleCache.noindex"*(N); do
+    if [[ -d "$modcache" ]]; then
+      echo "=> xcode module cache"
+      if (( dry )); then
+        du -sh "$modcache"
+        echo "   [dry-run] rm -rf $modcache"
+      else
+        rm -rf "$modcache"
+      fi
+    fi
+  done
+  if command -v xcrun &>/dev/null; then
+    echo "=> xcode simulators"
+    if (( dry )); then
+      echo "   [dry-run] xcrun simctl delete unavailable"
+    else
+      xcrun simctl delete unavailable
+    fi
+  fi
+fi
+
+# Go
+if command -v go &>/dev/null; then
+  echo "=> go cache"
+  if (( dry )); then
+    du -sh "$(go env GOCACHE 2>/dev/null)" 2>/dev/null
+    echo "   [dry-run] go clean -cache -testcache"
+  else
+    go clean -cache -testcache
+  fi
+fi
+
+# Cargo
+if command -v cargo &>/dev/null && [[ -d "$HOME/.cargo/registry/cache" ]]; then
+  echo "=> cargo registry cache"
+  if (( dry )); then
+    du -sh "$HOME/.cargo/registry/cache"
+    echo "   [dry-run] rm -rf ~/.cargo/registry/cache"
+  else
+    rm -rf "$HOME/.cargo/registry/cache"
+  fi
+fi
+
+# apt (non-NixOS Linux)
+if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+  echo "=> apt clean"
+  if (( dry )); then
+    echo "   [dry-run] sudo apt-get clean"
+    echo "   [dry-run] sudo apt-get autoremove -y"
+  else
+    sudo apt-get clean
+    sudo apt-get autoremove -y
+  fi
+fi
+
+# mise
+if command -v mise &>/dev/null; then
+  echo "=> mise cache"
+  if (( dry )); then
+    echo "   [dry-run] mise cache clear"
+    echo "   [dry-run] mise prune -y"
+  else
+    mise cache clear
+    mise prune -y
+  fi
+fi
+
+# pnpm
+if command -v pnpm &>/dev/null; then
+  echo "=> pnpm store"
+  if (( dry )); then
+    local pnpm_store
+    pnpm_store="$(pnpm store path 2>/dev/null)"
+    [[ -d "$pnpm_store" ]] && du -sh "$pnpm_store"
+    echo "   [dry-run] pnpm store prune"
+  else
+    pnpm store prune
+  fi
+fi
+
+# bun
+if command -v bun &>/dev/null && [[ -d "$HOME/.bun/install/cache" ]]; then
+  echo "=> bun cache"
+  if (( dry )); then
+    du -sh "$HOME/.bun/install/cache"
+    echo "   [dry-run] rm -rf ~/.bun/install/cache"
+  else
+    rm -rf "$HOME/.bun/install/cache"
+  fi
+fi
+
+# npm
+if command -v npm &>/dev/null; then
+  echo "=> npm cache"
+  if (( dry )); then
+    [[ -d "$HOME/.npm" ]] && du -sh "$HOME/.npm"
+    echo "   [dry-run] npm cache clean --force"
+  else
+    npm cache clean --force
+  fi
+fi
+
+# pip
+if command -v pip &>/dev/null; then
+  echo "=> pip cache"
+  if (( dry )); then
+    pip cache info 2>/dev/null
+    echo "   [dry-run] pip cache purge"
+  else
+    pip cache purge
+  fi
+fi
+
+# uv
+if command -v uv &>/dev/null; then
+  echo "=> uv cache"
+  if (( dry )); then
+    echo "   [dry-run] uv cache clean"
+  else
+    uv cache clean
+  fi
+fi
+
+# Neovim cache
+if [[ -d "$HOME/.cache/nvim" ]]; then
+  echo "=> nvim cache"
+  if (( dry )); then
+    du -sh "$HOME/.cache/nvim"
+    echo "   [dry-run] rm -rf ~/.cache/nvim"
+  else
+    rm -rf "$HOME/.cache/nvim"
+  fi
+fi
+
+# Trash (macOS)
+if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "$HOME/.Trash" ]] && [[ "$(ls -A "$HOME/.Trash" 2>/dev/null)" ]]; then
+  echo "=> empty trash"
+  if (( dry )); then
+    du -sh "$HOME/.Trash"
+    echo "   [dry-run] rm -rf ~/.Trash/*"
+  else
+    rm -rf "$HOME/.Trash"/*
+  fi
+fi
+
+# systemd journal (Linux)
+if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v journalctl &>/dev/null; then
+  echo "=> systemd journal"
+  if (( dry )); then
+    journalctl --disk-usage 2>/dev/null
+    echo "   [dry-run] sudo journalctl --vacuum-time=7d"
+  else
+    sudo journalctl --vacuum-time=7d
+  fi
+fi
+
+if (( dry )); then
+  echo ""
+  echo "Dry run complete. Run 'cleanup --force' to execute."
+fi
+
+echo "=> done"
