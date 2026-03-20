@@ -60,6 +60,8 @@ references/bret-victor.md        →  bret, bret victor, worrydream
 references/des-traynor.md        →  des, des traynor, destraynor
 references/walter-murch.md       →  walter, walter murch, waltermurch
 references/grant-sanderson.md    →  grant, 3b1b, grant sanderson, 3blue1brown
+references/matt-mullenweg.md     →  mullenweg, photomatt, matt mullenweg
+references/mark-jaquith.md       →  jaquith, markjaquith, mark jaquith
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -151,3 +153,5 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Jonny Burger | Remotion, programmatic video, React video | jonny, jonnyburger, jonny burger | `references/jonny-burger.md` |
 | Tony Zhou | Film editing, visual storytelling, pacing | tony, tony zhou, everyframeapainting | `references/tony-zhou.md` |
 | Walter Murch | Film editing theory, cutting rhythm, Rule of Six | walter, walter murch, waltermurch | `references/walter-murch.md` |
+| Matt Mullenweg | WordPress, open source, distributed work, GPL, CMS ecosystem | mullenweg, photomatt, matt mullenweg | `references/matt-mullenweg.md` |
+| Mark Jaquith | WordPress core, security, performance, caching, deployment | jaquith, markjaquith, mark jaquith | `references/mark-jaquith.md` |
