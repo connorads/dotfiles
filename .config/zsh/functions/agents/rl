@@ -1,0 +1,47 @@
+#!/usr/bin/env zsh
+# rl: ralph loop - run a command in a naive loop
+emulate -L zsh
+
+# Parse: rl [max] -- <command...>
+local max=0
+if [[ $1 =~ ^[0-9]+$ ]]; then
+  max=$1; shift
+fi
+if [[ $1 != "--" ]]; then
+  print 'rl - ralph loop: run a command in a naive loop
+
+Usage: rl [max] -- <command...>
+
+  max   Optional max iterations (default: unlimited, Ctrl+C to stop)
+  --    Separator (required)
+
+Examples:
+  rl -- claude -p "Follow the session protocol in CLAUDE.md"
+  rl 10 -- claude -p --verbose "Fix the next backlog item"
+  rl 5 -- claude -p --dangerously-skip-permissions "Run the sweep"
+  rl -- cargo test'
+  return 1
+fi
+shift  # consume --
+
+# Resolve aliases from interactive shell (script mode doesn't load them)
+local expanded
+expanded=$(zsh -ic "whence $1" 2>/dev/null)
+if [[ -n $expanded && $expanded != "$1" ]]; then
+  shift
+  set -- ${=expanded} "$@"
+fi
+
+local i=0
+while (( max == 0 || i < max )); do
+  (( i++ ))
+  print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
+  "$@"
+  local rc=$?
+  print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
+  if (( rc != 0 )); then
+    print -P "%F{yellow}[rl]%f non-zero exit, pausing 5s..."
+    sleep 5
+  fi
+done
+print -P "%F{green}[rl]%f finished after $i iterations"
