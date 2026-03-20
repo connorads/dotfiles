@@ -5,7 +5,7 @@
 | Key | Action |
 |-----|--------|
 | `Alt+Shift+H/L` | prev/next window |
-| `Ctrl+b n/p` | next/prev window (cycles panes when zoomed) |
+| `Ctrl+b n/p` | next/prev window |
 | `Ctrl+b 1-9` | go to window N |
 | `Ctrl+Alt+h/l` | move window left/right |
 | `Ctrl+b Tab` | last window |
