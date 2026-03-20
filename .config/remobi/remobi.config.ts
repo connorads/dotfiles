@@ -140,6 +140,7 @@ const preferredDrawerOrder = [
 
 export default {
 	font: { mobileSizeDefault: 12 },
+	gestures: { doubleTap: { enabled: true } },
 	mobile: {
 		initData: '\x02z',
 	},
