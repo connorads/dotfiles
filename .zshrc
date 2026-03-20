@@ -89,6 +89,9 @@ export MICRO_TRUECOLOR=1
 # Powerlevel10k config (run `p10k configure` to regenerate)
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
+# RTK agent shims (token reduction for coding agents)
+[[ -d "$HOME/.local/lib/rtk-shims" ]] && path=("$HOME/.local/lib/rtk-shims" $path)
+
 # pnpm global bin (pnpm link --global)
 [[ -d "$HOME/.local/share/pnpm" ]] && export PATH="$PATH:$HOME/.local/share/pnpm"
 

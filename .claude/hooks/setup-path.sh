@@ -11,6 +11,16 @@ if [[ -z "$CLAUDE_ENV_FILE" ]]; then
   exit 0
 fi
 
+# RTK agent shims
+if [[ -d "$HOME/.local/lib/rtk-shims" ]]; then
+  echo 'export PATH="$HOME/.local/lib/rtk-shims:$PATH"' >> "$CLAUDE_ENV_FILE"
+  for cmd in "$HOME"/.local/lib/rtk-shims/*; do
+    name=$(basename "$cmd")
+    [[ "$name" == .* || "$name" == README.md ]] && continue
+    echo "unfunction '$name' 2>/dev/null" >> "$CLAUDE_ENV_FILE"
+  done
+fi
+
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
 
 # Undefine autoload stubs that shadow ~/.local/bin commands
