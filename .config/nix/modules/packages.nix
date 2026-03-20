@@ -88,6 +88,9 @@ let
     osc
     xclip-osc
 
+    # Data
+    sqlite
+
     # Networking
     nmap
     bandwhich
@@ -107,7 +110,6 @@ let
     ollama
     postgresql
     lazysql
-    sqlite
     witr
 
     # PHP & WordPress
