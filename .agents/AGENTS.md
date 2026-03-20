@@ -110,6 +110,8 @@ Use for granular commits when a file contains changes for multiple concerns.
 - Each test should make its *why* obvious to the reader — not just what's being tested but the motivation
 - When a test fails, the cause should be immediately obvious. If you have to debug a test failure, the test isn't specific enough
 - Tests must be deterministic and order-independent. Flaky or sequence-dependent tests erode all confidence
+- **Tests before refactoring**: lock down existing behaviour with tests first. Commit them separately — they must pass against the old code
+- **See it break first**: before fixing a problem, prove you can detect it. Flip a warning to error, enable the strict check, run the failing test — see red, then make it green. The red step doesn't need a commit, just confidence
 
 **Testing taxonomy** — the architecture *is* the test strategy. Pure core → unit tests, adapters → contract tests, composition → integration:
 
