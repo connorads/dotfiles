@@ -63,21 +63,27 @@ git_branch_and_dirty() {
 }
 
 ssh_info() {
-	local count=0
+	local inbound=0 outbound=0
 	if [ "$(uname)" = "Darwin" ]; then
-		count="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+		inbound="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | awk '$9 ~ /:22->/' | wc -l | tr -d ' ')"
+		outbound="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | awk '$9 ~ /->.*:22$/' | wc -l | tr -d ' ')"
 	else
-		count="$(ss -tn state established '( sport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+		inbound="$(ss -tn state established '( sport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
+		outbound="$(ss -tn state established '( dport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
 	fi
 
-	[ "$count" -eq 0 ] 2>/dev/null && return
+	[ "${inbound:-0}" -eq 0 ] 2>/dev/null && [ "${outbound:-0}" -eq 0 ] 2>/dev/null && return
+
+	local label=""
+	[ "$inbound" -gt 0 ] 2>/dev/null && label="${inbound}↓"
+	[ "$outbound" -gt 0 ] 2>/dev/null && label="${label}${outbound}↑"
 
 	local agent=""
 	if SSH_AUTH_SOCK="$HOME/.ssh/agent.sock" timeout 1 ssh-add -l >/dev/null 2>&1; then
 		agent="#[fg=#a6e3a1]🔑"
 	fi
 
-	printf "#[fg=#fab387]%s↓%s " "$count" "$agent"
+	printf "#[fg=#3b2a30]#[bg=#3b2a30]#[fg=#fab387] %s%s " "$label" "$agent"
 }
 
 host_label() {
