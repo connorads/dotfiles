@@ -1,12 +1,63 @@
 #!/usr/bin/env zsh
-# wtrm: remove a worktree under ~/.trees via fzf
+# wtrm: remove a worktree under ~/.trees
+# usage: wtrm [-f|--force] [-b|--branch] [worktree-path]
 emulate -L zsh
 
-local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
+local force=0 delete_branch=0 worktree=""
 
-if [[ -n "$worktree" ]]; then
-  echo "Removing: $worktree"
-  git worktree remove "$worktree" --force
-else
-  echo "No worktree selected"
+while (( $# )); do
+  case $1 in
+    -f|--force)  force=1; shift ;;
+    -b|--branch) delete_branch=1; shift ;;
+    -*)          echo "error: unknown flag $1" >&2; return 1 ;;
+    *)           worktree=$1; shift ;;
+  esac
+done
+
+# Interactive: fzf picker if no path given
+if [[ -z "$worktree" ]]; then
+  worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Select worktree to remove: ")
+  if [[ -z "$worktree" ]]; then
+    echo "No worktree selected"
+    return 0
+  fi
+fi
+
+# Validate path
+if [[ "$worktree" != "$HOME/.trees/"* ]]; then
+  echo "error: path must be under ~/.trees/" >&2
+  return 1
+fi
+
+if [[ ! -d "$worktree" ]]; then
+  echo "error: worktree does not exist: $worktree" >&2
+  return 1
+fi
+
+# Get branch name before removal
+local branch=$(git -C "$worktree" branch --show-current 2>/dev/null)
+
+# Check dirty state unless --force
+if (( ! force )); then
+  local dirty=$(git -C "$worktree" status --porcelain 2>/dev/null)
+  if [[ -n "$dirty" ]]; then
+    if [[ -t 0 ]]; then
+      echo "Worktree has uncommitted changes:"
+      echo "$dirty"
+      echo
+      read -q "?Remove anyway? [y/N] " || { echo "\nAborted."; return 1; }
+      echo
+    else
+      echo "error: worktree has uncommitted changes (use --force to override)" >&2
+      return 1
+    fi
+  fi
+fi
+
+echo "Removing: $worktree"
+git worktree remove "$worktree" --force || return 1
+
+# Optionally delete the branch
+if (( delete_branch )) && [[ -n "$branch" ]]; then
+  git branch -d "$branch" 2>/dev/null || git branch -D "$branch"
 fi
