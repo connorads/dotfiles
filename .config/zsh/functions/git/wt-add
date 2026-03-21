@@ -1,0 +1,55 @@
+#!/usr/bin/env zsh
+# wt-add: create a worktree under ~/.trees, print its path
+# usage: wt-add [--base <ref>] [--no-setup] <branch>
+emulate -L zsh
+
+local base="" setup=1 branch=""
+
+while (( $# )); do
+  case $1 in
+    --base)   base=$2; shift 2 ;;
+    --no-setup) setup=0; shift ;;
+    -*)       echo "error: unknown flag $1" >&2; return 1 ;;
+    *)        branch=$1; shift ;;
+  esac
+done
+
+if [[ -z "$branch" ]]; then
+  echo "usage: wt-add [--base <ref>] [--no-setup] <branch>" >&2
+  return 1
+fi
+
+local repo=$(basename $(git rev-parse --show-toplevel 2>/dev/null)) || {
+  echo "error: not in a git repository" >&2
+  return 1
+}
+local worktree_path="$HOME/.trees/${repo}-${branch}"
+
+# Idempotent: if worktree already exists, just print its path
+if [[ -d "$worktree_path" ]]; then
+  echo "$worktree_path"
+  return 0
+fi
+
+git fetch origin 2>/dev/null >&2 || echo "warning: fetch failed, using local refs only" >&2
+
+if git show-ref --verify --quiet refs/heads/$branch; then
+  # Local branch exists
+  git worktree add "$worktree_path" "$branch" >&2 || return 1
+elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
+  # Remote branch exists — track it
+  git worktree add "$worktree_path" -b "$branch" "origin/$branch" >&2 || return 1
+elif [[ -n "$base" ]]; then
+  # New branch from specified base
+  git worktree add -b "$branch" "$worktree_path" "$base" >&2 || return 1
+else
+  # New branch from current HEAD
+  git worktree add -b "$branch" "$worktree_path" >&2 || return 1
+fi
+
+# Post-create setup (rs: mise trust + install, auto-detect deps)
+if (( setup )); then
+  (cd "$worktree_path" && rs) >&2
+fi
+
+echo "$worktree_path"
