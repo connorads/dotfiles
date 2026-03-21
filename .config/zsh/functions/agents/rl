@@ -32,16 +32,45 @@ if [[ -n $expanded && $expanded != "$1" ]]; then
   set -- ${=expanded} "$@"
 fi
 
-local i=0
+local i=0 stop=0 child_pid=
+
+trap '
+  if (( stop )); then
+    print -P "\n%F{red}[rl]%f force stopping"
+    [[ -n $child_pid ]] && kill -INT $child_pid 2>/dev/null
+    return 130
+  else
+    stop=1
+    print -P "\n%F{yellow}[rl]%f stopping after current iteration (Ctrl+C again to force)"
+  fi
+' INT
+
 while (( max == 0 || i < max )); do
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
-  "$@"
+  "$@" &
+  child_pid=$!
+  wait $child_pid
   local rc=$?
+  # If wait was interrupted by first Ctrl+C, re-wait for child to finish
+  if (( stop )) && kill -0 $child_pid 2>/dev/null; then
+    print -P "%F{cyan}[rl]%f waiting for iteration $i to finish..."
+    wait $child_pid
+    rc=$?
+  fi
+  child_pid=
   print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
+  (( stop )) && break
   if (( rc != 0 )); then
     print -P "%F{yellow}[rl]%f non-zero exit, pausing 5s..."
     sleep 5
   fi
 done
-print -P "%F{green}[rl]%f finished after $i iterations"
+
+trap - INT
+
+if (( stop )); then
+  print -P "%F{yellow}[rl]%f stopped after $i iterations"
+else
+  print -P "%F{green}[rl]%f finished after $i iterations"
+fi
