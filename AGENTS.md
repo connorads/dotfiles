@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`~/CLAUDE.md` is a symlink to `~/AGENTS.md`. The canonical file is `AGENTS.md` — use `dotfiles add AGENTS.md` when committing changes.
+`~/CLAUDE.md` → `~/AGENTS.md` (project/dotfiles), `~/.claude/CLAUDE.md` → `~/.agents/AGENTS.md` (user). Canonical files are `AGENTS.md` — use `dotfiles add AGENTS.md` when committing changes.
 
 ## Dotfiles Git Dir + Work-tree
 
