@@ -1,0 +1,14 @@
+#!/usr/bin/env zsh
+# cys: claude yolo stream - non-interactive claude with live formatted output
+emulate -L zsh
+claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null \
+  | jq --unbuffered -r '
+    if .type == "assistant" then
+      .message.content[]
+      | if .type == "text" then "▶ " + .text
+        elif .type == "tool_use" then "⚙ " + .name + " — " + (.input | tostring | .[:120])
+        else empty end
+    elif .type == "result" then
+      "✓ done (" + (.duration_ms / 1000 | tostring | .[:5]) + "s, $" + (.total_cost_usd | tostring | .[:6]) + ")"
+    else empty end
+  '
