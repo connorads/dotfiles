@@ -72,6 +72,12 @@
 | `Ctrl+h/j/k/l` | navigate panes (also works in copy mode) |
 | `]` / `[` | jump to next/prev shell prompt (requires OSC 133 shell integration) |
 
+## Shell navigation
+
+| Key | Action |
+|-----|--------|
+| `Alt+Left/Right` | skip between words |
+
 ## Other
 
 | Key | Action |
