@@ -169,6 +169,12 @@ svc up <name> [port]   # Start service + expose via Tailscale
 svc down <name>        # Stop service + teardown Tailscale route
 svc restart <name>     # Restart a service
 svc ui                 # fzf service picker (default in TTY)
+wt-add <branch>        # Create worktree under ~/.trees, run rs, print path (agent-callable)
+wta <branch>           # wt-add + cd into it (human workflow)
+wti                    # Show all worktrees with branch, dirty/clean, ahead/behind
+wts                    # fzf switch to a worktree (works outside git repos)
+wtrm [path]            # Remove worktree (--force, --branch flags; fzf if no path)
+wtmerge                # Two-phase merge worktree branch back to main
 ghcl [owner]           # fzf clone from GitHub (SSH)
 gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
 gh-gate grant          # Push 1-hour write token to dev (from host machine)
