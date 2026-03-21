@@ -19,6 +19,8 @@ Examples:
   rl -- claude -p "Follow the session protocol in CLAUDE.md"
   rl 10 -- claude -p --verbose "Fix the next backlog item"
   rl 5 -- claude -p --dangerously-skip-permissions "Run the sweep"
+  rl -- codex exec "Follow the session protocol in AGENTS.md"
+  rl 10 -- codex exec --full-auto "Fix the next backlog item"
   rl -- cargo test'
   return 1
 fi
