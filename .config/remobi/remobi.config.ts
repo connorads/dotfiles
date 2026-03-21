@@ -14,18 +14,6 @@ const customDrawerButtons = [
 		action: { type: 'send', data: '\x02-' },
 	},
 	{
-		id: 'tmux-sessions',
-		label: 'Sessions',
-		description: 'Open tmux session picker',
-		action: { type: 'send', data: '\x02S' },
-	},
-	{
-		id: 'tmux-windows',
-		label: 'Windows',
-		description: 'Open tmux window picker',
-		action: { type: 'send', data: '\x02W' },
-	},
-	{
 		id: 'tmux-git',
 		label: 'Git',
 		description: 'Open Lazygit popup',
@@ -80,16 +68,16 @@ const customDrawerButtons = [
 		action: { type: 'send', data: '\x02C' },
 	},
 	{
+		id: 'review',
+		label: 'Review',
+		description: 'Review unpushed commits (fzf + critique)',
+		action: { type: 'send', data: '\x02\x1bg' },
+	},
+	{
 		id: 'diff',
 		label: 'Diff',
 		description: 'Open difftastic diff popup',
 		action: { type: 'send', data: '\x02D' },
-	},
-	{
-		id: 'gh-dash',
-		label: 'gh-dash',
-		description: 'Open gh-dash popup',
-		action: { type: 'send', data: '\x02G' },
 	},
 	{
 		id: 'ports',
@@ -114,6 +102,7 @@ const customDrawerButtons = [
 const preferredDrawerOrder = [
 	'ai-usage',
 	'critique',
+	'review',
 	'tmux-git',
 	'tmux-files',
 	'tmux-links',
@@ -122,7 +111,6 @@ const preferredDrawerOrder = [
 	'detach',
 	'thumbs',
 	'diff',
-	'gh-dash',
 	'ports',
 	'layouts',
 	'tailscale',
@@ -130,8 +118,6 @@ const preferredDrawerOrder = [
 	'tmux-split-vertical',
 	'tmux-split-horizontal',
 	'tmux-zoom',
-	'tmux-sessions',
-	'tmux-windows',
 	'tmux-copy',
 	'tmux-help',
 	'tmux-kill-pane',
