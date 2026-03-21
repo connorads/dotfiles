@@ -236,6 +236,7 @@ EOF
 			sudo "$TAILSCALE_BIN" set --operator="$USER"
 		fi
 		echo "tailscaled running with TUN. Run 'ts up' to authenticate."
+		echo "  Then lock down SSH: sudo ufw delete allow 22/tcp"
 	elif [ -f "$UNIT_FILE" ]; then
 		echo "System tailscaled already installed"
 	fi
@@ -285,7 +286,11 @@ EOF
 [sshd]
 enabled = true
 maxretry = 3
-bantime = 3600
+bantime = 1h
+bantime.increment = true
+bantime.multipliers = 1 5 30 60 720 1440 2880
+bantime.maxtime = 4w
+findtime = 10m
 EOF
 	fi
 	sudo systemctl enable --now fail2ban 2>/dev/null || true
@@ -299,7 +304,7 @@ EOF
 		echo "Configuring UFW firewall..."
 		sudo ufw default deny incoming
 		sudo ufw default allow outgoing
-		sudo ufw allow 22/tcp comment 'SSH'
+		sudo ufw allow 22/tcp comment 'SSH (remove after Tailscale setup)'
 		sudo ufw allow in on tailscale0 comment 'Tailscale'
 
 		# Auto-detect Tailscale WireGuard UDP port from iptables rules
