@@ -1,6 +1,12 @@
 # wts: fzf switch to a worktree under ~/.trees
 emulate -L zsh
-local worktree=$(git worktree list --porcelain | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" | fzf --prompt="Switch to worktree: ")
+
+local worktree
+# Try git worktree list first; fall back to listing ~/.trees/ directly
+worktree=$(
+  { git worktree list --porcelain 2>/dev/null | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" } ||
+  { for d in "$HOME/.trees"/*(N/); do echo "$d"; done }
+) | fzf --prompt="Switch to worktree: "
 
 if [[ -n "$worktree" ]]; then
   cd "$worktree"
