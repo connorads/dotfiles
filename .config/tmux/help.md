@@ -96,4 +96,4 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 |---------|--------|
 | `tmux-usage` | Show most-used bindings by period (1d/7d/30d/all) |
 
-Mouse: click, scroll, drag borders
+Mouse: click, scroll, drag borders, double-click pane to zoom
