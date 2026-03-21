@@ -1,0 +1,18 @@
+#!/usr/bin/env zsh
+# cxys: codex yolo stream - non-interactive codex with live formatted output
+# alias: cxy e (codex exec with yolo + json streaming)
+emulate -L zsh
+codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null \
+  | jq --unbuffered -r '
+    if .type == "item.completed" then
+      .item
+      | if .type == "agent_message" then "▶ " + .text
+        elif .type == "command_execution" then "⚙ " + (.command // "cmd") + " (exit " + (.exit_code | tostring) + ")"
+        elif .type == "error" then "⚠ " + .message
+        else empty end
+    elif .type == "item.started" and .item.type == "command_execution" then
+      "⚙ " + (.item.command // "cmd") + " …"
+    elif .type == "turn.completed" then
+      "✓ turn done"
+    else empty end
+  '
