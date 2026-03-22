@@ -3,6 +3,9 @@
 emulate -L zsh
 setopt pipefail
 
+# -p is baked in below — strip if caller passes it redundantly (e.g. cys -p "prompt")
+[[ $1 == -p ]] && { print -P "%F{yellow}[cys]%f stripping redundant '-p' (already baked in)"; shift; }
+
 claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null \
   | jq --unbuffered -r '
     if .type == "assistant" then
