@@ -4,6 +4,9 @@
 emulate -L zsh
 setopt pipefail
 
+# exec is baked in below — strip if caller passes it redundantly (e.g. cxys exec "prompt")
+[[ $1 == exec ]] && { print -P "%F{yellow}[cxys]%f stripping redundant 'exec' (already baked in)"; shift; }
+
 codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null \
   | jq --unbuffered -r '
     if .type == "item.completed" then
