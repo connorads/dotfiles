@@ -35,8 +35,6 @@ if [[ -n $expanded && $expanded != "$1" ]]; then
 fi
 
 local i=0 stop=0 child_pid=
-local logfile="/tmp/rl-$$.log"
-print -P "%F{cyan}[rl]%f log: $logfile"
 
 trap '
   if (( stop )); then
@@ -49,12 +47,10 @@ trap '
   fi
 ' INT
 
-trap 'rm -f "$logfile"' EXIT
-
 while (( max == 0 || i < max )); do
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
-  "$@" > >(tee -a "$logfile") 2>&1 &
+  "$@" &
   child_pid=$!
   wait $child_pid
   local rc=$?

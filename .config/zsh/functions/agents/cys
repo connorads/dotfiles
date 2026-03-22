@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 # cys: claude yolo stream - non-interactive claude with live formatted output
 emulate -L zsh
+setopt pipefail
+
 claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null \
   | jq --unbuffered -r '
     if .type == "assistant" then
