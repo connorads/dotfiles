@@ -2,6 +2,8 @@
 # cxys: codex yolo stream - non-interactive codex with live formatted output
 # alias: cxy e (codex exec with yolo + json streaming)
 emulate -L zsh
+setopt pipefail
+
 codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null \
   | jq --unbuffered -r '
     if .type == "item.completed" then
