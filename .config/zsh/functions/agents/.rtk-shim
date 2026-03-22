@@ -7,18 +7,6 @@
 cmd="${0##*/}"
 shim_dir="${0%/*}"
 
-# Command name remapping (where rtk subcommand differs from the tool name)
-# Verified against rtk src/discover/rules.rs
-case "$cmd" in
-  cat)           rtk_cmd="read" ;;
-  rg)            rtk_cmd="grep" ;;
-  jest)          rtk_cmd="vitest" ;;
-  pip3)          rtk_cmd="pip" ;;
-  golangci)      rtk_cmd="golangci-lint" ;;
-  eslint|biome)  rtk_cmd="lint" ;;
-  *)             rtk_cmd="$cmd" ;;
-esac
-
 # Remove shim dir from PATH to find real commands (prevents infinite recursion)
 _clean_path() {
   _p="" _ifs="$IFS"; IFS=':'
@@ -29,12 +17,43 @@ _clean_path() {
   IFS="$_ifs"; printf '%s' "$_p"
 }
 
+# Bypass RTK for commands that are unsafe to intercept:
+# - cat: rtk read requires a FILE arg, breaks stdin/heredoc (e.g. $(cat <<'EOF'...))
+# - git write ops: RTK corrupts COMMIT_EDITMSG during hooks; stash/push/pull are
+#   called internally by hook runners (hk) and must pass through cleanly
+_should_bypass() {
+  case "$cmd" in
+    cat) return 0 ;;
+    git)
+      case "$1" in
+        commit|stash|push|pull|merge|rebase|cherry-pick|revert|am|reset|checkout|switch|restore)
+          return 0 ;;
+      esac ;;
+  esac
+  return 1
+}
+
+# Command name remapping (where rtk subcommand differs from the tool name)
+# Verified against rtk src/discover/rules.rs
+case "$cmd" in
+  rg)            rtk_cmd="grep" ;;
+  jest)          rtk_cmd="vitest" ;;
+  pip3)          rtk_cmd="pip" ;;
+  golangci)      rtk_cmd="golangci-lint" ;;
+  eslint|biome)  rtk_cmd="lint" ;;
+  *)             rtk_cmd="$cmd" ;;
+esac
+
 # Fast agent detection: single compound test (~nanoseconds)
 # CLAUDECODE: Claude Code, AGENT: Goose/Amp/Bun, AI_AGENT: Vercel
 # COPILOT_CLI: GitHub Copilot, GEMINI_CLI: Gemini, RTK_AGENT: opt-in
 if [ -n "${CLAUDECODE:-}" ] || [ -n "${AGENT:-}" ] || [ -n "${AI_AGENT:-}" ] \
 || [ -n "${COPILOT_CLI:-}" ] || [ -n "${GEMINI_CLI:-}" ] || [ -n "${RTK_AGENT:-}" ]; then
   clean=$(_clean_path)
+  # Skip RTK for commands that break under interception
+  if _should_bypass "$@"; then
+    PATH="$clean" exec "$cmd" "$@"
+  fi
   # Find rtk on clean PATH
   _ifs="$IFS"; IFS=':'
   for _d in $clean; do
