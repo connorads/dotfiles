@@ -25,5 +25,5 @@ apply_patch_freeform = true
 skills = true
 shell_snapshot = true
 js_repl = true
-use_linux_sandbox_bwrap = true
+use_legacy_landlock = true
 fast_mode = true
