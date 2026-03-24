@@ -5,19 +5,36 @@ emulate -L zsh
 
 local has_output=0
 
-if command -v claude-usage &>/dev/null || typeset -f claude-usage &>/dev/null || [[ -f ~/.config/zsh/functions/claude-usage ]]; then
-  printf '\033[1;34m── Claude ──\033[0m\n'
-  autoload -Uz claude-usage 2>/dev/null
-  claude-usage
-  has_output=1
-fi
+_run_tool() {
+  local label="$1"
+  local colour="$2"
+  local command_name="$3"
+  local file_path="$4"
+  local tool=""
 
-if command -v codex-usage &>/dev/null || typeset -f codex-usage &>/dev/null || [[ -f ~/.config/zsh/functions/codex-usage ]]; then
+  if [[ -x "$HOME/.local/bin/$command_name" ]]; then
+    tool="$HOME/.local/bin/$command_name"
+  elif [[ -x "$file_path" ]]; then
+    tool="$file_path"
+  elif command -v "$command_name" &>/dev/null; then
+    tool=$(command -v "$command_name")
+  elif typeset -f "$command_name" &>/dev/null; then
+    tool="$command_name"
+  elif [[ -f "$file_path" ]]; then
+    fpath=("${file_path:h}" $fpath)
+    autoload -Uz "$command_name" 2>/dev/null || return 1
+    tool="$command_name"
+  else
+    return 1
+  fi
+
   (( has_output )) && echo
-  printf '\033[1;32m── Codex ───\033[0m\n'
-  autoload -Uz codex-usage 2>/dev/null
-  codex-usage
+  printf '\033[1;%sm── %s ──\033[0m\n' "$colour" "$label"
+  "$tool"
   has_output=1
-fi
+}
+
+_run_tool "Claude" "34" "claude-usage" "$HOME/.config/zsh/functions/claude-usage"
+_run_tool "Codex" "32" "codex-usage" "$HOME/.config/zsh/functions/codex-usage"
 
 (( has_output )) || { print -u2 "no usage tools available"; return 1; }

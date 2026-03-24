@@ -15,6 +15,7 @@ fi
 local now ttl
 now=$(date +%s)
 ttl=300
+local lock_stale_after=600
 
 _mtime() {
   local file="$1"
@@ -27,6 +28,37 @@ _age() {
   local m
   m=$(_mtime "$file")
   echo $((now - m))
+}
+
+_lock_pid() {
+  local lockdir="$1"
+  local pid_file="$lockdir/pid"
+  [[ -f "$pid_file" ]] || { echo "-"; return; }
+  local pid
+  pid=$(<"$pid_file")
+  [[ "$pid" == <-> ]] && { echo "$pid"; return; }
+  echo "-"
+}
+
+_lock_age() {
+  local lockdir="$1"
+  [[ -d "$lockdir" ]] || { echo -1; return; }
+  local started_file="$lockdir/started_at"
+  if [[ -f "$started_file" ]]; then
+    local started_at
+    started_at=$(<"$started_file")
+    if [[ "$started_at" == <-> ]]; then
+      echo $((now - started_at))
+      return
+    fi
+  fi
+  _age "$lockdir"
+}
+
+_lock_is_live() {
+  local pid="$1"
+  [[ "$pid" == <-> ]] || return 1
+  kill -0 "$pid" 2>/dev/null
 }
 
 _fmt_secs() {
@@ -91,7 +123,16 @@ _print_provider() {
 
   local can_refresh="yes"
   [[ "$next_retry" -gt "$now" ]] && can_refresh="no (backoff)"
-  [[ -d "$lockdir" ]] && can_refresh="no (locked)"
+  local lock_pid="-" lock_age=-1
+  if [[ -d "$lockdir" ]]; then
+    lock_pid=$(_lock_pid "$lockdir")
+    lock_age=$(_lock_age "$lockdir")
+    if _lock_is_live "$lock_pid" && [[ "$lock_age" -lt "$lock_stale_after" ]]; then
+      can_refresh="no (active lock)"
+    else
+      can_refresh="yes (stale lock can be reaped)"
+    fi
+  fi
 
   echo "$name"
   if [[ "$cache_age" -ge 0 ]]; then
@@ -117,7 +158,11 @@ _print_provider() {
   fi
 
   if [[ -d "$lockdir" ]]; then
-    echo "  lock: active ($lockdir)"
+    local lock_desc="stale"
+    if _lock_is_live "$lock_pid" && [[ "$lock_age" -lt "$lock_stale_after" ]]; then
+      lock_desc="active"
+    fi
+    echo "  lock: $lock_desc, pid=$lock_pid, age=$(_fmt_secs "$lock_age") ($lockdir)"
   else
     echo "  lock: none"
   fi
