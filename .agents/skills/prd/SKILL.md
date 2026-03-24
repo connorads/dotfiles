@@ -1,62 +1,58 @@
 ---
 name: prd
-description: Create Product Requirements Documents (PRDs) that define the end state of a feature. Use when planning new features, migrations, or refactors. Generates structured PRDs with acceptance criteria.
+description: Create Product Requirements Documents (PRDs) that define the end state of a feature through iterative design interview. Use when planning new features, migrations, or refactors. Generates structured PRDs with acceptance criteria, testing strategy, and architectural decisions.
 ---
 
 # PRD Creation Skill
 
-Create Product Requirements Documents suitable for RFC review by Principal Engineers, Designers, and Product Owners.
+Create Product Requirements Documents suitable for RFC review and for AI agents to implement from.
 
 The PRD describes WHAT to build and WHY, not HOW or in WHAT ORDER.
 
 ## Workflow
 
-1. User requests: "Load the prd skill and create a PRD for [feature]"
-2. **Ask clarifying questions** to build full understanding
-3. **Explore codebase** to understand patterns, constraints, and dependencies
-4. Generate markdown PRD to `prd-<feature-name>.md` in project root
+### 1. Gather context
 
-## Clarifying Questions
+User describes the problem and any initial ideas. Explore the codebase to understand existing patterns, constraints, and dependencies.
 
-Ask questions across these domains.
+### 2. Interview the design tree
 
-### Problem & Motivation
-- What problem does this solve? Who experiences it?
-- What's the cost of NOT solving this? (user pain, revenue, tech debt)
-- Why now? What triggered this work?
+Walk through the design decision tree branch by branch. For each decision point:
+- **Explore the codebase first** — only ask the user what the code can't answer
+- **One topic per turn** — don't dump multiple questions at once
+- Resolve dependencies between decisions before moving on
 
-### Users & Stakeholders
-- Who are the primary users? Secondary users?
+Cover these domains as the tree branches into them:
+- Problem & motivation (what, who, why now, cost of inaction)
+- Users & stakeholders
+- End state & success criteria
+- Scope & boundaries (what's in, what's explicitly out, what must NOT be affected)
+- Constraints (performance, security, compatibility, accessibility)
+- Risks & dependencies
+- Alternatives considered
 
-### End State & Success
-- What does "done" look like? How will users interact with it?
+If ambiguous or overloaded domain terms surface, flag them and propose canonical terms.
 
-### Scope & Boundaries
-- What's explicitly OUT of scope?
-- What's deferred to future iterations?
-- Are there adjacent features that must NOT be affected?
+Keep going until shared understanding is reached. No artificial cap on questions.
 
-### Constraints & Requirements
-- Performance requirements? 
-- Security requirements? (auth, data sensitivity, compliance)
-- Compatibility requirements? (browsers, versions, APIs)
-- Accessibility requirements? (WCAG level, screen readers)
+### 3. Identify modules
 
-### Risks & Dependencies
-- What could go wrong? Technical risks?
-- External service dependencies?
-- What decisions are still open/contentious?
+Sketch the major modules to build or modify. Look for opportunities to extract **deep modules** — small interface hiding lots of implementation, testable in isolation.
 
-Keep questions concise. 5-7 at most.
+Check with the user:
+- Do these modules match their mental model?
+- Which modules warrant dedicated tests?
 
-## Output Format
+### 4. Write the PRD
 
-Save to `prd-<feature-name>.md` (project root):
+Generate markdown PRD to `prd-<feature-name>.md` in project root. Use the template below, including only sections relevant to the feature.
+
+## Template
 
 ```markdown
 # PRD: <Feature Name>
 
-**Date:** <YYYY-MM-DD>  
+**Date:** <YYYY-MM-DD>
 
 ---
 
@@ -80,16 +76,9 @@ What triggered this work? Cost of inaction?
 One paragraph describing what this feature does when complete.
 
 ### User Experience (if applicable)
-<!-- Include for user-facing features -->
 How will users interact with this feature? Include user flows for primary scenarios.
 
-#### User Flow: <Scenario Name>
-1. User does X
-2. System responds with Y
-3. User sees Z
-
 ### Design Considerations (if applicable)
-<!-- Include for features with UI/UX components -->
 - Visual/interaction requirements
 - Accessibility requirements (WCAG level)
 - Platform-specific considerations
@@ -104,22 +93,7 @@ When this PRD is complete, the following will be true:
 - [ ] Capability 2 exists and works
 - [ ] All acceptance criteria pass
 - [ ] Tests cover the new functionality
-- [ ] Documentation is updated
 - [ ] Observability/monitoring is in place
-
----
-
-## Success Metrics
-
-### Quantitative
-| Metric | Current | Target | Measurement Method |
-|--------|---------|--------|-------------------|
-| Metric 1 | X | Y | How measured |
-| Metric 2 | X | Y | How measured |
-
-### Qualitative
-- User feedback criteria
-- Team/process improvements expected
 
 ---
 
@@ -130,32 +104,72 @@ When this PRD is complete, the following will be true:
 - [ ] Criterion 2
 - [ ] Criterion 3
 
-### Feature: <Name>
-- [ ] Criterion 1
-- [ ] Criterion 2
+---
+
+## Durable Architectural Decisions
+
+Decisions unlikely to change regardless of implementation order:
+
+- **Routes/URL patterns:** ...
+- **Schema shape:** ...
+- **Key data models:** ...
+- **Auth/authorisation approach:** ...
+- **Third-party service boundaries:** ...
+
+Include only what applies. These anchor the PRD for anyone implementing from it.
+
+---
+
+## Modules
+
+Major modules to build or modify, with interface sketches where helpful.
+
+Do NOT include specific file paths or code snippets — they become outdated quickly. Describe modules by name and responsibility.
+
+- **Module name:** What it owns, what it hides, how callers interact with it
+- **Module name:** ...
+
+---
+
+## Testing Strategy
+
+- Which modules are tested and at which tier (unit / integration / component / e2e)
+- What makes a good test for this feature (test behaviour through public interfaces, not implementation)
+- Prior art — similar test patterns already in the codebase
 
 ---
 
 ## Technical Context
 
 ### Existing Patterns
-- Pattern 1: `src/path/to/example.ts` - Why relevant
-- Pattern 2: `src/path/to/example.ts` - Why relevant
-
-### Key Files
-- `src/relevant/file.ts` - Description of relevance
-- `src/another/file.ts` - Description of relevance
+Patterns in the codebase to follow (describe by name and purpose, not file paths):
+- Pattern name — why relevant, how it applies
 
 ### System Dependencies
 - External services/APIs
 - Package requirements
 - Infrastructure requirements
 
-### Data Model Changes
-<!-- If applicable -->
+### Data Model Changes (if applicable)
 - New entities/tables
 - Schema migrations required
 - Data backfill considerations
+
+---
+
+## Boundary Tiers
+
+### Always (conventions to follow)
+- Convention 1
+- Convention 2
+
+### Ask First (decisions needing human input)
+- Decision area 1
+- Decision area 2
+
+### Never (must not be touched)
+- Protected area 1 — why
+- Protected area 2 — why
 
 ---
 
@@ -164,7 +178,6 @@ When this PRD is complete, the following will be true:
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Risk 1 | High/Med/Low | High/Med/Low | How to mitigate |
-| Risk 2 | High/Med/Low | High/Med/Low | How to mitigate |
 
 ---
 
@@ -176,33 +189,24 @@ When this PRD is complete, the following will be true:
 - **Cons:** Why we didn't choose it
 - **Decision:** Why rejected
 
-### Alternative 2: <Name>
-- **Description:** Brief description
-- **Pros:** What's good about it
-- **Cons:** Why we didn't choose it
-- **Decision:** Why rejected
 ---
 
 ## Non-Goals (v1)
 
-Explicitly out of scope for this PRD:
-- Thing we're not building - why deferred
-- Future enhancement - why deferred
-- Related feature that's separate - why separate
+Explicitly out of scope:
+- Thing we're not building — why deferred
+- Future enhancement — why deferred
 
 ---
 
-## Interface Specifications
+## Interface Specifications (if applicable)
 
-### CLI (if applicable)
+### CLI
 ```
 command-name [args] [options]
-
-Options:
-  --flag    Description
 ```
 
-### API (if applicable)
+### API
 ```
 POST /api/endpoint
 Request: { field: type }
@@ -210,83 +214,49 @@ Response: { field: type }
 Errors: 4xx/5xx scenarios
 ```
 
-### UI (if applicable)
-Component behavior, states, and error handling.
-
 ---
 
-## Documentation Requirements
+## Success Metrics (if applicable)
 
-- [ ] User-facing documentation updates
-- [ ] API documentation updates
-- [ ] Internal runbook/playbook updates
-- [ ] Architecture decision records (ADRs)
+How we'll know this worked:
+- Metric 1: current → target (how measured)
+- Metric 2: current → target (how measured)
 
 ---
 
 ## Open Questions
 
-| Question | Owner | Due Date | Status |
-|----------|-------|----------|--------|
-| Question 1 | Name | Date | Open/Resolved |
-| Question 2 | Name | Date | Open/Resolved |
-
----
-
-## Appendix
-
-### Glossary
-- **Term:** Definition
-
-### References
-- Link to related PRDs, ADRs, designs
-- External documentation/specs
+- Question 1
+- Question 2
 ```
 
 ## Key Principles
 
 ### Problem Before Solution
-- Lead with the problem, not the solution
-- Quantify the impact of NOT solving this
-- Make the case for why this work matters
+Lead with the problem. Quantify the cost of inaction. Make the case for why this matters.
 
 ### Define End State, Not Process
-- Describe WHAT exists when done
-- Don't prescribe implementation order
-- Don't assign priorities
-- Don't create phases
+Describe WHAT exists when done. Don't prescribe implementation order, priorities, or phases.
 
-### Technical Context Enables Autonomy
-- Show existing patterns to follow
-- Reference key files agent should explore
-- Agent uses this to make informed decisions
+### No File Paths
+File paths and code snippets go stale. Describe patterns by name and purpose. Reference modules by responsibility, not location.
 
-### Non-Goals Prevent Scope Creep
-- Explicit boundaries help agent stay focused
-- Agent won't accidentally build deferred features
+### Boundaries Prevent Drift
+Explicit boundary tiers (Always/Ask First/Never) and non-goals prevent agents from touching stable code or building unrequested features.
 
-### Risks & Alternatives Show Rigor
-- Demonstrate you've thought through what could go wrong
-- Show alternatives considered and why rejected
-- Builds confidence in the proposed approach
+### Testing Strategy Is Architecture
+Which modules are tested at which tier reveals the architecture. Deep modules get boundary tests; pure logic gets unit tests; composition gets integration tests.
 
 ## Bad vs Good Examples
 
-### Bad (Prescriptive / Thin)
+### Bad (Prescriptive / Phases)
 ```markdown
-## Implementation Phases
-
-### Phase 1: Database
+## Phase 1: Database
 1. Create users table
 2. Add indexes
 
-### Phase 2: API
+## Phase 2: API
 1. Build registration endpoint
-2. Build login endpoint
-
-### Phase 3: Tests
-1. Write unit tests
-2. Write integration tests
 ```
 
 ### Bad (Missing RFC Context)
@@ -298,79 +268,40 @@ We need user authentication.
 - [ ] Users can register
 - [ ] Users can log in
 ```
-Missing: Why? What problem? Success metrics? Risks? Alternatives?
+Missing: Why? What problem? Risks? Alternatives? Testing strategy?
 
 ### Good (RFC-Ready)
 ```markdown
 ## Problem Statement
+Users can't persist data across sessions. 47% drop off when asked to re-enter
+information. ~$50k/month in lost conversions.
 
-### What problem are we solving?
-Users currently can't persist data across sessions. 47% of users drop off 
-when asked to re-enter information. This costs ~$50k/month in lost conversions.
+## Durable Architectural Decisions
+- **Routes:** POST /api/auth/register, POST /api/auth/login
+- **Schema:** users table with email (unique), password_hash, created_at
+- **Auth:** JWT with 24h expiry, refresh token with 7d expiry
 
-### Why now?
-Q4 retention initiative. Competitor X launched auth last month.
+## Modules
+- **AuthService:** Owns registration, login, token lifecycle. Callers pass
+  credentials, receive tokens. Hides hashing, token signing, refresh logic.
 
-### Who is affected?
-- **Primary users:** End users who want persistent sessions
-- **Secondary users:** Support team handling "lost data" tickets (~200/week)
+## Testing Strategy
+- AuthService: integration tests against real DB (prior art: tests/int/)
+- Token validation: unit tests for expiry, malformed tokens, refresh flows
 
----
-## End State
+## Boundary Tiers
+### Never
+- Payment module — unrelated, must not be affected
+- User profile schema — separate concern, future PRD
+```
 
-When complete:
-- [ ] Users can register with email/password
-- [ ] Users can log in and receive JWT
-- [ ] Auth endpoints have >80% test coverage
-- [ ] Monitoring dashboards track auth success/failure rates
-
----
-
-## Acceptance Criteria
-
-### Registration
-- [ ] POST /api/auth/register creates user
-- [ ] Password is hashed (bcrypt, cost factor 12)
-- [ ] Duplicate email returns 409
-- [ ] Invalid input returns 400 with details
-
-### Login
-- [ ] POST /api/auth/login returns JWT
-- [ ] Invalid credentials return 401 (no user enumeration)
-- [ ] Token expires in 24h, refresh token in 7d
----
-## Risks & Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Credential stuffing | High | High | Rate limiting + CAPTCHA after 3 failures |
-| Token theft | Med | High | Short expiry + secure cookie flags |
-
----
-
-## Alternatives Considered
-
-### Alternative 1: OAuth-only (Google/GitHub)
-- **Pros:** No password storage liability
-- **Cons:** Some users don't have/want social accounts
-- **Decision:** Rejected. Add OAuth in v2, but need email/password baseline.
-
----
 ## After PRD Creation
 
-### RFC Review Checklist
-
-Before marking PRD ready for review and sharing with the user, verify:
-
-- [ ] Technical risks identified and mitigated
-- [ ] User flows documented (if applicable)
-- [ ] Edge cases and error states covered (if applicable)
-- [ ] Accessibility requirements specified (if applicable)
-- [ ] Design considerations captured (if applicable)
+Before sharing, verify:
 - [ ] Problem statement is clear and compelling
-- [ ] Scope boundaries explicit
+- [ ] Scope boundaries are explicit (boundary tiers + non-goals)
+- [ ] Testing strategy covers the identified modules
+- [ ] No file paths or code snippets that will go stale
+- [ ] Durable architectural decisions are separated from implementation detail
 
-Tell the user:
-
-PRD saved to prd-<name>.md
-```
+Tell the user: PRD saved to `prd-<name>.md`
