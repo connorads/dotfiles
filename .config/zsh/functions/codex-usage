@@ -7,9 +7,11 @@ local cache="$HOME/.cache/codex-usage.json"
 local meta="$HOME/.cache/codex-usage.meta.json"
 local lockdir="$HOME/.cache/codex-usage.lock"
 local ttl=300
+local lock_stale_after=600
 local backoff_base=120
 local backoff_max=1800
 local now age next_retry fail_count last_success
+local hdr="" body=""
 now=$(date +%s)
 
 _mtime() {
@@ -23,6 +25,64 @@ _cache_age() {
     local mtime
     mtime=$(_mtime "$file")
     echo $((now - mtime))
+}
+
+_lock_age() {
+    local started_file="$1/started_at"
+    local started_at
+    if [[ -f "$started_file" ]]; then
+        started_at=$(<"$started_file")
+        if [[ "$started_at" == <-> ]]; then
+            echo $((now - started_at))
+            return
+        fi
+    fi
+    echo $((now - $(_mtime "$1")))
+}
+
+_lock_is_live() {
+    local pid_file="$1/pid"
+    local pid
+    [[ -f "$pid_file" ]] || return 1
+    pid=$(<"$pid_file")
+    [[ "$pid" == <-> ]] || return 1
+    kill -0 "$pid" 2>/dev/null
+}
+
+_cleanup_lock() {
+    rm -f "$lockdir/pid" "$lockdir/started_at" 2>/dev/null
+    rmdir "$lockdir" 2>/dev/null
+}
+
+_cleanup() {
+    rm -f "${hdr:-}" "${body:-}"
+    _cleanup_lock
+}
+
+_reap_stale_lock() {
+    [[ -d "$lockdir" ]] || return 0
+    local age_lock
+    age_lock=$(_lock_age "$lockdir")
+    if _lock_is_live "$lockdir" && [[ "$age_lock" -lt "$lock_stale_after" ]]; then
+        return 1
+    fi
+    _cleanup_lock
+    [[ ! -d "$lockdir" ]]
+}
+
+_acquire_lock() {
+    if mkdir "$lockdir" 2>/dev/null; then
+        print -r -- "$$" > "$lockdir/pid"
+        print -r -- "$now" > "$lockdir/started_at"
+        return 0
+    fi
+    _reap_stale_lock || return 1
+    if mkdir "$lockdir" 2>/dev/null; then
+        print -r -- "$$" > "$lockdir/pid"
+        print -r -- "$now" > "$lockdir/started_at"
+        return 0
+    fi
+    return 1
 }
 
 _fmt_secs() {
@@ -78,24 +138,23 @@ elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
     should_fetch=1
 fi
 
-if [[ "$should_fetch" -eq 1 ]] && mkdir "$lockdir" 2>/dev/null; then
-    trap 'rmdir "$lockdir" 2>/dev/null' EXIT INT TERM
+if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
+    trap _cleanup EXIT INT TERM HUP
 
     local auth_file="$HOME/.codex/auth.json"
     if [[ ! -f "$auth_file" ]]; then
-        rmdir "$lockdir" 2>/dev/null
-        trap - EXIT INT TERM
+        _cleanup
+        trap - EXIT INT TERM HUP
         echo "Not logged in (run: codex login)"
         return 1
     fi
 
     local token usage_resp usage_http usage_retry usage_ok=0
     token=$(jq -r '.tokens.access_token // empty' "$auth_file" 2>/dev/null)
-    [[ -z "$token" ]] && { rmdir "$lockdir" 2>/dev/null; trap - EXIT INT TERM; echo "No access token found in $auth_file"; return 1; }
+    [[ -z "$token" ]] && { _cleanup; trap - EXIT INT TERM HUP; echo "No access token found in $auth_file"; return 1; }
 
     _fetch_usage() {
         local tk="$1"
-        local hdr body
         hdr=$(mktemp)
         body=$(mktemp)
         if curl -sS --max-time 8 -D "$hdr" -o "$body" "https://chatgpt.com/backend-api/wham/usage" -H "Authorization: Bearer $tk"; then
@@ -169,8 +228,8 @@ if [[ "$should_fetch" -eq 1 ]] && mkdir "$lockdir" 2>/dev/null; then
         _write_meta $((now + cooldown)) "$next_fail_count" "${usage_http:-0}" "${err:-fetch_failed}" "$last_success"
     fi
 
-    rmdir "$lockdir" 2>/dev/null
-    trap - EXIT INT TERM
+    _cleanup
+    trap - EXIT INT TERM HUP
 fi
 
 if [[ ! -f "$cache" ]]; then
@@ -198,12 +257,23 @@ r7=$((r7_raw - age))
 _fmt_remaining() {
     local secs="$1"
     if [[ "$secs" -le 0 ]]; then
-        [[ "$cache_stale" -eq 1 ]] && { echo "stale"; return; }
+        [[ "$cache_stale" -eq 1 ]] && { echo "__STALE__"; return; }
         echo "0h 0m"
         return
     fi
     _fmt_secs "$secs"
 }
 
-printf "5-hour:  %3d%%  resets in %s\n" "$u5" "$(_fmt_remaining "$r5")"
-printf "7-day:   %3d%%  resets in %s\n" "$u7" "$(_fmt_remaining "$r7")"
+_print_window() {
+    local label="$1"
+    local usage="$2"
+    local remaining="$3"
+    if [[ "$remaining" == "__STALE__" ]]; then
+        printf "%-9s %3d%%  cache stale\n" "$label" "$usage"
+        return
+    fi
+    printf "%-9s %3d%%  resets in %s\n" "$label" "$usage" "$remaining"
+}
+
+_print_window "5-hour:" "$u5" "$(_fmt_remaining "$r5")"
+_print_window "7-day:" "$u7" "$(_fmt_remaining "$r7")"

@@ -110,7 +110,7 @@ ai_usage() {
 	local codex_meta="$HOME/.cache/codex-usage.meta.json"
 	local codex_lock="$HOME/.cache/codex-usage.lock"
 	local codex_trigger="$HOME/.cache/codex-usage.trigger"
-	local ttl=300 trigger_ttl=60 now bin="$HOME/.local/bin"
+	local ttl=300 trigger_ttl=60 lock_stale_after=600 now bin="$HOME/.local/bin"
 	now=$(date +%s)
 
 	_mtime() {
@@ -133,7 +133,22 @@ ai_usage() {
 
 		next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
 		[ "$now" -lt "$next_retry" ] && return 1
-		[ -d "$lockdir" ] && return 1
+
+		if [ -d "$lockdir" ]; then
+			local lock_pid="-" lock_started="" lock_age=0
+			[ -f "$lockdir/pid" ] && lock_pid="$(cat "$lockdir/pid" 2>/dev/null || echo -)"
+			[ -f "$lockdir/started_at" ] && lock_started="$(cat "$lockdir/started_at" 2>/dev/null || echo)"
+			if [[ "$lock_started" =~ ^[0-9]+$ ]]; then
+				lock_age=$((now - lock_started))
+			else
+				lock_age=$((now - $(_mtime "$lockdir")))
+			fi
+			if [[ "$lock_pid" =~ ^[0-9]+$ ]] && kill -0 "$lock_pid" 2>/dev/null && [ "$lock_age" -lt "$lock_stale_after" ]; then
+				return 1
+			fi
+			rm -f "$lockdir/pid" "$lockdir/started_at" 2>/dev/null
+			rmdir "$lockdir" 2>/dev/null || return 1
+		fi
 
 		if [ -f "$trigger" ]; then
 			trigger_mtime=$(_mtime "$trigger")
