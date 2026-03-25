@@ -15,6 +15,9 @@ fi
 setopt HIST_IGNORE_SPACE
 # Commands starting with a space are not saved to history.
 
+# Key bindings for special keys (not provided by OMZ lib/key-bindings.zsh)
+bindkey "^[[3~" delete-char
+
 # https://github.com/mattmc3/antidote
 ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
 [[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
