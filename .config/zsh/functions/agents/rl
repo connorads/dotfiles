@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 # rl: ralph loop - run a command in a naive loop
 emulate -L zsh
+setopt localtraps
 
 # Parse: rl [max] -- <command...>
 local max=0
@@ -12,7 +13,7 @@ if [[ $1 != "--" ]]; then
 
 Usage: rl [max] -- <command...>
 
-  max   Optional max iterations (default: unlimited, Ctrl+C to stop)
+  max   Optional max iterations (default: unlimited, Ctrl+C once to stop, twice to force)
   --    Separator (required)
 
 Examples:
@@ -34,45 +35,75 @@ if [[ -n $expanded && $expanded != "$1" ]]; then
   set -- ${=expanded} "$@"
 fi
 
-local i=0 stop=0 child_pid=
+local i=0
+local rc=0
+local stop_requested=0
+local child_wait_interrupted=0
+local child_pid=
+local pause_pid=
+local phase=idle
 
 trap '
-  if (( stop )); then
+  if (( stop_requested )); then
     print -P "\n%F{red}[rl]%f force stopping"
     [[ -n $child_pid ]] && kill -INT $child_pid 2>/dev/null
+    [[ -n $pause_pid ]] && kill $pause_pid 2>/dev/null
     return 130
-  else
-    stop=1
-    print -P "\n%F{yellow}[rl]%f stopping after current iteration (Ctrl+C again to force)"
   fi
+
+  stop_requested=1
+  case $phase in
+    child)
+      child_wait_interrupted=1
+      print -P "\n%F{yellow}[rl]%f stopping after current iteration (Ctrl+C again to force)"
+      ;;
+    pause)
+      print -P "\n%F{yellow}[rl]%f stopping before next iteration (Ctrl+C again to force)"
+      [[ -n $pause_pid ]] && kill $pause_pid 2>/dev/null
+      ;;
+    *)
+      print -P "\n%F{yellow}[rl]%f stopping before next iteration (Ctrl+C again to force)"
+      ;;
+  esac
 ' INT
 
 while (( max == 0 || i < max )); do
+  (( stop_requested )) && break
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
+  phase=child
   "$@" &
   child_pid=$!
   wait $child_pid
-  local rc=$?
-  # If wait was interrupted by first Ctrl+C, re-wait for child to finish
-  if (( stop )) && kill -0 $child_pid 2>/dev/null; then
+  rc=$?
+  # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
+  if (( child_wait_interrupted )); then
     print -P "%F{cyan}[rl]%f waiting for iteration $i to finish..."
     wait $child_pid
     rc=$?
   fi
   child_pid=
+  child_wait_interrupted=0
+  phase=idle
   print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
-  (( stop )) && break
+  (( stop_requested )) && break
   if (( rc != 0 )); then
     print -P "%F{yellow}[rl]%f non-zero exit, pausing 5s..."
-    sleep 5
+    phase=pause
+    sleep 5 &
+    pause_pid=$!
+    wait $pause_pid
+    pause_pid=
+    phase=idle
+    (( stop_requested )) && break
   fi
 done
 
 trap - INT
 
-if (( stop )); then
+if (( stop_requested )); then
   print -P "%F{yellow}[rl]%f stopped after $i iterations"
+  return 130
 else
   print -P "%F{green}[rl]%f finished after $i iterations"
 fi
