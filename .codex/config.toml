@@ -17,6 +17,7 @@ approval_policy = "on-request"
 network_access = false
 
 [notice]
+"hide_rate_limit_model_nudge" = true
 "hide_gpt-5.1-codex-max_migration_prompt" = true
 
 [features]
