@@ -83,13 +83,19 @@ Use for granular commits when a file contains changes for multiple concerns.
 
 ## Domain modelling
 
-- Strongly typed code: no `any`, no non-null assertion operator (`!`), no type assertions (`as Type`)
+- Strongly typed code: no `any`, no non-null assertion operator (`!`), no type assertions (`as Type`). Prefer `satisfies` to check shapes without losing inference
 - Make illegal states unrepresentable: model domain with ADTs/discriminated unions; if state can't exist, code can't mishandle it
 - Wrapper types for primitives: EmailAddress, OrderId, CustomerId as distinct types — not raw strings/numbers
-- Parse don't validate: transform untyped input at boundaries into typed structures; never re-check validity internally
+- Parse don't validate: transform untyped input at boundaries into typed structures; never re-check validity internally. Use Zod/Pydantic (or project's schema library) for boundary parsing
 - Ubiquitous language: code names must match domain language; no generic names (data, info, manager, helper)
 - Bounded contexts: separate models per domain area with explicit translation at boundaries
 - Quality abstractions: consciously constrained, pragmatically parameterised, doggedly documented
+
+## Error handling
+
+- Prefer explicit error values (Result/Either) over thrown exceptions in domain and application logic
+- Compose use-case steps so the happy path reads linearly and failures are handled explicitly at each stage
+- Exceptions are fine at the imperative shell (HTTP handlers, CLI) — catch and translate there
 
 ## Observability
 
@@ -149,3 +155,7 @@ The gap between expectation and reality is the most valuable and perishable know
 - Non-obvious fixes get inline code comments explaining the constraint
 - Tests guarding subtle bugs get a comment explaining the failure mode, not just what's asserted
 - Decisions with trade-offs get an ADR
+
+### Micro-retro
+
+After completing a task, briefly reflect (1–3 bullets): what did we learn, what surprised us, what small rule/update prevents repeats? If it's a durable lesson, update AGENTS.md or add a code comment — those are what future sessions actually see.
