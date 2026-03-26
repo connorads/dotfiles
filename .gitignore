@@ -143,6 +143,8 @@
 !/.config/zsh/aliases/**
 !/.config/zsh/functions/
 !/.config/zsh/functions/**
+!/.config/zsh/tests/
+!/.config/zsh/tests/**
 
 # gh-gate secrets (tokens, PEM, config with IDs)
 /.config/gh-gate/
