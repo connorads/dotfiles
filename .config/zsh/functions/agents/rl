@@ -2,6 +2,7 @@
 # rl: ralph loop - run a command in a naive loop
 emulate -L zsh
 setopt localtraps
+setopt no_monitor 2>/dev/null  # suppress [N] job notifications if possible
 
 # Parse: rl [max] -- <command...>
 local max=0
@@ -43,14 +44,16 @@ local child_pid=
 local child_pgid=
 local pause_pid=
 local phase=idle
-local use_setsid=$(( ${+commands[setsid]} ))
+local my_pgid
+my_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
 
-force_stop_child_group() {
+force_stop_child() {
   local grace_checks=10
   local grace_sleep=0.1
   local attempt
 
-  if [[ -n $child_pgid ]]; then
+  # If child has its own process group (MONITOR on), kill the whole group.
+  if [[ -n $child_pgid && $child_pgid != $my_pgid ]]; then
     kill -INT -- -$child_pgid 2>/dev/null
     for (( attempt = 1; attempt <= grace_checks; attempt++ )); do
       kill -0 -- -$child_pgid 2>/dev/null || return 0
@@ -73,7 +76,7 @@ force_stop_child_group() {
 trap '
   if (( stop_requested )); then
     print -P "\n%F{red}[rl]%f force stopping"
-    force_stop_child_group
+    force_stop_child
     [[ -n $pause_pid ]] && kill $pause_pid 2>/dev/null
     return 130
   fi
@@ -99,18 +102,9 @@ while (( max == 0 || i < max )); do
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
   phase=child
-  # Run the iteration in its own session so force-stop can target the whole tree.
-  if (( use_setsid )); then
-    setsid "$@" &
-  else
-    "$@" &
-  fi
+  "$@" &
   child_pid=$!
-  if (( use_setsid )); then
-    child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
-  else
-    child_pgid=
-  fi
+  child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
   wait $child_pid
   rc=$?
   # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
