@@ -11,6 +11,7 @@ for arg in "$@"; do
 done
 
 mise upgrade
+mise upgrade claude --before 0d
 if [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi
