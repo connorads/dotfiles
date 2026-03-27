@@ -191,7 +191,7 @@ rtk-shims clean        # Remove all shims and the directory
 
 Mise tools use a **14-day quarantine** (`install_before = "14d"`) — only versions released 14+ days ago are installed. This gives the community time to catch compromised releases (the Trivy hack was caught within days). GitHub attestation and SLSA provenance verification are also enabled.
 
-**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude is the sole exception — stays at `"latest"` and is exempted from quarantine in `up`.
+**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine in `up`.
 
 **How `up` works**: upgrades mise tools within ranges (14-day quarantine), exempts Claude (always latest), updates brew/apt, optionally updates nix flake lock, rebuilds. `-s` skips nix flake update.
 
