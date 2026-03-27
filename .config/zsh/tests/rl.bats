@@ -5,7 +5,13 @@
 
 bats_require_minimum_version 1.5.0
 
-RL="$HOME/.config/zsh/functions/agents/rl"
+source "$BATS_TEST_DIRNAME/test_helper.bash"
+
+RL="$FUNCTIONS_DIR/agents/rl"
+
+setup() {
+  setup_test_home
+}
 
 # The critical bug: with MONITOR (job control) on, `setsid cmd &` puts setsid
 # in its own process group, making it a pg leader. setsid then forks internally
@@ -15,7 +21,7 @@ RL="$HOME/.config/zsh/functions/agents/rl"
 
 @test "iterations run sequentially with job control (TTY)" {
   local helper="$BATS_TEST_TMPDIR/seq_cmd.sh"
-  cat > "$helper" <<'SCRIPT'
+  write_executable "$helper" <<'SCRIPT'
 #!/usr/bin/env bash
 n=$(cat "$SEQ_COUNTER" 2>/dev/null || echo 0)
 n=$((n + 1))
@@ -24,13 +30,12 @@ echo "start-$n" >> "$SEQ_LOG"
 sleep 0.3
 echo "end-$n" >> "$SEQ_LOG"
 SCRIPT
-  chmod +x "$helper"
 
   export SEQ_COUNTER="$BATS_TEST_TMPDIR/counter"
   export SEQ_LOG="$BATS_TEST_TMPDIR/seq.log"
 
   # script(1) allocates a TTY so zsh enables MONITOR (job control)
-  run script -qc "zsh --no-rcs -i -c 'source $RL 3 -- $helper'" /dev/null
+  run_in_tty "source $RL 3 -- $helper"
 
   # Sequential: start-1, end-1, start-2, end-2, start-3, end-3
   # Parallel bug produces: start-1, start-2, start-3, end-1, end-2, end-3
@@ -47,12 +52,11 @@ SCRIPT
 
 @test "rl N runs exactly N iterations" {
   local helper="$BATS_TEST_TMPDIR/count_cmd.sh"
-  cat > "$helper" <<'SCRIPT'
+  write_executable "$helper" <<'SCRIPT'
 #!/usr/bin/env bash
 n=$(cat "$COUNT_FILE")
 echo $((n + 1)) > "$COUNT_FILE"
 SCRIPT
-  chmod +x "$helper"
 
   echo 0 > "$BATS_TEST_TMPDIR/count"
   export COUNT_FILE="$BATS_TEST_TMPDIR/count"
@@ -64,11 +68,10 @@ SCRIPT
 
 @test "child exit code is reported in output" {
   local helper="$BATS_TEST_TMPDIR/exit_cmd.sh"
-  cat > "$helper" <<'SCRIPT'
+  write_executable "$helper" <<'SCRIPT'
 #!/usr/bin/env bash
 exit 42
 SCRIPT
-  chmod +x "$helper"
 
   run zsh "$RL" 1 -- "$helper"
 
@@ -78,7 +81,7 @@ SCRIPT
 @test "double SIGINT force-stops the whole iteration tree" {
   local helper="$BATS_TEST_TMPDIR/tree_cmd.sh"
   local output_file="$BATS_TEST_TMPDIR/rl.out"
-  cat > "$helper" <<'SCRIPT'
+  write_executable "$helper" <<'SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 echo "$$" > "$RL_CHILD_PID_FILE"
@@ -87,7 +90,6 @@ grandchild=$!
 echo "$grandchild" > "$RL_GRANDCHILD_PID_FILE"
 wait "$grandchild"
 SCRIPT
-  chmod +x "$helper"
 
   export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
   export RL_GRANDCHILD_PID_FILE="$BATS_TEST_TMPDIR/grandchild.pid"
@@ -124,10 +126,43 @@ SCRIPT
   fi
 
   [ "$exit_status" -eq 130 ]
-  run bash -c 'kill -0 "$1" 2>/dev/null' _ "$child_pid"
-  [ "$status" -ne 0 ]
-  run bash -c 'kill -0 "$1" 2>/dev/null' _ "$grandchild_pid"
-  [ "$status" -ne 0 ]
+  local child_stopped=0
+  for _ in {1..20}; do
+    if ! kill -0 "$child_pid" 2>/dev/null; then
+      child_stopped=1
+      break
+    fi
+
+    local child_state
+    child_state=$(ps -o stat= -p "$child_pid" 2>/dev/null | tr -d ' ')
+    if [[ "$child_state" == Z* ]]; then
+      child_stopped=1
+      break
+    fi
+
+    sleep 0.05
+  done
+
+  [ "$child_stopped" -eq 1 ]
+
+  local grandchild_stopped=0
+  for _ in {1..20}; do
+    if ! kill -0 "$grandchild_pid" 2>/dev/null; then
+      grandchild_stopped=1
+      break
+    fi
+
+    local state
+    state=$(ps -o stat= -p "$grandchild_pid" 2>/dev/null | tr -d ' ')
+    if [[ "$state" == Z* ]]; then
+      grandchild_stopped=1
+      break
+    fi
+
+    sleep 0.05
+  done
+
+  [ "$grandchild_stopped" -eq 1 ]
   grep -Fq "force stopping" "$output_file"
 }
 

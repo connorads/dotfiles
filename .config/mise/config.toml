@@ -66,3 +66,7 @@ claude = "latest"
 "pipx:ty" = "0"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
+
+[tasks.zsh-tests]
+description = "Run BATS tests for zsh functions"
+run = "cd \"$HOME\" && bats --recursive .config/zsh/tests"
