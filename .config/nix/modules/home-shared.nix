@@ -13,6 +13,7 @@
   programs.git = {
     enable = true;
     lfs.enable = true;
+    signing.format = null;
     settings = {
       user.name = "Connor Adams";
       user.email = "connorads@users.noreply.github.com";
