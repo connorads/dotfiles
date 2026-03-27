@@ -2,6 +2,7 @@
 # rl: ralph loop - run a command in a naive loop
 emulate -L zsh
 setopt localtraps
+setopt trapsasync
 setopt no_monitor 2>/dev/null  # suppress [N] job notifications if possible
 
 # Parse: rl [max] -- <command...>
@@ -39,24 +40,76 @@ fi
 local i=0
 local rc=0
 local stop_requested=0
+local force_stop_requested=0
 local child_wait_interrupted=0
 local child_pid=
 local child_pgid=
 local pause_pid=
 local phase=idle
-local my_pgid
-my_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
+
+debug_log() {
+  (( ${RL_DEBUG:-0} )) || return 0
+  print -u2 -r -- "[rl-debug] $*"
+}
 
 start_child() {
+  local parent_pid=$$
+
   if command -v setsid >/dev/null 2>&1; then
-    setsid --wait -- "$@" &
+    setsid --wait -- zsh -c '
+      emulate -L zsh
+      local parent_pid=$1
+      shift
+
+      if command -v perl >/dev/null 2>&1; then
+        perl -MPOSIX=setsid -e '"'"'
+          POSIX::setsid();
+          my ($parent_pid, $target_pgid, $leader_pid) = @ARGV;
+          while (kill 0, $leader_pid) {
+            unless (kill 0, $parent_pid) {
+              kill 15, -$target_pgid;
+              select undef, undef, undef, 0.1;
+              kill 9, -$target_pgid;
+              exit 0;
+            }
+            select undef, undef, undef, 0.05;
+          }
+        '"'"' -- "$parent_pid" "$$" "$$" </dev/null >/dev/null 2>&1 &
+        sleep 0.05
+      fi
+
+      exec "$@"
+    ' _ "$parent_pid" "$@" &
     return 0
   fi
 
-  perl -MPOSIX=setsid -e '
+  perl -MPOSIX=setsid,getpgrp -e '
+    my $parent_pid = shift @ARGV;
     POSIX::setsid() or die "setsid failed\n";
+    my $leader_pid = $$;
+    my $target_pgid = POSIX::getpgrp();
+    my $watchdog = fork();
+    die "fork failed\n" unless defined $watchdog;
+
+    if ($watchdog == 0) {
+      POSIX::setsid();
+      while (kill 0, $leader_pid) {
+        unless (kill 0, $parent_pid) {
+          # macOS can leave the iteration tree running after rl exits on a
+          # second Ctrl+C, so the detached watchdog kills the whole process
+          # group once the parent loop disappears.
+          kill 15, -$target_pgid;
+          select undef, undef, undef, 0.1;
+          kill 9, -$target_pgid;
+          exit 0;
+        }
+        select undef, undef, undef, 0.05;
+      }
+      exit 0;
+    }
+
     exec @ARGV or die "exec failed\n";
-  ' -- "$@" &
+  ' -- "$parent_pid" "$@" &
 }
 
 refresh_child_pgid() {
@@ -72,39 +125,13 @@ refresh_child_pgid() {
   done
 }
 
-force_stop_child() {
-  local grace_checks=10
-  local grace_sleep=0.1
-  local attempt
-
-  # Each iteration should run in its own process group so a second Ctrl+C can
-  # tear down the whole subtree, not just the direct child wrapper.
-  if [[ -n $child_pgid && $child_pgid != $my_pgid ]]; then
-    kill -INT -- -$child_pgid 2>/dev/null
-    for (( attempt = 1; attempt <= grace_checks; attempt++ )); do
-      kill -0 -- -$child_pgid 2>/dev/null || return 0
-      sleep $grace_sleep
-    done
-    kill -KILL -- -$child_pgid 2>/dev/null
-    return 0
-  fi
-
-  [[ -z $child_pid ]] && return 0
-
-  kill -INT $child_pid 2>/dev/null
-  for (( attempt = 1; attempt <= grace_checks; attempt++ )); do
-    kill -0 $child_pid 2>/dev/null || return 0
-    sleep $grace_sleep
-  done
-  kill -KILL $child_pid 2>/dev/null
-}
-
-trap '
+TRAPINT() {
   if (( stop_requested )); then
+    force_stop_requested=1
     print -P "\n%F{red}[rl]%f force stopping"
-    force_stop_child
     [[ -n $pause_pid ]] && kill $pause_pid 2>/dev/null
-    return 130
+    child_wait_interrupted=1
+    return 0
   fi
 
   stop_requested=1
@@ -121,7 +148,9 @@ trap '
       print -P "\n%F{yellow}[rl]%f stopping before next iteration (Ctrl+C again to force)"
       ;;
   esac
-' INT
+
+  return 0
+}
 
 while (( max == 0 || i < max )); do
   (( stop_requested )) && break
@@ -131,20 +160,29 @@ while (( max == 0 || i < max )); do
   start_child "$@"
   child_pid=$!
   refresh_child_pgid
-  wait $child_pid
-  rc=$?
-  # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
-  if (( child_wait_interrupted )); then
-    print -P "%F{cyan}[rl]%f waiting for iteration $i to finish..."
+  while true; do
     wait $child_pid
     rc=$?
-  fi
+    # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
+    if (( force_stop_requested )); then
+      rc=130
+      break
+    fi
+
+    if (( child_wait_interrupted )); then
+      print -P "%F{cyan}[rl]%f waiting for iteration $i to finish..."
+      child_wait_interrupted=0
+      continue
+    fi
+
+    break
+  done
+  phase=idle
+  print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
+  (( stop_requested || force_stop_requested )) && break
   child_pid=
   child_pgid=
   child_wait_interrupted=0
-  phase=idle
-  print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
-  (( stop_requested )) && break
   if (( rc != 0 )); then
     print -P "%F{yellow}[rl]%f non-zero exit, pausing 5s..."
     phase=pause
@@ -156,8 +194,6 @@ while (( max == 0 || i < max )); do
     (( stop_requested )) && break
   fi
 done
-
-trap - INT
 
 if (( stop_requested )); then
   print -P "%F{yellow}[rl]%f stopped after $i iterations"

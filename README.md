@@ -43,6 +43,12 @@ dhk check
 
 `dotfiles commit` then runs `.hk-hooks/pre-commit`, which calls `hk run pre-commit`.
 
+For shell-function regression tests:
+
+```sh
+mise run zsh-tests
+```
+
 ### Managing system
 
 #### macOS (nix-darwin)
