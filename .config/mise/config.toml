@@ -28,7 +28,7 @@ rumdl = "0.1"
 gcloud = "562"
 aws = "2"
 gemini = "0.35"
-codex = "0.117"
+codex = "latest"
 usage = "3"
 hcloud = "1"
 deno = "2"
@@ -36,7 +36,8 @@ claude = "latest"
 
 "aqua:anomalyco/opencode" = "1"
 
-"github:rtk-ai/rtk" = "0.34"
+# Pinned: github backend constructs wrong release tag from ranges (0.34 → rtk-ai/rtk@0.34 instead of v0.34.0)
+"github:rtk-ai/rtk" = "0.34.0"
 
 "npm:@elevenlabs/cli" = "0"
 "npm:@github/copilot" = "1"
