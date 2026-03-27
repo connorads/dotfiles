@@ -204,7 +204,11 @@ mise outdated                               # available updates within ranges
 mise outdated --bump                        # available updates beyond ranges
 ```
 
-**No lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
+**pnpm**: global 14-day quarantine (`minimum-release-age=20160`) + trust policy (`trust-policy=no-downgrade`) in `~/.config/pnpm/rc`. Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise).
+
+**uv**: global 14-day quarantine (`exclude-newer = "14 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
+
+**No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
 
