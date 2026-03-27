@@ -28,5 +28,3 @@ shell_snapshot = true
 js_repl = true
 use_legacy_landlock = true
 fast_mode = true
-
-
