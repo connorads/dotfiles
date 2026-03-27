@@ -275,7 +275,7 @@
 
   # -- Services --
   services.openssh = {
-    enable = true;
+    enable = false;
     extraConfig = ''
       AuthorizedKeysCommand none
       AuthorizedKeysFile .ssh/authorized_keys
