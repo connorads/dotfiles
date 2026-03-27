@@ -19,10 +19,12 @@ if [[ -z "$branch" ]]; then
   return 1
 fi
 
-local repo=$(basename $(git rev-parse --show-toplevel 2>/dev/null)) || {
+local repo_root
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
   echo "error: not in a git repository" >&2
   return 1
 }
+local repo=${repo_root:t}
 local worktree_path="$HOME/.trees/${repo}-${branch}"
 
 # Idempotent: if worktree already exists, just print its path
