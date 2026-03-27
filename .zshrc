@@ -86,6 +86,9 @@ export DISABLE_ERROR_REPORTING=1
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
+# Homebrew supply chain: verify bottle provenance via Sigstore/GitHub attestations
+[[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_VERIFY_ATTESTATIONS=1
+
 # Startup profiling output (before p10k to avoid noise)
 [[ -n "${ZSH_PROFILE+1}" ]] && zprof
 
