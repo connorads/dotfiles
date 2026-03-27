@@ -47,12 +47,38 @@ local phase=idle
 local my_pgid
 my_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
 
+start_child() {
+  if command -v setsid >/dev/null 2>&1; then
+    setsid --wait -- "$@" &
+    return 0
+  fi
+
+  perl -MPOSIX=setsid -e '
+    POSIX::setsid() or die "setsid failed\n";
+    exec @ARGV or die "exec failed\n";
+  ' -- "$@" &
+}
+
+refresh_child_pgid() {
+  local attempt
+
+  child_pgid=
+  [[ -z $child_pid ]] && return 0
+
+  for (( attempt = 1; attempt <= 20; attempt++ )); do
+    child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
+    [[ -n $child_pgid ]] && return 0
+    sleep 0.05
+  done
+}
+
 force_stop_child() {
   local grace_checks=10
   local grace_sleep=0.1
   local attempt
 
-  # If child has its own process group (MONITOR on), kill the whole group.
+  # Each iteration should run in its own process group so a second Ctrl+C can
+  # tear down the whole subtree, not just the direct child wrapper.
   if [[ -n $child_pgid && $child_pgid != $my_pgid ]]; then
     kill -INT -- -$child_pgid 2>/dev/null
     for (( attempt = 1; attempt <= grace_checks; attempt++ )); do
@@ -102,9 +128,9 @@ while (( max == 0 || i < max )); do
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
   phase=child
-  "$@" &
+  start_child "$@"
   child_pid=$!
-  child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
+  refresh_child_pgid
   wait $child_pid
   rc=$?
   # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
