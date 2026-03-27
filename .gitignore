@@ -132,6 +132,12 @@
 !/.config/mise/
 !/.config/mise/**
 
+!/.config/uv/
+!/.config/uv/uv.toml
+
+!/.config/pnpm/
+!/.config/pnpm/rc
+
 !/.config/remobi/
 !/.config/remobi/remobi.config.ts
 

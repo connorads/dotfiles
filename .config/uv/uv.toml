@@ -1,0 +1,2 @@
+# Supply chain security: only resolve versions released 14+ days ago
+exclude-newer = "14 days"

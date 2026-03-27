@@ -55,6 +55,7 @@
   home.sessionVariables = {
     EDITOR = "micro";
     VISUAL = "micro";
+    XDG_CONFIG_HOME = "$HOME/.config";
   };
 
   home.activation.tmuxPlugins = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
