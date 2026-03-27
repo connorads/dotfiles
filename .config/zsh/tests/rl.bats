@@ -3,6 +3,8 @@
 # rl (ralph loop) regression tests
 # Run: bats ~/.config/zsh/tests/rl.bats
 
+bats_require_minimum_version 1.5.0
+
 RL="$HOME/.config/zsh/functions/agents/rl"
 
 # The critical bug: with MONITOR (job control) on, `setsid cmd &` puts setsid
@@ -71,6 +73,62 @@ SCRIPT
   run zsh "$RL" 1 -- "$helper"
 
   [[ "$output" == *"exit 42"* ]]
+}
+
+@test "double SIGINT force-stops the whole iteration tree" {
+  local helper="$BATS_TEST_TMPDIR/tree_cmd.sh"
+  local output_file="$BATS_TEST_TMPDIR/rl.out"
+  cat > "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "$$" > "$RL_CHILD_PID_FILE"
+sleep 300 &
+grandchild=$!
+echo "$grandchild" > "$RL_GRANDCHILD_PID_FILE"
+wait "$grandchild"
+SCRIPT
+  chmod +x "$helper"
+
+  export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
+  export RL_GRANDCHILD_PID_FILE="$BATS_TEST_TMPDIR/grandchild.pid"
+
+  zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
+  local rl_pid=$!
+  local ready=0
+
+  for _ in {1..50}; do
+    if [[ -f "$RL_CHILD_PID_FILE" && -f "$RL_GRANDCHILD_PID_FILE" ]]; then
+      ready=1
+      break
+    fi
+    sleep 0.1
+  done
+
+  [ "$ready" -eq 1 ]
+  [ -f "$RL_CHILD_PID_FILE" ]
+  [ -f "$RL_GRANDCHILD_PID_FILE" ]
+
+  local child_pid
+  local grandchild_pid
+  child_pid=$(cat "$RL_CHILD_PID_FILE")
+  grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
+
+  kill -INT "$rl_pid"
+  sleep 0.2
+  kill -INT "$rl_pid"
+  local exit_status
+  if wait "$rl_pid"; then
+    exit_status=0
+  else
+    exit_status=$?
+  fi
+
+  [ "$exit_status" -eq 130 ]
+  run bash -c 'kill -0 "$1" 2>/dev/null' _ "$child_pid"
+  [ "$status" -ne 0 ]
+  run bash -c 'kill -0 "$1" 2>/dev/null' _ "$grandchild_pid"
+  [ "$status" -ne 0 ]
+  grep -Fq "force stopping" "$output_file"
 }
 
 @test "usage printed without -- separator" {
