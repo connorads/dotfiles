@@ -29,5 +29,4 @@ js_repl = true
 use_legacy_landlock = true
 fast_mode = true
 
-[projects."/Users/connorads"]
-trust_level = "trusted"
+
