@@ -11,7 +11,10 @@ setup_test_home() {
 
   mkdir -p "$TEST_HOME" "$TEST_BIN"
   export HOME="$TEST_HOME"
-  export PATH="$TEST_BIN:/usr/bin:/bin:/usr/sbin:/sbin"
+  # Preserve the path to zsh (may be nix-managed, not in /usr/bin)
+  local zsh_dir
+  zsh_dir="$(dirname "$(command -v zsh 2>/dev/null || echo /usr/bin/zsh)")"
+  export PATH="$TEST_BIN:$zsh_dir:/usr/bin:/bin:/usr/sbin:/sbin"
   : > "$TEST_LOG"
 }
 
