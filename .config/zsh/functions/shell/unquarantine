@@ -1,0 +1,15 @@
+#!/usr/bin/env zsh
+# unquarantine: run command with supply chain quarantines disabled
+# alias: uq
+emulate -L zsh
+
+if (( $# == 0 )); then
+  print -u2 "usage: unquarantine <command> [args...]"
+  print -u2 "  Runs command with pnpm/uv/mise quarantine checks disabled"
+  return 1
+fi
+
+npm_config_minimum_release_age=0 \
+UV_EXCLUDE_NEWER="" \
+MISE_INSTALL_BEFORE=0 \
+  "$@"
