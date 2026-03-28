@@ -1,0 +1,132 @@
+#!/usr/bin/env zsh
+# rl-kill: find and kill orphaned rl process trees
+emulate -L zsh
+
+local mode=kill  # kill (default), list, force
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -l|--list)  mode=list;  shift ;;
+    -f|--force) mode=force; shift ;;
+    -h|--help)
+      print 'rl-kill: find and kill orphaned rl process trees
+
+Usage: rl-kill [options]
+
+Options:
+  -l, --list   List orphaned processes only (no kill)
+  -f, --force  Kill without prompting
+  -h, --help   Show this help
+
+Finds processes with RL_SESSION in their environment where the
+parent rl process is no longer running (orphans). Without -l,
+sends SIGTERM then SIGKILL after 1s to orphaned process groups.'
+      return 0
+      ;;
+    *) print -P "%F{red}[rl-kill]%f unknown option: $1"; return 1 ;;
+  esac
+done
+
+# Discover processes with RL_SESSION in their environment
+# Returns lines of: pid session_value
+typeset -A session_pids  # session -> space-separated pids
+
+if [[ -d /proc/1 ]]; then
+  # Linux: read /proc/<pid>/environ
+  local f pid val
+  for f in /proc/[0-9]*/environ(N); do
+    pid=${${f:h}:t}
+    # skip our own process
+    (( pid == $$ )) && continue
+    val=$(tr '\0' '\n' < "$f" 2>/dev/null | grep -m1 '^RL_SESSION=' | cut -d= -f2-)
+    [[ -n $val ]] || continue
+    session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
+  done
+else
+  # macOS: ps -eww shows full environment
+  local line pid rest val
+  ps -eww -o pid=,command= 2>/dev/null | while IFS= read -r line; do
+    pid=${line%%[! ]*}
+    pid=${pid// /}
+    (( pid == $$ )) && continue
+    # extract RL_SESSION=value from the environment portion
+    val=${(M)line:#*RL_SESSION=*}
+    [[ -n $val ]] || continue
+    val=${val##*RL_SESSION=}
+    val=${val%% *}
+    [[ -n $val ]] || continue
+    session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
+  done
+fi
+
+if (( ${#session_pids} == 0 )); then
+  print -P "%F{green}[rl-kill]%f no rl processes found"
+  return 0
+fi
+
+# Filter to orphaned sessions (parent rl PID is dead)
+typeset -A orphaned  # session -> pids
+local session parent_pid
+for session in ${(k)session_pids}; do
+  parent_pid=${session%%:*}
+  if ! kill -0 "$parent_pid" 2>/dev/null; then
+    orphaned[$session]="${session_pids[$session]}"
+  fi
+done
+
+if (( ${#orphaned} == 0 )); then
+  print -P "%F{green}[rl-kill]%f no orphaned rl processes found (${#session_pids} active session(s))"
+  return 0
+fi
+
+# Display orphaned sessions
+local total=0
+for session in ${(k)orphaned}; do
+  local pids=(${=orphaned[$session]})
+  total=$(( total + ${#pids} ))
+  print -P "%F{yellow}[rl-kill]%f session $session: ${#pids} process(es)"
+  local pid
+  for pid in $pids; do
+    local cmd
+    cmd=$(ps -o args= -p "$pid" 2>/dev/null || echo "<exited>")
+    print "  pid $pid: $cmd"
+  done
+done
+
+if [[ $mode == list ]]; then
+  print -P "%F{cyan}[rl-kill]%f $total orphaned process(es) across ${#orphaned} session(s)"
+  return 0
+fi
+
+# Confirm unless --force
+if [[ $mode != force ]]; then
+  print -Pn "%F{yellow}[rl-kill]%f kill $total orphaned process(es)? [y/N] "
+  local answer
+  read -q answer
+  print
+  if [[ $answer != y ]]; then
+    print -P "%F{cyan}[rl-kill]%f aborted"
+    return 0
+  fi
+fi
+
+# Kill: SIGTERM, wait 1s, SIGKILL survivors
+local all_pids=()
+for session in ${(k)orphaned}; do
+  all_pids+=(${=orphaned[$session]})
+done
+
+kill -TERM $all_pids 2>/dev/null
+sleep 1
+
+local survivors=()
+local pid
+for pid in $all_pids; do
+  kill -0 "$pid" 2>/dev/null && survivors+=($pid)
+done
+
+if (( ${#survivors} > 0 )); then
+  kill -KILL $survivors 2>/dev/null
+  print -P "%F{red}[rl-kill]%f sent SIGKILL to ${#survivors} survivor(s)"
+fi
+
+print -P "%F{green}[rl-kill]%f killed $total orphaned process(es)"
