@@ -16,6 +16,7 @@ Manage scoped gh CLI tokens on remote dev machines. Uses a GitHub App to
 generate time-boxed write tokens; the remote machine defaults to read-only.
 
 Commands:
+  setup                 Interactive first-time configuration
   init    [user@host]   Create read-only PAT and deploy to target
   grant   [user@host]   Generate a 1-hour write token and push to target
   revoke  [user@host]   Remove write token, restore read-only on target
@@ -24,6 +25,8 @@ Commands:
 Default target comes from DEFAULT_TARGET in ~/.config/gh-gate/config.
 
 Setup:
+  Run 'gh-gate setup' for interactive guided setup, or manually:
+
   1. Create a GitHub App (github.com/settings/apps/new):
      - Webhook: uncheck "Active"
      - Permissions (Read & write): Actions, Contents, Issues, Pull requests
@@ -32,7 +35,7 @@ Setup:
 
   2. Store the private key:
      macOS:  security add-generic-password -a "$USER" -s "gh-gate" \
-               -w "$(base64 < gh-gate-private-key.pem)" -T "" -U
+               -w "$(base64 -b 0 < gh-gate-private-key.pem)" -T "" -U
      Linux:  mkdir -p ~/.config/gh-gate && chmod 700 ~/.config/gh-gate
              cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
              chmod 600 ~/.config/gh-gate/private-key.pem
@@ -65,10 +68,108 @@ Security:
 HELP
 }
 
+_gh_gate_setup() {
+  print -r "gh-gate setup"
+  print -r "============="
+  print -r ""
+
+  # Step 1: GitHub App
+  print -r "Step 1: Create a GitHub App"
+  print -r "  Go to: github.com/settings/apps/new"
+  print -r "  - Webhook: uncheck \"Active\""
+  print -r "  - Permissions (Read & write): Actions, Contents, Issues, Pull requests"
+  print -r "  - Install on your account"
+  print -r ""
+
+  local app_id installation_id default_target pem_path
+
+  print -rn "App ID: "
+  read -r app_id
+  if [[ -z "$app_id" || ! "$app_id" =~ '^[0-9]+$' ]]; then
+    print -r "Error: App ID must be a number" >&2
+    return 1
+  fi
+
+  print -rn "Installation ID: "
+  read -r installation_id
+  if [[ -z "$installation_id" || ! "$installation_id" =~ '^[0-9]+$' ]]; then
+    print -r "Error: Installation ID must be a number" >&2
+    return 1
+  fi
+
+  print -rn "Default SSH target (e.g. connor@dev): "
+  read -r default_target
+  if [[ -z "$default_target" ]]; then
+    print -r "Error: target is required" >&2
+    return 1
+  fi
+
+  # Step 2: Write config
+  mkdir -p "$config_dir" && chmod 700 "$config_dir"
+  cat > "$config_file" <<EOF
+APP_ID=${app_id}
+INSTALLATION_ID=${installation_id}
+DEFAULT_TARGET=${default_target}
+EOF
+  chmod 600 "$config_file"
+  print -r ""
+  print -r "Config written to ${config_file}"
+
+  # Step 3: Private key
+  print -r ""
+  print -r "Step 2: Store the private key"
+  print -rn "Path to private key PEM file: "
+  read -r pem_path
+  pem_path=${~pem_path}  # expand tilde
+
+  if [[ ! -r "$pem_path" ]]; then
+    print -r "Error: cannot read ${pem_path}" >&2
+    return 1
+  fi
+
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    security add-generic-password -a "$USER" -s "gh-gate" \
+      -w "$(base64 -b 0 < "$pem_path")" -T "" -U || {
+      print -r "Error: failed to store key in Keychain" >&2
+      return 1
+    }
+    print -r "Private key stored in macOS Keychain"
+  else
+    cp "$pem_path" "${config_dir}/private-key.pem"
+    chmod 600 "${config_dir}/private-key.pem"
+    print -r "Private key stored at ${config_dir}/private-key.pem"
+  fi
+
+  # Verify — source config so $APP_ID is available for JWT generation
+  _gh_gate_load_config || return 1
+  print -r ""
+  print -r "Verifying GitHub App access..."
+  local pem jwt response app_name
+  pem=$(_gh_gate_get_pem) || return 1
+  jwt=$(_gh_gate_generate_jwt "$pem")
+  unset pem
+
+  response=$(curl -sf \
+    -H "Authorization: Bearer ${jwt}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/app" 2>/dev/null)
+
+  if [[ $? -eq 0 ]]; then
+    app_name=$(print -r -- "$response" | jq -r '.name // empty')
+    print -r "Authenticated as GitHub App: ${app_name:-<unknown>}"
+  else
+    print -r "Warning: could not verify app credentials (check APP_ID and key)" >&2
+  fi
+
+  print -r ""
+  print -r "Setup complete. Next: gh-gate init ${default_target}"
+}
+
 _gh_gate_load_config() {
   if [[ ! -r "$config_file" ]]; then
     print -r "Error: config not found at ${config_file}" >&2
-    print -r "Run 'gh-gate --help' for setup instructions" >&2
+    print -r "Run 'gh-gate setup' for guided configuration" >&2
     return 1
   fi
   source "$config_file"
@@ -93,16 +194,24 @@ _gh_gate_get_pem() {
   local pem
   if [[ "$(uname -s)" == "Darwin" ]]; then
     # macOS: retrieve from Keychain (triggers Touch ID / password prompt)
-    local b64
-    b64=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
+    local raw
+    raw=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
       print -r "Error: PEM not found in Keychain (service: gh-gate)" >&2
-      print -r "Store with: security add-generic-password -a \"\$USER\" -s \"gh-gate\" -w \"\$(base64 < key.pem)\" -T \"\" -U" >&2
+      print -r "Run 'gh-gate setup' to configure" >&2
       return 1
     }
-    pem=$(print -r -- "$b64" | base64 --decode) || {
-      print -r "Error: failed to decode PEM from Keychain" >&2
-      return 1
-    }
+    # Keychain returns hex when item is stored as data blob — decode hex then base64
+    if [[ "$raw" =~ ^[0-9a-fA-F]+$ ]]; then
+      pem=$(print -r -- "$raw" | xxd -r -p | base64 --decode) || {
+        print -r "Error: failed to decode PEM from Keychain (hex)" >&2
+        return 1
+      }
+    else
+      pem=$(print -r -- "$raw" | base64 --decode) || {
+        print -r "Error: failed to decode PEM from Keychain (base64)" >&2
+        return 1
+      }
+    fi
   else
     # Linux: read from file
     local pem_file="${config_dir}/private-key.pem"
@@ -324,19 +433,20 @@ _gh_gate_status() {
 
 # Main dispatch
 case "$cmd" in
+  setup)   _gh_gate_setup ;;
   init)    _gh_gate_init "${2:-}" ;;
   grant)   _gh_gate_grant "${2:-}" ;;
   revoke)  _gh_gate_revoke "${2:-}" ;;
   status)  _gh_gate_status "${2:-}" ;;
   -h|--help|help) _gh_gate_help ;;
   "")
-    print -r "Usage: gh-gate <init|grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <setup|init|grant|revoke|status> [user@host]" >&2
     print -r "Run 'gh-gate --help' for full documentation" >&2
     return 1
     ;;
   *)
     print -r "Unknown command: ${cmd}" >&2
-    print -r "Usage: gh-gate <init|grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <setup|init|grant|revoke|status> [user@host]" >&2
     return 1
     ;;
 esac
