@@ -8,6 +8,7 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 RL="$FUNCTIONS_DIR/agents/rl"
+RL_KILL="$FUNCTIONS_DIR/agents/rl-kill"
 
 setup() {
   setup_test_home
@@ -116,7 +117,7 @@ SCRIPT
   grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
 
   kill -INT "$rl_pid"
-  sleep 0.2
+  sleep 2.5  # must exceed 2s debounce cooldown
   kill -INT "$rl_pid"
   local exit_status
   if wait "$rl_pid"; then
@@ -178,4 +179,110 @@ SCRIPT
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"Usage:"* ]]
+}
+
+@test "rapid double SIGINT is blocked by debounce" {
+  local helper="$BATS_TEST_TMPDIR/debounce_cmd.sh"
+  local output_file="$BATS_TEST_TMPDIR/rl.out"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+echo "$$" > "$RL_CHILD_PID_FILE"
+sleep 300
+SCRIPT
+
+  export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
+
+  zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
+  local rl_pid=$!
+
+  # Wait for child to start
+  local ready=0
+  for _ in {1..50}; do
+    if [[ -f "$RL_CHILD_PID_FILE" ]]; then
+      ready=1
+      break
+    fi
+    sleep 0.1
+  done
+  [ "$ready" -eq 1 ]
+
+  # Send two SIGINTs rapidly (within debounce window)
+  kill -INT "$rl_pid"
+  sleep 0.1
+  kill -INT "$rl_pid"
+  sleep 0.5
+
+  # rl should still be running (debounce blocked force-stop)
+  kill -0 "$rl_pid" 2>/dev/null
+  local still_running=$?
+  [ "$still_running" -eq 0 ]
+
+  # Output should contain the debounce message, not force-stop
+  grep -Fq "hold on" "$output_file"
+  ! grep -Fq "force stopping" "$output_file"
+
+  # Clean up: wait for debounce then force-stop
+  sleep 2
+  kill -INT "$rl_pid" 2>/dev/null
+  wait "$rl_pid" 2>/dev/null || true
+}
+
+@test "RL_SESSION is set in child environment" {
+  local helper="$BATS_TEST_TMPDIR/session_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+echo "$RL_SESSION" > "$SESSION_FILE"
+SCRIPT
+
+  export SESSION_FILE="$BATS_TEST_TMPDIR/session.txt"
+
+  run zsh "$RL" 1 -- "$helper"
+
+  [ -f "$SESSION_FILE" ]
+  local session
+  session=$(cat "$SESSION_FILE")
+  # Format: <pid>:<epoch>
+  [[ "$session" =~ ^[0-9]+:[0-9]+$ ]]
+}
+
+@test "rl-kill lists orphaned processes" {
+  # Spawn a process with a fake RL_SESSION (simulating an orphan)
+  RL_SESSION="99999:1234567890" sleep 300 &
+  local orphan_pid=$!
+
+  run zsh "$RL_KILL" -l
+
+  # Should find the orphan (PID 99999 doesn't exist)
+  [[ "$output" == *"99999:1234567890"* ]]
+  [[ "$output" == *"orphaned"* ]]
+
+  # Clean up
+  kill "$orphan_pid" 2>/dev/null
+  wait "$orphan_pid" 2>/dev/null || true
+}
+
+@test "rl-kill force-kills orphaned processes" {
+  RL_SESSION="99999:1234567890" sleep 300 &
+  local orphan_pid=$!
+
+  run zsh "$RL_KILL" -f
+
+  # Process should be gone
+  sleep 0.2
+  ! kill -0 "$orphan_pid" 2>/dev/null
+}
+
+@test "rl-kill skips active sessions" {
+  # Use our own PID as the parent — it's alive, so not orphaned
+  RL_SESSION="$$:1234567890" sleep 300 &
+  local active_pid=$!
+
+  run zsh "$RL_KILL" -l
+
+  # Should report no orphans
+  [[ "$output" == *"no orphaned"* ]]
+
+  # Clean up
+  kill "$active_pid" 2>/dev/null
+  wait "$active_pid" 2>/dev/null || true
 }
