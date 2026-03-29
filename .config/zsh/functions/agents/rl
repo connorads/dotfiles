@@ -217,6 +217,11 @@ while (( max == 0 || i < max )); do
     rc=$?
     # Ctrl+C interrupts wait in the parent shell, not the backgrounded child.
     if (( force_stop_requested )); then
+      if [[ -n $child_pgid ]]; then
+        kill -TERM -"$child_pgid" 2>/dev/null
+        sleep 0.1
+        kill -KILL -"$child_pgid" 2>/dev/null
+      fi
       rc=130
       break
     fi

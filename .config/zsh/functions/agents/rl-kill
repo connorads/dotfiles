@@ -37,6 +37,7 @@ if [[ -d /proc/1 ]]; then
     pid=${${f:h}:t}
     # skip our own process
     (( pid == $$ )) && continue
+    [[ -r $f ]] || continue
     val=$(tr '\0' '\n' < "$f" 2>/dev/null | grep -m1 '^RL_SESSION=' | cut -d= -f2-)
     [[ -n $val ]] || continue
     session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
