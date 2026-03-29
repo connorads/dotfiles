@@ -6,18 +6,35 @@ setopt trapsasync
 setopt no_monitor 2>/dev/null  # suppress [N] job notifications if possible
 zmodload zsh/datetime
 
-# Parse: rl [max] -- <command...>
+# Parse: rl [max] [-t timeout] -- <command...>
 local max=0
+local timeout_secs=0
 if [[ $1 =~ ^[0-9]+$ ]]; then
   max=$1; shift
 fi
+while [[ $1 == -* && $1 != "--" ]]; do
+  case $1 in
+    -t|--timeout)
+      shift
+      local raw=$1; shift
+      case $raw in
+        *h) timeout_secs=$(( ${raw%h} * 3600 )) ;;
+        *m) timeout_secs=$(( ${raw%m} * 60 )) ;;
+        *s) timeout_secs=${raw%s} ;;
+        *)  timeout_secs=$raw ;;
+      esac
+      ;;
+    *) print -P "%F{red}[rl]%f unknown option: $1"; return 1 ;;
+  esac
+done
 if [[ $1 != "--" ]]; then
   print 'rl - ralph loop: run a command in a naive loop
 
-Usage: rl [max] -- <command...>
+Usage: rl [max] [-t timeout] -- <command...>
 
-  max   Optional max iterations (default: unlimited, Ctrl+C once to stop, twice within 2s+ to force-stop)
-  --    Separator (required)
+  max       Optional max iterations (default: unlimited, Ctrl+C once to stop, twice within 2s+ to force-stop)
+  -t, --timeout DURATION  Kill iteration if it exceeds DURATION (e.g. 30m, 2h, 90s, 90)
+  --        Separator (required)
 
 Examples:
   rl -- claude -p "Follow the session protocol in CLAUDE.md"
@@ -25,6 +42,7 @@ Examples:
   rl 5 -- claude -p --dangerously-skip-permissions "Run the sweep"
   rl -- codex exec "Follow the session protocol in AGENTS.md"
   rl 10 -- codex exec --full-auto "Fix the next backlog item"
+  rl 36 -t 30m -- cys "One task per run"
   rl -- cargo test'
   return 1
 fi
@@ -172,6 +190,28 @@ while (( max == 0 || i < max )); do
   start_child "$@"
   child_pid=$!
   refresh_child_pgid
+  local timeout_pid=
+  local timeout_sleep_pid=
+  local timed_out=0
+  local timeout_marker="${TMPDIR:-/tmp}/rl-timeout-$$-$i"
+  if (( timeout_secs > 0 && child_pgid )); then
+    # Watchdog: sleep then kill child process group. Track inner sleep PID for cleanup.
+    local sleep_pid_file="${TMPDIR:-/tmp}/rl-timeout-sleep-$$-$i"
+    (
+      sleep "$timeout_secs" &
+      echo $! > "$sleep_pid_file"
+      wait $!
+      touch "$timeout_marker"
+      kill -TERM -"$child_pgid" 2>/dev/null
+      sleep 0.1
+      kill -KILL -"$child_pgid" 2>/dev/null
+    ) &
+    timeout_pid=$!
+    # Wait briefly for the sleep PID file to be written
+    local _w; for _w in {1..10}; do [[ -f $sleep_pid_file ]] && break; sleep 0.01; done
+    timeout_sleep_pid=$(cat "$sleep_pid_file" 2>/dev/null)
+    rm -f "$sleep_pid_file"
+  fi
   while true; do
     wait $child_pid
     rc=$?
@@ -189,8 +229,21 @@ while (( max == 0 || i < max )); do
 
     break
   done
+  if [[ -n $timeout_pid ]]; then
+    [[ -n $timeout_sleep_pid ]] && kill "$timeout_sleep_pid" 2>/dev/null
+    kill "$timeout_pid" 2>/dev/null
+    wait "$timeout_pid" 2>/dev/null || true
+    if [[ -f $timeout_marker ]]; then
+      timed_out=1
+      rm -f "$timeout_marker"
+    fi
+  fi
   phase=idle
-  print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
+  if (( timed_out )); then
+    print -P "%F{yellow}[rl]%f iteration $i timed out after ${timeout_secs}s"
+  else
+    print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
+  fi
   (( stop_requested || force_stop_requested )) && break
   child_pid=
   child_pgid=
