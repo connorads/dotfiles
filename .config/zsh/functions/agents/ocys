@@ -1,0 +1,21 @@
+#!/usr/bin/env zsh
+# ocys: opencode yolo stream - non-interactive opencode with live formatted output
+emulate -L zsh
+setopt pipefail
+
+# run is baked in below — strip if caller passes it redundantly (e.g. ocys run "prompt")
+[[ $1 == run ]] && { print -P "%F{yellow}[ocys]%f stripping redundant 'run' (already baked in)"; shift; }
+
+OPENCODE_CONFIG_CONTENT='{"permission":{"bash":{"*":"allow"},"external_directory":"allow"}}' \
+  opencode run --format json "$@" 2>/dev/null \
+  | jq --unbuffered -r '
+    if .type == "text" then
+      "▶ " + .part.text
+    elif .type == "tool_use" then
+      if .part.state.status == "completed" then
+        "⚙ " + .part.tool + " — " + (.part.state.input.description // .part.state.input.command // "?" | .[:120])
+      else empty end
+    elif .type == "step_finish" then
+      "✓ step (" + (.part.tokens.total | tostring) + " tok, $" + (.part.cost | tostring | .[:6]) + ")"
+    else empty end
+  '
