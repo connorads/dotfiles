@@ -272,6 +272,59 @@ SCRIPT
   ! kill -0 "$orphan_pid" 2>/dev/null
 }
 
+@test "timeout kills stuck iteration and moves to next" {
+  local helper="$BATS_TEST_TMPDIR/stuck_cmd.sh"
+  local output_file="$BATS_TEST_TMPDIR/rl.out"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+if [ "$n" -eq 1 ]; then
+  sleep 300  # first iteration hangs
+else
+  exit 0     # second iteration succeeds
+fi
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/timeout_count"
+
+  run zsh "$RL" 2 -t 2s -- "$helper"
+
+  # Both iterations should have run (timeout killed the first, second ran normally)
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  # Output should mention the timeout
+  [[ "$output" == *"timed out"* ]]
+}
+
+@test "timeout parses duration units (s, m, h and bare number)" {
+  local helper="$BATS_TEST_TMPDIR/fast_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+exit 0
+SCRIPT
+
+  # All of these should parse without error and run 1 iteration
+  run zsh "$RL" 1 -t 60s -- "$helper"
+  [ "$status" -eq 0 ]
+
+  run zsh "$RL" 1 -t 1m -- "$helper"
+  [ "$status" -eq 0 ]
+
+  run zsh "$RL" 1 -t 1h -- "$helper"
+  [ "$status" -eq 0 ]
+
+  run zsh "$RL" 1 -t 60 -- "$helper"
+  [ "$status" -eq 0 ]
+}
+
+@test "unknown option prints error" {
+  run zsh "$RL" --bogus -- echo hi
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unknown option"* ]]
+}
+
 @test "rl-kill skips active sessions" {
   # Use our own PID as the parent — it's alive, so not orphaned
   RL_SESSION="$$:1234567890" sleep 300 &
