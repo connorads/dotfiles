@@ -49,6 +49,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
+| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/rc`       |
 | [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
@@ -205,6 +206,8 @@ mise outdated --bump                        # available updates beyond ranges
 ```
 
 **pnpm**: global 14-day quarantine (`minimum-release-age=20160`) + trust policy (`trust-policy=no-downgrade`) in `~/.config/pnpm/rc`. Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise).
+
+**npm**: global 14-day quarantine (`min-release-age=14`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimum-release-age` in **minutes** (20160 = 14 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
 
 **uv**: global 14-day quarantine (`exclude-newer = "14 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
 
