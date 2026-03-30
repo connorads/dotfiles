@@ -136,8 +136,9 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 ## Nix Targets
 
 ```
-darwinConfigurations."Connors-Mac-mini"  # macOS via nix-darwin + home-manager
-homeConfigurations."connor@penguin"      # Chromebook Linux
+darwinConfigurations."Connors-Mac-mini"     # macOS Mac mini via nix-darwin + home-manager
+darwinConfigurations."Connors-MacBook-Air"  # macOS MacBook Air via nix-darwin + home-manager
+homeConfigurations."connor@penguin"         # Chromebook Linux
 homeConfigurations."connor@dev"          # Remote aarch64 Linux
 homeConfigurations."connor@rpi5"         # Raspberry Pi 5 (aarch64, server packages, user env only)
 homeConfigurations."codespace"           # GitHub Codespaces (minimal)
