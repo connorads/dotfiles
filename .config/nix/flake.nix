@@ -3,10 +3,11 @@
 # ==============================================================================
 #
 # Configurations:
-#   - darwinConfigurations."Connors-Mac-mini"  : macOS (nix-darwin + home-manager)
-#   - homeConfigurations."connor@penguin"      : Chromebook Linux container (x86_64)
-#   - homeConfigurations."connor@dev"          : Remote/cloud dev machine (aarch64)
-#   - homeConfigurations."codespace"           : GitHub Codespaces (minimal)
+#   - darwinConfigurations."Connors-Mac-mini"     : macOS Mac mini (nix-darwin + home-manager)
+#   - darwinConfigurations."Connors-MacBook-Air"  : macOS MacBook Air (nix-darwin + home-manager)
+#   - homeConfigurations."connor@penguin"         : Chromebook Linux container (x86_64)
+#   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (aarch64)
+#   - homeConfigurations."codespace"              : GitHub Codespaces (minimal)
 #
 # RPi5 config: github.com/connorads/rpi5 (system) + homeConfigurations."connor@rpi5" (user env)
 #
@@ -72,6 +73,20 @@
       # Helper to create packages module for a given pkgs
       mkPackages = pkgs: import ./modules/packages.nix { inherit pkgs; };
 
+      # Helper to reduce darwinConfiguration boilerplate
+      mkDarwin =
+        extraModules:
+        nix-darwin.lib.darwinSystem {
+          specialArgs = {
+            inherit self;
+            packages = mkPackages (mkPkgs "aarch64-darwin");
+          };
+          modules = [
+            ./modules/darwin.nix
+            home-manager.darwinModules.home-manager
+          ] ++ extraModules;
+        };
+
       # Helper to reduce homeConfiguration boilerplate
       mkHome =
         system: modules:
@@ -95,16 +110,8 @@
       );
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
-      darwinConfigurations."Connors-Mac-mini" = nix-darwin.lib.darwinSystem {
-        specialArgs = {
-          inherit self;
-          packages = mkPackages (mkPkgs "aarch64-darwin");
-        };
-        modules = [
-          ./modules/darwin.nix
-          home-manager.darwinModules.home-manager
-        ];
-      };
+      darwinConfigurations."Connors-Mac-mini" = mkDarwin [ ];
+      darwinConfigurations."Connors-MacBook-Air" = mkDarwin [ ];
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
       homeConfigurations."connor@penguin" = mkHome "x86_64-linux" [
@@ -153,7 +160,8 @@
       # without a full rebuild: nix flake check --flake ~/.config/nix
       checks = {
         aarch64-darwin = {
-          darwin = self.darwinConfigurations."Connors-Mac-mini".system;
+          darwin-mini = self.darwinConfigurations."Connors-Mac-mini".system;
+          darwin-air = self.darwinConfigurations."Connors-MacBook-Air".system;
         };
         x86_64-linux = {
           penguin = self.homeConfigurations."connor@penguin".activationPackage;

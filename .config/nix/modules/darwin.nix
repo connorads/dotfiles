@@ -198,7 +198,7 @@
     # Ports: Next.js/React (3000-3003), Astro (4321), Vite (5173), Wrangler (8787)
     #
     # Blocked interfaces: en0 (Ethernet), en1 (WiFi/secondary)
-    # Mac Mini has multiple en* interfaces - add more if needed
+    # macOS machines may have multiple en* interfaces - add more if needed
     dev_ports = "{ 3000, 3001, 3002, 3003, 4321, 5173, 8787 }"
     block return in on en0 proto tcp from any to any port $dev_ports
     block return in on en1 proto tcp from any to any port $dev_ports
