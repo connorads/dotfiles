@@ -77,6 +77,8 @@ install_tools() {
 		curl -fsSL https://mise.run | sh
 		export PATH="$HOME/.local/bin:$PATH"
 	fi
+	mise install node bun 2>&1 | grep -vF 'npm may be required'
+	eval "$(mise activate bash --shims)"
 	mise install
 
 	if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
@@ -106,7 +108,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	# Install Nix (via DetSys installer, vanilla Nix — not Determinate Nix)
 	if ! command -v nix &>/dev/null; then
 		echo "Installing Nix..."
-		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false --no-confirm
+		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm --prefer-upstream-nix
 		if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
 			. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 		fi
@@ -115,13 +117,22 @@ if [ "$(uname -s)" = "Darwin" ]; then
 		echo "Nix already installed"
 	fi
 
+	# Install Homebrew (required by nix-darwin homebrew module)
+	if ! command -v brew &>/dev/null && [ ! -x /opt/homebrew/bin/brew ]; then
+		echo "Installing Homebrew..."
+		NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	fi
+	eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)" || true
+
 	# Bootstrap nix-darwin (first run) or rebuild (subsequent runs)
+	# --flake path is resolved before darwin-rebuild resets $HOME
+	# PATH is preserved so activation can find brew
 	if command -v darwin-rebuild &>/dev/null; then
 		echo "Running darwin-rebuild switch..."
-		darwin-rebuild switch --flake ~/.config/nix
+		sudo --preserve-env=PATH darwin-rebuild switch --flake "$HOME/.config/nix" || true
 	else
 		echo "Bootstrapping nix-darwin..."
-		sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
+		sudo --preserve-env=PATH nix run nix-darwin/master#darwin-rebuild -- switch --flake "$HOME/.config/nix" || true
 	fi
 
 	install_tools
@@ -194,7 +205,7 @@ EOF
 			printf '%s\n' "sandbox = false" >>"$HOME/.config/nix/nix.conf"
 		fi
 	else
-		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false --no-confirm
+		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm --prefer-upstream-nix
 	fi
 
 	# Source nix for this session (best-effort across install modes)
