@@ -103,10 +103,10 @@ if [ "$(uname -s)" = "Darwin" ]; then
 
 	clone_dotfiles
 
-	# Install Nix (Determinate Systems)
+	# Install Nix (via DetSys installer, vanilla Nix — not Determinate Nix)
 	if ! command -v nix &>/dev/null; then
 		echo "Installing Nix..."
-		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false --no-confirm
 		if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
 			. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 		fi
@@ -194,7 +194,7 @@ EOF
 			printf '%s\n' "sandbox = false" >>"$HOME/.config/nix/nix.conf"
 		fi
 	else
-		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false --no-confirm
 	fi
 
 	# Source nix for this session (best-effort across install modes)

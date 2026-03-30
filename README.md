@@ -160,7 +160,7 @@ If you want to follow the manual path (or fork this repo), use this.
     git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" branch --set-upstream-to="origin/$CURRENT_BRANCH" "$CURRENT_BRANCH"
     ```
 
-5. Set up nix, brew and install software (⚠️ skip the option to install Determinate Nix)
+5. Set up nix, brew and install software
 
     **macOS (nix-darwin):**
 
@@ -169,8 +169,8 @@ If you want to follow the manual path (or fork this repo), use this.
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     eval "$(/opt/homebrew/bin/brew shellenv)"
 
-    # Install Nix
-    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    # Install Nix (vanilla, not Determinate Nix)
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
     # Build and activate nix-darwin configuration
@@ -180,8 +180,8 @@ If you want to follow the manual path (or fork this repo), use this.
     **Linux (home-manager):**
 
     ```sh
-    # Install Nix
-    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+    # Install Nix (vanilla, not Determinate Nix)
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --determinate false
     . ~/.nix-profile/etc/profile.d/nix.sh
 
     # Build and activate home-manager configuration
