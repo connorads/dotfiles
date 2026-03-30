@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dotfiles install script
-# Works on: GitHub Codespaces, Linux as root (creates connor user), Linux as regular user
+# Works on: macOS, GitHub Codespaces, Linux as root (creates connor user), Linux as regular user
 # Usage: curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 
 set -e
@@ -19,6 +19,105 @@ IN_NIXOS=false
 if [ -f /etc/NIXOS ]; then
 	IN_NIXOS=true
 	echo "Detected NixOS - Nix already installed, skipping Nix/Docker install..."
+fi
+
+# --- Clone or update dotfiles ---
+clone_dotfiles() {
+	if [ ! -d "$DOTFILES_DIR" ]; then
+		echo "Cloning dotfiles..."
+		mkdir -p "$(dirname "$DOTFILES_DIR")"
+		BOOTSTRAP_WORKTREE="$(mktemp -d "$HOME/.dotfiles-bootstrap.XXXXXX")"
+		git clone --separate-git-dir="$DOTFILES_DIR" "$DOTFILES_REPO" "$BOOTSTRAP_WORKTREE"
+		rm -rf "$BOOTSTRAP_WORKTREE"
+
+		git --git-dir="$DOTFILES_DIR/" config core.bare false
+		git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
+		git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+		git --git-dir="$DOTFILES_DIR/" fetch origin --prune
+
+		cd "$HOME"
+		# Backup any conflicting files
+		git --git-dir="$DOTFILES_DIR/" checkout 2>&1 | sed -n 's/^[[:space:]]\+//p' | while IFS= read -r file; do
+			if [ -f "$file" ]; then
+				echo "Backing up $file to $file.bak"
+				mv "$file" "$file.bak"
+			fi
+		done
+		git --git-dir="$DOTFILES_DIR/" checkout -f
+
+		current_branch="$(git --git-dir="$DOTFILES_DIR/" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+		if [ -n "$current_branch" ]; then
+			git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" branch --set-upstream-to="origin/$current_branch" "$current_branch" || true
+		fi
+	else
+		echo "Dotfiles already present, pulling latest..."
+		if [ "$(git --git-dir="$DOTFILES_DIR/" rev-parse --is-bare-repository 2>/dev/null || true)" = "true" ]; then
+			git --git-dir="$DOTFILES_DIR/" config --unset core.bare || true
+		fi
+		git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
+		git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+		git --git-dir="$DOTFILES_DIR/" fetch origin --prune || true
+
+		current_branch="$(git --git-dir="$DOTFILES_DIR/" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+		if [ -n "$current_branch" ]; then
+			git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" branch --set-upstream-to="origin/$current_branch" "$current_branch" >/dev/null 2>&1 || true
+		fi
+
+		git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" pull || true
+	fi
+
+	git --git-dir="$DOTFILES_DIR/" config core.hooksPath .hk-hooks
+}
+
+# --- Install mise and tmux plugins (shared across platforms) ---
+install_tools() {
+	export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+	if ! command -v mise &>/dev/null; then
+		echo "Installing mise..."
+		curl -fsSL https://mise.run | sh
+		export PATH="$HOME/.local/bin:$PATH"
+	fi
+	mise install
+
+	if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
+		echo "Installing TPM (tmux plugin manager)..."
+		git clone --depth 1 https://github.com/connorads/tpm "$HOME/.config/tmux/plugins/tpm"
+	fi
+	echo "Installing tmux plugins via TPM..."
+	TMUX_PLUGIN_MANAGER_PATH="$HOME/.config/tmux/plugins/" "$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
+}
+
+# --- macOS: install Nix + nix-darwin ---
+if [ "$(uname -s)" = "Darwin" ]; then
+	echo "Setting up dotfiles for macOS..."
+	clone_dotfiles
+
+	# Install Nix (Determinate Systems)
+	if ! command -v nix &>/dev/null; then
+		echo "Installing Nix..."
+		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+		if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+			. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+		fi
+		export PATH="/nix/var/nix/profiles/default/bin:$PATH"
+	else
+		echo "Nix already installed"
+	fi
+
+	# Bootstrap nix-darwin (first run) or rebuild (subsequent runs)
+	if command -v darwin-rebuild &>/dev/null; then
+		echo "Running darwin-rebuild switch..."
+		darwin-rebuild switch --flake ~/.config/nix
+	else
+		echo "Bootstrapping nix-darwin..."
+		nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
+	fi
+
+	install_tools
+
+	echo ""
+	echo "Done! Restart your shell or run: exec zsh"
+	exit 0
 fi
 
 # --- Linux as root: create user and re-run ---
@@ -48,53 +147,7 @@ fi
 
 # --- Linux as regular user ---
 echo "Setting up dotfiles for Linux..."
-
-# Clone dotfiles if not present
-if [ ! -d "$DOTFILES_DIR" ]; then
-	echo "Cloning dotfiles..."
-	mkdir -p "$(dirname "$DOTFILES_DIR")"
-	BOOTSTRAP_WORKTREE="$(mktemp -d "$HOME/.dotfiles-bootstrap.XXXXXX")"
-	git clone --separate-git-dir="$DOTFILES_DIR" "$DOTFILES_REPO" "$BOOTSTRAP_WORKTREE"
-	rm -rf "$BOOTSTRAP_WORKTREE"
-
-	git --git-dir="$DOTFILES_DIR/" config core.bare false
-	git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
-	git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-	git --git-dir="$DOTFILES_DIR/" fetch origin --prune
-
-	cd "$HOME"
-	# Backup any conflicting files
-	git --git-dir="$DOTFILES_DIR/" checkout 2>&1 | sed -n 's/^[[:space:]]\+//p' | while IFS= read -r file; do
-		if [ -f "$file" ]; then
-			echo "Backing up $file to $file.bak"
-			mv "$file" "$file.bak"
-		fi
-	done
-	git --git-dir="$DOTFILES_DIR/" checkout -f
-
-	current_branch="$(git --git-dir="$DOTFILES_DIR/" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-	if [ -n "$current_branch" ]; then
-		git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" branch --set-upstream-to="origin/$current_branch" "$current_branch" || true
-	fi
-else
-	echo "Dotfiles already present, pulling latest..."
-	if [ "$(git --git-dir="$DOTFILES_DIR/" rev-parse --is-bare-repository 2>/dev/null || true)" = "true" ]; then
-		git --git-dir="$DOTFILES_DIR/" config --unset core.bare || true
-	fi
-	git --git-dir="$DOTFILES_DIR/" config core.worktree "$HOME"
-	git --git-dir="$DOTFILES_DIR/" config --replace-all remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-	git --git-dir="$DOTFILES_DIR/" fetch origin --prune || true
-
-	current_branch="$(git --git-dir="$DOTFILES_DIR/" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-	if [ -n "$current_branch" ]; then
-		git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" branch --set-upstream-to="origin/$current_branch" "$current_branch" >/dev/null 2>&1 || true
-	fi
-
-	git --git-dir="$DOTFILES_DIR/" --work-tree="$HOME" pull || true
-fi
-
-# Use tracked hooks in ~/.hk-hooks
-git --git-dir="$DOTFILES_DIR/" config core.hooksPath .hk-hooks
+clone_dotfiles
 
 # Install Nix if not present (skip on NixOS - already has Nix)
 if [ "$IN_NIXOS" = "true" ]; then
@@ -520,21 +573,13 @@ else
 		fi
 	fi
 
-	echo "Installing tools via mise..."
-	export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
-
-	if ! command -v mise &>/dev/null; then
-		echo "Installing mise..."
-		curl -fsSL https://mise.run | sh
-		export PATH="$HOME/.local/bin:$PATH"
-	fi
-
 	if [ "$IN_CODESPACES" = "true" ]; then
 		export MISE_ENV=codespaces
 		echo "mise: env=codespaces"
 	fi
 
-	mise install
+	export PATH="/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/per-user/$USER/profile/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$USER/bin:$PATH"
+	install_tools
 fi
 
 # Install browser binaries for Playwright and agent-browser (if available via mise)
@@ -547,15 +592,6 @@ if command -v agent-browser &>/dev/null; then
 	echo "Installing agent-browser browsers..."
 	agent-browser install --with-deps
 fi
-
-# Install TPM (tmux plugin manager) and plugins
-if [ ! -d "$HOME/.config/tmux/plugins/tpm" ]; then
-	echo "Installing TPM (tmux plugin manager)..."
-	git clone --depth 1 https://github.com/connorads/tpm "$HOME/.config/tmux/plugins/tpm"
-fi
-
-echo "Installing tmux plugins via TPM..."
-TMUX_PLUGIN_MANAGER_PATH="$HOME/.config/tmux/plugins/" "$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
 
 # Set zsh as default shell
 ZSH_PATH="$HOME/.nix-profile/bin/zsh"
