@@ -4,8 +4,8 @@ npm.package_manager = "bun"
 # Prefer prebuilt binaries; compile-from-source fails on NixOS (no FHS toolchain)
 node.compile = false
 python.compile = false
-# Supply chain security: only install versions released 14+ days ago
-install_before = "14d"
+# Supply chain security: only install versions released 4+ days ago
+install_before = "4d"
 github_attestations = true
 slsa = true
 
