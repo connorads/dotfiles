@@ -90,6 +90,17 @@ install_tools() {
 # --- macOS: install Nix + nix-darwin ---
 if [ "$(uname -s)" = "Darwin" ]; then
 	echo "Setting up dotfiles for macOS..."
+
+	# Install Xcode Command Line Tools (needed for git, clang, etc.)
+	if ! xcode-select -p &>/dev/null; then
+		echo "Installing Xcode Command Line Tools..."
+		xcode-select --install
+		echo "Waiting for Xcode CLT installation to complete..."
+		until xcode-select -p &>/dev/null; do
+			sleep 5
+		done
+	fi
+
 	clone_dotfiles
 
 	# Install Nix (Determinate Systems)
@@ -110,7 +121,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
 		darwin-rebuild switch --flake ~/.config/nix
 	else
 		echo "Bootstrapping nix-darwin..."
-		nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
+		sudo nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
 	fi
 
 	install_tools
