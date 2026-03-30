@@ -191,26 +191,26 @@ rtk-shims clean        # Remove all shims and the directory
 
 ## Supply Chain & Update Strategy
 
-Mise tools use a **14-day quarantine** (`install_before = "14d"`) — only versions released 14+ days ago are installed. This gives the community time to catch compromised releases (the Trivy hack was caught within days). GitHub attestation and SLSA provenance verification are also enabled.
+Mise tools use a **4-day quarantine** (`install_before = "4d"`) — only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
 
 **Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine in `up`.
 
-**How `up` works**: upgrades mise tools within ranges (14-day quarantine), exempts Claude (always latest), updates brew/apt, optionally updates nix flake lock, rebuilds. `-s` skips nix flake update.
+**How `up` works**: upgrades mise tools within ranges (4-day quarantine), exempts Claude (always latest), updates brew/apt, optionally updates nix flake lock, rebuilds. `-s` skips nix flake update.
 
 ```bash
 up                                          # full update (quarantined mise + brew/apt + nix + rebuild)
 up -s                                       # skip nix flake update
-mise upgrade --bump [tool]                  # cross version boundaries (still 14-day quarantine)
+mise upgrade --bump [tool]                  # cross version boundaries (still 4-day quarantine)
 mise upgrade --bump --before 0d [tool]      # skip quarantine for urgent updates
 mise outdated                               # available updates within ranges
 mise outdated --bump                        # available updates beyond ranges
 ```
 
-**pnpm**: global 14-day quarantine (`minimum-release-age=20160`) + trust policy (`trust-policy=no-downgrade`) in `~/.config/pnpm/rc`. Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise).
+**pnpm**: global 4-day quarantine (`minimum-release-age=5760`) + trust policy (`trust-policy=no-downgrade`) in `~/.config/pnpm/rc`. Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise).
 
-**npm**: global 14-day quarantine (`min-release-age=14`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimum-release-age` in **minutes** (20160 = 14 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
+**npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimum-release-age` in **minutes** (5760 = 4 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
 
-**uv**: global 14-day quarantine (`exclude-newer = "14 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
+**uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
 
 **No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
 
