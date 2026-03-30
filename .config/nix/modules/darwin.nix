@@ -146,6 +146,18 @@
         };
       };
 
+      # Keyboard: British - PC layout (ID 250)
+      "com.apple.HIToolbox" = {
+        AppleCurrentKeyboardLayoutInputSourceID = "com.apple.keylayout.British-PC";
+        AppleEnabledInputSources = [
+          {
+            InputSourceKind = "Keyboard Layout";
+            "KeyboardLayout ID" = 250;
+            "KeyboardLayout Name" = "British-PC";
+          }
+        ];
+      };
+
       # Finder > Settings > Advanced > "Remove items from the Trash after 30 days"
       "com.apple.finder" = {
         FXRemoveOldTrashItems = true;
