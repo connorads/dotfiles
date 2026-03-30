@@ -110,7 +110,9 @@
       );
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
-      darwinConfigurations."Connors-Mac-mini" = mkDarwin [ ];
+      darwinConfigurations."Connors-Mac-mini" = mkDarwin [
+        { homebrew.casks = [ "logitech-camera-settings" "wacom-tablet" ]; }
+      ];
       darwinConfigurations."Connors-MacBook-Air" = mkDarwin [ ];
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)

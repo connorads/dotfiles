@@ -86,10 +86,7 @@
       "slack"
       "linear-linear"
 
-      # Hardware
       "blackhole-16ch"
-      "logitech-camera-settings"
-      "wacom-tablet"
     ];
     masApps = {
       RunCat = 1429033973;
@@ -337,6 +334,7 @@
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
+    backupFileExtension = "bak";
     users.connorads =
       { lib, ... }:
       {
