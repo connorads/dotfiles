@@ -104,7 +104,8 @@
       persistent-apps = [
         "/Applications/kitty.app"
         "/Applications/Google Chrome.app"
-        "/Applications/Steam.app"
+        # Steam self-updates into ~/Library/Application Support/Steam/Steam.AppBundle,
+        # which can appear as a separate running app in the Dock.
         "/Applications/Sublime Text.app"
       ];
     };
