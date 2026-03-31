@@ -104,9 +104,7 @@
       persistent-apps = [
         "/Applications/kitty.app"
         "/Applications/Google Chrome.app"
-        "/Applications/Visual Studio Code.app"
         "/Applications/Steam.app"
-        "/Applications/Sublime Merge.app"
         "/Applications/Sublime Text.app"
       ];
     };
