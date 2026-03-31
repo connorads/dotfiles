@@ -6,7 +6,7 @@ STABLE="$HOME/.ssh/agent.sock"
 best=""
 best_mtime=0
 
-for sock in /tmp/ssh-*/agent.* "$HOME"/.ssh/agent/s.*; do
+for sock in /tmp/ssh-*/agent.* "$HOME"/.ssh/agent/s.* "$HOME"/.bitwarden-ssh-agent.sock; do
   [ -S "$sock" ] || continue
   # skip the stable symlink itself
   [ "$sock" = "$STABLE" ] && continue
