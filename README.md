@@ -254,7 +254,18 @@ This section is for anyone who wants to build their own dotfiles repo using the 
 
 ### Setup YubiKey for `sudo`
 
-macOS let's you use Touch ID for `sudo` but dem keyboards be expensive. Maybe you gots a YubiKey, this is how you set it up so you can touch your YubiKey instead of typing your password. The `sudo`/`pam` config is taken care of in [`flake.nix`](.config/nix/flake.nix).
+macOS `sudo` auth is configured in [`darwin.nix`](.config/nix/modules/darwin.nix):
+
+- Touch ID is enabled for both Macs
+- `pam_reattach` is enabled so Touch ID works inside `tmux`
+- `pam_u2f` remains in the sudo PAM stack for YubiKey auth
+
+In practice:
+
+- MacBook Air uses Touch ID first, with YubiKey as fallback
+- Mac mini falls through to YubiKey unless it has a Touch ID-capable keyboard
+
+The YubiKey mapping file is local per machine and is not tracked in dotfiles:
 
 ```sh
 mkdir ~/.config/Yubico

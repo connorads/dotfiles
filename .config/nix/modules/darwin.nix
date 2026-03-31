@@ -229,11 +229,17 @@
   };
 
   # -- PAM / sudo authentication --
-  # TouchID and YubiKey for sudo
-  environment.etc."pam.d/sudo_local".text = ''
-    auth sufficient pam_tid.so
-    auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
-  '';
+  # Shared sudo PAM stack for both Macs:
+  # - Air uses Touch ID now
+  # - Mini falls through to YubiKey until it has Touch ID hardware
+  security.pam.services.sudo_local = {
+    enable = true;
+    touchIdAuth = true;
+    reattach = true;
+    text = ''
+      auth       sufficient     ${pkgs.pam_u2f}/lib/security/pam_u2f.so cue
+    '';
+  };
 
   # -- Nix Settings --
   nix.settings.experimental-features = "nix-command flakes";
