@@ -16,6 +16,7 @@ Usage:
   tsp ls [--json]
   tsp up [--public|-p] [--apex|-a] [--https PORT] [LOCAL_PORT]
   tsp down [HTTPS_PORT] [--yes]
+  tsp down --all [--except PORTS] [--yes]
   tsp prune [--yes] [--dry-run]
 
 Examples:
@@ -24,6 +25,8 @@ Examples:
   tsp up --public 4321
   tsp up --apex 7681
   tsp down 3000
+  tsp down --all --except 443
+  tsp down --all --except 443,8000
   tsp prune --dry-run
 EOF
 }
@@ -385,10 +388,19 @@ _tsp_up() {
 _tsp_down() {
   _tsp_need_cmds ts jq || return 1
 
-  local assume_yes=0 https_port=""
+  local assume_yes=0 all=0 https_port="" except_csv=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --yes|-y) assume_yes=1; shift ;;
+      --all|-a) all=1; shift ;;
+      --except|-e)
+        if [[ -z "$2" ]]; then
+          print -u2 "error: --except requires a comma-separated list of ports"
+          return 1
+        fi
+        except_csv="$2"
+        shift 2
+        ;;
       -h|--help)
         _tsp_usage
         return 0
@@ -405,12 +417,66 @@ _tsp_down() {
     esac
   done
 
+  if [[ -n "$except_csv" ]] && (( ! all )); then
+    print -u2 "error: --except requires --all"
+    return 1
+  fi
+
   _tsp_load_listeners
   _tsp_load_served || return 1
 
   if [[ ${#TSP_SERVE_EPORTS[@]} -eq 0 ]]; then
     echo "no active serve routes"
     return 0
+  fi
+
+  if (( all )); then
+    local -A except_set
+    if [[ -n "$except_csv" ]]; then
+      local p
+      for p in ${(s:,:)except_csv}; do
+        if ! _tsp_port_valid "$p"; then
+          print -u2 "error: invalid port in --except: $p"
+          return 1
+        fi
+        except_set[$p]=1
+      done
+    fi
+
+    local -a targets
+    local ep
+    for ep in "${TSP_SERVE_EPORTS[@]}"; do
+      [[ -n "${except_set[$ep]}" ]] && continue
+      targets+=("$ep")
+    done
+
+    if [[ ${#targets[@]} -eq 0 ]]; then
+      echo "no routes to remove (all excluded)"
+      return 0
+    fi
+
+    if (( ! assume_yes )); then
+      echo "will remove:"
+      for ep in "${targets[@]}"; do
+        echo "  :$ep -> ${TSP_SERVE_PROXY[$ep]}"
+      done
+      _tsp_confirm "Remove ${#targets[@]} route(s)?" || return 1
+    fi
+
+    local removed=0 failed=0
+    for ep in "${targets[@]}"; do
+      if _tsp_down_internal "$ep" >/dev/null 2>&1; then
+        echo "removed :$ep -> ${TSP_SERVE_PROXY[$ep]}"
+        (( removed++ ))
+      else
+        print -u2 "failed to remove :$ep"
+        (( failed++ ))
+      fi
+    done
+
+    echo "done: removed $removed, failed $failed"
+    (( failed == 0 ))
+    return
   fi
 
   if [[ -z "$https_port" ]]; then
