@@ -257,6 +257,23 @@ tsp down [https-port]        # Tear down a served port
 tsp prune --dry-run          # Preview stale served routes
 ```
 
+### Local dev servers
+
+When writing or updating scripts that start local dev servers, bind them explicitly to loopback instead of relying on tool defaults.
+
+- Prefer `127.0.0.1` / `localhost`, not `0.0.0.0`
+- Many tools default to all interfaces (`0.0.0.0`), which can make the dev server itself bind the Tailscale interface and appear to collide with a port already served via Tailscale
+- Tailscale exposure is still fine, and usually desired here. Bind the app to loopback first, then expose that local port via `tsp` / `svc`
+- This keeps one owner per socket: the app owns `127.0.0.1:PORT`, Tailscale Serve owns the Tailnet-facing listener for that port
+
+Examples:
+
+```bash
+next dev -H 127.0.0.1
+storybook dev --host 127.0.0.1
+http-server -a 127.0.0.1
+```
+
 ### Serve port registry
 
 Each service uses a dedicated external HTTPS port so multiple services can coexist:
