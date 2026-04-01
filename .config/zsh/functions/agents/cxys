@@ -4,20 +4,48 @@
 emulate -L zsh
 setopt pipefail
 
+source "${0:A:h}/agent-stream-colours"
+agent_stream_setup_colours
+
 # exec is baked in below — strip if caller passes it redundantly (e.g. cxys exec "prompt")
 [[ $1 == exec ]] && { print -P "%F{yellow}[cxys]%f stripping redundant 'exec' (already baked in)"; shift; }
 
-codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null \
-  | jq --unbuffered -r '
+codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null   | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
+    def paint($colour; $text): $colour + $text + $c_reset;
+    def bucket($command):
+      ($command // "") as $cmd
+      | if $cmd == "" then "shell"
+        elif $cmd | test("^(rg|sed|cat|less|head|tail|ls|find|fd|tree|wc|sort|uniq|cut|awk|jq|git (status|diff|show|log)\b|dotfiles status\b)") then "read"
+        elif $cmd | test("^(git\b|dotfiles\b)") then "git"
+        elif $cmd | test("^(mise\b|hk\b|bats\b|npm (test|run\b)|pnpm (test|run\b)|bun (test|run\b)|cargo (test|check|build|clippy)\b|pytest\b|uv run\b|nix\b)") then "test"
+        elif $cmd | test("^(gh\b|curl\b|wget\b|http\b|exa\b)") then "web"
+        elif $cmd | test("^(apply_patch|mv\b|cp\b|rm\b|touch\b|mkdir\b|chmod\b|chown\b|perl -0pi\b|python .*write|shfmt\b|prettier\b|eslint .*--fix\b|sed -i\b)") then "write"
+        else "shell"
+        end;
+    def bucket_colour($bucket):
+      if $bucket == "read" then $c_read
+      elif $bucket == "git" then $c_agent
+      elif $bucket == "test" then $c_success
+      elif $bucket == "web" then $c_web
+      elif $bucket == "write" then $c_write
+      else $c_shell
+      end;
+    def command_line($command; $suffix):
+      bucket($command) as $bucket
+      | paint(bucket_colour($bucket); "⚙ " + ($command // "cmd"))
+      + paint($c_dim; $suffix);
+
     if .type == "item.completed" then
       .item
-      | if .type == "agent_message" then "▶ " + .text
-        elif .type == "command_execution" then "⚙ " + (.command // "cmd") + " (exit " + (.exit_code | tostring) + ")"
-        elif .type == "error" then "⚠ " + .message
+      | if .type == "agent_message" then paint($c_assistant; "▶ " + .text)
+        elif .type == "command_execution" then
+          command_line(.command; " ")
+          + paint(if (.exit_code // 1) == 0 then $c_success else $c_error end; "(exit " + (.exit_code | tostring) + ")")
+        elif .type == "error" then paint($c_error; "⚠ " + .message)
         else empty end
     elif .type == "item.started" and .item.type == "command_execution" then
-      "⚙ " + (.item.command // "cmd") + " …"
+      command_line(.item.command; " …")
     elif .type == "turn.completed" then
-      "✓ turn done"
+      paint($c_success; "✓ turn done")
     else empty end
   '

@@ -3,19 +3,31 @@
 emulate -L zsh
 setopt pipefail
 
+source "${0:A:h}/agent-stream-colours"
+agent_stream_setup_colours
+
 # run is baked in below — strip if caller passes it redundantly (e.g. ocys run "prompt")
 [[ $1 == run ]] && { print -P "%F{yellow}[ocys]%f stripping redundant 'run' (already baked in)"; shift; }
 
-OPENCODE_CONFIG_CONTENT='{"permission":{"bash":{"*":"allow"},"external_directory":"allow"}}' \
-  opencode run --format json "$@" 2>/dev/null \
-  | jq --unbuffered -r '
+OPENCODE_CONFIG_CONTENT='{"permission":{"bash":{"*":"allow"},"external_directory":"allow"}}'   opencode run --format json "$@" 2>/dev/null   | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
+    def paint($colour; $text): $colour + $text + $c_reset;
+    def tool_colour($name):
+      if ($name // "") | test("^(read|glob|grep|ls|task)"; "i") then $c_read
+      elif ($name // "") | test("^(edit|write|patch)"; "i") then $c_write
+      elif ($name // "") | test("^(web|fetch|search)"; "i") then $c_web
+      elif ($name // "") | test("^(bash|shell|command)"; "i") then $c_shell
+      else $c_agent
+      end;
+
     if .type == "text" then
-      "▶ " + .part.text
+      paint($c_assistant; "▶ " + .part.text)
     elif .type == "tool_use" then
       if .part.state.status == "completed" then
-        "⚙ " + .part.tool + " — " + (.part.state.input.description // .part.state.input.command // "?" | .[:120])
+        paint(tool_colour(.part.tool); "⚙ " + .part.tool)
+        + paint($c_dim; " — " + ((.part.state.input.description // .part.state.input.command // "?")[:120]))
       else empty end
     elif .type == "step_finish" then
-      "✓ step (" + (.part.tokens.total | tostring) + " tok, $" + (.part.cost | tostring | .[:6]) + ")"
+      paint($c_success; "✓ step")
+      + paint($c_dim; " (" + (.part.tokens.total | tostring) + " tok, $" + ((.part.cost | tostring)[:6]) + ")")
     else empty end
   '
