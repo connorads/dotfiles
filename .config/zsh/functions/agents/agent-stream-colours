@@ -1,0 +1,51 @@
+# agent-stream-colours: shared ANSI palette for agent stream wrappers
+
+agent_stream_setup_colours() {
+  emulate -L zsh
+
+  local enable=0
+  if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+    enable=1
+  fi
+
+  local reset=""
+  local dim=""
+  local assistant=""
+  local read=""
+  local shell=""
+  local write=""
+  local web=""
+  local agent=""
+  local success=""
+  local warning=""
+  local error=""
+
+  if (( enable )); then
+    local esc=$'\033['
+    reset="${esc}0m"
+    dim="${esc}2m"
+    assistant="${esc}38;5;45m"
+    read="${esc}38;5;111m"
+    shell="${esc}38;5;214m"
+    write="${esc}38;5;203m"
+    web="${esc}38;5;141m"
+    agent="${esc}38;5;78m"
+    success="${esc}38;5;70m"
+    warning="${esc}38;5;220m"
+    error="${esc}38;5;196m"
+  fi
+
+  typeset -ga AGENT_STREAM_JQ_ARGS=(
+    --arg c_reset "$reset"
+    --arg c_dim "$dim"
+    --arg c_assistant "$assistant"
+    --arg c_read "$read"
+    --arg c_shell "$shell"
+    --arg c_write "$write"
+    --arg c_web "$web"
+    --arg c_agent "$agent"
+    --arg c_success "$success"
+    --arg c_warning "$warning"
+    --arg c_error "$error"
+  )
+}

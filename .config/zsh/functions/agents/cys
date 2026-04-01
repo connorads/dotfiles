@@ -3,17 +3,31 @@
 emulate -L zsh
 setopt pipefail
 
+source "${0:A:h}/agent-stream-colours"
+agent_stream_setup_colours
+
 # -p is baked in below — strip if caller passes it redundantly (e.g. cys -p "prompt")
 [[ $1 == -p ]] && { print -P "%F{yellow}[cys]%f stripping redundant '-p' (already baked in)"; shift; }
 
-claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null \
-  | jq --unbuffered -r '
+claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null   | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
+    def paint($colour; $text): $colour + $text + $c_reset;
+    def tool_colour($name):
+      if ($name // "") | test("^(Read|Glob|Grep|LS|Task)$") then $c_read
+      elif ($name // "") | test("^(Edit|MultiEdit|Write|NotebookEdit)$") then $c_write
+      elif ($name // "") | test("^(Web|WebFetch|Fetch|Search)$") then $c_web
+      elif ($name // "") | test("^(Bash)$") then $c_shell
+      else $c_agent
+      end;
+
     if .type == "assistant" then
       .message.content[]
-      | if .type == "text" then "▶ " + .text
-        elif .type == "tool_use" then "⚙ " + .name + " — " + (.input | tostring | .[:120])
+      | if .type == "text" then paint($c_assistant; "▶ " + .text)
+        elif .type == "tool_use" then
+          paint(tool_colour(.name); "⚙ " + .name)
+          + paint($c_dim; " — " + ((.input | tostring)[:120]))
         else empty end
     elif .type == "result" then
-      "✓ done (" + (.duration_ms / 1000 | tostring | .[:5]) + "s, $" + (.total_cost_usd | tostring | .[:6]) + ")"
+      paint($c_success; "✓ done")
+      + paint($c_dim; " (" + ((.duration_ms / 1000 | tostring)[:5]) + "s, $" + ((.total_cost_usd | tostring)[:6]) + ")")
     else empty end
   '
