@@ -85,6 +85,7 @@
       "knockknock"
       "slack"
       "linear-linear"
+      "miro"
 
       "blackhole-16ch"
     ];
