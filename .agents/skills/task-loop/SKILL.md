@@ -72,6 +72,10 @@ has the complete protocol. Built from the core protocol template
 
 - **File paths** — point to this directory's loop-state.md, run-log.md,
   and backlog.md
+- **Loop completion token** — emit `__PROMISE_RL_DONE__` as a standalone
+  final line when no unchecked tasks remain so the default `rl`
+  promise-token handling can stop cleanly. This is the Ralph-loop
+  “completion promise” expressed as a plain token.
 - **Verification rules** — extracted from the backlog's global and
   per-task verification patterns. Reference external docs if the backlog
   mentions them
@@ -121,6 +125,7 @@ Every generated PROMPT.md has these sections:
    files before doing anything else:" followed by the three file paths
 3. **Protocol** — the state machine:
    - No state file or status `done` → append run-log entry, pick next task
+   - No unchecked tasks remain → emit `__PROMISE_RL_DONE__` and exit
    - Status `in_progress` or `verifying` → resume from checklist
    - Status `blocked` → log blocker, skip to next task
 4. **Verification** — rules adapted from the backlog, referencing

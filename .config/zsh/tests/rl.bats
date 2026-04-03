@@ -79,6 +79,155 @@ SCRIPT
   [[ "$output" == *"exit 42"* ]]
 }
 
+@test "promise token stops loop after successful iteration" {
+  local helper="$BATS_TEST_TMPDIR/promise_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "__PROMISE_RL_DONE__"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-count"
+
+  run zsh "$RL" 5 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 1 ]
+  [[ "$output" == *"promise token seen"* ]]
+}
+
+@test "promise token is detected through ANSI colour codes" {
+  local helper="$BATS_TEST_TMPDIR/promise_ansi_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+printf '\033[32m__PROMISE_RL_DONE__\033[0m\n'
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-ansi-count"
+
+  run zsh "$RL" 5 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 1 ]
+}
+
+@test "promise mode allocates a tty for interactive children" {
+  local helper="$BATS_TEST_TMPDIR/promise_tty_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ -t 1 ]]; then
+  echo "tty"
+else
+  echo "notty"
+fi
+echo "__PROMISE_RL_DONE__"
+SCRIPT
+
+  run_in_tty "env PATH=\"$PATH\" zsh --no-rcs \"$RL\" 2 -- \"$helper\""
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"tty"* ]]
+  [[ "$output" != *"notty"* ]]
+  [[ "$output" == *"promise token seen"* ]]
+}
+
+@test "promise mode preserves ANSI output in a tty" {
+  local helper="$BATS_TEST_TMPDIR/promise_tty_ansi_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+printf '\033[31mred\033[0m\n'
+echo "__PROMISE_RL_DONE__"
+SCRIPT
+
+  run_in_tty "env PATH=\"$PATH\" zsh --no-rcs \"$RL\" 2 -- \"$helper\""
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'\033[31mred\033[0m'* ]]
+}
+
+@test "promise mode falls back to non-tty behaviour when stdout is not a tty" {
+  local helper="$BATS_TEST_TMPDIR/promise_notty_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ -t 1 ]]; then
+  echo "tty"
+else
+  echo "notty"
+fi
+echo "__PROMISE_RL_DONE__"
+SCRIPT
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"notty"* ]]
+  [[ "$output" != *$'\n'"tty"$'\n'* ]]
+}
+
+@test "promise token is ignored on non-zero exit" {
+  local helper="$BATS_TEST_TMPDIR/promise_fail_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "__PROMISE_RL_DONE__"
+if [ "$n" -eq 1 ]; then
+  exit 7
+fi
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-fail-count"
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" != *"promise token seen; stopping after iteration 1"* ]]
+}
+
+@test "custom promise token overrides the default" {
+  local helper="$BATS_TEST_TMPDIR/promise_custom_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "__CUSTOM_DONE__"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-custom-count"
+
+  run zsh "$RL" 5 --promise-token __CUSTOM_DONE__ -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 1 ]
+}
+
+@test "no-promise-token disables default early stop" {
+  local helper="$BATS_TEST_TMPDIR/promise_disabled_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "__PROMISE_RL_DONE__"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-disabled-count"
+
+  run zsh "$RL" 2 --no-promise-token -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" != *"promise token seen"* ]]
+}
+
 @test "double SIGINT force-stops the whole iteration tree" {
   local helper="$BATS_TEST_TMPDIR/tree_cmd.sh"
   local output_file="$BATS_TEST_TMPDIR/rl.out"

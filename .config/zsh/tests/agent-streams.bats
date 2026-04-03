@@ -7,6 +7,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 CYS="$FUNCTIONS_DIR/agents/cys"
 CXYS="$FUNCTIONS_DIR/agents/cxys"
 OCYS="$FUNCTIONS_DIR/agents/ocys"
+RL="$FUNCTIONS_DIR/agents/rl"
 
 setup() {
   setup_test_home
@@ -79,6 +80,32 @@ EOS
   [[ "$output" == *$'\033[38;5;203m⚙ apply_patch fix\033[0m'* ]]
   [[ "$output" == *$'\033[38;5;196m(exit 1)\033[0m'* ]]
   [[ "$output" == *$'\033[38;5;196m⚠ bad news\033[0m'* ]]
+}
+
+@test "rl promise mode preserves cys colours in a TTY" {
+  run_in_tty "env -u NO_COLOR PATH=\"$PATH\" zsh --no-rcs \"$RL\" 1 -- \"$CYS\" prompt"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'\033[38;5;45m▶ hello\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;111m⚙ Read\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;70m✓ done\033[0m'* ]]
+}
+
+@test "rl promise mode preserves cxys colours in a TTY" {
+  run_in_tty "env -u NO_COLOR PATH=\"$PATH\" zsh --no-rcs \"$RL\" 1 -- \"$CXYS\" prompt"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'\033[38;5;111m⚙ rg foo .\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;203m⚙ apply_patch fix\033[0m'* ]]
+}
+
+@test "rl promise mode still honours NO_COLOR" {
+  run_in_tty "env PATH=\"$PATH\" NO_COLOR=1 zsh --no-rcs \"$RL\" 1 -- \"$CYS\" prompt"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"▶ hello"* ]]
+  [[ "$output" != *$'\033[38;5;45m▶ hello\033[0m'* ]]
+  [[ "$output" != *$'\033[38;5;111m⚙ Read\033[0m'* ]]
 }
 
 @test "ocys colours web and edit tool families" {
