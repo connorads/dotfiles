@@ -43,7 +43,7 @@ Usage: rl [max] [-t timeout] [--promise-token token | --no-promise-token] -- <co
 
   max       Optional max iterations (default: unlimited, Ctrl+C once to stop, twice within 2s+ to force-stop)
   -t, --timeout DURATION  Kill iteration if it exceeds DURATION (e.g. 30m, 2h, 90s, 90)
-  --promise-token TOKEN   Override the default promise token / completion promise (__PROMISE_RL_DONE__)
+  --promise-token TOKEN   Override the default promise token / completion promise (__PROMISE_RL_DONE__ on its own final line)
   --no-promise-token      Disable promise-token detection for this run
   --        Separator (required)
 
@@ -232,12 +232,21 @@ while (( max == 0 || i < max )); do
     mkfifo "$output_fifo" || return 1
     pty_supported && use_pty=1
     PROMISE_TOKEN="$promise_token" PROMISE_MARKER="$promise_marker" perl -ne '
+      our $last_nonempty;
       print $_;
       my $clean = $_;
       $clean =~ s/\e\[[0-9;?]*[ -\/]*[@-~]//g;
-      if (index($clean, $ENV{PROMISE_TOKEN}) >= 0) {
+      $clean =~ s/\r//g;
+      for my $line (split /\n/, $clean) {
+        if ($line =~ /\S/) {
+          $last_nonempty = $line;
+        }
+      }
+      END {
+        if (defined $last_nonempty && $last_nonempty eq $ENV{PROMISE_TOKEN}) {
         open my $fh, ">>", $ENV{PROMISE_MARKER} or die $!;
         close $fh;
+      }
       }
     ' < "$output_fifo" &
     output_scanner_pid=$!
