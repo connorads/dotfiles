@@ -20,6 +20,21 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
+      rebase.autosquash = true;
+      fetch.prune = true;
+      diff.algorithm = "histogram";
+      diff.colorMoved = "default";
+      merge.conflictStyle = "zdiff3";
+      rerere.enabled = true;
+      branch.sort = "-committerdate";
+      tag.sort = "-version:refname";
+      column.ui = "auto";
+      core.pager = "delta";
+      interactive.diffFilter = "delta --color-only";
+      delta.navigate = true;
+      delta.dark = true;
+      delta.line-numbers = true;
+      commit.verbose = true;
     };
   };
 
