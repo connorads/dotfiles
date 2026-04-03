@@ -1,6 +1,72 @@
 #!/usr/bin/env zsh
 # cplan: fzf pick a Claude plan and open in editor
+# Usage: cplan              — local plans → open in editor
+#        cplan <host>       — remote plans via fzf → clipboard
+#        cplan <host> <slug> — copy specific remote plan → clipboard
 emulate -L zsh
+
+local remote_host="${1:-}"
+local remote_slug="${2:-}"
+
+if [[ -n "$remote_host" ]]; then
+  # --- Remote path (returns early) ---
+
+  # Direct slug copy: cplan <host> <slug>
+  if [[ -n "$remote_slug" ]]; then
+    if [[ ! "$remote_slug" =~ ^[a-z0-9-]+$ ]]; then
+      print -u2 "Invalid slug: ${remote_slug}"
+      return 1
+    fi
+    local content
+    content=$(ssh "$remote_host" "cat ~/.claude/plans/${remote_slug}.md" 2>&1)
+    if [[ $? -ne 0 || -z "$content" ]]; then
+      print -u2 "Plan not found: ${remote_slug} (on ${remote_host})"
+      return 1
+    fi
+    printf '%s' "$content" | pbcopy
+    print "Copied: ${remote_slug} (from ${remote_host})"
+    return 0
+  fi
+
+  # Remote listing: cplan <host>
+  local listing
+  if ! listing=$(ssh "$remote_host" 'for f in ~/.claude/plans/*.md; do
+    [ -f "$f" ] || continue
+    slug=$(basename "$f" .md)
+    title=$(head -1 "$f" | sed "s/^#\\+ *//")
+    mod=$(stat --format="%Y" "$f" 2>/dev/null || stat -f "%m" "$f")
+    date=$(date -d "@$mod" "+%Y-%m-%d %H:%M" 2>/dev/null || date -r "$mod" "+%Y-%m-%d %H:%M")
+    printf "%s\t%s\t%s\t%s\n" "$mod" "$slug" "$date" "$title"
+  done | sort -t"$(printf "\t")" -k1 -rn | cut -f2-' 2>/dev/null); then
+    print -u2 "SSH failed: ${remote_host}"
+    return 1
+  fi
+  if [[ -z "$listing" ]]; then
+    print -u2 "No plans found on ${remote_host}"
+    return 1
+  fi
+
+  local selection
+  selection=$(printf '%s\n' "$listing" \
+    | fzf --prompt="Copy plan (${remote_host}): " \
+          --with-nth=2.. \
+          --delimiter=$'\t' \
+          --no-sort \
+          --preview="ssh ${remote_host} 'head -40 ~/.claude/plans/{1}.md'" \
+          --preview-window=right:50%:wrap)
+
+  [[ -z "$selection" ]] && return
+
+  local picked_slug
+  picked_slug=$(printf '%s' "$selection" | cut -f1)
+  if [[ ! "$picked_slug" =~ ^[a-z0-9-]+$ ]]; then
+    print -u2 "Invalid slug: ${picked_slug}"
+    return 1
+  fi
+  ssh "$remote_host" "cat ~/.claude/plans/${picked_slug}.md" | pbcopy
+  print "Copied: ${picked_slug} (from ${remote_host})"
+  return 0
+fi
 
 local plandir="${HOME}/.claude/plans"
 local projdir="${HOME}/.claude/projects"
