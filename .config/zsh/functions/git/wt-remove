@@ -1,0 +1,75 @@
+#!/usr/bin/env zsh
+# wt-remove: remove a managed worktree non-interactively
+# usage: wt-remove [--force] [--delete-branch] [--json] [worktree-path]
+emulate -L zsh
+_wt_common_dir="${${functions_source[wt-remove]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local force=0 delete_branch=0 json=0 worktree=""
+
+while (( $# )); do
+  case $1 in
+    -h|--help)        echo "usage: wt-remove [--force] [--delete-branch] [--json] [worktree-path]" >&2; return 0 ;;
+    --force)          force=1; shift ;;
+    --delete-branch)  delete_branch=1; shift ;;
+    --json)           json=1; shift ;;
+    -*)               echo "error: unknown flag $1" >&2; return 1 ;;
+    *)                worktree=$1; shift ;;
+  esac
+done
+
+worktree=$(_wt_current_or_arg_path "$worktree") || return 1
+
+if ! _wt_is_managed_path "$worktree"; then
+  echo "error: path must be under ~/.trees/: $worktree" >&2
+  return 1
+fi
+
+if [[ ! -d "$worktree" ]]; then
+  echo "error: worktree does not exist: $worktree" >&2
+  return 1
+fi
+
+local branch
+branch=$(git -C "$worktree" branch --show-current 2>/dev/null)
+local common_dir
+common_dir=$(git -C "$worktree" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+  echo "error: unable to resolve git common dir for worktree: $worktree" >&2
+  return 1
+}
+
+if (( ! force )); then
+  _wt_fail_if_dirty "$worktree" || return 1
+fi
+
+if (( force )); then
+  if git --git-dir="$common_dir" worktree list --porcelain 2>/dev/null | grep -Fqx "worktree $worktree"; then
+    git --git-dir="$common_dir" worktree unlock "$worktree" >/dev/null 2>&1 || true
+  fi
+  git --git-dir="$common_dir" worktree remove "$worktree" --force || return 1
+else
+  git --git-dir="$common_dir" worktree remove "$worktree" || return 1
+fi
+
+local branch_deleted=0
+if (( delete_branch )) && [[ -n "$branch" ]]; then
+  if (( force )); then
+    git --git-dir="$common_dir" branch -D "$branch" >/dev/null 2>&1 || return 1
+    branch_deleted=1
+  elif git --git-dir="$common_dir" branch -d "$branch" >/dev/null 2>&1; then
+    branch_deleted=1
+  else
+    echo "warning: branch $branch could not be safely deleted (-d failed); leaving it" >&2
+  fi
+fi
+
+if (( json )); then
+  jq -n \
+    --arg path "$worktree" \
+    --arg branch "$branch" \
+    --argjson branch_deleted "$(_wt_json_bool $branch_deleted)" \
+    '{path:$path, branch:$branch, branch_deleted:$branch_deleted}'
+else
+  echo "$worktree"
+fi

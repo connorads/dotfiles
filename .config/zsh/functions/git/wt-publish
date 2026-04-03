@@ -1,0 +1,88 @@
+#!/usr/bin/env zsh
+# wt-publish: push a worktree branch and optionally open a PR
+# usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json]
+emulate -L zsh
+_wt_common_dir="${${functions_source[wt-publish]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local remote="" base="" open_pr=0 draft=0 json=0
+
+while (( $# )); do
+  case $1 in
+    -h|--help) echo "usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json]" >&2; return 0 ;;
+    --remote)  remote=$2; shift 2 ;;
+    --base)    base=$2; shift 2 ;;
+    --pr)      open_pr=1; shift ;;
+    --draft)   draft=1; shift ;;
+    --json)    json=1; shift ;;
+    -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+  esac
+done
+
+local wt_path branch
+wt_path=$(_wt_current_path) || {
+  echo "error: not in a git repository" >&2
+  return 1
+}
+branch=$(_wt_current_branch)
+if [[ -z "$branch" ]]; then
+  echo "error: must be on a branch" >&2
+  return 1
+fi
+
+_wt_fail_if_dirty "$wt_path" || return 1
+
+remote=$(_wt_resolve_remote "$wt_path" "$remote") || {
+  echo "error: unable to resolve remote" >&2
+  return 1
+}
+
+base=$(_wt_resolve_base "$wt_path" "$base") || {
+  echo "error: unable to resolve base branch" >&2
+  return 1
+}
+
+local push_err=""
+if (( json )); then
+  push_err=$(git push --quiet --set-upstream "$remote" "$branch" 2>&1 >/dev/null) || {
+    jq -n --arg error "$push_err" '{"error":$error}' >&2
+    return 1
+  }
+else
+  git push --set-upstream "$remote" "$branch" >/dev/null || return 1
+fi
+
+local pr_url=""
+if (( open_pr )); then
+  pr_url=$(gh pr view "$branch" --json url --jq .url 2>/dev/null)
+  if [[ -z "$pr_url" ]]; then
+    if (( draft )); then
+      pr_url=$(gh pr create --base "$base" --head "$branch" --fill --draft 2>/dev/null) || return 1
+    else
+      pr_url=$(gh pr create --base "$base" --head "$branch" --fill 2>/dev/null) || return 1
+    fi
+  fi
+fi
+
+local upstream
+upstream=$(_wt_branch_upstream "$wt_path")
+
+if (( json )); then
+  jq -n \
+    --arg branch "$branch" \
+    --arg remote "$remote" \
+    --arg upstream "$upstream" \
+    --arg pr_url "$pr_url" \
+    --argjson pushed true \
+    '{
+      branch:$branch,
+      remote:$remote,
+      upstream:$upstream,
+      pushed:$pushed,
+      pr_url:(if $pr_url == "" then null else $pr_url end)
+    }'
+else
+  printf '%s\n' "$branch"
+  [[ -n "$pr_url" ]] && printf '%s\n' "$pr_url"
+fi

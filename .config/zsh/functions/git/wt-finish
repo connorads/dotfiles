@@ -1,0 +1,193 @@
+#!/usr/bin/env zsh
+# wt-finish: finish a managed worktree via local merge or PR flow
+# usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json]
+# --mode local: merge feature→base, remove worktree, delete local branch
+# --mode pr: delegate to wt-publish --pr (worktree remains for further work)
+emulate -L zsh
+_wt_common_dir="${${functions_source[wt-finish]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local mode="" base="" remote="" push_main=0 delete_remote=0 draft=0 json=0
+
+while (( $# )); do
+  case $1 in
+    -h|--help)       echo "usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json]" >&2; return 0 ;;
+    --mode)          mode=$2; shift 2 ;;
+    --base)          base=$2; shift 2 ;;
+    --remote)        remote=$2; shift 2 ;;
+    --push-main)     push_main=1; shift ;;
+    --delete-remote) delete_remote=1; shift ;;
+    --draft)         draft=1; shift ;;
+    --json)          json=1; shift ;;
+    -*)              echo "error: unknown flag $1" >&2; return 1 ;;
+  esac
+done
+
+if [[ "$mode" != local && "$mode" != pr ]]; then
+  echo "error: --mode must be local or pr" >&2
+  return 1
+fi
+
+if [[ "$mode" == pr ]]; then
+  local -a publish_args=()
+  [[ -n "$remote" ]] && publish_args+=(--remote "$remote")
+  [[ -n "$base" ]] && publish_args+=(--base "$base")
+  (( draft )) && publish_args+=(--draft)
+  publish_args+=(--pr)
+  (( json )) && publish_args+=(--json)
+  wt-publish "${publish_args[@]}"
+  return $?
+fi
+
+local wt_path branch base_wt
+wt_path=$(_wt_current_path) || {
+  echo "error: not in a git repository" >&2
+  return 1
+}
+branch=$(_wt_current_branch)
+
+if [[ -z "$branch" ]]; then
+  echo "error: must be on a branch" >&2
+  return 1
+fi
+
+if ! _wt_is_managed_path "$wt_path"; then
+  echo "error: must be run from inside a ~/.trees/ worktree" >&2
+  return 1
+fi
+
+_wt_fail_if_dirty "$wt_path" || return 1
+
+base=$(_wt_resolve_base "$wt_path" "$base") || {
+  echo "error: unable to resolve base branch" >&2
+  return 1
+}
+
+if [[ "$branch" == "$base" ]]; then
+  echo "error: must be on a feature branch, not $base" >&2
+  return 1
+fi
+
+base_wt=$(_wt_main_worktree_path "$base") || {
+  echo "error: no worktree found for $base branch" >&2
+  return 1
+}
+
+_wt_fail_if_dirty "$base_wt" || return 1
+
+if _wt_worktree_is_locked "$base_wt" "$wt_path"; then
+  git -C "$base_wt" worktree unlock "$wt_path" >/dev/null 2>&1 || {
+    echo "error: unable to unlock worktree before finish: $wt_path" >&2
+    return 1
+  }
+fi
+
+local remote_known=1
+local base_remote=""
+if [[ -n "$remote" ]]; then
+  base_remote="$remote"
+elif base_remote=$(_wt_branch_remote "$base_wt" "$base"); then
+  true
+else
+  base_remote=$(_wt_resolve_remote "$base_wt" "") || true
+fi
+
+if [[ -n "$base_remote" ]] && git -C "$base_wt" remote get-url "$base_remote" >/dev/null 2>&1; then
+  if (( json )); then
+    git -C "$base_wt" fetch --quiet "$base_remote" "$base" >/dev/null 2>&1 || true
+  else
+    echo "Fetching $base_remote/$base..." >&2
+    git -C "$base_wt" fetch "$base_remote" "$base" >/dev/null || true
+  fi
+  if git -C "$base_wt" rev-parse --verify --quiet "refs/remotes/$base_remote/$base" >/dev/null 2>&1; then
+    if git -C "$base_wt" merge-base --is-ancestor HEAD "refs/remotes/$base_remote/$base" >/dev/null 2>&1; then
+      local ff_err=""
+      if (( json )); then
+        ff_err=$(git -C "$base_wt" merge --quiet --ff-only "refs/remotes/$base_remote/$base" 2>&1 >/dev/null) || {
+          jq -n --arg error "$ff_err" '{"error":$error}' >&2
+          return 1
+        }
+      else
+        git -C "$base_wt" merge --ff-only "refs/remotes/$base_remote/$base" || return 1
+      fi
+    fi
+  fi
+fi
+
+local merge_err=""
+if (( json )); then
+  merge_err=$(git -C "$base_wt" merge --quiet --no-edit "$branch" 2>&1 >/dev/null) || {
+    jq -n --arg error "$merge_err" '{"error":$error}' >&2
+    return 1
+  }
+else
+  echo "Merging $branch into $base..." >&2
+  git -C "$base_wt" merge --no-edit "$branch" || return 1
+fi
+
+local feature_remote=""
+if [[ -n "$remote" ]]; then
+  feature_remote="$remote"
+elif feature_remote=$(_wt_branch_remote "$wt_path" "$branch"); then
+  true
+else
+  feature_remote=$(_wt_resolve_remote "$wt_path" "") || true
+fi
+
+(( json )) || echo "Removing worktree $wt_path..." >&2
+git -C "$base_wt" worktree remove "$wt_path" || return 1
+(( json )) || echo "Deleting branch $branch..." >&2
+if ! git -C "$base_wt" branch -d "$branch" >/dev/null 2>&1; then
+  echo "warning: branch $branch could not be safely deleted (-d failed); leaving it" >&2
+fi
+
+local pushed_base=0 deleted_remote_branch=0
+if (( push_main )) && [[ -n "$base_remote" ]]; then
+  (( json )) || echo "Pushing $base to $base_remote..." >&2
+  local push_err=""
+  if (( json )); then
+    push_err=$(git -C "$base_wt" push --quiet "$base_remote" "$base" 2>&1 >/dev/null) || {
+      jq -n --arg error "$push_err" '{"error":$error}' >&2
+      return 1
+    }
+  else
+    git -C "$base_wt" push "$base_remote" "$base" >/dev/null || return 1
+  fi
+  pushed_base=1
+fi
+
+if (( delete_remote )) && [[ -n "$feature_remote" ]]; then
+  if git -C "$base_wt" ls-remote --exit-code --heads "$feature_remote" "$branch" >/dev/null 2>&1; then
+    (( json )) || echo "Deleting remote branch $feature_remote/$branch..." >&2
+    local del_err=""
+    if (( json )); then
+      del_err=$(git -C "$base_wt" push --quiet "$feature_remote" --delete "$branch" 2>&1 >/dev/null) || {
+        jq -n --arg error "$del_err" '{"error":$error}' >&2
+        return 1
+      }
+    else
+      git -C "$base_wt" push "$feature_remote" --delete "$branch" >/dev/null || return 1
+    fi
+    deleted_remote_branch=1
+  fi
+fi
+
+if (( json )); then
+  jq -n \
+    --arg base "$base" \
+    --arg branch "$branch" \
+    --arg base_worktree "$base_wt" \
+    --argjson pushed_base "$(_wt_json_bool $pushed_base)" \
+    --argjson deleted_remote_branch "$(_wt_json_bool $deleted_remote_branch)" \
+    '{
+      mode:"local",
+      base:$base,
+      branch:$branch,
+      base_worktree:$base_worktree,
+      pushed_base:$pushed_base,
+      deleted_remote_branch:$deleted_remote_branch
+    }'
+else
+  printf '%s\n' "$base"
+fi
