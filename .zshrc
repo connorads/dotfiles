@@ -82,6 +82,7 @@ eval "$(atuin init zsh --disable-up-arrow)"
 # https://github.com/anthropics/claude-code
 export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
+export CLAUDE_CODE_NO_FLICKER=1
 
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
