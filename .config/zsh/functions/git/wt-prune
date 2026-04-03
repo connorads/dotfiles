@@ -1,0 +1,31 @@
+#!/usr/bin/env zsh
+# wt-prune: prune stale worktree admin entries
+# usage: wt-prune [--json]
+emulate -L zsh
+
+local json=0
+while (( $# )); do
+  case $1 in
+    -h|--help) echo "usage: wt-prune [--json]" >&2; return 0 ;;
+    --json)    json=1; shift ;;
+    -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+  esac
+done
+
+local output
+output=$(git worktree prune --verbose 2>&1)
+local exit_code=$?
+[[ $exit_code -eq 0 ]] || {
+  printf '%s\n' "$output" >&2
+  return $exit_code
+}
+
+if (( json )); then
+  printf '%s\n' "$output" | jq -R -s '
+    {
+      output: .,
+      removed: (split("\n") | map(select(startswith("Removing "))) | map(sub("^Removing "; "")))
+    }'
+else
+  printf '%s\n' "$output"
+fi

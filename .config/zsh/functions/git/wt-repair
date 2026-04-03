@@ -1,0 +1,30 @@
+#!/usr/bin/env zsh
+# wt-repair: repair moved worktree metadata
+# usage: wt-repair [--json] [path...]
+emulate -L zsh
+
+local json=0
+local -a args=()
+
+while (( $# )); do
+  case $1 in
+    -h|--help) echo "usage: wt-repair [--json] [path...]" >&2; return 0 ;;
+    --json)    json=1; shift ;;
+    -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+    *)         args+=("$1"); shift ;;
+  esac
+done
+
+local output
+output=$(git worktree repair "${args[@]}" 2>&1)
+local exit_code=$?
+[[ $exit_code -eq 0 ]] || {
+  printf '%s\n' "$output" >&2
+  return $exit_code
+}
+
+if (( json )); then
+  jq -n --arg output "$output" --argjson paths "$(printf '%s\n' "${args[@]}" | jq -R -s 'split("\n") | map(select(length > 0))')" '{output:$output, paths:$paths}'
+else
+  printf '%s\n' "$output"
+fi
