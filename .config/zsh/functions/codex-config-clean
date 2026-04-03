@@ -2,9 +2,19 @@
 # codex-config-clean: strip [projects.*] blocks from codex config.toml for clean git commits
 emulate -L zsh
 
-# Read stdin, remove [projects."..."] sections (header + key-value lines until next section or EOF)
+# Read stdin, remove [projects."..."] sections (header + key-value lines until
+# next section or EOF). Keep this awk-only: BSD sed rejects the old multiline
+# cleanup expression, which broke the clean filter on macOS.
 awk '
   /^\[projects\./ { skip=1; next }
-  /^\[/            { skip=0 }
-  !skip
-' | sed -e :a -e '/^\n*$/{$d;N;ba}'
+  /^\[/ { skip=0 }
+  !skip { lines[++count] = $0 }
+  END {
+    while (count > 0 && lines[count] == "") {
+      count--
+    }
+    for (i = 1; i <= count; i++) {
+      print lines[i]
+    }
+  }
+'
