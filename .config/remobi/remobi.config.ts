@@ -128,7 +128,7 @@ export default {
 	font: { mobileSizeDefault: 12 },
 	gestures: { doubleTap: { enabled: false } },
 	mobile: {
-		initData: '\x02z',
+		initData: null,
 	},
 	floatingButtons: [
 		{
