@@ -37,6 +37,8 @@ Then `dotfiles add .newfile` works without `-f`.
 ## Git Hygiene
 
 - Ignore unrelated git changes; do not reset/revert/discard them.
+- Treat Codex `[projects.*]` trust entries in [`.codex/config.toml`](./.codex/config.toml) as machine-local state; never commit them.
+- Use `dotfiles` commands for dotfiles git operations so Codex config renormalisation runs before status/diff/stash.
 
 ## Key Documentation
 

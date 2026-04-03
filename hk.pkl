@@ -34,6 +34,11 @@ local fast_steps = new Mapping<String, Step> {
     }
 
     ["mise"] = Builtins.mise
+
+    ["codex-config-trust"] {
+        glob = List(".codex/config.toml")
+        check = "git show :{{file}} | rg -q '^\\[projects\\.' && { echo '.codex/config.toml contains staged machine-local [projects.*] trust state' >&2; exit 1; } || exit 0"
+    }
 }
 
 hooks {
