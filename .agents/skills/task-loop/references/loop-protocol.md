@@ -20,6 +20,8 @@ You are running in an automated loop. Read these files before doing anything els
 **If loop-state.md doesn't exist or status is `done`:**
 
 - Append a run-log entry for the completed task (if any)
+- If no unchecked `[ ]` tasks remain in backlog.md, print `__PROMISE_RL_DONE__`
+  on its own final line and exit
 - Pick the next unchecked `[ ]` task from backlog.md
 - Create/update loop-state.md with `status: in_progress`
 
@@ -51,6 +53,12 @@ Only set `status: done` when ALL are true:
 Record in loop-state.md. If durable, update code comments or docs.
 ```
 
+Run the outer loop with `rl -- ...` so the default promise-token
+handling stops the shell runner once the backlog is exhausted. In
+Ralph-loop terms this token is the completion promise. Use
+`--promise-token` to override the token or `--no-promise-token` to
+disable this behaviour for a specific run.
+
 ## Adaptation Points
 
 When generating PROMPT.md from this template, adapt these sections:
@@ -64,6 +72,8 @@ Replace `<name>` with the actual directory name.
 If the backlog has a dependency graph, add to the "pick next task" step:
 
 ```markdown
+- If no unchecked `[ ]` tasks remain after applying the dependency rules,
+  print `__PROMISE_RL_DONE__` on its own final line and exit
 - Pick the next unchecked `[ ]` task from backlog.md, respecting the
   dependency graph — skip tasks whose dependencies aren't complete
 ```

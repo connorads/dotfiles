@@ -6,9 +6,10 @@ setopt trapsasync
 setopt no_monitor 2>/dev/null  # suppress [N] job notifications if possible
 zmodload zsh/datetime
 
-# Parse: rl [max] [-t timeout] -- <command...>
+# Parse: rl [max] [-t timeout] [--promise-token token | --no-promise-token] -- <command...>
 local max=0
 local timeout_secs=0
+local promise_token="__PROMISE_RL_DONE__"
 if [[ $1 =~ ^[0-9]+$ ]]; then
   max=$1; shift
 fi
@@ -24,16 +25,26 @@ while [[ $1 == -* && $1 != "--" ]]; do
         *)  timeout_secs=$raw ;;
       esac
       ;;
+    --promise-token)
+      shift
+      promise_token=$1; shift
+      ;;
+    --no-promise-token)
+      promise_token=
+      shift
+      ;;
     *) print -P "%F{red}[rl]%f unknown option: $1"; return 1 ;;
   esac
 done
 if [[ $1 != "--" ]]; then
   print 'rl - ralph loop: run a command in a naive loop
 
-Usage: rl [max] [-t timeout] -- <command...>
+Usage: rl [max] [-t timeout] [--promise-token token | --no-promise-token] -- <command...>
 
   max       Optional max iterations (default: unlimited, Ctrl+C once to stop, twice within 2s+ to force-stop)
   -t, --timeout DURATION  Kill iteration if it exceeds DURATION (e.g. 30m, 2h, 90s, 90)
+  --promise-token TOKEN   Override the default promise token / completion promise (__PROMISE_RL_DONE__)
+  --no-promise-token      Disable promise-token detection for this run
   --        Separator (required)
 
 Examples:
@@ -42,6 +53,8 @@ Examples:
   rl 5 -- claude -p --dangerously-skip-permissions "Run the sweep"
   rl -- codex exec "Follow the session protocol in AGENTS.md"
   rl 10 -- codex exec --full-auto "Fix the next backlog item"
+  rl -- cys "Read and follow TASKS/demo/PROMPT.md"
+  rl --no-promise-token -- cargo test
   rl 36 -t 30m -- cys "One task per run"
   rl -- cargo test'
   return 1
@@ -66,6 +79,7 @@ local child_pgid=
 local pause_pid=
 local phase=idle
 local first_int_at=0
+local promise_stop_requested=0
 
 debug_log() {
   (( ${RL_DEBUG:-0} )) || return 0
@@ -132,6 +146,26 @@ start_child() {
   ' -- "$parent_pid" "$@" &
 }
 
+start_child_pty() {
+  start_child python3 -c '
+import os
+import pty
+import sys
+
+argv = sys.argv[1:]
+if not argv:
+    raise SystemExit(1)
+
+status = pty.spawn(argv)
+raise SystemExit(os.waitstatus_to_exitcode(status))
+  ' "$@"
+}
+
+pty_supported() {
+  [[ -t 1 ]] || return 1
+  command -v python3 >/dev/null 2>&1 || return 1
+}
+
 refresh_child_pgid() {
   local attempt
 
@@ -187,7 +221,34 @@ while (( max == 0 || i < max )); do
   (( i++ ))
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
   phase=child
-  start_child "$@"
+  local promise_marker=
+  local output_fifo=
+  local output_scanner_pid=
+  local use_pty=0
+  if [[ -n $promise_token ]]; then
+    promise_marker="${TMPDIR:-/tmp}/rl-promise-$$-$i"
+    output_fifo="${TMPDIR:-/tmp}/rl-output-$$-$i.fifo"
+    rm -f "$promise_marker" "$output_fifo"
+    mkfifo "$output_fifo" || return 1
+    pty_supported && use_pty=1
+    PROMISE_TOKEN="$promise_token" PROMISE_MARKER="$promise_marker" perl -ne '
+      print $_;
+      my $clean = $_;
+      $clean =~ s/\e\[[0-9;?]*[ -\/]*[@-~]//g;
+      if (index($clean, $ENV{PROMISE_TOKEN}) >= 0) {
+        open my $fh, ">>", $ENV{PROMISE_MARKER} or die $!;
+        close $fh;
+      }
+    ' < "$output_fifo" &
+    output_scanner_pid=$!
+    if (( use_pty )); then
+      start_child_pty "$@" > "$output_fifo" 2>&1
+    else
+      start_child "$@" > "$output_fifo" 2>&1
+    fi
+  else
+    start_child "$@"
+  fi
   child_pid=$!
   refresh_child_pgid
   local timeout_pid=
@@ -243,13 +304,24 @@ while (( max == 0 || i < max )); do
       rm -f "$timeout_marker"
     fi
   fi
+  if [[ -n $output_scanner_pid ]]; then
+    wait "$output_scanner_pid" 2>/dev/null || true
+    rm -f "$output_fifo"
+  fi
   phase=idle
   if (( timed_out )); then
     print -P "%F{yellow}[rl]%f iteration $i timed out after ${timeout_secs}s"
   else
     print -P "%F{cyan}[rl]%f iteration $i done (exit $rc)"
   fi
-  (( stop_requested || force_stop_requested )) && break
+  if [[ -n $promise_marker && -f $promise_marker ]]; then
+    rm -f "$promise_marker"
+    if (( rc == 0 && !timed_out && !force_stop_requested )); then
+      promise_stop_requested=1
+      print -P "%F{green}[rl]%f promise token seen (completion promise); stopping after iteration $i"
+    fi
+  fi
+  (( stop_requested || force_stop_requested || promise_stop_requested )) && break
   child_pid=
   child_pgid=
   child_wait_interrupted=0
