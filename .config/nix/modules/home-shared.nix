@@ -35,6 +35,9 @@
       delta.dark = true;
       delta.line-numbers = true;
       commit.verbose = true;
+      filter.codex-config.clean = "codex-config-clean";
+      filter.codex-config.smudge = "cat";
+      filter.codex-config.required = true;
     };
   };
 
