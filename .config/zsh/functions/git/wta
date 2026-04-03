@@ -1,6 +1,6 @@
 # wta: add a worktree and cd into it
 # usage: wta [--base <ref>] [--no-setup] <branch>
 emulate -L zsh
-local path
-path=$(wt-add "$@") || return $?
-cd "$path"
+local wt_path
+wt_path=$(wt-add "$@") || return $?
+cd "$wt_path"

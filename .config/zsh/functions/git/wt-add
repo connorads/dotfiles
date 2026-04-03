@@ -1,26 +1,40 @@
 #!/usr/bin/env zsh
 # wt-add: create a worktree under ~/.trees, print its path
-# usage: wt-add [--base <ref>] [--no-setup] <branch>
+# usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>
 emulate -L zsh
+_wt_common_dir="${${functions_source[wt-add]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
 
-local base="" setup=1 branch=""
+local base="" setup=1 json=0 branch="" lock=0 lock_reason=""
 
 while (( $# )); do
   case $1 in
-    --base)   base=$2; shift 2 ;;
-    --no-setup) setup=0; shift ;;
-    -*)       echo "error: unknown flag $1" >&2; return 1 ;;
-    *)        branch=$1; shift ;;
+    -h|--help)   echo "usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>" >&2; return 0 ;;
+    --base)      base=$2; shift 2 ;;
+    --no-setup)  setup=0; shift ;;
+    --json)      json=1; shift ;;
+    --lock)
+      lock=1
+      if (( $# >= 3 )) && [[ $2 != -* ]]; then
+        lock_reason=$2
+        shift 2
+      else
+        shift
+      fi
+      ;;
+    -*)          echo "error: unknown flag $1" >&2; return 1 ;;
+    *)           branch=$1; shift ;;
   esac
 done
 
 if [[ -z "$branch" ]]; then
-  echo "usage: wt-add [--base <ref>] [--no-setup] <branch>" >&2
+  echo "usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>" >&2
   return 1
 fi
 
-local repo_root
-repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+local repo_root created=0
+repo_root=$(_wt_current_path) || {
   echo "error: not in a git repository" >&2
   return 1
 }
@@ -29,18 +43,40 @@ local worktree_path="$HOME/.trees/${repo}-${branch}"
 
 # Idempotent: if worktree already exists, just print its path
 if [[ -d "$worktree_path" ]]; then
-  echo "$worktree_path"
+  if ! _wt_registered_path "$worktree_path"; then
+    echo "error: existing path is not a registered worktree for this repository: $worktree_path" >&2
+    return 1
+  fi
+  if (( json )); then
+    jq -n \
+      --arg path "$worktree_path" \
+      --arg branch "$branch" \
+      --argjson created false \
+      --argjson setup_ran false \
+      '{path:$path, branch:$branch, created:$created, setup_ran:$setup_ran}'
+  else
+    echo "$worktree_path"
+  fi
   return 0
 fi
 
-git fetch origin 2>/dev/null >&2 || echo "warning: fetch failed, using local refs only" >&2
+local preferred_remote=""
+preferred_remote=$(_wt_resolve_remote "$repo_root" "" 2>/dev/null) || true
+local fetch_remote=""
+while IFS= read -r fetch_remote; do
+  [[ -n "$fetch_remote" ]] || continue
+  git fetch "$fetch_remote" 2>/dev/null >&2 || echo "warning: fetch failed for $fetch_remote, using local refs only" >&2
+done < <(_wt_candidate_remotes "$repo_root" "$preferred_remote")
+
+local remote_ref=""
+remote_ref=$(_wt_find_remote_branch "$repo_root" "$branch" "$preferred_remote") || true
 
 if git show-ref --verify --quiet refs/heads/$branch; then
   # Local branch exists
   git worktree add "$worktree_path" "$branch" >&2 || return 1
-elif git show-ref --verify --quiet refs/remotes/origin/$branch; then
+elif [[ -n "$remote_ref" ]]; then
   # Remote branch exists — track it
-  git worktree add "$worktree_path" -b "$branch" "origin/$branch" >&2 || return 1
+  git worktree add --track -b "$branch" "$worktree_path" "$remote_ref" >&2 || return 1
 elif [[ -n "$base" ]]; then
   # New branch from specified base
   git worktree add -b "$branch" "$worktree_path" "$base" >&2 || return 1
@@ -48,10 +84,28 @@ else
   # New branch from current HEAD
   git worktree add -b "$branch" "$worktree_path" >&2 || return 1
 fi
+created=1
+
+if (( lock )); then
+  if [[ -n "$lock_reason" ]]; then
+    git worktree lock --reason "$lock_reason" "$worktree_path" >&2 || return 1
+  else
+    git worktree lock "$worktree_path" >&2 || return 1
+  fi
+fi
 
 # Post-create setup (rs: mise trust + install, auto-detect deps)
 if (( setup )); then
   (cd "$worktree_path" && rs) >&2
 fi
 
-echo "$worktree_path"
+if (( json )); then
+  jq -n \
+    --arg path "$worktree_path" \
+    --arg branch "$branch" \
+    --argjson created "$(_wt_json_bool $created)" \
+    --argjson setup_ran "$(_wt_json_bool $setup)" \
+    '{path:$path, branch:$branch, created:$created, setup_ran:$setup_ran}'
+else
+  echo "$worktree_path"
+fi

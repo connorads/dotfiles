@@ -1,0 +1,67 @@
+# wtui: human TUI for managed worktrees
+emulate -L zsh
+_wt_common_dir="${${functions_source[wtui]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local selection wt_path target action
+
+selection=$(
+  wt-status --all | awk -F'\t' 'NF {
+    state=($5=="1" ? "conflict" : ($3=="1" ? "dirty" : "clean"))
+    lock=($9=="1" ? "yes" : "no")
+    merged=($11=="1" ? "yes" : "no")
+    printf "%s\t%s\t%s\t+%s/-%s\tlock:%s\tmerged:%s\n", $1, $2, state, $7, $8, lock, merged
+  }' | fzf \
+    --prompt="Worktree: " \
+    --header='enter=open  alt-f=finish-local  alt-p=publish-pr  alt-r=remove  alt-l=lazyworktree' \
+    --expect=enter,alt-f,alt-p,alt-r,alt-l \
+    --delimiter=$'\t' \
+    --with-nth=2.. \
+    --preview='git -C "{1}" status --short 2>/dev/null || true' \
+    --preview-window=right:60%:wrap
+) || return 0
+
+action=$(printf '%s\n' "$selection" | sed -n '1p')
+wt_path=$(printf '%s\n' "$selection" | sed -n '2p' | awk -F'\t' '{print $1}')
+target="$wt_path"
+
+[[ -d "$target" ]] || {
+  echo "error: worktree not found: $target" >&2
+  return 1
+}
+
+case "$action" in
+  alt-f)
+    cd "$target" && wt-finish --mode local
+    ;;
+  alt-p)
+    cd "$target" && wt-publish --pr
+    ;;
+  alt-r)
+    local dirty_state
+    dirty_state=$(_wt_dirty_state "$target")
+    local dirty=${dirty_state%%$'\t'*}
+    local rest=${dirty_state#*$'\t'}
+    local untracked=${rest%%$'\t'*}
+    if [[ "$dirty" == 1 || "$untracked" == 1 ]]; then
+      echo "Worktree has uncommitted changes:"
+      git -C "$target" status --short 2>/dev/null
+      echo
+      read -q "?Remove anyway with --force? [y/N] " || { echo "\nAborted."; return 1; }
+      echo
+      wt-remove --force "$target"
+    else
+      wt-remove "$target"
+    fi
+    ;;
+  alt-l)
+    cd "$target" && lazyworktree
+    ;;
+  ""|enter)
+    cd "$target"
+    ;;
+  *)
+    cd "$target"
+    ;;
+esac

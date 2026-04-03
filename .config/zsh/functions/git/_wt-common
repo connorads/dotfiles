@@ -1,0 +1,310 @@
+# _wt-common: shared helpers for worktree lifecycle commands
+
+_wt_script_dir() {
+  local fn_name="${funcstack[1]:-}"
+  local source_path=""
+
+  if [[ -n "$fn_name" && -n "${functions_source[$fn_name]:-}" ]]; then
+    source_path="${functions_source[$fn_name]}"
+  elif [[ -n "${(%):-%x}" && "${(%):-%x}" != zsh ]]; then
+    source_path="${(%):-%x}"
+  elif [[ -n "$0" && "$0" != zsh ]]; then
+    source_path="$0"
+  fi
+
+  [[ -n "$source_path" ]] || return 1
+  printf '%s\n' "${source_path:A:h}"
+}
+
+_wt_load_common() {
+  local common="$(_wt_script_dir)/_wt-common"
+  # shellcheck disable=SC1090
+  source "$common"
+}
+
+_wt_json_bool() {
+  if [[ "$1" == 1 || "$1" == true || "$1" == yes ]]; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
+_wt_json_string() {
+  jq -Rn --arg value "$1" '$value'
+}
+
+_wt_common_dir() {
+  git rev-parse --git-common-dir 2>/dev/null
+}
+
+_wt_current_path() {
+  git rev-parse --show-toplevel 2>/dev/null
+}
+
+_wt_current_branch() {
+  git branch --show-current 2>/dev/null
+}
+
+_wt_is_managed_path() {
+  [[ "$1" == "$HOME/.trees/"* ]]
+}
+
+_wt_worktree_exists_in_repo() {
+  local target=$1
+  git worktree list --porcelain 2>/dev/null | while IFS= read -r line; do
+    [[ "$line" == "worktree $target" ]] && return 0
+  done
+}
+
+_wt_registered_path() {
+  local target=$1
+  local line
+  while IFS= read -r line; do
+    [[ "$line" == "worktree $target" ]] && return 0
+  done < <(git worktree list --porcelain 2>/dev/null)
+  return 1
+}
+
+_wt_dirty_state() {
+  local repo_path=$1
+  local dirty=0
+  local untracked=0
+  local conflicted=0
+
+  [[ -n "$(git -C "$repo_path" status --porcelain 2>/dev/null)" ]] && dirty=1
+  [[ -n "$(git -C "$repo_path" ls-files --others --exclude-standard 2>/dev/null)" ]] && untracked=1
+  [[ -n "$(git -C "$repo_path" ls-files --unmerged 2>/dev/null)" ]] && conflicted=1
+
+  printf '%s\t%s\t%s\n' "$dirty" "$untracked" "$conflicted"
+}
+
+_wt_fail_if_dirty() {
+  local repo_path=$1
+  local state_line
+  state_line=$(_wt_dirty_state "$repo_path") || return 1
+  local dirty=${state_line%%$'\t'*}
+  local rest=${state_line#*$'\t'}
+  local untracked=${rest%%$'\t'*}
+  local conflicted=${rest##*$'\t'}
+
+  if [[ "$conflicted" == 1 ]]; then
+    echo "error: worktree has unresolved merge conflicts" >&2
+    return 1
+  fi
+
+  if [[ "$dirty" == 1 || "$untracked" == 1 ]]; then
+    echo "error: worktree has uncommitted changes" >&2
+    return 1
+  fi
+}
+
+_wt_branch_upstream() {
+  local repo_path=$1
+  git -C "$repo_path" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null
+}
+
+_wt_branch_upstream_remote() {
+  local repo_path=$1
+  local upstream
+  upstream=$(_wt_branch_upstream "$repo_path") || return 1
+  printf '%s\n' "${upstream%%/*}"
+}
+
+_wt_resolve_remote() {
+  local repo_path=$1
+  local explicit_remote=$2
+
+  if [[ -n "$explicit_remote" ]]; then
+    printf '%s\n' "$explicit_remote"
+    return 0
+  fi
+
+  local upstream_remote
+  upstream_remote=$(_wt_branch_upstream_remote "$repo_path") && [[ -n "$upstream_remote" ]] && {
+    printf '%s\n' "$upstream_remote"
+    return 0
+  }
+
+  local push_default
+  push_default=$(git -C "$repo_path" config --get remote.pushDefault 2>/dev/null)
+  if [[ -n "$push_default" ]]; then
+    printf '%s\n' "$push_default"
+    return 0
+  fi
+
+  if git -C "$repo_path" remote get-url origin >/dev/null 2>&1; then
+    printf '%s\n' origin
+    return 0
+  fi
+
+  return 1
+}
+
+_wt_branch_remote() {
+  local repo_path=$1
+  local branch=$2
+  local upstream_ref=""
+
+  upstream_ref=$(git -C "$repo_path" for-each-ref --format='%(upstream:short)' "refs/heads/$branch" 2>/dev/null | head -1)
+  [[ -n "$upstream_ref" ]] || return 1
+  printf '%s\n' "${upstream_ref%%/*}"
+}
+
+_wt_resolve_base() {
+  local repo_path=$1
+  local explicit_base=$2
+
+  if [[ -n "$explicit_base" ]]; then
+    printf '%s\n' "$explicit_base"
+    return 0
+  fi
+
+  local config_base
+  config_base=$(git -C "$repo_path" config --get worktree.baseBranch 2>/dev/null)
+  if [[ -n "$config_base" ]]; then
+    printf '%s\n' "$config_base"
+    return 0
+  fi
+
+  local remote_head
+  remote_head=$(git -C "$repo_path" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
+  if [[ -n "$remote_head" ]]; then
+    printf '%s\n' "${remote_head#origin/}"
+    return 0
+  fi
+
+  if git -C "$repo_path" show-ref --verify --quiet refs/heads/main; then
+    printf '%s\n' main
+    return 0
+  fi
+
+  if git -C "$repo_path" show-ref --verify --quiet refs/heads/master; then
+    printf '%s\n' master
+    return 0
+  fi
+
+  return 1
+}
+
+_wt_main_worktree_path() {
+  local base_branch=$1
+  local wt_path=""
+  local current=""
+  local branch=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ "$branch" == "refs/heads/$base_branch" && -n "$current" ]]; then
+        wt_path=$current
+        break
+      fi
+      current=""
+      branch=""
+      continue
+    fi
+
+    case $line in
+      "worktree "*) current=${line#worktree } ;;
+      "branch "*) branch=${line#branch } ;;
+    esac
+  done < <(git worktree list --porcelain 2>/dev/null; printf '\n')
+
+  [[ -n "$wt_path" ]] || return 1
+  printf '%s\n' "$wt_path"
+}
+
+_wt_merged_into_base() {
+  local repo_path=$1
+  local base_branch=$2
+  git -C "$repo_path" rev-parse --verify --quiet "refs/heads/$base_branch" >/dev/null 2>&1 || return 1
+  git -C "$repo_path" merge-base --is-ancestor HEAD "refs/heads/$base_branch" >/dev/null 2>&1
+}
+
+_wt_worktree_records() {
+  git worktree list --porcelain 2>/dev/null
+}
+
+_wt_worktree_is_locked() {
+  local repo_path=$1
+  local target=$2
+  local current_path="" locked=0 line
+  local common_dir=""
+
+  common_dir=$(git -C "$repo_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ "$current_path" == "$target" ]]; then
+        [[ "$locked" == 1 ]] && return 0
+        return 1
+      fi
+      current_path=""
+      locked=0
+      continue
+    fi
+
+    case $line in
+      "worktree "*) current_path=${line#worktree } ;;
+      locked*) locked=1 ;;
+    esac
+  done < <(git --git-dir="$common_dir" worktree list --porcelain 2>/dev/null; printf '\n')
+
+  return 1
+}
+
+_wt_current_or_arg_path() {
+  if [[ -n "$1" ]]; then
+    printf '%s\n' "$1"
+    return 0
+  fi
+
+  _wt_current_path
+}
+
+_wt_repo_name() {
+  local repo_root=$1
+  printf '%s\n' "${repo_root:t}"
+}
+
+_wt_find_remote_branch() {
+  local repo_path=$1
+  local branch=$2
+  local preferred_remote=$3
+  local remote="" candidate=""
+
+  while IFS= read -r remote; do
+    [[ -n "$remote" ]] || continue
+    candidate="$remote/$branch"
+    if git -C "$repo_path" show-ref --verify --quiet "refs/remotes/$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(_wt_candidate_remotes "$repo_path" "$preferred_remote")
+
+  return 1
+}
+
+_wt_candidate_remotes() {
+  local repo_path=$1
+  local preferred_remote=$2
+  local -a remotes=()
+  local remote=""
+
+  if [[ -n "$preferred_remote" ]]; then
+    remotes+=("$preferred_remote")
+  fi
+
+  if [[ "$preferred_remote" != origin ]] && git -C "$repo_path" remote get-url origin >/dev/null 2>&1; then
+    remotes+=(origin)
+  fi
+
+  while IFS= read -r remote; do
+    [[ -n "$remote" ]] || continue
+    if [[ " ${remotes[*]} " != *" $remote "* ]]; then
+      remotes+=("$remote")
+    fi
+  done < <(git -C "$repo_path" remote 2>/dev/null)
+
+  printf '%s\n' "${remotes[@]}"
+}

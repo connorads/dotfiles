@@ -1,0 +1,155 @@
+#!/usr/bin/env zsh
+# wt-status: report worktree status for agents and humans
+# usage: wt-status [--all] [--json] [worktree-path]
+emulate -L zsh
+_wt_common_dir="${${functions_source[wt-status]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local all=0 json=0 target=""
+
+while (( $# )); do
+  case $1 in
+    -h|--help) echo "usage: wt-status [--all] [--json] [worktree-path]" >&2; return 0 ;;
+    --all)     all=1; shift ;;
+    --json)    json=1; shift ;;
+    -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+    *)         target=$1; shift ;;
+  esac
+done
+
+local current
+if (( ! all )) && [[ -z "$target" ]]; then
+  current=$(_wt_current_path) || {
+    echo "error: not in a git repository" >&2
+    return 1
+  }
+  target=$current
+fi
+
+typeset -a records=()
+
+print_record() {
+  local wt_path=$1
+  local branch_ref=$2
+  local locked=$3
+  local prunable=$4
+
+  local branch="${branch_ref#refs/heads/}"
+  [[ -z "$branch_ref" ]] && branch="(detached)"
+
+  local state_line dirty untracked conflicted upstream ahead behind base merged
+  state_line=$(_wt_dirty_state "$wt_path")
+  dirty=${state_line%%$'\t'*}
+  local rest=${state_line#*$'\t'}
+  untracked=${rest%%$'\t'*}
+  conflicted=${rest##*$'\t'}
+
+  upstream=$(_wt_branch_upstream "$wt_path")
+  ahead=0
+  behind=0
+  if [[ -n "$upstream" ]]; then
+    local counts
+    counts=$(git -C "$wt_path" rev-list --left-right --count HEAD..."$upstream" 2>/dev/null)
+    if [[ -n "$counts" ]]; then
+      ahead=${counts%%$'\t'*}
+      behind=${counts##*$'\t'}
+    fi
+  fi
+
+  base=$(_wt_resolve_base "$wt_path" "" 2>/dev/null) || base=""
+  merged=0
+  if [[ -n "$base" ]] && _wt_merged_into_base "$wt_path" "$base"; then
+    merged=1
+  fi
+
+  records+=("$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "$wt_path" \
+    "$branch" \
+    "$dirty" \
+    "$untracked" \
+    "$conflicted" \
+    "$upstream" \
+    "$ahead" \
+    "$behind" \
+    "$locked" \
+    "$prunable" \
+    "$merged")")
+}
+
+collect_all_records() {
+  local trees_dir="$HOME/.trees"
+  local -a worktrees=()
+  local wt_path branch branch_ref locked prunable
+
+  [[ -d "$trees_dir" ]] || return 0
+  worktrees=(${trees_dir}/**/*(N-/))
+
+  for wt_path in "${worktrees[@]}"; do
+    [[ -d "$wt_path/.git" || -f "$wt_path/.git" ]] || continue
+    branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
+    branch_ref=""
+    [[ -n "$branch" ]] && branch_ref="refs/heads/$branch"
+    locked=0
+    _wt_worktree_is_locked "$wt_path" "$wt_path" && locked=1
+    prunable=0
+    print_record "$wt_path" "$branch_ref" "$locked" "$prunable"
+  done
+}
+
+if (( all )); then
+  collect_all_records
+else
+
+local current_path="" current_branch="" locked=0 prunable=0 matched=0
+local line
+while IFS= read -r line || [[ -n "$line" ]]; do
+  if [[ -z "$line" ]]; then
+    if [[ -n "$current_path" && "$target" == "$current_path" ]]; then
+      print_record "$current_path" "$current_branch" "$locked" "$prunable"
+      matched=1
+    fi
+    current_path=""
+    current_branch=""
+    locked=0
+    prunable=0
+    continue
+  fi
+
+  case $line in
+    "worktree "*) current_path=${line#worktree } ;;
+    "branch "*) current_branch=${line#branch } ;;
+    locked*) locked=1 ;;
+    prunable*) prunable=1 ;;
+  esac
+done < <(_wt_worktree_records; printf '\n')
+
+if (( ! matched )); then
+  echo "error: worktree not found: $target" >&2
+  return 1
+fi
+fi
+
+local joined_records="${(F)records}"
+
+if (( json )); then
+  printf '%s\n' "$joined_records" | jq -R -s '
+    split("\n")
+    | map(select(length > 0))
+    | map(split("\t"))
+    | map({
+        path: .[0],
+        branch: .[1],
+        dirty: (.[2] == "1"),
+        untracked: (.[3] == "1"),
+        conflicted: (.[4] == "1"),
+        upstream: (if .[5] == "" then null else .[5] end),
+        ahead: (.[6] | tonumber),
+        behind: (.[7] | tonumber),
+        locked: (.[8] == "1"),
+        prunable: (.[9] == "1"),
+        merged_into_base: (.[10] == "1")
+      })'
+else
+  printf '%s\n' "$joined_records"
+fi

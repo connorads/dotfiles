@@ -36,7 +36,7 @@ make_repo() {
 @test "returns the existing worktree path without running setup" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
-  mkdir -p "$HOME/.trees/repo-topic"
+  git -C "$repo" worktree add "$HOME/.trees/repo-topic" -b topic >/dev/null
 
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' topic"
 
@@ -73,4 +73,16 @@ make_repo() {
   [[ "$output" == *"$HOME/.trees/repo-feature"* ]]
   [ -f "$HOME/.trees/repo-feature/branch.txt" ]
   [ ! -s "$TEST_LOG" ]
+}
+
+@test "supports slash branch names and json output" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --json feature/foo 2>/dev/null"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.branch')" = "feature/foo" ]
+  [ "$(printf '%s' "$output" | jq -r '.path')" = "$HOME/.trees/repo-feature/foo" ]
+  [ -d "$HOME/.trees/repo-feature/foo" ]
 }

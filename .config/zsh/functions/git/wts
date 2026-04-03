@@ -2,11 +2,25 @@
 emulate -L zsh
 
 local worktree
-# Try git worktree list first; fall back to listing ~/.trees/ directly
-worktree=$(
-  { git worktree list --porcelain 2>/dev/null | grep "^worktree" | cut -d' ' -f2 | grep "^$HOME/.trees/" } ||
-  { for d in "$HOME/.trees"/*(N/); do echo "$d"; done }
-) | fzf --prompt="Switch to worktree: "
+
+_wts_candidates() {
+  local cwd_root
+  cwd_root=$(git rev-parse --show-toplevel 2>/dev/null) || cwd_root=""
+
+  if [[ -n "$cwd_root" ]]; then
+    git -C "$cwd_root" worktree list --porcelain 2>/dev/null |
+      awk '/^worktree / { print substr($0, 10) }' |
+      grep "^$HOME/.trees/" || true
+    return 0
+  fi
+
+  local d
+  for d in "$HOME/.trees"/**/*(N-/); do
+    [[ -d "$d/.git" || -f "$d/.git" ]] && print -r -- "$d"
+  done
+}
+
+worktree=$(_wts_candidates | fzf --prompt="Switch to worktree: ")
 
 if [[ -n "$worktree" ]]; then
   cd "$worktree"
