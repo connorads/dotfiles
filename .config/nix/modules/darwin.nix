@@ -362,17 +362,24 @@
         home.packages = packages.sharedPackages ++ [ pkgs.duti pkgs.pngpaste ];
         home.stateVersion = "24.11";
 
-        # Keep editor file associations declarative without replacing the full
-        # LaunchServices LSHandlers array: duti updates only the targeted types.
+        # Set Sublime Text as default editor for common text formats.
+        # Uses duti because nix-darwin has no built-in file association support
+        # and home-manager's xdg.mimeApps is Linux-only.
+        #
+        # Only extensions with declared system UTIs work — dynamic UTIs (dyn.*)
+        # cause duti to fail, which under set -eu aborts the entire home-manager
+        # activation (blocking ALL symlink creation including git config).
+        # Extensions without UTIs (markdown, mdown, mkd, toml, env) are covered
+        # by the UTI entries below. || true guards against future breakage.
         home.activation.defaultAppAssociations = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           app_id="com.sublimetext.4"
 
-          for ext in md markdown mdown mkd txt json yaml yml toml env; do
-            ${pkgs.duti}/bin/duti -s "$app_id" "$ext" all
+          for ext in md txt json yaml yml; do
+            ${pkgs.duti}/bin/duti -s "$app_id" "$ext" all || true
           done
 
           for uti in net.daringfireball.markdown public.plain-text public.json public.yaml; do
-            ${pkgs.duti}/bin/duti -s "$app_id" "$uti" all
+            ${pkgs.duti}/bin/duti -s "$app_id" "$uti" all || true
           done
         '';
 
