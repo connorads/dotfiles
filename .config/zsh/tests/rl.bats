@@ -116,6 +116,65 @@ SCRIPT
   [ "$(cat "$COUNT_FILE")" -eq 1 ]
 }
 
+@test "promise token mentioned before the final line does not stop the loop" {
+  local helper="$BATS_TEST_TMPDIR/promise_mid_output_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "mentioning __PROMISE_RL_DONE__ in passing"
+echo "still working"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-mid-output-count"
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" != *"promise token seen"* ]]
+}
+
+@test "promise token embedded in a longer final line does not stop the loop" {
+  local helper="$BATS_TEST_TMPDIR/promise_embedded_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "done? __PROMISE_RL_DONE__ nope"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-embedded-count"
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" != *"promise token seen"* ]]
+}
+
+@test "promise token followed by another non-empty line does not stop the loop" {
+  local helper="$BATS_TEST_TMPDIR/promise_not_final_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+echo "__PROMISE_RL_DONE__"
+echo "postscript"
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/promise-not-final-count"
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" != *"promise token seen"* ]]
+}
+
 @test "promise mode allocates a tty for interactive children" {
   local helper="$BATS_TEST_TMPDIR/promise_tty_cmd.sh"
   write_executable "$helper" <<'SCRIPT'
