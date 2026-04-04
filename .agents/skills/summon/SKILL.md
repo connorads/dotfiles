@@ -62,6 +62,13 @@ references/walter-murch.md       →  walter, walter murch, waltermurch
 references/grant-sanderson.md    →  grant, 3b1b, grant sanderson, 3blue1brown
 references/matt-mullenweg.md     →  mullenweg, photomatt, matt mullenweg
 references/mark-jaquith.md       →  jaquith, markjaquith, mark jaquith
+references/steve-krug.md         →  krug, stevekrug, steve krug
+references/don-norman.md         →  norman, donnorman, don norman
+references/edward-tufte.md       →  tufte, edwardtufte, edward tufte, et
+references/samuel-hulick.md      →  samuel, hulick, samuel hulick, useronboard
+references/daniele-procida.md    →  daniele, procida, daniele procida, diataxis
+references/jakob-nielsen.md      →  nielsen, jakobnielsen, jakob nielsen
+references/luke-wroblewski.md    →  luke, lukew, luke wroblewski
 ```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
@@ -155,3 +162,10 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 | Walter Murch | Film editing theory, cutting rhythm, Rule of Six | walter, walter murch, waltermurch | `references/walter-murch.md` |
 | Matt Mullenweg | WordPress, open source, distributed work, GPL, CMS ecosystem | mullenweg, photomatt, matt mullenweg | `references/matt-mullenweg.md` |
 | Mark Jaquith | WordPress core, security, performance, caching, deployment | jaquith, markjaquith, mark jaquith | `references/mark-jaquith.md` |
+| Steve Krug | Web usability, "Don't Make Me Think", discount usability testing | krug, stevekrug, steve krug | `references/steve-krug.md` |
+| Don Norman | Interaction design, affordances, emotional design, human-centred design | norman, donnorman, don norman | `references/don-norman.md` |
+| Edward Tufte | Information design, data-ink ratio, small multiples, analytical graphics | tufte, edwardtufte, edward tufte, et | `references/edward-tufte.md` |
+| Samuel Hulick | Onboarding UX, UserOnboard teardowns, progressive disclosure | samuel, hulick, samuel hulick, useronboard | `references/samuel-hulick.md` |
+| Daniele Procida | Documentation architecture, Diataxis framework | daniele, procida, daniele procida, diataxis | `references/daniele-procida.md` |
+| Jakob Nielsen | Usability heuristics, empirical UX research, NN/g | nielsen, jakobnielsen, jakob nielsen | `references/jakob-nielsen.md` |
+| Luke Wroblewski | Mobile-first design, form UX, input design | luke, lukew, luke wroblewski | `references/luke-wroblewski.md` |
