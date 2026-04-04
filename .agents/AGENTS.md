@@ -7,6 +7,11 @@
 - Prefer to use [`mise`](https://mise.jdx.dev/walkthrough.html) to manage runtime and tool versions
 - If using GHA use `jdx/mise-action@v3` (`mise generate github-action` to create a new one)
 
+## Package managers
+
+- Never use `npm` or `npx` — use `pnpm` (or `pnpm dlx`) instead
+- Only use `bun` if the project already uses it
+
 ## GitHub
 
 Use `gh` CLI to access and update issues and PRs etc. Use `--body-file - <<'EOF'` for multi-line text.
