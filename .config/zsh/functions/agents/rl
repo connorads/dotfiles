@@ -5,6 +5,7 @@ setopt localtraps
 setopt trapsasync
 setopt no_monitor 2>/dev/null  # suppress [N] job notifications if possible
 zmodload zsh/datetime
+source "${0:A:h}/agent-usage-log"
 
 # Parse: rl [max] [-t timeout] [--promise-token token | --no-promise-token] -- <command...>
 local max=0
@@ -214,11 +215,19 @@ TRAPINT() {
   return 0
 }
 
-export RL_SESSION="$$:$EPOCHSECONDS"
+local -x RL_SESSION="$$:$EPOCHSECONDS"
+local usage_state_dir usage_session_dir usage_session_file
+usage_state_dir=$(agent_usage_state_dir)
+usage_session_dir="$usage_state_dir/rl-sessions"
+usage_session_file="$usage_session_dir/${RL_SESSION//:/-}.jsonl"
+mkdir -p "$usage_session_dir" 2>/dev/null || true
+local -x RL_USAGE_SESSION_FILE="$usage_session_file"
+local -x RL_ITERATION=
 
 while (( max == 0 || i < max )); do
   (( stop_requested )) && break
   (( i++ ))
+  RL_ITERATION="$i"
   print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
   phase=child
   local promise_marker=
@@ -345,6 +354,19 @@ while (( max == 0 || i < max )); do
     (( stop_requested )) && break
   fi
 done
+
+RL_ITERATION=
+
+if [[ -f "$usage_session_file" ]]; then
+  local session_totals summary_line
+  session_totals=$(agent_usage_session_totals "$usage_session_file" 2>/dev/null)
+  if [[ -n "$session_totals" ]] && [[ $(jq -r '.run_count // 0' <<<"$session_totals" 2>/dev/null) -gt 0 ]]; then
+    summary_line=$(agent_usage_format_summary "total" "$session_totals")
+    if [[ -n "$summary_line" ]]; then
+      print -P "%F{magenta}[rl]%f $summary_line across $(jq -r '.run_count' <<<"$session_totals") runs"
+    fi
+  fi
+fi
 
 if (( stop_requested )); then
   print -P "%F{yellow}[rl]%f stopped after $i iterations"
