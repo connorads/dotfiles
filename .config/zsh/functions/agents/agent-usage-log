@@ -1,0 +1,97 @@
+#!/usr/bin/env zsh
+# agent-usage-log: shared helpers for recording and summarising agent run usage
+emulate -L zsh
+
+agent_usage_state_dir() {
+  print -r -- "${AGENT_USAGE_STATE_DIR:-$HOME/.local/state/agents}"
+}
+
+agent_usage_log_file() {
+  print -r -- "$(agent_usage_state_dir)/rl-usage.jsonl"
+}
+
+agent_usage_append_record() {
+  local provider="$1"
+  local runner="$2"
+  local payload="$3"
+  [[ -n "$payload" ]] || return 0
+
+  local dir log_file
+  dir=$(agent_usage_state_dir)
+  log_file=$(agent_usage_log_file)
+  mkdir -p "$dir" 2>/dev/null || return 0
+
+  local record
+  record=$(
+    jq -cn \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --arg provider "$provider" \
+      --arg runner "$runner" \
+      --arg cwd "$PWD" \
+      --arg rl_session "${RL_SESSION:-}" \
+      --arg session_file "${RL_USAGE_SESSION_FILE:-}" \
+      --argjson iteration "${RL_ITERATION:-null}" \
+      --argjson payload "$payload" \
+      '{
+        ts: $ts,
+        provider: $provider,
+        runner: $runner,
+        cwd: $cwd,
+        rl_session: (if $rl_session == "" then null else $rl_session end),
+        iteration: $iteration
+      } + $payload'
+  ) || return 0
+
+  print -r -- "$record" >> "$log_file" 2>/dev/null || return 0
+  if [[ -n "${RL_USAGE_SESSION_FILE:-}" ]]; then
+    mkdir -p "${RL_USAGE_SESSION_FILE:h}" 2>/dev/null || return 0
+    print -r -- "$record" >> "$RL_USAGE_SESSION_FILE" 2>/dev/null || return 0
+  fi
+}
+
+agent_usage_format_summary() {
+  local label="$1"
+  local payload="$2"
+  jq -rn --arg label "$label" --argjson payload "$payload" '
+    def n($v): if $v == null then 0 else $v end;
+    def fmt_cost($v):
+      if $v == null then null
+      elif $v == 0 then "$0"
+      elif ($v < 1 and $v > -1) then ("$" + (($v * 10000 | round) / 10000 | tostring))
+      else ("$" + (($v * 100 | round) / 100 | tostring))
+      end;
+    def fmt_secs($v):
+      if $v == null then null
+      else (($v / 1000) | tostring) + "s"
+      end;
+
+    [
+      $label,
+      "in " + (n($payload.input_tokens) | tostring),
+      (if $payload.cached_input_tokens == null then empty else "cached " + (n($payload.cached_input_tokens) | tostring) end),
+      "out " + (n($payload.output_tokens) | tostring),
+      (if $payload.duration_ms == null then empty else fmt_secs($payload.duration_ms) end),
+      (if $payload.total_cost_usd == null then empty else fmt_cost($payload.total_cost_usd) end)
+    ]
+    | map(select(. != null and . != ""))
+    | join(", ")
+  '
+}
+
+agent_usage_session_totals() {
+  local session_file="$1"
+  [[ -f "$session_file" ]] || return 1
+
+  jq -sc '
+    def sum_num($key): map(.[$key] // 0) | add;
+    {
+      run_count: length,
+      input_tokens: sum_num("input_tokens"),
+      cached_input_tokens: sum_num("cached_input_tokens"),
+      output_tokens: sum_num("output_tokens"),
+      duration_ms: sum_num("duration_ms"),
+      total_cost_usd: sum_num("total_cost_usd"),
+      providers: (map(.provider) | unique | sort)
+    }
+  ' "$session_file"
+}

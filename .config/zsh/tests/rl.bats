@@ -453,6 +453,60 @@ SCRIPT
   [[ "$session" =~ ^[0-9]+:[0-9]+$ ]]
 }
 
+@test "RL_USAGE_SESSION_FILE is set in child environment" {
+  local helper="$BATS_TEST_TMPDIR/session_file_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+echo "$RL_USAGE_SESSION_FILE" > "$SESSION_FILE"
+SCRIPT
+
+  export SESSION_FILE="$BATS_TEST_TMPDIR/session-file.txt"
+
+  run zsh "$RL" 1 -- "$helper"
+
+  [ -f "$SESSION_FILE" ]
+  local session_file
+  session_file=$(cat "$SESSION_FILE")
+  [[ "$session_file" == "$HOME/.local/state/agents/rl-sessions/"*".jsonl" ]]
+}
+
+@test "RL_* variables do not leak after rl returns in the same shell" {
+  local helper="$BATS_TEST_TMPDIR/session_scope_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+printf '%s|%s|%s\n' "$RL_SESSION" "$RL_USAGE_SESSION_FILE" "$RL_ITERATION" > "$INSIDE_FILE"
+SCRIPT
+
+  export INSIDE_FILE="$BATS_TEST_TMPDIR/inside-vars.txt"
+
+  run zsh -c '
+    set -e
+    rl() { source "'"$RL"'" "$@"; }
+    rl 1 -- "'"$helper"'"
+    printf "<LAST>%s|%s|%s</LAST>\n" "${RL_SESSION-unset}" "${RL_USAGE_SESSION_FILE-unset}" "${RL_ITERATION-unset}"
+  '
+
+  [ "$status" -eq 0 ]
+  [ -f "$INSIDE_FILE" ]
+  [[ "$(cat "$INSIDE_FILE")" =~ ^[0-9]+:[0-9]+\|.*/rl-sessions/.*\.jsonl\|1$ ]]
+  [[ "$output" == *"<LAST>unset|unset|unset</LAST>"* ]]
+}
+
+@test "rl prints aggregate totals from session usage log" {
+  local helper="$BATS_TEST_TMPDIR/usage_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+cat >> "$RL_USAGE_SESSION_FILE" <<JSON
+{"provider":"claude","runner":"cys","input_tokens":3,"cached_input_tokens":7,"output_tokens":4,"duration_ms":1200,"total_cost_usd":0.01}
+JSON
+SCRIPT
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"total, in 6, cached 14, out 8, 2.4s, \$0.02 across 2 runs"* || "$output" == *"total, in 6, cached 14, out 8, 2.4s, \$0.0200 across 2 runs"* ]]
+}
+
 @test "rl-kill lists orphaned processes" {
   # Spawn a process with a fake RL_SESSION (simulating an orphan)
   RL_SESSION="99999:1234567890" sleep 300 &

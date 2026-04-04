@@ -3,14 +3,30 @@
 # alias: cxy e (codex exec with yolo + json streaming)
 emulate -L zsh
 setopt pipefail
+setopt localtraps
 
 source "${0:A:h}/agent-stream-colours"
+source "${0:A:h}/agent-usage-log"
 agent_stream_setup_colours
 
 # exec is baked in below — strip if caller passes it redundantly (e.g. cxys exec "prompt")
 [[ $1 == exec ]] && { print -P "%F{yellow}[cxys]%f stripping redundant 'exec' (already baked in)"; shift; }
 
-codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null   | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
+local tmp_dir="${TMPDIR:-/tmp}"
+local usage_file raw_stream_file
+usage_file=$(mktemp "${tmp_dir%/}/cxys-usage.XXXXXX.json") || return 1
+raw_stream_file=$(mktemp "${tmp_dir%/}/cxys-stream.XXXXXX.jsonl") || {
+  rm -f "$usage_file"
+  return 1
+}
+
+TRAPEXIT() {
+  rm -f "$usage_file" "$raw_stream_file"
+}
+
+codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null \
+  | tee "$raw_stream_file" \
+  | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
     def paint($colour; $text): $colour + $text + $c_reset;
     def bucket($command):
       ($command // "") as $cmd
@@ -47,5 +63,35 @@ codex exec --dangerously-bypass-approvals-and-sandbox --json "$@" 2>/dev/null   
       command_line(.item.command; " …")
     elif .type == "turn.completed" then
       paint($c_success; "✓ turn done")
+      + paint(
+          $c_dim;
+          ([
+            "in " + ((.usage.input_tokens // 0) | tostring),
+            "cached " + ((.usage.cached_input_tokens // 0) | tostring),
+            "out " + ((.usage.output_tokens // 0) | tostring)
+          ] | join(", ")) as $summary
+          | " (" + $summary + ")"
+        )
     else empty end
   '
+local rc=$?
+
+if [[ -s "$raw_stream_file" ]]; then
+  jq -rc '
+    select(.type == "turn.completed" and .usage != null) |
+    {
+      input_tokens: (.usage.input_tokens // 0),
+      cached_input_tokens: (.usage.cached_input_tokens // 0),
+      output_tokens: (.usage.output_tokens // 0),
+      success: true
+    }
+  ' "$raw_stream_file" | tail -n 1 > "$usage_file"
+fi
+
+if [[ -s "$usage_file" ]]; then
+  local usage_payload
+  usage_payload=$(<"$usage_file")
+  agent_usage_append_record "codex" "cxys" "$usage_payload"
+fi
+
+return $rc
