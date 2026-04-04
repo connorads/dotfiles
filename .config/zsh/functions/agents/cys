@@ -2,15 +2,32 @@
 # cys: claude yolo stream - non-interactive claude with live formatted output
 emulate -L zsh
 setopt pipefail
+setopt localtraps
 
 source "${0:A:h}/agent-stream-colours"
+source "${0:A:h}/agent-usage-log"
 agent_stream_setup_colours
 
 # -p is baked in below — strip if caller passes it redundantly (e.g. cys -p "prompt")
 [[ $1 == -p ]] && { print -P "%F{yellow}[cys]%f stripping redundant '-p' (already baked in)"; shift; }
 
-claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null   | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
+local tmp_dir="${TMPDIR:-/tmp}"
+local usage_file raw_stream_file
+usage_file=$(mktemp "${tmp_dir%/}/cys-usage.XXXXXX.json") || return 1
+raw_stream_file=$(mktemp "${tmp_dir%/}/cys-stream.XXXXXX.jsonl") || {
+  rm -f "$usage_file"
+  return 1
+}
+
+TRAPEXIT() {
+  rm -f "$usage_file" "$raw_stream_file"
+}
+
+claude --dangerously-skip-permissions -p --verbose --output-format stream-json "$@" 2>/dev/null \
+  | tee "$raw_stream_file" \
+  | jq --unbuffered -r "${AGENT_STREAM_JQ_ARGS[@]}" '
     def paint($colour; $text): $colour + $text + $c_reset;
+    def usage_obj: (.usage // .message.usage // {});
     def tool_colour($name):
       if ($name // "") | test("^(Read|Glob|Grep|LS|Task)$") then $c_read
       elif ($name // "") | test("^(Edit|MultiEdit|Write|NotebookEdit)$") then $c_write
@@ -28,6 +45,40 @@ claude --dangerously-skip-permissions -p --verbose --output-format stream-json "
         else empty end
     elif .type == "result" then
       paint($c_success; "✓ done")
-      + paint($c_dim; " (" + ((.duration_ms / 1000 | tostring)[:5]) + "s, $" + ((.total_cost_usd | tostring)[:6]) + ")")
+      + paint(
+          $c_dim;
+          ([
+            "in " + ((usage_obj.input_tokens // 0) | tostring),
+            "cached " + ((usage_obj.cache_read_input_tokens // 0) | tostring),
+            "out " + ((usage_obj.output_tokens // 0) | tostring),
+            (((.duration_ms // 0) / 1000 | tostring)[:5]) + "s",
+            "$" + ((.total_cost_usd | tostring)[:6])
+          ] | join(", ")) as $summary
+          | " (" + $summary + ")"
+        )
     else empty end
   '
+local rc=$?
+
+if [[ -s "$raw_stream_file" ]]; then
+  jq -rc '
+    select(.type == "result")
+    | (.usage // .message.usage // {}) as $usage
+    | {
+        input_tokens: ($usage.input_tokens // 0),
+        cached_input_tokens: ($usage.cache_read_input_tokens // 0),
+        output_tokens: ($usage.output_tokens // 0),
+        duration_ms: (.duration_ms // 0),
+        total_cost_usd: .total_cost_usd,
+        success: (if (.is_error // false) or ((.subtype // "success") != "success") then false else true end)
+      }
+  ' "$raw_stream_file" | tail -n 1 > "$usage_file"
+fi
+
+if [[ -s "$usage_file" ]]; then
+  local usage_payload
+  usage_payload=$(<"$usage_file")
+  agent_usage_append_record "claude" "cys" "$usage_payload"
+fi
+
+return $rc
