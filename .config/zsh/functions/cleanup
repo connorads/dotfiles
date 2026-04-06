@@ -1,253 +1,576 @@
 #!/usr/bin/env zsh
-# cleanup: reclaim disk space by cleaning caches, build artefacts, and garbage
-# flags: --force / -f  execute (default is dry-run)
-#        --volumes     also prune docker volumes
+# cleanup: reclaim disk space from safe local caches and stale artefacts
+# usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
+# selectors: --target <id>, --bun, --pnpm, --npm, --pip, --uv, --cargo,
+#            --nvim, --browsers, --temp, --docker, --nix, --volumes
 emulate -L zsh
+setopt extended_glob
 
-local dry=1 volumes=0
-for arg in "$@"; do
-  case "$arg" in
-    --force|-f) dry=0 ;;
-    --volumes)  volumes=1 ;;
+typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
+CLEANUP_ALL_TARGETS=(bun pnpm npm pip uv cargo nvim browsers temp docker nix)
+CLEANUP_DEFAULT_TARGETS=("${CLEANUP_ALL_TARGETS[@]}")
+CLEANUP_SELECTED_TARGETS=()
+
+typeset -g CLEANUP_DRY_RUN=0
+typeset -g CLEANUP_ASSUME_YES=0
+typeset -g CLEANUP_JSON=0
+typeset -g CLEANUP_INCLUDE_VOLUMES=0
+typeset -g CLEANUP_SUBCOMMAND=""
+typeset -g CLEANUP_TMP_ROOT="${CLEANUP_TMPDIR_ROOT:-/var/tmp}"
+typeset -g CLEANUP_PROGRESS_ENABLED=0
+typeset -g CLEANUP_PROGRESS_START=0
+
+typeset -gA CLEANUP_LABELS CLEANUP_DEFAULT_FLAGS CLEANUP_SELECTED_FLAGS
+CLEANUP_LABELS=(
+  bun "Bun caches"
+  pnpm "pnpm store and cache"
+  npm "npm cache"
+  pip "pip cache"
+  uv "uv cache"
+  cargo "Cargo registry cache"
+  nvim "Neovim cache"
+  browsers "Browser automation caches"
+  temp "Stale temp directories"
+  docker "Docker unused images and build cache"
+  nix "Nix garbage collection"
+)
+CLEANUP_DEFAULT_FLAGS=(
+  bun 1
+  pnpm 1
+  npm 1
+  pip 1
+  uv 1
+  cargo 1
+  nvim 1
+  browsers 1
+  temp 1
+  docker 1
+  nix 1
+)
+
+typeset -gA CLEANUP_PROBE_APPLICABLE CLEANUP_PROBE_KB CLEANUP_PROBE_SIZE CLEANUP_PROBE_DETAILS CLEANUP_PROBE_COMMAND
+typeset -ga CLEANUP_ROW_CACHE
+
+_cleanup_usage() {
+  cat <<'EOF'
+Usage:
+  cleanup
+  cleanup ui
+  cleanup --dry-run
+  cleanup --yes
+  cleanup --json
+  cleanup --target <id> [--target <id> ...]
+  cleanup --bun --pnpm --docker [--volumes]
+
+Targets:
+  bun, pnpm, npm, pip, uv, cargo, nvim, browsers, temp, docker, nix
+
+Notes:
+  - Plain cleanup executes the default safe set.
+  - In non-interactive mode, execution requires --yes.
+  - --dry-run reports only and never prompts.
+  - --volumes only applies when Docker is selected.
+EOF
+}
+
+_cleanup_target_known() {
+  local target=$1
+  [[ -n "${CLEANUP_LABELS[$target]}" ]]
+}
+
+_cleanup_add_target() {
+  local target=$1
+  _cleanup_target_known "$target" || {
+    print -u2 "error: unknown cleanup target '$target'"
+    return 1
+  }
+
+  if [[ -z "${CLEANUP_SELECTED_FLAGS[$target]}" ]]; then
+    CLEANUP_SELECTED_TARGETS+=("$target")
+    CLEANUP_SELECTED_FLAGS[$target]=1
+  fi
+}
+
+_cleanup_kb_sum() {
+  local total=0 path kb
+  for path in "$@"; do
+    [[ -e "$path" ]] || continue
+    kb=$(/bin/sh -c '/usr/bin/du -sk -- "$1" 2>/dev/null | /usr/bin/sed "s/[[:space:]].*//"' sh "$path")
+    (( total += ${kb:-0} ))
+  done
+  print -r -- "$total"
+}
+
+_cleanup_human_kb() {
+  local kb=${1:-0}
+  if (( kb >= 1073741824 )); then
+    printf '%.1fT' "$(( kb / 1024.0 / 1024.0 / 1024.0 ))"
+  elif (( kb >= 1048576 )); then
+    printf '%.1fG' "$(( kb / 1024.0 / 1024.0 ))"
+  elif (( kb >= 1024 )); then
+    printf '%.1fM' "$(( kb / 1024.0 ))"
+  else
+    printf '%dK' "$kb"
+  fi
+}
+
+_cleanup_json_escape() {
+  local s=$1
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/}
+  s=${s//$'\t'/\\t}
+  print -r -- "$s"
+}
+
+_cleanup_parse_size_to_kb() {
+  local raw=${1//,/}
+  [[ "$raw" == "0B" || "$raw" == "0" ]] && { print -r -- 0; return 0; }
+
+  if [[ "$raw" =~ '^([0-9]+([.][0-9]+)?)([KMGTP]?B)$' ]]; then
+    local -F value=$match[1]
+    local unit=$match[3]
+    local -F mult=1
+    case "$unit" in
+      KB) mult=1 ;;
+      MB) mult=1024 ;;
+      GB) mult=$(( 1024.0 * 1024.0 )) ;;
+      TB) mult=$(( 1024.0 * 1024.0 * 1024.0 )) ;;
+      PB) mult=$(( 1024.0 * 1024.0 * 1024.0 * 1024.0 )) ;;
+      B)  mult=$(( 1.0 / 1024.0 )) ;;
+    esac
+    printf '%.0f\n' "$(( value * mult ))"
+    return 0
+  fi
+
+  print -r -- 0
+}
+
+_cleanup_temp_candidates() {
+  local root=$CLEANUP_TMP_ROOT
+  [[ -d "$root" ]] || return 0
+
+  find "$root" -maxdepth 1 -mindepth 1 -user "${USER:-$(id -un)}" -mtime +7 -print 2>/dev/null
+}
+
+_cleanup_probe_target() {
+  local target=$1
+  local applicable=1 kb=0
+  local detail="" command=""
+  local store=""
+  local -a dirs candidates
+
+  case "$target" in
+    bun)
+      dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || command -v bun >/dev/null 2>&1 || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}"
+      # Bun documents `bun pm cache rm`, but local path discovery can still fail.
+      command="bun pm cache rm (fallback: rm -rf Bun cache roots)"
+      ;;
+    pnpm)
+      command -v pnpm >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        store=$(pnpm store path 2>/dev/null)
+        kb=$(_cleanup_kb_sum "$store" "$HOME/.cache/pnpm")
+        detail="Store: ${store:-<unknown>}; cache: $HOME/.cache/pnpm"
+        command="pnpm store prune; rm -rf ~/.cache/pnpm"
+      fi
+      ;;
+    npm)
+      command -v npm >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        kb=$(_cleanup_kb_sum "$HOME/.npm")
+        detail="Path: $HOME/.npm"
+        command="npm cache clean --force"
+      fi
+      ;;
+    pip)
+      command -v pip >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        kb=$(_cleanup_kb_sum "$HOME/.cache/pip")
+        detail="Path: $HOME/.cache/pip"
+        command="pip cache purge"
+      fi
+      ;;
+    uv)
+      command -v uv >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        kb=$(_cleanup_kb_sum "$HOME/.cache/uv")
+        detail="Path: $HOME/.cache/uv"
+        command="uv cache clean"
+      fi
+      ;;
+    cargo)
+      dirs=("$HOME/.cargo/registry/cache")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || command -v cargo >/dev/null 2>&1 || applicable=0
+      detail="Path: $HOME/.cargo/registry/cache"
+      command="rm -rf ~/.cargo/registry/cache"
+      ;;
+    nvim)
+      kb=$(_cleanup_kb_sum "$HOME/.cache/nvim")
+      (( kb > 0 )) || applicable=0
+      detail="Path: $HOME/.cache/nvim"
+      command="rm -rf ~/.cache/nvim"
+      ;;
+    browsers)
+      dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
+      command="rm -rf browser automation caches"
+      ;;
+    temp)
+      candidates=("${(@f)$(_cleanup_temp_candidates)}")
+      kb=$(_cleanup_kb_sum "${candidates[@]}")
+      (( ${#candidates[@]} > 0 )) || applicable=0
+      detail="Root: $CLEANUP_TMP_ROOT; age: >7d; owner: ${USER:-$(id -un)}"
+      command="rm -rf stale temp entries"
+      ;;
+    docker)
+      command -v docker >/dev/null 2>&1 || applicable=0
+      if (( applicable )) && ! docker info >/dev/null 2>&1; then
+        applicable=0
+      fi
+      if (( applicable )); then
+        local line dtype reclaim
+        local docker_suffix=""
+        while IFS='|' read -r dtype reclaim; do
+          [[ -n "$dtype" && -n "$reclaim" ]] || continue
+          if [[ "$dtype" == "Local Volumes" ]] && (( ! CLEANUP_INCLUDE_VOLUMES )); then
+            continue
+          fi
+          (( kb += $(_cleanup_parse_size_to_kb "${reclaim%% *}") ))
+        done < <(docker system df --format '{{.Type}}|{{.Reclaimable}}' 2>/dev/null)
+        (( CLEANUP_INCLUDE_VOLUMES )) && docker_suffix=" --volumes"
+        detail="Command: docker system prune -af${docker_suffix}"
+        command="docker system prune -af${docker_suffix}"
+      fi
+      ;;
+    nix)
+      if ! command -v nix-collect-garbage >/dev/null 2>&1 || ! command -v nix-store >/dev/null 2>&1; then
+        applicable=0
+      else
+        kb=$(_cleanup_kb_sum "/nix/store")
+        detail="Store: /nix/store"
+        command="nix-collect-garbage --delete-older-than 30d; nix-store --optimise"
+      fi
+      ;;
+  esac
+
+  CLEANUP_PROBE_APPLICABLE[$target]=$applicable
+  CLEANUP_PROBE_KB[$target]=$kb
+  CLEANUP_PROBE_SIZE[$target]=$(_cleanup_human_kb "$kb")
+  CLEANUP_PROBE_DETAILS[$target]=$detail
+  CLEANUP_PROBE_COMMAND[$target]=$command
+}
+
+_cleanup_progress_init() {
+  (( CLEANUP_JSON )) && return 0
+  [[ -t 1 ]] || return 0
+
+  CLEANUP_PROGRESS_ENABLED=1
+  CLEANUP_PROGRESS_START=$SECONDS
+}
+
+_cleanup_progress_update() {
+  (( CLEANUP_PROGRESS_ENABLED )) || return 0
+
+  local current=$1
+  local total=$2
+  local target=$3
+  local elapsed=$(( SECONDS - CLEANUP_PROGRESS_START ))
+  local label="${CLEANUP_LABELS[$target]:-$target}"
+
+  print -rn -- $'\r\033[2K'"Probing cleanup targets ${current}/${total}: ${label} (elapsed ${elapsed}s)"
+}
+
+_cleanup_progress_finish() {
+  (( CLEANUP_PROGRESS_ENABLED )) || return 0
+  print -r -- ""
+  CLEANUP_PROGRESS_ENABLED=0
+}
+
+_cleanup_run_target() {
+  local target=$1
+  local store=""
+  local -a dirs candidates cmd
+
+  case "$target" in
+    bun)
+      dirs=("$HOME/.bun/install/cache" "$HOME/.cache/.bun/install/cache")
+      if command -v bun >/dev/null 2>&1 && bun pm cache rm >/dev/null 2>&1; then
+        return 0
+      fi
+      command rm -rf -- "${dirs[@]}"
+      ;;
+    pnpm)
+      command -v pnpm >/dev/null 2>&1 || return 0
+      pnpm store prune
+      command rm -rf -- "$HOME/.cache/pnpm"
+      ;;
+    npm)
+      command -v npm >/dev/null 2>&1 || return 0
+      npm cache clean --force
+      ;;
+    pip)
+      command -v pip >/dev/null 2>&1 || return 0
+      pip cache purge
+      ;;
+    uv)
+      command -v uv >/dev/null 2>&1 || return 0
+      uv cache clean
+      ;;
+    cargo)
+      command rm -rf -- "$HOME/.cargo/registry/cache"
+      ;;
+    nvim)
+      command rm -rf -- "$HOME/.cache/nvim"
+      ;;
+    browsers)
+      dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
+      command rm -rf -- "${dirs[@]}"
+      ;;
+    temp)
+      candidates=("${(@f)$(_cleanup_temp_candidates)}")
+      (( ${#candidates[@]} > 0 )) || return 0
+      command rm -rf -- "${candidates[@]}"
+      ;;
+    docker)
+      command -v docker >/dev/null 2>&1 || return 0
+      docker info >/dev/null 2>&1 || return 0
+      cmd=(docker system prune -af)
+      (( CLEANUP_INCLUDE_VOLUMES )) && cmd+=(--volumes)
+      "${cmd[@]}"
+      ;;
+    nix)
+      command -v nix-collect-garbage >/dev/null 2>&1 || return 0
+      command -v nix-store >/dev/null 2>&1 || return 0
+      nix-collect-garbage --delete-older-than 30d
+      nix-store --optimise
+      ;;
+  esac
+}
+
+_cleanup_probe_all() {
+  CLEANUP_ROW_CACHE=()
+  local target
+  local total=${#CLEANUP_SELECTED_TARGETS[@]}
+  local current=0
+
+  _cleanup_progress_init
+  for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
+    (( current += 1 ))
+    _cleanup_progress_update "$current" "$total" "$target"
+    _cleanup_probe_target "$target"
+    CLEANUP_ROW_CACHE+=("$(printf '%012d\t%s\t%s\t%s\t%s\t%s\t%s' \
+      "${CLEANUP_PROBE_KB[$target]:-0}" \
+      "$target" \
+      "${CLEANUP_LABELS[$target]}" \
+      "${CLEANUP_PROBE_SIZE[$target]}" \
+      "${CLEANUP_PROBE_APPLICABLE[$target]}" \
+      "${CLEANUP_PROBE_DETAILS[$target]}" \
+      "${CLEANUP_PROBE_COMMAND[$target]}")")
+  done
+  _cleanup_progress_finish
+}
+
+_cleanup_sorted_rows() {
+  printf '%s\n' "${CLEANUP_ROW_CACHE[@]}" | sort -r
+}
+
+_cleanup_print_plan() {
+  local mode_label=$1
+  local total_kb=0
+  local row kb target label size applicable detail command
+
+  echo "Cleanup plan ($mode_label):"
+  while IFS=$'\t' read -r kb target label size applicable detail command; do
+    kb=$((10#$kb))
+    (( total_kb += kb ))
+    printf '  %-10s %-10s %s\n' "$size" "$target" "$label"
+    [[ "$applicable" == "1" ]] || { echo "      skip: not available on this host"; continue; }
+    [[ -n "$detail" ]] && echo "      $detail"
+    [[ -n "$command" ]] && echo "      run: $command"
+  done < <(_cleanup_sorted_rows)
+  echo "  total estimate: $(_cleanup_human_kb "$total_kb")"
+}
+
+_cleanup_print_json() {
+  local mode_label=$1
+  local first=1
+  printf '{'
+  printf '"mode":"%s",' "$(_cleanup_json_escape "$mode_label")"
+  printf '"dry_run":%s,' "$([[ "$mode_label" == "dry-run" ]] && echo true || echo false)"
+  printf '"volumes":%s,' "$(( CLEANUP_INCLUDE_VOLUMES ))" 
+  printf '"targets":['
+  local row kb target label size applicable detail command
+  while IFS=$'\t' read -r kb target label size applicable detail command; do
+    (( first )) || printf ','
+    first=0
+    printf '{'
+    printf '"id":"%s",' "$(_cleanup_json_escape "$target")"
+    printf '"label":"%s",' "$(_cleanup_json_escape "$label")"
+    printf '"default":%s,' "$([[ "${CLEANUP_DEFAULT_FLAGS[$target]}" == "1" ]] && echo true || echo false)"
+    printf '"applicable":%s,' "$([[ "$applicable" == "1" ]] && echo true || echo false)"
+    printf '"size_kb":%s,' "$((10#$kb))"
+    printf '"size_human":"%s",' "$(_cleanup_json_escape "$size")"
+    printf '"detail":"%s",' "$(_cleanup_json_escape "$detail")"
+    printf '"command":"%s"' "$(_cleanup_json_escape "$command")"
+    printf '}'
+  done < <(_cleanup_sorted_rows)
+  printf ']}'
+  printf '\n'
+}
+
+_cleanup_confirm() {
+  local prompt=$1
+  if command -v gum >/dev/null 2>&1 && [[ -t 0 && -t 1 ]]; then
+    gum confirm "$prompt"
+    return $?
+  fi
+
+  if [[ -t 0 ]]; then
+    local reply
+    read -r "reply?$prompt [y/N] "
+    [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]]
+    return $?
+  fi
+
+  return 1
+}
+
+_cleanup_ui() {
+  command -v fzf >/dev/null 2>&1 || { print -u2 "fzf required"; return 1; }
+
+  local script_path="${0:A}"
+  local -a rows selections picked
+  local target mark row
+
+  for target in "${CLEANUP_ALL_TARGETS[@]}"; do
+    _cleanup_probe_target "$target"
+    mark=' '
+    [[ "${CLEANUP_DEFAULT_FLAGS[$target]}" == "1" ]] && mark='*'
+    rows+=("$target\t$mark\t${CLEANUP_PROBE_SIZE[$target]}\t${CLEANUP_LABELS[$target]}")
+  done
+
+  selections=("${(@f)$(
+    printf '%s\n' "${rows[@]}" | \
+      fzf --multi --reverse \
+        --delimiter=$'\t' \
+        --with-nth=2,3,4 \
+        --header='tab:select enter:run  (* = default target)' \
+        --preview="zsh --no-rcs ${(q)script_path} --dry-run --target {1}"
+  )}")
+  (( ${#selections[@]} > 0 )) || return 0
+
+  CLEANUP_SELECTED_TARGETS=()
+  CLEANUP_SELECTED_FLAGS=()
+  for row in "${selections[@]}"; do
+    picked+=("${row%%$'\t'*}")
+  done
+  for target in "${picked[@]}"; do
+    _cleanup_add_target "$target" || return 1
+  done
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    ui)
+      CLEANUP_SUBCOMMAND="ui"
+      shift
+      ;;
+    -n|--dry-run)
+      CLEANUP_DRY_RUN=1
+      shift
+      ;;
+    -y|--yes)
+      CLEANUP_ASSUME_YES=1
+      shift
+      ;;
+    --json)
+      CLEANUP_JSON=1
+      shift
+      ;;
+    --volumes)
+      CLEANUP_INCLUDE_VOLUMES=1
+      shift
+      ;;
+    --target)
+      [[ $# -ge 2 ]] || { print -u2 "error: --target requires a value"; return 1; }
+      _cleanup_add_target "$2" || return 1
+      shift 2
+      ;;
+    --bun|--pnpm|--npm|--pip|--uv|--cargo|--nvim|--browsers|--temp|--docker|--nix)
+      _cleanup_add_target "${1#--}" || return 1
+      shift
+      ;;
+    -h|--help|help)
+      _cleanup_usage
+      return 0
+      ;;
+    *)
+      print -u2 "error: unknown argument '$1'"
+      _cleanup_usage
+      return 1
+      ;;
   esac
 done
 
-# Nix
-if command -v nix-collect-garbage &>/dev/null; then
-  echo "=> nix garbage collect"
-  if (( dry )); then
-    du -sh /nix/store 2>/dev/null
-    echo "   [dry-run] nix-collect-garbage --delete-older-than 30d"
-    echo "   [dry-run] nix-store --optimise"
-  else
-    nix-collect-garbage --delete-older-than 30d
-    nix-store --optimise
-  fi
+if [[ "$CLEANUP_SUBCOMMAND" == "ui" ]]; then
+  _cleanup_ui || return $?
 fi
 
-# Docker
-if command -v docker &>/dev/null; then
-  echo "=> docker prune"
-  if (( dry )); then
-    docker system df 2>/dev/null
-    echo "   [dry-run] docker system prune -af"
-    echo "   [dry-run] docker builder prune -af"
-    if (( volumes )); then
-      echo "   [dry-run] docker volume prune -af"
-    else
-      echo "   [skip] docker volumes (pass --volumes to include)"
-    fi
-  else
-    docker system prune -af
-    docker builder prune -af
-    if (( volumes )); then
-      docker volume prune -af
-    fi
-  fi
-fi
-
-# Podman
-if command -v podman &>/dev/null; then
-  echo "=> podman prune"
-  if (( dry )); then
-    podman system df 2>/dev/null
-    echo "   [dry-run] podman system prune -af"
-    echo "   [dry-run] podman builder prune --all"
-    if (( volumes )); then
-      echo "   [dry-run] podman volume prune -af"
-    else
-      echo "   [skip] podman volumes (pass --volumes to include)"
-    fi
-  else
-    podman system prune -af
-    podman builder prune --all
-    if (( volumes )); then
-      podman volume prune -af
-    fi
-  fi
-fi
-
-# Homebrew (macOS)
-if [[ "$OSTYPE" == "darwin"* ]] && command -v brew &>/dev/null; then
-  echo "=> brew cleanup"
-  if (( dry )); then
-    brew cleanup -n --prune=30 2>/dev/null
-  else
-    brew cleanup --prune=30
-  fi
-fi
-
-# Xcode (macOS)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  local dd="$HOME/Library/Developer/Xcode/DerivedData"
-  if [[ -d "$dd" ]]; then
-    echo "=> xcode derived data"
-    if (( dry )); then
-      du -sh "$dd"
-      echo "   [dry-run] rm -rf $dd"
-    else
-      rm -rf "$dd"
-    fi
-  fi
-  for modcache in "$HOME/Library/Developer/Xcode/ModuleCache"*(N) "$HOME/Library/Developer/Xcode/ModuleCache.noindex"*(N); do
-    if [[ -d "$modcache" ]]; then
-      echo "=> xcode module cache"
-      if (( dry )); then
-        du -sh "$modcache"
-        echo "   [dry-run] rm -rf $modcache"
-      else
-        rm -rf "$modcache"
-      fi
-    fi
+if (( ${#CLEANUP_SELECTED_TARGETS[@]} == 0 )); then
+  typeset default_target
+  for default_target in "${CLEANUP_DEFAULT_TARGETS[@]}"; do
+    _cleanup_add_target "$default_target" || return 1
   done
-  if command -v xcrun &>/dev/null; then
-    echo "=> xcode simulators"
-    if (( dry )); then
-      echo "   [dry-run] xcrun simctl delete unavailable"
-    else
-      xcrun simctl delete unavailable
-    fi
-  fi
 fi
 
-# Go
-if command -v go &>/dev/null; then
-  echo "=> go cache"
-  if (( dry )); then
-    du -sh "$(go env GOCACHE 2>/dev/null)" 2>/dev/null
-    echo "   [dry-run] go clean -cache -testcache"
+if (( CLEANUP_INCLUDE_VOLUMES )) && [[ -z "${CLEANUP_SELECTED_FLAGS[docker]}" ]]; then
+  print -u2 "error: --volumes requires Docker cleanup"
+  return 1
+fi
+
+typeset mode_label="run"
+(( CLEANUP_DRY_RUN )) && mode_label="dry-run"
+_cleanup_probe_all
+
+if (( CLEANUP_JSON )); then
+  _cleanup_print_json "$mode_label"
+else
+  _cleanup_print_plan "$mode_label"
+fi
+
+if (( CLEANUP_DRY_RUN )); then
+  return 0
+fi
+
+if (( ! CLEANUP_ASSUME_YES )); then
+  if [[ -t 0 && -t 1 ]]; then
+    _cleanup_confirm "Run cleanup?" || { echo "Aborted."; return 1; }
   else
-    go clean -cache -testcache
+    print -u2 "error: non-interactive execution requires --yes"
+    return 1
   fi
 fi
 
-# Cargo
-if command -v cargo &>/dev/null && [[ -d "$HOME/.cargo/registry/cache" ]]; then
-  echo "=> cargo registry cache"
-  if (( dry )); then
-    du -sh "$HOME/.cargo/registry/cache"
-    echo "   [dry-run] rm -rf ~/.cargo/registry/cache"
-  else
-    rm -rf "$HOME/.cargo/registry/cache"
+typeset target
+typeset failed=0
+for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
+  [[ "${CLEANUP_PROBE_APPLICABLE[$target]}" == "1" ]] || continue
+  if (( ! CLEANUP_JSON )); then
+    echo "=> $target"
   fi
+  _cleanup_run_target "$target" || failed=1
+done
+
+if (( CLEANUP_JSON )); then
+  printf '{"ok":%s}\n' "$(( failed == 0 ))"
 fi
 
-# apt (non-NixOS Linux)
-if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
-  echo "=> apt clean"
-  if (( dry )); then
-    echo "   [dry-run] sudo apt-get clean"
-    echo "   [dry-run] sudo apt-get autoremove -y"
-  else
-    sudo apt-get clean
-    sudo apt-get autoremove -y
-  fi
-fi
-
-# mise
-if command -v mise &>/dev/null; then
-  echo "=> mise cache"
-  if (( dry )); then
-    echo "   [dry-run] mise cache clear"
-    echo "   [dry-run] mise prune -y"
-  else
-    mise cache clear
-    mise prune -y
-  fi
-fi
-
-# pnpm
-if command -v pnpm &>/dev/null; then
-  echo "=> pnpm store"
-  if (( dry )); then
-    local pnpm_store
-    pnpm_store="$(pnpm store path 2>/dev/null)"
-    [[ -d "$pnpm_store" ]] && du -sh "$pnpm_store"
-    echo "   [dry-run] pnpm store prune"
-  else
-    pnpm store prune
-  fi
-fi
-
-# bun
-if command -v bun &>/dev/null && [[ -d "$HOME/.bun/install/cache" ]]; then
-  echo "=> bun cache"
-  if (( dry )); then
-    du -sh "$HOME/.bun/install/cache"
-    echo "   [dry-run] rm -rf ~/.bun/install/cache"
-  else
-    rm -rf "$HOME/.bun/install/cache"
-  fi
-fi
-
-# npm
-if command -v npm &>/dev/null; then
-  echo "=> npm cache"
-  if (( dry )); then
-    [[ -d "$HOME/.npm" ]] && du -sh "$HOME/.npm"
-    echo "   [dry-run] npm cache clean --force"
-  else
-    npm cache clean --force
-  fi
-fi
-
-# pip
-if command -v pip &>/dev/null; then
-  echo "=> pip cache"
-  if (( dry )); then
-    pip cache info 2>/dev/null
-    echo "   [dry-run] pip cache purge"
-  else
-    pip cache purge
-  fi
-fi
-
-# uv
-if command -v uv &>/dev/null; then
-  echo "=> uv cache"
-  if (( dry )); then
-    echo "   [dry-run] uv cache clean"
-  else
-    uv cache clean
-  fi
-fi
-
-# Neovim cache
-if [[ -d "$HOME/.cache/nvim" ]]; then
-  echo "=> nvim cache"
-  if (( dry )); then
-    du -sh "$HOME/.cache/nvim"
-    echo "   [dry-run] rm -rf ~/.cache/nvim"
-  else
-    rm -rf "$HOME/.cache/nvim"
-  fi
-fi
-
-# Trash (macOS)
-if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "$HOME/.Trash" ]] && [[ "$(ls -A "$HOME/.Trash" 2>/dev/null)" ]]; then
-  echo "=> empty trash"
-  if (( dry )); then
-    du -sh "$HOME/.Trash"
-    echo "   [dry-run] rm -rf ~/.Trash/*"
-  else
-    rm -rf "$HOME/.Trash"/*
-  fi
-fi
-
-# systemd journal (Linux)
-if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v journalctl &>/dev/null; then
-  echo "=> systemd journal"
-  if (( dry )); then
-    journalctl --disk-usage 2>/dev/null
-    echo "   [dry-run] sudo journalctl --vacuum-time=7d"
-  else
-    sudo journalctl --vacuum-time=7d
-  fi
-fi
-
-if (( dry )); then
-  echo ""
-  echo "Dry run complete. Run 'cleanup --force' to execute."
-fi
-
-echo "=> done"
+return $failed
