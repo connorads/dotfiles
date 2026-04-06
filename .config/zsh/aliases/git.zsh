@@ -4,6 +4,10 @@ alias gomu='gom && gstp'
 alias gob='git switch -'
 alias gobu='gob && gstp'
 
+# no-verify commit
+alias gcnv='git commit --verbose --no-verify'
+alias gcnvm='git commit --no-verify --message'
+
 # https://github.com/chmouel/lazyworktree
 alias lwt='lazyworktree'
 alias wtl='git worktree list'
