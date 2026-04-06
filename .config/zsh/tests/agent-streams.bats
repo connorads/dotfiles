@@ -37,8 +37,11 @@ EOS
 #!/usr/bin/env bash
 cat <<'JSON'
 {"type":"text","part":{"text":"hello"}}
-{"type":"tool_use","part":{"tool":"web_fetch","state":{"status":"completed","input":{"description":"https://example.com"}}}}
+{"type":"tool_use","part":{"tool":"read","state":{"status":"completed","input":{"filePath":"/tmp/AGENTS.md"}}}}
+{"type":"tool_use","part":{"tool":"grep","state":{"status":"completed","input":{"pattern":"AGENTS.md","include":"**/*.md"}}}}
+{"type":"tool_use","part":{"tool":"web_fetch","state":{"status":"completed","input":{"url":"https://example.com"}}}}
 {"type":"tool_use","part":{"tool":"edit","state":{"status":"completed","input":{"command":"apply patch"}}}}
+{"type":"tool_use","part":{"tool":"task","state":{"status":"completed","input":{"foo":"bar"}}}}
 {"type":"step_finish","part":{"tokens":{"total":42},"cost":0.0098}}
 JSON
 EOS
@@ -119,8 +122,16 @@ EOS
 
   [ "$status" -eq 0 ]
   [[ "$output" == *$'\033[38;5;45m▶ hello\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;111m⚙ read\033[0m'* ]]
+  [[ "$output" == *"/tmp/AGENTS.md"* ]]
+  [[ "$output" == *$'\033[38;5;111m⚙ grep\033[0m'* ]]
+  [[ "$output" == *"AGENTS.md in **/*.md"* ]]
   [[ "$output" == *$'\033[38;5;141m⚙ web_fetch\033[0m'* ]]
+  [[ "$output" == *"https://example.com"* ]]
   [[ "$output" == *$'\033[38;5;203m⚙ edit\033[0m'* ]]
+  [[ "$output" == *"apply patch"* ]]
+  [[ "$output" == *$'\033[38;5;111m⚙ task\033[0m'* ]]
+  [[ "$output" == *'{"foo":"bar"}'* ]]
   [[ "$output" == *$'\033[38;5;70m✓ step\033[0m'* ]]
 }
 
