@@ -4,8 +4,20 @@ emulate -L zsh
 setopt pipefail
 setopt localtraps
 
-source "${0:A:h}/agent-stream-colours"
-source "${0:A:h}/agent-usage-log"
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local agent_file=
+local candidate_dir
+for candidate_dir in $fpath; do
+  if [[ -r "$candidate_dir/$self_name" ]]; then
+    agent_file="$candidate_dir/$self_name"
+    break
+  fi
+done
+[[ -n "$agent_file" ]] || agent_file="${${(%):-%N}:A}"
+[[ -r "$agent_file" ]] || agent_file="${0:A}"
+local agent_dir="${agent_file:A:h}"
+source "$agent_dir/agent-stream-colours"
+source "$agent_dir/agent-usage-log"
 agent_stream_setup_colours
 
 # -p is baked in below — strip if caller passes it redundantly (e.g. cys -p "prompt")
