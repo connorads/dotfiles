@@ -18,13 +18,33 @@ OPENCODE_CONFIG_CONTENT='{"permission":{"bash":{"*":"allow"},"external_directory
       elif ($name // "") | test("^(bash|shell|command)"; "i") then $c_shell
       else $c_agent
       end;
+    def compact_json($value):
+      ($value // {}) | tojson;
+    def summary_input($tool; $input):
+      if ($input | type) != "object" then
+        compact_json($input)
+      else
+        (
+          if ($input.description // "") != "" then $input.description
+          elif ($input.command // "") != "" then $input.command
+          elif ($input.filePath // "") != "" then $input.filePath
+          elif ($input.path // "") != "" then $input.path
+          elif ($input.pattern // "") != "" and ($input.include // "") != "" then ($input.pattern + " in " + $input.include)
+          elif ($input.pattern // "") != "" then $input.pattern
+          elif ($input.query // "") != "" then $input.query
+          elif ($input.url // "") != "" then $input.url
+          elif ($input.prompt // "") != "" then $input.prompt
+          else compact_json($input)
+          end
+        )
+      end;
 
     if .type == "text" then
       paint($c_assistant; "▶ " + .part.text)
     elif .type == "tool_use" then
       if .part.state.status == "completed" then
         paint(tool_colour(.part.tool); "⚙ " + .part.tool)
-        + paint($c_dim; " — " + ((.part.state.input.description // .part.state.input.command // "?")[:120]))
+        + paint($c_dim; " — " + (summary_input(.part.tool; .part.state.input)[:120]))
       else empty end
     elif .type == "step_finish" then
       paint($c_success; "✓ step")
