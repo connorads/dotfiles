@@ -492,6 +492,35 @@ SCRIPT
   [[ "$output" == *"<LAST>unset|unset|unset</LAST>"* ]]
 }
 
+@test "rl can be sourced from another directory" {
+  local helper="$BATS_TEST_TMPDIR/sourced_rl_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+echo ok
+SCRIPT
+
+  run zsh -c '
+    mkdir -p "'"$BATS_TEST_TMPDIR"'/caller"
+    cd "'"$BATS_TEST_TMPDIR"'/caller"
+    source "'"$RL"'" 1 -- "'"$helper"'"
+  '
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"finished after 1 iterations"* ]]
+}
+
+@test "rl autoload resolves sibling helpers from fpath" {
+  run zsh -fc '
+    fpath=("/home/connor/.config/zsh/functions/agents" $fpath)
+    autoload -Uz rl
+    rl 1 -- true
+  '
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"finished after 1 iterations"* ]]
+  [[ "$output" != *"agent_usage_state_dir: command not found"* ]]
+}
+
 @test "rl prints aggregate totals from session usage log" {
   local helper="$BATS_TEST_TMPDIR/usage_cmd.sh"
   write_executable "$helper" <<'SCRIPT'
