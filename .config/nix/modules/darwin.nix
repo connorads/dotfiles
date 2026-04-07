@@ -362,24 +362,37 @@
         home.packages = packages.sharedPackages ++ [ pkgs.duti pkgs.pngpaste ];
         home.stateVersion = "24.11";
 
-        # Set Sublime Text as default editor for common text formats.
+        # Set default macOS app associations declaratively.
         # Uses duti because nix-darwin has no built-in file association support
         # and home-manager's xdg.mimeApps is Linux-only.
         #
         # Only extensions with declared system UTIs work — dynamic UTIs (dyn.*)
         # cause duti to fail, which under set -eu aborts the entire home-manager
         # activation (blocking ALL symlink creation including git config).
-        # Extensions without UTIs (markdown, mdown, mkd, toml, env) are covered
-        # by the UTI entries below. || true guards against future breakage.
+        # Some formats are therefore covered by broad UTI mappings instead.
         home.activation.defaultAppAssociations = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          app_id="com.sublimetext.4"
+          set_default_app() {
+            local app_id="$1"
+            local selector="$2"
+            ${pkgs.duti}/bin/duti -s "$app_id" "$selector" all || true
+          }
 
+          text_app_id="com.sublimetext.4"
           for ext in md txt json yaml yml; do
-            ${pkgs.duti}/bin/duti -s "$app_id" "$ext" all || true
+            set_default_app "$text_app_id" "$ext"
           done
 
           for uti in net.daringfireball.markdown public.plain-text public.json public.yaml; do
-            ${pkgs.duti}/bin/duti -s "$app_id" "$uti" all || true
+            set_default_app "$text_app_id" "$uti"
+          done
+
+          media_app_id="com.colliderli.iina"
+          for ext in mp4 m4v mkv mov avi webm mpg mpeg ts m2ts flv wmv mp3 m4a aac flac wav ogg opus; do
+            set_default_app "$media_app_id" "$ext"
+          done
+
+          for uti in public.movie public.video public.audio public.audiovisual-content; do
+            set_default_app "$media_app_id" "$uti"
           done
         '';
 
