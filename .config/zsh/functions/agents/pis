@@ -1,0 +1,167 @@
+#!/usr/bin/env zsh
+# pis: pi yolo stream - non-interactive pi with live formatted output
+emulate -L zsh
+setopt pipefail
+
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local agent_file=
+local candidate_dir
+for candidate_dir in $fpath; do
+  if [[ -r "$candidate_dir/$self_name" ]]; then
+    agent_file="$candidate_dir/$self_name"
+    break
+  fi
+done
+[[ -n "$agent_file" ]] || agent_file="${${(%):-%N}:A}"
+[[ -r "$agent_file" ]] || agent_file="${0:A}"
+local agent_dir="${agent_file:A:h}"
+source "$agent_dir/agent-stream-colours"
+source "$agent_dir/agent-usage-log"
+agent_stream_setup_colours
+
+local c_reset=""
+local c_dim=""
+local c_assistant=""
+local c_read=""
+local c_shell=""
+local c_write=""
+local c_web=""
+local c_agent=""
+local c_success=""
+local c_error=""
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+  local esc=$'\033['
+  c_reset="${esc}0m"
+  c_dim="${esc}2m"
+  c_assistant="${esc}38;5;45m"
+  c_read="${esc}38;5;111m"
+  c_shell="${esc}38;5;214m"
+  c_write="${esc}38;5;203m"
+  c_web="${esc}38;5;141m"
+  c_agent="${esc}38;5;78m"
+  c_success="${esc}38;5;70m"
+  c_error="${esc}38;5;196m"
+fi
+
+# -p is baked in below — strip if caller passes it redundantly (e.g. pis -p "prompt")
+[[ $1 == -p ]] && { print -P "%F{yellow}[pis]%f stripping redundant '-p' (already baked in)"; shift; }
+
+local tmp_dir="${TMPDIR:-/tmp}"
+local usage_file raw_stream_file event_stream_file
+usage_file=$(mktemp "${tmp_dir%/}/pis-usage.XXXXXX.json") || return 1
+raw_stream_file=$(mktemp "${tmp_dir%/}/pis-stream.XXXXXX.jsonl") || {
+  rm -f "$usage_file"
+  return 1
+}
+event_stream_file=$(mktemp "${tmp_dir%/}/pis-events.XXXXXX.jsonl") || {
+  rm -f "$usage_file" "$raw_stream_file"
+  return 1
+}
+
+pi --mode json --no-session -p "$@" 2>/dev/null \
+  | tee "$raw_stream_file" \
+  | jq --unbuffered -rc '
+    def usage_summary($message):
+      {
+        input_tokens: ($message.usage.input // 0),
+        cached_input_tokens: ($message.usage.cacheRead // 0),
+        output_tokens: ($message.usage.output // 0),
+        total_cost_usd: ($message.usage.cost.total // 0)
+      };
+
+    if .type == "message_update" and .assistantMessageEvent.type == "text_delta" then
+      {kind: "assistant", text: .assistantMessageEvent.delta}
+    elif .type == "tool_execution_start" then
+      {kind: "tool_start", tool: .toolName, args: (.args | tostring)}
+    elif .type == "tool_execution_update" then
+      {kind: "tool_update", tool: .toolName, partial: (.partialResult | tostring)}
+    elif .type == "tool_execution_end" then
+      {kind: "tool_end", tool: .toolName, is_error: (.isError // false)}
+    elif .type == "message_end" and .message.role == "assistant" and (.message.stopReason // "stop") != "toolUse" then
+      {kind: "summary", usage: usage_summary(.message)}
+    else empty end
+  ' > "$event_stream_file"
+local rc=$?
+
+local text_open=0
+local event_line kind tool args partial summary_text text
+while IFS= read -r event_line; do
+  kind=$(jq -r '.kind' <<<"$event_line") || continue
+  case "$kind" in
+    assistant)
+      text=$(jq -r '.text' <<<"$event_line") || continue
+      if (( ! text_open )); then
+        printf '%s▶ %s%s' "$c_assistant" "$text" "$c_reset"
+        text_open=1
+      else
+        printf '%s' "$text"
+      fi
+      ;;
+    tool_start)
+      (( text_open )) && { printf '\n'; text_open=0; }
+      tool=$(jq -r '.tool' <<<"$event_line") || continue
+      args=$(jq -r '.args' <<<"$event_line") || continue
+      local tool_colour="$c_agent"
+      case "${tool:l}" in
+        read|grep|find|ls|task) tool_colour="$c_read" ;;
+        edit|write) tool_colour="$c_write" ;;
+        bash) tool_colour="$c_shell" ;;
+        web|fetch|search) tool_colour="$c_web" ;;
+      esac
+      printf '%s⚙ %s%s%s — %s%s\n' "$tool_colour" "$tool" "$c_reset" "$c_dim" "$args" "$c_reset"
+      ;;
+    tool_update)
+      partial=$(jq -r '.partial' <<<"$event_line") || continue
+      [[ "$partial" == "null" || -z "$partial" ]] && continue
+      ;;
+    tool_end)
+      tool=$(jq -r '.tool' <<<"$event_line") || continue
+      if [[ $(jq -r '.is_error' <<<"$event_line") == true ]]; then
+        printf '%s⚠ %s failed%s\n' "$c_error" "$tool" "$c_reset"
+      else
+        printf '%s✓ %s%s\n' "$c_success" "$tool" "$c_reset"
+      fi
+      ;;
+    summary)
+      (( text_open )) && { printf '\n'; text_open=0; }
+      summary_text=$(jq -rn --argjson payload "$(jq -c '.usage' <<<"$event_line")" '
+        [
+          "in " + (($payload.input_tokens // 0) | tostring),
+          "cached " + (($payload.cached_input_tokens // 0) | tostring),
+          "out " + (($payload.output_tokens // 0) | tostring),
+          "$" + ((($payload.total_cost_usd // 0) | tostring)[:8])
+        ] | join(", ")
+      ') || continue
+      printf '%s✓ done%s%s (%s)%s\n' "$c_success" "$c_reset" "$c_dim" "$summary_text" "$c_reset"
+      ;;
+  esac
+done < "$event_stream_file"
+
+if [[ -s "$raw_stream_file" ]]; then
+  local success_json
+  if (( rc == 0 )); then
+    success_json=true
+  else
+    success_json=false
+  fi
+
+  jq -rc --argjson success "$success_json" '
+    select(.type == "message_end" and .message.role == "assistant")
+    | {
+        input_tokens: (.message.usage.input // 0),
+        cached_input_tokens: (.message.usage.cacheRead // 0),
+        output_tokens: (.message.usage.output // 0),
+        total_cost_usd: (.message.usage.cost.total // 0),
+        success: $success
+      }
+  ' "$raw_stream_file" | tail -n 1 > "$usage_file"
+fi
+
+if [[ -s "$usage_file" ]]; then
+  local usage_payload
+  usage_payload=$(<"$usage_file")
+  agent_usage_append_record "pi" "pis" "$usage_payload"
+fi
+
+rm -f "$usage_file" "$raw_stream_file" "$event_stream_file"
+return $rc
