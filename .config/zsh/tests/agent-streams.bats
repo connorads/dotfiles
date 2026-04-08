@@ -7,6 +7,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 CYS="$FUNCTIONS_DIR/agents/cys"
 CXYS="$FUNCTIONS_DIR/agents/cxys"
 OCYS="$FUNCTIONS_DIR/agents/ocys"
+PIS="$FUNCTIONS_DIR/agents/pis"
 RL="$FUNCTIONS_DIR/agents/rl"
 
 setup() {
@@ -43,6 +44,24 @@ cat <<'JSON'
 {"type":"tool_use","part":{"tool":"edit","state":{"status":"completed","input":{"command":"apply patch"}}}}
 {"type":"tool_use","part":{"tool":"task","state":{"status":"completed","input":{"foo":"bar"}}}}
 {"type":"step_finish","part":{"tokens":{"total":42},"cost":0.0098}}
+JSON
+EOS
+
+  write_stub pi <<'EOS'
+#!/usr/bin/env bash
+cat <<'JSON'
+{"type":"session","version":3,"id":"test","timestamp":"2026-04-08T00:00:00.000Z","cwd":"/tmp"}
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_start","message":{"role":"assistant","content":[],"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"cost":{"total":0}}}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":"hello"},"message":{"role":"assistant","content":[{"type":"text","text":"hello"}]}}
+{"type":"tool_execution_start","toolCallId":"1","toolName":"read","args":{"path":"AGENTS.md"}}
+{"type":"tool_execution_end","toolCallId":"1","toolName":"read","result":{"path":"AGENTS.md"},"isError":false}
+{"type":"tool_execution_start","toolCallId":"2","toolName":"edit","args":{"path":"notes.md"}}
+{"type":"tool_execution_end","toolCallId":"2","toolName":"edit","result":{"ok":false},"isError":true}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"hello"}],"usage":{"input":12,"output":4,"cacheRead":3,"cacheWrite":0,"cost":{"total":0.0456}}}}
+{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"hello"}],"usage":{"input":12,"output":4,"cacheRead":3,"cacheWrite":0,"cost":{"total":0.0456}}},"toolResults":[]}
+{"type":"agent_end","messages":[]}
 JSON
 EOS
 }
@@ -135,6 +154,29 @@ EOS
   [[ "$output" == *$'\033[38;5;70m✓ step\033[0m'* ]]
 }
 
+@test "pis stays plain when stdout is not a TTY" {
+  run_zsh_function "$PIS" prompt
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"▶ hello"* ]]
+  [[ "$output" == *"⚙ read — {\"path\":\"AGENTS.md\"}"* ]]
+  [[ "$output" == *"✓ read"* ]]
+  [[ "$output" == *"⚠ edit failed"* ]]
+  [[ "$output" == *"in 12, cached 3, out 4, \$0.0456"* ]]
+  [[ "$output" != *$'\033['* ]]
+}
+
+@test "pis adds semantic colours in a TTY" {
+  run_in_tty "env -u NO_COLOR PATH=\"$PATH\" zsh --no-rcs \"$PIS\" prompt"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'\033[38;5;45m▶ hello\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;111m⚙ read\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;70m✓ read\033[0m'* ]]
+  [[ "$output" == *$'\033[38;5;196m⚠ edit failed\033[0m'* ]]
+  [[ "$output" == *"in 12, cached 3, out 4, \$0.0456"* ]]
+}
+
 @test "cys writes persistent rl usage record without prompt text" {
   run_zsh_function "$CYS" prompt
 
@@ -155,6 +197,18 @@ EOS
   [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"provider":"codex"'* ]]
   [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"runner":"cxys"'* ]]
   [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"cached_input_tokens":13'* ]]
+}
+
+@test "pis writes persistent rl usage record" {
+  run_zsh_function "$PIS" prompt
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.local/state/agents/rl-usage.jsonl" ]
+  [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"provider":"pi"'* ]]
+  [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"runner":"pis"'* ]]
+  [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"input_tokens":12'* ]]
+  [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"cached_input_tokens":3'* ]]
+  [[ "$(cat "$HOME/.local/state/agents/rl-usage.jsonl")" == *'"success":true'* ]]
 }
 
 @test "cys records usage for Claude error results" {
