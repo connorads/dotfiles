@@ -35,7 +35,7 @@ Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head
 
 Don't assume, check: It's important to do research to get the latest code and information.
 
-- Web search: Use exa to search the web for current information, documentation, discussions, issues, and solutions.
+- Web search: Use the web for current information, documentation, discussions, issues, and solutions.
 - Code search: Grep the codebase. You can also clone other repos like libraries from GitHub into /tmp and explore.
 
 Prefer to *use subagents* for research as to not pollute the context with lots of distracting tokens.
