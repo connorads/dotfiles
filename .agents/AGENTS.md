@@ -160,7 +160,3 @@ The gap between expectation and reality is the most valuable and perishable know
 - Non-obvious fixes get inline code comments explaining the constraint
 - Tests guarding subtle bugs get a comment explaining the failure mode, not just what's asserted
 - Decisions with trade-offs get an ADR
-
-### Micro-retro
-
-After completing a task, briefly reflect (1–3 bullets): what did we learn, what surprised us, what small rule/update prevents repeats? If it's a durable lesson, update AGENTS.md or add a code comment — those are what future sessions actually see.
