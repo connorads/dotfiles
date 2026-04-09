@@ -35,6 +35,7 @@
     taps = [ ];
     brews = [
       "mole"
+      "podman"
     ];
     casks = [
       # Apps
