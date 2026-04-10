@@ -1,0 +1,45 @@
+// Strict TypeScript compilerOptions — drop this into tsconfig.json
+// and keep the comments so future-you knows *why* each flag is set.
+{
+  "compilerOptions": {
+    // Core: the "strict" family — null checks, no implicit any, etc.
+    // Non-negotiable. If you find yourself turning sub-flags off, fix the code instead.
+    "strict": true,
+    "strictNullChecks": true,
+
+    // Indexed access returns T | undefined.
+    // Prevents `arr[0].foo` crashing on empty arrays; forces explicit checks.
+    "noUncheckedIndexedAccess": true,
+
+    // Fail the build on dead code. Zombie imports and unused vars drift otherwise.
+    // Prefix with `_` to intentionally keep an unused parameter.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // Only allow syntax that can be erased by a pure type-stripper (TS 5.8+).
+    // Bans `enum`, `namespace`, parameter properties (`constructor(private x)`),
+    // and other constructs that would require runtime codegen.
+    // Rationale: interop with deno/bun/swc/esbuild runtimes that strip types
+    // without a full TS compiler. Migrate enums to `as const` unions.
+    "erasableSyntaxOnly": true,
+
+    // Type-check only — emit is done by bundler / swc / tsgo.
+    "noEmit": true,
+
+    // Catch missed breakage when switching editors or build tools.
+    "isolatedModules": true,
+    "skipLibCheck": true,
+
+    // Module resolution appropriate for bundler-based projects (Next, Vite, etc.).
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "jsx": "preserve",
+    "incremental": true
+  },
+  "exclude": ["node_modules"]
+}

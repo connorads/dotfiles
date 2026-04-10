@@ -1,0 +1,94 @@
+// Worked example: hk.pkl step graph for a TypeScript / React / Next project.
+// Copy into a project's hk.pkl and trim for stacks that don't apply.
+// See the `hk` skill for wiring (mise.toml, .hk-hooks/, prepare script).
+amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+
+exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
+display_skip_reasons = List()
+terminal_progress = false
+
+local binary_excludes = List(
+    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.ico",
+    "*.woff", "*.woff2", "*.ttf", "*.eot", "*.pdf", "*.zip"
+)
+
+hooks {
+    ["pre-commit"] {
+        // fix = true + stash = git means: auto-fix, re-stage fixed files,
+        // stash the rest, run the gates, unstash at the end.
+        // Net effect: a single `git commit` succeeds with fixed content.
+        fix = true
+        stash = "git"
+
+        steps {
+            // --- Tier 1: formatting (auto-fixed and staged) ---
+            ["trailing-whitespace"] = (Builtins.trailing_whitespace) {
+                exclude = binary_excludes
+            }
+            ["newlines"] = (Builtins.newlines) {
+                exclude = binary_excludes
+            }
+            ["rumdl"] = (Builtins.rumdl) {}
+            ["typos"] = (Builtins.typos) {
+                exclude = binary_excludes + List("pnpm-lock.yaml", "**/*.generated.*")
+            }
+
+            // --- Tier 2: lint / format JS-TS code ---
+            // Biome (via Ultracite) owns formatting + general linting.
+            ["biome"] {
+                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.json", "*.css")
+                check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"
+                fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
+            }
+            // ESLint owns boundary rules that Biome can't express:
+            // no-restricted-imports, no-restricted-syntax, jsx-a11y, plugin:next, plugin:storybook.
+            ["eslint"] {
+                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
+                check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
+                fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
+            }
+
+            // --- Tier 2 cont.: validation gates (no auto-fix) ---
+            ["yamllint"] = (Builtins.yamllint) {}
+            ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
+            ["gitleaks"] {
+                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+            }
+
+            // --- Tier 3: typecheck ---
+            // Gate, not fix — a failing typecheck must block the commit.
+            ["typecheck"] {
+                check = "scripts/quiet-on-success.sh pnpm typecheck:fast"
+            }
+
+            // --- Tier 4: tests ---
+            // Enforce a coverage threshold via the test runner's config, not hk.
+            // For vitest: set `coverage.thresholds = { 100: true }` (or whatever
+            // threshold you want) and use `/* v8 ignore next */` for unreachable
+            // defensive code.
+            ["test-gate"] {
+                check = "scripts/quiet-on-success.sh pnpm test:unit --coverage"
+            }
+        }
+    }
+
+    // Commit message validation — conventional commits.
+    ["commit-msg"] {
+        steps {
+            ["commitlint"] {
+                check = "pnpm exec commitlint --edit {{commit_msg_file}}"
+            }
+        }
+    }
+
+    // Pre-push is a no-op: all gates run pre-commit so the push is already clean.
+    // Keeps `git push` fast and keeps the enforcement surface in one place.
+    ["pre-push"] {
+        steps {
+            ["noop"] {
+                check = "true"
+            }
+        }
+    }
+}
