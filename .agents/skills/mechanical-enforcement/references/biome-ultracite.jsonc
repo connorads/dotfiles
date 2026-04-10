@@ -1,0 +1,51 @@
+// Biome config extending Ultracite presets.
+// Ultracite bundles opinionated Biome rules for core/react/next — use it
+// instead of hand-rolling a Biome config. Override only with a comment
+// explaining *what would break* if the override were removed.
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/next"
+  ],
+  "files": {
+    "includes": [
+      "!.next/",
+      "!.open-next/",
+      "!node_modules/",
+      "!**/*.generated.*",
+      "!pnpm-lock.yaml",
+      "!.wrangler/",
+      "!storybook-static/"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        // Tailwind's `theme()` function in CSS is legal but Biome doesn't know.
+        "noUnknownFunction": {
+          "level": "error",
+          "options": { "ignore": ["theme"] }
+        }
+      },
+      "a11y": {
+        // tabIndex={0} on scrollable regions is the axe-mandated pattern
+        // (scrollable-region-focusable). Conflicts with this rule; keep it off.
+        "noNoninteractiveTabindex": "off"
+      },
+      "style": {
+        // Allow filenames that don't match strict kebab-case — Next.js app router
+        // uses `[slug]`, `(group)` etc. that fail camelCase convention checks.
+        "useFilenamingConvention": "off",
+        // Barrel re-exports are a legitimate pattern.
+        "noExportedImports": "off"
+      },
+      "security": {
+        // JSON-LD structured data requires static dangerouslySetInnerHTML blocks.
+        // Keep the override narrow — review any new use sites by hand.
+        "noDangerouslySetInnerHtml": "off"
+      }
+    }
+  }
+}
