@@ -89,6 +89,7 @@
 !/.pi/agent/
 /.pi/agent/**
 !/.pi/agent/AGENTS.md
+!/.pi/agent/settings.json
 !/.pi/agent/skills/
 /.pi/agent/skills/**
 !/.pi/agent/skills/*
