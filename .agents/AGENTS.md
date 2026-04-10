@@ -102,6 +102,10 @@ Use for granular commits when a file contains changes for multiple concerns.
 - Compose use-case steps so the happy path reads linearly and failures are handled explicitly at each stage
 - Exceptions are fine at the imperative shell (HTTP handlers, CLI) — catch and translate there
 
+## Mechanical enforcement
+
+Rules a reviewer would otherwise have to remember belong in a linter. Preferred rules, linter picks by stack, and copy-pasteable config snippets live in the `mechanical-enforcement` skill. Wiring those into git hooks is the `hk` skill.
+
 ## Observability
 
 - Design for observability: instrument at system boundaries (HTTP, DB, queues), prefer structured logging over unstructured, include context (request ID, operation, entity)
