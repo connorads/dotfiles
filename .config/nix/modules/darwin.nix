@@ -53,6 +53,7 @@
       "whatsapp"
       "steam"
       "whisky"
+      "retroarch"
       "android-studio"
       "android-commandlinetools"
       "visual-studio-code"
