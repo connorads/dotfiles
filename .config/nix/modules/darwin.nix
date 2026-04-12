@@ -133,6 +133,8 @@
     NSGlobalDomain = {
       "com.apple.swipescrolldirection" = false;
       AppleInterfaceStyle = "Dark";
+      KeyRepeat = 1;
+      InitialKeyRepeat = 10;
     };
     CustomUserPreferences = {
       "com.apple.symbolichotkeys" = {
