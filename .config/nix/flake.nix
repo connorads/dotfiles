@@ -113,7 +113,9 @@
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
         { homebrew.casks = [ "logitech-camera-settings" "wacom-tablet" ]; }
       ];
-      darwinConfigurations."Connors-MacBook-Air" = mkDarwin [ ];
+      darwinConfigurations."Connors-MacBook-Air" = mkDarwin [
+        { homebrew.casks = [ "logitech-camera-settings" ]; }
+      ];
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
       homeConfigurations."connor@penguin" = mkHome "x86_64-linux" [
