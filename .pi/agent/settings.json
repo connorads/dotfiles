@@ -2,8 +2,5 @@
   "lastChangelogVersion": "0.66.1",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.4",
-  "defaultThinkingLevel": "medium",
-  "packages": [
-    "npm:pi-web-providers@2.2.0"
-  ]
+  "defaultThinkingLevel": "medium"
 }
