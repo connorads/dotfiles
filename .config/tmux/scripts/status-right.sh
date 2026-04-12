@@ -328,11 +328,11 @@ if [ -f /var/run/reboot-required ]; then
 	printf "#[fg=#1e1e2e]#[bg=#f38ba8]#[bold] ⟳ REBOOT #[bg=#1e1e2e]#[fg=#f38ba8] "
 fi
 
-if [ "$width_raw" -ge 120 ]; then
+if [ "$width_raw" -ge 80 ]; then
 	print_full
-elif [ "$width_raw" -ge 90 ]; then
+elif [ "$width_raw" -ge 45 ]; then
 	print_medium
-elif [ "$width_raw" -ge 60 ]; then
+elif [ "$width_raw" -ge 35 ]; then
 	print_compact
 fi
-# < 60: output nothing except reboot indicator (mobile — maximise window tab space)
+# < 35: output nothing except reboot indicator (clock-only from tmux.conf)
