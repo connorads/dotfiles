@@ -1,0 +1,32 @@
+# Workspace lint configuration — paste into root Cargo.toml
+# Requires Rust 1.74+ (workspace-level lints)
+# Each crate needs: [lints]\nworkspace = true
+
+[workspace.lints.clippy]
+# Enable pedantic at warn; promote to deny once clean
+pedantic = { level = "warn", priority = -1 }
+
+# --- Common allows (adjust per-project) ---
+
+# Numeric code (casts) — allow in emulator/embedded/math-heavy projects
+cast-possible-lossless    = "allow"  # u8 as u16 etc.
+cast-possible-truncation  = "allow"  # intentional width narrowing
+cast-precision-loss       = "allow"  # f64 as f32
+cast-sign-loss            = "allow"  # i32 as u32
+
+# Naming
+module-name-repetitions   = "allow"  # idiomatic Rust (error::Error)
+similar-names             = "allow"  # register names, coordinate pairs
+unreadable-literal        = "allow"  # hex addresses (0x3CD70)
+
+# Documentation (non-library crates only)
+missing-errors-doc        = "allow"
+missing-panics-doc        = "allow"
+
+# Low signal-to-noise
+must-use-candidate        = "allow"
+wildcard-imports          = "allow"  # common in tests and enum re-exports
+struct-excessive-bools    = "allow"  # state/config structs
+
+[workspace.lints.rust]
+unsafe_code = "warn"  # visible, not denied — FFI crates need escape hatch
