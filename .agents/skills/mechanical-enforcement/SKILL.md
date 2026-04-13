@@ -1,6 +1,6 @@
 ---
 name: mechanical-enforcement
-description: Catalogue of preferred linter rules, TypeScript flags, and architectural boundary checks for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
+description: Catalogue of preferred linter rules, TypeScript flags, clippy thresholds, and architectural boundary checks for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
 ---
 
 # Mechanical Enforcement
@@ -34,7 +34,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | ESLint flat config — only for `no-restricted-imports`, `no-restricted-syntax`, `jsx-a11y`, framework plugins (next, storybook) | `tsc --noEmit` strict | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | — | `tsc --noEmit` strict | Skip ESLint entirely unless you need boundary rules. |
 | Python | ruff format | ruff | — | basedpyright strict (or pyright) | `ruff` replaces black + isort + flake8 + pylint. |
-| Rust | rustfmt | clippy (`-D warnings`) | — | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. |
+| Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
 | Shell | shfmt | shellcheck | — | — | `-e SC2086` only with comment. |
 | Markdown | rumdl | rumdl | — | — | Handles frontmatter too. |
@@ -116,6 +116,81 @@ Full working snippets live in `references/eslint-boundaries.mjs`.
 | Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `install_before` | Compromised releases |
 | No `--no-verify` | Documented in project CLAUDE.md / AGENTS.md; not technically preventable | Bypassing the whole gate. Cultural rule — reinforce in every project's agent docs. |
 
+### Rust: type safety & correctness
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Deny all default warnings | `clippy -D warnings` | Warnings accumulating silently | Non-negotiable baseline. |
+| Pedantic lints (selective) | `[workspace.lints.clippy] pedantic = { level = "warn", priority = -1 }` | Broader code quality issues | Start at `warn`, promote to `deny` once clean. Allow noisy lints per-project — see common allows table below. |
+| Unused results | clippy `let_underscore_must_use`, `unused_results` | Silently discarding important return values | Complements `#[must_use]` annotations. |
+| Unsafe visibility | `[workspace.lints.rust] unsafe_code = "warn"` | Unsafe blocks spreading unnoticed | `warn` not `deny` — FFI crates need escape hatch with per-crate override. |
+
+### Rust: complexity thresholds (clippy.toml)
+
+All settings go in `clippy.toml` at the workspace root. See `references/clippy-thresholds.toml` for a drop-in file.
+
+| Setting | Default | Recommended | Prevents |
+|---|---|---|---|
+| `too-many-lines-threshold` | 100 | 100 | Functions too long to review in one screen. Per-fn `#[allow(clippy::too_many_lines)]` for faithful translations (e.g. ASM ports). |
+| `too-many-arguments-threshold` | 7 | 7 | God-functions with too many inputs. |
+| `cognitive-complexity-threshold` | 25 | 25 | Deeply nested/branching logic. |
+| `type-complexity-threshold` | 250 | 250 | Deeply nested generics. |
+| `max-fn-params-bools` | 3 | 3 | Boolean-parameter blindness. |
+| `max-struct-bools` | 3 | 3 | Structs that should use enums instead. |
+| `disallowed-names` | `["foo","baz","quux"]` | `["foo","bar","baz","quux"]` | Placeholder names leaking into prod. |
+
+### Rust: common pedantic allows
+
+When enabling `clippy::pedantic`, these lints are typically too noisy. Allow them at workspace level and document why so projects don't re-derive the set. See `references/rust-workspace-lints.toml` for a drop-in config.
+
+| Lint | When to allow | Why |
+|---|---|---|
+| `cast-possible-truncation` | Numeric/embedded/emulator code | Intentional width casts are the norm |
+| `cast-possible-lossless` | Same | Would flag every `u8 as u16` |
+| `cast-precision-loss` | Float/audio/timing code | `f64 as f32` is intentional |
+| `cast-sign-loss` | Bitwise/register code | `i32 as u32` is intentional |
+| `module-name-repetitions` | Always | Idiomatic Rust (`error::Error`) |
+| `must-use-candidate` | Always | Too many suggestions, low signal |
+| `missing-errors-doc` | Non-library crates | Only useful for published APIs |
+| `missing-panics-doc` | Non-library crates | Same |
+| `similar-names` | Domain code with similar identifiers | Register names, coordinate pairs |
+| `unreadable-literal` | Code with hex addresses/constants | `0x3CD70` shouldn't need `0x0003_CD70` |
+| `wildcard-imports` | Test modules, enum re-exports | Common Rust pattern |
+| `struct-excessive-bools` | State/config structs | Game state, feature flags |
+
+### Rust: workspace lint wiring
+
+Requires Rust 1.74+. Define lints once in root `Cargo.toml`, inherit in each crate. FFI/sys crates get per-crate overrides. See `references/rust-workspace-lints.toml` for a complete template.
+
+```toml
+# Root Cargo.toml
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# ... project-specific allows ...
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+# Each crate's Cargo.toml
+[lints]
+workspace = true
+
+# FFI crate override example
+[lints.clippy]
+missing-safety-doc = "allow"
+```
+
+### Rust: supply chain (cargo-deny)
+
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) enforces dependency policy. See `references/cargo-deny.toml` for a template `deny.toml`.
+
+| Concern | Config section | What it catches | Notes |
+|---|---|---|---|
+| Known vulnerabilities | `[advisories]` | CVEs in transitive deps via RustSec DB | Set `severity = "low"` to flag everything. |
+| Licence compliance | `[licenses]` with allowlist | Unapproved or missing SPDX licences | Use `[[licenses.clarify]]` for deps with missing metadata. |
+| Banned crates | `[bans]` | Specific crates (e.g. `openssl` → use `rustls`) or duplicate versions | `multiple-versions = "warn"` catches dep tree bloat. |
+| Registry restriction | `[sources]` | Deps from unknown registries or git repos | `unknown-registry = "deny"`, `unknown-git = "warn"`. |
+
 ### Commit messages
 
 ```js
@@ -129,7 +204,7 @@ Wire via hk's `commit-msg` hook (see `references/hk-steps.pkl`). Nothing else to
 
 This skill gives you *what* to enforce. The `hk` skill gives you *how* to wire it.
 
-The typical mapping:
+The typical mapping (TypeScript):
 
 ```
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, biome fix
@@ -137,6 +212,15 @@ tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge
 tier 3 (typecheck)      → tsc --noEmit (or tsgo)
 tier 4 (test)           → vitest run --coverage
 commit-msg              → commitlint
+```
+
+The typical mapping (Rust):
+
+```
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, cargo-fmt
+tier 2 (lint/gate)      → cargo-clippy -D warnings, gitleaks, cargo-deny
+tier 3 (typecheck)      → cargo check (usually redundant with clippy but catches cfg issues)
+tier 4 (test)           → cargo test (scoped to changed crates via glob)
 ```
 
 Use `fix = true` + `stash = "git"` on pre-commit so tier 1 auto-fixes and re-stages. See `references/hk-steps.pkl` for a full worked example.
@@ -153,10 +237,18 @@ When a bug escapes to review or production, the retro question is: **what rule w
 
 ## References
 
+### TypeScript / JS
 - `references/typescript-strict.jsonc` — strict `compilerOptions` block (drop-in)
 - `references/biome-ultracite.jsonc` — Biome config extending Ultracite with override pattern
 - `references/eslint-boundaries.mjs` — layered `no-restricted-imports` + `no-restricted-syntax` examples
-- `references/hk-steps.pkl` — worked hk.pkl step graph
 - `references/commitlint.config.js` — one-line conventional-commits config
+
+### Rust
+- `references/clippy-thresholds.toml` — `clippy.toml` with recommended complexity thresholds (drop-in)
+- `references/rust-workspace-lints.toml` — `[workspace.lints]` block with pedantic + common allows (drop-in)
+- `references/cargo-deny.toml` — `deny.toml` template for licence/advisory/ban enforcement (drop-in)
+
+### Cross-stack
+- `references/hk-steps.pkl` — worked hk.pkl step graph
 - [Ultracite](https://www.ultracite.ai/) — Biome preset bundle
 - [hk](https://hk.jdx.dev) — git hook manager

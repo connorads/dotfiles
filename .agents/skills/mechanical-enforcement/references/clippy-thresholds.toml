@@ -1,0 +1,16 @@
+# clippy.toml — drop-in complexity thresholds
+# Copy to project root as `clippy.toml`
+# Docs: https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# Function complexity
+too-many-lines-threshold = 100        # pedantic: too_many_lines
+too-many-arguments-threshold = 7      # too_many_arguments
+cognitive-complexity-threshold = 25   # cognitive_complexity
+type-complexity-threshold = 250       # type_complexity_limit
+
+# Struct/param quality
+max-fn-params-bools = 3               # fn_params_excessive_bools
+max-struct-bools = 3                  # struct_excessive_bools
+
+# Naming
+disallowed-names = ["foo", "bar", "baz", "quux"]  # disallowed_names
