@@ -92,6 +92,8 @@
 !/.pi/agent/settings.json
 !/.pi/agent/extensions/
 !/.pi/agent/extensions/**
+/.pi/agent/extensions/**/node_modules/
+/.pi/agent/extensions/**/pnpm-lock.yaml
 !/.pi/agent/skills/
 /.pi/agent/skills/**
 !/.pi/agent/skills/*
