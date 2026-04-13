@@ -280,3 +280,26 @@ _print_window() {
 
 _print_window "5-hour:" "$u5" "$(_remaining "$r5")"
 _print_window "7-day:" "$u7" "$(_remaining "$r7")"
+
+# Sonnet-only window (shown when present)
+local us rs
+us=$(jq -r '.seven_day_sonnet.utilization // empty' "$cache")
+rs=$(jq -r '.seven_day_sonnet.resets_at // empty' "$cache")
+[[ -n "$us" ]] && _print_window "Sonnet:" "$us" "$(_remaining "$rs")"
+
+# Extra usage (spend-based, not time-windowed)
+local ex_enabled ex_limit ex_used
+ex_enabled=$(jq -r '.extra_usage.is_enabled // empty' "$cache")
+if [[ -n "$ex_enabled" ]]; then
+    ex_limit=$(jq -r '.extra_usage.monthly_limit // 0' "$cache")
+    ex_used=$(jq -r '.extra_usage.used_credits // 0' "$cache")
+    local limit_fmt used_fmt status_label
+    limit_fmt=$(printf "%.2f" "$((ex_limit))e-2")
+    used_fmt=$(printf "%.2f" "${ex_used}e-2")
+    if [[ "$ex_enabled" == "true" ]]; then
+        status_label="enabled"
+    else
+        status_label="disabled"
+    fi
+    printf "%-9s %s/%s  (%s)\n" "Extra:" "$used_fmt" "$limit_fmt" "$status_label"
+fi
