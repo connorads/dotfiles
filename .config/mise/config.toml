@@ -50,6 +50,8 @@ claude = "latest"
 "npm:agent-browser" = "0"
 "npm:cline" = "2"
 "npm:apify-cli" = "1"
+# TODO: unpin after 2026-04-17 (quarantine bypass for day-0 Cloudflare release)
+"npm:cf" = "0.0.4"
 "npm:critique" = "0"
 "npm:ctx7" = "0"
 "npm:firecrawl-cli" = "1"
