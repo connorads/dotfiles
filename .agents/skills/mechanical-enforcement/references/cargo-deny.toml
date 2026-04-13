@@ -1,0 +1,50 @@
+# deny.toml — cargo-deny template
+# Copy to project root as `deny.toml`
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+all-features = true
+
+# --- Security advisories (RustSec DB) ---
+[advisories]
+severity = "low"  # flag everything, not just critical
+
+# --- Licence compliance ---
+[licenses]
+unlicensed = "deny"
+confidence-threshold = 0.8
+copyleft = "deny"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
+
+# For deps with missing/ambiguous licence metadata:
+# [[licenses.clarify]]
+# crate = "some-crate"
+# expression = "MIT"
+# license-files = [{ path = "LICENSE", hash = 0xDEADBEEF }]
+
+# --- Crate bans ---
+[bans]
+multiple-versions = "warn"  # flag duplicate versions in the dep tree
+
+# Ban specific crates (uncomment/extend as needed):
+# deny = [
+#     { crate = "openssl", use-instead = "rustls" },
+# ]
+
+# --- Source restrictions ---
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# allow-git = ["https://github.com/org/repo"]
