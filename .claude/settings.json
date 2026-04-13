@@ -924,6 +924,7 @@
     "rust-analyzer-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
+  "showClearContextOnPlanAccept": true,
   "skipDangerousModePermissionPrompt": true,
-  "showClearContextOnPlanAccept": true
+  "model": "opus"
 }
