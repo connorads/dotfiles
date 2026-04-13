@@ -1,0 +1,13 @@
+{
+  "name": "pi-palette",
+  "version": "0.1.0",
+  "private": true,
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
