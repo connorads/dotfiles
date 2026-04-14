@@ -42,6 +42,19 @@ describe("buildEntries", () => {
     }
   });
 
+  it("includes direct session tree action", () => {
+    const entries = buildEntries([], "anthropic/claude-sonnet", "medium");
+    const tree = entries.find(
+      (e) => e.type === "action" && e.key === "r",
+    );
+    expect(tree).toBeDefined();
+    expect(tree!.type).toBe("action");
+    if (tree!.type === "action") {
+      expect(tree!.label).toBe("Session tree");
+      expect(tree!.description).toBe("/tree");
+    }
+  });
+
   it("includes model action with current model", () => {
     const entries = buildEntries([], "anthropic/claude-sonnet", "medium");
     const model = entries.find(
