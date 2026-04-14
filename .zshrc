@@ -108,3 +108,6 @@ export MICRO_TRUECOLOR=1
 # Added by LM Studio CLI (lms)
 [[ -d "$HOME/.lmstudio/bin" ]] && export PATH="$PATH:$HOME/.lmstudio/bin"
 # End of LM Studio CLI section
+
+# CF CLI completions
+[[ -f "$HOME/.config/cf/completions/_cf.zsh" ]] && source "$HOME/.config/cf/completions/_cf.zsh"
