@@ -126,6 +126,18 @@ export function buildEntries(
     },
   });
 
+  // ── Direct session tree shortcut ──
+  entries.push({
+    type: "action",
+    key: "r",
+    label: "Session tree",
+    description: "/tree",
+    action: (ctx) => {
+      ctx.ui.setEditorText("/tree");
+      setTimeout(() => process.stdin.emit("data", "\r"), 0);
+    },
+  });
+
   // ── Model (direct action) ──
   entries.push({
     type: "action",
