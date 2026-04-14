@@ -39,6 +39,9 @@
 /.config/**
 !/.config/opencode/
 /.config/opencode/**
+!/.config/opencode/tui.json
+!/.config/opencode/themes/
+!/.config/opencode/themes/catppuccin-mocha.json
 !/.config/opencode/command/
 !/.config/opencode/command/**
 !/.config/opencode/skills/
