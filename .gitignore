@@ -93,6 +93,7 @@
 /.pi/agent/**
 !/.pi/agent/AGENTS.md
 !/.pi/agent/settings.json
+!/.pi/agent/keybindings.json
 !/.pi/agent/extensions/
 !/.pi/agent/extensions/**
 /.pi/agent/extensions/**/node_modules/
