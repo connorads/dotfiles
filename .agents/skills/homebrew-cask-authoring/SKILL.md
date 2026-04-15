@@ -76,9 +76,17 @@ Rules of thumb:
 
 ### 3) Handle architecture (if needed)
 
-If URLs and/or sha256 differ by CPU:
-- Use `arch` + `sha256 arm: ..., intel: ...` when versions match.
-- Use `on_arm` / `on_intel` blocks when versions differ.
+Always confirm the binary's architectures — don't assume from vendor marketing. Mount the DMG (or unpack the artifact) and run:
+
+```bash
+lipo -archs "/Volumes/<Vol>/<AppName>.app/Contents/MacOS/<AppName>"
+```
+
+Then:
+- **Single-arch (`arm64` only)**: add `depends_on arch: :arm64` alongside any `macos:` gate. Without it, Intel users on a supported macOS can install a cask they can't run — a user-facing install-time regression reviewers will flag.
+- **Universal (`arm64 x86_64`)**: no arch gate needed.
+- **Different URLs and/or sha256 per CPU**: use `arch` + `sha256 arm: ..., intel: ...` when versions match.
+- **Different versions per CPU**: use `on_arm` / `on_intel` blocks.
 
 ### 4) Add uninstall/zap stanzas
 
