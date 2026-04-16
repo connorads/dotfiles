@@ -1,0 +1,33 @@
+{
+  "skill_name": "logging-best-practices",
+  "evals": [
+    {
+      "id": 0,
+      "name": "python-fastapi-greenfield",
+      "prompt": "I'm starting a new FastAPI service that talks to Postgres and ships to a dashboard via Datadog. Haven't set up logging yet. Help me do it properly from the start — we log ~1k req/s in prod and want to be able to debug individual customer issues later.",
+      "expected_output": "Structured logger config (structlog preferred), per-request canonical middleware emitting one wide event in finally, contextvars binding for request_id/user_id/tenant_id, OTel log/trace correlation, notes on JSON-to-stdout + Datadog ingestion, mentions high-cardinality fields and four context categories.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "workers-retrofit",
+      "prompt": "Our Cloudflare Worker (Hono, TypeScript) has ~40 `console.log` calls scattered across handlers. The Workers dashboard is unreadable — I can't filter by customer or route. Fix it.",
+      "expected_output": "Diagnoses that string-concat console.log defeats JSON auto-indexing. Proposes Hono canonical-event middleware emitting one JSON object per request via console.log. Mentions wrangler.jsonc observability config. Recommends Analytics Engine for per-tenant metrics with single index key. Flags waitUntil unreliability. Does NOT rip out all 40 logs at once — migration plan.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "small-audit",
+      "prompt": "Can you review the logging in src/auth/session.py? We had an incident last night where we couldn't figure out which user was hitting a bug, and the logs were useless.",
+      "expected_output": "Proportionate response. Does not mandate a full-service middleware rewrite. Diagnoses: user_id not being logged, string-interpolation losing fields. Recommends binding user_id/session_id into contextvars early, reframing key log calls as structured events. References canonical-event pattern as the long-term direction without forcing it on the user immediately.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "non-trigger-fib",
+      "prompt": "Write a tail-recursive fibonacci function in Python.",
+      "expected_output": "A straightforward fib function. Does not bring up logging, structlog, wide events, or observability. This tests whether the skill bloats unrelated tasks.",
+      "files": []
+    }
+  ]
+}
