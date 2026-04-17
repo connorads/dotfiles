@@ -13,6 +13,7 @@ Author and maintain Homebrew Casks with correct token naming, stanzas, audit/sty
 - Keep casks minimal: only add stanzas that are required for correct install/uninstall/cleanup.
 - Avoid destructive system changes unless explicitly requested; call out any `rm`/tap changes before suggesting them.
 - When testing local casks, ensure Homebrew reads from the local file (not the API).
+- Treat local Homebrew tap overrides as temporary. When done testing/submitting, restore standard Homebrew state unless the user asks to keep the override.
 
 ## Quick intake (ask these first)
 
@@ -163,6 +164,10 @@ The PR template includes an AI disclosure section. If AI assisted with the PR:
 ## Local development patterns
 
 If the user is editing `Homebrew/homebrew-cask` locally and wants Homebrew to execute their working copy, use a tap symlink workflow.
+
+Before changing the tap, print the current Homebrew state/commands so the restore path is visible in-context.
+
+When the task is done (typically after local validation, commit, or PR creation), restore standard Homebrew state unless the user asks to keep the local override. Prompt before leaving Homebrew in a non-standard state.
 
 Read the full end-to-end checklist here:
 - `references/homebrew-cask-contribution-workflow.md`
