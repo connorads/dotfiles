@@ -10,6 +10,8 @@ A complete guide for contributing casks to Homebrew, covering local testing, val
 
 ## Setup: Link Your Local Repository
 
+This override is temporary. Before changing anything, print the current Homebrew tap state/commands so the restore path is visible in-context. When testing is done, restore standard Homebrew state unless the user explicitly asks to keep the override.
+
 ### Initial Setup
 
 If you have the homebrew-cask repository checked out locally, make Homebrew use your working copy for testing:
@@ -28,6 +30,8 @@ ls -la $(brew --repository)/Library/Taps/homebrew/
 Now any changes you make in your git repo are immediately live for Homebrew commands.
 
 ### Restore Official Tap (After Testing)
+
+Restore when local validation/submission is done, usually after commit or PR creation. If you are about to leave Homebrew in a non-standard state, prompt first.
 
 ```bash
 # Remove your symlink
