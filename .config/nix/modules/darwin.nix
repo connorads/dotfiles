@@ -69,6 +69,7 @@
       "macwhisper"
       "native-access"
       "google-chrome"
+      "google-gemini"
       "firefox"
       "tor-browser"
       "discord"
