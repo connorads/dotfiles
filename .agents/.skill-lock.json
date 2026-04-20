@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "skills": {
+    "brave-search": {
+      "source": "badlogic/pi-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/badlogic/pi-skills.git",
+      "skillPath": "brave-search/SKILL.md",
+      "skillFolderHash": "079a8cb038b9166f6570a1db1f8b576efbb30b24",
+      "installedAt": "2026-04-09T11:08:57.145Z",
+      "updatedAt": "2026-04-09T11:08:57.145Z"
+    }
+  },
+  "dismissed": {}
+}
