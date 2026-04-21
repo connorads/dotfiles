@@ -20,6 +20,11 @@ See the [main agents skill](../SKILL.md#outbound-calls) for basic Python, JavaSc
 | `agent_phone_number_id` | string | Yes | The ID of the Twilio phone number linked to your agent |
 | `to_number` | string | Yes | The destination phone number (E.164 format) |
 | `conversation_initiation_client_data` | object | No | Override conversation settings for this call |
+| `call_recording_enabled` | boolean | No | Whether to let Twilio record the call |
+| `telephony_call_config` | object | No | Telephony call settings like ringing timeout |
+
+`conversation_initiation_client_data` also accepts `branch_id` to route the call to a specific
+agent branch and `environment` to control how environment variables resolve for that call.
 
 ## Response
 
@@ -50,7 +55,10 @@ response = client.conversational_ai.twilio.outbound_call(
     agent_id="your-agent-id",
     agent_phone_number_id="your-phone-number-id",
     to_number="+1234567890",
+    call_recording_enabled=True,
     conversation_initiation_client_data={
+        "branch_id": "branch_support_staging",
+        "environment": "staging",
         "conversation_config_override": {
             "agent": {
                 "first_message": "Hello! This is a reminder about your appointment tomorrow.",
@@ -75,7 +83,10 @@ const response = await client.conversationalAi.twilio.outboundCall({
   agentId: "your-agent-id",
   agentPhoneNumberId: "your-phone-number-id",
   toNumber: "+1234567890",
+  callRecordingEnabled: true,
   conversationInitiationClientData: {
+    branchId: "branch_support_staging",
+    environment: "staging",
     conversationConfigOverride: {
       agent: {
         firstMessage: "Hello! This is a reminder about your appointment tomorrow.",
@@ -112,9 +123,28 @@ const response = await client.conversationalAi.twilio.outboundCall({
 | `similarity_boost` | number | Voice similarity boost (0.0-1.0) |
 | `speed` | number | Speech speed multiplier |
 
+### Telephony Call Configuration
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `ringing_timeout_secs` | integer | How long to ring the recipient before giving up (default: `60`) |
+
 ### Dynamic Variables
 
 Pass custom data to your agent's prompt using `dynamic_variables`. Reference them in your agent's prompt with `{{variable_name}}` syntax.
+
+### Branch and Environment Routing
+
+Use `branch_id` inside `conversation_initiation_client_data` for per-call branch routing on
+Twilio or SIP trunk outbound calls. Use `environment` alongside it when the call should resolve
+workspace environment variables against a non-default deployment target such as `staging` or
+`production`.
+
+When assigning dynamic variables, you can use the `sanitize` option to remove sensitive values from tool responses before they are sent to the LLM and transcript, while still allowing variable assignment:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sanitize` | boolean | `false` | If true, the assignment's value is removed from tool responses before sending to LLM/transcript but still processed for variable assignment |
 
 ## Complete Example
 
@@ -135,6 +165,7 @@ for customer in customers:
             agent_id="payment-reminder-agent",
             agent_phone_number_id="your-phone-number-id",
             to_number=customer["phone"],
+            call_recording_enabled=True,
             conversation_initiation_client_data={
                 "conversation_config_override": {
                     "agent": {

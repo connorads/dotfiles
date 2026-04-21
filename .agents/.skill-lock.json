@@ -46,6 +46,51 @@
       "skillFolderHash": "b49af211f0b24c94bc62d45cdfc53155fb940f6e",
       "installedAt": "2026-04-21T12:40:32.371Z",
       "updatedAt": "2026-04-21T12:40:32.371Z"
+    },
+    "agents": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/elevenlabs/skills.git",
+      "skillPath": "agents/SKILL.md",
+      "skillFolderHash": "d5d05c01326f5ef4376a4e979bbbe81caeb55573",
+      "installedAt": "2026-04-21T12:41:13.278Z",
+      "updatedAt": "2026-04-21T12:41:13.278Z"
+    },
+    "music": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/elevenlabs/skills.git",
+      "skillPath": "music/SKILL.md",
+      "skillFolderHash": "c90eb2e31057ad0721274766dcddfb5ed675bc8b",
+      "installedAt": "2026-04-21T12:41:13.639Z",
+      "updatedAt": "2026-04-21T12:41:13.639Z"
+    },
+    "sound-effects": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/elevenlabs/skills.git",
+      "skillPath": "sound-effects/SKILL.md",
+      "skillFolderHash": "82919c6a296d21de49ee06ec0155d5575f317b51",
+      "installedAt": "2026-04-21T12:41:13.996Z",
+      "updatedAt": "2026-04-21T12:41:13.996Z"
+    },
+    "speech-to-text": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/elevenlabs/skills.git",
+      "skillPath": "speech-to-text/SKILL.md",
+      "skillFolderHash": "3ebfcc5851a89c0a46ff1650a06e206f77d96e99",
+      "installedAt": "2026-04-21T12:41:14.334Z",
+      "updatedAt": "2026-04-21T12:41:14.334Z"
+    },
+    "text-to-speech": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/elevenlabs/skills.git",
+      "skillPath": "text-to-speech/SKILL.md",
+      "skillFolderHash": "dd84f377254e264d24bb9191d502708fb574ef58",
+      "installedAt": "2026-04-21T12:41:14.670Z",
+      "updatedAt": "2026-04-21T12:41:14.670Z"
     }
   },
   "dismissed": {

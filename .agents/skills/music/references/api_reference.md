@@ -5,6 +5,8 @@
 - [compose](#compose)
 - [composition_plan.create](#composition_plancreate)
 - [compose_detailed](#compose_detailed)
+- [upload](#upload)
+- [video_to_music](#video_to_music)
 - [Error Handling](#error-handling)
 
 ## compose
@@ -134,6 +136,82 @@ print(result.json)
 # Save the audio
 with open(result.filename, "wb") as f:
     f.write(result.audio)
+```
+
+## upload
+
+Upload a music file for later inpainting workflows. This endpoint is available to enterprise clients with access to the inpainting feature.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file` | file | Yes | The audio file to upload |
+| `extract_composition_plan` | boolean | No | If `true`, the response includes an extracted composition plan and may take longer to return |
+
+### Returns
+
+| Field | Description |
+|-------|-------------|
+| `song_id` | Unique identifier for the uploaded song |
+| `composition_plan` | Extracted composition plan, or `null` when `extract_composition_plan` is not enabled |
+
+### Python
+
+```python
+client.music.upload(
+    file="example_file",
+)
+```
+
+### cURL
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/music/upload" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "file=@<file1>"
+```
+
+## video_to_music
+
+Generate background music that follows one or more uploaded video clips. Videos are combined in
+order before music generation.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `videos` | array of files | Yes | One or more video files. Up to 10 files, 200MB combined size, and 600 seconds total duration. |
+| `description` | string | No | Optional text prompt describing the desired music (up to 1000 characters). |
+| `tags` | array of strings | No | Optional style tags such as `upbeat` or `cinematic` (up to 10 tags). |
+| `sign_with_c2pa` | boolean | No | Sign generated MP3 output with C2PA metadata. Defaults to `false`. |
+| `output_format` | string | No | Output codec/sample-rate/bitrate, such as `mp3_44100_128`, `pcm_44100`, or `opus_48000_96`. |
+
+### Python
+
+```python
+audio = client.music.video_to_music(
+    videos=[open("scene-1.mp4", "rb"), open("scene-2.mp4", "rb")],
+    description="Cinematic ambient score with a gentle build",
+    tags=["cinematic", "ambient"],
+)
+
+with open("video-score.mp3", "wb") as f:
+    for chunk in audio:
+        f.write(chunk)
+```
+
+### cURL
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/music/video-to-music?output_format=mp3_44100_128" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "videos=@scene-1.mp4" \
+  -F "videos=@scene-2.mp4" \
+  -F "description=Cinematic ambient score with a gentle build" \
+  -F "tags=cinematic" \
+  -F "tags=ambient" \
+  --output video-score.mp3
 ```
 
 ## Error Handling

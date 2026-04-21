@@ -9,13 +9,16 @@
 | `language_code` | string | No | Language hint (ISO 639-1 or ISO 639-3, e.g., `en` or `eng`) |
 | `timestamps_granularity` | string | No | `none`, `word`, or `character` (default: `word`) |
 | `diarize` | boolean | No | Enable speaker diarization (default: `false`; up to 32 speakers) |
+| `detect_speaker_roles` | boolean | No | Label diarized speakers as `agent` and `customer` instead of `speaker_0`, `speaker_1`, etc. Requires `diarize=true` and cannot be used with `use_multi_channel=true` |
 | `num_speakers` | integer | No | Maximum speakers to detect (up to 32 for batch) |
 | `diarization_threshold` | number | No | Tune diarization sensitivity (default: ~0.22; only when `diarize=true` and `num_speakers` is not set) |
 | `keyterms` | array | No | Terms to bias transcription (up to 100 terms; each ≤50 chars, ≤5 words) |
 | `tag_audio_events` | boolean | No | Detect non-speech sounds like laughter, applause (default: `true`) |
 | `entity_detection` | string or array | No | Detect entities (e.g., `pii`, `phi`, `pci`, `offensive_language`) |
+| `no_verbatim` | boolean | No | If `true`, removes filler words, false starts, and non-speech sounds (supported with `scribe_v2`) |
 | `use_multi_channel` | boolean | No | Split multichannel audio into separate transcripts (default: `false`; max 5 channels, max 1 hour) |
 | `cloud_storage_url` | string | No | HTTPS URL to transcribe instead of uploading a file (max 2GB) |
+| `source_url` | string | No | URL of an audio or video file to transcribe, including hosted media, YouTube, TikTok, and other video services |
 | `webhook` | boolean | No | Process async and send result to webhook (default: `false`) |
 | `webhook_id` | string | No | Target specific webhook (only when `webhook=true`) |
 | `webhook_metadata` | string or object | No | Custom metadata included in webhook responses (max 16KB) |
@@ -73,6 +76,93 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   -F "diarize=true"
 ```
 
+## Agent and Customer Role Detection
+
+Use `detect_speaker_roles` with diarization when you want speaker labels tailored for contact center recordings:
+
+### Python
+
+```python
+result = client.speech_to_text.convert(
+    file=audio_file,
+    model_id="scribe_v2",
+    diarize=True,
+    detect_speaker_roles=True
+)
+
+for word in result.words:
+    print(f"[{word.speaker_id}] {word.text}")
+```
+
+### JavaScript
+
+```javascript
+const result = await client.speechToText.convert({
+  file: createReadStream("call.mp3"),
+  modelId: "scribe_v2",
+  diarize: true,
+  detectSpeakerRoles: true,
+});
+
+for (const word of result.words ?? []) {
+  console.log(`[${word.speakerId}] ${word.text}`);
+}
+```
+
+### cURL
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "file=@call.mp3" \
+  -F "model_id=scribe_v2" \
+  -F "diarize=true" \
+  -F "detect_speaker_roles=true"
+```
+
+## Cloud Storage URL
+
+If your media is already stored remotely and accessible over HTTPS, use `cloud_storage_url`
+instead of uploading a local file:
+
+```python
+result = client.speech_to_text.convert(
+    cloud_storage_url="https://storage.example.com/audio.mp3?signature=abc123",
+    model_id="scribe_v2"
+)
+```
+
+## Transcribing from a URL
+
+Use `source_url` when the media is already hosted online and you do not want to upload a file directly.
+
+### Python
+
+```python
+result = client.speech_to_text.convert(
+    model_id="scribe_v2",
+    source_url="https://example.com/interview.mp4",
+)
+```
+
+### JavaScript
+
+```javascript
+const result = await client.speechToText.convert({
+  modelId: "scribe_v2",
+  sourceUrl: "https://example.com/interview.mp4",
+});
+```
+
+### cURL
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "model_id=scribe_v2" \
+  -F "source_url=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+```
+
 ## Response Structure
 
 ```json
@@ -80,6 +170,7 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   "text": "The complete transcribed text from the audio file.",
   "language_code": "eng",
   "language_probability": 0.98,
+  "audio_duration_secs": 12.4,
   "words": [
     {
       "text": "The",
@@ -106,6 +197,7 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
 | `text` | string | Full transcription text |
 | `language_code` | string | Detected language (ISO 639-1 or ISO 639-3) |
 | `language_probability` | float | Confidence in detection (0-1) |
+| `audio_duration_secs` | float | Duration of the transcribed audio in seconds |
 | `words` | array | Word-level timestamps (if requested) |
 | `words[].text` | string | The transcribed word or spacing |
 | `words[].start` | float | Start time in seconds |

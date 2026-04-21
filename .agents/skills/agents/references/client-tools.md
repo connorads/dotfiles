@@ -143,6 +143,32 @@ Or for structured data:
 }
 ```
 
+Use workspace environment variables to keep a single server tool configuration working across
+staging and production. `{{system_env__label}}` works in server tool URLs, secret environment
+variables can populate `request_headers`, and auth-connection environment variables can populate
+`api_schema.auth_connection`. The same environment-variable resolution model also applies to MCP
+server connections.
+
+```json
+{
+  "api_schema": {
+    "url": "https://{{system_env__api_host}}.example.com/orders",
+    "method": "GET",
+    "request_headers": {
+      "X-Api-Key": { "env_var_label": "orders_api_key" }
+    },
+    "auth_connection": { "env_var_label": "orders_oauth" }
+  }
+}
+```
+
+Workspace auth connections support OAuth2 client credentials, OAuth2 JWT, private key JWT,
+basic auth, bearer auth, custom header auth, and mutual TLS (`mtls`).
+
+System dynamic variables are also available in tool parameters and headers. Use
+`{{system__conversation_history}}` when a webhook or sub-agent needs the full conversation
+context as a lazily evaluated JSON history object with user, agent, and tool entries.
+
 ### Webhook Tool Options
 
 | Field | Type | Default | Description |
@@ -224,6 +250,53 @@ const conversation = await Conversation.startSession({
     },
   },
 });
+```
+
+### React Registration with `useConversationClientTool`
+
+When you use the React SDK, wrap your component tree in `ConversationProvider` and register
+client tools from components with `useConversationClientTool`. Handlers are cleaned up
+automatically on unmount and always use the latest closure value. Prefer granular hooks such as
+`useConversationControls` and `useConversationStatus` for the session UI; `useConversation`
+remains available when you want the full conversation object in one hook.
+
+```typescript
+import {
+  ConversationProvider,
+  useConversationClientTool,
+  useConversationControls,
+  useConversationStatus,
+} from "@elevenlabs/react";
+
+function Storefront() {
+  useConversationClientTool("show_product", async ({ productId }) => {
+    const modal = document.getElementById("product-modal");
+    modal.innerHTML = await fetchProductCard(productId);
+    modal.showModal();
+    return { success: true };
+  });
+
+  const { startSession, endSession } = useConversationControls();
+  const { status } = useConversationStatus();
+
+  if (status === "connected") {
+    return <button onClick={endSession}>End</button>;
+  }
+
+  return (
+    <button onClick={() => startSession({ agentId: "your-agent-id" })}>
+      Start
+    </button>
+  );
+}
+
+function App() {
+  return (
+    <ConversationProvider>
+      <Storefront />
+    </ConversationProvider>
+  );
+}
 ```
 
 ### Registering Client Tools with Agent
@@ -317,10 +390,11 @@ Built-in tools provided by ElevenLabs. These are configured in `conversation_con
     "language_detection": {},
     "skip_turn": {},
     "voicemail_detection": {...},
-    "play_keypad_touch_tone": {},
-    "search_documentation": {...}
+    "play_keypad_touch_tone": {}
 }
 ```
+
+Current API schemas also expose `agent_prompt_change`, `memory_entry_create`, `memory_entry_delete`, `memory_entry_search`, and `memory_entry_update` in `built_in_tools`.
 
 ### end_call
 
@@ -399,6 +473,15 @@ Help the LLM extract correct values:
 ```
 
 ### Error Handling
+
+Configure how tool errors are shared with the agent using `tool_error_handling_mode`:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` | ElevenLabs automatically decides how to handle errors |
+| `summarized` | Errors are summarized before being sent to the agent |
+| `passthrough` | Full error details are passed to the agent |
+| `hide` | Errors are hidden from the agent |
 
 Return helpful error messages:
 
