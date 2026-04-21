@@ -146,6 +146,81 @@
       "skillFolderHash": "244095954fa19993a6252643f04607dee4ad17d6",
       "installedAt": "2026-04-21T12:42:56.390Z",
       "updatedAt": "2026-04-21T12:42:56.390Z"
+    },
+    "claude-api": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/claude-api/SKILL.md",
+      "skillFolderHash": "ffbd6daefeffa43f694a4af7772a1f11ff015180",
+      "pluginName": "claude-api",
+      "installedAt": "2026-04-21T12:43:29.653Z",
+      "updatedAt": "2026-04-21T12:43:29.653Z"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "skillFolderHash": "928950704df8a8b885c03de5da626331e6f29cf8",
+      "pluginName": "example-skills",
+      "installedAt": "2026-04-21T12:43:30.101Z",
+      "updatedAt": "2026-04-21T12:43:30.101Z"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/anthropics/skills.git",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "skillFolderHash": "3cf9a8db32597ba3e24b584a3d696f4e11c7d7b6",
+      "pluginName": "example-skills",
+      "installedAt": "2026-04-21T12:43:30.521Z",
+      "updatedAt": "2026-04-21T12:43:30.521Z"
+    },
+    "manim-composer": {
+      "source": "adithya-s-k/manim_skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/adithya-s-k/manim_skill.git",
+      "skillPath": "skills/manim-composer/SKILL.md",
+      "skillFolderHash": "134e1413eda79ef0a894c3407cc0805aa802a342",
+      "installedAt": "2026-04-21T12:43:32.865Z",
+      "updatedAt": "2026-04-21T12:43:32.865Z"
+    },
+    "manimce-best-practices": {
+      "source": "adithya-s-k/manim_skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/adithya-s-k/manim_skill.git",
+      "skillPath": "skills/manimce-best-practices/SKILL.md",
+      "skillFolderHash": "12f05bc0b33394aa665dea9720e32ebb9b9dda92",
+      "installedAt": "2026-04-21T12:43:33.371Z",
+      "updatedAt": "2026-04-21T12:43:33.371Z"
+    },
+    "next-best-practices": {
+      "source": "vercel-labs/next-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/next-skills.git",
+      "skillPath": "skills/next-best-practices/SKILL.md",
+      "skillFolderHash": "ad17eb27952b39a6ab0061bd50e8a2213b63a3ec",
+      "installedAt": "2026-04-21T12:43:35.009Z",
+      "updatedAt": "2026-04-21T12:43:35.009Z"
+    },
+    "next-cache-components": {
+      "source": "vercel-labs/next-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/next-skills.git",
+      "skillPath": "skills/next-cache-components/SKILL.md",
+      "skillFolderHash": "a6f29564b9228af553737bd437c7016fc3dc44e0",
+      "installedAt": "2026-04-21T12:43:35.011Z",
+      "updatedAt": "2026-04-21T12:43:35.011Z"
+    },
+    "next-upgrade": {
+      "source": "vercel-labs/next-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/next-skills.git",
+      "skillPath": "skills/next-upgrade/SKILL.md",
+      "skillFolderHash": "962598faa417cf3b6c03ec2e5cbe0aa0aeb2c4a9",
+      "installedAt": "2026-04-21T12:43:35.012Z",
+      "updatedAt": "2026-04-21T12:43:35.012Z"
     }
   },
   "dismissed": {
