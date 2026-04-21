@@ -91,6 +91,61 @@
       "skillFolderHash": "dd84f377254e264d24bb9191d502708fb574ef58",
       "installedAt": "2026-04-21T12:41:14.670Z",
       "updatedAt": "2026-04-21T12:41:14.670Z"
+    },
+    "context7": {
+      "source": "intellectronica/agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/intellectronica/agent-skills.git",
+      "skillPath": "skills/context7/SKILL.md",
+      "skillFolderHash": "c7ab574e006997d98e8a2d8fb7a1db0d2477b180",
+      "installedAt": "2026-04-21T12:42:48.377Z",
+      "updatedAt": "2026-04-21T12:42:48.377Z"
+    },
+    "youtube-transcript": {
+      "source": "intellectronica/agent-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/intellectronica/agent-skills.git",
+      "skillPath": "skills/youtube-transcript/SKILL.md",
+      "skillFolderHash": "e4b4218e2d65ec7dd601d2025f5e31b7bcd6c2e4",
+      "installedAt": "2026-04-21T12:42:48.760Z",
+      "updatedAt": "2026-04-21T12:42:48.760Z"
+    },
+    "firecrawl": {
+      "source": "firecrawl/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/firecrawl/cli.git",
+      "skillPath": "skills/firecrawl-cli/SKILL.md",
+      "skillFolderHash": "bf111a59bd51d6e86bbe21666fc33c28d9da2166",
+      "pluginName": "firecrawl",
+      "installedAt": "2026-04-21T12:42:50.699Z",
+      "updatedAt": "2026-04-21T12:42:50.699Z"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/skills.git",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "skillFolderHash": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
+      "installedAt": "2026-04-21T12:42:51.817Z",
+      "updatedAt": "2026-04-21T12:42:51.817Z"
+    },
+    "opentui": {
+      "source": "msmps/opentui-skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/msmps/opentui-skill.git",
+      "skillPath": "skill/opentui/SKILL.md",
+      "skillFolderHash": "5762c20998971757745d9c3dc8d55e9b64539fd3",
+      "installedAt": "2026-04-21T12:42:54.696Z",
+      "updatedAt": "2026-04-21T12:42:54.696Z"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/remotion-dev/skills.git",
+      "skillPath": "skills/remotion/SKILL.md",
+      "skillFolderHash": "244095954fa19993a6252643f04607dee4ad17d6",
+      "installedAt": "2026-04-21T12:42:56.390Z",
+      "updatedAt": "2026-04-21T12:42:56.390Z"
     }
   },
   "dismissed": {
