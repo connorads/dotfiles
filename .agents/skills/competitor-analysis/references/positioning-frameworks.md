@@ -316,5 +316,5 @@ Rate each competitor's messaging on these dimensions (1-5):
 3. **Build Positioning Statement** using the templates
 4. **Audit Differentiation** to ensure claims are defensible
 5. **Identify Messaging Vulnerabilities** to find attack angles
-6. **Create Battlecards** (see [battlecard-template.md](./battlecard-template.md)) incorporating all insights
+6. **Create Battlecards** (see [battlecard-template.md](https://github.com/aaron-he-zhu/seo-geo-claude-skills/blob/main/research/competitor-analysis/references/battlecard-template.md)) incorporating all insights
 7. **Review quarterly** as the competitive landscape shifts
