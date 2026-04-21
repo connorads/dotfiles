@@ -293,6 +293,36 @@
       "skillFolderHash": "f638bfc2027d14140dd5ac63b5c1a1c2f4c993d0",
       "installedAt": "2026-04-21T12:44:58.049Z",
       "updatedAt": "2026-04-21T12:44:58.049Z"
+    },
+    "create-auth-skill": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/better-auth/skills.git",
+      "skillPath": "better-auth/create-auth/SKILL.md",
+      "skillFolderHash": "5192f50c149fc94b6bfb4cf288dfd84f37517e00",
+      "pluginName": "auth-skills",
+      "installedAt": "2026-04-21T12:46:27.022Z",
+      "updatedAt": "2026-04-21T12:46:27.022Z"
+    },
+    "competitor-analysis": {
+      "source": "aaron-he-zhu/seo-geo-claude-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/aaron-he-zhu/seo-geo-claude-skills.git",
+      "skillPath": "research/competitor-analysis/SKILL.md",
+      "skillFolderHash": "76469b548fd74e7aa4aad0132470fddff47db5a9",
+      "pluginName": "aaron-seo-geo",
+      "installedAt": "2026-04-21T12:47:31.820Z",
+      "updatedAt": "2026-04-21T12:47:31.820Z"
+    },
+    "content-gap-analysis": {
+      "source": "aaron-he-zhu/seo-geo-claude-skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/aaron-he-zhu/seo-geo-claude-skills.git",
+      "skillPath": "research/content-gap-analysis/SKILL.md",
+      "skillFolderHash": "e28242b70afae60648b64a9b0fa12ea711bbad2c",
+      "pluginName": "aaron-seo-geo",
+      "installedAt": "2026-04-21T12:47:32.120Z",
+      "updatedAt": "2026-04-21T12:47:32.120Z"
     }
   },
   "dismissed": {
