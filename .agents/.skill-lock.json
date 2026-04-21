@@ -9,7 +9,42 @@
       "skillFolderHash": "079a8cb038b9166f6570a1db1f8b576efbb30b24",
       "installedAt": "2026-04-09T11:08:57.145Z",
       "updatedAt": "2026-04-09T11:08:57.145Z"
+    },
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/agent-browser.git",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "skillFolderHash": "121eecacd86c0aab06aef5cd4663e80c5397cd41",
+      "installedAt": "2026-04-20T17:21:03.910Z",
+      "updatedAt": "2026-04-20T17:21:03.910Z"
+    },
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/microsoft/playwright-cli.git",
+      "skillPath": "skills/playwright-cli/SKILL.md",
+      "skillFolderHash": "b901dcc64256dbb1b32744975a0bafaeb4478da5",
+      "installedAt": "2026-04-20T17:22:09.545Z",
+      "updatedAt": "2026-04-20T17:22:09.545Z"
     }
   },
-  "dismissed": {}
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "antigravity",
+    "cline",
+    "codex",
+    "cursor",
+    "deepagents",
+    "firebender",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-cli",
+    "opencode",
+    "warp",
+    "claude-code"
+  ]
 }
