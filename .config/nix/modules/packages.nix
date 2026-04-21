@@ -135,6 +135,7 @@ let
     ffmpeg
     imagemagick
     libwebp
+    poppler-utils
     presenterm
     charm-freeze
     # rembg CLI without gradio (rembg s server won't work; rembg i/p/b still work)
