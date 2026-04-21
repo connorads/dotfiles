@@ -60,8 +60,56 @@ curl -X POST "https://api.elevenlabs.io/v1/music" \
 | `music.compose` | Generate audio from a prompt or composition plan |
 | `music.composition_plan.create` | Generate a structured plan for fine-grained control |
 | `music.compose_detailed` | Generate audio + composition plan + metadata |
+| `music.video_to_music` | Generate background music from one or more uploaded video files |
+| `music.upload` | Upload an audio file for later inpainting workflows and optionally extract its composition plan |
 
 See [API Reference](references/api_reference.md) for full parameter details.
+
+`music.upload` is available to enterprise clients with access to the inpainting feature.
+
+## Video to Music
+
+Generate background music that follows one or more uploaded video clips. The API combines videos
+in order, accepts an optional natural-language description, and lets you steer style with up to 10
+tags such as `upbeat` or `cinematic`.
+
+### Python
+
+```python
+from elevenlabs import ElevenLabs
+
+client = ElevenLabs()
+
+audio = client.music.video_to_music(
+    videos=["trailer.mp4"],
+    description="Build suspense, then resolve with a warm cinematic finish.",
+    tags=["cinematic", "suspenseful", "uplifting"],
+)
+
+with open("video-score.mp3", "wb") as f:
+    for chunk in audio:
+        f.write(chunk)
+```
+
+### cURL
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/music/video-to-music" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "videos=@trailer.mp4" \
+  -F "description=Build suspense, then resolve with a warm cinematic finish." \
+  -F "tags=cinematic" \
+  -F "tags=suspenseful" \
+  -F "tags=uplifting" \
+  --output video-score.mp3
+```
+
+Constraints from the current API schema:
+
+- Upload 1-10 video files per request
+- Keep total combined upload size at or below 200 MB
+- Keep total combined video duration at or below 600 seconds
+- Use `description` for high-level musical direction and `tags` for concise style cues
 
 ## Composition Plans
 

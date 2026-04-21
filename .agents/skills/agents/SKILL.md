@@ -40,6 +40,7 @@ client = ElevenLabs()
 
 agent = client.conversational_ai.agents.create(
     name="My Assistant",
+    enable_versioning=True,
     conversation_config={
         "agent": {
             "first_message": "Hello! How can I help?",
@@ -63,6 +64,7 @@ const client = new ElevenLabsClient();
 
 const agent = await client.conversationalAi.agents.create({
   name: "My Assistant",
+  enableVersioning: true,
   conversationConfig: {
     agent: {
       firstMessage: "Hello! How can I help?",
@@ -81,7 +83,7 @@ const agent = await client.conversationalAi.agents.create({
 ### cURL
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/convai/agents/create" \
+curl -X POST "https://api.elevenlabs.io/v1/convai/agents/create?enable_versioning=true" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
   -d '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
 ```
@@ -90,7 +92,10 @@ curl -X POST "https://api.elevenlabs.io/v1/convai/agents/create" \
 
 **Server-side (Python):** Get signed URL for client connection:
 ```python
-signed_url = client.conversational_ai.conversations.get_signed_url(agent_id="your-agent-id")
+signed_url = client.conversational_ai.conversations.get_signed_url(
+    agent_id="your-agent-id",
+    environment="staging",
+)
 ```
 
 **Client-side (JavaScript):**
@@ -99,30 +104,61 @@ import { Conversation } from "@elevenlabs/client";
 
 const conversation = await Conversation.startSession({
   agentId: "your-agent-id",
+  environment: "staging",
   onMessage: (msg) => console.log("Agent:", msg.message),
   onUserTranscript: (t) => console.log("User:", t.message),
   onError: (e) => console.error(e)
 });
 ```
 
-**React Hook:**
+**React Hook:** Wrap hook consumers in `ConversationProvider`. Prefer granular hooks such as
+`useConversationControls` and `useConversationStatus` for session controls and UI state;
+`useConversation` remains available as the convenience all-in-one hook. Pass provider-level
+callbacks such as `onError` when you want React to handle conversation errors in one place.
 ```typescript
-import { useConversation } from "@elevenlabs/react";
+import {
+  ConversationProvider,
+  useConversationControls,
+  useConversationStatus,
+} from "@elevenlabs/react";
 
-const conversation = useConversation({ onMessage: (msg) => console.log(msg) });
-// Get signed URL from backend, then:
-await conversation.startSession({ signedUrl: token });
+function Agent({ signedUrl }: { signedUrl: string }) {
+  const { startSession, endSession } = useConversationControls();
+  const { status } = useConversationStatus();
+
+  if (status === "connected") {
+    return <button onClick={endSession}>End conversation</button>;
+  }
+
+  return (
+    <button onClick={() => startSession({ signedUrl })}>
+      Start conversation
+    </button>
+  );
+}
+
+function App({ signedUrl }: { signedUrl: string }) {
+  return (
+    <ConversationProvider
+      onError={(error) => console.error("Conversation error:", error)}
+    >
+      <Agent signedUrl={signedUrl} />
+    </ConversationProvider>
+  );
+}
 ```
 
 ## Configuration
 
 | Provider | Models |
 |----------|--------|
-| OpenAI | `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
-| Anthropic | `claude-sonnet-4-5`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
-| Google | `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
-| ElevenLabs | `glm-45-air-fp8`, `qwen3-30b-a3b`, `gpt-oss-120b` |
+| OpenAI | `gpt-5.4`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
+| Anthropic | `claude-sonnet-4-6`, `claude-sonnet-4-5`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
+| Google | `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
+| ElevenLabs | `glm-45-air-fp8`, `qwen3-30b-a3b`, `qwen35-35b-a3b`, `qwen35-397b-a17b`, `gpt-oss-120b` |
 | Custom | `custom-llm` (bring your own endpoint) |
+
+Use `GET /v1/convai/llm/list` to inspect the current model catalog, including deprecation state, token/context limits, capability flags such as image-input support, and model-specific reasoning effort support.
 
 **Popular voices:** `JBFqnCBsd6RMkjVDRZzb` (George), `EXAVITQu4vr4xnSDxMaL` (Sarah), `onwK4e9ZLuTAKqWW03F9` (Daniel), `XB0fDUnXU5powFXDhCwa` (Charlotte)
 
@@ -133,6 +169,8 @@ See [Agent Configuration](references/agent-configuration.md) for all options.
 ## Tools
 
 Extend agents with webhook, client, or built-in system tools. Tools are defined inside `conversation_config.agent.prompt`:
+
+Workspace environment variables can resolve per-environment server tool URLs, headers, and auth connections, and runtime system variables such as `{{system__conversation_history}}` can pass full conversation context into tool calls when needed.
 
 ```python
 "prompt": {
@@ -187,7 +225,8 @@ Make outbound phone calls using your agent via Twilio integration:
 response = client.conversational_ai.twilio.outbound_call(
     agent_id="your-agent-id",
     agent_phone_number_id="your-phone-number-id",
-    to_number="+1234567890"
+    to_number="+1234567890",
+    call_recording_enabled=True
 )
 print(f"Call initiated: {response.conversation_id}")
 ```
@@ -199,6 +238,7 @@ const response = await client.conversationalAi.twilio.outboundCall({
   agentId: "your-agent-id",
   agentPhoneNumberId: "your-phone-number-id",
   toNumber: "+1234567890",
+  callRecordingEnabled: true,
 });
 ```
 
@@ -207,7 +247,7 @@ const response = await client.conversationalAi.twilio.outboundCall({
 ```bash
 curl -X POST "https://api.elevenlabs.io/v1/convai/twilio/outbound-call" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"agent_id": "your-agent-id", "agent_phone_number_id": "your-phone-number-id", "to_number": "+1234567890"}'
+  -d '{"agent_id": "your-agent-id", "agent_phone_number_id": "your-phone-number-id", "to_number": "+1234567890", "call_recording_enabled": true}'
 ```
 
 See [Outbound Calls Reference](references/outbound-calls.md) for configuration overrides and dynamic variables.

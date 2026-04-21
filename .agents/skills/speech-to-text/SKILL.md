@@ -84,6 +84,17 @@ for word in result.words:
     print(f"[{word.speaker_id}] {word.text}")
 ```
 
+For call recordings, the batch API can label diarized speakers as `agent` and `customer` by setting `detect_speaker_roles=true` alongside `diarize=true`. This option is not compatible with `use_multi_channel=true`.
+
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -F "file=@call.mp3" \
+  -F "model_id=scribe_v2" \
+  -F "diarize=true" \
+  -F "detect_speaker_roles=true"
+```
+
 ## Keyterm Prompting
 
 Help the model recognize specific words it might otherwise mishear - product names, technical jargon, or unusual spellings (up to 100 terms):
