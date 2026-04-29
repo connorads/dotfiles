@@ -323,6 +323,15 @@
       "pluginName": "aaron-seo-geo",
       "installedAt": "2026-04-21T12:47:32.120Z",
       "updatedAt": "2026-04-21T12:47:32.120Z"
+    },
+    "hyperframes": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes/SKILL.md",
+      "skillFolderHash": "75ec3a10592981d715b0ff2a6d97da4900e32a3e",
+      "installedAt": "2026-04-29T19:07:21.828Z",
+      "updatedAt": "2026-04-29T19:07:21.828Z"
     }
   },
   "dismissed": {
