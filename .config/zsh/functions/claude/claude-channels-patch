@@ -1,0 +1,143 @@
+#!/usr/bin/env zsh
+# claude-channels-patch: bypass tengu_harbor gate so --channels works with DISABLE_TELEMETRY=1
+# usage: claude-channels-patch [--check|--restore|--all] [path-to-claude-binary]
+#
+# Why: cJH() in the bundled JS returns I_("tengu_harbor", false). When telemetry is
+# disabled (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1),
+# I_ short-circuits to the default false, so channels are gated as "not currently available"
+# even with claude.ai auth and managed-settings.json configured. Patching the bundled
+# default from !1 to !0 forces cJH() true regardless of telemetry / rollout.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local needle='tengu_harbor",!1)'
+local replace='tengu_harbor",!0)'
+local mode=patch
+local select_all=0
+
+while (( $# )); do
+  case $1 in
+    --check)   mode=check;   shift ;;
+    --restore) mode=restore; shift ;;
+    --all)     select_all=1; shift ;;
+    --help|-h)
+      sed -n '2,10p' "${(%):-%x}"
+      return 0
+      ;;
+    *) break ;;
+  esac
+done
+
+# Resolve target binaries (deduped by realpath so symlinks don't double up).
+# `command -v claude` returns the mise shim, which is itself a symlink to the
+# mise binary (mise dispatches by argv[0]). Resolve via `mise which`, falling
+# back to the highest-versioned install in ~/.local/share/mise/installs/claude/.
+local -a raw_targets targets
+local -A seen
+local rp t miseout
+if (( $# )); then
+  raw_targets=("$@")
+elif (( select_all )); then
+  raw_targets=( "$HOME"/.local/share/mise/installs/claude/*/claude(N) )
+else
+  miseout=""
+  if command -v mise >/dev/null 2>&1; then
+    miseout=$(mise which claude 2>/dev/null || true)
+  fi
+  if [[ -n $miseout && -f $miseout ]]; then
+    raw_targets=( "$miseout" )
+  else
+    # Fall back to highest version from mise installs (lexicographic on x.y.z
+    # is correct only for zero-padded; use sort -V).
+    local -a installs=( "$HOME"/.local/share/mise/installs/claude/*/claude(N.) )
+    if (( ${#installs} == 0 )); then
+      print -u2 "no claude install found under ~/.local/share/mise/installs/claude/"
+      return 1
+    fi
+    local highest
+    highest=$(printf '%s\n' "${installs[@]}" | awk -F/ '{print $(NF-1)}' \
+      | /usr/bin/sort -V | /usr/bin/tail -1)
+    raw_targets=( "$HOME/.local/share/mise/installs/claude/$highest/claude" )
+  fi
+fi
+
+for t in "${raw_targets[@]}"; do
+  [[ -e $t ]] || { targets+=("$t"); continue }
+  rp=$(/usr/bin/python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$t")
+  if [[ -z ${seen[$rp]:-} ]]; then
+    seen[$rp]=1
+    targets+=("$rp")
+  fi
+done
+
+if (( ${#targets} == 0 )); then
+  print -u2 "no claude binaries found"
+  return 1
+fi
+
+local rc=0 real before after
+for real in "${targets[@]}"; do
+  if [[ ! -f $real ]]; then
+    print -u2 "skip (missing): $real"
+    rc=1
+    continue
+  fi
+  before=$(LC_ALL=C /usr/bin/grep -aoF -- "$needle"  "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+  after=$( LC_ALL=C /usr/bin/grep -aoF -- "$replace" "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+
+  case $mode in
+    check)
+      if   (( after  > 0 && before == 0 )); then print "patched:    $real"
+      elif (( before > 0 && after  == 0 )); then print "unpatched:  $real ($before occurrence(s))"
+      elif (( before == 0 && after == 0 )); then print "no-pattern: $real (different version?)"; rc=1
+      else                                       print "mixed:      $real (before=$before after=$after)"; rc=1
+      fi
+      ;;
+    restore)
+      if [[ -f $real.unpatched ]]; then
+        cp -p "$real.unpatched" "$real"
+        if [[ $OSTYPE == darwin* ]]; then
+          /usr/bin/codesign --force --sign - "$real" 2>/dev/null || true
+        fi
+        print "restored:   $real (from $real.unpatched)"
+      else
+        print -u2 "no backup at $real.unpatched: $real"
+        rc=1
+      fi
+      ;;
+    patch|all)
+      if (( after > 0 && before == 0 )); then
+        print "skip (already patched): $real"
+        continue
+      fi
+      if (( before == 0 )); then
+        print -u2 "skip (pattern not found): $real"
+        rc=1
+        continue
+      fi
+      [[ -f $real.unpatched ]] || cp -p "$real" "$real.unpatched"
+      /usr/bin/python3 - "$real" "$needle" "$replace" <<'PY'
+import os, sys, pathlib
+path, needle, repl = sys.argv[1], sys.argv[2].encode(), sys.argv[3].encode()
+p = pathlib.Path(path)
+mode = p.stat().st_mode
+data = p.read_bytes()
+new = data.replace(needle, repl)
+if new == data:
+    sys.exit("no replacement made")
+tmp = p.with_suffix(p.suffix + ".tmp")
+tmp.write_bytes(new)
+os.chmod(tmp, mode)
+tmp.replace(p)
+PY
+      if [[ $OSTYPE == darwin* ]]; then
+        /usr/bin/codesign --force --sign - "$real" 2>/dev/null || true
+      fi
+      after=$(LC_ALL=C /usr/bin/grep -aoF -- "$replace" "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+      print "patched:    $real ($after occurrence(s); backup at $real.unpatched)"
+      ;;
+  esac
+done
+
+return $rc
