@@ -46,6 +46,7 @@
       "chatgpt"
       "claude"
       "codex-app"
+      "blender"
       "comfyui"
       "gimp"
       "lm-studio"
