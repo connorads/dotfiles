@@ -84,6 +84,9 @@ export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
 export CLAUDE_CODE_NO_FLICKER=1
 
+# https://donottrack.sh/
+export DO_NOT_TRACK=1
+
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
