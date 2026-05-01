@@ -44,3 +44,6 @@ enabled = true
 
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
