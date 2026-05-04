@@ -925,6 +925,5 @@
   },
   "alwaysThinkingEnabled": true,
   "showClearContextOnPlanAccept": true,
-  "skipDangerousModePermissionPrompt": true,
-  "model": "opus"
+  "skipDangerousModePermissionPrompt": true
 }
