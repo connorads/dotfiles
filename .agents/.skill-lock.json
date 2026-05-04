@@ -362,6 +362,16 @@
       "pluginName": "mattpocock-skills",
       "installedAt": "2026-05-04T21:25:32.654Z",
       "updatedAt": "2026-05-04T21:25:32.654Z"
+    },
+    "tdd": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/mattpocock/skills.git",
+      "skillPath": "skills/engineering/tdd/SKILL.md",
+      "skillFolderHash": "75beb3030b4c979205dd771ff85ac600baeb68f4",
+      "pluginName": "mattpocock-skills",
+      "installedAt": "2026-05-04T21:25:54.183Z",
+      "updatedAt": "2026-05-04T21:25:54.183Z"
     }
   },
   "dismissed": {
