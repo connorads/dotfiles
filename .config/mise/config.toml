@@ -33,6 +33,7 @@ usage = "3"
 hcloud = "1"
 deno = "2"
 claude = "latest"
+fnox = "1"
 
 "aqua:anomalyco/opencode" = "1"
 
