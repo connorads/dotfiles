@@ -57,6 +57,7 @@
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
 | `Ctrl+b D` | difftastic git diff |
+| `Ctrl+b Alt+d` | hunk git diff |
 | `Ctrl+b C` | critique git diff |
 | `Ctrl+b R` | critique AI review (choose agent) |
 | `Ctrl+b Alt+g` | review commits (fzf + critique) |
