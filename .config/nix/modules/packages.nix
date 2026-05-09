@@ -138,14 +138,6 @@ let
     poppler-utils
     presenterm
     charm-freeze
-    # rembg CLI without gradio (rembg s server won't work; rembg i/p/b still work)
-    (pkgs.python3Packages.toPythonApplication (
-      (pkgs.python3Packages.rembg.override { withCli = true; }).overrideAttrs (old: {
-        propagatedBuildInputs = builtins.filter (
-          p: (p.pname or p.name or "") != "gradio"
-        ) old.propagatedBuildInputs;
-      })
-    ))
 
     # Sync & backup
     rclone

@@ -44,30 +44,6 @@
         import nixpkgs {
           inherit system;
           config.allowUnfree = true;
-          # Temporary workarounds for upstream nixpkgs-unstable regressions.
-          # TODO: after each `nfu`, check if the linked issue is closed and delete the block.
-          # Once all are gone, delete the entire `overlays = [ ... ];` argument too.
-          overlays = [
-            (final: prev: {
-              pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
-                (pyFinal: pyPrev: {
-                  # TODO: remove once https://github.com/NixOS/nixpkgs/issues/494024 is fixed
-                  # (gradio relaxes tomlkit upper bound; opened 2026-02-25)
-                  gradio =
-                    let
-                      orig = pyPrev.gradio;
-                    in
-                    orig.overridePythonAttrs (old: {
-                      pythonRelaxDeps = (old.pythonRelaxDeps or [ ]) ++ [ "tomlkit" ];
-                      doCheck = false; # tests need CUDA + network, unavailable in sandbox
-                    })
-                    // {
-                      inherit (orig) override;
-                    }; # preserve override for passthru.tests self-ref
-                })
-              ];
-            })
-          ];
         };
 
       # Helper to create packages module for a given pkgs
