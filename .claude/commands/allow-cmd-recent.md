@@ -1,6 +1,7 @@
 ---
 description: Review recent bash tool calls for whitelist candidates
 allowed-tools: Bash(~/.claude/commands/allow-cmd-recent.sh:*)
+disable-model-invocation: true
 ---
 
 First, run this command to extract recent bash commands (default 7 days, or pass a number for different window):
