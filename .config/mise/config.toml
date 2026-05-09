@@ -72,6 +72,7 @@ fnox = "1"
 
 "pipx:batrachian-toad" = "0"
 "pipx:mistral-vibe" = "2"
+"pipx:rembg" = { version = "2", extras = "cli,cpu" }
 "pipx:ty" = "0"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
