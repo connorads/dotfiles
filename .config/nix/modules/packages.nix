@@ -151,8 +151,6 @@ let
     rclone
     unison
 
-    # Apps
-    telegram-desktop
   ];
 in
 {

@@ -52,6 +52,7 @@
       "lm-studio"
       "obsidian"
       "whatsapp"
+      "telegram-desktop"
       "steam"
       "whisky"
       "retroarch"
