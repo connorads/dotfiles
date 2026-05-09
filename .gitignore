@@ -174,3 +174,4 @@ __pycache__/
 !/.local/bin/
 !/.local/bin/**
 /.local/bin/claude
+/.local/bin/browser-harness
