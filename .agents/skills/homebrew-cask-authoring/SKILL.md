@@ -45,7 +45,7 @@ Before investing effort in a new cask, verify:
 - Start from the `.app` bundle name.
 - Remove `.app` and common suffixes: "App", "for macOS", version numbers.
 - Remove "Mac" unless it distinguishes the product (e.g., "WinZip Mac" vs "WinZip").
-- Remove "Desktop" only when it's a generic suffix, **not** when it's intrinsic to the product name. Keep it for products branded as "X Desktop" (e.g., `Docker Desktop` → `docker-desktop`, `LTX Desktop` → `ltx-desktop`). When in doubt, keep "Desktop".
+- Remove "Desktop" only when it's a generic suffix, **not** when it's intrinsic to the product name. Keep it for products branded as "X Desktop" (e.g., `Docker Desktop` → `docker-desktop`, `LTX Desktop` → `ltx-desktop`). When in doubt, keep "Desktop". The `cask token mentions desktop` audit cop is `strict_only` (fires under `--new`); reviewers accept the suffix when justified — beyond the brand case, also when an upstream sibling component (CLI, cloud variant) owns the bare name. `aks-desktop`, `grammarly-desktop`, `firefly-iota-desktop` all exist without a Homebrew formula or cask under the bare name. Justify the choice in the PR description either way.
 - Downcase; replace spaces/underscores with hyphens.
 - Remove non-alphanumerics except hyphens.
 - Use `@beta`, `@nightly`, or `@<major>` for variants.
@@ -95,8 +95,9 @@ Then:
   - For `.app` casks, `uninstall quit:` is still useful so `brew uninstall` cleanly terminates a running app. If the app bundles helper processes (look in `Contents/Helpers/` or run `pgrep -lf <AppName>` while it's running), pass an array of bundle IDs (e.g. main app + `*.launcher`) — a single ID leaves helpers stranded.
   - **`quit:` / `signal:` no longer run during `brew upgrade`/`brew reinstall` by default** (Nov 2025 change). If you need the app to be quit during upgrade, add `on_upgrade: :quit` (or `on_upgrade: [:quit, :signal]`).
 - **`zap`**: Recommended for thorough cleanup (support dirs, preferences, caches) but not enforced by `brew audit`. Reviewers expect it for new casks — verify paths are accurate.
-  - Primary tool: **`brew generate-zap <token>`** (documented Mar 2026). Install and launch the app first, then run it to get a draft zap stanza. Still review the output — it can include noise.
+  - Primary tool: **`brew generate-zap <token>`** (documented Mar 2026). Install and launch the app first, then run it to get a draft zap stanza. Still review the output — it can include noise. If it aborts after only printing the "Scanning" line, it likely hit a TCC permission error (e.g. `Operation not permitted @ dir_initialize - .../sharedfilelist/...`); exit code can still look fine. Fall back to `find ~/Library -name "*<bundle-id>*"` plus a manual sweep of the standard Electron locations (`Application Support`, `Caches`, `HTTPStorages`, `Logs`, `Preferences`, `Saved Application State`).
   - **Also scan while the app is in *active use*, not just after first launch.** Paths like `~/Library/HTTPStorages/<bundle-id>`, session caches, and some preferences only appear after login/real interaction. `generate-zap` may miss these if you only ran the app once.
+  - **If state still survives `--zap` + reinstall, scan outside `~/Library/`.** Apps that bundle a Node CLI/server (`Contents/Resources/sidecar/`) often persist to dotfolders (`~/.<appname>`) and XDG paths (`~/.local/share/<appname>`) — `generate-zap` and bundle-ID scans don't cover these. Cloning the upstream repo and grepping for `os.homedir()` / `env-paths` will surface them.
   - Keep Keystone/GoogleUpdater-style shared components in `zap` only (never `uninstall`) — they're shared across vendor apps.
 - **`livecheck`**: `strategy :extract_plist` and `version :latest` are *automatically* excluded from autobump — no `no_autobump!` needed.
 - **`depends_on`**: Optional. Only add when genuinely needed (e.g., specific macOS version, another cask dependency).
@@ -134,6 +135,7 @@ Reinstalling after a plain `brew uninstall` (without `--zap`) should leave sessi
 - `HOMEBREW_NO_INSTALL_FROM_API=1` forces Homebrew to use your local cask file rather than the API.
 - `brew audit --cask --new` checks GitHub repo age (must be >30 days) and notability — if the repo is too new, this will fail regardless of cask quality.
 - `brew audit` prints nothing on success (silent = pass) — don't mistake empty output for the command failing to run.
+- **When iterating on the `zap` stanza, reinstall before re-zapping.** `brew uninstall --zap` reads the cached cask from `/opt/homebrew/Caskroom/<token>/.metadata/<version>/...`, not your working copy. After editing zap paths: `brew uninstall` → `brew install` (refreshes the cached metadata) → `brew uninstall --zap`. The `==> Trashing files:` log will silently use the previous stanza otherwise.
 
 If install fails:
 - Re-check URL reachability, `sha256`, and artifact name.
