@@ -7,7 +7,7 @@ emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm npm pip uv cargo nvim browsers temp docker nix)
+CLEANUP_ALL_TARGETS=(bun pnpm npm pip uv cargo nvim browsers temp docker nix mise codex)
 CLEANUP_DEFAULT_TARGETS=("${CLEANUP_ALL_TARGETS[@]}")
 CLEANUP_SELECTED_TARGETS=()
 
@@ -33,6 +33,8 @@ CLEANUP_LABELS=(
   temp "Stale temp directories"
   docker "Docker unused images and build cache"
   nix "Nix garbage collection"
+  mise "mise unused tool versions"
+  codex "Codex TUI log and old session files"
 )
 CLEANUP_DEFAULT_FLAGS=(
   bun 1
@@ -46,6 +48,8 @@ CLEANUP_DEFAULT_FLAGS=(
   temp 1
   docker 1
   nix 1
+  mise 1
+  codex 1
 )
 
 typeset -gA CLEANUP_PROBE_APPLICABLE CLEANUP_PROBE_KB CLEANUP_PROBE_SIZE CLEANUP_PROBE_DETAILS CLEANUP_PROBE_COMMAND
@@ -63,7 +67,7 @@ Usage:
   cleanup --bun --pnpm --docker [--volumes]
 
 Targets:
-  bun, pnpm, npm, pip, uv, cargo, nvim, browsers, temp, docker, nix
+  bun, pnpm, npm, pip, uv, cargo, nvim, browsers, temp, docker, nix, mise, codex
 
 Notes:
   - Plain cleanup executes the default safe set.
@@ -182,9 +186,9 @@ _cleanup_probe_target() {
     npm)
       command -v npm >/dev/null 2>&1 || applicable=0
       if (( applicable )); then
-        kb=$(_cleanup_kb_sum "$HOME/.npm")
-        detail="Path: $HOME/.npm"
-        command="npm cache clean --force"
+        kb=$(_cleanup_kb_sum "$HOME/.npm/_cacache" "$HOME/.npm/_npx")
+        detail="Paths: $HOME/.npm/_cacache, $HOME/.npm/_npx"
+        command="npm cache clean --force; rm -rf ~/.npm/_npx"
       fi
       ;;
     pip)
@@ -259,6 +263,33 @@ _cleanup_probe_target() {
         command="nix-collect-garbage --delete-older-than 30d; nix-store --optimise"
       fi
       ;;
+    mise)
+      command -v mise >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        local prunable_path
+        kb=0
+        while IFS= read -r prunable_path; do
+          [[ -n "$prunable_path" ]] || continue
+          prunable_path=${prunable_path/#\~/$HOME}
+          (( kb += $(_cleanup_kb_sum "$prunable_path") ))
+        done < <(mise prune --dry-run 2>&1 | awk '/[[:space:]]remove[[:space:]]/ {print $NF}')
+        detail="Source: mise prune --dry-run"
+        command="mise prune --yes"
+      fi
+      ;;
+    codex)
+      local log_file=$HOME/.codex/log/codex-tui.log
+      local -a sessions
+      kb=0
+      [[ -f "$log_file" ]] && (( kb += $(_cleanup_kb_sum "$log_file") ))
+      if [[ -d $HOME/.codex/sessions ]]; then
+        sessions=("${(@f)$(find "$HOME/.codex/sessions" -type f -mtime +30 2>/dev/null)}")
+        (( ${#sessions[@]} > 0 )) && (( kb += $(_cleanup_kb_sum "${sessions[@]}") ))
+      fi
+      (( kb > 0 )) || applicable=0
+      detail="Truncate: $log_file; prune sessions older than 30d"
+      command="truncate -s 0 codex-tui.log; rm stale session files"
+      ;;
   esac
 
   CLEANUP_PROBE_APPLICABLE[$target]=$applicable
@@ -315,6 +346,7 @@ _cleanup_run_target() {
     npm)
       command -v npm >/dev/null 2>&1 || return 0
       npm cache clean --force
+      command rm -rf -- "$HOME/.npm/_npx"
       ;;
     pip)
       command -v pip >/dev/null 2>&1 || return 0
@@ -351,6 +383,18 @@ _cleanup_run_target() {
       command -v nix-store >/dev/null 2>&1 || return 0
       nix-collect-garbage --delete-older-than 30d
       nix-store --optimise
+      ;;
+    mise)
+      command -v mise >/dev/null 2>&1 || return 0
+      mise prune --yes
+      ;;
+    codex)
+      local log_file=$HOME/.codex/log/codex-tui.log
+      [[ -f "$log_file" ]] && : > "$log_file"
+      if [[ -d $HOME/.codex/sessions ]]; then
+        find "$HOME/.codex/sessions" -type f -mtime +30 -delete 2>/dev/null
+        find "$HOME/.codex/sessions" -type d -empty -delete 2>/dev/null
+      fi
       ;;
   esac
 }
@@ -504,7 +548,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--npm|--pip|--uv|--cargo|--nvim|--browsers|--temp|--docker|--nix)
+    --bun|--pnpm|--npm|--pip|--uv|--cargo|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
