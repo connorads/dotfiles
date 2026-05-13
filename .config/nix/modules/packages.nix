@@ -95,6 +95,7 @@ let
     nmap
     bandwhich
     cloudflared
+    mosh
     ttyd
   ];
 
