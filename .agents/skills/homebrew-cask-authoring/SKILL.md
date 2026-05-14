@@ -45,7 +45,12 @@ Before investing effort in a new cask, verify:
 - Start from the `.app` bundle name.
 - Remove `.app` and common suffixes: "App", "for macOS", version numbers.
 - Remove "Mac" unless it distinguishes the product (e.g., "WinZip Mac" vs "WinZip").
-- Remove "Desktop" only when it's a generic suffix, **not** when it's intrinsic to the product name. Keep it for products branded as "X Desktop" (e.g., `Docker Desktop` → `docker-desktop`, `LTX Desktop` → `ltx-desktop`). When in doubt, keep "Desktop". The `cask token mentions desktop` audit cop is `strict_only` (fires under `--new`); reviewers accept the suffix when justified — beyond the brand case, also when an upstream sibling component (CLI, cloud variant) owns the bare name. `aks-desktop`, `grammarly-desktop`, `firefly-iota-desktop` all exist without a Homebrew formula or cask under the bare name. Justify the choice in the PR description either way.
+- Drop "Desktop" by default — reviewers want the bare name. Maintainer guidance: "It should be ok to use `executor` for the token here, if the CLI is added to `homebrew-core` later it can use `executor-cli`." The bare name goes to whichever component lands in Homebrew first; subsequent siblings disambiguate (`-cli`, `-cloud`, etc.).
+- Only keep "Desktop" when:
+  - It's part of the actual product brand (e.g., `Docker Desktop` → `docker-desktop`, `LTX Desktop` → `ltx-desktop`), **or**
+  - An upstream sibling component (CLI, cloud variant) already exists *in Homebrew* (formula or cask) under the bare name.
+- A bare-named CLI that exists only upstream (npm, crates.io, etc.) and isn't yet packaged for Homebrew is **not** a reason to keep "Desktop" — submit the cask under the bare name and let the CLI take a suffix if/when it's added.
+- The `cask token mentions desktop` audit cop is `strict_only` (fires under `--new`); reviewers accept the suffix when justified by the rules above. Existing `-desktop` casks (`aks-desktop`, `grammarly-desktop`, `firefly-iota-desktop`) don't validate the suffix as a generic pattern — check why each was named that way before citing them. Justify the choice in the PR description either way.
 - Downcase; replace spaces/underscores with hyphens.
 - Remove non-alphanumerics except hyphens.
 - Use `@beta`, `@nightly`, or `@<major>` for variants.
