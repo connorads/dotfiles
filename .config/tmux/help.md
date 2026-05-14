@@ -53,6 +53,7 @@
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
 | `Ctrl+b Alt+c` | connections overview |
 | `Ctrl+b O` | open cwd in file manager |
+| `Ctrl+b Alt+o` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
