@@ -169,6 +169,11 @@
       "com.apple.finder" = {
         FXRemoveOldTrashItems = true;
       };
+
+      # Hide the keyboard input source ("A" / "British – PC") menu bar icon
+      "com.apple.TextInputMenu" = {
+        visible = false;
+      };
     };
   };
 
@@ -339,6 +344,16 @@
       StandardErrorPath = "/var/log/tailscaled.err.log";
     };
   };
+
+  # Hide the Spotlight menu bar icon (⌘+Space is rebound to Raycast above).
+  # `com.apple.Spotlight MenuItemHidden` lives in ~/Library/Preferences/ByHost
+  # and must be written with `defaults -currentHost`, which has no declarative
+  # nix-darwin option (see nix-darwin#1721). nix-darwin activation now runs as
+  # root, so drop to the primary user with `sudo -u` for -currentHost to target
+  # the right per-user ByHost plist.
+  system.activationScripts.spotlightMenuBarIcon.text = ''
+    sudo -u connorads -H /usr/bin/defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+  '';
 
   # MagicDNS resolver (OSS tailscaled doesn't create this automatically)
   # See: https://github.com/tailscale/tailscale/issues/13461
