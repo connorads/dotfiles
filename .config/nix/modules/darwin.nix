@@ -86,6 +86,7 @@
       "keka"
       "figma"
       "opencode-desktop"
+      "executor"
       "conductor"
       "knockknock"
       "slack"
