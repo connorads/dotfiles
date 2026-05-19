@@ -89,6 +89,7 @@
       "conductor"
       "knockknock"
       "slack"
+      "microsoft-teams"
       "linear-linear"
       "miro"
 
