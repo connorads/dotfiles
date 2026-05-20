@@ -1,2 +1,3 @@
 minimum-release-age=5760
 trust-policy=no-downgrade
+ignore-scripts=true
