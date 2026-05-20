@@ -48,7 +48,13 @@ fnox = "1"
 "npm:@ralph-orchestrator/ralph-cli" = "2"
 "npm:@redwoodjs/agent-ci" = "0"
 "npm:@sandbox-agent/gigacode" = "0"
-"npm:@sourcegraph/amp" = "0"
+# amp ships only prerelease versions (0.0.<ts>-g<hash>): every patch number is
+# unique so no semver range matches >1 version, and `latest` is always inside
+# the 4d quarantine. From 2026-05-13 builds also point `bin` at a path inside a
+# hoisted dep (node_modules/@ampcode/cli/bin/amp.exe), which breaks under
+# mise's forced `--linker hoisted`. Pin to last build before that transition;
+# bump by hand when amp fixes the bin path or mise honours node_modules/.bin.
+"npm:@sourcegraph/amp" = "0.0.1778655711-ga6eb3e"
 "npm:agent-browser" = "0"
 "npm:cline" = "2"
 "npm:apify-cli" = "1"
