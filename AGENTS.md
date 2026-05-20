@@ -220,6 +220,19 @@ mise outdated --bump                        # available updates beyond ranges
 
 **uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
 
+**Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `~/.config/pnpm/rc`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
+
+pnpm 10 already defaults to this; the rc setting is belt-and-braces. npm has no equivalent default, so the rc setting is the meaningful change there.
+
+Native modules and codegen need scripts to build. When a project errors out:
+
+1. **Ask the user before allow-listing.** Security decision is theirs, not the agent's.
+2. With approval, allow-list specifically:
+   - **pnpm**: `pnpm approve-builds` (interactive) or add to `onlyBuiltDependencies` in the project's `package.json`.
+   - **npm**: project-level `.npmrc` with `ignore-scripts=false` (no per-package primitive exists).
+
+**Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
+
 **No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
