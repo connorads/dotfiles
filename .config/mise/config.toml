@@ -39,6 +39,7 @@ fnox = "1"
 
 # Pinned: github backend constructs wrong release tag from ranges (0.34 → rtk-ai/rtk@0.34 instead of v0.34.0)
 "github:rtk-ai/rtk" = "0.34.0"
+"github:ogulcancelik/herdr" = "0.6.0"
 
 "npm:@elevenlabs/cli" = "0"
 "npm:@github/copilot" = "1"
