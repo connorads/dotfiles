@@ -32,7 +32,7 @@
   homebrew = {
     enable = true;
     onActivation.cleanup = "zap";
-    taps = [ ];
+    taps = [ "manaflow-ai/cmux" ];
     brews = [
       "mole"
       "podman"
@@ -45,6 +45,7 @@
       "bitwarden"
       "chatgpt"
       "claude"
+      "cmux"
       "codex-app"
       "blender"
       "comfyui"
