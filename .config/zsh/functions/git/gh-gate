@@ -27,7 +27,7 @@ Default target comes from DEFAULT_TARGET in ~/.config/gh-gate/config.
 Setup:
   Run 'gh-gate setup' for interactive guided setup, or manually:
 
-  1. Create a GitHub App (github.com/settings/apps/new):
+  1. Create a GitHub App (https://github.com/settings/apps/new):
      - Webhook: uncheck "Active"
      - Permissions (Read & write): Actions, Contents, Issues, Pull requests
      - Install on your account
@@ -35,7 +35,7 @@ Setup:
 
   2. Store the private key:
      macOS:  security add-generic-password -a "$USER" -s "gh-gate" \
-               -w "$(base64 -b 0 < gh-gate-private-key.pem)" -T "" -U
+               -w "$(<gh-gate-private-key.pem)" -T "" -U
      Linux:  mkdir -p ~/.config/gh-gate && chmod 700 ~/.config/gh-gate
              cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
              chmod 600 ~/.config/gh-gate/private-key.pem
@@ -63,7 +63,7 @@ Security:
   - Private key never leaves the host machine (macOS Keychain / local file)
   - Write tokens expire after 1 hour automatically
   - App permissions are an absolute ceiling for generated tokens
-  - Emergency: uninstall the app at github.com/settings/installations
+  - Emergency: uninstall the app at https://github.com/settings/installations
     to immediately invalidate ALL tokens
 HELP
 }
@@ -75,7 +75,7 @@ _gh_gate_setup() {
 
   # Step 1: GitHub App
   print -r "Step 1: Create a GitHub App"
-  print -r "  Go to: github.com/settings/apps/new"
+  print -r "  Go to: https://github.com/settings/apps/new"
   print -r "  - Webhook: uncheck \"Active\""
   print -r "  - Permissions (Read & write): Actions, Contents, Issues, Pull requests"
   print -r "  - Install on your account"
@@ -90,36 +90,21 @@ _gh_gate_setup() {
     return 1
   fi
 
-  print -rn "Installation ID: "
-  read -r installation_id
-  if [[ -z "$installation_id" || ! "$installation_id" =~ '^[0-9]+$' ]]; then
-    print -r "Error: Installation ID must be a number" >&2
-    return 1
-  fi
-
-  print -rn "Default SSH target (e.g. connor@dev): "
-  read -r default_target
-  if [[ -z "$default_target" ]]; then
-    print -r "Error: target is required" >&2
-    return 1
-  fi
-
-  # Step 2: Write config
-  mkdir -p "$config_dir" && chmod 700 "$config_dir"
-  cat > "$config_file" <<EOF
-APP_ID=${app_id}
-INSTALLATION_ID=${installation_id}
-DEFAULT_TARGET=${default_target}
-EOF
-  chmod 600 "$config_file"
+  # Step 2: Private key path + validation (needed before we can auth)
   print -r ""
-  print -r "Config written to ${config_file}"
+  print -r "Step 2: Private key"
 
-  # Step 3: Private key
-  print -r ""
-  print -r "Step 2: Store the private key"
-  print -rn "Path to private key PEM file: "
+  local pem_default pem_candidates
+  pem_candidates=(${HOME}/Downloads/*gh-gate*.pem(N.om))
+  (( ${#pem_candidates[@]} )) && pem_default=${pem_candidates[1]}
+
+  if [[ -n "$pem_default" ]]; then
+    print -rn "Path to private key PEM file [${pem_default}]: "
+  else
+    print -rn "Path to private key PEM file: "
+  fi
   read -r pem_path
+  [[ -z "$pem_path" && -n "$pem_default" ]] && pem_path=$pem_default
   pem_path=${~pem_path}  # expand tilde
 
   if [[ ! -r "$pem_path" ]]; then
@@ -127,9 +112,77 @@ EOF
     return 1
   fi
 
+  # Validate before doing anything irreversible — GNU base64 used to silently
+  # break key storage (BSD-only -b flag), so we belt-and-brace the check.
+  if ! openssl rsa -in "$pem_path" -check -noout 2>/dev/null && \
+     ! openssl pkey -in "$pem_path" -noout 2>/dev/null; then
+    print -r "Error: ${pem_path} is not a valid private key" >&2
+    return 1
+  fi
+
+  # Step 3: Authenticate as the App; discover Installation ID
+  print -r ""
+  print -r "Authenticating as App ${app_id}..."
+  local APP_ID=$app_id pem jwt body_file http_code app_name
+  pem=$(<"$pem_path")
+  jwt=$(_gh_gate_generate_jwt "$pem")
+  unset pem
+
+  body_file=$(mktemp)
+  http_code=$(curl -s -o "$body_file" -w '%{http_code}' \
+    -H "Authorization: Bearer ${jwt}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/app/installations")
+
+  if [[ "$http_code" != "200" ]]; then
+    print -r "Error: GitHub App authentication failed (HTTP ${http_code})" >&2
+    cat "$body_file" >&2
+    rm -f "$body_file"
+    return 1
+  fi
+
+  app_name=$(jq -r 'first(.[]) | .app_slug // empty' < "$body_file" 2>/dev/null)
+  print -r "Authenticated as GitHub App: ${app_name:-<unknown>}"
+
+  local installation_ids
+  installation_ids=("${(@f)$(jq -r '.[].id' < "$body_file")}")
+  installation_ids=("${(@)installation_ids:#}")
+
+  if (( ${#installation_ids[@]} == 1 )); then
+    installation_id=${installation_ids[1]}
+    print -r "Installation ID: ${installation_id} (auto-discovered)"
+  else
+    if (( ${#installation_ids[@]} > 1 )); then
+      print -r "Multiple installations found:"
+      jq -r '.[] | "  \(.id)  \(.account.login // .account.slug)"' < "$body_file"
+    else
+      print -r "No installations found — install the App on your account first."
+    fi
+    print -rn "Installation ID (found at https://github.com/settings/installations/<NUMBER>): "
+    read -r installation_id
+    if [[ -z "$installation_id" || ! "$installation_id" =~ '^[0-9]+$' ]]; then
+      print -r "Error: Installation ID must be a number" >&2
+      rm -f "$body_file"
+      return 1
+    fi
+  fi
+  rm -f "$body_file"
+
+  # Step 4: Default target
+  print -r ""
+  print -rn "Default SSH target (e.g. connor@dev): "
+  read -r default_target
+  if [[ -z "$default_target" ]]; then
+    print -r "Error: target is required" >&2
+    return 1
+  fi
+
+  # Step 5: Store the PEM (only after auth succeeded)
+  mkdir -p "$config_dir" && chmod 700 "$config_dir"
   if [[ "$(uname -s)" == "Darwin" ]]; then
     security add-generic-password -a "$USER" -s "gh-gate" \
-      -w "$(base64 -b 0 < "$pem_path")" -T "" -U || {
+      -w "$(<"$pem_path")" -T "" -U || {
       print -r "Error: failed to store key in Keychain" >&2
       return 1
     }
@@ -140,26 +193,22 @@ EOF
     print -r "Private key stored at ${config_dir}/private-key.pem"
   fi
 
-  # Verify — source config so $APP_ID is available for JWT generation
-  _gh_gate_load_config || return 1
+  # Step 6: Write config
+  cat > "$config_file" <<EOF
+APP_ID=${app_id}
+INSTALLATION_ID=${installation_id}
+DEFAULT_TARGET=${default_target}
+EOF
+  chmod 600 "$config_file"
+  print -r "Config written to ${config_file}"
+
+  # Step 7: Offer to delete the original PEM
   print -r ""
-  print -r "Verifying GitHub App access..."
-  local pem jwt response app_name
-  pem=$(_gh_gate_get_pem) || return 1
-  jwt=$(_gh_gate_generate_jwt "$pem")
-  unset pem
-
-  response=$(curl -sf \
-    -H "Authorization: Bearer ${jwt}" \
-    -H "Accept: application/vnd.github+json" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/app" 2>/dev/null)
-
-  if [[ $? -eq 0 ]]; then
-    app_name=$(print -r -- "$response" | jq -r '.name // empty')
-    print -r "Authenticated as GitHub App: ${app_name:-<unknown>}"
-  else
-    print -r "Warning: could not verify app credentials (check APP_ID and key)" >&2
+  print -rn "Delete original key at ${pem_path}? [y/N]: "
+  local delete_answer
+  read -r delete_answer
+  if [[ "$delete_answer" == [yY] ]]; then
+    rm -f "$pem_path" && print -r "Deleted ${pem_path}"
   fi
 
   print -r ""
@@ -194,26 +243,12 @@ _gh_gate_get_pem() {
   local pem
   if [[ "$(uname -s)" == "Darwin" ]]; then
     # macOS: retrieve from Keychain (triggers Touch ID / password prompt)
-    local raw
-    raw=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
+    pem=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
       print -r "Error: PEM not found in Keychain (service: gh-gate)" >&2
       print -r "Run 'gh-gate setup' to configure" >&2
       return 1
     }
-    # Keychain returns hex when item is stored as data blob — decode hex then base64
-    if [[ "$raw" =~ ^[0-9a-fA-F]+$ ]]; then
-      pem=$(print -r -- "$raw" | xxd -r -p | base64 --decode) || {
-        print -r "Error: failed to decode PEM from Keychain (hex)" >&2
-        return 1
-      }
-    else
-      pem=$(print -r -- "$raw" | base64 --decode) || {
-        print -r "Error: failed to decode PEM from Keychain (base64)" >&2
-        return 1
-      }
-    fi
   else
-    # Linux: read from file
     local pem_file="${config_dir}/private-key.pem"
     if [[ ! -r "$pem_file" ]]; then
       print -r "Error: PEM not found at ${pem_file}" >&2
