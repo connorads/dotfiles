@@ -156,6 +156,9 @@
 !/.config/bun/
 !/.config/bun/critique-tsconfig.json
 
+!/.config/aube/
+!/.config/aube/config.toml
+
 !/.config/zsh/
 !/.config/zsh/aliases/
 !/.config/zsh/aliases/**
