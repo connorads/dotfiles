@@ -1,7 +1,8 @@
 {
   "autoMemoryEnabled": false,
   "env": {
-    "DISABLE_INSTALLATION_CHECKS": "1"
+    "DISABLE_INSTALLATION_CHECKS": "1",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
   },
   "attribution": {
     "commit": "",
