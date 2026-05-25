@@ -52,6 +52,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/rc`       |
+| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds). Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
 | [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
@@ -219,6 +220,8 @@ mise outdated --bump                        # available updates beyond ranges
 **npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimum-release-age` in **minutes** (5760 = 4 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
 
 **uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
+
+**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml`. Closes the leak when mise's npm backend uses bun (`npm.package_manager = "bun"`) — mise's own `install_before` only gates the top-level pin, bun then resolves transitive deps. Applies to new resolution + transitives, not existing `bun.lock` entries. **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default (no `ignore-scripts` setting needed); allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global — any project bunfig nukes the quarantine for that project.
 
 **Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `~/.config/pnpm/rc`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
