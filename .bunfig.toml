@@ -1,0 +1,6 @@
+[install]
+# Supply chain security: only resolve versions released 4+ days ago.
+# Mirrors install_before (mise), min-release-age (npm), minimum-release-age (pnpm), exclude-newer (uv).
+# Bun's setting is in seconds. Applies to new resolution + transitive deps;
+# existing bun.lock entries pass through unchanged.
+minimumReleaseAge = 345600

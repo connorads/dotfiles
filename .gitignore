@@ -3,6 +3,7 @@
 !.gitignore
 !/.gitattributes
 !/.npmrc
+!/.bunfig.toml
 !/hk.pkl
 
 !/.hk-hooks/
