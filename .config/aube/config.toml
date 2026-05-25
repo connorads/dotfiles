@@ -1,0 +1,20 @@
+# 4-day quarantine (minutes). Mirrors npm/pnpm/uv/bun gates.
+minimumReleaseAge = 5760
+
+# Bloom-filter OSV MAL-* prefilter on lockfile installs (~380KB, ~0.1% FPR)
+advisoryBloomCheck = "on"
+
+# Pinned niche tools — intentionally low-download. Bypass `lowDownloadThreshold` (default 1000).
+allowedUnpopularPackages = [
+  "remobi",
+  "@kitlangton/ghui",
+  "critique",
+]
+
+# CI bug, not an attack: @mariozechner/clipboard-* platform packages dropped
+# SLSA provenance after a workflow refactor at 0.3.3 (root pkg kept it).
+# Same publisher, same npm signing key, identical tarball shape.
+# Track: https://github.com/badlogic/clipboard — remove once provenance restored.
+trustPolicyExclude = [
+  "@mariozechner/clipboard-*",
+]

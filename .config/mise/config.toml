@@ -1,6 +1,6 @@
 [settings]
 experimental = true
-npm.package_manager = "bun"
+npm.package_manager = "aube"
 # Prefer prebuilt binaries; compile-from-source fails on NixOS (no FHS toolchain)
 node.compile = false
 python.compile = false
@@ -17,6 +17,7 @@ python = "3.14"
 node = "lts"
 pnpm = "10"
 bun = "1.3"
+aube = "1"
 uv = "0.9"
 "rust" = "1"
 hk = "1"

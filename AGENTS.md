@@ -52,7 +52,8 @@ Then `dotfiles add .newfile` works without `-f`.
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/rc`       |
-| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds). Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
+| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
+| [.config/aube/config.toml](./.config/aube/config.toml)                 | aube quarantine + trustPolicy + low-download gate + advisoryBloomCheck. Primary npm backend for mise (`npm.package_manager = "aube"`) |
 | [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
@@ -221,7 +222,17 @@ mise outdated --bump                        # available updates beyond ranges
 
 **uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
 
-**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml`. Closes the leak when mise's npm backend uses bun (`npm.package_manager = "bun"`) — mise's own `install_before` only gates the top-level pin, bun then resolves transitive deps. Applies to new resolution + transitives, not existing `bun.lock` entries. **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default (no `ignore-scripts` setting needed); allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global — any project bunfig nukes the quarantine for that project.
+**aube** (primary npm backend for mise): config at `~/.config/aube/config.toml`. Set via mise: `npm.package_manager = "aube"`. Layered defenses beyond a simple age gate:
+
+- `minimumReleaseAge = 5760` (minutes — aube uses minutes, bun uses seconds, pnpm uses minutes, npm uses days)
+- `advisoryBloomCheck = "on"` — ~380KB bloom-filter prefilter for OSV `MAL-*` advisories on lockfile installs (~0.1% FPR, ~1 round-trip per typical install)
+- `trustPolicy = "no-downgrade"` (default) — fails install if a package's trust evidence weakens (e.g. previously had SLSA provenance, now doesn't). Real catch: `@mariozechner/clipboard-darwin-arm64@0.3.6` lost provenance after a CI refactor at 0.3.3 — root pkg kept it but platform sibling packages didn't. Same publisher, same npm signing key — added to `trustPolicyExclude` with reasoning in the config comment
+- `lowDownloadThreshold = 1000` (default) — refuses packages with <1000 weekly downloads as typosquat defense. Niche-but-trusted tools listed in `allowedUnpopularPackages`
+- `allowBuilds = {}` (default empty) — lifecycle scripts blocked unless explicitly allowed via `aube approve-builds <pkg>` or `allowBuilds.pkg = true`
+
+Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/aube/config.toml` (aube-only keys). Keep aube-specific keys in the latter to avoid npm warnings ("Unknown user config 'minimum-release-age'") when mise calls `npm view` for metadata. CLI: `aube config set <key> <value>` routes correctly.
+
+**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global.
 
 **Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `~/.config/pnpm/rc`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
