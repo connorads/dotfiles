@@ -28,7 +28,6 @@ bats = "1"
 rumdl = "0.1"
 gcloud = "562"
 aws = "2"
-gemini = "0.35"
 codex = "latest"
 usage = "3"
 hcloud = "1"
@@ -43,20 +42,11 @@ fnox = "1"
 "github:ogulcancelik/herdr" = "0.6.0"
 
 "npm:@elevenlabs/cli" = "0"
-"npm:@github/copilot" = "1"
 "npm:@kitlangton/ghui" = "latest"
 "npm:@earendil-works/pi-coding-agent" = "latest"
 "npm:@playwright/cli" = "0"
 "npm:@redwoodjs/agent-ci" = "0"
-# amp ships only prerelease versions (0.0.<ts>-g<hash>): every patch number is
-# unique so no semver range matches >1 version, and `latest` is always inside
-# the 4d quarantine. From 2026-05-13 builds also point `bin` at a path inside a
-# hoisted dep (node_modules/@ampcode/cli/bin/amp.exe), which breaks under
-# mise's forced `--linker hoisted`. Pin to last build before that transition;
-# bump by hand when amp fixes the bin path or mise honours node_modules/.bin.
-"npm:@sourcegraph/amp" = "0.0.1778655711-ga6eb3e"
 "npm:agent-browser" = "0"
-"npm:cline" = "2"
 "npm:apify-cli" = "1"
 # TODO: unpin after 2026-04-17 (quarantine bypass for day-0 Cloudflare release)
 "npm:cf" = "0.0.4"
@@ -74,7 +64,6 @@ fnox = "1"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
-"pipx:mistral-vibe" = "2"
 "pipx:rembg" = { version = "2", extras = "cli,cpu" }
 "pipx:ty" = "0"
 
