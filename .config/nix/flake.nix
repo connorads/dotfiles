@@ -44,6 +44,24 @@
         import nixpkgs {
           inherit system;
           config.allowUnfree = true;
+          overlays = [
+            # pipx 1.8.0 tests assert pre-packaging-26 spec spacing (no space
+            # before `@`); packaging 26.x added the space per PEP 508, so the
+            # tests fail at build time on unstable. Broken until NixOS/nixpkgs#522307
+            # lands. Remove this overlay after the next `nfu` picks up the fix.
+            (final: prev: {
+              pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+                (pyfinal: pyprev: {
+                  pipx = pyprev.pipx.overridePythonAttrs (old: {
+                    disabledTests = (old.disabledTests or [ ]) ++ [
+                      "test_fix_package_name"
+                      "test_parse_specifier_for_metadata"
+                    ];
+                  });
+                })
+              ];
+            })
+          ];
         };
 
       # Helper to create packages module for a given pkgs
