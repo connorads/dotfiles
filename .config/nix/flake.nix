@@ -61,6 +61,29 @@
                 })
               ];
             })
+            # Patched tmux: dims inactive pane *content* (lazygit, nvim syntax,
+            # any ANSI-coloured output). Vanilla tmux's `window-style` /
+            # `window-active-style` only retint cells that use the terminal
+            # *default* fg/bg — anything emitting explicit SGR colours bypasses
+            # them, so inactive panes stay at full saturation and focus cues
+            # get lost. The patch hooks `tty_attributes` to blend every cell
+            # toward the pane bg (Rec. 601 luma desat + target blend).
+            #
+            # Both patches are required:
+            #   - dim-inactive-panes.patch — the dimming itself
+            #   - force-redraw-on-focus-change.patch — without it panes don't
+            #     re-render on focus change, so dim/undim stalls until next
+            #     keypress. The name doesn't telegraph this; do not drop it.
+            #
+            # See ./patches/README.md for lineage and bump procedure.
+            (final: prev: {
+              tmux = prev.tmux.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [
+                  ./patches/dim-inactive-panes.patch
+                  ./patches/force-redraw-on-focus-change.patch
+                ];
+              });
+            })
           ];
         };
 

@@ -1,0 +1,21 @@
+diff --git a/window.c b/window.c
+index 562fcc7..a2bb50b 100644
+--- a/window.c
++++ b/window.c
+@@ -562,6 +562,16 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
+ 	if (wp == w->active)
+ 		return;
+ 
++	/*
++	 * Local patch: the dim-inactive-panes patch in tty_attributes() needs a
++	 * full redraw whenever focus moves between panes so that the outgoing
++	 * pane is dimmed and the incoming pane is restored. Force PANE_REDRAW on
++	 * both panes unconditionally; the style-comparison loop below may also
++	 * set it for other reasons, which is harmless.
++	 */
++	wp->flags |= PANE_REDRAW;
++	w->active->flags |= PANE_REDRAW;
++
+ 	for (;;) {
+ 		/*
+ 		 * If the active and inactive styles or palettes are different,
