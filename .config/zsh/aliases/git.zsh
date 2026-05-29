@@ -17,7 +17,15 @@ alias wtm='wt-finish --mode local'
 
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
-alias lgdf='lg --git-dir="$HOME/git/dotfiles" --work-tree="$HOME"'
+# Renormalise codex config first so the clean filter strips [projects.*]
+# from the index — otherwise lazygit shows a perpetual diff (it bypasses
+# the dotfiles wrapper's `add --renormalize` shim).
+lgdf() {
+  command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" \
+    add --renormalize .codex/config.toml 2>/dev/null
+  lazygit --use-config-dir ~/.config/lazygit \
+    --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
+}
 
 # https://github.com/Wilfred/difftastic
 alias gdd='GIT_EXTERNAL_DIFF=difft git diff'
