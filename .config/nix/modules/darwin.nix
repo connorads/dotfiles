@@ -325,26 +325,55 @@
 
   # -- Tailscale (CLI, no GUI) --
   # Runs open-source `tailscaled` at boot (launchd daemon).
-  system.activationScripts.tailscale = {
-    text = ''
-      mkdir -p /var/lib/tailscale
-      chown root:wheel /var/lib/tailscale || true
-      chmod 700 /var/lib/tailscale || true
-    '';
-  };
+  #
+  # NOTE: nix-darwin only runs its *recognised* activation hooks (preActivation,
+  # extraActivation, postActivation). An arbitrarily-named
+  # `system.activationScripts.tailscale` block is accepted by the module system
+  # but never executed — so the firewall-stability copy below lives in the
+  # daemon's own launch command, not an activation script.
 
   launchd.daemons.tailscaled = {
     serviceConfig = {
       Label = "com.tailscale.tailscaled";
+      # Firewall-stable launch path:
+      # The macOS Application Firewall remembers its "allow incoming connections"
+      # verdict for *unsigned* binaries by FILE PATH (there's no code signature
+      # to key on, so it falls back to the path). ${pkgs.tailscale} is a
+      # content-addressed /nix/store path that changes on every Tailscale bump,
+      # so each upgrade looked like a brand-new app and re-fired the firewall
+      # prompt — leaving one stale "allow" entry per version. So at launch we
+      # refresh a copy at a FIXED path and exec THAT: ALF then has a single
+      # stable identity and stops re-prompting across upgrades. The launch
+      # (store) path still changes in this plist each upgrade, which is what
+      # makes launchd reload the daemon and re-copy the new binary — but ALF only
+      # sees the exec'd stable path, so it stays quiet.
+      #
+      # We copy the inner `.tailscaled-wrapped` (the binary that opens the
+      # socket; the `tailscaled` wrapper is just a bash shim adding lsof to PATH,
+      # supplied via PATH below). A copy — not a sym/hardlink — is required: ALF
+      # resolves links back to the real store path, and /nix is a separate APFS
+      # volume so a hardlink can't cross to /usr/local anyway.
       ProgramArguments = [
         "/bin/sh"
-        "-lc"
-        "mkdir -p /var/run/tailscale /var/lib/tailscale && exec ${pkgs.tailscale}/bin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock"
+        "-c"
+        ''
+          set -e
+          mkdir -p /var/run/tailscale /var/lib/tailscale /usr/local/lib/tailscale
+          cp -f ${pkgs.tailscale}/bin/.tailscaled-wrapped /usr/local/lib/tailscale/.tailscaled.new
+          chmod 0755 /usr/local/lib/tailscale/.tailscaled.new
+          mv -f /usr/local/lib/tailscale/.tailscaled.new /usr/local/lib/tailscale/tailscaled
+          exec /usr/local/lib/tailscale/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock
+        ''
       ];
       RunAtLoad = true;
       KeepAlive = true;
       StandardOutPath = "/var/log/tailscaled.log";
       StandardErrorPath = "/var/log/tailscaled.err.log";
+      # tailscaled shells out to `lsof`; supply the system one (/usr/sbin/lsof)
+      # since launching the unwrapped binary bypasses the nix wrapper's PATH.
+      EnvironmentVariables = {
+        PATH = "/usr/sbin:/usr/bin:/bin:/sbin";
+      };
     };
   };
 
@@ -384,7 +413,10 @@
         imports = [ ./home-shared.nix ];
         home.username = "connorads";
         home.homeDirectory = "/Users/connorads";
-        home.packages = packages.sharedPackages ++ [ pkgs.duti pkgs.pngpaste ];
+        home.packages = packages.sharedPackages ++ [
+          pkgs.duti
+          pkgs.pngpaste
+        ];
         home.stateVersion = "24.11";
 
         # Set default macOS app associations declaratively.
