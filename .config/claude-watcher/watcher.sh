@@ -125,11 +125,29 @@ cw_log() {
   printf '%s %s\n' "$_ts" "$*" >> "$LOG"
 }
 
-# Notify hook — basic for now (tmux message + bell); enriched in the notify layer.
+# Notify on backed-off / gave-up only (the happy path is log-only).
+#   1. CLAUDE_WATCH_NOTIFY_CMD if set — receives event ($1) + message ($2), so
+#      ntfy/Telegram bridges work on headless boxes.
+#   2. else desktop popup if a session is present (osascript / notify-send).
+#   3. always: tmux message + a bell on the pane tty (lands on reattach).
 cw_notify() {  # $1 = event, $2 = message
-  $TMUX_BIN display-message -t "$pane" "claude-watch [$1]: $2" 2>/dev/null
-  $TMUX_BIN display-message -t "$pane" -p '' >/dev/null 2>&1
-  printf '\a' >/dev/null 2>&1
+  _ev="$1"; _msg="$2"
+  cw_log "NOTIFY [$_ev] $_msg"
+
+  if [ -n "${CLAUDE_WATCH_NOTIFY_CMD:-}" ]; then
+    sh -c "$CLAUDE_WATCH_NOTIFY_CMD" _ "$_ev" "$_msg" 2>/dev/null
+    return
+  fi
+
+  $TMUX_BIN display-message -t "$pane" "claude-watch [$_ev]: $_msg" 2>/dev/null
+  _tty=$($TMUX_BIN display -p -t "$pane" '#{pane_tty}' 2>/dev/null)
+  [ -n "$_tty" ] && printf '\a' > "$_tty" 2>/dev/null
+
+  if [ "$(uname 2>/dev/null)" = Darwin ] && command -v osascript >/dev/null 2>&1; then
+    osascript -e "display notification \"$_msg\" with title \"claude-watch: $_ev\"" 2>/dev/null
+  elif { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && command -v notify-send >/dev/null 2>&1; then
+    notify-send "claude-watch: $_ev" "$_msg" 2>/dev/null
+  fi
 }
 
 cw_cleanup() {
