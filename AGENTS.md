@@ -60,6 +60,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration (update `help.md` when changing bindings)                              |
 | [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
+| [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm with `prefix + A`); design + env vars   |
 | [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
 | [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
@@ -172,6 +173,7 @@ dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
+claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + A)
 ts                     # Tailscale wrapper (defined in .zshrc)
 svc ls                 # List agent services with status
 svc up <name> [port]   # Start service + expose via Tailscale
