@@ -1,0 +1,142 @@
+#!/usr/bin/env zsh
+# claude-watch: arm/disarm a per-pane Claude Code auto-continue watcher
+# Usage: claude-watch [toggle|on|off|status] [pane_id]
+#
+# Toggles a tmux-native background watcher (run-shell -b) that polls one pane,
+# detects the "usage limit reached" banner, waits until the real reset, and
+# types a continue message. Opt-in per pane; nothing runs until armed.
+# The watcher writes its own PID (run-shell -b hides the child PID); this
+# toggle only reads/validates it. See ~/.config/claude-watcher/README.md.
+emulate -L zsh
+
+local watcher="$HOME/.config/claude-watcher/watcher.sh"
+local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/claude-watcher"
+
+local action="toggle" pane=""
+local arg
+for arg in "$@"; do
+  case "$arg" in
+    toggle|on|off|status) action="$arg" ;;
+    -h|--help)
+      print -r -- "Usage: claude-watch [toggle|on|off|status] [pane_id]"
+      return 0
+      ;;
+    *) pane="$arg" ;;
+  esac
+done
+
+# Resolve the target pane: explicit arg wins, else the caller's pane.
+[[ -z "$pane" ]] && pane="${TMUX_PANE:-}"
+if [[ -z "$pane" ]]; then
+  print -u2 "claude-watch: no pane (pass a pane_id or run inside tmux)"
+  return 1
+fi
+
+local pane_safe="${pane#%}"
+local pidfile="$state_dir/${pane_safe}.pid"
+local logfile="$state_dir/${pane_safe}.log"
+
+# Confirm a PID belongs to a live watcher (validate cmdline to dodge PID reuse).
+_cw_is_watcher() {
+  local pid="$1"
+  if [[ -r "/proc/$pid/cmdline" ]]; then
+    tr '\0' ' ' < "/proc/$pid/cmdline" | grep -q 'watcher\.sh'
+  else
+    ps -p "$pid" -o command= 2>/dev/null | grep -q 'watcher\.sh'
+  fi
+}
+
+# Echo the live watcher PID for this pane (and return 0) if armed, else return 1.
+_cw_armed_pid() {
+  [[ -f "$pidfile" ]] || return 1
+  local pid; pid="$(<"$pidfile")"
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  _cw_is_watcher "$pid" || return 1
+  print -r -- "$pid"
+}
+
+_cw_disarm() {
+  local pid="$1"
+  # Kill the whole process group (setsid made the watcher its group leader),
+  # falling back to the bare PID if there's no group.
+  kill -TERM -"$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+  command rm -f "$pidfile" 2>/dev/null
+  tmux set -p -u -t "$pane" @claude_armed 2>/dev/null
+  tmux display-message -t "$pane" "claude-watch: disarmed $pane" 2>/dev/null
+  print -r -- "claude-watch: disarmed watcher on $pane (pid $pid)"
+}
+
+_cw_arm() {
+  # Warn-but-allow if the pane isn't obviously running Claude right now.
+  local cmd; cmd="$(tmux display -p -t "$pane" '#{pane_current_command}' 2>/dev/null)"
+  case "$cmd" in
+    node|claude|npx|tsx|bun|deno) ;;
+    *) print -u2 "claude-watch: warning — pane $pane runs '${cmd:-?}', not Claude (arming anyway)" ;;
+  esac
+
+  command mkdir -p "$state_dir"
+
+  # Defensive interpreter/tmux overrides resolved here (full PATH), plus any
+  # tuning/test env the caller set — forwarded into the run-shell server env.
+  local -a fwd
+  local tmux_bin py_bin
+  tmux_bin="${CLAUDE_WATCH_TMUX:-$(command -v tmux)}"
+  py_bin="${CLAUDE_WATCH_PY:-$(command -v python3)}"
+  [[ -n "$tmux_bin" ]] && fwd+=("CLAUDE_WATCH_TMUX=${(q)tmux_bin}")
+  [[ -n "$py_bin" ]] && fwd+=("CLAUDE_WATCH_PY=${(q)py_bin}")
+  local k
+  for k in CLAUDE_WATCH_POLL CLAUDE_WATCH_MARGIN CLAUDE_WATCH_CEILING \
+           CLAUDE_WATCH_FALLBACK CLAUDE_WATCH_MSG CLAUDE_WATCH_RAPID_CAP \
+           CLAUDE_WATCH_RAPID_GAP CLAUDE_WATCH_LIFETIME_CAP \
+           CLAUDE_WATCH_NOTIFY_CMD CLAUDE_WATCH_FAKE_BANNER \
+           CLAUDE_WATCH_FAKE_RESET CLAUDE_WATCH_DRY_RUN; do
+    [[ -v "$k" ]] && fwd+=("${k}=${(q)${(P)k}}")
+  done
+
+  # `exec` so the run-shell `sh -c` wrapper is replaced by the watcher (which
+  # then setsid's into its own group) — no orphaned wrapper process lingers.
+  local cmdline="${(j: :)fwd} exec ${(q)watcher} ${(q)pane}"
+  tmux run-shell -b "$cmdline"
+  tmux set -p -t "$pane" @claude_armed 1 2>/dev/null
+  tmux display-message -t "$pane" "claude-watch: armed ▶ $pane" 2>/dev/null
+  print -r -- "claude-watch: armed watcher on $pane (log: $logfile)"
+}
+
+if [[ ! -f "$watcher" ]]; then
+  print -u2 "claude-watch: watcher not found at $watcher"
+  return 1
+fi
+
+local pid
+case "$action" in
+  status)
+    if pid="$(_cw_armed_pid)"; then
+      print -r -- "claude-watch: ARMED on $pane (pid $pid, log: $logfile)"
+    else
+      print -r -- "claude-watch: not armed on $pane"
+      return 1
+    fi
+    ;;
+  on)
+    if pid="$(_cw_armed_pid)"; then
+      print -r -- "claude-watch: already armed on $pane (pid $pid)"
+    else
+      _cw_arm
+    fi
+    ;;
+  off)
+    if pid="$(_cw_armed_pid)"; then
+      _cw_disarm "$pid"
+    else
+      print -r -- "claude-watch: not armed on $pane"
+    fi
+    ;;
+  toggle)
+    if pid="$(_cw_armed_pid)"; then
+      _cw_disarm "$pid"
+    else
+      _cw_arm
+    fi
+    ;;
+esac
