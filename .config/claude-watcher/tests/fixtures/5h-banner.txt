@@ -1,0 +1,4 @@
+[2m⏺[0m Running long task...
+  ⎿ working
+[38;5;215m▌[0m [1mClaude usage limit reached.[0m
+[38;5;215m▌[0m Your limit will reset at 3pm [2m(America/Santiago)[0m.
