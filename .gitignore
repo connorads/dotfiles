@@ -182,6 +182,9 @@
 !/.config/zsh/tests/
 !/.config/zsh/tests/**
 
+!/.config/claude-watcher/
+!/.config/claude-watcher/**
+
 # gh-gate secrets (tokens, PEM, config with IDs)
 /.config/gh-gate/
 
