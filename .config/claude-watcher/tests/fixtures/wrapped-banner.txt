@@ -1,0 +1,4 @@
+[38;5;215m▌[0m Claude usage limit reached.
+[38;5;215m▌[0m
+[38;5;215m▌[0m Your limit will
+[38;5;215m▌[0m reset at 3pm (America/Santiago).
