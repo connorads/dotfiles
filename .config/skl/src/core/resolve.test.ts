@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { resolveRef } from "./resolve.ts";
+import { resolveRef, resolveRefs } from "./resolve.ts";
 import { parseRef } from "./ref.ts";
 import type { DiscoveredSkill, Source } from "./types.ts";
 
@@ -52,6 +52,26 @@ describe("resolveRef", () => {
     expect(resolveRef(parseRef("repo/ghost"), skills)).toEqual({
       ok: false,
       error: { kind: "not-found", name: "ghost" },
+    });
+  });
+});
+
+describe("resolveRefs (all-or-nothing batch)", () => {
+  test("all valid → ok with skills in input order", () => {
+    const r = resolveRefs(["beta", "fixtureB/alpha"], skills);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.map((s) => `${s.source.name}/${s.name}`)).toEqual([
+      "repo/beta",
+      "fixtureB/alpha",
+    ]);
+  });
+
+  test("a bad ref mid-batch → err (the partial-injection guard)", () => {
+    // `typo` is unresolvable; the batch must fail rather than resolve `alpha`
+    // and leave the bad ref to abort after the first injection.
+    expect(resolveRefs(["alpha", "typo", "beta"], skills)).toEqual({
+      ok: false,
+      error: { kind: "not-found", name: "typo" },
     });
   });
 });

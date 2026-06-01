@@ -3,6 +3,7 @@
 // so the FIRST match for a bare name is the precedence winner (PATH semantics).
 
 import { ok, err, type Result } from "./result.ts";
+import { parseRef } from "./ref.ts";
 import type { DiscoveredSkill, ResolveError, SkillRef } from "./types.ts";
 
 export const resolveRef = (
@@ -23,4 +24,21 @@ export const resolveRef = (
   );
   if (match === undefined) return err({ kind: "not-found", name: ref.name });
   return ok(match);
+};
+
+// All-or-nothing batch resolution: parse and resolve every ref, short-circuiting
+// to `err` on the first failure. Lets the shell resolve a whole batch up front
+// (an impureim sandwich) so a bad ref aborts BEFORE any injection — no partial
+// injection. Pure: parseRef/resolveRef do no I/O.
+export const resolveRefs = (
+  refs: readonly string[],
+  skills: readonly DiscoveredSkill[],
+): Result<DiscoveredSkill[], ResolveError> => {
+  const resolved: DiscoveredSkill[] = [];
+  for (const ref of refs) {
+    const result = resolveRef(parseRef(ref), skills);
+    if (!result.ok) return result;
+    resolved.push(result.value);
+  }
+  return ok(resolved);
 };
