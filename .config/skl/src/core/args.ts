@@ -46,7 +46,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     positionals.push(arg);
   }
 
-  const options: Options = { target, paths, submit, stdin };
+  const options: Options = { target, paths, submit };
 
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });

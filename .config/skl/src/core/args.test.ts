@@ -15,7 +15,6 @@ describe("parseArgs", () => {
     const r = parseArgs(["--stdin", "--target", "%3"]);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null });
-    if (r.ok && r.value.kind === "load") expect(r.value.options.stdin).toBe(true);
   });
 
   test("--stdin with a positional ref → too-many-args", () => {
@@ -54,7 +53,7 @@ describe("parseArgs", () => {
     expect(r.ok).toBe(true);
     if (r.ok && r.value.kind === "load") {
       expect(r.value.ref).toBe("alpha");
-      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true, stdin: false });
+      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true });
     }
   });
 
