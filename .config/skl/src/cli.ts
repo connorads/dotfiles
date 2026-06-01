@@ -5,7 +5,7 @@
 import { parseArgs } from "./core/args.ts";
 import { parseConfig, configFromPaths } from "./core/config.ts";
 import { parseRef } from "./core/ref.ts";
-import { resolveRef } from "./core/resolve.ts";
+import { resolveRef, resolveRefs } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
 import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
 import type {
@@ -113,8 +113,8 @@ const buildConfig = async (
 };
 
 // Inject pointers for one or more refs into a single target pane. The target is
-// resolved once (so stacked skills land in the same pane); each ref is resolved
-// and injected in order, and a single bad ref fails the whole batch.
+// resolved once (so stacked skills land in the same pane); all refs resolve
+// before any injection, so a bad ref fails the batch with no partial injection.
 const loadRefs = async (
   refs: readonly string[],
   skills: readonly DiscoveredSkill[],
@@ -128,13 +128,14 @@ const loadRefs = async (
     return 1;
   }
 
-  for (const ref of refs) {
-    const resolved = resolveRef(parseRef(ref), skills);
-    if (!resolved.ok) {
-      env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
-      return 1;
-    }
-    const skill = resolved.value;
+  // Resolve the whole batch up front (pure) — bail before injecting anything.
+  const resolved = resolveRefs(refs, skills);
+  if (!resolved.ok) {
+    env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
+    return 1;
+  }
+
+  for (const skill of resolved.value) {
     const injected = await injectPointer(target.value, renderPointer(skill), {
       submit: options.submit,
     });
