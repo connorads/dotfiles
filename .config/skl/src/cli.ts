@@ -177,7 +177,7 @@ const main = async (argv: readonly string[]): Promise<number> => {
     case "preview": {
       const resolved = resolveRef(parseRef(command.ref), skills);
       if (!resolved.ok) {
-        env.stderr(`${fmtResolveError(resolved.error)}\n`);
+        env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
         return 1;
       }
       const pointer = renderPointer(resolved.value);
