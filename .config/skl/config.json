@@ -1,0 +1,3 @@
+{
+  "paths": [{ "path": "~/.agents/skills", "name": "agents" }]
+}
