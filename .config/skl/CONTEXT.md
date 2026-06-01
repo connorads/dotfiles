@@ -38,11 +38,15 @@ progressive disclosure.
 
 - **Source paths**: configurable, multiple. Default = a dedicated skills repo/folder
   (TBD). `~/.agents/skills` usable as a test fixture.
-- **Trigger/target**: tmux popup (keybind) → fzf picker → `send-keys` into the pane it
-  was summoned from. Thin wrapper over a testable CLI (`skill-load`-style).
+- **Trigger/target**: tmux popup (keybind `prefix + A`) → fzf picker → inject into the
+  pane it was summoned from. The picker is a **shell pipeline**, not Bun-driven:
+  `skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>`
+  (`bin/pick`, symlinked `~/.local/bin/skl-pick`). fzf runs in the popup's real TTY —
+  the `skl` CLI never spawns it. The CLI stays a thin, TTY-free wrapper over the core.
+  See ADR-0004 for why the earlier Bun-spawned fzf was dropped.
 - **Runtime**: Bun + TypeScript, **zero external deps** (Bun.file/Bun.spawn/Bun.Glob).
   Functional core (discovery, frontmatter parse, pointer render) pure + unit-tested;
-  imperative shell (fs, tmux) thin. `bun test`.
+  imperative shell (fs, tmux) thin. fzf orchestration is shell, not Bun. `bun test`.
 - **Home**: lives in a folder in the dotfiles repo to start; may graduate to its own
   package/repo later (see Command + location).
 - **Submit behaviour**: never press Enter by default — you may stack multiple skills
@@ -50,9 +54,11 @@ progressive disclosure.
 - **Multi-select**: picker supports selecting several skills at once (fzf Tab, like
   `tmk`); each selected skill injects its own pointer.
 - **Command + location**: command is `skl`; Bun project root at `~/.config/skl/`
-  (`src/`, `tests/`, `package.json`, `config.json`, plus this `CONTEXT.md` and
+  (`src/`, `tests/`, `bin/`, `package.json`, `config.json`, plus this `CONTEXT.md` and
   `docs/adr/` co-located in the project — not at `~`). `~/.local/bin/skl` is a thin
-  launcher shim (`exec bun ~/.config/skl/src/cli.ts "$@"`) — the only thing in `bin`.
+  launcher shim (`exec bun ~/.config/skl/src/cli.ts "$@"`); `~/.local/bin/skl-pick`
+  symlinks `bin/pick`, the fzf picker glue. The launcher shim is the only Bun-facing
+  thing in `bin`.
   Dotfiles-tracked for the MVP; **intent to extract to a standalone `~/git/skl` repo**
   once it stabilises.
 - **Path config**: JSON config file (ordered sources `{ path, name? }`) is source of

@@ -1,10 +1,10 @@
-// Pure transforms for the fzf picker: skills → tab-delimited lines, and the
-// selected lines → ref tokens. Kept in the core so they're testable; only the
-// fzf spawn itself (shell/fzf.ts) is untested.
+// Pure transforms for the shell pipeline: skills → list lines, and selected
+// lines → ref tokens. `skl list` emits these lines; fzf shows them and feeds
+// the chosen ones to `skl load --stdin`, which parses the ref back out.
 //
-// Line format: `<ref>\t<ref>  <description>`
-//   - column 1 (ref) is the machine key, hidden via fzf --with-nth=2..
-//   - column 2.. is what the user sees.
+// Line format: `<ref>  <description>` (ref = `source/name`, no spaces). The ref
+// is the first whitespace-delimited token, so fzf's default `{1}` IS the ref
+// (no --delimiter/--with-nth needed) and `linesToRefs` is a first-token split.
 
 import type { DiscoveredSkill } from "./types.ts";
 
@@ -17,15 +17,14 @@ const flatten = (text: string): string => text.replace(/\s+/g, " ").trim();
 export const skillToLine = (skill: DiscoveredSkill): string => {
   const ref = skillRef(skill);
   const desc = flatten(skill.description);
-  const visible = desc.length > 0 ? `${ref}  ${desc}` : ref;
-  return `${ref}\t${visible}`;
+  return desc.length > 0 ? `${ref}  ${desc}` : ref;
 };
 
 export const skillsToLines = (skills: readonly DiscoveredSkill[]): string[] =>
   skills.map(skillToLine);
 
-/** Extract ref tokens (column 1) from fzf's selected lines. */
+/** Extract ref tokens (first whitespace-delimited field) from selected lines. */
 export const linesToRefs = (selected: readonly string[]): string[] =>
   selected
-    .map((line) => line.split("\t")[0] ?? "")
+    .map((line) => line.trim().split(/\s+/)[0] ?? "")
     .filter((ref) => ref.length > 0);

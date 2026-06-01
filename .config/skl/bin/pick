@@ -1,0 +1,36 @@
+#!/usr/bin/env zsh
+# skl-pick: tmux popup glue for the deliberate skill loader.
+#
+# Composes the (TTY-free) skl CLI with fzf in the shell — fzf runs in the
+# popup's real terminal, so there is no Bun-pipe / pseudo-terminal problem
+# (the reason the old Bun-spawned picker was dropped; see docs/adr/0004).
+#
+#   skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>
+#
+# Usage: skl-pick [target-pane]   (target forwarded to `skl load`). Bound to
+# tmux prefix + A.
+emulate -L zsh
+
+# Resolve `skl` even in tmux's non-interactive popup shell (fzf is inherited
+# from the tmux server's PATH, like the session/window pickers).
+path=("$HOME/.local/bin" $path)
+
+# Target pane: an explicit arg wins; otherwise query the active pane.
+#
+# SURPRISE: `display-popup -E "...#{pane_id}..."` does NOT expand #{pane_id} —
+# the format reaches the command verbatim, so passing it from the keybind gave a
+# bogus target and the pointer landed in the wrong pane. A popup is a client
+# overlay and does NOT change which pane is active, so querying from in here
+# returns the pane the popup was summoned from. This is the robust target.
+typeset -a target
+pane="${1-}"
+[[ -z $pane || $pane == '#{pane_id}' ]] && pane=$(tmux display-message -p '#{pane_id}')
+[[ -n $pane ]] && target=(--target "$pane")
+
+skl list \
+  | fzf --reverse --multi \
+      --preview 'skl preview {1}' \
+      --preview-window 'right,60%,wrap' \
+      --header 'tab: mark · enter: load · esc: cancel' \
+      --bind 'tab:toggle+down,btab:toggle+up' \
+  | skl load --stdin "$target[@]"

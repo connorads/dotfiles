@@ -2,11 +2,8 @@ import { expect, test, describe } from "bun:test";
 import { parseArgs } from "./args.ts";
 
 describe("parseArgs", () => {
-  test("no args → pick with defaults", () => {
-    expect(parseArgs([])).toEqual({
-      ok: true,
-      value: { kind: "pick", options: { target: null, paths: [], submit: false } },
-    });
+  test("no args → help (the picker is the skl-pick shell glue)", () => {
+    expect(parseArgs([])).toEqual({ ok: true, value: { kind: "help" } });
   });
 
   test("--help → help", () => {
@@ -14,8 +11,28 @@ describe("parseArgs", () => {
     expect(parseArgs(["-h"])).toEqual({ ok: true, value: { kind: "help" } });
   });
 
+  test("--stdin → load with null ref (refs read from stdin)", () => {
+    const r = parseArgs(["--stdin", "--target", "%3"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null });
+    if (r.ok && r.value.kind === "load") expect(r.value.options.stdin).toBe(true);
+  });
+
+  test("--stdin with a positional ref → too-many-args", () => {
+    expect(parseArgs(["--stdin", "alpha"])).toEqual({
+      ok: false,
+      error: { kind: "too-many-args", args: ["alpha"] },
+    });
+  });
+
   test("single ref → load", () => {
     const r = parseArgs(["agents/tdd"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: "agents/tdd" });
+  });
+
+  test("explicit `load` verb is optional sugar for a bare ref", () => {
+    const r = parseArgs(["load", "agents/tdd"]);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: "agents/tdd" });
   });
@@ -37,7 +54,7 @@ describe("parseArgs", () => {
     expect(r.ok).toBe(true);
     if (r.ok && r.value.kind === "load") {
       expect(r.value.ref).toBe("alpha");
-      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true });
+      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true, stdin: false });
     }
   });
 

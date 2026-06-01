@@ -9,7 +9,7 @@ export const env = {
   stderr: (text: string): void => {
     process.stderr.write(text);
   },
-  /** Set by the tmux popup keybind so the picker renders top-down. */
-  popup: (): boolean => process.env["SKL_POPUP"] === "1",
+  /** Read all of stdin (used by `skl load --stdin`). */
+  stdin: (): Promise<string> => Bun.stdin.text(),
 };
 

@@ -7,7 +7,7 @@ import { parseConfig, configFromPaths } from "./core/config.ts";
 import { parseRef } from "./core/ref.ts";
 import { resolveRef } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
-import { skillRef } from "./core/display.ts";
+import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
 import type {
   ArgError,
   Config,
@@ -20,15 +20,20 @@ import type { Result } from "./core/result.ts";
 import { env } from "./shell/env.ts";
 import { loadConfigFile, discoverAll, type ConfigFileError } from "./shell/fs.ts";
 import { injectPointer, resolveTarget } from "./shell/tmux.ts";
-import { pickSkills } from "./shell/fzf.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
 
+The picker is the \`skl-pick\` shell glue (bound to tmux prefix + A), which
+composes this CLI with fzf:
+
+  skl list | fzf --multi --preview 'skl preview {1}' | skl load --stdin --target <pane>
+
 Usage:
-  skl                       open fzf picker, inject chosen pointer(s)
   skl <name>                resolve by config precedence, inject pointer
   skl <source>/<name>       inject the exact skill copy
-  skl list                  list discovered skills as source/name
+  skl --stdin               inject pointers for refs read from stdin
+  skl list                  list discovered skills (fed to fzf)
+  skl preview <ref>         render a skill's pointer (the fzf preview)
   skl --help                show this help
 
 Options:
@@ -93,10 +98,6 @@ const absolutise = (p: string): string =>
     ? p
     : `${process.cwd()}/${p}`;
 
-// Single-quote for the fzf preview shell command (the only place we build a
-// shell string; tmux injection stays argv-form).
-const shQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
-
 const buildConfig = async (
   options: Options,
 ): Promise<Result<Config, string>> => {
@@ -111,31 +112,39 @@ const buildConfig = async (
   return { ok: true, value: parsed.value };
 };
 
-const loadOne = async (
-  ref: string,
+// Inject pointers for one or more refs into a single target pane. The target is
+// resolved once (so stacked skills land in the same pane); each ref is resolved
+// and injected in order, and a single bad ref fails the whole batch.
+const loadRefs = async (
+  refs: readonly string[],
   skills: readonly DiscoveredSkill[],
   options: Options,
 ): Promise<number> => {
-  const resolved = resolveRef(parseRef(ref), skills);
-  if (!resolved.ok) {
-    env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
-    return 1;
-  }
-  const skill = resolved.value;
+  if (refs.length === 0) return 0; // nothing selected (e.g. fzf cancelled)
+
   const target = await resolveTarget(options.target);
   if (!target.ok) {
     env.stderr(`skl: ${target.error.stderr || target.error.command}\n`);
     return 1;
   }
-  const injected = await injectPointer(target.value, renderPointer(skill), {
-    submit: options.submit,
-  });
-  if (!injected.ok) {
-    env.stderr(`skl: ${injected.error.stderr || injected.error.command}\n`);
-    return 1;
+
+  for (const ref of refs) {
+    const resolved = resolveRef(parseRef(ref), skills);
+    if (!resolved.ok) {
+      env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
+      return 1;
+    }
+    const skill = resolved.value;
+    const injected = await injectPointer(target.value, renderPointer(skill), {
+      submit: options.submit,
+    });
+    if (!injected.ok) {
+      env.stderr(`skl: ${injected.error.stderr || injected.error.command}\n`);
+      return 1;
+    }
+    // Visibility of system status: print the resolved source/name.
+    env.stdout(`skl: loaded ${skillRef(skill)} → ${target.value}\n`);
   }
-  // Visibility of system status: print the resolved source/name.
-  env.stdout(`skl: loaded ${skillRef(skill)} → ${target.value}\n`);
   return 0;
 };
 
@@ -161,7 +170,7 @@ const main = async (argv: readonly string[]): Promise<number> => {
 
   switch (command.kind) {
     case "list": {
-      for (const skill of skills) env.stdout(`${skillRef(skill)}\n`);
+      for (const line of skillsToLines(skills)) env.stdout(`${line}\n`);
       return 0;
     }
     case "preview": {
@@ -174,23 +183,13 @@ const main = async (argv: readonly string[]): Promise<number> => {
       env.stdout(`${pointer.skillName}\n\n${pointer.bulk}\n`);
       return 0;
     }
-    case "load":
-      return loadOne(command.ref, skills, command.options);
-    case "pick": {
-      // Preview reuses this same CLI (absolute path → robust in fzf's subshell),
-      // carrying the same --path overrides so the preview matches the picker.
-      const pathFlags = command.options.paths
-        .map((p) => `--path ${shQuote(absolutise(p))}`)
-        .join(" ");
-      const previewCmd = `bun ${shQuote(import.meta.path)} preview {1} ${pathFlags}`.trim();
-      const picked = await pickSkills(skills, { previewCmd, reverse: env.popup() });
-      if (picked.refs.length === 0) return 0; // cancelled / nothing selected
-      let exit = 0;
-      for (const ref of picked.refs) {
-        const code = await loadOne(ref, skills, command.options);
-        if (code !== 0) exit = code;
-      }
-      return exit;
+    case "load": {
+      // `--stdin` (command.ref === null) reads the picker's selected lines and
+      // parses the ref out of each; otherwise it's the single positional ref.
+      const refs = command.ref === null
+        ? linesToRefs((await env.stdin()).split("\n"))
+        : [command.ref];
+      return loadRefs(refs, skills, command.options);
     }
   }
 };

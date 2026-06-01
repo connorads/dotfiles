@@ -11,18 +11,18 @@ const skill = (name: string, description: string): DiscoveredSkill => ({
 });
 
 describe("skillToLine", () => {
-  test("ref key is column 1, visible text column 2", () => {
+  test("ref then description, ref is the first token (fzf {1})", () => {
     const line = skillToLine(skill("alpha", "A skill."));
-    expect(line).toBe("repo/alpha\trepo/alpha  A skill.");
+    expect(line).toBe("repo/alpha  A skill.");
   });
 
   test("multiline description flattened to one line", () => {
     const line = skillToLine(skill("beta", "one\ntwo\n  three"));
-    expect(line).toBe("repo/beta\trepo/beta  one two three");
+    expect(line).toBe("repo/beta  one two three");
   });
 
-  test("empty description omits the separator", () => {
-    expect(skillToLine(skill("noname", ""))).toBe("repo/noname\trepo/noname");
+  test("empty description leaves the bare ref", () => {
+    expect(skillToLine(skill("noname", ""))).toBe("repo/noname");
   });
 });
 
@@ -38,7 +38,7 @@ describe("linesToRefs", () => {
     expect(linesToRefs(lines)).toEqual(["repo/alpha", "repo/beta"]);
   });
 
-  test("ignores blank lines", () => {
-    expect(linesToRefs(["", "repo/alpha\tx"])).toEqual(["repo/alpha"]);
+  test("ignores blank lines and takes the first token", () => {
+    expect(linesToRefs(["", "repo/alpha  some description"])).toEqual(["repo/alpha"]);
   });
 });
