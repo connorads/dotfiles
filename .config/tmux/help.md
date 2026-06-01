@@ -39,6 +39,7 @@
 |-----|--------|
 | `Ctrl+b S` | fzf session picker |
 | `Ctrl+b W` | fzf window picker |
+| `Ctrl+b A` | skill loader (skl picker → inject pointer into this pane) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
