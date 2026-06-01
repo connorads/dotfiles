@@ -9,4 +9,7 @@ export const env = {
   stderr: (text: string): void => {
     process.stderr.write(text);
   },
+  /** Set by the tmux popup keybind so the picker renders top-down. */
+  popup: (): boolean => process.env["SKL_POPUP"] === "1",
 };
+

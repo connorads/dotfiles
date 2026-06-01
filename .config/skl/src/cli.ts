@@ -20,6 +20,7 @@ import type { Result } from "./core/result.ts";
 import { env } from "./shell/env.ts";
 import { loadConfigFile, discoverAll, type ConfigFileError } from "./shell/fs.ts";
 import { injectPointer, resolveTarget } from "./shell/tmux.ts";
+import { pickSkills } from "./shell/fzf.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
 
@@ -91,6 +92,10 @@ const absolutise = (p: string): string =>
   p.startsWith("/") || p.startsWith("~") || p.startsWith("$HOME")
     ? p
     : `${process.cwd()}/${p}`;
+
+// Single-quote for the fzf preview shell command (the only place we build a
+// shell string; tmux injection stays argv-form).
+const shQuote = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`;
 
 const buildConfig = async (
   options: Options,
@@ -172,9 +177,20 @@ const main = async (argv: readonly string[]): Promise<number> => {
     case "load":
       return loadOne(command.ref, skills, command.options);
     case "pick": {
-      // fzf picker arrives in the next build step.
-      env.stderr(`skl: specify a skill (the fzf picker is not wired yet)\n\n${HELP}`);
-      return 2;
+      // Preview reuses this same CLI (absolute path → robust in fzf's subshell),
+      // carrying the same --path overrides so the preview matches the picker.
+      const pathFlags = command.options.paths
+        .map((p) => `--path ${shQuote(absolutise(p))}`)
+        .join(" ");
+      const previewCmd = `bun ${shQuote(import.meta.path)} preview {1} ${pathFlags}`.trim();
+      const picked = await pickSkills(skills, { previewCmd, reverse: env.popup() });
+      if (picked.refs.length === 0) return 0; // cancelled / nothing selected
+      let exit = 0;
+      for (const ref of picked.refs) {
+        const code = await loadOne(ref, skills, command.options);
+        if (code !== 0) exit = code;
+      }
+      return exit;
     }
   }
 };
