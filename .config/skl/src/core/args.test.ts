@@ -1,0 +1,68 @@
+import { expect, test, describe } from "bun:test";
+import { parseArgs } from "./args.ts";
+
+describe("parseArgs", () => {
+  test("no args → pick with defaults", () => {
+    expect(parseArgs([])).toEqual({
+      ok: true,
+      value: { kind: "pick", options: { target: null, paths: [], submit: false } },
+    });
+  });
+
+  test("--help → help", () => {
+    expect(parseArgs(["--help"])).toEqual({ ok: true, value: { kind: "help" } });
+    expect(parseArgs(["-h"])).toEqual({ ok: true, value: { kind: "help" } });
+  });
+
+  test("single ref → load", () => {
+    const r = parseArgs(["agents/tdd"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: "agents/tdd" });
+  });
+
+  test("list subcommand", () => {
+    const r = parseArgs(["list"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.kind).toBe("list");
+  });
+
+  test("preview subcommand carries the ref", () => {
+    const r = parseArgs(["preview", "repo/alpha"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "preview", ref: "repo/alpha" });
+  });
+
+  test("flags: target, repeatable path, submit", () => {
+    const r = parseArgs(["alpha", "--target", "%3", "--path", "/a", "--path", "/b", "--submit"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "load") {
+      expect(r.value.ref).toBe("alpha");
+      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true });
+    }
+  });
+
+  test("missing flag value → missing-value", () => {
+    expect(parseArgs(["--target"])).toEqual({
+      ok: false,
+      error: { kind: "missing-value", flag: "--target" },
+    });
+  });
+
+  test("unknown flag → unknown-flag", () => {
+    expect(parseArgs(["--bogus"])).toEqual({
+      ok: false,
+      error: { kind: "unknown-flag", flag: "--bogus" },
+    });
+  });
+
+  test("too many positional args → too-many-args", () => {
+    expect(parseArgs(["a", "b"])).toEqual({
+      ok: false,
+      error: { kind: "too-many-args", args: ["b"] },
+    });
+  });
+
+  test("--help wins even amongst other args", () => {
+    expect(parseArgs(["alpha", "--help"])).toEqual({ ok: true, value: { kind: "help" } });
+  });
+});
