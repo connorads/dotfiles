@@ -23,21 +23,10 @@ export const loadConfigFile = async (
   }
 };
 
-const scanFiles = async (root: string): Promise<string[]> => {
-  const glob = new Glob("**/*");
-  const out: string[] = [];
-  try {
-    for await (const rel of glob.scan({ cwd: root, onlyFiles: true })) out.push(rel);
-  } catch {
-    // Missing/unreadable root → no files (a friendly empty result, not a throw).
-    return [];
-  }
-  return out;
-};
-
-/** SKILL.md paths relative to the source root, SORTED (Bun.Glob is unordered). */
-export const globSkills = async (root: string): Promise<string[]> => {
-  const glob = new Glob("**/SKILL.md");
+// Glob files under a root, relative to it, SORTED (Bun.Glob is unordered). A
+// missing/unreadable root yields no files (a friendly empty result, not a throw).
+const globSorted = async (root: string, pattern: string): Promise<string[]> => {
+  const glob = new Glob(pattern);
   const rels: string[] = [];
   try {
     for await (const rel of glob.scan({ cwd: root, onlyFiles: true })) rels.push(rel);
@@ -48,15 +37,16 @@ export const globSkills = async (root: string): Promise<string[]> => {
   return rels;
 };
 
+/** SKILL.md paths relative to the source root, sorted. */
+export const globSkills = (root: string): Promise<string[]> =>
+  globSorted(root, "**/SKILL.md");
+
 export const readSkillMd = (absPath: string): Promise<string> =>
   Bun.file(absPath).text();
 
 /** File paths relative to a skill dir (includes SKILL.md), sorted. */
-export const siblingFiles = async (skillDir: string): Promise<string[]> => {
-  const files = await scanFiles(skillDir);
-  files.sort();
-  return files;
-};
+export const siblingFiles = (skillDir: string): Promise<string[]> =>
+  globSorted(skillDir, "**/*");
 
 const discoverSource = async (source: Source): Promise<DiscoveredSkill[]> => {
   const rels = await globSkills(source.path);
