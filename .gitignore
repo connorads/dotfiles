@@ -60,6 +60,9 @@
 /.config/agents/skills/**
 !/.config/agents/skills/*
 
+!/.config/skl/
+!/.config/skl/**
+
 !/.gemini/
 /.gemini/**
 !/.gemini/skills/

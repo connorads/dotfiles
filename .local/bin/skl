@@ -1,0 +1,21 @@
+#!/bin/sh
+# skl: launcher shim for the deliberate skill loader
+# Runs the Bun CLI at ~/.config/skl/src/cli.ts (zero-dep, no build step)
+
+# Find bun, skipping this wrapper's directory just in case
+real_bun=""
+OLDIFS="$IFS"; IFS=':'
+for dir in $PATH; do
+  case "$dir" in
+    "$HOME/.local/bin"|"$HOME/.local/bin/") continue ;;
+  esac
+  [ -x "$dir/bun" ] && real_bun="$dir/bun" && break
+done
+IFS="$OLDIFS"
+
+if [ -z "$real_bun" ]; then
+  echo "skl: cannot find bun in PATH" >&2
+  exit 127
+fi
+
+exec "$real_bun" "$HOME/.config/skl/src/cli.ts" "$@"
