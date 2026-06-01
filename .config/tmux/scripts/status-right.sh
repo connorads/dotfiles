@@ -33,7 +33,10 @@ ram_percentage() {
 
 disk_percentage() {
 	local disk
-	disk="$(df -h / 2>/dev/null | awk 'NR==2 { print $5; exit }')"
+	# Query $HOME, not /: on macOS / is the sealed read-only System volume
+	# (~12% used), while real files live on the Data volume. df resolves $HOME
+	# to the right mount on both macOS and Linux without OS-specific branching.
+	disk="$(df -h "$HOME" 2>/dev/null | awk 'NR==2 { print $5; exit }')"
 	if [ -n "$disk" ]; then
 		printf "%s" "$disk"
 	else
