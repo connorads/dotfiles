@@ -69,14 +69,15 @@ export interface Options {
   /** `--path` overrides config entirely (no merge). Empty = use config file. */
   readonly paths: readonly string[];
   readonly submit: boolean;
+  /** Read refs from stdin (one per line) instead of a positional ref. */
+  readonly stdin: boolean;
 }
 
-/** A fully-parsed CLI invocation. */
+/** A fully-parsed CLI invocation. `load.ref` is null when refs come from stdin. */
 export type Command =
   | { readonly kind: "help" }
   | { readonly kind: "list"; readonly options: Options }
-  | { readonly kind: "pick"; readonly options: Options }
-  | { readonly kind: "load"; readonly ref: string; readonly options: Options }
+  | { readonly kind: "load"; readonly ref: string | null; readonly options: Options }
   | { readonly kind: "preview"; readonly ref: string; readonly options: Options };
 
 export type ArgError =
