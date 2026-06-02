@@ -11,9 +11,12 @@ session, as an alternative to autoloaded skills.
 ### Skill source path
 
 One or more **configured directories** the loader scans for skills. Distinct from
-`~/.agents/skills/` (the canonical autoload set that `skillsync` symlinks into each
-agent). Default will be a dedicated skills repo/folder (to be created); `~/.agents/skills`
-is usable as a test fixture for now.
+`~/.agents/skills/` (the autoload set that `skillsync` symlinks into each agent — kept
+**empty** by design so nothing autoloads). The configured sources are the **catalogue
+tier**: the curation home at `~/.config/skills/` — `public` (label `mine`), `private`,
+and the `vendor/.agents/skills` project dir (label `vendor`). See
+`~/.config/skills/AGENTS.md` for the tier model and curation rubric — that's curation
+intent, not `skl`'s domain.
 
 ### Autoloaded skill
 
@@ -36,8 +39,10 @@ progressive disclosure.
 
 ## Resolved decisions
 
-- **Source paths**: configurable, multiple. Default = a dedicated skills repo/folder
-  (TBD). `~/.agents/skills` usable as a test fixture.
+- **Source paths**: configurable, multiple. Default = the three curation-home sources
+  (`~/.config/skills/{public,private,vendor/.agents/skills}`, labelled
+  `mine`/`private`/`vendor`). `~/.agents/skills` is *not* a source — it's the (empty)
+  autoload dir; use `--path` for any ad-hoc fixture.
 - **Trigger/target**: tmux popup (keybind `prefix + A`) → fzf picker → inject into the
   pane it was summoned from. The picker is a **shell pipeline**, not Bun-driven:
   `skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>`
