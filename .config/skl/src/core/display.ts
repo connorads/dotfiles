@@ -6,13 +6,11 @@
 // is the first whitespace-delimited token, so fzf's default `{1}` IS the ref
 // (no --delimiter/--with-nth needed) and `linesToRefs` is a first-token split.
 
+import { flatten } from "./text.ts";
 import type { DiscoveredSkill } from "./types.ts";
 
 export const skillRef = (skill: DiscoveredSkill): string =>
   `${skill.source.name}/${skill.name}`;
-
-/** Collapse any whitespace run (incl. newlines) to a single space. */
-const flatten = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 export const skillToLine = (skill: DiscoveredSkill): string => {
   const ref = skillRef(skill);
