@@ -1,19 +1,29 @@
 #!/usr/bin/env zsh
 # Sync skill symlinks across all agents
-# Usage: skillsync [-v|--verbose] [-n|--dry-run]
+# Usage: skillsync [-v|--verbose] [-n|--dry-run] [-p|--prune]
+#   --prune also removes per-agent symlinks whose canonical source is gone.
+#   Needed because the autoload dir is empty by design (catalogue lives in
+#   ~/.config/skills, loaded on demand via skl) — emptying it leaves the
+#   per-agent symlinks dangling, and the create-only sync never cleans them.
 emulate -L zsh
 
-local verbose=0 dry_run=0
+local verbose=0 dry_run=0 prune=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -v|--verbose) verbose=1; shift ;;
     -n|--dry-run) dry_run=1; verbose=1; shift ;;
+    -p|--prune) prune=1; shift ;;
     *) print -u2 "Unknown option: $1"; return 1 ;;
   esac
 done
 
 local canonical="$HOME/.agents/skills"
-[[ -d "$canonical" ]] || { print -u2 "No skills at $canonical"; return 1; }
+if [[ ! -d "$canonical" ]]; then
+  # Pruning doesn't need a canonical dir (it only removes stale links); a plain
+  # sync does (nothing to create from).
+  (( prune )) || { print -u2 "No skills at $canonical"; return 1; }
+  canonical=""
+fi
 
 typeset -A paths=(
   [amp]="$HOME/.config/agents/skills"
@@ -28,8 +38,10 @@ typeset -A paths=(
   [pi]="$HOME/.pi/agent/skills"
 )
 
-local skills=("$canonical"/*(/:t))
-local created=0
+# nullglob (N): the canonical dir may legitimately be empty (autoload-none).
+local skills=()
+[[ -n "$canonical" ]] && skills=("$canonical"/*(/N:t))
+local created=0 pruned=0
 
 # Calculate relative path from $1 to $2
 _relpath() {
@@ -86,6 +98,22 @@ for agent dir in "${(@kv)paths}"; do
     fi
     ((created++))
   done
+
+  # Prune stale symlinks (symlinks only, target no longer resolves). Real dirs
+  # and live links are left untouched.
+  if (( prune )); then
+    for link in "$dir"/*(N@); do
+      [[ -e "$link" ]] && continue
+      (( verbose )) && echo "Pruning: $link"
+      if (( ! dry_run )); then
+        command rm "$link"
+      fi
+      ((pruned++))
+    done
+  fi
 done
 
 echo "Created $created symlinks"
+if (( prune )); then
+  echo "Pruned $pruned symlinks"
+fi
