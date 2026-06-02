@@ -31,7 +31,7 @@ export type SkillRef =
 export interface Pointer {
   /** Sent as visible literal keystrokes so stacked skills stay identifiable. */
   readonly skillName: string;
-  /** Path + tree + instruction, sent as a (collapsible) bracketed paste. */
+  /** Description + tree + instruction, sent as a (collapsible) bracketed paste. */
   readonly bulk: string;
 }
 
