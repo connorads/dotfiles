@@ -5,17 +5,18 @@
 // paste (collapses to "[Pasted text +N lines]") so stacked skills stay readable.
 
 import { posixJoin } from "./path.ts";
+import { flatten } from "./text.ts";
 import { renderTree } from "./tree.ts";
 import type { DiscoveredSkill, Pointer } from "./types.ts";
 
 export const renderPointer = (skill: DiscoveredSkill): Pointer => {
   const skillMd = posixJoin(skill.dir, "SKILL.md");
-  const tree = renderTree(skill.files);
+  const desc = flatten(skill.description);
   const bulk = [
     `(skl: ${skill.source.name}/${skill.name})`,
-    skill.dir,
+    ...(desc.length > 0 ? [desc] : []),
     "",
-    tree,
+    renderTree(skill.files),
     "",
     `Read SKILL.md at ${skillMd} and follow it.`,
   ].join("\n");
