@@ -160,9 +160,9 @@ name can differ — gotchas below).
 | `mattpocock/skills` | grill-me, grill-with-docs, improve-codebase-architecture, tdd, zoom-out | trusted (bucketed paths) |
 | `cloudflare/skills` | cloudflare | trusted (official) |
 | `microsoft/playwright-cli` | playwright-cli | trusted (official) |
-| `firecrawl/cli` | firecrawl | trusted — `--skill firecrawl-cli` (registers as `firecrawl`) |
+| `firecrawl/cli` | firecrawl | trusted — `--skill firecrawl` (frontmatter name; lives at `skills/firecrawl-cli/`) |
 | `heygen-com/hyperframes` | hyperframes | trusted (official) |
-| `remotion-dev/skills` | remotion-best-practices | trusted — `--skill remotion` (registers as `remotion-best-practices`) |
+| `remotion-dev/skills` | remotion-best-practices | trusted — `--skill remotion-best-practices` |
 | `aaron-he-zhu/seo-geo-claude-skills` | competitor-analysis, content-gap-analysis | trusted (original, 1.6K★) |
 | `adithya-s-k/manim_skill` | manim-composer, manimce-best-practices | trusted (reputable author) |
 | `blader/humanizer` | humanizer | re-sourced from softaworks aggregator → original author |
