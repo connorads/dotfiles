@@ -25,6 +25,29 @@ If the user mentions a GitHub issue, remember to close the issue if you fix it -
   - `gh ... --body-file - <<'EOF' ... EOF`
 - If stdin is awkward, use repeated `-m` flags.
 
+## Skills
+
+Curation intent + rubric live in **`~/.config/skills/AGENTS.md`** (the single home). Read
+it before adding, removing, or promoting any skill.
+
+Three tiers (= the `skills` CLI's two scopes + `skl`):
+
+- **Catalogue** (default, ~zero session cost): `~/.config/skills/{public,private}` (authored,
+  hand-edited) + `~/.config/skills/vendor/.agents/skills` (third-party, `skills add` *project*
+  scope). Loaded on demand via `skl` (`~/.config/skl/`), never autoloaded.
+- **Per-project**: `skills add <repo> --skill <name>` (no `-g`) from inside a repo →
+  `<repo>/.agents/skills/<name>`, auto-fires for that repo only.
+- **Autoload (global)**: `~/.agents/skills/` — `skills add -g` puts a skill here and
+  `skillsync` symlinks it into every tool, so it autoloads in **every** session. Kept
+  **empty by design**; promote only broad + must-auto-fire + regular skills.
+
+`skl` sources (config `~/.config/skl/config.json`): `public` (`mine`), `private`, and
+`vendor/.agents/skills` (`vendor`).
+
+Tracking new files in dotfiles: `~/.gitignore` ignores `/.config/**`, so add an un-ignore
+pattern before `dotfiles add` (top-level files under `~/.config/skills/` need their own
+`!` line; `public/**`, `private/**`, `vendor/**` are already un-ignored).
+
 # Guidance
 
 ## Secrets

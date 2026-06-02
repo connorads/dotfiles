@@ -63,6 +63,19 @@
 !/.config/skl/
 !/.config/skl/**
 
+# skills curation home: real files (authored + vendored). Un-ignore the dir,
+# re-ignore its contents, then un-ignore the doc files and each subtree.
+!/.config/skills/
+/.config/skills/**
+!/.config/skills/AGENTS.md
+!/.config/skills/CLAUDE.md
+!/.config/skills/public/
+!/.config/skills/public/**
+!/.config/skills/private/
+!/.config/skills/private/**
+!/.config/skills/vendor/
+!/.config/skills/vendor/**
+
 !/.gemini/
 /.gemini/**
 !/.gemini/skills/
