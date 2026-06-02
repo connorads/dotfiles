@@ -39,3 +39,63 @@ setup() {
   [[ "$output" == *"Creating: $HOME/.claude/skills/git-skill -> ../../.agents/skills/git-skill"* ]]
   [ ! -e "$HOME/.claude/skills/git-skill" ]
 }
+
+@test "prune removes symlinks whose canonical source is gone" {
+  run_zsh_function "$SKILLSYNC"
+  [ "$status" -eq 0 ]
+
+  # Simulate a removed skill: its per-agent symlinks now dangle.
+  rm -rf "$HOME/.agents/skills/git-skill"
+
+  run_zsh_function "$SKILLSYNC" --prune
+
+  [ "$status" -eq 0 ]
+  [ ! -L "$HOME/.claude/skills/git-skill" ]
+  [ ! -e "$HOME/.claude/skills/git-skill" ]
+  # The surviving skill's link is left intact.
+  assert_symlink_target "$HOME/.claude/skills/tmux-skill" "../../.agents/skills/tmux-skill"
+}
+
+@test "prune leaves live links and real directories untouched" {
+  run_zsh_function "$SKILLSYNC"
+  [ "$status" -eq 0 ]
+
+  # A real (non-symlink) skill dir living directly in an agent dir.
+  mkdir -p "$HOME/.codex/skills/local-only"
+
+  run_zsh_function "$SKILLSYNC" --prune
+
+  [ "$status" -eq 0 ]
+  [ -d "$HOME/.codex/skills/local-only" ]
+  [ ! -L "$HOME/.codex/skills/local-only" ]
+  assert_symlink_target "$HOME/.codex/skills/git-skill" "../../.agents/skills/git-skill"
+}
+
+@test "prune dry-run reports removals without deleting" {
+  run_zsh_function "$SKILLSYNC"
+  [ "$status" -eq 0 ]
+
+  rm -rf "$HOME/.agents/skills/git-skill"
+
+  run_zsh_function "$SKILLSYNC" --prune --dry-run
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Pruning: $HOME/.claude/skills/git-skill"* ]]
+  # Still present (and still dangling) because nothing was written.
+  [ -L "$HOME/.claude/skills/git-skill" ]
+  [ ! -e "$HOME/.claude/skills/git-skill" ]
+}
+
+@test "prune works when the canonical dir is empty" {
+  run_zsh_function "$SKILLSYNC"
+  [ "$status" -eq 0 ]
+
+  # Empty the autoload set entirely (the real-world end state).
+  rm -rf "$HOME/.agents/skills"/*
+
+  run_zsh_function "$SKILLSYNC" --prune
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/.claude/skills/git-skill" ]
+  [ ! -e "$HOME/.codex/skills/tmux-skill" ]
+}
