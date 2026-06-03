@@ -7,6 +7,12 @@ output) — beyond what vanilla `window-style` covers, which only retints cells
 using terminal *default* fg/bg. See the overlay comment in `flake.nix` for the
 full rationale.
 
+**Config-side half (required):** the patch leaves terminal-*default*-fg cells
+(`fg=8`, e.g. Claude Code's white text) unchanged. `window-style` /
+`window-active-style` in `~/.config/tmux/tmux.conf` (set to the terminal theme's
+fg/bg) resolve those to a concrete RGB so the patch dims them too. Without it,
+default-fg text never dims. Keep both halves in sync.
+
 ## Patches
 
 | File | Required | What it does |
