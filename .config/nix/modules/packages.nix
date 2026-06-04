@@ -35,6 +35,7 @@ let
     # Navigation & search
     fd
     ripgrep
+    sd # intuitive find & replace (sed replacement); pairs with fd/rg
     fzf
     zoxide
     tree
