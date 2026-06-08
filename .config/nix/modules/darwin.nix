@@ -3,6 +3,8 @@
 # ==============================================================================
 {
   self,
+  lib,
+  config,
   pkgs,
   packages,
   ...
@@ -377,29 +379,32 @@
     };
   };
 
-  # Hide the Spotlight menu bar icon (⌘+Space is rebound to Raycast above).
-  # `com.apple.Spotlight MenuItemHidden` lives in ~/Library/Preferences/ByHost
-  # and must be written with `defaults -currentHost`, which has no declarative
-  # nix-darwin option (see nix-darwin#1721). nix-darwin activation now runs as
-  # root, so drop to the primary user with `sudo -u` for -currentHost to target
-  # the right per-user ByHost plist.
-  system.activationScripts.spotlightMenuBarIcon.text = ''
-    sudo -u connorads -H /usr/bin/defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
-  '';
+  # nix-darwin only runs its *recognised* activation hooks (see Tailscale NOTE
+  # above), so both blocks must live under `postActivation`. `types.lines`
+  # concatenates multiple definitions, so mkMerge keeps the two concerns as
+  # separate commented blocks.
+  system.activationScripts.postActivation.text = lib.mkMerge [
+    # Hide the Spotlight menu bar icon (⌘+Space is rebound to Raycast above).
+    # MenuItemHidden lives in ByHost and needs `defaults -currentHost`, which has no
+    # declarative nix-darwin option (nix-darwin#1721). Activation runs as root, so drop
+    # to the primary user for -currentHost to hit the right per-user ByHost plist.
+    ''
+      sudo -u ${config.system.primaryUser} -H /usr/bin/defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+    ''
 
-  # MagicDNS resolver (OSS tailscaled doesn't create this automatically)
-  # See: https://github.com/tailscale/tailscale/issues/13461
-  # Dynamically creates /etc/resolver/<tailnet> at activation time
-  system.activationScripts.postActivation.text = ''
-    if ${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json 2>/dev/null | ${pkgs.jq}/bin/jq -e '.CurrentTailnet.MagicDNSSuffix' >/dev/null 2>&1; then
-      DOMAIN=$(${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json | ${pkgs.jq}/bin/jq -r '.CurrentTailnet.MagicDNSSuffix')
-      mkdir -p /etc/resolver
-      echo "nameserver 100.100.100.100" > "/etc/resolver/$DOMAIN"
-      echo "Created /etc/resolver/$DOMAIN for Tailscale MagicDNS"
-    else
-      echo "Tailscale not running, skipping MagicDNS resolver setup"
-    fi
-  '';
+    # MagicDNS resolver (OSS tailscaled doesn't create this automatically)
+    # See: https://github.com/tailscale/tailscale/issues/13461
+    ''
+      if ${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json 2>/dev/null | ${pkgs.jq}/bin/jq -e '.CurrentTailnet.MagicDNSSuffix' >/dev/null 2>&1; then
+        DOMAIN=$(${pkgs.tailscale}/bin/tailscale --socket /var/run/tailscale/tailscaled.sock status --json | ${pkgs.jq}/bin/jq -r '.CurrentTailnet.MagicDNSSuffix')
+        mkdir -p /etc/resolver
+        echo "nameserver 100.100.100.100" > "/etc/resolver/$DOMAIN"
+        echo "Created /etc/resolver/$DOMAIN for Tailscale MagicDNS"
+      else
+        echo "Tailscale not running, skipping MagicDNS resolver setup"
+      fi
+    ''
+  ];
 
   # -- Users & Home Manager --
   users.users.connorads.home = "/Users/connorads";
