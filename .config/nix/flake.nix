@@ -3,8 +3,8 @@
 # ==============================================================================
 #
 # Configurations:
-#   - darwinConfigurations."Connors-Mac-mini"     : macOS Mac mini (nix-darwin + home-manager)
-#   - darwinConfigurations."Connors-MacBook-Air"  : macOS MacBook Air (nix-darwin + home-manager)
+#   - darwinConfigurations."Connors-MacBook-Air"  : macOS desktop workstation (nix-darwin + home-manager)
+#   - darwinConfigurations."Connors-Mac-mini"     : macOS headless Tailscale-only dev server (nix-darwin + home-manager)
 #   - homeConfigurations."connor@penguin"         : Chromebook Linux container (x86_64)
 #   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (aarch64)
 #   - homeConfigurations."codespace"              : GitHub Codespaces (minimal)
@@ -128,13 +128,13 @@
       );
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
-      darwinConfigurations."Connors-Mac-mini" = mkDarwin [
-        ./modules/darwin-desktop.nix
-        { homebrew.casks = [ "logitech-camera-settings" "wacom-tablet" ]; }
-      ];
+      # Air = desktop workstation; mini = headless Tailscale-only dev server.
       darwinConfigurations."Connors-MacBook-Air" = mkDarwin [
         ./modules/darwin-desktop.nix
         { homebrew.casks = [ "logitech-camera-settings" ]; }
+      ];
+      darwinConfigurations."Connors-Mac-mini" = mkDarwin [
+        ./modules/darwin-server.nix
       ];
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
