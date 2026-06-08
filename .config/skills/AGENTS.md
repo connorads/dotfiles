@@ -113,7 +113,7 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 symlinks it into every tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
 regular skills. Currently: **none**.
 
-## Disposition (68 → keep 54, remove 14)
+## Disposition (68 → keep 54, remove 14; +1 added since: `teach`)
 
 **REMOVE (14)** (+ `brave-search` dangling lockfile entry, no dir): `frontend-design`,
 `nano-banana`, `payload-cms`, `better-auth-best-practices`, `create-auth-skill`, `opentui`,
@@ -127,14 +127,14 @@ regular skills. Currently: **none**.
 `opencode-conversation-analysis`, `logging-best-practices` ⚠️, `prd`, `summon`, `task-loop`,
 `task-plan`, `loop-supervisor`, `tmux`.
 
-**vendor/ (38)** — third-party kept:
-- *Tracked, re-added via project `skills add` from validated sources (31):* `agent-browser`,
+**vendor/ (39)** — third-party kept:
+- *Tracked, re-added via project `skills add` from validated sources (32):* `agent-browser`,
   `agents`, `claude-api`, `cloudflare`, `competitor-analysis`, `content-gap-analysis`,
   `find-skills`, `firecrawl`, `grill-me`, `grill-with-docs`, `humanizer`, `hyperframes`,
   `improve-codebase-architecture`, `manim-composer`, `manimce-best-practices`, `music`,
   `next-best-practices`, `next-cache-components`, `next-upgrade`, `playwright-cli`,
   `remotion-best-practices`, `skill-creator`, `sound-effects`, `speech-to-text`, `tdd`,
-  `text-to-speech`, `vercel-composition-patterns`, `vercel-react-best-practices`,
+  `teach`, `text-to-speech`, `vercel-composition-patterns`, `vercel-react-best-practices`,
   `vercel-react-native-skills`, `web-design-guidelines`, `zoom-out`.
 - *Untracked (no upstream) — moved manually, not in project lock (7):* `design-taste-frontend`,
   `high-end-visual-design`, `minimalist-ui`, `redesign-existing-projects`, `marimo`,
@@ -157,7 +157,7 @@ name can differ — gotchas below).
 | `vercel-labs/agent-browser` | agent-browser | trusted (official) |
 | `anthropics/skills` | claude-api, skill-creator | trusted (official) |
 | `elevenlabs/skills` | agents, music, sound-effects, speech-to-text, text-to-speech | trusted (official; skills at repo root) |
-| `mattpocock/skills` | grill-me, grill-with-docs, improve-codebase-architecture, tdd, zoom-out | trusted (bucketed paths) |
+| `mattpocock/skills` | grill-me, grill-with-docs, improve-codebase-architecture, tdd, teach, zoom-out | trusted (bucketed paths) |
 | `cloudflare/skills` | cloudflare | trusted (official) |
 | `microsoft/playwright-cli` | playwright-cli | trusted (official) |
 | `firecrawl/cli` | firecrawl | trusted — `--skill firecrawl` (frontmatter name; lives at `skills/firecrawl-cli/`) |
