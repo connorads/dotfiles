@@ -113,59 +113,28 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 symlinks it into every tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
 regular skills. Currently: **none**.
 
-## Disposition (68 → keep 54, remove 14; +1 added since: `teach`)
-
-**REMOVE (14)** (+ `brave-search` dangling lockfile entry, no dir): `frontend-design`,
-`nano-banana`, `payload-cms`, `better-auth-best-practices`, `create-auth-skill`, `opentui`,
-`expertise-distiller`, `context7`, `youtube-transcript`, `dogfood`, `agent-skills-spec`,
-`mermaid-diagrams`, `dependency-updater`, `vhs`.
-
-**public/ (6)** — authored, shareable: `hk`, `test-coverage`, `mechanical-enforcement`,
-`accessibility`, `holistic-ux`, `homebrew-cask-authoring`.
-
-**private/ (10)** — authored, personal/never-public: `hetzner-server`, `github-images`,
-`opencode-conversation-analysis`, `logging-best-practices` ⚠️, `prd`, `summon`, `task-loop`,
-`task-plan`, `loop-supervisor`, `tmux`.
-
-**vendor/ (39)** — third-party kept:
-- *Tracked, re-added via project `skills add` from validated sources (32):* `agent-browser`,
-  `agents`, `claude-api`, `cloudflare`, `competitor-analysis`, `content-gap-analysis`,
-  `find-skills`, `firecrawl`, `grill-me`, `grill-with-docs`, `humanizer`, `hyperframes`,
-  `improve-codebase-architecture`, `manim-composer`, `manimce-best-practices`, `music`,
-  `next-best-practices`, `next-cache-components`, `next-upgrade`, `playwright-cli`,
-  `remotion-best-practices`, `skill-creator`, `sound-effects`, `speech-to-text`, `tdd`,
-  `teach`, `text-to-speech`, `vercel-composition-patterns`, `vercel-react-best-practices`,
-  `vercel-react-native-skills`, `web-design-guidelines`, `zoom-out`.
-- *Untracked (no upstream) — moved manually, not in project lock (7):* `design-taste-frontend`,
-  `high-end-visual-design`, `minimalist-ui`, `redesign-existing-projects`, `marimo`,
-  `web-animation-design` ⚠️, `thermo-nuclear-code-quality-review`.
-
-⚠️ **Derivatives — attribution before any public push:** `logging-best-practices` (Boris
-Tane) and `web-animation-design` (Emil Kowalski). Both kept out of `public/` (private /
-vendor), so safe now.
-
 ## Validated vendor sources
 
 `skills add <repo> -l` first to resolve the exact `--skill` token (dir name vs frontmatter
 name can differ — gotchas below).
 
-| source (owner/repo) | skills | trust |
-|---|---|---|
-| `vercel-labs/agent-skills` | vercel-composition-patterns, vercel-react-best-practices, vercel-react-native-skills, web-design-guidelines | trusted (official) |
-| `vercel-labs/next-skills` | next-best-practices, next-cache-components, next-upgrade | trusted (official) |
-| `vercel-labs/skills` | find-skills | trusted (the CLI repo) |
-| `vercel-labs/agent-browser` | agent-browser | trusted (official) |
-| `anthropics/skills` | claude-api, skill-creator | trusted (official) |
-| `elevenlabs/skills` | agents, music, sound-effects, speech-to-text, text-to-speech | trusted (official; skills at repo root) |
-| `mattpocock/skills` | grill-me, grill-with-docs, improve-codebase-architecture, tdd, teach, zoom-out | trusted (bucketed paths) |
-| `cloudflare/skills` | cloudflare | trusted (official) |
-| `microsoft/playwright-cli` | playwright-cli | trusted (official) |
-| `firecrawl/cli` | firecrawl | trusted — `--skill firecrawl` (frontmatter name; lives at `skills/firecrawl-cli/`) |
-| `heygen-com/hyperframes` | hyperframes | trusted (official) |
-| `remotion-dev/skills` | remotion-best-practices | trusted — `--skill remotion-best-practices` |
-| `aaron-he-zhu/seo-geo-claude-skills` | competitor-analysis, content-gap-analysis | trusted (original, 1.6K★) |
-| `adithya-s-k/manim_skill` | manim-composer, manimce-best-practices | trusted (reputable author) |
-| `blader/humanizer` | humanizer | re-sourced from softaworks aggregator → original author |
+| source (owner/repo) | trust |
+|---|---|
+| `vercel-labs/agent-skills` | trusted (official) |
+| `vercel-labs/next-skills` | trusted (official) |
+| `vercel-labs/skills` | trusted (the CLI repo) |
+| `vercel-labs/agent-browser` | trusted (official) |
+| `anthropics/skills` | trusted (official) |
+| `elevenlabs/skills` | trusted (official; skills at repo root) |
+| `mattpocock/skills` | trusted (bucketed paths) |
+| `cloudflare/skills` | trusted (official) |
+| `microsoft/playwright-cli` | trusted (official) |
+| `firecrawl/cli` | trusted — `--skill firecrawl` (frontmatter name; lives at `skills/firecrawl-cli/`) |
+| `heygen-com/hyperframes` | trusted (official) |
+| `remotion-dev/skills` | trusted — `--skill remotion-best-practices` |
+| `aaron-he-zhu/seo-geo-claude-skills` | trusted (original, 1.6K★) |
+| `adithya-s-k/manim_skill` | trusted (reputable author) |
+| `blader/humanizer` | re-sourced from softaworks aggregator → original author |
 
 Gotchas: `firecrawl/cli` → `--skill firecrawl-cli`; `remotion-dev/skills` → `--skill
 remotion`; `vercel-labs/agent-skills` dir names are unprefixed but skill names are `vercel-*`
@@ -174,6 +143,9 @@ remotion`; `vercel-labs/agent-skills` dir names are unprefixed but skill names a
 Dropped sources: `softaworks/agent-toolkit` (aggregator; humanizer re-sourced to blader,
 mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs removed, low trust),
 `better-auth/skills`, `intellectronica/agent-skills`, `msmps/opentui-skill` (skills removed).
+
+**Attribution (before any public push):** `logging-best-practices` (Boris Tane) and
+`web-animation-design` (Emil Kowalski) are derivatives — keep them out of `public/`.
 
 ## Rejected alternatives
 
@@ -203,7 +175,12 @@ and diff-review clones against the prior vetted copy before trusting them.
 
 ## Caveats
 
-- 7 untracked vendored skills have **no recorded upstream** → manual refresh only (re-`skills
-  add` if/when a source is found).
+- Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
+  can't refresh them; re-`skills add` if/when a source is found. List the untracked ones —
+  on disk but absent from the lockfile:
+  ```bash
+  comm -23 <(ls ~/.config/skills/vendor/.agents/skills | sort) \
+           <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
+  ```
 - `connorads/skills` public repo is **deferred** — when ready, push `~/.config/skills/public/`
   as-is (sanitise any personal refs first; none currently in `public/`).
