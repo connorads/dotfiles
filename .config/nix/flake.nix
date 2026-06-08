@@ -84,6 +84,28 @@
                 ];
               });
             })
+            # ollama 0.30.5 defaults to building the MLX Metal backend on
+            # darwin-arm64, which hard-requires Xcode's Metal toolchain —
+            # unavailable in the nix sandbox (and outside the pinned apple-sdk).
+            # Disable it via OLLAMA_MLX_BACKENDS=""; regular Metal GGML inference
+            # (what ollama is actually used for) is a separate path, unaffected.
+            # Fragile: rewrites the literal `cmake -B build \` line in upstream's
+            # preBuild (cmakeFlags is bypassed by the custom preBuild) — revisit
+            # if that line is reformatted. Scoped to darwin-arm64 so Linux/rpi
+            # builds are untouched (MLX default is already empty off Apple arm64).
+            # Remove once nixpkgs handles MLX on darwin — nixpkgs regression @
+            # cbb5cf3, see nixpkgs#463131 / ollama#13460.
+            (final: prev:
+              prev.lib.optionalAttrs
+                (prev.stdenv.hostPlatform.isDarwin && prev.stdenv.hostPlatform.isAarch64)
+                {
+                  ollama = prev.ollama.overrideAttrs (old: {
+                    preBuild = builtins.replaceStrings
+                      [ "cmake -B build \\" ]
+                      [ "cmake -B build -DOLLAMA_MLX_BACKENDS=\"\" \\" ]
+                      old.preBuild;
+                  });
+                })
           ];
         };
 
