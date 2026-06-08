@@ -99,9 +99,10 @@
             packages = mkPackages (mkPkgs "aarch64-darwin");
           };
           modules = [
-            ./modules/darwin.nix
+            ./modules/darwin-shared.nix
             home-manager.darwinModules.home-manager
-          ] ++ extraModules;
+          ]
+          ++ extraModules;
         };
 
       # Helper to reduce homeConfiguration boilerplate
@@ -128,9 +129,11 @@
 
       # macOS: darwin-rebuild switch --flake ~/.config/nix (alias: drs)
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
+        ./modules/darwin-desktop.nix
         { homebrew.casks = [ "logitech-camera-settings" "wacom-tablet" ]; }
       ];
       darwinConfigurations."Connors-MacBook-Air" = mkDarwin [
+        ./modules/darwin-desktop.nix
         { homebrew.casks = [ "logitech-camera-settings" ]; }
       ];
 
