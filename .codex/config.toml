@@ -25,7 +25,6 @@ unified_exec = true
 apply_patch_freeform = true
 skills = true
 shell_snapshot = true
-js_repl = true
 fast_mode = true
 goals = true
 
@@ -43,6 +42,3 @@ enabled = true
 
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
-
-[tui.model_availability_nux]
-"gpt-5.5" = 4
