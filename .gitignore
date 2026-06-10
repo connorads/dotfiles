@@ -13,7 +13,6 @@
 /.agents/**
 !/.agents/AGENTS.md
 !/.agents/README.md
-!/.agents/.skill-lock.json
 !/.agents/skills/
 !/.agents/skills/**
 /.agents/skills/.system/
