@@ -227,16 +227,17 @@
         }
 
         text_app_id="com.sublimetext.4"
-        for ext in md txt json yaml yml csv tsv; do
+        for ext in md txt json yaml yml csv tsv js ts css; do
           set_default_app "$text_app_id" "$ext"
         done
 
-        for uti in net.daringfireball.markdown public.plain-text public.json public.yaml public.comma-separated-values-text public.tab-separated-values-text; do
+        # .ts is also MPEG transport stream on macOS; prefer TypeScript in Finder.
+        for uti in net.daringfireball.markdown public.plain-text public.json public.yaml public.comma-separated-values-text public.tab-separated-values-text public.css public.mpeg-2-transport-stream; do
           set_default_app "$text_app_id" "$uti"
         done
 
         media_app_id="com.colliderli.iina"
-        for ext in mp4 m4v mkv mov avi webm mpg mpeg ts m2ts flv wmv mp3 m4a aac flac wav ogg opus; do
+        for ext in mp4 m4v mkv mov avi webm mpg mpeg m2ts flv wmv mp3 m4a aac flac wav ogg opus; do
           set_default_app "$media_app_id" "$ext"
         done
 
