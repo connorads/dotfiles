@@ -265,21 +265,25 @@ The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 
 ## Agent Skills
 
-Skills stored canonically in `~/.agents/skills/` and symlinked to all agent tools via `skillsync`. Both canonical files and symlinks are tracked in dotfiles.
+Skills load three ways, in preference order. **Canonical home is the catalogue at
+`~/.config/skills/{public,private,vendor}`** — *not* `~/.agents/skills/`, which is the
+autoload dir and is **empty by design**.
+
+1. **`skl` — on-demand, the default (~95% of use).** Pick a catalogue skill → its pointer
+   is injected into the agent's tmux pane → the agent reads `SKILL.md`. Zero session cost.
+   Authored skills: just drop a dir in `~/.config/skills/{public,private}`. Third-party:
+   `cd ~/.config/skills/vendor && skills add <owner/repo> --skill <name>` (project scope).
+2. **Per-project autoload.** `skills add <owner/repo> --skill <name>` (no `-g`) from inside a
+   repo → auto-fires for *that repo* only.
+3. **Global autoload — rare (currently none).** `skills add -g <owner/repo> --skill <name>`
+   lands in `~/.agents/skills/` and autoloads in *every* session (per-session context cost).
+   `skillsync` is a **deprecated** fallback here (no-repo/private authored globals only).
 
 Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
 
-**Installing skills:**
-
-```bash
-# Via CLI (preferred)
-skills add vercel-labs/agent-skills -g  # Install from repo globally
-
-# Manual (when skill isn't packaged or needs fetching)
-mkdir -p ~/.agents/skills/<skill-name>
-# Fetch/write SKILL.md (and any referenced files) to that directory
-skillsync  # Creates symlinks to claude, cursor, codex, gemini, opencode, etc.
-```
+**Curation intent, the rubric, tiers, and lockfile/skillsync rationale live in
+[`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md)** — read it before adding,
+removing, or promoting a skill.
 
 ## Tailscale
 

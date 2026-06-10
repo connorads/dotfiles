@@ -64,7 +64,7 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
     .agents/skills/<name>/ real vendored files (CLI-managed, project scope)
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
-~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (skillsync source). Empty → autoload none.
+~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (CLI `-g` target; skillsync = deprecated fallback). Empty → autoload none.
 ~/.agents/.skill-lock.json UNTRACKED (gitignored): skills-CLI global lockfile. Nothing to
                            version while autoload is empty; re-track (restore the !-line in
                            ~/.gitignore) once you `skills add -g` a real global skill — it
@@ -112,9 +112,19 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 `test-coverage`, `mechanical-enforcement`.
 
 ### Promote to global autoload (rare)
-`skills add -g <owner/repo> --skill <name>` → lands in `~/.agents/skills/`, `skillsync`
-symlinks it into every tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
+`skills add -g <owner/repo> --skill <name>` → lands in `~/.agents/skills/`, the CLI symlinks
+it into every selected tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
 regular skills. Currently: **none**.
+
+The CLI is the **primary** global path: it fans out into more tools than `skillsync`'s
+hand-curated list (cline, zed, warp, deepagents, … which skillsync lacks) and tracks
+upstream. **`skillsync` is deprecated** — kept only as the no-repo fallback. Its one
+irreducible job: globally installing your *own loose/private authored* skills without first
+publishing them to a repo (the CLI's `-g` fetches *from a repo*). It symlinks loose dirs in
+`~/.agents/skills/` out to the tools and never reads `.skill-lock.json`. Caveat for a
+*private* global skill: dotfiles are public, so its installed copy needs gitignoring
+regardless of which tool installed it — and "private + autoloaded everywhere" cuts against
+the keep-autoload-empty philosophy anyway.
 
 ## Validated vendor sources
 
@@ -162,6 +172,15 @@ mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs remov
 - **One-folder lockfile split** (keep all vendored skills in one dir, slice the lockfile by
   tier) — rejected: the CLI manages one lockfile per dir; splitting it by hand fights the
   tool. Project scope gives a real per-tier lockfile for free.
+- **Tracking the empty global skill-lock** (incl. committing its `lastSelectedAgents` /
+  `dismissed` UI keys, or a clean filter à la `codex-config-clean` to strip them) — rejected:
+  `skillsync` ignores the lockfile and the UI keys don't touch autoload or session cost, so
+  versioning an always-empty, CLI-regenerated file (or building a filter for it) is machinery
+  for zero value. Untracked + gitignored until a real global skill makes it meaningful.
+- **Hard-deprecating skillsync** (CLI for everything; delete skillsync) — rejected: would
+  force publishing every authored skill to a repo (`connorads/skills` doesn't exist yet) plus
+  a publish→clone round-trip for your own code, and removes the only working path to a private
+  global skill. Soft-deprecated instead: documented as fallback, kept at ~zero cost.
 
 ## The constraint that forced project-scope vendoring
 
