@@ -227,11 +227,11 @@
         }
 
         text_app_id="com.sublimetext.4"
-        for ext in md txt json yaml yml; do
+        for ext in md txt json yaml yml csv tsv; do
           set_default_app "$text_app_id" "$ext"
         done
 
-        for uti in net.daringfireball.markdown public.plain-text public.json public.yaml; do
+        for uti in net.daringfireball.markdown public.plain-text public.json public.yaml public.comma-separated-values-text public.tab-separated-values-text; do
           set_default_app "$text_app_id" "$uti"
         done
 
