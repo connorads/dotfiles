@@ -1,5 +1,4 @@
 {
-  "autoMemoryEnabled": false,
   "env": {
     "DISABLE_INSTALLATION_CHECKS": "1",
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
@@ -927,5 +926,6 @@
   },
   "alwaysThinkingEnabled": true,
   "showClearContextOnPlanAccept": true,
+  "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true
 }
