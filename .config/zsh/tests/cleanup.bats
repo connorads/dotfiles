@@ -18,6 +18,15 @@ setup() {
     "$HOME/.cache/pip/http-v2" \
     "$HOME/.cache/uv/archive" \
     "$HOME/.cargo/registry/cache" \
+    "$HOME/.local/share/aube/store/cas" \
+    "$HOME/.cache/aube/virtual-store/pkg" \
+    "$HOME/.cache/aube/packuments-full-v1" \
+    "$HOME/.cache/aube/primer" \
+    "$HOME/.local/share/yarn/berry/cache" \
+    "$HOME/.cache/yarn/pkg" \
+    "$HOME/.cache/node-gyp/22" \
+    "$HOME/.rustup/toolchains/override-named-unmarked/bin" \
+    "$HOME/.rustup/toolchains/remove-unmarked/bin" \
     "$HOME/.cache/nvim/state" \
     "$HOME/.cache/ms-playwright/browser" \
     "$HOME/.cache/puppeteer/browser" \
@@ -33,6 +42,16 @@ setup() {
   touch "$HOME/.cache/pip/http-v2/data"
   touch "$HOME/.cache/uv/archive/data"
   touch "$HOME/.cargo/registry/cache/data"
+  touch "$HOME/.local/share/aube/store/cas/data"
+  touch "$HOME/.cache/aube/virtual-store/pkg/data"
+  touch "$HOME/.cache/aube/packuments-full-v1/data"
+  touch "$HOME/.cache/aube/primer/data"
+  touch "$HOME/.cache/aube/adaptive-state.json"
+  touch "$HOME/.local/share/yarn/berry/cache/data"
+  touch "$HOME/.cache/yarn/pkg/data"
+  touch "$HOME/.cache/node-gyp/22/data"
+  touch "$HOME/.rustup/toolchains/override-named-unmarked/bin/rustc"
+  touch "$HOME/.rustup/toolchains/remove-unmarked/bin/rustc"
   touch "$HOME/.cache/nvim/state/data"
   touch "$HOME/.cache/ms-playwright/browser/data"
   touch "$HOME/.cache/puppeteer/browser/data"
@@ -80,6 +99,30 @@ EOF
   write_stub uv <<'EOF'
 #!/usr/bin/env bash
 echo "uv $*" >>"$TEST_LOG"
+exit 0
+EOF
+
+  write_stub aube <<'EOF'
+#!/usr/bin/env bash
+echo "aube $*" >>"$TEST_LOG"
+exit 0
+EOF
+
+  # Synthetic, role-describing names (not real versions) so the fixture is
+  # self-documenting. Covers all three keep-markers plus the anchoring edge
+  # case: "override-named-unmarked" is named with a marker word but has no
+  # "(...)" marker, so it must still be removed.
+  write_stub rustup <<'EOF'
+#!/usr/bin/env bash
+echo "rustup $*" >>"$TEST_LOG"
+if [ "${1:-}" = "toolchain" ] && [ "${2:-}" = "list" ]; then
+  printf 'keep-marked-default (default)\n'
+  printf 'keep-marked-active (active)\n'
+  printf 'keep-marked-override (overridden by environment variable RUSTUP_TOOLCHAIN)\n'
+  printf 'override-named-unmarked\n'
+  printf 'remove-unmarked\n'
+  exit 0
+fi
 exit 0
 EOF
 
@@ -136,8 +179,79 @@ EOF
   grep -F "uv cache clean" "$TEST_LOG"
   grep -F "docker system prune -af" "$TEST_LOG"
   grep -F "nix-collect-garbage --delete-older-than 30d" "$TEST_LOG"
+  grep -F "aube cache prune --age-days 0" "$TEST_LOG"
+  [ ! -e "$HOME/.local/share/yarn/berry/cache" ]
+  [ ! -e "$HOME/.cache/yarn" ]
+  [ ! -e "$HOME/.cache/node-gyp" ]
+  # rustup is opt-in: must NOT auto-uninstall toolchains in the default set.
+  [[ "$(cat "$TEST_LOG")" != *"rustup toolchain uninstall"* ]]
   [ ! -e "$CLEANUP_TMPDIR_ROOT/old-dir" ]
   [ -e "$CLEANUP_TMPDIR_ROOT/new-dir" ]
+}
+
+@test "aube cleanup flushes caches but preserves the durable store" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --aube
+
+  [ "$status" -eq 0 ]
+  grep -F "aube cache prune --age-days 0" "$TEST_LOG"
+  [ ! -e "$HOME/.cache/aube/virtual-store" ]
+  [ ! -e "$HOME/.cache/aube/packuments-full-v1" ]
+  [ -e "$HOME/.local/share/aube/store/cas/data" ]
+  [ -e "$HOME/.cache/aube/primer/data" ]
+  [ -e "$HOME/.cache/aube/adaptive-state.json" ]
+}
+
+@test "yarn cleanup removes caches without invoking yarn" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --yarn
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/.local/share/yarn/berry/cache" ]
+  [ ! -e "$HOME/.cache/yarn" ]
+  [[ "$(cat "$TEST_LOG")" != *"yarn "* ]]
+}
+
+@test "node-gyp cleanup removes its cache directory" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --node-gyp
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/.cache/node-gyp" ]
+}
+
+@test "rustup cleanup uninstalls only unmarked toolchains" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --rustup
+
+  [ "$status" -eq 0 ]
+  # Unmarked toolchains are removed — including one literally named with a
+  # marker word, proving the keep-filter keys on the "(" marker, not the word
+  # (and that "overridden" is correctly kept, not mistaken for unmarked).
+  grep -F "toolchain uninstall remove-unmarked" "$TEST_LOG"
+  grep -F "toolchain uninstall override-named-unmarked" "$TEST_LOG"
+  # default / active / overridden are kept.
+  [[ "$(cat "$TEST_LOG")" != *"uninstall keep-marked-default"* ]]
+  [[ "$(cat "$TEST_LOG")" != *"uninstall keep-marked-active"* ]]
+  [[ "$(cat "$TEST_LOG")" != *"uninstall keep-marked-override"* ]]
+}
+
+@test "rustup cleanup skips when no removable toolchains exist" {
+  write_stub rustup <<'EOF'
+#!/usr/bin/env bash
+echo "rustup $*" >>"$TEST_LOG"
+if [ "${1:-}" = "toolchain" ] && [ "${2:-}" = "list" ]; then
+  printf 'keep-marked-default (default)\n'
+  printf 'keep-marked-active (active)\n'
+  exit 0
+fi
+exit 0
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --rustup
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skip: not available on this host"* ]]
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --rustup
+  [ "$status" -eq 0 ]
+  [[ "$(cat "$TEST_LOG")" != *"toolchain uninstall"* ]]
 }
 
 @test "selector flags replace the default target set" {
