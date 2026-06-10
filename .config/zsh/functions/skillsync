@@ -1,5 +1,12 @@
 #!/usr/bin/env zsh
 # Sync skill symlinks across all agents
+#
+# DEPRECATED: prefer `skills add -g <repo> --skill <name>` (the skills CLI) for
+# global installs — it fans out into more tools (cline, zed, warp, …) and tracks
+# upstream. Kept as the no-repo fallback for globally installing your own loose
+# or private authored skills without first publishing them to a repo.
+# Full rationale: ~/.config/skills/AGENTS.md.
+#
 # Usage: skillsync [-v|--verbose] [-n|--dry-run] [-p|--prune]
 #   --prune also removes per-agent symlinks whose canonical source is gone.
 #   Needed because the autoload dir is empty by design (catalogue lives in
