@@ -1,14 +1,17 @@
 #!/usr/bin/env zsh
 # cleanup: reclaim disk space from safe local caches and stale artefacts
 # usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
-# selectors: --target <id>, --bun, --pnpm, --npm, --pip, --uv, --cargo,
-#            --nvim, --browsers, --temp, --docker, --nix, --volumes
+# selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
+#            --pip, --uv, --cargo, --rustup, --nvim, --browsers, --temp,
+#            --docker, --nix, --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm npm pip uv cargo nvim browsers temp docker nix mise codex)
-CLEANUP_DEFAULT_TARGETS=("${CLEANUP_ALL_TARGETS[@]}")
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo rustup nvim browsers temp docker nix mise codex)
+# DEFAULT set EXPLICITLY (not a copy of ALL) so rustup is excluded from auto-run:
+# auto-uninstalling toolchains is a tooling state change, not a cache flush.
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers temp docker nix mise codex)
 CLEANUP_SELECTED_TARGETS=()
 
 typeset -g CLEANUP_DRY_RUN=0
@@ -24,10 +27,14 @@ typeset -gA CLEANUP_LABELS CLEANUP_DEFAULT_FLAGS CLEANUP_SELECTED_FLAGS
 CLEANUP_LABELS=(
   bun "Bun caches"
   pnpm "pnpm store and cache"
+  yarn "Yarn cache"
+  aube "aube caches"
+  node-gyp "node-gyp cache"
   npm "npm cache"
   pip "pip cache"
   uv "uv cache"
   cargo "Cargo registry cache"
+  rustup "rustup unused toolchains"
   nvim "Neovim cache"
   browsers "Browser automation caches"
   temp "Stale temp directories"
@@ -39,10 +46,14 @@ CLEANUP_LABELS=(
 CLEANUP_DEFAULT_FLAGS=(
   bun 1
   pnpm 1
+  yarn 1
+  aube 1
+  node-gyp 1
   npm 1
   pip 1
   uv 1
   cargo 1
+  rustup 0
   nvim 1
   browsers 1
   temp 1
@@ -67,10 +78,11 @@ Usage:
   cleanup --bun --pnpm --docker [--volumes]
 
 Targets:
-  bun, pnpm, npm, pip, uv, cargo, nvim, browsers, temp, docker, nix, mise, codex
+  bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, rustup, nvim,
+  browsers, temp, docker, nix, mise, codex
 
 Notes:
-  - Plain cleanup executes the default safe set.
+  - Plain cleanup executes the default safe set (rustup is opt-in only).
   - In non-interactive mode, execution requires --yes.
   - --dry-run reports only and never prompts.
   - --volumes only applies when Docker is selected.
@@ -158,6 +170,18 @@ _cleanup_temp_candidates() {
   find "$root" -maxdepth 1 -mindepth 1 -user "${USER:-$(id -un)}" -mtime +7 -print 2>/dev/null
 }
 
+_cleanup_rustup_removable() {
+  command -v rustup >/dev/null 2>&1 || return 0
+  # `rustup toolchain list` appends a parenthesised marker — (default),
+  # (active), (overridden by ...) — to every toolchain rustup considers in
+  # use. Keep those; emit the rest (field 1). Toolchain names never contain
+  # "(", so its absence reliably means "idle/removable" — and matching the
+  # marker by "(" rather than enumerating words avoids the override/overridden
+  # prefix trap (the words diverge at char 8).
+  rustup toolchain list 2>/dev/null \
+    | awk '!/\(/ { if ($1 != "") print $1 }'
+}
+
 _cleanup_probe_target() {
   local target=$1
   local applicable=1 kb=0
@@ -182,6 +206,24 @@ _cleanup_probe_target() {
         detail="Store: ${store:-<unknown>}; cache: $HOME/.cache/pnpm"
         command="pnpm store prune; rm -rf ~/.cache/pnpm"
       fi
+      ;;
+    yarn)
+      # Never invoke `yarn`: the mise shim errors "No version is set for shim:
+      # yarn" when unpinned, so probe/run by path only.
+      dirs=("$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}"
+      command="rm -rf ~/.local/share/yarn/berry/cache ~/.cache/yarn"
+      ;;
+    aube)
+      # Cache-only: the durable CAS store, primer/, and adaptive-state.json
+      # under ~/.local/share/aube and ~/.cache/aube/primer are preserved.
+      dirs=("$HOME/.cache/aube/virtual-store" "$HOME/.cache/aube/packuments-full-v1")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || command -v aube >/dev/null 2>&1 || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}"
+      command="aube cache prune --age-days 0; rm -rf virtual-store + packuments"
       ;;
     npm)
       command -v npm >/dev/null 2>&1 || applicable=0
@@ -214,11 +256,29 @@ _cleanup_probe_target() {
       detail="Path: $HOME/.cargo/registry/cache"
       command="rm -rf ~/.cargo/registry/cache"
       ;;
+    rustup)
+      local tc
+      kb=0
+      while IFS= read -r tc; do
+        [[ -n "$tc" ]] || continue
+        (( kb += $(_cleanup_kb_sum "$HOME/.rustup/toolchains/$tc") ))
+      done < <(_cleanup_rustup_removable)
+      command -v rustup >/dev/null 2>&1 || applicable=0
+      (( kb > 0 )) || applicable=0
+      detail="Source: rustup toolchain list (keeps default/active/overridden)"
+      command="rustup toolchain uninstall <unused toolchains>"
+      ;;
     nvim)
       kb=$(_cleanup_kb_sum "$HOME/.cache/nvim")
       (( kb > 0 )) || applicable=0
       detail="Path: $HOME/.cache/nvim"
       command="rm -rf ~/.cache/nvim"
+      ;;
+    node-gyp)
+      kb=$(_cleanup_kb_sum "$HOME/.cache/node-gyp")
+      (( kb > 0 )) || applicable=0
+      detail="Path: $HOME/.cache/node-gyp"
+      command="rm -rf ~/.cache/node-gyp"
       ;;
     browsers)
       dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
@@ -343,6 +403,16 @@ _cleanup_run_target() {
       pnpm store prune
       command rm -rf -- "$HOME/.cache/pnpm"
       ;;
+    yarn)
+      # Never invoke `yarn` (unpinned mise shim errors); path removal only.
+      command rm -rf -- "$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn"
+      ;;
+    aube)
+      # Cache-only. Hard-coded dirs so the durable CAS store, primer/, and
+      # adaptive-state.json are never named/removed.
+      command -v aube >/dev/null 2>&1 && aube cache prune --age-days 0
+      command rm -rf -- "$HOME/.cache/aube/virtual-store" "$HOME/.cache/aube/packuments-full-v1"
+      ;;
     npm)
       command -v npm >/dev/null 2>&1 || return 0
       npm cache clean --force
@@ -359,8 +429,19 @@ _cleanup_run_target() {
     cargo)
       command rm -rf -- "$HOME/.cargo/registry/cache"
       ;;
+    rustup)
+      command -v rustup >/dev/null 2>&1 || return 0
+      local tc
+      while IFS= read -r tc; do
+        [[ -n "$tc" ]] || continue
+        rustup toolchain uninstall "$tc"
+      done < <(_cleanup_rustup_removable)
+      ;;
     nvim)
       command rm -rf -- "$HOME/.cache/nvim"
+      ;;
+    node-gyp)
+      command rm -rf -- "$HOME/.cache/node-gyp"
       ;;
     browsers)
       dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
@@ -548,7 +629,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--npm|--pip|--uv|--cargo|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--rustup|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
