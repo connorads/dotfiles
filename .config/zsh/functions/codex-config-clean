@@ -1,14 +1,41 @@
 #!/usr/bin/env zsh
-# codex-config-clean: strip [projects.*] blocks from codex config.toml for clean git commits
+# codex-config-clean: strip machine-local/ephemeral blocks from codex config.toml
+# for clean git commits.
 emulate -L zsh
 
-# Read stdin, remove [projects."..."] sections (header + key-value lines until
-# next section or EOF). Keep this awk-only: BSD sed rejects the old multiline
-# cleanup expression, which broke the clean filter on macOS.
+# Read stdin and drop machine-local state codex rewrites on its own, keeping only
+# portable config in git:
+#   [projects.*]                  per-machine trust entries
+#   [marketplaces.*]              regenerated source/timestamp state (.tmp paths)
+#   [tui.model_availability_nux]  per-machine NUX "times shown" counters
+#   [mcp_servers.node_repl]       Codex.app-injected browser-feature wiring
+#                                 (abs /Applications + CODEX_HOME paths, app SHA);
+#                                 matched BY NAME so genuine MCP servers survive
+#   notify = [...]                absolute machine-local app paths
+#   js_repl = ...                 app-flipped browser-feature flag (regenerated)
+# The browser feature regenerates all of the above per machine from the portable
+# [plugins."browser@openai-bundled"] enable, which is kept.
+# Section drops swallow the header + key-value lines until the next section/EOF.
+# A trailing blank-line squeeze keeps spacing identical to HEAD after a dropped
+# key/section, so removals don't leave a doubled blank (whitespace-only diff).
+# Keep this awk-only: BSD sed rejects the old multiline cleanup expression, which
+# broke the clean filter on macOS.
 awk '
   /^\[projects\./ { skip=1; next }
+  /^\[marketplaces\./ { skip=1; next }
+  /^\[tui\.model_availability_nux\]/ { skip=1; next }
+  /^\[mcp_servers\.node_repl/ { skip=1; next }
   /^\[/ { skip=0 }
-  !skip { lines[++count] = $0 }
+  skip { next }
+  /^notify[[:space:]]*=/ { next }
+  /^js_repl[[:space:]]*=/ { next }
+  /^[[:space:]]*$/ {
+    if (prev_blank) next
+    prev_blank = 1
+    lines[++count] = $0
+    next
+  }
+  { prev_blank = 0; lines[++count] = $0 }
   END {
     while (count > 0 && lines[count] == "") {
       count--
