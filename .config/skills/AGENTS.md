@@ -65,7 +65,10 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
 ~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (skillsync source). Empty → autoload none.
-~/.agents/.skill-lock.json global lockfile → {version:3,skills:{}} when autoload empty.
+~/.agents/.skill-lock.json UNTRACKED (gitignored): skills-CLI global lockfile. Nothing to
+                           version while autoload is empty; re-track (restore the !-line in
+                           ~/.gitignore) once you `skills add -g` a real global skill — it
+                           then pins that install's provenance. NOT machine-local state.
 ```
 
 `skl` config (`~/.config/skl/config.json`), order = precedence:
