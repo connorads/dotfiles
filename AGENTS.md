@@ -232,6 +232,8 @@ mise outdated --bump                        # available updates beyond ranges
 
 Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/aube/config.toml` (aube-only keys). Keep aube-specific keys in the latter to avoid npm warnings ("Unknown user config 'minimum-release-age'") when mise calls `npm view` for metadata. CLI: `aube config set <key> <value>` routes correctly.
 
+Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.cache/aube/{virtual-store,packuments-full-v1}` (plus `aube cache prune --age-days 0`). It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
+
 **bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global.
 
 **Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `~/.config/pnpm/rc`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
