@@ -53,7 +53,7 @@
       "whatsapp"
       "telegram-desktop"
       "steam"
-      "whisky"
+      "utm"
       "retroarch"
       "android-studio"
       "android-commandlinetools"
