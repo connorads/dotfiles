@@ -1,0 +1,12 @@
+#!/usr/bin/env zsh
+# claude-settings-clean: strip machine-local keys Claude Code rewrites on its own
+# from .claude/settings.json for clean git commits.
+emulate -L zsh
+
+# Since Claude Code v2.1.153 the /model picker persists the selection by writing
+# a "model" key into user settings.json (Enter or `/model <name>` saves; only
+# `s` in the picker is session-only). There is no opt-out, so treat the key as
+# machine-local state and drop it here, mirroring codex-config-clean.
+# jq's default 2-space indent matches Claude Code's JSON output, so del() is
+# byte-identical to the committed file apart from the dropped key.
+jq 'del(.model)'
