@@ -1,0 +1,23 @@
+{
+  "skill_name": "utm",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "i've got a UTM vm called 'dev-ubuntu' on my mac. write me a shell script that boots it, waits til it's actually reachable, runs the test suite inside the vm (/home/connor/run-tests.sh), reports the exit code, and shuts the vm down cleanly",
+      "expected_output": "Shell script using /Applications/UTM.app/Contents/MacOS/utmctl: start, poll readiness (ip-address or exec probe with timeout, not a fixed sleep), exec the test script capturing exit code, graceful stop. No invented utmctl flags.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "can you give me a script that creates a new arm linux vm in UTM? I have ubuntu-24.04.2-live-server-arm64.iso in ~/Downloads. want 8gb ram, 4 cores, 80gb disk. don't open the UTM gui please",
+      "expected_output": "AppleScript (osascript) using 'make new virtual machine' with backend:qemu, architecture aarch64, memory 8192 MiB, cpu cores 4, removable ISO drive with source + 81920 MiB new disk. Should NOT attempt creation via utmctl (impossible).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I want to be able to run powershell commands in a windows 11 vm on my mac mini (apple silicon) from a script on the host. how do I set that up with UTM? ideally fully scriptable end to end",
+      "expected_output": "Plan covering: CrystalFetch for Win11 ARM64 ISO, guest tools/VirtIO install, warning that the QEMU guest agent does not exist for Windows ARM64 so utmctl exec/ip-address won't work, OpenSSH Server in guest + port forward (emulated NIC) instead, ssh -p <port> loop with boot polling.",
+      "files": []
+    }
+  ]
+}
