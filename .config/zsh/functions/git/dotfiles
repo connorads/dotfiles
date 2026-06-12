@@ -1,9 +1,9 @@
 #!/usr/bin/env zsh
-# dotfiles: git wrapper for bare-repo dotfiles with codex config renormalisation
+# dotfiles: git wrapper for bare-repo dotfiles with codex/claude config renormalisation
 emulate -L zsh
 case ${1:-} in
   status|diff|stash)
-    command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" add --renormalize .codex/config.toml 2>/dev/null
+    command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" add --renormalize .codex/config.toml .claude/settings.json 2>/dev/null
     ;;
 esac
 command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
