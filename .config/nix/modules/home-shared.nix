@@ -40,6 +40,9 @@
       filter.codex-config.clean = "codex-config-clean";
       filter.codex-config.smudge = "cat";
       filter.codex-config.required = true;
+      filter.claude-settings.clean = "claude-settings-clean";
+      filter.claude-settings.smudge = "cat";
+      filter.claude-settings.required = true;
     };
   };
 
