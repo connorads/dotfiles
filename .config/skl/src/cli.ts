@@ -19,7 +19,7 @@ import type {
 import type { Result } from "./core/result.ts";
 import { env } from "./shell/env.ts";
 import { loadConfigFile, discoverAll, type ConfigFileError } from "./shell/fs.ts";
-import { injectPointer, resolveTarget } from "./shell/tmux.ts";
+import { copyToClipboard, injectPointer, resolveTarget } from "./shell/tmux.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
 
@@ -40,6 +40,7 @@ Options:
   --target <pane>           tmux pane to inject into (default: last-active)
   --path <dir>              override config sources entirely (repeatable)
   --submit                  press Enter after injecting (default: never)
+  --copy                    copy pointer(s) to the system clipboard, no injection
 `;
 
 const DEFAULT_CONFIG = `${import.meta.dir}/../config.json`;
@@ -112,9 +113,10 @@ const buildConfig = async (
   return { ok: true, value: parsed.value };
 };
 
-// Inject pointers for one or more refs into a single target pane. The target is
-// resolved once (so stacked skills land in the same pane); all refs resolve
-// before any injection, so a bad ref fails the batch with no partial injection.
+// Inject pointers for one or more refs into a single target pane (or, with
+// --copy, write them to the clipboard). The target is resolved once (so stacked
+// skills land in the same pane); all refs resolve before any injection, so a
+// bad ref fails the batch with no partial injection.
 const loadRefs = async (
   refs: readonly string[],
   skills: readonly DiscoveredSkill[],
@@ -122,16 +124,34 @@ const loadRefs = async (
 ): Promise<number> => {
   if (refs.length === 0) return 0; // nothing selected (e.g. fzf cancelled)
 
-  const target = await resolveTarget(options.target);
-  if (!target.ok) {
-    env.stderr(`skl: ${target.error.stderr || target.error.command}\n`);
-    return 1;
-  }
-
   // Resolve the whole batch up front (pure) — bail before injecting anything.
   const resolved = resolveRefs(refs, skills);
   if (!resolved.ok) {
     env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
+    return 1;
+  }
+
+  if (options.copy) {
+    // One clipboard write for the whole batch (a second write would clobber the
+    // first), same name-then-bulk shape the injection path produces.
+    const text = resolved.value
+      .map((skill) => renderPointer(skill))
+      .map((p) => `${p.skillName} ${p.bulk}`)
+      .join("\n\n");
+    const copied = await copyToClipboard(text);
+    if (!copied.ok) {
+      env.stderr(`skl: ${copied.error.stderr || copied.error.command}\n`);
+      return 1;
+    }
+    for (const skill of resolved.value) {
+      env.stdout(`skl: copied ${skillRef(skill)} → clipboard\n`);
+    }
+    return 0;
+  }
+
+  const target = await resolveTarget(options.target);
+  if (!target.ok) {
+    env.stderr(`skl: ${target.error.stderr || target.error.command}\n`);
     return 1;
   }
 
