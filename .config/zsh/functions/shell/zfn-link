@@ -83,6 +83,10 @@ for link in "$bin_dir"/*(N@); do
     abs_target="$bin_dir/$target"
   fi
 
+  # Only manage symlinks that point into the functions dir — others (e.g.
+  # skl-pick -> ~/.config/skl/bin/pick) are not ours to remove
+  [[ "${abs_target:A}" == "$fn_dir"/* ]] || continue
+
   # Stale if dangling or name not in expected set
   if [[ ! -e "$abs_target" ]] || [[ -z "${expected[$name]+x}" ]]; then
     (( verbose )) && echo "Removing stale: $link"
