@@ -58,6 +58,12 @@ progressive disclosure.
   then submit yourself. (Auto-submit could be an opt-in flag later.)
 - **Multi-select**: picker supports selecting several skills at once (fzf Tab, like
   `tmk`); each selected skill injects its own pointer.
+- **Copy to clipboard**: `skl load --copy` (picker: ctrl-y, via fzf `--expect`) writes
+  the pointer(s) to the system clipboard instead of injecting — `tmux load-buffer -w`
+  (OSC52 via `set-clipboard on`), no pbcopy/xclip platform branching. A multi-select
+  batch is one joined clipboard write (a second write would clobber the first). The
+  named tmux buffer remains as a fallback (choose-buffer / prefix + =; named buffers
+  sit outside the automatic stack, so prefix + ] won't see them).
 - **Command + location**: command is `skl`; Bun project root at `~/.config/skl/`
   (`src/`, `tests/`, `bin/`, `package.json`, `config.json`, plus this `CONTEXT.md` and
   `docs/adr/` co-located in the project — not at `~`). `~/.local/bin/skl` is a thin

@@ -53,8 +53,23 @@ describe("parseArgs", () => {
     expect(r.ok).toBe(true);
     if (r.ok && r.value.kind === "load") {
       expect(r.value.ref).toBe("alpha");
-      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true });
+      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true, copy: false });
     }
+  });
+
+  test("--copy → load to clipboard instead of injecting", () => {
+    const r = parseArgs(["alpha", "--copy"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "load") {
+      expect(r.value.ref).toBe("alpha");
+      expect(r.value.options).toMatchObject({ copy: true });
+    }
+  });
+
+  test("--copy composes with --stdin (the picker's ctrl-y path)", () => {
+    const r = parseArgs(["--stdin", "--copy"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { copy: true } });
   });
 
   test("missing flag value → missing-value", () => {
