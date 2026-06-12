@@ -69,6 +69,8 @@ export interface Options {
   /** `--path` overrides config entirely (no merge). Empty = use config file. */
   readonly paths: readonly string[];
   readonly submit: boolean;
+  /** Copy pointer(s) to the system clipboard instead of injecting into a pane. */
+  readonly copy: boolean;
 }
 
 /** A fully-parsed CLI invocation. `load.ref` is null when refs come from stdin. */

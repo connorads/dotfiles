@@ -96,6 +96,20 @@ export const injectPointer = async (
   return ok(undefined);
 };
 
+/**
+ * Copy text to the system clipboard via a tmux buffer. `load-buffer -w` pushes
+ * to the outer clipboard through OSC52 (requires `set-clipboard on`); the tmux
+ * buffer remains as a fallback. Named buffers sit OUTSIDE the automatic-buffer
+ * stack (prefix + ] / bare show-buffer won't see them) — paste via choose-buffer
+ * (prefix + =). Returns the buffer name so callers can reference it.
+ */
+export const copyToClipboard = async (text: string): Promise<Result<string, TmuxError>> => {
+  const buffer = uniqueBufferName();
+  const load = await step(["load-buffer", "-w", "-b", buffer, "-"], text);
+  if (!load.ok) return load;
+  return ok(buffer);
+};
+
 /** Test helper: capture a pane's visible contents. */
 export const capturePane = async (target: string): Promise<string> => {
   const r = await runTmux(["capture-pane", "-p", "-t", target]);

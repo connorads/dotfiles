@@ -7,6 +7,9 @@
 #
 #   skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>
 #
+# enter injects into the origin pane; ctrl-y copies the pointer(s) to the
+# system clipboard instead (`skl load --copy`).
+#
 # Usage: skl-pick [target-pane]   (target forwarded to `skl load`). Bound to
 # tmux prefix + A.
 emulate -L zsh
@@ -27,10 +30,23 @@ pane="${1-}"
 [[ -z $pane || $pane == '#{pane_id}' ]] && pane=$(tmux display-message -p '#{pane_id}')
 [[ -n $pane ]] && target=(--target "$pane")
 
-skl list \
+# --expect makes fzf print the accepting key on line 1, selections after — the
+# glue routes on it rather than piping fzf straight into `skl load`.
+out=$(skl list \
   | fzf --reverse --multi \
       --preview 'skl preview {1}' \
       --preview-window 'right,60%,wrap' \
-      --header 'tab: mark · enter: load · esc: cancel' \
+      --header 'tab: mark · enter: load · ctrl-y: copy · esc: cancel' \
       --bind 'tab:toggle+down,btab:toggle+up' \
-  | skl load --stdin "$target[@]"
+      --expect 'ctrl-y')
+[[ -z $out ]] && exit 0   # cancelled (esc / ctrl-c)
+
+key=${out%%$'\n'*}        # line 1: "" (enter) or "ctrl-y"
+sel=${out#"$key"}         # rest: selected rows (empty if accepted with no match)
+sel=${sel#$'\n'}
+
+if [[ $key == ctrl-y ]]; then
+  print -r -- "$sel" | skl load --stdin --copy
+else
+  print -r -- "$sel" | skl load --stdin "$target[@]"
+fi
