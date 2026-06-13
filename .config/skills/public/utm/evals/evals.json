@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "I want to be able to run powershell commands in a windows 11 vm on my mac mini (apple silicon) from a script on the host. how do I set that up with UTM? ideally fully scriptable end to end",
-      "expected_output": "Plan covering: CrystalFetch for Win11 ARM64 ISO; warning that a >4GB 24H2 ISO won't boot as a normal ISO and must be repacked onto a FAT32 disk image with a split WIM; virtio-ramfb-gl display (not virtio-gpu-pci) and NVMe system disk; guest tools/VirtIO install; warning that the QEMU guest agent does not exist for Windows ARM64 so utmctl exec/ip-address won't work; OpenSSH Server in guest INCLUDING explicit firewall rule (not auto-created reliably); reach via shared-network guest IP (primary) or emulated NIC + port forward (deterministic fallback); ssh loop with boot polling.",
+      "expected_output": "Plan covering: CrystalFetch for Win11 ARM64 ISO; warning that a >4GB 24H2 ISO won't boot as a normal ISO and must be repacked onto a FAT32 disk image with a split WIM; virtio-ramfb-gl display (not virtio-gpu-pci) and NVMe system disk; guest tools/VirtIO install (these bundle an x64 qemu-ga that runs emulated: utmctl ip-address/file and AppleScript execute work, but utmctl exec returns no stdout); OpenSSH Server in guest INCLUDING explicit firewall rule (not auto-created reliably); reach via shared-network guest IP (primary) or emulated NIC + port forward (deterministic fallback); ssh loop with boot polling.",
       "files": []
     },
     {
