@@ -217,12 +217,22 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	# failure. Hostname convergence is handled declaratively by networking.hostName
 	# during activation, so bare `drs`/`up` resolve correctly thereafter.
 	# PATH is preserved so activation can find brew.
+	#
+	# The bootstrap `nix run` enables experimental-features inline because step (d)
+	# moves the Determinate installer's /etc/nix/nix.conf (which carries
+	# `extra-experimental-features = nix-command flakes`) aside before activation,
+	# and under `sudo` $HOME falls back to /var/root so no user nix.conf supplies
+	# them either. Without this flag `nix run` aborts: "nix-command is disabled".
+	# nix-darwin regenerates /etc/nix/nix.conf with the flags on first activation,
+	# so the darwin-rebuild path (subsequent runs) needs no override.
 	if command -v darwin-rebuild &>/dev/null; then
 		echo "Running darwin-rebuild switch..."
 		sudo --preserve-env=PATH darwin-rebuild switch --flake "$HOME/.config/nix#$DARWIN_HOST"
 	else
 		echo "Bootstrapping nix-darwin..."
-		sudo --preserve-env=PATH nix run nix-darwin/master#darwin-rebuild -- \
+		sudo --preserve-env=PATH nix \
+			--extra-experimental-features 'nix-command flakes' \
+			run nix-darwin/master#darwin-rebuild -- \
 			switch --flake "$HOME/.config/nix#$DARWIN_HOST"
 	fi
 
