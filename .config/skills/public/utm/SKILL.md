@@ -55,12 +55,22 @@ the guest/backend combination:
 |---|---|---|
 | Linux on QEMU | ✓ `apt/dnf/apk install qemu-guest-agent` | `utmctl exec` or SSH |
 | Windows x86_64 on QEMU | ✓ via UTM guest tools ISO | `utmctl exec` or SSH |
-| **Windows ARM64 on QEMU** (the normal case on Apple Silicon) | ✗ no native ARM64 agent ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134), unfixed) | **SSH over a port forward** — see windows.md |
+| **Windows ARM64 on QEMU** (the normal case on Apple Silicon) | ✗ no native ARM64 agent ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134), unfixed) | **SSH** over the shared-network IP or a port forward — see windows.md |
 | Any guest on Apple VZ backend | unreliable; no input injection or USB either | SSH |
 
 Prefer the **QEMU backend** when creating VMs for automation. For Windows ARM,
 don't burn time trying to make the agent work — set up OpenSSH Server in the
-guest and a host port forward; it's deterministic and survives reboots.
+guest (reachable on the shared-network IP, or pin a port forward). See
+windows.md for the full path, including the gotchas below that cost hours.
+
+**Three Windows-ARM traps that look like "it's hung" but aren't fixable by
+waiting** (all in windows.md):
+- A **>4 GB Win11 24H2 ISO won't boot** — hangs at the firmware "Start boot
+  option" screen. Repack the installer onto a FAT32 disk image with a split WIM.
+- **`virtio-gpu-pci` display → "Display output is not active"** black screen the
+  moment Windows boots. Use **`virtio-ramfb-gl`** (no Windows driver needed).
+- A **new scripted disk defaults to VirtIO**, which Windows Setup can't see. Use
+  **NVMe** for the system disk.
 
 ## Gotchas that waste hours
 
@@ -73,6 +83,11 @@ guest and a host port forward; it's deterministic and survives reboots.
 - **Config is cached**: UTM reads each VM's `config.plist` once at app launch.
   Editing the plist on disk while UTM runs does nothing. Use AppleScript
   `update configuration` (VM must be stopped), or quit UTM → edit → relaunch.
+  Some fields (e.g. drive `ImageType` CD-vs-Disk) aren't in the AppleScript
+  dictionary at all → plist edit is the only way (windows.md).
+- **Diagnosing boot/firmware issues**: set `QEMU.DebugLog` true in config.plist
+  to dump the exact QEMU launch line (how drives are presented, display device)
+  to `Data/debug.log`. Far faster than guessing — see windows.md.
 - **Headless = no display device**: there's no headless flag. Remove the
   `displays` entry from the VM config (or omit it at creation) and use SSH or a
   serial port; `--hide` only hides the UTM window.

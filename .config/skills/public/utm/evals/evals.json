@@ -16,7 +16,19 @@
     {
       "id": 3,
       "prompt": "I want to be able to run powershell commands in a windows 11 vm on my mac mini (apple silicon) from a script on the host. how do I set that up with UTM? ideally fully scriptable end to end",
-      "expected_output": "Plan covering: CrystalFetch for Win11 ARM64 ISO, guest tools/VirtIO install, warning that the QEMU guest agent does not exist for Windows ARM64 so utmctl exec/ip-address won't work, OpenSSH Server in guest + port forward (emulated NIC) instead, ssh -p <port> loop with boot polling.",
+      "expected_output": "Plan covering: CrystalFetch for Win11 ARM64 ISO; warning that a >4GB 24H2 ISO won't boot as a normal ISO and must be repacked onto a FAT32 disk image with a split WIM; virtio-ramfb-gl display (not virtio-gpu-pci) and NVMe system disk; guest tools/VirtIO install; warning that the QEMU guest agent does not exist for Windows ARM64 so utmctl exec/ip-address won't work; OpenSSH Server in guest INCLUDING explicit firewall rule (not auto-created reliably); reach via shared-network guest IP (primary) or emulated NIC + port forward (deterministic fallback); ssh loop with boot polling.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm trying to install windows 11 in UTM on my macbook but it just hangs forever on a screen that says 'Start boot option' with a progress bar. the iso is fine, it's the 24h2 arm build from crystalfetch. what's wrong?",
+      "expected_output": "Identifies the >4GiB 24H2 ISO boot hang: a stock Win11 24H2 ISO (~4.9GB) attached as a USB CD won't boot on QEMU (firmware/usb-storage choke on the oversized image); the 'USB HARDDRIVE' label is cosmetic and re-attaching as media=disk fails too (no ESP). Fix: repack installer contents onto a FAT32 disk image with install.wim split into <4GB .swm parts (wimlib), attach as a fixed USB disk; reset efi_vars.fd. Should NOT advise 'just wait longer' or blame the ISO download.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "my windows 11 UTM vm boots but then the screen goes black with 'Display output is not active'. it was working in the installer. how do I fix it?",
+      "expected_output": "Identifies the display adapter: virtio-gpu-pci has no Windows driver so the screen dies when the Windows bootloader/OS takes over. Fix: change the display hardware to virtio-ramfb-gl (driverless framebuffer, UTM wizard default). VM must be stopped to change config (AppleScript update configuration, or quit UTM + edit config.plist). Notes a brief transient message during boot is normal; only a persistent one is the driver issue.",
       "files": []
     }
   ]

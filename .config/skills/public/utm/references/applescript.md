@@ -55,7 +55,11 @@ end tell
 
 New-QEMU-VM defaults: **no display** (headless), one PTTY serial port, one
 `shared` network. Add a display only if the user needs a GUI:
-`displays:{{hardware:"virtio-gpu-pci"}}` (aarch64) / `"virtio-vga-gl"` (x86_64).
+`displays:{{hardware:"virtio-ramfb-gl"}}` (aarch64) / `"virtio-vga-gl"` (x86_64).
+**For Windows guests use `virtio-ramfb-gl`, not `virtio-gpu-pci`** — Windows has
+no virtio-gpu driver during install and black-screens with "Display output is
+not active"; ramfb is a driverless framebuffer (UTM's wizard default). See
+windows.md.
 
 Apple backend (`backend:apple`): same shape, no `architecture`/`uefi`/
 `hypervisor`; network modes only `shared`/`bridged`; serial only ptty; no input
@@ -133,19 +137,53 @@ Guest files: `open file vm at "/tmp/x" for writing` → then `write`/`push`/
 
 ## Input injection (QEMU backend only — no agent needed)
 
-Last-resort UI automation (e.g. clicking through an installer):
+UI automation when there's no agent (e.g. clicking through a Windows installer):
 
 ```applescript
 input keystroke vm text "hello" with modifiers {shift}
 input mouse click vm at {400, 300} with mouse button left
-input scan code vm codes {28}    -- raw PC AT scan codes (28 = Enter)
+input scan code vm codes {28, 156}   -- raw PC AT scan codes; 28=Enter press, 156=release (0x80|28)
 ```
+
+### Driving the installer (screenshot → locate → click loop)
+
+A reliable way to drive a GUI install fully from the host:
+
+1. **Screen Recording permission** is required for `screencapture` (granted to
+   the *calling* app — terminal/agent harness; trigger the prompt once). If the
+   macOS display sleeps, `screencapture -l` returns black/stale frames — keep it
+   awake with `caffeinate -d` during long installs.
+2. **Find the VM window id** (it changes across guest reboots — re-query):
+   ```bash
+   uv run --with pyobjc-framework-Quartz python3 -c '
+   import Quartz
+   for w in Quartz.CGWindowListCopyWindowInfo(Quartz.kCGWindowListOptionAll, 0):
+       if w.get("kCGWindowOwnerName")=="UTM" and w.get("kCGWindowName")=="win11":
+           print(w["kCGWindowNumber"])'
+   ```
+3. **Capture just that window**: `screencapture -x -o -l<id> /tmp/vm.png`, read
+   it, locate the target. Coordinates in the capture map to the UTM window's
+   content; use them directly in `input mouse click vm at {x,y}` (halve them if
+   the PNG is 2× the window's point size — Retina). Calibrate against a known
+   button on the first click.
+4. Type with `input keystroke`; submit with the Enter scan-code pair above.
+
+**Keyboard-layout gotcha**: injected text goes through the *guest's* layout. On a
+UK guest the pipe `|` and some symbols come out wrong, which silently breaks
+piped PowerShell. Avoid `|` in injected commands — use `$null = …` instead of
+`| Out-Null`, and `(cmd).Property` instead of `cmd | Select Property`. For a
+literal tilde (e.g. the `~~~~` in `OpenSSH.Server~~~~0.0.1.0`) build it with
+`[char]126` to dodge layout issues. Once OpenSSH is up, stop injecting and drive
+the guest over SSH instead — far more reliable than the keyboard.
 
 ## After `update configuration`
 
 Device `index` fields are invalidated — re-read the configuration before a
 second update. Raw `config.plist` edits require quitting UTM first (the app
 caches configs at launch); files live under
-`~/Library/Containers/com.utmapp.UTM/Data/Documents/<name>.utm/`. UEFI NVRAM
+`~/Library/Containers/com.utmapp.UTM/Data/Documents/<name>.utm/`. Some fields
+have **no AppleScript exposure** and *must* be set via the plist — notably a
+drive's `ImageType` (`CD` vs `Disk`) and the `QEMU.DebugLog` flag (windows.md).
+UEFI NVRAM
 (`efi_vars.fd`) is ephemeral — install bootloaders to the removable path
 (`grub-install --removable`) rather than relying on efibootmgr entries.
