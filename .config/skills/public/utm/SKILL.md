@@ -55,7 +55,7 @@ the guest/backend combination:
 |---|---|---|
 | Linux on QEMU | ✓ `apt/dnf/apk install qemu-guest-agent` | `utmctl exec` or SSH |
 | Windows x86_64 on QEMU | ✓ via UTM guest tools ISO | `utmctl exec` or SSH |
-| **Windows ARM64 on QEMU** (the normal case on Apple Silicon) | ✗ no native ARM64 agent ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134), unfixed) | **SSH** over the shared-network IP or a port forward — see windows.md |
+| **Windows ARM64 on QEMU** (the normal case on Apple Silicon) | ◑ partial — guest tools ship the **x64 qemu-ga (runs emulated)**: `ip-address`+`file` work, AppleScript `execute` works; **`utmctl exec` returns no stdout**. No *native* ARM64 agent ([#5134](https://github.com/utmapp/UTM/issues/5134)) | AppleScript Guest Suite, or **SSH** over the shared IP / port forward — see windows.md |
 | Any guest on Apple VZ backend | unreliable; no input injection or USB either | SSH |
 
 Prefer the **QEMU backend** when creating VMs for automation. For Windows ARM,

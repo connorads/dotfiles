@@ -6,11 +6,16 @@ QEMU backend. Official guide: https://docs.getutm.app/guides/windows/
 
 **Two facts shape everything:**
 
-1. There is no native ARM64 QEMU guest agent for Windows
-   ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134)), so
-   `utmctl exec / file / ip-address` **do not work** on Windows ARM guests. The
-   host→guest channel is **OpenSSH Server**, reached over the guest's IP
-   (shared networking) or a port forward.
+1. There's no *native* ARM64 QEMU guest agent
+   ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134)), **but the UTM
+   guest tools install the x64 `qemu-ga` which runs under Windows' x86 emulation
+   and works** (confirmed: guest-tools 0.1.271, qemu-ga 109.1.0). So
+   `utmctl ip-address`, `utmctl file push/pull`, and the AppleScript
+   `execute … with output capturing` all work. The one gap: **`utmctl exec` runs
+   the command (exit 0) but returns no stdout** — use AppleScript `execute` (it
+   captures) or SSH when you need output. For interactive/scriptable PowerShell,
+   **OpenSSH Server** over the guest IP (shared networking) or a port forward is
+   still the most ergonomic channel. Note the agent runs as `NT AUTHORITY\SYSTEM`.
 2. **Windows 11 24H2 ISOs (~4.9 GB) will not boot from a normal attached ISO**
    on QEMU — they hang at the firmware "Start boot option" screen forever. You
    must repack the installer onto a FAT32 disk image (§2). This burns hours if
