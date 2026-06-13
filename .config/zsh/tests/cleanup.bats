@@ -154,6 +154,16 @@ EOF
   write_stub nix-store <<'EOF'
 #!/usr/bin/env bash
 echo "nix-store $*" >>"$TEST_LOG"
+if [ "${1:-}" = "--gc" ] && [ "${2:-}" = "--print-dead" ]; then
+  printf '/nix/store/aaa\n/nix/store/bbb\n'
+  exit 0
+fi
+if [ "${1:-}" = "-q" ] && [ "${2:-}" = "--size" ]; then
+  shift 2
+  # 1 MiB per dead path → two dead paths estimate to 2.0M
+  for _ in "$@"; do echo 1048576; done
+  exit 0
+fi
 exit 0
 EOF
 }
@@ -252,6 +262,19 @@ EOF
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --rustup
   [ "$status" -eq 0 ]
   [[ "$(cat "$TEST_LOG")" != *"toolchain uninstall"* ]]
+}
+
+@test "nix estimate reflects dead store paths, not the whole /nix/store" {
+  # Regression: the probe used to `du -sk /nix/store`, reporting the ENTIRE
+  # store as reclaimable when GC only removes paths unreachable from a live
+  # root. The estimate must come from the dead-path set instead — here two
+  # 1 MiB dead paths → 2.0M, regardless of the host's real /nix/store size.
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --nix
+
+  [ "$status" -eq 0 ]
+  grep -F -- "nix-store --gc --print-dead" "$TEST_LOG"
+  [[ "$output" == *"2.0M"* ]]
+  [[ "$output" == *"nix"* ]]
 }
 
 @test "selector flags replace the default target set" {
