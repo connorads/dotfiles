@@ -318,8 +318,22 @@ _cleanup_probe_target() {
       if ! command -v nix-collect-garbage >/dev/null 2>&1 || ! command -v nix-store >/dev/null 2>&1; then
         applicable=0
       else
-        kb=$(_cleanup_kb_sum "/nix/store")
-        detail="Store: /nix/store"
+        # Estimate from the dead-path set, NOT `du /nix/store`: GC only removes
+        # paths unreachable from a live root, so du'ing the whole store reported
+        # the entire 17G+ store as "reclaimable" when the true figure was ~0.
+        # `nix-store -q --size` returns each path's NAR size from metadata (no
+        # disk walk), so this is both accurate and far faster than du. It is a
+        # lower bound: `--delete-older-than 30d` may free a little more once old
+        # profile generations are dropped and their closures become dead.
+        local dead_paths
+        dead_paths=$(nix-store --gc --print-dead 2>/dev/null)
+        kb=0
+        if [[ -n "$dead_paths" ]]; then
+          kb=$(print -r -- "$dead_paths" \
+            | xargs nix-store -q --size 2>/dev/null \
+            | awk '{ s += $1 } END { printf "%d", s / 1024 }')
+        fi
+        detail="Reclaimable from dead store paths (lower bound; --optimise dedups further)"
         command="nix-collect-garbage --delete-older-than 30d; nix-store --optimise"
       fi
       ;;
