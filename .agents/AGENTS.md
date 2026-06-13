@@ -136,6 +136,7 @@ Rules a reviewer would otherwise have to remember belong in a linter. Preferred 
 ## Commits, comments and docs
 
 - Document the *why* and *intent*, the what and how can usually be deduced but the *why* and *intent* will get lost otherwise.
+- Comments are for a future reader with no knowledge of the change that produced them: write them timeless and declarative — state the standing rule/constraint in the present tense, not a narration of the edit ("would…", "here", "the X above", "now") nor a message to a present reader. Test: would it still read right in two years to someone who never saw the diff?
 - If you're ever unsure why the user might be doing something then ask - they will appreciate your questioning and clarify.
 
 ## Testing
