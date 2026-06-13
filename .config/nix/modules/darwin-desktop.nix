@@ -18,6 +18,11 @@
   ...
 }:
 {
+  # Converge LocalHostName so bare `drs`/`up` resolve to this config after the
+  # first explicit-`#attr` bootstrap (mirrors darwin-server.nix). networking.hostName
+  # sets LocalHostName because networking.localHostName defaults to it.
+  networking.hostName = "Connors-MacBook-Air";
+
   # -- System Packages --
   environment.systemPackages = [
     # Tools

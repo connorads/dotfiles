@@ -2,6 +2,13 @@
 
 Use `git` to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to set up and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
 
+> **Quick start:** `curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash`
+> — bootstraps macOS, Linux, or Codespaces.
+>
+> ⚠️ Tailored to my specific machines (usernames `connor`/`connorads` and a handful of
+> named host configs). **Forking? See [Setup](#setup) below** for what to change
+> (`flake.nix` configs + the `VALID_DARWIN` / `VALID_HM` lists in `install.sh`).
+
 ## Why this setup
 
 - No symlinks: tracked files live directly in `$HOME`.
@@ -107,13 +114,32 @@ mise upgrade
 
 ### Quick start (recommended)
 
-If you are setting up this exact repo on Linux/Codespaces, use the bootstrap script:
+If you are setting up this exact repo on macOS, Linux, or Codespaces, use the bootstrap script:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash
 ```
 
 It installs dotfiles and sets upstream tracking so `git status`/LazyGit show ahead-behind correctly.
+
+**Fresh machine — selecting the host config.** The script activates a specific config
+(`nix-darwin` on macOS, `home-manager` on Linux), normally resolved from the machine's
+hostname. On a freshly reset/provisioned box the hostname rarely matches yet, so:
+
+- Set the override env var to pick explicitly:
+  - macOS: `DARWIN_HOST=Connors-Mac-mini` (or `Connors-MacBook-Air`)
+  - Linux: `HM_HOST=dev` (or `penguin` / `rpi5`)
+- …or answer the interactive prompt. For the prompt to get a terminal, prefer
+  `bash <(curl -fsSL …/install.sh)` or download-then-run over a bare `curl … | bash` pipe.
+- Picking the wrong host is refused rather than silently applied; an unknown/undecidable
+  host fails loudly with the valid list.
+
+The first activation passes the config explicitly (`--flake …#<attr>`) and then **converges
+the hostname** (macOS via `networking.hostName`, Linux via `hostnamectl`). After that, bare
+`drs`/`hms`/`up` resolve the right config from the hostname with no `#attr` needed.
+
+The valid host names are hardcoded in `install.sh` (`VALID_DARWIN` / `VALID_HM`) — keep them
+in sync with `flake.nix` if you add or rename a config.
 
 ### Manual setup (from this repo)
 
