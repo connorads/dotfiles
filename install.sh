@@ -21,6 +21,49 @@ if [ -f /etc/NIXOS ]; then
 	echo "Detected NixOS - Nix already installed, skipping Nix/Docker install..."
 fi
 
+# select_host <override> <current-identity> <valid-attr...>
+# Echoes the chosen attr; exits non-zero (listing valid attrs) if it can't decide.
+# On a fresh machine the hostname rarely matches a config, so the first activation
+# must pick the attr explicitly (env override > current hostname > /dev/tty prompt).
+# No silent default: guessing wrong would reconfigure the machine into the wrong role.
+select_host() {
+	local override="$1" current="$2"
+	shift 2
+	local valid=("$@") h
+	if [ -n "$override" ]; then
+		for h in "${valid[@]}"; do [ "$h" = "$override" ] && {
+			echo "$h"
+			return
+		}; done
+		echo "Unknown host '$override'. Valid: ${valid[*]}" >&2
+		return 1
+	fi
+	for h in "${valid[@]}"; do [ "$h" = "$current" ] && {
+		echo "$h"
+		return
+	}; done
+	if [ -r /dev/tty ]; then
+		{
+			echo "Select host config:"
+			local i=1
+			for h in "${valid[@]}"; do
+				echo "  $i) $h"
+				i=$((i + 1))
+			done
+		} >/dev/tty
+		local n
+		read -r -p "> " n </dev/tty
+		[ "$n" -ge 1 ] 2>/dev/null && [ "$n" -le "${#valid[@]}" ] && {
+			echo "${valid[$((n - 1))]}"
+			return
+		}
+		echo "Invalid selection" >&2
+		return 1
+	fi
+	echo "Cannot determine host. Set the override env var to one of: ${valid[*]}" >&2
+	return 1
+}
+
 # --- Clone or update dotfiles ---
 clone_dotfiles() {
 	if [ ! -d "$DOTFILES_DIR" ]; then
@@ -93,6 +136,20 @@ install_tools() {
 if [ "$(uname -s)" = "Darwin" ]; then
 	echo "Setting up dotfiles for macOS..."
 
+	# Valid nix-darwin configs — keep in sync with flake.nix darwinConfigurations.
+	VALID_DARWIN=("Connors-Mac-mini" "Connors-MacBook-Air")
+
+	# (a) Preflight: darwin-shared.nix hardcodes the `connorads` account, so a
+	# different login user makes activation fail opaquely. Fail loud now instead.
+	if [ "$(id -un)" != "connorads" ]; then
+		echo "ERROR: this config expects the macOS account 'connorads', but you are '$(id -un)'." >&2
+		echo "Create/login as connorads, or adjust darwin-shared.nix + the host modules." >&2
+		exit 1
+	fi
+	# Prime sudo now (reads /dev/tty, works under curl|bash) so a bad password
+	# surfaces here rather than mid-activation.
+	sudo -v
+
 	# Install Xcode Command Line Tools (needed for git, clang, etc.)
 	if ! xcode-select -p &>/dev/null; then
 		echo "Installing Xcode Command Line Tools..."
@@ -117,6 +174,17 @@ if [ "$(uname -s)" = "Darwin" ]; then
 		echo "Nix already installed"
 	fi
 
+	# (b) Determinate check: nix-darwin aborts "Determinate detected" if its daemon
+	# is present, because this config manages nix.settings.* (incompatible unless
+	# nix.enable = false). We install vanilla Nix above (--prefer-upstream-nix), so
+	# this should never trip — but fail loud with remediation if it somehow does.
+	if [ -e /usr/local/bin/determinate-nixd ]; then
+		echo "ERROR: Determinate Nix daemon detected (/usr/local/bin/determinate-nixd)." >&2
+		echo "This config manages nix.settings.* and is incompatible with Determinate's daemon." >&2
+		echo "Remediation: reinstall vanilla Nix, or set nix.enable = false (out of scope here)." >&2
+		exit 1
+	fi
+
 	# Install Homebrew (required by nix-darwin homebrew module)
 	if ! command -v brew &>/dev/null && [ ! -x /opt/homebrew/bin/brew ]; then
 		echo "Installing Homebrew..."
@@ -124,15 +192,38 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	fi
 	eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null)" || true
 
-	# Bootstrap nix-darwin (first run) or rebuild (subsequent runs)
-	# --flake path is resolved before darwin-rebuild resets $HOME
-	# PATH is preserved so activation can find brew
+	# (c) Resolve the config explicitly for the first activation. nix-darwin resolves
+	# from `scutil --get LocalHostName`, which on a fresh machine rarely matches — so
+	# pass `#<attr>` here. No fallback: select_host failing aborts under `set -e`.
+	DARWIN_HOST="$(select_host "${DARWIN_HOST:-}" "$(scutil --get LocalHostName 2>/dev/null)" "${VALID_DARWIN[@]}")"
+	echo "Using nix-darwin config: $DARWIN_HOST"
+
+	# (d) Back up nix-darwin-managed /etc files that the Determinate installer created,
+	# so the first activation doesn't abort on file conflicts. Only when darwin-rebuild
+	# isn't on PATH yet (i.e. first run). Skip files that are already /etc/static
+	# symlinks (managed) or already backed up (idempotent). /etc/profile and
+	# /etc/bash.bashrc are NOT nix-darwin-managed — left untouched.
+	if ! command -v darwin-rebuild &>/dev/null; then
+		for f in /etc/nix/nix.conf /etc/zprofile /etc/bashrc /etc/zshrc /etc/zshenv; do
+			if [ -e "$f" ] && [ ! -L "$f" ] && [ ! -e "$f.before-nix-darwin" ]; then
+				echo "Backing up $f to $f.before-nix-darwin"
+				sudo mv "$f" "$f.before-nix-darwin"
+			fi
+		done
+	fi
+
+	# (e) Bootstrap nix-darwin (first run) or rebuild (subsequent runs).
+	# Explicit `#$DARWIN_HOST` attr; no `|| true` masking — `set -e` stops on real
+	# failure. Hostname convergence is handled declaratively by networking.hostName
+	# during activation, so bare `drs`/`up` resolve correctly thereafter.
+	# PATH is preserved so activation can find brew.
 	if command -v darwin-rebuild &>/dev/null; then
 		echo "Running darwin-rebuild switch..."
-		sudo --preserve-env=PATH darwin-rebuild switch --flake "$HOME/.config/nix" || true
+		sudo --preserve-env=PATH darwin-rebuild switch --flake "$HOME/.config/nix#$DARWIN_HOST"
 	else
 		echo "Bootstrapping nix-darwin..."
-		sudo --preserve-env=PATH nix run nix-darwin/master#darwin-rebuild -- switch --flake "$HOME/.config/nix" || true
+		sudo --preserve-env=PATH nix run nix-darwin/master#darwin-rebuild -- \
+			switch --flake "$HOME/.config/nix#$DARWIN_HOST"
 	fi
 
 	install_tools
@@ -258,8 +349,41 @@ if [ "$IN_CODESPACES" = "true" ]; then
 	echo "Running home-manager switch..."
 	nix run home-manager/master -- switch --flake ~/.config/nix#codespace
 else
+	# Valid home-manager configs — keep in sync with flake.nix homeConfigurations.
+	VALID_HM=("connor@penguin" "connor@dev" "connor@rpi5")
+
+	# Preflight: the Linux configs (and TARGET_USER) assume the `connor` account.
+	if [ "$(id -un)" != "connor" ]; then
+		echo "ERROR: this config expects the Linux account 'connor', but you are '$(id -un)'." >&2
+		echo "Re-run as connor, or adjust flake.nix homeConfigurations + TARGET_USER." >&2
+		exit 1
+	fi
+	# home-manager resolves homeConfigurations."$USER@<host>" from $USER (env), so
+	# ensure it's exported for the `nix run` below.
+	export USER
+
+	# Resolve the config explicitly for the first activation. home-manager resolves
+	# from "$USER@$(hostname)" and, if absent, silently falls back to bare "$USER"
+	# (which doesn't exist here) → opaque Nix error. Override with HM_HOST=<host>.
+	HOME_HOST="$(select_host "${HM_HOST:+connor@$HM_HOST}" "connor@$(hostname -s)" "${VALID_HM[@]}")"
+	echo "Using home-manager config: $HOME_HOST"
+
+	# Converge the hostname (the Linux equivalent of macOS networking.hostName) so
+	# bare `hms`/`up` resolve afterwards. home-manager standalone can't set it.
+	# Skip on NixOS (the system config owns the hostname) and Codespaces.
+	if [ "$IN_NIXOS" = "false" ]; then
+		if command -v hostnamectl &>/dev/null; then
+			if [ "$(hostname -s)" != "${HOME_HOST#connor@}" ]; then
+				echo "Setting hostname to ${HOME_HOST#connor@}..."
+				sudo hostnamectl set-hostname "${HOME_HOST#connor@}"
+			fi
+		else
+			echo "WARNING: hostnamectl absent — hostname not converged; bare 'hms'/'up' will need '#$HOME_HOST'."
+		fi
+	fi
+
 	echo "Running home-manager switch..."
-	nix run home-manager/master -- switch --flake ~/.config/nix
+	nix run home-manager/master -- switch --flake "$HOME/.config/nix#$HOME_HOST"
 fi
 
 # Install system-level tailscaled (kernel TUN mode, needed for ts serve)
