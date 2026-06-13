@@ -251,6 +251,44 @@ Pin `127.0.0.1:2222 → 22` (never drifts, backend-independent). Switch the NIC 
 ssh -p 2222 connor@127.0.0.1 'Get-ComputerInfo | Select OsName'
 ```
 
+### Driving PowerShell over SSH — host-side gotchas
+
+Hard-won driving a Win11 ARM guest headlessly (esp. for GUI apps):
+
+- **The admin SSH session comes up elevated (high integrity).** Logging in via
+  `administrators_authorized_keys` (sshd runs as SYSTEM) yields a full token —
+  `whoami /priv` shows `SeBackupPrivilege Enabled` and installers self-elevate
+  with no interactive UAC. So privileged headless ops just work: all-users MSIX
+  installs, and reading the ACL-locked `C:\Program Files\WindowsApps\…` (use
+  `robocopy /b` to lean on SeBackupPrivilege — plain copy is "Access is denied").
+
+- **If DefaultShell is PowerShell (§4), send PowerShell *directly* — don't wrap it
+  in `powershell -Command "…"`.** Nesting double-expands `$vars`: the outer shell
+  expands `$PSVersionTable` / `$env:…` before the inner one sees it, yielding
+  `System.Collections.Hashtable.…` garbage and parser errors. Just
+  `ssh host '<powershell here>'`.
+
+- **For anything with quotes, `scp` a `.ps1` and run it with `-File`.** The
+  bash-single-quote → PowerShell quoting path is a tarpit (`\"x\"` leaks
+  backslashes; PS parses the whole script before running, so one slip aborts
+  everything with *no* partial output). `scp script.ps1 host:C:/tmp/x.ps1` then
+  `ssh host 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\tmp\x.ps1'`.
+
+- **GUI apps launched over SSH are invisible and die on disconnect.** SSH lands in
+  a non-interactive session, not the console (session 1) the UTM window renders;
+  the app never appears on screen, and OpenSSH tears down the session's process
+  tree when the command returns. To launch a GUI app *into the logged-in console
+  session* (visible + persistent), fire a one-shot scheduled task as the console
+  user, then delete it:
+
+  ```powershell
+  $a = New-ScheduledTaskAction -Execute 'C:\path\App.exe' -Argument '--flag'
+  $p = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+  Register-ScheduledTask -TaskName run-once -Action $a -Principal $p -Force | Out-Null
+  Start-ScheduledTask -TaskName run-once; Start-Sleep 5
+  Unregister-ScheduledTask -TaskName run-once -Confirm:$false   # window stays open
+  ```
+
 ## 6. End-to-end automation loop
 
 ```bash
