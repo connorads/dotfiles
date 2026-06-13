@@ -39,7 +39,7 @@
 |-----|--------|
 | `Ctrl+b S` | fzf session picker |
 | `Ctrl+b W` | fzf window picker |
-| `Ctrl+b A` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
+| `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
@@ -50,7 +50,7 @@
 | `Ctrl+b Alt+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
-| `Ctrl+b A` | Claude auto-continue (arm/disarm watcher) |
+| `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
 | `Ctrl+b Alt+c` | connections overview |
