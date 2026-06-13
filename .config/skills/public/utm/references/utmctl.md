@@ -49,5 +49,7 @@ done
 ssh "user@$IP" 'uname -a'
 ```
 
-For guests without an agent (Windows ARM), poll the forwarded SSH port instead:
-`until nc -z 127.0.0.1 2222; do sleep 3; done`.
+For guests without an agent (Windows ARM), poll the SSH port instead — the
+shared-network guest IP (`until nc -z -G 3 192.168.64.2 22; do sleep 5; done`)
+or a forwarded port (`until nc -z 127.0.0.1 2222; do sleep 3; done`). See
+windows.md for both networking paths.
