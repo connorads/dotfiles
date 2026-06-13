@@ -17,7 +17,7 @@ to `#{pane_id}`, plus a stdlib-only Python date parser.
 
 ## Quick start
 
-- **Arm / disarm:** `prefix + A` in the target pane (or `claude-watch` from a
+- **Arm / disarm:** `prefix + Alt+a` in the target pane (or `claude-watch` from a
   shell in that pane). The pane border shows **` ARMED`** (green) while active.
 - **Status / explicit control:** `claude-watch [status|on|off|toggle] [pane_id]`.
 - **Watch what it's doing:** `tail -f ~/.local/state/claude-watcher/<pane>.log`
