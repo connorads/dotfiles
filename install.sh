@@ -236,6 +236,13 @@ if [ "$(uname -s)" = "Darwin" ]; then
 			switch --flake "$HOME/.config/nix#$DARWIN_HOST"
 	fi
 
+	# install_tools runs in the shell that started this script — i.e. before
+	# nix-darwin activated — so freshly installed packages (notably tmux, needed by
+	# TPM below) aren't on PATH yet; those dirs only join PATH via nix-darwin's
+	# /etc/zprofile in a new login shell. Prepend the system + per-user profiles so
+	# install_tools sees them in this same run.
+	export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"
+
 	install_tools
 
 	echo ""
