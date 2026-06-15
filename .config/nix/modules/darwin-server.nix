@@ -93,27 +93,9 @@
   # -- Home Manager (server additions) --
   # Full toolkit (matches connor@dev). No duti/pngpaste, no defaultAppAssociations,
   # no osxkeychain credential helper (SSH remotes + gh-gate instead).
-  home-manager.users.connorads =
-    { config, ... }:
-    {
-      home.packages = packages.sharedPackages;
-
-      # Point ~/.terminfo at the per-user nix terminfo dir so the login shell
-      # finds kitty/ghostty (and any nix-shipped terminal) at startup.
-      #
-      # The login shell is Apple's /bin/zsh, linked against Apple libncurses,
-      # which caches its terminfo search path at startup — before nix's
-      # set-environment exports TERMINFO_DIRS. Entries living only in the
-      # per-user profile (xterm-kitty) are therefore unreachable when
-      # set-environment re-runs `export TERM=$TERM`, so a fresh ssh login emits
-      # "can't find terminal definition for xterm-kitty" twice before the
-      # prompt. Apple ncurses always probes ~/.terminfo first, and the nix
-      # profile's terminfo is already in the hashed layout Apple reads, so this
-      # symlink fixes it transparently for plain `ssh`, with no per-terminal
-      # upkeep — a future Ghostty is covered once its terminfo is in the profile.
-      home.file.".terminfo".source =
-        config.lib.file.mkOutOfStoreSymlink "/etc/profiles/per-user/connorads/share/terminfo";
-    };
+  home-manager.users.connorads = {
+    home.packages = packages.sharedPackages;
+  };
 
   # NB: no security.pam.services.sudo_local here (password sudo).
   # services.openssh stays enable = false (inherited from shared); remote access
