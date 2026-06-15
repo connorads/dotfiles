@@ -70,6 +70,7 @@ Prefer to *use subagents* for research as to not pollute the context with lots o
 
 ## Git
 
+- **Branching**: commit/push on the current branch by default, `main` included — don't branch first unless I ask.
 - **MVP commits**: each commit is the smallest complete, coherent change — code + tests + wiring together. Would you send it as a standalone PR? If not, it's too small.
 - **Revert test**: could this commit be reverted cleanly, removing exactly one meaningful thing? If reverting orphans code or breaks something unrelated, it's not self-contained.
 - **Review test**: can a reviewer understand this commit without reading other commits in the series? If context is missing, fold the pieces together.
