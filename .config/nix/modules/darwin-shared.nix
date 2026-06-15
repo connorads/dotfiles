@@ -260,12 +260,32 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "bak";
-    users.connorads = {
-      imports = [ ./home-shared.nix ];
-      home.username = "connorads";
-      home.homeDirectory = "/Users/connorads";
-      home.stateVersion = "24.11";
-    };
+    users.connorads =
+      { config, ... }:
+      {
+        imports = [ ./home-shared.nix ];
+        home.username = "connorads";
+        home.homeDirectory = "/Users/connorads";
+        home.stateVersion = "24.11";
+
+        # Point ~/.terminfo at the per-user nix terminfo dir so the login shell
+        # finds kitty/ghostty (and any nix-shipped terminal) at startup.
+        #
+        # The login shell is Apple's /bin/zsh, linked against Apple libncurses,
+        # which caches its terminfo search path at startup — before nix's
+        # set-environment exports TERMINFO_DIRS. Entries living only in the
+        # per-user profile (xterm-kitty) are therefore unreachable when
+        # set-environment re-runs `export TERM=$TERM`, so a fresh ssh login emits
+        # "can't find terminal definition for xterm-kitty" twice before the
+        # prompt. Apple ncurses always probes ~/.terminfo first, and the nix
+        # profile's terminfo is already in the hashed layout Apple reads, so this
+        # symlink fixes it transparently for plain `ssh`, with no per-terminal
+        # upkeep — a future Ghostty is covered once its terminfo is in the profile.
+        # Applies to every darwin host: the same Apple-ncurses bug bites any
+        # inbound SSH login (mini is just where it surfaced first).
+        home.file.".terminfo".source =
+          config.lib.file.mkOutOfStoreSymlink "${config.home.profileDirectory}/share/terminfo";
+      };
   };
 
   # Set Git commit hash for darwin-version.
