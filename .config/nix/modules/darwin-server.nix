@@ -35,19 +35,32 @@
     pkgs.tailscale
   ];
 
-  # -- Power: never sleep, recover from power loss --
+  # -- Power: stay awake, but blank + lock the idle display --
+  # The box never sleeps (remote dev must stay reachable), but the physical
+  # screen turns off after 10 min idle and the session locks, so an unattended
+  # headed Mac mini isn't left showing an unlocked desktop. `disablesleep` only
+  # gates *system* sleep, not display sleep, so the two coexist.
+  #
   # `computer = "never"` is a first-class option; autorestart/disablesleep/etc.
   # are not nix-darwin options, hence the pmset script below.
   power.sleep.computer = "never";
 
+  # Require the login password the moment the display sleeps / screen saver
+  # starts (delay 0 = immediate). CustomUserPreferences is used over the
+  # `screensaver` options to stay decoupled from nix-darwin option churn.
+  system.defaults.CustomUserPreferences."com.apple.screensaver" = {
+    askForPassword = 1;
+    askForPasswordDelay = 0;
+  };
+
   # pmset via lib.mkAfter (priority 1500) sorts after shared's MagicDNS resolver.
   # Server-only — does not touch the Air.
   #   autorestart 1   — power back on after a power failure
-  #   disablesleep 1  — never sleep (belt-and-braces with power.sleep.computer)
-  #   displaysleep 0  — no display sleep (headless, but keeps the GPU live)
+  #   disablesleep 1  — never system-sleep (belt-and-braces with power.sleep.computer)
+  #   displaysleep 10 — blank the screen after 10 min idle (pairs with the lock above)
   #   powernap 0      — no Power Nap wake cycles
   system.activationScripts.postActivation.text = lib.mkAfter ''
-    /usr/bin/pmset -a autorestart 1 disablesleep 1 displaysleep 0 powernap 0
+    /usr/bin/pmset -a autorestart 1 disablesleep 1 displaysleep 10 powernap 0
   '';
 
   # -- OS updates: manual only --
