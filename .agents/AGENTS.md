@@ -1,191 +1,86 @@
 # AGENTS.md
 
-# Tools
+## Tools
 
-## mise
-
-- Prefer to use [`mise`](https://mise.jdx.dev/walkthrough.html) to manage runtime and tool versions
-- If using GHA use `jdx/mise-action@v3` (`mise generate github-action` to create a new one)
-
-## Package managers
-
-- Never use `npm` or `npx` — use `pnpm` (or `pnpm dlx`) instead
-- Only use `bun` if the project already uses it
-
-## GitHub
-
-Use `gh` CLI to access and update issues and PRs etc. Use `--body-file - <<'EOF'` for multi-line text.
-If the user mentions a GitHub issue, remember to close the issue if you fix it - mention "Closes #NO" in commit message.
-
-## Multiline input
-
-- Never use `$(cat <<'EOF' ... EOF)` for commit/PR text.
-- Use stdin flags instead:
-  - `git commit -F - <<'EOF' ... EOF`
-  - `gh ... --body-file - <<'EOF' ... EOF`
+- Prefer `mise` for runtime/tool versions. For GitHub Actions, use `jdx/mise-action@v3`; generate new workflows with `mise generate github-action`.
+- Never use `npm` or `npx`; use `pnpm` or `pnpm dlx`. Use `bun` only when the project already does.
+- Do not disable package install-script protections globally. If native modules or codegen need install scripts, ask before allow-listing narrowly.
+- Use `gh` CLI for GitHub issues and PRs. If you fix a mentioned issue, close it with `Closes #NO` in the commit message.
+- For multiline commit/PR text, use stdin flags: `git commit -F - <<'EOF'` and `gh ... --body-file - <<'EOF'`. Never use `$(cat <<'EOF' ... EOF)`.
 - If stdin is awkward, use repeated `-m` flags.
-
-## Skills
-
-Curation intent + rubric live in **`~/.config/skills/AGENTS.md`** (the single home). Read
-it before adding, removing, or promoting any skill.
-
-Three tiers (= the `skills` CLI's two scopes + `skl`):
-
-- **Catalogue** (default, ~zero session cost): `~/.config/skills/{public,private}` (authored,
-  hand-edited) + `~/.config/skills/vendor/.agents/skills` (third-party, `skills add` *project*
-  scope). Loaded on demand via `skl` (`~/.config/skl/`), never autoloaded.
-- **Per-project**: `skills add <repo> --skill <name>` (no `-g`) from inside a repo →
-  `<repo>/.agents/skills/<name>`, auto-fires for that repo only.
-- **Autoload (global)**: `~/.agents/skills/` — `skills add -g` puts a skill here and
-  `skillsync` symlinks it into every tool, so it autoloads in **every** session. Kept
-  **empty by design**; promote only broad + must-auto-fire + regular skills.
-
-`skl` sources (config `~/.config/skl/config.json`): `public` (`mine`), `private`, and
-`vendor/.agents/skills` (`vendor`).
-
-Tracking new files in dotfiles: `~/.gitignore` ignores `/.config/**`, so add an un-ignore
-pattern before `dotfiles add` (top-level files under `~/.config/skills/` need their own
-`!` line; `public/**`, `private/**`, `vendor/**` are already un-ignored).
-
-# Guidance
 
 ## Secrets
 
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
-## Assumptions and research
+## Research
 
-Don't assume, check: It's important to do research to get the latest code and information.
+Do not rely on memory when the answer can be checked quickly.
+Grep the local codebase first for implementation questions.
+For external facts, docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, and solutions, check online.
+For dependency behaviour, inspect installed source such as `node_modules` when present; otherwise clone the repo into `/tmp` and inspect it.
+Use subagents for broad research so the main context stays focused.
 
-- Web search: Use the web for current information, documentation, discussions, issues, and solutions.
-- Code search: Grep the codebase. You can also clone other repos like libraries from GitHub into /tmp and explore.
+## Communication
 
-Prefer to *use subagents* for research as to not pollute the context with lots of distracting tokens.
-
-## Communication and writing
-
-- Use British English: analyse, favourite, realise, colour etc.
-- Be concise: Interactions, PRs and commit messages - be concise and sacrifice grammar for the sake of concision.
+Use British English: analyse, favourite, realise, colour.
+Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
 
 ## Git
 
-- **Branching**: commit/push on the current branch by default, `main` included — don't branch first unless I ask.
-- **MVP commits**: each commit is the smallest complete, coherent change — code + tests + wiring together. Would you send it as a standalone PR? If not, it's too small.
-- **Revert test**: could this commit be reverted cleanly, removing exactly one meaningful thing? If reverting orphans code or breaks something unrelated, it's not self-contained.
-- **Review test**: can a reviewer understand this commit without reading other commits in the series? If context is missing, fold the pieces together.
-- Split when the *concern* changes, not the *file type* — "add feature X with tests" is one commit; "refactor auth then add feature X" is two.
-- Renames/moves in a separate commit from content changes (git rename detection breaks otherwise) — but include reference/import updates so the build passes.
-- Commit after each coherent unit. Don't batch everything into one mega-commit at the end.
-- Plan steps map to commits when they pass the revert and review tests. Multiple small steps may merge into one commit; one large step may split into several.
-- **Amending commits**: before amending, always check if the commit has been pushed (`git log @{u}.. --oneline` — if empty, it's pushed). Only amend unpushed commits; if already pushed, create a new commit instead.
+- Commit/push on the current branch by default, `main` included; do not branch first unless asked.
+- Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
+- Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
+- A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
+- Commit after each coherent unit rather than batching unrelated work.
+- Before amending, check whether the commit was pushed with `git log @{u}.. --oneline`; amend only unpushed commits.
 
 ## Verification
 
-**Every commit must be verified before moving on.** Writing code is not enough - prove it works.
-
-- **Run what exists**: test suite, linter/formatter, pre-commit hooks (`hk`). Let automated checks catch the obvious
-- **No automated checks?** Still verify: run the app, execute the command, use browser automation for UI, curl the endpoint
-- **Proportional to risk**: config tweak -> smoke test. New feature -> full suite + manual confirmation if coverage is thin
-- **Fix before proceeding**: if verification fails, amend the commit (see amending rule in Git section) rather than adding a follow-up "fix" commit
-- **Plans must include verification**: when writing a plan, specify how each step will be verified - don't leave it implicit
+Verify every change before moving on; writing code is not enough.
+Run the existing checks first: tests, typecheck, lint/format, hooks (`hk`) or app-specific smoke checks.
+If no automated checks exist, still verify manually: run the command, start the app, curl the endpoint, or use browser automation.
+Scale verification to risk: config tweak -> smoke test; user-facing feature -> relevant automated suite plus manual confirmation when coverage is thin.
+When writing plans, include how each step will be verified.
 
 ## Selective Staging
 
-`git hunks list` shows diff hunks with unique IDs. `git hunks add <id>` stages specific hunks non-interactively.
-Use for granular commits when a file contains changes for multiple concerns.
+Use `git hunks list` and `git hunks add <id>` to stage specific hunks non-interactively when a file contains changes for multiple concerns.
 
-## Design approach
+## Design
 
-- Design before building: sketch domain types and key workflows before writing implementation
-- Make the change easy, then make the easy change — restructure first if the code fights you
-- 3X awareness: know whether you're exploring, expanding, or extracting. Explore = lighter touch, experiment fast. Expand/extract = full discipline (types, tests, architecture)
+Sketch domain types and key workflows before substantial implementation.
+Make the change easy, then make the easy change; restructure first if the code fights you.
+For substantial domains, prefer functional core / imperative shell, explicit ports, and typed values at boundaries.
+Keep business decisions pure where practical: gather data, decide, then perform effects.
+Model domain states explicitly so invalid states are hard to represent.
+Prefer strong types at boundaries and avoid type-system escape hatches unless the project has a documented reason.
+Use explicit error values in domain/application logic; translate exceptions at the shell.
+Design system boundaries with observability in mind: structured logs, operation context, and relevant entity/request IDs.
+Use the `architecture` skill for domain modelling, ports/adapters, error design, observability, and hard-to-test designs.
 
-## Architecture
+## Enforcement
 
-- **Functional core, imperative shell**: pure business logic in the centre (no I/O, no side effects, no mutation); thin imperative shell at the edges (HTTP handlers, DB access, CLI parsing)
-- **Impureim sandwich**: gather data (impure) → make decisions (pure) → act on results (impure). Challenge assumptions that effects must be interleaved — fetch eagerly, decide purely
-- **Values at boundaries**: pass simple values between components, not objects with behaviour
-- **Ports and adapters**: define interfaces (ports) in the application's own terms; implement with technology-specific adapters. If tests need real infrastructure, you're missing a port. Name ports by purpose ("for ordering") not technology ("for postgres")
-- **Walking skeleton**: start new projects with the thinnest end-to-end slice proving the architecture works — one use case traversing all layers
-- For substantial domains, apply full DDD and ports/adapters. For simple scripts/tools, strong types and impureim sandwich are sufficient
+Rules reviewers would otherwise have to remember should become types, linters, tests, or hooks where practical.
+Use `mechanical-enforcement` to choose rules and linters.
+Use `hk` to wire git hooks and local checks.
 
-## Domain modelling
+## Intent
 
-- Strongly typed code: no `any`, no non-null assertion operator (`!`), no type assertions (`as Type`). Prefer `satisfies` to check shapes without losing inference
-- Make illegal states unrepresentable: model domain with ADTs/discriminated unions; if state can't exist, code can't mishandle it
-- Wrapper types for primitives: EmailAddress, OrderId, CustomerId as distinct types — not raw strings/numbers
-- Parse don't validate: transform untyped input at boundaries into typed structures; never re-check validity internally. Use Zod/Pydantic (or project's schema library) for boundary parsing
-- Ubiquitous language: code names must match domain language; no generic names (data, info, manager, helper)
-- Bounded contexts: separate models per domain area with explicit translation at boundaries
-- Quality abstractions: consciously constrained, pragmatically parameterised, doggedly documented
-
-## Error handling
-
-- Prefer explicit error values (Result/Either) over thrown exceptions in domain and application logic
-- Compose use-case steps so the happy path reads linearly and failures are handled explicitly at each stage
-- Exceptions are fine at the imperative shell (HTTP handlers, CLI) — catch and translate there
-
-## Mechanical enforcement
-
-Rules a reviewer would otherwise have to remember belong in a linter. Preferred rules, linter picks by stack, and copy-pasteable config snippets live in the `mechanical-enforcement` skill. Wiring those into git hooks is the `hk` skill.
-
-## Observability
-
-- Design for observability: instrument at system boundaries (HTTP, DB, queues), prefer structured logging over unstructured, include context (request ID, operation, entity)
-
-## Commits, comments and docs
-
-- Document the *why* and *intent*, the what and how can usually be deduced but the *why* and *intent* will get lost otherwise.
-- Comments are for a future reader with no knowledge of the change that produced them: write them timeless and declarative — state the standing rule/constraint in the present tense, not a narration of the edit ("would…", "here", "the X above", "now") nor a message to a present reader. Test: would it still read right in two years to someone who never saw the diff?
-- If you're ever unsure why the user might be doing something then ask - they will appreciate your questioning and clarify.
+Document why and intent when it would otherwise be lost; the what/how should usually be clear from code.
+Comments are for future readers: write timeless, declarative comments that state the standing rule or constraint in the present tense.
+If the user's goal or reasoning is unclear, ask before encoding assumptions.
+When a decision has trade-offs or rejected alternatives worth preserving, write an ADR or capture it in docs/commit messages.
+When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
+Keep `AGENTS.md`, `CLAUDE.md`, docs, and code comments in sync with reality.
 
 ## Testing
 
-**TDD is the default discipline**, not a suggestion:
+Prefer TDD for behavioural changes: see the failure, make it pass, then refactor.
+Test observable behaviour through public APIs, not implementation details.
+Prefer pure unit tests for pure logic, contract/integration tests at boundaries, and minimal e2e for critical journeys.
+Avoid mocks by default; use fakes, real values, or real infrastructure at adapter boundaries where practical.
+Verify every change proportionally before committing.
 
-- Red-green-refactor: write a failing test, make it pass with simplest code, refactor. This is the rhythm
-- Tests are design feedback: if it's hard to test, the design is wrong — redesign, don't add mocks
-- Test business behaviour through public APIs, not implementation details. Tests should break when behaviour changes, not when code is refactored
-- Each test should make its *why* obvious to the reader — not just what's being tested but the motivation
-- When a test fails, the cause should be immediately obvious. If you have to debug a test failure, the test isn't specific enough
-- Tests must be deterministic and order-independent. Flaky or sequence-dependent tests erode all confidence
-- **Tests before refactoring**: lock down existing behaviour with tests first. Commit them separately — they must pass against the old code
-- **See it break first**: before fixing a problem, prove you can detect it. Flip a warning to error, enable the strict check, run the failing test — see red, then make it green. The red step doesn't need a commit, just confidence
-
-**Testing taxonomy** — the architecture *is* the test strategy. Pure core → unit tests, adapters → contract tests, composition → integration:
-
-| Layer | What | How | Volume |
-|-------|------|-----|--------|
-| Pure core | Business logic, domain rules | Unit tests with real values, no test doubles. Property-based tests for large input spaces | Most tests |
-| Adapter contracts | Each adapter fulfils its port | Fakes (in-memory port implementations) for fast tests; few integration tests per adapter against real infra | Some tests |
-| Composition | Wiring works end-to-end | Walking skeleton first, then key user journeys through composed system | Few tests |
-| E2e | Critical paths through real UI/CLI | CLI: run commands. Web: playwright. Critical journeys only | Minimal |
-
-**No mocks** — the architecture eliminates the need. Pure core needs no doubles; adapters use fakes (in-memory implementations of the port interface) or real infrastructure. If you reach for a mock, reconsider the design.
-
-**Property-based testing**: use for pure functions where the input space is large or combinatorial — describe the properties that must hold, not individual examples.
-
-## Capturing intent
-
-Intent from conversations gets lost between sessions. After making changes, ask: would a future agent (or human) understand *why* this was done?
-
-- Update docs, comments, commit messages, and ADRs to preserve the *why* - not just what changed
-- Keep `AGENTS.md`, `CLAUDE.md`, and code comments in sync with reality - stale docs poison future context
-- Write an ADR when a decision involved trade-offs or rejected alternatives worth remembering
-
-### Surprise = write it down
-
-The gap between expectation and reality is the most valuable and perishable knowledge. When something surprises you, **stop and capture it** before continuing.
-
-**Triggers** - pause and document when:
-- You changed your hypothesis (thought the problem was X, it's actually Y)
-- You abandoned an approach (tried X, it didn't work because Y)
-- The fix is non-obvious (someone reading the code wouldn't guess why)
-- The user corrected your understanding
-
-**Where to capture it:**
-- Dead-ends and rejected approaches go in commit messages or ADRs
-- Non-obvious fixes get inline code comments explaining the constraint
-- Tests guarding subtle bugs get a comment explaining the failure mode, not just what's asserted
-- Decisions with trade-offs get an ADR
+Use the `testing` skill for test strategy, TDD, refactoring tests, and test design.
+Use the `test-coverage` skill for coverage audits, thresholds, and CI/hook enforcement.
