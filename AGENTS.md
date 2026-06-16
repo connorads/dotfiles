@@ -268,6 +268,9 @@ The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 
 ## Agent Skills
 
+Before adding, removing, vendoring, or promoting skills, read
+[`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).
+
 Skills load three ways, in preference order. **Canonical home is the catalogue at
 `~/.config/skills/{public,private,vendor}`** — *not* `~/.agents/skills/`, which is the
 autoload dir and is **empty by design**.
@@ -280,13 +283,13 @@ autoload dir and is **empty by design**.
    repo → auto-fires for *that repo* only.
 3. **Global autoload — rare (currently none).** `skills add -g <owner/repo> --skill <name>`
    lands in `~/.agents/skills/` and autoloads in *every* session (per-session context cost).
+   Promote only when a skill is broad, regular, and must auto-fire.
    `skillsync` is a **deprecated** fallback here (no-repo/private authored globals only).
 
 Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
 
 **Curation intent, the rubric, tiers, and lockfile/skillsync rationale live in
-[`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md)** — read it before adding,
-removing, or promoting a skill.
+[`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).**
 
 ## Tailscale
 
