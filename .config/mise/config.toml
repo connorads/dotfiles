@@ -40,6 +40,8 @@ fnox = "1"
 # Pinned: github backend constructs wrong release tag from ranges (0.34 → rtk-ai/rtk@0.34 instead of v0.34.0)
 "github:rtk-ai/rtk" = "0.34.0"
 "github:ogulcancelik/herdr" = "0.6.0"
+# prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
+"github:CosineAI/cli" = { version = "2.0.21", bin = "cos", prerelease = true }
 
 "npm:@elevenlabs/cli" = "0"
 "npm:@kitlangton/ghui" = "latest"
