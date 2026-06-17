@@ -240,7 +240,9 @@ while (( max == 0 || i < max )); do
   (( stop_requested )) && break
   (( i++ ))
   RL_ITERATION="$i"
-  print -P "%F{cyan}[rl]%f iteration $i${max:+/$max}: $*"
+  local max_display=
+  (( max > 0 )) && max_display="/$max"
+  print -P "%F{cyan}[rl]%f iteration $i$max_display: $*"
   phase=child
   local promise_marker=
   local output_fifo=
