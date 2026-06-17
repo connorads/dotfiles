@@ -107,7 +107,7 @@ against `skills-lock.json`. No global/symlink resurrection problem.
 ### Promote to per-project
 When working in a repo whose stack matches a skill, `cd <repo>` and `skills add <owner/repo>
 --skill <name>` (no `-g`). It auto-fires for that repo's sessions only. Candidates:
-`next-*`, `vercel-*`, `cloudflare`, `remotion-best-practices`, `claude-api`, `marimo`,
+`next-*`, `vercel-*`, `cloudflare`, `remotion-best-practices`, `claude-api`, `marimo-notebook`,
 `logging-best-practices`, `web-design-guidelines`, `accessibility`, `holistic-ux`, `hk`,
 `test-coverage`, `mechanical-enforcement`.
 
@@ -148,10 +148,17 @@ name can differ — gotchas below).
 | `aaron-he-zhu/seo-geo-claude-skills` | trusted (original, 1.6K★) |
 | `adithya-s-k/manim_skill` | trusted (reputable author) |
 | `blader/humanizer` | re-sourced from softaworks aggregator → original author |
+| `vercel-labs/open-agents` | trusted (Vercel org) — `--skill web-animation-design` (Emil Kowalski derivative; keep out of `public/`) |
+| `cursor/plugins` | trusted (official Cursor) — large monorepo; `--skill thermo-nuclear-code-quality-review` (skillPath `cursor-team-kit/skills/…`) |
+| `marimo-team/skills` | trusted (official) — `--skill marimo-notebook` (was vendored as `marimo`; upstream renamed) |
+| `leonxlnx/taste-skill` | **third-party, unvetted author** — design pack: `design-taste-frontend`, `high-end-visual-design`, `minimalist-ui`, `redesign-existing-projects`. Diff-review every refresh. |
 
 Gotchas: `firecrawl/cli` → `--skill firecrawl-cli`; `remotion-dev/skills` → `--skill
 remotion`; `vercel-labs/agent-skills` dir names are unprefixed but skill names are `vercel-*`
-(CLI resolves by frontmatter name). Confirm all via `-l`.
+(CLI resolves by frontmatter name). `leonxlnx/taste-skill` internal skillPaths don't match
+skill names (`taste-skill/`→design-taste-frontend, `soft-skill/`→high-end-visual-design,
+`minimalist-skill/`→minimalist-ui, `redesign-skill/`→redesign-existing-projects); the CLI
+resolves by frontmatter name regardless. Confirm all via `-l`.
 
 Dropped sources: `softaworks/agent-toolkit` (aggregator; humanizer re-sourced to blader,
 mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs removed, low trust),

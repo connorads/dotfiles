@@ -1,7 +1,8 @@
 ---
 name: web-animation-design
-description: >
-  Design and implement web animations that feel natural and purposeful. Use this skill proactively whenever the user asks questions about animations, motion, easing, timing, duration, springs, transitions, or animation performance. This includes questions about how to animate specific UI elements, which easing to use, animation best practices, or accessibility considerations for motion. Triggers on: easing, ease-out, ease-in, ease-in-out, cubic-bezier, bounce, spring physics, keyframes, transform, opacity, fade, slide, scale, hover effects, microinteractions, Framer Motion, React Spring, GSAP, CSS transitions, entrance/exit animations, page transitions, stagger, will-change, GPU acceleration, prefers-reduced-motion, modal/dropdown/tooltip/popover/drawer animations, gesture animations, drag interactions, button press feel, "feels janky", "make it smooth".
+description: "Design and implement web animations that feel natural and purposeful. Use this skill proactively whenever the user asks questions about animations, motion, easing, timing, duration, springs, transitions, or animation performance. This includes questions about how to animate specific UI elements, which easing to use, animation best practices, or accessibility considerations for motion. Triggers on: easing, ease-out, ease-in, ease-in-out, cubic-bezier, bounce, spring physics, keyframes, transform, opacity, fade, slide, scale, hover effects, microinteractions, Framer Motion, React Spring, GSAP, CSS transitions, entrance/exit animations, page transitions, stagger, will-change, GPU acceleration, prefers-reduced-motion, modal/dropdown/tooltip/popover/drawer animations, gesture animations, drag interactions, button press feel, feels janky, make it smooth."
+metadata:
+  short-description: Design and implement web animations that feel natural and purposeful
 ---
 
 # Web Animation Design
@@ -11,6 +12,7 @@ A comprehensive guide for creating animations that feel right, based on Emil Kow
 ## Initial Response
 
 When this skill is first invoked without a specific question, respond only with:
+
 > I'm ready to help you with animations based on Emil Kowalski's animations.dev course.
 
 Do not provide any other information until the user asks a question.
@@ -19,13 +21,14 @@ Do not provide any other information until the user asks a question.
 
 When reviewing animations, you MUST use a markdown table. Do NOT use a list with "Before:" and "After:" on separate lines. Always output an actual markdown table like this:
 
-| Before                                | After                                           |
-| ------------------------------------- | ----------------------------------------------- |
-| `transform: scale(0)`                 | `transform: scale(0.95)`                        |
-| `animation: fadeIn 400ms ease-in`     | `animation: fadeIn 200ms ease-out`              |
-| No reduced motion support             | `@media (prefers-reduced-motion: reduce) {...}` |
+| Before                            | After                                           |
+| --------------------------------- | ----------------------------------------------- |
+| `transform: scale(0)`             | `transform: scale(0.95)`                        |
+| `animation: fadeIn 400ms ease-in` | `animation: fadeIn 200ms ease-out`              |
+| No reduced motion support         | `@media (prefers-reduced-motion: reduce) {...}` |
 
 Wrong format (never do this):
+
 ```
 Before: transform: scale(0)
 After: transform: scale(0.95)
@@ -104,32 +107,39 @@ Elements that animate together must use the same easing and duration. Modal + ov
 
 ```css
 /* Both use the same timing */
-.modal { transition: transform 200ms ease-out; }
-.overlay { transition: opacity 200ms ease-out; }
+.modal {
+  transition: transform 200ms ease-out;
+}
+.overlay {
+  transition: opacity 200ms ease-out;
+}
 ```
 
 ## Timing and Duration
 
-### Duration Guidelines
+## Duration Guidelines
 
 | Element Type                      | Duration  |
 | --------------------------------- | --------- |
 | Micro-interactions                | 100-150ms |
 | Standard UI (tooltips, dropdowns) | 150-250ms |
 | Modals, drawers                   | 200-300ms |
-| Page transitions                  | 300-400ms |
 
-**Rule:** UI animations should stay under 300ms. Larger elements animate slower than smaller ones.
+**Rules:**
+- UI animations should stay under 300ms
+- Larger elements animate slower than smaller ones
+- Exit animations can be ~20% faster than entrance
+- Match duration to distance - longer travel = longer duration
 
-### The Frequency Principle
+### The Frequency
 
 Determine how often users will see the animation:
 
 - **100+ times/day** → No animation (or drastically reduced)
 - **Occasional use** → Standard animation
-- **Rare/first-time** → Can add delight
+- **Rare/first-time** → Can be more special
 
-**Example:** Raycast never animates its menu toggle because users open it hundreds of times daily.
+**Example:** Raycast never animates because users open it hundreds of times a day.
 
 ## When to Animate
 
