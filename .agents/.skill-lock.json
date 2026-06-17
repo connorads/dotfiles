@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "skills": {
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/microsoft/playwright-cli.git",
+      "skillPath": "skills/playwright-cli/SKILL.md",
+      "skillFolderHash": "6bf055ae36a2460e4a8f70eaec772ab7ac7e12e4",
+      "installedAt": "2026-06-17T14:05:06.891Z",
+      "updatedAt": "2026-06-17T14:05:06.891Z"
+    }
+  },
+  "dismissed": {}
+}
