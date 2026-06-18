@@ -43,11 +43,11 @@ enabled = true
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
 
-[plugins."browser@openai-bundled"]
-enabled = true
-
 [plugins."pdf@openai-primary-runtime"]
 enabled = true
 
 [plugins."telegram@claude-plugins-official"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
 enabled = true
