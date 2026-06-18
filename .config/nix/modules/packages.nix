@@ -52,6 +52,7 @@ let
     bat
 
     # Networking
+    wget
     tailscale
 
     # Dev tools
