@@ -124,6 +124,7 @@ let
 
     # Web browsing
     w3m
+    monolith
 
     # Networking & security
     rustscan
