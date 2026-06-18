@@ -151,6 +151,7 @@ name can differ — gotchas below).
 | `vercel-labs/open-agents` | trusted (Vercel org) — `--skill web-animation-design` (Emil Kowalski derivative; keep out of `public/`) |
 | `cursor/plugins` | trusted (official Cursor) — large monorepo; `--skill thermo-nuclear-code-quality-review` (skillPath `cursor-team-kit/skills/…`) |
 | `marimo-team/skills` | trusted (official) — `--skill marimo-notebook` (was vendored as `marimo`; upstream renamed) |
+| `callstack/agent-device` | trusted (Callstack, 2.8k★, MIT) — `--skill agent-device` (router-only; needs `npm:agent-device ≥0.14.0` CLI, in mise). Repo also has `dogfood`. |
 | `leonxlnx/taste-skill` | **third-party, unvetted author** — design pack: `design-taste-frontend`, `high-end-visual-design`, `minimalist-ui`, `redesign-existing-projects`. Diff-review every refresh. |
 
 Gotchas: `firecrawl/cli` → `--skill firecrawl-cli`; `remotion-dev/skills` → `--skill
