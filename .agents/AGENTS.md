@@ -34,6 +34,7 @@ Be concise: interactions, PRs and commit messages. Sacrifice grammar for concisi
 - A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
 - Commit after each coherent unit rather than batching unrelated work.
 - Before amending, check whether the commit was pushed with `git log @{u}.. --oneline`; amend only unpushed commits.
+- Never stage with `git add -A`/`--all`/`.` (also denied in settings); they sweep in unintended changes. Stage explicit paths instead.
 
 ## Verification
 
