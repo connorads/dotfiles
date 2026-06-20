@@ -53,7 +53,8 @@ Then `dotfiles add .newfile` works without `-f`.
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [modules/biokc.nix](./.config/nix/modules/biokc.nix)                   | Builds `biokc` (Touch ID keychain helper) from [`main.swift`](./.config/nix/biokc/main.swift) via system swiftc; desktop-only. Used by gh-gate to fingerprint-gate the key |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
-| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/rc`       |
+| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/config.yaml` (pnpm 11, YAML) |
+| [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
 | [.config/aube/config.toml](./.config/aube/config.toml)                 | aube quarantine + trustPolicy + low-download gate + advisoryBloomCheck. Primary npm backend for mise (`npm.package_manager = "aube"`) |
 | [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
@@ -216,9 +217,9 @@ mise outdated                               # available updates within ranges
 mise outdated --bump                        # available updates beyond ranges
 ```
 
-**pnpm**: global 4-day quarantine (`minimum-release-age=5760`) + trust policy (`trust-policy=no-downgrade`) in `~/.config/pnpm/rc`. Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise).
+**pnpm** (v11): global 4-day quarantine (`minimumReleaseAge: 5760`) + trust policy (`trustPolicy: no-downgrade`) + `ignoreScripts: true` in `~/.config/pnpm/config.yaml` (YAML, camelCase). Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise). **v11 reads pnpm settings only from YAML** (`pnpm-workspace.yaml` / global `config.yaml`), never `.npmrc`/`rc` — the old `~/.config/pnpm/rc` is an inert v10 fallback. **macOS gotcha**: pnpm reads its global config from the native dir `~/Library/Preferences/pnpm/`, not `~/.config/pnpm/`, so the dotfile is symlinked there via nix (`home.file."Library/Preferences/pnpm/config.yaml"` in [darwin-shared.nix](./.config/nix/modules/darwin-shared.nix), `mkOutOfStoreSymlink` → the tracked `~/.config/pnpm/config.yaml`). Linux reads `~/.config/pnpm/config.yaml` natively. `blockExoticSubdeps` defaults `true` in v11 (left implicit).
 
-**npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimum-release-age` in **minutes** (5760 = 4 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
+**npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimumReleaseAge` in **minutes** (5760 = 4 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
 
 **uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
 
@@ -236,15 +237,15 @@ Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.
 
 **bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global.
 
-**Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `~/.config/pnpm/rc`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
+**Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `ignoreScripts: true` in `~/.config/pnpm/config.yaml`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
-pnpm 10 already defaults to this; the rc setting is belt-and-braces. npm has no equivalent default, so the rc setting is the meaningful change there.
+pnpm 11 blocks build scripts by default (`allowBuilds`); the `ignoreScripts` setting is belt-and-braces. npm has no equivalent default, so the rc setting is the meaningful change there.
 
 Native modules and codegen need scripts to build. When a project errors out:
 
 1. **Ask the user before allow-listing.** Security decision is theirs, not the agent's.
 2. With approval, allow-list specifically:
-   - **pnpm**: `pnpm approve-builds` (interactive) or add to `onlyBuiltDependencies` in the project's `package.json`.
+   - **pnpm** (v11): `pnpm approve-builds` (interactive) or add to `allowBuilds` (in `pnpm-workspace.yaml` / `package.json#pnpm`).
    - **npm**: project-level `.npmrc` with `ignore-scripts=false` (no per-package primitive exists).
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
