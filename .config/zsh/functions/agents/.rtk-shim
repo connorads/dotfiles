@@ -21,6 +21,8 @@ _clean_path() {
 # - cat: rtk read requires a FILE arg, breaks stdin/heredoc (e.g. $(cat <<'EOF'...))
 # - git write ops: RTK corrupts COMMIT_EDITMSG during hooks; stash/push/pull are
 #   called internally by hook runners (hk) and must pass through cleanly
+# RTK's changelog claims fixes for these (cat multi-file + git stdin in 0.35), so
+# the carve-outs may be relaxable on current RTK — kept as backstops until verified.
 _should_bypass() {
   case "$cmd" in
     cat) return 0 ;;

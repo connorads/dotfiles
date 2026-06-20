@@ -39,7 +39,9 @@ done
 local shim_dir="$HOME/.local/lib/rtk-shims"
 local shim_source="$HOME/.config/zsh/functions/agents/.rtk-shim"
 
-# Full command list from RTK src/discover/rules.rs (v0.31.0)
+# Manual mirror of RTK's wrapped-command set (src/discover/rules.rs). Covers the
+# commands actually used here (verified via `rtk discover`); re-sync only if discover
+# later flags a new high-volume command RTK handles.
 local -a RTK_COMMANDS=(
   git gh cargo pnpm npm npx cat rg grep ls find tsc eslint biome prettier
   vitest jest playwright prisma docker kubectl tree diff curl wget mypy ruff pytest
