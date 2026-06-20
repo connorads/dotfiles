@@ -432,15 +432,18 @@ _gh_gate_status() {
   _gh_gate_load_config || return 1
   _gh_gate_resolve_target "${1:-}" || return 1
 
+  # POSIX remote check: EPOCHSECONDS is zsh/bash-only and comes back empty over
+  # plain ssh (→ 0 < expiry → false "active"); date +%s is portable.
   local result
   result=$(ssh "$target" '
-    if [[ -r ~/.config/gh-gate/active-token ]]; then
-      if [[ -r ~/.config/gh-gate/active-token-expires ]] && (( EPOCHSECONDS < $(<~/.config/gh-gate/active-token-expires) )); then
-        echo "write:active"
-      else
-        echo "write:expired"
-      fi
-    elif [[ -r ~/.config/gh-gate/readonly-token ]]; then
+    d="$HOME/.config/gh-gate"
+    if [ -r "$d/active-token" ]; then
+      exp=$(cat "$d/active-token-expires" 2>/dev/null)
+      case "$exp" in
+        ""|*[!0-9]*) echo "write:expired" ;;
+        *) if [ "$(date +%s)" -lt "$exp" ]; then echo "write:active"; else echo "write:expired"; fi ;;
+      esac
+    elif [ -r "$d/readonly-token" ]; then
       echo "readonly"
     else
       echo "none"
