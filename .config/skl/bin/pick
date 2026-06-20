@@ -33,7 +33,7 @@ pane="${1-}"
 # --expect makes fzf print the accepting key on line 1, selections after — the
 # glue routes on it rather than piping fzf straight into `skl load`.
 out=$(skl list \
-  | fzf --reverse --multi --scheme=path \
+  | fzf --reverse --multi --scheme=path --no-hscroll \
       --preview 'skl preview {1}' \
       --preview-window 'right,60%,wrap' \
       --header 'tab: mark · enter: load · ctrl-y: copy · esc: cancel' \
