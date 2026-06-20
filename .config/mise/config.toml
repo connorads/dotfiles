@@ -15,7 +15,7 @@ PNPM_HOME = "{{env.HOME}}/.local/share/pnpm"
 [tools]
 python = "3.14"
 node = "lts"
-pnpm = "10"
+pnpm = "11"
 bun = "1.3"
 aube = "1"
 uv = "0.9"
