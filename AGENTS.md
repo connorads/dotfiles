@@ -51,6 +51,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | File                                                                   | Purpose                                                                                   |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
+| [modules/biokc.nix](./.config/nix/modules/biokc.nix)                   | Builds `biokc` (Touch ID keychain helper) from [`main.swift`](./.config/nix/biokc/main.swift) via system swiftc; desktop-only. Used by gh-gate to fingerprint-gate the key |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/rc`       |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
@@ -67,7 +68,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper that reads gh-gate tokens dynamically (not a symlink)                        |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
-| [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup)                     |
+| [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
 | [.rtk-shim](./.config/zsh/functions/agents/.rtk-shim)                  | RTK shim script: intercepts commands in agent contexts for token reduction                |
 | [rtk-shims](./.config/zsh/functions/agents/rtk-shims)                  | Manager for RTK shim symlinks in `~/.local/lib/rtk-shims/`                               |
 
