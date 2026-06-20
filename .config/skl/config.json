@@ -1,7 +1,7 @@
 {
   "paths": [
-    { "path": "~/.config/skills/public", "name": "mine" },
-    { "path": "~/.config/skills/private", "name": "private" },
+    { "path": "~/.config/skills/public", "name": "public" },
+    { "path": "~/.config/skills/personal", "name": "personal" },
     { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" }
   ]
 }

@@ -30,7 +30,7 @@ CLI's two scopes *are* our two managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/private` (authored) + `vendor/.agents/skills` (vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored) + `vendor/.agents/skills` (vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
@@ -45,29 +45,29 @@ then `skillsync` (`skills add -g` clones a *second* copy into the dotfiles-track
 
 ```text
 1. Provenance → home.
-     authored   → ~/.config/skills/{public|private}   (plain dirs, you edit in place)
+     authored   → ~/.config/skills/{public|personal}  (plain dirs, you edit in place)
      third-party→ ~/.config/skills/vendor             (skills CLI, project scope)
 2. Keep?  off-domain / unused / redundant → REMOVE (reinstall from upstream later).
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
 5. + Global autoload iff broad AND must-auto-fire AND regular. Vendored: `skills add -g`.
      Authored: symlink into ~/.agents/skills + `skillsync`. Current: architecture, typescript, playwright-cli.
-6. Authored publishable? ~/skills (future connorads/skills) : private/ (personal, never public).
+6. Authored publishable? ~/skills (future connorads/skills) : personal/ (never public).
 ```
 
 Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-specific),
 **trigger mode** (auto-fire vs deliberate), **provenance** (authored/vendored),
-**publishability** (public/private).
+**publishability** (public/personal).
 
 ## Layout
 
 ```text
-~/skills/<name>/           authored PUBLIC, real files · skl source 'mine' (via symlink) · → future connorads/skills
+~/skills/<name>/           authored PUBLIC, real files · skl source 'public' (via symlink) · → future connorads/skills
 
 ~/.config/skills/
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
   public                   → symlink to ../../skills (compat: skl/autoload/refs resolve through it)
-  private/<name>/          authored, personal       · skl source 'private'
+  personal/<name>/         authored, personal       · skl source 'personal'
   vendor/                  third-party "project"     · skl source 'vendor'
     .agents/skills/<name>/ real vendored files (CLI-managed, project scope)
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
@@ -85,8 +85,8 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 
 ```json
 { "paths": [
-  { "path": "~/.config/skills/public",                "name": "mine" },
-  { "path": "~/.config/skills/private",               "name": "private" },
+  { "path": "~/.config/skills/public",                "name": "public" },
+  { "path": "~/.config/skills/personal",              "name": "personal" },
   { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" }
 ] }
 ```
@@ -96,10 +96,10 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 ### Add an authored skill
 
 Create `<name>/SKILL.md` (+ supporting files): public skills in `~/skills/<name>/` (their
-real home, symlinked from `.config/skills/public`), private in
-`~/.config/skills/private/<name>/`. Public iff shareable with no personal refs; private
+real home, symlinked from `.config/skills/public`), personal in
+`~/.config/skills/personal/<name>/`. Public iff shareable with no personal refs; personal
 otherwise. No CLI, no lockfile — you edit in place. `skl <name>` finds it immediately.
-The `.gitignore` un-ignore is already in place for `~/skills/**`, `private/**`, `vendor/**`;
+The `.gitignore` un-ignore is already in place for `~/skills/**`, `personal/**`, `vendor/**`;
 new top-level files need their own un-ignore before `dotfiles add`.
 
 ### Add / vendor a third-party skill
@@ -155,8 +155,8 @@ is pointless on your own code anyway. The symlink keeps **one** real copy in `~/
 so authored autoloads are absent from the global lockfile by design — which is also why
 `skills update -g` (playwright) never clobbers them.
 
-Caveat for a *private* authored autoload: dotfiles are public, so its installed copy needs
-gitignoring — and "private + autoloaded everywhere" cuts against the keep-autoload-small
+Caveat for a *personal* authored autoload: dotfiles are public, so its installed copy needs
+gitignoring — and "personal + autoloaded everywhere" cuts against the keep-autoload-small
 philosophy anyway.
 
 ## Validated vendor sources
@@ -225,7 +225,7 @@ mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs remov
 - **Hard-deprecating skillsync** (CLI for everything; delete skillsync) — rejected: it's the
   active path for authored autoload. Public authored skills do live in a repo now
   (`connorads/dotfiles`), but routing them through `skills add -g` means a clone-back
-  round-trip + a duplicate copy committed back into the repo they came from, and *private*
+  round-trip + a duplicate copy committed back into the repo they came from, and *personal*
   authored skills live in no public repo, so the CLI can't reach them at all. skillsync
   symlinks the real files in place — one copy, no round-trip.
 

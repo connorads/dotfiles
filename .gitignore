@@ -77,8 +77,8 @@
 !/.config/skills/CLAUDE.md
 # public is a compat symlink → ../../skills (real files live at ~/skills)
 !/.config/skills/public
-!/.config/skills/private/
-!/.config/skills/private/**
+!/.config/skills/personal/
+!/.config/skills/personal/**
 !/.config/skills/vendor/
 !/.config/skills/vendor/**
 
