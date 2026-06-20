@@ -54,6 +54,17 @@ class TestIsMutatingGhApi:
             "gh api repos/foo/bar/rulesets --input payload.json",
             "gh api repos/foo/bar/rulesets --input=payload.json",
             "gh api repos/foo/bar/issues/1/comments --input -",
+            # A GET in one sub-command must not mask an implicit POST in another
+            "gh api /user -X GET && gh api repos/foo/bar/issues -f body=hi",
+            "gh api /user --method GET; gh api repos/foo/bar/issues --field title=bug",
+            "gh api /user -X GET | gh api repos/foo/bar/issues -f body=hi",
+            # An explicit mutating method anywhere in a compound line is flagged
+            "gh api /user -X GET && gh api repos/foo/bar -X POST",
+            # A method substring inside a quoted value is not a flag
+            "gh api repos/foo/bar/issues -f body='see -X GET docs'",
+            'gh api repos/foo/bar/issues -f body="use --method GET"',
+            # Body-param flag glued to its value (pflag shorthand) still POSTs
+            "gh api repos/foo/bar/issues -fbody=hi",
         ],
     )
     def test_detects_mutating_calls(self, command: str) -> None:
