@@ -34,16 +34,14 @@ fi
 
 typeset -A paths=(
   [amp]="$HOME/.config/agents/skills"
-  [antigravity]="$HOME/.gemini/antigravity/global_skills"
   [claude-code]="$HOME/.claude/skills"
   [codex]="$HOME/.codex/skills"
-  [cursor]="$HOME/.cursor/skills"
-  [gemini-cli]="$HOME/.gemini/skills"
-  [github-copilot]="$HOME/.copilot/skills"
-  [kiro-cli]="$HOME/.kiro/skills"
   [opencode]="$HOME/.config/opencode/skills"
   [pi]="$HOME/.pi/agent/skills"
 )
+# Fan-out is scoped to agents in regular use. cursor/gemini/kiro/copilot were
+# dropped: they cluttered $HOME with skills dirs (and husk parent dirs) for
+# tools not used. Re-add a line here to opt an agent back in.
 
 # nullglob (N): the canonical dir may legitimately be empty (autoload-none).
 # (-/): match directories, following symlinks — authored skills are symlinked
