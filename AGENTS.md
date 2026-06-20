@@ -81,7 +81,7 @@ Most functions in `~/.config/zsh/functions/` are **dual-mode**: they work as zsh
 
 **File structure:**
 
-```
+```text
 #!/usr/bin/env zsh           # ← present = dual-mode (PATH command)
 # <name>: <purpose>
 # alias: <alias>             # if applicable
@@ -141,7 +141,7 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 
 ## Nix Targets
 
-```
+```text
 darwinConfigurations."Connors-Mac-mini"     # macOS Mac mini via nix-darwin + home-manager
 darwinConfigurations."Connors-MacBook-Air"  # macOS MacBook Air via nix-darwin + home-manager
 homeConfigurations."connor@penguin"         # Chromebook Linux
@@ -197,6 +197,7 @@ gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
 gh-gate grant          # Push 1-hour write token to dev (from host machine)
 gh-gate revoke         # Revoke write token, restore read-only on dev
 gh-gate status         # Check token state on dev
+gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
 rtk-shims sync         # Create/update RTK agent shims (default)
 rtk-shims list         # Show current shims with status
 rtk-shims clean        # Remove all shims and the directory
