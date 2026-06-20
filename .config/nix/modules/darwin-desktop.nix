@@ -53,7 +53,7 @@
       "cmux"
       "codex-app"
       "blender"
-      "comfyui"
+      "comfy"
       "gimp"
       "lm-studio"
       "obsidian"
@@ -97,7 +97,7 @@
       "knockknock"
       "slack"
       "microsoft-teams"
-      "linear-linear"
+      "linear"
       "miro"
 
       "blackhole-16ch"
