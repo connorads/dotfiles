@@ -10,6 +10,9 @@ permissionDecision: "ask" so the user is prompted for confirmation.
 gh api switches from GET to POST implicitly when body params or --input are present,
 so `gh api repos/o/r/issues/1/comments -f body='hi'` would POST without -X.
 
+An explicit `-X GET`/`--method GET` overrides that inference (params become query
+string), so `gh api path -X GET -f ref=x` is treated as read-only and not flagged.
+
 Exit codes:
   0 - Always
 
@@ -41,6 +44,10 @@ METHOD_FLAG_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Explicit GET overrides the implicit-POST inference below: `gh api path -X GET -f ref=x`
+# keeps body params as query string and stays a read, so it must not be flagged.
+GET_METHOD_FLAG_RE = re.compile(r"(?:-X\s*|--method[\s=])GET\b", re.IGNORECASE)
+
 # Flags that cause gh api to implicitly use POST instead of GET.
 # -f/--raw-field and -F/--field add body params; --input pipes a body from file/stdin.
 # See: gh api source pkg/cmd/api/api.go — method defaults to POST when params or input present.
@@ -61,6 +68,8 @@ def is_mutating_gh_api(command: str) -> bool:
         return False
     if METHOD_FLAG_RE.search(command) is not None:
         return True
+    if GET_METHOD_FLAG_RE.search(command) is not None:
+        return False
     return IMPLICIT_POST_RE.search(command) is not None
 
 
