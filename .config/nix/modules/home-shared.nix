@@ -23,7 +23,9 @@
       pull.rebase = true;
       push.autoSetupRemote = true;
       rebase.autosquash = true;
+      rebase.updateRefs = true;
       fetch.prune = true;
+      fetch.writeCommitGraph = true;
       diff.algorithm = "histogram";
       diff.colorMoved = "default";
       merge.conflictStyle = "zdiff3";
