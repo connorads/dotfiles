@@ -20,15 +20,18 @@ if [ -z "$HK_BIN" ]; then
   exit 1
 fi
 
-TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-hk.XXXXXX")" || exit 1
-
-cleanup() {
-  rm -rf "$TMP_REPO"
-}
-trap cleanup EXIT INT TERM
-
-printf 'gitdir: %s\n' "$HOME/git/dotfiles" > "$TMP_REPO/.git" || exit 1
-ln -s "$HOME/hk.pkl" "$TMP_REPO/hk.pkl" || exit 1
-
-cd "$TMP_REPO" || exit 1
+# Run hk from the real work-tree ($HOME). A previous tmpdir approach (a gitdir
+# pointer + hk.pkl symlink, then cd into the tmpdir) made hk resolve staged
+# files relative to that tmpdir, so only the symlinked hk.pkl was ever checked
+# and every dot-path file — i.e. almost the entire repo — was silently skipped.
+# core.worktree is already $HOME and hk.pkl lives at $HOME/hk.pkl, so running
+# from $HOME is correct and simpler.
+#
+# HK_STASH_UNTRACKED=false: the work-tree is $HOME, so skip hk's untracked-file
+# scan, which would otherwise walk all of $HOME (tens of seconds) — see hk docs
+# on YADM-style repos where GIT_WORK_TREE is $HOME.
+cd "$HOME" || exit 1
+export GIT_DIR="$HOME/git/dotfiles"
+export GIT_WORK_TREE="$HOME"
+export HK_STASH_UNTRACKED=false
 exec "$HK_BIN" run pre-commit "$@"
