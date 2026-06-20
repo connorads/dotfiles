@@ -113,14 +113,4 @@
     ensure_tmux_plugin "tmux-cpu" "connorads/tmux-cpu"
     ensure_tmux_plugin "tmux-fzf-links" "connorads/tmux-fzf-links"
   '';
-
-  home.activation.rtkShims = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    rtk_shims="$HOME/.config/zsh/functions/agents/rtk-shims"
-    if [ -f "$rtk_shims" ]; then
-      ${pkgs.zsh}/bin/zsh "$rtk_shims" sync || \
-        echo "warning: rtk-shims sync failed during activation" >&2
-    else
-      echo "warning: rtk-shims script not found at $rtk_shims; skipping shim sync" >&2
-    fi
-  '';
 }
