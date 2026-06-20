@@ -391,9 +391,12 @@ _gh_gate_grant() {
     return 1
   fi
 
-  # Convert ISO 8601 expires_at to epoch (portable: macOS + GNU date)
+  # Convert ISO 8601 expires_at to epoch (portable: macOS + GNU date).
+  # TZ=UTC is required: BSD date treats the literal "Z" as local time, so
+  # without it the epoch is off by the local UTC offset and the token reads as
+  # already-expired in non-UTC zones.
   local expires_epoch
-  expires_epoch=$(date -d "$expires_at" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null)
+  expires_epoch=$(TZ=UTC date -d "$expires_at" +%s 2>/dev/null || TZ=UTC date -jf "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null)
 
   print -r "Pushing write token to ${target}..."
   ssh "$target" 'umask 077 && mkdir -p ~/.config/gh-gate' || {
