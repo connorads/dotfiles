@@ -95,17 +95,16 @@
             # builds are untouched (MLX default is already empty off Apple arm64).
             # Remove once nixpkgs handles MLX on darwin — nixpkgs regression @
             # cbb5cf3, see nixpkgs#463131 / ollama#13460.
-            (final: prev:
-              prev.lib.optionalAttrs
-                (prev.stdenv.hostPlatform.isDarwin && prev.stdenv.hostPlatform.isAarch64)
-                {
-                  ollama = prev.ollama.overrideAttrs (old: {
-                    preBuild = builtins.replaceStrings
-                      [ "cmake -B build \\" ]
-                      [ "cmake -B build -DOLLAMA_MLX_BACKENDS=\"\" \\" ]
+            (
+              final: prev:
+              prev.lib.optionalAttrs (prev.stdenv.hostPlatform.isDarwin && prev.stdenv.hostPlatform.isAarch64) {
+                ollama = prev.ollama.overrideAttrs (old: {
+                  preBuild =
+                    builtins.replaceStrings [ "cmake -B build \\" ] [ "cmake -B build -DOLLAMA_MLX_BACKENDS=\"\" \\" ]
                       old.preBuild;
-                  });
-                })
+                });
+              }
+            )
           ];
         };
 
@@ -202,22 +201,21 @@
         )
       ];
 
-      # Force-evaluate all configurations to catch typos and broken imports
+      # Force-evaluate every configuration to catch typos and broken imports
       # without a full rebuild: nix flake check --flake ~/.config/nix
-      checks = {
-        aarch64-darwin = {
-          darwin-mini = self.darwinConfigurations."Connors-Mac-mini".system;
-          darwin-air = self.darwinConfigurations."Connors-MacBook-Air".system;
-        };
-        x86_64-linux = {
-          penguin = self.homeConfigurations."connor@penguin".activationPackage;
-          codespace = self.homeConfigurations."codespace".activationPackage;
-        };
-        aarch64-linux = {
-          dev = self.homeConfigurations."connor@dev".activationPackage;
-          rpi5 = self.homeConfigurations."connor@rpi5".activationPackage;
-        };
-      };
+      # Derived from the config sets so adding a host can't silently escape the
+      # check: darwinConfigurations contribute their .system, homeConfigurations
+      # their .activationPackage, each bucketed under the derivation's platform.
+      checks =
+        let
+          builds =
+            (nixpkgs.lib.mapAttrs (_name: cfg: cfg.system) self.darwinConfigurations)
+            // (nixpkgs.lib.mapAttrs (_name: cfg: cfg.activationPackage) self.homeConfigurations);
+        in
+        nixpkgs.lib.foldlAttrs (
+          acc: name: drv:
+          nixpkgs.lib.recursiveUpdate acc { ${drv.system}.${name} = drv; }
+        ) { } builds;
 
     };
 }
