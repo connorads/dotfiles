@@ -35,9 +35,10 @@ Setup:
      - Install on your account
      - Note the App ID and Installation ID
 
-  2. Store the private key:
-     macOS:  security add-generic-password -a "$USER" -s "gh-gate" \
-               -w "$(<gh-gate-private-key.pem)" -T "" -U
+  2. Store the private key (handled automatically by 'gh-gate setup'):
+     macOS:  via biokc when present (Touch ID-gated), else security(1):
+               security add-generic-password -a "$USER" -s "gh-gate" \
+                 -w "$(<gh-gate-private-key.pem)" -T "" -U
      Linux:  mkdir -p ~/.config/gh-gate && chmod 700 ~/.config/gh-gate
              cp gh-gate-private-key.pem ~/.config/gh-gate/private-key.pem
              chmod 600 ~/.config/gh-gate/private-key.pem
@@ -63,6 +64,10 @@ Permissions:
 
 Security:
   - Private key never leaves the host machine (macOS Keychain / local file)
+  - On the desktop the key is Touch ID-gated via biokc: the keychain item ACL is
+    pinned to the read-only, root-owned biokc binary, and biokc only releases the
+    key after a successful fingerprint. Changing biokc's source re-keys the item,
+    so re-run 'gh-gate setup' after that. See modules/biokc.nix in the nix config.
   - Write tokens expire after 1 hour automatically
   - App permissions are an absolute ceiling for generated tokens
   - Emergency: uninstall the app at https://github.com/settings/installations
@@ -183,12 +188,23 @@ _gh_gate_setup() {
   # Step 5: Store the PEM (only after auth succeeded)
   mkdir -p "$config_dir" && chmod 700 "$config_dir"
   if [[ "$(uname -s)" == "Darwin" ]]; then
-    security add-generic-password -a "$USER" -s "gh-gate" \
-      -w "$(<"$pem_path")" -T "" -U || {
-      print -r "Error: failed to store key in Keychain" >&2
-      return 1
-    }
-    print -r "Private key stored in macOS Keychain"
+    local biokc_bin
+    biokc_bin=$(_gh_gate_biokc_bin)
+    if [[ -n "$biokc_bin" ]]; then
+      # biokc owns the item ACL and gates reads behind Touch ID.
+      "$biokc_bin" set gh-gate "$USER" < "$pem_path" || {
+        print -r "Error: failed to store key via biokc" >&2
+        return 1
+      }
+      print -r "Private key stored in macOS Keychain (Touch ID-gated via biokc)"
+    else
+      security add-generic-password -a "$USER" -s "gh-gate" \
+        -w "$(<"$pem_path")" -T "" -U || {
+        print -r "Error: failed to store key in Keychain" >&2
+        return 1
+      }
+      print -r "Private key stored in macOS Keychain"
+    fi
   else
     cp "$pem_path" "${config_dir}/private-key.pem"
     chmod 600 "${config_dir}/private-key.pem"
@@ -245,18 +261,38 @@ _gh_gate_resolve_target() {
   print -r "Target: ${target}" >&2
 }
 
+# Absolute path to the Touch ID keychain helper, or empty if unavailable. The
+# desktop nix-darwin config installs biokc into the read-only system profile;
+# callers fall back to the plain `security` keychain path when it's absent (other
+# machines, non-biometric hosts). Absolute path defeats PATH-shadowing.
+_gh_gate_biokc_bin() {
+  local b=/run/current-system/sw/bin/biokc
+  [[ -x "$b" ]] && print -r -- "$b"
+}
+
 _gh_gate_get_pem() {
   local pem
   if [[ "$(uname -s)" == "Darwin" ]]; then
-    # macOS: retrieve from Keychain (triggers Touch ID / password prompt)
-    pem=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
-      print -r "Error: PEM not found in Keychain (service: gh-gate)" >&2
-      print -r "Run 'gh-gate setup' to configure" >&2
-      return 1
-    }
-    # `security -w` hexdumps multi-line secrets (a PEM has newlines); decode if so.
-    if [[ "$pem" =~ '^[0-9a-fA-F]+$' ]]; then
-      pem=$(printf '%s' "$pem" | xxd -r -p)
+    local biokc_bin
+    biokc_bin=$(_gh_gate_biokc_bin)
+    if [[ -n "$biokc_bin" ]]; then
+      # Touch ID-gated retrieval; biokc returns the exact stored bytes.
+      pem=$("$biokc_bin" get gh-gate "$USER") || {
+        print -r "Error: biokc could not retrieve the key (Touch ID cancelled, or key not imported?)" >&2
+        print -r "Run 'gh-gate setup' to (re)import the key" >&2
+        return 1
+      }
+    else
+      # macOS without biokc: retrieve from Keychain (password prompt)
+      pem=$(security find-generic-password -a "$USER" -s "gh-gate" -w 2>/dev/null) || {
+        print -r "Error: PEM not found in Keychain (service: gh-gate)" >&2
+        print -r "Run 'gh-gate setup' to configure" >&2
+        return 1
+      }
+      # `security -w` hexdumps multi-line secrets (a PEM has newlines); decode if so.
+      if [[ "$pem" =~ '^[0-9a-fA-F]+$' ]]; then
+        pem=$(printf '%s' "$pem" | xxd -r -p)
+      fi
     fi
   else
     local pem_file="${config_dir}/private-key.pem"
