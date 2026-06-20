@@ -67,6 +67,12 @@ class TestIsMutatingGhApi:
             "gh api /user",
             "gh api repos/foo/bar -X GET",
             "gh api repos/foo/bar --method GET",
+            # Explicit GET overrides implicit-POST inference from body params
+            "gh api repos/foo/bar -X GET -f ref=v1",
+            "gh api -X GET repos/foo/bar -f ref=v1",
+            "gh api repos/foo/bar -XGET -f ref=v1",
+            "gh api repos/foo/bar --method GET -f ref=v1",
+            "gh api repos/foo/bar --method=GET --field ref=v1",
             "gh api --help",
             "gh api repos/foo/bar --paginate",
             "gh api repos/foo/bar -H 'Accept: application/json'",
