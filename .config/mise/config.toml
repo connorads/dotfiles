@@ -41,8 +41,6 @@ fnox = "1"
 
 "aqua:anomalyco/opencode" = "1"
 
-# Exact-pinned: the github backend builds a wrong tag from ranges (0.42 -> rtk-ai/rtk@0.42, not v0.42.4)
-"github:rtk-ai/rtk" = "0.42.4"
 "github:ogulcancelik/herdr" = "0.6.0"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2.0.21", bin = "cos", prerelease = true }
