@@ -44,6 +44,17 @@ disk_percentage() {
 	fi
 }
 
+iso_to_epoch() {
+	local iso="$1"
+	[ -n "$iso" ] || {
+		echo 0
+		return
+	}
+	local normalised
+	normalised=$(printf '%s\n' "$iso" | sed -E 's/\.[0-9]+//; s/Z$/+0000/; s/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
+	date -d "$iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$normalised" +%s 2>/dev/null || echo 0
+}
+
 git_branch_and_dirty() {
 	local branch
 	local dirty
@@ -188,8 +199,7 @@ ai_usage() {
 		resets_at=$(jq -r '.five_hour.resets_at // empty' "$claude_cache" 2>/dev/null)
 		if [ -n "$resets_at" ]; then
 			local reset_ts
-			reset_ts=$(date -d "$resets_at" +%s 2>/dev/null ||
-				date -j -f "%Y-%m-%dT%H:%M:%S" "${resets_at%%.*}" +%s 2>/dev/null || echo 0)
+			reset_ts=$(iso_to_epoch "$resets_at")
 			claude_remaining_secs=$((reset_ts - now))
 			[ "$claude_remaining_secs" -lt 0 ] && claude_remaining_secs=0
 			if [ "$claude_remaining_secs" -eq 0 ] && [ "$claude_cache_age" -ge "$ttl" ]; then

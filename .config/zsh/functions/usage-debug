@@ -33,11 +33,11 @@ _age() {
 _lock_pid() {
   local lockdir="$1"
   local pid_file="$lockdir/pid"
-  [[ -f "$pid_file" ]] || { echo "-"; return; }
+  [[ -f "$pid_file" ]] || { print -r -- "-"; return; }
   local pid
   pid=$(<"$pid_file")
   [[ "$pid" == <-> ]] && { echo "$pid"; return; }
-  echo "-"
+  print -r -- "-"
 }
 
 _lock_age() {
@@ -63,7 +63,7 @@ _lock_is_live() {
 
 _fmt_secs() {
   local secs="$1"
-  [[ "$secs" -lt 0 ]] && { echo "-"; return; }
+  [[ "$secs" -lt 0 ]] && { print -r -- "-"; return; }
   local d=$((secs / 86400))
   local h=$(((secs % 86400) / 3600))
   local m=$(((secs % 3600) / 60))
@@ -78,14 +78,16 @@ _fmt_secs() {
 
 _fmt_epoch() {
   local ts="$1"
-  [[ -z "$ts" || "$ts" -le 0 ]] && { echo "-"; return; }
+  [[ -z "$ts" || "$ts" -le 0 ]] && { print -r -- "-"; return; }
   date -d "@$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || date -r "$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || echo "$ts"
 }
 
 _parse_iso_to_epoch() {
   local iso="$1"
   [[ -z "$iso" ]] && { echo 0; return; }
-  date -d "$iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${iso%%.*}" +%s 2>/dev/null || echo 0
+  local normalised
+  normalised=$(printf '%s\n' "$iso" | sed -E 's/\.[0-9]+//; s/Z$/+0000/; s/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
+  date -d "$iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$normalised" +%s 2>/dev/null || echo 0
 }
 
 _print_provider() {
@@ -104,8 +106,8 @@ _print_provider() {
   if [[ -f "$meta" ]]; then
     next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
     fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
-    http_status=$(jq -r 'if (.last_http_status // "") == "" then "-" else .last_http_status end' "$meta" 2>/dev/null || echo "-")
-    last_error=$(jq -r 'if (.last_error // "") == "" then "-" else .last_error end' "$meta" 2>/dev/null || echo "-")
+    http_status=$(jq -r 'if (.last_http_status // "") == "" then "-" else .last_http_status end' "$meta" 2>/dev/null || print -r -- "-")
+    last_error=$(jq -r 'if (.last_error // "") == "" then "-" else .last_error end' "$meta" 2>/dev/null || print -r -- "-")
     last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
   fi
 
