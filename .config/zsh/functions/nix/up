@@ -12,6 +12,9 @@ done
 
 mise upgrade
 mise upgrade claude codex --before 0d
+# Reassert the --channels patch: covers no-op upgrades (postinstall only fires
+# on an actual install) and manual paths. Idempotent, so safe alongside it.
+claude-channels-patch --reapply
 if [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi

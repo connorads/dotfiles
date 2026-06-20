@@ -33,7 +33,10 @@ codex = "latest"
 usage = "3"
 hcloud = "1"
 deno = "2"
-claude = "latest"
+# postinstall reapplies the --channels binary patch to each freshly installed
+# bundle (claude = "latest" drops an unpatched build on every update). Warns +
+# drops a marker but exits 0 on a missing needle, so an update is never blocked.
+claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 fnox = "1"
 
 "aqua:anomalyco/opencode" = "1"

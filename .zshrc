@@ -78,6 +78,11 @@ export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
 export CLAUDE_CODE_NO_FLICKER=1
 
+# Surface a stale --channels patch (needle rename) left by claude-channels-patch
+# --reapply, so an upstream flag rename can't be silently forgotten.
+[[ -f "$HOME/.cache/claude-channels-patch.stale" ]] && \
+  print -P "%F{yellow}claude-channels-patch:%f needle missing — see $HOME/.cache/claude-channels-patch.stale"
+
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
