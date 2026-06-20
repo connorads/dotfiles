@@ -285,6 +285,12 @@
         # inbound SSH login (mini is just where it surfaced first).
         home.file.".terminfo".source =
           config.lib.file.mkOutOfStoreSymlink "${config.home.profileDirectory}/share/terminfo";
+
+        # pnpm 11 reads its global config only from the macOS-native dir
+        # (~/Library/Preferences/pnpm), not ~/.config. Symlink it to the tracked
+        # dotfile so the quarantine + trust-policy settings apply on macOS.
+        home.file."Library/Preferences/pnpm/config.yaml".source =
+          config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/pnpm/config.yaml";
       };
   };
 
