@@ -248,6 +248,10 @@ _gh_gate_get_pem() {
       print -r "Run 'gh-gate setup' to configure" >&2
       return 1
     }
+    # `security -w` hexdumps multi-line secrets (a PEM has newlines); decode if so.
+    if [[ "$pem" =~ '^[0-9a-fA-F]+$' ]]; then
+      pem=$(printf '%s' "$pem" | xxd -r -p)
+    fi
   else
     local pem_file="${config_dir}/private-key.pem"
     if [[ ! -r "$pem_file" ]]; then
