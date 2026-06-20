@@ -4,6 +4,7 @@
 !/.gitattributes
 !/.npmrc
 !/.bunfig.toml
+!/.rumdl.toml
 !/hk.pkl
 
 !/.hk-hooks/
