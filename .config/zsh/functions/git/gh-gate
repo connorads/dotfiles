@@ -303,7 +303,10 @@ _gh_gate_init() {
   print -r "This step sets the read-only floor on ${target}."
   print -r ""
 
-  local pat_url="https://github.com/settings/personal-access-tokens/new?name=dev-readonly&expires_in=90&actions=read&contents=read&issues=read&pull_requests=read"
+  # Name the PAT after the target host (connor@dev -> dev-readonly, mini -> mini-readonly)
+  local host=${target##*@}
+  local pat_name="${host}-readonly"
+  local pat_url="https://github.com/settings/personal-access-tokens/new?name=${pat_name}&expires_in=90&actions=read&contents=read&issues=read&pull_requests=read"
 
   print -r "Opening GitHub to create a read-only fine-grained PAT..."
   print -r "Permissions: actions:read, contents:read, issues:read, pull_requests:read"
