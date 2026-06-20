@@ -46,8 +46,11 @@ typeset -A paths=(
 )
 
 # nullglob (N): the canonical dir may legitimately be empty (autoload-none).
+# (-/): match directories, following symlinks — authored skills are symlinked
+# into the autoload dir (real files live in ~/skills), so a plain (/) would skip
+# them and only sync real-dir clones (e.g. CLI-vendored playwright-cli).
 local skills=()
-[[ -n "$canonical" ]] && skills=("$canonical"/*(/N:t))
+[[ -n "$canonical" ]] && skills=("$canonical"/*(-/N:t))
 local created=0 pruned=0
 
 # Calculate relative path from $1 to $2
