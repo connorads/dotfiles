@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 
 # HTTP methods considered mutating
@@ -37,40 +38,100 @@ NOT_GH_API_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
 # Pattern to detect `gh api` (with optional flags before `api`)
 GH_API_RE = re.compile(r"\bgh\s+api\b")
 
-# Patterns to extract the HTTP method from -X/--method flags
-# Matches: -X POST, -XPOST, --method POST, --method=POST
+# --- Regex fallback (used only when the command can't be tokenised) ---
+# These err on the safe side: no GET override, so an unparseable command with any
+# body-param flag is still flagged. Verified behaviour (gh api --help):
+# "adding request parameters will automatically switch the request method to POST.
+#  To send the parameters as a GET query string instead, use --method GET."
 METHOD_FLAG_RE = re.compile(
     r"(?:-X\s*|--method[\s=])(" + "|".join(MUTATING_METHODS) + r")\b",
     re.IGNORECASE,
 )
-
-# Explicit GET overrides the implicit-POST inference below: `gh api path -X GET -f ref=x`
-# keeps body params as query string and stays a read, so it must not be flagged.
-GET_METHOD_FLAG_RE = re.compile(r"(?:-X\s*|--method[\s=])GET\b", re.IGNORECASE)
-
-# Flags that cause gh api to implicitly use POST instead of GET.
-# -f/--raw-field and -F/--field add body params; --input pipes a body from file/stdin.
-# See: gh api source pkg/cmd/api/api.go — method defaults to POST when params or input present.
 IMPLICIT_POST_RE = re.compile(
     r"(?:^|\s)(?:-[fF]\s+|--raw-field[\s=]|--field[\s=]|--input[\s=])"
 )
 
+# --- Token-level detection (preferred path) ---
+# A glued method flag carries its verb in one token: -XPOST, -XGET, --method=POST.
+GLUED_METHOD_RE = re.compile(r"^(?:-X|--method=)([A-Za-z]+)$", re.IGNORECASE)
+# Body-param flags glued to a value: -fkey=val, -Fkey=val (pflag shorthand), and
+# the long forms with `=`. These switch gh from GET to POST unless --method GET is set.
+GLUED_IMPLICIT_RE = re.compile(r"^(?:-[fF].|--(?:raw-field|field|input)=)")
+IMPLICIT_FLAGS = {"-f", "-F", "--field", "--raw-field", "--input"}
+
+
+def _regex_fallback(command: str) -> bool:
+    """Safe-erring detection for commands that can't be shell-tokenised."""
+    if METHOD_FLAG_RE.search(command) is not None:
+        return True
+    return IMPLICIT_POST_RE.search(command) is not None
+
+
+def _methods_and_implicit(tokens: list[str]) -> tuple[set[str], bool]:
+    """Extract HTTP method(s) and whether any body-param flag is present.
+
+    Operates on real argv tokens, so a method substring inside a quoted value
+    (e.g. -f body='see -X GET docs') is part of the value token, not a flag.
+    """
+    methods: set[str] = set()
+    implicit = False
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok in ("-X", "--method"):
+            if i + 1 < len(tokens):
+                methods.add(tokens[i + 1].upper())
+            i += 2
+            continue
+        glued = GLUED_METHOD_RE.match(tok)
+        if glued:
+            methods.add(glued.group(1).upper())
+        elif tok in IMPLICIT_FLAGS or GLUED_IMPLICIT_RE.match(tok):
+            implicit = True
+        i += 1
+    return methods, implicit
+
+
+def _count_gh_api(tokens: list[str]) -> int:
+    """Count `gh api` invocations among tokens (adjacent gh -> api)."""
+    return sum(
+        1
+        for i in range(len(tokens) - 1)
+        if tokens[i] == "gh" and tokens[i + 1] == "api"
+    )
+
 
 def is_mutating_gh_api(command: str) -> bool:
-    """Return True if command is a `gh api` call with a mutating HTTP method.
+    """Return True if command issues a mutating `gh api` request.
 
-    Detects both explicit methods (-X POST, --method DELETE) and implicit POST
-    via body-param flags (-f, -F, --field, --raw-field, --input).
+    Detects explicit methods (-X POST, --method DELETE) and implicit POST via
+    body-param flags (-f, -F, --field, --raw-field, --input). An explicit
+    -X GET / --method GET keeps body params as a query string, so it stays a read.
+
+    To avoid a GET in one sub-command masking a mutation in another, the GET
+    override is only honoured for a single `gh api` call; a compound line with a
+    body-param flag anywhere is flagged conservatively.
     """
     if NOT_GH_API_CMD_RE.search(command):
         return False
     if not GH_API_RE.search(command):
         return False
-    if METHOD_FLAG_RE.search(command) is not None:
+
+    try:
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        tokens = list(lexer)
+    except ValueError:
+        return _regex_fallback(command)
+
+    methods, implicit = _methods_and_implicit(tokens)
+    if methods & MUTATING_METHODS:
         return True
-    if GET_METHOD_FLAG_RE.search(command) is not None:
+    # Honour the GET override only when a single call owns both flags.
+    if "GET" in methods and _count_gh_api(tokens) == 1:
         return False
-    return IMPLICIT_POST_RE.search(command) is not None
+    return implicit
 
 
 def main() -> int:
