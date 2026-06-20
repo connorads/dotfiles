@@ -59,6 +59,7 @@ Prefer strong types at boundaries and avoid type-system escape hatches unless th
 Use explicit error values in domain/application logic; translate exceptions at the shell.
 Design system boundaries with observability in mind: structured logs, operation context, and relevant entity/request IDs.
 Use the `architecture` skill for domain modelling, ports/adapters, error design, observability, and hard-to-test designs.
+For TypeScript specifically — errors-as-values, branded types, domain modules, parse-don't-validate mechanics — use the `typescript` skill (`architecture` stays the language-agnostic spine).
 
 ## Enforcement
 
