@@ -1,0 +1,3 @@
+minimumReleaseAge: 5760     # 4 days (minutes); explicit ⇒ strict enforcement
+trustPolicy: no-downgrade
+ignoreScripts: true

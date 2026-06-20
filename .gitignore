@@ -163,6 +163,7 @@
 
 !/.config/pnpm/
 !/.config/pnpm/rc
+!/.config/pnpm/config.yaml
 
 !/.config/remobi/
 !/.config/remobi/remobi.config.ts
