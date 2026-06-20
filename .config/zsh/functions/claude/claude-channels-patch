@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 # claude-channels-patch: bypass tengu_harbor gate so --channels works with DISABLE_TELEMETRY=1
-# usage: claude-channels-patch [--check|--restore|--all] [path-to-claude-binary]
+# usage: claude-channels-patch [--check|--restore|--all|--reapply] [path-to-claude-binary]
+# --reapply: install-hook-friendly patch — clears the stale marker on success,
+#            but on a missing needle warns loudly, writes the marker, exits 0.
 #
 # Why: cJH() in the bundled JS returns I_("tengu_harbor", false). When telemetry is
 # disabled (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1),
@@ -20,9 +22,10 @@ while (( $# )); do
   case $1 in
     --check)   mode=check;   shift ;;
     --restore) mode=restore; shift ;;
+    --reapply) mode=reapply; shift ;;
     --all)     select_all=1; shift ;;
     --help|-h)
-      sed -n '2,10p' "${(%):-%x}"
+      sed -n '2,11p' "${(%):-%x}"
       return 0
       ;;
     *) break ;;
@@ -76,6 +79,34 @@ if (( ${#targets} == 0 )); then
   return 1
 fi
 
+local marker="$HOME/.cache/claude-channels-patch.stale"
+local reapply_missing=0
+
+# Warn loudly and drop a marker when the needle is gone (likely an upstream
+# rename). Keeps exit status 0 so a Claude install/update is never blocked; the
+# next shell start surfaces the marker so the rename cannot be forgotten.
+_channels_warn_missing() {
+  local target="$1"
+  local when
+  when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+  mkdir -p "${marker:h}" 2>/dev/null || true
+  {
+    print -r -- "claude-channels-patch could not reapply the --channels patch."
+    print -r -- "binary: $target"
+    print -r -- "needle: $needle"
+    print -r -- "when:   $when"
+    print -r -- "The flag was likely renamed upstream; --channels will silently"
+    print -r -- "revert until the needle in claude-channels-patch is updated."
+  } > "$marker" 2>/dev/null || true
+  print -u2 ""
+  print -u2 "################################################################"
+  print -u2 "# claude-channels-patch: NEEDLE NOT FOUND — --channels will revert"
+  print -u2 "#   binary: $target"
+  print -u2 "#   needle: $needle"
+  print -u2 "# Update the needle in claude-channels-patch. Marker: $marker"
+  print -u2 "################################################################"
+}
+
 local rc=0 real before after
 for real in "${targets[@]}"; do
   if [[ ! -f $real ]]; then
@@ -106,12 +137,17 @@ for real in "${targets[@]}"; do
         rc=1
       fi
       ;;
-    patch|all)
+    patch|all|reapply)
       if (( after > 0 && before == 0 )); then
         print "skip (already patched): $real"
         continue
       fi
       if (( before == 0 )); then
+        if [[ $mode == reapply ]]; then
+          _channels_warn_missing "$real"
+          reapply_missing=1
+          continue
+        fi
         print -u2 "skip (pattern not found): $real"
         rc=1
         continue
@@ -139,5 +175,10 @@ PY
       ;;
   esac
 done
+
+if [[ $mode == reapply ]]; then
+  (( reapply_missing )) || rm -f "$marker" 2>/dev/null
+  return 0
+fi
 
 return $rc
