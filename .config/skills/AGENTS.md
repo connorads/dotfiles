@@ -12,8 +12,9 @@ Every skill installed under `~/.agents/skills/` is symlinked into ~10 agent tool
 `skillsync`, and each tool injects *every* installed skill's `name`+`description` into
 *every* session as fixed context. 68 skills = 68 descriptions loaded in every session,
 most for skills that are rarely used and never need to auto-fire. The fix: make the
-**autoloaded** set tiny (ideally empty), keep everything one `skl` popup away (~zero
-session cost), and make stack-specific skills installable per-project.
+**autoloaded** set tiny — currently three deliberately-chosen broad/ubiquitous skills
+(`architecture`, `typescript`, `playwright-cli`) — keep everything else one `skl` popup
+away (~zero session cost), and make stack-specific skills installable per-project.
 
 ## Tiers — and the CLI scopes that map to them
 
@@ -29,12 +30,16 @@ CLI's two scopes *are* our two managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/.config/skills/{public,private}` (authored) + `vendor/.agents/skills` (vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/private` (authored) + `vendor/.agents/skills` (vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
-| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` / `skills remove -g` |
+| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
-**Autoload is kept deliberately minimal.** Promote a skill only if you catch yourself
-wishing something fired automatically. `skills add -g <x>` is the one-step promotion.
+**Autoload is kept deliberately minimal** — currently `architecture` + `typescript`
+(authored, symlinked from `~/skills` + `skillsync`) and `playwright-cli` (vendored,
+`skills add -g`). Promote only when you catch yourself wishing something fired
+automatically. Vendored → `skills add -g <x>`; authored → symlink into `~/.agents/skills`
+then `skillsync` (`skills add -g` clones a *second* copy into the dotfiles-tracked
+`~/.agents/skills`; the symlink keeps one real copy in `~/skills`).
 
 ## The rubric (apply to every future skill)
 
@@ -45,8 +50,9 @@ wishing something fired automatically. `skills add -g <x>` is the one-step promo
 2. Keep?  off-domain / unused / redundant → REMOVE (reinstall from upstream later).
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
-5. + Global autoload (`skills add -g`) iff broad AND must-auto-fire AND regular. Default: NONE.
-6. Authored publishable? public/ (future connorads/skills) : private/ (personal, never public).
+5. + Global autoload iff broad AND must-auto-fire AND regular. Vendored: `skills add -g`.
+     Authored: symlink into ~/.agents/skills + `skillsync`. Current: architecture, typescript, playwright-cli.
+6. Authored publishable? ~/skills (future connorads/skills) : private/ (personal, never public).
 ```
 
 Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-specific),
@@ -56,21 +62,26 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 ## Layout
 
 ```text
+~/skills/<name>/           authored PUBLIC, real files · skl source 'mine' (via symlink) · → future connorads/skills
+
 ~/.config/skills/
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
-  public/<name>/           authored, shareable      · skl source 'mine'  · → future connorads/skills
+  public                   → symlink to ../../skills (compat: skl/autoload/refs resolve through it)
   private/<name>/          authored, personal       · skl source 'private'
   vendor/                  third-party "project"     · skl source 'vendor'
     .agents/skills/<name>/ real vendored files (CLI-managed, project scope)
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
-~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (CLI `-g` target; skillsync = deprecated fallback). Kept minimal.
+~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
+  architecture, typescript → symlinks to ~/skills (authored; fanned out by skillsync)
+  playwright-cli           → real CLI clone (vendored; `skills add -g`, upstream-tracked)
 ~/.agents/.skill-lock.json TRACKED (un-ignored in ~/.gitignore): skills-CLI global lockfile —
-                           source of truth for which globals are promoted + provenance.
-                           NOT machine-local state.
+                           records CLI-managed globals only (playwright-cli). Authored
+                           symlinks are skillsync-managed and absent here by design.
 ```
 
-`skl` config (`~/.config/skl/config.json`), order = precedence:
+`skl` config (`~/.config/skl/config.json`), order = precedence — unchanged by the move
+(`public` is a symlink → `~/skills`, which skl follows):
 
 ```json
 { "paths": [
@@ -84,11 +95,12 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 
 ### Add an authored skill
 
-Create `~/.config/skills/{public|private}/<name>/SKILL.md` (+ supporting files). Public iff
-shareable with no personal refs; private otherwise. No CLI, no lockfile — you edit in place.
-`skl <name>` finds it immediately. Remember the `.gitignore` un-ignore is already in place
-for `public/**`, `private/**`, `vendor/**`; new top-level files need their own un-ignore
-before `dotfiles add`.
+Create `<name>/SKILL.md` (+ supporting files): public skills in `~/skills/<name>/` (their
+real home, symlinked from `.config/skills/public`), private in
+`~/.config/skills/private/<name>/`. Public iff shareable with no personal refs; private
+otherwise. No CLI, no lockfile — you edit in place. `skl <name>` finds it immediately.
+The `.gitignore` un-ignore is already in place for `~/skills/**`, `private/**`, `vendor/**`;
+new top-level files need their own un-ignore before `dotfiles add`.
 
 ### Add / vendor a third-party skill
 
@@ -117,19 +129,35 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 
 ### Promote to global autoload (rare)
 
-`skills add -g <owner/repo> --skill <name>` → lands in `~/.agents/skills/`, the CLI symlinks
-it into every selected tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
-regular skills; `~/.agents/.skill-lock.json` records the current set.
+Reserve for broad + must-auto-fire + regular skills. Two paths by provenance, because the
+deciding axis is **upstream tracking**:
 
-The CLI is the **primary** global path: it fans out into more tools than `skillsync`'s
-hand-curated list (cline, zed, warp, deepagents, … which skillsync lacks) and tracks
-upstream. **`skillsync` is deprecated** — kept only as the no-repo fallback. Its one
-irreducible job: globally installing your *own loose/private authored* skills without first
-publishing them to a repo (the CLI's `-g` fetches *from a repo*). It symlinks loose dirs in
-`~/.agents/skills/` out to the tools and never reads `.skill-lock.json`. Caveat for a
-*private* global skill: dotfiles are public, so its installed copy needs gitignoring
-regardless of which tool installed it — and "private + autoloaded everywhere" cuts against
-the keep-autoload-empty philosophy anyway.
+**Vendored** (real upstream) → `skills add -g <owner/repo> --skill <name>`. Lands a clone in
+`~/.agents/skills/`, the CLI fans it into every selected tool (more than `skillsync`'s list:
+cline, zed, warp, deepagents, …) and `skills update -g` pulls upstream fixes.
+`~/.agents/.skill-lock.json` records the CLI-managed set (currently `playwright-cli`).
+
+**Authored** (you *are* upstream) → symlink the skill into `~/.agents/skills/`, then run
+`skillsync` to fan out:
+
+```bash
+ln -s ../../skills/<name> ~/.agents/skills/<name>   # real files stay in ~/skills
+skillsync                                           # → per-tool symlinks (resolve to ~/skills)
+```
+
+Why not `skills add -g` for authored skills? They already live in a public repo —
+`connorads/dotfiles`, *this* repo, at `skills/` — so `skills add -g connorads/dotfiles
+--skill <name>` would even work. But `-g` clones a **second real copy** into
+`~/.agents/skills`, which dotfiles tracks, so you'd commit two copies of the same skill back
+into the repo it came from (circular, and the duplication we're avoiding). `skills update`
+is pointless on your own code anyway. The symlink keeps **one** real copy in `~/skills`.
+`skillsync` follows symlinked entries (the `(-/)` glob) and never reads `.skill-lock.json`,
+so authored autoloads are absent from the global lockfile by design — which is also why
+`skills update -g` (playwright) never clobbers them.
+
+Caveat for a *private* authored autoload: dotfiles are public, so its installed copy needs
+gitignoring — and "private + autoloaded everywhere" cuts against the keep-autoload-small
+philosophy anyway.
 
 ## Validated vendor sources
 
@@ -179,9 +207,12 @@ mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs remov
   Rejected: still pays per-session description cost for everything listed, and no agent tool
   supports a partial-load manifest. `skl` (deliberate, on-demand) gives ~zero cost instead.
 - **Symlink trick** (symlink catalogue skills into `~/.agents/skills` so one set of files
-  serves both tiers) — rejected: `skills update -g` walks the global dir and would resurrect
-  / overwrite symlinked entries, and any global presence reintroduces autoload. The two CLI
-  scopes give a clean split with no symlink fragility.
+  serves both tiers) — rejected *as a way to avoid autoload*: any global presence reintroduces
+  autoload, which is exactly what you don't want for a catalogue-only skill. NOTE the
+  distinction: deliberately symlinking an authored skill you *do* want autoloaded
+  (`architecture`, `typescript`) is the supported path above — the `skills update -g` clobber
+  worry doesn't apply there because authored symlinks aren't in the global lockfile, so the
+  CLI never walks to them. The rejection stands only for skills you want kept *out* of autoload.
 - **One-folder lockfile split** (keep all vendored skills in one dir, slice the lockfile by
   tier) — rejected: the CLI manages one lockfile per dir; splitting it by hand fights the
   tool. Project scope gives a real per-tier lockfile for free.
@@ -191,10 +222,12 @@ mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs remov
   versioning an always-empty, CLI-regenerated file (or building a filter for it) is machinery
   for zero value. Tracked once a global skill is promoted (it then pins provenance);
   left untracked only while autoload is genuinely empty.
-- **Hard-deprecating skillsync** (CLI for everything; delete skillsync) — rejected: would
-  force publishing every authored skill to a repo (`connorads/skills` doesn't exist yet) plus
-  a publish→clone round-trip for your own code, and removes the only working path to a private
-  global skill. Soft-deprecated instead: documented as fallback, kept at ~zero cost.
+- **Hard-deprecating skillsync** (CLI for everything; delete skillsync) — rejected: it's the
+  active path for authored autoload. Public authored skills do live in a repo now
+  (`connorads/dotfiles`), but routing them through `skills add -g` means a clone-back
+  round-trip + a duplicate copy committed back into the repo they came from, and *private*
+  authored skills live in no public repo, so the CLI can't reach them at all. skillsync
+  symlinks the real files in place — one copy, no round-trip.
 
 ## The constraint that forced project-scope vendoring
 
@@ -220,5 +253,7 @@ and diff-review clones against the prior vetted copy before trusting them.
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
 
-- `connorads/skills` public repo is **deferred** — when ready, push `~/.config/skills/public/`
-  as-is (sanitise any personal refs first; none currently in `public/`).
+- `connorads/skills` public repo is **deferred** — public skills are pre-staged at `~/skills`
+  (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
+  just a tracking handoff (dotfiles stops tracking its contents). Sanitise any personal refs
+  first; none currently. `~/.config/skills/public` stays as a compat symlink afterwards.
