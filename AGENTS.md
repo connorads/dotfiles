@@ -199,7 +199,7 @@ gh-gate grant          # Push 1-hour write token to dev (from host machine)
 gh-gate revoke         # Revoke write token, restore read-only on dev
 gh-gate status         # Check token state on dev
 gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
-rtk-shims sync         # Create/update RTK agent shims (default)
+rtk-shims sync         # Create/update RTK agent shims (also auto-runs on drs/hms activation; manual sync for between-rebuild fixes)
 rtk-shims list         # Show current shims with status
 rtk-shims clean        # Remove all shims and the directory
 ```
