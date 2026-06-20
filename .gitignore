@@ -10,6 +10,11 @@
 !/.hk-hooks/
 !/.hk-hooks/**
 
+# public skills home (authoring root; symlinked from .config/skills/public).
+# Staged here for a future standalone connorads/skills repo.
+!/skills/
+!/skills/**
+
 !/.agents/
 /.agents/**
 !/.agents/AGENTS.md
@@ -70,8 +75,8 @@
 /.config/skills/**
 !/.config/skills/AGENTS.md
 !/.config/skills/CLAUDE.md
-!/.config/skills/public/
-!/.config/skills/public/**
+# public is a compat symlink → ../../skills (real files live at ~/skills)
+!/.config/skills/public
 !/.config/skills/private/
 !/.config/skills/private/**
 !/.config/skills/vendor/
