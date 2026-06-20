@@ -22,7 +22,7 @@ _tsp() {
 compdef _tsp tsp
 
 _gh_gate_complete() {
-  local -a subcmds=(init grant revoke status help)
+  local -a subcmds=(setup init grant revoke status ui help)
   if (( CURRENT == 2 )); then
     _describe 'subcommand' subcmds
   fi
