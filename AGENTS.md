@@ -279,7 +279,7 @@ autoload dir and is **empty by design**.
    `cd ~/.config/skills/vendor && skills add <owner/repo> --skill <name>` (project scope).
 2. **Per-project autoload.** `skills add <owner/repo> --skill <name>` (no `-g`) from inside a
    repo → auto-fires for *that repo* only.
-3. **Global autoload — rare (currently none).** `skills add -g <owner/repo> --skill <name>`
+3. **Global autoload — rare, used sparingly.** `skills add -g <owner/repo> --skill <name>`
    lands in `~/.agents/skills/` and autoloads in *every* session (per-session context cost).
    Promote only when a skill is broad, regular, and must auto-fire.
    `skillsync` is a **deprecated** fallback here (no-repo/private authored globals only).
