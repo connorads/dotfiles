@@ -27,113 +27,17 @@ local now age next_retry fail_count last_success
 local hdr="" body=""
 now=$(date +%s)
 
-_mtime() {
-    local file="$1"
-    stat -f%m "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || echo 0
-}
-
-_cache_age() {
-    local file="$1"
-    [[ -f "$file" ]] || { echo 999999; return; }
-    local mtime
-    mtime=$(_mtime "$file")
-    echo $((now - mtime))
-}
-
-_lock_age() {
-    local started_file="$1/started_at"
-    local started_at
-    if [[ -f "$started_file" ]]; then
-        started_at=$(<"$started_file")
-        if [[ "$started_at" == <-> ]]; then
-            echo $((now - started_at))
-            return
-        fi
-    fi
-    echo $((now - $(_mtime "$1")))
-}
-
-_lock_is_live() {
-    local pid_file="$1/pid"
-    local pid
-    [[ -f "$pid_file" ]] || return 1
-    pid=$(<"$pid_file")
-    [[ "$pid" == <-> ]] || return 1
-    kill -0 "$pid" 2>/dev/null
-}
-
-_cleanup_lock() {
-    rm -f "$lockdir/pid" "$lockdir/started_at" 2>/dev/null
-    rmdir "$lockdir" 2>/dev/null
-}
-
-_cleanup() {
-    rm -f "${hdr:-}" "${body:-}"
-    _cleanup_lock
-}
-
-_reap_stale_lock() {
-    [[ -d "$lockdir" ]] || return 0
-    local age_lock
-    age_lock=$(_lock_age "$lockdir")
-    if _lock_is_live "$lockdir" && [[ "$age_lock" -lt "$lock_stale_after" ]]; then
-        return 1
-    fi
-    _cleanup_lock
-    [[ ! -d "$lockdir" ]]
-}
-
-_acquire_lock() {
-    if mkdir "$lockdir" 2>/dev/null; then
-        print -r -- "$$" > "$lockdir/pid"
-        print -r -- "$now" > "$lockdir/started_at"
-        return 0
-    fi
-    _reap_stale_lock || return 1
-    if mkdir "$lockdir" 2>/dev/null; then
-        print -r -- "$$" > "$lockdir/pid"
-        print -r -- "$now" > "$lockdir/started_at"
-        return 0
-    fi
-    return 1
-}
-
-_fmt_secs() {
-    local diff="$1"
-    [[ "$diff" -lt 0 ]] && diff=0
-    local d=$((diff / 86400))
-    local h=$(((diff % 86400) / 3600))
-    local m=$(((diff % 3600) / 60))
-    if [[ $d -gt 0 ]]; then
-        echo "${d}d ${h}h"
-    else
-        echo "${h}h ${m}m"
-    fi
-}
-
-_write_meta() {
-    local next="$1"
-    local fails="$2"
-    local http_status="$3"
-    local err="$4"
-    local success="$5"
-    local tmp
-    tmp="${meta}.tmp.$$"
-    mkdir -p "$(dirname "$meta")"
-    jq -n \
-      --argjson next_retry_at "$next" \
-      --argjson fail_count "$fails" \
-      --arg last_http_status "$http_status" \
-      --arg last_error "$err" \
-      --argjson last_success_at "$success" \
-      '{
-        next_retry_at: $next_retry_at,
-        fail_count: $fail_count,
-        last_http_status: $last_http_status,
-        last_error: $last_error,
-        last_success_at: $last_success_at
-      }' > "$tmp" && mv "$tmp" "$meta"
-}
+# Resolve this function file's directory (autoload, ~/.local/bin symlink, or
+# direct run) so the shared cache/lock/backoff engine sources cleanly. Mirrors
+# the agent-usage-log idiom used by pis/cys.
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local self_file= candidate_dir
+for candidate_dir in $fpath; do
+    [[ -r "$candidate_dir/$self_name" ]] && { self_file="$candidate_dir/$self_name"; break }
+done
+[[ -n "$self_file" ]] || self_file="${${(%):-%N}:A}"
+[[ -r "$self_file" ]] || self_file="${0:A}"
+source "${self_file:A:h}/usage-cache-lib"
 
 if [[ ! -f "$meta" ]]; then
     _write_meta 0 0 "" "" 0
@@ -195,32 +99,11 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
             _write_meta 0 0 "$http_code" "" "$now"
             age=0
         else
-            local next_fail_count cooldown i=1
-            next_fail_count=$((fail_count + 1))
-            cooldown=$backoff_base
-            while [[ $i -lt $next_fail_count ]]; do
-                cooldown=$((cooldown * 2))
-                [[ "$cooldown" -ge "$backoff_max" ]] && { cooldown=$backoff_max; break; }
-                i=$((i + 1))
-            done
-            if [[ "$retry_after" == <-> ]] && [[ "$retry_after" -gt 0 ]]; then
-                cooldown="$retry_after"
-            fi
-            [[ "$cooldown" -gt "$backoff_max" ]] && cooldown=$backoff_max
             err=$(jq -r '.error.message? // .message? // "fetch_failed"' "$body" 2>/dev/null)
-            _write_meta $((now + cooldown)) "$next_fail_count" "${http_code:-0}" "${err:-fetch_failed}" "$last_success"
+            _record_failure "$fail_count" "$retry_after" "${http_code:-0}" "$err" "$last_success"
         fi
     else
-        local next_fail_count cooldown i=1
-        next_fail_count=$((fail_count + 1))
-        cooldown=$backoff_base
-        while [[ $i -lt $next_fail_count ]]; do
-            cooldown=$((cooldown * 2))
-            [[ "$cooldown" -ge "$backoff_max" ]] && { cooldown=$backoff_max; break; }
-            i=$((i + 1))
-        done
-        [[ "$cooldown" -gt "$backoff_max" ]] && cooldown=$backoff_max
-        _write_meta $((now + cooldown)) "$next_fail_count" "0" "network_error" "$last_success"
+        _record_failure "$fail_count" "" "0" "network_error" "$last_success"
     fi
 
     _cleanup
