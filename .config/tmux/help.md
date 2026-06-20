@@ -59,6 +59,7 @@
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
+| `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b D` | difftastic git diff |
 | `Ctrl+b Alt+d` | hunk git diff |
 | `Ctrl+b C` | critique git diff |

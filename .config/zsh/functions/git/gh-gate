@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # gh-gate: manage scoped gh CLI tokens on remote machines via GitHub App
-# usage: gh-gate <init|grant|revoke|status> [user@host]
+# usage: gh-gate <setup|init|grant|revoke|status|ui> [user@host]
 emulate -L zsh
 
 local cmd=${1:-}
@@ -21,6 +21,7 @@ Commands:
   grant   <user@host>   Generate a 1-hour write token and push to target
   revoke  <user@host>   Remove write token, restore read-only on target
   status  [user@host]   Check which token is active on target
+  ui                    Pick an SSH host, then grant/revoke in a popup-friendly UI
 
 init/grant/revoke require an explicit target (no silent default — it once
 deployed a token to the wrong machine). status falls back to DEFAULT_TARGET.
@@ -494,6 +495,79 @@ _gh_gate_status() {
   esac
 }
 
+_gh_gate_ssh_hosts() {
+  local ssh_config="${HOME}/.ssh/config"
+  [[ -r "$ssh_config" ]] || return 0
+
+  awk 'tolower($1) == "host" { for (i = 2; i <= NF; i++) print $i }' "$ssh_config" |
+    while IFS= read -r host; do
+      [[ -z "$host" || "$host" == !* || "$host" == *[\*\?\[]* ]] && continue
+      print -r -- "$host"
+    done | sort -u
+}
+
+_gh_gate_ui() {
+  if ! command -v fzf >/dev/null 2>&1; then
+    print -r "Error: fzf required" >&2
+    return 1
+  fi
+
+  local -a hosts
+  hosts=("${(@f)$(_gh_gate_ssh_hosts)}")
+  hosts=("${(@)hosts:#}")
+  if (( ${#hosts[@]} == 0 )); then
+    print -r "Error: no SSH hosts found in ~/.ssh/config" >&2
+    return 1
+  fi
+
+  local selected_target
+  selected_target=$(printf '%s\n' "${hosts[@]}" |
+    fzf --prompt="gh-gate target: " \
+      --header="Pick target. Grant creates a 1-hour GitHub write token.") || return 130
+  [[ -n "$selected_target" ]] || return 130
+
+  local action_line action
+  action_line=$(printf '%s\n' \
+    $'grant\tGrant 1-hour write access' \
+    $'revoke\tRevoke write access and restore read-only' |
+    fzf --prompt="gh-gate action: " \
+      --delimiter=$'\t' \
+      --with-nth=2.. \
+      --header="Target: ${selected_target}") || return 130
+  [[ -n "$action_line" ]] || return 130
+  action=${action_line%%$'\t'*}
+
+  print -r ""
+  print -r "Command: gh-gate ${action} ${selected_target}"
+  print -rn "Run this command? [y/N]: "
+
+  local answer
+  read -r answer
+  if [[ "$answer" != [yY] ]]; then
+    print -r "Cancelled"
+    return 130
+  fi
+
+  print -r ""
+  if [[ -n "${GH_GATE_COMMAND:-}" ]]; then
+    "$GH_GATE_COMMAND" "$action" "$selected_target"
+  elif command -v gh-gate >/dev/null 2>&1; then
+    command gh-gate "$action" "$selected_target"
+  else
+    "$0" "$action" "$selected_target"
+  fi
+  local result=$?
+
+  if [[ -t 0 ]]; then
+    print -r ""
+    print -rn "Press any key to close..."
+    read -sk1
+    print -r ""
+  fi
+
+  return $result
+}
+
 # Main dispatch
 case "$cmd" in
   setup)   _gh_gate_setup ;;
@@ -501,15 +575,16 @@ case "$cmd" in
   grant)   _gh_gate_grant "${2:-}" ;;
   revoke)  _gh_gate_revoke "${2:-}" ;;
   status)  _gh_gate_status "${2:-}" ;;
+  ui)      _gh_gate_ui ;;
   -h|--help|help) _gh_gate_help ;;
   "")
-    print -r "Usage: gh-gate <setup|init|grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <setup|init|grant|revoke|status|ui> [user@host]" >&2
     print -r "Run 'gh-gate --help' for full documentation" >&2
     return 1
     ;;
   *)
     print -r "Unknown command: ${cmd}" >&2
-    print -r "Usage: gh-gate <setup|init|grant|revoke|status> [user@host]" >&2
+    print -r "Usage: gh-gate <setup|init|grant|revoke|status|ui> [user@host]" >&2
     return 1
     ;;
 esac
