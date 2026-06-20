@@ -275,7 +275,10 @@ _gh_gate_base64url() {
 
 _gh_gate_generate_jwt() {
   local pem=$1
-  local now=$EPOCHSECONDS
+  # date +%s, not $EPOCHSECONDS: the latter needs zmodload zsh/datetime, which
+  # isn't loaded when gh-gate runs as a plain script (→ empty → JWT stamped at
+  # epoch 0 → GitHub rejects it as expired).
+  local now=$(date +%s)
   local iat=$((now - 60))
   local exp=$((now + 600))
 
