@@ -33,12 +33,12 @@ CLI's two scopes *are* our two managed tiers:
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` / `skills remove -g` |
 
-**Autoload starts empty by design.** Promote 1–2 skills later only if you catch yourself
+**Autoload is kept deliberately minimal.** Promote a skill only if you catch yourself
 wishing something fired automatically. `skills add -g <x>` is the one-step promotion.
 
 ## The rubric (apply to every future skill)
 
-```
+```text
 1. Provenance → home.
      authored   → ~/.config/skills/{public|private}   (plain dirs, you edit in place)
      third-party→ ~/.config/skills/vendor             (skills CLI, project scope)
@@ -55,7 +55,7 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 
 ## Layout
 
-```
+```text
 ~/.config/skills/
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
   public/<name>/           authored, shareable      · skl source 'mine'  · → future connorads/skills
@@ -64,11 +64,10 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
     .agents/skills/<name>/ real vendored files (CLI-managed, project scope)
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
-~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (CLI `-g` target; skillsync = deprecated fallback). Empty → autoload none.
-~/.agents/.skill-lock.json UNTRACKED (gitignored): skills-CLI global lockfile. Nothing to
-                           version while autoload is empty; re-track (restore the !-line in
-                           ~/.gitignore) once you `skills add -g` a real global skill — it
-                           then pins that install's provenance. NOT machine-local state.
+~/.agents/skills/          GLOBAL CLI dir = AUTOLOAD tier (CLI `-g` target; skillsync = deprecated fallback). Kept minimal.
+~/.agents/.skill-lock.json TRACKED (un-ignored in ~/.gitignore): skills-CLI global lockfile —
+                           source of truth for which globals are promoted + provenance.
+                           NOT machine-local state.
 ```
 
 `skl` config (`~/.config/skl/config.json`), order = precedence:
@@ -84,6 +83,7 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 ## How-to
 
 ### Add an authored skill
+
 Create `~/.config/skills/{public|private}/<name>/SKILL.md` (+ supporting files). Public iff
 shareable with no personal refs; private otherwise. No CLI, no lockfile — you edit in place.
 `skl <name>` finds it immediately. Remember the `.gitignore` un-ignore is already in place
@@ -91,20 +91,24 @@ for `public/**`, `private/**`, `vendor/**`; new top-level files need their own u
 before `dotfiles add`.
 
 ### Add / vendor a third-party skill
+
 ```bash
 cd ~/.config/skills/vendor
 skills add <owner/repo> -l                 # list skills in the repo, resolve exact --skill token
 skills add <owner/repo> --skill <name>     # project scope → vendor/.agents/skills/<name> + lock
 ```
+
 Use **fully-qualified** `owner/repo` + `--skill`, never fuzzy `skills find`. Pin to a
 `ref`/commit where the upstream offers one. Re-fetching is an unvetted git clone that
 bypasses npm/aube/quarantine posture — review the clone before trusting it.
 
 ### Update vendored skills
+
 From `~/.config/skills/vendor`: `skills update -p` (project scope) refreshes **in place**
 against `skills-lock.json`. No global/symlink resurrection problem.
 
 ### Promote to per-project
+
 When working in a repo whose stack matches a skill, `cd <repo>` and `skills add <owner/repo>
 --skill <name>` (no `-g`). It auto-fires for that repo's sessions only. Candidates:
 `next-*`, `vercel-*`, `cloudflare`, `remotion-best-practices`, `claude-api`, `marimo-notebook`,
@@ -112,9 +116,10 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 `test-coverage`, `mechanical-enforcement`.
 
 ### Promote to global autoload (rare)
+
 `skills add -g <owner/repo> --skill <name>` → lands in `~/.agents/skills/`, the CLI symlinks
 it into every selected tool, it autoloads everywhere. Reserve for broad + must-auto-fire +
-regular skills. Currently: **none**.
+regular skills; `~/.agents/.skill-lock.json` records the current set.
 
 The CLI is the **primary** global path: it fans out into more tools than `skillsync`'s
 hand-curated list (cline, zed, warp, deepagents, … which skillsync lacks) and tracks
@@ -184,7 +189,8 @@ mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs remov
   `dismissed` UI keys, or a clean filter à la `codex-config-clean` to strip them) — rejected:
   `skillsync` ignores the lockfile and the UI keys don't touch autoload or session cost, so
   versioning an always-empty, CLI-regenerated file (or building a filter for it) is machinery
-  for zero value. Untracked + gitignored until a real global skill makes it meaningful.
+  for zero value. Tracked once a global skill is promoted (it then pins provenance);
+  left untracked only while autoload is genuinely empty.
 - **Hard-deprecating skillsync** (CLI for everything; delete skillsync) — rejected: would
   force publishing every authored skill to a repo (`connorads/skills` doesn't exist yet) plus
   a publish→clone round-trip for your own code, and removes the only working path to a private
@@ -208,9 +214,11 @@ and diff-review clones against the prior vetted copy before trusting them.
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them; re-`skills add` if/when a source is found. List the untracked ones —
   on disk but absent from the lockfile:
+
   ```bash
   comm -23 <(ls ~/.config/skills/vendor/.agents/skills | sort) \
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
+
 - `connorads/skills` public repo is **deferred** — when ready, push `~/.config/skills/public/`
   as-is (sanitise any personal refs first; none currently in `public/`).
