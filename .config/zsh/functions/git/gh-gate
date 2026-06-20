@@ -17,12 +17,13 @@ generate time-boxed write tokens; the remote machine defaults to read-only.
 
 Commands:
   setup                 Interactive first-time configuration
-  init    [user@host]   Create read-only PAT and deploy to target
-  grant   [user@host]   Generate a 1-hour write token and push to target
-  revoke  [user@host]   Remove write token, restore read-only on target
+  init    <user@host>   Create read-only PAT and deploy to target
+  grant   <user@host>   Generate a 1-hour write token and push to target
+  revoke  <user@host>   Remove write token, restore read-only on target
   status  [user@host]   Check which token is active on target
 
-Default target comes from DEFAULT_TARGET in ~/.config/gh-gate/config.
+init/grant/revoke require an explicit target (no silent default — it once
+deployed a token to the wrong machine). status falls back to DEFAULT_TARGET.
 
 Setup:
   Run 'gh-gate setup' for interactive guided setup, or manually:
@@ -52,7 +53,7 @@ Setup:
 Config: ~/.config/gh-gate/config
   APP_ID=<number>            GitHub App ID
   INSTALLATION_ID=<number>   App installation ID
-  DEFAULT_TARGET=<user@host> Default SSH target (via Tailscale)
+  DEFAULT_TARGET=<user@host> Fallback target for 'status' only (via Tailscale)
 
 Permissions:
   Read-only PAT (init):    actions:read  contents:read  issues:read  pull_requests:read
@@ -229,14 +230,18 @@ _gh_gate_load_config() {
 }
 
 _gh_gate_resolve_target() {
+  # $1 = target arg (may be empty); $2 = "required" forbids the DEFAULT_TARGET
+  # fallback. Mutating ops (init/grant/revoke) require an explicit target so a
+  # stray default can't silently deploy a token to the wrong machine.
   if [[ -n "${1:-}" ]]; then
     target=$1
-  elif [[ -n "${DEFAULT_TARGET:-}" ]]; then
+  elif [[ "${2:-}" != "required" && -n "${DEFAULT_TARGET:-}" ]]; then
     target=$DEFAULT_TARGET
   else
-    print -r "Error: no target specified and DEFAULT_TARGET not set in config" >&2
+    print -r "Error: target required (e.g. gh-gate ${cmd:-init} mini)" >&2
     return 1
   fi
+  print -r "Target: ${target}" >&2
 }
 
 _gh_gate_get_pem() {
@@ -289,7 +294,14 @@ _gh_gate_generate_jwt() {
 
 _gh_gate_init() {
   _gh_gate_load_config || return 1
-  _gh_gate_resolve_target "${1:-}" || return 1
+  _gh_gate_resolve_target "${1:-}" required || return 1
+
+  print -r ""
+  print -r "gh-gate gives a remote machine two tokens:"
+  print -r "  • read-only floor (this step): a 90-day fine-grained PAT, read only"
+  print -r "  • 1-hour write token: minted on demand via 'gh-gate grant ${target}'"
+  print -r "This step sets the read-only floor on ${target}."
+  print -r ""
 
   local pat_url="https://github.com/settings/personal-access-tokens/new?name=dev-readonly&expires_in=90&actions=read&contents=read&issues=read&pull_requests=read"
 
@@ -339,7 +351,7 @@ _gh_gate_init() {
 
 _gh_gate_grant() {
   _gh_gate_load_config || return 1
-  _gh_gate_resolve_target "${1:-}" || return 1
+  _gh_gate_resolve_target "${1:-}" required || return 1
 
   print -r "Retrieving private key..."
   local pem
@@ -398,7 +410,7 @@ _gh_gate_grant() {
 
 _gh_gate_revoke() {
   _gh_gate_load_config || return 1
-  _gh_gate_resolve_target "${1:-}" || return 1
+  _gh_gate_resolve_target "${1:-}" required || return 1
 
   # Try to revoke the token via API first (best-effort)
   local remote_token
