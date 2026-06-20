@@ -43,13 +43,7 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
 typeset -U fpath
 fpath=(
   ~/.config/zsh/functions
-  ~/.config/zsh/functions/nix
-  ~/.config/zsh/functions/git
-  ~/.config/zsh/functions/tmux
-  ~/.config/zsh/functions/tailscale
-  ~/.config/zsh/functions/hetzner
-  ~/.config/zsh/functions/agents
-  ~/.config/zsh/functions/shell
+  ~/.config/zsh/functions/*(/N)
   $fpath
 )
 autoload -Uz ~/.config/zsh/functions/*(.N:t) ~/.config/zsh/functions/*/*(.N:t)
