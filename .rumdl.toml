@@ -1,0 +1,9 @@
+# Markdown lint config for the dotfiles repo (rumdl runs via the hk pre-commit gate).
+#
+# These docs are long-form prose — roughly one sentence/idea per line, the established
+# convention across every doc here — so MD013's column hard-wrap fights the style and
+# makes prose diffs noisier. MD033 (inline HTML) is occasionally needed. Disable just
+# those two; keep the rest of rumdl's defaults (trailing newline, heading style, fenced
+# code-block language, etc.). Mirrors the per-project .rumdl.toml convention in ~/git/*.
+[global]
+disable = ["MD013", "MD033"]
