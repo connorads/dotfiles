@@ -37,8 +37,16 @@ deno = "2"
 # bundle (claude = "latest" drops an unpatched build on every update). Warns +
 # drops a marker but exits 0 on a missing needle, so an update is never blocked.
 claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
-fnox = "1"
+# Pinned to 1.26: 1.27.0 shipped with no binary assets (any platform); the github
+# backend grabs it as highest 1.x and the assetless install aborts every `mise run`.
+# 1.27.1 fixed it but mise's ls-remote won't surface it. Revisit when 1.28 lands.
+fnox = "1.26"
 
+# github:/aqua: tools: the install_before/minimum_release_age quarantine is
+# best-effort here — it only filters versions mise has a timestamp for, and
+# "versions without timestamps are included by default" (mise docs). So a fresh
+# release can slip the 4d gate. Prefer an exact/known-good pin on these backends;
+# the pin, not the age gate, is the supply-chain control.
 "aqua:anomalyco/opencode" = "1"
 
 "github:ogulcancelik/herdr" = "0.6.0"
