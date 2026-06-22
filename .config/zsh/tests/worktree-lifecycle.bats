@@ -23,7 +23,7 @@ make_repo() {
   git init -b main "$repo" >/dev/null
   git -C "$repo" config user.name "Bats"
   git -C "$repo" config user.email "bats@example.com"
-  echo "base" > "$repo/base.txt"
+  echo "base" >"$repo/base.txt"
   git -C "$repo" add base.txt
   git -C "$repo" commit -m "initial" >/dev/null
 }
@@ -88,6 +88,43 @@ EOF
   [ "$output" = "$HOME/.trees/repo-feature/foo" ]
 }
 
+@test "wt-status --all ignores nested vendored repos inside a worktree" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  # A vendored dependency carrying its own .git (node_modules, submodule, ...)
+  # must not be mistaken for a managed worktree.
+  git init "$HOME/.trees/repo-topic/node_modules/pkg" >/dev/null
+
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --json"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq 'length')" -eq 1 ]
+  [ "$(printf '%s' "$output" | jq -r '.[0].path')" = "$HOME/.trees/repo-topic" ]
+}
+
+@test "_wt_managed_worktrees ignores nested vendored repos and finds slash branches" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feature/foo"
+  [ "$status" -eq 0 ]
+
+  git init "$HOME/.trees/repo-topic/node_modules/pkg" >/dev/null
+
+  run zsh -fc "HOME='$HOME'; PATH='$PATH'; source '$FUNCTIONS_DIR/git/_wt-common'; cd /tmp; _wt_managed_worktrees"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 2 ]
+  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo-topic"
+  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo-feature/foo"
+}
+
 @test "autoloaded wt-add loads shared helpers from the function file path" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
@@ -111,7 +148,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >> "$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
 
   run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo-topic'"
 
@@ -143,7 +180,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >> "$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
 
   write_stub wt-status <<EOF
 #!/usr/bin/env bash
@@ -160,7 +197,7 @@ EOF
 printf '%s\n' "$*" >> "$TEST_LOG"
 EOF
 
-  cat > "$runner" <<EOF
+  cat >"$runner" <<EOF
 fpath=('$FUNCTIONS_DIR/git' \$fpath)
 autoload -Uz wtui
 wtui
@@ -180,7 +217,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" > "$HOME/.trees/repo-topic/topic.txt"
+  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
   git -C "$HOME/.trees/repo-topic" add topic.txt
   git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
 
@@ -203,14 +240,14 @@ EOF
   git -C "$repo" remote add origin "$remote"
   git -C "$repo" push -u origin main >/dev/null
 
-  echo "local-ahead" > "$repo/local.txt"
+  echo "local-ahead" >"$repo/local.txt"
   git -C "$repo" add local.txt
   git -C "$repo" commit -m "local ahead" >/dev/null
 
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" > "$HOME/.trees/repo-topic/topic.txt"
+  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
   git -C "$HOME/.trees/repo-topic" add topic.txt
   git -C "$HOME/.trees/repo-topic" commit -m "topic change" >/dev/null
 
@@ -228,7 +265,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >> "$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
 
   run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local"
 
@@ -243,7 +280,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --lock topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" > "$HOME/.trees/repo-topic/topic.txt"
+  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
   git -C "$HOME/.trees/repo-topic" add topic.txt
   git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
 
@@ -292,7 +329,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" > "$HOME/.trees/repo-topic/topic.txt"
+  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
   git -C "$HOME/.trees/repo-topic" add topic.txt
   git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
 
@@ -322,7 +359,7 @@ EOF
   git -C "$origin_seed" config user.name "Bats"
   git -C "$origin_seed" config user.email "bats@example.com"
   git -C "$origin_seed" checkout -b topic >/dev/null
-  echo "from-origin" > "$origin_seed/origin.txt"
+  echo "from-origin" >"$origin_seed/origin.txt"
   git -C "$origin_seed" add origin.txt
   git -C "$origin_seed" commit -m "origin topic" >/dev/null
   git -C "$origin_seed" push -u origin topic >/dev/null
@@ -330,12 +367,12 @@ EOF
   git clone "$other" "$other_seed" >/dev/null
   git -C "$other_seed" config user.name "Bats"
   git -C "$other_seed" config user.email "bats@example.com"
-  echo "base" > "$other_seed/base.txt"
+  echo "base" >"$other_seed/base.txt"
   git -C "$other_seed" add base.txt
   git -C "$other_seed" commit -m "initial" >/dev/null
   git -C "$other_seed" push -u origin HEAD:main >/dev/null
   git -C "$other_seed" checkout -b topic >/dev/null
-  echo "from-other" > "$other_seed/other.txt"
+  echo "from-other" >"$other_seed/other.txt"
   git -C "$other_seed" add other.txt
   git -C "$other_seed" commit -m "other topic" >/dev/null
   git -C "$other_seed" push -u origin topic >/dev/null
@@ -369,7 +406,7 @@ EOF
   git clone "$upstream" "$upstream_seed" >/dev/null
   git -C "$upstream_seed" config user.name "Bats"
   git -C "$upstream_seed" config user.email "bats@example.com"
-  echo "upstream-main" > "$upstream_seed/upstream.txt"
+  echo "upstream-main" >"$upstream_seed/upstream.txt"
   git -C "$upstream_seed" add upstream.txt
   git -C "$upstream_seed" commit -m "upstream main" >/dev/null
   git -C "$upstream_seed" push origin HEAD:main >/dev/null
@@ -380,7 +417,7 @@ EOF
   git -C "$origin_seed" config user.email "bats@example.com"
   git -C "$origin_seed" push -u origin main >/dev/null
   git -C "$origin_seed" checkout -b topic >/dev/null
-  echo "origin-topic" > "$origin_seed/topic.txt"
+  echo "origin-topic" >"$origin_seed/topic.txt"
   git -C "$origin_seed" add topic.txt
   git -C "$origin_seed" commit -m "origin topic" >/dev/null
   git -C "$origin_seed" push -u origin topic >/dev/null
@@ -421,7 +458,7 @@ EOF
   git -C "$origin_seed" config user.email "bats@example.com"
   git -C "$origin_seed" push -u origin main >/dev/null
   git -C "$origin_seed" checkout -b topic >/dev/null
-  echo "fetched-late" > "$origin_seed/topic.txt"
+  echo "fetched-late" >"$origin_seed/topic.txt"
   git -C "$origin_seed" add topic.txt
   git -C "$origin_seed" commit -m "origin topic" >/dev/null
   git -C "$origin_seed" push -u origin topic >/dev/null
@@ -453,7 +490,7 @@ EOF
   git clone "$upstream" "$upstream_seed" >/dev/null
   git -C "$upstream_seed" config user.name "Bats"
   git -C "$upstream_seed" config user.email "bats@example.com"
-  echo "base-update" > "$upstream_seed/upstream.txt"
+  echo "base-update" >"$upstream_seed/upstream.txt"
   git -C "$upstream_seed" add upstream.txt
   git -C "$upstream_seed" commit -m "upstream main update" >/dev/null
   git -C "$upstream_seed" push origin HEAD:main >/dev/null
@@ -464,7 +501,7 @@ EOF
   git -C "$origin_seed" config user.email "bats@example.com"
   git -C "$origin_seed" push -u origin main >/dev/null
   git -C "$origin_seed" checkout -b topic >/dev/null
-  echo "feature" > "$origin_seed/topic.txt"
+  echo "feature" >"$origin_seed/topic.txt"
   git -C "$origin_seed" add topic.txt
   git -C "$origin_seed" commit -m "topic feature" >/dev/null
   git -C "$origin_seed" push -u origin topic >/dev/null
@@ -497,7 +534,7 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" > "$HOME/.trees/repo-topic/topic.txt"
+  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
   git -C "$HOME/.trees/repo-topic" add topic.txt
   git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
   git -C "$HOME/.trees/repo-topic" push -u origin topic >/dev/null

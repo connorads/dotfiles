@@ -78,15 +78,10 @@ print_record() {
 }
 
 collect_all_records() {
-  local trees_dir="$HOME/.trees"
-  local -a worktrees=()
   local wt_path branch branch_ref locked prunable
 
-  [[ -d "$trees_dir" ]] || return 0
-  worktrees=(${trees_dir}/**/*(N-/))
-
-  for wt_path in "${worktrees[@]}"; do
-    [[ -d "$wt_path/.git" || -f "$wt_path/.git" ]] || continue
+  while IFS= read -r wt_path; do
+    [[ -n "$wt_path" ]] || continue
     branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
     branch_ref=""
     [[ -n "$branch" ]] && branch_ref="refs/heads/$branch"
@@ -94,7 +89,7 @@ collect_all_records() {
     _wt_worktree_is_locked "$wt_path" "$wt_path" && locked=1
     prunable=0
     print_record "$wt_path" "$branch_ref" "$locked" "$prunable"
-  done
+  done < <(_wt_managed_worktrees)
 }
 
 if (( all )); then
