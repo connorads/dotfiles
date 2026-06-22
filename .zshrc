@@ -23,13 +23,20 @@ ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
 [[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
 source "$ANTIDOTE_HOME"/antidote.zsh
 
-# Initialise completion system (cached, regenerates every 24h)
+# Initialise completion system. Regenerate the dump — full compinit, including
+# the slow security audit — at most once a day; otherwise trust the cache (-C).
+# The staleness test must glob in array context: filename generation does not
+# run inside [[ … ]], so the old `[[ -n …(#qN.mh+24) ]]` form was inert and
+# compinit ran in full on every startup. (compinit must stay before `antidote
+# load` so fzf-tab can wrap the completion widgets it sets up.)
 autoload -Uz compinit
-if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
-  compinit
-else
+_zcompdump_fresh=( "${ZDOTDIR:-$HOME}/.zcompdump"(Nmh-24) )
+if (( ${#_zcompdump_fresh} )); then
   compinit -C
+else
+  compinit
 fi
+unset _zcompdump_fresh
 
 antidote load ${ZDOTDIR:-$HOME}/.zsh_plugins.txt
 
