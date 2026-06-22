@@ -49,6 +49,12 @@
       "skillPath": "skills/taste-skill/SKILL.md",
       "computedHash": "6d838b246d0e35d0b53f4f23f98ba7a1dd561937e64f7d0c7553b0928e376c3e"
     },
+    "emulate": {
+      "source": "vercel-labs/emulate",
+      "sourceType": "github",
+      "skillPath": "skills/emulate/SKILL.md",
+      "computedHash": "23671c39bae5555e725ba6346511c0bf88bb654dff5a2df592f5f0918f829e80"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
