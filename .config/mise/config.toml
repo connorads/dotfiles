@@ -4,8 +4,12 @@ npm.package_manager = "aube"
 # Prefer prebuilt binaries; compile-from-source fails on NixOS (no FHS toolchain)
 node.compile = false
 python.compile = false
-# Supply chain security: only install versions released 4+ days ago
-install_before = "4d"
+# Supply chain security: only install versions released 4+ days ago.
+# `install_before` is deprecated; `minimum_release_age` is the canonical key.
+minimum_release_age = "4d"
+# Claude and Codex track upstream as fast as possible, so exempt them from the
+# quarantine here (replaces `mise upgrade claude codex --before 0d` in `up`).
+minimum_release_age_excludes = ["claude", "codex"]
 github_attestations = true
 slsa = true
 
@@ -42,11 +46,11 @@ claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude
 # 1.27.1 fixed it but mise's ls-remote won't surface it. Revisit when 1.28 lands.
 fnox = "1.26"
 
-# github:/aqua: tools: the install_before/minimum_release_age quarantine is
-# best-effort here — it only filters versions mise has a timestamp for, and
-# "versions without timestamps are included by default" (mise docs). So a fresh
-# release can slip the 4d gate. Prefer an exact/known-good pin on these backends;
-# the pin, not the age gate, is the supply-chain control.
+# github:/aqua tools: the minimum_release_age quarantine applies to versions
+# mise can date (most GitHub releases carry a published-at), but "versions
+# without timestamps are included by default" (mise docs) — so a release mise
+# can't date still slips the 4d gate. Keep an exact/known-good pin on these
+# backends; the pin, not the age gate, is the supply-chain control.
 "aqua:anomalyco/opencode" = "1"
 
 "github:ogulcancelik/herdr" = "0.6.0"

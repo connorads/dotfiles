@@ -202,9 +202,9 @@ gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
 
 ## Supply Chain & Update Strategy
 
-Mise tools use a **4-day quarantine** (`install_before = "4d"`) — only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
+Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) — only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
 
-**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine in `up`.
+**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine via the `minimum_release_age_excludes` mise setting.
 
 **How `up` works**: upgrades mise tools within ranges (4-day quarantine), exempts Claude (always latest), updates brew/apt, optionally updates nix flake lock, rebuilds. `-s` skips nix flake update.
 
