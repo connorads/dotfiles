@@ -169,6 +169,12 @@
       "skillPath": "skills/playwright-cli/SKILL.md",
       "computedHash": "84495cfda62b6c012afc4cc34a0c35bfc7923ba35983b8c04ce4cace0f35a5d8"
     },
+    "portless": {
+      "source": "vercel-labs/portless",
+      "sourceType": "github",
+      "skillPath": "skills/portless/SKILL.md",
+      "computedHash": "3afca398409c64eb5f4196db4d3b345a523b3c71092bdf30eafc5ab97885f3b3"
+    },
     "redesign-existing-projects": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
