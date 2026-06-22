@@ -225,6 +225,30 @@ _wt_worktree_records() {
   git worktree list --porcelain 2>/dev/null
 }
 
+# Emit the path of every managed worktree under ~/.trees, one per line. Walks
+# ~/.trees but STOPS descending the moment it reaches a worktree root (a dir
+# holding a .git marker), so nested submodule / vendored (node_modules) .git
+# markers inside a worktree are never mistaken for worktrees — the historic
+# phantom bug. Intermediate dirs created for slash-containing branch names (e.g.
+# repo-feat/x) carry no .git, so they are descended into. Paths keep the
+# ~/.trees (unresolved) form callers and `git worktree` operations already use.
+_wt_managed_worktrees() {
+  local trees="$HOME/.trees"
+  [[ -d "$trees" ]] || return 0
+  local -a stack=("$trees"/*(N/))
+  local dir
+  while (( $#stack )); do
+    dir=${stack[1]}
+    shift stack
+    [[ -L "$dir" ]] && continue
+    if [[ -e "$dir/.git" ]]; then
+      print -r -- "$dir"
+    else
+      stack+=("$dir"/*(N/))
+    fi
+  done
+}
+
 _wt_worktree_is_locked() {
   local repo_path=$1
   local target=$2
