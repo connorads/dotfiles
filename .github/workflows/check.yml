@@ -1,0 +1,52 @@
+name: check
+
+# Evaluate (not build or activate) every Nix configuration so a config authored
+# on one host can't silently break another — e.g. a typo in a Linux module only
+# surfacing on the next `hms`. Eval needs no target builder; each config is
+# still evaluated on a matching-platform runner to stay closest to reality.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    name: eval (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: darwin
+            os: macos-latest
+          - name: linux
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: eval configurations
+        working-directory: .config/nix
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.name }}" = darwin ]; then
+            targets=(
+              'darwinConfigurations."Connors-MacBook-Air".system'
+              'darwinConfigurations."Connors-Mac-mini".system'
+            )
+          else
+            targets=(
+              'homeConfigurations."connor@penguin".activationPackage'
+              'homeConfigurations."connor@dev".activationPackage'
+              'homeConfigurations."connor@rpi5".activationPackage'
+              'homeConfigurations."codespace".activationPackage'
+            )
+          fi
+          for t in "${targets[@]}"; do
+            echo "::group::eval $t"
+            nix eval --raw ".#${t}.drvPath"
+            echo
+            echo "::endgroup::"
+          done
