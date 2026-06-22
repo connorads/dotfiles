@@ -53,6 +53,12 @@ fnox = "1.27.1"
 # can't date still slips the 4d gate. Keep an exact/known-good pin on these
 # backends; the pin, not the age gate, is the supply-chain control.
 "aqua:anomalyco/opencode" = "1"
+# osv-scanner: detective supply-chain layer. Scans lockfiles (npm, Cargo, uv,
+# etc.) against the OSV database for known-vulnerable/malicious deps — the one
+# layer that catches what already slipped past the time-based gates. Major range
+# (vs an exact pin) is deliberate: keep the scanner itself current. Run via
+# `mise run supply-audit`.
+"aqua:google/osv-scanner" = "2"
 
 "github:ogulcancelik/herdr" = "0.7.0"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
@@ -93,3 +99,7 @@ fnox = "1.27.1"
 [tasks.zsh-tests]
 description = "Run BATS tests for zsh functions"
 run = "cd \"$HOME\" && bats --recursive .config/zsh/tests"
+
+[tasks.supply-audit]
+description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
+run = "osv-scanner scan source -r ."
