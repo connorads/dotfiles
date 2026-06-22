@@ -856,6 +856,7 @@
       "Bash(zstd -d:*)",
       "Edit(/tmp/**)",
       "Read(//tmp/**)",
+      "Skill",
       "WebFetch",
       "WebSearch",
       "Write(/tmp/**)",
