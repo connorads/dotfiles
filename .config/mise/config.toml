@@ -29,9 +29,9 @@ pkl = "0.31"
 shfmt = "3"
 shellcheck = "0.11"
 bats = "1"
-rumdl = "0.1"
+rumdl = "0.2"
 gitleaks = "8"
-gcloud = "562"
+gcloud = "573"
 aws = "2"
 codex = "latest"
 usage = "3"
@@ -41,10 +41,11 @@ deno = "2"
 # bundle (claude = "latest" drops an unpatched build on every update). Warns +
 # drops a marker but exits 0 on a missing needle, so an update is never blocked.
 claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
-# Pinned to 1.26: 1.27.0 shipped with no binary assets (any platform); the github
-# backend grabs it as highest 1.x and the assetless install aborts every `mise run`.
-# 1.27.1 fixed it but mise's ls-remote won't surface it. Revisit when 1.28 lands.
-fnox = "1.26"
+# Pinned to EXACT 1.27.1: v1.27.1 ships binaries (8 assets) but v1.27.0 shipped
+# none AND was published ~20 min later, so the github backend resolves a "1.27"
+# range to the assetless 1.27.0 and every `mise run` aborts. The exact pin
+# sidesteps the bad sibling; loosen toward a range once 1.28 lands.
+fnox = "1.27.1"
 
 # github:/aqua tools: the minimum_release_age quarantine applies to versions
 # mise can date (most GitHub releases carry a published-at), but "versions
@@ -53,9 +54,9 @@ fnox = "1.26"
 # backends; the pin, not the age gate, is the supply-chain control.
 "aqua:anomalyco/opencode" = "1"
 
-"github:ogulcancelik/herdr" = "0.6.0"
+"github:ogulcancelik/herdr" = "0.7.0"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
-"github:CosineAI/cli" = { version = "2.0.21", bin = "cos", prerelease = true }
+"github:CosineAI/cli" = { version = "2.0.22", bin = "cos", prerelease = true }
 
 "npm:@elevenlabs/cli" = "0"
 "npm:@kitlangton/ghui" = "latest"
@@ -68,10 +69,12 @@ fnox = "1.26"
 "npm:cf" = "0"
 "npm:critique" = "0"
 "npm:ctx7" = "0"
+# Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so
+# `mise upgrade --bump` would regress to it. Do not bump past "1".
 "npm:executor" = "1"
 "npm:firecrawl-cli" = "1"
 "npm:hunkdiff" = "0"
-"npm:obsidian-headless" = "0.0.10"
+"npm:obsidian-headless" = "0.0.12"
 "npm:playwright" = "1"
 "npm:portless" = "0"
 "npm:remobi" = "1"
