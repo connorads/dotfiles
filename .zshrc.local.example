@@ -1,5 +1,8 @@
 # API Keys and secrets for local machine
 # This file is gitignored and won't be committed to dotfiles
+#
+# It holds live secrets, so keep it owner-only:
+#   chmod 600 ~/.zshrc.local
 
 # Brave Search API - https://brave.com/search/api/
 export BRAVE_API_KEY=
