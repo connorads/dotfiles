@@ -250,6 +250,10 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
 
+**Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* — they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter.
+
+**Cargo/Rust**: the one ecosystem without a proactive age-gate, and `build.rs` runs arbitrary code at build with no global off-switch (unlike npm's `ignore-scripts`). Native `registry.global-min-publish-age` is accepted (RFC 3923) but the client side is pending ([cargo#17009](https://github.com/rust-lang/cargo/issues/17009)); revisit then. For now the cover is reactive: `mise run supply-audit` (osv-scanner) flags known-bad `Cargo.lock` entries, with `cargo audit` / `cargo deny` available on demand (no fast prebuilt in the mise registry, so not pinned).
+
 **No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
