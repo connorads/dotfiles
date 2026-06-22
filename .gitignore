@@ -151,6 +151,7 @@
 !/.config/aube/config.toml
 
 !/.config/zsh/
+!/.config/zsh/.editorconfig
 !/.config/zsh/aliases/
 !/.config/zsh/aliases/**
 !/.config/zsh/functions/
