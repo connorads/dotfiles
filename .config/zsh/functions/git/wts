@@ -1,5 +1,8 @@
 # wts: fzf switch to a worktree under ~/.trees
 emulate -L zsh
+_wt_common_dir="${${functions_source[wts]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
 
 local worktree
 
@@ -14,10 +17,7 @@ _wts_candidates() {
     return 0
   fi
 
-  local d
-  for d in "$HOME/.trees"/**/*(N-/); do
-    [[ -d "$d/.git" || -f "$d/.git" ]] && print -r -- "$d"
-  done
+  _wt_managed_worktrees
 }
 
 worktree=$(_wts_candidates | fzf --prompt="Switch to worktree: ")
