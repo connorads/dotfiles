@@ -7,9 +7,16 @@ exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".carg
 display_skip_reasons = List()
 terminal_progress = false
 
+// Vendored third-party skills are a faithful mirror of upstream. Reformatting
+// them (rumdl/whitespace) would make our copy diverge from upstream, so every
+// `skills update` diff carries formatting churn — which defeats the security
+// diff-review the update-vendored-skills skill relies on. Exclude them from the
+// formatting steps only; gitleaks + merge-conflict checks still run on them.
+local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**")
+
 local fast_steps = new Mapping<String, Step> {
-    ["trailing-whitespace"] = (Builtins.trailing_whitespace) {}
-    ["newlines"] = (Builtins.newlines) {}
+    ["trailing-whitespace"] = (Builtins.trailing_whitespace) { exclude = vendored_skills }
+    ["newlines"] = (Builtins.newlines) { exclude = vendored_skills }
     ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
 
     ["shfmt"] = (Builtins.shfmt) {
@@ -31,6 +38,7 @@ local fast_steps = new Mapping<String, Step> {
 
     ["rumdl"] = (Builtins.rumdl) {
         batch = true
+        exclude = vendored_skills
     }
 
     ["mise"] = Builtins.mise
