@@ -45,22 +45,6 @@
           inherit system;
           config.allowUnfree = true;
           overlays = [
-            # pipx 1.8.0 tests assert pre-packaging-26 spec spacing (no space
-            # before `@`); packaging 26.x added the space per PEP 508, so the
-            # tests fail at build time on unstable. Broken until NixOS/nixpkgs#522307
-            # lands. Remove this overlay after the next `nfu` picks up the fix.
-            (final: prev: {
-              pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
-                (pyfinal: pyprev: {
-                  pipx = pyprev.pipx.overridePythonAttrs (old: {
-                    disabledTests = (old.disabledTests or [ ]) ++ [
-                      "test_fix_package_name"
-                      "test_parse_specifier_for_metadata"
-                    ];
-                  });
-                })
-              ];
-            })
             # Patched tmux: dims inactive pane *content* (lazygit, nvim syntax,
             # any ANSI-coloured output). Vanilla tmux's `window-style` /
             # `window-active-style` only retint cells that use the terminal
@@ -84,27 +68,6 @@
                 ];
               });
             })
-            # ollama 0.30.5 defaults to building the MLX Metal backend on
-            # darwin-arm64, which hard-requires Xcode's Metal toolchain —
-            # unavailable in the nix sandbox (and outside the pinned apple-sdk).
-            # Disable it via OLLAMA_MLX_BACKENDS=""; regular Metal GGML inference
-            # (what ollama is actually used for) is a separate path, unaffected.
-            # Fragile: rewrites the literal `cmake -B build \` line in upstream's
-            # preBuild (cmakeFlags is bypassed by the custom preBuild) — revisit
-            # if that line is reformatted. Scoped to darwin-arm64 so Linux/rpi
-            # builds are untouched (MLX default is already empty off Apple arm64).
-            # Remove once nixpkgs handles MLX on darwin — nixpkgs regression @
-            # cbb5cf3, see nixpkgs#463131 / ollama#13460.
-            (
-              final: prev:
-              prev.lib.optionalAttrs (prev.stdenv.hostPlatform.isDarwin && prev.stdenv.hostPlatform.isAarch64) {
-                ollama = prev.ollama.overrideAttrs (old: {
-                  preBuild =
-                    builtins.replaceStrings [ "cmake -B build \\" ] [ "cmake -B build -DOLLAMA_MLX_BACKENDS=\"\" \\" ]
-                      old.preBuild;
-                });
-              }
-            )
           ];
         };
 
