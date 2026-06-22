@@ -1,0 +1,8 @@
+# The zsh shell code here (functions, tests/*.bats, aliases/*.zsh) uses 2-space
+# indentation. Pin it so shfmt — which defaults to tabs — enforces that
+# convention on commit instead of reformatting the files.
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
