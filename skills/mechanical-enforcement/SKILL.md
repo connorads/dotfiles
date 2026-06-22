@@ -16,7 +16,7 @@ This is a **content skill**, not a tool. It provides rules and snippets. For wir
 3. **Architectural boundaries are linter rules**. Layers (domain ← infra, utilities ← server, UI ← schemas) are enforced with `no-restricted-imports` / `no-restricted-syntax`, not trusted to vigilance.
 4. **Auto-fix where possible, gate where not**. Formatters and whitespace fixers run with `fix = true` and re-stage. Correctness rules gate the commit.
 5. **Prefer opinionated presets, override minimally**. Ultracite for Biome, `@commitlint/config-conventional` for commits, `next/core-web-vitals` for Next. Only override with a comment explaining *why*.
-6. **The _why_ lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
+6. **The *why* lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
 
 ## When to use this skill
 
@@ -43,6 +43,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Commit messages | — | commitlint (`@commitlint/config-conventional`) | — | — | One-line config. See `references/commitlint.config.js`. |
 | Secrets | — | gitleaks | — | — | Always add — cheap, high-signal. |
 | Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes, tiny false-positive rate. |
+| GitHub Actions / CI | — | [zizmor](https://github.com/zizmorcore/zizmor) | — | — | Security audit of `.github/workflows/*.yml` + `action.yml`. SARIF + `--format=github` annotations. Complements gitleaks, not overlapping. |
 
 ## Rules catalogue
 
@@ -115,6 +116,7 @@ Full working snippets live in `references/eslint-boundaries.mjs`.
 | No committed secrets | gitleaks pre-commit step | Token leaks |
 | Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `install_before` | Compromised releases |
 | No `--no-verify` | Documented in project CLAUDE.md / AGENTS.md; not technically preventable | Bypassing the whole gate. Cultural rule — reinforce in every project's agent docs. |
+| Pinned + safe GitHub Actions workflows | [zizmor](https://github.com/zizmorcore/zizmor) (gate on exit ≥ 11) | Unpinned actions (`unpinned-uses`), dangerous triggers (`dangerous-triggers` — `pull_request_target`/`workflow_run`), template injection into `run:` (`template-injection`), over-broad `permissions:` (`excessive-permissions`), impostor commits, typosquatted actions |
 
 ### Rust: type safety & correctness
 
@@ -206,9 +208,9 @@ This skill gives you *what* to enforce. The `hk` skill gives you *how* to wire i
 
 The typical mapping (TypeScript):
 
-```
+```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, biome fix
-tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict
+tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline (glob: .github/workflows/*.{yml,yaml} + action.yml)
 tier 3 (typecheck)      → tsc --noEmit (or tsgo)
 tier 4 (test)           → vitest run --coverage
 commit-msg              → commitlint
@@ -216,7 +218,7 @@ commit-msg              → commitlint
 
 The typical mapping (Rust):
 
-```
+```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, cargo-fmt
 tier 2 (lint/gate)      → cargo-clippy -D warnings, gitleaks, cargo-deny
 tier 3 (typecheck)      → cargo check (usually redundant with clippy but catches cfg issues)
@@ -238,17 +240,20 @@ When a bug escapes to review or production, the retro question is: **what rule w
 ## References
 
 ### TypeScript / JS
+
 - `references/typescript-strict.jsonc` — strict `compilerOptions` block (drop-in)
 - `references/biome-ultracite.jsonc` — Biome config extending Ultracite with override pattern
 - `references/eslint-boundaries.mjs` — layered `no-restricted-imports` + `no-restricted-syntax` examples
 - `references/commitlint.config.js` — one-line conventional-commits config
 
 ### Rust
+
 - `references/clippy-thresholds.toml` — `clippy.toml` with recommended complexity thresholds (drop-in)
 - `references/rust-workspace-lints.toml` — `[workspace.lints]` block with pedantic + common allows (drop-in)
 - `references/cargo-deny.toml` — `deny.toml` template for licence/advisory/ban enforcement (drop-in)
 
 ### Cross-stack
+
 - `references/hk-steps.pkl` — worked hk.pkl step graph
 - [Ultracite](https://www.ultracite.ai/) — Biome preset bundle
 - [hk](https://hk.jdx.dev) — git hook manager
