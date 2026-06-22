@@ -14,4 +14,7 @@ ohmyzsh/ohmyzsh path:plugins/brew
 zsh-users/zsh-autosuggestions
 zsh-users/zsh-completions
 Aloxaf/fzf-tab
+# fast-syntax-highlighting: zdharma-continuum is the community recovery fork after
+# the original zdharma org was deleted (Oct 2021). antidote pins by commit, so
+# updates are reviewed, not auto-applied. Alt: zsh-users/zsh-syntax-highlighting.
 zdharma-continuum/fast-syntax-highlighting
