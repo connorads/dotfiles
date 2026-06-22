@@ -29,12 +29,6 @@
     enable = true;
     onActivation = {
       cleanup = "zap";
-      # Homebrew 5.1.15 (2026-06-03) made `brew bundle --cleanup` refuse to uninstall
-      # without --force / --force-cleanup / $HOMEBREW_ASK (Homebrew/brew#22453). nix-darwin
-      # still emits `--cleanup --zap` with no force flag, so activation aborts. --force-cleanup
-      # is the scoped, non-interactive opt-in (--force is broader; $HOMEBREW_ASK would hang).
-      # REMOVE once nix-darwin ships the fix: https://github.com/nix-darwin/nix-darwin/issues/1787
-      extraFlags = [ "--force-cleanup" ];
     };
     brews = [
       "mole"
