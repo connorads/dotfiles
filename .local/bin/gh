@@ -34,6 +34,21 @@ for dir in $PATH; do
 done
 IFS="$OLDIFS"
 
+# Callers with a sanitised PATH (e.g. Homebrew attestation verification) may
+# drop the nix profile dirs where gh lives. Fall back to known absolute paths.
+if [ -z "$real_gh" ]; then
+  gh_user="${USER:-${HOME##*/}}"
+  for cand in \
+    "/etc/profiles/per-user/$gh_user/bin/gh" \
+    "$HOME/.nix-profile/bin/gh" \
+    "/run/current-system/sw/bin/gh" \
+    /opt/homebrew/bin/gh \
+    /usr/local/bin/gh \
+    /usr/bin/gh; do
+    [ -x "$cand" ] && real_gh="$cand" && break
+  done
+fi
+
 if [ -z "$real_gh" ]; then
   echo "gh wrapper: cannot find real gh in PATH" >&2
   exit 127
