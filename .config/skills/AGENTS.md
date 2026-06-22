@@ -170,6 +170,7 @@ name can differ — gotchas below).
 | `vercel-labs/next-skills` | trusted (official) |
 | `vercel-labs/skills` | trusted (the CLI repo) |
 | `vercel-labs/agent-browser` | trusted (official) |
+| `vercel-labs/portless` | trusted (Vercel org; same repo as the `npm:portless` CLI in mise) — `--skill portless` (named `.localhost` dev URLs: proxy setup, monorepo/worktree naming, port/proxy troubleshooting). Single `SKILL.md`, no scripts, only official URLs; pinned by `computedHash`. Repo also ships `oauth` (provider redirect-URI config for `.localhost` — vendor on demand). Doc text says `npm install -g`/"don't use npx" — counter to the never-npm rule, but it's prose only; CLI comes via mise. |
 | `anthropics/skills` | trusted (official) |
 | `elevenlabs/skills` | trusted (official; skills at repo root) |
 | `mattpocock/skills` | trusted (bucketed paths) |
