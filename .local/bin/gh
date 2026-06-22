@@ -4,10 +4,12 @@
 
 config_dir="$HOME/.config/gh-gate"
 
-# Clear any stale GH_TOKEN from parent env (e.g. shell snapshot)
-# so only file-based tokens are used when gh-gate is configured
-if [ -d "$config_dir" ]; then
-  unset GH_TOKEN
+# Only assert gh-gate's token on hosts gh-gate actually manages, i.e. where it
+# has deployed a token file. The granting host (and any unmanaged host) holds at
+# most config, so stay transparent: leave the caller's GH_TOKEN untouched (lets
+# e.g. Homebrew's own token through; gh still falls back to the keyring).
+if [ -r "$config_dir/active-token" ] || [ -r "$config_dir/readonly-token" ]; then
+  unset GH_TOKEN   # gh-gate's revocable file token is authoritative here
 
   if [ -r "$config_dir/active-token" ] && [ -r "$config_dir/active-token-expires" ]; then
     expires=$(cat "$config_dir/active-token-expires")
