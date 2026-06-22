@@ -429,18 +429,25 @@ Transfer to a phone number (requires telephony integration):
 
 ### transfer_to_agent
 
-Transfer to another ElevenLabs agent:
+Transfer to another ElevenLabs agent or workflow node:
 
 ```python
 "built_in_tools": {
     "transfer_to_agent": {
         "transfers": [{
             "agent_id": "other-agent-id",
+            "node_id": "destination-workflow-node-id",
+            "preserve_client_tts_overrides": true,
             "condition": "User asks about sales"
         }]
     }
 }
 ```
+
+Use `node_id` when the transfer should start at a specific workflow node. Omit
+`agent_id` when the transfer stays within the current agent's workflow.
+Set `preserve_client_tts_overrides` when client-side TTS overrides should continue
+after the transfer.
 
 ## Best Practices
 
@@ -475,6 +482,10 @@ Help the LLM extract correct values:
     }
 }
 ```
+
+For optional tool parameters that should never be sent in the request payload, set
+`is_omitted: true` on the JSON schema property. Do not combine it with `description`,
+`dynamic_variable`, `is_system_provided`, or `constant_value`.
 
 ### Error Handling
 

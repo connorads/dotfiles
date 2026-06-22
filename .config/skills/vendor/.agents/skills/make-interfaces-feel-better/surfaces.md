@@ -6,7 +6,7 @@ Border radius, optical alignment, shadows, and image outlines.
 
 When nesting rounded elements, the outer radius must equal the inner radius plus the padding between them:
 
-```text
+```
 outerRadius = innerRadius + padding
 ```
 

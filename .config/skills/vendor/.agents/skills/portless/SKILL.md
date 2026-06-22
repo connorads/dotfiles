@@ -446,7 +446,7 @@ tailscale status     # Check if connected
 tailscale up         # Connect to your tailnet
 ```
 
-Requires the Tailscale CLI to be installed (<https://tailscale.com/download>) and on PATH.
+Requires the Tailscale CLI to be installed (https://tailscale.com/download) and on PATH.
 
 ### ngrok not working
 
@@ -457,7 +457,7 @@ ngrok version                         # Check if installed
 ngrok config add-authtoken <token>    # Configure authentication
 ```
 
-Requires the ngrok CLI to be installed (<https://ngrok.com/download>) and on PATH.
+Requires the ngrok CLI to be installed (https://ngrok.com/download) and on PATH.
 
 ### Requirements
 

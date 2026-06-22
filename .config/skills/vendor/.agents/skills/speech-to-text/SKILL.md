@@ -86,13 +86,16 @@ for word in result.words:
 
 For call recordings, the batch API can label diarized speakers as `agent` and `customer` by setting `detect_speaker_roles=true` alongside `diarize=true`. This option is not compatible with `use_multi_channel=true`.
 
+If your workspace has registered speaker profiles, set `use_speaker_library=true` with `diarize=true` to match detected speakers against the speaker library.
+
 ```bash
 curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" \
   -F "file=@call.mp3" \
   -F "model_id=scribe_v2" \
   -F "diarize=true" \
-  -F "detect_speaker_roles=true"
+  -F "detect_speaker_roles=true" \
+  -F "use_speaker_library=true"
 ```
 
 ## Keyterm Prompting
@@ -126,7 +129,7 @@ print(f"Detected: {result.language_code} ({result.language_probability:.0%})")
 **Audio:** MP3, WAV, M4A, FLAC, OGG, WebM, AAC, AIFF, Opus
 **Video:** MP4, AVI, MKV, MOV, WMV, FLV, WebM, MPEG, 3GPP
 
-**Limits:** Up to 3GB file size, 10 hours duration
+**Limits:** Up to 5.0GB file size, 10 hours duration
 
 ## Response Format
 
