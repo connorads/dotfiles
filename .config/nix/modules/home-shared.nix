@@ -26,6 +26,10 @@
       rebase.updateRefs = true;
       fetch.prune = true;
       fetch.writeCommitGraph = true;
+      # Reject malformed / malicious objects on transfer (supply-chain hardening).
+      transfer.fsckObjects = true;
+      fetch.fsckObjects = true;
+      receive.fsckObjects = true;
       diff.algorithm = "histogram";
       diff.colorMoved = "default";
       merge.conflictStyle = "zdiff3";
