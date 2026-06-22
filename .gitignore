@@ -10,6 +10,9 @@
 !/.hk-hooks/
 !/.hk-hooks/**
 
+!/.github/
+!/.github/**
+
 # public skills home (authoring root; symlinked from .config/skills/public).
 # Staged here for a future standalone connorads/skills repo.
 !/skills/
