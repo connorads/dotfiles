@@ -39,14 +39,14 @@ RED='\033[31m'
 WHITE='\033[37m'
 DIM='\033[2m'
 
-# Effort glyph: 5-step block ramp, colour by intensity (shows the *effective* level)
+# Effort: 5-step block ramp + label, colour by intensity (shows the *effective* level)
 effort_seg=""
 case "$effort" in
-low) effort_seg=" ${DIM}${WHITE}▁${RESET}" ;;
-medium) effort_seg=" ${CYAN}▃${RESET}" ;;
-high) effort_seg=" ${GREEN}▅${RESET}" ;;
-xhigh) effort_seg=" ${YELLOW}▆${RESET}" ;;
-max) effort_seg=" ${RED}█${RESET}" ;;
+low) effort_seg=" ${DIM}${WHITE}▁ ${effort}${RESET}" ;;
+medium) effort_seg=" ${CYAN}▃ ${effort}${RESET}" ;;
+high) effort_seg=" ${GREEN}▅ ${effort}${RESET}" ;;
+xhigh) effort_seg=" ${YELLOW}▆ ${effort}${RESET}" ;;
+max) effort_seg=" ${RED}█ ${effort}${RESET}" ;;
 esac
 
 # Colour-code context (white < 50%, yellow 50-80%, red > 80%)
