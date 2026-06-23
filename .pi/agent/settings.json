@@ -3,5 +3,8 @@
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
   "defaultThinkingLevel": "high",
-  "theme": "dark"
+  "theme": "dark",
+  "packages": [
+    "npm:@plannotator/pi-extension"
+  ]
 }
