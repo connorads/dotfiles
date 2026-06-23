@@ -2,7 +2,7 @@
  * Pi Palette Extension
  *
  * Two complementary overlays for pi:
- *   Ctrl+X — leader-key chord palette (press / within to search)
+ *   Alt+X — leader-key chord palette (press / within to search)
  *   /telescope, /lk — slash command fallbacks
  */
 
@@ -78,8 +78,8 @@ async function runTelescope(
 // ── Extension entry point ──────────────────────────
 
 export default function piPalette(pi: ExtensionAPI) {
-  // Ctrl+X -> leader key palette
-  pi.registerShortcut(Key.ctrl("x"), {
+  // Alt+X -> leader key palette (Ctrl+X is built-in app.models.clearAll)
+  pi.registerShortcut(Key.alt("x"), {
     description: "Leader key palette",
     handler: (ctx) => openLeaderKey(pi, ctx),
   });
