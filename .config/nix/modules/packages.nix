@@ -71,7 +71,7 @@ let
     lazygit
     lazyworktree
     jujutsu
-    jjui # jj TUI (lazygit equivalent); tmux popup on prefix + Alt+j
+    jjui
     # CLI utilities
     bc
     glow
