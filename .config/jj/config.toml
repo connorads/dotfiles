@@ -1,0 +1,12 @@
+#:schema https://docs.jj-vcs.dev/latest/config-schema.json
+
+[user]
+name = "Connor Adams"
+email = "connorads@users.noreply.github.com"
+
+[ui]
+# Bare `jj` shows the log instead of erroring.
+default-command = "log"
+# Rich structural diffs via difftastic (installed through nix). jj ships a
+# builtin `merge-tools.difft`, so we only point the formatter at it.
+diff-formatter = "difft"

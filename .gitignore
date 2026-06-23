@@ -72,6 +72,11 @@
 !/.config/skl/
 !/.config/skl/**
 
+# jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
+!/.config/jj/
+/.config/jj/**
+!/.config/jj/config.toml
+
 # skills curation home: real files (authored + vendored). Un-ignore the dir,
 # re-ignore its contents, then un-ignore the doc files and each subtree.
 !/.config/skills/
