@@ -58,6 +58,43 @@ Choose the narrowest layer that proves the behaviour.
 Do not use e2e tests to compensate for untested domain logic. Do not use unit
 tests to assert wiring that only fails when components are composed.
 
+### Scenario (integration) tests
+
+A useful named layer sits between application and composition: run the **real
+application** end to end and fake **only the externals you don't own**
+(third-party HTTP), switching the faked backend state per test.
+
+- Fake at the network boundary (e.g. MSW server-side), not by stubbing your own
+  modules — routing, parsing, middleware, and wiring all run for real.
+- Define named backend states ("payment succeeds", "auth times out") and select
+  one per test instead of restarting the app or re-mocking by hand.
+- Isolate parallel tests by tagging each with an id (e.g. an injected header) so
+  concurrent tests don't share mocked state.
+
+Reach for it to prove a vertical slice works without standing up real
+third-party services. It complements, and does not replace, a few true e2e
+checks and exhaustive domain tests.
+
+### Testing at multiple boundaries
+
+"Narrowest layer" is the default, not an absolute. Deliberately re-test the same
+**business rule** at more than one boundary (e.g. the domain function *and* the
+HTTP API) when defense in depth earns the duplication:
+
+- **Duplicate business rules, not plumbing.** Re-prove a rule at each public
+  entry point; test plumbing (status codes, parsing, DOM details) only at the
+  layer it lives in.
+- **Why pay for it:** which layer's test fails tells you which boundary broke;
+  two layers re-implementing a rule surface drift the moment one changes; the
+  rule survives as suites erode.
+- **The cost is real:** every rule change touches every layer that asserts it.
+
+Stop duplicating and sample at the outer layer instead when: the inner layer
+becomes a thin wrapper (ceremony outweighs the rule), the outer surface explodes
+to many endpoints, suite runtime crosses a pain threshold (keep the domain
+exhaustive, sample the API), or there is only ever one consumer behind a trivial
+forwarder.
+
 ## Test Doubles
 
 Avoid mocks by default; they tend to couple tests to call order and internal
@@ -72,6 +109,14 @@ collaboration.
   and keep at least one smoke/integration check where practical.
 - If a test needs many mocks, reconsider the boundary rather than adding more
   mocking.
+
+**The mirror-test trap:** a test that mocks the very collaborator whose
+behaviour it claims to verify proves *wiring*, not behaviour — and stays green
+when the real behaviour breaks. A handler test that stubs `validateBooking` to
+return a rejection and then asserts the handler returns `400` never exercises
+the real rule: delete the rule and the test still passes, because the test
+supplied the rejection itself. Such tests also survive mutation of the mocked
+unit. Assert against the real collaborator, or prove the rule at its own layer.
 
 ## Property-Based Tests
 
