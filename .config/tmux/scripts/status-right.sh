@@ -186,61 +186,93 @@ ai_usage() {
 	fi
 
 	# Read percentages and remaining seconds from cache
-	local claude_pct="" codex_pct=""
-	local claude_remaining_secs="" codex_remaining_secs=""
-	local claude_reset="" codex_reset=""
+	local claude_5_pct="" claude_7_pct="" codex_5_pct="" codex_7_pct=""
+	local claude_5_remaining_secs="" claude_7_remaining_secs=""
+	local codex_5_remaining_secs="" codex_7_remaining_secs=""
+	local claude_5_reset="" claude_7_reset="" codex_5_reset="" codex_7_reset=""
 	local claude_cache_age=999999 codex_cache_age=999999
-	local claude_stale=0 codex_stale=0
+	local claude_5_stale=0 claude_7_stale=0 codex_5_stale=0 codex_7_stale=0
+
+	_fmt_reset() {
+		local remaining_secs="$1"
+		local cache_age="$2"
+		if [ -z "$remaining_secs" ]; then
+			return 0
+		fi
+		if [ "$remaining_secs" -le 0 ] 2>/dev/null; then
+			if [ "$cache_age" -ge "$ttl" ] 2>/dev/null; then
+				printf "stale"
+			else
+				printf "0m"
+			fi
+		elif [ "$remaining_secs" -ge 86400 ]; then
+			printf "%dd" "$((remaining_secs / 86400))"
+		elif [ "$remaining_secs" -ge 3600 ]; then
+			printf "%dh" "$(((remaining_secs + 1800) / 3600))"
+		else
+			printf "%dm" "$((remaining_secs / 60))"
+		fi
+	}
+
+	_iso_remaining_secs() {
+		local resets_at="$1"
+		[ -n "$resets_at" ] || return 0
+		local reset_ts
+		reset_ts=$(iso_to_epoch "$resets_at")
+		[ "$reset_ts" -gt 0 ] 2>/dev/null || return 0
+		local remaining=$((reset_ts - now))
+		[ "$remaining" -lt 0 ] && remaining=0
+		printf "%s" "$remaining"
+	}
+
+	_relative_remaining_secs() {
+		local reset_secs="$1"
+		local cache_file="$2"
+		[ -n "$reset_secs" ] || return 0
+		[[ "$reset_secs" =~ ^[0-9]+$ ]] || return 0
+		local cache_mt remaining
+		cache_mt=$(_mtime "$cache_file")
+		remaining=$((reset_secs - (now - cache_mt)))
+		[ "$remaining" -lt 0 ] && remaining=0
+		printf "%s" "$remaining"
+	}
 
 	if [ -f "$claude_cache" ]; then
 		claude_cache_age=$((now - $(_mtime "$claude_cache")))
-		claude_pct=$(jq -r '.five_hour.utilization // empty' "$claude_cache" 2>/dev/null)
-		local resets_at
-		resets_at=$(jq -r '.five_hour.resets_at // empty' "$claude_cache" 2>/dev/null)
-		if [ -n "$resets_at" ]; then
-			local reset_ts
-			reset_ts=$(iso_to_epoch "$resets_at")
-			claude_remaining_secs=$((reset_ts - now))
-			[ "$claude_remaining_secs" -lt 0 ] && claude_remaining_secs=0
-			if [ "$claude_remaining_secs" -eq 0 ] && [ "$claude_cache_age" -ge "$ttl" ]; then
-				claude_reset="stale"
-				claude_stale=1
-			elif [ "$claude_remaining_secs" -ge 3600 ]; then
-				claude_reset="$(((claude_remaining_secs + 1800) / 3600))h"
-			else
-				claude_reset="$((claude_remaining_secs / 60))m"
-			fi
-		fi
+		claude_5_pct=$(jq -r '.five_hour.utilization // empty' "$claude_cache" 2>/dev/null)
+		claude_7_pct=$(jq -r '.seven_day.utilization // empty' "$claude_cache" 2>/dev/null)
+		local claude_5_resets_at claude_7_resets_at
+		claude_5_resets_at=$(jq -r '.five_hour.resets_at // empty' "$claude_cache" 2>/dev/null)
+		claude_7_resets_at=$(jq -r '.seven_day.resets_at // empty' "$claude_cache" 2>/dev/null)
+		claude_5_remaining_secs=$(_iso_remaining_secs "$claude_5_resets_at")
+		claude_7_remaining_secs=$(_iso_remaining_secs "$claude_7_resets_at")
+		claude_5_reset=$(_fmt_reset "$claude_5_remaining_secs" "$claude_cache_age")
+		claude_7_reset=$(_fmt_reset "$claude_7_remaining_secs" "$claude_cache_age")
+		[ "$claude_5_reset" = "stale" ] 2>/dev/null && claude_5_stale=1
+		[ "$claude_7_reset" = "stale" ] 2>/dev/null && claude_7_stale=1
 	fi
 
 	if [ -f "$codex_cache" ]; then
 		codex_cache_age=$((now - $(_mtime "$codex_cache")))
-		codex_pct=$(jq -r '.rate_limit.primary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
-		local reset_secs
-		reset_secs=$(jq -r '.rate_limit.primary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
-		if [ -n "$reset_secs" ]; then
-			# reset_after_seconds is relative to cache write time — subtract elapsed
-			local cache_mt
-			cache_mt=$(_mtime "$codex_cache")
-			codex_remaining_secs=$((reset_secs - (now - cache_mt)))
-			[ "$codex_remaining_secs" -lt 0 ] && codex_remaining_secs=0
-			if [ "$codex_remaining_secs" -eq 0 ] && [ "$codex_cache_age" -ge "$ttl" ]; then
-				codex_reset="stale"
-				codex_stale=1
-			elif [ "$codex_remaining_secs" -ge 3600 ]; then
-				codex_reset="$(((codex_remaining_secs + 1800) / 3600))h"
-			else
-				codex_reset="$((codex_remaining_secs / 60))m"
-			fi
-		fi
+		codex_5_pct=$(jq -r '.rate_limit.primary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
+		codex_7_pct=$(jq -r '.rate_limit.secondary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
+		local codex_5_reset_secs codex_7_reset_secs
+		codex_5_reset_secs=$(jq -r '.rate_limit.primary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
+		codex_7_reset_secs=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
+		codex_5_remaining_secs=$(_relative_remaining_secs "$codex_5_reset_secs" "$codex_cache")
+		codex_7_remaining_secs=$(_relative_remaining_secs "$codex_7_reset_secs" "$codex_cache")
+		codex_5_reset=$(_fmt_reset "$codex_5_remaining_secs" "$codex_cache_age")
+		codex_7_reset=$(_fmt_reset "$codex_7_remaining_secs" "$codex_cache_age")
+		[ "$codex_5_reset" = "stale" ] 2>/dev/null && codex_5_stale=1
+		[ "$codex_7_reset" = "stale" ] 2>/dev/null && codex_7_stale=1
 	fi
 
-	[ -z "$claude_pct" ] && [ -z "$codex_pct" ] && return
+	[ -z "$claude_5_pct" ] && [ -z "$codex_5_pct" ] && return
 
-	# Pace-based colour: compare usage% against elapsed% of 5h window
+	# Pace-based colour: compare usage% against elapsed% of the matching window
 	# pace = usage% / elapsed%, green <1.2, yellow 1.2-1.4, red >=1.4
 	_usage_colour() {
-		local usage_pct=$1 remaining_secs=$2
+		local usage_pct=$1 remaining_secs=$2 window_secs=$3
 		local usage_int=${usage_pct%.*}
 		usage_int=${usage_int:-0}
 
@@ -250,14 +282,14 @@ ai_usage() {
 			return
 		fi
 
-		local elapsed_secs=$((18000 - remaining_secs))
+		local elapsed_secs=$((window_secs - remaining_secs))
 		# Early window (<3min elapsed) → green (pace too unstable)
 		if [ "$elapsed_secs" -lt 180 ]; then
 			echo "a6e3a1"
 			return
 		fi
 
-		local elapsed_pct=$((elapsed_secs * 100 / 18000))
+		local elapsed_pct=$((elapsed_secs * 100 / window_secs))
 		[ "$elapsed_pct" -le 0 ] && elapsed_pct=1
 
 		local pace_x100=$((usage_int * 100 / elapsed_pct))
@@ -269,34 +301,60 @@ ai_usage() {
 	}
 
 	local dim="#7f849c"
+	local show_weekly=0 show_weekly_resets=0
+	[ "$width_raw" -ge 100 ] && show_weekly=1
+	[ "$width_raw" -ge 120 ] && show_weekly_resets=1
+
+	_provider_colour() {
+		local stale="$1"
+		local pct="$2"
+		local remaining="$3"
+		local window_secs="$4"
+		if [ "$stale" -eq 1 ]; then
+			printf "%s" "${dim#"#"}"
+		else
+			_usage_colour "$pct" "${remaining:-$window_secs}" "$window_secs"
+		fi
+	}
+
+	_append_provider() {
+		local label="$1"
+		local pct5="$2"
+		local pct7="$3"
+		local reset5="$4"
+		local reset7="$5"
+		local remaining5="$6"
+		local remaining7="$7"
+		local stale5="$8"
+		local stale7="$9"
+
+		[ -n "$pct5" ] || return 0
+
+		local c5 c7 i5 i7
+		c5=$(_provider_colour "$stale5" "$pct5" "$remaining5" 18000)
+		i5=$(printf "%.0f" "$pct5" 2>/dev/null || echo "$pct5")
+
+		out+="#[fg=#${c5}] ${label}:${i5}"
+		if [ "$show_weekly" -eq 1 ] && [ -n "$pct7" ]; then
+			c7=$(_provider_colour "$stale7" "$pct7" "$remaining7" 604800)
+			i7=$(printf "%.0f" "$pct7" 2>/dev/null || echo "$pct7")
+			out+="#[fg=${dim}]/#[fg=#${c7}]${i7}#[fg=${dim}]%"
+			if [ -n "$reset5" ]; then
+				out+="#[fg=${dim}]·${reset5}"
+				[ "$show_weekly_resets" -eq 1 ] && [ -n "$reset7" ] && out+="#[fg=${dim}]/${reset7}"
+			fi
+		else
+			out+="#[fg=#${c5}]%"
+			[ -n "$reset5" ] && out+="#[fg=${dim}]·${reset5}"
+		fi
+		return 0
+	}
 
 	# Build segment: powerline separator then colour-coded labels
 	local out="#[fg=#232334]#[bg=#232334]"
 
-	if [ -n "$claude_pct" ]; then
-		local cc
-		if [ "$claude_stale" -eq 1 ]; then
-			cc="$dim"
-		else
-			cc=$(_usage_colour "$claude_pct" "${claude_remaining_secs:-18000}")
-		fi
-		local ci
-		ci=$(printf "%.0f" "$claude_pct" 2>/dev/null || echo "$claude_pct")
-		out+="#[fg=#${cc}] C:${ci}%"
-		[ -n "$claude_reset" ] && out+="#[fg=${dim}]·${claude_reset}"
-	fi
-	if [ -n "$codex_pct" ]; then
-		local xc
-		if [ "$codex_stale" -eq 1 ]; then
-			xc="$dim"
-		else
-			xc=$(_usage_colour "$codex_pct" "${codex_remaining_secs:-18000}")
-		fi
-		local xi
-		xi=$(printf "%.0f" "$codex_pct" 2>/dev/null || echo "$codex_pct")
-		out+="#[fg=#${xc}] X:${xi}%"
-		[ -n "$codex_reset" ] && out+="#[fg=${dim}]·${codex_reset}"
-	fi
+	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale"
+	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale"
 	out+=" "
 
 	printf "%s" "$out"
