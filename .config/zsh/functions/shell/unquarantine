@@ -5,20 +5,22 @@
 # Disables the minimum-release-age gate per manager:
 #   pnpm + aube -> npm_config_minimum_release_age=0  (both read this npmrc key)
 #   npm         -> npm_config_min_release_age=0       (npm's own distinct key)
+#   pip         -> PIP_UPLOADED_PRIOR_TO=""           (pip's upload-age gate)
 #   uv          -> UV_EXCLUDE_NEWER=""
 #   mise        -> MISE_INSTALL_BEFORE=0
-# Not covered: bun exposes no env/flag for minimumReleaseAge — for a one-off bun
-# install, point `bun -c` at an alternate bunfig or edit ~/.bunfig.toml directly.
+# Not covered: bun exposes no env override for minimumReleaseAge — for a one-off
+# install, pass `bun install --minimum-release-age=0`.
 emulate -L zsh
 
 if (( $# == 0 )); then
   print -u2 "usage: unquarantine <command> [args...]"
-  print -u2 "  Disables release-age quarantines for pnpm/aube/npm/uv/mise (not bun)"
+  print -u2 "  Disables release-age quarantines for pnpm/aube/npm/pip/uv/mise (not bun)"
   return 1
 fi
 
 npm_config_minimum_release_age=0 \
 npm_config_min_release_age=0 \
+PIP_UPLOADED_PRIOR_TO="" \
 UV_EXCLUDE_NEWER="" \
 MISE_INSTALL_BEFORE=0 \
   "$@"
