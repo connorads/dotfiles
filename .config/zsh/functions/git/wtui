@@ -48,8 +48,12 @@ case "$action" in
       echo "Worktree has uncommitted changes:"
       git -C "$target" status --short 2>/dev/null
       echo
-      read -q "?Remove anyway with --force? [y/N] " || { echo "\nAborted."; return 1; }
-      echo
+      local answer
+      read -r "answer?Remove anyway with --force? [y/N] "
+      if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
+        echo "Aborted."
+        return 1
+      fi
       wt-remove --force "$target"
     else
       wt-remove "$target"

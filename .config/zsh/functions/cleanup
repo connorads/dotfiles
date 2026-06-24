@@ -111,10 +111,18 @@ _cleanup_kb_sum() {
   local total=0 path kb
   for path in "$@"; do
     [[ -e "$path" ]] || continue
-    kb=$(/bin/sh -c '/usr/bin/du -sk -- "$1" 2>/dev/null | /usr/bin/sed "s/[[:space:]].*//"' sh "$path")
+    kb=$(/bin/sh -c '/usr/bin/du -sk "$1" 2>/dev/null | /usr/bin/sed "s/[[:space:]].*//"' sh "$path")
     (( total += ${kb:-0} ))
   done
   print -r -- "$total"
+}
+
+_cleanup_any_exists() {
+  local path
+  for path in "$@"; do
+    [[ -e "$path" ]] && return 0
+  done
+  return 1
 }
 
 _cleanup_human_kb() {
@@ -212,7 +220,7 @@ _cleanup_probe_target() {
       # yarn" when unpinned, so probe/run by path only.
       dirs=("$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn")
       kb=$(_cleanup_kb_sum "${dirs[@]}")
-      (( kb > 0 )) || applicable=0
+      _cleanup_any_exists "${dirs[@]}" || applicable=0
       detail="Paths: ${dirs[1]}, ${dirs[2]}"
       command="rm -rf ~/.local/share/yarn/berry/cache ~/.cache/yarn"
       ;;
@@ -258,13 +266,15 @@ _cleanup_probe_target() {
       ;;
     rustup)
       local tc
+      local -a removable_toolchains
       kb=0
-      while IFS= read -r tc; do
-        [[ -n "$tc" ]] || continue
+      removable_toolchains=("${(@f)$(_cleanup_rustup_removable)}")
+      removable_toolchains=("${(@)removable_toolchains:#}")
+      for tc in "${removable_toolchains[@]}"; do
         (( kb += $(_cleanup_kb_sum "$HOME/.rustup/toolchains/$tc") ))
-      done < <(_cleanup_rustup_removable)
+      done
       command -v rustup >/dev/null 2>&1 || applicable=0
-      (( kb > 0 )) || applicable=0
+      (( ${#removable_toolchains[@]} > 0 )) || applicable=0
       detail="Source: rustup toolchain list (keeps default/active/overridden)"
       command="rustup toolchain uninstall <unused toolchains>"
       ;;
@@ -276,7 +286,7 @@ _cleanup_probe_target() {
       ;;
     node-gyp)
       kb=$(_cleanup_kb_sum "$HOME/.cache/node-gyp")
-      (( kb > 0 )) || applicable=0
+      [[ -e "$HOME/.cache/node-gyp" ]] || applicable=0
       detail="Path: $HOME/.cache/node-gyp"
       command="rm -rf ~/.cache/node-gyp"
       ;;
@@ -544,7 +554,7 @@ _cleanup_print_json() {
   printf '{'
   printf '"mode":"%s",' "$(_cleanup_json_escape "$mode_label")"
   printf '"dry_run":%s,' "$([[ "$mode_label" == "dry-run" ]] && echo true || echo false)"
-  printf '"volumes":%s,' "$(( CLEANUP_INCLUDE_VOLUMES ))" 
+  printf '"volumes":%s,' "$(( CLEANUP_INCLUDE_VOLUMES ))"
   printf '"targets":['
   local row kb target label size applicable detail command
   while IFS=$'\t' read -r kb target label size applicable detail command; do

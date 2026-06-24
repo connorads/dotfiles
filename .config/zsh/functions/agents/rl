@@ -139,6 +139,9 @@ start_child() {
     die "fork failed\n" unless defined $watchdog;
 
     if ($watchdog == 0) {
+      open STDIN, "<", "/dev/null";
+      open STDOUT, ">", "/dev/null";
+      open STDERR, ">", "/dev/null";
       POSIX::setsid();
       while (kill 0, $leader_pid) {
         unless (kill 0, $parent_pid) {
@@ -161,15 +164,58 @@ start_child() {
 
 start_child_pty() {
   start_child python3 -c '
+import errno
 import os
 import pty
+import select
 import sys
+import time
 
 argv = sys.argv[1:]
 if not argv:
     raise SystemExit(1)
 
-status = pty.spawn(argv)
+pid, master_fd = pty.fork()
+if pid == 0:
+    os.execvp(argv[0], argv)
+
+os.set_blocking(master_fd, False)
+status = 0
+while True:
+    done, maybe_status = os.waitpid(pid, os.WNOHANG)
+    if done:
+        status = maybe_status
+        drain_until = time.time() + 0.2
+    else:
+        drain_until = None
+
+    readable, _, _ = select.select([master_fd], [], [], 0.05)
+    if master_fd in readable:
+        try:
+            data = os.read(master_fd, 4096)
+        except OSError as exc:
+            if exc.errno != errno.EIO:
+                raise
+            data = b""
+        if data:
+            os.write(1, data)
+        elif done:
+            break
+
+    if done:
+        while time.time() < drain_until:
+            readable, _, _ = select.select([master_fd], [], [], 0.02)
+            if master_fd not in readable:
+                continue
+            try:
+                data = os.read(master_fd, 4096)
+            except OSError:
+                break
+            if not data:
+                break
+            os.write(1, data)
+        break
+
 raise SystemExit(os.waitstatus_to_exitcode(status))
   ' "$@"
 }
@@ -181,15 +227,20 @@ pty_supported() {
 
 refresh_child_pgid() {
   local attempt
+  local parent_pgid
 
   child_pgid=
   [[ -z $child_pid ]] && return 0
+  parent_pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
 
   for (( attempt = 1; attempt <= 20; attempt++ )); do
     child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
-    [[ -n $child_pgid ]] && return 0
+    [[ -n $child_pgid && $child_pgid != "$parent_pgid" ]] && return 0
     sleep 0.05
   done
+
+  debug_log "child $child_pid did not enter a separate process group"
+  child_pgid=
 }
 
 TRAPINT() {

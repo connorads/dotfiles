@@ -31,6 +31,7 @@ make_repo() {
 make_remote_repo() {
   local remote=$1
   git init --bare "$remote" >/dev/null
+  git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 }
 
 add_origin_and_push_main() {
@@ -203,7 +204,7 @@ autoload -Uz wtui
 wtui
 EOF
 
-  run bash -lc "export HOME='$HOME' PATH='$PATH' TEST_LOG='$TEST_LOG'; if script --help 2>&1 | grep -q 'illegal option'; then printf 'y\n' | script -q /dev/null zsh --no-rcs -i '$runner'; else printf 'y\n' | script -qec \"zsh --no-rcs -i '$runner'\" /dev/null; fi"
+  run bash -lc "export HOME='$HOME' PATH='$PATH' TEST_LOG='$TEST_LOG'; printf 'y\n' | zsh --no-rcs -i '$runner'"
 
   [ "$status" -eq 0 ]
   grep -q -- "--force $HOME/.trees/repo-topic" "$TEST_LOG"
@@ -236,7 +237,7 @@ EOF
   local remote="$BATS_TEST_TMPDIR/remote.git"
   make_repo "$repo"
 
-  git init --bare "$remote" >/dev/null
+  make_remote_repo "$remote"
   git -C "$repo" remote add origin "$remote"
   git -C "$repo" push -u origin main >/dev/null
 
@@ -350,8 +351,8 @@ EOF
   local other_seed="$BATS_TEST_TMPDIR/other-seed"
   make_repo "$repo"
 
-  git init --bare "$origin" >/dev/null
-  git init --bare "$other" >/dev/null
+  make_remote_repo "$origin"
+  make_remote_repo "$other"
   git -C "$repo" remote add origin "$origin"
   git -C "$repo" push -u origin main >/dev/null
 
@@ -397,8 +398,8 @@ EOF
   local origin_seed="$BATS_TEST_TMPDIR/origin-seed"
   make_repo "$repo"
 
-  git init --bare "$upstream" >/dev/null
-  git init --bare "$origin" >/dev/null
+  make_remote_repo "$upstream"
+  make_remote_repo "$origin"
   git -C "$repo" remote add upstream "$upstream"
   git -C "$repo" remote add origin "$origin"
   git -C "$repo" push upstream main >/dev/null
@@ -441,8 +442,8 @@ EOF
   local origin_seed="$BATS_TEST_TMPDIR/origin-seed"
   make_repo "$repo"
 
-  git init --bare "$upstream" >/dev/null
-  git init --bare "$origin" >/dev/null
+  make_remote_repo "$upstream"
+  make_remote_repo "$origin"
   git -C "$repo" remote add upstream "$upstream"
   git -C "$repo" remote add origin "$origin"
   git -C "$repo" push upstream main >/dev/null
@@ -481,8 +482,8 @@ EOF
   local origin_seed="$BATS_TEST_TMPDIR/origin-seed"
   make_repo "$repo"
 
-  git init --bare "$upstream" >/dev/null
-  git init --bare "$origin" >/dev/null
+  make_remote_repo "$upstream"
+  make_remote_repo "$origin"
   git -C "$repo" remote add upstream "$upstream"
   git -C "$repo" remote add origin "$origin"
   git -C "$repo" push upstream main >/dev/null
@@ -527,7 +528,7 @@ EOF
   local remote="$BATS_TEST_TMPDIR/remote.git"
   make_repo "$repo"
 
-  git init --bare "$remote" >/dev/null
+  make_remote_repo "$remote"
   git -C "$repo" remote add origin "$remote"
   git -C "$repo" push -u origin main >/dev/null
 

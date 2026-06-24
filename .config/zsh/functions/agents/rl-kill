@@ -43,17 +43,20 @@ if [[ -d /proc/1 ]]; then
     session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
   done
 else
-  # macOS: ps -eww shows full environment
+  # macOS: axeww includes command arguments followed by the environment.
   local line pid rest val
-  ps -eww -o pid=,command= 2>/dev/null | while IFS= read -r line; do
-    pid=${line%%[! ]*}
-    pid=${pid// /}
+  ps axeww -o pid=,command= 2>/dev/null | while IFS= read -r line; do
+    if [[ ! $line =~ '^[[:space:]]*([0-9]+)[[:space:]]+(.*)$' ]]; then
+      continue
+    fi
+    pid=$match[1]
+    rest=$match[2]
     (( pid == $$ )) && continue
-    # extract RL_SESSION=value from the environment portion
-    val=${(M)line:#*RL_SESSION=*}
-    [[ -n $val ]] || continue
-    val=${val##*RL_SESSION=}
-    val=${val%% *}
+
+    if [[ ! $rest =~ '(^|[[:space:]])RL_SESSION=([^[:space:]]+)' ]]; then
+      continue
+    fi
+    val=$match[2]
     [[ -n $val ]] || continue
     session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
   done

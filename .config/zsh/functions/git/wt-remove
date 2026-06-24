@@ -44,7 +44,14 @@ if (( ! force )); then
 fi
 
 if (( force )); then
-  if git --git-dir="$common_dir" worktree list --porcelain 2>/dev/null | grep -Fqx "worktree $worktree"; then
+  local registered=0 line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" == "worktree "* ]] && _wt_same_path "${line#worktree }" "$worktree" && {
+      registered=1
+      break
+    }
+  done < <(git --git-dir="$common_dir" worktree list --porcelain 2>/dev/null)
+  if (( registered )); then
     git --git-dir="$common_dir" worktree unlock "$worktree" >/dev/null 2>&1 || true
   fi
   git --git-dir="$common_dir" worktree remove "$worktree" --force || return 1
