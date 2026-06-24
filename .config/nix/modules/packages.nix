@@ -74,6 +74,7 @@ let
     jjui
     # CLI utilities
     bc
+    gnupg
     glow
     bottom
     dust
