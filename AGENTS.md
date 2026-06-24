@@ -53,9 +53,11 @@ Then `dotfiles add .newfile` works without `-f`.
 | [flake.nix](./.config/nix/flake.nix)                                   | Main Nix config: macOS (nix-darwin), Linux (home-manager)                                 |
 | [modules/biokc.nix](./.config/nix/modules/biokc.nix)                   | Builds `biokc` (Touch ID keychain helper) from [`main.swift`](./.config/nix/biokc/main.swift) via system swiftc; desktop-only. Used by gh-gate to fingerprint-gate the key |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
-| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days); pnpm equivalent in `~/.config/pnpm/config.yaml` (pnpm 11, YAML) |
+| [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
 | [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
+| [.config/pip/pip.conf](./.config/pip/pip.conf)                         | pip quarantine (`uploaded-prior-to = P4D`) for direct `pip install` / `download` / `wheel` |
+| [.yarnrc.yml](./.yarnrc.yml)                                           | Modern Yarn quarantine (`npmMinimalAgeGate: 4d`). Yarn 1 ignores this; prefer pnpm there |
 | [.config/aube/config.toml](./.config/aube/config.toml)                 | aube quarantine + trustPolicy + low-download gate + advisoryBloomCheck. Primary npm backend for mise (`npm.package_manager = "aube"`) |
 | [.zshrc](./.zshrc)                                                     | Shell config with aliases and autoloaded helpers                                          |
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
@@ -219,9 +221,11 @@ mise outdated --bump                        # available updates beyond ranges
 
 **pnpm** (v11): global 4-day quarantine (`minimumReleaseAge: 5760`) + trust policy (`trustPolicy: no-downgrade`) + `ignoreScripts: true` in `~/.config/pnpm/config.yaml` (YAML, camelCase). Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise). **v11 reads pnpm settings only from YAML** (`pnpm-workspace.yaml` / global `config.yaml`), never `.npmrc`/`rc` — the old `~/.config/pnpm/rc` is an inert v10 fallback. **macOS gotcha**: pnpm reads its global config from the native dir `~/Library/Preferences/pnpm/`, not `~/.config/pnpm/`, so the dotfile is symlinked there via nix (`home.file."Library/Preferences/pnpm/config.yaml"` in [darwin-shared.nix](./.config/nix/modules/darwin-shared.nix), `mkOutOfStoreSymlink` → the tracked `~/.config/pnpm/config.yaml`). Linux reads `~/.config/pnpm/config.yaml` natively. `blockExoticSubdeps: true` is set explicitly (it's the v11 default, but pinning it keeps the posture auditable in one place and drift-proof).
 
-**npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimumReleaseAge` in **minutes** (5760 = 4 days). Project `.npmrc` files should set both keys if either tool might run. npm has no `trust-policy` equivalent.
+**npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimumReleaseAge` in **minutes** (5760 = 4 days). `allow-git=none` blocks Git dependencies, which can execute code even when lifecycle scripts are disabled. Project `.npmrc` files should set both age-gate keys if either tool might run. npm has no `trust-policy` equivalent.
 
 **uv**: global 4-day quarantine (`exclude-newer = "4 days"`) in `~/.config/uv/uv.toml`. Applies during resolution (`uv lock`/`uv lock --upgrade`), not during `uv sync --frozen`.
+
+**pip**: global 4-day quarantine (`uploaded-prior-to = P4D`) in `~/.config/pip/pip.conf`. Applies to `pip install`, `pip download`, and `pip wheel` when installing from indexes that expose upload-time metadata. `uv` remains preferred for Python projects because lockfile resolution is easier to audit.
 
 **aube** (primary npm backend for mise): config at `~/.config/aube/config.toml`. Set via mise: `npm.package_manager = "aube"`. Layered defenses beyond a simple age gate:
 
@@ -235,7 +239,11 @@ Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/au
 
 Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.cache/aube/{virtual-store,packuments-full-v1}` (plus `aube cache prune --age-days 0`). It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
 
-**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global.
+**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks dependency postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global. For urgent one-offs, use `bun install --minimum-release-age=0`; there is no known env override like npm/pnpm/uv/pip expose.
+
+**Deno**: Deno 2.8+ reads `min-release-age` from `.npmrc` for npm dependencies. `deno install --minimum-dependency-age=0` disables it for an explicit one-off. Lifecycle scripts still require explicit `--allow-scripts`.
+
+**Yarn**: modern Yarn reads `npmMinimalAgeGate: 4d` from `~/.yarnrc.yml`. Yarn 1 ignores this setting, and Corepack can still expose Yarn 1 for legacy projects, so prefer pnpm unless the project pins Yarn 4+.
 
 **Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `ignoreScripts: true` in `~/.config/pnpm/config.yaml`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
@@ -252,7 +260,11 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 **Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* — they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter.
 
-**Cargo/Rust**: the one ecosystem without a proactive age-gate, and `build.rs` runs arbitrary code at build with no global off-switch (unlike npm's `ignore-scripts`). Native `registry.global-min-publish-age` is accepted (RFC 3923) but the client side is pending ([cargo#17009](https://github.com/rust-lang/cargo/issues/17009)); revisit then. For now the cover is reactive: `mise run supply-audit` (osv-scanner) flags known-bad `Cargo.lock` entries, with `cargo audit` / `cargo deny` available on demand (no fast prebuilt in the mise registry, so not pinned).
+**Cargo/Rust**: the one ecosystem without a stable proactive age-gate, and `build.rs` runs arbitrary code at build with no global off-switch (unlike npm's `ignore-scripts`). Native `-Zmin-publish-age` / `registry.global-min-publish-age` is nightly-only as of Cargo 1.96; revisit once [cargo#17009](https://github.com/rust-lang/cargo/issues/17009) stabilises. For now the cover is reactive: `mise run supply-audit` (osv-scanner) flags known-bad `Cargo.lock` entries, with `cargo audit` / `cargo deny` available on demand (no fast prebuilt in the mise registry, so not pinned).
+
+**Ruby / Bundler**: system Bundler 1.17.2 has no cooldown support. If Ruby work becomes active, install modern Ruby/Bundler and set `bundle config set --global cooldown 4`.
+
+**Composer**: no package-age quarantine is configured; keep `secure-http=true` and Composer audit enabled. Prefer lockfile review plus `mise run supply-audit` where supported.
 
 **No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
 
