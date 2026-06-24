@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # resurrect-save-sessions.sh: post-save hook for tmux-resurrect
-# Discovers active Claude Code and OpenCode session IDs and writes a
+# Discovers active Claude Code, Codex and OpenCode session IDs and writes a
 # companion JSON file that strategy scripts read at restore time.
 
 set -euo pipefail
@@ -18,7 +18,12 @@ declare -A CLAUDE_SESSIONS
 declare -A CLAUDE_PANE_SESSIONS
 declare -A CLAUDE_PANE_DIRS
 declare -A CLAUDE_DIR_COUNTS
+declare -A CODEX_PANE_SESSIONS
+declare -A CODEX_PANE_DIRS
+declare -A OPENCODE_PANE_SESSIONS
+declare -A OPENCODE_PANE_DIRS
 declare -A OPENCODE_SESSIONS
+declare -A OPENCODE_DIR_COUNTS
 found_sessions=0
 
 # --- Claude Code session discovery ---
@@ -106,55 +111,62 @@ foreground_pid_for_command() {
 	echo "$pid"
 }
 
-# --- OpenCode session discovery ---
-# Session files: ~/.local/share/opencode/storage/session/<project-id>/ses_*.json
-# Project mapping: ~/.local/share/opencode/storage/project/*.json (id -> worktree)
-find_opencode_session() {
+# --- Codex session discovery ---
+# Session files: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+find_codex_session() {
 	local dir="$1"
-	local pid="$2"
+	local pane_pid="$2"
+	local tty="$3"
 	local session_id=""
+	local codex_pid=""
 
-	# Try lsof first
-	if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-		session_id=$(lsof -p "$pid" 2>/dev/null |
-			grep '/opencode/storage/session/' |
-			grep '\.json$' |
-			awk '{print $NF}' |
-			head -1 |
-			xargs -I{} basename {} .json 2>/dev/null || true)
+	codex_pid=$(foreground_pid_for_command "$tty" "codex" "$pane_pid")
+	if [ -z "$codex_pid" ]; then
+		echo ""
+		return
 	fi
 
-	# Fallback: find project ID for this directory, then most recent session file
-	if [ -z "$session_id" ]; then
-		local project_dir="$HOME/.local/share/opencode/storage/project"
-		if [ -d "$project_dir" ]; then
-			local project_id=""
-			# Search project files for matching worktree
-			for pf in "$project_dir"/*.json; do
-				[ -f "$pf" ] || continue
-				local worktree
-				worktree=$(jq -r '.worktree // empty' "$pf" 2>/dev/null)
-				if [ "$worktree" = "$dir" ]; then
-					project_id=$(jq -r '.id // empty' "$pf" 2>/dev/null)
-					break
-				fi
-			done
+	local session_file=""
+	session_file=$(lsof -p "$codex_pid" 2>/dev/null |
+		grep '\.jsonl$' |
+		grep '/\.codex/sessions/' |
+		awk '{print $NF}' |
+		head -1 || true)
 
-			if [ -n "$project_id" ]; then
-				local session_dir="$HOME/.local/share/opencode/storage/session/$project_id"
-				if [ -d "$session_dir" ]; then
-					local latest
-					# shellcheck disable=SC2012  # mtime ordering is the fallback behaviour.
-					latest=$(ls -t "$session_dir"/ses_*.json 2>/dev/null | head -1)
-					if [ -n "$latest" ]; then
-						session_id=$(basename "$latest" .json)
-					fi
-				fi
-			fi
+	if [ -n "$session_file" ] && [ -f "$session_file" ]; then
+		session_id=$(jq -r --arg dir "$dir" '
+			select(.type == "session_meta")
+			| select((.payload.cwd // $dir) == $dir)
+			| .payload.id // empty
+		' "$session_file" 2>/dev/null | head -1 || true)
+	fi
+
+	echo "$session_id"
+}
+
+# --- OpenCode session discovery ---
+# Current OpenCode persists sessions in ~/.local/share/opencode/opencode.db.
+# There is no passive active-session marker, so cwd/latest restore is used only
+# when a single live OpenCode pane owns that cwd.
+find_opencode_session() {
+	local dir="$1"
+	local allow_latest="${2:-0}"
+	local session_id=""
+
+	if [ "$allow_latest" = "1" ] && command -v sqlite3 &>/dev/null; then
+		local db="$HOME/.local/share/opencode/opencode.db"
+		if [ -f "$db" ]; then
+			session_id=$(sqlite3 -readonly "$db" \
+				"select id from session where directory = $(sql_quote "$dir") order by time_updated desc limit 1;" 2>/dev/null || true)
 		fi
 	fi
 
 	echo "$session_id"
+}
+
+sql_quote() {
+	local value="${1//\'/\'\'}"
+	printf "'%s'" "$value"
 }
 
 # --- Get pane PIDs from tmux (still running at hook time) ---
@@ -163,19 +175,24 @@ get_live_panes() {
 	tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_current_command}	#{pane_current_path}	#{pane_tty}' 2>/dev/null || true
 }
 
-# --- Parse save file for panes running claude or opencode ---
+# --- Parse save file for panes running claude, codex or opencode ---
 # Save file pane format (tab-delimited):
 # pane<TAB>session<TAB>window<TAB>win_active<TAB>:flags<TAB>pane_idx<TAB>:title<TAB>:dir<TAB>pane_active<TAB>pane_cmd<TAB>:full_cmd
 # But PID is not in the save file — we use live tmux panes instead.
 
-# Read live pane data and match against claude/opencode
+# Read live pane data and match against agent processes.
 live_panes=$(get_live_panes)
 
 while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
-	if [ "$cmd" = "claude" ]; then
+	case "$cmd" in
+	claude)
 		CLAUDE_DIR_COUNTS["$dir"]=$((${CLAUDE_DIR_COUNTS["$dir"]:-0} + 1))
-	fi
+		;;
+	opencode)
+		OPENCODE_DIR_COUNTS["$dir"]=$((${OPENCODE_DIR_COUNTS["$dir"]:-0} + 1))
+		;;
+	esac
 done <<<"$live_panes"
 
 while IFS=$'\t' read -r pane_key pid cmd dir tty; do
@@ -196,10 +213,24 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 			fi
 		fi
 		;;
-	opencode)
-		sid=$(find_opencode_session "$dir" "$pid")
+	codex)
+		sid=$(find_codex_session "$dir" "$pid" "$tty")
 		if [ -n "$sid" ]; then
 			found_sessions=1
+			CODEX_PANE_SESSIONS["$pane_key"]="$sid"
+			CODEX_PANE_DIRS["$pane_key"]="$dir"
+		fi
+		;;
+	opencode)
+		allow_latest=0
+		if [ "${OPENCODE_DIR_COUNTS["$dir"]:-0}" -eq 1 ]; then
+			allow_latest=1
+		fi
+		sid=$(find_opencode_session "$dir" "$allow_latest")
+		if [ -n "$sid" ]; then
+			found_sessions=1
+			OPENCODE_PANE_SESSIONS["$pane_key"]="$sid"
+			OPENCODE_PANE_DIRS["$pane_key"]="$dir"
 			OPENCODE_SESSIONS["$dir"]="$sid"
 		fi
 		;;
@@ -223,6 +254,14 @@ json='{"version":2,"panes":{}}'
 for pane_key in "${!CLAUDE_PANE_SESSIONS[@]}"; do
 	entry=$(jq -n --arg dir "${CLAUDE_PANE_DIRS[$pane_key]}" --arg sid "${CLAUDE_PANE_SESSIONS[$pane_key]}" '{dir: $dir, claude: $sid}')
 	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = $entry')
+done
+for pane_key in "${!CODEX_PANE_SESSIONS[@]}"; do
+	entry=$(jq -n --arg dir "${CODEX_PANE_DIRS[$pane_key]}" --arg sid "${CODEX_PANE_SESSIONS[$pane_key]}" '{dir: $dir, codex: $sid}')
+	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = (.panes[$pane_key] // {}) + $entry')
+done
+for pane_key in "${!OPENCODE_PANE_SESSIONS[@]}"; do
+	entry=$(jq -n --arg dir "${OPENCODE_PANE_DIRS[$pane_key]}" --arg sid "${OPENCODE_PANE_SESSIONS[$pane_key]}" '{dir: $dir, opencode: $sid}')
+	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = (.panes[$pane_key] // {}) + $entry')
 done
 
 for dir in "${!ALL_DIRS[@]}"; do
