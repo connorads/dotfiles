@@ -54,3 +54,7 @@ enabled = true
 
 [plugins."computer-use@openai-bundled"]
 enabled = true
+
+[tui]
+status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-remaining"]
+terminal_title = ["spinner", "project", "git-branch", "model"]
