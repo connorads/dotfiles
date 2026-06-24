@@ -4,6 +4,8 @@ icons:
   bun: ""
   claude: "󰗋"
   codex: "󰧑"
+  codex-aarch64: "󰧑"
+  codex-aarch64-a: "󰧑"
   node: ""
   opencode: "󰏦"
   micro: "󰏫"
