@@ -47,7 +47,7 @@ enabled = true
 enabled = true
 
 [plugins."telegram@claude-plugins-official"]
-enabled = true
+enabled = false
 
 [plugins."browser@openai-bundled"]
 enabled = true
