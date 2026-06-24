@@ -11,7 +11,7 @@ setup() {
 }
 
 @test "errors when tailscale is not installed" {
-  run -127 zsh --no-rcs "$TS" status
+  run -127 env PATH="/usr/bin:/bin:/usr/sbin:/sbin" zsh --no-rcs "$TS" status
 
   [ "$status" -eq 127 ]
   [[ "$output" == *"tailscale not installed"* ]]
