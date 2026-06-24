@@ -1,12 +1,12 @@
 ---
 name: test-coverage
 description: >
-  Systematically audit, improve, and enforce test coverage in any repository.
-  Use when asked to improve coverage, add missing tests, set up coverage thresholds,
-  audit test gaps, or wire coverage into CI/hooks. Works across ecosystems
-  (TypeScript, Python, Go, Rust, etc.). Composes with the hk skill for pre-commit enforcement.
-  Triggers on: test coverage, missing tests, coverage threshold, coverage report,
-  untested code, coverage gap, coverage audit.
+  Systematically audit, improve, and enforce test coverage, and gate test quality in
+  CI — across any ecosystem (TypeScript, Python, Go, Rust). Use to raise coverage, set
+  thresholds, audit gaps, manage exclusions, merge reports, wire coverage into CI/hooks,
+  or add mutation testing and fuzzing as quality gates. Composes with the hk skill for
+  pre-commit enforcement. For how to design and write good tests — property-based,
+  snapshot/approval, differential, contract, flaky-test handling — use the testing skill.
 ---
 
 # Test Coverage
@@ -38,7 +38,8 @@ Is there any coverage tooling configured?
 └── Yes
     ├── Coverage below target? → Audit & Improve (below)
     ├── Coverage adequate but not enforced? → Enforce (below)
-    └── Coverage enforced, writing new code? → Write Tests for New Code (below)
+    ├── Coverage enforced, writing new code? → Write Tests for New Code (below)
+    └── Coverage high but tests feel weak / want to raise quality? → Test Quality: Beyond Coverage (below)
 ```
 
 ## Bootstrap: Setting Up Coverage from Scratch
@@ -271,6 +272,46 @@ Every exclusion at one tier names the tier that provides coverage:
 
 See [coverage exclusions](references/coverage-exclusions.md) for the full exclusion taxonomy and documentation format.
 
+## Test Quality: Beyond Coverage
+
+Coverage is **necessary but not sufficient**. It tells you which lines *ran*, never whether a test would *fail* when the code is wrong. A suite can hit 100% and assert nothing. This section is what to reach for once coverage is high and you need evidence the tests actually catch bugs.
+
+### Why a coverage number is not a quality target
+
+- **Coverage is weakly correlated with effectiveness.** Controlling for test-suite size, coverage is a poor predictor of fault-detection ability (Inozemtseva & Holmes, *Coverage Is Not Strongly Correlated With Test Suite Effectiveness*, [ICSE 2014](https://dl.acm.org/doi/10.1145/2568225.2568271)). High coverage is consistent with a near-useless suite.
+- **Goodhart's law.** "When a measure becomes a target, it ceases to be a good measure." Mandating a coverage percentage incentivises assertion-free tests, deleted edge cases, and excluded hard files — activity that raises the number while lowering quality. (See [Seemann, *Code coverage is a useless target measure*](https://blog.ploeh.dk/2015/11/16/code-coverage-is-a-useless-target-measure/).)
+- **100% is a smell, not a goal.** Use coverage to *find untested code*, not as a KPI. Well-tested code tends to land in the 80–90s naturally; a hard 100% mandate signals gaming (Fowler, [*TestCoverage*](https://martinfowler.com/bliki/TestCoverage.html)).
+
+**Practical stance for this skill:** keep coverage as the *regression gate* (the Enforce section), and use the techniques below to measure and raise *quality*. The single most useful quality signal is the **oracle gap** — high coverage paired with low mutation score flags files where weak tests execute important code (see mutation testing).
+
+### Which technique, when
+
+This skill owns the techniques you **measure and gate in CI** (the left two columns below). The *test-design* techniques (when/how to write a good test) live in the **`testing`** skill — load it for those; this skill only points at them.
+
+| Situation | Reach for | Home |
+|-----------|-----------|------|
+| Coverage high but unsure tests *assert* enough | **Mutation testing** | [mutation-testing.md](references/mutation-testing.md) — here |
+| Code ingests untrusted/byte input; want crash-finding | **Coverage-guided fuzzing** | [fuzzing.md](references/fuzzing.md) — here |
+| Function has a statable invariant / round-trip / model | **Property-based testing** | `testing` skill |
+| No reliable oracle (compilers, ML, numeric, renderers) | **Differential / metamorphic** | `testing` skill |
+| Verifying serialised output / rendered UI | **Snapshot / approval** (carefully) | `testing` skill |
+| Service boundary between teams/repos | **Contract testing** | `testing` skill |
+| Tests pass but assert nothing | **Assertion-density check** | `testing` skill |
+| Tests fail intermittently | **Flaky-test detection & quarantine** | `testing` skill |
+
+The two quality *metrics* you can gate on each have a dedicated reference here with per-ecosystem tooling and CI/diff enforcement: **[mutation testing](references/mutation-testing.md)** (does the suite *detect* changes — the strongest quality signal, and the rigorous version of "do my assertions matter") and **[fuzzing](references/fuzzing.md)** (coverage-guided crash-finding). The oracle gap above is computed from mutation score.
+
+For the design side — **property-based testing** (invariants over generated inputs, shrinking, stateful/model-based), **snapshot/approval pitfalls**, **differential & metamorphic testing**, **assertion density**, and **flaky-test management** — see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md)). That's where "how to write the test" lives; this skill is where "how to measure and enforce it" lives.
+
+### Enforcing quality techniques in CI/hooks
+
+These are slower than unit tests — keep them **fast and actionable** the same way coverage stays fast:
+
+- **Diff-scoped:** mutate/fuzz only changed code (mutation `--in-diff`/`--incremental`/`--git-diff-lines`; see refs).
+- **Time-boxed:** fuzzing runs a fixed budget (e.g. 5 min smoke test), never open-ended in PR CI.
+- **Capped & separated:** cap mutants per file; run mutation/fuzz as a **dedicated CI job after the suite passes**, not in the fast pre-commit path. PBT runs *inside* the unit tier with a bounded example count.
+- **Thresholds live in the tool**, per the Enforce-section boundary — `break` (Stryker), `--min-msi` (go-mutesting), exit-code 2 (cargo-mutants), `numRuns` (fast-check). hk/CI just runs the command and checks the exit code.
+
 ## Test Organisation Patterns
 
 ### Directory structure
@@ -356,3 +397,7 @@ Counter-based (not random) for deterministic debugging. Reset between test runs 
   - [TypeScript/JS](references/ecosystems/typescript.md) | [Python](references/ecosystems/python.md) | [Go](references/ecosystems/go.md) | [Rust](references/ecosystems/rust.md) | [Merging](references/ecosystems/merging.md)
 - [Coverage Exclusions](references/coverage-exclusions.md) — How to document and justify every exclusion
 - [Enforcement](references/enforcement.md) — Wiring coverage into hk hooks, CI pipelines, and PR checks
+- Test quality you measure & gate (beyond line/branch coverage):
+  - [Mutation Testing](references/mutation-testing.md) — Does the suite *detect* changes? Per-ecosystem tools, the oracle gap, diff-based CI
+  - [Fuzzing](references/fuzzing.md) — Coverage-guided crash-finding (Go native, cargo-fuzz, Atheris, Jazzer, OSS-Fuzz), time-boxed CI
+- For test *design* quality — property-based, snapshot/approval, differential/metamorphic, contract, assertion density, flaky-test management — see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md))
