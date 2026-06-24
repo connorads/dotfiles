@@ -2,10 +2,11 @@
 name: testing
 description: >
   Design and write effective tests for behavioural changes, bug fixes, and
-  refactors. Use when adding tests, choosing a test layer, practising TDD,
-  reducing brittle tests, refactoring safely, deciding when to use fakes or
-  property-based tests, or reviewing test strategy. For coverage reports,
-  thresholds, and enforcement, use the test-coverage skill.
+  refactors. Use when choosing a test layer, practising TDD, picking
+  doubles/fakes, reducing brittle or flaky tests, refactoring safely, or
+  applying property-based, snapshot/approval, differential/metamorphic, or
+  contract testing. For coverage, thresholds, mutation testing, fuzzing, and
+  CI/hook enforcement, use the test-coverage skill.
 ---
 
 # Testing
@@ -89,6 +90,71 @@ Keep generators valid by construction where possible. Keep named example tests
 for edge cases and regression stories; use property tests to explore the input
 space around them.
 
+Failures shrink automatically to a minimal counterexample — persist that case
+as a regression example so the specific failure is checked deterministically
+forever. For stateful systems, generate a sequence of operations and check them
+against a simple in-memory model (model-based testing).
+
+See [property-based-testing.md](references/property-based-testing.md) for
+per-ecosystem frameworks (fast-check, Hypothesis, proptest, rapid/gopter),
+shrinking, stateful/model-based testing, CI integration, and pitfalls.
+
+## Differential & Metamorphic Testing
+
+Use these when there is **no reliable oracle** — you cannot state the correct
+output, only relationships between outputs. They are the backbone of compiler,
+parser, database, numeric, and ML testing.
+
+- **Differential:** run the same input through two independent implementations
+  (or old vs new version) and assert they agree. Cheap and powerful for safe
+  refactors and for parsers/compilers — keep the reference implementation as the
+  oracle.
+- **Metamorphic:** assert a *relation* between related inputs when no single
+  output is checkable — `sin(x) == sin(pi - x)`; permuting training data should
+  not change a model's accuracy; add-then-remove restores state. Usually
+  expressed as a property (see above), so reach for your PBT framework.
+
+## Snapshot & Approval Tests
+
+Snapshot tools (Jest/Vitest snapshots, insta for Rust, syrupy for Python,
+ApprovalTests) record output and diff future runs against it. Useful for large,
+semantically meaningful serialised output — but they fail *open* and degrade:
+
+- **Snapshot rot / rubber-stamping:** when a snapshot breaks, the path of least
+  resistance is update-and-merge, so the snapshot ends up asserting "what the
+  code currently does", not what it *should*.
+- **Over-broad snapshots** bury the one meaningful line among hundreds of
+  irrelevant ones; every change churns the snapshot and nobody reads the diff.
+
+Use them well: keep snapshots **small and targeted** (snapshot the one derived
+value, not the whole DOM/object), review every update as real code, and prefer
+explicit assertions whenever you can name the expectation. Treat a snapshot-only
+test as roughly assertion-free for quality purposes. Avoid snapshots for
+incidental structure.
+
+## Assertion Quality
+
+A test with no assertion only proves "it did not throw". Make each test's
+assertions name the behaviour they protect. As a cheap guard, flag
+assertion-free tests in lint/CI (e.g. ESLint `jest/expect-expect`, or AST/grep
+checks for test functions lacking `assert`/`expect`/`require`). Assertion
+*count* is a weak, gameable proxy — the rigorous measure of "do my assertions
+actually catch bugs" is **mutation testing**, owned by the test-coverage skill.
+
+## Contract Testing
+
+Two senses, both about proving a boundary without a full end-to-end stack:
+
+- **Adapter/port contract** (within one codebase): one test suite run against
+  both the real adapter and any fake proves they satisfy the same port. Prefer
+  this over mocks for owned ports (see Test Doubles).
+- **Consumer-driven contract** (across independently deployed services, e.g.
+  Pact): the consumer publishes the requests/responses it relies on; the
+  provider verifies it still satisfies them. Sits *between* integration and e2e,
+  catching cross-service breaks cheaply. Pitfalls: broker/tooling overhead and
+  false confidence if contracts drift from real usage. For HTTP, schema/OpenAPI
+  contract testing is lighter when one side owns the spec.
+
 ## Refactoring Existing Code
 
 Before refactoring, characterise current behaviour through public APIs. Commit
@@ -107,3 +173,30 @@ need a commit, but it should be real enough to prove the fix.
 
 After the fix, run the narrowest relevant check first, then the broader checks
 needed for confidence.
+
+## Flaky Tests
+
+A flaky test (passes and fails on the same code) erodes trust in the whole
+suite. **Retry-to-green is an anti-pattern** — auto-rerunning until a pass hides
+a real defect (usually a race, shared state, or order-dependency) and lets it
+ship.
+
+- **Detect:** re-run suspected tests to *surface* flakiness, not mask it
+  (`pytest-rerunfailures`, `go test -count=N`, seed/order shuffling to expose
+  order-dependence). CI test-analytics (Datadog, Buildkite, GitHub) track
+  per-test pass/fail history over time.
+- **Quarantine, then fix:** move a confirmed-flaky test out of the blocking gate
+  into a tracked quarantine with an owner and a deadline — do not `skip` and
+  forget, and do not leave it blocking the build. Root-cause it: timing, shared
+  state, network, or nondeterministic ordering.
+
+Prevention is design: keep tests deterministic and order-independent, and remove
+time/network coupling (see Core Rules).
+
+## References
+
+- [property-based-testing.md](references/property-based-testing.md) —
+  Per-ecosystem PBT frameworks, shrinking, stateful/model-based testing, CI
+  integration, and pitfalls.
+- For coverage reports, thresholds, exclusions, **mutation testing**, fuzzing,
+  and CI/hook enforcement of test quality, use the **test-coverage** skill.
