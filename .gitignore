@@ -3,6 +3,7 @@
 !.gitignore
 !/.gitattributes
 !/.npmrc
+!/.yarnrc.yml
 !/.bunfig.toml
 !/.rumdl.toml
 !/hk.pkl
@@ -71,6 +72,9 @@
 
 !/.config/skl/
 !/.config/skl/**
+
+!/.config/pip/
+!/.config/pip/pip.conf
 
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
