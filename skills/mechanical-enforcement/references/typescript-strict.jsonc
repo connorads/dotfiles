@@ -7,9 +7,20 @@
     "strict": true,
     "strictNullChecks": true,
 
+    // Distinguish optional (`x?: T`) from `x: T | undefined`. Stricter than
+    // `strict`: blocks writing `undefined` into a property that only opted into
+    // *absence*, so optional-vs-explicitly-undefined stops being conflated.
+    // Add `| undefined` to optionals that are genuinely nullable.
+    "exactOptionalPropertyTypes": true,
+
     // Indexed access returns T | undefined.
     // Prevents `arr[0].foo` crashing on empty arrays; forces explicit checks.
     "noUncheckedIndexedAccess": true,
+
+    // Force bracket access for index-signature keys; dot access stays for
+    // declared properties. Stricter than `strict`: a typo'd dynamic key
+    // (`config.hostnam`) is caught instead of being silently typed.
+    "noPropertyAccessFromIndexSignature": true,
 
     // Fail the build on dead code. Zombie imports and unused vars drift otherwise.
     // Prefix with `_` to intentionally keep an unused parameter.

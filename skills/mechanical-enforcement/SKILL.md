@@ -55,6 +55,8 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 |---|---|---|---|
 | Full strict mode | `tsconfig.json`: `"strict": true` | Most null/undefined footguns | Non-negotiable. |
 | Indexed access returns `T \| undefined` | `"noUncheckedIndexedAccess": true` | `arr[0].foo` crashing on empty arrays | See `references/typescript-strict.jsonc`. |
+| Exact optional properties | `"exactOptionalPropertyTypes": true` | Conflating `x?: T` with `x: T \| undefined`; writing `undefined` into a merely-optional field | Stricter than `strict`. Add `\| undefined` to optionals that are genuinely nullable. |
+| Index-signature keys need bracket access | `"noPropertyAccessFromIndexSignature": true` | Typo'd dynamic keys (`cfg.hostnam`) silently typed instead of flagged | Stricter than `strict`. Declared properties keep dot access. |
 | Dead code fails build | `"noUnusedLocals": true`, `"noUnusedParameters": true` | Drifted imports, zombie variables | Prefix with `_` to intentionally keep an unused param. |
 | Only erasable TS syntax | `"erasableSyntaxOnly": true` (TS 5.8+) | `enum`, `namespace`, constructor param props — things that don't survive pure type-stripping | Enables deno/bun/swc/esbuild interop without a TS runtime. Breaks existing code using `enum`; migrate to `as const` unions. |
 | No `any` | Biome `noExplicitAny` (error) | Escape hatch from the type system | Use `unknown` + narrowing. |
@@ -81,6 +83,28 @@ Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs un
 - **Dynamic `import()` only via named wrappers.** `no-restricted-syntax` on `ImportExpression` outside `next/dynamic` / `React.lazy`. Prevents ad-hoc chunking that defeats SSR.
 
 Full working snippets live in `references/eslint-boundaries.mjs`.
+
+#### Greppable invariants (agent self-audit tier)
+
+Some boundaries are awkward or impossible for `no-restricted-imports` to see:
+cross-package leaks in a monorepo, raw-string patterns, "this directory must
+stay framework-free". Encode these as **grep assertions that must return zero
+matches** — a cheap pre-flight an agent runs before declaring work done, and
+that wires into an hk step where it should gate.
+
+```bash
+# each line must find NOTHING; `! rg` turns a match into a non-zero (failing) exit
+! rg -n "from ['\"]express['\"]" packages/core/src                 # core stays framework-free
+! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src  # no un-injected clock/rng in the domain
+! rg -n "sql\`" packages/*/src --glob '!packages/db/**'            # raw SQL only in the query layer
+```
+
+This sits between lint and review. Prefer a real `no-restricted-imports` /
+`no-restricted-syntax` rule when the linter *can* express the boundary — it runs
+in-editor and is harder to bypass. Reach for grep for the cross-file,
+cross-package, and string-level cases ESLint can't see, and as a portable check
+an agent can run in any repo with no linter config. The "unique function names"
+grep step below is the same technique applied to one rule.
 
 ### UI hygiene (React / Next)
 
