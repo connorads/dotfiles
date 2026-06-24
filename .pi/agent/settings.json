@@ -5,6 +5,7 @@
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "packages": [
-    "npm:@plannotator/pi-extension"
+    "npm:@plannotator/pi-extension",
+    "npm:@quintinshaw/pi-dynamic-workflows@2.8.0"
   ]
 }
