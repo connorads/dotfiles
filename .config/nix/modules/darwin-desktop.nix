@@ -78,6 +78,7 @@
       "native-access"
       "google-chrome"
       "google-gemini"
+      "brave-browser"
       "firefox"
       "tor-browser"
       "discord"
