@@ -303,7 +303,7 @@ ai_usage() {
 	local dim="#7f849c"
 	local show_weekly=0 show_weekly_resets=0
 	[ "$width_raw" -ge 100 ] && show_weekly=1
-	[ "$width_raw" -ge 120 ] && show_weekly_resets=1
+	[ "$width_raw" -ge 100 ] && show_weekly_resets=1
 
 	_provider_colour() {
 		local stale="$1"
@@ -327,34 +327,36 @@ ai_usage() {
 		local remaining7="$7"
 		local stale5="$8"
 		local stale7="$9"
+		local label_colour="${10}"
 
 		[ -n "$pct5" ] || return 0
+
+		if [ "$appended_provider" -eq 1 ]; then
+			out+=" #[fg=${dim}]│"
+		fi
+		appended_provider=1
 
 		local c5 c7 i5 i7
 		c5=$(_provider_colour "$stale5" "$pct5" "$remaining5" 18000)
 		i5=$(printf "%.0f" "$pct5" 2>/dev/null || echo "$pct5")
 
-		out+="#[fg=#${c5}] ${label}:${i5}"
+		out+=" #[fg=${label_colour}]#[bold]${label}#[nobold]#[fg=${dim}]:#[fg=#${c5}]${i5}#[fg=${dim}]%"
+		[ -n "$reset5" ] && out+="#[fg=${dim}]·${reset5}"
 		if [ "$show_weekly" -eq 1 ] && [ -n "$pct7" ]; then
 			c7=$(_provider_colour "$stale7" "$pct7" "$remaining7" 604800)
 			i7=$(printf "%.0f" "$pct7" 2>/dev/null || echo "$pct7")
-			out+="#[fg=${dim}]/#[fg=#${c7}]${i7}#[fg=${dim}]%"
-			if [ -n "$reset5" ]; then
-				out+="#[fg=${dim}]·${reset5}"
-				[ "$show_weekly_resets" -eq 1 ] && [ -n "$reset7" ] && out+="#[fg=${dim}]/${reset7}"
-			fi
-		else
-			out+="#[fg=#${c5}]%"
-			[ -n "$reset5" ] && out+="#[fg=${dim}]·${reset5}"
+			out+="#[fg=${dim}] #[fg=#${c7}]${i7}#[fg=${dim}]%"
+			[ "$show_weekly_resets" -eq 1 ] && [ -n "$reset7" ] && out+="#[fg=${dim}]·${reset7}"
 		fi
 		return 0
 	}
 
 	# Build segment: powerline separator then colour-coded labels
 	local out="#[fg=#232334]#[bg=#232334]"
+	local appended_provider=0
 
-	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale"
-	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale"
+	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale" "#fab387"
+	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale" "#74c7ec"
 	out+=" "
 
 	printf "%s" "$out"

@@ -38,33 +38,31 @@ seed_usage_caches() {
 EOF
   cat >"$HOME/.cache/codex-usage.json" <<'EOF'
 {"rate_limit":{"primary_window":{"used_percent":10,"reset_after_seconds":10800},
- "secondary_window":{"used_percent":86,"reset_after_seconds":18000}}}
+ "secondary_window":{"used_percent":86,"reset_after_seconds":216000}}}
 EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
 }
 
-@test "wide status renders compact 5-hour and 7-day pairs with both resets" {
+@test "wide status groups each usage with its reset" {
   seed_usage_caches
 
   run_status_right 180
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4/38%·"* ]]
-  [[ "$plain" == *"/"*d* ]]
-  [[ "$plain" == *"X:10/86%·3h/5h"* ]]
+  [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
+  [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
 }
 
-@test "medium-wide status keeps weekly percentages but omits weekly reset text" {
+@test "medium-wide status groups weekly usage with weekly reset" {
   seed_usage_caches
 
   run_status_right 110
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4/38%·"* ]]
-  [[ "$plain" == *"X:10/86%·3h"* ]]
-  [[ "$plain" != *"X:10/86%·3h/5h"* ]]
+  [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
+  [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
 }
 
 @test "narrow full status keeps the previous 5-hour-only shape" {
@@ -76,8 +74,8 @@ EOF
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" == *"C:4%·"* ]]
   [[ "$plain" == *"X:10%·3h"* ]]
-  [[ "$plain" != *"C:4/38%"* ]]
-  [[ "$plain" != *"X:10/86%"* ]]
+  [[ "$plain" != *" 38%"* ]]
+  [[ "$plain" != *" 86%"* ]]
 }
 
 @test "missing weekly fields fall back to 5-hour-only provider output" {
@@ -94,8 +92,8 @@ EOF
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" == *"C:4%·"* ]]
   [[ "$plain" == *"X:10%·3h"* ]]
-  [[ "$plain" != *"C:4/"* ]]
-  [[ "$plain" != *"X:10/"* ]]
+  [[ "$plain" != *" 38%"* ]]
+  [[ "$plain" != *" 86%"* ]]
 }
 
 @test "expired stale windows render stale instead of negative reset times" {
@@ -109,5 +107,5 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:90/95%·stale/stale"* ]]
+  [[ "$plain" == *"C:90%·stale 95%·stale"* ]]
 }
