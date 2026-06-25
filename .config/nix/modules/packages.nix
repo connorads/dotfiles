@@ -19,6 +19,17 @@ let
     '';
   };
 
+  # mise 2026.6.11's oci-layer test asserts setuid bits survive a round-trip,
+  # but the macOS Nix build sandbox strips them, so the test fails
+  # deterministically (and the build isn't cached, forcing a source build).
+  # Skip just that test; keep mise's other build-time checks. Remove once the
+  # binary cache has 2026.6.11 or upstream fixes the test.
+  mise = pkgs.mise.overrideAttrs (old: {
+    checkFlags = (old.checkFlags or [ ]) ++ [
+      "--skip=oci::layer::tests::preserve_metadata_dir_layer_keeps_special_permission_bits"
+    ];
+  });
+
   # ---------------------------------------------------------------------------
   # Tier 1: Minimal — ephemeral environments (codespaces, containers)
   # ---------------------------------------------------------------------------
