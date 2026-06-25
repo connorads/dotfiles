@@ -1,0 +1,84 @@
+# Ruff formatter + linter template.
+# Paste into pyproject.toml and adapt target-version / src paths per project.
+# Docs: https://docs.astral.sh/ruff/
+
+[tool.ruff]
+required-version = ">=0.15,<0.16"
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+force-exclude = true
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+# Keep off in shared templates while Ruff still documents this as opt-in.
+docstring-code-format = false
+
+[tool.ruff.lint]
+# Explicit stable baseline. Do not use "ALL" in shared templates: new Ruff
+# releases can add rules and turn upgrades into behaviour changes.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    # Ruff format owns wrapping. Re-enable only if the project wants a hard
+    # line-length gate in addition to formatter output.
+    "E501",
+]
+fixable = ["ALL"]
+# Never enable unsafe fixes in hooks or CI. Use `ruff check --unsafe-fixes`
+# only as a reviewed one-off when accepting semantic rewrites deliberately.
+unsafe-fixes = false
+preview = false
+
+[tool.ruff.lint.per-file-ignores]
+# Tests intentionally use asserts, fixture names, literals, and compact setup.
+"tests/**" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN"]
+
+# Migrations are framework output and often preserve generated names/shapes.
+"**/migrations/**" = ["D", "ANN", "E501", "N806", "N815", "RUF012"]
+
+# Generated files should usually be excluded. Keep this for generated code that
+# must stay in the lint input for import/reachability checks.
+"**/generated/**" = ["ALL"]
+
+# Optional rule families to add once a project is ready:
+# C4   comprehensions
+# PIE  small correctness/style checks
+# RET  return statement cleanup
+# PTH  pathlib over os.path
+# LOG/G logging format hygiene
+# T10/T20 debugger/print bans
+# PT   pytest style
+# S    security checks
+# ARG  unused arguments
+# TC   type-checking-only imports
+# PERF performance traps
+#
+# Policy-heavy families to opt into deliberately:
+# D    docstrings
+# ANN  annotations
+# PL   Pylint
+# TRY  exception style
+# FBT  boolean positional args
+# TD/FIX todos and fixmes
