@@ -11,10 +11,10 @@ them. This is the **single home for curation intent** — it lives with the conf
 Every skill installed under `~/.agents/skills/` is symlinked into ~10 agent tools by
 `skillsync`, and each tool injects *every* installed skill's `name`+`description` into
 *every* session as fixed context. 68 skills = 68 descriptions loaded in every session,
-most for skills that are rarely used and never need to auto-fire. The fix: make the
-**autoloaded** set tiny — currently three deliberately-chosen broad/ubiquitous skills
-(`architecture`, `typescript`, `playwright-cli`) — keep everything else one `skl` popup
-away (~zero session cost), and make stack-specific skills installable per-project.
+most for skills that are rarely used and never need to auto-fire. The fix: keep the
+**autoloaded** set tiny and intentional — the filesystem at `~/.agents/skills/` is the
+source of truth for what is currently global — keep everything else one `skl` popup away
+(~zero session cost), and make stack-specific skills installable per-project.
 
 ## Tiers — and the CLI scopes that map to them
 
@@ -34,12 +34,11 @@ CLI's two scopes *are* our two managed tiers:
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
-**Autoload is kept deliberately minimal** — currently `architecture` + `typescript`
-(authored, symlinked from `~/skills` + `skillsync`) and `playwright-cli` (vendored,
-`skills add -g`). Promote only when you catch yourself wishing something fired
-automatically. Vendored → `skills add -g <x>`; authored → symlink into `~/.agents/skills`
-then `skillsync` (`skills add -g` clones a *second* copy into the dotfiles-tracked
-`~/.agents/skills`; the symlink keeps one real copy in `~/skills`).
+**Autoload is kept deliberately minimal** — inspect `~/.agents/skills/` for the current
+set. Promote only when you catch yourself wishing something fired automatically. Vendored →
+`skills add -g <x>`; authored → symlink into `~/.agents/skills` then `skillsync` (`skills
+add -g` clones a *second* copy into the dotfiles-tracked `~/.agents/skills`; the symlink
+keeps one real copy in `~/skills`).
 
 ## The rubric (apply to every future skill)
 
@@ -51,7 +50,7 @@ then `skillsync` (`skills add -g` clones a *second* copy into the dotfiles-track
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
 5. + Global autoload iff broad AND must-auto-fire AND regular. Vendored: `skills add -g`.
-     Authored: symlink into ~/.agents/skills + `skillsync`. Current: architecture, typescript, playwright-cli.
+     Authored: symlink into ~/.agents/skills + `skillsync`. Current set: `ls ~/.agents/skills`.
 6. Authored publishable? ~/skills (future connorads/skills) : personal/ (never public).
 ```
 
@@ -73,11 +72,11 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
 ~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
-  architecture, typescript → symlinks to ~/skills (authored; fanned out by skillsync)
-  playwright-cli           → real CLI clone (vendored; `skills add -g`, upstream-tracked)
+  <authored-name> → symlink to ~/skills/<name> (authored; fanned out by skillsync)
+  <vendored-name>/ real CLI clone (vendored; `skills add -g`, upstream-tracked)
 ~/.agents/.skill-lock.json TRACKED (un-ignored in ~/.gitignore): skills-CLI global lockfile —
-                           records CLI-managed globals only (playwright-cli). Authored
-                           symlinks are skillsync-managed and absent here by design.
+                           records CLI-managed globals only. Authored symlinks are
+                           skillsync-managed and absent here by design.
 ```
 
 `skl` config (`~/.config/skl/config.json`), order = precedence — unchanged by the move

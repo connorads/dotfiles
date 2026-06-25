@@ -286,19 +286,19 @@ Before adding, removing, vendoring, or promoting skills, read
 [`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).
 
 Skills load three ways, in preference order. **Canonical home is the catalogue at
-`~/.config/skills/{public,private,vendor}`** — *not* `~/.agents/skills/`, which is the
-autoload dir and is **empty by design**.
+`~/.config/skills/{public,personal,vendor}`** — *not* `~/.agents/skills/`, which is the
+deliberately small global autoload dir.
 
 1. **`skl` — on-demand, the default (~95% of use).** Pick a catalogue skill → its pointer
    is injected into the agent's tmux pane → the agent reads `SKILL.md`. Zero session cost.
-   Authored skills: just drop a dir in `~/.config/skills/{public,private}`. Third-party:
+   Authored skills: just drop a dir in `~/.config/skills/{public,personal}`. Third-party:
    `cd ~/.config/skills/vendor && skills add <owner/repo> --skill <name>` (project scope).
 2. **Per-project autoload.** `skills add <owner/repo> --skill <name>` (no `-g`) from inside a
    repo → auto-fires for *that repo* only.
-3. **Global autoload — rare, used sparingly.** `skills add -g <owner/repo> --skill <name>`
-   lands in `~/.agents/skills/` and autoloads in *every* session (per-session context cost).
-   Promote only when a skill is broad, regular, and must auto-fire.
-   `skillsync` is a **deprecated** fallback here (no-repo/private authored globals only).
+3. **Global autoload — rare, used sparingly.** The filesystem at `~/.agents/skills/`
+   is the source of truth for the current global set. Vendored globals use `skills add -g`
+   and authored globals use symlink + `skillsync`. `skillsync` is deprecated for catalogue
+   sync, but remains the supported path for authored global autoload symlinks.
 
 Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
 
