@@ -2,7 +2,12 @@
 # Shared Home-Manager Configuration
 # ==============================================================================
 # Common settings for all users across macOS and Linux
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 {
   xdg.enable = true;
 
@@ -20,6 +25,7 @@
       user.name = "Connor Adams";
       user.email = "connorads@users.noreply.github.com";
       init.defaultBranch = "main";
+      init.templateDir = "${config.xdg.configHome}/git/template";
       pull.rebase = true;
       push.autoSetupRemote = true;
       rebase.autosquash = true;
@@ -50,6 +56,64 @@
       filter.claude-settings.smudge = "cat";
       filter.claude-settings.required = true;
     };
+  };
+
+  # Central identity guard: the single source of truth for the commit hook logic.
+  # New repos get a tiny stub (below) that delegates here, so improving this
+  # script updates behaviour everywhere with no drift.
+  xdg.configFile."git/hooks/identity-guard" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      # Block commits whose author email is not a GitHub noreply address.
+      # Installed into new repos via init.templateDir (see programs.git below).
+      # Why: agents/tools sometimes run `git config user.email <personal>` in a
+      # fresh repo, baking a private address into commit metadata.
+
+      # Escape hatch for repos that legitimately need a non-GitHub identity:
+      #   git config guard.allowNonGithubEmail true
+      if [ "$(git config --bool guard.allowNonGithubEmail 2>/dev/null)" = "true" ]; then
+        exit 0
+      fi
+
+      # Effective author identity (honours local/global config AND GIT_AUTHOR_EMAIL).
+      ident=$(git var GIT_AUTHOR_IDENT 2>/dev/null)
+      email=$(printf '%s\n' "$ident" | sed -n 's/.*<\(.*\)>.*/\1/p')
+
+      case "$email" in
+        *@users.noreply.github.com) exit 0 ;;
+      esac
+
+      cat >&2 <<MSG
+      commit blocked: author email "$email" is not a GitHub noreply address.
+
+      This guard stops a personal email leaking into commit metadata. Your global
+      git identity already uses the privacy-preserving noreply address, so do NOT
+      override user.email per-repo. Fix one of:
+        - drop the local override (use the global identity):
+            git config --unset user.email
+        - or set the noreply explicitly:
+            git config user.email "connorads@users.noreply.github.com"
+
+      If this repo really needs a non-GitHub identity, opt out:
+        git config guard.allowNonGithubEmail true
+      MSG
+      exit 1
+    '';
+  };
+
+  # Template stub copied into every new repo via init.templateDir. Stays trivial
+  # (no drift) and delegates to the central guard above.
+  xdg.configFile."git/template/hooks/pre-commit" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      # Delegates to the central identity guard so the logic lives in one place
+      # and updates apply to every repo. Installed via init.templateDir.
+      guard="$HOME/.config/git/hooks/identity-guard"
+      [ -x "$guard" ] && exec "$guard" "$@"
+      exit 0
+    '';
   };
 
   home.packages = [ pkgs.neovim ];
