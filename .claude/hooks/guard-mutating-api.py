@@ -52,6 +52,10 @@ IMPLICIT_POST_RE = re.compile(
 )
 
 # --- Token-level detection (preferred path) ---
+# Command separators that split shell commands without trying to be a full shell
+# parser. `shlex` keeps quoted separators inside values, which is what we need.
+COMMAND_SEPARATORS = {";", "&&", "||", "|"}
+
 # A glued method flag carries its verb in one token: -XPOST, -XGET, --method=POST.
 GLUED_METHOD_RE = re.compile(r"^(?:-X|--method=)([A-Za-z]+)$", re.IGNORECASE)
 # Body-param flags glued to a value: -fkey=val, -Fkey=val (pflag shorthand), and
@@ -101,6 +105,23 @@ def _count_gh_api(tokens: list[str]) -> int:
     )
 
 
+def _command_segments(tokens: list[str]) -> list[list[str]]:
+    """Split tokens into shell command segments at simple separators."""
+    segments: list[list[str]] = []
+    current: list[str] = []
+    for tok in tokens:
+        if tok in COMMAND_SEPARATORS:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+        current.append(tok)
+
+    if current:
+        segments.append(current)
+    return segments
+
+
 def is_mutating_gh_api(command: str) -> bool:
     """Return True if command issues a mutating `gh api` request.
 
@@ -108,9 +129,8 @@ def is_mutating_gh_api(command: str) -> bool:
     body-param flags (-f, -F, --field, --raw-field, --input). An explicit
     -X GET / --method GET keeps body params as a query string, so it stays a read.
 
-    To avoid a GET in one sub-command masking a mutation in another, the GET
-    override is only honoured for a single `gh api` call; a compound line with a
-    body-param flag anywhere is flagged conservatively.
+    Compound commands are analysed per shell command segment so a GET override
+    only affects the `gh api` invocation in the same segment.
     """
     if NOT_GH_API_CMD_RE.search(command):
         return False
@@ -125,13 +145,17 @@ def is_mutating_gh_api(command: str) -> bool:
     except ValueError:
         return _regex_fallback(command)
 
-    methods, implicit = _methods_and_implicit(tokens)
-    if methods & MUTATING_METHODS:
-        return True
-    # Honour the GET override only when a single call owns both flags.
-    if "GET" in methods and _count_gh_api(tokens) == 1:
-        return False
-    return implicit
+    for segment in _command_segments(tokens):
+        if _count_gh_api(segment) == 0:
+            continue
+
+        methods, implicit = _methods_and_implicit(segment)
+        if methods & MUTATING_METHODS:
+            return True
+        if implicit and "GET" not in methods:
+            return True
+
+    return False
 
 
 def main() -> int:
