@@ -33,7 +33,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 |---|---|---|---|---|---|
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | ESLint flat config — only for `no-restricted-imports`, `no-restricted-syntax`, `jsx-a11y`, framework plugins (next, storybook) | `tsc --noEmit` strict | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | — | `tsc --noEmit` strict | Skip ESLint entirely unless you need boundary rules. |
-| Python | ruff format | ruff | — | basedpyright strict (or pyright) | `ruff` replaces black + isort + flake8 + pylint. |
+| Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
 | Shell | shfmt | shellcheck | — | — | `-e SC2086` only with comment. |
@@ -72,6 +72,57 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 | No catch-all re-throw without cause | Custom `no-restricted-syntax` catching rethrows without `{ cause }` | Losing error context | Required pattern: `throw new Error("while doing X", { cause: e })`. |
 | Prefer Result types at domain boundaries | Convention + review; no linter | Exception-driven control flow in pure code | Exceptions live at the imperative shell only. |
 | No `console.*` in prod code | Biome `noConsole` with `allow: ["warn", "error"]` | Logs leaking to user consoles | Use the project's logger. |
+
+### Python: Ruff format + lint
+
+Ruff is the default Python formatter and linter. It replaces Black, isort,
+Flake8, pyupgrade, and most Pylint-style low-level checks. Use an explicit,
+stable rule set in shared templates; do not use `ALL` as the baseline because
+new Ruff releases can add rules and turn upgrades into behaviour changes. See
+`references/python-ruff.toml` for a drop-in `pyproject.toml` snippet.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Stable baseline checks | `select = ["E", "F", "UP", "B", "SIM", "I", "RUF"]` | Syntax/style drift, Pyflakes bugs, stale Python syntax, common bug patterns, import disorder | Add noisier families per project once clean. |
+| Formatter owns wrapping | Ruff format + ignore `E501` | Formatter/linter disagreement on line length | Re-enable `E501` only when the team wants hard line-length gates. |
+| Safe fixes only by default | `ruff check --fix --show-fixes`; no `--unsafe-fixes` in hooks/CI | Mechanical rewrites changing semantics | Run unsafe fixes only as reviewed one-offs. |
+| Tests get test-shaped ignores | per-file ignores for `tests/**` | Lints fighting idiomatic tests | Commonly relax `S101`, `ARG`, `FBT`, `PLR2004`, `D`, `ANN`. |
+| Generated/migration files stay explicit | `exclude` for generated trees; per-file ignores for migrations | Generated/framework output obscuring real failures | Ignore whole generated trees; relax migrations narrowly. |
+
+Optional high-signal rule families once a project is ready: `C4`, `PIE`, `RET`,
+`PTH`, `LOG`/`G`, `T10`, `T20`, `PT`, `S`, `ARG`, `TC`, `PERF`. Treat `D`,
+`ANN`, `PL`, `TRY`, `FBT`, `TD`, and `FIX` as policy-heavy; useful in strict
+projects, noisy as defaults.
+
+### Python: type checking
+
+Use basedpyright as the default blocking type gate. Its `recommended` mode is
+the best shared default: broad diagnostics, fail-on-warnings behaviour, and a
+baseline workflow for existing projects. See `references/python-typecheck.toml`.
+
+| Tool | Default use | Notes |
+|---|---|---|
+| basedpyright | Primary gate with `typeCheckingMode = "recommended"` | Prefer `[tool.basedpyright]` in `pyproject.toml`; use `--writebaseline` only during adoption, never in CI. |
+| basedpyright `all` | Greenfield or deliberately strict projects | Higher friction; enable only once the codebase wants that contract. |
+| pyright | Compatibility fallback | Use `pyright --warnings` so warnings fail CI. |
+| ty | Optional beta supplement | Pin tightly, start advisory, and do not replace basedpyright yet while diagnostics are still unstable. |
+
+Suppressions must be narrow and rule-coded: `# pyright: ignore[reportX]`,
+`# ty: ignore[rule-name]`, or `# type: ignore[ty:rule-name]`. Avoid bare
+`# type: ignore`; keep unused-ignore diagnostics enabled so suppressions expire.
+
+### Python: dead code (Vulture)
+
+Use Vulture for whole-project dead-code audits, not as a Ruff replacement. Ruff
+/ Pyflakes already cover unused imports and local variables; Vulture adds
+broader unused functions, classes, attributes, properties, and unreachable code.
+See `references/python-vulture.toml`.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Whole-repo analysis | Run `vulture` from repo root; do not pass only changed files | False confidence from incomplete reachability | Include `src`, `tests`, scripts, and whitelist files. |
+| Conservative gate | `min_confidence = 100` | Dynamic Python false positives blocking commits | Use lower confidence only for manual cleanup reports. |
+| Whitelist intentional dynamic use | `vulture_whitelist.py` checked into the repo | Broad excludes hiding real dead code | Prefer whitelists over `ignore_names` / `ignore_decorators`; exclude only generated/vendor/build trees. |
 
 ### Architectural boundaries
 
@@ -249,6 +300,15 @@ tier 3 (typecheck)      → cargo check (usually redundant with clippy but catch
 tier 4 (test)           → cargo test (scoped to changed crates via glob)
 ```
 
+The typical mapping (Python):
+
+```text
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, ruff check --fix, ruff format
+tier 2 (lint/gate)      → ruff check, gitleaks, yamllint, check-merge-conflict
+tier 3 (typecheck)      → basedpyright (optional pinned ty check as advisory/secondary)
+tier 4 (dead code/test) → vulture at min_confidence=100 after baseline cleanup; pytest/coverage
+```
+
 Use `fix = true` + `stash = "git"` on pre-commit so tier 1 auto-fixes and re-stages. See `references/hk-steps.pkl` for a full worked example.
 
 ## Adding a new rule
@@ -275,6 +335,12 @@ When a bug escapes to review or production, the retro question is: **what rule w
 - `references/clippy-thresholds.toml` — `clippy.toml` with recommended complexity thresholds (drop-in)
 - `references/rust-workspace-lints.toml` — `[workspace.lints]` block with pedantic + common allows (drop-in)
 - `references/cargo-deny.toml` — `deny.toml` template for licence/advisory/ban enforcement (drop-in)
+
+### Python
+
+- `references/python-ruff.toml` — Ruff formatter/linter `pyproject.toml` snippet (drop-in)
+- `references/python-typecheck.toml` — basedpyright default plus pyright/ty notes (drop-in)
+- `references/python-vulture.toml` — conservative Vulture dead-code config (drop-in)
 
 ### Cross-stack
 
