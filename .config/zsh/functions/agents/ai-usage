@@ -3,7 +3,53 @@
 # alias: aiu
 emulate -L zsh
 
+local mode="plain"
+case "${1:-}" in
+  --fancy|fancy)
+    mode="fancy"
+    shift
+    ;;
+  --plain|plain|"")
+    [[ "${1:-}" == "--plain" || "${1:-}" == "plain" ]] && shift
+    ;;
+  -h|--help)
+    cat <<'EOF'
+Usage: ai-usage [--plain|--fancy]
+
+Show combined Claude + Codex usage.
+  --plain   Original text output from claude-usage/codex-usage
+  --fancy   Dashboard with usage bars and recent agent-run totals
+EOF
+    return 0
+    ;;
+  *)
+    print -u2 "ai-usage: unknown option: $1"
+    return 2
+    ;;
+esac
+
 local has_output=0
+
+_resolve_tool() {
+  local command_name="$1"
+  local file_path="$2"
+
+  if [[ -x "$HOME/.local/bin/$command_name" ]]; then
+    print -r -- "$HOME/.local/bin/$command_name"
+  elif [[ -x "$file_path" ]]; then
+    print -r -- "$file_path"
+  elif command -v "$command_name" &>/dev/null; then
+    command -v "$command_name"
+  elif typeset -f "$command_name" &>/dev/null; then
+    print -r -- "$command_name"
+  elif [[ -f "$file_path" ]]; then
+    fpath=("${file_path:h}" $fpath)
+    autoload -Uz "$command_name" 2>/dev/null || return 1
+    print -r -- "$command_name"
+  else
+    return 1
+  fi
+}
 
 _run_tool() {
   local label="$1"
@@ -12,27 +58,372 @@ _run_tool() {
   local file_path="$4"
   local tool=""
 
-  if [[ -x "$HOME/.local/bin/$command_name" ]]; then
-    tool="$HOME/.local/bin/$command_name"
-  elif [[ -x "$file_path" ]]; then
-    tool="$file_path"
-  elif command -v "$command_name" &>/dev/null; then
-    tool=$(command -v "$command_name")
-  elif typeset -f "$command_name" &>/dev/null; then
-    tool="$command_name"
-  elif [[ -f "$file_path" ]]; then
-    fpath=("${file_path:h}" $fpath)
-    autoload -Uz "$command_name" 2>/dev/null || return 1
-    tool="$command_name"
-  else
-    return 1
-  fi
+  tool=$(_resolve_tool "$command_name" "$file_path") || return 1
 
   (( has_output )) && echo
   printf '\033[1;%sm── %s ──\033[0m\n' "$colour" "$label"
   "$tool"
   has_output=1
 }
+
+_refresh_tool_quiet() {
+  local command_name="$1"
+  local file_path="$2"
+  local tool=""
+
+  tool=$(_resolve_tool "$command_name" "$file_path") || return 0
+  "$tool" >/dev/null 2>&1 || true
+}
+
+_render_fancy() {
+  python3 <<'PY'
+import json
+import os
+import re
+import shutil
+import sys
+from collections import deque
+from datetime import datetime, timezone
+from pathlib import Path
+
+HOME = Path(os.environ.get("HOME", ""))
+NOW = datetime.now(timezone.utc)
+NOW_TS = NOW.timestamp()
+USE_COLOUR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+PALETTE = {
+    "reset": "\033[0m",
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "border": "\033[38;5;63m",
+    "muted": "\033[38;5;245m",
+    "green": "\033[38;5;120m",
+    "yellow": "\033[38;5;228m",
+    "red": "\033[38;5;210m",
+    "claude": "\033[38;5;215m",
+    "codex": "\033[38;5;117m",
+    "sonnet": "\033[38;5;183m",
+    "accent": "\033[38;5;141m",
+}
+
+
+def c(name: str, text: str) -> str:
+    if not USE_COLOUR:
+        return text
+    return f"{PALETTE.get(name, '')}{text}{PALETTE['reset']}"
+
+
+def visible_len(text: str) -> int:
+    return len(ANSI_RE.sub("", text))
+
+
+def pad(text: str, width: int) -> str:
+    return text + " " * max(0, width - visible_len(text))
+
+
+def load_json(path: Path):
+    try:
+        with path.open() as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def mtime(path: Path) -> float | None:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
+
+
+def iso_ts(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def fmt_duration(secs: float | int | None) -> str:
+    if secs is None:
+        return "-"
+    secs = max(0, int(secs))
+    if secs >= 86400:
+        days = secs // 86400
+        hours = (secs % 86400) // 3600
+        return f"{days}d {hours}h"
+    if secs >= 3600:
+        hours = secs // 3600
+        mins = (secs % 3600) // 60
+        return f"{hours}h {mins}m"
+    return f"{secs // 60}m"
+
+
+def fmt_age(path: Path) -> str:
+    ts = mtime(path)
+    if ts is None:
+        return "missing"
+    return fmt_duration(NOW_TS - ts) + " ago"
+
+
+def as_pct(value) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def usage_colour(pct: float, remaining: float | None, window_secs: int, stale: bool) -> str:
+    if stale:
+        return "muted"
+    if pct <= 0:
+        return "green"
+    if remaining is None:
+        return "green" if pct < 70 else "yellow" if pct < 90 else "red"
+    elapsed = window_secs - max(0, remaining)
+    if elapsed < 180:
+        return "green"
+    elapsed_pct = max(1, elapsed * 100 / window_secs)
+    pace = pct / elapsed_pct
+    if pace >= 1.4:
+        return "red"
+    if pace >= 1.2:
+        return "yellow"
+    return "green"
+
+
+def bar(pct: float, width: int, colour_name: str) -> str:
+    pct = max(0, min(100, pct))
+    filled = int(round(pct * width / 100))
+    raw = "█" * filled + "░" * (width - filled)
+    if not USE_COLOUR:
+        return raw
+    return c(colour_name, "█" * filled) + c("muted", "░" * (width - filled))
+
+
+def fmt_num(value) -> str:
+    try:
+        n = float(value or 0)
+    except Exception:
+        n = 0
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    if n >= 1_000_000:
+        return f"{sign}{n / 1_000_000:.1f}M".replace(".0M", "M")
+    if n >= 1_000:
+        return f"{sign}{n / 1_000:.1f}k".replace(".0k", "k")
+    return f"{sign}{int(n)}"
+
+
+def fmt_money(value) -> str:
+    try:
+        n = float(value or 0)
+    except Exception:
+        n = 0
+    if n == 0:
+        return "$0"
+    if abs(n) < 1:
+        return f"${n:.3f}".rstrip("0").rstrip(".")
+    return f"${n:.2f}"
+
+
+def collect_windows():
+    rows = []
+    notes = []
+
+    claude_path = HOME / ".cache/claude-usage.json"
+    claude = load_json(claude_path)
+    claude_age = NOW_TS - mtime(claude_path) if mtime(claude_path) else None
+    claude_stale = claude_age is not None and claude_age >= 900
+    if claude:
+        for label, key, window_secs in (
+            ("Claude", "five_hour", 18000),
+            ("Claude", "seven_day", 604800),
+            ("Sonnet", "seven_day_sonnet", 604800),
+        ):
+            obj = claude.get(key) or {}
+            pct = as_pct(obj.get("utilization"))
+            if pct is None:
+                continue
+            reset = iso_ts(obj.get("resets_at"))
+            remaining = max(0, reset - NOW_TS) if reset else None
+            rows.append({
+                "provider": label,
+                "window": "5h" if key == "five_hour" else "7d",
+                "pct": pct,
+                "remaining": remaining,
+                "window_secs": window_secs,
+                "stale": claude_stale,
+                "provider_colour": "sonnet" if label == "Sonnet" else "claude",
+            })
+        extra = claude.get("extra_usage") or {}
+        if extra.get("is_enabled") is not None:
+            try:
+                used = float(extra.get("used_credits") or 0) / 100
+                limit = float(extra.get("monthly_limit") or 0) / 100
+                if extra.get("is_enabled"):
+                    notes.append(f"Claude extra {fmt_money(used)}/{fmt_money(limit)} enabled")
+                else:
+                    notes.append("Claude extra disabled")
+            except Exception:
+                pass
+        notes.append(f"Claude cache {fmt_age(claude_path)}")
+
+    codex_path = HOME / ".cache/codex-usage.json"
+    codex = load_json(codex_path)
+    codex_mt = mtime(codex_path)
+    codex_age = NOW_TS - codex_mt if codex_mt else None
+    codex_stale = codex_age is not None and codex_age >= 900
+    if codex:
+        rl = codex.get("rate_limit") or {}
+        for label, key, window_secs in (
+            ("Codex", "primary_window", 18000),
+            ("Codex", "secondary_window", 604800),
+        ):
+            obj = rl.get(key) or {}
+            pct = as_pct(obj.get("used_percent"))
+            if pct is None:
+                continue
+            reset_secs = as_pct(obj.get("reset_after_seconds"))
+            remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
+            rows.append({
+                "provider": label,
+                "window": "5h" if key == "primary_window" else "7d",
+                "pct": pct,
+                "remaining": remaining,
+                "window_secs": window_secs,
+                "stale": codex_stale,
+                "provider_colour": "codex",
+            })
+        notes.append(f"Codex cache {fmt_age(codex_path)}")
+
+    return rows, notes
+
+
+def collect_recent():
+    log = HOME / ".local/state/agents/rl-usage.jsonl"
+    if not log.exists():
+        return []
+    records = deque(maxlen=1000)
+    try:
+        with log.open(errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except Exception:
+                    continue
+    except Exception:
+        return []
+    if not records:
+        return []
+
+    lines = []
+    last = records[-1]
+    provider = str(last.get("provider") or "agent")
+    runner = str(last.get("runner") or "run")
+    lines.append(
+        "last  "
+        + f"{provider}/{runner} "
+        + f"in {fmt_num(last.get('input_tokens'))} "
+        + f"cached {fmt_num(last.get('cached_input_tokens'))} "
+        + f"out {fmt_num(last.get('output_tokens'))} "
+        + fmt_money(last.get("total_cost_usd"))
+    )
+
+    local_today = datetime.now().astimezone().date()
+    today = []
+    for rec in records:
+        ts = str(rec.get("ts") or "")
+        try:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
+        except Exception:
+            continue
+        if dt.date() == local_today:
+            today.append(rec)
+    if today:
+        total = lambda key: sum(float(r.get(key) or 0) for r in today)
+        lines.append(
+            "today "
+            + f"{len(today)} runs · "
+            + f"cached {fmt_num(total('cached_input_tokens'))} · "
+            + f"out {fmt_num(total('output_tokens'))} · "
+            + fmt_money(total("total_cost_usd"))
+        )
+    return lines
+
+
+def render():
+    term_width = shutil.get_terminal_size((80, 24)).columns
+    box_width = max(46, min(86, term_width - 2))
+    inner = box_width - 4
+    bar_width = max(8, min(28, inner - 31))
+    rows, notes = collect_windows()
+    recent = collect_recent()
+
+    print(c("border", "╭" + "─" * (box_width - 2) + "╮"))
+    title = c("accent", c("bold", "AI usage"))
+    print(c("border", "│ ") + pad(title, inner) + c("border", " │"))
+    print(c("border", "├" + "─" * (box_width - 2) + "┤"))
+
+    if rows:
+        for row in rows:
+            pct = row["pct"]
+            colour = usage_colour(pct, row["remaining"], row["window_secs"], row["stale"])
+            provider = c(row["provider_colour"], f"{row['provider']:<7}")
+            window = c("muted", f"{row['window']:<2}")
+            reset = fmt_duration(row["remaining"])
+            pct_text = c(colour, f"{pct:>3.0f}%")
+            content = f"{provider} {window} {bar(pct, bar_width, colour)} {pct_text}  {c('muted', '↻')} {reset}"
+            print(c("border", "│ ") + pad(content, inner) + c("border", " │"))
+    else:
+        print(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
+
+    if recent:
+        print(c("border", "├" + "─" * (box_width - 2) + "┤"))
+        print(c("border", "│ ") + pad(c("accent", "Recent agent runs"), inner) + c("border", " │"))
+        for line in recent[:3]:
+            if len(line) > inner:
+                line = line[: max(0, inner - 1)] + "…"
+            print(c("border", "│ ") + pad(c("muted", line), inner) + c("border", " │"))
+
+    if notes:
+        print(c("border", "├" + "─" * (box_width - 2) + "┤"))
+        footer = " · ".join(notes)
+        if visible_len(footer) > inner:
+            footer = footer[: max(0, inner - 1)] + "…"
+        print(c("border", "│ ") + pad(c("muted", footer), inner) + c("border", " │"))
+
+    sys.stdout.write(c("border", "╰" + "─" * (box_width - 2) + "╯"))
+    sys.stdout.flush()
+
+
+render()
+PY
+}
+
+if [[ "$mode" == "fancy" ]]; then
+  _refresh_tool_quiet "claude-usage" "$HOME/.config/zsh/functions/claude-usage" &
+  local claude_pid=$!
+  _refresh_tool_quiet "codex-usage" "$HOME/.config/zsh/functions/codex-usage" &
+  local codex_pid=$!
+  wait "$claude_pid" 2>/dev/null || true
+  wait "$codex_pid" 2>/dev/null || true
+
+  _render_fancy || {
+    print -u2 "ai-usage: fancy renderer failed; falling back to plain output"
+    _run_tool "Claude" "34" "claude-usage" "$HOME/.config/zsh/functions/claude-usage"
+    _run_tool "Codex" "32" "codex-usage" "$HOME/.config/zsh/functions/codex-usage"
+    (( has_output )) || { print -u2 "no usage tools available"; return 1; }
+  }
+  return 0
+fi
 
 _run_tool "Claude" "34" "claude-usage" "$HOME/.config/zsh/functions/claude-usage"
 _run_tool "Codex" "32" "codex-usage" "$HOME/.config/zsh/functions/codex-usage"
