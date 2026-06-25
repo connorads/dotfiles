@@ -62,12 +62,29 @@ git_branch_and_dirty() {
 	dirty=""
 
 	if [ -d "$pane_path" ] && cd "$pane_path" 2>/dev/null; then
+		local -a git_cmd
+		git_cmd=()
+
 		if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-			branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null | cut -c1-15)"
+			git_cmd=(git)
+		else
+			local cwd_physical home_physical
+			cwd_physical="$(pwd -P)"
+			home_physical="$(cd "$HOME" 2>/dev/null && pwd -P || printf '%s' "$HOME")"
+			if [ "$cwd_physical" = "$home_physical" ] && [ -d "$HOME/git/dotfiles" ]; then
+				git_cmd=(git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME")
+				if ! "${git_cmd[@]}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+					git_cmd=()
+				fi
+			fi
+		fi
+
+		if [ "${#git_cmd[@]}" -gt 0 ]; then
+			branch="$("${git_cmd[@]}" rev-parse --abbrev-ref HEAD 2>/dev/null | cut -c1-15)"
 			if [ -z "$branch" ]; then
 				branch="-"
 			fi
-			if ! git diff --quiet || ! git diff --cached --quiet; then
+			if ! "${git_cmd[@]}" diff --quiet || ! "${git_cmd[@]}" diff --cached --quiet; then
 				dirty="*"
 			fi
 		fi
