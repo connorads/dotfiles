@@ -36,7 +36,9 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
-| Shell | shfmt | shellcheck | — | — | `-e SC2086` only with comment. |
+| Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
+| Bash | shfmt `-ln=bash` | ShellCheck `--shell=bash` | bats-core for black-box CLI tests | — | Bats is Bash-based; good for CLI contracts and Bash scripts. |
+| zsh | shfmt `-ln=zsh` | — | `zsh -n`, isolated zsh runtime tests | — | ShellCheck does not support zsh; use parser/format checks plus native tests. |
 | Markdown | rumdl | rumdl | — | — | Handles frontmatter too. |
 | Nix | nixfmt | deadnix + statix | — | — | |
 | YAML | — | yamllint | — | — | |
@@ -72,6 +74,17 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 | No catch-all re-throw without cause | Custom `no-restricted-syntax` catching rethrows without `{ cause }` | Losing error context | Required pattern: `throw new Error("while doing X", { cause: e })`. |
 | Prefer Result types at domain boundaries | Convention + review; no linter | Exception-driven control flow in pure code | Exceptions live at the imperative shell only. |
 | No `console.*` in prod code | Biome `noConsole` with `allow: ["warn", "error"]` | Logs leaking to user consoles | Use the project's logger. |
+
+### Shell and zsh correctness
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| POSIX scripts stay POSIX | `shellcheck --shell=sh`, `checkbashisms`, tests under target shells (`dash`, `busybox sh`, `bash --posix`, etc.) | Bashisms and portability drift | ShellCheck's `sh` dialect means POSIX `sh`, not whatever `/bin/sh` points to locally. |
+| Bash scripts pass static analysis | `shellcheck --shell=bash`, `shfmt -ln=bash --diff` | Quoting, globbing, parse, and maintainability footguns | Keep ShellCheck disables narrow and documented. |
+| zsh parses cleanly | `zsh -n`, `shfmt -ln=zsh --diff` | Syntax and formatting drift | ShellCheck does not support zsh; do not fake it with `--shell=bash`. |
+| Shell tests are hermetic | Test harness owns `PATH`, temp dirs, `HOME`/`ZDOTDIR`, and shell options | Ambient-machine failures | Put exact harness patterns in the testing skill; this skill gates the invariant. |
+
+See `references/shell-quality.md` for copy-paste hook and CI command patterns.
 
 ### Python: Ruff format + lint
 
@@ -309,6 +322,14 @@ tier 3 (typecheck)      → basedpyright (optional pinned ty check as advisory/s
 tier 4 (dead code/test) → vulture at min_confidence=100 after baseline cleanup; pytest/coverage
 ```
 
+The typical mapping (Shell):
+
+```text
+POSIX sh tier 1/2 → shfmt -ln=posix --diff, shellcheck --shell=sh, checkbashisms, parse/run under target shells
+Bash tier 1/2     → shfmt -ln=bash --diff, shellcheck --shell=bash, bats-core or equivalent behaviour tests
+zsh tier 1/2      → shfmt -ln=zsh --diff, zsh -n, native zsh behaviour tests
+```
+
 Use `fix = true` + `stash = "git"` on pre-commit so tier 1 auto-fixes and re-stages. See `references/hk-steps.pkl` for a full worked example.
 
 ## Adding a new rule
@@ -322,6 +343,10 @@ When a bug escapes to review or production, the retro question is: **what rule w
 5. If it's a new *type* of rule worth sharing, add a snippet to `references/`.
 
 ## References
+
+### Shell
+
+- `references/shell-quality.md` — ShellCheck/shfmt/checkbashisms/zsh command patterns and hook notes
 
 ### TypeScript / JS
 

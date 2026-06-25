@@ -58,6 +58,25 @@ Choose the narrowest layer that proves the behaviour.
 Do not use e2e tests to compensate for untested domain logic. Do not use unit
 tests to assert wiring that only fails when components are composed.
 
+### Shell, zsh and POSIX sh testing
+
+Choose shell test tooling by the language boundary being tested:
+
+- **Bash-heavy CLI/code:** `bats-core` is a good default.
+- **Cross-shell shell functions/libraries:** prefer `ShellSpec`.
+- **POSIX sh portability:** run the same behaviour tests under multiple real shells
+  (`dash`, `busybox sh`, `bash --posix`, etc.).
+- **zsh-native functions/autoloads/completions:** test inside `zsh` with isolated
+  shell state; Bats can black-box execute zsh commands but is not a zsh-native
+  test language.
+
+Prefer black-box CLI tests for scripts: arguments, exit status, stdout, stderr,
+and filesystem effects. For shell functions, isolate `PATH`, `HOME`/`ZDOTDIR`,
+temp dirs, fixtures, and shell options.
+
+See `references/shell-testing.md` for tool comparison, zsh isolation patterns,
+POSIX multi-shell loops, and example harnesses.
+
 ### Scenario (integration) tests
 
 A useful named layer sits between application and composition: run the **real
@@ -243,5 +262,7 @@ time/network coupling (see Core Rules).
 - [property-based-testing.md](references/property-based-testing.md) —
   Per-ecosystem PBT frameworks, shrinking, stateful/model-based testing, CI
   integration, and pitfalls.
+- [shell-testing.md](references/shell-testing.md) — Bats/ShellSpec/shUnit2/cram
+  trade-offs, zsh isolation, POSIX multi-shell testing, and shell fakes.
 - For coverage reports, thresholds, exclusions, **mutation testing**, fuzzing,
   and CI/hook enforcement of test quality, use the **test-coverage** skill.
