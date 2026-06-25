@@ -31,6 +31,25 @@ run_status_right() {
   run bash "$STATUS_RIGHT" "$width" "$BATS_TEST_TMPDIR" "host" "host.local" "" "$@"
 }
 
+run_status_right_for_path() {
+  local width="$1"
+  local pane_path="$2"
+  shift 2
+
+  run bash "$STATUS_RIGHT" "$width" "$pane_path" "host" "host.local" "" "$@"
+}
+
+init_dotfiles_repo() {
+  mkdir -p "$HOME/git"
+  git init --bare "$HOME/git/dotfiles" >/dev/null
+  git --git-dir="$HOME/git/dotfiles" symbolic-ref HEAD refs/heads/dotfiles-test
+  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" config user.email "bats@example.com"
+  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" config user.name "Bats Test"
+  printf 'tracked\n' >"$HOME/.tracked-dotfile"
+  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" add .tracked-dotfile
+  git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" commit -m "initial" >/dev/null
+}
+
 seed_usage_caches() {
   cat >"$HOME/.cache/claude-usage.json" <<'EOF'
 {"five_hour":{"utilization":4,"resets_at":"2099-01-01T02:00:00Z"},
@@ -41,6 +60,39 @@ EOF
  "secondary_window":{"used_percent":86,"reset_after_seconds":216000}}}
 EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
+}
+
+@test "home directory shows bare dotfiles branch" {
+  init_dotfiles_repo
+
+  run_status_right_for_path 45 "$HOME"
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" dotfiles-test"* ]]
+}
+
+@test "home directory marks bare dotfiles dirty" {
+  init_dotfiles_repo
+  printf 'changed\n' >"$HOME/.tracked-dotfile"
+
+  run_status_right_for_path 45 "$HOME"
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" dotfiles-test*"* ]]
+}
+
+@test "dotfiles fallback is not used below home" {
+  init_dotfiles_repo
+  mkdir -p "$HOME/.config/tmux"
+
+  run_status_right_for_path 45 "$HOME/.config/tmux"
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" - "* ]]
+  [[ "$plain" != *"dotfiles-test"* ]]
 }
 
 @test "wide status groups each usage with its reset" {
