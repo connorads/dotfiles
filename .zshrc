@@ -90,6 +90,10 @@ export CLAUDE_CODE_NO_FLICKER=1
 [[ -f "$HOME/.cache/claude-channels-patch.stale" ]] && \
   print -P "%F{yellow}claude-channels-patch:%f needle missing — see $HOME/.cache/claude-channels-patch.stale"
 
+# Surface a stale computer-use patch (default-config reshape) the same way.
+[[ -f "$HOME/.cache/claude-computer-use-patch.stale" ]] && \
+  print -P "%F{yellow}claude-computer-use-patch:%f needle missing — see $HOME/.cache/claude-computer-use-patch.stale"
+
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
