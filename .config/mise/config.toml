@@ -37,10 +37,11 @@ codex = "latest"
 usage = "3"
 hcloud = "1"
 deno = "2"
-# postinstall reapplies the --channels binary patch to each freshly installed
-# bundle (claude = "latest" drops an unpatched build on every update). Warns +
-# drops a marker but exits 0 on a missing needle, so an update is never blocked.
-claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
+# postinstall reapplies the --channels and computer-use binary patches to each
+# freshly installed bundle (claude = "latest" drops an unpatched build on every
+# update). Each warns + drops a marker but exits 0 on a missing needle, so an
+# update is never blocked; chained with ; so cu still runs if channels warns.
+claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 # Pinned to EXACT 1.27.1: v1.27.1 ships binaries (8 assets) but v1.27.0 shipped
 # none AND was published ~20 min later, so the github backend resolves a "1.27"
 # range to the assetless 1.27.0 and every `mise run` aborts. The exact pin

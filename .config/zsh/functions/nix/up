@@ -11,9 +11,10 @@ for arg in "$@"; do
 done
 
 mise upgrade
-# Reassert the --channels patch: covers no-op upgrades (postinstall only fires
-# on an actual install) and manual paths. Idempotent, so safe alongside it.
+# Reassert the --channels and computer-use patches: covers no-op upgrades
+# (postinstall only fires on an actual install) and manual paths. Idempotent.
 claude-channels-patch --reapply
+claude-computer-use-patch --reapply
 if [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi
