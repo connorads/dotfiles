@@ -19,6 +19,7 @@ default-fg text never dims. Keep both halves in sync.
 | ---- | -------- | ------------ |
 | `dim-inactive-panes.patch` | yes | Adds `colour_dim()` (Rec. 601 luma desat 30% + blend 35% toward target bg), hooks `tty_attributes` to apply it to every cell in inactive panes. Touches `colour.c`, `screen-redraw.c`, `screen-write.c`, `tmux.h`, `tty.c`. |
 | `force-redraw-on-focus-change.patch` | **yes** | Marks both incoming and outgoing panes `PANE_REDRAW` in `window_redraw_active_switch`. Without it the dim/undim transition stalls until the next keypress in the affected pane — i.e. it looks broken. Tiny patch, easy to drop accidentally; do not. |
+| `split-status-top-bottom.patch` | optional/local | Private split-status experiment gated by `@connorads-split-status on`: only for `status 2`, maps `status-format[0]` to terminal top and `status-format[1]` to terminal bottom. Keeps upstream behaviour when the option is unset. |
 
 Skipped: `theme-palette.patch` (from the same source). Injects an ANSI 0-15
 palette via a Nix-generated header. Pointless here because `tmux.conf` specifies
@@ -41,19 +42,23 @@ When nixpkgs bumps tmux past 3.6a and the patch hunks rot:
    `screen_redraw_draw_pane` shifted; re-anchor by hand. The actual inserts
    are small (~20-30 lines each).
 3. Rebuild patched tmux only:
+
    ```sh
    nix build --no-link --print-out-paths \
      ~/.config/nix#darwinConfigurations.Connors-MacBook-Air.pkgs.tmux
    ```
+
    (Note: that derivation path goes through nix-darwin's own pkgs import,
    which doesn't include this overlay — to actually test the *patched*
    tmux, use `darwin-rebuild build --flake ~/.config/nix` and inspect
    `result/sw/bin/tmux`'s store path, or compare `nm | grep _colour_dim`.)
 4. Verify:
+
    ```sh
    nm /nix/store/<hash>-tmux-<ver>/bin/tmux | grep _colour_dim
    # → 000000010002290c T _colour_dim
    ```
+
 5. Bounce the server (`tmux kill-server`) so the new binary is in use.
 
 ## Tuning
@@ -67,3 +72,31 @@ function:
   harder, decrease for subtler.
 
 Edit, `drs`, `tmux kill-server`. There's no runtime knob.
+
+## Split-status patch
+
+`split-status-top-bottom.patch` is intentionally local, not upstream-shaped.
+It preserves tmux's normal single status block unless the session option
+`@connorads-split-status` is one of `on`, `1`, `yes`, or `top-bottom`, and the
+session has exactly `status 2`.
+
+When active:
+
+- logical status row 0 (`status-format[0]`) renders at terminal row 0
+- logical status row 1 (`status-format[1]`) renders at the last terminal row
+- pane content is offset by one top row and still reserves one bottom row
+- `message-line 0` means top, `message-line 1` means bottom
+
+Smoke-test after changing or rebasing it:
+
+```sh
+tmux -L split-test -f ~/.config/tmux/tmux.conf new-session
+```
+
+Check: top window row, bottom stats row, pane output does not overwrite either
+row, `prefix :` prompt appears on the bottom row, mouse window switching works,
+panes resize, popups/display-panes/copy-mode render sensibly, and inactive pane
+dimming still changes on focus switch.
+
+Rollback: remove/unset `@connorads-split-status` for config-only fallback, or
+remove the patch from `flake.nix`, rebuild, then `tmux kill-server`.

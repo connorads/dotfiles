@@ -53,11 +53,13 @@
             # get lost. The patch hooks `tty_attributes` to blend every cell
             # toward the pane bg (Rec. 601 luma desat + target blend).
             #
-            # Both patches are required:
+            # Dimming needs two patches:
             #   - dim-inactive-panes.patch — the dimming itself
             #   - force-redraw-on-focus-change.patch — without it panes don't
             #     re-render on focus change, so dim/undim stalls until next
             #     keypress. The name doesn't telegraph this; do not drop it.
+            # split-status-top-bottom.patch is a separate local experiment for
+            # top window row + bottom stats row, gated by a tmux user option.
             #
             # See ./patches/README.md for lineage and bump procedure.
             (final: prev: {
@@ -65,6 +67,7 @@
                 patches = (old.patches or [ ]) ++ [
                   ./patches/dim-inactive-panes.patch
                   ./patches/force-redraw-on-focus-change.patch
+                  ./patches/split-status-top-bottom.patch
                 ];
               });
             })
