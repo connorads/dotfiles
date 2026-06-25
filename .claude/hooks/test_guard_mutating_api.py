@@ -60,6 +60,7 @@ class TestIsMutatingGhApi:
             "gh api /user -X GET | gh api repos/foo/bar/issues -f body=hi",
             # An explicit mutating method anywhere in a compound line is flagged
             "gh api /user -X GET && gh api repos/foo/bar -X POST",
+            "gh api -X GET search/issues -f q=foo && gh api repos/foo/bar -X POST",
             # A method substring inside a quoted value is not a flag
             "gh api repos/foo/bar/issues -f body='see -X GET docs'",
             'gh api repos/foo/bar/issues -f body="use --method GET"',
@@ -84,6 +85,9 @@ class TestIsMutatingGhApi:
             "gh api repos/foo/bar -XGET -f ref=v1",
             "gh api repos/foo/bar --method GET -f ref=v1",
             "gh api repos/foo/bar --method=GET --field ref=v1",
+            "echo x; gh api /user; gh api -X GET search/issues -f q=foo",
+            "echo '=== issue 41102 ==='; gh api repos/anthropics/claude-code/issues/41102 --jq '{number,title,state}' 2>&1 | head -5; echo '=== issue 49180 ==='; gh api repos/anthropics/claude-code/issues/49180 --jq '{number,title,state}' 2>&1 | head -5; echo '=== search computer-use ==='; gh api -X GET search/issues -f q='repo:anthropics/claude-code computer-use mcp' --jq '.total_count' 2>&1 | head -5",
+            "gh api -X GET search/issues -f q=foo | jq .total_count",
             "gh api --help",
             "gh api repos/foo/bar --paginate",
             "gh api repos/foo/bar -H 'Accept: application/json'",
