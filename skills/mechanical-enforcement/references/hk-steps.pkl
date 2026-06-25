@@ -49,6 +49,20 @@ hooks {
                 fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
             }
 
+            // --- Tier 2: lint / format Python code ---
+            // Ruff check runs before Ruff format so lint fixes can add/remove
+            // imports and the formatter gets the final pass.
+            // ["ruff-check"] {
+            //     glob = List("*.py", "*.pyi")
+            //     check = "scripts/quiet-on-success.sh uv run ruff check {{files}}"
+            //     fix = "scripts/quiet-on-success.sh uv run ruff check --fix --show-fixes {{files}}"
+            // }
+            // ["ruff-format"] {
+            //     glob = List("*.py", "*.pyi")
+            //     check = "scripts/quiet-on-success.sh uv run ruff format --check {{files}}"
+            //     fix = "scripts/quiet-on-success.sh uv run ruff format {{files}}"
+            // }
+
             // --- Tier 2 cont.: validation gates (no auto-fix) ---
             ["yamllint"] = (Builtins.yamllint) {}
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
@@ -61,6 +75,17 @@ hooks {
             ["typecheck"] {
                 check = "scripts/quiet-on-success.sh pnpm typecheck:fast"
             }
+            // Python typecheck gate. Keep basedpyright as the default blocking
+            // check; add pinned `ty check` only as an advisory/secondary gate
+            // while ty remains beta.
+            // ["basedpyright"] {
+            //     glob = List("*.py", "*.pyi")
+            //     check = "scripts/quiet-on-success.sh uv run basedpyright"
+            // }
+            // ["ty"] {
+            //     glob = List("*.py", "*.pyi")
+            //     check = "scripts/quiet-on-success.sh uv run ty check"
+            // }
 
             // --- Tier 4: tests ---
             // Enforce a coverage threshold via the test runner's config, not hk.
@@ -70,6 +95,11 @@ hooks {
             ["test-gate"] {
                 check = "scripts/quiet-on-success.sh pnpm test:unit --coverage"
             }
+            // Vulture needs whole-repo visibility. Enable only after baseline
+            // cleanup and keep min_confidence=100 for commit gates.
+            // ["vulture"] {
+            //     check = "scripts/quiet-on-success.sh uv run vulture"
+            // }
         }
     }
 

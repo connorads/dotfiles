@@ -1,0 +1,45 @@
+# Python type-checking template.
+# Paste the relevant sections into pyproject.toml.
+
+[tool.basedpyright]
+# Default gate for new Python projects. `recommended` gives broad diagnostics
+# and fails warnings without the friction of `all`.
+typeCheckingMode = "recommended"
+pythonVersion = "3.12"
+include = ["src", "tests"]
+exclude = [
+    "**/.venv",
+    "**/.tox",
+    "**/.nox",
+    "**/__pycache__",
+    "**/build",
+    "**/dist",
+    "**/generated",
+]
+
+# Adoption workflow for existing codebases:
+#   basedpyright --writebaseline
+# Commit .basedpyright/baseline.json, then let CI fail on new diagnostics.
+# Do not write or refresh baselines in CI.
+
+# Suppression policy:
+# - Prefer `# pyright: ignore[reportX]` over bare `# type: ignore`.
+# - Keep unnecessary-ignore diagnostics enabled so suppressions expire.
+
+# Pyright compatibility fallback:
+# - Use `[tool.pyright]` only when the project explicitly wants upstream pyright.
+# - Run `pyright --warnings` in CI so warnings fail the gate.
+
+# ty is a fast, promising checker, but upstream still treats it as beta/0.0.x.
+# Use it as a pinned supplementary job first, not as the default replacement for
+# basedpyright. Do not use `--error=all`; configure targeted stricter rules.
+#
+# [tool.ty]
+# environment.python-version = "3.12"
+#
+# [tool.ty.terminal]
+# error-on-warning = true
+#
+# [tool.ty.rules]
+# missing-type-argument = "error"
+# possibly-unresolved-reference = "warn"

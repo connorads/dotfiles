@@ -1,0 +1,29 @@
+# Vulture dead-code template.
+# Paste into pyproject.toml after cleaning or accepting an initial baseline.
+# Docs: https://github.com/jendrikseipp/vulture
+
+[tool.vulture]
+paths = ["src", "tests", "scripts", "vulture_whitelist.py"]
+min_confidence = 100
+sort_by_size = true
+exclude = [
+    "*/.venv/*.py",
+    "*/build/*.py",
+    "*/dist/*.py",
+    "*/generated/*.py",
+]
+
+# Vulture is whole-project analysis. Run it from the repo root and do not pass
+# only changed files from a hook runner.
+#
+# Keep `min_confidence = 100` for CI/pre-commit gates. Lower-confidence findings
+# are useful cleanup leads, but dynamic Python makes them too noisy as a default
+# blocker.
+#
+# Prefer a curated `vulture_whitelist.py` over broad ignores. Generate a first
+# draft with:
+#   vulture src tests scripts --make-whitelist > vulture_whitelist.py
+#
+# Use `ignore_names` and `ignore_decorators` sparingly for unavoidable framework
+# registration patterns such as CLI commands, web routes, pytest hooks/fixtures,
+# ORMs, serializers, plugin entry points, and string-based dispatch.
