@@ -27,4 +27,5 @@ local marker="$HOME/.cache/claude-computer-use-patch.stale"
 local missing_body=$'The default config was likely reshaped upstream; computer-use will\nsilently revert until the needle in claude-computer-use-patch is updated.'
 local missing_banner='computer-use will revert'
 
-source "${wrapper:h}/_claude-gate-patch-lib"
+source "${wrapper:h}/_claude-patch-targets-lib"
+source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"

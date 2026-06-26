@@ -1,0 +1,42 @@
+emulate -L zsh
+setopt no_unset pipe_fail
+
+# Resolve Claude binaries for needle patch wrappers. Prints one target per line.
+# $1 = select_all (0/1). When false, use the active mise Claude install, falling
+# back to the highest version under ~/.local/share/mise/installs/claude/.
+needle_patch_resolve_targets() {
+  emulate -L zsh
+  setopt no_unset pipe_fail
+
+  local select_all="${1:-0}"
+  local miseout highest
+  local -a raw_targets installs
+
+  if (( select_all )); then
+    raw_targets=( "$HOME"/.local/share/mise/installs/claude/*/claude(N) )
+  else
+    miseout=""
+    if command -v mise >/dev/null 2>&1; then
+      miseout=$(mise which claude 2>/dev/null || true)
+    fi
+    if [[ -n $miseout && -f $miseout ]]; then
+      raw_targets=( "$miseout" )
+    else
+      installs=( "$HOME"/.local/share/mise/installs/claude/*/claude(N.) )
+      if (( ${#installs} == 0 )); then
+        print -u2 "no claude install found under ~/.local/share/mise/installs/claude/"
+        return 1
+      fi
+      highest=$(printf '%s\n' "${installs[@]}" | awk -F/ '{print $(NF-1)}' \
+        | /usr/bin/sort -V | /usr/bin/tail -1)
+      raw_targets=( "$HOME/.local/share/mise/installs/claude/$highest/claude" )
+    fi
+  fi
+
+  if (( ${#raw_targets} == 0 )); then
+    print -u2 "no claude binaries found"
+    return 1
+  fi
+
+  printf '%s\n' "${raw_targets[@]}"
+}
