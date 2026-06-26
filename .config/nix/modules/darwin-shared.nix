@@ -243,28 +243,6 @@
     else
       echo "Tailscale not running, skipping MagicDNS resolver setup"
     fi
-
-    # -- mosh-server: allow inbound UDP through the Application Firewall --
-    # ALF silently drops inbound UDP to *unsigned* binaries unless they are
-    # allow-listed by path (no signature to key on, so it falls back to the
-    # path). mosh-server is an adhoc-signed Nix binary, so SSH (TCP, system
-    # path) connects but mosh's UDP data channel is dropped — the classic
-    # "mosh: Nothing received from server on UDP port" with a working ssh.
-    # Its /nix/store path changes on every upgrade, so we re-assert the allow
-    # for the current mosh-server each rebuild and prune entries left by prior
-    # store paths, keeping the ALF list clean. (tailscaled solves the same
-    # path-churn by pinning a fixed-path copy and exec'ing it; mosh-server is
-    # launched on-demand by the incoming SSH session — we don't control its
-    # exec — so allowing the Nix path directly is the natural fit here.)
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    mosh_server=${pkgs.mosh}/bin/mosh-server
-    "$fw" --listapps 2>/dev/null | grep -oE '/nix/store/[^ ]*mosh[^ ]*/bin/mosh-server' | while read -r old; do
-      [ "$old" = "$mosh_server" ] && continue
-      "$fw" --remove "$old" >/dev/null 2>&1 || true
-    done
-    "$fw" --add "$mosh_server" >/dev/null 2>&1 || true
-    "$fw" --unblockapp "$mosh_server" >/dev/null 2>&1 || true
-    echo "Allowed mosh-server through Application Firewall: $mosh_server"
   '';
 
   # -- Users & Home Manager (base) --
