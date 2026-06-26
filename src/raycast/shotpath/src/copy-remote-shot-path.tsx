@@ -11,6 +11,7 @@ import {
 } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
@@ -20,6 +21,11 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 
 const LAST_HOST_KEY = "shotpath:lastHost";
+
+interface ClipboardImage {
+  directory: string;
+  path: string;
+}
 
 interface Preferences {
   shotpathPath: string;
@@ -67,26 +73,35 @@ function shotpathBinary(): string {
   return raw;
 }
 
+async function captureClipboardImage(
+  env: NodeJS.ProcessEnv,
+): Promise<ClipboardImage | null> {
+  const directory = await mkdtemp(join(tmpdir(), "raycast-shotpath-"));
+  const path = join(directory, `shotpath-${randomUUID()}.png`);
+
+  try {
+    await run("pngpaste", [path], {
+      env,
+      cwd: homedir(),
+      timeout: 5_000,
+    });
+    if ((await stat(path)).size === 0) throw new Error("empty clipboard image");
+    return { directory, path };
+  } catch {
+    await rm(directory, { recursive: true, force: true });
+    return null;
+  }
+}
+
 /**
  * Use pngpaste for the probe too: it is what shotpath uses and it accepts
  * pasteboards that only advertise a file URL but still contain an image.
  */
 async function clipboardHasImage(env: NodeJS.ProcessEnv): Promise<boolean> {
-  const dir = await mkdtemp(join(tmpdir(), "raycast-shotpath-"));
-  const out = join(dir, "probe.png");
-
-  try {
-    await run("pngpaste", [out], {
-      env,
-      cwd: homedir(),
-      timeout: 5_000,
-    });
-    return (await stat(out)).size > 0;
-  } catch {
-    return false;
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+  const image = await captureClipboardImage(env);
+  if (!image) return false;
+  await rm(image.directory, { recursive: true, force: true });
+  return true;
 }
 
 async function listHosts(
@@ -131,7 +146,8 @@ async function uploadTo(host: string, bin: string, env: NodeJS.ProcessEnv) {
     title: `Uploading to ${host}…`,
   });
 
-  if (!(await clipboardHasImage(env))) {
+  const image = await captureClipboardImage(env);
+  if (!image) {
     toast.style = Toast.Style.Failure;
     toast.title = "No screenshot on clipboard";
     toast.message = "Copy a screenshot first (⌘⌃⇧4), then try again.";
@@ -139,7 +155,7 @@ async function uploadTo(host: string, bin: string, env: NodeJS.ProcessEnv) {
   }
 
   try {
-    const { stdout } = await run(bin, ["--host", host], {
+    const { stdout } = await run(bin, ["--host", host, image.path], {
       env,
       cwd: homedir(),
       timeout: 60_000,
@@ -152,6 +168,8 @@ async function uploadTo(host: string, bin: string, env: NodeJS.ProcessEnv) {
     toast.style = Toast.Style.Failure;
     toast.title = `shotpath ${host} failed`;
     toast.message = failureMessage(error);
+  } finally {
+    await rm(image.directory, { recursive: true, force: true });
   }
 }
 
