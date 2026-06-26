@@ -22,4 +22,5 @@ local marker="$HOME/.cache/claude-channels-patch.stale"
 local missing_body=$'The flag was likely renamed upstream; --channels will silently\nrevert until the needle in claude-channels-patch is updated.'
 local missing_banner='--channels will revert'
 
-source "${wrapper:h}/_claude-gate-patch-lib"
+source "${wrapper:h}/_claude-patch-targets-lib"
+source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"

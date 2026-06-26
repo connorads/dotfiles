@@ -7,8 +7,8 @@
 # readClipboardImageViaNativeClipboard(), so patch it to treat getImageBinary()
 # as authoritative and ignore errors.
 #
-# Reuses the Claude gate patch helper. The needles stay single-line because that
-# helper intentionally uses grep/byte replacement for simple generated-code
+# Reuses the generic needle patch helper. The needles stay single-line because
+# that helper intentionally uses grep/byte replacement for simple generated-code
 # patches, not multi-line patch hunks.
 
 emulate -L zsh
@@ -92,7 +92,7 @@ _run_needle_patch() {
   [[ $mode != patch ]] && patch_args+=("--$mode")
   patch_args+=("$clipboard")
 
-  source "$HOME/.config/zsh/functions/claude/_claude-gate-patch-lib" "${patch_args[@]}"
+  source "$HOME/.config/zsh/functions/patch/_needle-patch-lib" "${patch_args[@]}"
 }
 
 local rc=0
