@@ -94,16 +94,17 @@
 !/.config/skills/vendor/
 !/.config/skills/vendor/**
 
-# raycast extension source (tracked source-only; the built bundle lives in the
+# Raycast extension source (tracked source-only; the built bundle lives in the
 # machine-local ~/.config/raycast/, which stays untracked). pnpm-lock.yaml IS
 # tracked for supply-chain audit; node_modules + generated files are not.
-!/.config/raycast-ext/
-!/.config/raycast-ext/**
-/.config/raycast-ext/**/node_modules/
-/.config/raycast-ext/**/dist/
-/.config/raycast-ext/**/raycast-env.d.ts
-/.config/raycast-ext/**/*.js.map
-/.config/raycast-ext/**/*.tsbuildinfo
+!/src/
+!/src/raycast/
+!/src/raycast/**
+/src/raycast/**/node_modules/
+/src/raycast/**/dist/
+/src/raycast/**/raycast-env.d.ts
+/src/raycast/**/*.js.map
+/src/raycast/**/*.tsbuildinfo
 
 !/.pi/
 /.pi/**
