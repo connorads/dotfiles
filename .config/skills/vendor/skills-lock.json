@@ -181,6 +181,12 @@
       "skillPath": "skills/portless/SKILL.md",
       "computedHash": "cee49d001444a5af71476d22b6294cdb4f2f639b69431e248c26478a1d75e860"
     },
+    "prototype": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/prototype/SKILL.md",
+      "computedHash": "40ff56e36bb13b5a9a16903efd6c78a02690ba430e10a8d1a65559100b77f475"
+    },
     "redesign-existing-projects": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
