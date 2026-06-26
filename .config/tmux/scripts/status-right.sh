@@ -44,6 +44,35 @@ disk_percentage() {
 	fi
 }
 
+battery_percentage() {
+	local pct="" status=""
+
+	if command -v pmset >/dev/null 2>&1; then
+		local batt
+		batt="$(pmset -g batt 2>/dev/null || true)"
+		printf '%s\n' "$batt" | grep -q 'InternalBattery' || return
+		pct="$(printf '%s\n' "$batt" | grep -Eo '[0-9]{1,3}%' | head -n1 || true)"
+		status="$(printf '%s\n' "$batt" | awk -F';' 'NR==2 { gsub(/^ +| +$/, "", $2); print $2 }')"
+	elif [ -d /sys/class/power_supply ]; then
+		local bat cap
+		bat="$(find /sys/class/power_supply -maxdepth 1 -name 'BAT*' -type d 2>/dev/null | head -n1)"
+		[ -n "$bat" ] || return
+		cap="$(cat "$bat/capacity" 2>/dev/null || true)"
+		[ -n "$cap" ] || return
+		pct="${cap}%"
+		status="$(cat "$bat/status" 2>/dev/null || true)"
+	else
+		return
+	fi
+
+	[ -n "$pct" ] || return
+	case "$status" in
+	[Cc]harging) printf " %s" "$pct" ;;
+	[Ff]ull | [Cc]harged) printf " %s" "$pct" ;;
+	*) printf " %s" "$pct" ;;
+	esac
+}
+
 iso_to_epoch() {
 	local iso="$1"
 	[ -n "$iso" ] || {
@@ -383,10 +412,11 @@ ai_usage() {
 }
 
 print_full() {
-	local cpu ram disk git_ref host
+	local cpu ram disk battery git_ref host
 	cpu="$(cpu_percentage)"
 	ram="$(ram_percentage)"
 	disk="$(disk_percentage)"
+	battery="$(battery_percentage)"
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
@@ -394,6 +424,7 @@ print_full() {
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#cba6f7]#[bold]  %s " "$ram"
 	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
+	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
