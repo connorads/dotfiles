@@ -48,6 +48,18 @@ def iso(delta):
 PY
 }
 
+set_cache_age_hours() {
+  python3 - "$1" "$2" <<'PY'
+import os
+import sys
+import time
+
+path, hours = sys.argv[1], float(sys.argv[2])
+t = time.time() - hours * 3600
+os.utime(path, (t, t))
+PY
+}
+
 @test "fancy dashboard renders useful insights and hides normal footers" {
   write_usage_caches
 
@@ -62,6 +74,30 @@ PY
   [[ "$output" != *"Claude cache"* ]]
   [[ "$output" != *"Codex cache"* ]]
   [[ "$output" != *"Claude extra disabled"* ]]
+}
+
+@test "stale 7d reading still wins the bottleneck, flagged stale" {
+  write_usage_caches
+  set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Bottleneck"*"Claude 7d 68%"*"cache stale"* ]]
+  [[ "$output" != *"Bottleneck Codex"* ]]
+  [[ "$output" == *"Stale"*"Claude cache"* ]]
+  [[ "$output" == *"▒"* ]]
+}
+
+@test "7d reading tolerates hours of staleness before being distrusted" {
+  write_usage_caches
+  set_cache_age_hours "$HOME/.cache/claude-usage.json" 3
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Bottleneck"*"Claude 7d 68%"* ]]
+  [[ "$output" != *"cache stale"* ]]
 }
 
 @test "stale caches are alerts, stale local run history is hidden" {
