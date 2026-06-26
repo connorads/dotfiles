@@ -75,6 +75,9 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+h/j/k/l` | navigate panes (also works in copy mode) |
+| `Ctrl+b PageUp` | enter copy mode and scroll up one page |
+| `Shift+↑/↓` | scroll up/down 5 lines |
+| `Shift+PageUp/PageDown` | scroll up/down one page |
 | `]` / `[` | jump to next/prev shell prompt (requires OSC 133 shell integration) |
 
 ## Shell navigation
