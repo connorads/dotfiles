@@ -172,6 +172,9 @@ hms                    # home-manager switch (Linux)
 nrs                    # nixos-rebuild switch (reads $NIXOS_FLAKE, default: ~/.config/nix)
 nrsr                   # nixos-rebuild switch --rollback
 up                     # update everything: mise, brew/apt, flake lock, rebuild (NixOS: nrs + hms)
+up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
+macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
+macup-check            # report pending macOS updates (cached daily scan; --scan to force)
 nfu                    # nix flake update
 dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
