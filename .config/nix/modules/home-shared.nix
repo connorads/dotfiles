@@ -116,7 +116,10 @@
     '';
   };
 
-  home.packages = [ pkgs.neovim ];
+  home.packages = [
+    pkgs.neovim
+    pkgs.fresh-editor
+  ];
 
   programs.atuin = {
     enable = true;
