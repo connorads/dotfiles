@@ -1,0 +1,9 @@
+{
+  "file_explorer": {
+    "show_hidden": true,
+    "show_gitignored": false
+  },
+  "file_browser": {
+    "show_hidden": true
+  }
+}
