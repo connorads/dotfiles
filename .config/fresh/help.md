@@ -32,8 +32,8 @@ Fresh is modeless: most shortcuts are VS Code/Sublime-style rather than Vim-styl
 |-----|--------|
 | `Ctrl+b Alt+v` | Fresh popup in pane cwd |
 | `Ctrl+b Alt+V` | this help |
-| `Ctrl+h/j/k/l` | passed through to Fresh while Fresh is active |
-| `Ctrl+b h/j/k/l` | leave Fresh by selecting a tmux pane |
+| `Ctrl+h/j/k/l` | tmux pane navigation owns these keys |
+| `Ctrl+b h/j/k/l` | select a tmux pane from Fresh |
 
 ## Config
 

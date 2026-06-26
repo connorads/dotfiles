@@ -17,7 +17,7 @@
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+h/j/k/l` | navigate panes (works across nvim/Fresh, preserves zoom) |
+| `Ctrl+h/j/k/l` | navigate panes (works across nvim, preserves zoom) |
 | `Ctrl+b Ctrl+l` | clear screen |
 | `Ctrl+b \|` | split vertical |
 | `Ctrl+b -` | split horizontal |
