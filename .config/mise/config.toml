@@ -94,7 +94,13 @@ fnox = "1.27.1"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
-"pipx:rembg" = { version = "2", extras = "cli,cpu" }
+# Pinned <2.0.70: rembg 2.0.70+ hard-pins numpy>=2.3, but its transitive
+# numba/llvmlite chain can't go that high, forcing the resolver onto ancient
+# numba 0.53.1 -> llvmlite 0.36.0 which won't build on Python >=3.10.
+# --with numpy<2.3 stops uv greedily picking numpy 2.3 and keeps the modern
+# numba 0.65.1 / llvmlite 0.47.0 stack (builds on 3.13/3.14). See upstream
+# danielgatis/rembg: numpy floor bump broke the numba dep chain.
+"pipx:rembg" = { version = "2.0.69", extras = "cli,cpu", uvx_args = "--with numpy<2.3" }
 "pipx:ty" = "0"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
