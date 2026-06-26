@@ -178,6 +178,7 @@ dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + Alt+a)
+shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
 svc ls                 # List agent services with status
 svc up <name> [port]   # Start service + expose via Tailscale
