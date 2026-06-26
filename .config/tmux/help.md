@@ -30,6 +30,10 @@
 | `Ctrl+d` | close pane (exit shell) |
 | `Ctrl+b Space` | next layout |
 | `Ctrl+b Backspace` | previous layout |
+| `Ctrl+b E` | spread panes evenly |
+| `Ctrl+b Alt+1` | even horizontal layout |
+| `Ctrl+b Alt+2` | even vertical layout |
+| `Ctrl+b Alt+5` | tiled layout |
 | `Ctrl+b L` | layout presets (fzf picker) |
 | `Ctrl+b N` | prompt for total panes, then build two-row grid |
 | `Ctrl+b Alt+r` | resize mode (`h/j/k/l`, `q`/Esc exits) |
