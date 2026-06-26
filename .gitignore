@@ -14,6 +14,9 @@
 !/.github/
 !/.github/**
 
+!/.fresh/
+!/.fresh/config.json
+
 # public skills home (authoring root; symlinked from .config/skills/public).
 # Staged here for a future standalone connorads/skills repo.
 !/skills/
