@@ -9,7 +9,8 @@ MARKER_REL=".cache/claude-computer-use-patch.stale"
 
 setup() {
   setup_test_home
-  mkdir -p "$HOME/.cache"
+  mkdir -p "$HOME/.cache" "$HOME/.config/zsh/functions"
+  ln -s "$FUNCTIONS_DIR/patch" "$HOME/.config/zsh/functions/patch"
   NEEDLE='{enabled:!1,pixelValidation:!1,clipboardPasteMultiline:!0,mouseAnimation:!0,hideBeforeAction:!0,autoTargetDisplay:!0,clipboardGuard:!0,coordinateMode:"pixels"}'
   PATCHED='{enabled:!0,pixelValidation:!1,clipboardPasteMultiline:!0,mouseAnimation:!0,hideBeforeAction:!0,autoTargetDisplay:!0,clipboardGuard:!0,coordinateMode:"pixels"}'
 }
