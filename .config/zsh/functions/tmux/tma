@@ -3,16 +3,17 @@
 emulate -L zsh
 
 local session_name="${1:-main}"
-if tmux has-session -t="$session_name" 2>/dev/null; then
-  if [[ -z "$TMUX" ]]; then
-    tmux attach -t "$session_name"
-  else
-    tmux switch-client -t "$session_name"
-  fi
-else
-  if [[ -z "$TMUX" ]]; then
-    tmux new-session -s "$session_name"
-  else
-    tmux new-session -ds "$session_name" && tmux switch-client -t "$session_name"
-  fi
+
+# Ensure the session exists (create it detached if not).
+tmux has-session -t="$session_name" 2>/dev/null \
+  || tmux new-session -ds "$session_name" || return
+
+# $TMUX only means "real tmux client" when it's genuinely set by tmux; it can be
+# stale, leaked into a non-client shell (e.g. a kitty shell spawned from a tmux
+# context), in which case it points at a dead pane and switch-client fails with
+# "no current client". Prefer switching when we are a real client, but fall back
+# to a fresh attach (blanking the possibly-stale $TMUX) when that fails.
+if [[ -n "$TMUX" ]] && tmux switch-client -t "$session_name" 2>/dev/null; then
+  return 0
 fi
+TMUX= tmux attach -t "$session_name"
