@@ -531,7 +531,7 @@ def collect_insights(rows):
     return lines
 
 
-def print_kv_lines(lines, inner, box_width):
+def print_kv_lines(lines, inner, box_width, left_pad=""):
     for label, value, colour_name in lines:
         left = c("accent", f"{label:<10}")
         content = f"{left} {c(colour_name, value)}"
@@ -539,22 +539,31 @@ def print_kv_lines(lines, inner, box_width):
             plain_value_max = max(0, inner - visible_len(left) - 2)
             value = value[:plain_value_max] + "…"
             content = f"{left} {c(colour_name, value)}"
-        print(c("border", "│ ") + pad(content, inner) + c("border", " │"))
+        print(left_pad + c("border", "│ ") + pad(content, inner) + c("border", " │"))
 
 
 def render():
     term_width = shutil.get_terminal_size((80, 24)).columns
-    box_width = max(46, min(86, term_width - 2))
+    available_width = max(1, term_width - 2)
+    # Use a proportional width with a sane cap, then centre it in the popup.
+    # This grows on roomy popups without turning bars into full-width rulers.
+    box_width = min(available_width, max(68, min(104, int(available_width * 0.72))))
+    left_pad = " " * max(0, (term_width - box_width) // 2)
     inner = box_width - 4
-    bar_width = max(8, min(28, inner - 31))
+    show_pace = inner >= 52
+    row_reserved = 36 if show_pace else 27
+    bar_width = max(8, inner - row_reserved)
     rows, alerts = collect_windows()
     insights = collect_insights(rows)
     recent = collect_recent()
 
-    print(c("border", "╭" + "─" * (box_width - 2) + "╮"))
+    def emit(line):
+        print(left_pad + line)
+
+    emit(c("border", "╭" + "─" * (box_width - 2) + "╮"))
     title = c("accent", c("bold", "AI usage")) + c("muted", "  ┃=constant pace")
-    print(c("border", "│ ") + pad(title, inner) + c("border", " │"))
-    print(c("border", "├" + "─" * (box_width - 2) + "┤"))
+    emit(c("border", "│ ") + pad(title, inner) + c("border", " │"))
+    emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
 
     if rows:
         for row in rows:
@@ -566,25 +575,25 @@ def render():
             pct_text = c(colour, f"{pct:>3.0f}%")
             ideal = ideal_pct(row["remaining"], row["window_secs"], row["stale"])
             delta = pace_delta(pct, row["remaining"], row["window_secs"], row["stale"])
-            pace_part = f" {pace_delta_label(delta)}" if inner >= 52 and delta is not None else ""
+            pace_part = f" {pace_delta_label(delta)}" if show_pace and delta is not None else ""
             content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'], ideal)} {pct_text}{pace_part}  {c('muted', '↻')} {reset}"
-            print(c("border", "│ ") + pad(content, inner) + c("border", " │"))
+            emit(c("border", "│ ") + pad(content, inner) + c("border", " │"))
     else:
-        print(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
+        emit(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
 
     if insights:
-        print(c("border", "├" + "─" * (box_width - 2) + "┤"))
-        print_kv_lines(insights, inner, box_width)
+        emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
+        print_kv_lines(insights, inner, box_width, left_pad)
 
     if recent:
-        print(c("border", "├" + "─" * (box_width - 2) + "┤"))
-        print_kv_lines(recent[:3], inner, box_width)
+        emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
+        print_kv_lines(recent[:3], inner, box_width, left_pad)
 
     if alerts:
-        print(c("border", "├" + "─" * (box_width - 2) + "┤"))
-        print_kv_lines(alerts[:3], inner, box_width)
+        emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
+        print_kv_lines(alerts[:3], inner, box_width, left_pad)
 
-    sys.stdout.write(c("border", "╰" + "─" * (box_width - 2) + "╯"))
+    sys.stdout.write(left_pad + c("border", "╰" + "─" * (box_width - 2) + "╯"))
     sys.stdout.flush()
 
 
