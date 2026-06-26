@@ -1,0 +1,21 @@
+#!/usr/bin/env zsh
+# macup-check: report pending macOS software updates (read-only)
+# Reads the OS's daily background-scan cache (--no-scan) so it's ~instant and
+# safe to call from `up`. Pass --scan/-s to force a fresh network scan.
+emulate -L zsh
+[[ "$OSTYPE" == "darwin"* ]] || return 0
+
+local mode="--no-scan"
+[[ "$1" == "--scan" || "$1" == "-s" ]] && mode=""
+
+local scan
+scan=$(softwareupdate -l $mode 2>/dev/null)
+grep -q "No new software available" <<< "$scan" && return 0
+grep -qE '^[[:space:]]*\* Label:' <<< "$scan" || return 0
+
+print -r -- "*** macOS updates available (run: macup) ***"
+grep -E 'Title:' <<< "$scan" | sed 's/^[[:space:]]*/  /'
+if grep -qi 'restart' <<< "$scan"; then
+  print -r -- "  note: some require a RESTART — not installed by \`up --os\` (headless+FileVault)."
+fi
+return 0
