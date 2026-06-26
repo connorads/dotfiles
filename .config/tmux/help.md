@@ -18,7 +18,6 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+h/j/k/l` | navigate panes (works across nvim, preserves zoom) |
-| `Alt+h/j/k/l` | resize panes (works across nvim) |
 | `Ctrl+b Ctrl+l` | clear screen |
 | `Ctrl+b \|` | split vertical |
 | `Ctrl+b -` | split horizontal |
@@ -29,8 +28,15 @@
 | `Ctrl+b B` | burst ALL panes into own windows |
 | `Ctrl+b z` | zoom pane |
 | `Ctrl+d` | close pane (exit shell) |
+| `Ctrl+b Space` | next layout |
+| `Ctrl+b Backspace` | previous layout |
 | `Ctrl+b L` | layout presets (fzf picker) |
 | `Ctrl+b N` | prompt for total panes, then build two-row grid |
+| `Ctrl+b Alt+r` | resize mode (`h/j/k/l`, `q`/Esc exits) |
+| `Ctrl+b Ctrl+o` | rotate panes forward |
+| `Ctrl+b Alt+o` | rotate panes backward |
+| `Ctrl+b Ctrl+arrows` | resize pane by 1 |
+| `Ctrl+b Alt+arrows` | resize pane by 5 |
 | `Ctrl+b x` | kill pane |
 
 ## Popups
@@ -41,7 +47,8 @@
 | `Ctrl+b W` | fzf window picker |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
-| `Ctrl+b f` | function/alias search |
+| `Ctrl+b f` | find window |
+| `Ctrl+b Alt+f` | function/alias search |
 | `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
 | `Ctrl+b Alt+t` | Tailscale serve status (active routes) |
 | `Ctrl+b T` | Tailscale serve manager (expose/down/funnel/prune) |
@@ -54,8 +61,7 @@
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
 | `Ctrl+b Alt+c` | connections overview |
-| `Ctrl+b O` | open cwd in file manager |
-| `Ctrl+b Alt+o` | open cwd in… (palette: Zed/VS Code/Finder) |
+| `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
@@ -68,7 +74,7 @@
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
-| `Ctrl+b Space` | thumbs (quick-copy text with hints) |
+| `Ctrl+b Ctrl+y` | thumbs (quick-copy text with hints) |
 
 ## Copy mode navigation
 
