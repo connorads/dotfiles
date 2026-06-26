@@ -185,14 +185,32 @@ def stale_after(window_secs):
     return max(900, (window_secs or 0) * 0.04)
 
 
+def ideal_pct(remaining, window_secs, stale):
+    if stale or remaining is None or not window_secs:
+        return None
+    elapsed = window_secs - max(0, remaining)
+    if elapsed < 0:
+        return None
+    return max(0, min(100, elapsed * 100 / window_secs))
+
+
+def pace_delta(pct, remaining, window_secs, stale):
+    ideal = ideal_pct(remaining, window_secs, stale)
+    if ideal is None:
+        return None
+    return ideal - pct
+
+
 def pace_ratio(pct, remaining, window_secs, stale):
     if stale or remaining is None or pct <= 0:
+        return None
+    ideal = ideal_pct(remaining, window_secs, stale)
+    if ideal is None:
         return None
     elapsed = window_secs - max(0, remaining)
     if elapsed < 180:
         return None
-    elapsed_pct = max(1, elapsed * 100 / window_secs)
-    return pct / elapsed_pct
+    return pct / max(1, ideal)
 
 
 def usage_colour(pct, remaining, window_secs, stale):
@@ -235,14 +253,40 @@ def burn_note(row):
     return "pace OK", "green"
 
 
-def bar(pct: float, width: int, colour_name: str, stale: bool = False) -> str:
+def bar(pct: float, width: int, colour_name: str, stale: bool = False, marker_pct=None) -> str:
     pct = max(0, min(100, pct))
     filled = int(round(pct * width / 100))
     fill = "▒" if stale else "█"  # hatched fill marks a reading we no longer trust
-    raw = fill * filled + "░" * (width - filled)
+    marker_idx = None
+    if marker_pct is not None and width > 0:
+        marker_pct = max(0, min(100, float(marker_pct)))
+        marker_idx = int(round(marker_pct * (width - 1) / 100))
+
     if not USE_COLOUR:
-        return raw
-    return c(colour_name, fill * filled) + c("muted", "░" * (width - filled))
+        chars = []
+        for idx in range(width):
+            chars.append("┃" if idx == marker_idx else fill if idx < filled else "░")
+        return "".join(chars)
+
+    out = []
+    for idx in range(width):
+        if idx == marker_idx:
+            out.append(c("muted" if stale else "accent", "┃"))
+        elif idx < filled:
+            out.append(c(colour_name, fill))
+        else:
+            out.append(c("muted", "░"))
+    return "".join(out)
+
+
+def pace_delta_label(delta) -> str:
+    if delta is None:
+        return ""
+    rounded = int(round(delta))
+    if rounded == 0:
+        return c("muted", "pace 0")
+    colour_name = "green" if rounded > 0 else "yellow" if rounded >= -10 else "red"
+    return c(colour_name, f"pace {rounded:+d}")
 
 
 def fmt_num(value) -> str:
@@ -508,7 +552,7 @@ def render():
     recent = collect_recent()
 
     print(c("border", "╭" + "─" * (box_width - 2) + "╮"))
-    title = c("accent", c("bold", "AI usage"))
+    title = c("accent", c("bold", "AI usage")) + c("muted", "  ┃=constant pace")
     print(c("border", "│ ") + pad(title, inner) + c("border", " │"))
     print(c("border", "├" + "─" * (box_width - 2) + "┤"))
 
@@ -520,7 +564,10 @@ def render():
             window = c("muted", f"{row['window']:<2}")
             reset = fmt_duration(row["remaining"])
             pct_text = c(colour, f"{pct:>3.0f}%")
-            content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'])} {pct_text}  {c('muted', '↻')} {reset}"
+            ideal = ideal_pct(row["remaining"], row["window_secs"], row["stale"])
+            delta = pace_delta(pct, row["remaining"], row["window_secs"], row["stale"])
+            pace_part = f" {pace_delta_label(delta)}" if inner >= 52 and delta is not None else ""
+            content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'], ideal)} {pct_text}{pace_part}  {c('muted', '↻')} {reset}"
             print(c("border", "│ ") + pad(content, inner) + c("border", " │"))
     else:
         print(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
