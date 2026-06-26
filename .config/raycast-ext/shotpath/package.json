@@ -1,0 +1,47 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "shotpath",
+  "title": "Shotpath",
+  "description": "Upload the clipboard screenshot to an SSH host and copy the remote path",
+  "icon": "icon.png",
+  "author": "connorads",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "commands": [
+    {
+      "name": "copy-remote-shot-path",
+      "title": "Copy Remote Shot Path",
+      "description": "Pick an SSH host, upload the clipboard screenshot with shotpath, and copy the remote path",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "shotpathPath",
+      "title": "shotpath Binary",
+      "description": "Absolute path to the shotpath executable. Leave blank to use ~/.local/bin/shotpath.",
+      "type": "textfield",
+      "required": false,
+      "default": ""
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.0",
+    "@raycast/utils": "^2.2.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint"
+  }
+}
