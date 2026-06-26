@@ -1,0 +1,8 @@
+# pnpm 11 reads project settings (incl. overrides) from this file, not package.json.
+#
+# undici-types: @types/node@22 depends on ~6.20.0, but 6.20.0/6.21.0 shipped WITHOUT
+# SLSA provenance and trip the global trustPolicy: no-downgrade. 6.23.0 is the earliest
+# version that restored provenance (types-only package, negligible drift), so we force
+# it rather than excluding the package from trust checks — keeping the posture strict.
+overrides:
+  undici-types: 6.23.0
