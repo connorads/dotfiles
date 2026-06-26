@@ -177,6 +177,14 @@ def as_pct(value):
         return None
 
 
+def stale_after(window_secs):
+    # How old a reading may get before we distrust it, scaled to the window it
+    # describes: a 7d utilisation barely moves in a few hours, a 5h one does.
+    # ~4% of the window — 15 min for the 5h window, ~6.7h for the 7d window —
+    # floored at 15 min so short windows are not flagged the instant they age.
+    return max(900, (window_secs or 0) * 0.04)
+
+
 def pace_ratio(pct, remaining, window_secs, stale):
     if stale or remaining is None or pct <= 0:
         return None
@@ -227,13 +235,14 @@ def burn_note(row):
     return "pace OK", "green"
 
 
-def bar(pct: float, width: int, colour_name: str) -> str:
+def bar(pct: float, width: int, colour_name: str, stale: bool = False) -> str:
     pct = max(0, min(100, pct))
     filled = int(round(pct * width / 100))
-    raw = "█" * filled + "░" * (width - filled)
+    fill = "▒" if stale else "█"  # hatched fill marks a reading we no longer trust
+    raw = fill * filled + "░" * (width - filled)
     if not USE_COLOUR:
         return raw
-    return c(colour_name, "█" * filled) + c("muted", "░" * (width - filled))
+    return c(colour_name, fill * filled) + c("muted", "░" * (width - filled))
 
 
 def fmt_num(value) -> str:
@@ -281,7 +290,6 @@ def collect_windows():
     claude = load_json(claude_path)
     claude_mt = mtime(claude_path)
     claude_age = NOW_TS - claude_mt if claude_mt else None
-    claude_stale = claude_age is not None and claude_age >= 900
     if claude:
         for label, key, window_secs in (
             ("Claude", "five_hour", 18000),
@@ -300,7 +308,7 @@ def collect_windows():
                 "pct": pct,
                 "remaining": remaining,
                 "window_secs": window_secs,
-                "stale": claude_stale,
+                "stale": claude_age is not None and claude_age >= stale_after(window_secs),
                 "provider_colour": "sonnet" if label == "Sonnet" else "claude",
                 "source": "claude",
             })
@@ -315,7 +323,7 @@ def collect_windows():
                     alerts.append(("Extra", f"Claude disabled after {fmt_money(used)}", "yellow"))
             except Exception:
                 pass
-        if claude_stale:
+        if claude_age is not None and claude_age >= 900:
             alerts.append(("Stale", f"Claude cache {fmt_age(claude_path)}", "yellow"))
     elif not claude_path.exists():
         alerts.append(("Missing", "Claude usage cache", "yellow"))
@@ -324,7 +332,6 @@ def collect_windows():
     codex = load_json(codex_path)
     codex_mt = mtime(codex_path)
     codex_age = NOW_TS - codex_mt if codex_mt else None
-    codex_stale = codex_age is not None and codex_age >= 900
     if codex:
         rl = codex.get("rate_limit") or {}
         for label, key, window_secs in (
@@ -343,7 +350,7 @@ def collect_windows():
                 "pct": pct,
                 "remaining": remaining,
                 "window_secs": window_secs,
-                "stale": codex_stale,
+                "stale": codex_age is not None and codex_age >= stale_after(window_secs),
                 "provider_colour": "codex",
                 "source": "codex",
             })
@@ -363,7 +370,7 @@ def collect_windows():
                     "pct": pct,
                     "remaining": remaining,
                     "window_secs": window_secs,
-                    "stale": codex_stale,
+                    "stale": codex_age is not None and codex_age >= stale_after(window_secs),
                     "provider_colour": "codex",
                     "source": "codex-extra",
                 })
@@ -375,7 +382,7 @@ def collect_windows():
             pass
         if (codex.get("rate_limit") or {}).get("limit_reached"):
             alerts.append(("Limit", "Codex limit reached", "red"))
-        if codex_stale:
+        if codex_age is not None and codex_age >= 900:
             alerts.append(("Stale", f"Codex cache {fmt_age(codex_path)}", "yellow"))
     elif not codex_path.exists():
         alerts.append(("Missing", "Codex usage cache", "yellow"))
@@ -448,10 +455,16 @@ def collect_recent():
 
 
 def collect_insights(rows):
-    fresh = [r for r in rows if not r.get("stale")]
-    if not fresh:
+    if not rows:
         return []
-    bottleneck = max(fresh, key=lambda r: (float(r.get("pct") or 0), 1 if r.get("window") == "5h" else 0))
+    # Stale rows still count: an hours-old 7d reading is more likely the real
+    # bottleneck than a fresh-but-idle 5h one. Prefer fresh data, then the
+    # tighter 5h window, on ties — and flag a stale pick rather than hide it.
+    bottleneck = max(rows, key=lambda r: (
+        float(r.get("pct") or 0),
+        0 if r.get("stale") else 1,
+        1 if r.get("window") == "5h" else 0,
+    ))
     note, note_colour = burn_note(bottleneck)
     lines = [(
         "Bottleneck",
@@ -459,11 +472,16 @@ def collect_insights(rows):
         note_colour,
     )]
 
-    best = min(fresh, key=lambda r: (float(r.get("pct") or 0), 0 if r.get("window") == "5h" else 1))
+    best = min(rows, key=lambda r: (
+        float(r.get("pct") or 0),
+        1 if r.get("stale") else 0,
+        0 if r.get("window") == "5h" else 1,
+    ))
     headroom = max(0, 100 - float(best.get("pct") or 0))
+    suffix = " (stale)" if best.get("stale") else ""
     lines.append((
         "Headroom",
-        f"{best['provider']} {best['window']} has {headroom:.0f}% free",
+        f"{best['provider']} {best['window']} has {headroom:.0f}% free{suffix}",
         "green" if headroom >= 70 else "yellow" if headroom >= 30 else "red",
     ))
     return lines
@@ -502,7 +520,7 @@ def render():
             window = c("muted", f"{row['window']:<2}")
             reset = fmt_duration(row["remaining"])
             pct_text = c(colour, f"{pct:>3.0f}%")
-            content = f"{provider} {window} {bar(pct, bar_width, colour)} {pct_text}  {c('muted', '↻')} {reset}"
+            content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'])} {pct_text}  {c('muted', '↻')} {reset}"
             print(c("border", "│ ") + pad(content, inner) + c("border", " │"))
     else:
         print(c("border", "│ ") + pad(c("yellow", "No usage cache yet — run claude-usage or codex-usage."), inner) + c("border", " │"))
