@@ -1,0 +1,65 @@
+{
+  "skill_name": "raycast-extensions",
+  "evals": [
+    {
+      "id": 0,
+      "name": "build-search-command",
+      "prompt": "I want to build a Raycast extension that searches dictionary definitions using a REST API at https://api.dictionaryapi.dev/api/v2/entries/en/{word}. It needs one command that takes the user's search text, fetches definitions, and shows each result in a list with the word as the title and the definition as the subtitle. The API needs no auth, but add a preference for an optional custom API base URL. Write the package.json manifest and src/search.tsx. Save everything under a folder called dictionary-search/.",
+      "expected_output": "A valid manifest (kebab-case name, Title Case noun-first title, MIT license, a category from the enum, $schema, @raycast/api + @raycast/utils deps, the command mapping to src/search.tsx) and a search.tsx that uses a @raycast/utils data hook (useFetch/useCachedPromise) — NOT raw useEffect+fetch — wires isLoading into <List>, reads the base-URL preference via getPreferenceValues, handles the search via onSearchTextChange with throttle, and handles errors.",
+      "files": [],
+      "expectations": [
+        "Manifest license is MIT",
+        "Manifest name is kebab-case",
+        "Title is noun-first Title Case, not verb-first",
+        "Category from the allowed Title Case enum",
+        "Includes $schema and depends on @raycast/utils",
+        "Fetches via a @raycast/utils hook, not raw useEffect+fetch",
+        "isLoading wired into <List>",
+        "Reads the custom base-URL preference via getPreferenceValues",
+        "Networked search uses throttle + onSearchTextChange",
+        "Errors handled (showFailureToast / failureToastOptions), not left to throw",
+        "devDependencies includes react so the extension is buildable",
+        "Current toolchain (latest @raycast/api, ESLint flat config)"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "ai-tool-with-confirmation",
+      "prompt": "My Raycast extension manages notes via a REST API (I already have an api client at src/api/notes.ts exporting deleteNote(id) and getNote(id)). Add an AI tool that lets Raycast AI delete a note by its id, and wire it into the manifest. It deletes data so it must be safe.",
+      "expected_output": "A src/tools/delete-note.ts with an `Input` type (named exactly Input) whose id field has a JSDoc description, a default-exported async tool function, and an exported `confirmation` that returns a descriptive message/info (ideally Action.Style.Destructive). A matching tools[] entry in package.json with name 'delete-note'. Should explain that JSDoc on Input is the model-facing prompt and that mutating tools require confirmation.",
+      "files": [],
+      "expectations": [
+        "Creates the tool at src/tools/delete-note.ts",
+        "Declares an input type named exactly 'Input'",
+        "The id field on Input has a JSDoc description",
+        "Default-exports the async tool function",
+        "Exports a `confirmation` function",
+        "Confirmation returns descriptive message/info",
+        "package.json tools[] includes name 'delete-note'",
+        "Explains JSDoc-is-prompt and confirmation-required",
+        "Confirmation guards an empty/whitespace id before lookup",
+        "Uses a valid destructive style (Action.Style.Destructive)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "review-flawed-extension",
+      "prompt": "Here's a Raycast extension I want to submit to the store. Can you review it and tell me everything that would get it rejected or flagged, and fix what you can? The files are package.json and src/search.tsx in this folder.",
+      "expected_output": "Identifies the planted issues: license not MIT (Apache-2.0); name not kebab-case (Dictionary_Lookup); verb-first title (Lookup Words); category not in the allowed Title Case enum (dictionary); hardcoded API secret in source (should be a password preference); raw useEffect+fetch instead of @raycast/utils hooks; British spelling (Favourite colour); missing CHANGELOG.md and README; outdated @raycast/api / React 18 / missing @raycast/utils; missing throttle on networked search; default/likely-invalid icon. Bonus: applies fixes.",
+      "files": ["fixtures/dictionary-flawed/package.json", "fixtures/dictionary-flawed/src/search.tsx"],
+      "expectations": [
+        "Flags license not MIT (Apache-2.0)",
+        "Flags name not kebab-case (Dictionary_Lookup)",
+        "Flags verb-first / non-noun title (Lookup Words)",
+        "Flags category not in allowed enum (dictionary)",
+        "Flags hardcoded API secret in source",
+        "Flags raw useEffect+fetch instead of hooks",
+        "Flags British spelling (Favourite colour)",
+        "Flags missing CHANGELOG.md",
+        "Flags outdated @raycast/api / missing @raycast/utils",
+        "Flags missing throttle on networked search",
+        "Flags default/likely-invalid icon or missing README"
+      ]
+    }
+  ]
+}
