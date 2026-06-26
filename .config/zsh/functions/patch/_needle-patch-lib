@@ -4,7 +4,7 @@ setopt no_unset pipe_fail
 local required
 for required in patch_name patch_label needle replace marker missing_body missing_banner; do
   if [[ -z ${(P)required:-} ]]; then
-    print -u2 "_claude-gate-patch-lib: missing required setting: $required"
+    print -u2 "_needle-patch-lib: missing required setting: $required"
     return 2
   fi
 done
@@ -30,40 +30,24 @@ while (( $# )); do
   esac
 done
 
-# Resolve target binaries (deduped by realpath so symlinks don't double up).
-# `command -v claude` returns the mise shim, which is itself a symlink to the
-# mise binary (mise dispatches by argv[0]). Resolve via `mise which`, falling
-# back to the highest-versioned install in ~/.local/share/mise/installs/claude/.
+# Resolve targets (deduped by realpath so symlinks do not double up). Wrappers
+# should either pass explicit target paths or define needle_patch_resolve_targets,
+# which receives select_all (0/1) and prints one target path per line.
 local -a raw_targets targets
 local -A seen
-local rp t miseout
+local rp t resolved_targets
 if (( $# )); then
   raw_targets=("$@")
-elif (( select_all )); then
-  raw_targets=( "$HOME"/.local/share/mise/installs/claude/*/claude(N) )
+elif (( $+functions[needle_patch_resolve_targets] )); then
+  resolved_targets=$(needle_patch_resolve_targets "$select_all") || return $?
+  raw_targets=("${(@f)resolved_targets}")
 else
-  miseout=""
-  if command -v mise >/dev/null 2>&1; then
-    miseout=$(mise which claude 2>/dev/null || true)
-  fi
-  if [[ -n $miseout && -f $miseout ]]; then
-    raw_targets=( "$miseout" )
-  else
-    # Fall back to highest version from mise installs (lexicographic on x.y.z
-    # is correct only for zero-padded; use sort -V).
-    local -a installs=( "$HOME"/.local/share/mise/installs/claude/*/claude(N.) )
-    if (( ${#installs} == 0 )); then
-      print -u2 "no claude install found under ~/.local/share/mise/installs/claude/"
-      return 1
-    fi
-    local highest
-    highest=$(printf '%s\n' "${installs[@]}" | awk -F/ '{print $(NF-1)}' \
-      | /usr/bin/sort -V | /usr/bin/tail -1)
-    raw_targets=( "$HOME/.local/share/mise/installs/claude/$highest/claude" )
-  fi
+  print -u2 "_needle-patch-lib: no targets supplied and no needle_patch_resolve_targets function defined"
+  return 1
 fi
 
 for t in "${raw_targets[@]}"; do
+  [[ -n $t ]] || continue
   [[ -e $t ]] || { targets+=("$t"); continue }
   rp=$(/usr/bin/python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$t")
   if [[ -z ${seen[$rp]:-} ]]; then
@@ -73,23 +57,23 @@ for t in "${raw_targets[@]}"; do
 done
 
 if (( ${#targets} == 0 )); then
-  print -u2 "no claude binaries found"
+  print -u2 "_needle-patch-lib: no patch targets found"
   return 1
 fi
 
 local reapply_missing=0
 
 # Warn loudly and drop a marker when the needle is gone (likely an upstream
-# rename). Keeps exit status 0 so a Claude install/update is never blocked; the
-# next shell start surfaces the marker so the rename cannot be forgotten.
-_claude_gate_patch_warn_missing() {
+# rename). Keeps exit status 0 in --reapply so install/update hooks are never
+# blocked; the next shell start surfaces the marker so the rename is not missed.
+_needle_patch_warn_missing() {
   local target="$1"
   local when
   when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
   mkdir -p "${marker:h}" 2>/dev/null || true
   {
     print -r -- "$patch_name could not reapply the $patch_label patch."
-    print -r -- "binary: $target"
+    print -r -- "target: $target"
     print -r -- "needle: $needle"
     print -r -- "when:   $when"
     print -r -- "$missing_body"
@@ -97,7 +81,7 @@ _claude_gate_patch_warn_missing() {
   print -u2 ""
   print -u2 "################################################################"
   print -u2 "# $patch_name: NEEDLE NOT FOUND — $missing_banner"
-  print -u2 "#   binary: $target"
+  print -u2 "#   target: $target"
   print -u2 "#   needle: $needle"
   print -u2 "# Update the needle in $patch_name. Marker: $marker"
   print -u2 "################################################################"
@@ -133,14 +117,14 @@ for real in "${targets[@]}"; do
         rc=1
       fi
       ;;
-    patch|all|reapply)
+    patch|reapply)
       if (( after > 0 && before == 0 )); then
         print "skip (already patched): $real"
         continue
       fi
       if (( before == 0 )); then
         if [[ $mode == reapply ]]; then
-          _claude_gate_patch_warn_missing "$real"
+          _needle_patch_warn_missing "$real"
           reapply_missing=1
           continue
         fi
