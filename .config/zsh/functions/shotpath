@@ -1,0 +1,182 @@
+#!/usr/bin/env zsh
+# shotpath: save/upload clipboard image and copy the resulting path
+emulate -L zsh
+
+local usage="Usage: shotpath [--remote] [--host HOST] [host] [file]
+
+No host: save local clipboard image and copy the local path.
+Host or --remote: upload image with sendshot and copy the remote path."
+
+local remote=0
+local host=""
+local file=""
+
+while (($# > 0)); do
+  case "$1" in
+  --remote)
+    remote=1
+    shift
+    ;;
+  --host)
+    if (($# < 2)); then
+      print -u2 -- "shotpath: --host needs a value"
+      return 2
+    fi
+    host="$2"
+    remote=1
+    shift 2
+    ;;
+  -h | --help)
+    print -r -- "$usage"
+    return 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    print -u2 -- "shotpath: unknown option: $1"
+    print -u2 -- "$usage"
+    return 2
+    ;;
+  *)
+    if [[ -z "$host" && "$1" != /* && ! -f "$1" ]]; then
+      host="$1"
+      remote=1
+    elif [[ -z "$file" ]]; then
+      file="$1"
+    else
+      print -u2 -- "shotpath: too many arguments"
+      print -u2 -- "$usage"
+      return 2
+    fi
+    shift
+    ;;
+  esac
+done
+
+if (($# > 0)); then
+  if [[ -z "$file" ]]; then
+    file="$1"
+    shift
+  fi
+  if (($# > 0)); then
+    print -u2 -- "shotpath: too many arguments"
+    print -u2 -- "$usage"
+    return 2
+  fi
+fi
+
+_copy_path() {
+  local value="$1"
+  if command -v pbcopy >/dev/null 2>&1; then
+    print -rn -- "$value" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    print -rn -- "$value" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    print -rn -- "$value" | xclip -selection clipboard
+  else
+    print -u2 -- "shotpath: no clipboard writer found (pbcopy/wl-copy/xclip)"
+    return 1
+  fi
+}
+
+_ssh_hosts() {
+  local ssh_config="$HOME/.ssh/config"
+  [[ -r "$ssh_config" ]] || return 0
+  awk 'tolower($1) == "host" { for (i = 2; i <= NF; i++) if ($i !~ /[*?]/) print $i }' "$ssh_config" |
+    awk '!seen[$0]++'
+}
+
+_pick_host() {
+  local picked=""
+  local hosts=""
+
+  hosts="$({
+    [[ -n "${SENDSHOT_HOST:-}" ]] && print -r -- "$SENDSHOT_HOST"
+    _ssh_hosts
+  } | awk '!seen[$0]++')"
+
+  if command -v fzf >/dev/null 2>&1 && [[ -n "$hosts" ]] && { [[ "${SHOTPATH_PICKER:-}" == 1 ]] || [[ -t 0 && -t 1 ]]; }; then
+    picked="$(print -r -- "$hosts" | fzf --prompt='Upload screenshot to host: ' --height=40% --reverse --query="${SENDSHOT_HOST:-}")" || return 1
+    [[ -n "$picked" ]] || return 1
+    print -r -- "$picked"
+    return 0
+  fi
+
+  if [[ -n "${SENDSHOT_HOST:-}" ]]; then
+    print -r -- "$SENDSHOT_HOST"
+    return 0
+  fi
+
+  print -u2 -- "shotpath: host required for --remote (or set SENDSHOT_HOST)"
+  return 1
+}
+
+_capture_local_image() {
+  local out_dir="${SHOTPATH_DIR:-${TMPDIR:-/tmp}/screenshots}"
+  local out="$out_dir/shotpath-$(date +%s).png"
+  mkdir -p "$out_dir"
+
+  if [[ -n "$file" ]]; then
+    if [[ ! -f "$file" ]]; then
+      print -u2 -- "shotpath: file not found: $file"
+      return 1
+    fi
+    print -r -- "$file"
+    return 0
+  fi
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    if ! command -v pngpaste >/dev/null 2>&1; then
+      print -u2 -- "shotpath: pngpaste not found — install via nix (darwin config)"
+      return 1
+    fi
+    if ! pngpaste "$out" >/dev/null 2>&1; then
+      rm -f "$out"
+      print -u2 -- "shotpath: no image in clipboard"
+      return 1
+    fi
+  elif [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
+    if ! wl-paste --type image/png >"$out" 2>/dev/null; then
+      rm -f "$out"
+      print -u2 -- "shotpath: no image in clipboard"
+      return 1
+    fi
+  elif command -v xclip >/dev/null 2>&1; then
+    if ! xclip -selection clipboard -t image/png -o >"$out" 2>/dev/null; then
+      rm -f "$out"
+      print -u2 -- "shotpath: no image in clipboard"
+      return 1
+    fi
+  else
+    print -u2 -- "shotpath: no image clipboard reader found (pngpaste/wl-paste/xclip)"
+    return 1
+  fi
+
+  if [[ ! -s "$out" ]]; then
+    rm -f "$out"
+    print -u2 -- "shotpath: no image in clipboard"
+    return 1
+  fi
+
+  print -r -- "$out"
+}
+
+if ((remote)); then
+  host="${host:-$(_pick_host)}" || return 1
+  local remote_path
+  if [[ -n "$file" ]]; then
+    remote_path="$(sendshot --copy --host "$host" "$file")" || return 1
+  else
+    remote_path="$(sendshot --copy --host "$host")" || return 1
+  fi
+  print -r -- "$remote_path"
+  return 0
+fi
+
+local result_path
+result_path="$(_capture_local_image)" || return 1
+_copy_path "$result_path" || return 1
+print -r -- "$result_path"
+print -u2 -- "Copied local path to clipboard"

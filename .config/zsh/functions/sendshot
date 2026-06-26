@@ -2,57 +2,141 @@
 # sendshot: transfer screenshot to remote machine over SSH
 emulate -L zsh
 
-local host="${1:-$SENDSHOT_HOST}"
-local file="$2"
+local usage="Usage: sendshot [--copy] [--host HOST] <host> [file]
 
+Uploads an image to HOST:/tmp/screenshots and prints the remote path.
+If [file] is omitted, reads an image from the local clipboard."
+
+local copy=0
+local host=""
+local file=""
+
+while (($# > 0)); do
+  case "$1" in
+  --copy)
+    copy=1
+    shift
+    ;;
+  --host)
+    if (($# < 2)); then
+      print -u2 -- "sendshot: --host needs a value"
+      return 2
+    fi
+    host="$2"
+    shift 2
+    ;;
+  -h | --help)
+    print -r -- "$usage"
+    return 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    print -u2 -- "sendshot: unknown option: $1"
+    print -u2 -- "$usage"
+    return 2
+    ;;
+  *)
+    if [[ -z "$host" ]]; then
+      host="$1"
+    elif [[ -z "$file" ]]; then
+      file="$1"
+    else
+      print -u2 -- "sendshot: too many arguments"
+      print -u2 -- "$usage"
+      return 2
+    fi
+    shift
+    ;;
+  esac
+done
+
+if (($# > 0)); then
+  if [[ -z "$file" ]]; then
+    file="$1"
+    shift
+  fi
+  if (($# > 0)); then
+    print -u2 -- "sendshot: too many arguments"
+    print -u2 -- "$usage"
+    return 2
+  fi
+fi
+
+host="${host:-${SENDSHOT_HOST:-}}"
 if [[ -z "$host" ]]; then
-  echo "Usage: sendshot <host> [file]" >&2
-  echo "  or set SENDSHOT_HOST env var" >&2
+  print -u2 -- "$usage"
+  print -u2 -- "sendshot: host required (or set SENDSHOT_HOST)"
   return 1
 fi
 
-local tmpfile
+_copy_path() {
+  local value="$1"
+  if command -v pbcopy >/dev/null 2>&1; then
+    print -rn -- "$value" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    print -rn -- "$value" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    print -rn -- "$value" | xclip -selection clipboard
+  else
+    print -u2 -- "sendshot: no clipboard writer found (pbcopy/wl-copy/xclip)"
+    return 1
+  fi
+}
+
+local tmpfile=""
+local cleanup_tmp=0
 if [[ -n "$file" ]]; then
-  # Explicit file provided
   if [[ ! -f "$file" ]]; then
-    echo "File not found: $file" >&2
+    print -u2 -- "sendshot: file not found: $file"
     return 1
   fi
   tmpfile="$file"
 elif [[ "$(uname)" == "Darwin" ]]; then
-  # macOS: grab from clipboard via pngpaste
-  if ! command -v pngpaste &>/dev/null; then
-    echo "pngpaste not found — install via nix (darwin config)" >&2
+  if ! command -v pngpaste >/dev/null 2>&1; then
+    print -u2 -- "sendshot: pngpaste not found — install via nix (darwin config)"
     return 1
   fi
-  tmpfile="/tmp/sendshot-$$.png"
-  if ! pngpaste "$tmpfile"; then
-    echo "No image in clipboard" >&2
+  tmpfile="${TMPDIR:-/tmp}/sendshot-$$.png"
+  cleanup_tmp=1
+  if ! pngpaste "$tmpfile" >/dev/null 2>&1; then
+    rm -f "$tmpfile"
+    print -u2 -- "sendshot: no image in clipboard"
     return 1
   fi
 else
-  # Crostini: Chrome OS screenshots land in shared Downloads, not ~/Downloads
+  # Crostini: Chrome OS screenshots land in shared Downloads, not ~/Downloads.
   local screenshots_dir="/mnt/chromeos/MyFiles/Downloads"
   [[ -d "$screenshots_dir" ]] || screenshots_dir="$HOME/Downloads"
-  # (N) = nullglob, (om) = sort by mtime desc, [1] = newest
-  tmpfile=( ${screenshots_dir}/*.png(Nom[1]) )
+  tmpfile=(${screenshots_dir}/*.png(Nom[1]))
   if [[ -z "$tmpfile" ]]; then
-    echo "No PNG files found in ~/Downloads" >&2
+    print -u2 -- "sendshot: no PNG files found in $screenshots_dir"
     return 1
   fi
 fi
 
 local filename="${tmpfile:t}"
-# Use timestamp-based name for clipboard grabs (no meaningful original name)
 if [[ "$filename" == sendshot-*.png ]]; then
   filename="sendshot-$(date +%s).png"
 fi
-# Sanitise spaces for clean remote paths (Chrome OS: "Screenshot 2026-03-15 21.09.47.png")
 filename="${filename// /-}"
 
 local remote_dir="/tmp/screenshots"
 local remote_path="$remote_dir/$filename"
 
-ssh "${host}" "mkdir -p ${remote_dir}" && \
-  scp -q "$tmpfile" "${host}:${remote_path}" && \
-  echo "$remote_path"
+if ssh "$host" "mkdir -p '$remote_dir' && chmod 700 '$remote_dir'" &&
+  scp -q "$tmpfile" "$host:$remote_path" &&
+  ssh "$host" "chmod 600 '$remote_path'"; then
+  print -r -- "$remote_path"
+  if ((copy)); then
+    _copy_path "$remote_path" || return 1
+    print -u2 -- "Copied remote path to clipboard"
+  fi
+else
+  ((cleanup_tmp)) && rm -f "$tmpfile"
+  return 1
+fi
+
+((cleanup_tmp)) && rm -f "$tmpfile"
