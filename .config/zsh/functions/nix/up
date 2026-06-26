@@ -1,12 +1,16 @@
 #!/usr/bin/env zsh
 # up: update tools, flake lock, and rebuild for current OS
 # flags: --skip-flake / -s  skip nix flake update and commit
+#        --os               also install no-restart macOS updates (macOS only);
+#                           restart-required (OS) updates are only reported, never
+#                           applied, so a headless FileVault box is never rebooted.
 emulate -L zsh
 
-local skip_flake=0
+local skip_flake=0 do_os=0
 for arg in "$@"; do
   case "$arg" in
     --skip-flake|-s) skip_flake=1 ;;
+    --os) do_os=1 ;;
   esac
 done
 
@@ -37,6 +41,11 @@ fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   drs
+  if (( do_os )); then
+    macup --safe   # install no-restart macOS updates; report OS updates only
+  else
+    macup-check    # cached scan, ~instant: report any pending macOS updates
+  fi
 elif [[ -f /etc/NIXOS ]]; then
   nrs    # system rebuild (reads NIXOS_FLAKE)
   hms    # user env rebuild (reads ~/.config/nix)
