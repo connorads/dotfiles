@@ -61,6 +61,33 @@
   #   powernap 0      — no Power Nap wake cycles
   system.activationScripts.postActivation.text = lib.mkAfter ''
     /usr/bin/pmset -a autorestart 1 disablesleep 1 displaysleep 10 powernap 0
+
+    # -- mosh-server: allow inbound UDP through the Application Firewall --
+    # ALF silently drops inbound UDP to *unsigned* binaries unless they are
+    # allow-listed by path (no signature to key on, so it falls back to the
+    # path). mosh-server is an adhoc-signed Nix binary, so SSH (TCP, system
+    # path) connects but mosh's UDP data channel is dropped — the classic
+    # "mosh: Nothing received from server on UDP port" with a working ssh.
+    # Its /nix/store path changes on every upgrade, so we re-assert the allow
+    # for the current mosh-server each rebuild and prune entries left by prior
+    # store paths, keeping the ALF list clean. Server-only: the Air deliberately
+    # stays un-mosh-able (no inbound mosh allowed there).
+    #
+    # The `{ ...; } || true` wrapper is load-bearing: activation runs under
+    # `set -e` + `set -o pipefail`, and the prune grep exits non-zero when there
+    # is nothing to prune (the common case) — without the guard that aborts the
+    # entire activation mid-switch. The wrapper disables `set -e` for the block.
+    {
+      fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+      mosh_server=${pkgs.mosh}/bin/mosh-server
+      stale=$("$fw" --listapps 2>/dev/null | grep -oE '/nix/store/[^ ]*mosh[^ ]*/bin/mosh-server' || true)
+      for old in $stale; do
+        [ "$old" = "$mosh_server" ] || "$fw" --remove "$old" >/dev/null 2>&1 || true
+      done
+      "$fw" --add "$mosh_server" >/dev/null 2>&1 || true
+      "$fw" --unblockapp "$mosh_server" >/dev/null 2>&1 || true
+      echo "Allowed mosh-server through Application Firewall: $mosh_server"
+    } || true
   '';
 
   # -- OS updates: manual only --
