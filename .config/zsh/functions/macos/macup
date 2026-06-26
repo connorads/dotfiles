@@ -1,0 +1,83 @@
+#!/usr/bin/env zsh
+# macup: install macOS software updates via the CLI (Apple Silicon, FileVault-aware)
+#
+#   macup           interactive: install no-restart updates, then OFFER the OS
+#                   reboot path with a loud FileVault/headless warning.
+#   macup --safe    install ONLY no-restart updates; never reboot. Just reports
+#                   restart-required updates. This is the mode `up --os` uses, so
+#                   the headless Mac mini is never rebooted out from under SSH.
+#
+# Why owner auth: on Apple Silicon, OS (restart-required) updates must be
+# authorised by a volume owner via --user/--stdinpass; that path is interactive
+# only (prompts for the login password) and only runs when you invoke `macup`
+# by hand near the machine.
+emulate -L zsh
+[[ "$OSTYPE" == "darwin"* ]] || { print -u2 "macup: macOS only"; return 1 }
+
+local safe=0
+for a in "$@"; do case "$a" in
+  --safe)    safe=1 ;;
+  -h|--help) print "usage: macup [--safe]"; return 0 ;;
+  *) print -u2 "macup: unknown arg: $a"; return 2 ;;
+esac; done
+
+print "=> scanning for macOS updates"
+local scan
+scan=$(softwareupdate -l 2>&1)
+if grep -q "No new software available" <<< "$scan"; then
+  print "macup: already up to date"
+  return 0
+fi
+grep -E 'Title:' <<< "$scan" | sed 's/^[[:space:]]*/  /'
+
+# Associate each Label with whether its detail line requires a restart, so we
+# install the safe ones by explicit label and leave OS updates untouched.
+local -a safe_labels restart_labels
+local label="" line
+while IFS= read -r line; do
+  if [[ "$line" == *"* Label: "* ]]; then
+    label="${line#*\* Label: }"
+  elif [[ "$line" == *Title:* && -n "$label" ]]; then
+    if [[ "$line" == *[Rr]estart* ]]; then
+      restart_labels+=("$label")
+    else
+      safe_labels+=("$label")
+    fi
+    label=""
+  fi
+done <<< "$scan"
+
+if (( ${#safe_labels} )); then
+  print "=> installing (no restart): ${safe_labels[*]}"
+  sudo softwareupdate -i --no-scan "${safe_labels[@]}"
+else
+  print "=> nothing to install without a restart"
+fi
+
+(( ${#restart_labels} )) || return 0
+
+print ""
+print "*** Restart-required updates NOT installed: ***"
+printf '  - %s\n' "${restart_labels[@]}"
+
+if (( safe )); then
+  print "  (run \`macup\` by hand near the machine to install these)"
+  return 0
+fi
+
+# Interactive reboot path — only when run by hand (not from `up`).
+local fv="off"
+fdesetup status 2>/dev/null | grep -q "On" && fv="on"
+print "   FileVault: $fv   Host: $(scutil --get LocalHostName 2>/dev/null)"
+if [[ "$fv" == "on" ]]; then
+  print "   WARNING: FileVault is ON. After the reboot the disk is locked until"
+  print "   someone unlocks it at the console — SSH/Tailscale will NOT return."
+  print "   Major upgrades reboot multiple times; do this only at the machine."
+fi
+
+read -q "REPLY?Install OS updates and RESTART now? [y/N] " || { print; return 0 }
+print
+local pw
+read -rs "pw?login password (volume owner, for --stdinpass): "
+print
+softwareupdate -ia -R --user "$USER" --stdinpass <<< "$pw"
