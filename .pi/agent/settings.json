@@ -4,6 +4,13 @@
   "defaultModel": "gpt-5.5",
   "defaultThinkingLevel": "high",
   "theme": "dark",
+  "npmCommand": [
+    "mise",
+    "exec",
+    "pnpm@11",
+    "--",
+    "pnpm"
+  ],
   "packages": [
     "npm:@plannotator/pi-extension@0.20.3",
     "npm:@quintinshaw/pi-dynamic-workflows@2.8.0"
