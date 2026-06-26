@@ -2,14 +2,16 @@
 # shotpath: save/upload clipboard image and copy the resulting path
 emulate -L zsh
 
-local usage="Usage: shotpath [--remote] [--host HOST] [host] [file]
+local usage="Usage: shotpath [--remote] [--host HOST] [--list-hosts] [host] [file]
 
 No host: save local clipboard image and copy the local path.
-Host or --remote: upload image with sendshot and copy the remote path."
+Host or --remote: upload image with sendshot and copy the remote path.
+--list-hosts: print ssh-config host aliases (one per line) and exit."
 
 local remote=0
 local host=""
 local file=""
+local list_hosts=0
 
 while (($# > 0)); do
   case "$1" in
@@ -25,6 +27,10 @@ while (($# > 0)); do
     host="$2"
     remote=1
     shift 2
+    ;;
+  --list-hosts)
+    list_hosts=1
+    shift
     ;;
   -h | --help)
     print -r -- "$usage"
@@ -162,6 +168,11 @@ _capture_local_image() {
 
   print -r -- "$out"
 }
+
+if ((list_hosts)); then
+  _ssh_hosts
+  return 0
+fi
 
 if ((remote)); then
   host="${host:-$(_pick_host)}" || return 1
