@@ -10,5 +10,19 @@
     "skip_session_restore_when_files_passed": true,
     "line_numbers": true,
     "line_wrap": true
-  }
+  },
+  "keybindings": [
+    {
+      "key": "b",
+      "modifiers": ["ctrl", "alt"],
+      "action": "toggle_file_explorer",
+      "when": "normal"
+    },
+    {
+      "key": "b",
+      "modifiers": ["ctrl", "alt"],
+      "action": "toggle_file_explorer",
+      "when": "file_explorer"
+    }
+  ]
 }

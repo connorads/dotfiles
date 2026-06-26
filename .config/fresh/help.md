@@ -25,6 +25,7 @@ Fresh is modeless: most shortcuts are VS Code/Sublime-style rather than Vim-styl
 | `Ctrl+Alt+R` | rename symbol |
 | `Alt+[` / `Alt+]` | previous/next Fresh split |
 | `Ctrl+E` | toggle file explorer focus |
+| `Ctrl+Alt+B` | toggle sidebar/file explorer (tmux-friendly alternative to `Ctrl+B`) |
 
 ## tmux
 
@@ -33,7 +34,7 @@ Fresh is modeless: most shortcuts are VS Code/Sublime-style rather than Vim-styl
 | `Ctrl+b Alt+v` | Fresh popup in pane cwd |
 | `Ctrl+b Alt+V` | this help |
 | `Ctrl+h/j/k/l` | tmux pane navigation owns these keys |
-| `Ctrl+b h/j/k/l` | select a tmux pane from Fresh |
+| `Ctrl+b Ctrl+b` | send literal `Ctrl+B` to Fresh if needed |
 
 ## Config
 
