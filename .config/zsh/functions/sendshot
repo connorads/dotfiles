@@ -139,4 +139,7 @@ else
   return 1
 fi
 
-((cleanup_tmp)) && rm -f "$tmpfile"
+if ((cleanup_tmp)); then
+  rm -f "$tmpfile"
+fi
+return 0
