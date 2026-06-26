@@ -58,10 +58,14 @@ fi
 if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
     trap _cleanup EXIT INT TERM HUP
 
+    # Keychain-first on macOS, but fall back to the file store: recent Claude
+    # Code keeps credentials in ~/.claude/.credentials.json and leaves the
+    # keychain item empty, so an empty keychain read must not mean "logged out".
     local token=""
     if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
         token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-    elif [[ -f "$HOME/.claude/.credentials.json" ]]; then
+    fi
+    if [[ -z "$token" && -f "$HOME/.claude/.credentials.json" ]]; then
         token=$(jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null)
     fi
 
