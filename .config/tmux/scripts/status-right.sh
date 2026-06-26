@@ -87,6 +87,9 @@ git_branch_and_dirty() {
 			if ! "${git_cmd[@]}" diff --quiet || ! "${git_cmd[@]}" diff --cached --quiet; then
 				dirty="*"
 			fi
+			if [ -n "$("${git_cmd[@]}" ls-files --others --exclude-standard --directory --no-empty-directory 2>/dev/null | sed -n '1p')" ]; then
+				dirty="${dirty}?"
+			fi
 		fi
 	fi
 
