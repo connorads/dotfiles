@@ -62,6 +62,7 @@ fnox = "1.27.1"
 "aqua:google/osv-scanner" = "2"
 
 "github:ogulcancelik/herdr" = "0.7.0"
+"github:tamnd/kage" = "0.3.8"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2.0.22", bin = "cos", prerelease = true }
 
