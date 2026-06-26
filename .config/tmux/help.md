@@ -17,7 +17,7 @@
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+h/j/k/l` | navigate panes (works across nvim, preserves zoom) |
+| `Ctrl+h/j/k/l` | navigate panes (works across nvim/Fresh, preserves zoom) |
 | `Ctrl+b Ctrl+l` | clear screen |
 | `Ctrl+b \|` | split vertical |
 | `Ctrl+b -` | split horizontal |
@@ -78,6 +78,8 @@
 | `Ctrl+b Alt+g` | review commits (fzf + critique) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
+| `Ctrl+b Alt+v` | Fresh editor |
+| `Ctrl+b Alt+V` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Ctrl+y` | thumbs (quick-copy text with hints) |
 

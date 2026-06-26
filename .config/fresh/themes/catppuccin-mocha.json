@@ -1,0 +1,69 @@
+{
+  "name": "catppuccin-mocha",
+  "extends": "builtin://dark",
+  "editor": {
+    "bg": [30, 30, 46],
+    "fg": [205, 214, 244],
+    "cursor": [245, 224, 220],
+    "inactive_cursor": [108, 112, 134],
+    "selection_bg": [88, 91, 112],
+    "current_line_bg": [49, 50, 68],
+    "line_number_fg": [108, 112, 134],
+    "line_number_bg": [30, 30, 46],
+    "ruler_bg": [69, 71, 90],
+    "whitespace_indicator_fg": [69, 71, 90],
+    "diff_add_bg": [30, 57, 43],
+    "diff_remove_bg": [64, 38, 54],
+    "diff_modify_bg": [58, 54, 44]
+  },
+  "ui": {
+    "tab_active_fg": [30, 30, 46],
+    "tab_active_bg": [137, 180, 250],
+    "tab_inactive_fg": [186, 194, 222],
+    "tab_inactive_bg": [49, 50, 68],
+    "tab_separator_bg": [30, 30, 46],
+    "status_bar_fg": [205, 214, 244],
+    "status_bar_bg": [24, 24, 37],
+    "prompt_fg": [205, 214, 244],
+    "prompt_bg": [49, 50, 68],
+    "prompt_selection_fg": [30, 30, 46],
+    "prompt_selection_bg": [137, 180, 250],
+    "popup_border_fg": [137, 180, 250],
+    "popup_bg": [24, 24, 37],
+    "popup_text_fg": [205, 214, 244],
+    "popup_selection_bg": [49, 50, 68],
+    "suggestion_bg": [49, 50, 68],
+    "suggestion_selected_bg": [69, 71, 90],
+    "help_bg": [24, 24, 37],
+    "help_fg": [205, 214, 244],
+    "help_key_fg": [137, 180, 250],
+    "help_separator_fg": [69, 71, 90],
+    "help_indicator_fg": [243, 139, 168],
+    "help_indicator_bg": [24, 24, 37],
+    "split_separator_fg": [69, 71, 90]
+  },
+  "search": {
+    "match_bg": [249, 226, 175],
+    "match_fg": [30, 30, 46]
+  },
+  "diagnostic": {
+    "error_fg": [243, 139, 168],
+    "error_bg": [30, 30, 46],
+    "warning_fg": [249, 226, 175],
+    "warning_bg": [30, 30, 46],
+    "info_fg": [137, 180, 250],
+    "info_bg": [30, 30, 46],
+    "hint_fg": [148, 226, 213],
+    "hint_bg": [30, 30, 46]
+  },
+  "syntax": {
+    "keyword": [203, 166, 247],
+    "string": [166, 227, 161],
+    "comment": [108, 112, 134],
+    "function": [137, 180, 250],
+    "type": [116, 199, 236],
+    "variable": [205, 214, 244],
+    "constant": [250, 179, 135],
+    "operator": [137, 180, 250]
+  }
+}

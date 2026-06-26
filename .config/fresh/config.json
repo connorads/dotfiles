@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "theme": "catppuccin-mocha.json",
+  "check_for_updates": false,
+  "editor": {
+    "use_terminal_bg": false,
+    "trim_trailing_whitespace_on_save": true,
+    "ensure_final_newline_on_save": true,
+    "restore_previous_session": true,
+    "skip_session_restore_when_files_passed": true,
+    "line_numbers": true,
+    "line_wrap": true
+  }
+}
