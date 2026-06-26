@@ -67,7 +67,9 @@ fnox = "1.27.1"
 
 "npm:@elevenlabs/cli" = "0"
 "npm:@kitlangton/ghui" = "latest"
-"npm:@earendil-works/pi-coding-agent" = "latest"
+# Reapply local generated-JS image paste patch after Pi updates. The script
+# exits 0 on a missing needle so update is never blocked; it drops a stale marker.
+"npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
 "npm:@playwright/cli" = "0"
 "npm:@redwoodjs/agent-ci" = "0"
 "npm:agent-browser" = "0"

@@ -1,0 +1,113 @@
+#!/usr/bin/env zsh
+# pi-image-paste-patch: local macOS image paste fix for Pi
+# usage: pi-image-paste-patch [--check|--restore|--reapply] [mise-pi-install-dir]
+#
+# Why: Zappy screenshots can expose PNG bytes via getImageBinary() even when
+# @mariozechner/clipboard.hasImage() reports false. Pi's Ctrl+V image paste uses
+# readClipboardImageViaNativeClipboard(), so patch it to treat getImageBinary()
+# as authoritative and ignore errors.
+#
+# Reuses the Claude gate patch helper. The needles stay single-line because that
+# helper intentionally uses grep/byte replacement for simple generated-code
+# patches, not multi-line patch hunks.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local mode=patch
+
+while (( $# )); do
+  case $1 in
+    --check)   mode=check;   shift ;;
+    --restore) mode=restore; shift ;;
+    --reapply) mode=reapply; shift ;;
+    --help|-h)
+      awk '
+        NR == 1 { next }
+        /^emulate / { exit }
+        { print }
+      ' "$wrapper"
+      return 0
+      ;;
+    *) break ;;
+  esac
+done
+
+
+_warn_missing_target() {
+  local detail="$1"
+  local marker="$HOME/.cache/pi-image-paste-patch.stale"
+  local when
+  when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)
+  mkdir -p "${marker:h}" 2>/dev/null || true
+  {
+    print -r -- "pi-image-paste-patch could not reapply."
+    print -r -- "reason: $detail"
+    print -r -- "when:   $when"
+    print -r -- "Pi or mise likely changed its install layout."
+  } > "$marker" 2>/dev/null || true
+  print -u2 "pi-image-paste-patch: $detail (marker: $marker)"
+}
+
+local install_dir="${1:-}"
+if [[ -z $install_dir ]]; then
+  install_dir=$(mise where 'npm:@earendil-works/pi-coding-agent' 2>/dev/null || true)
+fi
+
+local pi_bin="$install_dir/bin/pi"
+if [[ -z $install_dir || ! -e $pi_bin ]]; then
+  if [[ $mode == reapply ]]; then
+    _warn_missing_target "no pi binary at $pi_bin"
+    return 0
+  fi
+  print -u2 "pi-image-paste-patch: no pi binary at $pi_bin"
+  return 1
+fi
+
+local cli_real agent_root clipboard
+cli_real=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$pi_bin")
+agent_root="${cli_real:h:h}"
+clipboard="$agent_root/dist/utils/clipboard-image.js"
+
+if [[ ! -f $clipboard ]]; then
+  if [[ $mode == reapply ]]; then
+    _warn_missing_target "missing target file: $clipboard"
+    return 0
+  fi
+  print -u2 "pi-image-paste-patch: missing target file: $clipboard"
+  return 1
+fi
+
+_run_needle_patch() {
+  local patch_name="$1"
+  local patch_label="$2"
+  local needle="$3"
+  local replace="$4"
+  local marker="$HOME/.cache/$patch_name.stale"
+  local missing_body=$'Pi likely changed its generated clipboard helper. Ctrl+V image paste\nwill revert until this needle is updated or the patch is removed.'
+  local missing_banner='Ctrl+V image paste fallback will revert'
+  local -a patch_args=()
+
+  [[ $mode != patch ]] && patch_args+=("--$mode")
+  patch_args+=("$clipboard")
+
+  source "$HOME/.config/zsh/functions/claude/_claude-gate-patch-lib" "${patch_args[@]}"
+}
+
+local rc=0
+
+_run_needle_patch \
+  pi-image-paste-hasimage-patch \
+  'native clipboard hasImage gate' \
+  'if (!clipboard || !clipboard.hasImage()) {' \
+  'if (!clipboard) {' || rc=1
+
+_run_needle_patch \
+  pi-image-paste-getimage-patch \
+  'native clipboard getImageBinary fallback' \
+  'const imageData = await clipboard.getImageBinary();' \
+  'const imageData = await Promise.resolve().then(() => clipboard.getImageBinary()).catch(() => null);' || rc=1
+
+[[ $mode == reapply ]] && return 0
+return $rc
