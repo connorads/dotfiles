@@ -66,6 +66,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
 | [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm with `prefix + Alt+a`); design + env vars   |
 | [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
+| [config.json](./.config/fresh/config.json)                             | Fresh terminal IDE configuration; local theme/help live under `~/.config/fresh/`           |
 | [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
 | [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper that reads gh-gate tokens dynamically (not a symlink)                        |

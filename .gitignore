@@ -133,6 +133,13 @@
 !/.config/nvim/lua/
 !/.config/nvim/lua/**
 
+!/.config/fresh/
+/.config/fresh/**
+!/.config/fresh/config.json
+!/.config/fresh/help.md
+!/.config/fresh/themes/
+!/.config/fresh/themes/catppuccin-mocha.json
+
 !/.config/tealdeer/
 !/.config/tealdeer/config.toml
 
