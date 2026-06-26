@@ -61,6 +61,7 @@
 | `Ctrl+b Alt+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
+| `Ctrl+b Alt+i` | paste clipboard image path (uploads for detected ssh/mosh panes) |
 | `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
