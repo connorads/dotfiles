@@ -126,3 +126,45 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"host required for --remote"* ]]
 }
+
+@test "shotpath --list-hosts prints ssh config aliases, skipping wildcards, no image needed" {
+  mkdir -p "$HOME/.ssh"
+  cat >"$HOME/.ssh/config" <<'EOF'
+Host dev
+  HostName dev.example
+Host rpi5 *.ignored
+  HostName rpi5.example
+Host mini
+EOF
+
+  run_zsh_function "$FUNCTIONS_DIR/shotpath" --list-hosts
+
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "dev" ]
+  [ "${lines[1]}" = "rpi5" ]
+  [ "${lines[2]}" = "mini" ]
+  [ "${#lines[@]}" -eq 3 ]
+}
+
+@test "shotpath --list-hosts dedups repeated aliases, first-seen order" {
+  mkdir -p "$HOME/.ssh"
+  cat >"$HOME/.ssh/config" <<'EOF'
+Host dev
+Host rpi5
+Host dev
+EOF
+
+  run_zsh_function "$FUNCTIONS_DIR/shotpath" --list-hosts
+
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "dev" ]
+  [ "${lines[1]}" = "rpi5" ]
+  [ "${#lines[@]}" -eq 2 ]
+}
+
+@test "shotpath --list-hosts succeeds with empty output when no ssh config" {
+  run_zsh_function "$FUNCTIONS_DIR/shotpath" --list-hosts
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+}
