@@ -8,6 +8,6 @@
     "extensions": ["./index.ts"]
   },
   "scripts": {
-    "test": "node --test core.test.ts index.test.ts"
+    "test": "node --test core.test.ts prompts.test.ts index.test.ts"
   }
 }

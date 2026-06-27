@@ -97,8 +97,9 @@ A widget above the editor shows the objective, status, and budget at all times.
 
 - **Functional core / imperative shell.** Every decision is a pure function in
   [`core.ts`](./core.ts) (`reduceGoal`, `decideContinuation`, `decideCompletion`, the
-  parsers, the renderers, the metering). All pi I/O, the clock, and timers sit behind a
-  port.
+  parsers, the metering); the model-/UI-facing copy (anchor, kicks, tail, status/widget
+  renderers) lives in [`prompts.ts`](./prompts.ts), which imports `core.ts` one-way
+  (`core.ts` imports nothing back). All pi I/O, the clock, and timers sit behind a port.
 - **A domain-named port, not a structural `Pick`.** The loop depends on
   [`GoalRuntime`](./runtime.ts) — verbs like `record`, `sendContinuation`,
   `contextPercent`, `now`, `sleep` — so it is tested against a type-honest in-memory fake
@@ -115,8 +116,9 @@ A widget above the editor shows the objective, status, and budget at all times.
 - **Plain JSON Schema tool params (one documented cast).** The `update_goal`/`get_goal`
   tools pass plain JSON Schema objects rather than importing TypeBox. pi's validator
   (`pi-ai` `validation.js`) has an explicit branch for schemas without TypeBox metadata, so
-  this keeps the extension's **only runtime dependency `./core.ts`** (pi and typebox are
-  type-only imports, erased) and keeps the test suite free of any dependency. The single
+  this keeps the extension's **only runtime dependencies first-party** (`./core.ts` +
+  `./prompts.ts`, still dependency-free; pi and typebox are type-only imports, erased)
+  and keeps the test suite free of any dependency. The single
   `as unknown as TSchema` cast at the pi boundary carries a `// SAFETY:` note; it's verified
   against the real validator in the load smoke.
 - **Completion is codex-faithful + a backstop.** The completion/blocked audit prompt is
@@ -130,16 +132,18 @@ Pure logic, properties, and the pi wiring are all covered with **no test-framewo
 dependency** (Node's built-in runner, native TypeScript):
 
 ```sh
-node --test core.test.ts index.test.ts
+node --test core.test.ts prompts.test.ts index.test.ts
 # or: pnpm test
 ```
 
 - `core.test.ts` — parsing (incl. invalid-vs-absent option results and old-shape rejection
   in `parseGoalEvent`), `reduceGoal` (mode init, progress/no-progress, resume reset, branch
   slices), the full `decideContinuation` truth table + precedence, `decideCompletion` ±,
-  metering + `classifyError`, anchor byte-stability and tail content, plus seeded
-  **property-based** tests (zero-dep mulberry32) for the reduce invariants, options
-  round-trip, and decision precedence.
+  metering + `classifyError`, plus seeded **property-based** tests (zero-dep mulberry32) for
+  the reduce invariants, options round-trip, and decision precedence.
+- `prompts.test.ts` — the renderers: anchor byte-stability (cache-stable per objective/mode),
+  tail content (budget countdown + `update_goal` nudge, never the objective), `renderGoalStatus`,
+  and the continuation kick.
 - `index.test.ts` — the engine driven against a type-honest fake `GoalRuntime` (set →
   continuation; budget wrap-up then stop; no-progress → stuck; max-iter; context-full;
   abort; fatal → blocked; human takeover; dedup; update_goal accept/reject; steer-only;

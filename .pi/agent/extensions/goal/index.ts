@@ -11,7 +11,8 @@
 //
 // The engine takes a GoalRuntime per call, so it is driven in tests by a type-honest
 // in-memory fake (no `as` cast). pi types are imported type-only (erased at runtime),
-// so — like core.ts and runtime.ts — this module's only runtime dependency is ./core.ts.
+// so — like core.ts, prompts.ts, and runtime.ts — this module's only runtime
+// dependencies are first-party (./core.ts, ./prompts.ts, ./runtime.ts).
 import type {
   AgentEndEvent,
   AgentMessage,
@@ -25,9 +26,7 @@ import type {
 import type { TSchema } from "typebox";
 
 import {
-  BUDGET_WRAPUP_KICK,
   CONTINUATION_COOLDOWN_MS,
-  CONTINUATION_KICK,
   type GoalEvent,
   type GoalMode,
   type GoalState,
@@ -43,10 +42,14 @@ import {
   lastAssistantStopReason,
   parseGoalCommand,
   reduceGoal,
+} from "./core.ts";
+import {
+  BUDGET_WRAPUP_KICK,
+  CONTINUATION_KICK,
   renderGoalBlock,
   renderGoalStatus,
   renderGoalTail,
-} from "./core.ts";
+} from "./prompts.ts";
 import { createPiRuntime, type GoalRuntime } from "./runtime.ts";
 
 // ---------------------------------------------------------------------------
