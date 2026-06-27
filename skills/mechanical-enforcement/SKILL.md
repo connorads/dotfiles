@@ -114,6 +114,11 @@ stable rule set in shared templates; do not use `ALL` as the baseline because
 new Ruff releases can add rules and turn upgrades into behaviour changes. See
 `references/python-ruff.toml` for a drop-in `pyproject.toml` snippet.
 
+Ruff 0.15 (2026) ships a one-time style-guide reformat and block-level
+suppression comments (`# ruff: disable[RULE]` / `# ruff: enable[RULE]`) — prefer
+those over file-wide `noqa`, and let the reformat land deliberately under the
+release-age quarantine rather than as surprise churn on upgrade.
+
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
 | Stable baseline checks | `select = ["E", "F", "UP", "B", "SIM", "I", "RUF"]` | Syntax/style drift, Pyflakes bugs, stale Python syntax, common bug patterns, import disorder | Add noisier families per project once clean. |
