@@ -340,46 +340,48 @@ function accumulateProgress(mode: GoalMode, promptCost: number, outputTokens: nu
 }
 
 /**
+ * Apply one event to the current state — the fold step. Pulled out of reduceGoal's
+ * loop so `state` is a parameter rather than a reassigned `let`: the latter defeats
+ * TS's narrowing of the `GoalState` (`… | null`) union inside the loop and trips
+ * TS2698 on the `{ ...state }` spreads, even though the narrowing is correct at
+ * runtime. As a parameter the spreads typecheck cleanly.
+ */
+function applyGoalEvent(state: GoalState, event: GoalEvent): GoalState {
+  switch (event.kind) {
+    case "set":
+      return { text: event.text, status: "active", mode: event.mode };
+    case "edit":
+      return state ? { ...state, text: event.text } : state;
+    case "pause":
+      // Only a driving goal can be paused; never overwrite a terminal status.
+      return state && isDriving(state.status) ? { ...state, status: "paused" } : state;
+    case "resume":
+      // Resume re-activates from paused/budget_limited/blocked (a resumed blocked
+      // goal restarts its blocked audit). A `complete` goal stays complete — set a
+      // new goal to keep working — so a finished objective is never silently re-driven.
+      return state && (state.status === "paused" || state.status === "budget_limited" || state.status === "blocked")
+        ? { ...state, status: "active", mode: resetRunway(state.mode) }
+        : state;
+    case "clear":
+      return null;
+    case "progress":
+      return state && state.mode.kind === "auto"
+        ? { ...state, mode: accumulateProgress(state.mode, event.promptCost, event.outputTokens) }
+        : state;
+    case "status":
+      return state ? { ...state, status: event.status } : state;
+    default:
+      return assertNever(event);
+  }
+}
+
+/**
  * Fold the current branch's goal events into the active state (latest wins).
  * Returns null when there is no goal (or it was cleared).
  */
 export function reduceGoal(events: readonly GoalEvent[]): GoalState {
   let state: GoalState = null;
-  for (const event of events) {
-    switch (event.kind) {
-      case "set":
-        state = { text: event.text, status: "active", mode: event.mode };
-        break;
-      case "edit":
-        if (state) state = { ...state, text: event.text };
-        break;
-      case "pause":
-        // Only a driving goal can be paused; never overwrite a terminal status.
-        if (state && isDriving(state.status)) state = { ...state, status: "paused" };
-        break;
-      case "resume":
-        // Resume re-activates from paused/budget_limited/blocked (a resumed blocked
-        // goal restarts its blocked audit). A `complete` goal stays complete — set a
-        // new goal to keep working — so a finished objective is never silently re-driven.
-        if (state && (state.status === "paused" || state.status === "budget_limited" || state.status === "blocked")) {
-          state = { ...state, status: "active", mode: resetRunway(state.mode) };
-        }
-        break;
-      case "clear":
-        state = null;
-        break;
-      case "progress":
-        if (state && state.mode.kind === "auto") {
-          state = { ...state, mode: accumulateProgress(state.mode, event.promptCost, event.outputTokens) };
-        }
-        break;
-      case "status":
-        if (state) state = { ...state, status: event.status };
-        break;
-      default:
-        return assertNever(event);
-    }
-  }
+  for (const event of events) state = applyGoalEvent(state, event);
   return state;
 }
 
@@ -474,7 +476,7 @@ export interface ContinuationSignals {
 }
 
 export type Decision =
-  | { action: "continue"; reason: "ok" | "retry" | "budget_wrapup"; mark?: { status: GoalStatus; reason: StopReason } }
+  | { action: "continue"; reason: "ok" | "retry" | "budget_wrapup"; mark?: { status: Exclude<GoalStatus, "active">; reason: StopReason } }
   | { action: "pause"; reason: StopReason; mark: { status: Exclude<GoalStatus, "active">; reason: StopReason } }
   | { action: "stop"; reason: StopReason };
 

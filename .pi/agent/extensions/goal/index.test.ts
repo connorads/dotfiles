@@ -113,7 +113,8 @@ test("self-driving: a clean run records progress and kicks the next turn", async
   assert.equal(f.progressCount(), 1);
   assert.equal(f.continuations.length, 2); // set kick + loop kick
   assert.equal(f.state()?.status, "active");
-  assert.equal(f.state()?.mode.kind === "auto" && f.state()?.mode.iteration, 1);
+  const st = f.state();
+  assert.equal(st?.mode.kind === "auto" && st.mode.iteration, 1);
 });
 
 test("budget: one wrap-up turn is kicked, then the loop stops", async () => {
@@ -155,7 +156,8 @@ test("max-iterations: the loop pauses at the cap (counters restored from events 
   ];
   const f = fakeRuntime(seed);
   const engine = createGoalEngine();
-  assert.equal(f.state()?.mode.kind === "auto" && f.state()?.mode.iteration, 2); // restored
+  const restored = f.state();
+  assert.equal(restored?.mode.kind === "auto" && restored.mode.iteration, 2); // restored
   engine.onAgentStart();
   await engine.onAgentEnd(f.rt, [asst(100)]); // iteration → 3 == max
   assert.equal(f.state()?.status, "paused");
@@ -330,7 +332,8 @@ test("resume: resets the runway and re-kicks (auto)", async () => {
   const engine = createGoalEngine();
   engine.applyResume(f.rt);
   assert.equal(f.state()?.status, "active");
-  assert.equal(f.state()?.mode.kind === "auto" && f.state()?.mode.iteration, 0);
+  const st = f.state();
+  assert.equal(st?.mode.kind === "auto" && st.mode.iteration, 0);
   assert.equal(f.continuations.length, 1); // re-kick
 });
 
