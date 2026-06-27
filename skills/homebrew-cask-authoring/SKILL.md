@@ -14,7 +14,7 @@ Author and maintain Homebrew Casks with correct token naming, stanzas, audit/sty
 - Avoid destructive system changes unless explicitly requested; call out any `rm`/tap changes before suggesting them.
 - When testing local casks, ensure Homebrew reads from the local file (not the API).
 - Treat local Homebrew tap overrides as temporary. When done testing/submitting, restore standard Homebrew state unless the user asks to keep the override.
-- **`app_image` is a Linux-only artifact** (`Cask::Artifact::LINUX_ONLY_ARTIFACTS = [AppImage]`). macOS users hit `This cask requires Linux.` at install unless every `app_image` stanza is gated by `on_linux do ... end` or `depends_on :linux`. Conversely, `app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, etc. are macOS-only and must be gated by `on_macos` in a cross-platform cask.
+- **`app_image` is a Linux-only artifact**: a macOS install raises `This cask requires Linux.` unless every `app_image` stanza is gated inside an `on_linux do ... end` block. Conversely, `app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, etc. are macOS-only and must be gated inside `on_macos`. (Top-level `depends_on :linux` is for a *Linux-only* cask only — it deliberately makes the cask refuse to install on macOS, so don't reach for it to gate a cross-platform cask.)
 
 ## Quick intake (ask these first)
 
