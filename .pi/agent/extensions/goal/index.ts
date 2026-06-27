@@ -30,6 +30,7 @@ import {
   type GoalEvent,
   type GoalMode,
   type GoalState,
+  type MessageLike,
   classifyError,
   computeOutputTokens,
   computePromptCost,
@@ -108,7 +109,7 @@ export interface GoalEngine {
   onContext(rt: GoalRuntime, messages: readonly ChatMessage[]): ChatMessage[] | undefined;
   onAgentStart(): void;
   onTurnStart(): void;
-  onAgentEnd(rt: GoalRuntime, messages: readonly MeteredMessage[]): Promise<void>;
+  onAgentEnd(rt: GoalRuntime, messages: readonly MessageLike[]): Promise<void>;
   onInput(source: string, text: string): void;
   refresh(rt: GoalRuntime): void;
   onSessionTree(rt: GoalRuntime): void;
@@ -121,9 +122,6 @@ export interface GoalEngine {
   execUpdateGoal(rt: GoalRuntime, status: "complete" | "blocked", summary: string): ToolReply;
   execGetGoal(rt: GoalRuntime): ToolReply;
 }
-
-/** The metering view of agent_end messages (assistant usage/stop reason). */
-type MeteredMessage = Parameters<typeof computePromptCost>[0][number];
 
 interface ToolReply {
   content: TextBlock[];
