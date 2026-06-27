@@ -50,22 +50,22 @@ battery_percentage() {
 	if command -v pmset >/dev/null 2>&1; then
 		local batt
 		batt="$(pmset -g batt 2>/dev/null || true)"
-		printf '%s\n' "$batt" | grep -q 'InternalBattery' || return
+		printf '%s\n' "$batt" | grep -q 'InternalBattery' || return 0
 		pct="$(printf '%s\n' "$batt" | grep -Eo '[0-9]{1,3}%' | head -n1 || true)"
 		status="$(printf '%s\n' "$batt" | awk -F';' 'NR==2 { gsub(/^ +| +$/, "", $2); print $2 }')"
 	elif [ -d /sys/class/power_supply ]; then
 		local bat cap
 		bat="$(find /sys/class/power_supply -maxdepth 1 -name 'BAT*' -type d 2>/dev/null | head -n1)"
-		[ -n "$bat" ] || return
+		[ -n "$bat" ] || return 0
 		cap="$(cat "$bat/capacity" 2>/dev/null || true)"
-		[ -n "$cap" ] || return
+		[ -n "$cap" ] || return 0
 		pct="${cap}%"
 		status="$(cat "$bat/status" 2>/dev/null || true)"
 	else
-		return
+		return 0
 	fi
 
-	[ -n "$pct" ] || return
+	[ -n "$pct" ] || return 0
 	case "$status" in
 	[Cc]harging) printf " %s" "$pct" ;;
 	[Ff]ull | [Cc]harged) printf " %s" "$pct" ;;
@@ -441,7 +441,7 @@ print_full() {
 	cpu="$(cpu_percentage)"
 	ram="$(ram_percentage)"
 	disk="$(disk_percentage)"
-	battery="$(battery_percentage)"
+	battery="$(battery_percentage || true)"
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
