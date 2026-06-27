@@ -11,6 +11,7 @@
 # never wrongly clears.
 #
 #   agent-sweep.sh            # one-shot sweep (default)
+#   agent-sweep.sh daemon     # single per-server background loop (≤POLL clearing)
 #
 # Quiet no-op when there is no tmux or no running server.
 
@@ -89,10 +90,62 @@ EOF
 	tmux refresh-client -S 2>/dev/null || true
 }
 
+# _is_sweep PID — true if PID is an agent-sweep process (guards the pidfile
+# against PID reuse). /proc on Linux, ps fallback on macOS (no /proc).
+_is_sweep() {
+	if [ -r "/proc/$1/cmdline" ]; then
+		tr '\0' ' ' <"/proc/$1/cmdline" 2>/dev/null | grep -q agent-sweep
+	else
+		ps -p "$1" -o command= 2>/dev/null | grep -q agent-sweep
+	fi
+}
+
+# daemon — one background loop per tmux server. Clears stale dots every POLL
+# while a client is attached; self-terminates when the server dies.
+daemon() {
+	command -v tmux >/dev/null 2>&1 || return 0
+	tmux list-sessions >/dev/null 2>&1 || return 0
+
+	_state_dir=${AGENT_SWEEP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-sweep}
+	_server_pid=$(tmux display-message -p '#{pid}' 2>/dev/null)
+	[ -n "$_server_pid" ] || return 0
+	_pidfile="$_state_dir/server-$_server_pid.pid"
+
+	# Single-instance guard: a live agent-sweep daemon already owns this server.
+	if [ -f "$_pidfile" ]; then
+		_old=$(cat "$_pidfile" 2>/dev/null || true)
+		if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null && _is_sweep "$_old"; then
+			return 0
+		fi
+	fi
+
+	# Own a process group so teardown can signal the whole tree. setsid is absent
+	# on macOS — fall back to running in place (run-shell -b already detached us),
+	# exactly as claude-watcher does.
+	if [ -z "${AGENT_SWEEP_SETSID:-}" ] && command -v setsid >/dev/null 2>&1; then
+		AGENT_SWEEP_SETSID=1 exec setsid "$SELF_DIR/$(basename -- "$0")" daemon
+	fi
+
+	mkdir -p "$_state_dir"
+	printf '%s\n' "$$" >"$_pidfile"
+	# EXIT cleans the pidfile; INT/TERM must *exit* (a bare signal trap would run
+	# then resume the loop) so the EXIT trap fires.
+	trap 'rm -f "$_pidfile" 2>/dev/null' EXIT
+	trap 'exit 143' TERM
+	trap 'exit 130' INT
+
+	while :; do
+		sleep "${AGENT_SWEEP_POLL:-30}"
+		tmux list-sessions >/dev/null 2>&1 || break
+		sweep_once
+	done
+}
+
 case "${1:-}" in
 "" | sweep | sweep_once) sweep_once ;;
+daemon) daemon ;;
 *)
-	printf 'usage: %s [sweep]\n' "$(basename -- "$0")" >&2
+	printf 'usage: %s [sweep|daemon]\n' "$(basename -- "$0")" >&2
 	exit 2
 	;;
 esac

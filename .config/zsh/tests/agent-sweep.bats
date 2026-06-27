@@ -22,11 +22,36 @@ setup() {
 }
 
 teardown() {
+  # Kill the daemon by tracked PID (covers no-setsid) and by pidfile (covers a
+  # setsid fork on Linux giving the real daemon a different PID) before the server.
   if [ -n "${DAEMON_PID:-}" ]; then
     kill "$DAEMON_PID" 2>/dev/null || true
     kill -- -"$DAEMON_PID" 2>/dev/null || true
   fi
+  for f in "$BATS_TEST_TMPDIR"/server-*.pid; do
+    [ -f "$f" ] || continue
+    p=$(cat "$f" 2>/dev/null || true)
+    [ -n "$p" ] && kill "$p" 2>/dev/null || true
+  done
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+}
+
+# Launch the daemon backgrounded with an isolated state dir + 1s poll. 3>&- closes
+# bats's status fd so the loop does not keep the run hanging; fds 1/2 → /dev/null.
+launch_daemon() {
+  AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 \
+    sh "$SCRIPT" daemon >/dev/null 2>&1 3>&- &
+  DAEMON_PID=$!
+}
+
+# Poll up to ~6s for a file to appear.
+wait_file() {
+  local i
+  for i in $(seq 1 30); do
+    [ -f "$1" ] && return 0
+    sleep 0.2
+  done
+  return 1
 }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
@@ -98,4 +123,54 @@ wait_nonshell() {
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
+}
+
+@test "daemon starts one process with a pidfile and is idempotent" {
+  pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
+  launch_daemon
+  wait_file "$pidfile"
+  [ -f "$pidfile" ]
+  first=$(cat "$pidfile")
+  kill -0 "$first"
+  # A second invocation finds the live daemon and no-ops without touching the pidfile.
+  run env AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 sh "$SCRIPT" daemon
+  [ "$status" -eq 0 ]
+  [ "$(cat "$pidfile")" = "$first" ]
+}
+
+@test "daemon clears a stale dot on its interval" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
+  launch_daemon
+  wait_file "$pidfile"
+  tx set-option -p -t "$pane" @agent_state working
+  tx set-option -w -t "$win" @win_agent_state working
+  cleared=0
+  for i in $(seq 1 20); do
+    [ -z "$(pstate "$pane")" ] && {
+      cleared=1
+      break
+    }
+    sleep 0.2
+  done
+  [ "$cleared" -eq 1 ]
+  [ -z "$(wstate "$win")" ]
+}
+
+@test "daemon exits when the server dies" {
+  pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
+  launch_daemon
+  wait_file "$pidfile"
+  dpid=$(cat "$pidfile")
+  tx kill-server 2>/dev/null || true
+  gone=0
+  for i in $(seq 1 30); do
+    kill -0 "$dpid" 2>/dev/null || {
+      gone=1
+      break
+    }
+    sleep 0.2
+  done
+  [ "$gone" -eq 1 ]
 }
