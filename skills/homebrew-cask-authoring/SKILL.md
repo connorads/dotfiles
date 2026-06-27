@@ -112,16 +112,66 @@ Then:
 
 ### 5) Cross-platform casks: macOS + Linux (AppImage)
 
-A cask can target both OSes: shared top-level stanzas, then `on_macos do ... end` / `on_linux do ... end` blocks for the platform-specific artifacts. On Linux the artifact is usually `app_image` (an AppImage).
+A cask can target both OSes: shared top-level stanzas, then sibling `on_macos do ... end` / `on_linux do ... end` blocks for platform-specific artifacts.
 
-Before writing one:
-- `app_image` is **Linux-only** — gate it inside `on_linux`; macOS-only artifacts (`app`, `pkg`, `suite`, ...) go inside `on_macos`. An ungated artifact makes the cask refuse the other OS (`This cask requires Linux./macOS.`). Top-level `depends_on :linux` is for a *Linux-only* cask only — it intentionally blocks macOS install.
-- `sha256` takes four top-level keys (`arm:`, `intel:`, `arm64_linux:`, `x86_64_linux:`) when artifacts differ per arch/OS; switch the download extension with `url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"`.
-- **Single-arch Linux AppImage**: when the Linux build ships for only one arch (e.g. x86_64 only), put a plain (unkeyed) `sha256 "<hex>"` *inside* `on_linux` and add `depends_on arch: :x86_64` there too — do not use the `x86_64_linux:`/`arm64_linux:` keys, and do not put `depends_on arch:` at top level (it would block macOS). Model on `t3-code` in `homebrew-cask`: macOS side uses `sha256 arm: ..., intel: ...` with `arch` switching the `.dmg`, while `on_linux` uses a plain `sha256` + `depends_on arch: :x86_64` + a fixed `app_image` filename via `on_system_conditional`.
-- **`zap` goes inside `on_macos` only.** For AppImage casks the `on_linux` block conventionally has **no `zap` stanza** — verified against `agentsview`, `zen`, `tabby` in `homebrew-cask`, which all put `zap trash:` inside `on_macos` and have just `app_image` inside `on_linux`. The install only drops a single symlink into `appimagedir` that `brew uninstall` already removes; runtime user state (`~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`) is created by the app at runtime, not at install time, so there's nothing for `zap` to reverse on the install side. `brew audit --cask` doesn't require `zap` on any OS (`audit_required_stanzas` excludes `:zap`/`:uninstall` from the activatable artifact count), so a Linux-side `zap` is purely optional and only worth adding if you've manually verified significant XDG paths the user would want cleaned.
+**Structural rules:**
+- `on_macos`/`on_linux` are **sibling blocks at the top level** — never nest one inside the other.
+- `app_image` is **Linux-only** — gate inside `on_linux`; macOS-only artifacts (`app`, `pkg`, `suite`, ...) go inside `on_macos`. An ungated artifact makes the cask refuse the other OS (`This cask requires Linux./macOS.`). Top-level `depends_on :linux` is for a *Linux-only* cask only — it intentionally blocks macOS install.
+- `arch` must appear **before** `url` if `url` interpolates `#{arch}`. When `arch` values differ per platform, define inside both `on_macos`/`on_linux` blocks at the top of the file.
+- `sha256`: either all four keys (`arm:`, `intel:`, `arm64_linux:`, `x86_64_linux:`) at top level, or split into separate `sha256` inside each `on_*` block. The per-block form is required when key names differ or when one OS's sha is unkeyed (single-arch).
+- Common stanzas (`version`, `url`, `name`, `desc`, `homepage`) at top level. Switch download extension with `url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"`.
+- **`zap` goes inside `on_macos` only.** For AppImage casks the `on_linux` block conventionally has **no `zap` stanza**. Runtime user state (`~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`) is created by the app at runtime, not at install time, so there's nothing for `zap` to reverse on the install side.
 - `brew style` has no stanza-order position for `app_image`, so place it alone inside `on_linux` and run `--fix` anyway.
 
-Model on `agentsview`, `zen`, `zettlr`, `tabby` (AppImage on Linux); `git-credential-manager` ships a `binary` on Linux, not an AppImage. Full worked example and `app_image` internals: `references/homebrew-cask-contribution-workflow.md`.
+Canonical structure (different `arch` per platform):
+
+```ruby
+cask "token" do
+  version "1.2.3"
+
+  on_macos do
+    arch arm: "aarch64", intel: "x64"
+  end
+
+  on_linux do
+    arch arm: "aarch64", intel: "amd64"
+  end
+
+  url_end = on_system_conditional macos: ".dmg", linux: ".AppImage"
+
+  url "https://example.com/download/v#{version}/App_#{version}_#{arch}#{url_end}",
+      verified: "example.com/"
+  name "App Name"
+  desc "Short description"
+  homepage "https://example.com"
+
+  on_macos do
+    sha256 arm:   "...",
+           intel: "..."
+
+    auto_updates true
+    depends_on macos: :big_sur
+
+    app "App.app"
+
+    zap trash: [
+      "~/Library/Application Support/com.example.app",
+      "~/Library/Preferences/com.example.app.plist",
+    ]
+  end
+
+  on_linux do
+    sha256 arm64_linux:  "...",
+           x86_64_linux: "..."
+
+    app_image "App_#{version}_#{arch}.AppImage", target: "App.AppImage"
+  end
+end
+```
+
+- **Single-arch Linux AppImage**: when the Linux build ships for only one arch (e.g. x86_64 only), put a plain (unkeyed) `sha256 "<hex>"` *inside* `on_linux` and add `depends_on arch: :x86_64` there too — do not use the `x86_64_linux:`/`arm64_linux:` keys, and do not put `depends_on arch:` at top level (it would block macOS). Model on `t3-code` in `homebrew-cask`: macOS side uses `sha256 arm: ..., intel: ...` with `arch` switching the `.dmg`, while `on_linux` uses a plain `sha256` + `depends_on arch: :x86_64` + a fixed `app_image` filename via `on_system_conditional`.
+
+Model on `dbx`, `beekeeper-studio`, `bdash` (AppImage on Linux) from krehel's PRs; also `agentsview`, `zen`, `zettlr`, `tabby`. Full worked example and `app_image` internals: `references/homebrew-cask-contribution-workflow.md`.
 
 ### 6) Validate and test locally
 
