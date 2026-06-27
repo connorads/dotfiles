@@ -31,8 +31,8 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
-| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook) | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
-| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. |
+| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
+| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
@@ -241,6 +241,26 @@ grep step below is the same technique applied to one rule.
 | No default exports (optional) | Biome `noDefaultExport` / ESLint `import/no-default-export` | Inconsistent naming at import sites; poor rename refactoring. Exempt Next.js pages/layouts where defaults are required. |
 | Unique function names | `no-restricted-syntax` on duplicate `FunctionDeclaration` identifiers across a file; fallback is a grep-based hk step | Duplicate helpers being written instead of discovered. Grep check catches the cross-file case ESLint can't. |
 
+### TypeScript: dead code (knip)
+
+The TypeScript analogue of Vulture. `tsc`'s `noUnusedLocals` and madge only see
+inside a file or the cycle graph; they never flag an unused *export*, an
+orphaned file, or an unused / unlisted dependency. knip does — one tool for
+unused files, exports, exported types, enum/class members, and unused
+`dependencies` / `devDependencies`. `ts-prune` and `depcheck` are both archived;
+knip is the successor. See `references/knip.jsonc`.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Whole-project graph | knip from the repo root (it builds the full import graph) | Orphaned files and dead exports drifting in | 150+ framework plugins teach it implicit entry points (next, vitest, storybook). |
+| Gate in production mode | `knip --production` in CI | Test-only utilities being flagged as dead | Default (dev) mode is fine locally; `--production` drops test files for the gate. |
+| Adopt before blocking | report-only first, then gate on exit code | A noisy first run blocking every commit | Tune `knip.json` for dynamic / implicit entries, then flip to blocking. |
+
+A faster Rust alternative, **fallow**, covers the same graph plus cycles and
+boundary checks, but its core is MIT while the high-confidence runtime layer is
+paid (open-core) and the tool is young — keep knip as the reference and treat
+fallow as a watch.
+
 ### Testing
 
 | Rule | Encode with | Prevents |
@@ -406,6 +426,7 @@ When a bug escapes to review or production, the retro question is: **what rule w
 - `references/typescript-strict.jsonc` — strict `compilerOptions` block (drop-in)
 - `references/biome-ultracite.jsonc` — Biome config extending Ultracite with override pattern
 - `references/eslint-boundaries.mjs` — layered `no-restricted-imports` + `no-restricted-syntax` examples
+- `references/knip.jsonc` — knip dead-code / unused-deps config (drop-in)
 - `references/commitlint.config.js` — one-line conventional-commits config
 
 ### Rust
