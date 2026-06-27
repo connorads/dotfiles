@@ -285,7 +285,7 @@ depends_on cask: "other-required-app"
 
 ### Cross-platform (macOS + Linux / AppImage)
 
-One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then `on_macos` / `on_linux` blocks for the platform-specific artifacts. On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
+One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then sibling `on_macos` / `on_linux` blocks for the platform-specific artifacts — don't nest one inside the other (not a brew error; the OS conditions are mutually exclusive, so a nested block is unreachable dead code). On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
 
 ```ruby
 cask "app-name" do
@@ -331,14 +331,16 @@ end
 
 `app_image` mechanics:
 
-- **Stanza name** is `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage`), not `appimage`. It is **Linux-only**: gate it inside `on_linux`. An ungated `app_image` makes a macOS install raise `This cask requires Linux.`; conversely the macOS-only artifacts (`app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, ...) raise `This cask requires macOS.` on Linux unless gated inside `on_macos`. Top-level `depends_on :linux` is for a *Linux-only* cask — it deliberately blocks macOS install, so don't use it to gate a cross-platform cask.
+- **Stanza name** is `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage`), not `appimage`. It is **Linux-only**: gate it inside `on_linux`. An ungated `app_image` makes a macOS install raise `This cask requires Linux.` (current main prepends the cask token: `"<cask>: This cask requires Linux."`; the original AppImage commits `3ca53a26`/`48ac0fb5` raised `"Linux is required for this software."`); conversely the macOS-only artifacts (`app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, ...) raise `This cask requires macOS.` on Linux unless gated inside `on_macos`. Top-level `depends_on :linux` is for a *Linux-only* cask — it deliberately blocks macOS install, so don't use it to gate a cross-platform cask.
 - **Signature**: `app_image "<source-filename-in-archive>", target: "<symlink-name>"`. `target:` is optional (defaults to the source basename) — always pass a stable name (e.g. `AppName.AppImage`) when the source embeds version/arch, so upgrades don't accumulate per-version symlinks.
 - **Install**: symlinks the source into `appimagedir` (default `~/Applications` on **both** macOS and Linux — `appdir`, by contrast, becomes `~/.config/apps` on Linux) and `chmod +x`s it. `brew uninstall` removes the symlink, so no `uninstall` stanza is needed. Override per-install with `--appimagedir=PATH`; don't hardcode the install path in `zap`.
 - **Linux user-state cleanup**: by convention `zap` is **omitted** from the `on_linux` block for AppImage casks. Verified against `agentsview`, `zen`, `tabby` in `homebrew-cask` — all three put `zap trash:` only inside `on_macos` and have no `zap` inside `on_linux`. The install only drops a single symlink into `appimagedir` that `brew uninstall` already removes, so there's nothing for `zap` to reverse. User config/cache (e.g. `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`) is created by the app at *runtime*, not at install time, and Homebrew leaves it alone by the same principle that makes `zap` optional (not required) even on macOS. `brew audit --cask` does not require `zap` on any OS (`cask/audit.rb:audit_required_stanzas` only checks `version`, `sha256`, `url`, `homepage`, `name`, and one activatable artifact; `:zap` and `:uninstall` are explicitly excluded from the activatable count). Only add a Linux `zap` if you have a specific reason and have manually verified the XDG paths (no `generate-zap` on Linux — clone the upstream repo and grep for `os.homedir()` / `env-paths` / `xdg.*` to find them).
 - **`brew style`** has no stanza-order position for `app_image`, so it won't be auto-reordered. Place it alone inside `on_linux` (or after other artifacts if declared at top level) and run `brew style --fix` for everything else.
-- **sha256 / version per OS**: **when all four arches build exist (macOS arm + intel, Linux arm64 + x86_64), put them in a single top-level `sha256` block — this is maintainer-preferred, not split per-OS.** Split `sha256`/`version` into `on_macos`/`on_linux` blocks only when one OS's sha is unkeyed (single-arch) or the key set genuinely differs. Add an `os macos:/linux:` stanza only when the asset name embeds an OS string (see `tabby`, `git-credential-manager`).
+- **sha256 / version per OS**: **when all four arches build exist (macOS arm + intel, Linux arm64 + x86_64), put them in a single top-level `sha256` block — this is maintainer-preferred, not split per-OS.** The Cask Cookbook documents inline arch-keyed `sha256` as the default; reserve per-OS / `on_arch` splits for when `version` or build shape differs per arch (4/4 genuine four-arch casks use one block). Split `sha256`/`version` into `on_macos`/`on_linux` blocks only when one OS's sha is unkeyed (single-arch) or the key set genuinely differs. The canonical macOS-Intel key is `x86_64:`; `intel:` is an accepted alias coalesced into it — real four-arch casks like `agentsview` use `x86_64:`. Add an `os macos:/linux:` stanza only when the asset name embeds an OS string (see `tabby`, `git-credential-manager`).
 
-Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby` (AppImage on Linux); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
+Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby`, `beekeeper-studio` (AppImage on Linux); `t3-code` (single-arch x86_64 AppImage — see below); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
+
+Use the per-OS `arch` block shape (above) when arch strings differ per OS and both OSes are multi-arch; use the top-level `arch` helper + split `sha256` shape (below) when one OS ships a single arch (`t3-code`).
 
 ### Cross-platform with single-arch Linux AppImage
 
@@ -389,7 +391,7 @@ Key points:
 - `depends_on arch: :x86_64` lives inside `on_linux` so it only constrains the Linux install; a top-level `depends_on arch:` would spill onto macOS and block Apple-Silicon users.
 - `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
 
-_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
+_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
 
 ### Livecheck (Version Auto-detection)
 
