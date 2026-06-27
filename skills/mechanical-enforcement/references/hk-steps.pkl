@@ -72,6 +72,9 @@ hooks {
 
             // --- Tier 3: typecheck ---
             // Gate, not fix — a failing typecheck must block the commit.
+            // `typecheck:fast` can run tsgo (TS 7 native, ~10x faster) as the
+            // local gate; keep a `tsc --noEmit` (TS 6) job in CI as the
+            // authoritative check until tsgo GA is verified on the project.
             ["typecheck"] {
                 check = "scripts/quiet-on-success.sh pnpm typecheck:fast"
             }

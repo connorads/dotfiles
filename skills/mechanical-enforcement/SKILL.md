@@ -31,7 +31,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
-| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | ESLint flat config — only for `no-restricted-imports`, `no-restricted-syntax`, `jsx-a11y`, framework plugins (next, storybook) | `tsc --noEmit` strict | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
+| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | ESLint flat config — only for `no-restricted-imports`, `no-restricted-syntax`, `jsx-a11y`, framework plugins (next, storybook) | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | — | `tsc --noEmit` strict | Skip ESLint entirely unless you need boundary rules. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
@@ -65,6 +65,24 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 | No `as Type` assertions | ESLint `@typescript-eslint/consistent-type-assertions` with `assertionStyle: "never"` | Silent lies to the compiler | Allowed exceptions (document each with `eslint-disable-next-line` + reason): `as const`, DOM APIs after null checks, untyped-library interop, intentionally-invalid test fixtures. |
 | No `!` non-null assertion | ESLint `@typescript-eslint/no-non-null-assertion` | Silent runtime crashes | Use a proper null check or throw a narrowed error. |
 | Prefer `import type` | Biome `useImportType` | Accidental runtime imports of type-only modules | Auto-fixable. |
+
+### TypeScript: type checking
+
+`tsc --noEmit` strict is the authoritative gate. As of mid-2026 the native Go
+compiler (Project Corsa) has reached RC — `typescript@rc` is `7.0.1-rc`, GA
+estimated ~late July 2026 — and is ~10× faster with near-parity `--noEmit`
+checking, so it earns an explicit place as the fast local / pre-commit check
+rather than the passing mention it had before.
+
+| Tool | Default use | Notes |
+|---|---|---|
+| `tsc --noEmit` (TS 6) | Authoritative blocking gate | The required CI check until tsgo GA is verified on the project, then promote tsgo to primary. |
+| `tsgo --noEmit` (TS 7) | Fast local / pre-commit check | Invoked as `tsgo` from `@typescript/native-preview`, or as `tsc` from `typescript@rc`. Same strict flags. |
+
+Hard caveats while pre-GA:
+
+- **Library builds stay on `tsc`.** tsgo declaration (`.d.ts`) emit still has gaps (declaration maps, `--build` / project-reference orchestration) — do not generate published artefacts with it yet.
+- **The lint stack stays on TS 6.** The programmatic API (Strada) lands in 7.1, so typescript-eslint / ts-morph / custom transformers can't ride tsgo until then. Install side-by-side via `typescript@npm:@typescript/typescript6` if a tool needs the old API.
 
 ### Error handling
 
@@ -299,7 +317,7 @@ The typical mapping (TypeScript):
 ```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, biome fix
 tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline (glob: .github/workflows/*.{yml,yaml} + action.yml)
-tier 3 (typecheck)      → tsc --noEmit (or tsgo)
+tier 3 (typecheck)      → tsc --noEmit strict (TS 6, authoritative) + tsgo --noEmit (TS 7, fast local gate)
 tier 4 (test)           → vitest run --coverage
 commit-msg              → commitlint
 ```
