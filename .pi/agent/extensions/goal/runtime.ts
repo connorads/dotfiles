@@ -6,11 +6,13 @@
 // a type-honest fake (no `as` cast) and confines every real pi/ctx touch (plus
 // the clock and timers) to `createPiRuntime` below.
 //
-// Type-only pi imports are erased at runtime, so this module — like core.ts — has
-// no runtime dependency beyond ./core.ts. (ADR: see README "Phase 2".)
+// Type-only pi imports are erased at runtime, so this module's only runtime
+// dependencies are the first-party ./core.ts and ./prompts.ts. (ADR: see README
+// "Phase 2".)
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { GOAL_ENTRY_TYPE, type GoalEvent, type GoalState, parseGoalEvent, renderGoalWidget } from "./core.ts";
+import { GOAL_ENTRY_TYPE, type GoalEvent, type GoalState, parseGoalEvent } from "./core.ts";
+import { renderGoalWidget } from "./prompts.ts";
 
 /** The model-callable goal tools, toggled active only while a goal self-drives. */
 export const GOAL_TOOL_NAMES = ["update_goal", "get_goal"] as const;
