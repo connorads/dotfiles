@@ -41,8 +41,18 @@ hooks {
                 check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"
                 fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
             }
-            // ESLint owns boundary rules that Biome can't express:
-            // no-restricted-imports, no-restricted-syntax, jsx-a11y, plugin:next, plugin:storybook.
+            // oxlint (Rust) runs the boundary rules in-tree with no Node dep
+            // graph: no-restricted-imports, no-restricted-syntax, jsx-a11y, and
+            // a multi-file import/no-cycle (which retires madge). Configure deny
+            // levels in .oxlintrc.json; gate on non-zero exit.
+            ["oxlint"] {
+                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
+                check = "scripts/quiet-on-success.sh pnpm exec oxlint --max-warnings=0 {{files}}"
+                fix = "scripts/quiet-on-success.sh pnpm exec oxlint --fix {{files}}"
+            }
+            // ESLint owns only what oxlint/Biome can't yet express: import-type-
+            // aware boundary rules (allowTypeImports) and framework plugins
+            // (plugin:next, plugin:storybook).
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
                 check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
