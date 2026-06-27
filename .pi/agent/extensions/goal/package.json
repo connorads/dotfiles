@@ -5,9 +5,18 @@
   "type": "module",
   "description": "A persistent, self-driving objective that steers the agent across turns, drives it toward completion within a token budget, and survives context compaction",
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": [
+      "./index.ts"
+    ]
   },
   "scripts": {
-    "test": "node --test core.test.ts prompts.test.ts index.test.ts"
+    "test": "node --test core.test.ts prompts.test.ts index.test.ts",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.79.10",
+    "@types/node": "^26.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260623.1",
+    "typebox": "1.1.38"
   }
 }
