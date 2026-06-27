@@ -115,6 +115,16 @@ EOF
   [[ "$output" != *"claude/cys"* ]]
 }
 
+@test "fancy dashboard alerts when Claude auth is paused" {
+  write_usage_caches
+  jq -n '{last_error:"auth_expired", last_http_status:"401", auth_expires_at:111}' >"$HOME/.cache/claude-usage.meta.json"
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Auth"*"Claude expired"* ]]
+}
+
 @test "fresh local run history is summarised" {
   write_usage_caches
   python3 - "$HOME/.local/state/agents/rl-usage.jsonl" <<'PY'

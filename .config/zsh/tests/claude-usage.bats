@@ -18,6 +18,12 @@ seed_meta() {
     >"$HOME/.cache/claude-usage.meta.json"
 }
 
+seed_auth_paused_meta() {
+  jq -n --argjson expires "$1" \
+    '{next_retry_at:0, fail_count:0, last_http_status:"401", last_error:"auth_expired", last_success_at:1700000000, auth_paused_at:1700000100, auth_expires_at:$expires}' \
+    >"$HOME/.cache/claude-usage.meta.json"
+}
+
 @test "renders all windows on a fresh cache hit" {
   cat >"$HOME/.cache/claude-usage.json" <<'EOF'
 {"five_hour":{"utilization":42,"resets_at":"2099-01-01T00:00:00Z"},
@@ -106,6 +112,74 @@ EOF
   [[ "$output" == *"5-hour:"* ]]
   [[ "$output" == *"42%"* ]]
   [ -f "$HOME/.cache/claude-usage.json" ]
+}
+
+@test "401 pauses auth refresh instead of exponential backoff" {
+  seed_meta 0 0 1700000000
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"tok","expiresAt":111}}'
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "1.2.3 (Claude Code)"
+EOF
+  write_curl_stub
+  printf '{"error":{"type":"authentication_error","message":"Invalid authentication credentials"}}' >"$BATS_TEST_TMPDIR/body401.json"
+  export CURL_1_KIND=hb CURL_1_CODE=401 CURL_1_BODY="$BATS_TEST_TMPDIR/body401.json"
+
+  run_zsh_function "$CLAUDE_USAGE"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Claude auth expired"* ]]
+  run jq -r '.last_error' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "auth_expired" ]
+  run jq -r '.auth_expires_at' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "111" ]
+  run jq -r '.fail_count' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "0" ]
+}
+
+@test "auth pause skips fetch while Claude credentials are unchanged" {
+  seed_auth_paused_meta 111
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"tok","expiresAt":111}}'
+EOF
+  write_curl_stub
+
+  run_zsh_function "$CLAUDE_USAGE"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Claude auth expired"* ]]
+  [ "$(cat "$CURL_STATE")" = "" ]
+}
+
+@test "auth pause retries immediately after Claude credentials change" {
+  seed_auth_paused_meta 111
+  write_stub security <<'EOF'
+#!/usr/bin/env bash
+echo '{"claudeAiOauth":{"accessToken":"tok","expiresAt":222}}'
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "1.2.3 (Claude Code)"
+EOF
+  write_curl_stub
+  cat >"$BATS_TEST_TMPDIR/body200.json" <<'EOF'
+{"five_hour":{"utilization":42,"resets_at":"2099-01-01T00:00:00Z"},
+ "seven_day":{"utilization":7,"resets_at":"2099-01-02T00:00:00Z"}}
+EOF
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/body200.json"
+
+  run_zsh_function "$CLAUDE_USAGE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"5-hour:"* ]]
+  [[ "$output" == *"42%"* ]]
+  [ "$(cat "$CURL_STATE")" = "1" ]
+  run jq -r '.last_error' "$HOME/.cache/claude-usage.meta.json"
+  [ "$output" = "" ]
 }
 
 @test "records backoff in meta on an HTTP failure" {
