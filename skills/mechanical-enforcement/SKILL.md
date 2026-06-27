@@ -32,7 +32,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
-| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. |
+| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
@@ -260,6 +260,26 @@ A faster Rust alternative, **fallow**, covers the same graph plus cycles and
 boundary checks, but its core is MIT while the high-confidence runtime layer is
 paid (open-core) and the tool is young — keep knip as the reference and treat
 fallow as a watch.
+
+### TypeScript: library publishing (publint + attw)
+
+For published packages, nothing in the lint / typecheck stack validates the
+*shipped* shape. Two complementary, production tools close that gap — both gate
+on a non-zero exit:
+
+| Tool | Checks | Notes |
+|---|---|---|
+| publint | `package.json` `exports` / `main` / `module` / `types` resolve to real files; ESM/CJS format and condition order | Pure static, fast. Lints the packed tarball, so it only sees what ships. |
+| `@arethetypeswrong/cli` (attw) | the shipped `.d.ts` resolve for consumers across node10 / node16-CJS / node16-ESM / bundler modes | Pick a `--profile` (e.g. node16, esm-only) so you don't fail on modes you don't support. Use `--pack`. |
+
+These run **after the build**, against the built `dist` + generated `.d.ts`, so
+they belong in a CI / pre-publish gate (pre-push or the release workflow), not
+pre-commit. There is no Rust equivalent — attw drives `tsc` itself and publint
+is already fast pure-JS, so the usual Rust-first preference doesn't apply. If the
+library builds with tsdown (Rust/Rolldown), it can run both inline
+(`tsdown --dts --publint --attw`). Pin both under the release-age quarantine —
+they ship pre-1.0 and move fast. For monorepos, **sherif** (Rust) additionally
+enforces dependency-version consistency across workspaces.
 
 ### Testing
 
