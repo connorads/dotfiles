@@ -1,0 +1,26 @@
+// Starter knip config — drop in as knip.json(c) at the repo root.
+// knip finds what tsc and the linter miss: unused files, exports, exported
+// types, enum/class members, and unused / unlisted dependencies. Its framework
+// plugins (next, vitest, storybook, …) auto-detect implicit entry points, so
+// most projects need only a small amount of config on top.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // Entry points the graph starts from. Plugins add framework entries
+  // automatically — list only the extras they can't infer.
+  "entry": ["src/index.ts", "src/main.ts"],
+
+  // The set of files knip treats as owned (and therefore reachable-or-dead).
+  // Exclude generated output so codegen isn't reported as dead.
+  "project": ["src/**/*.{ts,tsx}", "!src/**/*.generated.*"],
+
+  // Suppress known-dynamic or intentionally-unreferenced cases narrowly.
+  // Prefer this over broad excludes that could hide real dead code.
+  "ignore": ["**/*.d.ts"],
+  "ignoreDependencies": [],
+
+  // Gate with `knip --production` in CI: production mode drops test-only files
+  // so test utilities aren't flagged as dead. Default (dev) mode is fine
+  // locally. Adoption: run report-only first, tune false positives on dynamic
+  // / implicit entries, then flip to blocking on the non-zero exit code.
+}
