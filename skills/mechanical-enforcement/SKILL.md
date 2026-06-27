@@ -34,7 +34,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
-| Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
+| Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
 | SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | — | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta — start advisory, verify dialect coverage before blocking. |
 | Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
@@ -376,6 +376,18 @@ missing-safety-doc = "allow"
 | Banned crates | `[bans]` | Specific crates (e.g. `openssl` → use `rustls`) or duplicate versions | `multiple-versions = "warn"` catches dep tree bloat. |
 | Registry restriction | `[sources]` | Deps from unknown registries or git repos | `unknown-registry = "deny"`, `unknown-git = "warn"`. |
 
+### Rust: unused dependencies (cargo-machete)
+
+clippy and cargo-deny don't flag dependencies declared in `Cargo.toml` but never
+used. [cargo-machete](https://github.com/bnjbvr/cargo-machete) does — a fast,
+text-level scan that gates on a non-zero exit (`cargo machete`) and removes them
+with `--fix`. Fewer deps means a smaller build and attack surface.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| No unused deps | `cargo machete` (tier-4 hygiene) | Dead dependencies bloating the build and attack surface | False positives for deps used only via proc-macros / build scripts — suppress narrowly with `[package.metadata.cargo-machete] ignored`. |
+| Exhaustive variant | `cargo udeps` on demand | Missed unused deps from machete's text-level scan | More precise but needs nightly + a full compile; too slow for a default hook, so keep it on-demand. |
+
 ### Commit messages
 
 ```js
@@ -405,7 +417,7 @@ The typical mapping (Rust):
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, cargo-fmt
 tier 2 (lint/gate)      → cargo-clippy -D warnings, gitleaks, cargo-deny
 tier 3 (typecheck)      → cargo check (usually redundant with clippy but catches cfg issues)
-tier 4 (test)           → cargo test (scoped to changed crates via glob)
+tier 4 (deps/test)      → cargo machete (unused deps), cargo test (scoped to changed crates via glob)
 ```
 
 The typical mapping (Python):
