@@ -31,8 +31,8 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
-| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | ESLint flat config — only for `no-restricted-imports`, `no-restricted-syntax`, `jsx-a11y`, framework plugins (next, storybook) | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
-| TypeScript (library / node) | Biome | Biome | — | `tsc --noEmit` strict | Skip ESLint entirely unless you need boundary rules. |
+| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook) | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
+| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
@@ -190,6 +190,17 @@ Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs un
 
 Full working snippets live in `references/eslint-boundaries.mjs`.
 
+**oxlint (Rust) is the fast, Rust-first way to run these.** As of mid-2026 oxlint
+is production (v1.7x; 1.0 shipped Jun 2025) with native `no-restricted-imports`,
+`no-restricted-syntax`, `jsx-a11y`, and a multi-file `import/no-cycle` — so it
+takes the boundary-rule role this skill kept ESLint around for, with no Node
+dependency tree, and retires madge (see Import hygiene). Two adjacent pieces are
+still pre-stable, so keep them advisory: type-aware rules via tsgolint/tsgo
+(`oxlint --type-aware`, alpha — the only thing here that catches floating /
+misused promises) and custom JS plugins (alpha). The import-type-aware boundary
+rule (`allowTypeImports`) and framework-specific plugins (next, storybook) still
+need typescript-eslint until oxlint's JS plugins stabilise.
+
 #### Greppable invariants (agent self-audit tier)
 
 Some boundaries are awkward or impossible for `no-restricted-imports` to see:
@@ -226,7 +237,7 @@ grep step below is the same technique applied to one rule.
 | Rule | Encode with | Prevents |
 |---|---|---|
 | Sorted + grouped imports | Biome `organizeImports` on format | Merge conflicts; inconsistency |
-| No cycles | [madge](https://github.com/pahen/madge) (`madge --circular`) in pre-commit or `eslint-plugin-import`'s `no-cycle` | Module init-order bugs |
+| No cycles | oxlint `import/no-cycle` (Rust, multi-file — retires madge) or [madge](https://github.com/pahen/madge) (`madge --circular`); Biome `noImportCycles` is stable but scanner-heavy | Module init-order bugs |
 | No default exports (optional) | Biome `noDefaultExport` / ESLint `import/no-default-export` | Inconsistent naming at import sites; poor rename refactoring. Exempt Next.js pages/layouts where defaults are required. |
 | Unique function names | `no-restricted-syntax` on duplicate `FunctionDeclaration` identifiers across a file; fallback is a grep-based hk step | Duplicate helpers being written instead of discovered. Grep check catches the cross-file case ESLint can't. |
 
