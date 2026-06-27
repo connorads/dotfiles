@@ -36,6 +36,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
+| SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | — | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta — start advisory, verify dialect coverage before blocking. |
 | Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
 | Bash | shfmt `-ln=bash` | ShellCheck `--shell=bash` | bats-core for black-box CLI tests | — | Bats is Bash-based; good for CLI contracts and Bash scripts. |
 | zsh | shfmt `-ln=zsh` | — | `zsh -n`, isolated zsh runtime tests | — | ShellCheck does not support zsh; use parser/format checks plus native tests. |
@@ -186,7 +187,7 @@ Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs un
 
 - **Pure layer cannot import side-effectful layer.** `files: ["src/utilities/**"]` + `no-restricted-imports` banning `next/cache`, `next/headers`, `next/navigation`, ORM runtime modules. Use `allowTypeImports: true` for types you still want visible. Exempt one or two *intentionally* coupled files (`queries.ts`, `revalidate.ts`) via `ignores`.
 - **UI cannot import schemas directly.** `files: ["src/components/**"]` + `no-restricted-imports patterns` banning `@/collections/*` (or whichever path holds your DB schemas). UI should depend on *generated types*, not schema source — otherwise a UI tweak forces a migration.
-- **Raw SQL only in the query layer.** `no-restricted-syntax` on `TaggedTemplateExpression[tag.name='sql']` everywhere except `src/db/**`. Also ban raw driver imports (`ImportDeclaration[source.value='postgres']`) outside the same directory.
+- **Raw SQL only in the query layer.** `no-restricted-syntax` on `TaggedTemplateExpression[tag.name='sql']` everywhere except `src/db/**`. Also ban raw driver imports (`ImportDeclaration[source.value='postgres']`) outside the same directory. **sqruff** (Rust) then lints / formats that quarantined SQL — see the picks table.
 - **Dynamic `import()` only via named wrappers.** `no-restricted-syntax` on `ImportExpression` outside `next/dynamic` / `React.lazy`. Prevents ad-hoc chunking that defeats SSR.
 
 Full working snippets live in `references/eslint-boundaries.mjs`.
