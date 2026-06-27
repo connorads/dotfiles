@@ -79,6 +79,13 @@ hooks {
             ["gitleaks"] {
                 check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
             }
+            // Detective supply-chain layer: scan lockfiles against the OSV DB
+            // (CVEs + MAL-* malware advisories) — catches what the release-age
+            // quarantine can't. Whole-repo, gate on non-zero exit. Heavier than
+            // the other gates, so move to pre-push / CI if it slows commits.
+            ["osv-scanner"] {
+                check = "scripts/quiet-on-success.sh osv-scanner scan source -r ."
+            }
 
             // --- Tier 3: typecheck ---
             // Gate, not fix — a failing typecheck must block the commit.
