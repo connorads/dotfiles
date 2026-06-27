@@ -283,6 +283,53 @@ depends_on macos: ">= :monterey"
 depends_on cask: "other-required-app"
 ```
 
+### Cross-platform (macOS + Linux / AppImage)
+
+```ruby
+cask "app-name" do
+  on_macos do
+    arch arm: "arm64", intel: "x86_64"
+  end
+  on_linux do
+    arch arm: "aarch64", intel: "amd64"
+  end
+
+  version "1.2.3"
+  sha256 arm:          "...",
+         intel:         "...",
+         arm64_linux:   "...",
+         x86_64_linux:  "..."
+
+  url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"
+  url "https://github.com/owner/repo/releases/download/v#{version}/#{app}-#{version}-#{arch}#{url_end}",
+      verified: "github.com/owner/repo/"
+  name "App Name"
+  desc "Short one-line description"
+  homepage "https://example.com/"
+
+  on_macos do
+    depends_on macos: :monterey
+    app "AppName.app"
+    zap trash: [
+      "~/Library/Application Support/AppName",
+      "~/Library/Preferences/com.example.app.plist",
+    ]
+  end
+
+  on_linux do
+    app_image "AppName_#{version}_#{arch}.AppImage", target: "AppName.AppImage"
+  end
+end
+```
+
+**`app_image` notes** (verified against `Library/Homebrew/cask/artifact/appimage.rb`):
+
+- Stanza is `app_image` (snake_case), Linux-only (`LINUX_ONLY_ARTIFACTS = [Artifact::AppImage]`).
+- Installs by symlinking the AppImage to `<appimagedir>/<target>` (default `~/Applications`) and `chmod +x` on the source. `brew uninstall` removes the symlink — no `uninstall` stanza needed.
+- `target:` gives a stable symlink name in `~/Applications/` so upgrades don't accumulate versioned links.
+- Linux `zap` paths live in the `on_linux` block: scan `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`. No `generate-zap` for Linux — derive manually.
+- `app_image` is absent from rubocop `STANZA_ORDER`, so `brew style --fix` will not auto-reorder it. Keep it alone inside `on_linux`.
+
 ### Livecheck (Version Auto-detection)
 
 ```ruby

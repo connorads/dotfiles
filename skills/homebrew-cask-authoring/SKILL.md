@@ -1,6 +1,6 @@
 ---
 name: homebrew-cask-authoring
-description: Create, update, validate, and submit Homebrew Casks. Use when the user mentions Homebrew cask/cask, Homebrew/homebrew-cask, adding a new cask, updating a cask, cask token naming, sha256, url verified:, livecheck, zap/uninstall, or when asked to run brew style/audit for a cask.
+description: Create, update, validate, and submit Homebrew Casks (macOS and Linux/AppImage). Use when the user mentions Homebrew cask/cask, Homebrew/homebrew-cask, adding a new cask, updating a cask, cask token naming, sha256, url verified:, livecheck, zap/uninstall, AppImage/app_image, on_linux/on_macos, cross-platform cask, or when asked to run brew style/audit for a cask.
 ---
 
 # Homebrew Cask Authoring
@@ -14,15 +14,17 @@ Author and maintain Homebrew Casks with correct token naming, stanzas, audit/sty
 - Avoid destructive system changes unless explicitly requested; call out any `rm`/tap changes before suggesting them.
 - When testing local casks, ensure Homebrew reads from the local file (not the API).
 - Treat local Homebrew tap overrides as temporary. When done testing/submitting, restore standard Homebrew state unless the user asks to keep the override.
+- **`app_image` is a Linux-only artifact** (`Cask::Artifact::LINUX_ONLY_ARTIFACTS = [AppImage]`). macOS users hit `This cask requires Linux.` at install unless every `app_image` stanza is gated by `on_linux do ... end` or `depends_on :linux`. Conversely, `app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, etc. are macOS-only and must be gated by `on_macos` in a cross-platform cask.
 
 ## Quick intake (ask these first)
 
 Collect:
-- App name (exact `.app` bundle name)
+- App name (exact `.app` bundle name on macOS; for Linux, the AppImage filename)
 - Homepage (official)
-- Download URL(s) (DMG/ZIP/PKG) and whether they differ by arch
-- Version scheme (single version? per-arch?)
-- Install artifact type (`app`, `pkg`, `suite`, etc.)
+- Download URL(s) (DMG/ZIP/PKG on macOS; `.AppImage` / `.tar.gz` on Linux) and whether they differ by arch
+- Version scheme (single version? per-arch? per-OS?)
+- Install artifact type (`app`, `pkg`, `suite`, `app_image`, `binary`, etc.)
+- Platforms supported: macOS only, Linux only, or both (cross-platform)
 - Uninstall requirements (pkgutil ids, launch agents, kernel extensions)
 - Desired cleanup (zap paths)
 
@@ -36,7 +38,8 @@ Before investing effort in a new cask, verify:
 2. **Repo age**: GitHub repos less than 30 days old cause a hard `brew audit --new` failure. Wait until the repo is old enough.
 3. **Previously refused**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token. If previously rejected for unfixable reasons, do not re-submit.
 4. **Existing PRs**: Check [open PRs](https://github.com/Homebrew/homebrew-cask/pulls) to avoid duplicating work.
-5. **Modern macOS compatibility**: Casks that don't work on current macOS will be rejected outright. Avoid submitting x86-only / `requires_rosetta` new casks — they're on a deprecation path (blocked once macOS 27 is stable, removed after 28).
+5. **Modern macOS compatibility**: Casks that don't work on current macOS will be rejected outright. Avoid submitting x86-only / `requires_rosetta` new casks — they're on a deprecation path (blocked once macOS 27 is stable, removed after 28). This only governs the macOS side of a cross-platform cask — a Linux-only cask (or one with `depends_on :linux`) is exempt.
+6. **Linux/AppImage notability**: Linux-only or cross-platform casks are held to the same notability thresholds as macOS casks. AppImage distribution alone is not sufficient; the upstream project still needs the public presence described in (1).
 
 ## Workflow: create or update a cask
 
@@ -107,6 +110,74 @@ Then:
 - **`livecheck`**: `strategy :extract_plist` and `version :latest` are *automatically* excluded from autobump — no `no_autobump!` needed.
 - **`depends_on`**: Optional. Only add when genuinely needed (e.g., specific macOS version, another cask dependency).
 
+### 4.5) Cross-platform casks: macOS + Linux (AppImage)
+
+A single cask can target both macOS and Linux. The canonical pattern: shared top-level stanzas (`version`, `sha256` with all four keys, `url`, `name`, `desc`, `homepage`, `livecheck`), then `on_macos do ... end` and `on_linux do ... end` blocks holding the platform-specific artifacts. Real examples in `homebrew-cask`: `agentsview`, `zen`, `zettlr`, `tabby`, `git-credential-manager`.
+
+```ruby
+cask "token" do
+  os macos: "darwin", linux: "linux"          # only if URL/asset name embeds an OS string
+
+  on_macos do
+    arch arm: "arm64", intel: "x86_64"
+  end
+  on_linux do
+    arch arm: "aarch64", intel: "amd64"        # arch strings often differ per OS — check upstream asset names
+  end
+
+  version "1.2.3"
+  sha256 arm:          "...",
+         intel:         "...",
+         arm64_linux:   "...",
+         x86_64_linux:  "..."
+
+  url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"
+  url "https://github.com/owner/repo/releases/download/v#{version}/#{AppName}_#{version}_#{arch}#{url_end}",
+      verified: "github.com/owner/repo/"
+  name "App Name"
+  desc "Short one-line description"
+  homepage "https://example.com/"
+
+  livecheck do
+    url :url
+    regex(%r{/AppName[._-]v?(\d+(?:\.\d+)+)[._-]#{arch}#{url_end}}i)
+    strategy :github_releases do |json, regex|
+      json.map do |release|
+        next if release["draft"] || release["prerelease"]
+        release["assets"]&.map { |a| a["browser_download_url"]&.match(regex) && Regexp.last_match(1) }
+      end.flatten
+    end
+  end
+
+  on_macos do
+    depends_on macos: :monterey
+    app "AppName.app"
+    binary "#{appdir}/AppName.app/Contents/MacOS/appname"
+    zap trash: [
+      "~/Library/Application Support/AppName",
+      "~/Library/Preferences/com.example.appname.plist",
+      "~/Library/Saved Application State/com.example.appname.savedState",
+    ]
+  end
+
+  on_linux do
+    app_image "AppName_#{version}_#{arch}.AppImage", target: "AppName.AppImage"
+  end
+end
+```
+
+Key facts about `app_image` (source: `Library/Homebrew/cask/artifact/appimage.rb`, `relocated.rb`, `symlinked.rb`, `artifact.rb`):
+
+- **Stanza name**: `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage` via `dsl_key`). Not `appimage`.
+- **Signature**: `app_image "<source-filename-in-archive>", target: "<symlink-name>"`. The `target:` keyword is optional; default is the source's basename. Always pass `target:` with a stable name (e.g., `AppName.AppImage`) when the source embeds version/arch — this gives `~/Applications/AppName.AppImage` instead of a per-version symlink that drifts on upgrade.
+- **Install behaviour**: symlinks `<staged_path>/<source>` → `<appimagedir>/<target>` and ensures the source is executable (`chmod +x`, sudo if the staged copy is not writable). No `uninstall` stanza is required — `brew uninstall` removes the symlink via `Symlinked#uninstall_phase`.
+- **`appimagedir` default**: `~/Applications` on **both** macOS and Linux (the Linux override in `extend/os/linux/cask/config.rb` changes `appdir` to `~/.config/apps` but leaves `appimagedir` at `~/Applications`). Override per-install with `--appimagedir=PATH`. Do not hardcode the install path in `zap` — `brew uninstall` already unlinks it.
+- **Linux user state cleanup**: there is no `generate-zap` for Linux. Manually scan `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>` and any XDG dirs the app writes. Clone the upstream repo and grep for `os.homedir()` / `env-paths` / `xdg.*` to surface them. Put these in `zap trash:` inside the `on_linux` block — never in `uninstall`.
+- **`app_image` is missing from `STANZA_ORDER`** (see `rubocops/cask/constants/stanza.rb`), so `brew style` will not auto-reorder it. Place it where the existing Linux-enabled casks do: alone inside the `on_linux` block, or after `binary`/other artifacts if declared at top level. Run `brew style --fix` anyway — it will fix everything else and leave `app_image` in place.
+- **`sha256` Linux keys**: `arm64_linux:` and `x86_64_linux:`. If only Linux is supported, you can use `depends_on :linux` and skip `arm:`/`intel:`. If versions differ per OS, use `on_macos`/`on_linux` blocks to set `version`/`sha256` separately.
+- **`os` stanza**: `os macos: "<str>", linux: "<str>"` interpolates an OS-specific fragment into the URL via `#{os}` (see `tabby`, `git-credential-manager`). Only add it when the asset name actually embeds an OS string; otherwise omit.
+- **URL extension switching**: `url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"` (or `".zip"`) is the idiomatic way to vary the extension in a single `url` stanza. Keep it on one line so the livecheck `regex` can interpolate `#{url_end}` the same way.
+
 ### 5) Validate and test locally
 
 Run, in this order:
@@ -141,10 +212,7 @@ Reinstalling after a plain `brew uninstall` (without `--zap`) should leave sessi
 - `brew audit --cask --new` checks GitHub repo age (must be >30 days) and notability — if the repo is too new, this will fail regardless of cask quality.
 - `brew audit` prints nothing on success (silent = pass) — don't mistake empty output for the command failing to run.
 - **When iterating on the `zap` stanza, reinstall before re-zapping.** `brew uninstall --zap` reads the cached cask from `/opt/homebrew/Caskroom/<token>/.metadata/<version>/...`, not your working copy. After editing zap paths: `brew uninstall` → `brew install` (refreshes the cached metadata) → `brew uninstall --zap`. The `==> Trashing files:` log will silently use the previous stanza otherwise.
-
-If install fails:
-- Re-check URL reachability, `sha256`, and artifact name.
-- Re-run with verbosity: `brew install --cask --verbose <token>`.
+- **Cross-platform casks**: ideally exercise the `on_macos` artifacts on macOS and the `on_linux` artifacts on Linux (a Linux box, WSL, or a VM). `brew audit --cask --online` validates both sides statically from either platform, so run it even if you can only test one OS interactively. On Linux, the AppImage lands in `~/Applications/<target>` — verify with `ls -l ~/Applications/<target>`, run it once to surface user-state paths for `zap`, then `brew uninstall --zap --cask <token>` and confirm `~/Applications/<target>` is gone.
 
 ### 6) PR hygiene
 
