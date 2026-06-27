@@ -3,7 +3,7 @@
 // instead of hand-rolling a Biome config. Override only with a comment
 // explaining *what would break* if the override were removed.
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "extends": [
     "ultracite/biome/core",
     "ultracite/biome/react",

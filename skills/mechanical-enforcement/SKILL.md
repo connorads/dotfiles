@@ -155,6 +155,30 @@ See `references/python-vulture.toml`.
 | Conservative gate | `min_confidence = 100` | Dynamic Python false positives blocking commits | Use lower confidence only for manual cleanup reports. |
 | Whitelist intentional dynamic use | `vulture_whitelist.py` checked into the repo | Broad excludes hiding real dead code | Prefer whitelists over `ignore_names` / `ignore_decorators`; exclude only generated/vendor/build trees. |
 
+### TypeScript: what Biome 2.x covers (and the ESLint hold-outs)
+
+Biome 2.x (pin `$schema` to the current release — 2.5.x as of mid-2026) has
+absorbed much of what previously forced an ESLint flat config. Move those rules
+into `biome.json` and keep ESLint only for what genuinely remains.
+
+| Capability | Biome rule | Status | Replaces |
+|---|---|---|---|
+| Ban modules / globals by path or glob | `noRestrictedImports`, `noRestrictedGlobals` | stable | most ESLint `no-restricted-imports` / `no-restricted-globals` |
+| Custom project-local AST rules | GritQL plugins (`.grit` via `linter.plugins`) | stable (code fixes in 2.5) | many `no-restricted-syntax` rules and some greppable invariants |
+| Floating / misused promises | `noFloatingPromises`, `noMisusedPromises` (`types` domain) | nursery → advisory | a typescript-eslint class nothing else here catches |
+| Import cycles | `noImportCycles` (`project` domain) | stable but scanner-heavy | overlaps madge — madge stays primary on perf (see Import hygiene) |
+
+Genuine ESLint hold-outs — keep ESLint for these:
+
+- **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
+- **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
+
+GritQL plugins can't be shared across repos (by design), so a reusable
+cross-repo invariant pack still lives in a shared ESLint config or the
+greppable-invariants tier. Enabling the `types` / `project` domains turns on
+Biome's project scanner — real perf cost, so treat those rules as advisory, not
+a blocking gate.
+
 ### Architectural boundaries
 
 Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs uncompilable. The catalogue of patterns:
