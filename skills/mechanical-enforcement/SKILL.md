@@ -42,6 +42,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Markdown | rumdl | rumdl | — | — | Handles frontmatter too. |
 | Nix | nixfmt | deadnix + statix | — | — | |
 | YAML | — | yamllint | — | — | |
+| TOML | taplo (`taplo fmt`) | taplo (`taplo lint` + JSON-schema) | — | — | Format + lint + schema-validate `Cargo.toml` / `*.toml` config. Maintenance is in limbo (no release since 0.10.0, May 2025) — watch [`tombi`](https://github.com/tombi-toml/tombi) as the successor. |
 | Commit messages | — | commitlint (`@commitlint/config-conventional`) | — | — | One-line config. See `references/commitlint.config.js`. |
 | Secrets | — | gitleaks | — | — | Always add — cheap, high-signal. |
 | Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes, tiny false-positive rate. |
