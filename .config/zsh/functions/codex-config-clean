@@ -11,6 +11,9 @@ emulate -L zsh
 #   [mcp_servers.node_repl]       Codex.app-injected browser-feature wiring
 #                                 (abs /Applications + CODEX_HOME paths, app SHA);
 #                                 matched BY NAME so genuine MCP servers survive
+#   [hooks.state."..."]          per-machine trusted_hash keyed by absolute path
+#                                 (regenerated on /hooks trust); the bare
+#                                 [hooks.state] header is kept as a portable marker
 #   notify = [...]                absolute machine-local app paths
 #   js_repl = ...                 app-flipped browser-feature flag (regenerated)
 # The browser feature regenerates all of the above per machine from the portable
@@ -25,6 +28,7 @@ awk '
   /^\[marketplaces\./ { skip=1; next }
   /^\[tui\.model_availability_nux\]/ { skip=1; next }
   /^\[mcp_servers\.node_repl/ { skip=1; next }
+  /^\[hooks\.state\./ { skip=1; next }
   /^\[/ { skip=0 }
   skip { next }
   /^notify[[:space:]]*=/ { next }
