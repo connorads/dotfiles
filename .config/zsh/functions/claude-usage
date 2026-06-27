@@ -39,6 +39,36 @@ done
 [[ -r "$self_file" ]] || self_file="${0:A}"
 source "${self_file:A:h}/usage-cache-lib"
 
+_read_claude_credentials_json() {
+    local credentials_json=""
+    # Keychain-first on macOS, but fall back to the file store: recent Claude
+    # Code keeps credentials in ~/.claude/.credentials.json and leaves the
+    # keychain item empty, so an empty keychain read must not mean "logged out".
+    if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
+        credentials_json=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null || true)
+    fi
+    if [[ -z "$credentials_json" && -f "$HOME/.claude/.credentials.json" ]]; then
+        credentials_json=$(<"$HOME/.claude/.credentials.json")
+    fi
+    print -r -- "$credentials_json"
+}
+
+_auth_failure() {
+    local http_status="$1"
+    local err="${(L)2}"
+    [[ "$http_status" -eq 401 ]] 2>/dev/null && return 0
+    [[ "$err" == *"invalid authentication credentials"* ]] && return 0
+    [[ "$err" == *"authentication_error"* ]] && return 0
+    return 1
+}
+
+_auth_paused_meta() {
+    local http_status="$1"
+    local err="${(L)2}"
+    [[ "$err" == "auth_expired" ]] && return 0
+    _auth_failure "$http_status" "$err"
+}
+
 if [[ ! -f "$meta" ]]; then
     _write_meta 0 0 "" "" 0
 fi
@@ -46,28 +76,39 @@ fi
 next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
 fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
 last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
+local last_error last_http_status meta_auth_expires_at credentials_json current_auth_expires_at auth_fetch_paused=0
+last_error=$(jq -r '.last_error // ""' "$meta" 2>/dev/null || echo "")
+last_http_status=$(jq -r '.last_http_status // ""' "$meta" 2>/dev/null || echo "")
+meta_auth_expires_at=$(jq -r '.auth_expires_at // empty' "$meta" 2>/dev/null || echo "")
+credentials_json=$(_read_claude_credentials_json)
+current_auth_expires_at=$(print -r -- "$credentials_json" | jq -r '.claudeAiOauth.expiresAt // empty' 2>/dev/null || echo "")
 age=$(_cache_age "$cache")
 
-local should_fetch=0
-if [[ ! -f "$cache" ]]; then
-    [[ "$now" -ge "$next_retry" ]] && should_fetch=1
-elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
-    should_fetch=1
+local should_fetch=0 auth_pause_current=0
+if _auth_paused_meta "$last_http_status" "$last_error"; then
+    if [[ -n "$current_auth_expires_at" && ( -z "$meta_auth_expires_at" || "$current_auth_expires_at" != "$meta_auth_expires_at" ) ]]; then
+        # Claude Code refreshed credentials since the auth failure; retry now.
+        next_retry=0
+        fail_count=0
+    else
+        auth_pause_current=1
+        auth_fetch_paused=1
+    fi
+fi
+
+if [[ "$auth_pause_current" -eq 0 ]]; then
+    if [[ ! -f "$cache" ]]; then
+        [[ "$now" -ge "$next_retry" ]] && should_fetch=1
+    elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
+        should_fetch=1
+    fi
 fi
 
 if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
     trap _cleanup EXIT INT TERM HUP
 
-    # Keychain-first on macOS, but fall back to the file store: recent Claude
-    # Code keeps credentials in ~/.claude/.credentials.json and leaves the
-    # keychain item empty, so an empty keychain read must not mean "logged out".
     local token=""
-    if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
-        token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-    fi
-    if [[ -z "$token" && -f "$HOME/.claude/.credentials.json" ]]; then
-        token=$(jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null)
-    fi
+    token=$(print -r -- "$credentials_json" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
 
     if [[ -z "$token" ]]; then
         _cleanup
@@ -101,10 +142,16 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
             print -r -- "$resp" > "${cache}.tmp.$$"
             mv "${cache}.tmp.$$" "$cache"
             _write_meta 0 0 "$http_code" "" "$now"
+            auth_fetch_paused=0
             age=0
         else
-            err=$(jq -r '.error.message? // .message? // "fetch_failed"' "$body" 2>/dev/null)
-            _record_failure "$fail_count" "$retry_after" "${http_code:-0}" "$err" "$last_success"
+            err=$(jq -r '.error.type? // .error.message? // .message? // "fetch_failed"' "$body" 2>/dev/null)
+            if _auth_failure "${http_code:-0}" "$err"; then
+                _write_auth_paused "${http_code:-401}" "$err" "$last_success" "$current_auth_expires_at"
+                auth_fetch_paused=1
+            else
+                _record_failure "$fail_count" "$retry_after" "${http_code:-0}" "$err" "$last_success"
+            fi
         fi
     else
         _record_failure "$fail_count" "" "0" "network_error" "$last_success"
@@ -116,7 +163,10 @@ fi
 
 if [[ ! -f "$cache" ]]; then
     next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
-    if [[ "$next_retry" -gt "$now" ]]; then
+    last_error=$(jq -r '.last_error // ""' "$meta" 2>/dev/null || echo "")
+    if [[ "$last_error" == "auth_expired" || "$auth_fetch_paused" -eq 1 ]]; then
+        echo "Claude auth expired — use Claude or run claude auth login"
+    elif [[ "$next_retry" -gt "$now" ]]; then
         echo "Usage refresh paused for $(_fmt_secs $((next_retry - now)))"
     else
         echo "Failed to fetch usage data"
@@ -190,4 +240,9 @@ if [[ -n "$ex_enabled" ]]; then
         status_label="disabled"
     fi
     printf "%-9s %s/%s  (%s)\n" "Extra:" "$used_fmt" "$limit_fmt" "$status_label"
+fi
+
+last_error=$(jq -r '.last_error // ""' "$meta" 2>/dev/null || echo "")
+if [[ "$last_error" == "auth_expired" || "$auth_fetch_paused" -eq 1 ]]; then
+    printf "%-9s expired — use Claude or run claude auth login\n" "Auth:"
 fi
