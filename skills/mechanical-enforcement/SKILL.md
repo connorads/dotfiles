@@ -33,7 +33,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 |---|---|---|---|---|---|
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
-| Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (or pyright); ty as beta supplement | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
+| Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
 | SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | — | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta — start advisory, verify dialect coverage before blocking. |
@@ -131,18 +131,23 @@ projects, noisy as defaults.
 
 Use basedpyright as the default blocking type gate. Its `recommended` mode is
 the best shared default: broad diagnostics, fail-on-warnings behaviour, and a
-baseline workflow for existing projects. See `references/python-typecheck.toml`.
+baseline workflow for existing projects. The fast Rust newcomers are catching
+up — pyrefly is production (1.x), ty still beta — but basedpyright stays the gate
+on maturity, conformance, and its MIT licence. See
+`references/python-typecheck.toml`.
 
 | Tool | Default use | Notes |
 |---|---|---|
 | basedpyright | Primary gate with `typeCheckingMode = "recommended"` | Prefer `[tool.basedpyright]` in `pyproject.toml`; use `--writebaseline` only during adoption, never in CI. |
 | basedpyright `all` | Greenfield or deliberately strict projects | Higher friction; enable only once the codebase wants that contract. |
 | pyright | Compatibility fallback | Use `pyright --warnings` so warnings fail CI. |
-| ty | Optional beta supplement | Pin tightly, start advisory, and do not replace basedpyright yet while diagnostics are still unstable. |
+| pyrefly | Fast secondary / migration aid (Rust) | Meta's checker reached stable 1.x (~92% conformance, production at Instagram/PyTorch). Strong fast pre-filter and mypy/pyright-config migration path, but it doesn't follow strict semver — a bump can add errors — so keep basedpyright as the authoritative gate. |
+| ty | Watch (beta, 0.0.x) | Astral's checker; fastest of the field and best uv/ruff fit, but diagnostics are explicitly unstable and conformance trails the others. Advisory only — re-evaluate at 1.0. |
 
 Suppressions must be narrow and rule-coded: `# pyright: ignore[reportX]`,
-`# ty: ignore[rule-name]`, or `# type: ignore[ty:rule-name]`. Avoid bare
-`# type: ignore`; keep unused-ignore diagnostics enabled so suppressions expire.
+`# pyrefly: ignore[rule]`, `# ty: ignore[rule-name]`, or
+`# type: ignore[ty:rule-name]`. Avoid bare `# type: ignore`; keep unused-ignore
+diagnostics enabled so suppressions expire.
 
 ### Python: dead code (Vulture)
 
@@ -449,7 +454,7 @@ The typical mapping (Python):
 ```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, ruff check --fix, ruff format
 tier 2 (lint/gate)      → ruff check, gitleaks, yamllint, check-merge-conflict
-tier 3 (typecheck)      → basedpyright (optional pinned ty check as advisory/secondary)
+tier 3 (typecheck)      → basedpyright (primary); optional pinned pyrefly/ty as advisory/secondary
 tier 4 (dead code/test) → vulture at min_confidence=100 after baseline cleanup; pytest/coverage
 ```
 

@@ -30,9 +30,21 @@ exclude = [
 # - Use `[tool.pyright]` only when the project explicitly wants upstream pyright.
 # - Run `pyright --warnings` in CI so warnings fail the gate.
 
-# ty is a fast, promising checker, but upstream still treats it as beta/0.0.x.
-# Use it as a pinned supplementary job first, not as the default replacement for
-# basedpyright. Do not use `--error=all`; configure targeted stricter rules.
+# pyrefly (Meta, Rust) reached stable 1.x and is the more gate-ready of the two
+# fast Rust newcomers (~92% conformance, production at Instagram/PyTorch). Use it
+# as a fast secondary / migration aid, but it doesn't follow strict semver — a
+# bump can introduce new errors — so keep basedpyright as the authoritative gate
+# and pin pyrefly under the release-age quarantine. See pyrefly docs for the full
+# key set.
+#
+# [tool.pyrefly]
+# project-includes = ["src", "tests"]
+# python-version = "3.12"
+
+# ty is faster still and fits the uv/ruff ecosystem, but upstream treats it as
+# beta/0.0.x with explicitly-unstable diagnostics — watch/advisory only, do not
+# gate on it yet. Pin tightly. Do not use `--error=all`; configure targeted
+# stricter rules.
 #
 # [tool.ty]
 # environment.python-version = "3.12"
