@@ -340,6 +340,55 @@ end
 
 Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby` (AppImage on Linux); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
 
+### Cross-platform with single-arch Linux AppImage
+
+When the Linux build ships for only one arch (e.g. x86_64 only), do not use the `x86_64_linux:`/`arm64_linux:` keys and do not put `depends_on arch:` at top level (it would block macOS). Instead put a plain (unkeyed) `sha256` **and** `depends_on arch: :x86_64` *inside* `on_linux`, and use `on_system_conditional` to switch the artifact filename. Model on `t3-code` in `homebrew-cask`:
+
+```ruby
+cask "app-name" do
+  arch arm: "arm64", intel: "x64"   # macOS arch strings only
+
+  version "1.2.3"
+
+  artifact = on_system_conditional linux:  "AppName-#{version}-x86_64.AppImage",
+                                   macos: "AppName-#{version}-#{arch}.dmg"
+
+  url "https://github.com/owner/repo/releases/download/v#{version}/#{artifact}",
+      verified: "github.com/owner/repo/"
+  name "App Name"
+  desc "Short one-line description"
+  homepage "https://example.com/"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  on_macos do
+    sha256 arm:   "...",
+           intel: "..."
+    depends_on macos: :monterey
+    app "AppName.app"
+    zap trash: [
+      "~/Library/Application Support/AppName",
+      "~/Library/Preferences/com.example.app.plist",
+    ]
+  end
+
+  on_linux do
+    sha256 "..."                     # plain, unkeyed — only one Linux arch exists
+    depends_on arch: :x86_64
+    app_image artifact, target: "AppName.AppImage"
+  end
+end
+```
+
+Key points:
+- The `arch` helper is declared for the macOS side only (used inside the `#{arch}` interpolation of the macOS `.dmg` name). The Linux artifact name is hardcoded to `x86_64` (no `arm64_linux` build exists to switch on).
+- `sha256` inside `on_linux` is plain/unkeyed — there's only one Linux artifact. Using `x86_64_linux:` here would imply a `arm64_linux:` value that doesn't exist.
+- `depends_on arch: :x86_64` lives inside `on_linux` so it only constrains the Linux install; a top-level `depends_on arch:` would spill onto macOS and block Apple-Silicon users.
+- `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
+
 _Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
 
 ### Livecheck (Version Auto-detection)
