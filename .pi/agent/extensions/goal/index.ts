@@ -15,7 +15,6 @@
 // dependencies are first-party (./core.ts, ./prompts.ts, ./runtime.ts).
 import type {
   AgentEndEvent,
-  AgentMessage,
   BeforeAgentStartEvent,
   ContextEvent,
   ExtensionAPI,
@@ -23,6 +22,10 @@ import type {
   InputEvent,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+
+// pi's live message type — the element of ContextEvent.messages. Derived via
+// indexed access because pi does not re-export the name from its package root.
+type PiMessage = ContextEvent["messages"][number];
 import type { TSchema } from "typebox";
 
 import {
@@ -222,7 +225,7 @@ export function createGoalEngine(): GoalEngine {
         errorClass: classifyError(stopReason, lastAssistantErrorMessage(messages)),
         contextPercent: rt.contextPercent(),
       });
-      if (decision.mark) {
+      if ("mark" in decision && decision.mark) {
         rt.record({ kind: "status", at: rt.now(), status: decision.mark.status, reason: decision.mark.reason });
       }
       syncUi(rt);
@@ -409,10 +412,12 @@ export default function (pi: ExtensionAPI): void {
   // Inject the volatile per-turn tail (budget countdown / wrap-up) into the live
   // message list, once per turn.
   pi.on("context", (event: ContextEvent, ctx) => {
-    const messages = engine.onContext(rtOf(ctx), event.messages);
-    // SAFETY: onContext returns the same structural shape it received (AgentMessage
-    // fields role/content/timestamp), only appending a well-formed user message.
-    return messages ? { messages: messages as unknown as AgentMessage[] } : undefined;
+    // ChatMessage is a deliberate structural subset of pi's message type (role/
+    // content/timestamp); cast at this single boundary so the engine stays decoupled.
+    const messages = engine.onContext(rtOf(ctx), event.messages as unknown as ChatMessage[]);
+    // SAFETY: onContext returns the same structural shape it received, only appending
+    // a well-formed user message.
+    return messages ? { messages: messages as unknown as PiMessage[] } : undefined;
   });
 
   pi.on("agent_start", () => engine.onAgentStart());
