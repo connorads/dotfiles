@@ -33,6 +33,8 @@
 | `Ctrl+b E` | spread panes evenly |
 | `Ctrl+b Alt+1` | even horizontal layout |
 | `Ctrl+b Alt+2` | even vertical layout |
+| `Ctrl+b Alt+3` | main horizontal layout |
+| `Ctrl+b Alt+4` | main vertical layout |
 | `Ctrl+b Alt+5` | tiled layout |
 | `Ctrl+b L` | layout presets (fzf picker) |
 | `Ctrl+b N` | prompt for total panes, then build two-row grid |
