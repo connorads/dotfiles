@@ -216,8 +216,6 @@ export function createGoalEngine(): GoalEngine {
       }
 
       const decision = decideContinuation(state, {
-        aborted: false,
-        humanTookOver: false,
         errorClass: classifyError(stopReason, lastAssistantErrorMessage(messages)),
         contextPercent: rt.contextPercent(),
       });

@@ -470,10 +470,6 @@ export function classifyError(
 // ---------------------------------------------------------------------------
 
 export interface ContinuationSignals {
-  /** The run was aborted (Esc / stopReason "aborted"). */
-  aborted: boolean;
-  /** A human sent an interactive message, taking manual control. */
-  humanTookOver: boolean;
   /** Classification of the run's terminal error, if any. */
   errorClass: "none" | "retryable" | "fatal";
   /** Context usage percent (0–100), or null when unknown. */
@@ -503,9 +499,11 @@ export function goalToolsShouldBeActive(state: GoalState): boolean {
  * Decide whether to auto-continue after a run, as a total pure function of the
  * post-progress state and the run's signals. Precedence (highest first):
  *
- *   no-goal → steer-only → status≠active → aborted → human-takeover →
- *   fatal-error(→blocked) → budget(→one wrap-up turn) → stuck → max-iterations →
- *   context-full → continue
+ *   no-goal → steer-only → status≠active → fatal-error(→blocked) →
+ *   budget(→one wrap-up turn) → stuck → max-iterations → context-full → continue
+ *
+ * Abort and human-takeover are owned by the shell (onAgentEnd pre-empts them via
+ * pauseFromLoop, before metering), so they never reach this function.
  *
  * Hard caps (budget/stuck/max-iter/context) sit ABOVE retryable errors so that a
  * persistently-erroring run cannot bypass them and run away — the whole point of
@@ -516,12 +514,6 @@ export function decideContinuation(state: GoalState, signals: ContinuationSignal
   if (state.mode.kind !== "auto") return { action: "stop", reason: "steer_only" };
   if (state.status !== "active") return { action: "stop", reason: "already_terminal" };
 
-  if (signals.aborted) {
-    return { action: "pause", reason: "interrupted", mark: { status: "paused", reason: "interrupted" } };
-  }
-  if (signals.humanTookOver) {
-    return { action: "pause", reason: "human_takeover", mark: { status: "paused", reason: "human_takeover" } };
-  }
   if (signals.errorClass === "fatal") {
     return { action: "pause", reason: "error_fatal", mark: { status: "blocked", reason: "error_fatal" } };
   }

@@ -385,8 +385,6 @@ test("classifyError: error vs transient vs none", () => {
 // ---------------------------------------------------------------------------
 
 const okSignals = (over: Partial<ContinuationSignals> = {}): ContinuationSignals => ({
-  aborted: false,
-  humanTookOver: false,
   errorClass: "none",
   contextPercent: null,
   ...over,
@@ -409,24 +407,6 @@ test("decideContinuation: a non-active status stops (already terminal)", () => {
 test("decideContinuation: a clean active run continues", () => {
   const state: GoalState = { text: "A", status: "active", mode: auto({ iteration: 1, tokensUsed: 10 }) };
   assert.deepEqual(decideContinuation(state, okSignals()), { action: "continue", reason: "ok" });
-});
-
-test("decideContinuation: abort pauses (interrupted), never continues", () => {
-  const state: GoalState = { text: "A", status: "active", mode: auto() };
-  assert.deepEqual(decideContinuation(state, okSignals({ aborted: true })), {
-    action: "pause",
-    reason: "interrupted",
-    mark: { status: "paused", reason: "interrupted" },
-  });
-});
-
-test("decideContinuation: human takeover pauses", () => {
-  const state: GoalState = { text: "A", status: "active", mode: auto() };
-  assert.deepEqual(decideContinuation(state, okSignals({ humanTookOver: true })), {
-    action: "pause",
-    reason: "human_takeover",
-    mark: { status: "paused", reason: "human_takeover" },
-  });
 });
 
 test("decideContinuation: a fatal error pauses and marks blocked", () => {
@@ -482,14 +462,14 @@ test("decideContinuation: a retryable error keeps the loop going (caps still app
   });
 });
 
-test("decideContinuation precedence: abort beats budget/stuck/max-iter", () => {
+test("decideContinuation precedence: a fatal error pauses (blocked) regardless of budget/stuck/max-iter caps", () => {
   const maxed: GoalState = {
     text: "A",
     status: "active",
     mode: auto({ tokensUsed: 9999, noProgressCount: 9, iteration: 99, maxIterations: 5 }),
   };
-  assert.equal(decideContinuation(maxed, okSignals({ aborted: true })).action, "pause");
-  assert.equal(decideContinuation(maxed, okSignals({ aborted: true })).reason, "interrupted");
+  assert.equal(decideContinuation(maxed, okSignals({ errorClass: "fatal" })).action, "pause");
+  assert.equal(decideContinuation(maxed, okSignals({ errorClass: "fatal" })).reason, "error_fatal");
 });
 
 test("decideContinuation precedence: a persistent retryable error cannot bypass the caps", () => {
@@ -734,7 +714,7 @@ test("property: parseGoalOptions round-trip — text is the objective minus reco
   }
 });
 
-test("property: decideContinuation always stops/pauses on terminal/abort/human regardless of caps", () => {
+test("property: decideContinuation always pauses on a fatal error regardless of caps", () => {
   const rand = mulberry32(0xABCD);
   for (let iter = 0; iter < 1000; iter++) {
     const mode = auto({
@@ -745,9 +725,6 @@ test("property: decideContinuation always stops/pauses on terminal/abort/human r
       noProgressCount: Math.floor(rand() * 10),
     });
     const state: GoalState = { text: "A", status: "active", mode };
-    // Abort and human-takeover must never yield "continue".
-    assert.notEqual(decideContinuation(state, okSignals({ aborted: true })).action, "continue");
-    assert.notEqual(decideContinuation(state, okSignals({ humanTookOver: true })).action, "continue");
     // A fatal error must never continue.
     assert.notEqual(decideContinuation(state, okSignals({ errorClass: "fatal" })).action, "continue");
   }
