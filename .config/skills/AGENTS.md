@@ -255,6 +255,12 @@ and diff-review clones against the prior vetted copy before trusting them.
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
 
+  Current untracked: `govuk-style` — from a **gist**
+  (`gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2`), so the CLI can't ingest it
+  (it rewrites the URL to `github.com/fofr/505e…git`, which 404s — gists live on a
+  different host). Single `SKILL.md`, no scripts; refresh by re-cloning the gist and
+  diffing. GOV.UK / GDS house-style prose skill (plain English, sentence case, no bold).
+
 - `connorads/skills` public repo is **deferred** — public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
   just a tracking handoff (dotfiles stops tracking its contents). Sanitise any personal refs
