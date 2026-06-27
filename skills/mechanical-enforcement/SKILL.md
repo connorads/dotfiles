@@ -308,8 +308,22 @@ enforces dependency-version consistency across workspaces.
 |---|---|---|
 | No committed secrets | gitleaks pre-commit step | Token leaks |
 | Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `install_before` | Compromised releases |
+| Detect deps that slipped the quarantine | osv-scanner against lockfiles (`mise run supply-audit`) | Malware (OSV `MAL-*`) + CVEs in already-installed deps — the detective half a time-based age-gate can't see |
 | No `--no-verify` | Documented in project CLAUDE.md / AGENTS.md; not technically preventable | Bypassing the whole gate. Cultural rule — reinforce in every project's agent docs. |
 | Pinned + safe GitHub Actions workflows | [zizmor](https://github.com/zizmorcore/zizmor) (gate on exit ≥ 11) | Unpinned actions (`unpinned-uses`), dangerous triggers (`dangerous-triggers` — `pull_request_target`/`workflow_run`), template injection into `run:` (`template-injection`), over-broad `permissions:` (`excessive-permissions`), impostor commits, typosquatted actions |
+
+The quarantine and gitleaks rows are *preventive* — they slow adoption so the
+community can flag a bad release, but nothing detects malware that already
+slipped through (the 2026 worm waves shipped packages with valid provenance).
+**osv-scanner** is the *detective* layer: it matches every lockfile ecosystem
+(npm/pnpm, Cargo, uv/pip, Go, …) against the OSV database, including the `MAL-*`
+malicious-package advisories an age-gate can't see. Run it in a project dir
+(`osv-scanner scan source -r .`, wired as `mise run supply-audit` via
+`aqua:google/osv-scanner`) and gate it in CI for repos that matter. Native
+`pnpm` / `npm` / `bun audit` are GHSA-only (no malware) — an advisory fallback,
+not a substitute. Socket (behavioural SCA + install firewall) is a watch:
+stronger detection, but SaaS / telemetry / proprietary, against this skill's
+local-OSS grain.
 
 ### Rust: type safety & correctness
 
