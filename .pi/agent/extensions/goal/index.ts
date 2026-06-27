@@ -59,6 +59,7 @@ import { createPiRuntime, type GoalRuntime } from "./runtime.ts";
 // ---------------------------------------------------------------------------
 
 type TextBlock = { type: "text"; text: string };
+type ContentBlock = TextBlock | { type: string; [k: string]: unknown };
 interface ChatMessage {
   role: string;
   content: unknown;
@@ -66,33 +67,34 @@ interface ChatMessage {
 }
 
 /**
+ * Normalise a message's content into a block array, shallow-cloning each block so
+ * the result can be appended to without mutating the source: a string becomes a
+ * single text block (an empty string contributes nothing), an array is mapped to
+ * shallow-cloned blocks, and any other shape yields no blocks.
+ */
+function toBlocks(content: unknown): ContentBlock[] {
+  if (typeof content === "string") return content === "" ? [] : [{ type: "text", text: content }];
+  if (Array.isArray(content)) return content.map((b) => (typeof b === "object" && b !== null ? { ...b } : b));
+  return [];
+}
+
+/**
  * Append the goal tail to the trailing user message (or, if the last message is
  * not a user message, as a new trailing user message). Merging avoids two
- * consecutive user messages, which pi forwards verbatim to the provider. Operates
- * on a deep copy — the live session entries are never mutated.
+ * consecutive user messages, which pi forwards verbatim to the provider. Each
+ * message is shallow-copied and the target gets a brand-new content array, so the
+ * live session entries are never mutated.
  */
 function appendGoalTail(messages: readonly ChatMessage[], tail: string, at: number): ChatMessage[] {
-  const copy: ChatMessage[] = messages.map((m) => ({ ...m, content: cloneContent(m.content) }));
+  const copy: ChatMessage[] = messages.map((m) => ({ ...m }));
   const last = copy[copy.length - 1];
   const block: TextBlock = { type: "text", text: tail };
   if (last && last.role === "user") {
-    last.content = appendBlock(last.content, block);
+    last.content = [...toBlocks(last.content), block];
     return copy;
   }
   copy.push({ role: "user", content: [block], timestamp: at });
   return copy;
-}
-
-function cloneContent(content: unknown): unknown {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) return content.map((b) => (typeof b === "object" && b !== null ? { ...b } : b));
-  return content;
-}
-
-function appendBlock(content: unknown, block: TextBlock): unknown {
-  if (typeof content === "string") return [{ type: "text", text: content }, block];
-  if (Array.isArray(content)) return [...content, block];
-  return [block];
 }
 
 // ---------------------------------------------------------------------------
