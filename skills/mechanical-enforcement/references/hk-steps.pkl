@@ -139,6 +139,17 @@ hooks {
             ["noop"] {
                 check = "true"
             }
+            // Library publish gate (post-build): publint validates the
+            // package.json export map and attw checks the shipped .d.ts resolve
+            // across moduleResolution modes. Both need the built dist + .d.ts,
+            // so wire them into the release workflow if the build doesn't run on
+            // push. Pin both under the release-age quarantine.
+            // ["publint"] {
+            //     check = "scripts/quiet-on-success.sh pnpm exec publint"
+            // }
+            // ["attw"] {
+            //     check = "scripts/quiet-on-success.sh pnpm exec attw --pack --profile node16"
+            // }
         }
     }
 }
