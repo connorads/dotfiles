@@ -150,6 +150,22 @@ node --test core.test.ts prompts.test.ts index.test.ts
   anchor/tail presence; resume; session_tree), plus a pi+ctx fake that drives the real
   adapter and command/tool registration end-to-end.
 
+### Typecheck
+
+A strict `tsgo` (`@typescript/native-preview`) pass guards the types — `tsc` reports
+identical results:
+
+```sh
+pnpm install   # dev-only: pi's type declarations + tsgo
+pnpm typecheck  # tsgo -p tsconfig.json
+```
+
+The **runtime** stays dependency-free (the only runtime imports are the first-party
+`./core.ts`/`./prompts.ts`; pi and typebox are type-only, erased). The typecheck
+`devDependencies` — `@earendil-works/pi-coding-agent` (pinned to the running runtime so
+the pi API surface is checked for real), `typebox`, `@types/node`, and `tsgo` — are dev
+tooling only; they are never imported at runtime and `node --test` needs none of them.
+
 Live smoke: `/goal --tokens 1k "tiny task"` → watch one continuation, the budget wrap-up
 turn, then a clean stop; confirm `/goal status`, Esc-pauses, a human message yields, and
 `--steer-only` never loops.
