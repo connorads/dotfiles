@@ -285,27 +285,34 @@ depends_on cask: "other-required-app"
 
 ### Cross-platform (macOS + Linux / AppImage)
 
+One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then `on_macos` / `on_linux` blocks for the platform-specific artifacts. On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
+
 ```ruby
 cask "app-name" do
   on_macos do
     arch arm: "arm64", intel: "x86_64"
   end
   on_linux do
-    arch arm: "aarch64", intel: "amd64"
+    arch arm: "aarch64", intel: "amd64"     # arch strings often differ per OS — check upstream asset names
   end
 
   version "1.2.3"
   sha256 arm:          "...",
-         intel:         "...",
-         arm64_linux:   "...",
-         x86_64_linux:  "..."
+         intel:        "...",
+         arm64_linux:  "...",
+         x86_64_linux: "..."
 
   url_end = on_system_conditional linux: ".AppImage", macos: ".dmg"
-  url "https://github.com/owner/repo/releases/download/v#{version}/#{app}-#{version}-#{arch}#{url_end}",
+  url "https://github.com/owner/repo/releases/download/v#{version}/AppName_#{version}_#{arch}#{url_end}",
       verified: "github.com/owner/repo/"
   name "App Name"
   desc "Short one-line description"
   homepage "https://example.com/"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
 
   on_macos do
     depends_on macos: :monterey
@@ -322,13 +329,18 @@ cask "app-name" do
 end
 ```
 
-**`app_image` notes** (verified against `Library/Homebrew/cask/artifact/appimage.rb`):
+`app_image` mechanics:
 
-- Stanza is `app_image` (snake_case), Linux-only (`LINUX_ONLY_ARTIFACTS = [Artifact::AppImage]`).
-- Installs by symlinking the AppImage to `<appimagedir>/<target>` (default `~/Applications`) and `chmod +x` on the source. `brew uninstall` removes the symlink — no `uninstall` stanza needed.
-- `target:` gives a stable symlink name in `~/Applications/` so upgrades don't accumulate versioned links.
-- Linux `zap` paths live in the `on_linux` block: scan `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`. No `generate-zap` for Linux — derive manually.
-- `app_image` is absent from rubocop `STANZA_ORDER`, so `brew style --fix` will not auto-reorder it. Keep it alone inside `on_linux`.
+- **Stanza name** is `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage`), not `appimage`. It is **Linux-only**: gate it inside `on_linux`. An ungated `app_image` makes a macOS install raise `This cask requires Linux.`; conversely the macOS-only artifacts (`app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, ...) raise `This cask requires macOS.` on Linux unless gated inside `on_macos`. Top-level `depends_on :linux` is for a *Linux-only* cask — it deliberately blocks macOS install, so don't use it to gate a cross-platform cask.
+- **Signature**: `app_image "<source-filename-in-archive>", target: "<symlink-name>"`. `target:` is optional (defaults to the source basename) — always pass a stable name (e.g. `AppName.AppImage`) when the source embeds version/arch, so upgrades don't accumulate per-version symlinks.
+- **Install**: symlinks the source into `appimagedir` (default `~/Applications` on **both** macOS and Linux — `appdir`, by contrast, becomes `~/.config/apps` on Linux) and `chmod +x`s it. `brew uninstall` removes the symlink, so no `uninstall` stanza is needed. Override per-install with `--appimagedir=PATH`; don't hardcode the install path in `zap`.
+- **Linux user-state cleanup**: there's no `generate-zap` on Linux — scan `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>` and any XDG dirs the app writes (clone the upstream repo and grep for `os.homedir()` / `env-paths` / `xdg.*`). Put these in `zap trash:` inside the `on_linux` block — never in `uninstall`.
+- **`brew style`** has no stanza-order position for `app_image`, so it won't be auto-reordered. Place it alone inside `on_linux` (or after other artifacts if declared at top level) and run `brew style --fix` for everything else.
+- **sha256 / version per OS**: use the four top-level keys (`arm:`, `intel:`, `arm64_linux:`, `x86_64_linux:`), or split `sha256`/`version` into `on_macos`/`on_linux` blocks when they differ per OS. Add an `os macos:/linux:` stanza only when the asset name embeds an OS string (see `tabby`, `git-credential-manager`).
+
+Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby` (AppImage on Linux); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
+
+_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
 
 ### Livecheck (Version Auto-detection)
 
