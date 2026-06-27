@@ -27,6 +27,8 @@ skills = true
 shell_snapshot = true
 fast_mode = true
 goals = true
+# Lifecycle hooks -> ~/.codex/hooks.json (tmux agent-state dots). Trust once via /hooks.
+hooks = true
 
 [plugins."github@openai-curated"]
 enabled = true
