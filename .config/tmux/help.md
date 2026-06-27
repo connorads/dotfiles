@@ -51,6 +51,7 @@
 |-----|--------|
 | `Ctrl+b S` | fzf session picker |
 | `Ctrl+b W` | fzf window picker |
+| `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b f` | find window |
