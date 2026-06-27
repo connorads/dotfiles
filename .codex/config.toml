@@ -63,3 +63,5 @@ terminal_title = ["spinner", "project", "git-branch", "model"]
 
 [desktop]
 followUpQueueMode = "queue"
+
+[hooks.state]
