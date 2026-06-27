@@ -225,6 +225,16 @@ cross-package, and string-level cases ESLint can't see, and as a portable check
 an agent can run in any repo with no linter config. The "unique function names"
 grep step below is the same technique applied to one rule.
 
+**ast-grep upgrades the durable ones from text to AST.** `rg` matches strings,
+so it false-positives on comments and string literals and false-negatives across
+reformatting. [ast-grep](https://ast-grep.github.io/) (`sg`, Rust, production)
+matches tree-sitter AST patterns with `$VAR` metavariables and gates via
+`sg scan` (non-zero exit, YAML rules), polyglot from one binary. Use `rg` for
+quick / throwaway assertions and ast-grep for the boundary rules you want to
+keep — it also subsumes `no-restricted-syntax` rules that don't need type
+information. It is syntax-only, so type-aware boundaries (import resolution,
+`allowTypeImports`) still belong in ESLint / oxlint.
+
 ### UI hygiene (React / Next)
 
 | Rule | Encode with | Prevents | Notes |
