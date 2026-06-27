@@ -23,17 +23,13 @@ pane=${AGENT_STATE_PANE:-${TMUX_PANE:-}}
 [ -n "$pane" ] || exit 0
 command -v tmux >/dev/null 2>&1 || exit 0
 
-# Attention ranking — the window dot shows the worst (highest) of its panes:
-# blocked (needs you now) > done (finished, unseen) > working > idle.
-rank() {
-	case $1 in
-	blocked) echo 4 ;;
-	done) echo 3 ;;
-	working) echo 2 ;;
-	idle) echo 1 ;;
-	*) echo 0 ;;
-	esac
-}
+# Shared rollup helpers (rank + roll_window) live beside this script so phase 1
+# (here) and phase 5 (agent-sweep.sh) share one implementation. agent-state.sh
+# is always invoked by full path, so the sibling lib resolves off $0.
+# shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom, not a bad assign
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=agent-state-lib.sh disable=SC1091
+. "$SELF_DIR/agent-state-lib.sh"
 
 window=$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null) || exit 0
 [ -n "$window" ] || exit 0
@@ -70,23 +66,6 @@ clear)
 esac
 
 # Roll the worst pane state in this window up to the option the tabs render.
-best=
-best_rank=0
-while IFS= read -r s; do
-	[ -n "$s" ] || continue
-	r=$(rank "$s")
-	[ "$r" -gt "$best_rank" ] && {
-		best_rank=$r
-		best=$s
-	}
-done <<EOF
-$(tmux list-panes -t "$window" -F '#{@agent_state}' 2>/dev/null)
-EOF
-
-if [ -n "$best" ]; then
-	tmux set-option -w -t "$window" @win_agent_state "$best"
-else
-	tmux set-option -wu -t "$window" @win_agent_state 2>/dev/null || true
-fi
+roll_window "$window"
 
 tmux refresh-client -S 2>/dev/null || true
