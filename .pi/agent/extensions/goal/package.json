@@ -1,0 +1,13 @@
+{
+  "name": "pi-goal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A persistent objective that steers the agent across turns and survives context compaction",
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "scripts": {
+    "test": "node --test core.test.ts index.test.ts"
+  }
+}
