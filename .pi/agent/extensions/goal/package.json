@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A persistent objective that steers the agent across turns and survives context compaction",
+  "description": "A persistent, self-driving objective that steers the agent across turns, drives it toward completion within a token budget, and survives context compaction",
   "pi": {
     "extensions": ["./index.ts"]
   },
