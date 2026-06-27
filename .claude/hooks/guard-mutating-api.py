@@ -39,17 +39,18 @@ NOT_GH_API_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
 GH_API_RE = re.compile(r"\bgh\s+api\b")
 
 # --- Regex fallback (used only when the command can't be tokenised) ---
-# These err on the safe side: no GET override, so an unparseable command with any
-# body-param flag is still flagged. Verified behaviour (gh api --help):
-# "adding request parameters will automatically switch the request method to POST.
-#  To send the parameters as a GET query string instead, use --method GET."
+# These still inspect only text after each `gh api` token. A flag used by an
+# earlier shell helper, such as `cut -f1`, must not make a later read-only
+# `gh api` look mutating.
 METHOD_FLAG_RE = re.compile(
     r"(?:-X\s*|--method[\s=])(" + "|".join(MUTATING_METHODS) + r")\b",
     re.IGNORECASE,
 )
+GET_METHOD_FLAG_RE = re.compile(r"(?:-X\s*|--method[\s=])GET\b", re.IGNORECASE)
 IMPLICIT_POST_RE = re.compile(
-    r"(?:^|\s)(?:-[fF]\s+|--raw-field[\s=]|--field[\s=]|--input[\s=])"
+    r"(?:^|\s)(?:-[fF](?:\s+|\S)|--raw-field[\s=]|--field[\s=]|--input[\s=])"
 )
+SHELL_SEPARATOR_RE = re.compile(r"\s(?:&&|\|\||[;|])\s")
 
 # --- Token-level detection (preferred path) ---
 # Command separators that split shell commands without trying to be a full shell
@@ -64,11 +65,26 @@ GLUED_IMPLICIT_RE = re.compile(r"^(?:-[fF].|--(?:raw-field|field|input)=)")
 IMPLICIT_FLAGS = {"-f", "-F", "--field", "--raw-field", "--input"}
 
 
+def _fallback_invocations(command: str) -> list[str]:
+    """Best-effort `gh api` argument substrings for unparseable commands."""
+    invocations: list[str] = []
+    for match in GH_API_RE.finditer(command):
+        rest = command[match.end() :]
+        separator = SHELL_SEPARATOR_RE.search(rest)
+        invocations.append(rest[: separator.start()] if separator else rest)
+    return invocations
+
+
+def _is_mutating_args_regex(args: str) -> bool:
+    """Return True when a rough `gh api` argument string looks mutating."""
+    if METHOD_FLAG_RE.search(args) is not None:
+        return True
+    return IMPLICIT_POST_RE.search(args) is not None and GET_METHOD_FLAG_RE.search(args) is None
+
+
 def _regex_fallback(command: str) -> bool:
     """Safe-erring detection for commands that can't be shell-tokenised."""
-    if METHOD_FLAG_RE.search(command) is not None:
-        return True
-    return IMPLICIT_POST_RE.search(command) is not None
+    return any(_is_mutating_args_regex(args) for args in _fallback_invocations(command))
 
 
 def _methods_and_implicit(tokens: list[str]) -> tuple[set[str], bool]:
@@ -96,13 +112,18 @@ def _methods_and_implicit(tokens: list[str]) -> tuple[set[str], bool]:
     return methods, implicit
 
 
-def _count_gh_api(tokens: list[str]) -> int:
-    """Count `gh api` invocations among tokens (adjacent gh -> api)."""
-    return sum(
-        1
+def _gh_api_arg_vectors(tokens: list[str]) -> list[list[str]]:
+    """Return argv slices after each `gh api` token pair in a segment."""
+    starts = [
+        i
         for i in range(len(tokens) - 1)
         if tokens[i] == "gh" and tokens[i + 1] == "api"
-    )
+    ]
+    invocations: list[list[str]] = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(tokens)
+        invocations.append(tokens[start + 2 : end])
+    return invocations
 
 
 def _command_segments(tokens: list[str]) -> list[list[str]]:
@@ -146,14 +167,12 @@ def is_mutating_gh_api(command: str) -> bool:
         return _regex_fallback(command)
 
     for segment in _command_segments(tokens):
-        if _count_gh_api(segment) == 0:
-            continue
-
-        methods, implicit = _methods_and_implicit(segment)
-        if methods & MUTATING_METHODS:
-            return True
-        if implicit and "GET" not in methods:
-            return True
+        for args in _gh_api_arg_vectors(segment):
+            methods, implicit = _methods_and_implicit(args)
+            if methods & MUTATING_METHODS:
+                return True
+            if implicit and "GET" not in methods:
+                return True
 
     return False
 

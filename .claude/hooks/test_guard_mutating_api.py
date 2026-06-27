@@ -66,6 +66,8 @@ class TestIsMutatingGhApi:
             'gh api repos/foo/bar/issues -f body="use --method GET"',
             # Body-param flag glued to its value (pflag shorthand) still POSTs
             "gh api repos/foo/bar/issues -fbody=hi",
+            # Flags before the gh invocation do not matter; flags after it still do.
+            'repo=$(echo "$f" | cut -d/ -f1-2); gh api repos/foo/bar/issues -f body=hi',
         ],
     )
     def test_detects_mutating_calls(self, command: str) -> None:
@@ -91,6 +93,8 @@ class TestIsMutatingGhApi:
             "gh api --help",
             "gh api repos/foo/bar --paginate",
             "gh api repos/foo/bar -H 'Accept: application/json'",
+            'repo=$(echo "$f" | cut -d/ -f1-2); gh api "repos/$f" -H "Accept: application/vnd.github.raw" | grep -nE "child_process|execSync|spawn|eval\\(|fetch\\(|https?://|require\\(|process\\.env" | head -15',
+            'for f in "owner/repo/contents/file"; do repo=$(echo "$f" | cut -d/ -f1-2); gh api "repos/$f" -H "Accept: application/vnd.github.raw" | grep -nE "child_process|execSync|spawn|eval\\(|fetch\\(|https?://|require\\(|process\\.env" | head -15; done',
         ],
     )
     def test_allows_read_only_calls(self, command: str) -> None:
