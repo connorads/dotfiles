@@ -331,9 +331,12 @@ def collect_windows():
     alerts = []
 
     claude_path = HOME / ".cache/claude-usage.json"
+    claude_meta = load_json(HOME / ".cache/claude-usage.meta.json") or {}
     claude = load_json(claude_path)
     claude_mt = mtime(claude_path)
     claude_age = NOW_TS - claude_mt if claude_mt else None
+    if claude_meta.get("last_error") == "auth_expired":
+        alerts.append(("Auth", "Claude expired — use Claude or run claude auth login", "yellow"))
     if claude:
         for label, key, window_secs in (
             ("Claude", "five_hour", 18000),

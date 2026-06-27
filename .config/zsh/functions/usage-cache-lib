@@ -115,6 +115,34 @@ _write_meta() {
       }' > "$tmp" && mv "$tmp" "$meta"
 }
 
+# Pause auth failures until Claude Code refreshes credentials. OAuth refresh is
+# deliberately left to Claude Code: external refreshes can race active sessions.
+_write_auth_paused() {
+    local http_status="$1"
+    local detail="$2"
+    local success="$3"
+    local auth_expires_at="$4"
+    local tmp
+    tmp="${meta}.tmp.$$"
+    mkdir -p "$(dirname "$meta")"
+    jq -n \
+      --arg last_http_status "${http_status:-401}" \
+      --arg last_error_detail "${detail:-auth_expired}" \
+      --argjson last_success_at "${success:-0}" \
+      --argjson auth_paused_at "$now" \
+      --arg auth_expires_at "${auth_expires_at:-}" \
+      '{
+        next_retry_at: 0,
+        fail_count: 0,
+        last_http_status: $last_http_status,
+        last_error: "auth_expired",
+        last_error_detail: $last_error_detail,
+        last_success_at: $last_success_at,
+        auth_paused_at: $auth_paused_at,
+        auth_expires_at: ($auth_expires_at | tonumber? // null)
+      }' > "$tmp" && mv "$tmp" "$meta"
+}
+
 # Record a failed fetch: grow the cooldown geometrically from $backoff_base,
 # clamp to $backoff_max, honour a numeric retry-after override, then persist
 # the new next-retry time via _write_meta. Callers pass their own resolved

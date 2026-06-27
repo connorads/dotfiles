@@ -181,11 +181,23 @@ ai_usage() {
 		stat -c '%Y' "$file" 2>/dev/null || stat -f%m "$file" 2>/dev/null || echo 0
 	}
 
+	_claude_auth_expires_at() {
+		local credentials_json=""
+		if [[ "${OSTYPE:-}" == darwin* ]] && command -v security >/dev/null 2>&1; then
+			credentials_json=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null || true)
+		fi
+		if [ -z "$credentials_json" ] && [ -f "$HOME/.claude/.credentials.json" ]; then
+			credentials_json=$(cat "$HOME/.claude/.credentials.json" 2>/dev/null || true)
+		fi
+		printf '%s' "$credentials_json" | jq -r '.claudeAiOauth.expiresAt // empty' 2>/dev/null || true
+	}
+
 	_should_trigger_refresh() {
 		local cache="$1"
 		local meta="$2"
 		local lockdir="$3"
 		local trigger="$4"
+		local provider="${5:-}"
 		local next_retry trigger_age cache_age cache_mtime trigger_mtime
 
 		if [ -f "$cache" ]; then
@@ -195,6 +207,19 @@ ai_usage() {
 		fi
 
 		next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+		if [ "$provider" = "claude" ] && [ -f "$meta" ]; then
+			local last_error last_http_status saved_auth_expires_at current_auth_expires_at
+			last_error=$(jq -r '.last_error // ""' "$meta" 2>/dev/null || echo "")
+			last_http_status=$(jq -r '.last_http_status // ""' "$meta" 2>/dev/null || echo "")
+			saved_auth_expires_at=$(jq -r '.auth_expires_at // empty' "$meta" 2>/dev/null || echo "")
+			if [ "$last_error" = "auth_expired" ] || [ "$last_http_status" = "401" ]; then
+				current_auth_expires_at=$(_claude_auth_expires_at)
+				if [ -z "$current_auth_expires_at" ] || { [ -n "$saved_auth_expires_at" ] && [ "$current_auth_expires_at" = "$saved_auth_expires_at" ]; }; then
+					return 1
+				fi
+				next_retry=0
+			fi
+		fi
 		[ "$now" -lt "$next_retry" ] && return 1
 
 		if [ -d "$lockdir" ]; then
@@ -222,13 +247,13 @@ ai_usage() {
 		return 0
 	}
 
-	if [ -x "$bin/claude-usage" ] && _should_trigger_refresh "$claude_cache" "$claude_meta" "$claude_lock" "$claude_trigger"; then
+	if [ -x "$bin/claude-usage" ] && _should_trigger_refresh "$claude_cache" "$claude_meta" "$claude_lock" "$claude_trigger" "claude"; then
 		mkdir -p "$(dirname "$claude_trigger")"
 		: >"$claude_trigger"
 		"$bin/claude-usage" >/dev/null 2>&1 &
 	fi
 
-	if [ -x "$bin/codex-usage" ] && _should_trigger_refresh "$codex_cache" "$codex_meta" "$codex_lock" "$codex_trigger"; then
+	if [ -x "$bin/codex-usage" ] && _should_trigger_refresh "$codex_cache" "$codex_meta" "$codex_lock" "$codex_trigger" "codex"; then
 		mkdir -p "$(dirname "$codex_trigger")"
 		: >"$codex_trigger"
 		"$bin/codex-usage" >/dev/null 2>&1 &
