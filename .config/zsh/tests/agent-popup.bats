@@ -25,7 +25,32 @@ setup() {
 }
 
 teardown() {
+  # Plain kill hangs up the pty so `tmux attach` exits; kill-server then reaps the
+  # private server. (No process-group kill: under bats the backgrounded client is
+  # not a group leader, so it shares this shell's group — a -PGID kill is a no-op.)
+  if [ -n "${CLIENT_BG:-}" ]; then kill "$CLIENT_BG" 2>/dev/null || true; fi
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+}
+
+# Attach a background client to session $1 over a pseudo-tty so switch-client has a
+# real client to move. Dual `script` syntax (BSD vs util-linux) mirrors test_helper
+# run_in_tty; TERM is forced because CI runners leave it unset/dumb and tmux's
+# client then fails to open the terminal (which would silently skip this test).
+# 3>&- closes bats's status fd so the attached client does not hang the run.
+attach_client() {
+  local sess=${1:-s}
+  if script --help 2>&1 | grep -q 'illegal option'; then
+    TERM=${TERM:-screen} script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t "$sess" >/dev/null 2>&1 3>&- &
+  else
+    TERM=${TERM:-screen} script -qc "$TMUX_BIN -L $SOCK attach -t $sess" /dev/null >/dev/null 2>&1 3>&- &
+  fi
+  CLIENT_BG=$!
+  local i
+  for i in $(seq 1 30); do
+    [ -n "$(tx list-clients -F '#{client_name}' 2>/dev/null)" ] && return 0
+    sleep 0.2
+  done
+  return 1
 }
 
 @test "list ranks blocked > done > working > idle and hides pane_id in field 1" {
@@ -97,4 +122,31 @@ teardown() {
 @test "jump with no pane id exits 2" {
   run sh "$SCRIPT" jump
   [ "$status" -eq 2 ]
+}
+
+# Headed coverage of the one behaviour the headless tests cannot reach: jump's
+# switch-client moving an *attached* client. The client is parked on a SECOND
+# session so only switch-client (not select-window/select-pane, which the headless
+# tests cover) can bring it to the target — isolating the cross-session move.
+@test "jump switch-clients an attached client across sessions and ages done to idle" {
+  command -v script >/dev/null 2>&1 || skip "script (pty) unavailable"
+  w0=$(tx list-windows -t s -F '#{window_id}')
+  p0=$(tx list-panes -t "$w0" -F '#{pane_id}') # target lives in session s
+  tx new-session -d -s t -x 80 -y 24           # a SECOND session for the client
+  attach_client t || skip "could not attach a pty client in this environment"
+  cl=$(tx list-clients -F '#{client_name}' | head -n1)
+  [ "$(tx display -p -c "$cl" '#{client_session}')" = t ] # precondition: parked on t
+  tx set-option -p -t "$p0" @agent_state done
+  tx set-option -w -t "$w0" @win_agent_state done
+  run sh "$SCRIPT" jump "$p0"
+  [ "$status" -eq 0 ]
+  # A client that started on t now showing s/w0/p0 proves switch-client ran:
+  # only switch-client can move a client across sessions.
+  [ "$(tx display -p -c "$cl" '#{client_session}')" = s ]
+  [ "$(tx display -p -c "$cl" '#{window_id}')" = "$w0" ]
+  [ "$(tx display -p -c "$cl" '#{pane_id}')" = "$p0" ]
+  # done → idle is aged only by jump's explicit seen call: the server runs with
+  # -f /dev/null, so no focus hook can age it instead. Window dot recomputed too.
+  [ "$(tx show-options -pqv -t "$p0" @agent_state)" = idle ]
+  [ "$(tx show-options -wqv -t "$w0" @win_agent_state)" = idle ]
 }
