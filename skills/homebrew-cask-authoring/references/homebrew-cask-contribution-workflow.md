@@ -287,13 +287,16 @@ depends_on cask: "other-required-app"
 
 ```bash
 defaults read "/Applications/<AppName>.app/Contents/Info.plist" LSMinimumSystemVersion
-# 10.13 -> :high_sierra | 11 -> :big_sur | 12 -> :monterey | 13 -> :ventura
+# 10.15 -> :catalina | 11 -> :big_sur | 12 -> :monterey | 13 -> :ventura
 # 14 -> :sonoma | 15 -> :sequoia
+# (10.13 :high_sierra / 10.14 :mojave map below Homebrew's floor — see the omit rule below)
 ```
+
+The bare keyword form is a *minimum*: `depends_on macos:` parses with a `>=` comparator (`cask/dsl/depends_on.rb`), so `depends_on macos: :big_sur` means macOS 11 *or newer*, not exactly 11.
 
 ```ruby
 on_macos do
-  depends_on macos: :high_sierra    # from LSMinimumSystemVersion, not a guess
+  depends_on macos: :big_sur    # from LSMinimumSystemVersion (a >= floor), not a guess
   app "AppName.app"
 end
 ```
@@ -471,7 +474,7 @@ Key points:
 - **`auto_updates true` goes inside `on_macos`**, never top-level, for cross-platform casks. The AppImage side is a static symlink with no in-place updater, so a top-level declaration misrepresents the Linux artifact. Only the macOS `.app` self-updates (Sparkle/Tauri updater); gate the assertion there. Model: `t3-code`, `agentsview`.
 - `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
 
-_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
+_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `cask/dsl/depends_on.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
 
 ### Livecheck (Version Auto-detection)
 
