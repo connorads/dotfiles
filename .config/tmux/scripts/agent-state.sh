@@ -35,7 +35,14 @@ window=$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null) || exit 
 [ -n "$window" ] || exit 0
 
 case $state in
-working | blocked | idle)
+blocked)
+	# Ring only on entry (not re-emits); see ring_bell.
+	prev=$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)
+	tmux set-option -p -t "$pane" @agent_state "$state"
+	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
+	should_ring "$prev" && ring_bell "$pane"
+	;;
+working | idle)
 	tmux set-option -p -t "$pane" @agent_state "$state"
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
