@@ -123,6 +123,17 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   are macOS `~/Library` locations. (Idiomatic across every current AppImage cask, not
   brew-enforced.)
 - **`arch` must precede `url`** when `url` interpolates `#{arch}`.
+- **Prefer the `os` stanza when the asset path embeds an OS-specific string that
+  differs from the OS type name** (`macos`/`linux`) — e.g. `mac`, `darwin`, `osx`,
+  `macos-x64`, `linux-amd64`. Declare `os macos: "<macstr>", linux: "<linuxstr>"`
+  at the top of the cask and interpolate `#{os}` in `url`/`app_image`. This is
+  idiomatic and readable; do **not** fake it with a local variable like
+  `url_os = on_system_conditional macos: "mac", linux: "linux"`. The `os` stanza
+  also reads correctly in `brew livecheck` and `brew audit` contexts where local
+  variables aren't re-evaluated. Models: `agentsview` (`os macos: "darwin",
+  linux: "linux"`), `bruno`, `filen` (`os macos: "mac", linux: "linux"`).
+  Skip the stanza when the asset name doesn't embed an OS string at all — a
+  single top-level `arch` is then simpler.
 - **Split `arch` per OS when asset names embed different arch strings** (e.g. macOS uses
   `x64`, Linux uses `x86_64`). Declare `arch` inside `on_macos do … end` and
   `on_linux do … end` separately, and add an `os macos: "<macstr>", linux: "<linuxstr>"`
