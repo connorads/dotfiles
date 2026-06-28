@@ -158,52 +158,6 @@ Caveat for a *personal* authored autoload: dotfiles are public, so its installed
 gitignoring — and "personal + autoloaded everywhere" cuts against the keep-autoload-small
 philosophy anyway.
 
-## Validated vendor sources
-
-`skills add <repo> -l` first to resolve the exact `--skill` token (dir name vs frontmatter
-name can differ — gotchas below).
-
-| source (owner/repo) | trust |
-|---|---|
-| `vercel-labs/agent-skills` | trusted (official) |
-| `vercel-labs/next-skills` | trusted (official) |
-| `vercel-labs/skills` | trusted (the CLI repo) |
-| `vercel-labs/agent-browser` | trusted (official) |
-| `vercel-labs/portless` | trusted (Vercel org; same repo as the `npm:portless` CLI in mise) — `--skill portless` (named `.localhost` dev URLs: proxy setup, monorepo/worktree naming, port/proxy troubleshooting). Single `SKILL.md`, no scripts, only official URLs; pinned by `computedHash`. Repo also ships `oauth` (provider redirect-URI config for `.localhost` — vendor on demand). Doc text says `npm install -g`/"don't use npx" — counter to the never-npm rule, but it's prose only; CLI comes via mise. |
-| `anthropics/skills` | trusted (official) |
-| `elevenlabs/skills` | trusted (official; skills at repo root) |
-| `mattpocock/skills` | trusted (bucketed paths) |
-| `cloudflare/skills` | trusted (official) |
-| `microsoft/playwright-cli` | trusted (official) |
-| `firecrawl/cli` | trusted — `--skill firecrawl` (frontmatter name; lives at `skills/firecrawl-cli/`) |
-| `heygen-com/hyperframes` | trusted (official) |
-| `remotion-dev/skills` | trusted — `--skill remotion-best-practices` |
-| `aaron-he-zhu/seo-geo-claude-skills` | trusted (original, 1.6K★) |
-| `adithya-s-k/manim_skill` | trusted (reputable author) |
-| `blader/humanizer` | re-sourced from softaworks aggregator → original author |
-| `vercel-labs/open-agents` | trusted (Vercel org) — `--skill web-animation-design` (Emil Kowalski derivative; keep out of `public/`) |
-| `cursor/plugins` | trusted (official Cursor) — large monorepo; `--skill thermo-nuclear-code-quality-review` (skillPath `cursor-team-kit/skills/…`) |
-| `marimo-team/skills` | trusted (official) — `--skill marimo-notebook` (was vendored as `marimo`; upstream renamed) |
-| `callstack/agent-device` | trusted (Callstack, 2.8k★, MIT) — `--skill agent-device` (router-only; needs `npm:agent-device ≥0.14.0` CLI, in mise). Repo also has `dogfood`. |
-| `jakubkrehel/make-interfaces-feel-better` | trusted (Jakub Krehel, Founding Design Engineer @ Interfere, 1.4k★, MIT) — `--skill make-interfaces-feel-better`. Solo author, content-reviewed (5 md files, no scripts/links); implementation-detail UI polish (concrete CSS values, hit areas, `will-change`), distinct altitude from the taste/design pack. Pinned by `computedHash` (CLI 1.5.11 stores no ref). |
-| `vercel-labs/emulate` | trusted (Vercel org) — `--skill emulate` (umbrella; CLI + programmatic API for local stateful API emulation). Repo has 12 skills (`apple aws github google linear microsoft next resend slack stripe vercel` + umbrella); only umbrella vendored — add per-service ones on demand. Single `SKILL.md`, no scripts; Socket/Snyk clean; pinned by `computedHash` (CLI stores no ref). Stack-specific → per-project `skills add` candidate. |
-| `vercel-labs/deepsec` | trusted (Vercel org) — `--skill deepsec` (skillPath `packages/deepsec/SKILL.md`; AI vuln scanner docs-pointer). `SKILL.md` is pure docs-routing (no scripts/links; points at `node_modules/deepsec/dist/docs/` or `<clone>/docs/`). CLI via mise (`npm:deepsec = "2"`). Caveat: deepsec ships its `SKILL.md` inside its npm package dir, so `skills add` clones the **full monorepo** (~508K, 59 files: `src/`, `build.mjs`, `tsconfig`, `vitest.config.ts`, `package.json`) — kept bloat; `skills update -p` re-pulls the lot. None of it auto-runs (skills inject only `name`+`description`). |
-| `leonxlnx/taste-skill` | **third-party, unvetted author** — design pack: `design-taste-frontend`, `high-end-visual-design`, `minimalist-ui`, `redesign-existing-projects`. Diff-review every refresh. |
-
-Gotchas: `firecrawl/cli` → `--skill firecrawl-cli`; `remotion-dev/skills` → `--skill
-remotion`; `vercel-labs/agent-skills` dir names are unprefixed but skill names are `vercel-*`
-(CLI resolves by frontmatter name). `leonxlnx/taste-skill` internal skillPaths don't match
-skill names (`taste-skill/`→design-taste-frontend, `soft-skill/`→high-end-visual-design,
-`minimalist-skill/`→minimalist-ui, `redesign-skill/`→redesign-existing-projects); the CLI
-resolves by frontmatter name regardless. Confirm all via `-l`.
-
-Dropped sources: `softaworks/agent-toolkit` (aggregator; humanizer re-sourced to blader,
-mermaid-diagrams + dependency-updater removed), `pproenca/dot-skills` (vhs removed, low trust),
-`better-auth/skills`, `intellectronica/agent-skills`, `msmps/opentui-skill` (skills removed).
-
-**Attribution (before any public push):** `logging-best-practices` (Boris Tane) and
-`web-animation-design` (Emil Kowalski) are derivatives — keep them out of `public/`.
-
 ## Rejected alternatives
 
 - **Autoload manifest / allowlist file** — a curated list the agent loads at session start.
