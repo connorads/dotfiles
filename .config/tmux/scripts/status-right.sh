@@ -45,7 +45,7 @@ disk_percentage() {
 }
 
 battery_percentage() {
-	local pct="" status=""
+	local pct="" status="" on_ac=0
 
 	if command -v pmset >/dev/null 2>&1; then
 		local batt
@@ -53,24 +53,40 @@ battery_percentage() {
 		printf '%s\n' "$batt" | grep -q 'InternalBattery' || return 0
 		pct="$(printf '%s\n' "$batt" | grep -Eo '[0-9]{1,3}%' | head -n1 || true)"
 		status="$(printf '%s\n' "$batt" | awk -F';' 'NR==2 { gsub(/^ +| +$/, "", $2); print $2 }')"
+		# Line 1 ("Now drawing from 'AC Power'") is the authoritative power-source
+		# signal, independent of charge motion: macOS holds near 100% on the adapter
+		# without "charging", so the sub-state alone would hide that it is plugged.
+		printf '%s\n' "$batt" | head -n1 | grep -q "'AC Power'" && on_ac=1
 	elif [ -d /sys/class/power_supply ]; then
-		local bat cap
+		local bat cap supply
 		bat="$(find /sys/class/power_supply -maxdepth 1 -name 'BAT*' -type d 2>/dev/null | head -n1)"
 		[ -n "$bat" ] || return 0
 		cap="$(cat "$bat/capacity" 2>/dev/null || true)"
 		[ -n "$cap" ] || return 0
 		pct="${cap}%"
 		status="$(cat "$bat/status" 2>/dev/null || true)"
+		# Any Mains-type supply reporting online=1 means the adapter is attached
+		# (covers AC/ACAD/ADP1 naming), mirroring the macOS power-source check.
+		for supply in /sys/class/power_supply/*; do
+			[ "$(cat "$supply/type" 2>/dev/null || true)" = "Mains" ] || continue
+			[ "$(cat "$supply/online" 2>/dev/null || true)" = "1" ] || continue
+			on_ac=1
+			break
+		done
 	else
 		return 0
 	fi
 
 	[ -n "$pct" ] || return 0
-	case "$status" in
-	[Cc]harging) printf " %s" "$pct" ;;
-	[Ff]ull | [Cc]harged) printf " %s" "$pct" ;;
-	*) printf " %s" "$pct" ;;
-	esac
+	if [ "$on_ac" = 1 ]; then
+		# Plugged in: bolt while actively topping up, plug glyph while holding/full.
+		case "$status" in
+		[Cc]harging | *[Ff]inishing*) printf " %s" "$pct" ;;
+		*) printf " %s" "$pct" ;;
+		esac
+	else
+		printf " %s" "$pct"
+	fi
 }
 
 iso_to_epoch() {
