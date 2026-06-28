@@ -116,7 +116,7 @@
 | `Ctrl+b r` | reload config |
 | `Ctrl+b H` | toggle hostname |
 | `Ctrl+b ?` | this help |
-| `Ctrl+b /` | search help (fzf) |
+| `Ctrl+b /` | command palette (alias of `Alt+/`) |
 | `Ctrl+b Alt+/` | command palette (actual prefix bindings) |
 
 ## Usage Tracking
