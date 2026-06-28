@@ -141,6 +141,83 @@ TEST_LOG="$(mktemp)" PATH="$fakebin:$PATH" ./script-under-test
 This exercises the real command lookup and argument passing while avoiding real
 network/filesystem side effects.
 
+## Speed and determinism
+
+Shell suites are slow for the same reasons they are flaky: real time and real
+processes. Profile before optimising — `bats -T` (per-test timing) or
+`/usr/bin/time -p bats <file>` to rank the slow files — then attack the biggest
+wall-clock items. Wall-clock far above CPU time (`user`+`sys`) means the suite is
+*waiting*, not computing; that waiting is the target.
+
+### Run files in parallel
+
+`bats -j "$(nproc)"` runs files concurrently — a large win when the bottleneck is
+waiting. It needs an external dispatcher: GNU `parallel` **or** `shenwei356/rush`
+(`bats -j N --parallel-binary-name rush`, or `export BATS_PARALLEL_BINARY_NAME=rush`).
+Trap: with neither installed, current bats silently runs **0 tests and exits 1** —
+assert the expected test count in CI rather than trusting the exit code. `-j` enables
+across- *and* within-file parallelism; add `--no-parallelize-within-files` when only
+whole files are independent.
+
+Parallelism exposes hidden coupling, so design for it: each test must own its
+resources. `$BATS_TEST_TMPDIR` is unique per test (safe to write); `$BATS_FILE_TMPDIR`
+and `$BATS_SUITE_TMPDIR` are shared. Use unique server/socket names
+(`tmux -L "srv-$BATS_TEST_NUMBER"`), OS-assigned ports (bind `:0`), and never a fixed
+path. Re-run a parallelised suite a few times to flush ordering dependence before
+trusting it.
+
+### Remove time-coupling
+
+The largest single-file speedups usually come from killing fixed waits — which also
+removes flakiness. Look in the **code under test**, not just the tests:
+
+- A poll-with-sleep loop (`for i in {1..20}; do check || sleep 0.05; done`) makes every
+  fast test pay the whole loop when the awaited thing never appears. Short-circuit the
+  common case — break the moment the outcome is decided (e.g. `kill -0 "$pid" || break`
+  once the child is gone). One such fix took a no-op iteration from ~2.6s to ~0.3s.
+- Hardcoded cooldowns, debounce windows, and retry backoff should be **injectable** via
+  env with the production value as default — `: "${TOOL_DEBOUNCE_SECS:=2}"` — so tests
+  drive timing with a small value instead of `sleep`-ing a fixed cushion to "wait long
+  enough". A test that sleeps a magic number to outlast a hardcoded delay is both slow
+  and racy.
+- Reap backgrounded helpers and close their FDs before returning. A watchdog or output
+  scanner left holding a pipe open blocks the parent until it dies — one test can
+  silently cost tens of seconds with nothing visibly wrong.
+
+Hardcoded environment paths are the related determinism trap: a test that hardcodes
+`/home/<user>/...` either fails or hits a slow fallback on another machine. Derive
+paths from the fixtures.
+
+### Amortise expensive fixtures — after measuring
+
+Build immutable, costly fixtures **once per file** in `setup_file()` under
+`$BATS_FILE_TMPDIR`; give each test its own *mutable* copy cheaply. For git, build a
+template repo once and `git clone --local` it per test: the clone hardlinks the object
+store but stays self-contained (git objects are append-only, so the clone can commit or
+gc without touching the template), preserving per-test isolation. Only hoist state that
+is read-only for every test — the moment a test writes to it, it must live per-test
+under `$BATS_TEST_TMPDIR`. Avoid `git clone --shared`/alternates: that reintroduces a
+shared mutable object store. Amortisation pays only when the fixture is the bottleneck,
+so profile first — hoisting a per-test `git init` can save ~20% of the fixture step yet
+only ~3% of the file when the real cost is subprocess spawns.
+
+### Tag slow tests and run a fast subset
+
+Mark files that spin up real servers, ptys, git repos, or TTYs with
+`# bats file_tags=integration` (a comment before the first test). Run the fast,
+fake-only set on every save and keep the full tagged suite for pre-push and CI:
+
+```sh
+bats --filter-tags '!integration' tests/   # fast inner loop (unit/faked only)
+bats tests/                                 # everything, for pre-push and CI
+bats --filter-status failed tests/          # re-run only last run's failures
+```
+
+`--filter-status` needs a prior completed run (its run-logs dir must exist). `bats
+<file>` and `-f <regex>` narrow further. Splitting a suite this way — fast faked unit
+files versus slow real-process integration files — routinely turns a multi-minute
+suite into a few-second edit loop.
+
 ## Assertion quality
 
 - Assert status, stdout, stderr, and side effects separately when they carry
