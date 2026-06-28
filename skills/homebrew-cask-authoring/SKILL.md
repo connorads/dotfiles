@@ -19,6 +19,7 @@ Author and maintain Homebrew Casks with correct token naming, stanzas, audit/sty
 ## Quick intake (ask these first)
 
 Collect:
+
 - App name (exact `.app` bundle name on macOS; for Linux, the AppImage filename)
 - Homepage (official)
 - Download URL(s) (DMG/ZIP/PKG on macOS; `.AppImage` / `.tar.gz` on Linux) and whether they differ by arch
@@ -79,6 +80,7 @@ end
 ```
 
 Rules of thumb:
+
 - Prefer `https` URLs.
 - Add `verified:` when download host domain differs from `homepage` domain.
 - Keep `desc` factual and concise (no marketing).
@@ -92,6 +94,7 @@ lipo -archs "/Volumes/<Vol>/<AppName>.app/Contents/MacOS/<AppName>"
 ```
 
 Then:
+
 - **Single-arch (`arm64` only)**: add `depends_on arch: :arm64` alongside any `macos:` gate. Without it, Intel users on a supported macOS can install a cask they can't run — a user-facing install-time regression reviewers will flag.
 - **Universal (`arm64 x86_64`)**: no arch gate needed.
 - **Different URLs and/or sha256 per CPU**: use `arch` + `sha256 arm: ..., intel: ...` when versions match.
@@ -128,7 +131,7 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   `zap`: the install is a single symlink `brew uninstall` already removes, and zap paths
   are macOS `~/Library` locations. (Idiomatic across every current AppImage cask, not
   brew-enforced.)
-- **`arch` must precede `url`** when `url` interpolates `#{arch}`.
+- **`arch`/`os` are the first stanzas — before `version`**, not merely before `url`. Homebrew's canonical order opens with the `[arch, on_arch_conditional, os]` group, then `[version, sha256]`; `brew style --fix` hoists them. (Required whenever `url` interpolates `#{arch}`/`#{os}`.)
 - **Prefer the `os` stanza when the asset path embeds an OS-specific string that
   differs from the OS type name** (`macos`/`linux`) — e.g. `mac`, `darwin`, `osx`,
   `macos-x64`, `linux-amd64`. Declare `os macos: "<macstr>", linux: "<linuxstr>"`
@@ -145,7 +148,7 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   `on_linux do … end` separately, and add an `os macos: "<macstr>", linux: "<linuxstr>"`
   stanza so the URL can interpolate both `#{arch}` and `#{os}`. Model: `bruno` —
   `on_macos do arch arm: "arm64", intel: "x64" end` / `on_linux do arch arm: "arm64", intel: "x86_64" end`
-  + `os macos: "mac", linux: "linux"`, then
+  - `os macos: "mac", linux: "linux"`, then
   `url ".../bruno_#{version}_#{arch}_#{os}#{url_end}"`. Don't use this shape when the
   asset name doesn't embed an OS string — a single top-level `arch` is simpler.
 - **Single-arch Linux build**: put the unkeyed `sha256` *and* `depends_on arch: :x86_64`
@@ -195,6 +198,7 @@ pgrep -lf <AppName>                # should be empty — if not, add bundle IDs 
 Reinstalling after a plain `brew uninstall` (without `--zap`) should leave session data intact (so login persists). Reinstalling after `--zap` should require a fresh login. Verifying both confirms the zap paths are actually the ones that hold user state.
 
 **Important notes:**
+
 - Always install/uninstall by **token name**, not file path. Running `brew install ./Casks/t/token.rb` will fail when using a tap symlink — use `brew install --cask token` instead.
 - `HOMEBREW_NO_INSTALL_FROM_API=1` forces Homebrew to use your local cask file rather than the API.
 - `brew audit --cask --new` checks GitHub repo age (must be >30 days) and notability — if the repo is too new, this will fail regardless of cask quality.
@@ -203,18 +207,21 @@ Reinstalling after a plain `brew uninstall` (without `--zap`) should leave sessi
 - **Cross-platform casks**: `brew audit --cask --online` validates both the `on_macos` and `on_linux` sides from either OS — run it even if you can only install-test one. On Linux the AppImage lands in `~/Applications/<target>`; `brew uninstall --zap --cask <token>` removes it (confirm with `ls -l ~/Applications/<target>`).
 
 If install fails:
+
 - Re-check URL reachability, `sha256`, and artifact name.
 - Re-run with verbosity: `brew install --cask --verbose <token>`.
 
 ### 7) PR hygiene
 
 Before suggesting submission:
+
 - Ensure `brew style` and all relevant `brew audit` commands pass.
 - For new casks, check the token has not been previously refused/unmerged.
 - One cask change per PR, minimal diffs, no drive-by formatting.
 - Target the `main` branch (not `master`).
 
 Commit message format (first line <=50 chars):
+
 - New cask: `token version (new cask)`
 - Version update: `token version`
 - Fix/change: `token: description`
@@ -224,6 +231,7 @@ Commit message format (first line <=50 chars):
 ### 8) AI disclosure
 
 The PR template includes an AI disclosure section. If AI assisted with the PR:
+
 - Check the AI checkbox in the template.
 - Split the disclosure into two parts: **what the agent ran** (list the `brew` commands executed and note the human read the output) and **what the human verified manually** (app install, login, actual usage, zap path derivation, running-app uninstall). Reviewers value seeing both halves.
 - Call out any non-obvious things the agent's testing surfaced (e.g. a helper process needing a second bundle ID in `uninstall quit:`).
@@ -237,4 +245,5 @@ Before changing the tap, print the current Homebrew state/commands so the restor
 When the task is done (typically after local validation, commit, or PR creation), restore standard Homebrew state unless the user asks to keep the local override. Prompt before leaving Homebrew in a non-standard state.
 
 Read the full end-to-end checklist here:
+
 - `references/homebrew-cask-contribution-workflow.md`
