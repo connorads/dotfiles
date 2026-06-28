@@ -6,8 +6,14 @@ fi
 # Optional startup profiling: ZSH_PROFILE=1 zsh -i -c exit
 [[ -n "${ZSH_PROFILE+1}" ]] && zmodload zsh/zprof
 
-# Use stable SSH agent socket inside tmux.
-# Symlink management is handled by tmux hooks/scripts to keep shell startup quiet.
+# Use a stable SSH agent socket inside tmux so long-lived panes survive
+# reconnects. tmux's attach hook / `fixssh` repoint the symlink, but those miss
+# socket rotation with no fresh attach (mosh roaming, re-attach to a persistent
+# client). So also self-heal on a fresh SSH login: the first new shell after a
+# reconnect repoints the symlink to the live forwarded socket, no manual fixssh.
+if [[ -n "$SSH_CONNECTION" && -S "$SSH_AUTH_SOCK" && "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent.sock" ]]; then
+  ln -sf "$SSH_AUTH_SOCK" "$HOME/.ssh/agent.sock"
+fi
 if [[ -n "$TMUX" ]]; then
   export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
 fi
