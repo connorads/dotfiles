@@ -236,6 +236,9 @@ refresh_child_pgid() {
   for (( attempt = 1; attempt <= 20; attempt++ )); do
     child_pgid=$(ps -o pgid= -p $child_pid 2>/dev/null | tr -d ' ')
     [[ -n $child_pgid && $child_pgid != "$parent_pgid" ]] && return 0
+    # Short-circuit once the child is gone: a fast/no-op command exits before it
+    # ever joins a separate group, so polling the full loop just burns time.
+    kill -0 "$child_pid" 2>/dev/null || return 0
     sleep 0.05
   done
 
