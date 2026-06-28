@@ -298,7 +298,7 @@ on_macos do
 end
 ```
 
-If `LSMinimumSystemVersion` is absent from the plist, omit `depends_on macos:` entirely — don't invent a floor.
+If `LSMinimumSystemVersion` is absent from the plist (or below Homebrew's own support floor — valid `depends_on macos:` symbols start at `:catalina` / 10.15; older ones like `:high_sierra` / `:mojave` are disabled and fail CI with "Calling strict symbol format for `depends_on macos:` is deprecated! There is no replacement."), omit `depends_on macos:` entirely — don't invent a floor and don't use a disabled symbol.
 
 ### Cross-platform (macOS + Linux / AppImage)
 

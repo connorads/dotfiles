@@ -140,8 +140,10 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   # 14 -> :sonoma, 15 -> :sequoia
   ```
   and gate inside `on_macos do` with `depends_on macos: :<symbol>`. If no
-  `LSMinimumSystemVersion` is present in the plist, omit `depends_on macos:` entirely
-  rather than guessing.
+  `LSMinimumSystemVersion` is present in the plist (or it's below Homebrew's own
+  support floor — valid symbols start at `:catalina`, 10.15; older ones like
+  `:high_sierra`/`:mojave` are disabled and fail CI), omit `depends_on macos:`
+  entirely rather than guessing or using a disabled symbol.
 
 Worked examples (full cross-platform + single-arch `t3-code`), `app_image` internals,
 sha256 placement, and the model-cask list live in
