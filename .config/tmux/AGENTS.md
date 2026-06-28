@@ -1,7 +1,5 @@
 # AGENTS.md — tmux config
 
-`CLAUDE.md` here is a symlink to this file (dotfiles AGENTS.md convention).
-
 ## When changing keybindings
 
 **Update [`help.md`](./help.md) whenever you add, change, or remove a binding.**
