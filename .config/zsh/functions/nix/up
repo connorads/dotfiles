@@ -21,15 +21,11 @@ done
 if (( frozen )); then
   mise install                  # converge to committed mise.lock, no bump/commit
 else
-  local lock=~/.config/mise/mise.lock before="" after=""
-  [[ -f $lock ]] && before="$(<$lock)"
-  mise upgrade                  # bump within ranges, updates mise.lock
-  [[ -f $lock ]] && after="$(<$lock)"
-  # Refresh other-platform checksums only when a bump actually changed the lock.
-  # mise upgrade rewrites just the current platform's entry, so a real bump
-  # leaves the other platforms stale; a no-op upgrade leaves the lock untouched.
-  # Gating here skips the redundant provenance re-download on the common no-op up.
-  [[ "$before" != "$after" ]] && mise lock -g
+  local lock=~/.config/mise/mise.lock
+  # mise upgrade bumps within ranges and auto-locks every lockfile_platforms
+  # entry (not just the current one) for each changed tool, plus current-platform
+  # provenance — so no separate `mise lock` refresh is needed here.
+  mise upgrade
   if [[ -f $lock ]]; then
     dotfiles add "$lock"
     dotfiles diff --cached --quiet -- "$lock" \
