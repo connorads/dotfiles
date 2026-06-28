@@ -151,8 +151,9 @@ wall-clock items. Wall-clock far above CPU time (`user`+`sys`) means the suite i
 
 ### Run files in parallel
 
-`bats -j "$(nproc)"` runs files concurrently — a large win when the bottleneck is
-waiting. It needs an external dispatcher: GNU `parallel` **or** `shenwei356/rush`
+`bats -j "$(nproc)"` (`sysctl -n hw.logicalcpu` on macOS) runs files concurrently —
+a large win when the bottleneck is waiting. It needs an external dispatcher: GNU
+`parallel` **or** `shenwei356/rush`
 (`bats -j N --parallel-binary-name rush`, or `export BATS_PARALLEL_BINARY_NAME=rush`).
 Trap: with neither installed, current bats silently runs **0 tests and exits 1** —
 assert the expected test count in CI rather than trusting the exit code. `-j` enables
@@ -171,6 +172,12 @@ trusting it.
 The largest single-file speedups usually come from killing fixed waits — which also
 removes flakiness. Look in the **code under test**, not just the tests:
 
+- Don't spawn a shell or subprocess to compute what the current shell already knows.
+  Resolving a command or alias with `zsh -ic`/`bash -ic` re-sources the whole
+  interactive rc (prompt, completion, plugins, version managers) on *every* call —
+  0.1–4s normally, tens of seconds when it triggers a completion-cache rebuild, and it
+  hits real usage, not just tests. Resolve in-process (`whence`/`type`/`command -v`) and
+  fall back to an interactive shell only for the rare word unknown in script mode.
 - A poll-with-sleep loop (`for i in {1..20}; do check || sleep 0.05; done`) makes every
   fast test pay the whole loop when the awaited thing never appears. Short-circuit the
   common case — break the moment the outcome is decided (e.g. `kill -0 "$pid" || break`
@@ -216,7 +223,8 @@ bats --filter-status failed tests/          # re-run only last run's failures
 `--filter-status` needs a prior completed run (its run-logs dir must exist). `bats
 <file>` and `-f <regex>` narrow further. Splitting a suite this way — fast faked unit
 files versus slow real-process integration files — routinely turns a multi-minute
-suite into a few-second edit loop.
+suite into a tens-of-seconds edit loop (one real suite: ~240s serial full → ~20s for
+the faked subset, and ~70s for the full suite run in parallel).
 
 ## Assertion quality
 
