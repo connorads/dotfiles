@@ -125,6 +125,11 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
 - **`arch` must precede `url`** when `url` interpolates `#{arch}`.
 - **Single-arch Linux build**: put the unkeyed `sha256` *and* `depends_on arch: :x86_64`
   *inside* `on_linux` — a top-level `depends_on arch:` would block macOS.
+- **`auto_updates true` goes inside `on_macos`** for cross-platform casks. AppImage
+  installs on Linux are a single symlink with no in-place updater, so declaring
+  `auto_updates` top-level (or inside `on_linux`) misrepresents the Linux artifact.
+  The macOS `.app` is the only side that genuinely self-updates (Sparkle/Tauri updater),
+  so gate the assertion there. Model: `t3-code`, `agentsview`.
 
 Worked examples (full cross-platform + single-arch `t3-code`), `app_image` internals,
 sha256 placement, and the model-cask list live in

@@ -389,6 +389,7 @@ Key points:
 - The `arch` helper is declared for the macOS side only (used inside the `#{arch}` interpolation of the macOS `.dmg` name). The Linux artifact name is hardcoded to `x86_64` (no `arm64_linux` build exists to switch on).
 - `sha256` inside `on_linux` is plain/unkeyed — there's only one Linux artifact. Using `x86_64_linux:` here would imply a `arm64_linux:` value that doesn't exist.
 - `depends_on arch: :x86_64` lives inside `on_linux` so it only constrains the Linux install; a top-level `depends_on arch:` would spill onto macOS and block Apple-Silicon users.
+- **`auto_updates true` goes inside `on_macos`**, never top-level, for cross-platform casks. The AppImage side is a static symlink with no in-place updater, so a top-level declaration misrepresents the Linux artifact. Only the macOS `.app` self-updates (Sparkle/Tauri updater); gate the assertion there. Model: `t3-code`, `agentsview`.
 - `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
 
 _Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
