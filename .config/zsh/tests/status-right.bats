@@ -19,6 +19,20 @@ EOF
 #!/usr/bin/env bash
 printf '2%%'
 EOF
+  # Host isolation: print_full renders real disk% (df) and battery% (pmset). On a
+  # host at e.g. 38% disk those tokens collide with the AI-usage % assertions
+  # (regression from 637fcff, which loosened specific tokens to bare " 38%"). Stub
+  # both so the suite is host-independent, like the cpu/ram plugin stubs above.
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+# Header only: disk_percentage() finds no NR==2 row and renders "-" (no number).
+echo "Filesystem Size Used Avail Use% Mounted on"
+EOF
+  write_stub pmset <<'EOF'
+#!/usr/bin/env bash
+# No "InternalBattery" line: battery_percentage() returns early, no segment.
+echo "Now drawing from 'AC Power'"
+EOF
 }
 
 strip_tmux_styles() {
