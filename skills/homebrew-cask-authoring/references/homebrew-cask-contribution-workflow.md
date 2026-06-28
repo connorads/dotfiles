@@ -485,6 +485,29 @@ livecheck do
 end
 ```
 
+**Preferred strategy order — prefer non-GitHub; GitHub is the last resort.** Homebrew
+sets `PRIORITY = 0` on `GithubLatest` and `GithubReleases` (`livecheck/strategy/github_latest.rb`,
+`github_releases.rb`), so livecheck never auto-selects them — you opt in explicitly, and the
+docs say to do so only "when Git isn't sufficient or appropriate"
+([docs.brew.sh/Brew-Livecheck](https://docs.brew.sh/Brew-Livecheck)). Minimising GitHub REST
+hits matters most for unauthenticated local `brew livecheck` runs (60 req/hr/IP); CI and the
+autobump cron run authenticated (5,000/hr), but keeping casks off the API by default is still
+the documented preference. Work down this list and stop at the first that fits:
+
+1. **`strategy :git`** — the documented default; reads repo tags, no REST API call.
+2. **`strategy :electron_builder`** against an upstream `latest-mac.yml` / `latest-linux.yml`
+   (Electron apps — Filen, Zettlr, tabby, agentsview …).
+3. **`url :url` + `strategy :header_match` / `:page_match` / `:sparkle`** against the download
+   URL itself or a sibling page (no extra HTTP beyond what `url` already needs).
+4. **`url :url` against the project's own version feed** (`releases.atom`, `releases.json`,
+   `latest.json`), `strategy :xml` / `:json` / `:yaml`.
+5. **`:github_latest`** (single `GET /releases/latest`) or **`:github_releases`** (`GET /releases`)
+   only when the project ships no other checkable source.
+
+Both GitHub strategies match the **`tag_name`** through the `regex:` block, not asset filenames —
+there is no `asset_regex` parameter. A `regex` only narrows which *version* is selected; it does
+not reduce API calls (`:github_latest` is a single unpaginated request regardless).
+
 ## Submitting Your Contribution
 
 ### 1. Commit Your Changes

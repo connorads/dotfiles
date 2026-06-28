@@ -108,26 +108,12 @@ Then:
   - **If state still survives `--zap` + reinstall, scan outside `~/Library/`.** Apps that bundle a Node CLI/server (`Contents/Resources/sidecar/`) often persist to dotfolders (`~/.<appname>`) and XDG paths (`~/.local/share/<appname>`) — `generate-zap` and bundle-ID scans don't cover these. Cloning the upstream repo and grepping for `os.homedir()` / `env-paths` will surface them.
   - Keep Keystone/GoogleUpdater-style shared components in `zap` only (never `uninstall`) — they're shared across vendor apps.
 - **`livecheck`**: `strategy :extract_plist` and `version :latest` are *automatically* excluded from autobump — no `no_autobump!` needed.
-  - **Prefer non-GitHub strategies over `:github_latest` / `:github_releases` when the
-    upstream provides another checkable source.** Every `:github_latest` /
-    `:github_releases` livecheck hits the GitHub REST API, and Homebrew's autobump
-    cron plus CI runs that check repeatedly — exhaustive use eats into the
-    unauthenticated rate budget (60 req/hour per IP) and triggers `brew livecheck`
-    failures with `GitHub API rate limit exceeded`. Use `:github_latest`/`:github_releases`
-    only when unavoidable (i.e. no `latest-mac.yml`, no `releases.atom` feed, no
-    version-bearing HTML page, no JSON endpoint, no header-based redirect chain).
-    Prefer in this order:
-    1. `strategy :electron_builder` against an upstream `latest-mac.yml` /
-       `latest-linux.yml` (Electron apps — Filen, Zettlr, tabby, agentsview …).
-    2. `url :url` + `strategy :header_match` / `:page_match` / `:sparkle` against the
-       download URL itself or a sibling page (no extra HTTP beyond what `url` already needs).
-    3. `url :stable`/`:url` against the project's own version file/JSON/Atom feed
-       (`releases.atom`, `releases.json`, `latest.json`), `strategy :xml/JSON/yml`.
-    4. Only fall back to `:github_latest` (single newest release) or `:github_releases`
-       (filter by asset regex) when the project ships no other checkable source.
-    When `:github_latest`/`:github_releases` is genuinely the only option, scope a
-    `regex`/`asset_regex` to the exact asset name so the strategy can short-circuit
-    on the first matching release rather than paginating further.
+  - **Prefer non-GitHub livecheck strategies; reserve `:github_latest`/`:github_releases`
+    for when nothing else works.** Homebrew sets `PRIORITY = 0` on both, so livecheck never
+    auto-picks them — opt-in only, "when Git isn't sufficient or appropriate" (docs.brew.sh).
+    Try `:git` tags first, then `:electron_builder` (`latest-mac.yml`), then a `:sparkle` /
+    `:header_match` / `:page_match` on the download URL or a project version feed. Full
+    preference order + the `tag_name`-vs-asset caveat: see the reference.
 - **`depends_on`**: Optional. Only add when genuinely needed (e.g., specific macOS version, another cask dependency).
 
 ### 5) Cross-platform casks: macOS + Linux (AppImage)
