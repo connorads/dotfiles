@@ -75,6 +75,23 @@ wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
   [ "$(pstate "$pane")" = idle ]
 }
 
+@test "unread forces done in the active window (manual inverse of seen)" {
+  pane=$(tx display-message -p -t s '#{pane_id}') # sole window is active
+  win=$(tx display-message -p -t s '#{window_id}')
+  ason "$pane" unread
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = done ] # done, NOT collapsed to idle like the `done` verb
+  [ "$(wstate "$win")" = done ]
+}
+
+@test "unread then seen round-trips done -> idle (mark unread, then read)" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" unread
+  [ "$(pstate "$pane")" = done ]
+  ason "$pane" seen
+  [ "$(pstate "$pane")" = idle ]
+}
+
 @test "seen ages a done pane to idle" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   tx set-option -p -t "$pane" @agent_state done

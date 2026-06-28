@@ -8,7 +8,10 @@
 # status bar renders, and repaints immediately so the dot never waits for
 # status-interval.
 #
-#   agent-state.sh <working|blocked|done|idle|clear|seen> [agent-kind]
+#   agent-state.sh <working|blocked|done|unread|idle|clear|seen> [agent-kind]
+#
+# `unread` is the manual inverse of `seen` (forces done even on the focused
+# window); the dot menu (prefix + Alt+.) drives it and the other states by hand.
 #
 # Pane: $AGENT_STATE_PANE overrides $TMUX_PANE (the focus hook passes a pane id;
 # an agent's own hook inherits TMUX_PANE from the pane it runs in). Outside tmux,
@@ -61,6 +64,13 @@ seen)
 	if [ "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" = "done" ]; then
 		tmux set-option -p -t "$pane" @agent_state idle
 	fi
+	;;
+unread)
+	# "Mark as unread": force done (finished, unseen) even on the active window
+	# — the manual inverse of seen, driven by the dot menu. The blue dot then
+	# persists after you leave; re-focusing the window ages it back to idle.
+	tmux set-option -p -t "$pane" @agent_state "done"
+	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 clear)
 	tmux set-option -pu -t "$pane" @agent_state 2>/dev/null || true
