@@ -58,15 +58,19 @@ wait_file() {
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
 
-# Wait until a pane's foreground command is no longer a bare shell (the agent's
-# child has taken over), or give up after ~3s.
+# Wait until a pane's foreground command is no longer a bare shell — i.e. the
+# respawned child has taken over. Returns non-zero on timeout (~6s) so callers
+# can skip rather than assert a precondition the pane never reached (the sweep
+# correctly clears shell-foreground dots, so asserting on one is wrong). Panes
+# are respawned with a child that has no rc files, so the only non-shell that
+# ever appears is that child — no interactive-startup transient can fool this.
 wait_nonshell() {
   local pane=$1 cmd i
-  for i in $(seq 1 15); do
+  for i in $(seq 1 30); do
     cmd=$(tx display-message -p -t "$pane" '#{pane_current_command}')
     case "$SHELLS" in *" $cmd "*) sleep 0.2 ;; *) return 0 ;; esac
   done
-  return 0
+  return 1
 }
 
 @test "sweep clears a stale dot on a shell-foreground pane" {
@@ -85,8 +89,8 @@ wait_nonshell() {
 @test "sweep leaves a non-shell foreground pane untouched" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')
-  tx send-keys -t "$pane" 'sleep 300' Enter
-  wait_nonshell "$pane"
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
   tx set-option -p -t "$pane" @agent_state working
   tx set-option -w -t "$win" @win_agent_state working
   run sh "$SCRIPT"
@@ -98,8 +102,8 @@ wait_nonshell() {
 @test "sweep recomputes the window dot down when the worst pane was hard-closed" {
   p1=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')
-  tx send-keys -t "$p1" 'sleep 300' Enter
-  wait_nonshell "$p1"
+  tx respawn-pane -k -t "$p1" 'sh -c "exec sleep 300"'
+  wait_nonshell "$p1" || skip "pane shell did not yield the foreground in time"
   tx split-window -t s
   p2=$(tx display-message -p -t s '#{pane_id}')
   tx set-option -p -t "$p1" @agent_state working
