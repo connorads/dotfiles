@@ -76,7 +76,7 @@ shift  # consume --
 
 # Resolve aliases from interactive shell (script mode doesn't load them)
 local expanded
-expanded=$(zsh -ic "whence $1" 2>/dev/null)
+expanded=$(whence -- "$1" 2>/dev/null) || expanded=$(zsh -ic "whence $1" 2>/dev/null)
 if [[ -n $expanded && $expanded != "$1" ]]; then
   shift
   set -- ${=expanded} "$@"
