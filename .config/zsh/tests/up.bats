@@ -57,11 +57,11 @@ exit 0
 EOF
 }
 
-@test "up bumps both lockfiles: mise lock refresh + commit each, brew, flake" {
+@test "up bumps both lockfiles: commit each, brew, flake; no separate mise lock" {
   MISE_SIMULATE_BUMP=1 run_zsh_function "$UP"
   [ "$status" -eq 0 ]
   grep -qF 'mise upgrade' "$TEST_LOG"
-  grep -qF 'mise lock' "$TEST_LOG"      # refresh ran because the lock changed
+  ! grep -qF 'mise lock' "$TEST_LOG"    # upgrade auto-locks all platforms; no refresh call
   ! grep -qF 'mise install' "$TEST_LOG" # default path bumps, never frozen-installs
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
@@ -69,11 +69,10 @@ EOF
   grep -qF 'nfu' "$TEST_LOG"
 }
 
-@test "up skips mise lock refresh + mise commit when nothing bumped" {
+@test "up skips the mise commit when the upgrade changed nothing" {
   run_zsh_function "$UP" # no MISE_SIMULATE_BUMP -> lock unchanged
   [ "$status" -eq 0 ]
   grep -qF 'mise upgrade' "$TEST_LOG"
-  ! grep -qF 'mise lock' "$TEST_LOG" # optimisation: no redundant refresh
   ! grep -qF 'update tool lock' "$TEST_LOG"
   # the flake half still runs independently of the mise no-op
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
