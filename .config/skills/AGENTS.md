@@ -210,11 +210,28 @@ and diff-review clones against the prior vetted copy before trusting them.
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
 
-  Current untracked: `govuk-style` — from a **gist**
+  Current untracked: `govuk-style`, `ponytail`.
+
+  `govuk-style` — from a **gist**
   (`gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2`), so the CLI can't ingest it
   (it rewrites the URL to `github.com/fofr/505e…git`, which 404s — gists live on a
   different host). Single `SKILL.md`, no scripts; refresh by re-cloning the gist and
   diffing. GOV.UK / GDS house-style prose skill (plain English, sentence case, no bold).
+
+  `ponytail` — a hand-**distilled** lift from
+  [`DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail) (MIT, pinned at
+  `c4d1925`). The "lazy senior dev" YAGNI/minimalism coding mode. Upstream is one good
+  ruleset wrapped in 16 agent-tool adapters (hooks, an MCP server, per-host plugin
+  manifests, benchmarks); none of that is vendored — only the knowledge. The six upstream
+  `skills/` are merged into one: the core `ponytail` mode as `SKILL.md`, the `review` pass
+  (with a whole-repo `audit` variant folded in) and the `debt` pass as `references/*.md`;
+  upstream's separate `audit` skill is collapsed into `review.md` (it was a near-duplicate);
+  the `gain` (benchmark-marketing) and `help`
+  (plugin-command reference) skills are dropped. The always-on/mode-flag/`PONYTAIL_DEFAULT_MODE`
+  runtime prose is trimmed (no hook engine behind it here). **No lock by design** — it's an
+  adaptation, so `skills update` would clobber the merge; refresh by re-cloning upstream and
+  re-applying the same distillation, diffing against this copy. `LICENSE` (MIT) is kept for
+  attribution.
 
 - `connorads/skills` public repo is **deferred** — public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
