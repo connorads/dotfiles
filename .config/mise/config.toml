@@ -98,8 +98,13 @@ fnox = "1.27.1"
 # Cargo tools (Rust): think twice before adding; builds are slow.
 
 [tasks.zsh-tests]
-description = "Run BATS tests for zsh functions"
-run = "cd \"$HOME\" && bats --recursive .config/zsh/tests"
+description = "Run BATS tests for zsh functions (parallel)"
+env = { BATS_PARALLEL_BINARY_NAME = "rush" }
+run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)\" --no-parallelize-within-files --recursive .config/zsh/tests"
+
+[tasks.zsh-tests-fast]
+description = "Run only fast (non-integration) BATS tests"
+run = "cd \"$HOME\" && bats --filter-tags '!integration' --recursive .config/zsh/tests"
 
 [tasks.supply-audit]
 description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
