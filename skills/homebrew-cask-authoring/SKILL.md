@@ -123,6 +123,14 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   are macOS `~/Library` locations. (Idiomatic across every current AppImage cask, not
   brew-enforced.)
 - **`arch` must precede `url`** when `url` interpolates `#{arch}`.
+- **Split `arch` per OS when asset names embed different arch strings** (e.g. macOS uses
+  `x64`, Linux uses `x86_64`). Declare `arch` inside `on_macos do … end` and
+  `on_linux do … end` separately, and add an `os macos: "<macstr>", linux: "<linuxstr>"`
+  stanza so the URL can interpolate both `#{arch}` and `#{os}`. Model: `bruno` —
+  `on_macos do arch arm: "arm64", intel: "x64" end` / `on_linux do arch arm: "arm64", intel: "x86_64" end`
+  + `os macos: "mac", linux: "linux"`, then
+  `url ".../bruno_#{version}_#{arch}_#{os}#{url_end}"`. Don't use this shape when the
+  asset name doesn't embed an OS string — a single top-level `arch` is simpler.
 - **Single-arch Linux build**: put the unkeyed `sha256` *and* `depends_on arch: :x86_64`
   *inside* `on_linux` — a top-level `depends_on arch:` would block macOS.
 - **`auto_updates true` goes inside `on_macos`** for cross-platform casks. AppImage
