@@ -117,6 +117,9 @@
 | `Ctrl+b H` | toggle hostname |
 | `Ctrl+b ?` | this help |
 | `Ctrl+b /` | command palette (actual prefix bindings) |
+| `Ctrl+b I` | install plugins (TPM) |
+| `Ctrl+b U` | update plugins (TPM) |
+| `Ctrl+b Alt+u` | clean unused plugins (TPM) |
 
 ## Usage Tracking
 
