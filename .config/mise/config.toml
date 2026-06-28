@@ -9,6 +9,12 @@ minimum_release_age = "4d"
 minimum_release_age_excludes = ["claude", "codex"]
 github_attestations = true
 slsa = true
+# Pin exact versions + checksums across platforms (the mise analogue of
+# flake.lock). lockfile_platforms records checksums for machines we don't
+# build on (current platform is always added regardless); other-platform
+# checksums come from registry metadata, no downloads.
+lockfile = true
+lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]
 
 [env]
 PNPM_HOME = "{{env.HOME}}/.local/share/pnpm"
