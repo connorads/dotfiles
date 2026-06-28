@@ -114,7 +114,9 @@ Every cask must have: `version`, `sha256`, `url`, `name`, `desc`, `homepage`, an
 
 **Canonical stanza order:**
 
-`version` → `sha256` → `url` → `name` → `desc` → `homepage` → `livecheck` → `auto_updates` → `depends_on` → artifacts → `uninstall` → `zap`
+`arch`/`os` → `version` → `sha256` → `on_macos`/`on_linux` → `url` → `name` → `desc` → `homepage` → `livecheck` → `auto_updates` → `depends_on` → artifacts → `uninstall` → `zap`
+
+`arch`/`os` (and `on_arch_conditional`) lead — before `version` — per Homebrew's `STANZA_ORDER` (`rubocops/cask/constants/stanza.rb`). The per-OS arch shape (`on_macos do arch … end` / `on_linux do arch … end`) also sits before `version` in real casks (e.g. `bruno`).
 
 Run `brew style --fix <token>` to auto-correct ordering.
 
@@ -414,6 +416,7 @@ end
 ```
 
 Key points:
+
 - The `os` stanza maps the `on_system_conditional` symbol to the string embedded in the asset filename (`mac`/`linux` for bruno; could be `macos`/`linux` for other apps — **always match the actual upstream asset name**, don't guess).
 - `arch` blocks live inside `on_macos`/`on_linux` because the per-CPU string differs by OS (`x64` vs `x86_64`). When the same string works on both OSes, a single top-level `arch` is simpler — prefer that.
 - `sha256` stays top-level and arch-keyed (`arm:`/`intel:`/`arm64_linux:`/`x86_64_linux:`) because the version is shared across all four arches.
@@ -468,13 +471,14 @@ end
 ```
 
 Key points:
+
 - The `arch` helper is declared for the macOS side only (used inside the `#{arch}` interpolation of the macOS `.dmg` name). The Linux artifact name is hardcoded to `x86_64` (no `arm64_linux` build exists to switch on).
 - `sha256` inside `on_linux` is plain/unkeyed — there's only one Linux artifact. Using `x86_64_linux:` here would imply a `arm64_linux:` value that doesn't exist.
 - `depends_on arch: :x86_64` lives inside `on_linux` so it only constrains the Linux install; a top-level `depends_on arch:` would spill onto macOS and block Apple-Silicon users.
 - **`auto_updates true` goes inside `on_macos`**, never top-level, for cross-platform casks. The AppImage side is a static symlink with no in-place updater, so a top-level declaration misrepresents the Linux artifact. Only the macOS `.app` self-updates (Sparkle/Tauri updater); gate the assertion there. Model: `t3-code`, `agentsview`.
 - `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
 
-_Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `cask/dsl/depends_on.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026._
+*Verified against Homebrew source (`cask/artifact/appimage.rb`, `cask/config.rb`, `cask/audit.rb`, `cask/dsl.rb`, `cask/dsl/depends_on.rb`, `rubocops/cask/constants/stanza.rb`) as of June 2026.*
 
 ### Livecheck (Version Auto-detection)
 
@@ -548,6 +552,7 @@ EOF
 ```
 
 Or via the GitHub web UI — fill in the PR template with:
+
 - Brief description
 - Checkboxes ticked ONLY if you completed each step
 - AI disclosure (see below)
@@ -555,6 +560,7 @@ Or via the GitHub web UI — fill in the PR template with:
 ### 4. AI Disclosure
 
 The PR template includes an AI disclosure section. If AI assisted with the PR:
+
 - Check the AI checkbox in the template.
 - Briefly describe how AI was used.
 - Confirm that all changes were personally reviewed, tested, and verified — especially `zap` stanza paths.
@@ -660,6 +666,6 @@ brew tap homebrew/cask
 
 **Key Documentation:**
 
-- Token reference: https://docs.brew.sh/Cask-Cookbook#token-reference
-- Acceptable casks: https://docs.brew.sh/Acceptable-Casks
-- Full cookbook: https://docs.brew.sh/Cask-Cookbook
+- Token reference: <https://docs.brew.sh/Cask-Cookbook#token-reference>
+- Acceptable casks: <https://docs.brew.sh/Acceptable-Casks>
+- Full cookbook: <https://docs.brew.sh/Cask-Cookbook>
