@@ -174,7 +174,8 @@ drs                    # darwin-rebuild switch (macOS)
 hms                    # home-manager switch (Linux)
 nrs                    # nixos-rebuild switch (reads $NIXOS_FLAKE, default: ~/.config/nix)
 nrsr                   # nixos-rebuild switch --rollback
-up                     # update everything: mise, brew/apt, flake lock, rebuild (NixOS: nrs + hms)
+up                     # update everything: bump mise.lock + flake.lock, brew/apt, rebuild (NixOS: nrs + hms)
+up -s / up --frozen    # frozen rebuild: converge to committed locks (no bumps, no brew/apt, no flake), then rebuild
 up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
 macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
 macup-check            # report pending macOS updates (cached daily scan; --scan to force)
@@ -215,17 +216,20 @@ gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
 
 Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) — only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
 
+**Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform — the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
+
 **Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine via the `minimum_release_age_excludes` mise setting.
 
-**How `up` works**: upgrades mise tools within ranges (4-day quarantine), exempts Claude (always latest), updates brew/apt, optionally updates nix flake lock, rebuilds. `-s` skips nix flake update.
+**How `up` works**: by default it *bumps* both lockfiles and commits each change (symmetric with the nix flake model) — `mise upgrade` within ranges (4-day quarantine, Claude exempt), `mise lock -g` to refresh other-platform checksums, then `dotfiles commit` the lock if it changed; updates brew/apt; `nfu` + commits `flake.lock`; rebuilds. **`--frozen` / `-s` / `--skip-flake`** is the *frozen* path: bump nothing — converge tools to the committed `mise.lock` via `mise install`, skip brew/apt, skip the flake bump/commit — then rebuild. Use it to reproduce a known-good toolchain (e.g. on a fresh Linux box).
 
 ```bash
-up                                          # full update (quarantined mise + brew/apt + nix + rebuild)
-up -s                                       # skip nix flake update
+up                                          # bump mise.lock + flake.lock + brew/apt, commit locks, rebuild
+up -s / up --frozen                         # frozen: install committed locks only, no bumps/brew/apt/flake
 mise upgrade --bump [tool]                  # cross version boundaries (still 4-day quarantine)
 mise upgrade --bump --before 0d [tool]      # skip quarantine for urgent updates
 mise outdated                               # available updates within ranges
 mise outdated --bump                        # available updates beyond ranges
+mise lock -g                                # refresh global lockfile checksums for all platforms
 ```
 
 **pnpm** (v11): global 4-day quarantine (`minimumReleaseAge: 5760`) + trust policy (`trustPolicy: no-downgrade`) + `ignoreScripts: true` in `~/.config/pnpm/config.yaml` (YAML, camelCase). Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise). **v11 reads pnpm settings only from YAML** (`pnpm-workspace.yaml` / global `config.yaml`), never `.npmrc`/`rc` — the old `~/.config/pnpm/rc` is an inert v10 fallback. **macOS gotcha**: pnpm reads its global config from the native dir `~/Library/Preferences/pnpm/`, not `~/.config/pnpm/`, so the dotfile is symlinked there via nix (`home.file."Library/Preferences/pnpm/config.yaml"` in [darwin-shared.nix](./.config/nix/modules/darwin-shared.nix), `mkOutOfStoreSymlink` → the tracked `~/.config/pnpm/config.yaml`). Linux reads `~/.config/pnpm/config.yaml` natively. `blockExoticSubdeps: true` is set explicitly (it's the v11 default, but pinning it keeps the posture auditable in one place and drift-proof).
@@ -275,7 +279,7 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 **Composer**: no package-age quarantine is configured; keep `secure-http=true` and Composer audit enabled. Prefer lockfile review plus `mise run supply-audit` where supported.
 
-**No mise lockfile** (yet): `mise.lock` has multi-platform issues — `mise upgrade --bump` only updates the current platform's entries. Revisit when mise rewrites the lockfile system.
+**mise lockfile** (enabled): `~/.config/mise/mise.lock` pins exact versions + checksums for `macos-arm64`, `linux-arm64`, `linux-x64` (plus the current platform, always). The historical multi-platform blocker is gone — mise `v2025.11.11` added cross-platform lockfiles (other-platform checksums computed from registry metadata, no download) and `v2026.4.8` added `lockfile_platforms`. Caveat: those non-current-platform checksums are *recorded from metadata, not verified by download* here — but install-time `github_attestations` + `slsa` still fire on the machine that actually installs. `claude`/`codex` are `latest`, so their lock entries churn every `up` (no per-tool lock-exclude exists; accepted). `locked` is deliberately **off**: turning it on would fail closed when adding a new tool that isn't in the lockfile yet. Revisit `locked = true` once the toolset is stable.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
 

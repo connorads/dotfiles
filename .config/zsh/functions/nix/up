@@ -1,37 +1,51 @@
 #!/usr/bin/env zsh
-# up: update tools, flake lock, and rebuild for current OS
-# flags: --skip-flake / -s  skip nix flake update and commit
+# up: update tools, lockfiles, and rebuild for current OS
+# flags: --frozen / -s / --skip-flake
+#                           frozen rebuild: bump nothing. Converge tools to the
+#                           committed mise.lock (mise install) and skip the flake
+#                           bump/commit + brew/apt. The default (no flag) bumps both
+#                           lockfiles within their ranges and commits each change.
 #        --os               also install no-restart macOS updates (macOS only);
 #                           restart-required (OS) updates are only reported, never
 #                           applied, so a headless FileVault box is never rebooted.
 emulate -L zsh
 
-local skip_flake=0 do_os=0
+local frozen=0 do_os=0
 for arg in "$@"; do
   case "$arg" in
-    --skip-flake|-s) skip_flake=1 ;;
+    --frozen|-s|--skip-flake) frozen=1 ;;
     --os) do_os=1 ;;
   esac
 done
 
-mise upgrade
+if (( frozen )); then
+  mise install                  # converge to committed mise.lock, no bump/commit
+else
+  mise upgrade                  # bump within ranges, updates mise.lock
+  mise lock -g                  # belt-and-braces: refresh other-platform checksums
+  if [[ -f ~/.config/mise/mise.lock ]]; then
+    dotfiles add ~/.config/mise/mise.lock
+    dotfiles diff --cached --quiet -- ~/.config/mise/mise.lock \
+      || dotfiles commit -m "chore(mise): update tool lock"
+  fi
+fi
 # Reassert the --channels and computer-use patches: covers no-op upgrades
 # (postinstall only fires on an actual install) and manual paths. Idempotent.
 claude-channels-patch --reapply
 claude-computer-use-patch --reapply
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if (( !frozen )) && [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi
 
 # apt updates (non-NixOS Linux)
-if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+if (( !frozen )) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
   echo "=> apt update + upgrade"
   sudo apt-get update -y
   sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 fi
 
-if (( !skip_flake )); then
+if (( !frozen )); then
   nfu
   dotfiles add ~/.config/nix/flake.lock
   if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
