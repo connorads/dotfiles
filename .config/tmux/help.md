@@ -117,6 +117,7 @@
 | `Ctrl+b H` | toggle hostname |
 | `Ctrl+b ?` | this help |
 | `Ctrl+b /` | search help (fzf) |
+| `Ctrl+b Alt+/` | command palette (actual prefix bindings) |
 
 ## Usage Tracking
 
