@@ -75,7 +75,7 @@ and filesystem effects. For shell functions, isolate `PATH`, `HOME`/`ZDOTDIR`,
 temp dirs, fixtures, and shell options.
 
 See `references/shell-testing.md` for tool comparison, zsh isolation patterns,
-POSIX multi-shell loops, and example harnesses.
+POSIX multi-shell loops, example harnesses, and keeping suites fast.
 
 ### Scenario (integration) tests
 
@@ -263,6 +263,7 @@ time/network coupling (see Core Rules).
   Per-ecosystem PBT frameworks, shrinking, stateful/model-based testing, CI
   integration, and pitfalls.
 - [shell-testing.md](references/shell-testing.md) — Bats/ShellSpec/shUnit2/cram
-  trade-offs, zsh isolation, POSIX multi-shell testing, and shell fakes.
+  trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, and keeping
+  suites fast (parallelism, fixture amortisation, removing time-coupling).
 - For coverage reports, thresholds, exclusions, **mutation testing**, fuzzing,
   and CI/hook enforcement of test quality, use the **test-coverage** skill.
