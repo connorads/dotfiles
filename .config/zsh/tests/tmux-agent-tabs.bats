@@ -30,14 +30,20 @@ teardown() {
 
 dot() { tx list-windows -t s -F '#{E:@agent_dotfmt}'; }
 
-@test "blocked maps to a red filled dot" {
+@test "blocked maps to a red diamond" {
   tx set-option -w -t s @win_agent_state blocked
-  [[ "$(dot)" == *"#[fg=#f38ba8]●"* ]]
+  [[ "$(dot)" == *"#[fg=#f38ba8]◆"* ]]
 }
 
-@test "working maps to a yellow filled dot" {
-  tx set-option -w -t s @win_agent_state working
-  [[ "$(dot)" == *"#[fg=#f9e2af]●"* ]]
+@test "working is a peach half-dot (clears the yellow active-tab text)" {
+  tx set-option -w -t s @win_agent_state working # sole window is active
+  [[ "$(dot)" == *"#[fg=#fab387]◐"* ]]
+}
+
+@test "working stays peach on an unfocused tab (one colour per state)" {
+  tx set-option -w -t s @win_agent_state working # window 1, currently active
+  tx new-window -t s                             # window 2 active; window 1 inactive
+  [[ "$(dot)" == *"#[fg=#fab387]◐"* ]]
 }
 
 @test "done maps to a blue filled dot" {
