@@ -169,20 +169,12 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   `auto_updates` top-level (or inside `on_linux`) misrepresents the Linux artifact.
   The macOS `.app` is the only side that genuinely self-updates (Sparkle/Tauri updater),
   so gate the assertion there. Model: `t3-code`, `agentsview`.
-- **Inside `on_macos do`, use `depends_on macos: :<symbol>`, never the bare
-  `depends_on :macos`.** The bare form is a no-op inside `on_macos` (it's documented
-  as a top-level macOS-only marker) and produces a misleading "Required: macOS" line
-  for a cross-platform cask. Instead, read the app's minimum macOS from its bundle:
-  ```bash
-  defaults read "/Applications/<AppName>.app/Contents/Info.plist" LSMinimumSystemVersion
-  # e.g. 10.13 -> :high_sierra, 11 -> :big_sur, 12 -> :monterey, 13 -> :ventura,
-  # 14 -> :sonoma, 15 -> :sequoia
-  ```
-  and gate inside `on_macos do` with `depends_on macos: :<symbol>`. If no
-  `LSMinimumSystemVersion` is present in the plist (or it's below Homebrew's own
-  support floor — valid symbols start at `:catalina`, 10.15; older ones like
-  `:high_sierra`/`:mojave` are disabled and fail CI), omit `depends_on macos:`
-  entirely rather than guessing or using a disabled symbol.
+- **Inside `on_macos do`, use the keyword form `depends_on macos: :<symbol>` (a
+  minimum, parsed as `>=`), never the bare `depends_on :macos`.** Derive `<symbol>`
+  from the app's `LSMinimumSystemVersion`; if that's absent or below Homebrew's floor
+  (`:catalina` / 10.15 — older symbols like `:high_sierra`/`:mojave` are disabled and
+  fail CI), omit `depends_on macos:` entirely rather than guess. Derivation steps +
+  symbol map: see the reference.
 
 Worked examples (full cross-platform + single-arch `t3-code`), `app_image` internals,
 sha256 placement, and the model-cask list live in
