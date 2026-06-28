@@ -43,6 +43,12 @@
       "skillPath": "research/content-gap-analysis/SKILL.md",
       "computedHash": "89da7d194feafdd5b626f1165041904ee607efdef89eab30a3de1b9249d496a8"
     },
+    "deepsec": {
+      "source": "vercel-labs/deepsec",
+      "sourceType": "github",
+      "skillPath": "packages/deepsec/SKILL.md",
+      "computedHash": "8a56b6a95b489f6f718345315cfb3ed181a5363ae07406cc5eb25edbc7de9d2e"
+    },
     "design-taste-frontend": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",

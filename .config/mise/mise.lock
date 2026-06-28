@@ -379,6 +379,10 @@ backend = "npm:critique"
 version = "0.5.3"
 backend = "npm:ctx7"
 
+[[tools."npm:deepsec"]]
+version = "2.1.2"
+backend = "npm:deepsec"
+
 [[tools."npm:executor"]]
 version = "1.5.19"
 backend = "npm:executor"
