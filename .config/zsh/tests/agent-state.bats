@@ -110,3 +110,56 @@ wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
   ason "$pane" bogus
   [ "$status" -eq 2 ]
 }
+
+# --- should_ring: fresh entry into blocked rings; re-emits don't ---
+
+LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
+
+@test "should_ring: working->blocked rings" {
+  . "$LIB"
+  should_ring working
+  [ "$?" -eq 0 ]
+}
+
+@test "should_ring: idle->blocked rings" {
+  . "$LIB"
+  should_ring idle
+  [ "$?" -eq 0 ]
+}
+
+@test "should_ring: done->blocked rings" {
+  . "$LIB"
+  should_ring done
+  [ "$?" -eq 0 ]
+}
+
+@test "should_ring: unset->blocked rings" {
+  . "$LIB"
+  should_ring ""
+  [ "$?" -eq 0 ]
+}
+
+@test "should_ring: blocked->blocked does not ring" {
+  . "$LIB"
+  ! should_ring blocked
+}
+
+# --- blocked integration (real tmux server, no client attached) ---
+
+@test "blocked sets pane and window state without crashing (no client)" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  ason "$pane" blocked
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = blocked ]
+  [ "$(wstate "$win")" = blocked ]
+}
+
+@test "re-blocked is idempotent: state stays blocked, no crash" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" blocked
+  [ "$status" -eq 0 ]
+  ason "$pane" blocked
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = blocked ]
+}

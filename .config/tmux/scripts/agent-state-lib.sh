@@ -41,3 +41,24 @@ EOF
 		tmux set-option -wu -t "$_window" @win_agent_state 2>/dev/null || true
 	fi
 }
+
+# should_ring PREV — true when this is a fresh entry into blocked (prev was
+# anything else). Dedupes back-to-back blocked hooks so they don't double-bell.
+should_ring() {
+	[ "$1" != blocked ]
+}
+
+# ring_bell PANE — write a BEL (\a) to every writable client TTY of the pane's
+# session. Writes direct to the client TTY, bypassing tmux's monitor-bell so
+# window_bell_flag stays clear — the red agent dot already covers the in-tmux
+# signal; this only drives the outer terminal (kitty 🔔 + sound).
+ring_bell() {
+	_pane=$1
+	_session=$(tmux display-message -p -t "$_pane" '#{session_name}' 2>/dev/null) || return 0
+	[ -n "$_session" ] || return 0
+	tmux list-clients -t "$_session" -F '#{client_tty}' 2>/dev/null |
+		while IFS= read -r _tty; do
+			[ -n "$_tty" ] && [ -w "$_tty" ] || continue
+			printf '\a' >"$_tty" 2>/dev/null || true
+		done
+}
