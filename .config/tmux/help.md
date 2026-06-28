@@ -66,6 +66,7 @@
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+i` | copy local/remote clipboard image path (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
+| `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
 | `Ctrl+b Alt+c` | connections overview |
@@ -85,6 +86,22 @@
 | `Ctrl+b Alt+V` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Ctrl+y` | thumbs (quick-copy text with hints) |
+
+## Agent tab dots
+
+Each window tab shows a dot for the worst agent state across its panes (driven by
+agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without colour.
+
+| Dot | State | Meaning |
+|-----|-------|---------|
+| `◆` red | blocked | needs you (permission/input) — also rings the bell |
+| `◐` peach | working | agent mid-turn |
+| `●` blue | done | finished, unseen |
+| `○` green | idle | seen / at rest |
+| `·` grey | unknown | present but unclassified |
+
+Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
+it `done` (blue) before you leave — like marking an email unread.
 
 ## Copy mode navigation
 
