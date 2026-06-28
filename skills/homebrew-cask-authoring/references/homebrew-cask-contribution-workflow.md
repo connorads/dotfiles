@@ -283,6 +283,23 @@ depends_on macos: ">= :monterey"
 depends_on cask: "other-required-app"
 ```
 
+**Deriving the macOS minimum version from the app bundle.** Inside an `on_macos do` block, never use the bare `depends_on :macos` — it's a no-op there (the `:macos` symbol is only a macOS-only marker when used at top level) and it produces a misleading "Required: macOS" line for a cross-platform cask. Instead, read the app's declared minimum from its `Info.plist` and gate with the symbol form:
+
+```bash
+defaults read "/Applications/<AppName>.app/Contents/Info.plist" LSMinimumSystemVersion
+# 10.13 -> :high_sierra | 11 -> :big_sur | 12 -> :monterey | 13 -> :ventura
+# 14 -> :sonoma | 15 -> :sequoia
+```
+
+```ruby
+on_macos do
+  depends_on macos: :high_sierra    # from LSMinimumSystemVersion, not a guess
+  app "AppName.app"
+end
+```
+
+If `LSMinimumSystemVersion` is absent from the plist, omit `depends_on macos:` entirely — don't invent a floor.
+
 ### Cross-platform (macOS + Linux / AppImage)
 
 One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then sibling `on_macos` / `on_linux` blocks for the platform-specific artifacts — don't nest one inside the other (not a brew error; the OS conditions are mutually exclusive, so a nested block is unreachable dead code). On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
