@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 bats_require_minimum_version 1.5.0
+# bats file_tags=integration
 
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
@@ -21,7 +22,7 @@ make_repo() {
   git init "$repo" >/dev/null
   git -C "$repo" config user.name "Bats"
   git -C "$repo" config user.email "bats@example.com"
-  echo "base" > "$repo/base.txt"
+  echo "base" >"$repo/base.txt"
   git -C "$repo" add base.txt
   git -C "$repo" commit -m "initial" >/dev/null
 }
@@ -62,7 +63,7 @@ make_repo() {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
   git -C "$repo" checkout -b base-branch >/dev/null
-  echo "base branch" > "$repo/branch.txt"
+  echo "base branch" >"$repo/branch.txt"
   git -C "$repo" add branch.txt
   git -C "$repo" commit -m "base branch" >/dev/null
   git -C "$repo" checkout master >/dev/null 2>&1 || git -C "$repo" checkout main >/dev/null
