@@ -4,6 +4,7 @@
 # Run: bats ~/.config/zsh/tests/rl.bats
 
 bats_require_minimum_version 1.5.0
+# bats file_tags=integration
 
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
@@ -42,7 +43,7 @@ SCRIPT
   # Parallel bug produces: start-1, start-2, start-3, end-1, end-2, end-3
   [ -f "$SEQ_LOG" ]
   local lines
-  mapfile -t lines < "$SEQ_LOG"
+  mapfile -t lines <"$SEQ_LOG"
   [ "${lines[0]}" = "start-1" ]
   [ "${lines[1]}" = "end-1" ]
   [ "${lines[2]}" = "start-2" ]
@@ -59,7 +60,7 @@ n=$(cat "$COUNT_FILE")
 echo $((n + 1)) > "$COUNT_FILE"
 SCRIPT
 
-  echo 0 > "$BATS_TEST_TMPDIR/count"
+  echo 0 >"$BATS_TEST_TMPDIR/count"
   export COUNT_FILE="$BATS_TEST_TMPDIR/count"
 
   run zsh "$RL" 5 -- "$helper"
@@ -325,7 +326,7 @@ SCRIPT
   grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
 
   kill -INT "$rl_pid"
-  sleep 2.5  # must exceed 2s debounce cooldown
+  sleep 2.5 # must exceed 2s debounce cooldown
   kill -INT "$rl_pid"
   local exit_status
   if wait "$rl_pid"; then
