@@ -65,6 +65,8 @@ Then `dotfiles add .newfile` works without `-f`.
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration · maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md)       |
 | [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
 | [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm with `prefix + Alt+a`); design + env vars   |
+| [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh)            | Memory-pressure vocabulary (OK/BUSY/CRITICAL) shared by the status gauge, `prefix + Alt+m` popup, and `memwatch`; subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
+| [zsh/functions/macos/memwatch](./.config/zsh/functions/macos/memwatch) | Desktop-only launchd notifier ([darwin-desktop.nix](./.config/nix/modules/darwin-desktop.nix)); banners on sustained pressure. Log `~/.cache/memwatch.log`; reload `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"` |
 | [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
 | [config.json](./.config/fresh/config.json)                             | Fresh terminal IDE configuration; local theme/help live under `~/.config/fresh/`           |
 | [.fresh/config.json](./.fresh/config.json)                             | Fresh project config for this dotfiles work-tree (shows hidden files from `~`)             |
