@@ -58,3 +58,31 @@ Tests (run `mise run zsh-tests`):
 - [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot sweeper.
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
+
+## Memory-pressure monitoring (custom subsystem)
+
+macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
+three surfaces speaking one vocabulary — `OK | BUSY | CRITICAL`, encoded as
+colour plus glyph plus swap figure. Change as a set:
+
+- [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) — **canonical** thresholds
+  (`MEM_BUSY_SWAP_MB` / `MEM_CRITICAL_SWAP_MB`), state mapping (`mem_state`),
+  and the colour/glyph language (`mem_state_colour` / `mem_state_glyph`).
+  Swap-used is the primary signal; macOS pressure level only escalates the
+  colour (it often reads normal while actively swapping). Sourced, never run.
+  On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
+- [`scripts/status-right.sh`](./scripts/status-right.sh) — `mem_segment()`, the
+  quiet-when-healthy pill (width ≥ 80 only). The legacy tmux-cpu RAM% pill
+  (`ram_percentage()`, bright-mauve) renders **alongside** it as a transitional
+  A/B; drop it once the new gauge is trusted on macOS.
+- [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` drill-down
+  (swap/RAM breakdown, top apps by `phys_footprint`, agent panes). `k`/`r`/`q`.
+- [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) — launchd
+  notifier (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
+  Banners on sustained pressure; log `~/.cache/memwatch.log`. Reload after edits:
+  `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
+
+Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary)
+and the RAM/mem pills in [`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats).
+Keep the gauge legend in [`help.md`](./help.md) in sync with the lib. The popup's
+own awk and the `memwatch` notifier are not yet unit-tested.
