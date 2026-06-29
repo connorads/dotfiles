@@ -426,7 +426,11 @@ ai_usage() {
 		else echo "a6e3a1"; fi
 	}
 
-	local dim="#7f849c"
+	# overlay2 (not overlay1 #7f849c): on the #232334 AI pill overlay1 is only
+	# 4.17:1 — below WCAG AA — and this "dim" run still carries readable info
+	# (reset times, % signs). overlay2 lifts it to 5.46:1 while staying clearly
+	# subordinate to the bright usage numbers.
+	local dim="#9399b2"
 	local show_weekly=0 show_weekly_resets=0
 	[ "$width_raw" -ge 100 ] && show_weekly=1
 	[ "$width_raw" -ge 100 ] && show_weekly_resets=1
@@ -505,9 +509,14 @@ print_full() {
 	# shade (#313244, cpu's; separated from cpu by the pressure pill) keeps it a
 	# distinct segment instead of merging into the pressure pill's #45475a.
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#cba6f7]#[bold]  %s " "$ram"
-	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
+	# Disk + git pills sit on surface1 (#45475a), not the lighter surface2/overlay0
+	# they used to: coloured text needs surface0/surface1 to clear WCAG AA (peach on
+	# surface2 is 3.8:1, green on overlay0 3.3:1 — both fail). They don't merge —
+	# disk/git are non-adjacent, separated by the bright battery/host pills, and the
+	# fg colour + icon distinguish them, not the pill shade.
+	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
 	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
-	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
+	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
 }
@@ -517,7 +526,7 @@ print_medium() {
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
-	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
+	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
 }
