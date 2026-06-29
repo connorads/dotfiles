@@ -132,6 +132,22 @@ mem_footprint_mb() {
 	mem_parse_mb $_fp
 }
 
+# mem_app_name COMMAND — the group key for a process command line: the .app
+# bundle name when present (truncated at the FIRST .app so nested helper
+# bundles like "Google Chrome.app/.../Google Chrome Helper.app" roll up to the
+# outer app), else the basename of the executable. Shared by the popup and the
+# watcher so both group identically.
+mem_app_name() {
+	case "$1" in
+	*.app/*)
+		_p=$(echo "$1" | sed -E 's#(\.app)/.*#\1#')
+		_b=$(basename -- "$_p")
+		echo "${_b%.app}"
+		;;
+	*) basename -- "${1%% *}" ;;
+	esac
+}
+
 # mem_group_apps — stdin rows "<mb>\t<app>"; stdout "<total_mb>\t<count>\t<app>"
 # sorted by total descending. Aggregates per-app footprint and process count.
 #

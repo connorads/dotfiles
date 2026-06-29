@@ -42,26 +42,6 @@ ansi() {
 	printf '\033[38;2;%d;%d;%dm%s\033[0m' "$_r" "$_g" "$_b" "$2"
 }
 
-# app_name COMMAND — group key for a process command line: the .app bundle name
-# when present (so every "Google Chrome.app/.../Helper" rolls up to one row),
-# else the basename of the executable.
-app_name() {
-	case "$1" in
-	*.app/*)
-		# Truncate at the FIRST .app so nested helper bundles
-		# (Google Chrome.app/.../Google Chrome Helper.app) roll up to the
-		# outer app. Then basename and drop the .app suffix.
-		_p=$(echo "$1" | sed -E 's#(\.app)/.*#\1#')
-		_b=$(basename -- "$_p")
-		echo "${_b%.app}"
-		;;
-	*)
-		# first whitespace-delimited token, then its basename
-		basename -- "${1%% *}"
-		;;
-	esac
-}
-
 # emit_one PID — "<footprint_mb>\t<app>" for one pid (skips zero/gone procs).
 # Invoked as `mem-popup.sh _one PID` by the xargs fan-out.
 emit_one() {
@@ -70,7 +50,7 @@ emit_one() {
 	[ "$_mb" -gt 0 ] 2>/dev/null || return 0
 	_cmd=$(ps -p "$_pid" -o command= 2>/dev/null) || return 0
 	[ -n "$_cmd" ] || return 0
-	printf '%s\t%s\n' "$_mb" "$(app_name "$_cmd")"
+	printf '%s\t%s\n' "$_mb" "$(mem_app_name "$_cmd")"
 }
 
 # vm_stat_mb FIELD — MB for a vm_stat page-count line (pages × page size).
