@@ -500,9 +500,11 @@ print_full() {
 	ai_usage
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
-	# Legacy RAM% pill (A/B against mem_segment). Bright mauve bg — distinct from
-	# the dark pressure pill before it — mirrors the battery/host accent pills.
-	printf "#[fg=#cba6f7]#[bg=#cba6f7]#[fg=#1e1e2e]#[bold]  %s " "$ram"
+	# Legacy RAM% pill (A/B against mem_segment). Dark pill with mauve content, in
+	# the data-pill family (cpu/disk/git) — not a bright accent pill. Its own dark
+	# shade (#313244, cpu's; separated from cpu by the pressure pill) keeps it a
+	# distinct segment instead of merging into the pressure pill's #45475a.
+	printf "#[fg=#313244]#[bg=#313244]#[fg=#cba6f7]#[bold]  %s " "$ram"
 	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
 	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
