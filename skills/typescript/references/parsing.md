@@ -30,6 +30,12 @@ errors — not as ad-hoc validators sprinkled through core logic.
 Standard Schema-compatible for generic helpers > Zod 4 > hand-written smart
 constructors for small domain types when clearer.
 
+A schema library's primitives are pre-tested — don't re-test them. Test the rules
+*you* add (refinements, transforms, cross-field constraints) and that the schema
+matches what the producer actually sends; the engine is not your code. A
+hand-written smart constructor, by contrast, is your logic — test it. See the
+`testing` skill (Types Before Tests).
+
 ## Branded types
 
 Brand meaningful primitives so a raw string/number can't be passed where a

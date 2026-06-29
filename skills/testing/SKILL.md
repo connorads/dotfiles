@@ -58,14 +58,18 @@ compile-time check that deletes a whole class of guard tests.
   once at a boundary parser / smart constructor, and trust the type inward — an
   always-valid model needs no defensive re-tests at every layer.
 - **Relocate, don't delete.** Making a value a type moves the tests to the
-  constructor, it doesn't remove them: prove the parser accepts the whole valid
-  set and rejects the invalid set. Downstream code then needs no tests for
-  inputs it can't hold.
+  constructor — but test the rules *you* authored, not the engine. A hand-rolled
+  smart constructor is logic you wrote: cover valid-accepted, invalid-rejected,
+  and edges. A schema-library parser (zod, valibot, pydantic) is declarative
+  config over a pre-tested engine: test only your custom refinements, transforms,
+  and cross-field constraints — re-testing the library's primitives is testing
+  the framework. Downstream code then needs no tests for inputs it can't hold.
 - **The guarantee is only as strong as the boundary.** Where types are erased at
   runtime (TypeScript), "trust the type inward" holds only if the boundary did a
-  real runtime parse and nothing forges the type with a cast (`as`) or `any`. A
-  type is a compile-time claim the parser makes true at runtime — so test the
-  parser hard and keep the no-cast discipline.
+  real runtime parse — a schema library, not a cast (`as`) or `any`. A type is a
+  compile-time claim the parser makes true at runtime. What no library covers:
+  whether your schema matches what the producer actually sends — guard that drift
+  with a contract test or a captured sample (see Contract Testing).
 
 ## Choosing the Layer
 
