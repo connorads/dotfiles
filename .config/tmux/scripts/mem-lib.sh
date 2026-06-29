@@ -86,8 +86,11 @@ mem_state() {
 	fi
 }
 
-# mem_state_colour STATE — bare 6-hex catppuccin colour for STATE. All pass
-# WCAG AA (≥7:1) on the status bar background. Unknown → green (fail quiet).
+# mem_state_colour STATE — bare 6-hex catppuccin colour for STATE. mem_segment
+# renders these on its own surface1 (#45475a) pill, NOT the bar bg: green 6.1:1
+# and yellow 7.2:1 clear WCAG AA; CRITICAL red is 3.9:1 (AA-large/UI only) but
+# stays legible via triple-encoding (⊠ glyph + swap figure + bold). Unknown →
+# green (fail quiet).
 mem_state_colour() {
 	case "$1" in
 	OK) echo a6e3a1 ;;
