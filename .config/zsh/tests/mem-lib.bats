@@ -137,6 +137,18 @@ EOF
   [ "$output" = "0" ]
 }
 
+# --- app name (group key) --------------------------------------------------
+
+@test "nested .app helper bundles roll up to the outer app" {
+  lib 'mem_app_name "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/149/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)"'
+  [ "$output" = "Google Chrome" ]
+}
+
+@test "non-bundled process keys on the executable basename" {
+  lib 'mem_app_name "/opt/homebrew/bin/node /Users/x/.local/bin/claude"'
+  [ "$output" = "node" ]
+}
+
 # --- app grouping aggregation ----------------------------------------------
 
 @test "grouping sums footprint and counts procs per app, ranked desc" {
