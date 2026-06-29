@@ -78,6 +78,30 @@ SCRIPT
   run zsh "$RL" 1 -- "$helper"
 
   [[ "$output" == *"exit 42"* ]]
+  # No retry pause on the final iteration - nothing follows it.
+  [[ "$output" != *"pausing"* ]]
+}
+
+@test "retry pause occurs between failing iterations but not after the last" {
+  local helper="$BATS_TEST_TMPDIR/always_fail_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+exit 1
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/always-fail-count"
+  export RL_RETRY_PAUSE_SECS=0
+
+  run zsh "$RL" 2 -- "$helper"
+
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  # Pause between iter 1 and 2, but not after iter 2 (the last).
+  local pausing
+  pausing=$(grep -c "pausing" <<<"$output")
+  [ "$pausing" -eq 1 ]
 }
 
 @test "promise token stops loop after successful iteration" {
@@ -243,6 +267,7 @@ fi
 SCRIPT
 
   export COUNT_FILE="$BATS_TEST_TMPDIR/promise-fail-count"
+  export RL_RETRY_PAUSE_SECS=0
 
   run zsh "$RL" 2 -- "$helper"
 
@@ -580,13 +605,26 @@ fi
 SCRIPT
 
   export COUNT_FILE="$BATS_TEST_TMPDIR/timeout_count"
+  export RL_RETRY_PAUSE_SECS=0
 
-  run zsh "$RL" 2 -t 2s -- "$helper"
+  run zsh "$RL" 2 -t 0.5s -- "$helper"
 
   # Both iterations should have run (timeout killed the first, second ran normally)
   [ "$(cat "$COUNT_FILE")" -eq 2 ]
   # Output should mention the timeout
   [[ "$output" == *"timed out"* ]]
+}
+
+@test "timeout accepts fractional durations" {
+  local helper="$BATS_TEST_TMPDIR/frac_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+exit 0
+SCRIPT
+
+  run zsh "$RL" 1 -t 0.5s -- "$helper"
+
+  [ "$status" -eq 0 ]
 }
 
 @test "timeout parses duration units (s, m, h and bare number)" {
