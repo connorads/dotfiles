@@ -46,8 +46,8 @@ setup() {
   cmds '.hooks.Notification[] | select(.matcher=="permission_prompt") | .hooks[].command' | grep -qF 'agent-state.sh blocked claude'
 }
 
-@test "Stop marks done" {
-  cmds '.hooks.Stop[].hooks[].command' | grep -qF 'agent-state.sh done claude'
+@test "Stop routes through the background-aware adapter" {
+  cmds '.hooks.Stop[].hooks[].command' | grep -qF 'agent-stop.sh'
 }
 
 @test "SessionEnd clears the dot" {
@@ -63,7 +63,7 @@ setup() {
   # return exit 2 and veto a tool call.
   while IFS= read -r c; do
     case "$c" in
-    *agent-state.sh*) [[ "$c" == *"|| true"* ]] ;;
+    *agent-state.sh* | *agent-stop.sh*) [[ "$c" == *"|| true"* ]] ;;
     esac
   done < <(cmds '.hooks[][].hooks[].command')
 }
