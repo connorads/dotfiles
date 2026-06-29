@@ -22,15 +22,20 @@ The logic is spread across several files — change them as a set:
   `working|blocked|done|unread|idle|seen|clear`. `unread` is the manual inverse
   of `seen` (force `done` even on the focused window — mark a read tab blue again).
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
-  rollup, and bell helpers (also used by `agent-sweep.sh`).
-- `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — maps state → glyph + colour.
-  **Shape** encodes state as well as colour (◆ blocked · ◐ working · ● done ·
-  ○ idle · · unknown) so it reads on a colour clash and for colour-blind use.
-  `working` is peach (not yellow) so it clears the same-yellow active-tab text.
+  rollup, and bell helpers (also used by `agent-sweep.sh`), **and the canonical
+  state → glyph + colour mapping** (`agent_attrs`/`agent_hex`/`agent_char`/
+  `agent_glyph`). **Shape** encodes state as well as colour so it reads on a
+  colour clash and for colour-blind use; `working` is peach (not yellow) so it
+  clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
+  legend.
+- `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the
+  mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
+  menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
   `agent-state.sh` on lifecycle events; the `after-select-pane` /
   `session-window-changed` hooks fire `seen` (focus = mark read).
-- Menu: `prefix + Alt+.` (`display-menu`) sets a state by hand.
+- Menu: `prefix + Alt+.` (`display-menu`) sets a state by hand (literals must
+  match the lib — see `agent-glyphs.bats`).
 
 Tests (run `mise run zsh-tests`):
 
@@ -38,6 +43,9 @@ Tests (run `mise run zsh-tests`):
 - [`../zsh/tests/tmux-agent-tabs.bats`](../zsh/tests/tmux-agent-tabs.bats) —
   asserts the **exact** `@agent_dotfmt` glyph/colour output against the real
   tmux.conf; update it when you change the state → glyph mapping.
+- [`../zsh/tests/agent-glyphs.bats`](../zsh/tests/agent-glyphs.bats) — derives
+  expectations from `agent-state-lib.sh` and asserts all three renderers (tabs,
+  menu, popup) match it; the drift guard for the mapping.
 - [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot sweeper.
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
