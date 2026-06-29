@@ -8,9 +8,13 @@ args:
     required: false
 ---
 
+# GOV.UK style
+
 Open the content up so anyone can understand it the first time they read it — without losing any of the substance, nuance or precision. The goal is to open up, not to dumb down. This skill applies the GOV.UK style guide and the Government Digital Service (GDS) content design principles. It is based on the GOV.UK A to Z style guide and writing guidelines (guidance.publishing.service.gov.uk).
 
 Apply it to reports, research write-ups, guidance and any prose meant to be read. When you write a report, default to this style. When you brief a research agent, pass this skill so its report follows the same style.
+
+Adapted from fofr's gist (gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2).
 
 ## Content design principles
 
