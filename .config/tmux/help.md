@@ -68,6 +68,7 @@
 | `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
+| `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |
 | `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
 | `Ctrl+b Alt+c` | connections overview |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
