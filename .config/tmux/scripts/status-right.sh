@@ -508,7 +508,7 @@ print_full() {
 	# the data-pill family (cpu/disk/git) — not a bright accent pill. Its own dark
 	# shade (#313244, cpu's; separated from cpu by the pressure pill) keeps it a
 	# distinct segment instead of merging into the pressure pill's #45475a.
-	printf "#[fg=#313244]#[bg=#313244]#[fg=#cba6f7]#[bold]  %s " "$ram"
+	printf "#[fg=#313244]#[bg=#313244]#[fg=#cba6f7]#[bold] 󰘚 %s " "$ram"
 	# Disk + git pills sit on surface1 (#45475a), not the lighter surface2/overlay0
 	# they used to: coloured text needs surface0/surface1 to clear WCAG AA (peach on
 	# surface2 is 3.8:1, green on overlay0 3.3:1 — both fail). They don't merge —
