@@ -1,0 +1,97 @@
+# memwatch: edge-triggered memory-pressure notifier (macOS)
+#
+# The third monitoring surface (after the status gauge and prefix+Alt+m popup):
+# a background daemon that notices pressure even when no terminal is in view.
+# Polls mem_state from mem-lib.sh; on a *transition* into BUSY/CRITICAL it posts
+# a notification naming the top footprint offender + swap, and appends the top-5
+# footprints to a log for post-event review. Edge-triggered + cooldown-limited
+# so a sustained bad state notifies at most once per cooldown, never per poll.
+#
+# No shebang: this is a daemon, not a dual-mode PATH command, so it is autoload-
+# only (run `memwatch` interactively to watch in the foreground, or `memwatch
+# --once` for a single evaluation). Launched unattended by the nix-darwin
+# launchd.user.agents.memwatch agent (GUI session, so notifications appear).
+#
+# Notifications use osascript (zero-dependency); they surface as "Script Editor"
+# and need that app's notification permission enabled once. Metrics, vocabulary
+# and app-grouping all come from mem-lib.sh — this file is only the loop.
+
+emulate -L zsh
+setopt no_unset
+
+# System tools live outside a login agent's minimal PATH; mem-lib calls sysctl
+# (/usr/sbin), footprint/vm_stat/osascript/ps (/usr/bin, /bin). Appended (not
+# prepended) so a real environment still resolves these while a test PATH shim
+# can still take precedence.
+export PATH="$PATH:/usr/bin:/usr/sbin:/bin"
+
+[[ "$OSTYPE" == "darwin"* ]] || {
+	print -u2 "memwatch: macOS only"
+	return 1
+}
+
+local mem_lib="${MEM_LIB:-$HOME/.config/tmux/scripts/mem-lib.sh}"
+[[ -r "$mem_lib" ]] || {
+	print -u2 "memwatch: missing mem-lib at $mem_lib"
+	return 1
+}
+# shellcheck source=/dev/null
+source "$mem_lib"
+
+local interval=${MEMWATCH_INTERVAL:-30}
+local cooldown=${MEMWATCH_COOLDOWN:-600} # re-notify a sustained bad state ≤ this often
+local log=${MEMWATCH_LOG:-$HOME/.cache/memwatch.log}
+local sample=${MEMWATCH_SAMPLE:-15} # procs footprinted per evaluation
+local once=0
+[[ "${1:-}" == "--once" ]] && once=1
+
+mkdir -p "${log:h}"
+
+# top_apps — top apps by phys_footprint this instant: RSS-rank, footprint the
+# top N, group by app (mem-lib). Serial (a 30 s daemon can spend ~1.3 s); the
+# popup parallelises because it blocks a human. Stdout: "<mb>\t<cnt>\t<app>".
+top_apps() {
+	ps -axo pid=,rss= | sort -k2 -nr | head -n "$sample" | awk '{ print $1 }' |
+		while read -r pid; do
+			local mb cmd
+			mb=$(mem_footprint_mb "$pid")
+			[[ "$mb" -gt 0 ]] || continue
+			cmd=$(ps -p "$pid" -o command= 2>/dev/null) || continue
+			[[ -n "$cmd" ]] || continue
+			printf '%s\t%s\n' "$mb" "$(mem_app_name "$cmd")"
+		done | mem_group_apps
+}
+
+local prev=OK now=0 last_notify=0
+while :; do
+	local state
+	state=$(mem_state)
+
+	if [[ "$state" != OK ]]; then
+		now=$(date +%s)
+		# Notify on a state change (incl. BUSY→CRITICAL escalation) or once the
+		# cooldown has lapsed while still bad — never silently, never per poll.
+		if [[ "$state" != "$prev" ]] || ((now - last_notify >= cooldown)); then
+			local grouped swap hog
+			grouped=$(top_apps)
+			swap=$(mem_swap_human)
+			hog=$(printf '%s\n' "$grouped" | awk -F '\t' 'NR==1 {
+				printf "%s ≈%s", $3, ($1 >= 1024 ? sprintf("%.1fG", $1/1024) : $1 "M") }')
+			[[ -n "$hog" ]] || hog="(no footprint data)"
+
+			osascript -e "display notification \"swap ${swap} · top: ${hog}\" with title \"Memory ${state}\"" 2>/dev/null || true
+
+			{
+				printf '%s  state=%s  swap=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$state" "$swap"
+				printf '%s\n' "$grouped" | head -5 | while IFS=$'\t' read -r mb cnt app; do
+					printf '  %-24s ≈%s (%s)\n' "$app" "$(mem_human_mb "$mb")" "$cnt"
+				done
+			} >>"$log"
+			last_notify=$now
+		fi
+	fi
+
+	prev=$state
+	((once)) && break
+	sleep "$interval"
+done
