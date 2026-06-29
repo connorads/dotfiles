@@ -172,6 +172,15 @@ servers at import time. Own resource creation and cleanup explicitly in the
 shell. Inject clock and randomness into dependency-bearing code; let pure
 functions take time and random values as arguments.
 
+Wire dependencies in one composition root in the bootstrap/entrypoint and pass
+them inward as explicit arguments. That single wiring point is also the one place
+to substitute every dependency with a fake in tests, which beats patching
+imports. A port can be a plain function for a single-method dependency — reserve a
+richer interface for a genuinely multi-method one. Reach for manual injection
+once you have more than one adapter, and for a dependency-injection framework only
+when dependencies have their own dependencies (chained graphs); below that it is
+overengineering.
+
 ## Workflows as Pipelines
 
 Reach for this apparatus — workflows-as-pipelines, aggregates, domain events,
@@ -219,6 +228,33 @@ work. Any command, job, or step that may be retried needs an explicit
 idempotency strategy — idempotency key, natural unique constraint, deduplication
 record, state-machine guard, or transactional outbox/inbox. Do not rely on
 "probably safe" repeated side effects.
+
+Concurrency control is distinct from idempotency: idempotency makes a retry safe;
+concurrency control stops two simultaneous writers clobbering each other — the
+lost update. Hold the consistency boundary under concurrent writes by versioning
+the aggregate (optimistic locking): bump a version on write, let one transaction
+commit, and make the loser reload and retry. Reach for pessimistic locks
+(`SELECT ... FOR UPDATE`) when conflicts are frequent and a retry is expensive,
+minding deadlocks; raising the isolation level to `SERIALIZABLE` lets the database
+enforce the rule but is slower, so prefer a targeted version check. Pick by
+conflict rate and the cost of a lost update.
+
+Make the transaction boundary safe by default: the only path that commits is
+total success plus an explicit commit, and any exception or early exit rolls
+back. Design the default to change nothing and require a positive act to persist.
+
+## Reads And Writes
+
+Separate reads from writes. At the call level, a function either changes state or
+answers a question, never both (command-query separation). At system scale the
+same split is CQRS: the write model is shaped by invariants, not by how screens
+query it — a domain model is not a data model — so reads need not travel through
+the aggregate. Default to the same store and repository for both. Reach for a
+separate read model — a denormalised view keyed for the query, kept fresh from
+the domain events the write side already emits — only when the read shape
+genuinely diverges or a performance wall demands it. Treat CQRS as a last resort,
+not a default: splitting read-only views out from command handlers captures most
+of the benefit without a second store.
 
 ## Scale Rule
 
