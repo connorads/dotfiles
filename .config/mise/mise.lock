@@ -435,6 +435,13 @@ backend = "npm:wrangler"
 version = "0.6.20"
 backend = "pipx:batrachian-toad"
 
+[[tools."pipx:markitdown"]]
+version = "0.1.6"
+backend = "pipx:markitdown"
+
+[tools."pipx:markitdown".options]
+extras = "pdf,docx,pptx,xlsx,xls,outlook,audio-transcription,youtube-transcription"
+
 [[tools."pipx:rembg"]]
 version = "2.0.69"
 backend = "pipx:rembg"
