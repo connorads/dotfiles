@@ -104,6 +104,19 @@ agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without 
 Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
 it `done` (blue) before you leave — like marking an email unread.
 
+## Memory pressure (status bar)
+
+Right-side gauge (macOS, width ≥ 80). Swap-used is always shown — including when
+healthy — so the resting baseline stays visible. Colour + glyph encode state;
+bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down (swap/RAM, top
+footprint apps, agents).
+
+| Pill | State | Meaning |
+|------|-------|---------|
+| `⬡` green | OK | swap below threshold, kernel pressure normal |
+| `⊟` amber (bold) | BUSY | swapping (≥4G) or kernel warn pressure |
+| `⊠` red (bold) | CRITICAL | heavy swap (≥7G) or kernel critical pressure |
+
 ## Copy mode navigation
 
 | Key | Action |

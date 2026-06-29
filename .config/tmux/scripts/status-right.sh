@@ -49,18 +49,19 @@ ram_percentage() {
 	fi
 }
 
-# mem_segment — quiet-when-healthy memory gauge in the powerline-pill shape.
-# State is triple-encoded for colour-blind safety: colour + glyph +
-# presence-of-number. OK shows just the hollow glyph (no number, no bold);
-# BUSY/CRITICAL surface the swap figure and bold. Sysctl-only, cheap at the
-# 15 s status-interval, so no caching.
+# mem_segment — memory-pressure gauge in the powerline-pill shape. State is
+# encoded by colour + glyph; bold escalates on BUSY/CRITICAL as the extra
+# non-colour cue. The swap figure is always shown (OK included) so the resting
+# baseline stays visible and calibrates the eye for when it climbs. Sysctl-only,
+# cheap at the 15 s status-interval, so no caching.
 mem_segment() {
 	local state colour glyph
 	state="$(mem_state)"
 	colour="$(mem_state_colour "$state")"
 	glyph="$(mem_state_glyph "$state")"
 	if [ "$state" = "OK" ]; then
-		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s " "$colour" "$glyph"
+		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
+			"$colour" "$glyph" "$(mem_swap_human)"
 	else
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
 			"$colour" "$glyph" "$(mem_swap_human)"
