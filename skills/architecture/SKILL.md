@@ -41,7 +41,10 @@ gather data and dependencies -> decide with pure values -> perform effects
 ```
 
 Challenge effects that appear to need interleaving. Often the code can fetch
-eagerly, decide purely, then act once.
+eagerly, decide purely, then act once. Have the core return a value describing
+what should happen — a decision or a list of events — and let the shell perform
+it. Returning events rather than publishing them keeps the core pure and lets a
+test assert on the returned value.
 
 ## Ports And Adapters
 
@@ -65,23 +68,38 @@ adapter and its rejected alternatives where decisions are kept.
 ## Domain Modelling
 
 Parse, don't validate repeatedly. Convert untrusted inputs at the boundary into
-typed values that internal code can trust.
+typed values that internal code can trust. Treat every inbound boundary this
+way — including your own database and configuration: parse rows and settings
+back into domain types on the way in rather than trusting them.
+
+Store the input to a business rule, not its output. Persist the facts a
+decision derives from (`customerIsVip`), never the verdict it produces
+(`freeShipping`). Rules change far more often than facts; a stored verdict
+couples the model to today's rules and forces a migration when they change.
+
+Keep look-alike types separate. Two concepts that share fields today — billing
+vs shipping address, a validated vs a priced line — diverge under new
+requirements. Coincidental structural sameness is not a reason to unify;
+resisting DRY here lets each evolve independently.
 
 Prefer:
 
 - discriminated unions / ADTs for state machines
 - wrapper types for meaningful primitives such as `EmailAddress`, `OrderId`, or
-  `CustomerId`
+  `CustomerId` — distinct even when the representation is identical (an `OrderId`
+  must never be assignable where a `CustomerId` is expected) and worthwhile even
+  with nothing to validate, purely to stop mix-ups
 - precise names from the domain language
 - bounded contexts with explicit translation between models
 
 Avoid generic names like `data`, `info`, `manager`, and `helper` when the domain
 has better words.
 
-Avoid boolean blindness. Model meaningful lifecycle states as discriminated
-unions, not bags of `isX`/`isY` flags, and avoid boolean parameters that switch
-behaviour — use named options or domain types. Booleans are fine as predicate
-return values.
+Make illegal states unrepresentable: model meaningful lifecycle states as
+discriminated unions, not bags of `isX`/`isY` flags, so invalid combinations
+cannot be constructed and need no runtime check. Avoid boolean blindness — no
+boolean parameters that switch behaviour; use named options or domain types.
+Booleans are fine as predicate return values.
 
 Prefer strong types at boundaries and avoid type-system escape hatches unless
 the project has a documented reason. Use mechanical enforcement for stack-level
@@ -91,6 +109,16 @@ rules such as no `any`, no non-null assertions, and strict type checking.
 
 Use explicit error values in domain and application logic. Exceptions are fine
 at the imperative shell; catch and translate them there.
+
+Triage every failure into one of three kinds:
+
+- domain errors — expected business outcomes; model them as typed values in the
+  domain language
+- panics — bugs and impossible states; throw and let them crash, caught once at
+  the top
+- infrastructure errors — timeouts, auth, outages; handle per architecture, and
+  promote to a domain error when the business outcome changes (then ask a domain
+  expert what should happen)
 
 Make expected failures part of the use-case flow. Preserve causes when wrapping
 unexpected infrastructure failures. Keep the happy path readable without hiding
@@ -120,7 +148,29 @@ servers at import time. Own resource creation and cleanup explicitly in the
 shell. Inject clock and randomness into dependency-bearing code; let pure
 functions take time and random values as arguments.
 
+## Workflows as Pipelines
+
+Model each use case as one workflow: a command in, a list of domain events out,
+contained in a single bounded context. Name events as past-tense facts
+(`OrderPlaced`), distinct from the command that requests them — a command may
+fail; an event is a fact that happened.
+
+Compose a workflow from small single-purpose steps wired output-to-input. Give
+each step a typed input, a typed output that includes its failure case, and
+explicit dependencies. Keep each step stateless and pure so it is testable in
+isolation; push I/O to the ends. Cross-context scenarios are choreographed by
+events, not one giant function.
+
 ## Workflows, Transactions, Idempotency
+
+An aggregate is both the consistency boundary and the unit of persistence: route
+all changes through its root, and update only one aggregate per transaction.
+Link aggregates by id, never by embedding one in another. When an operation
+seems to need two aggregates atomically, suspect a missing entity (model the
+operation itself) or use eventual consistency. Across services, prefer async
+events to distributed transactions, with an explicit recovery path — reconcile
+or compensate. Eventual consistency is not optional consistency; it must still
+converge.
 
 Use a plain call or a single database transaction for simple single-boundary
 operations. Reach for a saga or durable workflow when the process needs retries,
