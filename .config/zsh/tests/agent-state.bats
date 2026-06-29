@@ -15,7 +15,11 @@ setup() {
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="agentstate_${BATS_TEST_NUMBER}_$$"
-  tx new-session -d -s s -x 80 -y 24
+  # -f /dev/null: bare server, no real tmux.conf. The script reads only the
+  # @agent_state it manages itself, so the config adds nothing the test checks
+  # while its focus hooks (see ../../tmux/tmux.conf) would fire agent-state.sh
+  # mid-test and mutate state under us. Bare is faster and better isolated.
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   # Point bare `tmux` (as the script invokes it) at this private server, exactly
   # as an agent's hook would via the $TMUX it inherits from its pane.
   TMUX="$(tx display-message -p -t s '#{socket_path}'),$(tx display-message -p -t s '#{pid}'),0"

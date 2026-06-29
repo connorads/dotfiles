@@ -17,7 +17,10 @@ setup() {
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="agentsweep_${BATS_TEST_NUMBER}_$$"
-  tx new-session -d -s s -x 80 -y 24
+  # -f /dev/null: bare server (see AGENTS.md). The sweep reads only @agent_state,
+  # which the script manages itself; the real config adds nothing and its focus
+  # hooks would contaminate the test. Bare is faster and better isolated.
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   TMUX="$(tx display-message -p -t s '#{socket_path}'),$(tx display-message -p -t s '#{pid}'),0"
   export TMUX
 }

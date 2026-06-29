@@ -20,7 +20,9 @@ setup() {
   [ -n "$BUN_BIN" ] || skip "bun not installed"
   [ -f "$PLUGIN" ] || skip "no opencode agent-state plugin"
   SOCK="ocplugin_${BATS_TEST_NUMBER}_$$"
-  tx new-session -d -s s -x 80 -y 24
+  # -f /dev/null: bare server (see AGENTS.md) so the plugin's own state writes,
+  # not the real config's focus hooks, are what set the pane option we assert on.
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   PANE=$(tx display-message -p -t s '#{pane_id}') # first window's pane...
   tx new-window -t s                              # ...now inactive, so done stays done
   TMUX_ENV="$(tx display-message -p -t s '#{socket_path}'),$(tx display-message -p -t s '#{pid}'),0"
