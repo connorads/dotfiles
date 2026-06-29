@@ -30,7 +30,7 @@ CLI's two scopes *are* our two managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored) + `vendor/.agents/skills` (vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored) + `vendor/.agents/skills` (CLI-vendored) + `vendor/<name>` (manually-vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
@@ -67,8 +67,9 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
   public                   → symlink to ../../skills (compat: skl/autoload/refs resolve through it)
   personal/<name>/         authored, personal       · skl source 'personal'
-  vendor/                  third-party "project"     · skl source 'vendor'
-    .agents/skills/<name>/ real vendored files (CLI-managed, project scope)
+  vendor/                  third-party "project"     · skl sources 'vendor' + 'vendored'
+    <name>/                manually-vendored skills at depth 4 (skills.sh-registerable) · skl source 'vendored'
+    .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope) · skl source 'vendor'
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
 ~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
@@ -79,14 +80,17 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
                            skillsync-managed and absent here by design.
 ```
 
-`skl` config (`~/.config/skl/config.json`), order = precedence — unchanged by the move
-(`public` is a symlink → `~/skills`, which skl follows):
+`skl` config (`~/.config/skl/config.json`), order = precedence (`public` is a symlink
+→ `~/skills`, which skl follows). The `vendored` source roots at `vendor/` so its non-dot
+Glob serves the depth-4 manually-vendored skills while naturally skipping the `.agents/`
+nested CLI clones (no overlap with `vendor`):
 
 ```json
 { "paths": [
   { "path": "~/.config/skills/public",                "name": "public" },
   { "path": "~/.config/skills/personal",              "name": "personal" },
-  { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" }
+  { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
+  { "path": "~/.config/skills/vendor",                "name": "vendored" }
 ] }
 ```
 
@@ -202,19 +206,21 @@ and diff-review clones against the prior vetted copy before trusting them.
 ## Caveats
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
-  can't refresh them; re-`skills add` if/when a source is found. List the untracked ones —
-  on disk but absent from the lockfile:
+  can't refresh them, and they are **absent from `skills-lock.json` by design**. These two —
+  `govuk-style`, `ponytail` — live one level up at `vendor/<name>/` (depth 4), not under
+  `.agents/skills/`, so they are **discoverable by `skills add` / registerable on skills.sh**
+  (the CLI's `findSkillDirs` caps at `maxDepth = 5`; depth 6 under `.agents/skills/` was never
+  reached). skl serves them via the `vendored` source. The CLI-cloned, lock-tracked skills
+  stay nested under `.agents/skills/`. List the manually-vendored (un-locked) ones:
 
   ```bash
-  comm -23 <(ls ~/.config/skills/vendor/.agents/skills | sort) \
+  comm -23 <(find ~/.config/skills/vendor -mindepth 1 -maxdepth 1 -type d ! -name .agents -exec basename {} \; | sort) \
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
 
-  Current untracked: `govuk-style`, `ponytail`.
-
   `govuk-style` — from a **gist**
-  (`gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2`), so the CLI can't ingest it
-  (it rewrites the URL to `github.com/fofr/505e…git`, which 404s — gists live on a
+  (`gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2`), so `skills update` can't refresh
+  it (the CLI rewrites the URL to `github.com/fofr/505e…git`, which 404s — gists live on a
   different host). Single `SKILL.md`, no scripts; refresh by re-cloning the gist and
   diffing. GOV.UK / GDS house-style prose skill (plain English, sentence case, no bold).
 
