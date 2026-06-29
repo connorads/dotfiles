@@ -80,6 +80,10 @@
 !/.config/pip/
 !/.config/pip/pip.conf
 
+# build-wrap allowlist (crates whose build.rs runs unsandboxed)
+!/.config/build-wrap/
+!/.config/build-wrap/**
+
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
 /.config/jj/**
@@ -204,6 +208,11 @@
 
 .DS_Store
 __pycache__/
+
+# cargo: track global config only (build-wrap linker); bin/registry are local
+!/.cargo/
+/.cargo/**
+!/.cargo/config.toml
 
 !/.local/
 /.local/**

@@ -1,0 +1,22 @@
+#!/bin/sh
+# build-wrap-shim: cargo linker that runs build-wrap when installed, else cc.
+#
+# ~/.cargo/config.toml sets this as the global linker so every build script is
+# sandboxed (Seatbelt on macOS, bubblewrap on Linux). The indirection lets a
+# machine that hasn't built build-wrap yet (fresh bootstrap) fall back to the
+# real linker instead of failing every cargo build - including the build of
+# build-wrap itself.
+#
+# build-wrap is resolved by explicit path first (not just $PATH), so a shell
+# without mise active can't silently skip the sandbox and leave builds
+# unprotected without anyone noticing.
+for bw in \
+  "$HOME/.local/share/mise/shims/build-wrap" \
+  "$HOME/.cargo/bin/build-wrap" \
+  "$(command -v build-wrap 2>/dev/null)"; do
+  if [ -n "$bw" ] && [ -x "$bw" ]; then
+    exec "$bw" "$@"
+  fi
+done
+
+exec "${BUILD_WRAP_LD:-cc}" "$@"
