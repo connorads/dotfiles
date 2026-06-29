@@ -65,6 +65,19 @@ then extend an existing adapter when the capability fits, then create a new one
 only when reuse and extension would force bad coupling. Record a meaningful new
 adapter and its rejected alternatives where decisions are kept.
 
+## Module Depth
+
+Pull complexity downward. A module has more callers than authors, so a simple
+interface over a complex body beats the reverse: absorb the hard cases inside
+rather than exposing flags and knobs to callers. A layer whose interface is about
+as complex as its body is shallow — a pass-through method or thin wrapper that
+hides nothing adds interface cost for no gain, so merge or delete it.
+
+This red flag targets abstraction layers that hide nothing — not deliberate
+ports/adapters, nor pure pipeline steps kept for substitution or isolated
+testability, which earn their seam. The `typescript` skill owns the mechanics
+(deep, cohesive modules; the deletion test).
+
 ## Domain Modelling
 
 Parse, don't validate repeatedly. Convert untrusted inputs at the boundary into
