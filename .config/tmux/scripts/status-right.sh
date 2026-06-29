@@ -13,6 +13,7 @@ if ! [[ "$width_raw" =~ ^[0-9]+$ ]]; then
 fi
 
 cpu_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh"
+ram_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/ram_percentage.sh"
 
 # Shared memory-pressure vocabulary (OK/BUSY/CRITICAL → colour + glyph + swap).
 # RAM-used % from tmux-cpu was dropped: on macOS it reads ~90% when healthy
@@ -28,6 +29,21 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cpu_percentage() {
 	if [ -x "$cpu_script" ]; then
 		"$cpu_script" 2>/dev/null | tr -d '\n'
+	else
+		printf "--%%"
+	fi
+}
+
+# ram_percentage — the legacy RAM-used % from tmux-cpu, kept ALONGSIDE
+# mem_segment as a transitional A/B so the two gauges can be compared in situ.
+# Caveat: on macOS this over-reads (counts reclaimable inactive pages) and was
+# the reason for the switch; trust mem_segment's swap/pressure signal over this.
+# On Linux it is the meaningful indicator (mem_segment's macOS sysctls are
+# absent there, so the gauge reads a flat OK). Drop this once the new gauge is
+# trusted on macOS.
+ram_percentage() {
+	if [ -x "$ram_script" ]; then
+		"$ram_script" 2>/dev/null | tr -d '\n'
 	else
 		printf "--%%"
 	fi
@@ -473,8 +489,9 @@ ai_usage() {
 }
 
 print_full() {
-	local cpu disk battery git_ref host
+	local cpu ram disk battery git_ref host
 	cpu="$(cpu_percentage)"
+	ram="$(ram_percentage)"
 	disk="$(disk_percentage)"
 	battery="$(battery_percentage || true)"
 	git_ref="$(git_branch_and_dirty)"
@@ -483,6 +500,9 @@ print_full() {
 	ai_usage
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
+	# Legacy RAM% pill (A/B against mem_segment). Bright mauve bg — distinct from
+	# the dark pressure pill before it — mirrors the battery/host accent pills.
+	printf "#[fg=#cba6f7]#[bg=#cba6f7]#[fg=#1e1e2e]#[bold]  %s " "$ram"
 	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
 	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
