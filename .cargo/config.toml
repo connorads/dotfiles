@@ -1,0 +1,11 @@
+# Sandbox every Rust build script (build.rs) via build-wrap: read-only FS, no
+# network, writes only to OUT_DIR/TMPDIR. Closes the supply-chain hole the
+# age-gates can't reach - build scripts run arbitrary code at build time and
+# Cargo has no global ignore-scripts switch. macOS uses Seatbelt, Linux bwrap.
+#
+# linker points at build-wrap-shim (on PATH via ~/.local/bin), which uses
+# build-wrap when installed and falls back to cc otherwise, so a fresh machine
+# can still bootstrap cargo (incl. building build-wrap itself). Allowlist crates
+# that legitimately need build-time network/FS in ~/.config/build-wrap/config.toml.
+[target.'cfg(all())']
+linker = "build-wrap-shim"

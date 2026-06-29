@@ -134,6 +134,10 @@ url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-linux-x6
 checksum = "sha256:d8b96221828ad6f97ac7ac0ab7e95872341af763001e8803e8267652c2652620"
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-darwin-aarch64.zip"
 
+[[tools."cargo:build-wrap"]]
+version = "0.7.0"
+backend = "cargo:build-wrap"
+
 [[tools.claude]]
 version = "2.1.195"
 backend = "aqua:anthropics/claude-code"
