@@ -61,6 +61,11 @@ compile-time check that deletes a whole class of guard tests.
   constructor, it doesn't remove them: prove the parser accepts the whole valid
   set and rejects the invalid set. Downstream code then needs no tests for
   inputs it can't hold.
+- **The guarantee is only as strong as the boundary.** Where types are erased at
+  runtime (TypeScript), "trust the type inward" holds only if the boundary did a
+  real runtime parse and nothing forges the type with a cast (`as`) or `any`. A
+  type is a compile-time claim the parser makes true at runtime — so test the
+  parser hard and keep the no-cast discipline.
 
 ## Choosing the Layer
 
