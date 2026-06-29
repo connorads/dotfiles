@@ -162,6 +162,93 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
   ! should_ring blocked
 }
 
+# --- stop_state: in-flight-count -> verb (pure) ---
+
+@test "stop_state: 0 in-flight -> done" {
+  . "$LIB"
+  [ "$(stop_state 0)" = done ]
+}
+
+@test "stop_state: positive count -> working" {
+  . "$LIB"
+  [ "$(stop_state 3)" = working ]
+}
+
+@test "stop_state: empty -> done" {
+  . "$LIB"
+  [ "$(stop_state "")" = done ]
+}
+
+@test "stop_state: non-numeric -> done" {
+  . "$LIB"
+  [ "$(stop_state null)" = done ]
+}
+
+# --- agent-stop.sh adapter: Stop payload on stdin -> pane state ---
+#
+# Counts only finite work (workflow|subagent|shell): pending work keeps the dot
+# peach (working), a drained/empty array goes blue (done), and persistent
+# watchers (monitor|dream) must not pin it at working. `done` only *reads* as
+# done on an inactive window (active collapses to idle, "already seen"), so the
+# done-expecting cases add a second window first. jq-parse cases skip without jq.
+
+STOP="$TESTS_DIR/../../tmux/scripts/agent-stop.sh"
+
+# astop PANE JSON — feed JSON to agent-stop.sh on stdin against the private server.
+astop() { run env AGENT_STATE_PANE="$1" sh "$STOP" <<<"$2"; }
+
+@test "agent-stop: pending workflow keeps working" {
+  command -v jq >/dev/null || skip "jq not installed"
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  astop "$pane" '{"background_tasks":[{"id":"1","type":"workflow","status":"running","description":"d"}]}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+}
+
+@test "agent-stop: pending subagent keeps working" {
+  command -v jq >/dev/null || skip "jq not installed"
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  astop "$pane" '{"background_tasks":[{"id":"1","type":"subagent","status":"pending","description":"d"}]}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+}
+
+@test "agent-stop: empty background_tasks -> done" {
+  command -v jq >/dev/null || skip "jq not installed"
+  p1=$(tx display-message -p -t s '#{pane_id}') # window 1, currently active
+  tx new-window -t s                            # window 2 active; window 1 inactive
+  astop "$p1" '{"background_tasks":[]}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
+@test "agent-stop: lone monitor -> done (must not pin working)" {
+  command -v jq >/dev/null || skip "jq not installed"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s
+  astop "$p1" '{"background_tasks":[{"id":"1","type":"monitor","status":"running","description":"d"}]}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
+@test "agent-stop: missing background_tasks -> done" {
+  command -v jq >/dev/null || skip "jq not installed"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s
+  astop "$p1" '{}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
+@test "agent-stop: malformed JSON degrades to done" {
+  command -v jq >/dev/null || skip "jq not installed"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s
+  astop "$p1" 'not json'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
 # --- blocked integration (real tmux server, no client attached) ---
 
 @test "blocked sets pane and window state without crashing (no client)" {

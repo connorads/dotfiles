@@ -48,6 +48,18 @@ should_ring() {
 	[ "$1" != blocked ]
 }
 
+# stop_state COUNT — map a count of in-flight background tasks to the verb the
+# Stop hook should forward: a positive count means work is still draining
+# (working), zero means the turn is genuinely finished (done). Non-numeric or
+# empty input collapses to done so a missing/garbled count never beats today's
+# unconditional-done behaviour.
+stop_state() {
+	case ${1:-0} in
+	0 | '' | *[!0-9]*) echo "done" ;;
+	*) echo "working" ;;
+	esac
+}
+
 # ring_bell PANE — write a BEL (\a) to every writable client TTY of the pane's
 # session. Writes direct to the client TTY, bypassing tmux's monitor-bell so
 # window_bell_flag stays clear — the red agent dot already covers the in-tmux
