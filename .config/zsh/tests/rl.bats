@@ -328,6 +328,7 @@ SCRIPT
 
   export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
   export RL_GRANDCHILD_PID_FILE="$BATS_TEST_TMPDIR/grandchild.pid"
+  export RL_FORCE_STOP_WINDOW_SECS=0.3
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
@@ -351,7 +352,7 @@ SCRIPT
   grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
 
   kill -INT "$rl_pid"
-  sleep 2.5 # must exceed 2s debounce cooldown
+  sleep 0.5 # must exceed the 0.3s debounce cooldown
   kill -INT "$rl_pid"
   local exit_status
   if wait "$rl_pid"; then
@@ -425,6 +426,7 @@ sleep 300
 SCRIPT
 
   export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
+  export RL_FORCE_STOP_WINDOW_SECS=0.3
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
@@ -456,7 +458,7 @@ SCRIPT
   ! grep -Fq "force stopping" "$output_file"
 
   # Clean up: wait for debounce then force-stop
-  sleep 2
+  sleep 0.4
   kill -INT "$rl_pid" 2>/dev/null
   wait "$rl_pid" 2>/dev/null || true
 }
