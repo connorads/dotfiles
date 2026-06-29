@@ -93,6 +93,10 @@ fnox = "1.27.1"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
+# extras: the document/media set. NOT "all" — that drags in az-doc-intel /
+# azure-ai-contentunderstanding which only ships as a pre-release, so the
+# resolver fails closed (no pre-releases enabled).
+"pipx:markitdown" = { version = "0", extras = "pdf,docx,pptx,xlsx,xls,outlook,audio-transcription,youtube-transcription" }
 # Pinned <2.0.70: rembg 2.0.70+ hard-pins numpy>=2.3, but its transitive
 # numba/llvmlite chain can't go that high, forcing the resolver onto ancient
 # numba 0.53.1 -> llvmlite 0.36.0 which won't build on Python >=3.10.
