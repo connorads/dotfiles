@@ -70,6 +70,9 @@ compile-time check that deletes a whole class of guard tests.
   compile-time claim the parser makes true at runtime. What no library covers:
   whether your schema matches what the producer actually sends — guard that drift
   with a contract test or a captured sample (see Contract Testing).
+- **Define errors out of existence, too.** Redefining an operation so the edge
+  case is normal — a total function over a tested special case — deletes its
+  edge-case test with it. Design mechanic in `architecture` → Error Handling.
 
 ## Choosing the Layer
 
