@@ -132,6 +132,8 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   are macOS `~/Library` locations. (Idiomatic across every current AppImage cask, not
   brew-enforced.)
 - **`arch`/`os` are the first stanzas — before `version`**, not merely before `url`. Homebrew's canonical order opens with the `[arch, on_arch_conditional, os]` group, then `[version, sha256]`; `brew style --fix` hoists them. (Required whenever `url` interpolates `#{arch}`/`#{os}`.)
+  - **Within that group, `arch` precedes `os`.** With a top-level `arch`, write `arch` then `os` - `brew style` flags `os` first as "os stanza out of order". The reverse-looking layout (`os` leading) is only correct in the per-OS *nested* shape (`arch` inside `on_macos`/`on_linux`), where there is no top-level `arch`, so `os` is the first stanza. Don't generalise "os before arch" - it holds only when `arch` is nested.
+- **`arch` and `sha256` do not share key vocabularies.** `arch` takes `arm:`/`intel:` on *both* OSes, so `arch arm: …, intel: …` inside `on_linux` is correct. But `sha256` keys are OS-specific: `arm:`/`intel:` (alias `x86_64:`) feed the **macOS** branch only; Linux reads `arm64_linux:`/`x86_64_linux:`. Never put `sha256 arm:`/`intel:` inside `on_linux` - on Linux they resolve to `nil`, the sha goes missing, and the cask fails audit/install. Keep all four shas in one top-level `sha256` block (`arm:`/`intel:`/`arm64_linux:`/`x86_64_linux:`).
 - **Prefer the `os` stanza when the asset path embeds an OS-specific string that
   differs from the OS type name** (`macos`/`linux`) — e.g. `mac`, `darwin`, `osx`,
   `macos-x64`, `linux-amd64`. Declare `os macos: "<macstr>", linux: "<linuxstr>"`
