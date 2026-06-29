@@ -150,6 +150,13 @@ functions take time and random values as arguments.
 
 ## Workflows as Pipelines
 
+Reach for this apparatus — workflows-as-pipelines, aggregates, domain events,
+bounded contexts — where business complexity and domain-expert collaboration
+justify it: the core domain. For technical, generic, or simpler subdomains,
+plain functions, a single transaction, and strong types are enough; don't impose
+the ceremony. DDD is not appropriate for all software — match the modelling style
+to the domain (see Scale Rule).
+
 Model each use case as one workflow: a command in, a list of domain events out,
 contained in a single bounded context. Name events as past-tense facts
 (`OrderPlaced`), distinct from the command that requests them — a command may
@@ -158,8 +165,14 @@ fail; an event is a fact that happened.
 Compose a workflow from small single-purpose steps wired output-to-input. Give
 each step a typed input, a typed output that includes its failure case, and
 explicit dependencies. Keep each step stateless and pure so it is testable in
-isolation; push I/O to the ends. Cross-context scenarios are choreographed by
-events, not one giant function.
+isolation; push I/O to the ends.
+
+Two weights of "events": returning events as values from the core — a list of
+what happened, instead of a `void` mutation — is cheap and broadly worthwhile,
+even in simple code. Event sourcing and async event choreography across services
+are heavy; use them only when the coordination genuinely warrants it, not as a
+default. Cross-context scenarios are then choreographed by events, not one giant
+function.
 
 ## Workflows, Transactions, Idempotency
 
@@ -185,6 +198,10 @@ record, state-machine guard, or transactional outbox/inbox. Do not rely on
 
 ## Scale Rule
 
-For simple scripts, strong types and a clear gather/decide/act flow are enough.
-For substantial domains, use explicit ports, typed domain models, and a walking
-skeleton that proves one end-to-end use case before expanding.
+Scope the investment by domain, not just by size. For simple scripts, strong
+types and a clear gather/decide/act flow are enough. For a substantial core
+domain — the part that differentiates the business — use explicit ports, typed
+domain models, aggregates where consistency demands them, and a walking skeleton
+that proves one end-to-end use case before expanding. For supporting subdomains,
+model lightly; for generic ones (auth, billing, search, notifications), buy or
+adopt an existing solution rather than modelling it yourself.
