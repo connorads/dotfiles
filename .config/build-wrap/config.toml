@@ -1,0 +1,12 @@
+# build-wrap allowlist. Crates/dirs listed here run their build scripts
+# UNSANDBOXED. Add a crate only after confirming a sandboxed build failure is a
+# legitimate build-time need (network fetch, external toolchain) and not malware.
+# Common offenders: *-sys crates, FIPS crates (aws-lc-fips-sys), svm-rs-builds.
+#
+# Example:
+#   [allow]
+#   packages = ["aws-lc-fips-sys"]
+#   directories = ["~/some/trusted/project"]
+[allow]
+packages = []
+directories = []

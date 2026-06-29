@@ -115,6 +115,9 @@ fnox = "1.27.1"
 "pipx:ty" = "0"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
+# Sandboxes build.rs for every cargo build via ~/.cargo/config.toml's linker
+# shim. Not in nixpkgs, so mise (cargo backend) keeps it in mise.lock.
+"cargo:build-wrap" = "0.7"
 
 [tasks.zsh-tests]
 description = "Run BATS tests for zsh functions (parallel)"
