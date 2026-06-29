@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`~/CLAUDE.md` → `~/AGENTS.md` (project/dotfiles), `~/.claude/CLAUDE.md` → `~/.agents/AGENTS.md` (user). Canonical files are `AGENTS.md` — use `dotfiles add AGENTS.md` when committing changes.
+`~/CLAUDE.md` → `~/AGENTS.md` (project/dotfiles), `~/.claude/CLAUDE.md` → `~/.agents/AGENTS.md` (user). Canonical files are `AGENTS.md` - use `dotfiles add AGENTS.md` when committing changes.
 
 ## Dotfiles Git Dir + Work-tree
 
@@ -38,7 +38,7 @@ Then `dotfiles add .newfile` works without `-f`.
 
 - Ignore unrelated git changes; do not reset/revert/discard them.
 - Treat Codex `[projects.*]` trust entries in [`.codex/config.toml`](./.codex/config.toml) as machine-local state; never commit them.
-- Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state — Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit.
+- Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex + Claude settings clean filters) runs before status/diff/stash.
 
 ## Key Documentation
@@ -55,7 +55,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
 | [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
-| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` — XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
+| [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` - XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
 | [.config/pip/pip.conf](./.config/pip/pip.conf)                         | pip quarantine (`uploaded-prior-to = P4D`) for direct `pip install` / `download` / `wheel` |
 | [.yarnrc.yml](./.yarnrc.yml)                                           | Modern Yarn quarantine (`npmMinimalAgeGate: 4d`). Yarn 1 ignores this; prefer pnpm there |
 | [.config/aube/config.toml](./.config/aube/config.toml)                 | aube quarantine + trustPolicy + low-download gate + advisoryBloomCheck. Primary npm backend for mise (`npm.package_manager = "aube"`) |
@@ -126,7 +126,7 @@ Run `zfn-link` and commit after adding a shebang to a new function.
 
 ### Agent usage
 
-Agents can call these commands directly — no `zsh -lc` wrapper needed:
+Agents can call these commands directly - no `zsh -lc` wrapper needed:
 
 ```bash
 bash -c 'ts status'       # works via ~/.local/bin/ts
@@ -160,7 +160,7 @@ homeConfigurations."codespace"           # GitHub Codespaces (minimal)
 
 ### Hybrid NixOS (rpi5)
 
-The rpi5 uses a hybrid setup — two repos, two rebuilds:
+The rpi5 uses a hybrid setup - two repos, two rebuilds:
 
 - **System** (`nrs`): NixOS config from `~/git/rpi5` (set via `NIXOS_FLAKE` in `.zshrc.local`)
 - **User env** (`hms`): shell, tools, git, tmux etc. from dotfiles (`~/.config/nix`)
@@ -214,13 +214,13 @@ gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
 
 ## Supply Chain & Update Strategy
 
-Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) — only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
+Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) - only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
 
-**Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform — the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
+**Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform - the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
 
 **Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude and Codex are exempted from quarantine via the `minimum_release_age_excludes` mise setting.
 
-**How `up` works**: by default it *bumps* both lockfiles and commits each change (symmetric with the nix flake model) — `mise upgrade` within ranges (4-day quarantine, Claude exempt), which auto-locks **every** `lockfile_platforms` entry for each changed tool plus current-platform provenance (so no separate `mise lock` refresh is needed), then `dotfiles commit` the lock if it changed; updates brew/apt; `nfu` + commits `flake.lock`; rebuilds. **`--frozen` / `-s` / `--skip-flake`** is the *frozen* path: bump nothing — converge tools to the committed `mise.lock` via `mise install`, skip brew/apt, skip the flake bump/commit — then rebuild. Use it to reproduce a known-good toolchain (e.g. on a fresh Linux box).
+**How `up` works**: by default it *bumps* both lockfiles and commits each change (symmetric with the nix flake model) - `mise upgrade` within ranges (4-day quarantine, Claude exempt), which auto-locks **every** `lockfile_platforms` entry for each changed tool plus current-platform provenance (so no separate `mise lock` refresh is needed), then `dotfiles commit` the lock if it changed; updates brew/apt; `nfu` + commits `flake.lock`; rebuilds. **`--frozen` / `-s` / `--skip-flake`** is the *frozen* path: bump nothing - converge tools to the committed `mise.lock` via `mise install`, skip brew/apt, skip the flake bump/commit - then rebuild. Use it to reproduce a known-good toolchain (e.g. on a fresh Linux box).
 
 ```bash
 up                                          # bump mise.lock + flake.lock + brew/apt, commit locks, rebuild
@@ -232,7 +232,7 @@ mise outdated --bump                        # available updates beyond ranges
 mise lock -g                                # refresh global lockfile checksums for all platforms
 ```
 
-**pnpm** (v11): global 4-day quarantine (`minimumReleaseAge: 5760`) + trust policy (`trustPolicy: no-downgrade`) + `ignoreScripts: true` in `~/.config/pnpm/config.yaml` (YAML, camelCase). Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise). **v11 reads pnpm settings only from YAML** (`pnpm-workspace.yaml` / global `config.yaml`), never `.npmrc`/`rc` — the old `~/.config/pnpm/rc` is an inert v10 fallback. **macOS gotcha**: pnpm reads its global config from the native dir `~/Library/Preferences/pnpm/`, not `~/.config/pnpm/`, so the dotfile is symlinked there via nix (`home.file."Library/Preferences/pnpm/config.yaml"` in [darwin-shared.nix](./.config/nix/modules/darwin-shared.nix), `mkOutOfStoreSymlink` → the tracked `~/.config/pnpm/config.yaml`). Linux reads `~/.config/pnpm/config.yaml` natively. `blockExoticSubdeps: true` is set explicitly (it's the v11 default, but pinning it keeps the posture auditable in one place and drift-proof).
+**pnpm** (v11): global 4-day quarantine (`minimumReleaseAge: 5760`) + trust policy (`trustPolicy: no-downgrade`) + `ignoreScripts: true` in `~/.config/pnpm/config.yaml` (YAML, camelCase). Applies to all projects. `trustPolicy` blocks installs where a package's trust level has decreased (e.g., Trusted Publisher → unsigned = likely compromise). **v11 reads pnpm settings only from YAML** (`pnpm-workspace.yaml` / global `config.yaml`), never `.npmrc`/`rc` - the old `~/.config/pnpm/rc` is an inert v10 fallback. **macOS gotcha**: pnpm reads its global config from the native dir `~/Library/Preferences/pnpm/`, not `~/.config/pnpm/`, so the dotfile is symlinked there via nix (`home.file."Library/Preferences/pnpm/config.yaml"` in [darwin-shared.nix](./.config/nix/modules/darwin-shared.nix), `mkOutOfStoreSymlink` → the tracked `~/.config/pnpm/config.yaml`). Linux reads `~/.config/pnpm/config.yaml` natively. `blockExoticSubdeps: true` is set explicitly (it's the v11 default, but pinning it keeps the posture auditable in one place and drift-proof).
 
 **npm**: global 4-day quarantine (`min-release-age=4`) in `~/.npmrc`. Note: npm uses `min-release-age` in **days**, pnpm uses `minimumReleaseAge` in **minutes** (5760 = 4 days). `allow-git=none` blocks Git dependencies, which can execute code even when lifecycle scripts are disabled. Project `.npmrc` files should set both age-gate keys if either tool might run. npm has no `trust-policy` equivalent.
 
@@ -242,23 +242,23 @@ mise lock -g                                # refresh global lockfile checksums 
 
 **aube** (primary npm backend for mise): config at `~/.config/aube/config.toml`. Set via mise: `npm.package_manager = "aube"`. Layered defenses beyond a simple age gate:
 
-- `minimumReleaseAge = 5760` (minutes — aube uses minutes, bun uses seconds, pnpm uses minutes, npm uses days)
-- `advisoryBloomCheck = "on"` — ~380KB bloom-filter prefilter for OSV `MAL-*` advisories on lockfile installs (~0.1% FPR, ~1 round-trip per typical install)
-- `trustPolicy = "no-downgrade"` (default) — fails install if a package's trust evidence weakens (e.g. previously had SLSA provenance, now doesn't). Real catch: `@mariozechner/clipboard-darwin-arm64@0.3.6` lost provenance after a CI refactor at 0.3.3 — root pkg kept it but platform sibling packages didn't. Same publisher, same npm signing key — added to `trustPolicyExclude` with reasoning in the config comment
-- `lowDownloadThreshold = 1000` (default) — refuses packages with <1000 weekly downloads as typosquat defense. Niche-but-trusted tools listed in `allowedUnpopularPackages`
-- `allowBuilds = {}` (default empty) — lifecycle scripts blocked unless explicitly allowed via `aube approve-builds <pkg>` or `allowBuilds.pkg = true`
+- `minimumReleaseAge = 5760` (minutes - aube uses minutes, bun uses seconds, pnpm uses minutes, npm uses days)
+- `advisoryBloomCheck = "on"` - ~380KB bloom-filter prefilter for OSV `MAL-*` advisories on lockfile installs (~0.1% FPR, ~1 round-trip per typical install)
+- `trustPolicy = "no-downgrade"` (default) - fails install if a package's trust evidence weakens (e.g. previously had SLSA provenance, now doesn't). Real catch: `@mariozechner/clipboard-darwin-arm64@0.3.6` lost provenance after a CI refactor at 0.3.3 - root pkg kept it but platform sibling packages didn't. Same publisher, same npm signing key - added to `trustPolicyExclude` with reasoning in the config comment
+- `lowDownloadThreshold = 1000` (default) - refuses packages with <1000 weekly downloads as typosquat defense. Niche-but-trusted tools listed in `allowedUnpopularPackages`
+- `allowBuilds = {}` (default empty) - lifecycle scripts blocked unless explicitly allowed via `aube approve-builds <pkg>` or `allowBuilds.pkg = true`
 
 Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/aube/config.toml` (aube-only keys). Keep aube-specific keys in the latter to avoid npm warnings ("Unknown user config 'minimum-release-age'") when mise calls `npm view` for metadata. CLI: `aube config set <key> <value>` routes correctly.
 
 Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.cache/aube/{virtual-store,packuments-full-v1}` (plus `aube cache prune --age-days 0`). It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
 
-**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** — bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks dependency postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global. For urgent one-offs, use `bun install --minimum-release-age=0`; there is no known env override like npm/pnpm/uv/pip expose.
+**bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** - bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks dependency postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global. For urgent one-offs, use `bun install --minimum-release-age=0`; there is no known env override like npm/pnpm/uv/pip expose.
 
 **Deno**: Deno 2.8+ reads `min-release-age` from `.npmrc` for npm dependencies. `deno install --minimum-dependency-age=0` disables it for an explicit one-off. Lifecycle scripts still require explicit `--allow-scripts`.
 
 **Yarn**: modern Yarn reads `npmMinimalAgeGate: 4d` from `~/.yarnrc.yml`. Yarn 1 ignores this setting, and Corepack can still expose Yarn 1 for legacy projects, so prefer pnpm unless the project pins Yarn 4+.
 
-**Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `ignoreScripts: true` in `~/.config/pnpm/config.yaml`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive — disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
+**Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `ignoreScripts: true` in `~/.config/pnpm/config.yaml`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive - disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
 pnpm 11 blocks build scripts by default (`allowBuilds`); the `ignoreScripts` setting is belt-and-braces. npm has no equivalent default, so the rc setting is the meaningful change there.
 
@@ -271,7 +271,7 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
 
-**Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* — they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter.
+**Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* - they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter.
 
 **Cargo/Rust**: the one ecosystem without a stable proactive age-gate, and `build.rs` runs arbitrary code at build with no global off-switch (unlike npm's `ignore-scripts`). Native `-Zmin-publish-age` / `registry.global-min-publish-age` is nightly-only as of Cargo 1.96; revisit once [cargo#17009](https://github.com/rust-lang/cargo/issues/17009) stabilises. For now the cover is reactive: `mise run supply-audit` (osv-scanner) flags known-bad `Cargo.lock` entries, with `cargo audit` / `cargo deny` available on demand (no fast prebuilt in the mise registry, so not pinned).
 
@@ -279,7 +279,7 @@ Native modules and codegen need scripts to build. When a project errors out:
 
 **Composer**: no package-age quarantine is configured; keep `secure-http=true` and Composer audit enabled. Prefer lockfile review plus `mise run supply-audit` where supported.
 
-**mise lockfile** (enabled): `~/.config/mise/mise.lock` pins exact versions + checksums for `macos-arm64`, `linux-arm64`, `linux-x64` (plus the current platform, always). The historical multi-platform blocker is gone — mise `v2025.11.11` added cross-platform lockfiles (other-platform checksums computed from registry metadata, no download) and `v2026.4.8` added `lockfile_platforms`. Caveat: those non-current-platform checksums are *recorded from metadata, not verified by download* here — but install-time `github_attestations` + `slsa` still fire on the machine that actually installs. `claude`/`codex` are `latest`, so their lock entries churn every `up` (no per-tool lock-exclude exists; accepted). `locked` is deliberately **off**: turning it on would fail closed when adding a new tool that isn't in the lockfile yet. Revisit `locked = true` once the toolset is stable.
+**mise lockfile** (enabled): `~/.config/mise/mise.lock` pins exact versions + checksums for `macos-arm64`, `linux-arm64`, `linux-x64` (plus the current platform, always). The historical multi-platform blocker is gone - mise `v2025.11.11` added cross-platform lockfiles (other-platform checksums computed from registry metadata, no download) and `v2026.4.8` added `lockfile_platforms`. Caveat: those non-current-platform checksums are *recorded from metadata, not verified by download* here - but install-time `github_attestations` + `slsa` still fire on the machine that actually installs. `claude`/`codex` are `latest`, so their lock entries churn every `up` (no per-tool lock-exclude exists; accepted). `locked` is deliberately **off**: turning it on would fail closed when adding a new tool that isn't in the lockfile yet. Revisit `locked = true` once the toolset is stable.
 
 **Nix**: flake.lock is the checkpoint. `nfu` updates it; `up` commits it. nixpkgs-unstable is correct for macOS (NixOS integration tests are irrelevant for nix-darwin).
 
@@ -299,16 +299,16 @@ Before adding, removing, vendoring, or promoting skills, read
 [`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).
 
 Skills load three ways, in preference order. **Canonical home is the catalogue at
-`~/.config/skills/{public,personal,vendor}`** — *not* `~/.agents/skills/`, which is the
+`~/.config/skills/{public,personal,vendor}`** - *not* `~/.agents/skills/`, which is the
 deliberately small global autoload dir.
 
-1. **`skl` — on-demand, the default (~95% of use).** Pick a catalogue skill → its pointer
+1. **`skl` - on-demand, the default (~95% of use).** Pick a catalogue skill → its pointer
    is injected into the agent's tmux pane → the agent reads `SKILL.md`. Zero session cost.
    Authored skills: just drop a dir in `~/.config/skills/{public,personal}`. Third-party:
    `cd ~/.config/skills/vendor && skills add <owner/repo> --skill <name>` (project scope).
 2. **Per-project autoload.** `skills add <owner/repo> --skill <name>` (no `-g`) from inside a
    repo → auto-fires for *that repo* only.
-3. **Global autoload — rare, used sparingly.** The filesystem at `~/.agents/skills/`
+3. **Global autoload - rare, used sparingly.** The filesystem at `~/.agents/skills/`
    is the source of truth for the current global set. Vendored globals use `skills add -g`
    and authored globals use symlink + `skillsync`. `skillsync` is deprecated for catalogue
    sync, but remains the supported path for authored global autoload symlinks.
@@ -320,7 +320,7 @@ Bookmarked skills live in `~/.agents/README.md` (references only, not installed)
 
 ## Tailscale
 
-**Always use `ts` wrapper, never raw `tailscale`** — it handles socket paths across platforms:
+**Always use `ts` wrapper, never raw `tailscale`** - it handles socket paths across platforms:
 
 ```bash
 ts status                    # List devices
@@ -359,7 +359,7 @@ Each service uses a dedicated external HTTPS port so multiple services can coexi
 | gigacode  | `gigacode`  | 2468       | 2468           |
 | companion | `companion` | 3456       | 3456           |
 
-Pattern: `ts serve --bg --https=$port $port` — remobi is the exception, omitting `--https=` to claim the apex `:443`.
+Pattern: `ts serve --bg --https=$port $port` - remobi is the exception, omitting `--https=` to claim the apex `:443`.
 
 ### Public access options
 
