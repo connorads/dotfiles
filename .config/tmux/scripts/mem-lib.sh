@@ -155,7 +155,7 @@ mem_app_name() {
 # exceed physical RAM). The *ranking* is reliable; the absolute total is not —
 # callers must render it as approximate (≈).
 mem_group_apps() {
-	awk -F '\t' '{ mb[$2] += $1; cnt[$2]++ }
+	awk -F '\t' '$2 != "" { mb[$2] += $1; cnt[$2]++ }
 		END { for (a in mb) printf "%d\t%d\t%s\n", mb[a], cnt[a], a }' |
 		sort -t "$(printf '\t')" -k1,1 -nr
 }

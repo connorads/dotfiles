@@ -51,9 +51,12 @@ mkdir -p "${log:h}"
 # top N, group by app (mem-lib). Serial (a 30 s daemon can spend ~1.3 s); the
 # popup parallelises because it blocks a human. Stdout: "<mb>\t<cnt>\t<app>".
 top_apps() {
+	# Declared once here, NOT inside the loop: in zsh a `local` for an
+	# already-set parameter *lists* it ("mb=508") to stdout, which would then
+	# pollute the grouped rows with tab-less lines.
+	local pid mb cmd
 	ps -axo pid=,rss= | sort -k2 -nr | head -n "$sample" | awk '{ print $1 }' |
 		while read -r pid; do
-			local mb cmd
 			mb=$(mem_footprint_mb "$pid")
 			[[ "$mb" -gt 0 ]] || continue
 			cmd=$(ps -p "$pid" -o command= 2>/dev/null) || continue
@@ -62,9 +65,11 @@ top_apps() {
 		done | mem_group_apps
 }
 
+# Hoisted out of the loop for the same zsh `local`-lists-existing-params reason
+# as top_apps above: re-declaring locals each iteration would echo them.
 local prev=OK now=0 last_notify=0
+local state grouped swap hog
 while :; do
-	local state
 	state=$(mem_state)
 
 	if [[ "$state" != OK ]]; then
@@ -72,7 +77,6 @@ while :; do
 		# Notify on a state change (incl. BUSY→CRITICAL escalation) or once the
 		# cooldown has lapsed while still bad — never silently, never per poll.
 		if [[ "$state" != "$prev" ]] || ((now - last_notify >= cooldown)); then
-			local grouped swap hog
 			grouped=$(top_apps)
 			swap=$(mem_swap_human)
 			hog=$(printf '%s\n' "$grouped" | awk -F '\t' 'NR==1 {
