@@ -68,6 +68,31 @@ Throwing is for unrecoverable *defects* only: violated invariants, impossible
 branches, startup misconfiguration, `notYetImplemented`. See `references/errors.md`
 for the `Result` shape, tagged-error anatomy, panic helpers, and `Redacted`.
 
+### Composing fallible steps
+
+Chain `Result` steps with `map` (the step can't fail) and `flatMap`/`andThen`
+(it can) so the first error short-circuits — don't write an `if (!r.ok) return r`
+ladder after every call. Give the pipeline one error channel: `mapError` each
+step's error into the shared type before composing (success types may change down
+the pipe, the error type may not). Collapse a `Result<T>[]` into a `Result<T[]>`
+with a `traverse`/`all` helper, never a manual loop. Each stage should output its
+own type, so stage order is compiler-enforced.
+
+Fail-fast (chaining) suits dependent steps; **accumulate every error** for
+independent validations (form fields) — what schema libraries do and a `Result`
+chain does not. Pick by intent. (Effect: `Effect.all`, `Either`, `Match` — the
+railway is built in.) Expand in `references/errors.md`.
+
+### Make signatures total and honest
+
+A signature that can throw — or returns `void`/`Promise<void>` from pure-core
+logic — is lying: the caller sees neither the failure nor the hidden mutation.
+Make a partial function total two ways: **constrain the input** (a branded/parsed
+type so the bad value can't exist) or **widen the output** (`Result`/`Option`).
+Prefer constraining the input where the value recurs — it deletes the failure
+branch for every caller, not just this one. (Pure core returns the new value;
+effects live at the shell — `architecture`.)
+
 ### Parse, don't validate
 
 Turn `unknown` into domain types at the boundary, once, and keep the refined
@@ -91,8 +116,9 @@ type Invoice =
 ### Deep, cohesive modules
 
 Centre a module on one concept; expose parsers, smart constructors, combinators,
-predicates. Depend on the narrowest structural shape a caller needs; let
-concrete adapters be wider. Audit existing adapters before creating a new one.
+predicates. Depend on the narrowest structural shape a caller needs — often a
+single function type, not a fat interface; let concrete adapters be wider. Audit
+existing adapters before creating a new one.
 See `references/modules.md` for domain/application modules, the adapter reuse
 audit + ADR rule, and import/file layout.
 
