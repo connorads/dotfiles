@@ -21,7 +21,9 @@ setup() {
   command -v jq >/dev/null || skip "jq not installed"
   [ -f "$HOOKS" ] || skip "no codex hooks.json"
   SOCK="codexhooks_${BATS_TEST_NUMBER}_$$"
-  tx new-session -d -s s -x 80 -y 24
+  # -f /dev/null: bare server (see AGENTS.md) so the hook's agent-state.sh call,
+  # not the real config's focus hooks, is what sets the pane option we assert on.
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   PANE=$(tx display-message -p -t s '#{pane_id}') # first window's pane...
   tx new-window -t s                              # ...now inactive, so done stays done
   TMUX="$(tx display-message -p -t s '#{socket_path}'),$(tx display-message -p -t s '#{pid}'),0"

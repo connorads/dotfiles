@@ -15,7 +15,10 @@ setup() {
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="agenttabs_${BATS_TEST_NUMBER}_$$"
-  tx new-session -d -s s -x 120 -y 12
+  # -f /dev/null: start bare, then source ONLY the curated agent.conf below. Without
+  # it the server would also load the whole real tmux.conf, defeating the isolation
+  # this test exists for (the unrelated base hooks the next comment says it excludes).
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 12
   conf="$BATS_TEST_TMPDIR/agent.conf"
   # Isolate the agent-tracking additions: the dot mapping and the `-ga` seen
   # appends. The base `-g ... refresh-client -S` hooks are unrelated and error
