@@ -22,6 +22,12 @@ export interface DiscoveredSkill {
   readonly files: readonly string[];
 }
 
+/** A skill file read for inlining: path relative to the skill dir + text content. */
+export interface BundleFile {
+  readonly path: string;
+  readonly content: string;
+}
+
 /** A parsed reference token from the CLI. */
 export type SkillRef =
   | { readonly kind: "bare"; readonly name: string }
@@ -78,7 +84,8 @@ export type Command =
   | { readonly kind: "help" }
   | { readonly kind: "list"; readonly options: Options }
   | { readonly kind: "load"; readonly ref: string | null; readonly options: Options }
-  | { readonly kind: "preview"; readonly ref: string; readonly options: Options };
+  | { readonly kind: "preview"; readonly ref: string; readonly options: Options }
+  | { readonly kind: "inline"; readonly ref: string; readonly options: Options };
 
 export type ArgError =
   | { readonly kind: "missing-value"; readonly flag: string }

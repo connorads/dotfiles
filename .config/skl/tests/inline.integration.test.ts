@@ -1,0 +1,72 @@
+// Integration test for `skl inline <ref>`: the full content bundle for pasting
+// where the agent has no filesystem (a web chat). Spawns the real CLI so the
+// discover → readSkillFiles → renderBundle → stdout path is exercised end to end.
+//
+// Two things the unit tests can't cover: that all of a multi-file skill's text
+// files are inlined verbatim under <file> tags, and that a binary file is
+// skipped (NUL-byte sniff) with a note on stderr while the bundle on stdout
+// stays clean. The binary fixture is written at runtime — no committed blob.
+
+import { expect, test, describe, beforeAll, afterAll } from "bun:test";
+import { resolve } from "node:path";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const CLI = resolve(import.meta.dir, "../src/cli.ts");
+const REPO = resolve(import.meta.dir, "fixtures/repo");
+
+const runInline = (ref: string, path: string) =>
+  Bun.spawnSync([process.execPath, CLI, "inline", ref, "--path", path]);
+
+describe("skl inline (real CLI)", () => {
+  test("bundles a multi-file skill: every text file inlined, in order", () => {
+    const out = runInline("repo/alpha", REPO);
+    expect(out.exitCode).toBe(0);
+    const text = out.stdout.toString();
+    expect(text.startsWith('<skill name="alpha" source="repo">\n')).toBe(true);
+    expect(text).toContain('<file path="SKILL.md">');
+    expect(text).toContain("Body of the alpha skill.");
+    expect(text).toContain('<file path="references/guide.md">');
+    expect(text).toContain("A sibling reference file");
+    expect(text.trimEnd().endsWith("</skill>")).toBe(true);
+    // SKILL.md before its reference (skill.files order).
+    expect(text.indexOf("SKILL.md")).toBeLessThan(text.indexOf("references/guide.md"));
+  });
+
+  test("unknown ref → error on stderr, exit 1, no bundle", () => {
+    const out = runInline("repo/nope", REPO);
+    expect(out.exitCode).toBe(1);
+    expect(out.stderr.toString()).toContain('no skill named "nope"');
+    expect(out.stdout.toString()).toBe("");
+  });
+
+  describe("binary skip", () => {
+    let root = "";
+
+    beforeAll(async () => {
+      root = await mkdtemp(join(tmpdir(), "skl-inline-"));
+      const skill = join(root, "withbin");
+      await mkdir(skill, { recursive: true });
+      await writeFile(
+        join(skill, "SKILL.md"),
+        "---\nname: withbin\ndescription: Has a binary sibling.\n---\n\n# Withbin\n",
+      );
+      // A NUL byte makes it binary to the sniff (like a PNG header would).
+      await writeFile(join(skill, "logo.png"), Buffer.from([0x89, 0x50, 0x00, 0x01, 0x00]));
+    });
+
+    afterAll(async () => {
+      if (root) await rm(root, { recursive: true, force: true });
+    });
+
+    test("skips the binary, keeps the bundle pasteable, notes it on stderr", () => {
+      const out = runInline("withbin", root);
+      expect(out.exitCode).toBe(0);
+      const stdout = out.stdout.toString();
+      expect(stdout).toContain('<file path="SKILL.md">');
+      expect(stdout).not.toContain("logo.png");
+      expect(out.stderr.toString()).toContain("skipped logo.png (binary)");
+    });
+  });
+});
