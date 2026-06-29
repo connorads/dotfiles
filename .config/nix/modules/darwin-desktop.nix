@@ -208,6 +208,33 @@
     '';
   };
 
+  # -- memwatch (memory-pressure notifier) --
+  # The third memory-monitoring surface (after the tmux status gauge and the
+  # prefix+Alt+m popup): a resident watcher that notices pressure even with no
+  # terminal in view. This 16 GB Air panicked from chronic memory exhaustion;
+  # memwatch posts a notification (top footprint hog + swap) on a transition
+  # into BUSY/CRITICAL and logs the top-5 footprints to ~/.cache/memwatch.log.
+  #
+  # A user *agent* (not a launchd.daemons system daemon): agents run inside the
+  # GUI session, which is what lets osascript notifications actually appear.
+  # This is the repo's first launchd.user.agents entry — the existing launchd
+  # blocks are all system daemons (dev-firewall, tailscaled). The loop lives in
+  # ~/.config/zsh/functions/macos/memwatch and reuses mem-lib.sh for metrics.
+  launchd.user.agents.memwatch = {
+    serviceConfig = {
+      Label = "dev.connorads.memwatch";
+      ProgramArguments = [
+        "/bin/zsh"
+        "/Users/connorads/.config/zsh/functions/macos/memwatch"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      EnvironmentVariables.PATH = "/usr/bin:/usr/sbin:/bin";
+      StandardErrorPath = "/Users/connorads/.cache/memwatch.err.log";
+    };
+  };
+
   # -- Home Manager (desktop additions) --
   # Merges into the shared home-manager.users.connorads submodule, closing over
   # this module's `pkgs`/`packages` args.
