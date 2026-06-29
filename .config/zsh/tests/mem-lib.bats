@@ -46,8 +46,8 @@ lib() {
   [ "$output" = "BUSY" ]
 }
 
-@test "BUSY on swap over 1G even when pressure reads normal" {
-  FAKE_PRESSURE=1 FAKE_SWAP=2500.00M lib mem_state
+@test "BUSY on swap over the 4G threshold even when pressure reads normal" {
+  FAKE_PRESSURE=1 FAKE_SWAP=5000.00M lib mem_state
   [ "$output" = "BUSY" ]
 }
 
@@ -57,7 +57,7 @@ lib() {
 }
 
 @test "CRITICAL on large swap regardless of pressure" {
-  FAKE_PRESSURE=1 FAKE_SWAP=5000.00M lib mem_state
+  FAKE_PRESSURE=1 FAKE_SWAP=8000.00M lib mem_state
   [ "$output" = "CRITICAL" ]
 }
 

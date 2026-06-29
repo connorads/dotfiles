@@ -19,10 +19,13 @@
 # ai_usage's _usage_colour convention in status-right.sh.
 
 # Thresholds — defined once. Swap escalates state even when pressure reads
-# normal (1): >=1 G of swap means the working set already exceeds RAM (BUSY),
-# >=4 G means chronic exhaustion (CRITICAL). Overridable for tests.
-MEM_BUSY_SWAP_MB=${MEM_BUSY_SWAP_MB:-1024}
-MEM_CRITICAL_SWAP_MB=${MEM_CRITICAL_SWAP_MB:-4096}
+# normal (1). Tuned to this 16 GB machine's lived baseline: it idles at ~2.5-4 G
+# of swap, so the BUSY line sits ABOVE that resting band (>=4 G) and CRITICAL at
+# >=7 G (working set ~1.5x RAM = real thrashing). The kernel pressure level still
+# escalates colour independently, so acute spikes show even below these swap
+# lines — these only suppress the chronic-amber noise. Overridable for tests.
+MEM_BUSY_SWAP_MB=${MEM_BUSY_SWAP_MB:-4096}
+MEM_CRITICAL_SWAP_MB=${MEM_CRITICAL_SWAP_MB:-7168}
 
 # mem_pressure_level — kern.memorystatus_vm_pressure_level normalised to the
 # documented set 1 (normal) / 2 (warn) / 4 (critical). Anything else (absent
