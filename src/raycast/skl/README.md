@@ -11,12 +11,21 @@ It recreates the `tmux prefix + Alt-s` picker:
 
 ## Actions
 
+**Pointer** - the agent reads SKILL.md itself (needs a shared filesystem):
+
 | Action | Shortcut | What it does |
 | --- | --- | --- |
 | Copy Skill Pointer | `↵` | Copy `<name> <pointer body>` to the clipboard (the `ctrl-y` equivalent) |
-| Paste Skill Pointer | `⌘↵` | Paste the pointer straight into the frontmost app (the `↵`/inject equivalent) |
-| Copy Reference | `⌘⇧C` | Copy just `source/name` |
-| Toggle Preview | `⌘D` | Show/hide the preview pane |
+| Paste Skill Pointer | `⌘↵` | Paste the pointer into the frontmost app (the `↵`/inject equivalent) |
+
+**Inline** - the full content travels with the paste (for web chats, no filesystem):
+
+| Action | Shortcut | What it does |
+| --- | --- | --- |
+| Copy Inlined Skill | `⌘I` | Copy SKILL.md + every text file, wrapped in `<file>` tags |
+| Paste Inlined Skill | `⌘⇧I` | Paste the full bundle into the frontmost app |
+
+Plus `⌘⇧C` Copy Reference (`source/name`) and `⌘D` Toggle Preview.
 
 ## How it works
 
@@ -24,6 +33,7 @@ The command shells out to the `skl` CLI as the single source of truth:
 
 - `skl list` populates the list.
 - `skl preview <ref>` renders the preview and the pointer text.
+- `skl inline <ref>` renders the full content bundle.
 
 Unlike `skl --copy` (which writes via tmux's OSC52 buffer and only works inside
 tmux), this uses Raycast's native `Clipboard` API, so it works anywhere.
