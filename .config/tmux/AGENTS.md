@@ -28,12 +28,21 @@ The logic is spread across several files — change them as a set:
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
   legend.
+- [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) — Claude `Stop` hook
+  adapter. Claude fires `Stop` at every turn-end, even while a background
+  dynamic workflow / subagent is still draining; it jq-counts the in-flight
+  *finite* work (`workflow|subagent|shell`) in the payload's `background_tasks`
+  and forwards `working` while any remain, else `done` (degrades to `done` if jq
+  is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
+  are excluded so they can't pin the dot at working forever.
 - `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
-  `agent-state.sh` on lifecycle events; the `after-select-pane` /
-  `session-window-changed` hooks fire `seen` (focus = mark read).
+  `agent-state.sh` on lifecycle events; `Stop` routes through `agent-stop.sh`
+  (`working` while `background_tasks` holds finite in-flight work, `done` once
+  drained). The `after-select-pane` / `session-window-changed` hooks fire `seen`
+  (focus = mark read).
 - Menu: `prefix + Alt+.` (`display-menu`) sets a state by hand (literals must
   match the lib — see `agent-glyphs.bats`).
 
