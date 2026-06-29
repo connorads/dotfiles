@@ -621,12 +621,16 @@ SCRIPT
   local helper="$BATS_TEST_TMPDIR/frac_cmd.sh"
   write_executable "$helper" <<'SCRIPT'
 #!/usr/bin/env bash
-exit 0
+sleep 300
 SCRIPT
+
+  export RL_RETRY_PAUSE_SECS=0
 
   run zsh "$RL" 1 -t 0.5s -- "$helper"
 
-  [ "$status" -eq 0 ]
+  # A sub-second timeout must actually fire on a child that outlives it - asserting
+  # status 0 on an instant child passed even when 0.5s silently truncated to 0.
+  [[ "$output" == *"timed out"* ]]
 }
 
 @test "timeout parses duration units (s, m, h and bare number)" {
