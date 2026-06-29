@@ -77,6 +77,16 @@ EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
 }
 
+@test "wide status shows both cpu and the legacy ram percentage pill" {
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  # cpu stub → 1%, ram stub → 2%; both pills present side by side at width >=80.
+  [[ "$plain" == *"1%"* ]]
+  [[ "$plain" == *"2%"* ]]
+}
+
 @test "home directory shows bare dotfiles branch" {
   init_dotfiles_repo
 
