@@ -14,18 +14,30 @@ set -u
 
 # shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom, not a bad assign
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "$SELF_DIR/agent-state-lib.sh" # agent_glyph: the canonical state → glyph mapping
 AGENT_STATE_SH=${AGENT_STATE_SH:-$SELF_DIR/agent-state.sh}
 AGENT_SWEEP=${AGENT_SWEEP:-$SELF_DIR/agent-sweep.sh}
 
 # list — one row per pane with agent state, ranked by attention. Hidden pane_id
-# is field 1 (the jump key); fzf shows fields 2.. The glyph matches the status
-# bar's catppuccin colours, emitted as truecolour ANSI via octal printf escapes
-# for awk portability.
+# is field 1 (the jump key); fzf shows fields 2.. The glyph (state colour +
+# shape) is the single source of truth in agent-state-lib.sh: computed once per
+# state in sh via agent_glyph, then passed into awk as truecolour-ANSI strings
+# (awk can't source the lib; -v passes the finished bytes through verbatim).
 list() {
+	_g_blocked=$(agent_glyph blocked)
+	_g_working=$(agent_glyph working)
+	_g_done=$(agent_glyph 'done')
+	_g_idle=$(agent_glyph idle)
+	_g_unknown=$(agent_glyph unknown)
 	tmux list-panes -a -F \
 		"#{pane_id}	#{@agent_state}	#{@agent_kind}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}	#{b:pane_current_path}" \
 		2>/dev/null |
-		awk -F '\t' '
+		awk -F '\t' \
+			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
+			-v g_done="$_g_done" -v g_idle="$_g_idle" -v g_unknown="$_g_unknown" '
+		# Mirrors agent-state-lib.sh rank(); awk cannot call sh, so it is
+		# duplicated here (trivial + pinned by agent-popup.bats).
 		function rank(s) {
 			if (s == "blocked") return 4
 			if (s == "done")    return 3
@@ -33,12 +45,13 @@ list() {
 			if (s == "idle")    return 1
 			return 0
 		}
+		# Selector over the glyphs agent_glyph computed in sh.
 		function glyph(s) {
-			if (s == "blocked") return sprintf("\033[38;2;243;139;168m\342\227\217\033[0m")
-			if (s == "working") return sprintf("\033[38;2;249;226;175m\342\227\217\033[0m")
-			if (s == "done")    return sprintf("\033[38;2;137;180;250m\342\227\217\033[0m")
-			if (s == "idle")    return sprintf("\033[38;2;166;227;161m\342\227\213\033[0m")
-			return sprintf("\033[38;2;108;112;134m\302\267\033[0m")
+			if (s == "blocked") return g_blocked
+			if (s == "working") return g_working
+			if (s == "done")    return g_done
+			if (s == "idle")    return g_idle
+			return g_unknown
 		}
 		BEGIN { OFS = "\t" }
 		$2 != "" {
@@ -99,7 +112,9 @@ pick() {
 		return 0
 	fi
 
-	_legend=$(printf '\033[38;2;243;139;168m\342\227\217\033[0m blocked  \033[38;2;249;226;175m\342\227\217\033[0m working  \033[38;2;137;180;250m\342\227\217\033[0m done  \033[38;2;166;227;161m\342\227\213\033[0m idle')
+	_legend=$(printf '%s blocked  %s working  %s done  %s idle' \
+		"$(agent_glyph blocked)" "$(agent_glyph working)" \
+		"$(agent_glyph 'done')" "$(agent_glyph idle)")
 
 	_choice=$(printf '%s\n' "$_rows" | fzf \
 		--ansi --reverse --no-multi --info=hidden \
