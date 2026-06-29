@@ -72,10 +72,13 @@ typed values that internal code can trust. Treat every inbound boundary this
 way — including your own database and configuration: parse rows and settings
 back into domain types on the way in rather than trusting them.
 
-Store the input to a business rule, not its output. Persist the facts a
-decision derives from (`customerIsVip`), never the verdict it produces
-(`freeShipping`). Rules change far more often than facts; a stored verdict
-couples the model to today's rules and forces a migration when they change.
+Store the input to a business rule, not the value it derives. Persist the raw
+fact (`dateOfBirth`) and compute the derived value (`age`) on read, so it tracks
+current rules; a stored verdict couples the model to today's rules and forces a
+migration when they change. The exception is a decision you acted on: snapshot
+its output as an immutable fact (charged price, order total, applied discount,
+tax) precisely because it must survive rule changes — the same instinct as
+`OrderPlaced` events.
 
 Keep look-alike types separate. Two concepts that share fields today — billing
 vs shipping address, a validated vs a priced line — diverge under new
