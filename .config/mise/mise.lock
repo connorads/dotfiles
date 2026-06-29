@@ -431,9 +431,35 @@ backend = "npm:vercel"
 version = "4.104.0"
 backend = "npm:wrangler"
 
+[[tools.pandoc]]
+version = "3.10"
+backend = "github:jgm/pandoc"
+
+[tools.pandoc."platforms.linux-arm64"]
+checksum = "sha256:55413dfb0c1aec861641fe858f1f73e84848f3db497b1c0c02e62887ea76f4a4"
+url = "https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/438408619"
+provenance = "github-attestations"
+
+[tools.pandoc."platforms.linux-x64"]
+checksum = "sha256:e0f8af62d0f267d22baa5bcefe6d5dda3a097ccc60de794b759fe03159923244"
+url = "https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/438406829"
+provenance = "github-attestations"
+
+[tools.pandoc."platforms.macos-arm64"]
+checksum = "sha256:d9cad01d96ae774a0dc8c8c45bb1ad3e4c5ff2cc2e24f45958f5f9b7974aee34"
+url = "https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-arm64-macOS.zip"
+url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/438404702"
+provenance = "github-attestations"
+
 [[tools."pipx:batrachian-toad"]]
 version = "0.6.20"
 backend = "pipx:batrachian-toad"
+
+[[tools."pipx:docling"]]
+version = "2.107.0"
+backend = "pipx:docling"
 
 [[tools."pipx:markitdown"]]
 version = "0.1.6"

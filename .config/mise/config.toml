@@ -40,6 +40,9 @@ codex = "latest"
 usage = "3"
 hcloud = "1"
 deno = "2"
+# Doc conversion: pandoc handles structured formats (EPUB/HTML/DOCX -> md);
+# companion to docling/markitdown below. Registry-backed (github:jgm/pandoc).
+pandoc = "3"
 # postinstall reapplies the --channels and computer-use binary patches to each
 # freshly installed bundle (claude = "latest" drops an unpatched build on every
 # update). Each warns + drops a marker but exits 0 on a missing needle, so an
@@ -97,6 +100,11 @@ fnox = "1.27.1"
 # azure-ai-contentunderstanding which only ships as a pre-release, so the
 # resolver fails closed (no pre-releases enabled).
 "pipx:markitdown" = { version = "0", extras = "pdf,docx,pptx,xlsx,xls,outlook,audio-transcription,youtube-transcription" }
+# Better PDF->md engine than markitdown's pdfminer extra (layout/tables/OCR).
+# Pulls a torch closure; kept in pipx (not nix) so it stays off the system
+# profile. Downloads layout models at first run. For gnarly academic PDFs that
+# docling can't handle, reach for `uvx --from mineru mineru ...` on demand.
+"pipx:docling" = "2"
 # Pinned <2.0.70: rembg 2.0.70+ hard-pins numpy>=2.3, but its transitive
 # numba/llvmlite chain can't go that high, forcing the resolver onto ancient
 # numba 0.53.1 -> llvmlite 0.36.0 which won't build on Python >=3.10.
