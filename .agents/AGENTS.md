@@ -51,7 +51,9 @@ Use `git hunks list` and `git hunks add <id>` to stage specific hunks non-intera
 ## Design
 
 Sketch domain types and key workflows before substantial implementation.
+For each major design decision, rough out two or more substantially different approaches before committing; the first idea is rarely the best.
 Make the change easy, then make the easy change; restructure first if the code fights you.
+Follow the conventions already in the file/codebase over personal preference; apply your own defaults only where the repo has none. Change an established convention only with reason, updating every existing use in the same change.
 For substantial domains, prefer functional core / imperative shell, explicit ports, and typed values at boundaries.
 Keep business decisions pure where practical: gather data, decide, then perform effects.
 Model domain states explicitly so illegal states are unrepresentable, not just discouraged.
