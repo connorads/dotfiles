@@ -93,6 +93,7 @@ local pause_pid=
 local phase=idle
 local first_int_at=0
 local promise_stop_requested=0
+local retry_pause_secs=${RL_RETRY_PAUSE_SECS:-5}
 
 debug_log() {
   (( ${RL_DEBUG:-0} )) || return 0
@@ -411,10 +412,12 @@ while (( max == 0 || i < max )); do
   child_pid=
   child_pgid=
   child_wait_interrupted=0
-  if (( rc != 0 )); then
-    print -P "%F{yellow}[rl]%f non-zero exit, pausing 5s..."
+  # Back off before the next attempt. None follows the final iteration, so skip
+  # the pause there - waiting before an exit nobody waits on is dead time.
+  if (( rc != 0 && (max == 0 || i < max) )); then
+    print -P "%F{yellow}[rl]%f non-zero exit, pausing ${retry_pause_secs}s..."
     phase=pause
-    sleep 5 &
+    sleep "$retry_pause_secs" &
     pause_pid=$!
     wait $pause_pid
     pause_pid=
