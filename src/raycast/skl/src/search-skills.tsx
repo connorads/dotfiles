@@ -89,9 +89,10 @@ function groupBySource(skills: Skill[]): { source: string; skills: Skill[] }[] {
   return groups;
 }
 
-// `skl preview <ref>` spawns Bun; memoise so re-selecting a skill is instant and
-// the copy/paste actions reuse whatever the detail pane already fetched.
+// `skl preview`/`skl inline` spawn Bun; memoise per ref so re-selecting a skill
+// is instant and the actions reuse whatever the detail pane already fetched.
 const previewCache = new Map<string, string>();
+const inlineCache = new Map<string, string>();
 
 async function fetchPreview(
   ref: string,
@@ -107,6 +108,25 @@ async function fetchPreview(
   });
   previewCache.set(ref, stdout);
   return stdout;
+}
+
+// The full content bundle (SKILL.md + every text file), for pasting where the
+// agent has no filesystem. stderr carries skipped-binary notes — ignored here.
+async function fetchInline(
+  ref: string,
+  bin: string,
+  env: NodeJS.ProcessEnv,
+): Promise<string> {
+  const cached = inlineCache.get(ref);
+  if (cached !== undefined) return cached;
+  const { stdout } = await run(bin, ["inline", ref], {
+    env,
+    cwd: homedir(),
+    timeout: 15_000,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  inlineCache.set(ref, stdout.trimEnd());
+  return inlineCache.get(ref) as string;
 }
 
 /**
@@ -155,43 +175,81 @@ function SkillActions({
 
   return (
     <ActionPanel>
-      <Action
-        title="Copy Skill Pointer"
-        icon={Icon.Clipboard}
-        onAction={async () => {
-          try {
-            await Clipboard.copy(await pointer());
-            await showHUD(`Copied ${skill.ref} pointer`);
-          } catch (error) {
-            await showFailureToast(error, { title: "Couldn't copy pointer" });
-          }
-        }}
-      />
-      <Action
-        title="Paste Skill Pointer"
-        icon={Icon.Text}
-        shortcut={{ modifiers: ["cmd"], key: "return" }}
-        onAction={async () => {
-          try {
-            const text = await pointer();
-            await closeMainWindow();
-            await Clipboard.paste(text);
-          } catch (error) {
-            await showFailureToast(error, { title: "Couldn't paste pointer" });
-          }
-        }}
-      />
-      <Action.CopyToClipboard
-        title="Copy Reference"
-        content={skill.ref}
-        shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
-      />
-      <Action
-        title="Toggle Preview"
-        icon={Icon.Sidebar}
-        shortcut={{ modifiers: ["cmd"], key: "d" }}
-        onAction={onToggleDetail}
-      />
+      <ActionPanel.Section title="Pointer (agent reads SKILL.md itself)">
+        <Action
+          title="Copy Skill Pointer"
+          icon={Icon.Clipboard}
+          onAction={async () => {
+            try {
+              await Clipboard.copy(await pointer());
+              await showHUD(`Copied ${skill.ref} pointer`);
+            } catch (error) {
+              await showFailureToast(error, { title: "Couldn't copy pointer" });
+            }
+          }}
+        />
+        <Action
+          title="Paste Skill Pointer"
+          icon={Icon.Text}
+          shortcut={{ modifiers: ["cmd"], key: "return" }}
+          onAction={async () => {
+            try {
+              const text = await pointer();
+              await closeMainWindow();
+              await Clipboard.paste(text);
+            } catch (error) {
+              await showFailureToast(error, {
+                title: "Couldn't paste pointer",
+              });
+            }
+          }}
+        />
+      </ActionPanel.Section>
+      <ActionPanel.Section title="Inline (full content, for web chats)">
+        <Action
+          title="Copy Inlined Skill"
+          icon={Icon.CopyClipboard}
+          shortcut={{ modifiers: ["cmd"], key: "i" }}
+          onAction={async () => {
+            try {
+              const text = await fetchInline(skill.ref, bin, env);
+              await Clipboard.copy(text);
+              await showHUD(
+                `Copied ${skill.ref} (${(text.length / 1024).toFixed(1)} KB)`,
+              );
+            } catch (error) {
+              await showFailureToast(error, { title: "Couldn't inline skill" });
+            }
+          }}
+        />
+        <Action
+          title="Paste Inlined Skill"
+          icon={Icon.Document}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "i" }}
+          onAction={async () => {
+            try {
+              const text = await fetchInline(skill.ref, bin, env);
+              await closeMainWindow();
+              await Clipboard.paste(text);
+            } catch (error) {
+              await showFailureToast(error, { title: "Couldn't inline skill" });
+            }
+          }}
+        />
+      </ActionPanel.Section>
+      <ActionPanel.Section>
+        <Action.CopyToClipboard
+          title="Copy Reference"
+          content={skill.ref}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+        />
+        <Action
+          title="Toggle Preview"
+          icon={Icon.Sidebar}
+          shortcut={{ modifiers: ["cmd"], key: "d" }}
+          onAction={onToggleDetail}
+        />
+      </ActionPanel.Section>
     </ActionPanel>
   );
 }
