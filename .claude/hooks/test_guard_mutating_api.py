@@ -68,6 +68,19 @@ class TestIsMutatingGhApi:
             "gh api repos/foo/bar/issues -fbody=hi",
             # Flags before the gh invocation do not matter; flags after it still do.
             'repo=$(echo "$f" | cut -d/ -f1-2); gh api repos/foo/bar/issues -f body=hi',
+            # GraphQL: a top-level mutation operation
+            "gh api graphql -f query='mutation { addStar(input:{}){ id } }'",
+            # GraphQL: multi-op document containing a mutation
+            "gh api graphql -f query='query A { viewer { login } } mutation B { addStar(input:{}){ id } }'",
+            # GraphQL: uninspectable documents err safe -> ask
+            "gh api graphql -f query=@query.graphql",
+            "gh api graphql -f query=@-",
+            # GraphQL: no query field to inspect -> ask
+            "gh api graphql -f variables='{}'",
+            # GraphQL read alongside a REST POST in another segment
+            "gh api graphql -f query='{ viewer { login } }' && gh api repos/foo/bar -f body=hi",
+            # GraphQL: an explicit -X POST override stays an ask
+            "gh api graphql -X POST -f query='{ viewer { login } }'",
         ],
     )
     def test_detects_mutating_calls(self, command: str) -> None:
@@ -95,6 +108,24 @@ class TestIsMutatingGhApi:
             "gh api repos/foo/bar -H 'Accept: application/json'",
             'repo=$(echo "$f" | cut -d/ -f1-2); gh api "repos/$f" -H "Accept: application/vnd.github.raw" | grep -nE "child_process|execSync|spawn|eval\\(|fetch\\(|https?://|require\\(|process\\.env" | head -15',
             'for f in "owner/repo/contents/file"; do repo=$(echo "$f" | cut -d/ -f1-2); gh api "repos/$f" -H "Accept: application/vnd.github.raw" | grep -nE "child_process|execSync|spawn|eval\\(|fetch\\(|https?://|require\\(|process\\.env" | head -15; done',
+            # GraphQL reads: graphql always POSTs, but these are read operations
+            "gh api graphql -f query='{ viewer { login } }'",
+            "gh api graphql -f query='query Me { viewer { login } }'",
+            "gh api graphql -f query='query($n:String!){ user(login:$n){ id } }' -f n=connorads",
+            "gh api graphql -f query='fragment F on User { login } query { viewer { ...F } }'",
+            "gh api graphql -f query='subscription { onEvent { id } }'",
+            # GraphQL read across -F / glued / long body-param forms
+            "gh api graphql -F query='{ viewer { login } }'",
+            "gh api graphql -fquery='{ viewer { login } }'",
+            "gh api graphql --field=query='{ viewer { login } }'",
+            # GraphQL read with an explicit GET override
+            "gh api graphql --method GET -f query='{ viewer { login } }'",
+            # GraphQL read with extra operationName / variables fields
+            "gh api graphql -f query='query Q { viewer { login } }' -f operationName=Q -F variables='{}'",
+            # A field literally named `mutation` inside a selection set is a read
+            "gh api graphql -f query='{ repository { mutation } }'",
+            # The originally reported account-stats command
+            "gh api graphql -f query='{ user(login:\"connorads\"){ createdAt contributionsCollection { ... } } }'",
         ],
     )
     def test_allows_read_only_calls(self, command: str) -> None:
