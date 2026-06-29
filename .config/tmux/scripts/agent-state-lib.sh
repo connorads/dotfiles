@@ -62,3 +62,44 @@ ring_bell() {
 			printf '\a' >"$_tty" 2>/dev/null || true
 		done
 }
+
+# agent_attrs STATE — "HEX CHAR" for STATE: the single source of truth for the
+# state → glyph + colour mapping shared by the tab dots (@agent_dotfmt), the
+# prefix+Alt+. menu, and the prefix+A popup. Shape encodes state alongside
+# colour (reads on a colour clash and for colour-blind use); unknown → grey ·.
+# agent-glyphs.bats fails if any renderer drifts from this. Same done)-as-pattern
+# idiom as rank() above.
+agent_attrs() {
+	case $1 in
+	blocked) echo "f38ba8 ◆" ;;
+	working) echo "fab387 ◐" ;;
+	done) echo "89b4fa ●" ;;
+	idle) echo "a6e3a1 ○" ;;
+	*) echo "6c7086 ·" ;;
+	esac
+}
+
+# agent_hex STATE — 6 hex digits for STATE (for tmux #[fg=#...] consumers/tests).
+agent_hex() {
+	_attrs=$(agent_attrs "$1")
+	echo "${_attrs% *}"
+}
+
+# agent_char STATE — bare UTF-8 glyph for STATE.
+agent_char() {
+	_attrs=$(agent_attrs "$1")
+	echo "${_attrs#* }"
+}
+
+# agent_glyph STATE — STATE's glyph wrapped in an ANSI truecolour SGR
+# (\033[38;2;R;G;Bm<char>\033[0m) for direct terminal output. Hex→RGB via POSIX
+# arithmetic; hex is ASCII so cut -c is byte-safe.
+agent_glyph() {
+	_attrs=$(agent_attrs "$1")
+	_hex=${_attrs% *}
+	_char=${_attrs#* }
+	_r=$((0x$(echo "$_hex" | cut -c1-2)))
+	_g=$((0x$(echo "$_hex" | cut -c3-4)))
+	_b=$((0x$(echo "$_hex" | cut -c5-6)))
+	printf '\033[38;2;%d;%d;%dm%s\033[0m' "$_r" "$_g" "$_b" "$_char"
+}
