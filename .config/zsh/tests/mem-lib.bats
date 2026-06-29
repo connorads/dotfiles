@@ -157,6 +157,13 @@ EOF
   [ "${lines[1]}" = "$(printf '150\t2\tChrome')" ]
 }
 
+@test "grouping ignores tab-less / empty-app rows" {
+  # A malformed line (no tab → empty app) must not form a spurious bucket.
+  run bash -c "source '$MEM_LIB'; printf '100\tChrome\nmb=508\n50\tChrome\n' | mem_group_apps"
+  [ "${#lines[@]}" -eq 1 ]
+  [ "${lines[0]}" = "$(printf '150\t2\tChrome')" ]
+}
+
 # --- magnitude bar ----------------------------------------------------------
 
 @test "bar fills proportionally and clamps to width" {
