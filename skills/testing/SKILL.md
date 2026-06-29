@@ -88,6 +88,35 @@ Choose the narrowest layer that proves the behaviour.
 Do not use e2e tests to compensate for untested domain logic. Do not use unit
 tests to assert wiring that only fails when components are composed.
 
+### Test altitude: aim at the stable contract
+
+The "unit" worth testing is a *behaviour through a stable public contract*, not a
+layer or a class (Ian Cooper, "TDD, Where Did It All Go Wrong"). So don't pick a
+layer — **aim each test at the deepest stable interface that keeps setup cheap and
+failures localised**; the level you land on is a consequence, not a goal.
+
+- **Depth, not height, buys refactor-resilience.** A deep module — a narrow
+  interface over a rich, churning implementation — changes its interface rarely
+  while its body churns, so a test pinned to that interface survives the refactor
+  and still exercises everything behind it (`architecture` → Module Depth). A
+  *shallow* interface is never a good target: make the module deep first, or test
+  the pure core beneath it. Tests bound to internal structure (class shape,
+  private methods) are glue that pins the design — the cost this rule avoids.
+- **Push combinatorial coverage down to the pure core.** A pure function's
+  signature is already a stable contract, so cover branchy logic (pricing, rules
+  matrices, parsers) directly with table or property-based tests — don't enumerate
+  its cases through a deep facade, which adds setup, blurs shrinking, and buries
+  the failure.
+- **Keep a low-gear inner loop while a contract is molten.** Testing close to the
+  code is where you feel the friction that drives a better design. That coupling
+  is temporary and the point; once the design settles, lift the bulk to the stable
+  interface and delete the scaffolding a higher test now subsumes.
+
+"Stable" is an end-state: while the contract churns, low gear is correct, not a
+fallback. Exercise the stable interface heavily for representative behaviours and
+integration — but it is only genuinely cheap once builders/fakes make the arrange
+step cheap.
+
 ### Shell, zsh and POSIX sh testing
 
 Choose shell test tooling by the language boundary being tested:
@@ -286,6 +315,10 @@ ship.
   into a tracked quarantine with an owner and a deadline — do not `skip` and
   forget, and do not leave it blocking the build. Root-cause it: timing, shared
   state, network, or nondeterministic ordering.
+- **Bounded polling is not retry-to-green.** Polling a genuinely asynchronous
+  result until it appears, with a timeout, is correct; re-running a whole test
+  until it passes masks a race. The first waits for a known-pending outcome; the
+  second hides nondeterminism.
 
 Prevention is design: keep tests deterministic and order-independent, and remove
 time/network coupling (see Core Rules).
