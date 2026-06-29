@@ -148,6 +148,15 @@
 
   programs.gh-dash.enable = true;
 
+  # Per-project env / nix devshells, opt-in via a repo's .envrc. nix-direnv caches
+  # `use flake` shells so GC won't evict them. Nothing runs until `direnv allow`
+  # approves a given .envrc, so entering an untrusted repo is inert by default.
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+  };
+
   home.sessionVariables = {
     EDITOR = "micro";
     VISUAL = "micro";
