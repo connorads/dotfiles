@@ -13,7 +13,17 @@ if ! [[ "$width_raw" =~ ^[0-9]+$ ]]; then
 fi
 
 cpu_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh"
-ram_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/ram_percentage.sh"
+
+# Shared memory-pressure vocabulary (OK/BUSY/CRITICAL → colour + glyph + swap).
+# RAM-used % from tmux-cpu was dropped: on macOS it reads ~90% when healthy
+# (file cache), so it was learned-to-be-ignored noise. mem-lib reports the
+# jetsam-relevant signal instead. See mem_segment below.
+# Sourced relative to this script (not $HOME) so it resolves wherever the
+# script lives — including the bats harness's isolated HOME.
+# shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=/dev/null
+. "$SELF_DIR/mem-lib.sh"
 
 cpu_percentage() {
 	if [ -x "$cpu_script" ]; then
@@ -23,11 +33,21 @@ cpu_percentage() {
 	fi
 }
 
-ram_percentage() {
-	if [ -x "$ram_script" ]; then
-		"$ram_script" 2>/dev/null | tr -d '\n'
+# mem_segment — quiet-when-healthy memory gauge in the powerline-pill shape.
+# State is triple-encoded for colour-blind safety: colour + glyph +
+# presence-of-number. OK shows just the hollow glyph (no number, no bold);
+# BUSY/CRITICAL surface the swap figure and bold. Sysctl-only, cheap at the
+# 15 s status-interval, so no caching.
+mem_segment() {
+	local state colour glyph
+	state="$(mem_state)"
+	colour="$(mem_state_colour "$state")"
+	glyph="$(mem_state_glyph "$state")"
+	if [ "$state" = "OK" ]; then
+		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s " "$colour" "$glyph"
 	else
-		printf "--%%"
+		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
+			"$colour" "$glyph" "$(mem_swap_human)"
 	fi
 }
 
@@ -453,9 +473,8 @@ ai_usage() {
 }
 
 print_full() {
-	local cpu ram disk battery git_ref host
+	local cpu disk battery git_ref host
 	cpu="$(cpu_percentage)"
-	ram="$(ram_percentage)"
 	disk="$(disk_percentage)"
 	battery="$(battery_percentage || true)"
 	git_ref="$(git_branch_and_dirty)"
@@ -463,7 +482,7 @@ print_full() {
 
 	ai_usage
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
-	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#cba6f7]#[bold]  %s " "$ram"
+	mem_segment
 	printf "#[fg=#585b70]#[bg=#585b70]#[fg=#fab387]#[bold] 󰋊 %s " "$disk"
 	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
 	printf "#[fg=#6c7086]#[bg=#6c7086]#[fg=#a6e3a1]  %s " "$git_ref"
