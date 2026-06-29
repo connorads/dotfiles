@@ -54,7 +54,8 @@ Sketch domain types and key workflows before substantial implementation.
 Make the change easy, then make the easy change; restructure first if the code fights you.
 For substantial domains, prefer functional core / imperative shell, explicit ports, and typed values at boundaries.
 Keep business decisions pure where practical: gather data, decide, then perform effects.
-Model domain states explicitly so invalid states are hard to represent.
+Model domain states explicitly so illegal states are unrepresentable, not just discouraged.
+Name types and functions in the domain's language; keep filler like Manager/Factory/Helper/Util out of the model.
 Prefer strong types at boundaries and avoid type-system escape hatches unless the project has a documented reason.
 Use explicit error values in domain/application logic; translate exceptions at the shell.
 Design system boundaries with observability in mind: structured logs, operation context, and relevant entity/request IDs.
