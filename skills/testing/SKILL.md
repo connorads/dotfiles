@@ -25,8 +25,9 @@ What is the task?
 |-- Refactor existing code
 |   |-- Behaviour already covered? -> refactor behind the tests
 |   `-- Behaviour not covered? -> characterise it first, then refactor
-|-- Large input space or invariants
-|   `-- Add property-based tests alongside named examples
+|-- Invariant or illegal state to protect
+|   |-- Can a type make it unrepresentable? -> change the type, skip the test
+|   `-- Large input space? -> property-based tests alongside named examples
 |-- Flaky or brittle tests
 |   `-- remove time/order/network coupling and implementation-detail assertions
 `-- Coverage report, thresholds, or CI/hook enforcement
@@ -43,6 +44,23 @@ What is the task?
 - A failing test should point at the cause quickly; vague failures are test
   design problems.
 - Prefer real values and simple pure tests before introducing doubles.
+
+## Types Before Tests
+
+The cheapest test is one you never write because the bug cannot compile. Before
+testing an invariant, ask whether a type can make the bad state unrepresentable
+— a constrained type with a smart constructor, a union per lifecycle state,
+`NonEmptyList` for "at least one". If it can, change the type instead: that is a
+compile-time check that deletes a whole class of guard tests.
+
+- **Don't test what the type forbids.** Feeding illegal values to an internal
+  function that cannot receive them tests the language, not your code. Validate
+  once at a boundary parser / smart constructor, and trust the type inward — an
+  always-valid model needs no defensive re-tests at every layer.
+- **Relocate, don't delete.** Making a value a type moves the tests to the
+  constructor, it doesn't remove them: prove the parser accepts the whole valid
+  set and rejects the invalid set. Downstream code then needs no tests for
+  inputs it can't hold.
 
 ## Choosing the Layer
 
@@ -150,7 +168,10 @@ Use property-based tests when examples under-sample the behaviour:
 - round trips and invariants
 
 Write properties as invariants over generated inputs, not randomised examples.
-Keep generators valid by construction where possible. Keep named example tests
+Keep generators valid by construction where possible. When an invariant is
+*structural* (non-empty, bounded, exactly-one), prefer encoding it as a type
+(e.g. `NonEmptyList`) over a "never empty" property — a compile-time guarantee
+beats a sampled one and needs no generator. Keep named example tests
 for edge cases and regression stories; use property tests to explore the input
 space around them.
 
