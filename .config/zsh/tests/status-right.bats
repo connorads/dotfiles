@@ -87,6 +87,24 @@ EOF
   [[ "$plain" == *"2%"* ]]
 }
 
+@test "healthy memory-pressure pill still shows the swap figure" {
+  # Normal pressure + 2.6G swap (below the 4G BUSY threshold) → OK state. The
+  # figure is shown even when healthy so the resting baseline stays visible.
+  write_stub sysctl <<'EOF'
+#!/usr/bin/env bash
+case "$2" in
+  kern.memorystatus_vm_pressure_level) echo 1 ;;
+  vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M  (encrypted)" ;;
+esac
+EOF
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"2.6G"* ]]
+}
+
 @test "home directory shows bare dotfiles branch" {
   init_dotfiles_repo
 
