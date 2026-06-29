@@ -140,6 +140,14 @@ Make expected failures part of the use-case flow. Preserve causes when wrapping
 unexpected infrastructure failures. Keep the happy path readable without hiding
 failure handling.
 
+Define errors out of existence where the domain allows. Before adding an error
+branch, try broadening the operation so the awkward input has an ordinary result
+— model "no selection" as an empty range, make `remove` ensure-absent rather than
+fail on a missing key. A deleted branch beats a well-handled one: illegal states
+made unrepresentable, applied to behaviour rather than data. This is not licence
+to swallow real failures — if a domain expert would want the edge surfaced, it is
+a domain error: keep it a typed value and let the triage stand.
+
 ## Observability
 
 Design system boundaries with observability in mind:
