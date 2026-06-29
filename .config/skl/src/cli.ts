@@ -7,6 +7,7 @@ import { parseConfig, configFromPaths } from "./core/config.ts";
 import { parseRef } from "./core/ref.ts";
 import { resolveRef, resolveRefs } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
+import { renderBundle } from "./core/bundle.ts";
 import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
 import type {
   ArgError,
@@ -18,7 +19,7 @@ import type {
 } from "./core/types.ts";
 import type { Result } from "./core/result.ts";
 import { env } from "./shell/env.ts";
-import { loadConfigFile, discoverAll, type ConfigFileError } from "./shell/fs.ts";
+import { loadConfigFile, discoverAll, readSkillFiles, type ConfigFileError } from "./shell/fs.ts";
 import { copyToClipboard, injectPointer, resolveTarget } from "./shell/tmux.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
@@ -34,6 +35,8 @@ Usage:
   skl --stdin               inject pointers for refs read from stdin
   skl list                  list discovered skills (fed to fzf)
   skl preview <ref>         render a skill's pointer (the fzf preview)
+  skl inline <ref>          print the full content bundle (SKILL.md + all text
+                            files) for pasting where there is no filesystem
   skl --help                show this help
 
 Options:
@@ -202,6 +205,18 @@ const main = async (argv: readonly string[]): Promise<number> => {
       }
       const pointer = renderPointer(resolved.value);
       env.stdout(`${pointer.skillName}\n\n${pointer.bulk}\n`);
+      return 0;
+    }
+    case "inline": {
+      const resolved = resolveRef(parseRef(command.ref), skills);
+      if (!resolved.ok) {
+        env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
+        return 1;
+      }
+      const { files, skipped } = await readSkillFiles(resolved.value);
+      env.stdout(`${renderBundle(resolved.value, files)}\n`);
+      // Skipped binaries go to stderr so the bundle on stdout stays pasteable.
+      for (const rel of skipped) env.stderr(`skl: skipped ${rel} (binary)\n`);
       return 0;
     }
     case "load": {

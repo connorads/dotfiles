@@ -5,7 +5,7 @@ import { Glob } from "bun";
 import { ok, err, type Result } from "../core/result.ts";
 import { buildSkill } from "../core/discover.ts";
 import { posixDirname, posixJoin } from "../core/path.ts";
-import type { DiscoveredSkill, Source } from "../core/types.ts";
+import type { BundleFile, DiscoveredSkill, Source } from "../core/types.ts";
 
 export type ConfigFileError =
   | { readonly kind: "missing"; readonly path: string }
@@ -47,6 +47,28 @@ export const readSkillMd = (absPath: string): Promise<string> =>
 /** File paths relative to a skill dir (includes SKILL.md), sorted. */
 export const siblingFiles = (skillDir: string): Promise<string[]> =>
   globSorted(skillDir, "**/*");
+
+/**
+ * Read a skill's text files for inlining, in `skill.files` order. Binary files
+ * (images, etc.) are skipped — a NUL byte in the first 8 KB is the sniff — and
+ * returned separately so the caller can report them. Pointless to paste binary
+ * into a web chat, and a TextDecoder would mangle it anyway.
+ */
+export const readSkillFiles = async (
+  skill: DiscoveredSkill,
+): Promise<{ files: BundleFile[]; skipped: string[] }> => {
+  const files: BundleFile[] = [];
+  const skipped: string[] = [];
+  for (const rel of skill.files) {
+    const bytes = await Bun.file(posixJoin(skill.dir, rel)).bytes();
+    if (bytes.subarray(0, 8000).includes(0)) {
+      skipped.push(rel);
+      continue;
+    }
+    files.push({ path: rel, content: new TextDecoder().decode(bytes) });
+  }
+  return { files, skipped };
+};
 
 const discoverSource = async (source: Source): Promise<DiscoveredSkill[]> => {
   const rels = await globSkills(source.path);

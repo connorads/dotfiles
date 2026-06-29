@@ -37,6 +37,15 @@ skill's files, and a one-line instruction ("Read SKILL.md at this path and follo
 Deliberately *not* the SKILL.md content — keeps injected context tiny and honours
 progressive disclosure.
 
+### Inline bundle
+
+The **inverse** of a pointer: SKILL.md *plus every text file under the skill dir*,
+inlined verbatim and wrapped in `<skill>`/`<file path="…">` tags (`skl inline <ref>`).
+For a target with **no filesystem access** — a web chat, a pasted prompt — the pointer's
+"read SKILL.md at `<path>`" is useless, so the content has to travel with the paste.
+Binaries (NUL-byte sniff) are skipped. XML-ish tags rather than ``` fences because skill
+files are themselves full of fences. See ADR-0005.
+
 ## Resolved decisions
 
 - **Source paths**: configurable, multiple. Default = the three curation-home sources

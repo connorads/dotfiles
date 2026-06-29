@@ -7,6 +7,7 @@
 //   skl load --stdin         → load refs read from stdin (one per line)
 //   skl list                 → list   (fed to fzf in the pipeline)
 //   skl preview <ref>        → preview <ref>   (the fzf preview command)
+//   skl inline <ref>         → inline <ref>    (full content bundle for web paste)
 //   skl --help | -h          → help
 // Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy.
 
@@ -61,6 +62,11 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   if (positionals[0] === "preview") {
     if (positionals.length !== 2) return err({ kind: "too-many-args", args: positionals });
     return ok({ kind: "preview", ref: positionals[1] ?? "", options });
+  }
+
+  if (positionals[0] === "inline") {
+    if (positionals.length !== 2) return err({ kind: "too-many-args", args: positionals });
+    return ok({ kind: "inline", ref: positionals[1] ?? "", options });
   }
 
   // Everything else is a load. The `load` verb is optional, so strip a leading

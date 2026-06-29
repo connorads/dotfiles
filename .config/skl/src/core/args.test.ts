@@ -48,6 +48,17 @@ describe("parseArgs", () => {
     if (r.ok) expect(r.value).toMatchObject({ kind: "preview", ref: "repo/alpha" });
   });
 
+  test("inline subcommand carries the ref", () => {
+    const r = parseArgs(["inline", "repo/alpha"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "inline", ref: "repo/alpha" });
+  });
+
+  test("inline needs exactly one ref", () => {
+    expect(parseArgs(["inline"]).ok).toBe(false);
+    expect(parseArgs(["inline", "a", "b"]).ok).toBe(false);
+  });
+
   test("flags: target, repeatable path, submit", () => {
     const r = parseArgs(["alpha", "--target", "%3", "--path", "/a", "--path", "/b", "--submit"]);
     expect(r.ok).toBe(true);
