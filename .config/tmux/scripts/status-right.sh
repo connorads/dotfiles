@@ -206,17 +206,17 @@ ssh_info() {
 }
 
 host_label() {
-	local short
 	if [ -n "$hostname_full_flag" ]; then
 		printf "%s" "$host_full"
 		return
 	fi
-
-	short="$(printf "%s" "$host_short" | cut -c1-5)"
-	if [ "${#host_short}" -gt 5 ]; then
-		printf "%s…" "$short"
+	# Show the last 8 chars; the distinctive part of these hostnames is the tail
+	# (the shared prefix is noise). Shorter hosts print whole.
+	local len=${#host_short}
+	if [ "$len" -gt 8 ]; then
+		printf "%s" "${host_short:len-8}"
 	else
-		printf "%s" "$short"
+		printf "%s" "$host_short"
 	fi
 }
 
@@ -522,7 +522,7 @@ print_full() {
 	[ -n "$battery" ] && printf "#[fg=#74c7ec]#[bg=#74c7ec]#[fg=#1e1e2e]#[bold] %s " "$battery"
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
-	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
+	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold] %s" "$host"
 }
 
 print_medium() {
@@ -532,14 +532,14 @@ print_medium() {
 
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
-	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
+	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold] %s" "$host"
 }
 
 print_compact() {
 	local host
 	host="$(host_label)"
 	ssh_info
-	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold]  %s" "$host"
+	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold] %s" "$host"
 }
 
 # Reboot-required indicator (visible at all widths)

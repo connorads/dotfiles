@@ -87,6 +87,30 @@ EOF
   [[ "$plain" == *"2%"* ]]
 }
 
+@test "hostname shows the distinctive tail, not a shared prefix" {
+  # Connors-MacBook-Air / Connors-Mac-mini share "Connors-"; the tail is what
+  # tells the machines apart, so print that — never collapse to "Conno…".
+  run bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" "Connors-MacBook-Air" "Connors-MacBook-Air.local" ""
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"Air"* ]]
+  [[ "$plain" != *"Conno"* ]]
+}
+
+@test "short hostname prints whole" {
+  run bash "$STATUS_RIGHT" 45 "$BATS_TEST_TMPDIR" "rpi5" "rpi5.local" ""
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"rpi5"* ]]
+}
+
+@test "full-hostname flag overrides trailing-segment shortening" {
+  run bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" "Connors-MacBook-Air" "Connors-MacBook-Air.local" "1"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"Connors-MacBook-Air"* ]]
+}
+
 @test "healthy memory-pressure pill still shows the swap figure" {
   # Normal pressure + 2.6G swap (below the 5G / 5120 MB BUSY threshold) → OK
   # state. The figure is shown even when healthy so the resting baseline stays
