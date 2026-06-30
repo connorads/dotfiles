@@ -5,11 +5,13 @@
       "*.anthropic.com",
       "*.githubusercontent.com",
       "*.npmjs.org",
+      "*.opencode.ai",
       "api.anthropic.com",
       "api.github.com",
       "codeload.github.com",
       "files.pythonhosted.org",
       "github.com",
+      "opencode.ai",
       "pypi.org",
       "registry.npmjs.org"
     ],
