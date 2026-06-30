@@ -2,6 +2,11 @@
 
 Reference for choosing steps when setting up hk in a new repo. Run `hk builtins` for the full list.
 
+**On `scripts/quiet-on-success.sh`:** it wraps only steps that print *on success*. Truly-silent
+linters (eslint, `tsc --noEmit`, shellcheck, gitleaks `--log-level=error`) are **not** wrapped here;
+`ruff check` uses its `-q` flag; only chatty test runners and summary-printing tools keep the
+wrapper. See `references/output-noise.md` for the 3-tier decision and how to check a tool.
+
 ## Universal (always add)
 
 ```pkl
@@ -29,6 +34,7 @@ Reference for choosing steps when setting up hk in a new repo. Run `hk builtins`
 ```
 
 Configure locale in `_typos.toml`:
+
 ```toml
 [default]
 locale = "en-gb"   # or "en-us"
@@ -38,7 +44,7 @@ locale = "en-gb"   # or "en-us"
 
 ```pkl
 ["gitleaks"] {
-    check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+    check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success (--log-level=error)
 }
 ```
 
@@ -51,6 +57,7 @@ Requires `gitleaks = "latest"` in `mise.toml`.
 ```
 
 Requires `rumdl = "latest"` in `mise.toml`. Configure in `.rumdl.toml`:
+
 ```toml
 [default]
 extend_rule_off = ["MD013", "MD033"]  # disable line-length and inline HTML rules
@@ -62,29 +69,36 @@ extend_rule_off = ["MD013", "MD033"]  # disable line-length and inline HTML rule
 
 ### Formatter: Biome (signal: `biome.json` or `biome.jsonc`)
 
+biome/ultracite print a `Checked N files…` summary on success (no verified silence flag here),
+so they keep the wrapper (tier 3):
+
 ```pkl
 ["biome"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
-    check = "scripts/quiet-on-success.sh pnpm exec biome check {{files}}"
+    check = "scripts/quiet-on-success.sh pnpm exec biome check {{files}}"  // prints success summary; wrapper suppresses it
     fix = "scripts/quiet-on-success.sh pnpm exec biome check --write {{files}}"
 }
 ```
 
 Or via [ultracite](https://github.com/haydenbleasel/ultracite) wrapper:
+
 ```pkl
 ["biome"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
-    check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"
+    check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"  // prints success summary; wrapper suppresses it
     fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
 }
 ```
 
 ### Formatter: Prettier (signal: `.prettierrc*` or no biome)
 
+prettier `--check` prints `All matched files use Prettier code style!` on success. `--log-level warn`
+should silence that — verify it reaches 0 bytes before relying on it; otherwise keep the wrapper (tier 3):
+
 ```pkl
 ["prettier"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.json", "*.css", "*.md", "*.mdx")
-    check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"
+    check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"  // prints on success; wrapper suppresses it
     fix = "scripts/quiet-on-success.sh pnpm exec prettier --write {{files}}"
 }
 ```
@@ -93,11 +107,13 @@ Add framework-specific globs as needed: `"*.astro"`, `"*.svelte"`, `"*.vue"`.
 
 ### Linter: ESLint (signal: `eslint.config.*`)
 
+eslint is silent on success (tier 1) — no wrapper:
+
 ```pkl
 ["eslint"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.mjs")
-    check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
-    fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
+    check = "pnpm exec eslint {{files}}"
+    fix = "pnpm exec eslint --fix {{files}}"
 }
 ```
 
@@ -105,31 +121,38 @@ Add `"*.astro"`, `"*.svelte"`, `"*.vue"` to glob if using those frameworks.
 
 ### Type checking
 
+`tsc`/`tsgo --noEmit` are silent on success (tier 1) — no wrapper. `astro check` / `svelte-check`
+print a result summary (tier 3) — keep the wrapper.
+
 **Plain TypeScript (`tsconfig.json`):**
+
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec tsc --noEmit"
+    check = "pnpm exec tsc --noEmit"   // silent on success
 }
 ```
 
 **Native TS compiler preview (tsgo — faster):**
+
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec tsgo --noEmit"
+    check = "pnpm exec tsgo --noEmit"   // silent on success
 }
 ```
 
 **Astro:**
+
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec astro check"
+    check = "scripts/quiet-on-success.sh pnpm exec astro check"   // prints result summary; wrapper suppresses it
 }
 ```
 
 **SvelteKit:**
+
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec svelte-kit sync && pnpm exec svelte-check"
+    check = "scripts/quiet-on-success.sh pnpm exec svelte-kit sync && pnpm exec svelte-check"   // svelte-check prints a summary; wrapper suppresses it
 }
 ```
 
@@ -137,17 +160,22 @@ Add `"*.astro"`, `"*.svelte"`, `"*.vue"` to glob if using those frameworks.
 
 ### Test runners
 
+Test runners print a reporter summary on success and have no true silence flag
+(`--silent` only mutes test `console.log`, not the reporter) — tier 3, keep the wrapper.
+
 **Vitest:**
+
 ```pkl
 ["vitest"] {
-    check = "scripts/quiet-on-success.sh pnpm exec vitest run"
+    check = "scripts/quiet-on-success.sh pnpm exec vitest run"   // prints on success; wrapper suppresses it
 }
 ```
 
 **Jest:**
+
 ```pkl
 ["jest"] {
-    check = "scripts/quiet-on-success.sh pnpm exec jest --passWithNoTests"
+    check = "scripts/quiet-on-success.sh pnpm exec jest --passWithNoTests"   // prints on success; wrapper suppresses it
 }
 ```
 
@@ -156,6 +184,7 @@ Add `"*.astro"`, `"*.svelte"`, `"*.vue"` to glob if using those frameworks.
 ### Commit message validation (signal: `commitlint.config.*`)
 
 Add a `commit-msg` hook:
+
 ```pkl
 ["commit-msg"] {
     steps {
@@ -187,9 +216,10 @@ Add a `commit-msg` hook:
 ```
 
 Tests:
+
 ```pkl
 ["go-test"] {
-    check = "scripts/quiet-on-success.sh go test ./..."
+    check = "scripts/quiet-on-success.sh go test ./..."   // prints ok/PASS lines on success; wrapper suppresses them
 }
 ```
 
@@ -203,9 +233,10 @@ Tests:
 ```
 
 Tests:
+
 ```pkl
 ["cargo-test"] {
-    check = "scripts/quiet-on-success.sh cargo test"
+    check = "scripts/quiet-on-success.sh cargo test"   // prints on success; wrapper suppresses it
 }
 ```
 
@@ -216,8 +247,12 @@ Tests:
 ### Formatter + linter: Ruff (preferred, signal: `ruff.toml` or `[tool.ruff]` in `pyproject.toml`)
 
 ```pkl
-["ruff-format"] = (Builtins.ruff_format) {}
-["ruff"] = (Builtins.ruff) {}
+["ruff-format"] = (Builtins.ruff_format) {}   // builtin already passes --quiet (silent on success)
+["ruff"] = (Builtins.ruff) {
+    // Builtins.ruff runs `ruff check` which prints `All checks passed!` (tier 2).
+    // Override with -q (verified 0 bytes on success) — more direct than the wrapper.
+    check = "ruff check -q --force-exclude {{files}}"
+}
 ```
 
 ### Legacy: Black + Flake8
@@ -234,9 +269,10 @@ Tests:
 ```
 
 Tests:
+
 ```pkl
 ["pytest"] {
-    check = "scripts/quiet-on-success.sh pytest"
+    check = "scripts/quiet-on-success.sh pytest"   // prints dots + summary on success (even `-q`); wrapper suppresses it
 }
 ```
 
@@ -259,6 +295,7 @@ Tests:
 ```
 
 Custom glob for specific shell file patterns:
+
 ```pkl
 ["zsh-syntax"] {
     glob = List(".zshrc", ".zprofile", ".config/zsh/functions/**")
@@ -275,6 +312,7 @@ Custom glob for specific shell file patterns:
 ```
 
 Requires `yamllint = "latest"` in `mise.toml`. Configure in `.yamllint.yaml`:
+
 ```yaml
 extends: default
 rules:
@@ -288,6 +326,7 @@ rules:
 ## CSS
 
 With Prettier (usually sufficient), or:
+
 ```pkl
 ["stylelint"] = (Builtins.stylelint) {}
 ```
