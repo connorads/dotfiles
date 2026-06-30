@@ -1,8 +1,6 @@
-diff --git a/cmd-display-menu.c b/cmd-display-menu.c
-index 3d8bed9..8e3c4e6 100644
 --- a/cmd-display-menu.c
 +++ b/cmd-display-menu.c
-@@ -105,8 +105,8 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
+@@ -105,8 +105,8 @@
  	struct style_range	*sr = NULL;
  	const char		*xp, *yp;
  	char			*p;
@@ -12,8 +10,8 @@ index 3d8bed9..8e3c4e6 100644
 +	u_int			 line, ox, oy, sx, sy, lines;
  	long			 n;
  	struct format_tree	*ft;
-
-@@ -130,15 +130,9 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
+ 
+@@ -130,15 +130,9 @@
  	 * If there are any status lines, add this window position and the
  	 * status line position.
  	 */
@@ -32,7 +30,7 @@ index 3d8bed9..8e3c4e6 100644
  		for (line = 0; line < lines; line++) {
  			ranges = &tc->status.entries[line].ranges;
  			TAILQ_FOREACH(sr, ranges, entry) {
-@@ -154,20 +148,21 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
+@@ -154,20 +148,21 @@
  		if (sr != NULL) {
  			format_add(ft, "popup_window_status_line_x", "%u",
  			    sr->start);
@@ -49,7 +47,7 @@ index 3d8bed9..8e3c4e6 100644
 -			}
 +				    "%u", status_y);
  		}
-
+ 
 -		if (position == 0)
 -			format_add(ft, "popup_status_line_y", "%u", lines + h);
 +		if (status_top_lines(tc) != 0)
@@ -62,29 +60,25 @@ index 3d8bed9..8e3c4e6 100644
  		}
  	} else
  		top = 0;
-diff --git a/cmd-display-panes.c b/cmd-display-panes.c
-index 25556f3..9c854b0 100644
 --- a/cmd-display-panes.c
 +++ b/cmd-display-panes.c
-@@ -113,8 +113,8 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
+@@ -135,8 +135,8 @@
  		sy = wp->sy - yoff;
  	}
-
+ 
 -	if (ctx->statustop)
 -		yoff += ctx->statuslines;
 +	if (ctx->status_toplines != 0)
 +		yoff += ctx->status_toplines;
  	px = sx / 2;
  	py = sy / 2;
-
-diff --git a/format.c b/format.c
-index 3d498b3..9b0898d 100644
+ 
 --- a/format.c
 +++ b/format.c
-@@ -1267,11 +1267,7 @@ format_cb_mouse_status_line(struct format_tree *ft)
+@@ -1310,11 +1310,7 @@
  	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
  		return (NULL);
-
+ 
 -	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
 -		y = ft->m.y;
 -	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
@@ -94,10 +88,10 @@ index 3d498b3..9b0898d 100644
  		return (NULL);
  	xasprintf(&value, "%u", y);
  	return (value);
-@@ -1290,14 +1286,9 @@ format_cb_mouse_status_range(struct format_tree *ft)
+@@ -1333,14 +1329,9 @@
  	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
  		return (NULL);
-
+ 
 -	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
 -		x = ft->m.x;
 -		y = ft->m.y;
@@ -105,13 +99,14 @@ index 3d498b3..9b0898d 100644
 -		x = ft->m.x;
 -		y = ft->m.y - ft->m.statusat;
 -	} else
+-		return (NULL);
 +	if (!status_line_at_y(ft->c, ft->m.y, &y))
- 		return (NULL);
++		return (NULL);
 +	x = ft->m.x;
-
+ 
  	sr = status_get_range(ft->c, x, y);
  	if (sr == NULL)
-@@ -1898,12 +1889,9 @@ format_cb_mouse_x(struct format_tree *ft)
+@@ -1959,12 +1950,9 @@
  	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
  	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
  		return (format_printf("%u", x));
@@ -126,8 +121,8 @@ index 3d498b3..9b0898d 100644
 +		return (format_printf("%u", ft->m.x));
  	return (NULL);
  }
-
-@@ -1919,12 +1907,9 @@ format_cb_mouse_y(struct format_tree *ft)
+ 
+@@ -1980,12 +1968,9 @@
  	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
  	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
  		return (format_printf("%u", y));
@@ -142,23 +137,21 @@ index 3d498b3..9b0898d 100644
 +		return (format_printf("%u", y));
  	return (NULL);
  }
-
-diff --git a/screen-redraw.c b/screen-redraw.c
-index 4b9a98b..595cc32 100644
+ 
 --- a/screen-redraw.c
 +++ b/screen-redraw.c
-@@ -560,8 +560,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
- 			width = size - x;
- 		}
-
+@@ -718,8 +718,8 @@
+ 
+ 		r = tty_check_overlay_range(tty, x, yoff, width);
+ 		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, r);
 -		if (ctx->statustop)
 -			yoff += ctx->statuslines;
 +		if (ctx->status_toplines != 0)
 +			yoff += ctx->status_toplines;
- 		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
- 		    &grid_default_cell, NULL);
- 	}
-@@ -620,9 +620,16 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
+ 		for (i = 0; i < r->used; i++) {
+ 			ri = &r->ranges[i];
+ 			if (ri->nx == 0)
+@@ -784,9 +784,16 @@
  	lines = status_line_size(c);
  	if (c->message_string != NULL || c->prompt_string != NULL)
  		lines = (lines == 0) ? 1 : lines;
@@ -174,13 +167,13 @@ index 4b9a98b..595cc32 100644
 +		ctx->statustop = 1;
 +	} else
 +		ctx->status_bottomlines = lines;
-
+ 
  	ctx->pane_status = options_get_number(wo, "pane-border-status");
  	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
-@@ -633,9 +640,10 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
-
+@@ -797,9 +804,10 @@
+ 
  	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
-
+ 
 -	log_debug("%s: %s @%u ox=%u oy=%u sx=%u sy=%u %u/%d", __func__, c->name,
 -	    w->id, ctx->ox, ctx->oy, ctx->sx, ctx->sy, ctx->statuslines,
 -	    ctx->statustop);
@@ -189,12 +182,12 @@ index 4b9a98b..595cc32 100644
 +	    ctx->statuslines, ctx->statustop, ctx->status_toplines,
 +	    ctx->status_bottomlines);
  }
-
+ 
  /* Redraw entire screen. */
-@@ -787,8 +795,8 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
+@@ -1035,8 +1043,8 @@
  	else
  		isolates = 0;
-
+ 
 -	if (ctx->statustop)
 -		tty_cursor(tty, i, ctx->statuslines + j);
 +	if (ctx->status_toplines != 0)
@@ -202,75 +195,72 @@ index 4b9a98b..595cc32 100644
  	else
  		tty_cursor(tty, i, j);
  	if (isolates)
-@@ -875,12 +883,9 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
-
+@@ -1100,12 +1108,9 @@
+ 
  	log_debug("%s: %s @%u", __func__, c->name, w->id);
-
+ 
 -	if (ctx->statustop)
 -		y = 0;
 -	else
 -		y = c->tty.sy - ctx->statuslines;
- 	for (i = 0; i < ctx->statuslines; i++) {
+-	for (i = 0; i < ctx->statuslines; i++) {
 -		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
++	for (i = 0; i < ctx->statuslines; i++) {
 +		y = status_line_y(c, i);
 +		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y,
  		    &grid_default_cell, NULL);
  	}
  }
-@@ -901,10 +906,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
-
- 	if (wp->xoff + wp->sx <= ctx->ox || wp->xoff >= ctx->ox + ctx->sx)
+@@ -1339,10 +1344,7 @@
+ 	    wp->xoff >= (int)ctx->ox + (int)ctx->sx)
  		return;
+ 
 -	if (ctx->statustop)
--		top = ctx->statuslines;
+-		woy = ctx->statuslines;
 -	else
--		top = 0;
-+	top = ctx->status_toplines;
-
+-		woy = 0;
++	woy = ctx->status_toplines;
+ 
  	/*
  	 * Local patch: full-redraw path. tty_attributes() will dim cells while
-@@ -1038,9 +1040,9 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
- 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
- 	int			 yoff = wp->yoff;
-
+@@ -1500,9 +1502,9 @@
+ 	sy = tty->sy - ctx->statuslines;
+ 	ox = ctx->ox;
+ 	oy = ctx->oy;
 -	if (ctx->statustop) {
--		sb_y += ctx->statuslines;
+-		sb_y += ctx->statuslines; /* tty coordinates */
 -		sy += ctx->statuslines;
 +	if (ctx->status_toplines != 0) {
-+		sb_y += ctx->status_toplines;
++		sb_y += ctx->status_toplines; /* tty coordinates */
 +		sy += ctx->status_toplines;
  	}
-
- 	/* Set up style for slider. */
-diff --git a/screen-write.c b/screen-write.c
-index cbef4f5..48af16d 100644
+ 
+ 	gc = sb_style->gc;
 --- a/screen-write.c
 +++ b/screen-write.c
-@@ -161,8 +161,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+@@ -168,8 +168,7 @@
  	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
  	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
-
+ 
 -	if (status_at_line(c) == 0)
 -		ttyctx->yoff += status_line_size(c);
 +	ttyctx->yoff += status_top_lines(c);
-
+ 
  	/*
  	 * Local patch: flag the client tty so subsequent tty_attributes() calls
-diff --git a/server-client.c b/server-client.c
-index 7f1942c..1858b8f 100644
 --- a/server-client.c
 +++ b/server-client.c
-@@ -673,7 +673,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
- 	struct window		*w = s->curw->window;
- 	struct winlink		*fwl;
- 	struct window_pane	*wp, *fwp;
--	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
-+	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0, statusline;
- 	int			 ignore = 0;
- 	key_code		 key;
- 	struct timeval		 tv;
-@@ -782,11 +782,10 @@ have_event:
-
+@@ -724,7 +724,7 @@
+ 	struct window			*w = s->curw->window;
+ 	struct winlink			*fwl;
+ 	struct window_pane		*wp, *fwp, *lwp = NULL;
+-	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0;
++	u_int				 x, y, sx, sy, px, py, n, sl_mpos = 0, statusline;
+ 	u_int				 b, bn;
+ 	int				 ignore = 0;
+ 	key_code			 key;
+@@ -821,11 +821,10 @@
+ 
  	/* Is this on the status line? */
  	m->statusat = status_at_line(c);
 -	m->statuslines = status_line_size(c);
@@ -283,19 +273,19 @@ index 7f1942c..1858b8f 100644
 +	if (status_line_at_y(c, y, &statusline)) {
 +		sr = status_get_range(c, x, statusline);
  		if (sr == NULL) {
- 			where = STATUS_DEFAULT;
+ 			loc = KEYC_MOUSE_LOCATION_STATUS_DEFAULT;
  		} else {
-@@ -2907,7 +2906,7 @@ server_client_reset_state(struct client *c)
+@@ -1767,7 +1766,7 @@
  	struct screen		*s = NULL;
  	struct options		*oo = c->session->options;
  	int			 mode = 0, cursor, flags;
 -	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
 +	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
-
+ 	struct visible_ranges	*r;
+ 
  	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
- 		return;
-@@ -2937,16 +2936,9 @@ server_client_reset_state(struct client *c)
-
+@@ -1798,16 +1797,9 @@
+ 
  	/* Move cursor to pane cursor and offset. */
  	if (c->prompt_string != NULL) {
 -		n = options_get_number(oo, "status-position");
@@ -312,26 +302,24 @@ index 7f1942c..1858b8f 100644
 +		if (cy == (u_int)-1)
 +			cy = tty->sy - 1;
  		cx = c->prompt_cursor;
- 	} else if (c->overlay_draw == NULL) {
+ 	} else if (wp != NULL && c->overlay_draw == NULL) {
  		cursor = 0;
-@@ -2958,8 +2950,7 @@ server_client_reset_state(struct client *c)
- 			cx = wp->xoff + s->cx - ox;
- 			cy = wp->yoff + s->cy - oy;
-
+@@ -1825,8 +1817,7 @@
+ 			if (!screen_redraw_is_visible(r, cx))
+ 				cursor = 0;
+ 
 -			if (status_at_line(c) == 0)
 -				cy += status_line_size(c);
 +			cy += status_top_lines(c);
  		}
+ 
  		if (!cursor)
- 			mode &= ~MODE_CURSOR;
-diff --git a/status.c b/status.c
-index 0551b54..4f458ea 100644
 --- a/status.c
 +++ b/status.c
-@@ -237,17 +237,32 @@ status_update_cache(struct session *s)
+@@ -237,17 +237,32 @@
  		s->statusat = 1;
  }
-
+ 
 -/* Get screen line of status line. -1 means off. */
 +/* Is the local split-status hack active? */
  int
@@ -343,7 +331,7 @@ index 0551b54..4f458ea 100644
 +	struct options_entry	*o;
 +	char			*value;
 +	int			 enabled;
-
+ 
  	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
 -		return (-1);
 -	if (s->statusat != 1)
@@ -366,12 +354,14 @@ index 0551b54..4f458ea 100644
 +	free(value);
 +	return (enabled);
  }
-
+ 
  /* Get size of status line for client's session. 0 means off. */
-@@ -263,6 +278,99 @@ status_line_size(struct client *c)
+@@ -261,6 +276,99 @@
+ 	if (s == NULL)
+ 		return (options_get_number(global_s_options, "status"));
  	return (s->statuslines);
- }
-
++}
++
 +/* Get number of status lines reserved at the top of the terminal. */
 +u_int
 +status_top_lines(struct client *c)
@@ -463,23 +453,21 @@ index 0551b54..4f458ea 100644
 +	if (s->statusat != 1)
 +		return (s->statusat);
 +	return (c->tty.sy - status_line_size(c));
-+}
-+
+ }
+ 
  /* Get the prompt line number for client's session. 1 means at the bottom. */
- u_int
- status_prompt_line_at(struct client *c)
-@@ -1821,6 +1929,7 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
+@@ -1967,6 +2075,7 @@
  	struct status_prompt_menu	*spm;
  	u_int				 lines = status_line_size(c), height, i;
- 	u_int				 py;
+ 	u_int				 py, ax, aw;
 +	int				 status_y;
-
+ 
  	if (size <= 1)
  		return (0);
-@@ -1848,10 +1957,11 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
- 		menu_add_item(menu, &item, NULL, c, NULL);
+@@ -1995,10 +2104,11 @@
  	}
-
+ 
+ 	status_prompt_area(c, &ax, &aw);
 -	if (options_get_number(c->session->options, "status-position") == 0)
 -		py = lines;
 +	status_y = status_line_y(c, status_prompt_line_at(c));
@@ -489,20 +477,20 @@ index 0551b54..4f458ea 100644
 -		py = c->tty.sy - 3 - height;
 +		py = status_y - 2 - height;
  	offset += utf8_cstrwidth(c->prompt_string);
+ 	offset += ax;
  	if (offset > 2)
- 		offset -= 2;
-@@ -1880,6 +1990,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
+@@ -2028,6 +2138,7 @@
  	char				**list = NULL, *tmp;
  	u_int				  lines = status_line_size(c), height;
- 	u_int				  py, size = 0;
+ 	u_int				  py, size = 0, i, ax, aw;
 +	int				  status_y;
-
+ 
  	if (c->tty.sy - lines < 3)
  		return (NULL);
-@@ -1944,10 +2055,11 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
- 	spm->size = size;
+@@ -2093,10 +2204,11 @@
  	spm->list = list;
-
+ 
+ 	status_prompt_area(c, &ax, &aw);
 -	if (options_get_number(c->session->options, "status-position") == 0)
 -		py = lines;
 +	status_y = status_line_y(c, status_prompt_line_at(c));
@@ -512,22 +500,20 @@ index 0551b54..4f458ea 100644
 -		py = c->tty.sy - 3 - height;
 +		py = status_y - 2 - height;
  	offset += utf8_cstrwidth(c->prompt_string);
+ 	offset += ax;
  	if (offset > 2)
- 		offset -= 2;
-diff --git a/tmux.h b/tmux.h
-index 856fb06..8ffc280 100644
 --- a/tmux.h
 +++ b/tmux.h
-@@ -1049,6 +1049,8 @@ struct screen_redraw_ctx {
+@@ -1111,6 +1111,8 @@
  	struct client	*c;
-
+ 
  	u_int		 statuslines;
 +	u_int		 status_toplines;
 +	u_int		 status_bottomlines;
  	int		 statustop;
-
+ 
  	int		 pane_status;
-@@ -2954,6 +2956,11 @@ void	 status_timer_start(struct client *);
+@@ -3139,6 +3141,11 @@
  void	 status_timer_start_all(void);
  void	 status_update_cache(struct session *);
  u_int	 status_prompt_line_at(struct client *);
@@ -539,17 +525,15 @@ index 856fb06..8ffc280 100644
  int	 status_at_line(struct client *);
  u_int	 status_line_size(struct client *);
  struct style_range *status_get_range(struct client *, u_int, u_int);
-diff --git a/tty.c b/tty.c
-index 35acf71..4e309f5 100644
 --- a/tty.c
 +++ b/tty.c
-@@ -1665,8 +1665,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
- 	    &ttyctx->wsx, &ttyctx->wsy);
-
+@@ -1535,8 +1535,7 @@
+ 		ttyctx->flags &= ~TTY_CTX_WINDOW_BIGGER;
+ 
  	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 -	if (status_at_line(c) == 0)
 -		ttyctx->yoff += status_line_size(c);
 +	ttyctx->yoff += status_top_lines(c);
-
+ 
  	return (1);
  }
