@@ -14,9 +14,15 @@ terminal_progress = false
 // formatting steps only; gitleaks + merge-conflict checks still run on them.
 local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**")
 
+// Patch files are byte-exact: a blank context line is a single space and
+// trailing whitespace can be significant, so reformatting them silently
+// corrupts the diff (git apply rejects it; patch only tolerates it by luck).
+// Exclude every *.patch from the whitespace fixers.
+local no_reformat = vendored_skills + List("**/*.patch")
+
 local fast_steps = new Mapping<String, Step> {
-    ["trailing-whitespace"] = (Builtins.trailing_whitespace) { exclude = vendored_skills }
-    ["newlines"] = (Builtins.newlines) { exclude = vendored_skills }
+    ["trailing-whitespace"] = (Builtins.trailing_whitespace) { exclude = no_reformat }
+    ["newlines"] = (Builtins.newlines) { exclude = no_reformat }
     ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
 
     ["shfmt"] = (Builtins.shfmt) {

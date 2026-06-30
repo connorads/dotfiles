@@ -1,8 +1,6 @@
-diff --git a/colour.c b/colour.c
-index 791c5fd5..91e39c04 100644
 --- a/colour.c
 +++ b/colour.c
-@@ -120,6 +120,51 @@ colour_force_rgb(int c)
+@@ -120,6 +120,51 @@
  	return (-1);
  }
  
@@ -54,14 +52,12 @@ index 791c5fd5..91e39c04 100644
  /* Convert colour to a string. */
  const char *
  colour_tostring(int c)
-diff --git a/screen-redraw.c b/screen-redraw.c
-index 1c1b8503..4b9a98b9 100644
 --- a/screen-redraw.c
 +++ b/screen-redraw.c
-@@ -905,6 +905,14 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
- 		top = ctx->statuslines;
+@@ -1343,6 +1343,14 @@
+ 		woy = ctx->statuslines;
  	else
- 		top = 0;
+ 		woy = 0;
 +
 +	/*
 +	 * Local patch: full-redraw path. tty_attributes() will dim cells while
@@ -71,10 +67,10 @@ index 1c1b8503..4b9a98b9 100644
 +	tty->dim_inactive = (wp != w->active);
 +
  	for (j = 0; j < wp->sy; j++) {
- 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
- 			continue;
-@@ -940,6 +948,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
- 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
+ 		if (wp->yoff + (int)j < (int)ctx->oy ||
+ 		    wp->yoff + (int)j >= (int)ctx->oy + (int)ctx->sy)
+@@ -1391,6 +1399,8 @@
+ 		}
  	}
  
 +	tty->dim_inactive = 0;
@@ -82,11 +78,9 @@ index 1c1b8503..4b9a98b9 100644
  #ifdef ENABLE_SIXEL
  	tty_draw_images(c, wp, s);
  #endif
-diff --git a/screen-write.c b/screen-write.c
-index a2755d35..cbef4f53 100644
 --- a/screen-write.c
 +++ b/screen-write.c
-@@ -164,6 +164,13 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+@@ -171,6 +171,13 @@
  	if (status_at_line(c) == 0)
  		ttyctx->yoff += status_line_size(c);
  
@@ -100,11 +94,9 @@ index a2755d35..cbef4f53 100644
  	return (1);
  }
  
-diff --git a/tmux.h b/tmux.h
-index dd62382e..856fb06e 100644
 --- a/tmux.h
 +++ b/tmux.h
-@@ -1618,6 +1618,15 @@ struct tty {
+@@ -1732,6 +1732,15 @@
  
  	struct event	 key_timer;
  	struct tty_key	*key_tree;
@@ -120,7 +112,7 @@ index dd62382e..856fb06e 100644
  };
  
  /* Terminal command context. */
-@@ -3004,6 +3013,7 @@ int	 colour_find_rgb(u_char, u_char, u_char);
+@@ -3189,6 +3198,7 @@
  int	 colour_join_rgb(u_char, u_char, u_char);
  void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
  int	 colour_force_rgb(int);
@@ -128,11 +120,9 @@ index dd62382e..856fb06e 100644
  const char *colour_tostring(int);
  enum client_theme colour_totheme(int);
  int	 colour_fromstring(const char *);
-diff --git a/tty.c b/tty.c
-index 71293f6b..35acf716 100644
 --- a/tty.c
 +++ b/tty.c
-@@ -1769,6 +1769,8 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
+@@ -1639,6 +1639,8 @@
  			if (state == 0)
  				continue;
  			cmdfn(&c->tty, ctx);
@@ -141,10 +131,11 @@ index 71293f6b..35acf716 100644
  		}
  	}
  }
-@@ -2756,6 +2758,22 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
+@@ -2651,6 +2653,22 @@
+ 	tty_check_fg(tty, palette, &gc2);
  	tty_check_bg(tty, palette, &gc2);
  	tty_check_us(tty, palette, &gc2);
- 
++
 +	/*
 +	 * Local patch: if the cell belongs to an inactive pane, blend its colors
 +	 * toward the pane's default bg. This dims arbitrary ANSI-colored content
@@ -160,7 +151,6 @@ index 71293f6b..35acf716 100644
 +		if (gc2.us != 0 && gc2.us != 8)
 +			gc2.us = colour_dim(gc2.us, target);
 +	}
-+
+ 
  	/*
  	 * If any bits are being cleared or the underline colour is now default,
- 	 * reset everything.
