@@ -1,0 +1,58 @@
+{
+  "allowPty": true,
+  "network": {
+    "allowedDomains": [
+      "*.anthropic.com",
+      "*.githubusercontent.com",
+      "*.npmjs.org",
+      "api.anthropic.com",
+      "api.github.com",
+      "codeload.github.com",
+      "files.pythonhosted.org",
+      "github.com",
+      "pypi.org",
+      "registry.npmjs.org"
+    ],
+    "deniedDomains": []
+  },
+  "filesystem": {
+    "denyRead": [
+      "~/.aws",
+      "~/.cloudflared",
+      "~/.config/fnox",
+      "~/.config/gcloud",
+      "~/.config/gh",
+      "~/.config/gh-gate",
+      "~/.config/op",
+      "~/.docker/config.json",
+      "~/.fnox",
+      "~/.gemini",
+      "~/.gnupg",
+      "~/.kube",
+      "~/.netrc",
+      "~/.password-store",
+      "~/.ssh",
+      "~/.zshrc.local",
+      "~/Library/Keychains"
+    ],
+    "allowRead": [],
+    "allowWrite": [
+      "$TMPDIR/**",
+      ".",
+      "./**",
+      "/private/tmp/**",
+      "/tmp/**",
+      "~/.cache/**",
+      "~/.cache/opencode/**",
+      "~/.config/opencode/**",
+      "~/.local/share/opencode/**",
+      "~/.local/share/pnpm/**",
+      "~/.local/state/opencode/**",
+      "~/.npm/**",
+      "~/Library/Application Support/opencode/**",
+      "~/Library/Caches/**",
+      "~/Library/Caches/opencode/**"
+    ],
+    "denyWrite": []
+  }
+}

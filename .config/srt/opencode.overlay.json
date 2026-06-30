@@ -1,0 +1,3 @@
+{ "filesystem": { "allowWrite": [
+  "~/.config/opencode/**","~/.local/share/opencode/**","~/.cache/opencode/**","~/.local/state/opencode/**",
+  "~/Library/Application Support/opencode/**","~/Library/Caches/opencode/**" ] } }
