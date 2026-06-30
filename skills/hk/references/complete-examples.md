@@ -10,13 +10,13 @@ Real configurations for different tech stacks. Bump the version in the `amends`/
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".wrangler")
 
-display_skip_reasons = List()
-terminal_progress = false
+display_skip_reasons = List()   // suppress skip noise
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -35,25 +35,25 @@ hooks {
             }
             ["prettier"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.json", "*.css", "*.astro", "*.md", "*.mdx")
-                check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"
+                check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"  // prints on success; wrapper suppresses it
                 fix = "scripts/quiet-on-success.sh pnpm exec prettier --write {{files}}"
             }
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.astro")
-                check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
-                fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
+                check = "pnpm exec eslint {{files}}"
+                fix = "pnpm exec eslint --fix {{files}}"
             }
 
             // Validation
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
             ["gitleaks"] {
-                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+                check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
             ["typecheck"] {
-                check = "scripts/quiet-on-success.sh pnpm exec astro check"
+                check = "scripts/quiet-on-success.sh pnpm exec astro check"  // prints result summary; wrapper suppresses it
             }
             ["vitest"] {
-                check = "scripts/quiet-on-success.sh pnpm exec vitest run"
+                check = "scripts/quiet-on-success.sh pnpm exec vitest run"  // prints on success; wrapper suppresses it
             }
         }
     }
@@ -61,6 +61,7 @@ hooks {
 ```
 
 **mise.toml additions:**
+
 ```toml
 [tools]
 hk = "latest"
@@ -77,13 +78,13 @@ gitleaks = "latest"
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 
-display_skip_reasons = List()
-terminal_progress = false
+display_skip_reasons = List()   // suppress skip noise
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -104,13 +105,13 @@ hooks {
             ["biome"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
                 exclude = List(".vscode/*")
-                check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"
+                check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"  // prints success summary; wrapper suppresses it
                 fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
             }
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx")
-                check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
-                fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
+                check = "pnpm exec eslint {{files}}"
+                fix = "pnpm exec eslint --fix {{files}}"
             }
 
             // Validation
@@ -132,7 +133,7 @@ hooks {
                   """
             }
             ["gitleaks"] {
-                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+                check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
             ["check-migrations"] {
                 glob = List("src/collections/*", "src/blocks/*", "src/globals/*", "payload.config.ts")
@@ -189,6 +190,7 @@ hooks {
 ```
 
 **mise.toml additions:**
+
 ```toml
 [tools]
 hk = "latest"
@@ -207,13 +209,13 @@ No package.json. Uses local variable to share steps across pre-commit/fix/check 
 
 ```pkl
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
 
 exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
 
-display_skip_reasons = List()
-terminal_progress = false
+display_skip_reasons = List()   // suppress skip noise
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
 
 local fast_steps = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) {}
@@ -264,6 +266,7 @@ hooks {
 ```
 
 **mise.toml additions:**
+
 ```toml
 [tools]
 hk = "latest"
@@ -272,6 +275,7 @@ rumdl = "latest"
 ```
 
 **Installation** (no `prepare` script — set manually once):
+
 ```bash
 git config --local core.hooksPath .hk-hooks
 ```
@@ -281,11 +285,11 @@ git config --local core.hooksPath .hk-hooks
 ## Go Service
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
 
-display_skip_reasons = List()
-terminal_progress = false
+display_skip_reasons = List()   // suppress skip noise
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -299,13 +303,13 @@ hooks {
                 exclude = List("go.sum")
             }
             ["gitleaks"] {
-                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+                check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
             ["go-fmt"] = (Builtins.go_fmt) {}
             ["go-vet"] = (Builtins.go_vet) {}
             ["golangci-lint"] = (Builtins.golangci_lint) {}
             ["go-test"] {
-                check = "scripts/quiet-on-success.sh go test ./..."
+                check = "scripts/quiet-on-success.sh go test ./..."   // prints on success; wrapper suppresses it
             }
         }
     }
@@ -313,6 +317,7 @@ hooks {
 ```
 
 **mise.toml additions:**
+
 ```toml
 [tools]
 hk = "latest"
@@ -326,13 +331,13 @@ gitleaks = "latest"
 ## Python (ruff + mypy)
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
 
 exclude = List(".venv", "__pycache__", ".mypy_cache", ".ruff_cache", "dist")
 
-display_skip_reasons = List()
-terminal_progress = false
+display_skip_reasons = List()   // suppress skip noise
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -344,13 +349,15 @@ hooks {
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
             ["typos"] = (Builtins.typos) {}
             ["gitleaks"] {
-                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+                check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
-            ["ruff-format"] = (Builtins.ruff_format) {}
-            ["ruff"] = (Builtins.ruff) {}
+            ["ruff-format"] = (Builtins.ruff_format) {}   // builtin passes --quiet (silent)
+            ["ruff"] = (Builtins.ruff) {
+                check = "ruff check -q --force-exclude {{files}}"   // -q silences `All checks passed!` (tier 2)
+            }
             ["mypy"] = (Builtins.mypy) { stomp = true }
             ["pytest"] {
-                check = "scripts/quiet-on-success.sh pytest"
+                check = "scripts/quiet-on-success.sh pytest"   // prints on success; wrapper suppresses it
             }
         }
     }
@@ -358,6 +365,7 @@ hooks {
 ```
 
 **mise.toml additions:**
+
 ```toml
 [tools]
 hk = "latest"
