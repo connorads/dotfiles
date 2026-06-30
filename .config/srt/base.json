@@ -13,6 +13,9 @@
     "allowRead": [],
     "allowWrite": [".","./**","$TMPDIR/**","/private/tmp/**","/tmp/**",
       "~/.cache/**","~/Library/Caches/**","~/.local/share/pnpm/**","~/.npm/**"],
-    "denyWrite": []
+    "denyWrite": ["~/.ssh","~/.config/gh-gate","~/.config/gh","~/.aws","~/.config/gcloud","~/.netrc",
+      "~/.config/fnox","~/.fnox","~/Library/Keychains","~/.zshrc.local","~/.docker/config.json",
+      "~/.gnupg","~/.cloudflared","~/.gemini","~/.config/op","~/.kube","~/.password-store",
+      "~/git/dotfiles","~/.zshenv"]
   }
 }

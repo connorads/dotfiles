@@ -55,6 +55,26 @@
       "~/Library/Caches/**",
       "~/Library/Caches/opencode/**"
     ],
-    "denyWrite": []
+    "denyWrite": [
+      "~/.aws",
+      "~/.cloudflared",
+      "~/.config/fnox",
+      "~/.config/gcloud",
+      "~/.config/gh",
+      "~/.config/gh-gate",
+      "~/.config/op",
+      "~/.docker/config.json",
+      "~/.fnox",
+      "~/.gemini",
+      "~/.gnupg",
+      "~/.kube",
+      "~/.netrc",
+      "~/.password-store",
+      "~/.ssh",
+      "~/.zshenv",
+      "~/.zshrc.local",
+      "~/Library/Keychains",
+      "~/git/dotfiles"
+    ]
   }
 }
