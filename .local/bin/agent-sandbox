@@ -1,0 +1,410 @@
+#!/bin/sh
+# agent-sandbox (asb): opt-in OS sandbox wrapper for CLI coding agents.
+#
+# Wraps an enrolled agent (opencode, pi, ...) in @anthropic-ai/sandbox-runtime
+# (`srt`) so its bash/file/network actions run under OS isolation (macOS
+# Seatbelt via sandbox-exec). Nothing is sandboxed by default; enrolment is a
+# deliberate committed act (`asb enable <tool>` -> a shadow-bin symlink to this
+# dispatcher). Mode is chosen by basename "$0".
+#
+# NESTED-SEATBELT GOTCHA: tools with a *native* sandbox (claude `/sandbox`,
+# codex) should NOT be enrolled - nesting Seatbelt profiles double-confines and
+# breaks them. Leave them to their own sandbox.
+#
+# NAME COLLISION: `agentbox` is a *Docker* sandbox; `agent-sandbox`/`asb` is
+# this srt (OS-level) wrapper. Different mechanisms, similar names.
+#
+# Generated policy: ~/.config/srt/<tool>.json is rendered from base.json +
+# <tool>.overlay.json by `asb sync`. Edit base/overlay then `asb sync`, never
+# the generated file (clobbered on next sync).
+
+# jq filter programs and a literal usage string are deliberately single-quoted.
+# shellcheck disable=SC2016
+set -u
+
+SHADOW_DIR="$HOME/.local/share/shadow-bin"
+LOCAL_BIN="$HOME/.local/bin"
+MISE_SHIMS="$HOME/.local/share/mise/shims"
+SRT_DIR="$HOME/.config/srt"
+LOG="$HOME/.cache/agent-sandbox.log"
+LOG_CAP=1048576 # 1 MiB; trimmed by rename
+SELF="$0"
+
+self_name() { basename -- "$SELF"; }
+
+warn() { printf 'agent-sandbox: %s\n' "$*" >&2; }
+debug() {
+  [ -n "${AGENT_SANDBOX_DEBUG:-}" ] && printf 'agent-sandbox[debug]: %s\n' "$*" >&2
+  return 0
+}
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+# Resolve the real binary for <name>, never this dispatcher. Prefer the mise
+# shim (version-agnostic, execs the install directly so no PATH recursion);
+# else PATH-walk skipping shadow-bin + ~/.local/bin; else absolute fallbacks.
+resolve_real() {
+  name=$1
+  if [ -x "$MISE_SHIMS/$name" ]; then
+    printf '%s\n' "$MISE_SHIMS/$name"
+    return 0
+  fi
+  _real=""
+  OLDIFS="$IFS"
+  IFS=':'
+  for dir in $PATH; do
+    case "$dir" in
+      "$SHADOW_DIR" | "$SHADOW_DIR/") continue ;;
+      "$LOCAL_BIN" | "$LOCAL_BIN/") continue ;;
+    esac
+    if [ -x "$dir/$name" ]; then
+      _real="$dir/$name"
+      break
+    fi
+  done
+  IFS="$OLDIFS"
+  if [ -z "$_real" ]; then
+    user="${USER:-${HOME##*/}}"
+    for cand in \
+      "$HOME/.local/share/mise/installs/npm-$name/latest/bin/$name" \
+      "/etc/profiles/per-user/$user/bin/$name" \
+      "$HOME/.nix-profile/bin/$name" \
+      "/run/current-system/sw/bin/$name" \
+      "/opt/homebrew/bin/$name" \
+      "/usr/local/bin/$name" \
+      "/usr/bin/$name"; do
+      [ -x "$cand" ] && _real="$cand" && break
+    done
+  fi
+  [ -n "$_real" ] && printf '%s\n' "$_real"
+}
+
+# Locate jq for policy rendering (interactive paths only; not the hot launch
+# path unless AGENT_SANDBOX_ALLOW_WRITE is set).
+resolve_jq() {
+  for cand in "$(command -v jq 2>/dev/null)" \
+    "/etc/profiles/per-user/${USER:-${HOME##*/}}/bin/jq" \
+    "$HOME/.nix-profile/bin/jq" /opt/homebrew/bin/jq /usr/local/bin/jq; do
+    [ -n "$cand" ] && [ -x "$cand" ] && printf '%s\n' "$cand" && return 0
+  done
+  return 1
+}
+
+make_tmp() {
+  if t=$(mktemp 2>/dev/null); then
+    printf '%s\n' "$t"
+    return 0
+  fi
+  t="${TMPDIR:-/tmp}/agent-sandbox.$$.$(awk 'BEGIN{srand();print int(rand()*1e9)}' 2>/dev/null || echo $$)"
+  : >"$t" 2>/dev/null && printf '%s\n' "$t"
+}
+
+# jq merge program: arrays concat + dedupe; allowPty scalar overlay-wins. No
+# extra keys (srt may reject them). Args: <jq> <base.json> <overlay.json>
+jq_merge() {
+  "$1" -s '
+    def m(a;b): ((a // []) + (b // [])) | unique;
+    .[0] as $b | .[1] as $o | {
+      allowPty: (if ($o|has("allowPty")) then $o.allowPty
+                 elif ($b|has("allowPty")) then $b.allowPty else true end),
+      network: { allowedDomains: m($b.network.allowedDomains;$o.network.allowedDomains),
+                 deniedDomains:  m($b.network.deniedDomains;$o.network.deniedDomains) },
+      filesystem: { denyRead: m($b.filesystem.denyRead;$o.filesystem.denyRead),
+                    allowRead: m($b.filesystem.allowRead;$o.filesystem.allowRead),
+                    allowWrite: m($b.filesystem.allowWrite;$o.filesystem.allowWrite),
+                    denyWrite: m($b.filesystem.denyWrite;$o.filesystem.denyWrite) }
+    }' "$2" "$3"
+}
+
+# Cheap pre-check used on the hot path (no jq): exists, non-empty, has the two
+# required keys. srt validates fully; this just avoids handing it junk.
+policy_ok() {
+  f=$1
+  [ -s "$f" ] || return 1
+  grep -q '"network"' "$f" && grep -q '"filesystem"' "$f"
+}
+
+log_launch() {
+  # Atomic short-line append (macOS has no flock; a write under PIPE_BUF is
+  # atomic). Best-effort size cap by rename. Never fail the launch on log error.
+  dir=${LOG%/*}
+  [ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null || return 0
+  if [ -f "$LOG" ]; then
+    size=$(wc -c <"$LOG" 2>/dev/null || echo 0)
+    [ "${size:-0}" -gt "$LOG_CAP" ] 2>/dev/null && mv -f "$LOG" "$LOG.1" 2>/dev/null
+  fi
+  printf '%s\n' "$1" >>"$LOG" 2>/dev/null || true
+}
+
+# ---------------------------------------------------------------------------
+# Management CLI
+# ---------------------------------------------------------------------------
+
+enrolled_tools() {
+  [ -d "$SHADOW_DIR" ] || return 0
+  for link in "$SHADOW_DIR"/*; do
+    [ -L "$link" ] || continue
+    n=$(basename -- "$link")
+    case "$n" in agent-sandbox | asb) continue ;; esac
+    # only count symlinks resolving to this dispatcher
+    target=$(readlink "$link" 2>/dev/null) || continue
+    case "$target" in */agent-sandbox) printf '%s\n' "$n" ;; esac
+  done
+}
+
+cmd_sync() {
+  tool=${1:-}
+  jq=$(resolve_jq) || {
+    warn "sync needs jq (not found); install it or run on an interactive shell"
+    return 1
+  }
+  base="$SRT_DIR/base.json"
+  [ -s "$base" ] || {
+    warn "missing $base"
+    return 1
+  }
+  if [ -n "$tool" ]; then set -- "$tool"; else
+    set --
+    for o in "$SRT_DIR"/*.overlay.json; do
+      [ -e "$o" ] || continue
+      n=$(basename -- "$o")
+      n=${n%.overlay.json}
+      set -- "$@" "$n"
+    done
+  fi
+  [ "$#" -gt 0 ] || {
+    warn "no overlays to sync in $SRT_DIR"
+    return 1
+  }
+  rc=0
+  for t in "$@"; do
+    overlay="$SRT_DIR/$t.overlay.json"
+    out="$SRT_DIR/$t.json"
+    [ -s "$overlay" ] || {
+      warn "missing overlay $overlay"
+      rc=1
+      continue
+    }
+    tmp=$(make_tmp) || {
+      warn "cannot create temp file"
+      rc=1
+      continue
+    }
+    if jq_merge "$jq" "$base" "$overlay" >"$tmp" 2>/dev/null && policy_ok "$tmp"; then
+      mv -f "$tmp" "$out" && printf 'synced %s\n' "$out"
+    else
+      warn "render failed for $t (kept existing $out)"
+      rm -f "$tmp"
+      rc=1
+    fi
+  done
+  return $rc
+}
+
+cmd_enable() {
+  tool=${1:-}
+  [ -n "$tool" ] || {
+    warn "usage: agent-sandbox enable <tool>"
+    return 1
+  }
+  mkdir -p "$SRT_DIR" "$SHADOW_DIR"
+  overlay="$SRT_DIR/$tool.overlay.json"
+  if [ ! -e "$overlay" ]; then
+    cat >"$overlay" <<EOF
+{ "filesystem": { "allowWrite": [
+  "~/.config/$tool/**","~/.local/share/$tool/**","~/.cache/$tool/**","~/.local/state/$tool/**",
+  "~/Library/Application Support/$tool/**","~/Library/Caches/$tool/**" ] } }
+EOF
+    printf 'scaffolded %s (tune as needed)\n' "$overlay"
+  fi
+  cmd_sync "$tool" || return 1
+  # Relative target: shadow-bin/<tool> -> ../../bin/agent-sandbox. enrolled_tools
+  # and the dispatch `case` match a target basename of agent-sandbox.
+  ln -sf "../../bin/agent-sandbox" "$SHADOW_DIR/$tool"
+  printf 'enrolled %s -> %s\n' "$tool" "$SHADOW_DIR/$tool"
+  printf '\nCommit:\n  dotfiles add .config/srt/%s.overlay.json .config/srt/%s.json\n' "$tool" "$tool"
+  printf '  dotfiles add .local/share/shadow-bin/%s\n' "$tool"
+  printf '\nThen refresh this shell so the wrapper resolves:\n  hash -r\n'
+}
+
+cmd_disable() {
+  tool=${1:-}
+  [ -n "$tool" ] || {
+    warn "usage: agent-sandbox disable <tool>"
+    return 1
+  }
+  link="$SHADOW_DIR/$tool"
+  if [ -L "$link" ]; then
+    rm -f "$link"
+    printf 'removed shadow wrapper %s (policy kept)\n' "$link"
+    printf '\nCommit:\n  dotfiles rm --cached .local/share/shadow-bin/%s\n' "$tool"
+    printf '\nThen refresh this shell:\n  hash -r\n'
+  else
+    warn "$tool not enrolled (no $link)"
+    return 1
+  fi
+}
+
+cmd_list() {
+  srt=$(resolve_real srt)
+  rg=$(resolve_real rg)
+  printf 'srt:      %s\n' "${srt:-NOT FOUND}"
+  printf 'ripgrep:  %s\n' "${rg:-NOT FOUND (srt runtime dep on macOS)}"
+  printf 'log:      %s\n' "$LOG"
+  printf 'policies: %s\n\n' "$SRT_DIR"
+  found=0
+  for t in $(enrolled_tools); do
+    found=1
+    policy="$SRT_DIR/$t.json"
+    if policy_ok "$policy"; then pstate="ok"; else pstate="MISSING/INVALID"; fi
+    real=$(resolve_real "$t")
+    real=${real:-NOT FOUND}
+    nets=$(grep -c 'anthropic\|npmjs\|github\|pypi\|pythonhosted' "$policy" 2>/dev/null || echo 0)
+    printf '%-12s policy=%s [%s]  real=%s  net-rules~%s\n' "$t" "$policy" "$pstate" "$real" "$nets"
+  done
+  [ "$found" -eq 1 ] || printf '(no tools enrolled; `agent-sandbox enable <tool>`)\n'
+}
+
+usage() {
+  cat >&2 <<'EOF'
+agent-sandbox (asb): opt-in OS sandbox wrapper for CLI agents.
+
+  asb enable <tool>     scaffold overlay, render policy, create shadow wrapper
+  asb disable <tool>    remove shadow wrapper (keeps policy)
+  asb list              show enrolled tools, srt/rg, policy + net summary
+  asb sync [tool]       re-render <tool>.json from base.json + <tool>.overlay.json
+  asb run <tool> -- ..  run a tool sandboxed explicitly (testing/unshadowed use)
+
+Policy: edit ~/.config/srt/base.json or <tool>.overlay.json, then `asb sync`.
+Never edit the generated <tool>.json directly (clobbered on sync).
+Env: AGENT_SANDBOX_REQUIRE=1 fail-closed; AGENT_SANDBOX_ALLOW_WRITE=p1:p2 grant
+writes; AGENT_SANDBOX_DEBUG=1 trace.
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Wrapped-tool launch
+# ---------------------------------------------------------------------------
+
+run_wrapped() {
+  name=$1
+  shift
+
+  # Linux: committed policy uses macOS git-style globs (Linux srt is literal
+  # only) -> not enforceable here. Fall back rather than mis-enforce.
+  os=$(uname -s 2>/dev/null || echo unknown)
+  if [ "$os" != "Darwin" ]; then
+    real=$(resolve_real "$name")
+    [ -n "$real" ] || {
+      warn "cannot find real $name"
+      exit 127
+    }
+    if [ -n "${AGENT_SANDBOX_REQUIRE:-}" ]; then
+      warn "AGENT_SANDBOX_REQUIRE=1 but sandbox unsupported on $os (macOS-only policy); refusing"
+      exit 1
+    fi
+    warn "sandbox unsupported on $os; running $name unwrapped"
+    log_launch "$(launch_ts) $name fallback policy=none reason=os:$os"
+    exec "$real" "$@"
+  fi
+
+  real=$(resolve_real "$name")
+  if [ -z "$real" ]; then
+    warn "cannot find real $name in PATH"
+    exit 127
+  fi
+  debug "real=$real"
+
+  policy="$SRT_DIR/$name.json"
+  srt=$(resolve_real srt)
+  debug "srt=${srt:-<none>} policy=$policy"
+
+  # Decide whether we can sandbox. Fallback is inlined (not a nested function)
+  # so `exec "$real" "$@"` keeps run_wrapped's own positional args.
+  reason=""
+  [ -n "$srt" ] || reason="srt-not-found"
+  [ -z "$reason" ] && { policy_ok "$policy" || reason="policy-missing-or-invalid"; }
+  if [ -n "$reason" ]; then
+    if [ -n "${AGENT_SANDBOX_REQUIRE:-}" ]; then
+      warn "AGENT_SANDBOX_REQUIRE=1 and cannot sandbox $name ($reason); refusing"
+      exit 1
+    fi
+    warn "running $name UNSANDBOXED ($reason)"
+    log_launch "$(launch_ts) $name fallback policy=none reason=$reason"
+    exec "$real" "$@"
+  fi
+
+  # Deny the agent's gh/git tokens inside the sandbox (denyRead covers the
+  # files; this covers the inherited env). Model API keys are kept.
+  unset GH_TOKEN GITHUB_TOKEN
+
+  # Per-launch write grants (e.g. a worktree gitdir). Only path that touches jq
+  # at launch; degrade to the committed policy if jq is unavailable.
+  if [ -n "${AGENT_SANDBOX_ALLOW_WRITE:-}" ]; then
+    jq=$(resolve_jq) || jq=""
+    if [ -n "$jq" ]; then
+      tmp=$(make_tmp)
+      if [ -n "$tmp" ] && "$jq" --arg p "$AGENT_SANDBOX_ALLOW_WRITE" \
+        '.filesystem.allowWrite += ($p | split(":") | map(select(length>0)))' \
+        "$policy" >"$tmp" 2>/dev/null && policy_ok "$tmp"; then
+        policy="$tmp"
+        debug "extra writable: $AGENT_SANDBOX_ALLOW_WRITE"
+      else
+        warn "AGENT_SANDBOX_ALLOW_WRITE render failed; using committed policy"
+        [ -n "$tmp" ] && rm -f "$tmp"
+      fi
+    else
+      warn "AGENT_SANDBOX_ALLOW_WRITE set but jq not found; using committed policy"
+    fi
+  fi
+
+  debug "exec: $srt -s $policy -- $real $*"
+  log_launch "$(launch_ts) $name sandboxed policy=$policy"
+  exec "$srt" -s "$policy" -- "$real" "$@"
+}
+
+launch_ts() { date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || echo '?'; }
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+
+name=$(self_name)
+case "$name" in
+  agent-sandbox | asb)
+    cmd=${1:-}
+    [ "$#" -gt 0 ] && shift
+    case "$cmd" in
+      enable) cmd_enable "$@" ;;
+      disable) cmd_disable "$@" ;;
+      list) cmd_list ;;
+      sync) cmd_sync "$@" ;;
+      run)
+        tool=${1:-}
+        [ -n "$tool" ] || {
+          usage
+          exit 1
+        }
+        shift
+        # tolerate an optional `--` separator before the tool args
+        [ "${1:-}" = "--" ] && shift
+        run_wrapped "$tool" "$@"
+        ;;
+      "" | -h | --help | help)
+        usage
+        [ -z "$cmd" ] && exit 1 || exit 0
+        ;;
+      *)
+        warn "unknown command: $cmd"
+        usage
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    # Invoked as a shadow wrapper (basename = the tool name).
+    run_wrapped "$name" "$@"
+    ;;
+esac

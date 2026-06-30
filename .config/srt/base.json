@@ -1,0 +1,18 @@
+{
+  "allowPty": true,
+  "network": {
+    "allowedDomains": ["api.anthropic.com","*.anthropic.com","registry.npmjs.org","*.npmjs.org",
+      "github.com","api.github.com","codeload.github.com","*.githubusercontent.com",
+      "pypi.org","files.pythonhosted.org"],
+    "deniedDomains": []
+  },
+  "filesystem": {
+    "denyRead": ["~/.ssh","~/.config/gh-gate","~/.config/gh","~/.aws","~/.config/gcloud","~/.netrc",
+      "~/.config/fnox","~/.fnox","~/Library/Keychains","~/.zshrc.local","~/.docker/config.json",
+      "~/.gnupg","~/.cloudflared","~/.gemini","~/.config/op","~/.kube","~/.password-store"],
+    "allowRead": [],
+    "allowWrite": [".","./**","$TMPDIR/**","/private/tmp/**","/tmp/**",
+      "~/.cache/**","~/Library/Caches/**","~/.local/share/pnpm/**","~/.npm/**"],
+    "denyWrite": []
+  }
+}
