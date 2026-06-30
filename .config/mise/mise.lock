@@ -339,6 +339,10 @@ url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-x64.tar.gz"
 checksum = "sha256:e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1"
 url = "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz"
 
+[[tools."npm:@anthropic-ai/sandbox-runtime"]]
+version = "0.0.62"
+backend = "npm:@anthropic-ai/sandbox-runtime"
+
 [[tools."npm:@earendil-works/pi-coding-agent"]]
 version = "0.80.2"
 backend = "npm:@earendil-works/pi-coding-agent"

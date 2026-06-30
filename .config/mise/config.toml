@@ -66,6 +66,11 @@ fnox = "1.27.1"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2.0.22", bin = "cos", prerelease = true }
 
+# OS-level sandbox runtime (srt) wrapping CLI agents via agent-sandbox. Exact
+# pin: config schema is pre-1.0 and churns; the validate-before-mv render + the
+# policy pre-check in the dispatcher contain a breaking change. macOS runtime
+# dep: ripgrep (nix-provided). No install scripts (no aube allowlist needed).
+"npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "npm:@elevenlabs/cli" = "0"
 "npm:@kitlangton/ghui" = "latest"
 # Reapply local generated-JS image paste patch after Pi updates. The script
