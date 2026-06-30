@@ -77,18 +77,18 @@ url = "https://github.com/jdx/aube/releases/download/v1.25.1/aube-v1.25.1-aarch6
 provenance = "github-attestations"
 
 [[tools.aws]]
-version = "2.35.12"
+version = "2.35.13"
 backend = "aqua:aws/aws-cli"
 
 [tools.aws."platforms.linux-arm64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.12.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.13.zip"
 
 [tools.aws."platforms.linux-x64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.12.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.13.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "blake3:33736cb4a5fcac7bb8c77b96d885e8e7f30f743b0bf897a2fb49241e5acfa480"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.12.pkg"
+checksum = "blake3:88c3f147fcecb0900c24aec2ed952bb05280dcf2519841e0d8bf5fb635a3dae8"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.13.pkg"
 
 [[tools.bats]]
 version = "1.13.0"
@@ -140,18 +140,18 @@ version = "0.7.0"
 backend = "cargo:build-wrap"
 
 [[tools.claude]]
-version = "2.1.196"
+version = "2.1.197"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.196/linux-arm64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.197/linux-arm64/claude"
 
 [tools.claude."platforms.linux-x64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.196/linux-x64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.197/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "blake3:85abfc8342d7089752e6eaf110af50b4b4f0f510fe64c3646e375ca0861ab6c4"
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.196/darwin-arm64/claude"
+checksum = "blake3:2ecb00e35ac65f42671a8db2cfca872a8fbf99b3504f64ec1c3a4ac0f78572d2"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.197/darwin-arm64/claude"
 
 [[tools.codex]]
 version = "0.142.4"
@@ -366,11 +366,11 @@ version = "0.16.2"
 backend = "npm:@redwoodjs/agent-ci"
 
 [[tools."npm:agent-browser"]]
-version = "0.31.0"
+version = "0.31.1"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
-version = "0.17.10"
+version = "0.18.0"
 backend = "npm:agent-device"
 
 [[tools."npm:apify-cli"]]
@@ -398,7 +398,7 @@ version = "1.5.20"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
-version = "1.19.19"
+version = "1.19.21"
 backend = "npm:firecrawl-cli"
 
 [[tools."npm:hunkdiff"]]
