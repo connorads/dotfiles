@@ -142,9 +142,10 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   `url_os = on_system_conditional macos: "mac", linux: "linux"`. The `os` stanza
   also reads correctly in `brew livecheck` and `brew audit` contexts where local
   variables aren't re-evaluated. Models: `agentsview` (`os macos: "darwin",
-  linux: "linux"`), `bruno`, `filen` (`os macos: "mac", linux: "linux"`).
-  Skip the stanza when the asset name doesn't embed an OS string at all — a
-  single top-level `arch` is then simpler.
+  linux: "linux"`), `bruno`, `filen` (`os macos: "mac", linux: "linux"` — Linux
+  side via homebrew-cask#272068, pending). bruno/agentsview are the merged,
+  authoritative models. Skip the stanza when the asset name doesn't embed an OS
+  string at all — a single top-level `arch` is then simpler.
 - **Split `arch` per OS when asset names embed different arch strings** (e.g. macOS uses
   `x64`, Linux uses `x86_64`). Declare `arch` inside `on_macos do … end` and
   `on_linux do … end` separately, and add an `os macos: "<macstr>", linux: "<linuxstr>"`
@@ -153,6 +154,19 @@ is unreachable dead code, not an error). Gotchas beyond the Operating rules:
   - `os macos: "mac", linux: "linux"`, then
   `url ".../bruno_#{version}_#{arch}_#{os}#{url_end}"`. Don't use this shape when the
   asset name doesn't embed an OS string — a single top-level `arch` is simpler.
+- **Define the OS-varying URL suffix as a local directly above `url`:**
+  `url_end = on_system_conditional macos: ".dmg", linux: ".AppImage"`, then
+  interpolate `#{url_end}` in the `url`. Place it immediately above `url` (the
+  local must precede its interpolation, consistent with the canonical stanza
+  order where `url` follows `arch`/`os`/`version`/`sha256`) — krehel's
+  homebrew-cask#272068 point. A file extension is **not** a CPU/OS *name*, so it
+  can't be an `os`/`arch` stanza; this is the one place a local variable is
+  idiomatic — contrast the `url_os` anti-pattern above, which encodes OS *names*
+  and should be the `os` stanza instead. This is repo convention (the
+  `url_end = on_system_conditional ...` local appears across casks — bruno,
+  tabby, agentsview, …), not Cookbook-documented. Model: `filen`. When the whole
+  filename varies (not just the suffix), use `filename`/`artifact` instead (see
+  the t3-code example in the reference).
 - **Single-arch Linux build**: put the unkeyed `sha256` *and* `depends_on arch: :x86_64`
   *inside* `on_linux` — a top-level `depends_on arch:` would block macOS.
 - **`auto_updates true` goes inside `on_macos`** for cross-platform casks. AppImage
