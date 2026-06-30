@@ -12,6 +12,9 @@
 #
 # Pressure often reads 1 (normal) while the machine is actively swapping, so
 # swap-used is the primary visible signal and pressure is the colour accent.
+# Pressure also names the figure-slot CAUSE, not only the colour: when pressure
+# (not swap) drives a non-OK state, the pill shows a ▲ cause-marker in place of
+# the swap figure (mem_cause / mem_token below), so amber/red is self-explaining.
 #
 # Function-locals are _underscore-prefixed and always assigned before use so
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
@@ -19,13 +22,22 @@
 # ai_usage's _usage_colour convention in status-right.sh.
 
 # Thresholds — defined once. Swap escalates state even when pressure reads
-# normal (1). Tuned to this 16 GB machine's lived baseline: it idles at ~2.5-4 G
-# of swap, so the BUSY line sits ABOVE that resting band (>=4 G) and CRITICAL at
-# >=7 G (working set ~1.5x RAM = real thrashing). The kernel pressure level still
-# escalates colour independently, so acute spikes show even below these swap
-# lines — these only suppress the chronic-amber noise. Overridable for tests.
-MEM_BUSY_SWAP_MB=${MEM_BUSY_SWAP_MB:-4096}
+# normal (1). Tuned to this 16 GB machine's lived baseline: it idles at ~2.5-3.9 G
+# of swap, so the BUSY line sits clearly ABOVE that resting band (>=5 G) — a
+# swap-driven amber now means a genuine blowout, not the idle band brushing the
+# line — and CRITICAL at >=7 G (working set ~1.5x RAM = real thrashing). The
+# kernel pressure level escalates state independently and instantaneously, so
+# pressure-2 spikes show even below these swap lines; these lines only gate the
+# swap path. Overridable for tests.
+MEM_BUSY_SWAP_MB=${MEM_BUSY_SWAP_MB:-5120}
 MEM_CRITICAL_SWAP_MB=${MEM_CRITICAL_SWAP_MB:-7168}
+
+# Cause marker shown in the figure slot when kernel pressure (not swap) drives a
+# non-OK state: ▲ (U+25B2) is single-width text-presentation in kitty (unlike ⚠
+# U+26A0, which renders emoji/double-width and would break pill alignment); the
+# filled triangle contrasts the hollow state glyphs ⬡ ⊟ ⊠ and avoids ◆ (the
+# blocked agent-dot, a cross-vocabulary collision).
+MEM_CAUSE_GLYPH="▲"
 
 # mem_pressure_level — kern.memorystatus_vm_pressure_level normalised to the
 # documented set 1 (normal) / 2 (warn) / 4 (critical). Anything else (absent
@@ -89,8 +101,8 @@ mem_state() {
 # mem_state_colour STATE — bare 6-hex catppuccin colour for STATE. mem_segment
 # renders these on its own surface1 (#45475a) pill, NOT the bar bg: green 6.1:1
 # and yellow 7.2:1 clear WCAG AA; CRITICAL red is 3.9:1 (AA-large/UI only) but
-# stays legible via triple-encoding (⊠ glyph + swap figure + bold). Unknown →
-# green (fail quiet).
+# stays legible via triple-encoding (⊠ glyph + figure-or-cause-marker + bold).
+# Unknown → green (fail quiet).
 mem_state_colour() {
 	case "$1" in
 	OK) echo a6e3a1 ;;
@@ -109,6 +121,29 @@ mem_state_glyph() {
 	BUSY) echo "⊟" ;;
 	CRITICAL) echo "⊠" ;;
 	*) echo "⬡" ;;
+	esac
+}
+
+# mem_cause — none | pressure | swap for the current reading: which signal
+# drives the active state. Pressure wins only when at/over the *active state's*
+# line (a swap-driven CRITICAL with pressure merely 2 returns swap, since 2 <
+# CRITICAL's line of 4). OK is always cause=none.
+mem_cause() {
+	_lvl=$(mem_pressure_level)
+	_swap=$(mem_swap_used_mb)
+	case "$(mem_state)" in
+	OK) echo none ;;
+	CRITICAL) if [ "$_lvl" -ge 4 ]; then echo pressure; else echo swap; fi ;;
+	BUSY) if [ "$_lvl" -ge 2 ]; then echo pressure; else echo swap; fi ;;
+	esac
+}
+
+# mem_token — figure-slot content: the ▲ cause-marker when pressure drives the
+# state (swap is fine, look elsewhere), else the swap figure (the real cause).
+mem_token() {
+	case "$(mem_cause)" in
+	pressure) printf '%s' "$MEM_CAUSE_GLYPH" ;;
+	*) mem_swap_human ;;
 	esac
 }
 
