@@ -84,6 +84,11 @@
 !/.config/build-wrap/
 !/.config/build-wrap/**
 
+# srt sandbox config (agent-sandbox). shadow-bin wrappers are un-ignored below
+# the .local block (last-match-wins ordering vs /.local/**).
+!/.config/srt/
+!/.config/srt/**
+
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
 /.config/jj/**
@@ -220,3 +225,9 @@ __pycache__/
 !/.local/bin/**
 /.local/bin/claude
 /.local/bin/browser-harness
+
+# agent-sandbox shadow-bin wrappers (symlinks to ~/.local/bin/agent-sandbox).
+# Two levels deep, so re-include the share parent dir then the subtree.
+!/.local/share/
+!/.local/share/shadow-bin/
+!/.local/share/shadow-bin/**
