@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claude Code status line: dir | model | context %
+# Claude Code status line: context % | model | dir
 # Input: JSON from Claude Code via stdin
 
 input=$(cat)
@@ -60,17 +60,22 @@ if [ -n "$ctx_pct" ]; then
 	fi
 fi
 
-# Build single-line output
-line="${CYAN}${dir}${RESET}"
-[ -n "$branch" ] && line+=" on ${GREEN}${branch}${RESET}"
-line+=" | ${MAGENTA}${model}${RESET}${effort_seg}"
+# Build single-line output (context % | model+effort | dir)
+line=""
 if [ -n "$ctx_pct" ] && [ -n "$ctx_size" ]; then
 	# Calculate used tokens and format as k
 	used_tokens=$((ctx_size * ctx_int / 100))
 	used_k=$((used_tokens / 1000))
-	line+=" | ${ctx_colour}${used_k}k (${ctx_int:-0}%)${RESET}"
+	line+="${ctx_colour}${used_k}k (${ctx_int:-0}%)${RESET} | "
 elif [ -n "$ctx_pct" ]; then
-	line+=" | ${ctx_colour}${ctx_int:-0}% ctx${RESET}"
+	line+="${ctx_colour}${ctx_int:-0}% ctx${RESET} | "
 fi
+if [ -n "$effort_seg" ]; then
+	# effort_seg has a leading space; strip it so effort leads cleanly
+	line+="${effort_seg# } ${MAGENTA}${model}${RESET} | ${CYAN}${dir}${RESET}"
+else
+	line+="${MAGENTA}${model}${RESET} | ${CYAN}${dir}${RESET}"
+fi
+[ -n "$branch" ] && line+=" on ${GREEN}${branch}${RESET}"
 
 printf "%b\n" "$line"
