@@ -63,13 +63,17 @@ Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
 three surfaces speaking one vocabulary — `OK | BUSY | CRITICAL`, encoded as
-colour plus glyph plus swap figure. Change as a set:
+colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a set:
 
 - [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) — **canonical** thresholds
   (`MEM_BUSY_SWAP_MB` / `MEM_CRITICAL_SWAP_MB`), state mapping (`mem_state`),
-  and the colour/glyph language (`mem_state_colour` / `mem_state_glyph`).
-  Swap-used is the primary signal; macOS pressure level only escalates the
-  colour (it often reads normal while actively swapping). Sourced, never run.
+  the colour/glyph language (`mem_state_colour` / `mem_state_glyph`), and the
+  figure-slot cause logic (`mem_cause` / `mem_token` / `MEM_CAUSE_GLYPH`): when
+  kernel pressure (not swap) drives a non-OK state the pill shows `▲` instead of
+  the swap figure, so amber/red is self-explaining.
+  Swap-used is the primary visible signal; macOS pressure level escalates the
+  state (it often reads normal while actively swapping) and, when it is the
+  driver, names the cause. Sourced, never run.
   On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `mem_segment()`, the
   quiet-when-healthy pill (width ≥ 80 only). The legacy tmux-cpu RAM% pill

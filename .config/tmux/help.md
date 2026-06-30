@@ -106,16 +106,20 @@ it `done` (blue) before you leave — like marking an email unread.
 
 ## Memory pressure (status bar)
 
-Right-side gauge (macOS, width ≥ 80). Swap-used is always shown — including when
-healthy — so the resting baseline stays visible. Colour + glyph encode state;
-bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down (swap/RAM, top
-footprint apps, agents).
+Right-side gauge (macOS, width ≥ 80). Swap-used is shown — including when
+healthy — so the resting baseline stays visible, *unless* kernel pressure is the
+driver, where a `▲` replaces the figure (swap is fine, look elsewhere). Colour +
+glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
+(swap/RAM, top footprint apps, agents).
 
 | Pill | State | Meaning |
 |------|-------|---------|
 | `⬡` green | OK | swap below threshold, kernel pressure normal |
-| `⊟` amber (bold) | BUSY | swapping (≥4G) or kernel warn pressure |
+| `⊟` amber (bold) | BUSY | swapping (≥5G) or kernel warn pressure |
 | `⊠` red (bold) | CRITICAL | heavy swap (≥7G) or kernel critical pressure |
+
+`▲` in the figure slot = kernel pressure is the cause (swap itself is below
+threshold); a number = swap worth noting.
 
 ## Copy mode navigation
 
