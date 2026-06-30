@@ -76,9 +76,10 @@ colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a
   driver, names the cause. Sourced, never run.
   On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `mem_segment()`, the
-  quiet-when-healthy pill (width ≥ 80 only). The legacy tmux-cpu RAM% pill
-  (`ram_percentage()`, bright-mauve) renders **alongside** it as a transitional
-  A/B; drop it once the new gauge is trusted on macOS.
+  quiet-when-healthy pill (width ≥ 80 only). The tmux-cpu RAM% pill
+  (`ram_percentage()`, bright-mauve) renders **alongside** it by design — both
+  are wanted: RAM% is the total-used headline, mem_segment the swap/pressure
+  signal.
 - [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` drill-down
   (swap/RAM breakdown, top apps by `phys_footprint`, agent panes). `k`/`r`/`q`.
 - [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) — launchd

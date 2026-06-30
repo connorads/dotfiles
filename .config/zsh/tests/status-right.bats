@@ -77,7 +77,7 @@ EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
 }
 
-@test "wide status shows both cpu and the legacy ram percentage pill" {
+@test "wide status shows both cpu and the ram percentage pill" {
   run_status_right 90
 
   [ "$status" -eq 0 ]
