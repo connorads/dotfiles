@@ -46,8 +46,8 @@ lib() {
   [ "$output" = "BUSY" ]
 }
 
-@test "BUSY on swap over the 4G threshold even when pressure reads normal" {
-  FAKE_PRESSURE=1 FAKE_SWAP=5000.00M lib mem_state
+@test "BUSY on swap over the 5G (5120 MB) threshold even when pressure reads normal" {
+  FAKE_PRESSURE=1 FAKE_SWAP=6000.00M lib mem_state
   [ "$output" = "BUSY" ]
 }
 
@@ -59,6 +59,84 @@ lib() {
 @test "CRITICAL on large swap regardless of pressure" {
   FAKE_PRESSURE=1 FAKE_SWAP=8000.00M lib mem_state
   [ "$output" = "CRITICAL" ]
+}
+
+# --- BUSY swap-line raise to 5120: the resting band no longer trips amber ------
+
+@test "swap in the idle band (5000 MB, below 5120) reads OK at normal pressure" {
+  FAKE_PRESSURE=1 FAKE_SWAP=5000.00M lib mem_state
+  [ "$output" = "OK" ]
+}
+
+@test "swap exactly at the 5120 MB line reads BUSY" {
+  FAKE_PRESSURE=1 FAKE_SWAP=5120.00M lib mem_state
+  [ "$output" = "BUSY" ]
+}
+
+# --- mem_cause: which signal drives the active state -----------------------
+
+@test "cause none when OK" {
+  FAKE_PRESSURE=1 FAKE_SWAP=500.00M lib mem_cause
+  [ "$output" = "none" ]
+}
+
+@test "cause pressure on warn pressure with no swap" {
+  FAKE_PRESSURE=2 FAKE_SWAP=0.00M lib mem_cause
+  [ "$output" = "pressure" ]
+}
+
+@test "cause pressure on warn pressure with idle-band swap (the bug case)" {
+  FAKE_PRESSURE=2 FAKE_SWAP=3000.00M lib mem_cause
+  [ "$output" = "pressure" ]
+}
+
+@test "cause swap when swap drives BUSY at normal pressure" {
+  FAKE_PRESSURE=1 FAKE_SWAP=6000.00M lib mem_cause
+  [ "$output" = "swap" ]
+}
+
+@test "cause pressure on critical pressure level" {
+  FAKE_PRESSURE=4 FAKE_SWAP=0.00M lib mem_cause
+  [ "$output" = "pressure" ]
+}
+
+@test "cause swap when swap drives CRITICAL at normal pressure" {
+  FAKE_PRESSURE=1 FAKE_SWAP=8000.00M lib mem_cause
+  [ "$output" = "swap" ]
+}
+
+@test "cause pressure when both fire at BUSY (pressure wins)" {
+  FAKE_PRESSURE=2 FAKE_SWAP=6000.00M lib mem_cause
+  [ "$output" = "pressure" ]
+}
+
+@test "cause pressure when both fire at CRITICAL (pressure wins)" {
+  FAKE_PRESSURE=4 FAKE_SWAP=8000.00M lib mem_cause
+  [ "$output" = "pressure" ]
+}
+
+@test "cause swap when CRITICAL via swap but pressure only 2 (active-state-line rule)" {
+  # State is CRITICAL (swap >= 7168) but pressure 2 < CRITICAL's line of 4, so
+  # swap is the driver, not pressure.
+  FAKE_PRESSURE=2 FAKE_SWAP=8000.00M lib mem_cause
+  [ "$output" = "swap" ]
+}
+
+# --- mem_token: marker when pressure-driven, else swap figure ---------------
+
+@test "token is the cause marker when pressure drives the state" {
+  FAKE_PRESSURE=2 FAKE_SWAP=0.00M lib mem_token
+  [ "$output" = "▲" ]
+}
+
+@test "token is the swap figure when swap drives the state" {
+  FAKE_PRESSURE=1 FAKE_SWAP=6000.00M lib mem_token
+  [ "$output" = "5.9G" ]
+}
+
+@test "token is the swap figure (resting baseline) when OK" {
+  FAKE_PRESSURE=1 FAKE_SWAP=2662.40M lib mem_token
+  [ "$output" = "2.6G" ]
 }
 
 # --- swap parsing (M and G units) ------------------------------------------

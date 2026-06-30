@@ -15,7 +15,8 @@ fi
 cpu_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh"
 ram_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/ram_percentage.sh"
 
-# Shared memory-pressure vocabulary (OK/BUSY/CRITICAL → colour + glyph + swap).
+# Shared memory-pressure vocabulary (OK/BUSY/CRITICAL → colour + glyph +
+# swap-figure, or a ▲ marker in the figure slot when kernel pressure is the cause).
 # RAM-used % from tmux-cpu was dropped: on macOS it reads ~90% when healthy
 # (file cache), so it was learned-to-be-ignored noise. mem-lib reports the
 # jetsam-relevant signal instead. See mem_segment below.
@@ -51,9 +52,11 @@ ram_percentage() {
 
 # mem_segment — memory-pressure gauge in the powerline-pill shape. State is
 # encoded by colour + glyph; bold escalates on BUSY/CRITICAL as the extra
-# non-colour cue. The swap figure is always shown (OK included) so the resting
-# baseline stays visible and calibrates the eye for when it climbs. Sysctl-only,
-# cheap at the 15 s status-interval, so no caching.
+# non-colour cue. The figure slot shows the swap figure (OK included, so the
+# resting baseline stays visible and calibrates the eye), except when kernel
+# pressure is the cause — there a ▲ marker takes the slot (swap is fine, look
+# elsewhere). See mem_token. Sysctl-only, cheap at the 15 s status-interval, so
+# no caching.
 mem_segment() {
 	local state colour glyph
 	state="$(mem_state)"
@@ -61,10 +64,10 @@ mem_segment() {
 	glyph="$(mem_state_glyph "$state")"
 	if [ "$state" = "OK" ]; then
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
-			"$colour" "$glyph" "$(mem_swap_human)"
+			"$colour" "$glyph" "$(mem_token)"
 	else
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
-			"$colour" "$glyph" "$(mem_swap_human)"
+			"$colour" "$glyph" "$(mem_token)"
 	fi
 }
 
