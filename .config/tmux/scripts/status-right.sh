@@ -35,13 +35,12 @@ cpu_percentage() {
 	fi
 }
 
-# ram_percentage — the legacy RAM-used % from tmux-cpu, kept ALONGSIDE
-# mem_segment as a transitional A/B so the two gauges can be compared in situ.
-# Caveat: on macOS this over-reads (counts reclaimable inactive pages) and was
-# the reason for the switch; trust mem_segment's swap/pressure signal over this.
-# On Linux it is the meaningful indicator (mem_segment's macOS sysctls are
-# absent there, so the gauge reads a flat OK). Drop this once the new gauge is
-# trusted on macOS.
+# ram_percentage — RAM-used % from tmux-cpu, shown ALONGSIDE mem_segment by
+# design: the two measure different things and both are wanted. ram% is the
+# total-used headline; mem_segment is the jetsam-relevant swap/pressure signal.
+# Caveat: on macOS ram% over-reads (counts reclaimable inactive pages), so read
+# it as a rough ceiling and trust mem_segment for actual pressure. On Linux
+# mem_segment's sysctls are absent (flat OK), so ram% is the meaningful gauge.
 ram_percentage() {
 	if [ -x "$ram_script" ]; then
 		"$ram_script" 2>/dev/null | tr -d '\n'
@@ -508,10 +507,11 @@ print_full() {
 	ai_usage
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
-	# Legacy RAM% pill (A/B against mem_segment). Dark pill with mauve content, in
-	# the data-pill family (cpu/disk/git) — not a bright accent pill. Its own dark
-	# shade (#313244, cpu's; separated from cpu by the pressure pill) keeps it a
-	# distinct segment instead of merging into the pressure pill's #45475a.
+	# RAM% pill (shown alongside mem_segment by design — both wanted). Dark pill
+	# with mauve content, in the data-pill family (cpu/disk/git) — not a bright
+	# accent pill. Its own dark shade (#313244, cpu's; separated from cpu by the
+	# pressure pill) keeps it a distinct segment instead of merging into the
+	# pressure pill's #45475a.
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#cba6f7]#[bold] 󰘚 %s " "$ram"
 	# Disk + git pills sit on surface1 (#45475a), not the lighter surface2/overlay0
 	# they used to: coloured text needs surface0/surface1 to clear WCAG AA (peach on
