@@ -77,18 +77,18 @@ url = "https://github.com/jdx/aube/releases/download/v1.25.1/aube-v1.25.1-aarch6
 provenance = "github-attestations"
 
 [[tools.aws]]
-version = "2.35.13"
+version = "2.35.14"
 backend = "aqua:aws/aws-cli"
 
 [tools.aws."platforms.linux-arm64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.13.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.14.zip"
 
 [tools.aws."platforms.linux-x64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.13.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.14.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "blake3:88c3f147fcecb0900c24aec2ed952bb05280dcf2519841e0d8bf5fb635a3dae8"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.13.pkg"
+checksum = "blake3:ec37258147022b2f03b427bb435031d3bba872f5aad51b80b5abb49b7592bc75"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.14.pkg"
 
 [[tools.bats]]
 version = "1.13.0"
@@ -154,20 +154,20 @@ checksum = "blake3:2ecb00e35ac65f42671a8db2cfca872a8fbf99b3504f64ec1c3a4ac0f7857
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.197/darwin-arm64/claude"
 
 [[tools.codex]]
-version = "0.142.4"
+version = "0.142.5"
 backend = "aqua:openai/codex"
 
 [tools.codex."platforms.linux-arm64"]
-checksum = "sha256:95eec2b0445c4f51b399e54215dd90651bcb1a1f6411c10a9af83149df0e8f08"
-url = "https://github.com/openai/codex/releases/download/rust-v0.142.4/codex-aarch64-unknown-linux-musl.zst"
+checksum = "sha256:28eaed337684830d33d28e92297f8b2e9ae5c613a6e451d10f1494490210b969"
+url = "https://github.com/openai/codex/releases/download/rust-v0.142.5/codex-aarch64-unknown-linux-musl.zst"
 
 [tools.codex."platforms.linux-x64"]
-checksum = "sha256:0f9241afd52819eea56950ebd42fd731c4ea40ccd069cce6feeef7af05a52aa1"
-url = "https://github.com/openai/codex/releases/download/rust-v0.142.4/codex-x86_64-unknown-linux-musl.zst"
+checksum = "sha256:e5b8480c1cc4a5f0c61c928871a7ae18dcf6d554df33fa033f10956d88a93180"
+url = "https://github.com/openai/codex/releases/download/rust-v0.142.5/codex-x86_64-unknown-linux-musl.zst"
 
 [tools.codex."platforms.macos-arm64"]
-checksum = "sha256:259b55d03565decff6196f0bc6df49b9b775d95d97249953cba312ddabb2c73f"
-url = "https://github.com/openai/codex/releases/download/rust-v0.142.4/codex-aarch64-apple-darwin.zst"
+checksum = "sha256:f1c5a525498a5292e6547910542630ba0516dc411e8f93b7bebb14b232d408bb"
+url = "https://github.com/openai/codex/releases/download/rust-v0.142.5/codex-aarch64-apple-darwin.zst"
 
 [[tools.deno]]
 version = "2.9.0"
@@ -219,6 +219,25 @@ url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-573.0.0
 
 [tools.gcloud."platforms.macos-arm64"]
 url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-573.0.0-darwin-arm.tar.gz"
+
+[[tools."github:CosineAI/argusred-dist"]]
+version = "0.1.7"
+backend = "github:CosineAI/argusred-dist"
+
+[tools."github:CosineAI/argusred-dist"."platforms.linux-arm64"]
+checksum = "sha256:6f34cdd1c2f1873c80790829b6938c799f3ba01a470be04e8e42145b4be98bd3"
+url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452991385"
+
+[tools."github:CosineAI/argusred-dist"."platforms.linux-x64"]
+checksum = "sha256:cc30ecc61f2f9d9cab0b68d39338ae581ebb3efbfef4cf262f96b5caeba228e4"
+url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452990685"
+
+[tools."github:CosineAI/argusred-dist"."platforms.macos-arm64"]
+checksum = "sha256:90e57237ba3501a49fd019433d5aea5965f53efed98157624516296eaf7a7cc2"
+url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusred-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452990911"
 
 [[tools."github:CosineAI/cli"]]
 version = "2.0.22"
@@ -545,22 +564,22 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.23"
+version = "0.2.24"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:67130528f8b113276416192f3ea9a714e46c5045563d98f82e288334fac4a3b9"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.23/rumdl-v0.2.23-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:c944675dc2464af0d557c9fc595843b935aa1631bd613f4228447d6d967f88cc"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:af01cfcccab9ff79164ccd90762089d80343f6b2b053999458586123f99d48e2"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.23/rumdl-v0.2.23-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:d6c270d23810912c9e1dccbcbb287cb121c47886b9199b07871bca5cae837cf8"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:631e69101191c7d2b939a7c5352ce695cfffd4db69b31018de0ca4962c63fd25"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.23/rumdl-v0.2.23-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:7bac72d2a50211d374d246a263a1cc0462652a92d811a9b991d4cf36b05aafce"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rust]]
