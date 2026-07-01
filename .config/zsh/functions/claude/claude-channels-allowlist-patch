@@ -1,0 +1,38 @@
+#!/usr/bin/env zsh
+# claude-channels-allowlist-patch: bypass the approved-channels allowlist so any --channels plugin registers
+# usage: claude-channels-allowlist-patch [--check|--restore|--all|--reapply] [path-to-claude-binary]
+# --reapply: install-hook-friendly patch — clears the stale marker on success,
+#            but on a missing needle warns loudly, writes the marker, exits 0.
+#
+# Why: gateChannelServer (YTt) gates every non-dev channel on an allowlist —
+#   if(!o.dev){let{entries:i}=VJn(...);if(!i.some(...))return{...kind:"allowlist"}}
+# The effective allowlist is either managed-org allowedChannelPlugins or the
+# tengu_harbor_ledger remote-config feature (default []). With telemetry disabled
+# (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1) the ledger read short-circuits to that
+# empty default, so *no* plugin is ever allowlisted and --channels servers skip
+# with "not on the approved channels allowlist" — even the official telegram
+# plugin. There is no user-scope settings key or slash command for this list
+# (anthropics/claude-code#58152); the only self-serve path is the per-launch,
+# dialog-gated --dangerously-load-development-channels flag.
+#
+# Flipping the guard condition to a constant-false skips the allowlist branch for
+# every entry, so any server explicitly passed via --channels registers without
+# the dev flag or startup dialog. This is length-preserving (Bun single-file
+# binaries embed a byte-offset source trailer, so edits must not change length):
+# `if(!o.dev){` (11) -> `if(0&&o.d){` (11); `0&&…` short-circuits, block skipped.
+# Complements claude-channels-patch, which flips the tengu_harbor master gate.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local patch_name=claude-channels-allowlist-patch
+local patch_label='--channels allowlist'
+local needle='if(!o.dev){'
+local replace='if(0&&o.d){'
+local marker="$HOME/.cache/claude-channels-allowlist-patch.stale"
+local missing_body=$'The guard was likely renamed/reminified upstream; the allowlist\ngate will re-block --channels plugins until the needle in\nclaude-channels-allowlist-patch is updated.'
+local missing_banner='--channels allowlist gate will re-block'
+
+source "${wrapper:h}/_claude-patch-targets-lib"
+source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"
