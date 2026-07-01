@@ -8,5 +8,8 @@
 #   packages = ["aws-lc-fips-sys"]
 #   directories = ["~/some/trusted/project"]
 [allow]
-packages = []
+# sdl2-sys: build.rs copies the compiled libSDL2 dylib into target/<profile>/
+# (outside OUT_DIR) so the binary can link/find it - a legitimate build-time FS
+# write the sandbox blocks. Well-known *-sys crate; vendored SDL, no network.
+packages = ["sdl2-sys"]
 directories = []
