@@ -31,6 +31,7 @@
     pkgs.pam_u2f
     pkgs.docker
     pkgs.colima
+    pkgs.lazydocker
     pkgs.tart
     pkgs.tailscale
     # GUI Apps

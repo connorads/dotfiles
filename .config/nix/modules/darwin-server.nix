@@ -31,6 +31,7 @@
   environment.systemPackages = [
     pkgs.docker
     pkgs.colima
+    pkgs.lazydocker
     pkgs.tart
     pkgs.tailscale
   ];
