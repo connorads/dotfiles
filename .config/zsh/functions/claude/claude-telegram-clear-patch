@@ -1,0 +1,180 @@
+#!/usr/bin/env zsh
+# claude-telegram-clear-patch: add a server-side /clear command to the Telegram
+# channel plugin so the paired user can wipe this session's context from Telegram
+# with zero LLM inference.
+# usage: claude-telegram-clear-patch [--check|--restore|--reapply] [server.ts ...]
+# --reapply: install-hook-friendly — clears the stale marker on success, but on a
+#            missing anchor warns loudly, writes the marker, and exits 0.
+#
+# Why: the plugin relays ordinary messages into Claude (burning inference) but
+# handles bot commands (/start,/help,/status) server-side inside its MCP (bun)
+# process. There is no extension hook for custom commands, so we insert a
+# bot.command('clear',...) handler that types /clear into the tmux pane the
+# session runs in ($TMUX_PANE, inherited by the MCP child). Deterministic, no
+# inference, and it fires even when the session is stuck mid-turn.
+#
+# The plugin cache is overwritten on plugin update, so this is idempotent (keyed
+# on a sentinel comment) and re-appliable. Insertion, not a length-preserving
+# byte-swap, so it is a sibling of claude-channels-patch rather than a user of
+# _needle-patch-lib. Backup at <server.ts>.unpatched; --restore reverts.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local patch_name=claude-telegram-clear-patch
+local anchor='// Inline-button handler for permission requests.'
+local start_marker='// >>> claude-telegram-clear-patch'
+local marker="$HOME/.cache/claude-telegram-clear-patch.stale"
+
+local mode=patch
+while (( $# )); do
+  case $1 in
+    --check)   mode=check;   shift ;;
+    --restore) mode=restore; shift ;;
+    --reapply) mode=reapply; shift ;;
+    --help|-h)
+      awk 'NR==1{next} /^emulate /{exit} {print}' "$wrapper"
+      return 0
+      ;;
+    *) break ;;
+  esac
+done
+
+# Targets: every cached telegram plugin server.ts (covers multiple versions).
+local -a targets
+if (( $# )); then
+  targets=("$@")
+else
+  targets=( "$HOME"/.claude/plugins/cache/claude-plugins-official/telegram/*/server.ts(N) )
+fi
+if (( ${#targets} == 0 )); then
+  # The plugin legitimately isn't installed on every machine (rpi5, codespaces).
+  # Under --reapply that's a benign no-op so `up` is never noisy or blocked.
+  [[ $mode == reapply ]] && return 0
+  print -u2 "$patch_name: no telegram plugin server.ts found"
+  return 1
+fi
+
+# The handler block inserted before the permission-callback handler. Kept as a
+# single contiguous unit (dynamic import of child_process) so the patch touches
+# exactly one anchor.
+local block_file
+block_file=$(mktemp "${TMPDIR:-/tmp}/tg-clear-block.XXXXXX") || return 1
+cat >"$block_file" <<'BLOCK'
+// >>> claude-telegram-clear-patch (remote /clear; re-applied by dotfiles) --------
+// Clear the paired session's context from Telegram, server-side (no LLM
+// inference): type /clear into the tmux pane this MCP process runs in. Gated to
+// allowlisted senders only — it acts, unlike /status which merely reports.
+bot.command('clear', async ctx => {
+  const gated = dmCommandGate(ctx)
+  if (!gated) return
+  if (!gated.access.allowFrom.includes(gated.senderId)) {
+    await ctx.reply('Not paired — /clear is only for the paired user.')
+    return
+  }
+  const pane = process.env.TMUX_PANE
+  if (!pane) {
+    await ctx.reply('Cannot clear: this session is not running in tmux (no TMUX_PANE).')
+    return
+  }
+  try {
+    const { spawnSync } = await import('child_process')
+    // -l sends the literal string, so '/clear' is typed, not parsed as key names.
+    spawnSync('tmux', ['send-keys', '-t', pane, '-l', '/clear'])
+    // Let Claude Code's slash-command menu settle before submitting.
+    setTimeout(() => { spawnSync('tmux', ['send-keys', '-t', pane, 'Enter']) }, 600)
+    await ctx.reply(`🧹 Cleared context (pane ${pane}).`)
+  } catch (err) {
+    await ctx.reply(`Clear failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+})
+// <<< claude-telegram-clear-patch -------------------------------------------------
+BLOCK
+
+_tg_clear_warn_missing() {
+  local target="$1" when
+  when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+  mkdir -p "${marker:h}" 2>/dev/null || true
+  {
+    print -r -- "$patch_name could not reapply the /clear command patch."
+    print -r -- "target: $target"
+    print -r -- "anchor: $anchor"
+    print -r -- "when:   $when"
+    print -r -- "The plugin's server.ts was likely restructured upstream; remote"
+    print -r -- "/clear will be missing until the anchor in $patch_name is updated."
+  } >"$marker" 2>/dev/null || true
+  print -u2 ""
+  print -u2 "################################################################"
+  print -u2 "# $patch_name: ANCHOR NOT FOUND — remote /clear will be missing"
+  print -u2 "#   target: $target"
+  print -u2 "# Update the anchor in $patch_name. Marker: $marker"
+  print -u2 "################################################################"
+}
+
+local rc=0 reapply_missing=0 real
+for real in "${targets[@]}"; do
+  if [[ ! -f $real ]]; then
+    print -u2 "skip (missing): $real"; rc=1; continue
+  fi
+  case $mode in
+    check)
+      if   LC_ALL=C /usr/bin/grep -qaF -- "$start_marker" "$real"; then print "patched:    $real"
+      elif LC_ALL=C /usr/bin/grep -qaF -- "$anchor" "$real";       then print "unpatched:  $real"
+      else print "no-anchor:  $real (different version?)"; rc=1
+      fi
+      ;;
+    restore)
+      if [[ -f $real.unpatched ]]; then
+        cp -p "$real.unpatched" "$real"; print "restored:   $real"
+      else
+        print -u2 "no backup at $real.unpatched: $real"; rc=1
+      fi
+      ;;
+    patch|reapply)
+      if LC_ALL=C /usr/bin/grep -qaF -- "$start_marker" "$real"; then
+        print "skip (already patched): $real"; continue
+      fi
+      if ! LC_ALL=C /usr/bin/grep -qaF -- "$anchor" "$real"; then
+        if [[ $mode == reapply ]]; then
+          _tg_clear_warn_missing "$real"; reapply_missing=1; continue
+        fi
+        print -u2 "skip (anchor not found): $real"; rc=1; continue
+      fi
+      [[ -f $real.unpatched ]] || cp -p "$real" "$real.unpatched"
+      if /usr/bin/python3 - "$real" "$block_file" "$anchor" <<'PY'
+import sys, pathlib
+path, block_file, anchor = sys.argv[1], sys.argv[2], sys.argv[3]
+p = pathlib.Path(path)
+src = pathlib.Path(path).read_text()
+block = pathlib.Path(block_file).read_text().rstrip("\n")
+if anchor not in src:
+    sys.exit(3)
+# Handler block, inserted once before the permission-callback handler.
+src = src.replace(anchor, block + "\n\n" + anchor, 1)
+# Menu entry (best effort; the command works with or without it).
+menu = "{ command: 'status', description: 'Check your pairing status' },"
+if menu in src and "command: 'clear'" not in src:
+    src = src.replace(
+        menu,
+        menu + "\n              { command: 'clear', description: 'Clear the paired session context' },",
+        1,
+    )
+pathlib.Path(path).write_text(src)
+PY
+      then
+        print "patched:    $real (backup at $real.unpatched)"
+      else
+        print -u2 "patch failed: $real"; rc=1
+      fi
+      ;;
+  esac
+done
+
+rm -f "$block_file" 2>/dev/null
+
+if [[ $mode == reapply ]]; then
+  (( reapply_missing )) || rm -f "$marker" 2>/dev/null
+  return 0
+fi
+return $rc

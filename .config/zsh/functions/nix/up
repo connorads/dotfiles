@@ -36,6 +36,7 @@ fi
 # (postinstall only fires on an actual install) and manual paths. Idempotent.
 claude-channels-patch --reapply
 claude-computer-use-patch --reapply
+claude-telegram-clear-patch --reapply
 if (( !frozen )) && [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
 fi
