@@ -167,6 +167,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
 		echo "Installing Nix..."
 		curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm --prefer-upstream-nix
 		if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+			# shellcheck source=/dev/null
 			. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 		fi
 		export PATH="/nix/var/nix/profiles/default/bin:$PATH"
@@ -241,7 +242,8 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	# TPM below) aren't on PATH yet; those dirs only join PATH via nix-darwin's
 	# /etc/zprofile in a new login shell. Prepend the system + per-user profiles so
 	# install_tools sees them in this same run.
-	export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$(id -un)/bin:$PATH"
+	profile_user="$(id -un)"
+	export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$profile_user/bin:$PATH"
 
 	install_tools
 
@@ -318,10 +320,13 @@ EOF
 
 	# Source nix for this session (best-effort across install modes)
 	if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+		# shellcheck source=/dev/null
 		. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 	elif [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then
+		# shellcheck source=/dev/null
 		. /nix/var/nix/profiles/default/etc/profile.d/nix.sh
 	elif [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+		# shellcheck source=/dev/null
 		. "$HOME/.nix-profile/etc/profile.d/nix.sh"
 	fi
 
