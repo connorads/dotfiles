@@ -372,7 +372,9 @@ if [ "$IN_CODESPACES" = "true" ]; then
 	nix run home-manager/master -- switch --flake ~/.config/nix#codespace
 else
 	# Valid home-manager configs — keep in sync with flake.nix homeConfigurations.
-	VALID_HM=("connor@penguin" "connor@dev" "connor@rpi5")
+	# dev has arch-qualified variants for when the box's arch differs from the
+	# bare `connor@dev` default (e.g. ARM cax* vs x86 cx*): HM_HOST=dev-aarch64-linux.
+	VALID_HM=("connor@penguin" "connor@dev" "connor@dev-aarch64-linux" "connor@dev-x86_64-linux" "connor@rpi5")
 
 	# Preflight: the Linux configs (and TARGET_USER) assume the `connor` account.
 	if [ "$(id -un)" != "connor" ]; then
