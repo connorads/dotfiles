@@ -65,6 +65,7 @@ fnox = "1.27.1"
 "github:tamnd/kage" = "0.3.8"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2.0.22", bin = "cos", prerelease = true }
+"github:CosineAI/argusred-dist" = { version = "0.1.7", bin = "argusred" }
 
 # OS-level sandbox runtime (srt) wrapping CLI agents via agent-sandbox. Exact
 # pin: config schema is pre-1.0 and churns; the validate-before-mv render + the
