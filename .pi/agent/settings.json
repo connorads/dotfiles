@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.79.10",
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
+  "lastChangelogVersion": "0.80.2",
+  "defaultProvider": "opencode-go",
+  "defaultModel": "glm-5.2",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "npmCommand": [
