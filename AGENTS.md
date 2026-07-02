@@ -54,6 +54,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [modules/biokc.nix](./.config/nix/modules/biokc.nix)                   | Builds `biokc` (Touch ID keychain helper) from [`main.swift`](./.config/nix/biokc/main.swift) via system swiftc; desktop-only. Used by gh-gate to fingerprint-gate the key |
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.config/srt/base.json](./.config/srt/base.json)                       | `agent-sandbox` (`asb`) srt policies: opt-in OS sandbox for CLI agents. Subsystem docs: [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
+| [.config/sbx/Dockerfile](./.config/sbx/Dockerfile)                     | Image for `sbx` ([zsh/functions/agents/sbx](./.config/zsh/functions/agents/sbx)): VM-isolated (colima) container for running UNTRUSTED software. Inverse of `agentbox` - no host mounts, cap-drop ALL, offline by default. Capable toolbox baked in (build/net/trace tools); no host dotfiles |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
 | [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` - XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
@@ -213,6 +214,12 @@ gh-gate grant          # Push 1-hour write token to dev (from host machine)
 gh-gate revoke         # Revoke write token, restore read-only on dev
 gh-gate status         # Check token state on dev
 gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
+sbx new [--net] [name] # Create+attach a VM-isolated box for UNTRUSTED software (offline by default)
+sbx shell [name]       # Self-heal (colima+box up) then attach the box's tmux session
+sbx net on|off [name]  # Toggle network for a running box
+sbx cp <path> [name]   # Copy a host path into the box's /work
+sbx list               # List sbx boxes; sbx stop/rm [name] to stop / nuke (box + volume)
+lazydocker             # TUI to browse/exec/log/prune containers (nix)
 ```
 
 ## Supply Chain & Update Strategy
