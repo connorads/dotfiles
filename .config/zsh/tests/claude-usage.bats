@@ -29,6 +29,7 @@ seed_auth_paused_meta() {
 {"five_hour":{"utilization":42,"resets_at":"2099-01-01T00:00:00Z"},
  "seven_day":{"utilization":7,"resets_at":"2099-01-02T00:00:00Z"},
  "seven_day_sonnet":{"utilization":13,"resets_at":"2099-01-03T00:00:00Z"},
+ "limits":[{"kind":"weekly_scoped","percent":5,"resets_at":"2099-01-04T00:00:00Z","scope":{"model":{"display_name":"Fable"}}}],
  "extra_usage":{"is_enabled":true,"monthly_limit":5000,"used_credits":1234}}
 EOF
   seed_meta 9999999999 0 0
@@ -41,9 +42,27 @@ EOF
   [[ "$output" == *"7-day:"* ]]
   [[ "$output" == *"resets in"* ]]
   [[ "$output" == *"Sonnet:"* ]]
+  [[ "$output" == *"Fable:"* ]]
   [[ "$output" == *"Extra:"* ]]
   [[ "$output" == *"12.34/50.00"* ]]
   [[ "$output" == *"enabled"* ]]
+}
+
+@test "renders a model-scoped window from limits when legacy keys are null" {
+  cat >"$HOME/.cache/claude-usage.json" <<'EOF'
+{"five_hour":{"utilization":42,"resets_at":"2099-01-01T00:00:00Z"},
+ "seven_day":{"utilization":7,"resets_at":"2099-01-02T00:00:00Z"},
+ "seven_day_sonnet":null,
+ "limits":[{"kind":"weekly_scoped","percent":9,"resets_at":"2099-01-04T00:00:00Z","scope":{"model":{"display_name":"Fable"}}}]}
+EOF
+  seed_meta 9999999999 0 0
+
+  run_zsh_function "$CLAUDE_USAGE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Sonnet:"* ]]
+  [[ "$output" == *"Fable:"* ]]
+  [[ "$output" == *"9%"* ]]
 }
 
 @test "shows cache stale when the window reset and the cache is old" {

@@ -359,6 +359,27 @@ def collect_windows():
                 "provider_colour": "sonnet" if label == "Sonnet" else "claude",
                 "source": "claude",
             })
+        # Model-scoped weekly windows (e.g. Fable) now arrive via .limits[] with a
+        # scope.model.display_name; the legacy seven_day_<model> keys are null.
+        for lim in claude.get("limits") or []:
+            if lim.get("kind") != "weekly_scoped":
+                continue
+            model = ((lim.get("scope") or {}).get("model") or {}).get("display_name")
+            pct = as_pct(lim.get("percent"))
+            if not model or pct is None:
+                continue
+            reset = iso_ts(lim.get("resets_at"))
+            remaining = max(0, reset - NOW_TS) if reset else None
+            rows.append({
+                "provider": model[:7],
+                "window": "7d",
+                "pct": pct,
+                "remaining": remaining,
+                "window_secs": 604800,
+                "stale": claude_age is not None and claude_age >= stale_after(604800),
+                "provider_colour": "sonnet",
+                "source": "claude",
+            })
         extra = claude.get("extra_usage") or {}
         if extra.get("is_enabled") is not None:
             try:

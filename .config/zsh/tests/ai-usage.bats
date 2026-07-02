@@ -27,7 +27,13 @@ def iso(delta):
 (home / ".cache/claude-usage.json").write_text(json.dumps({
     "five_hour": {"utilization": 19, "resets_at": iso(timedelta(hours=1, minutes=30))},
     "seven_day": {"utilization": 68, "resets_at": iso(timedelta(days=3))},
-    "seven_day_sonnet": {"utilization": 0, "resets_at": iso(timedelta(days=3))},
+    "seven_day_sonnet": None,
+    "limits": [{
+        "kind": "weekly_scoped",
+        "percent": 4,
+        "resets_at": iso(timedelta(days=3)),
+        "scope": {"model": {"display_name": "Fable"}},
+    }],
     "extra_usage": {"is_enabled": False, "monthly_limit": 0, "used_credits": 0},
 }))
 (home / ".cache/codex-usage.json").write_text(json.dumps({
@@ -68,6 +74,7 @@ PY
   [ "$status" -eq 0 ]
   [[ "$output" == *"AI usage"* ]]
   [[ "$output" == *"Claude"*"68%"* ]]
+  [[ "$output" == *"Fable"*"4%"* ]]
   [[ "$output" == *"Spark"*"0%"* ]]
   [[ "$output" == *"Bottleneck"*"Claude 7d 68%"* ]]
   [[ "$output" == *"Headroom"*"Spark 5h has 100% free"* ]]
