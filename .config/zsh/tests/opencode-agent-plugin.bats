@@ -51,13 +51,33 @@ if (MODE === "noop") {
   const h = await AgentStatePlugin({})
   const ev = (type, properties = {}) => h.event({ event: { type, properties } })
   const step = async (label, fn) => { await fn(); await sleep(220); console.log(label + "=" + st()) }
-  await step("chat.message", () => h["chat.message"]({ sessionID: "root" }))
-  await step("permission.asked", () => ev("permission.asked", { sessionID: "root" }))
-  await step("permission.replied", () => ev("permission.replied", { sessionID: "root" }))
-  h.event({ event: { type: "session.updated", properties: { info: { id: "child", parentID: "root" } } } })
-  await step("child.idle", () => ev("session.idle", { sessionID: "child" }))
-  await step("root.idle", () => ev("session.idle", { sessionID: "root" }))
-  await step("deleted", () => ev("session.deleted", { sessionID: "root" }))
+  if (MODE === "lifecycle") {
+    await step("chat.message", () => h["chat.message"]({ sessionID: "root" }))
+    await step("permission.asked", () => ev("permission.asked", { sessionID: "root" }))
+    await step("permission.replied", () => ev("permission.replied", { sessionID: "root" }))
+    h.event({ event: { type: "session.updated", properties: { info: { id: "child", parentID: "root" } } } })
+    await step("child.idle", () => ev("session.idle", { sessionID: "child" }))
+    await step("root.idle", () => ev("session.idle", { sessionID: "root" }))
+    await step("deleted", () => ev("session.deleted", { sessionID: "root" }))
+  } else if (MODE === "subagent") {
+    // Foreground subagent whose root parks (goes idle) while it runs: the dot
+    // must keep working and only retire on a deferred done.
+    await step("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
+    h.event({ event: { type: "session.created", properties: { info: { id: "child", parentID: "root" } } } })
+    await step("child.busy", () => ev("session.status", { sessionID: "child", status: { type: "busy" } }))
+    await step("root.idle", () => ev("session.status", { sessionID: "root", status: { type: "idle" } }))
+    await step("child.idle", () => ev("session.idle", { sessionID: "child" }))
+    await step("clear", () => ev("session.deleted", { sessionID: "root" }))
+  } else if (MODE === "background") {
+    // Background subagent: parent turn ends (done) then the bg sub keeps the
+    // dot busy until it completes.
+    await step("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
+    await step("root.idle", () => ev("session.idle", { sessionID: "root" }))
+    h.event({ event: { type: "session.created", properties: { info: { id: "bg", parentID: "root" } } } })
+    await step("bg.busy", () => ev("session.status", { sessionID: "bg", status: { type: "busy" } }))
+    await step("bg.idle", () => ev("session.status", { sessionID: "bg", status: { type: "idle" } }))
+    await step("clear", () => ev("global.disposed", {}))
+  }
 }
 JS
 }
@@ -86,4 +106,22 @@ drive() {
   drive noop
   [[ "$output" == *"keys=0"* ]]
   [[ "$output" == *"state=unset"* ]]
+}
+
+@test "foreground subagent keeps the dot working under a parked root" {
+  drive subagent
+  [[ "$output" == *"root.busy=working"* ]]
+  [[ "$output" == *"child.busy=working"* ]]
+  [[ "$output" == *"root.idle=working"* ]] # parked root must NOT age the dot to done
+  [[ "$output" == *"child.idle=done"* ]]   # deferred done fires when the subagent retires
+  [[ "$output" == *"clear=unset"* ]]
+}
+
+@test "background subagent re-busies the dot after the parent goes idle" {
+  drive background
+  [[ "$output" == *"root.busy=working"* ]]
+  [[ "$output" == *"root.idle=done"* ]]
+  [[ "$output" == *"bg.busy=working"* ]] # bg sub revives the dot from done
+  [[ "$output" == *"bg.idle=done"* ]]
+  [[ "$output" == *"clear=unset"* ]]
 }
