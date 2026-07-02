@@ -114,6 +114,10 @@
       devModules = [
         ./modules/linux-base.nix
         ./modules/linux-packages.nix
+        # The dev box has no GitHub SSH private key (login keys only); it auths to
+        # GitHub via the gh-gate PAT over HTTPS. Override the shared ssh default so
+        # `gh repo clone` / ghcl clone over HTTPS with the token instead of SSH.
+        ({ lib, ... }: { programs.gh.settings.git_protocol = lib.mkForce "https"; })
       ];
     in
     # ==========================================================================
