@@ -1,0 +1,32 @@
+{
+  "providers": {
+    "cosine": {
+      "name": "Cosine",
+      "baseUrl": "https://api.cosine.sh",
+      "api": "openai-responses",
+      "apiKey": "!cosine-bearer",
+      "headers": {
+        "Cosine-Origin": "cli"
+      },
+      "models": [
+        {
+          "id": "lumen-outpost",
+          "name": "Lumen Outpost (Cosine default)",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 400000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    }
+  }
+}
