@@ -1,7 +1,8 @@
 {
   "env": {
     "DISABLE_INSTALLATION_CHECKS": "1",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "CLAUDE_AFK_TIMEOUT_MS": "2147483647"
   },
   "attribution": {
     "commit": "",
