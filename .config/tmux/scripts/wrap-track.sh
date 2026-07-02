@@ -7,9 +7,16 @@ TMPFILE="$(mktemp)"
 NOTEFILE="$(mktemp)"
 trap 'rm -f "$TMPFILE" "$NOTEFILE"' EXIT
 
-# Build note lookup: key<TAB>name<TAB>note (from -N annotations)
-# list-keys -N -T prefix format: "<key>  <note text>"
+# Build note lookup: key<TAB>name<TAB>note (from -N annotations).
+# Newer tmux prefixes each -N line with the client key-prefix, e.g.
+# "C-b <key>  <note text>"; strip that leading "C-b " so the first field is the
+# key, not the prefix. Older tmux omits it (line starts with the key) and the
+# guard leaves it untouched.
+prefix_key=$(tmux show-options -gv prefix 2>/dev/null)
 tmux list-keys -N -T prefix | while IFS= read -r line; do
+	case "$line" in
+	"$prefix_key "*) line=${line#"$prefix_key" } ;;
+	esac
 	key=$(printf '%s' "$line" | awk '{print $1}')
 	note=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//')
 	name=$(printf '%s' "$note" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
