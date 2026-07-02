@@ -6,7 +6,7 @@
 #   - darwinConfigurations."Connors-MacBook-Air"  : macOS desktop workstation (nix-darwin + home-manager)
 #   - darwinConfigurations."Connors-Mac-mini"     : macOS headless Tailscale-only dev server (nix-darwin + home-manager)
 #   - homeConfigurations."connor@penguin"         : Chromebook Linux container (x86_64)
-#   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (aarch64)
+#   - homeConfigurations."connor@dev"             : Remote/cloud dev machine (x86_64; aarch64 variant: connor@dev-aarch64-linux)
 #   - homeConfigurations."codespace"              : GitHub Codespaces (minimal)
 #
 # RPi5 config: github.com/connorads/rpi5 (system) + homeConfigurations."connor@rpi5" (user env)
@@ -105,6 +105,16 @@
           };
           inherit modules;
         };
+
+      # dev (remote/cloud) box modules — identical on either arch. Historically
+      # ARM (cax*), but x86 (cx*) when Hetzner ARM stock is short, so the config
+      # must build on both. Bare `connor@dev` tracks the live box; the
+      # arch-qualified variants keep either arch first-class (flake check + a
+      # concrete `#connor@dev-<system>` target when the hostname's arch differs).
+      devModules = [
+        ./modules/linux-base.nix
+        ./modules/linux-packages.nix
+      ];
     in
     # ==========================================================================
     # Flake Outputs
@@ -139,10 +149,11 @@
         )
       ];
 
-      homeConfigurations."connor@dev" = mkHome "aarch64-linux" [
-        ./modules/linux-base.nix
-        ./modules/linux-packages.nix
-      ];
+      # Bare name resolves for install.sh / `hms` (hostname carries no arch);
+      # points at the live box's arch. Both arch variants are always buildable.
+      homeConfigurations."connor@dev" = mkHome "x86_64-linux" devModules;
+      homeConfigurations."connor@dev-aarch64-linux" = mkHome "aarch64-linux" devModules;
+      homeConfigurations."connor@dev-x86_64-linux" = mkHome "x86_64-linux" devModules;
 
       # RPi5 user env: home-manager switch --flake ~/.config/nix (alias: hms)
       homeConfigurations."connor@rpi5" = mkHome "aarch64-linux" [
