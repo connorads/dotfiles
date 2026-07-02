@@ -1050,6 +1050,69 @@
           }
         }
       }
+    },
+    "cosine": {
+      "npm": "@ai-sdk/openai",
+      "name": "Cosine",
+      "options": {
+        "baseURL": "https://api.cosine.sh",
+        "apiKey": "{env:COSINE_API_KEY}",
+        "headers": {
+          "Cosine-Origin": "cli"
+        },
+        "reasoningEffort": "medium",
+        "reasoningSummary": "detailed",
+        "textVerbosity": "medium",
+        "store": false
+      },
+      "models": {
+        "lumen-outpost": {
+          "name": "Lumen Outpost (Cosine default)",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "low": {
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto"
+            },
+            "medium": {
+              "reasoningEffort": "medium",
+              "reasoningSummary": "detailed"
+            },
+            "high": {
+              "reasoningEffort": "high",
+              "reasoningSummary": "detailed"
+            }
+          }
+        },
+        "gpt-5.3-codex": {
+          "name": "GPT 5.3 Codex (Cosine, unverified id)",
+          "limit": {
+            "context": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
     }
   }
 }

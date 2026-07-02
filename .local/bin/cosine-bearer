@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# cosine-bearer: emit a valid Cosine (cos CLI) inference bearer token on stdout.
+# Reads ~/.cosine/auth.json; refreshes via api.cosine.sh/auth/cli-refresh when near expiry.
+# Used by opencode ({env:COSINE_API_KEY} via `export COSINE_API_KEY=$(cosine-bearer)`)
+# and pi (models.json apiKey "!cosine-bearer", resolved per request).
+# NOTE: refresh endpoint body shape is inferred from binary struct tags, not yet
+# confirmed by a live capture - verify with mitmproxy if it 4xxs.
+set -euo pipefail
+
+AUTH="${COSINE_CONFIG_FILE:-$HOME/.cosine/auth.json}"
+REFRESH_URL="https://api.cosine.sh/auth/cli-refresh"
+SKEW=86400   # refresh if within 1 day of expiry (cos uses ExpiredOrNear)
+
+[ -r "$AUTH" ] || { echo "cosine-bearer: $AUTH not found; run 'cos login'" >&2; exit 1; }
+
+now=$(date +%s)
+exp_iso=$(jq -r '.expiry // empty' "$AUTH")
+exp_epoch=0
+if [ -n "$exp_iso" ]; then
+  exp_epoch=$(date -j -f '%Y-%m-%dT%H:%M:%S' "${exp_iso%%.*}" +%s 2>/dev/null || echo 0)
+fi
+
+if [ "$exp_epoch" -ne 0 ] && [ "$now" -ge $((exp_epoch - SKEW)) ]; then
+  resp=$(curl -fsS -X POST "$REFRESH_URL" \
+           -H 'Content-Type: application/json' \
+           -d "$(jq -c '{refresh_token}' "$AUTH")" 2>/dev/null || true)
+  if [ -n "$resp" ] && jq -e '.token' >/dev/null 2>&1 <<<"$resp"; then
+    tmp=$(mktemp)
+    jq --argjson r "$resp" '
+      .token = $r.token
+      | .refresh_token = ($r.refresh_token // .refresh_token)
+      | .expiry = (($r.expires_in // 0) as $e | (now + $e) | todate)
+    ' "$AUTH" > "$tmp" && mv "$tmp" "$AUTH"
+  fi
+fi
+
+jq -r '.token' "$AUTH"
