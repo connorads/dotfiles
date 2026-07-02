@@ -89,6 +89,10 @@
 !/.config/srt/
 !/.config/srt/**
 
+# sbx: Dockerfile for the untrusted-software sandbox container (see sbx function)
+!/.config/sbx/
+!/.config/sbx/**
+
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
 /.config/jj/**

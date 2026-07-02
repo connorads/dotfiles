@@ -1,0 +1,149 @@
+#!/usr/bin/env zsh
+# sbx: run UNTRUSTED software in a throwaway, VM-isolated container (no host mounts)
+# Sibling of `agentbox`, opposite trust posture: agentbox mounts your home in
+# because it trusts the agent; sbx mounts nothing because it does not trust the
+# code. Isolation is the colima Linux VM + a hardened container (cap-drop ALL,
+# no-new-privileges, offline by default). Reconnect resumes an in-container tmux.
+#
+# usage: sbx <subcommand> [name]              (name defaults to "default")
+#   new [--net] [name]    (re)create a hardened box and attach
+#   shell|attach [name]   self-heal (colima+box up) then attach the tmux session
+#   cp <path> [name]      copy a host path into the box's /work
+#   net on|off [name]     toggle network for a running box
+#   list|ls               list sbx boxes
+#   stop [name]           stop a box (keeps its filesystem)
+#   rm [name]             remove a box AND its /work volume (nuke)
+#   build                 build/rebuild the image
+emulate -L zsh
+
+local IMAGE="sbx:latest"
+local CONFIG_DIR="${HOME}/.config/sbx"
+local DEFAULT_NAME="default"
+
+# Ensure the colima VM is up (self-heal after reboot; no always-on daemon).
+_sbx_colima_up() {
+  colima status >/dev/null 2>&1 && return 0
+  print -u2 "sbx: starting colima VM..."
+  colima start --cpu 2 --memory 4 --vm-type vz >&2
+}
+
+# Ensure the image exists.
+_sbx_image() {
+  docker image inspect "$IMAGE" >/dev/null 2>&1 && return 0
+  print -u2 "sbx: building image..."
+  docker build -t "$IMAGE" "$CONFIG_DIR" >&2
+}
+
+# Start a fresh hardened container. $1=name $2=net(0/1)
+_sbx_run() {
+  local name="$1" net="$2" cname="sbx-$1"
+  local -a args=(
+    --name "$cname" --label sbx --label "sbx.name=$name"
+    -d
+    --cap-drop ALL
+    --security-opt no-new-privileges
+    --pids-limit 512
+    --memory 2g
+    -v "${cname}-work:/work"
+  )
+  docker run "${args[@]}" "$IMAGE" >/dev/null || return 1
+  # Offline by default: start on the default bridge then detach it, leaving only
+  # loopback. Unlike `--network none` (exclusive, can't be re-attached), this is
+  # reconnectable via `sbx net on`. The image only idles at start, so there is no
+  # window where untrusted code sees the network.
+  (( net )) || docker network disconnect bridge "$cname" >/dev/null 2>&1
+  return 0
+}
+
+# Ensure box is running (create/start as needed); sets REPLY=container name.
+_sbx_ensure() {
+  local name="${1:-$DEFAULT_NAME}" cname="sbx-${1:-$DEFAULT_NAME}"
+  _sbx_colima_up || return 1
+  _sbx_image || return 1
+  if docker ps --format '{{.Names}}' | grep -qx "$cname"; then
+    :
+  elif docker ps -a --format '{{.Names}}' | grep -qx "$cname"; then
+    docker start "$cname" >/dev/null || return 1
+  else
+    print -u2 "sbx: creating box '$name' (offline)..."
+    _sbx_run "$name" 0 || return 1
+  fi
+  typeset -g REPLY="$cname"
+}
+
+case "${1:-shell}" in
+  build)
+    _sbx_colima_up || return 1
+    _sbx_image
+    return $?
+    ;;
+  list|ls)
+    docker ps -a --filter label=sbx \
+      --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}'
+    return $?
+    ;;
+  new)
+    shift
+    local net=0
+    [[ "${1:-}" == "--net" ]] && { net=1; shift; }
+    local name="${1:-$DEFAULT_NAME}" cname="sbx-${1:-$DEFAULT_NAME}"
+    _sbx_colima_up || return 1
+    _sbx_image || return 1
+    docker rm -f "$cname" >/dev/null 2>&1
+    print -u2 "sbx: starting box '$name' ($( (( net )) && print online || print offline ))"
+    _sbx_run "$name" "$net" || return 1
+    docker exec -it "$cname" tmux new-session -A -s main
+    return $?
+    ;;
+  shell|attach)
+    _sbx_ensure "${2:-$DEFAULT_NAME}" || return 1
+    docker exec -it "$REPLY" tmux new-session -A -s main
+    return $?
+    ;;
+  cp)
+    shift
+    local src="$1"
+    [[ -z "$src" ]] && { print -u2 "usage: sbx cp <path> [name]"; return 1 }
+    _sbx_ensure "${2:-$DEFAULT_NAME}" || return 1
+    docker cp "$src" "${REPLY}:/work/"
+    return $?
+    ;;
+  net)
+    local cname="sbx-${3:-$DEFAULT_NAME}"
+    case "${2:-}" in
+      on)  docker network connect bridge "$cname" && print "sbx: $cname online" ;;
+      off) docker network disconnect bridge "$cname" && print "sbx: $cname offline" ;;
+      *)   print -u2 "usage: sbx net on|off [name]"; return 1 ;;
+    esac
+    return $?
+    ;;
+  stop)
+    docker stop "sbx-${2:-$DEFAULT_NAME}"
+    return $?
+    ;;
+  rm|nuke)
+    local cname="sbx-${2:-$DEFAULT_NAME}"
+    docker rm -f "$cname" >/dev/null 2>&1
+    docker volume rm "${cname}-work" >/dev/null 2>&1
+    print -u2 "sbx: removed $cname + its /work volume"
+    return 0
+    ;;
+  -h|--help|help)
+    print "sbx: run untrusted software in a throwaway, VM-isolated container"
+    print ""
+    print "usage: sbx <subcommand> [name]   (name defaults to \"$DEFAULT_NAME\")"
+    print "  new [--net] [name]   (re)create a hardened box and attach"
+    print "  shell|attach [name]  self-heal then attach the tmux session"
+    print "  cp <path> [name]     copy a host path into the box's /work"
+    print "  net on|off [name]    toggle network for a running box"
+    print "  list|ls              list sbx boxes"
+    print "  stop [name]          stop a box (keeps filesystem)"
+    print "  rm [name]            remove a box AND its /work volume"
+    print "  build                build/rebuild the image"
+    return 0
+    ;;
+  *)
+    print -u2 "sbx: unknown subcommand '$1' (try: sbx help)"
+    return 1
+    ;;
+esac
