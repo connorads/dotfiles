@@ -77,18 +77,18 @@ url = "https://github.com/jdx/aube/releases/download/v1.25.1/aube-v1.25.1-aarch6
 provenance = "github-attestations"
 
 [[tools.aws]]
-version = "2.35.14"
+version = "2.35.15"
 backend = "aqua:aws/aws-cli"
 
 [tools.aws."platforms.linux-arm64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.14.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.15.zip"
 
 [tools.aws."platforms.linux-x64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.14.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.15.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "blake3:ec37258147022b2f03b427bb435031d3bba872f5aad51b80b5abb49b7592bc75"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.14.pkg"
+checksum = "blake3:b30debdccf39a94ec05f0e3084cf3c2a8f2a756f13e22db690943dd5c7c5a33e"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.15.pkg"
 
 [[tools.bats]]
 version = "1.13.0"
@@ -364,7 +364,7 @@ version = "0.5.4"
 backend = "npm:@elevenlabs/cli"
 
 [[tools."npm:@kitlangton/ghui"]]
-version = "0.8.0"
+version = "0.9.0"
 backend = "npm:@kitlangton/ghui"
 
 [[tools."npm:@playwright/cli"]]
@@ -404,7 +404,7 @@ version = "2.1.2"
 backend = "npm:deepsec"
 
 [[tools."npm:executor"]]
-version = "1.5.20"
+version = "1.5.22"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
@@ -497,7 +497,7 @@ extras = "cli,cpu"
 uvx_args = "--with numpy<2.3"
 
 [[tools."pipx:ty"]]
-version = "0.0.54"
+version = "0.0.55"
 backend = "pipx:ty"
 
 [[tools.pkl]]
@@ -555,22 +555,22 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.24"
+version = "0.2.25"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:c944675dc2464af0d557c9fc595843b935aa1631bd613f4228447d6d967f88cc"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:2a066d296e6c13cafd67e557693d39984de52c3599004ff057de1c4a4f9b7976"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:d6c270d23810912c9e1dccbcbb287cb121c47886b9199b07871bca5cae837cf8"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:3f3b9e791b3d3d8f58ce792b881d6b1326b74fef96ba3a7e2cf7a6def212f688"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:7bac72d2a50211d374d246a263a1cc0462652a92d811a9b991d4cf36b05aafce"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.24/rumdl-v0.2.24-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:20e953a4a1bc254e7eac2dfbaef7ef1a3f238f01510edb0ff93417da67fbaca2"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rust]]
