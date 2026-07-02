@@ -225,6 +225,22 @@ us=$(jq -r '.seven_day_sonnet.utilization // empty' "$cache")
 rs=$(jq -r '.seven_day_sonnet.resets_at // empty' "$cache")
 [[ -n "$us" ]] && _print_window "Sonnet:" "$us" "$(_remaining "$rs")"
 
+# Model-scoped weekly windows (e.g. Fable). These now arrive via .limits[] with
+# a scope.model.display_name; the legacy seven_day_<model> keys are null. Label
+# each by its model name so new scoped models show without a code change.
+local scoped_tsv sm_name sm_pct sm_reset
+scoped_tsv=$(jq -r '
+    .limits[]?
+    | select(.kind == "weekly_scoped" and (.scope.model.display_name // "") != "")
+    | [.scope.model.display_name, (.percent // 0), (.resets_at // "")]
+    | @tsv' "$cache" 2>/dev/null)
+if [[ -n "$scoped_tsv" ]]; then
+    while IFS=$'\t' read -r sm_name sm_pct sm_reset; do
+        [[ -z "$sm_name" ]] && continue
+        _print_window "${sm_name}:" "$sm_pct" "$(_remaining "$sm_reset")"
+    done <<<"$scoped_tsv"
+fi
+
 # Extra usage (spend-based, not time-windowed)
 local ex_enabled ex_limit ex_used
 ex_enabled=$(jq -r '.extra_usage.is_enabled // empty' "$cache")
