@@ -11,12 +11,16 @@ setup() {
 #!/usr/bin/env bash
 set -euo pipefail
 case "$*" in
+  "show-options -gv prefix")
+    echo C-b
+    ;;
   "list-keys -N -T prefix")
+    # Current tmux prefixes each -N line with the client key-prefix ("C-b ").
     cat <<'NOTES'
-g       Lazygit
-M-s     Skill loader (skl)
-C-Up    Resize pane up
-\      Join pane from picker (left/right)
+C-b g       Lazygit
+C-b M-s     Skill loader (skl)
+C-b C-Up    Resize pane up
+C-b \      Join pane from picker (left/right)
 NOTES
     ;;
   "list-keys -T prefix")
@@ -68,4 +72,36 @@ EOF
   grep -F 'bind-key -T prefix z run-shell -b' "$SOURCE_FILE_CAPTURE"
   grep -F '#{q:pane_current_path} #{q:host_short}' "$SOURCE_FILE_CAPTURE"
   grep -F 'resize-pane -Z' "$SOURCE_FILE_CAPTURE"
+}
+
+@test "wrap-track preserves notes on older tmux without the key-prefix column" {
+  # Older tmux omits the leading "C-b " on -N lines; the guard must leave them be.
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  "show-options -gv prefix")
+    echo C-b
+    ;;
+  "list-keys -N -T prefix")
+    echo 'g       Lazygit'
+    ;;
+  "list-keys -T prefix")
+    echo 'bind-key    -T prefix g       display-message hi'
+    ;;
+  source-file*)
+    cp "$2" "$SOURCE_FILE_CAPTURE"
+    ;;
+  *)
+    echo "unexpected tmux args: $*" >&2
+    exit 64
+    ;;
+esac
+EOF
+
+  run sh "$TESTS_DIR/../../tmux/scripts/wrap-track.sh"
+  [ "$status" -eq 0 ]
+
+  grep -F 'bind-key -N "Lazygit" -T prefix g run-shell -b' "$SOURCE_FILE_CAPTURE"
+  grep -F 'track-bind.sh g lazygit #{q:session_name}' "$SOURCE_FILE_CAPTURE"
 }
