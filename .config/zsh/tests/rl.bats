@@ -617,6 +617,40 @@ SCRIPT
   [[ "$output" == *"timed out"* ]]
 }
 
+@test "timeout still fires when the child's process group cannot be detected" {
+  # Regression: refresh_child_pgid can lose its ~1s ps-polling race under load and
+  # leave child_pgid empty. The watchdog must still arm (keyed on -t alone) and fall
+  # back to killing child_pid, rather than silently letting a stuck iteration run
+  # unbounded. A fake ps that always reports one pgid makes the child's group appear
+  # identical to the parent's, so refresh_child_pgid gives up - the exact failure.
+  write_stub ps <<'SCRIPT'
+#!/usr/bin/env bash
+for a in "$@"; do [[ "$a" == pgid=* || "$a" == -o ]] && { echo 12345; exit 0; }; done
+exit 0
+SCRIPT
+
+  local helper="$BATS_TEST_TMPDIR/nopgid_cmd.sh"
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT_FILE"
+if [ "$n" -eq 1 ]; then
+  sleep 5   # bounded: a broken (unarmed) watchdog exits here after 5s, not "timed out"
+else
+  exit 0
+fi
+SCRIPT
+
+  export COUNT_FILE="$BATS_TEST_TMPDIR/nopgid_count"
+  export RL_RETRY_PAUSE_SECS=0
+
+  run zsh "$RL" 2 -t 0.5s -- "$helper"
+
+  [ "$(cat "$COUNT_FILE")" -eq 2 ]
+  [[ "$output" == *"timed out"* ]]
+}
+
 @test "timeout accepts fractional durations" {
   local helper="$BATS_TEST_TMPDIR/frac_cmd.sh"
   write_executable "$helper" <<'SCRIPT'
