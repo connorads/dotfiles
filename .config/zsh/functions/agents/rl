@@ -343,7 +343,14 @@ while (( max == 0 || i < max )); do
   local timeout_sleep_pid=
   local timed_out=0
   local timeout_marker="${TMPDIR:-/tmp}/rl-timeout-$$-$i"
-  if (( timeout_secs > 0 && child_pgid )); then
+  # Arm on timeout_secs alone, never on child_pgid: refresh_child_pgid can lose its
+  # ~1s ps-polling race under load and leave child_pgid empty, which used to silently
+  # drop the timeout entirely (a stuck iteration then ran unbounded). The pgid is
+  # resolved at fire time instead, falling back to killing child_pid directly.
+  if (( timeout_secs > 0 )); then
+    # Combined declare+assign: a bare `local x` re-declaration inside this while loop
+    # prints `x=value` to stdout on the second iteration onwards (zsh typeset display).
+    local parent_pgid="$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')"
     # Watchdog: sleep then kill child process group. Track inner sleep PID for cleanup.
     local sleep_pid_file="${TMPDIR:-/tmp}/rl-timeout-sleep-$$-$i"
     (
@@ -351,13 +358,22 @@ while (( max == 0 || i < max )); do
       echo $! > "$sleep_pid_file"
       wait $!
       touch "$timeout_marker"
-      kill -TERM -"$child_pgid" 2>/dev/null
-      sleep 0.1
-      kill -KILL -"$child_pgid" 2>/dev/null
+      local pgid=$child_pgid
+      [[ -z $pgid ]] && pgid=$(ps -o pgid= -p "$child_pid" 2>/dev/null | tr -d ' ')
+      # Only signal the group if it is genuinely the child's own, never the parent's.
+      if [[ -n $pgid && $pgid != "$parent_pgid" ]]; then
+        kill -TERM -"$pgid" 2>/dev/null
+        sleep 0.1
+        kill -KILL -"$pgid" 2>/dev/null
+      else
+        kill -TERM "$child_pid" 2>/dev/null
+        sleep 0.1
+        kill -KILL "$child_pid" 2>/dev/null
+      fi
     ) &
     timeout_pid=$!
     # Wait briefly for the sleep PID file to be written
-    local _w; for _w in {1..10}; do [[ -f $sleep_pid_file ]] && break; sleep 0.01; done
+    local _w=; for _w in {1..10}; do [[ -f $sleep_pid_file ]] && break; sleep 0.01; done
     timeout_sleep_pid=$(cat "$sleep_pid_file" 2>/dev/null)
     rm -f "$sleep_pid_file"
   fi
