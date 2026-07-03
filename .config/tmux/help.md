@@ -64,6 +64,7 @@
 | `Ctrl+b Alt+K` | process closer (all processes via sudo) |
 | `Ctrl+b a` | AI usage (Claude + Codex) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
+| `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window, bypass perms; copy cmd/id) |
 | `Ctrl+b Alt+i` | copy local/remote clipboard image path (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
