@@ -1,0 +1,26 @@
+{
+	"skill_name": "design-forking",
+	"evals": [
+		{
+			"id": 1,
+			"eval_name": "one-way-door-schema-decision",
+			"prompt": "im building a habit tracker api (fastify + postgres, drizzle). users log habit completions and i need streaks - current streak and longest streak per habit. should i store streak counters on the habit row and update them when a completion is logged, or something else? maybe 10k users eventually. tell me how youd build it",
+			"expected_output": "Recognises a one-way door (schema shape / derived-vs-stored state), forks 3+ structurally different candidates (e.g. stored counters, derive-on-read from completions, materialised/cached view, event-log), includes a null/simplest candidate, converges with per-attribute trade-offs and a clear recommendation, notes what was rejected and why.",
+			"files": []
+		},
+		{
+			"id": 2,
+			"eval_name": "two-way-door-should-not-fork",
+			"prompt": "quick one - should i use zod or valibot for validating the config file in my internal CLI? its like 40 lines of schema, only i use this tool",
+			"expected_output": "Classifies this as a reversible two-way door, gives a fast direct recommendation with a one-line reversal note, and does NOT produce a heavyweight multi-candidate analysis.",
+			"files": []
+		},
+		{
+			"id": 3,
+			"eval_name": "invariant-drift-enforcement-locus",
+			"prompt": "my express app calculates order totals in three places - the cart endpoint, the checkout endpoint and an admin refund script. they have drifted before (discount handling bug last month). whats the best way to make sure they cant disagree? we have decent integration tests and a small team",
+			"expected_output": "Forks across enforcement loci rather than three variants of 'extract a shared function': e.g. shared calculator module (code seam), differential/agreement test (test locus), single pricing service/endpoint (runtime locus), delete duplicate paths (null). Converges with per-attribute comparison and stated rejections.",
+			"files": []
+		}
+	]
+}
