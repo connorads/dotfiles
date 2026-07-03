@@ -9,6 +9,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | Skill | What it's for | Install |
 |-------|---------------|---------|
 | `architecture` | Language-agnostic software design | `npx skills add connorads/dotfiles -s architecture` |
+| `design-forking` | Divergent design alternatives before committing | `npx skills add connorads/dotfiles -s design-forking` |
 | `typescript` | Idiomatic, type-safe TypeScript | `npx skills add connorads/dotfiles -s typescript` |
 | `testing` | Test strategy, TDD, test design | `npx skills add connorads/dotfiles -s testing` |
 | `test-coverage` | Coverage audits and enforcement | `npx skills add connorads/dotfiles -s test-coverage` |
