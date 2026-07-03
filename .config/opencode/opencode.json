@@ -1111,6 +1111,397 @@
               "text"
             ]
           }
+        },
+        "claude-opus-4-8": {
+          "name": "claude-opus-4-8 (Anthropic via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-opus-4-7": {
+          "name": "claude-opus-4-7 (Anthropic via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-opus-4-7-1m": {
+          "name": "claude-opus-4-7-1m (Anthropic via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-sonnet-5": {
+          "name": "claude-sonnet-5 (Anthropic via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-sonnet-5-1m": {
+          "name": "claude-sonnet-5-1m (Anthropic via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-haiku-4-5": {
+          "name": "claude-haiku-4-5 (Anthropic via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "claude-fable-5": {
+          "name": "claude-fable-5 (Anthropic via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.5": {
+          "name": "gpt-5.5 (Azure via Cosine)",
+          "limit": {
+            "context": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.4": {
+          "name": "gpt-5.4 (Azure via Cosine)",
+          "limit": {
+            "context": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.4-1m": {
+          "name": "gpt-5.4-1m (Azure via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gpt-5.4-mini": {
+          "name": "gpt-5.4-mini (Azure via Cosine)",
+          "limit": {
+            "context": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "codex": {
+          "name": "codex (Azure via Cosine)",
+          "limit": {
+            "context": 272000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3.1-pro": {
+          "name": "gemini-3.1-pro (Gemini via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3-pro": {
+          "name": "gemini-3-pro (Gemini via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "gemini-3.5-flash": {
+          "name": "gemini-3.5-flash (Gemini via Cosine)",
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "glm-5.2": {
+          "name": "glm-5.2 (Fireworks via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "kimi-k2.7-code": {
+          "name": "kimi-k2.7-code (Fireworks via Cosine)",
+          "limit": {
+            "context": 262144,
+            "output": 131072
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "kimi-k2.6": {
+          "name": "kimi-k2.6 (Fireworks via Cosine)",
+          "limit": {
+            "context": 262144,
+            "output": 131072
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "deepseek-v4-pro": {
+          "name": "deepseek-v4-pro (Fireworks via Cosine)",
+          "limit": {
+            "context": 163840,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "qwen3.6-plus": {
+          "name": "qwen3.6-plus (Fireworks via Cosine)",
+          "limit": {
+            "context": 262144,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "minimax-m2.7": {
+          "name": "minimax-m2.7 (Fireworks via Cosine)",
+          "limit": {
+            "context": 200000,
+            "output": 131072
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "mistral-large-latest": {
+          "name": "mistral-large-latest (Mistral via Cosine)",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "devstral-latest": {
+          "name": "devstral-latest (Mistral via Cosine)",
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "lumen": {
+          "name": "lumen (Openai via Cosine)",
+          "limit": {
+            "context": 400000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "lumen-scout": {
+          "name": "lumen-scout (Mistral via Cosine)",
+          "limit": {
+            "context": 256000,
+            "output": 64000
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         }
       }
     }
