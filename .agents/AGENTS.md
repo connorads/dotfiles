@@ -74,7 +74,7 @@ Use `hk` to wire git hooks and local checks.
 ## Intent
 
 Document why and intent when it would otherwise be lost; the what/how should usually be clear from code.
-Comments are for future readers: write timeless, declarative comments that state the standing rule or constraint in the present tense.
+Comments and docs (`AGENTS.md`, `README`, ADRs) are for future readers: describe the standing state, rule or constraint in the present tense, timelessly. Keep change history - "replaced X", "now uses Y", "previously", "no longer" - in commit messages, not the comment or doc body.
 If the user's goal or reasoning is unclear, ask before encoding assumptions.
 When a decision has trade-offs or rejected alternatives worth preserving, write an ADR or capture it in docs/commit messages.
 When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
