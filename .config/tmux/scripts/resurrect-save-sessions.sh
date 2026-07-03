@@ -9,6 +9,10 @@ SAVE_FILE="$1"
 RESURRECT_DIR="$(dirname "$SAVE_FILE")"
 SESSION_FILE="$RESURRECT_DIR/session_ids.json"
 
+# Shared pane -> agent PID -> live session-file resolver.
+# shellcheck source=lib/claude-session.sh disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/lib/claude-session.sh"
+
 # Require jq
 if ! command -v jq &>/dev/null; then
 	exit 0
@@ -37,14 +41,12 @@ find_claude_session() {
 	local session_id=""
 	local claude_pid=""
 
-	claude_pid=$(foreground_pid_for_command "$tty" "claude" "$pane_pid")
+	claude_pid=$(claude_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
 
 	# Claude Code writes the active session ID keyed by its process PID.
 	if [ -n "$claude_pid" ]; then
-		local session_file="$HOME/.claude/sessions/$claude_pid.json"
-		if [ -f "$session_file" ]; then
-			session_id=$(jq -r --arg dir "$dir" 'select((.cwd // $dir) == $dir) | .sessionId // empty' "$session_file" 2>/dev/null || true)
-		fi
+		session_id=$(claude_session_meta_for_pid "$claude_pid" |
+			jq -r --arg dir "$dir" 'select((.cwd // $dir) == $dir) | .sessionId // empty' 2>/dev/null || true)
 	fi
 
 	# Fallback for older Claude versions — find .jsonl files the process has open.
@@ -76,41 +78,6 @@ find_claude_session() {
 	echo "$session_id"
 }
 
-foreground_pid_for_command() {
-	local tty="$1"
-	local command="$2"
-	local pane_pid="$3"
-	local pid=""
-
-	if [ -n "$tty" ]; then
-		pid=$(ps -t "${tty#/dev/}" -o pid=,stat=,comm= 2>/dev/null |
-			awk -v want="$command" '
-        $2 ~ /\+/ {
-          c=$3
-          sub(/.*\//, "", c)
-          if (c == want) {
-            print $1
-            exit
-          }
-        }')
-	fi
-
-	if [ -z "$pid" ] && [ -n "$pane_pid" ]; then
-		pid=$(ps -ao pid=,ppid=,comm= 2>/dev/null |
-			awk -v ppid="$pane_pid" -v want="$command" '
-        $2 == ppid {
-          c=$3
-          sub(/.*\//, "", c)
-          if (c == want) {
-            print $1
-            exit
-          }
-        }')
-	fi
-
-	echo "$pid"
-}
-
 # --- Codex session discovery ---
 # Session files: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
 find_codex_session() {
@@ -120,7 +87,7 @@ find_codex_session() {
 	local session_id=""
 	local codex_pid=""
 
-	codex_pid=$(foreground_pid_for_command "$tty" "codex" "$pane_pid")
+	codex_pid=$(claude_foreground_pid_for_tty "$tty" "codex" "$pane_pid")
 	if [ -z "$codex_pid" ]; then
 		echo ""
 		return
