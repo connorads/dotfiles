@@ -140,18 +140,18 @@ version = "0.7.0"
 backend = "cargo:build-wrap"
 
 [[tools.claude]]
-version = "2.1.198"
+version = "2.1.200"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.198/linux-arm64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.200/linux-arm64/claude"
 
 [tools.claude."platforms.linux-x64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.198/linux-x64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.200/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "blake3:f75bb6887d1ad2373069daff4d7d103a15d8bb1d7b46aabca92fe160b5b76a12"
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.198/darwin-arm64/claude"
+checksum = "blake3:3e7fe1bd0d30b3b0fb733a52b5d610378181c70a8113d926b1486e47cc6f45f5"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.200/darwin-arm64/claude"
 
 [[tools.codex]]
 version = "0.142.5"
@@ -404,7 +404,7 @@ version = "2.1.2"
 backend = "npm:deepsec"
 
 [[tools."npm:executor"]]
-version = "1.5.22"
+version = "1.5.25"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
@@ -555,22 +555,22 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.25"
+version = "0.2.26"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:2a066d296e6c13cafd67e557693d39984de52c3599004ff057de1c4a4f9b7976"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-aarch64-unknown-linux-musl.tar.gz"
+checksum = "sha256:057fa8f2bb17865cc068f1cb74c3ab5d447c7c8a0de0981ed33250d3d86012b3"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.26/rumdl-v0.2.26-aarch64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:3f3b9e791b3d3d8f58ce792b881d6b1326b74fef96ba3a7e2cf7a6def212f688"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-x86_64-unknown-linux-musl.tar.gz"
+checksum = "sha256:7abf4fb6c3a86aa56501bba5fa75d6a0db1d8c308c46bc2280d7d6a0eb9f4ab3"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.26/rumdl-v0.2.26-x86_64-unknown-linux-musl.tar.gz"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:20e953a4a1bc254e7eac2dfbaef7ef1a3f238f01510edb0ff93417da67fbaca2"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.25/rumdl-v0.2.25-aarch64-apple-darwin.tar.gz"
+checksum = "sha256:d6f480b80b2ac4506bfa920577b515238255a3dec8b54599ea58ef18abb46fb7"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.26/rumdl-v0.2.26-aarch64-apple-darwin.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rust]]
