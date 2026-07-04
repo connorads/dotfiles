@@ -17,21 +17,34 @@ pane_tty="${2:-}"
 pane_path="${3:-}"
 pane_pid="${4:-}"
 
+# No live Claude foreground process in this pane - nothing to branch.
 no_session() {
-	tmux display-message "No Claude session in this pane"
+	tmux display-message "No Claude in this pane"
 	exit 0
 }
 
-command -v jq >/dev/null 2>&1 || no_session
+# Claude is running here but wrote no ~/.claude/sessions/<pid>.json registry entry,
+# so there is no sessionId to fork. Expected for agent/child sessions and for
+# sessions that skipped registration at launch (see the concurrentSessions guard);
+# a running session never registers retroactively.
+not_forkable() {
+	tmux display-message "Claude here (pid $1) but not registered - not forkable (agent/child session, or skipped registration at launch)"
+	exit 0
+}
+
+command -v jq >/dev/null 2>&1 || {
+	tmux display-message "jq not found - cannot branch Claude session"
+	exit 0
+}
 
 claude_pid=$(claude_foreground_pid_for_tty "$pane_tty" "claude" "$pane_pid")
 [ -n "$claude_pid" ] || no_session
 
 meta=$(claude_session_meta_for_pid "$claude_pid")
-[ -n "$meta" ] || no_session
+[ -n "$meta" ] || not_forkable "$claude_pid"
 
 sid=$(printf '%s' "$meta" | jq -r '.sessionId // empty' 2>/dev/null || true)
-[ -n "$sid" ] || no_session
+[ -n "$sid" ] || not_forkable "$claude_pid"
 
 name=$(printf '%s' "$meta" | jq -r '.name // empty' 2>/dev/null || true)
 status=$(printf '%s' "$meta" | jq -r '.status // empty' 2>/dev/null || true)
