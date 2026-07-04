@@ -1,7 +1,10 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
 tool_output_token_limit = 25000
-# Leave room for native compaction near the 272-273k context window
+# Stay under the 272k long-context pricing cliff (gpt-5.5 window is ~1.05M, so
+# this is a cost boundary, not a capacity one): >272k input bills 2x input /
+# 1.5x output for the whole session. Compact before then so every turn stays at
+# the base rate, leaving headroom for tool output + the compaction pass itself.
 # Formula: 273000 - (tool_output_token_limit + 15000)
 model_auto_compact_token_limit = 233000
 personality = "pragmatic"
