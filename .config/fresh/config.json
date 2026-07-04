@@ -14,15 +14,24 @@
   "keybindings": [
     {
       "key": "b",
-      "modifiers": ["ctrl", "alt"],
+      "modifiers": [
+        "ctrl",
+        "alt"
+      ],
       "action": "toggle_file_explorer",
       "when": "normal"
     },
     {
       "key": "b",
-      "modifiers": ["ctrl", "alt"],
+      "modifiers": [
+        "ctrl",
+        "alt"
+      ],
       "action": "toggle_file_explorer",
       "when": "file_explorer"
     }
-  ]
+  ],
+  "file_explorer": {
+    "show_hidden": true
+  }
 }
