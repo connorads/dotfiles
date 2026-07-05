@@ -109,12 +109,6 @@
       "skillPath": "skills/productivity/handoff/SKILL.md",
       "computedHash": "5d0f81e38abe6b984e1feaa731927de5291d040982106ac513cf54ec240e00ec"
     },
-    "high-end-visual-design": {
-      "source": "leonxlnx/taste-skill",
-      "sourceType": "github",
-      "skillPath": "skills/soft-skill/SKILL.md",
-      "computedHash": "7db385e4c5370e5a7fca9704a1361b056e4504ea6a03924bb86f33a4f00b5c73"
-    },
     "humanizer": {
       "source": "blader/humanizer",
       "sourceType": "github",
