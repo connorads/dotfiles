@@ -1,5 +1,9 @@
 # 4-day quarantine (minutes). Mirrors npm/pnpm/uv/bun gates.
 minimumReleaseAge = 5760
+# Fail closed when no version satisfies the age gate, instead of silently
+# falling back to the next-oldest satisfying version (aube's default is
+# advisory, unlike pnpm where strict is the default).
+minimumReleaseAgeStrict = true
 
 # Bloom-filter OSV MAL-* prefilter on lockfile installs (~380KB, ~0.1% FPR)
 advisoryBloomCheck = "on"
