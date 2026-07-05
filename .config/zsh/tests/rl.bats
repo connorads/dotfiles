@@ -609,7 +609,14 @@ SCRIPT
   export COUNT_FILE="$BATS_TEST_TMPDIR/timeout_count"
   export RL_RETRY_PAUSE_SECS=0
 
-  run zsh "$RL" 2 -t 0.5s -- "$helper"
+  # 5s, not a sub-second value: the timeout arms before the child's
+  # setsid->zsh->perl startup chain reaches the helper body, and under the
+  # parallel runner's load that chain can outlast a 0.5s timeout - the watchdog
+  # then kills the child before it writes COUNT_FILE, so the counter never
+  # reaches 2 (flaky under -j, fine in isolation). The margin must clear
+  # worst-case startup yet stay far below the 300s hang so the timeout still
+  # fires.
+  run zsh "$RL" 2 -t 5s -- "$helper"
 
   # Both iterations should have run (timeout killed the first, second ran normally)
   [ "$(cat "$COUNT_FILE")" -eq 2 ]
