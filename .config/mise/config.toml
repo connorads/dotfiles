@@ -138,6 +138,10 @@ run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 description = "Run only fast (non-integration) BATS tests"
 run = "cd \"$HOME\" && bats --filter-tags '!integration' --recursive .config/zsh/tests"
 
+[tasks.claude-hook-tests]
+description = "Run pytest suite for Claude Code hooks (mise python has no pytest; uv supplies it)"
+run = "cd \"$HOME/.claude/hooks\" && uv run --with pytest python -m pytest -q"
+
 [tasks.supply-audit]
 description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
 run = "osv-scanner scan source -r ."
