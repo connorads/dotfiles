@@ -9,6 +9,9 @@ minimum_release_age = "4d"
 minimum_release_age_excludes = ["claude", "codex"]
 github_attestations = true
 slsa = true
+# Re-verify SLSA/attestations at install time even when the lockfile already
+# has a checksum (otherwise verification is skipped on lockfile hits).
+locked_verify_provenance = true
 # Pin exact versions + checksums across platforms (the mise analogue of
 # flake.lock). lockfile_platforms records checksums for machines we don't
 # build on (current platform is always added regardless); other-platform
