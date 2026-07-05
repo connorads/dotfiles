@@ -1,50 +1,47 @@
 #!/usr/bin/env zsh
-# tmux-upstream: check forked tmux plugins for upstream updates
+# tmux-upstream: check pinned tmux plugins for upstream updates
 emulate -L zsh
 
 local verbose=false
 [[ "$1" == "-v" || "$1" == "--verbose" ]] && verbose=true
 
-local conf="$HOME/.config/tmux/tmux.conf"
-if [[ ! -f "$conf" ]]; then
-  print -u2 "tmux.conf not found at $conf"
+local nixmod="$HOME/.config/nix/modules/home-shared.nix"
+if [[ ! -f "$nixmod" ]]; then
+  print -u2 "home-shared.nix not found at $nixmod"
   return 1
 fi
 
-# Parse plugin forks from tmux.conf (connorads/* only)
-local -a plugins
-plugins=("${(@f)$(grep "^set -g @plugin" "$conf" | grep -o "connorads/[^']*")}")
+# Parse pins: pin_tmux_plugin "<name>" "<owner/repo>" "<sha>"
+local -a pins
+pins=("${(@f)$(sed -nE 's/^[[:space:]]*pin_tmux_plugin "([^"]+)" "([^"]+)" "([^"]+)".*/\1 \2 \3/p' "$nixmod")}")
 
-if [[ ${#plugins} -eq 0 ]]; then
-  print -u2 "No connorads/ plugins found in $conf"
+if [[ ${#pins} -eq 0 || -z "${pins[1]}" ]]; then
+  print -u2 "No pin_tmux_plugin entries found in $nixmod"
   return 1
 fi
 
-local max_name=0 name
-for plugin in "${plugins[@]}"; do
-  name="${plugin#connorads/}"
+local max_name=0 name repo sha
+for pin in "${pins[@]}"; do
+  name="${pin%% *}"
   (( ${#name} > max_name )) && max_name=${#name}
 done
 
 local has_behind=false
-local meta branch parent parent_branch compare behind commits
+local branch compare behind commits
 
-for plugin in "${plugins[@]}"; do
-  name="${plugin#connorads/}"
+for pin in "${pins[@]}"; do
+  name="${pin%% *}"
+  repo="${${pin#* }%% *}"
+  sha="${pin##* }"
 
-  # Get fork metadata: parent repo and default branches
-  meta=$(gh api "repos/$plugin" --jq '{db: .default_branch, pn: .parent.full_name, pdb: .parent.default_branch}' 2>/dev/null)
-  if [[ -z "$meta" ]]; then
-    printf "  %-${max_name}s   ? could not query fork\n" "$name"
+  branch=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null)
+  if [[ -z "$branch" ]]; then
+    printf "  %-${max_name}s   ? could not query $repo\n" "$name"
     continue
   fi
 
-  branch=$(echo "$meta" | jq -r '.db')
-  parent=$(echo "$meta" | jq -r '.pn')
-  parent_branch=$(echo "$meta" | jq -r '.pdb')
-
-  # Compare: base=fork, head=upstream → ahead_by = commits fork is behind
-  compare=$(gh api "repos/$parent/compare/connorads:${branch}...${parent_branch}" \
+  # Compare: base=pinned sha, head=upstream branch → ahead_by = commits behind
+  compare=$(gh api "repos/$repo/compare/${sha}...${branch}" \
     --jq '{behind: .ahead_by, commits: [.commits[] | .commit.message | split("\n")[0]]}' 2>/dev/null)
   if [[ -z "$compare" ]]; then
     printf "  %-${max_name}s   ? compare failed\n" "$name"
@@ -67,6 +64,6 @@ done
 
 if $has_behind; then
   echo ""
-  echo "Sync a fork:  gh repo sync connorads/<plugin>"
-  echo "Then update:  prefix + U (in tmux)"
+  echo "Update: review the upstream diff, then bump the sha in"
+  echo "  $nixmod (pin_tmux_plugin line) and rebuild (drs/hms)."
 fi
