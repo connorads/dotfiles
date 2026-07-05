@@ -166,31 +166,44 @@
     plugins_dir="$HOME/.config/tmux/plugins"
     mkdir -p "$plugins_dir"
 
-    ensure_tmux_plugin() {
+    # Plugins are pinned to exact commits (the tmux analogue of flake.lock).
+    # Activation converges the checkout to the pinned sha; offline it warns and
+    # keeps the existing checkout. Bump a plugin by updating its sha here.
+    pin_tmux_plugin() {
       plugin_name="$1"
       plugin_repo="$2"
+      plugin_rev="$3"
       plugin_path="$plugins_dir/$plugin_name"
 
-      if [ -d "$plugin_path/.git" ]; then
-        return 0
-      fi
-
-      if [ -e "$plugin_path" ]; then
+      if [ -e "$plugin_path" ] && [ ! -d "$plugin_path/.git" ]; then
         echo "tmux plugin path exists but is not a git repo: $plugin_path" >&2
         return 0
       fi
 
-      if ! ${pkgs.git}/bin/git clone --depth 1 "https://github.com/$plugin_repo.git" "$plugin_path" >/dev/null 2>&1; then
-        echo "warning: failed to clone tmux plugin $plugin_repo" >&2
+      if [ ! -d "$plugin_path/.git" ]; then
+        if ! ${pkgs.git}/bin/git init -q "$plugin_path" >/dev/null 2>&1 \
+          || ! ${pkgs.git}/bin/git -C "$plugin_path" remote add origin "https://github.com/$plugin_repo.git"; then
+          echo "warning: failed to init tmux plugin $plugin_repo" >&2
+          return 0
+        fi
+      fi
+
+      if [ "$(${pkgs.git}/bin/git -C "$plugin_path" rev-parse HEAD 2>/dev/null)" = "$plugin_rev" ]; then
+        return 0
+      fi
+
+      if ! ${pkgs.git}/bin/git -C "$plugin_path" fetch -q --depth 1 origin "$plugin_rev" >/dev/null 2>&1 \
+        || ! ${pkgs.git}/bin/git -C "$plugin_path" checkout -q --detach "$plugin_rev" >/dev/null 2>&1; then
+        echo "warning: failed to pin tmux plugin $plugin_repo to $plugin_rev" >&2
       fi
     }
 
-    ensure_tmux_plugin "tpm" "connorads/tpm"
-    ensure_tmux_plugin "tmux-resurrect" "connorads/tmux-resurrect"
-    ensure_tmux_plugin "tmux-continuum" "connorads/tmux-continuum"
-    ensure_tmux_plugin "tmux-thumbs" "connorads/tmux-thumbs"
-    ensure_tmux_plugin "tmux-nerd-font-window-name" "connorads/tmux-nerd-font-window-name"
-    ensure_tmux_plugin "tmux-cpu" "connorads/tmux-cpu"
-    ensure_tmux_plugin "tmux-fzf-links" "connorads/tmux-fzf-links"
+    pin_tmux_plugin "tpm" "connorads/tpm" "e261deb1b47614eed3400089ce7197dc68acc4eb"
+    pin_tmux_plugin "tmux-resurrect" "connorads/tmux-resurrect" "cff343cf9e81983d3da0c8562b01616f12e8d548"
+    pin_tmux_plugin "tmux-continuum" "connorads/tmux-continuum" "0698e8f4b17d6454c71bf5212895ec055c578da0"
+    pin_tmux_plugin "tmux-thumbs" "connorads/tmux-thumbs" "ae91d5f7c0d989933e86409833c46a1eca521b6a"
+    pin_tmux_plugin "tmux-nerd-font-window-name" "connorads/tmux-nerd-font-window-name" "0af812a228e1b9f538b8d220c6c59d82d7228973"
+    pin_tmux_plugin "tmux-cpu" "connorads/tmux-cpu" "bcb110d754ab2417de824c464730c412a3eb2769"
+    pin_tmux_plugin "tmux-fzf-links" "connorads/tmux-fzf-links" "820fc0cb39168486e3884b81592d69b57191a272"
   '';
 }
