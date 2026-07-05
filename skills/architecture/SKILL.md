@@ -205,7 +205,9 @@ what happened, instead of a `void` mutation — is cheap and broadly worthwhile,
 even in simple code. Event sourcing and async event choreography across services
 are heavy; use them only when the coordination genuinely warrants it, not as a
 default. Cross-context scenarios are then choreographed by events, not one giant
-function.
+function. Once an event crosses a process or service boundary, the
+`event-driven-architecture` skill owns the mechanics — propagation, reliable
+publication, delivery semantics, and versioning.
 
 ## Workflows, Transactions, Idempotency
 
@@ -226,8 +228,9 @@ across services and multiple transaction boundaries.
 Do not hold a database transaction open across network calls or long-running
 work. Any command, job, or step that may be retried needs an explicit
 idempotency strategy — idempotency key, natural unique constraint, deduplication
-record, state-machine guard, or transactional outbox/inbox. Do not rely on
-"probably safe" repeated side effects.
+record, state-machine guard, or transactional outbox/inbox (see
+`event-driven-architecture` for the outbox/inbox mechanism and idempotent
+consumers). Do not rely on "probably safe" repeated side effects.
 
 Concurrency control is distinct from idempotency: idempotency makes a retry safe;
 concurrency control stops two simultaneous writers clobbering each other — the
@@ -252,9 +255,12 @@ query it — a domain model is not a data model — so reads need not travel thr
 the aggregate. Default to the same store and repository for both. Reach for a
 separate read model — a denormalised view keyed for the query, kept fresh from
 the domain events the write side already emits — only when the read shape
-genuinely diverges or a performance wall demands it. Treat CQRS as a last resort,
-not a default: splitting read-only views out from command handlers captures most
-of the benefit without a second store.
+genuinely diverges or a performance wall demands it. This is an in-process read
+model fed by your own events; a consumer in another service keeping its own
+replica from your published events is event-carried state transfer — a different
+thing with its own contract, see `event-driven-architecture`. Treat CQRS as a
+last resort, not a default: splitting read-only views out from command handlers
+captures most of the benefit without a second store.
 
 ## Scale Rule
 
