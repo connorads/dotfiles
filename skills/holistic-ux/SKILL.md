@@ -18,7 +18,7 @@ You are a design practitioner who thinks in systems. Your role is to help design
 
 Most design requests describe **events** (surface-level symptoms). Good design addresses the deeper levels:
 
-```
+```text
 EVENTS        "Users are abandoning checkout"
      ↓
 PATTERNS      "This happens more on mobile, especially step 3"
@@ -29,6 +29,7 @@ MENTAL MODELS "We assumed users would complete this in one session"
 ```
 
 **Before designing, ask:**
+
 - Is this a surface fix or a systemic issue?
 - What patterns repeat across similar problems?
 - What structure enables this pattern?
@@ -39,6 +40,7 @@ Fixing events treats symptoms. Changing structures prevents recurrence.
 ### What's Behind the Curtain?
 
 Every interface has a backstage. A booking screen implies:
+
 - Staff availability systems
 - Calendar synchronisation
 - Payment processing
@@ -47,6 +49,7 @@ Every interface has a backstage. A booking screen implies:
 - Cancellation handling
 
 **Before designing screens, map:**
+
 - What systems support this interaction?
 - What happens if they fail?
 - Who else touches this journey?
@@ -76,32 +79,38 @@ Don't apply complicated solutions to clear problems. Don't apply best practices 
 
 ### Laws of UX You Should Internalise
 
-**Hick's Law: More choices = slower decisions**
+#### Hick's Law: More choices = slower decisions
+
 - Don't show 20 options; show 4-6 then "see more"
 - Progressive disclosure: reveal complexity gradually
 - Default selections reduce cognitive load
 
-**Fitts's Law: Target size and distance matter**
+#### Fitts's Law: Target size and distance matter
+
 - Primary actions: large, easy to reach
 - Mobile: 44×44px minimum touch targets
 - Destructive actions: smaller, further away
 
-**Miller's Law: Working memory holds ~7 items**
+#### Miller's Law: Working memory holds ~7 items
+
 - Chunk information into groups of 3-5
 - Use visual grouping (whitespace, borders)
 - Long forms: break into steps
 
-**Peak-End Rule: People remember peaks and endings**
+#### Peak-End Rule: People remember peaks and endings
+
 - Design the high point deliberately
 - End experiences on a positive note
 - Error states are remembered; make recovery graceful
 
-**Jakob's Law: Users spend most time on other sites**
+#### Jakob's Law: Users spend most time on other sites
+
 - Follow conventions unless you have a strong reason
 - Place navigation where people expect it
 - Use familiar patterns (hamburger menu, shopping cart icon)
 
-**Aesthetic-Usability Effect: Pretty feels easier**
+#### Aesthetic-Usability Effect: Pretty feels easier
+
 - Good visual design increases tolerance for friction
 - But don't sacrifice usability for aesthetics
 - Visual polish is the last 10%, not the first
@@ -109,18 +118,22 @@ Don't apply complicated solutions to clear problems. Don't apply best practices 
 ### Cognitive Load Management
 
 **Intrinsic load:** Complexity inherent to the task
+
 - Can't be reduced, only supported
 - Provide scaffolding (tooltips, examples)
 
 **Extraneous load:** Complexity from poor design
+
 - Must be eliminated
 - Remove unnecessary steps, confusing labels, visual noise
 
 **Germane load:** Effort spent learning/understanding
+
 - Should be supported
 - Consistent patterns, clear mental models
 
 **Practical application:**
+
 - Every element on screen should justify its presence
 - If something needs explanation, simplify it first
 - Animation should guide attention, not distract
@@ -137,7 +150,6 @@ Users don't want your product; they want progress. Every job has three dimension
 
 **Job Story format:**
 > When [situation], I want to [motivation], so I can [expected outcome].
-
 > When I'm signing up for a new service, I want to generate a strong password automatically, so I can stay secure without effort.
 
 Design for the full job, not just the functional bit.
@@ -150,7 +162,7 @@ Before producing anything, ask: **What decision will this support?**
 
 ### Decision Tree
 
-```
+```text
 "What do I need to understand or communicate?"
                     │
         ┌───────────┴───────────┐
@@ -187,6 +199,7 @@ Heuristic Review          What scope?
 **Purpose:** Evaluate existing design against established principles.
 
 **Format:**
+
 ```markdown
 ## Heuristic Review: [Screen/Feature Name]
 
@@ -214,14 +227,15 @@ Heuristic Review          What scope?
 - 1: Cosmetic - polish issue
 ```
 
-Use **Nielsen's 10 Heuristics** (see references/heuristics.md).
+Use **Nielsen's 10 Heuristics** (see [references/heuristics.md](references/heuristics.md)).
 
 ### User Flow
 
 **Purpose:** Map the steps a user takes to complete a specific task.
 
 **Format (ASCII):**
-```
+
+```text
 [Start]
     │
     ↓
@@ -253,6 +267,7 @@ Use **Nielsen's 10 Heuristics** (see references/heuristics.md).
 ```
 
 **Format (Mermaid):**
+
 ```mermaid
 graph TD
     A[Landing] --> B{Logged in?}
@@ -274,6 +289,7 @@ Include: entry points, decision points, error states, exit points.
 **Purpose:** Capture user's experience across touchpoints, including emotions.
 
 **Format:**
+
 ```markdown
 ## Journey Map: [User Goal]
 
@@ -295,6 +311,7 @@ Include: entry points, decision points, error states, exit points.
 **Purpose:** Map the full service ecosystem, including backstage operations.
 
 **Format:**
+
 ```markdown
 ## Service Blueprint: [Service Name]
 
@@ -331,7 +348,8 @@ Include: entry points, decision points, error states, exit points.
 **Purpose:** Communicate layout and hierarchy without visual design detail.
 
 **Format (ASCII):**
-```
+
+```text
 ┌─────────────────────────────────────────────────┐
 │  [Logo]              [Nav 1] [Nav 2] [Nav 3]    │
 ├─────────────────────────────────────────────────┤
@@ -367,18 +385,21 @@ Include: hierarchy (what's most important), states (error, loading, empty), resp
 Before delivering any output, verify:
 
 ### Thinking Checks
+
 - [ ] Did I identify the real problem, not just the symptom?
 - [ ] Did I consider what happens beyond the screen?
 - [ ] Did I match my approach to the problem complexity?
 - [ ] Did I design for the full job (functional + emotional + social)?
 
 ### Design Checks
+
 - [ ] Does every element serve a purpose?
 - [ ] Is cognitive load minimised?
 - [ ] Are conventions followed (or deliberately broken with reason)?
 - [ ] Are the peaks and endings designed intentionally?
 
 ### Accessibility Checks
+
 - [ ] 4.5:1 contrast for text, 3:1 for UI components
 - [ ] All functionality keyboard accessible
 - [ ] Form inputs have visible labels
@@ -386,6 +407,7 @@ Before delivering any output, verify:
 - [ ] Focus states are visible
 
 ### Output Checks
+
 - [ ] Does this output support the decision that needs to be made?
 - [ ] Is the fidelity appropriate (not over-designed for the stage)?
 - [ ] Are annotations clear for whoever receives this?
@@ -395,17 +417,23 @@ Before delivering any output, verify:
 ## Quick Reference
 
 **Check colour contrast:**
+
+From this skill directory:
+
 ```bash
-python ~/.agents/skills/holistic-ux/scripts/contrast-check.py #333333 #ffffff
+python scripts/contrast-check.py '#333333' '#ffffff'
 ```
 
+Script: [scripts/contrast-check.py](scripts/contrast-check.py)
+
 **Deep dives:**
-- Mental models & systems thinking → `references/mental-models.md`
-- Psychology & Laws of UX → `references/design-psychology.md`
-- Service blueprints & JTBD → `references/service-design.md`
-- WCAG 2.1 AA checklist → `references/accessibility.md`
-- UI patterns with when-to-use → `references/patterns.md`
-- Nielsen's heuristics & Norman's principles → `references/heuristics.md`
+
+- [Mental models & systems thinking](references/mental-models.md)
+- [Psychology & Laws of UX](references/design-psychology.md)
+- [Service blueprints & JTBD](references/service-design.md)
+- [WCAG 2.1 AA checklist](references/accessibility.md)
+- [UI patterns with when-to-use](references/patterns.md)
+- [Nielsen's heuristics & Norman's principles](references/heuristics.md)
 
 ---
 
