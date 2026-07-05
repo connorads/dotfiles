@@ -224,7 +224,7 @@ lazydocker             # TUI to browse/exec/log/prune containers (nix)
 
 ## Supply Chain & Update Strategy
 
-Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) - only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled.
+Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) - only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled; `locked_verify_provenance = true` re-verifies provenance at install time even when the lockfile already has a checksum (otherwise skipped on lockfile hits).
 
 **Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform - the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
 
@@ -253,6 +253,7 @@ mise lock -g                                # refresh global lockfile checksums 
 **aube** (primary npm backend for mise): config at `~/.config/aube/config.toml`. Set via mise: `npm.package_manager = "aube"`. Layered defenses beyond a simple age gate:
 
 - `minimumReleaseAge = 5760` (minutes - aube uses minutes, bun uses seconds, pnpm uses minutes, npm uses days)
+- `minimumReleaseAgeStrict = true` - fail closed when no version satisfies the age gate. aube's default is advisory (silently falls back to the next-oldest satisfying version), unlike pnpm where strict is the default
 - `advisoryBloomCheck = "on"` - ~380KB bloom-filter prefilter for OSV `MAL-*` advisories on lockfile installs (~0.1% FPR, ~1 round-trip per typical install)
 - `trustPolicy = "no-downgrade"` (default) - fails install if a package's trust evidence weakens (e.g. previously had SLSA provenance, now doesn't). Real catch: `@mariozechner/clipboard-darwin-arm64@0.3.6` lost provenance after a CI refactor at 0.3.3 - root pkg kept it but platform sibling packages didn't. Same publisher, same npm signing key - added to `trustPolicyExclude` with reasoning in the config comment
 - `lowDownloadThreshold = 1000` (default) - refuses packages with <1000 weekly downloads as typosquat defense. Niche-but-trusted tools listed in `allowedUnpopularPackages`
