@@ -104,3 +104,11 @@ Everything above is a choice with trade-offs. These two are not:
 - Consumer-driven contract testing (e.g. Pact) - see the `testing` skill.
 - Parsing the wire payload back into a trusted domain type at the boundary -
   parse-don't-validate, see `architecture` / `typescript`.
+- End-to-end observability across the async hops this skill keeps flagging ("where
+  is order 123 stuck?"): propagate **W3C Trace Context** (`traceparent` /
+  `tracestate`) in message headers so one trace spans producer -> broker ->
+  consumer, and prefer OTel span **links** over parent-child (a consumer may
+  process minutes later, so nesting distorts trace duration). Adopt the OTel
+  messaging semantic conventions (`messaging.system`, `messaging.destination.name`,
+  PRODUCER/CONSUMER span kinds). The structured-log and correlation-ID foundation
+  is the `architecture` skill's Observability section.

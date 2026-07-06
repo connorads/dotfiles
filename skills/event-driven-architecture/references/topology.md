@@ -74,8 +74,10 @@ patterns, freely combinable, not a ladder:
   consumers keep a local replica and don't call back. Autonomy at the cost of
   duplicated data.
 - **Event sourcing** - the event log *is* the source of truth; current state is a
-  fold over events. Full audit and replay; heavy, and versioning gets hard (see
-  `schema-versioning.md`).
+  fold over events. Full audit and replay; heavy, and versioning gets hard - though
+  Greg Young's own line is that event-sourced systems are *easier* to version once
+  you know the patterns, hard mainly when you can't take the system down for a
+  two-version migration (see `schema-versioning.md`).
 - **CQRS** - separate the write model from the read model. Often paired with
   events but independent of them.
 

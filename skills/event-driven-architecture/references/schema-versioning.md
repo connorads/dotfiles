@@ -42,9 +42,13 @@ producer changes safe.
 
 The nuance - and it is contested - is that Postel's "be liberal in what you
 accept" taken too far hides divergent interpretations and accrues interop debt.
-Draw the line at *structure vs meaning*: be liberal about unknown or extra
-fields, strict about ambiguous or malformed *core* data you actually consume.
-Tolerate what you ignore; validate what you use.
+Martin Thomson's IETF draft *The Harmful Consequences of the Robustness Principle*
+(`draft-thomson-postel-was-wrong`) makes the case directly: liberal acceptance
+causes long-term *protocol decay* as divergent interpretations accrete, so it
+argues for active maintenance over blanket tolerance. Draw the line at *structure
+vs meaning*: be liberal about unknown or extra fields, strict about ambiguous or
+malformed *core* data you actually consume. Tolerate what you ignore; validate what
+you use.
 
 ## Handling A Breaking Change
 
@@ -71,6 +75,20 @@ of in-flight runs (Temporal's "non-deterministic error"). The fix is the direct
 analogue of upcasting - version the code path (`patched` / `GetVersion`) so old
 runs replay on the old branch. This is a footnote, not another instance of the
 rules above: the history is engine-internal, not a published contract.
+
+## Immutable Logs vs The Right To Be Forgotten
+
+An append-only log's great virtue collides with GDPR Article 17 / CCPA: you cannot
+surgically delete one subject's record from a Kafka topic or an event-sourced store
+without breaking offsets and the fold. The standard answer is **crypto-shredding** -
+encrypt each subject's PII under a per-subject key, then destroy the key on erasure
+so the ciphertext becomes unrecoverable noise while the log's structure and offsets
+stay intact. Pair it with tokenisation and a user-deletions topic to cascade the
+erasure to downstream **ECST replicas** (your own event-carried state transfer has
+already spread that PII into other services). Real costs: per-key KMS overhead,
+on-the-fly crypto, and it is a defensible interpretation, not a guaranteed legal
+safe harbour. Read "the log is immutable" as "never rewrite an event's *shape*",
+not "PII lives forever" - and get the erasure design reviewed by legal.
 
 ## Format Choice Shapes Evolution
 
