@@ -23,6 +23,13 @@ state=${1:-}
 kind=${2:-}
 pane=${AGENT_STATE_PANE:-${TMUX_PANE:-}}
 
+drain_hook_stdin() {
+	[ -t 0 ] && return 0
+	cat >/dev/null 2>&1 || true
+}
+
+drain_hook_stdin
+
 [ -n "$pane" ] || exit 0
 command -v tmux >/dev/null 2>&1 || exit 0
 

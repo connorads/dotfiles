@@ -35,6 +35,9 @@ ason() { run env AGENT_STATE_PANE="$1" sh "$SCRIPT" "$2" "${3:-}"; }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
+large_hook_payload() {
+  awk 'BEGIN { for (i = 0; i < 5000; i++) print "{\"tool\":\"PostToolUse\",\"payload\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}" }'
+}
 
 @test "working sets the pane state and rolls up to the window" {
   pane=$(tx display-message -p -t s '#{pane_id}')
@@ -43,6 +46,23 @@ wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
   [ "$status" -eq 0 ]
   [ "$(pstate "$pane")" = working ]
   [ "$(wstate "$win")" = working ]
+}
+
+@test "large ignored hook stdin is drained before setting working" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+
+  run bash -o pipefail -c "$(declare -f large_hook_payload); large_hook_payload | env AGENT_STATE_PANE=\"\$1\" sh \"\$2\" working codex" bash "$pane" "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  [ "$(pstate "$pane")" = working ]
+}
+
+@test "large ignored hook stdin is drained before no-pane no-op" {
+  run bash -o pipefail -c "$(declare -f large_hook_payload); large_hook_payload | env -u AGENT_STATE_PANE -u TMUX_PANE sh \"\$1\" working codex" bash "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
 }
 
 @test "agent kind is recorded when supplied" {
