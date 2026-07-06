@@ -74,7 +74,10 @@ EOF
 {"rate_limit":{"primary_window":{"used_percent":10,"reset_after_seconds":10800},
  "secondary_window":{"used_percent":86,"reset_after_seconds":216000}}}
 EOF
-  touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json"
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":400,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
+EOF
+  touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json" "$HOME/.cache/cosine-usage.json"
 }
 
 @test "wide status shows both cpu and the ram percentage pill" {
@@ -191,6 +194,7 @@ EOF
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
   [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
+  [[ "$plain" == *" │ S:40%·"*d* ]]
 }
 
 @test "medium-wide status groups weekly usage with weekly reset" {
@@ -202,6 +206,7 @@ EOF
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
   [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
+  [[ "$plain" == *" │ S:40%·"*d* ]]
 }
 
 @test "narrow full status keeps the previous 5-hour-only shape" {
@@ -213,8 +218,23 @@ EOF
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" == *"C:4%·"* ]]
   [[ "$plain" == *"X:10%·3h"* ]]
+  [[ "$plain" == *"S:40%·"* ]]
   [[ "$plain" != *" 38%"* ]]
   [[ "$plain" != *" 86%"* ]]
+}
+
+@test "status renders cosine when it is the only usage cache" {
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":720,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
+EOF
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"S:72%·"*d* ]]
+  [[ "$plain" != *"C:"* ]]
+  [[ "$plain" != *"X:"* ]]
 }
 
 @test "missing weekly fields fall back to 5-hour-only provider output" {

@@ -63,7 +63,7 @@
 | `Ctrl+b Alt+T` | Tailscale serve down (quick teardown) |
 | `Ctrl+b K` | process closer (user processes) |
 | `Ctrl+b Alt+K` | process closer (all processes via sudo) |
-| `Ctrl+b a` | AI usage (Claude + Codex) |
+| `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window, bypass perms; copy cmd/id) |
 | `Ctrl+b Alt+i` | copy local/remote clipboard image path (local tmux only; use `shotpath` from Mac for remote tmux) |
