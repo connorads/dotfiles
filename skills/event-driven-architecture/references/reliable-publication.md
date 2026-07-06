@@ -49,6 +49,21 @@ trade-off: polling buys zero infrastructure on any datastore (latency bounded by
 the interval); CDC buys lower load and latency and no relay concurrency, at the
 cost of replication-slot / WAL weight.
 
+## Durable Execution And The Outbox
+
+A durable-execution engine can subsume the outbox, but only where its journal is
+**co-transactional with your data**. DBOS writes the step checkpoint and the
+business update in the same database transaction - "both ... are durably recorded" -
+so the outbox row *becomes* the workflow-status insert and there is no relay.
+Temporal, Restate, Step Functions, Cloudflare Workflows and Vercel keep a
+*separate* journal, so they **relocate** the dual-write (your DB <-> the engine's
+journal) rather than remove it, and close it exactly as the outbox's consumer side
+does: the activity is retried at-least-once and must be idempotent. So the
+marketing - Restate: "you no longer need a separate ... transactional outbox" -
+holds only inside the engine's boundary, the same caveat this skill makes about
+Kafka EOS. The reusable framing: the outbox turns an atomicity problem into an
+idempotency problem, and durable execution takes the atomicity half only.
+
 ## Inbox / Idempotent Receiver
 
 The outbox's counterpart on the consumer side. Record each processed message id

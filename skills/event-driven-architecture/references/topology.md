@@ -39,6 +39,30 @@ placed but not yet paid). Design explicit countermeasures - semantic locks, a
 is the concrete shape of the `architecture` skill's "eventual consistency must
 still converge."
 
+## A Third Option: Durable Execution
+
+Not a fourth topology - **orchestration done as code**. A durable-execution engine
+runs your orchestrator *as* an ordinary function: the workflow code *is* the
+process manager, its activities *are* the commands. The field is crowded - Temporal,
+AWS Step Functions, Azure Durable Functions, Restate, DBOS, Inngest, Cloudflare
+Workflows, Vercel's WDK, Conductor (Orkes, not Netflix - OSS maintenance ended
+2023). The mechanism is the same everywhere: the engine records each step as it
+runs and, on failure, "resumes from the last completed step" (Restate) by
+deterministic replay of an event-sourced history (Azure Durable's orchestrators
+"use event sourcing to ensure reliable execution").
+
+It softens the god-service risk rather than refuting it: runtime-enforced pure
+control flow keeps IO-bearing logic out of the centre - coordination runs in your
+application code, not a separate service you deploy and scale apart. Sagas change
+in ergonomics only: the engine owns state, retries, and timers, and compensation
+becomes ordinary reverse-order code - but the **ACD-not-ACID** caveat one section
+above is unchanged, since no engine gives you global locks or hides intermediate
+states. Reach for an engine when the flow is long-running (timers, human approval,
+day-long waits), branches, compensates, and must be observable and
+crash-resumable - i.e. exactly when you'd otherwise hand-roll state, retries, and
+recovery. This is the `architecture` skill's "reach for a saga or durable workflow"
+trigger, made concrete.
+
 ## Fowler's Four Are Orthogonal
 
 The most common source of muddled EDA arguments. These are four distinct
