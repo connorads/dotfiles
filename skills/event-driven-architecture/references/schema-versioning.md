@@ -65,6 +65,13 @@ Greg Young's rule for event sourcing generalises well: if you can't convert the
 old event into the new one by a pure function, it isn't a new *version* - it's a
 new *event*. Give it a new name rather than pretending it's the same fact.
 
+The same rule reaches durable-execution engines: a workflow's execution history
+*is* an event-sourced log, so editing workflow code can break deterministic replay
+of in-flight runs (Temporal's "non-deterministic error"). The fix is the direct
+analogue of upcasting - version the code path (`patched` / `GetVersion`) so old
+runs replay on the old branch. This is a footnote, not another instance of the
+rules above: the history is engine-internal, not a published contract.
+
 ## Format Choice Shapes Evolution
 
 - **Avro** - schema travels with the data (or via a registry); strong,

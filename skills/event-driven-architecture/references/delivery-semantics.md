@@ -65,6 +65,13 @@ you hammering a struggling downstream; jitter stops a fleet of consumers
 retrying in lockstep and synchronising into a thundering herd. A fixed-interval
 retry does both wrong.
 
+**Durable-execution engines** (Temporal, Step Functions, Restate) productise all
+of the above - retry cap, backoff-plus-jitter, transient-vs-permanent
+classification, DLQ - as configuration rather than hand-rolled consumer code. What
+they do *not* change is the exactly-once boundary above: the activity still runs
+at-least-once, so external side effects still need their own idempotency. Swap
+broker for engine; the obligation is unchanged.
+
 ## Ordering
 
 Global ordering across a distributed queue is expensive and usually
