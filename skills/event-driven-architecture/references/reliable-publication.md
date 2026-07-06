@@ -49,6 +49,17 @@ trade-off: polling buys zero infrastructure on any datastore (latency bounded by
 the interval); CDC buys lower load and latency and no relay concurrency, at the
 cost of replication-slot / WAL weight.
 
+## Kafka Transactions vs Outbox
+
+In a Kafka shop the live alternative to an outbox is **Kafka transactions (EOS)**
+plus idempotent DB writes - the consume-transform-produce loop committing consumer
+offset and produced records atomically. No outbox table, no relay. The honest
+limit: EOS spans a **single Kafka cluster** only. The moment an external side
+effect is in scope - a DB row, an API call - it does *not* close the dual-write
+gap, so you are back to idempotent writes or an outbox. Both outbox and EOS leave
+the consumer at at-least-once; EOS holds only inside its boundary (see
+`delivery-semantics.md`).
+
 ## Durable Execution And The Outbox
 
 A durable-execution engine can subsume the outbox, but only where its journal is

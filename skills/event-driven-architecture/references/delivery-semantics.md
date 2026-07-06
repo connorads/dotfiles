@@ -43,6 +43,16 @@ first:
 Dedup by a business/message key, not by delivery metadata - the same logical
 event redelivered must carry the same key.
 
+**Where duplicates actually come from (Kafka).** The common source is not broker
+redelivery but consumer-group **rebalancing**: a partition can be reassigned in the
+window between processing a message and committing its offset - "the danger zone" -
+so the new owner reprocesses from the last commit. Rebalances also invalidate local
+caches and force state rebuild, spiking lag and compounding head-of-line blocking.
+Mitigate with the **CooperativeSticky** assignor (incremental, default since Kafka
+3.0), **static group membership** (avoids rebalances on rolling restarts), and
+committing offsets in the `onRevoke` callback. This is the mechanism behind
+"design for at-least-once" - the duplicates are routine, not a broker edge case.
+
 ## Poison Messages And Dead Letters
 
 Some messages will never succeed: malformed payload, a referenced record that no
@@ -57,6 +67,17 @@ queue or spins forever.
   contention) deserves a retry; a *permanent* one (validation error, 400) should
   go straight to the DLQ. Retrying a permanent failure just wastes attempts
   before the inevitable dead-letter.
+
+Getting messages *out* of a DLQ is the hard half, not a formality. Watch four
+hazards: a **replay storm** - bulk redrive before fixing the root cause re-poisons
+and can overwhelm a freshly-recovered downstream; **reordering** - a dead-lettered
+message was set aside while later ones proceeded, so redrive violates order (AWS
+warns against pairing a DLQ with a FIFO queue when order matters); **duplicate side
+effects** - a replayed message may have already triggered partial effects, so
+idempotency on the redrive path is non-negotiable; and **non-terminal DLQs** - a
+DLQ with its own redrive policy silently loses messages, so keep it terminal.
+Discipline: fix the root cause first, then dry-run a sample, canary ~10%, and ramp
+under a rate limit.
 
 ## Backoff
 
@@ -86,6 +107,13 @@ process in parallel.
 - A **competing-consumer queue** (RabbitMQ/SQS standard) maximises throughput by
   handing messages to whichever consumer is free - which *reorders* them. SQS
   FIFO restores per-group order at the cost of throughput.
+
+Keying for order has a failure mode: a **skewed or low-cardinality key**
+(partitioning by tenant or user id) concentrates traffic on a **hot partition**.
+Kafka won't rebalance records off a hot key, and adding partitions doesn't help a
+single hot key - you get concentrated lag while peers idle. Salting or a composite
+key spreads the load but **sacrifices the per-key ordering you just bought** - a
+concrete instance of the law below.
 
 You cannot have unbounded per-key ordering *and* unbounded fan-out parallelism
 at once. Pick the ordering scope you actually need - usually per-key - and size
