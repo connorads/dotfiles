@@ -15,6 +15,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `test-coverage` | Coverage audits and enforcement | `npx skills add connorads/dotfiles -s test-coverage` |
 | `mechanical-enforcement` | Linter/type rules that kill bug classes | `npx skills add connorads/dotfiles -s mechanical-enforcement` |
 | `hk` | Set up `hk` git hooks | `npx skills add connorads/dotfiles -s hk` |
+| `cloudflare-workers-deployments` | Deploy and protect Cloudflare Workers with Workers Builds and Access | `npx skills add connorads/dotfiles -s cloudflare-workers-deployments` |
 | `accessibility` | Screen-reader-first a11y (WCAG 2.2 AA) | `npx skills add connorads/dotfiles -s accessibility` |
 | `holistic-ux` | UX via systems thinking and service design | `npx skills add connorads/dotfiles -s holistic-ux` |
 | `homebrew-cask-authoring` | Author and submit Homebrew Casks | `npx skills add connorads/dotfiles -s homebrew-cask-authoring` |
