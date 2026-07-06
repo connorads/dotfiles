@@ -29,6 +29,12 @@ test("renderWorkflowStartPrompt asks the model to call workflow with an inline s
   assert.match(prompt, /Use the tool's `script` input/u);
   assert.match(prompt, /Do not use `name` or `scriptPath`/u);
   assert.match(prompt, /export const meta/u);
+  assert.match(prompt, /`phase\(title\)` returns void/u);
+  assert.match(prompt, /agent\(prompt, options\?\)/u);
+  assert.match(prompt, /parallel\(\[\(\) => agent\(\.\.\.\)\]\)/u);
+  assert.match(prompt, /Never write `phase\("discover", \(\) => parallel\(\.\.\.\)\)`/u);
+  assert.match(prompt, /Never write `agent\(\{ name, prompt \}\)`/u);
+  assert.match(prompt, /const \[a, b\] = await parallel/u);
   assert.match(prompt, /review architecture and tests/u);
 });
 

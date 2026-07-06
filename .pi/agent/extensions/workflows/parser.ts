@@ -58,6 +58,9 @@ export function parseWorkflowScript(source: string): Result<ParsedWorkflowScript
   const deterministic = rejectStaticNondeterminism(program);
   if (!deterministic.ok) return deterministic;
 
+  const dsl = rejectStaticDslMisuse(program);
+  if (!dsl.ok) return dsl;
+
   return ok({
     meta: meta.value,
     body: source.slice(first.end).trimStart(),
@@ -195,6 +198,37 @@ function rejectStaticNondeterminism(program: ProgramNode): Result<void, Workflow
   return failure ? err(failure) : ok(undefined);
 }
 
+function rejectStaticDslMisuse(program: ProgramNode): Result<void, WorkflowParseError> {
+  let failure: WorkflowParseError | undefined;
+  walk(program, (node) => {
+    if (failure || !isCallExpressionNode(node) || !isIdentifierNode(node.callee)) return;
+
+    if (node.callee.name === "phase" && node.arguments.length > 1) {
+      failure = new WorkflowParseError(
+        'phase(title) returns void; call phase("name") as a statement, then run workflow work separately',
+      );
+      return;
+    }
+
+    if (node.callee.name === "agent" && node.arguments[0]?.type === "ObjectExpression") {
+      failure = new WorkflowParseError(
+        "agent(prompt, options?) expects the prompt as the first argument; do not use agent({ name, prompt })",
+      );
+      return;
+    }
+
+    if (node.callee.name === "parallel" && node.arguments[0]?.type === "ArrayExpression") {
+      const array = node.arguments[0] as ArrayExpressionNode;
+      if (array.elements.some((element) => element === null || isDefinitelyNotFunctionExpression(element))) {
+        failure = new WorkflowParseError(
+          "parallel([() => agent(...)]) expects an array of functions, not direct agent calls or promises",
+        );
+      }
+    }
+  });
+  return failure ? err(failure) : ok(undefined);
+}
+
 function walk(node: Node, visit: (node: AnyNode) => void): void {
   visit(node as AnyNode);
   for (const key of Object.keys(node)) {
@@ -222,8 +256,22 @@ function isNewExpressionNode(node: AnyNode): node is NewExpressionNode {
   return node.type === "NewExpression";
 }
 
+function isCallExpressionNode(node: AnyNode): node is CallExpressionNode {
+  return node.type === "CallExpression";
+}
+
 function isIdentifierNode(node: ExpressionNode | IdentifierNode): node is IdentifierNode {
   return node.type === "Identifier";
+}
+
+function isFunctionExpression(node: ExpressionNode): boolean {
+  return node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression";
+}
+
+function isDefinitelyNotFunctionExpression(node: ExpressionNode): boolean {
+  if (isFunctionExpression(node)) return false;
+  if (node.type === "Identifier" || node.type === "MemberExpression") return false;
+  return true;
 }
 
 type AnyNode = Node & { readonly type: string };
@@ -271,6 +319,11 @@ type MemberExpressionNode = Node & {
 };
 type NewExpressionNode = Node & {
   readonly type: "NewExpression";
+  readonly callee: ExpressionNode | IdentifierNode;
+  readonly arguments: ExpressionNode[];
+};
+type CallExpressionNode = Node & {
+  readonly type: "CallExpression";
   readonly callee: ExpressionNode | IdentifierNode;
   readonly arguments: ExpressionNode[];
 };
