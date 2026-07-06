@@ -2,7 +2,7 @@
 
 ## Tools
 
-- Prefer `mise` for runtime/tool versions. For GitHub Actions, use `jdx/mise-action@v3`; generate new workflows with `mise generate github-action`.
+- Prefer `mise` for runtime/tool versions. For GitHub Actions, use `jdx/mise-action@v4`; generate new workflows with `mise generate github-action`.
 - Never use `npm` or `npx`; use `pnpm` or `pnpm dlx`. Use `bun` only when the project already does.
 - Do not disable package install-script protections globally. If native modules or codegen need install scripts, ask before allow-listing narrowly.
 - Use `gh` CLI for GitHub issues and PRs. If you fix a mentioned issue, close it with `Closes #NO` in the commit message.
