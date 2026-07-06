@@ -1,0 +1,95 @@
+#!/usr/bin/env zsh
+# claude-commit-note-check: verify the built-in Bash-tool git note still exists in
+# the installed claude binary. The system-prompt append at ~/.claude/system-append.md
+# countermands that note ("commit only when the user asks / branch first"); if
+# Anthropic removes or rewords it, the override is stale and should be updated.
+# Read-only - never patches. usage: claude-commit-note-check [--check|--reapply] [binary ...]
+# --reapply: install-hook-friendly - clears the stale marker when both strings are
+#            present, else warns loudly, writes the marker, and exits 0 so a claude
+#            update is never blocked. The next shell start surfaces the marker.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local check_name=claude-commit-note-check
+local marker="$HOME/.cache/claude-commit-note-check.stale"
+# Strings the override relies on; keep in sync with ~/.claude/system-append.md.
+local -a notes=(
+  'Commit or push only when the user asks'
+  'If on the default branch, branch first'
+)
+
+local mode=check
+while (( $# )); do
+  case $1 in
+    --check)   mode=check;   shift ;;
+    --reapply) mode=reapply; shift ;;
+    --help|-h) awk 'NR==1{next} /^emulate /{exit} {print}' "$wrapper"; return 0 ;;
+    *) break ;;
+  esac
+done
+
+# Targets: explicit paths, or the active mise claude install (shared resolver).
+local -a targets
+if (( $# )); then
+  targets=("$@")
+else
+  source "${wrapper:h}/_claude-patch-targets-lib"
+  local resolved
+  resolved=$(needle_patch_resolve_targets 0) || return $?
+  targets=("${(@f)resolved}")
+fi
+
+# Record which strings went missing so the marker (and next shell) name them.
+_note_check_write_marker() {
+  local target="$1"; shift
+  local -a gone=("$@")
+  local when g
+  when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+  mkdir -p "${marker:h}" 2>/dev/null || true
+  {
+    print -r -- "$check_name: the built-in git note has changed."
+    print -r -- "target: $target"
+    print -r -- "when:   $when"
+    print -r -- "missing string(s) the ~/.claude/system-append.md override relies on:"
+    for g in "${gone[@]}"; do print -r -- "  - $g"; done
+    print -r -- "Action: update ~/.claude/system-append.md (and the strings in"
+    print -r -- "$check_name) to the new wording, or drop the override if it is gone."
+  } > "$marker" 2>/dev/null || true
+}
+
+local rc=0 stale_any=0 real note g
+local -a gone
+for real in "${targets[@]}"; do
+  if [[ ! -f $real ]]; then
+    print -u2 "skip (missing): $real"
+    rc=1
+    continue
+  fi
+  gone=()
+  for note in "${notes[@]}"; do
+    LC_ALL=C /usr/bin/grep -qaF -- "$note" "$real" || gone+=("$note")
+  done
+  if (( ${#gone} == 0 )); then
+    print "ok: $real (both built-in git-note strings present)"
+  else
+    stale_any=1
+    rc=1
+    print -u2 ""
+    print -u2 "################################################################"
+    print -u2 "# $check_name: STALE - built-in git note changed"
+    print -u2 "#   target: $real"
+    for g in "${gone[@]}"; do print -u2 "#   missing: $g"; done
+    print -u2 "# The ~/.claude/system-append.md override may no longer apply."
+    print -u2 "# Marker: $marker"
+    print -u2 "################################################################"
+    _note_check_write_marker "$real" "${gone[@]}"
+  fi
+done
+
+if [[ $mode == reapply ]]; then
+  (( stale_any )) || rm -f "$marker" 2>/dev/null
+  return 0
+fi
+return $rc
