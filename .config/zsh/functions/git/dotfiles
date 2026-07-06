@@ -1,9 +1,34 @@
 #!/usr/bin/env zsh
-# dotfiles: git wrapper for bare-repo dotfiles with codex/claude config renormalisation
+# dotfiles: git wrapper for bare-repo dotfiles with codex/claude config stat refresh
 emulate -L zsh
+
+_dotfiles_git() {
+  command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
+}
+
+_dotfiles_refresh_clean_filtered() {
+  local file line mode oid
+  for file in .codex/config.toml .claude/settings.json; do
+    _dotfiles_git ls-files --error-unmatch -- "$file" >/dev/null 2>&1 || continue
+    [[ -e "$HOME/$file" ]] || continue
+
+    # If the clean-filtered worktree matches the index, update only the cached
+    # stat data. Real cleaned content changes stay unstaged and visible.
+    if _dotfiles_git diff --quiet -- "$file"; then
+      line="$(_dotfiles_git ls-files -s -- "$file" 2>/dev/null)" || continue
+      [[ -n "$line" ]] || continue
+      mode="${line%% *}"
+      line="${line#* }"
+      oid="${line%% *}"
+      [[ -n "$mode" && -n "$oid" ]] || continue
+      _dotfiles_git update-index --cacheinfo "$mode,$oid,$file" 2>/dev/null
+    fi
+  done
+}
+
 case ${1:-} in
   status|diff|stash)
-    command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" add --renormalize .codex/config.toml .claude/settings.json 2>/dev/null
+    _dotfiles_refresh_clean_filtered
     ;;
 esac
-command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
+_dotfiles_git "$@"

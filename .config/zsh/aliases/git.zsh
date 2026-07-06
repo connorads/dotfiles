@@ -17,12 +17,10 @@ alias wtm='wt-finish --mode local'
 
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
-# Renormalise codex config first so the clean filter strips [projects.*]
-# from the index — otherwise lazygit shows a perpetual diff (it bypasses
-# the dotfiles wrapper's `add --renormalize` shim).
+# Refresh codex/claude config stat data through the dotfiles wrapper first so
+# stripped machine-local blocks stay out of lazygit without staging real edits.
 lgdf() {
-  command git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" \
-    add --renormalize .codex/config.toml 2>/dev/null
+  dotfiles status --short .codex/config.toml .claude/settings.json >/dev/null 2>&1
   lazygit --use-config-dir ~/.config/lazygit \
     --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
 }
