@@ -1,6 +1,6 @@
 # usage-cache-lib: shared cache/lock/backoff engine for the usage trackers
 #
-# Sourced (not executed) by claude-usage and codex-usage. Defines functions
+# Sourced (not executed) by claude-usage, codex-usage, and cosine-usage. Defines functions
 # only — no top-level side effects — so callers keep full control of options.
 # The helpers read caller-scope locals via zsh dynamic scope, so each caller
 # must declare these as `local` before sourcing/calling:

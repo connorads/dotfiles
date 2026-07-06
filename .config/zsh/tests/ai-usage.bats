@@ -51,6 +51,11 @@ def iso(delta):
     }],
     "rate_limit_reset_credits": {"available_count": 0},
 }))
+(home / ".cache/cosine-usage.json").write_text(json.dumps({
+    "usedTokens": 420,
+    "totalAvailableTokens": 1000,
+    "billingPeriodResetsAt": iso(timedelta(days=20)),
+}))
 PY
 }
 
@@ -76,6 +81,7 @@ PY
   [[ "$output" == *"Claude"*"68%"* ]]
   [[ "$output" == *"Fable"*"4%"* ]]
   [[ "$output" == *"Spark"*"0%"* ]]
+  [[ "$output" == *"Cosine"*"mo"*"42%"* ]]
   [[ "$output" == *"Bottleneck"*"Claude 7d 68%"* ]]
   [[ "$output" == *"Headroom"*"Spark 5h has 100% free"* ]]
   [[ "$output" != *"Claude cache"* ]]
@@ -120,6 +126,32 @@ EOF
   [[ "$output" == *"Stale"*"Claude cache"* ]]
   [[ "$output" == *"Stale"*"Codex cache"* ]]
   [[ "$output" != *"claude/cys"* ]]
+}
+
+@test "cosine monthly pool has no pace marker and participates in insights" {
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":950,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
+EOF
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  cosine_row=$(printf '%s\n' "$output" | grep 'Cosine.*mo.*95%' | head -n1)
+  [[ "$cosine_row" == *"Cosine"*"mo"*"95%"* ]]
+  [[ "$cosine_row" != *"pace"* ]]
+  [[ "$cosine_row" != *"┃"* ]]
+  [[ "$output" == *"Bottleneck"*"Cosine mo 95%"*"credits critical"* ]]
+  [[ "$output" == *"Headroom"*"Cosine mo has 5% free"* ]]
+}
+
+@test "fancy dashboard alerts when Cosine cache is stale" {
+  write_usage_caches
+  set_cache_age_hours "$HOME/.cache/cosine-usage.json" 1
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Stale"*"Cosine cache"* ]]
 }
 
 @test "fancy dashboard alerts when Claude auth is paused" {

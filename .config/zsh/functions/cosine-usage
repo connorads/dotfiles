@@ -1,0 +1,206 @@
+#!/usr/bin/env zsh
+# cosine-usage: Query Cosine billing-period credit usage with cache/backoff protection
+# Usage: cosine-usage [-h|--help]
+emulate -L zsh
+setopt pipefail
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "Usage: cosine-usage [-h|--help]"
+    echo
+    echo "Shows Cosine billing-period credit usage"
+    echo "Uses cache + retry backoff to avoid API hammering"
+    echo
+    echo "If not logged in:"
+    echo "  - Run: cos login"
+    return 0
+fi
+
+local cache="$HOME/.cache/cosine-usage.json"
+local meta="$HOME/.cache/cosine-usage.meta.json"
+local lockdir="$HOME/.cache/cosine-usage.lock"
+local ttl=300
+local lock_stale_after=600
+local backoff_base=120
+local backoff_max=1800
+local now age next_retry fail_count last_success
+local hdr="" body=""
+now=$(date +%s)
+
+# Resolve this function file's directory (autoload, ~/.local/bin symlink, or
+# direct run) so the shared cache/lock/backoff engine sources cleanly.
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local self_file= candidate_dir
+for candidate_dir in $fpath; do
+    [[ -r "$candidate_dir/$self_name" ]] && { self_file="$candidate_dir/$self_name"; break }
+done
+[[ -n "$self_file" ]] || self_file="${${(%):-%N}:A}"
+[[ -r "$self_file" ]] || self_file="${0:A}"
+source "${self_file:A:h}/usage-cache-lib"
+
+_valid_cosine_payload() {
+    local file="$1"
+    jq -e '
+      (.usedTokens | type == "number")
+      and (.totalAvailableTokens | type == "number")
+      and (.totalAvailableTokens > 0)
+      and (.billingPeriodResetsAt | type == "string" and length > 0)
+    ' "$file" >/dev/null 2>&1
+}
+
+if [[ ! -f "$meta" ]]; then
+    _write_meta 0 0 "" "" 0
+fi
+
+next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+fail_count=$(jq -r '.fail_count // 0' "$meta" 2>/dev/null || echo 0)
+last_success=$(jq -r '.last_success_at // 0' "$meta" 2>/dev/null || echo 0)
+age=$(_cache_age "$cache")
+
+local should_fetch=0
+if [[ ! -f "$cache" ]]; then
+    [[ "$now" -ge "$next_retry" ]] && should_fetch=1
+elif [[ "$age" -ge "$ttl" && "$now" -ge "$next_retry" ]]; then
+    should_fetch=1
+fi
+
+if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
+    trap _cleanup EXIT INT TERM HUP
+
+    local auth_file="${COSINE_CONFIG_FILE:-$HOME/.cosine/auth.json}"
+    if [[ ! -f "$auth_file" ]]; then
+        _cleanup
+        trap - EXIT INT TERM HUP
+        echo "Not logged in (run: cos login)"
+        return 1
+    fi
+
+    local team_id
+    team_id=$(jq -r '.team_id // empty' "$auth_file" 2>/dev/null)
+    if [[ -z "$team_id" ]]; then
+        _cleanup
+        trap - EXIT INT TERM HUP
+        echo "No team_id found in $auth_file"
+        return 1
+    fi
+
+    local bearer_cmd token bearer_status
+    if command -v cosine-bearer >/dev/null 2>&1; then
+        bearer_cmd=$(command -v cosine-bearer)
+    elif [[ -x "$HOME/.local/bin/cosine-bearer" ]]; then
+        bearer_cmd="$HOME/.local/bin/cosine-bearer"
+    else
+        bearer_cmd=""
+    fi
+
+    if [[ -z "$bearer_cmd" ]]; then
+        _record_failure "$fail_count" "" "0" "cosine-bearer not found" "$last_success"
+    else
+        token=$(COSINE_CONFIG_FILE="$auth_file" "$bearer_cmd" 2>/dev/null)
+        bearer_status=$?
+        if [[ "$bearer_status" -ne 0 || -z "$token" ]]; then
+            _record_failure "$fail_count" "" "0" "cosine-bearer failed" "$last_success"
+        else
+            local http_code retry_after resp err
+            hdr=$(mktemp)
+            body=$(mktemp)
+
+            if curl -sS --max-time 8 \
+                -D "$hdr" \
+                -o "$body" \
+                "https://api.cosine.sh/teams/${team_id}/billing/usage" \
+                -H "Authorization: Bearer $token"; then
+                http_code=$(awk 'BEGIN{IGNORECASE=1} /^HTTP/{code=$2} END{print code+0}' "$hdr")
+                retry_after=$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {print $2; exit}' "$hdr" | tr -d '\r')
+                resp=$(<"$body")
+
+                if [[ "$http_code" -eq 200 ]] && _valid_cosine_payload "$body"; then
+                    mkdir -p "$(dirname "$cache")"
+                    print -r -- "$resp" > "${cache}.tmp.$$"
+                    mv "${cache}.tmp.$$" "$cache"
+                    _write_meta 0 0 "$http_code" "" "$now"
+                    age=0
+                else
+                    err=$(jq -r '.error.message? // .message? // .error? // "fetch_failed"' "$body" 2>/dev/null || echo "fetch_failed")
+                    _record_failure "$fail_count" "$retry_after" "${http_code:-0}" "$err" "$last_success"
+                fi
+            else
+                _record_failure "$fail_count" "" "0" "network_error" "$last_success"
+            fi
+        fi
+    fi
+
+    _cleanup
+    trap - EXIT INT TERM HUP
+fi
+
+if [[ ! -f "$cache" ]]; then
+    next_retry=$(jq -r '.next_retry_at // 0' "$meta" 2>/dev/null || echo 0)
+    if [[ "$next_retry" -gt "$now" ]]; then
+        echo "Usage refresh paused for $(_fmt_secs $((next_retry - now)))"
+    else
+        echo "Failed to fetch Cosine usage"
+    fi
+    echo
+    echo "Possible causes:"
+    echo "  - Not logged in (run: cos login)"
+    echo "  - Network error"
+    echo "  - API temporarily unavailable"
+    return 1
+fi
+
+if ! _valid_cosine_payload "$cache"; then
+    echo "Invalid Cosine usage cache"
+    return 1
+fi
+
+age=$(_cache_age "$cache")
+local cache_stale=0
+[[ "$age" -ge "$ttl" ]] && cache_stale=1
+
+local used total reset_iso pct
+used=$(jq -r '.usedTokens' "$cache")
+total=$(jq -r '.totalAvailableTokens' "$cache")
+reset_iso=$(jq -r '.billingPeriodResetsAt' "$cache")
+pct=$(jq -r '(.usedTokens / .totalAvailableTokens) * 100' "$cache")
+
+_remaining() {
+    local reset_iso="$1"
+    [[ -z "$reset_iso" ]] && { print -r -- "-"; return; }
+    local normalised ts
+    normalised=$(printf '%s\n' "$reset_iso" | sed -E 's/\.[0-9]+//; s/Z$/+0000/; s/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
+    ts=$(date -d "$reset_iso" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$normalised" +%s 2>/dev/null)
+    [[ -z "$ts" ]] && { print -r -- "-"; return; }
+    local diff=$((ts - now))
+    if [[ "$diff" -le 0 ]]; then
+        [[ "$cache_stale" -eq 1 ]] && { echo "__STALE__"; return; }
+        echo "0h 0m"
+        return
+    fi
+    _fmt_secs "$diff"
+}
+
+_fmt_tokens() {
+    local value="$1"
+    awk -v n="$value" 'BEGIN {
+      sign = n < 0 ? "-" : ""
+      if (n < 0) n = -n
+      if (n >= 1000000) {
+        s = sprintf("%.1fM", n / 1000000)
+      } else if (n >= 1000) {
+        s = sprintf("%.1fk", n / 1000)
+      } else {
+        s = sprintf("%d", n)
+      }
+      if (s ~ /\.0[kM]$/) sub(/\.0/, "", s)
+      print sign s
+    }'
+}
+
+local remaining
+remaining=$(_remaining "$reset_iso")
+if [[ "$remaining" == "__STALE__" ]]; then
+    printf "%-9s %3.0f%%  cache stale\n" "Monthly:" "$pct"
+else
+    printf "%-9s %3.0f%%  resets in %s\n" "Monthly:" "$pct" "$remaining"
+fi
+printf "%-9s %s/%s credits\n" "Credits:" "$(_fmt_tokens "$used")" "$(_fmt_tokens "$total")"

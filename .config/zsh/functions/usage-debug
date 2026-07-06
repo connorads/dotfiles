@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# usage-debug: inspect Claude/Codex usage cache, backoff, and trigger state
+# usage-debug: inspect Claude/Codex/Cosine usage cache, backoff, and trigger state
 # Usage: usage-debug [-h|--help]
 emulate -L zsh
 
@@ -9,6 +9,7 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "Shows cache, backoff, lock, and refresh trigger state for:"
   echo "  - claude-usage"
   echo "  - codex-usage"
+  echo "  - cosine-usage"
   return 0
 fi
 
@@ -80,6 +81,23 @@ _fmt_epoch() {
   local ts="$1"
   [[ -z "$ts" || "$ts" -le 0 ]] && { print -r -- "-"; return; }
   date -d "@$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || date -r "$ts" '+%Y-%m-%d %H:%M:%S %z' 2>/dev/null || echo "$ts"
+}
+
+_fmt_tokens() {
+  local value="$1"
+  awk -v n="$value" 'BEGIN {
+    sign = n < 0 ? "-" : ""
+    if (n < 0) n = -n
+    if (n >= 1000000) {
+      s = sprintf("%.1fM", n / 1000000)
+    } else if (n >= 1000) {
+      s = sprintf("%.1fk", n / 1000)
+    } else {
+      s = sprintf("%d", n)
+    }
+    if (s ~ /\.0[kM]$/) sub(/\.0/, "", s)
+    print sign s
+  }'
 }
 
 _parse_iso_to_epoch() {
@@ -188,7 +206,7 @@ _print_provider() {
         [[ "$rem" -lt 0 ]] && rem=0
         echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
       fi
-    else
+    elif [[ "$kind" == "codex" ]]; then
       local u5 reset_after rem
       u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache" 2>/dev/null)
       reset_after=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache" 2>/dev/null)
@@ -198,6 +216,24 @@ _print_provider() {
       else
         [[ "$rem" -lt 0 ]] && rem=0
         echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
+      fi
+    elif [[ "$kind" == "cosine" ]]; then
+      local used total pct reset_iso reset_ts rem
+      if jq -e '(.usedTokens | type == "number") and (.totalAvailableTokens | type == "number") and (.totalAvailableTokens > 0) and (.billingPeriodResetsAt | type == "string" and length > 0)' "$cache" >/dev/null 2>&1; then
+        used=$(jq -r '.usedTokens' "$cache" 2>/dev/null)
+        total=$(jq -r '.totalAvailableTokens' "$cache" 2>/dev/null)
+        pct=$(jq -r '(.usedTokens / .totalAvailableTokens) * 100' "$cache" 2>/dev/null)
+        reset_iso=$(jq -r '.billingPeriodResetsAt // empty' "$cache" 2>/dev/null)
+        reset_ts=$(_parse_iso_to_epoch "$reset_iso")
+        rem=$((reset_ts - now))
+        if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
+          printf "  usage: credits=%s/%s (%.0f%%) reset=stale\n" "$(_fmt_tokens "$used")" "$(_fmt_tokens "$total")" "$pct"
+        else
+          [[ "$rem" -lt 0 ]] && rem=0
+          printf "  usage: credits=%s/%s (%.0f%%) reset in %s\n" "$(_fmt_tokens "$used")" "$(_fmt_tokens "$total")" "$pct" "$(_fmt_secs "$rem")"
+        fi
+      else
+        echo "  usage: invalid Cosine cache"
       fi
     fi
   fi
@@ -221,3 +257,11 @@ _print_provider \
   "$HOME/.cache/codex-usage.lock" \
   "$HOME/.cache/codex-usage.trigger" \
   "codex"
+
+_print_provider \
+  "Cosine" \
+  "$HOME/.cache/cosine-usage.json" \
+  "$HOME/.cache/cosine-usage.meta.json" \
+  "$HOME/.cache/cosine-usage.lock" \
+  "$HOME/.cache/cosine-usage.trigger" \
+  "cosine"

@@ -228,6 +228,10 @@ ai_usage() {
 	local codex_meta="$HOME/.cache/codex-usage.meta.json"
 	local codex_lock="$HOME/.cache/codex-usage.lock"
 	local codex_trigger="$HOME/.cache/codex-usage.trigger"
+	local cosine_cache="$HOME/.cache/cosine-usage.json"
+	local cosine_meta="$HOME/.cache/cosine-usage.meta.json"
+	local cosine_lock="$HOME/.cache/cosine-usage.lock"
+	local cosine_trigger="$HOME/.cache/cosine-usage.trigger"
 	local ttl=300 trigger_ttl=60 lock_stale_after=600 now bin="$HOME/.local/bin"
 	now=$(date +%s)
 
@@ -314,13 +318,19 @@ ai_usage() {
 		"$bin/codex-usage" >/dev/null 2>&1 &
 	fi
 
+	if [ -x "$bin/cosine-usage" ] && _should_trigger_refresh "$cosine_cache" "$cosine_meta" "$cosine_lock" "$cosine_trigger" "cosine"; then
+		mkdir -p "$(dirname "$cosine_trigger")"
+		: >"$cosine_trigger"
+		"$bin/cosine-usage" >/dev/null 2>&1 &
+	fi
+
 	# Read percentages and remaining seconds from cache
-	local claude_5_pct="" claude_7_pct="" codex_5_pct="" codex_7_pct=""
+	local claude_5_pct="" claude_7_pct="" codex_5_pct="" codex_7_pct="" cosine_pct=""
 	local claude_5_remaining_secs="" claude_7_remaining_secs=""
-	local codex_5_remaining_secs="" codex_7_remaining_secs=""
-	local claude_5_reset="" claude_7_reset="" codex_5_reset="" codex_7_reset=""
-	local claude_cache_age=999999 codex_cache_age=999999
-	local claude_5_stale=0 claude_7_stale=0 codex_5_stale=0 codex_7_stale=0
+	local codex_5_remaining_secs="" codex_7_remaining_secs="" cosine_remaining_secs=""
+	local claude_5_reset="" claude_7_reset="" codex_5_reset="" codex_7_reset="" cosine_reset=""
+	local claude_cache_age=999999 codex_cache_age=999999 cosine_cache_age=999999
+	local claude_5_stale=0 claude_7_stale=0 codex_5_stale=0 codex_7_stale=0 cosine_stale=0
 
 	_fmt_reset() {
 		local remaining_secs="$1"
@@ -396,7 +406,21 @@ ai_usage() {
 		[ "$codex_7_reset" = "stale" ] 2>/dev/null && codex_7_stale=1
 	fi
 
-	[ -z "$claude_5_pct" ] && [ -z "$codex_5_pct" ] && return
+	if [ -f "$cosine_cache" ]; then
+		cosine_cache_age=$((now - $(_mtime "$cosine_cache")))
+		if jq -e '(.usedTokens | type == "number") and (.totalAvailableTokens | type == "number") and (.totalAvailableTokens > 0) and (.billingPeriodResetsAt | type == "string" and length > 0)' "$cosine_cache" >/dev/null 2>&1; then
+			cosine_pct=$(jq -r '(.usedTokens / .totalAvailableTokens) * 100' "$cosine_cache" 2>/dev/null)
+			local cosine_resets_at
+			cosine_resets_at=$(jq -r '.billingPeriodResetsAt // empty' "$cosine_cache" 2>/dev/null)
+			cosine_remaining_secs=$(_iso_remaining_secs "$cosine_resets_at")
+			cosine_reset=$(_fmt_reset "$cosine_remaining_secs" "$cosine_cache_age")
+			if [ "$cosine_cache_age" -ge "$ttl" ] 2>/dev/null || [ "$cosine_reset" = "stale" ] 2>/dev/null; then
+				cosine_stale=1
+			fi
+		fi
+	fi
+
+	[ -z "$claude_5_pct" ] && [ -z "$codex_5_pct" ] && [ -z "$cosine_pct" ] && return
 
 	# Pace-based colour: compare usage% against elapsed% of the matching window
 	# pace = usage% / elapsed%, green <1.2, yellow 1.2-1.4, red >=1.4
@@ -450,6 +474,22 @@ ai_usage() {
 		fi
 	}
 
+	_pool_colour() {
+		local stale="$1"
+		local pct="$2"
+		local usage_int=${pct%.*}
+		usage_int=${usage_int:-0}
+		if [ "$stale" -eq 1 ]; then
+			printf "%s" "${dim#"#"}"
+		elif [ "$usage_int" -ge 90 ] 2>/dev/null; then
+			printf "f38ba8"
+		elif [ "$usage_int" -ge 70 ] 2>/dev/null; then
+			printf "f9e2af"
+		else
+			printf "a6e3a1"
+		fi
+	}
+
 	_append_provider() {
 		local label="$1"
 		local pct5="$2"
@@ -484,12 +524,35 @@ ai_usage() {
 		return 0
 	}
 
+	_append_pool_provider() {
+		local label="$1"
+		local pct="$2"
+		local reset="$3"
+		local stale="$4"
+		local label_colour="$5"
+
+		[ -n "$pct" ] || return 0
+
+		if [ "$appended_provider" -eq 1 ]; then
+			out+=" #[fg=${dim}]│"
+		fi
+		appended_provider=1
+
+		local c i
+		c=$(_pool_colour "$stale" "$pct")
+		i=$(printf "%.0f" "$pct" 2>/dev/null || echo "$pct")
+		out+=" #[fg=${label_colour}]#[bold]${label}#[nobold]#[fg=${dim}]:#[fg=#${c}]${i}#[fg=${dim}]%"
+		[ -n "$reset" ] && out+="#[fg=${dim}]·${reset}"
+		return 0
+	}
+
 	# Build segment: powerline separator then colour-coded labels
 	local out="#[fg=#232334]#[bg=#232334]"
 	local appended_provider=0
 
 	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale" "#fab387"
 	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale" "#74c7ec"
+	_append_pool_provider "S" "$cosine_pct" "$cosine_reset" "$cosine_stale" "#a6e3a1"
 	out+=" "
 
 	printf "%s" "$out"

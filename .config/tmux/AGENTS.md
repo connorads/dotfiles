@@ -59,6 +59,41 @@ Tests (run `mise run zsh-tests`):
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
+## AI usage tracker (custom subsystem)
+
+The AI usage surfaces track three providers:
+
+- Claude: [`../zsh/functions/claude-usage`](../zsh/functions/claude-usage)
+  reads Claude OAuth credentials and caches `~/.cache/claude-usage.json`.
+- Codex: [`../zsh/functions/codex-usage`](../zsh/functions/codex-usage)
+  reads Codex auth and caches `~/.cache/codex-usage.json`.
+- Cosine: [`../zsh/functions/cosine-usage`](../zsh/functions/cosine-usage)
+  reads `${COSINE_CONFIG_FILE:-~/.cosine/auth.json}` for `team_id`, gets a
+  bearer via `cosine-bearer`, and caches `~/.cache/cosine-usage.json`.
+
+Each provider shares [`../zsh/functions/usage-cache-lib`](../zsh/functions/usage-cache-lib):
+`*.meta.json` stores backoff state, `*.lock` prevents concurrent fetches, and
+`*.trigger` debounces tmux background refreshes. Do not print bearer/access
+tokens in diagnostics.
+
+Surfaces:
+
+- [`scripts/status-right.sh`](./scripts/status-right.sh) renders the compact
+  status pill: `C:` Claude windows, `X:` Codex windows, and `S:` Cosine monthly
+  credit pool.
+- [`../zsh/functions/agents/ai-usage`](../zsh/functions/agents/ai-usage)
+  (`aiu`, popup via `prefix + a`) refreshes providers and renders plain or fancy
+  combined usage.
+- [`../zsh/functions/usage-debug`](../zsh/functions/usage-debug) prints cache,
+  backoff, lock, trigger, and provider usage details.
+
+Tests: [`../zsh/tests/claude-usage.bats`](../zsh/tests/claude-usage.bats),
+[`../zsh/tests/codex-usage.bats`](../zsh/tests/codex-usage.bats),
+[`../zsh/tests/cosine-usage.bats`](../zsh/tests/cosine-usage.bats),
+[`../zsh/tests/ai-usage.bats`](../zsh/tests/ai-usage.bats),
+[`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats), and
+[`../zsh/tests/usage-debug.bats`](../zsh/tests/usage-debug.bats).
+
 ## Memory-pressure monitoring (custom subsystem)
 
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
