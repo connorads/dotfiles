@@ -46,6 +46,14 @@ what should happen — a decision or a list of events — and let the shell perf
 it. Returning events rather than publishing them keeps the core pure and lets a
 test assert on the returned value.
 
+Durable-execution engines (Temporal, Step Functions, Restate) enforce this rule at
+runtime: deterministic workflow code as the pure control flow, with IO, clocks, and
+randomness confined to activities (Temporal: "workflow code must be deterministic
+... put non-deterministic operations in Activities"). They are also the sanctioned
+way to run genuinely *interleaved* effects safely - the case that relaxes "act
+once" when a flow is long-running (timers, human approval, retries over days),
+rather than a smell to design away.
+
 ## Ports And Adapters
 
 Define ports in the application's language, not the technology's language.
@@ -161,6 +169,11 @@ Design system boundaries with observability in mind:
 The core should decide what happened. The shell should record it with the
 context needed to debug production behaviour.
 
+Across a message boundary the same discipline needs trace context propagated in
+message headers rather than carried on a call stack; the
+`event-driven-architecture` skill's "Reaching Out" covers async tracing (W3C Trace
+Context, OTel messaging conventions).
+
 ## Configuration And Lifecycle
 
 Parse configuration at startup, or the earliest boundary, into typed values with
@@ -223,7 +236,11 @@ converge.
 Use a plain call or a single database transaction for simple single-boundary
 operations. Reach for a saga or durable workflow when the process needs retries,
 compensation, idempotency, resumability, timers, human approval, or coordination
-across services and multiple transaction boundaries.
+across services and multiple transaction boundaries. Both buy ACD, not ACID - you
+get atomicity, durability, resumability, and compensation, but not isolation, so
+intermediate states stay visible; design the countermeasures the
+`event-driven-architecture` skill's `topology.md` lists (semantic locks, a
+`pending` status, re-reads).
 
 Do not hold a database transaction open across network calls or long-running
 work. Any command, job, or step that may be retried needs an explicit
