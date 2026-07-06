@@ -1,0 +1,24 @@
+{
+  "name": "pi-workflows",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pi-native dynamic workflow runner using the documented workflow script format",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test core.test.ts runtime.test.ts manager.test.ts",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "dependencies": {
+    "acorn": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260623.1",
+    "typebox": "1.1.38"
+  }
+}
