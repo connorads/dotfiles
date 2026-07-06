@@ -11,9 +11,14 @@ that rolled back.
 This is the dual-write problem, and it is the reason the patterns below exist.
 Any "write then publish" (or "publish then write") sequence has it.
 
-Two-phase commit (2PC/XA) across the DB and broker technically closes the gap,
-but it couples their availability, most modern brokers don't support it well,
-and it scales badly. Treat it as a last resort, not the answer.
+Two-phase commit (2PC/XA) across the DB and broker technically closes the gap.
+Broker support is no longer the objection it once was - Kafka's KIP-939 adds
+producer participation in 2PC (a `transaction.two.phase.commit.enable` property
+plus `prepareTransaction()`/`completeTransaction()`), aimed squarely at this
+dual-write problem, though still maturing. The durable objection is structural:
+even where supported, 2PC couples DB and broker availability and adds synchronous
+overhead, so the outbox usually still wins. Treat it as a last resort, not the
+answer.
 
 ## Transactional Outbox
 
@@ -34,7 +39,15 @@ Two ways to run the relay:
   Debezium) and stream new outbox rows out. Lower latency, no polling load, but
   more infrastructure and operational weight.
 
-Poll first; reach for CDC when the latency or load of polling actually hurts.
+"Poll first, reach for CDC when polling hurts" is a simplicity call, not field
+consensus - the pattern's own authority (Morling / Debezium) defaults the
+*opposite* way, objecting that polling "hammers your database even when empty" and
+needs locking so instances don't double-process, while capture happens "with a
+very low overhead in near-realtime"; the 2024 *Revisiting the Outbox Pattern* drops
+the outbox table entirely for Postgres logical decoding. Weigh it as a real
+trade-off: polling buys zero infrastructure on any datastore (latency bounded by
+the interval); CDC buys lower load and latency and no relay concurrency, at the
+cost of replication-slot / WAL weight.
 
 ## Inbox / Idempotent Receiver
 
