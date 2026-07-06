@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cloudflare Workers Deployments"
+  short_description: "Deploy Workers with Builds and Access"
+  default_prompt: "Use $cloudflare-workers-deployments to set up or repair a Cloudflare Workers deployment."
