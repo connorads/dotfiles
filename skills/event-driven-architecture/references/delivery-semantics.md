@@ -6,14 +6,21 @@
   Fine for a metric tick; wrong for anything that matters.
 - **At-least-once** - retried until acknowledged. Never lost, sometimes
   duplicated. The default of every real broker, and what you design for.
-- **Exactly-once delivery** - the myth. The Two Generals problem says two
-  parties over an unreliable channel can never both be certain a message
-  arrived, so a broker can never guarantee it delivered a message once and only
-  once.
+- **Exactly-once delivery** - not achievable end-to-end. Two parties over an
+  unreliable channel can never both be certain a message arrived (the Two
+  Generals problem). But note what that does *not* prove: Two Generals is about
+  certainty of acknowledgement, not the impossibility of exactly-once
+  *processing*. Jay Kreps (Kafka's co-creator) calls citing it as such a category
+  error, and Confluent's official position is titled "Exactly-once Semantics is
+  Possible."
 
-What you actually engineer is **effectively-once processing**: at-least-once
-delivery plus a consumer that ignores duplicates. Kafka's exactly-once semantics
-(EOS) and SQS FIFO's dedup are real, but they hold only *inside their own
+What you actually engineer is **effectively-once processing** - at-least-once
+delivery plus a consumer that ignores duplicates - and that is a synonym for
+Kafka's "exactly-once *processing*" (EOS terminology), a real and defended term,
+not a softer euphemism for a broken promise. Tyler Treat's canonical rebuttal
+agrees on the substance: Kafka did not solve Two Generals; it achieves
+exactly-once processing in a closed system. What EOS does *not* do is reach past
+that boundary: Kafka's EOS and SQS FIFO dedup hold only *inside their own
 boundary* - Kafka-to-Kafka, within the dedup window. The moment your consumer
 writes to an external database, calls an API, or sends an email, that external
 effect needs its own idempotency. The broker cannot make your side effects

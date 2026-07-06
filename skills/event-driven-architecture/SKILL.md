@@ -61,12 +61,15 @@ happen. Hold them as explicit pairs.
   serialisable thing another service consumes. Whether they are one type or two
   is a genuine design choice, not a rule - see `references/event-propagation.md`.
 - **Event notification vs event-carried state transfer vs event sourcing** -
-  Fowler's three, orthogonal. Thin "it happened, call back" vs fat "here is the
-  new state, keep your own copy" vs "the log is the source of truth." You can do
-  any without the others; conflating them makes consistency bugs undiagnosable.
+  three of Fowler's four (CQRS being the fourth, and arguably not about events),
+  orthogonal. Thin "it happened, call back" vs fat "here is the new state, keep
+  your own copy" vs "the log is the source of truth." You can do any without the
+  others; conflating them makes consistency bugs undiagnosable.
 - **At-least-once delivery vs exactly-once processing** - exactly-once
-  *delivery* is a myth (Two Generals). You engineer **effectively-once** by
-  pairing at-least-once delivery with an idempotent consumer. Kafka EOS and SQS
+  *delivery* end-to-end is not achievable; you engineer **effectively-once** by
+  pairing at-least-once delivery with an idempotent consumer. "Exactly-once
+  *processing*" (Kafka's EOS term) is a real, defended term, not a myth -
+  "effectively-once" is a synonym for it, not a correction. Kafka EOS and SQS
   FIFO hold only inside their own boundary - a write to an external DB or API
   still needs your own idempotency or an outbox.
 - **Additive vs breaking schema change** - adding an optional/defaulted field is
