@@ -67,6 +67,13 @@ local fast_steps = new Mapping<String, Step> {
         check = "git show :{{files}} | rg -q '^\\[projects\\.' && { echo '.codex/config.toml contains staged machine-local [projects.*] trust state' >&2; exit 1; } || exit 0"
     }
 
+    // Block local Claude profile aliases/state and auth override variables that
+    // can be forced past .gitignore with `git add -f`. The guard permits the
+    // tracked generic launcher implementation, but not concrete profile names.
+    ["claude-profile-leak-guard"] {
+        check = "python3 .hk-hooks/claude-profile-leak-guard.py"
+    }
+
     // Keep Claude and OpenCode security denies in lock-step (R6 drift guard).
     // Fires whenever a relevant config, the gh-api gate hook, or the checker
     // itself is staged. Runs from $HOME, so the checker's cwd-relative paths

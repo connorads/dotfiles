@@ -1,0 +1,43 @@
+#!/usr/bin/env zsh
+# claude-code-profile: launch Claude Code with an isolated config directory.
+emulate -L zsh
+setopt pipefail
+
+_claude_code_profile_usage() {
+    print -u2 "usage: claude-code-profile <name> [claude-args...]"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    _claude_code_profile_usage
+    return 0
+fi
+
+local name="${1:-}"
+if [[ -z "$name" ]]; then
+    _claude_code_profile_usage
+    return 2
+fi
+shift
+
+if [[ ! "$name" =~ '^[A-Za-z0-9][A-Za-z0-9._-]*$' ]]; then
+    print -u2 "claude-code-profile: profile name must match [A-Za-z0-9][A-Za-z0-9._-]*"
+    return 2
+fi
+
+local root="$HOME/.claude-profiles/code"
+local profile_dir="$root/$name"
+
+mkdir -p "$profile_dir" || return
+chmod 700 "$HOME/.claude-profiles" "$root" "$profile_dir" 2>/dev/null || true
+
+# Claude Code auth precedence lets ambient env vars override subscription OAuth.
+# Make profile selection explicit and avoid silently billing an unrelated API key.
+env \
+    -u ANTHROPIC_API_KEY \
+    -u ANTHROPIC_AUTH_TOKEN \
+    -u CLAUDE_CODE_OAUTH_TOKEN \
+    -u CLAUDE_CODE_USE_BEDROCK \
+    -u CLAUDE_CODE_USE_VERTEX \
+    -u CLAUDE_CODE_USE_FOUNDRY \
+    CLAUDE_CONFIG_DIR="$profile_dir" \
+    claude "$@"

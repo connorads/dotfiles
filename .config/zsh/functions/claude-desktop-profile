@@ -1,0 +1,34 @@
+#!/usr/bin/env zsh
+# claude-desktop-profile: launch an isolated Claude Desktop profile.
+emulate -L zsh
+setopt pipefail
+
+_claude_desktop_profile_usage() {
+    print -u2 "usage: claude-desktop-profile <name> [claude-desktop-args...]"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    _claude_desktop_profile_usage
+    return 0
+fi
+
+local name="${1:-}"
+if [[ -z "$name" ]]; then
+    _claude_desktop_profile_usage
+    return 2
+fi
+shift
+
+if [[ ! "$name" =~ '^[A-Za-z0-9][A-Za-z0-9._-]*$' ]]; then
+    print -u2 "claude-desktop-profile: profile name must match [A-Za-z0-9][A-Za-z0-9._-]*"
+    return 2
+fi
+
+local root="$HOME/.claude-profiles/desktop"
+local profile_dir="$root/$name"
+local app="/Applications/Claude.app"
+
+mkdir -p "$profile_dir" || return
+chmod 700 "$HOME/.claude-profiles" "$root" "$profile_dir" 2>/dev/null || true
+
+open -n -a "$app" --args --user-data-dir="$profile_dir" "$@"

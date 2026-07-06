@@ -1,5 +1,13 @@
 /*
 
+# Local machine-only profile/secrets state. These are already covered by the
+# deny-by-default rule above; the explicit entries document the intended privacy
+# boundary and defend against future un-ignore churn.
+/.claude-profiles/
+/.config/claude-profiles/
+/.secrets/
+/.zshrc.local
+
 !.gitignore
 !/.gitattributes
 !/.npmrc

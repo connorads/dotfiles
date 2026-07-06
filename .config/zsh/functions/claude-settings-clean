@@ -7,6 +7,23 @@ emulate -L zsh
 # a "model" key into user settings.json (Enter or `/model <name>` saves; only
 # `s` in the picker is session-only). There is no opt-out, so treat the key as
 # machine-local state and drop it here, mirroring codex-config-clean.
+#
+# Auth/provider selectors are also machine-local: committing them can leak token
+# helper paths or make another machine silently prefer API/cloud-provider auth
+# over subscription OAuth. Keep those in settings.local.json or another ignored
+# local file instead.
+#
 # jq's default 2-space indent matches Claude Code's JSON output, so del() is
-# byte-identical to the committed file apart from the dropped key.
-jq 'del(.model)'
+# byte-identical to the committed file apart from the dropped keys.
+jq 'del(
+  .model,
+  .apiKeyHelper,
+  .awsAuthRefresh,
+  .forceLoginMethod,
+  .env.ANTHROPIC_API_KEY,
+  .env.ANTHROPIC_AUTH_TOKEN,
+  .env.CLAUDE_CODE_OAUTH_TOKEN,
+  .env.CLAUDE_CODE_USE_BEDROCK,
+  .env.CLAUDE_CODE_USE_VERTEX,
+  .env.CLAUDE_CODE_USE_FOUNDRY
+)'
