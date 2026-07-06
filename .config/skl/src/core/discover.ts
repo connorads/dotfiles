@@ -3,6 +3,7 @@
 
 import { parseFrontmatter } from "./frontmatter.ts";
 import { posixBasename, posixDirname, posixJoin } from "./path.ts";
+import { filterPayloadFiles } from "./payload.ts";
 import type { DiscoveredSkill, Source } from "./types.ts";
 
 export interface BuildSkillInput {
@@ -13,10 +14,12 @@ export interface BuildSkillInput {
   readonly raw: string;
   /** File paths relative to the skill dir (includes SKILL.md). */
   readonly siblingFiles: readonly string[];
+  /** Disable payload excludes for this build. */
+  readonly all?: boolean;
 }
 
 export const buildSkill = (input: BuildSkillInput): DiscoveredSkill => {
-  const { source, relPath, raw, siblingFiles } = input;
+  const { source, relPath, raw, siblingFiles, all = false } = input;
 
   const relDir = posixDirname(relPath); // "alpha", "nested/deep/beta", or "."
   const basename = posixBasename(relDir);
@@ -31,7 +34,7 @@ export const buildSkill = (input: BuildSkillInput): DiscoveredSkill => {
       : basename;
   const description = parsed.ok ? parsed.value.description : "";
 
-  const files = [...siblingFiles].sort();
+  const files = (all ? [...siblingFiles] : filterPayloadFiles(siblingFiles, source.exclude)).sort();
 
   return { source, name, description, dir, files };
 };

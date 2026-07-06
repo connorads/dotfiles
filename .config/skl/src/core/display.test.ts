@@ -3,7 +3,7 @@ import { skillToLine, skillsToLines, linesToRefs, skillRef } from "./display.ts"
 import type { DiscoveredSkill } from "./types.ts";
 
 const skill = (name: string, description: string): DiscoveredSkill => ({
-  source: { path: "/repo", name: "repo" },
+  source: { path: "/repo", name: "repo", exclude: [] },
   name,
   description,
   dir: `/repo/${name}`,

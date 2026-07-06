@@ -37,14 +37,56 @@ skill's files, and a one-line instruction ("Read SKILL.md at this path and follo
 Deliberately *not* the SKILL.md content — keeps injected context tiny and honours
 progressive disclosure.
 
+The file tree is a **payload tree**: useful source files under the skill dir after
+built-in and configured payload excludes have removed generated/cache artefacts such as
+`__pycache__`, `.pyc`, `.DS_Store`, `.git`, and `node_modules`. `SKILL.md` is always
+retained. Pass `--all` to show the raw sibling payload list for that invocation.
+
 ### Inline bundle
 
-The **inverse** of a pointer: SKILL.md *plus every text file under the skill dir*,
-inlined verbatim and wrapped in `<skill>`/`<file path="…">` tags (`skl inline <ref>`).
+The **inverse** of a pointer: SKILL.md *plus every retained text file under the skill
+dir*, inlined verbatim and wrapped in `<skill>`/`<file path="…">` tags (`skl inline
+<ref>`).
 For a target with **no filesystem access** — a web chat, a pasted prompt — the pointer's
 "read SKILL.md at `<path>`" is useless, so the content has to travel with the paste.
-Binaries (NUL-byte sniff) are skipped. XML-ish tags rather than ``` fences because skill
-files are themselves full of fences. See ADR-0005.
+Binaries (NUL-byte sniff) are skipped after payload filtering. XML-ish tags rather than
+
+``` fences because skill files are themselves full of fences. See ADR-0005.
+
+### Payload filtering
+
+`skl` decides what to show an agent, so it applies explicit payload filters rather than
+reading `.gitignore`. Defaults:
+
+```json
+[
+  "**/.DS_Store",
+  "**/.git/**",
+  "**/__pycache__/**",
+  "**/*.py[cod]",
+  "**/node_modules/**"
+]
+```
+
+Config may add top-level excludes that apply to every source and per-source excludes:
+
+```json
+{
+  "exclude": ["**/.venv/**"],
+  "paths": [
+    {
+      "path": "~/.config/skills/vendor/.agents/skills",
+      "name": "vendor",
+      "exclude": ["**/tmp/**"]
+    }
+  ]
+}
+```
+
+Effective excludes are built-ins + top-level `exclude` + source-level `exclude`. Patterns
+use Bun glob syntax against paths relative to the skill directory. There is no `.gitignore`
+negation or comment semantics in v1. `--all` disables payload excludes for previews,
+loads/copies, stdin loads, and inline bundles; it does not change source discovery.
 
 ## Resolved decisions
 
@@ -82,8 +124,10 @@ files are themselves full of fences. See ADR-0005.
   Dotfiles-tracked for the MVP; **intent to extract to a standalone `~/git/skl` repo**
   once it stabilises.
 - **Path config**: JSON config file (ordered sources `{ path, name? }`) is source of
-  truth, parsed + validated at the boundary; `--path` (repeatable) overrides for
-  tests/agents. The pure core takes paths as plain args — no env/fs reads inside it.
+  truth, parsed + validated at the boundary. Optional `exclude` arrays can appear at the
+  top level and per source. `--path` (repeatable) overrides for tests/agents and keeps
+  only the built-in payload excludes. The pure core takes paths as plain args — no env/fs
+  reads inside it.
   Committed with `~`/`$HOME`-relative paths (tilde-expanded at load) for portability;
   machine-specific roots via `--path` or an uncommitted local override, never absolute
   paths in the committed config. New tracked paths (`~/.config/skl/**`, `~/.local/bin/skl`)

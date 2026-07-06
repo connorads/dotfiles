@@ -3,8 +3,8 @@ import { resolveRef, resolveRefs } from "./resolve.ts";
 import { parseRef } from "./ref.ts";
 import type { DiscoveredSkill, Source } from "./types.ts";
 
-const repo: Source = { path: "/repo", name: "repo" };
-const fixtureB: Source = { path: "/fixtureB", name: "fixtureB" };
+const repo: Source = { path: "/repo", name: "repo", exclude: [] };
+const fixtureB: Source = { path: "/fixtureB", name: "fixtureB", exclude: [] };
 
 const skill = (source: Source, name: string): DiscoveredSkill => ({
   source,

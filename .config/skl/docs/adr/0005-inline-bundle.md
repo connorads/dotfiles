@@ -1,7 +1,7 @@
 # Inline bundle: the pointer's inverse, for targets with no filesystem
 
-`skl inline <ref>` prints a skill's **full content** — SKILL.md plus every text
-file under its dir — wrapped in XML-ish delimiters:
+`skl inline <ref>` prints a skill's **full retained content** - SKILL.md plus every
+retained text file under its dir, wrapped in XML-ish delimiters:
 
 ```text
 <skill name="raycast-extensions" source="public">
@@ -31,12 +31,14 @@ the paste.
 
 Add `inline` as a sibling of `preview` — same shape (resolve one ref), different
 payload. It reuses the discovery that already powers the pointer's tree:
-`DiscoveredSkill.files` is the full walked file list, so "inline everything" is
-*read each file, concatenate*, no new discovery.
+`DiscoveredSkill.files` is the retained payload file list, so "inline everything" is
+*read each retained file, concatenate*, no new discovery.
 
-- **Everything text, by default.** A web paste can't lazy-load a reference later,
-  so leaving references out would defeat the purpose. Binaries (images) are skipped
-  via a NUL-byte sniff and noted on stderr; the bundle on stdout stays pasteable.
+- **Everything retained and text, by default.** A web paste can't lazy-load a reference
+  later, so leaving retained references out would defeat the purpose. Generated/cache
+  artefacts are filtered before reading; binaries (images) that survive the payload
+  filters are skipped via a NUL-byte sniff and noted on stderr; the bundle on stdout
+  stays pasteable.
 - **XML-ish `<file>` tags, not ``` fences.** Skill files are themselves full of
   fenced code blocks; nesting them inside more fences breaks rendering. Tags nest
   cleanly and Claude parses them well. (Same reasoning the Anthropic docs give for

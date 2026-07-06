@@ -69,4 +69,41 @@ describe("skl inline (real CLI)", () => {
       expect(out.stderr.toString()).toContain("skipped logo.png (binary)");
     });
   });
+
+  describe("payload filtering", () => {
+    let root = "";
+
+    beforeAll(async () => {
+      root = await mkdtemp(join(tmpdir(), "skl-inline-filter-"));
+      const skill = join(root, "noisy");
+      await mkdir(join(skill, "__pycache__"), { recursive: true });
+      await mkdir(join(skill, "node_modules/pkg"), { recursive: true });
+      await writeFile(join(skill, "SKILL.md"), "---\nname: noisy\n---\n\n# Noisy\n");
+      await writeFile(join(skill, "notes.md"), "useful notes\n");
+      await writeFile(join(skill, "__pycache__/helper.pyc"), "bytecode cache\n");
+      await writeFile(join(skill, "node_modules/pkg/index.js"), "dependency code\n");
+    });
+
+    afterAll(async () => {
+      if (root) await rm(root, { recursive: true, force: true });
+    });
+
+    test("omits filtered text files by default", () => {
+      const out = runInline("noisy", root);
+      expect(out.exitCode).toBe(0);
+      const text = out.stdout.toString();
+      expect(text).toContain('<file path="SKILL.md">');
+      expect(text).toContain('<file path="notes.md">');
+      expect(text).not.toContain("bytecode cache");
+      expect(text).not.toContain("dependency code");
+    });
+
+    test("--all includes text files that default filters omit", () => {
+      const out = Bun.spawnSync([process.execPath, CLI, "inline", "noisy", "--path", root, "--all"]);
+      expect(out.exitCode).toBe(0);
+      const text = out.stdout.toString();
+      expect(text).toContain("bytecode cache");
+      expect(text).toContain("dependency code");
+    });
+  });
 });
