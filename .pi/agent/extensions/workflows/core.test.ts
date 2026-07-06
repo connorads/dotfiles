@@ -57,6 +57,60 @@ test("parseWorkflowScript rejects executable metadata and dangerous static runti
   }
 });
 
+test("parseWorkflowScript rejects common generated DSL shape mistakes", () => {
+  const callbackPhase = parseWorkflowScript(`
+export const meta = {};
+const [a] = await phase("discover", () => parallel([]));
+return a;
+`);
+  assert.equal(callbackPhase.ok, false);
+  assert.match(callbackPhase.ok ? "" : callbackPhase.error.message, /phase\(title\) returns void/u);
+
+  const objectAgent = parseWorkflowScript(`
+export const meta = {};
+const out = await agent({ name: "research", prompt: "inspect this" });
+return out;
+`);
+  assert.equal(objectAgent.ok, false);
+  assert.match(objectAgent.ok ? "" : objectAgent.error.message, /agent\(prompt, options\?\)/u);
+
+  const eagerParallel = parseWorkflowScript(`
+export const meta = {};
+const out = await parallel([agent("inspect this")]);
+return out;
+`);
+  assert.equal(eagerParallel.ok, false);
+  assert.match(eagerParallel.ok ? "" : eagerParallel.error.message, /parallel\(\[\(\) => agent\(\.\.\.\)\]\)/u);
+});
+
+test("parseWorkflowScript accepts the canonical dynamic workflow skeleton", () => {
+  const parsed = parseWorkflowScript(`
+export const meta = { name: "demo", description: "demo workflow", phases: ["discover", "synthesise"] };
+
+phase("discover");
+const [a, b] = await parallel([
+  () => agent("Prompt A", { label: "a" }),
+  () => agent("Prompt B", { label: "b" }),
+]);
+
+phase("synthesise");
+const result = await agent(\`Use these reports:\\n\${JSON.stringify({ a, b })}\`, { label: "synthesis" });
+
+return { a, b, result };
+`);
+  assert.equal(parsed.ok, true);
+});
+
+test("parseWorkflowScript allows parallel function references when statically ambiguous", () => {
+  const parsed = parseWorkflowScript(`
+export const meta = {};
+const task = () => agent("inspect this");
+const out = await parallel([task]);
+return out;
+`);
+  assert.equal(parsed.ok, true);
+});
+
 test("firstHiddenControl reports hidden controls", () => {
   assert.equal(firstHiddenControl("ok\n\t"), undefined);
   assert.equal(firstHiddenControl("bad\u0000"), 0);
