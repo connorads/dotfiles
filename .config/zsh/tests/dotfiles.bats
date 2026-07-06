@@ -25,6 +25,7 @@ setup() {
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
 EOF
 
   dfgit add .gitattributes .codex/config.toml
@@ -48,7 +49,8 @@ EOF
 @test "status leaves real codex config edits unstaged" {
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 12000
 
 [projects."/Users/connorads"]
 trust_level = "trusted"
@@ -61,17 +63,38 @@ EOF
   dfgit diff --cached --quiet -- .codex/config.toml
 
   run dfgit diff -- .codex/config.toml
-  [[ "$output" == *'model_reasoning_effort = "xhigh"'* ]]
+  [[ "$output" == *'tool_output_token_limit = 12000'* ]]
+}
+
+@test "status hides codex model picker churn" {
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+tool_output_token_limit = 25000
+
+[projects."/Users/connorads"]
+trust_level = "trusted"
+EOF
+
+  run "$DOTFILES" status --short .codex/config.toml
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  dfgit diff --cached --quiet -- .codex/config.toml
 }
 
 @test "status preserves staged codex edits while hiding stripped worktree noise" {
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 12000
 EOF
   dfgit add .codex/config.toml
 
-  cat >>"$HOME/.codex/config.toml" <<'EOF'
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+tool_output_token_limit = 12000
 
 [projects."/Users/connorads"]
 trust_level = "trusted"
@@ -84,5 +107,5 @@ EOF
   dfgit diff --quiet -- .codex/config.toml
 
   run dfgit diff --cached -- .codex/config.toml
-  [[ "$output" == *'model_reasoning_effort = "xhigh"'* ]]
+  [[ "$output" == *'tool_output_token_limit = 12000'* ]]
 }
