@@ -67,6 +67,10 @@ declare module "@earendil-works/pi-coding-agent" {
       },
       options?: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" | "nextTurn" },
     ): void;
+    sendUserMessage(
+      content: string,
+      options?: { readonly deliverAs?: "steer" | "followUp" | "nextTurn" },
+    ): void;
   }
 
   export interface ExtensionCommandContext extends ExtensionContext {}
