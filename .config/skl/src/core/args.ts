@@ -9,7 +9,7 @@
 //   skl preview <ref>        → preview <ref>   (the fzf preview command)
 //   skl inline <ref>         → inline <ref>    (full content bundle for web paste)
 //   skl --help | -h          → help
-// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy.
+// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy, --all.
 
 import { ok, err, type Result } from "./result.ts";
 import type { ArgError, Command, Options } from "./types.ts";
@@ -22,6 +22,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   let submit = false;
   let stdin = false;
   let copy = false;
+  let all = false;
   const positionals: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -40,6 +41,10 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
       copy = true;
       continue;
     }
+    if (arg === "--all") {
+      all = true;
+      continue;
+    }
     if (VALUE_FLAGS.has(arg)) {
       const value = argv[i + 1];
       if (value === undefined) return err({ kind: "missing-value", flag: arg });
@@ -52,7 +57,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     positionals.push(arg);
   }
 
-  const options: Options = { target, paths, submit, copy };
+  const options: Options = { target, paths, submit, copy, all };
 
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });

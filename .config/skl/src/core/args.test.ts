@@ -17,6 +17,12 @@ describe("parseArgs", () => {
     if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null });
   });
 
+  test("--all parses into options", () => {
+    const r = parseArgs(["preview", "repo/alpha", "--all"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "preview") expect(r.value.options.all).toBe(true);
+  });
+
   test("--stdin with a positional ref → too-many-args", () => {
     expect(parseArgs(["--stdin", "alpha"])).toEqual({
       ok: false,
@@ -64,7 +70,13 @@ describe("parseArgs", () => {
     expect(r.ok).toBe(true);
     if (r.ok && r.value.kind === "load") {
       expect(r.value.ref).toBe("alpha");
-      expect(r.value.options).toEqual({ target: "%3", paths: ["/a", "/b"], submit: true, copy: false });
+      expect(r.value.options).toEqual({
+        target: "%3",
+        paths: ["/a", "/b"],
+        submit: true,
+        copy: false,
+        all: false,
+      });
     }
   });
 
@@ -80,7 +92,7 @@ describe("parseArgs", () => {
   test("--copy composes with --stdin (the picker's ctrl-y path)", () => {
     const r = parseArgs(["--stdin", "--copy"]);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { copy: true } });
+    if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { copy: true, all: false } });
   });
 
   test("missing flag value → missing-value", () => {

@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { buildSkill } from "./discover.ts";
 import type { Source } from "./types.ts";
 
-const source: Source = { path: "/root", name: "repo" };
+const source: Source = { path: "/root", name: "repo", exclude: ["**/generated/**"] };
 
 describe("buildSkill", () => {
   test("uses frontmatter name + description, absolute dir, sorted files", () => {
@@ -16,6 +16,27 @@ describe("buildSkill", () => {
     expect(skill.description).toBe("A skill.");
     expect(skill.dir).toBe("/root/alpha");
     expect(skill.files).toEqual(["SKILL.md", "references/guide.md"]);
+  });
+
+  test("filters payload files with the source's effective excludes", () => {
+    const skill = buildSkill({
+      source,
+      relPath: "alpha/SKILL.md",
+      raw: "---\nname: alpha\n---\n",
+      siblingFiles: ["SKILL.md", "generated/cache.txt", "references/guide.md"],
+    });
+    expect(skill.files).toEqual(["SKILL.md", "references/guide.md"]);
+  });
+
+  test("all=true keeps payload files that would otherwise be excluded", () => {
+    const skill = buildSkill({
+      source,
+      relPath: "alpha/SKILL.md",
+      raw: "---\nname: alpha\n---\n",
+      siblingFiles: ["SKILL.md", "generated/cache.txt", "references/guide.md"],
+      all: true,
+    });
+    expect(skill.files).toEqual(["SKILL.md", "generated/cache.txt", "references/guide.md"]);
   });
 
   test("nested skill: dir reflects depth", () => {

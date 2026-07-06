@@ -35,8 +35,8 @@ Usage:
   skl --stdin               inject pointers for refs read from stdin
   skl list                  list discovered skills (fed to fzf)
   skl preview <ref>         render a skill's pointer (the fzf preview)
-  skl inline <ref>          print the full content bundle (SKILL.md + all text
-                            files) for pasting where there is no filesystem
+  skl inline <ref>          print the full content bundle (SKILL.md + retained
+                            text files) for pasting where there is no filesystem
   skl --help                show this help
 
 Options:
@@ -44,6 +44,7 @@ Options:
   --path <dir>              override config sources entirely (repeatable)
   --submit                  press Enter after injecting (default: never)
   --copy                    copy pointer(s) to the system clipboard, no injection
+  --all                     include generated/cache payload files in trees/bundles
 `;
 
 const DEFAULT_CONFIG = `${import.meta.dir}/../config.json`;
@@ -67,12 +68,20 @@ const fmtConfigError = (e: ConfigError): string => {
       return "config.paths must be an array";
     case "empty":
       return "config.paths is empty — add at least one source";
+    case "exclude-not-array":
+      return "config.exclude must be an array";
+    case "exclude-not-string":
+      return `config.exclude[${e.index}] must be a string`;
     case "path-not-object":
       return `config.paths[${e.index}] is not an object`;
     case "path-missing":
       return `config.paths[${e.index}] is missing a string "path"`;
     case "name-not-string":
       return `config.paths[${e.index}].name must be a string`;
+    case "path-exclude-not-array":
+      return `config.paths[${e.pathIndex}].exclude must be an array`;
+    case "path-exclude-not-string":
+      return `config.paths[${e.pathIndex}].exclude[${e.index}] must be a string`;
   }
 };
 
@@ -190,7 +199,7 @@ const main = async (argv: readonly string[]): Promise<number> => {
     env.stderr(`skl: ${config.error}\n`);
     return 1;
   }
-  const skills = await discoverAll(config.value.sources);
+  const skills = await discoverAll(config.value.sources, { all: command.options.all });
 
   switch (command.kind) {
     case "list": {

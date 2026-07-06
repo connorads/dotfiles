@@ -3,7 +3,7 @@ import { renderPointer } from "./pointer.ts";
 import type { DiscoveredSkill } from "./types.ts";
 
 const skill: DiscoveredSkill = {
-  source: { path: "/repo", name: "repo" },
+  source: { path: "/repo", name: "repo", exclude: [] },
   name: "alpha",
   description: "A skill.",
   dir: "/repo/alpha",

@@ -7,6 +7,8 @@ export interface Source {
   readonly path: string;
   /** Label used in `source/name` identity and display. */
   readonly name: string;
+  /** Effective payload excludes: built-ins + config-level + source-level. */
+  readonly exclude: readonly string[];
 }
 
 /** A skill discovered under a source: identity `(source, name)` plus render data. */
@@ -65,9 +67,13 @@ export type ConfigError =
   | { readonly kind: "not-object" }
   | { readonly kind: "paths-not-array" }
   | { readonly kind: "empty" }
+  | { readonly kind: "exclude-not-array" }
+  | { readonly kind: "exclude-not-string"; readonly index: number }
   | { readonly kind: "path-not-object"; readonly index: number }
   | { readonly kind: "path-missing"; readonly index: number }
-  | { readonly kind: "name-not-string"; readonly index: number };
+  | { readonly kind: "name-not-string"; readonly index: number }
+  | { readonly kind: "path-exclude-not-array"; readonly pathIndex: number }
+  | { readonly kind: "path-exclude-not-string"; readonly pathIndex: number; readonly index: number };
 
 /** Options shared across commands. */
 export interface Options {
@@ -77,6 +83,8 @@ export interface Options {
   readonly submit: boolean;
   /** Copy pointer(s) to the system clipboard instead of injecting into a pane. */
   readonly copy: boolean;
+  /** Disable payload excludes for this invocation. */
+  readonly all: boolean;
 }
 
 /** A fully-parsed CLI invocation. `load.ref` is null when refs come from stdin. */

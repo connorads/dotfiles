@@ -25,11 +25,17 @@ export const loadConfigFile = async (
 
 // Glob files under a root, relative to it, SORTED (Bun.Glob is unordered). A
 // missing/unreadable root yields no files (a friendly empty result, not a throw).
-const globSorted = async (root: string, pattern: string): Promise<string[]> => {
+const globSorted = async (
+  root: string,
+  pattern: string,
+  options: { readonly dot?: boolean } = {},
+): Promise<string[]> => {
   const glob = new Glob(pattern);
   const rels: string[] = [];
   try {
-    for await (const rel of glob.scan({ cwd: root, onlyFiles: true })) rels.push(rel);
+    for await (const rel of glob.scan({ cwd: root, onlyFiles: true, dot: options.dot })) {
+      rels.push(rel);
+    }
   } catch {
     return [];
   }
@@ -46,7 +52,7 @@ export const readSkillMd = (absPath: string): Promise<string> =>
 
 /** File paths relative to a skill dir (includes SKILL.md), sorted. */
 export const siblingFiles = (skillDir: string): Promise<string[]> =>
-  globSorted(skillDir, "**/*");
+  globSorted(skillDir, "**/*", { dot: true });
 
 /**
  * Read a skill's text files for inlining, in `skill.files` order. Binary files
@@ -70,7 +76,14 @@ export const readSkillFiles = async (
   return { files, skipped };
 };
 
-const discoverSource = async (source: Source): Promise<DiscoveredSkill[]> => {
+export interface DiscoverOptions {
+  readonly all?: boolean;
+}
+
+const discoverSource = async (
+  source: Source,
+  options: DiscoverOptions,
+): Promise<DiscoveredSkill[]> => {
   const rels = await globSkills(source.path);
   const skills: DiscoveredSkill[] = [];
   for (const relPath of rels) {
@@ -78,7 +91,7 @@ const discoverSource = async (source: Source): Promise<DiscoveredSkill[]> => {
     const dir = relDir === "." ? source.path : posixJoin(source.path, relDir);
     const raw = await readSkillMd(posixJoin(source.path, relPath));
     const sibs = await siblingFiles(dir);
-    skills.push(buildSkill({ source, relPath, raw, siblingFiles: sibs }));
+    skills.push(buildSkill({ source, relPath, raw, siblingFiles: sibs, all: options.all }));
   }
   return skills;
 };
@@ -86,8 +99,9 @@ const discoverSource = async (source: Source): Promise<DiscoveredSkill[]> => {
 /** Discover every skill across sources, preserving config (precedence) order. */
 export const discoverAll = async (
   sources: readonly Source[],
+  options: DiscoverOptions = {},
 ): Promise<DiscoveredSkill[]> => {
   const all: DiscoveredSkill[] = [];
-  for (const source of sources) all.push(...(await discoverSource(source)));
+  for (const source of sources) all.push(...(await discoverSource(source, options)));
   return all;
 };
