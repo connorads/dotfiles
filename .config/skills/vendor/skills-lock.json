@@ -19,6 +19,13 @@
       "skillPath": "agents/SKILL.md",
       "computedHash": "fe4f99153ff58196d72abe50293056d588a807b6b185b20f49e5ffb32265db42"
     },
+    "caveman": {
+      "source": "JuliusBrussee/caveman",
+      "ref": "v1.9.1",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "d18cdf73a5f5c496d681a43a6846336b110223bdffa6817b8992529c57f1a815"
+    },
     "claude-api": {
       "source": "anthropics/skills",
       "sourceType": "github",
