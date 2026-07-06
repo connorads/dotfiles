@@ -10,6 +10,11 @@ model_auto_compact_token_limit = 233000
 personality = "pragmatic"
 web_search = "live"
 plan_mode_reasoning_effort = "high"
+developer_instructions = """
+When using the `request_user_input` tool, never set `autoResolutionMs`.
+Use question cards when input is needed, and wait indefinitely for the user.
+Do not auto-resolve, default, or continue past unanswered question cards.
+"""
 
 # Defaults made explicit — sandbox is read-only (upgrades to workspace-write
 # after trust prompt), network blocked, approval based on trust decision
