@@ -6,8 +6,11 @@ import { Glob } from "bun";
 export const BUILTIN_PAYLOAD_EXCLUDES: readonly string[] = [
   "**/.DS_Store",
   "**/.git/**",
+  "**/.claude/**",
+  "**/.rumdl_cache/**",
   "**/__pycache__/**",
   "**/*.py[cod]",
+  "**/*.backup",
   "**/node_modules/**",
 ];
 

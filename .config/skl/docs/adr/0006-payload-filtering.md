@@ -4,8 +4,9 @@
 
 `skl` previews, loads, copies, and inlines a skill by showing files under the skill
 directory. That raw sibling walk can contain generated/cache artefacts such as
-`scripts/__pycache__`, `.pyc` files, `.DS_Store`, `.git`, and `node_modules`. These files
-are usually noise for an agent and make inline bundles larger than the useful source.
+`scripts/__pycache__`, `.pyc` files, `.DS_Store`, `.git`, `.claude`, `.rumdl_cache`,
+`*.backup`, and `node_modules`. These files are usually noise for an agent and make inline
+bundles larger than the useful source.
 
 This is not the same problem Git solves. Git answers "what should this repository track?"
 `skl` answers "what should an agent see as the skill payload?"
@@ -20,8 +21,11 @@ Built-in excludes:
 [
   "**/.DS_Store",
   "**/.git/**",
+  "**/.claude/**",
+  "**/.rumdl_cache/**",
   "**/__pycache__/**",
   "**/*.py[cod]",
+  "**/*.backup",
   "**/node_modules/**"
 ]
 ```

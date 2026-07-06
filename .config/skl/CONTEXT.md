@@ -39,8 +39,9 @@ progressive disclosure.
 
 The file tree is a **payload tree**: useful source files under the skill dir after
 built-in and configured payload excludes have removed generated/cache artefacts such as
-`__pycache__`, `.pyc`, `.DS_Store`, `.git`, and `node_modules`. `SKILL.md` is always
-retained. Pass `--all` to show the raw sibling payload list for that invocation.
+`__pycache__`, `.pyc`, `.DS_Store`, `.git`, `.claude`, `.rumdl_cache`, `*.backup`, and
+`node_modules`. `SKILL.md` is always retained. Pass `--all` to show the raw sibling
+payload list for that invocation.
 
 ### Inline bundle
 
@@ -62,8 +63,11 @@ reading `.gitignore`. Defaults:
 [
   "**/.DS_Store",
   "**/.git/**",
+  "**/.claude/**",
+  "**/.rumdl_cache/**",
   "**/__pycache__/**",
   "**/*.py[cod]",
+  "**/*.backup",
   "**/node_modules/**"
 ]
 ```

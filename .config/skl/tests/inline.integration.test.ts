@@ -80,6 +80,7 @@ describe("skl inline (real CLI)", () => {
       await mkdir(join(skill, "node_modules/pkg"), { recursive: true });
       await writeFile(join(skill, "SKILL.md"), "---\nname: noisy\n---\n\n# Noisy\n");
       await writeFile(join(skill, "notes.md"), "useful notes\n");
+      await writeFile(join(skill, "notes.md.backup"), "backup notes\n");
       await writeFile(join(skill, "__pycache__/helper.pyc"), "bytecode cache\n");
       await writeFile(join(skill, "node_modules/pkg/index.js"), "dependency code\n");
     });
@@ -94,6 +95,7 @@ describe("skl inline (real CLI)", () => {
       const text = out.stdout.toString();
       expect(text).toContain('<file path="SKILL.md">');
       expect(text).toContain('<file path="notes.md">');
+      expect(text).not.toContain("backup notes");
       expect(text).not.toContain("bytecode cache");
       expect(text).not.toContain("dependency code");
     });
@@ -102,6 +104,7 @@ describe("skl inline (real CLI)", () => {
       const out = Bun.spawnSync([process.execPath, CLI, "inline", "noisy", "--path", root, "--all"]);
       expect(out.exitCode).toBe(0);
       const text = out.stdout.toString();
+      expect(text).toContain("backup notes");
       expect(text).toContain("bytecode cache");
       expect(text).toContain("dependency code");
     });
