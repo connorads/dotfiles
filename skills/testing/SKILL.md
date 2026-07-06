@@ -3,10 +3,11 @@ name: testing
 description: >
   Design and write effective tests for behavioural changes, bug fixes, and
   refactors. Use when choosing a test layer, practising TDD, picking
-  doubles/fakes, reducing brittle or flaky tests, refactoring safely, or
-  applying property-based, snapshot/approval, differential/metamorphic, or
-  contract testing. For coverage, thresholds, mutation testing, fuzzing, and
-  CI/hook enforcement, use the test-coverage skill.
+  doubles/fakes, designing scenario or e2e suites for critical journeys,
+  reducing brittle or flaky tests, refactoring safely, or applying
+  property-based, snapshot/approval, differential/metamorphic, or contract
+  testing. For coverage, thresholds, mutation testing, fuzzing, and CI/hook
+  enforcement, use the test-coverage skill.
 ---
 
 # Testing
@@ -83,6 +84,7 @@ Choose the narrowest layer that proves the behaviour.
 | Pure core | Business rules, parsing, validation, calculations | Unit tests with real values |
 | Application/use case | Decisions across owned ports | Public API tests with fakes for owned ports |
 | Adapter | Database, queue, filesystem, third-party integration code | Contract/integration tests against real infrastructure where practical |
+| Scenario | Critical vertical journeys across routing, auth, UI/API, and owned state | Real app composition, real owned infrastructure where cheap, fake only externals |
 | Composition | Wiring, CLI, HTTP handlers, UI journeys | A few integration/e2e checks for critical paths |
 
 Do not use e2e tests to compensate for untested domain logic. Do not use unit
@@ -140,18 +142,35 @@ POSIX multi-shell loops, example harnesses, and keeping suites fast.
 
 A useful named layer sits between application and composition: run the **real
 application** end to end and fake **only the externals you don't own**
-(third-party HTTP), switching the faked backend state per test.
+(third-party HTTP, email delivery, payment providers), switching the faked
+external state per test.
 
+- Cover named user/business journeys, not matrices: lifecycle transitions,
+  permissions, locale, persistence, resumability, and other places where several
+  boundaries must agree.
+- Use app-owned setup and cleanup surfaces when they exist - admin APIs, public
+  APIs, CLI commands - so the test validates the same contracts operators and
+  users rely on. Direct storage setup is a fallback when the public setup seam is
+  absent or prohibitively slow.
 - Fake at the network boundary (e.g. MSW server-side), not by stubbing your own
-  modules — routing, parsing, middleware, and wiring all run for real.
+  modules - routing, parsing, middleware, and wiring all run for real.
 - Define named backend states ("payment succeeds", "auth times out") and select
   one per test instead of restarting the app or re-mocking by hand.
-- Isolate parallel tests by tagging each with an id (e.g. an injected header) so
-  concurrent tests don't share mocked state.
+- Isolate both browser state and backend state: create unique records, clean them
+  up in fixture teardown, restore any global flags, and tag parallel tests with
+  an id (e.g. an injected header) so concurrent tests don't share mocked state.
+- Prefer user-facing selectors and web-first assertions. Add stable accessible
+  scopes to repeated UI regions (e.g. a named `role="group"`) instead of
+  reaching for DOM structure.
+- Keep slow scenario suites on an explicit command unless they are tiny and
+  mission-critical for every commit. Run serially only for unavoidable global
+  state, and say why.
 
 Reach for it to prove a vertical slice works without standing up real
 third-party services. It complements, and does not replace, a few true e2e
-checks and exhaustive domain tests.
+checks and exhaustive domain tests. See
+`references/scenario-testing.md` when designing a scenario suite, choosing
+setup/cleanup seams, or debugging scenario flakiness.
 
 ### Testing at multiple boundaries
 
@@ -328,6 +347,9 @@ time/network coupling (see Core Rules).
 - [property-based-testing.md](references/property-based-testing.md) —
   Per-ecosystem PBT frameworks, shrinking, stateful/model-based testing, CI
   integration, and pitfalls.
+- [scenario-testing.md](references/scenario-testing.md) - Critical-journey
+  selection, setup/cleanup through public surfaces, external fakes, accessible
+  selectors, runtime policy, and anti-patterns for scenario/e2e suites.
 - [shell-testing.md](references/shell-testing.md) — Bats/ShellSpec/shUnit2/cram
   trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, and keeping
   suites fast (parallelism, fixture amortisation, removing time-coupling).
