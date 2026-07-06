@@ -1,0 +1,113 @@
+# Resource hints (preload / preconnect / prefetch)
+
+> The React DOM hint APIs (`preload`, `preconnect`, `prefetchDNS`, `preloadModule`,
+> `preinit`) are documented in
+> `vercel-react-best-practices/rules/rendering-resource-hints.md`. This reference
+> adds the *why* and the ordering/matching/budget gotchas that skill omits, NOT the
+> API table.
+
+## What this adds over the vercel skill
+
+- **crossOrigin on font preloads** - see fonts.md; a missing `crossorigin` causes a
+  credentials-mode mismatch, so the preload record is discarded and the font is
+  fetched twice.
+- **Exact-file matching** - the preload href must equal the file the consuming rule
+  (`@font-face src`, `<img>` src) actually requests, byte for byte including the
+  fingerprint. With Vite that is what `?url` guarantees. A near-miss = two fetches and
+  a wasted preload.
+
+## Ordering: it controls priority, not discovery
+
+The preload scanner is a secondary parser that scans raw markup ahead of the main
+parser and discovers **all** declarative preloads regardless of position relative to
+the stylesheet. A stylesheet is render-blocking, not markup-parser-blocking, so it does
+NOT hide a later `<link rel=preload>`. **Order does not change discovery.**
+
+So put font preloads **below** the stylesheet: a preloaded font gets Chrome's Highest
+priority - the same as render-blocking CSS - and placing it first makes it contend for
+bandwidth with the CSS the page needs to render (and the LCP image), worst on slow
+links. web.dev puts font preloads below stylesheets for exactly this reason. Control
+priority/budget, not discovery order.
+
+- <https://web.dev/articles/preload-scanner> ·
+  <https://web.dev/learn/performance/optimize-web-fonts>
+
+## Preload budget
+
+Preload is zero-sum priority; over-preloading dilutes and causes bandwidth contention
+(worst on slow networks). Chrome-team budget: **at most ~2 images + 2-3 essential
+fonts per page**; `fetchpriority=high` on at most 1-2 LCP images. Preload only
+**late-discovered** critical resources (fonts in CSS, `@import`, CSS-background/LCP
+images not in the initial HTML) - not things already in the HTML the browser finds
+anyway. An unused preload = a Chrome console warning ~3s after load, strictly worse
+than none.
+
+- <https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/performance/optimize-preload-priority.md> ·
+  <https://web.dev/articles/preload-critical-assets>
+
+## preconnect vs dns-prefetch
+
+- `preconnect` = full DNS + TCP + TLS (~3 RTT, saves ~100-500ms), expensive; the
+  browser closes an unused socket after ~10s -> only for a few critical, soon-used
+  cross-origins.
+- `dns-prefetch` = DNS only (~20-120ms), cheap; the right hint for lower-confidence
+  origins and a preconnect fallback. Keep the two in SEPARATE `<link>` tags (combining
+  triggers a Safari bug).
+- **Load-bearing for this stack:** self-hosting fonts (fontsource) means there is no
+  third-party origin to hint - the browser is already connected for HTML/CSS - so
+  preconnect/dns-prefetch are pure waste unless an analytics/image CDN remains a
+  distinct early origin.
+- <https://web.dev/articles/preconnect-and-dns-prefetch>
+
+## modulepreload (Vite already does it)
+
+A standard Vite HTML build auto-generates `<link rel="modulepreload">` for entry chunks
+and their direct static imports, and preloads async-chunk shared deps in parallel - no
+config (`build.modulePreload` defaults to `{ polyfill: true }`). Hand-adding
+modulepreload for the SSR->hydration entry path is usually redundant; only needed for
+custom/backend non-HTML entries (where you also `import 'vite/modulepreload-polyfill'`).
+
+- <https://vite.dev/guide/features> · <https://vite.dev/config/build-options>
+
+## 103 Early Hints on Cloudflare
+
+The Worker does NOT send 103 itself. Attach a standard
+`Link: </file.woff2>; rel=preload; as=font` header to your normal 200/301/302 HTML
+response; Cloudflare's Early Hints feature harvests + caches those Link headers (keyed
+by URI, query ignored) and replays a cached `103 Early Hints` BEFORE the request reaches
+the Worker. Enable via dashboard Speed > Optimization > Content Optimization > Early
+Hints (zone-level, not on `workers.dev`). It **works for dynamic/uncacheable Worker
+responses** precisely because there is a render-latency gap. Eligibility:
+`.html`/`.htm`/`.php` or no extension, 200/301/302 only; keep Link headers under ~8KB.
+Responsive `imagesrcset` preloads do NOT work here (or in HTTP-header preload).
+
+- **Privacy caveat (the edge lens):** an unauthenticated visitor can receive a 103 with
+  cached Link headers ahead of a 403. Under a pre-gate anonymity constraint, do not leak
+  gated asset URLs via Early Hints - scope them to anonymous/pre-gate assets only.
+- <https://developers.cloudflare.com/cache/advanced-configuration/early-hints/> ·
+  <https://developers.cloudflare.com/workers/examples/103-early-hints/>
+
+## fetchpriority x preload
+
+Images fetch at Low priority by default; preload aids DISCOVERY only, at default
+priority; `fetchpriority` sets priority, not discovery - so preloaded images need
+`fetchpriority="high"`. Reserve it for the true LCP element, never decorative art. Full
+detail + responsive markup in images.md.
+
+- <https://web.dev/articles/fetch-priority>
+
+## Emitting hints on TanStack Start
+
+Emit hints via the route `head()` option (`{ meta, links, styles, scripts }`) rendered
+by `<HeadContent />` in `<head>` (root route for above-the-fold font preloads). Prefer
+this over React 19 native `<link>` hoisting: Start's SSR-stream path is dedupe/stream-
+aware, and mixing React 19 native metadata has caused double-rendered tags. The router
+dedupes title/meta by deepest route (do not rely on it to dedupe repeated preloads).
+`ReactDOM.preload()` works and dedupes by `href` (`as:image` also keys on
+`imageSrcSet`+`imageSizes`) but must run in the SSR render context, and post-Suspense
+preloads get appended to the stream tail (useless) - keep critical hints in the root
+`head()`. Because the head is framework-rendered per request, verify by parsing the
+booted route's bytes, not the source (verify.md).
+
+- <https://tanstack.com/router/latest/docs/guide/document-head-management> ·
+  <https://react.dev/reference/react-dom/preload>
