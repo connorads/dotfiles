@@ -7,10 +7,13 @@ describe("filterPayloadFiles", () => {
       "SKILL.md",
       ".DS_Store",
       ".git/config",
+      ".claude/.cc-writes/state.json",
+      ".rumdl_cache/workspace_index.bin",
       "__pycache__/helper.cpython-314.pyc",
       "lib/helper.pyc",
       "lib/helper.pyo",
       "lib/helper.pyd",
+      "notes.md.backup",
       "node_modules/pkg/index.js",
       "references/guide.md",
     ];

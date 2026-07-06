@@ -18,11 +18,16 @@ describe("skl preview payload filtering (real CLI)", () => {
   beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), "skl-preview-"));
     const skill = join(root, "noisy");
+    await mkdir(join(skill, ".claude/.cc-writes"), { recursive: true });
+    await mkdir(join(skill, ".rumdl_cache/0.2.27"), { recursive: true });
     await mkdir(join(skill, "__pycache__"), { recursive: true });
     await mkdir(join(skill, ".git"), { recursive: true });
     await mkdir(join(skill, "node_modules/pkg"), { recursive: true });
     await writeFile(join(skill, "SKILL.md"), "---\nname: noisy\n---\n\n# Noisy\n");
     await writeFile(join(skill, "references.md"), "useful reference\n");
+    await writeFile(join(skill, "SKILL.md.backup"), "backup copy\n");
+    await writeFile(join(skill, ".claude/.cc-writes/state.json"), "{}\n");
+    await writeFile(join(skill, ".rumdl_cache/workspace_index.bin"), "cache index\n");
     await writeFile(join(skill, ".DS_Store"), "finder data\n");
     await writeFile(join(skill, ".git/config"), "git internals\n");
     await writeFile(join(skill, "__pycache__/helper.pyc"), "bytecode cache\n");
@@ -39,6 +44,9 @@ describe("skl preview payload filtering (real CLI)", () => {
     const text = out.stdout.toString();
     expect(text).toContain("SKILL.md");
     expect(text).toContain("references.md");
+    expect(text).not.toContain("SKILL.md.backup");
+    expect(text).not.toContain(".claude");
+    expect(text).not.toContain(".rumdl_cache");
     expect(text).not.toContain(".DS_Store");
     expect(text).not.toContain(".git");
     expect(text).not.toContain("__pycache__");
@@ -49,6 +57,9 @@ describe("skl preview payload filtering (real CLI)", () => {
     const out = runPreview("noisy", root, ["--all"]);
     expect(out.exitCode).toBe(0);
     const text = out.stdout.toString();
+    expect(text).toContain("SKILL.md.backup");
+    expect(text).toContain(".claude");
+    expect(text).toContain(".rumdl_cache");
     expect(text).toContain(".DS_Store");
     expect(text).toContain(".git");
     expect(text).toContain("__pycache__");
