@@ -162,6 +162,15 @@
     VISUAL = "micro";
   };
 
+  # tmux-fingers ships a compiled Crystal binary, so it can't be a pin_tmux_plugin
+  # git checkout like the siblings below — the nixpkgs derivation builds it from
+  # pinned source and a fix.patch that hardcodes the store binary (no runtime
+  # curl). Symlinked into the plugins dir so TPM sources it; not in the pin list,
+  # so no collision with the git-checkout siblings (both land at writeBoundary,
+  # before home.activation.tmuxPlugins).
+  home.file.".config/tmux/plugins/tmux-fingers".source =
+    "${pkgs.tmuxPlugins.fingers}/share/tmux-plugins/tmux-fingers";
+
   home.activation.tmuxPlugins = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     plugins_dir="$HOME/.config/tmux/plugins"
     mkdir -p "$plugins_dir"
@@ -205,7 +214,6 @@
     pin_tmux_plugin "tpm" "tmux-plugins/tpm" "e261deb1b47614eed3400089ce7197dc68acc4eb"
     pin_tmux_plugin "tmux-resurrect" "tmux-plugins/tmux-resurrect" "cff343cf9e81983d3da0c8562b01616f12e8d548"
     pin_tmux_plugin "tmux-continuum" "tmux-plugins/tmux-continuum" "0698e8f4b17d6454c71bf5212895ec055c578da0"
-    pin_tmux_plugin "tmux-thumbs" "fcsonline/tmux-thumbs" "ae91d5f7c0d989933e86409833c46a1eca521b6a"
     pin_tmux_plugin "tmux-nerd-font-window-name" "joshmedeski/tmux-nerd-font-window-name" "0af812a228e1b9f538b8d220c6c59d82d7228973"
     pin_tmux_plugin "tmux-cpu" "tmux-plugins/tmux-cpu" "bcb110d754ab2417de824c464730c412a3eb2769"
     pin_tmux_plugin "tmux-fzf-links" "alberti42/tmux-fzf-links" "820fc0cb39168486e3884b81592d69b57191a272"

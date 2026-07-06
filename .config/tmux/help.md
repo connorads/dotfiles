@@ -88,7 +88,7 @@
 | `Ctrl+b Alt+v` | Fresh editor |
 | `Ctrl+b Alt+V` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
-| `Ctrl+b Ctrl+y` | thumbs (quick-copy text with hints) |
+| `Ctrl+b F` | fingers (quick-copy text with hints) |
 
 ## Agent tab dots
 
@@ -143,7 +143,6 @@ threshold); a number = swap worth noting.
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+b F` | fix SSH agent socket |
 | `Ctrl+b Ctrl+s` | save tmux session state |
 | `Ctrl+b Ctrl+r` | restore saved tmux session state |
 | `F10` | suspend/resume tmux client |
