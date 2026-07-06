@@ -231,12 +231,12 @@ def usage_colour(pct, remaining, window_secs, stale):
     return "green"
 
 
-def pool_colour(pct, stale):
+def pool_colour(pct, stale, pace=None):
     if stale:
         return "muted"
-    if pct >= 90:
+    if pct >= 90 or (pace is not None and pace >= 1.4):
         return "red"
-    if pct >= 70:
+    if pct >= 70 or (pace is not None and pace >= 1.2):
         return "yellow"
     return "green"
 
@@ -251,6 +251,14 @@ def pool_note(row):
         return "credits critical", "red"
     if pct >= 70:
         return "credits warm", "yellow"
+    pace = row.get("pace_ratio")
+    projected = row.get("projected_exhaustion")
+    remaining = row.get("remaining")
+    if pace is not None and pace >= 1.2:
+        colour_name = "red" if pace >= 1.4 else "yellow"
+        if projected is not None and remaining is not None and projected < remaining:
+            return f"projects empty in ~{fmt_duration(projected)}", colour_name
+        return "critical pace" if pace >= 1.4 else "warm pace", colour_name
     return "credits OK", "green"
 
 
@@ -264,7 +272,7 @@ def burn_note(row):
     window_secs = int(row.get("window_secs") or 0)
     if pct >= 100:
         return "limit now", "red"
-    pace = pace_ratio(pct, remaining, window_secs, False)
+    pace = row.get("pace_ratio")
     if pace is None:
         return "fresh window", "muted"
     elapsed = window_secs - max(0, float(remaining or 0))
@@ -277,6 +285,82 @@ def burn_note(row):
     if pace >= 1.2:
         return "warm pace", "yellow"
     return "pace OK", "green"
+
+
+def severity_rank(colour_name):
+    return {"red": 3, "yellow": 2, "green": 1, "muted": 0}.get(colour_name, 0)
+
+
+def attach_row_metadata(row):
+    if row.get("kind") == "pool":
+        row["colour"] = pool_colour(row["pct"], row["stale"], row.get("pace_ratio"))
+    else:
+        row["colour"] = usage_colour(row["pct"], row["remaining"], row["window_secs"], row["stale"])
+    note, note_colour = burn_note(row)
+    row["note"] = note
+    row["note_colour"] = note_colour
+    if row.get("stale"):
+        row["risk_rank"] = severity_rank("green")
+    else:
+        row["risk_rank"] = max(severity_rank(row["colour"]), severity_rank(note_colour))
+    return row
+
+
+def make_window_row(provider, window, pct, remaining, window_secs, stale, provider_colour, source):
+    ideal = ideal_pct(remaining, window_secs, stale)
+    row = {
+        "kind": "window",
+        "provider": provider,
+        "window": window,
+        "pct": pct,
+        "remaining": remaining,
+        "window_secs": window_secs,
+        "stale": stale,
+        "ideal_pct": ideal,
+        "pace_delta": ideal - pct if ideal is not None else None,
+        "pace_ratio": pace_ratio(pct, remaining, window_secs, stale),
+        "note": "",
+        "provider_colour": provider_colour,
+        "source": source,
+    }
+    return attach_row_metadata(row)
+
+
+def make_pool_row(provider, window, pct, remaining, stale, provider_colour, source, start_ts=None, reset_ts=None):
+    ideal = None
+    delta = None
+    ratio = None
+    projected = None
+    period_secs = None
+    elapsed_secs = None
+    if not stale and start_ts is not None and reset_ts is not None:
+        period_secs = reset_ts - start_ts
+        elapsed_secs = NOW_TS - start_ts
+        if period_secs > 0 and elapsed_secs >= 0:
+            ideal = max(0, min(100, elapsed_secs * 100 / period_secs))
+            delta = ideal - pct
+            if pct > 0 and ideal > 0:
+                ratio = pct / ideal
+            if pct > 0 and elapsed_secs > 0:
+                projected = (100 - pct) / (pct / elapsed_secs)
+    row = {
+        "kind": "pool",
+        "provider": provider,
+        "window": window,
+        "pct": pct,
+        "remaining": remaining,
+        "window_secs": period_secs or 0,
+        "stale": stale,
+        "ideal_pct": ideal,
+        "pace_delta": delta,
+        "pace_ratio": ratio,
+        "projected_exhaustion": projected,
+        "elapsed_secs": elapsed_secs,
+        "note": "",
+        "provider_colour": provider_colour,
+        "source": source,
+    }
+    return attach_row_metadata(row)
 
 
 def bar(pct: float, width: int, colour_name: str, stale: bool = False, marker_pct=None) -> str:
@@ -375,16 +459,16 @@ def collect_windows():
                 continue
             reset = iso_ts(obj.get("resets_at"))
             remaining = max(0, reset - NOW_TS) if reset else None
-            rows.append({
-                "provider": label,
-                "window": "5h" if key == "five_hour" else "7d",
-                "pct": pct,
-                "remaining": remaining,
-                "window_secs": window_secs,
-                "stale": claude_age is not None and claude_age >= stale_after(window_secs),
-                "provider_colour": "sonnet" if label == "Sonnet" else "claude",
-                "source": "claude",
-            })
+            rows.append(make_window_row(
+                label,
+                "5h" if key == "five_hour" else "7d",
+                pct,
+                remaining,
+                window_secs,
+                claude_age is not None and claude_age >= stale_after(window_secs),
+                "sonnet" if label == "Sonnet" else "claude",
+                "claude",
+            ))
         # Model-scoped weekly windows (e.g. Fable) now arrive via .limits[] with a
         # scope.model.display_name; the legacy seven_day_<model> keys are null.
         for lim in claude.get("limits") or []:
@@ -396,16 +480,16 @@ def collect_windows():
                 continue
             reset = iso_ts(lim.get("resets_at"))
             remaining = max(0, reset - NOW_TS) if reset else None
-            rows.append({
-                "provider": model[:7],
-                "window": "7d",
-                "pct": pct,
-                "remaining": remaining,
-                "window_secs": 604800,
-                "stale": claude_age is not None and claude_age >= stale_after(604800),
-                "provider_colour": "sonnet",
-                "source": "claude",
-            })
+            rows.append(make_window_row(
+                model[:7],
+                "7d",
+                pct,
+                remaining,
+                604800,
+                claude_age is not None and claude_age >= stale_after(604800),
+                "sonnet",
+                "claude",
+            ))
         extra = claude.get("extra_usage") or {}
         if extra.get("is_enabled") is not None:
             try:
@@ -438,16 +522,16 @@ def collect_windows():
                 continue
             reset_secs = as_pct(obj.get("reset_after_seconds"))
             remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
-            rows.append({
-                "provider": label,
-                "window": "5h" if key == "primary_window" else "7d",
-                "pct": pct,
-                "remaining": remaining,
-                "window_secs": window_secs,
-                "stale": codex_age is not None and codex_age >= stale_after(window_secs),
-                "provider_colour": "codex",
-                "source": "codex",
-            })
+            rows.append(make_window_row(
+                label,
+                "5h" if key == "primary_window" else "7d",
+                pct,
+                remaining,
+                window_secs,
+                codex_age is not None and codex_age >= stale_after(window_secs),
+                "codex",
+                "codex",
+            ))
         for extra_limit in (codex.get("additional_rate_limits") or [])[:2]:
             limit_name = short_limit_name(extra_limit.get("limit_name"))
             extra_rl = extra_limit.get("rate_limit") or {}
@@ -458,16 +542,16 @@ def collect_windows():
                     continue
                 reset_secs = as_pct(obj.get("reset_after_seconds"))
                 remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
-                rows.append({
-                    "provider": limit_name,
-                    "window": "5h" if key == "primary_window" else "7d",
-                    "pct": pct,
-                    "remaining": remaining,
-                    "window_secs": window_secs,
-                    "stale": codex_age is not None and codex_age >= stale_after(window_secs),
-                    "provider_colour": "codex",
-                    "source": "codex-extra",
-                })
+                rows.append(make_window_row(
+                    limit_name,
+                    "5h" if key == "primary_window" else "7d",
+                    pct,
+                    remaining,
+                    window_secs,
+                    codex_age is not None and codex_age >= stale_after(window_secs),
+                    "codex",
+                    "codex-extra",
+                ))
         reset_credits = ((codex.get("rate_limit_reset_credits") or {}).get("available_count") or 0)
         try:
             if int(reset_credits) > 0:
@@ -488,20 +572,21 @@ def collect_windows():
     if cosine:
         used = as_pct(cosine.get("usedTokens"))
         total = as_pct(cosine.get("totalAvailableTokens"))
+        start = iso_ts(cosine.get("billingPeriodStartsAt"))
         reset = iso_ts(cosine.get("billingPeriodResetsAt"))
         if used is not None and total is not None and total > 0:
             pct = used * 100 / total
-            rows.append({
-                "provider": "Cosine",
-                "window": "mo",
-                "pct": pct,
-                "remaining": max(0, reset - NOW_TS) if reset else None,
-                "window_secs": 0,
-                "stale": cosine_age is not None and cosine_age >= 900,
-                "provider_colour": "cosine",
-                "source": "cosine",
-                "kind": "pool",
-            })
+            rows.append(make_pool_row(
+                "Cosine",
+                "mo",
+                pct,
+                max(0, reset - NOW_TS) if reset else None,
+                cosine_age is not None and cosine_age >= 900,
+                "cosine",
+                "cosine",
+                start,
+                reset,
+            ))
         if cosine_age is not None and cosine_age >= 900:
             alerts.append(("Stale", f"Cosine cache {fmt_age(cosine_path)}", "yellow"))
     elif not cosine_path.exists():
@@ -578,14 +663,16 @@ def collect_insights(rows):
     if not rows:
         return []
     # Stale rows still count: an hours-old 7d reading is more likely the real
-    # bottleneck than a fresh-but-idle 5h one. Prefer fresh data, then the
-    # tighter 5h window, on ties — and flag a stale pick rather than hide it.
+    # bottleneck than a fresh-but-idle 5h one. Pace can now make a lower absolute
+    # pool usage more urgent, so severity ranks first, then absolute usage.
     bottleneck = max(rows, key=lambda r: (
+        int(r.get("risk_rank") or 0),
         float(r.get("pct") or 0),
         0 if r.get("stale") else 1,
         1 if r.get("window") == "5h" else 0,
     ))
-    note, note_colour = burn_note(bottleneck)
+    note = bottleneck.get("note") or burn_note(bottleneck)[0]
+    note_colour = bottleneck.get("note_colour") or burn_note(bottleneck)[1]
     lines = [(
         "Bottleneck",
         f"{bottleneck['provider']} {bottleneck['window']} {bottleneck['pct']:.0f}% · ↻ {fmt_duration(bottleneck.get('remaining'))} · {note}",
@@ -644,14 +731,9 @@ def render():
     if rows:
         for row in rows:
             pct = row["pct"]
-            if row.get("kind") == "pool":
-                colour = pool_colour(pct, row["stale"])
-                ideal = None
-                delta = None
-            else:
-                colour = usage_colour(pct, row["remaining"], row["window_secs"], row["stale"])
-                ideal = ideal_pct(row["remaining"], row["window_secs"], row["stale"])
-                delta = pace_delta(pct, row["remaining"], row["window_secs"], row["stale"])
+            colour = row.get("colour") or usage_colour(pct, row["remaining"], row["window_secs"], row["stale"])
+            ideal = row.get("ideal_pct")
+            delta = row.get("pace_delta")
             provider = c(row["provider_colour"], f"{row['provider']:<7}")
             window = c("muted", f"{row['window']:<2}")
             reset = fmt_duration(row["remaining"])

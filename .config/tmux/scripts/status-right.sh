@@ -329,6 +329,7 @@ ai_usage() {
 	local claude_5_remaining_secs="" claude_7_remaining_secs=""
 	local codex_5_remaining_secs="" codex_7_remaining_secs="" cosine_remaining_secs=""
 	local claude_5_reset="" claude_7_reset="" codex_5_reset="" codex_7_reset="" cosine_reset=""
+	local cosine_pace_x100=""
 	local claude_cache_age=999999 codex_cache_age=999999 cosine_cache_age=999999
 	local claude_5_stale=0 claude_7_stale=0 codex_5_stale=0 codex_7_stale=0 cosine_stale=0
 
@@ -376,6 +377,29 @@ ai_usage() {
 		printf "%s" "$remaining"
 	}
 
+	_period_pace_x100() {
+		local pct="$1"
+		local starts_at="$2"
+		local resets_at="$3"
+		[ -n "$pct" ] && [ -n "$starts_at" ] && [ -n "$resets_at" ] || return 0
+
+		local start_ts reset_ts period elapsed
+		start_ts=$(iso_to_epoch "$starts_at")
+		reset_ts=$(iso_to_epoch "$resets_at")
+		[ "$start_ts" -gt 0 ] 2>/dev/null || return 0
+		[ "$reset_ts" -gt "$start_ts" ] 2>/dev/null || return 0
+		[ "$now" -ge "$start_ts" ] 2>/dev/null || return 0
+
+		period=$((reset_ts - start_ts))
+		elapsed=$((now - start_ts))
+		[ "$period" -gt 0 ] 2>/dev/null || return 0
+		[ "$elapsed" -gt 0 ] 2>/dev/null || return 0
+
+		awk -v pct="$pct" -v period="$period" -v elapsed="$elapsed" 'BEGIN {
+			printf "%.0f", (pct * period) / elapsed
+		}'
+	}
+
 	if [ -f "$claude_cache" ]; then
 		claude_cache_age=$((now - $(_mtime "$claude_cache")))
 		claude_5_pct=$(jq -r '.five_hour.utilization // empty' "$claude_cache" 2>/dev/null)
@@ -410,10 +434,12 @@ ai_usage() {
 		cosine_cache_age=$((now - $(_mtime "$cosine_cache")))
 		if jq -e '(.usedTokens | type == "number") and (.totalAvailableTokens | type == "number") and (.totalAvailableTokens > 0) and (.billingPeriodResetsAt | type == "string" and length > 0)' "$cosine_cache" >/dev/null 2>&1; then
 			cosine_pct=$(jq -r '(.usedTokens / .totalAvailableTokens) * 100' "$cosine_cache" 2>/dev/null)
-			local cosine_resets_at
+			local cosine_starts_at cosine_resets_at
+			cosine_starts_at=$(jq -r '.billingPeriodStartsAt // empty' "$cosine_cache" 2>/dev/null)
 			cosine_resets_at=$(jq -r '.billingPeriodResetsAt // empty' "$cosine_cache" 2>/dev/null)
 			cosine_remaining_secs=$(_iso_remaining_secs "$cosine_resets_at")
 			cosine_reset=$(_fmt_reset "$cosine_remaining_secs" "$cosine_cache_age")
+			cosine_pace_x100=$(_period_pace_x100 "$cosine_pct" "$cosine_starts_at" "$cosine_resets_at")
 			if [ "$cosine_cache_age" -ge "$ttl" ] 2>/dev/null || [ "$cosine_reset" = "stale" ] 2>/dev/null; then
 				cosine_stale=1
 			fi
@@ -477,13 +503,14 @@ ai_usage() {
 	_pool_colour() {
 		local stale="$1"
 		local pct="$2"
+		local pace_x100="${3:-}"
 		local usage_int=${pct%.*}
 		usage_int=${usage_int:-0}
 		if [ "$stale" -eq 1 ]; then
 			printf "%s" "${dim#"#"}"
-		elif [ "$usage_int" -ge 90 ] 2>/dev/null; then
+		elif [ "$usage_int" -ge 90 ] 2>/dev/null || { [ -n "$pace_x100" ] && [ "$pace_x100" -ge 140 ] 2>/dev/null; }; then
 			printf "f38ba8"
-		elif [ "$usage_int" -ge 70 ] 2>/dev/null; then
+		elif [ "$usage_int" -ge 70 ] 2>/dev/null || { [ -n "$pace_x100" ] && [ "$pace_x100" -ge 120 ] 2>/dev/null; }; then
 			printf "f9e2af"
 		else
 			printf "a6e3a1"
@@ -530,6 +557,7 @@ ai_usage() {
 		local reset="$3"
 		local stale="$4"
 		local label_colour="$5"
+		local pace_x100="${6:-}"
 
 		[ -n "$pct" ] || return 0
 
@@ -539,7 +567,7 @@ ai_usage() {
 		appended_provider=1
 
 		local c i
-		c=$(_pool_colour "$stale" "$pct")
+		c=$(_pool_colour "$stale" "$pct" "$pace_x100")
 		i=$(printf "%.0f" "$pct" 2>/dev/null || echo "$pct")
 		out+=" #[fg=${label_colour}]#[bold]${label}#[nobold]#[fg=${dim}]:#[fg=#${c}]${i}#[fg=${dim}]%"
 		[ -n "$reset" ] && out+="#[fg=${dim}]·${reset}"
@@ -552,7 +580,7 @@ ai_usage() {
 
 	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale" "#fab387"
 	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale" "#74c7ec"
-	_append_pool_provider "S" "$cosine_pct" "$cosine_reset" "$cosine_stale" "#a6e3a1"
+	_append_pool_provider "S" "$cosine_pct" "$cosine_reset" "$cosine_stale" "#a6e3a1" "$cosine_pace_x100"
 	out+=" "
 
 	printf "%s" "$out"
