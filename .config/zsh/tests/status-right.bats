@@ -80,6 +80,37 @@ EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json" "$HOME/.cache/cosine-usage.json"
 }
 
+write_cosine_usage_cache() {
+  local used="$1"
+  local total="$2"
+  local start_days="$3"
+  local reset_days="$4"
+
+  python3 - "$HOME" "$used" "$total" "$start_days" "$reset_days" <<'PY'
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+home = Path(sys.argv[1])
+used = int(sys.argv[2])
+total = int(sys.argv[3])
+start_days = float(sys.argv[4])
+reset_days = float(sys.argv[5])
+now = datetime.now(timezone.utc)
+
+def iso(delta):
+    return (now + delta).isoformat().replace("+00:00", "Z")
+
+(home / ".cache/cosine-usage.json").write_text(json.dumps({
+    "usedTokens": used,
+    "totalAvailableTokens": total,
+    "billingPeriodStartsAt": iso(timedelta(days=start_days)),
+    "billingPeriodResetsAt": iso(timedelta(days=reset_days)),
+}))
+PY
+}
+
 @test "wide status shows both cpu and the ram percentage pill" {
   run_status_right 90
 
@@ -235,6 +266,45 @@ EOF
   [[ "$plain" == *"S:72%·"*d* ]]
   [[ "$plain" != *"C:"* ]]
   [[ "$plain" != *"X:"* ]]
+}
+
+@test "status colours cosine yellow when monthly pace is warm" {
+  write_cosine_usage_cache 250 1000 -5 20
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"S"*"#[fg=#f9e2af]25#[fg=#9399b2]%"* ]]
+}
+
+@test "status colours cosine red when monthly pace is critical" {
+  write_cosine_usage_cache 150 1000 -5 45
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"S"*"#[fg=#f38ba8]15#[fg=#9399b2]%"* ]]
+}
+
+@test "status falls back to absolute cosine colour without billing-period start" {
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":720,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
+EOF
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"S"*"#[fg=#f9e2af]72#[fg=#9399b2]%"* ]]
+}
+
+@test "status keeps stale cosine usage dim" {
+  write_cosine_usage_cache 400 1000 -20 20
+  touch -t 202001010000 "$HOME/.cache/cosine-usage.json"
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"S"*"#[fg=#9399b2]40#[fg=#9399b2]%"* ]]
 }
 
 @test "missing weekly fields fall back to 5-hour-only provider output" {

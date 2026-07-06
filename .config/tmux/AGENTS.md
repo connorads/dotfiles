@@ -80,7 +80,9 @@ Surfaces:
 
 - [`scripts/status-right.sh`](./scripts/status-right.sh) renders the compact
   status pill: `C:` Claude windows, `X:` Codex windows, and `S:` Cosine monthly
-  credit pool.
+  credit pool. `S:` keeps the compact `S:<used>%·<reset>` text; its colour uses
+  the worse of absolute pool usage and billing-period pace when Cosine provides
+  `billingPeriodStartsAt`.
 - [`../zsh/functions/agents/ai-usage`](../zsh/functions/agents/ai-usage)
   (`aiu`, popup via `prefix + a`) refreshes providers and renders plain or fancy
   combined usage.
