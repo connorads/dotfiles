@@ -156,7 +156,7 @@ If you want to follow the manual path (or fork this repo), use this.
     rm -rf "$BOOTSTRAP_WORKTREE"
     ```
 
-    Why the temporary `BOOTSTRAP_WORKTREE` dir? `git clone` needs a checkout target path, and `$HOME` is non-empty. The temp dir keeps bootstrap safe and disposable.
+   Why the temporary `BOOTSTRAP_WORKTREE` dir? `git clone` needs a checkout target path, and `$HOME` is non-empty. The temp dir keeps bootstrap safe and disposable.
 
 2. Point the repo at `$HOME` and ensure tracking refs
 
@@ -188,7 +188,7 @@ If you want to follow the manual path (or fork this repo), use this.
 
 5. Set up nix, brew and install software
 
-    **macOS (nix-darwin):**
+   **macOS (nix-darwin):**
 
     ```sh
     # Install Homebrew
@@ -203,7 +203,7 @@ If you want to follow the manual path (or fork this repo), use this.
     nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.config/nix
     ```
 
-    **Linux (home-manager):**
+   **Linux (home-manager):**
 
     ```sh
     # Install Nix (vanilla, not Determinate Nix)
@@ -275,6 +275,15 @@ This section is for anyone who wants to build their own dotfiles repo using the 
     dotfiles remote add origin "$DOTFILES_REPO"
     dotfiles push -u origin HEAD
     ```
+
+   Git also supports separate fetch and push URLs for the same remote. This is useful when a clone should pull over HTTPS but only push through SSH:
+
+    ```sh
+    dotfiles remote set-url origin https://github.com/your-user/dotfiles.git
+    dotfiles remote set-url --push origin git@github.com:your-user/dotfiles.git
+    ```
+
+   After this, `dotfiles pull` uses HTTPS and `dotfiles push` uses SSH. This can be handy on machines where read-only updates should not depend on SSH agent forwarding, while write access still uses the normal SSH path.
 
 </details>
 
