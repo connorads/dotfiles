@@ -122,7 +122,7 @@ export default function extension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("workflows", {
-    description: "List, inspect, stop, resume, or launch Pi dynamic workflows",
+    description: "List, inspect, stop, resume, or launch Pi project workflows",
     handler: async (args, ctx) => {
       const store = storeFor(ctx);
       const [command = "list", ...rest] = args.trim().split(/\s+/u).filter(Boolean);
@@ -210,15 +210,13 @@ export default function extension(pi: ExtensionAPI) {
 function renderWidget(runs: readonly WorkflowRunSnapshot[]): string[] {
   const interesting = runs.filter((run) => run.status === "running" || run.status === "queued").slice(0, 3);
   if (interesting.length === 0) return [];
-  return ["Workflows", ...interesting.map((run) => `${run.status} ${run.runId} ${run.workflowName}`)];
+  return ["Project workflows", ...interesting.map((run) => `${run.status} ${run.runId} ${run.workflowName}`)];
 }
 
 function renderRuns(runs: readonly WorkflowRunSnapshot[]): string {
-  if (runs.length === 0) return "No workflow runs.";
-  return runs
-    .slice(0, 12)
-    .map((run) => `${run.runId}  ${run.status.padEnd(9)}  ${run.workflowName}`)
-    .join("\n");
+  if (runs.length === 0) return "No project workflow runs.";
+  const rows = runs.slice(0, 12).map((run) => `${run.runId}  ${run.status.padEnd(9)}  ${run.workflowName}`);
+  return ["Project workflow runs", ...rows].join("\n");
 }
 
 function renderRun(run: WorkflowRunSnapshot, active: boolean): string {
