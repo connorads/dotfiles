@@ -10,6 +10,7 @@ import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { WorkflowManager, parseCommandRunId, parseRunCommand } from "./manager.ts";
 import { PiAgentRunner } from "./pi-agent-runner.ts";
 import { preview } from "./prelude.ts";
+import { startWorkflowFromCommand, WORKFLOW_TOOL_NAME, type WorkflowStarterRuntime } from "./starter.ts";
 import { createWorkflowStore, type WorkflowStore } from "./store.ts";
 
 const WORKFLOW_CUSTOM_MESSAGE = "workflow_result";
@@ -36,6 +37,20 @@ export default function extension(pi: ExtensionAPI) {
 
   const storeFor = (ctx: Pick<ExtensionContext, "cwd">): WorkflowStore => createWorkflowStore(ctx.cwd);
   const runnerFor = (ctx: ExtensionContext): PiAgentRunner => new PiAgentRunner(ctx.cwd, ctx.model);
+  const starterRuntime = (): WorkflowStarterRuntime => ({
+    activateTool(name) {
+      const active = new Set(pi.getActiveTools());
+      active.add(name);
+      pi.setActiveTools([...active]);
+    },
+    sendFollowUp(message) {
+      pi.sendUserMessage(message, { deliverAs: "followUp" });
+    },
+  });
+  const startWorkflow = (args: string, ctx: ExtensionContext): void => {
+    const started = startWorkflowFromCommand(args, starterRuntime());
+    ctx.ui.notify(started.ok ? started.value.summary : started.error.message, started.ok ? "info" : "warning");
+  };
   const refreshWidget = async (ctx: ExtensionContext): Promise<void> => {
     const lines = renderWidget(await storeFor(ctx).listRuns());
     ctx.ui.setWidget(WIDGET_KEY, lines.length === 0 ? undefined : lines, { placement: "belowEditor" });
@@ -67,6 +82,7 @@ export default function extension(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use workflow for substantial decomposable work where a workflow script gives clearer orchestration than ad hoc tool calls.",
       "Provide exactly one of script, name, or scriptPath. Use args for JSON data passed into the workflow.",
+      "When starting a dynamic workflow from a user objective, generate a Claude-compatible inline script and call this tool with the script field.",
     ],
     parameters: asSchema(WORKFLOW_INPUT_SCHEMA),
     executionMode: "parallel",
@@ -96,7 +112,7 @@ export default function extension(pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => {
     liveCtx = ctx;
     const active = new Set(pi.getActiveTools());
-    active.add("workflow");
+    active.add(WORKFLOW_TOOL_NAME);
     pi.setActiveTools([...active]);
     void refreshWidget(ctx);
   });
@@ -173,9 +189,20 @@ export default function extension(pi: ExtensionAPI) {
           await refreshWidget(ctx);
           return;
         }
+        case "start": {
+          startWorkflow(tail, ctx);
+          return;
+        }
         default:
-          ctx.ui.notify("Usage: /workflows [list|status|show|stop|resume|run] ...", "warning");
+          ctx.ui.notify("Usage: /workflows [list|status|show|stop|resume|run|start] ...", "warning");
       }
+    },
+  });
+
+  pi.registerCommand("workflow", {
+    description: "Ask Pi to draft and launch an inline dynamic workflow",
+    handler: async (args, ctx) => {
+      startWorkflow(args, ctx);
     },
   });
 }
