@@ -37,9 +37,10 @@ Then `dotfiles add .newfile` works without `-f`.
 ## Git Hygiene
 
 - Ignore unrelated git changes; do not reset/revert/discard them.
-- Treat Codex `[projects.*]` trust entries and model picker keys (`model`, `model_reasoning_effort`) in [`.codex/config.toml`](./.codex/config.toml) as machine-local state; never commit them. A `codex-config` clean filter strips or normalises them on commit.
+- Treat Codex `[projects.*]` trust entries and model picker keys (`model`, `model_reasoning_effort`, `plan_mode_reasoning_effort`) in [`.codex/config.toml`](./.codex/config.toml) as machine-local state; never commit them. A `codex-config` clean filter strips or normalises them on commit.
+- Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit.
-- Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex + Claude settings clean filters) runs before status/diff/stash.
+- Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
 
 ## Key Documentation
 

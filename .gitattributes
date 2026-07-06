@@ -1,2 +1,3 @@
 .codex/config.toml filter=codex-config
 .claude/settings.json filter=claude-settings
+.pi/agent/settings.json filter=pi-agent-settings

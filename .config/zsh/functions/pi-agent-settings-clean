@@ -1,0 +1,12 @@
+#!/usr/bin/env zsh
+# pi-agent-settings-clean: normalise machine-local Pi model preferences.
+emulate -L zsh
+
+# Pi rewrites these defaults from UI/model picker state. Keep portable defaults
+# in git while still allowing local worktree choices. jq also guarantees a final
+# newline and stable two-space JSON formatting.
+command jq '
+  .defaultProvider = "openai-codex"
+  | .defaultModel = "gpt-5.5"
+  | .defaultThinkingLevel = "high"
+'

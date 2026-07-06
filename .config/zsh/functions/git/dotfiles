@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# dotfiles: git wrapper for bare-repo dotfiles with codex/claude config stat refresh
+# dotfiles: git wrapper for bare-repo dotfiles with clean-filtered stat refresh
 emulate -L zsh
 
 _dotfiles_git() {
@@ -8,7 +8,7 @@ _dotfiles_git() {
 
 _dotfiles_refresh_clean_filtered() {
   local file line mode oid
-  for file in .codex/config.toml .claude/settings.json; do
+  for file in .codex/config.toml .claude/settings.json .pi/agent/settings.json; do
     _dotfiles_git ls-files --error-unmatch -- "$file" >/dev/null 2>&1 || continue
     [[ -e "$HOME/$file" ]] || continue
 
