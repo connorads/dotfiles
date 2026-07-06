@@ -8,6 +8,8 @@ emulate -L zsh
 #   model = ...                  Codex model picker state; committed default is
 #                                normalised so changing models does not dirty git
 #   model_reasoning_effort = ... Codex model picker state; same rationale
+#   plan_mode_reasoning_effort = ...
+#                                Plan-mode override state; same rationale
 #   [projects.*]                  per-machine trust entries
 #   [marketplaces.*]              regenerated source/timestamp state (.tmp paths)
 #   [tui.model_availability_nux]  per-machine NUX "times shown" counters
@@ -42,6 +44,11 @@ awk '
   /^model_reasoning_effort[[:space:]]*=/ && !in_section {
     prev_blank = 0
     lines[++count] = "model_reasoning_effort = \"medium\""
+    next
+  }
+  /^plan_mode_reasoning_effort[[:space:]]*=/ && !in_section {
+    prev_blank = 0
+    lines[++count] = "plan_mode_reasoning_effort = \"high\""
     next
   }
   /^notify[[:space:]]*=/ { next }

@@ -55,6 +55,9 @@
       filter.claude-settings.clean = "claude-settings-clean";
       filter.claude-settings.smudge = "cat";
       filter.claude-settings.required = true;
+      filter.pi-agent-settings.clean = "pi-agent-settings-clean";
+      filter.pi-agent-settings.smudge = "cat";
+      filter.pi-agent-settings.required = true;
     };
   };
 
