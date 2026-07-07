@@ -1,0 +1,7 @@
+symbolPreset: nerd
+theme:
+  dark: catppuccin-mocha
+  light: light-catppuccin
+setupVersion: 1
+modelRoles:
+  default: openai-codex/gpt-5.3-codex-spark
