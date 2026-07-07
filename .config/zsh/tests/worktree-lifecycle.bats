@@ -174,6 +174,52 @@ EOF
   [ -z "$output" ]
 }
 
+@test "wt-remove of the sole branch prunes the empty repo dir" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
+  [ ! -d "$HOME/.trees/repo" ]
+  [ -d "$HOME/.trees" ]
+}
+
+@test "wt-remove of a slash branch prunes both levels" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feature/foo"
+  [ "$status" -eq 0 ]
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/feature/foo'"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/feature" ]
+  [ ! -d "$HOME/.trees/repo" ]
+}
+
+@test "wt-remove leaves shared parent dirs that still hold a sibling" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feature/foo"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feature/bar"
+  [ "$status" -eq 0 ]
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/feature/foo'"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/feature/foo" ]
+  [ -d "$HOME/.trees/repo/feature" ]
+  [ -d "$HOME/.trees/repo" ]
+}
+
 @test "wtui prompts before removing a dirty worktree" {
   local repo="$BATS_TEST_TMPDIR/repo"
   local runner="$BATS_TEST_TMPDIR/run-wtui.zsh"
@@ -231,6 +277,24 @@ EOF
   [ -f "$repo/topic.txt" ]
   run git -C "$repo" branch --list topic
   [ -z "$output" ]
+}
+
+@test "wt-finish local prunes the empty repo dir" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
+
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo" ]
+  [ -d "$HOME/.trees" ]
 }
 
 @test "wt-finish local works when base branch is locally ahead of remote" {
