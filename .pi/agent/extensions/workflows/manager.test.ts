@@ -52,7 +52,7 @@ test("WorkflowManager persists thrown workflow failures as failed snapshots", as
   const launch = await manager.launch(
     {
       script: `
-export const meta = { name: "throws" };
+export const meta = { name: "throws", description: "t" };
 throw new Error("boom");
 `,
     },
@@ -86,7 +86,7 @@ test("bare resumeFromRunId resumes the run's pinned script", async () => {
   const manager = new WorkflowManager();
   const options = { cwd: temp, store, agentRunner: new EmptyRunner() };
 
-  const launch = await manager.launch({ script: `export const meta = { name: "pin" };\nreturn "original";` }, options);
+  const launch = await manager.launch({ script: `export const meta = { name: "pin", description: "t" };\nreturn "original";` }, options);
   assert.equal(launch.ok, true);
   if (!launch.ok) return;
   const first = await waitForTerminalRun(store, launch.value.runId);
@@ -107,7 +107,7 @@ test("resume with a supplied source re-pins the script and re-runs only the chan
   const runner = new PromptRecordingRunner();
   const options = { cwd: temp, store, agentRunner: runner };
 
-  const original = `export const meta = { name: "edit" };\nconst a = await agent("a");\nreturn [a, await agent("b")];`;
+  const original = `export const meta = { name: "edit", description: "t" };\nconst a = await agent("a");\nreturn [a, await agent("b")];`;
   const launch = await manager.launch({ script: original }, options);
   assert.equal(launch.ok, true);
   if (!launch.ok) return;
@@ -115,7 +115,7 @@ test("resume with a supplied source re-pins the script and re-runs only the chan
   assert.equal(first.status, "completed");
   assert.deepEqual(runner.prompts, ["a", "b"]);
 
-  const edited = `export const meta = { name: "edit-v2" };\nconst a = await agent("a");\nreturn [a, await agent("c")];`;
+  const edited = `export const meta = { name: "edit-v2", description: "t" };\nconst a = await agent("a");\nreturn [a, await agent("c")];`;
   const resumed = await manager.launch({ script: edited, resumeFromRunId: launch.value.runId }, options);
   assert.equal(resumed.ok, true);
   const after = await waitForTerminalRun(store, launch.value.runId);
@@ -136,7 +136,7 @@ test("resume with two sources is still rejected", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-twosrc-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const rejected = await manager.launch(
-    { script: "export const meta = {};\nreturn 1;", name: "other", resumeFromRunId: "wf_abcdef01" },
+    { script: `export const meta = { name: "t", description: "t" };\nreturn 1;`, name: "other", resumeFromRunId: "wf_abcdef01" },
     { cwd: temp, store, agentRunner: new EmptyRunner() },
   );
   assert.equal(rejected.ok, false);
@@ -152,7 +152,7 @@ test("resume errors on an unknown run id instead of minting a fresh run", async 
   assert.equal(viaResume.ok, false);
 
   const viaLaunch = await manager.launch(
-    { script: `export const meta = {};\nreturn 1;`, resumeFromRunId: "wf_missing01" },
+    { script: `export const meta = { name: "t", description: "t" };\nreturn 1;`, resumeFromRunId: "wf_missing01" },
     options,
   );
   assert.equal(viaLaunch.ok, false);
@@ -170,7 +170,7 @@ test("reconcile marks stale running runs failed and sweeps orphaned tmp files", 
   const alive = makeSnapshot("wf_alive0001", { status: "running", pid: process.pid });
   const done = makeSnapshot("wf_done00001", { status: "completed" });
   for (const snapshot of [stale, orphan, alive, done]) {
-    await store.createRun(snapshot, "export const meta = {};\nreturn 1;");
+    await store.createRun(snapshot, `export const meta = { name: "t", description: "t" };\nreturn 1;`);
   }
   const staleDir = join(root, "projects", workflowProjectKey(project), "runs", stale.runId);
   await writeFile(join(staleDir, "run.json.123.abc.tmp"), "torn", "utf8");
@@ -196,7 +196,7 @@ test("a superseded execution does not deliver its terminal snapshot", async () =
   const delivered: WorkflowRunSnapshot[] = [];
 
   const launch = await manager.launch(
-    { script: `export const meta = { name: "slow" };\nreturn await agent("hang");` },
+    { script: `export const meta = { name: "slow", description: "t" };\nreturn await agent("hang");` },
     { cwd: temp, store, agentRunner: new AbortableRunner(), deliver: (snapshot) => delivered.push(snapshot) },
   );
   assert.equal(launch.ok, true);
@@ -220,7 +220,7 @@ test("execution records the owning pid on the running snapshot", async () => {
   const manager = new WorkflowManager();
 
   const launch = await manager.launch(
-    { script: `export const meta = { name: "pid" };\nreturn 1;` },
+    { script: `export const meta = { name: "pid", description: "t" };\nreturn 1;` },
     { cwd: temp, store, agentRunner: new EmptyRunner() },
   );
   assert.equal(launch.ok, true);
@@ -235,7 +235,7 @@ test("stop does not overwrite a terminal run summary", async () => {
   const manager = new WorkflowManager();
 
   const launch = await manager.launch(
-    { script: `export const meta = { name: "done" };\nreturn "finished";` },
+    { script: `export const meta = { name: "done", description: "t" };\nreturn "finished";` },
     { cwd: temp, store, agentRunner: new EmptyRunner() },
   );
   assert.equal(launch.ok, true);

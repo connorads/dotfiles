@@ -32,8 +32,8 @@ export interface ResolvedWorkflowSource {
 
 /** Parsed metadata exported by a workflow script. */
 export interface WorkflowMeta {
-  readonly name?: string;
-  readonly description?: string;
+  readonly name: string;
+  readonly description: string;
   readonly phases?: readonly string[];
   readonly budget?: number;
   readonly raw: JsonValue;
