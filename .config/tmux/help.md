@@ -50,7 +50,7 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+b s` / `w` | session / window tree (tmux default choose-tree) |
-| `Ctrl+b Alt+Shift+W` | worktree picker: repo + status markers (`open`/`dirty`/`merged`/`ahead N`); enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; branch kept) |
+| `Ctrl+b Alt+Shift+W` | worktree picker: repo + status markers (`open`/`dirty`/`merged`/`ahead N`); enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; merged branch deleted, unmerged kept) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |

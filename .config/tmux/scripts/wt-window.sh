@@ -10,7 +10,8 @@
 #                 then [enter] new window · [v] pane here
 #   pick          fzf over managed worktrees (wt-status --all): repo + status
 #                 columns (open/dirty/merged/ahead N); enter → open,
-#                 ctrl-v → pane here, ctrl-x → remove (wt-remove, branch kept)
+#                 ctrl-v → pane here, ctrl-x → remove (wt-remove
+#                 --delete-branch: merged branch deleted, unmerged kept)
 set -euo pipefail
 
 # wt-add / wt-status are dual-mode zsh functions exposed via ~/.local/bin;
@@ -74,8 +75,9 @@ new)
 pick)
 	# Rows: path (hidden), repo (path component after ~/.trees), branch, then
 	# marker fields: dirty/untracked, merged into base, ahead of upstream.
-	# Markers are information, not guards - wt-remove keeps the branch, so
-	# removing a clean tree loses nothing.
+	# Markers are information, not guards - removal deletes only branches
+	# already merged into base (git branch -d), so removing a clean tree
+	# loses nothing.
 	rows=$(wt-status --all --json |
 		jq -r '.[] | [.path,
 			((.path | split("/.trees/")[1] // "") | split("/")[0]),
@@ -124,12 +126,14 @@ pick)
 	ctrl-v) exec "$self" pane "$path" ;;
 	ctrl-x)
 		# Two guards only: an open pane (removing under a live shell leaves a
-		# dead pane) and wt-remove's own dirty/untracked refusal.
+		# dead pane) and wt-remove's own dirty/untracked refusal. Branch
+		# deletion is git branch -d via --delete-branch: merged branches
+		# (commits already in base) go, unmerged ones survive with a warning.
 		if tmux list-panes -a -F '#{window_id}	#{pane_current_path}' |
 			awk -F'\t' -v p="$path" \
 				'$2 == p || index($2, p "/") == 1 { f = 1; exit } END { exit !f }'; then
 			pause_msg "Worktree has an open pane - close it first: $path"
-		elif ! wt-remove "$path" >/dev/null; then
+		elif ! wt-remove --delete-branch "$path" >/dev/null; then
 			pause_msg "wt-remove refused (see above): $path"
 		fi
 		exec "$self" pick
