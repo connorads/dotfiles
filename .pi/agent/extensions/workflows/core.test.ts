@@ -13,8 +13,8 @@ test("parseWorkflowInput accepts exactly one source and JSON args", () => {
   assert.equal(parsed.ok, true);
   if (!parsed.ok) return;
 
-  assert.equal(parsed.value.source.kind, "name");
-  assert.equal(parsed.value.source.kind === "name" && parsed.value.source.name, "review");
+  assert.equal(parsed.value.source?.kind, "name");
+  assert.equal(parsed.value.source?.kind === "name" && parsed.value.source.name, "review");
   assert.deepEqual(parsed.value.args, { depth: 2, tags: ["plan"] });
 });
 
@@ -23,6 +23,20 @@ test("parseWorkflowInput rejects unknown keys, multiple sources, and non-JSON ar
   assert.equal(parseWorkflowInput({ name: "a", script: "export const meta = {}" }).ok, false);
   assert.equal(parseWorkflowInput({ name: "a", args: { nope: undefined } }).ok, false);
   assert.equal(parseWorkflowInput({ name: "../escape" }).ok, false);
+});
+
+test("parseWorkflowInput accepts a bare resumeFromRunId with no source", () => {
+  const bare = parseWorkflowInput({ resumeFromRunId: "wf_abcdef01" });
+  assert.equal(bare.ok, true);
+  if (!bare.ok) return;
+  assert.equal(bare.value.source, undefined);
+  assert.equal(bare.value.resumeFromRunId, "wf_abcdef01");
+
+  assert.equal(parseWorkflowInput({}).ok, false);
+  assert.equal(
+    parseWorkflowInput({ script: "x", name: "y", resumeFromRunId: "wf_abcdef01" }).ok,
+    false,
+  );
 });
 
 test("parseWorkflowScript extracts pure metadata and executable body", () => {

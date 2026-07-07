@@ -25,8 +25,16 @@ const WORKFLOW_INPUT_SCHEMA = {
     description: { type: "string", description: "Optional ergonomic description; ignored by the runner." },
     title: { type: "string", description: "Optional ergonomic title; ignored by the runner." },
     args: { description: "JSON value exposed to the workflow as args." },
-    scriptPath: { type: "string", description: "Path to a workflow script. Relative paths resolve from cwd." },
-    resumeFromRunId: { type: "string", description: "Existing run id to resume with replayed completed agent calls." },
+    scriptPath: {
+      type: "string",
+      description:
+        "Path to a workflow script. Relative paths resolve from cwd. With resumeFromRunId, this file is treated as the edited script and replaces the run's pinned copy.",
+    },
+    resumeFromRunId: {
+      type: "string",
+      description:
+        "Existing run id to resume; completed agent calls replay from the journal. Alone, resumes the run's pinned script. With script/scriptPath/name supplied, that source is the edited script: it is re-pinned and only calls after the first change re-run.",
+    },
   },
 } as const;
 

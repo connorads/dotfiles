@@ -372,6 +372,9 @@ export class WorkflowRuntime {
         : { ...(isRecord(nameOrSpec) ? nameOrSpec : {}), args: argsInput };
     const parsedInput = parseWorkflowInput(input);
     if (!parsedInput.ok) throw parsedInput.error;
+    if (parsedInput.value.source === undefined) {
+      throw new WorkflowRuntimeError("workflow() requires a script source; child workflows cannot resume runs");
+    }
 
     const resolved = await this.deps.store.resolveSource(parsedInput.value.source);
     if (!resolved.ok) throw resolved.error;

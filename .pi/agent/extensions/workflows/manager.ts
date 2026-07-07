@@ -3,6 +3,7 @@ import {
   parseRunId,
   parseWorkflowInput,
   type JsonValue,
+  type ResolvedWorkflowSource,
   type RunId,
   type WorkflowInput,
   type WorkflowRunSnapshot,
@@ -44,11 +45,20 @@ export class WorkflowManager {
     const parsedInput = parseWorkflowInput(input);
     if (!parsedInput.ok) return err(new WorkflowManagerError(parsedInput.error.message));
 
-    // resumeFromRunId always resumes the run's pinned script.js and ignores any
-    // supplied source, so there is a single resume code path that errors on an
-    // unknown run id rather than minting a fresh run over it.
+    // resumeFromRunId targets an existing run and errors on an unknown run id
+    // rather than minting a fresh run over it. Bare, it resumes the run's
+    // pinned script.js; with a source supplied, the source is the edited
+    // script and replaces the pin (completed agents still replay by prefix).
     if (parsedInput.value.resumeFromRunId) {
-      return this.resume(parsedInput.value.resumeFromRunId, options);
+      if (parsedInput.value.source === undefined) {
+        return this.resume(parsedInput.value.resumeFromRunId, options);
+      }
+      const replacement = await options.store.resolveSource(parsedInput.value.source);
+      if (!replacement.ok) return err(new WorkflowManagerError(replacement.error.message));
+      return this.resume(parsedInput.value.resumeFromRunId, options, replacement.value);
+    }
+    if (parsedInput.value.source === undefined) {
+      return err(new WorkflowManagerError("Must provide script, name, or scriptPath"));
     }
 
     const resolved = await options.store.resolveSource(parsedInput.value.source);
@@ -105,12 +115,22 @@ export class WorkflowManager {
     });
   }
 
-  async resume(runId: RunId, options: WorkflowLaunchOptions): Promise<Result<WorkflowLaunch, WorkflowManagerError>> {
+  async resume(
+    runId: RunId,
+    options: WorkflowLaunchOptions,
+    replacement?: ResolvedWorkflowSource,
+  ): Promise<Result<WorkflowLaunch, WorkflowManagerError>> {
     const existing = await options.store.readRun(runId);
     if (!existing.ok) return err(new WorkflowManagerError(existing.error.message));
-    const script = await options.store.readRunScript(runId);
-    if (!script.ok) return err(new WorkflowManagerError(script.error.message));
-    const parsed = parseWorkflowScript(script.value);
+    let scriptSource: string;
+    if (replacement) {
+      scriptSource = replacement.source;
+    } else {
+      const script = await options.store.readRunScript(runId);
+      if (!script.ok) return err(new WorkflowManagerError(script.error.message));
+      scriptSource = script.value;
+    }
+    const parsed = parseWorkflowScript(scriptSource);
     if (!parsed.ok) return err(new WorkflowManagerError(parsed.error.message));
 
     const now = options.now ?? Date.now;
@@ -118,7 +138,7 @@ export class WorkflowManager {
     // Claim write authority before the first write so any still-running prior
     // execution has its late snapshot/journal writes fenced.
     const generation = options.store.nextGeneration(runId);
-    const snapshot: WorkflowRunSnapshot = {
+    let snapshot: WorkflowRunSnapshot = {
       ...existing.value,
       status: "queued",
       error: undefined,
@@ -130,7 +150,26 @@ export class WorkflowManager {
       logs: [],
       updatedAt: now(),
     };
-    await options.store.updateRun(snapshot, generation);
+    if (replacement) {
+      // Re-pin the edited script: chained replay keys make the journal a
+      // prefix cache, so the first edited call diverges and re-runs live.
+      snapshot = {
+        ...snapshot,
+        workflowName: parsed.value.meta.name ?? replacement.displayName,
+        sourceKind: replacement.ref.kind,
+        sourceHash: replacement.sourceHash,
+        scriptPath: replacement.scriptPath,
+        meta: parsed.value.meta.raw,
+        budgetTotal:
+          typeof parsed.value.meta.budget === "number" && parsed.value.meta.budget > 0
+            ? parsed.value.meta.budget
+            : null,
+        phases: parsed.value.meta.phases ?? [],
+      };
+      await options.store.createRun(snapshot, replacement.source, generation);
+    } else {
+      await options.store.updateRun(snapshot, generation);
+    }
     const controller = new AbortController();
     this.active.set(runId, controller);
     void this.execute(snapshot, parsed.value, {
