@@ -52,7 +52,8 @@ export interface WorkflowInput {
 
 /** Parsed launch request, with the executable source still unresolved. */
 export interface ParsedWorkflowInput {
-  readonly source: WorkflowSourceRef;
+  /** Absent only on a bare resume, which re-runs the run's pinned script. */
+  readonly source?: WorkflowSourceRef;
   readonly args: JsonValue;
   readonly resumeFromRunId?: RunId;
 }
@@ -173,7 +174,6 @@ export function parseWorkflowInput(input: unknown): Result<ParsedWorkflowInput, 
   const scriptPath = typeof input.scriptPath === "string" ? input.scriptPath : undefined;
   const name = typeof input.name === "string" ? input.name : undefined;
   const sources = [script, scriptPath, name].filter((value) => value !== undefined);
-  if (sources.length === 0) return err(new InvalidWorkflowInput("Must provide script, name, or scriptPath"));
   if (sources.length > 1) {
     return err(new InvalidWorkflowInput("Provide exactly one of script, name, or scriptPath"));
   }
@@ -189,6 +189,12 @@ export function parseWorkflowInput(input: unknown): Result<ParsedWorkflowInput, 
     const parsed = parseRunId(input.resumeFromRunId);
     if (!parsed.ok) return err(new InvalidWorkflowInput(parsed.error.message));
     resumeFromRunId = parsed.value;
+  }
+
+  // A bare resume re-runs the pinned script; a launch needs a source.
+  if (sources.length === 0) {
+    if (resumeFromRunId !== undefined) return ok({ args, resumeFromRunId });
+    return err(new InvalidWorkflowInput("Must provide script, name, or scriptPath"));
   }
 
   if (script !== undefined) return ok({ source: { kind: "inline", script }, args, resumeFromRunId });

@@ -80,7 +80,7 @@ test("parseRunCommand preserves whitespace inside JSON string args", () => {
   assert.deepEqual(parsed.value.args, { msg: "hello  world" });
 });
 
-test("launch with resumeFromRunId resumes the pinned script and ignores the supplied source", async () => {
+test("bare resumeFromRunId resumes the run's pinned script", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-pin-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const manager = new WorkflowManager();
@@ -93,14 +93,53 @@ test("launch with resumeFromRunId resumes the pinned script and ignores the supp
   assert.equal(first.status, "completed");
   assert.equal(first.result, "original");
 
-  const resumed = await manager.launch(
-    { script: `export const meta = { name: "pin" };\nreturn "different";`, resumeFromRunId: launch.value.runId },
-    options,
-  );
+  const resumed = await manager.launch({ resumeFromRunId: launch.value.runId }, options);
   assert.equal(resumed.ok, true);
   const after = await waitForTerminalRun(store, launch.value.runId);
   assert.equal(after.status, "completed");
   assert.equal(after.result, "original");
+});
+
+test("resume with a supplied source re-pins the script and re-runs only the changed suffix", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-repin-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const manager = new WorkflowManager();
+  const runner = new PromptRecordingRunner();
+  const options = { cwd: temp, store, agentRunner: runner };
+
+  const original = `export const meta = { name: "edit" };\nconst a = await agent("a");\nreturn [a, await agent("b")];`;
+  const launch = await manager.launch({ script: original }, options);
+  assert.equal(launch.ok, true);
+  if (!launch.ok) return;
+  const first = await waitForTerminalRun(store, launch.value.runId);
+  assert.equal(first.status, "completed");
+  assert.deepEqual(runner.prompts, ["a", "b"]);
+
+  const edited = `export const meta = { name: "edit-v2" };\nconst a = await agent("a");\nreturn [a, await agent("c")];`;
+  const resumed = await manager.launch({ script: edited, resumeFromRunId: launch.value.runId }, options);
+  assert.equal(resumed.ok, true);
+  const after = await waitForTerminalRun(store, launch.value.runId);
+  assert.equal(after.status, "completed");
+  assert.equal(after.workflowName, "edit-v2");
+  assert.deepEqual(after.result, ["ran:a", "ran:c"]);
+  // The unchanged prefix replays from the journal; only the edited call re-runs.
+  assert.deepEqual(runner.prompts, ["a", "b", "c"]);
+
+  const pinned = await store.readRunScript(launch.value.runId);
+  assert.equal(pinned.ok, true);
+  if (!pinned.ok) return;
+  assert.equal(pinned.value, edited);
+});
+
+test("resume with two sources is still rejected", async () => {
+  const manager = new WorkflowManager();
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-twosrc-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const rejected = await manager.launch(
+    { script: "export const meta = {};\nreturn 1;", name: "other", resumeFromRunId: "wf_abcdef01" },
+    { cwd: temp, store, agentRunner: new EmptyRunner() },
+  );
+  assert.equal(rejected.ok, false);
 });
 
 test("resume errors on an unknown run id instead of minting a fresh run", async () => {
@@ -144,6 +183,15 @@ test("stop does not overwrite a terminal run summary", async () => {
 class EmptyRunner implements AgentRunner {
   async run(): Promise<AgentRunResult> {
     return { value: null, outputTokens: 0 };
+  }
+}
+
+class PromptRecordingRunner implements AgentRunner {
+  readonly prompts: string[] = [];
+
+  async run(prompt: string): Promise<AgentRunResult> {
+    this.prompts.push(prompt);
+    return { value: `ran:${prompt}`, outputTokens: 1 };
   }
 }
 
