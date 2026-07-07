@@ -57,12 +57,7 @@
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b f` | find window |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b P` | port inspector (multi-select, TERM->KILL) |
-| `Ctrl+b Alt+t` | Tailscale serve status (active routes) |
-| `Ctrl+b T` | Tailscale serve manager (expose/down/funnel/prune) |
-| `Ctrl+b Alt+T` | Tailscale serve down (quick teardown) |
-| `Ctrl+b K` | process closer (user processes) |
-| `Ctrl+b Alt+K` | process closer (all processes via sudo) |
+| `Ctrl+b T` | Tools launcher (fzf: connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window, bypass perms; copy cmd/id) |
@@ -71,8 +66,6 @@
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |
-| `Ctrl+b e` | network bandwidth monitor (bandwhich, sudo) |
-| `Ctrl+b Alt+c` | connections overview |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
@@ -155,7 +148,7 @@ threshold); a number = swap worth noting.
 | `Ctrl+b /` | command palette (actual prefix bindings) |
 | `Ctrl+b I` | install plugins (TPM) |
 | `Ctrl+b U` | update plugins (TPM) |
-| `Ctrl+b Alt+u` | clean unused plugins (TPM) |
+| clean unused plugins (TPM) | now in the `Ctrl+b T` Tools launcher |
 
 ## Usage Tracking
 

@@ -1,0 +1,9 @@
+Connections (netstat / sockets)	conns | less -R --mouse
+Ports (inspect / kill)	ports -k
+Kill process (user)	pclose
+Kill process (sudo)	pclose --sudo
+Network bandwidth (bandwhich)	command -v bandwhich >/dev/null || { echo "bandwhich not found - run hms to install"; read -r; exit 1; }; sudo "$(command -v bandwhich)"
+Tailscale serve status	tsp ls; echo; print -n "Press any key…"; read -sk1
+Tailscale serve manage	tsp ui
+Tailscale serve down	tsp down
+Clean tmux plugins (TPM)	~/.config/tmux/plugins/tpm/bindings/clean_plugins; echo; print -n "Press any key…"; read -sk1
