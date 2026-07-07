@@ -164,13 +164,14 @@ EOF
 #!/usr/bin/env bash
 cat <<'JSON'
 [
-  {"path":"/tmp/x/.trees/beta/fix","branch":"fix","dirty":false,"untracked":false,"ahead":2,"merged_into_base":true},
+  {"path":"/tmp/x/.trees/beta/fix","branch":"fix","dirty":false,"untracked":false,"ahead":2,"behind":1,"merged_into_base":true},
   {"path":"/tmp/x/.trees/alpha/feat","branch":"feat","dirty":false,"untracked":true,"ahead":0,"merged_into_base":false}
 ]
 JSON
 EOF
   write_stub fzf <<'EOF'
 #!/usr/bin/env bash
+printf 'fzf %s\n' "$*" >>"$TEST_LOG"
 cat >>"$HOME/fzf-input"
 exit 130
 EOF
@@ -179,13 +180,33 @@ EOF
   run "$WT_WINDOW" pick
 
   [ "$status" -eq 0 ]
+  # Markers are ANSI-coloured; strip codes for the layout assertions.
+  sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
   # Sorted by repo: alpha first although wt-status emitted beta first.
-  head -1 "$HOME/fzf-input" | grep -q "alpha"
+  head -1 "$HOME/fzf-plain" | grep -q "alpha"
   # Hidden path field 1, then repo + branch display columns.
-  grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/fzf-input"
+  grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/fzf-plain"
   # open (pane inside the tree) + dirty (untracked counts as dirty).
-  grep -Eq 'alpha +feat +open dirty$' "$HOME/fzf-input"
-  grep -Eq 'beta +fix +merged ahead 2$' "$HOME/fzf-input"
+  grep -Eq 'alpha +feat +open dirty$' "$HOME/fzf-plain"
+  grep -Eq 'beta +fix +merged ahead 2 behind 1$' "$HOME/fzf-plain"
+  # dirty renders red; fzf is told to interpret colours and show a preview.
+  grep -q $'\x1b\\[31mdirty' "$HOME/fzf-input"
+  grep -q -- "--ansi" "$TEST_LOG"
+  grep -q -- "--preview" "$TEST_LOG"
+}
+
+@test "pick with no managed worktrees soft-fails before fzf" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+echo '[]'
+EOF
+
+  run --separate-stderr "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"No managed worktrees"* ]]
+  # Soft-fails before the pane scan (and so before fzf).
+  ! grep -q "list-panes" "$TEST_LOG"
 }
 
 @test "pick ctrl-x removes a clean pane-free worktree and reloads the list" {

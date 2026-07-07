@@ -9,9 +9,10 @@
 #   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
 #                 then [enter] new window · [v] pane here
 #   pick          fzf over managed worktrees (wt-status --all): repo + status
-#                 columns (open/dirty/merged/ahead N); enter → open,
-#                 ctrl-v → pane here, ctrl-x → remove (wt-remove
-#                 --delete-branch: merged branch deleted, unmerged kept)
+#                 columns (open/dirty/merged/ahead/behind) with a git log +
+#                 status preview; enter → open, ctrl-v → pane here,
+#                 ctrl-x → remove (wt-remove --delete-branch: merged branch
+#                 deleted, unmerged kept)
 set -euo pipefail
 
 # wt-add / wt-status are dual-mode zsh functions exposed via ~/.local/bin;
@@ -74,24 +75,29 @@ new)
 	;;
 pick)
 	# Rows: path (hidden), repo (path component after ~/.trees), branch, then
-	# marker fields: dirty/untracked, merged into base, ahead of upstream.
-	# Markers are information, not guards - removal deletes only branches
-	# already merged into base (git branch -d), so removing a clean tree
-	# loses nothing.
+	# marker fields: dirty/untracked, merged into base, ahead/behind of
+	# upstream. Markers are information, not guards - removal deletes only
+	# branches already merged into base (git branch -d), so removing a clean
+	# tree loses nothing.
 	rows=$(wt-status --all --json |
 		jq -r '.[] | [.path,
 			((.path | split("/.trees/")[1] // "") | split("/")[0]),
 			.branch,
 			(if .dirty or .untracked then "dirty" else "" end),
 			(if .merged_into_base then "merged" else "" end),
-			(if .ahead > 0 then "ahead \(.ahead)" else "" end)] | @tsv' |
+			(if .ahead > 0 then "ahead \(.ahead)" else "" end),
+			(if .behind > 0 then "behind \(.behind)" else "" end)] | @tsv' |
 		sort -t'	' -k2,2 -k3,3)
+	[ -n "$rows" ] || soft_fail 'No managed worktrees - prefix + Alt+w creates one'
 	panes=$(tmux list-panes -a -F '#{window_id}	#{pane_current_path}')
 	# Render display columns; "open" marks a live pane at or inside the
 	# worktree (same path-boundary match as the open subcommand).
 	display=$(printf '%s\n' "$rows" | PANES="$panes" awk '
 		BEGIN {
 			FS = "\t"
+			# Marker colours by field: dirty red, merged green, ahead yellow,
+			# behind magenta; the pane-scan "open" is blue.
+			col[4] = 31; col[5] = 32; col[6] = 33; col[7] = 35
 			np = split(ENVIRON["PANES"], pl, "\n")
 			for (i = 1; i <= np; i++) {
 				split(pl[i], pf, "\t")
@@ -102,9 +108,13 @@ pick)
 		{
 			m = ""
 			for (i = 1; i <= pn; i++)
-				if (pc[i] == $1 || index(pc[i], $1 "/") == 1) { m = "open"; break }
+				if (pc[i] == $1 || index(pc[i], $1 "/") == 1) {
+					m = "\033[34mopen\033[0m"
+					break
+				}
 			for (f = 4; f <= NF; f++)
-				if ($f != "") m = m (m == "" ? "" : " ") $f
+				if ($f != "")
+					m = m (m == "" ? "" : " ") "\033[" col[f] "m" $f "\033[0m"
 			nr++
 			paths[nr] = $1; repos[nr] = $2; branches[nr] = $3; marks[nr] = m
 			if (length($2) > rw) rw = length($2)
@@ -116,8 +126,10 @@ pick)
 				printf fmt, paths[i], repos[i], branches[i], marks[i]
 		}')
 	out=$(printf '%s\n' "$display" |
-		fzf --reverse --header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
-			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x) || exit 0
+		fzf --reverse --ansi \
+			--header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
+			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x \
+			--preview 'git -C {1} log --oneline --decorate -10; echo; git -C {1} status --short') || exit 0
 	key="${out%%$'\n'*}"
 	line="${out#*$'\n'}"
 	path="${line%%	*}"
