@@ -74,7 +74,8 @@ gitleaks = "latest"
 
 ## Payload CMS + Next.js 15 + Biome + pnpm
 
-16 pre-commit steps + commit-msg + pre-push hooks. Comprehensive setup for a team repo.
+16 pre-commit steps + commit-msg hook. Comprehensive setup for a team repo. Add
+the soft-protected pre-push asset when advisory branch push protection is needed.
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
@@ -168,26 +169,12 @@ hooks {
             }
         }
     }
-    ["pre-push"] {
-        steps {
-            ["no-push-to-branch"] {
-                check = """
-                  branch=$(git rev-parse --abbrev-ref HEAD)
-                  if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
-                    echo "Direct pushes to '$branch' are not allowed."
-                    echo ""
-                    echo "Please create a feature branch and open a pull request:"
-                    echo "  git checkout -b feature/my-change"
-                    echo "  git push -u origin feature/my-change"
-                    echo "  gh pr create"
-                    exit 1
-                  fi
-                  """
-            }
-        }
-    }
 }
 ```
+
+For advisory local push protection, copy
+`assets/soft-protected-branch-pre-push.sh` to `.hk-hooks/pre-push`. It blocks by
+the remote ref Git is about to update and supports clone-local owner opt-out.
 
 **mise.toml additions:**
 
