@@ -54,6 +54,18 @@ _wt_same_path() {
   [[ "${1:A}" == "${2:A}" ]]
 }
 
+# _wt_prune_empty_parents: after a worktree leaf is removed, rmdir now-empty
+# ancestor dirs, walking up but never past ~/.trees itself. Plain rmdir fails on
+# a non-empty dir, so a sibling worktree naturally halts the walk - no empty-check
+# race, no sibling-clobber risk.
+_wt_prune_empty_parents() {
+  local dir=${1:h}
+  while _wt_is_managed_path "$dir"; do
+    rmdir "$dir" 2>/dev/null || break
+    dir=${dir:h}
+  done
+}
+
 _wt_worktree_exists_in_repo() {
   local target=$1
   git worktree list --porcelain 2>/dev/null | while IFS= read -r line; do
