@@ -222,6 +222,47 @@ test("null agent results are not journalled and re-run on resume", async () => {
   assert.equal(second.calls.length, 1);
 });
 
+test("parallel and pipeline reject more than 4096 items", async () => {
+  for (const call of [
+    "parallel(Array.from({ length: 4097 }, () => () => 1))",
+    "pipeline(Array.from({ length: 4097 }, (_, i) => i), x => x)",
+  ]) {
+    const runtime = makeRuntime(
+      `export const meta = { name: "t", description: "t" };\nreturn await ${call};`,
+      new RecordingRunner(),
+    );
+    await assert.rejects(runtime.execute(runtime.parsed), /4096/u, call);
+  }
+});
+
+test("boundary array truncation logs a visible warning", async () => {
+  const runtime = makeRuntime(
+    `export const meta = { name: "t", description: "t" };\nreturn Array.from({ length: 5000 }, (_, i) => i);`,
+    new RecordingRunner(),
+  );
+  const result = await runtime.execute(runtime.parsed);
+  assert.equal(Array.isArray(result) && result.length, 4096);
+  assert.ok(
+    runtime.getSnapshot().logs.some((line) => line.includes("truncated to 4096")),
+    runtime.getSnapshot().logs.join("\n"),
+  );
+});
+
+test("async timer rejections are logged instead of crashing the host", async () => {
+  const runtime = makeRuntime(
+    `export const meta = { name: "t", description: "t" };
+setTimeout(async () => { throw new Error("boom-timer"); }, 0);
+await new Promise((resolve) => setTimeout(resolve, 30));
+return null;`,
+    new RecordingRunner(),
+  );
+  assert.equal(await runtime.execute(runtime.parsed), null);
+  assert.ok(
+    runtime.getSnapshot().logs.some((line) => line.includes("timer failed: boom-timer")),
+    runtime.getSnapshot().logs.join("\n"),
+  );
+});
+
 test("resolveRequestedModel matches by id, provider/id, then name, and rejects unknowns", () => {
   const sonnet = { id: "claude-sonnet-5", name: "Claude Sonnet 5", provider: "anthropic" };
   const mini = { id: "o4-mini", name: "o4 mini", provider: "openai" };

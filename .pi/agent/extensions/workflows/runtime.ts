@@ -89,7 +89,7 @@ export class WorkflowRuntime {
   async execute(parsed: ParsedWorkflowScript): Promise<JsonValue> {
     try {
       const result = await this.executeBody(parsed.body, this.snapshot.args, parsed.meta.name);
-      const json = sanitiseBoundaryValue(result);
+      const json = this.sanitise(result);
       return json === undefined ? null : json;
     } finally {
       for (const timer of this.timers.values()) clearTimeout(timer);
@@ -316,13 +316,16 @@ export class WorkflowRuntime {
   private async parallel(items: unknown): Promise<Array<JsonValue | null>> {
     this.throwIfBudgetExceeded();
     if (!Array.isArray(items)) throw new WorkflowRuntimeError("parallel() expects an array of functions");
+    if (items.length > ARRAY_CAP) {
+      throw new WorkflowRuntimeError(`parallel() accepts at most ${ARRAY_CAP} items; got ${items.length}`);
+    }
     if (items.some((item) => typeof item !== "function")) {
       throw new WorkflowRuntimeError("parallel() expects an array of functions, not promises. Wrap each call: () => agent(...)");
     }
     const tasks = items.map(async (item, index) => {
       try {
         const value = await Promise.resolve().then(() => (item as () => unknown)());
-        return sanitiseBoundaryValue(value) ?? null;
+        return this.sanitise(value) ?? null;
       } catch (error) {
         this.log(`parallel[${index}] failed: ${errorMessage(error)}`);
         return null;
@@ -334,6 +337,9 @@ export class WorkflowRuntime {
   private async pipeline(items: unknown, ...stages: unknown[]): Promise<Array<JsonValue | null>> {
     this.throwIfBudgetExceeded();
     if (!Array.isArray(items)) throw new WorkflowRuntimeError("pipeline() expects an array as the first argument");
+    if (items.length > ARRAY_CAP) {
+      throw new WorkflowRuntimeError(`pipeline() accepts at most ${ARRAY_CAP} items; got ${items.length}`);
+    }
     if (stages.some((stage) => typeof stage !== "function")) {
       throw new WorkflowRuntimeError("pipeline() stages must be functions: pipeline(items, item => ..., result => ...)");
     }
@@ -344,13 +350,20 @@ export class WorkflowRuntime {
           if (current === null) break;
           current = await (stage as (current: unknown, original: unknown, index: number) => unknown)(current, item, index);
         }
-        return sanitiseBoundaryValue(current) ?? null;
+        return this.sanitise(current) ?? null;
       } catch (error) {
         this.log(`pipeline[${index}] failed: ${errorMessage(error)}`);
         return null;
       }
     });
     return Promise.all(tasks);
+  }
+
+  /** Boundary sanitiser that surfaces silent array truncation in the run log. */
+  private sanitise(value: unknown): JsonValue | undefined {
+    return sanitiseBoundaryValue(value, () =>
+      this.log(`array truncated to ${ARRAY_CAP} elements at the workflow boundary`),
+    );
   }
 
   private phase(title: unknown): void {
@@ -407,7 +420,7 @@ export class WorkflowRuntime {
     this.childLogPrefix = `[${childName}] `;
     this.forcedAgentPhase = `child:${childName}`;
     try {
-      return sanitiseBoundaryValue(await this.executeBody(parsed.value.body, parsedInput.value.args, childName)) ?? null;
+      return this.sanitise(await this.executeBody(parsed.value.body, parsedInput.value.args, childName)) ?? null;
     } finally {
       this.childDepth = priorDepth;
       this.childLogPrefix = priorPrefix;
@@ -422,11 +435,11 @@ export class WorkflowRuntime {
     const ms = Math.max(0, Number(delay) || 0);
     const timer = setTimeout(() => {
       this.timers.delete(id);
-      try {
-        void (callback as () => unknown)();
-      } catch (error) {
-        this.log(`timer failed: ${errorMessage(error)}`);
-      }
+      // Route async callback rejections into the run log too; a bare void call
+      // would surface them as host-level unhandled rejections.
+      Promise.resolve()
+        .then(() => (callback as () => unknown)())
+        .catch((error) => this.log(`timer failed: ${errorMessage(error)}`));
     }, ms);
     this.timers.set(id, timer);
     return id;
@@ -459,7 +472,11 @@ function parseAgentOptions(input: unknown): AgentOptions {
   };
 }
 
-function sanitiseBoundaryValue(value: unknown, seen = new WeakSet<object>()): JsonValue | undefined {
+function sanitiseBoundaryValue(
+  value: unknown,
+  onTruncate?: () => void,
+  seen = new WeakSet<object>(),
+): JsonValue | undefined {
   if (value === undefined) return null;
   if (typeof value === "function") throw new WorkflowRuntimeError("Workflow result cannot be a function");
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
@@ -471,8 +488,9 @@ function sanitiseBoundaryValue(value: unknown, seen = new WeakSet<object>()): Js
     // would preserve the (possibly in-realm) prototype of the input array.
     const output: JsonValue[] = [];
     for (let index = 0; index < value.length && index < ARRAY_CAP; index += 1) {
-      output.push(sanitiseBoundaryValue(value[index], seen) ?? null);
+      output.push(sanitiseBoundaryValue(value[index], onTruncate, seen) ?? null);
     }
+    if (value.length > ARRAY_CAP) onTruncate?.();
     return output;
   }
   if (isRecord(value)) {
@@ -481,7 +499,7 @@ function sanitiseBoundaryValue(value: unknown, seen = new WeakSet<object>()): Js
     const output: Record<string, JsonValue> = {};
     for (const [key, item] of Object.entries(value)) {
       if (key === "__proto__") continue;
-      const parsed = sanitiseBoundaryValue(item, seen);
+      const parsed = sanitiseBoundaryValue(item, onTruncate, seen);
       if (parsed !== undefined) output[key] = parsed;
     }
     return output;

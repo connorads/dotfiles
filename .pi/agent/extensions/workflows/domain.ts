@@ -257,8 +257,11 @@ export function nextReplayKey(previous: ReplayKey | "", prompt: string, options:
   if (options.effort !== undefined) selected.effort = options.effort;
   if (options.isolation !== undefined) selected.isolation = options.isolation;
   if (options.agentType !== undefined) selected.agentType = options.agentType;
-  const value = `v2:${sha256(`${previous}\0${prompt}\0${stableJson(selected)}`)}`;
-  // SAFETY: replay keys are constructed only from this v2 SHA-256 format.
+  // Each field is hashed separately before the outer hash, so no content in
+  // one field (e.g. a NUL or delimiter in the prompt) can masquerade as
+  // another field's bytes.
+  const value = `v3:${sha256(`${sha256(previous)}:${sha256(prompt)}:${sha256(stableJson(selected))}`)}`;
+  // SAFETY: replay keys are constructed only from this v3 field-hashed SHA-256 format.
   return value as ReplayKey;
 }
 

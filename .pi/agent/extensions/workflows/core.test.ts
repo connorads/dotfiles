@@ -172,6 +172,43 @@ test("nextReplayKey is stable for semantically equal options and chained by prev
   assert.notEqual(first, chained);
 });
 
+test("nextReplayKey v3 hashes fields separately so NUL in prompts cannot cross boundaries", () => {
+  assert.match(nextReplayKey("", "p", {}), /^v3:[0-9a-f]{64}$/u);
+
+  // Shifting content across the prompt/options boundary must change the key.
+  const nulInPrompt = nextReplayKey("", 'p\u0000{"schema":"x"}', {});
+  const inOptions = nextReplayKey("", "p", { schema: "x" });
+  assert.notEqual(nulInPrompt, inOptions);
+
+  // Shifting content across the previous/prompt boundary must change the key.
+  const previous = nextReplayKey("", "seed", {});
+  const chained = nextReplayKey(previous, "p", {});
+  const glued = nextReplayKey("", `${previous}\u0000p`, {});
+  assert.notEqual(chained, glued);
+});
+
+test("readRun rejects a non-finite budgetTotal", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-budget-"));
+  const project = join(temp, "project");
+  const root = join(temp, "root");
+  const store = createWorkflowStore(project, root);
+  const runId = parseRunId("wf_budget001");
+  assert.equal(runId.ok, true);
+  if (!runId.ok) return;
+
+  const dir = join(root, "projects", workflowProjectKey(project), "runs", runId.value);
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    join(dir, "run.json"),
+    `{"schemaVersion":1,"runId":"${runId.value}","status":"completed","budgetTotal":1e999,"startedAt":1,"updatedAt":1}`,
+    "utf8",
+  );
+  const run = await store.readRun(runId.value);
+  assert.equal(run.ok, true);
+  if (!run.ok) return;
+  assert.equal(run.value.budgetTotal, null);
+});
+
 test("readJournal keeps valid entries when a trailing line is truncated", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-journal-"));
   const project = join(temp, "project");
