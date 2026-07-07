@@ -344,6 +344,70 @@ EOF
   grep -q "pr create --base main --head topic --fill" "$TEST_LOG"
 }
 
+@test "wt-finish local accepts a worktree path from outside the repository" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
+
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.base')" = "main" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
+  [ -f "$repo/topic.txt" ]
+  run git -C "$repo" branch --list topic
+  [ -z "$output" ]
+}
+
+@test "wt-finish rejects a path that is not a worktree" {
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local '$BATS_TEST_TMPDIR/nowhere'"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"error: not a git worktree"* ]]
+}
+
+@test "wt-publish accepts a worktree path from outside the repository" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  local remote="$BATS_TEST_TMPDIR/remote.git"
+  make_repo "$repo"
+  make_remote_repo "$remote"
+  add_origin_and_push_main "$repo" "$remote"
+
+  write_stub gh <<'EOF'
+#!/usr/bin/env bash
+printf '%s %s\n' "$PWD" "$*" >> "$TEST_LOG"
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  exit 1
+fi
+if [ "$1" = "pr" ] && [ "$2" = "create" ]; then
+  echo "https://example.test/pr/321"
+  exit 0
+fi
+exit 1
+EOF
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
+
+  run bash -lc "cd /tmp && HOME='$HOME' TEST_LOG='$TEST_LOG' PATH='$PATH' zsh --no-rcs '$WT_PUBLISH' --pr --json '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.pr_url')" = "https://example.test/pr/321" ]
+  [ "$(git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
+  # gh must run inside the worktree so repo resolution follows it
+  grep -q "\.trees/repo/topic pr create --base main --head topic --fill" "$TEST_LOG"
+}
+
 @test "wt-add prefers origin when multiple remotes have the same branch" {
   local repo="$BATS_TEST_TMPDIR/repo"
   local origin="$BATS_TEST_TMPDIR/origin.git"

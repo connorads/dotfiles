@@ -193,6 +193,7 @@ _wt_resolve_base() {
 
 _wt_main_worktree_path() {
   local base_branch=$1
+  local repo_path=${2:-.}
   local wt_path=""
   local current=""
   local branch=""
@@ -212,7 +213,7 @@ _wt_main_worktree_path() {
       "worktree "*) current=${line#worktree } ;;
       "branch "*) branch=${line#branch } ;;
     esac
-  done < <(git worktree list --porcelain 2>/dev/null; printf '\n')
+  done < <(git -C "$repo_path" worktree list --porcelain 2>/dev/null; printf '\n')
 
   [[ -n "$wt_path" ]] || return 1
   printf '%s\n' "$wt_path"
