@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# wt-add: create a worktree under ~/.trees, print its path
+# wt-add: create a worktree under ~/.trees/<repo>/<branch>, print its path
 # usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-add]:-${(%):-%x}}:A:h}"
@@ -39,7 +39,7 @@ repo_root=$(_wt_current_path) || {
   return 1
 }
 local repo=${repo_root:t}
-local worktree_path="$HOME/.trees/${repo}-${branch}"
+local worktree_path="$HOME/.trees/${repo}/${branch}"
 
 # Idempotent: if worktree already exists, just print its path
 if [[ -d "$worktree_path" ]]; then

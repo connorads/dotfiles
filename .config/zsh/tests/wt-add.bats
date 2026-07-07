@@ -37,12 +37,12 @@ make_repo() {
 @test "returns the existing worktree path without running setup" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
-  git -C "$repo" worktree add "$HOME/.trees/repo-topic" -b topic >/dev/null
+  git -C "$repo" worktree add "$HOME/.trees/repo/topic" -b topic >/dev/null
 
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' topic"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$HOME/.trees/repo-topic"* ]]
+  [[ "$output" == *"$HOME/.trees/repo/topic"* ]]
   [ ! -s "$TEST_LOG" ]
 }
 
@@ -54,9 +54,9 @@ make_repo() {
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' topic"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$HOME/.trees/repo-topic"* ]]
-  [ -e "$HOME/.trees/repo-topic/.git" ]
-  [ "$(cat "$TEST_LOG")" = "$HOME/.trees/repo-topic" ]
+  [[ "$output" == *"$HOME/.trees/repo/topic"* ]]
+  [ -e "$HOME/.trees/repo/topic/.git" ]
+  [ "$(cat "$TEST_LOG")" = "$HOME/.trees/repo/topic" ]
 }
 
 @test "creates a new branch from an explicit base and skips setup with --no-setup" {
@@ -71,8 +71,8 @@ make_repo() {
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --base base-branch feature"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$HOME/.trees/repo-feature"* ]]
-  [ -f "$HOME/.trees/repo-feature/branch.txt" ]
+  [[ "$output" == *"$HOME/.trees/repo/feature"* ]]
+  [ -f "$HOME/.trees/repo/feature/branch.txt" ]
   [ ! -s "$TEST_LOG" ]
 }
 
@@ -84,6 +84,6 @@ make_repo() {
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -r '.branch')" = "feature/foo" ]
-  [ "$(printf '%s' "$output" | jq -r '.path')" = "$HOME/.trees/repo-feature/foo" ]
-  [ -d "$HOME/.trees/repo-feature/foo" ]
+  [ "$(printf '%s' "$output" | jq -r '.path')" = "$HOME/.trees/repo/feature/foo" ]
+  [ -d "$HOME/.trees/repo/feature/foo" ]
 }
