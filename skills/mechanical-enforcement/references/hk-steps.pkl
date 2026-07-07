@@ -79,6 +79,14 @@ hooks {
             ["gitleaks"] {
                 check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
             }
+            // dependency-cruiser enforces transitive graph boundaries that
+            // direct import rules cannot see. Whole-repo, so no glob/{{files}}.
+            // Prefer a full quality/CI hook if it measures too slow for commit.
+            // Add a package script such as:
+            // "check:deps": "depcruise src --config .dependency-cruiser.cjs --output-type err-long --no-progress --no-cache"
+            // ["depcruise"] {
+            //     check = "scripts/quiet-on-success.sh pnpm --silent check:deps"
+            // }
             // Detective supply-chain layer: scan lockfiles against the OSV DB
             // (CVEs + MAL-* malware advisories) — catches what the release-age
             // quarantine can't. Whole-repo, gate on non-zero exit. Heavier than

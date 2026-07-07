@@ -74,6 +74,7 @@ Identify:
 | Signal | Step |
 |--------|------|
 | `commitlint.config.*` exists | commit-msg hook with commitlint |
+| `.dependency-cruiser.*` or `check:deps` exists | whole-graph architecture check |
 | `.yamllint*` exists | yamllint |
 | Team/shared repo | no-commit-to-branch (pre-commit), no-push-to-branch (pre-push) |
 | Test runner detected | test step(s) — vitest/jest/go test/cargo test/pytest |
@@ -172,6 +173,32 @@ Copy `assets/quiet-on-success.sh` from this skill directory into `scripts/` in t
 repo (only needed if you have any tier-3 steps). Measured: vitest 734→233 bytes (−68%),
 failure output unchanged.
 
+### Whole-graph checks
+
+Some tools inspect the whole repo graph and should not receive `{{files}}`:
+dependency-cruiser, knip, supply-chain scanners, full typechecks, and coverage
+gates. Wire them as ordinary steps with no `glob` when the check must always see
+the full graph.
+
+For dependency-cruiser:
+
+```pkl
+local depcruise_step = new Step {
+    check = "scripts/quiet-on-success.sh pnpm --silent check:deps"
+}
+```
+
+Use a package script so the long command and config path live with the JS
+project:
+
+```json
+"check:deps": "depcruise src --config .dependency-cruiser.cjs --output-type err-long --no-progress --no-cache"
+```
+
+Prefer putting whole-graph checks in a full `quality`, `check`, CI, or pre-push
+hook. Promote to staged pre-commit only after measuring the step and confirming
+the added latency is acceptable for normal commits.
+
 ### The .hk-hooks/pre-commit wrapper
 
 This is the file git actually executes. It's tracked in git (unlike `.git/hooks/`).
@@ -215,8 +242,6 @@ exec hk run commit-msg "$@"
 #!/bin/sh
 exec hk run pre-push "$@"
 ```
-
----
 
 ## Pkl Syntax Reference
 

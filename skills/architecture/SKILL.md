@@ -73,6 +73,12 @@ then extend an existing adapter when the capability fits, then create a new one
 only when reuse and extension would force bad coupling. Record a meaningful new
 adapter and its rejected alternatives where decisions are kept.
 
+After sketching layers and adapters, classify the boundaries by enforcement
+surface. A direct "X must not import Y" rule belongs in the lint stack; a
+transitive "domain must never reach runtime/DB/routes" rule belongs in a graph
+architecture test. The architecture skill owns the boundary language and
+trade-offs; `mechanical-enforcement` owns the exact rule and hook.
+
 ## Module Depth
 
 Pull complexity downward. A module has more callers than authors, so a simple
