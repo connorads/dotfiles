@@ -36,7 +36,8 @@ Identify:
 - Formatter already configured (prettier, biome, ruff, gofmt…)
 - Linter already configured (eslint, golangci-lint, ruff, clippy…)
 - Test runner (vitest, jest, go test, cargo test, pytest…)
-- Whether it's a team/shared repo (needs no-commit-to-branch)
+- Whether it's a team/shared repo, and whether branch protection should be hard
+  server-side protection or advisory local hook protection
 
 ### 2. Choose steps (tiered)
 
@@ -76,17 +77,18 @@ Identify:
 | `commitlint.config.*` exists | commit-msg hook with commitlint |
 | `.dependency-cruiser.*` or `check:deps` exists | whole-graph architecture check |
 | `.yamllint*` exists | yamllint |
-| Team/shared repo | no-commit-to-branch (pre-commit), no-push-to-branch (pre-push) |
+| Team/shared repo | no-commit-to-branch (pre-commit), branch guard (pre-push). For advisory private-repo protection with owner opt-out, use the soft-protected pre-push asset below. |
 | Test runner detected | test step(s) — vitest/jest/go test/cargo test/pytest |
 
 ### 3. Wire the hooks
 
-Three files to create/update, plus an optional fourth:
+Three files to create/update, plus optional extras:
 
 1. `mise.toml` — add hk, pkl, tool binaries
 2. `hk.pkl` — configuration
 3. `.hk-hooks/pre-commit` — tracked hook wrapper
 4. `scripts/quiet-on-success.sh` — **optional**, only if you have chatty-on-success steps (test runners, tools with no silent mode). Most check-style linters are already silent on success — don't wrap them. See `references/output-noise.md`. Copy from `assets/quiet-on-success.sh` in this skill.
+5. `.hk-hooks/pre-push` — **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
 
 Then:
 
@@ -231,7 +233,7 @@ fi
 exec "$HK_BIN" run pre-commit "$@"
 ```
 
-For other hooks (commit-msg, pre-push), use simpler wrappers:
+For hooks that only delegate to hk, use simpler wrappers:
 
 ```sh
 #!/bin/sh
@@ -242,6 +244,33 @@ exec hk run commit-msg "$@"
 #!/bin/sh
 exec hk run pre-push "$@"
 ```
+
+### Soft-protected branch pre-push
+
+Use this rarely: small/private/shared repos where server-side branch protection is
+unavailable or intentionally advisory, but collaborators should be steered away
+from direct pushes to `main`/`master`. Prefer server-side branch rules when they
+are available. This is not a security boundary: hooks are per clone, require
+`core.hooksPath`, and can be bypassed with `--no-verify`.
+
+Copy `assets/soft-protected-branch-pre-push.sh` to `.hk-hooks/pre-push` and make
+it executable:
+
+```bash
+cp /path/to/skill/assets/soft-protected-branch-pre-push.sh .hk-hooks/pre-push
+chmod +x .hk-hooks/pre-push
+git config --local core.hooksPath .hk-hooks
+```
+
+Pattern:
+
+- Parse Git's pre-push stdin and block by `remote_ref`, not the current branch.
+  Current-branch checks miss pushes like `git push origin feature:main`.
+- Default-block direct pushes to `refs/heads/main` and `refs/heads/master`.
+- Let owner clones opt out with repo-local config:
+  `git config --local hooks.allowMainPush true`.
+- Keep one-off automation escape hatch explicit: `HK_ALLOW_MAIN_PUSH=1 git push`.
+- Document the advisory nature and opt-out in repo docs/agent instructions.
 
 ## Pkl Syntax Reference
 
@@ -459,6 +488,8 @@ hooks {
 - `references/complete-examples.md` — full hk.pkl configs for different stacks
 - `references/output-noise.md` — how to keep steps quiet correctly (the 3-tier model, hk's native controls, harness-truncation caveat)
 - `assets/quiet-on-success.sh` — copy into `scripts/` in target repo (only for tier-3 chatty steps)
+- `assets/soft-protected-branch-pre-push.sh` — copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
 - `tests/quiet-on-success.bats` — behavioural tests for the asset (`bats tests/`)
+- `tests/soft-protected-branch-pre-push.bats` — behavioural tests for the advisory branch-protection asset
 - [hk docs](https://hk.jdx.dev) — official documentation
 - `hk builtins` — list all 90+ available built-in linters

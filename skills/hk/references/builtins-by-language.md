@@ -360,7 +360,7 @@ With Prettier (usually sufficient), or:
 
 ## Team/Shared Repo Guards
 
-Block direct commits/pushes to protected branches:
+Block direct commits to protected branches:
 
 ```pkl
 // In pre-commit steps:
@@ -376,19 +376,8 @@ Block direct commits/pushes to protected branches:
 }
 ```
 
-```pkl
-// In pre-push hook:
-["pre-push"] {
-    steps {
-        ["no-push-to-branch"] {
-            check = """
-              branch=$(git rev-parse --abbrev-ref HEAD)
-              if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
-                echo "Direct pushes to '$branch' are not allowed."
-                exit 1
-              fi
-              """
-        }
-    }
-}
-```
+For push guards, prefer server-side branch protection. If local advisory
+protection is the right trade-off, copy
+`assets/soft-protected-branch-pre-push.sh` to `.hk-hooks/pre-push`. It parses
+Git's pre-push stdin and checks the `remote_ref`; current-branch checks miss
+pushes like `git push origin feature:main`.
