@@ -28,9 +28,16 @@ drives deterministic replay on resume.
 _Avoid_: log (that word is reserved for user-facing `log()` output), history
 
 **Replay key**:
-The chained `v2:sha256(...)` identity of an `agent()` call. Matching keys reuse a
-journalled result instead of relaunching the subagent.
+The chained `v3:sha256(...)` identity of an `agent()` call - previous key,
+prompt, and selected options each hashed separately before the outer hash.
+Matching keys reuse a journalled result instead of relaunching the subagent.
 _Avoid_: cache key, hash
+
+**Stall watchdog**:
+The progress-based per-agent timer: session events (message deltas, tool
+executions, turn starts) reset it, so only a genuinely silent agent is aborted
+(`stallMs`, default 180000 ms; `<= 0` disables).
+_Avoid_: timeout (a flat deadline is exactly what it is not)
 
 **Agent**:
 A Pi coding-agent subagent launched by an `agent()` call within a workflow. Runs
