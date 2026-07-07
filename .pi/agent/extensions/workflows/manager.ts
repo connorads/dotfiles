@@ -68,7 +68,7 @@ export class WorkflowManager {
     if (!parsedScript.ok) return err(new WorkflowManagerError(parsedScript.error.message));
 
     const runId = createRunId();
-    const workflowName = parsedScript.value.meta.name ?? resolved.value.displayName;
+    const workflowName = parsedScript.value.meta.name;
     const now = options.now ?? Date.now;
     const generation = options.store.nextGeneration(runId);
 
@@ -155,7 +155,7 @@ export class WorkflowManager {
       // prefix cache, so the first edited call diverges and re-runs live.
       snapshot = {
         ...snapshot,
-        workflowName: parsed.value.meta.name ?? replacement.displayName,
+        workflowName: parsed.value.meta.name,
         sourceKind: replacement.ref.kind,
         sourceHash: replacement.sourceHash,
         scriptPath: replacement.scriptPath,

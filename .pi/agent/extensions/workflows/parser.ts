@@ -98,7 +98,9 @@ function extractMetaNode(node: StatementNode): Result<ExpressionNode, WorkflowPa
 function evaluateMetaLiteral(node: ExpressionNode): Result<JsonValue, WorkflowParseError> {
   switch (node.type) {
     case "Literal": {
-      const value = toJsonValue((node as LiteralNode).value);
+      const literal = (node as LiteralNode).value;
+      if (literal instanceof RegExp) return err(new WorkflowParseError("meta cannot contain regex literals"));
+      const value = toJsonValue(literal);
       return value === undefined ? err(new WorkflowParseError("meta contains a non-JSON literal")) : ok(value);
     }
     case "TemplateLiteral": {
@@ -166,13 +168,25 @@ function propertyKey(node: ExpressionNode | IdentifierNode | PrivateIdentifierNo
 
 function buildMeta(raw: JsonValue): Result<WorkflowMeta, WorkflowParseError> {
   if (!isPlainRecord(raw)) return err(new WorkflowParseError("meta must be an object literal"));
-  const name = typeof raw.name === "string" ? raw.name : undefined;
-  const description = typeof raw.description === "string" ? raw.description : undefined;
-  const phases = Array.isArray(raw.phases) && raw.phases.every((value) => typeof value === "string")
-    ? raw.phases
-    : undefined;
+  const name = raw.name;
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return err(new WorkflowParseError("meta.name must be a non-empty string"));
+  }
+  const description = raw.description;
+  if (typeof description !== "string" || description.trim().length === 0) {
+    return err(new WorkflowParseError("meta.description must be a non-empty string"));
+  }
+  // Claude-compatible phases: plain titles or {title, ...} entries; invalid
+  // entries are dropped rather than failing the whole array.
+  const phases = Array.isArray(raw.phases) ? raw.phases.flatMap(phaseTitle) : undefined;
   const budget = typeof raw.budget === "number" && Number.isFinite(raw.budget) ? raw.budget : undefined;
   return ok({ name, description, phases, budget, raw });
+}
+
+function phaseTitle(entry: JsonValue): string[] {
+  if (typeof entry === "string" && entry.length > 0) return [entry];
+  if (isPlainRecord(entry) && typeof entry.title === "string" && entry.title.length > 0) return [entry.title];
+  return [];
 }
 
 function rejectStaticNondeterminism(program: ProgramNode): Result<void, WorkflowParseError> {

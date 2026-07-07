@@ -14,7 +14,7 @@ test("runtime executes agents, parallel, pipeline, phases, logs, and replay", as
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-runtime-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const source = `
-export const meta = { name: "demo", phases: ["Setup"], budget: 100 };
+export const meta = { name: "demo", description: "t", phases: ["Setup"], budget: 100 };
 phase("Plan");
 log("started");
 const one = await agent("first", { label: "one" });
@@ -84,7 +84,7 @@ test("runtime runs one-level child workflows with forced child agent phase", asy
   await writeFile(
     join(scripts, "child.js"),
     `
-export const meta = { name: "child" };
+export const meta = { name: "child", description: "t" };
 phase("ignored");
 log("child log");
 const out = await agent("child prompt", { label: "child-agent" });
@@ -94,7 +94,7 @@ return { out, args };
   );
 
   const source = `
-export const meta = { name: "parent" };
+export const meta = { name: "parent", description: "t" };
 const child = await workflow("child", { answer: 42 });
 return { child };
 `;
@@ -132,19 +132,19 @@ test("workflow body cannot reach a host Function through .constructor", async ()
     `const p = await parallel([() => agent("x")]); return p.constructor.constructor("return process")();`,
   ];
   for (const body of escapes) {
-    const runtime = makeRuntime(`export const meta = {};\n${body}`, new RecordingRunner());
+    const runtime = makeRuntime(`export const meta = { name: "t", description: "t" };\n${body}`, new RecordingRunner());
     await assert.rejects(runtime.execute(runtime.parsed), /Code generation from strings disallowed/u, body);
   }
 });
 
 test("workflow determinism: real Date/Math are unreachable but explicit dates work", async () => {
-  const bypass = makeRuntime(`export const meta = {};\nreturn Object.getPrototypeOf(Math).random();`, new RecordingRunner());
+  const bypass = makeRuntime(`export const meta = { name: "t", description: "t" };\nreturn Object.getPrototypeOf(Math).random();`, new RecordingRunner());
   await assert.rejects(bypass.execute(bypass.parsed), /random is not a function/u);
 
-  const aliasedDate = makeRuntime(`export const meta = {};\nconst D = Date;\nreturn new D().getTime();`, new RecordingRunner());
+  const aliasedDate = makeRuntime(`export const meta = { name: "t", description: "t" };\nconst D = Date;\nreturn new D().getTime();`, new RecordingRunner());
   await assert.rejects(aliasedDate.execute(aliasedDate.parsed), /without explicit arguments/u);
 
-  const explicitDate = makeRuntime(`export const meta = {};\nreturn new Date("2026-01-02").getFullYear();`, new RecordingRunner());
+  const explicitDate = makeRuntime(`export const meta = { name: "t", description: "t" };\nreturn new Date("2026-01-02").getFullYear();`, new RecordingRunner());
   assert.equal(await explicitDate.execute(explicitDate.parsed), 2026);
 });
 
@@ -153,7 +153,7 @@ test("parallel and pipeline throw WorkflowBudgetExceededError once the budget is
     // The first agent spends 7 tokens, exhausting the budget of 5 before the
     // parallel/pipeline entry precheck runs.
     const runtime = makeRuntime(
-      `export const meta = { budget: 5 };\nawait agent("one");\nreturn await ${call};`,
+      `export const meta = { name: "t", description: "t", budget: 5 };\nawait agent("one");\nreturn await ${call};`,
       new RecordingRunner(),
       { budgetTotal: 5 },
     );
@@ -162,14 +162,14 @@ test("parallel and pipeline throw WorkflowBudgetExceededError once the budget is
 });
 
 test("a stalled agent is aborted and fails its call", async () => {
-  const runtime = makeRuntime(`export const meta = {};\nreturn await agent("hang", { stallMs: 20 });`, new HangingRunner());
+  const runtime = makeRuntime(`export const meta = { name: "t", description: "t" };\nreturn await agent("hang", { stallMs: 20 });`, new HangingRunner());
   await assert.rejects(runtime.execute(runtime.parsed), /stalled after 20ms/u);
   assert.ok(runtime.getSnapshot().logs.some((line) => line.includes("stalled after 20ms")));
 });
 
 test("an agent emitting progress past the stall deadline is not aborted", async () => {
   const runtime = makeRuntime(
-    `export const meta = {};\nreturn await agent("slow", { stallMs: 30 });`,
+    `export const meta = { name: "t", description: "t" };\nreturn await agent("slow", { stallMs: 30 });`,
     new ProgressingRunner(90, 10),
   );
   assert.equal(await runtime.execute(runtime.parsed), "slow-done");
@@ -178,7 +178,7 @@ test("an agent emitting progress past the stall deadline is not aborted", async 
 test("agent isolation worktree and remote both throw", async () => {
   for (const isolation of ["worktree", "remote"]) {
     const runtime = makeRuntime(
-      `export const meta = {};\nreturn await agent("x", { isolation: "${isolation}" });`,
+      `export const meta = { name: "t", description: "t" };\nreturn await agent("x", { isolation: "${isolation}" });`,
       new RecordingRunner(),
     );
     await assert.rejects(runtime.execute(runtime.parsed), new RegExp(`isolation:'${isolation}'`, "u"), isolation);
@@ -188,7 +188,7 @@ test("agent isolation worktree and remote both throw", async () => {
 test("agentType logs a visible warning and is ignored", async () => {
   const runner = new RecordingRunner();
   const runtime = makeRuntime(
-    `export const meta = {};\nreturn await agent("x", { agentType: "code-reviewer" });`,
+    `export const meta = { name: "t", description: "t" };\nreturn await agent("x", { agentType: "code-reviewer" });`,
     runner,
   );
   await runtime.execute(runtime.parsed);
@@ -202,7 +202,7 @@ test("agentType logs a visible warning and is ignored", async () => {
 test("null agent results are not journalled and re-run on resume", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-null-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
-  const source = `export const meta = { name: "n" };\nreturn await agent("x");`;
+  const source = `export const meta = { name: "n", description: "t" };\nreturn await agent("x");`;
   const parsed = mustParse(source);
   const snapshot = makeSnapshot("wf_nulljrnl1", { workflowName: "n" });
   await store.createRun(snapshot, source);

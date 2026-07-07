@@ -88,7 +88,7 @@ export class WorkflowRuntime {
   /** Execute the top-level workflow body. */
   async execute(parsed: ParsedWorkflowScript): Promise<JsonValue> {
     try {
-      const result = await this.executeBody(parsed.body, this.snapshot.args, parsed.meta.name ?? this.snapshot.workflowName);
+      const result = await this.executeBody(parsed.body, this.snapshot.args, parsed.meta.name);
       const json = sanitiseBoundaryValue(result);
       return json === undefined ? null : json;
     } finally {
@@ -399,7 +399,7 @@ export class WorkflowRuntime {
     const parsed = parseWorkflowScript(resolved.value.source);
     if (!parsed.ok) throw parsed.error;
 
-    const childName = parsed.value.meta.name ?? resolved.value.displayName;
+    const childName = parsed.value.meta.name;
     const priorDepth = this.childDepth;
     const priorPrefix = this.childLogPrefix;
     const priorForcedPhase = this.forcedAgentPhase;

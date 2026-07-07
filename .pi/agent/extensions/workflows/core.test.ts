@@ -56,6 +56,39 @@ return args;
   assert.match(parsed.value.body, /^phase\("Plan"\);/u);
 });
 
+test("parseWorkflowScript accepts Claude-style object phases and filters invalid entries", () => {
+  const parsed = parseWorkflowScript(`
+export const meta = {
+  name: "demo",
+  description: "docs",
+  phases: [{ title: "Scan", detail: "grep logs" }, "Fix", { detail: "no title" }, 7, { title: "Verify" }],
+};
+return null;
+`);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.value.meta.phases, ["Scan", "Fix", "Verify"]);
+});
+
+test("parseWorkflowScript requires non-empty meta.name and meta.description", () => {
+  const missingName = parseWorkflowScript(`export const meta = { description: "d" };\nreturn null;`);
+  assert.equal(missingName.ok, false);
+  assert.match(missingName.ok ? "" : missingName.error.message, /meta\.name/u);
+
+  const missingDescription = parseWorkflowScript(`export const meta = { name: "n" };\nreturn null;`);
+  assert.equal(missingDescription.ok, false);
+  assert.match(missingDescription.ok ? "" : missingDescription.error.message, /meta\.description/u);
+
+  const emptyName = parseWorkflowScript(`export const meta = { name: "", description: "d" };\nreturn null;`);
+  assert.equal(emptyName.ok, false);
+});
+
+test("parseWorkflowScript rejects regex literals in meta instead of coercing them", () => {
+  const parsed = parseWorkflowScript(`export const meta = { name: "n", description: /d/ };\nreturn null;`);
+  assert.equal(parsed.ok, false);
+  assert.match(parsed.ok ? "" : parsed.error.message, /regex/iu);
+});
+
 test("parseWorkflowScript rejects executable metadata and dangerous static runtime calls", () => {
   const badMeta = parseWorkflowScript("export const meta = { name: process.env.X };\nreturn null;");
   assert.equal(badMeta.ok, false);
@@ -66,14 +99,14 @@ test("parseWorkflowScript rejects executable metadata and dangerous static runti
   assert.match(proto.ok ? "" : proto.error.message, /not allowed/u);
 
   for (const body of ["Date.now();", "Math.random();", "new Date();"]) {
-    const parsed = parseWorkflowScript(`export const meta = {};\n${body}\nreturn null;`);
+    const parsed = parseWorkflowScript(`export const meta = { name: "t", description: "t" };\n${body}\nreturn null;`);
     assert.equal(parsed.ok, false, body);
   }
 });
 
 test("parseWorkflowScript rejects common generated DSL shape mistakes", () => {
   const callbackPhase = parseWorkflowScript(`
-export const meta = {};
+export const meta = { name: "t", description: "t" };
 const [a] = await phase("discover", () => parallel([]));
 return a;
 `);
@@ -81,7 +114,7 @@ return a;
   assert.match(callbackPhase.ok ? "" : callbackPhase.error.message, /phase\(title\) returns void/u);
 
   const objectAgent = parseWorkflowScript(`
-export const meta = {};
+export const meta = { name: "t", description: "t" };
 const out = await agent({ name: "research", prompt: "inspect this" });
 return out;
 `);
@@ -89,7 +122,7 @@ return out;
   assert.match(objectAgent.ok ? "" : objectAgent.error.message, /agent\(prompt, options\?\)/u);
 
   const eagerParallel = parseWorkflowScript(`
-export const meta = {};
+export const meta = { name: "t", description: "t" };
 const out = await parallel([agent("inspect this")]);
 return out;
 `);
@@ -117,7 +150,7 @@ return { a, b, result };
 
 test("parseWorkflowScript allows parallel function references when statically ambiguous", () => {
   const parsed = parseWorkflowScript(`
-export const meta = {};
+export const meta = { name: "t", description: "t" };
 const task = () => agent("inspect this");
 const out = await parallel([task]);
 return out;
