@@ -16,7 +16,9 @@ setup() {
   : >"$TEST_HOME/.config/mise/mise.lock" # committed lock exists, empty
 
   for cmd in brew drs macup-check tmux-upstream \
-    claude-channels-patch claude-computer-use-patch; do
+    claude-channels-patch claude-channels-allowlist-patch \
+    claude-computer-use-patch claude-session-reaper-patch \
+    claude-telegram-clear-patch; do
     write_stub "$cmd" <<EOF
 #!/usr/bin/env bash
 echo "$cmd \$*" >>"$TEST_LOG"
@@ -67,6 +69,7 @@ EOF
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
+  grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
 }
 
 @test "up skips the mise commit when the upgrade changed nothing" {
@@ -83,6 +86,7 @@ EOF
   run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
   grep -qF 'mise install' "$TEST_LOG"
+  grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'mise lock' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"

@@ -41,6 +41,25 @@ EOF
   [ -z "$output" ]
 }
 
+@test "claude_session_resolve_for_pid preserves pane and cwd arguments with spaces" {
+  resolver="$HOME/resolver"
+  write_executable "$resolver" <<'EOF'
+#!/usr/bin/env bash
+printf '<%s>\n' "$@" >"$TEST_LOG"
+printf '{"status":"resolved","sessionId":"session-xyz"}\n'
+EOF
+  export CLAUDE_SESSION_RESOLVER="$resolver"
+
+  run claude_session_resolve_for_pid 711 "%1" "/tmp/work space"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.sessionId')" = "session-xyz" ]
+  grep -qF '<--pane>' "$TEST_LOG"
+  grep -qF '<%1>' "$TEST_LOG"
+  grep -qF '<--cwd>' "$TEST_LOG"
+  grep -qF '</tmp/work space>' "$TEST_LOG"
+}
+
 @test "claude_foreground_pid_for_tty finds the foreground claude on the tty" {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash

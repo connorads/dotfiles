@@ -10,6 +10,7 @@ MENU="$BATS_TEST_DIRNAME/../../tmux/scripts/claude-branch-menu.sh"
 setup() {
   setup_test_home
   mkdir -p "$HOME/.claude/sessions"
+  export CLAUDE_SESSION_RESOLVER="$BATS_TEST_DIRNAME/../../tmux/scripts/claude-session-resolve.py"
   # tmux stub records every invocation so we can assert what was shown.
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
@@ -49,11 +50,34 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
   [ "$status" -eq 0 ]
   grep -q "pid 711" "$TEST_LOG"
-  grep -q "not registered" "$TEST_LOG"
+  grep -q "not forkable" "$TEST_LOG"
   # it must not fall back to the ambiguous "no Claude" message...
   ! grep -q "No Claude in this pane" "$TEST_LOG"
   # ...and there is nothing to fork, so no menu.
   ! grep -q "display-menu" "$TEST_LOG"
+}
+
+@test "claude with no registry but resumable launch args -> opens the branch menu" {
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *-t\ ttys010*)
+    printf '  700 Ss zsh\n'
+    printf '  711 S+ claude\n'
+    ;;
+  *"-o command= -p 711"*)
+    printf 'claude --resume session-from-args\n'
+    ;;
+  *) exit 1 ;;
+esac
+EOF
+
+  run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -q "session-from-args" "$TEST_LOG"
+  ! grep -q "not registered" "$TEST_LOG"
+  ! grep -q "\\[resolved\\]" "$TEST_LOG"
 }
 
 @test "claude with a registry file -> opens the branch menu, no error message" {

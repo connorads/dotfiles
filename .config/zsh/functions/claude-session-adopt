@@ -1,0 +1,161 @@
+#!/usr/bin/env zsh
+# claude-session-adopt: repair Claude Code's missing pid -> sessionId registry entry
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+usage() {
+  print -u2 "usage: claude-session-adopt (--pane %id | --pid PID) [--yes] [--dry-run]"
+}
+
+local pane="" pid="" yes=0 dry_run=0
+while (( $# )); do
+  case "$1" in
+    --pane) pane="${2:-}"; shift 2 ;;
+    --pid) pid="${2:-}"; shift 2 ;;
+    --yes|-y) yes=1; shift ;;
+    --dry-run|-n) dry_run=1; shift ;;
+    --help|-h) usage; return 0 ;;
+    *) usage; return 2 ;;
+  esac
+done
+
+if [[ -z $pane && -z $pid ]]; then
+  usage
+  return 2
+fi
+if [[ -n $pane && -n $pid ]]; then
+  print -u2 "claude-session-adopt: pass either --pane or --pid, not both"
+  return 2
+fi
+
+local session_lib="${CLAUDE_SESSION_LIB:-$HOME/.config/tmux/scripts/lib/claude-session.sh}"
+if [[ ! -r $session_lib ]]; then
+  print -u2 "claude-session-adopt: session lib not found: $session_lib"
+  return 1
+fi
+# shellcheck source=../../tmux/scripts/lib/claude-session.sh disable=SC1090
+source "$session_lib"
+
+local pane_tty="" pane_pid="" cwd=""
+if [[ -n $pane ]]; then
+  if ! command -v tmux >/dev/null 2>&1; then
+    print -u2 "claude-session-adopt: tmux not found"
+    return 1
+  fi
+  local pane_info
+  pane_info=$(tmux display-message -p -t "$pane" '#{pane_tty}	#{pane_pid}	#{pane_current_path}' 2>/dev/null || true)
+  if [[ -z $pane_info ]]; then
+    print -u2 "claude-session-adopt: pane not found: $pane"
+    return 1
+  fi
+  IFS=$'\t' read -r pane_tty pane_pid cwd <<<"$pane_info"
+  pid=$(claude_foreground_pid_for_tty "$pane_tty" "claude" "$pane_pid")
+  if [[ -z $pid ]]; then
+    print -u2 "claude-session-adopt: no foreground Claude in $pane"
+    return 1
+  fi
+else
+  cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | awk '/^n\// {sub(/^n/, ""); print; exit}')
+  [[ -n $cwd ]] || cwd=$(lsof -a -p "$pid" -d cwd 2>/dev/null | awk 'END {print $NF}')
+fi
+
+local session_file="$HOME/.claude/sessions/$pid.json"
+if [[ -e $session_file ]]; then
+  print -u2 "claude-session-adopt: registry already exists: $session_file"
+  return 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  print -u2 "claude-session-adopt: jq not found"
+  return 1
+fi
+
+local resolved
+resolved=$(claude_session_resolve_for_pid "$pid" "$pane" "$cwd" 2>/dev/null || true)
+if [[ -z $resolved ]]; then
+  print -u2 "claude-session-adopt: resolver returned no result"
+  return 1
+fi
+
+local resolved_status sid source reason
+resolved_status=$(print -r -- "$resolved" | jq -r '.status // empty')
+if [[ $resolved_status != resolved ]]; then
+  reason=$(print -r -- "$resolved" | jq -r '.reason // "unresolved"')
+  print -u2 "claude-session-adopt: cannot adopt pid $pid: $reason"
+  return 1
+fi
+
+sid=$(print -r -- "$resolved" | jq -r '.sessionId')
+source=$(print -r -- "$resolved" | jq -r '.source')
+cwd=$(print -r -- "$resolved" | jq -r '.cwd // empty')
+[[ -n $cwd ]] || cwd="$PWD"
+
+local duplicates
+duplicates=$(ps -axo pid=,command= 2>/dev/null |
+  awk -v sid="$sid" -v self="$pid" '$1 != self && index($0, sid) && $0 ~ /claude/ {print $1}' |
+  paste -sd, - 2>/dev/null || true)
+
+print -r -- "Claude session adoption candidate"
+print -r -- "  pid:       $pid"
+print -r -- "  session:   $sid"
+print -r -- "  cwd:       $cwd"
+print -r -- "  source:    $source"
+if [[ -n $duplicates ]]; then
+  print -r -- "  duplicate live pids for session: $duplicates"
+fi
+print -r -- "  evidence:"
+print -r -- "$resolved" | jq -r '.evidence[]? | "    - " + .'
+
+if (( dry_run )); then
+  print -r -- "dry-run: would write $session_file"
+  return 0
+fi
+
+if (( ! yes )); then
+  local reply
+  print -n -- "Write $session_file? [y/N] "
+  read -r reply
+  case "$reply" in
+    y|Y|yes|YES) ;;
+    *) print -r -- "aborted"; return 1 ;;
+  esac
+fi
+
+local proc_start version now tmp
+proc_start=$(LC_ALL=C TZ=UTC ps -o lstart= -p "$pid" 2>/dev/null | sed 's/^ *//;s/ *$//')
+version=$(claude --version 2>/dev/null | awk '{print $1; exit}')
+now=$(python3 - <<'PY'
+import time
+print(int(time.time() * 1000))
+PY
+)
+
+mkdir -p "$HOME/.claude/sessions"
+tmp="$session_file.tmp.$$"
+jq -n \
+  --argjson pid "$pid" \
+  --arg sessionId "$sid" \
+  --arg cwd "$cwd" \
+  --arg procStart "$proc_start" \
+  --arg version "$version" \
+  --arg name "adopted-$pid" \
+  --argjson now "$now" \
+  '{
+    pid: $pid,
+    sessionId: $sessionId,
+    cwd: $cwd,
+    startedAt: $now,
+    procStart: $procStart,
+    version: $version,
+    peerProtocol: 1,
+    kind: "interactive",
+    entrypoint: "cli",
+    name: $name,
+    nameSource: "derived",
+    status: "idle",
+    updatedAt: $now,
+    statusUpdatedAt: $now
+  }' >"$tmp"
+mv "$tmp" "$session_file"
+print -r -- "wrote: $session_file"
