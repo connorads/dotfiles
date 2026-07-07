@@ -55,7 +55,6 @@
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
-| `Ctrl+b f` | find window |
 | `Ctrl+b Alt+f` | function/alias search |
 | `Ctrl+b T` | Tools launcher (fzf: connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
@@ -78,8 +77,8 @@
 | `Ctrl+b Alt+g` | review commits (fzf + critique) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
-| `Ctrl+b Alt+v` | Fresh editor |
-| `Ctrl+b Alt+V` | Fresh help |
+| `Ctrl+b f` | Fresh editor |
+| `Ctrl+b F` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
 
