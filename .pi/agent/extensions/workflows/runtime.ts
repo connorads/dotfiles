@@ -4,15 +4,13 @@ import { createContext, Script } from "node:vm";
 import {
   nextReplayKey,
   parseWorkflowInput,
-  stableJson,
-  toJsonValue,
   type AgentOptions,
   type JsonValue,
   type ReplayKey,
   type WorkflowJournalEntry,
   type WorkflowRunSnapshot,
 } from "./domain.ts";
-import { errorMessage, preview } from "./prelude.ts";
+import { errorMessage } from "./prelude.ts";
 import { type ParsedWorkflowScript, parseWorkflowScript } from "./parser.ts";
 import type { WorkflowStore } from "./store.ts";
 
@@ -37,7 +35,12 @@ export interface WorkflowRuntimeDeps {
   readonly signal: AbortSignal;
   readonly now: () => number;
   readonly concurrency?: number;
+  /** Write-authority epoch; superseded executions have their durable writes fenced. */
+  readonly generation?: number;
 }
+
+/** Default per-agent stall timeout: abort a subagent that makes no progress. */
+const DEFAULT_STALL_MS = 180_000;
 
 export class WorkflowRuntimeError extends Error {
   readonly _tag: "WorkflowRuntimeError" | "WorkflowBudgetExceededError" = "WorkflowRuntimeError";
@@ -93,14 +96,13 @@ export class WorkflowRuntime {
 
   private async executeBody(body: string, args: JsonValue, filename: string): Promise<unknown> {
     this.throwIfAborted();
+    // Inject only host callables under hidden `__host$*` names. The static
+    // bootstrap captures them into a closure, deletes the globals, and exposes
+    // in-realm DSL wrappers that marshal every result back through JSON. The
+    // workflow body can therefore name no host object, sealing the
+    // `.constructor` -> host `Function` escape. See ADR 0001.
     const sandbox = Object.create(null) as Record<string, unknown>;
-    const helpers = this.createHelpers();
-    Object.assign(sandbox, helpers, {
-      args: cloneJson(args),
-      console: this.createConsole(),
-      Date: createDateShim(),
-      Math: createMathShim(),
-      globalThis: sandbox,
+    Object.assign(sandbox, this.createHostBridge(args), {
       WebAssembly: undefined,
       ShadowRealm: undefined,
       FinalizationRegistry: undefined,
@@ -115,27 +117,67 @@ export class WorkflowRuntime {
       name: "pi-workflow",
       codeGeneration: { strings: false, wasm: false },
     });
+    new Script(BOOTSTRAP, { filename: "pi-workflow-bootstrap.js" }).runInContext(context, { timeout: 30_000 });
     const wrapped = `(async () => {\n${body}\n})()`;
     const script = new Script(wrapped, { filename: `${filename}.js` });
     return await script.runInContext(context, { timeout: 30_000 });
   }
 
-  private createHelpers(): WorkflowHelpers {
+  /**
+   * Host callables exposed to the bootstrap under `__host$*` names. Async
+   * helpers return a JSON envelope string so neither results nor host errors
+   * cross into the realm as host objects; the bootstrap re-throws in-realm.
+   */
+  private createHostBridge(args: JsonValue): Record<string, unknown> {
+    const marshal = async (run: () => Promise<JsonValue>): Promise<string> => {
+      try {
+        return JSON.stringify({ ok: true, value: await run() });
+      } catch (error) {
+        return JSON.stringify({ ok: false, error: errorMessage(error) });
+      }
+    };
     return {
-      agent: (prompt, options) => this.agent(prompt, options),
-      parallel: (items) => this.parallel(items),
-      pipeline: (items, ...stages) => this.pipeline(items, ...stages),
-      phase: (title) => this.phase(title),
-      log: (message) => this.log(String(message)),
-      budget: {
-        total: this.snapshot.budgetTotal,
-        spent: () => this.snapshot.budgetSpent,
-        remaining: () =>
-          this.snapshot.budgetTotal === null ? Infinity : Math.max(0, this.snapshot.budgetTotal - this.snapshot.budgetSpent),
+      __host$argsJson: JSON.stringify(cloneJson(args)),
+      __host$agent: (prompt: unknown, options: unknown): Promise<string> => marshal(() => this.agent(prompt, options)),
+      __host$parallel: (items: unknown): Promise<string> => marshal(() => this.parallel(items)),
+      __host$pipeline: (items: unknown, stages: unknown): Promise<string> =>
+        marshal(() => this.pipeline(items, ...(Array.isArray(stages) ? stages : []))),
+      __host$workflow: (nameOrSpec: unknown, workflowArgs: unknown): Promise<string> =>
+        marshal(() => this.workflow(nameOrSpec, workflowArgs)),
+      __host$phase: (title: unknown): void => {
+        try {
+          this.phase(title);
+        } catch {
+          // Progress markers must never fail the workflow body.
+        }
       },
-      workflow: (nameOrSpec, args) => this.workflow(nameOrSpec, args),
-      setTimeout: (callback, delay) => this.workflowSetTimeout(callback, delay),
-      clearTimeout: (id) => this.workflowClearTimeout(id),
+      __host$log: (message: unknown): void => {
+        try {
+          this.log(String(message));
+        } catch {
+          // Logging must never fail the workflow body.
+        }
+      },
+      __host$setTimeout: (callback: unknown, delay: unknown): string => {
+        try {
+          return JSON.stringify({ ok: true, value: this.workflowSetTimeout(callback, delay) });
+        } catch (error) {
+          return JSON.stringify({ ok: false, error: errorMessage(error) });
+        }
+      },
+      __host$clearTimeout: (id: unknown): void => {
+        try {
+          this.workflowClearTimeout(id);
+        } catch {
+          // Clearing an unknown timer id is a no-op.
+        }
+      },
+      __host$budgetTotal: this.snapshot.budgetTotal,
+      __host$budgetSpent: (): number => this.snapshot.budgetSpent,
+      __host$budgetRemaining: (): number =>
+        this.snapshot.budgetTotal === null
+          ? Infinity
+          : Math.max(0, this.snapshot.budgetTotal - this.snapshot.budgetSpent),
     };
   }
 
@@ -165,7 +207,7 @@ export class WorkflowRuntime {
       agentCalls: index,
       updatedAt: this.deps.now(),
     };
-    await this.deps.store.updateRun(this.snapshot);
+    await this.deps.store.updateRun(this.snapshot, this.deps.generation);
 
     const cached = this.cachedResults.get(replayKey);
     if (cached) {
@@ -174,45 +216,87 @@ export class WorkflowRuntime {
         budgetSpent: this.snapshot.budgetSpent + Math.max(0, cached.outputTokens),
         updatedAt: this.deps.now(),
       };
-      await this.deps.store.updateRun(this.snapshot);
+      await this.deps.store.updateRun(this.snapshot, this.deps.generation);
       this.log(`agent[${index}] cached${options.label ? `: ${options.label}` : ""}`);
       return cached.value;
     }
 
-    await this.deps.store.appendJournal(this.snapshot.runId, {
-      kind: "agent_started",
-      at: this.deps.now(),
-      replayKey,
-      index,
-      prompt,
-      label: options.label,
-      phase,
-    });
-
-    const result = await this.semaphore.run(() =>
-      this.deps.agentRunner.run(prompt, {
-        ...options,
+    await this.deps.store.appendJournal(
+      this.snapshot.runId,
+      {
+        kind: "agent_started",
+        at: this.deps.now(),
+        replayKey,
+        index,
+        prompt,
+        label: options.label,
         phase,
-        signal: this.deps.signal,
-      }),
+      },
+      this.deps.generation,
     );
+
+    const result = await this.semaphore.run(() => this.runAgent(prompt, { ...options, phase }, index));
     this.snapshot = {
       ...this.snapshot,
       budgetSpent: this.snapshot.budgetSpent + Math.max(0, result.outputTokens),
       updatedAt: this.deps.now(),
     };
-    await this.deps.store.appendJournal(this.snapshot.runId, {
-      kind: "agent_result",
-      at: this.deps.now(),
-      replayKey,
-      value: result.value,
-      outputTokens: result.outputTokens,
-    });
-    await this.deps.store.updateRun(this.snapshot);
+    // Match the spec: only successful non-null results are journalled, so
+    // null/skipped agents re-run rather than replaying `null` on resume.
+    if (result.value !== null) {
+      await this.deps.store.appendJournal(
+        this.snapshot.runId,
+        {
+          kind: "agent_result",
+          at: this.deps.now(),
+          replayKey,
+          value: result.value,
+          outputTokens: result.outputTokens,
+        },
+        this.deps.generation,
+      );
+    }
+    await this.deps.store.updateRun(this.snapshot, this.deps.generation);
     return result.value;
   }
 
+  /**
+   * Run a single subagent under a per-agent stall watchdog. The agent aborts if
+   * `deps.signal` fires or it makes no progress for `stallMs` (default 180s;
+   * `<= 0` disables), so a hung agent cannot wedge a background run.
+   */
+  private async runAgent(prompt: string, options: AgentOptions & { readonly phase?: string }, index: number): Promise<AgentRunResult> {
+    const stallMs = options.stallMs ?? DEFAULT_STALL_MS;
+    const controller = new AbortController();
+    const abortFromParent = (): void => controller.abort();
+    if (this.deps.signal.aborted) controller.abort();
+    else this.deps.signal.addEventListener("abort", abortFromParent, { once: true });
+
+    let stalled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (stallMs > 0) {
+      timer = setTimeout(() => {
+        stalled = true;
+        controller.abort();
+      }, stallMs);
+    }
+
+    try {
+      return await this.deps.agentRunner.run(prompt, { ...options, signal: controller.signal });
+    } catch (error) {
+      if (stalled) {
+        this.log(`agent[${index}] stalled after ${stallMs}ms and was aborted`);
+        throw new WorkflowRuntimeError(`agent[${index}] stalled after ${stallMs}ms with no progress`);
+      }
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+      this.deps.signal.removeEventListener("abort", abortFromParent);
+    }
+  }
+
   private async parallel(items: unknown): Promise<Array<JsonValue | null>> {
+    this.throwIfBudgetExceeded();
     if (!Array.isArray(items)) throw new WorkflowRuntimeError("parallel() expects an array of functions");
     if (items.some((item) => typeof item !== "function")) {
       throw new WorkflowRuntimeError("parallel() expects an array of functions, not promises. Wrap each call: () => agent(...)");
@@ -230,6 +314,7 @@ export class WorkflowRuntime {
   }
 
   private async pipeline(items: unknown, ...stages: unknown[]): Promise<Array<JsonValue | null>> {
+    this.throwIfBudgetExceeded();
     if (!Array.isArray(items)) throw new WorkflowRuntimeError("pipeline() expects an array as the first argument");
     if (stages.some((stage) => typeof stage !== "function")) {
       throw new WorkflowRuntimeError("pipeline() stages must be functions: pipeline(items, item => ..., result => ...)");
@@ -259,7 +344,7 @@ export class WorkflowRuntime {
       phases: this.snapshot.phases.includes(phase) ? this.snapshot.phases : [...this.snapshot.phases, phase],
       updatedAt: this.deps.now(),
     };
-    void this.deps.store.updateRun(this.snapshot);
+    void this.deps.store.updateRun(this.snapshot, this.deps.generation).catch(() => {});
   }
 
   private log(message: string): void {
@@ -269,7 +354,13 @@ export class WorkflowRuntime {
       logs: [...this.snapshot.logs, text].slice(-LOG_CAP),
       updatedAt: this.deps.now(),
     };
-    void this.deps.store.updateRun(this.snapshot);
+    void this.deps.store.updateRun(this.snapshot, this.deps.generation).catch(() => {});
+  }
+
+  private throwIfBudgetExceeded(): void {
+    if (this.snapshot.budgetTotal !== null && this.snapshot.budgetSpent >= this.snapshot.budgetTotal) {
+      throw new WorkflowBudgetExceededError("Workflow token budget exceeded");
+    }
   }
 
   private async workflow(nameOrSpec: unknown, argsInput?: unknown): Promise<JsonValue> {
@@ -327,19 +418,6 @@ export class WorkflowRuntime {
     this.timers.delete(numeric);
   }
 
-  private createConsole(): Pick<Console, "log" | "info" | "debug" | "warn" | "error"> {
-    const write = (prefix: string, values: readonly unknown[]): void => {
-      this.log(`${prefix}${values.map(formatLogValue).join(" ")}`);
-    };
-    return {
-      log: (...values) => write("", values),
-      info: (...values) => write("", values),
-      debug: (...values) => write("", values),
-      warn: (...values) => write("[warn] ", values),
-      error: (...values) => write("[error] ", values),
-    };
-  }
-
   private throwIfAborted(): void {
     if (this.deps.signal.aborted) throw new WorkflowRuntimeError("Workflow was stopped");
   }
@@ -368,7 +446,13 @@ function sanitiseBoundaryValue(value: unknown, seen = new WeakSet<object>()): Js
   if (Array.isArray(value)) {
     if (seen.has(value)) throw new WorkflowRuntimeError("Workflow result cannot contain cycles");
     seen.add(value);
-    return value.slice(0, ARRAY_CAP).map((item) => sanitiseBoundaryValue(item, seen) ?? null);
+    // Build a fresh host-realm array rather than value.slice()/map(), which
+    // would preserve the (possibly in-realm) prototype of the input array.
+    const output: JsonValue[] = [];
+    for (let index = 0; index < value.length && index < ARRAY_CAP; index += 1) {
+      output.push(sanitiseBoundaryValue(value[index], seen) ?? null);
+    }
+    return output;
   }
   if (isRecord(value)) {
     if (seen.has(value)) throw new WorkflowRuntimeError("Workflow result cannot contain cycles");
@@ -386,45 +470,6 @@ function sanitiseBoundaryValue(value: unknown, seen = new WeakSet<object>()): Js
 
 function cloneJson(value: JsonValue): JsonValue {
   return JSON.parse(JSON.stringify(value)) as JsonValue;
-}
-
-function formatLogValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  const json = toJsonValue(value);
-  if (json !== undefined) return preview(stableJson(json), 400);
-  return preview(String(value), 400);
-}
-
-function createDateShim(): DateConstructor {
-  const DateShim = function (this: Date, ...args: unknown[]) {
-    if (!new.target) throw new WorkflowRuntimeError("Date() without explicit arguments is not available in workflows");
-    if (args.length === 0) throw new WorkflowRuntimeError("new Date() without explicit arguments is not available in workflows");
-    return Reflect.construct(Date, args, new.target);
-  };
-  Object.defineProperty(DateShim, "now", {
-    value: () => {
-      throw new WorkflowRuntimeError("Date.now is not available in workflows");
-    },
-  });
-  Object.defineProperty(DateShim, "parse", { value: Date.parse });
-  Object.defineProperty(DateShim, "UTC", { value: Date.UTC });
-  DateShim.prototype = Date.prototype;
-  Object.setPrototypeOf(DateShim, Date);
-  return DateShim as unknown as DateConstructor;
-}
-
-function createMathShim(): Math {
-  const math = Object.create(Math) as Math;
-  for (const key of Object.getOwnPropertyNames(Math)) {
-    if (key === "random") continue;
-    Object.defineProperty(math, key, Object.getOwnPropertyDescriptor(Math, key) ?? { value: undefined });
-  }
-  Object.defineProperty(math, "random", {
-    value: () => {
-      throw new WorkflowRuntimeError("Math.random is not available in workflows");
-    },
-  });
-  return Object.freeze(math);
 }
 
 function defaultConcurrency(): number {
@@ -468,18 +513,93 @@ class Semaphore {
   }
 }
 
-interface WorkflowHelpers {
-  readonly agent: (prompt: unknown, options?: unknown) => Promise<JsonValue>;
-  readonly parallel: (items: unknown) => Promise<Array<JsonValue | null>>;
-  readonly pipeline: (items: unknown, ...stages: unknown[]) => Promise<Array<JsonValue | null>>;
-  readonly phase: (title: unknown) => void;
-  readonly log: (message: unknown) => void;
-  readonly budget: {
-    readonly total: number | null;
-    readonly spent: () => number;
-    readonly remaining: () => number;
+/**
+ * Static, host-authored bootstrap run in the VM context before the workflow
+ * body. It captures the injected `__host$*` callables into a closure, deletes
+ * them from the global object, and installs in-realm DSL wrappers that marshal
+ * every value across the boundary through JSON. It also tames the context's own
+ * `Date`/`Math` intrinsics for determinism. After this runs, the workflow body
+ * can reach no host object, so `.constructor` resolves only to the in-realm
+ * `Function` (neutered by `codeGeneration.strings: false`).
+ */
+const BOOTSTRAP = `
+"use strict";
+(() => {
+  const H = {
+    agent: globalThis.__host$agent,
+    parallel: globalThis.__host$parallel,
+    pipeline: globalThis.__host$pipeline,
+    workflow: globalThis.__host$workflow,
+    phase: globalThis.__host$phase,
+    log: globalThis.__host$log,
+    setTimeout: globalThis.__host$setTimeout,
+    clearTimeout: globalThis.__host$clearTimeout,
+    budgetTotal: globalThis.__host$budgetTotal,
+    budgetSpent: globalThis.__host$budgetSpent,
+    budgetRemaining: globalThis.__host$budgetRemaining,
+    argsJson: globalThis.__host$argsJson,
   };
-  readonly workflow: (nameOrSpec: unknown, args?: unknown) => Promise<JsonValue>;
-  readonly setTimeout: (callback: unknown, delay: unknown) => number;
-  readonly clearTimeout: (id: unknown) => void;
-}
+  for (const key of Object.getOwnPropertyNames(globalThis)) {
+    if (key.indexOf("__host$") === 0) delete globalThis[key];
+  }
+
+  const unwrap = (envelopeJson) => {
+    const env = JSON.parse(envelopeJson);
+    if (env && env.ok) return env.value;
+    throw new Error(env && typeof env.error === "string" ? env.error : "Workflow host call failed");
+  };
+
+  globalThis.args = JSON.parse(H.argsJson);
+  globalThis.agent = async (prompt, options) => unwrap(await H.agent(prompt, options));
+  globalThis.parallel = async (items) => unwrap(await H.parallel(items));
+  globalThis.pipeline = async (items, ...stages) => unwrap(await H.pipeline(items, stages));
+  globalThis.workflow = async (nameOrSpec, workflowArgs) => unwrap(await H.workflow(nameOrSpec, workflowArgs));
+  globalThis.phase = (title) => { H.phase(title); };
+  globalThis.log = (message) => { H.log(message); };
+  globalThis.setTimeout = (callback, delay) => unwrap(H.setTimeout(callback, delay));
+  globalThis.clearTimeout = (id) => { H.clearTimeout(id); };
+  globalThis.budget = {
+    total: H.budgetTotal,
+    spent: () => H.budgetSpent(),
+    remaining: () => H.budgetRemaining(),
+  };
+
+  const truncate = (text) => (text.length <= 400 ? text : text.slice(0, 400) + "...");
+  const formatValue = (value) => {
+    if (typeof value === "string") return value;
+    try {
+      const json = JSON.stringify(value);
+      return truncate(json === undefined ? String(value) : json);
+    } catch {
+      return truncate(String(value));
+    }
+  };
+  const writeLog = (prefix, values) => { H.log(prefix + values.map(formatValue).join(" ")); };
+  globalThis.console = {
+    log: (...values) => writeLog("", values),
+    info: (...values) => writeLog("", values),
+    debug: (...values) => writeLog("", values),
+    warn: (...values) => writeLog("[warn] ", values),
+    error: (...values) => writeLog("[error] ", values),
+  };
+
+  const RealDate = Date;
+  const WorkflowDate = function (...args) {
+    if (!new.target) throw new Error("Date() without explicit arguments is not available in workflows");
+    if (args.length === 0) throw new Error("new Date() without explicit arguments is not available in workflows");
+    return Reflect.construct(RealDate, args, new.target);
+  };
+  WorkflowDate.prototype = RealDate.prototype;
+  Object.defineProperty(RealDate.prototype, "constructor", { value: WorkflowDate, writable: true, configurable: true });
+  WorkflowDate.parse = RealDate.parse;
+  WorkflowDate.UTC = RealDate.UTC;
+  WorkflowDate.now = () => { throw new Error("Date.now is not available in workflows"); };
+  globalThis.Date = WorkflowDate;
+
+  Object.defineProperty(Math, "random", {
+    value: () => { throw new Error("Math.random is not available in workflows"); },
+    writable: true,
+    configurable: true,
+  });
+})();
+`;
