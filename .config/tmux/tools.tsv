@@ -1,3 +1,5 @@
+Tmux: join all windows into panes (tiled)	~/.local/bin/tmjoin "${TMUX_TOOLS_WINDOW:-}"; echo; print -n "Press any key…"; read -sk1
+Tmux: burst panes into windows	~/.local/bin/tmburst "${TMUX_TOOLS_WINDOW:-}"; echo; print -n "Press any key…"; read -sk1
 Connections (netstat / sockets)	conns | less -R --mouse
 Ports (inspect / kill)	ports -k
 Kill process (user)	pclose
