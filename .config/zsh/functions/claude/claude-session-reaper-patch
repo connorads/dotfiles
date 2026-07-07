@@ -16,11 +16,181 @@ setopt no_unset pipe_fail
 local wrapper="${${(%):-%x}:A}"
 local patch_name=claude-session-reaper-patch
 local patch_label='session reaper EPERM'
-local needle='function aE(e){if(e<=1)return!1;try{return process.kill(e,0),!0}catch{return!1}}'
-local replace='function aE(e){try{return e>1&&process.kill(e,0)}catch(t){return e>1&t.errno<2}}'
+local needle_desc='function <minified>(e){if(e<=1)return!1;try{return process.kill(e,0),!0}catch{return!1}}'
 local marker="$HOME/.cache/claude-session-reaper-patch.stale"
 local missing_body=$'The liveness helper was likely renamed/reminified upstream; sandboxed\nClaude launches can again reap live session registry files until the\nneedle in claude-session-reaper-patch is updated.'
 local missing_banner='session reaper may misclassify EPERM as dead'
 
 source "${wrapper:h}/_claude-patch-targets-lib"
-source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"
+
+local mode=patch
+local select_all=0
+
+while (( $# )); do
+  case $1 in
+    --check)   mode=check;   shift ;;
+    --restore) mode=restore; shift ;;
+    --reapply) mode=reapply; shift ;;
+    --all)     select_all=1; shift ;;
+    --help|-h)
+      awk '
+        NR == 1 { next }
+        /^emulate / { exit }
+        { print }
+      ' "$wrapper"
+      return 0
+      ;;
+    *) break ;;
+  esac
+done
+
+local -a raw_targets targets
+local -A seen
+local rp t resolved_targets
+if (( $# )); then
+  raw_targets=("$@")
+else
+  resolved_targets=$(needle_patch_resolve_targets "$select_all") || return $?
+  raw_targets=("${(@f)resolved_targets}")
+fi
+
+for t in "${raw_targets[@]}"; do
+  [[ -n $t ]] || continue
+  [[ -e $t ]] || { targets+=("$t"); continue }
+  rp=$(/usr/bin/python3 -c "import os,sys;print(os.path.realpath(sys.argv[1]))" "$t")
+  if [[ -z ${seen[$rp]:-} ]]; then
+    seen[$rp]=1
+    targets+=("$rp")
+  fi
+done
+
+if (( ${#targets} == 0 )); then
+  print -u2 "$patch_name: no patch targets found"
+  return 1
+fi
+
+_session_reaper_counts() {
+  /usr/bin/python3 - "$1" <<'PY'
+import pathlib
+import re
+import sys
+
+data = pathlib.Path(sys.argv[1]).read_bytes()
+unpatched = re.compile(rb'function ([A-Za-z_$][A-Za-z0-9_$]*)\(e\)\{if\(e<=1\)return!1;try\{return process\.kill\(e,0\),!0\}catch\{return!1\}\}')
+patched = re.compile(rb'function ([A-Za-z_$][A-Za-z0-9_$]*)\(e\)\{try\{return e>1&&process\.kill\(e,0\)\}catch\(t\)\{return e>1&t\.errno<2\}\}')
+print(len(unpatched.findall(data)), len(patched.findall(data)))
+PY
+}
+
+_session_reaper_patch_file() {
+  /usr/bin/python3 - "$1" <<'PY'
+import os
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+mode = path.stat().st_mode
+data = path.read_bytes()
+unpatched = re.compile(rb'function ([A-Za-z_$][A-Za-z0-9_$]*)\(e\)\{if\(e<=1\)return!1;try\{return process\.kill\(e,0\),!0\}catch\{return!1\}\}')
+
+def replacement(match: re.Match[bytes]) -> bytes:
+    name = match.group(1)
+    return b"function " + name + b"(e){try{return e>1&&process.kill(e,0)}catch(t){return e>1&t.errno<2}}"
+
+new, count = unpatched.subn(replacement, data)
+if count == 0:
+    sys.exit("no replacement made")
+tmp = path.with_suffix(path.suffix + ".tmp")
+tmp.write_bytes(new)
+os.chmod(tmp, mode)
+tmp.replace(path)
+PY
+}
+
+_session_reaper_warn_missing() {
+  local target="$1"
+  local when
+  when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+  mkdir -p "${marker:h}" 2>/dev/null || true
+  {
+    print -r -- "$patch_name could not reapply the $patch_label patch."
+    print -r -- "target: $target"
+    print -r -- "needle: $needle_desc"
+    print -r -- "when:   $when"
+    print -r -- "$missing_body"
+  } > "$marker" 2>/dev/null || true
+  print -u2 ""
+  print -u2 "################################################################"
+  print -u2 "# $patch_name: NEEDLE NOT FOUND - $missing_banner"
+  print -u2 "#   target: $target"
+  print -u2 "#   needle: $needle_desc"
+  print -u2 "# Update the needle in $patch_name. Marker: $marker"
+  print -u2 "################################################################"
+}
+
+local rc=0 reapply_missing=0 real counts before after
+for real in "${targets[@]}"; do
+  if [[ ! -f $real ]]; then
+    print -u2 "skip (missing): $real"
+    rc=1
+    continue
+  fi
+
+  counts=$(_session_reaper_counts "$real")
+  before=${counts%% *}
+  after=${counts##* }
+
+  case $mode in
+    check)
+      if   (( after  > 0 && before == 0 )); then print "patched:    $real"
+      elif (( before > 0 && after  == 0 )); then print "unpatched:  $real ($before occurrence(s))"
+      elif (( before == 0 && after == 0 )); then print "no-pattern: $real (different version?)"; rc=1
+      else                                       print "mixed:      $real (before=$before after=$after)"; rc=1
+      fi
+      ;;
+    restore)
+      if [[ -f $real.unpatched ]]; then
+        cp -p "$real.unpatched" "$real"
+        if [[ $OSTYPE == darwin* ]]; then
+          /usr/bin/codesign --force --sign - "$real" 2>/dev/null || true
+        fi
+        print "restored:   $real (from $real.unpatched)"
+      else
+        print -u2 "no backup at $real.unpatched: $real"
+        rc=1
+      fi
+      ;;
+    patch|reapply)
+      if (( after > 0 && before == 0 )); then
+        print "skip (already patched): $real"
+        continue
+      fi
+      if (( before == 0 )); then
+        if [[ $mode == reapply ]]; then
+          _session_reaper_warn_missing "$real"
+          reapply_missing=1
+          continue
+        fi
+        print -u2 "skip (pattern not found): $real"
+        rc=1
+        continue
+      fi
+      [[ -f $real.unpatched ]] || cp -p "$real" "$real.unpatched"
+      _session_reaper_patch_file "$real"
+      if [[ $OSTYPE == darwin* ]]; then
+        /usr/bin/codesign --force --sign - "$real" 2>/dev/null || true
+      fi
+      counts=$(_session_reaper_counts "$real")
+      after=${counts##* }
+      print "patched:    $real ($after occurrence(s); backup at $real.unpatched)"
+      ;;
+  esac
+done
+
+if [[ $mode == reapply ]]; then
+  (( reapply_missing )) || rm -f "$marker" 2>/dev/null
+  return 0
+fi
+
+return $rc
