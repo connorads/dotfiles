@@ -1,6 +1,5 @@
 import {
   createAgentSession,
-  createCodingTools,
   getAgentDir,
   SessionManager,
   SettingsManager,
@@ -14,6 +13,14 @@ import { toJsonValue, type AgentOptions, type JsonValue } from "./domain.ts";
 import { errorMessage } from "./prelude.ts";
 import type { AgentRunner, AgentRunResult } from "./runtime.ts";
 
+/**
+ * Total structured-output solicitations before failing: the initial prompt plus
+ * up to four repair prompts. `terminate` ends the turn on capture when it is the
+ * only call in the batch, but this bounded loop plus prose extraction remain the
+ * fallback when the model batches the tool call with other work.
+ */
+const MAX_STRUCTURED_OUTPUT_RETRIES = 5;
+
 /** Pi SDK-backed AgentRunner. */
 export class PiAgentRunner implements AgentRunner {
   private readonly cwd: string;
@@ -26,7 +33,9 @@ export class PiAgentRunner implements AgentRunner {
 
   async run(prompt: string, options: AgentOptions & { readonly signal: AbortSignal }): Promise<AgentRunResult> {
     const capture: StructuredCapture = { called: false };
-    const customTools: ToolDefinition[] = [...createCodingTools(this.cwd)];
+    // createAgentSession enables read/bash/edit/write by default, so only the
+    // schema tool needs to be supplied here.
+    const customTools: ToolDefinition[] = [];
     if (options.schema !== undefined) customTools.push(createStructuredOutputTool(options.schema, capture));
 
     const agentDir = getAgentDir();
@@ -89,6 +98,9 @@ function createStructuredOutputTool(schema: JsonValue, capture: StructuredCaptur
       return {
         content: [{ type: "text", text: "Structured output captured." }],
         details: { captured: true },
+        // End the turn on capture when structured_output is the only call in
+        // the batch; the repair loop covers the batched-call case.
+        terminate: true,
       };
     },
   };
@@ -106,7 +118,9 @@ async function resolveStructuredOutput(
   } catch {
     // Repair prompt still helps when active-tool narrowing is unavailable.
   }
-  for (let attempt = 0; attempt < 5 && !capture.called; attempt += 1) {
+  // The initial prompt already counts as one solicitation, so allow up to
+  // MAX_STRUCTURED_OUTPUT_RETRIES - 1 repair prompts.
+  for (let attempt = 0; attempt < MAX_STRUCTURED_OUTPUT_RETRIES - 1 && !capture.called; attempt += 1) {
     if (signal.aborted) throw new Error("Subagent was aborted");
     await session.prompt(
       "You did not call the structured_output tool. Call structured_output now as your only action, with the required fields filled in. Do not write prose.",
@@ -116,7 +130,9 @@ async function resolveStructuredOutput(
 
   const extracted = extractValidatedJson(lastAssistantText(session.messages), schema);
   if (extracted !== undefined) return extracted;
-  throw new Error("agent({schema}): StructuredOutput retry cap exceeded with no valid output");
+  throw new Error(
+    `agent({schema}): StructuredOutput retry cap (${MAX_STRUCTURED_OUTPUT_RETRIES}) exceeded with no valid output`,
+  );
 }
 
 function buildPrompt(prompt: string, options: AgentOptions, structured: boolean): string {
