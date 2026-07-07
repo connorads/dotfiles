@@ -144,6 +144,7 @@ fi
 
 (( json )) || echo "Removing worktree $wt_path..." >&2
 git -C "$base_wt" worktree remove "$wt_path" || return 1
+_wt_prune_empty_parents "$wt_path"
 (( json )) || echo "Deleting branch $branch..." >&2
 if ! git -C "$base_wt" branch -d "$branch" >/dev/null 2>&1; then
   echo "warning: branch $branch could not be safely deleted (-d failed); leaving it" >&2
