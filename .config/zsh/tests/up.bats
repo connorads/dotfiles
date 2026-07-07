@@ -68,6 +68,7 @@ EOF
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
+  grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
 }
@@ -80,6 +81,7 @@ EOF
   # the flake half still runs independently of the mise no-op
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
+  grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
 }
 
 @test "up --frozen converges via mise install with no bumps, brew, flake, or commit" {
