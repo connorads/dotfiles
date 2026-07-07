@@ -21,6 +21,17 @@ The logic is spread across several files — change them as a set:
   pane, rolls the worst up to `@win_agent_state`. Verbs:
   `working|blocked|done|unread|idle|seen|clear`. `unread` is the manual inverse
   of `seen` (force `done` even on the focused window — mark a read tab blue again).
+- [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) — sourced by
+  `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
+  **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
+  permission_mode, notification message, tool_name — plus `tool_input` for
+  `ExitPlanMode` only, i.e. the plan text) to
+  `~/.local/state/agent-journal/events-YYYY-MM.jsonl`. The dots show current
+  state; the journal is the replayable history for audits and future cross-pane
+  sequencing. Full tool inputs are deliberately not recorded (file contents /
+  command lines can carry secrets). Fail-open, needs jq; disable with
+  `AGENT_JOURNAL_DISABLE=1`, relocate with `AGENT_JOURNAL_DIR`. Monthly files:
+  retention is deleting old months.
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
   rollup, and bell helpers (also used by `agent-sweep.sh`), **and the canonical
   state → glyph + colour mapping** (`agent_attrs`/`agent_hex`/`agent_char`/
@@ -49,6 +60,9 @@ The logic is spread across several files — change them as a set:
 Tests (run `mise run zsh-tests`):
 
 - [`../zsh/tests/agent-state.bats`](../zsh/tests/agent-state.bats) — verb behaviour + rollup.
+- [`../zsh/tests/agent-journal.bats`](../zsh/tests/agent-journal.bats) — journal
+  lines: curated fields, ExitPlanMode plan capture, no tool_input leak,
+  disable/no-stdin/no-op-seen cases, Stop payload pass-through.
 - [`../zsh/tests/tmux-agent-tabs.bats`](../zsh/tests/tmux-agent-tabs.bats) —
   asserts the **exact** `@agent_dotfmt` glyph/colour output against the real
   tmux.conf; update it when you change the state → glyph mapping.

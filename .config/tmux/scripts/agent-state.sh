@@ -23,27 +23,29 @@ state=${1:-}
 kind=${2:-}
 pane=${AGENT_STATE_PANE:-${TMUX_PANE:-}}
 
-drain_hook_stdin() {
-	[ -t 0 ] && return 0
-	cat >/dev/null 2>&1 || true
-}
-
-drain_hook_stdin
-
-[ -n "$pane" ] || exit 0
-command -v tmux >/dev/null 2>&1 || exit 0
-
 # Shared rollup helpers (rank + roll_window) live beside this script so phase 1
 # (here) and phase 5 (agent-sweep.sh) share one implementation. agent-state.sh
-# is always invoked by full path, so the sibling lib resolves off $0.
+# is always invoked by full path, so the sibling libs resolve off $0.
 # shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom, not a bad assign
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=agent-state-lib.sh disable=SC1091
 . "$SELF_DIR/agent-state-lib.sh"
+# shellcheck source=agent-journal.sh disable=SC1091
+. "$SELF_DIR/agent-journal.sh"
+
+# Capture (and fully drain) hook stdin before any early exit, so the hook
+# writer never sees EPIPE. The captured payload feeds journal_event below.
+journal_capture_stdin
+
+[ -n "$pane" ] || exit 0
+command -v tmux >/dev/null 2>&1 || exit 0
 
 window=$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null) || exit 0
 [ -n "$window" ] || exit 0
 
+# Every state-setting verb is journalled; `seen` only when it actually ages a
+# pane (the focus hook fires it on every pane focus — no-ops are noise).
+journal=1
 case $state in
 blocked)
 	# Ring only on entry (not re-emits); see ring_bell.
@@ -70,6 +72,8 @@ seen)
 	# Focusing a finished pane ages done → idle; nothing else changes.
 	if [ "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" = "done" ]; then
 		tmux set-option -p -t "$pane" @agent_state idle
+	else
+		journal=0
 	fi
 	;;
 unread)
@@ -88,6 +92,8 @@ clear)
 	exit 2
 	;;
 esac
+
+[ "$journal" = 1 ] && journal_event "$state" "$kind" "$pane" "$window"
 
 # Roll the worst pane state in this window up to the option the tabs render.
 roll_window "$window"
