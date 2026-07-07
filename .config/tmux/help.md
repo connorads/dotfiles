@@ -68,12 +68,10 @@
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
-| `Ctrl+b G` | gh-dash (GitHub PRs/issues) |
+| `Ctrl+b G` | lazygit dotfiles (lgdf, bare repo from any pane) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
-| `Ctrl+b D` | difftastic git diff |
-| `Ctrl+b Alt+d` | hunk git diff |
+| `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff |
-| `Ctrl+b R` | critique AI review (choose agent) |
 | `Ctrl+b Alt+g` | review commits (fzf + critique) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
