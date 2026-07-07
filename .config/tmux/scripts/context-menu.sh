@@ -6,10 +6,40 @@
 # tmux's stock MouseDown3 menus stay available on Alt+right-click.
 #
 # Usage: context-menu.sh pane <pane_id> <mx> <my>
+#        context-menu.sh window <window_id> <active_pane> <cwd> <mx> <my>
 #        context-menu.sh session <mx> <my>
+#
+# The wt-publish/wt-finish/wt-remove modes run INSIDE a display-popup opened by
+# the window menu's worktree items: composition stays in bash (testable) and
+# the wt-* output/failures stay visible.
 set -euo pipefail
 
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+self="${BASH_SOURCE[0]}"
+
+# wt-* are dual-mode zsh functions exposed via ~/.local/bin; the tmux server's
+# PATH may not carry that dir.
+PATH="$HOME/.local/bin:$PATH"
+
+# Popup epilogue: hold the popup open until a key so output can be read.
+wait_key() {
+	printf '\nPress any key…'
+	read -rsn1 || true
+}
+
+# Agent dot section, shared by the pane and window menus — literals must match
+# agent-state-lib.sh's canonical mapping (drift-guarded by agent-glyphs.bats,
+# same as the prefix+Alt+. menu). Appends to the caller's menu array.
+append_agent_dot_items() {
+	local pane=$1
+	menu+=(
+		"working  #[fg=#fab387]◐#[default]" w "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh working'"
+		"blocked  #[fg=#f38ba8]◆#[default]" b "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh blocked'"
+		"unread   #[fg=#89b4fa]●#[default]" u "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh unread'"
+		"idle     #[fg=#a6e3a1]○#[default]" i "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh idle'"
+		"clear dot" c "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh clear'"
+	)
+}
 
 case "${1:-}" in
 pane)
@@ -35,16 +65,66 @@ pane)
 		"Arm/disarm claude-watch" a "run-shell '$HOME/.local/bin/claude-watch $pane'"
 		""
 	)
-	# Agent dot section — literals must match agent-state-lib.sh's canonical
-	# mapping (drift-guarded by agent-glyphs.bats, same as the prefix+Alt+. menu).
-	menu+=(
-		"working  #[fg=#fab387]◐#[default]" w "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh working'"
-		"blocked  #[fg=#f38ba8]◆#[default]" b "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh blocked'"
-		"unread   #[fg=#89b4fa]●#[default]" u "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh unread'"
-		"idle     #[fg=#a6e3a1]○#[default]" i "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh idle'"
-		"clear dot" c "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh clear'"
-	)
+	append_agent_dot_items "$pane"
 	tmux "${menu[@]}"
+	;;
+window)
+	win="${2:?window_id required}"
+	active_pane="${3:?active pane required}"
+	cwd="${4:-}"
+	mx="${5:-C}"
+	my="${6:-C}"
+	name=$(tmux display-message -p -t "$win" '#{window_name}')
+
+	menu=(display-menu -t "$active_pane" -x "$mx" -y "$my" -T " Window · $name ")
+	# Explicit -s: the moused window may not be the current one.
+	menu+=(
+		"Swap left" "<" "swap-window -s $win -t :-1"
+		"Swap right" ">" "swap-window -s $win -t :+1"
+		"Rename" r "command-prompt -I \"$name\" \"rename-window -t $win '%%'\""
+		"Kill" X "confirm-before -p \"kill window $name? (y/n)\" \"kill-window -t $win\""
+		""
+	)
+	append_agent_dot_items "$active_pane"
+	# Worktree windows get lifecycle actions; each runs this script's popup
+	# modes below so wt-* output/failures stay visible. kill-window fires only
+	# after the wt command succeeds.
+	case "$cwd" in
+	"$HOME"/.trees/*)
+		menu+=(
+			""
+			"Publish PR (wt-publish)" p "display-popup -E -w 80% -h 60% \"$self wt-publish '$cwd'\""
+			"Finish: merge → base, close window" F "display-popup -E -w 80% -h 60% -d \"$HOME\" \"$self wt-finish $win '$cwd'\""
+			"Remove worktree, close window" D "display-popup -E -w 80% -h 60% -d \"$HOME\" \"$self wt-remove $win '$cwd'\""
+		)
+		;;
+	esac
+	tmux "${menu[@]}"
+	;;
+wt-publish)
+	cwd="${2:?path required}"
+	wt-publish --pr "$cwd" || printf 'wt-publish failed\n' >&2
+	wait_key
+	;;
+wt-finish)
+	win="${2:?window_id required}"
+	cwd="${3:?path required}"
+	if wt-finish --mode local "$cwd"; then
+		tmux kill-window -t "$win"
+	else
+		printf 'wt-finish failed — window left open\n' >&2
+		wait_key
+	fi
+	;;
+wt-remove)
+	win="${2:?window_id required}"
+	cwd="${3:?path required}"
+	if wt-remove "$cwd"; then
+		tmux kill-window -t "$win"
+	else
+		printf 'wt-remove failed — window left open\n' >&2
+		wait_key
+	fi
 	;;
 session)
 	mx="${2:-C}"
@@ -62,7 +142,7 @@ session)
 	tmux "${menu[@]}"
 	;;
 *)
-	echo "usage: context-menu.sh pane <pane_id> <mx> <my> | session <mx> <my>" >&2
+	echo "usage: context-menu.sh pane <pane_id> <mx> <my> | window <window_id> <active_pane> <cwd> <mx> <my> | session <mx> <my>" >&2
 	exit 1
 	;;
 esac
