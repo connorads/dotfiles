@@ -68,8 +68,9 @@ The logic is spread across several files — change them as a set:
   (`working` while `background_tasks` holds finite in-flight work, `done` once
   drained). The `after-select-pane` / `session-window-changed` hooks fire `seen`
   (focus = mark read).
-- Menu: `prefix + Alt+.` (`display-menu`) sets a state by hand (literals must
-  match the lib — see `agent-glyphs.bats`).
+- Menus: `prefix + Alt+.` and the right-click pane menu
+  ([`scripts/context-menu.sh`](./scripts/context-menu.sh)) set a state by hand
+  (literals must match the lib — see `agent-glyphs.bats`).
 
 Tests (run `mise run zsh-tests`):
 
@@ -81,8 +82,9 @@ Tests (run `mise run zsh-tests`):
   asserts the **exact** `@agent_dotfmt` glyph/colour output against the real
   tmux.conf; update it when you change the state → glyph mapping.
 - [`../zsh/tests/agent-glyphs.bats`](../zsh/tests/agent-glyphs.bats) — derives
-  expectations from `agent-state-lib.sh` and asserts all three renderers (tabs,
-  menu, popup) match it; the drift guard for the mapping.
+  expectations from `agent-state-lib.sh` and asserts all four renderers (tabs,
+  prefix+Alt+. menu, right-click pane menu, popup) match it; the drift guard
+  for the mapping.
 - [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot sweeper.
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.

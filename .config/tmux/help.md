@@ -155,4 +155,17 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 |---------|--------|
 | `tmux-usage` | Show most-used bindings by period (1d/7d/30d/all) |
 
-Mouse: click, scroll, drag borders, double-click pane to zoom
+## Mouse
+
+| Gesture | Action |
+|---------|--------|
+| left-click | select pane/window |
+| scroll | enter copy mode / scroll |
+| drag border | resize pane |
+| double-click pane | zoom toggle |
+| right-click pane | context menu (zoom, mark, copy info, open cwd, claude-watch, agent dot) |
+| right-click session name (status left) | session menu (pickers, layouts, memory, detach) |
+| Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |
+
+When an app owns the mouse (nvim, `less --mouse`, …) a plain right-click passes
+through to it; use Alt+right-click for tmux's stock menu there.
