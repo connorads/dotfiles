@@ -26,3 +26,21 @@ model.
   reopens.
 - **Determinism only** - leave the RCE open by design; rejected as needlessly
   reckless when the leaks are cheap to close.
+
+## Liveness Is Also Not Guaranteed
+
+The in-process VM shares the host event loop, so the `runInContext` timeout only
+guards the synchronous prologue before the body's first `await`. A workflow that
+enters a synchronous busy-loop *after* an `await` (e.g. `await agent(...); while
+(true) {}`) blocks the entire Pi process - the timeout cannot fire once control
+has re-entered the VM via a promise continuation. This is the same trade as the
+security limit above: accepted because the script and the agents trace back to
+the same model, and a self-DoS is recoverable by restarting Pi (crash
+reconciliation then marks the run failed with a resume hint).
+
+If this bites in practice, the accepted future path is a worker isolate: move VM
+execution into a `worker_threads` worker, turn the DSL host calls
+(`agent`/`parallel`/`pipeline`/`workflow`/`log`/`phase`/timers) into async RPC
+over `postMessage`, and use `worker.terminate()` as the hard kill for both
+liveness and the security boundary. That rewrite is deliberately deferred, not
+rejected.
