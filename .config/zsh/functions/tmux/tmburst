@@ -7,22 +7,32 @@ if [[ -z "${TMUX:-}" ]]; then
   return 1
 fi
 
-local target_window
-target_window=$(tmux display-message -p '#{window_index}')
+local target_window="${1:-${TMUX_TOOLS_WINDOW:-}}"
+if [[ -n "$target_window" ]]; then
+  if ! target_window=$(tmux display-message -p -t "$target_window" '#{window_id}' 2>/dev/null); then
+    print -u2 "tmburst: target window not found: $target_window"
+    return 1
+  fi
+else
+  target_window=$(tmux display-message -p '#{window_id}')
+fi
 
 local pane_count
-pane_count=$(tmux list-panes -t ":${target_window}" | wc -l | tr -d ' ')
+pane_count=$(tmux list-panes -t "${target_window}" | wc -l | tr -d ' ')
 
 if (( pane_count <= 1 )); then
   tmux display-message "tmburst: only 1 pane, nothing to break out"
   return 0
 fi
 
+local target_session
+target_session=$(tmux display-message -p -t "${target_window}" '#{session_id}')
+
 # Break from highest index downward to avoid index shifting
 local last_pane
-while (( $(tmux list-panes -t ":${target_window}" | wc -l | tr -d ' ') > 1 )); do
-  last_pane=$(tmux list-panes -t ":${target_window}" -F '#{pane_index}' | tail -1)
-  tmux break-pane -d -s ":${target_window}.${last_pane}"
+while (( $(tmux list-panes -t "${target_window}" | wc -l | tr -d ' ') > 1 )); do
+  last_pane=$(tmux list-panes -t "${target_window}" -F '#{pane_id}' | tail -1)
+  tmux break-pane -d -s "${last_pane}" -t "${target_session}:"
 done
 
 tmux display-message "tmburst: broke ${pane_count} panes into individual windows"

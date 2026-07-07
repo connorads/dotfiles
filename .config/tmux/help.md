@@ -25,8 +25,6 @@
 | `Ctrl+b !` | break pane into new window |
 | `Ctrl+b \` | join pane from picker (left/right) |
 | `Ctrl+b _` | join pane from picker (top/bottom) |
-| `Ctrl+b J` | join ALL windows into panes (tiled) |
-| `Ctrl+b B` | burst ALL panes into own windows |
 | `Ctrl+b z` | zoom pane |
 | `Ctrl+d` | close pane (exit shell) |
 | `Ctrl+b Space` | next layout |
@@ -57,7 +55,7 @@
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |

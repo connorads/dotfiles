@@ -7,8 +7,21 @@ if [[ -z "${TMUX:-}" ]]; then
   return 1
 fi
 
+local target_id="${1:-${TMUX_TOOLS_WINDOW:-}}"
+if [[ -n "$target_id" ]]; then
+  if ! target_id=$(tmux display-message -p -t "$target_id" '#{window_id}' 2>/dev/null); then
+    print -u2 "tmjoin: target window not found: $target_id"
+    return 1
+  fi
+else
+  target_id=$(tmux display-message -p '#{window_id}')
+fi
+
+local target_session
+target_session=$(tmux display-message -p -t "$target_id" '#{session_id}')
+
 local win_count
-win_count=$(tmux list-windows -F '#{window_index}' | wc -l | tr -d ' ')
+win_count=$(tmux list-windows -t "$target_session" -F '#{window_id}' | wc -l | tr -d ' ')
 
 if (( win_count <= 1 )); then
   tmux display-message "tmjoin: only 1 window, nothing to join"
@@ -17,11 +30,8 @@ fi
 
 # Use stable window IDs (@N) rather than indices — renumber-windows on shifts
 # indices as windows are destroyed, making a pre-captured index list stale.
-local target_id
-target_id=$(tmux display-message -p '#{window_id}')
-
 local win_id
-tmux list-windows -F '#{window_id}' | while read -r win_id; do
+tmux list-windows -t "$target_session" -F '#{window_id}' | while read -r win_id; do
   [[ "$win_id" == "$target_id" ]] && continue
   # A window may have multiple panes — join them one at a time until gone
   while tmux join-pane -d -s "${win_id}" -t "${target_id}" 2>/dev/null; do
