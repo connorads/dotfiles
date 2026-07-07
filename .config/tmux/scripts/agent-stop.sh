@@ -28,12 +28,16 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=agent-state-lib.sh disable=SC1091
 . "$SELF_DIR/agent-state-lib.sh"
 
+# Capture the payload rather than streaming it straight into jq: agent-state.sh
+# journals hook payloads (agent-journal.sh), so Stop's is re-piped through.
+payload=$(cat 2>/dev/null) || payload=
+
 count=0
 if command -v jq >/dev/null 2>&1; then
-	count=$(jq -r '
+	count=$(printf '%s' "$payload" | jq -r '
 		[ .background_tasks[]?
 		  | select(.type == "workflow" or .type == "subagent" or .type == "shell") ]
 		| length' 2>/dev/null) || count=0
 fi
 
-exec sh "$SELF_DIR/agent-state.sh" "$(stop_state "$count")" claude
+printf '%s' "$payload" | sh "$SELF_DIR/agent-state.sh" "$(stop_state "$count")" claude
