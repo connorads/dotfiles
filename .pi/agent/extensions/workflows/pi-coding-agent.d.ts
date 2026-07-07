@@ -9,7 +9,8 @@ declare module "@earendil-works/pi-coding-agent" {
   export interface AgentToolResult<TDetails = unknown> {
     readonly content: readonly ToolResultContent[];
     readonly details?: TDetails;
-    readonly isError?: boolean;
+    /** Batch-level hint: end the turn when every finalised result in the batch is terminating. */
+    readonly terminate?: boolean;
   }
 
   export type AgentToolUpdateCallback<TDetails = unknown> = (details: TDetails) => void;
@@ -65,11 +66,11 @@ declare module "@earendil-works/pi-coding-agent" {
         readonly display: boolean;
         readonly details?: T;
       },
-      options?: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" | "nextTurn" },
+      options?: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" },
     ): void;
     sendUserMessage(
       content: string,
-      options?: { readonly deliverAs?: "steer" | "followUp" | "nextTurn" },
+      options?: { readonly deliverAs?: "steer" | "followUp" },
     ): void;
   }
 
@@ -98,9 +99,9 @@ declare module "@earendil-works/pi-coding-agent" {
   export function createAgentSession(options: {
     readonly cwd: string;
     readonly agentDir: string;
-    readonly sessionManager: SessionManager;
-    readonly settingsManager: SettingsManager;
-    readonly customTools: ToolDefinition[];
+    readonly sessionManager?: SessionManager;
+    readonly settingsManager?: SettingsManager;
+    readonly customTools?: ToolDefinition[];
     readonly model?: unknown;
   }): Promise<{ readonly session: AgentSession }>;
 }
