@@ -26,12 +26,17 @@ export interface WorkflowStore {
   readonly projectKey: string;
   resolveSource(ref: WorkflowSourceRef): Promise<Result<ResolvedWorkflowSource, WorkflowStoreError>>;
   listWorkflowNames(): Promise<string[]>;
-  createRun(snapshot: WorkflowRunSnapshot, script: string): Promise<void>;
-  updateRun(snapshot: WorkflowRunSnapshot): Promise<void>;
+  /**
+   * Claim durable write authority for a run, superseding any earlier execution.
+   * Writes tagged with an older generation are refused (see {@link updateRun}).
+   */
+  nextGeneration(runId: RunId): number;
+  createRun(snapshot: WorkflowRunSnapshot, script: string, generation?: number): Promise<void>;
+  updateRun(snapshot: WorkflowRunSnapshot, generation?: number): Promise<void>;
   readRun(runId: RunId): Promise<Result<WorkflowRunSnapshot, WorkflowStoreError>>;
   readRunScript(runId: RunId): Promise<Result<string, WorkflowStoreError>>;
   listRuns(): Promise<WorkflowRunSnapshot[]>;
-  appendJournal(runId: RunId, entry: WorkflowJournalEntry): Promise<void>;
+  appendJournal(runId: RunId, entry: WorkflowJournalEntry, generation?: number): Promise<void>;
   readJournal(runId: RunId): Promise<WorkflowJournalEntry[]>;
 }
 
@@ -53,8 +58,28 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
   const scriptPath = (runId: RunId): string => join(runDir(runId), "script.js");
   const journalPath = (runId: RunId): string => join(runDir(runId), "journal.jsonl");
 
+  // Per-run write authority and a serialised write queue so concurrent
+  // executions of the same run cannot tear each other's durable snapshots.
+  const generations = new Map<string, number>();
+  const writeChains = new Map<string, Promise<unknown>>();
+  const currentGeneration = (runId: RunId): number => generations.get(runId) ?? 0;
+  const isSuperseded = (runId: RunId, generation: number | undefined): boolean =>
+    generation !== undefined && generation < currentGeneration(runId);
+  const enqueueWrite = <T>(runId: RunId, task: () => Promise<T>): Promise<T> => {
+    const prev = writeChains.get(runId) ?? Promise.resolve();
+    const run = prev.then(task, task);
+    writeChains.set(runId, run.then(noop, noop));
+    return run;
+  };
+
   return {
     projectKey,
+
+    nextGeneration(runId) {
+      const next = currentGeneration(runId) + 1;
+      generations.set(runId, next);
+      return next;
+    },
 
     async resolveSource(ref) {
       try {
@@ -106,15 +131,21 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
       return listNames([projectScriptsDir, userScriptsDir]);
     },
 
-    async createRun(snapshot, script) {
-      await mkdir(runDir(snapshot.runId), { recursive: true });
-      await atomicWrite(scriptPath(snapshot.runId), script);
-      await atomicWrite(snapshotPath(snapshot.runId), JSON.stringify(snapshot, null, 2));
+    createRun(snapshot, script, generation) {
+      return enqueueWrite(snapshot.runId, async () => {
+        if (isSuperseded(snapshot.runId, generation)) return;
+        await mkdir(runDir(snapshot.runId), { recursive: true });
+        await atomicWrite(scriptPath(snapshot.runId), script);
+        await atomicWrite(snapshotPath(snapshot.runId), JSON.stringify(snapshot, null, 2));
+      });
     },
 
-    async updateRun(snapshot) {
-      await mkdir(runDir(snapshot.runId), { recursive: true });
-      await atomicWrite(snapshotPath(snapshot.runId), JSON.stringify(snapshot, null, 2));
+    updateRun(snapshot, generation) {
+      return enqueueWrite(snapshot.runId, async () => {
+        if (isSuperseded(snapshot.runId, generation)) return;
+        await mkdir(runDir(snapshot.runId), { recursive: true });
+        await atomicWrite(snapshotPath(snapshot.runId), JSON.stringify(snapshot, null, 2));
+      });
     },
 
     async readRun(runId) {
@@ -148,26 +179,42 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
       }
     },
 
-    async appendJournal(runId, entry) {
-      await mkdir(runDir(runId), { recursive: true });
-      await appendFile(journalPath(runId), `${JSON.stringify(entry)}\n`, "utf8");
+    appendJournal(runId, entry, generation) {
+      return enqueueWrite(runId, async () => {
+        if (isSuperseded(runId, generation)) return;
+        await mkdir(runDir(runId), { recursive: true });
+        await appendFile(journalPath(runId), `${JSON.stringify(entry)}\n`, "utf8");
+      });
     },
 
     async readJournal(runId) {
+      let text: string;
       try {
-        const text = await readFile(journalPath(runId), "utf8");
-        const entries: WorkflowJournalEntry[] = [];
-        for (const line of text.split("\n")) {
-          if (!line.trim()) continue;
-          const parsed = parseJournalEntry(JSON.parse(line) as unknown);
-          if (parsed) entries.push(parsed);
-        }
-        return entries;
+        text = await readFile(journalPath(runId), "utf8");
       } catch {
         return [];
       }
+      const entries: WorkflowJournalEntry[] = [];
+      for (const line of text.split("\n")) {
+        if (!line.trim()) continue;
+        // Parse each line independently so a single truncated trailing line
+        // (e.g. after a crash mid-append) does not discard the whole journal.
+        let raw: unknown;
+        try {
+          raw = JSON.parse(line) as unknown;
+        } catch {
+          continue;
+        }
+        const parsed = parseJournalEntry(raw);
+        if (parsed) entries.push(parsed);
+      }
+      return entries;
     },
   };
+}
+
+function noop(): void {
+  // Intentionally empty: keeps the per-run write chain alive after failures.
 }
 
 /** Stable project key matching the local Pi extension convention. */

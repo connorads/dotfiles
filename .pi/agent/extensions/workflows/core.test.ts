@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { nextReplayKey, parseWorkflowInput, parseWorkflowName } from "./domain.ts";
+import { nextReplayKey, parseRunId, parseWorkflowInput, parseWorkflowName } from "./domain.ts";
 import { firstHiddenControl, parseWorkflowScript } from "./parser.ts";
-import { createWorkflowStore } from "./store.ts";
+import { createWorkflowStore, workflowProjectKey } from "./store.ts";
 
 test("parseWorkflowInput accepts exactly one source and JSON args", () => {
   const parsed = parseWorkflowInput({ name: "review.js", args: { depth: 2, tags: ["plan"] } });
@@ -123,6 +123,33 @@ test("nextReplayKey is stable for semantically equal options and chained by prev
 
   assert.equal(first, same);
   assert.notEqual(first, chained);
+});
+
+test("readJournal keeps valid entries when a trailing line is truncated", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-journal-"));
+  const project = join(temp, "project");
+  const root = join(temp, "root");
+  const store = createWorkflowStore(project, root);
+
+  const runId = parseRunId("wf_journal001");
+  assert.equal(runId.ok, true);
+  if (!runId.ok) return;
+
+  await store.appendJournal(runId.value, {
+    kind: "agent_started",
+    at: 1,
+    replayKey: "v2:abc" as never,
+    index: 1,
+    prompt: "hello",
+  });
+
+  // Simulate a crash mid-append: a truncated trailing JSON line.
+  const journalFile = join(root, "projects", workflowProjectKey(project), "runs", runId.value, "journal.jsonl");
+  await appendFile(journalFile, '{"kind":"agent_res', "utf8");
+
+  const entries = await store.readJournal(runId.value);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.kind, "agent_started");
 });
 
 test("store resolves named workflows only from Pi project/user script roots", async () => {
