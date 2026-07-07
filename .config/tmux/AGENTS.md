@@ -8,6 +8,20 @@ binding without its help row is invisible. [`tmux.conf`](./tmux.conf) carries a
 top-of-file NOTE to the same effect. Treat the bind and its help row as one
 coherent change and commit them together.
 
+**Key conventions** (mirrored in the override/convention comment at the top of
+the keybinds section in [`tmux.conf`](./tmux.conf)):
+
+- A lowercase key's **Capital is its companion/sibling** - same identity, a
+  variant or help view: `v`/`V` nvim + help, `f`/`F` fresh + help, `g`/`G`
+  lazygit + lazygit-dotfiles. Follows Vim (`a`/`A`, `c`/`C`) and
+  tmux-pain-control (`h`/`H`).
+- **Alt is the standalone-tool pocket** - agent/session tools with no plain-key
+  parent (`M-s` skl, `M-m` memory, `M-i` shotpath, `M-b` branch, `M-g` review,
+  `M-j` jjui). Alt is *not* a "variant of the plain key" modifier: don't put a
+  sibling on Alt, and new unrelated tools get a plain key, not Alt.
+- Occasional utilities that each ran at ~0 tracked uses live in the `prefix + T`
+  Tools launcher ([`tools.tsv`](./tools.tsv)), not a key each.
+
 Verify a binding before committing: live-test on a throwaway server
 (`tmux -L test new-session -d; tmux -L test source-file <(grep '^bind ...' tmux.conf); tmux -L test list-keys -T prefix | grep '<desc>'`),
 or `tmux source-file ~/.config/tmux/tmux.conf` to reload the running server.
