@@ -10,6 +10,7 @@
 | `Ctrl+Alt+h/l` | move window left/right |
 | `Ctrl+b Tab` | last window |
 | `Ctrl+b c` | new window |
+| `Ctrl+b Alt+w` | new worktree → window (prompts for branch, `wt-add`) |
 | `Ctrl+b ,` | rename window |
 | `Ctrl+b &` | kill window |
 
@@ -51,6 +52,7 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+b s` / `w` | session / window tree (tmux default choose-tree) |
+| `Ctrl+b Alt+Shift+W` | worktree picker (focus its window, or open one) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
