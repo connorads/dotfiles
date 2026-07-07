@@ -36,15 +36,37 @@ declare module "@earendil-works/pi-coding-agent" {
     tool: ToolDefinition<TParams, TDetails>,
   ): ToolDefinition<TParams, TDetails>;
 
+  export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+  /** Subset of the registry's Model shape used for agent model selection. */
+  export interface Model {
+    readonly id: string;
+    readonly name: string;
+    readonly provider: string;
+  }
+
+  export interface ModelRegistry {
+    find(provider: string, modelId: string): Model | undefined;
+    getAvailable(): Model[];
+  }
+
+  /** Progress events carry more fields upstream; only `type` is consumed here. */
+  export interface AgentSessionEvent {
+    readonly type: string;
+  }
+
   export interface ExtensionUIContext {
     notify(message: string, type?: "info" | "warning" | "error"): void;
     setWidget(key: string, content: string[] | undefined, options?: { placement?: "aboveEditor" | "belowEditor" }): void;
+    confirm(title: string, message: string): Promise<boolean>;
   }
 
   export interface ExtensionContext {
     readonly ui: ExtensionUIContext;
     readonly cwd: string;
-    readonly model: unknown;
+    readonly model: Model | undefined;
+    readonly modelRegistry: ModelRegistry;
+    readonly hasUI: boolean;
   }
 
   export interface ExtensionAPI {
@@ -66,7 +88,7 @@ declare module "@earendil-works/pi-coding-agent" {
         readonly display: boolean;
         readonly details?: T;
       },
-      options?: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" },
+      options?: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" | "nextTurn" },
     ): void;
     sendUserMessage(
       content: string,
@@ -94,6 +116,7 @@ declare module "@earendil-works/pi-coding-agent" {
     dispose(): void;
     setActiveToolsByName(names: string[]): void;
     getSessionStats(): { readonly tokens: { readonly output: number } };
+    subscribe(listener: (event: AgentSessionEvent) => void): () => void;
   }
 
   export function createAgentSession(options: {
@@ -102,6 +125,7 @@ declare module "@earendil-works/pi-coding-agent" {
     readonly sessionManager?: SessionManager;
     readonly settingsManager?: SettingsManager;
     readonly customTools?: ToolDefinition[];
-    readonly model?: unknown;
+    readonly model?: Model;
+    readonly thinkingLevel?: ThinkingLevel;
   }): Promise<{ readonly session: AgentSession }>;
 }

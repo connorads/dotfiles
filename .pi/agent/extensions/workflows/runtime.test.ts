@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
+import { resolveRequestedModel, thinkingLevelForEffort } from "./model-select.ts";
 import { parseWorkflowScript, type ParsedWorkflowScript } from "./parser.ts";
 import { WorkflowRuntime, type AgentRunner, type AgentRunResult, type WorkflowRuntimeDeps } from "./runtime.ts";
 import { createWorkflowStore } from "./store.ts";
@@ -166,6 +167,38 @@ test("a stalled agent is aborted and fails its call", async () => {
   assert.ok(runtime.getSnapshot().logs.some((line) => line.includes("stalled after 20ms")));
 });
 
+test("an agent emitting progress past the stall deadline is not aborted", async () => {
+  const runtime = makeRuntime(
+    `export const meta = {};\nreturn await agent("slow", { stallMs: 30 });`,
+    new ProgressingRunner(90, 10),
+  );
+  assert.equal(await runtime.execute(runtime.parsed), "slow-done");
+});
+
+test("agent isolation worktree and remote both throw", async () => {
+  for (const isolation of ["worktree", "remote"]) {
+    const runtime = makeRuntime(
+      `export const meta = {};\nreturn await agent("x", { isolation: "${isolation}" });`,
+      new RecordingRunner(),
+    );
+    await assert.rejects(runtime.execute(runtime.parsed), new RegExp(`isolation:'${isolation}'`, "u"), isolation);
+  }
+});
+
+test("agentType logs a visible warning and is ignored", async () => {
+  const runner = new RecordingRunner();
+  const runtime = makeRuntime(
+    `export const meta = {};\nreturn await agent("x", { agentType: "code-reviewer" });`,
+    runner,
+  );
+  await runtime.execute(runtime.parsed);
+  assert.equal(runner.calls.length, 1);
+  assert.ok(
+    runtime.getSnapshot().logs.some((line) => line.includes("agentType") && line.includes("code-reviewer")),
+    runtime.getSnapshot().logs.join("\n"),
+  );
+});
+
 test("null agent results are not journalled and re-run on resume", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-null-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
@@ -187,6 +220,30 @@ test("null agent results are not journalled and re-run on resume", async () => {
   const replay = new WorkflowRuntime(makeSnapshot("wf_nulljrnl1", { workflowName: "n" }), journal, baseDeps(store, second));
   assert.deepEqual(await replay.execute(parsed), { prompt: "x", label: null, phase: null });
   assert.equal(second.calls.length, 1);
+});
+
+test("resolveRequestedModel matches by id, provider/id, then name, and rejects unknowns", () => {
+  const sonnet = { id: "claude-sonnet-5", name: "Claude Sonnet 5", provider: "anthropic" };
+  const mini = { id: "o4-mini", name: "o4 mini", provider: "openai" };
+  const registry = {
+    getAvailable: () => [sonnet, mini],
+    find: (provider: string, id: string) =>
+      [sonnet, mini].find((model) => model.provider === provider && model.id === id),
+  };
+
+  assert.equal(resolveRequestedModel(registry, "claude-sonnet-5"), sonnet);
+  assert.equal(resolveRequestedModel(registry, "openai/o4-mini"), mini);
+  assert.equal(resolveRequestedModel(registry, "Claude Sonnet 5"), sonnet);
+  assert.throws(() => resolveRequestedModel(registry, "gpt-99"), /Unknown agent model: gpt-99/u);
+});
+
+test("thinkingLevelForEffort passes through known levels, maps max, rejects unknowns", () => {
+  assert.equal(thinkingLevelForEffort("low"), "low");
+  assert.equal(thinkingLevelForEffort("medium"), "medium");
+  assert.equal(thinkingLevelForEffort("high"), "high");
+  assert.equal(thinkingLevelForEffort("xhigh"), "xhigh");
+  assert.equal(thinkingLevelForEffort("max"), "xhigh");
+  assert.throws(() => thinkingLevelForEffort("ultra"), /Unknown agent effort: ultra/u);
 });
 
 class RecordingRunner implements AgentRunner {
@@ -217,6 +274,27 @@ class HangingRunner implements AgentRunner {
     return new Promise((_resolve, reject) => {
       options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
     });
+  }
+}
+
+/** Emits onProgress every `stepMs` until finishing after `totalMs`. */
+class ProgressingRunner implements AgentRunner {
+  private readonly totalMs: number;
+  private readonly stepMs: number;
+
+  constructor(totalMs: number, stepMs: number) {
+    this.totalMs = totalMs;
+    this.stepMs = stepMs;
+  }
+
+  async run(prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+    const started = Date.now();
+    while (Date.now() - started < this.totalMs) {
+      if (options.signal.aborted) throw new Error("aborted");
+      await new Promise((resolve) => setTimeout(resolve, this.stepMs));
+      options.onProgress?.();
+    }
+    return { value: `${prompt}-done`, outputTokens: 1 };
   }
 }
 
