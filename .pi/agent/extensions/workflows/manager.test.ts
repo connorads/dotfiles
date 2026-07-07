@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import type { RunId, WorkflowRunSnapshot } from "./domain.ts";
+import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { parseCommandRunId, parseRunCommand, WorkflowManager } from "./manager.ts";
 import type { AgentRunner, AgentRunResult } from "./runtime.ts";
 import { createWorkflowStore } from "./store.ts";
@@ -73,10 +73,84 @@ throw new Error("boom");
   assert.equal(delivered.at(-1)?.status, "failed");
 });
 
+test("parseRunCommand preserves whitespace inside JSON string args", () => {
+  const parsed = parseRunCommand('greet {"msg":"hello  world"}');
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.value.args, { msg: "hello  world" });
+});
+
+test("launch with resumeFromRunId resumes the pinned script and ignores the supplied source", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-pin-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const manager = new WorkflowManager();
+  const options = { cwd: temp, store, agentRunner: new EmptyRunner() };
+
+  const launch = await manager.launch({ script: `export const meta = { name: "pin" };\nreturn "original";` }, options);
+  assert.equal(launch.ok, true);
+  if (!launch.ok) return;
+  const first = await waitForTerminalRun(store, launch.value.runId);
+  assert.equal(first.status, "completed");
+  assert.equal(first.result, "original");
+
+  const resumed = await manager.launch(
+    { script: `export const meta = { name: "pin" };\nreturn "different";`, resumeFromRunId: launch.value.runId },
+    options,
+  );
+  assert.equal(resumed.ok, true);
+  const after = await waitForTerminalRun(store, launch.value.runId);
+  assert.equal(after.status, "completed");
+  assert.equal(after.result, "original");
+});
+
+test("resume errors on an unknown run id instead of minting a fresh run", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-unknown-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const manager = new WorkflowManager();
+  const options = { cwd: temp, store, agentRunner: new EmptyRunner() };
+
+  const viaResume = await manager.resume(mustRunId("wf_missing01"), options);
+  assert.equal(viaResume.ok, false);
+
+  const viaLaunch = await manager.launch(
+    { script: `export const meta = {};\nreturn 1;`, resumeFromRunId: "wf_missing01" },
+    options,
+  );
+  assert.equal(viaLaunch.ok, false);
+});
+
+test("stop does not overwrite a terminal run summary", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-stopterm-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const manager = new WorkflowManager();
+
+  const launch = await manager.launch(
+    { script: `export const meta = { name: "done" };\nreturn "finished";` },
+    { cwd: temp, store, agentRunner: new EmptyRunner() },
+  );
+  assert.equal(launch.ok, true);
+  if (!launch.ok) return;
+  const terminal = await waitForTerminalRun(store, launch.value.runId);
+  assert.equal(terminal.status, "completed");
+
+  const stopped = await manager.stop(launch.value.runId, store);
+  assert.equal(stopped.ok, true);
+  if (!stopped.ok) return;
+  assert.equal(stopped.value.status, "completed");
+  assert.equal(stopped.value.summary, terminal.summary);
+  assert.notEqual(stopped.value.summary, "Stopped by user.");
+});
+
 class EmptyRunner implements AgentRunner {
   async run(): Promise<AgentRunResult> {
     return { value: null, outputTokens: 0 };
   }
+}
+
+function mustRunId(value: string): RunId {
+  const parsed = parseRunId(value);
+  if (parsed.ok) return parsed.value;
+  throw parsed.error;
 }
 
 async function waitForTerminalRun(

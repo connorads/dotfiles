@@ -44,16 +44,23 @@ export class WorkflowManager {
     const parsedInput = parseWorkflowInput(input);
     if (!parsedInput.ok) return err(new WorkflowManagerError(parsedInput.error.message));
 
+    // resumeFromRunId always resumes the run's pinned script.js and ignores any
+    // supplied source, so there is a single resume code path that errors on an
+    // unknown run id rather than minting a fresh run over it.
+    if (parsedInput.value.resumeFromRunId) {
+      return this.resume(parsedInput.value.resumeFromRunId, options);
+    }
+
     const resolved = await options.store.resolveSource(parsedInput.value.source);
     if (!resolved.ok) return err(new WorkflowManagerError(resolved.error.message));
 
     const parsedScript = parseWorkflowScript(resolved.value.source);
     if (!parsedScript.ok) return err(new WorkflowManagerError(parsedScript.error.message));
 
-    const runId = parsedInput.value.resumeFromRunId ?? createRunId();
+    const runId = createRunId();
     const workflowName = parsedScript.value.meta.name ?? resolved.value.displayName;
     const now = options.now ?? Date.now;
-    if (parsedInput.value.resumeFromRunId) this.active.get(runId)?.abort();
+    const generation = options.store.nextGeneration(runId);
 
     const snapshot = makeInitialSnapshot({
       runId,
@@ -72,7 +79,7 @@ export class WorkflowManager {
       phases: parsedScript.value.meta.phases ?? [],
       now: now(),
     });
-    await options.store.createRun(snapshot, resolved.value.source);
+    await options.store.createRun(snapshot, resolved.value.source, generation);
 
     const controller = new AbortController();
     this.active.set(runId, controller);
@@ -80,9 +87,12 @@ export class WorkflowManager {
       ...options,
       now,
       signal: controller.signal,
-    }).finally(() => {
-      if (this.active.get(runId) === controller) this.active.delete(runId);
-    });
+      generation,
+    })
+      .catch(() => {})
+      .finally(() => {
+        if (this.active.get(runId) === controller) this.active.delete(runId);
+      });
 
     return ok({
       status: "async_launched",
@@ -105,6 +115,9 @@ export class WorkflowManager {
 
     const now = options.now ?? Date.now;
     this.active.get(runId)?.abort();
+    // Claim write authority before the first write so any still-running prior
+    // execution has its late snapshot/journal writes fenced.
+    const generation = options.store.nextGeneration(runId);
     const snapshot: WorkflowRunSnapshot = {
       ...existing.value,
       status: "queued",
@@ -117,16 +130,19 @@ export class WorkflowManager {
       logs: [],
       updatedAt: now(),
     };
-    await options.store.updateRun(snapshot);
+    await options.store.updateRun(snapshot, generation);
     const controller = new AbortController();
     this.active.set(runId, controller);
     void this.execute(snapshot, parsed.value, {
       ...options,
       now,
       signal: controller.signal,
-    }).finally(() => {
-      if (this.active.get(runId) === controller) this.active.delete(runId);
-    });
+      generation,
+    })
+      .catch(() => {})
+      .finally(() => {
+        if (this.active.get(runId) === controller) this.active.delete(runId);
+      });
 
     return ok({
       status: "async_launched",
@@ -143,6 +159,12 @@ export class WorkflowManager {
     this.active.get(runId)?.abort();
     const existing = await store.readRun(runId);
     if (!existing.ok) return err(new WorkflowManagerError(existing.error.message));
+    // Never overwrite a real terminal summary with "Stopped by user."
+    if (existing.value.status === "completed" || existing.value.status === "failed" || existing.value.status === "stopped") {
+      return ok(existing.value);
+    }
+    // Claim write authority so the aborted execution's terminal write is fenced.
+    const generation = store.nextGeneration(runId);
     const snapshot: WorkflowRunSnapshot = {
       ...existing.value,
       status: "stopped",
@@ -150,7 +172,7 @@ export class WorkflowManager {
       completedAt: now(),
       summary: "Stopped by user.",
     };
-    await store.updateRun(snapshot);
+    await store.updateRun(snapshot, generation);
     return ok(snapshot);
   }
 
@@ -161,14 +183,15 @@ export class WorkflowManager {
   private async execute(
     snapshot: WorkflowRunSnapshot,
     parsed: ParsedWorkflowScript,
-    options: WorkflowLaunchOptions & { readonly signal: AbortSignal; readonly now: () => number },
+    options: WorkflowLaunchOptions & { readonly signal: AbortSignal; readonly now: () => number; readonly generation: number },
   ): Promise<void> {
+    const generation = options.generation;
     let next: WorkflowRunSnapshot = {
       ...snapshot,
       status: "running",
       updatedAt: options.now(),
     };
-    await options.store.updateRun(next);
+    await options.store.updateRun(next, generation);
     let runtime: WorkflowRuntime | undefined;
 
     try {
@@ -178,6 +201,7 @@ export class WorkflowManager {
         agentRunner: options.agentRunner,
         signal: options.signal,
         now: options.now,
+        generation,
       });
       const result = await runtime.execute(parsed);
       next = {
@@ -201,7 +225,7 @@ export class WorkflowManager {
       };
     }
 
-    await options.store.updateRun(next);
+    await options.store.updateRun(next, generation);
     options.deliver?.(next);
   }
 }
@@ -213,12 +237,18 @@ export function parseCommandRunId(value: string | undefined): Result<RunId, Work
   return parsed.ok ? ok(parsed.value) : err(new WorkflowManagerError(parsed.error.message));
 }
 
-/** Build tool input from `/workflows run ...` arguments. */
+/**
+ * Build tool input from `/workflows run ...` arguments. Only the first token is
+ * split off as the target; the remainder is handed to `JSON.parse` verbatim so
+ * whitespace inside JSON string values survives.
+ */
 export function parseRunCommand(args: string): Result<WorkflowInput, WorkflowManagerError> {
-  const [target, ...rest] = splitCommandArgs(args);
+  const trimmed = args.trim();
+  const firstSpace = trimmed.search(/\s/u);
+  const target = firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
   if (!target) return err(new WorkflowManagerError("Usage: /workflows run <name|path> [jsonArgs]"));
+  const rawArgs = firstSpace === -1 ? "" : trimmed.slice(firstSpace + 1).trim();
   let parsedArgs: JsonValue | undefined;
-  const rawArgs = rest.join(" ").trim();
   if (rawArgs) {
     try {
       parsedArgs = JSON.parse(rawArgs) as JsonValue;
@@ -270,8 +300,4 @@ function makeInitialSnapshot(input: {
 function summariseResult(result: JsonValue): string {
   if (typeof result === "string") return preview(result, 500);
   return preview(JSON.stringify(result), 500);
-}
-
-function splitCommandArgs(args: string): string[] {
-  return args.trim().split(/\s+/u).filter(Boolean);
 }
