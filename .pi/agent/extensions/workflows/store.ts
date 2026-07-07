@@ -33,6 +33,8 @@ export interface WorkflowStore {
   nextGeneration(runId: RunId): number;
   /** Latest claimed write authority for a run (0 when never claimed). */
   currentGeneration(runId: RunId): number;
+  /** Durable directory holding a run's run.json, script.js, and journal.jsonl. */
+  runDir(runId: RunId): string;
   /** Delete orphaned atomic-write temp files left in a run dir by a crash. */
   removeOrphanedTempFiles(runId: RunId): Promise<void>;
   createRun(snapshot: WorkflowRunSnapshot, script: string, generation?: number): Promise<void>;
@@ -86,6 +88,8 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
     },
 
     currentGeneration,
+
+    runDir,
 
     async removeOrphanedTempFiles(runId) {
       try {
