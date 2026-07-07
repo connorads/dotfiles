@@ -240,23 +240,23 @@ url = "https://github.com/CosineAI/argusred-dist/releases/download/v0.1.7/argusr
 url_api = "https://api.github.com/repos/CosineAI/argusred-dist/releases/assets/452990911"
 
 [[tools."github:CosineAI/cli"]]
-version = "2.0.22"
+version = "2.0.25"
 backend = "github:CosineAI/cli"
 
 [tools."github:CosineAI/cli"."platforms.linux-arm64"]
-checksum = "sha256:61f310f20b92a43f9ceac6042c688eaae2e18b6651a0f6b6e2b825eac9f11c41"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.22/cos-linux-arm64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/451109330"
+checksum = "sha256:203dae9e8d6e6da766e65ee125e6465ffc3c01c1c890a575af15dd0823bd9646"
+url = "https://github.com/CosineAI/cli/releases/download/2.0.25/cos-linux-arm64.zip"
+url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/463292323"
 
 [tools."github:CosineAI/cli"."platforms.linux-x64"]
-checksum = "sha256:eb230cc91fdce42492f2b5b983064345ba895f705de7e5f56374ac7ce8ae36ee"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.22/cos-linux-amd64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/451109331"
+checksum = "sha256:b5f3499c227d30257fbc77e265b0837ef8119e575b80a73a323ccbf728932807"
+url = "https://github.com/CosineAI/cli/releases/download/2.0.25/cos-linux-amd64.zip"
+url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/463292324"
 
 [tools."github:CosineAI/cli"."platforms.macos-arm64"]
-checksum = "sha256:9cc5823453e2c213706089757d3e481fdc89ab865fc9c45e9cb2155ee1562543"
-url = "https://github.com/CosineAI/cli/releases/download/2.0.22/cos-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/451109332"
+checksum = "sha256:afc5419d3d807f20dceaba2b1e32c5158e4f6c05f61e1a479a6a45b3ac502298"
+url = "https://github.com/CosineAI/cli/releases/download/2.0.25/cos-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/463292322"
 
 [[tools."github:can1357/oh-my-pi"]]
 version = "16.3.4"
@@ -278,23 +278,23 @@ url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.4/omp-darwin-
 url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/465052282"
 
 [[tools."github:ogulcancelik/herdr"]]
-version = "0.7.0"
+version = "0.7.1"
 backend = "github:ogulcancelik/herdr"
 
 [tools."github:ogulcancelik/herdr"."platforms.linux-arm64"]
-checksum = "sha256:77407959c514c25c870bbcc6d2a2c86fef5b5701ed0c7c37745d7412e8563d72"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.0/herdr-linux-aarch64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/448342842"
+checksum = "sha256:3d757ac30c631e79dc45038c3ecc6423fe13a89f9cffa0f415aedd2c27f1576c"
+url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.1/herdr-linux-aarch64"
+url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/456674305"
 
 [tools."github:ogulcancelik/herdr"."platforms.linux-x64"]
-checksum = "sha256:ad2a5d480a4e04609a9dd30a19ec07854578df6b5f0ea9299246963baf40363b"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.0/herdr-linux-x86_64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/448342843"
+checksum = "sha256:b965acaffc2c22f54b6e6c64af7cf8e98a3f4ac2622630a0599c67a4b9d8a654"
+url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.1/herdr-linux-x86_64"
+url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/456674304"
 
 [tools."github:ogulcancelik/herdr"."platforms.macos-arm64"]
-checksum = "sha256:0946c1c5de396d1404906c81c84a0cef47af5e15c9aac3c058c3936b833fe311"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.0/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/448342844"
+checksum = "sha256:16f4653f0491ea1e7d2b46b5b02542f18e1b82e88daaf9e2900572e5bb634df8"
+url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.1/herdr-macos-aarch64"
+url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/456674306"
 
 [[tools."github:tamnd/kage"]]
 version = "0.3.8"
