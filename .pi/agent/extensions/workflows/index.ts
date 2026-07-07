@@ -125,7 +125,17 @@ export default function extension(pi: ExtensionAPI) {
     const active = new Set(pi.getActiveTools());
     active.add(WORKFLOW_TOOL_NAME);
     pi.setActiveTools([...active]);
-    void refreshWidget(ctx);
+    void (async () => {
+      const reconciled = await manager.reconcile(storeFor(ctx));
+      if (reconciled.length > 0) {
+        const lines = reconciled.map((run) => `  ${run.runId} - /workflows resume ${run.runId} to continue`);
+        ctx.ui.notify(
+          [`${reconciled.length} interrupted workflow run(s) from a previous Pi process:`, ...lines].join("\n"),
+          "warning",
+        );
+      }
+      await refreshWidget(ctx);
+    })().catch(() => {});
   });
 
   pi.on("session_shutdown", () => {

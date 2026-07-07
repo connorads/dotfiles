@@ -219,6 +219,34 @@ export class WorkflowManager {
     return this.active.has(runId);
   }
 
+  /**
+   * Mark crashed runs failed. A running/queued run is reconciled only when it
+   * is not active in this manager AND its recorded owning process is dead or
+   * unrecorded - a live sibling Pi session's runs are left alone.
+   */
+  async reconcile(store: WorkflowStore, now = Date.now): Promise<WorkflowRunSnapshot[]> {
+    const reconciled: WorkflowRunSnapshot[] = [];
+    for (const run of await store.listRuns()) {
+      if (run.status !== "running" && run.status !== "queued") continue;
+      if (this.isActive(run.runId)) continue;
+      if (isPidAlive(run.pid)) continue;
+      const generation = store.nextGeneration(run.runId);
+      const message = `Interrupted - Pi exited mid-run. Resume with /workflows resume ${run.runId}`;
+      const snapshot: WorkflowRunSnapshot = {
+        ...run,
+        status: "failed",
+        error: message,
+        summary: `Failed: ${message}`,
+        updatedAt: now(),
+        completedAt: now(),
+      };
+      await store.updateRun(snapshot, generation);
+      await store.removeOrphanedTempFiles(run.runId);
+      reconciled.push(snapshot);
+    }
+    return reconciled;
+  }
+
   private async execute(
     snapshot: WorkflowRunSnapshot,
     parsed: ParsedWorkflowScript,
@@ -228,6 +256,7 @@ export class WorkflowManager {
     let next: WorkflowRunSnapshot = {
       ...snapshot,
       status: "running",
+      pid: process.pid,
       updatedAt: options.now(),
     };
     await options.store.updateRun(next, generation);
@@ -265,7 +294,22 @@ export class WorkflowManager {
     }
 
     await options.store.updateRun(next, generation);
-    options.deliver?.(next);
+    // A superseded execution (stopped or resumed over) must not announce its
+    // stale terminal state; the superseding path owns user-facing delivery.
+    if (options.store.currentGeneration(snapshot.runId) === generation) {
+      options.deliver?.(next);
+    }
+  }
+}
+
+function isPidAlive(pid: number | undefined): boolean {
+  if (pid === undefined || !Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to another user.
+    return (error as NodeJS.ErrnoException).code === "EPERM";
   }
 }
 

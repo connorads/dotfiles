@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
@@ -31,6 +31,10 @@ export interface WorkflowStore {
    * Writes tagged with an older generation are refused (see {@link updateRun}).
    */
   nextGeneration(runId: RunId): number;
+  /** Latest claimed write authority for a run (0 when never claimed). */
+  currentGeneration(runId: RunId): number;
+  /** Delete orphaned atomic-write temp files left in a run dir by a crash. */
+  removeOrphanedTempFiles(runId: RunId): Promise<void>;
   createRun(snapshot: WorkflowRunSnapshot, script: string, generation?: number): Promise<void>;
   updateRun(snapshot: WorkflowRunSnapshot, generation?: number): Promise<void>;
   readRun(runId: RunId): Promise<Result<WorkflowRunSnapshot, WorkflowStoreError>>;
@@ -79,6 +83,19 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
       const next = currentGeneration(runId) + 1;
       generations.set(runId, next);
       return next;
+    },
+
+    currentGeneration,
+
+    async removeOrphanedTempFiles(runId) {
+      try {
+        const dir = runDir(runId);
+        for (const entry of await readdir(dir)) {
+          if (entry.endsWith(".tmp")) await rm(join(dir, entry), { force: true });
+        }
+      } catch {
+        // A missing run dir has nothing to sweep.
+      }
     },
 
     async resolveSource(ref) {
@@ -305,6 +322,7 @@ function parseStoredRun(value: unknown): Result<WorkflowRunSnapshot, Error> {
     startedAt: numberField(value.startedAt),
     updatedAt: numberField(value.updatedAt),
     completedAt: optionalNumber(value.completedAt),
+    pid: optionalNumber(value.pid),
   });
 }
 
