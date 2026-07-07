@@ -30,6 +30,13 @@ wait_key() {
 	read -rsn1 || true
 }
 
+tmux_double_quote() {
+	local value=$1
+	value=${value//\\/\\\\}
+	value=${value//\"/\\\"}
+	printf '%s' "$value"
+}
+
 # Agent dot section, shared by the pane and window menus — literals must match
 # agent-state-lib.sh's canonical mapping (drift-guarded by agent-glyphs.bats,
 # same as the prefix+Alt+. menu). Appends to the caller's menu array.
@@ -77,15 +84,23 @@ window)
 	cwd="${4:-}"
 	mx="${5:-C}"
 	my="${6:-C}"
-	name=$(tmux display-message -p -t "$win" '#{window_name}')
+	window_info=$(tmux display-message -p -t "$active_pane" '#{automatic-rename}	#{?automatic-rename,#{b:pane_current_path},#{window_name}}')
+	automatic_rename=${window_info%%	*}
+	visible_label=${window_info#*	}
+	quoted_visible_label=$(tmux_double_quote "$visible_label")
+	reset_label="Reset name"
+	if [ "$automatic_rename" = "1" ]; then
+		reset_label="Auto name"
+	fi
 
-	menu=(display-menu -M -O -t "$active_pane" -x "$mx" -y "$my" -T " Window · $name ")
+	menu=(display-menu -M -O -t "$active_pane" -x "$mx" -y "$my" -T " Window · $visible_label ")
 	# Explicit -s: the moused window may not be the current one.
 	menu+=(
 		"Swap left" "<" "swap-window -s $win -t :-1"
 		"Swap right" ">" "swap-window -s $win -t :+1"
-		"Rename" r "command-prompt -I \"$name\" \"rename-window -t $win '%%'\""
-		"Kill" X "confirm-before -p \"kill window $name? (y/n)\" \"kill-window -t $win\""
+		"Rename" r "command-prompt -I \"$quoted_visible_label\" -p \"Manual window label:\" \"rename-window -t $win '%%'\""
+		"$reset_label" a "set-window-option -t $win automatic-rename on"
+		"Kill" X "confirm-before -p \"kill window $quoted_visible_label? (y/n)\" \"kill-window -t $win\""
 		""
 	)
 	append_agent_dot_items "$active_pane"

@@ -5,8 +5,8 @@ bats_require_minimum_version 1.5.0
 
 load test_helper
 
-# Exercises the agent-tracking wiring in the REAL tmux.conf (the @agent_dotfmt
-# state→glyph mapping and the seen-demotion hooks) against a throwaway tmux
+# Exercises the tab/agent wiring in the REAL tmux.conf (window label formats,
+# the @agent_dotfmt state→glyph mapping, and the seen-demotion hooks) against a throwaway tmux
 # server, so a future conf edit that breaks them fails `mise run zsh-tests`.
 CONF="$HOME/.config/tmux/tmux.conf"
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
@@ -20,10 +20,10 @@ setup() {
   # this test exists for (the unrelated base hooks the next comment says it excludes).
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 12
   conf="$BATS_TEST_TMPDIR/agent.conf"
-  # Isolate the agent-tracking additions: the dot mapping and the `-ga` seen
+  # Isolate the tab additions: label formats, dot mapping and the `-ga` seen
   # appends. The base `-g ... refresh-client -S` hooks are unrelated and error
   # headlessly ("no current client"), so they are deliberately excluded.
-  grep -E '^set -g @agent_dotfmt |^set-hook -ga (after-select-pane|session-window-changed) ' "$CONF" >"$conf"
+  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed) ' "$CONF" >"$conf"
   tx source-file "$conf"
 }
 
@@ -32,6 +32,19 @@ teardown() {
 }
 
 dot() { tx list-windows -t s -F '#{E:@agent_dotfmt}'; }
+
+assert_tab_label() {
+  local target=$1
+  local expected=$2
+  local unexpected=$3
+  local option rendered
+
+  for option in window-status-format window-status-current-format; do
+    rendered="$(tx display-message -p -t "$target" "#{T:$option}")"
+    [[ "$rendered" == *"$expected"* ]]
+    [[ "$rendered" != *"$unexpected"* ]]
+  done
+}
 
 @test "blocked maps to a red diamond" {
   tx set-option -w -t s @win_agent_state blocked
@@ -62,6 +75,33 @@ dot() { tx list-windows -t s -F '#{E:@agent_dotfmt}'; }
 @test "no agent state renders nothing" {
   tx set-option -wu -t s @win_agent_state
   [ -z "$(dot)" ]
+}
+
+@test "automatic window tab labels render cwd basename" {
+  dir="$BATS_TEST_TMPDIR/auto-project"
+  mkdir -p "$dir"
+  win="$(tx new-window -d -P -F '#{window_id}' -t s -c "$dir")"
+
+  assert_tab_label "$win" "auto-project" "zsh"
+}
+
+@test "manual window tab labels render the window name" {
+  dir="$BATS_TEST_TMPDIR/cwd-project"
+  mkdir -p "$dir"
+  win="$(tx new-window -d -P -F '#{window_id}' -t s -c "$dir")"
+  tx rename-window -t "$win" "manual-name"
+
+  assert_tab_label "$win" "manual-name" "cwd-project"
+}
+
+@test "resetting automatic-rename returns tab labels to cwd basename" {
+  dir="$BATS_TEST_TMPDIR/cwd-project"
+  mkdir -p "$dir"
+  win="$(tx new-window -d -P -F '#{window_id}' -t s -c "$dir")"
+  tx rename-window -t "$win" "manual-name"
+  tx set-window-option -t "$win" automatic-rename on
+
+  assert_tab_label "$win" "cwd-project" "manual-name"
 }
 
 # The navigation commands below return non-zero headlessly (tmux's hook dispatch

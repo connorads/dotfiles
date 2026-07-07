@@ -11,7 +11,7 @@
 | `Ctrl+b Tab` | last window |
 | `Ctrl+b c` | new window |
 | `Ctrl+b Alt+w` | new worktree (prompts for branch, `wt-add`; enter→window, `v`→pane here) |
-| `Ctrl+b ,` | rename window |
+| `Ctrl+b ,` | set manual window label (visible in tab; disables auto name) |
 | `Ctrl+b &` | kill window |
 
 ## Panes
@@ -162,7 +162,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | drag border | resize pane |
 | double-click pane | zoom toggle |
 | right-click pane | context menu (zoom, mark, copy info, open cwd, claude-watch, agent dot) |
-| right-click window tab | window menu (swap, rename, kill, agent dot; `~/.trees` windows add publish PR / finish / remove worktree) |
+| right-click window tab | window menu (swap, manual label, reset to auto name, kill, agent dot; `~/.trees` windows add publish PR / finish / remove worktree) |
 | right-click session name (status left) | session menu (pickers, layouts, memory, detach) |
 | Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |
 
