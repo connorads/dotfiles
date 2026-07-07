@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # wt-window.sh: worktree ↔ tmux window glue (prefix + Alt+w / Alt+Shift+W).
-# Windows are the workspace unit: one worktree per window, tab labelled by
-# cwd basename. Subcommands:
+# A worktree defaults to its own window (tab labelled by cwd basename), but
+# placement is the caller's choice: both surfaces also offer "pane here".
+# Subcommands:
 #   open <path>   focus the window whose pane cwd is <path> (or inside it),
 #                 else open a new window there
+#   pane <path>   split the summoning pane, new pane cd'd to <path>
 #   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
-#                 then open a window in the worktree
-#   pick          fzf over managed worktrees (wt-status --all) → open
+#                 then [enter] new window · [v] pane here
+#   pick          fzf over managed worktrees (wt-status --all): enter → open,
+#                 ctrl-v → pane here
 set -euo pipefail
 
 # wt-add / wt-status are dual-mode zsh functions exposed via ~/.local/bin;
@@ -38,6 +41,14 @@ open)
 		tmux new-window -c "$path"
 	fi
 	;;
+pane)
+	path="${2:?path required}"
+	# A popup doesn't change which pane is active, so querying from inside one
+	# returns the summoning pane; #{pane_id} in the keybind would arrive
+	# verbatim (see the skl pick note in tmux.conf).
+	origin=$(tmux display-message -p '#{pane_id}')
+	tmux split-window -h -t "$origin" -c "$path"
+	;;
 new)
 	branch="${2:-}"
 	[ -n "$branch" ] || soft_fail "usage: wt-window.sh new <branch>"
@@ -47,17 +58,29 @@ new)
 	git rev-parse --show-toplevel >/dev/null 2>&1 ||
 		soft_fail "Not in a git repository: $PWD"
 	path=$(wt-add "$branch") || soft_fail "wt-add failed for $branch"
-	tmux new-window -c "$path"
+	printf 'worktree ready: %s\n[enter] new window · [v] pane here ' "$path" >&2
+	read -rsn1 key || key=''
+	case "$key" in
+	v | V) exec "$self" pane "$path" ;;
+	*) tmux new-window -c "$path" ;;
+	esac
 	;;
 pick)
-	line=$(wt-status --all --json |
+	out=$(wt-status --all --json |
 		jq -r '.[] | [.path, .branch + (if .dirty then " [dirty]" else "" end)] | @tsv' |
-		fzf --reverse --header='Worktree → window' --delimiter='\t' --with-nth=2..) || exit 0
+		fzf --reverse --header='enter: window · ctrl-v: pane here' \
+			--delimiter='\t' --with-nth=2.. --expect=ctrl-v) || exit 0
+	key="${out%%$'\n'*}"
+	line="${out#*$'\n'}"
 	path="${line%%	*}"
-	[ -n "$path" ] && exec "$self" open "$path"
+	[ -n "$path" ] || exit 0
+	case "$key" in
+	ctrl-v) exec "$self" pane "$path" ;;
+	*) exec "$self" open "$path" ;;
+	esac
 	;;
 *)
-	echo "usage: wt-window.sh open <path> | new <branch> | pick" >&2
+	echo "usage: wt-window.sh open <path> | pane <path> | new <branch> | pick" >&2
 	exit 1
 	;;
 esac
