@@ -315,7 +315,7 @@ function parseStoredRun(value: unknown): Result<WorkflowRunSnapshot, Error> {
     scriptFile: stringField(value.scriptFile),
     args: parseJsonField(value.args),
     meta: parseJsonField(value.meta),
-    budgetTotal: typeof value.budgetTotal === "number" ? value.budgetTotal : null,
+    budgetTotal: typeof value.budgetTotal === "number" && Number.isFinite(value.budgetTotal) ? value.budgetTotal : null,
     budgetSpent: numberField(value.budgetSpent),
     agentCalls: numberField(value.agentCalls),
     phases: stringArray(value.phases),
