@@ -55,7 +55,7 @@ add_origin_and_push_main() {
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq 'length')" -eq 1 ]
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch == "feature/foo") | .locked')" = "true" ]
-  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch == "feature/foo") | .path')" = "$HOME/.trees/repo-feature/foo" ]
+  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch == "feature/foo") | .path')" = "$HOME/.trees/repo/feature/foo" ]
 }
 
 @test "wt-status --all works outside a git repository" {
@@ -69,7 +69,7 @@ add_origin_and_push_main() {
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq 'length')" -eq 1 ]
-  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch == "topic") | .path')" = "$HOME/.trees/repo-topic" ]
+  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch == "topic") | .path')" = "$HOME/.trees/repo/topic" ]
 }
 
 @test "wts finds nested slash-branch worktrees outside a git repository" {
@@ -87,7 +87,7 @@ EOF
   run zsh -fc "HOME='$HOME'; PATH='$PATH'; fpath=('$FUNCTIONS_DIR/git' \$fpath); autoload -Uz wts; cd /tmp; wts; pwd"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$HOME/.trees/repo-feature/foo" ]
+  [ "$output" = "$HOME/.trees/repo/feature/foo" ]
 }
 
 @test "wt-status --all ignores nested vendored repos inside a worktree" {
@@ -99,13 +99,13 @@ EOF
 
   # A vendored dependency carrying its own .git (node_modules, submodule, ...)
   # must not be mistaken for a managed worktree.
-  git init "$HOME/.trees/repo-topic/node_modules/pkg" >/dev/null
+  git init "$HOME/.trees/repo/topic/node_modules/pkg" >/dev/null
 
   run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --json"
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq 'length')" -eq 1 ]
-  [ "$(printf '%s' "$output" | jq -r '.[0].path')" = "$HOME/.trees/repo-topic" ]
+  [ "$(printf '%s' "$output" | jq -r '.[0].path')" = "$HOME/.trees/repo/topic" ]
 }
 
 @test "_wt_managed_worktrees ignores nested vendored repos and finds slash branches" {
@@ -117,14 +117,14 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feature/foo"
   [ "$status" -eq 0 ]
 
-  git init "$HOME/.trees/repo-topic/node_modules/pkg" >/dev/null
+  git init "$HOME/.trees/repo/topic/node_modules/pkg" >/dev/null
 
   run zsh -fc "HOME='$HOME'; PATH='$PATH'; source '$FUNCTIONS_DIR/git/_wt-common'; cd /tmp; _wt_managed_worktrees"
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s\n' "$output" | grep -c .)" -eq 2 ]
-  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo-topic"
-  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo-feature/foo"
+  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo/topic"
+  printf '%s\n' "$output" | grep -qx "$HOME/.trees/repo/feature/foo"
 }
 
 @test "autoloaded wt-add loads shared helpers from the function file path" {
@@ -139,8 +139,8 @@ EOF
   run zsh -fc "fpath=(/home/connor/.config/zsh/functions/git \$fpath); HOME='$HOME'; PATH='$PATH'; cd '$repo'; autoload -Uz wt-add; wt-add --no-setup topic 2>/dev/null"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$HOME/.trees/repo-topic" ]
-  [ -d "$HOME/.trees/repo-topic" ]
+  [ "$output" = "$HOME/.trees/repo/topic" ]
+  [ -d "$HOME/.trees/repo/topic" ]
 }
 
 @test "wt-remove refuses dirty worktrees by default" {
@@ -150,13 +150,13 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo/topic/base.txt"
 
-  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo-topic'"
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/topic'"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: worktree has uncommitted changes"* ]]
-  [ -d "$HOME/.trees/repo-topic" ]
+  [ -d "$HOME/.trees/repo/topic" ]
 }
 
 @test "wt-remove works from outside the target repository" {
@@ -166,10 +166,10 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' --delete-branch '$HOME/.trees/repo-topic'"
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' --delete-branch '$HOME/.trees/repo/topic'"
 
   [ "$status" -eq 0 ]
-  [ ! -d "$HOME/.trees/repo-topic" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
   run git -C "$repo" branch --list topic
   [ -z "$output" ]
 }
@@ -182,16 +182,16 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo/topic/base.txt"
 
   write_stub wt-status <<EOF
 #!/usr/bin/env bash
-printf '%s\ttopic\t1\t0\t0\t\t0\t0\t0\t0\t0\n' '$HOME/.trees/repo-topic'
+printf '%s\ttopic\t1\t0\t0\t\t0\t0\t0\t0\t0\n' '$HOME/.trees/repo/topic'
 EOF
 
   write_stub fzf <<EOF
 #!/usr/bin/env bash
-printf 'alt-r\n%s\ttopic\tdirty\t+0/-0\tlock:no\tmerged:no\n' '$HOME/.trees/repo-topic'
+printf 'alt-r\n%s\ttopic\tdirty\t+0/-0\tlock:no\tmerged:no\n' '$HOME/.trees/repo/topic'
 EOF
 
   write_stub wt-remove <<'EOF'
@@ -208,8 +208,8 @@ EOF
   run bash -lc "export HOME='$HOME' PATH='$PATH' TEST_LOG='$TEST_LOG'; printf 'y\n' | zsh --no-rcs -i '$runner'"
 
   [ "$status" -eq 0 ]
-  grep -q -- "--force $HOME/.trees/repo-topic" "$TEST_LOG"
-  [ -d "$HOME/.trees/repo-topic" ]
+  grep -q -- "--force $HOME/.trees/repo/topic" "$TEST_LOG"
+  [ -d "$HOME/.trees/repo/topic" ]
 }
 
 @test "wt-finish local merges back into base and removes the worktree" {
@@ -219,15 +219,15 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
-  git -C "$HOME/.trees/repo-topic" add topic.txt
-  git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -r '.base')" = "main" ]
-  [ ! -d "$HOME/.trees/repo-topic" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
   [ -f "$repo/topic.txt" ]
   run git -C "$repo" branch --list topic
   [ -z "$output" ]
@@ -249,11 +249,11 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
-  git -C "$HOME/.trees/repo-topic" add topic.txt
-  git -C "$HOME/.trees/repo-topic" commit -m "topic change" >/dev/null
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "topic change" >/dev/null
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
 
   [ "$status" -eq 0 ]
   [ -f "$repo/local.txt" ]
@@ -267,9 +267,9 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "dirty" >>"$HOME/.trees/repo-topic/base.txt"
+  echo "dirty" >>"$HOME/.trees/repo/topic/base.txt"
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: worktree has uncommitted changes"* ]]
@@ -282,14 +282,14 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --lock topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
-  git -C "$HOME/.trees/repo-topic" add topic.txt
-  git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
 
   [ "$status" -eq 0 ]
-  [ ! -d "$HOME/.trees/repo-topic" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
   [ -f "$repo/topic.txt" ]
 }
 
@@ -300,10 +300,10 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --lock topic"
   [ "$status" -eq 0 ]
 
-  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' --force --delete-branch '$HOME/.trees/repo-topic'"
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' --force --delete-branch '$HOME/.trees/repo/topic'"
 
   [ "$status" -eq 0 ]
-  [ ! -d "$HOME/.trees/repo-topic" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
   run git -C "$repo" branch --list topic
   [ -z "$output" ]
 }
@@ -331,16 +331,16 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
-  git -C "$HOME/.trees/repo-topic" add topic.txt
-  git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' TEST_LOG='$TEST_LOG' PATH='$PATH' zsh --no-rcs '$WT_PUBLISH' --pr --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' TEST_LOG='$TEST_LOG' PATH='$PATH' zsh --no-rcs '$WT_PUBLISH' --pr --json"
 
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -r '.remote')" = "origin" ]
   [ "$(printf '%s' "$output" | jq -r '.pr_url')" = "https://example.test/pr/123" ]
-  [ "$(git -C "$HOME/.trees/repo-topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
+  [ "$(git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
   grep -q "pr create --base main --head topic --fill" "$TEST_LOG"
 }
 
@@ -386,9 +386,9 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
 
   [ "$status" -eq 0 ]
-  [ -f "$HOME/.trees/repo-topic/origin.txt" ]
-  [ ! -f "$HOME/.trees/repo-topic/other.txt" ]
-  [ "$(git -C "$HOME/.trees/repo-topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
+  [ -f "$HOME/.trees/repo/topic/origin.txt" ]
+  [ ! -f "$HOME/.trees/repo/topic/other.txt" ]
+  [ "$(git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
 }
 
 @test "wt-add falls back from upstream main to origin feature branch" {
@@ -431,8 +431,8 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
 
   [ "$status" -eq 0 ]
-  [ -f "$HOME/.trees/repo-topic/topic.txt" ]
-  [ "$(git -C "$HOME/.trees/repo-topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
+  [ -f "$HOME/.trees/repo/topic/topic.txt" ]
+  [ "$(git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
 }
 
 @test "wt-add fetches origin before falling back from upstream-tracked main" {
@@ -471,8 +471,8 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
 
   [ "$status" -eq 0 ]
-  [ -f "$HOME/.trees/repo-topic/topic.txt" ]
-  [ "$(git -C "$HOME/.trees/repo-topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
+  [ -f "$HOME/.trees/repo/topic/topic.txt" ]
+  [ "$(git -C "$HOME/.trees/repo/topic" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = "origin/topic" ]
 }
 
 @test "wt-finish syncs base branch from base remote, not feature remote" {
@@ -516,12 +516,12 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --json"
 
   [ "$status" -eq 0 ]
   [ -f "$repo/upstream.txt" ]
   [ -f "$repo/topic.txt" ]
-  [ ! -d "$HOME/.trees/repo-topic" ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
 }
 
 @test "wt-finish --delete-remote deletes the feature branch without explicit --remote" {
@@ -536,12 +536,12 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  echo "topic" >"$HOME/.trees/repo-topic/topic.txt"
-  git -C "$HOME/.trees/repo-topic" add topic.txt
-  git -C "$HOME/.trees/repo-topic" commit -m "add topic" >/dev/null
-  git -C "$HOME/.trees/repo-topic" push -u origin topic >/dev/null
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
+  git -C "$HOME/.trees/repo/topic" push -u origin topic >/dev/null
 
-  run bash -lc "cd '$HOME/.trees/repo-topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --delete-remote --json"
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local --delete-remote --json"
 
   [ "$status" -eq 0 ]
   ! git -C "$repo" ls-remote --exit-code --heads origin topic >/dev/null 2>&1
@@ -554,10 +554,10 @@ EOF
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
 
-  rm -rf "$HOME/.trees/repo-topic"
+  rm -rf "$HOME/.trees/repo/topic"
 
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_PRUNE' --json"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"repo-topic"* ]]
+  [[ "$output" == *"worktrees/topic"* ]]
 }
