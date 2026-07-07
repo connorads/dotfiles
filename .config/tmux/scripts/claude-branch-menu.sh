@@ -28,7 +28,8 @@ no_session() {
 # sessions that skipped registration at launch (see the concurrentSessions guard);
 # a running session never registers retroactively.
 not_forkable() {
-	tmux display-message "Claude here (pid $1) but not registered - not forkable (agent/child session, or skipped registration at launch)"
+	local reason="${2:-not registered}"
+	tmux display-message "Claude here (pid $1) but $reason - not forkable"
 	exit 0
 }
 
@@ -41,13 +42,24 @@ claude_pid=$(claude_foreground_pid_for_tty "$pane_tty" "claude" "$pane_pid")
 [ -n "$claude_pid" ] || no_session
 
 meta=$(claude_session_meta_for_pid "$claude_pid")
-[ -n "$meta" ] || not_forkable "$claude_pid"
+if [ -z "$meta" ]; then
+	resolved=$(claude_session_resolve_for_pid "$claude_pid" "$pane_id" "$pane_path" 2>/dev/null || true)
+	if [ -z "$resolved" ]; then
+		not_forkable "$claude_pid" "not registered"
+	fi
+	resolved_status=$(printf '%s' "$resolved" | jq -r '.status // empty' 2>/dev/null || true)
+	if [ "$resolved_status" != "resolved" ]; then
+		reason=$(printf '%s' "$resolved" | jq -r '.reason // "not registered"' 2>/dev/null || true)
+		not_forkable "$claude_pid" "$reason"
+	fi
+	meta="$resolved"
+fi
 
 sid=$(printf '%s' "$meta" | jq -r '.sessionId // empty' 2>/dev/null || true)
 [ -n "$sid" ] || not_forkable "$claude_pid"
 
 name=$(printf '%s' "$meta" | jq -r '.name // empty' 2>/dev/null || true)
-status=$(printf '%s' "$meta" | jq -r '.status // empty' 2>/dev/null || true)
+status=$(printf '%s' "$meta" | jq -r '.claudeStatus // empty' 2>/dev/null || true)
 cwd=$(printf '%s' "$meta" | jq -r '.cwd // empty' 2>/dev/null || true)
 [ -n "$cwd" ] || cwd="$pane_path"
 

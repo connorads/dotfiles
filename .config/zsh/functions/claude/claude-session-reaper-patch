@@ -1,0 +1,26 @@
+#!/usr/bin/env zsh
+# claude-session-reaper-patch: treat sandbox EPERM as live in Claude's session reaper
+# usage: claude-session-reaper-patch [--check|--restore|--all|--reapply] [path-to-claude-binary]
+# --reapply: install-hook-friendly patch - clears the stale marker on success,
+#            but on a missing needle warns loudly, writes the marker, exits 0.
+#
+# Why: Claude Code's concurrent-session reaper calls process.kill(pid, 0) and
+# treats every exception as "dead". In macOS Seatbelt sandboxes, checking another
+# live process returns EPERM, so a sandboxed Claude can delete every other live
+# ~/.claude/sessions/<pid>.json registry file. This patch keeps ESRCH cleanup but
+# treats EPERM (Bun errno 1) as alive.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local patch_name=claude-session-reaper-patch
+local patch_label='session reaper EPERM'
+local needle='function aE(e){if(e<=1)return!1;try{return process.kill(e,0),!0}catch{return!1}}'
+local replace='function aE(e){try{return e>1&&process.kill(e,0)}catch(t){return e>1&t.errno<2}}'
+local marker="$HOME/.cache/claude-session-reaper-patch.stale"
+local missing_body=$'The liveness helper was likely renamed/reminified upstream; sandboxed\nClaude launches can again reap live session registry files until the\nneedle in claude-session-reaper-patch is updated.'
+local missing_banner='session reaper may misclassify EPERM as dead'
+
+source "${wrapper:h}/_claude-patch-targets-lib"
+source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"

@@ -105,11 +105,15 @@ export CLAUDE_CODE_NO_FLICKER=1
 # Surface a stale --channels patch (needle rename) left by claude-channels-patch
 # --reapply, so an upstream flag rename can't be silently forgotten.
 [[ -f "$HOME/.cache/claude-channels-patch.stale" ]] && \
-  print -P "%F{yellow}claude-channels-patch:%f needle missing — see $HOME/.cache/claude-channels-patch.stale"
+  print -P "%F{yellow}claude-channels-patch:%f needle missing - see $HOME/.cache/claude-channels-patch.stale"
 
 # Surface a stale computer-use patch (default-config reshape) the same way.
 [[ -f "$HOME/.cache/claude-computer-use-patch.stale" ]] && \
-  print -P "%F{yellow}claude-computer-use-patch:%f needle missing — see $HOME/.cache/claude-computer-use-patch.stale"
+  print -P "%F{yellow}claude-computer-use-patch:%f needle missing - see $HOME/.cache/claude-computer-use-patch.stale"
+
+# Surface a stale session-reaper patch (liveness helper reshape) the same way.
+[[ -f "$HOME/.cache/claude-session-reaper-patch.stale" ]] && \
+  print -P "%F{yellow}claude-session-reaper-patch:%f needle missing - see $HOME/.cache/claude-session-reaper-patch.stale"
 
 # https://donottrack.sh/
 export DO_NOT_TRACK=1

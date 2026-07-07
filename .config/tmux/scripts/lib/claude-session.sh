@@ -56,3 +56,21 @@ claude_session_meta_for_pid() {
 	[ -f "$session_file" ] || return 0
 	cat "$session_file" 2>/dev/null || true
 }
+
+# claude_session_resolve_for_pid <pid> [pane_id] [cwd]
+# Emit resolver JSON. status=resolved includes sessionId/source/evidence.
+claude_session_resolve_for_pid() {
+	local pid="$1"
+	local pane_id="${2:-}"
+	local cwd="${3:-}"
+	local resolver="${CLAUDE_SESSION_RESOLVER:-$HOME/.config/tmux/scripts/claude-session-resolve.py}"
+
+	[ -n "$pid" ] || return 1
+	[ -x "$resolver" ] || return 1
+
+	local -a args
+	args=(--pid "$pid")
+	[ -n "$pane_id" ] && args+=(--pane "$pane_id")
+	[ -n "$cwd" ] && args+=(--cwd "$cwd")
+	"$resolver" "${args[@]}"
+}

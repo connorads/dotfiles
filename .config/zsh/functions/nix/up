@@ -32,10 +32,12 @@ else
       || dotfiles commit -m "chore(mise): update tool lock"
   fi
 fi
-# Reassert the --channels and computer-use patches: covers no-op upgrades
-# (postinstall only fires on an actual install) and manual paths. Idempotent.
+# Reassert Claude binary/plugin patches: covers no-op upgrades (postinstall only
+# fires on an actual install) and manual paths. Idempotent.
 claude-channels-patch --reapply
+claude-channels-allowlist-patch --reapply
 claude-computer-use-patch --reapply
+claude-session-reaper-patch --reapply
 claude-telegram-clear-patch --reapply
 if (( !frozen )) && [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade
