@@ -258,6 +258,25 @@ checksum = "sha256:9cc5823453e2c213706089757d3e481fdc89ab865fc9c45e9cb2155ee1562
 url = "https://github.com/CosineAI/cli/releases/download/2.0.22/cos-darwin-arm64.zip"
 url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/451109332"
 
+[[tools."github:can1357/oh-my-pi"]]
+version = "16.3.4"
+backend = "github:can1357/oh-my-pi"
+
+[tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
+checksum = "sha256:e9ceb64689213afe1bdcbc17d4ddff06844b1ab794035ed512c77048bc0416ae"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.4/omp-linux-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/465052284"
+
+[tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
+checksum = "sha256:6b15df198a537b324dd7e7c93801ff11e8401929827da30476bf6302178206e8"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.4/omp-linux-x64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/465052283"
+
+[tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
+checksum = "sha256:b283f06976b2b723c8c21e4bee709c4c53292256a848371f721ee6fa055cafd6"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.4/omp-darwin-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/465052282"
+
 [[tools."github:ogulcancelik/herdr"]]
 version = "0.7.0"
 backend = "github:ogulcancelik/herdr"
@@ -495,6 +514,10 @@ backend = "pipx:rembg"
 [tools."pipx:rembg".options]
 extras = "cli,cpu"
 uvx_args = "--with numpy<2.3"
+
+[[tools."pipx:tau-ai"]]
+version = "0.1.0"
+backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
 version = "0.0.56"

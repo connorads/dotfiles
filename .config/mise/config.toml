@@ -69,6 +69,7 @@ fnox = "1.27.1"
 "aqua:shenwei356/rush" = "0"
 
 "github:ogulcancelik/herdr" = "0.7.0"
+"github:can1357/oh-my-pi" = "16.3.4"
 "github:tamnd/kage" = "0.3.8"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2.0.22", bin = "cos", prerelease = true }
@@ -109,6 +110,9 @@ fnox = "1.27.1"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
+# Tau docs install with `uv tool install tau-ai`; mise's pipx backend uses uv
+# when available and forwards minimum_release_age to uv's exclude-newer guard.
+"pipx:tau-ai" = "0"
 # extras: the document/media set. NOT "all" — that drags in az-doc-intel /
 # azure-ai-contentunderstanding which only ships as a pre-release, so the
 # resolver fails closed (no pre-releases enabled).
