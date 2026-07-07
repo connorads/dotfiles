@@ -20,7 +20,7 @@ printf '%s\n' "$*" >>"$TEST_LOG"
 if [ "$1" = "display-message" ]; then
   case "$*" in
     *pane_tty*) printf '/dev/ttys010\tzsh\t/tmp/some where\n' ;;
-    *window_name*) printf 'mywin\n' ;;
+    *automatic-rename*) printf '%s\t%s\n' "${TMUX_AUTOMATIC_RENAME:-0}" "${TMUX_VISIBLE_LABEL:-mywin}" ;;
   esac
 fi
 EOF
@@ -64,6 +64,28 @@ EOF
   grep -q "rename-window -t @7" "$TEST_LOG"
   grep -q "kill-window -t @7" "$TEST_LOG"
   grep -q "AGENT_STATE_PANE=%5 .*agent-state.sh working" "$TEST_LOG"
+}
+
+@test "window menu seeds rename from the auto cwd label" {
+  export TMUX_AUTOMATIC_RENAME=1
+  export TMUX_VISIBLE_LABEL="auto-project"
+
+  run "$CTX" window "@7" "%5" "/tmp/somewhere" 12 0
+
+  [ "$status" -eq 0 ]
+  grep -q 'command-prompt -I "auto-project" -p "Manual window label:" "rename-window -t @7' "$TEST_LOG"
+  grep -q "Auto name a set-window-option -t @7 automatic-rename on" "$TEST_LOG"
+}
+
+@test "window menu seeds rename from the manual label and resets the clicked window" {
+  export TMUX_AUTOMATIC_RENAME=0
+  export TMUX_VISIBLE_LABEL="manual label"
+
+  run "$CTX" window "@7" "%5" "/tmp/somewhere" 12 0
+
+  [ "$status" -eq 0 ]
+  grep -q 'command-prompt -I "manual label" -p "Manual window label:" "rename-window -t @7' "$TEST_LOG"
+  grep -q "Reset name a set-window-option -t @7 automatic-rename on" "$TEST_LOG"
 }
 
 @test "window menu outside ~/.trees has no worktree actions" {
