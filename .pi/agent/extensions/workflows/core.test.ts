@@ -158,9 +158,24 @@ return out;
   assert.equal(parsed.ok, true);
 });
 
-test("firstHiddenControl reports hidden controls", () => {
+test("firstHiddenControl reports hidden controls and Unicode invisibles", () => {
   assert.equal(firstHiddenControl("ok\n\t"), undefined);
   assert.equal(firstHiddenControl("bad\u0000"), 0);
+  assert.equal(firstHiddenControl("bom\ufeff"), 0xfeff);
+  assert.equal(firstHiddenControl("zwsp\u200b"), 0x200b);
+  assert.equal(firstHiddenControl("rlo\u202e"), 0x202e);
+  assert.equal(firstHiddenControl("ls\u2028"), 0x2028);
+  assert.equal(firstHiddenControl("wj\u2060"), 0x2060);
+});
+
+test("parseWorkflowScript reports CRLF sources with a conversion hint", () => {
+  const crlf = parseWorkflowScript(`export const meta = { name: "t", description: "t" };\r\nreturn null;`);
+  assert.equal(crlf.ok, false);
+  assert.match(crlf.ok ? "" : crlf.error.message, /CRLF line endings are not supported - convert the script to LF/u);
+
+  const zwsp = parseWorkflowScript(`export const meta = { name: "t", description: "t" };\nreturn\u200b null;`);
+  assert.equal(zwsp.ok, false);
+  assert.match(zwsp.ok ? "" : zwsp.error.message, /hidden control character 0x200b/u);
 });
 
 test("nextReplayKey is stable for semantically equal options and chained by previous call", () => {

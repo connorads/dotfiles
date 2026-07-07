@@ -17,11 +17,17 @@ import type { AgentRunner, AgentRunResult } from "./runtime.ts";
 
 /**
  * Total structured-output solicitations before failing: the initial prompt plus
- * up to four repair prompts. `terminate` ends the turn on capture when it is the
- * only call in the batch, but this bounded loop plus prose extraction remain the
- * fallback when the model batches the tool call with other work.
+ * repair prompts. `terminate` ends the turn on capture when it is the only call
+ * in the batch, but this bounded loop plus prose extraction remain the fallback
+ * when the model batches the tool call with other work. Overridable via the
+ * MAX_STRUCTURED_OUTPUT_RETRIES environment variable (positive integer).
  */
-const MAX_STRUCTURED_OUTPUT_RETRIES = 5;
+const MAX_STRUCTURED_OUTPUT_RETRIES = parseRetryCap(process.env.MAX_STRUCTURED_OUTPUT_RETRIES);
+
+function parseRetryCap(raw: string | undefined): number {
+  const value = Number.parseInt(raw ?? "", 10);
+  return Number.isInteger(value) && value > 0 ? value : 5;
+}
 
 /** Session events that count as agent progress for the stall watchdog. */
 const PROGRESS_EVENT_TYPES = new Set([
@@ -122,6 +128,11 @@ function createStructuredOutputTool(schema: JsonValue, capture: StructuredCaptur
     async execute(_toolCallId, params) {
       const value = toJsonValue(params);
       if (value === undefined) throw new Error("structured_output arguments must be JSON data");
+      // Belt and braces: throwing re-enters the repair loop, so a value the
+      // tool layer let through cannot be captured against the schema.
+      if (!Check(asSchema(schema), value)) {
+        throw new Error("structured_output arguments do not match the required schema; call it again with valid fields");
+      }
       capture.called = true;
       capture.value = value;
       return {
