@@ -78,6 +78,25 @@ DTOs; parse them before core logic. Keep SQL/ORM inside the adapter.
   that mentions a domain noun gets its own module; `prelude.ts` is only for tiny
   ubiquitous domain-free one-liners.
 
+## Enforceable module boundaries
+
+When a module boundary becomes a standing rule, name it in domain language first
+and then encode it mechanically. Direct one-edge bans belong in
+`no-restricted-imports` / `no-restricted-syntax`; transitive "must never reach"
+rules are architecture tests, with TypeScript graph tooling configured through
+the `mechanical-enforcement` skill.
+
+Good boundary names read like invariants:
+
+- `domain-not-to-app-shells`
+- `pure-access-not-to-runtime`
+- `ui-not-to-server-modules`
+- `private-content-through-approved-boundaries`
+
+Allow type-only imports deliberately, not accidentally. If a type is safe to
+share but the runtime module is not, say that in the rule and encode it with the
+tool that can distinguish type-only imports.
+
 ## Configuration and resources
 
 Parse env/config at startup into typed config with branded/`Redacted` values.

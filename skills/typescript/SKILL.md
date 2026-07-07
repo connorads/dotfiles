@@ -21,7 +21,7 @@ not restate the agnostic *why* or the enforceable lint config — see routing.
 | Concern | Owner | This skill |
 |---|---|---|
 | Agnostic principles (functional core/shell, ports, error-as-value concept, observability, workflows/idempotency, config-at-boundary) | `architecture` | states the TS idiom + why, points here |
-| Lint rules, strict tsconfig flags, no-`any`/`as`/`!`, no-barrel | `mechanical-enforcement` | names the idiom, points there for config |
+| Lint rules, strict tsconfig flags, no-`any`/`as`/`!`, no-barrel, direct/transitive module-boundary checks | `mechanical-enforcement` | names the idiom, points there for config |
 | Test strategy, layers, fakes-not-mocks, property tests | `testing` | TS specifics only (fast-check, arbitraries, no `vi.mock`) |
 | Coverage thresholds, CI/hook enforcement | `test-coverage` | — |
 
@@ -120,7 +120,9 @@ predicates. Depend on the narrowest structural shape a caller needs — often a
 single function type, not a fat interface; let concrete adapters be wider. Audit
 existing adapters before creating a new one.
 See `references/modules.md` for domain/application modules, the adapter reuse
-audit + ADR rule, and import/file layout.
+audit + ADR rule, import/file layout, and how to name boundaries before handing
+them to `mechanical-enforcement` for direct import checks or graph architecture
+tests.
 
 ### Exhaustiveness and the cast discipline
 

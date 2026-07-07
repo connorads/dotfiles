@@ -1,6 +1,6 @@
 ---
 name: mechanical-enforcement
-description: Catalogue of preferred linter rules, TypeScript flags, clippy thresholds, and architectural boundary checks for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
+description: Catalogue of preferred linter rules, TypeScript flags, clippy thresholds, import-boundary checks, and architecture tests for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
 ---
 
 # Mechanical Enforcement
@@ -13,7 +13,7 @@ This is a **content skill**, not a tool. It provides rules and snippets. For wir
 
 1. **Mechanical over social**. If a rule relies on a reviewer remembering it, it will drift. Encode it in a linter, a type, or a test — never in a convention.
 2. **Types first, lint second, tests third**. Prefer `strict` TypeScript / Pydantic / clippy to a custom lint rule. Reach for a lint rule when the type system can't express it. Reach for a test only when neither can.
-3. **Architectural boundaries are linter rules**. Layers (domain ← infra, utilities ← server, UI ← schemas) are enforced with `no-restricted-imports` / `no-restricted-syntax`, not trusted to vigilance.
+3. **Architectural boundaries are linter rules**. Layers (domain <- infra, utilities <- server, UI <- schemas) are enforced with `no-restricted-imports` / `no-restricted-syntax`, or with graph checks when the rule is transitive, not trusted to vigilance.
 4. **Auto-fix where possible, gate where not**. Formatters and whitespace fixers run with `fix = true` and re-stage. Correctness rules gate the commit.
 5. **Prefer opinionated presets, override minimally**. Ultracite for Biome, `@commitlint/config-conventional` for commits, `next/core-web-vitals` for Next. Only override with a comment explaining *why*.
 6. **The *why* lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
@@ -31,8 +31,8 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
-| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check — see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
-| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for boundary rules; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint — oxlint covers boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
+| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
+| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
 | Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
@@ -212,6 +212,49 @@ still pre-stable, so keep them advisory: type-aware rules via tsgolint/tsgo
 misused promises) and custom JS plugins (alpha). The import-type-aware boundary
 rule (`allowTypeImports`) and framework-specific plugins (next, storybook) still
 need typescript-eslint until oxlint's JS plugins stabilise.
+
+#### Transitive architecture tests
+
+Use "architecture test" for an executable check over the module graph: "domain
+must never reach runtime", "UI must never reach server-only content", "private
+facts only enter through the gated boundary". These are not behavioural tests;
+they are lint-style gates for structural drift.
+
+`dependency-cruiser` is the default TypeScript tool for these transitive graph
+rules. Keep direct import bans in oxlint/Biome/ESLint where possible because
+they are faster and show up closer to the editor.
+
+Good dependency-cruiser rules are named like architecture invariants and have a
+short comment explaining the failure mode:
+
+- `domain-not-to-app-shells`
+- `pure-access-not-to-runtime`
+- `ui-not-to-server-modules`
+- `private-content-through-approved-boundaries`
+- `prod-not-to-tests`
+
+Adoption pattern:
+
+1. Start with `dependency-cruiser/configs/recommended-strict` so findings fail
+   the gate instead of disappearing as warnings.
+2. Add project-specific `forbidden` rules with names and comments.
+3. Pass `options.tsConfig.fileName` so aliases resolve.
+4. Enable `tsPreCompilationDeps` so type-only imports are visible to rules.
+5. Split value-import and type-only-import rules when a boundary allows shared
+   types but not runtime values.
+6. Use `dependencyTypesNot: ["type-only"]` only where type visibility is
+   intentionally allowed but runtime imports are not.
+7. Exclude generated files and list legitimate entry points as orphan
+   exceptions.
+8. Run with `--no-cache` in hooks/CI unless config invalidation has been proven
+   in that repo.
+9. Measure wall time before choosing pre-commit. Whole-graph checks usually fit
+   a full `quality`/CI hook better than staged pre-commit.
+
+`no-orphans` is a useful sanity check, but it is not a dead-code strategy. Keep
+knip for unused exports, unused files, and unused dependencies.
+
+See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
 #### Greppable invariants (agent self-audit tier)
 
@@ -494,6 +537,7 @@ When a bug escapes to review or production, the retro question is: **what rule w
 - `references/typescript-strict.jsonc` — strict `compilerOptions` block (drop-in)
 - `references/biome-ultracite.jsonc` — Biome config extending Ultracite with override pattern
 - `references/eslint-boundaries.mjs` — layered `no-restricted-imports` + `no-restricted-syntax` examples
+- `references/dependency-cruiser.cjs` - transitive TypeScript graph-boundary config template
 - `references/knip.jsonc` — knip dead-code / unused-deps config (drop-in)
 - `references/commitlint.config.js` — one-line conventional-commits config
 
