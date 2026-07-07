@@ -44,7 +44,7 @@ export default function extension(pi: ExtensionAPI) {
   let liveCtx: ExtensionContext | undefined;
 
   const storeFor = (ctx: Pick<ExtensionContext, "cwd">): WorkflowStore => createWorkflowStore(ctx.cwd);
-  const runnerFor = (ctx: ExtensionContext): PiAgentRunner => new PiAgentRunner(ctx.cwd, ctx.model);
+  const runnerFor = (ctx: ExtensionContext): PiAgentRunner => new PiAgentRunner(ctx.cwd, ctx.model, ctx.modelRegistry);
   const starterRuntime = (): WorkflowStarterRuntime => ({
     activateTool(name) {
       const active = new Set(pi.getActiveTools());

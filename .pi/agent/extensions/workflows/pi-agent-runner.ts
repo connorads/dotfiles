@@ -4,12 +4,14 @@ import {
   SessionManager,
   SettingsManager,
   type ExtensionContext,
+  type ModelRegistry,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 import { Check, Convert } from "typebox/value";
 
 import { toJsonValue, type AgentOptions, type JsonValue } from "./domain.ts";
+import { resolveRequestedModel, thinkingLevelForEffort } from "./model-select.ts";
 import { errorMessage } from "./prelude.ts";
 import type { AgentRunner, AgentRunResult } from "./runtime.ts";
 
@@ -21,22 +23,41 @@ import type { AgentRunner, AgentRunResult } from "./runtime.ts";
  */
 const MAX_STRUCTURED_OUTPUT_RETRIES = 5;
 
+/** Session events that count as agent progress for the stall watchdog. */
+const PROGRESS_EVENT_TYPES = new Set([
+  "turn_start",
+  "message_update",
+  "tool_execution_start",
+  "tool_execution_update",
+  "tool_execution_end",
+]);
+
 /** Pi SDK-backed AgentRunner. */
 export class PiAgentRunner implements AgentRunner {
   private readonly cwd: string;
   private readonly model: ExtensionContext["model"];
+  private readonly modelRegistry: ModelRegistry;
 
-  constructor(cwd: string, model: ExtensionContext["model"]) {
+  constructor(cwd: string, model: ExtensionContext["model"], modelRegistry: ModelRegistry) {
     this.cwd = cwd;
     this.model = model;
+    this.modelRegistry = modelRegistry;
   }
 
-  async run(prompt: string, options: AgentOptions & { readonly signal: AbortSignal }): Promise<AgentRunResult> {
+  async run(
+    prompt: string,
+    options: AgentOptions & { readonly signal: AbortSignal; readonly onProgress?: () => void },
+  ): Promise<AgentRunResult> {
     const capture: StructuredCapture = { called: false };
     // createAgentSession enables read/bash/edit/write by default, so only the
     // schema tool needs to be supplied here.
     const customTools: ToolDefinition[] = [];
     if (options.schema !== undefined) customTools.push(createStructuredOutputTool(options.schema, capture));
+
+    // Unknown model/effort throws before the session exists: the agent call
+    // fails (a parallel slot becomes null) rather than running on the wrong tier.
+    const model = options.model !== undefined ? resolveRequestedModel(this.modelRegistry, options.model) : this.model;
+    const thinkingLevel = options.effort !== undefined ? thinkingLevelForEffort(options.effort) : undefined;
 
     const agentDir = getAgentDir();
     const { session } = await createAgentSession({
@@ -45,9 +66,16 @@ export class PiAgentRunner implements AgentRunner {
       sessionManager: SessionManager.inMemory(),
       settingsManager: SettingsManager.create(this.cwd, agentDir),
       customTools,
-      ...(this.model ? { model: this.model } : {}),
+      ...(model ? { model } : {}),
+      ...(thinkingLevel ? { thinkingLevel } : {}),
     });
 
+    const onProgress = options.onProgress;
+    const unsubscribe = onProgress
+      ? session.subscribe((event) => {
+          if (PROGRESS_EVENT_TYPES.has(event.type)) onProgress();
+        })
+      : undefined;
     let removeAbortListener: (() => void) | undefined;
     try {
       if (options.signal.aborted) throw new Error("Subagent was aborted");
@@ -73,6 +101,7 @@ export class PiAgentRunner implements AgentRunner {
         outputTokens: tokens.output,
       };
     } finally {
+      unsubscribe?.();
       removeAbortListener?.();
       session.dispose();
     }

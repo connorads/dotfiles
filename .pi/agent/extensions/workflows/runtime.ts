@@ -26,7 +26,10 @@ export interface AgentRunResult {
 
 /** Narrow port used by the workflow runtime to launch Pi subagents. */
 export interface AgentRunner {
-  run(prompt: string, options: AgentOptions & { readonly signal: AbortSignal }): Promise<AgentRunResult>;
+  run(
+    prompt: string,
+    options: AgentOptions & { readonly signal: AbortSignal; readonly onProgress?: () => void },
+  ): Promise<AgentRunResult>;
 }
 
 export interface WorkflowRuntimeDeps {
@@ -194,8 +197,11 @@ export class WorkflowRuntime {
 
     const prompt = String(promptInput);
     const options = parseAgentOptions(optionsInput);
-    if (options.isolation === "remote") {
-      throw new WorkflowRuntimeError("agent({isolation:'remote'}) is not available in this build");
+    if (options.isolation === "remote" || options.isolation === "worktree") {
+      throw new WorkflowRuntimeError(`agent({isolation:'${options.isolation}'}) is not available in this build`);
+    }
+    if (options.agentType !== undefined) {
+      this.log(`agent option agentType="${options.agentType}" is not supported in this build and was ignored`);
     }
 
     const replayKey = nextReplayKey(this.previousReplayKey, prompt, options);
@@ -274,15 +280,27 @@ export class WorkflowRuntime {
 
     let stalled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (stallMs > 0) {
-      timer = setTimeout(() => {
-        stalled = true;
-        controller.abort();
-      }, stallMs);
-    }
+    // Resettable no-progress watchdog: each runner progress event (message
+    // deltas, tool executions, turn starts) pushes the deadline out, so only a
+    // genuinely silent agent is aborted, however long its real work takes.
+    const armWatchdog =
+      stallMs > 0
+        ? (): void => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => {
+              stalled = true;
+              controller.abort();
+            }, stallMs);
+          }
+        : undefined;
+    armWatchdog?.();
 
     try {
-      return await this.deps.agentRunner.run(prompt, { ...options, signal: controller.signal });
+      return await this.deps.agentRunner.run(prompt, {
+        ...options,
+        signal: controller.signal,
+        onProgress: armWatchdog,
+      });
     } catch (error) {
       if (stalled) {
         this.log(`agent[${index}] stalled after ${stallMs}ms and was aborted`);
