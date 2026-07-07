@@ -111,7 +111,7 @@ export class WorkflowManager {
       runId,
       workflowName,
       scriptPath: resolved.value.scriptPath,
-      summary: `Workflow "${workflowName}" launched in the background. Use /workflows status ${runId} to inspect it.`,
+      summary: `Workflow "${workflowName}" launched in the background. /workflows status ${runId} to inspect, /workflows stop ${runId} to cancel.`,
     });
   }
 
@@ -190,7 +190,9 @@ export class WorkflowManager {
       runId,
       workflowName: snapshot.workflowName,
       scriptPath: snapshot.scriptPath,
-      summary: `Workflow "${snapshot.workflowName}" resumed. Use /workflows status ${runId} to inspect it.`,
+      summary: `Workflow "${snapshot.workflowName}" resumed${
+        existing.value.status === "completed" ? " (re-running a previously completed run)" : ""
+      }${replacement ? " with the edited script" : ""}. /workflows status ${runId} to inspect, /workflows stop ${runId} to cancel.`,
     });
   }
 
