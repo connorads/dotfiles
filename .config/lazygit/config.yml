@@ -88,3 +88,13 @@ customCommands:
         !                this cheatsheet
       EOF
     output: terminal
+  - key: 'V'
+    context: 'files'
+    description: 'Critique working-tree diff'
+    command: 'zsh -ic "critique"'
+    output: terminal
+  - key: 'V'
+    context: 'commits'
+    description: 'Critique review (commits)'
+    command: 'zsh -ic "review"'
+    output: terminal
