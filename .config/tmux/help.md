@@ -81,7 +81,7 @@
 | `Ctrl+b Alt+v` | Fresh editor |
 | `Ctrl+b Alt+V` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
-| `Ctrl+b F` | fingers (quick-copy text with hints) |
+| `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
 
 ## Agent tab dots
 
