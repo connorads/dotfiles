@@ -75,7 +75,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [.fresh/config.json](./.fresh/config.json)                             | Fresh project config for this dotfiles work-tree (shows hidden files from `~`)             |
 | [~/.config/zsh/functions/](./.config/zsh/functions/)                   | Custom shell functions (autoloaded in zsh, also on PATH as executables)                   |
 | [~/.local/bin/](./.local/bin/)                                         | Symlinks to dual-mode zsh functions (callable from any shell/agent); includes `git-hunks` |
-| [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper that reads gh-gate tokens dynamically (not a symlink)                        |
+| [~/.local/bin/gh](./.local/bin/gh)                                     | `gh` wrapper; normal keyring auth unless gh-gate token files exist                       |
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
 | [~/src/raycast/shotpath](./src/raycast/shotpath)                       | Local Raycast extension wrapping the `shotpath` command; kept outside dot dirs because Raycast rejects hidden development source paths |
@@ -210,10 +210,10 @@ wts                    # fzf switch to a worktree (works outside git repos)
 wt-prune               # Prune stale git worktree metadata after crashes/manual deletes
 wt-repair [path...]    # Repair moved worktree metadata
 ghcl [owner]           # fzf clone from GitHub (SSH)
-gh-gate init           # Create read-only PAT and deploy to dev (opens browser)
-gh-gate grant          # Push 1-hour write token to dev (from host machine)
-gh-gate revoke         # Revoke write token, restore read-only on dev
-gh-gate status         # Check token state on dev
+gh-gate init <host>    # Deploy read-only PAT to a managed remote
+gh-gate grant <host>   # Push 1-hour write token to a managed remote
+gh-gate revoke <host>  # Revoke write token on a managed remote
+gh-gate status [host]  # Check token state on a managed remote
 gh-gate ui             # Pick SSH host and grant/revoke write access in fzf
 sbx new [--net] [name] # Create+attach a VM-isolated box for UNTRUSTED software (offline by default)
 sbx shell [name]       # Self-heal (colima+box up) then attach the box's tmux session
@@ -222,6 +222,12 @@ sbx cp <path> [name]   # Copy a host path into the box's /work
 sbx list               # List sbx boxes; sbx stop/rm [name] to stop / nuke (box + volume)
 lazydocker             # TUI to browse/exec/log/prune containers (nix)
 ```
+
+### GitHub CLI auth
+
+Desktop/granting hosts use normal `gh auth` keyring auth. `gh-gate` controls `gh`
+only where `~/.config/gh-gate/readonly-token` or `active-token` exists; config
+alone does not mean read-only.
 
 ## Supply Chain & Update Strategy
 
