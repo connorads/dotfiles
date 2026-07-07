@@ -56,6 +56,9 @@ export default function extension(pi: ExtensionAPI) {
     ctx.ui.setWidget(WIDGET_KEY, lines.length === 0 ? undefined : lines, { placement: "belowEditor" });
   };
   const deliver = (snapshot: WorkflowRunSnapshot): void => {
+    // Skip delivery once the session has ended: a post-shutdown send would
+    // target a dead session and surface as an unhandled rejection.
+    if (!liveCtx) return;
     const content = renderCompletionMessage(snapshot);
     pi.sendMessage(
       {
@@ -125,10 +128,17 @@ export default function extension(pi: ExtensionAPI) {
     description: "List, inspect, stop, resume, or launch Pi project workflows",
     handler: async (args, ctx) => {
       const store = storeFor(ctx);
-      const [command = "list", ...rest] = args.trim().split(/\s+/u).filter(Boolean);
-      const tail = rest.join(" ");
+      const trimmed = args.trim();
+      const firstSpace = trimmed.search(/\s/u);
+      const command = (firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace)) || "list";
+      const tail = firstSpace === -1 ? "" : trimmed.slice(firstSpace + 1).trim();
+      const rest = tail.split(/\s+/u).filter(Boolean);
 
       switch (command) {
+        case "help": {
+          ctx.ui.notify(WORKFLOWS_HELP, "info");
+          return;
+        }
         case "list": {
           ctx.ui.notify(renderRuns(await store.listRuns()), "info");
           await refreshWidget(ctx);
@@ -143,7 +153,10 @@ export default function extension(pi: ExtensionAPI) {
           const runId = parseCommandRunId(rest[0]);
           if (!runId.ok) return ctx.ui.notify(runId.error.message, "warning");
           const run = await store.readRun(runId.value);
-          ctx.ui.notify(run.ok ? renderRun(run.value, manager.isActive(runId.value)) : run.error.message, run.ok ? "info" : "warning");
+          ctx.ui.notify(
+            run.ok ? renderRun(run.value, manager.isActive(runId.value)) : friendlyRunError(runId.value, run.error.message),
+            run.ok ? "info" : "warning",
+          );
           await refreshWidget(ctx);
           return;
         }
@@ -151,7 +164,10 @@ export default function extension(pi: ExtensionAPI) {
           const runId = parseCommandRunId(rest[0]);
           if (!runId.ok) return ctx.ui.notify(runId.error.message, "warning");
           const run = await store.readRun(runId.value);
-          ctx.ui.notify(run.ok ? renderRunDetails(run.value) : run.error.message, run.ok ? "info" : "warning");
+          ctx.ui.notify(
+            run.ok ? renderRunDetails(run.value) : friendlyRunError(runId.value, run.error.message),
+            run.ok ? "info" : "warning",
+          );
           await refreshWidget(ctx);
           return;
         }
@@ -159,7 +175,10 @@ export default function extension(pi: ExtensionAPI) {
           const runId = parseCommandRunId(rest[0]);
           if (!runId.ok) return ctx.ui.notify(runId.error.message, "warning");
           const stopped = await manager.stop(runId.value, store);
-          ctx.ui.notify(stopped.ok ? `Stopped workflow ${runId.value}.` : stopped.error.message, stopped.ok ? "info" : "warning");
+          ctx.ui.notify(
+            stopped.ok ? `Stopped workflow ${runId.value}.` : friendlyRunError(runId.value, stopped.error.message),
+            stopped.ok ? "info" : "warning",
+          );
           await refreshWidget(ctx);
           return;
         }
@@ -172,7 +191,10 @@ export default function extension(pi: ExtensionAPI) {
             agentRunner: runnerFor(ctx),
             deliver,
           });
-          ctx.ui.notify(resumed.ok ? resumed.value.summary : resumed.error.message, resumed.ok ? "info" : "warning");
+          ctx.ui.notify(
+            resumed.ok ? resumed.value.summary : friendlyRunError(runId.value, resumed.error.message),
+            resumed.ok ? "info" : "warning",
+          );
           await refreshWidget(ctx);
           return;
         }
@@ -194,7 +216,7 @@ export default function extension(pi: ExtensionAPI) {
           return;
         }
         default:
-          ctx.ui.notify("Usage: /workflows [list|status|show|stop|resume|run|start] ...", "warning");
+          ctx.ui.notify(`Unknown /workflows command: ${command}\n\n${WORKFLOWS_HELP}`, "warning");
       }
     },
   });
@@ -214,14 +236,26 @@ function renderWidget(runs: readonly WorkflowRunSnapshot[]): string[] {
 }
 
 function renderRuns(runs: readonly WorkflowRunSnapshot[]): string {
-  if (runs.length === 0) return "No project workflow runs.";
-  const rows = runs.slice(0, 12).map((run) => `${run.runId}  ${run.status.padEnd(9)}  ${run.workflowName}`);
-  return ["Project workflow runs", ...rows].join("\n");
+  if (runs.length === 0) return "No project workflow runs. Start one with /workflows run <name> or /workflow <objective>.";
+  const now = Date.now();
+  const rows = runs.slice(0, 12).map((run) => {
+    const detail = [`agents ${run.agentCalls}`];
+    if (run.budgetTotal !== null) detail.push(`budget ${run.budgetSpent}/${run.budgetTotal}`);
+    const phase = currentPhase(run);
+    if (phase) detail.push(`phase ${phase}`);
+    return `${run.runId}  ${run.status.padEnd(9)}  ${relativeTime(run.updatedAt, now).padStart(7)}  ${run.workflowName}  (${detail.join(", ")})`;
+  });
+  return [`Project workflow runs (${runs.length})`, ...rows].join("\n");
 }
 
 function renderRun(run: WorkflowRunSnapshot, active: boolean): string {
   const live = active ? " active" : "";
-  return `${run.runId} ${run.status}${live}: ${run.workflowName}\n${run.summary ?? ""}`;
+  const header = `${run.runId} ${run.status}${live}: ${run.workflowName}`;
+  const progress =
+    run.status === "running" || run.status === "queued"
+      ? `agents ${run.agentCalls}${currentPhase(run) ? `, phase ${currentPhase(run)}` : ""}${run.budgetTotal !== null ? `, budget ${run.budgetSpent}/${run.budgetTotal}` : ""}`
+      : undefined;
+  return [header, progress, run.summary].filter((line): line is string => typeof line === "string" && line.length > 0).join("\n");
 }
 
 function renderRunDetails(run: WorkflowRunSnapshot): string {
@@ -244,6 +278,41 @@ function renderCompletionMessage(run: WorkflowRunSnapshot): string {
   return [`Workflow ${status}: ${run.workflowName}`, `Run: ${run.runId}`, preview(body, 1200), `Details: /workflows show ${run.runId}`]
     .filter(Boolean)
     .join("\n");
+}
+
+const WORKFLOWS_HELP = [
+  "Pi workflows - background multi-agent orchestration.",
+  "",
+  "/workflows list                 list recent project runs",
+  "/workflows status <runId>       show a run's status, phase, and budget",
+  "/workflows show <runId>         show full details, logs, and result",
+  "/workflows stop <runId>         stop a running workflow",
+  "/workflows resume <runId>       resume a run, replaying completed agents",
+  "/workflows run <name|path> [json]   launch a named or file workflow",
+  "/workflows start <objective>    ask Pi to draft and launch an inline workflow",
+  "/workflows help                 show this help",
+].join("\n");
+
+/** Map a raw store read failure to a friendly not-found message. */
+function friendlyRunError(runId: RunId, message: string): string {
+  if (/ENOENT|no such file/iu.test(message)) return `Workflow run not found: ${runId}`;
+  return message;
+}
+
+/** The most recent runtime phase, if any. */
+function currentPhase(run: WorkflowRunSnapshot): string | undefined {
+  return run.phases.length > 0 ? run.phases[run.phases.length - 1] : undefined;
+}
+
+/** Compact relative time such as "3m" or "2h" for run listings. */
+function relativeTime(then: number, now: number): string {
+  const seconds = Math.max(0, Math.round((now - then) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }
 
 function asSchema(value: unknown): TSchema {
