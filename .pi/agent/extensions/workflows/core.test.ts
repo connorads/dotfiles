@@ -236,6 +236,35 @@ test("readJournal keeps valid entries when a trailing line is truncated", async 
   assert.equal(entries[0]?.kind, "agent_started");
 });
 
+test("appendJournal survives a torn trailing fragment without a newline", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-torn-"));
+  const project = join(temp, "project");
+  const root = join(temp, "root");
+  const store = createWorkflowStore(project, root);
+
+  const runId = parseRunId("wf_torn00001");
+  assert.equal(runId.ok, true);
+  if (!runId.ok) return;
+
+  // A crash mid-append can leave a fragment with no trailing newline; the next
+  // append must not glue onto it and corrupt both entries.
+  const journalFile = join(root, "projects", workflowProjectKey(project), "runs", runId.value, "journal.jsonl");
+  await mkdir(join(root, "projects", workflowProjectKey(project), "runs", runId.value), { recursive: true });
+  await writeFile(journalFile, '{"kind":"agent_res', "utf8");
+
+  await store.appendJournal(runId.value, {
+    kind: "agent_started",
+    at: 1,
+    replayKey: "v3:abc" as never,
+    index: 1,
+    prompt: "hello",
+  });
+
+  const entries = await store.readJournal(runId.value);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.kind, "agent_started");
+});
+
 test("store resolves named workflows only from Pi project/user script roots", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-core-"));
   const project = join(temp, "project");

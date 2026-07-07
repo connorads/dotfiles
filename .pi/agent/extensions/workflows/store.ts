@@ -204,7 +204,10 @@ export function createWorkflowStore(cwd: string, root = join(homedir(), ".pi", "
       return enqueueWrite(runId, async () => {
         if (isSuperseded(runId, generation)) return;
         await mkdir(runDir(runId), { recursive: true });
-        await appendFile(journalPath(runId), `${JSON.stringify(entry)}\n`, "utf8");
+        // Leading newline: a crash mid-append can leave a torn fragment with
+        // no trailing newline, and this entry must not glue onto it. readJournal
+        // skips the blank lines this produces on clean appends.
+        await appendFile(journalPath(runId), `\n${JSON.stringify(entry)}\n`, "utf8");
       });
     },
 
