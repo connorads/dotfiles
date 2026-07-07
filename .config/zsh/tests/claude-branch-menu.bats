@@ -93,3 +93,50 @@ EOF
   ! grep -q "not registered" "$TEST_LOG"
   ! grep -q "No Claude in this pane" "$TEST_LOG"
 }
+
+@test "menu offers forking into a new worktree window" {
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q "fork-worktree %% session-xyz" "$TEST_LOG"
+}
+
+@test "fork-worktree creates the worktree then opens a window running the fork" {
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  write_stub wt-add <<'EOF'
+#!/usr/bin/env bash
+printf 'wt-add %s\n' "$*" >>"$TEST_LOG"
+echo "/tmp/trees/repo/feat/x"
+EOF
+
+  run "$MENU" fork-worktree "feat/x" "session-xyz"
+  [ "$status" -eq 0 ]
+  grep -q "wt-add feat/x" "$TEST_LOG"
+  grep -q -- "new-window -c /tmp/trees/repo/feat/x claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+}
+
+@test "fork-worktree outside a git repository soft-fails without opening a window" {
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+exit 128
+EOF
+
+  run --separate-stderr "$MENU" fork-worktree "feat/x" "session-xyz" </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"Not in a git repository"* ]]
+  ! grep -q "new-window" "$TEST_LOG"
+}
+
+@test "fork-worktree rejects branch names with spaces" {
+  run --separate-stderr "$MENU" fork-worktree "feat x" "session-xyz" </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"must not contain spaces"* ]]
+  ! grep -q "new-window" "$TEST_LOG"
+}
