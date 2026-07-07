@@ -3,6 +3,9 @@
 # Builds a display-menu argv and shows it at the click position. Targets and
 # mouse coords are passed explicitly from the bind (run-shell -t= expands them
 # against the moused pane/window); extras are resolved here via display-message.
+# display-menu runs via run-shell, so no mouse event reaches it and tmux would
+# mark the menu MENU_NOMOUSE (any pointer motion dismisses it): -M forces mouse
+# handling back on, -O keeps the menu open until a selection or a click away.
 # tmux's stock MouseDown3 menus stay available on Alt+right-click.
 #
 # Usage: context-menu.sh pane <pane_id> <mx> <my>
@@ -52,7 +55,7 @@ pane)
 	cmd=${rest%%	*}
 	path=${rest##*	}
 
-	menu=(display-menu -t "$pane" -x "$mx" -y "$my" -T " Pane $pane ")
+	menu=(display-menu -M -O -t "$pane" -x "$mx" -y "$my" -T " Pane $pane ")
 	menu+=(
 		"#{?window_zoomed_flag,Unzoom,Zoom}" z "resize-pane -Z -t $pane"
 		"#{?pane_marked,Unmark,Mark}" m "select-pane -m -t $pane"
@@ -76,7 +79,7 @@ window)
 	my="${6:-C}"
 	name=$(tmux display-message -p -t "$win" '#{window_name}')
 
-	menu=(display-menu -t "$active_pane" -x "$mx" -y "$my" -T " Window · $name ")
+	menu=(display-menu -M -O -t "$active_pane" -x "$mx" -y "$my" -T " Window · $name ")
 	# Explicit -s: the moused window may not be the current one.
 	menu+=(
 		"Swap left" "<" "swap-window -s $win -t :-1"
@@ -130,7 +133,7 @@ session)
 	mx="${2:-C}"
 	my="${3:-C}"
 	# Picker/popup bodies mirror the prefix+S / W / L / Alt+m binds in tmux.conf.
-	menu=(display-menu -x "$mx" -y "$my" -T " Session #S ")
+	menu=(display-menu -M -O -x "$mx" -y "$my" -T " Session #S ")
 	menu+=(
 		"Session picker (fzf)" s "display-popup -E \"tmux list-sessions -F '#{session_name}' | fzf --reverse --header='Switch session' | xargs -I{} tmux switch-client -t {}\""
 		"Window picker (fzf)" w "display-popup -E \"tmux list-windows -a -F '#{session_name}:#{window_index} #{window_name}' | fzf --reverse --header='Switch window' | cut -d' ' -f1 | xargs -I{} tmux switch-client -t {}\""
