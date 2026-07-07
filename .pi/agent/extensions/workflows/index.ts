@@ -15,6 +15,10 @@ import { createWorkflowStore, type WorkflowStore } from "./store.ts";
 
 const WORKFLOW_CUSTOM_MESSAGE = "workflow_result";
 const WIDGET_KEY = "workflows";
+// Completion messages trigger a turn so the launching session reacts to the
+// result without the user prodding it. Set PI_WORKFLOWS_COMPLETION_TURN=0 to
+// deliver silently instead (read once at load).
+const COMPLETION_TRIGGERS_TURN = process.env.PI_WORKFLOWS_COMPLETION_TURN !== "0";
 
 const WORKFLOW_INPUT_SCHEMA = {
   type: "object",
@@ -67,7 +71,8 @@ export default function extension(pi: ExtensionAPI) {
     // Skip delivery once the session has ended: a post-shutdown send would
     // target a dead session and surface as an unhandled rejection.
     if (!liveCtx) return;
-    const content = renderCompletionMessage(snapshot);
+    const content = renderCompletionMessage(snapshot, createWorkflowStore(snapshot.cwd).runDir(snapshot.runId));
+    const terminal = snapshot.status === "completed" || snapshot.status === "failed" || snapshot.status === "stopped";
     pi.sendMessage(
       {
         customType: WORKFLOW_CUSTOM_MESSAGE,
@@ -79,7 +84,9 @@ export default function extension(pi: ExtensionAPI) {
           workflowName: snapshot.workflowName,
         },
       },
-      { triggerTurn: false },
+      // Delivery only fires in the launching Pi process, so a completion turn
+      // cannot double-fire across sessions.
+      { triggerTurn: terminal && COMPLETION_TRIGGERS_TURN, deliverAs: "followUp" },
     );
     if (liveCtx) void refreshWidget(liveCtx);
   };
@@ -290,12 +297,24 @@ function renderRunDetails(run: WorkflowRunSnapshot): string {
   return lines.join("\n");
 }
 
-function renderCompletionMessage(run: WorkflowRunSnapshot): string {
+function renderCompletionMessage(run: WorkflowRunSnapshot, runDir: string): string {
   const status = run.status === "completed" ? "completed" : run.status;
   const body = run.summary ?? run.error ?? "";
-  return [`Workflow ${status}: ${run.workflowName}`, `Run: ${run.runId}`, preview(body, 1200), `Details: /workflows show ${run.runId}`]
+  return [
+    `Workflow ${status}: ${run.workflowName}`,
+    `Run: ${run.runId}`,
+    preview(body, 1200),
+    run.status === "failed" || run.status === "stopped" ? recoveryHint(run.runId) : undefined,
+    `Details: /workflows show ${run.runId}`,
+    `Run dir: ${runDir}`,
+  ]
     .filter(Boolean)
     .join("\n");
+}
+
+/** Shared failed/stopped recovery line for completion messages and renders. */
+function recoveryHint(runId: RunId): string {
+  return `Recover: edit the pinned script and run /workflows resume ${runId} - completed agents replay from the journal.`;
 }
 
 const WORKFLOWS_HELP = [
