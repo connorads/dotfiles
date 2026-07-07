@@ -164,6 +164,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | drag border | resize pane |
 | double-click pane | zoom toggle |
 | right-click pane | context menu (zoom, mark, copy info, open cwd, claude-watch, agent dot) |
+| right-click window tab | window menu (swap, rename, kill, agent dot; `~/.trees` windows add publish PR / finish / remove worktree) |
 | right-click session name (status left) | session menu (pickers, layouts, memory, detach) |
 | Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |
 
