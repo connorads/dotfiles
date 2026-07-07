@@ -204,7 +204,7 @@ EOF
   run "$WT_WINDOW" pick </dev/null
 
   [ "$status" -eq 0 ]
-  grep -q -- "wt-remove /tmp/x/.trees/repo/feat" "$TEST_LOG"
+  grep -q -- "wt-remove --delete-branch /tmp/x/.trees/repo/feat" "$TEST_LOG"
   # Reload: pick re-execs and fzf runs a second time (aborted by the stub).
   [ "$(cat "$HOME/fzf-calls")" = "2" ]
 }
