@@ -60,7 +60,7 @@
 | `Ctrl+b T` | Tools launcher (fzf: connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
-| `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window, bypass perms; copy cmd/id) |
+| `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |
 | `Ctrl+b Alt+i` | copy local/remote clipboard image path (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
