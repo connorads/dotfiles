@@ -86,6 +86,8 @@ export interface WorkflowRunSnapshot {
   readonly startedAt: Instant;
   readonly updatedAt: Instant;
   readonly completedAt?: Instant;
+  /** Process that owns the live execution; used to detect crashed runs. */
+  readonly pid?: number;
 }
 
 /** Journal entry persisted for replay/resume. */
