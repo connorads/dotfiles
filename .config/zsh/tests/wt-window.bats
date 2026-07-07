@@ -144,6 +144,113 @@ EOF
   ! grep -q "split-window" "$TEST_LOG"
 }
 
+# Stateful fzf stub for ctrl-x reload tests: appends its stdin to
+# $HOME/fzf-input, prints a ctrl-x selection on the first call, and aborts
+# (exit 130) on later calls so the re-exec'd pick terminates. Call count in
+# $HOME/fzf-calls. $FZF_SELECT holds the selected TSV line.
+write_ctrl_x_fzf_stub() {
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >>"$HOME/fzf-input"
+n=$(( $(cat "$HOME/fzf-calls" 2>/dev/null || echo 0) + 1 ))
+echo "$n" >"$HOME/fzf-calls"
+[ "$n" -gt 1 ] && exit 130
+printf 'ctrl-x\n%s\n' "$FZF_SELECT"
+EOF
+}
+
+@test "pick rows carry repo column and status markers" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+cat <<'JSON'
+[
+  {"path":"/tmp/x/.trees/beta/fix","branch":"fix","dirty":false,"untracked":false,"ahead":2,"merged_into_base":true},
+  {"path":"/tmp/x/.trees/alpha/feat","branch":"feat","dirty":false,"untracked":true,"ahead":0,"merged_into_base":false}
+]
+JSON
+EOF
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >>"$HOME/fzf-input"
+exit 130
+EOF
+  export TMUX_PANES=$'@7\t/tmp/x/.trees/alpha/feat/src'
+
+  run "$WT_WINDOW" pick
+
+  [ "$status" -eq 0 ]
+  # Sorted by repo: alpha first although wt-status emitted beta first.
+  head -1 "$HOME/fzf-input" | grep -q "alpha"
+  # Hidden path field 1, then repo + branch display columns.
+  grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/fzf-input"
+  # open (pane inside the tree) + dirty (untracked counts as dirty).
+  grep -Eq 'alpha +feat +open dirty$' "$HOME/fzf-input"
+  grep -Eq 'beta +fix +merged ahead 2$' "$HOME/fzf-input"
+}
+
+@test "pick ctrl-x removes a clean pane-free worktree and reloads the list" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+echo '[{"path":"/tmp/x/.trees/repo/feat","branch":"feat","dirty":false}]'
+EOF
+  write_stub wt-remove <<'EOF'
+#!/usr/bin/env bash
+printf 'wt-remove %s\n' "$*" >>"$TEST_LOG"
+echo "$1"
+EOF
+  write_ctrl_x_fzf_stub
+  export FZF_SELECT=$'/tmp/x/.trees/repo/feat\trepo  feat'
+
+  run "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  grep -q -- "wt-remove /tmp/x/.trees/repo/feat" "$TEST_LOG"
+  # Reload: pick re-execs and fzf runs a second time (aborted by the stub).
+  [ "$(cat "$HOME/fzf-calls")" = "2" ]
+}
+
+@test "pick ctrl-x refuses when the worktree has an open pane" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+echo '[{"path":"/tmp/x/.trees/repo/feat","branch":"feat","dirty":false}]'
+EOF
+  write_stub wt-remove <<'EOF'
+#!/usr/bin/env bash
+printf 'wt-remove %s\n' "$*" >>"$TEST_LOG"
+EOF
+  write_ctrl_x_fzf_stub
+  export FZF_SELECT=$'/tmp/x/.trees/repo/feat\trepo  feat'
+  export TMUX_PANES=$'@3\t/tmp/x/.trees/repo/feat'
+
+  run --separate-stderr "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  ! grep -q "wt-remove" "$TEST_LOG"
+  [[ "$stderr" == *"close it first"* ]]
+  [ "$(cat "$HOME/fzf-calls")" = "2" ]
+}
+
+@test "pick ctrl-x surfaces wt-remove's refusal and still reloads" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+echo '[{"path":"/tmp/x/.trees/repo/feat","branch":"feat","dirty":true}]'
+EOF
+  write_stub wt-remove <<'EOF'
+#!/usr/bin/env bash
+echo "error: worktree has uncommitted changes" >&2
+exit 1
+EOF
+  write_ctrl_x_fzf_stub
+  export FZF_SELECT=$'/tmp/x/.trees/repo/feat\trepo  feat dirty'
+
+  run --separate-stderr "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"uncommitted changes"* ]]
+  [[ "$stderr" == *"wt-remove refused"* ]]
+  [ "$(cat "$HOME/fzf-calls")" = "2" ]
+}
+
 @test "new outside a git repository soft-fails without opening a window" {
   write_stub git <<'EOF'
 #!/usr/bin/env bash

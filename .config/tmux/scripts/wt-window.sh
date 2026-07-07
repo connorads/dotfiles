@@ -8,8 +8,9 @@
 #   pane <path>   split the summoning pane, new pane cd'd to <path>
 #   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
 #                 then [enter] new window · [v] pane here
-#   pick          fzf over managed worktrees (wt-status --all): enter → open,
-#                 ctrl-v → pane here
+#   pick          fzf over managed worktrees (wt-status --all): repo + status
+#                 columns (open/dirty/merged/ahead N); enter → open,
+#                 ctrl-v → pane here, ctrl-x → remove (wt-remove, branch kept)
 set -euo pipefail
 
 # wt-add / wt-status are dual-mode zsh functions exposed via ~/.local/bin;
@@ -18,11 +19,16 @@ PATH="$HOME/.local/bin:$PATH"
 
 self="${BASH_SOURCE[0]}"
 
-# Popup-friendly soft failure: show the message, wait for a key, exit clean.
-soft_fail() {
+# Popup-friendly notice: show the message, wait for a key, carry on.
+pause_msg() {
 	printf '%s\n' "$1" >&2
 	printf 'Press any key…' >&2
 	read -rsn1 || true
+}
+
+# Popup-friendly soft failure: pause_msg, then exit clean.
+soft_fail() {
+	pause_msg "$1"
 	exit 0
 }
 
@@ -66,16 +72,68 @@ new)
 	esac
 	;;
 pick)
-	out=$(wt-status --all --json |
-		jq -r '.[] | [.path, .branch + (if .dirty then " [dirty]" else "" end)] | @tsv' |
-		fzf --reverse --header='enter: window · ctrl-v: pane here' \
-			--delimiter='\t' --with-nth=2.. --expect=ctrl-v) || exit 0
+	# Rows: path (hidden), repo (path component after ~/.trees), branch, then
+	# marker fields: dirty/untracked, merged into base, ahead of upstream.
+	# Markers are information, not guards - wt-remove keeps the branch, so
+	# removing a clean tree loses nothing.
+	rows=$(wt-status --all --json |
+		jq -r '.[] | [.path,
+			((.path | split("/.trees/")[1] // "") | split("/")[0]),
+			.branch,
+			(if .dirty or .untracked then "dirty" else "" end),
+			(if .merged_into_base then "merged" else "" end),
+			(if .ahead > 0 then "ahead \(.ahead)" else "" end)] | @tsv' |
+		sort -t'	' -k2,2 -k3,3)
+	panes=$(tmux list-panes -a -F '#{window_id}	#{pane_current_path}')
+	# Render display columns; "open" marks a live pane at or inside the
+	# worktree (same path-boundary match as the open subcommand).
+	display=$(printf '%s\n' "$rows" | PANES="$panes" awk '
+		BEGIN {
+			FS = "\t"
+			np = split(ENVIRON["PANES"], pl, "\n")
+			for (i = 1; i <= np; i++) {
+				split(pl[i], pf, "\t")
+				if (pf[2] != "") pc[++pn] = pf[2]
+			}
+		}
+		$1 == "" { next }
+		{
+			m = ""
+			for (i = 1; i <= pn; i++)
+				if (pc[i] == $1 || index(pc[i], $1 "/") == 1) { m = "open"; break }
+			for (f = 4; f <= NF; f++)
+				if ($f != "") m = m (m == "" ? "" : " ") $f
+			nr++
+			paths[nr] = $1; repos[nr] = $2; branches[nr] = $3; marks[nr] = m
+			if (length($2) > rw) rw = length($2)
+			if (length($3) > bw) bw = length($3)
+		}
+		END {
+			fmt = "%s\t%-" rw "s  %-" bw "s  %s\n"
+			for (i = 1; i <= nr; i++)
+				printf fmt, paths[i], repos[i], branches[i], marks[i]
+		}')
+	out=$(printf '%s\n' "$display" |
+		fzf --reverse --header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
+			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x) || exit 0
 	key="${out%%$'\n'*}"
 	line="${out#*$'\n'}"
 	path="${line%%	*}"
 	[ -n "$path" ] || exit 0
 	case "$key" in
 	ctrl-v) exec "$self" pane "$path" ;;
+	ctrl-x)
+		# Two guards only: an open pane (removing under a live shell leaves a
+		# dead pane) and wt-remove's own dirty/untracked refusal.
+		if tmux list-panes -a -F '#{window_id}	#{pane_current_path}' |
+			awk -F'\t' -v p="$path" \
+				'$2 == p || index($2, p "/") == 1 { f = 1; exit } END { exit !f }'; then
+			pause_msg "Worktree has an open pane - close it first: $path"
+		elif ! wt-remove "$path" >/dev/null; then
+			pause_msg "wt-remove refused (see above): $path"
+		fi
+		exec "$self" pick
+		;;
 	*) exec "$self" open "$path" ;;
 	esac
 	;;
