@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { parseWorkflowScript, type ParsedWorkflowScript } from "./parser.ts";
-import { WorkflowRuntime, type AgentRunner, type AgentRunResult } from "./runtime.ts";
+import { WorkflowRuntime, type AgentRunner, type AgentRunResult, type WorkflowRuntimeDeps } from "./runtime.ts";
 import { createWorkflowStore } from "./store.ts";
 
 test("runtime executes agents, parallel, pipeline, phases, logs, and replay", async () => {
@@ -122,6 +122,73 @@ return { child };
   assert.ok(runtime.getSnapshot().logs.includes("[child] child log"));
 });
 
+test("workflow body cannot reach a host Function through .constructor", async () => {
+  const escapes = [
+    `return log.constructor("return process")().pid;`,
+    `return agent.constructor("return this")();`,
+    `const r = await agent("x"); return r.constructor.constructor("return process")();`,
+    `const p = await parallel([() => agent("x")]); return p[0].constructor.constructor("return process")();`,
+    `const p = await parallel([() => agent("x")]); return p.constructor.constructor("return process")();`,
+  ];
+  for (const body of escapes) {
+    const runtime = makeRuntime(`export const meta = {};\n${body}`, new RecordingRunner());
+    await assert.rejects(runtime.execute(runtime.parsed), /Code generation from strings disallowed/u, body);
+  }
+});
+
+test("workflow determinism: real Date/Math are unreachable but explicit dates work", async () => {
+  const bypass = makeRuntime(`export const meta = {};\nreturn Object.getPrototypeOf(Math).random();`, new RecordingRunner());
+  await assert.rejects(bypass.execute(bypass.parsed), /random is not a function/u);
+
+  const aliasedDate = makeRuntime(`export const meta = {};\nconst D = Date;\nreturn new D().getTime();`, new RecordingRunner());
+  await assert.rejects(aliasedDate.execute(aliasedDate.parsed), /without explicit arguments/u);
+
+  const explicitDate = makeRuntime(`export const meta = {};\nreturn new Date("2026-01-02").getFullYear();`, new RecordingRunner());
+  assert.equal(await explicitDate.execute(explicitDate.parsed), 2026);
+});
+
+test("parallel and pipeline throw WorkflowBudgetExceededError once the budget is spent", async () => {
+  for (const call of ["parallel([() => agent(\"two\")])", "pipeline([1], () => agent(\"two\"))"]) {
+    // The first agent spends 7 tokens, exhausting the budget of 5 before the
+    // parallel/pipeline entry precheck runs.
+    const runtime = makeRuntime(
+      `export const meta = { budget: 5 };\nawait agent("one");\nreturn await ${call};`,
+      new RecordingRunner(),
+      { budgetTotal: 5 },
+    );
+    await assert.rejects(runtime.execute(runtime.parsed), /token budget exceeded/u, call);
+  }
+});
+
+test("a stalled agent is aborted and fails its call", async () => {
+  const runtime = makeRuntime(`export const meta = {};\nreturn await agent("hang", { stallMs: 20 });`, new HangingRunner());
+  await assert.rejects(runtime.execute(runtime.parsed), /stalled after 20ms/u);
+  assert.ok(runtime.getSnapshot().logs.some((line) => line.includes("stalled after 20ms")));
+});
+
+test("null agent results are not journalled and re-run on resume", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-null-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const source = `export const meta = { name: "n" };\nreturn await agent("x");`;
+  const parsed = mustParse(source);
+  const snapshot = makeSnapshot("wf_nulljrnl1", { workflowName: "n" });
+  await store.createRun(snapshot, source);
+
+  const first = new NullRunner();
+  const runtime = new WorkflowRuntime(snapshot, [], baseDeps(store, first));
+  assert.equal(await runtime.execute(parsed), null);
+  assert.equal(first.calls, 1);
+
+  const journal = await store.readJournal(snapshot.runId);
+  assert.equal(journal.filter((entry) => entry.kind === "agent_result").length, 0);
+  assert.equal(journal.filter((entry) => entry.kind === "agent_started").length, 1);
+
+  const second = new RecordingRunner();
+  const replay = new WorkflowRuntime(makeSnapshot("wf_nulljrnl1", { workflowName: "n" }), journal, baseDeps(store, second));
+  assert.deepEqual(await replay.execute(parsed), { prompt: "x", label: null, phase: null });
+  assert.equal(second.calls.length, 1);
+});
+
 class RecordingRunner implements AgentRunner {
   readonly calls: Array<{ readonly prompt: string; readonly label: string | null; readonly phase: string | null }> = [];
 
@@ -134,6 +201,38 @@ class RecordingRunner implements AgentRunner {
     this.calls.push(call);
     return { value: call, outputTokens: 7 };
   }
+}
+
+class NullRunner implements AgentRunner {
+  calls = 0;
+
+  async run(): Promise<AgentRunResult> {
+    this.calls += 1;
+    return { value: null, outputTokens: 3 };
+  }
+}
+
+class HangingRunner implements AgentRunner {
+  async run(_prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    });
+  }
+}
+
+function baseDeps(store: ReturnType<typeof createWorkflowStore>, agentRunner: AgentRunner): WorkflowRuntimeDeps {
+  return { store, agentRunner, signal: new AbortController().signal, now: clock(), concurrency: 4 };
+}
+
+function makeRuntime(
+  source: string,
+  agentRunner: AgentRunner,
+  over: Partial<Omit<WorkflowRunSnapshot, "runId" | "schemaVersion">> = {},
+): WorkflowRuntime & { readonly parsed: ParsedWorkflowScript } {
+  const store = createWorkflowStore(join(tmpdir(), "pi-workflows-inline"), join(tmpdir(), "pi-workflows-inline-root"));
+  const snapshot = makeSnapshot("wf_inline001", over);
+  const runtime = new WorkflowRuntime(snapshot, [], baseDeps(store, agentRunner));
+  return Object.assign(runtime, { parsed: mustParse(source) });
 }
 
 function mustParse(source: string): ParsedWorkflowScript {
