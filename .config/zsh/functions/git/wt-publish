@@ -1,31 +1,37 @@
 #!/usr/bin/env zsh
 # wt-publish: push a worktree branch and optionally open a PR
-# usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json]
+# usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json] [path]
+# [path]: target worktree (default: the current directory's worktree)
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-publish]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
 source "$_wt_common_dir/_wt-common"
 
-local remote="" base="" open_pr=0 draft=0 json=0
+local remote="" base="" open_pr=0 draft=0 json=0 path_arg=""
 
 while (( $# )); do
   case $1 in
-    -h|--help) echo "usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json]" >&2; return 0 ;;
+    -h|--help) echo "usage: wt-publish [--remote <name>] [--base <branch>] [--pr] [--draft] [--json] [path]" >&2; return 0 ;;
     --remote)  remote=$2; shift 2 ;;
     --base)    base=$2; shift 2 ;;
     --pr)      open_pr=1; shift ;;
     --draft)   draft=1; shift ;;
     --json)    json=1; shift ;;
     -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+    *)         path_arg=$1; shift ;;
   esac
 done
 
 local wt_path branch
-wt_path=$(_wt_current_path) || {
+wt_path=$(_wt_current_or_arg_path "$path_arg") || {
   echo "error: not in a git repository" >&2
   return 1
 }
-branch=$(_wt_current_branch)
+wt_path=$(git -C "$wt_path" rev-parse --show-toplevel 2>/dev/null) || {
+  echo "error: not a git worktree: $wt_path" >&2
+  return 1
+}
+branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
 if [[ -z "$branch" ]]; then
   echo "error: must be on a branch" >&2
   return 1
@@ -45,22 +51,23 @@ base=$(_wt_resolve_base "$wt_path" "$base") || {
 
 local push_err=""
 if (( json )); then
-  push_err=$(git push --quiet --set-upstream "$remote" "$branch" 2>&1 >/dev/null) || {
+  push_err=$(git -C "$wt_path" push --quiet --set-upstream "$remote" "$branch" 2>&1 >/dev/null) || {
     jq -n --arg error "$push_err" '{"error":$error}' >&2
     return 1
   }
 else
-  git push --set-upstream "$remote" "$branch" >/dev/null || return 1
+  git -C "$wt_path" push --set-upstream "$remote" "$branch" >/dev/null || return 1
 fi
 
+# gh resolves the repo from cwd, so run it from the worktree.
 local pr_url=""
 if (( open_pr )); then
-  pr_url=$(gh pr view "$branch" --json url --jq .url 2>/dev/null)
+  pr_url=$(cd "$wt_path" && gh pr view "$branch" --json url --jq .url 2>/dev/null)
   if [[ -z "$pr_url" ]]; then
     if (( draft )); then
-      pr_url=$(gh pr create --base "$base" --head "$branch" --fill --draft 2>/dev/null) || return 1
+      pr_url=$(cd "$wt_path" && gh pr create --base "$base" --head "$branch" --fill --draft 2>/dev/null) || return 1
     else
-      pr_url=$(gh pr create --base "$base" --head "$branch" --fill 2>/dev/null) || return 1
+      pr_url=$(cd "$wt_path" && gh pr create --base "$base" --head "$branch" --fill 2>/dev/null) || return 1
     fi
   fi
 fi

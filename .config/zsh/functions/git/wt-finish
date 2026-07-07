@@ -1,18 +1,19 @@
 #!/usr/bin/env zsh
 # wt-finish: finish a managed worktree via local merge or PR flow
-# usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json]
+# usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json] [path]
 # --mode local: merge feature→base, remove worktree, delete local branch
 # --mode pr: delegate to wt-publish --pr (worktree remains for further work)
+# [path]: target worktree (default: the current directory's worktree)
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-finish]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
 source "$_wt_common_dir/_wt-common"
 
-local mode="" base="" remote="" push_main=0 delete_remote=0 draft=0 json=0
+local mode="" base="" remote="" push_main=0 delete_remote=0 draft=0 json=0 path_arg=""
 
 while (( $# )); do
   case $1 in
-    -h|--help)       echo "usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json]" >&2; return 0 ;;
+    -h|--help)       echo "usage: wt-finish --mode <local|pr> [--base <branch>] [--remote <name>] [--push-main] [--delete-remote] [--draft] [--json] [path]" >&2; return 0 ;;
     --mode)          mode=$2; shift 2 ;;
     --base)          base=$2; shift 2 ;;
     --remote)        remote=$2; shift 2 ;;
@@ -21,6 +22,7 @@ while (( $# )); do
     --draft)         draft=1; shift ;;
     --json)          json=1; shift ;;
     -*)              echo "error: unknown flag $1" >&2; return 1 ;;
+    *)               path_arg=$1; shift ;;
   esac
 done
 
@@ -36,16 +38,21 @@ if [[ "$mode" == pr ]]; then
   (( draft )) && publish_args+=(--draft)
   publish_args+=(--pr)
   (( json )) && publish_args+=(--json)
+  [[ -n "$path_arg" ]] && publish_args+=("$path_arg")
   wt-publish "${publish_args[@]}"
   return $?
 fi
 
 local wt_path branch base_wt
-wt_path=$(_wt_current_path) || {
+wt_path=$(_wt_current_or_arg_path "$path_arg") || {
   echo "error: not in a git repository" >&2
   return 1
 }
-branch=$(_wt_current_branch)
+wt_path=$(git -C "$wt_path" rev-parse --show-toplevel 2>/dev/null) || {
+  echo "error: not a git worktree: $wt_path" >&2
+  return 1
+}
+branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
 
 if [[ -z "$branch" ]]; then
   echo "error: must be on a branch" >&2
@@ -53,7 +60,7 @@ if [[ -z "$branch" ]]; then
 fi
 
 if ! _wt_is_managed_path "$wt_path"; then
-  echo "error: must be run from inside a ~/.trees/ worktree" >&2
+  echo "error: not a managed ~/.trees/ worktree: $wt_path" >&2
   return 1
 fi
 
@@ -69,7 +76,7 @@ if [[ "$branch" == "$base" ]]; then
   return 1
 fi
 
-base_wt=$(_wt_main_worktree_path "$base") || {
+base_wt=$(_wt_main_worktree_path "$base" "$wt_path") || {
   echo "error: no worktree found for $base branch" >&2
   return 1
 }
