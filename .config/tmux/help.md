@@ -128,6 +128,7 @@ threshold); a number = swap worth noting.
 | Key | Action |
 |-----|--------|
 | `Alt+Left/Right` | skip between words |
+| `Ctrl+U Ctrl+Y` | copy current zsh command line to shell kill ring (cut whole line, yank back) |
 
 ## Other
 
