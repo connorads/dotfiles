@@ -50,8 +50,7 @@
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+b S` | fzf session picker |
-| `Ctrl+b W` | fzf window picker |
+| `Ctrl+b s` / `w` | session / window tree (tmux default choose-tree) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
@@ -66,7 +65,6 @@
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
-| `Ctrl+b y` | yazi file manager |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (lgdf, bare repo from any pane) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
