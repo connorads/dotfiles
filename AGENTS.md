@@ -67,7 +67,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration · maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md)       |
 | [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
-| [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm with `prefix + Alt+a`); design + env vars   |
+| [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm via `prefix + T` Tools or pane context menu); design + env vars   |
 | [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh)            | Memory-pressure vocabulary (OK/BUSY/CRITICAL) shared by the status gauge, `prefix + Alt+m` popup, and `memwatch`; subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | [zsh/functions/macos/memwatch](./.config/zsh/functions/macos/memwatch) | Desktop-only launchd notifier ([darwin-desktop.nix](./.config/nix/modules/darwin-desktop.nix)); banners on sustained pressure. Log `~/.cache/memwatch.log`; reload `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"` |
 | [init.lua](./.config/nvim/init.lua)                                    | Neovim configuration                                                                      |
@@ -189,7 +189,7 @@ dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
-claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + Alt+a)
+claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
 svc ls                 # List agent services with status

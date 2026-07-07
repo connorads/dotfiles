@@ -55,12 +55,11 @@
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |
 | `Ctrl+b Alt+i` | copy local/remote clipboard image path (local tmux only; use `shotpath` from Mac for remote tmux) |
-| `Ctrl+b Alt+a` | Claude auto-continue (arm/disarm watcher) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |

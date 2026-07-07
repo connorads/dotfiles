@@ -17,8 +17,10 @@ to `#{pane_id}`, plus a stdlib-only Python date parser.
 
 ## Quick start
 
-- **Arm / disarm:** `prefix + Alt+a` in the target pane (or `claude-watch` from a
-  shell in that pane). The pane border shows **` ARMED`** (green) while active.
+- **Arm / disarm:** `prefix + T` → `Claude: auto-continue watcher` in the
+  target pane, right-click the pane and choose `Arm/disarm claude-watch`, or run
+  `claude-watch` from a shell in that pane. The pane border shows **` ARMED`**
+  (green) while active.
 - **Status / explicit control:** `claude-watch [status|on|off|toggle] [pane_id]`.
 - **Watch what it's doing:** `tail -f ~/.local/state/claude-watcher/<pane>.log`
   (e.g. pane `%5` → `…/claude-watcher/5.log`).
@@ -69,9 +71,9 @@ Only **backed-off** and **gave-up** notify; the happy path is log-only.
 | `CLAUDE_WATCH_RAPID_CAP` | `10` | Consecutive-resume cap. |
 | `CLAUDE_WATCH_RAPID_GAP` | `1800` | Quiet gap (s) that resets the rapid counter. |
 | `CLAUDE_WATCH_LIFETIME_CAP` | `50` | Lifetime resume backstop. |
-| `CLAUDE_WATCH_NOTIFY_CMD` | _(unset)_ | Custom notify command; receives `event` (`$1`) and `message` (`$2`). |
-| `CLAUDE_WATCH_PY` | _(unset)_ | Python interpreter override (else `python3` from PATH). |
-| `CLAUDE_WATCH_TMUX` | _(unset)_ | tmux binary override (else `tmux` from PATH). |
+| `CLAUDE_WATCH_NOTIFY_CMD` | *(unset)* | Custom notify command; receives `event` (`$1`) and `message` (`$2`). |
+| `CLAUDE_WATCH_PY` | *(unset)* | Python interpreter override (else `python3` from PATH). |
+| `CLAUDE_WATCH_TMUX` | *(unset)* | tmux binary override (else `tmux` from PATH). |
 
 `CLAUDE_WATCH_PY` / `CLAUDE_WATCH_TMUX` are defensive overrides only — the
 `claude-watch` toggle resolves both from your interactive PATH and forwards them
