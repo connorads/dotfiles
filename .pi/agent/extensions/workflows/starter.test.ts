@@ -36,6 +36,12 @@ test("renderWorkflowStartPrompt asks the model to call workflow with an inline s
   assert.match(prompt, /Never write `agent\(\{ name, prompt \}\)`/u);
   assert.match(prompt, /const \[a, b\] = await parallel/u);
   assert.match(prompt, /review architecture and tests/u);
+  assert.match(prompt, /Date\.now/u);
+  assert.match(prompt, /Math\.random/u);
+  assert.match(prompt, /import\/export/u);
+  assert.match(prompt, /busy-loop/u);
+  assert.match(prompt, /meta\.budget/u);
+  assert.match(prompt, /effort/u);
 });
 
 test("startWorkflowFromCommand activates workflow and sends one follow-up", () => {

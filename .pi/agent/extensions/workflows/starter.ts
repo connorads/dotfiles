@@ -1,3 +1,4 @@
+import { firstHiddenControl } from "./parser.ts";
 import type { Brand } from "./prelude.ts";
 import { err, ok, type Result } from "./result.ts";
 
@@ -81,6 +82,11 @@ export function renderWorkflowStartPrompt(objective: WorkflowObjective): string 
     "- Prefer a small number of meaningful phases and agent calls.",
     "- Use `parallel` for independent branches and `pipeline` for staged item processing.",
     "- Return a JSON-serialisable result that summarises what happened.",
+    "- Determinism: `Date.now()`, `Math.random()`, and argless `new Date()` are unavailable; pass timestamps in via `args`.",
+    "- No import/export statements beyond the `meta` export.",
+    "- Avoid synchronous busy-loops; the script body shares the host event loop.",
+    "- Optional `meta.budget` caps total subagent output tokens; `budget.remaining()` reads what is left.",
+    "- `agent` options: `label`, `phase`, `schema` (JSON Schema for structured output), `model`, and `effort` (low|medium|high|xhigh|max).",
     "",
     "Do not use these invalid shapes:",
     '- Never write `phase("discover", () => parallel(...))`. `phase` does not wrap callbacks.',
@@ -108,12 +114,4 @@ export function renderWorkflowStartPrompt(objective: WorkflowObjective): string 
     "Objective:",
     objective,
   ].join("\n");
-}
-
-function firstHiddenControl(source: string): number | undefined {
-  for (let index = 0; index < source.length; index += 1) {
-    const code = source.charCodeAt(index);
-    if ((code < 0x20 && code !== 0x09 && code !== 0x0a) || (code >= 0x7f && code <= 0x9f)) return code;
-  }
-  return undefined;
 }

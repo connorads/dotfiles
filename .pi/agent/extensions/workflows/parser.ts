@@ -25,7 +25,13 @@ export function parseWorkflowScript(source: string): Result<ParsedWorkflowScript
   }
   const hidden = firstHiddenControl(source);
   if (hidden !== undefined) {
-    return err(new WorkflowParseError(`Workflow source contains hidden control character 0x${hidden.toString(16)}`));
+    return err(
+      new WorkflowParseError(
+        hidden === 0x0d
+          ? "CRLF line endings are not supported - convert the script to LF"
+          : `Workflow source contains hidden control character 0x${hidden.toString(16)}`,
+      ),
+    );
   }
 
   let program: ProgramNode;
@@ -68,13 +74,30 @@ export function parseWorkflowScript(source: string): Result<ParsedWorkflowScript
   });
 }
 
-/** First hidden control code point, if present. */
+/** First hidden control or invisible Unicode code point, if present. */
 export function firstHiddenControl(source: string): number | undefined {
   for (let index = 0; index < source.length; index += 1) {
     const code = source.charCodeAt(index);
     if ((code < 0x20 && code !== 0x09 && code !== 0x0a) || (code >= 0x7f && code <= 0x9f)) return code;
+    if (isInvisibleUnicode(code)) return code;
   }
   return undefined;
+}
+
+/**
+ * Invisible/direction-control code points that can smuggle content past a
+ * human reviewer: BOM/ZWNBSP, zero-width spaces and joiners, bidi overrides,
+ * line/paragraph separators, and the word-joiner block.
+ */
+function isInvisibleUnicode(code: number): boolean {
+  return (
+    code === 0xfeff ||
+    (code >= 0x200b && code <= 0x200d) ||
+    (code >= 0x202a && code <= 0x202e) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    (code >= 0x2060 && code <= 0x2064)
+  );
 }
 
 function extractMetaNode(node: StatementNode): Result<ExpressionNode, WorkflowParseError> {
