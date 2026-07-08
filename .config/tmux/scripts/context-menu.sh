@@ -56,11 +56,18 @@ pane)
 	pane="${2:?pane_id required}"
 	mx="${3:-C}"
 	my="${4:-C}"
-	info=$(tmux display-message -p -t "$pane" '#{pane_tty}	#{pane_current_command}	#{pane_current_path}')
+	info=$(tmux display-message -p -t "$pane" '#{pane_tty}	#{pane_current_command}	#{pane_current_path}	#{window_panes}')
 	tty=${info%%	*}
 	rest=${info#*	}
 	cmd=${rest%%	*}
-	path=${rest##*	}
+	rest=${rest#*	}
+	path=${rest%%	*}
+	pane_count=${rest##*	}
+	kill_prompt="kill pane $pane running $cmd? (y/n)"
+	if [ "$pane_count" = "1" ]; then
+		kill_prompt="kill last pane $pane and close window? (y/n)"
+	fi
+	quoted_kill_prompt=$(tmux_double_quote "$kill_prompt")
 
 	menu=(display-menu -M -O -t "$pane" -x "$mx" -y "$my" -T " Pane $pane ")
 	menu+=(
@@ -76,6 +83,10 @@ pane)
 		""
 	)
 	append_agent_dot_items "$pane"
+	menu+=(
+		""
+		"Kill pane" X "confirm-before -p \"$quoted_kill_prompt\" \"kill-pane -t $pane\""
+	)
 	tmux "${menu[@]}"
 	;;
 window)

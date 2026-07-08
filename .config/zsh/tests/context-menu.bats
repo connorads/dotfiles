@@ -19,7 +19,7 @@ setup() {
 printf '%s\n' "$*" >>"$TEST_LOG"
 if [ "$1" = "display-message" ]; then
   case "$*" in
-    *pane_tty*) printf '/dev/ttys010\tzsh\t/tmp/some where\n' ;;
+    *pane_tty*) printf '/dev/ttys010\tzsh\t/tmp/some where\t%s\n' "${TMUX_WINDOW_PANES:-2}" ;;
     *automatic-rename*) printf '%s\t%s\n' "${TMUX_AUTOMATIC_RENAME:-0}" "${TMUX_VISIBLE_LABEL:-mywin}" ;;
   esac
 fi
@@ -38,6 +38,16 @@ EOF
   grep -q 'zed .*/tmp/some where' "$TEST_LOG"
   grep -q 'code .*/tmp/some where' "$TEST_LOG"
   grep -q "claude-watch %5" "$TEST_LOG"
+  grep -q 'Kill pane X confirm-before -p "kill pane %5 running zsh? (y/n)" "kill-pane -t %5"' "$TEST_LOG"
+}
+
+@test "pane menu warns that killing the last pane closes the window" {
+  export TMUX_WINDOW_PANES=1
+
+  run "$CTX" pane "%5" 10 2
+
+  [ "$status" -eq 0 ]
+  grep -q 'Kill pane X confirm-before -p "kill last pane %5 and close window? (y/n)" "kill-pane -t %5"' "$TEST_LOG"
 }
 
 @test "pane menu carries the agent-dot items with canonical glyphs" {
