@@ -10,7 +10,7 @@
     ]
   },
   "scripts": {
-    "test": "node --test core.test.ts runtime.test.ts manager.test.ts starter.test.ts render.test.ts",
+    "test": "node --test core.test.ts runtime.test.ts manager.test.ts starter.test.ts starter-gate.test.ts render.test.ts",
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {

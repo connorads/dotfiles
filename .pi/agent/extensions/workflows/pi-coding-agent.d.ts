@@ -55,6 +55,33 @@ declare module "@earendil-works/pi-coding-agent" {
     readonly type: string;
   }
 
+  export interface ToolCallEvent {
+    readonly type: "tool_call";
+    readonly toolCallId: string;
+    readonly toolName: string;
+    readonly input: Record<string, unknown>;
+  }
+
+  export interface ToolCallEventResult {
+    readonly block?: boolean;
+    readonly reason?: string;
+  }
+
+  export interface TurnEndEvent {
+    readonly type: "turn_end";
+    readonly toolResults: readonly unknown[];
+  }
+
+  export interface AgentEndEvent {
+    readonly type: "agent_end";
+    readonly messages: readonly unknown[];
+  }
+
+  export interface SessionShutdownEvent {
+    readonly type: "session_shutdown";
+    readonly reason?: string;
+  }
+
   export interface ExtensionUIContext {
     notify(message: string, type?: "info" | "warning" | "error"): void;
     setWidget(key: string, content: string[] | undefined, options?: { placement?: "aboveEditor" | "belowEditor" }): void;
@@ -78,9 +105,22 @@ declare module "@earendil-works/pi-coding-agent" {
         readonly handler: (args: string, ctx: ExtensionCommandContext) => Promise<void>;
       },
     ): void;
-    on(event: "session_start" | "session_shutdown", handler: (event: unknown, ctx: ExtensionContext) => void): void;
+    on(event: "session_start", handler: (event: unknown, ctx: ExtensionContext) => void | Promise<void>): void;
+    on(
+      event: "session_shutdown",
+      handler: (event: SessionShutdownEvent, ctx: ExtensionContext) => void | Promise<void>,
+    ): void;
+    on(
+      event: "tool_call",
+      handler: (
+        event: ToolCallEvent,
+        ctx: ExtensionContext,
+      ) => ToolCallEventResult | void | Promise<ToolCallEventResult | void>,
+    ): void;
+    on(event: "turn_end", handler: (event: TurnEndEvent, ctx: ExtensionContext) => void | Promise<void>): void;
+    on(event: "agent_end", handler: (event: AgentEndEvent, ctx: ExtensionContext) => void | Promise<void>): void;
     getActiveTools(): string[];
-    setActiveTools(names: string[]): void;
+    setActiveTools(names: string[]): Promise<void>;
     sendMessage<T = unknown>(
       message: {
         readonly customType: string;
