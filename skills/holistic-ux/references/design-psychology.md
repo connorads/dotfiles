@@ -1,5 +1,31 @@
 # Design Psychology
 
+## Contents
+
+- Evidence-First Cautions
+- Laws of UX
+  - Hick's Law
+  - Fitts's Law
+  - Miller's Law
+  - Peak-End Rule
+  - Jakob's Law
+  - Aesthetic-Usability Effect
+  - Response Time and the Doherty Threshold
+  - Von Restorff Effect (Isolation Effect)
+- Cognitive Load Theory
+  - Three Types of Cognitive Load
+  - Cautions
+  - Reducing Extraneous Load
+  - Attention and Scanning
+- Krug's Principles
+  - People Satisfice
+  - People Don't Figure Out How Things Work
+  - Get Rid of Half the Words, Then Get Rid of Half of What's Left
+- Emotional Design (Don Norman)
+  - Three Levels of Processing
+- Decision-Making in Practice
+- Source Anchors
+
 Psychological principles that inform good UX decisions. These aren't rules to blindly apply — they're lenses for understanding why designs work or fail.
 
 ---

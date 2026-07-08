@@ -1,5 +1,40 @@
 # Homebrew Formula Contribution Workflow
 
+## Contents
+
+- Prerequisites
+- Formula vs Cask — route before you start
+- Setup: make Homebrew use your working copy
+  - Option A — personal tap (recommended for dogfooding)
+  - Option B — genuine core gate (your fork, or the local core tap on a branch)
+- Canonical formula structure
+- Build-system appendix (install patterns)
+  - Rust / Cargo
+  - Go
+  - CMake
+  - Meson
+  - Autotools / GNU configure
+  - Make-only
+  - Python (virtualenv + resources)
+  - Node / npm
+  - Ruby gem (bundler)
+  - Useful helpers
+- Worked example: `choose` (verified end-to-end)
+  - Scaffold
+  - Final formula
+  - Validation transcript (all green)
+  - What the broken-variant audit taught us (verified cops)
+- Acceptable Formulae (detail)
+  - keg_only
+- Test design patterns
+- Validation command reference
+- Submitting
+  - New formula (manual)
+  - Version update
+  - After the PR
+- Troubleshooting
+- Key documentation
+
 A complete guide for authoring and contributing **formulae** (open-source, built-from-source software) to Homebrew Core, covering local testing, validation, and submission.
 
 ## Prerequisites

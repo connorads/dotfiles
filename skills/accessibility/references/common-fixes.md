@@ -1,5 +1,29 @@
 # Common Fixes Reference
 
+## Contents
+
+- 1. Icon-only button missing accessible name
+- 2. Input without associated label
+- 3. Form error not associated with field
+- 4. Form error summary at top of page
+- 5. div or span used as interactive control
+- 6. Ambiguous link text
+- 7. Link opens in new tab without warning
+- 8. Select/radio group missing group label
+- 9. Required fields not indicated programmatically
+- 10. Custom toggle/accordion without ARIA state
+- 11. Navigation missing accessible name when multiple navs exist
+- 12. Carousel/slider not keyboard navigable
+- 13. Toast notification not announced
+- 14. Table missing headers or scope
+- 15. Images of text (charts, infographics)
+- 16. focus outline removed globally
+- 17. Lazy-loaded images missing alt
+- 18. Custom select/dropdown not keyboard navigable
+- 19. Sticky header obscuring focused elements (WCAG 2.4.11)
+- 20. Skip link not working for screen reader users
+- The Visually Hidden Utility Class
+
 Ready-to-use code fixes for the 20 most frequent accessibility audit findings. Each fix is minimal — it targets the specific issue without rewriting surrounding code.
 
 ---
@@ -59,8 +83,8 @@ Note: `focusable="false"` on SVG prevents IE/Edge from adding SVG to tab order.
 <!-- ✅ After -->
 <div class="field">
   <label for="email">Email</label>
-  <input 
-    id="email" 
+  <input
+    id="email"
     type="email"
     class="error"
     aria-invalid="true"
@@ -78,8 +102,8 @@ For inline errors, `aria-invalid` + `aria-describedby` is sufficient — the err
 
 ```html
 <!-- ✅ Error summary that receives focus after failed submit -->
-<div 
-  id="error-summary" 
+<div
+  id="error-summary"
   role="alert"
   tabindex="-1"
   class="error-summary"
@@ -111,7 +135,7 @@ The `role="alert"` announces immediately. Moving focus there ensures keyboard us
 <button class="btn" onclick="handleSave()">Save</button>
 
 <!-- ✅ After - if you truly cannot change the element (third-party library) -->
-<div 
+<div
   class="btn"
   role="button"
   tabindex="0"
@@ -213,7 +237,7 @@ For a group of related checkboxes, same pattern applies.
 <div class="accordion-content" hidden>...</div>
 
 <!-- ✅ After -->
-<button 
+<button
   class="accordion-trigger"
   aria-expanded="false"
   aria-controls="faq-1-content"
@@ -228,7 +252,7 @@ For a group of related checkboxes, same pattern applies.
 function toggle(trigger) {
   const expanded = trigger.getAttribute('aria-expanded') === 'true';
   trigger.setAttribute('aria-expanded', !expanded);
-  
+
   const contentId = trigger.getAttribute('aria-controls');
   document.getElementById(contentId).hidden = expanded;
 }
@@ -257,7 +281,7 @@ If there's only one `<nav>`, no label is needed (the landmark role is sufficient
 ```html
 <!-- ✅ Accessible carousel skeleton -->
 <section aria-label="Featured products" aria-roledescription="carousel">
-  <div 
+  <div
     role="group"
     aria-roledescription="slide"
     aria-label="Slide 1 of 3"
@@ -279,9 +303,9 @@ function changeSlide(newIndex) {
   slides.forEach((slide, i) => {
     slide.setAttribute('aria-hidden', i !== newIndex);
   });
-  
+
   // Announce change
-  document.getElementById('carousel-live').textContent = 
+  document.getElementById('carousel-live').textContent =
     `Showing slide ${newIndex + 1} of ${slides.length}`;
 }
 ```
@@ -349,6 +373,7 @@ function showToast(message) {
 ```
 
 For complex tables with both row and column headers:
+
 ```html
 <th scope="row">Row header</th>
 <th scope="col">Column header</th>
@@ -363,7 +388,7 @@ For complex tables with both row and column headers:
 <img src="infographic.png" alt="Infographic" />
 
 <!-- ✅ After - Option A: Detailed alt -->
-<img src="infographic.png" 
+<img src="infographic.png"
      alt="2024 user growth: 45,000 users in Q1, 62,000 in Q2, 78,000 in Q3, 95,000 in Q4." />
 
 <!-- ✅ After - Option B: Linked long description -->
@@ -404,15 +429,15 @@ For complex tables with both row and column headers:
 
 ```html
 <!-- ❌ Before - alt="" on functional images means "decorative" to screen readers -->
-<img 
-  src="placeholder.jpg" 
-  data-src="product.jpg" 
+<img
+  src="placeholder.jpg"
+  data-src="product.jpg"
   alt=""
   class="lazy"
 />
 
 <!-- ✅ After - include meaningful alt from the start -->
-<img 
+<img
   src="placeholder.jpg"
   data-src="product.jpg"
   alt="Blue leather wallet, front view"
@@ -428,7 +453,7 @@ For custom selects, prefer a native `<select>` styled with CSS over a custom imp
 
 ```html
 <div class="custom-select">
-  <button 
+  <button
     id="select-btn"
     aria-haspopup="listbox"
     aria-expanded="false"
@@ -437,9 +462,9 @@ For custom selects, prefer a native `<select>` styled with CSS over a custom imp
     <span id="select-label">Choose country</span>
     <span id="selected-value">Select...</span>
   </button>
-  
-  <ul 
-    role="listbox" 
+
+  <ul
+    role="listbox"
     aria-labelledby="select-label"
     hidden
   >
@@ -471,6 +496,7 @@ html {
 ```
 
 For focus visibility specifically:
+
 ```css
 :focus-visible {
   scroll-margin-top: 80px; /* Ensure focused element scrolls into view below sticky header */
@@ -531,6 +557,7 @@ Required for many of the above patterns:
 ```
 
 Use for:
+
 - Extra link context ("Read more <span class="visually-hidden">about our returns policy</span>")
 - Icon button supplement (`aria-label` is preferred, but this works for translation needs)
 - Form labels hidden by design but required for AT

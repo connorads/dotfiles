@@ -1,8 +1,28 @@
 # Windows 11 on UTM (Apple Silicon) — setup for automation
 
+## Contents
+
+- 1. Get the ISO
+- 2. Create the VM (and the install-media trap)
+  - The >4 GB ISO boot hang — read this first
+  - The fix: repack the installer onto a FAT32 USB disk image (split WIM)
+  - Hardware config
+  - Boot order — avoid the reinstall loop
+- 3. Install Windows — driving the GUI from the host
+- 4. Enable SSH in the guest (admin PowerShell, once)
+- 5. Reach the guest from the host
+  - Shared networking (default NIC) — primary, faster
+  - Emulated + port forward — deterministic fallback
+  - Driving PowerShell over SSH — host-side gotchas
+- 6. End-to-end automation loop
+- Diagnostics & config editing
+  - Inspect how QEMU actually launched (the DebugLog)
+  - Editing config.plist (for what AppleScript can't set)
+  - Clear a stale boot entry (NVRAM reset)
+
 Goal: a Windows VM you can drive from the host (run PowerShell, copy files)
 without touching the GUI. On Apple Silicon you run **Windows 11 ARM64** on the
-QEMU backend. Official guide: https://docs.getutm.app/guides/windows/
+QEMU backend. Official guide: <https://docs.getutm.app/guides/windows/>
 
 **Two facts shape everything:**
 
@@ -43,7 +63,7 @@ doesn't care about a clean ISO install.
 Attach a stock 24H2 ISO the normal way (a removable drive → UTM presents it as a
 USB CD, `usb-storage … media=cdrom`) and the VM hangs at:
 
-```
+```text
 BdsDxe: loading Boot0001 "UEFI QEMU QEMU USB HARDDRIVE 1-0000:00:03.0-4.1"
 BdsDxe: starting Boot0001 ...
 Start boot option              [full progress bar, never advances]
@@ -135,7 +155,7 @@ make new virtual machine with properties {backend:qemu, configuration:{name:"win
   Setup can't see without drivers; NVMe is visible out of the box. (`cp` the
   default drive's interface to NVMe via config edit if needed.)
 - Then attach the FAT32 install image (above) and the guest-tools ISO
-  (https://getutm.app/downloads/utm-guest-tools-latest.iso) as a removable CD.
+  (<https://getutm.app/downloads/utm-guest-tools-latest.iso>) as a removable CD.
 - ≥4 cores, ≥6144 MiB RAM, ≥64 GiB disk (qcow2 is sparse — sizes to what Windows
   writes, ~27 GB for a fresh install).
 
@@ -301,7 +321,7 @@ $UTMCTL stop "win11" --request                         # graceful; --force to po
 
 For richer GUI control enable RDP and forward/route 3389 the same way. For fully
 unattended *installs* (no GUI step), bake an `autounattend.xml` and use
-packer-plugin-utm (https://github.com/naveenrajm7/packer-plugin-utm) — suggest it
+packer-plugin-utm (<https://github.com/naveenrajm7/packer-plugin-utm>) — suggest it
 when the user wants reproducible image builds rather than a one-off VM.
 
 ## Diagnostics & config editing
