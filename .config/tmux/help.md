@@ -55,7 +55,7 @@
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |
@@ -69,7 +69,7 @@
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff |
-| `Ctrl+b Alt+g` | review commits (fzf + critique) |
+| `Ctrl+b Alt+g` | GitHub triage (ghfzf: PRs, issues, Actions runs) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b f` | Fresh editor |

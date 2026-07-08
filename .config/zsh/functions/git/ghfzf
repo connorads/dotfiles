@@ -1,0 +1,437 @@
+#!/usr/bin/env zsh
+# ghfzf: fuzzy GitHub triage for PRs, issues, and Actions runs
+emulate -L zsh
+
+local version="0.1.0"
+local usage="Usage: ghfzf [pr|issue|run] [-R owner/repo] [-L n|--limit n] [--tmux-popup] [-h|--help]
+
+Domains:
+  pr       Pull requests
+  issue    Issues
+  run      GitHub Actions runs
+
+Keys:
+  enter    View selected item with gh
+  ctrl-o   Open selected item in the browser
+  ctrl-y   Copy selected item URL
+  ctrl-a   Open action menu"
+
+local domain="" repo="" limit="${GHFZF_LIMIT:-75}" tmux_popup=0
+
+_ghfzf_error() {
+  print -ru2 -- "ghfzf: $*"
+}
+
+_ghfzf_usage_error() {
+  _ghfzf_error "$*"
+  print -ru2 -- "$usage"
+  return 2
+}
+
+_ghfzf_require() {
+  local cmd
+  for cmd in "$@"; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      _ghfzf_error "$cmd not found"
+      return 127
+    fi
+  done
+}
+
+_ghfzf_quote_cmd() {
+  local out="" arg quoted
+  for arg in "$@"; do
+    quoted=$(printf '%q' "$arg")
+    if [[ -z $out ]]; then
+      out="$quoted"
+    else
+      out="$out $quoted"
+    fi
+  done
+  print -r -- "$out"
+}
+
+_ghfzf_pause() {
+  (( tmux_popup )) || return 0
+  print
+  print -n -- "Press any key..."
+  read -r -k 1 -s
+  print
+}
+
+_ghfzf_run() {
+  "$@"
+  local rc=$?
+  _ghfzf_pause
+  return $rc
+}
+
+_ghfzf_confirm_and_run() {
+  local -a cmd=("$@")
+  print -r -- "Command: $(_ghfzf_quote_cmd "${cmd[@]}")"
+  print -n -- "Run? [y/N] "
+
+  local answer
+  if ! read -r answer; then
+    print
+    print -r -- "Cancelled"
+    return 130
+  fi
+
+  if [[ $answer != [yY] ]]; then
+    print -r -- "Cancelled"
+    return 130
+  fi
+
+  _ghfzf_run "${cmd[@]}"
+}
+
+_ghfzf_copy_url() {
+  local url=$1
+
+  if command -v pbcopy >/dev/null 2>&1; then
+    print -rn -- "$url" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    print -rn -- "$url" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    print -rn -- "$url" | xclip -selection clipboard
+  else
+    _ghfzf_error "no clipboard command found (pbcopy, wl-copy, xclip)"
+    return 127
+  fi
+
+  print -r -- "copied: $url"
+}
+
+_ghfzf_select_domain() {
+  _ghfzf_require fzf || return $?
+
+  local selected
+  selected=$(printf 'pr\tpull requests\nissue\tissues\nrun\tactions runs\n' |
+    fzf --prompt="ghfzf: " --delimiter=$'\t' --with-nth=2) || return 130
+
+  [[ -n $selected ]] || return 130
+  domain=${selected%%$'\t'*}
+}
+
+_ghfzf_fetch_rows() {
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  case "$domain" in
+    pr)
+      local jq='map([(.number|tostring), .state, .url, ("#" + (.number|tostring)), (.title // "" | gsub("[\t\r\n]"; " ")), (.author.login // "-"), .updatedAt, ([(.labels // [])[].name] | join(","))] | @tsv)[]'
+      gh pr list --state all -L "$limit" "${repo_args[@]}" \
+        --json number,state,url,title,author,updatedAt,labels \
+        --jq "$jq"
+      ;;
+    issue)
+      local jq='map([(.number|tostring), .state, .url, ("#" + (.number|tostring)), (.title // "" | gsub("[\t\r\n]"; " ")), (.author.login // "-"), .updatedAt, ([(.labels // [])[].name] | join(","))] | @tsv)[]'
+      gh issue list --state all -L "$limit" "${repo_args[@]}" \
+        --json number,state,url,title,author,updatedAt,labels \
+        --jq "$jq"
+      ;;
+    run)
+      local jq='map([(.databaseId|tostring), .status, (.conclusion // ""), .url, (.databaseId|tostring), (.workflowName // .name // "-"), (.displayTitle // ""), (.headBranch // "-"), (.event // "-"), .updatedAt] | @tsv)[]'
+      gh run list -L "$limit" "${repo_args[@]}" \
+        --json databaseId,status,conclusion,url,workflowName,name,displayTitle,headBranch,event,updatedAt \
+        --jq "$jq"
+      ;;
+  esac
+}
+
+_ghfzf_pick_row() {
+  local rows=$1
+  local with_nth="4.."
+  [[ $domain == run ]] && with_nth="5.."
+
+  local picked
+  picked=$(print -r -- "$rows" |
+    fzf --ansi --reverse --no-sort \
+      --prompt="ghfzf $domain: " \
+      --header="enter view | ctrl-o web | ctrl-y copy URL | ctrl-a actions | esc quit" \
+      --expect=enter,ctrl-o,ctrl-y,ctrl-a \
+      --delimiter=$'\t' \
+      --with-nth="$with_nth") || return 130
+
+  [[ -n $picked ]] || return 130
+  print -r -- "$picked"
+}
+
+_ghfzf_pick_action() {
+  local rows=$1
+  local selected
+
+  selected=$(print -r -- "$rows" |
+    fzf --prompt="ghfzf action: " --delimiter=$'\t' --with-nth=2) || return 130
+
+  [[ -n $selected ]] || return 130
+  print -r -- "${selected%%$'\t'*}"
+}
+
+_ghfzf_pick_add_label() {
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  local labels
+  labels=$(gh label list -L 200 --sort name "${repo_args[@]}" --json name --jq '.[].name') || return $?
+
+  if [[ -z $labels ]]; then
+    print -ru2 -- "ghfzf: no labels found"
+    return 1
+  fi
+
+  local label
+  label=$(print -r -- "$labels" | fzf --prompt="ghfzf label: ") || return 130
+  [[ -n $label ]] || return 130
+  print -r -- "$label"
+}
+
+_ghfzf_pick_remove_label() {
+  local labels=$1
+
+  if [[ -z $labels ]]; then
+    print -ru2 -- "ghfzf: selected item has no labels"
+    return 1
+  fi
+
+  local label
+  label=$(print -r -- "$labels" | tr ',' '\n' | fzf --prompt="ghfzf label: ") || return 130
+  [[ -n $label ]] || return 130
+  print -r -- "$label"
+}
+
+_ghfzf_pr_actions() {
+  local number=$1 state=$2 labels=$3
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  local state_action state_label
+  if [[ $state == OPEN ]]; then
+    state_action="close"
+    state_label="Close pull request"
+  else
+    state_action="reopen"
+    state_label="Reopen pull request"
+  fi
+
+  local action
+  action=$(_ghfzf_pick_action "$(printf 'merge\tMerge pull request\nedit\tEdit pull request\n%s\t%s\nadd-label\tAdd label\nremove-label\tRemove label\n' "$state_action" "$state_label")") || return $?
+
+  local label
+  case "$action" in
+    merge) _ghfzf_confirm_and_run gh pr merge "$number" "${repo_args[@]}" ;;
+    edit) _ghfzf_confirm_and_run gh pr edit "$number" "${repo_args[@]}" ;;
+    close) _ghfzf_confirm_and_run gh pr close "$number" "${repo_args[@]}" ;;
+    reopen) _ghfzf_confirm_and_run gh pr reopen "$number" "${repo_args[@]}" ;;
+    add-label)
+      label=$(_ghfzf_pick_add_label)
+      local rc=$?
+      (( rc == 1 )) && return 0
+      (( rc != 0 )) && return $rc
+      _ghfzf_confirm_and_run gh pr edit "$number" --add-label "$label" "${repo_args[@]}"
+      ;;
+    remove-label)
+      label=$(_ghfzf_pick_remove_label "$labels")
+      local rc=$?
+      (( rc == 1 )) && return 0
+      (( rc != 0 )) && return $rc
+      _ghfzf_confirm_and_run gh pr edit "$number" --remove-label "$label" "${repo_args[@]}"
+      ;;
+  esac
+}
+
+_ghfzf_issue_actions() {
+  local number=$1 state=$2 labels=$3
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  local state_action state_label
+  if [[ $state == OPEN ]]; then
+    state_action="close"
+    state_label="Close issue"
+  else
+    state_action="reopen"
+    state_label="Reopen issue"
+  fi
+
+  local action
+  action=$(_ghfzf_pick_action "$(printf 'edit\tEdit issue\n%s\t%s\nadd-label\tAdd label\nremove-label\tRemove label\n' "$state_action" "$state_label")") || return $?
+
+  local label
+  case "$action" in
+    edit) _ghfzf_confirm_and_run gh issue edit "$number" "${repo_args[@]}" ;;
+    close) _ghfzf_confirm_and_run gh issue close "$number" "${repo_args[@]}" ;;
+    reopen) _ghfzf_confirm_and_run gh issue reopen "$number" "${repo_args[@]}" ;;
+    add-label)
+      label=$(_ghfzf_pick_add_label)
+      local rc=$?
+      (( rc == 1 )) && return 0
+      (( rc != 0 )) && return $rc
+      _ghfzf_confirm_and_run gh issue edit "$number" --add-label "$label" "${repo_args[@]}"
+      ;;
+    remove-label)
+      label=$(_ghfzf_pick_remove_label "$labels")
+      local rc=$?
+      (( rc == 1 )) && return 0
+      (( rc != 0 )) && return $rc
+      _ghfzf_confirm_and_run gh issue edit "$number" --remove-label "$label" "${repo_args[@]}"
+      ;;
+  esac
+}
+
+_ghfzf_run_actions() {
+  local run_id=$1
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  local action
+  action=$(_ghfzf_pick_action $'watch\tWatch run\nfailed-logs\tFailed logs\nrerun\tRerun run\nrerun-failed\tRerun failed jobs\ncancel\tCancel run\ndelete\tDelete run\ndownload\tDownload artifacts') || return $?
+
+  case "$action" in
+    watch) _ghfzf_run gh run watch "$run_id" "${repo_args[@]}" ;;
+    failed-logs) _ghfzf_run gh run view "$run_id" --log-failed "${repo_args[@]}" ;;
+    rerun) _ghfzf_confirm_and_run gh run rerun "$run_id" "${repo_args[@]}" ;;
+    rerun-failed) _ghfzf_confirm_and_run gh run rerun "$run_id" --failed "${repo_args[@]}" ;;
+    cancel) _ghfzf_confirm_and_run gh run cancel "$run_id" "${repo_args[@]}" ;;
+    delete) _ghfzf_confirm_and_run gh run delete "$run_id" "${repo_args[@]}" ;;
+    download) _ghfzf_confirm_and_run gh run download "$run_id" "${repo_args[@]}" ;;
+  esac
+}
+
+_ghfzf_dispatch_selected() {
+  local picked=$1
+  local key row
+
+  if [[ $picked == *$'\n'* ]]; then
+    key=${picked%%$'\n'*}
+    row=${picked#*$'\n'}
+  else
+    key="enter"
+    row=$picked
+  fi
+
+  row=${row%%$'\n'*}
+  [[ -n $row ]] || return 130
+  [[ -z $key ]] && key="enter"
+
+  local -a fields
+  fields=("${(@ps:\t:)row}")
+
+  local -a repo_args=()
+  [[ -n $repo ]] && repo_args=(-R "$repo")
+
+  local id=${fields[1]} state=${fields[2]} url labels
+  case "$domain" in
+    pr|issue)
+      url=${fields[3]}
+      labels=${fields[8]}
+      ;;
+    run)
+      url=${fields[4]}
+      labels=""
+      ;;
+  esac
+
+  case "$key" in
+    enter)
+      case "$domain" in
+        pr) _ghfzf_run gh pr view "$id" "${repo_args[@]}" ;;
+        issue) _ghfzf_run gh issue view "$id" "${repo_args[@]}" ;;
+        run) _ghfzf_run gh run view "$id" "${repo_args[@]}" ;;
+      esac
+      ;;
+    ctrl-o)
+      case "$domain" in
+        pr) _ghfzf_run gh pr view "$id" --web "${repo_args[@]}" ;;
+        issue) _ghfzf_run gh issue view "$id" --web "${repo_args[@]}" ;;
+        run) _ghfzf_run gh run view "$id" --web "${repo_args[@]}" ;;
+      esac
+      ;;
+    ctrl-y)
+      _ghfzf_copy_url "$url"
+      ;;
+    ctrl-a)
+      case "$domain" in
+        pr) _ghfzf_pr_actions "$id" "$state" "$labels" ;;
+        issue) _ghfzf_issue_actions "$id" "$state" "$labels" ;;
+        run) _ghfzf_run_actions "$id" ;;
+      esac
+      ;;
+    *)
+      return 130
+      ;;
+  esac
+}
+
+while (( $# > 0 )); do
+  case "$1" in
+    -h|--help)
+      print -r -- "$usage"
+      return 0
+      ;;
+    --version)
+      print -r -- "ghfzf $version"
+      return 0
+      ;;
+    --tmux-popup)
+      tmux_popup=1
+      shift
+      ;;
+    -R|--repo)
+      (( $# >= 2 )) || { _ghfzf_usage_error "$1 requires a repository"; return $?; }
+      repo=$2
+      shift 2
+      ;;
+    -L|--limit)
+      (( $# >= 2 )) || { _ghfzf_usage_error "$1 requires a limit"; return $?; }
+      limit=$2
+      shift 2
+      ;;
+    --limit)
+      (( $# >= 2 )) || { _ghfzf_usage_error "$1 requires a limit"; return $?; }
+      limit=$2
+      shift 2
+      ;;
+    pr|issue|run)
+      [[ -z $domain ]] || { _ghfzf_usage_error "multiple subcommands provided"; return $?; }
+      domain=$1
+      shift
+      ;;
+    -*)
+      _ghfzf_usage_error "unknown option: $1"
+      return $?
+      ;;
+    *)
+      _ghfzf_usage_error "unknown subcommand: $1"
+      return $?
+      ;;
+  esac
+done
+
+if [[ ! $limit == <-> ]] || (( limit < 1 )); then
+  _ghfzf_usage_error "limit must be a positive integer"
+  return $?
+fi
+
+if [[ -z $domain ]]; then
+  _ghfzf_select_domain || return $?
+fi
+
+_ghfzf_require gh fzf || return $?
+
+local rows
+rows=$(_ghfzf_fetch_rows) || return $?
+
+if [[ -z $rows ]]; then
+  case "$domain" in
+    pr) print -r -- "ghfzf: no pull requests found" ;;
+    issue) print -r -- "ghfzf: no issues found" ;;
+    run) print -r -- "ghfzf: no actions runs found" ;;
+  esac
+  return 0
+fi
+
+local picked
+picked=$(_ghfzf_pick_row "$rows") || return $?
+_ghfzf_dispatch_selected "$picked"
