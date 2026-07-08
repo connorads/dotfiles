@@ -73,6 +73,41 @@ function:
 
 Edit, `drs`, `tmux kill-server`. There's no runtime knob.
 
+## Verified redraw-path facts
+
+How the patched render path composes with tmux 3.7 features (established by
+code reading plus the automated gauntlet below; useful when triaging a redraw
+bug or rebasing the patches):
+
+- **Floating panes draw as ordinary panes** through `screen_redraw_draw_pane` -
+  the patches do not special-case them, so a float-only bug points at upstream,
+  not the patches.
+- **Occlusion is visible-range clipping**: tiled panes under a float are drawn
+  with their covered cells clipped out, not overdrawn.
+- **The dim flag is set/cleared per pane and reapplied per tty command**, so a
+  pane's dim state cannot leak into another pane's cells.
+- **All vertical offsets go through `status_toplines`/`status_line_y`**, which
+  is why floats, popups, display-panes and message rows all land correctly
+  under split-status without the patch touching each of those paths.
+
+## Automated smoke coverage
+
+Two BATS files guard this render path (run via `mise run zsh-tests`):
+
+- [`tmux-patch-symbols.bats`](../../zsh/tests/tmux-patch-symbols.bats) - fast
+  guard that the installed binary carries `_colour_dim` and
+  `_status_split_top_bottom` (catches a rebuild silently dropping a patch).
+- [`tmux-render-smoke.bats`](../../zsh/tests/tmux-render-smoke.bats) - drives
+  the REAL config + patches through a live pty client: floats (create,
+  full-size, copy-mode, churn under heavy output), focus dim transitions,
+  copy-mode scrolling, display-panes, popups, splits/resizes, window resize,
+  message/prompt rows, `pane-scrollbars on`/`modal`, plus a pyte-composited
+  screen check (status rows, borders, float on top).
+
+The interactive checklist below remains the sign-off for what the harness
+cannot drive: mouse input (float move/resize, scrollbar thumb drags, mouse
+window switching).
+
 ## Split-status patch
 
 `split-status-top-bottom.patch` is intentionally local, not upstream-shaped.
@@ -87,7 +122,9 @@ When active:
 - pane content is offset by one top row and still reserves one bottom row
 - `message-line 0` means top, `message-line 1` means bottom
 
-Smoke-test after changing or rebasing it:
+Smoke-test after changing or rebasing it: run the automated gauntlet first
+(`bats ~/.config/zsh/tests/tmux-render-smoke.bats` covers the non-mouse checks
+below), then eyeball the mouse-only behaviours interactively:
 
 ```sh
 tmux -L split-test -f ~/.config/tmux/tmux.conf new-session
