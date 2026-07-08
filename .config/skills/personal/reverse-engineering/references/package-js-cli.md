@@ -7,7 +7,9 @@ Use this reference for static-first analysis of single-file JavaScript or TypeSc
 - [Triage Shape](#triage-shape)
 - [Packager Fingerprints](#packager-fingerprints)
 - [Static Workflow](#static-workflow)
+- [Wrapper Package Inspection](#wrapper-package-inspection)
 - [String And Surface Extraction](#string-and-surface-extraction)
+- [Payload Feature Extraction](#payload-feature-extraction)
 - [Evidence Rules](#evidence-rules)
 - [Common Gotchas](#common-gotchas)
 - [Useful Sources](#useful-sources)
@@ -139,6 +141,25 @@ rg -n 'denort|DENORT_BIN|DENO_DIR|Deno\.|deno compile|self-extracting' /tmp/re-<
 
 6. Keep the result static unless the user explicitly permits execution. Do not run unknown CLIs just to get `--version`.
 
+## Wrapper Package Inspection
+
+Many packaged CLIs are distributed inside an npm-style wrapper even when the runtime payload is a native executable. Inspect nearby package files before deep decompilation:
+
+```bash
+realpath <binary>
+find -L "$(dirname "$(realpath <binary>")")/.." -maxdepth 3 -type f \
+  \( -name package.json -o -name README.md -o -name 'install.cjs' -o -name 'cli-wrapper.cjs' \) -print
+```
+
+Useful leads:
+
+- `package.json`: package name, version, optional native platform packages, `bin`, `postinstall`, and distribution shape.
+- `install.cjs`: whether the install hard-links, copies, wraps, downloads, or patches the native binary.
+- `cli-wrapper.cjs`: fallback execution path, supported platforms, env passthrough, and error handling.
+- `README.md` / `LICENSE.md`: intended public installation path and provenance.
+
+Treat wrapper files as distribution evidence. They can explain how the binary was placed on disk, but they do not prove runtime behaviour inside the compiled payload.
+
 ## String And Surface Extraction
 
 Run extractors against saved `strings.txt`, not directly against terminal output. Avoid printing credential-like values verbatim.
@@ -160,6 +181,8 @@ PY
 ```
 
 Report secret-looking names as names only, not values. Raw env-var names are `Present` unless code flow proves they are read.
+
+Large runtime bundles produce many crypto, protocol, and test-fixture false positives. For app behaviour, do a second pass focused on product-specific prefixes, vendor names, and strings near feature keys; report broad runtime constants separately or omit them from the behavioural summary.
 
 ### URLs and domains
 
@@ -200,6 +223,76 @@ for marker in '__BUN' '---- Bun! ----' '/$bunfs/' \
     && echo present || echo absent
 done
 ```
+
+## Payload Feature Extraction
+
+Once the packager is classified, switch from broad string search to feature-focused payload extraction. Packaged JS often stores minified application code on very long lines; `rg` output can be too noisy or truncated. Use byte offsets and bounded context around important needles.
+
+```bash
+LC_ALL=C grep -aobF -- '<feature-key-or-flag>' <binary> | head -20
+```
+
+For repeated context extraction:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+
+binary = Path('<binary>')
+needles = [b'<feature-key>', b'<cli-flag>', b'<api-method>']
+data = binary.read_bytes()
+
+for needle in needles:
+    print(f'\n== {needle.decode("utf-8", "replace")} ==')
+    start = 0
+    seen = 0
+    while True:
+        idx = data.find(needle, start)
+        if idx < 0 or seen >= 8:
+            break
+        lo = max(0, idx - 400)
+        hi = min(len(data), idx + 700)
+        snippet = data[lo:hi].decode('utf-8', 'replace')
+        snippet = ''.join(
+            ch if ch in '\n\t' or 32 <= ord(ch) < 127 else ' '
+            for ch in snippet
+        )
+        print(f'-- offset {idx} --')
+        print(snippet.replace('\n', '\\n')[:1200])
+        start = idx + len(needle)
+        seen += 1
+PY
+```
+
+High-signal feature surfaces:
+
+- Config default maps: setting names, defaults, visibility, descriptions, and scope.
+- CLI option descriptor arrays: hidden flags, incompatibilities, mode dispatch, and user-facing errors.
+- API schema objects: request/response shapes and enum values.
+- State-machine classes: status states, lifecycle methods, error branches, and delegate callbacks.
+- Persistence code: data directory construction, file modes, JSON shapes, cache paths, PID locks, and migration cleanup.
+- Transport setup: registration payloads, credential fetchers, session IDs, reconnect hooks, and shutdown paths.
+
+When tracing filesystem locations, search both config and state roots:
+
+```bash
+rg -n 'XDG_DATA_HOME|XDG_CACHE_HOME|XDG_CONFIG_HOME|\.config|\.local/share|\.cache|settings\.json|pids|logs' /tmp/re-<target>/strings.txt
+```
+
+Confirm which path stores identity/state and which path stores logs/cache before reporting. Similar-looking variables can point to different roots in different modules.
+
+### Desired-State Runner Pattern
+
+Some CLIs expose local executors to a web service by maintaining an outbound session rather than opening an inbound local server. Useful static signs:
+
+- Registration payload includes a stable local ID, session ID, hostname, working directory, repository URL, PID, and running item IDs.
+- Local state persists served item IDs across restarts.
+- The service sends desired-state intents such as running/stopped rather than direct shell commands.
+- The local process reconciles intents idempotently by attaching and detaching executors.
+- A per-directory or per-workspace PID claim prevents duplicate runners.
+- Shutdown unregisters the session, disposes clients/listeners, and releases the local claim.
+
+Describe this as a reconciliation loop unless code flow proves one-shot command execution.
 
 ## Evidence Rules
 
