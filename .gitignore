@@ -249,3 +249,14 @@ __pycache__/
 !/.local/share/
 !/.local/share/shadow-bin/
 !/.local/share/shadow-bin/**
+
+# tmux agent branch menus
+!/.config/
+!/.config/tmux/
+!/.config/tmux/scripts/
+!/.config/tmux/scripts/agent-branch-menu.sh
+!/.config/tmux/scripts/codex-branch-menu.sh
+!/.config/zsh/
+!/.config/zsh/tests/
+!/.config/zsh/tests/agent-branch-menu.bats
+!/.config/zsh/tests/codex-branch-menu.bats

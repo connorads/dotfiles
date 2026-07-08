@@ -93,20 +93,7 @@ find_codex_session() {
 		return
 	fi
 
-	local session_file=""
-	session_file=$(lsof -p "$codex_pid" 2>/dev/null |
-		grep '\.jsonl$' |
-		grep '/\.codex/sessions/' |
-		awk '{print $NF}' |
-		head -1 || true)
-
-	if [ -n "$session_file" ] && [ -f "$session_file" ]; then
-		session_id=$(jq -r --arg dir "$dir" '
-			select(.type == "session_meta")
-			| select((.payload.cwd // $dir) == $dir)
-			| .payload.id // empty
-		' "$session_file" 2>/dev/null | head -1 || true)
-	fi
+	session_id=$(codex_session_id_for_pid "$codex_pid" "$dir")
 
 	echo "$session_id"
 }
