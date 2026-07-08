@@ -88,6 +88,16 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/permission-parity.py"
     }
 
+    // Authored agent skills must pass writing-skills' checker: spec errors
+    // (invalid frontmatter, unknown keys, name/dir mismatch) block the commit;
+    // hygiene findings (orphans, doc-rot phrasing, missing TOCs) print only.
+    // Authored tiers only - vendored skills mirror upstream and aren't ours
+    // to gate.
+    ["skill-check"] {
+        glob = List("skills/**", ".config/skills/personal/**")
+        check = "bash .hk-hooks/skill-check.sh {{files}}"
+    }
+
     // Secret scan: block staged secrets before they enter this public repo.
     // gitleaks reads the staged diff itself (`git --staged`), so no per-file
     // glob — the step runs once per commit. --redact keeps any match out of
