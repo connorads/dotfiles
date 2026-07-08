@@ -228,10 +228,10 @@ EOF
   [[ "$plain" == *" │ S:40%·"*d* ]]
 }
 
-@test "medium-wide status groups weekly usage with weekly reset" {
+@test "wide boundary status shows full weekly usage with weekly reset" {
   seed_usage_caches
 
-  run_status_right 110
+  run_status_right 140
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
@@ -240,10 +240,10 @@ EOF
   [[ "$plain" == *" │ S:40%·"*d* ]]
 }
 
-@test "narrow full status keeps the previous 5-hour-only shape" {
+@test "medium-wide status keeps 5-hour agent usage but hides weekly details" {
   seed_usage_caches
 
-  run_status_right 90
+  run_status_right 115
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
@@ -252,6 +252,20 @@ EOF
   [[ "$plain" == *"S:40%·"* ]]
   [[ "$plain" != *" 38%"* ]]
   [[ "$plain" != *" 86%"* ]]
+}
+
+@test "narrow full status hides agent usage entirely" {
+  seed_usage_caches
+
+  run_status_right 114
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" != *"C:"* ]]
+  [[ "$plain" != *"X:"* ]]
+  [[ "$plain" != *"S:"* ]]
+  [[ "$plain" == *"1%"* ]]
+  [[ "$plain" == *"2%"* ]]
 }
 
 @test "status renders cosine when it is the only usage cache" {

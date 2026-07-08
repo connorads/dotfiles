@@ -220,6 +220,14 @@ host_label() {
 }
 
 ai_usage() {
+	# The AI pill is the widest optional segment. Keep it off narrower full-status
+	# layouts so system health, repo, host, mode, and clock remain visible.
+	[ "$width_raw" -ge 115 ] || return 0
+
+	local show_weekly=0 show_weekly_resets=0
+	[ "$width_raw" -ge 140 ] && show_weekly=1
+	[ "$width_raw" -ge 140 ] && show_weekly_resets=1
+
 	local claude_cache="$HOME/.cache/claude-usage.json"
 	local claude_meta="$HOME/.cache/claude-usage.meta.json"
 	local claude_lock="$HOME/.cache/claude-usage.lock"
@@ -484,10 +492,6 @@ ai_usage() {
 	# (reset times, % signs). overlay2 lifts it to 5.46:1 while staying clearly
 	# subordinate to the bright usage numbers.
 	local dim="#9399b2"
-	local show_weekly=0 show_weekly_resets=0
-	[ "$width_raw" -ge 100 ] && show_weekly=1
-	[ "$width_raw" -ge 100 ] && show_weekly_resets=1
-
 	_provider_colour() {
 		local stale="$1"
 		local pct="$2"
