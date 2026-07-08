@@ -38,6 +38,10 @@ goals = true
 # Lifecycle hooks -> ~/.codex/hooks.json (tmux agent-state dots). Trust once via /hooks.
 hooks = true
 
+[[skills.config]]
+name = "skill-creator"
+enabled = false
+
 [plugins."github@openai-curated"]
 enabled = true
 
