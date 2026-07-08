@@ -1,0 +1,4 @@
+interface:
+  display_name: "Single HTML Page"
+  short_description: "Bundle pages into one shareable HTML file"
+  default_prompt: "Use $single-html-page to make this HTML page self-contained and shareable."
