@@ -46,6 +46,12 @@ themselves plus runtime values (`#{pane_id}`, `#{session_name}`, ...) - nothing 
 sets. The earlier `agent-popup.bats` / `agent-glyphs.bats` already did this; the rest were
 brought into line.
 
+**Deliberate exception:** `tmux-render-smoke.bats` loads the REAL config on its private
+socket - its purpose is to drive the actual `tmux.conf` + local nix render patches through
+the tty redraw path. It pays the config parse once via a shared `setup_file` server and
+silences the config's journal side-effects with `AGENT_JOURNAL_DISABLE=1`; see its header
+comment before copying the pattern.
+
 ### The discipline
 
 - **A test sets/sources every tmux option its script-under-test depends on, explicitly.**
