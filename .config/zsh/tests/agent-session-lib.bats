@@ -5,7 +5,7 @@ bats_require_minimum_version 1.5.0
 # shellcheck disable=SC1091
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
-REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/claude-session.sh"
+REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
 
 setup() {
   setup_test_home
@@ -60,7 +60,7 @@ EOF
   grep -qF '</tmp/work space>' "$TEST_LOG"
 }
 
-@test "claude_foreground_pid_for_tty finds the foreground claude on the tty" {
+@test "agent_foreground_pid_for_tty finds the foreground claude on the tty" {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
@@ -72,12 +72,12 @@ case "$*" in
 esac
 EOF
 
-  run claude_foreground_pid_for_tty "/dev/ttys010" "claude"
+  run agent_foreground_pid_for_tty "/dev/ttys010" "claude"
   [ "$status" -eq 0 ]
   [ "$output" = "711" ]
 }
 
-@test "claude_foreground_pid_for_tty ignores a backgrounded claude on the tty" {
+@test "agent_foreground_pid_for_tty ignores a backgrounded claude on the tty" {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
@@ -88,12 +88,12 @@ case "$*" in
 esac
 EOF
 
-  run claude_foreground_pid_for_tty "/dev/ttys010" "claude"
+  run agent_foreground_pid_for_tty "/dev/ttys010" "claude"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
-@test "claude_foreground_pid_for_tty falls back to a child of pane_pid" {
+@test "agent_foreground_pid_for_tty falls back to a child of pane_pid" {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
@@ -107,7 +107,7 @@ case "$*" in
 esac
 EOF
 
-  run claude_foreground_pid_for_tty "/dev/ttys010" "claude" "500"
+  run agent_foreground_pid_for_tty "/dev/ttys010" "claude" "500"
   [ "$status" -eq 0 ]
   [ "$output" = "711" ]
 }

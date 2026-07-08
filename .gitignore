@@ -256,7 +256,10 @@ __pycache__/
 !/.config/tmux/scripts/
 !/.config/tmux/scripts/agent-branch-menu.sh
 !/.config/tmux/scripts/codex-branch-menu.sh
+!/.config/tmux/scripts/lib/
+!/.config/tmux/scripts/lib/agent-session.sh
 !/.config/zsh/
 !/.config/zsh/tests/
 !/.config/zsh/tests/agent-branch-menu.bats
 !/.config/zsh/tests/codex-branch-menu.bats
+!/.config/zsh/tests/agent-session-lib.bats

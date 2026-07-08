@@ -10,8 +10,8 @@ RESURRECT_DIR="$(dirname "$SAVE_FILE")"
 SESSION_FILE="$RESURRECT_DIR/session_ids.json"
 
 # Shared pane -> agent PID -> live session-file resolver.
-# shellcheck source=lib/claude-session.sh disable=SC1091
-. "$(dirname "${BASH_SOURCE[0]}")/lib/claude-session.sh"
+# shellcheck source=lib/agent-session.sh disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
 
 # Require jq
 if ! command -v jq &>/dev/null; then
@@ -41,7 +41,7 @@ find_claude_session() {
 	local session_id=""
 	local claude_pid=""
 
-	claude_pid=$(claude_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
+	claude_pid=$(agent_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
 
 	# Claude Code writes the active session ID keyed by its process PID.
 	if [ -n "$claude_pid" ]; then
@@ -87,7 +87,7 @@ find_codex_session() {
 	local session_id=""
 	local codex_pid=""
 
-	codex_pid=$(claude_foreground_pid_for_tty "$tty" "codex" "$pane_pid")
+	codex_pid=$(agent_foreground_pid_for_tty "$tty" "codex" "$pane_pid")
 	if [ -z "$codex_pid" ]; then
 		echo ""
 		return

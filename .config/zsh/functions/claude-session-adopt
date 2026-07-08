@@ -29,12 +29,12 @@ if [[ -n $pane && -n $pid ]]; then
   return 2
 fi
 
-local session_lib="${CLAUDE_SESSION_LIB:-$HOME/.config/tmux/scripts/lib/claude-session.sh}"
+local session_lib="${CLAUDE_SESSION_LIB:-$HOME/.config/tmux/scripts/lib/agent-session.sh}"
 if [[ ! -r $session_lib ]]; then
   print -u2 "claude-session-adopt: session lib not found: $session_lib"
   return 1
 fi
-# shellcheck source=../../tmux/scripts/lib/claude-session.sh disable=SC1090
+# shellcheck source=../../tmux/scripts/lib/agent-session.sh disable=SC1090
 source "$session_lib"
 
 local pane_tty="" pane_pid="" cwd=""
@@ -50,7 +50,7 @@ if [[ -n $pane ]]; then
     return 1
   fi
   IFS=$'\t' read -r pane_tty pane_pid cwd <<<"$pane_info"
-  pid=$(claude_foreground_pid_for_tty "$pane_tty" "claude" "$pane_pid")
+  pid=$(agent_foreground_pid_for_tty "$pane_tty" "claude" "$pane_pid")
   if [[ -z $pid ]]; then
     print -u2 "claude-session-adopt: no foreground Claude in $pane"
     return 1
