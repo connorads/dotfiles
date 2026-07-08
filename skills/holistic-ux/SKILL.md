@@ -1,459 +1,309 @@
 ---
 name: holistic-ux
 description: >
-  Design holistic user experiences using systems thinking, service design,
-  and psychological principles. Triggers on: UX design, user experience,
-  journey map, service blueprint, user flow, wireframe, accessibility,
-  WCAG, design critique, heuristic review, cognitive load, design thinking,
-  holistic design, JTBD, jobs to be done, user research synthesis.
+  Strategic UX and service-design skill for framing user problems before code or
+  visual polish. Use when a request involves user experience, journey maps,
+  service blueprints, user flows, low-fidelity wireframes, heuristic reviews,
+  cognitive load, jobs to be done, onboarding/drop-off/trust/confusion, or
+  synthesising user research into design decisions. Prefer this skill when the
+  user asks why an experience is not working, what flow should exist, or what
+  artefact would help stakeholders decide. Do not use it for code-level WCAG,
+  ARIA, screen-reader, or keyboard fixes; use the accessibility skill for those.
 ---
 
 # Holistic UX Design
 
-You are a design practitioner who thinks in systems. Your role is to help design experiences that work for users, not just interfaces that look good. Before jumping to wireframes, you consider what problem is actually being solved, who it's being solved for, and what happens beyond the screen.
+Use this skill to design experiences as systems. The goal is not to make an
+interface look nicer; it is to understand what progress the user is trying to
+make, what blocks that progress, and what artefact will help the next decision.
 
-## How to Think About Design Problems
+## Boundaries
 
-### What Level Is This Problem? (The Iceberg Model)
+Use this skill for:
 
-Most design requests describe **events** (surface-level symptoms). Good design addresses the deeper levels:
+- diagnosing confusing, slow, low-trust, high-drop-off, or hard-to-complete
+  experiences
+- mapping user flows, journey maps, service blueprints, and low-fidelity
+  wireframes
+- running product/flow-level heuristic reviews
+- translating research notes into themes, opportunities, and design principles
+- reasoning about cognitive load, JTBD, backstage processes, and failure paths
 
-```text
-EVENTS        "Users are abandoning checkout"
-     ↓
-PATTERNS      "This happens more on mobile, especially step 3"
-     ↓
-STRUCTURES    "Step 3 requires address entry; mobile keyboard covers fields"
-     ↓
-MENTAL MODELS "We assumed users would complete this in one session"
-```
+Route elsewhere when the request is really:
 
-**Before designing, ask:**
+- **Code-level accessibility:** WCAG, ARIA, keyboard, focus, screen-reader, or
+  semantic HTML fixes belong in the `accessibility` skill.
+- **Visual polish or frontend styling:** spacing, type, colour systems, shadows,
+  imagery, and refined component styling belong in `ui-design-playbook`.
+- **Performance or motion:** first paint and layout shift belong in
+  `first-load-web-perf`; animation timing and perceived jank belong in
+  `web-animation-design`.
 
-- Is this a surface fix or a systemic issue?
-- What patterns repeat across similar problems?
-- What structure enables this pattern?
-- What assumption created this structure?
+Accessibility still matters here, but at this level it is a design constraint
+and risk note. Do not run a WCAG checklist from this skill.
 
-Fixing events treats symptoms. Changing structures prevents recurrence.
+## Operating Protocol
 
-### What's Behind the Curtain?
+1. **Gather evidence first.** Inspect the product, screenshot, code, metrics,
+   transcript, research notes, or prompt details before proposing a flow. If
+   evidence is missing, state assumptions and ask only for what blocks the next
+   decision.
+2. **Name the real problem.** Distinguish the visible event from repeated
+   patterns, enabling structures, and underlying assumptions.
+3. **Choose the smallest useful artefact.** Produce the thing that supports the
+   decision: findings, flow, journey map, blueprint, synthesis, or wireframe.
+4. **Design beyond the screen.** Include backstage systems, handoffs, failure
+   modes, recovery paths, and stakeholder ownership when they affect the user's
+   experience.
+5. **Keep fidelity honest.** Do not over-design. If the decision is about
+   sequence or service delivery, a flow or blueprint beats a polished screen.
+6. **Verify the output.** Check that recommendations follow from evidence,
+   reduce extraneous cognitive load, cover critical states, and identify any
+   accessibility handoff.
 
-Every interface has a backstage. A booking screen implies:
+## Problem Framing
 
-- Staff availability systems
-- Calendar synchronisation
-- Payment processing
-- Confirmation emails
-- Reminder notifications
-- Cancellation handling
-
-**Before designing screens, map:**
-
-- What systems support this interaction?
-- What happens if they fail?
-- Who else touches this journey?
-- What's the recovery path?
-
-### Match Approach to Complexity (Cynefin)
-
-Not all design problems are the same type:
-
-| Domain | Characteristics | Approach |
-|--------|-----------------|----------|
-| **Clear** | Obvious cause-effect | Apply best practices |
-| **Complicated** | Multiple valid solutions | Analyse, then design |
-| **Complex** | Cause-effect unclear | Probe with experiments |
-| **Chaotic** | No discernible patterns | Stabilise first |
-
-**Clear problem:** Button colour for conversion → A/B test
-**Complicated problem:** Navigation restructure → User research, card sorts
-**Complex problem:** Why don't users trust us? → Qualitative research, hypotheses
-**Chaotic problem:** Production is down → Fix it, learn later
-
-Don't apply complicated solutions to clear problems. Don't apply best practices to complex problems.
-
----
-
-## Core Design Principles
-
-### Laws of UX You Should Internalise
-
-#### Hick's Law: More choices = slower decisions
-
-- Don't show 20 options; show 4-6 then "see more"
-- Progressive disclosure: reveal complexity gradually
-- Default selections reduce cognitive load
-
-#### Fitts's Law: Target size and distance matter
-
-- Primary actions: large, easy to reach
-- Mobile: 44×44px minimum touch targets
-- Destructive actions: smaller, further away
-
-#### Miller's Law: Working memory holds ~7 items
-
-- Chunk information into groups of 3-5
-- Use visual grouping (whitespace, borders)
-- Long forms: break into steps
-
-#### Peak-End Rule: People remember peaks and endings
-
-- Design the high point deliberately
-- End experiences on a positive note
-- Error states are remembered; make recovery graceful
-
-#### Jakob's Law: Users spend most time on other sites
-
-- Follow conventions unless you have a strong reason
-- Place navigation where people expect it
-- Use familiar patterns (hamburger menu, shopping cart icon)
-
-#### Aesthetic-Usability Effect: Pretty feels easier
-
-- Good visual design increases tolerance for friction
-- But don't sacrifice usability for aesthetics
-- Visual polish is the last 10%, not the first
-
-### Cognitive Load Management
-
-**Intrinsic load:** Complexity inherent to the task
-
-- Can't be reduced, only supported
-- Provide scaffolding (tooltips, examples)
-
-**Extraneous load:** Complexity from poor design
-
-- Must be eliminated
-- Remove unnecessary steps, confusing labels, visual noise
-
-**Germane load:** Effort spent learning/understanding
-
-- Should be supported
-- Consistent patterns, clear mental models
-
-**Practical application:**
-
-- Every element on screen should justify its presence
-- If something needs explanation, simplify it first
-- Animation should guide attention, not distract
-
-### Jobs to Be Done (JTBD)
-
-Users don't want your product; they want progress. Every job has three dimensions:
-
-| Dimension | Example (Password Manager) |
-|-----------|---------------------------|
-| **Functional** | Store and autofill passwords securely |
-| **Emotional** | Feel confident I won't be hacked |
-| **Social** | Look competent to IT department |
-
-**Job Story format:**
-> When [situation], I want to [motivation], so I can [expected outcome].
-> When I'm signing up for a new service, I want to generate a strong password automatically, so I can stay secure without effort.
-
-Design for the full job, not just the functional bit.
-
----
-
-## What Output Do You Need?
-
-Before producing anything, ask: **What decision will this support?**
-
-### Decision Tree
+Most UX requests arrive as symptoms. Look one or two layers deeper before
+solving:
 
 ```text
-"What do I need to understand or communicate?"
-                    │
-        ┌───────────┴───────────┐
-        ↓                       ↓
-  EVALUATE                    DESIGN
-  (existing experience)       (new experience)
-        │                       │
-        ↓                       ↓
-Heuristic Review          What scope?
-                                │
-                    ┌───────────┼───────────┐
-                    ↓           ↓           ↓
-              Single flow   Journey      System
-                    │           │           │
-                    ↓           ↓           ↓
-              User Flow   Journey Map   Service Blueprint
-                                │
-                                ↓
-                           Need screens?
-                                │
-                    ┌───────────┴───────────┐
-                    ↓                       ↓
-                  Yes                      No
-                    ↓                       ↓
-                Wireframe             Keep it conceptual
+Event         Users abandon checkout at shipping address
+Pattern       Mostly mobile, mostly returning customers
+Structure     Address entry is desktop-shaped; saved addresses are hidden
+Assumption    Checkout was modelled as a one-session, new-customer task
 ```
 
----
+Use this framing to avoid cosmetic fixes for structural problems.
+
+Classify complexity:
+
+| Domain | What it looks like | UX response |
+| --- | --- | --- |
+| Clear | Known pattern, obvious cause | Apply a convention or checklist |
+| Complicated | Several plausible designs | Analyse evidence, then choose |
+| Complex | Cause unclear, trust/behaviour involved | Probe with research or experiments |
+| Chaotic | Urgent breakage or live harm | Stabilise first, learn later |
+
+Treat UX laws as diagnostic prompts, not proof. Hick, Fitts, Miller,
+Peak-End, Jakob, and aesthetic-usability can suggest what to inspect; they do
+not replace evidence from the actual context.
+
+## Artefact Selector
+
+Ask: "What decision will this support?"
+
+| Need | Output |
+| --- | --- |
+| Prioritise issues in an existing flow | Heuristic review |
+| Explain how a user completes one task | User flow |
+| Understand behaviour and emotion over time | Journey map |
+| Align screen work with operations and systems | Service blueprint |
+| Turn research into design direction | Research synthesis |
+| Communicate rough layout and hierarchy | Low-fidelity wireframe |
+
+If multiple artefacts seem useful, start with the one closest to the decision.
+For example, do not blueprint a simple form fix; do not wireframe before the
+flow is understood.
 
 ## Output Formats
 
 ### Heuristic Review
 
-**Purpose:** Evaluate existing design against established principles.
-
-**Format:**
+Use for an existing product, screen, or flow. Read
+`references/heuristics.md` when doing a detailed review.
 
 ```markdown
-## Heuristic Review: [Screen/Feature Name]
+## Heuristic review: [screen or flow]
 
 ### Summary
-[1-2 sentences on overall quality and key issues]
+[1-2 sentences on the most important user-impacting issues.]
+
+### Scope and evidence
+- User/task:
+- Evidence reviewed:
+- Assumptions:
 
 ### Findings
 
-#### [Severity 4] Visibility of System Status
-**Issue:** [Description]
-**Location:** [Where in the interface]
+#### [Severity 4] [Finding title]
+**Heuristic:** [Nielsen/Norman principle]
+**Evidence:** [What was observed]
+**Impact:** [Who is affected and how often, if known]
 **Recommendation:** [Specific fix]
 
-#### [Severity 3] Match Between System and Real World
-**Issue:** [Description]
-**Location:** [Where in the interface]
-**Recommendation:** [Specific fix]
-
-[Continue for each finding...]
-
-### Severity Scale
-- 4: Catastrophic - blocks users entirely
-- 3: Major - significant friction
-- 2: Minor - noticeable but workaround exists
-- 1: Cosmetic - polish issue
+### Severity guide
+- 4: blocks completion or causes serious harm
+- 3: major friction; users may abandon or need support
+- 2: noticeable friction with a workaround
+- 1: polish issue with low task impact
 ```
 
-Use **Nielsen's 10 Heuristics** (see [references/heuristics.md](references/heuristics.md)).
+Severity should be based on task impact, frequency, persistence, and confidence.
+Do not present a heuristic review as a substitute for user research.
 
 ### User Flow
 
-**Purpose:** Map the steps a user takes to complete a specific task.
-
-**Format (ASCII):**
+Use for one user, one goal, and the decisions/error paths needed to complete it.
 
 ```text
-[Start]
-    │
-    ↓
-[Landing Page]─────→[Sign Up?]
-    │                   │
-    │ (logged in)       ↓
-    ↓               [Registration]
-[Dashboard]             │
-    │                   │
-    ↓                   │
-[Search]←───────────────┘
-    │
-    ↓
-[Results]
-    │
-    ├──→[Filter]──┐
-    │             │
-    ↓             │
-[Detail]←─────────┘
-    │
-    ↓
-[Add to Cart]
-    │
-    ↓
-[Checkout]
-    │
-    ↓
-[Confirmation]
+[Entry point]
+    |
+    v
+[Step]
+    |
+    v
+{Decision?}
+  | yes                  | no
+  v                      v
+[Next step]          [Recovery / exit]
 ```
 
-**Format (Mermaid):**
-
-```mermaid
-graph TD
-    A[Landing] --> B{Logged in?}
-    B -->|Yes| C[Dashboard]
-    B -->|No| D[Sign Up]
-    D --> C
-    C --> E[Search]
-    E --> F[Results]
-    F --> G[Detail]
-    G --> H[Add to Cart]
-    H --> I[Checkout]
-    I --> J[Confirmation]
-```
-
-Include: entry points, decision points, error states, exit points.
+Include entry points, decision points, errors, recovery paths, and exit points.
 
 ### Journey Map
 
-**Purpose:** Capture user's experience across touchpoints, including emotions.
-
-**Format:**
+Use when the emotional and cross-touchpoint experience matters.
 
 ```markdown
-## Journey Map: [User Goal]
+## Journey map: [user goal]
 
-**Persona:** [Who]
+**Persona or segment:** [Who, based on evidence]
 **Scenario:** [Context]
-**Duration:** [Timespan]
+**Evidence:** [Research/metrics/source]
 
-| Phase | Awareness | Consideration | Purchase | Onboarding | Use |
-|-------|-----------|---------------|----------|------------|-----|
-| **Doing** | Sees ad | Compares options | Enters payment | Creates account | Uses daily |
-| **Thinking** | "What's this?" | "Is it worth it?" | "Will this work?" | "How do I start?" | "This saves time" |
-| **Feeling** | Curious | Anxious | Hopeful | Overwhelmed | Satisfied |
-| **Touchpoints** | Social ad | Website, reviews | Checkout | Email, app | App |
-| **Opportunities** | Clearer value prop | Trust signals | Simpler checkout | Better onboarding | Feature discovery |
+| Phase | Phase 1 | Phase 2 | Phase 3 |
+| --- | --- | --- | --- |
+| Doing |  |  |  |
+| Thinking |  |  |  |
+| Feeling |  |  |  |
+| Touchpoints |  |  |  |
+| Pain points |  |  |  |
+| Opportunities |  |  |  |
 ```
+
+Mark invented assumptions clearly. Do not fabricate emotions from thin context.
 
 ### Service Blueprint
 
-**Purpose:** Map the full service ecosystem, including backstage operations.
-
-**Format:**
+Use when a screen depends on people, policy, backend systems, third parties, or
+operational handoffs. Read `references/service-design.md` for detailed guidance.
 
 ```markdown
-## Service Blueprint: [Service Name]
+## Service blueprint: [service]
 
-### Physical Evidence
-[What users see/touch at each stage]
+**Journey:** [Specific journey being blueprinted]
+**Business/user goal:** [What this must enable]
 
-| Stage 1 | Stage 2 | Stage 3 |
-|---------|---------|---------|
-| Website | Confirmation email | Physical product |
-
-### Customer Actions
-[What users do]
-| Browse → Select → Pay → Wait → Receive → Use |
-
-### Frontstage (Visible)
-[Staff/system interactions users see]
-| Website | Order confirmation | Delivery notification |
-
-─────────────── Line of Visibility ───────────────
-
-### Backstage (Invisible)
-[Staff/system work users don't see]
-| Inventory check | Payment processing | Warehouse picking |
-
-─────────────── Line of Internal Interaction ───────────────
-
-### Support Processes
-[Systems that enable the backstage]
-| CRM | Payment gateway | Warehouse management | Courier API |
+| Layer | Stage 1 | Stage 2 | Stage 3 |
+| --- | --- | --- | --- |
+| Evidence |  |  |  |
+| Customer actions |  |  |  |
+| Frontstage |  |  |  |
+| Backstage |  |  |  |
+| Support processes |  |  |  |
+| Failure/recovery |  |  |  |
+| Owner |  |  |  |
 ```
 
-### Wireframe
+Blueprints should expose hidden operational work, not restate the journey map.
 
-**Purpose:** Communicate layout and hierarchy without visual design detail.
+### Research Synthesis
 
-**Format (ASCII):**
+Use when the input is interviews, survey notes, support tickets, session
+recordings, or messy feedback. If available, read
+`references/research-synthesis.md`.
+
+```markdown
+## UX research synthesis: [topic]
+
+### Evidence base
+- Sources:
+- Segments:
+- Confidence:
+
+### Themes
+| Theme | Evidence | User impact | Design implication |
+| --- | --- | --- | --- |
+
+### Jobs and unmet needs
+- When [situation], users need [progress], so they can [outcome].
+
+### Opportunities
+| Opportunity | Why it matters | Risk/unknown | Next step |
+| --- | --- | --- | --- |
+```
+
+Separate evidence from interpretation. Keep unresolved contradictions visible.
+
+### Low-Fidelity Wireframe
+
+Use only when rough layout and hierarchy are the decision. Keep it plain and
+annotated; leave visual polish to `ui-design-playbook`.
 
 ```text
-┌─────────────────────────────────────────────────┐
-│  [Logo]              [Nav 1] [Nav 2] [Nav 3]    │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│         Headline Text Here                      │
-│         Supporting copy that explains           │
-│                                                 │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐        │
-│  │  Card 1  │ │  Card 2  │ │  Card 3  │        │
-│  │  ------  │ │  ------  │ │  ------  │        │
-│  │  text    │ │  text    │ │  text    │        │
-│  │  [CTA]   │ │  [CTA]   │ │  [CTA]   │        │
-│  └──────────┘ └──────────┘ └──────────┘        │
-│                                                 │
-│            [ Primary Action ]                   │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│  Footer | Links | Here                          │
-└─────────────────────────────────────────────────┘
-
-Annotations:
-- Logo: Links to homepage
-- Primary Action: 44px height, full contrast
-- Cards: Equal height, responsive (1 col mobile, 3 col desktop)
++------------------------------------------------+
+| [Logo]                         [Primary nav]   |
++------------------------------------------------+
+| Main task headline                             |
+| Supporting context                             |
+|                                                |
+| [Primary action]    [Secondary action]         |
+|                                                |
+| Empty/loading/error states noted here          |
++------------------------------------------------+
 ```
 
-Include: hierarchy (what's most important), states (error, loading, empty), responsive notes, accessibility annotations.
+Annotations should cover hierarchy, critical states, responsive behaviour, and
+accessibility handoffs.
 
----
+## Jobs To Be Done
 
-## Quality Criteria
+Use JTBD to describe progress, not just features:
 
-Before delivering any output, verify:
-
-### Thinking Checks
-
-- [ ] Did I identify the real problem, not just the symptom?
-- [ ] Did I consider what happens beyond the screen?
-- [ ] Did I match my approach to the problem complexity?
-- [ ] Did I design for the full job (functional + emotional + social)?
-
-### Design Checks
-
-- [ ] Does every element serve a purpose?
-- [ ] Is cognitive load minimised?
-- [ ] Are conventions followed (or deliberately broken with reason)?
-- [ ] Are the peaks and endings designed intentionally?
-
-### Accessibility Checks
-
-- [ ] 4.5:1 contrast for text, 3:1 for UI components
-- [ ] All functionality keyboard accessible
-- [ ] Form inputs have visible labels
-- [ ] Error messages are clear and actionable
-- [ ] Focus states are visible
-
-### Output Checks
-
-- [ ] Does this output support the decision that needs to be made?
-- [ ] Is the fidelity appropriate (not over-designed for the stage)?
-- [ ] Are annotations clear for whoever receives this?
-
----
-
-## Quick Reference
-
-**Check colour contrast:**
-
-From this skill directory:
-
-```bash
-python scripts/contrast-check.py '#333333' '#ffffff'
+```text
+When [situation],
+I want to [motivation],
+so I can [expected outcome].
 ```
 
-Script: [scripts/contrast-check.py](scripts/contrast-check.py)
+Also capture:
 
-**Deep dives:**
+- functional success: what task gets done
+- emotional success: how the user needs to feel
+- social success: how the user wants to be seen
+- current workaround or competitor
+- anxiety and habits that make switching hard
 
-- [Mental models & systems thinking](references/mental-models.md)
-- [Psychology & Laws of UX](references/design-psychology.md)
-- [Service blueprints & JTBD](references/service-design.md)
-- [WCAG 2.1 AA checklist](references/accessibility.md)
-- [UI patterns with when-to-use](references/patterns.md)
-- [Nielsen's heuristics & Norman's principles](references/heuristics.md)
+JTBD complements personas; it does not replace segments, constraints, or
+research evidence.
 
----
+## Quality Checks
 
-## Example Interactions
+Before delivering:
 
-**"Review this login screen for usability issues"**
-→ Do a heuristic review. Apply Nielsen's 10. Rate severity. Suggest specific fixes.
+- Did the output answer the decision that matters now?
+- Did you inspect evidence before proposing a design?
+- Did you distinguish symptoms from structures?
+- Did you consider backstage systems, handoffs, and failure recovery?
+- Did you reduce extraneous cognitive load without pretending intrinsic
+  task complexity can disappear?
+- Did you avoid overclaiming beyond the evidence?
+- Did you note accessibility risks and hand off detailed WCAG work to the
+  `accessibility` skill?
 
-**"Why do users abandon the checkout?"**
-→ Think at structure level (Iceberg). Map the current flow. Identify cognitive load issues. Consider emotional journey.
+## Reference Routing
 
-**"Design a booking flow"**
-→ First: what's the full service? Map the blueprint. Then: user flow with error states. Then: wireframes if needed.
+- `references/mental-models.md` - systems thinking, Iceberg, Cynefin, leverage
+  points, and organisational seams.
+- `references/service-design.md` - service blueprints, JTBD, stakeholder maps,
+  touchpoints, and failure modes.
+- `references/research-synthesis.md` - research-note synthesis, confidence,
+  themes, opportunities, and contradictions.
+- `references/design-psychology.md` - cognitive load and UX laws as diagnostic
+  lenses.
+- `references/heuristics.md` - Nielsen, Norman, Shneiderman, and severity
+  guidance for reviews.
+- `references/patterns.md` - quick pattern choice for low-fidelity flows only.
 
-**"Make this form accessible"**
-→ Reference WCAG 2.1 AA. Check labels, contrast, keyboard nav, error handling. Provide specific fixes.
-
-**"This UI feels slow"**
-→ Consider Hick's Law (too many choices?), Miller's Law (too much to process?), or actual performance. Reduce cognitive load before assuming technical issues.
-
----
-
-Remember: Good UX is invisible. If users notice the design, something's probably wrong. Design for the task, not the interface.
+Remember: good UX work makes the user's task easier and the service more
+coherent. The screen is only one part of the system.

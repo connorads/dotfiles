@@ -1,0 +1,89 @@
+{
+  "skill_name": "holistic-ux",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Our telehealth clinic has a polished appointment booking UI, but 28% of first-time patients still miss the appointment. The product lead asked me to redesign the confirmation screen. Help me work out what to do.",
+      "expected_output": "Reframes missed appointments as a service-system problem before proposing screen changes. Maps patient journey stages, backstage dependencies such as reminders, insurance checks, intake forms, clinician availability, timezone handling and support recovery. Identifies likely failure points and gives prioritised interventions, research questions, and success metrics. Keeps any UI suggestions subordinate to the service-design diagnosis.",
+      "files": [],
+      "expectations": [
+        "The answer explicitly challenges the assumption that the confirmation screen alone is the root cause.",
+        "The answer includes a journey map or service blueprint with customer actions, visible frontstage interactions, backstage work, and support systems.",
+        "The answer identifies operational failure points such as reminders, intake completion, timezone confusion, eligibility or insurance, clinician availability, and rescheduling support.",
+        "The answer proposes research or instrumentation to distinguish competing causes before committing to a solution.",
+        "The answer defines success metrics beyond conversion, such as attendance rate, reschedule completion, support contacts, patient confidence, and clinician idle time.",
+        "The answer does not focus mainly on code, ARIA attributes, colour contrast, or visual polish."
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "A B2B analytics product loses most trial users after they invite teammates but before they create the first dashboard. Sales says to add more tooltips. I need a UX recommendation for the leadership team.",
+      "expected_output": "Treats the issue as onboarding and organisational adoption, not a tooltip shortage. Uses JTBD, stakeholder mapping and journey thinking to separate the user's functional job from emotional and social anxieties. Recommends evidence gathering, clearer activation milestones, collaboration handoffs, template/default design, and sales/customer-success alignment. Presents a leadership-friendly strategy with trade-offs and measurable outcomes.",
+      "files": [],
+      "expectations": [
+        "The answer identifies the user's functional, emotional, and social jobs around creating a dashboard with teammates.",
+        "The answer maps multiple stakeholders such as admin, analyst, invited teammate, buyer, sales, customer success, and support.",
+        "The answer explains why more tooltips may increase extraneous cognitive load or fail to address the underlying adoption barrier.",
+        "The answer proposes service or product interventions such as workspace templates, sample data, role-based invitations, onboarding emails, customer-success handoffs, or activation checkpoints.",
+        "The answer includes leadership-level metrics such as activation, time to first shared dashboard, collaborator participation, support demand, and trial-to-paid conversion.",
+        "The answer is strategic and does not produce a detailed component implementation plan."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We run a subscription meal kit. Churn is high and someone suggested hiding the cancel button deeper in account settings. Design a better cancellation experience that protects revenue without making users feel trapped.",
+      "expected_output": "Rejects dark-pattern retention and designs cancellation as part of the service relationship. Maps cancellation motivations, save offers, pause/skip alternatives, feedback collection, operations implications, confirmation and follow-up. Balances business goals with trust, reversibility, user control and long-term retention. Includes metrics that guard against both revenue loss and coercive friction.",
+      "files": [],
+      "expectations": [
+        "The answer explicitly rejects hiding the cancel button or trapping users as a harmful service decision.",
+        "The answer identifies different cancellation jobs or motivations, such as cost, travel, food preferences, delivery issues, and temporary overload.",
+        "The answer proposes user-respecting alternatives such as pause, skip, plan change, delivery fix, preference update, or support escalation.",
+        "The answer covers backstage or operational effects, including billing, fulfilment cutoffs, inventory, refunds, support tooling, and confirmation messaging.",
+        "The answer includes a clear ending state so users know whether cancellation, pause, or change has taken effect.",
+        "The answer recommends metrics for trust and service quality, not only short-term save rate."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "A city benefits portal is technically WCAG compliant, but residents still fail to renew benefits on time. Many use phones, some have limited English, and caseworkers say the same document questions come up every week. What should we evaluate?",
+      "expected_output": "Expands accessibility from code conformance to inclusive service access. Evaluates the full renewal journey across notices, login, document gathering, upload, caseworker review, error recovery, reminders, offline channels and language support. Names service barriers, stakeholder needs, risk points and research methods. Uses WCAG as one input but not the centre of the response.",
+      "files": [],
+      "expectations": [
+        "The answer distinguishes technical WCAG compliance from residents' ability to complete the service.",
+        "The answer maps touchpoints beyond the web UI, such as mailed notices, SMS/email reminders, document sources, upload, caseworker contact, decisions, and appeals or recovery.",
+        "The answer considers users with mobile-only access, limited English, low confidence, time pressure, and incomplete documents.",
+        "The answer includes backstage actors and systems such as caseworkers, eligibility rules, document verification, translation, call centres, and benefit deadlines.",
+        "The answer proposes evaluation methods such as journey research, service blueprinting, task observation, support-log analysis, and failure-point measurement.",
+        "The answer does not centre on ARIA, CSS, contrast ratios, or a code-level accessibility checklist."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Checkout abandonment spikes when customers choose delivery. Engineering thinks we should A/B test a greener primary button. Give me a UX plan for diagnosing and improving this.",
+      "expected_output": "Uses systems thinking to separate event, pattern, structure and assumption. Considers delivery pricing, address entry, fulfilment promises, inventory, courier availability, payment, trust, error states and mobile constraints. Recommends analytics, qualitative research and small experiments, then proposes service and flow changes based on likely failure points. Avoids treating button colour as the primary solution.",
+      "files": [],
+      "expectations": [
+        "The answer applies an iceberg-style diagnosis or otherwise separates symptoms from deeper patterns, structures, and assumptions.",
+        "The answer explains why a button-colour test is insufficient as the main diagnosis.",
+        "The answer examines delivery-specific dependencies such as fees, delivery windows, address validation, inventory availability, courier capacity, taxes, and payment authorisation.",
+        "The answer includes customer emotions or trust concerns around cost surprises, uncertainty, and commitment.",
+        "The answer proposes instrumentation or research that can localise the abandonment cause by device, stage, error, price change, delivery promise, or customer segment.",
+        "The answer includes realistic interventions such as earlier delivery cost disclosure, clearer delivery promises, address assistance, save-for-later, recovery messaging, or fulfilment fallback paths."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "We're launching a digital check-in service for a regional hotel chain. Guests arrive tired, front desk staff are understaffed, ID verification is manual, and room readiness is often uncertain. Create the UX artefact we should use before drawing screens.",
+      "expected_output": "Chooses a service blueprint before wireframes and explains why. Covers guest journey stages from pre-arrival through arrival, verification, room readiness, key handoff, issue recovery and post-check-in. Includes physical evidence, customer actions, frontstage interactions, backstage staff work, support systems, fail points and recovery paths. Produces an artefact that operations, product and engineering can use together.",
+      "files": [],
+      "expectations": [
+        "The answer chooses a service blueprint, not a wireframe-first approach.",
+        "The answer includes blueprint lanes for physical evidence, customer actions, frontstage, backstage, and support processes.",
+        "The answer covers operational dependencies such as PMS, ID verification, payment hold, room-cleaning status, key issuing, staffing, notifications, and support escalation.",
+        "The answer marks fail points and recovery paths for room-not-ready, ID mismatch, payment issue, mobile failure, queueing, and guest support.",
+        "The answer considers both guest and staff needs rather than treating staff as invisible implementation detail.",
+        "The answer keeps fidelity conceptual and does not jump into detailed screen layout or component specs."
+      ]
+    }
+  ]
+}

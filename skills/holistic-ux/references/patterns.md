@@ -1,425 +1,141 @@
 # UI Patterns
 
-When-to-use guidance for common interface patterns. Not a spec library — a decision guide.
+Pattern-selection guidance for low-fidelity UX work. This is a decision guide,
+not a visual spec or implementation library.
 
----
+Boundary: use `ui-design-playbook` for visual implementation details such as
+spacing, typography, colour, layout polish, and component styling. Use
+`accessibility` for WCAG, ARIA, keyboard, focus, and screen-reader details.
 
 ## Navigation
 
-### When to Use What
+Choose navigation by information shape:
 
 | Pattern | Use when | Avoid when |
-|---------|----------|------------|
-| **Top nav bar** | ≤7 primary sections, desktop-first | Many sections, deeply nested |
-| **Hamburger menu** | Mobile, space-constrained | Desktop (hides important nav) |
-| **Tab bar (mobile)** | 3-5 key sections in mobile app | >5 sections, nested content |
-| **Sidebar** | Many sections, hierarchical content (dashboards, docs) | Simple sites, mobile-primary |
-| **Tabs** | Content in distinct categories on one page | >6 tabs, unrelated content |
-| **Breadcrumbs** | Deep hierarchies (>2 levels) | Flat sites, linear flows |
+| --- | --- | --- |
+| Top navigation | There are a few stable, high-level destinations | The product has many nested areas |
+| Sidebar | Users need repeated access to many sections or a hierarchy | The experience is simple or mobile-primary |
+| Tabs | Users switch between peer categories within one context | The sections are unrelated or too numerous |
+| Breadcrumbs | Users move through a deep hierarchy | The flow is flat or strictly linear |
+| Mobile menu | Screen space is tight and destinations are secondary to the task | The hidden destinations are core to completion |
 
-### Top Navigation
-
-```
-┌────────────────────────────────────────────────────────┐
-│  [Logo]    Home  Products  About  Contact    [🔍] [👤] │
-└────────────────────────────────────────────────────────┘
-```
-
-- Fixed or sticky at top
-- Logo links to home
-- Active item distinguished (underline, bold, or colour)
-- Collapses to hamburger on mobile
-- `<nav aria-label="Main navigation">`
-- Current page: `aria-current="page"`
-
-### Hamburger Menu
-
-```
-Closed: [≡]     Open: [×]
-                       ├── Home
-                       ├── Products
-                       ├── About
-                       └── Contact
-```
-
-- Slide from left/right, 300ms ease
-- Trap focus within when open
-- Escape key closes
-- Backdrop click closes
-- Return focus to hamburger on close
-- `aria-expanded` toggles on open/close
-
-### Tabs
-
-```
-[Tab 1*]  [Tab 2]  [Tab 3]
-┌────────────────────────────┐
-│ Content for Tab 1          │
-└────────────────────────────┘
-```
-
-- Arrow keys switch tabs
-- Active tab: `aria-selected="true"`
-- Panel: `role="tabpanel"` linked via `aria-controls`
-- Content should not cause page scroll jump on switch
-
-### Breadcrumbs
-
-```
-Home > Products > Electronics > Laptops
-```
-
-- `<nav aria-label="Breadcrumb">` with `<ol>`
-- Current page: `aria-current="page"`, not a link
-- Only for hierarchical navigation, not linear flows
-
----
+Check the main user task before adding navigation. More navigation can make
+orientation worse if it competes with the primary path.
 
 ## Forms
 
-### Layout Principles
+Use forms when the user must provide structured information to complete a task.
 
-- **Single column** — always. Two-column forms slow completion.
-- **Labels above inputs** — better scanning, works at all widths
-- **16px minimum font** — prevents iOS zoom on focus
-- **One primary action** per form
-- **Group related fields** with visual spacing or fieldsets
+- Prefer one clear path through the fields.
+- Group related fields by meaning, not database structure.
+- Break long or high-risk forms into steps when users need reassurance or when
+  later questions depend on earlier answers.
+- Show validation and recovery where the user can act on it.
+- Keep optionality explicit; hidden requirements create support load.
 
-### Validation States
-
-| State | Visual | Behaviour |
-|-------|--------|-----------|
-| **Default** | Grey border | — |
-| **Focus** | Blue border + shadow | Validate on blur, not keystroke |
-| **Valid** | Green checkmark | Show after blur if instant feedback helps |
-| **Error** | Red border + icon + message | Show on blur or submit. `aria-invalid="true"` |
-| **Disabled** | Greyed out, reduced opacity | `cursor: not-allowed`. Explain why if not obvious |
-
-### Form Pattern
-
-```
-┌────────────────────────────┐
-│  Field Label *             │
-│  [____________________]    │
-│  Helper text               │
-│                            │
-│  Field Label               │
-│  [____________________]    │
-│                            │
-│  [ ] I agree to terms      │
-│                            │
-│  [    Submit    ]          │
-└────────────────────────────┘
-```
-
-- Required fields: asterisk (*) with "* Required" note
-- Helper text: below input, linked with `aria-describedby`
-- Error messages: replace helper text, use `role="alert"`
-- Submit button: match width to inputs or left-align
-
-### Long Forms
-
-Break into steps when >7 fields:
-
-```
-Step 1 of 3: Personal Details
-[==========                    ] 33%
-
-First Name *
-[____________________]
-
-Last Name *
-[____________________]
-
-[← Back]              [Next →]
-```
-
-- Progress indicator (bar or steps)
-- Allow back navigation without data loss
-- Validate per step, not just at end
-- Show step count
-
----
+Avoid asking for information before it is needed. If the service already knows
+something, confirm it instead of making the user re-enter it.
 
 ## Cards
 
-### When to Use Cards
+Use cards for collections where each item is a self-contained object users can
+scan, compare, or open.
 
-- Displaying collections of similar items
-- Each item has image + text + action
-- Items can be compared or scanned
+- Good fit: products, articles, templates, saved items, candidates, projects.
+- Weak fit: dense tabular comparison, step-by-step tasks, long prose, settings.
+- Keep each card focused on the same decision: compare, choose, resume, or
+  inspect.
 
-### Basic Card
-
-```
-┌────────────────────┐
-│  [Image]           │
-├────────────────────┤
-│  Title             │
-│  Description...    │
-│  [Action]          │
-└────────────────────┘
-```
-
-- Border-radius: 8px
-- Subtle shadow, increased on hover
-- Equal height within rows (CSS Grid)
-- If clickable, entire card is the link
-- Hover: slight elevation change (200ms ease)
-
-### Responsive Grid
-
-| Viewport | Columns | Gap |
-|----------|---------|-----|
-| Mobile (<768px) | 1 | 16px |
-| Tablet (768-1023px) | 2 | 16px |
-| Desktop (≥1024px) | 3-4 | 24px |
-
-```css
-.card-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-}
-```
-
----
+If users need to compare many attributes precisely, use a table instead.
 
 ## Modals
 
-### When to Use (and When Not)
+Use modals for short, interruptive decisions that must resolve before the user
+continues.
 
-**Use modals for:**
-- Confirmations ("Delete this item?")
-- Focused tasks that don't need full context
-- Urgent messages requiring action
+- Good fit: confirmations, lightweight focused tasks, urgent warnings.
+- Weak fit: multi-step work, reference material, complex editing, anything users
+  need to compare with the page behind it.
+- Prefer inline disclosure or a dedicated page when context matters.
 
-**Don't use modals for:**
-- Information that could be inline
-- Complex multi-step flows (use a page)
-- Content users need to reference while doing other things
-
-### Modal Structure
-
-```
-┌─────────────────────────────┐
-│ Title                   [×] │
-├─────────────────────────────┤
-│                             │
-│  Content                    │
-│                             │
-├─────────────────────────────┤
-│          [Cancel] [Confirm] │
-└─────────────────────────────┘
-```
-
-- Max-width: 600px, centred
-- Backdrop: semi-transparent overlay
-- Focus trap: Tab cycles within modal
-- Escape closes
-- Return focus to trigger on close
-- `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
-
-### Destructive Confirmation
-
-```
-┌───────────────────────────┐
-│ ⚠ Delete account?     [×] │
-├───────────────────────────┤
-│                           │
-│ This permanently deletes  │
-│ all your data. This       │
-│ cannot be undone.         │
-│                           │
-├───────────────────────────┤
-│     [Cancel]  [Delete]    │
-└───────────────────────────┘
-```
-
-- Explain consequences clearly
-- Cancel is default/primary visual weight
-- Destructive action uses danger colour
-- Consider requiring typed confirmation for irreversible actions
-
----
+Destructive confirmations should explain consequence, reversibility, and the
+safe exit.
 
 ## Buttons
 
-### Hierarchy
+Buttons express action priority. Decide the hierarchy before styling.
 
-| Level | Style | Use for |
-|-------|-------|---------|
-| **Primary** | Solid fill, high contrast | Main action per section |
-| **Secondary** | Outlined | Supporting actions |
-| **Tertiary** | Text only | Low-priority actions |
-| **Danger** | Red fill or outlined | Destructive actions |
+| Level | Use for |
+| --- | --- |
+| Primary | The main next action for the current decision |
+| Secondary | Useful alternatives that should remain visible |
+| Tertiary | Low-priority actions that should not compete |
+| Destructive | Actions with irreversible or harmful consequences |
 
-One primary button per visible section. Multiple primaries = no hierarchy.
-
-### Sizing
-
-| Context | Height | Min width | Touch target |
-|---------|--------|-----------|-------------|
-| Mobile | 48px | 120px | 44×44px minimum |
-| Desktop | 40px | 100px | — |
-| Compact | 32px | 80px | Only in toolbars/dense UI |
-
-### States
-
-Every button needs: default, hover, focus, active (pressed), disabled, loading.
-
-- **Disabled**: 50% opacity, `cursor: not-allowed`, explain why if possible
-- **Loading**: Replace label with spinner, prevent double-submit, keep button width stable
-
-### Icon Buttons
-
-```html
-<button aria-label="Close">
-  <svg aria-hidden="true"><!-- icon --></svg>
-</button>
-```
-
-Minimum 40×40px (44×44px on mobile). Always provide `aria-label`.
-
----
+One visible decision area should normally have one primary action. Too many
+primaries signal that the flow has not been prioritised.
 
 ## Loading
 
-### Choosing a Pattern
+Choose loading feedback by what the user can know and do:
 
 | Pattern | Use when |
-|---------|----------|
-| **Spinner** | Unknown duration, small area |
-| **Skeleton screen** | Known layout, content loading |
-| **Progress bar** | Known progress (upload, multi-step) |
-| **Optimistic UI** | Action likely to succeed (toggle, like) |
+| --- | --- |
+| Skeleton | The shape of content is known and loading should feel continuous |
+| Spinner | Duration is unknown and the waiting area is small |
+| Progress indicator | Progress is measurable or the task has clear steps |
+| Optimistic update | Failure is rare and rollback is easy to explain |
 
-### Skeleton Screen
-
-```
-┌────────────────────────────┐
-│  ▓▓▓▓▓▓▓▓▓▓▓▓              │
-│  ▓▓▓▓▓▓ ▓▓▓▓▓▓▓            │
-│                            │
-│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓         │
-│  ▓▓▓▓▓▓▓▓▓▓                │
-└────────────────────────────┘
-```
-
-- Match the layout of real content
-- Subtle shimmer animation (optional)
-- Replace with real content when loaded
-- `role="status"`, `aria-busy="true"` while loading
-
-### Progress Bar
-
-```html
-<div role="progressbar"
-     aria-valuenow="45"
-     aria-valuemin="0"
-     aria-valuemax="100"
-     aria-label="Upload progress">
-```
-
-Show percentage or "Step X of Y" for clarity.
-
----
+For slow or risky operations, set expectations and preserve user input. A loader
+without recovery is only decoration.
 
 ## Notifications
 
-### Choosing a Pattern
+Choose the smallest feedback pattern that matches the consequence:
 
-| Pattern | Persistence | Use for |
-|---------|-------------|---------|
-| **Toast** | Auto-dismiss (3-5s) | Success, info confirmations |
-| **Banner** | Persistent until dismissed | System-wide messages, warnings |
-| **Inline alert** | Persistent, contextual | Section-specific info, errors |
+| Pattern | Use when |
+| --- | --- |
+| Toast | The outcome is brief, low-risk, and does not need immediate action |
+| Banner | The message affects the whole page, session, or service |
+| Inline alert | The message belongs to a specific field, section, or decision |
 
-### Toast
+Do not use transient notifications for errors users must fix or information they
+may need to reference.
 
-```
-┌────────────────────────┐
-│  ✓ Changes saved   [×] │
-└────────────────────────┘
-```
+## Tables
 
-- Position: top-right or bottom-right
-- Auto-dismiss: 3-5 seconds (pause on hover)
-- `role="status"` for success/info
-- `role="alert"` for errors
-- Stack if multiple (most recent on top)
+Use tables when users compare structured data across shared attributes.
 
-### Inline Alert
+- Good fit: records, financial data, inventory, permissions, logs, schedules.
+- Weak fit: narrative content, visual browsing, sparse item summaries.
+- Prioritise the columns that support the user's decision.
+- Plan empty, loading, error, filtered, and no-results states.
 
-```
-┌────────────────────────────┐
-│  ⚠ Your trial expires in   │
-│  3 days. Upgrade now.       │
-└────────────────────────────┘
-```
+If the user scans objects more than attributes, cards may be clearer.
 
-- Left border colour indicates type (red/yellow/blue/green)
-- Tinted background (10% of border colour)
-- Icon reinforces type
-- Positioned near relevant content
+## Accordions
 
----
+Use accordions for optional or secondary detail where users need only some
+sections.
 
-## Data Display
+- Good fit: FAQs, progressive detail, advanced settings, grouped policy text.
+- Weak fit: primary steps, critical warnings, information users must compare
+  across sections.
+- Avoid hiding content required for task completion.
 
-### Tables
+If most users need most sections open, the accordion is adding work rather than
+reducing complexity.
 
-Use when: comparing structured data with multiple attributes.
+## Selection Cheatsheet
 
-```html
-<table>
-  <caption>Team members</caption>
-  <thead>
-    <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Alice</td>
-      <td>Engineer</td>
-    </tr>
-  </tbody>
-</table>
-```
-
-- Responsive: horizontal scroll or card view on mobile
-- Sortable columns: `aria-sort="ascending"`
-- Alternating row colours for scanability
-
-### Accordion
-
-Use when: content is optional/supplementary and users need only some sections.
-
-```html
-<button aria-expanded="false" aria-controls="panel1">
-  Section title
-</button>
-<div id="panel1" hidden>Content...</div>
-```
-
-- Allow multiple sections open (unless space is critical)
-- Expand/collapse animation: 200-300ms
-- Don't hide critical information in accordions
-
----
-
-## Pattern Selection Cheatsheet
-
-| User Need | Pattern |
-|-----------|---------|
-| Navigate between sections | Top nav, sidebar, tabs |
-| Complete a task | Form (single column, progressive) |
-| Browse a collection | Card grid |
-| Make a focused decision | Modal |
-| Trigger an action | Button (with proper hierarchy) |
-| Wait for something | Skeleton, spinner, or progress bar |
-| Get feedback | Toast, banner, or inline alert |
-| Compare data | Table |
-| Read optional detail | Accordion |
+| User need | Likely pattern |
+| --- | --- |
+| Move between product areas | Navigation |
+| Provide structured information | Form |
+| Browse similar objects | Cards |
+| Resolve a focused interruption | Modal |
+| Trigger or confirm an action | Button |
+| Wait with confidence | Loading pattern |
+| Understand an outcome or issue | Notification |
+| Compare structured records | Table |
+| Reveal optional detail | Accordion |

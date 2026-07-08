@@ -48,7 +48,7 @@ Quote the exact failing snippet, name the WCAG criterion, and propose the smalle
 
 ### The quick decision tree
 
-```
+```text
 Need an interactive control?
   ↓
 Does a native HTML element do this?  → YES → Use it. Done.
@@ -82,6 +82,7 @@ Opening a dialog/modal?
 ## The Five Most Common Failures (and their fixes)
 
 ### 1. Icon-only button with no accessible name
+
 ```html
 <!-- ❌ Screen reader announces: "button" -->
 <button><svg>...</svg></button>
@@ -91,6 +92,7 @@ Opening a dialog/modal?
 ```
 
 ### 2. Input with no label
+
 ```html
 <!-- ❌ Screen reader announces: "edit text" -->
 <input type="email" placeholder="Email" />
@@ -101,6 +103,7 @@ Opening a dialog/modal?
 ```
 
 ### 3. div or span used as a button
+
 ```html
 <!-- ❌ Not keyboard accessible, no role announced -->
 <div onclick="save()">Save</div>
@@ -110,6 +113,7 @@ Opening a dialog/modal?
 ```
 
 ### 4. Form error not linked to field
+
 ```html
 <!-- ❌ Error visible but not associated with the field -->
 <input id="email" type="email" />
@@ -123,6 +127,7 @@ Opening a dialog/modal?
 ```
 
 ### 5. Dynamic content updated silently
+
 ```html
 <!-- ❌ Cart count updates, screen reader users never know -->
 <span id="cart-count">3</span>
@@ -138,11 +143,13 @@ Opening a dialog/modal?
 Automated tools catch ~30–40% of accessibility issues. The rest require AT testing.
 
 **Minimum viable test matrix:**
+
 - NVDA + Chrome or Firefox (Windows) — covers ~66% of screen reader users
 - VoiceOver + Safari (macOS/iOS) — covers Apple ecosystem
 - Add JAWS + Chrome for enterprise contexts
 
 **Core navigation patterns to test manually:**
+
 1. Tab through all interactive elements — are names and roles announced correctly?
 2. Press `H` to navigate by headings — is the page structure logical?
 3. Press `D` to navigate by landmarks — are regions clearly labelled?
@@ -201,6 +208,21 @@ Do **not** use for: content that sighted users need. Hiding meaningful content f
 
 Never convey information by colour alone — always pair with a shape, pattern, or text label.
 
+Check exact foreground/background pairs from the `accessibility` skill
+directory:
+
+```bash
+python scripts/contrast-check.py '#333333' '#ffffff'
+python scripts/contrast-check.py '#767676' '#ffffff' --json
+python scripts/contrast-check.py '#949494' '#ffffff' --target large-text
+python scripts/contrast-check.py '#949494' '#ffffff' --target ui-component
+```
+
+Use `--target normal-text` (default), `large-text`, `ui-component`,
+`aaa-normal-text`, or `aaa-large-text` to make the exit status follow the
+relevant threshold. Do not round contrast values up. A measured `4.499:1` fails
+a `4.5:1` requirement.
+
 ---
 
 ## Reference Files
@@ -212,3 +234,4 @@ Never convey information by colour alone — always pair with a shape, pattern, 
 | **references/focus-management.md** | Modal focus trap, SPA route change focus, skip links, focus restoration patterns |
 | **references/wcag-checklist.md** | WCAG 2.2 AA criterion-by-criterion checklist with pass/fail examples |
 | **references/common-fixes.md** | Code-level fix templates for the 20 most common audit findings |
+| **scripts/contrast-check.py** | Deterministic WCAG contrast ratio checker for foreground/background hex pairs |

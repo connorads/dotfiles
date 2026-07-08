@@ -4,6 +4,20 @@ Designing beyond the screen. Every digital interaction exists within a larger se
 
 ---
 
+## Evidence-First Use
+
+Service maps are hypotheses until grounded in evidence.
+
+- Label each claim: observed, measured, reported, inferred, or assumed
+- Keep raw evidence separate from interpretation and recommendations
+- Prefer recent task evidence over stakeholder memory when they conflict
+- Mark confidence where evidence is thin, then design the next research step
+- Do not let a workshop artefact become "truth" without checking it against real operations
+
+For interview or observation-heavy work, use [research-synthesis.md](research-synthesis.md) before turning findings into journeys, jobs, or blueprints.
+
+---
+
 ## Service Blueprints
 
 ### What Is a Service Blueprint?
@@ -12,7 +26,7 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 
 ### Structure
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ PHYSICAL EVIDENCE                                       │
 │ (What users see/touch: website, emails, physical items) │
@@ -60,13 +74,23 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 
 ### How to Build One
 
-1. **Start with customer actions** — walk through the user's journey left to right
-2. **Add physical evidence** — what do they see/receive at each point?
-3. **Map frontstage** — what visible interactions support each action?
-4. **Map backstage** — what invisible work enables the frontstage?
-5. **Add support processes** — what systems/tools/services power the backstage?
-6. **Identify pain points** — where do things break? Where are the delays?
-7. **Mark fail points** — use ⚠ symbols where things commonly go wrong
+1. **Start with customer actions**: walk through the user's journey left to right
+2. **Co-create with operators**: include support, ops, engineering, policy, and third parties
+3. **Add physical evidence**: what do users see, receive, or keep at each point?
+4. **Map frontstage**: what visible interactions support each action?
+5. **Map backstage**: what invisible work enables the frontstage?
+6. **Add support processes**: what systems/tools/services power the backstage?
+7. **Identify pain points**: where do things break? Where are the delays?
+8. **Mark fail points**: capture trigger, detection signal, user impact, recovery path, owner
+
+### Co-Creation, Failure Modes, and Ownership
+
+- Build blueprints with the people who deliver the service, not only product/design
+- Treat disagreements as evidence gaps: check logs, tickets, call recordings, or observed work
+- Assign an owner for each touchpoint, backstage step, support process, and recovery path
+- For each fail point, define who notices, who can fix it, who tells the user, and what happens if recovery fails
+- Include operational constraints: staffing, SLAs, legal/policy limits, system latency, batch jobs, vendor dependencies
+- Review the blueprint after launch; ownership and failure modes drift as teams and systems change
 
 ---
 
@@ -74,13 +98,13 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 
 ### Core Concept
 
-People don't buy products; they **hire** them to make progress in their lives.
+People often **hire** products or services to make progress in a specific situation.
 
-> "People don't want a quarter-inch drill bit. They want a quarter-inch hole."
-> — Theodore Levitt
+JTBD is a lens for understanding progress. It does not replace segmentation, personas, analytics, accessibility work, or usability findings.
 
-> "They don't want the hole either. They want the shelf on the wall. Actually, they want their books organised."
-> — Further refinement
+Quote: "People don't want a quarter-inch drill bit. They want a quarter-inch hole." - Theodore Levitt
+
+Refinement: "They don't want the hole either. They want the shelf on the wall. Actually, they want their books organised."
 
 ### Three Dimensions of Every Job
 
@@ -98,22 +122,35 @@ Better than user stories for UX because they focus on **situation** rather than 
 
 **Examples:**
 
-> When I'm booking a flight and see the total price jump at checkout, I want to understand exactly what changed, so I can decide whether to proceed or go back.
-
-> When I receive an error after filling out a long form, I want to know exactly which field needs fixing without losing my work, so I can complete the task without starting over.
-
-> When I'm comparing subscription plans, I want to see a clear difference between them, so I can pick the right one without second-guessing.
+- When I'm booking a flight and see the total price jump at checkout, I want to
+  understand exactly what changed, so I can decide whether to proceed or go
+  back.
+- When I receive an error after filling out a long form, I want to know exactly
+  which field needs fixing without losing my work, so I can complete the task
+  without starting over.
+- When I'm comparing subscription plans, I want to see a clear difference
+  between them, so I can pick the right one without second-guessing.
 
 ### Applying JTBD to Design
 
-1. **Identify the job** — What progress is the user trying to make?
-2. **Map the full job** — Not just the functional task but emotional and social dimensions
-3. **Find the struggling moment** — Where is current progress blocked?
-4. **Design for the switch** — What would make someone switch from their current solution to yours?
+1. **Identify the job**: What progress is the user trying to make?
+2. **Map the full job**: Not just the functional task but emotional and social dimensions
+3. **Find the struggling moment**: Where is current progress blocked?
+4. **Study current alternatives**: What workaround, competitor, spreadsheet, person, or habit do they use today?
+5. **Design for the switch**: What would make someone trust a new solution enough to change?
+
+### JTBD Nuance
+
+- A job is not a feature request, persona, task, or market segment
+- The same person can have different jobs in different situations
+- Different people can share a job but need different interfaces, language, or support
+- Progress can mean reducing risk, avoiding embarrassment, staying compliant, or keeping things the same
+- Validate jobs with behaviour: switching stories, workarounds, purchase/support data, and observed struggle
+- Pair each job statement with source evidence and confidence; do not invent jobs from stakeholder preference alone
 
 ### Forces of Progress
 
-```
+```text
                     ┌────────────────────┐
   Push of current   │                    │  Pull of new
   situation         │     SWITCHING      │  solution
@@ -129,7 +166,7 @@ Better than user stories for UX because they focus on **situation** rather than 
 - **Anxiety**: Fear of the new (what stops them)
 - **Habit**: Comfort of the familiar (inertia)
 
-Design must: amplify push + pull, reduce anxiety + habit.
+Design usually works by strengthening push/pull while reducing anxiety and habit. If the evidence shows users value stability more than change, design for confidence rather than persuasion.
 
 ---
 
@@ -139,7 +176,7 @@ Design must: amplify push + pull, reduce anxiety + habit.
 
 Before designing, understand who's involved:
 
-```
+```text
                     ┌──────────┐
                     │  End User │
                     └────┬─────┘
@@ -160,6 +197,7 @@ Before designing, understand who's involved:
 ```
 
 For each stakeholder ask:
+
 - What's their goal?
 - What do they need from this service?
 - How do they interact with other stakeholders?
@@ -180,6 +218,7 @@ List every point of contact between user and service:
 | Cancellation flow | App | Product | Missing |
 
 **Look for:**
+
 - Gaps (missing touchpoints)
 - Inconsistencies (different tone/quality across touchpoints)
 - Handoff failures (one team's touchpoint clashes with another's)
@@ -199,11 +238,13 @@ List every point of contact between user and service:
 ### Journey Map vs Experience Map
 
 **Journey map**: How does a user experience *our product/service*?
+
 - Has specific stages related to our service
 - Includes our touchpoints
 - Helps improve our experience
 
 **Experience map**: How does a person experience *this domain* in general?
+
 - Not tied to our product
 - Includes competitor and offline touchpoints
 - Helps find opportunities
@@ -211,11 +252,13 @@ List every point of contact between user and service:
 ### Journey Map vs Service Blueprint
 
 **Journey map**: Focuses on user's emotional experience.
+
 - What are they feeling at each stage?
 - Where are the pain points?
 - Where are the moments of delight?
 
 **Service blueprint**: Focuses on operational delivery.
+
 - What systems support each interaction?
 - Where are the failure points?
 - What's the operational cost?
