@@ -289,12 +289,6 @@
       "sourceType": "github",
       "skillPath": "skills/web-design-guidelines/SKILL.md",
       "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
-    },
-    "writing-great-skills": {
-      "source": "mattpocock/skills",
-      "sourceType": "github",
-      "skillPath": "skills/productivity/writing-great-skills/SKILL.md",
-      "computedHash": "dd555ce552f82784c3d2b8d13a8e26a6677a07ddc00032e142dec33bfd5438c6"
     }
   }
 }
