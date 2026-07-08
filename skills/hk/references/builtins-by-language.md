@@ -1,5 +1,35 @@
 # hk Builtins by Language/Ecosystem
 
+## Contents
+
+- Universal (always add)
+- Common Tools (add if relevant)
+  - Spell checking (typos)
+  - Secret detection (gitleaks)
+  - Markdown linting (rumdl)
+- JavaScript / TypeScript
+  - Formatter: Biome (signal: `biome.json` or `biome.jsonc`)
+  - Formatter: Prettier (signal: `.prettierrc*` or no biome)
+  - Linter: ESLint (signal: `eslint.config.*`)
+  - Type checking
+  - Test runners
+  - Commit message validation (signal: `commitlint.config.*`)
+  - Package manager detection
+- Go
+- Rust
+- Python
+  - Formatter + linter: Ruff (preferred, signal: `ruff.toml` or `[tool.ruff]` in `pyproject.toml`)
+  - Legacy: Black + Flake8
+  - Type checking
+- Nix
+- Shell
+- YAML (signal: `.yamllint*`)
+- CSS
+- Dockerfile (signal: `Dockerfile*`)
+- Terraform / OpenTofu (signal: `*.tf`)
+- GitHub Actions (signal: `.github/workflows/*.yml`)
+- Team/Shared Repo Guards
+
 Reference for choosing steps when setting up hk in a new repo. Run `hk builtins` for the full list.
 
 **On `scripts/quiet-on-success.sh`:** it wraps only steps that print *on success*. Truly-silent

@@ -1,5 +1,24 @@
 # WCAG 2.2 AA Checklist
 
+## Contents
+
+- Perceivable
+  - 1.1 Text Alternatives
+  - 1.2 Time-based Media
+  - 1.3 Adaptable
+  - 1.4 Distinguishable
+- Operable
+  - 2.1 Keyboard Accessible
+  - 2.4 Navigable
+  - 2.5 Input Modalities
+- Understandable
+  - 3.1 Readable
+  - 3.2 Predictable
+  - 3.3 Input Assistance
+- Robust
+  - 4.1 Compatible
+- Testing Order by Impact
+
 Criterion-by-criterion reference for WCAG 2.2 Level A and AA. Level AAA included where commonly implemented. Focus is on practical pass/fail examples, not abstract definitions.
 
 Conformance target for most projects: **WCAG 2.2 AA**. This is the legal standard for ADA, Section 508 (US federal), European Accessibility Act (EEA, June 2025+).
@@ -44,7 +63,8 @@ Alt text should convey the **purpose and meaning**, not describe the picture lit
 
 ### 1.2 Time-based Media
 
-**1.2.1 Audio-only and Video-only (A)**
+#### 1.2.1 Audio-only and Video-only (A)
+
 - Pre-recorded audio: provide a text transcript
 - Pre-recorded video (no audio): provide audio description or text equivalent
 
@@ -102,7 +122,8 @@ Reading order in the DOM must be logical. CSS absolute positioning should not cr
 
 **1.3.3 Sensory Characteristics (A)**
 Instructions must not rely on shape, colour, size, location, or sound alone.
-```
+
+```text
 ❌ "Click the red button to continue"
 ✅ "Click the Continue button (highlighted in red) to proceed"
 ```
@@ -112,6 +133,7 @@ Content must not be restricted to portrait or landscape only, unless essential.
 
 **1.3.5 Identify Input Purpose (AA)**
 Form inputs collecting personal data must use autocomplete attributes.
+
 ```html
 <input type="email" autocomplete="email" />
 <input type="tel" autocomplete="tel" />
@@ -127,7 +149,7 @@ Form inputs collecting personal data must use autocomplete attributes.
 **1.4.1 Use of Colour (A)**
 Colour must not be the only visual means of conveying information.
 
-```
+```text
 ❌ Required fields marked only by red label colour
 ✅ Required fields marked with asterisk (*) + aria-required="true" + visible legend explaining the mark
 
@@ -140,6 +162,7 @@ Any audio that plays automatically for more than 3 seconds must have a mechanism
 
 **1.4.3 Contrast Minimum (AA)**
 Text contrast ratios:
+
 - Normal text (< 18pt / < 14pt bold): **4.5:1**
 - Large text (≥ 18pt or ≥ 14pt bold): **3:1**
 
@@ -156,12 +179,14 @@ Content must reflow at 400% zoom (equivalent to 320px viewport width) without ho
 
 **1.4.11 Non-text Contrast (AA)**
 UI components and graphical objects must have 3:1 contrast against adjacent colours.
+
 - Form input borders must meet 3:1 against background
 - Focus indicators must meet 3:1
 - Icon-only buttons must meet 3:1 for the icon
 
 **1.4.12 Text Spacing (AA)**
 Text must remain readable when users apply all of the following simultaneously:
+
 - Line height: 1.5× the font size
 - Letter spacing: 0.12× the font size
 - Word spacing: 0.16× the font size
@@ -169,6 +194,7 @@ Text must remain readable when users apply all of the following simultaneously:
 
 **1.4.13 Content on Hover or Focus (AA)**
 When additional content appears on hover or focus (tooltips, sub-menus):
+
 - The content is dismissable (e.g., Escape closes it)
 - The pointer can move over the additional content without it disappearing
 - The content stays until pointer leaves, focus moves, or user dismisses
@@ -187,6 +213,7 @@ When additional content appears on hover or focus (tooltips, sub-menus):
 
 **2.1.1 Keyboard (A)**
 All functionality must be operable via keyboard. This means:
+
 - Every interactive element must be reachable by Tab
 - All mouse-triggered actions must have keyboard equivalents
 - Custom drag-and-drop must have a keyboard alternative
@@ -251,6 +278,7 @@ The entire focused element must be visible (no partial obscuring).
 
 **2.4.13 Focus Appearance (AA)** *(new in 2.2)*
 Focus indicator must:
+
 - Have an area of at least the perimeter of the element × 2px
 - Have a contrast ratio of at least 3:1 against adjacent colours
 
@@ -292,7 +320,8 @@ Interactive targets must be at least 24×24 CSS pixels, or have sufficient offse
 
 ### 3.1 Readable
 
-**3.1.1 Language of Page (A)**
+#### 3.1.1 Language of Page (A)
+
 ```html
 <html lang="en">
 <html lang="fr">
@@ -301,6 +330,7 @@ Interactive targets must be at least 24×24 CSS pixels, or have sufficient offse
 
 **3.1.2 Language of Parts (AA)**
 Mark language changes inline:
+
 ```html
 <p>The French for hello is <span lang="fr">bonjour</span>.</p>
 ```
@@ -333,6 +363,7 @@ Errors are identified in text. Not by colour alone. The error message describes 
 
 **3.3.2 Labels or Instructions (A)**
 Labels or instructions are provided for required format or constraints.
+
 ```html
 <label for="dob">Date of birth <span aria-hidden="true">(DD/MM/YYYY)</span></label>
 <input id="dob" type="text" aria-describedby="dob-format" />
@@ -362,8 +393,8 @@ All UI components must have an accessible name, the correct role, and appropriat
 
 ```html
 <!-- ✅ Custom checkbox -->
-<div role="checkbox" 
-     aria-checked="false" 
+<div role="checkbox"
+     aria-checked="false"
      tabindex="0"
      aria-labelledby="label-id">
 </div>
@@ -391,6 +422,7 @@ Status messages (success, error, loading) must be programmatically determinable 
 6. Mobile screen reader test with VoiceOver/TalkBack
 
 Automated tools to use:
+
 - **axe DevTools** (browser extension) — most accurate automated scanner
 - **Lighthouse** (built into Chrome DevTools) — good for quick audits
 - **WAVE** (browser extension) — good for visual overlay of issues

@@ -1,5 +1,30 @@
 # ARIA Patterns Reference
 
+## Contents
+
+- The Accessible Name Computation
+- Labelling Techniques
+  - aria-label (string directly on element)
+  - aria-labelledby (points to visible text)
+  - aria-describedby (supplementary description)
+  - Labelling groups with fieldset/legend
+- ARIA Roles
+  - Landmark Roles (navigation regions)
+  - Widget Roles (interactive elements)
+- ARIA States and Properties
+  - Dynamic states (change at runtime)
+  - Relationship properties
+  - Toggle button pattern
+- Live Regions
+  - Choosing the right pattern
+  - Implementation rules
+  - When NOT to use live regions
+- Complex Widget Patterns
+  - Tabs (ARIA tab pattern)
+  - Menu Button pattern
+  - Accordion
+- aria-hidden Pitfalls
+
 ARIA (Accessible Rich Internet Applications) exposes semantics to assistive technologies when native HTML doesn't provide them. The golden rule: **no ARIA is better than bad ARIA**. Native HTML is always preferred.
 
 ---
@@ -21,7 +46,7 @@ Screen readers compute a control's accessible name using this priority order (hi
 ```html
 <!-- Name: "Email address" | Description: "We'll never share your email" -->
 <label for="email">Email address</label>
-<input id="email" 
+<input id="email"
        aria-describedby="email-hint"
        type="email" />
 <span id="email-hint">We'll never share your email with anyone.</span>
@@ -32,7 +57,9 @@ Screen readers compute a control's accessible name using this priority order (hi
 ## Labelling Techniques
 
 ### aria-label (string directly on element)
+
 Use when no visible label exists or the visible label is insufficient.
+
 ```html
 <button aria-label="Close dialog">✕</button>
 <nav aria-label="Main navigation">...</nav>
@@ -42,7 +69,9 @@ Use when no visible label exists or the visible label is insufficient.
 **Caveat:** `aria-label` is not translated by automated tools. For multilingual sites, prefer `aria-labelledby` pointing to visible translated text.
 
 ### aria-labelledby (points to visible text)
+
 Use when the label already exists visually elsewhere on the page.
+
 ```html
 <h2 id="products-heading">Products</h2>
 <ul aria-labelledby="products-heading">...</ul>
@@ -54,9 +83,11 @@ Use when the label already exists visually elsewhere on the page.
 ```
 
 ### aria-describedby (supplementary description)
+
 Announced after the name, typically on focus. Use for: hints, error messages, format instructions.
+
 ```html
-<input id="pw" 
+<input id="pw"
        type="password"
        aria-describedby="pw-requirements"
        aria-invalid="false" />
@@ -66,7 +97,9 @@ Announced after the name, typically on focus. Use for: hints, error messages, fo
 ```
 
 ### Labelling groups with fieldset/legend
+
 Always use for radio groups and checkbox groups.
+
 ```html
 <fieldset>
   <legend>Notification preferences</legend>
@@ -95,6 +128,7 @@ Always use for radio groups and checkbox groups.
 | `<search>` | `search` | Search landmark (HTML 5.x) |
 
 Multiple `<nav>` elements must be distinguished with `aria-label`:
+
 ```html
 <nav aria-label="Main">...</nav>
 <nav aria-label="Footer">...</nav>
@@ -105,26 +139,31 @@ Multiple `<nav>` elements must be distinguished with `aria-label`:
 Only use when native HTML doesn't provide the semantics. All widget roles require keyboard handling.
 
 **`role="button"`** — use only when you cannot use `<button>`.
+
 ```html
-<div role="button" tabindex="0" 
+<div role="button" tabindex="0"
      onkeydown="if(e.key==='Enter'||e.key===' ') activate(e)">
   Save
 </div>
 ```
+
 Better: just use `<button>`.
 
 **`role="checkbox"` (custom)**
+
 ```html
-<div role="checkbox" 
-     aria-checked="false" 
+<div role="checkbox"
+     aria-checked="false"
      tabindex="0"
      aria-labelledby="tos-label">
 </div>
 <span id="tos-label">Accept terms of service</span>
 ```
+
 Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 
 **`role="switch"`** — for boolean toggles (on/off semantics, not checked/unchecked)
+
 ```html
 <button role="switch" aria-checked="true">Dark mode</button>
 ```
@@ -132,24 +171,28 @@ Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 **`role="combobox"`** — autocomplete/select widget (complex — see ARIA APG)
 
 **`role="dialog"`** — modal overlay
+
 ```html
-<div role="dialog" 
-     aria-modal="true" 
+<div role="dialog"
+     aria-modal="true"
      aria-labelledby="dialog-title">
   <h2 id="dialog-title">Confirm deletion</h2>
   ...
 </div>
 ```
+
 `aria-modal="true"` tells screen readers to restrict reading to the dialog. Still implement JS focus trap — `aria-modal` alone is insufficient.
 
 **`role="alertdialog"`** — modal requiring immediate response (confirm/deny)
 
 **`role="alert"`** — implicit `aria-live="assertive"`. Use for errors and urgent messages.
+
 ```html
 <div role="alert">Your session is about to expire. Save your work.</div>
 ```
 
 **`role="status"`** — implicit `aria-live="polite"`. Use for success messages, counts.
+
 ```html
 <div role="status">File uploaded successfully.</div>
 ```
@@ -180,6 +223,7 @@ Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 | `aria-haspopup` | Indicates a popup (menu, listbox, tree, grid, dialog) will appear |
 
 ### Toggle button pattern
+
 ```html
 <button aria-expanded="false" aria-controls="nav-menu">
   Menu
@@ -216,6 +260,7 @@ Live regions announce changes to screen readers without moving focus. Use sparin
 | Constantly updating ticker | Move focus, or provide separate "summary" button | Avoid live region |
 
 ### Implementation rules
+
 1. **Live regions must be in the DOM on page load** — inject text *into* them, not the region itself
 2. **Start empty** — if pre-populated, the initial content won't be announced
 3. **Wait ≥2s before populating** a dynamically injected live region (browser needs to register it)
@@ -236,6 +281,7 @@ requestAnimationFrame(() => { statusEl.textContent = '3 items in cart'; });
 ```
 
 ### When NOT to use live regions
+
 - **Focus moves to the new content** — moving focus is already an announcement
 - **Modal opens** — focus trap + role="dialog" handles this
 - **Page navigates** — document title change + focus to `<main>` or `<h1>` announces it
@@ -248,6 +294,7 @@ requestAnimationFrame(() => { statusEl.textContent = '3 items in cart'; });
 For complex interactive widgets, follow the **ARIA Authoring Practices Guide** (APG) patterns exactly. Partial ARIA implementation is worse than none.
 
 ### Tabs (ARIA tab pattern)
+
 ```html
 <div role="tablist" aria-label="Account sections">
   <button role="tab" aria-selected="true" aria-controls="profile-panel" id="profile-tab">Profile</button>
@@ -256,9 +303,11 @@ For complex interactive widgets, follow the **ARIA Authoring Practices Guide** (
 <div role="tabpanel" id="profile-panel" aria-labelledby="profile-tab">...</div>
 <div role="tabpanel" id="billing-panel" aria-labelledby="billing-tab" hidden>...</div>
 ```
+
 Keyboard: `Tab` enters the tab list, **arrow keys** navigate between tabs (not Tab), `Tab` again moves to tab panel.
 
 ### Menu Button pattern
+
 ```html
 <button aria-haspopup="menu" aria-expanded="false" id="actions-btn">
   Actions ▾
@@ -268,9 +317,11 @@ Keyboard: `Tab` enters the tab list, **arrow keys** navigate between tabs (not T
   <li role="menuitem">Delete</li>
 </ul>
 ```
+
 Keyboard: `Enter`/`Space` opens, arrow keys navigate items, `Escape` closes, first-letter navigation optional.
 
 ### Accordion
+
 ```html
 <h3>
   <button aria-expanded="false" aria-controls="section1-body">
@@ -281,6 +332,7 @@ Keyboard: `Enter`/`Space` opens, arrow keys navigate items, `Escape` closes, fir
   Content
 </div>
 ```
+
 No custom ARIA role needed — the `<button>` inside a heading is sufficient.
 
 ---
@@ -290,11 +342,13 @@ No custom ARIA role needed — the `<button>` inside a heading is sufficient.
 `aria-hidden="true"` removes the element and all descendants from the accessibility tree.
 
 **Never apply to:**
+
 - Focusable elements (`<button>`, `<a>`, `<input>`) — keyboard focus will land there with no announcement
 - The currently focused element
 - Parents of focusable elements
 
 **Correct uses:**
+
 ```html
 <!-- Decorative icon -->
 <button>Delete <svg aria-hidden="true">...</svg></button>

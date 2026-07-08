@@ -1,5 +1,31 @@
 # Service Design
 
+## Contents
+
+- Evidence-First Use
+- Service Blueprints
+  - What Is a Service Blueprint?
+  - Structure
+  - Example: Restaurant Booking
+  - When to Use a Service Blueprint
+  - How to Build One
+  - Co-Creation, Failure Modes, and Ownership
+- Jobs to Be Done (JTBD)
+  - Core Concept
+  - Three Dimensions of Every Job
+  - Job Story Format
+  - Applying JTBD to Design
+  - JTBD Nuance
+  - Forces of Progress
+- Ecosystem Mapping
+  - Stakeholder Map
+  - Touchpoint Inventory
+- When to Use What
+  - Journey Map vs Experience Map
+  - Journey Map vs Service Blueprint
+- Service Design Principles
+- Source Anchors
+
 Designing beyond the screen. Every digital interaction exists within a larger service ecosystem.
 
 ---

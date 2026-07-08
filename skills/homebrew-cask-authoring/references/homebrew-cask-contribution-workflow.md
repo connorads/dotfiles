@@ -1,5 +1,48 @@
 # Homebrew Cask Contribution Workflow
 
+## Contents
+
+- Prerequisites
+- Setup: Link Your Local Repository
+  - Initial Setup
+  - Restore Official Tap (After Testing)
+- Creating a New Cask
+  - Pre-flight Checks
+  - 1. Determine the Token
+  - 2. Create the Cask File
+  - 3. Write the Cask Definition
+  - 4. Handle Different Architectures
+- Validation Checklist
+  - For All Casks (New or Updated)
+  - For New Casks Only
+- Testing Tips
+  - Dry Run (See What Would Happen)
+  - Force Reinstall (After Changes)
+  - Test Uninstall with Zap
+  - Check What Files Were Installed
+- Common Cask Patterns
+  - App with Binary
+  - PKG Installer
+  - Suite (Multiple Apps)
+  - With Dependencies
+  - Cross-platform (macOS + Linux / AppImage)
+  - Cross-platform with per-OS arch strings + `os` stanza
+  - Cross-platform with single-arch Linux AppImage
+  - Livecheck (Version Auto-detection)
+- Submitting Your Contribution
+  - 1. Commit Your Changes
+  - 2. Push to Your Fork
+  - 3. Create Pull Request
+  - 4. AI Disclosure
+  - 5. Respond to Review
+- Troubleshooting
+  - "Cask not found"
+  - File Path Install Fails
+  - Symlink Issues
+  - Audit Failures
+  - Installation Failures
+- Quick Reference
+
 A complete guide for contributing casks to Homebrew, covering local testing, validation, and submission.
 
 ## Prerequisites

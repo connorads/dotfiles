@@ -1,5 +1,28 @@
 # Enforcing Coverage: Hooks, CI, and PR Checks
 
+## Contents
+
+- Pre-commit Hooks (hk)
+  - Coverage steps in hk.pkl
+  - Key principles
+  - Stash-aware testing
+  - Python equivalent
+  - Go equivalent
+  - Skipping during development
+- CI Pipeline
+  - GitHub Actions: TypeScript/JavaScript
+  - GitHub Actions: Python
+  - GitHub Actions: Go
+  - GitHub Actions: Rust
+- PR Coverage Checks
+  - Codecov configuration
+  - Manual enforcement (no third-party service)
+- Ratcheting Strategy
+  - The ratcheting workflow
+  - Ratcheting rules
+  - Automated ratcheting (advanced)
+- Composition: test-coverage + hk Skills
+
 Two enforcement points prevent coverage regression: pre-commit hooks (fast feedback) and CI (comprehensive checks).
 
 ## Pre-commit Hooks (hk)

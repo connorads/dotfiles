@@ -1,5 +1,25 @@
 # Focus Management Reference
 
+## Contents
+
+- The Core Focus Contract
+- Modal Dialogs
+  - The complete accessible modal checklist
+  - Vanilla JS focus trap implementation
+  - Using native `<dialog>` element (recommended)
+  - React implementation
+- SPA Route Changes
+  - Pattern 1: Focus the `<h1>` on route change
+  - Pattern 2: Focus a live region announcing the new page
+  - Pattern 3: Skip link to main content (always include this)
+- Focus Visibility
+  - WCAG 2.2 Focus Appearance (2.4.11, 2.4.12 — AA)
+  - Custom focus style example
+- tabindex
+- Focus After Dynamic Content Changes
+- Inert Attribute (Modern Alternative)
+- Common Focus Bugs
+
 Focus management is the programmatic control of keyboard focus — moving it, trapping it, and restoring it. This is the area most commonly broken in modern web apps, especially SPAs.
 
 ---
@@ -46,7 +66,7 @@ function trapFocus(element) {
 
   function handleKeyDown(e) {
     if (e.key !== 'Tab') return;
-    
+
     const focusable = getFocusableElements();
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -75,10 +95,10 @@ function trapFocus(element) {
 // Usage
 function openModal(modalEl, triggerEl) {
   const cleanup = trapFocus(modalEl);
-  
+
   // Make background inert
   document.getElementById('app-root').setAttribute('aria-hidden', 'true');
-  
+
   // Focus first focusable element in dialog
   const firstFocusable = modalEl.querySelector(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -197,7 +217,7 @@ function PageTitle({ title }) {
   useEffect(() => {
     // Update document title
     document.title = `${title} - My App`;
-    
+
     // Move focus to page heading
     // tabIndex="-1" makes it focusable programmatically without entering tab order
     h1Ref.current?.focus();
@@ -223,8 +243,8 @@ router.on('navigate', (route) => {
 
 ```html
 <!-- In app shell - present on all pages -->
-<div id="route-announcer" 
-     aria-live="assertive" 
+<div id="route-announcer"
+     aria-live="assertive"
      aria-atomic="true"
      class="visually-hidden">
 </div>
@@ -264,6 +284,7 @@ router.on('navigate', (route) => {
 Never remove focus outlines without providing a visible replacement. Keyboard users depend on the focus indicator to know where they are.
 
 ### WCAG 2.2 Focus Appearance (2.4.11, 2.4.12 — AA)
+
 - Focused element must have a focus indicator with at least 3:1 contrast ratio against adjacent colours
 - Focus indicator area must be at least the perimeter of the element
 
@@ -356,7 +377,8 @@ Check browser support before using in production. Polyfill available: `wicg-iner
 
 ## Common Focus Bugs
 
-**Bug: Focus lost to `<body>` after dynamic removal**
+### Bug: Focus lost to `<body>` after dynamic removal
+
 ```javascript
 // ❌ Element removed, focus disappears
 item.remove();
@@ -367,7 +389,8 @@ nextSibling.focus();
 item.remove();
 ```
 
-**Bug: Modal opens, focus not moved**
+### Bug: Modal opens, focus not moved
+
 ```javascript
 // ❌ Modal appears, screen reader user is still on the trigger
 modal.classList.remove('hidden');
@@ -377,7 +400,8 @@ modal.classList.remove('hidden');
 modal.querySelector('h2, button, input').focus();
 ```
 
-**Bug: Focus trapped in modal after `display:none` toggle**
+### Bug: Focus trapped in modal after `display:none` toggle
+
 ```javascript
 // ❌ Modal hidden but focus trap still active
 modal.style.display = 'none';
@@ -388,7 +412,8 @@ modal.style.display = 'none';
 triggerEl.focus();
 ```
 
-**Bug: Skip link not visible on focus (common mistake)**
+### Bug: Skip link not visible on focus (common mistake)
+
 ```css
 /* ❌ Hidden with display:none — not focusable at all */
 .skip-link { display: none; }

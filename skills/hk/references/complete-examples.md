@@ -1,5 +1,13 @@
 # Complete hk.pkl Examples
 
+## Contents
+
+- Astro + Preact + Tailwind + pnpm
+- Payload CMS + Next.js 15 + Biome + pnpm
+- Dotfiles (Shell + Nix)
+- Go Service
+- Python (ruff + mypy)
+
 Real configurations for different tech stacks. Bump the version in the `amends`/`import` URLs to match `hk --version`.
 
 ---
