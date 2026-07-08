@@ -14,12 +14,14 @@ setup() {
   export FZF_ARG_LOG="$BATS_TEST_TMPDIR/fzf-args.log"
   export FZF_CALLS="$BATS_TEST_TMPDIR/fzf-calls"
   export GH_LOG="$BATS_TEST_TMPDIR/gh.log"
+  export GIT_LOG="$BATS_TEST_TMPDIR/git.log"
   export CLIPBOARD_LOG="$BATS_TEST_TMPDIR/clipboard.log"
 
   mkdir -p "$FZF_RESPONSE_DIR" "$FZF_INPUT_DIR"
   : >"$FZF_ARG_LOG"
   : >"$FZF_CALLS"
   : >"$GH_LOG"
+  : >"$GIT_LOG"
   : >"$CLIPBOARD_LOG"
 
   write_stub fzf <<'EOF'
@@ -76,6 +78,32 @@ esac
 exit 0
 EOF
 
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+{
+  printf 'git'
+  for arg in "$@"; do
+    printf ' <%s>' "$arg"
+  done
+  printf '\n'
+} >>"$GIT_LOG"
+
+if [ "${1:-}" = "--git-dir=$HOME/git/dotfiles" ] \
+  && [ "${2:-}" = "--work-tree=$HOME" ] \
+  && [ "${3:-}" = "remote" ] \
+  && [ "${4:-}" = "get-url" ] \
+  && [ "${5:-}" = "origin" ]; then
+  if [ "${GIT_REMOTE_EXIT:-0}" -ne 0 ]; then
+    exit "$GIT_REMOTE_EXIT"
+  fi
+  printf '%s\n' "${GIT_REMOTE_URL:-git@github.com:connorads/dotfiles.git}"
+  exit 0
+fi
+
+exit 1
+EOF
+
   write_stub pbcopy <<'EOF'
 #!/usr/bin/env bash
 cat >"$CLIPBOARD_LOG"
@@ -104,6 +132,7 @@ reset_fakes() {
   : >"$FZF_ARG_LOG"
   : >"$FZF_CALLS"
   : >"$GH_LOG"
+  : >"$GIT_LOG"
   : >"$CLIPBOARD_LOG"
 }
 
@@ -111,6 +140,10 @@ run_ghfzf_with_answer() {
   local answer=$1
   shift
   run bash -c 'printf "%s\n" "$1" | zsh --no-rcs "$2" "${@:3}"' _ "$answer" "$GHFZF" "$@"
+}
+
+run_ghfzf_from_home() {
+  run bash -c 'cd "$HOME" && zsh --no-rcs "$1" "${@:2}"' _ "$GHFZF" "$@"
 }
 
 last_gh_line() {
@@ -128,6 +161,7 @@ last_gh_line() {
   [ "$status" -eq 0 ]
   [[ "$output" == "ghfzf 0.1.0" ]]
 
+  [ ! -s "$GIT_LOG" ]
   [ ! -s "$GH_LOG" ]
   [ ! -s "$FZF_ARG_LOG" ]
 }
@@ -139,6 +173,7 @@ last_gh_line() {
 
   [ "$status" -eq 2 ]
   [[ "$output" == *"ghfzf: unknown subcommand: repo"* ]]
+  [ ! -s "$GIT_LOG" ]
   [ ! -s "$GH_LOG" ]
   [ ! -s "$FZF_ARG_LOG" ]
 }
@@ -203,6 +238,77 @@ last_gh_line() {
   grep -Fq '<-L> <12>' "$GH_LOG"
   grep -Fq '<-R> <owner/repo>' "$GH_LOG"
   [ "$(last_gh_line)" = 'gh <pr> <view> <42> <-R> <owner/repo>' ]
+}
+
+@test "running from home auto-targets dotfiles GitHub repo" {
+  mkdir -p "$HOME/git/dotfiles"
+  write_fzf_exit 1 130
+
+  run_ghfzf_from_home pr
+
+  [ "$status" -eq 130 ]
+  grep -Fq 'git <--git-dir='"$HOME"'/git/dotfiles> <--work-tree='"$HOME"'> <remote> <get-url> <origin>' "$GIT_LOG"
+  grep -Fq 'gh <pr> <list>' "$GH_LOG"
+  grep -Fq '<-R> <connorads/dotfiles>' "$GH_LOG"
+}
+
+@test "explicit repo wins over home dotfiles auto-targeting" {
+  mkdir -p "$HOME/git/dotfiles"
+  write_fzf_exit 1 130
+
+  run_ghfzf_from_home issue -R owner/repo
+
+  [ "$status" -eq 130 ]
+  [ ! -s "$GIT_LOG" ]
+  grep -Fq 'gh <issue> <list>' "$GH_LOG"
+  grep -Fq '<-R> <owner/repo>' "$GH_LOG"
+  ! grep -Fq '<-R> <connorads/dotfiles>' "$GH_LOG"
+}
+
+@test "dotfiles auto-targeting only applies at home root" {
+  mkdir -p "$HOME/git/dotfiles" "$HOME/project"
+  write_fzf_exit 1 130
+
+  run bash -c 'cd "$HOME/project" && zsh --no-rcs "$1" pr' _ "$GHFZF"
+
+  [ "$status" -eq 130 ]
+  [ ! -s "$GIT_LOG" ]
+  grep -Fq 'gh <pr> <list>' "$GH_LOG"
+  ! grep -Fq '<-R>' "$GH_LOG"
+}
+
+@test "dotfiles remote parser supports https and ssh URL forms" {
+  mkdir -p "$HOME/git/dotfiles"
+  export GIT_REMOTE_URL="https://github.com/connorads/dotfiles.git"
+  write_fzf_exit 1 130
+
+  run_ghfzf_from_home run
+
+  [ "$status" -eq 130 ]
+  grep -Fq '<-R> <connorads/dotfiles>' "$GH_LOG"
+
+  reset_fakes
+  mkdir -p "$HOME/git/dotfiles"
+  export GIT_REMOTE_URL="ssh://git@github.example.com/teams/dotfiles.git"
+  write_fzf_exit 1 130
+
+  run_ghfzf_from_home run
+
+  [ "$status" -eq 130 ]
+  grep -Fq '<-R> <github.example.com/teams/dotfiles>' "$GH_LOG"
+}
+
+@test "dotfiles remote lookup failure falls back to gh repo discovery" {
+  mkdir -p "$HOME/git/dotfiles"
+  export GIT_REMOTE_EXIT=1
+  write_fzf_exit 1 130
+
+  run_ghfzf_from_home pr
+
+  [ "$status" -eq 130 ]
+  grep -Fq 'git <--git-dir='"$HOME"'/git/dotfiles> <--work-tree='"$HOME"'> <remote> <get-url> <origin>' "$GIT_LOG"
+  grep -Fq 'gh <pr> <list>' "$GH_LOG"
+  ! grep -Fq '<-R>' "$GH_LOG"
 }
 
 @test "GHFZF_LIMIT supplies the default limit" {
