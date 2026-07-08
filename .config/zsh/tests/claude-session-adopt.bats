@@ -6,7 +6,7 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 ADOPT="$FUNCTIONS_DIR/claude-session-adopt"
-REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/claude-session.sh"
+REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
 RESOLVER="$BATS_TEST_DIRNAME/../../tmux/scripts/claude-session-resolve.py"
 
 setup() {

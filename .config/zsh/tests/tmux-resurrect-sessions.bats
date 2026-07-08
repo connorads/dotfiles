@@ -7,7 +7,7 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 REAL_SAVE_SESSIONS="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-save-sessions.sh"
-REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/claude-session.sh"
+REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
 REAL_CLAUDE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/claude_session_id.sh"
 REAL_CODEX_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/codex_session_id.sh"
 REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_session_id.sh"
@@ -21,7 +21,7 @@ setup() {
   OPENCODE_STRATEGY="$HOME/.config/tmux/strategies/opencode_session_id.sh"
   mkdir -p "$HOME/.config/tmux/scripts/lib" "$HOME/.config/tmux/strategies" "$HOME/.local/share/tmux/resurrect" "$HOME/.claude/sessions"
   cp "$REAL_SAVE_SESSIONS" "$SAVE_SESSIONS"
-  cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/claude-session.sh"
+  cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/agent-session.sh"
   cp "$REAL_CLAUDE_STRATEGY" "$CLAUDE_STRATEGY"
   cp "$REAL_CODEX_STRATEGY" "$CODEX_STRATEGY"
   cp "$REAL_OPENCODE_STRATEGY" "$OPENCODE_STRATEGY"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# claude-session.sh: shared resolver for a tmux pane -> agent PID -> live session file.
+# agent-session.sh: shared resolver for a tmux pane -> agent PID -> live session file.
 # Sourced (not executed) by resurrect-save-sessions.sh and branch-menu scripts.
 #
 # Golden source: Claude Code writes a live per-PID file
@@ -7,11 +7,11 @@
 # session_ids.json map is a stale save-time cache and must NOT be used for live
 # actions.
 
-# claude_foreground_pid_for_tty <tty> <command> [pane_pid]
+# agent_foreground_pid_for_tty <tty> <command> [pane_pid]
 # Resolve the foreground process named <command> on <tty>. Falls back to a child
 # of <pane_pid> when the tty scan finds nothing. Command basename is matched so
 # absolute paths / mise shims still match. Empty output when unresolved.
-claude_foreground_pid_for_tty() {
+agent_foreground_pid_for_tty() {
 	local tty="$1"
 	local command="$2"
 	local pane_pid="${3:-}"

@@ -45,8 +45,8 @@ if [ "${1:-}" = "fork-worktree" ]; then
 	exit 0
 fi
 
-# shellcheck source=lib/claude-session.sh disable=SC1091
-. "$(dirname "${BASH_SOURCE[0]}")/lib/claude-session.sh"
+# shellcheck source=lib/agent-session.sh disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
 
 pane_id="${1:?pane_id required}"
 pane_tty="${2:-}"
@@ -74,7 +74,7 @@ command -v lsof >/dev/null 2>&1 || {
 	exit 0
 }
 
-codex_pid=$(claude_foreground_pid_for_tty "$pane_tty" "codex" "$pane_pid")
+codex_pid=$(agent_foreground_pid_for_tty "$pane_tty" "codex" "$pane_pid")
 [ -n "$codex_pid" ] || no_session
 
 resolved=$(codex_session_resolve_for_pid "$codex_pid" "$pane_path" 2>/dev/null || true)
