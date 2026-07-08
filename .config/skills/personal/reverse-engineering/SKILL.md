@@ -12,7 +12,7 @@ Use this skill for static-first binary analysis. Start with format/runtime ident
 - Treat "do not run this binary" as a hard constraint.
 - Default to static inspection even when the user does not say it explicitly.
 - Do not modify the target binary. Write extracted artefacts to a separate workspace under `/tmp` unless the user asks for a specific location.
-- If a tool is missing, discuss adding it through Nix or mise before installing anything ad hoc.
+- If a tool is missing in dotfiles, follow `AGENTS.md` dependency ownership: host-global and well-packaged tools go in Nix; project/version-selected tools go in mise; macOS vendor bundles go in Homebrew.
 - Avoid printing credential-like values verbatim. Record that they exist and where they were found; show only enough prefix/context to identify the finding.
 
 ## Workflow
@@ -123,9 +123,9 @@ Keep reports compact and evidence-backed:
 
 If the useful tools are missing, propose a small install set rather than a broad RE toolbox:
 
-- **Core CLI**: Go toolchain, GoReSym, Redress/GoRE, `jq`, `ripgrep`.
+- **Core CLI**: Go toolchain, `GoReSym`, `redress`, `radare2`, `binutils`, `upx`, `yara`, `jq`, `ripgrep`. In dotfiles, the RE-specific CLI tools are expected to be Nix-owned.
 - **Binary format tools**: `binutils` or LLVM tools on Linux; `otool`/`lldb` already exist on macOS.
 - **Workbench**: Ghidra first if a free GUI decompiler is needed; IDA/Binary Ninja only if already available or explicitly desired.
 - **Obfuscation extras**: GoStringUngarbler only when garble `-literals` evidence exists.
 
-For dotfiles, discuss whether each belongs in Nix or mise before editing config.
+Discuss GUI workbenches, vendor bundles, and language-specific extras before adding them.

@@ -101,6 +101,14 @@ let
     cloudflared
     mosh
     ttyd
+
+    # Reverse engineering
+    goresym
+    redress
+    radare2
+    binutils
+    upx
+    yara
   ];
 
   # ---------------------------------------------------------------------------
