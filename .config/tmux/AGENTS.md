@@ -16,7 +16,7 @@ the keybinds section in [`tmux.conf`](./tmux.conf)):
   lazygit + lazygit-dotfiles. Follows Vim (`a`/`A`, `c`/`C`) and
   tmux-pain-control (`h`/`H`).
 - **Alt is the standalone-tool pocket** - agent/session tools with no plain-key
-  parent (`M-s` skl, `M-m` memory, `M-i` shotpath, `M-b` branch, `M-g` review,
+  parent (`M-s` skl, `M-m` memory, `M-i` shotpath, `M-b` branch, `M-g` ghfzf,
   `M-j` jjui). Alt is *not* a "variant of the plain key" modifier: don't put a
   sibling on Alt, and new unrelated tools get a plain key, not Alt.
 - Occasional utilities that each ran at ~0 tracked uses live in the `prefix + T`

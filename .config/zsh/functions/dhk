@@ -15,11 +15,8 @@ if [[ -z "$hk_bin" ]]; then
   return 127
 fi
 
-local tmpdir
-tmpdir="$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/dhk.XXXXXX")" || return 1
-trap 'rm -rf -- "$tmpdir"' EXIT
-
-printf 'gitdir: %s\n' "$HOME/git/dotfiles" > "$tmpdir/.git" || return 1
-ln -s "$HOME/hk.pkl" "$tmpdir/hk.pkl" || return 1
-
-(cd "$tmpdir" && "$hk_bin" "$@")
+cd "$HOME" || return 1
+export GIT_DIR="$HOME/git/dotfiles"
+export GIT_WORK_TREE="$HOME"
+export HK_STASH_UNTRACKED=false
+"$hk_bin" "$@"
