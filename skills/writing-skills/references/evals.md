@@ -1,10 +1,10 @@
 # Evals
 
 The harness for proving a skill changes behaviour. Scale it to stakes: a
-personal skill might get two prompts and an eyeball; a published skill that
-fires daily deserves the full loop. Skipping the harness entirely (vibe mode)
-is legitimate — but then user review *is* the eval, so get outputs in front
-of the user before self-assessing.
+personal skill might get two prompts and human review; a published skill that
+fires daily deserves the full loop. Exploratory mode (human-reviewed) is
+legitimate when the user wants to iterate live or the output is subjective,
+but then captured outputs plus user feedback *are* the eval.
 
 ## Contents
 
@@ -30,9 +30,10 @@ property — sanitised prompts pass trivially and hide the failures that matter:
   case where this skill competes with a neighbour and should win.
 
 Every prompt is a permanent asset. Keep them with the skill (e.g. an `evals/`
-dir, noted in SKILL.md so it doesn't read as an orphan) and only ever add —
-especially every real-world failure report, which becomes a test case
-*before* the fix.
+dir, noted in SKILL.md so it doesn't read as an orphan). Real-world failure
+reports become test cases before the fix. For trigger-description work, keep a
+small validation set held out from wording edits so the description doesn't
+overfit the first failures you saw.
 
 ## Running: with-skill vs baseline
 
@@ -47,9 +48,10 @@ skill's intent and masks exactly the ambiguities you're hunting. Where the
 environment offers subagents, spawn all runs in the same turn so they finish
 together; otherwise run serially, still in clean sessions.
 
-Capture per run: the outputs the user cares about, the full transcript, and
-cost (tokens, wall time) — a skill that wins on quality but triples cost is
-information the author needs.
+Capture per run: the outputs the user cares about, the full transcript, token
+cost, and wall time. Token cost is a grading dimension because skill text
+competes with the conversation for context. Wall time is informational because
+machines and network conditions vary.
 
 ## Grading
 
@@ -60,11 +62,14 @@ Grade the transcript, not just the output. The questions that find revisions:
 - Did any section change nothing? Candidate for deletion.
 - Did runs independently reinvent the same helper or multi-step dance? That's
   the signal to bundle a script.
+- Can deterministic trace assertions check the process? Prefer concrete events
+  where available: skill invoked, references read, commands run, files created,
+  and command order.
 - Did it follow the *description* instead of the body? (See
   [description.md](description.md) — the description is summarising the
   workflow.)
 - Where did it rationalise around a rule? Copy the excuse verbatim into a
-  rationalization table (see
+  rationalisation table (see
   [instruction-forms.md](instruction-forms.md)).
 - Do the skill's own examples run? Commands, flags, and names a skill asserts
   are domain claims — verify a sample against the live tool. Reviewing the
@@ -99,6 +104,12 @@ negative for a PDF skill tests nothing; "pull the tables out of this scanned
 contract" (needs OCR, not your PDF-forms skill) tests the boundary. Run each
 query more than once — triggering is stochastic, and a 2/3 trigger rate is a
 different problem (ambiguous description) than 0/3 (wrong description).
+
+Split trigger prompts into training and validation sets when tuning a
+description. Use the training set to revise wording, then pick the final
+wording by validation pass rate. Before shipping a description change, run at
+least one held-out should-trigger prompt and one near-miss should-not-trigger
+prompt.
 
 ## When the loop ends
 

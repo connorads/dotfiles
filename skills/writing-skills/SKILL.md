@@ -1,15 +1,13 @@
 ---
 name: writing-skills
 description: >-
-  Guides creating, editing, reviewing, and debugging agent skills (SKILL.md
-  directories) test-first: observe what an agent gets wrong without the skill,
-  write the minimum that fixes it, and prove the fix with evals. Use when
-  writing a new skill, improving or reviewing an existing one, writing or
-  debugging a skill description or frontmatter, structuring references and
-  scripts, or diagnosing a skill that doesn't trigger or doesn't change the
-  agent's behaviour. Covers the agentskills SKILL.md spec, progressive
-  disclosure, and packaging. Not for invoking an existing skill to do its own
-  task.
+  Guides creating, editing, reviewing, and debugging Agent Skills and SKILL.md
+  directories. Use when writing a new skill, improving or reviewing an existing
+  skill, fixing a skill description or frontmatter, structuring references,
+  scripts, assets or evals, packaging a skill, or diagnosing a skill that does
+  not trigger or does not change agent behaviour. Covers portable Agent Skills
+  spec, progressive disclosure, eval design, and client compatibility notes.
+  Not for using an existing skill to perform its domain task.
 ---
 
 # Writing Skills
@@ -41,7 +39,7 @@ The cheapest fix is often not writing a skill at all.
 
 1. **Watch it fail** — run the task without the skill, capture failures verbatim
 2. **Draft the minimum** that addresses those failures
-3. **Test** — eval mode or vibe mode
+3. **Test** — eval mode or exploratory mode
 4. **Read the transcripts**, not just the outputs
 5. **Revise** — feed gaps back; prune as deliberately as you add
 6. **Re-test**; stop on convergence
@@ -82,7 +80,7 @@ every sentence:
   guidance that should apply throughout as an ongoing rule, not an action to
   perform now.
 - **Timeless present tense.** Version numbers, prices, release dates, and
-  "recently/no longer" framing rot faster than the rules they decorate — and
+  dated change-history framing rot faster than the rules they decorate — and
   stale facts read as authoritative. State the current rule plainly; point at
   live sources (`--help`, official docs) for anything volatile.
 - **One source of truth.** Any rule, table, or protocol lives in exactly one
@@ -104,7 +102,9 @@ SKILL.md body (loaded on trigger), bundled files (loaded on demand):
   Y") — a generic "see references/" never fires.
 - Bundle a script in `scripts/` when you observe the agent reinventing the
   same deterministic logic across runs; mark whether it's to EXECUTE or to
-  read as reference. Handle errors inside the script and justify any constant.
+  read as reference. Give scripts clear CLI arguments, check dependencies,
+  prefer structured output when another step consumes it, and make errors
+  actionable enough for the agent to recover.
 - Match specificity to fragility: prose and principles for judgement calls;
   exact commands ("run exactly this, no extra flags") for fragile,
   destructive, or consistency-critical operations. Calibrate each part of a
@@ -118,14 +118,15 @@ before first shipping rather than mid-draft.
 
 Two lanes, same shape, different rigour:
 
-- **Eval mode** — write 2–3 realistic test prompts (messy, specific, the kind
-  a real user types — clean sanitised prompts hide triggering failures). Run
-  each with-skill and baseline (no skill, or the old version) in **fresh
-  sessions**, in parallel where the environment allows. Read
-  [references/evals.md](references/evals.md) for the full harness.
-- **Vibe mode** — iterate live with the user on real tasks, no harness.
-  Legitimate whenever the user prefers it or the output is subjective
-  (writing style, design taste); the human review is the eval.
+- **Eval mode** — write realistic prompts (messy, specific, the kind a real
+  user types — clean sanitised prompts hide triggering failures). Run each
+  with-skill and baseline (no skill, or the old version) in **fresh sessions**,
+  in parallel where the environment allows. Keep a held-out validation slice
+  for description changes so trigger wording doesn't overfit the first misses.
+  Read [references/evals.md](references/evals.md) for the full harness.
+- **Exploratory mode (human-reviewed)** — iterate live with the user on real
+  tasks when the output is subjective or the user prefers a conversational
+  loop. Capture the outputs and feedback; the human review is the eval.
 
 Fresh sessions matter in both lanes: leftover authoring context masks exactly
 the gaps you're testing for.
@@ -134,7 +135,10 @@ the gaps you're testing for.
 
 A skill can produce the right final answer while wasting steps, ignoring its
 bundled scripts, or following the description instead of the body. Grade *how*
-the agent got there. Two signals to hunt for:
+the agent got there. Prefer deterministic trace checks when available: skill
+invoked, files touched, commands run, and expected order. Record token cost and
+wall time; grade token cost as a context trade-off, and treat wall time as
+informational because machines vary. Two signals to hunt for:
 
 - Sections the agent read but that changed nothing → candidates for deletion.
 - Work the agent reinvented identically across runs → candidate for a bundled
@@ -177,6 +181,9 @@ contents list. Then verify the things a script can't:
 - No machine-specific paths; bundled scripts are referenced relative to the
   skill directory. Any required binary is checked for, with a portable
   fallback.
+- Bundled scripts and resources are reviewed as executable or instructive
+  content: flag network access, broad filesystem access, secret handling, or
+  any path that could move data outside the user's intent.
 - The skill's executable claims — commands, flags, type names, API fields —
   are spot-checked against the live tool. Craft review alone ships domain
   bugs: a skill can be structurally perfect while its first example errors.
@@ -197,5 +204,6 @@ contents list. Then verify the things a script can't:
 | Running the eval harness: prompts, baselines, grading, micro-testing wording | [references/evals.md](references/evals.md) |
 | Frontmatter fields, naming, layout, packaging, validation | [references/spec-and-packaging.md](references/spec-and-packaging.md) |
 
-`evals/` holds this skill's own test prompts and assertions — run them per
-[references/evals.md](references/evals.md) when revising this skill.
+`evals/` holds this skill's own test prompts, fixture templates, and assertions
+— run them per [references/evals.md](references/evals.md) when revising this
+skill.
