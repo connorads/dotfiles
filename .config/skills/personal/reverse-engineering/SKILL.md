@@ -1,11 +1,11 @@
 ---
 name: reverse-engineering
-description: Static-first reverse engineering and binary decompilation workflow. Use when the user asks to inspect, decompile, reverse engineer, triage, recover symbols/types/strings, identify endpoints/models/dependencies, explain executable behaviour, or analyse a stripped/packed/obfuscated Mach-O, ELF, PE, WASM, firmware blob, CLI, app bundle, or unknown binary. Use especially when they say not to run it, mention Ghidra, IDA, Binary Ninja, radare2, lldb, strings, xrefs, symbols, Go/Golang, Rust, .NET, Java, Electron, native code, malware triage, or binary internals.
+description: Static-first reverse engineering and binary decompilation workflow. Use when the user asks to inspect, decompile, reverse engineer, triage, recover symbols/types/strings, identify endpoints/models/dependencies, explain executable behaviour, or analyse a stripped/packed/obfuscated Mach-O, ELF, PE, WASM, firmware blob, CLI, app bundle, or unknown binary. Use especially when they say not to run it, mention Ghidra, IDA, Binary Ninja, radare2, lldb, strings, xrefs, symbols, Go/Golang, Rust, .NET, Java, Electron, Bun, Node SEA, pkg/nexe, Deno compile, packaged JavaScript/TypeScript CLIs, native code, malware triage, or binary internals.
 ---
 
 # Reverse Engineering
 
-Use this skill for static-first binary analysis. Start with format/runtime identification, then switch into the relevant language/runtime reference. The only detailed reference currently bundled is Go; add more references as workflows are tested.
+Use this skill for static-first binary analysis. Start with format/runtime identification, then switch into the relevant language/runtime reference. Detailed references are bundled for Go and packaged JavaScript CLIs; add more references as workflows are tested.
 
 ## Default posture
 
@@ -37,12 +37,14 @@ Use this skill for static-first binary analysis. Start with format/runtime ident
    - Rust: symbols or strings mention `rustc`, `panic_unwind`, `core::`, `alloc::`, or cargo metadata.
    - .NET: PE metadata, CLR headers, `mscoree.dll`, `System.*`, `Microsoft.*`.
    - Java/Kotlin: JAR/APK/classes, `META-INF`, JVM constant pools.
-   - Electron/Node: app archives, `app.asar`, V8 snapshots, `node_modules`, Chromium strings.
+   - Packaged JS CLI: single-file executables with Bun/JSC, Node SEA, `pkg`/`nexe`, Deno `compile`, `NODE_SEA_BLOB`, `__BUN`, `/$bunfs/`, `/snapshot/`, `denort`, or bundled `node_modules` strings.
+   - Electron/Node app: app archives, `app.asar`, V8 snapshots, `node_modules`, Chromium strings.
    - Native C/C++/Obj-C/Swift: no managed runtime, platform ABI symbols, Objective-C/Swift metadata, dynamic library imports.
 
 4. Read the matching reference before deeper analysis. Current reference:
 
    - [references/go.md](references/go.md) for Go binaries.
+   - [references/package-js-cli.md](references/package-js-cli.md) for single-file packaged JavaScript/TypeScript CLIs.
 
 5. For Go binaries, the bundled helper can run the static triage ladder:
 
