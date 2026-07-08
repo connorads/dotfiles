@@ -20,10 +20,12 @@ Analyze user messages from OpenCode sessions to identify recurring themes, commu
 ### Step 1: Run Extraction
 
 ```bash
-~/.agents/skills/opencode-conversation-analysis/scripts/extract.sh
+# From this skill directory:
+scripts/extract.sh
 ```
 
 This script:
+
 - Reads from `~/.local/share/opencode/opencode.db` (SQLite) when available
 - Falls back to `~/.local/share/opencode/storage/` for older OpenCode installs
 - Extracts user messages from main sessions with metadata (session_id, title, timestamp, text)
@@ -37,7 +39,7 @@ Review the output summary to see how many chunks were created.
 
 For each chunk file, spawn a `general` subagent with this prompt template:
 
-```
+```text
 Read the file /tmp/opencode-analysis/chunk_N.jsonl which contains user messages from coding sessions (JSONL format with fields: session_id, session_title, timestamp, text).
 
 Analyze these messages to identify recurring themes in how the user steers/guides AI coding assistants. Look for patterns like:
@@ -107,6 +109,7 @@ Output directly to the user - don't write to a file unless asked.
 ## Customisation Options
 
 The user may request:
+
 - **Different chunk sizes**: Edit `CHUNK_SIZE` in extract.sh (default 320000 chars)
 - **Different message filter**: Edit `MIN_TEXT_LEN` in `extract.sh` (default 10 chars)
 - **Include subagent sessions**: Remove the `parent_id IS NULL` (SQLite) and `parentID` (legacy) filters in extract.sh

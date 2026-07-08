@@ -109,7 +109,7 @@ app.add_middleware(CanonicalLogMiddleware)
 Handlers then annotate without knowing anything about the middleware:
 
 ```python
-from canonical import annotate
+from canonical_asgi import annotate
 
 @app.post("/checkout")
 async def checkout(req, user=Depends(current_user)):

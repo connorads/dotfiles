@@ -1,17 +1,11 @@
 ---
 name: github-images
-description: Download images from private GitHub issues and PRs using authenticated signed URLs.
+description: Download images from GitHub issues and PRs using authenticated signed URLs. Use when a user shares a GitHub issue/PR URL and the agent needs to view screenshots or image attachments, especially from private repos, or asks to "grab the screenshots from that issue" or similar.
 ---
 
 # github-images
 
 Download image attachments from GitHub issues and pull requests, including private repos that require authentication.
-
-## When to use
-
-- User shares a GitHub issue/PR URL and you need to view screenshots or images from it
-- You need to download image attachments from a private repo
-- User asks to "grab the screenshots from that issue" or similar
 
 ## Usage
 

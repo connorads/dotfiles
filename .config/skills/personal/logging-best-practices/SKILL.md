@@ -1,10 +1,6 @@
 ---
 name: logging-best-practices
 description: Design, review, or refactor logging for a service so it works as an observability primitive — the canonical wide-event / structured-log pattern. Use when the user is setting up logging for a new service, adding or auditing middleware, building a logger config (structlog, pino, winston), enabling Cloudflare Workers observability or Analytics Engine, instrumenting OpenTelemetry logs, planning sampling strategy, proposing logging schema changes, or saying things like "our logs are noisy", "we can't find anything in the logs", "improve our logging", or "add proper logging". Do NOT trigger for single casual `console.log`/`print`/`logger.info` additions during unrelated work.
-references:
-  - python
-  - cloudflare-workers
-  - sampling
 ---
 
 # Logging Best Practices
@@ -44,7 +40,7 @@ Load the reference that matches the runtime **before writing any code**. The pri
 
 | Runtime | Reference |
 |---|---|
-| Python services (FastAPI, Starlette, Django, Flask, Celery, scripts) | [`references/python.md`](references/python.md) |
+| Python services (FastAPI, Starlette, Django, Flask, Celery, scripts) | [`references/python.md`](references/python.md); use bundled [`scripts/canonical_asgi.py`](scripts/canonical_asgi.py) for ASGI middleware |
 | Cloudflare Workers (Hono, raw fetch handler, Durable Objects, Workers AI) | [`references/cloudflare-workers.md`](references/cloudflare-workers.md) |
 | Any runtime — cross-cutting sampling strategy | [`references/sampling.md`](references/sampling.md) |
 
@@ -54,7 +50,7 @@ For stacks not yet covered (Node/Express, Go, Rust): load the closest reference 
 
 Every concrete implementation in the references is a variation of this shape. If you are tempted to skip loading a reference, re-read this block — the real code needs library-specific APIs, context-propagation mechanics, and platform pitfalls that pseudocode cannot capture.
 
-```
+```text
 # At service startup: configure the structured logger once (JSON to stdout).
 
 # Per unit of work (HTTP request, queue message, cron tick):
@@ -142,4 +138,3 @@ An exception should produce exactly one log event: the canonical event for that 
 | Random-sample all requests at 1% | Drops 99% of your errors. | Tail sampling — keep errors, slow requests, VIPs, flag-enabled requests. See `references/sampling.md`. |
 | Logging full request/response bodies | Secrets, PII, cost. | Redaction processor + allowlist + size cap. |
 | Treating structured JSON as sufficient | Five JSON fields is not a wide event. | Aim for 20+ fields with all four context categories. |
-

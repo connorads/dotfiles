@@ -43,7 +43,9 @@ as the skeleton when generating the file.
 
 1. **Role + golden rule** — one line setting the frame.
 2. **Mission + stop conditions** — what success looks like, what
-   exhaustion looks like, when to stop.
+   exhaustion looks like, when to stop. If the loop contract does not make
+   success, exhaustion, and failure conditions obvious, read
+   [references/stop-conditions.md](references/stop-conditions.md).
 3. **State files to watch** — paths the supervisor reads each cycle.
 4. **Intervention taxonomy** — project-specific triggers + responses.
 5. **Out-of-scope / don't-touch** — the inner loop's domain.
