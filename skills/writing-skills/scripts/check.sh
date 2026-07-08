@@ -68,6 +68,14 @@ elif ((desc_len > 1024)); then
 fi
 
 # --- Hygiene ----------------------------------------------------------------
+# Long bodies carry reference material into every triggered session. 500 lines
+# is the skill body cap from the authoring guidance; warn so authors can move
+# stack/provider details into routed references.
+skill_lines=$(wc -l <"$skill_md" | tr -d ' ')
+if ((skill_lines > 500)); then
+	warn "SKILL.md is $skill_lines lines (recommended max 500; move reference-shaped detail into references/)"
+fi
+
 # Local state that should never ship inside a skill.
 while IFS= read -r -d '' f; do
 	warn "shipped cache/artifact: ${f#"$dir"/}"
@@ -94,10 +102,11 @@ while IFS= read -r -d '' f; do
 	fi
 done < <(find "$dir" -name '*.md' ! -name SKILL.md -print0)
 
-# Doc-rot phrasing: change-history written as standing prose.
+# Doc-rot phrasing: change-history, version snapshots, and verification banners
+# written as standing prose.
 while IFS= read -r hit; do
 	warn "possible doc-rot phrasing: $hit"
-done < <(grep -rnEi '\b(no longer|previously|used to|recently (added|changed|moved)|as of (19|20)[0-9]{2})\b' \
+done < <(grep -rnEi '\b(no longer|previously|used to|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b' \
 	--include='*.md' "$dir" | sed "s|^$dir/||" || true)
 
 # --- Authoritative validator, when available ---------------------------------
