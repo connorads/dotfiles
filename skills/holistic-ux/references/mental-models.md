@@ -59,6 +59,7 @@ Changing mental models is the hardest but most impactful intervention.
 ### Applying the Iceberg
 
 When handed a design problem:
+
 1. **Name the event** — What specifically happened?
 2. **Find the pattern** — Has this happened before? Under what conditions?
 3. **Identify the structure** — What system enables this?
@@ -78,11 +79,14 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 **Approach:** Sense → Categorise → Respond
 
 **UX examples:**
+
 - Button placement for conversion optimisation
 - Standard form layouts
 - Applying an existing design system
 
-**What to do:** Apply known patterns. Don't reinvent. Use UI pattern libraries and accessibility checklists.
+**What to do:** Apply known patterns and specialist checks. Don't reinvent. Use
+`references/patterns.md` for pattern choice, `ui-design-playbook` for visual
+implementation, and `accessibility` for detailed accessibility checks.
 
 ### Complicated
 
@@ -90,6 +94,7 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 **Approach:** Sense → Analyse → Respond
 
 **UX examples:**
+
 - Information architecture restructure
 - Complex dashboard design
 - Multi-step onboarding flow
@@ -102,6 +107,7 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 **Approach:** Probe → Sense → Respond
 
 **UX examples:**
+
 - "Why don't users trust our brand?"
 - "How should we enter a new market?"
 - "Why is engagement declining despite good usability metrics?"
@@ -114,6 +120,7 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 **Approach:** Act → Sense → Respond
 
 **UX examples:**
+
 - Production outage with user impact
 - Security breach affecting user data
 - Critical accessibility lawsuit
@@ -125,6 +132,7 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 When you don't know which domain you're in, you're in disorder. The danger is applying your favourite approach regardless.
 
 **Common mistakes:**
+
 - Treating complex problems as complicated (over-planning)
 - Treating complicated problems as clear (under-researching)
 - Treating clear problems as complex (over-thinking)
@@ -136,15 +144,19 @@ When you don't know which domain you're in, you're in disorder. The danger is ap
 ### Feedback Loops
 
 **Reinforcing (positive) loops** amplify change:
-```
+
+```text
 Good reviews → More users → More reviews → Even more users
 ```
+
 Design implication: Identify virtuous cycles and design to strengthen them.
 
 **Balancing (negative) loops** resist change:
-```
+
+```text
 More features → More complexity → Harder to use → Fewer users → Demand for simplicity
 ```
+
 Design implication: Feature creep has natural consequences. Design constraints are a feature.
 
 ### Leverage Points
@@ -184,7 +196,7 @@ Every design decision has consequences beyond the immediate:
 
 ## Applying These Models Together
 
-**Example: "Users aren't completing onboarding"**
+### Example: "Users aren't completing onboarding"
 
 1. **Iceberg:** Event (drop-off at step 4) → Pattern (happens with enterprise users) → Structure (onboarding assumes individual use, not team setup) → Mental model ("users are individuals")
 
