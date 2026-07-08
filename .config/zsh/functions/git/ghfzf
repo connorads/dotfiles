@@ -103,6 +103,55 @@ _ghfzf_copy_url() {
   print -r -- "copied: $url"
 }
 
+_ghfzf_remote_to_repo() {
+  local url=$1 host path owner name
+
+  case "$url" in
+    git@*:*)
+      host=${url#git@}
+      host=${host%%:*}
+      path=${url#*:}
+      ;;
+    ssh://git@*/*)
+      host=${url#ssh://git@}
+      host=${host%%/*}
+      path=${url#ssh://git@*/}
+      ;;
+    https://*/*/*)
+      host=${url#https://}
+      host=${host%%/*}
+      path=${url#https://*/}
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  path=${path%.git}
+  owner=${path%%/*}
+  name=${path#*/}
+  [[ $path == */* && -n $host && -n $owner && -n $name && $name != */* ]] || return 1
+  path="$owner/$name"
+
+  if [[ $host == github.com ]]; then
+    print -r -- "$path"
+  else
+    print -r -- "$host/$path"
+  fi
+}
+
+_ghfzf_resolve_repo_context() {
+  [[ -n $repo ]] && return 0
+  [[ ${PWD:A} == ${HOME:A} ]] || return 0
+  [[ -d $HOME/git/dotfiles ]] || return 0
+
+  local remote resolved
+  remote=$(git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" remote get-url origin 2>/dev/null) || return 0
+  resolved=$(_ghfzf_remote_to_repo "$remote" 2>/dev/null) || return 0
+  [[ -n $resolved ]] || return 0
+  repo=$resolved
+}
+
 _ghfzf_select_domain() {
   _ghfzf_require fzf || return $?
 
@@ -418,6 +467,7 @@ if [[ -z $domain ]]; then
   _ghfzf_select_domain || return $?
 fi
 
+_ghfzf_resolve_repo_context
 _ghfzf_require gh fzf || return $?
 
 local rows
