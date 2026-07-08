@@ -232,6 +232,29 @@ alone does not mean read-only.
 
 ## Supply Chain & Update Strategy
 
+### Dependency ownership: Nix, mise, Homebrew
+
+Nix owns the machine/profile layer: base shell tools, services, fonts, native
+libraries, patched builds, tools needed before mise works, stable CLIs, and GUI
+apps where the nixpkgs package is healthy.
+
+Prefer Nix for GUI apps when they are open-source, cross-platform, useful on a
+future Linux desktop, or otherwise behave well from nixpkgs. macOS-only GUI apps
+can still belong in Nix when declarative ownership and rollback matter.
+
+Homebrew is the macOS app compatibility lane: use it for casks, MAS apps,
+proprietary/vendor bundles, self-updating apps, browsers/editors/AI apps with
+fast vendor cadence, drivers/extensions, or anything whose signing, permissions,
+updates, or app-bundle integration are better via Homebrew.
+
+mise owns the developer-tool layer: language runtimes, package managers,
+project-specific tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs
+like Claude/Codex, and tools needing direct upstream updates or postinstall
+patching.
+
+Rule of thumb: host-global and well-packaged -> Nix; project/version-selected ->
+mise; macOS vendor bundle -> Homebrew.
+
 Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `install_before`) - only versions released 4+ days ago are installed. This gives the community time to catch compromised releases. GitHub attestation and SLSA provenance verification are also enabled; `locked_verify_provenance = true` re-verifies provenance at install time even when the lockfile already has a checksum (otherwise skipped on lockfile hits).
 
 **Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform - the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
