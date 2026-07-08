@@ -6,7 +6,7 @@ node.compile = false
 python.compile = false
 # Supply chain security: only install versions released 4+ days ago.
 minimum_release_age = "4d"
-minimum_release_age_excludes = ["claude", "codex"]
+minimum_release_age_excludes = ["claude", "codex", "amp"]
 github_attestations = true
 slsa = true
 # Re-verify SLSA/attestations at install time even when the lockfile already
@@ -135,6 +135,8 @@ fnox = "1.27.1"
 # Sandboxes build.rs for every cargo build via ~/.cargo/config.toml's linker
 # shim. Not in nixpkgs, so mise (cargo backend) keeps it in mise.lock.
 "cargo:build-wrap" = "0.7"
+# Amp is pinned globally; aube exempts @ampcode/* from the age gate.
+amp = { version = "0.0.1783547350-gd57707", allow_builds = ["@ampcode/cli"] }
 
 [tasks.zsh-tests]
 description = "Run BATS tests for zsh functions (parallel)"

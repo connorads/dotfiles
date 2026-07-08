@@ -4,6 +4,10 @@ minimumReleaseAge = 5760
 # falling back to the next-oldest satisfying version (aube's default is
 # advisory, unlike pnpm where strict is the default).
 minimumReleaseAgeStrict = true
+# Amp releases several times a day; keep the quarantine for everything else.
+minimumReleaseAgeExclude = [
+  "@ampcode/*",
+]
 
 # Bloom-filter OSV MAL-* prefilter on lockfile installs (~380KB, ~0.1% FPR)
 advisoryBloomCheck = "on"
