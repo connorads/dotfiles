@@ -180,6 +180,8 @@ contents list. Then verify the things a script can't:
 - The skill's executable claims — commands, flags, type names, API fields —
   are spot-checked against the live tool. Craft review alone ships domain
   bugs: a skill can be structurally perfect while its first example errors.
+  "Couldn't verify" is only true after `command -v <tool>` fails; run that
+  check before writing it.
 - The skill has one coherent responsibility and names its boundaries with
   neighbouring skills ("this begins where X ends") when they could collide.
 
