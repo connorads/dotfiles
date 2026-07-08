@@ -20,6 +20,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `holistic-ux` | UX via systems thinking and service design | `pnpm dlx skills add connorads/dotfiles -s holistic-ux` |
 | `homebrew-cask-authoring` | Author and submit Homebrew Casks | `pnpm dlx skills add connorads/dotfiles -s homebrew-cask-authoring` |
 | `utm` | Drive UTM virtual machines on macOS | `pnpm dlx skills add connorads/dotfiles -s utm` |
+| `writing-skills` | Author, review, and eval agent skills test-first | `pnpm dlx skills add connorads/dotfiles -s writing-skills` |
 
 Add `-g` to install globally (every project), or `-l` to list. These skills are part of
 my [dotfiles](https://github.com/connorads/dotfiles).
