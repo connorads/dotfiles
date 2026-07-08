@@ -66,6 +66,9 @@ Grade the transcript, not just the output. The questions that find revisions:
 - Where did it rationalise around a rule? Copy the excuse verbatim into a
   rationalization table (see
   [instruction-forms.md](instruction-forms.md)).
+- Do the skill's own examples run? Commands, flags, and names a skill asserts
+  are domain claims — verify a sample against the live tool. Reviewing the
+  prose while trusting the claims misses exactly the bugs users hit first.
 
 For objectively checkable outcomes, write assertions and script the check —
 scripts are rerunnable across iterations and don't grade generously.

@@ -177,6 +177,9 @@ contents list. Then verify the things a script can't:
 - No machine-specific paths; bundled scripts are referenced relative to the
   skill directory. Any required binary is checked for, with a portable
   fallback.
+- The skill's executable claims — commands, flags, type names, API fields —
+  are spot-checked against the live tool. Craft review alone ships domain
+  bugs: a skill can be structurally perfect while its first example errors.
 - The skill has one coherent responsibility and names its boundaries with
   neighbouring skills ("this begins where X ends") when they could collide.
 
