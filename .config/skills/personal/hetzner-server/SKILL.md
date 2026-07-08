@@ -10,7 +10,7 @@ Create and manage Hetzner Cloud servers using the `hcloud` CLI.
 ## Prerequisites
 
 - `hcloud` CLI installed (via mise: `hcloud = "latest"`)
-- Authenticated: `hcloud context create <name>` with API token from https://console.hetzner.cloud
+- Authenticated: `hcloud context create <name>` with API token from <https://console.hetzner.cloud>
 
 ## Cloud Firewalls
 
@@ -108,7 +108,7 @@ Ubuntu cloud images don't include swap by default. Add swap via cloud-init at cr
 # Create server with 16GB swap (1:1 ratio for 16GB RAM server)
 hcloud server create \
   --name dev \
-  --type cax33 \
+  --type cax31 \
   --image ubuntu-24.04 \
   --location nbg1 \
   --ssh-key connorads \
@@ -124,8 +124,9 @@ EOF
 ```
 
 **Recommended swap sizes:**
+
 - 4GB RAM → 4-8GB swap
-- 8GB RAM → 8GB swap  
+- 8GB RAM → 8GB swap
 - 16GB+ RAM → 16GB swap (1:1 ratio)
 
 **Add swap to existing server:**
@@ -233,6 +234,7 @@ ssh dev-agent "cd repo && git push"
 ```
 
 For interactive sessions (e.g., lazygit):
+
 ```bash
 ssh dev-agent
 # Then on server: git clone/push/pull works with forwarded agent
@@ -255,6 +257,7 @@ hcssh --dry-run    # preview without writing
 ```
 
 This creates two Host entries per server inside a managed block (`# BEGIN/END hetzner-managed`):
+
 - `<name>` — no agent forwarding (safe for AI agents)
 - `<name>-agent` — with agent forwarding (for git push/pull to GitHub)
 
