@@ -185,6 +185,9 @@ contents list. Then verify the things a script can't:
 - The skill has one coherent responsibility and names its boundaries with
   neighbouring skills ("this begins where X ends") when they could collide.
 
+`tests/check.bats` covers the checker CLI contract; run it after changing
+`scripts/check.sh`.
+
 ## References
 
 | When the task involves… | Read |
