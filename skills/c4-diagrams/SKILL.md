@@ -108,7 +108,9 @@ The metadata + relationship + legend contract, colours, and anti-patterns:
    multi-level model or one already exists.
 4. **Render and verify** - `scripts/render.sh <file>` picks the renderer, runs
    it, and reports errors. Fix until it renders cleanly. For Mermaid destined
-   for a README/PR, note it renders natively on GitHub with no tooling.
+   for a README/PR, note it renders natively on GitHub with no tooling. Use
+   `scripts/example-workspace.dsl` as a known-good Structurizr DSL smoke test
+   or sample when checking local renderer setup.
 5. **Self-review against the quality checklist**
    ([references/notation-and-quality.md](references/notation-and-quality.md#quality-checklist))
    before presenting.
