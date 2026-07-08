@@ -3,9 +3,10 @@
 Pattern-selection guidance for low-fidelity UX work. This is a decision guide,
 not a visual spec or implementation library.
 
-Boundary: use `ui-design-playbook` for visual implementation details such as
-spacing, typography, colour, layout polish, and component styling. Use
-`accessibility` for WCAG, ARIA, keyboard, focus, and screen-reader details.
+Boundary: use a UI design skill such as `ui-design-playbook` when available for
+visual implementation details such as spacing, typography, colour, layout
+polish, and component styling. Use an accessibility skill when available for
+WCAG, ARIA, keyboard, focus, and screen-reader details.
 
 ## Navigation
 
@@ -21,6 +22,10 @@ Choose navigation by information shape:
 
 Check the main user task before adding navigation. More navigation can make
 orientation worse if it competes with the primary path.
+
+Hidden navigation is a trade-off. Hamburger/mobile menus are recognisable, but
+they still reduce discoverability. Keep primary destinations visible when they
+are core to completion, especially on desktop or task-critical mobile screens.
 
 ## Forms
 
@@ -139,3 +144,10 @@ reducing complexity.
 | Understand an outcome or issue | Notification |
 | Compare structured records | Table |
 | Reveal optional detail | Accordion |
+
+---
+
+## Source Anchors
+
+- Navigation and hidden-menu trade-offs: Nielsen Norman Group guidance on menu design and hamburger-menu recognisability.
+- Pattern choices here are low-fidelity UX heuristics, not a substitute for a design-system component spec or accessibility review.

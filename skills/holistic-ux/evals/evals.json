@@ -4,11 +4,11 @@
     {
       "id": 0,
       "prompt": "Our telehealth clinic has a polished appointment booking UI, but 28% of first-time patients still miss the appointment. The product lead asked me to redesign the confirmation screen. Help me work out what to do.",
-      "expected_output": "Reframes missed appointments as a service-system problem before proposing screen changes. Maps patient journey stages, backstage dependencies such as reminders, insurance checks, intake forms, clinician availability, timezone handling and support recovery. Identifies likely failure points and gives prioritised interventions, research questions, and success metrics. Keeps any UI suggestions subordinate to the service-design diagnosis.",
+      "expected_output": "Reframes missed appointments as a service-system problem before proposing screen changes. Chooses a service blueprint or explains why a lighter artefact is enough. Maps patient journey stages, physical evidence, customer actions, frontstage interactions, backstage dependencies such as reminders, insurance checks, intake forms, clinician availability, timezone handling, support recovery and ownership. Identifies likely failure points and gives prioritised interventions, research questions and success metrics. Keeps any UI suggestions subordinate to the service-design diagnosis.",
       "files": [],
       "expectations": [
         "The answer explicitly challenges the assumption that the confirmation screen alone is the root cause.",
-        "The answer includes a journey map or service blueprint with customer actions, visible frontstage interactions, backstage work, and support systems.",
+        "The answer includes a service blueprint or clearly justified smaller artefact with customer actions, visible frontstage interactions, backstage work, support systems, failure/recovery and ownership.",
         "The answer identifies operational failure points such as reminders, intake completion, timezone confusion, eligibility or insurance, clinician availability, and rescheduling support.",
         "The answer proposes research or instrumentation to distinguish competing causes before committing to a solution.",
         "The answer defines success metrics beyond conversion, such as attendance rate, reschedule completion, support contacts, patient confidence, and clinician idle time.",
@@ -18,10 +18,10 @@
     {
       "id": 1,
       "prompt": "A B2B analytics product loses most trial users after they invite teammates but before they create the first dashboard. Sales says to add more tooltips. I need a UX recommendation for the leadership team.",
-      "expected_output": "Treats the issue as onboarding and organisational adoption, not a tooltip shortage. Uses JTBD, stakeholder mapping and journey thinking to separate the user's functional job from emotional and social anxieties. Recommends evidence gathering, clearer activation milestones, collaboration handoffs, template/default design, and sales/customer-success alignment. Presents a leadership-friendly strategy with trade-offs and measurable outcomes.",
+      "expected_output": "Treats the issue as onboarding and organisational adoption, not a tooltip shortage. Uses JTBD, stakeholder mapping and journey thinking to separate likely functional progress from emotional and social anxieties, while labelling thin-context claims as hypotheses. Recommends evidence gathering, clearer activation milestones, collaboration handoffs, template/default design, and sales/customer-success alignment. Presents a leadership-friendly strategy with trade-offs and measurable outcomes.",
       "files": [],
       "expectations": [
-        "The answer identifies the user's functional, emotional, and social jobs around creating a dashboard with teammates.",
+        "The answer identifies likely functional, emotional, and social jobs around creating a dashboard with teammates, and marks them as hypotheses where evidence is missing.",
         "The answer maps multiple stakeholders such as admin, analyst, invited teammate, buyer, sales, customer success, and support.",
         "The answer explains why more tooltips may increase extraneous cognitive load or fail to address the underlying adoption barrier.",
         "The answer proposes service or product interventions such as workspace templates, sample data, role-based invitations, onboarding emails, customer-success handoffs, or activation checkpoints.",
@@ -66,7 +66,7 @@
         "The answer applies an iceberg-style diagnosis or otherwise separates symptoms from deeper patterns, structures, and assumptions.",
         "The answer explains why a button-colour test is insufficient as the main diagnosis.",
         "The answer examines delivery-specific dependencies such as fees, delivery windows, address validation, inventory availability, courier capacity, taxes, and payment authorisation.",
-        "The answer includes customer emotions or trust concerns around cost surprises, uncertainty, and commitment.",
+        "The answer states customer emotions or trust concerns around cost surprises, uncertainty, and commitment as hypotheses to check rather than proven facts.",
         "The answer proposes instrumentation or research that can localise the abandonment cause by device, stage, error, price change, delivery promise, or customer segment.",
         "The answer includes realistic interventions such as earlier delivery cost disclosure, clearer delivery promises, address assistance, save-for-later, recovery messaging, or fulfilment fallback paths."
       ]
@@ -74,15 +74,92 @@
     {
       "id": 5,
       "prompt": "We're launching a digital check-in service for a regional hotel chain. Guests arrive tired, front desk staff are understaffed, ID verification is manual, and room readiness is often uncertain. Create the UX artefact we should use before drawing screens.",
-      "expected_output": "Chooses a service blueprint before wireframes and explains why. Covers guest journey stages from pre-arrival through arrival, verification, room readiness, key handoff, issue recovery and post-check-in. Includes physical evidence, customer actions, frontstage interactions, backstage staff work, support systems, fail points and recovery paths. Produces an artefact that operations, product and engineering can use together.",
+      "expected_output": "Chooses a service blueprint before wireframes and explains why. Covers guest journey stages from pre-arrival through arrival, verification, room readiness, key handoff, issue recovery and post-check-in. Includes physical evidence, customer actions, frontstage interactions, backstage staff work, support systems, fail points, recovery paths and owners. Produces an artefact that operations, product and engineering can use together.",
       "files": [],
       "expectations": [
         "The answer chooses a service blueprint, not a wireframe-first approach.",
-        "The answer includes blueprint lanes for physical evidence, customer actions, frontstage, backstage, and support processes.",
+        "The answer includes blueprint lanes for physical evidence, customer actions, frontstage, backstage, support processes, failure/recovery, and owner.",
         "The answer covers operational dependencies such as PMS, ID verification, payment hold, room-cleaning status, key issuing, staffing, notifications, and support escalation.",
         "The answer marks fail points and recovery paths for room-not-ready, ID mismatch, payment issue, mobile failure, queueing, and guest support.",
         "The answer considers both guest and staff needs rather than treating staff as invisible implementation detail.",
         "The answer keeps fidelity conceptual and does not jump into detailed screen layout or component specs."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review this existing SaaS notification settings flow: users land on Account > Notifications, see five unchecked product areas, a global email toggle, a hidden 'advanced' accordion, and a Save button that stays disabled until a change. Support tickets say admins are unsure whether changes affect their own account or the whole workspace. Give me a heuristic review.",
+      "expected_output": "Produces a heuristic review with scope, evidence, assumptions, findings, severity ratings, impacted task/user and concrete recommendations. Uses Nielsen/Norman principles without pretending this replaces user research.",
+      "files": [],
+      "expectations": [
+        "The answer uses the heuristic review format with summary, scope/evidence/assumptions, findings, heuristic, evidence, impact, and recommendation.",
+        "The answer rates severity from task impact, frequency, persistence and confidence, and may use 0 for non-problems or positive notes.",
+        "The answer identifies likely issues around system status, match to real-world language, recognition over recall, consistency, and user control.",
+        "The answer explains the workspace-versus-personal ambiguity as a task-impacting risk.",
+        "The answer states that heuristic review is not a substitute for observing admins or analysing support logs."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Synthesize these research notes for a document-upload step. Interviews: three residents said they do not know whether a bank screenshot counts; two said they only have the document on paper; one caseworker says blurry uploads are common. Analytics: 41% mobile drop-off on upload, but desktop completion is steady. Support tickets mention 'wrong document' and 'file too large'. Stakeholder says we just need clearer button text.",
+      "expected_output": "Produces research synthesis that separates raw evidence from interpretation and recommendations. Shows evidence base, confidence, themes, contradictions, JTBD or unmet needs, opportunities and next steps. Does not jump from one quote to a button-text solution.",
+      "files": [],
+      "expectations": [
+        "The answer inventories the evidence sources and notes limits or missing segments.",
+        "The answer clusters themes such as document eligibility confusion, paper-to-digital burden, mobile upload failure, image quality, and file-size constraints.",
+        "The answer keeps stakeholder opinion separate from user evidence.",
+        "The answer includes confidence levels and open questions.",
+        "The answer proposes solution-neutral opportunities before design moves."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Create a user flow for a returning patient who needs to reschedule a telehealth appointment after insurance eligibility fails. Keep it to the user-facing flow, including decisions, errors, recovery and exits.",
+      "expected_output": "Produces a single-user, single-goal user flow with entry point, steps, decision points, error paths, recovery paths and exit states. Avoids a full service blueprint unless noting backstage dependencies separately.",
+      "files": [],
+      "expectations": [
+        "The answer chooses a user flow, not a journey map or service blueprint as the main artefact.",
+        "The flow includes entry point, eligibility failure notice, decision to update insurance or self-pay/reschedule, available slots, confirmation and exit states.",
+        "The flow covers error and recovery paths such as no eligible coverage, no slots, support contact, saved progress and cancellation.",
+        "The answer keeps backstage systems as notes rather than turning the output into an operations blueprint.",
+        "The answer marks assumptions where prompt evidence is thin."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "Before visual design, sketch a low-fidelity wireframe for a public-service document upload step. Users need to know what document is accepted, upload from mobile, recover from errors, and continue later.",
+      "expected_output": "Produces a plain annotated low-fidelity wireframe and uses pattern guidance without visual polish. Covers hierarchy, primary action, secondary/exit action, accepted-document guidance, upload state, errors, continue-later recovery, mobile considerations and accessibility handoff.",
+      "files": [],
+      "expectations": [
+        "The answer provides a rough wireframe rather than polished styling, typography or colour decisions.",
+        "The wireframe shows hierarchy for document requirements, upload control, current file/status, error recovery, primary action and secondary continue-later path.",
+        "The answer annotates empty, loading, success and error states.",
+        "The answer mentions responsive/mobile constraints without specifying detailed frontend implementation.",
+        "The answer notes accessibility handoff for keyboard, screen-reader and target-size checks."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Use Hick's Law, Fitts's Law and Miller's Law to justify removing half the checkout options and moving every primary action to the bottom of mobile screens.",
+      "expected_output": "Treats UX laws as diagnostic hypotheses, not proof. Pushes back on fixed thresholds and absolute bottom-placement rules. Distinguishes intrinsic and extraneous cognitive load, recommends evidence to inspect, and suggests experiments or research before committing.",
+      "files": [],
+      "expectations": [
+        "The answer refuses to use named laws as proof for a predetermined design.",
+        "The answer explains that option count, grouping, decision complexity and task context matter more than a fixed number.",
+        "The answer explains that mobile reach zones are contextual and bottom placement can create problems.",
+        "The answer distinguishes useful complexity from extraneous load.",
+        "The answer proposes measurement or research such as funnel analytics, hesitation, errors, support contacts or usability testing."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Fix the modal's ARIA labels, keyboard trap, focus order, CSS contrast and screen-reader announcements. I want implementation details.",
+      "expected_output": "Routes the request away from holistic UX because it is code-level accessibility. It should state the handoff boundary and avoid producing detailed WCAG, ARIA, keyboard or CSS implementation.",
+      "files": [],
+      "expectations": [
+        "The answer identifies the request as code-level accessibility rather than holistic UX.",
+        "The answer says to use an accessibility skill when available, or otherwise treats the detailed accessibility implementation as out of scope for this skill.",
+        "The answer may briefly mention user risk, but does not run a WCAG checklist.",
+        "The answer does not provide detailed ARIA, keyboard, focus or CSS fixes."
       ]
     }
   ]

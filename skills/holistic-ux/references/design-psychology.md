@@ -26,15 +26,19 @@ These "laws" describe tendencies. They help spot likely problems, but they do no
 
 **In practice:**
 
-- 2 options: nearly instant. 10 options: significantly slower. 50 options: paralysis.
-- This applies to navigation menus, settings pages, product listings, form dropdowns.
+- Decision time tends to increase with the number and complexity of choices.
+- Grouping, recommendation, familiar labels, and task context can make larger
+  sets usable.
+- This applies to navigation menus, settings pages, product listings, form
+  dropdowns, and any point where users must compare options.
 
 **Design applications:**
 
-- **Progressive disclosure**: Show 4-6 items, reveal more on demand
+- **Progressive disclosure**: Show the most relevant options first, reveal more
+  on demand
 - **Smart defaults**: Pre-select the most common option
-- **Categorisation**: Group 20 options into 4 categories of 5
-- **Search**: When options exceed ~15, offer search instead of scanning
+- **Categorisation**: Group options by the user's decision, not the database
+- **Search/filtering**: Offer it when scanning becomes slow or error-prone
 
 **Common mistake:** Hiding complexity in the name of simplicity. Users need the right transparency at the right time: enough context to decide, without every option competing at once.
 
@@ -51,9 +55,10 @@ These "laws" describe tendencies. They help spot likely problems, but they do no
 **Design applications:**
 
 - **Primary actions**: Large buttons, prominent placement
-- **Touch targets**: 44x44px is a good comfort target for touch; use the
-  `accessibility` skill for exact WCAG/platform minimums
-- **Mobile**: Place key actions within thumb reach zone
+- **Touch targets**: WCAG 2.2 AA uses a 24x24 CSS pixel minimum with exceptions;
+  44/48-ish targets are better comfort targets where layout allows. Use an
+  accessibility skill for exact conformance work.
+- **Mobile**: Consider reach zones for frequent primary actions
 - **Destructive actions**: Smaller and further from primary actions
 - **Toolbar grouping**: Related actions close together
 
@@ -72,7 +77,10 @@ These "laws" describe tendencies. They help spot likely problems, but they do no
 └─────────────┘
 ```
 
-Place primary actions in the bottom third of mobile screens.
+Do not force every primary action into the bottom third. Device size, grip,
+handedness, scroll position, and task context vary. Use reachable controls,
+adequate spacing, and sticky actions only when they do not obscure content or
+recovery.
 
 ### Miller's Law
 
@@ -80,16 +88,19 @@ Place primary actions in the bottom third of mobile screens.
 
 **In practice:**
 
-- People can process ~4-7 distinct chunks simultaneously
-- More recent research suggests the effective limit is closer to 4
-- This applies to navigation items, steps in a process, items in a list before grouping
+- People can hold only a few chunks in working memory at once.
+- Later research often points closer to 3-5 chunks, depending on context.
+- The UX implication is to reduce memory dependence, not to cap every visible
+  menu or process at seven items.
 
 **Design applications:**
 
 - **Chunking**: Break long numbers (1234567890 → 123 456 7890)
 - **Visual grouping**: Use whitespace and borders to create chunks
-- **Wizard patterns**: Break 15-field forms into 3-5 steps
-- **Navigation**: Keep top-level items to 5-7
+- **Wizard patterns**: Break long or risky forms when grouping reduces effort or
+  gives reassurance
+- **Navigation**: Test findability and comprehension instead of applying a fixed
+  item count
 
 **Common mistake:** Using Miller's Law as a hard rule. It's about cognitive chunks, not a literal count. Five complex items can be harder than eight simple ones.
 
@@ -99,8 +110,10 @@ Place primary actions in the bottom third of mobile screens.
 
 **In practice:**
 
-- A terrible 2-minute wait followed by a delightful confirmation = "good experience"
-- A smooth process with a confusing final step = "frustrating experience"
+- Peaks and endings disproportionately shape remembered experience.
+- A confusing or harmful ending can undermine an otherwise smooth flow.
+- A positive ending does not excuse avoidable pain, task failure, or loss of
+  trust.
 
 **Design applications:**
 
@@ -153,21 +166,23 @@ Place primary actions in the bottom third of mobile screens.
 
 **Caution:** Don't use this as an excuse to ship pretty but unusable products. The effect buys tolerance, not satisfaction.
 
-### Doherty Threshold
+### Response Time and the Doherty Threshold
 
-> Productivity increases when response time is under 400ms.
+> Fast feedback supports flow; delayed feedback requires expectation-setting.
 
 **In practice:**
 
-- Under 100ms: feels instantaneous
-- 100-400ms: feels responsive
-- Over 1000ms: user attention wanders
+- Around 100ms feels directly connected to the user's action.
+- Around 1 second keeps the user's flow if feedback is clear.
+- Longer waits need progress, explanation, or a recovery path, especially when
+  the operation is risky.
 
 **Design applications:**
 
 - **Optimistic UI**: Update the interface before the server confirms
 - **Skeleton screens**: Show layout immediately, fill in data
-- **Progress indicators**: For anything over 1 second
+- **Progress indicators**: When progress is measurable or the task has clear
+  stages
 - **Chunked loading**: Load visible content first
 
 ### Von Restorff Effect (Isolation Effect)
@@ -215,7 +230,9 @@ Place primary actions in the bottom third of mobile screens.
 **Content:**
 
 - Remove words that don't add meaning
-- Use plain language (reading age 12-14)
+- Use plain language: familiar words, short sentences, clear headings, and
+  explained terms. For public services, a lower reading-age benchmark may be
+  appropriate, but user-tested comprehension matters more than a raw score.
 - Front-load important information
 
 **Visual:**
@@ -240,11 +257,13 @@ Place primary actions in the bottom third of mobile screens.
 
 **People often scan before reading**, especially when they are goal-oriented. (Steve Krug, "Don't Make Me Think")
 
-**F-pattern scanning:** Users scan left-to-right, then down the left edge.
+**Scanning patterns:** Users scan according to task, layout, language direction,
+information scent, and content structure. The F-pattern is common on weakly
+structured, text-heavy pages, but it is only one pattern.
 
-- Place important content top-left
-- Use headings as scanning anchors
-- Left-align key information
+- Use headings, summaries, lists, and visual hierarchy as scanning anchors
+- Front-load labels and headings with the words users seek
+- Group related content so users can inspect chunks without reading everything
 
 **Visual hierarchy drives scanning order:**
 
@@ -326,5 +345,17 @@ When reviewing a design, use these as diagnostic questions:
 | Users make errors | Extraneous cognitive load? Unclear labels? |
 | Users don't complete flows | Peak-End — is the ending bad? Steps too many (Miller's)? |
 | Users use workarounds | Jakob's Law — breaking conventions? |
-| Users say "it feels slow" | Doherty Threshold — above 400ms? Or cognitive load (feels slow)? |
-| Users say "it's confusing" | Mental model mismatch. Their model ≠ your model. |
+| Users say "it feels slow" | Response timing, missing feedback, or cognitive load? |
+| Users say "it's confusing" | Mental model mismatch. Their model does not match your model. |
+
+---
+
+## Source Anchors
+
+- Hick's Law and long menus: Nielsen Norman Group, "Hick's Law: Making the choice easier for users".
+- Fitts's Law and touch targets: W3C WCAG 2.2 target-size guidance; Nielsen Norman Group touch-target guidance.
+- Miller's Law: George Miller, "The Magical Number Seven, Plus or Minus Two"; Nelson Cowan, "The magical number 4 in short-term memory"; Nielsen Norman Group commentary on the UX myth.
+- Peak-End Rule: Daniel Kahneman and later UX summaries from Nielsen Norman Group.
+- Response-time thresholds: Jakob Nielsen, "Response Times: The 3 Important Limits".
+- Scanning patterns: Nielsen Norman Group eye-tracking work on F-pattern, layer-cake, spotted, and commitment patterns.
+- Cognitive load: John Sweller's cognitive load theory; apply here as a diagnostic lens, not a single-cause explanation.
