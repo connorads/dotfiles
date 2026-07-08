@@ -142,7 +142,14 @@ attach_client() {
   run sh "$SCRIPT" jump "$p0"
   [ "$status" -eq 0 ]
   # A client that started on t now showing s/w0/p0 proves switch-client ran:
-  # only switch-client can move a client across sessions.
+  # only switch-client can move a client across sessions. The client's
+  # window/pane formats update asynchronously after switch-client (observed on
+  # tmux 3.7b: ~1-2s behind while #{client_session} is already current), so
+  # poll for the move instead of asserting the instant state.
+  for i in $(seq 1 25); do
+    [ "$(tx display -p -c "$cl" '#{pane_id}')" = "$p0" ] && break
+    sleep 0.2
+  done
   [ "$(tx display -p -c "$cl" '#{client_session}')" = s ]
   [ "$(tx display -p -c "$cl" '#{window_id}')" = "$w0" ]
   [ "$(tx display -p -c "$cl" '#{pane_id}')" = "$p0" ]
