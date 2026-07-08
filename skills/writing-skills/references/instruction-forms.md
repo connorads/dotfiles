@@ -17,7 +17,7 @@ Prohibition lists backfire here — enumerating wrong shapes plants them.
 **Rule-violation-under-pressure failures** — the agent knows the rule but
 talks itself out of it when a competing incentive appears (deadline pressure
 in the prompt, a user asking nicely, sunk cost). Fix with **prohibitions plus
-a rationalization table**: state the rule, then list the exact excuses the
+a rationalisation table**: state the rule, then list the exact excuses the
 agent generates — verbatim from your baseline transcripts — each with its
 rebuttal:
 
@@ -28,7 +28,8 @@ rebuttal:
 | "This case is too simple to need the check" | Simple cases are where the check is cheapest. Run it. |
 ```
 
-Rationalizations are predictable, so closing them explicitly works — the
+Rationalisations are a transcript-derived tactic, not a generic template. Use
+them only when baseline runs show the agent making predictable excuses; the
 agent recognises its own excuse mid-generation.
 
 ## Never hedge a winning rule
@@ -96,5 +97,6 @@ write a principle; if you'd hand them a runbook, write the runbook.
 - **Separate fact from extrapolation in knowledge/persona skills.** Forbid
   fabrication concretely: "never invent quotes; if no source matches, say
   so."
-- **Worked examples over abstractions** — one realistic input/output pair
-  beats a paragraph of qualities, when the failure is output-shaping.
+- **Worked examples over abstractions** — realistic, varied, structured
+  examples beat a paragraph of qualities when the failure is output-shaping.
+  Put bulky examples in routed references instead of the main body.

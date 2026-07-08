@@ -1,8 +1,9 @@
 # Spec and packaging
 
-The agentskills spec (agentskills.io) hard rules, plus the packaging hygiene
-that keeps a skill portable. `scripts/check.sh` automates most of this;
-`skills-ref validate <dir>` is the authoritative spec check when installed.
+The portable Agent Skills spec (agentskills.io) hard rules, plus the packaging
+hygiene that keeps a skill portable. `scripts/check.sh` automates most of
+this; `skills-ref validate <dir>` is the authoritative portable-spec check
+when installed.
 
 ## Layout
 
@@ -20,10 +21,10 @@ skill-name/
 
 ## Frontmatter
 
-YAML between `---` delimiters, starting at byte one of the file. The field
-set is **closed** — validators reject unknown top-level keys, so `version:`,
-`author:`, or `references:` at top level make the skill invalid. Custom data
-goes under `metadata` (string → string; quote numbers).
+YAML between `---` delimiters, starting at byte one of the file. For portable
+skills, the field set is **closed**: unknown top-level keys such as `version:`,
+`author:`, or `references:` make the skill invalid. Custom data goes under
+`metadata` (string → string; quote numbers).
 
 | Field | Rules |
 |---|---|
@@ -33,6 +34,16 @@ goes under `metadata` (string → string; quote numbers).
 | `compatibility` (optional) | 1–500 chars; only for genuine environment requirements. Most skills should omit it. |
 | `metadata` (optional) | String-to-string map for anything else. |
 | `allowed-tools` (optional) | Space-separated pre-approved tool patterns. Experimental; agent support varies. |
+
+## Client compatibility
+
+Some clients extend the portable spec. Claude Code accepts fields such as
+`when_to_use`, invocation controls, subagent/context fields, model/effort
+overrides, and tool restrictions. Codex can use `agents/openai.yaml` for UI
+metadata, invocation policy, and tool dependencies. These can be valid for a
+specific client, but they reduce portability. This skill's checker defaults to
+the portable field set; document any client-specific target before accepting
+extension fields.
 
 ## Size budgets
 
@@ -78,8 +89,8 @@ Ship only SKILL.md plus the files it routes to:
   `.DS_Store`, `node_modules/`) — local state that adds nothing for a
   consuming agent.
 - No eval scratch/output directories in the shipped skill.
-- No dated change-history prose ("previously", "no longer since…", "recent
-  changes") — state the current rule; history belongs in commit messages.
+- No migration-history prose, release-note phrasing, or verification banners -
+  state the current rule; history belongs in commit messages.
 - No volatile external facts (prices, version literals, beta statuses) as
   standing prose; point at the live source and mark any snapshot as
   illustrative.
