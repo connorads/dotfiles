@@ -72,3 +72,11 @@ Use this when summarising findings:
 ```
 
 Good synthesis narrows design choices without pretending uncertainty is gone.
+
+---
+
+## Source Anchors
+
+- Research synthesis and affinity clustering: common UX research practice from contextual inquiry, affinity diagramming, and mixed-methods product discovery.
+- Evidence hierarchy and confidence language: triangulation practice from qualitative research and usability research.
+- JTBD synthesis: Clayton Christensen, Bob Moesta, Tony Ulwick, and the Job Stories format from Intercom/JTBD Toolkit.

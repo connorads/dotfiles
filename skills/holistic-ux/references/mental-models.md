@@ -85,8 +85,9 @@ Developed by Dave Snowden. Helps match your approach to the type of problem.
 - Applying an existing design system
 
 **What to do:** Apply known patterns and specialist checks. Don't reinvent. Use
-`references/patterns.md` for pattern choice, `ui-design-playbook` for visual
-implementation, and `accessibility` for detailed accessibility checks.
+`references/patterns.md` for pattern choice, a UI design skill for visual
+implementation when available, and an accessibility skill for detailed
+accessibility checks when available.
 
 ### Complicated
 
@@ -207,3 +208,13 @@ Every design decision has consequences beyond the immediate:
 4. **Leverage point:** Not in the UI. In the information flow between sales and product teams about what "easy" means.
 
 **The right design intervention:** Might be a different onboarding path for enterprise, or it might be changing what sales promises. Either way, the answer wasn't "make step 4 better."
+
+---
+
+## Source Anchors
+
+- Iceberg model: systems-thinking practice popularised by Peter Senge and the Waters Center for Systems Thinking.
+- Cynefin: Dave Snowden and Cognitive Edge.
+- Leverage points: Donella Meadows, "Leverage Points: Places to Intervene in a System".
+- Conway's Law: Melvin Conway, "How Do Committees Invent?".
+- Feedback loops and second-order effects: general systems-thinking practice; use as diagnostic prompts, not proof.

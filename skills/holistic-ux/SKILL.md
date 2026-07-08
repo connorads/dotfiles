@@ -8,7 +8,8 @@ description: >
   synthesising user research into design decisions. Prefer this skill when the
   user asks why an experience is not working, what flow should exist, or what
   artefact would help stakeholders decide. Do not use it for code-level WCAG,
-  ARIA, screen-reader, or keyboard fixes; use the accessibility skill for those.
+  ARIA, screen-reader, or keyboard fixes; route those to an accessibility skill
+  when available, or state the handoff boundary clearly.
 ---
 
 # Holistic UX Design
@@ -32,15 +33,26 @@ Use this skill for:
 Route elsewhere when the request is really:
 
 - **Code-level accessibility:** WCAG, ARIA, keyboard, focus, screen-reader, or
-  semantic HTML fixes belong in the `accessibility` skill.
+  semantic HTML fixes belong in an `accessibility` skill when available.
 - **Visual polish or frontend styling:** spacing, type, colour systems, shadows,
-  imagery, and refined component styling belong in `ui-design-playbook`.
-- **Performance or motion:** first paint and layout shift belong in
-  `first-load-web-perf`; animation timing and perceived jank belong in
-  `web-animation-design`.
+  imagery, and refined component styling belong in a visual/UI design skill such
+  as `ui-design-playbook` when available.
+- **Performance or motion:** first paint, layout shift, animation timing, and
+  perceived jank belong in a performance or motion-design skill when available.
+
+When routing elsewhere, stop after naming the boundary and the target skill or
+discipline. You may add one sentence about the user risk, but do not provide the
+detailed implementation, checklist, code, CSS, WCAG/ARIA fixes, visual spec, or
+performance prescription from this skill.
 
 Accessibility still matters here, but at this level it is a design constraint
-and risk note. Do not run a WCAG checklist from this skill.
+and risk note. Do not run a WCAG checklist from this skill. Do assess whether
+people with disabilities, limited language, low confidence, mobile-only access,
+or assisted-digital needs can complete the service end to end.
+
+Do not solve retention, conversion, consent, opt-out, pricing, or cancellation
+problems with deceptive choice architecture. Keep choices findable, reversible
+where possible, and no harder to leave than to enter.
 
 ## Operating Protocol
 
@@ -105,6 +117,17 @@ If multiple artefacts seem useful, start with the one closest to the decision.
 For example, do not blueprint a simple form fix; do not wireframe before the
 flow is understood.
 
+Read references only when they match the task:
+
+| When the task involves | Read |
+| --- | --- |
+| Symptoms, systems, complexity, assumptions, or leverage points | `references/mental-models.md` |
+| Services, channels, backstage work, stakeholders, JTBD, or failure recovery | `references/service-design.md` |
+| Interviews, support tickets, survey notes, analytics, or contradictions | `references/research-synthesis.md` |
+| Cognitive load, UX laws, attention, scanning, memory, or decision friction | `references/design-psychology.md` |
+| Existing screens or flows being reviewed against principles | `references/heuristics.md` |
+| Rough layout, navigation, form, modal, loading, notification, or table choices | `references/patterns.md` |
+
 ## Output Formats
 
 ### Heuristic Review
@@ -136,6 +159,7 @@ Use for an existing product, screen, or flow. Read
 - 3: major friction; users may abandon or need support
 - 2: noticeable friction with a workaround
 - 1: polish issue with low task impact
+- 0: not a usability problem; observation or positive note
 ```
 
 Severity should be based on task impact, frequency, persistence, and confidence.
@@ -196,7 +220,7 @@ operational handoffs. Read `references/service-design.md` for detailed guidance.
 
 | Layer | Stage 1 | Stage 2 | Stage 3 |
 | --- | --- | --- | --- |
-| Evidence |  |  |  |
+| Physical evidence |  |  |  |
 | Customer actions |  |  |  |
 | Frontstage |  |  |  |
 | Backstage |  |  |  |
@@ -206,6 +230,8 @@ operational handoffs. Read `references/service-design.md` for detailed guidance.
 ```
 
 Blueprints should expose hidden operational work, not restate the journey map.
+Keep source evidence and confidence in the surrounding notes, not as a blueprint
+lane unless the artefact specifically needs it.
 
 ### Research Synthesis
 
@@ -238,7 +264,8 @@ Separate evidence from interpretation. Keep unresolved contradictions visible.
 ### Low-Fidelity Wireframe
 
 Use only when rough layout and hierarchy are the decision. Keep it plain and
-annotated; leave visual polish to `ui-design-playbook`.
+annotated; leave visual polish to a UI design skill such as
+`ui-design-playbook` when available.
 
 ```text
 +------------------------------------------------+
@@ -288,22 +315,26 @@ Before delivering:
 - Did you reduce extraneous cognitive load without pretending intrinsic
   task complexity can disappear?
 - Did you avoid overclaiming beyond the evidence?
-- Did you note accessibility risks and hand off detailed WCAG work to the
-  `accessibility` skill?
+- Did you consider inclusive service access beyond code conformance?
+- Did you avoid dark patterns and coercive friction?
+- Did you note accessibility risks and hand off detailed WCAG work to an
+  accessibility skill when available?
+- If the request belongs elsewhere, did you stop instead of continuing into
+  implementation guidance?
 
 ## Reference Routing
 
-- `references/mental-models.md` - systems thinking, Iceberg, Cynefin, leverage
-  points, and organisational seams.
-- `references/service-design.md` - service blueprints, JTBD, stakeholder maps,
-  touchpoints, and failure modes.
-- `references/research-synthesis.md` - research-note synthesis, confidence,
-  themes, opportunities, and contradictions.
-- `references/design-psychology.md` - cognitive load and UX laws as diagnostic
-  lenses.
-- `references/heuristics.md` - Nielsen, Norman, Shneiderman, and severity
-  guidance for reviews.
-- `references/patterns.md` - quick pattern choice for low-fidelity flows only.
+- `references/mental-models.md` - read for systems thinking, Iceberg, Cynefin,
+  leverage points, and organisational seams.
+- `references/service-design.md` - read for service blueprints, JTBD,
+  stakeholder maps, touchpoints, channels, and failure modes.
+- `references/research-synthesis.md` - read for research-note synthesis,
+  confidence, themes, opportunities, and contradictions.
+- `references/design-psychology.md` - read for cognitive load and UX laws as
+  diagnostic lenses, not proof.
+- `references/heuristics.md` - read for Nielsen, Norman, Shneiderman, and
+  severity guidance for reviews.
+- `references/patterns.md` - read for low-fidelity pattern choice only.
 
 Remember: good UX work makes the user's task easier and the service more
 coherent. The screen is only one part of the system.

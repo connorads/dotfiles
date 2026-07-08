@@ -6,7 +6,8 @@ Quick reference for established evaluation frameworks.
 
 ## Nielsen's 10 Usability Heuristics
 
-Use these to evaluate existing designs. For each violation, rate severity (1-4).
+Use these to evaluate existing designs. For each observation, decide whether it
+is a usability problem; if it is, rate severity (1-4).
 
 ### 1. Visibility of System Status
 
@@ -72,10 +73,15 @@ Ideally the system needs no explanation, but provide documentation focused on th
 
 | Rating | Level | Impact |
 |--------|-------|--------|
+| **0** | Not a problem | Observation, preference, or positive note |
 | **4** | Catastrophic | Blocks users from completing their goal |
 | **3** | Major | Significant friction; users may give up |
 | **2** | Minor | Annoying but users find workarounds |
 | **1** | Cosmetic | Polish issue; fix when convenient |
+
+Rate severity from task impact, frequency, persistence, confidence, and known
+business or user risk. Do not multiply severity by frequency afterward; frequency
+is already part of the judgement.
 
 ---
 
@@ -86,6 +92,7 @@ From Don Norman's "The Design of Everyday Things":
 ### Affordances
 
 Properties that suggest how something can be used.
+
 - A button affords pressing. A slider affords sliding.
 - Digital affordances: raised appearance → clickable. Underlined text → link.
 - **Check:** Does the element visually suggest its function?
@@ -93,18 +100,21 @@ Properties that suggest how something can be used.
 ### Signifiers
 
 Signals that indicate where actions should take place.
+
 - A door handle is a signifier (push/pull direction). A placeholder is a signifier.
 - **Check:** Is it clear where to click, tap, or type?
 
 ### Mapping
 
 Relationship between controls and their effects.
+
 - Light switch position maps to on/off. Slider left-right maps to less-more.
 - **Check:** Is the relationship between action and outcome intuitive?
 
 ### Feedback
 
 Information about the result of an action.
+
 - Button press → visual change. Form submit → success message.
 - Feedback must be immediate, informative, and proportional.
 - **Check:** Does every action produce visible feedback?
@@ -112,12 +122,14 @@ Information about the result of an action.
 ### Constraints
 
 Limitations that guide correct use.
+
 - Greyed-out buttons prevent invalid actions. Date pickers prevent invalid dates.
 - **Check:** Does the design prevent misuse through constraints?
 
 ### Conceptual Models
 
 The user's understanding of how the system works.
+
 - Files and folders (desktop metaphor). Shopping cart (e-commerce).
 - **Check:** Does the user's mental model match the system model?
 
@@ -149,13 +161,14 @@ Quick reference for interface design evaluation:
 ### Evaluation
 
 For each screen/interaction:
+
 1. Walk through user tasks
 2. Compare against each heuristic
 3. Note violations with:
    - **Heuristic violated** (which one)
    - **Location** (where in the interface)
    - **Description** (what's wrong)
-   - **Severity** (1-4)
+   - **Severity** (0-4)
    - **Recommendation** (specific fix)
 
 ### Reporting
@@ -174,5 +187,13 @@ For each screen/interaction:
 - Evaluate independently before discussing with others (avoids groupthink)
 - Multiple evaluators catch more issues (3-5 is ideal)
 - Focus on problems, not preferences ("I don't like the colour" isn't a heuristic violation)
-- Prioritise by severity × frequency
+- Prioritise by severity, confidence, affected task, and cost of delay
 - Include positive findings too — what works well and why
+
+---
+
+## Source Anchors
+
+- Nielsen's 10 heuristics and severity ratings: Jakob Nielsen and Nielsen Norman Group heuristic-evaluation guidance.
+- Norman's design principles: Don Norman, *The Design of Everyday Things*.
+- Shneiderman's rules: Ben Shneiderman, *Designing the User Interface*.

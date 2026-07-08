@@ -56,14 +56,16 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 ```markdown
 | Stage | Discover | Book | Confirm | Arrive | Dine | Pay | Follow-up |
 |-------|----------|------|---------|--------|------|-----|-----------|
-| **Evidence** | Google listing, website | Booking form | Email, SMS | Signage, host | Menu, table | Bill | Review request |
+| **Physical evidence** | Google listing, website | Booking form | Email, SMS | Signage, host | Menu, table | Bill | Review request |
 | **Customer** | Search, browse menu | Select date/time/party | Read confirmation | Walk in, give name | Order, eat | Request bill, pay | Rate experience |
 | **Frontstage** | Website loads | Availability shown | Auto-email sent | Host greets | Server takes order | POS terminal | Auto-email sent |
-| --- | --- | --- | --- | --- | --- | --- | --- |
 | **Backstage** | SEO, content management | Check table inventory | Email service triggers | Staff notified via tablet | Kitchen receives order | Process payment | CRM tags customer |
-| --- | --- | --- | --- | --- | --- | --- | --- |
 | **Support** | Google Business, hosting | Booking DB | SendGrid, Twilio | Staff scheduling app | POS, kitchen display | Payment processor | CRM, review platform |
 ```
+
+Use labelled notes for the line of interaction, line of visibility, and line of
+internal interaction when they help readers see boundaries. Do not render them as
+ambiguous table rows.
 
 ### When to Use a Service Blueprint
 
@@ -82,6 +84,18 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 6. **Add support processes**: what systems/tools/services power the backstage?
 7. **Identify pain points**: where do things break? Where are the delays?
 8. **Mark fail points**: capture trigger, detection signal, user impact, recovery path, owner
+
+Add optional rows when they materially affect delivery:
+
+- **Channel**: web, mobile, email, SMS, phone, in-person, paper, or partner route
+- **Assisted/offline route**: how someone completes the service without using the
+  primary digital path alone
+- **Policy/legal constraint**: eligibility, deadlines, refund rules, consent,
+  retention, or regulatory limits
+- **Privacy/security risk**: sensitive data, identity checks, data sharing, or
+  account access risk
+- **Measurement**: success measure, guardrail, instrumentation gap, or signal
+  that would change the recommendation
 
 ### Co-Creation, Failure Modes, and Ownership
 
@@ -251,19 +265,23 @@ List every point of contact between user and service:
 
 ### Journey Map vs Service Blueprint
 
-**Journey map**: Focuses on user's emotional experience.
+**Journey map**: Foregrounds the user's experience over time.
 
 - What are they feeling at each stage?
 - Where are the pain points?
 - Where are the moments of delight?
 
-**Service blueprint**: Focuses on operational delivery.
+**Service blueprint**: Foregrounds operational delivery.
 
 - What systems support each interaction?
 - Where are the failure points?
 - What's the operational cost?
 
-Use journey maps to understand the problem. Use service blueprints to design the solution.
+Use journey maps and blueprints as companion lenses. A journey map is usually
+better when emotions, expectations, and cross-touchpoint perception matter most.
+A blueprint is usually better when the decision depends on backstage
+dependencies, ownership, policy, channels, support, or failure recovery. Both can
+be used diagnostically and both should be revised as evidence changes.
 
 ---
 
@@ -278,3 +296,12 @@ Use journey maps to understand the problem. Use service blueprints to design the
 
 > "A service is a chain of activities that form a process and have value for the end user."
 > — If one link in the chain breaks, the experience breaks regardless of how good the UI is.
+
+---
+
+## Source Anchors
+
+- Service blueprint lanes: Lynn Shostack's service blueprinting work and Nielsen Norman Group service blueprint guidance.
+- Service design principles: Marc Stickdorn and Jakob Schneider, *This is Service Design Thinking* and *This is Service Design Doing*.
+- JTBD and forces of progress: Clayton Christensen, Bob Moesta, Tony Ulwick, and the Job Stories format from Intercom/JTBD Toolkit.
+- Public-service access and assisted routes: GOV.UK Service Manual and Service Standard.
