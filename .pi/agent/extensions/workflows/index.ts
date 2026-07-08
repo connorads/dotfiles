@@ -18,7 +18,14 @@ import {
   renderRuns,
   renderWidget,
 } from "./render.ts";
-import { startWorkflowFromCommand, WORKFLOW_TOOL_NAME, type WorkflowStarterRuntime } from "./starter.ts";
+import { errorMessage } from "./prelude.ts";
+import {
+  createStarterGate,
+  routeStarterToolCall,
+  routeStarterTurnEnd,
+  type StarterGate,
+} from "./starter-gate.ts";
+import { createWorkflowStart, WORKFLOW_TOOL_NAME } from "./starter.ts";
 import { createWorkflowStore, type WorkflowStore } from "./store.ts";
 
 const WORKFLOW_CUSTOM_MESSAGE = "workflow_result";
@@ -56,22 +63,37 @@ const manager = new WorkflowManager();
 export default function extension(pi: ExtensionAPI) {
   let liveCtx: ExtensionContext | undefined;
   let widgetTimer: ReturnType<typeof setInterval> | undefined;
+  let starterLease: { readonly previousTools: readonly string[]; gate: StarterGate } | undefined;
 
   const storeFor = (ctx: Pick<ExtensionContext, "cwd">): WorkflowStore => createWorkflowStore(ctx.cwd);
   const runnerFor = (ctx: ExtensionContext): PiAgentRunner => new PiAgentRunner(ctx.cwd, ctx.model, ctx.modelRegistry);
-  const starterRuntime = (): WorkflowStarterRuntime => ({
-    activateTool(name) {
-      const active = new Set(pi.getActiveTools());
-      active.add(name);
-      pi.setActiveTools([...active]);
-    },
-    sendFollowUp(message) {
-      pi.sendUserMessage(message, { deliverAs: "followUp" });
-    },
-  });
-  const startWorkflow = (args: string, ctx: ExtensionContext): void => {
-    const started = startWorkflowFromCommand(args, starterRuntime());
-    ctx.ui.notify(started.ok ? started.value.summary : started.error.message, started.ok ? "info" : "warning");
+  const restoreStarterLease = async (): Promise<void> => {
+    const lease = starterLease;
+    if (!lease) return;
+    starterLease = undefined;
+    await pi.setActiveTools([...lease.previousTools]);
+  };
+  const startWorkflow = async (args: string, ctx: ExtensionContext): Promise<void> => {
+    if (starterLease) {
+      ctx.ui.notify("Workflow starter already pending. Wait for the current starter turn to finish.", "warning");
+      return;
+    }
+
+    const started = createWorkflowStart(args);
+    if (!started.ok) {
+      ctx.ui.notify(started.error.message, "warning");
+      return;
+    }
+
+    starterLease = { previousTools: pi.getActiveTools(), gate: createStarterGate() };
+    try {
+      await pi.setActiveTools([WORKFLOW_TOOL_NAME]);
+      pi.sendUserMessage(started.value.prompt, { deliverAs: "steer" });
+      ctx.ui.notify(started.value.summary, "info");
+    } catch (error) {
+      await restoreStarterLease();
+      ctx.ui.notify(`Workflow starter failed: ${errorMessage(error)}`, "warning");
+    }
   };
   const stopWidgetTimer = (): void => {
     if (widgetTimer) clearInterval(widgetTimer);
@@ -169,7 +191,7 @@ export default function extension(pi: ExtensionAPI) {
     liveCtx = ctx;
     const active = new Set(pi.getActiveTools());
     active.add(WORKFLOW_TOOL_NAME);
-    pi.setActiveTools([...active]);
+    void pi.setActiveTools([...active]);
     void (async () => {
       const reconciled = await manager.reconcile(storeFor(ctx));
       if (reconciled.length > 0) {
@@ -183,7 +205,32 @@ export default function extension(pi: ExtensionAPI) {
     })().catch(() => {});
   });
 
-  pi.on("session_shutdown", () => {
+  pi.on("tool_call", (event) => {
+    if (!starterLease) return undefined;
+    const routed = routeStarterToolCall(starterLease.gate, {
+      toolCallId: event.toolCallId,
+      toolName: event.toolName,
+    });
+    starterLease = { ...starterLease, gate: routed.gate };
+    return routed.block ? { block: true, reason: routed.reason } : undefined;
+  });
+
+  pi.on("turn_end", async (event) => {
+    if (!starterLease) return;
+    const routed = routeStarterTurnEnd(starterLease.gate, { toolResults: event.toolResults });
+    if (routed.restore) {
+      await restoreStarterLease();
+      return;
+    }
+    starterLease = { ...starterLease, gate: routed.gate };
+  });
+
+  pi.on("agent_end", async () => {
+    await restoreStarterLease();
+  });
+
+  pi.on("session_shutdown", async () => {
+    await restoreStarterLease();
     liveCtx = undefined;
     stopWidgetTimer();
   });
@@ -285,7 +332,7 @@ export default function extension(pi: ExtensionAPI) {
           return;
         }
         case "start": {
-          startWorkflow(tail, ctx);
+          await startWorkflow(tail, ctx);
           return;
         }
         default:
@@ -297,7 +344,7 @@ export default function extension(pi: ExtensionAPI) {
   pi.registerCommand("workflow", {
     description: "Ask Pi to draft and launch an inline dynamic workflow",
     handler: async (args, ctx) => {
-      startWorkflow(args, ctx);
+      await startWorkflow(args, ctx);
     },
   });
 }

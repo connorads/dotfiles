@@ -2,11 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createWorkflowStart,
   parseWorkflowObjective,
   renderWorkflowStartPrompt,
-  startWorkflowFromCommand,
-  WORKFLOW_TOOL_NAME,
-  type WorkflowStarterRuntime,
 } from "./starter.ts";
 
 test("parseWorkflowObjective trims input and rejects empty or hidden-control objectives", () => {
@@ -26,8 +24,11 @@ test("renderWorkflowStartPrompt asks the model to call workflow with an inline s
 
   const prompt = renderWorkflowStartPrompt(objective.value);
   assert.match(prompt, /call the `workflow` tool exactly once/u);
+  assert.match(prompt, /first action in this turn must be a `workflow` tool call/u);
   assert.match(prompt, /Use the tool's `script` input/u);
   assert.match(prompt, /Do not use `name` or `scriptPath`/u);
+  assert.match(prompt, /Do not call `read`, `grep`, `find`, `ls`, `bash`/u);
+  assert.match(prompt, /Do not call any tool except `workflow`/u);
   assert.match(prompt, /export const meta/u);
   assert.match(prompt, /`phase\(title\)` returns void/u);
   assert.match(prompt, /agent\(prompt, options\?\)/u);
@@ -44,36 +45,17 @@ test("renderWorkflowStartPrompt asks the model to call workflow with an inline s
   assert.match(prompt, /effort/u);
 });
 
-test("startWorkflowFromCommand activates workflow and sends one follow-up", () => {
-  const runtime = new FakeStarterRuntime();
-  const started = startWorkflowFromCommand("review architecture", runtime);
+test("createWorkflowStart returns a prompt without Pi side effects", () => {
+  const started = createWorkflowStart("review architecture");
 
   assert.equal(started.ok, true);
   if (!started.ok) return;
-  assert.deepEqual(runtime.activated, [WORKFLOW_TOOL_NAME]);
-  assert.equal(runtime.followUps.length, 1);
-  assert.equal(runtime.followUps[0], started.value.prompt);
   assert.match(started.value.summary, /Workflow starter sent/u);
+  assert.match(started.value.prompt, /review architecture/u);
 });
 
-test("startWorkflowFromCommand does not send anything for invalid objectives", () => {
-  const runtime = new FakeStarterRuntime();
-  const started = startWorkflowFromCommand("   ", runtime);
+test("createWorkflowStart rejects invalid objectives", () => {
+  const started = createWorkflowStart("   ");
 
   assert.equal(started.ok, false);
-  assert.deepEqual(runtime.activated, []);
-  assert.deepEqual(runtime.followUps, []);
 });
-
-class FakeStarterRuntime implements WorkflowStarterRuntime {
-  readonly activated: string[] = [];
-  readonly followUps: string[] = [];
-
-  activateTool(name: string): void {
-    this.activated.push(name);
-  }
-
-  sendFollowUp(message: string): void {
-    this.followUps.push(message);
-  }
-}

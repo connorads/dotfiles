@@ -8,13 +8,7 @@ export const MAX_WORKFLOW_OBJECTIVE_CHARS = 12_000;
 /** User objective accepted by `/workflow` and `/workflows start`. */
 export type WorkflowObjective = Brand<string, "WorkflowObjective">;
 
-/** Effects needed to ask Pi to create and launch an inline workflow. */
-export interface WorkflowStarterRuntime {
-  activateTool(name: string): void;
-  sendFollowUp(message: string): void;
-}
-
-/** Immediate result after a workflow starter command injects the follow-up turn. */
+/** Immediate result after preparing a workflow starter command. */
 export interface WorkflowStart {
   readonly objective: WorkflowObjective;
   readonly prompt: string;
@@ -42,17 +36,12 @@ export function parseWorkflowObjective(input: string): Result<WorkflowObjective,
   return ok(objective as WorkflowObjective);
 }
 
-/** Ask the model to generate an inline script and call the workflow tool. */
-export function startWorkflowFromCommand(
-  args: string,
-  runtime: WorkflowStarterRuntime,
-): Result<WorkflowStart, InvalidWorkflowStartCommand> {
+/** Build the model-facing starter prompt for a valid command objective. */
+export function createWorkflowStart(args: string): Result<WorkflowStart, InvalidWorkflowStartCommand> {
   const objective = parseWorkflowObjective(args);
   if (!objective.ok) return objective;
 
   const prompt = renderWorkflowStartPrompt(objective.value);
-  runtime.activateTool(WORKFLOW_TOOL_NAME);
-  runtime.sendFollowUp(prompt);
 
   return ok({
     objective: objective.value,
@@ -66,8 +55,11 @@ export function renderWorkflowStartPrompt(objective: WorkflowObjective): string 
   return [
     "Start a Pi dynamic workflow for the objective below.",
     "",
+    "Your first action in this turn must be a `workflow` tool call with an inline script.",
     "Create an inline workflow script and call the `workflow` tool exactly once.",
     "Use the tool's `script` input. Do not use `name` or `scriptPath`.",
+    "Do not call `read`, `grep`, `find`, `ls`, `bash`, or any other exploration tool before `workflow`.",
+    "Do not call any tool except `workflow` in this starter turn.",
     "Do not answer in prose before the tool call. If you cannot launch a workflow, explain the blocker briefly.",
     "",
     "Workflow script requirements:",
