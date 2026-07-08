@@ -162,7 +162,7 @@ Treat wrapper files as distribution evidence. They can explain how the binary wa
 
 ## String And Surface Extraction
 
-Run extractors against saved `strings.txt`, not directly against terminal output. Avoid printing credential-like values verbatim.
+Run extractors against saved `strings.txt`, not directly against terminal output. Avoid printing credential-like values verbatim. Bounded context around endpoint builders can expose hard-coded or public credential-like constants; record their existence and purpose, but redact the values in reports and user-visible excerpts.
 
 ### Environment variables
 
@@ -272,6 +272,8 @@ High-signal feature surfaces:
 - State-machine classes: status states, lifecycle methods, error branches, and delegate callbacks.
 - Persistence code: data directory construction, file modes, JSON shapes, cache paths, PID locks, and migration cleanup.
 - Transport setup: registration payloads, credential fetchers, session IDs, reconnect hooks, and shutdown paths.
+- Lifecycle constants: heartbeat intervals, reconnect base/max delay, operation timeouts, startup validation windows, and signal-handling branches.
+- Role split: observer/client connections versus executor/runner connections, and code paths that replace or reject existing executors.
 
 When tracing filesystem locations, search both config and state roots:
 
@@ -292,7 +294,39 @@ Some CLIs expose local executors to a web service by maintaining an outbound ses
 - A per-directory or per-workspace PID claim prevents duplicate runners.
 - Shutdown unregisters the session, disposes clients/listeners, and releases the local claim.
 
-Describe this as a reconciliation loop unless code flow proves one-shot command execution.
+Search both product-specific names and generic control-plane verbs. Good needles include:
+
+```text
+runner
+daemon
+registerRunner
+runnerHeartbeat
+unregisterRunner
+runnerIntentsUpdated
+listRunners
+servedThreadIds
+getRunningThreads
+desired
+observerOnly
+executor
+already connected
+createRemoteExecutorThread
+clientIDPrefix
+SIGINT
+SIGTERM
+```
+
+When the pattern is present, extract these details:
+
+- Identity: how local IDs are generated, canonicalised, persisted, and scoped to workspace or host.
+- Ownership: PID files, locks, stale cleanup, and behaviour when another process owns the same workspace.
+- Transport: outbound endpoint, actor/session params, credential capability, registration call, heartbeat call, notification event, unregister call.
+- Reconciliation: what desired states exist, how invalid IDs are handled, how operations are serialised, and what gets reported as currently running.
+- Execution plane: how a thread/task executor attaches, how observer-only clients are upgraded or replaced, and whether existing executors can be stolen.
+- Repair: startup validation of persisted tasks, missing/archived cleanup, reconnect backoff, heartbeat re-registration, and fatal auth handling.
+- Shutdown: signal handling, unregister timeout, client disposal, and lock release.
+
+Describe this as a reconciliation loop unless code flow proves one-shot command execution. For "can we copy this?" requests, report the architecture as control plane, runner identity, persisted desired set, per-task executor attachment, failure model, and security implications.
 
 ## Evidence Rules
 

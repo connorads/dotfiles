@@ -121,6 +121,8 @@ Keep reports compact and evidence-backed:
 - Useful next tools:
 ```
 
+If the user asks how to reproduce the behaviour elsewhere, add a short **Reusable Pattern** section that separates control plane, local identity/state, transport, reconciliation, execution attachment, failure handling, and security implications.
+
 ## Tooling Discussion
 
 If the useful tools are missing, propose a small install set rather than a broad RE toolbox:
