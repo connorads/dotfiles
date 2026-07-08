@@ -1,0 +1,45 @@
+{
+  "skill_name": "writing-skills",
+  "how_to_run": "Per references/evals.md: for each eval, run the prompt with-skill and baseline (no skill) in fresh sessions, in parallel, against disposable copies. Replace <workspace> with a scratch dir; copy the named fixture skill into each arm's dir first. Grade transcripts against the assertions, not just outputs.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "fix-nontriggering-description",
+      "fixture": "a skill whose description states WHAT but not WHEN (original: github-images before commit 7e6cf6c4)",
+      "prompt": "my github-images skill basically never fires when i paste a github issue url even tho thats literally what its for. can you work out why and fix it? its at <workspace>/github-images",
+      "assertions": [
+        "Diagnoses the description (not the body) as the trigger surface",
+        "Rewrite is third person, states what + when with user-typed trigger contexts, <=1024 chars",
+        "Does not summarise the workflow into the description; body not bloated",
+        "Validates the change (check.sh) and proposes a trigger re-test including near-miss negatives"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "create-skill-from-scratch",
+      "fixture": "none (empty directory)",
+      "prompt": "i want a skill that makes agents write proper git commit messages in my repos - small coherent commits, imperative subject line, body explains why not what, no 'various fixes' rubbish. create it in <workspace>/ - call it whatever makes sense",
+      "assertions": [
+        "check.sh passes: closed frontmatter set, directory name equals name",
+        "Description: third person, what + when, includes a negative trigger",
+        "Classifies the failure type and matches form to it (recipes + worked examples for shape; rationalization table for pressure excuses)",
+        "Body is lean and timeless; proposes testing before shipping",
+        "Applies the mechanism gate (must-run-every-time steps belong in hooks/commands, not a skill)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "review-before-publishing",
+      "fixture": "a personal skill with portability and doc-rot issues plus at least one wrong domain claim (original: hetzner-server with --type cax33 before commit fc6bacb5; reintroduce a known-bad value when re-running)",
+      "prompt": "before i publish my hetzner-server skill can you review it and tell me what needs fixing? its at <workspace>/hetzner-server",
+      "assertions": [
+        "Catches volatile facts as standing prose (prices, version literals)",
+        "Catches machine-specific paths and unchecked personal-tool dependencies as a publish blocker",
+        "Runs structural checks (check.sh or equivalent)",
+        "Verifies domain claims against the live tool - values as well as flag syntax - and does not claim 'couldn't verify' without a failed command -v",
+        "Known miss to watch for (iteration 3): flag syntax verified but argument values not - the planted bad value must be caught"
+      ],
+      "history": "iter1: no verification; iter2: disclosed non-verification with a false 'no CLI' excuse (fixed by the command -v loophole closure); iter3: live verification of flags but missed the bad type value"
+    }
+  ]
+}
