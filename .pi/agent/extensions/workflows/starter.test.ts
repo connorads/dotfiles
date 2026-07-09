@@ -41,7 +41,7 @@ test("renderWorkflowStartPrompt asks the model to call workflow with an inline s
   assert.match(prompt, /Math\.random/u);
   assert.match(prompt, /import\/export/u);
   assert.match(prompt, /busy-loop/u);
-  assert.match(prompt, /meta\.budget/u);
+  assert.match(prompt, /Omit `meta\.budget` unless the user explicitly asks/u);
   assert.match(prompt, /effort/u);
 });
 

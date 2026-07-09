@@ -6,16 +6,12 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 
-import { type RunId, type WorkflowRunSnapshot } from "./domain.ts";
-import { WorkflowManager, parseCommandRunId, parseRunCommand } from "./manager.ts";
+import { handleWorkflowsCommand } from "./command-actions.ts";
+import { type WorkflowRunSnapshot } from "./domain.ts";
+import { WorkflowManager } from "./manager.ts";
 import { PiAgentRunner } from "./pi-agent-runner.ts";
 import {
-  WORKFLOWS_HELP,
-  defaultRunTarget,
   renderCompletionMessage,
-  renderRun,
-  renderRunDetails,
-  renderRuns,
   renderWidget,
 } from "./render.ts";
 import { errorMessage } from "./prelude.ts";
@@ -25,8 +21,9 @@ import {
   routeStarterTurnEnd,
   type StarterGate,
 } from "./starter-gate.ts";
-import { createWorkflowStart, WORKFLOW_TOOL_NAME } from "./starter.ts";
+import { createWorkflowStart } from "./starter.ts";
 import { createWorkflowStore, type WorkflowStore } from "./store.ts";
+import { deriveWorkflowToolPolicy, WORKFLOW_TOOL_NAME, type WorkflowToolPolicy } from "./tool-policy.ts";
 
 const WORKFLOW_CUSTOM_MESSAGE = "workflow_result";
 const WIDGET_KEY = "workflows";
@@ -67,6 +64,8 @@ export default function extension(pi: ExtensionAPI) {
 
   const storeFor = (ctx: Pick<ExtensionContext, "cwd">): WorkflowStore => createWorkflowStore(ctx.cwd);
   const runnerFor = (ctx: ExtensionContext): PiAgentRunner => new PiAgentRunner(ctx.cwd, ctx.model, ctx.modelRegistry);
+  const commandToolPolicy = (): WorkflowToolPolicy => deriveWorkflowToolPolicy(pi.getActiveTools());
+  const toolCallPolicy = (): WorkflowToolPolicy => deriveWorkflowToolPolicy(starterLease?.previousTools ?? pi.getActiveTools());
   const restoreStarterLease = async (): Promise<void> => {
     const lease = starterLease;
     if (!lease) return;
@@ -137,20 +136,6 @@ export default function extension(pi: ExtensionAPI) {
     if (liveCtx) void refreshWidget(liveCtx);
   };
 
-  /** Resolve a command's run target: explicit id, else single active/most recent run. */
-  const resolveRunTarget = async (
-    store: WorkflowStore,
-    arg: string | undefined,
-  ): Promise<{ ok: true; runId: RunId } | { ok: false; message: string }> => {
-    if (arg) {
-      const parsed = parseCommandRunId(arg);
-      return parsed.ok ? { ok: true, runId: parsed.value } : { ok: false, message: parsed.error.message };
-    }
-    const target = defaultRunTarget(await store.listRuns());
-    if (!target) return { ok: false, message: `No workflow runs in this project.\n\n${WORKFLOWS_HELP}` };
-    return { ok: true, runId: target.runId };
-  };
-
   const workflowTool: ToolDefinition = defineTool({
     name: "workflow",
     label: "Workflow",
@@ -163,12 +148,13 @@ export default function extension(pi: ExtensionAPI) {
       "When starting a dynamic workflow from a user objective, generate a Claude-compatible inline script and call this tool with the script field.",
     ],
     parameters: asSchema(WORKFLOW_INPUT_SCHEMA),
-    executionMode: "parallel",
+    executionMode: "sequential",
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const launch = await manager.launch(params, {
         cwd: ctx.cwd,
         store: storeFor(ctx),
         agentRunner: runnerFor(ctx),
+        toolPolicy: toolCallPolicy(),
         deliver,
       });
       await refreshWidget(ctx);
@@ -189,9 +175,6 @@ export default function extension(pi: ExtensionAPI) {
 
   pi.on("session_start", (_event, ctx) => {
     liveCtx = ctx;
-    const active = new Set(pi.getActiveTools());
-    active.add(WORKFLOW_TOOL_NAME);
-    void pi.setActiveTools([...active]);
     void (async () => {
       const reconciled = await manager.reconcile(storeFor(ctx));
       if (reconciled.length > 0) {
@@ -239,105 +222,18 @@ export default function extension(pi: ExtensionAPI) {
     description: "List, inspect, stop, resume, or launch Pi project workflows",
     handler: async (args, ctx) => {
       const store = storeFor(ctx);
-      const trimmed = args.trim();
-      const firstSpace = trimmed.search(/\s/u);
-      const command = (firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace)) || "list";
-      const tail = firstSpace === -1 ? "" : trimmed.slice(firstSpace + 1).trim();
-      const rest = tail.split(/\s+/u).filter(Boolean);
-
-      switch (command) {
-        case "help": {
-          ctx.ui.notify(WORKFLOWS_HELP, "info");
-          return;
-        }
-        case "list": {
-          ctx.ui.notify(renderRuns(await store.listRuns(), Date.now()), "info");
-          await refreshWidget(ctx);
-          return;
-        }
-        case "status": {
-          const target = await resolveRunTarget(store, rest[0]);
-          if (!target.ok) return ctx.ui.notify(target.message, "warning");
-          const run = await store.readRun(target.runId);
-          ctx.ui.notify(
-            run.ok
-              ? renderRun(run.value, manager.isActive(target.runId), Date.now())
-              : friendlyRunError(target.runId, run.error.message),
-            run.ok ? "info" : "warning",
-          );
-          await refreshWidget(ctx);
-          return;
-        }
-        case "show": {
-          const target = await resolveRunTarget(store, rest[0]);
-          if (!target.ok) return ctx.ui.notify(target.message, "warning");
-          const run = await store.readRun(target.runId);
-          ctx.ui.notify(
-            run.ok
-              ? renderRunDetails(run.value, store.runDir(target.runId), Date.now())
-              : friendlyRunError(target.runId, run.error.message),
-            run.ok ? "info" : "warning",
-          );
-          await refreshWidget(ctx);
-          return;
-        }
-        case "stop": {
-          const target = await resolveRunTarget(store, rest[0]);
-          if (!target.ok) return ctx.ui.notify(target.message, "warning");
-          const stopped = await manager.stop(target.runId, store);
-          ctx.ui.notify(
-            stopped.ok ? `Stopped workflow ${target.runId}.` : friendlyRunError(target.runId, stopped.error.message),
-            stopped.ok ? "info" : "warning",
-          );
-          await refreshWidget(ctx);
-          return;
-        }
-        case "resume": {
-          const target = await resolveRunTarget(store, rest[0]);
-          if (!target.ok) return ctx.ui.notify(target.message, "warning");
-          // Resuming a completed run wipes its stored result; make the human
-          // path deliberate. Headless sessions proceed without a dialog.
-          const existing = await store.readRun(target.runId);
-          if (existing.ok && existing.value.status === "completed" && ctx.hasUI) {
-            const confirmed = await ctx.ui.confirm(
-              "Resume completed workflow?",
-              `${target.runId} already completed. Resuming wipes its stored result and re-runs it (completed agents replay from the journal).`,
-            );
-            if (!confirmed) return ctx.ui.notify("Resume cancelled.", "info");
-          }
-          const resumed = await manager.resume(target.runId, {
-            cwd: ctx.cwd,
-            store,
-            agentRunner: runnerFor(ctx),
-            deliver,
-          });
-          ctx.ui.notify(
-            resumed.ok ? resumed.value.summary : friendlyRunError(target.runId, resumed.error.message),
-            resumed.ok ? "info" : "warning",
-          );
-          await refreshWidget(ctx);
-          return;
-        }
-        case "run": {
-          const parsed = parseRunCommand(tail);
-          if (!parsed.ok) return ctx.ui.notify(parsed.error.message, "warning");
-          const launch = await manager.launch(parsed.value, {
-            cwd: ctx.cwd,
-            store,
-            agentRunner: runnerFor(ctx),
-            deliver,
-          });
-          ctx.ui.notify(launch.ok ? launch.value.summary : launch.error.message, launch.ok ? "info" : "warning");
-          await refreshWidget(ctx);
-          return;
-        }
-        case "start": {
-          await startWorkflow(tail, ctx);
-          return;
-        }
-        default:
-          ctx.ui.notify(`Unknown /workflows command: ${command}\n\n${WORKFLOWS_HELP}`, "warning");
-      }
+      await handleWorkflowsCommand(args, {
+        manager,
+        store,
+        cwd: ctx.cwd,
+        hasUI: ctx.hasUI,
+        ui: ctx.ui,
+        agentRunner: runnerFor(ctx),
+        toolPolicy: commandToolPolicy,
+        deliver,
+        refreshWidget: () => refreshWidget(ctx),
+        startWorkflow: (tail) => startWorkflow(tail, ctx),
+      });
     },
   });
 
@@ -349,12 +245,8 @@ export default function extension(pi: ExtensionAPI) {
   });
 }
 
-/** Map a raw store read failure to a friendly not-found message. */
-function friendlyRunError(runId: RunId, message: string): string {
-  if (/ENOENT|no such file/iu.test(message)) return `Workflow run not found: ${runId}`;
-  return message;
-}
-
 function asSchema(value: unknown): TSchema {
+  // SAFETY: Pi tool parameters accept TypeBox-compatible JSON schema data, and
+  // WORKFLOW_INPUT_SCHEMA is a literal schema object owned by this module.
   return value as TSchema;
 }

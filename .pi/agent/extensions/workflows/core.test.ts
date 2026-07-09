@@ -215,7 +215,7 @@ test("readRun rejects a non-finite budgetTotal", async () => {
   await mkdir(dir, { recursive: true });
   await writeFile(
     join(dir, "run.json"),
-    `{"schemaVersion":1,"runId":"${runId.value}","status":"completed","budgetTotal":1e999,"startedAt":1,"updatedAt":1}`,
+    `{"schemaVersion":2,"runId":"${runId.value}","status":"completed","budgetTotal":1e999,"startedAt":1,"updatedAt":1}`,
     "utf8",
   );
   const run = await store.readRun(runId.value);

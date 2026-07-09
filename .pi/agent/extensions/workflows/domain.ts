@@ -61,9 +61,27 @@ export interface ParsedWorkflowInput {
 /** Status persisted for a workflow run. */
 export type WorkflowRunStatus = "queued" | "running" | "completed" | "failed" | "stopped";
 
+/** Status persisted for an agent call inside a run. */
+export type WorkflowAgentStatus = "running" | "completed" | "cached" | "failed";
+
+/** Durable observation of one workflow agent call. */
+export interface WorkflowAgentSnapshot {
+  readonly index: number;
+  readonly replayKey: ReplayKey;
+  readonly prompt: string;
+  readonly label?: string;
+  readonly phase?: string;
+  readonly status: WorkflowAgentStatus;
+  readonly outputTokens?: number;
+  readonly error?: string;
+  readonly startedAt: Instant;
+  readonly updatedAt: Instant;
+  readonly completedAt?: Instant;
+}
+
 /** Durable workflow run snapshot. */
 export interface WorkflowRunSnapshot {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly runId: RunId;
   readonly projectKey: string;
   readonly cwd: string;
@@ -75,9 +93,12 @@ export interface WorkflowRunSnapshot {
   readonly scriptFile: string;
   readonly args: JsonValue;
   readonly meta: JsonValue;
+  readonly toolAllowlist: readonly string[];
+  readonly excludedTools: readonly string[];
   readonly budgetTotal: number | null;
   readonly budgetSpent: number;
   readonly agentCalls: number;
+  readonly agents: readonly WorkflowAgentSnapshot[];
   readonly phases: readonly string[];
   readonly logs: readonly string[];
   readonly summary?: string;

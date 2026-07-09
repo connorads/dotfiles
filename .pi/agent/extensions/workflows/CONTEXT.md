@@ -18,8 +18,8 @@ durable snapshot, pinned script, and replay journal.
 _Avoid_: job, task, instance
 
 **Snapshot**:
-The current durable state of a run (`run.json`) - status, budget, logs, phases,
-result. Overwritten in place as the run progresses.
+The current durable state of a run - status, tool policy, agent observations,
+budget, logs, phases, result. Overwritten in place as the run progresses.
 _Avoid_: state file, record
 
 **Journal**:
@@ -41,8 +41,23 @@ _Avoid_: timeout (a flat deadline is exactly what it is not)
 
 **Agent**:
 A Pi coding-agent subagent launched by an `agent()` call within a workflow. Runs
-with the coding toolset; may be schema-constrained via structured output.
+with the run's tool allowlist; may be schema-constrained via structured output.
 _Avoid_: worker, subprocess, tool
+
+**Tool allowlist**:
+The parent Pi session tools captured for workflow agents at launch or resume,
+after workflow-control tools are excluded.
+_Avoid_: tool profile, permissions preset, all tools
+
+**Budget cap**:
+An optional positive output-token cap declared by `meta.budget`. Missing,
+non-positive, or invalid budget values mean the run is uncapped.
+_Avoid_: token target, quota, estimate
+
+**Workflow menu**:
+The interactive `/workflows menu` view for choosing a run and inspecting its
+status, phases, agents, logs, result, and available run actions.
+_Avoid_: dashboard, control panel, TUI
 
 **Defence-in-depth VM**:
 The `node:vm` context a workflow body runs in. Enforces determinism and contains

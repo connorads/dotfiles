@@ -14,6 +14,7 @@ export const WORKFLOWS_HELP = [
   "/workflows resume [runId]       resume a run, replaying completed agents (defaults like status)",
   "/workflows run <name|path> [json]   launch a named or file workflow",
   "/workflows start <objective>    ask Pi to draft and launch an inline workflow",
+  "/workflows menu                 inspect and act on workflow runs interactively",
   "/workflows help                 show this help",
 ].join("\n");
 
@@ -43,7 +44,11 @@ export function renderWidget(runs: readonly WorkflowRunSnapshot[], now: number):
     "Project workflows",
     ...interesting.map((run) => {
       const phase = currentPhase(run);
-      const detail = [`agents ${run.agentCalls}`, phase ? `phase ${phase}` : undefined, `${relativeTime(run.updatedAt, now)} ago`]
+      const detail = [
+        `agents ${agentStatusSummary(run)}`,
+        phase ? `phase ${phase}` : undefined,
+        `${relativeTime(run.updatedAt, now)} ago`,
+      ]
         .filter(Boolean)
         .join(", ");
       return `${run.status} ${run.runId} ${run.workflowName} (${detail})`;
@@ -54,7 +59,7 @@ export function renderWidget(runs: readonly WorkflowRunSnapshot[], now: number):
 export function renderRuns(runs: readonly WorkflowRunSnapshot[], now: number): string {
   if (runs.length === 0) return "No project workflow runs. Start one with /workflows run <name> or /workflow <objective>.";
   const rows = runs.slice(0, 12).map((run) => {
-    const detail = [`agents ${run.agentCalls}`];
+    const detail = [`agents ${agentStatusSummary(run)}`];
     if (run.budgetTotal !== null) detail.push(`budget ${run.budgetSpent}/${run.budgetTotal}`);
     const phase = currentPhase(run);
     if (phase) detail.push(`phase ${phase}`);
@@ -68,7 +73,7 @@ export function renderRun(run: WorkflowRunSnapshot, active: boolean, now: number
   const header = `${run.runId} ${run.status}${live}: ${run.workflowName}`;
   const progress =
     run.status === "running" || run.status === "queued"
-      ? `agents ${run.agentCalls}${currentPhase(run) ? `, phase ${currentPhase(run)}` : ""}${run.budgetTotal !== null ? `, budget ${run.budgetSpent}/${run.budgetTotal}` : ""}`
+      ? `agents ${agentStatusSummary(run)}${currentPhase(run) ? `, phase ${currentPhase(run)}` : ""}${run.budgetTotal !== null ? `, budget ${run.budgetSpent}/${run.budgetTotal}` : ""}`
       : undefined;
   return [header, timing(run, now), progress, run.summary, failedOrStoppedHint(run)]
     .filter((line): line is string => typeof line === "string" && line.length > 0)
@@ -81,14 +86,32 @@ export function renderRunDetails(run: WorkflowRunSnapshot, runDir: string, now: 
     timing(run, now),
     `cwd: ${run.cwd}`,
     `run dir: ${runDir}`,
-    `agents: ${run.agentCalls}`,
-    `budget: ${run.budgetTotal === null ? "uncapped" : `${run.budgetSpent}/${run.budgetTotal}`}`,
+    `tools: ${run.toolAllowlist.length > 0 ? run.toolAllowlist.join(", ") : "none"}${
+      run.excludedTools.length > 0 ? ` (excluded: ${run.excludedTools.join(", ")})` : ""
+    }`,
+    `agents: ${agentStatusSummary(run)}`,
+    run.phases.length > 0 ? `phases: ${run.phases.join(" -> ")}` : undefined,
+    run.budgetTotal === null ? undefined : `budget: ${run.budgetSpent}/${run.budgetTotal}`,
     run.summary ? `summary: ${run.summary}` : undefined,
     run.error ? `error: ${run.error}` : undefined,
+    run.agents.length > 0 ? `agent details:\n${renderRunAgents(run, now)}` : undefined,
     failedOrStoppedHint(run),
     run.logs.length > 0 ? `logs:\n${run.logs.slice(-20).join("\n")}` : undefined,
     run.result !== undefined ? `result:\n${preview(JSON.stringify(run.result, null, 2), 2000)}` : undefined,
   ].filter((line): line is string => typeof line === "string");
+  return lines.join("\n");
+}
+
+export function renderRunAgents(run: WorkflowRunSnapshot, now: number): string {
+  if (run.agents.length === 0) return "No workflow agents have started.";
+  const lines = run.agents.map((agent) => {
+    const label = agent.label ? ` ${agent.label}` : "";
+    const phase = agent.phase ? ` phase ${agent.phase}` : "";
+    const tokens = agent.outputTokens === undefined ? "" : ` tokens ${agent.outputTokens}`;
+    const age = agent.completedAt === undefined ? ` active ${relativeTime(agent.updatedAt, now)} ago` : ` done ${relativeTime(agent.completedAt, now)} ago`;
+    const error = agent.error ? ` error ${preview(agent.error, 120)}` : "";
+    return `agent[${agent.index}] ${agent.status}${label}${phase}${tokens}${age}${error}`;
+  });
   return lines.join("\n");
 }
 
@@ -126,6 +149,18 @@ export function relativeTime(then: number, now: number): string {
 /** The most recent runtime phase, if any. */
 function currentPhase(run: WorkflowRunSnapshot): string | undefined {
   return run.phases.length > 0 ? run.phases[run.phases.length - 1] : undefined;
+}
+
+function agentStatusSummary(run: WorkflowRunSnapshot): string {
+  if (run.agents.length === 0) return String(run.agentCalls);
+  const running = run.agents.filter((agent) => agent.status === "running").length;
+  const completed = run.agents.filter((agent) => agent.status === "completed" || agent.status === "cached").length;
+  const failed = run.agents.filter((agent) => agent.status === "failed").length;
+  const parts = [`${run.agentCalls} total`];
+  if (running > 0) parts.push(`${running} running`);
+  if (completed > 0) parts.push(`${completed} done`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  return parts.join(", ");
 }
 
 function timing(run: WorkflowRunSnapshot, now: number): string {

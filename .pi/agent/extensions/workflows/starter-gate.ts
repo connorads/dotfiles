@@ -1,4 +1,4 @@
-import { WORKFLOW_TOOL_NAME } from "./starter.ts";
+import { WORKFLOW_TOOL_NAME } from "./tool-policy.ts";
 
 export { WORKFLOW_TOOL_NAME };
 

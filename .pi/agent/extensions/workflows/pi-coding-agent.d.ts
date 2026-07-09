@@ -84,6 +84,7 @@ declare module "@earendil-works/pi-coding-agent" {
 
   export interface ExtensionUIContext {
     notify(message: string, type?: "info" | "warning" | "error"): void;
+    select(title: string, options: string[]): Promise<string | undefined>;
     setWidget(key: string, content: string[] | undefined, options?: { placement?: "aboveEditor" | "belowEditor" }): void;
     confirm(title: string, message: string): Promise<boolean>;
   }
@@ -155,6 +156,7 @@ declare module "@earendil-works/pi-coding-agent" {
     abort(): Promise<void>;
     dispose(): void;
     setActiveToolsByName(names: string[]): void;
+    getActiveToolNames(): string[];
     getSessionStats(): { readonly tokens: { readonly output: number } };
     subscribe(listener: (event: AgentSessionEvent) => void): () => void;
   }
@@ -165,6 +167,7 @@ declare module "@earendil-works/pi-coding-agent" {
     readonly sessionManager?: SessionManager;
     readonly settingsManager?: SettingsManager;
     readonly customTools?: ToolDefinition[];
+    readonly tools?: readonly string[];
     readonly model?: Model;
     readonly thinkingLevel?: ThinkingLevel;
   }): Promise<{ readonly session: AgentSession }>;

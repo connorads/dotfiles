@@ -14,6 +14,7 @@ import {
   type JsonValue,
   type ResolvedWorkflowSource,
   type RunId,
+  type WorkflowAgentSnapshot,
   type WorkflowJournalEntry,
   type WorkflowName,
   type WorkflowRunSnapshot,
@@ -301,12 +302,12 @@ function sanitizePathSegment(value: string): string {
 
 function parseStoredRun(value: unknown): Result<WorkflowRunSnapshot, Error> {
   if (!isRecord(value)) return err(new Error("Stored workflow run is not an object"));
-  if (value.schemaVersion !== 1) return err(new Error("Unsupported workflow run schema"));
+  if (value.schemaVersion !== 2) return err(new Error("Unsupported workflow run schema"));
   if (typeof value.runId !== "string") return err(new Error("Stored run id is missing"));
   const runId = parseRunId(value.runId);
   if (!runId.ok) return err(runId.error);
   return ok({
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: runId.value,
     projectKey: stringField(value.projectKey),
     cwd: stringField(value.cwd),
@@ -318,9 +319,12 @@ function parseStoredRun(value: unknown): Result<WorkflowRunSnapshot, Error> {
     scriptFile: stringField(value.scriptFile),
     args: parseJsonField(value.args),
     meta: parseJsonField(value.meta),
+    toolAllowlist: stringArray(value.toolAllowlist),
+    excludedTools: stringArray(value.excludedTools),
     budgetTotal: typeof value.budgetTotal === "number" && Number.isFinite(value.budgetTotal) ? value.budgetTotal : null,
     budgetSpent: numberField(value.budgetSpent),
     agentCalls: numberField(value.agentCalls),
+    agents: parseAgents(value.agents),
     phases: stringArray(value.phases),
     logs: stringArray(value.logs),
     summary: optionalString(value.summary),
@@ -331,6 +335,28 @@ function parseStoredRun(value: unknown): Result<WorkflowRunSnapshot, Error> {
     completedAt: optionalNumber(value.completedAt),
     pid: optionalNumber(value.pid),
   });
+}
+
+function parseAgents(value: unknown): WorkflowAgentSnapshot[] {
+  if (!Array.isArray(value)) return [];
+  const agents: WorkflowAgentSnapshot[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.replayKey !== "string" || typeof item.prompt !== "string") continue;
+    agents.push({
+      index: numberField(item.index),
+      replayKey: item.replayKey as WorkflowAgentSnapshot["replayKey"],
+      prompt: item.prompt,
+      label: optionalString(item.label),
+      phase: optionalString(item.phase),
+      status: parseAgentStatus(item.status),
+      outputTokens: optionalNumber(item.outputTokens),
+      error: optionalString(item.error),
+      startedAt: numberField(item.startedAt),
+      updatedAt: numberField(item.updatedAt),
+      completedAt: optionalNumber(item.completedAt),
+    });
+  }
+  return agents;
 }
 
 function parseJournalEntry(value: unknown): WorkflowJournalEntry | undefined {
@@ -390,6 +416,10 @@ function parseStatus(value: unknown): WorkflowRunSnapshot["status"] {
   return value === "queued" || value === "running" || value === "completed" || value === "failed" || value === "stopped"
     ? value
     : "failed";
+}
+
+function parseAgentStatus(value: unknown): WorkflowAgentSnapshot["status"] {
+  return value === "running" || value === "completed" || value === "cached" || value === "failed" ? value : "failed";
 }
 
 function parseSourceKind(value: unknown): WorkflowSourceRef["kind"] {

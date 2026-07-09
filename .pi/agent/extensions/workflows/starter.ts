@@ -2,7 +2,6 @@ import { firstHiddenControl } from "./parser.ts";
 import type { Brand } from "./prelude.ts";
 import { err, ok, type Result } from "./result.ts";
 
-export const WORKFLOW_TOOL_NAME = "workflow";
 export const MAX_WORKFLOW_OBJECTIVE_CHARS = 12_000;
 
 /** User objective accepted by `/workflow` and `/workflows start`. */
@@ -77,7 +76,7 @@ export function renderWorkflowStartPrompt(objective: WorkflowObjective): string 
     "- Determinism: `Date.now()`, `Math.random()`, and argless `new Date()` are unavailable; pass timestamps in via `args`.",
     "- No import/export statements beyond the `meta` export.",
     "- Avoid synchronous busy-loops; the script body shares the host event loop.",
-    "- Optional `meta.budget` caps total subagent output tokens; `budget.remaining()` reads what is left.",
+    "- Omit `meta.budget` unless the user explicitly asks for a token cap. Without it, `budget.remaining()` is Infinity.",
     "- `agent` options: `label`, `phase`, `schema` (JSON Schema for structured output), `model`, and `effort` (low|medium|high|xhigh|max).",
     "",
     "Do not use these invalid shapes:",

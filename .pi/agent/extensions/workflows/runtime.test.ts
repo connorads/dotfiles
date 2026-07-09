@@ -7,8 +7,8 @@ import test from "node:test";
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { resolveRequestedModel, thinkingLevelForEffort } from "./model-select.ts";
 import { parseWorkflowScript, type ParsedWorkflowScript } from "./parser.ts";
-import { WorkflowRuntime, type AgentRunner, type AgentRunResult, type WorkflowRuntimeDeps } from "./runtime.ts";
-import { createWorkflowStore } from "./store.ts";
+import { WorkflowRuntime, type AgentRunner, type AgentRunOptions, type AgentRunResult, type WorkflowRuntimeDeps } from "./runtime.ts";
+import { createWorkflowStore, type WorkflowStore } from "./store.ts";
 
 test("runtime executes agents, parallel, pipeline, phases, logs, and replay", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-runtime-"));
@@ -175,6 +175,30 @@ test("an agent emitting progress past the stall deadline is not aborted", async 
   assert.equal(await runtime.execute(runtime.parsed), "slow-done");
 });
 
+test("runtime coalesces bursty agent progress without durable write amplification", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-progress-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const source = `export const meta = { name: "t", description: "t" };\nreturn await agent("burst");`;
+  const snapshot = makeSnapshot("wf_progress1", { workflowName: "t" });
+  await store.createRun(snapshot, source);
+
+  const writes: WorkflowRunSnapshot[] = [];
+  const countingStore: WorkflowStore = {
+    ...store,
+    async updateRun(next, generation) {
+      writes.push(next);
+      await store.updateRun(next, generation);
+    },
+  };
+  const runtime = new WorkflowRuntime(snapshot, [], baseDeps(countingStore, new BurstProgressRunner(8)));
+
+  assert.equal(await runtime.execute(mustParse(source)), "burst-done");
+  assert.deepEqual(
+    writes.map((write) => write.agents[0]?.status ?? write.status),
+    ["running", "completed"],
+  );
+});
+
 test("agent isolation worktree and remote both throw", async () => {
   for (const isolation of ["worktree", "remote"]) {
     const runtime = makeRuntime(
@@ -290,7 +314,7 @@ test("thinkingLevelForEffort passes through known levels, maps max, rejects unkn
 class RecordingRunner implements AgentRunner {
   readonly calls: Array<{ readonly prompt: string; readonly label: string | null; readonly phase: string | null }> = [];
 
-  async run(prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+  async run(prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
     const call = {
       prompt,
       label: options.label ?? null,
@@ -311,7 +335,7 @@ class NullRunner implements AgentRunner {
 }
 
 class HangingRunner implements AgentRunner {
-  async run(_prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+  async run(_prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
     return new Promise((_resolve, reject) => {
       options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
     });
@@ -328,11 +352,26 @@ class ProgressingRunner implements AgentRunner {
     this.stepMs = stepMs;
   }
 
-  async run(prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+  async run(prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
     const started = Date.now();
     while (Date.now() - started < this.totalMs) {
       if (options.signal.aborted) throw new Error("aborted");
       await new Promise((resolve) => setTimeout(resolve, this.stepMs));
+      options.onProgress?.();
+    }
+    return { value: `${prompt}-done`, outputTokens: 1 };
+  }
+}
+
+class BurstProgressRunner implements AgentRunner {
+  private readonly events: number;
+
+  constructor(events: number) {
+    this.events = events;
+  }
+
+  async run(prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
+    for (let index = 0; index < this.events; index += 1) {
       options.onProgress?.();
     }
     return { value: `${prompt}-done`, outputTokens: 1 };
@@ -366,7 +405,7 @@ function makeSnapshot(
 ): WorkflowRunSnapshot {
   const runId = mustRunId(id);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId,
     projectKey: "project",
     cwd: "/tmp/project",
@@ -377,9 +416,12 @@ function makeSnapshot(
     scriptFile: "script.js",
     args: null,
     meta: {},
+    toolAllowlist: ["read", "web_search"],
+    excludedTools: ["workflow"],
     budgetTotal: null,
     budgetSpent: 0,
     agentCalls: 0,
+    agents: [],
     phases: [],
     logs: [],
     startedAt: 1,
