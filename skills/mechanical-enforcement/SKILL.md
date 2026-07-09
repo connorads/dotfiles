@@ -1,6 +1,6 @@
 ---
 name: mechanical-enforcement
-description: Catalogue of preferred linter rules, TypeScript flags, clippy thresholds, import-boundary checks, and architecture tests for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
+description: Catalogue of preferred linter rules, TypeScript flags, clippy thresholds, import-boundary checks, contract-compat gates, and architecture tests for making bug classes and design drift mechanically impossible. Use when setting up linting in a new project, hardening an existing project, responding to a class of bug by encoding a rule, or deciding which linter to reach for on a given stack. Pairs with the `hk` skill which handles wiring hooks.
 ---
 
 # Mechanical Enforcement
@@ -47,7 +47,9 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Commit messages | — | commitlint (`@commitlint/config-conventional`) | — | — | One-line config. See `references/commitlint.config.js`. |
 | Secrets | — | gitleaks | — | — | Always add — cheap, high-signal. |
 | Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes, tiny false-positive rate. |
-| GitHub Actions / CI | — | [zizmor](https://github.com/zizmorcore/zizmor) | — | — | Security audit of `.github/workflows/*.yml` + `action.yml`. SARIF + `--format=github` annotations. Complements gitleaks, not overlapping. |
+| GitHub Actions / CI | — | [zizmor](https://github.com/zizmorcore/zizmor) + [actionlint](https://github.com/rhysd/actionlint) | — | — | Run both — minimal overlap. zizmor = security audit of `.github/workflows/*.yml` + `action.yml` (SARIF + `--format=github` annotations); actionlint = correctness (expression type-checks, `needs:` graph, runner labels; shells out to an installed ShellCheck for `run:` blocks — not embedded). actionlint is an hk builtin. |
+| Postgres migrations | — | [squawk](https://squawkhq.com/) | eugene (watch — `eugene trace` only) | — | Rust, static — no DB needed in CI (`squawk 'migrations/*.sql'`; failure level configurable). Atlas `migrate lint` is paid. `eugene trace` observes real lock acquisition against a temp Postgres — ad-hoc for high-contention migrations; never wire `eugene lint` (duplicates squawk via the same pg_query.rs parser; pre-1.0, solo-maintained). Neither replaces `lock_timeout` / `statement_timeout` in the migration runner. MySQL/SQLite: gap. |
+| API / event contracts | — | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor | — | Baseline-diff gates for cross-service contracts — see Boundary contracts. |
 
 ## Rules catalogue
 
@@ -433,6 +435,30 @@ library builds with tsdown (Rust/Rolldown), it can run both inline
 they ship pre-1.0 and move fast. For monorepos, **sherif** (Rust) additionally
 enforces dependency-version consistency across workspaces.
 
+### Boundary contracts (cross-service compatibility)
+
+Anything crossing a service boundary is a public contract (the
+`event-driven-architecture` skill's framing) — and contract breakage is
+mechanically checkable by diffing the schema against a baseline. publint/attw
+above cover the npm package shape; these cover the wire:
+
+| Contract | Gate with | Notes |
+|---|---|---|
+| Protobuf | `buf breaking --against '.git#branch=main'` | Rule sets ladder from `FILE` (generated-code compat, default) to `WIRE` (wire-only). |
+| OpenAPI 3.0/3.1 | `oasdiff breaking base.yaml revision.yaml --fail-on ERR` | The default over Azure openapi-diff. Core CLI + action are OSS; a hosted/Pro tier exists, so the Atlas-lint paywall precedent applies — watch. |
+| GraphQL | `graphql-inspector diff` (non-zero on breaking) | Single schema. Federated graphs need Cosmo `wgc subgraph check` — composition breaks only show across the supergraph. |
+| Rust public API | `cargo semver-checks` | Diffs rustdoc JSON against the released baseline; auto-run by release-plz; not exhaustive (proves the breaks it finds, not their absence). |
+| TS public `.d.ts` surface | `@microsoft/api-extractor` with a committed `.api.md` report | CI runs *without* `--local` and fails when the surface changed unreviewed; dev regenerates with `--local` and commits the diff. |
+
+For consumer-driven contracts, `pact-broker can-i-deploy` is the deploy gate
+(the method itself lives in the `testing` / `event-driven-architecture`
+skills). Avro/JSON-Schema have no standalone single-binary gate — a schema
+registry's compatibility check is the production path.
+
+All of these diff against a baseline (git ref, published schema, committed
+report), so they belong in CI / pre-push, not pre-commit. Command patterns in
+`references/contract-gates.md`.
+
 ### Testing
 
 | Rule | Encode with | Prevents |
@@ -569,7 +595,7 @@ The typical mapping (TypeScript):
 
 ```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, biome fix
-tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline (glob: .github/workflows/*.{yml,yaml} + action.yml)
+tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline + actionlint (hk builtin) (glob: .github/workflows/*.{yml,yaml} + action.yml)
 tier 3 (typecheck)      → tsc --noEmit strict (TS 6, authoritative) + tsgo --noEmit (TS 7, fast local gate)
 tier 4 (test)           → vitest run --coverage
 commit-msg              → commitlint
@@ -581,14 +607,14 @@ The typical mapping (Rust):
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, cargo-fmt
 tier 2 (lint/gate)      → cargo-clippy -D warnings, gitleaks, cargo-deny
 tier 3 (typecheck)      → cargo check (usually redundant with clippy but catches cfg issues)
-tier 4 (deps/test)      → cargo machete (unused deps), cargo test (scoped to changed crates via glob)
+tier 4 (deps/test)      → cargo machete (unused deps), cargo test (scoped to changed crates via glob), cargo modules dependencies --acyclic where layering matters
 ```
 
 The typical mapping (Python):
 
 ```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, ruff check --fix, ruff format
-tier 2 (lint/gate)      → ruff check, gitleaks, yamllint, check-merge-conflict
+tier 2 (lint/gate)      → ruff check, lint-imports (when contracts exist), gitleaks, yamllint, check-merge-conflict
 tier 3 (typecheck)      → basedpyright (primary); optional pinned pyrefly/ty as advisory/secondary
 tier 4 (dead code/test) → vulture at min_confidence=100 after baseline cleanup; pytest/coverage
 ```
@@ -600,6 +626,10 @@ POSIX sh tier 1/2 → shfmt -ln=posix --diff, shellcheck --shell=sh, checkbashis
 Bash tier 1/2     → shfmt -ln=bash --diff, shellcheck --shell=bash, bats-core or equivalent behaviour tests
 zsh tier 1/2      → shfmt -ln=zsh --diff, zsh -n, native zsh behaviour tests
 ```
+
+Baseline-diff gates run at pre-push / CI, not pre-commit: the contract gates
+(buf breaking / oasdiff / cargo-semver-checks / api-extractor) and squawk
+scoped to migration globs (`migrations/**/*.sql`).
 
 Use `fix = true` + `stash = "git"` on pre-commit so tier 1 auto-fixes and re-stages. See `references/hk-steps.pkl` for a full worked example.
 
@@ -645,5 +675,6 @@ When a bug escapes to review or production, the retro question is: **what rule w
 ### Cross-stack
 
 - `references/hk-steps.pkl` — worked hk.pkl step graph
+- `references/contract-gates.md` — command patterns + CI placement for buf breaking, oasdiff, graphql-inspector, cargo-semver-checks, api-extractor, pact can-i-deploy
 - [Ultracite](https://www.ultracite.ai/) — Biome preset bundle
 - [hk](https://hk.jdx.dev) — git hook manager
