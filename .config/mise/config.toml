@@ -47,14 +47,14 @@ deno = "2"
 # companion to docling/markitdown below. Registry-backed (github:jgm/pandoc).
 pandoc = "3"
 # postinstall reapplies the --channels (master gate + allowlist), computer-use,
-# and session-reaper binary patches to each freshly installed bundle
+# session-reaper, and plan-scroll binary patches to each freshly installed bundle
 # (claude = "latest" drops an unpatched build on every update), then runs
 # claude-commit-note-check: a read-only guard that verifies the built-in
 # Bash-tool git note the ~/.claude/system-append.md override countermands still
 # exists. Each warns + drops a marker but exits 0 on a missing needle, so an
 # update is never blocked; chained with ; so later steps still run if an earlier
 # one warns.
-claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-channels-allowlist-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
+claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-channels-allowlist-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-plan-scroll-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 # Pinned to EXACT 1.27.1: v1.27.1 ships binaries (8 assets) but v1.27.0 shipped
 # none AND was published ~20 min later, so the github backend resolves a "1.27"
 # range to the assetless 1.27.0 and every `mise run` aborts. The exact pin

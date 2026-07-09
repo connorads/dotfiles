@@ -1,0 +1,31 @@
+#!/usr/bin/env zsh
+# claude-plan-scroll-patch: keep plan approval from becoming a nested scroll panel
+# usage: claude-plan-scroll-patch [--check|--restore|--all|--reapply] [path-to-claude-binary]
+# --reapply: install-hook-friendly patch - clears the stale marker on success,
+#            but on a missing needle warns loudly, writes the marker, exits 0.
+#
+# Why: Claude Code's plan approval dialog renders "Here is Claude's plan" through
+# an internal scroll component with a computed fixed height. The panel can then
+# trap scrollback at the top of the terminal. Patch only that dialog render call
+# to use a normal Ink Box with no fixed height, leaving the shared scroll
+# component untouched.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local patch_name=claude-plan-scroll-patch
+local patch_label='plan scroll'
+local needle='ky.jsx(pW,{ref:ht,flexDirection:"column",height:At,stickyScroll:!1,children:zt})'
+local replace='ky.jsx($ ,{ref:ht,flexDirection:"column",height:void 0,            children:zt})'
+local marker="$HOME/.cache/claude-plan-scroll-patch.stale"
+local missing_body=$'The plan approval render call was likely reshaped upstream; plan mode\nmay again trap scrollback until the needle in claude-plan-scroll-patch is updated.'
+local missing_banner='plan mode may trap scrollback'
+
+if (( ${#needle} != ${#replace} )); then
+  print -u2 "$patch_name: replacement must preserve byte length (${#needle} != ${#replace})"
+  return 2
+fi
+
+source "${wrapper:h}/_claude-patch-targets-lib"
+source "$HOME/.config/zsh/functions/patch/_needle-patch-lib"
