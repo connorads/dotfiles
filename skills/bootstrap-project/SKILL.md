@@ -39,6 +39,7 @@ commit discipline - which changes rarely. Churny per-stack knowledge lives in
 | Test strategy | `testing` | points there |
 | Workers Builds, custom domains, Access | `cloudflare-workers-deployments` | invokes it at the deploy phase |
 | Cloudflare platform wiring + TanStack Start | `references/cloudflare-tanstack-start.md` | reads it when that's the stack |
+| Cloudflare platform wiring + static Astro | `references/cloudflare-astro-static.md` | reads it when that's the stack |
 
 `mechanical-enforcement` also triggers on "setting up a new project" - the
 split is: it owns *which rules*; this skill owns *when in the sequence* and
@@ -71,7 +72,7 @@ starting points:
 
 | Stack | Scaffolder |
 |---|---|
-| Anything on Cloudflare | `pnpm create cloudflare@latest` - read `references/cloudflare-tanstack-start.md` first |
+| Anything on Cloudflare | `pnpm create cloudflare@latest` - read `references/cloudflare-tanstack-start.md` first; for a static-only Astro site c3 is wrong (SSR adapter forced) - read `references/cloudflare-astro-static.md` |
 | Vite SPA / frontend | `pnpm create vite` |
 | Python | `uv init` |
 | Rust | `cargo new` |
