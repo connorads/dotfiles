@@ -15,7 +15,7 @@ This is a **content skill**, not a tool. It provides rules and snippets. For wir
 2. **Types first, lint second, tests third**. Prefer `strict` TypeScript / Pydantic / clippy to a custom lint rule. Reach for a lint rule when the type system can't express it. Reach for a test only when neither can.
 3. **Architectural boundaries are linter rules**. Layers (domain <- infra, utilities <- server, UI <- schemas) are enforced with `no-restricted-imports` / `no-restricted-syntax`, or with graph checks when the rule is transitive, not trusted to vigilance.
 4. **Auto-fix where possible, gate where not**. Formatters and whitespace fixers run with `fix = true` and re-stage. Correctness rules gate the commit.
-5. **Prefer opinionated presets, override minimally**. Ultracite for Biome, `@commitlint/config-conventional` for commits, `next/core-web-vitals` for Next. Only override with a comment explaining *why*.
+5. **Prefer opinionated presets, override minimally**. Ultracite for the TS lint/format toolchain (oxlint/oxfmt or Biome), `@commitlint/config-conventional` for commits, `next/core-web-vitals` for Next. Only override with a comment explaining *why*.
 6. **The *why* lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
 
 ## When to use this skill
@@ -31,8 +31,8 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 
 | Stack | Formatter | Primary linter | Also | Type-check | Notes |
 |---|---|---|---|---|---|
-| TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
-| TypeScript (library / node) | Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
+| TypeScript / React / Next | oxfmt or Biome, via [Ultracite](https://www.ultracite.ai/) (`--linter oxlint` / `biome`) — see TypeScript: formatting | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see typecheck below) | Ultracite is the default for new projects; the all-oxc stack (oxlint + oxfmt) is the recommended provider, Biome the stable fallback. Raw Biome only if Ultracite doesn't support the framework. |
+| TypeScript (library / node) | oxfmt or Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
 | Python | ruff format | ruff | import-linter for layer / forbidden / independence contracts (tach is a watch — see Python boundaries); vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | go-arch-lint for declarative component `mayDependOn` maps; `gomodguard_v2` for module allow/block lists (v1 is deprecated in golangci-lint) | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. depguard with per-`files:` rules gates layers — see Go boundaries. |
@@ -40,10 +40,10 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
 | Bash | shfmt `-ln=bash` | ShellCheck `--shell=bash` | bats-core for black-box CLI tests | — | Bats is Bash-based; good for CLI contracts and Bash scripts. |
 | zsh | shfmt `-ln=zsh` | — | `zsh -n`, isolated zsh runtime tests | — | ShellCheck does not support zsh; use parser/format checks plus native tests. |
-| Markdown | rumdl | rumdl | — | — | Handles frontmatter too. |
+| Markdown | rumdl | rumdl | — | — | Handles frontmatter too. In oxc-stack repos oxfmt also formats Markdown — see TypeScript: formatting. |
 | Nix | nixfmt | deadnix + statix | — | — | |
-| YAML | — | yamllint | — | — | |
-| TOML | taplo (`taplo fmt`) | taplo (`taplo lint` + JSON-schema) | — | — | Format + lint + schema-validate `Cargo.toml` / `*.toml` config. Maintenance is in limbo (no release since 0.10.0, May 2025) — watch [`tombi`](https://github.com/tombi-toml/tombi) as the successor. |
+| YAML | — | yamllint | — | — | In oxc-stack repos oxfmt also formats YAML — see TypeScript: formatting. |
+| TOML | taplo (`taplo fmt`) | taplo (`taplo lint` + JSON-schema) | — | — | Format + lint + schema-validate `Cargo.toml` / `*.toml` config. Maintenance is in limbo (no release since 0.10.0, May 2025) — watch [`tombi`](https://github.com/tombi-toml/tombi) and oxfmt as successors; taplo's JSON-schema validation has no oxfmt equivalent. |
 | Commit messages | — | commitlint (`@commitlint/config-conventional`) | — | — | One-line config. See `references/commitlint.config.js`. |
 | Secrets | — | gitleaks | — | — | Always add — cheap, high-signal. |
 | Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes, tiny false-positive rate. |
@@ -166,6 +166,29 @@ See `references/python-vulture.toml`.
 | Whole-repo analysis | Run `vulture` from repo root; do not pass only changed files | False confidence from incomplete reachability | Include `src`, `tests`, scripts, and whitelist files. |
 | Conservative gate | `min_confidence = 100` | Dynamic Python false positives blocking commits | Use lower confidence only for manual cleanup reports. |
 | Whitelist intentional dynamic use | `vulture_whitelist.py` checked into the repo | Broad excludes hiding real dead code | Prefer whitelists over `ignore_names` / `ignore_decorators`; exclude only generated/vendor/build trees. |
+
+### TypeScript: formatting (oxfmt, with Biome as the stable fallback)
+
+The recommended default for new projects is the all-oxc stack: oxlint for
+linting (it already owns the boundary rules below) plus **oxfmt** for
+formatting, selected together via Ultracite's provider flag —
+`ultracite init --linter oxlint` generates both `oxlint.config.ts` and
+`oxfmt.config.ts` (one flag picks the whole toolchain; there is no separate
+formatter flag). With oxlint doing the linting, Biome's role in this stack is
+format-only — no integrated lint+format advantage — so the faster formatter
+wins.
+
+Why oxfmt: it passes 100% of Prettier's JS/TS conformance tests, runs ~30×
+faster than Prettier and ~3× faster than Biome, formats ~20 file types, is
+adopted by vuejs/core, turborepo and sentry-javascript, and sits under
+VoidZero (acquired by Cloudflare; projects stay MIT under a neutrality
+pledge). `oxfmt --migrate=prettier` / `--migrate=biome` converts existing
+config, making the switch near-zero.
+
+It is pre-1.0 (beta as of mid-2026), so Biome via Ultracite
+(`--linter biome`) stays the documented stable fallback. Promote oxfmt to the
+sole pick at 1.0. When migrating an existing repo, dry-run the diff first and
+land the reformat as an isolated commit.
 
 ### TypeScript: what Biome 2.x covers (and the ESLint hold-outs)
 
@@ -602,7 +625,7 @@ This skill gives you *what* to enforce. The `hk` skill gives you *how* to wire i
 The typical mapping (TypeScript):
 
 ```text
-tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, biome fix
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, oxfmt (or biome fix)
 tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline + actionlint (hk builtin) (glob: .github/workflows/*.{yml,yaml} + action.yml)
 tier 3 (typecheck)      → tsc --noEmit strict (TS 6, authoritative) + tsgo --noEmit (TS 7, fast local gate)
 tier 4 (test)           → vitest run --coverage
