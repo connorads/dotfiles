@@ -461,12 +461,20 @@ report), so they belong in CI / pre-push, not pre-commit. Command patterns in
 
 ### Testing
 
+Enable Biome's `test` domain — it covers the generic rules natively
+(`noFocusedTests`, `noSkippedTests`, `noDuplicateTestHooks`, `noExportsInTest`,
+`noExcessiveNestedTestSuites`; nursery: `noConditionalExpect`, `useExpect`).
+Framework-specific rules stay in ESLint; the vitest plugin is
+`@vitest/eslint-plugin` (`eslint-plugin-vitest` is its pre-ESLint-9 name).
+
 | Rule | Encode with | Prevents |
 |---|---|---|
-| No `.only` committed | Biome `noFocusedTests` (Ultracite default); or ESLint `vitest/no-focused-tests` | Accidentally skipping the rest of the suite in CI |
+| No `.only` / `.skip` committed | Biome `noFocusedTests` (Ultracite default) + `noSkippedTests`; or `@vitest/eslint-plugin` `no-focused-tests` | Accidentally skipping the rest of the suite in CI |
+| Assertion-free tests | Biome `useExpect` (nursery) or `@vitest/eslint-plugin` `expect-expect` | Tests that run code but assert nothing — the mechanical half of the testing skill's Assertion Quality note |
 | No inline regex in assertions | Biome `useTopLevelRegex` | Flaky matches and poor error messages |
 | Coverage threshold enforced pre-commit | hk step running `vitest run --coverage` + vitest config `thresholds: { 100: true }` | Untested branches slipping in. Use `/* v8 ignore next */` for unreachable defensive code. |
 | No mocks in unit tests | Convention + review | Tests that pass but mask integration bugs |
+| Flaky Playwright waits | eslint-plugin-playwright `no-wait-for-timeout`, `missing-playwright-await` | Timeout sleeps and unawaited async assertions — the two commonest flaky-e2e causes. Biome has no Playwright rules. |
 
 ### Secrets & supply chain
 
