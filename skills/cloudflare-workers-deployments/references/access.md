@@ -87,12 +87,41 @@ defaults explicitly on create/update, for example:
 }
 ```
 
+## workers.dev hostnames
+
+Protecting `<worker>.<account>.workers.dev` with a manually created
+self-hosted app works, but check the Worker's preview URLs:
+
+```bash
+# GET /accounts/{account_id}/workers/scripts/{name}/subdomain
+# -> { "enabled": true, "previews_enabled": true }
+```
+
+Preview URLs live at `<version>-<worker>.<account>.workers.dev` and are NOT
+covered by an exact-hostname app - unreleased versions leak. Mirror the
+dashboard's one-click toggle by adding a wildcard destination alongside the
+apex:
+
+```json
+"destinations": [
+  { "type": "public", "uri": "<worker>.<account>.workers.dev" },
+  { "type": "public", "uri": "*-<worker>.<account>.workers.dev" }
+]
+```
+
+(or disable previews if unused). Static assets-only Workers (no `main`)
+cannot validate the Access JWT in code; edge enforcement is the whole gate.
+
 ## Verify
 
 ```bash
 cf zero-trust access applications list --domain <hostname> --exact
 curl -sS -I https://<hostname>/
 ```
+
+Enforcement propagates in ~30-60s after create/update; a direct 200 (often
+`cf-cache-status: HIT`) immediately afterwards is normal - retry with a
+cache-busting query before diagnosing.
 
 Expected unauthenticated response:
 
