@@ -14,3 +14,13 @@ max-struct-bools = 3                  # struct_excessive_bools
 
 # Naming
 disallowed-names = ["foo", "bar", "baz", "quux"]  # disallowed_names
+
+# Purity / boundary bans (clippy::disallowed_methods / disallowed_types).
+# Granularity is crate-wide — scope by putting the pure code in its own crate.
+disallowed-methods = [
+    { path = "std::env::var", reason = "read config through a port — parse env at startup in the shell" },
+    { path = "std::time::SystemTime::now", reason = "inject a clock — domain code takes time as an argument" },
+]
+disallowed-types = [
+    # { path = "sqlx::PgPool", reason = "domain crates depend on a repository trait, not the driver" },
+]

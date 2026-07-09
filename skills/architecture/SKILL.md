@@ -189,7 +189,8 @@ Avoid top-level side effects outside true entrypoint/bootstrap code: modules
 should not open connections, read configuration, register handlers, or start
 servers at import time. Own resource creation and cleanup explicitly in the
 shell. Inject clock and randomness into dependency-bearing code; let pure
-functions take time and random values as arguments.
+functions take time and random values as arguments. The env/clock/rng bans are
+mechanically enforceable — see the `mechanical-enforcement` skill's purity rules.
 
 Wire dependencies in one composition root in the bootstrap/entrypoint and pass
 them inward as explicit arguments. That single wiring point is also the one place

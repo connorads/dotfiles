@@ -1,0 +1,51 @@
+# import-linter contracts — drop into pyproject.toml
+# Gate: `lint-imports` (non-zero exit on any broken contract).
+# Contracts check import CHAINS (transitive), not just direct edges, and
+# include `if TYPE_CHECKING:` imports by default.
+
+[tool.importlinter]
+root_packages = ["myproject"]
+
+# --- Layers: higher layers may import lower, never the reverse ---
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "myproject.api",         # imperative shell / entrypoints
+    "myproject.application", # use-cases
+    "myproject.domain",      # functional core — imports nothing above
+]
+# For a package-per-context monorepo shape, add:
+# containers = ["myproject.billing", "myproject.shipping"]
+
+# --- Forbidden: the core never reaches infrastructure, even indirectly ---
+[[tool.importlinter.contracts]]
+name = "Domain does not import infrastructure"
+type = "forbidden"
+source_modules = ["myproject.domain"]
+forbidden_modules = ["myproject.infra", "requests", "sqlalchemy"]
+# `ignore_imports` lists deliberate exceptions explicitly:
+# ignore_imports = ["myproject.domain.legacy -> myproject.infra.db"]
+
+# --- Independence: bounded contexts stay decoupled from each other ---
+[[tool.importlinter.contracts]]
+name = "Bounded contexts are independent"
+type = "independence"
+modules = ["myproject.billing", "myproject.shipping"]
+
+# ---------------------------------------------------------------------------
+# tach sketch (tach.toml) — opt-in for the two jobs import-linter can't do:
+# `strict` public-interface enforcement (blocks deep imports of a module's
+# internals) and guided adoption on legacy code (`tach mod` / `tach sync`).
+# Caveats: tach checks DIRECT declared edges only (no transitive chains), and
+# `tach sync` auto-allowlists existing imports — review its output or
+# accidental coupling becomes a permanently-allowed edge.
+#
+# [[modules]]
+# path = "myproject.domain"
+# depends_on = []
+# strict = true              # consumers may only import the public interface
+#
+# [[modules]]
+# path = "myproject.application"
+# depends_on = ["myproject.domain"]
