@@ -63,10 +63,13 @@ enabled = true
 [plugins."telegram@claude-plugins-official"]
 enabled = false
 
-[plugins."browser@openai-bundled"]
+[plugins."computer-use@openai-bundled"]
 enabled = true
 
-[plugins."computer-use@openai-bundled"]
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
 enabled = true
 
 [tui]
