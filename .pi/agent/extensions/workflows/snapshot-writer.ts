@@ -2,7 +2,7 @@ import type { WorkflowRunSnapshot } from "./domain.ts";
 import type { WorkflowStore } from "./store.ts";
 
 /** Default debounce window for soft snapshot writes. */
-export const DEFAULT_SNAPSHOT_FLUSH_MS = 250;
+const DEFAULT_SNAPSHOT_FLUSH_MS = 250;
 
 /** Scheduler port that hides timer handles behind one-shot cancellation. */
 export interface SnapshotWriteScheduler {

@@ -59,10 +59,10 @@ export interface ParsedWorkflowInput {
 }
 
 /** Status persisted for a workflow run. */
-export type WorkflowRunStatus = "queued" | "running" | "completed" | "failed" | "stopped";
+type WorkflowRunStatus = "queued" | "running" | "completed" | "failed" | "stopped";
 
 /** Status persisted for an agent call inside a run. */
-export type WorkflowAgentStatus = "running" | "completed" | "cached" | "failed";
+type WorkflowAgentStatus = "running" | "completed" | "cached" | "failed";
 
 /** Durable observation of one workflow agent call. */
 export interface WorkflowAgentSnapshot {
@@ -255,7 +255,7 @@ export function toJsonValue(value: unknown): JsonValue | undefined {
 }
 
 /** Stable JSON serialisation with sorted object keys and skipped unsafe values. */
-export function stableJson(value: unknown): string {
+function stableJson(value: unknown): string {
   return JSON.stringify(normaliseForStableJson(value));
 }
 

@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { nextReplayKey, parseRunId, parseWorkflowInput, parseWorkflowName } from "./domain.ts";
 import { firstHiddenControl, parseWorkflowScript } from "./parser.ts";
-import { createWorkflowStore, workflowProjectKey } from "./store.ts";
+import { createWorkflowStore } from "./store.ts";
 
 test("parseWorkflowInput accepts exactly one source and JSON args", () => {
   const parsed = parseWorkflowInput({ name: "review.js", args: { depth: 2, tags: ["plan"] } });
@@ -211,7 +211,7 @@ test("readRun rejects a non-finite budgetTotal", async () => {
   assert.equal(runId.ok, true);
   if (!runId.ok) return;
 
-  const dir = join(root, "projects", workflowProjectKey(project), "runs", runId.value);
+  const dir = join(root, "projects", store.projectKey, "runs", runId.value);
   await mkdir(dir, { recursive: true });
   await writeFile(
     join(dir, "run.json"),
@@ -243,7 +243,7 @@ test("readJournal keeps valid entries when a trailing line is truncated", async 
   });
 
   // Simulate a crash mid-append: a truncated trailing JSON line.
-  const journalFile = join(root, "projects", workflowProjectKey(project), "runs", runId.value, "journal.jsonl");
+  const journalFile = join(root, "projects", store.projectKey, "runs", runId.value, "journal.jsonl");
   await appendFile(journalFile, '{"kind":"agent_res', "utf8");
 
   const entries = await store.readJournal(runId.value);
@@ -263,8 +263,8 @@ test("appendJournal survives a torn trailing fragment without a newline", async 
 
   // A crash mid-append can leave a fragment with no trailing newline; the next
   // append must not glue onto it and corrupt both entries.
-  const journalFile = join(root, "projects", workflowProjectKey(project), "runs", runId.value, "journal.jsonl");
-  await mkdir(join(root, "projects", workflowProjectKey(project), "runs", runId.value), { recursive: true });
+  const journalFile = join(root, "projects", store.projectKey, "runs", runId.value, "journal.jsonl");
+  await mkdir(join(root, "projects", store.projectKey, "runs", runId.value), { recursive: true });
   await writeFile(journalFile, '{"kind":"agent_res', "utf8");
 
   await store.appendJournal(runId.value, {

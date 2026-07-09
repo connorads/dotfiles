@@ -1,5 +1,5 @@
 export const WORKFLOW_TOOL_NAME = "workflow";
-export const STRUCTURED_OUTPUT_TOOL_NAME = "structured_output";
+const STRUCTURED_OUTPUT_TOOL_NAME = "structured_output";
 
 export interface WorkflowToolPolicy {
   readonly toolAllowlist: readonly string[];

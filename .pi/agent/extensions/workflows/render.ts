@@ -131,12 +131,12 @@ export function renderCompletionMessage(run: WorkflowRunSnapshot, runDir: string
 }
 
 /** Shared failed/stopped recovery line for completion messages and renders. */
-export function recoveryHint(runId: RunId): string {
+function recoveryHint(runId: RunId): string {
   return `Recover: edit the pinned script and run /workflows resume ${runId} - completed agents replay from the journal.`;
 }
 
 /** Compact relative time such as "3m" or "2h" for run listings. */
-export function relativeTime(then: number, now: number): string {
+function relativeTime(then: number, now: number): string {
   const seconds = Math.max(0, Math.round((now - then) / 1000));
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.round(seconds / 60);
