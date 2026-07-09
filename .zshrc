@@ -115,10 +115,6 @@ export CLAUDE_CODE_NO_FLICKER=1
 [[ -f "$HOME/.cache/claude-session-reaper-patch.stale" ]] && \
   print -P "%F{yellow}claude-session-reaper-patch:%f needle missing - see $HOME/.cache/claude-session-reaper-patch.stale"
 
-# Surface a stale plan-scroll patch (plan dialog render reshape) the same way.
-[[ -f "$HOME/.cache/claude-plan-scroll-patch.stale" ]] && \
-  print -P "%F{yellow}claude-plan-scroll-patch:%f needle missing - see $HOME/.cache/claude-plan-scroll-patch.stale"
-
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
