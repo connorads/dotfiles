@@ -96,6 +96,47 @@ EOF
   dfgit diff --cached --quiet -- .codex/config.toml
 }
 
+@test "status hides codex desktop and app-injected mcp churn" {
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[desktop]
+followUpQueueMode = "queue"
+
+[hooks.state]
+EOF
+  dfgit add .codex/config.toml
+  dfgit commit -qm codex-desktop-baseline
+
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[desktop]
+followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"
+
+[hooks.state]
+
+[mcp_servers.computer-use]
+command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
+args = ["mcp"]
+cwd = "."
+enabled = false
+EOF
+
+  run "$DOTFILES" status --short .codex/config.toml
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  dfgit diff --cached --quiet -- .codex/config.toml
+}
+
 @test "status hides pi model picker churn and missing final newline" {
   printf '%s' '{
   "defaultProvider": "cosine",

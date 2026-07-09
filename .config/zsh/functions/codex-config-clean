@@ -16,11 +16,14 @@ emulate -L zsh
 #   [mcp_servers.node_repl]       Codex.app-injected browser-feature wiring
 #                                 (abs /Applications + CODEX_HOME paths, app SHA);
 #                                 matched BY NAME so genuine MCP servers survive
+#   [mcp_servers.computer-use]    Codex.app-injected desktop MCP wiring
+#                                 (plugin-relative app path; regenerated locally)
 #   [hooks.state."..."]          per-machine trusted_hash keyed by absolute path
 #                                 (regenerated on /hooks trust); the bare
 #                                 [hooks.state] header is kept as a portable marker
 #   notify = [...]                absolute machine-local app paths
 #   js_repl = ...                 app-flipped browser-feature flag (regenerated)
+#   dock-icon-preference = ...    desktop UI preference written by Codex.app
 # The browser feature regenerates all of the above per machine from the portable
 # [plugins."browser@openai-bundled"] enable, which is kept.
 # Section drops swallow the header + key-value lines until the next section/EOF.
@@ -33,6 +36,7 @@ awk '
   /^\[marketplaces\./ { skip=1; in_section=1; next }
   /^\[tui\.model_availability_nux\]/ { skip=1; in_section=1; next }
   /^\[mcp_servers\.node_repl/ { skip=1; in_section=1; next }
+  /^\[mcp_servers\.computer-use/ { skip=1; in_section=1; next }
   /^\[hooks\.state\./ { skip=1; in_section=1; next }
   /^\[/ { skip=0; in_section=1 }
   skip { next }
@@ -53,6 +57,7 @@ awk '
   }
   /^notify[[:space:]]*=/ { next }
   /^js_repl[[:space:]]*=/ { next }
+  /^dock-icon-preference[[:space:]]*=/ { next }
   /^[[:space:]]*$/ {
     if (prev_blank) next
     prev_blank = 1
