@@ -13,6 +13,7 @@ import { errorMessage, preview } from "./prelude.ts";
 import { err, ok, type Result } from "./result.ts";
 import { WorkflowRuntime, WorkflowRuntimeError, type AgentRunner } from "./runtime.ts";
 import type { WorkflowStore } from "./store.ts";
+import type { WorkflowToolPolicy } from "./tool-policy.ts";
 
 /** Immediate result returned to the model after a background launch. */
 export interface WorkflowLaunch {
@@ -29,6 +30,7 @@ export interface WorkflowLaunchOptions {
   readonly cwd: string;
   readonly store: WorkflowStore;
   readonly agentRunner: AgentRunner;
+  readonly toolPolicy: WorkflowToolPolicy;
   readonly deliver?: (snapshot: WorkflowRunSnapshot) => void;
   readonly now?: () => number;
 }
@@ -71,6 +73,7 @@ export class WorkflowManager {
     const workflowName = parsedScript.value.meta.name;
     const now = options.now ?? Date.now;
     const generation = options.store.nextGeneration(runId);
+    const toolPolicy = options.toolPolicy;
 
     const snapshot = makeInitialSnapshot({
       runId,
@@ -82,6 +85,7 @@ export class WorkflowManager {
       scriptPath: resolved.value.scriptPath,
       args: parsedInput.value.args,
       meta: parsedScript.value.meta.raw,
+      toolPolicy,
       budgetTotal:
         typeof parsedScript.value.meta.budget === "number" && parsedScript.value.meta.budget > 0
           ? parsedScript.value.meta.budget
@@ -134,6 +138,7 @@ export class WorkflowManager {
     if (!parsed.ok) return err(new WorkflowManagerError(parsed.error.message));
 
     const now = options.now ?? Date.now;
+    const toolPolicy = options.toolPolicy;
     this.active.get(runId)?.abort();
     // Claim write authority before the first write so any still-running prior
     // execution has its late snapshot/journal writes fenced.
@@ -145,8 +150,11 @@ export class WorkflowManager {
       result: undefined,
       summary: undefined,
       completedAt: undefined,
+      toolAllowlist: toolPolicy.toolAllowlist,
+      excludedTools: toolPolicy.excludedTools,
       budgetSpent: 0,
       agentCalls: 0,
+      agents: [],
       logs: [],
       updatedAt: now(),
     };
@@ -355,12 +363,13 @@ function makeInitialSnapshot(input: {
   readonly scriptPath?: string;
   readonly args: JsonValue;
   readonly meta: JsonValue;
+  readonly toolPolicy: WorkflowToolPolicy;
   readonly budgetTotal: number | null;
   readonly phases: readonly string[];
   readonly now: number;
 }): WorkflowRunSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: input.runId,
     projectKey: input.projectKey,
     cwd: input.cwd,
@@ -372,9 +381,12 @@ function makeInitialSnapshot(input: {
     scriptFile: "script.js",
     args: input.args,
     meta: input.meta,
+    toolAllowlist: input.toolPolicy.toolAllowlist,
+    excludedTools: input.toolPolicy.excludedTools,
     budgetTotal: input.budgetTotal,
     budgetSpent: 0,
     agentCalls: 0,
+    agents: [],
     phases: input.phases,
     logs: [],
     startedAt: input.now,

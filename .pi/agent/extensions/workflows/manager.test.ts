@@ -6,8 +6,11 @@ import test from "node:test";
 
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { parseCommandRunId, parseRunCommand, WorkflowManager } from "./manager.ts";
-import type { AgentRunner, AgentRunResult } from "./runtime.ts";
+import type { AgentRunner, AgentRunOptions, AgentRunResult } from "./runtime.ts";
 import { createWorkflowStore, workflowProjectKey } from "./store.ts";
+import type { WorkflowToolPolicy } from "./tool-policy.ts";
+
+const TEST_TOOL_POLICY: WorkflowToolPolicy = { toolAllowlist: ["read", "web_search"], excludedTools: ["workflow"] };
 
 test("parseRunCommand parses named workflows and JSON args", () => {
   const parsed = parseRunCommand('review {"limit":2,"strict":true}');
@@ -60,6 +63,7 @@ throw new Error("boom");
       cwd: temp,
       store,
       agentRunner: new EmptyRunner(),
+      toolPolicy: TEST_TOOL_POLICY,
       deliver: (snapshot) => delivered.push(snapshot),
     },
   );
@@ -73,6 +77,28 @@ throw new Error("boom");
   assert.equal(delivered.at(-1)?.status, "failed");
 });
 
+test("WorkflowManager stores the captured workflow tool policy", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "pi-workflows-tools-"));
+  const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
+  const manager = new WorkflowManager();
+
+  const launch = await manager.launch(
+    { script: `export const meta = { name: "tools", description: "t" };\nreturn "ok";` },
+    {
+      cwd: temp,
+      store,
+      agentRunner: new EmptyRunner(),
+      toolPolicy: TEST_TOOL_POLICY,
+    },
+  );
+  assert.equal(launch.ok, true);
+  if (!launch.ok) return;
+
+  const run = await waitForTerminalRun(store, launch.value.runId);
+  assert.deepEqual(run.toolAllowlist, ["read", "web_search"]);
+  assert.deepEqual(run.excludedTools, ["workflow"]);
+});
+
 test("parseRunCommand preserves whitespace inside JSON string args", () => {
   const parsed = parseRunCommand('greet {"msg":"hello  world"}');
   assert.equal(parsed.ok, true);
@@ -84,7 +110,7 @@ test("bare resumeFromRunId resumes the run's pinned script", async () => {
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-pin-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const manager = new WorkflowManager();
-  const options = { cwd: temp, store, agentRunner: new EmptyRunner() };
+  const options = { cwd: temp, store, agentRunner: new EmptyRunner(), toolPolicy: TEST_TOOL_POLICY };
 
   const launch = await manager.launch({ script: `export const meta = { name: "pin", description: "t" };\nreturn "original";` }, options);
   assert.equal(launch.ok, true);
@@ -105,7 +131,7 @@ test("resume with a supplied source re-pins the script and re-runs only the chan
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const manager = new WorkflowManager();
   const runner = new PromptRecordingRunner();
-  const options = { cwd: temp, store, agentRunner: runner };
+  const options = { cwd: temp, store, agentRunner: runner, toolPolicy: TEST_TOOL_POLICY };
 
   const original = `export const meta = { name: "edit", description: "t" };\nconst a = await agent("a");\nreturn [a, await agent("b")];`;
   const launch = await manager.launch({ script: original }, options);
@@ -137,7 +163,7 @@ test("resume with two sources is still rejected", async () => {
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const rejected = await manager.launch(
     { script: `export const meta = { name: "t", description: "t" };\nreturn 1;`, name: "other", resumeFromRunId: "wf_abcdef01" },
-    { cwd: temp, store, agentRunner: new EmptyRunner() },
+    { cwd: temp, store, agentRunner: new EmptyRunner(), toolPolicy: TEST_TOOL_POLICY },
   );
   assert.equal(rejected.ok, false);
 });
@@ -146,7 +172,7 @@ test("resume errors on an unknown run id instead of minting a fresh run", async 
   const temp = await mkdtemp(join(tmpdir(), "pi-workflows-unknown-"));
   const store = createWorkflowStore(join(temp, "project"), join(temp, "root"));
   const manager = new WorkflowManager();
-  const options = { cwd: temp, store, agentRunner: new EmptyRunner() };
+  const options = { cwd: temp, store, agentRunner: new EmptyRunner(), toolPolicy: TEST_TOOL_POLICY };
 
   const viaResume = await manager.resume(mustRunId("wf_missing01"), options);
   assert.equal(viaResume.ok, false);
@@ -197,7 +223,13 @@ test("a superseded execution does not deliver its terminal snapshot", async () =
 
   const launch = await manager.launch(
     { script: `export const meta = { name: "slow", description: "t" };\nreturn await agent("hang");` },
-    { cwd: temp, store, agentRunner: new AbortableRunner(), deliver: (snapshot) => delivered.push(snapshot) },
+    {
+      cwd: temp,
+      store,
+      agentRunner: new AbortableRunner(),
+      toolPolicy: TEST_TOOL_POLICY,
+      deliver: (snapshot) => delivered.push(snapshot),
+    },
   );
   assert.equal(launch.ok, true);
   if (!launch.ok) return;
@@ -221,7 +253,7 @@ test("execution records the owning pid on the running snapshot", async () => {
 
   const launch = await manager.launch(
     { script: `export const meta = { name: "pid", description: "t" };\nreturn 1;` },
-    { cwd: temp, store, agentRunner: new EmptyRunner() },
+    { cwd: temp, store, agentRunner: new EmptyRunner(), toolPolicy: TEST_TOOL_POLICY },
   );
   assert.equal(launch.ok, true);
   if (!launch.ok) return;
@@ -236,7 +268,7 @@ test("stop does not overwrite a terminal run summary", async () => {
 
   const launch = await manager.launch(
     { script: `export const meta = { name: "done", description: "t" };\nreturn "finished";` },
-    { cwd: temp, store, agentRunner: new EmptyRunner() },
+    { cwd: temp, store, agentRunner: new EmptyRunner(), toolPolicy: TEST_TOOL_POLICY },
   );
   assert.equal(launch.ok, true);
   if (!launch.ok) return;
@@ -267,7 +299,7 @@ class PromptRecordingRunner implements AgentRunner {
 }
 
 class AbortableRunner implements AgentRunner {
-  async run(_prompt: string, options: Parameters<AgentRunner["run"]>[1]): Promise<AgentRunResult> {
+  async run(_prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
     return new Promise((_resolve, reject) => {
       options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
     });
@@ -276,7 +308,7 @@ class AbortableRunner implements AgentRunner {
 
 function makeSnapshot(id: string, over: Partial<Omit<WorkflowRunSnapshot, "runId" | "schemaVersion">> = {}): WorkflowRunSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: mustRunId(id),
     projectKey: "project",
     cwd: "/tmp/project",
@@ -287,9 +319,12 @@ function makeSnapshot(id: string, over: Partial<Omit<WorkflowRunSnapshot, "runId
     scriptFile: "script.js",
     args: null,
     meta: {},
+    toolAllowlist: [],
+    excludedTools: ["workflow"],
     budgetTotal: null,
     budgetSpent: 0,
     agentCalls: 0,
+    agents: [],
     phases: [],
     logs: [],
     startedAt: 1,

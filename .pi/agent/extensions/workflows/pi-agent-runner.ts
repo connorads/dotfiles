@@ -13,7 +13,8 @@ import { Check, Convert } from "typebox/value";
 import { toJsonValue, type AgentOptions, type JsonValue } from "./domain.ts";
 import { resolveRequestedModel, thinkingLevelForEffort } from "./model-select.ts";
 import { errorMessage } from "./prelude.ts";
-import type { AgentRunner, AgentRunResult } from "./runtime.ts";
+import type { AgentRunner, AgentRunOptions, AgentRunResult } from "./runtime.ts";
+import { toolsForSubagent } from "./tool-policy.ts";
 
 /**
  * Total structured-output solicitations before failing: the initial prompt plus
@@ -50,15 +51,11 @@ export class PiAgentRunner implements AgentRunner {
     this.modelRegistry = modelRegistry;
   }
 
-  async run(
-    prompt: string,
-    options: AgentOptions & { readonly signal: AbortSignal; readonly onProgress?: () => void },
-  ): Promise<AgentRunResult> {
+  async run(prompt: string, options: AgentRunOptions): Promise<AgentRunResult> {
     const capture: StructuredCapture = { called: false };
-    // createAgentSession enables read/bash/edit/write by default, so only the
-    // schema tool needs to be supplied here.
     const customTools: ToolDefinition[] = [];
     if (options.schema !== undefined) customTools.push(createStructuredOutputTool(options.schema, capture));
+    const activeTools = toolsForSubagent(options.toolPolicy, options.schema !== undefined);
 
     // Unknown model/effort throws before the session exists: the agent call
     // fails (a parallel slot becomes null) rather than running on the wrong tier.
@@ -72,9 +69,15 @@ export class PiAgentRunner implements AgentRunner {
       sessionManager: SessionManager.inMemory(),
       settingsManager: SettingsManager.create(this.cwd, agentDir),
       customTools,
+      tools: activeTools,
       ...(model ? { model } : {}),
       ...(thinkingLevel ? { thinkingLevel } : {}),
     });
+    const missingTools = missingActiveTools(session.getActiveToolNames(), activeTools);
+    if (missingTools.length > 0) {
+      session.dispose();
+      throw new Error(`Subagent missing inherited tool(s): ${missingTools.join(", ")}`);
+    }
 
     const onProgress = options.onProgress;
     const unsubscribe = onProgress
@@ -112,6 +115,11 @@ export class PiAgentRunner implements AgentRunner {
       session.dispose();
     }
   }
+}
+
+function missingActiveTools(actual: readonly string[], expected: readonly string[]): string[] {
+  const active = new Set(actual);
+  return expected.filter((tool) => !active.has(tool));
 }
 
 interface StructuredCapture {
@@ -243,6 +251,8 @@ function findJsonBlock(text: string): string | undefined {
 }
 
 function asSchema(value: JsonValue): TSchema {
+  // SAFETY: structured-output schemas are workflow JSON values supplied to the
+  // TypeBox validator API, which accepts schema-shaped runtime data.
   return value as unknown as TSchema;
 }
 
@@ -254,4 +264,5 @@ interface StructuredSession {
   readonly messages: readonly unknown[];
   prompt(text: string): Promise<void>;
   setActiveToolsByName(names: string[]): void;
+  getActiveToolNames(): string[];
 }

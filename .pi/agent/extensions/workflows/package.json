@@ -10,7 +10,8 @@
     ]
   },
   "scripts": {
-    "test": "node --test core.test.ts runtime.test.ts manager.test.ts starter.test.ts starter-gate.test.ts render.test.ts",
+    "check:deps": "depcruise --config .dependency-cruiser.cjs --no-cache \"*.ts\"",
+    "test": "node --test core.test.ts runtime.test.ts manager.test.ts starter.test.ts starter-gate.test.ts render.test.ts tool-policy.test.ts agent-lifecycle.test.ts snapshot-writer.test.ts command-actions.test.ts",
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^26.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260623.1",
+    "dependency-cruiser": "^18.0.0",
     "typebox": "1.1.38"
   }
 }

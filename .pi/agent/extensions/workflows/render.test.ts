@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
-import { defaultRunTarget, renderCompletionMessage, renderRun, renderRunDetails, renderWidget } from "./render.ts";
+import { defaultRunTarget, renderCompletionMessage, renderRun, renderRunAgents, renderRunDetails, renderWidget } from "./render.ts";
 
 test("defaultRunTarget prefers the single active run, else the most recent", () => {
   const running = makeRun("wf_running01", { status: "running", updatedAt: 50 });
@@ -50,9 +50,36 @@ test("renderRun shows elapsed/last-activity and a recovery hint on failure", () 
 });
 
 test("renderRunDetails includes the run directory path", () => {
-  const run = makeRun("wf_detail001", { status: "completed" });
+  const run = makeRun("wf_detail001", {
+    status: "completed",
+    toolAllowlist: ["read", "web_search"],
+    excludedTools: ["workflow"],
+    agentCalls: 1,
+    phases: ["Scan", "Synthesis"],
+    agents: [
+      {
+        index: 1,
+        replayKey: "v3:abc" as never,
+        prompt: "inspect",
+        label: "scan",
+        phase: "Scan",
+        status: "completed",
+        outputTokens: 12,
+        startedAt: 1,
+        updatedAt: 2,
+        completedAt: 2,
+      },
+    ],
+  });
   const text = renderRunDetails(run, "/tmp/runs/wf_detail001", 1);
   assert.match(text, /run dir: \/tmp\/runs\/wf_detail001/u);
+  assert.match(text, /tools: read, web_search \(excluded: workflow\)/u);
+  assert.match(text, /phases: Scan -> Synthesis/u);
+  assert.match(text, /agent\[1\] completed scan phase Scan tokens 12/u);
+});
+
+test("renderRunAgents handles runs with no agents", () => {
+  assert.equal(renderRunAgents(makeRun("wf_noagent01"), 1), "No workflow agents have started.");
 });
 
 test("renderCompletionMessage appends recovery and run dir for stopped runs", () => {
@@ -68,7 +95,7 @@ test("renderCompletionMessage appends recovery and run dir for stopped runs", ()
 
 function makeRun(id: string, over: Partial<Omit<WorkflowRunSnapshot, "runId" | "schemaVersion">> = {}): WorkflowRunSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: mustRunId(id),
     projectKey: "project",
     cwd: "/tmp/project",
@@ -79,9 +106,12 @@ function makeRun(id: string, over: Partial<Omit<WorkflowRunSnapshot, "runId" | "
     scriptFile: "script.js",
     args: null,
     meta: {},
+    toolAllowlist: [],
+    excludedTools: ["workflow"],
     budgetTotal: null,
     budgetSpent: 0,
     agentCalls: 0,
+    agents: [],
     phases: [],
     logs: [],
     startedAt: 1,

@@ -2,6 +2,13 @@ import { cpus } from "node:os";
 import { createContext, Script } from "node:vm";
 
 import {
+  markAgentCached,
+  markAgentCompleted,
+  markAgentFailed,
+  startAgent,
+  touchAgentProgress,
+} from "./agent-lifecycle.ts";
+import {
   nextReplayKey,
   parseWorkflowInput,
   type AgentOptions,
@@ -12,7 +19,9 @@ import {
 } from "./domain.ts";
 import { errorMessage } from "./prelude.ts";
 import { type ParsedWorkflowScript, parseWorkflowScript } from "./parser.ts";
+import { WorkflowSnapshotWriter } from "./snapshot-writer.ts";
 import type { WorkflowStore } from "./store.ts";
+import type { WorkflowToolPolicy } from "./tool-policy.ts";
 
 const AGENT_CAP = 1000;
 const LOG_CAP = 1000;
@@ -24,12 +33,16 @@ export interface AgentRunResult {
   readonly outputTokens: number;
 }
 
+/** Runtime options supplied to the concrete Pi subagent adapter. */
+export type AgentRunOptions = AgentOptions & {
+  readonly signal: AbortSignal;
+  readonly onProgress?: () => void;
+  readonly toolPolicy: WorkflowToolPolicy;
+};
+
 /** Narrow port used by the workflow runtime to launch Pi subagents. */
 export interface AgentRunner {
-  run(
-    prompt: string,
-    options: AgentOptions & { readonly signal: AbortSignal; readonly onProgress?: () => void },
-  ): Promise<AgentRunResult>;
+  run(prompt: string, options: AgentRunOptions): Promise<AgentRunResult>;
 }
 
 export interface WorkflowRuntimeDeps {
@@ -66,6 +79,7 @@ export class WorkflowRuntime {
   private readonly timers = new Map<number, ReturnType<typeof setTimeout>>();
   private nextTimerId = 1;
   private readonly deps: WorkflowRuntimeDeps;
+  private readonly snapshots: WorkflowSnapshotWriter;
 
   constructor(
     snapshot: WorkflowRunSnapshot,
@@ -74,6 +88,7 @@ export class WorkflowRuntime {
   ) {
     this.snapshot = snapshot;
     this.deps = deps;
+    this.snapshots = new WorkflowSnapshotWriter({ store: deps.store, generation: deps.generation });
     this.semaphore = new Semaphore(deps.concurrency ?? defaultConcurrency());
     for (const entry of journal) {
       if (entry.kind === "agent_result") this.cachedResults.set(entry.replayKey, entry);
@@ -94,6 +109,7 @@ export class WorkflowRuntime {
     } finally {
       for (const timer of this.timers.values()) clearTimeout(timer);
       this.timers.clear();
+      await this.snapshots.drainAndDispose().catch(() => {});
     }
   }
 
@@ -206,23 +222,18 @@ export class WorkflowRuntime {
 
     const replayKey = nextReplayKey(this.previousReplayKey, prompt, options);
     this.previousReplayKey = replayKey;
-    const index = this.snapshot.agentCalls + 1;
     const phase = this.forcedAgentPhase ?? options.phase ?? this.currentPhase;
-    this.snapshot = {
-      ...this.snapshot,
-      agentCalls: index,
-      updatedAt: this.deps.now(),
-    };
-    await this.deps.store.updateRun(this.snapshot, this.deps.generation);
+    const startedAt = this.deps.now();
+    const started = startAgent(this.snapshot, { replayKey, prompt, options, phase, now: startedAt });
+    const index = started.index;
+    this.snapshot = started.snapshot;
+    await this.snapshots.writeNow(this.snapshot);
 
     const cached = this.cachedResults.get(replayKey);
     if (cached) {
-      this.snapshot = {
-        ...this.snapshot,
-        budgetSpent: this.snapshot.budgetSpent + Math.max(0, cached.outputTokens),
-        updatedAt: this.deps.now(),
-      };
-      await this.deps.store.updateRun(this.snapshot, this.deps.generation);
+      const completedAt = this.deps.now();
+      this.snapshot = markAgentCached(this.snapshot, index, cached.outputTokens, completedAt);
+      await this.snapshots.writeNow(this.snapshot);
       this.log(`agent[${index}] cached${options.label ? `: ${options.label}` : ""}`);
       return cached.value;
     }
@@ -241,12 +252,17 @@ export class WorkflowRuntime {
       this.deps.generation,
     );
 
-    const result = await this.semaphore.run(() => this.runAgent(prompt, { ...options, phase }, index));
-    this.snapshot = {
-      ...this.snapshot,
-      budgetSpent: this.snapshot.budgetSpent + Math.max(0, result.outputTokens),
-      updatedAt: this.deps.now(),
-    };
+    let result: AgentRunResult;
+    try {
+      result = await this.semaphore.run(() => this.runAgent(prompt, { ...options, phase }, index));
+    } catch (error) {
+      const failedAt = this.deps.now();
+      this.snapshot = markAgentFailed(this.snapshot, index, errorMessage(error), failedAt);
+      await this.snapshots.writeNow(this.snapshot);
+      throw error;
+    }
+    const completedAt = this.deps.now();
+    this.snapshot = markAgentCompleted(this.snapshot, index, result.outputTokens, completedAt);
     // Match the spec: only successful non-null results are journalled, so
     // null/skipped agents re-run rather than replaying `null` on resume.
     if (result.value !== null) {
@@ -262,7 +278,7 @@ export class WorkflowRuntime {
         this.deps.generation,
       );
     }
-    await this.deps.store.updateRun(this.snapshot, this.deps.generation);
+    await this.snapshots.writeNow(this.snapshot);
     return result.value;
   }
 
@@ -294,12 +310,20 @@ export class WorkflowRuntime {
           }
         : undefined;
     armWatchdog?.();
+    const onProgress = (): void => {
+      armWatchdog?.();
+      this.markAgentProgress(index);
+    };
 
     try {
       return await this.deps.agentRunner.run(prompt, {
         ...options,
         signal: controller.signal,
-        onProgress: armWatchdog,
+        onProgress,
+        toolPolicy: {
+          toolAllowlist: this.snapshot.toolAllowlist,
+          excludedTools: this.snapshot.excludedTools,
+        },
       });
     } catch (error) {
       if (stalled) {
@@ -375,7 +399,7 @@ export class WorkflowRuntime {
       phases: this.snapshot.phases.includes(phase) ? this.snapshot.phases : [...this.snapshot.phases, phase],
       updatedAt: this.deps.now(),
     };
-    void this.deps.store.updateRun(this.snapshot, this.deps.generation).catch(() => {});
+    this.snapshots.touch(this.snapshot);
   }
 
   private log(message: string): void {
@@ -385,7 +409,7 @@ export class WorkflowRuntime {
       logs: [...this.snapshot.logs, text].slice(-LOG_CAP),
       updatedAt: this.deps.now(),
     };
-    void this.deps.store.updateRun(this.snapshot, this.deps.generation).catch(() => {});
+    this.snapshots.touch(this.snapshot);
   }
 
   private throwIfBudgetExceeded(): void {
@@ -454,6 +478,12 @@ export class WorkflowRuntime {
 
   private throwIfAborted(): void {
     if (this.deps.signal.aborted) throw new WorkflowRuntimeError("Workflow was stopped");
+  }
+
+  private markAgentProgress(index: number): void {
+    const now = this.deps.now();
+    this.snapshot = touchAgentProgress(this.snapshot, index, now);
+    this.snapshots.touch(this.snapshot);
   }
 }
 
