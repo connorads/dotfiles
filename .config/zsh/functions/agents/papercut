@@ -1,0 +1,393 @@
+#!/usr/bin/env zsh
+# papercut: record small agent/workflow friction as structured JSONL
+emulate -L zsh
+
+papercut_usage() {
+  cat <<'EOF'
+Usage:
+  papercut add [options] <message...>
+  papercut list [--limit N] [--json]
+  papercut export [--format markdown|jsonl]
+  papercut path
+
+Log small non-blocking friction while working: a missed tool call retry,
+confusing setup step, flaky command, state cache, misleading error, or
+non-obvious gotcha. Log what you were doing -> what got in the way.
+
+This is for friction, not accomplishments or tracked bugs.
+JSONL is the source of truth; Markdown is an export/view.
+
+Add options:
+  -m, --model <model>       Model involved in the friction
+      --harness <name>      Agent harness or tool surface
+  -s, --severity <level>    low, medium, high (default: low)
+  -c, --category <name>     tool-call, setup, command, cache, docs, error,
+                            workflow, other (default: other)
+      --source <source>     Source of the note (default: manual)
+      --context <text>      Extra context
+      --fix <text>          Possible fix
+
+Environment:
+  PAPERCUTS_FILE            Exact JSONL file path
+  PAPERCUTS_STATE_DIR       Directory for papercuts.jsonl
+  XDG_STATE_HOME            Base state dir when PAPERCUTS_STATE_DIR is unset
+EOF
+}
+
+papercut_error() {
+  print -u2 -r -- "papercut: $*"
+}
+
+papercut_require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    papercut_error "jq is required"
+    return 1
+  fi
+}
+
+papercut_state_dir() {
+  local xdg_state="${XDG_STATE_HOME:-$HOME/.local/state}"
+  print -r -- "${PAPERCUTS_STATE_DIR:-$xdg_state/agents}"
+}
+
+papercut_file() {
+  if [[ -n "${PAPERCUTS_FILE:-}" ]]; then
+    print -r -- "$PAPERCUTS_FILE"
+  else
+    print -r -- "$(papercut_state_dir)/papercuts.jsonl"
+  fi
+}
+
+papercut_now() {
+  print -r -- "${PAPERCUTS_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+}
+
+papercut_make_id() {
+  local ts="$1"
+  local id_ts="${ts//-/}"
+  id_ts="${id_ts//:/}"
+  local suffix
+  if command -v uuidgen >/dev/null 2>&1; then
+    suffix="$(uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-')"
+  else
+    suffix="${$}_${RANDOM}_${RANDOM}"
+  fi
+  print -r -- "pc_${id_ts}_${suffix}"
+}
+
+papercut_repo_root() {
+  command git rev-parse --show-toplevel 2>/dev/null || true
+}
+
+papercut_valid_severity() {
+  case "$1" in
+    low|medium|high) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+papercut_valid_category() {
+  case "$1" in
+    tool-call|setup|command|cache|docs|error|workflow|other) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+papercut_join_message() {
+  local -a parts=("$@")
+  print -r -- "${(j: :)parts}"
+}
+
+papercut_add() {
+  papercut_require_jq || return 1
+
+  local model="" harness="" severity="low" category="other" source="manual" context="" fix=""
+  local -a message_parts=()
+
+  while (( $# > 0 )); do
+    case "$1" in
+      -m|--model)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        model="$2"; shift 2
+        ;;
+      --harness)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        harness="$2"; shift 2
+        ;;
+      -s|--severity)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        severity="$2"; shift 2
+        ;;
+      -c|--category)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        category="$2"; shift 2
+        ;;
+      --source)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        source="$2"; shift 2
+        ;;
+      --context)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        context="$2"; shift 2
+        ;;
+      --fix)
+        (( $# >= 2 )) || { papercut_error "$1 requires a value"; return 1; }
+        fix="$2"; shift 2
+        ;;
+      --)
+        shift
+        message_parts+=("$@")
+        break
+        ;;
+      -h|--help)
+        papercut_usage
+        return 0
+        ;;
+      -*)
+        papercut_error "Unknown add option: $1"
+        return 1
+        ;;
+      *)
+        message_parts+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  papercut_valid_severity "$severity" || { papercut_error "Invalid severity: $severity"; return 1; }
+  papercut_valid_category "$category" || { papercut_error "Invalid category: $category"; return 1; }
+
+  local summary
+  summary="$(papercut_join_message "${message_parts[@]}")"
+  [[ -n "${summary//[[:space:]]/}" ]] || { papercut_error "Summary is required"; return 1; }
+
+  local ts id repo file dir record
+  ts="$(papercut_now)"
+  id="$(papercut_make_id "$ts")"
+  repo="$(papercut_repo_root)"
+  file="$(papercut_file)"
+  dir="${file:h}"
+
+  mkdir -p "$dir" || { papercut_error "Could not create $dir"; return 1; }
+
+  record="$(
+    jq -cn \
+      --argjson schema_version 1 \
+      --arg id "$id" \
+      --arg ts "$ts" \
+      --arg cwd "$PWD" \
+      --arg repo "$repo" \
+      --arg harness "$harness" \
+      --arg model "$model" \
+      --arg severity "$severity" \
+      --arg category "$category" \
+      --arg source "$source" \
+      --arg summary "$summary" \
+      --arg context "$context" \
+      --arg fix "$fix" \
+      '{
+        schema_version: $schema_version,
+        id: $id,
+        ts: $ts,
+        cwd: $cwd,
+        repo: (if $repo == "" then null else $repo end),
+        harness: (if $harness == "" then null else $harness end),
+        model: (if $model == "" then null else $model end),
+        severity: $severity,
+        category: $category,
+        source: $source,
+        summary: $summary,
+        context: (if $context == "" then null else $context end),
+        fix: (if $fix == "" then null else $fix end)
+      }'
+  )" || { papercut_error "Could not build JSON record"; return 1; }
+
+  print -r -- "$record" >> "$file" || { papercut_error "Could not append to $file"; return 1; }
+  print -r -- "Logged papercut: $id"
+}
+
+papercut_parse_limit() {
+  local limit="$1"
+  [[ "$limit" == <-> && "$limit" -gt 0 ]] || return 1
+  print -r -- "$limit"
+}
+
+papercut_list() {
+  papercut_require_jq || return 1
+
+  local json=0 limit=""
+  while (( $# > 0 )); do
+    case "$1" in
+      --json)
+        json=1; shift
+        ;;
+      --limit)
+        (( $# >= 2 )) || { papercut_error "--limit requires a value"; return 1; }
+        limit="$(papercut_parse_limit "$2")" || { papercut_error "Invalid limit: $2"; return 1; }
+        shift 2
+        ;;
+      -h|--help)
+        papercut_usage
+        return 0
+        ;;
+      *)
+        papercut_error "Unknown list option: $1"
+        return 1
+        ;;
+    esac
+  done
+
+  local file
+  file="$(papercut_file)"
+
+  if [[ ! -s "$file" ]]; then
+    if (( json )); then
+      print -r -- "[]"
+    else
+      print -r -- "No papercuts logged yet."
+    fi
+    return 0
+  fi
+
+  local limit_json="null"
+  [[ -n "$limit" ]] && limit_json="$limit"
+
+  if (( json )); then
+    jq -s --argjson limit "$limit_json" '
+      reverse | if $limit == null then . else .[:$limit] end
+    ' "$file"
+  else
+    jq -sr --argjson limit "$limit_json" '
+      reverse | if $limit == null then . else .[:$limit] end | .[] |
+      "\(.ts) [\(.severity)/\(.category)] \(.summary)"
+    ' "$file"
+  fi
+}
+
+papercut_export_markdown() {
+  local file="$1"
+  if [[ ! -s "$file" ]]; then
+    print -r -- "# Papercuts"
+    print -r -- ""
+    print -r -- "No papercuts logged yet."
+    return 0
+  fi
+
+  jq -rsr '
+    def line($label; $value):
+      if $value == null or $value == "" then empty else "- \($label): \($value)" end;
+
+    ["# Papercuts", "", "## Entries", ""] +
+    (
+      if length == 0 then
+        ["No papercuts logged yet."]
+      else
+        map([
+          "### " + .summary,
+          "",
+          "- ID: " + .id,
+          "- Timestamp: " + .ts,
+          "- Severity: " + .severity,
+          "- Category: " + .category,
+          line("Harness"; .harness),
+          line("Model"; .model),
+          line("Source"; .source),
+          line("Context"; .context),
+          line("Possible fix"; .fix),
+          ""
+        ]) | add
+      end
+    )
+    | .[]
+  ' "$file"
+}
+
+papercut_export() {
+  papercut_require_jq || return 1
+
+  local format="markdown"
+  while (( $# > 0 )); do
+    case "$1" in
+      --format)
+        (( $# >= 2 )) || { papercut_error "--format requires a value"; return 1; }
+        format="$2"; shift 2
+        ;;
+      -h|--help)
+        papercut_usage
+        return 0
+        ;;
+      *)
+        papercut_error "Unknown export option: $1"
+        return 1
+        ;;
+    esac
+  done
+
+  local file
+  file="$(papercut_file)"
+
+  case "$format" in
+    markdown)
+      papercut_export_markdown "$file"
+      ;;
+    jsonl)
+      [[ -f "$file" ]] && cat "$file"
+      ;;
+    *)
+      papercut_error "Invalid format: $format"
+      return 1
+      ;;
+  esac
+}
+
+local command_name="${1:-help}"
+[[ $# -gt 0 ]] && shift
+local papercut_rc=0
+
+case "$command_name" in
+  add)
+    papercut_add "$@"
+    papercut_rc=$?
+    ;;
+  list)
+    papercut_list "$@"
+    papercut_rc=$?
+    ;;
+  export)
+    papercut_export "$@"
+    papercut_rc=$?
+    ;;
+  path)
+    papercut_file
+    papercut_rc=$?
+    ;;
+  help|-h|--help)
+    papercut_usage
+    papercut_rc=$?
+    ;;
+  *)
+    papercut_error "Unknown command: $command_name"
+    papercut_usage >&2
+    papercut_rc=1
+    ;;
+esac
+
+unfunction \
+  papercut_usage \
+  papercut_error \
+  papercut_require_jq \
+  papercut_state_dir \
+  papercut_file \
+  papercut_now \
+  papercut_make_id \
+  papercut_repo_root \
+  papercut_valid_severity \
+  papercut_valid_category \
+  papercut_join_message \
+  papercut_add \
+  papercut_parse_limit \
+  papercut_list \
+  papercut_export_markdown \
+  papercut_export 2>/dev/null
+
+return "$papercut_rc"
