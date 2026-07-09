@@ -42,6 +42,13 @@ multiple-versions = "warn"  # flag duplicate versions in the dep tree
 #     { crate = "openssl", use-instead = "rustls" },
 # ]
 
+# Layer boundary via `wrappers`: ban a crate everywhere EXCEPT the listed
+# wrappers. Here only the shell crates may depend on infra — the domain crate
+# cannot, and the compiler-level workspace DAG gets a policy-level backstop.
+# deny = [
+#     { crate = "my-infra", wrappers = ["my-app", "my-api"] },
+# ]
+
 # --- Source restrictions ---
 [sources]
 unknown-registry = "deny"

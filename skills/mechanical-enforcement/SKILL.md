@@ -33,9 +33,9 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 |---|---|---|---|---|---|
 | TypeScript / React / Next | Biome (via [Ultracite](https://www.ultracite.ai/) presets `core`, `react`, `next`) | Biome | oxlint (Rust) for native `no-restricted-imports` / `no-restricted-syntax` / `jsx-a11y` / `import/no-cycle`; dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see typecheck below) | Ultracite is the default for new projects. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
-| Python | ruff format | ruff | vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
+| Python | ruff format | ruff | import-linter for layer / forbidden / independence contracts (tach is a watch — see Python boundaries); vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See Python sections below. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See Rust sections below for thresholds and common allows. |
-| Go | gofmt / gofumpt | golangci-lint | — | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. |
+| Go | gofmt / gofumpt | golangci-lint | go-arch-lint for declarative component `mayDependOn` maps; `gomodguard_v2` for module allow/block lists (v1 is deprecated in golangci-lint) | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. depguard with per-`files:` rules gates layers — see Go boundaries. |
 | SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | — | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta — start advisory, verify dialect coverage before blocking. |
 | Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
 | Bash | shfmt `-ln=bash` | ShellCheck `--shell=bash` | bats-core for black-box CLI tests | — | Bats is Bash-based; good for CLI contracts and Bash scripts. |
@@ -70,15 +70,13 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 
 ### TypeScript: type checking
 
-`tsc --noEmit` strict is the authoritative gate. As of mid-2026 the native Go
-compiler (Project Corsa) has reached RC — `typescript@rc` is `7.0.1-rc`, GA
-estimated ~late July 2026 — and is ~10× faster with near-parity `--noEmit`
-checking, so it earns an explicit place as the fast local / pre-commit check
-rather than the passing mention it had before.
+`tsc --noEmit` strict is the authoritative gate. The native Go compiler
+(Project Corsa, TS 7) is ~10× faster with near-parity `--noEmit` checking, so
+it earns the fast local / pre-commit slot while `tsc` keeps the blocking gate.
 
 | Tool | Default use | Notes |
 |---|---|---|
-| `tsc --noEmit` (TS 6) | Authoritative blocking gate | The required CI check until tsgo GA is verified on the project, then promote tsgo to primary. |
+| `tsc --noEmit` (TS 6) | Authoritative blocking gate | The required CI check until tsgo is verified stable on the project, then promote tsgo to primary. |
 | `tsgo --noEmit` (TS 7) | Fast local / pre-commit check | Invoked as `tsgo` from `@typescript/native-preview`, or as `tsc` from `typescript@rc`. Same strict flags. |
 
 Hard caveats while pre-GA:
@@ -175,7 +173,8 @@ into `biome.json` and keep ESLint only for what genuinely remains.
 
 | Capability | Biome rule | Status | Replaces |
 |---|---|---|---|
-| Ban modules / globals by path or glob | `noRestrictedImports`, `noRestrictedGlobals` | stable | most ESLint `no-restricted-imports` / `no-restricted-globals` |
+| Ban modules / globals by exact specifier | `noRestrictedImports`, `noRestrictedGlobals` | stable | simple ESLint `no-restricted-imports` / `no-restricted-globals` — plain strings only, no glob `patterns`, so path-family bans stay in ESLint |
+| Package privacy via JSDoc visibility | `noPrivateImports` (`@package` / `@private` tags) | stable | the eslint-plugin-import `no-internal-modules` niche |
 | Custom project-local AST rules | GritQL plugins (`.grit` via `linter.plugins`) | stable (code fixes in 2.5) | many `no-restricted-syntax` rules and some greppable invariants |
 | Floating / misused promises | `noFloatingPromises`, `noMisusedPromises` (`types` domain) | nursery → advisory | a typescript-eslint class nothing else here catches |
 | Import cycles | `noImportCycles` (`project` domain) | stable but scanner-heavy | overlaps madge — madge stays primary on perf (see Import hygiene) |
@@ -183,6 +182,7 @@ into `biome.json` and keep ESLint only for what genuinely remains.
 Genuine ESLint hold-outs — keep ESLint for these:
 
 - **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
+- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, so `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint — see the Purity section.
 - **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
 
 GritQL plugins can't be shared across repos (by design), so a reusable
@@ -213,6 +213,12 @@ misused promises) and custom JS plugins (alpha). The import-type-aware boundary
 rule (`allowTypeImports`) and framework-specific plugins (next, storybook) still
 need typescript-eslint until oxlint's JS plugins stabilise.
 
+When the bounded-context map is richer than per-rule `no-restricted-imports` can
+express, declare it once instead: **eslint-plugin-boundaries** (assign element
+types to paths, write rules over the types) or **@softarc/sheriff** (tag rules
+plus barrel encapsulation; runs as an ESLint plugin or a standalone CLI).
+dependency-cruiser stays the default for transitive gates (below).
+
 #### Transitive architecture tests
 
 Use "architecture test" for an executable check over the module graph: "domain
@@ -221,8 +227,20 @@ facts only enter through the gated boundary". These are not behavioural tests;
 they are lint-style gates for structural drift.
 
 `dependency-cruiser` is the default TypeScript tool for these transitive graph
-rules. Keep direct import bans in oxlint/Biome/ESLint where possible because
-they are faster and show up closer to the editor.
+rules — its `reachable` / `via` / `viaNot` rules are the transitive engine, and
+they also cover its one direct-level gap (a re-export through a barrel file can
+evade a plain `from`/`to` rule; the reachability rules see through it). Keep
+direct import bans in oxlint/Biome/ESLint where possible because they are
+faster and show up closer to the editor.
+
+**fallow** (Rust) is a watch, not the boundary gate. It is fast (~20k files in
+~1.5s) and covers cycles, dead code, and zone presets, but its boundary
+analysis is direct-import-only and its barrel "parent fallback" rule
+deliberately suppresses barrel violations — so imports laundered through a
+barrel pass. It is TS/JS-only, open-core (paywall-creep risk on the zone
+features), and its config DSL is still unstable (two majors in four months).
+Use it as a complementary fast pass if at all; re-verify at its next major with
+a barrel-laundering fixture before trusting it with boundaries.
 
 Good dependency-cruiser rules are named like architecture invariants and have a
 short comment explaining the failure mode:
@@ -256,6 +274,50 @@ knip for unused exports, unused files, and unused dependencies.
 
 See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
+#### Python boundaries (import-linter)
+
+[import-linter](https://import-linter.readthedocs.io/) is the default: declare
+`layers` / `forbidden` / `independence` contracts in `pyproject.toml` and gate
+with `lint-imports` (non-zero exit). Two properties make it the pick — it gates
+transitive import *chains* natively (an A→B→C path breaks a forbidden A→C
+contract), and it includes `if TYPE_CHECKING:` imports by default, so type-only
+coupling can't launder a boundary. Its grimp graph engine is Rust-accelerated,
+so speed is not a differentiator for the newer rivals. Mature but
+single-maintainer. See `references/python-import-linter.toml`.
+
+**tach** (Rust) is opt-in for the two jobs import-linter has no primitive for:
+`strict` public-interface enforcement (consumers may only import a module's
+declared interface — blocks deep imports of internals) and guided incremental
+adoption on legacy codebases (`tach mod` / `tach sync`). Know its caveats: it
+checks direct declared edges only — it does **not** gate transitive chains; and
+`tach sync` auto-allowlists existing imports, so unreviewed output bakes
+accidental coupling in as permanently-allowed edges. It was abandoned once
+(its company pivoted away from dev tools) and revived under a solo community
+maintainer — bus factor ~1 with a prior death, so discount its star lead.
+If ArchUnit-style tests inside pytest are wanted instead, prefer PyTestArch
+over pytest-archon.
+
+#### Go boundaries
+
+depguard inside golangci-lint covers direct layer gating: multiple named rules
+scoped by `files:` globs (e.g. a `domain` rule denying `myapp/internal/infra`
+and the DB driver). Reach for
+[go-arch-lint](https://github.com/fe3dback/go-arch-lint) when a real component
+architecture warrants a declarative map — `components` + `deps.mayDependOn` in
+`.go-arch-lint.yml`, gated with `go-arch-lint check`. `gomodguard_v2` is the
+module-level sibling: allow/block whole modules with recommended replacements.
+
+#### Rust boundaries
+
+There is no import-linter equivalent — the pattern is structural. Make layers
+separate workspace crates so the compiler enforces the DAG (the domain crate
+simply has no path to infra). Back it with cargo-deny `[bans]` `wrappers`
+("only app/api may depend on infra" — see `references/cargo-deny.toml`),
+`cargo modules dependencies --acyclic` in CI where layering matters, and clippy
+`disallowed-types` / `disallowed-methods` for coarse in-crate bans (see
+`references/clippy-thresholds.toml`). cargo-pup (declarative architecture
+lints; nightly-only) is a watch.
+
 #### Greppable invariants (agent self-audit tier)
 
 Some boundaries are awkward or impossible for `no-restricted-imports` to see:
@@ -266,9 +328,8 @@ that wires into an hk step where it should gate.
 
 ```bash
 # each line must find NOTHING; `! rg` turns a match into a non-zero (failing) exit
-! rg -n "from ['\"]express['\"]" packages/core/src                 # core stays framework-free
-! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src  # no un-injected clock/rng in the domain
-! rg -n "sql\`" packages/*/src --glob '!packages/db/**'            # raw SQL only in the query layer
+! rg -n "from ['\"]express['\"]" packages/core/src        # core stays framework-free
+! rg -n "sql\`" packages/*/src --glob '!packages/db/**'   # raw SQL only in the query layer
 ```
 
 This sits between lint and review. Prefer a real `no-restricted-imports` /
@@ -287,6 +348,33 @@ quick / throwaway assertions and ast-grep for the boundary rules you want to
 keep — it also subsumes `no-restricted-syntax` rules that don't need type
 information. It is syntax-only, so type-aware boundaries (import resolution,
 `allowTypeImports`) still belong in ESLint / oxlint.
+
+### Purity: keeping the functional core pure
+
+The `architecture` skill's functional-core rules — inject clock and randomness,
+parse config at startup, no IO in the domain — are mechanically enforceable,
+but the obvious rules don't work: `no-restricted-globals` and Biome's
+`noRestrictedGlobals` ban **bare identifiers only**, so `Date.now()`,
+`Math.random()`, and `process.env.X` (member expressions) sail straight
+through. What works:
+
+- **ESLint `no-restricted-properties`**, scoped to the pure layer
+  (`files: ["src/domain/**"]`) — the rule that actually catches
+  member-expression effects. No Biome equivalent; a genuine ESLint hold-out.
+- **`no-restricted-imports` patterns** for IO modules (`node:fs`, `node:http`,
+  infra directories) in the same scoped block, with `allowTypeImports` for port
+  types.
+- **ast-grep** for cross-language or call-shape precision — zero-arg
+  `new Date()`, method chains — as YAML rules gated by `sg scan`.
+- **Rust**: clippy `disallowed-methods` (`std::env::var`,
+  `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
+  crate-wide, so give the pure core its own crate.
+
+See `references/purity-boundaries.mjs` for the drop-in flat-config block plus
+the equivalent ast-grep rule. The no-config escape hatch is grep
+(`! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src`) — the
+portable greppable-invariants fallback for repos with no linter config; weaker
+than the AST rules because it matches comments and strings too.
 
 ### UI hygiene (React / Next)
 
@@ -321,10 +409,9 @@ knip is the successor. See `references/knip.jsonc`.
 | Gate in production mode | `knip --production` in CI | Test-only utilities being flagged as dead | Default (dev) mode is fine locally; `--production` drops test files for the gate. |
 | Adopt before blocking | report-only first, then gate on exit code | A noisy first run blocking every commit | Tune `knip.json` for dynamic / implicit entries, then flip to blocking. |
 
-A faster Rust alternative, **fallow**, covers the same graph plus cycles and
-boundary checks, but its core is MIT while the high-confidence runtime layer is
-paid (open-core) and the tool is young — keep knip as the reference and treat
-fallow as a watch.
+A faster Rust alternative, **fallow**, covers the same dead-code graph plus
+cycles — keep knip as the reference; fallow's boundary limits and open-core
+risk are covered under Transitive architecture tests.
 
 ### TypeScript: library publishing (publint + attw)
 
@@ -537,6 +624,7 @@ When a bug escapes to review or production, the retro question is: **what rule w
 - `references/typescript-strict.jsonc` — strict `compilerOptions` block (drop-in)
 - `references/biome-ultracite.jsonc` — Biome config extending Ultracite with override pattern
 - `references/eslint-boundaries.mjs` — layered `no-restricted-imports` + `no-restricted-syntax` examples
+- `references/purity-boundaries.mjs` — functional-core purity rules (`no-restricted-properties` + ast-grep equivalent)
 - `references/dependency-cruiser.cjs` - transitive TypeScript graph-boundary config template
 - `references/knip.jsonc` — knip dead-code / unused-deps config (drop-in)
 - `references/commitlint.config.js` — one-line conventional-commits config
@@ -552,6 +640,7 @@ When a bug escapes to review or production, the retro question is: **what rule w
 - `references/python-ruff.toml` — Ruff formatter/linter `pyproject.toml` snippet (drop-in)
 - `references/python-typecheck.toml` — basedpyright default plus pyright/ty notes (drop-in)
 - `references/python-vulture.toml` — conservative Vulture dead-code config (drop-in)
+- `references/python-import-linter.toml` — import-linter layer/forbidden/independence contracts + tach sketch
 
 ### Cross-stack
 
