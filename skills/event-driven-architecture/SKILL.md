@@ -102,6 +102,8 @@ Everything above is a choice with trade-offs. These two are not:
 ## Reaching Out
 
 - Consumer-driven contract testing (e.g. Pact) - see the `testing` skill.
+- Mechanically gating contract compatibility in CI (buf breaking, oasdiff,
+  semver checks) - see the `mechanical-enforcement` skill's Boundary contracts.
 - Parsing the wire payload back into a trusted domain type at the boundary -
   parse-don't-validate, see `architecture` / `typescript`.
 - End-to-end observability across the async hops this skill keeps flagging ("where
