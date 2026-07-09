@@ -1,4 +1,9 @@
 minimumReleaseAge: 5760     # 4 days (minutes); explicit ⇒ strict enforcement
 trustPolicy: no-downgrade
+# Skip the downgrade check for versions published over a year ago: a takeover is a
+# live incident in its first days, while aged backports/publish-flow changes (e.g.
+# semver@6.3.1, chokidar@4.0.3 - both provenance-less after newer lines had it) are
+# this check's main false-positive class. Fresh publishes stay fully gated.
+trustPolicyIgnoreAfter: 525600
 ignoreScripts: true
 blockExoticSubdeps: true    # default true in v11; explicit ⇒ auditable + drift-proof
