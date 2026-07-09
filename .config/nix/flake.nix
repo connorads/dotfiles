@@ -138,6 +138,8 @@
       ];
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
         ./modules/darwin-server.nix
+        # Android SDK CLI for local Flutter Android builds (no Studio: headless)
+        { homebrew.casks = [ "android-commandlinetools" ]; }
       ];
 
       # Linux: home-manager switch --flake ~/.config/nix (alias: hms)
