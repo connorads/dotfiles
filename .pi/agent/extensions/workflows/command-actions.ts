@@ -22,17 +22,17 @@ type RunAction = "stop" | "resume";
 
 const MENU_ACTIONS = ["Show details", "Show agents", "Show logs", "Stop", "Resume"] as const;
 
-export type WorkflowNotifyLevel = "info" | "warning";
+type WorkflowNotifyLevel = "info" | "warning";
 
 /** Minimal UI surface needed by workflow commands and menus. */
-export interface WorkflowCommandUi {
+interface WorkflowCommandUi {
   notify(message: string, level: WorkflowNotifyLevel): void;
   confirm(title: string, message: string): Promise<boolean>;
   select(title: string, options: readonly string[]): Promise<string | undefined>;
 }
 
 /** Narrow manager port used by the workflow command shell. */
-export interface WorkflowCommandManager {
+interface WorkflowCommandManager {
   launch(input: WorkflowInput, options: WorkflowLaunchOptions): Promise<Result<WorkflowLaunch, WorkflowManagerError>>;
   resume(runId: RunId, options: WorkflowLaunchOptions): Promise<Result<WorkflowLaunch, WorkflowManagerError>>;
   stop(runId: RunId, store: WorkflowStore): Promise<Result<WorkflowRunSnapshot, WorkflowManagerError>>;

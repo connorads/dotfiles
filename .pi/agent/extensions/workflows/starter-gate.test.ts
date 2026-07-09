@@ -5,8 +5,8 @@ import {
   createStarterGate,
   routeStarterToolCall,
   routeStarterTurnEnd,
-  WORKFLOW_TOOL_NAME,
 } from "./starter-gate.ts";
+import { WORKFLOW_TOOL_NAME } from "./tool-policy.ts";
 
 test("non-workflow tool call blocks and keeps the gate awaiting", () => {
   const gate = createStarterGate();

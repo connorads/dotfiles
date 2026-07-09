@@ -2,10 +2,10 @@ import { firstHiddenControl } from "./parser.ts";
 import type { Brand } from "./prelude.ts";
 import { err, ok, type Result } from "./result.ts";
 
-export const MAX_WORKFLOW_OBJECTIVE_CHARS = 12_000;
+const MAX_WORKFLOW_OBJECTIVE_CHARS = 12_000;
 
 /** User objective accepted by `/workflow` and `/workflows start`. */
-export type WorkflowObjective = Brand<string, "WorkflowObjective">;
+type WorkflowObjective = Brand<string, "WorkflowObjective">;
 
 /** Immediate result after preparing a workflow starter command. */
 export interface WorkflowStart {
@@ -19,7 +19,7 @@ export class InvalidWorkflowStartCommand extends Error {
 }
 
 /** Parse the free-form objective supplied to `/workflow`. */
-export function parseWorkflowObjective(input: string): Result<WorkflowObjective, InvalidWorkflowStartCommand> {
+function parseWorkflowObjective(input: string): Result<WorkflowObjective, InvalidWorkflowStartCommand> {
   const objective = input.trim();
   if (objective.length === 0) {
     return err(new InvalidWorkflowStartCommand("Usage: /workflow <objective>"));
@@ -50,7 +50,7 @@ export function createWorkflowStart(args: string): Result<WorkflowStart, Invalid
 }
 
 /** Render the model-facing starter instruction injected by `/workflow`. */
-export function renderWorkflowStartPrompt(objective: WorkflowObjective): string {
+function renderWorkflowStartPrompt(objective: WorkflowObjective): string {
   return [
     "Start a Pi dynamic workflow for the objective below.",
     "",

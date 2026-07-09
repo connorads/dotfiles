@@ -47,7 +47,7 @@ export interface WorkflowStore {
   readJournal(runId: RunId): Promise<WorkflowJournalEntry[]>;
 }
 
-export class WorkflowStoreError extends Error {
+class WorkflowStoreError extends Error {
   readonly _tag = "WorkflowStoreError";
 }
 
@@ -243,7 +243,7 @@ function noop(): void {
 }
 
 /** Stable project key matching the local Pi extension convention. */
-export function workflowProjectKey(cwd: string): string {
+function workflowProjectKey(cwd: string): string {
   const slug = sanitizePathSegment(basename(resolve(cwd)) || "project");
   const hash = createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 12);
   return `${slug}-${hash}`;

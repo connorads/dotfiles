@@ -62,7 +62,7 @@ export class WorkflowRuntimeError extends Error {
   readonly _tag: "WorkflowRuntimeError" | "WorkflowBudgetExceededError" = "WorkflowRuntimeError";
 }
 
-export class WorkflowBudgetExceededError extends WorkflowRuntimeError {
+class WorkflowBudgetExceededError extends WorkflowRuntimeError {
   readonly _tag = "WorkflowBudgetExceededError";
 }
 

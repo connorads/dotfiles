@@ -1,7 +1,5 @@
 import { WORKFLOW_TOOL_NAME } from "./tool-policy.ts";
 
-export { WORKFLOW_TOOL_NAME };
-
 /** One-turn lease state for `/workflow` and `/workflows start`. */
 export type StarterGate =
   | { readonly _tag: "awaitingWorkflow" }

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  "entry": ["index.ts!"],
+  "project": ["*.ts!", "!*.test.ts!", "!pi-coding-agent.d.ts!"],
+  "ignoreDependencies": ["@earendil-works/pi-coding-agent"]
+}

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { handleWorkflowsCommand, type WorkflowCommandDeps, type WorkflowCommandManager } from "./command-actions.ts";
+import { handleWorkflowsCommand, type WorkflowCommandDeps } from "./command-actions.ts";
 import { parseRunId, type RunId, type WorkflowInput, type WorkflowRunSnapshot } from "./domain.ts";
 import { type WorkflowLaunch, type WorkflowLaunchOptions, type WorkflowManagerError } from "./manager.ts";
 import type { AgentRunner, AgentRunResult } from "./runtime.ts";
@@ -57,7 +57,7 @@ class RecordingUi {
   }
 }
 
-class RecordingManager implements WorkflowCommandManager {
+class RecordingManager {
   readonly resumeCalls: RunId[] = [];
   readonly stopCalls: RunId[] = [];
 

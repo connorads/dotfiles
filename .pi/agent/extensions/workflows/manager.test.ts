@@ -7,7 +7,7 @@ import test from "node:test";
 import { parseRunId, type RunId, type WorkflowRunSnapshot } from "./domain.ts";
 import { parseCommandRunId, parseRunCommand, WorkflowManager } from "./manager.ts";
 import type { AgentRunner, AgentRunOptions, AgentRunResult } from "./runtime.ts";
-import { createWorkflowStore, workflowProjectKey } from "./store.ts";
+import { createWorkflowStore } from "./store.ts";
 import type { WorkflowToolPolicy } from "./tool-policy.ts";
 
 const TEST_TOOL_POLICY: WorkflowToolPolicy = { toolAllowlist: ["read", "web_search"], excludedTools: ["workflow"] };
@@ -198,7 +198,7 @@ test("reconcile marks stale running runs failed and sweeps orphaned tmp files", 
   for (const snapshot of [stale, orphan, alive, done]) {
     await store.createRun(snapshot, `export const meta = { name: "t", description: "t" };\nreturn 1;`);
   }
-  const staleDir = join(root, "projects", workflowProjectKey(project), "runs", stale.runId);
+  const staleDir = join(root, "projects", store.projectKey, "runs", stale.runId);
   await writeFile(join(staleDir, "run.json.123.abc.tmp"), "torn", "utf8");
 
   const reconciled = await manager.reconcile(store);
