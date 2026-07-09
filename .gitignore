@@ -25,11 +25,6 @@
 !/.fresh/
 !/.fresh/config.json
 
-# public skills home (authoring root; symlinked from .config/skills/public).
-# Staged here for a future standalone connorads/skills repo.
-!/skills/
-!/skills/**
-
 !/.agents/
 /.agents/**
 !/.agents/AGENTS.md
@@ -88,6 +83,12 @@
 
 
 **
+
+# public skills home (authoring root; symlinked from .config/skills/public).
+# Staged here for a future standalone connorads/skills repo. Must live below
+# the `**` reset above (last match wins) or new skill files are silently ignored.
+!/skills/
+!/skills/**
 
 !/.config/pip/
 !/.config/pip/pip.conf
