@@ -1,67 +1,124 @@
 #!/usr/bin/env bash
-# Poll tmux pane for a text pattern with timeout
-# Usage: wait-for-text.sh -t session:0.0 -p '^>>>' -T 15
+# Wait for a text pattern in a tmux pane.
+# Usage: wait-for-text.sh [-L SOCKET_NAME|-S SOCKET_PATH] [--control] -t session:0.0 -p '^>>>' -T 15
 
 set -euo pipefail
 
-usage() {
-  cat <<EOF
-Usage: $(basename "$0") -t TARGET -p PATTERN [-T TIMEOUT] [-i INTERVAL]
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+tmux_cmd=()
+tmux_socket_args=()
+# shellcheck disable=SC1091
+source "$script_dir/tmux-common.sh"
 
-Poll a tmux pane until a pattern appears in the output.
+usage() {
+	cat <<EOF
+Usage: $(basename "$0") [-L SOCKET_NAME|-S SOCKET_PATH] [--control] -t TARGET -p PATTERN [-T TIMEOUT] [-i INTERVAL]
+
+Wait until a pattern appears in tmux pane output.
 
 Options:
-  -t TARGET    tmux target (session, session:window, or session:window.pane)
-  -p PATTERN   grep pattern to wait for
-  -T TIMEOUT   timeout in seconds (default: 30)
-  -i INTERVAL  poll interval in seconds (default: 0.5)
-  -h           show this help
+  -t TARGET      tmux target (session, session:window, pane id, or session:window.pane)
+  -p PATTERN     grep ERE to wait for; Python regex when --control is used
+  -T TIMEOUT     timeout in seconds (default: 30)
+  -i INTERVAL    poll interval in seconds (default: 0.5; ignored with --control)
+  -L SOCKET_NAME use a named tmux socket
+  -S SOCKET_PATH use a tmux socket path
+  --control      attach in tmux control mode and follow output events
+  -h, --help     show this help
 
 Examples:
-  $(basename "$0") -t mysession -p '^>>>'           # wait for Python prompt
-  $(basename "$0") -t dev:0.0 -p 'gdb>' -T 60       # wait for gdb prompt
-  $(basename "$0") -t repl -p 'error' -i 0.2        # quick polling for error
+  $(basename "$0") -t mysession -p '^>>>'                  # capture-poll for Python prompt
+  $(basename "$0") --control -t dev:%1 -p 'gdb>' -T 60     # event-driven wait
+  $(basename "$0") -L private -t repl -p 'error' -i 0.2    # named socket
 EOF
-  exit 1
+	exit 1
 }
 
 target=""
 pattern=""
 timeout=30
 interval=0.5
+control=false
 
-while getopts "t:p:T:i:h" opt; do
-  case $opt in
-    t) target="$OPTARG" ;;
-    p) pattern="$OPTARG" ;;
-    T) timeout="$OPTARG" ;;
-    i) interval="$OPTARG" ;;
-    h) usage ;;
-    *) usage ;;
-  esac
+while [[ $# -gt 0 ]]; do
+	case $1 in
+	-t)
+		tmux_common_require_arg "$@" || usage
+		target=$2
+		shift 2
+		;;
+	-p)
+		tmux_common_require_arg "$@" || usage
+		pattern=$2
+		shift 2
+		;;
+	-T)
+		tmux_common_require_arg "$@" || usage
+		timeout=$2
+		shift 2
+		;;
+	-i)
+		tmux_common_require_arg "$@" || usage
+		interval=$2
+		shift 2
+		;;
+	-L)
+		tmux_common_require_arg "$@" || usage
+		tmux_common_set_socket_name "$2" || exit 1
+		shift 2
+		;;
+	-S)
+		tmux_common_require_arg "$@" || usage
+		tmux_common_set_socket_path "$2" || exit 1
+		shift 2
+		;;
+	--control)
+		control=true
+		shift
+		;;
+	-h | --help)
+		usage
+		;;
+	*)
+		echo "Unknown option: $1" >&2
+		usage
+		;;
+	esac
 done
 
-[[ -z "$target" ]] && { echo "Error: -t TARGET required" >&2; usage; }
-[[ -z "$pattern" ]] && { echo "Error: -p PATTERN required" >&2; usage; }
+[[ -z "$target" ]] && {
+	echo "Error: -t TARGET required" >&2
+	usage
+}
+[[ -z "$pattern" ]] && {
+	echo "Error: -p PATTERN required" >&2
+	usage
+}
 
-# Check session exists
-if ! tmux has-session -t "${target%%:*}" 2>/dev/null; then
-  echo "Error: session '${target%%:*}' does not exist" >&2
-  exit 1
+tmux_common_build_cmd
+
+if $control; then
+	control_args=("$script_dir/control-tail.py" "${tmux_socket_args[@]}")
+	exec "${control_args[@]}" -t "$target" -p "$pattern" -T "$timeout"
+fi
+
+if ! "${tmux_cmd[@]}" display-message -p -t "$target" "#{pane_id}" >/dev/null 2>&1; then
+	echo "Error: tmux target '$target' does not exist" >&2
+	exit 1
 fi
 
 elapsed=0
-while (( $(echo "$elapsed < $timeout" | bc -l) )); do
-  output=$(tmux capture-pane -t "$target" -p 2>/dev/null || true)
-  if echo "$output" | grep -qE "$pattern"; then
-    echo "Pattern '$pattern' found after ${elapsed}s"
-    exit 0
-  fi
-  sleep "$interval"
-  elapsed=$(echo "$elapsed + $interval" | bc -l)
+while (($(echo "$elapsed < $timeout" | bc -l))); do
+	output=$("${tmux_cmd[@]}" capture-pane -t "$target" -p 2>/dev/null || true)
+	if echo "$output" | grep -qE "$pattern"; then
+		echo "Pattern '$pattern' found after ${elapsed}s"
+		exit 0
+	fi
+	sleep "$interval"
+	elapsed=$(echo "$elapsed + $interval" | bc -l)
 done
 
 echo "Timeout (${timeout}s) waiting for pattern '$pattern'" >&2
 echo "Last output:" >&2
-tmux capture-pane -t "$target" -p | tail -20 >&2
+"${tmux_cmd[@]}" capture-pane -t "$target" -p | tail -20 >&2
 exit 1
