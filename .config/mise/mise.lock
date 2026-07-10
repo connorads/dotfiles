@@ -161,23 +161,20 @@ checksum = "blake3:934002feb87e4c7449461251538e24011b928e8c9bbea2b5caf1e5705f434
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.205/darwin-arm64/claude"
 
 [[tools.codex]]
-version = "0.144.0"
+version = "0.144.1"
 backend = "aqua:openai/codex"
 
 [tools.codex."platforms.linux-arm64"]
-checksum = "sha256:bc73ca4c16cc03a4527c3309cfc391f96559750e34ee06c2abc293dae87584eb"
-url = "https://github.com/openai/codex/releases/download/rust-v0.144.0/codex-aarch64-unknown-linux-musl.zst"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/471534106"
+checksum = "sha256:f9bee9e0fe97a3d768e75e8f3a55a24b422aae12349e7e6c9bad4ffbcbd541c4"
+url = "https://github.com/openai/codex/releases/download/rust-v0.144.1/codex-aarch64-unknown-linux-musl.zst"
 
 [tools.codex."platforms.linux-x64"]
-checksum = "sha256:496143919ba2e539f5f85091f2c21a7ae8d6692e4ba1665e74d96fd25b61bb16"
-url = "https://github.com/openai/codex/releases/download/rust-v0.144.0/codex-x86_64-unknown-linux-musl.zst"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/471534010"
+checksum = "sha256:1e592eadf7ca401c66b8aa0d8e868c097acb9c196bb70540858bb47a6c403c56"
+url = "https://github.com/openai/codex/releases/download/rust-v0.144.1/codex-x86_64-unknown-linux-musl.zst"
 
 [tools.codex."platforms.macos-arm64"]
-checksum = "sha256:c2e28c4c834431fd2b5f9a07217f9abd2ef10ddca97a5f9749e2768e30cfe580"
-url = "https://github.com/openai/codex/releases/download/rust-v0.144.0/codex-aarch64-apple-darwin.zst"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/471534144"
+checksum = "sha256:bad496a4198a85678a4daf289ef5f107dd0f3da55597ff138d908765d0cca8b8"
+url = "https://github.com/openai/codex/releases/download/rust-v0.144.1/codex-aarch64-apple-darwin.zst"
 
 [[tools.deno]]
 version = "2.9.1"
@@ -376,9 +373,6 @@ url = "https://github.com/jdx/hk/releases/download/v1.49.0/hk-aarch64-apple-darw
 [[tools.node]]
 version = "24.18.0"
 backend = "core:node"
-
-[tools.node.options]
-compile = "false"
 
 [[tools."npm:@anthropic-ai/sandbox-runtime"]]
 version = "0.0.62"
