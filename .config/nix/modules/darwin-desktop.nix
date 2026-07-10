@@ -86,6 +86,7 @@
       "zoom"
       "cyberduck"
       "handbrake-app"
+      "keycastr"
       "libreoffice"
       "balenaetcher"
       "raspberry-pi-imager"
