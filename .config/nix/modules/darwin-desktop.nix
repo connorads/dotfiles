@@ -38,6 +38,18 @@
     pkgs.raycast
     pkgs.rectangle
     pkgs.iina
+    # KeyCastr pinned to an exact, hash-verified release (Homebrew can't pin cask
+    # versions; nixpkgs lags at 0.10.3). It holds Accessibility, so freezing the
+    # signed, notarised binary is a supply-chain control; runs read-only from
+    # /nix/store so Sparkle can't self-update it. Bump version + hash by hand from
+    # upstream's KeyCastr.app.zip - nfu won't move it.
+    (pkgs.keycastr.overrideAttrs (old: rec {
+      version = "0.10.5";
+      src = pkgs.fetchurl {
+        url = "https://github.com/keycastr/keycastr/releases/download/v${version}/KeyCastr.app.zip";
+        hash = "sha256-yXxj6tv0MEwEgCwMg3XJm1gIRYS+MU6WTINm7KMYt1I=";
+      };
+    }))
   ];
 
   # -- Homebrew (desktop casks / MAS apps / taps) --
@@ -86,7 +98,6 @@
       "zoom"
       "cyberduck"
       "handbrake-app"
-      "keycastr"
       "libreoffice"
       "balenaetcher"
       "raspberry-pi-imager"
@@ -183,6 +194,15 @@
       # Hide the keyboard input source ("A" / "British – PC") menu bar icon
       "com.apple.TextInputMenu" = {
         visible = false;
+      };
+
+      # KeyCastr: kill Sparkle auto-update. The binary is pinned+read-only via nix
+      # (see environment.systemPackages), so Sparkle can't replace it anyway - this
+      # also stops the update-check network call. Re-asserted every rebuild.
+      "io.github.keycastr" = {
+        SUEnableAutomaticChecks = false;
+        SUAutomaticallyUpdate = false;
+        SUSendProfileInfo = false;
       };
     };
   };
