@@ -37,6 +37,9 @@ class TestNudges:
             "FOO=bar npm install",
             "cd app && npm i",
             "npm install | tee log.txt",
+            # falsey bypass marker does not opt out
+            "NPM_OK=0 npm install",
+            "NPM_OK= npm ci",
         ],
     )
     def test_nudges(self, command: str) -> None:
@@ -68,6 +71,11 @@ class TestLeavesAlone:
             # unrelated
             "ls -la",
             "node script.js",
+            # NPM_OK=1 escape hatch opts out of the nudge
+            "NPM_OK=1 npm ci",
+            "NPM_OK=1 npx create-vite app",
+            "NPM_OK=true npm install",
+            "cd app && NPM_OK=1 npm i",
         ],
     )
     def test_no_nudge(self, command: str) -> None:
@@ -94,12 +102,20 @@ class TestIntegration:
             text=True,
         )
 
-    def test_nudge_returns_ask(self) -> None:
+    def test_nudge_returns_deny(self) -> None:
         r = self._run("npm install")
         assert r.returncode == 0
         out = json.loads(r.stdout)
-        assert out["hookSpecificOutput"]["permissionDecision"] == "ask"
-        assert out["hookSpecificOutput"]["permissionDecisionReason"]
+        assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+        reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+        assert reason
+        # reason must tell the model how to opt out without a human
+        assert "NPM_OK=1" in reason
+
+    def test_bypass_marker_returns_no_output(self) -> None:
+        r = self._run("NPM_OK=1 npm ci")
+        assert r.returncode == 0
+        assert r.stdout == ""
 
     def test_run_returns_no_output(self) -> None:
         r = self._run("npm run build")

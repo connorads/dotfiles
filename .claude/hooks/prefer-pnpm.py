@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
-"""Claude Code hook to nudge npm/npx towards pnpm.
+"""Claude Code hook to steer npm/npx towards pnpm.
 
 AGENTS.md: "Never use npm or npx; use pnpm or pnpm dlx." This turns that
-convention into a soft prompt: dependency-mutating npm verbs and bare npx
-(fetch-and-run) return permissionDecision "ask" with the pnpm equivalent, so an
-npm-locked project still works behind one confirmation.
+convention into model guidance rather than a human gate: dependency-mutating npm
+verbs and bare npx (fetch-and-run) return permissionDecision "deny" with the
+pnpm equivalent. The reason is shown to Claude (unlike "ask", whose reason goes
+only to the human), so the model reads it and retries with pnpm - no
+confirmation prompt, so unattended/background/long-running runs are never
+blocked waiting on input.
+
+Escape hatch (model-usable, no human needed): when npm is genuinely required -
+e.g. a project with only package-lock.json and no pnpm-lock.yaml, where
+`pnpm install --frozen-lockfile` cannot stand in for `npm ci` - re-run the
+command with an `NPM_OK=1` env prefix. The hook treats that marker as a
+deliberate opt-out and stays silent.
 
 Deliberately narrow:
   - nudges: npm install/i/add/ci/update/up/exec/dedupe, and any npx invocation
   - leaves alone: npm run/test/start/ls/view/audit/config/... (local scripts and
     read-only ops), since those carry no fetch/supply-chain cost
 
-Note: an "ask" here overrides a matching permissions.allow rule (same mechanism
-guard-mutating-api.py uses). So allow-listed tools like `npx convex` will prompt.
-If that friction outweighs the nudge, set NUDGE_NPX = False below.
+Note: a "deny" here overrides a matching permissions.allow rule and holds even
+under bypassPermissions (PreToolUse fires before the permission-mode check). So
+allow-listed tools like `npx convex` are blocked in favour of `pnpm dlx convex`.
+If that friction outweighs the nudge, set NUDGE_NPX = False below, or use the
+NPM_OK=1 escape for a one-off.
 
 Exit codes:
   0 - Always
 
 Output:
-  JSON with permissionDecision "ask" (+ reason) for npm/npx, else nothing.
+  JSON with permissionDecision "deny" (+ reason) for npm/npx, else nothing.
 
 Tests: uv run --with pytest pytest ~/.claude/hooks/test_prefer_pnpm.py -v
 """
@@ -33,6 +44,11 @@ import sys
 
 # Set False to stop nudging npx (keeps the npm dependency-verb nudge).
 NUDGE_NPX = True
+
+# Env marker the model can prepend to deliberately opt out when npm is genuinely
+# required (no human confirmation needed). Any non-falsey value bypasses.
+BYPASS_VAR = "NPM_OK"
+_BYPASS_FALSEY = frozenset({"", "0", "false", "False", "no"})
 
 # Commands where npm/npx may appear in quoted args (e.g. commit messages) - skip.
 NOT_PKG_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
@@ -78,6 +94,17 @@ def _strip_env_prefix(segment: list[str]) -> list[str]:
     return segment[i:]
 
 
+def _env_assignments(segment: list[str]) -> dict[str, str]:
+    """Leading `VAR=value` env prefix of a segment as a dict."""
+    envs: dict[str, str] = {}
+    for tok in segment:
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", tok)
+        if not m:
+            break
+        envs[m.group(1)] = m.group(2)
+    return envs
+
+
 def _first_subcommand(command: list[str]) -> str | None:
     """First non-flag argument after the command name."""
     for tok in command[1:]:
@@ -102,6 +129,9 @@ def nudge_reason(command: str) -> str | None:
         return None
 
     for segment in _segments(tokens):
+        bypass = _env_assignments(segment).get(BYPASS_VAR)
+        if bypass is not None and bypass not in _BYPASS_FALSEY:
+            continue
         command_tokens = _strip_env_prefix(segment)
         if not command_tokens:
             continue
@@ -133,9 +163,11 @@ def main() -> int:
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "ask",
+                "permissionDecision": "deny",
                 "permissionDecisionReason": (
-                    f"{reason}. If this project is npm-locked, confirm to proceed."
+                    f"{reason}. If this project is genuinely npm-locked (no pnpm "
+                    f"lockfile), re-run the command with an `{BYPASS_VAR}=1` prefix "
+                    f"to bypass."
                 ),
             }
         }
