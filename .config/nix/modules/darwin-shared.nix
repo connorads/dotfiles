@@ -31,6 +31,7 @@
       cleanup = "zap";
     };
     brews = [
+      "granted"
       "mole"
       "podman"
     ];
