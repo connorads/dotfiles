@@ -5,14 +5,25 @@ description: Control interactive CLIs and TUIs via tmux sessions - safely target
 
 # tmux Skill
 
-Use tmux to control interactive terminal applications by sending keystrokes and capturing output.
+Use tmux to control interactive terminal applications when a normal command/API is not enough. Prefer explicit program interfaces first, use tmux control mode for prompt-shaped flows, and reserve screen scraping plus keystrokes for genuinely modal TUIs.
 
 ## When to Use
 
-- Running interactive REPLs (python, node, psql)
-- Debugging with gdb/lldb
-- Any CLI that requires TTY interaction
-- Remote execution where you need to observe output
+- Running REPLs that need a PTY: Python, Node, psql, gdb/lldb.
+- Watching long-running interactive commands without blocking the agent.
+- Operating a modal prompt or TUI when no documented non-interactive path exists.
+- Remote execution where the human may want to attach and observe.
+
+## Choose the Interface
+
+1. Use APIs and non-interactive commands first.
+   Prefer flags, config files, JSON output, dry runs, stdin, HTTP APIs, or documented subcommands. This is the only pane-free option.
+
+2. Use tmux control mode for prompt-shaped interactive flows.
+   Control mode still uses tmux panes and PTYs, but the observer is not another visual pane. A control client attaches to a session with `tmux -C attach -t "$session"` and receives protocol events such as `%output %1 <payload>`. The helper filters those events to one stable pane id.
+
+3. Use `capture-pane` observe-before-commit for modal TUIs.
+   Full-screen TUIs are stateful. Control mode can stream bytes, but it does not tell you focus, selected rows, or confirmation semantics. Use visible captures and act one step at a time.
 
 ## Safety Model
 
@@ -28,28 +39,19 @@ For unfamiliar interactive programs, use this loop:
 
 Never combine selection and confirmation in one tmux command for an unfamiliar TUI.
 
-## Core Pattern
+## Core Setup Pattern
 
 ```bash
-# Create session
 tmux new-session -d -s "$SESSION" -x 120 -y 40
-
-# Send commands
 tmux send-keys -t "$SESSION" "python3" Enter
+pane=$(tmux display-message -p -t "$SESSION" '#{pane_id}')
 
-# Capture output
-tmux capture-pane -t "$SESSION" -p
+scripts/wait-for-text.sh --control -t "$pane" -p '^>>> ?$' -T 15
 
-# Wait for prompt (poll)
-for i in {1..30}; do
-  output=$(tmux capture-pane -t "$SESSION" -p)
-  if echo "$output" | grep -q ">>>"; then break; fi
-  sleep 0.5
-done
-
-# Cleanup
 tmux kill-session -t "$SESSION"
 ```
+
+Use `-x 120 -y 40` for predictable wrapping. Prefer stable pane IDs like `%1` over active/default targets.
 
 ## Key Risk Classes
 
@@ -61,7 +63,54 @@ tmux kill-session -t "$SESSION"
 
 Treat `Enter` as context-sensitive. It is not safe by default.
 
-## Stateful TUI Rules
+## Sending Input
+
+Use literal input for text and real keys separately:
+
+```bash
+tmux send-keys -lt "$pane" "literal text"
+tmux send-keys -t "$pane" Enter
+```
+
+For multiline text, prefer tmux buffers over repeated `send-keys`. Paste the text, observe it, then submit with a separate key:
+
+```bash
+tmux load-buffer -b agent-input - <<'EOF'
+first line
+second line
+EOF
+tmux paste-buffer -b agent-input -p -t "$pane"
+tmux delete-buffer -b agent-input
+tmux capture-pane -pt "$pane"
+tmux send-keys -t "$pane" Enter
+```
+
+Do not combine the paste and the committing `Enter` unless the target program is familiar and low risk.
+
+## Control Mode
+
+Use control mode when you need to wait for output from a REPL or prompt without polling screenshots of the pane.
+
+```bash
+scripts/wait-for-text.sh --control -t "$pane" -p '^>>> ?$' -T 15
+scripts/control-tail.py -t "$pane" -p 'Password: ?$' -T 30
+```
+
+Useful cases:
+
+- Waiting for prompts after starting a REPL/debugger/database shell.
+- Watching output emitted after the watcher starts.
+- Filtering output from one pane while the session contains other active panes.
+- Driving simple question/answer prompts where visible text is enough evidence.
+
+Limits:
+
+- Control mode is not pane-free. tmux still runs each interactive program in a pane-backed PTY.
+- It streams bytes, not semantic UI state.
+- It is not a terminal emulator. The helper normalises common ANSI/OSC sequences and carriage returns for matching, but use `capture-pane` for modal TUI state.
+- The current helper decodes tmux `%output` and `%extended-output` octal escapes with Python stdlib only.
+
+## Capture Mode and Modal TUIs
 
 When driving an unfamiliar TUI:
 
@@ -72,20 +121,17 @@ When driving an unfamiliar TUI:
 - Use `tmux send-keys -l` for literal text.
 - Send real keys separately from literal text.
 - Stop and ask if focus, selected action, prompt wording, or mode is ambiguous.
-- Prefer documented flags, config files, JSON output, dry runs, or APIs over TUI automation when available.
 
-## Mechanics
+Useful capture commands:
 
-- Prefer stable pane IDs (`%1`, `%2`) over active/default targets.
-- Fully qualify targets with `-t "$pane"`; avoid relying on the active pane.
-- `send-keys` sends all arguments sequentially. `tmux send-keys -t "$pane" 4 Enter` sends `4` and then immediately presses Enter.
-- `send-keys` treats recognised names like `Enter`, `Escape`, `Up`, `C-c`, and `BTab` as keys.
-- Use `send-keys -l` when text might look like a key name.
-- Use `capture-pane -p` for visible content.
-- Use `capture-pane -S - -E -` for all available history.
-- Use `capture-pane -M` if the pane is in a tmux mode.
-- Use `capture-pane -a` for alternate-screen content when needed.
-- Poll screen state with `capture-pane` and `display -p` rather than sleeping blindly.
+```bash
+tmux capture-pane -pt "$pane"             # visible content
+tmux capture-pane -pS - -E - -t "$pane"   # all available history
+tmux capture-pane -pM -t "$pane"          # tmux mode content
+tmux capture-pane -pa -t "$pane"          # alternate-screen content when needed
+```
+
+Poll screen state with `capture-pane` and `display-message -p` rather than sleeping blindly.
 
 ## Example: Modal Feedback Prompt
 
@@ -112,6 +158,15 @@ tmux capture-pane -pt "$pane"
 tmux send-keys -t "$pane" Enter
 ```
 
+## Mechanics
+
+- Fully qualify targets with `-t "$pane"`; avoid relying on the active pane.
+- `send-keys` sends all arguments sequentially. `tmux send-keys -t "$pane" 4 Enter` sends `4` and then immediately presses Enter.
+- `send-keys` treats recognised names like `Enter`, `Escape`, `Up`, `C-c`, and `BTab` as keys.
+- Use `send-keys -l` when text might look like a key name.
+- Resolve targets with `tmux display-message -p -t "$target" '#{pane_id}|#{session_id}'`.
+- For private servers, use `tmux -L "$name"` or `tmux -S "$path"` consistently across all commands.
+
 ## Remote Execution (Codespaces/SSH)
 
 For mise-installed tools, wrap in zsh:
@@ -135,22 +190,32 @@ To monitor: tmux attach -t $SESSION
 To capture: tmux capture-pane -t $SESSION -p
 ```
 
-## Tips
-
-- Use `-x 120 -y 40` for consistent pane size
-- Poll with `capture-pane -p` rather than `wait-for`
-- Send literal text with `-l` flag to avoid shell expansion
-- Control keys: `C-c` (interrupt), `C-d` (EOF), `Escape`
-- For Python REPL: set `PYTHON_BASIC_REPL=1` to avoid fancy console interference
-
 ## Helper Scripts
 
 ### [wait-for-text.sh](scripts/wait-for-text.sh)
 
-Poll tmux pane for a text pattern with timeout:
+Wait for a text pattern with timeout. Capture-polling is the default; `--control` follows tmux output events.
 
 ```bash
 scripts/wait-for-text.sh -t session:0.0 -p '^>>>' -T 15
+scripts/wait-for-text.sh --control -t %1 -p '^>>> ?$' -T 15
+scripts/wait-for-text.sh -L private -t repl -p 'ready'
+```
+
+Options:
+
+- `-L SOCKET_NAME` or `-S SOCKET_PATH` target a private tmux server.
+- `-i INTERVAL` controls capture polling and is ignored in control mode.
+- Capture mode uses grep ERE; control mode uses Python regex.
+
+### [control-tail.py](scripts/control-tail.py)
+
+Follow one pane with tmux control mode:
+
+```bash
+scripts/control-tail.py -t %1
+scripts/control-tail.py -t %1 -p 'READY|ERROR' -T 30
+scripts/control-tail.py -L private -t repl:0.0 -p '^>>> ?$' --no-seed
 ```
 
 ### [find-sessions.sh](scripts/find-sessions.sh)
@@ -160,4 +225,9 @@ List tmux sessions, optionally filtered:
 ```bash
 scripts/find-sessions.sh -q claude  # filter by name
 scripts/find-sessions.sh --all      # all sessions
+scripts/find-sessions.sh -L private # named socket
 ```
+
+### [tmux-common.sh](scripts/tmux-common.sh)
+
+Internal shared socket-option helpers used by the shell scripts.
