@@ -98,6 +98,7 @@
       "executor"
       "conductor"
       "knockknock"
+      "lulu"
       "slack"
       "microsoft-teams"
       "linear"
