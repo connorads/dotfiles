@@ -374,6 +374,9 @@ url = "https://github.com/jdx/hk/releases/download/v1.49.0/hk-aarch64-apple-darw
 version = "24.18.0"
 backend = "core:node"
 
+[tools.node.options]
+compile = "false"
+
 [[tools."npm:@anthropic-ai/sandbox-runtime"]]
 version = "0.0.62"
 backend = "npm:@anthropic-ai/sandbox-runtime"
@@ -453,6 +456,10 @@ backend = "npm:portless"
 [[tools."npm:remobi"]]
 version = "1.0.4"
 backend = "npm:remobi"
+
+[[tools."npm:serve-sim"]]
+version = "0.1.44"
+backend = "npm:serve-sim"
 
 [[tools."npm:sharp-cli"]]
 version = "5.2.0"
