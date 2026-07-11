@@ -1,5 +1,5 @@
 ---
-name: first-load-web-perf
+name: web-perf
 description: >-
   Diagnose and fix first-load visual jank - font-swap flashes, image decode
   pop-in, layout shift, blank-then-paint, SSR/hydration flips - on hand-rolled
