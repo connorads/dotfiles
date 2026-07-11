@@ -170,7 +170,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | Gesture | Action |
 |---------|--------|
 | left-click | select pane/window |
-| scroll | enter copy mode / scroll |
+| scroll | scroll the pane under the pointer; keyboard focus stays put (type/dictate in one pane while scrolling another) |
 | drag border | resize pane |
 | double-click pane | zoom toggle |
 | right-click pane | context menu (zoom, mark, copy info, open cwd, claude-watch, agent dot, kill pane) |
