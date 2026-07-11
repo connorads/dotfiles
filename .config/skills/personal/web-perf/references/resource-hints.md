@@ -57,10 +57,12 @@ than none.
 - `dns-prefetch` = DNS only (~20-120ms), cheap; the right hint for lower-confidence
   origins and a preconnect fallback. Keep the two in SEPARATE `<link>` tags (combining
   triggers a Safari bug).
-- **Load-bearing for this stack:** self-hosting fonts (fontsource) means there is no
-  third-party origin to hint - the browser is already connected for HTML/CSS - so
+- **Load-bearing when self-hosted:** self-hosting fonts (fontsource) means there is
+  no third-party origin to hint - the browser is already connected for HTML/CSS - so
   preconnect/dns-prefetch are pure waste unless an analytics/image CDN remains a
-  distinct early origin.
+  distinct early origin. With **hosted Google Fonts** the opposite holds: the
+  `fonts.googleapis.com` (no crossorigin) + `fonts.gstatic.com` (crossorigin)
+  preconnect pair IS load-bearing - see hosted-fonts.md.
 - <https://web.dev/articles/preconnect-and-dns-prefetch>
 
 ## modulepreload (Vite already does it)
