@@ -87,6 +87,11 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 - The CLS instance of the SSR/client mismatch below (B6) - when the server-rendered
   default and the client's real state differ *in size*. Same cause and fixes as B6;
   it just also moves layout. See B6.
+- **SSR-only class.** A4 and B6 both need a server-rendered default that a client
+  hydration step can then disagree with. Under full static prerender (no
+  hydration, or no client state feeding the markup) neither can occur - rule them
+  out first by asking whether the HTML is fixed at build or rendered/hydrated per
+  request.
 
 ---
 
@@ -175,8 +180,10 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 - **Cause**: SSR and hydration disagree. The server can't read client-only state
   (localStorage, `prefers-color-scheme`, `navigator.languages`) so it renders a
   default; the client reads the real value on hydrate and flips theme/colour/
-  highlight once. Reading it in `useEffect` makes it WORSE (guaranteed
-  post-hydration flash).
+  highlight once. Reading it in a post-mount effect (React `useEffect` or any
+  framework's equivalent) makes it WORSE (guaranteed post-hydration flash).
+  **SSR-only**: impossible under full static prerender with no hydration - if
+  there is no server-vs-client step, there is nothing to disagree.
 - **Fix**, in order: (1) make the value server-knowable - store the preference in a
   **cookie** so the server renders the correct state (any cookie-based preference -
   theme, locale - has no mismatch); (2) if it must live in localStorage, inject a

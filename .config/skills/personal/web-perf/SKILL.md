@@ -1,26 +1,39 @@
 ---
 name: web-perf
 description: >-
-  Diagnose and fix first-load visual jank - font-swap flashes, image decode
-  pop-in, layout shift, blank-then-paint, SSR/hydration flips - on hand-rolled
-  (non-Next) React apps built with Vite and served from the edge (Cloudflare
-  Workers or similar). Use when the user reports a "flash", "shimmer", "pop",
-  "jump", "flicker", or slow/janky first paint; when reviewing font or image
-  loading; or when wiring resource hints (preload/preconnect) and metric-matched
-  fallbacks by hand instead of via a framework. NOT for Next.js - defer to
-  next-best-practices there.
+  Diagnose and fix first-load visual jank users can see - font-swap flashes,
+  image decode pop-in, layout shift, blank-then-paint, SSR/hydration flips,
+  slow/janky first paint - on any hand-wired stack: static-prerendered
+  (Astro/SSG), Vite SPA/MPA, or SSR from a Worker/edge. Use when the user
+  reports a "flash", "shimmer", "pop", "jump", "flicker", or slow first paint;
+  when reviewing font or image loading; when deciding whether subsetting fixed
+  copy is safe; when wiring resource hints (preload/preconnect) or metric-matched
+  fallbacks by hand; or when asserting first-load invariants on built HTML. Not
+  for backend latency, bundle-size analysis, or runtime interaction (INP)
+  tuning; defer to a framework's own font/image layer (next/font, next/image)
+  where it automates the fix.
 ---
 
-# First-Load Web Performance (hand-rolled stacks)
+# Web Performance: first-load visual jank
 
-The **manual-stack counterpart** to the Next.js loading guidance. On Next,
-`next/font` and `next/image` solve most of what follows automatically -
-metric-matched fallbacks, per-weight preload, priority/lazy, CLS reservation -
-so on Next you defer to `next-best-practices/{font,image}.md` and stop.
+Diagnose and fix the first-load defects a user can *see* (font-swap flashes,
+image pop-in, layout shift, blank-then-paint, hydration flips, slow first paint)
+on any stack where you hand-wire loading instead of leaning on a framework's
+font/image layer. That spans static-prerendered sites (Astro/SSG), Vite
+SPA/MPA, and SSR from a Worker/edge: `@font-face` written by hand, native
+`<img>`, resource hints in your own document head. The framework is not doing it
+for you, so you must - and must verify it yourself.
 
-Reach here when you are hand-wiring loading: fontsource + `@font-face`, native
-`<img>`, resource hints written into your own document head, SSR from a Worker.
-The framework is not doing it for you, so you must - and must verify it yourself.
+Where a framework *does* automate the fix (Next's `next/font`/`next/image`),
+defer to it and stop (`references/next-vs-manual.md`).
+
+## Out of scope
+
+This skill owns **first-load visual jank** and nothing wider. Not here: backend
+/ TTFB latency, bundle-size analysis (tree-shaking, chunk budgets), runtime
+interaction tuning (INP beyond the hydration flip), or SEO. Those are separate
+concerns; do not grow this skill into them. If the ask is one of those, say so
+and stop rather than stretching a loading fix to fit.
 
 ## The core loop: symptom -> cause -> fix -> proof
 
@@ -58,11 +71,13 @@ can regress another. Run the symptom lens first, then sanity-check the others.
   **cache-hit before hydration** (a cached image/handler race). A fix that only
   works with warm cache and attached JS is not a fix. (Worked example: a JS
   `onLoad` image fade fails here; CSS entrance + eager load degrades safely.)
-- **Edge / privacy** (stack-specific) - SSR-in-locale via middleware; and any
-  pre-auth/pre-gate anonymity constraint limits what you may preload or inline
-  before the user is identified. Generic perf advice ignores this - and it bites
-  103 Early Hints, which can leak cached preload URLs ahead of an auth check
-  (resource-hints.md).
+- **Edge / privacy** - where the response is assembled per request (SSR at an
+  edge/Worker, locale or A/B branching), any pre-auth/pre-gate anonymity
+  constraint limits what you may preload or inline before the user is
+  identified. Generic perf advice ignores this - and it bites 103 Early Hints,
+  which can leak cached preload URLs ahead of an auth check (resource-hints.md).
+  Under full static prerender there is no per-request edge logic, so this lens
+  mostly collapses.
 
 ## Triage: does layout MOVE, only APPEARANCE change, or does NOTHING appear yet?
 
@@ -99,22 +114,25 @@ That root question routes the whole diagnosis (full tree + fixes in
   duplicate.
 - `will-change`, `transition` specificity, tabular-nums, text-wrap live in
   `make-interfaces-feel-better/{performance,typography}.md`.
-- React DOM resource-hint APIs (`preload`, `preconnect`, `prefetchDNS`) are in
-  `vercel-react-best-practices/rules/rendering-resource-hints.md` - this skill
-  adds the *why* (crossOrigin/CORS, exact-file matching, ordering/priority) that
-  skill omits.
+- On React stacks, the DOM resource-hint APIs (`preload`, `preconnect`,
+  `prefetchDNS`) have their own reference in
+  `vercel-react-best-practices/rules/rendering-resource-hints.md`; this skill is
+  framework-agnostic and adds the *why* (crossOrigin/CORS, exact-file matching,
+  ordering/priority) that the API table omits. On other stacks you write the
+  same `<link>` tags into your own head - the *why* is identical.
 
 ## References
 
 - `references/symptoms.md` - the diagnostic decision tree (spine). START HERE.
 - `references/verify.md` - how to prove a fix cold-cache (runnable Playwright CLS
   probe + head-count gate). The lens no other loading skill carries.
-- `references/fonts.md` - self-hosted font loading (fontsource + Vite): per-weight
-  preload, crossOrigin, `?url`, metric-matched fallbacks, `font-display`, variable
-  fonts.
+- `references/fonts.md` - self-hosted font loading: per-weight preload,
+  crossOrigin, exact-file (`?url`) matching, metric-matched fallbacks,
+  `font-display`, variable fonts, subsetting.
 - `references/images.md` - eager/lazy, decode timing, priority/discovery, CLS
   reservation, responsive `srcset`/`<picture>`, LQIP, content-visibility.
 - `references/resource-hints.md` - preload/preconnect ordering & priority,
-  crossOrigin, `?url` matching, budget, 103 Early Hints, TanStack Start head.
+  crossOrigin, exact-file matching, budget, 103 Early Hints (with clearly-labelled
+  stack-specific subsections for Vite/Cloudflare/TanStack).
 - `references/next-vs-manual.md` - what next/font & next/image automate <-> the
   hand-rolled equivalent.
