@@ -8,13 +8,20 @@ so check per-concern, not per-framework.
 
 **Automation is a spectrum, not a Next/not-Next switch:**
 
-- **Next** - automates almost the whole table (`next/font` + `next/image`). If
-  the project is on Next, defer entirely to `next-best-practices/{font,image}.md`
-  and stop.
-- **Astro** - *partial*. Ships a built-in `<Image>`/`<Picture>` (sizing,
-  format negotiation, lazy) so the image rows are handled - but fonts are still
-  your `@font-face` (Astro's experimental fonts API aside), so the font rows are
-  **this skill**. Mixed: use the framework's image component, hand-roll the fonts.
+- **Next** - automates almost the whole table (`next/font` + `next/image`);
+  defer to that layer's own output. But still inspect app code *wrapping* it:
+  an opacity-0 `onLoad` fade wrapper around a `priority` hero (invisible with
+  no-JS, racy on warm cache, defeats `fetchpriority`), or a raw `font-family`
+  re-declaration in global CSS that silently drops the `next/font` metric
+  fallback, reintroduces the exact jank this skill owns.
+- **Astro** - *version-dependent*. Ships a built-in `<Image>`/`<Picture>`
+  (sizing, format negotiation, lazy **by default** - put the `priority` prop on
+  the one LCP image), so the image rows are handled. Fonts: on **Astro 6+** the
+  built-in Fonts API (stable in 6.0, experimental from 5.7) automates
+  self-hosting, opt-in `<Font preload />`, and `optimizedFallbacks` metric
+  fallbacks - defer to it for those rows (fonts.md lead note). It does **not**
+  subset, so the subsetting/coverage row stays hand-rolled even on 6. Pre-6
+  Astro: all font rows are this skill.
 - **Vite SPA/MPA, plain SSR, static hand-built HTML** - no font/image layer;
   the whole right column is yours.
 
@@ -23,21 +30,24 @@ fullest example); the right column is what you write by hand when it doesn't.
 
 | What you need | A framework layer may automate | Hand-rolled equivalent (this skill) |
 | --- | --- | --- |
-| Self-host Google/local fonts | Next `next/font/google` / `next/font/local` | `@fontsource` (or raw `@font-face`) + bundler asset handling (Vite `?url`) |
-| Zero-CLS font swap | Next `adjustFontFallback` (Capsize-derived: `sizeAdjust` = avg-width ratio, then ascent/descent/lineGap overrides /(unitsPerEm*sizeAdjust)) | hand-authored `@font-face` with `size-adjust`/`ascent-override`/`descent-override`, generated via Fontaine/Capsize (fonts.md) |
-| Preload the right font | Next: automatic for the used subset/weights | explicit `?url` import + `<link rel=preload as=font crossorigin>` per weight, below the stylesheet (resource-hints.md) |
-| Only load needed characters | Next `subsets: ['latin']` | `@fontsource` subset imports / `unicode-range` / re-subset with a coverage guard (fonts.md) |
-| Above-the-fold image priority | Next `<Image priority>`; Astro `<Image>` | `fetchpriority="high"` on the true LCP `<img>` (eager alone does not reprioritise); decorative art stays eager without high priority (images.md) |
-| Below-fold lazy | Next/Astro `<Image>` default lazy | `loading="lazy"` (default) |
+| Self-host Google/local fonts | Next `next/font/google` / `next/font/local`; Astro 6 Fonts API (`fonts` config) | `@fontsource` (or raw `@font-face`) + bundler asset handling (Vite `?url`) |
+| Zero-CLS font swap | Next `adjustFontFallback` (Capsize-derived: `sizeAdjust` = avg-width ratio, then ascent/descent/lineGap overrides /(unitsPerEm*sizeAdjust)); Astro 6 `optimizedFallbacks` | hand-authored `@font-face` with `size-adjust`/`ascent-override`/`descent-override`, generated via Fontaine/Capsize (fonts.md) |
+| Preload the right font | Next: automatic for the used subset/weights; Astro 6 `<Font preload />` (opt-in) | explicit `?url` import + `<link rel=preload as=font crossorigin>` per weight, below the stylesheet (resource-hints.md) |
+| Only load needed characters | Next `subsets: ['latin']` (Astro 6 Fonts API does NOT subset) | `@fontsource` subset imports / `unicode-range` / re-subset with a coverage guard (fonts.md) |
+| Above-the-fold image priority | Next `<Image priority>`; Astro `<Image priority>` (5.10+: sets `loading="eager"` + `decoding="sync"` + `fetchpriority="high"`; the component is lazy by default without it) | `fetchpriority="high"` on the true LCP `<img>` (eager alone does not reprioritise); decorative art stays eager without high priority (images.md) |
+| Below-fold lazy | Next/Astro `<Image>` default lazy | explicit `loading="lazy"` (opt-in - native `<img>` is eager by default) |
 | No-CLS image box | Next width/height/fill required; Astro infers from source | width/height attributes infer `aspect-ratio` and reserve the box; reserve the *un-rotated* box for transforms (images.md) |
 | Placeholder | Next `placeholder="blur"` + blurDataURL | hand-rolled dominant-colour/LQIP, or skip for small art (images.md) |
 | Responsive sources + format | Next `sizes` + auto srcset; Astro `<Picture>` | manual `srcset`/`sizes` + `<picture><source type>` for AVIF/WebP (images.md) |
 
 **Rule**: per concern, if a framework layer automates the row, defer to it and
 stop; where it doesn't, this skill's job is to make the manual version as
-mechanical and verifiable as the framework version. Fully-automated stack (Next)
--> close this skill; partial (Astro: images automated, fonts not) -> use it for
-the un-automated concern only.
+mechanical and verifiable as the framework version. "Defer and stop" applies to
+the framework layer's **own output** - app code wrapping it (fade wrappers,
+CSS hiding a `priority` image, raw `font-family` overrides) is still in scope.
+Fully-automated stack (Next) -> close this skill once the wrapping code is
+clean; partial (Astro pre-6: images automated, fonts not) -> use it for the
+un-automated concern only.
 
 - <https://github.com/vercel/next.js/blob/canary/packages/next/src/server/font-utils.ts> ·
   <https://docs.astro.build/en/guides/images/>

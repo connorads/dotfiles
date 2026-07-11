@@ -3,20 +3,23 @@
 Ask this **first**, before diagnosing a symptom: is the HTML *fixed at build*
 (static prerender / SSG - Astro, an exported SPA shell, any `dist/*.html`) or
 *rendered per request* (SSR from a Worker/edge or a Node server, and hydrated on
-the client)? It is the only axis that changes which defects are possible and how
-you verify a fix. Everything else in this skill is shared; this file owns only
-what the axis flips, and points at the reference that carries the detail.
+the client)? It is the axis that decides how you verify a fix and which
+build-time gates are available. Everything else in this skill is shared; this
+file owns only what the axis flips, and points at the reference that carries
+the detail.
 
 ## What it changes
 
-1. **Which jank classes can occur.** The hydration-mismatch family - a
-   theme/active-state flip (`symptoms.md` B6) and its layout-moving twin
-   (`symptoms.md` A4, "FART") - needs a server-rendered default that a client
-   hydration step can disagree with. Under full static prerender with no
-   hydration (or no client state feeding the markup) **neither can happen** -
-   rule them out immediately instead of chasing a cookie/blocking-script fix that
-   has nothing to fix. Every other symptom (font swap, image pop-in, unreserved
-   boxes, render-blocking CSS) is stack-independent. → `symptoms.md`.
+1. **NOT which jank classes can occur - look for reconciliation JS instead.**
+   The state-mismatch family - a theme/active-state flip (`symptoms.md` B6) and
+   its layout-moving twin (`symptoms.md` A4, "FART") - needs *client JS
+   reconciling client-only state against the initial HTML*, and that JS ships
+   on static builds too: a fully static page whose theme `<script>` reads
+   localStorage flashes exactly like an SSR hydration flip. Do not rule B6/A4
+   out because the build is static; rule them out only when there is no
+   reconciling script or hydration step feeding the markup. Every symptom in
+   this skill is possible on either side of the axis - what the axis governs is
+   points 2 and 3 below. → `symptoms.md`.
 
 2. **How you verify.** Static prerender means `dist/*.html` IS the shipped bytes,
    so you assert on the files directly with a Node script - no server, no browser

@@ -5,6 +5,16 @@ Hand-wired `@font-face` (no framework font layer). Examples use
 exact-file matching, metric fallbacks, subsetting - are the browser's and hold
 on any stack that ships its own webfonts.
 
+> **Astro 6+: prefer the built-in Fonts API first.** Stable since Astro 6.0
+> (experimental from 5.7): a top-level `fonts` array + `fontProviders` in
+> `astro.config`, then `import { Font } from "astro:assets"` and
+> `<Font cssVariable="--font-display" preload />` in the head. It automates
+> self-hosting (files cached under `_astro/fonts`), opt-in per-font preload,
+> and `optimizedFallbacks` metric-matched fallbacks (default on). It does
+> **not** subset - the subsetting + coverage-guard sections below still apply
+> on Astro 6. Hand-wire the rest of this file on Vite, Worker-SSR, or pre-6
+> Astro. See framework-automation.md for the row-by-row boundary.
+
 ## Rules
 
 - **Preload the exact above-the-fold weights, per weight.** Fonts are per-weight
@@ -52,7 +62,24 @@ on any stack that ships its own webfonts.
   `capsize-font-metrics.json`, and `next/font/local`, via fontkit, use the identical
   Capsize-derived algorithm, falling back to Arial/Times New Roman by generic
   family).
+  - **Safari caveat**: through Safari 26/27, WebKit supports `size-adjust` but
+    ignores `ascent-override`/`descent-override`/`line-gap-override` (WebKit
+    bug 219735), so a tuned fallback still shifts there - and size-adjust
+    *alone* can be worse than nothing (it scales width and height with no
+    height correction). If Safari shift matters, gate the block: feature-detect
+    with JS (`'ascentOverride' in new FontFace('t', 'local(Arial)')`) or the
+    `@supports (overflow-anchor: auto)` proxy - `@supports` cannot test font
+    descriptors, and Safari is the one evergreen without `overflow-anchor`.
+  - **Pick the fallback per generic family**: derive a serif face's fallback
+    from a serif base (Georgia / Times New Roman), a sans face's from Arial. A
+    global generator config like fontaine's `fallbacks: ['Arial']` silently
+    builds a serif family's (e.g. Fraunces) fallback on Arial metrics -
+    per-family config or per-family generator runs avoid it.
   - <https://github.com/vercel/next.js/blob/canary/packages/next/src/server/font-utils.ts>
+
+- **Serve woff2 as-is.** The format is Brotli-compressed internally;
+  re-compressing (gzip or br at the CDN/server) wastes CPU for ~0 gain and can
+  add bytes. Exclude `*.woff2` from blanket compression rules.
 
 ## The metric-fallback mechanic (so you can verify any generator)
 
@@ -61,8 +88,10 @@ metrics as a `<percentage>` of em. `size-adjust` (%, initial 100%) multiplies **
 metrics *including those overrides* - that clause is the load-bearing bit. It is why
 generators divide the raw metric by `unitsPerEm * sizeAdjust`, pre-compensating so
 ascent/descent land correctly after size-adjust re-multiplies. `size-adjust` itself
-is an average character **width** ratio (`xWidthAvg` / average advance), despite the
-name suggesting overall size. The next/font formula:
+is a general scale factor over all the fallback's metrics; generators *derive its
+value* from the average-advance (`xWidthAvg`) ratio between the two faces, so the
+scaled fallback occupies the same horizontal run as the webfont. The next/font
+formula:
 
 ```text
 sizeAdjust = (mainAvgWidth / mainUnitsPerEm) / (fallbackAvgWidth / fallbackUnitsPerEm)
@@ -71,9 +100,16 @@ descent-override = |mainDescent / (mainUnitsPerEm * sizeAdjust)|  as toFixed(2)%
 lineGap-override = |mainLineGap / (mainUnitsPerEm * sizeAdjust)|  as toFixed(2)%
 ```
 
+The element-level CSS property `font-size-adjust` (Baseline 2024) is a
+complement, not a replacement: it normalises **x-height** between whatever face
+is currently rendering and the declared size - useful when the swap's visual
+jar is x-height, since the descriptors above tune line-box metrics, not glyph
+proportions.
+
 - <https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/size-adjust> ·
   <https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/ascent-override> ·
-  <https://drafts.csswg.org/css-fonts-5/#size-adjust-desc>
+  <https://drafts.csswg.org/css-fonts-5/#size-adjust-desc> ·
+  <https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust>
 
 ## Generating the overrides (don't hand-compute)
 

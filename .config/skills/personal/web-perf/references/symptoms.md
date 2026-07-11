@@ -14,7 +14,7 @@ A. LAYOUT MOVES  (measurable shift -> CLS)
    A1  moves when a webfont loads         = metric-mismatch fallback
    A2  moves when an image/iframe loads   = unreserved box
    A3  moves when late content appears    = injected banner/consent/ad/async
-   A4  shifts once at hydration           = SSR vs client size mismatch
+   A4  shifts once at hydration           = initial-HTML vs client size mismatch
 
 B. ONLY APPEARANCE CHANGES  (no measurable shift)
    B1  text INVISIBLE then appears        = FOIT (font-display:block/auto)
@@ -22,7 +22,7 @@ B. ONLY APPEARANCE CHANGES  (no measurable shift)
    B3  section flashes unstyled then snaps = FOUC, late/async/code-split CSS
    B4  icons render as boxes/tofu, swap   = icon-font load
    B5  image pops to opacity 1            = lazy decode
-   B6  theme/active state flips at hydrate = SSR/client state mismatch (FART)
+   B6  theme/active state flips at hydrate = initial-HTML/client state mismatch (FART)
 
 C. NOTHING APPEARS YET  (blank-then-paint; timing, not shift/restyle)
    C1  long blank then full paint         = render-blocking CSS/JS or huge hydration bundle
@@ -84,14 +84,15 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 
 ### A4. Layout shifts once at hydration
 
-- The CLS instance of the SSR/client mismatch below (B6) - when the server-rendered
+- The CLS instance of the state mismatch below (B6) - when the initial markup's
   default and the client's real state differ *in size*. Same cause and fixes as B6;
   it just also moves layout. See B6.
-- **SSR-only class.** A4 and B6 both need a server-rendered default that a client
-  hydration step can then disagree with. Under full static prerender (no
-  hydration, or no client state feeding the markup) neither can occur - rule them
-  out first by asking whether the HTML is fixed at build or rendered/hydrated per
-  request.
+- **Needs client JS reconciling state against the initial HTML - not SSR.** A4
+  and B6 occur whenever client JS reconciles client-only state against initial
+  markup, whether that markup was server-rendered or fixed at build: a fully
+  static page whose theme `<script>` reads localStorage flashes identically.
+  The static-vs-SSR axis picks the verify tier (static-vs-ssr.md), not whether
+  this class can occur - what rules it out is the *absence* of reconciling JS.
 
 ---
 
@@ -177,13 +178,16 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 
 ### B6. A theme / highlighted / active state flips once at hydration (FART)
 
-- **Cause**: SSR and hydration disagree. The server can't read client-only state
-  (localStorage, `prefers-color-scheme`, `navigator.languages`) so it renders a
-  default; the client reads the real value on hydrate and flips theme/colour/
-  highlight once. Reading it in a post-mount effect (React `useEffect` or any
-  framework's equivalent) makes it WORSE (guaranteed post-hydration flash).
-  **SSR-only**: impossible under full static prerender with no hydration - if
-  there is no server-vs-client step, there is nothing to disagree.
+- **Cause**: the initial HTML and the client's real state disagree. The initial
+  markup - server-rendered *or* fixed at build - can't know client-only state
+  (localStorage, `prefers-color-scheme`, `navigator.languages`), so it ships a
+  default; client JS reads the real value and flips theme/colour/highlight
+  once. Reading it in a post-mount effect (React `useEffect` or any
+  framework's equivalent) makes it WORSE (guaranteed post-paint flash).
+  **Not SSR-only**: a fully static page with a localStorage theme `<script>`
+  flashes identically - what the class needs is client JS reconciling state
+  against the initial HTML, not a server. Only the *absence* of that
+  reconciling JS rules it out (static-vs-ssr.md).
 - **Fix**, in order: (1) make the value server-knowable - store the preference in a
   **cookie** so the server renders the correct state (any cookie-based preference -
   theme, locale - has no mismatch); (2) if it must live in localStorage, inject a
