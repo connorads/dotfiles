@@ -1,22 +1,26 @@
 ---
-// Minimal static Astro head - fonts self-hosted via @font-face, no preload,
-// no metric-matched fallback. The eval scenario: headings paint in the system
-// fallback then "thicken" to the webfont on first load. Fully prerendered, so
-// dist/*.html is the shipped bytes.
-import displayWoff2 from "../fonts/display-700.woff2?url";
+// Minimal static Astro head - font self-hosted from public/fonts via
+// @font-face, no preload, no metric-matched fallback. The eval scenario:
+// headings paint in the system fallback then "thicken" to the webfont on
+// first load. Fully prerendered, so dist/*.html is the shipped bytes.
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <title>Font swap fixture</title>
     <style is:global>
       @font-face {
         font-family: "Display";
-        font-weight: 100 900;
+        font-weight: 700;
         font-display: swap;
-        src: url(display-700.woff2) format("woff2");
+        src: url(/fonts/display-700.woff2) format("woff2");
       }
-      h1 { font-family: "Display", sans-serif; font-weight: 700; }
+      h1 {
+        font-family: "Display", sans-serif;
+        font-weight: 700;
+        font-size: 3rem;
+      }
     </style>
   </head>
   <body>

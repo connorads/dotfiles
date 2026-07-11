@@ -1,6 +1,6 @@
 {
   "skill_name": "web-perf",
-  "how_to_run": "Per writing-skills/references/evals.md: for each eval run the prompt with-skill and baseline (no skill, or the pre-rename first-load-web-perf version) in fresh parallel sessions. Grade the transcript against the assertions, not just the final answer - especially whether the agent invents a booted dev server for a static-prerender scenario (it should not) and whether it routes to the right reference. Evals 5 and 6 are the held-out trigger slice: score whether the skill FIRES at all, and it should not.",
+  "how_to_run": "Per writing-skills/references/evals.md: for each eval run the prompt with-skill and baseline (no skill, or the pre-rename first-load-web-perf version) in fresh parallel sessions. Grade the transcript against the assertions, not just the final answer - especially whether the agent invents a booted dev server for a static-prerender scenario (it should not) and whether it routes to the right reference. The held-out negative trigger slice is the evals with ids 5 and 6 (named held-out-negative-*): score whether the skill FIRES at all, and it should not.",
   "evals": [
     {
       "id": 1,
@@ -22,7 +22,7 @@
       "assertions": [
         "Fires and identifies the hydration mismatch class (symptoms.md B6 / FART), not a font or image issue",
         "Recommends making the value server-knowable via a cookie first, or a synchronous blocking <script> in <head> before paint if it must stay in localStorage; warns that reading it in a post-mount effect makes it worse",
-        "Frames it as an SSR-only class (static-vs-ssr.md): would be impossible under full prerender with no hydration",
+        "Identifies the determinant correctly: the class needs client JS reconciling state against the initial HTML (a static page with a localStorage theme script flashes identically); does NOT call it SSR-only, and routes verification by tier (static-vs-ssr.md)",
         "Verifies per Tier 1 (boot the route, cold-cache with a non-default stored theme) since the head is rendered per request"
       ]
     },
@@ -67,6 +67,54 @@
       "assertions": [
         "Does NOT fire: bundle-size analysis (tree-shaking, chunk budgets) is out of scope per the description",
         "Near-miss guard: shares perf vocabulary (lighthouse, load) but needs bundle analysis, not first-load loading fixes"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "astro-lazy-lcp-hero",
+      "fixture": "",
+      "prompt": "astro site. the full-screen hero photo at the top of the homepage shows up noticeably late - page paints, then the hero pops in a second later. we use the <Image> component from astro:assets with width/height set. lighthouse says 'LCP image was lazily loaded'. what gives?",
+      "assertions": [
+        "Fires and identifies that astro:assets <Image> is lazy BY DEFAULT (loading=\"lazy\" decoding=\"async\") - the hero is lazy without anyone writing loading=\"lazy\"",
+        "Recommends the priority prop (Astro 5.10+: loading=\"eager\" + decoding=\"sync\" + fetchpriority=\"high\") on the one LCP image - or the equivalent explicit attributes",
+        "Does not tell the user to add loading=\"eager\" to native <img> elements as if eager were not already the HTML default",
+        "Keeps the box reserved (width/height stay) so the fix does not introduce CLS"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "hosted-google-fonts-waterfall",
+      "fixture": "",
+      "prompt": "our text is invisible for ages on first load then swaps in. we load Google Fonts with @import url('https://fonts.googleapis.com/css2?family=Inter') at the top of src/styles.css. how do we fix the font loading?",
+      "assertions": [
+        "Fires and identifies the @import-inside-CSS chain as preload-scanner-opaque: styles.css must be fetched and parsed before the fonts CSS is even requested (3 serialised hops)",
+        "Spots that the css2 URL has no display= param, so font-display defaults to auto (block-like FOIT) - &display=swap must be REQUESTED",
+        "Recommends parallel <link> tags with the correct preconnect pair - fonts.googleapis.com without crossorigin, fonts.gstatic.com with crossorigin, separate tags - and/or migrating to self-hosting (@fontsource)",
+        "Does NOT recommend hand-preloading a fonts.gstatic.com woff2 URL (they vary by UA/response)"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "tanstack-start-ssr-verification",
+      "fixture": "",
+      "prompt": "tanstack start app on cloudflare workers, SSR. i added font preloads to the root route's head() and want a repeatable check in CI that they actually ship correctly. how do i assert on this?",
+      "assertions": [
+        "Fires and routes to Tier 1: the head is rendered per request, so assert on a BOOTED route's bytes (fetch/curl the running app), not on source files",
+        "Does NOT invent static dist/*.html files to grep - there are none on this stack",
+        "Uses or adapts scripts/check-head.mjs (or an equivalent booted-route assertion): preload count within a min/max budget, anonymous-only crossorigin, duplicate-href detection",
+        "Notes the structural invariants are the same as the static tier - only the artifact source differs"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "next-fade-wrapper-judgement",
+      "fixture": "",
+      "prompt": "next.js app. our hero uses next/image with priority, but the image still shows up late and sometimes not at all until you scroll. we wrap it in a <FadeImage> component that renders the image at opacity 0 and fades it in from an onLoad handler. also our globals.css re-declares body { font-family: Inter } to match the next/font setup. anything wrong here?",
+      "assertions": [
+        "Does NOT defer-and-stop just because the stack is Next: framework deferral covers next/image's own output, not app code wrapping it",
+        "Flags the opacity-0 onLoad wrapper as the defect: invisible with no-JS, racy on warm cache (cache-hit-before-hydration), and it defeats the priority/fetchpriority the framework set up",
+        "Recommends removing the JS-gated reveal (CSS entrance + eager/priority load instead)",
+        "Flags the raw font-family re-declaration: naming the family by string drops the next/font metric-fallback stack (use the next/font className/variable instead); does not hand-roll @font-face/preloads that next/font already provides"
       ]
     }
   ]
