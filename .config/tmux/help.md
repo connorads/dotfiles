@@ -45,6 +45,18 @@
 | `Ctrl+b x` | kill pane |
 | `Ctrl+b Y` | copy active pane's id·tty·cmd·cwd to clipboard (yank; for join-pane/scripts) |
 
+## Floating panes
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+b \`` | scratch shell · centred float (70%) |
+| `Ctrl+b ~` | scratch shell · small top-right float |
+| `Ctrl+b *` | new float, stock geometry (reuses window's last float position/size) |
+
+Floats are real panes: persistent, non-modal, mouse-drag to move/resize, kill
+with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
+`big`, `tl`/`tr`/`bl`/`br` corners), e.g. `flt tr btm`.
+
 ## Popups
 
 | Key | Action |
@@ -53,7 +65,6 @@
 | `Ctrl+b Alt+Shift+W` | worktree picker: repo + status markers (`open`/`dirty`/`merged`/`ahead N`/`behind N`) + git log/status preview; enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; merged branch deleted, unmerged kept) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
-| `Ctrl+b \`` | scratch shell (ephemeral popup) |
 | `Ctrl+b Alt+f` | function/alias search |
 | `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
