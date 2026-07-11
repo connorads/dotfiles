@@ -70,6 +70,30 @@ Configure locale in `_typos.toml`:
 locale = "en-gb"   # or "en-us"
 ```
 
+**Locale mode rewrites US-spelled identifiers in code.** With `en-gb`, typos
+"corrects" US spellings even inside string literals — CLI flags, protocol/schema
+names, CSS keywords, API fields — which can silently break the build or the wire.
+Allow-list each as an identity map so the word maps to itself (i.e. is left
+alone). Keep a `why` comment per entry; describe the class you keep hitting, not
+a one-off:
+
+```toml
+[default.extend-words]
+# US-spelled EXTERNAL identifiers that must not be en-gb "corrected".
+flavor = "flavor"               # pyftsubset --flavor / --flavour is "Unknown option"
+color = "color"                 # CSS + countless API fields; -> "colour" breaks them
+center = "center"               # CSS keyword (text-align, etc.)
+behavior = "behavior"           # scrollIntoView({ behavior }), API fields
+Organization = "Organization"   # schema.org @type; -> "Organisation" is invalid JSON-LD
+authorization = "authorization" # HTTP header; -> "authorisation" fails auth
+```
+
+Trade-off: `extend-words` is **repo-global** — an entry also suppresses a genuine
+en-gb correction of that word in prose (e.g. `color` in body text stays
+US-spelled). That is usually the right call for identifier-heavy repos; if a word
+is a real problem only in code, prefer scoping via `[type.<ext>]` /
+`extend-glob` overrides so prose still gets corrected.
+
 ### Secret detection (gitleaks)
 
 ```pkl
