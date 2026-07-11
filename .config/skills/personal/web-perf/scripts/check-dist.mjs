@@ -174,12 +174,16 @@ for (const file of pages) {
 
 // Subset woff2 must stay subset-sized: catch a regeneration that lost the
 // subsetting (e.g. dropped --unicodes) and shipped the full face.
+// Skipped entirely when no ceilings are configured (a build with inlined CSS
+// and public/ fonts may legitimately emit no hashed-asset dir at all).
 const assetDir = join(dist, HASHED_ASSET_DIR);
 let assetFiles = null;
-try {
-  assetFiles = readdirSync(assetDir);
-} catch {
-  check(HASHED_ASSET_DIR, "hashed asset dir exists in dist", false);
+if (Object.keys(FONT_SIZE_CEILINGS).length > 0) {
+  try {
+    assetFiles = readdirSync(assetDir);
+  } catch {
+    check(HASHED_ASSET_DIR, "hashed asset dir exists in dist", false);
+  }
 }
 if (assetFiles) {
   for (const [stem, ceiling] of Object.entries(FONT_SIZE_CEILINGS)) {
