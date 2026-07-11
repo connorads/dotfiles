@@ -1,0 +1,26 @@
+---
+// Minimal static Astro head - fonts self-hosted via @font-face, no preload,
+// no metric-matched fallback. The eval scenario: headings paint in the system
+// fallback then "thicken" to the webfont on first load. Fully prerendered, so
+// dist/*.html is the shipped bytes.
+import displayWoff2 from "../fonts/display-700.woff2?url";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style is:global>
+      @font-face {
+        font-family: "Display";
+        font-weight: 100 900;
+        font-display: swap;
+        src: url(display-700.woff2) format("woff2");
+      }
+      h1 { font-family: "Display", sans-serif; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Headline that flashes then thickens</h1>
+    <slot />
+  </body>
+</html>
