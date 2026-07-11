@@ -135,13 +135,45 @@ one. Two rules, plus a host default that quietly breaks both:
 - **Non-hashed assets (favicons, `og.png`, manifest) -> a short explicit TTL**
   (e.g. `max-age=86400`) - they can change under a stable name, so you want
   revalidation, but not on *every* view.
+- **Fonts at stable `public/` paths need their own explicit long-TTL rule.**
+  A font served from `public/fonts/inter-400.woff2` has no content hash, so it
+  can never be immutable-by-hash - and a `_headers` file whose only
+  Cache-Control rule covers the hashed dir (`/_astro/*`) leaves every font
+  revalidating on repeat views. Add an explicit rule for the font path (e.g.
+  `/fonts/*` with a long `max-age`; version the *path* when the file changes),
+  or move fonts into the hashed pipeline.
 - **The host default often revalidates everything.** Cloudflare Workers static
   assets default to `Cache-Control: public, max-age=0, must-revalidate` (+ an
   ETag), so without an explicit rule every repeat view sends a conditional
   request for every asset and waits for the 304 - fine for freshness, needless
-  latency for hashed files. Set the two rules above in a `_headers` file (which
+  latency for hashed files. Set the rules above in a `_headers` file (which
   overrides the default for asset responses, though **not** for Worker-generated
   responses - SSR/`run_worker_first` must set headers in code). Check your
   platform's default before assuming assets are cached.
+- **OpenNext on Workers: `next.config` `headers()` does NOT cover static
+  assets.** Assets are served by Workers static-assets without the Worker
+  running in front of them, so config-level headers never apply and the
+  `max-age=0, must-revalidate` default stands - including for the hashed
+  `/_next/static/*` files. Fix: a `public/_headers` file with
+  `/_next/static/*` -> `public, max-age=31536000, immutable` (alternative:
+  `run_worker_first` routes assets through the Worker so code-set headers
+  apply, at the cost of a Worker invocation per asset).
+- **Plugin-managed Worker deploys own the asset headers.** With
+  `@cloudflare/vite-plugin`, alchemy, nitro presets and similar, the deploy
+  layer emits/controls asset-header config - find which layer owns it
+  (`_headers`, plugin option, or generated wrangler config) and override
+  there rather than adding a second, ignored mechanism.
+- **bfcache decides whether back/forward is instant.** A back/forward
+  navigation served from bfcache repaints instantly with zero first-load jank;
+  a page blocked from bfcache replays the full cold-load sequence on every
+  back/forward. `Cache-Control: no-store` on the HTML blocks bfcache in
+  Firefox/Safari; Chrome (since the 2025 CCNS rollout) does bfcache `no-store`
+  pages under safeguards (evicted on cookie/auth changes, shorter lifetime).
+  `no-cache` / short `max-age` never blocked it. `unload` handlers (often
+  third-party analytics) still disqualify the page - use `pagehide` instead
+  (Chrome is deprecating `unload`). Audit: DevTools > Application > Back/forward
+  cache.
 - <https://developers.cloudflare.com/workers/static-assets/headers/> ·
-  <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control>
+  <https://opennext.js.org/cloudflare> ·
+  <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control> ·
+  <https://web.dev/articles/bfcache>
