@@ -5,8 +5,11 @@ Use this reference for common failures seen while setting up Workers Builds.
 ## Contents
 
 - [`packages field missing or empty`](#packages-field-missing-or-empty)
+- [`Invalid package manager specification`](#invalid-package-manager-specification)
+- [`ERR_PNPM_IGNORED_BUILDS`](#err_pnpm_ignored_builds)
 - [`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`](#err_pnpm_lockfile_config_mismatch)
 - [`ERR_PNPM_NOTHING_TO_DEPLOY`](#err_pnpm_nothing_to_deploy)
+- [workers.dev Shows Disabled](#workersdev-shows-disabled)
 - [`Resource not found`](#resource-not-found)
 - [Empty Worker Project](#empty-worker-project)
 - [Build Cache Problems](#build-cache-problems)
@@ -30,6 +33,55 @@ Then run:
 
 ```bash
 pnpm install --frozen-lockfile
+```
+
+## `Invalid package manager specification`
+
+Log line: `Invalid package manager specification in package.json (<pm>@^x.y.z);
+expected a semver version`, followed by a failed install-tools step.
+
+Meaning: Workers Builds provisions the package manager via corepack, and
+corepack requires `packageManager` to be an exact semver version. Ranges fail;
+pnpm itself sometimes writes a range or a `devEngines.packageManager` object.
+
+Fix in `package.json`:
+
+- Set `"packageManager": "<pm>@<exact.version>"` (for example `pnpm@11.11.0`).
+- Remove `devEngines.packageManager` if it duplicates `packageManager` with a
+  different or ranged version (pnpm warns and one of them is ignored).
+
+## `ERR_PNPM_IGNORED_BUILDS`
+
+Log line: `Ignored build scripts: <pkg>@<version>, ...` then
+`Failed: error occurred while installing tools or dependencies`.
+
+Meaning: pnpm >= 10 blocks dependency install scripts by default, and in
+strict-dep-builds environments (Workers Builds included) undecided blocked
+scripts fail the install instead of warning. Wrangler's own deps (`esbuild`,
+`sharp`, `workerd`) trigger this.
+
+Fix: record an explicit decision per package in `pnpm-workspace.yaml`:
+
+```yaml
+allowBuilds:
+  esbuild: false
+  sharp: false
+  workerd: false
+```
+
+- `false` keeps the script blocked but marks it intentional — the error goes
+  away. Prefer this: esbuild/sharp/workerd ship platform binaries as optional
+  dependencies and work without their scripts.
+- Only set `true` if the package genuinely needs its script, and treat that as
+  a security decision for the user.
+- pnpm 11 removed `ignoredBuiltDependencies`/`onlyBuiltDependencies` and the
+  whole `package.json#pnpm` settings block; settings written there are silently
+  ignored. Use `pnpm-workspace.yaml`.
+
+Reproduce CI behaviour locally (global pnpm config often masks it):
+
+```bash
+HOME=/tmp/clean XDG_CONFIG_HOME=/tmp/clean pnpm install --frozen-lockfile
 ```
 
 ## `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`
@@ -151,6 +203,30 @@ curl --resolve <hostname>:443:<cloudflare-edge-ip> https://<hostname>/
 
 If Access protects the hostname, success for unauthenticated verification is a
 redirect/challenge, not the application HTML.
+
+## workers.dev Shows Disabled
+
+Dashboard shows `workers.dev: Disabled` next to the expected
+`<worker>.<subdomain>.workers.dev` hostname.
+
+Meaning: a Git-connected Worker created through the dashboard has no
+workers.dev route until the first successful deploy flips it on. Often the
+"problem" resolves itself once a build goes green — check the actual state
+before mutating:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' https://<worker>.<subdomain>.workers.dev/
+# API: GET /accounts/<account-id>/workers/scripts/<worker>/subdomain
+```
+
+Pin the route in Wrangler config so later deploys cannot flip it back off:
+
+```jsonc
+{
+  "workers_dev": true,
+  "preview_urls": true
+}
+```
 
 ## Static Asset Routing Problems
 
