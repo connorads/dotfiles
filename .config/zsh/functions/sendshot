@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# sendshot: transfer screenshot to remote machine over SSH
+# sendshot: transfer a clipboard image or image file over SSH
 emulate -L zsh
 
 local usage="Usage: sendshot [--copy] [--host HOST] <host> [file]
@@ -95,14 +95,14 @@ if [[ -n "$file" ]]; then
   fi
   tmpfile="$file"
 elif [[ "$(uname)" == "Darwin" ]]; then
-  if ! command -v pngpaste >/dev/null 2>&1; then
-    print -u2 -- "sendshot: pngpaste not found — install via nix (darwin config)"
+  if ! command -v imagepaste >/dev/null 2>&1; then
+    print -u2 -- "sendshot: imagepaste not found - rebuild the darwin config"
     return 1
   fi
-  tmpfile="${TMPDIR:-/tmp}/sendshot-$$.png"
   cleanup_tmp=1
-  if ! pngpaste "$tmpfile" >/dev/null 2>&1; then
-    rm -f "$tmpfile"
+  local tmp_stem="${TMPDIR:-/tmp}/sendshot-$$"
+  if ! tmpfile="$(imagepaste "$tmp_stem" 2>/dev/null)"; then
+    rm -f "$tmp_stem.gif" "$tmp_stem.png"
     print -u2 -- "sendshot: no image in clipboard"
     return 1
   fi
@@ -118,8 +118,8 @@ else
 fi
 
 local filename="${tmpfile:t}"
-if [[ "$filename" == sendshot-*.png ]]; then
-  filename="sendshot-$(date +%s).png"
+if [[ "$filename" == sendshot-*.* ]]; then
+  filename="sendshot-$(date +%s).${filename:e}"
 fi
 filename="${filename// /-}"
 

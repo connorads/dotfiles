@@ -18,7 +18,10 @@
   ...
 }:
 {
-  imports = [ ./biokc.nix ];
+  imports = [
+    ./biokc.nix
+    ./imagepaste.nix
+  ];
 
   # Converge LocalHostName so bare `drs`/`up` resolve to this config after the
   # first explicit-`#attr` bootstrap (mirrors darwin-server.nix). networking.hostName

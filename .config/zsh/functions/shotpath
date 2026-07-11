@@ -104,7 +104,7 @@ _pick_host() {
   } | awk '!seen[$0]++')"
 
   if command -v fzf >/dev/null 2>&1 && [[ -n "$hosts" ]] && { [[ "${SHOTPATH_PICKER:-}" == 1 ]] || [[ -t 0 && -t 1 ]]; }; then
-    picked="$(print -r -- "$hosts" | fzf --prompt='Upload screenshot to host: ' --height=40% --reverse --query="${SENDSHOT_HOST:-}")" || return 1
+    picked="$(print -r -- "$hosts" | fzf --prompt='Upload image to host: ' --height=40% --reverse --query="${SENDSHOT_HOST:-}")" || return 1
     [[ -n "$picked" ]] || return 1
     print -r -- "$picked"
     return 0
@@ -121,7 +121,8 @@ _pick_host() {
 
 _capture_local_image() {
   local out_dir="${SHOTPATH_DIR:-${TMPDIR:-/tmp}/screenshots}"
-  local out="$out_dir/shotpath-$(date +%s).png"
+  local out_stem="$out_dir/shotpath-$(date +%s)"
+  local out=""
   mkdir -p "$out_dir"
 
   if [[ -n "$file" ]]; then
@@ -134,29 +135,31 @@ _capture_local_image() {
   fi
 
   if [[ "$(uname)" == "Darwin" ]]; then
-    if ! command -v pngpaste >/dev/null 2>&1; then
-      print -u2 -- "shotpath: pngpaste not found — install via nix (darwin config)"
+    if ! command -v imagepaste >/dev/null 2>&1; then
+      print -u2 -- "shotpath: imagepaste not found - rebuild the darwin config"
       return 1
     fi
-    if ! pngpaste "$out" >/dev/null 2>&1; then
-      rm -f "$out"
+    if ! out="$(imagepaste "$out_stem" 2>/dev/null)"; then
+      rm -f "$out_stem.gif" "$out_stem.png"
       print -u2 -- "shotpath: no image in clipboard"
       return 1
     fi
   elif [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
+    out="$out_stem.png"
     if ! wl-paste --type image/png >"$out" 2>/dev/null; then
       rm -f "$out"
       print -u2 -- "shotpath: no image in clipboard"
       return 1
     fi
   elif command -v xclip >/dev/null 2>&1; then
+    out="$out_stem.png"
     if ! xclip -selection clipboard -t image/png -o >"$out" 2>/dev/null; then
       rm -f "$out"
       print -u2 -- "shotpath: no image in clipboard"
       return 1
     fi
   else
-    print -u2 -- "shotpath: no image clipboard reader found (pngpaste/wl-paste/xclip)"
+    print -u2 -- "shotpath: no image clipboard reader found (imagepaste/wl-paste/xclip)"
     return 1
   fi
 
