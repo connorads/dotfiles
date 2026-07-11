@@ -157,3 +157,16 @@ That root question routes the whole diagnosis (full tree + fixes in
 - `references/verify.md` - how to prove a fix cold-cache: Tier 0 asserts on the
   static `dist/*.html` bytes; Tier 1 boots the route for SSR; shared CLS probe +
   measurement-tool gotchas. The lens no other loading skill carries.
+
+**Templates (read-as-reference, brand-agnostic - adapt per project):**
+
+- `scripts/check-dist.mjs` - Tier-0 build-output guard: preload budget,
+  crossorigin, preload<->@font-face href match, no stylesheet link, metric
+  fallback presence, subset byte ceilings, scoped glyph coverage, immutable cache
+  headers. Wire into CI after the build.
+- `scripts/font-subset.config.mjs` - the single shared coverage module the subset
+  generator and `check-dist.mjs` both import, so the shipped woff2 and the
+  assertion can't drift.
+
+`evals/` holds the behaviour eval set (see writing-skills); it is intentionally
+not routed from the workflow above.
