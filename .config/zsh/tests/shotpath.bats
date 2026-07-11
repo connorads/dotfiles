@@ -24,10 +24,21 @@ cat >"$TEST_CLIPBOARD"
 EOF
 }
 
-write_successful_pngpaste() {
-  write_stub pngpaste <<'EOF'
+write_successful_png_imagepaste() {
+  write_stub imagepaste <<'EOF'
 #!/usr/bin/env bash
-printf 'PNG' >"$1"
+out="$1.png"
+printf 'PNG' >"$out"
+printf '%s\n' "$out"
+EOF
+}
+
+write_successful_gif_imagepaste() {
+  write_stub imagepaste <<'EOF'
+#!/usr/bin/env bash
+out="$1.gif"
+printf 'GIF89a' >"$out"
+printf '%s\n' "$out"
 EOF
 }
 
@@ -43,7 +54,7 @@ EOF
 }
 
 @test "sendshot uploads clipboard image and copies remote path on request" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
   write_remote_stubs
 
   run_zsh_function "$FUNCTIONS_DIR/sendshot" --copy --host dev
@@ -58,7 +69,7 @@ EOF
 }
 
 @test "shotpath without host saves local image path and copies it" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
 
   run_zsh_function "$FUNCTIONS_DIR/shotpath"
 
@@ -69,8 +80,34 @@ EOF
   [ "$(cat "$TEST_CLIPBOARD")" = "$expected" ]
 }
 
+@test "shotpath preserves GIF clipboard data locally" {
+  write_successful_gif_imagepaste
+
+  run_zsh_function "$FUNCTIONS_DIR/shotpath"
+
+  [ "$status" -eq 0 ]
+  local expected="$TMPDIR/screenshots/shotpath-1234567890.gif"
+  [ "${lines[0]}" = "$expected" ]
+  [ "$(cat "$expected")" = "GIF89a" ]
+  [ "$(cat "$TEST_CLIPBOARD")" = "$expected" ]
+}
+
+@test "shotpath removes a partial GIF when clipboard capture fails" {
+  write_stub imagepaste <<'EOF'
+#!/usr/bin/env bash
+printf 'partial' >"$1.gif"
+exit 1
+EOF
+
+  run_zsh_function "$FUNCTIONS_DIR/shotpath"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no image in clipboard"* ]]
+  [ ! -e "$TMPDIR/screenshots/shotpath-1234567890.gif" ]
+}
+
 @test "shotpath remote uses SENDSHOT_HOST without hardcoding a host" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
   write_remote_stubs
   export SENDSHOT_HOST=rpi5
 
@@ -83,7 +120,7 @@ EOF
 }
 
 @test "shotpath explicit host uploads and copies remote path" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
   write_remote_stubs
 
   run_zsh_function "$FUNCTIONS_DIR/shotpath" dev
@@ -94,8 +131,33 @@ EOF
   grep -F "ssh dev mkdir -p '/tmp/screenshots' && chmod 700 '/tmp/screenshots'" "$TEST_LOG"
 }
 
+@test "shotpath remote preserves GIF extension from clipboard capture" {
+  write_successful_gif_imagepaste
+  write_remote_stubs
+
+  run_zsh_function "$FUNCTIONS_DIR/shotpath" dev
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/tmp/screenshots/sendshot-1234567890.gif"* ]]
+  [ "$(cat "$TEST_CLIPBOARD")" = "/tmp/screenshots/sendshot-1234567890.gif" ]
+  grep -F "dev:/tmp/screenshots/sendshot-1234567890.gif" "$TEST_LOG"
+  [ -z "$(find "$TMPDIR" -maxdepth 1 -name 'sendshot-*.gif' -print -quit)" ]
+}
+
+@test "sendshot preserves an explicit GIF filename" {
+  write_remote_stubs
+  local source="$BATS_TEST_TMPDIR/animated.gif"
+  printf 'GIF89a' >"$source"
+
+  run_zsh_function "$FUNCTIONS_DIR/sendshot" --host dev "$source"
+
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "/tmp/screenshots/animated.gif" ]
+  grep -F "$source dev:/tmp/screenshots/animated.gif" "$TEST_LOG"
+}
+
 @test "shotpath remote offers ssh config hosts through fzf when interactive" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
   write_remote_stubs
   mkdir -p "$HOME/.ssh"
   cat >"$HOME/.ssh/config" <<'EOF'
@@ -115,12 +177,12 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"/tmp/screenshots/sendshot-1234567890.png"* ]]
   [ "$(cat "$TEST_CLIPBOARD")" = "/tmp/screenshots/sendshot-1234567890.png" ]
-  grep -F "fzf --prompt=Upload screenshot to host:  --height=40% --reverse --query=" "$TEST_LOG"
+  grep -F "fzf --prompt=Upload image to host:  --height=40% --reverse --query=" "$TEST_LOG"
   grep -F "ssh rpi5 mkdir -p '/tmp/screenshots' && chmod 700 '/tmp/screenshots'" "$TEST_LOG"
 }
 
 @test "shotpath remote fails clearly when no host is available non-interactively" {
-  write_successful_pngpaste
+  write_successful_png_imagepaste
 
   run_zsh_function "$FUNCTIONS_DIR/shotpath" --remote
 

@@ -44,6 +44,20 @@ EOF
   grep -F "tmux display-message -d 2000 shotpath ✓ pasted shotpath-123.png" "$TEST_LOG"
 }
 
+@test "shotpath-copy pastes a local GIF path into the originating pane" {
+  write_stub shotpath <<'EOF'
+#!/usr/bin/env bash
+echo "/tmp/screenshots/shotpath-123.gif"
+EOF
+
+  run "$COPY_SCRIPT" "%3"
+
+  [ "$status" -eq 0 ]
+  grep -F "tmux set-buffer -b shotpath -- /tmp/screenshots/shotpath-123.gif" "$TEST_LOG"
+  grep -F "tmux paste-buffer -p -d -b shotpath -t %3" "$TEST_LOG"
+  grep -F "tmux display-message -d 2000 shotpath ✓ pasted shotpath-123.gif" "$TEST_LOG"
+}
+
 @test "shotpath-copy without pane arg skips paste and reports copied" {
   write_stub shotpath <<'EOF'
 #!/usr/bin/env bash
@@ -114,6 +128,20 @@ EOF
   grep -F "tmux set-buffer -b shotpath -- /tmp/screenshots/sendshot-123.png" "$TEST_LOG"
   grep -F "tmux paste-buffer -p -d -b shotpath -t %7" "$TEST_LOG"
   grep -F "tmux display-message -d 3000 shotpath ✓ pasted /tmp/screenshots/sendshot-123.png" "$TEST_LOG"
+}
+
+@test "shotpath-remote-popup pastes an uploaded GIF path into the originating pane" {
+  write_stub shotpath <<'EOF'
+#!/usr/bin/env bash
+echo "/tmp/screenshots/sendshot-123.gif"
+EOF
+
+  run "$REMOTE_SCRIPT" </dev/null
+
+  [ "$status" -eq 0 ]
+  grep -F "tmux set-buffer -b shotpath -- /tmp/screenshots/sendshot-123.gif" "$TEST_LOG"
+  grep -F "tmux paste-buffer -p -d -b shotpath -t %7" "$TEST_LOG"
+  grep -F "tmux display-message -d 3000 shotpath ✓ pasted /tmp/screenshots/sendshot-123.gif" "$TEST_LOG"
 }
 
 @test "shotpath-remote-popup falls back to copied when the paste fails" {

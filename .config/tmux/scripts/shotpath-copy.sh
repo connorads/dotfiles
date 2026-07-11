@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shotpath-copy.sh: fire-and-forget local shotpath (prefix + Alt+i), invoked via
 # run-shell -b — no popup, no interactive shell. shotpath saves the clipboard
-# image and puts the full path on the clipboard; this wrapper then pastes the
+# PNG or GIF and puts the full path on the clipboard; this wrapper then pastes the
 # path into the originating pane ($1 = pane id, expanded from #{pane_id} at
 # press time) via a bracketed paste, and surfaces the outcome on the status
 # line (basename is enough signal — the full path is in the pane/clipboard).

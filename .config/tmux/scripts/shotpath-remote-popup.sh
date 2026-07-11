@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shotpath-remote-popup.sh: popup body for the remote case (prefix + Alt+I).
+# shotpath-remote-popup.sh: upload a clipboard PNG/GIF (prefix + Alt+I).
 # A popup is justified here — the fzf host picker and ssh prompts need a tty.
 # On success the remote path is pasted into the origin pane (bracketed paste;
 # clipboard already holds it as the fallback) and the popup exits 0 so
