@@ -54,6 +54,11 @@ const FONT_SIZE_CEILINGS = {
 };
 const HASHED_ASSET_DIR = "_astro"; // dir holding content-hashed assets
 const HEADERS_FILE = "_headers"; // platform header-rules file, if any
+// Fonts served from stable public/ paths carry no content hash, so they can
+// never be immutable-by-hash - they need their own explicit long-TTL rule in
+// the headers file (version the PATH when the file changes). Set to that
+// rule's path pattern (e.g. "/fonts/*"); null when all fonts ship hashed.
+const PUBLIC_FONT_PATH = null;
 // -----------------------------------------------------------------------------
 
 const failures = [];
@@ -207,6 +212,26 @@ if (headers) {
     new RegExp(`^/${HASHED_ASSET_DIR}/\\*$`, "m").test(headers) &&
       headers.includes("immutable"),
   );
+  if (PUBLIC_FONT_PATH) {
+    // The rule's block = indented lines under the matching path line; it must
+    // set a long max-age (threshold here: 30 days - adapt per project).
+    const lines = headers.split("\n");
+    const start = lines.findIndex((l) => l.trim() === PUBLIC_FONT_PATH);
+    let longTtl = false;
+    for (
+      let i = start + 1;
+      start !== -1 && i < lines.length && /^\s/.test(lines[i]);
+      i++
+    ) {
+      const age = lines[i].match(/max-age=(\d+)/);
+      if (age && Number(age[1]) >= 30 * 86_400) longTtl = true;
+    }
+    check(
+      HEADERS_FILE,
+      `public font path has a long-TTL rule: ${PUBLIC_FONT_PATH}`,
+      longTtl,
+    );
+  }
 }
 
 if (failures.length > 0) {
