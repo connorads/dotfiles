@@ -5,9 +5,14 @@ browser's, so they hold on any stack - static, SPA, or SSR.
 
 ## Rules
 
-- **Eager-load above-the-fold decorative images.** `loading="eager"` starts the
-  fetch immediately instead of the deferred lazy one-by-one decode - **this** is the
-  anti-pop lever. Keep below-the-fold images lazy (the default).
+- **Never lazy-load above-the-fold / LCP images.** That is the anti-pop lever.
+  On native `<img>`, **eager is the HTML default** - adding `loading="eager"`
+  only changes behaviour where something set the image lazy: a CMS, a lazy-load
+  lib, or a framework component (astro:assets `<Image>` defaults to
+  `loading="lazy" decoding="async"`). A lazy above-the-fold image defers its
+  fetch until layout proves it in-viewport, so images pop in one by one. Give
+  below-the-fold images an explicit `loading="lazy"` - lazy is opt-in, not free
+  by default.
 - **`decoding` does NOT sync decode to first paint.** It is only a hint about
   whether to wait for the image to decode before presenting *other* content. Per the
   HTML spec: `async` = "decode asynchronously to avoid delaying presentation of other

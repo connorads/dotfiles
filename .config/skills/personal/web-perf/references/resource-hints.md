@@ -6,6 +6,10 @@
 > adds the *why* and the ordering/matching/budget gotchas that skill omits, NOT the
 > API table.
 
+**Prefetch boundary**: speculative loading of the *next* navigation is out of
+this skill's first-load scope. If a project needs it, use the Speculation
+Rules API, not legacy `<link rel=prefetch>`/`rel=prerender`.
+
 ## What this adds over the vercel skill
 
 - **crossOrigin on font preloads** - see fonts.md; a missing `crossorigin` causes a
@@ -74,10 +78,14 @@ custom/backend non-HTML entries (where you also `import 'vite/modulepreload-poly
 The Worker does NOT send 103 itself. Attach a standard
 `Link: </file.woff2>; rel=preload; as=font` header to your normal 200/301/302 HTML
 response; Cloudflare's Early Hints feature harvests + caches those Link headers (keyed
-by URI, query ignored) and replays a cached `103 Early Hints` BEFORE the request reaches
-the Worker. Enable via dashboard Speed > Optimization > Content Optimization > Early
-Hints (zone-level, not on `workers.dev`). It **works for dynamic/uncacheable Worker
-responses** precisely because there is a render-latency gap. Eligibility:
+by URI, query ignored) and replays a cached `103 Early Hints` without waiting for the
+Worker to generate the response. Enable via dashboard Speed > Optimization > Content
+Optimization > Early Hints (zone-level, not on `workers.dev`). It **works for
+dynamic/uncacheable Worker responses** precisely because there is a render-latency gap.
+Requires HTTP/2 or HTTP/3 and applies to navigation requests. Browser support is now
+broad, but per-browser directive handling varies - some browsers act on the hints as
+preconnect-only rather than full preloads - so treat 103 as an accelerator, never the
+only delivery path for a hint. Eligibility:
 `.html`/`.htm`/`.php` or no extension, 200/301/302 only; keep Link headers under ~8KB.
 Responsive `imagesrcset` preloads do NOT work here (or in HTTP-header preload).
 
