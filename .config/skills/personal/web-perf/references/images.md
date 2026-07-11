@@ -101,6 +101,30 @@ SKIPPED, so order matters; the `<img>` is mandatory (it renders and is the fallb
 - <https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images> ·
   <https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/picture>
 
+### Astro anti-patterns (astro:assets)
+
+- **`<img src={img.src}>` throws the optimisation away.** Importing via
+  astro:assets and then rendering a raw `<img>` keeps width/height (no CLS)
+  but silently loses srcset generation and AVIF/WebP format negotiation - the
+  original file ships to every viewport. Use `<Image>`/`<Picture>` from
+  `astro:assets` instead.
+- **`<Image>` is lazy by default** (`loading="lazy" decoding="async"`). For
+  the one LCP image use the `priority` prop (5.10+): it sets
+  `loading="eager"` + `decoding="sync"` + `fetchpriority="high"` in one flag.
+
+## Animated GIFs: convert to video
+
+A multi-MB animated GIF used as hero/LCP media is a byte-weight problem none
+of the levers above touch - `decoding`, eager loading and `fetchpriority`
+change *when* bytes arrive, not how many. Convert to
+`<video autoplay muted loop playsinline poster="first-frame.jpg">` (H.264/WebM
+is routinely 10x+ smaller than GIF), or ship a first-frame poster image and
+load the animation on interaction. `muted` + `playsinline` are what allow
+autoplay on iOS. Reserve the box exactly as for images (width/height or
+`aspect-ratio`).
+
+- <https://web.dev/articles/replace-gifs-with-videos>
+
 ## Placeholders (LQIP) - and when to skip them
 
 Graded cheapest -> priciest: **dominant-colour** (single `background-color`, no

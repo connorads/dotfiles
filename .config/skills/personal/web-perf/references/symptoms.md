@@ -98,6 +98,19 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 
 ## B. Only appearance changes (no shift)
 
+**Gate before the font branches (B1/B2/B4): confirm a webfont is actually
+loaded.** Check for an `@font-face` (own CSS or @fontsource import) or a CDN
+stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
+
+- **No webfont at all** (pure system-font stack): there is no font jank to
+  chase - and no reason to add a webfont to "fix" anything (fonts.md).
+- **Family named but never delivered**: a `font-family` in CSS or a Tailwind
+  v4 `@theme` `--font-*` token whose face is never loaded renders the fallback
+  permanently and silently - **no swap event ever fires**, so it presents as
+  "the font looks wrong", not a flash. It is a dead token or missing delivery:
+  deliver the face (self-host per fonts.md) or remove the token. Registering
+  the token is not loading the font (framework-automation.md).
+
 ### B1. Text is invisible, then appears (FOIT)
 
 - **Cause**: `font-display: block` (or default/`auto`, which behaves block-like)
@@ -173,6 +186,9 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 
 - **Cause**: a `loading="lazy"` `<img>` (often `position:absolute`, so no CLS)
   snaps straight to opacity 1 the instant its bytes decode - a one-by-one pop.
+  The lazy attribute is often not hand-written: framework image components
+  default lazy (astro:assets `<Image>` emits `loading="lazy"` unless told
+  otherwise), so above-the-fold framework images are lazy unless you opted out.
 - **Fix (above the fold)**: `loading="eager"` starts the fetch immediately instead
   of the deferred lazy decode - **this** is the anti-pop lever, not `decoding`.
   `decoding="async"` is still right for decorative art, but only because it does
@@ -229,7 +245,10 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
   defer/async (module scripts are deferred by default); inline critical CSS + defer
   the rest; code-split so the initial bundle is small; keep the head lean. This is
   the counterpart to B3: render-blocking = blank screen (C1); deferred = unstyled
-  flash (B3).
+  flash (B3). **Client-only SPA (no SSR available)**: inline a critical
+  app-shell/skeleton into `index.html` itself - static markup + a few lines of
+  CSS sized like the real UI - so the blank period is bridged while the bundle
+  downloads; the app replaces it on mount.
 - **Vital**: FCP (target <=1.8s) + INP (hydration cost). (FCP is a Web Vital but not
   a *Core* Web Vital; TTI is deprecated - use INP for interactivity.)
 - **Confirm**: Lighthouse "Eliminate render-blocking resources"; Coverage tab shows
@@ -243,10 +262,14 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 - **Cause**: the preload scanner can only request an image it sees early in raw
   HTML; if the hero is a CSS `background-image`, is JS/client-injected, hides its
   src behind a lazy-load lib, or carries `loading="lazy"`, the bytes are requested
-  late.
+  late. Framework image components are a common silent source of that lazy
+  attribute: astro:assets `<Image>` defaults to `loading="lazy"`, so a
+  full-viewport hero built with it is lazy unless you opted out.
 - **Fix** (web.dev order): NEVER lazy-load the LCP image; put `fetchpriority="high"`
-  on a normal discoverable `<img src>` with width/height (not JS-injected); for a
-  CSS-background LCP, preload it
+  on a normal discoverable `<img src>` with width/height (not JS-injected); on
+  Astro's `<Image>`, the `priority` prop (5.10+) sets `loading="eager"` +
+  `decoding="sync"` + `fetchpriority="high"` in one flag - use it on the one
+  LCP image; for a CSS-background LCP, preload it
   (`<link rel=preload as=image fetchpriority=high type=image/webp>`); remove
   render-blocking CSS/JS.
 - **Vital**: LCP.

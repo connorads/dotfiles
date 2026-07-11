@@ -17,6 +17,13 @@ pair, `display=` param, un-preloadable file URLs - see **hosted-fonts.md**.
 > on Astro 6. Hand-wire the rest of this file on Vite, Worker-SSR, or pre-6
 > Astro. See framework-automation.md for the row-by-row boundary.
 
+**Fast exit: a pure system-font stack has no font jank.** If the site renders
+entirely from `system-ui`/named system faces with no `@font-face` and no CDN
+font link, there is nothing to preload, no swap, no fallback to tune - do not
+add a webfont to apply this file. The near-miss to check first: a font-family
+*named* in CSS or a Tailwind `@theme` token but never delivered loads nothing
+and silently renders the fallback forever (symptoms.md, the gate before B).
+
 ## Rules
 
 - **Preload the exact above-the-fold weights, per weight.** Fonts are per-weight
