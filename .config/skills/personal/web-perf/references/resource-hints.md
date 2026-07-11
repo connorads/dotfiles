@@ -111,3 +111,27 @@ booted route's bytes, not the source (verify.md).
 
 - <https://tanstack.com/router/latest/docs/guide/document-head-management> ·
   <https://react.dev/reference/react-dom/preload>
+
+## Cache-control that shapes repeat-view first paint
+
+Resource hints fix the *cold* first paint; cache headers decide the *repeat*
+one. Two rules, plus a host default that quietly breaks both:
+
+- **Fingerprinted assets -> `immutable`.** A content-hash in the filename
+  (`app.9f3a12c.js`, `/_astro/*`) means the bytes can never change under that
+  name, so serve `Cache-Control: public, max-age=31536000, immutable`. `immutable`
+  additionally suppresses the revalidation request a plain reload would still
+  send. Repeat views then paint from disk with zero network for those assets.
+- **Non-hashed assets (favicons, `og.png`, manifest) -> a short explicit TTL**
+  (e.g. `max-age=86400`) - they can change under a stable name, so you want
+  revalidation, but not on *every* view.
+- **The host default often revalidates everything.** Cloudflare Workers static
+  assets default to `Cache-Control: public, max-age=0, must-revalidate` (+ an
+  ETag), so without an explicit rule every repeat view sends a conditional
+  request for every asset and waits for the 304 - fine for freshness, needless
+  latency for hashed files. Set the two rules above in a `_headers` file (which
+  overrides the default for asset responses, though **not** for Worker-generated
+  responses - SSR/`run_worker_first` must set headers in code). Check your
+  platform's default before assuming assets are cached.
+- <https://developers.cloudflare.com/workers/static-assets/headers/> ·
+  <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control>
