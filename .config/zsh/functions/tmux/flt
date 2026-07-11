@@ -18,10 +18,10 @@ presets: c (centre, default) big tl tr bl br'
 local -A presets=(
   c   '-x 70% -y 70% -X 15% -Y 15%'
   big '-x 90% -y 85% -X 5% -Y 7%'
-  tl  '-x 45% -y 35% -X 0% -Y 5%'
-  tr  '-x 45% -y 35% -X 55% -Y 5%'
-  bl  '-x 45% -y 35% -X 0% -Y 65%'
-  br  '-x 45% -y 35% -X 55% -Y 65%'
+  tl  '-x 25% -y 35% -X 0% -Y 5%'
+  tr  '-x 25% -y 35% -X 75% -Y 5%'
+  bl  '-x 25% -y 35% -X 0% -Y 65%'
+  br  '-x 25% -y 35% -X 75% -Y 65%'
 )
 
 local nofocus='' dir="$PWD" print_only=''
