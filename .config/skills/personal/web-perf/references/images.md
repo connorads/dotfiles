@@ -1,4 +1,7 @@
-# Image loading & decode timing (native <img>)
+# Image loading & decode timing
+
+Hand-wired `<img>` (no framework image component). The rules are the
+browser's, so they hold on any stack - static, SPA, or SSR.
 
 ## Rules
 
