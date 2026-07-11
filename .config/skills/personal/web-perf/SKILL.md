@@ -141,8 +141,9 @@ That root question routes the whole diagnosis (full tree + fixes in
 - `references/images.md` - eager/lazy, decode timing, priority/discovery, CLS
   reservation, responsive `srcset`/`<picture>`, LQIP, content-visibility.
 - `references/resource-hints.md` - preload/preconnect ordering & priority,
-  crossOrigin, exact-file matching, budget, 103 Early Hints (with clearly-labelled
-  stack-specific subsections for Vite/Cloudflare/TanStack).
+  crossOrigin, exact-file matching, budget, 103 Early Hints, repeat-view cache
+  headers (with clearly-labelled stack-specific subsections for
+  Vite/Cloudflare/TanStack).
 
 **Decide where:**
 
