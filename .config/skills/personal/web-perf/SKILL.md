@@ -41,6 +41,10 @@ You almost always arrive with a **symptom the user saw** (or a screenshot), not
 a metric. So the spine is diagnostic. For each symptom: name the cause, apply
 the fix, then **prove it cold-cache** - an unverified perf fix is a guess.
 
+First ask: **is the HTML fixed at build (static prerender) or rendered per
+request (SSR)?** It rules out whole symptom classes and picks how you verify ->
+`references/static-vs-ssr.md`. Then:
+
 1. Identify the symptom -> `references/symptoms.md` (decision tree). START HERE.
 2. Apply the matching fix -> `references/{fonts,images,resource-hints}.md`.
 3. Prove it -> `references/verify.md`. This step is not optional. Half the value
@@ -123,9 +127,12 @@ That root question routes the whole diagnosis (full tree + fixes in
 
 ## References
 
+**Diagnose:**
+
 - `references/symptoms.md` - the diagnostic decision tree (spine). START HERE.
-- `references/verify.md` - how to prove a fix cold-cache (runnable Playwright CLS
-  probe + head-count gate). The lens no other loading skill carries.
+
+**Fix:**
+
 - `references/fonts.md` - self-hosted font loading: per-weight preload,
   crossOrigin, exact-file (`?url`) matching, metric-matched fallbacks,
   `font-display`, variable fonts, subsetting.
@@ -134,5 +141,16 @@ That root question routes the whole diagnosis (full tree + fixes in
 - `references/resource-hints.md` - preload/preconnect ordering & priority,
   crossOrigin, exact-file matching, budget, 103 Early Hints (with clearly-labelled
   stack-specific subsections for Vite/Cloudflare/TanStack).
+
+**Decide where:**
+
+- `references/static-vs-ssr.md` - the fixed-at-build vs rendered-per-request
+  axis: which symptom classes are possible, and which verify tier applies.
 - `references/next-vs-manual.md` - what next/font & next/image automate <-> the
   hand-rolled equivalent.
+
+**Prove:**
+
+- `references/verify.md` - how to prove a fix cold-cache: Tier 0 asserts on the
+  static `dist/*.html` bytes; Tier 1 boots the route for SSR; shared CLS probe +
+  measurement-tool gotchas. The lens no other loading skill carries.
