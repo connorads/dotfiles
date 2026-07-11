@@ -1,0 +1,73 @@
+{
+  "skill_name": "web-perf",
+  "how_to_run": "Per writing-skills/references/evals.md: for each eval run the prompt with-skill and baseline (no skill, or the pre-rename first-load-web-perf version) in fresh parallel sessions. Grade the transcript against the assertions, not just the final answer - especially whether the agent invents a booted dev server for a static-prerender scenario (it should not) and whether it routes to the right reference. Evals 5 and 6 are the held-out trigger slice: score whether the skill FIRES at all, and it should not.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "static-astro-font-swap",
+      "fixture": "evals/fixtures/astro-font-swap",
+      "prompt": "astro site (fully static, deploy to cloudflare workers). on first load the headings show up in some default font then visibly thicken into our display font a beat later - looks janky. Base.astro has the @font-face with font-display:swap already. how do i kill the flash? repo copied to <workspace>/astro-font-swap",
+      "assertions": [
+        "Fires (recognises font-swap / FOUT first-load jank on a hand-wired @font-face stack)",
+        "Routes to fonts.md: names per-weight preload of the exact above-the-fold weight (with crossorigin, exact ?url file) AND a metric-matched fallback @font-face to stop the reflow - not just font-display",
+        "Treats it as static/prerender: verifies by asserting on dist/*.html (Tier 0), does NOT invent or boot a dev server / Playwright to check the head",
+        "Does not misdiagnose as an SSR hydration flip (B6) - there is no hydration here"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "ssr-theme-flip-at-hydration",
+      "fixture": "",
+      "prompt": "we SSR our app from a worker and hydrate on the client. users with dark mode set see the page flash white then snap to dark right as it becomes interactive. only happens on a cold load. dark pref is in localStorage. help?",
+      "assertions": [
+        "Fires and identifies the hydration mismatch class (symptoms.md B6 / FART), not a font or image issue",
+        "Recommends making the value server-knowable via a cookie first, or a synchronous blocking <script> in <head> before paint if it must stay in localStorage; warns that reading it in a post-mount effect makes it worse",
+        "Frames it as an SSR-only class (static-vs-ssr.md): would be impossible under full prerender with no hydration",
+        "Verifies per Tier 1 (boot the route, cold-cache with a non-default stored theme) since the head is rendered per request"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "subset-fixed-copy-safety",
+      "fixture": "",
+      "prompt": "my marketing copy basically never changes. thinking of subsetting the webfonts down to only the characters we use to save bytes. is that safe or am i going to get tofu when someone edits a headline later?",
+      "assertions": [
+        "Fires and says subsetting fixed copy is safe ONLY with a coverage guard",
+        "Recommends a build-time assertion that rendered copy stays inside the kept glyph ranges, scoped to the text ranges (Latin + punctuation), leaving decorative symbols/emoji to the system font",
+        "Recommends keeping the ranges in one shared module that both the subsetter and the checker import so they can't drift (points at font-subset.config.mjs / check-dist.mjs pattern)",
+        "Mentions measuring the real before/after rather than promising a generic ratio"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "measure-before-ratio-trap",
+      "fixture": "",
+      "prompt": "read somewhere subsetting takes fonts from like 300kb to 20kb. we use @fontsource inter (the latin one). can we get that kind of win?",
+      "assertions": [
+        "Fires and corrects the premise: an @fontsource `latin` face is already subset (axis pinned, script Latin), so most of that win is banked - re-subsetting buys the punctuation/arrows tail (order of ~48KB->34KB), not 300KB->20KB",
+        "Tells the user to MEASURE the actual woff2 bytes (ls -l / DevTools) and quote the real before/after, not a generic multiplier",
+        "Does not parrot the 300KB->20KB figure as if it applies here"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "held-out-negative-backend-latency",
+      "fixture": "",
+      "prompt": "our api p95 is like 800ms and the whole app feels sluggish once you start clicking around the dashboard. can you help me make it faster?",
+      "assertions": [
+        "Does NOT fire: this is backend/TTFB latency + runtime interaction (INP), both explicitly out of scope",
+        "If it engages at all, it declines the first-load-loading framing and points elsewhere rather than stretching a font/image fix to fit"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "held-out-negative-bundle-size",
+      "fixture": "",
+      "prompt": "our main JS bundle is 900kb gzipped and lighthouse keeps yelling about it. what should i cut? want to get the bundle down.",
+      "assertions": [
+        "Does NOT fire: bundle-size analysis (tree-shaking, chunk budgets) is out of scope per the description",
+        "Near-miss guard: shares perf vocabulary (lighthouse, load) but needs bundle analysis, not first-load loading fixes"
+      ]
+    }
+  ]
+}
