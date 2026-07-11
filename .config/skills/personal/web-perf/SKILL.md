@@ -25,7 +25,7 @@ SPA/MPA, and SSR from a Worker/edge: `@font-face` written by hand, native
 for you, so you must - and must verify it yourself.
 
 Where a framework *does* automate the fix (Next's `next/font`/`next/image`),
-defer to it and stop (`references/next-vs-manual.md`).
+defer to it and stop (`references/framework-automation.md`).
 
 ## Out of scope
 
@@ -148,8 +148,8 @@ That root question routes the whole diagnosis (full tree + fixes in
 
 - `references/static-vs-ssr.md` - the fixed-at-build vs rendered-per-request
   axis: which symptom classes are possible, and which verify tier applies.
-- `references/next-vs-manual.md` - what next/font & next/image automate <-> the
-  hand-rolled equivalent.
+- `references/framework-automation.md` - what a framework's font/image layer
+  automates <-> the hand-rolled equivalent.
 
 **Prove:**
 
