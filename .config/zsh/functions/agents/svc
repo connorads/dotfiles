@@ -12,11 +12,11 @@ emulate -L zsh
 
 # --- service registry ---
 # Each service: name -> "cmd_template|default_port|https_port|process_type|session_name"
-# process_type: tmux (tmux session) or remobi (background job)
+# process_type: tmux (managed tmux session)
 # In cmd_template: $port and $session are interpolated; $hostname for public URL
 typeset -A SVC_REGISTRY
 SVC_REGISTRY=(
-  remobi  'remobi serve --no-sleep --port $port -- tmux new-session -A -s $session|7681|443|remobi|main'
+  remobi  'remobi serve --no-sleep --port $port -- tmux new-session -A -s main|7682|443|tmux|remobi'
   toad    'toad serve --host 127.0.0.1 --port $port --public-url https://$hostname:$https_port|8000|8000|tmux|toad'
   gigacode 'gigacode server --host 127.0.0.1 --port $port --no-token|2468|2468|tmux|gigacode'
   companion 'PORT=$port the-vibe-companion|3456|3456|tmux|companion'
@@ -59,11 +59,7 @@ _svc_validate_name() {
 _svc_is_running() {
   local name=$1
   _svc_parse_entry "${SVC_REGISTRY[$name]}"
-  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
-    pgrep -f "remobi serve.*--port ${SVC_DEFAULT_PORT}" >/dev/null 2>&1
-  else
-    tmux has-session -t "$SVC_SESSION" 2>/dev/null
-  fi
+  tmux has-session -t "$SVC_SESSION" 2>/dev/null
 }
 
 _svc_status_label() {
@@ -87,29 +83,16 @@ _svc_up() {
   local hostname
   hostname=$(ts-hostname) || return 1
 
-  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
-    # Kill existing remobi process on this port
-    if pkill -f "remobi serve.*--port $port" 2>/dev/null || pkill -f "ttyd.*--port $port" 2>/dev/null; then
-      print -u2 "stopped previous remobi on :$port"
-    fi
-    # Start as background job (suppress output to avoid terminal corruption)
-    eval "$SVC_CMD" &>/dev/null &!
-    # Serve on apex (no --https= flag)
-    ts serve --bg $port
-    echo "Terminal ($session): https://$hostname"
-  else
-    # Kill existing tmux session
-    tmux kill-session -t "$session" 2>/dev/null
-    # Interpolate command
-    local cmd
-    eval "cmd=\"$SVC_CMD\""
-    tmux new-session -d -s "$session" -x 200 -y 50 "$cmd"
-    ts serve --bg --https=$https_port $port
-    local url="https://$hostname"
-    [[ "$https_port" != "443" ]] && url="https://$hostname:$https_port"
-    echo "$name: $url"
-    echo "Attach: tmux attach -t $session"
-  fi
+  # Kill existing managed session, then start the service with inspectable logs.
+  tmux kill-session -t "$session" 2>/dev/null
+  local cmd
+  eval "cmd=\"$SVC_CMD\""
+  tmux new-session -d -s "$session" -x 200 -y 50 "$cmd"
+  ts serve --bg --https=$https_port $port
+  local url="https://$hostname"
+  [[ "$https_port" != "443" ]] && url="https://$hostname:$https_port"
+  echo "$name: $url"
+  echo "Attach: tmux attach -t $session"
 }
 
 _svc_down() {
@@ -120,14 +103,8 @@ _svc_down() {
   local port=$SVC_DEFAULT_PORT
   local https_port=$SVC_HTTPS_PORT
 
-  if [[ "$SVC_PROC_TYPE" == "remobi" ]]; then
-    pkill -f "remobi serve.*--port $port" 2>/dev/null
-    pkill -f "ttyd.*--port $port" 2>/dev/null
-    ts serve --https=443 off 2>/dev/null
-  else
-    tmux kill-session -t "$SVC_SESSION" 2>/dev/null
-    ts serve --https=$https_port off 2>/dev/null
-  fi
+  tmux kill-session -t "$SVC_SESSION" 2>/dev/null
+  ts serve --https=$https_port off 2>/dev/null
   echo "$name stopped"
 }
 
@@ -182,11 +159,7 @@ enter: up  ctrl-d: down  ctrl-r: restart  ctrl-a: attach  esc: quit"
         ;;
       ctrl-a)
         _svc_parse_entry "${SVC_REGISTRY[$svc_name]}"
-        if [[ "$SVC_PROC_TYPE" == "tmux" ]]; then
-          tmux attach -t "$SVC_SESSION" 2>/dev/null || print -u2 "$svc_name not running"
-        else
-          print -u2 "remobi services have no tmux session to attach"
-        fi
+        tmux attach -t "$SVC_SESSION" 2>/dev/null || print -u2 "$svc_name not running"
         return 0
         ;;
       *)
