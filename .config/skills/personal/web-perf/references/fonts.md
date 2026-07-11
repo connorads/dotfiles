@@ -1,4 +1,9 @@
-# Self-hosted font loading (fontsource + Vite)
+# Self-hosted font loading
+
+Hand-wired `@font-face` (no framework font layer). Examples use
+`@fontsource` + Vite `?url`, but the rules - per-weight preload, crossOrigin,
+exact-file matching, metric fallbacks, subsetting - are the browser's and hold
+on any stack that ships its own webfonts.
 
 ## Rules
 
@@ -134,7 +139,44 @@ weights). (4) use `format('woff2')`, not legacy `format('woff2-variations')`.
 
 ## Subsetting
 
-fontsource splits by subset (latin / latin-ext / vietnamese / greek ...). Preload only
+`@fontsource` splits by subset (latin / latin-ext / vietnamese / greek ...). Preload only
 the subset(s) actually rendered above the fold (usually latin), and only the weights in
 that subset - subsetting is a larger byte lever than variable-vs-static. `unicode-range`
 on each `@font-face` lets the browser fetch only the subset a page needs.
+
+### Measure the real file first - the big-savings ratio is usually a myth
+
+The "300KB -> 20KB" subsetting win assumes you start from a full, unsubset face.
+If the source is already a per-subset `@fontsource` `latin` file, most of that
+win is *already banked* - the variable axis is pinned and the script is Latin.
+Re-subsetting one of those buys the tail: the General-Punctuation /
+arrows / maths block the `latin` subset still carries but English copy never
+renders (e.g. Inter `latin` ~48KB -> ~34KB re-subset, not ~48KB -> 5KB). So
+**measure the actual bytes before promising a ratio** (`ls -l` the woff2, or
+DevTools Network); quote the real before/after, not a generic multiplier. The
+byte ceilings in `scripts/check-dist.mjs` exist precisely to catch a
+regeneration that silently drops the subsetting and reships the full face.
+
+### Safe subsetting needs a coverage guard scoped to text ranges
+
+Subsetting fixed copy is safe **only** if a check proves every rendered glyph is
+still in the subset - otherwise a later headline edit introduces one accented
+loanword that silently drops to the fallback face. Two halves:
+
+1. **Extraction** - which glyphs the copy actually uses. glyphhanger / subfont
+   can scan rendered pages and drive the subsetter; that covers the "what to
+   keep" half.
+2. **The guard** - a build-time assertion that rendered copy stays inside the
+   kept ranges. Scope it to the ranges the *text* fonts own: Latin + typographic
+   punctuation + currency. Decorative symbols (arrows U+2190+, dingbats, emoji)
+   are deliberately left to the system font - they were never in the `latin`
+   subset either - so the guard must flag a dropped accented **letter** loudly
+   while *not* failing on an intentional decorative glyph.
+
+Keep the ranges in **one shared module** that both the subset generator and the
+guard import, so the shipped woff2 and the assertion can't drift.
+`scripts/font-subset.config.mjs` is a template for that module (glyph ranges +
+text-scope ranges + `pyftsubset --unicodes` / CSS `unicode-range` string), and
+`verify.md` Tier 0 wires the assertion. Note the `--flavor`/`--unicodes` option
+names on `pyftsubset` are US-spelled - a locale spell-checker that "corrects"
+them breaks the build (see the mechanical-enforcement locale caveat).
