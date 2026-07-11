@@ -458,6 +458,44 @@ library builds with tsdown (Rust/Rolldown), it can run both inline
 they ship pre-1.0 and move fast. For monorepos, **sherif** (Rust) additionally
 enforces dependency-version consistency across workspaces.
 
+### Asserting on shipped artifacts
+
+publint/attw above validate a published package's shape; the same "gate the
+built output, not the source" discipline applies to any site's first-load
+surface. Three tiers, cheapest-to-verify first:
+
+| Layer | Off-the-shelf? | Gate with |
+|---|---|---|
+| Byte / time budgets | yes | **size-limit** (`@size-limit/file` for raw bytes, `preset-app` for time-to-run); non-zero exit in CI. `size-limit-action` (andresz1) wraps it for PR comments — a *community* action, not first-party. |
+| Runtime metrics (LCP / CLS / perf score) | yes | **Lighthouse CI** (`budget.json` or per-URL assertions) + **unlighthouse** (site-wide crawl). Both need a served preview + Chrome; sample multiple runs — perf assertions flake. |
+| Semantic first-load HTML invariants | no — bespoke | a Node checker that reads `dist/*.html` and exits non-zero |
+
+**Don't reach for** bundlesize (unmaintained — last release 0.18.x, 2024) or
+statoscope (webpack/rspack `stats.json` only — no Astro/Vite fit). Treat the
+version literals here as illustrative; confirm against the live registry.
+
+The third tier is the interesting one: it is the **typed generalisation of the
+greppable-invariants tier** above and a sibling to publint/attw's post-build
+gate. Where grep asserts "this string does not appear", a first-load checker
+asserts structural facts about the shipped HTML — font-preload count within
+budget, `crossorigin` present, the preload `href` matching an inline
+`@font-face url()` byte-for-byte, a metric-matched fallback face present,
+rendered copy staying inside the font subset's glyph coverage. When the site is
+prerendered, `dist/*.html` IS the shipped bytes, so asserting on the files is
+asserting on what users get.
+
+The discipline that makes it trustworthy: **keep the constraint set as one
+shared module** imported by both the generator and the checker (e.g. the glyph
+ranges the subsetter emits and the coverage assertion reads), so they cannot
+drift. Honest scope: some of these checks are size-limit-able (a raw byte
+ceiling is just a budget), and glyphhanger/subfont already cover the
+*extraction* half of glyph coverage. The genuinely bespoke part is the
+**semantic cross-reference** (preload ↔ `@font-face` href match) and the
+**scoped-coverage assertion against a shared config** — no off-the-shelf tool
+does "rendered copy ⊆ this subset, scoped to text ranges". See the `web-perf`
+skill's `verify.md` (Tier 0 for the checker shape, section 5 for the LHCI /
+unlighthouse measurement-tool gotchas) for why each invariant matters.
+
 ### Boundary contracts (cross-service compatibility)
 
 Anything crossing a service boundary is a public contract (the
