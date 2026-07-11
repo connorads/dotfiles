@@ -13,12 +13,13 @@ local usage='usage: flt [-d] [-c dir] [--print] [preset] [command...]
 presets: c (centre, default) big tl tr bl br'
 
 # Percent geometry scales with the window; X+width / Y+height may sum to 100%
-# (flush against an edge) but not exceed it.
+# (flush against an edge) but not exceed it. Top corners keep a 5% top inset
+# so they don't sit flush under the split-status top row.
 local -A presets=(
   c   '-x 70% -y 70% -X 15% -Y 15%'
   big '-x 90% -y 85% -X 5% -Y 7%'
-  tl  '-x 45% -y 35% -X 0% -Y 0%'
-  tr  '-x 45% -y 35% -X 55% -Y 0%'
+  tl  '-x 45% -y 35% -X 0% -Y 5%'
+  tr  '-x 45% -y 35% -X 55% -Y 5%'
   bl  '-x 45% -y 35% -X 0% -Y 65%'
   br  '-x 45% -y 35% -X 55% -Y 65%'
 )

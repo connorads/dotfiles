@@ -14,18 +14,18 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
   [ "$output" = "tmux new-pane -x 70% -y 70% -X 15% -Y 15% -c $PWD" ]
 }
 
-@test "tr preset is small and flush top-right" {
+@test "tr preset is small, flush right, inset below the top status row" {
   run -0 zsh --no-rcs "$FLT" --print tr
-  [[ "$output" == *"-x 45% -y 35% -X 55% -Y 0%"* ]]
+  [[ "$output" == *"-x 45% -y 35% -X 55% -Y 5%"* ]]
 }
 
-@test "corner presets pair flush edges (X+w and Y+h reach 100%)" {
+@test "corner presets: bottom flush (Y+h = 100%), top inset 5%" {
   run -0 zsh --no-rcs "$FLT" --print br
   [[ "$output" == *"-X 55% -Y 65%"* ]]
   run -0 zsh --no-rcs "$FLT" --print bl
   [[ "$output" == *"-X 0% -Y 65%"* ]]
   run -0 zsh --no-rcs "$FLT" --print tl
-  [[ "$output" == *"-X 0% -Y 0%"* ]]
+  [[ "$output" == *"-X 0% -Y 5%"* ]]
 }
 
 @test "a non-preset first arg is the command, centred by default" {
@@ -77,6 +77,6 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
   TMUX="$(tx display -p '#{socket_path}'),$(tx display -p '#{pid}'),0"
   run -0 env TMUX="$TMUX" zsh --no-rcs "$FLT" tr 'sleep 60'
   run -0 tx list-panes -F '#{pane_floating_flag} #{pane_left},#{pane_top}'
-  [[ "$output" == *"1 44,0"* ]] # 45% of 80 = 36 wide, flush right at 44
+  [[ "$output" == *"1 44,1"* ]] # 36 wide flush right at 44; 5% top inset = row 1 here
   tx kill-server 2>/dev/null || true
 }
