@@ -10,9 +10,12 @@
 //
 // Each check guards a silent regression class:
 //   - font preload budget: fonts are Highest priority, so extra preloads steal
-//     bandwidth from the critical path (budget ~2-3 per page)
+//     bandwidth from the critical path (max ~2-3 per page); the min catches a
+//     build that silently DROPS its font preloads - the regression this gate
+//     exists for
 //   - crossorigin on font preloads: @font-face fetches are anonymous-CORS; a
-//     preload without crossorigin is discarded and the font fetched twice
+//     preload without crossorigin - or with crossorigin="use-credentials" -
+//     mismatches the credentials mode and the font is fetched twice
 //   - preload href appears in the CSS byte-for-byte: a hash drift between the
 //     ?url import and the @font-face src means double-fetch
 //   - metric fallback faces: a generator like fontaine SILENTLY no-ops when it
@@ -31,7 +34,10 @@ import { isCovered, inFontScope } from "./font-subset.config.mjs";
 
 // ---- CONFIG: adapt every value below to the project -------------------------
 const dist = process.argv[2] ?? "dist";
-const FONT_PRELOAD_BUDGET = 3; // count of above-the-fold weights you preload
+// Range for font preloads per page: min catches a build that dropped its
+// preloads entirely; max catches over-preloading. Routes can preload different
+// weights, so this is a range, not an exact count.
+const FONT_PRELOAD_BUDGET = { min: 1, max: 3 };
 // Metric-matched fallback face names, as they appear in the built @font-face.
 const FALLBACK_FACES = [
   "Display fallback",
@@ -104,17 +110,22 @@ for (const file of pages) {
   );
   check(
     page,
-    `font preloads within budget of ${FONT_PRELOAD_BUDGET}`,
-    preloads.length === FONT_PRELOAD_BUDGET,
+    `font preloads within budget ${FONT_PRELOAD_BUDGET.min}-${FONT_PRELOAD_BUDGET.max}`,
+    preloads.length >= FONT_PRELOAD_BUDGET.min &&
+      preloads.length <= FONT_PRELOAD_BUDGET.max,
     `found ${preloads.length}`,
   );
 
   for (const l of preloads) {
     const href = l.match(/href="([^"]+)"/)?.[1];
+    // Only bare crossorigin / crossorigin="" / crossorigin="anonymous" match
+    // the anonymous-CORS mode of the @font-face fetch; a missing attribute AND
+    // crossorigin="use-credentials" both mismatch and double-fetch.
     check(
       page,
-      "font preload carries crossorigin",
-      /\bcrossorigin\b/.test(l),
+      "font preload carries anonymous crossorigin",
+      /\bcrossorigin\b/.test(l) &&
+        !/crossorigin="use-credentials"/.test(l),
       href,
     );
     check(
@@ -159,19 +170,27 @@ for (const file of pages) {
 // Subset woff2 must stay subset-sized: catch a regeneration that lost the
 // subsetting (e.g. dropped --unicodes) and shipped the full face.
 const assetDir = join(dist, HASHED_ASSET_DIR);
-for (const [stem, ceiling] of Object.entries(FONT_SIZE_CEILINGS)) {
-  const file = readdirSync(assetDir).find(
-    (n) => n.startsWith(`${stem}.`) && n.endsWith(".woff2"),
-  );
-  check(HASHED_ASSET_DIR, `subset font present: ${stem}`, Boolean(file));
-  if (file) {
-    const bytes = statSync(join(assetDir, file)).size;
-    check(
-      HASHED_ASSET_DIR,
-      `subset font under ${ceiling} bytes: ${stem}`,
-      bytes <= ceiling,
-      `${bytes} bytes - re-run the subset generator`,
+let assetFiles = null;
+try {
+  assetFiles = readdirSync(assetDir);
+} catch {
+  check(HASHED_ASSET_DIR, "hashed asset dir exists in dist", false);
+}
+if (assetFiles) {
+  for (const [stem, ceiling] of Object.entries(FONT_SIZE_CEILINGS)) {
+    const file = assetFiles.find(
+      (n) => n.startsWith(`${stem}.`) && n.endsWith(".woff2"),
     );
+    check(HASHED_ASSET_DIR, `subset font present: ${stem}`, Boolean(file));
+    if (file) {
+      const bytes = statSync(join(assetDir, file)).size;
+      check(
+        HASHED_ASSET_DIR,
+        `subset font under ${ceiling} bytes: ${stem}`,
+        bytes <= ceiling,
+        `${bytes} bytes - re-run the subset generator`,
+      );
+    }
   }
 }
 
@@ -196,5 +215,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(
-  `check-dist: OK (${pages.length} pages, ${FONT_PRELOAD_BUDGET} font preloads each, styles inline, headers immutable)`,
+  `check-dist: OK (${pages.length} pages, font preloads within ${FONT_PRELOAD_BUDGET.min}-${FONT_PRELOAD_BUDGET.max}, styles inline, headers immutable)`,
 );
