@@ -46,10 +46,22 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | TOML | taplo (`taplo fmt`) | taplo (`taplo lint` + JSON-schema) | — | — | Format + lint + schema-validate `Cargo.toml` / `*.toml` config. Maintenance is in limbo (no release since 0.10.0, May 2025) — watch [`tombi`](https://github.com/tombi-toml/tombi) and oxfmt as successors; taplo's JSON-schema validation has no oxfmt equivalent. |
 | Commit messages | — | commitlint (`@commitlint/config-conventional`) | — | — | One-line config. See `references/commitlint.config.js`. |
 | Secrets | — | gitleaks | — | — | Always add — cheap, high-signal. |
-| Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes, tiny false-positive rate. |
+| Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes. Low false-positive rate on prose, but locale mode rewrites US-spelled identifiers in code — see the locale caveat below. |
 | GitHub Actions / CI | — | [zizmor](https://github.com/zizmorcore/zizmor) + [actionlint](https://github.com/rhysd/actionlint) | — | — | Run both — minimal overlap. zizmor = security audit of `.github/workflows/*.yml` + `action.yml` (SARIF + `--format=github` annotations); actionlint = correctness (expression type-checks, `needs:` graph, runner labels; shells out to an installed ShellCheck for `run:` blocks — not embedded). actionlint is an hk builtin. |
 | Postgres migrations | — | [squawk](https://squawkhq.com/) | eugene (watch — `eugene trace` only) | — | Rust, static — no DB needed in CI (`squawk 'migrations/*.sql'`; failure level configurable). Atlas `migrate lint` is paid. `eugene trace` observes real lock acquisition against a temp Postgres — ad-hoc for high-contention migrations; never wire `eugene lint` (duplicates squawk via the same pg_query.rs parser; pre-1.0, solo-maintained). Neither replaces `lock_timeout` / `statement_timeout` in the migration runner. MySQL/SQLite: gap. |
 | API / event contracts | — | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor | — | Baseline-diff gates for cross-service contracts — see Boundary contracts. |
+
+> **Locale spell-checker caveat.** A locale-rewriting spell hook (typos `en-gb`,
+> aspell) treats US spellings as errors and auto-"fixes" them — including
+> US-spelled **external identifiers inside string literals**: CLI flags
+> (`--flavor`, `--color`), schema.org / HTTP protocol names (`Organization`,
+> `authorization`), CSS keywords (`color`, `center`, `behavior`), and API field
+> names. Rewriting those silently breaks the build or the wire — `pyftsubset
+> --flavour` is "Unknown option", an `authorisation` header fails auth. Allow-list
+> them **proactively** and re-check string literals after any commit the hook
+> auto-fixed. Describe the class, not a fixed word list — the dictionary drifts,
+> so a pinned list rots. Wire the allow-list per hk (`[default.extend-words]`;
+> `hk/references/builtins-by-language.md`).
 
 ## Rules catalogue
 
