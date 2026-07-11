@@ -397,7 +397,7 @@ Each service uses a dedicated external HTTPS port so multiple services can coexi
 
 | Service   | `svc` name  | Local port | External HTTPS |
 | --------- | ----------- | ---------- | -------------- |
-| remobi    | `remobi`    | 7681       | **443** (apex) |
+| remobi    | `remobi`    | 7682       | **443** (apex) |
 | toad      | `toad`      | 8000       | 8000           |
 | gigacode  | `gigacode`  | 2468       | 2468           |
 | companion | `companion` | 3456       | 3456           |

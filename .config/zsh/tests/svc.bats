@@ -31,18 +31,6 @@ fi
 exit 0
 EOF
 
-  write_stub pgrep <<'EOF'
-#!/usr/bin/env bash
-printf 'pgrep %s\n' "$*" >>"$TEST_LOG"
-exit "${PGREP_STATUS:-1}"
-EOF
-
-  write_stub pkill <<'EOF'
-#!/usr/bin/env bash
-printf 'pkill %s\n' "$*" >>"$TEST_LOG"
-exit "${PKILL_STATUS:-1}"
-EOF
-
   write_stub remobi <<'EOF'
 #!/usr/bin/env bash
 printf 'remobi %s\n' "$*" >>"$TEST_LOG"
@@ -68,7 +56,7 @@ EOF
   run_zsh_function "$SVC" ls
 
   [ "$status" -eq 0 ]
-  grep -q '^pgrep -f remobi serve.*--port 7681$' "$TEST_LOG"
+  grep -q '^tmux has-session -t remobi$' "$TEST_LOG"
   grep -q '^tmux has-session -t toad$' "$TEST_LOG"
   grep -q '^tmux has-session -t gigacode$' "$TEST_LOG"
   grep -q '^tmux has-session -t companion$' "$TEST_LOG"
@@ -131,20 +119,28 @@ EOF
   grep -Fxq 'ts serve --bg --https=8000 8000' "$TEST_LOG"
 }
 
-@test "down remobi kills remobi/ttyd and tears down apex serve" {
+@test "up remobi runs in a managed tmux session on its collision-free port" {
+  write_svc_stubs
+
+  run_zsh_function "$SVC" up remobi
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"remobi: https://host.tailnet.ts.net"* ]]
+  grep -Fxq 'tmux kill-session -t remobi' "$TEST_LOG"
+  grep -Fq 'tmux new-session -d -s remobi' "$TEST_LOG"
+  grep -Fq 'remobi serve --no-sleep --port 7682 -- tmux new-session -A -s main' "$TEST_LOG"
+  grep -Fxq 'ts serve --bg --https=443 7682' "$TEST_LOG"
+}
+
+@test "down remobi stops its managed tmux session and apex serve" {
   write_svc_stubs
 
   run_zsh_function "$SVC" down remobi
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"remobi stopped"* ]]
-  grep -Fxq 'pkill -f remobi serve.*--port 7681' "$TEST_LOG"
-  grep -Fxq 'pkill -f ttyd.*--port 7681' "$TEST_LOG"
+  grep -Fxq 'tmux kill-session -t remobi' "$TEST_LOG"
   grep -Fxq 'ts serve --https=443 off' "$TEST_LOG"
-}
-
-@test "up remobi background start is deferred until a deterministic sync seam exists" {
-  skip "remobi up uses zsh &! backgrounding; cover down/teardown first"
 }
 
 @test "failure propagation from tmux or ts is deferred pending implementation decision" {
