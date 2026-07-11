@@ -70,8 +70,8 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |
-| `Ctrl+b Alt+i` | copy local clipboard image path (no popup; result on status line) |
-| `Ctrl+b Alt+Shift+I` | upload clipboard image to remote host + copy remote path (local tmux only; use `shotpath` from Mac for remote tmux) |
+| `Ctrl+b Alt+i` | paste clipboard image path into current pane + copy (no popup; result on status line) |
+| `Ctrl+b Alt+Shift+I` | upload clipboard image to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |
