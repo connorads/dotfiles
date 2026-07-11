@@ -106,7 +106,9 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 - **Fix**: `font-display: swap` (or `optional` for body text) so the fallback
   paints immediately, AND preload the woff2 so the block period never elapses.
   (B2 assumes `swap` is already in effect - if text is *invisible* rather than
-  *restyling*, you are here, not B2.)
+  *restyling*, you are here, not B2.) With hosted Google Fonts, `font-display`
+  comes from the css2 URL's `display=` param and defaults to `auto`
+  (block-like) - `&display=swap` must be requested; see hosted-fonts.md.
 - **Vital**: FCP/LCP (invisible text delays contentful paint); + CLS if the
   fallback is metric-mismatched (A1).
 - **Confirm**: cold-cache Slow-3G - text is blank then appears; switching to
@@ -123,7 +125,10 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
   With metric-matched fallbacks in place the swap moves no layout, so it reads
   purely as a shimmer rather than a shift (same fix either way).
 - **Fix**: preload the *exact* weights rendered above the fold, per weight (see
-  fonts.md). Not "preload the font" - fonts are per-weight files.
+  fonts.md). Not "preload the font" - fonts are per-weight files. If the fonts
+  come from a hosted CDN (Google Fonts), the woff2 URLs are not reliably
+  preloadable - preconnect + `display=` are the levers, or self-host; see
+  hosted-fonts.md.
 - **Vital**: none directly (no layout move); a perceived-quality defect.
 - **Confirm**: DevTools Network, throttle + disable cache; the shimmering run of
   text corresponds to a woff2 that is *not* in the preload list / arrives late.
@@ -135,10 +140,14 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
   non-render-blocking (preload+onload swap, media hack, JS-injected `<style>`), or a
   route/component CSS chunk arriving after its markup. A render-blocking
   `<link rel=stylesheet>` in `<head>` does NOT flash - it blocks first paint (that
-  is C1, not B3).
+  is C1, not B3). A related discovery bug: `@import url(...)` *inside* a
+  stylesheet is invisible to the preload scanner and serialises an extra hop
+  (fetch + parse the CSS before the import is even requested) - common with
+  hosted Google Fonts (hosted-fonts.md).
 - **Fix**: keep critical/above-the-fold CSS render-blocking or inlined in `<head>`;
   defer only genuinely non-critical CSS; ensure code-split route CSS is *linked*,
-  not lazily injected after mount.
+  not lazily injected after mount; replace `@import` chains with parallel
+  `<link>` tags (or self-host the fonts).
 - **Vital**: none directly (unless a metric-mismatched restyle adds CLS).
 - **Confirm**: cold-cache + throttle - the unstyled frame appears before the CSS
   request completes.
@@ -212,7 +221,10 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 
 - **Cause**: nothing paints until the critical path clears - a render-blocking
   CSS/JS in `<head>` without defer/async, or a large client JS/hydration bundle that
-  must download+parse+execute.
+  must download+parse+execute. An `@import url(...)` inside a render-blocking
+  stylesheet stretches the blank period further: the imported CSS (e.g. a hosted
+  Google Fonts URL) is preload-scanner-opaque and only requested after the outer
+  CSS is fetched and parsed (hosted-fonts.md).
 - **Fix**: ship SSR HTML so first paint does not wait for JS; make scripts
   defer/async (module scripts are deferred by default); inline critical CSS + defer
   the rest; code-split so the initial bundle is small; keep the head lean. This is

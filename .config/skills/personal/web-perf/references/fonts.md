@@ -3,7 +3,9 @@
 Hand-wired `@font-face` (no framework font layer). Examples use
 `@fontsource` + Vite `?url`, but the rules - per-weight preload, crossOrigin,
 exact-file matching, metric fallbacks, subsetting - are the browser's and hold
-on any stack that ships its own webfonts.
+on any stack that ships its own webfonts. Fonts loaded from a hosted CDN
+(Google Fonts `css2` links, Bunny, etc.) have different mechanics - preconnect
+pair, `display=` param, un-preloadable file URLs - see **hosted-fonts.md**.
 
 > **Astro 6+: prefer the built-in Fonts API first.** Stable since Astro 6.0
 > (experimental from 5.7): a top-level `fonts` array + `fontProviders` in
