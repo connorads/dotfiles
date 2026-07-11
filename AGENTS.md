@@ -304,13 +304,13 @@ Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.
 
 **Install scripts disabled (npm/pnpm)**: `ignore-scripts=true` in `~/.npmrc` and `ignoreScripts: true` in `~/.config/pnpm/config.yaml`. Most recent npm RCE campaigns (Shai-Hulud, tinycolor, ngx-bootstrap) use `postinstall` as the execution primitive - disabling scripts neutralises that vector regardless of whether the malicious version slipped through quarantine.
 
-pnpm 11 blocks build scripts by default (`allowBuilds`); the `ignoreScripts` setting is belt-and-braces. npm has no equivalent default, so the rc setting is the meaningful change there.
+pnpm 11 blocks build scripts by default (`allowBuilds`); the `ignoreScripts` setting is belt-and-braces. Note pnpm 11 also fails *closed*: `strictDepBuilds` defaults to `true`, so unreviewed build scripts error the install (`ERR_PNPM_IGNORED_BUILDS`, non-zero exit) rather than warn - fatal in CI (e.g. Cloudflare Workers Builds) but masked locally by our global `ignoreScripts`. Record per-package decisions in `pnpm-workspace.yaml` `allowBuilds`. npm has no equivalent default, so the rc setting is the meaningful change there.
 
 Native modules and codegen need scripts to build. When a project errors out:
 
 1. **Ask the user before allow-listing.** Security decision is theirs, not the agent's.
 2. With approval, allow-list specifically:
-   - **pnpm** (v11): `pnpm approve-builds` (interactive) or add to `allowBuilds` (in `pnpm-workspace.yaml` / `package.json#pnpm`).
+   - **pnpm** (v11): `pnpm approve-builds` (interactive) or add to `allowBuilds` in `pnpm-workspace.yaml` (`false` = acknowledged-and-skipped, `true` = runs; pnpm 11 no longer reads `package.json#pnpm`).
    - **npm**: project-level `.npmrc` with `ignore-scripts=false` (no per-package primitive exists).
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
