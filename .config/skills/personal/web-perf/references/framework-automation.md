@@ -25,6 +25,17 @@ so check per-concern, not per-framework.
 - **Vite SPA/MPA, plain SSR, static hand-built HTML** - no font/image layer;
   the whole right column is yours.
 
+Two adjacent boundaries that look like automation but aren't:
+
+- **Tailwind v4 `@theme` `--font-*` tokens register utilities only** - they
+  never load a font file. A `--font-display: "Fraunces", serif` token with no
+  `@font-face`/font import behind it silently renders the fallback forever
+  (symptoms.md, the gate before B).
+- **Astro islands: the `client:*` directive is the hydration-timing control.**
+  `client:load` vs `client:idle` vs `client:visible` decides *when* an island
+  hydrates and can flip/pop - pick per island rather than reaching for the
+  generic hydration-flip fixes first.
+
 Read the left column as "what *a* framework layer automates" (Next is the
 fullest example); the right column is what you write by hand when it doesn't.
 
