@@ -119,8 +119,8 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
   `font-medium` = 500 and `font-semibold` = 600 (stable v3->v4); if only 400 is
   preloaded, 500/600 first paint in the fallback face and swap when their woff2
   arrives. The 400 text beside them does not shimmer - that asymmetry is the tell.
-  If you already have metric-matched fallbacks, the swap no longer moves layout, so
-  it reads purely as a shimmer (that used to be a distinct symptom; same fix).
+  With metric-matched fallbacks in place the swap moves no layout, so it reads
+  purely as a shimmer rather than a shift (same fix either way).
 - **Fix**: preload the *exact* weights rendered above the fold, per weight (see
   fonts.md). Not "preload the font" - fonts are per-weight files.
 - **Vital**: none directly (no layout move); a perceived-quality defect.
