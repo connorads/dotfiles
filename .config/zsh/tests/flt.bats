@@ -36,7 +36,7 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
 
 @test "preset plus command combine" {
   run -0 zsh --no-rcs "$FLT" --print tr btm --basic
-  [[ "$output" == *"-X 55% -Y 0%"* ]]
+  [[ "$output" == *"-X 75% -Y 5%"* ]]
   [[ "$output" == *" -- btm --basic" ]]
 }
 
