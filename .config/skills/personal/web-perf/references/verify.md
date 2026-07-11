@@ -27,6 +27,12 @@ rendered per request?** (The `static-vs-ssr.md` axis.)
   request) - there is no static file to grep, so boot the route and assert on
   the rendered bytes. **Tier 1** below.
 
+**The split can be per-route, not per-site.** Astro's `prerender` is a
+per-route flag, so one build can mix prerendered pages (Tier 0) with SSR
+routes (Tier 1) - and the SSR route is often the highest-traffic page. Point
+the Tier-0 script at the prerendered subset only; a "static-looking" build
+with any SSR routes still needs Tier 1 for those.
+
 Both tiers share the by-eye cold-cache pass and the CLS probe (section 4) -
 those drive a real browser and don't care how the HTML was produced (for a
 static site, serve `dist` with any static server to give the browser a URL).
@@ -59,7 +65,9 @@ byte-level structural invariant belongs here:
 `scripts/check-dist.mjs` + `scripts/font-subset.config.mjs` are drop-in
 templates for exactly these checks (adapt the paths, ceilings and ranges per
 project; they assume inlined CSS - if your CSS ships as a separate file, read
-that file for the `@font-face` cross-check instead of the HTML).
+that file for the `@font-face` cross-check instead of the HTML). In a
+per-route hybrid build, run them against the prerendered pages only - the SSR
+routes are section 3's job.
 
 **Adapt, don't copy, the matchers.** The template's preload matcher keys on
 `rel="preload"` / `as="font"` with **double** quotes and one attribute order; a
@@ -78,33 +86,33 @@ React 19 may also hoist `<link>` into `<head>`), there is no static file to
 grep - boot the app, fetch the rendered HTML for the *actual route*, and assert
 on it. Do not trust the source, trust the bytes.
 
-### 3a. Count what shipped in the head (cheapest, do this first)
+### 3a. Assert on the booted head with `scripts/check-head.mjs`
 
-Playwright locator (single count assertion) - set the count to the exact number
-of above-the-fold weights your head preloads:
+`scripts/check-head.mjs` is the Tier-1 drop-in template: it fetches a booted
+route (URL argument) or reads HTML from stdin, and asserts font preload count
+within a `{min,max}` budget, anonymous-only `crossorigin`, and no duplicate
+preload hrefs. The structural matchers are **rendering-mode agnostic** - the
+same invariants check-dist.mjs asserts on static files hold on per-request
+bytes; only the artifact source differs. Fallback-face checks are off by
+default (SSR stacks usually ship CSS as external files - assert fallbacks on
+the built CSS instead; flip `FALLBACK_FACES` on if your head inlines them).
+
+Worked example - TanStack Start (preloads emitted via the root route's
+`head()` option, rendered per request by `<HeadContent />`):
+
+```bash
+pnpm dev &                 # or the built preview: node .output/server/index.mjs
+node check-head.mjs http://localhost:3000/        # the booted root route
+# or, when you already have the bytes:
+curl -fsS http://localhost:3000/ | node check-head.mjs
+```
+
+Playwright equivalent for a suite that already boots the app (single count
+assertion; set N to your budget):
 
 ```ts
 // React/framework may hoist <link> into <head>, so target rendered DOM, not JSX
 await expect(page.locator('head link[rel="preload"][as="font"]')).toHaveCount(N);
-```
-
-Node variant (order-tolerant) for a preload-count gate against a booted route.
-Point `URL` at whatever route/port your dev server boots, and set `EXPECT` to
-your count:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-URL="http://localhost:$PORT/"; EXPECT=N
-curl -fsS "$URL" | node -e '
-  const h = require("fs").readFileSync(0,"utf8");
-  const links = h.match(/<link\b[^>]*>/gi) ?? [];
-  const font = links.filter(l => /rel="?preload"?/i.test(l) && /as="?font"?/i.test(l));
-  const want = Number(process.argv[1]);
-  console.log("font preloads:", font.length);
-  for (const l of font) console.log("  " + (l.match(/href="([^"]+)"/)?.[1] ?? l));
-  if (font.length !== want) { console.error(`FAIL: expected ${want}`); process.exit(1); }
-' "$EXPECT"
 ```
 
 Gotchas:

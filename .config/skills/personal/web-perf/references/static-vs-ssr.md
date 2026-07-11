@@ -35,6 +35,24 @@ the detail.
    woff2 and the assertion cannot drift. → `verify.md` Tier 0 +
    `scripts/font-subset.config.mjs`.
 
+## The axis is per-route, not per-site
+
+Astro's `prerender` flag is per-route: one build can ship a prerendered
+subset (Tier 0 - assert on those `dist/*.html` files directly) alongside SSR
+routes rendered by the Worker (Tier 1 - boot and fetch), and the SSR route is
+often the highest-traffic page. Classify each route you are diagnosing, not
+the project; point `check-dist.mjs` at the prerendered subset only and use
+`check-head.mjs` for the SSR routes (verify.md).
+
+## Embedded / host-owned surfaces: a different game
+
+In embedded contexts - MCP/Apps-SDK widgets, Devvit iframes, any CSP-forced
+single-file surface - the host owns `<head>`, headers and caching, so the
+hint/cache levers in this skill don't apply. First-load jank there is
+widget-mount and async client-render: reserve the widget's height, ship a
+sized placeholder, and for heavy canvas/game engines draw an in-canvas
+loading scene rather than leaving a blank element.
+
 ## The edge/privacy corollary
 
 Per-request assembly (SSR at an edge/Worker, locale or A/B branching) is also the
