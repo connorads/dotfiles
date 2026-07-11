@@ -1,0 +1,57 @@
+#!/usr/bin/env zsh
+# flt: create a tmux floating pane from a named preset
+# usage: flt [-d] [-c dir] [--print] [preset] [command...]
+#   presets: c (centre, default), big, tl, tr, bl, br
+#   A non-preset first arg is the command: `flt btm` = centred btm.
+#   -d creates without focusing; -c sets the start directory (default: caller's
+#   cwd); --print prints the tmux command instead of running it (tests use it).
+# Single source of the preset geometry - the tmux.conf ` and ~ binds call this
+# rather than duplicating coordinates. Needs tmux 3.7+ (new-pane).
+emulate -L zsh
+
+local usage='usage: flt [-d] [-c dir] [--print] [preset] [command...]
+presets: c (centre, default) big tl tr bl br'
+
+# Percent geometry scales with the window; X+width / Y+height may sum to 100%
+# (flush against an edge) but not exceed it.
+local -A presets=(
+  c   '-x 70% -y 70% -X 15% -Y 15%'
+  big '-x 90% -y 85% -X 5% -Y 7%'
+  tl  '-x 45% -y 35% -X 0% -Y 0%'
+  tr  '-x 45% -y 35% -X 55% -Y 0%'
+  bl  '-x 45% -y 35% -X 0% -Y 65%'
+  br  '-x 45% -y 35% -X 55% -Y 65%'
+)
+
+local nofocus='' dir="$PWD" print_only=''
+while (( $# )); do
+  case "$1" in
+  -d) nofocus=1; shift ;;
+  -c)
+    [[ -n "${2:-}" ]] || { print -u2 'flt: -c needs a directory'; return 2 }
+    dir="$2"; shift 2 ;;
+  --print) print_only=1; shift ;;
+  -h | --help) print -r -- "$usage"; return 0 ;;
+  -*) print -u2 "flt: unknown option $1"$'\n'"$usage"; return 2 ;;
+  *) break ;;
+  esac
+done
+
+local preset=c
+if [[ -n "${1:-}" && -n "${presets[$1]:-}" ]]; then
+  preset="$1"
+  shift
+fi
+
+local -a args=(new-pane ${=presets[$preset]} -c "$dir")
+[[ -n "$nofocus" ]] && args+=(-d)
+(( $# )) && args+=(-- "$@")
+
+if [[ -n "$print_only" ]]; then
+  # Space-joined for test assertions; args with spaces are not re-quoted.
+  print -r -- "tmux ${(j: :)args}"
+  return 0
+fi
+
+[[ -n "$TMUX" ]] || { print -u2 'flt: not inside tmux'; return 1 }
+command tmux "${args[@]}"
