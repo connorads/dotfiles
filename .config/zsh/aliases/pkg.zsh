@@ -13,6 +13,9 @@ alias br='bun run'
 alias pnr='pnpm run'
 alias nr='npm run'
 
+# dev shortcut (top script by usage)
+alias pnd='pnpm run dev'
+
 # install variants
 alias bi='bun install'
 alias pni='pnpm install'
