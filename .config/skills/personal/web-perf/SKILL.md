@@ -70,7 +70,9 @@ can regress another. Run the symptom lens first, then sanity-check the others.
 - **Bytes vs blocking vs main-thread** - is the cost download size (subset /
   compress), render-blocking (preload / inline / reorder), or JS on the main
   thread (defer / split)? People conflate "make it smaller" with "make it not
-  block"; the fixes differ.
+  block"; the fixes differ. **Measure the real artifact before trusting a generic
+  ratio** - the "300KB -> 20KB" subsetting win assumes an unsubset source; an
+  already-subset file has most of it banked (fonts.md).
 - **Degradation** - no-JS, `prefers-reduced-motion`, slow-3G, and the nasty one:
   **cache-hit before hydration** (a cached image/handler race). A fix that only
   works with warm cache and attached JS is not a fix. (Worked example: a JS
