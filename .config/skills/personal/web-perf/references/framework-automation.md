@@ -25,13 +25,14 @@ so check per-concern, not per-framework.
   the residual shimmer on those.
 - **Astro** - *version-dependent*. Ships a built-in `<Image>`/`<Picture>`
   (sizing, format negotiation, lazy **by default** - put the `priority` prop on
-  the one LCP image), so the image rows are handled. Fonts: on **Astro 6+** the
-  built-in Fonts API (stable in 6.0, experimental from 5.7) automates
-  self-hosting, opt-in `<Font preload />`, `optimizedFallbacks` metric
-  fallbacks, and provider-level subsetting (`subsets`/`unicodeRange`) - defer
-  to it for those rows (fonts.md lead note). Custom fixed-copy re-subsetting +
-  the coverage guard stay hand-rolled even on 6. Pre-6 Astro: all font rows
-  are this skill.
+  the one LCP image), so the image rows are handled. Fonts: where the built-in
+  **Fonts API is active** - stable in Astro 6, behind the `experimental.fonts`
+  flag in 5.7+ - it automates self-hosting, opt-in `<Font preload />`,
+  `optimizedFallbacks` metric fallbacks, and provider-level subsetting
+  (`subsets`/`unicodeRange`) - defer to it for those rows (fonts.md lead note).
+  Custom fixed-copy re-subsetting + the coverage guard stay hand-rolled even
+  then. Without the Fonts API active (below 5.7, or 5.7+ with the flag off), all
+  font rows are this skill.
 - **Vite SPA/MPA, plain SSR, static hand-built HTML** - no font/image layer;
   the whole right column is yours.
 
@@ -67,8 +68,8 @@ mechanical and verifiable as the framework version. "Defer and stop" applies to
 the framework layer's **own output** - app code wrapping it (fade wrappers,
 CSS hiding a `priority` image, raw `font-family` overrides) is still in scope.
 Fully-automated stack (Next) -> close this skill once the wrapping code is
-clean; partial (Astro pre-6: images automated, fonts not) -> use it for the
-un-automated concern only.
+clean; partial (Astro without the Fonts API active: images automated, fonts
+not) -> use it for the un-automated concern only.
 
 - <https://github.com/vercel/next.js/blob/canary/packages/next/src/server/font-utils.ts> ·
   <https://docs.astro.build/en/guides/images/>

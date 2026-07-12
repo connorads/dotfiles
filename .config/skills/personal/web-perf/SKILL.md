@@ -14,7 +14,7 @@ description: >-
   hand; or when asserting first-load invariants on built HTML or a booted
   route. Not for backend latency, bundle-size analysis, or runtime
   interaction (INP) tuning; where a framework layer automates the fix
-  (next/font, next/image, Astro 6 fonts), defer to that layer's own output -
+  (next/font, next/image, Astro fonts), defer to that layer's own output -
   but still inspect app code wrapping it.
 ---
 
@@ -30,7 +30,7 @@ document head. The framework is not doing it for you, so you must - and must
 verify it yourself.
 
 Where a framework *does* automate the fix (Next's `next/font`/`next/image`,
-Astro 6's Fonts API), defer to that layer's own output - but app code
+Astro's Fonts API), defer to that layer's own output - but app code
 *wrapping* it stays in scope (`references/framework-automation.md`).
 
 ## Out of scope
