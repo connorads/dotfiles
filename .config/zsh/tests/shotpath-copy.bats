@@ -174,6 +174,32 @@ EOF
   ! grep -q "paste-buffer" "$TEST_LOG"
 }
 
+@test "shotpath-remote-popup streams authentication prompts while shotpath is running" {
+  write_stub shotpath <<'EOF'
+#!/usr/bin/env bash
+echo "Tailscale SSH authentication required" >&2
+sleep 2
+exit 1
+EOF
+  local output_file="$BATS_TEST_TMPDIR/popup-output"
+
+  "$REMOTE_SCRIPT" </dev/null >"$output_file" 2>&1 &
+  local popup_pid=$!
+
+  local visible=0
+  for _ in {1..50}; do
+    if grep -q "Tailscale SSH authentication required" "$output_file"; then
+      visible=1
+      break
+    fi
+    sleep 0.02
+  done
+  [ "$visible" -eq 1 ]
+  kill -0 "$popup_pid"
+  wait "$popup_pid"
+  [ "$(grep -c "Tailscale SSH authentication required" "$output_file")" -eq 1 ]
+}
+
 @test "shotpath-remote-popup silent cancel (fzf Esc) closes without pause" {
   write_stub shotpath <<'EOF'
 #!/usr/bin/env bash

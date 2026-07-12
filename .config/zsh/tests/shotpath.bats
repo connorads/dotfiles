@@ -156,6 +156,18 @@ EOF
   grep -F "$source dev:/tmp/screenshots/animated.gif" "$TEST_LOG"
 }
 
+@test "sendshot reports upload size when popup progress is requested" {
+  write_remote_stubs
+  local source="$BATS_TEST_TMPDIR/animated.gif"
+  printf 'GIF89a' >"$source"
+  export SHOTPATH_PROGRESS=1
+
+  run_zsh_function "$FUNCTIONS_DIR/sendshot" --host mini "$source"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Uploading animated.gif (6 bytes) to mini..."* ]]
+}
+
 @test "shotpath remote offers ssh config hosts through fzf when interactive" {
   write_successful_png_imagepaste
   write_remote_stubs
