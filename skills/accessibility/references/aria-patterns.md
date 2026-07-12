@@ -41,6 +41,8 @@ Screen readers compute a control's accessible name using this priority order (hi
 
 The exact native source at step 3 is element-dependent, but `title` then `placeholder` are always the final fallbacks: if anything higher supplies a name, they are ignored.
 
+> Strictly, steps 1–4 follow [accname-1.2](https://www.w3.org/TR/accname-1.2/); `placeholder`-as-name is an input-only fallback defined by [HTML-AAM](https://www.w3.org/TR/html-aam-1.0/), not a step in the accname computation itself. Either way it is a last resort — never a substitute for a `<label>`.
+
 **Accessible description** (supplementary, announced after the name) comes from `aria-describedby`.
 
 ```html
@@ -263,7 +265,7 @@ Live regions announce changes to screen readers without moving focus. Use sparin
 
 1. **Live regions must be in the DOM on page load** — inject text *into* them, not the region itself
 2. **Start empty** — if pre-populated, the initial content won't be announced
-3. **Wait ≥2s before populating** a dynamically injected live region (browser needs to register it)
+3. **Register before populating** — if you inject the region dynamically, insert it *empty* first, then set its text in a separate step (a later tick / next frame is enough) so the AT registers it before the change. Better: ship the empty region in the initial HTML (rule 1) and avoid the problem
 4. **Keep messages concise** — they're announced once and cannot be replayed
 5. **`aria-atomic="true"`** — announces the entire region content, not just the changed part (use for counts: "4 items in cart" not just "4")
 
@@ -300,25 +302,37 @@ For complex interactive widgets, follow the **ARIA Authoring Practices Guide** (
   <button role="tab" aria-selected="true" aria-controls="profile-panel" id="profile-tab">Profile</button>
   <button role="tab" aria-selected="false" aria-controls="billing-panel" id="billing-tab" tabindex="-1">Billing</button>
 </div>
-<div role="tabpanel" id="profile-panel" aria-labelledby="profile-tab">...</div>
+<!-- tabindex="0" only when the panel has no focusable content of its own -->
+<div role="tabpanel" id="profile-panel" aria-labelledby="profile-tab" tabindex="0">...</div>
 <div role="tabpanel" id="billing-panel" aria-labelledby="billing-tab" hidden>...</div>
 ```
 
-Keyboard: `Tab` enters the tab list, **arrow keys** navigate between tabs (not Tab), `Tab` again moves to tab panel.
+Keyboard:
+
+- `Tab` enters the tab list; **arrow keys** move between tabs (not `Tab`); `Home`/`End` jump to the first/last tab.
+- `Tab` then moves focus *out* of the tab list to the next focusable element — the tabpanel only if it (or its first content) is focusable. Give the panel `tabindex="0"` when it has **no** focusable content, so it isn't skipped.
+- **Activation:** *automatic* (selecting a tab on arrow shows its panel immediately) suits cheap panels; *manual* (arrow moves focus, `Enter`/`Space` activates) suits panels that are expensive to render.
 
 ### Menu Button pattern
+
+Use `role="menu"`/`menuitem` **only for application-style action menus** — a list of commands like Edit / Delete / Duplicate. It commits you to the full APG keyboard model below; a partial implementation is worse than none.
 
 ```html
 <button aria-haspopup="menu" aria-expanded="false" id="actions-btn">
   Actions ▾
 </button>
 <ul role="menu" aria-labelledby="actions-btn" hidden>
-  <li role="menuitem">Edit</li>
-  <li role="menuitem">Delete</li>
+  <li role="menuitem" tabindex="-1">Edit</li>
+  <li role="menuitem" tabindex="-1">Delete</li>
 </ul>
 ```
 
-Keyboard: `Enter`/`Space` opens, arrow keys navigate items, `Escape` closes, first-letter navigation optional.
+Keyboard:
+
+- **On the button:** `Enter`/`Space` opens the menu and moves focus to the first item. `Down` opens and focuses the first item; `Up` opens and focuses the last item (both optional per APG).
+- **In the menu:** arrow keys move focus between items via a **roving tabindex** — the focused `menuitem` has `tabindex="0"` (all others `-1`) and receives `.focus()`; or use `aria-activedescendant`. `Home`/`End` jump to first/last. First-letter type-ahead is optional. `Escape` closes and returns focus to the button.
+
+> **Do not use `role="menu"`/`menuitem` for site navigation** — a dropdown of links (Home, About, Products). That is a *disclosure*, not a menu: a `<button aria-expanded>` toggling a `<ul>` of `<a>` inside `<nav>` (the [Toggle button pattern](#toggle-button-pattern) above), with **no** menu roles. Menu roles suppress link semantics and mislead screen reader users into expecting application-menu keyboard behaviour. ([Roselli: Don't Use ARIA Menu Roles for Site Nav](https://adrianroselli.com/2017/10/dont-use-aria-menu-roles-for-site-nav.html))
 
 ### Accordion
 
