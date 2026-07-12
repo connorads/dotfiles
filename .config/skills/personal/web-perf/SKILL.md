@@ -151,9 +151,10 @@ causes and fixes live in `references/symptoms.md`.
 **Templates (read-as-reference, brand-agnostic - adapt per project):**
 
 - `scripts/check-dist.mjs` - Tier-0 build-output guard: preload budget range,
-  crossorigin, preload<->@font-face href match, no stylesheet link, metric
-  fallback presence, subset byte ceilings, scoped glyph coverage, immutable +
-  public-font cache headers. Wire into CI after the build.
+  crossorigin, preload<->@font-face href match, non-blocking font-display on
+  fetched faces, no stylesheet link, metric fallback presence, subset byte
+  ceilings, scoped glyph coverage, immutable + public-font cache headers
+  (block-scoped). Wire into CI after the build.
 - `scripts/check-head.mjs` - Tier-1 booted-route guard: fetch a route (or pipe
   HTML in) and assert the same head invariants on rendered bytes.
 - `scripts/font-subset.config.mjs` - the single shared coverage module the subset

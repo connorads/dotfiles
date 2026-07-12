@@ -1,6 +1,6 @@
 {
   "skill_name": "web-perf",
-  "how_to_run": "Per writing-skills/references/evals.md: for each eval run the prompt with-skill and baseline (no skill, or the pre-rename first-load-web-perf version) in fresh parallel sessions. Grade the transcript against the assertions, not just the final answer - especially whether the agent invents a booted dev server for a static-prerender scenario (it should not) and whether it routes to the right reference. The held-out negative trigger slice is the evals with ids 5 and 6 (named held-out-negative-*): score whether the skill FIRES at all, and it should not.",
+  "how_to_run": "Per writing-skills/references/evals.md: for each eval run the prompt with-skill and baseline (no skill, or the pre-rename first-load-web-perf version) in fresh parallel sessions. Grade the transcript against the assertions, not just the final answer - especially whether the agent invents a booted dev server for a static-prerender scenario (it should not) and whether it routes to the right reference. The held-out negative trigger slice is the evals with ids 5 and 6 (named held-out-negative-*): score whether the skill FIRES at all, and it should not. Fixture-driven evals that grade rendered font visuals: Playwright's default headless is chromium-headless-shell, not full Chrome - use channel:'chromium' when the assertion hangs on font rasterisation.",
   "evals": [
     {
       "id": 1,
@@ -115,6 +115,31 @@
         "Flags the opacity-0 onLoad wrapper as the defect: invisible with no-JS, racy on warm cache (cache-hit-before-hydration), and it defeats the priority/fetchpriority the framework set up",
         "Recommends removing the JS-gated reveal (CSS entrance + eager/priority load instead)",
         "Flags the raw font-family re-declaration: naming the family by string drops the next/font metric-fallback stack (use the next/font className/variable instead); does not hand-roll @font-face/preloads that next/font already provides"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "js-gated-entrance-reveal",
+      "fixture": "",
+      "prompt": "static astro site on cloudflare. on a slow connection the hero section is just blank for a while and then the whole thing fades in together. we have an entrance animation (opacity 0 -> 1 plus a small translate) driven by an IntersectionObserver that adds an .in-view class. lighthouse LCP actually got WORSE after we added it. can you fix the jank without losing the animation?",
+      "assertions": [
+        "Fires and identifies the JS-gated entrance reveal (symptoms.md B7): CSS ships the content at opacity:0 unconditionally and client JS reveals it - not render-blocking CSS (C1), not image decode (B5)",
+        "Explains the LCP mechanism: opacity-0 content is excluded from LCP as non-contentful, so the reveal delays the recorded LCP; also flags that with no-JS the content never appears",
+        "Recommends inverting the default: content visible by default, hidden only behind a .js class set by an inline head script (or @starting-style / transform-only entrance), and excludes the LCP element from the reveal animation entirely",
+        "Keeps the animation (the ask) rather than deleting it, and does NOT reach for preload/fetchpriority levers - the bytes were never late",
+        "Verifies per tier: static build, so asserts on dist and/or a JS-disabled + Slow-3G cold-cache check showing content painted in the first frames"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "text-lcp-wordmark",
+      "fixture": "",
+      "prompt": "lighthouse says our LCP element is the big h1 wordmark (display font via our own @font-face). mobile LCP is 3.1s. i was going to add fetchpriority=high to the hero image but honestly it's small and decorative. what's the right fix here?",
+      "assertions": [
+        "Fires and routes to the text-LCP branch (symptoms.md C3): the LCP element is webfont TEXT, so the webfont is the LCP dependency - does not hunt for a hero image to optimise",
+        "Recommends font levers for the exact face the h1 renders: per-weight/style preload with crossorigin (+ type=font/woff2), metric-matched fallback, and a considered font-display choice",
+        "Handles the wordmark nuance: swap (default verdict) paints the fallback first; block/optional is a bounded exception for a short brand wordmark if the wrong-face flash is unacceptable - body text stays swap",
+        "Advises AGAINST fetchpriority=high on the decorative image (zero-sum bandwidth against the font/critical path), rather than just ignoring the user's proposed fix"
       ]
     }
   ]

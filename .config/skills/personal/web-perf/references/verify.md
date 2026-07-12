@@ -9,7 +9,7 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 - [1. First: which artifact are you asserting on?](#1-first-which-artifact-are-you-asserting-on)
 - [2. Tier 0 - static / prerender: assert on the built HTML directly](#2-tier-0---static--prerender-assert-on-the-built-html-directly)
 - [3. Tier 1 - SSR / per-request: boot the route, assert on rendered bytes](#3-tier-1---ssr--per-request-boot-the-route-assert-on-rendered-bytes)
-- [4. Shared probes (either tier): cold-cache by eye + CLS](#4-shared-probes-either-tier-cold-cache-by-eye--cls)
+- [4. Shared probes (either tier): cold-cache by eye + CLS/LCP](#4-shared-probes-either-tier-cold-cache-by-eye--clslcp)
 - [5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)](#5-measurement-tool-gotchas-lighthouse-ci--unlighthouse)
 - [6. DevTools trace workflow](#6-devtools-trace-workflow)
 - [7. Wire it into the build where it matters](#7-wire-it-into-the-build-where-it-matters)
@@ -131,7 +131,7 @@ requests. Cross-check the preload hrefs against the built font CSS `url()`s; in
 DevTools Network a mismatch shows the same face fetched twice, and Chrome logs
 the credentials-mode warning ~3s after load (fonts.md).
 
-## 4. Shared probes (either tier): cold-cache by eye + CLS
+## 4. Shared probes (either tier): cold-cache by eye + CLS/LCP
 
 ### 4a. See it cold-cache, by eye
 
@@ -196,6 +196,49 @@ corroborate but iterate slower.
   <https://developer.mozilla.org/en-US/docs/Web/API/LayoutShift> ·
   <https://playwright.dev/docs/api/class-page#page-add-init-script>
 
+### 4c. Prove LCP/FCP claims + attribute a shift to the font swap
+
+Same harness as 4b (collector installed BEFORE navigation, throttle before
+`goto`). Two gotchas make LCP different from CLS:
+
+- **LCP must be flushed before you read it** - the browser keeps accepting
+  larger candidates until an interaction or the page hides. After `load`,
+  `page.click('body')` (or dispatch `visibilitychange` -> hidden), then read
+  the *last* entry; a naive post-load read under-reports.
+- **Playwright's default headless is `chromium-headless-shell`, not full
+  Chrome** - it rasterises fonts/GPU differently, so font-swap visuals and
+  screenshot baselines can diverge from what users see. Use
+  `channel: 'chromium'` (new headless) when the assertion hangs on rendered
+  font pixels.
+
+```ts
+await page.addInitScript(() => {
+  (window as any).__lcp = 0;
+  new PerformanceObserver((list) => {
+    const last = list.getEntries().at(-1) as any;
+    if (last) (window as any).__lcp = last.startTime;
+  }).observe({ type: 'largest-contentful-paint', buffered: true });
+});
+// ...throttle + goto as in 4b, then flush and read:
+await page.click('body');                    // user input finalises LCP
+const lcp = await page.evaluate(() => (window as any).__lcp);
+```
+
+The entry's `element` also proves *what* the LCP is - a text node routes to
+symptoms.md C3 (font levers), an `<img>` to C2. For element-level culprits
+with less code, inject the `web-vitals` **attribution build** via
+`addInitScript` and read its report after the same flush.
+
+**Attribute a shift to the font swap**: log each `layout-shift` entry's
+`startTime` (4b collector) and compare against when `document.fonts.ready`
+resolved - a shift cluster landing at fonts-ready is the swap (fix per
+fonts.md A1 levers); one landing at an image response is A2/B5. This turns
+"CLS got worse" into a named culprit without a trace.
+
+- <https://developer.mozilla.org/en-US/docs/Web/API/LargestContentfulPaint> ·
+  <https://github.com/GoogleChrome/web-vitals#attribution> ·
+  <https://playwright.dev/docs/browsers#chromium-new-headless-mode>
+
 ## 5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)
 
 When you reach for a runtime tool to corroborate a fix, these traps waste the
@@ -258,4 +301,4 @@ over "remember to check" for anything load-bearing.
 Eager-loading spends bandwidth; preloading many files competes for it; `fetchpriority`
 is zero-sum. After a fix, re-check the vital you might have *regressed* (LCP after
 making an image eager or priority-high; overall load after adding preloads), not just
-the one you targeted.
+the one you targeted - the 4b/4c probes are the tools for that re-check.
