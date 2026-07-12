@@ -11,7 +11,7 @@ description: >
 
 # Accessibility
 
-Web accessibility done right means your UI is navigable, understandable, and operable by people who cannot use a mouse — primarily those using screen readers (NVDA, JAWS, VoiceOver), keyboard-only users, and those with motor, cognitive, or visual impairments. The 2024 WebAIM Million report found 95.9% of home pages failing basic accessibility checks. Most failures are preventable with the right mental model.
+Web accessibility done right means your UI is navigable, understandable, and operable by people who cannot use a mouse — primarily those using screen readers (NVDA, JAWS, VoiceOver), keyboard-only users, and those with motor, cognitive, or visual impairments. The WebAIM Million survey consistently finds roughly 95% of home pages carry detectable WCAG failures. Most are preventable with the right mental model.
 
 ## The Core Mental Model
 
@@ -39,6 +39,7 @@ Review in this priority order — fix critical issues before polishing low-impac
 | 6 | Colour contrast and visual states | AA | references/wcag-checklist.md |
 | 7 | Dynamic content announcements | AA | references/aria-patterns.md |
 | 8 | Images and media | A | references/wcag-checklist.md |
+| 9 | Motion, flashing, and timing (reduced-motion, seizure safety, auto-updating content) | A/AA | references/wcag-checklist.md |
 
 Quote the exact failing snippet, name the WCAG criterion, and propose the smallest viable fix. Do not refactor unrelated code.
 
@@ -76,6 +77,8 @@ Opening a dialog/modal?
 - [ ] Tab order is logical and matches visual order
 - [ ] All pointer interactions have a keyboard equivalent
 - [ ] No `tabindex` greater than 0
+- [ ] Interactive targets are at least 24×24 CSS px, or spaced apart (WCAG 2.5.8)
+- [ ] Non-essential motion respects `prefers-reduced-motion`; nothing flashes more than three times per second (WCAG 2.3.1)
 
 ---
 
@@ -144,9 +147,9 @@ Automated tools catch ~30–40% of accessibility issues. The rest require AT tes
 
 **Minimum viable test matrix:**
 
-- NVDA + Chrome or Firefox (Windows) — covers ~66% of screen reader users
-- VoiceOver + Safari (macOS/iOS) — covers Apple ecosystem
-- Add JAWS + Chrome for enterprise contexts
+- NVDA + Firefox or Chrome (Windows) — free, strict, and one of the two most-used desktop readers
+- VoiceOver + Safari (macOS/iOS) — the dominant reader across Apple platforms
+- JAWS + Chrome for enterprise contexts — the other leading desktop reader
 
 **Core navigation patterns to test manually:**
 
@@ -207,6 +210,8 @@ Do **not** use for: content that sighted users need. Hiding meaningful content f
 | Disabled elements | Exempt |
 
 Never convey information by colour alone — always pair with a shape, pattern, or text label.
+
+Respect user colour preferences: support `prefers-color-scheme`, and test under Windows High Contrast / `forced-colors: active` rather than overriding it (never `forced-colors-adjust: none` on meaningful content). See references/wcag-checklist.md.
 
 Check exact foreground/background pairs from the `accessibility` skill
 directory:
