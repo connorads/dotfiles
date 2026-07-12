@@ -35,11 +35,11 @@ eager/lazy split and box reservation, and route the LCP work to fonts
   swap-without-flash tool for dynamically-swapped images.
   - <https://html.spec.whatwg.org/multipage/images.html#decoding-images> ·
     <https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding>
-- **`loading="eager"` does NOT raise fetch priority.** Eager images still start at
-  Low priority (Chrome 117+ starts the first few large in-viewport images at
-  Medium) and are only boosted to High at layout when found in-viewport. Only
-  `fetchpriority="high"` (or a preload) starts them High immediately. Do not imply
-  eager reprioritises the fetch.
+- **`loading="eager"` does NOT raise fetch priority.** Eager only starts the
+  fetch early; it does not change the image's priority (still Low, boosted to
+  High at layout when found in-viewport - the priority model is in Priority &
+  discovery below). Only `fetchpriority="high"` (or a preload) starts it High
+  immediately. Do not imply eager reprioritises the fetch.
 - **The decode/animation coupling (the subtle one).** A CSS mount/entrance animation
   fires at element *load*, regardless of whether the image has decoded. So "keep it
   lazy + animate it" desyncs: the fade finishes before the image exists. Eager loading
@@ -74,9 +74,22 @@ preload fixes *discovery*, fetchpriority fixes *priority*.
 
 - Rule: an `<img>` already in the SSR HTML -> `fetchpriority="high"` on the img usually
   suffices; preload only when discovery is late (CSS background, JS-inserted).
+- **CSS `background-image` LCP candidate -> prefer the structural fix.** Move it
+  into an `<img>` (`object-fit: cover` + `object-position` for the crop) so the
+  preload scanner discovers it in markup; fall back to preloading the background
+  (`as=image` + `fetchpriority="high"`) only when it can't be dropped (art
+  direction, gradient overlay). A JS-inserted LCP image stays preload-first -
+  there is no markup for the scanner to find.
 - **Decorative-vs-LCP split:** do NOT add `fetchpriority="high"` to decorative art - it
   would steal priority from the true LCP element. Reserve it for the real LCP element
   (Chrome team: 1-2 per page).
+- **Demote competing above-the-fold images**, don't just avoid boosting them:
+  `fetchpriority="low"` on a header logo/avatar, a secondary hero, or offscreen
+  carousel slides frees bandwidth for the LCP fetch - *not* boosting the LCP is
+  not the same as demoting its rivals. For near-viewport carousel/offscreen
+  slides pair `loading="lazy"` WITH `fetchpriority="low"`: Chrome may judge
+  slides 2-4 "close enough" to in-viewport and eager-fetch/boost them despite
+  `lazy`, so lazy alone doesn't stop the contention.
 - Responsive preloads (`imagesrcset`/`imagesizes`) do NOT work in HTTP-header preload or
   103 Early Hints.
 
