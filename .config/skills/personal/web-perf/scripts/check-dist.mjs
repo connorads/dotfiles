@@ -23,8 +23,12 @@
 //     cannot resolve a font path, reintroducing font-swap layout shift
 //   - no stylesheet link: an inline-CSS posture keeps first paint off the
 //     render-blocking request; a config change would quietly bring it back
-//   - immutable cache headers: hashed assets must stay immutable or every
-//     repeat view revalidates each asset
+//   - font-display: every FETCHED @font-face (url() src) must carry a
+//     non-blocking font-display (swap/optional/fallback) - the descriptor the
+//     flash fixes hang on; local()-only metric fallbacks are skipped
+//   - immutable cache headers: hashed assets must stay immutable WITH a long
+//     max-age, asserted inside the rule's own block (a stray "immutable"
+//     elsewhere in the file must not pass), or every repeat view revalidates
 //   - font subset size: a ceiling catches a regeneration that dropped the
 //     subsetting and reshipped the full face
 //   - glyph coverage: rendered copy must stay within the subset's coverage, or a
@@ -55,6 +59,11 @@ const FONT_SIZE_CEILINGS = {
 };
 const HASHED_ASSET_DIR = "_astro"; // dir holding content-hashed assets
 const HEADERS_FILE = "_headers"; // platform header-rules file, if any
+// Long-TTL threshold for cache-header rules (headers file): adapt per project.
+const LONG_TTL_SECONDS = 30 * 86_400;
+// Families exempt from the non-blocking font-display check (e.g. an icon font
+// deliberately using `block` per fonts.md B4).
+const FONT_DISPLAY_EXEMPT = [];
 // Fonts served from stable public/ paths carry no content hash, so they can
 // never be immutable-by-hash - they need their own explicit long-TTL rule in
 // the headers file (version the PATH when the file changes). Set to that
@@ -138,8 +147,25 @@ for (const file of pages) {
       page,
       "font preload matches an inline @font-face url()",
       Boolean(href) &&
-        (html.includes(`url(${href})`) || html.includes(`url("${href}")`)),
+        (html.includes(`url(${href})`) ||
+          html.includes(`url("${href}")`) ||
+          html.includes(`url('${href}')`)),
       href,
+    );
+  }
+
+  // Every fetched face must carry a non-blocking font-display; local()-only
+  // faces (metric fallbacks) fetch nothing and legitimately omit it.
+  for (const face of html.match(/@font-face\s*{[^}]*}/g) ?? []) {
+    if (!/url\(/.test(face)) continue;
+    const family =
+      face.match(/font-family:\s*["']?([^;"'}]+)["']?/)?.[1]?.trim() ??
+      "unnamed";
+    if (FONT_DISPLAY_EXEMPT.includes(family)) continue;
+    check(
+      page,
+      `@font-face carries non-blocking font-display: ${family}`,
+      /font-display:\s*(swap|optional|fallback)\b/.test(face),
     );
   }
 
@@ -211,30 +237,36 @@ try {
   check(HEADERS_FILE, "file copied into dist", false);
 }
 if (headers) {
+  // A rule's block = the indented lines under the exact matching path line.
+  // Scoping both checks to the block stops a stray "immutable"/max-age
+  // anywhere else in the file from passing them.
+  const headerBlock = (pathPattern) => {
+    const lines = headers.split("\n");
+    const start = lines.findIndex((l) => l.trim() === pathPattern);
+    if (start === -1) return null;
+    const block = [];
+    for (let i = start + 1; i < lines.length && /^\s/.test(lines[i]); i++)
+      block.push(lines[i]);
+    return block.join("\n");
+  };
+  const blockHasLongTtl = (block) => {
+    const age = block?.match(/max-age=(\d+)/);
+    return Boolean(age) && Number(age[1]) >= LONG_TTL_SECONDS;
+  };
+
+  const hashedRule = headerBlock(`/${HASHED_ASSET_DIR}/*`);
   check(
     HEADERS_FILE,
-    "hashed assets cached immutably",
-    new RegExp(`^/${HASHED_ASSET_DIR}/\\*$`, "m").test(headers) &&
-      headers.includes("immutable"),
+    `hashed assets cached immutably with long max-age: /${HASHED_ASSET_DIR}/*`,
+    Boolean(hashedRule) &&
+      hashedRule.includes("immutable") &&
+      blockHasLongTtl(hashedRule),
   );
   if (PUBLIC_FONT_PATH) {
-    // The rule's block = indented lines under the matching path line; it must
-    // set a long max-age (threshold here: 30 days - adapt per project).
-    const lines = headers.split("\n");
-    const start = lines.findIndex((l) => l.trim() === PUBLIC_FONT_PATH);
-    let longTtl = false;
-    for (
-      let i = start + 1;
-      start !== -1 && i < lines.length && /^\s/.test(lines[i]);
-      i++
-    ) {
-      const age = lines[i].match(/max-age=(\d+)/);
-      if (age && Number(age[1]) >= 30 * 86_400) longTtl = true;
-    }
     check(
       HEADERS_FILE,
       `public font path has a long-TTL rule: ${PUBLIC_FONT_PATH}`,
-      longTtl,
+      blockHasLongTtl(headerBlock(PUBLIC_FONT_PATH)),
     );
   }
 }
