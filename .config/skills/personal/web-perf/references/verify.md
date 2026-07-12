@@ -11,7 +11,7 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 - [3. Tier 1 - SSR / per-request: boot the route, assert on rendered bytes](#3-tier-1---ssr--per-request-boot-the-route-assert-on-rendered-bytes)
 - [4. Shared probes (either tier): cold-cache by eye + CLS/LCP](#4-shared-probes-either-tier-cold-cache-by-eye--clslcp)
 - [5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)](#5-measurement-tool-gotchas-lighthouse-ci--unlighthouse)
-- [6. DevTools trace workflow](#6-devtools-trace-workflow)
+- [6. DevTools Performance panel](#6-devtools-performance-panel)
 - [7. Wire it into the build where it matters](#7-wire-it-into-the-build-where-it-matters)
 - [8. Regression-guard the trade-offs](#8-regression-guard-the-trade-offs)
 
@@ -133,6 +133,14 @@ the credentials-mode warning ~3s after load (fonts.md).
 
 ## 4. Shared probes (either tier): cold-cache by eye + CLS/LCP
 
+The probes below prove a fix *mechanically* - cold load, one machine. The
+shipping verdict is field data: field CLS is the largest session window over the
+whole page lifecycle (scroll, interaction, SPA nav), not just first load, so a
+lab load-only CLS ~0 can still regress in the field. Before calling a CLS/LCP
+regression closed, confirm against real-user p75 (PageSpeed Insights' field
+section or the DevTools field-data panel, both CrUX). Ref:
+<https://web.dev/articles/cls>.
+
 ### 4a. See it cold-cache, by eye
 
 Incognito, or DevTools -> Network -> **Disable cache** + throttle to **3G** -
@@ -189,8 +197,9 @@ test('first-load CLS is ~0 under Slow 3G', async ({ page, context, browserName }
 ```
 
 Avoid `waitUntil:'networkidle'` (Playwright discourages it); `load` + `fonts.ready` + a
-short timeout catches font-swap/decode shifts. Lighthouse / PSI and WebPageTest filmstrip
-corroborate but iterate slower.
+short timeout catches font-swap/decode shifts. Lighthouse and WebPageTest filmstrip
+corroborate but iterate slower; PSI adds a CrUX field read (the section-4 verdict)
+above its lab run.
 
 - <https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-emulateNetworkConditions> ·
   <https://developer.mozilla.org/en-US/docs/Web/API/LayoutShift> ·
@@ -272,16 +281,25 @@ most time:
 - <https://github.com/GoogleChrome/lighthouse-ci/blob/main/docs/configuration.md> ·
   <https://unlighthouse.dev/>
 
-## 6. DevTools trace workflow
+## 6. DevTools Performance panel
 
-1. **Network** panel: tick **Disable cache** + throttling -> **3G** (the former
-   "Slow 3G" preset).
-2. **Performance** panel: record a trace, read the **Layout Shifts** track (purple
-   diamonds grouped into session-window clusters; click one for the animated shift +
-   Summary tab with score/elements/culprits). The Insights sidebar "Layout shift
-   culprits" names causes like "Font request" / "Unsized images". (Diamond size is not
-   documented to scale with shift magnitude - don't read it that way.)
-3. **Lighthouse / PSI** corroborate CLS/LCP but iterate slower (sample the median,
+1. **Live Metrics (no trace).** Opening the Performance panel reads local
+   LCP/CLS/INP live via web-vitals - interact with the page to surface INP and
+   interaction-driven CLS. Enable **Field data** (opt-in; sends the URL to the
+   CrUX API) to read real-user p75 beside the local numbers - the field p75 is
+   the verdict (section 4). The panel can also recommend a throttling preset
+   derived from your users' p75 RTT; use that for a *field-representative* read,
+   but keep section 4a's slowest preset when the goal is reliably reproducing
+   FOUT/pop-in (a worst case, not a field average).
+2. **Record a trace** only when you need per-shift detail. Set Network ->
+   **Disable cache** + throttling -> **3G** first, then read the **Layout
+   Shifts** track (purple diamonds grouped into session-window clusters; click
+   one for the animated shift + Summary tab with score/elements/culprits). The
+   Insights sidebar "Layout shift culprits" names causes like "Font request" /
+   "Unsized images". (Diamond size is not documented to scale with shift
+   magnitude - don't read it that way.)
+3. **PSI** shows CrUX field data (the assessment verdict) above a Lighthouse lab
+   run; its lab half corroborates but iterates slower (sample the median,
    section 5).
 
 - <https://developer.chrome.com/docs/devtools/performance/reference>
