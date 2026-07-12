@@ -7,8 +7,9 @@ description: >-
   about first paint - on any hand-wired stack: static-prerendered (Astro/SSG),
   Vite SPA/MPA, or SSR from a Worker/edge. Use when the user reports a
   "flash", "shimmer", "pop", "jump", "flicker", or slow first paint; when
-  reviewing font loading (self-hosted or hosted CDN like Google Fonts) or
-  image loading; when deciding whether subsetting fixed copy is safe; when
+  content fades in only after JS runs (entrance reveals) or the LCP is
+  webfont text; when reviewing font loading (self-hosted or Google Fonts) or
+  image loading; when deciding if subsetting fixed copy is safe; when
   wiring resource hints (preload/preconnect) or metric-matched fallbacks by
   hand; or when asserting first-load invariants on built HTML or a booted
   route. Not for backend latency, bundle-size analysis, or runtime
@@ -72,6 +73,11 @@ causes and fixes live in `references/symptoms.md`.
   fade, a JS-decoded placeholder) fails when a cached image wins the race
   against hydration - and with no-JS. Prefer CSS + eager loading; check
   degradation (`prefers-reduced-motion`, Slow-3G) before calling it done.
+- **Reveal-gating**: if everything fades in, ask what actually paints first.
+  CSS that ships content at `opacity: 0` until client JS reveals it turns
+  first paint into a JS race, never paints with no-JS, and delays LCP
+  (opacity-0 content is excluded from the metric). The entrance must be an
+  enhancement, not the delivery mechanism (symptoms.md B7).
 - **Edge/privacy leak**: where the response is assembled per request, pre-auth
   anonymity limits what you may preload or inline - 103 Early Hints can replay
   cached preload URLs ahead of an auth check (resource-hints.md). Collapses
@@ -95,8 +101,10 @@ causes and fixes live in `references/symptoms.md`.
   single-file): the host owns `<head>`/headers, so hint/cache levers don't
   apply - see the boundary note in `references/static-vs-ssr.md`.
 - Animation design (easing, entrance curves, reduced-motion gating, stagger)
-  is the `web-animation-design` skill; this skill only owns the loading/decode
-  timing that determines whether there is a real image to animate.
+  is the `web-animation-design` skill; this skill owns the loading/decode
+  timing that determines whether there is a real image to animate - and
+  whether a reveal animation is allowed to gate first paint at all
+  (symptoms.md B7).
 - `will-change`, transitions, tabular-nums, text-wrap live in the
   `make-interfaces-feel-better` skill.
 - On React stacks, the DOM resource-hint APIs (`preload`, `preconnect`,

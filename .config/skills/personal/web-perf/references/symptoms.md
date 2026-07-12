@@ -3,6 +3,17 @@
 Diagnose from what the user *sees*. Each leaf: the symptom in plain words, the
 cause, the fix, the Web Vital it moves, and how to confirm it was that cause.
 
+## Contents
+
+- Root question + decision tree (below)
+- A. Layout moves (CLS): A1 font-swap reflow · A2 unreserved image/iframe box ·
+  A3 late-injected content · A4 hydration shift
+- B. Appearance only: B1 FOIT · B2 weight shimmer · B3 FOUC · B4 icon tofu ·
+  B5 image pop · B6 theme flip (FART) · B7 JS-gated entrance reveal
+- C. Nothing yet: C1 render-blocked blank · C2 late LCP image ·
+  C3 LCP is webfont text
+- D. Scroll jank: D1 long-page paint cost
+
 ## Root question
 
 **Does layout MOVE, does only APPEARANCE change, or does NOTHING appear yet?**
@@ -23,17 +34,21 @@ B. ONLY APPEARANCE CHANGES  (no measurable shift)
    B4  icons render as boxes/tofu, swap   = icon-font load
    B5  image pops to opacity 1            = lazy decode
    B6  theme/active state flips at hydrate = initial-HTML/client state mismatch (FART)
+   B7  content waits, then fades/slides in = JS-gated entrance reveal (opacity:0 until JS)
 
 C. NOTHING APPEARS YET  (blank-then-paint; timing, not shift/restyle)
    C1  long blank then full paint         = render-blocking CSS/JS or huge hydration bundle
    C2  hero/LCP image arrives very late   = late resource discovery
+   C3  LCP is display-font TEXT           = the webfont is the LCP dependency
 
 D. JANK DURING SCROLL/INTERACTION  (not first paint)
    D1  stutter scrolling a long page      = heavy paint/large layers
 ```
 
 The root split maps onto vitals: **A = CLS**, **C = FCP/LCP**, **B/D =
-perceived-quality / INP-adjacent** (no vital unless they also shift).
+perceived-quality / INP-adjacent** (no vital unless they also shift). B7 is
+the exception in B: a reveal gate delays FCP/LCP like C - it lives in B
+because the user describes a fade-in, not a blank.
 
 ---
 
@@ -233,6 +248,36 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
 - Ref: <https://react.dev/reference/react-dom/components/common> (suppressHydrationWarning),
   <https://github.com/pacocoursey/next-themes#readme> (canonical anti-flash pattern)
 
+### B7. Above-the-fold content sits invisible, then fades/slides in (JS-gated reveal)
+
+- **Cause**: entrance-animation CSS ships the content hidden *unconditionally*
+  (`.reveal { opacity: 0 }`, `[data-reveal] { opacity: 0 }`) and client JS -
+  an IntersectionObserver or mount effect - adds the revealed class. The
+  markup is in the initial HTML, but nothing paints until JS runs: on a slow
+  load the page is blank exactly where the content should be, with no-JS it
+  never appears, and when the gated element is the LCP element the LCP
+  timestamp moves to the reveal - opacity-0 content is excluded from LCP as
+  non-contentful, so the fade-in *is* the metric regression.
+- **Fix**: invert the default - content starts visible, the animation is an
+  enhancement layered on top. Options: gate the hidden state behind a `.js`
+  class set by an inline head script (no-JS never hides anything); use
+  `@starting-style` for pure-CSS entrances that cannot strand content hidden;
+  animate transform only (opacity stays 1). Never let the entrance be the
+  mechanism that makes the LCP element appear - exclude it from reveal
+  animations entirely. And if `prefers-reduced-motion` is the only path that
+  shows content un-hidden, the default is inverted - fix that first.
+- **Vital**: FCP/LCP (the reveal delays the paint the metric records); no
+  shift if only opacity/transform animate.
+- **Confirm**: disable JavaScript (DevTools command menu) - gated content must
+  still appear; cold-cache Slow-3G - text paints in the first frames rather
+  than fading in after the bundle; the LCP timestamp sits at first paint, not
+  at the reveal (verify.md).
+- Distinct from B5 (image decode pop: the *bytes* are late) and C1 (nothing
+  on the page paints: the critical path is blocked) - here bytes and layout
+  are ready and CSS is deliberately hiding them.
+- Ref: <https://web.dev/articles/lcp> (opacity-0 excluded as non-contentful),
+  <https://developer.mozilla.org/en-US/docs/Web/CSS/@starting-style>
+
 ---
 
 ## C. Nothing appears yet (blank-then-paint)
@@ -252,7 +297,10 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   flash (B3). **Client-only SPA (no SSR available)**: inline a critical
   app-shell/skeleton into `index.html` itself - static markup + a few lines of
   CSS sized like the real UI - so the blank period is bridged while the bundle
-  downloads; the app replaces it on mount.
+  downloads; the app replaces it on mount. **Astro knob for the
+  no-render-blocking-stylesheet posture**: `build.inlineStylesheets` defaults
+  to `'auto'` (inline only under ~4KB), so a small site whose CSS tops that
+  quietly ships a blocking `<link>` - set `'always'` to inline it.
 - **Vital**: FCP (target <=1.8s) + INP (hydration cost). (FCP is a Web Vital but not
   a *Core* Web Vital; TTI is deprecated - use INP for interactivity.)
 - **Confirm**: Lighthouse's `render-blocking-insight` audit (13+; formerly
@@ -281,6 +329,32 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   Lighthouse's `lcp-discovery-insight` audit clears (13+ folds the old "LCP
   image was lazily loaded" / "Preload LCP image" audits into it).
 - Ref: <https://web.dev/articles/optimize-lcp>
+
+### C3. The LCP element is webfont TEXT that paints late (or in the wrong face)
+
+- **Cause**: on text-first pages (minimal sites, landing pages with a
+  display-font wordmark or hero heading, no hero image) the LCP element is a
+  text node, so the webfont IS the LCP dependency. With block-ish
+  `font-display` the text - and the LCP paint - waits on the font; with
+  `swap`, LCP paints in the fallback but the branding moment is the swap.
+  Image levers (fetchpriority, srcset, preload-as-image) are N/A here - do
+  not hunt for a hero image.
+- **Fix**: fonts.md end to end, for the *exact face the LCP text renders*:
+  preload that weight/style file (crossorigin, exact-file match),
+  metric-matched fallback, `font-display: swap` (the default verdict). Narrow
+  exception for a short brand wordmark where the fallback face is an
+  unacceptable brand flash: `block`/`optional` trades a brief invisible run
+  for never painting the wrong face - bounded to that one element's face;
+  body text stays `swap` (fonts.md). A giant emoji/system-glyph hero is also
+  text-LCP: it renders from the system colour font, so there is nothing to
+  preload - cross-platform rendering variance is the only lever.
+- **Vital**: LCP/FCP (+ CLS if the fallback is metric-mismatched - that is A1).
+- **Confirm**: the DevTools Performance LCP marker names the text node (not an
+  image); cold-cache Slow-3G with the face preloaded paints the fallback (or
+  a brief blank under `block`) then swaps with no shift; the LCP timestamp
+  sits at first paint, not at `fonts.ready`.
+- Ref: <https://web.dev/articles/optimize-lcp>,
+  <https://web.dev/articles/font-best-practices>
 
 ---
 
