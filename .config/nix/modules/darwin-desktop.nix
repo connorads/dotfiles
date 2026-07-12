@@ -39,7 +39,6 @@
     pkgs.tailscale
     # GUI Apps
     pkgs.raycast
-    pkgs.rectangle
     pkgs.iina
     # KeyCastr pinned to an exact, hash-verified release (Homebrew can't pin cask
     # versions; nixpkgs lags at 0.10.3). It holds Accessibility, so freezing the
@@ -60,6 +59,7 @@
     taps = [ "manaflow-ai/cmux" ];
     casks = [
       # Apps
+      "rectangle"
       "kitty"
       "sublime-text"
       "sublime-merge"
