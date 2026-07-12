@@ -28,7 +28,8 @@ browser's, so they hold on any stack - static, SPA, or SSR.
   - <https://html.spec.whatwg.org/multipage/images.html#decoding-images> ·
     <https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding>
 - **`loading="eager"` does NOT raise fetch priority.** Eager images still start at
-  Low priority and are only boosted to High at layout when found in-viewport. Only
+  Low priority (Chrome 117+ starts the first few large in-viewport images at
+  Medium) and are only boosted to High at layout when found in-viewport. Only
   `fetchpriority="high"` (or a preload) starts them High immediately. Do not imply
   eager reprioritises the fetch.
 - **The decode/animation coupling (the subtle one).** A CSS mount/entrance animation
@@ -53,7 +54,8 @@ browser's, so they hold on any stack - static, SPA, or SSR.
 
 ## Priority & discovery
 
-Images default to **Low** priority and are boosted at layout if in-viewport.
+Images default to **Low** priority (since Chrome 117, the first few large
+in-viewport images start at Medium) and are boosted at layout if in-viewport.
 `fetchpriority="high"` = High immediately. A preload = discovery-only at *default*
 priority, so image preloads also need `fetchpriority="high"`. They are complementary:
 preload fixes *discovery*, fetchpriority fixes *priority*.

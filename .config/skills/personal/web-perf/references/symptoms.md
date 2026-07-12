@@ -58,6 +58,10 @@ perceived-quality / INP-adjacent** (no vital unless they also shift).
 - **Fix**: reserve the box. Width/height *attributes* alone now make browsers
   infer `aspect-ratio: auto W/H` and reserve space, even under CSS
   `width:100%; height:auto` - no explicit CSS `aspect-ratio` needed (images.md).
+  **That attribute mapping covers `<img>`, `<video>` and `<input type=image>`
+  only** - an `<iframe>`/`<embed>`/`<object>` gets no inferred aspect-ratio
+  from its attributes, so reserve its box with explicit CSS
+  (`aspect-ratio: 16 / 9` or a sized wrapper).
   Note: CSS rotation is a *transform*, so the reserved layout box is the
   *un-rotated* box - reserve for the upright dimensions. `position:absolute`
   decorative images cause no CLS by construction (out of flow).
@@ -251,9 +255,9 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   downloads; the app replaces it on mount.
 - **Vital**: FCP (target <=1.8s) + INP (hydration cost). (FCP is a Web Vital but not
   a *Core* Web Vital; TTI is deprecated - use INP for interactivity.)
-- **Confirm**: Lighthouse "Eliminate render-blocking resources"; Coverage tab shows
-  unused CSS/JS; the cold-cache trace's blank period ends only after the blocking
-  resource finishes.
+- **Confirm**: Lighthouse's `render-blocking-insight` audit (13+; formerly
+  "Eliminate render-blocking resources"); Coverage tab shows unused CSS/JS; the
+  cold-cache trace's blank period ends only after the blocking resource finishes.
 - Ref: <https://web.dev/first-contentful-paint/>,
   <https://developer.chrome.com/docs/lighthouse/performance/render-blocking-resources>
 
@@ -274,7 +278,8 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   render-blocking CSS/JS.
 - **Vital**: LCP.
 - **Confirm**: Network cold-cache - the LCP request starts near the waterfall start;
-  Lighthouse "LCP image was lazily loaded" / "Preload LCP image" audits clear.
+  Lighthouse's `lcp-discovery-insight` audit clears (13+ folds the old "LCP
+  image was lazily loaded" / "Preload LCP image" audits into it).
 - Ref: <https://web.dev/articles/optimize-lcp>
 
 ---

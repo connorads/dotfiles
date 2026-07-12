@@ -18,10 +18,11 @@ so check per-concern, not per-framework.
   (sizing, format negotiation, lazy **by default** - put the `priority` prop on
   the one LCP image), so the image rows are handled. Fonts: on **Astro 6+** the
   built-in Fonts API (stable in 6.0, experimental from 5.7) automates
-  self-hosting, opt-in `<Font preload />`, and `optimizedFallbacks` metric
-  fallbacks - defer to it for those rows (fonts.md lead note). It does **not**
-  subset, so the subsetting/coverage row stays hand-rolled even on 6. Pre-6
-  Astro: all font rows are this skill.
+  self-hosting, opt-in `<Font preload />`, `optimizedFallbacks` metric
+  fallbacks, and provider-level subsetting (`subsets`/`unicodeRange`) - defer
+  to it for those rows (fonts.md lead note). Custom fixed-copy re-subsetting +
+  the coverage guard stay hand-rolled even on 6. Pre-6 Astro: all font rows
+  are this skill.
 - **Vite SPA/MPA, plain SSR, static hand-built HTML** - no font/image layer;
   the whole right column is yours.
 
@@ -44,7 +45,7 @@ fullest example); the right column is what you write by hand when it doesn't.
 | Self-host Google/local fonts | Next `next/font/google` / `next/font/local`; Astro 6 Fonts API (`fonts` config) | `@fontsource` (or raw `@font-face`) + bundler asset handling (Vite `?url`) |
 | Zero-CLS font swap | Next `adjustFontFallback` (Capsize-derived: `sizeAdjust` = avg-width ratio, then ascent/descent/lineGap overrides /(unitsPerEm*sizeAdjust)); Astro 6 `optimizedFallbacks` | hand-authored `@font-face` with `size-adjust`/`ascent-override`/`descent-override`, generated via Fontaine/Capsize (fonts.md) |
 | Preload the right font | Next: automatic for the used subset/weights; Astro 6 `<Font preload />` (opt-in) | explicit `?url` import + `<link rel=preload as=font crossorigin>` per weight, below the stylesheet (resource-hints.md) |
-| Only load needed characters | Next `subsets: ['latin']` (Astro 6 Fonts API does NOT subset) | `@fontsource` subset imports / `unicode-range` / re-subset with a coverage guard (fonts.md) |
+| Only load needed characters | Next `subsets: ['latin']`; Astro 6 `subsets` + `unicodeRange` | `@fontsource` subset imports / `unicode-range`; custom fixed-copy re-subset with a coverage guard stays hand-rolled everywhere (fonts.md) |
 | Above-the-fold image priority | Next `<Image priority>`; Astro `<Image priority>` (5.10+: sets `loading="eager"` + `decoding="sync"` + `fetchpriority="high"`; the component is lazy by default without it) | `fetchpriority="high"` on the true LCP `<img>` (eager alone does not reprioritise); decorative art stays eager without high priority (images.md) |
 | Below-fold lazy | Next/Astro `<Image>` default lazy | explicit `loading="lazy"` (opt-in - native `<img>` is eager by default) |
 | No-CLS image box | Next width/height/fill required; Astro infers from source | width/height attributes infer `aspect-ratio` and reserve the box; reserve the *un-rotated* box for transforms (images.md) |

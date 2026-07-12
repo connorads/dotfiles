@@ -27,10 +27,10 @@ parser and discovers **all** declarative preloads regardless of position relativ
 the stylesheet. A stylesheet is render-blocking, not markup-parser-blocking, so it does
 NOT hide a later `<link rel=preload>`. **Order does not change discovery.**
 
-So put font preloads **below** the stylesheet: a preloaded font gets Chrome's Highest
-priority - the same as render-blocking CSS - and placing it first makes it contend for
-bandwidth with the CSS the page needs to render (and the LCP image), worst on slow
-links. web.dev puts font preloads below stylesheets for exactly this reason. Control
+So put font preloads **below** the stylesheet: a preloaded font is fetched at high
+priority and dispatched immediately - competing with render-blocking CSS - and
+placing it first makes it contend for bandwidth with the CSS the page needs to
+render (and the LCP image), worst on slow links. web.dev puts font preloads below stylesheets for exactly this reason. Control
 priority/budget, not discovery order.
 
 - <https://web.dev/articles/preload-scanner> ·
@@ -86,8 +86,11 @@ Optimization > Early Hints (zone-level, not on `workers.dev`). It **works for
 dynamic/uncacheable Worker responses** precisely because there is a render-latency gap.
 Requires HTTP/2 or HTTP/3 and applies to navigation requests. Browser support is now
 broad, but per-browser directive handling varies - some browsers act on the hints as
-preconnect-only rather than full preloads - so treat 103 as an accelerator, never the
-only delivery path for a hint. Eligibility:
+preconnect-only rather than full preloads (Safari notably) - so treat 103 as an
+accelerator, never the only delivery path for a hint. Measurement caveat: since
+Chrome 133 `responseStart` includes the 103, so enabling Early Hints lowers
+*reported* TTFB without changing real server time - judge a fix by LCP/FCP, not
+TTFB. Eligibility:
 `.html`/`.htm`/`.php` or no extension, 200/301/302 only; keep Link headers under ~8KB.
 Responsive `imagesrcset` preloads do NOT work here (or in HTTP-header preload).
 

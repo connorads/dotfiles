@@ -9,8 +9,9 @@
 // that file for the @font-face cross-check rather than the HTML.
 //
 // Each check guards a silent regression class:
-//   - font preload budget: fonts are Highest priority, so extra preloads steal
-//     bandwidth from the critical path (max ~2-3 per page); the min catches a
+//   - font preload budget: font preloads are high-priority and dispatched
+//     immediately, so extra ones steal bandwidth from the critical path
+//     (max ~2-3 per page); the min catches a
 //     build that silently DROPS its font preloads - the regression this gate
 //     exists for
 //   - crossorigin on font preloads: @font-face fetches are anonymous-CORS; a

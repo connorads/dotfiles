@@ -13,8 +13,9 @@
 //
 // Each check guards a silent regression class:
 //   - font preload budget: min catches a route that DROPPED its preloads (the
-//     regression this gate exists for), max catches over-preloading - fonts
-//     are Highest priority and steal bandwidth from critical CSS / the LCP
+//     regression this gate exists for), max catches over-preloading - font
+//     preloads are high-priority, dispatched immediately, and steal bandwidth
+//     from critical CSS / the LCP
 //   - crossorigin on font preloads: @font-face fetches are anonymous-CORS; a
 //     missing attribute AND crossorigin="use-credentials" both mismatch the
 //     credentials mode and double-fetch the font
