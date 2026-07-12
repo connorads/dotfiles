@@ -90,6 +90,14 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
     per-family config or per-family generator runs avoid it.
   - <https://github.com/vercel/next.js/blob/canary/packages/next/src/server/font-utils.ts>
 
+- **No `fetchpriority="high"` on font preloads.** Font fetches already run at
+  High priority (unlike images), so adding it is a no-op that reads as if it did
+  something - do not carry the image habit over. The deliberate use is the
+  opposite direction: `fetchpriority="low"` on a preloaded *non-critical* face
+  to keep it out of the critical path. Font levers are discovery (preload) and
+  blocking behaviour (`font-display`), not priority.
+  - <https://web.dev/articles/fetch-priority>
+
 - **Serve woff2 as-is.** The format is Brotli-compressed internally;
   re-compressing (gzip or br at the CDN/server) wastes CPU for ~0 gain and can
   add bytes. Exclude `*.woff2` from blanket compression rules.
@@ -204,7 +212,11 @@ asymmetry, per style rather than per weight).
 `@fontsource` splits by subset (latin / latin-ext / vietnamese / greek ...). Preload only
 the subset(s) actually rendered above the fold (usually latin), and only the weights in
 that subset - subsetting is a larger byte lever than variable-vs-static. `unicode-range`
-on each `@font-face` lets the browser fetch only the subset a page needs.
+on each `@font-face` lets the browser fetch only the subset a page needs - but note a
+**preload bypasses that gating entirely**: a preloaded file is fetched unconditionally,
+while an un-preloaded `@font-face` subset costs nothing until its range is hit. So
+preloading a subset the page never renders isn't neutral, it's a wasted high-priority
+fetch; preload only subsets the above-the-fold copy provably uses.
 
 ### Measure the real file first - the big-savings ratio is usually a myth
 
@@ -242,3 +254,16 @@ text-scope ranges + `pyftsubset --unicodes` / CSS `unicode-range` string), and
 `verify.md` Tier 0 wires the assertion. Note the `--flavor`/`--unicodes` option
 names on `pyftsubset` are US-spelled - a locale spell-checker that "corrects"
 them breaks the build (see the mechanical-enforcement locale caveat).
+
+### Two silent subsetter regressions
+
+- **`pyftsubset` strips OpenType layout features by default** - kerning and
+  ligatures quietly disappear from the re-subset face. Pass
+  `--layout-features='*'` (or an explicit keep-list) and eyeball a kerned pair
+  ("AV", "To") after regenerating.
+- **Regenerate metric fallbacks from the original face, not the subset output.**
+  Subsetting recomputes font-wide metrics like OS/2 `xAvgCharWidth` over the
+  reduced glyph set, which skews a `size-adjust` derived from the subset file
+  (Chrome's font-fallbacks guidance flags post-subset `xAvgCharWidth` as
+  unreliable). Point the generator (Fontaine/Capsize) at the pre-subset source.
+- <https://developer.chrome.com/blog/font-fallbacks>

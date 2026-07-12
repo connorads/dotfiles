@@ -92,7 +92,11 @@ fonts.md.
 Every section above trims a cost that self-hosting deletes: same-origin files
 (no preconnect needed), exact-file preload (`?url`), your own `@font-face`
 (metric fallback, `font-display`, `unicode-range` under your control), and
-immutable caching via your own headers. `@fontsource` packages make the
+immutable caching via your own headers. Do not hold back for the shared-cache
+myth - "the Google font is probably cached from another site" has been false
+since HTTP cache partitioning (Chrome 86 / Firefox 85; Safari long before):
+the cache is keyed per top-level site, so every site pays the CDN's cold
+two-origin cost for every new visitor. `@fontsource` packages make the
 migration mostly mechanical: install the package, import the weights you use,
 delete the CDN links. Then apply fonts.md end to end. Privacy is a bonus: no
 per-pageview font requests to a third party (GDPR rulings have bitten hosted

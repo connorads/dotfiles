@@ -26,10 +26,13 @@ eager/lazy split and box reservation, and route the LCP work to fonts
   presentation" (image + content together, but delays that presentation by the decode
   time). MDN: "Setting decoding won't prevent [an empty image being shown as it
   downloads]." So: `decoding="async"` is correct for decorative art precisely because
-  it does NOT hold up text paint - not because it aligns decode with paint. For a true
-  LCP hero, `sync` (or omitting `decoding`) can be preferable so paint waits for the
-  decoded image. `HTMLImageElement.decode()` is the real swap-without-flash tool for
-  dynamically-swapped images.
+  it does NOT hold up text paint - not because it aligns decode with paint. Nor is
+  `decoding` an LCP lever in either direction: it shapes post-fetch presentation, not
+  the network path, and WordPress-core benchmarking found `decoding="async"` on the
+  LCP image harmless (their LCP images ship `fetchpriority="high"` +
+  `decoding="async"` together). Fix LCP with discovery + priority; never sell a
+  `decoding` flip as the fix. `HTMLImageElement.decode()` is the real
+  swap-without-flash tool for dynamically-swapped images.
   - <https://html.spec.whatwg.org/multipage/images.html#decoding-images> ·
     <https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/decoding>
 - **`loading="eager"` does NOT raise fetch priority.** Eager images still start at
@@ -109,6 +112,16 @@ Selection: the first true `sizes` condition picks the matching (or next-larger)
 SKIPPED, so order matters; the `<img>` is mandatory (it renders and is the fallback);
 `srcset`+`sizes` can live on a `<source>` to combine both.
 
+Two newer primitives worth knowing: on a `loading="lazy"` img with a
+width-descriptor srcset, `sizes="auto, (width <= 600px) 480px, 800px"` lets the
+browser use the *actual layout width* instead of the hand-maintained condition
+list (lazy-only by design - eager images pick a candidate before layout; keep
+the fallback conditions after `auto` for non-supporting engines). And
+`width`/`height` are now honoured on `<picture>` `<source>` elements in all
+engines, so art-directed variants with *different* aspect ratios can each
+reserve the correct box - without them only the `<img>`'s ratio is reserved and
+the art-directed breakpoint shifts.
+
 - <https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Responsive_images> ·
   <https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/picture>
 
@@ -151,7 +164,14 @@ cache-hit-before-hydration degradation lens (the same reason to reject a JS onLo
 fade). LQIP pays off only for large hero photos; dominant-colour is the cheapest win
 there.
 
-- <https://github.com/woltapp/blurhash>
+**A placeholder never improves LCP.** Chrome excludes low-entropy images
+(< 0.05 bits per displayed pixel - blurry placeholders, gradients, solid fills)
+as LCP candidates precisely so a blur-up cannot game the metric: the real image
+still sets the LCP timestamp. LQIP is a perceived-quality lever only - when the
+complaint is "LCP is slow", the fix is discovery + priority above, not a
+placeholder.
+
+- <https://github.com/woltapp/blurhash> · <https://web.dev/articles/lcp>
 
 ## content-visibility (off-screen only)
 
