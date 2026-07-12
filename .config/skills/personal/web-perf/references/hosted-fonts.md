@@ -96,12 +96,16 @@ immutable caching via your own headers. Do not hold back for the shared-cache
 myth - "the Google font is probably cached from another site" has been false
 since HTTP cache partitioning (Chrome 86 / Firefox 85; Safari long before):
 the cache is keyed per top-level site, so every site pays the CDN's cold
-two-origin cost for every new visitor. `@fontsource` packages make the
-migration mostly mechanical: install the package, import the weights you use,
-delete the CDN links. Then apply fonts.md end to end. Privacy is a bonus: no
-per-pageview font requests to a third party (GDPR rulings have bitten hosted
-Google Fonts).
+two-origin cost for every new visitor. Two migration paths by stack: on a
+bundler stack, `@fontsource` packages make it mostly mechanical - install the
+package, import the weights you use, delete the CDN links. On a **no-build or
+non-JS site** (hand-wired HTML, plain SSG with no package manager),
+google-webfonts-helper emits the woff2 files plus ready-to-paste `@font-face`
+CSS - pick its Modern (woff2-only) output. Either way, then apply fonts.md end
+to end. Privacy is a bonus: no per-pageview font requests to a third party (GDPR
+rulings have bitten hosted Google Fonts).
 
 - <https://developers.google.com/fonts/docs/css2> ·
   <https://fontsource.org/docs/getting-started/introduction> ·
+  <https://gwfh.mranftl.com> (google-webfonts-helper, no-build) ·
   <https://web.dev/articles/font-best-practices>
