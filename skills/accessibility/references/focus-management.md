@@ -124,7 +124,7 @@ function openModal(modalEl, triggerEl) {
 
 ### Using native `<dialog>` element (recommended)
 
-The native `<dialog>` element handles focus trapping, `Escape` key, and `aria-modal` behaviour automatically in modern browsers.
+The native `<dialog>` element handles focus trapping, `Escape` key, `aria-modal` behaviour, and focus restoration automatically in modern browsers.
 
 ```html
 <dialog id="confirm-dialog" aria-labelledby="dialog-title">
@@ -140,16 +140,23 @@ const dialog = document.getElementById('confirm-dialog');
 const trigger = document.getElementById('delete-trigger');
 
 trigger.addEventListener('click', () => {
-  dialog.showModal(); // Opens as modal, traps focus, handles Escape
+  dialog.showModal(); // Opens as modal, traps focus, handles Escape, and records
+                      // the element to restore focus to when it closes
 });
 
 document.getElementById('cancel-btn').addEventListener('click', () => {
-  dialog.close();
-  trigger.focus(); // Native <dialog> does NOT auto-restore focus
+  dialog.close(); // Native <dialog> restores focus to what opened it automatically
 });
+```
 
+`showModal()`/`show()` record the currently-focused element, and `close()` re-focuses it — so native `<dialog>` restores focus to the trigger for you (baseline since Firefox 98 / Safari 15.4, March 2022). Do **not** add a manual `trigger.focus()` on top; it is redundant. The one exception: if the trigger was removed from the DOM while the dialog was open, the spec's restore does nothing (focus falls to `<body>`), so add a *labelled fallback* for that case (or for pre-2022 browsers):
+
+```javascript
 dialog.addEventListener('close', () => {
-  trigger.focus(); // Always restore focus on close
+  // Fallback only: native restore already handles the normal case.
+  if (!document.activeElement || document.activeElement === document.body) {
+    fallbackTarget?.focus();
+  }
 });
 ```
 
@@ -378,7 +385,12 @@ function closeModal(modal, appRoot, triggerEl) {
 
 Widely supported in current browsers; a `wicg-inert` polyfill covers older ones.
 
-For **non-modal** surfaces (menus, tooltips, disclosure popovers) that should not trap focus or make the page inert, prefer the native **Popover API** (`popover` attribute + `popovertarget`), which handles focus, light-dismiss, `Escape`, and focus return for you. Reserve `<dialog>.showModal()` for true modals.
+For **non-modal** surfaces (menus, tooltips, disclosure popovers) that should not trap focus or make the page inert, prefer the native **Popover API** (`popover` attribute + `popovertarget`), which gives you light-dismiss, `Escape`, and insertion into the tab order *after* the trigger. Note what it does **not** do: an `auto` popover does **not** move focus into itself on open (focus stays on the invoker — add `autofocus` to the element that should receive it), and it returns focus to the invoker only on *keyboard* (`Escape`) dismissal, not on click-outside. Reserve `<dialog>.showModal()` for true modals.
+
+For modals, two newer `<dialog>` primitives are worth knowing:
+
+- **`requestClose()`** (baseline 2025) — like `close()` but fires a cancelable `cancel` event first, so you can intercept `Escape`/dismissal (e.g. warn about unsaved changes).
+- **`closedby="any"`** — native click-outside (light) dismissal for `<dialog>`. Progressive enhancement only: supported in Chrome/Edge 134+ and Firefox 141+, but **not** yet in Safari/iOS ([webkit.org/b/284592](https://bugs.webkit.org/show_bug.cgi?id=284592)), so pair it with a backdrop-click fallback rather than relying on it.
 
 ---
 
