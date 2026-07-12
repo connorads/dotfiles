@@ -13,7 +13,16 @@ so check per-concern, not per-framework.
   an opacity-0 `onLoad` fade wrapper around a `priority` hero (invisible with
   no-JS, racy on warm cache, defeats `fetchpriority`), or a raw `font-family`
   re-declaration in global CSS that silently drops the `next/font` metric
-  fallback, reintroduces the exact jank this skill owns.
+  fallback, reintroduces the exact jank this skill owns. Two footguns inside
+  the automated layer itself: `adjustFontFallback` computes the metric
+  fallback once per family (from the first font file), not per weight - a
+  heavier heading weight added later can still swap with a metric mismatch
+  (prefer one variable font, or verify the fallback against every rendered
+  weight); and a `weight: ['400','500','600','700']` array whose pages render
+  only 400 ships wasted font preloads - trim the array to rendered weights
+  (the preload budget, resource-hints.md). The auto fallback is also
+  Arial/Times-derived, a poor metric match for pixel/display faces - check
+  the residual shimmer on those.
 - **Astro** - *version-dependent*. Ships a built-in `<Image>`/`<Picture>`
   (sizing, format negotiation, lazy **by default** - put the `priority` prop on
   the one LCP image), so the image rows are handled. Fonts: on **Astro 6+** the

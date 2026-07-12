@@ -3,6 +3,11 @@
 Hand-wired `<img>` (no framework image component). The rules are the
 browser's, so they hold on any stack - static, SPA, or SSR.
 
+**Triage gate**: if the page has no hero/LCP image at all (text LCP, only
+small icons/decorative art), most of this file is N/A - check just the
+eager/lazy split and box reservation, and route the LCP work to fonts
+(symptoms.md C3).
+
 ## Rules
 
 - **Never lazy-load above-the-fold / LCP images.** That is the anti-pop lever.
@@ -38,7 +43,11 @@ browser's, so they hold on any stack - static, SPA, or SSR.
   is what makes a CSS entrance line up with a real image. (Rejected alternative: a JS
   `onLoad`-driven fade guarantees sync but adds state to a pure decorative component
   and risks invisible images with no-JS or a cache-hit-before-hydration race - fails
-  the degradation lens.)
+  the degradation lens.) **Corollary for the LCP element**: never reveal it
+  from `opacity: 0` - opacity-0 content is excluded from LCP as
+  non-contentful, so a JS-gated fade delays the recorded LCP until the reveal
+  even after eager/decode is fixed (symptoms.md B7). Transform-only entrances
+  leave the paint alone.
 - **Reserve the box to avoid CLS.** Width/height *attributes* alone now make browsers
   (Chrome/FF/Safari, since 2021) infer `aspect-ratio: auto W/H` and reserve space
   before load, even when CSS sets `width:100%; height:auto` - no explicit CSS
@@ -123,7 +132,11 @@ change *when* bytes arrive, not how many. Convert to
 is routinely 10x+ smaller than GIF), or ship a first-frame poster image and
 load the animation on interaction. `muted` + `playsinline` are what allow
 autoplay on iOS. Reserve the box exactly as for images (width/height or
-`aspect-ratio`).
+`aspect-ratio`) - the attribute->aspect-ratio inference works on `<video>`
+too. Any raw `<video>` hero also wants a `poster`: LCP for video uses the
+poster image or the first presented frame, whichever paints earlier, so a
+lightweight poster gives a controlled, early LCP paint instead of waiting on
+video bytes.
 
 - <https://web.dev/articles/replace-gifs-with-videos>
 

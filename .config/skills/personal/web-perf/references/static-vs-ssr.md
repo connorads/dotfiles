@@ -46,12 +46,24 @@ the project; point `check-dist.mjs` at the prerendered subset only and use
 
 ## Embedded / host-owned surfaces: a different game
 
-In embedded contexts - MCP/Apps-SDK widgets, Devvit iframes, any CSP-forced
-single-file surface - the host owns `<head>`, headers and caching, so the
-hint/cache levers in this skill don't apply. First-load jank there is
-widget-mount and async client-render: reserve the widget's height, ship a
-sized placeholder, and for heavy canvas/game engines draw an in-canvas
-loading scene rather than leaving a blank element.
+In embedded contexts, which levers survive depends on *who owns the
+document*, so split the two cases rather than treating "embedded" as one:
+
+- **Host owns the whole document** (MCP/Apps-SDK widget resources, CSP-forced
+  single-file surfaces): no author `<head>`, headers or caching - the
+  hint/cache levers in this skill don't apply. First-load jank is
+  widget-mount and async client-render: reserve the widget's height, ship a
+  sized placeholder, render theme-neutral, and read the host's theme
+  synchronously at mount (not in a post-mount effect - that is B6 in a
+  widget).
+- **Author owns the markup and head, host owns only transport** (Devvit
+  web-views ship their own splash/game HTML inside the host iframe): inline
+  critical CSS and an HTML skeleton in the mount node ARE available levers -
+  only headers, caching and network hints are host-owned. Don't give up the
+  in-document fixes just because the surface is embedded.
+
+Either way, for heavy canvas/game engines draw an in-canvas loading scene
+rather than leaving a blank element (the C1 app-shell pattern, in-surface).
 
 ## The edge/privacy corollary
 

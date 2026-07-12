@@ -32,7 +32,8 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
 - **Preload the exact above-the-fold weights, per weight.** Fonts are per-weight
   woff2 files. Preloading 400 does nothing for 500/600 text. Enumerate what the
   above-the-fold header/hero actually renders (map Tailwind utilities:
-  `font-medium`->500, `font-semibold`->600) and preload each. The Tailwind
+  `font-medium`->500, `font-semibold`->600) and preload each, with
+  `type="font/woff2"` so a non-supporting UA skips the fetch. The Tailwind
   weight->number scale is identical across v3 and v4 (thin=100 ... normal=400,
   medium=500, semibold=600, bold=700 ... black=900); only the customisation
   mechanism changed (v3 `theme.fontWeight`; v4 `--font-weight-*` CSS vars +
@@ -173,6 +174,14 @@ for branding/headings.
   <https://web.dev/articles/font-best-practices> ·
   <https://web.dev/articles/preload-optional-fonts>
 
+**When the LCP element is webfont text** (a wordmark/hero heading on a
+text-first page), the webfont is the LCP dependency and this whole file is
+the LCP fix: preload the exact face that text renders, metric-match its
+fallback, keep `swap`. The one bounded exception to the swap verdict: a short
+brand wordmark whose fallback face is an unacceptable brand flash may prefer
+`block`/`optional` (brief invisible run over a wrong-face paint) - scoped to
+that one face; body text stays `swap`. Full leaf: symptoms.md C3.
+
 ## Variable fonts dodge the per-weight preload problem
 
 One variable woff2 with `@font-face { font-weight: 100 900; src: url(...)
@@ -182,6 +191,11 @@ static weight - break-even is ~3 weights (font-specific, not a hard rule); for 1
 weights a subset static is smaller. (2) subsetting still applies and is the bigger
 byte lever. (3) all weights share one cache entry (good for preload; can't skip unused
 weights). (4) use `format('woff2')`, not legacy `format('woff2-variations')`.
+(5) the axis that still forks a FILE is **style**: italic (and named
+optical-size instances) usually ship as a separate woff2, so "preload the
+variable font" covers the roman weights only - an italic run in the LCP
+headline needs its own preload decision or it shimmers alone (the B2
+asymmetry, per style rather than per weight).
 
 - <https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_fonts/Variable_fonts_guide>
 
