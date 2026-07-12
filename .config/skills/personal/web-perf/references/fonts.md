@@ -12,10 +12,13 @@ pair, `display=` param, un-preloadable file URLs - see **hosted-fonts.md**.
 > `astro.config`, then `import { Font } from "astro:assets"` and
 > `<Font cssVariable="--font-display" preload />` in the head. It automates
 > self-hosting (files cached under `_astro/fonts`), opt-in per-font preload,
-> and `optimizedFallbacks` metric-matched fallbacks (default on). It does
-> **not** subset - the subsetting + coverage-guard sections below still apply
-> on Astro 6. Hand-wire the rest of this file on Vite, Worker-SSR, or pre-6
-> Astro. See framework-automation.md for the row-by-row boundary.
+> and `optimizedFallbacks` metric-matched fallbacks (default on). It also
+> automates provider-level subsetting (`subsets: ['latin']`, `unicodeRange`
+> per font) like next/font; what no framework layer does is re-subset to your
+> *fixed copy* with a drift guard - the custom subsetting + coverage-guard
+> sections below still apply on Astro 6. Hand-wire the rest of this file on
+> Vite, Worker-SSR, or pre-6 Astro. See framework-automation.md for the
+> row-by-row boundary.
 
 **Fast exit: a pure system-font stack has no font jank.** If the site renders
 entirely from `system-ui`/named system faces with no `@font-face` and no CDN

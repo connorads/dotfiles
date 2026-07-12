@@ -11,8 +11,8 @@ the detail.
 ## What it changes
 
 1. **NOT which jank classes can occur - look for reconciliation JS instead.**
-   The state-mismatch family - a theme/active-state flip (`symptoms.md` B6) and
-   its layout-moving twin (`symptoms.md` A4, "FART") - needs *client JS
+   The state-mismatch family - a theme/active-state flip (`symptoms.md` B6,
+   "FART") and its layout-moving twin (`symptoms.md` A4) - needs *client JS
    reconciling client-only state against the initial HTML*, and that JS ships
    on static builds too: a fully static page whose theme `<script>` reads
    localStorage flashes exactly like an SSR hydration flip. Do not rule B6/A4

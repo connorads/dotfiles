@@ -44,8 +44,9 @@ Skip the server and Playwright entirely - read `dist/*.html` in a Node script
 and fail non-zero. This is the cheapest, most deterministic tier, and every
 byte-level structural invariant belongs here:
 
-- **font preload count within budget** - fonts are Highest priority, so an extra
-  preload steals bandwidth from the critical path (budget ~2-3; resource-hints.md).
+- **font preload count within budget** - font preloads are high-priority and
+  dispatched immediately, so an extra one steals bandwidth from the critical
+  path (budget ~2-3; resource-hints.md).
 - **each font preload carries `crossorigin`** - a missing one means a
   credentials-mode mismatch and a double fetch (fonts.md).
 - **each preload `href` appears in an inline `@font-face url()` byte-for-byte** -
@@ -134,10 +135,11 @@ the credentials-mode warning ~3s after load (fonts.md).
 
 ### 4a. See it cold-cache, by eye
 
-Incognito, or DevTools -> Network -> **Disable cache** + throttle to **Slow 3G**
-(the Disable-cache checkbox and the throttling dropdown sit together in the
-Network action bar; recent Chrome also lists Slow/Fast 4G + custom profiles
-under Settings > Throttling). This is the only way FOUT/pop-in reliably
+Incognito, or DevTools -> Network -> **Disable cache** + throttle to **3G** -
+Chrome's slowest built-in preset (the former "Slow 3G", same 400 Kbps / 2000ms
+values; the dropdown is now Fast 4G / Slow 4G / 3G, + custom profiles under
+Settings > Throttling. The Disable-cache checkbox sits beside it in the
+Network action bar). This is the only way FOUT/pop-in reliably
 reproduces - warm cache hides it. Toggle OS "Reduce motion" to confirm
 reduced-motion paths. For a static build, serve `dist` with any static server to
 give the browser a URL.
@@ -196,9 +198,18 @@ corroborate but iterate slower.
 
 ## 5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)
 
-When you reach for a runtime tool to corroborate a fix, three traps waste the
+When you reach for a runtime tool to corroborate a fix, these traps waste the
 most time:
 
+- **Lighthouse 13 renamed the diagnostic audits (Oct 2025).** The classic audit
+  names and JSON keys are gone, replaced by insight audits: "Eliminate
+  render-blocking resources" -> `render-blocking-insight`; the LCP
+  lazy-load/preload pair -> `lcp-discovery-insight` (+ `image-delivery-insight`
+  for weight/format); font-display -> `font-display-insight`; unsized-image /
+  layout-shift culprits -> `cls-culprits-insight`. The 0-100 performance
+  *score* is unchanged (metric-driven) - only the diagnostics moved. LHCI
+  assertions keyed on old audit ids fail on Lighthouse 13+; check ids against
+  the installed version.
 - **Lighthouse budget unit split (bytes vs KiB).** A LHCI `budget.json`
   `resourceSizes` `budget` is in **kibibytes** (`{ "resourceType": "font",
   "budget": 100 }` = 100 KiB). But the assertion form in `lighthouserc.json`
@@ -220,7 +231,8 @@ most time:
 
 ## 6. DevTools trace workflow
 
-1. **Network** panel: tick **Disable cache** + throttling -> **Slow 3G**.
+1. **Network** panel: tick **Disable cache** + throttling -> **3G** (the former
+   "Slow 3G" preset).
 2. **Performance** panel: record a trace, read the **Layout Shifts** track (purple
    diamonds grouped into session-window clusters; click one for the animated shift +
    Summary tab with score/elements/culprits). The Insights sidebar "Layout shift
