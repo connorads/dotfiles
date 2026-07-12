@@ -11,7 +11,7 @@ description: >
 
 # Accessibility
 
-Web accessibility done right means your UI is navigable, understandable, and operable by people who cannot use a mouse — primarily those using screen readers (NVDA, JAWS, VoiceOver), keyboard-only users, and those with motor, cognitive, or visual impairments. The WebAIM Million survey consistently finds roughly 95% of home pages carry detectable WCAG failures. Most are preventable with the right mental model.
+Web accessibility done right means your UI is navigable, understandable, and operable by people with disabilities — screen reader users, keyboard-only users, and people with low vision, motor, or cognitive impairments. This skill takes a **screen-reader-first lens** because it surfaces structural failures fastest, but low-vision users (contrast, zoom, reflow) and cognitive users matter just as much — in fact low-contrast text is the single most common barrier on the web, affecting ~84% of home pages. The [WebAIM Million](https://webaim.org/projects/million/) consistently finds ~96% of home pages carry detectable WCAG failures, and just six issue types — low-contrast text, missing alt text, missing form labels, empty links, empty buttons, and missing document language — account for ~96% of all detected failures and have topped the list for seven years running. Most are preventable with the right mental model.
 
 ## The Core Mental Model
 
@@ -82,7 +82,9 @@ Opening a dialog/modal?
 
 ---
 
-## The Five Most Common Failures (and their fixes)
+## Five High-Impact Screen-Reader Failures (and their fixes)
+
+These are the failures you will hit most through this skill's screen-reader lens. (The highest-*volume* failures site-wide — low-contrast text, missing alt — are covered under Colour and Contrast and Images below.)
 
 ### 1. Icon-only button with no accessible name
 
@@ -203,8 +205,8 @@ Do **not** use for: content that sighted users need. Hiding meaningful content f
 
 | Content type | Minimum ratio |
 |---|---|
-| Body text (<18pt / <14pt bold) | 4.5:1 |
-| Large text (≥18pt or ≥14pt bold) | 3:1 |
+| Body text (<18pt / 24px, and <14pt bold / 18.5px) | 4.5:1 |
+| Large text (≥18pt / 24px, or ≥14pt bold / 18.5px) | 3:1 |
 | UI components (borders, icons, focus rings) | 3:1 |
 | Placeholder text | 4.5:1 |
 | Disabled elements | Exempt |
@@ -227,6 +229,8 @@ Use `--target normal-text` (default), `large-text`, `ui-component`,
 `aaa-normal-text`, or `aaa-large-text` to make the exit status follow the
 relevant threshold. Do not round contrast values up. A measured `4.499:1` fails
 a `4.5:1` requirement.
+
+**WCAG 2 AA (this table) is the sole conformance target.** Its ratio maths is symmetric and ignores polarity, so it can over-rate some dark-mode pairings — if a passing pair still reads poorly on dark backgrounds, treat that as a design smell and sanity-check it with a perceptual tool (APCA). APCA is a candidate algorithm for the still-draft, undated [WCAG 3](https://www.w3.org/TR/wcag-3.0/) (it was even pulled from the July 2023 draft pending consensus) — a design aid only, never a compliance substitute.
 
 ---
 
