@@ -75,9 +75,10 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
   `capsize-font-metrics.json`, and `next/font/local`, via fontkit, use the identical
   Capsize-derived algorithm, falling back to Arial/Times New Roman by generic
   family).
-  - **Safari caveat**: through Safari 26/27, WebKit supports `size-adjust` but
-    ignores `ascent-override`/`descent-override`/`line-gap-override` (WebKit
-    bug 219735), so a tuned fallback still shifts there - and size-adjust
+  - **Safari caveat**: WebKit supports `size-adjust` but ignores
+    `ascent-override`/`descent-override`/`line-gap-override` (WebKit bug 219735,
+    open - check caniuse for current status), so a tuned fallback still shifts
+    there - and size-adjust
     *alone* can be worse than nothing (it scales width and height with no
     height correction). If Safari shift matters, gate the block: feature-detect
     with JS (`'ascentOverride' in new FontFace('t', 'local(Arial)')`) or the
@@ -181,6 +182,14 @@ for branding/headings.
 - <https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display> ·
   <https://web.dev/articles/font-best-practices> ·
   <https://web.dev/articles/preload-optional-fonts>
+
+**Icon fonts are the exception to both the swap default and metric fallbacks.**
+An icon font's fallback has no matching glyphs, so `swap`/`fallback` flash tofu
+or wrong glyphs and `size-adjust`/the override descriptors can't correct a gap
+that was never about metrics. Prefer an inline SVG `<symbol>` sprite - no font
+resource to swap or 404 (symptoms.md B4); if the icon font stays, use
+`font-display: block` (a brief invisible run beats a wrong-glyph paint) and skip
+the metric-fallback rule for that face.
 
 **When the LCP element is webfont text** (a wordmark/hero heading on a
 text-first page), the webfont is the LCP dependency and this whole file is
