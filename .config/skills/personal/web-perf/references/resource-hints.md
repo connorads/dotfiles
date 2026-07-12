@@ -105,8 +105,12 @@ Responsive `imagesrcset` preloads do NOT work here (or in HTTP-header preload).
 Images fetch at Low priority by default; preload aids DISCOVERY only, at default
 priority; `fetchpriority` sets priority, not discovery - so preloaded images need
 `fetchpriority="high"`. Reserve it for the true LCP element, never decorative art. Full
-detail + responsive markup in images.md. Fonts are the asymmetric case: already High
-by default, so `fetchpriority="high"` on a font preload is a no-op (fonts.md).
+detail + responsive markup in images.md. It is two-directional: pair `high` on
+the LCP element with `low` on a non-critical resource that contends for the same
+bandwidth (an offscreen image, a secondary font, a late non-blocking script) -
+the concrete competing/carousel-image lever is in images.md. Fonts are the
+asymmetric case: already High by default, so `fetchpriority="high"` on a font
+preload is a no-op (fonts.md).
 
 - <https://web.dev/articles/fetch-priority>
 
