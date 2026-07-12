@@ -166,10 +166,12 @@ Colour must not be the only visual means of conveying information.
 Any audio that plays automatically for more than 3 seconds must have a mechanism to pause or stop it.
 
 **1.4.3 Contrast Minimum (AA)**
-Text contrast ratios:
+Text contrast ratios (pt is the normative unit; px shown as the approximate equivalent, 1pt ≈ 1.333px):
 
-- Normal text (< 18pt / < 14pt bold): **4.5:1**
-- Large text (≥ 18pt or ≥ 14pt bold): **3:1**
+- Normal text (< 18pt / 24px, and < 14pt bold / 18.5px): **4.5:1**
+- Large text (≥ 18pt / 24px, or ≥ 14pt bold / 18.5px): **3:1**
+
+Exceptions (no contrast requirement): text in an inactive/disabled component; pure decoration; text not visible to anyone; text that is part of a picture with significant other visual content; and text that is part of a logo or brand name.
 
 Tools: WebAIM Contrast Checker, browser DevTools, Colour Contrast Analyser (desktop app).
 
@@ -360,7 +362,13 @@ Functionality triggered by device motion must have a UI alternative, and motion 
 Any drag-and-drop functionality must have a single-pointer alternative.
 
 **2.5.8 Target Size — Minimum (AA)** *(new in 2.2)*
-Interactive targets must be at least 24×24 CSS pixels, or have sufficient offset spacing from other targets.
+Pointer targets must be at least 24×24 CSS pixels. Exceptions:
+
+- **Spacing** — a 24px-diameter circle centred on each undersized target does not overlap another target (or its circle)
+- **Equivalent** — the same function is available via another control on the page that does meet 24×24
+- **Inline** — the target is within a sentence, or constrained by the line-height of surrounding non-target text (e.g. inline links). *This is the most common legitimate pass — don't fail inline text links.*
+- **User agent control** — the size is set by the browser and not modified by the author (e.g. native date pickers, default form controls)
+- **Essential** — a specific presentation is essential or legally required (e.g. map pins, dense data visualisation)
 
 ---
 
@@ -429,6 +437,9 @@ Information already entered in a multi-step process must be auto-populated or av
 
 **3.3.8 Accessible Authentication — Minimum (AA)** *(new in 2.2)*
 Authentication must not rely solely on a cognitive function test (memorising passwords, solving puzzles) without an alternative. Allowing copy-paste for passwords, password managers, and "show password" toggles all help satisfy this.
+
+**3.3.9 Accessible Authentication — Enhanced (AAA)** *(new in 2.2 — AAA, not required for AA)*
+Stricter than 3.3.8: no cognitive-function test at all, even with an alternative — it also removes 3.3.8's object-recognition and personal-content allowances.
 
 ---
 
