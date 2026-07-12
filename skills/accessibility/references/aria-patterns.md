@@ -31,15 +31,15 @@ ARIA (Accessible Rich Internet Applications) exposes semantics to assistive tech
 
 ## The Accessible Name Computation
 
-Screen readers compute a control's accessible name using this priority order (highest wins):
+Screen readers compute a control's accessible name using this priority order (highest wins), per the [Accessible Name and Description Computation](https://www.w3.org/TR/accname-1.2/):
 
 1. `aria-labelledby` (references another element's text)
 2. `aria-label` (inline string)
-3. Native `<label>` element (for form controls)
-4. `title` attribute (tooltip — use as last resort; inconsistent support)
-5. Text content of the element itself (buttons, links)
-6. `alt` attribute (images)
-7. `placeholder` attribute (never use as sole label — disappears on input)
+3. Native markup for the element type — a form control's associated `<label>`, an image's `alt`, or *name from content* (a button's or link's own text)
+4. `title` attribute (tooltip — last-resort fallback; inconsistent support)
+5. `placeholder` attribute (last resort, form fields only; never a substitute for a label — disappears on input)
+
+The exact native source at step 3 is element-dependent, but `title` then `placeholder` are always the final fallbacks: if anything higher supplies a name, they are ignored.
 
 **Accessible description** (supplementary, announced after the name) comes from `aria-describedby`.
 
@@ -355,10 +355,7 @@ No custom ARIA role needed — the `<button>` inside a heading is sufficient.
 
 <!-- Decorative separator -->
 <hr aria-hidden="true" />
-
-<!-- Background content behind modal -->
-<main aria-hidden="true">...</main>  <!-- Remove when modal closes -->
 ```
 
 **Hiding modal background:**
-When a modal is open, the background content should be `aria-hidden="true"` so screen reader users can't navigate outside the dialog. Remove `aria-hidden` when the modal closes. Many focus trap libraries handle this automatically.
+Neutralise the background behind an open modal with the `inert` attribute (or the native `<dialog>` element's `showModal()`, which makes the rest of the page inert for you), **not** bare `aria-hidden`. `aria-hidden` removes content from the accessibility tree but leaves it keyboard-focusable, so Tab can still land in "hidden" content; `inert` blocks focus, the a11y tree, and find-in-page together. See references/focus-management.md. Remove `inert` when the modal closes.

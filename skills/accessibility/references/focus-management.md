@@ -13,7 +13,7 @@
   - Pattern 2: Focus a live region announcing the new page
   - Pattern 3: Skip link to main content (always include this)
 - Focus Visibility
-  - WCAG 2.2 Focus Appearance (2.4.11, 2.4.12 — AA)
+  - Focus indicator requirements (WCAG 2.2)
   - Custom focus style example
 - tabindex
 - Focus After Dynamic Content Changes
@@ -47,7 +47,7 @@ Breaking this contract means keyboard and screen reader users lose their place o
 - [ ] Focus is trapped within dialog while open (Tab and Shift+Tab cycle within)
 - [ ] `Escape` key closes the dialog
 - [ ] Focus returns to the trigger element on close
-- [ ] Background content is `aria-hidden="true"` while dialog is open
+- [ ] Background content is made `inert` while the dialog is open (native `<dialog>.showModal()` does this for you) — not bare `aria-hidden`, which leaves the background keyboard-focusable
 
 ### Vanilla JS focus trap implementation
 
@@ -96,8 +96,8 @@ function trapFocus(element) {
 function openModal(modalEl, triggerEl) {
   const cleanup = trapFocus(modalEl);
 
-  // Make background inert
-  document.getElementById('app-root').setAttribute('aria-hidden', 'true');
+  // Make background inert (blocks focus + AT; aria-hidden alone would not block Tab)
+  document.getElementById('app-root').inert = true;
 
   // Focus first focusable element in dialog
   const firstFocusable = modalEl.querySelector(
@@ -114,7 +114,7 @@ function openModal(modalEl, triggerEl) {
   function closeModal() {
     cleanup();
     document.removeEventListener('keydown', handleEscape);
-    document.getElementById('app-root').removeAttribute('aria-hidden');
+    document.getElementById('app-root').inert = false;
     triggerEl.focus(); // Restore focus to trigger
   }
 
@@ -283,10 +283,15 @@ router.on('navigate', (route) => {
 
 Never remove focus outlines without providing a visible replacement. Keyboard users depend on the focus indicator to know where they are.
 
-### WCAG 2.2 Focus Appearance (2.4.11, 2.4.12 — AA)
+### Focus indicator requirements (WCAG 2.2)
 
-- Focused element must have a focus indicator with at least 3:1 contrast ratio against adjacent colours
-- Focus indicator area must be at least the perimeter of the element
+At Level AA, a focus indicator must:
+
+- **Be visible** — 2.4.7 Focus Visible (AA). Never `outline: none` without a replacement.
+- **Meet 3:1 non-text contrast** against adjacent colours — 1.4.11 Non-text Contrast (AA).
+- **Not be entirely hidden** by sticky headers, cookie banners, or other overlaid content — 2.4.11 Focus Not Obscured (Minimum) (AA).
+
+2.4.13 Focus Appearance is **Level AAA**, not AA — do not cite it as an AA obligation. It is stricter: the indicator must cover at least the area of a 2 CSS pixel thick perimeter of the component, and change by at least 3:1 contrast *between the focused and unfocused states* (a change-of-state contrast, distinct from the 1.4.11 contrast-against-adjacent-colours above). Aim for it where practical.
 
 ```css
 /* Minimal compliant focus style */
@@ -355,7 +360,7 @@ The **roving tabindex pattern** (used for widgets like tab lists, menus, radio g
 
 ## Inert Attribute (Modern Alternative)
 
-The `inert` attribute (2023+, good browser support) makes an element and all its descendants unfocusable, non-interactive, and hidden from the accessibility tree simultaneously — a cleaner alternative to `aria-hidden` + `tabindex` manipulation.
+The `inert` attribute makes an element and all its descendants unfocusable, non-interactive, and hidden from the accessibility tree simultaneously — a cleaner alternative to `aria-hidden` + `tabindex` manipulation, and the correct tool for neutralising a modal's background.
 
 ```javascript
 function openModal(modal, appRoot) {
@@ -371,7 +376,9 @@ function closeModal(modal, appRoot, triggerEl) {
 }
 ```
 
-Check browser support before using in production. Polyfill available: `wicg-inert`.
+Widely supported in current browsers; a `wicg-inert` polyfill covers older ones.
+
+For **non-modal** surfaces (menus, tooltips, disclosure popovers) that should not trap focus or make the page inert, prefer the native **Popover API** (`popover` attribute + `popovertarget`), which handles focus, light-dismiss, `Escape`, and focus return for you. Reserve `<dialog>.showModal()` for true modals.
 
 ---
 
