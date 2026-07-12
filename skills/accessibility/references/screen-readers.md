@@ -1,6 +1,6 @@
 # Screen Readers Reference
 
-Practical knowledge for testing with and building for the three dominant screen readers. NVDA and JAWS are the two most commonly used desktop readers — JAWS leads for *primary* use, NVDA (free) is close behind — while VoiceOver dominates Apple platforms and the large majority of mobile screen-reader use. Most users rely on more than one. (Source: WebAIM Screen Reader User Survey, run periodically — treat the exact percentages as moving, not fixed.)
+Practical knowledge for testing with and building for the major screen readers. On desktop, NVDA and JAWS lead — JAWS is ahead for *primary* use, NVDA (free) is close behind, and Windows Narrator is a common third. On mobile, VoiceOver (iOS) dominates and Android TalkBack is a solid second (roughly a third of mobile users). VoiceOver also covers macOS. Most users rely on more than one. (Source: WebAIM Screen Reader User Survey #10, Dec 2023–Jan 2024; re-check for a newer edition and treat the exact percentages as moving, not fixed.)
 
 ---
 
@@ -125,7 +125,7 @@ VoiceOver uses a **rotor** (gesture or `VO+U` on Mac) to switch navigation modes
 | Stop interacting | `VO+Shift+Up` |
 | Activate | `VO+Space` |
 | Open rotor | `VO+U` |
-| Read from beginning | `VO+A` |
+| Read all (continuously from the VO cursor) | `VO+A` |
 | Headings list | `VO+U`, then arrow to "Headings" |
 
 ### Rotor Navigation (most efficient for users)
@@ -141,14 +141,36 @@ Press `VO+U` to open the rotor wheel. Arrow left/right to select category (Headi
 
 ---
 
+## Narrator (Windows)
+
+**Built into Windows. Best with Edge.** Narrator's **scan mode** is the direct analogue of NVDA/JAWS browse mode — the same browse-vs-forms split described above.
+
+- Narrator key (the modifier) defaults to `Caps Lock` or `Insert`
+- Toggle scan mode: `Narrator + Space`. It turns on automatically in browsers (Edge/Chrome/Firefox) and turns off automatically in editable fields
+- In scan mode: arrow keys read; single-key quick-nav works (`H` headings, `K` links, etc.), mirroring NVDA/JAWS
+- Commonly used by a significant minority of users, so worth a spot-check on Windows even though NVDA is the stricter reference
+
+---
+
+## TalkBack (Android)
+
+**Built into Android. Best with Chrome.** The second most-used mobile reader after VoiceOver.
+
+- Enable: Settings → Accessibility → TalkBack (or the volume-key shortcut)
+- Swipe right/left — next/previous element
+- Double tap — activate; two-finger swipe — scroll
+- **Reading controls** (the rotor analogue): three-finger swipe up/down — or a single-finger up-then-down / down-then-up — cycles granularity (Headings, Links, Controls, Words, Characters, Lines); then single-finger up/down navigates by the selected control. Multi-finger gestures need TalkBack 9.1+; the single-finger angle gesture is the pre-9.1 fallback
+
+---
+
 ## Screen Reader + Browser Pairings
 
 Testing with the correct browser pairing matters — some accessibility APIs work differently across combinations.
 
 | Screen Reader | Best Browser | Notes |
 |---|---|---|
-| NVDA | Firefox, Chrome | Both good; Firefox has slightly better ARIA support |
-| JAWS | Chrome, IE (legacy) | Chrome is primary for modern testing |
+| NVDA | Chrome, Firefox | Test both; NVDA+Chrome is now the most common NVDA pairing (Survey #10). Firefox historically exposed some ARIA slightly more faithfully |
+| JAWS | Chrome, Edge | Both Chromium; JAWS+Edge is the 2nd most common JAWS pairing (Survey #10). IE is retired (June 2022) — legacy enterprise only |
 | VoiceOver macOS | Safari | Safari has the most complete AT support on Mac |
 | VoiceOver iOS | Safari | Always use Safari on iOS |
 | Narrator (Windows) | Edge | Built into Windows, edge cases with complex ARIA |
