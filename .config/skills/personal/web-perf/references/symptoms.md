@@ -99,6 +99,11 @@ because the user describes a fade-in, not a blank.
 - **Vital**: CLS.
 - **Confirm**: DevTools Layout Shift regions / the probe - the shift fires exactly
   when the banner mounts.
+- **Related (scrollbar reflow)**: content crossing viewport height mid-load makes
+  a vertical scrollbar appear, reflowing layout horizontally - but only with
+  classic (always-present) scrollbars (Windows/Linux), not the overlay scrollbars
+  default on macOS/mobile, so don't chase it on a macOS-only repro. Reserve the
+  gutter with `scrollbar-gutter: stable` on `:root`/the scroll container.
 - Ref: <https://web.dev/articles/optimize-cls>
 
 ### A4. Layout shifts once at hydration
@@ -282,6 +287,15 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
 
 ## C. Nothing appears yet (blank-then-paint)
 
+**First cut for a "slow LCP" complaint: which of LCP's four phases dominates?**
+Read the DevTools Performance LCP-phase breakdown. LCP = TTFB + resource load
+delay + resource load duration + element render delay; a healthy split is
+roughly 40% / <10% / 40% / <10%. Route by the outlier: an outsized *load delay*
+= late discovery (C2); *load duration* = the image/font bytes themselves
+(images.md / fonts.md); *render delay* = font or reveal gating (C3 / B7); TTFB
+is server-side and out of this skill's scope. Ref:
+<https://web.dev/articles/optimize-lcp>.
+
 ### C1. Long blank screen, then a full paint (slow FCP)
 
 - **Cause**: nothing paints until the critical path clears - a render-blocking
@@ -302,7 +316,7 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   to `'auto'` (inline only under ~4KB), so a small site whose CSS tops that
   quietly ships a blocking `<link>` - set `'always'` to inline it.
 - **Vital**: FCP (target <=1.8s) + INP (hydration cost). (FCP is a Web Vital but not
-  a *Core* Web Vital; TTI is deprecated - use INP for interactivity.)
+  a *Core* Web Vital.)
 - **Confirm**: Lighthouse's `render-blocking-insight` audit (13+; formerly
   "Eliminate render-blocking resources"); Coverage tab shows unused CSS/JS; the
   cold-cache trace's blank period ends only after the blocking resource finishes.
