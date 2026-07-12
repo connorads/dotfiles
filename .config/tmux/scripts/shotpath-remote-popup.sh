@@ -29,7 +29,9 @@ paste_into_pane() { # 0 if pasted, 1 otherwise (no pane / pane died mid-flight)
 stderr_file=$(mktemp)
 trap 'rm -f "$stderr_file"' EXIT
 
-if path=$(SHOTPATH_PICKER=1 shotpath --remote 2>"$stderr_file"); then
+# Keep SSH/Tailscale authentication instructions visible while retaining stderr
+# to distinguish an error from a silent fzf cancellation.
+if path=$(SHOTPATH_PICKER=1 SHOTPATH_PROGRESS=1 shotpath --remote 2> >(tee "$stderr_file" >&2)); then
 	if paste_into_pane "$pane_id" "$path"; then
 		tmux display-message -d 3000 "shotpath ✓ pasted $path"
 	else
@@ -39,7 +41,6 @@ if path=$(SHOTPATH_PICKER=1 shotpath --remote 2>"$stderr_file"); then
 fi
 
 if [ -s "$stderr_file" ]; then
-	cat "$stderr_file" >&2
 	printf '\nPress any key…' >&2
 	read -rsn1 || true
 fi

@@ -126,6 +126,12 @@ filename="${filename// /-}"
 local remote_dir="/tmp/screenshots"
 local remote_path="$remote_dir/$filename"
 
+if [[ "${SHOTPATH_PROGRESS:-0}" == 1 ]]; then
+  local size_bytes
+  size_bytes="$(wc -c <"$tmpfile" | tr -d '[:space:]')"
+  print -u2 -- "Uploading $filename ($size_bytes bytes) to $host..."
+fi
+
 if ssh "$host" "mkdir -p '$remote_dir' && chmod 700 '$remote_dir'" &&
   scp -q "$tmpfile" "$host:$remote_path" &&
   ssh "$host" "chmod 600 '$remote_path'"; then
