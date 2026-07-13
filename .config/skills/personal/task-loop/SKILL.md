@@ -1,7 +1,7 @@
 ---
 name: task-loop
 description: >
-  Scaffold a loop directory for automated agent task execution.
+  Scaffolds a loop directory for automated agent task execution.
   Use when asked to "create a task loop", "set up a loop", "scaffold
   a loop directory", "prepare tasks for rl", or "set up automated
   execution" for a backlog. Takes an existing backlog and generates
