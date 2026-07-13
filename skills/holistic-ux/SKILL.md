@@ -322,19 +322,11 @@ Before delivering:
 - If the request belongs elsewhere, did you stop instead of continuing into
   implementation guidance?
 
-## Reference Routing
+Reference routing lives in the "Read references only when they match the task"
+table above.
 
-- `references/mental-models.md` - read for systems thinking, Iceberg, Cynefin,
-  leverage points, and organisational seams.
-- `references/service-design.md` - read for service blueprints, JTBD,
-  stakeholder maps, touchpoints, channels, and failure modes.
-- `references/research-synthesis.md` - read for research-note synthesis,
-  confidence, themes, opportunities, and contradictions.
-- `references/design-psychology.md` - read for cognitive load and UX laws as
-  diagnostic lenses, not proof.
-- `references/heuristics.md` - read for Nielsen, Norman, Shneiderman, and
-  severity guidance for reviews.
-- `references/patterns.md` - read for low-fidelity pattern choice only.
+`evals/` holds this skill's trigger and behaviour test prompts; it is
+maintainer-facing and intentionally unrouted.
 
 Remember: good UX work makes the user's task easier and the service more
 coherent. The screen is only one part of the system.
