@@ -38,6 +38,7 @@ from contextvars import ContextVar
 from typing import Any
 
 import structlog
+from starlette.routing import Match
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 log = structlog.get_logger("canonical")
@@ -99,12 +100,16 @@ class CanonicalLogMiddleware:
             if error_class is not None:
                 event["error.class"] = error_class
 
-            # Route template (e.g. /users/{id}) if the router populated it.
-            route = scope.get("route")
-            if route is not None:
-                template = getattr(route, "path", None)
-                if template is not None:
-                    event["http.route"] = template
+            # Route template (e.g. /users/{id}). Starlette does not store the
+            # matched Route on the scope (only `endpoint`/`path_params`), so
+            # match against the app's top-level routes. Nested Mounts report
+            # the mount prefix.
+            app = scope.get("app")
+            if app is not None:
+                for route in getattr(app, "routes", []):
+                    if route.matches(scope)[0] == Match.FULL:
+                        event["http.route"] = route.path
+                        break
 
             log.info("http.request", **event)
             _event.reset(event_token)
