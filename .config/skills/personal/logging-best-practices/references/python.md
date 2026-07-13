@@ -172,17 +172,4 @@ The generic anti-patterns in `SKILL.md` apply; these are the ones that bite *spe
 
 ## Sampling in Python
 
-For head-based rate sampling or content-based drops, write a processor that raises `structlog.DropEvent`:
-
-```python
-def drop_health_checks(logger, name, event_dict):
-    if event_dict.get("http.path") == "/health":
-        import random
-        if random.random() > 0.01:   # keep 1%
-            raise structlog.DropEvent
-    return event_dict
-```
-
-**Gotcha:** do not raise `DropEvent` inside `ProcessorFormatter` (i.e. the stdlib-bridge path) — it crashes the formatter. Drop in structlog's own chain, before the formatter wrapper.
-
-For tail sampling, see [`sampling.md`](sampling.md). In short: the right home for tail sampling in Python is the OpenTelemetry Collector's `tail_sampling` processor keyed on `trace_id`, not the application.
+Head-based drops (e.g. dropping `/health` noise) and tail sampling both live in [`sampling.md`](sampling.md) — it owns the `structlog.DropEvent` processor pattern, the `ProcessorFormatter` gotcha, and the Collector `tail_sampling` guidance.
