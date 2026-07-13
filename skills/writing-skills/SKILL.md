@@ -79,10 +79,12 @@ every sentence:
   once and persists; the agent doesn't re-read the file later. Phrase
   guidance that should apply throughout as an ongoing rule, not an action to
   perform now.
-- **Timeless present tense.** Version numbers, prices, release dates, and
-  dated change-history framing rot faster than the rules they decorate — and
-  stale facts read as authoritative. State the current rule plainly; point at
-  live sources (`--help`, official docs) for anything volatile.
+- **Timeless present, keep load-bearing versions.** A *threshold* stays true
+  whenever it's read (`3.12+`, `since Kafka 3.0`) — not rot, keep it. A
+  *snapshot* ages silently (`current 4.3`, `verified 2026-06-30`, prices,
+  `recent changes`); deleting its date only hides the staleness so it reads as
+  eternal truth — repoint to a live source (`--help`, official docs) or keep an
+  honest as-of caveat.
 - **One source of truth.** Any rule, table, or protocol lives in exactly one
   file; every other mention is a one-line pointer. Duplication drifts as the
   skill evolves and inflates a rule's apparent importance.
