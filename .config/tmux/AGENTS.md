@@ -35,6 +35,9 @@ The logic is spread across several files — change them as a set:
   pane, rolls the worst up to `@win_agent_state`. Verbs:
   `working|blocked|done|unread|idle|seen|clear`. `unread` is the manual inverse
   of `seen` (force `done` even on the focused window — mark a read tab blue again).
+  `done` is **seen-at-birth**: if you are already viewing the pane when it
+  finishes (`is_viewing` — the sweep's gate: active pane / active window /
+  attached session) it goes straight to idle; otherwise blue until you focus it.
 - [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) — sourced by
   `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
   **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
@@ -47,7 +50,9 @@ The logic is spread across several files — change them as a set:
   `AGENT_JOURNAL_DISABLE=1`, relocate with `AGENT_JOURNAL_DIR`. Monthly files:
   retention is deleting old months.
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
-  rollup, and bell helpers (also used by `agent-sweep.sh`), **and the canonical
+  rollup, bell, and `is_viewing` helpers (also used by `agent-sweep.sh`;
+  `is_viewing` is the one definition of "you are looking at the pane", shared by
+  the `done` branch and the sweep), **and the canonical
   state → glyph + colour mapping** (`agent_attrs`/`agent_hex`/`agent_char`/
   `agent_glyph`). **Shape** encodes state as well as colour so it reads on a
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
@@ -61,12 +66,13 @@ The logic is spread across several files — change them as a set:
   is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
   are excluded so they can't pin the dot at working forever.
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
-  one-shot on `client-attached` + a per-server daemon polling every `POLL`, 30s).
+  one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
   Two jobs: (1) clear a stale dot whose agent died without a clean done/clear
   (shell foreground = agent gone); (2) age a `done` dot you are currently viewing
-  (active pane, active window, `session_attached>0`) to idle — the deterministic
-  backstop for the focus hooks' `seen`, which the focus events miss when you watch
-  one agent while another finishes then return by switching windows (no fresh
+  (`is_viewing`: active pane, active window, `session_attached>0`) to idle — the
+  deterministic backstop for the `done` branch's seen-at-birth and the focus
+  hooks' `seen`, which they miss when the finish races your focus or you watch one
+  agent while another finishes then return by switching windows (no fresh
   select-pane/window-changed). The attached-session gate keeps detached sessions
   unread (nobody looking).
 - `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the

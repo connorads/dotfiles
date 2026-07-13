@@ -42,6 +42,17 @@ EOF
 	fi
 }
 
+# is_viewing PANE_ACTIVE WINDOW_ACTIVE SESSION_ATTACHED — pure predicate: true
+# when these three pane fields together mean a human is demonstrably looking at
+# the pane (the active pane of the active window of an attached session). The
+# single definition of "you are looking at it", shared by the `done` branch
+# (agent-state.sh, seen-at-birth) and the phase-5 sweep (agent-sweep.sh, the
+# viewed-done reconcile) so both age a finished agent identically. Missing/empty
+# fields default to "not viewed" so a failed read never spuriously marks seen.
+is_viewing() {
+	[ "${1:-0}" = 1 ] && [ "${2:-0}" = 1 ] && [ "${3:-0}" != 0 ]
+}
+
 # should_ring PREV — true when this is a fresh entry into blocked (prev was
 # anything else). Dedupes back-to-back blocked hooks so they don't double-bell.
 should_ring() {

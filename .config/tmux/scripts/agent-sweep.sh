@@ -77,10 +77,11 @@ sweep_once() {
 				;;
 			*)
 				# Agent still alive: a `done` dot on a pane you are currently
-				# looking at (active pane, active window, ≥1 attached client) is
-				# seen — age it to idle. Backstop for the focus hooks' `seen`.
-				if [ "$_astate" = "done" ] && [ "$_pactive" = 1 ] &&
-					[ "$_wactive" = 1 ] && [ "${_sattached:-0}" != 0 ]; then
+				# looking at (is_viewing: active pane, active window, ≥1 attached
+				# client) is seen — age it to idle. Backstop for both the `done`
+				# branch's seen-at-birth and the focus hooks' `seen`.
+				if [ "$_astate" = "done" ] &&
+					is_viewing "$_pactive" "$_wactive" "$_sattached"; then
 					_seen="$_seen$_pane
 "
 					_windows="$_windows$_win
@@ -164,7 +165,7 @@ daemon() {
 	trap 'exit 130' INT
 
 	while :; do
-		sleep "${AGENT_SWEEP_POLL:-30}"
+		sleep "${AGENT_SWEEP_POLL:-10}"
 		tmux list-sessions >/dev/null 2>&1 || break
 		sweep_once
 	done
