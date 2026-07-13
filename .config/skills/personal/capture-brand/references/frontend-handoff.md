@@ -13,10 +13,9 @@ Prefer neutral structures:
 - Documentation-style landing page
 - Style tile with components
 
-Avoid trust-sensitive structures:
-
-- Login, checkout, payment, account, support, banking, medical, government, or
-  identity verification pages.
+Avoid trust-sensitive structures (login, checkout, payment, account, banking,
+government, identity verification, …) — see the full list in
+[`safety.md`](safety.md).
 
 ## Applying tokens
 

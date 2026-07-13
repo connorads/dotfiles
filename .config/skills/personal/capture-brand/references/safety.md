@@ -15,8 +15,9 @@ The goal is an on-brand page, not impersonation.
 
 Constrain the deliverable when the request could imply affiliation or trust:
 
-- Avoid login, signup, checkout, payment, account recovery, banking, wallet,
-  healthcare, government, or credential screens.
+- Avoid login, signup, checkout, payment, pricing, account/recovery, support,
+  banking, wallet, healthcare, government, identity-verification, or credential
+  screens.
 - Avoid exact navigation, copy, pricing tables, plan names, legal text, and
   claims.
 - Use placeholder content and neutral page framing.
