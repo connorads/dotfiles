@@ -60,3 +60,11 @@ references.
 If the page relies on JavaScript-rendered DOM that is not present in the source
 HTML, render or dump the browser DOM first, then run the bundler on that HTML
 with the original page URL as the base URL.
+
+`monolith -I` isolates the document from the Internet, so a page that fetches at
+runtime (JS `fetch`/XHR, SPA data loads) will not work offline. Asset-ref
+verification cannot detect this, so rely on the step 3 screenshot to catch it.
+
+The CSS `url(...)`/`@import` check scans the whole document, so a `url(...)`
+literal inside a `<script>` body or attribute string can surface as a false
+positive; inspect flagged references rather than trusting the exit code alone.
