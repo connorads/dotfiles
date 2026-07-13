@@ -145,9 +145,9 @@ section or the DevTools field-data panel, both CrUX). Ref:
 
 Incognito, or DevTools -> Network -> **Disable cache** + throttle to **3G** -
 Chrome's slowest built-in preset (the former "Slow 3G", same 400 Kbps / 2000ms
-values; the dropdown is now Fast 4G / Slow 4G / 3G, + custom profiles under
-Settings > Throttling. The Disable-cache checkbox sits beside it in the
-Network action bar). This is the only way FOUT/pop-in reliably
+values; exact dropdown labels vary by DevTools version - pick the slowest preset,
+or add a custom profile under Settings > Throttling. The Disable-cache checkbox
+sits beside it in the Network action bar). This is the only way FOUT/pop-in reliably
 reproduces - warm cache hides it. Toggle OS "Reduce motion" to confirm
 reduced-motion paths. For a static build, serve `dist` with any static server to
 give the browser a URL.
