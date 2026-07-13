@@ -1,21 +1,21 @@
 ---
 name: web-perf
 description: >-
-  Diagnose and fix first-load visual jank users can see - font-swap flashes,
-  image decode pop-in, layout shift (CLS), slow LCP/FCP, blank-then-paint,
+  Diagnoses and fixes first-load visual jank - font-swap flashes, image
+  decode pop-in, layout shift (CLS), slow LCP/FCP, blank-then-paint,
   hydration/theme flips, Core Web Vitals or Lighthouse/PageSpeed complaints
   about first paint - on any hand-wired stack: static-prerendered (Astro/SSG),
   Vite SPA/MPA, or SSR from a Worker/edge. Use when the user reports a
   "flash", "shimmer", "pop", "jump", "flicker", or slow first paint; when
-  content fades in only after JS runs (entrance reveals) or the LCP is
-  webfont text; when reviewing font loading (self-hosted or Google Fonts) or
-  image loading; when deciding if subsetting fixed copy is safe; when
-  wiring resource hints (preload/preconnect) or metric-matched fallbacks by
-  hand; or when asserting first-load invariants on built HTML or a booted
-  route. Not for backend latency, bundle-size analysis, or runtime
-  interaction (INP) tuning; where a framework layer automates the fix
-  (next/font, next/image, Astro fonts), defer to that layer's own output -
-  but still inspect app code wrapping it.
+  content fades in after JS runs (entrance reveals) or the LCP is webfont
+  text; when reviewing font loading (self-hosted or Google Fonts) or image
+  loading; when deciding if subsetting fixed copy is safe; when wiring
+  resource hints (preload/preconnect) or metric-matched fallbacks; or when
+  asserting first-load invariants on built HTML or a booted route. Not for
+  backend latency, bundle-size analysis, or runtime interaction (INP)
+  tuning; where a framework layer automates the fix (next/font, next/image,
+  Astro fonts), defer to that layer's output - but still inspect app code
+  wrapping it.
 ---
 
 # Web Performance: first-load visual jank
