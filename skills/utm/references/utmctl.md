@@ -29,9 +29,6 @@ UTM window — cosmetic only, not headless).
 
 ## Caveats
 
-- **Nested help is broken**: `utmctl help file pull` and `utmctl file pull --help`
-  print the top-level help. Run the subcommand with no args — the usage-error
-  line shows the real signature.
 - `exec` argv quoting: each `--cmd` is one argv element, e.g.
   `--cmd /bin/sh --cmd -c --cmd 'echo $HOME'`.
 - `start --disposable` ↔ AppleScript `start ... saving:false`.

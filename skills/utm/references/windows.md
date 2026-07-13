@@ -140,7 +140,7 @@ Create the VM headless-but-with-a-display (the installer needs a screen). Use
 **`virtio-ramfb-gl`** for the display, **NVMe** for the system disk:
 
 ```applescript
-make new virtual machine with properties {backend:qemu, configuration:{name:"win11", architecture:"aarch64", memory:6144, cpu cores:4, drives:{{guest size:65536}}, displays:{{hardware:"virtio-ramfb-gl"}}}}
+make new virtual machine with properties {backend:qemu, configuration:{name:"win11", architecture:"aarch64", memory:6144, cpu cores:4, drives:{{guest size:65536, interface:"NVMe"}}, displays:{{hardware:"virtio-ramfb-gl"}}}}
 ```
 
 - **Display: use `virtio-ramfb-gl`, NOT `virtio-gpu-pci`.** Windows has no
@@ -151,9 +151,9 @@ make new virtual machine with properties {backend:qemu, configuration:{name:"win
   `virtio-ramfb-gl` is what UTM's own Windows wizard picks (UTM v4.1+).
   (A *brief* "Display output is not active" during boot is normal; only a
   *persistent* one means the wrong adapter.)
-- **System disk: NVMe.** A new scripted drive defaults to VirtIO, which Windows
-  Setup can't see without drivers; NVMe is visible out of the box. (`cp` the
-  default drive's interface to NVMe via config edit if needed.)
+- **System disk: NVMe.** Set `interface:"NVMe"` on the drive (shown inline
+  above). A scripted drive otherwise defaults to VirtIO, which Windows Setup
+  can't see without drivers; NVMe is visible out of the box.
 - Then attach the FAT32 install image (above) and the guest-tools ISO
   (<https://getutm.app/downloads/utm-guest-tools-latest.iso>) as a removable CD.
 - ≥4 cores, ≥6144 MiB RAM, ≥64 GiB disk (qcow2 is sparse — sizes to what Windows
