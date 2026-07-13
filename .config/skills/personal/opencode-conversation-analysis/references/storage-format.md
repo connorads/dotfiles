@@ -1,6 +1,6 @@
 # OpenCode Storage Format
 
-OpenCode currently stores session history in SQLite.
+OpenCode stores session history in SQLite.
 Older installs may still have legacy JSON files.
 
 ## Current Format (SQLite)
