@@ -521,15 +521,23 @@ def run(args: argparse.Namespace) -> int:
     style_inputs.extend(css_texts)
     signals = extract_style_signals(style_inputs)
     for meta_name in ("theme-color", "msapplication-tilecolor"):
-        if meta_name in metadata:
-            signals["hex_colours"].insert(
-                0,
-                {
-                    "value": metadata[meta_name],
-                    "count": 1,
-                    "sources": [f"meta:{meta_name}"],
-                },
-            )
+        if meta_name not in metadata:
+            continue
+        raw_value = metadata[meta_name].strip()
+        # Only promote values that parse to real hex so hex_colours stays hex;
+        # named colours (e.g. "white") and rgb() forms are skipped here.
+        hex_match = HEX_RE.search(raw_value)
+        hex_value = expand_hex(hex_match.group(1)) if hex_match else css_rgb_triplet_to_hex(raw_value)
+        if not hex_value:
+            continue
+        signals["hex_colours"].insert(
+            0,
+            {
+                "value": hex_value,
+                "count": 1,
+                "sources": [f"meta:{meta_name}"],
+            },
+        )
 
     tokens = {
         "brand": {

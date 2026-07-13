@@ -52,24 +52,8 @@ pretending to be the brand or copying protected product flows.
 
 ## Output Contract
 
-Create or update a folder shaped like this:
-
-```text
-brand-capture/
-  sources.md
-  tokens.raw.json
-  tokens.json
-  brand-brief.md
-  verification.md
-  raw/
-    assets/
-      candidates/
-  assets/
-    logos/
-    icons/
-    images/
-    screenshots/
-```
+Create or update a `brand-capture/` folder following the layout in
+`references/token-schema.md` (Folder contract).
 
 `tokens.json` is the compact handoff file. `brand-brief.md` explains what to
 use, what to avoid, confidence levels, and source citations. `verification.md`
