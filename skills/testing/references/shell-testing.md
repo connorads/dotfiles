@@ -155,7 +155,7 @@ wall-clock items. Wall-clock far above CPU time (`user`+`sys`) means the suite i
 a large win when the bottleneck is waiting. It needs an external dispatcher: GNU
 `parallel` **or** `shenwei356/rush`
 (`bats -j N --parallel-binary-name rush`, or `export BATS_PARALLEL_BINARY_NAME=rush`).
-Trap: with neither installed, current bats silently runs **0 tests and exits 1** —
+Trap: with neither installed, bats silently runs **0 tests and exits 1** —
 assert the expected test count in CI rather than trusting the exit code. `-j` enables
 across- *and* within-file parallelism; add `--no-parallelize-within-files` when only
 whole files are independent.
