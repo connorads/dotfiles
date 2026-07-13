@@ -1,6 +1,6 @@
 ---
 name: design-forking
-description: Fork a design decision into genuinely different alternatives before committing - divergent thinking for software design. Use when facing an architecture or design decision, weighing approaches, or planning a non-trivial refactor; when the user asks for options, alternatives or trade-offs; when about to implement the first approach that came to mind for anything hard to reverse; or when reviewing a plan that considered only one design.
+description: Forks a design decision into genuinely different alternatives before committing - divergent thinking for software design. Use when facing an architecture or design decision, weighing approaches, or planning a non-trivial refactor; when the user asks for options, alternatives or trade-offs; when about to implement the first approach that came to mind for anything hard to reverse; or when reviewing a plan that considered only one design.
 ---
 
 # Design Forking
@@ -83,3 +83,5 @@ Decision: search results and the RSS feed apply visibility rules independently a
 - Reaching for temperature or "be creative" phrasing - weak levers; axes and bans are the strong ones.
 - A null candidate written as a strawman and dismissed unexamined.
 - Narrating the methodology in the answer - jibber-jabber. The reader gets the comparison and the justification, not the ceremony that produced them.
+
+<!-- evals/ holds this skill's trigger + behaviour test prompts; run when revising. -->
