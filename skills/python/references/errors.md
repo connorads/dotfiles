@@ -23,6 +23,10 @@ class Err[E]:
 type Result[T, E] = Ok[T] | Err[E]
 ```
 
+The `class Ok[T]` and `type Result[...] = ...` forms are PEP 695 syntax
+(Python 3.12+). On 3.10/3.11, use `T = TypeVar("T")` with `class Ok(Generic[T])`
+and a plain `Result = Ok[T] | Err[E]` alias (`match` itself needs 3.10+).
+
 Consume by matching, so a forgotten branch is a type error:
 
 ```python
