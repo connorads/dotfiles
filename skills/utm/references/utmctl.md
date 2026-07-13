@@ -1,4 +1,4 @@
-# utmctl reference (UTM 4.7.x)
+# utmctl reference (as of UTM 4.7.x; verify with `utmctl version` / UTM > About)
 
 Binary: `/Applications/UTM.app/Contents/MacOS/utmctl`. Thin client over the
 AppleScript bridge — drives a running UTM.app and launches it if needed.

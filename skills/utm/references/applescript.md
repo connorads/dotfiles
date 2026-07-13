@@ -1,9 +1,9 @@
-# UTM AppleScript API (UTM.sdef, UTM 4.7.x)
+# UTM AppleScript API (UTM.sdef, as of UTM 4.7.x)
 
 Run via `osascript script.applescript` or `osascript -e '...'`. Full dictionary:
 Script Editor → File → Open Dictionary → UTM, or
 `/Applications/UTM.app/Contents/Resources/UTM.sdef`.
-Docs: https://docs.getutm.app/scripting/
+Docs: <https://docs.getutm.app/scripting/>
 
 **Use AppleScript, not JXA, for creation/config** — JXA `make` with a
 configuration record fails with type-conversion errors (known, unresolved).
@@ -154,6 +154,7 @@ A reliable way to drive a GUI install fully from the host:
    macOS display sleeps, `screencapture -l` returns black/stale frames — keep it
    awake with `caffeinate -d` during long installs.
 2. **Find the VM window id** (it changes across guest reboots — re-query):
+
    ```bash
    uv run --with pyobjc-framework-Quartz python3 -c '
    import Quartz
@@ -161,6 +162,7 @@ A reliable way to drive a GUI install fully from the host:
        if w.get("kCGWindowOwnerName")=="UTM" and w.get("kCGWindowName")=="win11":
            print(w["kCGWindowNumber"])'
    ```
+
 3. **Capture just that window**: `screencapture -x -o -l<id> /tmp/vm.png`, read
    it, locate the target. Coordinates in the capture map to the UTM window's
    content; use them directly in `input mouse click vm at {x,y}` (halve them if
