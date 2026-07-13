@@ -147,7 +147,7 @@ Many packaged CLIs are distributed inside an npm-style wrapper even when the run
 
 ```bash
 realpath <binary>
-find -L "$(dirname "$(realpath <binary>")")/.." -maxdepth 3 -type f \
+find -L "$(dirname "$(realpath <binary>)")/.." -maxdepth 3 -type f \
   \( -name package.json -o -name README.md -o -name 'install.cjs' -o -name 'cli-wrapper.cjs' \) -print
 ```
 
