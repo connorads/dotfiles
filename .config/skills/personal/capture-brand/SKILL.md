@@ -44,8 +44,9 @@ pretending to be the brand or copying protected product flows.
    `assets/{logos,icons,images,screenshots}`. Cite the source for every major
    colour, font, logo, image, and style claim.
 6. **Hand off a page brief.** If the user wants a page recreation, produce a
-   neutral brand-inspired layout brief or implementation. Do not copy login,
-   payment, account, pricing, checkout, or other trust-sensitive flows.
+   neutral brand-inspired layout brief or implementation. Do not copy
+   trust-sensitive flows (login, payment, checkout, … — full list in
+   `references/safety.md`).
 7. **Verify.** Check files open, sources are traceable, `tokens.json` is valid
    JSON, local asset paths exist, fonts are usable or have fallbacks, and the
    final page reads as inspired by the brand rather than a pixel copy.
