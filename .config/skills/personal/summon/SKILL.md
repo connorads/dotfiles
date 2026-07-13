@@ -1,11 +1,12 @@
 ---
 name: summon
-description: >
+description: >-
   Channel the mental models, decision frameworks, and communication style of
   real experts (Steve Jobs, DHH, Rich Hickey, etc.) to approach problems the
   way they would. Use when the user says "summon", "channel", "what would
   [name] think", "ask [name]", or wants an expert perspective on a problem.
 ---
+
 # Summon
 
 Channel the spirit of a real person — their mental models, decision frameworks, communication style, and opinions — to approach problems the way they would.
@@ -18,58 +19,7 @@ Channel the spirit of a real person — their mental models, decision frameworks
 
 ## Name Resolution
 
-Each persona file defines aliases. Match trigger names against aliases case-insensitively.
-
-```
-references/dax-raad.md        →  dax, thdxr, dax raad
-references/mitchell-hashimoto.md  →  mitchell, mitchellh, mitchell hashimoto
-references/dhh.md             →  dhh, david heinemeier hansson
-references/scott-wlaschin.md  →  scott, scottwlaschin, scott wlaschin
-references/eric-evans.md      →  eric, eric evans, ericevans
-references/alberto-brandolini.md  →  alberto, brandolini, ziobrando
-references/greg-young.md      →  greg, greg young, gregyoung
-references/rich-hickey.md     →  rich, rich hickey, richhickey
-references/kent-beck.md       →  kent, kent beck, kentbeck
-references/gary-bernhardt.md  →  gary, garybernhardt, gary bernhardt
-references/mark-seemann.md   →  mark, ploeh, mark seemann
-references/alistair-cockburn.md  →  alistair, cockburn, alistair cockburn
-references/steve-jobs.md        →  steve, steve jobs, stevejobs
-references/john-carmack.md      →  carmack, john carmack, johncarmack
-references/jony-ive.md          →  jony, jony ive, jonyive, ive
-references/simon-willison.md    →  simon, simonw, simon willison
-references/swyx.md              →  swyx, shawn wang, shawn
-references/pieter-levels.md     →  pieter, levelsio, pieter levels
-references/guillermo-rauch.md   →  guillermo, rauchg, guillermo rauch
-references/matt-pocock.md       →  matt, mattpocockuk, matt pocock
-references/matt-perry.md         →  mattperry, mattgperry, matt perry
-references/ricardo-cabello.md    →  ricardo, mrdoob, ricardo cabello
-references/jack-doyle.md         →  jack, jack doyle, greensock
-references/josh-comeau.md        →  josh, joshwcomeau, josh comeau
-references/julia-evans.md        →  julia, b0rk, julia evans, jvns
-references/amelia-wattenberger.md →  amelia, wattenberger, amelia wattenberger
-references/rand-fishkin.md       →  rand, randfish, rand fishkin, sparktoro
-references/april-dunford.md      →  april, aprildunford, april dunford
-references/harry-dry.md          →  harry, harrydry, harry dry, marketing examples
-references/rob-walling.md        →  rob, robwalling, rob walling
-references/sahil-lavingia.md     →  sahil, shl, sahil lavingia
-references/alex-hormozi.md       →  alex, hormozi, alex hormozi
-references/maggie-appleton.md    →  maggie, maggie appleton, maggieappleton, mappletons
-references/jonny-burger.md       →  jonny, jonnyburger, jonny burger
-references/tony-zhou.md          →  tony, tony zhou, everyframeapainting
-references/bret-victor.md        →  bret, bret victor, worrydream
-references/des-traynor.md        →  des, des traynor, destraynor
-references/walter-murch.md       →  walter, walter murch, waltermurch
-references/grant-sanderson.md    →  grant, 3b1b, grant sanderson, 3blue1brown
-references/matt-mullenweg.md     →  mullenweg, photomatt, matt mullenweg
-references/mark-jaquith.md       →  jaquith, markjaquith, mark jaquith
-references/steve-krug.md         →  krug, stevekrug, steve krug
-references/don-norman.md         →  norman, donnorman, don norman
-references/edward-tufte.md       →  tufte, edwardtufte, edward tufte, et
-references/samuel-hulick.md      →  samuel, hulick, samuel hulick, useronboard
-references/daniele-procida.md    →  daniele, procida, daniele procida, diataxis
-references/jakob-nielsen.md      →  nielsen, jakobnielsen, jakob nielsen
-references/luke-wroblewski.md    →  luke, lukew, luke wroblewski
-```
+Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; see the Aliases column of the [Available Personas](#available-personas) table below for the persona-to-alias mapping.
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
 
