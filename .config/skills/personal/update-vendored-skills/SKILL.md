@@ -37,7 +37,7 @@ refresh with unrelated work.
 **Read `dotfiles status` paths relative to your cwd, not `$HOME`.** Git prints paths
 relative to the current directory, so from `~/.config/skills/vendor` a vendored file shows
 as `.agents/skills/<name>/...` — that's the *vendor* tier, not the global `~/.agents/skills`
-(which only holds `architecture`, `typescript`, `playwright-cli`). Don't mistake one for the
+(the deliberately-small global autoload tier — inspect `ls ~/.agents/skills` for the current set). Don't mistake one for the
 other. `cd ~` first if you want `$HOME`-relative paths.
 
 ### 2. Batch-discover what's stale, then handle per-skill
@@ -130,7 +130,7 @@ fix it rather than committing the churn.
 
 ### 5. Global autoload skill (`playwright-cli`)
 
-The one globally-autoloaded vendored skill; it lives outside the project dir and updates
+The one CLI-lock-tracked global vendored skill (recorded in `~/.agents/.skill-lock.json`); it lives outside the project dir and updates
 via global scope:
 
 ```bash
