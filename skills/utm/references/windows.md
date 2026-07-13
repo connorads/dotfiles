@@ -29,7 +29,8 @@ QEMU backend. Official guide: <https://docs.getutm.app/guides/windows/>
 1. There's no *native* ARM64 QEMU guest agent
    ([utmapp/UTM#5134](https://github.com/utmapp/UTM/issues/5134)), **but the UTM
    guest tools install the x64 `qemu-ga` which runs under Windows' x86 emulation
-   and works** (confirmed: guest-tools 0.1.271, qemu-ga 109.1.0). So
+   and works** (verified as of guest-tools 0.1.271 / qemu-ga 109.1.0; newer
+   builds expected to work). So
    `utmctl ip-address`, `utmctl file push/pull`, and the AppleScript
    `execute … with output capturing` all work. The one gap: **`utmctl exec` runs
    the command (exit 0) but returns no stdout** — use AppleScript `execute` (it

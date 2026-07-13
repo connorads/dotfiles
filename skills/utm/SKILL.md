@@ -65,6 +65,7 @@ windows.md for the full path, including the gotchas below that cost hours.
 
 **Three Windows-ARM traps that look like "it's hung" but aren't fixable by
 waiting** (all in windows.md):
+
 - A **>4 GB Win11 24H2 ISO won't boot** — hangs at the firmware "Start boot
   option" screen. Repack the installer onto a FAT32 disk image with a split WIM.
 - **`virtio-gpu-pci` display → "Display output is not active"** black screen the
@@ -108,3 +109,5 @@ poll for the thing you actually need: the SSH port accepting connections
 (`nc -z localhost 2222`), the agent responding (`utmctl exec ... --cmd true`),
 or `ip-address` returning a value. Boot can take 30–90s; poll with a timeout
 rather than sleeping a fixed amount.
+
+<!-- evals/ holds this skill's test prompts (maintainer-facing); intentionally unrouted. -->
