@@ -1,20 +1,22 @@
 ---
 name: distilling-domain-language
-description: Distil a contested or fuzzy domain term into canonical language through structured interrogation. Use when a term fights its own definition, several words compete for one concept, a glossary has bloated, or a hidden concept needs surfacing before terms are written into CONTEXT.md.
+description: Choose or distil canonical domain language through structured interrogation. Use when naming a new domain concept, pinning down a project's ubiquitous language, when a term fights its own definition, several words compete for one concept, a glossary has bloated, or a hidden concept needs surfacing before terms are written into CONTEXT.md.
 ---
 
 # Distilling Domain Language
 
-The workshop, not the maintenance habit. Run an intensive interrogation to decide what a domain term *should* be, then hand the verdict to the `domain-modeling` skill to write into `CONTEXT.md`. That sibling owns the steady-state glossary and ADRs; **do not write `CONTEXT.md` yourself here.**
+The workshop, not the maintenance habit. Run an intensive interrogation to decide what a domain concept *should* be called - whether you are naming it for the first time or reopening a word the domain has outgrown - then hand the verdict to the `domain-modeling` skill to write into `CONTEXT.md`. That sibling owns the steady-state glossary and ADRs; **do not write `CONTEXT.md` yourself here.**
 
 This is a grilling protocol: you drive it with named moves, one question at a time. But talk alone reaches false agreement - people nod at a word while meaning different things. So the instant a term resists, externalise the fight into a small forcing artifact (a scenario table, a hotspot register, a Given/When/Then). The artifact makes the contradiction impossible to hand-wave.
 
 ## When to run
 
+- A new concept, feature or project needs its language chosen before names harden into code, schema and copy.
 - A term fights its own definition ("a group invited together - but some are friends, not a household").
 - Several words compete for one concept and nobody has decided.
 - A glossary has bloated; terms feel loosely related.
-- A concept is being named and you want it stress-tested before it hardens into code.
+
+The same moves serve both entry points: a brand-new coinage earns the exact grilling a disputed veteran does - it just starts with a clean sheet instead of a fight.
 
 ## Ground rules
 
@@ -39,7 +41,7 @@ Run the phases in order. Refuse to settle a noun before the process around it ex
 
 ### 2. Interrogate - the grilling
 
-Aim these at the fought-over word. Run one, react to the answer, then pick the next.
+Aim these at the surviving candidates, whether contested veterans or fresh coinages. Run one, react to the answer, then pick the next.
 
 - **Say it out loud.** Put each candidate into 3-5 sentences someone would actually speak ("This ___ has responded"; "One ___ replied for four people"). Ask which sounds least forced. Awkward phrasing is audible faster than any diagram shows it, and awkwardness means wrong model, not just wrong word.
 - **Scenario ambush.** Throw concrete, *named* edge cases at the definition: the Smith family of five; Connor's four uni friends sharing one reply; a couple at two addresses. "Does the definition still hold for each?" A case it silently excludes is the evidence. *(If the ambush stalls, or the user keeps patching the definition, escalate to the scenario matrix below.)*
