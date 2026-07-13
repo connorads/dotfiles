@@ -604,11 +604,7 @@ Or via the GitHub web UI — fill in the PR template with:
 
 ### 4. AI Disclosure
 
-The PR template includes an AI disclosure section. If AI assisted with the PR:
-
-- Check the AI checkbox in the template.
-- Briefly describe how AI was used.
-- Confirm that all changes were personally reviewed, tested, and verified — especially `zap` stanza paths.
+See SKILL.md §8 (AI disclosure) — check the AI checkbox, split the disclosure into what the agent ran vs what the human verified manually (especially `zap` paths), and call out anything non-obvious the testing surfaced.
 
 ### 5. Respond to Review
 
