@@ -1,7 +1,7 @@
 ---
 name: living-documentation
 description: >
-  Write durable, trustworthy documentation that does not rot - for AI agents
+  Writes durable, trustworthy documentation that does not rot - for AI agents
   (AGENTS.md/CLAUDE.md, skills) and humans (ADRs, READMEs, knowledge bases).
   Distilled from Cyrille Martraire's "Living Documentation". Use when authoring
   or reviewing an AGENTS.md/CLAUDE.md, writing a skill, writing an ADR or doc,
@@ -48,9 +48,9 @@ references.
 
 ## The eight themes (map)
 
-Each maps to a section of [references/principles.md](references/principles.md)
-(the general method) and [references/agent-docs.md](references/agent-docs.md)
-(applied to AGENTS.md / skills / ADRs / KBs).
+Each is a section of [references/principles.md](references/principles.md) (the
+general method); [references/agent-docs.md](references/agent-docs.md) re-applies
+the themes per artifact (AGENTS.md / skills / ADRs / KBs), tagging them inline.
 
 1. **Accuracy & trust** - pair every fact with a mechanism; the hierarchy of accuracy; dated accounts need none.
 2. **What earns a place** - the default is *don't*; salience, Rule of Two, sedimentation, link-don't-re-explain, biodegradable docs.
