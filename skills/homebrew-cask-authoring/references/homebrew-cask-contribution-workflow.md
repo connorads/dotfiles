@@ -105,7 +105,7 @@ The token is the unique identifier for your cask. Follow these rules:
 - Remove `.app` extension
 - Remove suffixes: "App", version numbers, "for macOS"
 - Remove "Mac" unless it distinguishes the product
-- Remove "Desktop" only when it's a generic suffix — **keep it** when intrinsic to the product name (e.g., `Docker Desktop.app` → `docker-desktop`, `LTX Desktop.app` → `ltx-desktop`). When in doubt, keep "Desktop".
+- Drop "Desktop" by default; keep it only when it's part of the product brand (`Docker Desktop.app` → `docker-desktop`) or a bare-named sibling already ships in Homebrew — see the full rule in SKILL.md (token naming)
 - Convert to lowercase
 - Replace spaces/underscores with hyphens
 - Remove non-alphanumeric characters (except hyphens)
