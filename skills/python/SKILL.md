@@ -102,11 +102,10 @@ carrying a `Literal` tag — not a bag of `is_x`/`is_y` booleans. Use
 the catch-all so a new variant becomes a type error:
 
 ```python
-def describe(inv: Invoice) -> str:
-    match inv:
-        case Draft():     return "draft"
-        case Sent(sent_at=at): return f"sent {at:%Y-%m-%d}"
-        case _:           assert_never(inv)  # new variant -> type error here
+match inv:
+    case Draft():          ...
+    case Sent(sent_at=at): ...
+    case _:                assert_never(inv)  # new variant -> type error
 ```
 
 Avoid boolean behaviour-flag parameters; use named options or domain types.
@@ -126,11 +125,10 @@ express domain semantics. See `references/modeling.md`.
 ### Branded primitives — and where the advice stops
 
 `typing.NewType` distinguishes look-alike ids so a raw `str` can't stand in for a
-`Sku` or `Reference`. But this is the one place the agnostic advice does *not*
-transfer wholesale: brand where mix-ups genuinely bite (id collisions, units);
-accept a plain `str`/`int` where a wrapper is pure ceremony. Mindless
-primitive-obsession in Python buys complexity, not safety. Record the trade-off
-rather than wrapping everything. See `references/parsing.md`.
+`Sku` or `Reference` — but this is the one place the agnostic advice does *not*
+transfer wholesale. Brand where mix-ups genuinely bite (id collisions, units);
+accept a plain `str`/`int` where a wrapper is pure ceremony. See
+`references/parsing.md` for the full trade-off.
 
 ### Protocol over ABC for ports
 

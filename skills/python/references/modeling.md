@@ -20,7 +20,7 @@ class Sent:
     sent_at: Instant
     tag: Literal["sent"] = "sent"
 
-type Invoice = Draft | Sent
+type Invoice = Draft | Sent  # PEP 695 (3.12+); on 3.10/3.11 drop `type`: Invoice = Draft | Sent
 
 def status_line(inv: Invoice) -> str:
     match inv:
