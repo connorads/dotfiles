@@ -108,7 +108,7 @@ Limits:
 - Control mode is not pane-free. tmux still runs each interactive program in a pane-backed PTY.
 - It streams bytes, not semantic UI state.
 - It is not a terminal emulator. The helper normalises common ANSI/OSC sequences and carriage returns for matching, but use `capture-pane` for modal TUI state.
-- The current helper decodes tmux `%output` and `%extended-output` octal escapes with Python stdlib only.
+- The helper decodes tmux `%output` and `%extended-output` octal escapes with Python stdlib only.
 
 ## Capture Mode and Modal TUIs
 
