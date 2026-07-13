@@ -138,3 +138,7 @@ An exception should produce exactly one log event: the canonical event for that 
 | Random-sample all requests at 1% | Drops 99% of your errors. | Tail sampling — keep errors, slow requests, VIPs, flag-enabled requests. See `references/sampling.md`. |
 | Logging full request/response bodies | Secrets, PII, cost. | Redaction processor + allowlist + size cap. |
 | Treating structured JSON as sufficient | Five JSON fields is not a wide event. | Aim for 20+ fields with all four context categories. |
+
+---
+
+`evals/` holds this skill's trigger and behaviour test prompts; it is maintainer-facing and intentionally unrouted.
