@@ -60,14 +60,25 @@ The logic is spread across several files — change them as a set:
   and forwards `working` while any remain, else `done` (degrades to `done` if jq
   is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
   are excluded so they can't pin the dot at working forever.
+- [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
+  one-shot on `client-attached` + a per-server daemon polling every `POLL`, 30s).
+  Two jobs: (1) clear a stale dot whose agent died without a clean done/clear
+  (shell foreground = agent gone); (2) age a `done` dot you are currently viewing
+  (active pane, active window, `session_attached>0`) to idle — the deterministic
+  backstop for the focus hooks' `seen`, which the focus events miss when you watch
+  one agent while another finishes then return by switching windows (no fresh
+  select-pane/window-changed). The attached-session gate keeps detached sessions
+  unread (nobody looking).
 - `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
   `agent-state.sh` on lifecycle events; `Stop` routes through `agent-stop.sh`
   (`working` while `background_tasks` holds finite in-flight work, `done` once
-  drained). The `after-select-pane` / `session-window-changed` hooks fire `seen`
-  (focus = mark read).
+  drained). The `after-select-pane` / `session-window-changed` / `client-focus-in`
+  hooks fire `seen` (focus = mark read); `client-focus-in` (NOT `pane-focus-in`,
+  which is inert as a global hook) catches regaining terminal focus without a
+  navigation. `agent-sweep.sh` is the backstop when none of them fire.
 - Menus: `prefix + Alt+.` and the right-click pane menu
   ([`scripts/context-menu.sh`](./scripts/context-menu.sh)) set a state by hand
   (literals must match the lib — see `agent-glyphs.bats`).
@@ -85,7 +96,8 @@ Tests (run `mise run zsh-tests`):
   expectations from `agent-state-lib.sh` and asserts all four renderers (tabs,
   prefix+Alt+. menu, right-click pane menu, popup) match it; the drift guard
   for the mapping.
-- [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot sweeper.
+- [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot
+  clearing + the viewed-`done` → idle reconcile (attached/inactive/detached gates).
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
