@@ -554,7 +554,7 @@ Framework-specific rules stay in ESLint; the vitest plugin is
 | Rule | Encode with | Prevents |
 |---|---|---|
 | No committed secrets | gitleaks pre-commit step | Token leaks |
-| Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `install_before` | Compromised releases |
+| Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `minimum_release_age` | Compromised releases |
 | Detect deps that slipped the quarantine | osv-scanner against lockfiles (`mise run supply-audit`) | Malware (OSV `MAL-*`) + CVEs in already-installed deps — the detective half a time-based age-gate can't see |
 | No `--no-verify` | Documented in project CLAUDE.md / AGENTS.md; not technically preventable | Bypassing the whole gate. Cultural rule — reinforce in every project's agent docs. |
 | Pinned + safe GitHub Actions workflows | [zizmor](https://github.com/zizmorcore/zizmor) (gate on exit ≥ 11) | Unpinned actions (`unpinned-uses`), dangerous triggers (`dangerous-triggers` — `pull_request_target`/`workflow_run`), template injection into `run:` (`template-injection`), over-broad `permissions:` (`excessive-permissions`), impostor commits, typosquatted actions |
