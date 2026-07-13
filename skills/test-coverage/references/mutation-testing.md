@@ -85,7 +85,7 @@ Set expectations: there is **no dominant, stable mutation tool** in Go. Pick by 
 
 | Tool | Diff mode | CI threshold | Notes |
 |------|-----------|--------------|-------|
-| **Gremlins** ([go-gremlins/gremlins](https://github.com/go-gremlins/gremlins)) | ❌ none | partial | Actively released (v0.6.0, Dec 2025) but **pre-1.0, no backward-compat guarantee**. States: KILLED/LIVED/NOT COVERED/NOT VIABLE/TIMED OUT/RUNNABLE. |
+| **Gremlins** ([go-gremlins/gremlins](https://github.com/go-gremlins/gremlins)) | ❌ none | partial | Actively released but **pre-1.0, no backward-compat guarantee** (check [releases](https://github.com/go-gremlins/gremlins/releases) for the current version). States: KILLED/LIVED/NOT COVERED/NOT VIABLE/TIMED OUT/RUNNABLE. |
 | **go-mutesting fork** ([jonbaldie](https://github.com/jonbaldie/go-mutesting)) | ✅ `--git-diff-lines` | ✅ `--min-msi`/`--min-covered-msi` (exit 4) | Only Go tool with **both** diff-only AND threshold gating. Also `--baseline` (fail only on new regressions), `--logger-github`/`--logger-gitlab`. ⚠️ **Migrating to `quality-gates/mutago`** — re-check the canonical repo. |
 | **ooze** ([gtramontina/ooze](https://github.com/gtramontina/ooze)) | ❌ none | ✅ `WithMinimumThreshold` (default 1.0) | Embedded as a Go test (`//go:build mutation`), **runs the full suite per mutant** — expensive, run on a dedicated CI path. |
 
