@@ -20,10 +20,13 @@ setup() {
   # this test exists for (the unrelated base hooks the next comment says it excludes).
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 12
   conf="$BATS_TEST_TMPDIR/agent.conf"
-  # Isolate the tab additions: label formats, dot mapping and the `-ga` seen
-  # appends. The base `-g ... refresh-client -S` hooks are unrelated and error
-  # headlessly ("no current client"), so they are deliberately excluded.
-  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed|client-focus-in) ' "$CONF" >"$conf"
+  # Isolate the tab additions: label formats, dot mapping and the seen hooks -
+  # select-pane / window-changed append (-ga) to their refresh-client base, while
+  # client-focus-in sets plainly (-g, no refresh base to append to). The base
+  # `-g ... refresh-client -S` hooks are unrelated and error headlessly ("no
+  # current client"), so they are deliberately excluded - hence matching -ga for
+  # the two appends and -g only for client-focus-in, not -g across the board.
+  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed) |^set-hook -g client-focus-in ' "$CONF" >"$conf"
   tx source-file "$conf"
 }
 
