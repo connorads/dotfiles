@@ -115,12 +115,11 @@ The metadata + relationship + legend contract, colours, and anti-patterns:
    ([references/notation-and-quality.md](references/notation-and-quality.md#quality-checklist))
    before presenting.
 
-## Sibling skills - point, don't duplicate
+## Companion: the software guidebook
 
-- **`architecture`** - domain modelling, boundaries, ports/adapters, error
-  design. This skill draws/verifies; that one designs.
-- **`living-documentation`** - ADRs, guidebook, keeping docs in sync with
-  reality. Hand decision rationale there; C4 diagrams show structure only.
+Sibling-skill boundaries (`architecture`, `living-documentation`) are in "Not
+this skill" above.
+
 - The `Software Architecture for Developers` "software guidebook" (Context,
   Functional Overview, Quality Attributes, Constraints, Principles, Software
   Architecture, External Interfaces, Code, Data, Infrastructure, Deployment,

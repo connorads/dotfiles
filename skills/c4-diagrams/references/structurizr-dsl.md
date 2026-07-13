@@ -135,7 +135,7 @@ model fails the export.
 fully in Structurizr's own renderer. If the final target is exported
 Mermaid/PlantUML, keep styling minimal.
 
-**Note (Feb 2026 "vNext"):** `structurizr-cli` and "Structurizr Lite" are being
+**Unified `structurizr` tool:** `structurizr-cli` and "Structurizr Lite" are
 consolidated into one `structurizr` tool with subcommands (`local`, `server`,
 `export`, `validate`, `inspect`, ...) documented at
 [docs.structurizr.com/commands](https://docs.structurizr.com/commands). The DSL
