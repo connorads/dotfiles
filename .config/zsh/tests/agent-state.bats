@@ -92,11 +92,16 @@ large_hook_payload() {
   [ "$(pstate "$p1")" = done ]
 }
 
-@test "done in the active window becomes idle (already seen)" {
-  pane=$(tx display-message -p -t s '#{pane_id}') # sole window is active
+# The bare test server is detached (new-session -d), so session_attached==0 —
+# nobody is looking. Seen-at-birth (is_viewing) therefore keeps `done` blue even
+# on the active window/pane: an active window alone is not "you are viewing it".
+# The viewed(attached) done -> idle path is covered by agent-sweep.bats, which
+# attaches a real client and exercises the same shared is_viewing gate.
+@test "done in the active window of a detached session stays done (nobody attached)" {
+  pane=$(tx display-message -p -t s '#{pane_id}') # sole window/pane active, but detached
   ason "$pane" done
   [ "$status" -eq 0 ]
-  [ "$(pstate "$pane")" = idle ]
+  [ "$(pstate "$pane")" = done ]
 }
 
 @test "unread forces done in the active window (manual inverse of seen)" {
@@ -208,13 +213,47 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
   [ "$(stop_state null)" = done ]
 }
 
+# --- is_viewing: "you are looking at the pane" (pure predicate) ---
+
+@test "is_viewing: active pane, active window, attached -> viewed" {
+  . "$LIB"
+  is_viewing 1 1 1
+}
+
+@test "is_viewing: multiple attached clients still viewed" {
+  . "$LIB"
+  is_viewing 1 1 2
+}
+
+@test "is_viewing: detached session (0 clients) is not viewed" {
+  . "$LIB"
+  ! is_viewing 1 1 0
+}
+
+@test "is_viewing: inactive window is not viewed" {
+  . "$LIB"
+  ! is_viewing 1 0 1
+}
+
+@test "is_viewing: inactive pane is not viewed" {
+  . "$LIB"
+  ! is_viewing 0 1 1
+}
+
+@test "is_viewing: missing fields default to not viewed" {
+  . "$LIB"
+  ! is_viewing
+}
+
 # --- agent-stop.sh adapter: Stop payload on stdin -> pane state ---
 #
 # Counts only finite work (workflow|subagent|shell): pending work keeps the dot
 # peach (working), a drained/empty array goes blue (done), and persistent
-# watchers (monitor|dream) must not pin it at working. `done` only *reads* as
-# done on an inactive window (active collapses to idle, "already seen"), so the
-# done-expecting cases add a second window first. jq-parse cases skip without jq.
+# watchers (monitor|dream) must not pin it at working. The done-expecting cases
+# add a second window (finish on a background window) so the pane is unambiguously
+# unseen; the detached bare server would keep it `done` regardless (seen-at-birth
+# needs an attached client), but the extra window keeps intent explicit.
+# jq-parse cases skip without jq.
 
 STOP="$TESTS_DIR/../../tmux/scripts/agent-stop.sh"
 

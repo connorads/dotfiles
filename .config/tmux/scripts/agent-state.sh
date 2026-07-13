@@ -61,9 +61,17 @@ working | idle)
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 done)
-	# "Seen" if you are already on this window when it finishes → straight to
-	# idle; otherwise it is done (finished, unseen) until you focus the window.
-	if [ "$(tmux display-message -p -t "$pane" '#{window_active}' 2>/dev/null)" = 1 ]; then
+	# Seen-at-birth: if you are already viewing this pane when it finishes → go
+	# straight to idle; otherwise it is done (finished, unseen) until you focus it.
+	# "Viewing" is the sweep's gate (is_viewing): the active pane of the active
+	# window of an attached session - not window_active alone, so a finish on a
+	# detached or background session correctly stays unread. The focus hooks' seen
+	# and the phase-5 sweep are the backstops when this races (e.g. window_active
+	# momentarily reads 0) or when you were not looking at finish time.
+	pflags=$(tmux display-message -p -t "$pane" \
+		'#{pane_active} #{window_active} #{session_attached}' 2>/dev/null)
+	# shellcheck disable=SC2086  # deliberate word-split of the three flag fields
+	if is_viewing ${pflags:-0 0 0}; then
 		tmux set-option -p -t "$pane" @agent_state idle
 	else
 		tmux set-option -p -t "$pane" @agent_state "done"
