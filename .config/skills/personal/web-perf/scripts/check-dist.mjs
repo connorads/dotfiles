@@ -79,7 +79,7 @@ const check = (page, name, ok, detail) => {
 const htmlFiles = (dir) =>
   readdirSync(dir, { withFileTypes: true, recursive: true })
     .filter((e) => e.isFile() && e.name.endsWith(".html"))
-    .map((e) => join(e.parentPath, e.name));
+    .map((e) => join(e.parentPath ?? e.path, e.name));
 
 const NAMED_ENTITIES = {
   amp: "&",
