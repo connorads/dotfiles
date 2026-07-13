@@ -106,6 +106,29 @@ Each provider shares [`../zsh/functions/usage-cache-lib`](../zsh/functions/usage
 `*.trigger` debounces tmux background refreshes. Do not print bearer/access
 tokens in diagnostics.
 
+### Codex window classification
+
+Codex windows are classified by their real `limit_window_seconds`, never by JSON
+slot. [`../zsh/functions/codex-windows.jq`](../zsh/functions/codex-windows.jq) is
+the shared pure core: it turns a raw Codex usage object into a duration-sorted
+`[{seconds, used_percent, reset_after_seconds}]` list (shortest window first),
+using the `primary`/`secondary` slot only as a fallback duration when the API
+omits `limit_window_seconds`. All three surfaces render that list - the pill and
+`codex-usage` shell out to `jq -f`, the fancy dashboard shells out from Python;
+`window_label(seconds)` gives canonical `5-hour`/`7-day` (`5h`/`7d`) wording and
+adapts to any other duration. Pace/colour maths uses each window's real length.
+
+Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
+no return date, collapsing usage to a single weekly window that arrives in the
+`primary_window` slot. Positional classification (primary=5h, secondary=7d)
+mislabelled that weekly figure as 5h and forced a false green pill. Duration
+classification is adaptive: it renders only the windows that exist and stays
+correct whether the 5h window is gone now or returns later, in either slot. Claude
+is deliberately left positional - its `five_hour`/`seven_day` keys are named and
+contractually fixed, so they can't suffer the same collapse. Spark extras
+(`additional_rate_limits`) apply the same duration rule inline (low-stakes, not the
+failure mode), not the shared jq.
+
 Surfaces:
 
 - [`scripts/status-right.sh`](./scripts/status-right.sh) renders the compact
@@ -119,7 +142,9 @@ Surfaces:
 - [`../zsh/functions/usage-debug`](../zsh/functions/usage-debug) prints cache,
   backoff, lock, trigger, and provider usage details.
 
-Tests: [`../zsh/tests/claude-usage.bats`](../zsh/tests/claude-usage.bats),
+Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
+(the classifier's combinatorial matrix),
+[`../zsh/tests/claude-usage.bats`](../zsh/tests/claude-usage.bats),
 [`../zsh/tests/codex-usage.bats`](../zsh/tests/codex-usage.bats),
 [`../zsh/tests/cosine-usage.bats`](../zsh/tests/cosine-usage.bats),
 [`../zsh/tests/ai-usage.bats`](../zsh/tests/ai-usage.bats),
