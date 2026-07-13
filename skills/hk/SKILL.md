@@ -155,15 +155,11 @@ local binary_excludes = List(
 ### Keeping steps quiet — suppress at the source
 
 hk has **no native quiet-on-success** in a non-TTY/agentic context — `-q`, `--silent`,
-`HK_LOG`, etc. are no-ops on the log dump. So if a step is noisy on success, you must quiet
-the *command it runs*, not hk. Three tiers, decided per tool (see `references/output-noise.md`):
-
-1. **Truly silent on success** (eslint, `tsc --noEmit`, shellcheck, gitleaks `--log-level=error`)
-   → do nothing. **Don't wrap these** — the wrapper buys nothing.
-2. **Prints a summary but has a true silence flag** (`ruff check` → `ruff check -q`, verified 0 bytes)
-   → use the flag. More direct than the wrapper, keeps colour/streaming.
-3. **Prints on success, no silence flag** (test runners — pytest, vitest, jest, go/cargo test)
-   → wrap with `scripts/quiet-on-success.sh` (the universal fallback):
+`HK_LOG`, etc. are no-ops on the log dump. So if a step is noisy on success, quiet the
+*command it runs*, not hk: most check-style linters are already silent (do nothing), some
+have a true silence flag (`ruff check -q`), and chatty test runners get wrapped with
+`scripts/quiet-on-success.sh`. Decide per tool — see `references/output-noise.md` for the
+3-tier model, verification steps, and measured numbers.
 
 ```pkl
 ["vitest"] {
@@ -172,8 +168,7 @@ the *command it runs*, not hk. Three tiers, decided per tool (see `references/ou
 ```
 
 Copy `assets/quiet-on-success.sh` from this skill directory into `scripts/` in the target
-repo (only needed if you have any tier-3 steps). Measured: vitest 734→233 bytes (−68%),
-failure output unchanged.
+repo (only needed if you have any tier-3 steps).
 
 ### Whole-graph checks
 

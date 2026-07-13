@@ -319,7 +319,7 @@ Tests:
 ### Type checking
 
 ```pkl
-["mypy"] = (Builtins.mypy) { stomp = true }
+["mypy"] = (Builtins.mypy) {}   // check-only builtin (no fix command)
 ```
 
 Tests:
