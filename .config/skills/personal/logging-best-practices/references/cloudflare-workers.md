@@ -174,7 +174,7 @@ Limits at time of writing: up to 20 blobs, up to 20 doubles, exactly one index (
 
 ## Native OpenTelemetry traces
 
-Cloudflare ships automatic tracing as of 2025 (open beta, check current billing status). Spans are emitted for handler invocations, `fetch()`, cache, KV/R2/D1/Queues/DO bindings — no instrumentation code required. W3C `traceparent` propagates automatically across service bindings, subrequests, and Durable Objects.
+Cloudflare ships automatic tracing for Workers - no instrumentation code required (check the [Workers Observability / Traces docs](https://developers.cloudflare.com/workers/observability/) for current release stage and billing status). Spans are emitted for handler invocations, `fetch()`, cache, KV/R2/D1/Queues/DO bindings. W3C `traceparent` propagates automatically across service bindings, subrequests, and Durable Objects.
 
 Current limitations: OTLP/JSON only (not protobuf), so Datadog/Elastic APM do not work without an intermediary. When the workload needs custom spans or protobuf, use [`@microlabs/otel-cf-workers`](https://github.com/evanderkoogh/otel-cf-workers) instead — it requires `compatibility_flags = ["nodejs_compat"]` and gives full OTel SDK control.
 
@@ -221,4 +221,3 @@ Head sampling via `head_sampling_rate` is the simplest lever. For outcome-based 
 1. In-handler keep-rule: always emit to Analytics Engine; `console.log` only when `status >= 400`, `duration_ms > threshold`, or tenant is flagged important.
 2. Tail Worker filter: emit everything from the producer, let the Tail Worker decide what to ship downstream.
 3. For OTel traces, configure tail sampling in the collector (or at the backend like Honeycomb's Refinery) rather than the Worker.
-
