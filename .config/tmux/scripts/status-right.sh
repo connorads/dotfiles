@@ -340,6 +340,10 @@ ai_usage() {
 	local cosine_pace_x100=""
 	local claude_cache_age=999999 codex_cache_age=999999 cosine_cache_age=999999
 	local claude_5_stale=0 claude_7_stale=0 codex_5_stale=0 codex_7_stale=0 cosine_stale=0
+	# Real window lengths, so pace maths uses the duration the API reported rather
+	# than a hardcoded slot length. Defaults match the canonical 5h/7d windows.
+	local codex_5_secs=18000 codex_7_secs=604800
+	local codex_windows_jq="$SELF_DIR/../../zsh/functions/codex-windows.jq"
 
 	_fmt_reset() {
 		local remaining_secs="$1"
@@ -425,17 +429,28 @@ ai_usage() {
 
 	if [ -f "$codex_cache" ]; then
 		codex_cache_age=$((now - $(_mtime "$codex_cache")))
-		codex_5_pct=$(jq -r '.rate_limit.primary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
-		codex_7_pct=$(jq -r '.rate_limit.secondary_window.used_percent // empty' "$codex_cache" 2>/dev/null)
-		local codex_5_reset_secs codex_7_reset_secs
-		codex_5_reset_secs=$(jq -r '.rate_limit.primary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
-		codex_7_reset_secs=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // empty' "$codex_cache" 2>/dev/null)
-		codex_5_remaining_secs=$(_relative_remaining_secs "$codex_5_reset_secs" "$codex_cache")
-		codex_7_remaining_secs=$(_relative_remaining_secs "$codex_7_reset_secs" "$codex_cache")
-		codex_5_reset=$(_fmt_reset "$codex_5_remaining_secs" "$codex_cache_age")
-		codex_7_reset=$(_fmt_reset "$codex_7_remaining_secs" "$codex_cache_age")
-		[ "$codex_5_reset" = "stale" ] 2>/dev/null && codex_5_stale=1
-		[ "$codex_7_reset" = "stale" ] 2>/dev/null && codex_7_stale=1
+		# Classify by real duration: slot 1 (always shown) = shortest window
+		# present, slot 2 (weekly, wide-only) = longest when distinct. When the 5h
+		# window is gone the weekly figure lands in slot 1 and slot 2 stays empty.
+		local codex_windows codex_window_count codex_5_reset_secs codex_7_reset_secs
+		codex_windows=$(jq -cf "$codex_windows_jq" "$codex_cache" 2>/dev/null)
+		codex_window_count=$(printf '%s' "$codex_windows" | jq -r 'length' 2>/dev/null || echo 0)
+		if [ "${codex_window_count:-0}" -ge 1 ]; then
+			codex_5_pct=$(printf '%s' "$codex_windows" | jq -r '.[0].used_percent')
+			codex_5_secs=$(printf '%s' "$codex_windows" | jq -r '.[0].seconds')
+			codex_5_reset_secs=$(printf '%s' "$codex_windows" | jq -r '.[0].reset_after_seconds')
+			codex_5_remaining_secs=$(_relative_remaining_secs "$codex_5_reset_secs" "$codex_cache")
+			codex_5_reset=$(_fmt_reset "$codex_5_remaining_secs" "$codex_cache_age")
+			[ "$codex_5_reset" = "stale" ] 2>/dev/null && codex_5_stale=1
+		fi
+		if [ "${codex_window_count:-0}" -ge 2 ]; then
+			codex_7_pct=$(printf '%s' "$codex_windows" | jq -r '.[-1].used_percent')
+			codex_7_secs=$(printf '%s' "$codex_windows" | jq -r '.[-1].seconds')
+			codex_7_reset_secs=$(printf '%s' "$codex_windows" | jq -r '.[-1].reset_after_seconds')
+			codex_7_remaining_secs=$(_relative_remaining_secs "$codex_7_reset_secs" "$codex_cache")
+			codex_7_reset=$(_fmt_reset "$codex_7_remaining_secs" "$codex_cache_age")
+			[ "$codex_7_reset" = "stale" ] 2>/dev/null && codex_7_stale=1
+		fi
 	fi
 
 	if [ -f "$cosine_cache" ]; then
@@ -532,6 +547,8 @@ ai_usage() {
 		local stale5="$8"
 		local stale7="$9"
 		local label_colour="${10}"
+		local window_secs5="${11:-18000}"
+		local window_secs7="${12:-604800}"
 
 		[ -n "$pct5" ] || return 0
 
@@ -541,13 +558,13 @@ ai_usage() {
 		appended_provider=1
 
 		local c5 c7 i5 i7
-		c5=$(_provider_colour "$stale5" "$pct5" "$remaining5" 18000)
+		c5=$(_provider_colour "$stale5" "$pct5" "$remaining5" "$window_secs5")
 		i5=$(printf "%.0f" "$pct5" 2>/dev/null || echo "$pct5")
 
 		out+=" #[fg=${label_colour}]#[bold]${label}#[nobold]#[fg=${dim}]:#[fg=#${c5}]${i5}#[fg=${dim}]%"
 		[ -n "$reset5" ] && out+="#[fg=${dim}]·${reset5}"
 		if [ "$show_weekly" -eq 1 ] && [ -n "$pct7" ]; then
-			c7=$(_provider_colour "$stale7" "$pct7" "$remaining7" 604800)
+			c7=$(_provider_colour "$stale7" "$pct7" "$remaining7" "$window_secs7")
 			i7=$(printf "%.0f" "$pct7" 2>/dev/null || echo "$pct7")
 			out+="#[fg=${dim}] #[fg=#${c7}]${i7}#[fg=${dim}]%"
 			[ "$show_weekly_resets" -eq 1 ] && [ -n "$reset7" ] && out+="#[fg=${dim}]·${reset7}"
@@ -582,8 +599,8 @@ ai_usage() {
 	local out="#[fg=#232334]#[bg=#232334]"
 	local appended_provider=0
 
-	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale" "#fab387"
-	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale" "#74c7ec"
+	_append_provider "C" "$claude_5_pct" "$claude_7_pct" "$claude_5_reset" "$claude_7_reset" "$claude_5_remaining_secs" "$claude_7_remaining_secs" "$claude_5_stale" "$claude_7_stale" "#fab387" 18000 604800
+	_append_provider "X" "$codex_5_pct" "$codex_7_pct" "$codex_5_reset" "$codex_7_reset" "$codex_5_remaining_secs" "$codex_7_remaining_secs" "$codex_5_stale" "$codex_7_stale" "#74c7ec" "$codex_5_secs" "$codex_7_secs"
 	_append_pool_provider "S" "$cosine_pct" "$cosine_reset" "$cosine_stale" "#a6e3a1" "$cosine_pace_x100"
 	out+=" "
 

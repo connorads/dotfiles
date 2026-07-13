@@ -339,6 +339,36 @@ EOF
   [[ "$plain" != *" 86%"* ]]
 }
 
+@test "codex weekly-only window colours the pill by its real duration" {
+  # Live 2026-07 shape: 5h window removed, weekly figure (98%) sits in
+  # primary_window with limit_window_seconds:604800. Pace must use 604800, not a
+  # literal 18000 (which makes elapsed negative and forces a false green).
+  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":98,"limit_window_seconds":604800,"reset_after_seconds":530924},"secondary_window":null}}
+EOF
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"X"*"#[fg=#f38ba8]98#[fg=#9399b2]%"* ]]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"X:98%·6d"* ]]
+}
+
+@test "codex 5h window returning renders both slots at wide width" {
+  # Proves the 5h window renders correctly when OpenAI restores it: both
+  # limit_window_seconds present -> session slot (5h) then weekly slot (7d).
+  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":30,"limit_window_seconds":18000,"reset_after_seconds":9000},"secondary_window":{"used_percent":86,"limit_window_seconds":604800,"reset_after_seconds":216000}}}
+EOF
+
+  run_status_right 180
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"X:30%·"*" 86%·2d"* ]]
+}
+
 @test "expired stale windows render stale instead of negative reset times" {
   cat >"$HOME/.cache/claude-usage.json" <<'EOF'
 {"five_hour":{"utilization":90,"resets_at":"2000-01-01T00:00:00Z"},
