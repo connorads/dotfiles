@@ -306,9 +306,9 @@ Before refactoring, characterise current behaviour through public APIs. Commit
 those tests separately while the old implementation still exists. Then refactor
 behind the tests.
 
-If behaviour is unclear, preserve it first and ask before changing it. Use
-golden or approval tests only when output is large and semantically meaningful.
-Avoid snapshots for incidental structure.
+If behaviour is unclear, preserve it first and ask before changing it. For
+characterisation tests on large output, prefer golden/approval over snapshots
+(see Snapshot & Approval Tests).
 
 ## Fixing Bugs
 
