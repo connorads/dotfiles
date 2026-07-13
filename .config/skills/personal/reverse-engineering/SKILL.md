@@ -58,14 +58,7 @@ Use this skill for static-first binary analysis. Start with format/runtime ident
    python scripts/go_binary_triage.py <binary> --go-cmd "mise exec go@1.25 -- go" --out /tmp/re-<target-name>
    ```
 
-6. Recover runtime-specific metadata with at least two independent paths when possible. For Go:
-
-   ```bash
-   GoReSym -t -d -p -strings <binary> > goresym.json
-   redress info <binary> > redress-info.txt
-   redress packages <binary> > redress-packages.txt
-   redress source <binary> > redress-source.txt
-   ```
+6. Recover runtime-specific metadata with at least two independent paths when possible. For Go, follow the tool ladder in [references/go.md](references/go.md) (GoReSym → Redress/GoRE, with per-tool gotchas).
 
    Tool failure is evidence about the tooling, not proof the binary lacks metadata. Record the failure and try the next parser.
 
