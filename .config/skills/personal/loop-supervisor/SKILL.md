@@ -1,7 +1,7 @@
 ---
 name: loop-supervisor
 description: >
-  Scaffold a SUPERVISOR.md runbook for watching a long-running agent
+  Scaffolds a SUPERVISOR.md runbook for watching a long-running agent
   loop in tmux. Use when asked to "supervise a loop", "watch a loop",
   "babysit a loop", "set up a supervisor", or when a task-loop / rl
   run needs someone operating the harness around it.
@@ -50,12 +50,8 @@ as the skeleton when generating the file.
 4. **Intervention taxonomy** — project-specific triggers + responses.
 5. **Out-of-scope / don't-touch** — the inner loop's domain.
 6. **Budgets** — max interventions, poll cadence.
-7. **Escalation** — Ctrl-C the loop pane, explain in the final message.
-   No dedicated escalation file; the supervisor's last chat turn is the
-   report.
-8. **Launch** — tmux session name + launch command. Consumer runs
-   `tmux has-session -t <name>` first; launches if absent, attaches
-   if present (safety against double-start).
+7. **Escalation** — how and when to stop the run.
+8. **Launch** — tmux session name + launch command.
 
 ## Process
 
