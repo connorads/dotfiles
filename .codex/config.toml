@@ -1,5 +1,7 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
+# Responses API text.verbosity: trims final-output prose (not reasoning depth).
+model_verbosity = "low"
 tool_output_token_limit = 25000
 # Stay under the 272k long-context pricing cliff (gpt-5.5 window is ~1.05M, so
 # this is a cost boundary, not a capacity one): >272k input bills 2x input /
