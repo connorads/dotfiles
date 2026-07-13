@@ -204,8 +204,8 @@ land the reformat as an isolated commit.
 
 ### TypeScript: what Biome 2.x covers (and the ESLint hold-outs)
 
-Biome 2.x (pin `$schema` to the current release — 2.5.x as of mid-2026) has
-absorbed much of what previously forced an ESLint flat config. Move those rules
+Biome 2.x (pin `$schema` to your installed release) has absorbed much of what
+an ESLint flat config was once needed for. Move those rules
 into `biome.json` and keep ESLint only for what genuinely remains.
 
 | Capability | Biome rule | Status | Replaces |
@@ -239,8 +239,8 @@ Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs un
 
 Full working snippets live in `references/eslint-boundaries.mjs`.
 
-**oxlint (Rust) is the fast, Rust-first way to run these.** As of mid-2026 oxlint
-is production (v1.7x; 1.0 shipped Jun 2025) with native `no-restricted-imports`,
+**oxlint (Rust) is the fast, Rust-first way to run these.** oxlint is production
+(1.0 shipped 2025) with native `no-restricted-imports`,
 `no-restricted-syntax`, `jsx-a11y`, and a multi-file `import/no-cycle` — so it
 takes the boundary-rule role this skill kept ESLint around for, with no Node
 dependency tree, and retires madge (see Import hygiene). Two adjacent pieces are
