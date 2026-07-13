@@ -40,6 +40,19 @@
         "Known miss to watch for (iteration 3): flag syntax verified but argument values not - the planted bad value must be caught"
       ],
       "history": "Known misses to guard against: no live verification; a false 'no CLI' excuse without command -v; verification of flag syntax but not argument values."
+    },
+    {
+      "id": 4,
+      "name": "threshold-vs-snapshot-discrimination",
+      "fixture": "evals/fixtures/threshold-vs-snapshot",
+      "prompt": "review my kafka-consumer skill for anything that'll go stale before i publish it - its at <workspace>/kafka-consumer",
+      "assertions": [
+        "Keeps load-bearing version thresholds: does NOT flag 'since Kafka 3.0' or 'Python 3.12+' as doc-rot",
+        "Flags the self-ageing snapshots: the 'Verified against ... checked 2026-06-30' banner, 'Recent changes (2025-2026)', 'renamed ... recently', 'as of mid-2026'",
+        "For snapshots, recommends repoint-to-live-source, a timeless reword, or an honest as-of caveat - not bare date deletion that leaves a stale fact reading as current",
+        "Runs check.sh and notes its doc-rot warnings fire on the snapshot phrasing but not on the version literals"
+      ],
+      "history": "Baseline (pre-reframe wording) over-flags 'since Kafka 3.0' / '3.12+' as version-literal rot and/or recommends bare date deletion; the reframe must fix both without losing the true snapshot catches."
     }
   ]
 }
