@@ -213,7 +213,7 @@ When additional content appears on hover or focus (tooltips, sub-menus):
 ```
 
 **Colour preferences and forced colours (best practice beyond a single criterion)**
-Honour `prefers-color-scheme` for dark mode and `prefers-contrast: more` where you offer it. Under Windows High Contrast / `forced-colors: active`, the OS swaps your palette for a limited system set — test there, use CSS system-colour keywords for essential borders and icons, and never suppress it with `forced-colors-adjust: none` on meaningful content. `box-shadow`-only focus rings and CSS `background-image` icons disappear in forced-colors mode; provide an `outline` and real `<img>`/SVG fallback.
+Honour `prefers-color-scheme` for dark mode and `prefers-contrast: more` where you offer it. Under Windows High Contrast / `forced-colors: active`, the OS swaps your palette for a limited system set — test there, use CSS system-colour keywords for essential borders and icons, and never suppress it with `forced-color-adjust: none` on meaningful content. `box-shadow`-only focus rings and CSS `background-image` icons disappear in forced-colors mode; provide an `outline` and real `<img>`/SVG fallback.
 
 ---
 
