@@ -1,6 +1,6 @@
 ---
 name: github-images
-description: Download images from GitHub issues and PRs using authenticated signed URLs. Use when a user shares a GitHub issue/PR URL and the agent needs to view screenshots or image attachments, especially from private repos, or asks to "grab the screenshots from that issue" or similar.
+description: Downloads images from GitHub issues and PRs using authenticated signed URLs. Use when a user shares a GitHub issue/PR URL and the agent needs to view screenshots or image attachments, especially from private repos, or asks to "grab the screenshots from that issue" or similar.
 ---
 
 # github-images
@@ -28,7 +28,7 @@ ghimg owner/repo 39 --urls-only
 
 Default output: `/tmp/ghimg/<owner>/<repo>/<number>/`
 
-After downloading, use `Read` to view the images (Claude Code supports image files).
+After downloading, use `Read` to view the images.
 
 ## Manual fallback
 
