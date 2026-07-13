@@ -394,7 +394,7 @@ Counter-based (not random) for deterministic debugging. Reset between test runs 
 ## References
 
 - [Ecosystem Patterns](references/ecosystem-patterns.md) — Index of per-language references:
-  - [TypeScript/JS](references/ecosystems/typescript.md) | [Python](references/ecosystems/python.md) | [Go](references/ecosystems/go.md) | [Rust](references/ecosystems/rust.md) | [Merging](references/ecosystems/merging.md)
+  - [TypeScript/JS](references/ecosystem-typescript.md) | [Python](references/ecosystem-python.md) | [Go](references/ecosystem-go.md) | [Rust](references/ecosystem-rust.md) | [Merging](references/ecosystem-merging.md)
 - [Coverage Exclusions](references/coverage-exclusions.md) — How to document and justify every exclusion
 - [Enforcement](references/enforcement.md) — Wiring coverage into hk hooks, CI pipelines, and PR checks
 - Test quality you measure & gate (beyond line/branch coverage):

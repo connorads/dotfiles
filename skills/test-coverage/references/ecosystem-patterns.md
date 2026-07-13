@@ -4,11 +4,11 @@ Language-specific tools, configuration examples, and runner syntax. Each ecosyst
 
 | Ecosystem | File | Key tools |
 |-----------|------|-----------|
-| TypeScript / JavaScript | [ecosystems/typescript.md](ecosystems/typescript.md) | Vitest, Jest, Playwright, testing-library, v8, Istanbul |
-| Python | [ecosystems/python.md](ecosystems/python.md) | pytest-cov, coverage.py, hypothesis |
-| Go | [ecosystems/go.md](ecosystems/go.md) | go test -cover, gotestsum, build tags |
-| Rust | [ecosystems/rust.md](ecosystems/rust.md) | cargo-tarpaulin, cargo-llvm-cov, proptest |
-| Merging reports | [ecosystems/merging.md](ecosystems/merging.md) | lcov, codecov flags, coveralls, gocovmerge |
+| TypeScript / JavaScript | [ecosystem-typescript.md](ecosystem-typescript.md) | Vitest, Jest, Playwright, testing-library, v8, Istanbul |
+| Python | [ecosystem-python.md](ecosystem-python.md) | pytest-cov, coverage.py, hypothesis |
+| Go | [ecosystem-go.md](ecosystem-go.md) | go test -cover, gotestsum, build tags |
+| Rust | [ecosystem-rust.md](ecosystem-rust.md) | cargo-tarpaulin, cargo-llvm-cov, proptest |
+| Merging reports | [ecosystem-merging.md](ecosystem-merging.md) | lcov, codecov flags, coveralls, gocovmerge |
 
 ## Quick ecosystem detection
 
