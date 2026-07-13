@@ -1,8 +1,8 @@
 # Tailwind v4 Mapping
 
-> Verified against Tailwind CSS v4.3 (docs page reported "v4.3"), official docs at tailwindcss.com checked 2026-06-30 (theme, colors, padding, font-size, box-shadow, border-radius, upgrade-guide), cross-verified via web search.
+> Tracks Tailwind CSS v4. Verify specific tokens/utilities against the live docs at tailwindcss.com (theme, colors, spacing, font-size, box-shadow, border-radius, upgrade-guide).
 
-How to read this file: each section gives the framework-agnostic principle in one line, then the concrete v4 tokens/utilities to reach for, then a short note on what changed from v3. This is the only reference here that mentions Tailwind.
+How to read this file: each section gives the framework-agnostic principle in one line, then the concrete v4 tokens/utilities to reach for. This is the only reference here that mentions Tailwind.
 
 ## The v4 model in one breath
 
