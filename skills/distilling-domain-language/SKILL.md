@@ -16,7 +16,7 @@ This is a grilling protocol: you drive it with named moves, one question at a ti
 - Several words compete for one concept and nobody has decided.
 - A glossary has bloated; terms feel loosely related.
 
-The same moves serve both entry points: a brand-new coinage earns the exact grilling a disputed veteran does - it just starts with a clean sheet instead of a fight.
+The same moves serve both entry points: a brand-new coinage earns the exact grilling a disputed veteran does - it just starts with a clean sheet instead of a fight. Targets are not only nouns: verbs, states and lifecycle words (submit, pending, reopened) are domain language too and take the same grilling. Nor need the domain be a codebase - the same workshop distils the language of a business process, a policy or a book.
 
 ## Ground rules
 
@@ -97,3 +97,5 @@ Distillation is multi-session - sleeping on it surfaces missing concepts. End ev
 3. **Parked debt** - decisions deferred, with a note to resume.
 
 Then hand each settled term to the **`domain-modeling`** skill to write into `CONTEXT.md`: the term, a tight definition (what it *is*, not what it does), and the rejected words under the `_Avoid_` slot in that skill's `CONTEXT-FORMAT.md`. If a genuine boundary emerged (one word, two coherent context-scoped meanings), that is a `CONTEXT-MAP.md` split - `domain-modeling` owns it, and opens an ADR if the resolution was a hard-to-reverse, surprising trade-off. Keep implementation detail out; `CONTEXT.md` is a glossary and nothing else.
+
+**Propagate.** "One concept, one word, everywhere" means everywhere: a crowned term only pays off where it is spoken and written. After the handoff, sweep the surfaces the losing words still touch - code identifiers, schema, API routes, event and analytics names, UI copy, tests, docs. A rename that stops at the glossary leaves the fight alive.
