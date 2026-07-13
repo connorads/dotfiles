@@ -50,8 +50,7 @@ whole-project migration for an unrelated change.
 **Effect note.** Effect is the aspirational top of every ladder here: its typed
 error channel, `Either`, `Match`, `Redacted`, `Schema`, and layers subsume most
 hand-rolled helpers below. Prefer it *once a repo adopts it*. Until then the
-hand-rolled defaults apply. Deep Effect patterns are deferred — not yet in this
-skill.
+hand-rolled defaults apply. This skill does not cover deep Effect patterns.
 
 ## Core idioms
 
