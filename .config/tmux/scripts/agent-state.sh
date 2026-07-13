@@ -2,8 +2,10 @@
 # agent-state.sh — hooks-first per-pane agent state + per-window rollup (phase 1).
 #
 # Each coding agent's native hook calls this with the resolved lifecycle state
-# (working|blocked|done|idle); the tmux `pane-focus-in` hook calls it with
-# `seen` to age a finished agent once you look at it. It records state on the
+# (working|blocked|done|idle); the tmux focus hooks (after-select-pane /
+# session-window-changed / client-focus-in) call it with `seen` to age a finished
+# agent once you look at it - client-focus-in covers regaining terminal focus on a
+# pane you never navigationally left. It records state on the
 # agent's pane, rolls the worst state across the window up to a window option the
 # status bar renders, and repaints immediately so the dot never waits for
 # status-interval.
