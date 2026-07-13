@@ -169,15 +169,15 @@ hcloud server rebuild dev --image ubuntu-24.04
 
 ### Server types (commonly used)
 
-Prices in USD for EU regions (US regions ~20% higher):
+For current pricing (varies by region), run `hcloud server-type list`.
 
-| Type | Arch | vCPU | RAM | Disk | ~USD/mo |
-|------|------|------|-----|------|---------|
-| cax11 | ARM | 2 | 4GB | 40GB | $4.50 |
-| cax21 | ARM | 4 | 8GB | 80GB | $8 |
-| cax31 | ARM | 8 | 16GB | 160GB | $16 |
-| cpx21 | x86 | 3 | 4GB | 80GB | $9 |
-| cpx31 | x86 | 4 | 8GB | 160GB | $18 |
+| Type | Arch | vCPU | RAM | Disk |
+|------|------|------|-----|------|
+| cax11 | ARM | 2 | 4GB | 40GB |
+| cax21 | ARM | 4 | 8GB | 80GB |
+| cax31 | ARM | 8 | 16GB | 160GB |
+| cpx21 | x86 | 3 | 4GB | 80GB |
+| cpx31 | x86 | 4 | 8GB | 160GB |
 
 Full list: `hcloud server-type list`
 
@@ -272,7 +272,6 @@ Fallback: Hetzner Cloud Console VNC if locked out.
 
 ## Notes
 
-- ARM (cax*) servers are best value for dev work
 - IPv6-only saves money but requires Tailscale/cloudflared for access from IPv4 networks
 - User-data runs as root on first boot
 - The dotfiles install.sh handles creating user `connor`, installing Nix, home-manager, and mise tools
