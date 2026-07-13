@@ -213,7 +213,7 @@ Do **not** use for: content that sighted users need. Hiding meaningful content f
 
 Never convey information by colour alone — always pair with a shape, pattern, or text label.
 
-Respect user colour preferences: support `prefers-color-scheme`, and test under Windows High Contrast / `forced-colors: active` rather than overriding it (never `forced-colors-adjust: none` on meaningful content). See references/wcag-checklist.md.
+Respect user colour preferences: support `prefers-color-scheme`, and test under Windows High Contrast / `forced-colors: active` rather than overriding it (never `forced-color-adjust: none` on meaningful content). See references/wcag-checklist.md.
 
 Check exact foreground/background pairs from the `accessibility` skill
 directory:
