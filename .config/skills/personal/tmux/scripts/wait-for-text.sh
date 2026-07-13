@@ -108,14 +108,14 @@ if ! "${tmux_cmd[@]}" display-message -p -t "$target" "#{pane_id}" >/dev/null 2>
 fi
 
 elapsed=0
-while (($(echo "$elapsed < $timeout" | bc -l))); do
+while awk "BEGIN{exit !($elapsed < $timeout)}"; do
 	output=$("${tmux_cmd[@]}" capture-pane -t "$target" -p 2>/dev/null || true)
 	if echo "$output" | grep -qE "$pattern"; then
 		echo "Pattern '$pattern' found after ${elapsed}s"
 		exit 0
 	fi
 	sleep "$interval"
-	elapsed=$(echo "$elapsed + $interval" | bc -l)
+	elapsed=$(awk "BEGIN{print $elapsed + $interval}")
 done
 
 echo "Timeout (${timeout}s) waiting for pattern '$pattern'" >&2
