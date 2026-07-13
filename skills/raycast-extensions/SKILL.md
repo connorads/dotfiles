@@ -5,7 +5,7 @@ description: Build, maintain, and review Raycast extensions (the @raycast/api / 
 
 # Raycast Extensions
 
-Build new Raycast extensions, extend or fix existing ones, and review them against the Raycast Store guidelines — using current `@raycast/api` (v1.10x), `@raycast/utils` (v2.x), React 19, TypeScript, and ESLint 10 flat config.
+Build new Raycast extensions, extend or fix existing ones, and review them against the Raycast Store guidelines — using `@raycast/api`, `@raycast/utils` (v2), React 19, TypeScript, and ESLint 10 flat config. Check the extension's `package.json` for the exact `@raycast/api` version (pin the latest for Store submissions).
 
 ## Operating rules
 
@@ -33,6 +33,8 @@ The SKILL.md is the spine. Pull in a reference when the task touches it:
 | `references/api-and-hooks.md` | Writing command code: List/Detail/Form/Grid, ActionPanel/Action, navigation, feedback (toast/HUD/alert), storage/cache/clipboard, MenuBarExtra, and every `@raycast/utils` hook (useCachedPromise, useFetch, useForm, useExec, useSQL, OAuth). |
 | `references/ai-extensions.md` | Anything with AI tools: `src/tools/`, the `Input` type + JSDoc, `confirmation`, the `ai` config, evals (`ray evals`), or `AI.ask` inside a command. |
 | `references/store-review.md` | Preparing for the Store, reviewing an extension/PR, or any "is this store-ready?" question. Contains the full review checklist + asset specs. |
+
+`evals/` holds this skill's own trigger/behaviour test prompts and is intentionally unrouted (maintainer-facing, not read during a task).
 
 ## Quick intake (new extension)
 
