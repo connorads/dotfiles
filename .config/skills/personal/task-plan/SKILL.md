@@ -107,8 +107,9 @@ Each task needs all of these fields:
 - **ID** — short prefix + number (e.g. AU-1, DB-3). Prefix groups
   related tasks (CC = cross-cutting, AU = auth, UI = interface, etc.)
 - **Title** — what changes, not how
-- **Size** — XS (< 10 min), S (10-20 min), M (20-40 min), L (40+ min).
-  If L, strongly consider splitting
+- **Size** — XS / S / M / L (time bands in
+  [references/task-quality.md](references/task-quality.md)). If L, strongly
+  consider splitting
 - **Deps** — task IDs this depends on, or "none"
 - **Problem** — what's wrong or missing (the why)
 - **What to do** — concrete steps with file paths and current state
