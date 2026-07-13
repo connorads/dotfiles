@@ -170,14 +170,10 @@ For the genuine homebrew-core gate, place the file at `Formula/<first-char>/<nam
 
 Homebrew requires it: **disclose in the issue or PR that you used an AI/LLM and which tool/model**, and confirm you reviewed all generated content before asking anyone to review it. Split it usefully — what the agent ran (the `brew` commands) vs what the human verified (the build, the functional test behaviour).
 
-## Recent changes worth knowing (2025–2026)
+## Bottle attestations & automation
 
-- **Bottle attestations** (Sigstore, beta): opt-in via `HOMEBREW_VERIFY_ATTESTATIONS` (needs the `gh` CLI). "failed to verify attestation" errors usually mean an outdated `gh` — `brew upgrade gh` or set `HOMEBREW_NO_VERIFY_ATTESTATIONS=1`.
-- **Versioned formulae** (`foo@N`) are now accepted in core (meeting the Versions rules).
-- **Duplicates of macOS system packages** are now accepted as `keg_only :provided_by_macos`.
-- **Options removed from core** — `:optional`/`:recommended` and `with-`/`without-` are not accepted.
-- **Python** apps must install into a `libexec` virtualenv (PEP 668).
-- BrewTestBot auto-opens version-bump PRs on a schedule, so routine bumps are increasingly automated.
+- **Bottle attestations** (Sigstore): opt-in via `HOMEBREW_VERIFY_ATTESTATIONS` (needs the `gh` CLI). "failed to verify attestation" errors usually mean an outdated `gh` — `brew upgrade gh` or set `HOMEBREW_NO_VERIFY_ATTESTATIONS=1`.
+- BrewTestBot auto-opens version-bump PRs on a schedule, so routine bumps are automated.
 
 ## Reference
 
