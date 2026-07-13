@@ -1,7 +1,11 @@
 #!/bin/sh
-# agent-sweep.sh — clear stale agent dots left by agents that died without a
-# clean done/clear (SIGKILL, crash, pane closed abruptly). The phase-5 liveness
-# net behind the hooks-first model.
+# agent-sweep.sh — the phase-5 reconcile net behind the hooks-first model. Two jobs:
+#   (1) clear stale agent dots left by agents that died without a clean done/clear
+#       (SIGKILL, crash, pane closed abruptly);
+#   (2) age a `done` dot you are currently looking at to idle — a backstop for the
+#       focus hooks' `seen`, which the focus events miss under concurrent-agent
+#       churn (you watch one agent while another finishes, then return to it
+#       without a fresh select-pane/window-changed transition).
 #
 # Liveness signal: a running agent stays its pane's foreground process-group
 # leader, so #{pane_current_command} reads as the runtime (claude/codex-…/node)
@@ -26,19 +30,21 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # exited. Space-padded for whole-word `case` matching.
 SHELLS=" zsh bash sh fish dash ash "
 
-# sweep_once — clear every stale dot in one pass: read all panes once, clear
-# panes whose agent died (shell foreground), and recompute the rollup for every
-# affected window plus any window still showing a stale @win_agent_state.
+# sweep_once — reconcile every dot in one pass: read all panes once, clear panes
+# whose agent died (shell foreground), age a `done` dot you are currently looking
+# at to idle, and recompute the rollup for every affected window plus any window
+# still showing a stale @win_agent_state.
 sweep_once() {
 	command -v tmux >/dev/null 2>&1 || return 0
 	tmux list-sessions >/dev/null 2>&1 || return 0
 
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}" \
+		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}" \
 		2>/dev/null) || return 0
 
 	_tab=$(printf '\t')
 	_panes=
+	_seen=
 	_windows=
 	# Manual tab-split (not IFS read): tab is IFS-whitespace, so consecutive tabs
 	# from an empty @agent_state field would collapse and misalign the columns.
@@ -51,17 +57,35 @@ sweep_once() {
 		_astate=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_cmd=${_line%%"$_tab"*}
-		_wstate=${_line#*"$_tab"}
+		_line=${_line#*"$_tab"}
+		_wstate=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_pactive=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_wactive=${_line%%"$_tab"*}
+		_sattached=${_line#*"$_tab"}
 
-		# A pane carrying agent state whose foreground is a bare shell → the agent
-		# is gone. Clear it and re-roll its window.
 		if [ -n "$_astate" ]; then
 			case "$SHELLS" in
 			*" $_cmd "*)
+				# Foreground is a bare shell → the agent is gone. Clear it and
+				# re-roll its window.
 				_panes="$_panes$_pane
 "
 				_windows="$_windows$_win
 "
+				;;
+			*)
+				# Agent still alive: a `done` dot on a pane you are currently
+				# looking at (active pane, active window, ≥1 attached client) is
+				# seen — age it to idle. Backstop for the focus hooks' `seen`.
+				if [ "$_astate" = "done" ] && [ "$_pactive" = 1 ] &&
+					[ "$_wactive" = 1 ] && [ "${_sattached:-0}" != 0 ]; then
+					_seen="$_seen$_pane
+"
+					_windows="$_windows$_win
+"
+				fi
 				;;
 			esac
 		fi
@@ -74,12 +98,17 @@ sweep_once() {
 $_rows
 EOF
 
-	[ -n "$_panes$_windows" ] || return 0
+	[ -n "$_panes$_seen$_windows" ] || return 0
 
 	printf '%s' "$_panes" | while IFS= read -r _p; do
 		[ -n "$_p" ] || continue
 		tmux set-option -pu -t "$_p" @agent_state 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_kind 2>/dev/null || true
+	done
+
+	printf '%s' "$_seen" | while IFS= read -r _p; do
+		[ -n "$_p" ] || continue
+		tmux set-option -p -t "$_p" @agent_state idle 2>/dev/null || true
 	done
 
 	printf '%s' "$_windows" | sort -u | while IFS= read -r _w; do

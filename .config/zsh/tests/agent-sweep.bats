@@ -37,7 +37,28 @@ teardown() {
     p=$(cat "$f" 2>/dev/null || true)
     [ -n "$p" ] && kill "$p" 2>/dev/null || true
   done
+  [ -n "${ATTACH_PID:-}" ] && kill "$ATTACH_PID" 2>/dev/null || true
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+}
+
+# attach_client — attach a real client to session s through a pty so
+# session_attached becomes >0 (the sweep's "someone is viewing" gate). `script`
+# differs across BSD (macOS) and util-linux, so try both forms. Backgrounded;
+# ATTACH_PID is killed in teardown. Returns non-zero if the pty never attaches so
+# callers can `skip` (some CI environments refuse to allocate one).
+attach_client() {
+  if script --version >/dev/null 2>&1; then
+    script -qec "$TMUX_BIN -L $SOCK attach -t s" /dev/null >/dev/null 2>&1 &
+  else
+    script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t s >/dev/null 2>&1 &
+  fi
+  ATTACH_PID=$!
+  local i
+  for i in $(seq 1 25); do
+    [ "$(tx display-message -p -t s '#{session_attached}')" != 0 ] && return 0
+    sleep 0.2
+  done
+  return 1
 }
 
 # Launch the daemon backgrounded with an isolated state dir + 1s poll. 3>&- closes
@@ -117,6 +138,44 @@ wait_nonshell() {
   [ "$status" -eq 0 ]
   [ "$(pstate "$p1")" = working ]
   [ "$(wstate "$win")" = working ]
+}
+
+@test "sweep ages a done pane you are viewing to idle" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"' # alive, non-shell
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  attach_client || skip "could not attach a client for the viewing gate"
+  tx set-option -p -t "$pane" @agent_state done
+  tx set-option -w -t "$win" @win_agent_state done
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ]
+  [ "$(wstate "$win")" = idle ]
+}
+
+@test "sweep leaves a done pane in an inactive window unaged" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$p1" 'sh -c "exec sleep 300"'
+  wait_nonshell "$p1" || skip "pane shell did not yield the foreground in time"
+  attach_client || skip "could not attach a client for the viewing gate"
+  tx new-window -t s # window 2 active; p1's window now inactive (not viewed)
+  tx set-option -p -t "$p1" @agent_state done
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
+@test "sweep leaves a done pane unaged when no client is attached" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  # no attach_client: session_attached == 0, so nobody is looking
+  tx set-option -p -t "$pane" @agent_state done
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = done ]
 }
 
 @test "sweep is a quiet no-op when nothing is stale" {
