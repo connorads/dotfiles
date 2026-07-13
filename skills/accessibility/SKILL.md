@@ -11,7 +11,7 @@ description: >
 
 # Accessibility
 
-Web accessibility done right means your UI is navigable, understandable, and operable by people with disabilities — screen reader users, keyboard-only users, and people with low vision, motor, or cognitive impairments. This skill takes a **screen-reader-first lens** because it surfaces structural failures fastest, but low-vision users (contrast, zoom, reflow) and cognitive users matter just as much — in fact low-contrast text is the single most common barrier on the web, affecting ~84% of home pages. The [WebAIM Million](https://webaim.org/projects/million/) consistently finds ~96% of home pages carry detectable WCAG failures, and just six issue types — low-contrast text, missing alt text, missing form labels, empty links, empty buttons, and missing document language — account for ~96% of all detected failures and have topped the list for seven years running. Most are preventable with the right mental model.
+Web accessibility done right means your UI is navigable, understandable, and operable by people with disabilities — screen reader users, keyboard-only users, and people with low vision, motor, or cognitive impairments. This skill takes a **screen-reader-first lens** because it surfaces structural failures fastest, but low-vision users (contrast, zoom, reflow) and cognitive users matter just as much — in fact low-contrast text is the single most common barrier on the web, affecting ~84% of home pages. The [WebAIM Million](https://webaim.org/projects/million/) consistently finds ~96% of home pages carry detectable WCAG failures, and just six issue types — low-contrast text, missing alt text, missing form labels, empty links, empty buttons, and missing document language — account for ~96% of all detected failures and have topped the WebAIM Million findings every year they have been published (see link). Most are preventable with the right mental model.
 
 ## The Core Mental Model
 
@@ -182,18 +182,7 @@ Full ARIA pattern library → **references/aria-patterns.md**
 
 ## Visually Hidden Content
 
-To show content to screen readers but hide it visually:
-
-```css
-.visually-hidden:not(:focus):not(:active) {
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-```
+To show content to screen readers but hide it visually, use the `.visually-hidden` utility class — see references/common-fixes.md "The Visually Hidden Utility Class" for the canonical CSS.
 
 Use for: skip links, supplementary link context ("Read more <span class="visually-hidden">about caching</span>"), icon button labels when `aria-label` is impractical for translation reasons.
 
