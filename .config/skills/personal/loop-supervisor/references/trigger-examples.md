@@ -155,23 +155,6 @@ Each trigger has three parts:
 
 ## Stop conditions (not triggers, but live in the same section)
 
-### Success signal
-
-- **Detection:** The project's success file exists (e.g.
-  `FOUND_SECRET.txt`, `BUILD_PASSED.md`) or the loop emitted its
-  stop token (`__PROMISE_RL_DONE__`).
-- **Response:** Stop immediately. Don't run "just one more iteration".
-  Report in final message.
-
-### All work exhausted
-
-- **Detection:** No unchecked `[ ]` items in `backlog.md`; all
-  hypotheses in terminal state (confirmed / refuted / pruned); all
-  lanes closed.
-- **Response:** Stop. Loop is done.
-
-### Budget exhausted
-
-- **Detection:** Iteration count (`rl N`) complete, wall-clock cap
-  reached, or intervention budget spent.
-- **Response:** Stop. Report what was achieved vs planned.
+Stop conditions live in the same `SUPERVISOR.md` §2 as the triggers
+above. For the success / exhaustion / failure patterns to pick from,
+see [stop-conditions.md](stop-conditions.md).
