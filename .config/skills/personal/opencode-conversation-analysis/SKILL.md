@@ -37,7 +37,7 @@ Review the output summary to see how many chunks were created.
 
 ### Step 2: Launch Parallel Subagents
 
-For each chunk file, spawn a `general` subagent with this prompt template:
+For each chunk file, spawn a general-purpose subagent with this prompt template:
 
 ```text
 Read the file /tmp/opencode-analysis/chunk_N.jsonl which contains user messages from coding sessions (JSONL format with fields: session_id, session_title, timestamp, text).
@@ -117,4 +117,4 @@ The user may request:
 
 ## Storage Format Reference
 
-See [references/storage-format.md](references/storage-format.md) for details on OpenCode's conversation storage structure.
+When the schema differs, extraction fails, or you need to adjust the SQL, read [references/storage-format.md](references/storage-format.md) for OpenCode's conversation storage structure.
