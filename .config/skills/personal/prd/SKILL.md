@@ -18,11 +18,13 @@ User describes the problem and any initial ideas. Explore the codebase to unders
 ### 2. Interview the design tree
 
 Walk through the design decision tree branch by branch. For each decision point:
+
 - **Explore the codebase first** — only ask the user what the code can't answer
 - **One topic per turn** — don't dump multiple questions at once
 - Resolve dependencies between decisions before moving on
 
 Cover these domains as the tree branches into them:
+
 - Problem & motivation (what, who, why now, cost of inaction)
 - Users & stakeholders
 - End state & success criteria
@@ -40,6 +42,7 @@ Keep going until shared understanding is reached. No artificial cap on questions
 Sketch the major modules to build or modify. Look for opportunities to extract **deep modules** — small interface hiding lots of implementation, testable in isolation.
 
 Check with the user:
+
 - Do these modules match their mental model?
 - Which modules warrant dedicated tests?
 
@@ -203,16 +206,20 @@ Explicitly out of scope:
 
 ### CLI
 ```
+
 command-name [args] [options]
-```
+
+```text
 
 ### API
 ```
+
 POST /api/endpoint
 Request: { field: type }
 Response: { field: type }
 Errors: 4xx/5xx scenarios
-```
+
+```text
 
 ---
 
@@ -233,23 +240,29 @@ How we'll know this worked:
 ## Key Principles
 
 ### Problem Before Solution
+
 Lead with the problem. Quantify the cost of inaction. Make the case for why this matters.
 
 ### Define End State, Not Process
+
 Describe WHAT exists when done. Don't prescribe implementation order, priorities, or phases.
 
 ### No File Paths
+
 File paths and code snippets go stale. Describe patterns by name and purpose. Reference modules by responsibility, not location.
 
 ### Boundaries Prevent Drift
+
 Explicit boundary tiers (Always/Ask First/Never) and non-goals prevent agents from touching stable code or building unrequested features.
 
 ### Testing Strategy Is Architecture
+
 Which modules are tested at which tier reveals the architecture. Deep modules get boundary tests; pure logic gets unit tests; composition gets integration tests.
 
 ## Bad vs Good Examples
 
 ### Bad (Prescriptive / Phases)
+
 ```markdown
 ## Phase 1: Database
 1. Create users table
@@ -260,6 +273,7 @@ Which modules are tested at which tier reveals the architecture. Deep modules ge
 ```
 
 ### Bad (Missing RFC Context)
+
 ```markdown
 ## Overview
 We need user authentication.
@@ -268,9 +282,11 @@ We need user authentication.
 - [ ] Users can register
 - [ ] Users can log in
 ```
+
 Missing: Why? What problem? Risks? Alternatives? Testing strategy?
 
 ### Good (RFC-Ready)
+
 ```markdown
 ## Problem Statement
 Users can't persist data across sessions. 47% drop off when asked to re-enter
@@ -298,10 +314,11 @@ information. ~$50k/month in lost conversions.
 ## After PRD Creation
 
 Before sharing, verify:
+
 - [ ] Problem statement is clear and compelling
 - [ ] Scope boundaries are explicit (boundary tiers + non-goals)
 - [ ] Testing strategy covers the identified modules
 - [ ] No file paths or code snippets that will go stale
 - [ ] Durable architectural decisions are separated from implementation detail
 
-Tell the user: PRD saved to `prd-<name>.md`
+Tell the user: PRD saved to `prd-<feature-name>.md`
