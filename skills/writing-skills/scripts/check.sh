@@ -127,7 +127,7 @@ done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name 
 # written as standing prose (not load-bearing version thresholds like "3.12+").
 while IFS= read -r hit; do
 	warn "possible doc-rot phrasing: $hit"
-done < <(grep -rnEi '\b(no longer|previously|used to|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b' \
+done < <(grep -rnEi '\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b' \
 	--include='*.md' "$dir" | sed "s|^$dir/||" | grep -v '^evals/fixtures/' || true)
 
 # --- Authoritative validator, when available ---------------------------------
