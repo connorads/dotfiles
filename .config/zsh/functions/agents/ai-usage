@@ -30,6 +30,12 @@ esac
 
 local has_output=0
 
+# Resolve the shared classifier relative to this script (a sibling of agents/),
+# not $HOME, so it also resolves under an isolated test HOME. Falls back to the
+# canonical path for the autoload case where $0 is the function name.
+export CODEX_WINDOWS_JQ="${0:A:h:h}/codex-windows.jq"
+[[ -r "$CODEX_WINDOWS_JQ" ]] || export CODEX_WINDOWS_JQ="$HOME/.config/zsh/functions/codex-windows.jq"
+
 _resolve_tool() {
   local command_name="$1"
   local file_path="$2"
@@ -81,6 +87,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from collections import deque
 from datetime import datetime, timezone
@@ -436,6 +443,42 @@ def short_limit_name(name):
     return (name or "Codex+")[:7]
 
 
+CODEX_WINDOWS_JQ = Path(
+    os.environ.get("CODEX_WINDOWS_JQ") or (HOME / ".config/zsh/functions/codex-windows.jq")
+)
+
+
+def window_label(seconds):
+    # Canonical wording for the known windows; adapt to any duration otherwise.
+    # Mirrors the rule codex-usage and the status pill apply in their own idioms.
+    if seconds == 18000:
+        return "5h"
+    if seconds == 604800:
+        return "7d"
+    if seconds % 86400 == 0:
+        return f"{seconds // 86400}d"
+    return f"{seconds // 3600}h"
+
+
+def classify_codex_windows(obj):
+    # Duration-classify via the shared jq core so the dashboard, the pill, and
+    # codex-usage agree on which windows exist and how long each really is. `obj`
+    # is anything carrying a `.rate_limit` (the whole cache, or a Spark extra).
+    try:
+        proc = subprocess.run(
+            ["jq", "-cf", str(CODEX_WINDOWS_JQ)],
+            input=json.dumps(obj),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if proc.returncode != 0:
+            return []
+        return json.loads(proc.stdout or "[]")
+    except Exception:
+        return []
+
+
 def collect_windows():
     rows = []
     alerts = []
@@ -511,20 +554,16 @@ def collect_windows():
     codex_mt = mtime(codex_path)
     codex_age = NOW_TS - codex_mt if codex_mt else None
     if codex:
-        rl = codex.get("rate_limit") or {}
-        for label, key, window_secs in (
-            ("Codex", "primary_window", 18000),
-            ("Codex", "secondary_window", 604800),
-        ):
-            obj = rl.get(key) or {}
-            pct = as_pct(obj.get("used_percent"))
-            if pct is None:
+        for win in classify_codex_windows(codex):
+            window_secs = win.get("seconds")
+            pct = as_pct(win.get("used_percent"))
+            if window_secs is None or pct is None:
                 continue
-            reset_secs = as_pct(obj.get("reset_after_seconds"))
+            reset_secs = as_pct(win.get("reset_after_seconds"))
             remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
             rows.append(make_window_row(
-                label,
-                "5h" if key == "primary_window" else "7d",
+                "Codex",
+                window_label(window_secs),
                 pct,
                 remaining,
                 window_secs,
@@ -535,16 +574,19 @@ def collect_windows():
         for extra_limit in (codex.get("additional_rate_limits") or [])[:2]:
             limit_name = short_limit_name(extra_limit.get("limit_name"))
             extra_rl = extra_limit.get("rate_limit") or {}
-            for key, window_secs in (("primary_window", 18000), ("secondary_window", 604800)):
+            # Spark is low-stakes and not the failure mode, so apply the same
+            # limit_window_seconds // fallback rule inline rather than the jq core.
+            for key, fallback_secs in (("primary_window", 18000), ("secondary_window", 604800)):
                 obj = extra_rl.get(key) or {}
                 pct = as_pct(obj.get("used_percent"))
                 if pct is None:
                     continue
+                window_secs = int(obj.get("limit_window_seconds") or fallback_secs)
                 reset_secs = as_pct(obj.get("reset_after_seconds"))
                 remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
                 rows.append(make_window_row(
                     limit_name,
-                    "5h" if key == "primary_window" else "7d",
+                    window_label(window_secs),
                     pct,
                     remaining,
                     window_secs,

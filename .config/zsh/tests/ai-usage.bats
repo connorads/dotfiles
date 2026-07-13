@@ -121,6 +121,35 @@ PY
   [[ "$output" != *"Claude extra disabled"* ]]
 }
 
+@test "codex weekly-only window is labelled 7d, not a phantom 5h" {
+  write_usage_caches
+  # Live 2026-07 shape: 5h window removed, weekly figure carries
+  # limit_window_seconds:604800 in primary_window. Must render one 7d Codex row.
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+home = Path(sys.argv[1])
+(home / ".cache/codex-usage.json").write_text(json.dumps({
+    "rate_limit": {
+        "primary_window": {"used_percent": 98, "limit_window_seconds": 604800, "reset_after_seconds": 530924},
+        "secondary_window": None,
+    },
+    "additional_rate_limits": [],
+    "rate_limit_reset_credits": {"available_count": 0},
+}))
+PY
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  codex_row=$(printf '%s\n' "$output" | grep 'Codex' | head -n1)
+  [[ "$codex_row" == *"Codex"*"7d"*"98%"* ]]
+  # No Codex line anywhere (row, bottleneck, headroom) mentions a phantom 5h.
+  [ -z "$(printf '%s\n' "$output" | grep 'Codex' | grep '5h')" ]
+}
+
 @test "stale 7d reading still wins the bottleneck, flagged stale" {
   write_usage_caches
   set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
