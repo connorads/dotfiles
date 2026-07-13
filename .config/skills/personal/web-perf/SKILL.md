@@ -20,14 +20,11 @@ description: >-
 
 # Web Performance: first-load visual jank
 
-Diagnose and fix the first-load defects a user can *see* (font-swap flashes,
-image pop-in, layout shift, blank-then-paint, hydration flips, slow first paint)
-on any stack where you hand-wire loading instead of leaning on a framework's
-font/image layer. That spans static-prerendered sites (Astro/SSG), Vite
-SPA/MPA, and SSR from a Worker/edge: `@font-face` written by hand, fonts pulled
-from a hosted CDN (Google Fonts), native `<img>`, resource hints in your own
-document head. The framework is not doing it for you, so you must - and must
-verify it yourself.
+Diagnose and fix the first-load defects a user can *see* on any stack where you
+hand-wire loading instead of leaning on a framework's font/image layer:
+`@font-face` written by hand, fonts pulled from a hosted CDN (Google Fonts),
+native `<img>`, resource hints in your own document head. The framework is not
+doing it for you, so you must - and must verify it yourself.
 
 Where a framework *does* automate the fix (Next's `next/font`/`next/image`,
 Astro's Fonts API), defer to that layer's own output - but app code
