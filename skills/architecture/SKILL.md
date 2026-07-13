@@ -244,7 +244,8 @@ Use a plain call or a single database transaction for simple single-boundary
 operations. Reach for a saga or durable workflow when the process needs retries,
 compensation, idempotency, resumability, timers, human approval, or coordination
 across services and multiple transaction boundaries. Both buy ACD, not ACID - you
-get atomicity, durability, resumability, and compensation, but not isolation, so
+get atomicity, consistency, and durability (plus resumability and compensation),
+but not isolation, so
 intermediate states stay visible; design the countermeasures the
 `event-driven-architecture` skill's `topology.md` lists (semantic locks, a
 `pending` status, re-reads).
