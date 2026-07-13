@@ -197,7 +197,7 @@ VoidZero (acquired by Cloudflare; projects stay MIT under a neutrality
 pledge). `oxfmt --migrate=prettier` / `--migrate=biome` converts existing
 config, making the switch near-zero.
 
-It is pre-1.0 (beta as of mid-2026), so Biome via Ultracite
+It is pre-1.0 (check the oxfmt releases page for current status), so Biome via Ultracite
 (`--linter biome`) stays the documented stable fallback. Promote oxfmt to the
 sole pick at 1.0. When migrating an existing repo, dry-run the diff first and
 land the reformat as an isolated commit.
