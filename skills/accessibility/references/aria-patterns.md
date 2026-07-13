@@ -144,7 +144,7 @@ Only use when native HTML doesn't provide the semantics. All widget roles requir
 
 ```html
 <div role="button" tabindex="0"
-     onkeydown="if(event.key==='Enter'||event.key===' ') activate(event)">
+     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event);}">
   Save
 </div>
 ```
