@@ -139,14 +139,6 @@ age=$(_cache_age "$cache")
 local cache_stale=0
 [[ "$age" -ge "$ttl" ]] && cache_stale=1
 
-local u5 u7 r5_raw r7_raw r5 r7
-u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache")
-u7=$(jq -r '.rate_limit.secondary_window.used_percent // 0' "$cache")
-r5_raw=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache")
-r7_raw=$(jq -r '.rate_limit.secondary_window.reset_after_seconds // 0' "$cache")
-r5=$((r5_raw - age))
-r7=$((r7_raw - age))
-
 _fmt_remaining() {
     local secs="$1"
     if [[ "$secs" -le 0 ]]; then
@@ -155,6 +147,24 @@ _fmt_remaining() {
         return
     fi
     _fmt_secs "$secs"
+}
+
+# Canonical wording for the known windows; adapt to any duration otherwise so a
+# window at a new length still labels sensibly. Mirrors the rule the pill and the
+# fancy dashboard apply in their own idioms.
+_window_label() {
+    local secs="$1"
+    case "$secs" in
+        18000) echo "5-hour" ;;
+        604800) echo "7-day" ;;
+        *)
+            if (( secs % 86400 == 0 )); then
+                echo "$((secs / 86400))d"
+            else
+                echo "$((secs / 3600))h"
+            fi
+            ;;
+    esac
 }
 
 _print_window() {
@@ -168,5 +178,13 @@ _print_window() {
     printf "%-9s %3d%%  resets in %s\n" "$label" "$usage" "$remaining"
 }
 
-_print_window "5-hour:" "$u5" "$(_fmt_remaining "$r5")"
-_print_window "7-day:" "$u7" "$(_fmt_remaining "$r7")"
+# One line per window that actually exists, classified by real duration. The old
+# phantom "7-day: 0%" line falls away when only the weekly window is present -
+# the loop simply has nothing to print for it.
+local secs used reset_raw remaining
+while IFS=$'\t' read -r secs used reset_raw; do
+    [[ -n "$secs" ]] || continue
+    remaining=$((reset_raw - age))
+    _print_window "$(_window_label "$secs"):" "$used" "$(_fmt_remaining "$remaining")"
+done < <(jq -f "${self_file:A:h}/codex-windows.jq" "$cache" \
+    | jq -r '.[] | [.seconds, .used_percent, .reset_after_seconds] | @tsv')
