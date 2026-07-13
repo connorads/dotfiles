@@ -183,7 +183,7 @@ ssh host -t 'zsh -ilc "tmux attach -t mysession"'
 
 ## User Notification
 
-After starting a session, ALWAYS print:
+After starting a session, print the following so the human can attach and observe the session you started:
 
 ```text
 To monitor: tmux attach -t $SESSION
