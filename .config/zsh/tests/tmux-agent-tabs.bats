@@ -23,7 +23,7 @@ setup() {
   # Isolate the tab additions: label formats, dot mapping and the `-ga` seen
   # appends. The base `-g ... refresh-client -S` hooks are unrelated and error
   # headlessly ("no current client"), so they are deliberately excluded.
-  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed) ' "$CONF" >"$conf"
+  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed|client-focus-in) ' "$CONF" >"$conf"
   tx source-file "$conf"
 }
 
@@ -126,4 +126,15 @@ assert_tab_label() {
   tx select-window -t "$(tx display-message -p -t "$w1" '#{window_id}')" || true
   sleep 0.3
   [ "$(tx show-options -pqv -t "$w1" @agent_state)" = idle ]
+}
+
+# client-focus-in fires on a real terminal focus event, which cannot be driven
+# headlessly, so assert tmux actually REGISTERED the hook bound to `seen`. This
+# guards the tmux 3.7b trap: `pane-focus-in` is accepted but never stored as a
+# global hook, so reverting this to pane-focus-in would silently stop ageing a
+# `done` pane you regain focus on without navigating.
+@test "client-focus-in is registered to age panes via seen" {
+  line="$(tx show-hooks -g | grep client-focus-in || true)"
+  [ -n "$line" ]
+  [[ "$line" == *"agent-state.sh seen"* ]]
 }
