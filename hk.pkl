@@ -35,6 +35,9 @@ local fast_steps = new Mapping<String, Step> {
 
     ["zsh-syntax"] {
         glob = List(".zshrc", ".zprofile", ".zshenv", ".config/zsh/functions/**")
+        // Non-zsh helpers living under functions/ (e.g. the codex-windows.jq
+        // classifier) would fail `zsh -n`; they carry their own extension.
+        exclude = List("**/*.jq")
         check = "zsh -n {{files}}"
     }
 
