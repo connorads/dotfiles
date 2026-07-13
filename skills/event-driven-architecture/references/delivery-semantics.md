@@ -48,9 +48,11 @@ redelivery but consumer-group **rebalancing**: a partition can be reassigned in 
 window between processing a message and committing its offset - "the danger zone" -
 so the new owner reprocesses from the last commit. Rebalances also invalidate local
 caches and force state rebuild, spiking lag and compounding head-of-line blocking.
-Mitigate with the **CooperativeSticky** assignor (incremental, default since Kafka
-3.0), **static group membership** (avoids rebalances on rolling restarts), and
-committing offsets in the `onRevoke` callback. This is the mechanism behind
+Mitigate with the **CooperativeSticky** assignor (incremental; available since
+Kafka 3.0, where it was added to the default `partition.assignment.strategy` list
+alongside `RangeAssignor`, which stays first/effective - set it explicitly to get
+incremental rebalancing), **static group membership** (avoids rebalances on
+rolling restarts), and committing offsets in the `onRevoke` callback. This is the mechanism behind
 "design for at-least-once" - the duplicates are routine, not a broker edge case.
 
 ## Poison Messages And Dead Letters

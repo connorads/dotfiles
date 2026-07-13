@@ -12,13 +12,12 @@ This is the dual-write problem, and it is the reason the patterns below exist.
 Any "write then publish" (or "publish then write") sequence has it.
 
 Two-phase commit (2PC/XA) across the DB and broker technically closes the gap.
-Broker support is no longer the objection it once was - Kafka's KIP-939 adds
-producer participation in 2PC (a `transaction.two.phase.commit.enable` property
-plus `prepareTransaction()`/`completeTransaction()`), aimed squarely at this
-dual-write problem, though still maturing. The durable objection is structural:
-even where supported, 2PC couples DB and broker availability and adds synchronous
-overhead, so the outbox usually still wins. Treat it as a last resort, not the
-answer.
+Some brokers support producer participation in 2PC - Kafka's KIP-939 adds it (a
+`transaction.two.phase.commit.enable` property plus
+`prepareTransaction()`/`completeTransaction()`), aimed squarely at this
+dual-write problem. The durable objection is structural: even where supported,
+2PC couples DB and broker availability and adds synchronous overhead, so the
+outbox usually still wins. Treat it as a last resort.
 
 ## Transactional Outbox
 
