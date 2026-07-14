@@ -46,6 +46,13 @@ setup() {
   touch "$HOME/.local/share/aube/store/cas/data"
   touch "$HOME/.cache/aube/virtual-store/pkg/data"
   touch "$HOME/.cache/aube/packuments-full-v1/data"
+  # A mise npm-backend tool bin symlinked into virtual-store (real topology):
+  # the aube target must not dangle it. See _cleanup_run_target aube case.
+  mkdir -p "$HOME/.cache/aube/virtual-store/foo@1.0.0/node_modules/foo/bin" \
+    "$HOME/.local/share/mise/installs/npm-foo/1.0.0/bin"
+  touch "$HOME/.cache/aube/virtual-store/foo@1.0.0/node_modules/foo/bin/foo"
+  ln -s "$HOME/.cache/aube/virtual-store/foo@1.0.0/node_modules/foo/bin/foo" \
+    "$HOME/.local/share/mise/installs/npm-foo/1.0.0/bin/foo"
   touch "$HOME/.cache/aube/primer/data"
   touch "$HOME/.cache/aube/adaptive-state.json"
   touch "$HOME/.local/share/yarn/berry/cache/data"
@@ -205,8 +212,11 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -F "aube cache prune --age-days 0" "$TEST_LOG"
-  [ ! -e "$HOME/.cache/aube/virtual-store" ]
   [ ! -e "$HOME/.cache/aube/packuments-full-v1" ]
+  # virtual-store is preserved: it holds live working set for mise npm tools,
+  # and a `rm -rf` here would dangle every `npm:*` tool bin symlinked into it.
+  [ -e "$HOME/.cache/aube/virtual-store/pkg/data" ]
+  [ -e "$HOME/.local/share/mise/installs/npm-foo/1.0.0/bin/foo" ] # symlink still resolves
   [ -e "$HOME/.local/share/aube/store/cas/data" ]
   [ -e "$HOME/.cache/aube/primer/data" ]
   [ -e "$HOME/.cache/aube/adaptive-state.json" ]
