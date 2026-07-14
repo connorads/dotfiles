@@ -26,6 +26,7 @@ let
     # Shell & terminal
     zsh
     tmux
+    zellij
     kitty.terminfo
 
     # Editors

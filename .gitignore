@@ -187,6 +187,9 @@
 !/.config/tmux/**
 /.config/tmux/plugins/
 
+!/.config/zellij/
+!/.config/zellij/**
+
 !/.config/lazygit/
 !/.config/lazygit/**
 /.config/lazygit/state.yml
