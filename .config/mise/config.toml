@@ -145,8 +145,9 @@ env = { BATS_PARALLEL_BINARY_NAME = "rush" }
 run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)\" --no-parallelize-within-files --recursive .config/zsh/tests"
 
 [tasks.zsh-tests-fast]
-description = "Run only fast (non-integration) BATS tests"
-run = "cd \"$HOME\" && bats --filter-tags '!integration' --recursive .config/zsh/tests"
+description = "Run only fast (non-integration) BATS tests (parallel)"
+env = { BATS_PARALLEL_BINARY_NAME = "rush" }
+run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)\" --no-parallelize-within-files --filter-tags '!integration' --recursive .config/zsh/tests"
 
 [tasks.claude-hook-tests]
 description = "Run pytest suite for Claude Code hooks (mise python has no pytest; uv supplies it)"
