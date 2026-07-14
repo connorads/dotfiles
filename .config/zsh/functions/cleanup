@@ -227,11 +227,13 @@ _cleanup_probe_target() {
     aube)
       # Cache-only: the durable CAS store, primer/, and adaptive-state.json
       # under ~/.local/share/aube and ~/.cache/aube/primer are preserved.
-      dirs=("$HOME/.cache/aube/virtual-store" "$HOME/.cache/aube/packuments-full-v1")
+      # virtual-store is excluded on purpose - it is live working set for mise
+      # npm-backend tools, not durable garbage; see _cleanup_run_target.
+      dirs=("$HOME/.cache/aube/packuments-full-v1")
       kb=$(_cleanup_kb_sum "${dirs[@]}")
       (( kb > 0 )) || command -v aube >/dev/null 2>&1 || applicable=0
-      detail="Paths: ${dirs[1]}, ${dirs[2]}"
-      command="aube cache prune --age-days 0; rm -rf virtual-store + packuments"
+      detail="Paths: ${dirs[1]}"
+      command="aube cache prune --age-days 0; rm -rf packuments-full-v1"
       ;;
     npm)
       command -v npm >/dev/null 2>&1 || applicable=0
@@ -432,10 +434,17 @@ _cleanup_run_target() {
       command rm -rf -- "$HOME/.local/share/yarn/berry/cache" "$HOME/.cache/yarn"
       ;;
     aube)
-      # Cache-only. Hard-coded dirs so the durable CAS store, primer/, and
-      # adaptive-state.json are never named/removed.
+      # Cache-only. The durable CAS (~/.local/share/aube/store), primer/, and
+      # adaptive-state.json are never named/removed. virtual-store is
+      # deliberately NOT deleted: mise's npm backend symlinks each `npm:*`
+      # tool's bin into it, so `rm -rf virtual-store` dangles the entire mise
+      # npm toolchain (mise no-ops on present install dirs; only
+      # `mise install --force` rebuilds). It is live working set cloned from the
+      # preserved CAS, not durable garbage. Stale tool versions are reclaimed
+      # safely by the `mise` target (`mise prune`), not here. `aube cache prune`
+      # only touches primer metadata, never virtual-store.
       command -v aube >/dev/null 2>&1 && aube cache prune --age-days 0
-      command rm -rf -- "$HOME/.cache/aube/virtual-store" "$HOME/.cache/aube/packuments-full-v1"
+      command rm -rf -- "$HOME/.cache/aube/packuments-full-v1"
       ;;
     npm)
       command -v npm >/dev/null 2>&1 || return 0
