@@ -67,6 +67,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [.zshrc.local.example](./.zshrc.local.example)                         | Template for machine-local secrets in `~/.zshrc.local`                                    |
 | [kitty.conf](./.config/kitty/kitty.conf)                               | Terminal emulator config                                                                  |
 | [tmux.conf](./.config/tmux/tmux.conf)                                  | tmux configuration · maintenance: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md)       |
+| [config.kdl](./.config/zellij/config.kdl)                             | zellij configuration (KDL) · maintenance: [.config/zellij/AGENTS.md](./.config/zellij/AGENTS.md) |
 | [help.md](./.config/tmux/help.md)                                      | tmux keybindings cheatsheet (`Ctrl+b ?`)                                                  |
 | [claude-watcher/README.md](./.config/claude-watcher/README.md)         | Per-pane Claude auto-continue watcher (arm/disarm via `prefix + T` Tools or pane context menu); design + env vars   |
 | [tmux/scripts/mem-lib.sh](./.config/tmux/scripts/mem-lib.sh)            | Memory-pressure vocabulary (OK/BUSY/CRITICAL) shared by the status gauge, `prefix + Alt+m` popup, and `memwatch`; subsystem docs in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
@@ -193,6 +194,7 @@ dhk fix                # Run hk fixes in dotfiles repo
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
+zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
 svc ls                 # List agent services with status
 svc up <name> [port]   # Start service + expose via Tailscale
 svc down <name>        # Stop service + teardown Tailscale route

@@ -1,0 +1,20 @@
+// zellij config
+// KDL reference: https://zellij.dev/documentation/configuration
+// Defaults baked into the binary: zellij-utils/assets/config/default.kdl
+// Only overrides below; everything else is the zellij default.
+
+// Catppuccin Mocha - built into zellij (no theme file needed). Matches
+// kitty.conf and the tmux status palette so all three surfaces share one look.
+theme "catppuccin-mocha"
+
+// Match tmux history-limit (75000); zellij default is 10000.
+scroll_buffer_size 75000
+
+// Quiet the first-run release-notes popup on managed machines.
+show_release_notes false
+
+// Copy: zellij defaults to OSC 52 when copy_command is unset - same path as
+// tmux's `set-clipboard on`, so it works over SSH and in kitty. No override.
+
+// Mouse, default shell ($SHELL = zsh), default keybinds, default layout, and
+// pane frames are all zellij defaults - left unset intentionally.
