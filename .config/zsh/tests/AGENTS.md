@@ -6,10 +6,23 @@ Tests for shell functions (`../functions/**`) and tmux scripts (`../../tmux/scri
 
 ```bash
 mise run zsh-tests        # full parallel suite (-j, across files)
-mise run zsh-tests-fast   # non-integration tests only (--filter-tags '!integration')
+mise run zsh-tests-fast   # non-integration tests, also -j (--filter-tags '!integration')
 bats .config/zsh/tests/<file>.bats   # one file - use this for scoped changes
 bats --timing <file>.bats            # per-test durations (profiling)
 ```
+
+**Timing.** Both suites take ~2min wall-clock, so an agent's default 2min command
+timeout blows on them - run with a raised timeout or in the background, and use a single
+file (or `--filter-tags`) for scoped iteration. `-j` roughly halves the fast suite
+(serial ~230s, parallel ~122s) but no further because `--no-parallelize-within-files`
+serialises each file's own tests: ~7 CPU-bound files dominate the critical path
+(`status-right` ~31s, `up` ~22s, `cleanup` ~21s, `shotpath`+`shotpath-copy` ~28s,
+`killport-pclose` ~13s, `mem-lib` ~11s, measured serially). Cutting real waits in those,
+or opting the non-tmux ones into within-file parallelism, is the only lever left; adding
+cores or `-j` is not. Beware measuring per-test cost with `-T` under `-j` - contention
+inflates each figure several-fold; time files individually for true cost. A couple of
+timing-sensitive tests (e.g. `shotpath-copy.bats` streaming assertions) can flake under
+`-j` while passing serially.
 
 Conventions: isolate `$HOME`/`$PATH` via `setup_test_home` (`test_helper.bash`); assert
 observable behaviour (args, exit status, stdout, fs/option effects) not internals; prefer
