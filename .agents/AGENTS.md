@@ -2,7 +2,8 @@
 
 ## Tools
 
-- Prefer `mise` for runtime/tool versions. For GitHub Actions, use `jdx/mise-action@v4`; generate new workflows with `mise generate github-action`.
+- Prefer `mise` for runtime/tool *versions* (not task running). For GitHub Actions, use `jdx/mise-action@v4`; generate new workflows with `mise generate github-action`.
+- Use the repo's existing task runner: in a JS/TS project prefer `package.json` scripts (`pnpm <script>`); reach for `mise` `[tasks]` only in polyglot repos or where no native runner fits. Don't shadow scaffolder-seeded scripts with mise tasks.
 - Never use `npm` or `npx`; use `pnpm` or `pnpm dlx`. Use `bun` only when the project already does.
 - Do not disable package install-script protections globally. If native modules or codegen need install scripts, ask before allow-listing narrowly.
 - Use `gh` CLI for GitHub issues and PRs. If you fix a mentioned issue, close it with `Closes #NO` in the commit message.
