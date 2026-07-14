@@ -82,9 +82,10 @@ The logic is spread across several files — change them as a set:
   `agent-state.sh` on lifecycle events; `Stop` routes through `agent-stop.sh`
   (`working` while `background_tasks` holds finite in-flight work, `done` once
   drained). The `after-select-pane` / `session-window-changed` / `client-focus-in`
-  hooks fire `seen` (focus = mark read); `client-focus-in` (NOT `pane-focus-in`,
-  which is inert as a global hook) catches regaining terminal focus without a
-  navigation. `agent-sweep.sh` is the backstop when none of them fire.
+  hooks fire `seen` (focus = mark read), gated on `#{@agent_state}==done` so idle
+  switches skip the fork and pay only `refresh-client -S`; `client-focus-in` (NOT
+  `pane-focus-in`, which is inert as a global hook) catches regaining terminal
+  focus without a navigation. `agent-sweep.sh` is the backstop when none of them fire.
 - Menus: `prefix + Alt+.` and the right-click pane menu
   ([`scripts/context-menu.sh`](./scripts/context-menu.sh)) set a state by hand
   (literals must match the lib — see `agent-glyphs.bats`).
