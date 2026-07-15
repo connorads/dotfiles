@@ -19,6 +19,20 @@ const REPO = resolve(import.meta.dir, "fixtures/repo");
 const runInline = (ref: string, path: string) =>
   Bun.spawnSync([process.execPath, CLI, "inline", ref, "--path", path]);
 
+const pipeInlineTo = (ref: string, path: string, consumer: "wc -c" | "tail -c 256") =>
+  Bun.spawnSync([
+    "sh",
+    "-c",
+    `"$@" | ${consumer}`,
+    "skl-inline-pipe",
+    process.execPath,
+    CLI,
+    "inline",
+    ref,
+    "--path",
+    path,
+  ]);
+
 describe("skl inline (real CLI)", () => {
   test("bundles a multi-file skill: every text file inlined, in order", () => {
     const out = runInline("repo/alpha", REPO);
@@ -114,6 +128,35 @@ describe("skl inline (real CLI)", () => {
       expect(text).toContain("dependency code");
       expect(text).toContain("dependency skill");
       expect(text).toContain("eval fixture");
+    });
+  });
+
+  describe("large output", () => {
+    let root = "";
+
+    beforeAll(async () => {
+      root = await mkdtemp(join(tmpdir(), "skl-inline-large-"));
+      const skill = join(root, "large");
+      await mkdir(join(skill, "references"), { recursive: true });
+      await writeFile(join(skill, "SKILL.md"), "---\nname: large\n---\n\n# Large\n");
+      await writeFile(
+        join(skill, "references/large.md"),
+        `${"x".repeat(80 * 1024)}\nEND-OF-LARGE-REFERENCE\n`,
+      );
+    });
+
+    afterAll(async () => {
+      if (root) await rm(root, { recursive: true, force: true });
+    });
+
+    test("flushes a bundle larger than 64 KiB through a shell pipe before exiting", () => {
+      const count = pipeInlineTo("large", root, "wc -c");
+      const tail = pipeInlineTo("large", root, "tail -c 256");
+      expect(count.exitCode).toBe(0);
+      expect(Number(count.stdout.toString().trim())).toBeGreaterThan(64 * 1024);
+      expect(tail.exitCode).toBe(0);
+      expect(tail.stdout.toString()).toContain("END-OF-LARGE-REFERENCE");
+      expect(tail.stdout.toString().trimEnd().endsWith("</skill>")).toBe(true);
     });
   });
 });

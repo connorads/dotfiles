@@ -240,8 +240,10 @@ const main = async (argv: readonly string[]): Promise<number> => {
 };
 
 try {
-  process.exit(await main(env.argv()));
+  // Assigning the exit code lets pipe-backed stdout/stderr drain. Calling
+  // process.exit() here truncates writes once the pipe buffer reaches 64 KiB.
+  process.exitCode = await main(env.argv());
 } catch (e) {
   env.stderr(`skl: ${e instanceof Error ? e.message : String(e)}\n`);
-  process.exit(1);
+  process.exitCode = 1;
 }

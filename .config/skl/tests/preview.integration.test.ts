@@ -12,6 +12,20 @@ const CLI = resolve(import.meta.dir, "../src/cli.ts");
 const runPreview = (ref: string, path: string, extraArgs: readonly string[] = []) =>
   Bun.spawnSync([process.execPath, CLI, "preview", ref, "--path", path, ...extraArgs]);
 
+const pipePreviewTo = (ref: string, path: string, consumer: "wc -c" | "tail -c 256") =>
+  Bun.spawnSync([
+    "sh",
+    "-c",
+    `"$@" | ${consumer}`,
+    "skl-preview-pipe",
+    process.execPath,
+    CLI,
+    "preview",
+    ref,
+    "--path",
+    path,
+  ]);
+
 describe("skl preview payload filtering (real CLI)", () => {
   let root = "";
 
@@ -69,5 +83,40 @@ describe("skl preview payload filtering (real CLI)", () => {
     expect(text).toContain("__pycache__");
     expect(text).toContain("node_modules");
     expect(text).toContain("evals");
+  });
+});
+
+describe("skl preview large output (real CLI)", () => {
+  let root = "";
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "skl-preview-large-"));
+    const skill = join(root, "large");
+    const references = join(skill, "references");
+    await mkdir(references, { recursive: true });
+    await writeFile(join(skill, "SKILL.md"), "---\nname: large\n---\n\n# Large\n");
+    await Promise.all(
+      Array.from({ length: 1_200 }, (_, index) =>
+        writeFile(
+          join(references, `reference-${String(index).padStart(4, "0")}-${"x".repeat(32)}.md`),
+          "",
+        ),
+      ),
+    );
+  });
+
+  afterAll(async () => {
+    if (root) await rm(root, { recursive: true, force: true });
+  });
+
+  test("flushes a pointer larger than 64 KiB through a shell pipe before exiting", () => {
+    const count = pipePreviewTo("large", root, "wc -c");
+    const tail = pipePreviewTo("large", root, "tail -c 256");
+    expect(count.exitCode).toBe(0);
+    expect(Number(count.stdout.toString().trim())).toBeGreaterThan(64 * 1024);
+    expect(tail.exitCode).toBe(0);
+    expect(tail.stdout.toString()).toContain(`reference-1199-${"x".repeat(32)}.md`);
+    expect(tail.stdout.toString()).toContain("Read SKILL.md at ");
+    expect(tail.stdout.toString().trimEnd().endsWith("SKILL.md and follow it.")).toBe(true);
   });
 });
