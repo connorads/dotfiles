@@ -47,6 +47,10 @@ If no automated checks exist, still verify manually: run the command, start the 
 Scale verification to risk: config tweak -> smoke test; user-facing feature -> relevant automated suite plus manual confirmation when coverage is thin.
 When writing plans, include how each step will be verified.
 
+## Deletion Safety
+
+When recursive deletion with `rm -rf` is blocked, do not bypass the restriction with another permanent-deletion command. If the target is outside `/tmp`, `/private/tmp`, `/var/tmp`, and `$TMPDIR`, move it to Trash with `trash`. For agent-created data inside those temporary directories, leave it for system cleanup and create a fresh directory with `mktemp -d` if needed. Prefer a project's native clean command for generated output.
+
 ## Selective Staging
 
 Use `git hunks list` and `git hunks add <id>` to stage specific hunks non-interactively when a file contains changes for multiple concerns.
