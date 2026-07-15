@@ -28,6 +28,9 @@ setup() {
     "$HOME/.cache/node-gyp/22" \
     "$HOME/.rustup/toolchains/override-named-unmarked/bin" \
     "$HOME/.rustup/toolchains/remove-unmarked/bin" \
+    "$HOME/git/realcrate/target/debug" \
+    "$HOME/git/no-manifest/target" \
+    "$HOME/git/data-dir/target" \
     "$HOME/.cache/nvim/state" \
     "$HOME/.cache/ms-playwright/browser" \
     "$HOME/.cache/puppeteer/browser" \
@@ -60,6 +63,16 @@ setup() {
   touch "$HOME/.cache/node-gyp/22/data"
   touch "$HOME/.rustup/toolchains/override-named-unmarked/bin/rustc"
   touch "$HOME/.rustup/toolchains/remove-unmarked/bin/rustc"
+  # Cargo build dirs are identified by CACHEDIR.TAG *and* a sibling Cargo.toml.
+  # The two decoys hold one marker each, so either check alone would destroy one
+  # of them: `no-manifest` is an orphaned tag, `data-dir/target` is user data in
+  # a crate that has simply never been built.
+  printf '[package]\nname = "realcrate"\n' >"$HOME/git/realcrate/Cargo.toml"
+  printf 'Signature: 8a477f597d28d172789f06886806bc55\n' >"$HOME/git/realcrate/target/CACHEDIR.TAG"
+  touch "$HOME/git/realcrate/target/debug/data"
+  printf 'Signature: 8a477f597d28d172789f06886806bc55\n' >"$HOME/git/no-manifest/target/CACHEDIR.TAG"
+  printf '[package]\nname = "data-dir"\n' >"$HOME/git/data-dir/Cargo.toml"
+  touch "$HOME/git/data-dir/target/notes.txt"
   touch "$HOME/.cache/nvim/state/data"
   touch "$HOME/.cache/ms-playwright/browser/data"
   touch "$HOME/.cache/puppeteer/browser/data"
@@ -68,6 +81,22 @@ setup() {
   touch "$CLEANUP_TMPDIR_ROOT/new-dir/data"
   touch -d '10 days ago' "$CLEANUP_TMPDIR_ROOT/old-dir"
   touch -d '10 days ago' "$CLEANUP_TMPDIR_ROOT/old-dir/data"
+
+  write_stub cargo <<'EOF'
+#!/usr/bin/env bash
+echo "cargo $*" >>"$TEST_LOG"
+[ -n "${CARGO_CLEAN_FAIL:-}" ] && exit 1
+# Real `cargo clean` empties the dir it owns; mimic that so the fallback in
+# _cleanup_run_target is only exercised when the stub is made to fail.
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--manifest-path" ]; then
+    rm -rf "$(dirname "$2")/target"
+    break
+  fi
+  shift
+done
+exit 0
+EOF
 
   write_stub bun <<'EOF'
 #!/usr/bin/env bash
@@ -273,6 +302,41 @@ EOF
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --rustup
   [ "$status" -eq 0 ]
   [[ "$(cat "$TEST_LOG")" != *"toolchain uninstall"* ]]
+}
+
+@test "cargo-target cleanup reclaims build dirs via cargo and spares lookalikes" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" CLEANUP_CARGO_ROOTS="$HOME/git" \
+    zsh --no-rcs "$CLEANUP" --yes --cargo-target
+
+  [ "$status" -eq 0 ]
+  grep -F -- "clean --manifest-path $HOME/git/realcrate/Cargo.toml" "$TEST_LOG"
+  [ ! -d "$HOME/git/realcrate/target" ]
+  # Neither decoy is a build dir, so neither is touched or even passed to cargo.
+  [ -f "$HOME/git/no-manifest/target/CACHEDIR.TAG" ]
+  [ -f "$HOME/git/data-dir/target/notes.txt" ]
+  [[ "$(cat "$TEST_LOG")" != *"no-manifest"* ]]
+  [[ "$(cat "$TEST_LOG")" != *"data-dir"* ]]
+}
+
+@test "cargo-target falls back to removing the tree when cargo clean fails" {
+  # A crate whose manifest no longer parses must not strand its build dir.
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" CLEANUP_CARGO_ROOTS="$HOME/git" \
+    CARGO_CLEAN_FAIL=1 zsh --no-rcs "$CLEANUP" --yes --cargo-target
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/git/realcrate/target" ]
+  [ -f "$HOME/git/data-dir/target/notes.txt" ]
+}
+
+@test "cargo-target is opt-in and absent from the default run" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" CLEANUP_CARGO_ROOTS="$HOME/git" \
+    zsh --no-rcs "$CLEANUP" --dry-run
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"cargo-target"* ]]
+  # The plain `cargo` registry-cache target is still in the default set.
+  [[ "$output" == *"Cargo registry cache"* ]]
+  [ -d "$HOME/git/realcrate/target" ]
 }
 
 @test "nix estimate reflects dead store paths, not the whole /nix/store" {
