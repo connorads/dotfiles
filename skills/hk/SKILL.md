@@ -468,6 +468,7 @@ hooks {
 | `amends` version mismatch | Match amends/import URL version to `hk --version` output |
 | Builtins snake_case vs step names kebab-case | `Builtins.trailing_whitespace` → `["trailing-whitespace"]` |
 | Hook runs but matches nothing | Check glob patterns; use `hk check -v` to see file matching |
+| Step fails when `{{files}}` holds nothing the tool handles | A glob decides what the step *runs on*, not what the tool *accepts*: several exit non-zero on an empty target set rather than no-op. `oxfmt` errors "Expected at least one target file" when every passed path sits in its own `ignorePatterns`; `oxlint` does the same given no lintable file. Glob each step to what that tool actually handles, and keep lint and format as separate steps — a combined one globbing `*.json` fails on a JSON-only commit |
 | Binary files fail spell check | Add binary excludes to typos/trailing-whitespace/newlines steps |
 | Git worktrees: `hk install` fails | Automatic since v1.35.0; if using older version use `.hk-hooks/` + `core.hooksPath` |
 | Fix auto-stages wrong files | Use explicit `stage` glob on the step, or ensure step `glob` covers fixed files |
