@@ -1,4 +1,8 @@
+# Deny by default: `/*` covers the top level, `**` every depth below it. Both
+# stay at the top - last match wins, so a deny rule placed further down silently
+# resets every un-ignore above it.
 /*
+**
 
 # Local machine-only profile/secrets state. These are already covered by the
 # deny-by-default rule above; the explicit entries document the intended privacy
@@ -82,11 +86,8 @@
 !/.config/skl/**
 
 
-**
-
 # public skills home (authoring root; symlinked from .config/skills/public).
-# Staged here for a future standalone connorads/skills repo. Must live below
-# the `**` reset above (last match wins) or new skill files are silently ignored.
+# Staged here for a future standalone connorads/skills repo.
 !/skills/
 !/skills/**
 
