@@ -12,10 +12,10 @@ export const BUILTIN_PAYLOAD_EXCLUDES: readonly string[] = [
   "**/*.py[cod]",
   "**/*.backup",
   "**/node_modules/**",
+  "evals/**",
 ];
 
-const isSkillMd = (relPath: string): boolean =>
-  relPath === "SKILL.md" || relPath.endsWith("/SKILL.md");
+const isRootSkillMd = (relPath: string): boolean => relPath === "SKILL.md";
 
 export const filterPayloadFiles = (
   relPaths: readonly string[],
@@ -23,7 +23,7 @@ export const filterPayloadFiles = (
 ): string[] => {
   const globs = excludes.map((pattern) => new Glob(pattern));
   return relPaths.filter((relPath) => {
-    if (isSkillMd(relPath)) return true;
+    if (isRootSkillMd(relPath)) return true;
     return !globs.some((glob) => glob.match(relPath));
   });
 };

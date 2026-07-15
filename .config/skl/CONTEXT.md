@@ -37,11 +37,13 @@ skill's files, and a one-line instruction ("Read SKILL.md at this path and follo
 Deliberately *not* the SKILL.md content — keeps injected context tiny and honours
 progressive disclosure.
 
-The file tree is a **payload tree**: useful source files under the skill dir after
-built-in and configured payload excludes have removed generated/cache artefacts such as
+The file tree is a **payload tree**: useful runtime files under the skill dir after
+built-in and configured payload excludes have removed maintainer-only evals and
+generated/cache artefacts such as
 `__pycache__`, `.pyc`, `.DS_Store`, `.git`, `.claude`, `.rumdl_cache`, `*.backup`, and
-`node_modules`. `SKILL.md` is always retained. Pass `--all` to show the raw sibling
-payload list for that invocation.
+`node_modules`, plus the root `evals/` directory. The root `SKILL.md` is always retained;
+nested files with that name still respect exclusions. Pass `--all` to show the raw
+sibling payload list for that invocation.
 
 ### Inline bundle
 
@@ -68,7 +70,8 @@ reading `.gitignore`. Defaults:
   "**/__pycache__/**",
   "**/*.py[cod]",
   "**/*.backup",
-  "**/node_modules/**"
+  "**/node_modules/**",
+  "evals/**"
 ]
 ```
 
