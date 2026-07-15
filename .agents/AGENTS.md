@@ -31,7 +31,7 @@ Use `-`, not em/en dashes (`—`/`–`).
 
 ## Git
 
-- Commit/push on the current branch by default, `main` included; do not branch first unless asked.
+- Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
 - Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
 - Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
 - A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
