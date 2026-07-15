@@ -90,18 +90,18 @@ url_api = "https://api.github.com/repos/jdx/aube/releases/assets/468538559"
 provenance = "github-attestations"
 
 [[tools.aws]]
-version = "2.35.22"
+version = "2.35.23"
 backend = "aqua:aws/aws-cli"
 
 [tools.aws."platforms.linux-arm64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.22.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.35.23.zip"
 
 [tools.aws."platforms.linux-x64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.22.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.35.23.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "blake3:2d75b3518742fe94d8055645c98121142766d34a0c30d1db66adaea5ca725e70"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.22.pkg"
+checksum = "blake3:8dd744ce2b7815c4cd82ac08c17c8f0a2ad52c5c89c6e26c5588a4b0ff31bb05"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.35.23.pkg"
 
 [[tools.bats]]
 version = "1.13.0"
@@ -153,18 +153,18 @@ version = "0.7.0"
 backend = "cargo:build-wrap"
 
 [[tools.claude]]
-version = "2.1.209"
+version = "2.1.210"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.209/linux-arm64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.210/linux-arm64/claude"
 
 [tools.claude."platforms.linux-x64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.209/linux-x64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.210/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "blake3:a90b22869176b3cd2d5c1d2e601e7d9abdd9300ef5cd84ecc7d51a002a858197"
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.209/darwin-arm64/claude"
+checksum = "blake3:a3b5de614434411909094f36a5f2d83ca19b694db82ea9b1af7c5f565ffbd22e"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.210/darwin-arm64/claude"
 
 [[tools.codex]]
 version = "0.144.4"
@@ -181,9 +181,9 @@ url = "https://github.com/openai/codex/releases/download/rust-v0.144.4/codex-x86
 url_api = "https://api.github.com/repos/openai/codex/releases/assets/476296957"
 
 [tools.codex."platforms.macos-arm64"]
-checksum = "sha256:2a04fd456adf836fc17bf728701cd1ef43407dea0ddcadefeaf86536e1603965"
-url = "https://github.com/openai/codex/releases/download/rust-v0.144.4/codex-aarch64-apple-darwin.zst"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/476297093"
+checksum = "sha256:312e6fa2826596fb23cc1193c30d51902b6522c36ccc43b36417590e0ebd533d"
+url = "https://github.com/openai/codex/releases/download/rust-v0.144.4/codex-package-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/476297059"
 
 [[tools.deno]]
 version = "2.9.2"
@@ -275,23 +275,23 @@ url = "https://github.com/CosineAI/cli/releases/download/2.0.26/cos-darwin-arm64
 url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/475322590"
 
 [[tools."github:can1357/oh-my-pi"]]
-version = "16.3.15"
+version = "16.4.4"
 backend = "github:can1357/oh-my-pi"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
-checksum = "sha256:ce318a3ab628dbba2e7553f4d5bbfb651967a45b8612adcc3b6d508130d7ebd0"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.15/omp-linux-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/471752401"
+checksum = "sha256:796df39bc58367e10aa49d45b9c20fb00dbcb3461d40b437ec6941c456f7fc05"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.4.4/omp-linux-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/473432706"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
-checksum = "sha256:89674eaae7d88b4e7421d0889edc4e5f2636b2591a1405d718aed9a8b96b5d45"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.15/omp-linux-x64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/471752405"
+checksum = "sha256:810da5dabe6b2e9428be64edaa169f245f9b4ff932aeae0188a727e9b711af55"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.4.4/omp-linux-x64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/473432703"
 
 [tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
-checksum = "sha256:db7245abc4dae839605c1d8a892abbd15e1b422aba8b48b5354bd209c49b1c9e"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v16.3.15/omp-darwin-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/471752403"
+checksum = "sha256:86e6c40a889897e5a127e40f01ec14f724df39af8996878239ec10912541ab62"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v16.4.4/omp-darwin-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/473432707"
 
 [[tools."github:ogulcancelik/herdr"]]
 version = "0.7.3"
@@ -313,23 +313,23 @@ url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.3/herdr-maco
 url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/469642056"
 
 [[tools."github:tamnd/kage"]]
-version = "0.3.9"
+version = "0.3.10"
 backend = "github:tamnd/kage"
 
 [tools."github:tamnd/kage"."platforms.linux-arm64"]
-checksum = "sha256:b70beadf2e49677776001d9ab687af60111897fe5f3126c689915838a560282a"
-url = "https://github.com/tamnd/kage/releases/download/v0.3.9/kage_0.3.9_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/470264631"
+checksum = "sha256:7abcd964b6d8aba13fd321fac2228c778f4ff8cc609dfe24cb03c6cd9422afca"
+url = "https://github.com/tamnd/kage/releases/download/v0.3.10/kage_0.3.10_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/473187576"
 
 [tools."github:tamnd/kage"."platforms.linux-x64"]
-checksum = "sha256:012d7cdd27bf410300bd8c5cc811a635dd8721b2a96a71a4d2dc775f699e5218"
-url = "https://github.com/tamnd/kage/releases/download/v0.3.9/kage_0.3.9_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/470264637"
+checksum = "sha256:3a8288014821867229d0c3e680158ef347e6e578e8c4d523c2917986a717d244"
+url = "https://github.com/tamnd/kage/releases/download/v0.3.10/kage_0.3.10_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/473187591"
 
 [tools."github:tamnd/kage"."platforms.macos-arm64"]
-checksum = "sha256:17ea65d25629af2b398b0cf5cba26c5b1e3a6570355e990483bccb1908883641"
-url = "https://github.com/tamnd/kage/releases/download/v0.3.9/kage_0.3.9_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/470264618"
+checksum = "sha256:3513123a47e7478d00f10044812295d8cc521d03a25fbf762fd2a648d63ab263"
+url = "https://github.com/tamnd/kage/releases/download/v0.3.10/kage_0.3.10_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/473187575"
 
 [[tools.gitleaks]]
 version = "8.30.1"
@@ -430,7 +430,7 @@ version = "0.31.1"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
-version = "0.19.2"
+version = "0.19.3"
 backend = "npm:agent-device"
 
 [[tools."npm:apify-cli"]]
@@ -438,7 +438,7 @@ version = "1.7.1"
 backend = "npm:apify-cli"
 
 [[tools."npm:cf"]]
-version = "0.1.0"
+version = "0.2.0"
 backend = "npm:cf"
 
 [[tools."npm:critique"]]
@@ -454,7 +454,7 @@ version = "2.2.0"
 backend = "npm:deepsec"
 
 [[tools."npm:executor"]]
-version = "1.5.31"
+version = "1.5.32"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
@@ -490,7 +490,7 @@ version = "5.2.0"
 backend = "npm:sharp-cli"
 
 [[tools."npm:skills"]]
-version = "1.5.15"
+version = "1.5.16"
 backend = "npm:skills"
 
 [[tools."npm:svgo"]]
@@ -555,7 +555,7 @@ version = "0.1.5"
 backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
-version = "0.0.57"
+version = "0.0.58"
 backend = "pipx:ty"
 
 [[tools.pkl]]
