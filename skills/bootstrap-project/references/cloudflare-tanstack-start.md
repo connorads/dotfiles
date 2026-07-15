@@ -81,7 +81,19 @@ binding to fetch from in code. Verified 2026-07 by reading
   own (~14KB of TanStack Intent skill mappings) regardless. Decide
   deliberately whether to keep it, and reconcile with the house AGENTS.md the
   bootstrap seeds - two files competing for the same filename is the failure
-  mode.
+  mode. It is delimited by `<!-- intent-skills:start/end -->` markers and is
+  machine-regenerated, so house prose can live around the block rather than
+  replacing it.
+- **The house formatter destroys that block - exclude `AGENTS.md` from oxfmt.**
+  Its content is YAML entries embedded in markdown, and Ultracite's oxfmt preset
+  sets `proseWrap: "never"`, which joins each multi-line `id:`/`run:`/`for:`
+  entry onto a single line (97 lines → 39, ids and descriptions merged into one
+  string). Nothing errors; the block is just silently no longer parseable.
+  Add `AGENTS.md` (and the `CLAUDE.md` symlink) to `ignorePatterns` in
+  `oxfmt.config.ts` during the harden phase, and exclude them from the hk step's
+  glob as well - oxfmt honours its own `ignorePatterns` even for paths passed
+  explicitly, so a commit touching only `AGENTS.md` otherwise fails the gate on
+  an empty target set (see the `hk` skill's Gotchas).
 - Prerendering needs `@tanstack/react-start` >= 1.138.0.
 
 ## Churn watch
