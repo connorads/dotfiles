@@ -26,7 +26,12 @@ export XAI_API_KEY=
 # Zero-permission fine-grained PAT. Lifts anon GitHub API limit (60/hr -> 5000/hr)
 # so HOMEBREW_VERIFY_ATTESTATIONS (.zshrc) can verify bottle provenance during bulk
 # `up` upgrades without rate-limiting. No scopes required.
-# export HOMEBREW_GITHUB_API_TOKEN=
+# export HOMEBREW_GITHUB_TOKEN=
+
+# Same PAT, indirected for mise. mise reads GITHUB_TOKEN (not HOMEBREW_GITHUB_TOKEN)
+# when resolving version tags / lockfiles via the GitHub API. Without it, `up` and
+# `mise upgrade` hit the 60/hr anonymous ceiling across many GitHub-backed tools.
+# export GITHUB_TOKEN=$HOMEBREW_GITHUB_TOKEN
 
 # Add more API keys as needed:
 # export FIGMA_API_KEY="..."
