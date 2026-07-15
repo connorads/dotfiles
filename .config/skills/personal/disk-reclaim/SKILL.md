@@ -20,13 +20,18 @@ restore, a 6G photo library is gone forever.
 ## Survey before promising
 
 1. `df -h /System/Volumes/Data` for the real figure.
-2. `cleanup --dry-run` sizes every known cache target without touching
-   anything (`--json` to parse it, `cleanup --help` for the target list). Do
-   this *before* hand-rolling any cache deletion — package-manager, editor,
-   container and nix caches are all already covered.
-3. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home — background
-   it, or use `dust`. `ncdu` is for the user to drive: it's a TUI and gives an
-   agent nothing non-interactively.
+2. `cleanup --dry-run` sizes its known cache targets without touching anything
+   (`--json` to parse it, `cleanup --help` for the target list). Do this
+   *before* hand-rolling deletion, but do not mistake it for a complete cache
+   inventory.
+3. Then probe `~/Library/Caches` as well as the large home directories.
+   Individual tools use different cache roots - for example, a browser cache
+   can live there while `cleanup` checks only `~/.cache`.
+4. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home - background
+   it, or use `dust`. Scan named roots separately: cloud-managed or protected
+   trees can stall a broad scan. A stalled path is unclassified, not zero.
+   `ncdu` is for the user to drive: it's a TUI and gives an agent nothing
+   non-interactively.
 
 Quote a reclaim estimate only for things you have actually probed. Sizes on
 this machine change; check every time rather than trusting a remembered figure.
@@ -47,6 +52,11 @@ stores.
 Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
 the user's call, however obviously disposable it looks.
 
+Treat an active project's build tree differently from an idle one. It is
+rebuildable, but cleaning it during active work is short-lived headroom and
+forces an expensive rebuild; prefer other candidates first and make that
+trade-off explicit.
+
 ## Gotchas
 
 - **`rm -rf` is denied by settings.** Reach for the idiomatic cleaner instead:
@@ -57,11 +67,21 @@ the user's call, however obviously disposable it looks.
   `$CLEANUP_CARGO_ROOTS`). `cleanup`'s `cargo` target is the registry cache
   only and does not touch `target/`. These dirs get large enough to dominate a
   survey while `.git` beside them stays small.
+- **Aube:** `~/.cache/aube/virtual-store` is a live mise npm-tool working set,
+  not disposable cache. Do not delete it: it leaves mise tool shims dangling.
+  `aube store prune` is the supported way to reclaim unreferenced package data;
+  its saving may be zero and cannot be estimated from the whole store size.
 - **`/nix/store` size is not reclaimable space.** Most of it is live. Trust
   `cleanup`'s nix probe, which sizes dead paths only; `nix-collect-garbage -d`
   routinely frees nothing while costing rollback generations. Never quote the
   store total as a saving.
+- **Podman is separate from Docker.** A stopped Podman VM can make Docker
+  cleanup look empty while `~/.local/share/containers/podman/machine` remains
+  large. Inspect `podman machine list`; remove a machine only with a nod,
+  because it discards its images, containers, and volumes.
 - **Steam: uninstall in the app**, never delete `steamapps/common/*` — the
   manifests desync. Usually the largest single win, and the user must do it.
+- **Yarn v1:** do not probe `yarn cache clean` with `--help` - it runs the
+  cleaner. Use `yarn cache --help` to inspect the parent command instead.
 - Don't pipe a long-running background command through `tail`: the output is
   lost to buffering and you end up polling for a result that never lands.
