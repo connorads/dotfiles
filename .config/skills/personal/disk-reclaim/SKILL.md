@@ -71,6 +71,12 @@ trade-off explicit.
   not disposable cache. Do not delete it: it leaves mise tool shims dangling.
   `aube store prune` is the supported way to reclaim unreferenced package data;
   its saving may be zero and cannot be estimated from the whole store size.
+- **mise HTTP tarballs:** `mise prune` can remove an old tool while extracted
+  archives remain under `~/.local/share/mise/http-tarballs`, even when
+  `mise cache path` points elsewhere. For a large entry, read `metadata.json`
+  and confirm that no installed tool or symlink references it before treating
+  it as re-downloadable and removing that entry after a nod. Do not expect
+  `mise cache clear` to clear this legacy root.
 - **`/nix/store` size is not reclaimable space.** Most of it is live. Trust
   `cleanup`'s nix probe, which sizes dead paths only; `nix-collect-garbage -d`
   routinely frees nothing while costing rollback generations. Never quote the
