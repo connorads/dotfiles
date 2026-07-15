@@ -20,9 +20,7 @@ serialises each file's own tests: ~7 CPU-bound files dominate the critical path
 `killport-pclose` ~13s, `mem-lib` ~11s, measured serially). Cutting real waits in those,
 or opting the non-tmux ones into within-file parallelism, is the only lever left; adding
 cores or `-j` is not. Beware measuring per-test cost with `-T` under `-j` - contention
-inflates each figure several-fold; time files individually for true cost. A couple of
-timing-sensitive tests (e.g. `shotpath-copy.bats` streaming assertions) can flake under
-`-j` while passing serially.
+inflates each figure several-fold; time files individually for true cost.
 
 Conventions: isolate `$HOME`/`$PATH` via `setup_test_home` (`test_helper.bash`); assert
 observable behaviour (args, exit status, stdout, fs/option effects) not internals; prefer

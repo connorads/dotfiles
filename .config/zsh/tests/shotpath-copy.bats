@@ -175,10 +175,13 @@ EOF
 }
 
 @test "shotpath-remote-popup streams authentication prompts while shotpath is running" {
+  export SHOTPATH_TEST_RELEASE="$BATS_TEST_TMPDIR/shotpath-release"
   write_stub shotpath <<'EOF'
 #!/usr/bin/env bash
 echo "Tailscale SSH authentication required" >&2
-sleep 2
+while [ ! -e "$SHOTPATH_TEST_RELEASE" ]; do
+  sleep 0.01
+done
 exit 1
 EOF
   local output_file="$BATS_TEST_TMPDIR/popup-output"
@@ -187,16 +190,21 @@ EOF
   local popup_pid=$!
 
   local visible=0
-  for _ in {1..50}; do
+  for _ in {1..500}; do
     if grep -q "Tailscale SSH authentication required" "$output_file"; then
       visible=1
       break
     fi
     sleep 0.02
   done
-  [ "$visible" -eq 1 ]
-  kill -0 "$popup_pid"
+
+  local running=0
+  kill -0 "$popup_pid" 2>/dev/null && running=1
+  touch "$SHOTPATH_TEST_RELEASE"
   wait "$popup_pid"
+
+  [ "$visible" -eq 1 ]
+  [ "$running" -eq 1 ]
   [ "$(grep -c "Tailscale SSH authentication required" "$output_file")" -eq 1 ]
 }
 
