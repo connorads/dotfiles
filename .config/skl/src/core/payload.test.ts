@@ -2,7 +2,7 @@ import { expect, test, describe } from "bun:test";
 import { BUILTIN_PAYLOAD_EXCLUDES, filterPayloadFiles } from "./payload.ts";
 
 describe("filterPayloadFiles", () => {
-  test("built-in excludes hide generated/cache payload files", () => {
+  test("built-in excludes hide maintenance and generated/cache payload files", () => {
     const files = [
       "SKILL.md",
       ".DS_Store",
@@ -15,6 +15,8 @@ describe("filterPayloadFiles", () => {
       "lib/helper.pyd",
       "notes.md.backup",
       "node_modules/pkg/index.js",
+      "evals/evals.json",
+      "evals/fixtures/case/SKILL.fixture.md",
       "references/guide.md",
     ];
 
@@ -26,6 +28,12 @@ describe("filterPayloadFiles", () => {
 
   test("SKILL.md is retained even when a pattern matches markdown", () => {
     expect(filterPayloadFiles(["SKILL.md", "notes.md"], ["**/*.md"])).toEqual(["SKILL.md"]);
+  });
+
+  test("an excluded nested SKILL.md does not bypass its parent exclusion", () => {
+    expect(
+      filterPayloadFiles(["SKILL.md", "node_modules/pkg/SKILL.md"], ["**/node_modules/**"]),
+    ).toEqual(["SKILL.md"]);
   });
 
   test("configured excludes use Bun glob syntax relative to the skill dir", () => {

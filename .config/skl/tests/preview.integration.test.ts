@@ -23,6 +23,7 @@ describe("skl preview payload filtering (real CLI)", () => {
     await mkdir(join(skill, "__pycache__"), { recursive: true });
     await mkdir(join(skill, ".git"), { recursive: true });
     await mkdir(join(skill, "node_modules/pkg"), { recursive: true });
+    await mkdir(join(skill, "evals"), { recursive: true });
     await writeFile(join(skill, "SKILL.md"), "---\nname: noisy\n---\n\n# Noisy\n");
     await writeFile(join(skill, "references.md"), "useful reference\n");
     await writeFile(join(skill, "SKILL.md.backup"), "backup copy\n");
@@ -32,13 +33,15 @@ describe("skl preview payload filtering (real CLI)", () => {
     await writeFile(join(skill, ".git/config"), "git internals\n");
     await writeFile(join(skill, "__pycache__/helper.pyc"), "bytecode cache\n");
     await writeFile(join(skill, "node_modules/pkg/index.js"), "dependency code\n");
+    await writeFile(join(skill, "node_modules/pkg/SKILL.md"), "dependency skill\n");
+    await writeFile(join(skill, "evals/evals.json"), "{}\n");
   });
 
   afterAll(async () => {
     if (root) await rm(root, { recursive: true, force: true });
   });
 
-  test("hides generated and cache files by default", () => {
+  test("hides filtered payload files by default", () => {
     const out = runPreview("noisy", root);
     expect(out.exitCode).toBe(0);
     const text = out.stdout.toString();
@@ -51,9 +54,10 @@ describe("skl preview payload filtering (real CLI)", () => {
     expect(text).not.toContain(".git");
     expect(text).not.toContain("__pycache__");
     expect(text).not.toContain("node_modules");
+    expect(text).not.toContain("evals");
   });
 
-  test("--all shows generated and cache files", () => {
+  test("--all shows filtered payload files", () => {
     const out = runPreview("noisy", root, ["--all"]);
     expect(out.exitCode).toBe(0);
     const text = out.stdout.toString();
@@ -64,5 +68,6 @@ describe("skl preview payload filtering (real CLI)", () => {
     expect(text).toContain(".git");
     expect(text).toContain("__pycache__");
     expect(text).toContain("node_modules");
+    expect(text).toContain("evals");
   });
 });

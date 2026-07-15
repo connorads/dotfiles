@@ -44,7 +44,7 @@ Options:
   --path <dir>              override config sources entirely (repeatable)
   --submit                  press Enter after injecting (default: never)
   --copy                    copy pointer(s) to the system clipboard, no injection
-  --all                     include generated/cache payload files in trees/bundles
+  --all                     include files excluded from normal payloads in trees/bundles
 `;
 
 const DEFAULT_CONFIG = `${import.meta.dir}/../config.json`;
