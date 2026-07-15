@@ -19,6 +19,7 @@ Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head
 Do not rely on memory when the answer can be checked quickly.
 Grep the local codebase first for implementation questions.
 For external facts, docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, and solutions, check online.
+Grep `~/git/kb/notes/` alongside the web for topics I've researched - my Obsidian vault of compiled notes; `index.md` maps its domains.
 For dependency behaviour, inspect installed source such as `node_modules` when present; otherwise clone the repo into `/tmp` and inspect it.
 Use subagents for broad research so the main context stays focused.
 
