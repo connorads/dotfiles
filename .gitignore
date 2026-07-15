@@ -53,6 +53,8 @@
 /.codex/**
 !/.codex/config.toml
 !/.codex/hooks.json
+!/.codex/rules/
+!/.codex/rules/safety.rules
 !/.codex/skills/
 /.codex/skills/**
 !/.codex/skills/*

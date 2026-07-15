@@ -1,0 +1,13 @@
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "forbidden",
+    justification = "Use `trash` outside temporary directories; leave temporary paths for system cleanup.",
+    match = [
+        "rm -rf build",
+        "rm -rf /tmp/agent-work",
+    ],
+    not_match = [
+        "rm -f file.txt",
+        "rm -r directory",
+    ],
+)

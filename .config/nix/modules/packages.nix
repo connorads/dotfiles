@@ -19,10 +19,12 @@ let
     '';
   };
 
+  linuxCorePackages = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.trash-cli ];
+
   # ---------------------------------------------------------------------------
   # Tier 1: Minimal — ephemeral environments (codespaces, containers)
   # ---------------------------------------------------------------------------
-  corePackages = with pkgs; [
+  baseCorePackages = with pkgs; [
     # Shell & terminal
     zsh
     tmux
@@ -59,6 +61,8 @@ let
     # Dev tools
     mise
   ];
+
+  corePackages = baseCorePackages ++ linuxCorePackages;
 
   # ---------------------------------------------------------------------------
   # Tier 2 extras: Server/headless — "feels like home" over SSH
