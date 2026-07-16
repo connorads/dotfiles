@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!-- Thumbnail template: swap asset filenames, tune positions, screenshot at
+     exact viewport size. Layer order: bg glow < panels < person < logos < text. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  body {
+    position: relative;
+    background:
+      radial-gradient(ellipse 900px 600px at 30% 35%, #1a1a24 0%, #0b0b10 55%, #050507 100%);
+    font-family: "Helvetica Neue", -apple-system, Arial, sans-serif;
+  }
+  /* optional accent glow — match the product/brand colour */
+  .glow {
+    position: absolute; width: 700px; height: 500px; left: 620px; top: 100px;
+    background: radial-gradient(ellipse, rgba(166,227,161,0.10) 0%, transparent 65%);
+  }
+  .panel {
+    position: absolute;
+    border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.75);
+  }
+  /* big tilted screenshot behind the text side */
+  .panel-main {
+    left: -36px; top: 132px;
+    width: 640px;
+    transform: rotate(-4deg);
+    opacity: 0.92;
+    filter: brightness(0.82);   /* dim so the title pops */
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  /* secondary panel (e.g. phone) peeking behind the person */
+  .panel-side {
+    left: 648px; top: -14px;
+    width: 258px;
+    transform: rotate(4deg);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.85);
+  }
+  /* rembg cutout, bottom-anchored so the alpha fade meets the canvas edge */
+  .person {
+    position: absolute;
+    width: 900px;
+    right: -95px; bottom: 0;
+    filter: drop-shadow(-18px 0 45px rgba(0,0,0,0.65));
+  }
+  /* white-on-black logo: screen blend drops the black box over dark bg */
+  .logo-left {
+    position: absolute;
+    left: 30px; top: 26px;
+    width: 292px;
+    mix-blend-mode: screen;
+  }
+  .logo-right {
+    position: absolute;
+    right: 28px; top: 26px;
+    width: 118px;
+    border-radius: 26px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+  }
+  .title {
+    position: absolute;
+    left: 36px; bottom: 82px;
+    color: #fff;
+    font-size: 158px;          /* 1–3 words max at this size */
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 1;
+    text-shadow: 0 10px 40px rgba(0,0,0,0.9);
+  }
+  .subtitle {
+    position: absolute;
+    left: 42px; bottom: 34px;
+    color: rgba(255,255,255,0.96);
+    font-size: 24.5px;
+    font-weight: 600;
+    letter-spacing: 0.235em;   /* shrink spacing before shrinking font */
+    white-space: nowrap;
+    text-shadow: 0 3px 14px rgba(0,0,0,0.95), 0 0 30px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <img class="panel panel-main" src="asset_panel.png">
+  <img class="panel panel-side" src="asset_side.png">
+  <img class="person" src="asset_person.png">
+  <img class="logo-left" src="asset_logo_left.png">
+  <img class="logo-right" src="asset_logo_right.png">
+  <div class="title">Big Title</div>
+  <div class="subtitle">LETTER-SPACED SUPPORTING LINE FROM THE FULL TITLE</div>
+</body>
+</html>
