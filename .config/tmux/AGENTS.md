@@ -110,6 +110,30 @@ Tests (run `mise run zsh-tests`):
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
+## Resurrect agent-session restore (custom subsystem)
+
+tmux-resurrect restores Claude/Codex/OpenCode panes via the custom strategies in
+[`strategies/`](./strategies/) (synced into the plugin dir by a `run-shell cp`
+in [`tmux.conf`](./tmux.conf)). **Fidelity rule**: a strategy rebuilds the
+command from the *saved pane argv* (`$1`, from `ps -o args=`) rather than
+emitting a bare `<agent> --resume <id>` - none of the three CLIs persist
+permission mode / system-prompt append / model in the session, so dropping the
+flags would restore a gated pane. The shared token filter lives in
+[`scripts/lib/resurrect-argv.sh`](./scripts/lib/resurrect-argv.sh): unknown
+tokens are kept verbatim and in order, stale resume/continue state is stripped
+(idempotent across repeated restores), argv0 mismatch falls back to the bare
+command. Session IDs come from `session_ids.json`, written by the post-save
+hook [`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh).
+
+OpenCode caveat: yolo mode (`ocy`) lives in `OPENCODE_CONFIG_CONTENT`, not
+argv, so the save hook records that one env var per pane (`opencodeEnv`;
+`/proc` environ on Linux, `ps -E` token scan on macOS - space-containing
+values unsupported there) and the strategy re-emits it as a single-quoted
+inline env prefix. Never persist any other env var - both sources expose the
+process's full environment, secrets included.
+
+Tests: [`../zsh/tests/tmux-resurrect-sessions.bats`](../zsh/tests/tmux-resurrect-sessions.bats).
+
 ## AI usage tracker (custom subsystem)
 
 The AI usage surfaces track three providers:
