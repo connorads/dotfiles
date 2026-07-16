@@ -43,6 +43,12 @@ dhk check            # dotfiles-wide hk checks (rumdl gates the markdown here)
 - Astro 7's dev server is a background daemon; a stale `.astro/` content cache
   survives restarts and can throw `ImageNotFound` for since-deleted assets while
   `pnpm build` passes. Stop the daemon, `trash .astro`, restart.
+- Concurrent dotfiles sessions + hk's pre-commit stash can silently revert
+  tracked-and-modified files here to HEAD (untracked new files survive, so the
+  damage hides in files that already existed). Commit with
+  `HK_STASH=none dotfiles commit -- src/dotfiles-docs`, and diff the committed
+  content (`dotfiles show HEAD -- src/dotfiles-docs | head`) when other
+  sessions are active.
 
 ## Deeper docs
 
