@@ -8,8 +8,9 @@ description: >-
   Vite SPA/MPA, or SSR from a Worker/edge. Use when the user reports a
   "flash", "shimmer", "pop", "jump", "flicker", or slow first paint; when
   content fades in after JS runs (entrance reveals) or the LCP is webfont
-  text; when reviewing font loading (self-hosted or Google Fonts) or image
-  loading; when deciding if subsetting fixed copy is safe; when wiring
+  text; when reviewing font loading (self-hosted, Google Fonts, or Adobe
+  Fonts/Typekit kits) or image loading; when deciding if subsetting fixed
+  copy is safe; when wiring
   resource hints (preload/preconnect) or metric-matched fallbacks; or when
   asserting first-load invariants on built HTML or a booted route. Not for
   backend latency, bundle-size analysis, or runtime interaction (INP)
@@ -122,7 +123,9 @@ causes and fixes live in `references/symptoms.md`.
   `font-display`, variable fonts, subsetting.
 - `references/hosted-fonts.md` - fonts from a hosted CDN (Google Fonts):
   preconnect pair, `display=` param, `@import` chains, why gstatic woff2 can't
-  be hand-preloaded, migrate-to-self-host.
+  be hand-preloaded, migrate-to-self-host; Adobe Fonts (Typekit): JS kit vs
+  CSS embed, dashboard-only `font-display`, the three-preconnect set,
+  self-host-not-licensed.
 - `references/images.md` - eager/lazy, decode timing, priority/discovery, CLS
   reservation, responsive `srcset`/`<picture>`, Astro anti-patterns, GIF->video,
   LQIP, content-visibility.

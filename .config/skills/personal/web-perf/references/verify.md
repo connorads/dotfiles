@@ -238,6 +238,27 @@ symptoms.md C3 (font levers), an `<img>` to C2. For element-level culprits
 with less code, inject the `web-vitals` **attribution build** via
 `addInitScript` and read its report after the same flush.
 
+### 4d. When `load` never fires: probing a load-gated page
+
+Two probe traps on badly-gated pages (symptoms.md B7 and its load-event
+amplifier), where the defect itself breaks the naive harness:
+
+- **Do not `waitUntil: 'load'` on the page you are diagnosing** - under
+  Slow-3G a page holding tens of MB of image fetches may never fire `load`
+  inside any sane timeout, and the probe times out reporting nothing. Use
+  `waitUntil: 'domcontentloaded'` (or `'commit'`), then poll for the visible
+  condition (element opacity/visibility via `getComputedStyle`) inside a
+  fixed settle window.
+- **FCP = 0 after N seconds IS the finding, not a broken probe.** If
+  `performance.getEntriesByName('first-contentful-paint')` stays empty for
+  the whole budget, record "never painted in Ns" as the measurement - do not
+  retry with looser waits until a number appears.
+- **Name what holds `load` open.** Log in-flight requests
+  (`page.on('request'/'requestfinished')`, or CDP `Network.enable` events)
+  and diff the sets at DCL and at your budget cut-off - the survivors (30
+  lazy gallery images, an unbounded video manifest) are the reveal's real
+  gate when the init runs at `load`.
+
 **Attribute a shift to the font swap**: log each `layout-shift` entry's
 `startTime` (4b collector) and compare against when `document.fonts.ready`
 resolved - a shift cluster landing at fonts-ready is the swap (fix per
