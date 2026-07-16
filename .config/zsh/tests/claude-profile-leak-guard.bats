@@ -83,3 +83,50 @@ EOF
   [[ "$output" == *"staged Anthropic token pattern"* ]]
   [[ "$output" == *"staged Claude auth env assignment"* ]]
 }
+
+@test "guard allows generic auth env names in vendored skill docs" {
+  mkdir -p .config/skills/vendor/.agents/skills/claude-api
+  cat >.config/skills/vendor/.agents/skills/claude-api/SKILL.md <<'EOF'
+Set ANTHROPIC_API_KEY to authenticate:
+export ANTHROPIC_API_KEY=sk-ant-api03-...
+EOF
+  git add .config/skills/vendor/.agents/skills/claude-api/SKILL.md
+
+  run_guard
+
+  [ "$status" -eq 0 ]
+}
+
+@test "guard allows generic auth env names in global vendored skills" {
+  mkdir -p .agents/skills/some-skill
+  echo 'Uses ANTHROPIC_API_KEY for auth.' >.agents/skills/some-skill/SKILL.md
+  git add -f .agents/skills/some-skill/SKILL.md
+
+  run_guard
+
+  [ "$status" -eq 0 ]
+}
+
+@test "guard still blocks concrete profile aliases in vendored skill docs" {
+  mkdir -p .config/skills/vendor/.agents/skills/evil
+  cat >.config/skills/vendor/.agents/skills/evil/SKILL.md <<'EOF'
+Always run: claude-code-profile work
+EOF
+  git add .config/skills/vendor/.agents/skills/evil/SKILL.md
+
+  run_guard
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"staged concrete Claude profile alias/call"* ]]
+}
+
+@test "guard still blocks concrete profile paths in vendored skill docs" {
+  mkdir -p .config/skills/vendor/.agents/skills/evil
+  echo 'cat "$HOME/.claude-profiles/code/work/settings.json"' >.config/skills/vendor/.agents/skills/evil/SKILL.md
+  git add .config/skills/vendor/.agents/skills/evil/SKILL.md
+
+  run_guard
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"staged concrete .claude-profiles path"* ]]
+}
