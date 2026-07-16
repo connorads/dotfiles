@@ -31,6 +31,7 @@ All services start with sensible defaults:
 | MongoDB Atlas | 4010   |
 | Clerk     | 4011        |
 | Linear    | 4012        |
+| Twilio    | 4013        |
 
 ## CLI
 
@@ -96,7 +97,7 @@ await vercel.close()
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `service` | *(required)* | `'vercel'`, `'github'`, `'google'`, `'slack'`, `'apple'`, `'microsoft'`, `'okta'`, `'aws'`, `'resend'`, `'stripe'`, `'mongoatlas'`, `'clerk'`, or `'linear'` |
+| `service` | *(required)* | `'vercel'`, `'github'`, `'google'`, `'slack'`, `'apple'`, `'microsoft'`, `'okta'`, `'aws'`, `'resend'`, `'stripe'`, `'mongoatlas'`, `'clerk'`, `'linear'`, or `'twilio'` |
 | `port` | `4000` | Port for the HTTP server |
 | `seed` | none | Inline seed data (same shape as YAML config) |
 | `baseUrl` | none | Override advertised base URL. Per-service `baseUrl` in seed config takes highest priority, then this option, then `EMULATE_BASE_URL` env var (supports `{service}`), then `PORTLESS_URL` (supports `{service}`, automatically set by the `portless` CLI wrapper), then `http://localhost:<port>`. |
@@ -349,9 +350,11 @@ LINEAR_EMULATOR_URL=http://localhost:4012
 
 Then use these in your app to construct API and OAuth URLs. See each service's skill for SDK-specific override instructions.
 
-## Next.js Integration (Embedded Mode)
+## Framework Integration (Embedded Mode)
 
 The `@emulators/adapter-next` package embeds emulators directly into a Next.js app on the same origin. See the **next** skill (`skills/next/SKILL.md`) for full setup, Auth.js configuration, persistence, and font tracing details.
+
+The `@emulators/adapter-nuxt` package embeds emulators directly into a Nuxt app on the same origin. See the **nuxt** skill (`skills/nuxt/SKILL.md`) for the server route, Nuxt config, OAuth configuration, and persistence setup.
 
 ## Persistence
 
@@ -387,11 +390,13 @@ packages/
   @emulators/
     core/            # HTTP server, Store, plugin interface, middleware
     adapter-next/    # Next.js App Router integration
+    adapter-nuxt/    # Nuxt server route integration
     vercel/          # Vercel API service plugin
     github/          # GitHub API service plugin
     google/          # Google OAuth 2.0 / OIDC plugin
     slack/           # Slack Web API, OAuth, incoming webhooks plugin
     linear/          # Linear GraphQL API, OAuth, webhooks plugin
+    twilio/          # Twilio Messaging, Verify, Voice, webhooks plugin
     apple/           # Sign in with Apple / OIDC plugin
     microsoft/       # Microsoft Entra ID OAuth 2.0 / OIDC plugin
     aws/             # AWS S3, SQS, IAM, STS plugin

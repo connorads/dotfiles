@@ -5,7 +5,7 @@
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `file` | file | Yes | Audio or video file to transcribe |
-| `model_id` | string | Yes | `scribe_v2` (or legacy `scribe_v1`) for batch transcription |
+| `model_id` | string | Yes | `scribe_v2` for batch transcription |
 | `language_code` | string | No | Language hint (ISO 639-1 or ISO 639-3, e.g., `en` or `eng`) |
 | `timestamps_granularity` | string | No | `none`, `word`, or `character` (default: `word`) |
 | `diarize` | boolean | No | Enable speaker diarization (default: `false`; up to 32 speakers) |
@@ -18,6 +18,7 @@
 | `entity_detection` | string or array | No | Detect entities (e.g., `pii`, `phi`, `pci`, `offensive_language`) |
 | `no_verbatim` | boolean | No | If `true`, removes filler words, false starts, and non-speech sounds (supported with `scribe_v2`) |
 | `use_multi_channel` | boolean | No | Split multichannel audio into separate transcripts (default: `false`; max 5 channels, max 1 hour) |
+| `multichannel_output_style` | string | No | `separate` (default) returns one transcript per channel under `transcripts`; `combined` returns one merged transcript sorted by word start time with `channel_index` on each word. Requires timestamps and is only used with `use_multi_channel=true` |
 | `cloud_storage_url` | string | No | HTTPS URL to transcribe instead of uploading a file (max 2GB) |
 | `source_url` | string | No | URL of an audio or video file to transcribe, including hosted media, YouTube, TikTok, and other video services |
 | `webhook` | boolean | No | Process async and send result to webhook (default: `false`) |
@@ -206,6 +207,7 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
 | `words[].end` | float | End time in seconds |
 | `words[].type` | string | `word`, `spacing`, or `audio_event` |
 | `words[].speaker_id` | string | Speaker identifier (if diarization enabled) |
+| `words[].channel_index` | integer or null | Channel index for multichannel audio; null for single-channel transcriptions |
 | `transcription_id` | string | Unique identifier for this transcription |
 | `additional_formats` | array | Exported transcript formats (if requested) |
 | `entities` | array | Detected entities with text, type, and character offsets (if entity_detection enabled) |
