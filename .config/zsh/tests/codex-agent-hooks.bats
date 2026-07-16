@@ -90,6 +90,9 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
   local cmd seen=0
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
+    # The atuin command-capture hook (see ~/CLAUDE.md "Agent command history")
+    # coexists with the agent-state hooks and is exempt from these assertions.
+    [[ "$cmd" == "atuin hook codex"* ]] && continue
     seen=1
     [[ "$cmd" == *"agent-state.sh"* ]]
     [[ "$cmd" == *" codex "* ]]
