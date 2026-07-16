@@ -12,7 +12,9 @@ terminal_progress = false
 // `skills update` diff carries formatting churn — which defeats the security
 // diff-review the update-vendored-skills skill relies on. Exclude them from the
 // formatting steps only; gitleaks + merge-conflict checks still run on them.
-local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**")
+// skill-patch hunk files (patches/**) mirror upstream bytes too and must not
+// be reformatted/linted either.
+local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**", ".config/skills/vendor/patches/**")
 
 // Patch files are byte-exact: a blank context line is a single space and
 // trailing whitespace can be significant, so reformatting them silently
@@ -68,6 +70,14 @@ local fast_steps = new Mapping<String, Step> {
             ".config/nix/patches/force-redraw-on-focus-change.patch"
         )
         check = "rg -q 'dim-inactive-panes.patch' .config/nix/flake.nix && rg -q 'force-redraw-on-focus-change.patch' .config/nix/flake.nix || { echo 'flake.nix no longer references both tmux dimming patches (see .config/nix/patches/README.md)' >&2; exit 1; }"
+    }
+
+    // Staging a patched vendored skill whose LOCAL PATCH was clobbered by a
+    // refresh must fail; deleting the patch dir/vars entry in the same commit
+    // is the deliberate-removal escape hatch.
+    ["vendored-skill-patches"] {
+        glob = List("**/vendor/.agents/skills/**", ".config/skills/vendor/patches/**")
+        check = "zsh .config/zsh/functions/patch/skill-patch check"
     }
 
     ["codex-config-trust"] {
