@@ -26,7 +26,9 @@ declare -A CODEX_PANE_SESSIONS
 declare -A CODEX_PANE_DIRS
 declare -A OPENCODE_PANE_SESSIONS
 declare -A OPENCODE_PANE_DIRS
+declare -A OPENCODE_PANE_ENVS
 declare -A OPENCODE_SESSIONS
+declare -A OPENCODE_ENVS
 declare -A OPENCODE_DIR_COUNTS
 found_sessions=0
 
@@ -123,6 +125,34 @@ sql_quote() {
 	printf "'%s'" "$value"
 }
 
+# --- OpenCode env capture ---
+# ocy's yolo mode lives in OPENCODE_CONFIG_CONTENT, invisible in argv, so
+# fidelity restore needs this one env var recorded at save time.
+# SECURITY: /proc environ and `ps -E` expose the process's FULL environment
+# including real secrets - extract only this var, never persist anything else.
+find_opencode_env() {
+	local pane_pid="$1"
+	local tty="$2"
+	local opencode_pid=""
+
+	opencode_pid=$(agent_foreground_pid_for_tty "$tty" "opencode" "$pane_pid")
+	[ -n "$opencode_pid" ] || return 0
+
+	# Linux: null-delimited environ file (RESURRECT_PROC_ROOT overrides for tests).
+	local environ="${RESURRECT_PROC_ROOT:-/proc}/$opencode_pid/environ"
+	if [ -r "$environ" ]; then
+		tr '\0' '\n' <"$environ" 2>/dev/null |
+			grep -m1 '^OPENCODE_CONFIG_CONTENT=' | cut -d= -f2- || true
+		return 0
+	fi
+
+	# macOS: ps -E appends the env as space-separated tokens. Space-containing
+	# values are unsupported here (the ocy JSON contains none).
+	ps -E -o command= -p "$opencode_pid" 2>/dev/null |
+		tr ' ' '\n' |
+		grep -m1 '^OPENCODE_CONFIG_CONTENT=' | cut -d= -f2- || true
+}
+
 # --- Get pane PIDs from tmux (still running at hook time) ---
 # Returns: session:window.pane<TAB>pid<TAB>command<TAB>cwd<TAB>tty
 get_live_panes() {
@@ -186,6 +216,11 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 			OPENCODE_PANE_SESSIONS["$pane_key"]="$sid"
 			OPENCODE_PANE_DIRS["$pane_key"]="$dir"
 			OPENCODE_SESSIONS["$dir"]="$sid"
+			env_val=$(find_opencode_env "$pid" "$tty")
+			if [ -n "$env_val" ]; then
+				OPENCODE_PANE_ENVS["$pane_key"]="$env_val"
+				OPENCODE_ENVS["$dir"]="$env_val"
+			fi
 		fi
 		;;
 	esac
@@ -215,6 +250,9 @@ for pane_key in "${!CODEX_PANE_SESSIONS[@]}"; do
 done
 for pane_key in "${!OPENCODE_PANE_SESSIONS[@]}"; do
 	entry=$(jq -n --arg dir "${OPENCODE_PANE_DIRS[$pane_key]}" --arg sid "${OPENCODE_PANE_SESSIONS[$pane_key]}" '{dir: $dir, opencode: $sid}')
+	if [ -n "${OPENCODE_PANE_ENVS[$pane_key]:-}" ]; then
+		entry=$(echo "$entry" | jq --arg env "${OPENCODE_PANE_ENVS[$pane_key]}" '. + {opencodeEnv: $env}')
+	fi
 	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = (.panes[$pane_key] // {}) + $entry')
 done
 
@@ -225,6 +263,9 @@ for dir in "${!ALL_DIRS[@]}"; do
 	fi
 	if [ -n "${OPENCODE_SESSIONS[$dir]:-}" ]; then
 		entry=$(echo "$entry" | jq --arg sid "${OPENCODE_SESSIONS[$dir]}" '. + {opencode: $sid}')
+		if [ -n "${OPENCODE_ENVS[$dir]:-}" ]; then
+			entry=$(echo "$entry" | jq --arg env "${OPENCODE_ENVS[$dir]}" '. + {opencodeEnv: $env}')
+		fi
 	fi
 	json=$(echo "$json" | jq --arg dir "$dir" --argjson entry "$entry" '. + {($dir): $entry}')
 done
