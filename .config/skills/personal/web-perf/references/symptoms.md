@@ -263,6 +263,16 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   never appears, and when the gated element is the LCP element the LCP
   timestamp moves to the reveal - opacity-0 content is excluded from LCP as
   non-contentful, so the fade-in *is* the metric regression.
+- **The load-event amplifier (B7 x lazy images x `load`)**: when the hidden
+  wrapper covers the whole page, `loading="lazy"` is defeated - Chromium
+  cannot intersection-test images inside a hidden layout, so it fetches ALL
+  of them immediately - and those fetches hold window `load` open. A reveal
+  that runs at `load` (directly, or via a framework event that fires there -
+  see framework-automation.md on Astro's `astro:page-load`) is therefore
+  gated on every image byte on the page: a page with 15MB of lazy gallery
+  images measured ~45s to first paint at Fast-3G and never painted at
+  Slow-3G. The three parts look independent in source review; the compound
+  only shows up under a throttled probe (verify.md).
 - **Fix**: invert the default - content starts visible, the animation is an
   enhancement layered on top. Options: gate the hidden state behind a `.js`
   class set by an inline head script (no-JS never hides anything); use
@@ -271,6 +281,13 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   mechanism that makes the LCP element appear - exclude it from reveal
   animations entirely. And if `prefers-reduced-motion` is the only path that
   shows content un-hidden, the default is inverted - fix that first.
+- **Sequence font fixes WITH the un-gating**: a reveal gate *masks* font
+  jank - fonts load while everything is hidden, so FOIT/shimmer/swap-CLS
+  (B1/B2/A1) read as clean and CLS probes report 0. Un-gating exposes them
+  all at once on visible text. Audit the font pipeline (fonts.md /
+  hosted-fonts.md) as part of the same change, not as a later follow-up -
+  and if the reveal's init measures text (line-splitting, marquee widths),
+  see fonts.md's `document.fonts.ready` gotcha before wiring the new gate.
 - **Vital**: FCP/LCP (the reveal delays the paint the metric records); no
   shift if only opacity/transform animate.
 - **Confirm**: disable JavaScript (DevTools command menu) - gated content must

@@ -103,6 +103,25 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
   re-compressing (gzip or br at the CDN/server) wastes CPU for ~0 gain and can
   add bytes. Exclude `*.woff2` from blanket compression rules.
 
+- **`document.fonts.ready` resolves immediately when no faces are loading
+  yet.** It settles "all loading currently underway", so early in the page -
+  before layout has *requested* any face, or while font CSS is still arriving
+  asynchronously (a legacy Typekit JS kit, a `media="print"`-swapped
+  stylesheet, any JS-injected font CSS) - it can resolve with zero fonts
+  loaded. Two consequences: (1) gating init on `fonts.ready` only means
+  "fonts first" if the font CSS is *render-blocking*, so the faces are in
+  loading state before first layout - async-injected font CSS makes the gate
+  vacuous; (2) anything that measures text once at that gate (SplitText-style
+  line splitting, marquee/carousel width baking, test-harness font
+  assertions) bakes fallback metrics in permanently. Where you must guarantee
+  a specific face, `document.fonts.load('1em "Family"')` both *starts* the
+  load and awaits it - race that (plus `fonts.ready`) against a timeout cap
+  rather than trusting `fonts.ready` alone. CSS-embed hosted kits load faces
+  on *use*, so a face no visible element renders never loads at all - probe
+  it explicitly with `fonts.load()` if an assertion depends on it.
+  - <https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/ready> ·
+    <https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/load>
+
 ## The metric-fallback mechanic (so you can verify any generator)
 
 `ascent-override` / `descent-override` / `line-gap-override` set the line-box

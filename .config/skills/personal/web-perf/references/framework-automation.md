@@ -46,6 +46,18 @@ Two adjacent boundaries that look like automation but aren't:
   `client:load` vs `client:idle` vs `client:visible` decides *when* an island
   hydrates and can flip/pop - pick per island rather than reaching for the
   generic hydration-flip fixes first.
+- **Astro ClientRouter fires the initial `astro:page-load` at window `load`.**
+  On first load the ClientRouter (`transitions/router.js`) dispatches
+  `astro:page-load` from the window `load` event; only on client-side
+  navigations does it fire at swap time. Any motion/init core wired as "init
+  on astro:page-load" is therefore a load-gated reveal on first visit - and
+  `load` waits for every image (symptoms.md B7, the load-event amplifier).
+  Fix shape: run first init at module evaluation (DOM is parsed by then -
+  module scripts are deferred), guarded by a done-flag; the initial
+  `astro:page-load` handler branch calls the same guarded init (no-op if the
+  early init already ran) plus any late layout refresh, and
+  `astro:before-preparation` sets the flag so an early client nav cancels a
+  still-pending first init. Client-nav behaviour is untouched.
 
 Read the left column as "what *a* framework layer automates" (Next is the
 fullest example); the right column is what you write by hand when it doesn't.

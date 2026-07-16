@@ -2,9 +2,11 @@
 
 fonts.md assumes you self-host. This file covers the other common shape: fonts
 loaded from a hosted CDN - Google Fonts' `<link href="...css2?family=...">` is
-the canonical case; Bunny Fonts and similar share the mechanics. Two moves are
+the canonical case; Bunny Fonts and similar share the mechanics; Adobe Fonts
+(Typekit) differs enough to get its own section below. Two moves are
 available: **de-jank the CDN wiring in place** (this file) or **migrate to
-self-hosting** (usually the better fix - see the last section).
+self-hosting** (usually the better fix - see the last section; not licensed
+for Adobe Fonts).
 
 ## The two-hop waterfall you are starting from
 
@@ -86,6 +88,41 @@ default. Author your own fallback `@font-face` (it lives in YOUR css, keyed to
 the same family name) with fontpie or Capsize against the same font file, and
 put it after the real family in the stack. Mechanics and Safari caveat:
 fonts.md.
+
+## Adobe Fonts (Typekit): same shape, different levers
+
+Adobe Fonts kits share the two-hop mechanics above but differ where it
+matters:
+
+- **Two embed forms, same kit ID.** The legacy embed is a *synchronous JS
+  kit* (`<script src="https://use.typekit.net/<kit>.js"></script>` +
+  `Typekit.load()`) that render-blocks head and self-expires quickly
+  (`max-age=600`); the modern embed is a plain CSS link,
+  `https://use.typekit.net/<kit>.css`, **with the same kit ID** - swapping
+  script for link is usually a drop-in de-jank. The JS kit's `wf-loading` /
+  `wf-active` font-event classes are the only thing lost; grep for them
+  before assuming nothing depends on them. Behavioural difference that bites
+  tests and measurement code: the JS kit *actively* loads every kit face;
+  the CSS embed loads faces on use, so a page that never renders a kit
+  family never loads it.
+- **`font-display` is a per-kit DASHBOARD setting - no URL parameter.**
+  Unlike Google's `display=` param, you cannot fix FOIT from the embed code;
+  it is set in the web-project settings by whoever owns the kit (often a
+  designer, not the site owner). Kits default to `auto` (FOIT). If you don't
+  own the kit, this is a handover action to record, not an edit.
+- **The preconnect set is three tags**: `use.typekit.net` serves both the
+  kit CSS (plain fetch) and the woff2 (anonymous-CORS), so it needs BOTH a
+  plain and a `crossorigin` preconnect; and the kit CSS *starts* with a
+  render-blocking `@import` to `p.typekit.net` (the telemetry/licence
+  beacon), which sits on the critical path and earns its own preconnect.
+- **Exact-file preload is brittle across republish.** The woff2 URLs contain
+  opaque per-publish tokens that change when the kit is republished; a
+  hard-coded preload silently 404s later. Preconnect is the reliable hint
+  (same caveat class as gstatic above).
+- **Self-hosting is usually NOT licensed.** Adobe Fonts licensing ties the
+  faces to kit delivery - the "migrate to self-hosting" exit below does not
+  apply unless the face is licensed separately. The available levers are the
+  embed form, the preconnect trio, and the dashboard `font-display` setting.
 
 ## The usually-right fix: migrate to self-hosting
 
