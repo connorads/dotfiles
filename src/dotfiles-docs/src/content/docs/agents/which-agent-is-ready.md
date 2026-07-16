@@ -88,8 +88,14 @@ watching* safe.
 
 ## Steal this
 
-You don't need my hook machinery for the core of it. Two hooks in
-`~/.claude/settings.json` give you unread-message semantics on stock tmux:
+The no-build version exists: [herdr](https://herdr.dev) is an agent
+multiplexer with these same semantic states - blocked, working, done,
+idle - built in, for fifteen-plus agent CLIs, as a single binary. I said
+in [the manifesto](/why/) that tools like it are polished versions of
+exactly this idea; if you don't already live in tmux, start there.
+
+If you do live in tmux, two hooks in `~/.claude/settings.json` give you
+unread-message semantics on a stock setup:
 
 ```jsonc
 {
