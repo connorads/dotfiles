@@ -13,6 +13,16 @@ PATH_DENY = [
     re.compile(r"(^|/)\.config/claude-profiles(/|$)"),
 ]
 
+# Vendored third-party skills legitimately document generic auth env names and
+# token placeholders (e.g. the claude-api skill's upstream Anthropic docs). Skip
+# the generic-pattern checks there, but keep the concrete profile path/alias
+# checks: a vendored skill naming a real local profile is an exfiltration signal,
+# not documentation. gitleaks still scans these paths for real secrets.
+VENDORED_SKILL_PREFIXES = (
+    ".config/skills/vendor/",
+    ".agents/skills/",
+)
+
 # These tracked files intentionally mention the generic launcher/auth patterns.
 ALLOW_PATTERN_PATHS = {
     ".config/zsh/functions/claude-code-profile",
@@ -79,7 +89,10 @@ def main() -> int:
                 break
 
     for path in paths:
-        allow_generic_patterns = path in ALLOW_PATTERN_PATHS
+        allow_generic_patterns = path in ALLOW_PATTERN_PATHS or path.startswith(
+            VENDORED_SKILL_PREFIXES
+        )
+        allow_profile_patterns = path in ALLOW_PATTERN_PATHS
         for diff_line, line in added_lines(path):
             where = f"{path}:diff-line-{diff_line}"
             if TOKEN_RE.search(line) and not allow_generic_patterns:
@@ -88,9 +101,9 @@ def main() -> int:
                 failures.append(f"{where}: staged Claude auth env assignment")
             elif AUTH_ENV_RE.search(line) and not allow_generic_patterns:
                 failures.append(f"{where}: staged Claude auth env name")
-            if CONCRETE_PROFILE_PATH_RE.search(line) and not allow_generic_patterns:
+            if CONCRETE_PROFILE_PATH_RE.search(line) and not allow_profile_patterns:
                 failures.append(f"{where}: staged concrete .claude-profiles path")
-            if PROFILE_ALIAS_RE.search(line) and not allow_generic_patterns:
+            if PROFILE_ALIAS_RE.search(line) and not allow_profile_patterns:
                 failures.append(f"{where}: staged concrete Claude profile alias/call")
 
     if failures:
