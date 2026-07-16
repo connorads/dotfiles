@@ -118,6 +118,11 @@ export CLAUDE_CODE_NO_FLICKER=1
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
 
+# hyperframes/media-use skills: PostHog telemetry off (DO_NOT_TRACK also works;
+# explicit var survives if upstream drops the generic check). Also gates the
+# hyperframes-cli "report feedback after render" directive.
+export HYPERFRAMES_NO_TELEMETRY=1
+
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
