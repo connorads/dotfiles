@@ -151,3 +151,10 @@ an un-reviewed skill silently committed is the exact failure this skill prevents
 
 - Authored skills (`public`/`personal`) are edited in place, not touched here — this skill
   only refreshes the CLI-managed `vendor/` tier and the global `playwright-cli`.
+- **Several vendored SKILL.mds carry local patches** stripping upstream's runtime
+  self-install directives (see `~/.config/skills/AGENTS.md` caveats for the list:
+  `hyperframes` router sections, the 11 hyperframes workflow "keep this skill fresh"
+  blockquotes, and the two next.js adoption skills' `npx skills add next-dev-loop`
+  directives). A refresh clobbers them — after reviewing those skills' diffs, re-apply
+  (grep the diff for removed `LOCAL PATCH (connorads dotfiles)` markers; the diff
+  re-adding self-install text is the reminder).

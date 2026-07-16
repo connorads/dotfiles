@@ -23,7 +23,7 @@ Talk to the user in terms of what they'll see — PRs, features, and how the app
 
 - **Next.js 16.3 or later.** `partialPrefetching`, the `prefetch` route segment config, and the prefetch insights all land there.
 
-- **A browser you can drive.** Install [`next-dev-loop`](https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop) before starting (`npx skills add https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop`). Link prefetches fire when a link renders and enters the viewport, and shell validation fires on navigation — neither is reachable from `curl` or the build. If the app is webpack-pinned, drive a browser directly (`agent-browser`, Playwright) — you lose the framework cross-checks, not the insights; they're still in the overlay and the dev log.
+- **A browser you can drive.** <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time `npx skills add .../next-dev-loop`; it is vendored alongside this skill instead. --> `next-dev-loop` is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before starting. Link prefetches fire when a link renders and enters the viewport, and shell validation fires on navigation — neither is reachable from `curl` or the build. If the app is webpack-pinned, drive a browser directly (`agent-browser`, Playwright) — you lose the framework cross-checks, not the insights; they're still in the overlay and the dev log.
 
 ### notes
 
