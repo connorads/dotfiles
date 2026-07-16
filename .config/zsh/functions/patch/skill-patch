@@ -1,0 +1,257 @@
+#!/usr/bin/env zsh
+# skill-patch: apply/check declarative patches for vendored skills
+# usage: skill-patch apply|check|status|list [patch-name...]
+#
+# Patch definitions live in ~/.config/skills/vendor/patches/<name>/:
+# patch.json (reason, files, optional vars) + verbatim hunk pairs
+# NN-find.md / NN-replace.md. Format spec: patches/README.md there.
+#
+# Modes:
+#   apply   idempotent; applies every pending hunk. Exit 0 iff all applied;
+#           broken/ambiguous/missing target -> loud banner, exit 1.
+#   check   read-only; exit 0 iff all applied, exit 1 with offenders otherwise.
+#   status  per (patch, target, hunk) state table.
+#   list    patch names + reasons.
+# Exit 2: malformed patch.json / unpaired hunk files / bad usage.
+#
+# Not a _needle-patch-lib wrapper: that lib is single-needle binary-patch
+# machinery (grep -aoF can't match multi-line, .unpatched backups, codesign,
+# .stale markers). Here git is the backup and hk + the update-vendored-skills
+# flow are the surfacing.
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local usage="usage: skill-patch apply|check|status|list [patch-name...]"
+local mode=${1:-}
+case $mode in
+  apply|check|status|list) shift ;;
+  -h|--help) print -r -- "$usage"; return 0 ;;
+  '') print -u2 -r -- "$usage"; return 2 ;;
+  *) print -u2 -r -- "skill-patch: unknown mode: $mode"; print -u2 -r -- "$usage"; return 2 ;;
+esac
+
+/usr/bin/python3 - "$mode" "$HOME/.config/skills/vendor" "$@" <<'PY'
+import itertools
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+MARKER_TEMPLATE = "<!-- LOCAL PATCH (connorads dotfiles): {reason} -->"
+
+# States a (target, hunk) pair can be in. OK iff APPLIED.
+APPLIED = "applied"            # replace present, find absent
+PENDING = "pending"            # find present exactly once
+AMBIGUOUS = "ambiguous"        # find present >1 time - refuse to guess
+BROKEN = "broken"              # neither present - upstream drifted
+MISSING = "missing-target"     # target file does not exist
+
+
+def fail_config(msg):
+    print("skill-patch: {}".format(msg), file=sys.stderr)
+    sys.exit(2)
+
+
+def expand(text, combo):
+    for name, value in combo.items():
+        text = text.replace("{{%s}}" % name, value)
+    return text
+
+
+def load_patch(patch_dir):
+    meta_path = patch_dir / "patch.json"
+    try:
+        meta = json.loads(meta_path.read_text())
+    except FileNotFoundError:
+        fail_config("{}: missing patch.json".format(patch_dir.name))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        fail_config("{}: malformed patch.json: {}".format(patch_dir.name, exc))
+    if not isinstance(meta, dict):
+        fail_config("{}: patch.json must be a JSON object".format(patch_dir.name))
+
+    reason = meta.get("reason")
+    files = meta.get("files")
+    variables = meta.get("vars", {})
+    if not isinstance(reason, str) or not reason.strip():
+        fail_config("{}: patch.json needs a non-empty string \"reason\"".format(patch_dir.name))
+    if (not isinstance(files, list) or not files
+            or not all(isinstance(f, str) for f in files)):
+        fail_config("{}: patch.json needs a non-empty string array \"files\"".format(patch_dir.name))
+    if (not isinstance(variables, dict)
+            or not all(isinstance(k, str) and isinstance(v, list)
+                       and v and all(isinstance(x, str) for x in v)
+                       for k, v in variables.items())):
+        fail_config("{}: patch.json \"vars\" must map names to non-empty string arrays".format(patch_dir.name))
+    if "marker" in variables:
+        fail_config("{}: \"marker\" is a reserved token, not a var".format(patch_dir.name))
+
+    # Hunks: numbered verbatim pairs NN-find.md / NN-replace.md. Exactly one
+    # trailing newline is stripped so the hunk body is the matched bytes.
+    hunks = []
+    finds = sorted(patch_dir.glob("[0-9][0-9]-find.md"))
+    replaces = {p.name: p for p in patch_dir.glob("[0-9][0-9]-replace.md")}
+    stray = set(p.name for p in patch_dir.iterdir()
+                if not p.name.startswith(".")) - {"patch.json"} \
+        - set(p.name for p in finds) - set(replaces)
+    if stray:
+        fail_config("{}: unexpected files: {}".format(patch_dir.name, ", ".join(sorted(stray))))
+    if not finds:
+        fail_config("{}: no NN-find.md hunk files".format(patch_dir.name))
+    for find_path in finds:
+        num = find_path.name[:2]
+        replace_path = replaces.pop("{}-replace.md".format(num), None)
+        if replace_path is None:
+            fail_config("{}: {} has no matching {}-replace.md".format(
+                patch_dir.name, find_path.name, num))
+        find_text = find_path.read_bytes()
+        replace_text = replace_path.read_bytes()
+        if find_text.endswith(b"\n"):
+            find_text = find_text[:-1]
+        if replace_text.endswith(b"\n"):
+            replace_text = replace_text[:-1]
+        if not find_text:
+            fail_config("{}: {} is empty".format(patch_dir.name, find_path.name))
+        if b"{{marker}}" in find_text:
+            fail_config("{}: {{{{marker}}}} is only valid in replace hunks ({})".format(
+                patch_dir.name, find_path.name))
+        hunks.append((num, find_text, replace_text))
+    if replaces:
+        fail_config("{}: unpaired replace hunks: {}".format(
+            patch_dir.name, ", ".join(sorted(replaces))))
+
+    marker = MARKER_TEMPLATE.format(reason=reason).encode()
+    if b"\n" in marker:
+        fail_config("{}: reason must be a single line".format(patch_dir.name))
+
+    # Cross-product var expansion over target paths and hunk text.
+    combos = [dict(zip(variables, values))
+              for values in itertools.product(*variables.values())] or [{}]
+    targets = []
+    for combo in combos:
+        for rel in files:
+            expanded_hunks = []
+            for num, find_text, replace_text in hunks:
+                f = expand(find_text.decode(), combo).encode()
+                r = expand(replace_text.decode(), combo).encode().replace(b"{{marker}}", marker)
+                if f == r:
+                    fail_config("{}: hunk {} find and replace are identical after expansion".format(
+                        patch_dir.name, num))
+                expanded_hunks.append((num, f, r))
+            targets.append((expand(rel, combo), expanded_hunks))
+    return {"name": patch_dir.name, "reason": reason, "targets": targets}
+
+
+def classify(data, find_text, replace_text):
+    find_count = data.count(find_text)
+    if find_count > 1:
+        return AMBIGUOUS
+    if find_count == 1:
+        return PENDING
+    if data.count(replace_text) > 0:
+        return APPLIED
+    return BROKEN
+
+
+def banner(lines):
+    print("", file=sys.stderr)
+    print("#" * 64, file=sys.stderr)
+    for line in lines:
+        print("# {}".format(line), file=sys.stderr)
+    print("#" * 64, file=sys.stderr)
+
+
+def remediation(state, patch_name, num):
+    if state == PENDING:
+        return "clobbered by refresh - run: skill-patch apply"
+    if state == BROKEN:
+        return "upstream drifted - re-derive patches/{}/{}-find.md".format(patch_name, num)
+    if state == AMBIGUOUS:
+        return "find text matches more than once - refusing to guess; tighten patches/{}/{}-find.md".format(patch_name, num)
+    if state == MISSING:
+        return "target file missing - was the skill removed? Remove or fix patches/{}".format(patch_name)
+    return ""
+
+
+def main():
+    mode, vendor_root = sys.argv[1], Path(sys.argv[2])
+    requested = sys.argv[3:]
+    patches_root = vendor_root / "patches"
+    if not patches_root.is_dir():
+        fail_config("no patches dir at {}".format(patches_root))
+
+    available = sorted(d for d in patches_root.iterdir() if d.is_dir())
+    if requested:
+        by_name = {d.name: d for d in available}
+        unknown = [n for n in requested if n not in by_name]
+        if unknown:
+            fail_config("unknown patch(es): {} (have: {})".format(
+                ", ".join(unknown), ", ".join(sorted(by_name))))
+        available = [by_name[n] for n in requested]
+    if not available:
+        fail_config("no patch dirs under {}".format(patches_root))
+
+    patches = [load_patch(d) for d in available]
+
+    if mode == "list":
+        width = max(len(p["name"]) for p in patches)
+        for p in patches:
+            print("{:<{}}  {}".format(p["name"], width, p["reason"]))
+        return 0
+
+    rc = 0
+    rows = []
+    for p in patches:
+        for rel, hunks in p["targets"]:
+            target = vendor_root / rel
+            if not target.is_file():
+                for num, _, _ in hunks:
+                    rows.append((p["name"], rel, num, MISSING))
+                continue
+            data = target.read_bytes()
+            new_data = data
+            for num, find_text, replace_text in hunks:
+                state = classify(new_data, find_text, replace_text)
+                if mode == "apply" and state == PENDING:
+                    new_data = new_data.replace(find_text, replace_text, 1)
+                    state = classify(new_data, find_text, replace_text)
+                rows.append((p["name"], rel, num, state))
+            if mode == "apply" and new_data != data:
+                # Atomic write: temp beside target, preserve mode, rename over.
+                tmp = target.with_name(target.name + ".skill-patch.tmp")
+                tmp.write_bytes(new_data)
+                os.chmod(tmp, target.stat().st_mode)
+                tmp.replace(target)
+
+    bad = [(name, rel, num, state) for name, rel, num, state in rows if state != APPLIED]
+
+    if mode == "status":
+        for name, rel, num, state in rows:
+            print("{:<12}  {}  {}  hunk {}".format(state, name, rel, num))
+        return 1 if bad else 0
+
+    if mode == "check":
+        for name, rel, num, state in bad:
+            print("{}: {} hunk {}: {} ({})".format(
+                name, rel, num, state, remediation(state, name, num)))
+        return 1 if bad else 0
+
+    # apply
+    applied = sum(1 for name, rel, num, state in rows if state == APPLIED)
+    if bad:
+        for name, rel, num, state in bad:
+            banner([
+                "skill-patch: CANNOT APPLY - {}".format(state),
+                "  patch:  {}".format(name),
+                "  target: {}".format(rel),
+                "  hunk:   {}".format(num),
+                remediation(state, name, num),
+            ])
+        return 1
+    print("skill-patch: all patches applied ({} hunk(s) across {} patch(es))".format(
+        applied, len(patches)))
+    return 0
+
+
+sys.exit(main())
+PY
