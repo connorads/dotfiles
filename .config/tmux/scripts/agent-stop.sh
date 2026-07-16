@@ -10,11 +10,21 @@
 # later injects a <task-notification> that drives a fresh turn → another Stop
 # with the drained (empty) array.
 #
-# We count only finite, wake-me-later work — `workflow`, `subagent`, `shell` —
-# and forward `working` while any remain, else `done`. Persistent watchers
+# We count only finite, wake-me-later work — `workflow`, `subagent` — and
+# forward `working` while any remain, else `done`. Persistent watchers
 # (`monitor`, `dream`) are excluded: their status stays running forever, so
 # counting them would pin the dot at working permanently. The allowlist is a
 # single jq select() so widening it is trivial.
+#
+# `shell` (backgrounded Bash) is excluded too, and the reason is an asymmetry
+# in failure cost, not that shells never wake the session. A background shell
+# is often a dev server that never exits: counting it pins the dot at working
+# forever — no future hook fires and the sweep won't clear it (the agent is
+# still foreground) — a silent permanent lie. The other direction self-heals:
+# if a finite background build shows `done` early, its completion injects a
+# task-notification, a fresh turn re-fires the hooks, and the dot corrects
+# itself. Post-Stop the transcript is readable either way, so `done` is the
+# truthful answer to the dot's real question ("should I look?").
 #
 # Degrades to `done` if jq is missing or the payload won't parse — never worse
 # than the previous unconditional-done wiring.
@@ -36,7 +46,7 @@ count=0
 if command -v jq >/dev/null 2>&1; then
 	count=$(printf '%s' "$payload" | jq -r '
 		[ .background_tasks[]?
-		  | select(.type == "workflow" or .type == "subagent" or .type == "shell") ]
+		  | select(.type == "workflow" or .type == "subagent") ]
 		| length' 2>/dev/null) || count=0
 fi
 

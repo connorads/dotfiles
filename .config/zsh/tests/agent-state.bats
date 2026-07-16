@@ -247,9 +247,10 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
 
 # --- agent-stop.sh adapter: Stop payload on stdin -> pane state ---
 #
-# Counts only finite work (workflow|subagent|shell): pending work keeps the dot
+# Counts only finite work (workflow|subagent): pending work keeps the dot
 # peach (working), a drained/empty array goes blue (done), and persistent
-# watchers (monitor|dream) must not pin it at working. The done-expecting cases
+# watchers (monitor|dream) plus background shells (often never-exiting dev
+# servers) must not pin it at working. The done-expecting cases
 # add a second window (finish on a background window) so the pane is unambiguously
 # unseen; the detached bare server would keep it `done` regardless (seen-at-birth
 # needs an attached client), but the extra window keeps intent explicit.
@@ -281,6 +282,15 @@ astop() { run env AGENT_STATE_PANE="$1" sh "$STOP" <<<"$2"; }
   p1=$(tx display-message -p -t s '#{pane_id}') # window 1, currently active
   tx new-window -t s                            # window 2 active; window 1 inactive
   astop "$p1" '{"background_tasks":[]}'
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$p1")" = done ]
+}
+
+@test "agent-stop: lone background shell -> done (server must not pin working)" {
+  command -v jq >/dev/null || skip "jq not installed"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s
+  astop "$p1" '{"background_tasks":[{"id":"1","type":"shell","status":"running","description":"pnpm serve"}]}'
   [ "$status" -eq 0 ]
   [ "$(pstate "$p1")" = done ]
 }

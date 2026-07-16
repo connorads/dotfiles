@@ -63,10 +63,13 @@ The logic is spread across several files — change them as a set:
   background dynamic workflow / subagent is still draining; turns that end via
   API error fire `StopFailure` instead (`Stop` doesn't fire for those) and route
   through the same adapter. It jq-counts the in-flight
-  *finite* work (`workflow|subagent|shell`) in the payload's `background_tasks`
+  *finite* work (`workflow|subagent`) in the payload's `background_tasks`
   and forwards `working` while any remain, else `done` (degrades to `done` if jq
   is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
-  are excluded so they can't pin the dot at working forever.
+  are excluded so they can't pin the dot at working forever; `shell` is excluded
+  for the same reason — background shells are often never-exiting dev servers,
+  and a false `working` never self-corrects, whereas a finite build showing
+  `done` early does (its completion wakes a fresh turn that re-fires the hooks).
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
   Two jobs: (1) clear a stale dot whose agent died without a clean done/clear
