@@ -25,12 +25,17 @@ local fast_steps = new Mapping<String, Step> {
     ["newlines"] = (Builtins.newlines) { exclude = no_reformat }
     ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
 
+    // Vendored scripts mirror upstream too: don't reformat (divergence) or lint
+    // (upstream's style findings aren't ours to fix) — security review happens
+    // in the update-vendored-skills diff flow instead.
     ["shfmt"] = (Builtins.shfmt) {
         batch = true
+        exclude = vendored_skills
     }
 
     ["shellcheck"] = (Builtins.shellcheck) {
         batch = true
+        exclude = vendored_skills
     }
 
     ["zsh-syntax"] {
