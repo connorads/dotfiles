@@ -58,9 +58,11 @@ The logic is spread across several files — change them as a set:
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
   legend.
-- [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) — Claude `Stop` hook
-  adapter. Claude fires `Stop` at every turn-end, even while a background
-  dynamic workflow / subagent is still draining; it jq-counts the in-flight
+- [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) — Claude `Stop`/`StopFailure`
+  hook adapter. Claude fires `Stop` at every clean turn-end, even while a
+  background dynamic workflow / subagent is still draining; turns that end via
+  API error fire `StopFailure` instead (`Stop` doesn't fire for those) and route
+  through the same adapter. It jq-counts the in-flight
   *finite* work (`workflow|subagent|shell`) in the payload's `background_tasks`
   and forwards `working` while any remain, else `done` (degrades to `done` if jq
   is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
@@ -79,9 +81,9 @@ The logic is spread across several files — change them as a set:
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
-  `agent-state.sh` on lifecycle events; `Stop` routes through `agent-stop.sh`
-  (`working` while `background_tasks` holds finite in-flight work, `done` once
-  drained). The `after-select-pane` / `session-window-changed` / `client-focus-in`
+  `agent-state.sh` on lifecycle events; `Stop`/`StopFailure` route through
+  `agent-stop.sh` (`working` while `background_tasks` holds finite in-flight
+  work, `done` once drained). The `after-select-pane` / `session-window-changed` / `client-focus-in`
   hooks fire `seen` (focus = mark read), gated on `#{@agent_state}==done` so idle
   switches skip the fork and pay only `refresh-client -S`; `client-focus-in` (NOT
   `pane-focus-in`, which is inert as a global hook) catches regaining terminal
