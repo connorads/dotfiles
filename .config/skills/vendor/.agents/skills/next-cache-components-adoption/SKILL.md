@@ -73,17 +73,18 @@ In preference order:
 
 1. **[`next-dev-loop`](https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop) — strongly preferred.** Cross-checks `/_next/mcp` against the live browser via `agent-browser` and surfaces both compile and runtime issues in one pass. The diagnostics (React tree, suspense boundaries, console + network) are richer than poking at `next dev` by hand.
 
-   Install it before starting the loop. Don't wait until you hit something `next dev` alone can't explain. Run:
-
-   ```bash
-   npx skills add https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop
-   ```
+   <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time
+        `npx skills add .../next-dev-loop` (and, below, to install it without
+        asking in non-interactive runs). next-dev-loop is vendored alongside
+        this skill instead; refreshes go through the vendored-skills review
+        flow, not runtime installs. -->
+   `next-dev-loop` is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before starting the loop. Don't wait until you hit something `next dev` alone can't explain.
 
    The skill requires `agent-browser >= 0.27.0` and walks you through it.
 
    **Requires Turbopack.** If `package.json`'s `dev` script passes `--webpack`, flag it to the user and ask whether there's a reason to stay on webpack. If not, switch to Turbopack (the Next.js 16.3+ default). If they want to keep webpack, skip this install and use the [build-only loop](#the-loop-build-only-fallback) instead.
 
-   You don't need permission to install `next-dev-loop` itself. It's a tool, like installing a dev dependency. If a user is present, briefly tell them you're installing it for verification. In a non-interactive run (CI, dashboard, sandbox), install it without asking — "can't prompt the user" is not a reason to skip. The only legitimate skip is a real technical blocker: no network, no npm, read-only filesystem, a stated no-new-deps policy, or a webpack-only dev script. If you skip, name the specific blocker in your final report.
+   The only legitimate reason to skip the dev loop is a real technical blocker: no network, no npm, read-only filesystem, a stated no-new-deps policy, or a webpack-only dev script. If you skip, name the specific blocker in your final report.
 
 2. **A browser you can drive yourself.** Playwright, `agent-browser` directly, any browser-automation tool. Use only when `next-dev-loop` is genuinely blocked. You'll miss the framework-side checks (`/_next/mcp`), so DOM assertions alone don't catch every regression — be more cautious about what you call "verified."
 

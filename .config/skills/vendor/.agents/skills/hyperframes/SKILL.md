@@ -77,32 +77,16 @@ Routing needs to know **what the video is about** — its input and subject. If 
 - **A presentation / pitch deck / interactive deck** (discrete slides, navigation, presenter mode) → `/slideshow` — output is a navigable deck, not a rendered video. An explicit "slideshow" request proceeds directly; an adjacent trigger ("deck / slides / presentation / convert this page") makes `/slideshow` confirm it's a slideshow before authoring, and switch to the appropriate non-slideshow workflow if not.
 - **Length is a guide, not a gate** — intent picks the workflow; go to `/general-video` only when the piece is clearly longer than ~3 min, or is a static / loop / custom format.
 
-## After picking — guarantee the workflow is installed
+## After picking — workflow skills are vendored locally
 
-Once you've picked a workflow, run the update step **before reading its skill** — workflow skills install on demand, so the one you matched may not be on this machine yet (its trigger phrases live in this router precisely so you can route to skills that aren't installed):
+<!-- LOCAL PATCH (connorads dotfiles): upstream's version of this section and
+     "Keeping skills current" instruct agents to self-install/refresh skills at
+     task time (`npx hyperframes skills update`, `npx skills add`), which
+     bypasses this repo's pin-and-review vendoring. The full upstream skill set
+     is vendored alongside this router instead; refreshes go through the
+     update-vendored-skills flow, which re-applies this patch. -->
 
-```bash
-npx hyperframes skills update <workflow-name>
-```
-
-Bare name, no leading `/` — e.g. `npx hyperframes skills update pr-to-video`. Naming a skill guarantees it **plus the core domain skills** every workflow depends on are installed and current: a fast no-op when everything already is, a targeted install of just the missing/stale skills when not — never the full set. Then read the workflow's skill and continue. The same command works for an on-demand domain skill from the capability map (e.g. `npx hyperframes skills update figma`).
-
-If the command fails, surface its error to the user instead of improvising the workflow from memory. Manual fallback (no HyperFrames CLI available): `npx skills add heygen-com/hyperframes --skill <workflow-name>`; everything at once: `npx skills add heygen-com/hyperframes --all`.
-
-## Keeping skills current
-
-HyperFrames skills are versioned and install **lazily**: the core set eagerly, the workflows on first use.
-
-- **Core set** — this router, the `hyperframes-*` domain skills, and `media-use`. `npx hyperframes init` (which every creation workflow runs when scaffolding) checks GitHub and refreshes the core set plus anything else already installed. It never _expands_ the install — workflow skills you haven't used are not pulled. Re-running init on an up-to-date machine is a no-op; offline (or rate-limited) it degrades gracefully and never hard-fails. The `--skip-skills` flag is currently neutered (a temporary measure while the skills.sh registry catches up); CI/tests opt out via the `HYPERFRAMES_SKIP_SKILLS=1` env var.
-- **Workflow skills** — installed and refreshed at trigger time by the update step above (`skills update <workflow-name>`).
-
-If a task is behaving unexpectedly, or before a long build, confirm the installed skills are current:
-
-- **Check:** `npx hyperframes skills check` (add `--json` for a machine-readable verdict; exits non-zero when anything installed is outdated or the core set is incomplete — workflow skills not yet installed are reported as _available on demand_, not as a failure).
-- **Update:** `npx hyperframes skills update` — refreshes the core set plus everything installed to the latest, and removes skills no longer published. Without names it never installs workflows you haven't used; naming skills (`skills update <name…>`) additionally installs those.
-- **Full set, explicitly:** `npx hyperframes skills` (or `npx skills add heygen-com/hyperframes --all`).
-
-The CLI also surfaces a one-line reminder when a `render` / `lint` / `validate` run detects stale skills.
+Every workflow and domain skill in the capability map is vendored alongside this router (`../<workflow-name>/SKILL.md`). Read it from there and continue. Do **not** run `npx hyperframes skills update` or `npx skills add` — skill refreshes here go through the dotfiles vendored-skills review flow, not runtime installs. If a referenced skill is missing, surface that to the user instead of installing it.
 
 ## Workflow details
 

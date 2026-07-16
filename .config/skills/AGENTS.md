@@ -205,6 +205,20 @@ and diff-review clones against the prior vetted copy before trusting them.
 
 ## Caveats
 
+- **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
+  dotfiles)` in the file) stripping upstream directives that make agents self-install or
+  refresh skills at task time — which bypasses pin-and-review vendoring. Patched:
+  `hyperframes` (router "After picking"/"Keeping skills current" sections → pointer to the
+  locally vendored full set; all 19 upstream skills are vendored), the 11 hyperframes
+  workflow skills ("keep this skill fresh — run silently" blockquote removed), and
+  `next-cache-components-adoption` / `next-partial-prefetching-adoption` (task-time
+  `npx skills add next-dev-loop`, incl. "install without asking" → pointer to the vendored
+  `next-dev-loop`). `skills update` clobbers these patches — the update-vendored-skills
+  flow re-applies them (the diff makes the regression obvious). Runtime guards in
+  `.zshrc`: `HYPERFRAMES_NO_TELEMETRY=1` (PostHog off, gates the hyperframes-cli
+  post-render feedback directive) and `HYPERFRAMES_SKIP_SKILLS=1` (stops
+  `npx hyperframes init` refreshing installed skills at scaffold time).
+
 - The skills CLI treats the vendor dir as a Claude Code project too: `skills update -p`
   fans every project skill into `vendor/.claude/skills/<name>` as symlinks to
   `.agents/skills/<name>`. Machine-generated, regenerated on every update, and gitignored

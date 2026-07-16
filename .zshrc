@@ -122,6 +122,10 @@ export DO_NOT_TRACK=1
 # explicit var survives if upstream drops the generic check). Also gates the
 # hyperframes-cli "report feedback after render" directive.
 export HYPERFRAMES_NO_TELEMETRY=1
+# ...and stop `npx hyperframes init` silently refreshing installed skills at
+# scaffold time (--skip-skills is neutered upstream; only this var opts out).
+# The full skill set is vendored + diff-reviewed in ~/.config/skills/vendor.
+export HYPERFRAMES_SKIP_SKILLS=1
 
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
