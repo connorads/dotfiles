@@ -427,6 +427,133 @@ EOF
   [ ! -f "$HOME/.local/share/tmux/resurrect/session_ids.json" ]
 }
 
+@test "save hook records OPENCODE_CONFIG_CONTENT via ps -E without leaking other env vars" {
+  mkdir -p "$HOME/.local/share/opencode" "$BATS_TEST_TMPDIR/no-proc"
+  : >"$HOME/.local/share/opencode/opencode.db"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub sqlite3 <<'EOF'
+#!/usr/bin/env bash
+printf 'ses_current\n'
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*-E*901*)
+		printf 'opencode --continue HOME=/Users/connorads OPENCODE_CONFIG_CONTENT={"permission":{"edit":"allow","bash":"allow"}} SECRET_TOKEN=hunter2\n'
+		;;
+	*ttys001*)
+		printf ' 901 S+ opencode\n'
+		;;
+	*)
+		exit 1
+		;;
+esac
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = '{"permission":{"edit":"allow","bash":"allow"}}' ]
+  run jq -r '.["/Users/connorads"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = '{"permission":{"edit":"allow","bash":"allow"}}' ]
+  # Only the one var may be persisted - the rest of the env carries real secrets.
+  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "0" ]
+}
+
+@test "save hook reads OPENCODE_CONFIG_CONTENT from proc environ when available" {
+  mkdir -p "$HOME/.local/share/opencode" "$BATS_TEST_TMPDIR/proc/901"
+  : >"$HOME/.local/share/opencode/opencode.db"
+  printf 'HOME=/Users/connorads\0OPENCODE_CONFIG_CONTENT={"permission":"allow"}\0SECRET_TOKEN=hunter2\0' \
+    >"$BATS_TEST_TMPDIR/proc/901/environ"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\topencode\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub sqlite3 <<'EOF'
+#!/usr/bin/env bash
+printf 'ses_current\n'
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*-E*) exit 1 ;;
+	*ttys001*) printf ' 901 S+ opencode\n' ;;
+	*) exit 1 ;;
+esac
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = '{"permission":"allow"}' ]
+  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "0" ]
+}
+
+@test "OpenCode strategy emits recorded env prefix with preserved flags" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.1": {"dir": "/Users/connorads", "opencode": "ses_pane", "opencodeEnv": "{\"permission\":\"allow\"}"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$OPENCODE_STRATEGY" "opencode -s ses_old --model anthropic/claude-opus-4" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "OPENCODE_CONFIG_CONTENT='{\"permission\":\"allow\"}' opencode --model anthropic/claude-opus-4 --session ses_pane" ]
+}
+
+@test "OpenCode strategy single-quote-escapes the recorded env value" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.1": {"dir": "/Users/connorads", "opencode": "ses_pane", "opencodeEnv": "{\"note\":\"it's\"}"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$OPENCODE_STRATEGY" "opencode" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "OPENCODE_CONFIG_CONTENT='{\"note\":\"it'\\''s\"}' opencode --session ses_pane" ]
+}
+
 @test "OpenCode strategy restores by pane key and falls back to legacy cwd mapping" {
   cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
 {
