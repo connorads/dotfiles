@@ -1,0 +1,10 @@
+# gitleaks config for the dotfiles repo (work-tree ~). Extends the default
+# ruleset; entries here are allowlisted false-positive classes only.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "PostHog project API keys (phc_...) are public client-side write-only keys, not secrets; vendored skills ship them hardcoded (e.g. media-use telemetry.mjs)"
+regexTarget = "secret"
+regexes = ['''^phc_[A-Za-z0-9]{30,}$''']
