@@ -1,0 +1,13 @@
+/* Accent: terminal green. Stock Starlight otherwise - personality lives in
+   the prose, not the CSS. */
+:root {
+	--sl-color-accent-low: #00381f;
+	--sl-color-accent: #00834a;
+	--sl-color-accent-high: #8ee9be;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #c3f2d9;
+	--sl-color-accent: #007a45;
+	--sl-color-accent-high: #003a22;
+}
