@@ -1,40 +1,39 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: How I work
+description: My dotfiles, justified - a terminal-first, agent-heavy workflow explained.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: My dotfiles, justified. A terminal-first, agent-heavy way of working - explained, not prescribed.
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Why work like this
+      link: /why/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: The dotfiles themselves
+      link: https://github.com/connorads/dotfiles
+      icon: github
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
-
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
+	<Card title="Speed is compound" icon="rocket">
+		No single shortcut matters. zoxide saves a second, an alias saves a second,
+		a keybinding saves a second - and then it all adds up into a way of moving
+		that has no friction left in it.
 	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
+	<Card title="Portable by default" icon="laptop">
+		tmux, zsh, nix, mise. The same workflow on a Mac mini, a MacBook, a
+		Chromebook, a Raspberry Pi, or an SSH session into any of them. Nothing to
+		miss when the machine changes.
 	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
+	<Card title="Working with agents" icon="seti:powershell">
+		Agents live in terminal panes here. Fork a Claude conversation when it
+		genuinely forks, see at a glance which agents are ready, and keep an eye on
+		the credits - all without leaving tmux.
 	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+	<Card title="Trust but verify" icon="approve-check">
+		Supply-chain quarantine on every package manager, sandboxes for untrusted
+		code, scoped GitHub tokens. Convenience above, guardrails underneath.
 	</Card>
 </CardGrid>
