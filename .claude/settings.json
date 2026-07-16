@@ -980,6 +980,16 @@
         ]
       }
     ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
