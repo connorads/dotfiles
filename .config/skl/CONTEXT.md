@@ -95,6 +95,16 @@ use Bun glob syntax against paths relative to the skill directory. There is no `
 negation or comment semantics in v1. `--all` disables payload excludes for previews,
 loads/copies, stdin loads, and inline bundles; it does not change source discovery.
 
+### History record
+
+One JSONL line appended per **successful** load (inject or copy) to the machine-local
+usage log at `${XDG_STATE_HOME:-~/.local/state}/skl/history.jsonl`:
+`schema_version`, ISO-8601 UTC `ts`, `source`, `name`, `mode` (`inject`/`copy`),
+`target` (pane id, or null for copies), `submit`. Best-effort - a failed write warns
+on stderr and never fails the load. `skl history` summarises the file into
+`count  source/name  last <date>` rows. `SKL_HISTORY_FILE` overrides the path (test
+seam). See ADR-0007.
+
 ## Resolved decisions
 
 - **Source paths**: configurable, multiple. Default = the three curation-home sources
@@ -142,6 +152,11 @@ loads/copies, stdin loads, and inline bundles; it does not change source discove
 - **Frontmatter parsing**: `Bun.YAML.parse` (native in Bun 1.3.14, zero-dep) on the
   extracted `---` fenced block; validate `name`/`description` are strings at the boundary
   → `Result`. No hand-rolled YAML, no Zod.
+- **Usage history**: every successful load appends a history record (see glossary) to
+  `~/.local/state/skl/history.jsonl` - machine-local, deliberately dotfiles-untracked
+  telemetry for catalogue curation. Readout via `skl history` (needs no config or
+  discovery). Not fzf `--history` (records typed queries, not selections, and misses
+  CLI/`--stdin` loads). ADR-0007.
 
 ### Source
 

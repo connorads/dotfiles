@@ -13,7 +13,9 @@
 // is blocked otherwise) — `/sandbox` or dangerouslyDisableSandbox.
 
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";
-import { resolve } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { capturePane } from "../src/shell/tmux.ts";
 
 const tmuxAvailable = (): boolean => {
@@ -54,9 +56,15 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
 
     // Stage 2: pipe two of those lines into `skl load --stdin` → real injection.
     const selected = lines.filter((l) => /^repo\/(alpha|beta)\b/.test(l)).join("\n");
+    // Divert usage-history logging so the test never pollutes the real
+    // ~/.local/state/skl/history.jsonl with fixture loads.
+    const historyFile = join(mkdtempSync(join(tmpdir(), "skl-pipe-hist-")), "history.jsonl");
     const load = Bun.spawnSync(
       [process.execPath, CLI, "load", "--stdin", "--target", pane, "--path", REPO],
-      { stdin: new TextEncoder().encode(selected) },
+      {
+        stdin: new TextEncoder().encode(selected),
+        env: { ...process.env, SKL_HISTORY_FILE: historyFile },
+      },
     );
     expect(load.exitCode).toBe(0);
     await sleep(200);
