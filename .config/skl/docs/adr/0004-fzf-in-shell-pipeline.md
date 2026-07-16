@@ -3,11 +3,11 @@
 The picker is a shell script (`bin/pick`, symlinked as `~/.local/bin/skl-pick`)
 that pipes the (TTY-free) `skl` CLI through fzf:
 
-```
+```text
 skl list | fzf --multi --preview 'skl preview {1}' | skl load --stdin --target <pane>
 ```
 
-The tmux keybind (`prefix + A`) runs `skl-pick #{pane_id}` in a `display-popup`.
+The tmux keybind (`prefix + Alt+s`) runs `skl-pick #{pane_id}` in a `display-popup`.
 fzf runs in the popup's **real terminal**; the `skl` binary never spawns fzf.
 
 ## The dead-end this supersedes

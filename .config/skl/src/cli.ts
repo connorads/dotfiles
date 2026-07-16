@@ -26,7 +26,7 @@ import { copyToClipboard, injectPointer, resolveTarget } from "./shell/tmux.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
 
-The picker is the \`skl-pick\` shell glue (bound to tmux prefix + A), which
+The picker is the \`skl-pick\` shell glue (bound to tmux prefix + Alt+s), which
 composes this CLI with fzf:
 
   skl list | fzf --multi --preview 'skl preview {1}' | skl load --stdin --target <pane>

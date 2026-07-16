@@ -11,7 +11,7 @@
 # system clipboard instead (`skl load --copy`).
 #
 # Usage: skl-pick [target-pane]   (target forwarded to `skl load`). Bound to
-# tmux prefix + A.
+# tmux prefix + Alt+s.
 emulate -L zsh
 
 # Resolve `skl` even in tmux's non-interactive popup shell (fzf is inherited
