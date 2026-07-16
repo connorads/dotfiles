@@ -51,8 +51,15 @@ even stale — and most skills are usually already current. So **discover in one
 cd ~/.config/skills/vendor
 jq -r '.skills | to_entries[] | "\(.key)\t\(.value.source)"' skills-lock.json   # sources
 skills update -p -y                                                             # batch discover
+skill-patch apply                                                               # re-apply local patches the refresh clobbered
 dotfiles status --short -- .agents/skills skills-lock.json                      # what changed
 ```
+
+`skill-patch apply` runs **before** reading diffs so they show pure upstream drift, not
+patch churn. Non-zero exit means a patch no longer matches (upstream drifted): re-derive
+the named hunk in `patches/<name>/` during the diff review (procedure in
+`patches/README.md`) and stage the patch dir together with the skill. The hk
+`vendored-skill-patches` step blocks any commit that stages a clobbered skill.
 
 `skills update` prints `Failed to update <name>` for any skill it couldn't refresh. That's
 usually an **upstream removal/rename**, not a transient error — confirm by checking the
@@ -152,9 +159,6 @@ an un-reviewed skill silently committed is the exact failure this skill prevents
 - Authored skills (`public`/`personal`) are edited in place, not touched here — this skill
   only refreshes the CLI-managed `vendor/` tier and the global `playwright-cli`.
 - **Several vendored SKILL.mds carry local patches** stripping upstream's runtime
-  self-install directives (see `~/.config/skills/AGENTS.md` caveats for the list:
-  `hyperframes` router sections, the 11 hyperframes workflow "keep this skill fresh"
-  blockquotes, and the two next.js adoption skills' `npx skills add next-dev-loop`
-  directives). A refresh clobbers them — after reviewing those skills' diffs, re-apply
-  (grep the diff for removed `LOCAL PATCH (connorads dotfiles)` markers; the diff
-  re-adding self-install text is the reminder).
+  self-install directives. The declarative definitions in
+  `~/.config/skills/vendor/patches/` are the source of truth; `skill-patch apply` in
+  step 2 re-applies them and `skill-patch check` verifies (hk enforces it at commit).
