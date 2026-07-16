@@ -759,13 +759,18 @@ async function installAgentTools(sandbox: Sandbox, onLog: (msg: string) => void)
 
 /**
  * Codex CLI ships a vendored Rust binary via platform-specific optional
- * dependencies (e.g. `@openai/codex-linux-x64`). pnpm running on the bootstrap
- * host (Mac arm64 typically) installs only host-matching optional deps, so the
- * sandbox often comes up without the linux binary it needs.
+ * dependencies (e.g. `@openai/codex-linux-x64` → `@openai/codex@<ver>-linux-x64`).
+ * pnpm running on the bootstrap host (Mac arm64 typically) installs only
+ * host-matching optional deps, so the sandbox often comes up without the
+ * linux binary it needs.
  *
  * We resolve the SDK version, force-install the linux variant matching the
- * sandbox arch via `npm pack`, and place its `vendor/<triple>/codex/` tree
- * where the bin script (`bin/codex.js`) looks it up via `require.resolve`.
+ * sandbox arch via `npm pack`, and place its `vendor/<triple>/` tree where
+ * `bin/codex.js` looks it up via `require.resolve("@openai/codex-linux-*")`.
+ *
+ * Layout note (Codex ≥0.144): the Mach-O/ELF lives at
+ * `vendor/<triple>/bin/codex` (older releases used `vendor/<triple>/codex/codex`).
+ * We accept either path so a mid-flight pin doesn't break bootstrap.
  *
  * Codex linux binaries are statically linked musl, so they run on glibc
  * sandboxes too — no libc detection needed.
@@ -778,6 +783,7 @@ async function ensureCodexNativeBinary(
 set -e
 cd ${DEEPSEC_DIR}
 SDK_VER=""
+CODEX_PKG_DIR=""
 for CANDIDATE in \\
   ./node_modules/@openai/codex \\
   ./packages/processor/node_modules/@openai/codex \\
@@ -785,55 +791,85 @@ for CANDIDATE in \\
   ./node_modules/.pnpm/@openai+codex@*/node_modules/@openai/codex; do
   for DIR in $CANDIDATE; do
     if [ -f "$DIR/package.json" ]; then
-      SDK_VER=$(node -p "require('$DIR/package.json').version" 2>/dev/null)
-      break 2
+      VER=$(node -p "require('$DIR/package.json').version" 2>/dev/null || true)
+      # Skip platform-suffixed packages (e.g. 0.144.0-darwin-arm64).
+      case "\$VER" in
+        *-linux-*|*-darwin-*|*-win32-*) continue ;;
+      esac
+      if [ -n "\$VER" ]; then
+        SDK_VER="\$VER"
+        # Absolute path — the alias step below runs after cd'ing elsewhere.
+        CODEX_PKG_DIR="\$(cd "\$DIR" && pwd)"
+        break 2
+      fi
     fi
   done
 done
-if [ -z "$SDK_VER" ]; then
+if [ -z "\$SDK_VER" ]; then
   echo "Could not detect Codex CLI version"
   exit 1
 fi
-echo "Detected Codex CLI version: $SDK_VER"
+echo "Detected Codex CLI version: \$SDK_VER"
 
 # Map sandbox arch to platform package + vendor triple
 UNAME_M=$(uname -m)
-case "$UNAME_M" in
+case "\$UNAME_M" in
   x86_64) ARCH=x64; TRIPLE=x86_64-unknown-linux-musl ;;
   aarch64|arm64) ARCH=arm64; TRIPLE=aarch64-unknown-linux-musl ;;
-  *) echo "Unsupported arch: $UNAME_M"; exit 1 ;;
+  *) echo "Unsupported arch: \$UNAME_M"; exit 1 ;;
 esac
-echo "  Sandbox arch: $UNAME_M (linux-\${ARCH}, $TRIPLE)"
+echo "  Sandbox arch: \$UNAME_M (linux-\${ARCH}, \$TRIPLE)"
 
 # The platform package's actual published version is "<sdk_ver>-linux-<arch>".
-PLATFORM_PKG="@openai/codex-linux-\${ARCH}"
+# pnpm aliases it as @openai/codex-linux-<arch> → @openai/codex@<ver>-linux-<arch>.
+PLATFORM_ALIAS="@openai/codex-linux-\${ARCH}"
 PLATFORM_VER="\${SDK_VER}-linux-\${ARCH}"
+PNPM_STORE_KEY="@openai+codex@\${PLATFORM_VER}"
+STORE_DEST="${DEEPSEC_DIR}/node_modules/.pnpm/\${PNPM_STORE_KEY}/node_modules/@openai/codex"
 
 echo "  Fetching @openai/codex@\${PLATFORM_VER} (platform binary)..."
 rm -rf /tmp/codex-native-fetch && mkdir -p /tmp/codex-native-fetch
 cd /tmp/codex-native-fetch
 npm pack "@openai/codex@\${PLATFORM_VER}" --silent 2>&1 | tail -1
 tar -xzf ./*.tgz
-if [ ! -f "package/vendor/\${TRIPLE}/codex/codex" ]; then
-  echo "  ERROR: vendor/\${TRIPLE}/codex/codex not present in tarball"
-  ls -la package/vendor/ 2>/dev/null || true
+
+# Codex ≥0.144: vendor/<triple>/bin/codex
+# Codex ≤0.130-ish: vendor/<triple>/codex/codex
+BIN_REL=""
+if [ -f "package/vendor/\${TRIPLE}/bin/codex" ]; then
+  BIN_REL="vendor/\${TRIPLE}/bin/codex"
+elif [ -f "package/vendor/\${TRIPLE}/codex/codex" ]; then
+  BIN_REL="vendor/\${TRIPLE}/codex/codex"
+else
+  echo "  ERROR: neither vendor/\${TRIPLE}/bin/codex nor vendor/\${TRIPLE}/codex/codex present"
+  ls -la package/vendor/\${TRIPLE}/ 2>/dev/null || ls -la package/vendor/ 2>/dev/null || true
   exit 1
 fi
-SIZE=$(stat -c%s "package/vendor/\${TRIPLE}/codex/codex" 2>/dev/null || echo "?")
+SIZE=$(stat -c%s "package/\${BIN_REL}" 2>/dev/null || echo "?")
+echo "  Found binary at \${BIN_REL} (\${SIZE} bytes)"
 
-# pnpm stores platform packages under the alias name — drop the binary at every
-# place pnpm might have created (or expects) the vendor tree.
-PNPM_KEY="@openai+codex-linux-\${ARCH}@\${PLATFORM_VER}"
-DEST_PATHS=(
-  "${DEEPSEC_DIR}/node_modules/.pnpm/\${PNPM_KEY}/node_modules/\${PLATFORM_PKG}"
-  "${DEEPSEC_DIR}/node_modules/\${PLATFORM_PKG}"
+# Materialize the platform package where pnpm would have put it, then alias
+# it as @openai/codex-linux-<arch> next to the host @openai/codex package so
+# bin/codex.js's require.resolve(alias) succeeds inside the sandbox.
+mkdir -p "\${STORE_DEST}"
+rm -rf "\${STORE_DEST}/vendor"
+cp -a package/vendor "\${STORE_DEST}/vendor"
+cp package/package.json "\${STORE_DEST}/package.json"
+chmod +x "\${STORE_DEST}/\${BIN_REL}"
+echo "    → \${STORE_DEST}"
+
+# Alias symlink targets (require.resolve from bin/codex.js walks these).
+ALIAS_TARGETS=(
+  "${DEEPSEC_DIR}/node_modules/.pnpm/@openai+codex@\${SDK_VER}/node_modules/\${PLATFORM_ALIAS}"
+  "${DEEPSEC_DIR}/node_modules/\${PLATFORM_ALIAS}"
 )
-for DEST in "\${DEST_PATHS[@]}"; do
-  mkdir -p "\${DEST}/vendor/\${TRIPLE}/codex"
-  cp "package/vendor/\${TRIPLE}/codex/codex" "\${DEST}/vendor/\${TRIPLE}/codex/codex"
-  chmod +x "\${DEST}/vendor/\${TRIPLE}/codex/codex"
-  cp package/package.json "\${DEST}/package.json"
-  echo "    → \${DEST} (\${SIZE} bytes)"
+if [ -n "\$CODEX_PKG_DIR" ]; then
+  ALIAS_TARGETS+=("\${CODEX_PKG_DIR}/node_modules/\${PLATFORM_ALIAS}")
+fi
+for ALIAS in "\${ALIAS_TARGETS[@]}"; do
+  mkdir -p "\$(dirname "\$ALIAS")"
+  ln -sfn "\${STORE_DEST}" "\$ALIAS"
+  echo "    → alias \$ALIAS"
 done
 rm -rf /tmp/codex-native-fetch
 `;
@@ -862,7 +898,8 @@ rm -rf /tmp/codex-native-fetch
 async function writeCodexConfig(sandbox: Sandbox, onLog: (msg: string) => void): Promise<void> {
   const configToml = `# Written by deepsec sandbox bootstrap. Disables non-AI egress
 # (analytics, update checks, OTEL exporters) so the agent stays within
-# the sandbox firewall allowlist.
+# the sandbox firewall allowlist. Also pins plugins off — Codex 0.143+
+# enables remote_plugin by default, which we don't want in workers.
 check_for_update_on_startup = false
 
 [analytics]
@@ -871,6 +908,10 @@ enabled = false
 [otel]
 metrics_exporter = "none"
 trace_exporter = "none"
+
+[features]
+plugins = false
+remote_plugin = false
 `;
   const mkdir = await sandbox.runCommand({
     cmd: "mkdir",

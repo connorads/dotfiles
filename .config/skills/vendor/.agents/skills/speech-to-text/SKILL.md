@@ -98,6 +98,19 @@ curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
   -F "use_speaker_library=true"
 ```
 
+## Multichannel Audio
+
+Use `use_multi_channel=true` when each speaker is isolated on a separate audio channel. By default, the API returns one transcript per channel under `transcripts`; set `multichannel_output_style="combined"` to receive one transcript merged by timestamp, with `channel_index` on each word.
+
+```python
+result = client.speech_to_text.convert(
+    file=audio_file,
+    model_id="scribe_v2",
+    use_multi_channel=True,
+    multichannel_output_style="combined",
+)
+```
+
 ## Keyterm Prompting
 
 Help the model recognize specific words it might otherwise mishear - product names, technical jargon, or unusual spellings (up to 100 terms):
@@ -222,6 +235,7 @@ function TranscriptionComponent() {
     commitStrategy: CommitStrategy.VAD, // Auto-commit on silence for mic input
     keyterms: ["ElevenLabs", "Scribe"],
     noVerbatim: true,
+    includeLanguageDetection: true,
     onPartialTranscript: (data) => console.log("Partial:", data.text),
     onCommittedTranscript: (data) => setTranscript((prev) => prev + data.text),
   });
@@ -246,6 +260,9 @@ function TranscriptionComponent() {
 |----------|-------------|
 | **Manual** | You call `commit()` when ready - use for file processing or when you control the audio segments |
 | **VAD** | Voice Activity Detection auto-commits when silence is detected - use for live microphone input |
+
+Set `includeLanguageDetection: true` to receive the detected language code on committed transcript
+events that include timestamps.
 
 ```typescript
 // React: set commitStrategy on the hook (recommended for mic input)
