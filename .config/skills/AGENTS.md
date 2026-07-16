@@ -205,6 +205,13 @@ and diff-review clones against the prior vetted copy before trusting them.
 
 ## Caveats
 
+- The skills CLI treats the vendor dir as a Claude Code project too: `skills update -p`
+  fans every project skill into `vendor/.claude/skills/<name>` as symlinks to
+  `.agents/skills/<name>`. Machine-generated, regenerated on every update, and gitignored
+  (`/.config/skills/vendor/.claude/` in `~/.gitignore`) — the tracked copy is
+  `.agents/skills/`. Only effect: those skills autoload for agent sessions started *inside*
+  the vendor dir, which is not a working dir.
+
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them, and they are **absent from `skills-lock.json` by design**. These two —
   `govuk-style`, `ponytail` — live one level up at `vendor/<name>/` (depth 4), not under
