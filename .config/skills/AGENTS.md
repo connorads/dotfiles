@@ -207,16 +207,13 @@ and diff-review clones against the prior vetted copy before trusting them.
 
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
   dotfiles)` in the file) stripping upstream directives that make agents self-install or
-  refresh skills at task time — which bypasses pin-and-review vendoring. Patched:
-  `hyperframes` (router "After picking"/"Keeping skills current" sections → pointer to the
-  locally vendored full set; all 19 upstream skills are vendored), the 11 hyperframes
-  workflow skills ("keep this skill fresh — run silently" blockquote removed), and
-  `next-cache-components-adoption` / `next-partial-prefetching-adoption` (task-time
-  `npx skills add next-dev-loop`, incl. "install without asking" → pointer to the vendored
-  `next-dev-loop`). `skills update` clobbers these patches — the update-vendored-skills
-  flow re-applies them (the diff makes the regression obvious). Runtime guards in
-  `.zshrc`: `HYPERFRAMES_NO_TELEMETRY=1` (PostHog off, gates the hyperframes-cli
-  post-render feedback directive) and `HYPERFRAMES_SKIP_SKILLS=1` (stops
+  refresh skills at task time — which bypasses pin-and-review vendoring. The declarative
+  patch definitions in `vendor/patches/` are the **source of truth** (format spec +
+  procedures in its README); `skill-patch apply|check` re-applies/verifies them, the
+  update-vendored-skills flow runs apply after every refresh, and the hk
+  `vendored-skill-patches` step blocks commits that stage a clobbered skill. Runtime
+  guards in `.zshrc`: `HYPERFRAMES_NO_TELEMETRY=1` (PostHog off, gates the
+  hyperframes-cli post-render feedback directive) and `HYPERFRAMES_SKIP_SKILLS=1` (stops
   `npx hyperframes init` refreshing installed skills at scaffold time).
 
 - The skills CLI treats the vendor dir as a Claude Code project too: `skills update -p`
@@ -235,7 +232,7 @@ and diff-review clones against the prior vetted copy before trusting them.
   stay nested under `.agents/skills/`. List the manually-vendored (un-locked) ones:
 
   ```bash
-  comm -23 <(find ~/.config/skills/vendor -mindepth 1 -maxdepth 1 -type d ! -name .agents -exec basename {} \; | sort) \
+  comm -23 <(find ~/.config/skills/vendor -mindepth 1 -maxdepth 1 -type d ! -name .agents ! -name patches -exec basename {} \; | sort) \
            <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
   ```
 
