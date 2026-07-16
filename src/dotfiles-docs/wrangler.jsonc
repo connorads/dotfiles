@@ -1,0 +1,11 @@
+// Assets-only Worker: no `main`, no adapter, no nodejs_compat. Starlight
+// builds a fully static site; Cloudflare serves ./dist as static assets.
+// Starlight emits dist/404.html, which not_found_handling serves on a miss.
+{
+  "name": "dotfiles-docs",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}
