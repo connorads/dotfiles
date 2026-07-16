@@ -64,6 +64,28 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
 }
 
 # bats test_tags=integration
+@test "unzooms a zoomed window first (new-pane while zoomed segfaults tmux 3.7b, tmux/tmux#5327)" {
+  TMUX_BIN="$(command -v tmux || true)"
+  [ -n "$TMUX_BIN" ] || skip "tmux not installed"
+  SOCK="flt_${BATS_TEST_NUMBER}_$$"
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24 'exec sleep 60'
+  tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
+  tx list-commands | grep -q '^new-pane' || {
+    tx kill-server
+    skip "no floating-pane support in this tmux"
+  }
+  tx split-window -d 'exec sleep 60'
+  tx resize-pane -Z
+  TMUX="$(tx display -p '#{socket_path}'),$(tx display -p '#{pid}'),0"
+  run -0 env TMUX="$TMUX" zsh --no-rcs "$FLT" tr 'sleep 60'
+  run -0 tx display -p '#{window_zoomed_flag}' # server survived and unzoomed
+  [ "$output" = "0" ]
+  run -0 tx list-panes -F '#{pane_floating_flag}'
+  [[ "$output" == *"1"* ]]
+  tx kill-server 2>/dev/null || true
+}
+
+# bats test_tags=integration
 @test "creates a real floating pane on a private server" {
   TMUX_BIN="$(command -v tmux || true)"
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
