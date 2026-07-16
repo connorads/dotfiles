@@ -73,11 +73,7 @@ In preference order:
 
 1. **[`next-dev-loop`](https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop) — strongly preferred.** Cross-checks `/_next/mcp` against the live browser via `agent-browser` and surfaces both compile and runtime issues in one pass. The diagnostics (React tree, suspense boundaries, console + network) are richer than poking at `next dev` by hand.
 
-   <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time
-        `npx skills add .../next-dev-loop` (and, below, to install it without
-        asking in non-interactive runs). next-dev-loop is vendored alongside
-        this skill instead; refreshes go through the vendored-skills review
-        flow, not runtime installs. -->
+   <!-- LOCAL PATCH (connorads dotfiles): upstream instructs a task-time `npx skills add .../next-dev-loop` (and, below, to install it without asking in non-interactive runs); next-dev-loop is vendored alongside this skill instead, and refreshes go through the vendored-skills review flow, not runtime installs. -->
    `next-dev-loop` is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before starting the loop. Don't wait until you hit something `next dev` alone can't explain.
 
    The skill requires `agent-browser >= 0.27.0` and walks you through it.

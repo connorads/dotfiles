@@ -79,12 +79,7 @@ Routing needs to know **what the video is about** — its input and subject. If 
 
 ## After picking — workflow skills are vendored locally
 
-<!-- LOCAL PATCH (connorads dotfiles): upstream's version of this section and
-     "Keeping skills current" instruct agents to self-install/refresh skills at
-     task time (`npx hyperframes skills update`, `npx skills add`), which
-     bypasses this repo's pin-and-review vendoring. The full upstream skill set
-     is vendored alongside this router instead; refreshes go through the
-     update-vendored-skills flow, which re-applies this patch. -->
+<!-- LOCAL PATCH (connorads dotfiles): upstream's version of this section and "Keeping skills current" instruct agents to self-install/refresh skills at task time (`npx hyperframes skills update`, `npx skills add`), which bypasses this repo's pin-and-review vendoring; the full upstream skill set is vendored alongside this router instead, and refreshes go through the update-vendored-skills flow, which re-applies this patch. -->
 
 Every workflow and domain skill in the capability map is vendored alongside this router (`../<workflow-name>/SKILL.md`). Read it from there and continue. Do **not** run `npx hyperframes skills update` or `npx skills add` — skill refreshes here go through the dotfiles vendored-skills review flow, not runtime installs. If a referenced skill is missing, surface that to the user instead of installing it.
 

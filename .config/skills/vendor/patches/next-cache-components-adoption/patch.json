@@ -1,0 +1,6 @@
+{
+  "reason": "upstream instructs a task-time `npx skills add .../next-dev-loop` (and, below, to install it without asking in non-interactive runs); next-dev-loop is vendored alongside this skill instead, and refreshes go through the vendored-skills review flow, not runtime installs.",
+  "files": [
+    ".agents/skills/next-cache-components-adoption/SKILL.md"
+  ]
+}

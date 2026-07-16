@@ -1,0 +1,6 @@
+{
+  "reason": "upstream's version of this section and \"Keeping skills current\" instruct agents to self-install/refresh skills at task time (`npx hyperframes skills update`, `npx skills add`), which bypasses this repo's pin-and-review vendoring; the full upstream skill set is vendored alongside this router instead, and refreshes go through the update-vendored-skills flow, which re-applies this patch.",
+  "files": [
+    ".agents/skills/hyperframes/SKILL.md"
+  ]
+}
