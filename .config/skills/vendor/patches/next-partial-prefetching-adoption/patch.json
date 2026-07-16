@@ -1,0 +1,6 @@
+{
+  "reason": "upstream instructs a task-time `npx skills add .../next-dev-loop`; it is vendored alongside this skill instead.",
+  "files": [
+    ".agents/skills/next-partial-prefetching-adoption/SKILL.md"
+  ]
+}

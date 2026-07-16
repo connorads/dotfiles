@@ -1,0 +1,1 @@
+   The only legitimate reason to skip the dev loop is a real technical blocker: no network, no npm, read-only filesystem, a stated no-new-deps policy, or a webpack-only dev script. If you skip, name the specific blocker in your final report.

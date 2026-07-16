@@ -1,0 +1,21 @@
+{
+  "reason": "upstream's \"keep this skill fresh - run silently, don't ask\" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs.",
+  "files": [
+    ".agents/skills/{{skill}}/SKILL.md"
+  ],
+  "vars": {
+    "skill": [
+      "embedded-captions",
+      "faceless-explainer",
+      "figma",
+      "general-video",
+      "motion-graphics",
+      "music-to-video",
+      "pr-to-video",
+      "product-launch-video",
+      "remotion-to-hyperframes",
+      "slideshow",
+      "talking-head-recut"
+    ]
+  }
+}
