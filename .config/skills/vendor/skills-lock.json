@@ -132,7 +132,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/hyperframes/SKILL.md",
-      "computedHash": "5bf0372dfef8aab1085816b3c733f860d2500fa8197d14d208e84464aa0d2b3c"
+      "computedHash": "7ddbb928a3674e5e1821b13055e784f261edcd6ff9bf61e5f1fdffaab307a58b"
     },
     "hyperframes-animation": {
       "source": "heygen-com/hyperframes",
@@ -144,7 +144,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/hyperframes-cli/SKILL.md",
-      "computedHash": "3e7028e6dda15dd6a0ddc441298863d3e77448073b219bd19e7777056eec8650"
+      "computedHash": "61b7c5f97206eb4f8282a6804b54a25707df972c5ca7e6cfa055cc05bcb7d8c3"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
@@ -180,7 +180,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/media-use/SKILL.md",
-      "computedHash": "521b3d25a3c454f5b3940778c0c55bc92622c2eb3a392f79fa8f7d5c47ec97ef"
+      "computedHash": "38e490109c859658664c4f23c5fb84da982e35d06db89bd078e688de52c216f1"
     },
     "minimalist-ui": {
       "source": "leonxlnx/taste-skill",
