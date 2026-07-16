@@ -234,6 +234,34 @@ Desktop/granting hosts use normal `gh auth` keyring auth. `gh-gate` controls `gh
 only where `~/.config/gh-gate/readonly-token` or `active-token` exists; config
 alone does not mean read-only.
 
+### Agent command history (atuin)
+
+Shell commands run by coding agents are recorded in atuin with `--author <agent>`:
+Claude Code and Codex via hook entries (`atuin hook claude-code|codex`) in
+[.claude/settings.json](./.claude/settings.json) / [.codex/hooks.json](./.codex/hooks.json),
+pi via [.pi/agent/extensions/atuin.ts](./.pi/agent/extensions/atuin.ts). All three
+configs are dotfiles-tracked, so machines inherit on pull; atuin ≥18.17 (nix-owned)
+is required. Interactive Ctrl+R stays user-only (`$all-user` default filter).
+
+```bash
+atuin search --author '$all-agent' -- 'wt-'    # what agents actually run
+atuin search --author claude-code --format '{intent} | {command}' -- ''  # Bash description lands as intent
+```
+
+Caveats:
+
+- `atuin stats` has no author filter and counts agent entries (verified on 18.17) -
+  filter usage analyses via `atuin search --author` instead.
+- Codex requires one-time per-machine hook trust (`/hooks` in the codex TUI);
+  trust state lives in `.codex/config.toml` and is machine-local (clean filter
+  strips it). Untrusted hooks are silently skipped - no capture until trusted.
+- Codex has no `PostToolUseFailure` event; that entry in `hooks.json` is inert
+  there and exists so `atuin hook install codex` stays idempotent.
+- `atuin hook install <agent>` rewrites the whole config with its own formatting
+  even when every entry already exists - hand-edit tracked files instead.
+- The pi extension is version-coupled to the atuin binary: after major atuin
+  upgrades, re-run `atuin hook install pi` and diff.
+
 ## Supply Chain & Update Strategy
 
 ### Dependency ownership: Nix, mise, Homebrew

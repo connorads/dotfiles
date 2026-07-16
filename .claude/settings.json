@@ -935,6 +935,15 @@
             "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "atuin hook claude-code"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -944,6 +953,26 @@
           {
             "type": "command",
             "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "atuin hook claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "atuin hook claude-code"
           }
         ]
       }
