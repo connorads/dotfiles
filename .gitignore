@@ -142,6 +142,11 @@
 /src/raycast/**/*.js.map
 /src/raycast/**/*.tsbuildinfo
 
+# Dotfiles docs site (Astro Starlight; served at dotfiles.connoradams.co.uk).
+# The project's own .gitignore handles node_modules/dist/.astro.
+!/src/dotfiles-docs/
+!/src/dotfiles-docs/**
+
 !/.pi/
 /.pi/**
 !/.pi/agent/
