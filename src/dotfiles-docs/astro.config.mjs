@@ -39,6 +39,7 @@ export default defineConfig({
 				{
 					label: 'Working with agents',
 					items: [
+						{ slug: 'agents/research-and-discuss' },
 						{ slug: 'agents/fork-the-conversation' },
 						{ slug: 'agents/which-agent-is-ready' },
 						{ slug: 'agents/editors-for-the-agent-age' },
