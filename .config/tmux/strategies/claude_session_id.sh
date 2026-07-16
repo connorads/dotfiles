@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # claude_session_id.sh: tmux-resurrect strategy for Claude Code
-# Resumes the specific session that was running, falling back to --continue.
+# Fidelity restore: rebuilds the saved pane argv ($1) with a fresh
+# --resume <id> so flags like --dangerously-skip-permissions and
+# --append-system-prompt-file survive; falls back to --continue.
 # Reads session IDs from the companion file written by resurrect-save-sessions.sh.
 
+SAVED_COMMAND="$1"
 DIRECTORY="$2"
 SESSION_FILE="$HOME/.local/share/tmux/resurrect/session_ids.json"
+
+# shellcheck source=../scripts/lib/resurrect-argv.sh disable=SC1091
+[ -f "$HOME/.config/tmux/scripts/lib/resurrect-argv.sh" ] &&
+	. "$HOME/.config/tmux/scripts/lib/resurrect-argv.sh"
 
 main() {
 	local session_id=""
@@ -19,7 +26,14 @@ main() {
 		fi
 	fi
 
-	if [ -n "$session_id" ]; then
+	local rebuilt=""
+	if command -v resurrect_argv_claude &>/dev/null; then
+		rebuilt=$(resurrect_argv_claude "$SAVED_COMMAND" "$session_id") || rebuilt=""
+	fi
+
+	if [ -n "$rebuilt" ]; then
+		echo "$rebuilt"
+	elif [ -n "$session_id" ]; then
 		echo "claude --resume $session_id"
 	else
 		echo "claude --continue"

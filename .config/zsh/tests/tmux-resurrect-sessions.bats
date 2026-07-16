@@ -8,6 +8,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 REAL_SAVE_SESSIONS="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-save-sessions.sh"
 REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
+REAL_ARGV_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/resurrect-argv.sh"
 REAL_CLAUDE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/claude_session_id.sh"
 REAL_CODEX_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/codex_session_id.sh"
 REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_session_id.sh"
@@ -22,6 +23,7 @@ setup() {
   mkdir -p "$HOME/.config/tmux/scripts/lib" "$HOME/.config/tmux/strategies" "$HOME/.local/share/tmux/resurrect" "$HOME/.claude/sessions"
   cp "$REAL_SAVE_SESSIONS" "$SAVE_SESSIONS"
   cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/agent-session.sh"
+  cp "$REAL_ARGV_LIB" "$HOME/.config/tmux/scripts/lib/resurrect-argv.sh"
   cp "$REAL_CLAUDE_STRATEGY" "$CLAUDE_STRATEGY"
   cp "$REAL_CODEX_STRATEGY" "$CODEX_STRATEGY"
   cp "$REAL_OPENCODE_STRATEGY" "$OPENCODE_STRATEGY"
@@ -101,7 +103,82 @@ fi
 exit 1
 EOF
 
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions" "/Users/connorads"
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions --resume session-two" ]
+}
+
+@test "strategy strips stale resume state before appending the new session" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.2": {"dir": "/Users/connorads", "claude": "session-two"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.2\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions --resume 4626672f-1111-2222-3333-444444444444" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude -c --dangerously-skip-permissions --resume=old-session -r" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
+}
+
+@test "strategy keeps flags on --continue fallback" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {}
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.2\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --model fable --dangerously-skip-permissions" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "claude --model fable --dangerously-skip-permissions --continue" ]
+}
+
+@test "strategy falls back to bare resume when argv0 is not claude" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.2": {"dir": "/Users/connorads", "claude": "session-two"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.2\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "some-wrapper claude --dangerously-skip-permissions" "/Users/connorads"
 
   [ "$status" -eq 0 ]
   [ "$output" = "claude --resume session-two" ]
@@ -224,6 +301,62 @@ EOF
 EOF
 
   run "$REAL_BASH" "$CODEX_STRATEGY" "codex" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "codex resume --last" ]
+}
+
+@test "Codex strategy preserves saved flags around resume" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.1": {"dir": "/Users/connorads", "codex": "codex-one"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CODEX_STRATEGY" "codex --dangerously-bypass-approvals-and-sandbox" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "codex resume codex-one --dangerously-bypass-approvals-and-sandbox" ]
+
+  run "$REAL_BASH" "$CODEX_STRATEGY" "codex resume 11111111-2222-3333-4444-555555555555 --model gpt-5" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "codex resume codex-one --model gpt-5" ]
+}
+
+@test "Codex strategy keeps flags on --last fallback" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {}
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CODEX_STRATEGY" "codex --dangerously-bypass-approvals-and-sandbox" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "codex resume --last --dangerously-bypass-approvals-and-sandbox" ]
+
+  run "$REAL_BASH" "$CODEX_STRATEGY" "codex resume --last" "/Users/connorads"
 
   [ "$status" -eq 0 ]
   [ "$output" = "codex resume --last" ]
