@@ -7,10 +7,15 @@
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] }
     ],
     "PreToolUse": [
-      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] },
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
     ],
     "PostToolUse": [
-      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] },
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
+    ],
+    "PostToolUseFailure": [
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
     ],
     "PermissionRequest": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" blocked codex || true", "timeout": 10 } ] }
