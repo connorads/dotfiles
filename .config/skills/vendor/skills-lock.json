@@ -45,16 +45,16 @@
       "computedHash": "31d149a480eaa68c11e32f5ee77f0fd0b98a906834d531d881d502352edd0b8e"
     },
     "competitor-analysis": {
-      "source": "aaron-he-zhu/seo-geo-claude-skills",
+      "source": "aaron-he-zhu/aaron-marketing-skills",
       "sourceType": "github",
-      "skillPath": "research/competitor-analysis/SKILL.md",
-      "computedHash": "ee00b7003c585de5655f6026f20dc14a76a1d1c91087af2bb5fc02f8592be608"
+      "skillPath": "seo-geo/survey/competitor-analysis/SKILL.md",
+      "computedHash": "3298d5c13cbdfe468e6167f3e0e2bb39afa38303133ed367896d22c77f58b554"
     },
     "content-gap-analysis": {
-      "source": "aaron-he-zhu/seo-geo-claude-skills",
+      "source": "aaron-he-zhu/aaron-marketing-skills",
       "sourceType": "github",
-      "skillPath": "research/content-gap-analysis/SKILL.md",
-      "computedHash": "89da7d194feafdd5b626f1165041904ee607efdef89eab30a3de1b9249d496a8"
+      "skillPath": "seo-geo/survey/content-gap-analysis/SKILL.md",
+      "computedHash": "8728e4fb8fc7815b7d1215d8d5364e8afd989f88cad0304606d1e6945e907979"
     },
     "deepsec": {
       "source": "vercel-labs/deepsec",
@@ -254,6 +254,30 @@
       "skillPath": "skills/music-to-video/SKILL.md",
       "computedHash": "7ca2624c4526b0962a45ba39ada1a7b362b5e1f982acedfcc344bdbc947a9719"
     },
+    "next-cache-components-adoption": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-cache-components-adoption/SKILL.md",
+      "computedHash": "d4371ab1c921704f8b855463deef68502118e18a98d60f8b45619d9910f94fee"
+    },
+    "next-cache-components-optimizer": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
+      "computedHash": "b8d757a1fe10ebe7b10de1d5ee83f9bcdbd1de1e1147efc68cf249377f471067"
+    },
+    "next-dev-loop": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-dev-loop/SKILL.md",
+      "computedHash": "aad97b32ba6efd31e92d063ec77120a694fe0d4a9401daf9af4c205cd5e21b07"
+    },
+    "next-partial-prefetching-adoption": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
+      "computedHash": "45fd0e5f600e946cfcca44bd47d89619dc23c21c126734ff7d43d1e55eb39ad8"
+    },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
@@ -293,8 +317,8 @@
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
-      "skillPath": "skills/remotion/SKILL.md",
-      "computedHash": "14e4caa85e5c91d629e53397f94c9e8bb81460e93cafa31b278d14f5e9f640b7"
+      "skillPath": "skills/remotion-best-practices/SKILL.md",
+      "computedHash": "3c92fd961e11ea0be692138a9ba7cccaea4ec509d2e462d7e170a5b1238ab112"
     },
     "remotion-to-hyperframes": {
       "source": "heygen-com/hyperframes",
@@ -391,24 +415,6 @@
       "sourceType": "github",
       "skillPath": "skills/web-design-guidelines/SKILL.md",
       "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
-    },
-    "next-best-practices": {
-      "source": "vercel-labs/next-skills",
-      "sourceType": "github",
-      "skillPath": "skills/next-best-practices/SKILL.md",
-      "computedHash": "923cf68cb8f4ce917d81744b78b93ff586d3146b6c96dacfef797237b4897f16"
-    },
-    "next-cache-components": {
-      "source": "vercel-labs/next-skills",
-      "sourceType": "github",
-      "skillPath": "skills/next-cache-components/SKILL.md",
-      "computedHash": "a94b83ddcd2ff1c30722577f693b1bfe32f2e1a83abdd6c08c2d6cc6753b53c8"
-    },
-    "next-upgrade": {
-      "source": "vercel-labs/next-skills",
-      "sourceType": "github",
-      "skillPath": "skills/next-upgrade/SKILL.md",
-      "computedHash": "be6bbf6ab1dc2cc6f2505cea52d497920c04f5b532c0846ee201f6029b803fb0"
     }
   }
 }
