@@ -111,7 +111,7 @@ seam). See ADR-0007.
   (`~/.config/skills/{public,private,vendor/.agents/skills}`, labelled
   `mine`/`private`/`vendor`). `~/.agents/skills` is *not* a source — it's the (empty)
   autoload dir; use `--path` for any ad-hoc fixture.
-- **Trigger/target**: tmux popup (keybind `prefix + A`) → fzf picker → inject into the
+- **Trigger/target**: tmux popup (keybind `prefix + Alt+s`) → fzf picker → inject into the
   pane it was summoned from. The picker is a **shell pipeline**, not Bun-driven:
   `skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>`
   (`bin/pick`, symlinked `~/.local/bin/skl-pick`). fzf runs in the popup's real TTY —
