@@ -55,4 +55,8 @@ if [[ -n "$print_only" ]]; then
 fi
 
 [[ -n "$TMUX" ]] || { print -u2 'flt: not inside tmux'; return 1 }
+# tmux 3.7b use-after-frees the floating layout cell when new-pane runs on a
+# zoomed window and the server segfaults (tmux/tmux#5327). The unreleased
+# 3.7c fix unzooms before creating the float; mirror it here until then.
+command tmux if -F '#{window_zoomed_flag}' 'resize-pane -Z'
 command tmux "${args[@]}"
