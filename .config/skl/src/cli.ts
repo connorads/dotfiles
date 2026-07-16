@@ -9,6 +9,7 @@ import { resolveRef, resolveRefs } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
 import { renderBundle } from "./core/bundle.ts";
 import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
+import { historyLine, summariseHistory, renderHistory } from "./core/history.ts";
 import type {
   ArgError,
   Config,
@@ -20,6 +21,7 @@ import type {
 import type { Result } from "./core/result.ts";
 import { env } from "./shell/env.ts";
 import { loadConfigFile, discoverAll, readSkillFiles, type ConfigFileError } from "./shell/fs.ts";
+import { appendHistory, readHistoryFile } from "./shell/history.ts";
 import { copyToClipboard, injectPointer, resolveTarget } from "./shell/tmux.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
@@ -37,6 +39,7 @@ Usage:
   skl preview <ref>         render a skill's pointer (the fzf preview)
   skl inline <ref>          print the full content bundle (SKILL.md + retained
                             text files) for pasting where there is no filesystem
+  skl history               show usage counts per skill (most-loaded first)
   skl --help                show this help
 
 Options:
@@ -125,6 +128,18 @@ const buildConfig = async (
   return { ok: true, value: parsed.value };
 };
 
+// Best-effort usage logging: warn on stderr but never change the exit code —
+// the load itself succeeded, and curation data is not worth failing it for.
+const recordLoad = async (
+  skill: DiscoveredSkill,
+  mode: "inject" | "copy",
+  target: string | null,
+  submit: boolean,
+): Promise<void> => {
+  const appended = await appendHistory(historyLine(skill, mode, target, submit, env.now()));
+  if (!appended.ok) env.stderr(`skl: history write failed (${appended.error})\n`);
+};
+
 // Inject pointers for one or more refs into a single target pane (or, with
 // --copy, write them to the clipboard). The target is resolved once (so stacked
 // skills land in the same pane); all refs resolve before any injection, so a
@@ -157,6 +172,7 @@ const loadRefs = async (
     }
     for (const skill of resolved.value) {
       env.stdout(`skl: copied ${skillRef(skill)} → clipboard\n`);
+      await recordLoad(skill, "copy", null, options.submit);
     }
     return 0;
   }
@@ -177,6 +193,7 @@ const loadRefs = async (
     }
     // Visibility of system status: print the resolved source/name.
     env.stdout(`skl: loaded ${skillRef(skill)} → ${target.value}\n`);
+    await recordLoad(skill, "inject", target.value, options.submit);
   }
   return 0;
 };
@@ -191,6 +208,17 @@ const main = async (argv: readonly string[]): Promise<number> => {
 
   if (command.kind === "help") {
     env.stdout(HELP);
+    return 0;
+  }
+
+  // History needs neither config nor discovery — just the machine-local file.
+  if (command.kind === "history") {
+    const rows = summariseHistory(await readHistoryFile());
+    if (rows.length === 0) {
+      env.stdout("skl: no usage history yet — load a skill first\n");
+      return 0;
+    }
+    for (const line of renderHistory(rows)) env.stdout(`${line}\n`);
     return 0;
   }
 

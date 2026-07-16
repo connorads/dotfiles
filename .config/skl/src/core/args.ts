@@ -8,7 +8,10 @@
 //   skl list                 → list   (fed to fzf in the pipeline)
 //   skl preview <ref>        → preview <ref>   (the fzf preview command)
 //   skl inline <ref>         → inline <ref>    (full content bundle for web paste)
+//   skl history              → history (usage counts from the history file)
 //   skl --help | -h          → help
+// Verbs shadow bare skill names (a skill named "history" needs `skl load
+// history` or a qualified ref) — same precedence as list/preview/inline.
 // Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy, --all.
 
 import { ok, err, type Result } from "./result.ts";
@@ -62,6 +65,11 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });
     return ok({ kind: "list", options });
+  }
+
+  if (positionals[0] === "history") {
+    if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });
+    return ok({ kind: "history", options });
   }
 
   if (positionals[0] === "preview") {

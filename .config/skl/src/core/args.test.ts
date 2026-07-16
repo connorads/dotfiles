@@ -48,6 +48,19 @@ describe("parseArgs", () => {
     if (r.ok) expect(r.value.kind).toBe("list");
   });
 
+  test("history subcommand", () => {
+    const r = parseArgs(["history"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.kind).toBe("history");
+  });
+
+  test("history rejects extra args", () => {
+    expect(parseArgs(["history", "extra"])).toEqual({
+      ok: false,
+      error: { kind: "too-many-args", args: ["extra"] },
+    });
+  });
+
   test("preview subcommand carries the ref", () => {
     const r = parseArgs(["preview", "repo/alpha"]);
     expect(r.ok).toBe(true);

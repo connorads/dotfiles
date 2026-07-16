@@ -93,7 +93,8 @@ export type Command =
   | { readonly kind: "list"; readonly options: Options }
   | { readonly kind: "load"; readonly ref: string | null; readonly options: Options }
   | { readonly kind: "preview"; readonly ref: string; readonly options: Options }
-  | { readonly kind: "inline"; readonly ref: string; readonly options: Options };
+  | { readonly kind: "inline"; readonly ref: string; readonly options: Options }
+  | { readonly kind: "history"; readonly options: Options };
 
 export type ArgError =
   | { readonly kind: "missing-value"; readonly flag: string }
