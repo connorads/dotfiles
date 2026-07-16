@@ -81,6 +81,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/.config/zsh/aliases/](./.config/zsh/aliases/)                       | Tool-specific aliases (sourced from `.zshrc`)                                             |
 | [~/.config/remobi/remobi.config.ts](./.config/remobi/remobi.config.ts) | remobi config (package: [connorads/remobi](https://github.com/connorads/remobi))          |
 | [~/src/raycast/shotpath](./src/raycast/shotpath)                       | Local Raycast extension wrapping the `shotpath` command; kept outside dot dirs because Raycast rejects hidden development source paths |
+| [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md)                   | Astro Starlight site ("How I work") explaining the workflow these dotfiles encode; deploys later to dotfiles.connoradams.co.uk. Scope commits with `dotfiles commit -- src/dotfiles-docs` |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
 
 ## Shell Function Conventions
@@ -456,3 +457,8 @@ After making significant changes (new config files, architectural changes, new s
 
 - This file (`AGENTS.md`) - for new key files or commands
 - [README.md](./README.md) - for changes to the dotfiles system itself
+- [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md) - the "How I work" site
+  justifies subsystems these dotfiles encode (keybindings, aliases, tool
+  choices, security posture). When a change alters something a page covers,
+  update that page in the same commit; check the sidebar in
+  `src/dotfiles-docs/astro.config.mjs` for what's covered
