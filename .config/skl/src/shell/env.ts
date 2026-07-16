@@ -1,5 +1,15 @@
 // The only reader of ambient process state. Everything else takes values.
 
+// A downstream reader closing the pipe early (head, fzf on Esc) is normal for
+// a lister, not an error. Bun emits the EPIPE asynchronously as a stream
+// 'error' event - no try/catch around the write can see it - so swallow it
+// here; subsequent writes no-op the same way and the program completes.
+const ignoreEpipe = (e: NodeJS.ErrnoException): void => {
+  if (e.code !== "EPIPE") throw e;
+};
+process.stdout.on("error", ignoreEpipe);
+process.stderr.on("error", ignoreEpipe);
+
 export const env = {
   home: (): string => process.env["HOME"] ?? "",
   xdgStateHome: (): string =>
