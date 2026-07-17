@@ -28,10 +28,12 @@ export XAI_API_KEY=
 # `up` upgrades without rate-limiting. No scopes required.
 # export HOMEBREW_GITHUB_TOKEN=
 
-# Same PAT, indirected for mise. mise reads GITHUB_TOKEN (not HOMEBREW_GITHUB_TOKEN)
-# when resolving version tags / lockfiles via the GitHub API. Without it, `up` and
-# `mise upgrade` hit the 60/hr anonymous ceiling across many GitHub-backed tools.
-# export GITHUB_TOKEN=$HOMEBREW_GITHUB_TOKEN
+# Same PAT, indirected for mise. mise resolves version tags / lockfiles via the
+# GitHub API and hits the 60/hr anonymous ceiling without a token. Use the
+# mise-namespaced MISE_GITHUB_TOKEN, NOT the shared GITHUB_TOKEN: gh/git also read
+# GITHUB_TOKEN and would auth with this zero-perm PAT, 404ing private org repos
+# (the gh keyring token has that access). MISE_GITHUB_TOKEN is read only by mise.
+# export MISE_GITHUB_TOKEN=$HOMEBREW_GITHUB_TOKEN
 
 # Add more API keys as needed:
 # export FIGMA_API_KEY="..."
