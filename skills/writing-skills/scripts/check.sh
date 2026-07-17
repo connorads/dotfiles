@@ -50,14 +50,17 @@ if ((fm_valid)) && [[ -z $fm ]]; then
 fi
 
 # Closed field set per the agentskills spec: unknown top-level keys are invalid.
+# Extraction is broad (underscore/digit keys too) so nothing slips past unseen;
+# the allowlist match is exact so 'tools' never passes as a prefix of
+# 'allowed-tools'.
 allowed="name description license compatibility metadata allowed-tools"
 if ((fm_valid)); then
 	while IFS= read -r key; do
 		[[ -z $key ]] && continue
-		if ! grep -qw -- "$key" <<<"$allowed"; then
+		if ! grep -qFx -- "$key" <<<"${allowed// /$'\n'}"; then
 			err "unknown top-level frontmatter key '$key' (allowed: $allowed; custom data goes under metadata)"
 		fi
-	done < <(awk '/^[A-Za-z][A-Za-z-]*:/ {sub(/:.*/,""); print}' <<<"$fm")
+	done < <(awk '/^[A-Za-z][A-Za-z0-9_-]*:/ {sub(/:.*/,""); print}' <<<"$fm")
 fi
 
 name=$(awk '/^name:/ {sub(/^name:[ \t]*/,""); gsub(/^["'"'"']|["'"'"']$/,""); print; exit}' <<<"$fm")
@@ -125,10 +128,18 @@ done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name 
 
 # Doc-rot phrasing: change-history, version snapshots, and verification banners
 # written as standing prose (not load-bearing version thresholds like "3.12+").
-while IFS= read -r hit; do
-	warn "possible doc-rot phrasing: $hit"
-done < <(grep -rnEi '\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b' \
-	--include='*.md' "$dir" | sed "s|^$dir/||" | grep -v '^evals/fixtures/' || true)
+# Inline-code spans are stripped per line first so teaching examples that quote
+# the very phrasing they warn against (`recent changes`) don't self-trip.
+docrot_re='\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b'
+# The sed strips inline-code spans; its single-quoted backticks are literal.
+# shellcheck disable=SC2016
+while IFS= read -r -d '' f; do
+	rel=${f#"$dir"/}
+	[[ $rel == evals/fixtures/* ]] && continue
+	while IFS= read -r hit; do
+		warn "possible doc-rot phrasing: $rel:$hit"
+	done < <(sed -E 's/`[^`]*`//g' "$f" | grep -nEi "$docrot_re" || true)
+done < <(find "$dir" -name '*.md' -print0)
 
 # --- Authoritative validator, when available ---------------------------------
 if command -v skills-ref >/dev/null 2>&1; then

@@ -86,6 +86,57 @@ version: 1
 	[[ "$output" == *"1 error(s)"* ]]
 }
 
+@test "hyphenated-key prefixes are not accepted as top-level keys" {
+	local skill="$BATS_TEST_TMPDIR/prefix-key"
+	make_skill "$skill" "prefix-key"
+	sed -i.bak '/^description:/a\
+tools: Bash
+' "$skill/SKILL.md"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"ERROR:"*"unknown top-level frontmatter key 'tools'"* ]]
+
+	local allowed_skill="$BATS_TEST_TMPDIR/allowed-prefix"
+	make_skill "$allowed_skill" "allowed-prefix"
+	sed -i.bak '/^description:/a\
+allowed: yes
+' "$allowed_skill/SKILL.md"
+
+	run "$SCRIPT" "$allowed_skill"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"ERROR:"*"unknown top-level frontmatter key 'allowed'"* ]]
+}
+
+@test "underscore keys are extracted and rejected" {
+	local skill="$BATS_TEST_TMPDIR/underscore-key"
+	make_skill "$skill" "underscore-key"
+	sed -i.bak '/^description:/a\
+when_to_use: whenever
+' "$skill/SKILL.md"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"ERROR:"*"unknown top-level frontmatter key 'when_to_use'"* ]]
+}
+
+@test "backticked doc-rot phrasing in prose does not warn" {
+	local skill="$BATS_TEST_TMPDIR/backticked-docrot"
+	make_skill "$skill" "backticked-docrot"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Avoid snapshot phrasing like `recent changes` in standing prose.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
 @test "portable name and description limits stay enforced" {
 	local long_name="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	local skill="$BATS_TEST_TMPDIR/$long_name"
