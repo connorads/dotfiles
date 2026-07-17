@@ -74,7 +74,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
-| `Ctrl+b Alt+m` | memory pressure (swap + top footprint offenders + agents; `k`→kill picker, `r`→refresh) |
+| `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (lgdf, bare repo from any pane) |

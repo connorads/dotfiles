@@ -175,6 +175,14 @@ run_safe_zsh() {
   [ ! -s "$KILL_LOG" ]
 }
 
+@test "pclose --pid rejects a missing numeric argument" {
+  run_safe_zsh "$PCLOSE" --pid nope
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"--pid requires a numeric PID"* ]]
+  [ ! -s "$KILL_LOG" ]
+}
+
 @test "pclose reports no processes" {
   run_safe_zsh "$PCLOSE"
 
@@ -205,6 +213,40 @@ run_safe_zsh() {
   grep -Fxq 'kill -TERM 4242' "$KILL_LOG"
   grep -Fxq 'kill -0 4242' "$KILL_LOG"
   ! grep -q -- '-KILL' "$KILL_LOG"
+}
+
+@test "pclose --pid sends TERM only to the requested process when confirmed non-interactively" {
+  cat >"$PS_OUTPUT" <<'EOF'
+4242 1 0.0 0.1 00:01 connor sleep sleep 999
+4243 1 0.0 0.1 00:01 connor sleep sleep 1000
+EOF
+
+  run_safe_zsh "$PCLOSE" --pid 4242 --yes
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sending TERM to 1 process(es): 4242"* ]]
+  grep -Fxq 'kill -TERM 4242' "$KILL_LOG"
+  ! grep -q -- '4243' "$KILL_LOG"
+}
+
+@test "pclose --pid refuses to signal without an explicit confirmation" {
+  printf '4242 1 0.0 0.1 00:01 connor sleep sleep 999\n' >"$PS_OUTPUT"
+
+  run_safe_zsh "$PCLOSE" --pid 4242
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"refusing direct process without --yes: 4242"* ]]
+  [ ! -s "$KILL_LOG" ]
+}
+
+@test "pclose --pid refuses an unavailable or out-of-scope process" {
+  printf '4242 1 0.0 0.1 00:01 connor sleep sleep 999\n' >"$PS_OUTPUT"
+
+  run_safe_zsh "$PCLOSE" --pid 9999 --yes
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"process not found or not permitted: 9999"* ]]
+  [ ! -s "$KILL_LOG" ]
 }
 
 @test "pclose refuses protected selected pid without --yes" {
