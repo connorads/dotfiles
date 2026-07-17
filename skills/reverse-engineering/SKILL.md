@@ -1,108 +1,152 @@
 ---
 name: reverse-engineering
-description: Static-first reverse engineering and binary decompilation workflow. Use when the user asks to inspect, decompile, reverse engineer, triage, recover symbols/types/strings, identify endpoints/models/dependencies, explain executable behaviour, or analyse a stripped/packed/obfuscated Mach-O, ELF, PE, WASM, firmware blob, CLI, app bundle, or unknown binary. Use especially when they say not to run it, mention Ghidra, IDA, Binary Ninja, radare2, lldb, strings, xrefs, symbols, Go/Golang, Rust, .NET, Java, Electron, Bun, Node SEA, pkg/nexe, Deno compile, packaged JavaScript/TypeScript CLIs, native code, malware triage, or binary internals.
+description: >-
+  Performs static-first reverse engineering and binary decompilation without
+  launching the target. Use when the user asks to inspect, decompile, triage,
+  recover symbols/types/strings, identify endpoints/models/dependencies, explain
+  executable behaviour, or recover implementation patterns from an unknown,
+  stripped, packed, or obfuscated binary, CLI, DMG, macOS app bundle, Mach-O,
+  ELF, PE, WASM, firmware image, Go binary, or packaged JavaScript/TypeScript
+  executable. Also use for Ghidra, IDA, Binary Ninja, radare2, strings, xrefs,
+  Swift/Objective-C metadata, Bun compile, Node SEA, pkg/nexe, and Deno compile
+  analysis. Not for source-only code review or ordinary archive extraction where
+  executable behaviour is irrelevant.
 ---
 
 # Reverse Engineering
 
-Use this skill for static-first binary analysis. Start with format/runtime identification, then switch into the relevant language/runtime reference. Detailed references are bundled for Go and packaged JavaScript CLIs; add more references as workflows are tested.
+For every claim, ask:
 
-## Default posture
+> Which layer produced this evidence, and does it prove presence or execution?
+
+Start with container and runtime identification, then load only the matching
+reference.
+
+## Default Posture
 
 - Treat "do not run this binary" as a hard constraint.
-- Default to static inspection even when the user does not say it explicitly.
-- Do not modify the target binary. Write extracted artefacts to a separate workspace under `/tmp` unless the user asks for a specific location.
-- If a tool is missing in dotfiles, follow `AGENTS.md` dependency ownership: host-global and well-packaged tools go in Nix; project/version-selected tools go in mise; macOS vendor bundles go in Homebrew.
-- Avoid printing credential-like values verbatim. Record that they exist and where they were found; show only enough prefix/context to identify the finding.
+- Default to static inspection even when the user does not say so explicitly.
+- Never modify the target. Write extracted artefacts to a separate workspace
+  under `/tmp` unless the user requests another location.
+- Mount a disk image only with user permission and the safety sequence in
+  [references/macos-apps.md](references/macos-apps.md).
+- Avoid printing credential-like values verbatim. Record their existence and
+  location; reveal only enough context to identify the finding.
+- For hostile or genuinely unknown malware, use a disposable VM instead of
+  asking the host OS to parse or mount it.
 
 ## Workflow
 
-1. Create a workspace:
+1. Establish scope and constraints. Record whether target execution, mounting,
+   network access, extraction, or modification is allowed.
+
+2. When the user wants product behaviour or reusable features, research official
+   documentation and public artefacts first. Build an expected feature matrix so
+   documented behaviour is not misreported as a binary discovery.
+
+3. Create a disposable workspace:
 
    ```bash
-   mkdir -p /tmp/re-<target-name>
+   mktemp -d /tmp/re-<target-name>.XXXXXX
    ```
 
-2. Run baseline static triage:
+4. Run baseline static triage against a file:
 
    ```bash
    file <binary>
-   shasum -a 256 <binary>  # macOS
-   strings -a <binary> > strings.txt
+   shasum -a 256 <binary>    # macOS
+   sha256sum <binary>        # Linux
+   strings -a <binary> > /tmp/re-<target-name>/strings.txt
    ```
 
-3. Identify the likely runtime/language:
+   Save broad output to files and query it with `rg`; do not flood the
+   conversation with raw strings or symbol tables.
 
-   - Go: `go version -m` works, `.gopclntab` / `__gopclntab` exists, or strings mention Go runtime paths such as `runtime.main`.
-   - Rust: symbols or strings mention `rustc`, `panic_unwind`, `core::`, `alloc::`, or cargo metadata.
-   - .NET: PE metadata, CLR headers, `mscoree.dll`, `System.*`, `Microsoft.*`.
-   - Java/Kotlin: JAR/APK/classes, `META-INF`, JVM constant pools.
-   - Packaged JS CLI: single-file executables with Bun/JSC, Node SEA, `pkg`/`nexe`, Deno `compile`, `NODE_SEA_BLOB`, `__BUN`, `/$bunfs/`, `/snapshot/`, `denort`, or bundled `node_modules` strings.
-   - Electron/Node app: app archives, `app.asar`, V8 snapshots, `node_modules`, Chromium strings.
-   - Native C/C++/Obj-C/Swift: no managed runtime, platform ABI symbols, Objective-C/Swift metadata, dynamic library imports.
+5. Identify the container and likely runtime:
 
-4. Read the matching reference before deeper analysis. Current reference:
+   - Go: `go version -m`, `.gopclntab` / `__gopclntab`, or Go runtime paths.
+   - Packaged JS CLI: Bun/JSC, Node SEA, `pkg`/`nexe`, Deno, virtual filesystem,
+     or embedded runtime markers.
+   - Native Apple: Mach-O plus Swift reflection, Objective-C metadata, AppKit,
+     SwiftUI, or Apple framework imports.
+   - .NET: PE CLR headers, `mscoree.dll`, or managed assembly metadata.
+   - Java/Kotlin: JAR/APK/classes, `META-INF`, or JVM constant pools.
+   - Rust/C/C++: platform ABI metadata and language/runtime fingerprints without
+     a managed payload.
 
-   - [references/go.md](references/go.md) for Go binaries.
-   - [references/package-js-cli.md](references/package-js-cli.md) for single-file packaged JavaScript/TypeScript CLIs.
+6. Read the matching reference before deeper analysis:
 
-5. For Go binaries, the bundled helper can run the static triage ladder:
+   | Target evidence | Read |
+   |---|---|
+   | DMG, `.app`, Mach-O, Swift, Objective-C | [references/macos-apps.md](references/macos-apps.md) |
+   | Standard Go compiler | [references/go.md](references/go.md) |
+   | Bun compile, Node SEA, `pkg`/`nexe`, Deno compile | [references/package-js-cli.md](references/package-js-cli.md) |
+
+   No runtime-specific reference is bundled yet for .NET, JVM, Rust, Electron,
+   Tauri, PE, ELF, WASM, or firmware. Apply the generic workflow, label the
+   coverage limit, and add a reference only after a real analysis exposes
+   repeatable failures.
+
+7. Use the bundled static helpers when their target matches:
 
    ```bash
+   python scripts/macos_app_triage.py <binary-or-app> --out /tmp/re-<target-name>
+   python scripts/macos_app_triage.py <image.dmg> \
+     --allow-mount --out /tmp/re-<target-name>
    python scripts/go_binary_triage.py <binary> --out /tmp/re-<target-name>
    ```
 
-   If `go` is a mise shim without a selected version, pass the Go command explicitly:
+   `macos_app_triage.py` does not mount a DMG unless `--allow-mount` is present.
+   It never launches the target. `go_binary_triage.py` accepts `--go-cmd` when a
+   version manager needs an explicit Go invocation.
 
-   ```bash
-   python scripts/go_binary_triage.py <binary> --go-cmd "mise exec go@1.25 -- go" --out /tmp/re-<target-name>
-   ```
+8. Recover metadata with at least two independent paths where practical.
+   A parser failure is evidence about that parser, not proof that metadata is
+   absent. Record conflicts and try the next native or runtime-aware tool.
 
-6. Recover runtime-specific metadata with at least two independent paths when possible. For Go, follow the tool ladder in [references/go.md](references/go.md) (GoReSym → Redress/GoRE, with per-tool gotchas).
+9. Use raw strings as leads. For important literals, confirm offsets,
+   pointer/length use, xrefs, or reachable code flow before claiming runtime use.
 
-   Tool failure is evidence about the tooling, not proof the binary lacks metadata. Record the failure and try the next parser.
+10. Import recovered names and types into a workbench only after container and
+    runtime triage:
 
-7. Use strings as a lead generator, not as proof:
-
-   ```bash
-   strings -a <binary> > strings.txt
-   ```
-
-   For important literals, confirm pointer/length use or code xrefs before claiming a value is used at runtime.
-
-8. For decompilation, import recovered names/types into the best available workbench:
-
-   - Ghidra latest for free decompilation.
-   - IDA 9.2+ if available for stronger Go ABI decompilation.
-   - Binary Ninja + Go plugins if available for type-heavy workflows.
-   - radare2 when a headless annotation pipeline is more useful than a GUI.
+    - Ghidra for a free decompiler.
+    - IDA or Binary Ninja when already available and materially stronger for the
+      target.
+    - radare2 for headless annotation and repeatable queries.
 
 ## Evidence Levels
 
-Use explicit confidence language:
+- **Confirmed**: container metadata, build information, recovered
+  function/package metadata, disassembly/xref, or reachable data flow.
+- **Likely**: multiple independent static signals align, but exact control flow
+  is not fully proven.
+- **Present**: a string, package, symbol, type, entitlement, framework, or
+  resource exists; usage is unproven.
+- **Unclear**: tools conflict, metadata is damaged, or packing/obfuscation blocks
+  a stronger claim.
 
-- **Confirmed**: backed by build info, recovered function/package metadata, disassembly/xref, or data-flow from reachable code.
-- **Likely**: multiple independent static signals align, but exact control flow is not fully proven.
-- **Present**: a string, package, symbol, or type exists in the binary, but usage is unproven.
-- **Unclear**: tool output conflicts or version/obfuscation limits prevent a stronger claim.
+Never turn linkage, an entitlement, a raw string, or a valid signature into an
+execution claim.
 
 ## Report Shape
-
-Keep reports compact and evidence-backed:
 
 ```markdown
 ## Target
 - Path:
-- Format / arch:
+- Container / architecture:
 - Runtime / version:
 - Hash:
-- Execution constraint:
+- Execution and mounting constraints:
+
+## External Baseline
+- Documented behaviours:
+- Expected components:
 
 ## Static Findings
-- Build info:
-- Packages / dependencies:
-- Recovered user packages:
-- Notable endpoints / model routes / config keys:
+- Bundle / build information:
+- Dependencies and recovered user code:
+- Notable endpoints, routes, models, configuration, or persistence:
 
 ## Behavioural Claims
 | Claim | Evidence | Confidence |
@@ -110,19 +154,13 @@ Keep reports compact and evidence-backed:
 
 ## Tool Notes
 - Succeeded:
-- Failed / limitations:
-- Useful next tools:
+- Failed / conflicts:
+- Coverage limits:
 ```
 
-If the user asks how to reproduce the behaviour elsewhere, add a short **Reusable Pattern** section that separates control plane, local identity/state, transport, reconciliation, execution attachment, failure handling, and security implications.
+## Validation Assets
 
-## Tooling Discussion
-
-If the useful tools are missing, propose a small install set rather than a broad RE toolbox:
-
-- **Core CLI**: Go toolchain, `GoReSym`, `redress`, `radare2`, `binutils`, `upx`, `yara`, `jq`, `ripgrep`. In dotfiles, the RE-specific CLI tools are expected to be Nix-owned.
-- **Binary format tools**: `binutils` or LLVM tools on Linux; `otool`/`lldb` already exist on macOS.
-- **Workbench**: Ghidra first if a free GUI decompiler is needed; IDA/Binary Ninja only if already available or explicitly desired.
-- **Obfuscation extras**: GoStringUngarbler only when garble `-literals` evidence exists.
-
-Discuss GUI workbenches, vendor bundles, and language-specific extras before adding them.
+- Run `bats tests/macos_app_triage.bats` on macOS after changing the macOS
+  helper or mount safety behaviour.
+- `evals/evals.json` contains human-reviewed regression prompts derived from
+  real analysis failures. Run each draft and baseline in fresh sessions.
