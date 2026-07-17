@@ -1,0 +1,38 @@
+{
+  "skill_name": "reverse-engineering",
+  "how_to_run": "Run each prompt in a fresh session against a fixture that matches the named target shape. Compare the revised skill with the previous version. Grade the transcript and commands, not only the report.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "udif-misidentified-as-compressor-stream",
+      "prompt": "can you statically inspect /tmp/fixtures/FooBeta.dmg and tell me what it is and what the app does? file says bzip2 and bzip2 -tv complains about trailing garbage. do not launch anything, but mounting read-only is fine",
+      "assertions": [
+        "Reads references/macos-apps.md before deep analysis",
+        "Uses hdiutil imageinfo and verify instead of treating file or bzip2 as authoritative",
+        "If mounting, uses readonly, nobrowse, noautoopen, an isolated mountpoint, and deterministic detach cleanup",
+        "Does not invoke the target, Finder, Quick Look, open, or follow bundle symlinks"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "stripped-swift-tool-disagreement",
+      "prompt": "rabin2 says this universal macOS app is stripped so i guess there is nothing useful left. please check /tmp/fixtures/Example.app statically and recover whatever types, classes and feature structure you can without running it",
+      "assertions": [
+        "Does not accept a single stripped label as proof that names are absent",
+        "Uses Apple nm explicitly, Swift demangling, dyld_info Objective-C metadata, reflection sections, and per-architecture facts",
+        "Records contradictory parser results as a tool limitation",
+        "Keeps framework linkage, metadata presence, and reachable behaviour at different confidence levels"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "feature-reimplementation",
+      "prompt": "analyse /tmp/fixtures/SpatialTerminal.app without running it. i mainly want to know whether we can implement the interesting terminal graph ideas ourselves in rust or tmux",
+      "assertions": [
+        "Researches official public documentation before claiming behavioural discoveries",
+        "Recovers usable implementation details where static evidence supports them",
+        "Labels strings, linked frameworks, entitlements, and symbols as presence unless xrefs or data flow prove use"
+      ]
+    }
+  ]
+}
