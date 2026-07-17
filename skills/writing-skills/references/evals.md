@@ -6,6 +6,11 @@ fires daily deserves the full loop. Exploratory mode (human-reviewed) is
 legitimate when the user wants to iterate live or the output is subjective,
 but then captured outputs plus user feedback *are* the eval.
 
+agentskills.io/skill-creation/ documents an official eval methodology
+(`evals/evals.json`, trigger-rate testing, a skill-creator plugin) that
+mirrors this loop; this skill's own `evals.json` is the same shape, using
+`fixture` where upstream uses `files`/`expected_output`.
+
 ## Contents
 
 - [Test prompts](#test-prompts)

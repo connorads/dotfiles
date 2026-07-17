@@ -37,13 +37,12 @@ skills, the field set is **closed**: unknown top-level keys such as `version:`,
 
 ## Client compatibility
 
-Some clients extend the portable spec. Claude Code accepts fields such as
-`when_to_use`, invocation controls, subagent/context fields, model/effort
-overrides, and tool restrictions. Codex can use `agents/openai.yaml` for UI
-metadata, invocation policy, and tool dependencies. These can be valid for a
-specific client, but they reduce portability. This skill's checker defaults to
-the portable field set; document any client-specific target before accepting
-extension fields.
+Some clients extend the portable spec with their own top-level fields, and the
+exact set churns per release — so treat each client's live docs as the source
+of truth (e.g. code.claude.com/docs/en/skills) rather than snapshotting a list
+that rots here. Extension fields can be valid for their target client but
+reduce portability. This skill's checker defaults to the portable field set;
+document any client-specific target before accepting extension fields.
 
 ## Size budgets
 

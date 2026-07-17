@@ -28,9 +28,11 @@ Three mechanisms overlap; pick by trigger, not habit:
 
 - **Skill** — procedural knowledge loaded when the *agent decides* the task
   matches. Triggering is a heuristic: it both over- and under-fires.
-- **Command / explicit prompt** — a deterministic, *user-invoked* step. If
-  something must happen every time, a skill's trigger heuristic is the wrong
-  enforcement mechanism.
+- **Command / explicit prompt** — a deterministic, *user-invoked* step (some
+  clients implement commands as skills with invocation controls, so the line
+  blurs; the deciding question is deterministic user invocation vs trigger
+  heuristic, not which primitive). If something must happen every time, a
+  skill's trigger heuristic is the wrong enforcement mechanism.
 - **Tool / MCP** — external capability or connectivity, not knowledge.
 
 The cheapest fix is often not writing a skill at all.
@@ -106,7 +108,9 @@ SKILL.md body (loaded on trigger), bundled files (loaded on demand):
   same deterministic logic across runs; mark whether it's to EXECUTE or to
   read as reference. Give scripts clear CLI arguments, check dependencies,
   prefer structured output when another step consumes it, and make errors
-  actionable enough for the agent to recover.
+  actionable enough for the agent to recover. Two hard requirements: no
+  interactive prompts (a script that waits on stdin hangs the agent), and
+  bounded output (harnesses truncate, so a chatty script loses its own signal).
 - Match specificity to fragility: prose and principles for judgement calls;
   exact commands ("run exactly this, no extra flags") for fragile,
   destructive, or consistency-critical operations. Calibrate each part of a
@@ -168,6 +172,11 @@ iterations stop moving the needle.
 
 After shipping: every real-world "it didn't trigger" or "it did the wrong
 thing" report becomes a permanent test case before you fix it.
+
+The baseline improves underneath the skill as models get stronger. Periodically
+re-run the eval prompts *without* it and retire or shrink whatever the model now
+does unaided — a skill teaching what the agent already knows is pure context
+cost.
 
 ## Ship checklist
 
