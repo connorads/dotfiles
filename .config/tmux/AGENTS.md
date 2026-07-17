@@ -220,8 +220,10 @@ colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a
   (`ram_percentage()`, bright-mauve) renders **alongside** it by design — both
   are wanted: RAM% is the total-used headline, mem_segment the swap/pressure
   signal.
-- [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` drill-down
-  (swap/RAM breakdown, top apps by `phys_footprint`, agent panes). `k`/`r`/`q`.
+- [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` bounded
+  triage (top 5 sampled `phys_footprint` apps + 3 agents). `k` chooses a visible
+  app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
+  sampled-app/all-agent details; `r` refreshes and `q` closes.
 - [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) — launchd
   notifier (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
   Banners on sustained pressure; log `~/.cache/memwatch.log`. Reload after edits:

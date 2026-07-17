@@ -5,6 +5,7 @@ emulate -L zsh
 local use_sudo=0
 local force_kill=0
 local assume_yes=0
+local target_pid=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -17,13 +18,25 @@ while [[ $# -gt 0 ]]; do
     -y|--yes)
       assume_yes=1
       ;;
+    --pid)
+      shift
+      if [[ -z "${1:-}" || ! "$1" =~ '^[0-9]+$' ]]; then
+        print -u2 -- "--pid requires a numeric PID"
+        return 1
+      fi
+      if [[ -n "$target_pid" ]]; then
+        print -u2 -- "--pid may be specified once"
+        return 1
+      fi
+      target_pid=$1
+      ;;
     -h|--help)
-      print -u2 "usage: pclose [--sudo] [--force] [--yes]"
+      print -u2 "usage: pclose [--sudo] [--force] [--yes] [--pid PID]"
       return 0
       ;;
     *)
       print -u2 "unknown option: $1"
-      print -u2 "usage: pclose [--sudo] [--force] [--yes]"
+      print -u2 "usage: pclose [--sudo] [--force] [--yes] [--pid PID]"
       return 1
       ;;
   esac
@@ -92,11 +105,29 @@ local scope_label="user"
 (( use_sudo )) && scope_label="all (sudo)"
 
 local selected
-selected=$(printf '%s\n' "${rows[@]}" | fzf --multi --reverse --delimiter=$'\t' \
-  --with-nth=1,2,3,4,5,6,7,8,9 \
-  --header="scope: ${scope_label} | tab: mark | ! protected | enter: TERM->KILL" \
-  --bind='tab:toggle+down,btab:toggle+up' \
-  --preview='
+if [[ -n "$target_pid" ]]; then
+  selected=$(printf '%s\n' "${rows[@]}" | awk -F '\t' -v pid="$target_pid" '$2 == pid { print; exit }')
+  if [[ -z "$selected" ]]; then
+    print -u2 "process not found or not permitted: $target_pid"
+    return 1
+  fi
+
+  if (( assume_yes == 0 )); then
+    if [[ -t 0 ]]; then
+      local reply
+      read -r "reply?send TERM to process $target_pid? [y/N] "
+      [[ "$reply" == [yY] || "$reply" == [yY][eE][sS] ]] || return 0
+    else
+      print -u2 "refusing direct process without --yes: $target_pid"
+      return 1
+    fi
+  fi
+else
+  selected=$(printf '%s\n' "${rows[@]}" | fzf --multi --reverse --delimiter=$'\t' \
+    --with-nth=1,2,3,4,5,6,7,8,9 \
+    --header="scope: ${scope_label} | tab: mark | ! protected | enter: TERM->KILL" \
+    --bind='tab:toggle+down,btab:toggle+up' \
+    --preview='
     mark=$(printf "%s" {} | awk -F "\t" "{print \$1}")
     pid=$(printf "%s" {} | awk -F "\t" "{print \$2}")
     ppid=$(printf "%s" {} | awk -F "\t" "{print \$3}")
@@ -124,8 +155,9 @@ selected=$(printf '%s\n' "${rows[@]}" | fzf --multi --reverse --delimiter=$'\t' 
         printf "%s\n" "$ports"
       fi
     fi
-  ' \
-  --preview-window=right:55%:wrap)
+    ' \
+    --preview-window=right:55%:wrap)
+fi
 
 [[ -z "$selected" ]] && return 0
 
