@@ -15,6 +15,8 @@ The PRD describes WHAT to build and WHY, not HOW or in WHAT ORDER.
 
 User describes the problem and any initial ideas. Explore the codebase to understand existing patterns, constraints, and dependencies.
 
+If the request names a solution but no outcome for a product-facing feature, consider running the product-discovery skill first — it decides whether/which feature to build; this skill specs the committed one.
+
 ### 2. Interview the design tree
 
 Walk through the design decision tree branch by branch. For each decision point:
