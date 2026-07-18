@@ -114,7 +114,15 @@
       "knockknock"
       "lulu"
       "slack"
-      "microsoft-teams"
+      # Teams delegates updates to Microsoft AutoUpdate (MAU), which is not
+      # installed here - so its auto_updates flag means brew normally skips it
+      # and the build rots until Microsoft ages it out ("old version" banner).
+      # greedy makes brew bundle force-upgrade it on activation; Homebrew is
+      # the sole owner.
+      {
+        name = "microsoft-teams";
+        greedy = true;
+      }
       "linear"
       "miro"
 
