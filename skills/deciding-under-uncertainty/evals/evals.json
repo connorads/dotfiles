@@ -1,0 +1,40 @@
+{
+	"skill_name": "deciding-under-uncertainty",
+	"evals": [
+		{
+			"id": 1,
+			"eval_name": "build-vs-buy-auth",
+			"prompt": "I'm building remobi, a small SaaS side project (TypeScript, Cloudflare Workers). Should I build my own auth or use a hosted provider like Clerk? Leaning towards building it myself since it's just magic links really. What do you think?",
+			"expected_output": "Recommendation delivered as a calibrated bet, not a bare verdict: names a reference class (e.g. how solo-dev auth hand-rolls usually go), states an explicit probability plus what would move it, gives one concrete failure story for the recommended route (premortem, not a generic risk list), sets at least one observable tripwire with a checkpoint and action and proposes recording it, and offers a cheap probe before full commitment where one exists. Machinery woven into prose - no step headings, no skill vocabulary.",
+			"files": []
+		},
+		{
+			"id": 2,
+			"eval_name": "migrate-pnpm-bun",
+			"prompt": "Our monorepo is on pnpm 11 and installs feel slow in CI. Considering migrating the whole thing to bun for speed. Migrate now or wait? Give me your recommendation.",
+			"expected_output": "Baseline already ooches here (pilot suggestion); with the skill the answer must ADD the missing moves: reference class for CI-speed migrations (cache misses, not resolver), explicit odds with a mover, a single premortem failure story, and a tripwire with predicate + checkpoint + action recorded somewhere durable (issue/ADR), not 'revisit later'.",
+			"files": []
+		},
+		{
+			"id": 3,
+			"eval_name": "rewrite-vs-refactor",
+			"prompt": "I've inherited a legacy Express API - no tests, callback style, ~15k lines. Team wants to rewrite it in Fastify from scratch, I think we should refactor incrementally. It's blocking two feature streams. Which way should we go?",
+			"expected_output": "Recommends with odds and a named reference class (big-bang rewrites of untested code), one causal premortem for the incremental route itself (not only the rewrite's risks), and converts any 'when I'd flip to rewrite' conditions into pre-agreed tripwires: observable predicate + checkpoint + action, with a proposal to record them. Still leads with a clear recommendation.",
+			"files": []
+		},
+		{
+			"id": 4,
+			"eval_name": "two-way-door-no-ceremony",
+			"prompt": "quick one - prettier or biome for formatting a new 2-file TS script repo? just me using it",
+			"expected_output": "Classifies as cheap to reverse: direct recommendation with a one-line reversal note. Does NOT produce odds, premortems, or tripwires - no decision-hygiene ceremony on a two-way door.",
+			"files": []
+		},
+		{
+			"id": 5,
+			"eval_name": "resulting-past-decision",
+			"prompt": "Six months ago we picked DynamoDB over Postgres for our event store and it's been painful - hot partitions, awkward queries. Was that a stupid decision?",
+			"expected_output": "Refuses to judge by outcome alone: reconstructs what was known at decision time, evaluates process quality (alternatives considered, odds, exit criteria), and states whether it was a bad outcome from a reasonable bet or a genuinely bad bet. Distinguishes the two explicitly.",
+			"files": []
+		}
+	]
+}
