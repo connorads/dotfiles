@@ -16,8 +16,8 @@
 set -euo pipefail
 
 if [[ $# -lt 2 || $# -gt 4 ]]; then
-	echo "usage: $0 <baseline.mp4> <translated.mp4> [output-dir] [samples]" >&2
-	exit 2
+  echo "usage: $0 <baseline.mp4> <translated.mp4> [output-dir] [samples]" >&2
+  exit 2
 fi
 
 BASELINE="$1"
@@ -26,8 +26,8 @@ OUTDIR="${3:-./strip-out}"
 SAMPLES="${4:-8}"
 
 if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-	echo "error: ffmpeg/ffprobe not on PATH" >&2
-	exit 2
+  echo "error: ffmpeg/ffprobe not on PATH" >&2
+  exit 2
 fi
 
 mkdir -p "$OUTDIR"

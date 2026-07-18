@@ -44,25 +44,25 @@ trap 'rm -rf "$RESULTS_DIR"' EXIT
 # toolchain checks until run_render_tier() actually runs, so
 # `./run.sh tier-4-escape-hatch` works on a clean checkout.
 require_render_tier_tools() {
-	if [[ ! -f "$HF_CLI" ]]; then
-		echo "error: HF CLI not built at $HF_CLI" >&2
-		echo "       Run 'bun run --filter @hyperframes/cli build' in $REPO_ROOT" >&2
-		return 2
-	fi
-	if ! command -v ffmpeg >/dev/null 2>&1; then
-		echo "error: ffmpeg not on PATH" >&2
-		return 2
-	fi
-	return 0
+  if [[ ! -f "$HF_CLI" ]]; then
+    echo "error: HF CLI not built at $HF_CLI" >&2
+    echo "       Run 'bun run --filter @hyperframes/cli build' in $REPO_ROOT" >&2
+    return 2
+  fi
+  if ! command -v ffmpeg >/dev/null 2>&1; then
+    echo "error: ffmpeg not on PATH" >&2
+    return 2
+  fi
+  return 0
 }
 
 # Write one fixture's result as a JSON file. Values are passed via argv so
 # bash string interpolation can't corrupt the JSON or inject Python source.
 write_result() {
-	local fixture_name="$1"
-	local status="$2"
-	shift 2
-	python3 - "$RESULTS_DIR/$fixture_name.json" "$fixture_name" "$status" "$@" <<'PY'
+  local fixture_name="$1"
+  local status="$2"
+  shift 2
+  python3 - "$RESULTS_DIR/$fixture_name.json" "$fixture_name" "$status" "$@" <<'PY'
 import json
 import sys
 
@@ -82,10 +82,10 @@ PY
 # Read a top-level scalar value from a JSON file. Falls back to $3 if the
 # key is missing (used to default composition_id for older fixtures).
 read_json_value() {
-	local file="$1"
-	local key="$2"
-	local default="${3:-}"
-	python3 - "$file" "$key" "$default" <<'PY'
+  local file="$1"
+  local key="$2"
+  local default="${3:-}"
+  python3 - "$file" "$key" "$default" <<'PY'
 import json
 import sys
 
@@ -98,105 +98,105 @@ PY
 }
 
 run_render_tier() {
-	local fixture_dir="$1"
-	local fixture_name
-	fixture_name=$(basename "$fixture_dir")
-	local expected="$fixture_dir/expected.json"
+  local fixture_dir="$1"
+  local fixture_name
+  fixture_name=$(basename "$fixture_dir")
+  local expected="$fixture_dir/expected.json"
 
-	if ! require_render_tier_tools; then
-		echo "  ⚠ $fixture_name: render toolchain unavailable, skipping"
-		write_result "$fixture_name" "skipped" reason "render toolchain unavailable"
-		return 0
-	fi
+  if ! require_render_tier_tools; then
+    echo "  ⚠ $fixture_name: render toolchain unavailable, skipping"
+    write_result "$fixture_name" "skipped" reason "render toolchain unavailable"
+    return 0
+  fi
 
-	local threshold composition_id
-	threshold=$(read_json_value "$expected" "ssim_threshold")
-	composition_id=$(read_json_value "$expected" "composition_id" "Composition")
+  local threshold composition_id
+  threshold=$(read_json_value "$expected" "ssim_threshold")
+  composition_id=$(read_json_value "$expected" "composition_id" "Composition")
 
-	echo "  ▶ $fixture_name (threshold $threshold, composition $composition_id)"
+  echo "  ▶ $fixture_name (threshold $threshold, composition $composition_id)"
 
-	if [[ -x "$fixture_dir/setup.sh" ]]; then
-		"$fixture_dir/setup.sh" >/dev/null
-	fi
+  if [[ -x "$fixture_dir/setup.sh" ]]; then
+    "$fixture_dir/setup.sh" >/dev/null
+  fi
 
-	if ! python3 "$LINT" "$fixture_dir/remotion-src/src/" >/dev/null; then
-		echo "    ✗ lint failed (blockers in Remotion source)"
-		write_result "$fixture_name" "fail" stage "lint"
-		return 0
-	fi
+  if ! python3 "$LINT" "$fixture_dir/remotion-src/src/" >/dev/null; then
+    echo "    ✗ lint failed (blockers in Remotion source)"
+    write_result "$fixture_name" "fail" stage "lint"
+    return 0
+  fi
 
-	if [[ ! -d "$fixture_dir/remotion-src/node_modules" ]]; then
-		echo "    ⏳ npm install (first run)"
-		(cd "$fixture_dir/remotion-src" && npm install --silent --no-progress >/dev/null 2>&1)
-	fi
+  if [[ ! -d "$fixture_dir/remotion-src/node_modules" ]]; then
+    echo "    ⏳ npm install (first run)"
+    (cd "$fixture_dir/remotion-src" && npm install --silent --no-progress >/dev/null 2>&1)
+  fi
 
-	echo "    ⏳ render Remotion baseline"
-	if ! (cd "$fixture_dir/remotion-src" &&
-		npx --no-install remotion render "$composition_id" out/baseline.mp4 >/dev/null 2>&1); then
-		echo "    ✗ Remotion render failed"
-		write_result "$fixture_name" "fail" stage "remotion-render"
-		return 0
-	fi
+  echo "    ⏳ render Remotion baseline"
+  if ! (cd "$fixture_dir/remotion-src" && \
+        npx --no-install remotion render "$composition_id" out/baseline.mp4 >/dev/null 2>&1); then
+    echo "    ✗ Remotion render failed"
+    write_result "$fixture_name" "fail" stage "remotion-render"
+    return 0
+  fi
 
-	echo "    ⏳ render HF translation"
-	if ! (cd "$fixture_dir" &&
-		node "$HF_CLI" render hf-src/ --output hf.mp4 --quiet >/dev/null 2>&1); then
-		echo "    ✗ HF render failed"
-		write_result "$fixture_name" "fail" stage "hf-render"
-		return 0
-	fi
+  echo "    ⏳ render HF translation"
+  if ! (cd "$fixture_dir" && \
+        node "$HF_CLI" render hf-src/ --output hf.mp4 --quiet >/dev/null 2>&1); then
+    echo "    ✗ HF render failed"
+    write_result "$fixture_name" "fail" stage "hf-render"
+    return 0
+  fi
 
-	if R2HF_SSIM_THRESHOLD="$threshold" "$DIFF" \
-		"$fixture_dir/remotion-src/out/baseline.mp4" \
-		"$fixture_dir/hf.mp4" \
-		"$fixture_dir/diff" >/dev/null; then
-		local mean
-		mean=$(read_json_value "$fixture_dir/diff/summary.json" "mean")
-		echo "    ✓ pass (mean SSIM $mean, threshold $threshold)"
-		write_result "$fixture_name" "pass" mean_ssim "$mean" threshold "$threshold"
-	else
-		local mean
-		mean=$(read_json_value "$fixture_dir/diff/summary.json" "mean")
-		echo "    ✗ fail (mean SSIM $mean, threshold $threshold)"
-		"$STRIP" \
-			"$fixture_dir/remotion-src/out/baseline.mp4" \
-			"$fixture_dir/hf.mp4" \
-			"$fixture_dir/strip" 8 >/dev/null
-		write_result "$fixture_name" "fail" stage "ssim" mean_ssim "$mean" threshold "$threshold"
-	fi
+  if R2HF_SSIM_THRESHOLD="$threshold" "$DIFF" \
+      "$fixture_dir/remotion-src/out/baseline.mp4" \
+      "$fixture_dir/hf.mp4" \
+      "$fixture_dir/diff" >/dev/null; then
+    local mean
+    mean=$(read_json_value "$fixture_dir/diff/summary.json" "mean")
+    echo "    ✓ pass (mean SSIM $mean, threshold $threshold)"
+    write_result "$fixture_name" "pass" mean_ssim "$mean" threshold "$threshold"
+  else
+    local mean
+    mean=$(read_json_value "$fixture_dir/diff/summary.json" "mean")
+    echo "    ✗ fail (mean SSIM $mean, threshold $threshold)"
+    "$STRIP" \
+      "$fixture_dir/remotion-src/out/baseline.mp4" \
+      "$fixture_dir/hf.mp4" \
+      "$fixture_dir/strip" 8 >/dev/null
+    write_result "$fixture_name" "fail" stage "ssim" mean_ssim "$mean" threshold "$threshold"
+  fi
 }
 
 run_lint_tier() {
-	local fixture_dir="$1"
-	local fixture_name
-	fixture_name=$(basename "$fixture_dir")
+  local fixture_dir="$1"
+  local fixture_name
+  fixture_name=$(basename "$fixture_dir")
 
-	echo "  ▶ $fixture_name (lint-only)"
-	if "$fixture_dir/validate.sh" >/dev/null 2>&1; then
-		echo "    ✓ pass (8/8 cases)"
-		write_result "$fixture_name" "pass" mode "lint"
-	else
-		echo "    ✗ fail (some cases mismatched expected.json)"
-		write_result "$fixture_name" "fail" mode "lint"
-	fi
+  echo "  ▶ $fixture_name (lint-only)"
+  if "$fixture_dir/validate.sh" >/dev/null 2>&1; then
+    echo "    ✓ pass (8/8 cases)"
+    write_result "$fixture_name" "pass" mode "lint"
+  else
+    echo "    ✗ fail (some cases mismatched expected.json)"
+    write_result "$fixture_name" "fail" mode "lint"
+  fi
 }
 
 echo "remotion-to-hyperframes corpus run"
 echo "=================================="
 
 for tier in tier-1-title-card tier-2-multi-scene tier-3-data-driven; do
-	if [[ -n "${1:-}" && "$1" != "$tier" ]]; then
-		continue
-	fi
-	if [[ -d "$THIS_DIR/$tier" ]]; then
-		run_render_tier "$THIS_DIR/$tier"
-	fi
+  if [[ -n "${1:-}" && "$1" != "$tier" ]]; then
+    continue
+  fi
+  if [[ -d "$THIS_DIR/$tier" ]]; then
+    run_render_tier "$THIS_DIR/$tier"
+  fi
 done
 
 if [[ -z "${1:-}" || "$1" == "tier-4-escape-hatch" ]]; then
-	if [[ -d "$THIS_DIR/tier-4-escape-hatch" ]]; then
-		run_lint_tier "$THIS_DIR/tier-4-escape-hatch"
-	fi
+  if [[ -d "$THIS_DIR/tier-4-escape-hatch" ]]; then
+    run_lint_tier "$THIS_DIR/tier-4-escape-hatch"
+  fi
 fi
 
 # Aggregate the per-fixture JSON files into one report.

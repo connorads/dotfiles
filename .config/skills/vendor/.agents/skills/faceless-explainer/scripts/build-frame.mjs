@@ -37,6 +37,7 @@ import {
   parseFonts,
   pickAccent,
   semanticColors,
+  STATUS_ROLE_KEY,
   UA_DEFAULT_COLORS,
 } from "./lib/tokens.mjs";
 
@@ -162,10 +163,9 @@ let brandFontWeights = []; // weights the brand text font actually ships (tokens
 let brandColorStats = []; // rich per-color usage stats (areaBg / interactiveBg / textCount …)
 // Icon/glyph fonts capture surfaces as "fonts" — they are never the brand text face
 // (webflow-icons, Font Awesome, icomoon …) and must not become display/body or contribute weights.
-const isIconFont = (name) =>
-  /(?:^|[\s_-])icons?(?:[\s_-]|$)|icomoon|font\s*-?awesome|glyphicons?|material\s*icons|feather\s*icons/i.test(
-    String(name),
-  );
+const ICON_FONT_PATTERN =
+  /(?:^|[\s_-])icons?(?:[\s_-]|$)|icomoon|font\s*-?awesome|glyphicons?|material\s*icons|feather\s*icons|(?:icon|glyph).*font|font.*(?:icon|glyph)|^vidaxlfont$/i;
+const isIconFont = (name) => ICON_FONT_PATTERN.test(String(name));
 if (existsSync(tokensPath)) {
   try {
     const t = JSON.parse(readFileSync(tokensPath, "utf8"));
@@ -253,11 +253,7 @@ if (brandColors.length && presetColors.length) {
     let next;
     if (val === prDark) next = mapDark;
     else if (val === prLight) next = mapLight;
-    else if (
-      /(?:^|[-_])(?:positive|negative|success|error|warning|danger|good|bad|up|down)(?:[-_]|$)/i.test(
-        key,
-      )
-    )
+    else if (STATUS_ROLE_KEY.test(key))
       // semantic status colors (green/red …) — the HUE carries the meaning; never repaint.
       // MUST precede the accent checks: a preset's red "negative" is often its 2nd-most-chromatic
       // color and would otherwise be claimed as accent2 and recolored to the brand hue.
