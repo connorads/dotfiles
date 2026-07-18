@@ -4,10 +4,12 @@ description: >
   Design and write effective tests for behavioural changes, bug fixes, and
   refactors. Use when choosing a test layer, practising TDD, picking
   doubles/fakes, designing scenario or e2e suites for critical journeys,
-  reducing brittle or flaky tests, refactoring safely, or applying
-  property-based, snapshot/approval, differential/metamorphic, or contract
-  testing. For coverage, thresholds, mutation testing, fuzzing, and CI/hook
-  enforcement, use the test-coverage skill.
+  reducing brittle or flaky tests, designing the characterisation tests that
+  make refactoring safe, or applying property-based, snapshot/approval,
+  differential/metamorphic, or contract testing. For coverage, thresholds,
+  mutation testing, fuzzing, and CI/hook enforcement, use the test-coverage
+  skill; for legacy migration and refactoring strategy, use the refactoring
+  skill.
 ---
 
 # Testing

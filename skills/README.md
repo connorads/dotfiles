@@ -9,6 +9,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | Skill | What it's for | Install |
 |-------|---------------|---------|
 | `architecture` | Language-agnostic software design | `pnpm dlx skills add connorads/dotfiles -s architecture` |
+| `refactoring` | Legacy rescue and incremental migration | `pnpm dlx skills add connorads/dotfiles -s refactoring` |
 | `design-forking` | Divergent design alternatives before committing | `pnpm dlx skills add connorads/dotfiles -s design-forking` |
 | `typescript` | Idiomatic, type-safe TypeScript | `pnpm dlx skills add connorads/dotfiles -s typescript` |
 | `testing` | Test strategy, TDD, test design | `pnpm dlx skills add connorads/dotfiles -s testing` |
