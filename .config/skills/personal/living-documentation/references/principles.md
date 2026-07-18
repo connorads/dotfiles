@@ -51,6 +51,12 @@ Most knowledge matters only at the moment it is created. Durable form is a cost
   only the survivors. Three gates for durability: long-lived? many readers?
   critical? Transient "how I fixed it" belongs in a commit message, not a
   reference doc.
+- **Stake-driven focus.** Before spending any documentation effort, name the
+  project's single biggest risk - *"what would most easily make this fail?"* -
+  and aim the effort there first. The three gates decide *whether* to
+  document; the main stake decides *what to document first* when effort is
+  scarce. Acute on a rescue: document what would most easily sink it, not the
+  parts that are merely interesting.
 - **Link, don't re-explain (ready-made documentation).** If knowledge already
   exists authoritatively, name the pattern precisely and link it; write only the
   project-specific 1%. Your paraphrase is less accurate than the link, and a
