@@ -160,3 +160,7 @@ started — two sources of truth, permanently.
 Boundaries: `architecture` defines the destination and its module boundaries;
 `testing` owns test design in depth; `mechanical-enforcement` owns the exact
 lint/architecture rules; this skill owns sequencing the journey.
+
+`evals/evals.json` holds this skill's regression probes, judge checklist, and
+trigger-routing set, with grading instructions inline — run them when revising
+this skill.
