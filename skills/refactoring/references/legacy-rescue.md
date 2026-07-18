@@ -3,6 +3,8 @@
 Taking over an inherited, untested codebase — including the AI-generated
 variant. Assumes the SKILL.md spine (safety-net precondition, hotspot
 targeting, Mikado, ratchets, deletion conditions); this file is the mechanics.
+On an unfamiliar system — especially one with no handover — start with
+[comprehension.md](comprehension.md), then return here to build the net.
 
 ## Characterisation: pin behaviour you don't understand
 

@@ -26,7 +26,9 @@ wearing a disguise.
 The sections below are constraints a good plan satisfies, not a template to
 recite: shape the plan around the specific situation, keep its steps concrete
 to the codebase at hand, and skip a constraint only when it genuinely does not
-apply.
+apply. When the system is unfamiliar and the original author is gone, a
+comprehension phase precedes even the safety net — see
+[references/comprehension.md](references/comprehension.md).
 
 ## One precondition, two halves
 
@@ -155,6 +157,7 @@ started — two sources of truth, permanently.
 | When the task involves… | Read |
 |---|---|
 | Replacing a live subsystem, dependency, schema, or whole system: strangler fig, branch by abstraction, parallel change, expand–migrate–contract, event interception, escaping a rewrite branch | [references/migration-patterns.md](references/migration-patterns.md) |
+| First contact with an unfamiliar inherited system before any change: time-boxed feasibility read, hypothesis-first design recovery, refactor-to-understand, mining history for consolidation, recovering the domain from the schema, interviewing users during a demo | [references/comprehension.md](references/comprehension.md) |
 | Taking over an inherited, untested, or AI/vibe-coded codebase: characterisation and seams, deployment-confidence bootstrap, AI-specific pathologies and agent guardrails | [references/legacy-rescue.md](references/legacy-rescue.md) |
 
 Boundaries: `architecture` defines the destination and its module boundaries;
