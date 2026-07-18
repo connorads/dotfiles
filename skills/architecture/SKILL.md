@@ -3,7 +3,8 @@ name: architecture
 description: >
   Design the target structure of software: clear boundaries, typed domain
   models, and testable flows. Use for substantial design work, hard-to-test
-  code, domain modelling, module organisation, ports/adapters, functional core
+  code, domain modelling, module organisation, API and endpoint contract
+  design, ports/adapters, functional core
   / imperative shell, explicit error handling, observability, or when code
   structure is fighting the change. Defines the target shape; the refactoring
   skill owns the migration path that moves existing code there safely.
@@ -26,6 +27,8 @@ What kind of change is this?
 |   `-- Use strong types, clear parsing at boundaries, and a small imperative shell
 |-- New substantial behaviour
 |   `-- Sketch domain types, workflow, ports, and observable outcomes first
+|-- Designing or extending an API/endpoint
+|   `-- derive operations from consumer jobs, not the schema (API Contracts)
 |-- Existing code is hard to test
 |   `-- separate decisions from effects; introduce purpose-named ports
 |-- Domain states are unclear
@@ -179,6 +182,30 @@ Two corrections to common instincts:
   carries your internal model or the consumer reimplements your rule, the boundary
   is as strongly coupled as the synchronous version. Shrink shared knowledge with a
   contract; the transport is a separate concern (`event-driven-architecture`).
+
+## API Contracts
+
+An API is a module's public surface at a system boundary; the same
+encapsulation rule applies with the stakes raised, because consumers are far
+away and cannot be refactored with you. An API shaped by your schema shares
+your internal model at maximum distance — the strong-plus-far trap (see
+Balancing Coupling).
+
+Derive endpoints from consumer jobs, not from the schema. Given a vague ask
+("an API to manage bookings"), the reflex failure is anchoring on the central
+table and shipping its row lifecycle as the API — while every job that spans
+tables (sign up and book, cancel with refund, take payment) silently becomes
+unservable. Before writing endpoints, list the jobs the consumer must
+complete and check each is achievable end-to-end through the API; a job the
+schema spreads across tables still needs a first-class operation.
+
+Model workflow operations as actions, not status writes: `POST
+/bookings/{id}/cancel`, not `PATCH /bookings/{id}` with a status field. A
+status write invites implementing the transition table and dropping the
+operation's side effects (the refund, the freed capacity); an action route
+makes "what happens when this occurs" the unit of design. When the operation
+is a reaction rather than a request, it is an event —
+`event-driven-architecture` owns the mechanics.
 
 ## Domain Modelling
 
