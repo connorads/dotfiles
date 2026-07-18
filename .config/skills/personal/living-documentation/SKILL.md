@@ -7,7 +7,9 @@ description: >
   or reviewing an AGENTS.md/CLAUDE.md, writing a skill, writing an ADR or doc,
   deciding whether something is worth documenting, or when docs keep going
   stale. Triggers: "living documentation", "is this doc trustworthy", "should
-  this be documented", "why does this doc keep going stale", "doc rot".
+  this be documented", "why does this doc keep going stale", "doc rot",
+  "documenting a legacy or inherited codebase", "rescuing a codebase nobody
+  understands".
 ---
 
 # Living Documentation
@@ -27,6 +29,8 @@ catches destroys the authority of every other fact in the document.
 - Deciding whether a thing is even worth documenting.
 - A doc keeps drifting from reality, or feels too long to trust.
 - Designing how a project's knowledge should be organised.
+- Documenting, reverse-engineering, or rescuing a legacy / inherited codebase
+  nobody understands.
 
 ## The codex (sticky maxims)
 
@@ -71,12 +75,18 @@ the themes per artifact (AGENTS.md / skills / ADRs / KBs), tagging them inline.
   enforce the rule instead of stating it, or derive the fact from its source.
 - **Deciding what to capture?** Apply theme 2: Rule of Two, sedimentation, and
   the three gates (long-lived? many readers? critical?).
+- **Rescuing a legacy or inherited system (lost specs, author gone)?** Read
+  [references/legacy.md](references/legacy.md): fossilised knowledge,
+  superimposed / highlighted structure, external annotation registry,
+  small-scale simulation, comprehension diagnostics, enforced legacy rules,
+  biodegradable bankruptcy.
 
 ## Don't duplicate sibling skills
 
 Per maxim 11, point at these rather than restating them:
 
 - **mechanical-enforcement** - which rules to turn into linters/hooks and how (theme 5).
+- **refactoring** - comprehending, characterising, and migrating the legacy code itself; [references/legacy.md](references/legacy.md) covers only the documentation side.
 - **architecture** - domain modelling, ports/adapters, making illegal states unrepresentable (theme 5.3).
 - **testing** / **test-coverage** - reconciliation tests, contract tests, enforcement gates (themes 1, 5).
 - **hk** - wiring pre-commit hooks and local checks for the mechanisms above.
