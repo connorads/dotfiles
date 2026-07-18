@@ -279,6 +279,8 @@ proprietary/vendor bundles, self-updating apps, browsers/editors/AI apps with
 fast vendor cadence, drivers/extensions, or anything whose signing, permissions,
 updates, or app-bundle integration are better via Homebrew.
 
+`microsoft-teams` is marked `greedy` (in [darwin-desktop.nix](./.config/nix/modules/darwin-desktop.nix)) because Microsoft AutoUpdate is absent here, so its `auto_updates` cask would otherwise never upgrade ("old version" banner); `homebrew.onActivation.upgrade` makes `drs` own its version.
+
 mise owns the developer-tool layer: language runtimes, package managers,
 project-specific tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs
 like Claude/Codex, and tools needing direct upstream updates or postinstall

@@ -29,6 +29,11 @@
     enable = true;
     onActivation = {
       cleanup = "zap";
+      # Upgrade outdated formulae/casks on activation (drops brew bundle's
+      # --no-upgrade). Non-greedy bundle still skips auto_updates casks, so
+      # self-updating apps are untouched; only formulae, pinned casks, and
+      # casks explicitly marked greedy (see microsoft-teams) are upgraded.
+      upgrade = true;
     };
     brews = [
       "granted"
