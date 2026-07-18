@@ -1,6 +1,6 @@
 ---
 name: design-forking
-description: Forks a design decision into genuinely different alternatives before committing - divergent thinking for software design. Use when facing an architecture or design decision, weighing approaches, or planning a non-trivial refactor; when the user asks for options, alternatives or trade-offs; when about to implement the first approach that came to mind for anything hard to reverse; or when reviewing a plan that considered only one design.
+description: Forks a design decision into genuinely different alternatives before committing - divergent thinking for software design. Use when facing an architecture or design decision, weighing approaches, or planning a non-trivial refactor; when the user asks for options, alternatives or trade-offs; when about to implement the first approach that came to mind for anything hard to reverse; or when reviewing a plan that considered only one design. This skill widens and compares the option set; committing to the winner as a calibrated bet with a pre-agreed exit is deciding-under-uncertainty's job.
 ---
 
 # Design Forking
