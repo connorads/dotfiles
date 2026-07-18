@@ -96,7 +96,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/faceless-explainer/SKILL.md",
-      "computedHash": "8bdc7ddaccd9b7fa1180ef47a86823cbc35b23007c9c34ef2f2c0ad0ad010363"
+      "computedHash": "5013dc9f544e385b11a857acde0888b74ee4963bb6c3698d130e4848be30c060"
     },
     "figma": {
       "source": "heygen-com/hyperframes",
@@ -120,7 +120,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/general-video/SKILL.md",
-      "computedHash": "e26710c3537b3a0718a5baea8c2094b6d491306dff9088322638336423ef24f9"
+      "computedHash": "1194ac1ea4e0c90dad61f189c621d60adc26bad0c9b7b24bf003aa32ab01507c"
     },
     "grill-me": {
       "source": "mattpocock/skills",
@@ -168,7 +168,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/hyperframes-cli/SKILL.md",
-      "computedHash": "61b7c5f97206eb4f8282a6804b54a25707df972c5ca7e6cfa055cc05bcb7d8c3"
+      "computedHash": "b76dda34c940480c64a5c817379900fb387c7b896ca0c8fd62a6bb340c127a33"
     },
     "hyperframes-core": {
       "source": "heygen-com/hyperframes",
@@ -228,7 +228,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/media-use/SKILL.md",
-      "computedHash": "38e490109c859658664c4f23c5fb84da982e35d06db89bd078e688de52c216f1"
+      "computedHash": "c2533cda22f6d20c143b5e6e247b2d2fe0e3ca4de8d94c72a4cdbcf2f35e5adc"
     },
     "minimalist-ui": {
       "source": "leonxlnx/taste-skill",
@@ -288,7 +288,7 @@
       "source": "vercel-labs/portless",
       "sourceType": "github",
       "skillPath": "skills/portless/SKILL.md",
-      "computedHash": "63bff4a71f23671d9aa36591475773dda1a507d54d63591040bd5ffc94556593"
+      "computedHash": "65440d1cf751bde4d45ac8a215d4609f070624e162f999f26016691dc43a8eb7"
     },
     "pr-to-video": {
       "source": "heygen-com/hyperframes",
@@ -318,7 +318,7 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "3c92fd961e11ea0be692138a9ba7cccaea4ec509d2e462d7e170a5b1238ab112"
+      "computedHash": "c774c586a46ec09d349fa5a54f99bd572b7cea75fa58cd2a8b2c23dce5295550"
     },
     "remotion-to-hyperframes": {
       "source": "heygen-com/hyperframes",
@@ -342,7 +342,7 @@
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
       "skillPath": "skills/slideshow/SKILL.md",
-      "computedHash": "0ebf17569eb78232857d881d1d8f2e85c6a101f9af86b4b4ef86587e80cffdce"
+      "computedHash": "7b31f30f522435f18a89ab447b6f7f179a6021c44c501ef3d31a513d05ddfb74"
     },
     "sound-effects": {
       "source": "elevenlabs/skills",

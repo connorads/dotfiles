@@ -16,20 +16,20 @@ SCRIPTS_DIR="$(cd "$THIS_DIR/../../../scripts" && pwd)"
 EXPECTED="$THIS_DIR/expected.json"
 
 if [[ ! -f "$SCRIPTS_DIR/lint_source.py" ]]; then
-	echo "error: lint_source.py not found at $SCRIPTS_DIR/lint_source.py" >&2
-	exit 2
+  echo "error: lint_source.py not found at $SCRIPTS_DIR/lint_source.py" >&2
+  exit 2
 fi
 if [[ ! -f "$EXPECTED" ]]; then
-	echo "error: expected.json not found at $EXPECTED" >&2
-	exit 2
+  echo "error: expected.json not found at $EXPECTED" >&2
+  exit 2
 fi
 
 # Drive lint_file() in-process so the per-case overhead is one Python startup,
 # not N (8 cases × ~80 ms forking python3 was the dominant cost).
 SCRIPTS_DIR="$SCRIPTS_DIR" \
-	THIS_DIR="$THIS_DIR" \
-	EXPECTED="$EXPECTED" \
-	python3 <<'PY'
+THIS_DIR="$THIS_DIR" \
+EXPECTED="$EXPECTED" \
+python3 <<'PY'
 import json
 import os
 import sys

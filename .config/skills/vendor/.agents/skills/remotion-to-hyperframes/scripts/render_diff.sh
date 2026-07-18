@@ -25,8 +25,8 @@ set -euo pipefail
 THRESHOLD="${R2HF_SSIM_THRESHOLD:-0.85}"
 
 if [[ $# -lt 2 || $# -gt 3 ]]; then
-	echo "usage: $0 <baseline.mp4> <translated.mp4> [output-dir]" >&2
-	exit 2
+  echo "usage: $0 <baseline.mp4> <translated.mp4> [output-dir]" >&2
+  exit 2
 fi
 
 BASELINE="$1"
@@ -34,16 +34,16 @@ TRANSLATED="$2"
 OUTDIR="${3:-./diff-out}"
 
 if [[ ! -f "$BASELINE" ]]; then
-	echo "error: baseline not found: $BASELINE" >&2
-	exit 2
+  echo "error: baseline not found: $BASELINE" >&2
+  exit 2
 fi
 if [[ ! -f "$TRANSLATED" ]]; then
-	echo "error: translated not found: $TRANSLATED" >&2
-	exit 2
+  echo "error: translated not found: $TRANSLATED" >&2
+  exit 2
 fi
 if ! command -v ffmpeg >/dev/null 2>&1; then
-	echo "error: ffmpeg not on PATH" >&2
-	exit 2
+  echo "error: ffmpeg not on PATH" >&2
+  exit 2
 fi
 
 mkdir -p "$OUTDIR"
@@ -54,9 +54,9 @@ SUMMARY="$OUTDIR/summary.json"
 # Mean SSIM line to stderr. We capture both — per-frame for distribution
 # stats, and the mean for the headline number.
 ffmpeg -hide_banner -nostats -loglevel info \
-	-i "$BASELINE" -i "$TRANSLATED" \
-	-lavfi "[0:v]scale=iw:ih[ref];[1:v]scale=iw:ih[main];[main][ref]ssim=stats_file=$SSIM_LOG" \
-	-f null - 2>"$OUTDIR/ffmpeg.stderr"
+  -i "$BASELINE" -i "$TRANSLATED" \
+  -lavfi "[0:v]scale=iw:ih[ref];[1:v]scale=iw:ih[main];[main][ref]ssim=stats_file=$SSIM_LOG" \
+  -f null - 2>"$OUTDIR/ffmpeg.stderr"
 
 # Parse: each line in ssim.log looks like
 #   n:1 Y:0.987655 U:0.992345 V:0.991234 All:0.989012 (19.512345)
