@@ -80,8 +80,9 @@ every sentence:
   to trigger mode: it applies at full strength to autoloaded skills, where
   every sentence costs every session. A deliberately-invoked skill
   (catalogue/command-style) is a steering mode — knowledge the model holds
-  but won't apply unprompted is fair content there, and the bar shifts to
-  "does invoking this beat typing an ad-hoc sentence?" It must still encode
+  but demonstrably won't apply unprompted (shown by a baseline run, not
+  predicted) is fair content there, and the bar shifts to "does invoking
+  this beat typing an ad-hoc sentence?" It must still encode
   a specific stance — order, defaults, escape hatches — never a neutral
   summary.
 - **Standing rules, not one-time steps.** The body enters the conversation
