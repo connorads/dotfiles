@@ -9,6 +9,7 @@ table and rules-catalogue index in `SKILL.md`.
 
 - [Architectural boundaries](#architectural-boundaries)
 - [Transitive architecture tests](#transitive-architecture-tests)
+- [Cycle gating on legacy graphs](#cycle-gating-on-legacy-graphs)
 - [Go boundaries](#go-boundaries)
 - [Greppable invariants (agent self-audit tier)](#greppable-invariants-agent-self-audit-tier)
 - [Purity: keeping the functional core pure](#purity-keeping-the-functional-core-pure)
@@ -97,6 +98,41 @@ knip for unused exports, unused files, and unused dependencies (see
 `references/typescript.md`).
 
 See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
+
+## Cycle gating on legacy graphs
+
+The transitive tools above gate cycles as binary — any cycle fails. That is
+the right greenfield default, but it is unadoptable on a legacy graph already
+full of them, and it misses the real signal: a cycle's danger is its *size and
+growth*, not its existence (von Zitzewitz). Small same-package cycles do
+little harm; large cycle groups cannot be tested in isolation, replaced, or
+understood, and grow release by release into an unbreakable core. Gate by
+level:
+
+- **Package / namespace / module cycles: zero-tolerance.** These layers carry
+  architectural intent, so any cycle between them is a violation — this is
+  where `import/no-cycle` / dependency-cruiser / `cargo modules --acyclic`
+  earn their keep.
+- **File / class cycles: small and contained is tolerable.** A group of ≤5
+  confined to one package is liveable; break a group before it grows past that
+  or spans packages, while the fix is one dependency inversion rather than a
+  rewrite.
+- **Legacy adoption: baseline, don't flood.** Wire the cycle rule through a
+  committed baseline (`depcruise-baseline` + `--ignore-known`) so only *new*
+  cycles fail, then shrink the baseline — the ratchet recipe in `SKILL.md`
+  (Ratcheting a gate onto non-conforming code).
+
+No OSS tool gates on cycle-*group* (strongly-connected-component) size
+directly; Sonargraph-Explorer (free but proprietary) computes group-size and
+graph-erosion metrics — a watch, against the local-OSS grain, same posture as
+Socket.
+
+Soft complexity thresholds are the file-local half of the same erosion story
+(von Zitzewitz), enforced by each stack's own linter: file ≤ 800 LoC,
+cyclomatic complexity ≤ 15 (defect rates climb sharply past ~24), and **max
+nesting depth ≤ 4** — a cheap, underused proxy (ESLint `max-depth`, ruff/pylint
+equivalents) that catches deeply branched code a cyclomatic cap misses. Rust
+numbers live in `references/rust.md`.
 
 ## Go boundaries
 

@@ -49,7 +49,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Typos | — | [typos](https://github.com/crate-ci/typos) | — | — | Fast, auto-fixes. Low false-positive rate on prose, but locale mode rewrites US-spelled identifiers in code — see the locale caveat below. |
 | GitHub Actions / CI | — | [zizmor](https://github.com/zizmorcore/zizmor) + [actionlint](https://github.com/rhysd/actionlint) | — | — | Run both — minimal overlap. zizmor = security audit of `.github/workflows/*.yml` + `action.yml` (SARIF + `--format=github` annotations); actionlint = correctness (expression type-checks, `needs:` graph, runner labels; shells out to an installed ShellCheck for `run:` blocks — not embedded). actionlint is an hk builtin. |
 | Postgres migrations | — | [squawk](https://squawkhq.com/) | eugene (watch — `eugene trace` only) | — | Rust, static — no DB needed in CI (`squawk 'migrations/*.sql'`; failure level configurable). Atlas `migrate lint` is paid. `eugene trace` observes real lock acquisition against a temp Postgres — ad-hoc for high-contention migrations; never wire `eugene lint` (duplicates squawk via the same pg_query.rs parser; pre-1.0, solo-maintained). Neither replaces `lock_timeout` / `statement_timeout` in the migration runner. MySQL/SQLite: gap. |
-| API / event contracts | — | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor | — | Baseline-diff gates for cross-service contracts — see `references/architecture-boundaries.md` (Boundary contracts). |
+| API / event contracts | — | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor; vacuum for baseline-free OpenAPI spec governance | — | Baseline-diff gates for cross-service contracts — see `references/architecture-boundaries.md` (Boundary contracts); spec-shape governance in `references/contract-gates.md`. |
 
 > **Locale spell-checker caveat.** A locale-rewriting spell hook (typos `en-gb`,
 > aspell) treats US spellings as errors and auto-"fixes" them — including
@@ -172,6 +172,31 @@ When a bug escapes to review or production, the retro question is: **what rule w
 3. Add it, with an inline comment explaining the failure mode it prevents.
 4. Add an entry to the relevant rules-catalogue section — inline in this SKILL.md for a cross-stack concern, or the matching `references/` stack file — with the same rationale.
 5. If it's a new *type* of rule worth sharing, add a snippet to `references/`.
+
+### Ratcheting a gate onto non-conforming code
+
+A hard threshold (complexity cap, coverage floor, a new `no-restricted-*` or
+graph rule) fails the whole build the day it lands on a codebase that already
+violates it — so it gets reverted, or slackened to a ceiling that governs
+nothing. Ratchet instead (Ford/Parsons): record today's violations as a
+committed baseline, fail only *new* ones, and shrink the baseline deliberately.
+Write the baseline once during adoption; never refresh it in CI.
+
+| Stack / tool | Baseline vehicle | Notes |
+|---|---|---|
+| ESLint | `eslint --suppress-all` → committed `eslint-suppressions.json` (v9.24+) | New violations still fail; `--prune-suppressions` as debt is paid. |
+| dependency-cruiser | `depcruise-baseline` + `--ignore-known` | Makes graph/boundary rules adoptable on an already-tangled repo. |
+| basedpyright | `--writebaseline` — the exemplar workflow in `references/python-typecheck.toml` | Baselined errors downgrade to hints; fixed ones auto-prune. |
+| ruff | `ruff check --select CODE --add-noqa`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file — scope per rule. |
+| golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating; no baseline file. |
+| Coverage (Vitest) | `coverage.thresholds.autoUpdate: true` | Self-tightening: bumps thresholds up as coverage rises. Run where the config edit can be committed, not in a gated CI job. |
+
+Biome and oxlint have no baseline mechanism (open proposals only) — on a legacy
+repo that needs one, carry the rule on the ESLint / dependency-cruiser layer
+instead. Betterer, the generic snapshot-ratchet wrapper, is dormant — avoid.
+Where no vehicle exists, fall back to severity: gate at *warning* first,
+escalate to *error* after a grace window, and tighten the number release by
+release.
 
 ## References
 

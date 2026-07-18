@@ -1,9 +1,10 @@
 # Contract-compat gates — command patterns and CI placement
 
-Every tool here diffs the current API surface against a **baseline** (a git
-ref, a published schema, or a committed report), so they belong in CI or a
-pre-push hook — never pre-commit, where no baseline is naturally available.
-Gate on the non-zero exit in every case.
+Every tool here except vacuum diffs the current API surface against a
+**baseline** (a git ref, a published schema, or a committed report), so they
+belong in CI or a pre-push hook — never pre-commit, where no baseline is
+naturally available. Spec governance (vacuum, below) is the baseline-free
+exception and can run pre-commit. Gate on the non-zero exit in every case.
 
 ## Protobuf — buf breaking
 
@@ -43,6 +44,25 @@ In CI the baseline is usually the file at the target branch:
 git show origin/main:openapi.yaml > /tmp/base.yaml
 oasdiff breaking /tmp/base.yaml openapi.yaml --fail-on ERR
 ```
+
+## OpenAPI spec governance — vacuum
+
+oasdiff gates *breaking changes* against a baseline; spec governance gates the
+spec's *shape and style* with no baseline — required descriptions/examples,
+naming conventions, versioning rules, banned patterns — so it is the one gate
+in this file that can run pre-commit. The ruleset standard is Spectral's
+(`spectral:oas` built-ins plus house rules in one shared ruleset, so API
+conventions stop living in review memory). Run it with **vacuum** — single Go
+binary, Spectral-ruleset compatible, OpenAPI 3.0/3.1/3.2:
+
+```bash
+# non-zero exit at or above --fail-severity (default: error)
+vacuum lint -r house-ruleset.yaml --fail-severity error openapi.yaml
+```
+
+Spectral itself still ships patches but is investment-light and silently
+ignores OpenAPI 3.2 constructs — reach for it only where its JS plugin
+ecosystem is already wired in.
 
 ## GraphQL — graphql-inspector
 
