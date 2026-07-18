@@ -19,6 +19,8 @@ If none apply and the ask is really copy or conversion, route to `messaging.md`;
 
 A product or company that has never been positioned (a new launch) shows none of these symptoms - skip the symptom check entirely; positioning is the task by definition. Proceed to scoping below and expect the early-stage check (section 2) and the audience-research fallback (`customer-research.md` section 6) to apply.
 
+A product that has **dominated its niche and seen growth flatten** also shows none of the four symptoms - this is a growth-driven repositioning trigger, not a weakness, so do not route it away as "not a positioning problem". The task is choosing the next move along the Big Fish growth path (section 5: dominate the niche → adjacent segments the track record carries into → eventually Head to Head or category creation), re-entering at the alternatives step (section 8) to test whether the winning attributes actually transfer to the adjacent segment. Distinguish genuine saturation from a go-to-market execution ceiling before concluding the niche is exhausted.
+
 Then scope the exercise:
 
 - **Product vs company.** Single-product company: position product and company as one thing. Multi-product: each individually-sold product gets its own position; company positioning is the umbrella explaining why to buy several things from one vendor. Land-and-expand → position the entry product first; sold as a bundle → position the company first. The same process works for either (read "product" as "portfolio").
