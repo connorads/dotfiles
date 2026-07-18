@@ -23,10 +23,10 @@
   ],
   "cross_run_assertions": [
     "The six with-skill plans do not share a recited template: section structure and emphasis vary with the situation, not a fixed beat order",
-    "The churn one-liner (git log --format= --name-only ...) appears only where target selection is at issue, adapted to the context rather than pasted verbatim",
+    "The churn one-liner (git log --format= --name-only ...) appears only where target selection is genuinely at issue - e.g. absent from a pure schema-change plan; verbatim reuse of the canonical command is fine where it belongs",
     "No plan wastes words reciting the skill back (naming its sections, quoting its rules) instead of applying it"
   ],
-  "cross_run_history": "Iteration 1 (with-skill re-probes): all six failure modes fixed, but 5/6 plans shared the same six-beat structure and pasted the churn one-liner verbatim. The 'constraints, not a template' paragraph was added to SKILL.md in response; verified by micro-test in iteration 2.",
+  "cross_run_history": "Iteration 1 (with-skill re-probes): all six failure modes fixed, but 5/6 plans shared the same six-beat structure and pasted the churn one-liner verbatim. The 'constraints, not a template' paragraph was added to SKILL.md in response. Iteration 2 (micro-test, 1 fresh sample per probe): mitigation verified - section structure and ordering varied with the situation (deploy-first for inherited-app, reframe-first for clean-arch and rewrite-branch, pure expand-migrate-contract for db-schema), and the churn one-liner was correctly absent from db-schema-change. Residuals to watch: clean-arch-migration appended a meta-coda reciting the skill back despite 'return only the plan'; inherited-app made one tool call (SKILL.md only) and skipped the routed legacy-rescue.md, missing the AI-codebase specifics its assertions require.",
   "evals": [
     {
       "id": 1,
