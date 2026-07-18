@@ -53,6 +53,7 @@ journal_event() {
 		 notification_type: $h.notification_type?,
 		 message: $h.message?,
 		 tool_name: $h.tool_name?,
+		 stop_reason: $h.stop_reason?,
 		 plan: (if $h.tool_name? == "ExitPlanMode" then $h.tool_input? else null end)}
 	' >>"$_file" 2>/dev/null || true
 }

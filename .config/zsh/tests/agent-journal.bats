@@ -39,7 +39,8 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
     .state == "working" and .kind == "claude" and .pane == $pane
     and .event == "PreToolUse" and .session_id == "abc123"
     and .cwd == "/tmp/proj" and .permission_mode == "plan"
-    and .tool_name == "Bash" and .plan == null and (.ts | type) == "string"'
+    and .tool_name == "Bash" and .stop_reason == null
+    and .plan == null and (.ts | type) == "string"'
 }
 
 @test "ExitPlanMode tool_input is captured verbatim as plan" {
@@ -105,10 +106,11 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
 }
 
 @test "agent-stop passes the Stop payload through to the journal" {
-  printf '%s' '{"hook_event_name":"Stop","session_id":"stop-1","background_tasks":[]}' |
+  printf '%s' '{"hook_event_name":"Stop","session_id":"stop-1","stop_reason":"end_turn","background_tasks":[]}' |
     env AGENT_STATE_PANE="$PANE" sh "$STOP_SCRIPT"
 
-  journal_lines | jq -e '.state == "done" and .event == "Stop" and .session_id == "stop-1"'
+  journal_lines | jq -e '.state == "done" and .event == "Stop" and .session_id == "stop-1"
+    and .stop_reason == "end_turn"'
 }
 
 @test "agent-stop journals working while background tasks drain" {
