@@ -76,7 +76,14 @@ every sentence:
 
 - **"Can I assume the model knows this?"** If yes, delete it. Gotchas,
   non-obvious edge cases, house conventions, and exact tool invocations are
-  the high-signal content; general knowledge is padding.
+  the high-signal content; general knowledge is padding. Calibrate this test
+  to trigger mode: it applies at full strength to autoloaded skills, where
+  every sentence costs every session. A deliberately-invoked skill
+  (catalogue/command-style) is a steering mode — knowledge the model holds
+  but won't apply unprompted is fair content there, and the bar shifts to
+  "does invoking this beat typing an ad-hoc sentence?" It must still encode
+  a specific stance — order, defaults, escape hatches — never a neutral
+  summary.
 - **Standing rules, not one-time steps.** The body enters the conversation
   once and persists; the agent doesn't re-read the file later. Phrase
   guidance that should apply throughout as an ongoing rule, not an action to
