@@ -33,6 +33,51 @@ or decorator with the old name, running the new step around the delegated
 original). Both buy time without improving the old code — they are entry
 points, not the cleanup, and overuse grows the untested core.
 
+## Where to pin: reason forward to the funnel
+
+Characterisation says pin behaviour; effect reasoning says where. When one
+change touches several tangled methods, resist the reflex of one unit test
+per class — that forces breaking dependencies on every collaborator. Reason
+forward from each change point along the three channels effects travel —
+return values a caller reads, mutation of passed-in objects, and writes to
+static/global state — and find the pinch point (Feathers): the narrowest
+method or two that all those effects funnel through. Write one covering test
+there; it pins the whole cluster while you refactor beneath it. Narrow to
+per-class tests once the area is safe, then delete the covering test.
+Language firewalls bound the search — private fields, immutability, and
+value semantics are effects you need not trace past — but package/protected
+scope, references aliased and held after construction, and language escape
+hatches defeat them, so confirm rather than assume. A pinch point is also a
+natural encapsulation boundary: where effects funnel is often where a hidden
+class wants extracting.
+
+## Break dependencies safely before the net exists
+
+The behavioural net is the precondition, but making code testable usually
+needs edits before any test runs — the legacy dilemma in miniature. Make
+those unprotected edits provably safe, not merely careful:
+
+- Prefer the toolchain's behaviour-preserving refactorings (LSP/IDE rename,
+  extract method, extract variable) over hand-editing via search-replace; a
+  tool that refuses an unsafe move is a stronger net than review. When you
+  must go by hand, keep tool-driven and manual edits in separate commits,
+  and change one thing at a time — park every tangent that surfaces mid-edit
+  rather than chasing it.
+- Preserve signatures (Feathers): when extracting or delegating, copy the
+  whole parameter list verbatim rather than retyping it — transcription of
+  types and argument order is where silent bugs enter.
+- Lean on the compiler (Feathers): to find every site a change touches,
+  deliberately break the declaration — rename it, or change its type — and
+  read the errors instead of grepping. Blind spot: inheritance and
+  overloading satisfy silently — deleting a method that also exists on a
+  base class raises no error and hides real callers — so this finds
+  structural uses, not polymorphic ones.
+- Reordering statements and splitting expressions are functional changes,
+  not refactors: no tool verifies them, and a green characterisation test
+  can still hide a broken extraction — narrowing a type (double→int)
+  truncates silently unless an input forces the conversion to bite. Choose
+  inputs that exercise each conversion on the moved path.
+
 ## Requalify behaviour — modernising is not feature parity
 
 Characterisation pins what the code does; it does not tell you what to keep.

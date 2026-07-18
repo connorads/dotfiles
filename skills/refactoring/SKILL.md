@@ -158,7 +158,7 @@ started — two sources of truth, permanently.
 |---|---|
 | Replacing a live subsystem, dependency, schema, or whole system: strangler fig, branch by abstraction, parallel change, expand–migrate–contract, event interception, escaping a rewrite branch | [references/migration-patterns.md](references/migration-patterns.md) |
 | First contact with an unfamiliar inherited system before any change: time-boxed feasibility read, hypothesis-first design recovery, refactor-to-understand, mining history for consolidation, recovering the domain from the schema, interviewing users during a demo | [references/comprehension.md](references/comprehension.md) |
-| Taking over an inherited, untested, or AI/vibe-coded codebase: characterisation and seams, deployment-confidence bootstrap, AI-specific pathologies and agent guardrails | [references/legacy-rescue.md](references/legacy-rescue.md) |
+| Taking over an inherited, untested, or AI/vibe-coded codebase: characterisation and seams, test placement via pinch points, safe pre-net edits, deployment-confidence bootstrap, AI-specific pathologies and agent guardrails | [references/legacy-rescue.md](references/legacy-rescue.md) |
 
 Boundaries: `architecture` defines the destination and its module boundaries;
 `testing` owns test design in depth; `mechanical-enforcement` owns the exact
