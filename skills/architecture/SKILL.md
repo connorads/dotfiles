@@ -1,16 +1,22 @@
 ---
 name: architecture
 description: >
-  Design or refactor software around clear boundaries, typed domain models, and
-  testable flows. Use for substantial design work, hard-to-test code, domain
-  modelling, ports/adapters, functional core / imperative shell, explicit error
-  handling, observability, or when code structure is fighting the change.
+  Design the target structure of software: clear boundaries, typed domain
+  models, and testable flows. Use for substantial design work, hard-to-test
+  code, domain modelling, module organisation, ports/adapters, functional core
+  / imperative shell, explicit error handling, observability, or when code
+  structure is fighting the change. Defines the target shape; the refactoring
+  skill owns the migration path that moves existing code there safely.
 ---
 
 # Architecture
 
 Make the change easy, then make the easy change. Start by understanding the
 domain language, workflows, and boundaries before adding structure.
+
+This skill decides the target shape. When existing code must be moved there
+without stopping delivery, the `refactoring` skill owns the path — strangler
+fig, branch by abstraction, parallel change, seams.
 
 ## Decision Tree
 
@@ -68,6 +74,12 @@ infrastructure, a boundary is probably missing.
 Use fakes for owned ports in application tests. Use contract/integration tests
 to prove adapters fulfil the port.
 
+At a boundary to a legacy or third-party system whose model you do not
+control, make the adapter an anti-corruption layer (Evans): translate their
+model into your domain types at the edge so their shape never leaks inward. In
+a migration this is the seam where the new model meets the old — and unlike
+transitional scaffolding, it endures for as long as the foreign system does.
+
 Before adding a new adapter, audit existing ones: reuse through a narrow port,
 then extend an existing adapter when the capability fits, then create a new one
 only when reuse and extension would force bad coupling. Record a meaningful new
@@ -91,6 +103,26 @@ This red flag targets abstraction layers that hide nothing — not deliberate
 ports/adapters, nor pure pipeline steps kept for substitution or isolated
 testability, which earn their seam. The `typescript` skill owns the mechanics
 (deep, cohesive modules; the deletion test).
+
+## Module Organisation
+
+Organise top-level modules by business capability, not technical layer: a
+feature's handlers, domain logic, and persistence live together in one slice
+(`orders/`, `billing/`), not scattered across global `controllers/`,
+`services/`, `repositories/` folders that force every change to touch all
+three. Retrofitting global `domain/application/infrastructure` folders onto an
+existing tangle yields four connected balls of mud; layering belongs *inside*
+a capability, as a private detail.
+
+The load-bearing mechanism is encapsulation, not folder names: give each
+module one narrow public surface and keep the rest internal — a folder full of
+public types provides no protection however it is named. Keep cross-module
+calls on explicit interfaces so a module can later become a bounded context or
+its own service without rewiring. Default to a modular monolith with enforced
+boundaries; split out a deployable only when scaling, deploy cadence, or team
+ownership forces it. Modules need not share one internal shape — a complex
+pricing core earns a rich domain model while a reporting module stays plain
+queries (see Scale Rule).
 
 ## Domain Modelling
 
@@ -120,7 +152,9 @@ Prefer:
   must never be assignable where a `CustomerId` is expected) and worthwhile even
   with nothing to validate, purely to stop mix-ups
 - precise names from the domain language
-- bounded contexts with explicit translation between models
+- bounded contexts with explicit translation between your own models; a
+  foreign system's model gets the anti-corruption layer (see Ports And
+  Adapters)
 
 Avoid generic names like `data`, `info`, `manager`, and `helper` when the domain
 has better words.
@@ -296,3 +330,10 @@ domain models, aggregates where consistency demands them, and a walking skeleton
 that proves one end-to-end use case before expanding. For supporting subdomains,
 model lightly; for generic ones (auth, billing, search, notifications), buy or
 adopt an existing solution rather than modelling it yourself.
+
+Identify the core by differentiation, not centrality: the capability customers
+most obviously use is often table stakes — reliable, unremarkable, better
+bought or kept plain (a ride-hailing journey flow, a payments integration).
+Invest the rich model where differentiation potential and model complexity are
+both high, and re-score over time — today's core drifts toward supporting as
+competitors catch up.
