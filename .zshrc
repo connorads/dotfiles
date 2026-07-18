@@ -133,6 +133,12 @@ export MICRO_TRUECOLOR=1
 # Homebrew supply chain: verify bottle provenance via Sigstore/GitHub attestations
 [[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_VERIFY_ATTESTATIONS=1
 
+# uv supply chain: abort sync if a locked dependency matches an OSV MAL-* malware
+# advisory. Runs before download, incl. `uv sync --frozen` - the one path
+# exclude-newer (resolution-only) leaves unguarded. Preview feature; UV_MALWARE_CHECK=0
+# to bypass a one-off. Complements, does not replace, the exclude-newer cooldown.
+export UV_MALWARE_CHECK=1
+
 # Startup profiling output (before p10k to avoid noise)
 [[ -n "${ZSH_PROFILE+1}" ]] && zprof
 
