@@ -19,6 +19,12 @@
       "skillPath": "agents/SKILL.md",
       "computedHash": "990f8e57d0a982a4eafdd5167e4e4da6a767ee652ff000a86b4d74b09953080a"
     },
+    "batch-grill-me": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/in-progress/batch-grill-me/SKILL.md",
+      "computedHash": "f448831b8f04518b1527408f1d5024384ad5f543bdbaac6fabb7aa053ad60489"
+    },
     "caveman": {
       "source": "JuliusBrussee/caveman",
       "ref": "v1.9.1",
