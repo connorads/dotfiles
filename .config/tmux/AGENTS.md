@@ -41,7 +41,7 @@ The logic is spread across several files — change them as a set:
 - [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) — sourced by
   `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
   **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
-  permission_mode, notification message, tool_name — plus `tool_input` for
+  permission_mode, notification message, tool_name, stop_reason — plus `tool_input` for
   `ExitPlanMode` only, i.e. the plan text) to
   `~/.local/state/agent-journal/events-YYYY-MM.jsonl`. The dots show current
   state; the journal is the replayable history for audits and future cross-pane
