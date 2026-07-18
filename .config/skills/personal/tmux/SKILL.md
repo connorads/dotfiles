@@ -167,6 +167,14 @@ tmux send-keys -t "$pane" Enter
 - Resolve targets with `tmux display-message -p -t "$target" '#{pane_id}|#{session_id}'`.
 - For private servers, use `tmux -L "$name"` or `tmux -S "$path"` consistently across all commands.
 
+## Coding Agents in Panes
+
+When the target pane runs a coding agent (Claude Code, Codex), read
+[references/coding-agents.md](references/coding-agents.md) first: pane state is
+already tracked as `#{@agent_state}` (`blocked|done|working|idle`, hook-driven),
+so wait on that option instead of scraping the screen, treat `done`/`idle` as
+turn-complete, and handle `blocked` as a modal prompt needing the safety loop.
+
 ## Remote Execution (Codespaces/SSH)
 
 For mise-installed tools, wrap in zsh:
