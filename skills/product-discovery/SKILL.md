@@ -42,8 +42,10 @@ Then stop and present the result; do not continue into design or
 implementation unasked.
 
 **Escape hatch:** if the outcome is already stated, or discovery has clearly
-happened (research cited, bet explicitly made), note that in one line and
-proceed. Never run the gate on migrations, refactors, or internal tooling
+happened (research cited, bet explicitly made), note that in one line — at
+most also flag the single riskiest assumption the stated evidence leaves
+untested — and still deliver what was asked. Do not withhold the deliverable
+once outcome and evidence are stated. Never run the gate on migrations, refactors, or internal tooling
 with no user-facing behaviour to change — build what was asked.
 
 ## Session mode: open-ended discovery
@@ -76,3 +78,6 @@ whether and which; the spec defines the end state.
   heuristics; discovery here is product-level, not design artefacts.
 - **design-forking** — forks solution alternatives at the software-design
   layer; opportunity branching here happens at the problem layer.
+
+`evals/prompts.md` holds this skill's test prompts and expected behaviours —
+for revising the skill, not for performing discovery.
