@@ -33,6 +33,11 @@ property — sanitised prompts pass trivially and hide the failures that matter:
   skills, so a too-simple prompt tests nothing.
 - **Varied**: different phrasings of the intent; at least one edge case; one
   case where this skill competes with a neighbour and should win.
+- **Should-not-perform**: for skills with escape hatches or scope fences,
+  include prompts where success is *skipping* the skill's main procedure and
+  just doing the task. Over-steering (running the procedure on an exempt
+  request, or withholding the asked-for deliverable) is a failure only these
+  prompts catch.
 
 Every prompt is a permanent asset. Keep them with the skill (e.g. an `evals/`
 dir, noted in SKILL.md so it doesn't read as an orphan). Real-world failure
@@ -42,16 +47,27 @@ overfit the first failures you saw.
 
 ## Running: with-skill vs baseline
 
-For each prompt, run two fresh sessions in parallel:
+For each prompt, run fresh sessions in parallel:
 
 - **With-skill** — the draft under test.
 - **Baseline** — no skill (when creating), or the current/previous version
   (when editing; snapshot it before you start).
+- **Ad-hoc arm** (deliberately-invoked skills) — the task plus the one-line
+  instruction a user could type unaided ("do a bit of product discovery on
+  this first"). A steering skill must beat this arm, not just the bare
+  baseline: the delta over the sentence is what the skill actually earns.
 
 Fresh sessions are non-negotiable: the authoring conversation knows the
 skill's intent and masks exactly the ambiguities you're hunting. Where the
 environment offers subagents, spawn all runs in the same turn so they finish
 together; otherwise run serially, still in clean sessions.
+
+Fresh also means uncontaminated: user/project memory files
+(CLAUDE.md/AGENTS.md) often overlap a skill's domain and silently inflate or
+mask the baseline. In Claude Code, `claude -p --setting-sources ""` run from
+a directory outside any CLAUDE.md-bearing tree gives a clean headless
+session; grant the skill file with `--add-dir <skills-dir>` and pass the
+prompt on stdin (`--add-dir` is variadic and swallows a positional prompt).
 
 Capture per run: the outputs the user cares about, the full transcript, token
 cost, and wall time. Token cost is a grading dimension because skill text
@@ -70,9 +86,12 @@ Grade the transcript, not just the output. The questions that find revisions:
 - Can deterministic trace assertions check the process? Prefer concrete events
   where available: skill invoked, references read, commands run, files created,
   and command order.
-- Did it follow the *description* instead of the body? (See
-  [description.md](description.md) — the description is summarising the
-  workflow.)
+- Did it follow the *description* instead of the body? The signature: the
+  procedure's *content* appears but its control flow doesn't — ordering
+  drifts, stop points and escape hatches vanish. Verify the transcript shows
+  an actual body read. (See [description.md](description.md) — even a
+  trigger-only description can steer most of the content; the body is
+  load-bearing for the behaviours.)
 - Where did it rationalise around a rule? Copy the excuse verbatim into a
   rationalisation table (see
   [instruction-forms.md](instruction-forms.md)).
