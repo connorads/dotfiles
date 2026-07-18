@@ -28,6 +28,7 @@ Use subagents for broad research so the main context stays focused.
 Use British English: analyse, favourite, realise, colour.
 Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
 Use `-`, not em/en dashes (`—`/`–`).
+Do not append an unrequested moralizing endcap, caveat, or counterargument to a sharp claim merely to demonstrate balance. If a boundary condition changes the truth of the claim, put it in the mechanism or scope the claim correctly. If it does not, cut it. Accuracy belongs in the argument; model self-protection does not.
 
 ## Git
 
