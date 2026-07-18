@@ -1,0 +1,126 @@
+{
+  "skill_name": "refactoring",
+  "how_to_run": "Per ~/skills/writing-skills/references/evals.md: for each eval, run the prompt in two fresh sessions in parallel - with-skill (prepend with_skill_prefix) and baseline (no skill when creating; the pre-edit version when revising). Grade each plan against its assertions and the judge_checklist. Do not credit baseline_strengths to the skill - baselines already do them; a with-skill plan that loses one is a regression. Then apply cross_run_assertions to all six with-skill plans read together. Grade transcripts, not just outputs: where the routing table points at a reference file relevant to the probe, check it was actually read.",
+  "with_skill_prefix": "First read /Users/connorads/skills/refactoring/SKILL.md. If its routing table points at a reference file relevant to this task, read that too. Then, applying what you read, answer the task below.\n\n",
+  "judge_checklist": [
+    "Establishes a characterisation/smoke-test safety net AND deployment confidence (flags kill-switch, smoke gate, instant rollback) as one precondition, before restructuring",
+    "Targets effort via change hotspots (frequency x complexity), not whatever looks ugliest or scariest",
+    "Works capability-by-capability through one valuable painful slice, not global layer folders",
+    "Uses strangler fig / branch by abstraction / parallel change (expand-migrate-contract) rather than long-lived rewrite branches",
+    "Gives transitional scaffolding explicit deletion conditions, written at expand time",
+    "Uses Mikado-style try-revert-record when tangled prerequisites cascade",
+    "Protects won boundaries with automated dependency/import checks, not conventions",
+    "Keeps DB changes expand-migrate-contract with rollback; contract gated on measured residual usage",
+    "Explicitly warns against big-bang rewrite and refactoring-towards-a-diagram",
+    "Keeps shipping features throughout"
+  ],
+  "baseline_strengths": [
+    "Strangler fig / incremental slices as the default; big-bang side-branch rewrites rejected",
+    "Characterisation tests to pin current behaviour before touching tangled code",
+    "Expand-migrate-contract DB mechanics with lock-safe DDL and batched backfills",
+    "Keep-shipping budgets (e.g. ~20% of each sprint to migration slices)",
+    "Vertical-slice-not-horizontal-layer framing"
+  ],
+  "cross_run_assertions": [
+    "The six with-skill plans do not share a recited template: section structure and emphasis vary with the situation, not a fixed beat order",
+    "The churn one-liner (git log --format= --name-only ...) appears only where target selection is at issue, adapted to the context rather than pasted verbatim",
+    "No plan wastes words reciting the skill back (naming its sections, quoting its rules) instead of applying it"
+  ],
+  "cross_run_history": "Iteration 1 (with-skill re-probes): all six failure modes fixed, but 5/6 plans shared the same six-beat structure and pasted the churn one-liner verbatim. The 'constraints, not a template' paragraph was added to SKILL.md in response; verified by micro-test in iteration 2.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "inherited-app",
+      "prompt": "You are advising a software team. Situation: a startup has a web app (Node/TypeScript, Express + React, Postgres) built over two years by a single developer who has now left with no handover. It was largely \"vibe-coded\" with AI assistance: inconsistent patterns, almost no tests, tangled modules, deploys are manual and scary, and every deployment risks breaking production. A new developer has been on it for a few months trying to tidy it up. Goals: developer experience good enough to ship features again, and confidence in deployments. Write a concrete plan (max 600 words) for how to approach this over the next 3-6 months. Return only the plan as plain markdown.",
+      "assertions": [
+        "Pairs the characterisation net with deployment confidence (reproducible build, smoke gate, flag kill-switch) as one precondition",
+        "Selects targets by churn x complexity, not 'scariest modules' or ugliness",
+        "Ratchets each stabilised boundary with an automated import/dependency check",
+        "Transitional seams and flags carry explicit deletion conditions",
+        "Reads legacy-rescue.md and applies AI-codebase specifics: triage by blast radius not readability; dedupe near-clone paths"
+      ],
+      "history": "Baseline targeted 'the scariest modules', relied on documented conventions and the campsite rule with no CI ratchet, and added seams with no exit criteria."
+    },
+    {
+      "id": 2,
+      "name": "clean-arch-migration",
+      "prompt": "You are advising a software team. They have a working but messy Express/TypeScript monolith (no layering, business logic in route handlers and ORM models, ~80k LOC) and they say: \"we want to migrate this to clean architecture / hexagonal architecture\". Feature delivery must continue throughout. Write a concrete migration plan (max 600 words). Return only the plan as plain markdown.",
+      "assertions": [
+        "Converts 'we want hexagonal' into named concrete pains before planning; refuses full-codebase conversion to a reference architecture",
+        "Establishes deploy/rollback confidence alongside the characterisation harness, not tests alone",
+        "Transitional repository ports wrapping the existing ORM carry removal/consolidation conditions",
+        "Offers Mikado try-revert-record for extractions that cascade"
+      ],
+      "history": "Baseline accepted the diagram as the goal, planned to convert 80k LOC toward it, built a test harness with no deploy-confidence pairing, and introduced ORM-wrapping ports with no stated end state."
+    },
+    {
+      "id": 3,
+      "name": "orm-swap",
+      "prompt": "You are advising a software team. Their TypeScript app uses Sequelize scattered directly across ~200 files. They want to move to Drizzle ORM without a feature freeze and without a long-lived migration branch. Deploys happen weekly. Write a concrete plan (max 600 words) for how to do the replacement safely. Return only the plan as plain markdown.",
+      "assertions": [
+        "Repository seam first, then file-by-file migration on trunk (baseline strength - must not regress)",
+        "Boundary ratchet: lint/dependency rule banning Sequelize imports outside the seam, added when the seam lands",
+        "Deletion condition stated for the old ORM and the seam's dual implementations, gated on measured usage",
+        "Acknowledges extractions that cascade (hidden model coupling) and reaches for Mikado rather than patching forward"
+      ],
+      "history": "Baseline was strong here (seam + lint ban); its gap was assuming 'pure extraction' with no technique for when prerequisites cascade."
+    },
+    {
+      "id": 4,
+      "name": "db-schema-change",
+      "prompt": "You are advising a software team. Production Postgres, always-on SaaS. They need to split a bloated \"users\" table (auth fields + billing fields + profile JSON blob) into separate tables, and rename several misleading column names, with zero downtime and the ability to roll back. The app deploys multiple times a week. Write a concrete plan (max 600 words). Return only the plan as plain markdown.",
+      "assertions": [
+        "Expand-migrate-contract with lock-safe DDL and batched backfill (baseline strength - must not regress)",
+        "Contract gated on measured residual old-path usage; calendar date as backstop only",
+        "Removal DDL written at expand time and parked",
+        "Rollback = redeploy previous app image while the schema stays additive at every step"
+      ],
+      "history": "Baseline nailed the mechanics; gaps were gating contract on measurement and writing the removal change up front."
+    },
+    {
+      "id": 5,
+      "name": "where-to-start",
+      "prompt": "You are advising a software team. A developer says: \"I've inherited a ball-of-mud codebase (TypeScript, ~100k LOC, minimal tests). Everything looks bad. Where do I even start refactoring? I don't want to waste months polishing code that doesn't matter.\" Write concrete advice (max 600 words) on how to decide where to start and what to do first. Return only the advice as plain markdown.",
+      "assertions": [
+        "Evidence first: churn x complexity hotspot ranking before reading or editing code (baseline strength - must not regress)",
+        "Goes below file level when the hotspot is huge (function-scope X-Ray) and mines temporal coupling for hidden dependencies",
+        "Pairs the test net with deploy/rollback confidence before restructuring, not 'can you run it' alone",
+        "Ratchets won boundaries with automated checks so cleaned code stays clean"
+      ],
+      "history": "Baseline did hotspot targeting well but stopped its pre-work at 'can build and exercise the flow' with no deploy confidence, and protected slices only via tests."
+    },
+    {
+      "id": 6,
+      "name": "rewrite-branch",
+      "prompt": "You are advising a software team. A developer has spent 3 months on a long-lived \"v2\" branch rewriting an inherited messy app with a cleaner architecture. The branch has diverged badly from main (where bug fixes and small features still land), merges are painful, and the rewrite is maybe 40% done. Leadership is losing patience. Write concrete advice (max 600 words): should they continue, and how should they proceed either way? Return only the advice as plain markdown.",
+      "assertions": [
+        "Stops the long-lived branch and salvages via strangler fig / branch by abstraction on trunk (baseline strength - must not regress)",
+        "Chooses which v2 slices to port next by churn x complexity payback, not 'pick a feature'",
+        "Ratchets each ported slice's boundary with an automated check",
+        "Uses Mikado to decompose the merge-back when a port cascades"
+      ],
+      "history": "Baseline correctly killed the branch but picked salvage slices with no data signal and protected ported code only via tests."
+    }
+  ],
+  "trigger_evals": {
+    "how_to_run": "Rebuild the descriptions list fresh from the live frontmatter of: refactoring, architecture, testing, mechanical-enforcement, event-driven-architecture, typescript (descriptions drift; never grade against a frozen copy). Run 2+ independent panels, each given all descriptions and all prompts, asked to decide which skill(s) a real agent would load before starting, none for trivial mechanical tasks. A prompt passes when every panel's choice matches expected (also_acceptable entries may appear alongside). Triggering is stochastic - a split verdict means ambiguous description, not noise.",
+    "held_out_note": "T2, T6, T8, T11, T13 are the validation set: never use them to tune description wording, only to accept it.",
+    "prompts": [
+      { "id": "T1", "prompt": "I've inherited this nightmare Express app from a contractor who disappeared, zero tests, where do I even start", "expected": ["refactoring"] },
+      { "id": "T2", "prompt": "we're swapping prisma for drizzle but can't stop shipping, how do we do it", "expected": ["refactoring"] },
+      { "id": "T3", "prompt": "need to rename a column on a busy prod table with zero downtime", "expected": ["refactoring"] },
+      { "id": "T4", "prompt": "my colleague's v2 rewrite branch is 3 months old and drifting from main, leadership is annoyed", "expected": ["refactoring"] },
+      { "id": "T5", "prompt": "boss says we should move to hexagonal architecture, the app is a mess, plan?", "expected": ["refactoring"], "also_acceptable": ["architecture"] },
+      { "id": "T6", "prompt": "this whole codebase was vibe coded last year, help me make it maintainable", "expected": ["refactoring"] },
+      { "id": "T7", "prompt": "designing a new billing module from scratch, how should I structure the domain types", "expected": ["architecture"], "also_acceptable": ["typescript"] },
+      { "id": "T8", "prompt": "this class is impossible to unit test, how should I restructure it", "expected": ["architecture"] },
+      { "id": "T9", "prompt": "how should I organise the folders/modules in my new SaaS app", "expected": ["architecture"] },
+      { "id": "T10", "prompt": "our e2e suite is flaky, tests fail randomly", "expected": ["testing"] },
+      { "id": "T11", "prompt": "how do I write characterisation tests around this gnarly pricing function", "expected": ["testing"] },
+      { "id": "T12", "prompt": "refactor this function to use async/await instead of callbacks", "expected": [] },
+      { "id": "T13", "prompt": "rename this variable everywhere in the repo", "expected": [] },
+      { "id": "T14", "prompt": "we keep publishing events with breaking schema changes, consumers break", "expected": ["event-driven-architecture"] }
+    ],
+    "history": "Iteration 1: two independent panels routed 14/14 as expected, including both near-miss negatives (T12, T13) and the characterisation-tests boundary going to testing (T11)."
+  }
+}
