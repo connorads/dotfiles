@@ -6,6 +6,7 @@
 - Service Blueprints
   - What Is a Service Blueprint?
   - Structure
+  - Blueprint template
   - Example: Restaurant Booking
   - When to Use a Service Blueprint
   - How to Build One
@@ -76,6 +77,31 @@ A service blueprint maps the **full service delivery** — what the user sees, w
 │ (Systems, databases, third-party services)              │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Blueprint template
+
+```markdown
+## Service blueprint: [service]
+
+**Journey:** [Specific journey being blueprinted]
+**Business/user goal:** [What this must enable]
+
+| Layer | Stage 1 | Stage 2 | Stage 3 |
+| --- | --- | --- | --- |
+| Physical evidence |  |  |  |
+| Customer actions |  |  |  |
+| Frontstage |  |  |  |
+| Backstage |  |  |  |
+| Support processes |  |  |  |
+| Failure/recovery |  |  |  |
+| Owner |  |  |  |
+```
+
+The Failure/recovery and Owner rows extend the lane set shown in Structure above
+(see Co-Creation, Failure Modes, and Ownership). Blueprints should expose hidden
+operational work, not restate the journey map. Keep source evidence and
+confidence in the surrounding notes, not as a blueprint lane unless the artefact
+specifically needs it.
 
 ### Example: Restaurant Booking
 
