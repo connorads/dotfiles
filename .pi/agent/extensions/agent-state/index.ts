@@ -15,9 +15,8 @@
 //     print/json runs (ctx.hasUI !== true) are ignored.
 //   - Release (clear) only on a real quit. Pi tears down + rebinds extension
 //     runtimes for /reload, /new, /resume, /fork — those must NOT release.
-//
-// @ts-nocheck
 
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -25,14 +24,14 @@ import { join } from "node:path";
 const SCRIPT = join(homedir(), ".config", "tmux", "scripts", "agent-state.sh");
 const KIND = "pi";
 
-function inTmux() {
-  const pane = process.env.TMUX_PANE;
+function inTmux(): boolean {
+  const pane = process.env["TMUX_PANE"];
   return typeof pane === "string" && pane.length > 0;
 }
 
 // Fire-and-forget. The child inherits TMUX_PANE via env; the helper resolves the
 // pane itself. Never awaited; every failure is swallowed so pi is untouched.
-function emit(state) {
+function emit(state: "working" | "done" | "clear"): void {
   if (!inTmux()) return;
   try {
     const child = spawn("/bin/sh", [SCRIPT, state, KIND], {
@@ -47,7 +46,7 @@ function emit(state) {
   }
 }
 
-export default function (pi) {
+export default function (pi: ExtensionAPI) {
   if (!inTmux()) return; // outside tmux: do nothing at all
 
   let active = false; // true once the root interactive session has started
