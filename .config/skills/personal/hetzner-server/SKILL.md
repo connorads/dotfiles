@@ -143,73 +143,16 @@ ssh connor@$(hcloud server ip dev) "sudo fallocate -l 16G /swapfile && \
 ssh connor@$(hcloud server ip dev) "free -h"
 ```
 
-### Common commands
+### Reference lookups
+
+Server types, locations, images, SSH keys, and day-to-day server ops are live queries — look them up, don't memorise:
 
 ```bash
-# List servers
-hcloud server list
-
-# Get server IP
-hcloud server ip dev
-
-# SSH to server
-ssh connor@$(hcloud server ip dev)
-
-# Delete server
-hcloud server delete dev
-
-# Power operations
-hcloud server poweroff dev
-hcloud server poweron dev
-hcloud server reboot dev
-
-# Rebuild (reinstall OS, keeps IP)
-hcloud server rebuild dev --image ubuntu-24.04
-```
-
-### Server types (commonly used)
-
-For current pricing (varies by region), run `hcloud server-type list`.
-
-| Type | Arch | vCPU | RAM | Disk |
-|------|------|------|-----|------|
-| cax11 | ARM | 2 | 4GB | 40GB |
-| cax21 | ARM | 4 | 8GB | 80GB |
-| cax31 | ARM | 8 | 16GB | 160GB |
-| cpx21 | x86 | 3 | 4GB | 80GB |
-| cpx31 | x86 | 4 | 8GB | 160GB |
-
-Full list: `hcloud server-type list`
-
-### Locations
-
-| ID | City | Country |
-|----|------|---------|
-| fsn1 | Falkenstein | DE |
-| nbg1 | Nuremberg | DE |
-| hel1 | Helsinki | FI |
-| ash | Ashburn | US |
-| hil | Hillsboro | US |
-| sin | Singapore | SG |
-
-### SSH keys
-
-```bash
-# List keys
-hcloud ssh-key list
-
-# Add a key
-hcloud ssh-key create --name mykey --public-key-from-file ~/.ssh/id_ed25519.pub
-```
-
-### Images
-
-```bash
-# List system images
-hcloud image list --type system
-
-# ARM images
+hcloud server-type list                              # ARM cax* preferred (best value); cpx* x86 fallback
+hcloud location list                                 # nbg1 is the usual default here
 hcloud image list --type system --architecture arm
+hcloud ssh-key list
+hcloud server list|ip|delete|poweroff|poweron|reboot|rebuild   # rebuild keeps the IP
 ```
 
 ## Cloning GitHub repos (SSH agent forwarding)
