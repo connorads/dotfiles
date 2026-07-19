@@ -1,6 +1,6 @@
 # dotfiles
 
-Use `git` to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to set up and install software, and [`mise`](https://github.com/connorads/mise/) to manage runtimes.
+Use `git` to manage [dotfiles](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments) without symlinks. This setup uses a dedicated git dir at `~/git/dotfiles` with work-tree `~` (via the `dotfiles` wrapper). Uses [`nix-darwin`](https://github.com/LnL7/nix-darwin) (macOS) or [`home-manager`](https://github.com/nix-community/home-manager) (Linux) and [`brew`](https://brew.sh/) (macOS) to set up and install software, and [`mise`](https://github.com/jdx/mise) to manage runtimes.
 
 > **Quick start:** `curl -fsSL https://raw.githubusercontent.com/connorads/dotfiles/master/install.sh | bash`
 > — bootstraps macOS, Linux, or Codespaces.
@@ -67,25 +67,14 @@ darwin-rebuild switch --flake ~/.config/nix
 # alias: drs
 ```
 
-Update nix packages. This will update your non-homebrew packages and update [`flake.lock`](.config/nix/flake.lock)
+Update everything: bump `mise.lock` + `flake.lock` (committing each), upgrade brew, then rebuild.
 
 ```sh
-nix flake update --flake ~/.config/nix
-# alias: nfu
-# You need to run build and activate after i.e. drs
+up
+# up -s / up --frozen   # frozen: install committed locks only, no bumps/brew/flake
 ```
 
-Update brew packages
-
-```sh
-brew upgrade
-```
-
-Update mise packages
-
-```sh
-mise upgrade
-```
+`up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
 
 #### Linux (home-manager)
 
@@ -96,19 +85,14 @@ home-manager switch --flake ~/.config/nix
 # alias: hms
 ```
 
-Update nix packages. This will update your packages and update [`flake.lock`](.config/nix/flake.lock)
+Update everything: bump `mise.lock` + `flake.lock` (committing each), then rebuild (`nrs` + `hms` on NixOS).
 
 ```sh
-nix flake update --flake ~/.config/nix
-# alias: nfu
-# You need to run home-manager switch after i.e. hms
+up
+# up -s / up --frozen   # frozen: install committed locks only, no bumps/flake
 ```
 
-Update mise packages
-
-```sh
-mise upgrade
-```
+`up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `mise upgrade`) can still be run individually.
 
 ## Setup
 
