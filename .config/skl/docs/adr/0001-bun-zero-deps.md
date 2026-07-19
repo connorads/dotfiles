@@ -1,7 +1,11 @@
-# Bun + TypeScript with zero external dependencies for `skl`
+# Bun + TypeScript with zero runtime dependencies for `skl`
 
-`skl` (the deliberate skill loader) is built on Bun with native TypeScript and **no npm
-dependencies** — using `Bun.file`, `Bun.spawn`, `Bun.Glob`, and `Bun.YAML.parse` instead.
+`skl` (the deliberate skill loader) is built on Bun with native TypeScript and **no
+runtime npm dependencies** — using `Bun.file`, `Bun.spawn`, `Bun.Glob`, and
+`Bun.YAML.parse` instead. Type-only devDependencies (`@types/bun`, so `tsgo`/tsc can
+typecheck the Bun globals) are allowed: they ship no runtime code, and the
+supply-chain surface stays install-time-only, covered by the global `ignore-scripts`
+and bun quarantine posture.
 This deviates from the dotfiles' usual zsh-function convention and from the global rule
 "only use bun if the project already uses it"; both are deliberate here.
 
@@ -19,7 +23,7 @@ This deviates from the dotfiles' usual zsh-function convention and from the glob
 ## Consequences
 
 - A tmux popup wants snappy startup; Bun is fastest and TS needs no build step.
-- **Zero npm deps = zero supply-chain surface**, aligning with the repo's aube/pnpm
+- **Zero runtime deps = zero runtime supply-chain surface**, aligning with the repo's aube/pnpm
   quarantine and `ignore-scripts` posture. The cost is relying on Bun-specific APIs
   (notably `Bun.YAML.parse`), which couples the tool to Bun — acceptable for a personal
   tool that may later graduate to its own package (`bun build --compile`).
