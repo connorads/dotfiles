@@ -26,8 +26,6 @@ python3 scripts/single_html_page.py https://example.com/page --output page-share
 The script wraps `monolith`, removes leftover network hint and `base` links,
 and verifies that asset-bearing references are embedded as data URIs.
 
-`agents/openai.yaml` is UI metadata only; do not read it for runtime guidance.
-
 ## Tool Choice
 
 Prefer `monolith` from `PATH`. It is the primary bundler because it embeds
