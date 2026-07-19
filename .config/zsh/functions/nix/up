@@ -89,6 +89,12 @@ if command -v tmux-upstream &>/dev/null && command -v tmux &>/dev/null; then
   tmux-upstream
 fi
 
+# Recheck conditional pins/excludes so escape hatches don't quietly become
+# permanent. Report-only: pin-audit always exits 0 and never blocks `up`.
+if (( !frozen )); then
+  pin-audit
+fi
+
 # Reboot notification (apt-based Linux)
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then
   echo ""

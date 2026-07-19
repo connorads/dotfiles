@@ -195,6 +195,7 @@ up -s / up --frozen    # frozen rebuild: converge to committed locks (no bumps, 
 up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
 up --no-audit          # skip the pre-bump OSV lockfile sweep (escape hatch; offline already warns-not-blocks)
 lockfile-audit         # OSV sweep of tracked repo lockfiles: MAL-* blocks, CVEs report (also: mise run lockfile-audit)
+pin-audit              # recheck conditional version pins/excludes; report-only, FLAG = safe to loosen (also: mise run pin-audit)
 macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
 macup-check            # report pending macOS updates (cached daily scan; --scan to force)
 nfu                    # nix flake update
