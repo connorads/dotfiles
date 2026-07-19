@@ -260,6 +260,12 @@
       "skillPath": "skills/music-to-video/SKILL.md",
       "computedHash": "7ca2624c4526b0962a45ba39ada1a7b362b5e1f982acedfcc344bdbc947a9719"
     },
+    "mutation-testing": {
+      "source": "citypaul/.dotfiles",
+      "sourceType": "github",
+      "skillPath": "claude/.claude/skills/mutation-testing/SKILL.md",
+      "computedHash": "4bd2961fe920ec97126f46b44f15edd85a57388a080fcd3eb5b6560925d59841"
+    },
     "next-cache-components-adoption": {
       "source": "vercel/next.js",
       "sourceType": "github",
