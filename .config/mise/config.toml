@@ -89,6 +89,10 @@ fnox = "1.27.1"
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
 "npm:@playwright/cli" = "0"
+# tsgo: native-preview TypeScript compiler for first-party TS typecheck steps
+# (hk ts-typecheck-* + `mise run ts-checks`). Prerelease-only package, so pin an
+# exact dev build - a "7" range matches nothing (node-semver skips prereleases).
+"npm:@typescript/native-preview" = "7.0.0-dev.20260707.2"
 "npm:@redwoodjs/agent-ci" = "0"
 "npm:agent-browser" = "0"
 "npm:agent-device" = "0"
