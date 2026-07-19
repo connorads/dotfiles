@@ -1,0 +1,117 @@
+#!/usr/bin/env zsh
+# pin-audit: recheck conditional version pins so escape hatches don't age into permanence
+# Report-only companion to lockfile-audit: every exact pin / trust exclude that
+# exists because of a temporary upstream condition is re-probed here. FLAG means
+# the condition has cleared - action the loosening by hand (then the check
+# self-reports as removable once the pin is gone). Always exits 0; offline
+# degrades each probe to SKIP. Run by `up` (non-frozen) and `mise run pin-audit`.
+#
+# Verdicts: OK   condition still holds, keep the pin
+#           FLAG condition cleared, loosen/remove the pin
+#           INFO not mechanically checkable, guard restated for manual recheck
+#           SKIP probe failed (offline / gh auth)
+#
+# Not audited - intentional (deliberate pins with no recheck condition):
+#   npm:executor = "1"  (mise config.toml) - 2.0.0 is a stray off-`latest`
+#     major, so `mise upgrade --bump` would regress; hold on 1.x by design.
+#   amp exact pin (mise config.toml) - Amp releases several times a day and is
+#     exempt from the age gate; the global exact pin is the control itself.
+emulate -L zsh
+
+local mise_cfg=~/.config/mise/config.toml
+local aube_cfg=~/.config/aube/config.toml
+
+# --- fnox exact pin (mise config.toml [tools] fnox) ---------------------------
+# Guard: 1.27.0 shipped no binaries, so a "1.27" range resolves to an assetless
+# release and every `mise run` aborts. Loosen once a newer release ships assets.
+local fnox_pin fnox_latest fnox_assets
+fnox_pin=$(grep -Eo '^fnox = "[^"]+"' "$mise_cfg" 2>/dev/null | cut -d'"' -f2)
+if [[ -z $fnox_pin ]]; then
+  echo "pin-audit: OK   fnox - exact pin gone from $mise_cfg; drop this check"
+else
+  fnox_latest=$(mise ls-remote fnox 2>/dev/null | grep -E '^[0-9]+(\.[0-9]+)+$' | tail -1)
+  if [[ -z $fnox_latest ]]; then
+    echo "pin-audit: SKIP fnox $fnox_pin - version probe failed (offline?)"
+  elif [[ $fnox_latest == "$fnox_pin" ]]; then
+    echo "pin-audit: OK   fnox $fnox_pin - still the newest release"
+  else
+    fnox_assets=$(gh release view "v$fnox_latest" --repo jdx/fnox --json assets --jq '.assets | length' 2>/dev/null)
+    if [[ -z $fnox_assets ]]; then
+      echo "pin-audit: SKIP fnox $fnox_pin - newer $fnox_latest exists; asset probe failed (gh auth/offline?)"
+    elif (( fnox_assets > 0 )); then
+      echo "pin-audit: FLAG fnox $fnox_pin - $fnox_latest ships $fnox_assets assets; loosen the exact pin ($mise_cfg [tools] fnox)"
+    else
+      echo "pin-audit: OK   fnox $fnox_pin - newer $fnox_latest still ships no assets; keep the exact pin"
+    fi
+  fi
+fi
+
+# --- aube trustPolicyExclude @mariozechner/clipboard-* ------------------------
+# Guard: platform packages lost SLSA provenance after a CI refactor at 0.3.3.
+# Remove the exclude once npm shows attestations again.
+local clip_att clip_rc
+if ! grep -q 'clipboard-\*' "$aube_cfg" 2>/dev/null; then
+  echo "pin-audit: OK   clipboard trustPolicyExclude - gone from $aube_cfg; drop this check"
+else
+  clip_att=$(npm view @mariozechner/clipboard-darwin-arm64 dist.attestations --json 2>/dev/null)
+  clip_rc=$?
+  if (( clip_rc != 0 )); then
+    echo "pin-audit: SKIP clipboard trustPolicyExclude - npm probe failed (offline?)"
+  elif [[ -n $clip_att && $clip_att != null ]]; then
+    echo "pin-audit: FLAG clipboard trustPolicyExclude - @mariozechner/clipboard-darwin-arm64 has attestations again; remove the exclude ($aube_cfg trustPolicyExclude)"
+  else
+    echo "pin-audit: OK   clipboard trustPolicyExclude - still no attestations; keep the exclude"
+  fi
+fi
+
+# --- rembg exact pin (mise config.toml [tools] pipx:rembg) --------------------
+# Guard: 2.0.70+ hard-pins numpy>=2.3, which the numba/llvmlite chain can't
+# satisfy. Whether a given release fixed that is not probeable from metadata.
+local rembg_pin rembg_latest
+rembg_pin=$(grep -Eo '"pipx:rembg" = \{ version = "[^"]+"' "$mise_cfg" 2>/dev/null | cut -d'"' -f4)
+if [[ -z $rembg_pin ]]; then
+  echo "pin-audit: OK   rembg - exact pin gone from $mise_cfg; drop this check"
+else
+  rembg_latest=$(mise ls-remote "pipx:rembg" 2>/dev/null | grep -E '^[0-9]+(\.[0-9]+)+$' | tail -1)
+  echo "pin-audit: INFO rembg pinned $rembg_pin, latest ${rembg_latest:-unknown} - not mechanically checkable: before bumping, recheck whether the numpy>=2.3 floor still breaks the numba/llvmlite chain"
+fi
+
+# --- @anthropic-ai/sandbox-runtime exact pin (mise config.toml) ---------------
+# Guard: config schema is pre-1.0 and churns. Revisit the pin once 1.0 lands.
+local srt_pin srt_latest srt_rc
+srt_pin=$(grep -Eo '"npm:@anthropic-ai/sandbox-runtime" = "[^"]+"' "$mise_cfg" 2>/dev/null | cut -d'"' -f4)
+if [[ -z $srt_pin ]]; then
+  echo "pin-audit: OK   sandbox-runtime - exact pin gone from $mise_cfg; drop this check"
+else
+  srt_latest=$(npm view @anthropic-ai/sandbox-runtime version 2>/dev/null)
+  srt_rc=$?
+  if (( srt_rc != 0 )) || [[ -z $srt_latest ]]; then
+    echo "pin-audit: SKIP sandbox-runtime $srt_pin - npm probe failed (offline?)"
+  elif [[ $srt_latest == 0.* ]]; then
+    echo "pin-audit: OK   sandbox-runtime $srt_pin - latest $srt_latest still pre-1.0; keep the exact pin"
+  else
+    echo "pin-audit: FLAG sandbox-runtime $srt_pin - $srt_latest landed (1.0+); revisit the exact pin ($mise_cfg [tools])"
+  fi
+fi
+
+# --- CosineAI/cli prerelease=true (mise config.toml) --------------------------
+# Guard: every versioned release is flagged pre-release, so the resolver needs
+# prerelease=true. Drop it once a versioned stable release exists. The rolling
+# `latest`/`nightly` tags are not version releases and are ignored.
+local cos_stable cos_rc
+if ! grep -q '"github:CosineAI/cli".*prerelease = true' "$mise_cfg" 2>/dev/null; then
+  echo "pin-audit: OK   CosineAI/cli - prerelease=true gone from $mise_cfg; drop this check"
+else
+  cos_stable=$(gh release list --repo CosineAI/cli --exclude-pre-releases --limit 20 --json tagName \
+    --jq '[.[].tagName | select(test("^v?[0-9]"))] | first // empty' 2>/dev/null)
+  cos_rc=$?
+  if (( cos_rc != 0 )); then
+    echo "pin-audit: SKIP CosineAI/cli prerelease=true - gh probe failed (gh auth/offline?)"
+  elif [[ -n $cos_stable ]]; then
+    echo "pin-audit: FLAG CosineAI/cli - stable release $cos_stable exists; drop prerelease=true ($mise_cfg [tools])"
+  else
+    echo "pin-audit: OK   CosineAI/cli - all versioned releases still pre-release; keep prerelease=true"
+  fi
+fi
+
+return 0

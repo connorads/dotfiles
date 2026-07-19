@@ -40,7 +40,7 @@ case "${OSV_STUB_MODE:-clean}" in
 esac
 EOF
 
-  for cmd in brew drs macup-check tmux-upstream \
+  for cmd in brew drs macup-check tmux-upstream pin-audit \
     claude-channels-patch claude-channels-allowlist-patch \
     claude-computer-use-patch claude-session-reaper-patch \
     claude-telegram-clear-patch; do
@@ -174,6 +174,18 @@ EOF
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'dotfiles commit' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
+}
+
+@test "up runs the report-only pin-audit on the bump path" {
+  run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  grep -qF 'pin-audit' "$TEST_LOG"
+}
+
+@test "up --frozen skips pin-audit" {
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  ! grep -qF 'pin-audit' "$TEST_LOG"
 }
 
 @test "up proceeds when the scanner is offline (warn-not-block)" {
