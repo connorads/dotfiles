@@ -94,6 +94,16 @@ fnox = "1.27.1"
 # exact dev build - a "7" range matches nothing (node-semver skips prereleases).
 "npm:@typescript/native-preview" = "7.0.0-dev.20260707.2"
 "npm:@redwoodjs/agent-ci" = "0"
+# Local hybrid search (FTS + vector + rerank) over the kb Obsidian vault; also
+# pinned in ~/git/kb/mise.toml so the repo documents its own dependency.
+# qmd pulls native deps (better-sqlite3, node-llama-cpp, tree-sitter-*) whose
+# install scripts aube blocks by default. mise regenerates the aube-global
+# package.json (the file the build gate reads) on every install, so a global
+# allowBuilds can't persist the approval - the postinstall re-approves + rebuilds
+# this tool's own deps after each install. Narrow (scoped to qmd's install dir),
+# idempotent, and exits 0 so an install is never blocked (run `qmd doctor` if it
+# warns). Same self-healing shape as the claude/pi postinstall patches above.
+"npm:@tobilu/qmd" = { version = "2", postinstall = 'd=$(dirname "$(find "$MISE_TOOL_INSTALL_PATH/global-aube" -name package.json 2>/dev/null | head -1)"); [ -n "$d" ] && aube approve-builds --all -C "$d" && aube rebuild -C "$d" || echo "qmd: native build approve/rebuild skipped or failed - run: qmd doctor" >&2' }
 "npm:agent-browser" = "0"
 "npm:agent-device" = "0"
 "npm:serve-sim" = "latest"
