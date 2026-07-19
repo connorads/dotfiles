@@ -135,8 +135,9 @@ done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name 
 # unconditionally. A *dated* as-of caveat is sanctioned standing prose (the
 # "honest as-of caveat" in SKILL.md's timeless-present rule), so verification
 # banners warn only when the line carries no date at all.
-# Inline-code spans are stripped per line first so teaching examples that quote
-# the very phrasing they warn against (`recent changes`) don't self-trip.
+# Inline-code spans and fenced code blocks are stripped first (blanked, so
+# line numbers stay stable) so teaching examples that quote the very phrasing
+# they warn against (`recent changes`, a grep for the markers) don't self-trip.
 history_re='\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|at the time of writing)\b'
 # Bare 'checked' is deliberately absent: it swallows instructive prose
 # ("spot-checked against", "checked out locally"), which is a rule, not a claim.
@@ -147,7 +148,10 @@ year_re='(19|20)[0-9]{2}'
 while IFS= read -r -d '' f; do
 	rel=${f#"$dir"/}
 	[[ $rel == evals/fixtures/* ]] && continue
-	stripped=$(sed -E 's/`[^`]*`//g' "$f")
+	stripped=$(awk 'BEGIN { fence = 0 }
+		/^[ \t]*```/ { fence = !fence; print ""; next }
+		fence { print ""; next }
+		{ print }' "$f" | sed -E 's/`[^`]*`//g')
 	while IFS= read -r hit; do
 		warn "possible doc-rot phrasing: $rel:$hit"
 	done < <(grep -nEi "$history_re" <<<"$stripped" || true)
