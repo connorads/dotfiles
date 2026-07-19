@@ -289,7 +289,7 @@ This section is for anyone who wants to build their own dotfiles repo using the 
 
 ### Setup YubiKey for `sudo`
 
-macOS `sudo` auth is configured in [`darwin.nix`](.config/nix/modules/darwin.nix):
+macOS `sudo` auth is configured in [`darwin-desktop.nix`](.config/nix/modules/darwin-desktop.nix):
 
 - Touch ID is enabled for both Macs
 - `pam_reattach` is enabled so Touch ID works inside `tmux`
