@@ -19,7 +19,7 @@ Channel the spirit of a real person — their mental models, decision frameworks
 
 ## Name Resolution
 
-Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; see the Aliases column of the [Available Personas](#available-personas) table below for the persona-to-alias mapping.
+Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; the [Available Personas](#available-personas) table below maps personas to domains and files.
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
 
@@ -69,53 +69,53 @@ Copy `references/_template.md` and fill in each section. The template has guidan
 
 ## Available Personas
 
-| Persona | Domain | Aliases | File |
-|---------|--------|---------|------|
-| Alberto Brandolini | EventStorming, domain modelling facilitation | alberto, brandolini, ziobrando | `references/alberto-brandolini.md` |
-| Alex Hormozi | Offer design, business scaling, lead gen | alex, hormozi, alex hormozi | `references/alex-hormozi.md` |
-| Alistair Cockburn | Agile methodology, hexagonal architecture | alistair, cockburn, alistair cockburn | `references/alistair-cockburn.md` |
-| Amelia Wattenberger | Data visualisation, D3.js, interactive essays | amelia, wattenberger, amelia wattenberger | `references/amelia-wattenberger.md` |
-| April Dunford | Product positioning, go-to-market strategy | april, april dunford, aprildunford | `references/april-dunford.md` |
-| Dax Raad | SST, IaC, developer experience, open source | dax, thdxr, dax raad | `references/dax-raad.md` |
-| David Heinemeier Hansson | Rails, monoliths, HTML-over-the-wire | dhh, david heinemeier hansson | `references/dhh.md` |
-| Eric Evans | Domain-Driven Design, bounded contexts | eric, eric evans, ericevans | `references/eric-evans.md` |
-| Gary Bernhardt | TDD, functional core / imperative shell | gary, garybernhardt, gary bernhardt | `references/gary-bernhardt.md` |
-| Greg Young | CQRS, event sourcing, temporal modelling | greg, greg young, gregyoung | `references/greg-young.md` |
-| Guillermo Rauch | Next.js, Vercel, frontend deployment, AI cloud | guillermo, rauchg, guillermo rauch | `references/guillermo-rauch.md` |
-| Harry Dry | Marketing copywriting, show-don't-tell | harry, harry dry, harrydry, marketing examples | `references/harry-dry.md` |
-| Jack Doyle | GSAP, web animation, JS performance | jack, jack doyle, greensock | `references/jack-doyle.md` |
-| John Carmack | Graphics engines, optimisation, VR/latency | carmack, john carmack, johncarmack | `references/john-carmack.md` |
-| Josh Comeau | CSS mental models, interactive education, React, whimsy | josh, joshwcomeau, josh comeau | `references/josh-comeau.md` |
-| Julia Evans | Systems programming, debugging, zines, Linux internals | julia, b0rk, julia evans, jvns | `references/julia-evans.md` |
-| Jony Ive | Industrial design, Apple design philosophy | jony, jony ive, jonyive, ive | `references/jony-ive.md` |
-| Kent Beck | XP, TDD, refactoring, simple design | kent, kent beck, kentbeck | `references/kent-beck.md` |
-| Maggie Appleton | Visual thinking, digital gardens, AI interface design | maggie, maggie appleton, maggieappleton, mappletons | `references/maggie-appleton.md` |
-| Mark Seemann | DI, functional programming, clean architecture | mark, ploeh, mark seemann | `references/mark-seemann.md` |
-| Matt Perry | Motion library, spring physics, layout animation | mattperry, mattgperry, matt perry | `references/matt-perry.md` |
-| Matt Pocock | TypeScript, type inference, advanced patterns | matt, mattpocockuk, matt pocock | `references/matt-pocock.md` |
-| Mitchell Hashimoto | Terraform, infrastructure automation, Ghostty | mitchell, mitchellh, mitchell hashimoto | `references/mitchell-hashimoto.md` |
-| Pieter Levels | Solo bootstrapping, radical simplicity, shipping | pieter, levelsio, pieter levels | `references/pieter-levels.md` |
-| Rand Fishkin | SEO, audience research, zero-click content | rand, rand fishkin, randfish, sparktoro | `references/rand-fishkin.md` |
-| Ricardo Cabello | Three.js, WebGL, 3D graphics on the web | ricardo, mrdoob, ricardo cabello | `references/ricardo-cabello.md` |
-| Rich Hickey | Clojure, simplicity, values vs places | rich, rich hickey, richhickey | `references/rich-hickey.md` |
-| Rob Walling | SaaS bootstrapping, TinySeed, stair-step approach | rob, robwalling, rob walling | `references/rob-walling.md` |
-| Sahil Lavingia | Gumroad, creator economy, bootstrapping | sahil, shl, sahil lavingia | `references/sahil-lavingia.md` |
-| Scott Wlaschin | F#, FP, railway-oriented programming | scott, scottwlaschin, scott wlaschin | `references/scott-wlaschin.md` |
-| Simon Willison | Django, Datasette, SQLite, AI tooling | simon, simonw, simon willison | `references/simon-willison.md` |
-| Steve Jobs | Product vision, focus, technology × liberal arts | steve, steve jobs, stevejobs | `references/steve-jobs.md` |
-| Swyx | AI engineering, learning in public, developer experience | swyx, shawn wang, shawn | `references/swyx.md` |
-| Bret Victor | Interactive media, progressive revelation, dev tool demos | bret, bret victor, worrydream | `references/bret-victor.md` |
-| Des Traynor | Product storytelling, JTBD, demo narrative | des, des traynor, destraynor | `references/des-traynor.md` |
-| Grant Sanderson | Math animation, visual explanation, pacing | grant, 3b1b, grant sanderson, 3blue1brown | `references/grant-sanderson.md` |
-| Jonny Burger | Remotion, programmatic video, React video | jonny, jonnyburger, jonny burger | `references/jonny-burger.md` |
-| Tony Zhou | Film editing, visual storytelling, pacing | tony, tony zhou, everyframeapainting | `references/tony-zhou.md` |
-| Walter Murch | Film editing theory, cutting rhythm, Rule of Six | walter, walter murch, waltermurch | `references/walter-murch.md` |
-| Matt Mullenweg | WordPress, open source, distributed work, GPL, CMS ecosystem | mullenweg, photomatt, matt mullenweg | `references/matt-mullenweg.md` |
-| Mark Jaquith | WordPress core, security, performance, caching, deployment | jaquith, markjaquith, mark jaquith | `references/mark-jaquith.md` |
-| Steve Krug | Web usability, "Don't Make Me Think", discount usability testing | krug, stevekrug, steve krug | `references/steve-krug.md` |
-| Don Norman | Interaction design, affordances, emotional design, human-centred design | norman, donnorman, don norman | `references/don-norman.md` |
-| Edward Tufte | Information design, data-ink ratio, small multiples, analytical graphics | tufte, edwardtufte, edward tufte, et | `references/edward-tufte.md` |
-| Samuel Hulick | Onboarding UX, UserOnboard teardowns, progressive disclosure | samuel, hulick, samuel hulick, useronboard | `references/samuel-hulick.md` |
-| Daniele Procida | Documentation architecture, Diataxis framework | daniele, procida, daniele procida, diataxis | `references/daniele-procida.md` |
-| Jakob Nielsen | Usability heuristics, empirical UX research, NN/g | nielsen, jakobnielsen, jakob nielsen | `references/jakob-nielsen.md` |
-| Luke Wroblewski | Mobile-first design, form UX, input design | luke, lukew, luke wroblewski | `references/luke-wroblewski.md` |
+| Persona | Domain | File |
+|---------|--------|------|
+| Alberto Brandolini | EventStorming, domain modelling facilitation | `references/alberto-brandolini.md` |
+| Alex Hormozi | Offer design, business scaling, lead gen | `references/alex-hormozi.md` |
+| Alistair Cockburn | Agile methodology, hexagonal architecture | `references/alistair-cockburn.md` |
+| Amelia Wattenberger | Data visualisation, D3.js, interactive essays | `references/amelia-wattenberger.md` |
+| April Dunford | Product positioning, go-to-market strategy | `references/april-dunford.md` |
+| Dax Raad | SST, IaC, developer experience, open source | `references/dax-raad.md` |
+| David Heinemeier Hansson | Rails, monoliths, HTML-over-the-wire | `references/dhh.md` |
+| Eric Evans | Domain-Driven Design, bounded contexts | `references/eric-evans.md` |
+| Gary Bernhardt | TDD, functional core / imperative shell | `references/gary-bernhardt.md` |
+| Greg Young | CQRS, event sourcing, temporal modelling | `references/greg-young.md` |
+| Guillermo Rauch | Next.js, Vercel, frontend deployment, AI cloud | `references/guillermo-rauch.md` |
+| Harry Dry | Marketing copywriting, show-don't-tell | `references/harry-dry.md` |
+| Jack Doyle | GSAP, web animation, JS performance | `references/jack-doyle.md` |
+| John Carmack | Graphics engines, optimisation, VR/latency | `references/john-carmack.md` |
+| Josh Comeau | CSS mental models, interactive education, React, whimsy | `references/josh-comeau.md` |
+| Julia Evans | Systems programming, debugging, zines, Linux internals | `references/julia-evans.md` |
+| Jony Ive | Industrial design, Apple design philosophy | `references/jony-ive.md` |
+| Kent Beck | XP, TDD, refactoring, simple design | `references/kent-beck.md` |
+| Maggie Appleton | Visual thinking, digital gardens, AI interface design | `references/maggie-appleton.md` |
+| Mark Seemann | DI, functional programming, clean architecture | `references/mark-seemann.md` |
+| Matt Perry | Motion library, spring physics, layout animation | `references/matt-perry.md` |
+| Matt Pocock | TypeScript, type inference, advanced patterns | `references/matt-pocock.md` |
+| Mitchell Hashimoto | Terraform, infrastructure automation, Ghostty | `references/mitchell-hashimoto.md` |
+| Pieter Levels | Solo bootstrapping, radical simplicity, shipping | `references/pieter-levels.md` |
+| Rand Fishkin | SEO, audience research, zero-click content | `references/rand-fishkin.md` |
+| Ricardo Cabello | Three.js, WebGL, 3D graphics on the web | `references/ricardo-cabello.md` |
+| Rich Hickey | Clojure, simplicity, values vs places | `references/rich-hickey.md` |
+| Rob Walling | SaaS bootstrapping, TinySeed, stair-step approach | `references/rob-walling.md` |
+| Sahil Lavingia | Gumroad, creator economy, bootstrapping | `references/sahil-lavingia.md` |
+| Scott Wlaschin | F#, FP, railway-oriented programming | `references/scott-wlaschin.md` |
+| Simon Willison | Django, Datasette, SQLite, AI tooling | `references/simon-willison.md` |
+| Steve Jobs | Product vision, focus, technology × liberal arts | `references/steve-jobs.md` |
+| Swyx | AI engineering, learning in public, developer experience | `references/swyx.md` |
+| Bret Victor | Interactive media, progressive revelation, dev tool demos | `references/bret-victor.md` |
+| Des Traynor | Product storytelling, JTBD, demo narrative | `references/des-traynor.md` |
+| Grant Sanderson | Math animation, visual explanation, pacing | `references/grant-sanderson.md` |
+| Jonny Burger | Remotion, programmatic video, React video | `references/jonny-burger.md` |
+| Tony Zhou | Film editing, visual storytelling, pacing | `references/tony-zhou.md` |
+| Walter Murch | Film editing theory, cutting rhythm, Rule of Six | `references/walter-murch.md` |
+| Matt Mullenweg | WordPress, open source, distributed work, GPL, CMS ecosystem | `references/matt-mullenweg.md` |
+| Mark Jaquith | WordPress core, security, performance, caching, deployment | `references/mark-jaquith.md` |
+| Steve Krug | Web usability, "Don't Make Me Think", discount usability testing | `references/steve-krug.md` |
+| Don Norman | Interaction design, affordances, emotional design, human-centred design | `references/don-norman.md` |
+| Edward Tufte | Information design, data-ink ratio, small multiples, analytical graphics | `references/edward-tufte.md` |
+| Samuel Hulick | Onboarding UX, UserOnboard teardowns, progressive disclosure | `references/samuel-hulick.md` |
+| Daniele Procida | Documentation architecture, Diataxis framework | `references/daniele-procida.md` |
+| Jakob Nielsen | Usability heuristics, empirical UX research, NN/g | `references/jakob-nielsen.md` |
+| Luke Wroblewski | Mobile-first design, form UX, input design | `references/luke-wroblewski.md` |
