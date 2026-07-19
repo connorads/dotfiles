@@ -39,8 +39,11 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import _shellparse
 
 # Set False to stop nudging npx (keeps the npm dependency-verb nudge).
 NUDGE_NPX = True
@@ -49,11 +52,6 @@ NUDGE_NPX = True
 # required (no human confirmation needed). Any non-falsey value bypasses.
 BYPASS_VAR = "NPM_OK"
 _BYPASS_FALSEY = frozenset({"", "0", "false", "False", "no"})
-
-# Commands where npm/npx may appear in quoted args (e.g. commit messages) - skip.
-NOT_PKG_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
-
-COMMAND_SEPARATORS = {";", "&&", "||", "|"}
 
 # npm subcommands that fetch or mutate dependencies -> nudge to pnpm.
 # Read-only/script-running verbs (run, test, start, ls, view, ...) are omitted.
@@ -72,39 +70,6 @@ PNPM_EQUIV = {
 }
 
 
-def _segments(tokens: list[str]) -> list[list[str]]:
-    segments: list[list[str]] = []
-    current: list[str] = []
-    for tok in tokens:
-        if tok in COMMAND_SEPARATORS:
-            if current:
-                segments.append(current)
-                current = []
-            continue
-        current.append(tok)
-    if current:
-        segments.append(current)
-    return segments
-
-
-def _strip_env_prefix(segment: list[str]) -> list[str]:
-    i = 0
-    while i < len(segment) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", segment[i]):
-        i += 1
-    return segment[i:]
-
-
-def _env_assignments(segment: list[str]) -> dict[str, str]:
-    """Leading `VAR=value` env prefix of a segment as a dict."""
-    envs: dict[str, str] = {}
-    for tok in segment:
-        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", tok)
-        if not m:
-            break
-        envs[m.group(1)] = m.group(2)
-    return envs
-
-
 def _first_subcommand(command: list[str]) -> str | None:
     """First non-flag argument after the command name."""
     for tok in command[1:]:
@@ -115,24 +80,20 @@ def _first_subcommand(command: list[str]) -> str | None:
 
 def nudge_reason(command: str) -> str | None:
     """Return a pnpm suggestion if the command uses npm/npx in a nudged way."""
-    if NOT_PKG_CMD_RE.search(command):
+    if _shellparse.NOT_COMMIT_RE.search(command):
         return None
     if not re.search(r"(?:^|[|;&])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:npm|npx)\b", command):
         return None
 
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = _shellparse.tokenise(command)
+    if tokens is None:
         return None
 
-    for segment in _segments(tokens):
-        bypass = _env_assignments(segment).get(BYPASS_VAR)
+    for segment in _shellparse.command_segments(tokens):
+        bypass = _shellparse.env_assignments(segment).get(BYPASS_VAR)
         if bypass is not None and bypass not in _BYPASS_FALSEY:
             continue
-        command_tokens = _strip_env_prefix(segment)
+        command_tokens = _shellparse.strip_env_prefix(segment)
         if not command_tokens:
             continue
         head = command_tokens[0]

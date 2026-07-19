@@ -133,6 +133,8 @@ def _read_file_arg(command: str, flag_pattern: str) -> str | None:
 
 def clean_git_commit(command: str) -> str | None:
     """Clean self-attribution from a git commit command. Return cleaned command or None."""
+    # Same pattern as _shellparse.NOT_COMMIT_RE but used for truthiness (is this
+    # a commit?) rather than as a skip guard, so it stays local deliberately.
     if not re.search(r"\b(git|dotfiles)\b.*\bcommit\b", command):
         return None
 

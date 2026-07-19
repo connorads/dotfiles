@@ -40,20 +40,17 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
 import sys
+from pathlib import Path
 
-# Commands where a flag may appear in quoted args (e.g. commit messages) - skip.
-NOT_PKG_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
+sys.path.insert(0, str(Path(__file__).parent))
+import _shellparse
 
 # Package managers / tools whose flags this hook reasons about. A segment is only
 # inspected when its command (after env assignments) is one of these.
 TOOLS = frozenset(
     {"npm", "pnpm", "bun", "bunx", "yarn", "npx", "deno", "mise", "uv", "pip", "pip3", "corepack"}
 )
-
-# Shell command separators (mirrors guard-mutating-api.py).
-COMMAND_SEPARATORS = {";", "&&", "||", "|"}
 
 # Age-gate flags whose value being ~zero defeats the quarantine.
 AGE_FLAGS = frozenset(
@@ -87,30 +84,6 @@ FALLBACK_RES: tuple[tuple[re.Pattern[str], str], ...] = (
 )
 
 
-def _segments(tokens: list[str]) -> list[list[str]]:
-    """Split tokens into shell command segments at simple separators."""
-    segments: list[list[str]] = []
-    current: list[str] = []
-    for tok in tokens:
-        if tok in COMMAND_SEPARATORS:
-            if current:
-                segments.append(current)
-                current = []
-            continue
-        current.append(tok)
-    if current:
-        segments.append(current)
-    return segments
-
-
-def _strip_env_prefix(segment: list[str]) -> list[str]:
-    """Drop leading VAR=value assignments to reach the real command."""
-    i = 0
-    while i < len(segment) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", segment[i]):
-        i += 1
-    return segment[i:]
-
-
 def _value_of(tokens: list[str], i: int) -> str | None:
     """Glued (--flag=val) or following-token value for the flag at index i."""
     _, sep, glued = tokens[i].partition("=")
@@ -127,7 +100,7 @@ def _segment_reason(segment: list[str]) -> str | None:
         if ENV_AGE_RE.match(tok):
             return "zeroes the package age-gate via env"
 
-    command = _strip_env_prefix(segment)
+    command = _shellparse.strip_env_prefix(segment)
     if not command or command[0] not in TOOLS:
         return None
 
@@ -159,21 +132,17 @@ def bypass_reason(command: str) -> str | None:
     Inspects only segments whose command is a known package manager, so quoted
     text and commit messages don't trip it.
     """
-    if NOT_PKG_CMD_RE.search(command):
+    if _shellparse.NOT_COMMIT_RE.search(command):
         return None
 
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = _shellparse.tokenise(command)
+    if tokens is None:
         for pattern, reason in FALLBACK_RES:
             if pattern.search(command):
                 return reason
         return None
 
-    for segment in _segments(tokens):
+    for segment in _shellparse.command_segments(tokens):
         reason = _segment_reason(segment)
         if reason:
             return reason

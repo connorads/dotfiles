@@ -37,14 +37,14 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import _shellparse
 
 # HTTP methods considered mutating
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-
-# Commands where `gh api` may appear in quoted args (e.g. commit messages) — skip these.
-NOT_GH_API_CMD_RE = re.compile(r"\b(?:git|dotfiles)\b.*\bcommit\b")
 
 # Pattern to detect `gh api` (with optional flags before `api`)
 GH_API_RE = re.compile(r"\bgh\s+api\b")
@@ -64,10 +64,6 @@ IMPLICIT_POST_RE = re.compile(
 SHELL_SEPARATOR_RE = re.compile(r"\s(?:&&|\|\||[;|])\s")
 
 # --- Token-level detection (preferred path) ---
-# Command separators that split shell commands without trying to be a full shell
-# parser. `shlex` keeps quoted separators inside values, which is what we need.
-COMMAND_SEPARATORS = {";", "&&", "||", "|"}
-
 # A glued method flag carries its verb in one token: -XPOST, -XGET, --method=POST.
 GLUED_METHOD_RE = re.compile(r"^(?:-X|--method=)([A-Za-z]+)$", re.IGNORECASE)
 # Body-param flags glued to a value: -fkey=val, -Fkey=val (pflag shorthand), and
@@ -135,23 +131,6 @@ def _gh_api_arg_vectors(tokens: list[str]) -> list[list[str]]:
         end = starts[index + 1] if index + 1 < len(starts) else len(tokens)
         invocations.append(tokens[start + 2 : end])
     return invocations
-
-
-def _command_segments(tokens: list[str]) -> list[list[str]]:
-    """Split tokens into shell command segments at simple separators."""
-    segments: list[list[str]] = []
-    current: list[str] = []
-    for tok in tokens:
-        if tok in COMMAND_SEPARATORS:
-            if current:
-                segments.append(current)
-                current = []
-            continue
-        current.append(tok)
-
-    if current:
-        segments.append(current)
-    return segments
 
 
 # --- GraphQL awareness ---
@@ -271,20 +250,16 @@ def is_mutating_gh_api(command: str) -> bool:
     Compound commands are analysed per shell command segment so a GET override
     only affects the `gh api` invocation in the same segment.
     """
-    if NOT_GH_API_CMD_RE.search(command):
+    if _shellparse.NOT_COMMIT_RE.search(command):
         return False
     if not GH_API_RE.search(command):
         return False
 
-    try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        lexer.commenters = ""
-        tokens = list(lexer)
-    except ValueError:
+    tokens = _shellparse.tokenise(command)
+    if tokens is None:
         return _regex_fallback(command)
 
-    for segment in _command_segments(tokens):
+    for segment in _shellparse.command_segments(tokens):
         for args in _gh_api_arg_vectors(segment):
             methods, implicit = _methods_and_implicit(args)
             if methods & MUTATING_METHODS:
