@@ -6,6 +6,16 @@
     "lib": ["es2023"],
     "types": ["node"],
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    // exactOptionalPropertyTypes / noPropertyAccessFromIndexSignature are off:
+    // the JsonValue-heavy snapshot/journal layer builds `key: maybeUndefined`
+    // objects and dot-reads Record fields throughout (~129 errors); enabling
+    // them means restructuring, not annotating. Revisit alongside a refactor.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "erasableSyntaxOnly": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
