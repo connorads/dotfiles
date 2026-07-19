@@ -1,0 +1,78 @@
+#!/usr/bin/env zsh
+# lockfile-audit: detective OSV sweep of tracked repo lockfiles - MAL-* blocks, CVEs report
+# Scans every dotfiles-tracked JS/Rust/Python lockfile against the OSV database
+# in one osv-scanner run. Malware advisories (MAL-*) return 1 (block); ordinary
+# CVEs print a table but return 0 (triage via `mise run supply-audit`); scanner
+# errors incl. offline (rc not 0/1) warn and return 0 - a detective control must
+# not brick updates. Note osv-scanner cannot parse mise.lock or flake.lock; the
+# tool bump itself stays covered by quarantine + attestations + SLSA + aube's
+# bloom check.
+# flags: --block-cves   strict mode: any finding returns 1, not just MAL-*
+#        --quiet | -q   suppress clean/CVE-report output (MAL + warnings still print)
+emulate -L zsh
+
+local block_cves=0 quiet=0
+for arg in "$@"; do
+  case "$arg" in
+    --block-cves) block_cves=1 ;;
+    --quiet|-q) quiet=1 ;;
+  esac
+done
+
+# Discover targets from the dotfiles index so new projects are swept automatically.
+local -a tracked args
+tracked=("${(f)$(dotfiles ls-files \
+  | grep -E '(^|/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lock|Cargo\.lock|uv\.lock|poetry\.lock)$')}")
+local f
+for f in $tracked; do
+  [[ -n $f && -f $HOME/$f ]] && args+=(-L "$HOME/$f")
+done
+if (( ! ${#args} )); then
+  (( quiet )) || echo "lockfile-audit: no tracked lockfiles found"
+  return 0
+fi
+
+local out rc
+out=$(osv-scanner scan source -f json "${args[@]}" 2>/dev/null)
+rc=$?
+# 0 = clean, 1 = findings; anything else (127 offline, missing binary, parse
+# error) is a scanner failure - warn, never block.
+if (( rc != 0 && rc != 1 )); then
+  echo "lockfile-audit: osv-scanner failed (rc=$rc; offline?) - skipping audit" >&2
+  return 0
+fi
+
+# MAL-* can appear as the advisory id or as an alias of a GHSA id.
+local mal
+mal=$(print -r -- "$out" | jq -r '
+  .results[]? as $r | $r.packages[]? as $p | $p.vulnerabilities[]?
+  | select((.id | startswith("MAL-")) or ((.aliases // []) | any(startswith("MAL-"))))
+  | "  \($p.package.name)@\($p.package.version)  \(.id)  \($r.source.path)"' \
+  | sort -u)
+if [[ -n $mal ]]; then
+  echo "lockfile-audit: MALWARE advisories in tracked lockfiles - blocking:" >&2
+  print -r -- "$mal" >&2
+  return 1
+fi
+
+local findings
+findings=$(print -r -- "$out" | jq -r '
+  .results[]? as $r | $r.packages[]? as $p | $p.vulnerabilities[]?
+  | "  \($p.package.name)@\($p.package.version)  \(.id)  \($r.source.path)"' \
+  | sort -u)
+if [[ -n $findings ]]; then
+  if (( block_cves )); then
+    echo "lockfile-audit: findings (blocking, --block-cves):" >&2
+    print -r -- "$findings" >&2
+    return 1
+  fi
+  if (( ! quiet )); then
+    echo "lockfile-audit: findings:"
+    print -r -- "$findings"
+    echo "lockfile-audit: CVEs found (non-blocking); run 'mise run supply-audit' to triage"
+  fi
+  return 0
+fi
+
+(( quiet )) || echo "lockfile-audit: $(( ${#args} / 2 )) lockfiles clean"
+return 0

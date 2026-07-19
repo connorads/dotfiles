@@ -159,3 +159,7 @@ run = "cd \"$HOME/.claude/hooks\" && uv run --with pytest python -m pytest -q"
 [tasks.supply-audit]
 description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
 run = "osv-scanner scan source -r ."
+
+[tasks.lockfile-audit]
+description = "Scan tracked repo lockfiles for malware (MAL-*, blocking) + CVEs (report) via OSV"
+run = "lockfile-audit"
