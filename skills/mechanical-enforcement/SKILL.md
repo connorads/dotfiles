@@ -90,8 +90,9 @@ See `references/shell-quality.md` for copy-paste hook and CI command patterns.
 | Rule | Encode with | Prevents |
 |---|---|---|
 | No committed secrets | gitleaks pre-commit step | Token leaks |
-| Pinned dependencies with quarantine | pnpm `minimum-release-age`, npm `min-release-age`, uv `exclude-newer`, mise `minimum_release_age` | Compromised releases |
+| Pinned dependencies with quarantine | npm `min-release-age` (days; also read by Deno), pnpm/aube `minimumReleaseAge` (minutes), bun `minimumReleaseAge` (seconds), uv `exclude-newer`, pip `uploaded-prior-to`, Yarn `npmMinimalAgeGate`, mise `minimum_release_age` | Compromised releases |
 | Detect deps that slipped the quarantine | osv-scanner against lockfiles (`mise run supply-audit`) | Malware (OSV `MAL-*`) + CVEs in already-installed deps — the detective half a time-based age-gate can't see |
+| One policy value spelled across many configs stays in agreement | Custom pre-commit checker: one expected constant, one (file, regex, unit) row per config, normalise units, fail on drift; glob the hook step on exactly those files | Silent policy forks — e.g. a quarantine hand-encoded in nine files across four time units, where editing one file quietly weakens the rest |
 | No `--no-verify` | Documented in project CLAUDE.md / AGENTS.md; not technically preventable | Bypassing the whole gate. Cultural rule — reinforce in every project's agent docs. |
 | Pinned + safe GitHub Actions workflows | [zizmor](https://github.com/zizmorcore/zizmor) (gate on exit ≥ 11) | Unpinned actions (`unpinned-uses`), dangerous triggers (`dangerous-triggers` — `pull_request_target`/`workflow_run`), template injection into `run:` (`template-injection`), over-broad `permissions:` (`excessive-permissions`), impostor commits, typosquatted actions |
 
@@ -107,6 +108,18 @@ malicious-package advisories an age-gate can't see. Run it in a project dir
 not a substitute. Socket (behavioural SCA + install firewall) is a watch:
 stronger detection, but SaaS / telemetry / proprietary, against this skill's
 local-OSS grain.
+
+Two placement rules make the detective layer actually fire. Wire the scan into
+the routine update orchestrator, before any mutation — an on-demand task only
+detects when someone remembers to run it. Split severities so the gate
+survives contact with reality: block only on `MAL-*` (id or alias), report
+CVEs without blocking (a dev-dep CVE table is red on day one, and a
+red-by-default gate trains bypassing), and warn-not-block on scanner
+error/offline — a detective control must not brick updates; keep an explicit
+escape flag. And every escape hatch the preventive layer accumulates (exact
+pins, trust-policy excludes, prerelease flags) exists because of a temporary
+upstream condition — give each a report-only recheck that FLAGs when the
+condition clears, or it silently ages into permanence.
 
 ### Commit messages
 
