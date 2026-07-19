@@ -425,6 +425,10 @@ backend = "npm:@playwright/cli"
 version = "0.16.2"
 backend = "npm:@redwoodjs/agent-ci"
 
+[[tools."npm:@tobilu/qmd"]]
+version = "2.5.3"
+backend = "npm:@tobilu/qmd"
+
 [[tools."npm:@typescript/native-preview"]]
 version = "7.0.0-dev.20260707.2"
 backend = "npm:@typescript/native-preview"
