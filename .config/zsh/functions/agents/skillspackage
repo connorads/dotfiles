@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Package skills as .skill (zip) files
+# skillspackage: package skills as .skill (zip) files
 # Usage: skillspackage [skill-name...] [-o|--output DIR]
 emulate -L zsh
 

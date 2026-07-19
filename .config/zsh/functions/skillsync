@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Sync skill symlinks across all agents
+# skillsync: sync skill symlinks across all agents
 #
 # DEPRECATED: prefer `skills add -g <repo> --skill <name>` (the skills CLI) for
 # global installs — it fans out into more tools (cline, zed, warp, …) and tracks

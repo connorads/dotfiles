@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# rs (repo setup): trust mise, install tools, and install deps for current repo
+# rs: repo setup - trust mise, install tools, and install deps for current repo
 emulate -L zsh
 
 # mise trust + install

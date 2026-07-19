@@ -1,3 +1,4 @@
+# _claude-patch-targets-lib: resolve Claude binary targets for needle patch wrappers
 emulate -L zsh
 setopt no_unset pipe_fail
 
