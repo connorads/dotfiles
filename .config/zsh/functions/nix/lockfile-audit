@@ -19,9 +19,11 @@ for arg in "$@"; do
   esac
 done
 
-# Discover targets from the dotfiles index so new projects are swept automatically.
+# Discover targets from the dotfiles index so new projects are swept
+# automatically. ls-files reports paths relative to (and only under) the cwd,
+# so pin it to $HOME in a subshell or any other cwd hides lockfiles.
 local -a tracked args
-tracked=("${(f)$(dotfiles ls-files \
+tracked=("${(f)$(cd "$HOME" && dotfiles ls-files \
   | grep -E '(^|/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lock|Cargo\.lock|uv\.lock|poetry\.lock)$')}")
 local f
 for f in $tracked; do
