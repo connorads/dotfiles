@@ -1,0 +1,8 @@
+{
+  "name": "app",
+  "version": "0.1.0",
+  "dependencies": {
+    "@ctrl/tinycolor": "^4.1.0",
+    "express": "^5.1.0"
+  }
+}

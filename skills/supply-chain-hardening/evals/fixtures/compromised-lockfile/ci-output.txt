@@ -1,0 +1,9 @@
+$ osv-scanner scan source -r .
+Scanning dir .
+Scanned /work/app/package-lock.json file and found 2 packages
+╭─────────────────────────────────────┬──────┬───────────┬─────────────────┬─────────┬───────────────────╮
+│ OSV URL                             │ CVSS │ ECOSYSTEM │ PACKAGE         │ VERSION │ SOURCE            │
+├─────────────────────────────────────┼──────┼───────────┼─────────────────┼─────────┼───────────────────┤
+│ https://osv.dev/MAL-2025-47141      │      │ npm       │ @ctrl/tinycolor │ 4.1.1   │ package-lock.json │
+╰─────────────────────────────────────┴──────┴───────────┴─────────────────┴─────────┴───────────────────╯
+error: found 1 vulnerability/vulnerabilities in the lockfiles

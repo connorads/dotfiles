@@ -1,0 +1,12 @@
+$ pnpm install
+Packages: +68
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 68, reused 68, downloaded 0, added 68, done
+
+ ERR_PNPM_IGNORED_BUILDS  Ignored build scripts: better-sqlite3.
+
+The build scripts of these packages were not executed because pnpm blocks
+lifecycle scripts by default. If you need these scripts to run, approve the
+builds.
+
+ ELIFECYCLE  Command failed with exit code 1.

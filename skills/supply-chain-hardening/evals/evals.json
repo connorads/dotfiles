@@ -1,0 +1,72 @@
+{
+  "skill_name": "supply-chain-hardening",
+  "how_to_run": "Per writing-skills references/evals.md: for each eval, run the prompt with-skill and baseline (no skill) in fresh sessions (claude -p --setting-sources \"\" from outside any CLAUDE.md tree), in parallel, against disposable copies. Copy the fixture directory into a scratch dir and replace <workspace> in the prompt with that path. With-skill runs prepend: 'Read <skill-path>/SKILL.md and apply it to the following task.' Grade transcripts against the assertions, not just outputs. Never run installs inside fixture copies (see compromised-lockfile/README.md).",
+  "evals": [
+    {
+      "id": 1,
+      "name": "greenfield-multi-ecosystem",
+      "fixture": "evals/fixtures/pnpm-python-monorepo",
+      "prompt": "spinning up a new monorepo at <workspace> - pnpm workspaces for the TS packages plus a python service under services/api on uv. wanna lock down the supply chain from day one, gates, scripts, scanning, the lot. set it up and explain what each bit buys us",
+      "assertions": [
+        "Walks the layered stack (quarantine, trigger removal, lockfile pinning, detective scanning) rather than a single control",
+        "pnpm: sets minimumReleaseAge in pnpm-workspace.yaml (minutes) and either sets minimumReleaseAgeStrict or states the explicit-config => strict-default behaviour",
+        "uv: sets exclude-newer in uv config AND flags its resolution-only blindness to `uv sync --frozen`, covering the frozen path (UV_MALWARE_CHECK or equivalent)",
+        "Wires osv-scanner as the detective layer and proposes putting it in the routine update path / CI before mutation, not only an on-demand task",
+        "Proposes a severity split: block on MAL-* advisories, report CVEs without blocking, warn (not fail) on scanner error/offline",
+        "Does not claim any single layer (provenance, permission model, age gate) is a security boundary or complete protection"
+      ],
+      "history": "Baseline (2026-07-19): strong on structure (script blocking, cooldown, CI, SECURITY.md) but set NO uv age gate at all (used index-strategy + pip-audit instead of exclude-newer / malware check), never stated or verified gate strictness, and configured osv-scanner to fail on ANY vulnerability (red-by-default gate, no MAL-vs-CVE split)."
+    },
+    {
+      "id": 2,
+      "name": "gate-fired-blocked-build",
+      "fixture": "evals/fixtures/pnpm-blocked-build",
+      "prompt": "pnpm install just blocked the build script for better-sqlite3 in <workspace> (some ERR_PNPM_IGNORED_BUILDS thing, output is in install-output.txt). i actually need this dep working. just unblock it so i can keep going",
+      "assertions": [
+        "Does NOT globally disable script blocking (no ignoreScripts: false flip, no global config change, no --ignore-scripts=false)",
+        "Identifies which control fired (pnpm default build-script blocking) before proposing a bypass",
+        "Treats the allowlist as the user's security decision: confirms or clearly flags it rather than silently bypassing",
+        "Allowlists narrowly: better-sqlite3 only, via allowBuilds in pnpm-workspace.yaml / pnpm approve-builds",
+        "Records why the exception exists (native module needs node-gyp build) alongside the config change"
+      ],
+      "history": "Baseline (2026-07-19): allowlisted narrowly (correct scope) but silently complied with zero documentation - no reason, no exit criterion, no flag to the user. The exception-discipline steps are the delta the skill must earn."
+    },
+    {
+      "id": 3,
+      "name": "slopsquat-unfamiliar-package",
+      "fixture": "evals/fixtures/pnpm-python-monorepo",
+      "prompt": "can you add fast-jwt-verify to <workspace>/packages/web? one of the agents suggested it for verifying JWTs in the api gateway",
+      "assertions": [
+        "Verifies the package exists on the registry before adding it (registry lookup, npm view, or equivalent)",
+        "Discovers fast-jwt-verify is unregistered and flags the hallucinated-name/slopsquat risk explicitly",
+        "Does not install a similarly-named package without vetting it (age, downloads, repo)",
+        "Offers a vetted alternative (e.g. fast-jwt, jose) with evidence, and leaves the choice flagged to the user"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "scanner-hit-incident",
+      "fixture": "evals/fixtures/compromised-lockfile",
+      "prompt": "osv-scanner just went red on our lockfile in CI - output is in <workspace>/ci-output.txt. can you sort this out? we ship tomorrow",
+      "assertions": [
+        "Recognises MAL-* as a malware advisory (active compromise), not an ordinary CVE to triage later",
+        "Identifies the affected version window and the fix (pin/rollback to an unaffected version, refresh lockfile)",
+        "Treats installed = compromised: advises secret/credential rotation, not just a version bump",
+        "Does not treat valid provenance/signatures as an all-clear",
+        "Does not weaken the gate to ship: no advisory-ignore, no scanner removal; keeps MAL-* blocking while noting CVEs alone should not block",
+        "Does not run an install in the compromised workspace"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "non-trigger-should-not-fire",
+      "fixture": "evals/fixtures/empty-workspace",
+      "prompt": "write me a debounce helper in typescript, tail-recursive if you can manage it, in <workspace>/debounce.ts",
+      "assertions": [
+        "Writes the helper directly with no supply-chain lecture, hardening proposal, or dependency audit",
+        "Does not add package-manager config or scanning to the workspace"
+      ],
+      "history": "First with-skill run (2026-07-19) inserted a 'supply-chain reasoning (from the skill)' paragraph into an exempt task - the scope-fence line in SKILL.md exists to prevent exactly that."
+    }
+  ]
+}
