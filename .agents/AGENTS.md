@@ -14,6 +14,12 @@
 
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
+Secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh-gate`, ... - the srt `denyRead` list in
+`~/.config/srt/base.json`) are deny-ruled for Read/Edit in `~/.claude/settings.json` and
+guarded in Bash by the `guard-secret-paths` hook; these hold even under
+`--dangerously-skip-permissions`. For a deliberate exception, prefix the command with
+`SECRETS_OK=1`. The `secret-path-parity` hk step keeps all surfaces in lock-step with srt.
+
 ## Research
 
 Do not rely on memory when the answer can be checked quickly.
