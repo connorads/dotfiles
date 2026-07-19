@@ -11,3 +11,18 @@ prefix_rule(
         "rm -r directory",
     ],
 )
+
+prefix_rule(
+    pattern = ["git", "add", ["-A", "--all", "."]],
+    decision = "forbidden",
+    justification = "Sweeping stages pick up unintended changes (AGENTS.md); stage explicit paths, or `git hunks` for partial files.",
+    match = [
+        "git add -A",
+        "git add --all",
+        "git add .",
+    ],
+    not_match = [
+        "git add file.txt",
+        "git add src/",
+    ],
+)
