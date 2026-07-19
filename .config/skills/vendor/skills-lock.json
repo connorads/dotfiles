@@ -380,6 +380,13 @@
       "skillPath": "skills/productivity/teach/SKILL.md",
       "computedHash": "68999bb1a241384b2f921f3321d779b7d05eb6089077b70d88cee2aee3d75ccc"
     },
+    "terminal-control": {
+      "source": "anomalyco/terminal-control",
+      "ref": "v0.4.1",
+      "sourceType": "github",
+      "skillPath": "skills/terminal-control/SKILL.md",
+      "computedHash": "9ad2a1739894c7a60d6568be93e765d441bb8f84c19a591e796509a4d11ff6a2"
+    },
     "text-to-speech": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
