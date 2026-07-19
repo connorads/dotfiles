@@ -64,6 +64,7 @@
             # See ./patches/README.md for lineage and bump procedure.
             (final: prev: {
               redress = prev.callPackage ./packages/redress.nix { };
+              terminal-control = prev.callPackage ./packages/terminal-control.nix { };
 
               tmux = prev.tmux.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [
