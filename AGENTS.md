@@ -379,7 +379,9 @@ dotfiles config core.hooksPath .hk-hooks
 The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 
 Custom steps beyond the builtin formatters/linters include `zsh-fn-header`
-(shell-function header + shebang/`# zsh-only:` conventions).
+(shell-function header + shebang/`# zsh-only:` conventions) and `oxlint`
+(first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
+skills and eval-fixture/reference snippets excluded).
 
 ## Agent Skills
 

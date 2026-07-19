@@ -6,7 +6,6 @@
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { TelescopeProvider } from "../types.js";
 import { copyToClipboard } from "../../shared/clipboard.js";
 

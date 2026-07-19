@@ -65,6 +65,23 @@ local fast_steps = new Mapping<String, Step> {
         exclude = vendored_skills
     }
 
+    // First-party JS/TS lint: default correctness rules only (no type-aware
+    // rules - several first-party dirs lack tsconfigs). --deny-warnings is
+    // load-bearing: oxlint exits 0 on warnings by default, so without it the
+    // step never blocks. Extension glob over the whole tree so future
+    // first-party TS is covered automatically; vendored mirrors and fixture/
+    // reference snippets are deliberately broken or upstream's style.
+    ["oxlint"] {
+        batch = true
+        glob = List("**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs", "**/*.mts", "**/*.cts")
+        exclude = vendored_skills + List(
+            "**/evals/fixtures/**",
+            "skills/**/references/**",
+            ".config/skills/**/references/**"
+        )
+        check = "oxlint --deny-warnings {{files}}"
+    }
+
     ["mise"] = Builtins.mise
 
     // Guard the tmux dimming patches against accidental removal. Vanilla tmux

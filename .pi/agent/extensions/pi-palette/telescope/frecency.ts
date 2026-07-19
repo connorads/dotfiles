@@ -53,7 +53,7 @@ export function recordSelection(
   provider: string,
   key: string,
 ): FrecencyData {
-  const providerData = { ...(data[provider] ?? {}) };
+  const providerData = { ...data[provider] };
   const entry = providerData[key] ?? { count: 0, lastUsed: 0 };
   providerData[key] = { count: entry.count + 1, lastUsed: Date.now() };
 

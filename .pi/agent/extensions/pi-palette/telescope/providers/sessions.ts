@@ -6,7 +6,6 @@
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { TelescopeProvider } from "../types.js";
 import { copyToClipboard } from "../../shared/clipboard.js";
 
@@ -129,7 +128,6 @@ export function createSessionsProvider(): TelescopeProvider<SessionInfo> {
       const label = item.name ?? item.firstMessage;
       const truncated =
         label.length > 50 ? label.slice(0, 49) + "…" : label;
-      const cwdShort = item.cwd.replace(process.env.HOME ?? "~", "~");
       const time = theme.fg("dim", relativeTime(item.modified));
       const msgs = theme.fg("dim", `${item.messageCount}msg`);
       return `${truncated}  ${time} ${msgs}`;

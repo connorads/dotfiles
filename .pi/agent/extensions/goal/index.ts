@@ -30,7 +30,6 @@ import type { TSchema } from "typebox";
 
 import {
   CONTINUATION_COOLDOWN_MS,
-  type GoalEvent,
   type GoalMode,
   type GoalState,
   type MessageLike,
