@@ -126,19 +126,40 @@ while IFS= read -r -d '' f; do
 	fi
 done < <(find "$dir" -path "$dir/evals/fixtures" -prune -o -name '*.md' ! -name SKILL.md -print0)
 
-# Doc-rot phrasing: change-history, version snapshots, and verification banners
-# written as standing prose (not load-bearing version thresholds like "3.12+").
+# Doc-rot phrasing, two classes. This check owns *phrasing*; whether a claim is
+# still true is verified at revision time (see SKILL.md "Ship checklist"), not
+# by grep — staleness is a fact about the world, not the text.
+#
+# Change-history prose narrates the past (history belongs in commit messages),
+# and "at the time of writing" is a snapshot with its date deleted — both warn
+# unconditionally. A *dated* as-of caveat is sanctioned standing prose (the
+# "honest as-of caveat" in SKILL.md's timeless-present rule), so verification
+# banners warn only when the line carries no date at all.
 # Inline-code spans are stripped per line first so teaching examples that quote
 # the very phrasing they warn against (`recent changes`) don't self-trip.
-docrot_re='\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|as of (19|20)[0-9]{2}|as of (early|mid|late)-?(19|20)[0-9]{2}|at the time of writing|current as of|last verified|verified against|checked (19|20)[0-9]{2})\b'
+history_re='\b(no longer|previously|used to|recent changes|renamed[^.]*recently|recently (added|changed|moved)|at the time of writing)\b'
+# Bare 'checked' is deliberately absent: it swallows instructive prose
+# ("spot-checked against", "checked out locally"), which is a rule, not a claim.
+banner_re='\b(current as of|as of|last verified|verified against)\b'
+year_re='(19|20)[0-9]{2}'
 # The sed strips inline-code spans; its single-quoted backticks are literal.
 # shellcheck disable=SC2016
 while IFS= read -r -d '' f; do
 	rel=${f#"$dir"/}
 	[[ $rel == evals/fixtures/* ]] && continue
+	stripped=$(sed -E 's/`[^`]*`//g' "$f")
 	while IFS= read -r hit; do
 		warn "possible doc-rot phrasing: $rel:$hit"
-	done < <(sed -E 's/`[^`]*`//g' "$f" | grep -nEi "$docrot_re" || true)
+	done < <(grep -nEi "$history_re" <<<"$stripped" || true)
+	# The date test runs on content only (never grep -n's line-number prefix,
+	# which could itself look like a year) and includes the following line,
+	# since an honest caveat often wraps: "(as of\nmid-2026, v0.93)".
+	while IFS= read -r hit; do
+		lineno=${hit%%:*}
+		window="${hit#*:} $(sed -n "$((lineno + 1))p" <<<"$stripped")"
+		[[ $window =~ $year_re ]] && continue
+		warn "undated verification banner (date it or point at a live source): $rel:$hit"
+	done < <(grep -nEi "$banner_re" <<<"$stripped" || true)
 done < <(find "$dir" -name '*.md' -print0)
 
 # --- Authoritative validator, when available ---------------------------------

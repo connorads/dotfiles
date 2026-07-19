@@ -91,10 +91,13 @@ every sentence:
   perform now.
 - **Timeless present, keep load-bearing versions.** A *threshold* stays true
   whenever it's read (`3.12+`, `since Kafka 3.0`) — not rot, keep it. A
-  *snapshot* ages silently (`current 4.3`, `verified 2026-06-30`, prices,
-  `recent changes`); deleting its date only hides the staleness so it reads as
-  eternal truth — repoint to a live source (`--help`, official docs) or keep an
-  honest as-of caveat.
+  *snapshot* ages silently (`current 4.3`, prices, `recent changes`); deleting
+  its date only hides the staleness so it reads as eternal truth — repoint to a
+  live source (`--help`, official docs) or keep an honest as-of caveat
+  (`verified 2026-06-30 against X`). The checker enforces phrasing only: dated
+  caveats pass it, and whether they still hold is the revision-time sweep's
+  job (see the ship checklist), because staleness is a fact about the world,
+  not the text.
 - **One source of truth.** Any rule, table, or protocol lives in exactly one
   file; every other mention is a one-line pointer. Duplication drifts as the
   skill evolves and inflates a rule's apparent importance.
@@ -185,6 +188,14 @@ The baseline improves underneath the skill as models get stronger. Periodically
 re-run the eval prompts *without* it and retire or shrink whatever the model now
 does unaided — a skill teaching what the agent already knows is pure context
 cost.
+
+Truth decays underneath it too, and no grep can catch that — the checker flags
+rot-prone *phrasing*; whether a claim still holds is a fact about the world.
+Whenever you revise a skill, sweep it for freshness: re-verify its dated as-of
+caveats and executable claims (counts, versions, flags, API fields) against
+the live tool or source, and update or repoint whatever drifted. The as-of
+markers and version literals the checker tolerates are the sweep's target
+list — grep for them to know what needs re-checking.
 
 ## Ship checklist
 
