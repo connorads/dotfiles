@@ -86,60 +86,13 @@ Opening a dialog/modal?
 
 These are the failures you will hit most through this skill's screen-reader lens. (The highest-*volume* failures site-wide — low-contrast text, missing alt — are covered under Colour and Contrast and Images below.)
 
-### 1. Icon-only button with no accessible name
+1. **Icon-only button with no accessible name** — announces bare "button"; needs `aria-label` on the button, `aria-hidden="true"` on the icon.
+2. **Input with no label** — placeholder is not a label; needs an associated `<label for>`.
+3. **div or span used as a button** — no keyboard support, no role; use `<button>`.
+4. **Error not linked to its field** — visually adjacent text is silent; link with `aria-describedby` + `aria-invalid`.
+5. **Dynamic content updated silently** — DOM mutations are invisible to AT without a live region.
 
-```html
-<!-- ❌ Screen reader announces: "button" -->
-<button><svg>...</svg></button>
-
-<!-- ✅ Screen reader announces: "Close, button" -->
-<button aria-label="Close"><svg aria-hidden="true">...</svg></button>
-```
-
-### 2. Input with no label
-
-```html
-<!-- ❌ Screen reader announces: "edit text" -->
-<input type="email" placeholder="Email" />
-
-<!-- ✅ Screen reader announces: "Email address, edit text" -->
-<label for="email">Email address</label>
-<input id="email" type="email" />
-```
-
-### 3. div or span used as a button
-
-```html
-<!-- ❌ Not keyboard accessible, no role announced -->
-<div onclick="save()">Save</div>
-
-<!-- ✅ Free keyboard support, correct role -->
-<button onclick="save()">Save</button>
-```
-
-### 4. Form error not linked to field
-
-```html
-<!-- ❌ Error visible but not associated with the field -->
-<input id="email" type="email" />
-<span>Please enter a valid email</span>
-
-<!-- ✅ Screen reader announces error when field is focused -->
-<input id="email" type="email"
-       aria-describedby="email-err"
-       aria-invalid="true" />
-<span id="email-err" role="alert">Please enter a valid email</span>
-```
-
-### 5. Dynamic content updated silently
-
-```html
-<!-- ❌ Cart count updates, screen reader users never know -->
-<span id="cart-count">3</span>
-
-<!-- ✅ Announces "4 items in cart" when count changes -->
-<span id="cart-count" aria-live="polite" aria-atomic="true">4 items in cart</span>
-```
+Before/after fixes for all five: `references/common-fixes.md` (fixes 1, 2, 5, 3, and 23 respectively).
 
 ---
 
