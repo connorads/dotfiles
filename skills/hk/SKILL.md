@@ -488,4 +488,4 @@ hooks {
 - `tests/quiet-on-success.bats` — behavioural tests for the asset (`bats tests/`)
 - `tests/soft-protected-branch-pre-push.bats` — behavioural tests for the advisory branch-protection asset
 - [hk docs](https://hk.jdx.dev) — official documentation
-- `hk builtins` — list all 90+ available built-in linters
+- `hk builtins` — list all available built-in linters
