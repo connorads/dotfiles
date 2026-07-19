@@ -1,4 +1,5 @@
 # fns: search zsh functions and aliases with fzf
+# zsh-only: print -z (zsh command buffer)
 # Usage: fns [query]
 emulate -L zsh
 

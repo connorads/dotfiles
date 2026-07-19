@@ -1,4 +1,5 @@
 # wtui: human TUI for managed worktrees
+# zsh-only: cd (must run in caller's shell)
 emulate -L zsh
 _wt_common_dir="${${functions_source[wtui]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090

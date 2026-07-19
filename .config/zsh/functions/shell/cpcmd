@@ -1,4 +1,5 @@
 # cpcmd: ask Copilot for one command and paste it
+# zsh-only: print -z (zsh command buffer)
 emulate -L zsh
 (( $+commands[copilot] )) || { print -u2 "copilot not found"; return 127; }
 local q="$*"

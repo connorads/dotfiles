@@ -1,4 +1,5 @@
 # wta: add a worktree and cd into it
+# zsh-only: cd (must run in caller's shell)
 # usage: wta [--base <ref>] [--no-setup] <branch>
 emulate -L zsh
 local wt_path

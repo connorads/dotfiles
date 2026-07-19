@@ -1,4 +1,5 @@
 # memwatch: edge-triggered memory-pressure notifier (macOS)
+# zsh-only: launchd daemon, autoload-only by design
 #
 # The third monitoring surface (after the status gauge and prefix+Alt+m popup):
 # a background daemon that notices pressure even when no terminal is in view.

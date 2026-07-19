@@ -1,4 +1,5 @@
 # ghcl: fuzzy clone a GitHub repo via gh + fzf
+# zsh-only: cd (must run in caller's shell)
 # usage: ghcl [-c|--cd|-n|--no-cd] [owner|owner/repo]
 emulate -L zsh
 

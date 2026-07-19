@@ -1,4 +1,5 @@
 # usage-cache-lib: shared cache/lock/backoff engine for the usage trackers
+# zsh-only: sourced lib, not executed
 #
 # Sourced (not executed) by claude-usage, codex-usage, and cosine-usage. Defines functions
 # only — no top-level side effects — so callers keep full control of options.
