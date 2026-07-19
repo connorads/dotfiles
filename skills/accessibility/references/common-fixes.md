@@ -24,6 +24,7 @@
 - 20. Skip link not working for screen reader users
 - 21. Text with insufficient colour contrast
 - 22. Missing document language
+- 23. Dynamic text change not announced
 - The Visually Hidden Utility Class
 
 Ready-to-use code fixes for the most frequent accessibility audit findings. Each fix is minimal — it targets the specific issue without rewriting surrounding code. Ordered by fix pattern, not by frequency: per the [WebAIM Million](https://webaim.org/projects/million/), the highest-volume real-world failures are low-contrast text (fix 21) and missing form labels/alt text/link text (fixes 2, 15, 6), followed by missing document language (fix 22).
@@ -589,6 +590,26 @@ Missing document language is the 6th most common failure in the WebAIM Million (
 ```html
 <p>The French for hello is <span lang="fr">bonjour</span>.</p>
 ```
+
+---
+
+## 23. Dynamic text change not announced
+
+```html
+<!-- ❌ Before - cart count updates, screen reader users never know -->
+<span id="cart-count">3</span>
+
+<!-- ✅ After - announces "4 items in cart" when count changes -->
+<span id="cart-count" aria-live="polite" aria-atomic="true">4 items in cart</span>
+```
+
+Put `aria-live="polite"` + `aria-atomic="true"` on the mutating element itself
+when it is a small, persistent piece of text whose full content *is* the
+announcement (cart count, character counter, price total). `aria-atomic` makes
+the reader announce the whole phrase, not just the changed characters. For
+transient UI that appears and disappears (toasts), or when the visual element
+cannot exist in the DOM on page load, use the separate visually-hidden
+`role="status"` announcer of fix 13 instead.
 
 ---
 
