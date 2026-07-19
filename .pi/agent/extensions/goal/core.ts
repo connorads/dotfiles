@@ -137,6 +137,7 @@ export function parseGoalOptions(
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
+    if (token === undefined) break;
     // --flag=value, or --flag value (consuming the next token)
     const eq = token.indexOf("=");
     const named = token.startsWith("--");
@@ -240,15 +241,15 @@ function isFiniteNumber(value: unknown): value is number {
 /** Parse a persisted mode, defaulting a missing/invalid mode to steer (v1 goals never self-drove). */
 function parseGoalMode(value: unknown): GoalMode {
   if (!isRecord(value)) return { kind: "steer" };
-  if (value.kind === "steer") return { kind: "steer" };
-  if (value.kind === "auto") {
+  if (value["kind"] === "steer") return { kind: "steer" };
+  if (value["kind"] === "auto") {
     return {
       kind: "auto",
-      tokenBudget: isFiniteNumber(value.tokenBudget) ? value.tokenBudget : DEFAULT_TOKEN_BUDGET,
-      maxIterations: isFiniteNumber(value.maxIterations) ? value.maxIterations : DEFAULT_MAX_ITERATIONS,
-      tokensUsed: isFiniteNumber(value.tokensUsed) ? value.tokensUsed : 0,
-      iteration: isFiniteNumber(value.iteration) ? value.iteration : 0,
-      noProgressCount: isFiniteNumber(value.noProgressCount) ? value.noProgressCount : 0,
+      tokenBudget: isFiniteNumber(value["tokenBudget"]) ? value["tokenBudget"] : DEFAULT_TOKEN_BUDGET,
+      maxIterations: isFiniteNumber(value["maxIterations"]) ? value["maxIterations"] : DEFAULT_MAX_ITERATIONS,
+      tokensUsed: isFiniteNumber(value["tokensUsed"]) ? value["tokensUsed"] : 0,
+      iteration: isFiniteNumber(value["iteration"]) ? value["iteration"] : 0,
+      noProgressCount: isFiniteNumber(value["noProgressCount"]) ? value["noProgressCount"] : 0,
     };
   }
   return { kind: "steer" };
@@ -282,14 +283,14 @@ const STOP_REASONS: ReadonlySet<string> = new Set<StopReason>([
  */
 export function parseGoalEvent(data: unknown): GoalEvent | null {
   if (!isRecord(data)) return null;
-  const at = isFiniteNumber(data.at) ? data.at : 0;
-  switch (data.kind) {
+  const at = isFiniteNumber(data["at"]) ? data["at"] : 0;
+  switch (data["kind"]) {
     case "set":
-      if (typeof data.text !== "string") return null;
-      return { kind: "set", text: data.text, at, mode: parseGoalMode(data.mode) };
+      if (typeof data["text"] !== "string") return null;
+      return { kind: "set", text: data["text"], at, mode: parseGoalMode(data["mode"]) };
     case "edit":
-      if (typeof data.text !== "string") return null;
-      return { kind: "edit", text: data.text, at };
+      if (typeof data["text"] !== "string") return null;
+      return { kind: "edit", text: data["text"], at };
     case "pause":
       return { kind: "pause", at };
     case "resume":
@@ -297,22 +298,22 @@ export function parseGoalEvent(data: unknown): GoalEvent | null {
     case "clear":
       return { kind: "clear", at };
     case "progress":
-      if (!isFiniteNumber(data.promptCost) || !isFiniteNumber(data.outputTokens)) return null;
-      return { kind: "progress", at, promptCost: data.promptCost, outputTokens: data.outputTokens };
+      if (!isFiniteNumber(data["promptCost"]) || !isFiniteNumber(data["outputTokens"])) return null;
+      return { kind: "progress", at, promptCost: data["promptCost"], outputTokens: data["outputTokens"] };
     case "status":
       if (
-        typeof data.status !== "string" ||
-        !TERMINAL_OR_PAUSED.has(data.status) ||
-        typeof data.reason !== "string" ||
-        !STOP_REASONS.has(data.reason)
+        typeof data["status"] !== "string" ||
+        !TERMINAL_OR_PAUSED.has(data["status"]) ||
+        typeof data["reason"] !== "string" ||
+        !STOP_REASONS.has(data["reason"])
       ) {
         return null;
       }
       return {
         kind: "status",
         at,
-        status: data.status as Exclude<GoalStatus, "active">,
-        reason: data.reason as StopReason,
+        status: data["status"] as Exclude<GoalStatus, "active">,
+        reason: data["reason"] as StopReason,
       };
     default:
       return null;
@@ -437,13 +438,13 @@ export function computeOutputTokens(messages: readonly MessageLike[]): number {
 /** The stop reason of the run's final assistant message, if any. */
 export function lastAssistantStopReason(messages: readonly MessageLike[]): string | undefined {
   const assistants = assistantMessages(messages);
-  return assistants.length > 0 ? assistants[assistants.length - 1].stopReason : undefined;
+  return assistants.at(-1)?.stopReason;
 }
 
 /** The error message of the run's final assistant message, if any. */
 export function lastAssistantErrorMessage(messages: readonly MessageLike[]): string | undefined {
   const assistants = assistantMessages(messages);
-  return assistants.length > 0 ? assistants[assistants.length - 1].errorMessage : undefined;
+  return assistants.at(-1)?.errorMessage;
 }
 
 const RETRYABLE_ERROR = /rate.?limit|overload|throttl|429|50[234]|timed?.?out|etimedout|econnreset|enotfound|eai_again|temporar|try again|service unavailable|capacity|connection (reset|closed)/i;

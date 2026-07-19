@@ -224,7 +224,7 @@ test("update_goal complete: a clean summary is accepted and stops the loop", asy
   const engine = createGoalEngine();
   engine.applySet(f.rt, "Ship X", auto());
   const reply = engine.execUpdateGoal(f.rt, "complete", "All requirements verified against current state; tests green.");
-  assert.match(reply.content[0].text, /complete/);
+  assert.match(reply.content[0]!.text, /complete/);
   assert.equal(f.state()?.status, "complete");
   // A subsequent run does not continue a completed goal.
   engine.onAgentStart();
@@ -282,7 +282,7 @@ test("tail: injected once per turn when active, again after a new turn, absent w
 
   const out = engine.onContext(f.rt, [{ role: "user", content: "go", timestamp: 1 }]);
   assert.ok(out);
-  const merged = out![0];
+  const merged = out![0]!;
   assert.ok(Array.isArray(merged.content));
   assert.match(JSON.stringify(merged.content), /update_goal/);
 
@@ -318,7 +318,7 @@ test("tail: merges into a trailing user message rather than appending a second o
   engine.onAgentStart();
   const out = engine.onContext(f.rt, [{ role: "user", content: "original", timestamp: 1 }])!;
   assert.equal(out.length, 1); // still one user message
-  assert.equal(out[0].role, "user");
+  assert.equal(out[0]!.role, "user");
 });
 
 test("resume: resets the runway and re-kicks (auto)", async () => {
@@ -401,7 +401,7 @@ function harness(seed: GoalEvent[] = []) {
   const notes: string[] = [];
   let editorReply: string | undefined;
   let activeTools: string[] = [];
-  const sent: { content: unknown; deliverAs?: string }[] = [];
+  const sent: { content: unknown; deliverAs: string | undefined }[] = [];
   let percent: number | null = null;
 
   const ctx = {
@@ -473,7 +473,7 @@ test("wiring: /goal set persists, shows a widget, kicks a continuation, activate
   await h.run("Ship the OAuth refactor");
   assert.match(h.widget!.join(" "), /Ship the OAuth refactor/);
   assert.equal(h.sent.length, 1);
-  assert.equal(h.sent[0].deliverAs, "followUp");
+  assert.equal(h.sent[0]!.deliverAs, "followUp");
   assert.ok(h.activeTools.includes("update_goal"));
   assert.match(h.inject()!.systemPrompt, /Ship the OAuth refactor/);
 });
@@ -504,7 +504,7 @@ test("wiring: the registered get_goal tool reports status", async () => {
   const h = harness();
   await h.run("Ship X");
   const result = await h.tool("get_goal").execute("id", {}, undefined, undefined, h.ctx);
-  assert.match(result.content[0].text, /Ship X/);
+  assert.match(result.content[0]!.text, /Ship X/);
 });
 
 test("wiring: resume/pause on a completed goal are refused and preserve the terminal state", async () => {
