@@ -203,6 +203,7 @@ dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
+mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
@@ -304,7 +305,7 @@ Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `i
 
 **Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform - the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
 
-**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude, Codex and Amp are exempted from quarantine via the `minimum_release_age_excludes` mise setting.
+**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude, Codex and Amp are exempted from quarantine via the `minimum_release_age_excludes` mise setting. Exception: `npm:@typescript/native-preview` (tsgo, used by the `ts-typecheck-*` hk steps and `mise run ts-checks`) is pinned to an exact dev build - the package publishes prereleases only, so a `"7"` range matches nothing (node-semver skips prereleases); bump it manually.
 
 **How `up` works**: by default it *bumps* both lockfiles and commits each change (symmetric with the nix flake model) - `mise upgrade` within ranges (4-day quarantine, selected tools exempt), which auto-locks **every** `lockfile_platforms` entry for each changed tool plus current-platform provenance (so no separate `mise lock` refresh is needed), then `dotfiles commit` the lock if it changed; updates brew/apt; `nfu` + commits `flake.lock`; rebuilds. **`--frozen` / `-s` / `--skip-flake`** is the *frozen* path: bump nothing - converge tools to the committed `mise.lock` via `mise install`, skip brew/apt, skip the flake bump/commit - then rebuild. Use it to reproduce a known-good toolchain (e.g. on a fresh Linux box).
 
@@ -389,6 +390,13 @@ skills and eval-fixture/reference snippets excluded), and `quarantine-drift`
 nine config files across four time units; the checker normalises each to days
 and blocks the commit on disagreement, with warn-only staleness checks on the
 docs that cite literal values).
+
+The `ts-typecheck-*` steps gate first-party TS projects (skl, pi goal /
+workflows / pi-palette, and the small pi extensions) with the global `tsgo`,
+glob-scoped so only staged-project changes pay the cost. The shared
+`~/.hk-hooks/ts-typecheck.sh` warns and exits 0 when a project's
+`node_modules` is absent (fresh/offline machines); `mise run ts-checks`
+installs deps and runs typecheck + tests across all of them.
 
 ## Agent Skills
 
