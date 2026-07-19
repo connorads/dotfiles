@@ -139,6 +139,8 @@
       ];
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
         ./modules/darwin-server.nix
+        # Daily keepalive to anchor Claude's rolling 5h usage window (mini-only)
+        ./modules/claude-keepalive.nix
         # Android SDK CLI for local Flutter Android builds (no Studio: headless)
         { homebrew.casks = [ "android-commandlinetools" ]; }
       ];
