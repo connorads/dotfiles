@@ -1,4 +1,5 @@
 # _wt-common: shared helpers for worktree lifecycle commands
+# zsh-only: sourced lib, not executed
 
 _wt_script_dir() {
   local fn_name="${funcstack[1]:-}"

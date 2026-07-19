@@ -1,4 +1,5 @@
 # agent-stream-colours: shared ANSI palette for agent stream wrappers
+# zsh-only: sourced lib, not executed
 
 agent_stream_setup_colours() {
   emulate -L zsh

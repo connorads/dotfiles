@@ -1,4 +1,5 @@
 # wts: fzf switch to a worktree under ~/.trees
+# zsh-only: cd (must run in caller's shell)
 emulate -L zsh
 _wt_common_dir="${${functions_source[wts]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090

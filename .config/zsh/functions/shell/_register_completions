@@ -1,4 +1,5 @@
 # _register_completions: register completions for custom functions (runs once)
+# zsh-only: completion/hook
 
 _svc() {
   local -a subcmds=(up down restart ls ui help)

@@ -1,4 +1,5 @@
 # zshrc-local: edit ~/.zshrc.local (create from example)
+# zsh-only: sources into caller's shell
 emulate -L zsh
 local example_file="$HOME/.zshrc.local.example"
 local local_file="$HOME/.zshrc.local"

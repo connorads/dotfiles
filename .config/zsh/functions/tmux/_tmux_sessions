@@ -1,3 +1,4 @@
 # _tmux_sessions: completion helper for tmux sessions
+# zsh-only: completion/hook
 local sessions=(${(f)"$(tmux list-sessions -F '#{session_name}' 2>/dev/null)"})
 compadd -a sessions

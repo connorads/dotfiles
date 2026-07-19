@@ -1,4 +1,5 @@
 # _needle-patch-lib: shared needle-patch engine (patch/check/restore/reapply) for patch wrappers
+# zsh-only: sourced lib, not executed
 emulate -L zsh
 setopt no_unset pipe_fail
 

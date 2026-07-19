@@ -1,4 +1,5 @@
 # takeurl: download a tar archive, extract it, and cd into top directory
+# zsh-only: cd (must run in caller's shell)
 emulate -L zsh
 setopt localtraps
 
