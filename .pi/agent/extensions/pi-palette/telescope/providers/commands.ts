@@ -4,7 +4,7 @@
  * Browse all available pi commands (extensions, skills, prompts).
  */
 
-import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { TelescopeProvider } from "../types.js";
 import { copyToClipboard } from "../../shared/clipboard.js";
 

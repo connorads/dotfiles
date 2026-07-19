@@ -505,6 +505,10 @@ backend = "npm:vercel"
 version = "4.110.0"
 backend = "npm:wrangler"
 
+[[tools.oxlint]]
+version = "1.74.0"
+backend = "npm:oxlint"
+
 [[tools.pandoc]]
 version = "3.10"
 backend = "github:jgm/pandoc"

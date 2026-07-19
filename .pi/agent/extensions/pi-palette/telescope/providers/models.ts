@@ -4,7 +4,7 @@
  * Browse and switch between available AI models.
  */
 
-import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { TelescopeProvider } from "../types.js";
 
 interface ModelInfo {
