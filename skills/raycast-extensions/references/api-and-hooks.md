@@ -1,6 +1,6 @@
 # `@raycast/api` UI + `@raycast/utils` hooks reference
 
-Current as of `@raycast/api` ~v1.104, `@raycast/utils` v2.x, React 19.
+Covers `@raycast/api` 1.x and `@raycast/utils` 2.x (React 19); confirm exact APIs against the installed package's types.
 
 ## Contents
 
