@@ -15,6 +15,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `testing` | Test strategy, TDD, test design | `pnpm dlx skills add connorads/dotfiles -s testing` |
 | `test-coverage` | Coverage audits and enforcement | `pnpm dlx skills add connorads/dotfiles -s test-coverage` |
 | `mechanical-enforcement` | Linter/type rules that kill bug classes | `pnpm dlx skills add connorads/dotfiles -s mechanical-enforcement` |
+| `supply-chain-hardening` | Dependency supply-chain gates, triggers, scanning, exceptions | `pnpm dlx skills add connorads/dotfiles -s supply-chain-hardening` |
 | `hk` | Set up `hk` git hooks | `pnpm dlx skills add connorads/dotfiles -s hk` |
 | `cloudflare-workers-deployments` | Deploy and protect Cloudflare Workers with Workers Builds and Access | `pnpm dlx skills add connorads/dotfiles -s cloudflare-workers-deployments` |
 | `accessibility` | Screen-reader-first a11y (WCAG 2.2 AA) | `pnpm dlx skills add connorads/dotfiles -s accessibility` |

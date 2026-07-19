@@ -78,7 +78,7 @@ missing-safety-doc = "allow"
 
 ## Supply chain (cargo-deny)
 
-[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) enforces dependency policy. See `references/cargo-deny.toml` for a template `deny.toml`.
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) enforces dependency policy. See `references/cargo-deny.toml` for a template `deny.toml`. Licence/advisory/ban gates stay here; broader dependency posture (age gates, lockfile pinning, osv-scanner, exceptions) is the supply-chain-hardening skill's domain.
 
 | Concern | Config section | What it catches | Notes |
 |---|---|---|---|
