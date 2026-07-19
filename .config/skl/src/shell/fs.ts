@@ -33,7 +33,7 @@ const globSorted = async (
   const glob = new Glob(pattern);
   const rels: string[] = [];
   try {
-    for await (const rel of glob.scan({ cwd: root, onlyFiles: true, dot: options.dot })) {
+    for await (const rel of glob.scan({ cwd: root, onlyFiles: true, dot: options.dot ?? false })) {
       rels.push(rel);
     }
   } catch {
@@ -91,7 +91,7 @@ const discoverSource = async (
     const dir = relDir === "." ? source.path : posixJoin(source.path, relDir);
     const raw = await readSkillMd(posixJoin(source.path, relPath));
     const sibs = await siblingFiles(dir);
-    skills.push(buildSkill({ source, relPath, raw, siblingFiles: sibs, all: options.all }));
+    skills.push(buildSkill({ source, relPath, raw, siblingFiles: sibs, all: options.all ?? false }));
   }
   return skills;
 };

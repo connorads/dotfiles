@@ -87,6 +87,7 @@
 
 !/.config/skl/
 !/.config/skl/**
+/.config/skl/node_modules/
 
 
 # public skills home (authoring root; symlinked from .config/skills/public).
