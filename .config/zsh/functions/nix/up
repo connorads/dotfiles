@@ -8,15 +8,25 @@
 #        --os               also install no-restart macOS updates (macOS only);
 #                           restart-required (OS) updates are only reported, never
 #                           applied, so a headless FileVault box is never rebooted.
+#        --no-audit         skip the lockfile-audit OSV sweep (escape hatch; the
+#                           sweep itself already warns-not-blocks when offline).
 emulate -L zsh
 
-local frozen=0 do_os=0
+local frozen=0 do_os=0 no_audit=0
 for arg in "$@"; do
   case "$arg" in
     --frozen|-s|--skip-flake) frozen=1 ;;
     --os) do_os=1 ;;
+    --no-audit) no_audit=1 ;;
   esac
 done
+
+# Detective OSV sweep of tracked lockfiles before any mutation: a MAL-* hit
+# aborts with a clean tree (nothing bumped to revert). CVEs report non-blocking;
+# scanner errors/offline warn only. `up` has no set -e, hence the explicit return.
+if (( !frozen && !no_audit )); then
+  lockfile-audit || return 1
+fi
 
 if (( frozen )); then
   mise install                  # converge to committed mise.lock, no bump/commit
