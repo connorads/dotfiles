@@ -38,11 +38,13 @@ compromised release has usually been yanked, flagged, or written up.
 | Yarn         | `npmMinimalAgeGate`   | `4d`                 |
 | mise         | `minimum_release_age` | `"4d"`               |
 
-One policy, seven spellings and three different time units - and Deno makes
-eight for free, because it reads npm's key from `.npmrc`. The inconsistency
-is a real footgun (I've documented it so agents stop "fixing" one file to
-match another), but the coverage is the point: there is no package manager on
-my machines that installs day-zero releases by default.
+One policy, eight spellings and three different time units - and Deno makes
+nine for free, because it reads npm's key from `.npmrc`. The inconsistency
+is a real footgun, so a pre-commit drift-guard parses every spelling (plus
+pnpm's legacy fallback file), normalises each to days, and blocks any commit
+where they disagree - agents can no longer "fix" one file to match another.
+The coverage is the point: there is no package manager on my machines that
+installs day-zero releases by default.
 
 It's a default, not a cage. Every tool has an explicit escape hatch for the
 urgent one-off (`mise upgrade --bump --before 0d`, `bun install
@@ -75,7 +77,11 @@ Everything above buys time; none of it proves a package is clean. The 2026
 worm wave shipped packages with *valid* SLSA provenance. So `mise run
 supply-audit` scans a project's lockfiles against the OSV malware and
 vulnerability database via osv-scanner - the layer that catches what already
-slipped through.
+slipped through. The same sweep also runs automatically on every routine
+update: before anything is bumped, every tracked lockfile is scanned, a
+malware advisory aborts the update with the tree still clean, and ordinary
+CVEs are reported without blocking - detection on the default path, not just
+when I remember to ask for it.
 
 ### The honest exemption
 
