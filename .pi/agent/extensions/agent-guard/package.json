@@ -1,0 +1,20 @@
+{
+  "name": "pi-agent-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Blocks secret-path access and dangerous commands in pi tool calls (srt denyRead twin)",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test guard.test.ts",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260623.1"
+  }
+}
