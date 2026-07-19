@@ -564,7 +564,7 @@ function randomEventSequence(rand: () => number): GoalEvent[] {
       events.push({
         kind: "status",
         at: i,
-        status: (["paused", "complete", "blocked", "budget_limited"] as const)[Math.floor(rand() * 4)],
+        status: (["paused", "complete", "blocked", "budget_limited"] as const)[Math.floor(rand() * 4)] ?? "paused",
         reason: "stuck",
       });
   }
@@ -610,6 +610,7 @@ test("property: tokensUsed only ever increases as more progress events are folde
       const state = reduceGoal(events.slice(0, i + 1));
       // Reset tracking whenever the goal is (re)set, resumed, or cleared.
       const last = events[i];
+      if (last === undefined) continue;
       if (last.kind === "set" || last.kind === "resume" || last.kind === "clear") {
         prev = state && state.mode.kind === "auto" ? state.mode.tokensUsed : 0;
         sawAuto = !!state && state.mode.kind === "auto";
@@ -632,7 +633,7 @@ test("property: parseGoalOptions round-trip — text is the objective minus reco
     const parts: string[] = [];
     const count = 1 + Math.floor(rand() * 5);
     for (let i = 0; i < count; i++) {
-      const w = words[Math.floor(rand() * words.length)];
+      const w = words[Math.floor(rand() * words.length)] ?? "ship";
       objectiveWords.push(w);
       parts.push(w);
       // Randomly sprinkle valid flags between objective words.
