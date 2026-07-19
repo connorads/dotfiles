@@ -175,7 +175,9 @@ repo (only needed if you have any tier-3 steps).
 Some tools inspect the whole repo graph and should not receive `{{files}}`:
 dependency-cruiser, knip, supply-chain scanners, full typechecks, and coverage
 gates. Wire them as ordinary steps with no `glob` when the check must always see
-the full graph.
+the full graph. (Which supply-chain scan to run, and its block-vs-report
+severity split, is the supply-chain-hardening skill's call — this skill owns
+the wiring.)
 
 For dependency-cruiser:
 
