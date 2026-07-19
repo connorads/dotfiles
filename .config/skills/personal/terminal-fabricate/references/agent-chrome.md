@@ -32,6 +32,12 @@ screenshot and adjust. Escapes are shown as `\e`.
   animate a braille/dot spinner glyph; for a still, one frame reads fine.
 - **Tool call marker**: a leading glyph + dim label, e.g.
   `\e[36m> Read\e[0m path/to/file` - a coloured bullet then the tool name.
+- **Glyph tofu - use substitutes.** Claude Code's real markers `⏺` (U+23FA)
+  and `⎿` (U+23BF) are missing from the default render fonts (Menlo, the
+  fallback when JetBrains Mono is absent), so they render as tofu boxes.
+  Substitute `●` for `⏺` and `└─` for `⎿` - both are widely covered and read
+  the same. Bullet colour is the orange accent (`#D97757`,
+  `\e[38;2;217;119;87m`).
 - **Diff**: `\e[32m+ added line\e[0m` / `\e[31m- removed line\e[0m` over a
   dim `@@` hunk header.
 - **Boxed panel**: Unicode box-drawing (`+`-style corners in ASCII, or real
