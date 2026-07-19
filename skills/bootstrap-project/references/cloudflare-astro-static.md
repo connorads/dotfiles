@@ -1,9 +1,8 @@
 # Cloudflare platform wiring: static Astro (assets-only Worker)
 
-Last verified: 2026-07 (Astro 7.0.6, wrangler 4.107, create-astro 5.2.2,
-pnpm 11.9). If anything below contradicts what you observe during a
-bootstrap, update this file to match reality (see "Keep references honest"
-in SKILL.md).
+Last verified: 2026-07 (Astro 7.0.9, wrangler 4.111, pnpm 11.12). If
+anything below contradicts what you observe during a bootstrap, update this
+file to match reality (see "Keep references honest" in SKILL.md).
 
 ## Scaffold - skip c3 for static sites
 
@@ -74,11 +73,11 @@ workerd, exercises 404 routing; `astro preview` doesn't).
 ## Lint layer (Astro-specific deviation)
 
 Prettier + `prettier-plugin-astro` and ESLint flat config with
-`eslint-plugin-astro` 2.x (`configs["flat/recommended"]` +
-`configs["flat/jsx-a11y-recommended"]`) instead of Biome/Ultracite - Biome
-lacks full `.astro` support. eslint-plugin-astro 2.x requires eslint >=10
-while eslint-plugin-jsx-a11y's peer range still caps at 9; upstream intends
-the combo, so silence it in `pnpm-workspace.yaml`:
+`eslint-plugin-astro` 3.x (`configs["flat/recommended"]` +
+`configs["flat/jsx-a11y-recommended"]`, names unchanged from 2.x) instead of
+Biome/Ultracite - Biome lacks full `.astro` support. eslint-plugin-astro
+requires eslint >=10 while eslint-plugin-jsx-a11y's peer range still caps at
+9; upstream intends the combo, so silence it in `pnpm-workspace.yaml`:
 
 ```yaml
 peerDependencyRules:
@@ -86,7 +85,19 @@ peerDependencyRules:
     eslint-plugin-jsx-a11y>eslint: "10"
 ```
 
+Install `typescript-eslint` too and spread its `configs.recommended`:
+without it the astro plugin's configs fall back to espree for `.astro`
+frontmatter and TS syntax (`interface`, generics) is a parse error.
+`tseslint.config()` is deprecated - compose with `defineConfig` from
+`eslint/config`. Exclude `pnpm-lock.yaml` in `.prettierignore` or prettier
+reformats it and fights pnpm.
+
 Typecheck step is `astro check` (needs `@astrojs/check` + `typescript`).
+**Pin `typescript` to `^6`**: bare install now resolves 7.x (the native/Go
+compiler), which doesn't expose the programmatic API `astro check` needs -
+it errors pointing at withastro/roadmap#1321. In `.astro` content-collection
+code import `z` from `astro/zod`; the `astro:content` re-export is
+deprecated in Astro 7.
 
 ## Deploy
 
