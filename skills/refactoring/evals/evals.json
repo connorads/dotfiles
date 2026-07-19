@@ -1,7 +1,7 @@
 {
   "skill_name": "refactoring",
   "how_to_run": "Per ~/skills/writing-skills/references/evals.md: for each eval, run the prompt in two fresh sessions in parallel - with-skill (prepend with_skill_prefix) and baseline (no skill when creating; the pre-edit version when revising). Grade each plan against its assertions and the judge_checklist. Do not credit baseline_strengths to the skill - baselines already do them; a with-skill plan that loses one is a regression. Then apply cross_run_assertions to all six with-skill plans read together. Grade transcripts, not just outputs: where the routing table points at a reference file relevant to the probe, check it was actually read.",
-  "with_skill_prefix": "First read /Users/connorads/skills/refactoring/SKILL.md. If its routing table points at a reference file relevant to this task, read that too. Then, applying what you read, answer the task below.\n\n",
+  "with_skill_prefix": "First read ~/skills/refactoring/SKILL.md. If its routing table points at a reference file relevant to this task, read that too. Then, applying what you read, answer the task below.\n\n",
   "judge_checklist": [
     "Establishes a characterisation/smoke-test safety net AND deployment confidence (flags kill-switch, smoke gate, instant rollback) as one precondition, before restructuring",
     "Targets effort via change hotspots (frequency x complexity), not whatever looks ugliest or scariest",
