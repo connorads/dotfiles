@@ -46,7 +46,7 @@ Is there any coverage tooling configured?
 
 ### 1. Detect the ecosystem
 
-Check for project markers: `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `setup.py`, `*.csproj`. See [ecosystem patterns](references/ecosystem-patterns.md) for tool recommendations per language.
+Check for project markers: `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `setup.py`, `*.csproj`. See [ecosystem patterns](references/ecosystem-patterns.md) for tool recommendations per language. The examples below are TypeScript/Python-flavoured; for Go or Rust follow [ecosystem-go.md](references/ecosystem-go.md) / [ecosystem-rust.md](references/ecosystem-rust.md) instead ([ecosystem-python.md](references/ecosystem-python.md) has the full Python setup).
 
 ### 2. Create tiered configs
 
