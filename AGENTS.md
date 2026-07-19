@@ -105,6 +105,9 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 ...
 ```
 
+Zsh-only files drop the shebang and instead carry a `# zsh-only: <reason>`
+marker directly under the header (see below).
+
 **When to add shebang (dual-mode):** Add when the function does NOT:
 
 - `cd` into a directory (would affect calling script, not caller's shell)
@@ -113,17 +116,19 @@ emulate -L zsh               # ← ensures consistent zsh behaviour as script
 - Use `print -z` (zsh command buffer injection)
 - Define completions (`compdef`, `compadd`, `add-zsh-hook`, `_*` prefix)
 
-**Zsh-only functions** (no shebang, autoload only):
+**Zsh-only functions** (no shebang, autoload only) self-declare with a
+`# zsh-only: <reason>` marker in their first lines - reasons follow the list
+above (cd / export / source / print -z / completion), plus sourced libs and
+launchd-managed daemons. List them with:
 
-| Function                                           | Reason          |
-| -------------------------------------------------- | --------------- |
-| `takedir`, `takegit`, `takeurl`, `takezip`, `take` | `cd`            |
-| `ghcl`, `wta`, `wts`                               | `cd`            |
-| `y`                                                | `cd`            |
-| `secretexport`                                     | `export`        |
-| `zshrc-local`                                      | `source`        |
-| `fns`, `cpcmd`                                     | `print -z`      |
-| `_register_tmux_completions`, `_tmux_sessions`     | completion/hook |
+```bash
+grep -rl '^# zsh-only:' ~/.config/zsh/functions
+```
+
+**Enforcement**: the `zsh-fn-header` hk step checks every file under
+`.config/zsh/functions/` for the `# <name>: <purpose>` header and requires
+shebang XOR `# zsh-only:` marker (script: `~/.hk-hooks/zsh-fn-header-check.sh`,
+tests: `~/.config/zsh/tests/zsh-fn-header.bats`).
 
 ### Managing symlinks
 
@@ -372,6 +377,9 @@ dotfiles config core.hooksPath .hk-hooks
 ```
 
 The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
+
+Custom steps beyond the builtin formatters/linters include `zsh-fn-header`
+(shell-function header + shebang/`# zsh-only:` conventions).
 
 ## Agent Skills
 
