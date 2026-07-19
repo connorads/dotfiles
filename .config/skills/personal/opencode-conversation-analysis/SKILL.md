@@ -8,12 +8,13 @@ compatibility: OpenCode-specific. Supports SQLite-backed storage (`opencode.db`)
 
 Analyze user messages from OpenCode sessions to identify recurring themes, communication patterns, and steering behaviours.
 
-## Critical Rules
+## How the pieces fit
 
-1. **NEVER cat or read chunk files directly** - they're huge and will explode your context
-2. **Pass file paths to subagents** - let them read and analyze independently
-3. **Use parallel subagents** - one per chunk, they run concurrently
-4. **Subagents return structured JSON** - you synthesize at the end
+Chunk files are ~320k chars (~80k tokens) each - reading one inline consumes the orchestrator's entire context, which is why the whole workflow is delegation-shaped:
+
+1. Pass chunk file *paths* to subagents; they read and analyze independently
+2. Run subagents in parallel - one per chunk
+3. Subagents return structured JSON; you only synthesize at the end
 
 ## Workflow
 
