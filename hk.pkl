@@ -48,6 +48,14 @@ local fast_steps = new Mapping<String, Step> {
         check = "zsh -n {{files}}"
     }
 
+    // Shell Function Conventions (AGENTS.md): `# <name>: <purpose>` header,
+    // and dual-mode shebang XOR a `# zsh-only: <reason>` marker.
+    ["zsh-fn-header"] {
+        glob = List(".config/zsh/functions/**")
+        exclude = List("**/*.jq")
+        check = "bash .hk-hooks/zsh-fn-header-check.sh {{files}}"
+    }
+
     ["nixfmt"] = (Builtins.nix_fmt) {
         batch = true
     }
