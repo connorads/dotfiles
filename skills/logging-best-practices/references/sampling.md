@@ -22,7 +22,7 @@ This keeps cardinality where it matters (the failures, the outliers, the importa
 
 ## A keep-rule sketch (language-agnostic)
 
-```
+```text
 function shouldKeep(event):
     if event.status_code >= 500:                     return true
     if event.outcome == "error":                     return true
