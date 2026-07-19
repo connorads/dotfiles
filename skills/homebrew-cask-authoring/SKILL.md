@@ -125,61 +125,14 @@ Target both OSes with shared top-level stanzas plus sibling `on_macos` / `on_lin
 blocks — don't nest them (the OS conditions are mutually exclusive, so a nested block
 is unreachable dead code, not an error). Gotchas beyond the Operating rules:
 
-- **`app_image` is Linux-only** (see Operating rules) — macOS-only artifacts (`app`,
-  `pkg`, `suite`, …) go in `on_macos`.
-- **`zap` goes in `on_macos` only.** AppImage `on_linux` blocks conventionally carry no
-  `zap`: the install is a single symlink `brew uninstall` already removes, and zap paths
-  are macOS `~/Library` locations. (Idiomatic across every current AppImage cask, not
-  brew-enforced.)
-- **`arch`/`os` are the first stanzas — before `version`**, not merely before `url`. Homebrew's canonical order opens with the `[arch, on_arch_conditional, os]` group, then `[version, sha256]`; `brew style --fix` hoists them. (Required whenever `url` interpolates `#{arch}`/`#{os}`.)
-  - **Within that group, `arch` precedes `os`.** With a top-level `arch`, write `arch` then `os` - `brew style` flags `os` first as "os stanza out of order". The reverse-looking layout (`os` leading) is only correct in the per-OS *nested* shape (`arch` inside `on_macos`/`on_linux`), where there is no top-level `arch`, so `os` is the first stanza. Don't generalise "os before arch" - it holds only when `arch` is nested.
-- **`arch` and `sha256` do not share key vocabularies.** `arch` takes `arm:`/`intel:` on *both* OSes, so `arch arm: …, intel: …` inside `on_linux` is correct. But `sha256` keys are OS-specific: `arm:`/`intel:` (alias `x86_64:`) feed the **macOS** branch only; Linux reads `arm64_linux:`/`x86_64_linux:`. Never put `sha256 arm:`/`intel:` inside `on_linux` - on Linux they resolve to `nil`, the sha goes missing, and the cask fails audit/install. Keep all four shas in one top-level `sha256` block (`arm:`/`intel:`/`arm64_linux:`/`x86_64_linux:`).
-- **Prefer the `os` stanza when the asset path embeds an OS-specific string that
-  differs from the OS type name** (`macos`/`linux`) — e.g. `mac`, `darwin`, `osx`,
-  `macos-x64`, `linux-amd64`. Declare `os macos: "<macstr>", linux: "<linuxstr>"`
-  at the top of the cask and interpolate `#{os}` in `url`/`app_image`. This is
-  idiomatic and readable; do **not** fake it with a local variable like
-  `url_os = on_system_conditional macos: "mac", linux: "linux"`. The `os` stanza
-  also reads correctly in `brew livecheck` and `brew audit` contexts where local
-  variables aren't re-evaluated. Models: `agentsview` (`os macos: "darwin",
-  linux: "linux"`), `bruno`, `filen` (`os macos: "mac", linux: "linux"` — Linux
-  side via homebrew-cask#272068, pending). bruno/agentsview are the merged,
-  authoritative models. Skip the stanza when the asset name doesn't embed an OS
-  string at all — a single top-level `arch` is then simpler.
-- **Split `arch` per OS when asset names embed different arch strings** (e.g. macOS uses
-  `x64`, Linux uses `x86_64`). Declare `arch` inside `on_macos do … end` and
-  `on_linux do … end` separately, and add an `os macos: "<macstr>", linux: "<linuxstr>"`
-  stanza so the URL can interpolate both `#{arch}` and `#{os}`. Model: `bruno` —
-  `on_macos do arch arm: "arm64", intel: "x64" end` / `on_linux do arch arm: "arm64", intel: "x86_64" end`
-  - `os macos: "mac", linux: "linux"`, then
-  `url ".../bruno_#{version}_#{arch}_#{os}#{url_end}"`. Don't use this shape when the
-  asset name doesn't embed an OS string — a single top-level `arch` is simpler.
-- **Define the OS-varying URL suffix as a local directly above `url`:**
-  `url_end = on_system_conditional macos: ".dmg", linux: ".AppImage"`, then
-  interpolate `#{url_end}` in the `url`. Place it immediately above `url` (the
-  local must precede its interpolation, consistent with the canonical stanza
-  order where `url` follows `arch`/`os`/`version`/`sha256`) — krehel's
-  homebrew-cask#272068 point. A file extension is **not** a CPU/OS *name*, so it
-  can't be an `os`/`arch` stanza; this is the one place a local variable is
-  idiomatic — contrast the `url_os` anti-pattern above, which encodes OS *names*
-  and should be the `os` stanza instead. This is repo convention (the
-  `url_end = on_system_conditional ...` local appears across casks — bruno,
-  tabby, agentsview, …), not Cookbook-documented. Model: `filen`. When the whole
-  filename varies (not just the suffix), use `filename`/`artifact` instead (see
-  the t3-code example in the reference).
-- **Single-arch Linux build**: put the unkeyed `sha256` *and* `depends_on arch: :x86_64`
-  *inside* `on_linux` — a top-level `depends_on arch:` would block macOS.
-- **`auto_updates true` goes inside `on_macos`** for cross-platform casks. AppImage
-  installs on Linux are a single symlink with no in-place updater, so declaring
-  `auto_updates` top-level (or inside `on_linux`) misrepresents the Linux artifact.
-  The macOS `.app` is the only side that genuinely self-updates (Sparkle/Tauri updater),
-  so gate the assertion there. Model: `t3-code`, `agentsview`.
-- **Inside `on_macos do`, use the keyword form `depends_on macos: :<symbol>` (a
-  minimum, parsed as `>=`), never the bare `depends_on :macos`.** Derive `<symbol>`
-  from the app's `LSMinimumSystemVersion`; if that's absent or below Homebrew's floor
-  (`:catalina` / 10.15 — older symbols like `:high_sierra`/`:mojave` are disabled and
-  fail CI), omit `depends_on macos:` entirely rather than guess. Derivation steps +
-  symbol map: see the reference.
+- **`app_image` is Linux-only** (see Operating rules) — gate it in `on_linux`; macOS
+  artifacts (`app`, `pkg`, `suite`, …) go in `on_macos`.
+- **All four shas in one top-level `sha256` block**
+  (`arm:`/`intel:`/`arm64_linux:`/`x86_64_linux:`). `sha256` keys are OS-specific:
+  `sha256 arm:`/`intel:` inside `on_linux` resolves to `nil`, the sha goes missing,
+  and the cask fails audit/install.
+- **`arch`/`os` are the first stanzas (before `version`), and `arch` precedes `os`** —
+  `brew style` flags "os stanza out of order".
 
 Worked examples (full cross-platform + single-arch `t3-code`), `app_image` internals,
 sha256 placement, and the model-cask list live in
