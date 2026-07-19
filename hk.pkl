@@ -117,6 +117,25 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/claude-profile-leak-guard.py"
     }
 
+    // One policy value - the 4-day quarantine - is hand-spelled in nine config
+    // files across four time units. The checker normalises each spelling to
+    // days and fails the commit on disagreement; doc citations warn only.
+    ["quarantine-drift"] {
+        glob = List(
+            ".npmrc",
+            ".config/pnpm/config.yaml",
+            ".config/pnpm/rc",
+            ".bunfig.toml",
+            ".config/uv/uv.toml",
+            ".config/pip/pip.conf",
+            ".yarnrc.yml",
+            ".config/mise/config.toml",
+            ".config/aube/config.toml",
+            ".hk-hooks/quarantine-drift.py"
+        )
+        check = "python3 .hk-hooks/quarantine-drift.py"
+    }
+
     // Keep Claude and OpenCode security denies in lock-step (R6 drift guard).
     // Fires whenever a relevant config, the gh-api gate hook, or the checker
     // itself is staged. Runs from $HOME, so the checker's cwd-relative paths
