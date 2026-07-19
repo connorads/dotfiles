@@ -52,15 +52,20 @@ termctrl video run.termctrl --out run.mp4          # basic export, no edit plan
 termctrl show --recording run.termctrl             # final-frame preview
 ```
 
-`steps.json` (text may contain ANSI; `\e`/`\x1b`/`\033` expand to ESC):
+`steps.json` (ESC is written `\\e` - double backslash, because JSON rejects a
+bare `\e`; `\\x1b` and `\\033` also work, as does the standard JSON escape `\u001b`):
 
 ```json
 { "cols": 80, "rows": 24, "steps": [
-  { "at_ms": 0,    "text": "\e[1;32m$\e[0m claude \"summarise my day\"\n" },
-  { "at_ms": 600,  "text": "\e[2m* Thinking...\e[0m\n" },
+  { "at_ms": 0,    "text": "\\e[1;32m$\\e[0m claude \"summarise my day\"\n" },
+  { "at_ms": 600,  "text": "\\e[2m* Thinking...\\e[0m\n" },
   { "at_ms": 1200, "text": "You have 3 meetings today.\n" }
 ] }
 ```
+
+For anything beyond a couple of lines, generate `steps.json` from a short
+`python3` heredoc rather than hand-writing escapes - it sidesteps the
+backslash-and-quote footguns entirely.
 
 For a polished clip with captions/markers/speed, hand off to the
 `terminal-control` skill's `record`/`mark`/`video --edit` flow - the timeline
