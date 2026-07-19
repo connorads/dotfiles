@@ -52,7 +52,7 @@ Before scaffolding, settle:
 
 Preferred: Raycast's in-app **"Create Extension"** command (pick a template: Detail / List / Grid / Form / Menu Bar; it wires up eslint + tsconfig). CLI alternative: `npm init raycast-extension -t <template>`. Then `npm install`.
 
-Requires Raycast 1.26+, a current Node (the `@raycast/api` `engines` field tracks the latest LTS — 22.22+ at the time of writing, so use Node 22 LTS or newer), and being signed into Raycast.
+Requires Raycast 1.26+, a current Node (the `@raycast/api` `engines` field tracks the latest LTS — check it and use that Node or newer), and being signed into Raycast.
 
 ### 2) Manifest (`package.json`)
 
