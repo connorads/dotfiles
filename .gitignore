@@ -161,6 +161,7 @@
 !/.pi/agent/extensions/**
 /.pi/agent/extensions/**/node_modules/
 /.pi/agent/extensions/**/pnpm-lock.yaml
+!/.pi/agent/extensions/pnpm-lock.yaml
 !/.pi/agent/extensions/pi-palette/pnpm-lock.yaml
 !/.pi/agent/extensions/goal/pnpm-lock.yaml
 !/.pi/agent/extensions/workflows/pnpm-lock.yaml

@@ -1,0 +1,14 @@
+{
+  "name": "pi-extensions-tooling",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typecheck-only tooling for the single-file/small pi extensions (atuin, agent-state, web-search). Deliberately has NO \"pi\" field so the pi host never registers it as an extension; runtime module resolution stays with the host.",
+  "scripts": {
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-ai": "0.73.1",
+    "@mariozechner/pi-coding-agent": "0.73.1",
+    "@types/node": "^26.0.0"
+  }
+}
