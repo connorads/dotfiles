@@ -382,9 +382,13 @@ dotfiles config core.hooksPath .hk-hooks
 The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 
 Custom steps beyond the builtin formatters/linters include `zsh-fn-header`
-(shell-function header + shebang/`# zsh-only:` conventions) and `oxlint`
+(shell-function header + shebang/`# zsh-only:` conventions), `oxlint`
 (first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
-skills and eval-fixture/reference snippets excluded).
+skills and eval-fixture/reference snippets excluded), and `quarantine-drift`
+(`~/.hk-hooks/quarantine-drift.py`: the 4-day quarantine is hand-spelled in
+nine config files across four time units; the checker normalises each to days
+and blocks the commit on disagreement, with warn-only staleness checks on the
+docs that cite literal values).
 
 ## Agent Skills
 
