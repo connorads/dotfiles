@@ -40,7 +40,9 @@ fire() {
   local cmd
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
-    AGENT_STATE_PANE="$PANE" sh -c "$cmd"
+    # </dev/null: stdin-reading hooks (atuin, guard-secret-paths-codex) must
+    # not eat the loop's pipe; both exit 0 on an empty event.
+    AGENT_STATE_PANE="$PANE" sh -c "$cmd" </dev/null
   done < <(jq -r ".hooks[\"$1\"][].hooks[].command" "$HOOKS")
 }
 pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
@@ -91,12 +93,19 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
     # The atuin command-capture hook (see ~/CLAUDE.md "Agent command history")
-    # coexists with the agent-state hooks and is exempt from these assertions.
+    # and the secret-path guard (deliberately blocking, exit 2) coexist with
+    # the agent-state hooks and are exempt from these assertions.
     [[ "$cmd" == "atuin hook codex"* ]] && continue
+    [[ "$cmd" == *"guard-secret-paths-codex.py"* ]] && continue
     seen=1
     [[ "$cmd" == *"agent-state.sh"* ]]
     [[ "$cmd" == *" codex "* ]]
     [[ "$cmd" == *"|| true"* ]]
   done < <(jq -r '.hooks[][].hooks[].command' "$HOOKS")
   [ "$seen" = 1 ]
+}
+
+@test "PreToolUse wires the secret-path guard on Bash" {
+  jq -r '.hooks.PreToolUse[] | select(.matcher=="^Bash$") | .hooks[].command' "$HOOKS" |
+    grep -qF 'guard-secret-paths-codex.py'
 }
