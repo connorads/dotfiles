@@ -179,6 +179,38 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/skill-check.sh {{files}}"
     }
 
+    // First-party TS typecheck gates (tsgo via mise): one glob-scoped step per
+    // project so only staged-project changes pay the cost. Typecheck only -
+    // tests live in `mise run ts-checks` to keep hook latency low. The shared
+    // script warns + exits 0 when node_modules is absent (fresh/offline
+    // machines), so the gate never bricks a commit it can't evaluate.
+    ["ts-typecheck-skl"] {
+        glob = List(".config/skl/src/**/*.ts", ".config/skl/tests/**/*.ts", ".config/skl/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh .config/skl"
+    }
+    ["ts-typecheck-goal"] {
+        glob = List(".pi/agent/extensions/goal/*.ts", ".pi/agent/extensions/goal/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/goal"
+    }
+    ["ts-typecheck-workflows"] {
+        glob = List(".pi/agent/extensions/workflows/*.ts", ".pi/agent/extensions/workflows/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/workflows"
+    }
+    ["ts-typecheck-pi-palette"] {
+        glob = List(".pi/agent/extensions/pi-palette/**/*.ts", ".pi/agent/extensions/pi-palette/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/pi-palette"
+    }
+    ["ts-typecheck-extensions"] {
+        glob = List(
+            ".pi/agent/extensions/atuin.ts",
+            ".pi/agent/extensions/agent-state/**/*.ts",
+            ".pi/agent/extensions/web-search/**/*.ts",
+            ".pi/agent/extensions/web-search/**/*.mjs",
+            ".pi/agent/extensions/tsconfig.json"
+        )
+        check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions"
+    }
+
     // Secret scan: block staged secrets before they enter this public repo.
     // gitleaks reads the staged diff itself (`git --staged`), so no per-file
     // glob — the step runs once per commit. --redact keeps any match out of

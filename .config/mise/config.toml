@@ -160,6 +160,20 @@ run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 description = "Run pytest suite for Claude Code hooks (mise python has no pytest; uv supplies it)"
 run = "cd \"$HOME/.claude/hooks\" && uv run --with pytest python -m pytest -q"
 
+[tasks.ts-checks]
+description = "Typecheck + test all first-party TS projects (installs deps as needed)"
+run = """
+set -e
+cd "$HOME"
+(cd .config/skl && bun install --frozen-lockfile && tsgo -p tsconfig.json && bun test)
+for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows; do
+  (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test)
+done
+(cd .pi/agent/extensions/pi-palette && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test)
+(cd .pi/agent/extensions && pnpm install --frozen-lockfile && pnpm run typecheck)
+(cd .pi/agent/extensions/web-search && node --test core.test.mjs)
+"""
+
 [tasks.supply-audit]
 description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
 run = "osv-scanner scan source -r ."
