@@ -32,6 +32,7 @@ setup() {
   echo "$guards" | grep -qF 'no-self-attribution.py'
   echo "$guards" | grep -qF 'guard-mutating-api.py'
   echo "$guards" | grep -qF 'allow-local-curl.py'
+  echo "$guards" | grep -qF 'guard-secret-paths.py'
 }
 
 @test "permissions.deny covers srt secret paths for Read and Edit" {

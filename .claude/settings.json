@@ -989,6 +989,10 @@
           {
             "type": "command",
             "command": "python3 ~/.claude/hooks/prefer-pnpm.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/guard-secret-paths.py"
           }
         ]
       },
