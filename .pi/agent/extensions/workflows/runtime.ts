@@ -63,7 +63,7 @@ export class WorkflowRuntimeError extends Error {
 }
 
 class WorkflowBudgetExceededError extends WorkflowRuntimeError {
-  readonly _tag = "WorkflowBudgetExceededError";
+  override readonly _tag = "WorkflowBudgetExceededError";
 }
 
 /** Execute parsed workflow JavaScript in a restricted VM with workflow helpers. */
