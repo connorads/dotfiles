@@ -1,13 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import {
-  formatSearchResults,
-  getProviderApiKey,
-  resolveProvider,
-  searchWeb,
-  _resetConfigCache,
-} from "./core.mjs";
+// Isolate HOME before core.mjs computes its config path, so a real
+// ~/.pi/web-search.json (present on working machines) can't leak keys into
+// the no-key tests. Dynamic import: static imports would evaluate core.mjs
+// before this line runs.
+process.env.HOME = mkdtempSync(join(tmpdir(), "web-search-test-"));
+const { formatSearchResults, getProviderApiKey, resolveProvider, searchWeb, _resetConfigCache } =
+  await import("./core.mjs");
 
 test("resolveProvider honours explicit provider", () => {
   const provider = resolveProvider("brave", { EXA_API_KEY: "exa", BRAVE_API_KEY: "brave" });
