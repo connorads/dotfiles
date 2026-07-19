@@ -88,7 +88,7 @@ binding to fetch from in code. Verified 2026-07 by reading
   Its content is YAML entries embedded in markdown, and Ultracite's oxfmt preset
   sets `proseWrap: "never"`, which joins each multi-line `id:`/`run:`/`for:`
   entry onto a single line (97 lines → 39, ids and descriptions merged into one
-  string). Nothing errors; the block is just silently no longer parseable.
+  string). Nothing errors; the block is just left silently unparseable.
   Add `AGENTS.md` (and the `CLAUDE.md` symlink) to `ignorePatterns` in
   `oxfmt.config.ts` during the harden phase, and exclude them from the hk step's
   glob as well - oxfmt honours its own `ignorePatterns` even for paths passed
