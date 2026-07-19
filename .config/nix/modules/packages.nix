@@ -60,6 +60,7 @@ let
 
     # Dev tools
     mise
+    terminal-control # termctrl: drive/inspect/test terminal apps in a real PTY
   ];
 
   corePackages = baseCorePackages ++ linuxCorePackages;
