@@ -58,6 +58,13 @@ Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-s
 **trigger mode** (auto-fire vs deliberate), **provenance** (authored/vendored),
 **publishability** (public/personal).
 
+## Learnings from using a skill
+
+Route per the global `## Self-improvement` rule: durable domain learnings go into the
+catalogue skill that owns them, *proposed with a diff*, not auto-applied. Curation-specific:
+new skills are suggested, never auto-authored - tier, provenance, and publishability (rubric
+above) are curation calls.
+
 ## Layout
 
 ```text
