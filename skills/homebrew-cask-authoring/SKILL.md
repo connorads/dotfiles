@@ -37,7 +37,7 @@ Before investing effort in a new cask, verify:
 
 1. **Notability**: The app must have meaningful public presence. GitHub projects with <30 forks/watchers or <75 stars are likely to be rejected. **Self-submission threshold is 3× higher** (90 forks / 90 watchers / 225 stars) if the PR author also owns the upstream repo. See [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks).
 2. **Repo age**: GitHub repos less than 30 days old cause a hard `brew audit --new` failure. Wait until the repo is old enough.
-3. **Previously refused**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token. If previously rejected for unfixable reasons, do not re-submit.
+3. **Prior refusals**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token. If rejected before for unfixable reasons, do not re-submit.
 4. **Existing PRs**: Check [open PRs](https://github.com/Homebrew/homebrew-cask/pulls) to avoid duplicating work.
 5. **Modern macOS compatibility**: Casks that don't work on current macOS will be rejected outright. Avoid submitting x86-only / `requires_rosetta` new casks — they're on a deprecation path (blocked once macOS 27 is stable, removed after 28). This only governs the macOS side of a cross-platform cask — a Linux-only cask (or one with `depends_on :linux`) is exempt.
 6. **Linux/AppImage notability**: [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks) doesn't carve out a Linux exception, so hold Linux-only and cross-platform casks to the same notability bar as macOS casks (1). AppImage distribution alone is not sufficient; the upstream project still needs the public presence described in (1).
@@ -185,7 +185,7 @@ If install fails:
 Before suggesting submission:
 
 - Ensure `brew style` and all relevant `brew audit` commands pass.
-- For new casks, check the token has not been previously refused/unmerged.
+- For new casks, check the token for past refused/unmerged PRs.
 - One cask change per PR, minimal diffs, no drive-by formatting.
 - Target the `main` branch (not `master`).
 
