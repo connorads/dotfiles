@@ -6,8 +6,10 @@
 
 import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
 
+type ThemeRole = "accent" | "border" | "dim" | "success" | "text" | "warning";
+
 interface ThemeLike {
-  fg: (role: string, text: string) => string;
+  fg: (role: ThemeRole, text: string) => string;
   bold: (text: string) => string;
 }
 

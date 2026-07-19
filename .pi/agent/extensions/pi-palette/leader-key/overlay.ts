@@ -40,7 +40,7 @@ class LeaderKeyOverlay {
   private get currentItems(): Array<{
     key: string;
     label: string;
-    description?: string;
+    description?: string | undefined;
   }> {
     if (this.view.type === "root") {
       return this.entries.map((e) => {

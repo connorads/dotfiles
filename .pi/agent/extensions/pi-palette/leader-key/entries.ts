@@ -9,7 +9,7 @@ import type { TopLevelEntry } from "./types.js";
 
 interface CommandLike {
   name: string;
-  description: string;
+  description?: string | undefined;
   source: string;
 }
 

@@ -7,7 +7,7 @@ import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 export interface ActionItem {
   readonly key: string;
   readonly label: string;
-  readonly description?: string;
+  readonly description?: string | undefined;
   readonly action: (ctx: ExtensionContext) => void | Promise<void>;
 }
 
@@ -23,6 +23,6 @@ export type TopLevelEntry =
       readonly type: "action";
       readonly key: string;
       readonly label: string;
-      readonly description?: string;
+      readonly description?: string | undefined;
       readonly action: (ctx: ExtensionContext) => void | Promise<void>;
     };
