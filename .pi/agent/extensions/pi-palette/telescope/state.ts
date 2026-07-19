@@ -21,7 +21,7 @@ export interface TelescopeState<T = unknown> {
   readonly mode: Mode;
   readonly selectedKeys: ReadonlySet<string>;
   // Terminal results (set by select/cancel actions)
-  readonly selectedItem?: T;
+  readonly selectedItem?: T | undefined;
   readonly cancelled?: boolean;
 }
 

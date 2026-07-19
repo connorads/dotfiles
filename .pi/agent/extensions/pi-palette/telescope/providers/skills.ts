@@ -57,7 +57,7 @@ function scanSkillDir(dir: string, scope: SkillInfo["scope"]): SkillInfo[] {
 }
 
 function loadAllSkills(cwd: string): SkillInfo[] {
-  const home = process.env.HOME ?? "~";
+  const home = process.env["HOME"] ?? "~";
   const all: SkillInfo[] = [];
 
   all.push(...scanSkillDir(join(cwd, ".pi/skills"), "project"));

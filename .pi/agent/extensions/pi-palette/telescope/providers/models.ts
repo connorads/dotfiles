@@ -7,10 +7,13 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { TelescopeProvider } from "../types.js";
 
+type AvailableModel = ReturnType<ExtensionContext["modelRegistry"]["getAvailable"]>[number];
+
 interface ModelInfo {
   id: string;
   provider: string;
   name: string;
+  model: AvailableModel;
 }
 
 export function createModelsProvider(
@@ -28,6 +31,7 @@ export function createModelsProvider(
         id: m.id,
         provider: m.provider,
         name: m.name ?? m.id,
+        model: m,
       }));
     },
 
@@ -42,7 +46,7 @@ export function createModelsProvider(
     },
 
     async onSelect(item) {
-      pi.setModel({ id: item.id, provider: item.provider });
+      pi.setModel(item.model);
       ctx.ui.notify(`Switched to ${item.provider}/${item.id}`, "info");
     },
 

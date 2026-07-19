@@ -9,12 +9,12 @@ import { join } from "node:path";
 import type { TelescopeProvider } from "../types.js";
 import { copyToClipboard } from "../../shared/clipboard.js";
 
-const SESSION_BASE = join(process.env.HOME ?? "~", ".pi/agent/sessions");
+const SESSION_BASE = join(process.env["HOME"] ?? "~", ".pi/agent/sessions");
 
 interface SessionInfo {
   path: string;
   cwd: string;
-  name?: string;
+  name?: string | undefined;
   firstMessage: string;
   modified: Date;
   messageCount: number;

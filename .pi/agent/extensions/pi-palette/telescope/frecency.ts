@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 const FRECENCY_PATH = join(
-  process.env.HOME ?? "~",
+  process.env["HOME"] ?? "~",
   ".pi/telescope-frecency.json",
 );
 const HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
