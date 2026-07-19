@@ -210,56 +210,14 @@ Mark invented assumptions clearly. Do not fabricate emotions from thin context.
 ### Service Blueprint
 
 Use when a screen depends on people, policy, backend systems, third parties, or
-operational handoffs. Read `references/service-design.md` for detailed guidance.
-
-```markdown
-## Service blueprint: [service]
-
-**Journey:** [Specific journey being blueprinted]
-**Business/user goal:** [What this must enable]
-
-| Layer | Stage 1 | Stage 2 | Stage 3 |
-| --- | --- | --- | --- |
-| Physical evidence |  |  |  |
-| Customer actions |  |  |  |
-| Frontstage |  |  |  |
-| Backstage |  |  |  |
-| Support processes |  |  |  |
-| Failure/recovery |  |  |  |
-| Owner |  |  |  |
-```
-
-Blueprints should expose hidden operational work, not restate the journey map.
-Keep source evidence and confidence in the surrounding notes, not as a blueprint
-lane unless the artefact specifically needs it.
+operational handoffs. Read `references/service-design.md` for detailed guidance
+and the blueprint template.
 
 ### Research Synthesis
 
 Use when the input is interviews, survey notes, support tickets, session
 recordings, or messy feedback. If available, read
-`references/research-synthesis.md`.
-
-```markdown
-## UX research synthesis: [topic]
-
-### Evidence base
-- Sources:
-- Segments:
-- Confidence:
-
-### Themes
-| Theme | Evidence | User impact | Design implication |
-| --- | --- | --- | --- |
-
-### Jobs and unmet needs
-- When [situation], users need [progress], so they can [outcome].
-
-### Opportunities
-| Opportunity | Why it matters | Risk/unknown | Next step |
-| --- | --- | --- | --- |
-```
-
-Separate evidence from interpretation. Keep unresolved contradictions visible.
+`references/research-synthesis.md` for the workflow and report template.
 
 ### Low-Fidelity Wireframe
 

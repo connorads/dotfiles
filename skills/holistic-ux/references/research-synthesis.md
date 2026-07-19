@@ -32,6 +32,35 @@ Keep evidence, interpretation, and recommendation visibly separate.
 
 ---
 
+## Report Template
+
+Use for the report-level write-up; the per-insight structure is the Insight
+Format below.
+
+```markdown
+## UX research synthesis: [topic]
+
+### Evidence base
+- Sources:
+- Segments:
+- Confidence:
+
+### Themes
+| Theme | Evidence | User impact | Design implication |
+| --- | --- | --- | --- |
+
+### Jobs and unmet needs
+- When [situation], users need [progress], so they can [outcome].
+
+### Opportunities
+| Opportunity | Why it matters | Risk/unknown | Next step |
+| --- | --- | --- | --- |
+```
+
+Separate evidence from interpretation. Keep unresolved contradictions visible.
+
+---
+
 ## Evidence Quality Cautions
 
 - Observed behaviour beats stated preference for workflow and usability questions
