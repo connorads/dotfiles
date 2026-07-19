@@ -1,6 +1,6 @@
 ---
 name: prd
-description: Create Product Requirements Documents (PRDs) that define the end state of a feature through iterative design interview. Use when planning new features, migrations, or refactors. Generates structured PRDs with acceptance criteria, testing strategy, and architectural decisions.
+description: Create Product Requirements Documents (PRDs) that define the end state of a feature through iterative design interview. Use when asked to "write a PRD", "spec this feature", write a requirements doc or RFC, or when planning new features, migrations, or refactors that need a reviewable spec. Generates structured PRDs with acceptance criteria, testing strategy, and architectural decisions.
 ---
 
 # PRD Creation Skill
