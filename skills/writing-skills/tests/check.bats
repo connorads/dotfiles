@@ -249,7 +249,7 @@ EOF
 	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
 }
 
-@test "verification banner phrasing warns but does not fail" {
+@test "undated verification banner warns but does not fail" {
 	local skill="$BATS_TEST_TMPDIR/verified-banner"
 	make_skill "$skill" "verified-banner"
 	mkdir -p "$skill/references"
@@ -263,7 +263,87 @@ EOF
 	run "$SCRIPT" "$skill"
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"warning: possible doc-rot phrasing: references/tool.md:3:Verified against Tool v1.2."* ]]
+	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): references/tool.md:3:Verified against Tool v1.2."* ]]
+	[[ "$output" == *"0 error(s), 1 warning(s)"* ]]
+}
+
+@test "dated as-of caveat is sanctioned standing prose and does not warn" {
+	local skill="$BATS_TEST_TMPDIR/dated-caveat"
+	make_skill "$skill" "dated-caveat"
+	mkdir -p "$skill/references"
+	printf '\nSee references/tool.md.\n' >>"$skill/SKILL.md"
+	cat >"$skill/references/tool.md" <<'EOF'
+# Tool Reference
+
+Verified as of 2026-07 against Tool v1.2.
+The registry lists 142 linters as of 2026.
+Last verified 2026-06-30 against the upstream schema.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "instructive checked-against prose does not warn" {
+	local skill="$BATS_TEST_TMPDIR/instructive-check"
+	make_skill "$skill" "instructive-check"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Executable claims are spot-checked against the live tool before shipping.
+Keep the repository checked out locally while testing.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "dated caveat wrapped onto the next line does not warn" {
+	local skill="$BATS_TEST_TMPDIR/wrapped-caveat"
+	make_skill "$skill" "wrapped-caveat"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Not the blessed path because (as of
+mid-2026, v0.93) the rewrite is still in flight.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
+@test "banner exclusion tests content, not grep's line-number prefix" {
+	local skill="$BATS_TEST_TMPDIR/deep-line-banner"
+	make_skill "$skill" "deep-line-banner"
+	{
+		for i in $(seq 1 2025); do
+			printf '\n'
+		done
+		printf 'Verified against Tool v1.2.\n'
+	} >>"$skill/SKILL.md"
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: undated verification banner (date it or point at a live source): SKILL.md:"* ]]
+}
+
+@test "at the time of writing warns even alongside a date" {
+	local skill="$BATS_TEST_TMPDIR/time-of-writing"
+	make_skill "$skill" "time-of-writing"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+At the time of writing (2026) the API exposes three endpoints.
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"warning: possible doc-rot phrasing: SKILL.md:"* ]]
 	[[ "$output" == *"0 error(s), 1 warning(s)"* ]]
 }
 
