@@ -62,6 +62,16 @@ touch `~/.ssh` on its own, but happily tried an unsolicited `curl` and a
 write outside the project, and the sandbox stopped both. The model's safety
 layer is the first line; the policy is the one that holds.
 
+The same secret-path list is also enforced one layer up, inside each agent's
+own permission mechanism: Claude Code gets static deny rules plus a hook that
+catches shell readers like `xxd` and `base64`, Codex gets the same check via
+its hook contract, and pi gets a guard extension that vets every tool call.
+Those guards run everywhere - including sessions that never went through
+`asb` - and give the model a reason string it can act on, while the OS
+sandbox stays the backstop for anything textual matching can't see. A
+pre-commit parity check fails any commit that lets the per-agent copies
+drift from the sandbox policy's canonical list.
+
 ### A VM for code I don't trust at all
 
 `sbx` is for running software I actively distrust - the unknown binary, the

@@ -150,6 +150,25 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/permission-parity.py"
     }
 
+    // Keep every secret-path surface in lock-step with the srt denyRead list:
+    // Claude Read/Edit deny rules, the shared _secretpaths.py hook core
+    // (Claude + Codex), and the pi agent-guard TS twin, plus the hook wiring
+    // itself. Fires whenever the canonical list, an embedding surface, or the
+    // checker is staged.
+    ["secret-path-parity"] {
+        glob = List(
+            ".config/srt/base.json",
+            ".claude/settings.json",
+            ".codex/hooks.json",
+            ".claude/hooks/_secretpaths.py",
+            ".claude/hooks/guard-secret-paths.py",
+            ".claude/hooks/guard-secret-paths-codex.py",
+            ".pi/agent/extensions/agent-guard/guard.ts",
+            ".hk-hooks/secret-path-parity.py"
+        )
+        check = "python3 .hk-hooks/secret-path-parity.py"
+    }
+
     // Authored agent skills must pass writing-skills' checker: spec errors
     // (invalid frontmatter, unknown keys, name/dir mismatch) block the commit;
     // hygiene findings (orphans, doc-rot phrasing, missing TOCs) print only.
