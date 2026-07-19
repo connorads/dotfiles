@@ -34,6 +34,17 @@ setup() {
   echo "$guards" | grep -qF 'allow-local-curl.py'
 }
 
+@test "permissions.deny covers srt secret paths for Read and Edit" {
+  # Static twin of the srt denyRead list (~/.config/srt/base.json); the
+  # secret-path-parity hk step checks full coverage - this asserts a
+  # representative entry so a wholesale removal fails fast in the zsh suite.
+  deny=$(cmds '.permissions.deny[]')
+  echo "$deny" | grep -qxF 'Read(~/.ssh/**)'
+  echo "$deny" | grep -qxF 'Edit(~/.ssh/**)'
+  echo "$deny" | grep -qxF 'Read(~/.aws/**)'
+  echo "$deny" | grep -qxF 'Edit(~/.zshenv)'
+}
+
 @test "PostToolUse marks working (resume after approval)" {
   cmds '.hooks.PostToolUse[].hooks[].command' | grep -qF 'agent-state.sh working claude'
 }

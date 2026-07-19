@@ -21,6 +21,13 @@ opencode self-refused to touch `~/.ssh`, but its `curl example.org` and a `~/Doc
 passed the model and were stopped by srt. Treat policy as the thing that holds when the model's
 judgement doesn't.
 
+The upper layer mirrors this file's `denyRead` list per agent: Claude Code carries static
+`Read()`/`Edit()` deny rules in `~/.claude/settings.json` plus the `guard-secret-paths` Bash
+hook, Codex the same core via `guard-secret-paths-codex.py` in `~/.codex/hooks.json`, and pi
+the `agent-guard` extension (`~/.pi/agent/extensions/agent-guard/`). The `secret-path-parity`
+hk step fails a dotfiles commit when any of those surfaces drifts from `denyRead` here - so
+edits to this list propagate (or at least block) rather than rot.
+
 ## Write precedence and the denyWrite blocklist
 
 `denyWrite` takes precedence over `allowWrite` (srt emits allow rules then deny rules; Seatbelt
