@@ -286,6 +286,24 @@ EOF
 	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
 }
 
+@test "fenced code blocks are excluded from doc-rot scans" {
+	local skill="$BATS_TEST_TMPDIR/fenced-docrot"
+	make_skill "$skill" "fenced-docrot"
+	cat >>"$skill/SKILL.md" <<'EOF'
+
+Grep for the markers:
+
+```sh
+rg -n 'last verified|verified against|no longer' docs/
+```
+EOF
+
+	run "$SCRIPT" "$skill"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"0 error(s), 0 warning(s)"* ]]
+}
+
 @test "instructive checked-against prose does not warn" {
 	local skill="$BATS_TEST_TMPDIR/instructive-check"
 	make_skill "$skill" "instructive-check"
