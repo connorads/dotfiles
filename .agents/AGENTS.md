@@ -87,6 +87,20 @@ When a decision has trade-offs or rejected alternatives worth preserving, write 
 When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
 Keep `AGENTS.md`, `CLAUDE.md`, docs, and code comments in sync with reality.
 
+## Self-improvement
+
+Route durable learnings to the strongest home *as you learn them*, not batched to task-end
+(cf. `## Intent`): mechanically checkable -> `## Enforcement`; a decision's *why* -> `## Intent`;
+external research -> KB vault (`~/git/kb/notes/`).
+
+The part those don't cover: a durable **domain** rule / gotcha / framing belongs in the
+**catalogue skill that owns it** (`architecture`, `testing`, `typescript`,
+`mechanical-enforcement`, ...) - these exist to accrete curated detail - and a reusable
+procedure no skill owns (e.g. reverse-engineering a new binary type) is a new-skill candidate
+via `writing-skills`. Don't derail the task: capture the candidate, then *propose* the skill
+edit with its diff; auto-apply only a trivial verified fact (spot-check any command/flag
+live). New skills and trigger/description changes are always suggest-only.
+
 ## Testing
 
 Prefer TDD for behavioural changes: see the failure, make it pass, then refactor.
