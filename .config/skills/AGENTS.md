@@ -30,7 +30,7 @@ CLI's two scopes *are* our two managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored) + `vendor/.agents/skills` (CLI-vendored) + `vendor/<name>` (manually-vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/.agents/skills` (CLI-vendored) + `vendor/<name>` (manually-vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
@@ -44,19 +44,20 @@ keeps one real copy in `~/skills`).
 
 ```text
 1. Provenance → home.
-     authored   → ~/.config/skills/{public|personal}  (plain dirs, you edit in place)
-     third-party→ ~/.config/skills/vendor             (skills CLI, project scope)
+     authored   → ~/.config/skills/{public|personal|private}  (edit in place)
+     third-party→ ~/.config/skills/vendor                     (skills CLI, project scope)
 2. Keep?  off-domain / unused / redundant → REMOVE (reinstall from upstream later).
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
 5. + Global autoload iff broad AND must-auto-fire AND regular. Vendored: `skills add -g`.
      Authored: symlink into ~/.agents/skills + `skillsync`. Current set: `ls ~/.agents/skills`.
-6. Authored publishable? ~/skills (future connorads/skills) : personal/ (never public).
+6. Authored routing: showcase → ~/skills (future connorads/skills) ; personal → personal/ ;
+     private → private/.
 ```
 
 Axes to weigh: **frequency** (never/rare/regular), **breadth** (broad vs stack-specific),
 **trigger mode** (auto-fire vs deliberate), **provenance** (authored/vendored),
-**publishability** (public/personal).
+**publishability** (showcase / personal / private).
 
 ## Learnings from using a skill
 
@@ -73,7 +74,8 @@ above) are curation calls.
 ~/.config/skills/
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
   public                   → symlink to ../../skills (compat: skl/autoload/refs resolve through it)
-  personal/<name>/         authored, personal       · skl source 'personal'
+  private                  → symlink (gitignored) · skl source 'private'
+  personal/<name>/         authored, personal (public-in-dotfiles, not showcased) · skl source 'personal'
   vendor/                  third-party "project"     · skl sources 'vendor' + 'vendored'
     <name>/                manually-vendored skills at depth 4 (skills.sh-registerable) · skl source 'vendored'
     .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope) · skl source 'vendor'
@@ -87,15 +89,17 @@ above) are curation calls.
                            skillsync-managed and absent here by design.
 ```
 
-`skl` config (`~/.config/skl/config.json`), order = precedence (`public` is a symlink
-→ `~/skills`, which skl follows). The `vendored` source roots at `vendor/` so its non-dot
-Glob serves the depth-4 manually-vendored skills while naturally skipping the `.agents/`
-nested CLI clones (no overlap with `vendor`):
+`skl` config (`~/.config/skl/config.json`), order = precedence (first match wins). `public`
+and `private` are symlinks skl follows; a missing/uncloned source yields no skills (friendly
+empty, not a throw — verified in `skl/src/shell/fs.ts`). The `vendored` source roots at
+`vendor/` so its non-dot Glob serves the depth-4 manually-vendored skills while naturally
+skipping the `.agents/` nested CLI clones (no overlap with `vendor`):
 
 ```json
 { "paths": [
-  { "path": "~/.config/skills/public",                "name": "public" },
+  { "path": "~/.config/skills/private",               "name": "private" },
   { "path": "~/.config/skills/personal",              "name": "personal" },
+  { "path": "~/.config/skills/public",                "name": "public" },
   { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
   { "path": "~/.config/skills/vendor",                "name": "vendored" }
 ] }
@@ -105,12 +109,12 @@ nested CLI clones (no overlap with `vendor`):
 
 ### Add an authored skill
 
-Create `<name>/SKILL.md` (+ supporting files): public skills in `~/skills/<name>/` (their
-real home, symlinked from `.config/skills/public`), personal in
-`~/.config/skills/personal/<name>/`. Public iff shareable with no personal refs; personal
-otherwise. No CLI, no lockfile — you edit in place. `skl <name>` finds it immediately.
-The `.gitignore` un-ignore is already in place for `~/skills/**`, `personal/**`, `vendor/**`;
-new top-level files need their own un-ignore before `dotfiles add`.
+Create `<name>/SKILL.md` (+ supporting files) in the right source dir:
+`~/skills/<name>/` (showcase), `~/.config/skills/personal/<name>/`, or the `private` source
+(`.config/skills/private/`). No CLI, no lockfile — you edit in place; `skl <name>` finds it
+immediately. The `.gitignore` un-ignore is already in place for `~/skills/**`, `personal/**`,
+`vendor/**`; `private` stays ignored. New top-level files need their own un-ignore before
+`dotfiles add`.
 
 ### Add / vendor a third-party skill
 
