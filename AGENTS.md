@@ -425,6 +425,27 @@ Bookmarked skills live in `~/.agents/README.md` (references only, not installed)
 **Curation intent, the rubric, tiers, and lockfile/skillsync rationale live in
 [`~/.config/skills/AGENTS.md`](./.config/skills/AGENTS.md).**
 
+## Tmux (agent safety)
+
+Never run experimental or mutating `tmux` commands against the live server to
+"check behaviour" - no `new-session`, `split-window`, `select-pane -P`,
+`set-option`, or `kill-server` on the default socket. The running server holds
+real work, and the pane/layout path segfaults easily on some builds, so a stray
+probe can drop the server and trigger a resurrect restore cycle. Verify tmux
+behaviour from `man tmux`/docs, or on a throwaway socket that can never reach the
+real one:
+
+```bash
+tmux -L probe -f /dev/null new-session -d 'sleep 1'   # isolated server
+tmux -L probe kill-server
+```
+
+This bans *probing*, not legitimate scripted use - `agent-state.sh`, resurrect,
+and other first-party scripts drive `tmux set-option`/`split-window` by design.
+Don't delegate tmux verification to a general-purpose subagent either; the same
+rule binds it, and a broad-tools agent is likelier to experiment on the live
+server.
+
 ## Tailscale
 
 **Always use `ts` wrapper, never raw `tailscale`** - it handles socket paths across platforms:
