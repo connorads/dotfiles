@@ -37,7 +37,36 @@ MAGENTA='\033[35m'
 YELLOW='\033[33m'
 RED='\033[31m'
 WHITE='\033[37m'
+BLUE='\033[34m'
+VIOLET='\033[38;5;141m'
 DIM='\033[2m'
+
+# Account tag: ccp sets CLAUDE_CONFIG_DIR per account (absent == personal ~/.claude).
+# Show the profile's short label file, colour-coded, so the active account is
+# obvious at a glance. Runs inside the claude process, so it needs no detection
+# beyond its own inherited env - correct for fresh/resume/personal alike.
+cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+acct=$(cat "$cfg/label" 2>/dev/null) || acct=""
+if [ -z "$acct" ]; then
+	case "${cfg##*/}" in
+	.claude) acct="per" ;;
+	*) acct="${cfg##*/}" ;;
+	esac
+fi
+# Colour the tag deterministically from the label so a given account is always
+# the same colour, without naming any account in-repo. "per" (personal) is dim.
+if [ "$acct" = "per" ]; then
+	acct_col="$DIM$WHITE"
+else
+	palette=("$BLUE" "$VIOLET" "$CYAN" "$GREEN" "$YELLOW" "$RED")
+	sum=0 i=0
+	while [ "$i" -lt "${#acct}" ]; do
+		printf -v code '%d' "'${acct:$i:1}"
+		sum=$((sum + code))
+		i=$((i + 1))
+	done
+	acct_col="${palette[$((sum % ${#palette[@]}))]}"
+fi
 
 # Effort: 5-step block ramp + label, colour by intensity (shows the *effective* level)
 effort_seg=""
@@ -77,5 +106,8 @@ else
 	line+="${MAGENTA}${model}${RESET} | ${CYAN}${dir}${RESET}"
 fi
 [ -n "$branch" ] && line+=" on ${GREEN}${branch}${RESET}"
+
+# Lead with the account tag (leftmost survives width truncation best)
+line="${acct_col}${acct}${RESET} | ${line}"
 
 printf "%b\n" "$line"
