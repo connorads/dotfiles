@@ -121,6 +121,52 @@ PY
   [[ "$output" != *"Claude extra disabled"* ]]
 }
 
+@test "a profile cache adds a second labelled Claude group" {
+  write_usage_caches
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+home = Path(sys.argv[1])
+now = datetime.now(timezone.utc)
+
+def iso(delta):
+    return (now + delta).isoformat().replace("+00:00", "Z")
+
+# Profile cache stamped with _label (capitalised, unlike the dir name) so the
+# assertion proves the dashboard reads the stamp, not the filename.
+(home / ".cache/claude-usage-acme.json").write_text(json.dumps({
+    "five_hour": {"utilization": 33, "resets_at": iso(timedelta(hours=2))},
+    "seven_day": {"utilization": 81, "resets_at": iso(timedelta(days=4))},
+    "_label": "Acme",
+    "_profile": "acme",
+}))
+PY
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  # Default account is still rendered...
+  [[ "$output" == *"Claude"*"68%"* ]]
+  # ...alongside the profile account's own labelled row.
+  [[ "$output" == *"Acme"*"81%"* ]]
+}
+
+@test "profile meta files are not rendered as accounts" {
+  write_usage_caches
+  # A stray profile meta sibling must not be picked up as a usage cache.
+  jq -n '{last_error:"", last_success_at:0}' \
+    >"$HOME/.cache/claude-usage-acme.meta.json"
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"acme"* ]]
+  [[ "$output" != *"Acme"* ]]
+}
+
 @test "codex weekly-only window is labelled 7d, not a phantom 5h" {
   write_usage_caches
   # Live 2026-07 shape: 5h window removed, weekly figure carries

@@ -483,71 +483,89 @@ def collect_windows():
     rows = []
     alerts = []
 
-    claude_path = HOME / ".cache/claude-usage.json"
-    claude_meta = load_json(HOME / ".cache/claude-usage.meta.json") or {}
-    claude = load_json(claude_path)
-    claude_mt = mtime(claude_path)
-    claude_age = NOW_TS - claude_mt if claude_mt else None
-    if claude_meta.get("last_error") == "auth_expired":
-        alerts.append(("Auth", "Claude expired — use Claude or run claude auth login", "yellow"))
-    if claude:
-        for label, key, window_secs in (
-            ("Claude", "five_hour", 18000),
-            ("Claude", "seven_day", 604800),
-            ("Sonnet", "seven_day_sonnet", 604800),
-        ):
-            obj = claude.get(key) or {}
-            pct = as_pct(obj.get("utilization"))
-            if pct is None:
-                continue
-            reset = iso_ts(obj.get("resets_at"))
-            remaining = max(0, reset - NOW_TS) if reset else None
-            rows.append(make_window_row(
-                label,
-                "5h" if key == "five_hour" else "7d",
-                pct,
-                remaining,
-                window_secs,
-                claude_age is not None and claude_age >= stale_after(window_secs),
-                "sonnet" if label == "Sonnet" else "claude",
-                "claude",
-            ))
-        # Model-scoped weekly windows (e.g. Fable) now arrive via .limits[] with a
-        # scope.model.display_name; the legacy seven_day_<model> keys are null.
-        for lim in claude.get("limits") or []:
-            if lim.get("kind") != "weekly_scoped":
-                continue
-            model = ((lim.get("scope") or {}).get("model") or {}).get("display_name")
-            pct = as_pct(lim.get("percent"))
-            if not model or pct is None:
-                continue
-            reset = iso_ts(lim.get("resets_at"))
-            remaining = max(0, reset - NOW_TS) if reset else None
-            rows.append(make_window_row(
-                model[:7],
-                "7d",
-                pct,
-                remaining,
-                604800,
-                claude_age is not None and claude_age >= stale_after(604800),
-                "sonnet",
-                "claude",
-            ))
-        extra = claude.get("extra_usage") or {}
-        if extra.get("is_enabled") is not None:
-            try:
-                used = float(extra.get("used_credits") or 0) / 100
-                limit = float(extra.get("monthly_limit") or 0) / 100
-                if extra.get("is_enabled"):
-                    alerts.append(("Extra", f"Claude {fmt_money(used)}/{fmt_money(limit)} enabled", "yellow"))
-                elif used > 0:
-                    alerts.append(("Extra", f"Claude disabled after {fmt_money(used)}", "yellow"))
-            except Exception:
-                pass
-        if claude_age is not None and claude_age >= 900:
-            alerts.append(("Stale", f"Claude cache {fmt_age(claude_path)}", "yellow"))
-    elif not claude_path.exists():
-        alerts.append(("Missing", "Claude usage cache", "yellow"))
+    def add_claude_rows(path, label):
+        # One Claude account (default ~/.claude, or a ~/.claude-profiles/code/*
+        # profile). `label` heads the account's 5h/7d rows and its alerts; the
+        # default account passes "Claude" to preserve the original output. The
+        # Sonnet/model-scoped weekly windows keep their own names (Max-only
+        # windows that don't collide across accounts in practice).
+        meta = load_json(path.parent / (path.stem + ".meta.json")) or {}
+        claude = load_json(path)
+        claude_mt = mtime(path)
+        claude_age = NOW_TS - claude_mt if claude_mt else None
+        if meta.get("last_error") == "auth_expired":
+            alerts.append(("Auth", f"{label} expired — use Claude or run claude auth login", "yellow"))
+        if claude:
+            for row_label, key, window_secs, colour in (
+                (label[:7], "five_hour", 18000, "claude"),
+                (label[:7], "seven_day", 604800, "claude"),
+                ("Sonnet", "seven_day_sonnet", 604800, "sonnet"),
+            ):
+                obj = claude.get(key) or {}
+                pct = as_pct(obj.get("utilization"))
+                if pct is None:
+                    continue
+                reset = iso_ts(obj.get("resets_at"))
+                remaining = max(0, reset - NOW_TS) if reset else None
+                rows.append(make_window_row(
+                    row_label,
+                    "5h" if key == "five_hour" else "7d",
+                    pct,
+                    remaining,
+                    window_secs,
+                    claude_age is not None and claude_age >= stale_after(window_secs),
+                    colour,
+                    "claude",
+                ))
+            # Model-scoped weekly windows (e.g. Fable) now arrive via .limits[] with a
+            # scope.model.display_name; the legacy seven_day_<model> keys are null.
+            for lim in claude.get("limits") or []:
+                if lim.get("kind") != "weekly_scoped":
+                    continue
+                model = ((lim.get("scope") or {}).get("model") or {}).get("display_name")
+                pct = as_pct(lim.get("percent"))
+                if not model or pct is None:
+                    continue
+                reset = iso_ts(lim.get("resets_at"))
+                remaining = max(0, reset - NOW_TS) if reset else None
+                rows.append(make_window_row(
+                    model[:7],
+                    "7d",
+                    pct,
+                    remaining,
+                    604800,
+                    claude_age is not None and claude_age >= stale_after(604800),
+                    "sonnet",
+                    "claude",
+                ))
+            extra = claude.get("extra_usage") or {}
+            if extra.get("is_enabled") is not None:
+                try:
+                    used = float(extra.get("used_credits") or 0) / 100
+                    limit = float(extra.get("monthly_limit") or 0) / 100
+                    if extra.get("is_enabled"):
+                        alerts.append(("Extra", f"{label} {fmt_money(used)}/{fmt_money(limit)} enabled", "yellow"))
+                    elif used > 0:
+                        alerts.append(("Extra", f"{label} disabled after {fmt_money(used)}", "yellow"))
+                except Exception:
+                    pass
+            if claude_age is not None and claude_age >= 900:
+                alerts.append(("Stale", f"{label} cache {fmt_age(path)}", "yellow"))
+        elif not path.exists():
+            alerts.append(("Missing", f"{label} usage cache", "yellow"))
+
+    # Default account first, then each profile cache, labelled from its stamped
+    # _label (skip the *.meta.json siblings the glob also matches).
+    add_claude_rows(HOME / ".cache/claude-usage.json", "Claude")
+    for profile_cache in sorted((HOME / ".cache").glob("claude-usage-*.json")):
+        if profile_cache.name.endswith(".meta.json"):
+            continue
+        profile = load_json(profile_cache)
+        if not profile:
+            continue
+        acct_label = (profile.get("_label") or profile.get("_profile")
+                      or profile_cache.stem[len("claude-usage-"):])
+        add_claude_rows(profile_cache, acct_label)
 
     codex_path = HOME / ".cache/codex-usage.json"
     codex = load_json(codex_path)
@@ -807,7 +825,13 @@ PY
 }
 
 if [[ "$mode" == "fancy" ]]; then
-  _refresh_tool_quiet "claude-usage" "$HOME/.config/zsh/functions/claude-usage" &
+  # --all refreshes the default Claude account plus every profile in parallel.
+  _refresh_claude_all() {
+    local tool=""
+    tool=$(_resolve_tool "claude-usage" "$HOME/.config/zsh/functions/claude-usage") || return 0
+    "$tool" --all >/dev/null 2>&1 || true
+  }
+  _refresh_claude_all &
   local claude_pid=$!
   _refresh_tool_quiet "codex-usage" "$HOME/.config/zsh/functions/codex-usage" &
   local codex_pid=$!
