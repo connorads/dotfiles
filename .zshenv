@@ -12,3 +12,6 @@
 
 # 4. ~/.local/bin for user executables (XDG standard, zsh function symlinks)
 [[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
+
+# 5. Granted (granted.dev): source `assume` so it can export AWS creds into this shell (a subprocess can't)
+alias assume=". assume"
