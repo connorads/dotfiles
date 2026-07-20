@@ -31,6 +31,60 @@ EOF
   [ "${lines[2]}" = "fable" ]
 }
 
+@test "-y injects the cy flags ahead of a named account's args" {
+  stub_arg_logger claude-code-profile
+
+  run_zsh_function "$CCP" -y acme --model fable
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "acme" ]
+  [ "${lines[1]}" = "--append-system-prompt-file" ]
+  [ "${lines[2]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[3]}" = "--dangerously-skip-permissions" ]
+  [ "${lines[4]}" = "--model" ]
+  [ "${lines[5]}" = "fable" ]
+}
+
+@test "--yolo injects the cy flags on the personal account" {
+  write_stub claude <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" >"$TEST_LOG"
+EOF
+
+  run_zsh_function "$CCP" --yolo personal --resume abc
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "--append-system-prompt-file" ]
+  [ "${lines[1]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[2]}" = "--dangerously-skip-permissions" ]
+  [ "${lines[3]}" = "--resume" ]
+  [ "${lines[4]}" = "abc" ]
+}
+
+@test "-y with no account picks via fzf then injects the cy flags" {
+  # Build the path via a var so no concrete profile path is committed.
+  local acct=acme
+  mkdir -p "$HOME/.claude-profiles/code/$acct"
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+printf 'acme\n'
+EOF
+  stub_arg_logger claude-code-profile
+
+  run_zsh_function "$CCP" -y
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "acme" ]
+  [ "${lines[1]}" = "--append-system-prompt-file" ]
+  [ "${lines[2]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[3]}" = "--dangerously-skip-permissions" ]
+  [ "${#lines[@]}" -eq 4 ]
+}
+
 @test "personal launches bare claude on the default config" {
   stub_arg_logger claude
 
