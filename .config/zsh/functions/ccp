@@ -1,0 +1,48 @@
+#!/usr/bin/env zsh
+# ccp: launch Claude Code under a chosen account.
+# Personal = the default ~/.claude account; any other name = an isolated
+# ~/.claude-profiles/code/<name> profile (via claude-code-profile, which scrubs
+# ambient auth-override env vars). Private 2-char aliases live in ~/.zshrc.local.
+emulate -L zsh
+setopt pipefail
+
+_ccp_usage() {
+    print -u2 "usage: ccp [<name>|personal] [claude-args...]"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    _ccp_usage
+    return 0
+fi
+
+local root="$HOME/.claude-profiles/code"
+local choice
+
+if [[ -z "${1:-}" ]]; then
+    # No account given: pick from personal + discovered profiles via fzf.
+    if ! command -v fzf &>/dev/null; then
+        print -u2 "ccp: no account given and fzf is unavailable"
+        _ccp_usage
+        return 2
+    fi
+    local -a profiles
+    local prof_dir
+    for prof_dir in "$root"/*(/N); do
+        profiles+=("${prof_dir:t}")
+    done
+    choice=$(print -rl -- personal "${profiles[@]}" |
+        fzf --prompt="claude account> " --height 40% --no-multi) || return 130
+    [[ -n "$choice" ]] || return 130
+else
+    choice="$1"
+    shift
+fi
+
+# Personal is the plain default config - no profile isolation, ambient env as-is.
+if [[ "$choice" == "personal" ]]; then
+    claude "$@"
+    return
+fi
+
+# Delegate name validation + auth scrubbing to claude-code-profile.
+claude-code-profile "$choice" "$@"
