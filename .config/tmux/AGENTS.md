@@ -154,9 +154,11 @@ The AI usage surfaces track three providers:
   account (config-dir file first, then the hash-suffixed keychain service) into
   `~/.cache/claude-usage-<name>.json`, stamped with `_label`/`_profile`; `--all`
   fans the default account plus every profile out in parallel. The `prefix + a`
-  popup (`ai-usage --fancy`) renders one labelled Claude group per account (the
-  compact status pill stays default-account only). Accounts are launched with
-  `ccp`.
+  popup (`ai-usage --fancy`) renders one labelled Claude group per account;
+  column 1 is always the owner, so model-scoped weekly windows are
+  account-labelled too, with the model folded into the window token (`7d·S`
+  Sonnet, `7d·F` Fable) to stay distinguishable across accounts. The compact
+  status pill stays default-account only. Accounts are launched with `ccp`.
 - Codex: [`../zsh/functions/codex-usage`](../zsh/functions/codex-usage)
   reads Codex auth and caches `~/.cache/codex-usage.json`.
 - Cosine: [`../zsh/functions/cosine-usage`](../zsh/functions/cosine-usage)

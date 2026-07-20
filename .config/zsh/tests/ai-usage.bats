@@ -111,7 +111,7 @@ PY
   [ "$status" -eq 0 ]
   [[ "$output" == *"AI usage"* ]]
   [[ "$output" == *"Claude"*"68%"* ]]
-  [[ "$output" == *"Fable"*"4%"* ]]
+  [[ "$output" == *"7d·F"*"4%"* ]]
   [[ "$output" == *"Spark"*"0%"* ]]
   [[ "$output" == *"Cosine"*"mo"*"42%"* ]]
   [[ "$output" == *"Bottleneck"*"Claude 7d 68%"* ]]
@@ -136,10 +136,18 @@ def iso(delta):
     return (now + delta).isoformat().replace("+00:00", "Z")
 
 # Profile cache stamped with _label (capitalised, unlike the dir name) so the
-# assertion proves the dashboard reads the stamp, not the filename.
+# assertion proves the dashboard reads the stamp, not the filename. Its own
+# Fable weekly_scoped limit lets us prove the two accounts' Fable rows are now
+# distinguishable by account label + 7d·F token (the core regression).
 (home / ".cache/claude-usage-acme.json").write_text(json.dumps({
     "five_hour": {"utilization": 33, "resets_at": iso(timedelta(hours=2))},
     "seven_day": {"utilization": 81, "resets_at": iso(timedelta(days=4))},
+    "limits": [{
+        "kind": "weekly_scoped",
+        "percent": 7,
+        "resets_at": iso(timedelta(days=3)),
+        "scope": {"model": {"display_name": "Fable"}},
+    }],
     "_label": "Acme",
     "_profile": "acme",
 }))
@@ -152,6 +160,37 @@ PY
   [[ "$output" == *"Claude"*"68%"* ]]
   # ...alongside the profile account's own labelled row.
   [[ "$output" == *"Acme"*"81%"* ]]
+  # Both accounts' Fable rows are attributed to their account, distinguished by
+  # the account label in column 1 (the model lives in the 7d·F token now).
+  [[ "$output" == *"Claude"*"7d·F"* ]]
+  [[ "$output" == *"Acme"*"7d·F"* ]]
+}
+
+@test "a Sonnet weekly window renders account-labelled with a 7d·S token" {
+  write_usage_caches
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+home = Path(sys.argv[1])
+now = datetime.now(timezone.utc)
+
+def iso(delta):
+    return (now + delta).isoformat().replace("+00:00", "Z")
+
+# Populate the model-scoped Sonnet weekly window on the default account.
+cache = json.loads((home / ".cache/claude-usage.json").read_text())
+cache["seven_day_sonnet"] = {"utilization": 57, "resets_at": iso(timedelta(days=5))}
+(home / ".cache/claude-usage.json").write_text(json.dumps(cache))
+PY
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  # Sonnet is attributed to its account (Claude) with a 7d·S window token.
+  [[ "$output" == *"Claude"*"7d·S"*"57%"* ]]
 }
 
 @test "profile meta files are not rendered as accounts" {

@@ -485,10 +485,12 @@ def collect_windows():
 
     def add_claude_rows(path, label):
         # One Claude account (default ~/.claude, or a ~/.claude-profiles/code/*
-        # profile). `label` heads the account's 5h/7d rows and its alerts; the
-        # default account passes "Claude" to preserve the original output. The
-        # Sonnet/model-scoped weekly windows keep their own names (Max-only
-        # windows that don't collide across accounts in practice).
+        # profile). `label` heads every row for the account and its alerts; the
+        # default account passes "Claude" to preserve the original output.
+        # Model-scoped weekly windows are also account-labelled (column 1 is
+        # always the owner), with the model folded into the window token so
+        # rows stay distinguishable when the same model runs on several
+        # accounts: `7d·S` (Sonnet), `7d·F` (Fable).
         meta = load_json(path.parent / (path.stem + ".meta.json")) or {}
         claude = load_json(path)
         claude_mt = mtime(path)
@@ -496,10 +498,9 @@ def collect_windows():
         if meta.get("last_error") == "auth_expired":
             alerts.append(("Auth", f"{label} expired — use Claude or run claude auth login", "yellow"))
         if claude:
-            for row_label, key, window_secs, colour in (
-                (label[:7], "five_hour", 18000, "claude"),
-                (label[:7], "seven_day", 604800, "claude"),
-                ("Sonnet", "seven_day_sonnet", 604800, "sonnet"),
+            for key, window_secs in (
+                ("five_hour", 18000),
+                ("seven_day", 604800),
             ):
                 obj = claude.get(key) or {}
                 pct = as_pct(obj.get("utilization"))
@@ -508,13 +509,30 @@ def collect_windows():
                 reset = iso_ts(obj.get("resets_at"))
                 remaining = max(0, reset - NOW_TS) if reset else None
                 rows.append(make_window_row(
-                    row_label,
+                    label[:7],
                     "5h" if key == "five_hour" else "7d",
                     pct,
                     remaining,
                     window_secs,
                     claude_age is not None and claude_age >= stale_after(window_secs),
-                    colour,
+                    "claude",
+                    "claude",
+                ))
+            # Sonnet is a model-scoped weekly window: account-labelled with a
+            # `7d·S` token (column 1 is the owner, the token carries the model).
+            sonnet = claude.get("seven_day_sonnet") or {}
+            sonnet_pct = as_pct(sonnet.get("utilization"))
+            if sonnet_pct is not None:
+                reset = iso_ts(sonnet.get("resets_at"))
+                remaining = max(0, reset - NOW_TS) if reset else None
+                rows.append(make_window_row(
+                    label[:7],
+                    "7d·S",
+                    sonnet_pct,
+                    remaining,
+                    604800,
+                    claude_age is not None and claude_age >= stale_after(604800),
+                    "claude",
                     "claude",
                 ))
             # Model-scoped weekly windows (e.g. Fable) now arrive via .limits[] with a
@@ -529,13 +547,13 @@ def collect_windows():
                 reset = iso_ts(lim.get("resets_at"))
                 remaining = max(0, reset - NOW_TS) if reset else None
                 rows.append(make_window_row(
-                    model[:7],
-                    "7d",
+                    label[:7],
+                    f"7d·{model[:1].upper()}",
                     pct,
                     remaining,
                     604800,
                     claude_age is not None and claude_age >= stale_after(604800),
-                    "sonnet",
+                    "claude",
                     "claude",
                 ))
             extra = claude.get("extra_usage") or {}
@@ -774,7 +792,7 @@ def render():
     left_pad = " " * max(0, (term_width - box_width) // 2)
     inner = box_width - 4
     show_pace = inner >= 52
-    row_reserved = 36 if show_pace else 27
+    row_reserved = 38 if show_pace else 29
     bar_width = max(8, inner - row_reserved)
     rows, alerts = collect_windows()
     insights = collect_insights(rows)
@@ -795,7 +813,7 @@ def render():
             ideal = row.get("ideal_pct")
             delta = row.get("pace_delta")
             provider = c(row["provider_colour"], f"{row['provider']:<7}")
-            window = c("muted", f"{row['window']:<2}")
+            window = c("muted", f"{row['window']:<4}")
             reset = fmt_duration(row["remaining"])
             pct_text = c(colour, f"{pct:>3.0f}%")
             pace_part = f" {pace_delta_label(delta)}" if show_pace and delta is not None else ""
