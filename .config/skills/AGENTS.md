@@ -235,8 +235,8 @@ and diff-review clones against the prior vetted copy before trusting them.
   the vendor dir, which is not a working dir.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
-  can't refresh them, and they are **absent from `skills-lock.json` by design**. These two —
-  `govuk-style`, `ponytail` — live one level up at `vendor/<name>/` (depth 4), not under
+  can't refresh them, and they are **absent from `skills-lock.json` by design**. These three —
+  `govuk-style`, `ponytail`, `bro` — live one level up at `vendor/<name>/` (depth 4), not under
   `.agents/skills/`, so they are **discoverable by `skills add` / registerable on skills.sh**
   (the CLI's `findSkillDirs` caps at `maxDepth = 5`; depth 6 under `.agents/skills/` was never
   reached). skl serves them via the `vendored` source. The CLI-cloned, lock-tracked skills
@@ -267,6 +267,11 @@ and diff-review clones against the prior vetted copy before trusting them.
   adaptation, so `skills update` would clobber the merge; refresh by re-cloning upstream and
   re-applying the same distillation, diffing against this copy. `LICENSE` (MIT) is kept for
   attribution.
+
+  `bro` — from a **tweet** by Dillon Mulroy
+  (`x.com/dillon_mulroy/status/2079257150824620312`), so there's no repo/gist for `skills
+  update` to refresh. Single `SKILL.md`, no scripts. Restates your last message in plain
+  human language, no jargon; `disable-model-invocation: true` (deliberate `/bro` invoke only).
 
 - `connorads/skills` public repo is **deferred** — public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
