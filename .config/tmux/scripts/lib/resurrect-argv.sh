@@ -27,12 +27,16 @@ _resurrect_squote() {
 	printf "'%s'" "$v"
 }
 
-# resurrect_argv_claude <saved_command> <session_id>
+# resurrect_argv_claude <saved_command> <session_id> [config_dir]
 # Emit "claude <kept-flags> --resume <sid>"; empty sid -> "... --continue".
+# config_dir: recorded CLAUDE_CONFIG_DIR (invisible in argv - a ccp client
+# account); prefixed as an inline env assignment when non-empty, which works
+# because resurrect types the command into the pane's shell. Without it a
+# restored client pane reverts to the personal account (a cross-billing risk).
 resurrect_argv_claude() {
 	local -a tokens
 	read -ra tokens <<<"$1"
-	local sid="$2"
+	local sid="$2" config_dir="${3:-}"
 	[ "${#tokens[@]}" -gt 0 ] || return 1
 	_resurrect_argv0_matches claude "${tokens[0]}" || return 1
 
@@ -56,11 +60,16 @@ resurrect_argv_claude() {
 		i=$((i + 1))
 	done
 
+	local cmd
 	if [ -n "$sid" ]; then
-		echo "claude${kept:+ $kept} --resume $sid"
+		cmd="claude${kept:+ $kept} --resume $sid"
 	else
-		echo "claude${kept:+ $kept} --continue"
+		cmd="claude${kept:+ $kept} --continue"
 	fi
+	if [ -n "$config_dir" ]; then
+		cmd="CLAUDE_CONFIG_DIR=$(_resurrect_squote "$config_dir") $cmd"
+	fi
+	echo "$cmd"
 }
 
 # resurrect_argv_codex <saved_command> <session_id>

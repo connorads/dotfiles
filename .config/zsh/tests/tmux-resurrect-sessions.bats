@@ -84,6 +84,151 @@ EOF
   [ "$output" = "false" ]
 }
 
+@test "save hook records CLAUDE_CONFIG_DIR via ps -E without leaking other env vars" {
+  # Build the config dir via a var so no concrete profile path is committed.
+  local acct=acme
+  export CLAUDE_CFG="$HOME/.claude-profiles/code/$acct"
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*-E*901*)
+		printf 'claude --resume s1 CLAUDE_CONFIG_DIR=%s SECRET_TOKEN=hunter2\n' "$CLAUDE_CFG"
+		;;
+	*ttys001*)
+		printf ' 901 S+ claude\n'
+		;;
+	*)
+		exit 1
+		;;
+esac
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "$CLAUDE_CFG" ]
+  run jq -r '.["/Users/connorads"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "$CLAUDE_CFG" ]
+  # Only CLAUDE_CONFIG_DIR may be persisted - the rest of the env carries secrets.
+  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "0" ]
+}
+
+@test "save hook reads CLAUDE_CONFIG_DIR from proc environ when available" {
+  local acct=acme
+  export CLAUDE_CFG="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$BATS_TEST_TMPDIR/proc/901"
+  printf 'HOME=%s\0CLAUDE_CONFIG_DIR=%s\0SECRET_TOKEN=hunter2\0' "$HOME" "$CLAUDE_CFG" \
+    >"$BATS_TEST_TMPDIR/proc/901/environ"
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*-E*) exit 1 ;;
+	*ttys001*) printf ' 901 S+ claude\n' ;;
+	*) exit 1 ;;
+esac
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "$CLAUDE_CFG" ]
+  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  [ "$output" = "0" ]
+}
+
+@test "strategy prepends CLAUDE_CONFIG_DIR for a recorded client pane" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
+    >"$HOME/.local/share/tmux/resurrect/session_ids.json"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CLAUDE_CONFIG_DIR='$cfg' claude --dangerously-skip-permissions --resume session-two" ]
+}
+
+@test "strategy single-quote-escapes the recorded config dir" {
+  local cfg="$HOME/it's"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
+    >"$HOME/.local/share/tmux/resurrect/session_ids.json"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CLAUDE_CONFIG_DIR='$HOME/it'\''s' claude --resume session-two" ]
+}
+
+@test "strategy omits the prefix for a personal-account pane" {
+  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+{
+  "version": 2,
+  "panes": {
+    "main:1.1": {"dir": "/Users/connorads", "claude": "session-two"}
+  }
+}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "display-message" ]; then
+	printf 'main:1.1\n'
+	exit 0
+fi
+exit 1
+EOF
+
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions" "/Users/connorads"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
+  [[ "$output" != *"CLAUDE_CONFIG_DIR"* ]]
+}
+
 @test "strategy restores the session for the selected pane key" {
   cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
 {

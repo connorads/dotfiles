@@ -21,6 +21,8 @@ fi
 declare -A CLAUDE_SESSIONS
 declare -A CLAUDE_PANE_SESSIONS
 declare -A CLAUDE_PANE_DIRS
+declare -A CLAUDE_PANE_ENVS
+declare -A CLAUDE_ENVS
 declare -A CLAUDE_DIR_COUNTS
 declare -A CODEX_PANE_SESSIONS
 declare -A CODEX_PANE_DIRS
@@ -78,6 +80,36 @@ find_claude_session() {
 	fi
 
 	echo "$session_id"
+}
+
+# --- Claude Code env capture ---
+# A client pane runs under CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>,
+# invisible in argv, so fidelity restore needs this one env var recorded at save
+# time - without it a restored client pane silently reverts to the personal
+# account (a cross-billing risk).
+# SECURITY: /proc environ and `ps -E` expose the process's FULL environment
+# including real secrets - extract only this var, never persist anything else.
+find_claude_env() {
+	local pane_pid="$1"
+	local tty="$2"
+	local claude_pid=""
+
+	claude_pid=$(agent_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
+	[ -n "$claude_pid" ] || return 0
+
+	# Linux: null-delimited environ file (RESURRECT_PROC_ROOT overrides for tests).
+	local environ="${RESURRECT_PROC_ROOT:-/proc}/$claude_pid/environ"
+	if [ -r "$environ" ]; then
+		tr '\0' '\n' <"$environ" 2>/dev/null |
+			grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
+		return 0
+	fi
+
+	# macOS: ps -E appends the env as space-separated tokens. Space-containing
+	# values are unsupported here (config dir paths contain none).
+	ps -E -o command= -p "$claude_pid" 2>/dev/null |
+		tr ' ' '\n' |
+		grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
 }
 
 # --- Codex session discovery ---
@@ -192,8 +224,15 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 			found_sessions=1
 			CLAUDE_PANE_SESSIONS["$pane_key"]="$sid"
 			CLAUDE_PANE_DIRS["$pane_key"]="$dir"
+			env_val=$(find_claude_env "$pid" "$tty")
+			if [ -n "$env_val" ]; then
+				CLAUDE_PANE_ENVS["$pane_key"]="$env_val"
+			fi
 			if [ "$allow_latest" -eq 1 ]; then
 				CLAUDE_SESSIONS["$dir"]="$sid"
+				if [ -n "$env_val" ]; then
+					CLAUDE_ENVS["$dir"]="$env_val"
+				fi
 			fi
 		fi
 		;;
@@ -242,6 +281,9 @@ fi
 json='{"version":2,"panes":{}}'
 for pane_key in "${!CLAUDE_PANE_SESSIONS[@]}"; do
 	entry=$(jq -n --arg dir "${CLAUDE_PANE_DIRS[$pane_key]}" --arg sid "${CLAUDE_PANE_SESSIONS[$pane_key]}" '{dir: $dir, claude: $sid}')
+	if [ -n "${CLAUDE_PANE_ENVS[$pane_key]:-}" ]; then
+		entry=$(echo "$entry" | jq --arg env "${CLAUDE_PANE_ENVS[$pane_key]}" '. + {claudeConfigDir: $env}')
+	fi
 	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = $entry')
 done
 for pane_key in "${!CODEX_PANE_SESSIONS[@]}"; do
@@ -260,6 +302,9 @@ for dir in "${!ALL_DIRS[@]}"; do
 	entry="{}"
 	if [ -n "${CLAUDE_SESSIONS[$dir]:-}" ]; then
 		entry=$(echo "$entry" | jq --arg sid "${CLAUDE_SESSIONS[$dir]}" '. + {claude: $sid}')
+		if [ -n "${CLAUDE_ENVS[$dir]:-}" ]; then
+			entry=$(echo "$entry" | jq --arg env "${CLAUDE_ENVS[$dir]}" '. + {claudeConfigDir: $env}')
+		fi
 	fi
 	if [ -n "${OPENCODE_SESSIONS[$dir]:-}" ]; then
 		entry=$(echo "$entry" | jq --arg sid "${OPENCODE_SESSIONS[$dir]}" '. + {opencode: $sid}')
