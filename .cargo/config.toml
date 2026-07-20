@@ -9,3 +9,12 @@
 # that legitimately need build-time network/FS in ~/.config/build-wrap/config.toml.
 [target.'cfg(all())']
 linker = "build-wrap-shim"
+
+# build-wrap's Seatbelt profile hard-requires TMPDIR (0.7.0 util/common.rs is
+# inlined into each wrapper's main.rs; expand() + unwrap() panic when it is
+# unset). Sandboxed agent shells strip TMPDIR, killing every build script.
+# Cargo only sets this when the variable is absent, so real shells keep their
+# per-user temp dir; /tmp canonicalises to /private/tmp, which also satisfies
+# the profile's PRIVATE_TMPDIR derivation.
+[env]
+TMPDIR = "/tmp"
