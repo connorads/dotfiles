@@ -32,13 +32,20 @@ restore, a 6G photo library is gone forever.
    trees can stall a broad scan. A stalled path is unclassified, not zero.
    `ncdu` is for the user to drive: it's a TUI and gives an agent nothing
    non-interactively.
+5. Reconcile `du` home subtotals against the `df` *used* figure before
+   concluding. Home rarely equals the disk: a large shortfall lives outside
+   `~` - probe `/private/tmp`, `/opt/homebrew`, `/nix`, `/Library`. On a
+   shared APFS container every volume's `df` reports the *same* container
+   free, so read one volume, don't sum them.
 
 Quote a reclaim estimate only for things you have actually probed. Sizes on
 this machine change; check every time rather than trusting a remembered figure.
 
 Where large things tend to hide: `~/Library/Application Support` (games, model
 weights), Rust `target/` dirs under repos, `~/Downloads`, LLM/Whisper model
-stores.
+stores, and `/private/tmp` (dev/agent scratch accumulates there and is cleared
+only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
+rebooting or deleting named entries.
 
 ## What may be deleted
 
@@ -57,12 +64,21 @@ rebuildable, but cleaning it during active work is short-lived headroom and
 forces an expensive rebuild; prefer other candidates first and make that
 trade-off explicit.
 
+Untracked is not disposable: a gitignored `.cache/` or output tree can hold
+expensive-to-rebuild artefacts or irreplaceable captures, so sort its contents
+by the three classes - don't clear it wholesale because git ignores it. A
+project cleaner or its docs, where present, is the fastest classifier.
+
 ## Gotchas
 
 - **`rm -rf` is denied by settings.** Reach for the idiomatic cleaner instead:
   `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
   prune`. `rm -f` on named files is allowed. Bundling several removals into one
   command gets the whole command denied, so keep them separate.
+- **A mounted DMG under `/tmp`** (cask/`.pkg` install leftover) reports
+  `Read-only file system` and blocks its parent's deletion until
+  `hdiutil detach /dev/diskN` (find it via `hdiutil info`); the leftover
+  `.cdr`/dir then clears with `rm -f`/`rmdir`.
 - **Rust build dirs: `cleanup --target cargo-target --yes`** (opt-in; scans
   `$CLEANUP_CARGO_ROOTS`). `cleanup`'s `cargo` target is the registry cache
   only and does not touch `target/`. These dirs get large enough to dominate a
