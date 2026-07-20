@@ -1,4 +1,5 @@
 {
+  "exclude": ["**/agents/*.yaml"],
   "paths": [
     { "path": "~/.config/skills/private", "name": "private" },
     { "path": "~/.config/skills/personal", "name": "personal" },
