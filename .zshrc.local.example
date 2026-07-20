@@ -40,11 +40,11 @@ export XAI_API_KEY=
 # export SENTRY_API_KEY="..."
 
 # Claude account launchers (examples only; keep real names local/uncommitted).
-# `ccp personal` runs the default ~/.claude account; `ccp <name>` runs the
+# `ccp default` runs the plain ~/.claude account; `ccp <name>` runs the
 # isolated ~/.claude-profiles/code/<name> profile (CLAUDE_CONFIG_DIR, with
 # ambient auth-override env vars scrubbed). `ccp` with no arg opens an fzf picker.
 # Define private 2-char muscle-memory aliases for the accounts you use:
-# alias cp1='ccp personal'
+# alias cp1='ccp default'
 # alias cw='ccp account1 --append-system-prompt-file "$HOME/.claude/system-append.md"'
 # alias cw2='ccp account2'
 # Desktop profiles use ~/.claude-profiles/desktop/<name> as --user-data-dir:

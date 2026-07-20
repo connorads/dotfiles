@@ -46,13 +46,13 @@ EOF
   [ "${lines[5]}" = "fable" ]
 }
 
-@test "--yolo injects the cy flags on the personal account" {
+@test "--yolo injects the cy flags on the default account" {
   write_stub claude <<EOF
 #!/usr/bin/env bash
 printf '%s\n' "\$@" >"$TEST_LOG"
 EOF
 
-  run_zsh_function "$CCP" --yolo personal --resume abc
+  run_zsh_function "$CCP" --yolo default --resume abc
 
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
@@ -85,10 +85,10 @@ EOF
   [ "${#lines[@]}" -eq 4 ]
 }
 
-@test "personal launches bare claude on the default config" {
+@test "default launches bare claude on the plain config" {
   stub_arg_logger claude
 
-  run_zsh_function "$CCP" personal --resume abc
+  run_zsh_function "$CCP" default --resume abc
 
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
@@ -130,11 +130,11 @@ EOF
   [ "${#lines[@]}" -eq 1 ]
 }
 
-@test "picker selecting personal launches bare claude" {
+@test "picker selecting default launches bare claude" {
   write_stub fzf <<'EOF'
 #!/usr/bin/env bash
 cat >/dev/null
-printf 'personal\n'
+printf 'default\n'
 EOF
   write_stub claude <<EOF
 #!/usr/bin/env bash
