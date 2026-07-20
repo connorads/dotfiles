@@ -201,6 +201,83 @@ EOF
   [ "$output" = "" ]
 }
 
+@test "profile fetch writes a profile-scoped cache with label and profile stamp" {
+  local prof="acme"
+  local dir="$HOME/.claude-profiles/code/$prof"
+  mkdir -p "$dir"
+  printf 'Acme Corp' >"$dir/label"
+  # In-file credentials so the read never needs the keychain.
+  cat >"$dir/.credentials.json" <<'EOF'
+{"claudeAiOauth":{"accessToken":"prof-tok","expiresAt":999}}
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "1.2.3 (Claude Code)"
+EOF
+  write_curl_stub
+  cat >"$BATS_TEST_TMPDIR/body200.json" <<'EOF'
+{"five_hour":{"utilization":55,"resets_at":"2099-01-01T00:00:00Z"},
+ "seven_day":{"utilization":8,"resets_at":"2099-01-02T00:00:00Z"}}
+EOF
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/body200.json"
+
+  run_zsh_function "$CLAUDE_USAGE" --profile "$prof"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"5-hour:"* ]]
+  [[ "$output" == *"55%"* ]]
+  # Profile cache is written; the default cache is left untouched.
+  [ -f "$HOME/.cache/claude-usage-$prof.json" ]
+  [ ! -f "$HOME/.cache/claude-usage.json" ]
+  run jq -r '._label' "$HOME/.cache/claude-usage-$prof.json"
+  [ "$output" = "Acme Corp" ]
+  run jq -r '._profile' "$HOME/.cache/claude-usage-$prof.json"
+  [ "$output" = "acme" ]
+}
+
+@test "profile fetch reads the hash-suffixed keychain service" {
+  local prof="acme"
+  local dir="$HOME/.claude-profiles/code/$prof"
+  mkdir -p "$dir"
+  local hash
+  hash=$(printf %s "$dir" | shasum -a 256 | cut -c1-8)
+  # No in-file credentials: force the read down to the keychain, and only
+  # answer for the correctly hash-namespaced service.
+  write_stub security <<EOF
+#!/usr/bin/env bash
+svc=""; prev=""
+for a in "\$@"; do [ "\$prev" = "-s" ] && svc="\$a"; prev="\$a"; done
+if [ "\$svc" = "Claude Code-credentials-$hash" ]; then
+  echo '{"claudeAiOauth":{"accessToken":"kc-tok"}}'
+  exit 0
+fi
+exit 1
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "1.2.3 (Claude Code)"
+EOF
+  write_curl_stub
+  cat >"$BATS_TEST_TMPDIR/body200.json" <<'EOF'
+{"five_hour":{"utilization":42,"resets_at":"2099-01-01T00:00:00Z"},
+ "seven_day":{"utilization":7,"resets_at":"2099-01-02T00:00:00Z"}}
+EOF
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/body200.json"
+
+  run_zsh_function "$CLAUDE_USAGE" --profile "$prof"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"42%"* ]]
+  [ -f "$HOME/.cache/claude-usage-$prof.json" ]
+}
+
+@test "rejects an invalid profile name" {
+  run_zsh_function "$CLAUDE_USAGE" --profile "../evil"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"profile name must match"* ]]
+}
+
 @test "records backoff in meta on an HTTP failure" {
   seed_meta 0 0 1700000000
   write_stub security <<'EOF'

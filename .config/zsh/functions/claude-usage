@@ -4,21 +4,92 @@
 emulate -L zsh
 setopt pipefail
 
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-    echo "Usage: claude-usage [-h|--help]"
-    echo
-    echo "Shows Claude API usage limits (5-hour and 7-day windows)"
-    echo "Uses cache + retry backoff to avoid API hammering"
-    echo
-    echo "If not logged in:"
-    echo "  - In Claude CLI: /login"
-    echo "  - In terminal: claude setup-token"
+local profile="" all=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            cat <<'EOF'
+Usage: claude-usage [--profile <name>] [--all] [-h|--help]
+
+Shows Claude API usage limits (5-hour and 7-day windows)
+Uses cache + retry backoff to avoid API hammering
+
+  --profile <name>  Read the ~/.claude-profiles/code/<name> account instead of
+                    the default ~/.claude account
+  --all             Refresh the default account plus every profile in parallel
+
+If not logged in:
+  - In Claude CLI: /login
+  - In terminal: claude setup-token
+EOF
+            return 0
+            ;;
+        --all)
+            all=1
+            shift
+            ;;
+        --profile)
+            profile="${2:-}"
+            shift 2
+            ;;
+        --profile=*)
+            profile="${1#--profile=}"
+            shift
+            ;;
+        *)
+            print -u2 "claude-usage: unknown option: $1"
+            return 2
+            ;;
+    esac
+done
+
+if [[ -n "$profile" && ! "$profile" =~ '^[A-Za-z0-9][A-Za-z0-9._-]*$' ]]; then
+    print -u2 "claude-usage: profile name must match [A-Za-z0-9][A-Za-z0-9._-]*"
+    return 2
+fi
+
+# Resolve this function file's directory (autoload, ~/.local/bin symlink, or
+# direct run) so the shared cache/lock/backoff engine sources cleanly and --all
+# can re-invoke this script per account. Mirrors the agent-usage-log idiom.
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local self_file= candidate_dir
+for candidate_dir in $fpath; do
+    [[ -r "$candidate_dir/$self_name" ]] && { self_file="$candidate_dir/$self_name"; break }
+done
+[[ -n "$self_file" ]] || self_file="${${(%):-%N}:A}"
+[[ -r "$self_file" ]] || self_file="${0:A}"
+
+if [[ "$all" -eq 1 ]]; then
+    # Refresh the default account plus every discovered profile, each in its own
+    # process so the shared lock/backoff engine keys off that account's own
+    # cache. Not-logged-in profiles fail quietly (output discarded).
+    zsh "$self_file" >/dev/null 2>&1 &
+    local prof_dir
+    for prof_dir in "$HOME/.claude-profiles/code"/*(/N); do
+        zsh "$self_file" --profile "${prof_dir:t}" >/dev/null 2>&1 &
+    done
+    wait
     return 0
 fi
 
-local cache="$HOME/.cache/claude-usage.json"
-local meta="$HOME/.cache/claude-usage.meta.json"
-local lockdir="$HOME/.cache/claude-usage.lock"
+# Per-account paths. The default account is CLAUDE_CONFIG_DIR-less (~/.claude,
+# un-suffixed keychain service); a profile lives under ~/.claude-profiles/code
+# and its keychain item is namespaced by an 8-char hash of its config dir - the
+# same scheme Claude Code uses when CLAUDE_CONFIG_DIR is set.
+local config_dir cache meta lockdir cred_service
+if [[ -n "$profile" ]]; then
+    config_dir="$HOME/.claude-profiles/code/$profile"
+    cache="$HOME/.cache/claude-usage-$profile.json"
+    meta="$HOME/.cache/claude-usage-$profile.meta.json"
+    lockdir="$HOME/.cache/claude-usage-$profile.lock"
+    cred_service="Claude Code-credentials-$(printf %s "$config_dir" | shasum -a 256 | cut -c1-8)"
+else
+    config_dir="$HOME/.claude"
+    cache="$HOME/.cache/claude-usage.json"
+    meta="$HOME/.cache/claude-usage.meta.json"
+    lockdir="$HOME/.cache/claude-usage.lock"
+    cred_service="Claude Code-credentials"
+fi
 local ttl=300
 local lock_stale_after=600
 local backoff_base=120
@@ -27,28 +98,22 @@ local now age next_retry fail_count last_success
 local hdr="" body=""
 now=$(date +%s)
 
-# Resolve this function file's directory (autoload, ~/.local/bin symlink, or
-# direct run) so the shared cache/lock/backoff engine sources cleanly. Mirrors
-# the agent-usage-log idiom used by pis/cys.
-local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
-local self_file= candidate_dir
-for candidate_dir in $fpath; do
-    [[ -r "$candidate_dir/$self_name" ]] && { self_file="$candidate_dir/$self_name"; break }
-done
-[[ -n "$self_file" ]] || self_file="${${(%):-%N}:A}"
-[[ -r "$self_file" ]] || self_file="${0:A}"
 source "${self_file:A:h}/usage-cache-lib"
 
+# Read the OAuth credentials JSON for a given config dir. File-first: recent
+# Claude Code keeps the token in <config-dir>/.credentials.json and may leave
+# the keychain item empty, so an empty keychain read must not mean "logged out".
+# Falls back to the per-config-dir keychain service (the default account uses
+# the un-suffixed "Claude Code-credentials"; profiles are hash-suffixed).
 _read_claude_credentials_json() {
+    local dir="$1"
+    local service="$2"
     local credentials_json=""
-    # Keychain-first on macOS, but fall back to the file store: recent Claude
-    # Code keeps credentials in ~/.claude/.credentials.json and leaves the
-    # keychain item empty, so an empty keychain read must not mean "logged out".
-    if [[ "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
-        credentials_json=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null || true)
+    if [[ -f "$dir/.credentials.json" ]]; then
+        credentials_json=$(<"$dir/.credentials.json")
     fi
-    if [[ -z "$credentials_json" && -f "$HOME/.claude/.credentials.json" ]]; then
-        credentials_json=$(<"$HOME/.claude/.credentials.json")
+    if [[ -z "$credentials_json" && "$OSTYPE" == darwin* ]] && command -v security &>/dev/null; then
+        credentials_json=$(security find-generic-password -s "$service" -w 2>/dev/null || true)
     fi
     print -r -- "$credentials_json"
 }
@@ -80,7 +145,7 @@ local last_error last_http_status meta_auth_expires_at credentials_json current_
 last_error=$(jq -r '.last_error // ""' "$meta" 2>/dev/null || echo "")
 last_http_status=$(jq -r '.last_http_status // ""' "$meta" 2>/dev/null || echo "")
 meta_auth_expires_at=$(jq -r '.auth_expires_at // empty' "$meta" 2>/dev/null || echo "")
-credentials_json=$(_read_claude_credentials_json)
+credentials_json=$(_read_claude_credentials_json "$config_dir" "$cred_service")
 current_auth_expires_at=$(print -r -- "$credentials_json" | jq -r '.claudeAiOauth.expiresAt // empty' 2>/dev/null || echo "")
 age=$(_cache_age "$cache")
 
@@ -139,7 +204,18 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
 
         if [[ "$http_code" -eq 200 ]] && jq -e '.five_hour' "$body" >/dev/null 2>&1; then
             mkdir -p "$(dirname "$cache")"
-            print -r -- "$resp" > "${cache}.tmp.$$"
+            if [[ -n "$profile" ]]; then
+                # Stamp the profile + display label into the cache so the
+                # dashboard renders per-account rows without re-reading config
+                # dirs. Label = optional one-line $config_dir/label, else name.
+                local prof_label=""
+                [[ -f "$config_dir/label" ]] && prof_label=$(<"$config_dir/label")
+                [[ -n "$prof_label" ]] || prof_label="$profile"
+                print -r -- "$resp" | jq --arg l "$prof_label" --arg p "$profile" \
+                    '. + {_label: $l, _profile: $p}' > "${cache}.tmp.$$"
+            else
+                print -r -- "$resp" > "${cache}.tmp.$$"
+            fi
             mv "${cache}.tmp.$$" "$cache"
             _write_meta 0 0 "$http_code" "" "$now"
             auth_fetch_paused=0
