@@ -117,30 +117,58 @@ Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
 tmux-resurrect restores Claude/Codex/OpenCode panes via the custom strategies in
 [`strategies/`](./strategies/) (synced into the plugin dir by a `run-shell cp`
-in [`tmux.conf`](./tmux.conf)). **Fidelity rule**: a strategy rebuilds the
-command from the *saved pane argv* (`$1`, from `ps -o args=`) rather than
-emitting a bare `<agent> --resume <id>` - none of the three CLIs persist
-permission mode / system-prompt append / model in the session, so dropping the
-flags would restore a gated pane. The shared token filter lives in
+in [`tmux.conf`](./tmux.conf)). Session IDs come from `session_ids.json`, keyed
+by pane (`session:window.pane`), written by the post-save hook
+[`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh).
+
+**Identity is resolved inside the restored pane, not at eval time (Claude/Codex).**
+The strategy emits a *launcher* invocation
+([`scripts/resurrect-claude-launch.sh`](./scripts/resurrect-claude-launch.sh),
+[`scripts/resurrect-codex-launch.sh`](./scripts/resurrect-codex-launch.sh),
+absolute path) carrying the kept flags; the launcher runs in the pane and reads
+its own pane key from `$TMUX_PANE` (`tmux display-message -pt "$TMUX_PANE"`),
+looks up `session_ids.json`, and `exec`s `claude … --resume <id>` /
+`codex resume <id> …`. This is exact and client-independent: `$TMUX_PANE` is
+unambiguous in every pane, so a wrong-pane resume is structurally impossible.
+The strategy must **not** resolve the session itself - the old eval-time
+`display-message` read reported *global* active-pane state, which resolves to the
+last-active pane when no client is attached (continuum/auto-restore) and races
+even interactively, collapsing multiple panes onto one conversation.
+
+Safe cwd fallback: on an exact-key miss the launcher resumes only when *exactly
+one* recorded `.panes[]` entry has `.dir == $PWD`; 0 or >1 → `--continue` /
+`--last`, never a guessed resume. Because resolution is now exact, no save-time
+disambiguation is needed - the save hook just records `.panes[$key] = {dir,
+claude|codex, claudeConfigDir?}`.
+
+**Fidelity rule**: the launcher preserves the flags from the *saved pane argv*
+(`$1`, from `ps -o args=`) rather than resuming with a bare `<agent> --resume
+<id>` - none of the CLIs persist permission mode / system-prompt append / model
+in the session, so dropping the flags would restore a gated pane. The strategy
+filters them via `resurrect_argv_{claude,codex}_flags` in
 [`scripts/lib/resurrect-argv.sh`](./scripts/lib/resurrect-argv.sh): unknown
-tokens are kept verbatim and in order, stale resume/continue state is stripped
-(idempotent across repeated restores), argv0 mismatch falls back to the bare
-command. Session IDs come from `session_ids.json`, written by the post-save
-hook [`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh).
+tokens kept verbatim and in order, stale resume/continue state stripped
+(idempotent across repeated restores), argv0 mismatch → bare saved command.
 
-OpenCode caveat: yolo mode (`ocy`) lives in `OPENCODE_CONFIG_CONTENT`, not
-argv, so the save hook records that one env var per pane (`opencodeEnv`;
-`/proc` environ on Linux, `ps -E` token scan on macOS - space-containing
-values unsupported there) and the strategy re-emits it as a single-quoted
-inline env prefix. Never persist any other env var - both sources expose the
-process's full environment, secrets included.
-
-Claude multi-account caveat (same shape): a client pane runs under
+Claude multi-account caveat: a client pane runs under
 `CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>` (set by `ccp`), invisible in
-argv, so the save hook records that one var per pane (`claudeConfigDir`) and the
-strategy re-emits it as a single-quoted inline env prefix. Without it a restored
-client pane reverts to the personal `~/.claude` account - a cross-billing risk.
-Only `CLAUDE_CONFIG_DIR` is persisted; never any other env var.
+argv, so the save hook records that one var per pane (`claudeConfigDir`;
+`/proc` environ on Linux, `ps -E` token scan on macOS). The launcher `export`s
+it before `exec` (a real env var, so spaces/quotes need no shell quoting).
+Without it a restored client pane reverts to the personal `~/.claude` account -
+a cross-billing risk. Only `CLAUDE_CONFIG_DIR` is persisted; never any other env
+var - both sources expose the process's full environment, secrets included.
+
+OpenCode is left on the eval-time strategy (no launcher): it has no live
+active-session marker, so it still uses the per-dir cwd map (single live pane
+per cwd) and re-emits its `OPENCODE_CONFIG_CONTENT` (`opencodeEnv`, yolo mode
+via `ocy`) as a single-quoted inline env prefix. Same secret rule - never
+persist any other env var. Follow-up: give OpenCode a launcher too once it grows
+a passive marker.
+
+Because launcher resolution is client-independent, `@continuum-restore`
+(currently `off`) could be enabled for reliable auto-restore after a crash - the
+old eval-time mechanism could not support it. Left as a separate decision.
 
 Tests: [`../zsh/tests/tmux-resurrect-sessions.bats`](../zsh/tests/tmux-resurrect-sessions.bats).
 
