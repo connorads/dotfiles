@@ -69,6 +69,15 @@ workerd, exercises 404 routing; `astro preview` doesn't).
   denied) in `pnpm-workspace.yaml` - pnpm 10's `ignoredBuiltDependencies`
   list is silently ignored. esbuild/sharp/workerd all work with scripts
   denied (binaries come via optionalDependencies).
+- **Pin `packageManager` when the workspace file is settings-only.** That
+  `allowBuilds`/`peerDependencyRules` file has no `packages:` field, which is
+  fine on pnpm 11 but **Workers Builds' default pnpm is v10, which rejects it**
+  (`packages field missing or empty`) - so the repo builds locally and fails on
+  CF. Add `"packageManager": "pnpm@<exact.version>"` to `package.json` so CF's
+  corepack runs the same pnpm major the lockfile was built with. Cleaner than a
+  spurious `packages: - .` (which misrepresents a single package as a
+  workspace), and it also dodges the corepack `Invalid package manager
+  specification` range error. See the `cloudflare-workers-deployments` skill.
 
 ## Lint layer (Astro-specific deviation)
 

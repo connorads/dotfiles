@@ -19,21 +19,29 @@ Use this reference for common failures seen while setting up Workers Builds.
 
 ## `packages field missing or empty`
 
-Cloudflare's pnpm install can fail when `pnpm-workspace.yaml` exists without a
-non-empty `packages` field.
+Root cause is a **pnpm-major mismatch**: pnpm 10 requires a `packages:` field in
+any `pnpm-workspace.yaml`, while pnpm 11 treats that file as settings-only
+(`packages:` optional). A repo whose workspace file holds only settings -
+`allowBuilds`, `peerDependencyRules` (see
+[`ERR_PNPM_IGNORED_BUILDS`](#err_pnpm_ignored_builds)) - builds locally on pnpm
+11 but fails on Workers Builds when Cloudflare's default pnpm is v10.
 
-Fix:
+Two fixes:
 
-```yaml
-packages:
-  - .
-```
+- **Pin the package manager** (preferred when the file is settings-only): set
+  `"packageManager": "pnpm@<exact.version>"` in `package.json` so CF's corepack
+  runs the same pnpm major the lockfile was built with. Also cures the corepack
+  [`Invalid package manager specification`](#invalid-package-manager-specification)
+  error, and avoids turning a single-package repo into a spurious workspace.
+- **Declare a package** (only when you genuinely want a workspace): add a
+  non-empty `packages` field.
 
-Then run:
+  ```yaml
+  packages:
+    - .
+  ```
 
-```bash
-pnpm install --frozen-lockfile
-```
+Then run `pnpm install --frozen-lockfile`.
 
 ## `Invalid package manager specification`
 
