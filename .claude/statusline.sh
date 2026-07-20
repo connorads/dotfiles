@@ -41,21 +41,21 @@ BLUE='\033[34m'
 VIOLET='\033[38;5;141m'
 DIM='\033[2m'
 
-# Account tag: ccp sets CLAUDE_CONFIG_DIR per account (absent == personal ~/.claude).
+# Account tag: ccp sets CLAUDE_CONFIG_DIR per account (absent == default ~/.claude).
 # Show the profile's short label file, colour-coded, so the active account is
 # obvious at a glance. Runs inside the claude process, so it needs no detection
-# beyond its own inherited env - correct for fresh/resume/personal alike.
+# beyond its own inherited env - correct for fresh/resume/default alike.
 cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 acct=$(cat "$cfg/label" 2>/dev/null) || acct=""
 if [ -z "$acct" ]; then
 	case "${cfg##*/}" in
-	.claude) acct="per" ;;
+	.claude) acct="def" ;;
 	*) acct="${cfg##*/}" ;;
 	esac
 fi
 # Colour the tag deterministically from the label so a given account is always
-# the same colour, without naming any account in-repo. "per" (personal) is dim.
-if [ "$acct" = "per" ]; then
+# the same colour, without naming any account in-repo. "def" (default) is dim.
+if [ "$acct" = "def" ]; then
 	acct_col="$DIM$WHITE"
 else
 	palette=("$BLUE" "$VIOLET" "$CYAN" "$GREEN" "$YELLOW" "$RED")
