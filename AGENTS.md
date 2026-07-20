@@ -204,6 +204,8 @@ dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
+ccp [<name>|personal]  # launch Claude Code on an account (bare = fzf picker); real names + 2-char aliases in ~/.zshrc.local
+claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)

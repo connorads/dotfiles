@@ -135,6 +135,13 @@ values unsupported there) and the strategy re-emits it as a single-quoted
 inline env prefix. Never persist any other env var - both sources expose the
 process's full environment, secrets included.
 
+Claude multi-account caveat (same shape): a client pane runs under
+`CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>` (set by `ccp`), invisible in
+argv, so the save hook records that one var per pane (`claudeConfigDir`) and the
+strategy re-emits it as a single-quoted inline env prefix. Without it a restored
+client pane reverts to the personal `~/.claude` account - a cross-billing risk.
+Only `CLAUDE_CONFIG_DIR` is persisted; never any other env var.
+
 Tests: [`../zsh/tests/tmux-resurrect-sessions.bats`](../zsh/tests/tmux-resurrect-sessions.bats).
 
 ## AI usage tracker (custom subsystem)
@@ -143,6 +150,13 @@ The AI usage surfaces track three providers:
 
 - Claude: [`../zsh/functions/claude-usage`](../zsh/functions/claude-usage)
   reads Claude OAuth credentials and caches `~/.cache/claude-usage.json`.
+  Multi-account: `--profile <name>` reads a `~/.claude-profiles/code/<name>`
+  account (config-dir file first, then the hash-suffixed keychain service) into
+  `~/.cache/claude-usage-<name>.json`, stamped with `_label`/`_profile`; `--all`
+  fans the default account plus every profile out in parallel. The `prefix + a`
+  popup (`ai-usage --fancy`) renders one labelled Claude group per account (the
+  compact status pill stays default-account only). Accounts are launched with
+  `ccp`.
 - Codex: [`../zsh/functions/codex-usage`](../zsh/functions/codex-usage)
   reads Codex auth and caches `~/.cache/codex-usage.json`.
 - Cosine: [`../zsh/functions/cosine-usage`](../zsh/functions/cosine-usage)
