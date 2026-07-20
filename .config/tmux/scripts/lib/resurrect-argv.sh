@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# resurrect-argv.sh: rebuild agent resume commands from the saved pane argv.
+# resurrect-argv.sh: rebuild agent restore commands from the saved pane argv.
 # Sourced (not executed) by the tmux-resurrect strategy scripts.
 #
 # tmux-resurrect passes the saved full command (from `ps -o args=`, aliases
@@ -7,12 +7,16 @@
 # a bare "<agent> --resume <id>" would drop (permission mode, system-prompt
 # append, model...) - none of the three CLIs persist those in the session.
 #
-# Contract per function: echo the rebuilt command and return 0, or return 1
-# when the saved argv0 is not the expected agent (caller falls back to the
-# bare command). Stale resume/continue state is stripped first so restore is
-# idempotent across repeated save/restore cycles. Unknown tokens are kept
-# verbatim and in order, so flag+value pairs survive without a flag table.
-# The canonical bare command word is always emitted, never argv0's path.
+# Claude/Codex: the strategy emits a launcher invocation and session resolution
+# happens INSIDE the restored pane (exact identity via $TMUX_PANE), so these
+# functions only need to carry the *flags* across - `*_flags` echo the kept
+# flags (space-joined, possibly empty) and return 1 on argv0 mismatch so the
+# caller falls back to the bare command. Stale resume/continue state is stripped
+# so restore is idempotent across repeated save/restore cycles; unknown tokens
+# are kept verbatim and in order so flag+value pairs survive without a flag table.
+#
+# OpenCode: no in-pane launcher (no live active-session marker), so
+# resurrect_argv_opencode still rebuilds the full command from a save-time sid.
 
 # _resurrect_argv0_matches <expected> <argv0>
 # True when argv0's basename is the expected agent command.
@@ -27,16 +31,12 @@ _resurrect_squote() {
 	printf "'%s'" "$v"
 }
 
-# resurrect_argv_claude <saved_command> <session_id> [config_dir]
-# Emit "claude <kept-flags> --resume <sid>"; empty sid -> "... --continue".
-# config_dir: recorded CLAUDE_CONFIG_DIR (invisible in argv - a ccp client
-# account); prefixed as an inline env assignment when non-empty, which works
-# because resurrect types the command into the pane's shell. Without it a
-# restored client pane reverts to the personal account (a cross-billing risk).
-resurrect_argv_claude() {
+# resurrect_argv_claude_flags <saved_command>
+# Echo the kept flags (space-joined, may be empty) from the saved claude argv;
+# return 1 when argv0 is not claude. Stale resume/continue state is stripped.
+resurrect_argv_claude_flags() {
 	local -a tokens
 	read -ra tokens <<<"$1"
-	local sid="$2" config_dir="${3:-}"
 	[ "${#tokens[@]}" -gt 0 ] || return 1
 	_resurrect_argv0_matches claude "${tokens[0]}" || return 1
 
@@ -60,25 +60,16 @@ resurrect_argv_claude() {
 		i=$((i + 1))
 	done
 
-	local cmd
-	if [ -n "$sid" ]; then
-		cmd="claude${kept:+ $kept} --resume $sid"
-	else
-		cmd="claude${kept:+ $kept} --continue"
-	fi
-	if [ -n "$config_dir" ]; then
-		cmd="CLAUDE_CONFIG_DIR=$(_resurrect_squote "$config_dir") $cmd"
-	fi
-	echo "$cmd"
+	echo "$kept"
 }
 
-# resurrect_argv_codex <saved_command> <session_id>
-# Emit "codex resume <sid> <kept-flags>"; empty sid -> "codex resume --last ...".
+# resurrect_argv_codex_flags <saved_command>
+# Echo the kept flags (space-joined, may be empty) from the saved codex argv;
+# return 1 when argv0 is not codex. Stale resume/--last state is stripped.
 # Note: codex's -c takes a key=val value (unlike claude's bare -c) - kept verbatim.
-resurrect_argv_codex() {
+resurrect_argv_codex_flags() {
 	local -a tokens
 	read -ra tokens <<<"$1"
-	local sid="$2"
 	[ "${#tokens[@]}" -gt 0 ] || return 1
 	_resurrect_argv0_matches codex "${tokens[0]}" || return 1
 
@@ -102,11 +93,7 @@ resurrect_argv_codex() {
 		i=$((i + 1))
 	done
 
-	if [ -n "$sid" ]; then
-		echo "codex resume $sid${kept:+ $kept}"
-	else
-		echo "codex resume --last${kept:+ $kept}"
-	fi
+	echo "$kept"
 }
 
 # resurrect_argv_opencode <saved_command> <session_id> [env_value]

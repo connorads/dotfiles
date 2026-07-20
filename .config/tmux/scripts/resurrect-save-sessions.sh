@@ -18,12 +18,9 @@ if ! command -v jq &>/dev/null; then
 	exit 0
 fi
 
-declare -A CLAUDE_SESSIONS
 declare -A CLAUDE_PANE_SESSIONS
 declare -A CLAUDE_PANE_DIRS
 declare -A CLAUDE_PANE_ENVS
-declare -A CLAUDE_ENVS
-declare -A CLAUDE_DIR_COUNTS
 declare -A CODEX_PANE_SESSIONS
 declare -A CODEX_PANE_DIRS
 declare -A OPENCODE_PANE_SESSIONS
@@ -41,7 +38,6 @@ find_claude_session() {
 	local dir="$1"
 	local pane_pid="$2"
 	local tty="$3"
-	local allow_latest="${4:-0}"
 	local session_id=""
 	local claude_pid=""
 
@@ -61,22 +57,6 @@ find_claude_session() {
 			awk '{print $NF}' |
 			head -1 |
 			xargs -I{} basename {} .jsonl 2>/dev/null || true)
-	fi
-
-	# Last resort for unambiguous cwd restores only. Duplicate-cwd panes must not
-	# all inherit the same "latest" session.
-	if [ -z "$session_id" ] && [ "$allow_latest" = "1" ]; then
-		local project_hash
-		project_hash="${dir//\//-}"
-		local project_dir="$HOME/.claude/projects/$project_hash"
-		if [ -d "$project_dir" ]; then
-			local latest
-			# shellcheck disable=SC2012  # mtime ordering is the fallback behaviour.
-			latest=$(ls -t "$project_dir"/*.jsonl 2>/dev/null | head -1)
-			if [ -n "$latest" ]; then
-				session_id=$(basename "$latest" .jsonl)
-			fi
-		fi
 	fi
 
 	echo "$session_id"
@@ -199,12 +179,12 @@ get_live_panes() {
 # Read live pane data and match against agent processes.
 live_panes=$(get_live_panes)
 
+# OpenCode has no live active-session marker, so its cwd/latest restore is
+# gated on a single live pane owning the cwd. Claude/Codex resolve exactly at
+# restore time (see the launchers) and need no save-time disambiguation.
 while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
 	case "$cmd" in
-	claude)
-		CLAUDE_DIR_COUNTS["$dir"]=$((${CLAUDE_DIR_COUNTS["$dir"]:-0} + 1))
-		;;
 	opencode)
 		OPENCODE_DIR_COUNTS["$dir"]=$((${OPENCODE_DIR_COUNTS["$dir"]:-0} + 1))
 		;;
@@ -215,11 +195,7 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
 	case "$cmd" in
 	claude)
-		allow_latest=0
-		if [ "${CLAUDE_DIR_COUNTS["$dir"]:-0}" -eq 1 ]; then
-			allow_latest=1
-		fi
-		sid=$(find_claude_session "$dir" "$pid" "$tty" "$allow_latest")
+		sid=$(find_claude_session "$dir" "$pid" "$tty")
 		if [ -n "$sid" ]; then
 			found_sessions=1
 			CLAUDE_PANE_SESSIONS["$pane_key"]="$sid"
@@ -227,12 +203,6 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 			env_val=$(find_claude_env "$pid" "$tty")
 			if [ -n "$env_val" ]; then
 				CLAUDE_PANE_ENVS["$pane_key"]="$env_val"
-			fi
-			if [ "$allow_latest" -eq 1 ]; then
-				CLAUDE_SESSIONS["$dir"]="$sid"
-				if [ -n "$env_val" ]; then
-					CLAUDE_ENVS["$dir"]="$env_val"
-				fi
 			fi
 		fi
 		;;
@@ -266,9 +236,9 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 done <<<"$live_panes"
 
 # --- Write companion JSON ---
-# Collect all unique directories
+# Collect all unique directories (OpenCode only - the per-dir map is its
+# single-pane cwd fallback; Claude/Codex resolve by pane key at restore time).
 declare -A ALL_DIRS
-for dir in "${!CLAUDE_SESSIONS[@]}"; do ALL_DIRS["$dir"]=1; done
 for dir in "${!OPENCODE_SESSIONS[@]}"; do ALL_DIRS["$dir"]=1; done
 
 if [ "$found_sessions" -eq 0 ]; then
@@ -300,12 +270,6 @@ done
 
 for dir in "${!ALL_DIRS[@]}"; do
 	entry="{}"
-	if [ -n "${CLAUDE_SESSIONS[$dir]:-}" ]; then
-		entry=$(echo "$entry" | jq --arg sid "${CLAUDE_SESSIONS[$dir]}" '. + {claude: $sid}')
-		if [ -n "${CLAUDE_ENVS[$dir]:-}" ]; then
-			entry=$(echo "$entry" | jq --arg env "${CLAUDE_ENVS[$dir]}" '. + {claudeConfigDir: $env}')
-		fi
-	fi
 	if [ -n "${OPENCODE_SESSIONS[$dir]:-}" ]; then
 		entry=$(echo "$entry" | jq --arg sid "${OPENCODE_SESSIONS[$dir]}" '. + {opencode: $sid}')
 		if [ -n "${OPENCODE_ENVS[$dir]:-}" ]; then

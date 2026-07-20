@@ -12,22 +12,66 @@ REAL_ARGV_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/resurrect-argv.sh"
 REAL_CLAUDE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/claude_session_id.sh"
 REAL_CODEX_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/codex_session_id.sh"
 REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_session_id.sh"
+REAL_CLAUDE_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-claude-launch.sh"
+REAL_CODEX_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-codex-launch.sh"
 REAL_BASH="$(command -v bash)"
 
 setup() {
   setup_test_home
+  # The isolated test home must not inherit the runner's ccp account, or the
+  # launcher's "leave CLAUDE_CONFIG_DIR alone when none recorded" path would
+  # observe a leaked value.
+  unset CLAUDE_CONFIG_DIR
   SAVE_SESSIONS="$HOME/.config/tmux/scripts/resurrect-save-sessions.sh"
+  ARGV_LIB="$HOME/.config/tmux/scripts/lib/resurrect-argv.sh"
   CLAUDE_STRATEGY="$HOME/.config/tmux/strategies/claude_session_id.sh"
   CODEX_STRATEGY="$HOME/.config/tmux/strategies/codex_session_id.sh"
   OPENCODE_STRATEGY="$HOME/.config/tmux/strategies/opencode_session_id.sh"
+  CLAUDE_LAUNCH="$HOME/.config/tmux/scripts/resurrect-claude-launch.sh"
+  CODEX_LAUNCH="$HOME/.config/tmux/scripts/resurrect-codex-launch.sh"
+  SESSION_FILE="$HOME/.local/share/tmux/resurrect/session_ids.json"
   mkdir -p "$HOME/.config/tmux/scripts/lib" "$HOME/.config/tmux/strategies" "$HOME/.local/share/tmux/resurrect" "$HOME/.claude/sessions"
   cp "$REAL_SAVE_SESSIONS" "$SAVE_SESSIONS"
   cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/agent-session.sh"
-  cp "$REAL_ARGV_LIB" "$HOME/.config/tmux/scripts/lib/resurrect-argv.sh"
+  cp "$REAL_ARGV_LIB" "$ARGV_LIB"
   cp "$REAL_CLAUDE_STRATEGY" "$CLAUDE_STRATEGY"
   cp "$REAL_CODEX_STRATEGY" "$CODEX_STRATEGY"
   cp "$REAL_OPENCODE_STRATEGY" "$OPENCODE_STRATEGY"
-  chmod +x "$SAVE_SESSIONS" "$CLAUDE_STRATEGY" "$CODEX_STRATEGY" "$OPENCODE_STRATEGY"
+  cp "$REAL_CLAUDE_LAUNCH" "$CLAUDE_LAUNCH"
+  cp "$REAL_CODEX_LAUNCH" "$CODEX_LAUNCH"
+  chmod +x "$SAVE_SESSIONS" "$CLAUDE_STRATEGY" "$CODEX_STRATEGY" "$OPENCODE_STRATEGY" "$CLAUDE_LAUNCH" "$CODEX_LAUNCH"
+}
+
+# --- Stubs shared by launcher tests ---
+
+# tmux display-message stub that always reports the given pane key.
+write_tmux_display_stub() {
+  local key="$1"
+  write_stub tmux <<EOF
+#!/usr/bin/env bash
+if [ "\$1" = "display-message" ]; then
+	printf '%s\n' "$key"
+	exit 0
+fi
+exit 1
+EOF
+}
+
+# claude stub echoing the exported config dir + its argv, so a test can assert
+# exactly what the launcher exec'd.
+write_claude_launch_stub() {
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "CFG=${CLAUDE_CONFIG_DIR:-} args=$*"
+EOF
+}
+
+# codex stub echoing its argv.
+write_codex_launch_stub() {
+  write_stub codex <<'EOF'
+#!/usr/bin/env bash
+echo "args=$*"
+EOF
 }
 
 write_tmux_stub_for_save() {
@@ -60,6 +104,10 @@ esac
 EOF
 }
 
+# ---------------------------------------------------------------------------
+# Save hook
+# ---------------------------------------------------------------------------
+
 @test "save hook records Claude sessions per pane when cwd repeats" {
   write_tmux_stub_for_save
   write_ps_stub_for_save
@@ -74,13 +122,14 @@ EOF
   run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.version' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.version' "$SESSION_FILE"
   [ "$output" = "2" ]
-  run jq -r '.panes["main:1.1"].claude' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
   [ "$output" = "session-one" ]
-  run jq -r '.panes["main:1.2"].claude' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.2"].claude' "$SESSION_FILE"
   [ "$output" = "session-two" ]
-  run jq -r 'has("/Users/connorads")' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  # Claude/Codex resolve by pane key at restore time - no top-level per-dir map.
+  run jq -r 'has("/Users/connorads")' "$SESSION_FILE"
   [ "$output" = "false" ]
 }
 
@@ -118,12 +167,10 @@ EOF
     run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
-  [ "$output" = "$CLAUDE_CFG" ]
-  run jq -r '.["/Users/connorads"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$SESSION_FILE"
   [ "$output" = "$CLAUDE_CFG" ]
   # Only CLAUDE_CONFIG_DIR may be persisted - the rest of the env carries secrets.
-  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run grep -c 'hunter2' "$SESSION_FILE"
   [ "$output" = "0" ]
 }
 
@@ -157,217 +204,10 @@ EOF
     run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].claudeConfigDir' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$SESSION_FILE"
   [ "$output" = "$CLAUDE_CFG" ]
-  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run grep -c 'hunter2' "$SESSION_FILE"
   [ "$output" = "0" ]
-}
-
-@test "strategy prepends CLAUDE_CONFIG_DIR for a recorded client pane" {
-  local acct=acme
-  local cfg="$HOME/.claude-profiles/code/$acct"
-  jq -n --arg cfg "$cfg" \
-    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
-    >"$HOME/.local/share/tmux/resurrect/session_ids.json"
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "CLAUDE_CONFIG_DIR='$cfg' claude --dangerously-skip-permissions --resume session-two" ]
-}
-
-@test "strategy single-quote-escapes the recorded config dir" {
-  local cfg="$HOME/it's"
-  jq -n --arg cfg "$cfg" \
-    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
-    >"$HOME/.local/share/tmux/resurrect/session_ids.json"
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "CLAUDE_CONFIG_DIR='$HOME/it'\''s' claude --resume session-two" ]
-}
-
-@test "strategy omits the prefix for a personal-account pane" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.1": {"dir": "/Users/connorads", "claude": "session-two"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
-  [[ "$output" != *"CLAUDE_CONFIG_DIR"* ]]
-}
-
-@test "strategy restores the session for the selected pane key" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.1": {"dir": "/Users/connorads", "claude": "session-one"},
-    "main:1.2": {"dir": "/Users/connorads", "claude": "session-two"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.2\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions --resume session-two" ]
-}
-
-@test "strategy strips stale resume state before appending the new session" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.2": {"dir": "/Users/connorads", "claude": "session-two"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.2\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --dangerously-skip-permissions --resume 4626672f-1111-2222-3333-444444444444" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude -c --dangerously-skip-permissions --resume=old-session -r" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --dangerously-skip-permissions --resume session-two" ]
-}
-
-@test "strategy keeps flags on --continue fallback" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {}
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.2\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --model fable --dangerously-skip-permissions" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --model fable --dangerously-skip-permissions --continue" ]
-}
-
-@test "strategy falls back to bare resume when argv0 is not claude" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.2": {"dir": "/Users/connorads", "claude": "session-two"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.2\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "some-wrapper claude --dangerously-skip-permissions" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --resume session-two" ]
-}
-
-@test "strategy falls back to legacy cwd mapping" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "/Users/connorads/git/klimble": {"claude": "legacy-session"}
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude" "/Users/connorads/git/klimble"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --resume legacy-session" ]
-}
-
-@test "strategy continues when duplicate cwd has no pane match" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.1": {"dir": "/Users/connorads", "claude": "session-one"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.9\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "claude --continue" ]
 }
 
 @test "save hook records Codex sessions per pane when cwd repeats" {
@@ -407,122 +247,228 @@ EOF
   run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].codex' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].codex' "$SESSION_FILE"
   [ "$output" = "codex-one" ]
-  run jq -r '.panes["main:1.2"].codex' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.2"].codex' "$SESSION_FILE"
   [ "$output" = "codex-two" ]
 }
 
-@test "Codex strategy restores by pane key and falls back to --last" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.1": {"dir": "/Users/connorads", "codex": "codex-one"}
-  }
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
+# ---------------------------------------------------------------------------
+# Flags-only emitters (resurrect-argv.sh)
+# ---------------------------------------------------------------------------
 
-  run "$REAL_BASH" "$CODEX_STRATEGY" "codex" "/Users/connorads"
-
+@test "claude flags emitter preserves flag+value pairs" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_flags 'claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions'"
   [ "$status" -eq 0 ]
-  [ "$output" = "codex resume codex-one" ]
-
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.2": {"dir": "/Users/connorads", "codex": "codex-two"}
-  }
+  [ "$output" = "--append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" ]
 }
-EOF
 
-  run "$REAL_BASH" "$CODEX_STRATEGY" "codex" "/Users/connorads"
-
+@test "claude flags emitter strips stale resume/continue state" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_flags 'claude --dangerously-skip-permissions --resume 4626672f-1111-2222-3333-444444444444'"
   [ "$status" -eq 0 ]
-  [ "$output" = "codex resume --last" ]
+  [ "$output" = "--dangerously-skip-permissions" ]
+
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_flags 'claude -c --dangerously-skip-permissions --resume=old-session -r'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "--dangerously-skip-permissions" ]
 }
 
-@test "Codex strategy preserves saved flags around resume" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {
-    "main:1.1": {"dir": "/Users/connorads", "codex": "codex-one"}
-  }
+@test "claude flags emitter returns nonzero when argv0 is not claude" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_claude_flags 'some-wrapper claude --dangerously-skip-permissions'"
+  [ "$status" -eq 1 ]
 }
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
 
+@test "codex flags emitter strips stale resume/last and keeps flags verbatim" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_codex_flags 'codex resume 11111111-2222-3333-4444-555555555555 --model gpt-5'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "--model gpt-5" ]
+
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_codex_flags 'codex resume --last --dangerously-bypass-approvals-and-sandbox'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "--dangerously-bypass-approvals-and-sandbox" ]
+}
+
+@test "codex flags emitter returns nonzero when argv0 is not codex" {
+  run "$REAL_BASH" -c "source '$ARGV_LIB'; resurrect_argv_codex_flags 'some-wrapper codex'"
+  [ "$status" -eq 1 ]
+}
+
+# ---------------------------------------------------------------------------
+# Strategies: emit a launcher invocation carrying the kept flags
+# ---------------------------------------------------------------------------
+
+@test "claude strategy emits launcher with preserved flags" {
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$CLAUDE_LAUNCH --append-system-prompt-file /Users/connorads/.claude/system-append.md --dangerously-skip-permissions" ]
+}
+
+@test "claude strategy emits a bare launcher when no flags remain" {
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "claude --continue" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$CLAUDE_LAUNCH" ]
+}
+
+@test "claude strategy falls back to the bare command when argv0 is not claude" {
+  run "$REAL_BASH" "$CLAUDE_STRATEGY" "some-wrapper claude --dangerously-skip-permissions" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "some-wrapper claude --dangerously-skip-permissions" ]
+}
+
+@test "codex strategy emits launcher with preserved flags" {
   run "$REAL_BASH" "$CODEX_STRATEGY" "codex --dangerously-bypass-approvals-and-sandbox" "/Users/connorads"
-
   [ "$status" -eq 0 ]
-  [ "$output" = "codex resume codex-one --dangerously-bypass-approvals-and-sandbox" ]
-
-  run "$REAL_BASH" "$CODEX_STRATEGY" "codex resume 11111111-2222-3333-4444-555555555555 --model gpt-5" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "codex resume codex-one --model gpt-5" ]
+  [ "$output" = "$CODEX_LAUNCH --dangerously-bypass-approvals-and-sandbox" ]
 }
 
-@test "Codex strategy keeps flags on --last fallback" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "version": 2,
-  "panes": {}
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = "display-message" ]; then
-	printf 'main:1.1\n'
-	exit 0
-fi
-exit 1
-EOF
-
-  run "$REAL_BASH" "$CODEX_STRATEGY" "codex --dangerously-bypass-approvals-and-sandbox" "/Users/connorads"
-
-  [ "$status" -eq 0 ]
-  [ "$output" = "codex resume --last --dangerously-bypass-approvals-and-sandbox" ]
-
+@test "codex strategy emits a bare launcher when no flags remain" {
   run "$REAL_BASH" "$CODEX_STRATEGY" "codex resume --last" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$CODEX_LAUNCH" ]
+}
+
+@test "codex strategy falls back to the bare command when argv0 is not codex" {
+  run "$REAL_BASH" "$CODEX_STRATEGY" "some-wrapper codex resume" "/Users/connorads"
+  [ "$status" -eq 0 ]
+  [ "$output" = "some-wrapper codex resume" ]
+}
+
+# ---------------------------------------------------------------------------
+# Launchers: resolve session identity INSIDE the restored pane via $TMUX_PANE
+# ---------------------------------------------------------------------------
+
+@test "claude launcher resumes the exact pane key with flags and config dir" {
+  # Build the config dir via a var so no concrete profile path is committed.
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH" --dangerously-skip-permissions
 
   [ "$status" -eq 0 ]
-  [ "$output" = "codex resume --last" ]
+  [ "$output" = "CFG=$cfg args=--dangerously-skip-permissions --resume session-two" ]
 }
 
-@test "Codex strategy falls back to legacy cwd mapping" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
-{
-  "/Users/connorads/git/klimble": {"codex": "legacy-codex"}
-}
-EOF
-  write_stub tmux <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
+@test "claude launcher exports a config dir containing spaces and quotes safely" {
+  local cfg="$HOME/it's a dir"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
 
-  run "$REAL_BASH" "$CODEX_STRATEGY" "codex" "/Users/connorads/git/klimble"
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "codex resume legacy-codex" ]
+  [ "$output" = "CFG=$cfg args=--resume session-two" ]
 }
+
+@test "claude launcher resumes via unique cwd fallback on exact-key miss" {
+  mkdir -p "$HOME/proj"
+  cd "$HOME/proj"
+  jq -n --arg dir "$PWD" \
+    '{version:2,panes:{"main:1.1":{dir:$dir,claude:"cwd-session"}}}' \
+    >"$SESSION_FILE"
+  # display-message reports a key absent from the file -> exact miss.
+  write_tmux_display_stub 'main:9.9'
+  write_claude_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--resume cwd-session" ]
+}
+
+@test "claude launcher continues on ambiguous cwd, never a wrong resume" {
+  # Regression guard for the reported bug: two panes share one cwd, exact key
+  # misses, so the launcher must NOT guess a session.
+  mkdir -p "$HOME/proj"
+  cd "$HOME/proj"
+  jq -n --arg dir "$PWD" \
+    '{version:2,panes:{"main:1.1":{dir:$dir,claude:"s1"},"main:1.2":{dir:$dir,claude:"s2"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:9.9'
+  write_claude_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--continue" ]
+}
+
+@test "claude launcher continues when TMUX_PANE is absent" {
+  jq -n '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  unset TMUX_PANE
+  run "$REAL_BASH" "$CLAUDE_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--continue" ]
+}
+
+@test "claude launcher continues when the session file is absent" {
+  rm -f "$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH" --model fable
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG= args=--model fable --continue" ]
+}
+
+@test "codex launcher resumes the exact pane key with flags" {
+  jq -n '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",codex:"codex-one"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_codex_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CODEX_LAUNCH" --dangerously-bypass-approvals-and-sandbox
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "args=resume codex-one --dangerously-bypass-approvals-and-sandbox" ]
+}
+
+@test "codex launcher resumes via unique cwd fallback on exact-key miss" {
+  mkdir -p "$HOME/proj"
+  cd "$HOME/proj"
+  jq -n --arg dir "$PWD" \
+    '{version:2,panes:{"main:1.1":{dir:$dir,codex:"cwd-codex"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:9.9'
+  write_codex_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CODEX_LAUNCH"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "args=resume cwd-codex" ]
+}
+
+@test "codex launcher falls back to --last on ambiguous cwd" {
+  mkdir -p "$HOME/proj"
+  cd "$HOME/proj"
+  jq -n --arg dir "$PWD" \
+    '{version:2,panes:{"main:1.1":{dir:$dir,codex:"c1"},"main:1.2":{dir:$dir,codex:"c2"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:9.9'
+  write_codex_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CODEX_LAUNCH" --model gpt-5
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "args=resume --last --model gpt-5" ]
+}
+
+# ---------------------------------------------------------------------------
+# OpenCode (unchanged: no in-pane launcher, still cwd/latest gated at save time)
+# ---------------------------------------------------------------------------
 
 @test "save hook records OpenCode session from current database when cwd is unique" {
   mkdir -p "$HOME/.local/share/opencode"
@@ -543,9 +489,9 @@ EOF
   run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].opencode' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].opencode' "$SESSION_FILE"
   [ "$output" = "ses_current" ]
-  run jq -r '.["/Users/connorads"].opencode' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.["/Users/connorads"].opencode' "$SESSION_FILE"
   [ "$output" = "ses_current" ]
 }
 
@@ -569,7 +515,7 @@ EOF
   run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  [ ! -f "$HOME/.local/share/tmux/resurrect/session_ids.json" ]
+  [ ! -f "$SESSION_FILE" ]
 }
 
 @test "save hook records OPENCODE_CONFIG_CONTENT via ps -E without leaking other env vars" {
@@ -606,12 +552,12 @@ EOF
     run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].opencodeEnv' "$SESSION_FILE"
   [ "$output" = '{"permission":{"edit":"allow","bash":"allow"}}' ]
-  run jq -r '.["/Users/connorads"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.["/Users/connorads"].opencodeEnv' "$SESSION_FILE"
   [ "$output" = '{"permission":{"edit":"allow","bash":"allow"}}' ]
   # Only the one var may be persisted - the rest of the env carries real secrets.
-  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run grep -c 'hunter2' "$SESSION_FILE"
   [ "$output" = "0" ]
 }
 
@@ -645,14 +591,14 @@ EOF
     run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]
-  run jq -r '.panes["main:1.1"].opencodeEnv' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run jq -r '.panes["main:1.1"].opencodeEnv' "$SESSION_FILE"
   [ "$output" = '{"permission":"allow"}' ]
-  run grep -c 'hunter2' "$HOME/.local/share/tmux/resurrect/session_ids.json"
+  run grep -c 'hunter2' "$SESSION_FILE"
   [ "$output" = "0" ]
 }
 
 @test "OpenCode strategy emits recorded env prefix with preserved flags" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+  cat >"$SESSION_FILE" <<'EOF'
 {
   "version": 2,
   "panes": {
@@ -676,7 +622,7 @@ EOF
 }
 
 @test "OpenCode strategy single-quote-escapes the recorded env value" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+  cat >"$SESSION_FILE" <<'EOF'
 {
   "version": 2,
   "panes": {
@@ -700,7 +646,7 @@ EOF
 }
 
 @test "OpenCode strategy restores by pane key and falls back to legacy cwd mapping" {
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+  cat >"$SESSION_FILE" <<'EOF'
 {
   "version": 2,
   "panes": {
@@ -723,7 +669,7 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "opencode --session ses_pane" ]
 
-  cat >"$HOME/.local/share/tmux/resurrect/session_ids.json" <<'EOF'
+  cat >"$SESSION_FILE" <<'EOF'
 {
   "/Users/connorads": {"opencode": "ses_legacy"}
 }
