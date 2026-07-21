@@ -207,6 +207,12 @@ mise run ts-checks     # Typecheck + test all first-party TS projects (installs 
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
+agent ls [--json]      # list live agent panes (pane/state/kind/name/loc/window/cwd), ranked
+agent state <target>   # print a pane's @agent_state (target = %N | sess:win.pane | agent name)
+agent wait <target> [--for s,s] [--timeout n]  # block until @agent_state reaches a state
+agent prompt <target> <text> [--force]         # paste prompt + Enter, verify the agent starts
+agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
+agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
 zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)

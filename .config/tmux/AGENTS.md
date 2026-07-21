@@ -33,11 +33,17 @@ The logic is spread across several files — change them as a set:
 
 - [`scripts/agent-state.sh`](./scripts/agent-state.sh) — sets `@agent_state` per
   pane, rolls the worst up to `@win_agent_state`. Verbs:
-  `working|blocked|done|unread|idle|seen|clear`. `unread` is the manual inverse
-  of `seen` (force `done` even on the focused window — mark a read tab blue again).
-  `done` is **seen-at-birth**: if you are already viewing the pane when it
+  `working|blocked|done|unread|idle|seen|clear|name|unname`. `unread` is the manual
+  inverse of `seen` (force `done` even on the focused window — mark a read tab blue
+  again). `done` is **seen-at-birth**: if you are already viewing the pane when it
   finishes (`is_viewing` — the sweep's gate: active pane / active window /
   attached session) it goes straight to idle; otherwise blue until you focus it.
+  `name`/`unname` set/drop `@agent_name`, a user-set pane label (grammar
+  `[a-z][a-z0-9_-]{0,31}`, unique among live agents — enforced by the `agent`
+  CLI). Invariant: `@agent_name ⟹ @agent_state` (`name` refuses a stateless
+  pane), so the sweep's state-gated death-clear always covers the name; `clear`
+  drops it too. Not journalled (the schema has no name field). Shown on the pane
+  border (blue `⟪name⟫`) and as a column in the popup/`agent ls`.
 - [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) — sourced by
   `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
   **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
@@ -94,6 +100,21 @@ The logic is spread across several files — change them as a set:
 - Menus: `prefix + Alt+.` and the right-click pane menu
   ([`scripts/context-menu.sh`](./scripts/context-menu.sh)) set a state by hand
   (literals must match the lib — see `agent-glyphs.bats`).
+- [`scripts/agent-cli-lib.sh`](./scripts/agent-cli-lib.sh) — functional core
+  shared by the `agent` CLI and [`scripts/agent-popup.sh`](./scripts/agent-popup.sh):
+  the target resolver (`%N` | `session:win.pane` | exact `@agent_name`) and
+  `agent_list_rows`, the **single agent-pane enumerator** (ranked TSV; the popup
+  decorates it with glyphs, `agent ls` prints it). Sourced, never executed.
+- `agent` CLI ([`../zsh/functions/agents/agent`](../zsh/functions/agents/agent),
+  on PATH via `~/.local/bin`) — the scripting front-end so one agent can drive
+  others: `ls`/`state`/`wait` (poll `@agent_state`), `prompt` (gated
+  buffer-paste + separate Enter + stall verify with one submit retry), `name`/`unname`,
+  `pick`. It never writes `@agent_state` directly — all mutation goes through
+  `agent-state.sh`; `prompt` only sends keystrokes and observes the option the
+  agent's own hooks set.
+- Navigation: `prefix + A` popup (fzf pick) and `prefix + Alt+a` cycle-jump
+  (`agent-popup.sh cycle blocked` — positional order, wraps, falls back to
+  `done`; the visited pane is aged seen like any jump).
 
 Tests (run `mise run zsh-tests`):
 
@@ -110,6 +131,11 @@ Tests (run `mise run zsh-tests`):
   for the mapping.
 - [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot
   clearing + the viewed-`done` → idle reconcile (attached/inactive/detached gates).
+- [`../zsh/tests/agent-popup.bats`](../zsh/tests/agent-popup.bats) — list ranking,
+  the name column, jump's move + seen ageing, cycle order/wrap/fallback.
+- [`../zsh/tests/agent-cli.bats`](../zsh/tests/agent-cli.bats) — the `agent` CLI:
+  resolver, enumerator, ls/state/wait against a private server; prompt send
+  mechanics + stall/refusal via a PATH tmux stub; name uniqueness.
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
