@@ -46,23 +46,53 @@ agent_foreground_pid_for_tty() {
 	echo "$pid"
 }
 
-# claude_session_meta_for_pid <pid>
-# Emit the raw JSON of ~/.claude/sessions/<pid>.json. Empty output if absent.
-# Callers jq out sessionId / name / status / cwd.
+# claude_config_dir_for_pid <pid>
+# Read CLAUDE_CONFIG_DIR from the live PID's real environment. Empty output means
+# the process runs under the default ~/.claude account (no ccp profile).
+# A ccp pane relocates the whole user scope to
+# CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>, invisible in argv, so live
+# actions (branch/fork, resurrect save) must read it from the process itself -
+# env introspection is authoritative and never stale, unlike a pane-option cache.
+# SECURITY: /proc environ and `ps -E` expose the process's FULL environment
+# including real secrets - extract only this var, never persist anything else.
+claude_config_dir_for_pid() {
+	local pid="$1"
+	[ -n "$pid" ] || return 0
+
+	# Linux: null-delimited environ file (RESURRECT_PROC_ROOT overrides for tests).
+	local environ="${RESURRECT_PROC_ROOT:-/proc}/$pid/environ"
+	if [ -r "$environ" ]; then
+		tr '\0' '\n' <"$environ" 2>/dev/null |
+			grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
+		return 0
+	fi
+
+	# macOS: ps -E appends the env as space-separated tokens. Space-containing
+	# values are unsupported here (config dir paths contain none).
+	ps -E -o command= -p "$pid" 2>/dev/null |
+		tr ' ' '\n' |
+		grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
+}
+
+# claude_session_meta_for_pid <pid> [config_dir]
+# Emit the raw JSON of <config_dir>/sessions/<pid>.json (default ~/.claude).
+# Empty output if absent. Callers jq out sessionId / name / status / cwd.
 claude_session_meta_for_pid() {
 	local pid="$1"
-	local session_file="$HOME/.claude/sessions/$pid.json"
+	local config_dir="${2:-$HOME/.claude}"
+	local session_file="$config_dir/sessions/$pid.json"
 	[ -n "$pid" ] || return 0
 	[ -f "$session_file" ] || return 0
 	cat "$session_file" 2>/dev/null || true
 }
 
-# claude_session_resolve_for_pid <pid> [pane_id] [cwd]
+# claude_session_resolve_for_pid <pid> [pane_id] [cwd] [config_dir]
 # Emit resolver JSON. status=resolved includes sessionId/source/evidence.
 claude_session_resolve_for_pid() {
 	local pid="$1"
 	local pane_id="${2:-}"
 	local cwd="${3:-}"
+	local config_dir="${4:-}"
 	local resolver="${CLAUDE_SESSION_RESOLVER:-$HOME/.config/tmux/scripts/claude-session-resolve.py}"
 
 	[ -n "$pid" ] || return 1
@@ -72,6 +102,7 @@ claude_session_resolve_for_pid() {
 	args=(--pid "$pid")
 	[ -n "$pane_id" ] && args+=(--pane "$pane_id")
 	[ -n "$cwd" ] && args+=(--cwd "$cwd")
+	[ -n "$config_dir" ] && args+=(--config-dir "$config_dir")
 	"$resolver" "${args[@]}"
 }
 
