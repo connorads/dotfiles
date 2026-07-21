@@ -16,35 +16,29 @@ set -u
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck disable=SC1091
 . "$SELF_DIR/agent-state-lib.sh" # agent_glyph: the canonical state → glyph mapping
+# shellcheck disable=SC1091
+. "$SELF_DIR/agent-cli-lib.sh" # agent_list_rows: the shared agent-pane enumerator
 AGENT_STATE_SH=${AGENT_STATE_SH:-$SELF_DIR/agent-state.sh}
 AGENT_SWEEP=${AGENT_SWEEP:-$SELF_DIR/agent-sweep.sh}
 
 # list — one row per pane with agent state, ranked by attention. Hidden pane_id
-# is field 1 (the jump key); fzf shows fields 2.. The glyph (state colour +
-# shape) is the single source of truth in agent-state-lib.sh: computed once per
-# state in sh via agent_glyph, then passed into awk as truecolour-ANSI strings
-# (awk can't source the lib; -v passes the finished bytes through verbatim).
+# is field 1 (the jump key); fzf shows fields 2.. Enumeration + ranking live in
+# the shared agent_list_rows (agent-cli-lib.sh); this wrapper is display-only:
+# it decorates each row with the state glyph and shortens cwd to its basename.
+# The glyph (state colour + shape) is the single source of truth in
+# agent-state-lib.sh: computed once per state in sh via agent_glyph, then passed
+# into awk as truecolour-ANSI strings (awk can't source the lib; -v passes the
+# finished bytes through verbatim).
 list() {
 	_g_blocked=$(agent_glyph blocked)
 	_g_working=$(agent_glyph working)
 	_g_done=$(agent_glyph 'done')
 	_g_idle=$(agent_glyph idle)
 	_g_unknown=$(agent_glyph unknown)
-	tmux list-panes -a -F \
-		"#{pane_id}	#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}	#{b:pane_current_path}" \
-		2>/dev/null |
+	agent_list_rows |
 		awk -F '\t' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
 			-v g_done="$_g_done" -v g_idle="$_g_idle" -v g_unknown="$_g_unknown" '
-		# Mirrors agent-state-lib.sh rank(); awk cannot call sh, so it is
-		# duplicated here (trivial + pinned by agent-popup.bats).
-		function rank(s) {
-			if (s == "blocked") return 4
-			if (s == "done")    return 3
-			if (s == "working") return 2
-			if (s == "idle")    return 1
-			return 0
-		}
 		# Selector over the glyphs agent_glyph computed in sh.
 		function glyph(s) {
 			if (s == "blocked") return g_blocked
@@ -54,24 +48,12 @@ list() {
 			return g_unknown
 		}
 		BEGIN { OFS = "\t" }
-		$2 != "" {
-			n++
-			pane[n] = $1; st[n] = $2; kind[n] = $3; name[n] = $4
-			loc[n] = $5; wname[n] = $6; proj[n] = $7
-			r[n] = rank($2)
-		}
-		END {
-			# Stable insertion sort by rank desc (ties keep enumeration order).
-			for (i = 1; i <= n; i++) idx[i] = i
-			for (i = 2; i <= n; i++) {
-				key = idx[i]; j = i - 1
-				while (j >= 1 && r[idx[j]] < r[key]) { idx[j + 1] = idx[j]; j-- }
-				idx[j + 1] = key
-			}
-			for (i = 1; i <= n; i++) {
-				p = idx[i]
-				print pane[p], glyph(st[p]), st[p], kind[p], name[p], proj[p], loc[p], wname[p]
-			}
+		# In: pane state kind name loc window_name cwd → out (fzf row):
+		# pane glyph state kind name proj(basename cwd) loc window_name.
+		{
+			proj = $7
+			sub(/.*\//, "", proj)
+			print $1, glyph($2), $2, $3, $4, proj, $5, $6
 		}'
 }
 
