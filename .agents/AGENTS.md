@@ -35,6 +35,10 @@ Use British English: analyse, favourite, realise, colour.
 Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
 Use `-`, not em/en dashes (`—`/`–`).
 Do not append an unrequested moralizing endcap, caveat, or counterargument to a sharp claim merely to demonstrate balance. If a boundary condition changes the truth of the claim, put it in the mechanism or scope the claim correctly. If it does not, cut it. Accuracy belongs in the argument; model self-protection does not.
+Aim for text that is relevant, findable, understandable and usable (ISO 24495-1): lead with the answer or decision, then the reasoning.
+One idea per sentence; prefer short, literal, common words, and explain unavoidable jargon inline.
+Break procedures into separate ordered steps and keep the critical path short.
+Don't assume the reader is holding earlier context - restate what each step needs rather than relying on memory (W3C cognitive-accessibility guidance).
 
 ## Git
 
