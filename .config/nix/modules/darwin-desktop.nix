@@ -129,7 +129,7 @@
       "blackhole-16ch"
     ];
     masApps = {
-      RunCat = 1429033973;
+      RunCatNeo = 6757801838;
       Perplexity = 6714467650;
     };
   };

@@ -8,7 +8,7 @@
 #
 # Intended differences vs the old shared desktop config on this host:
 #   - no desktop casks/masApps (homebrew zap removes them on first switch;
-#     MAS apps RunCat/Perplexity are NOT zapped — remove manually)
+#     MAS apps RunCat Neo/Perplexity are NOT zapped — remove manually)
 #   - no sudo_local → sudo falls through to password (no Touch ID / key here)
 #   - no GUI app packages, no UI defaults, no app associations / credential helper
 #   - never sleeps, auto-restarts after power loss, manual OS updates only
