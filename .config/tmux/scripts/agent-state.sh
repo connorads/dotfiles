@@ -10,10 +10,13 @@
 # status bar renders, and repaints immediately so the dot never waits for
 # status-interval.
 #
-#   agent-state.sh <working|blocked|done|unread|idle|clear|seen> [agent-kind]
+#   agent-state.sh <working|blocked|done|unread|idle|clear|seen|name|unname> [arg]
 #
 # `unread` is the manual inverse of `seen` (forces done even on the focused
 # window); the dot menu (prefix + Alt+.) drives it and the other states by hand.
+# `name`/`unname` set/drop the pane's @agent_name label (for `name` the second
+# positional is the label, validated against valid_agent_name); the name rides
+# @agent_state's lifecycle — `clear` and the sweep's death-clear drop it too.
 #
 # Pane: $AGENT_STATE_PANE overrides $TMUX_PANE (the focus hook passes a pane id;
 # an agent's own hook inherits TMUX_PANE from the pane it runs in). Outside tmux,
@@ -96,6 +99,28 @@ unread)
 clear)
 	tmux set-option -pu -t "$pane" @agent_state 2>/dev/null || true
 	tmux set-option -pu -t "$pane" @agent_kind 2>/dev/null || true
+	tmux set-option -pu -t "$pane" @agent_name 2>/dev/null || true
+	;;
+name)
+	agent_name=${2:-}
+	if ! valid_agent_name "$agent_name"; then
+		echo "agent-state.sh: invalid agent name '$agent_name'" >&2
+		exit 2
+	fi
+	# @agent_name rides @agent_state's lifecycle (dropped by clear + the sweep's
+	# @agent_state-gated death-clear), so refuse to name a stateless pane — an
+	# orphan name would never be swept.
+	if [ -z "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" ]; then
+		echo "agent-state.sh: pane has no agent state; nothing to name" >&2
+		exit 2
+	fi
+	tmux set-option -p -t "$pane" @agent_name "$agent_name"
+	# Not journalled: the journal schema has state/kind but no name field.
+	journal=0
+	;;
+unname)
+	tmux set-option -pu -t "$pane" @agent_name 2>/dev/null || true
+	journal=0
 	;;
 *)
 	echo "agent-state.sh: unknown state '$state'" >&2

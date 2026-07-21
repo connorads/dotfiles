@@ -147,6 +147,60 @@ large_hook_payload() {
   [ -z "$(wstate "$win")" ]
 }
 
+# --- name/unname: @agent_name label riding @agent_state's lifecycle ---
+
+@test "name sets @agent_name on a state-carrying pane" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working
+  ason "$pane" name backend
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_name)" = backend ]
+}
+
+@test "name is rejected on a stateless pane" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" name backend
+  [ "$status" -eq 2 ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
+}
+
+@test "name rejects invalid labels" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working
+  for bad in Backend 9x -x 'has space' 'foo!' "$(printf 'a%.0s' $(seq 33))"; do
+    ason "$pane" name "$bad"
+    [ "$status" -eq 2 ]
+  done
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
+}
+
+@test "name leaves @agent_state and @agent_kind untouched" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working claude
+  ason "$pane" name backend
+  [ "$(pstate "$pane")" = working ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = claude ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_name)" = backend ]
+}
+
+@test "unname removes @agent_name" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working
+  ason "$pane" name backend
+  ason "$pane" unname
+  [ "$status" -eq 0 ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
+}
+
+@test "clear also drops @agent_name" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working
+  ason "$pane" name backend
+  ason "$pane" clear
+  [ "$status" -eq 0 ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
+}
+
 @test "quiet no-op outside tmux" {
   run env -u TMUX -u TMUX_PANE AGENT_STATE_PANE= sh "$SCRIPT" working
   [ "$status" -eq 0 ]
@@ -211,6 +265,33 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
 @test "stop_state: non-numeric -> done" {
   . "$LIB"
   [ "$(stop_state null)" = done ]
+}
+
+# --- valid_agent_name: label grammar (pure) ---
+
+@test "valid_agent_name accepts conforming labels" {
+  . "$LIB"
+  for good in backend a web-1 x_y "$(printf 'a%.0s' $(seq 32))"; do
+    valid_agent_name "$good"
+  done
+}
+
+@test "valid_agent_name rejects malformed labels" {
+  . "$LIB"
+  for bad in '' Backend 1x -x 'has space' 'foo!' "$(printf 'a%.0s' $(seq 33))"; do
+    ! valid_agent_name "$bad"
+  done
+}
+
+# --- agent_name_taken: live-name collision check (real server) ---
+
+@test "agent_name_taken sees another pane's name but excludes self" {
+  . "$LIB"
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_name backend
+  agent_name_taken backend
+  ! agent_name_taken backend "$p1"
+  ! agent_name_taken other
 }
 
 # --- is_viewing: "you are looking at the pane" (pure predicate) ---

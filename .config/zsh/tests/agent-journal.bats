@@ -99,6 +99,14 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
   journal_lines | jq -e '.state == "seen" and .kind == null'
 }
 
+@test "name and unname write no journal line" {
+  tx set-option -p -t "$PANE" @agent_state working
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" name backend </dev/null
+  env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" unname </dev/null
+
+  [ -z "$(journal_lines)" ]
+}
+
 @test "journal file is named by UTC month" {
   env AGENT_STATE_PANE="$PANE" sh "$SCRIPT" working claude </dev/null
 

@@ -105,6 +105,7 @@ EOF
 		[ -n "$_p" ] || continue
 		tmux set-option -pu -t "$_p" @agent_state 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_kind 2>/dev/null || true
+		tmux set-option -pu -t "$_p" @agent_name 2>/dev/null || true
 	done
 
 	printf '%s' "$_seen" | while IFS= read -r _p; do

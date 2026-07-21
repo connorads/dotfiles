@@ -102,11 +102,13 @@ wait_nonshell() {
   win=$(tx display-message -p -t s '#{window_id}')
   tx set-option -p -t "$pane" @agent_state working
   tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_name backend
   tx set-option -w -t "$win" @win_agent_state working
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
   [ -z "$(pstate "$pane")" ]
   [ -z "$(tx show-options -pqv -t "$pane" @agent_kind)" ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
   [ -z "$(wstate "$win")" ]
 }
 
@@ -116,10 +118,12 @@ wait_nonshell() {
   tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
   wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
   tx set-option -p -t "$pane" @agent_state working
+  tx set-option -p -t "$pane" @agent_name backend
   tx set-option -w -t "$win" @win_agent_state working
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
   [ "$(pstate "$pane")" = working ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_name)" = backend ]
   [ "$(wstate "$win")" = working ]
 }
 

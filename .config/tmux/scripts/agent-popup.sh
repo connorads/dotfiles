@@ -31,7 +31,7 @@ list() {
 	_g_idle=$(agent_glyph idle)
 	_g_unknown=$(agent_glyph unknown)
 	tmux list-panes -a -F \
-		"#{pane_id}	#{@agent_state}	#{@agent_kind}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}	#{b:pane_current_path}" \
+		"#{pane_id}	#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}	#{b:pane_current_path}" \
 		2>/dev/null |
 		awk -F '\t' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
@@ -56,8 +56,8 @@ list() {
 		BEGIN { OFS = "\t" }
 		$2 != "" {
 			n++
-			pane[n] = $1; st[n] = $2; kind[n] = $3
-			loc[n] = $4; wname[n] = $5; proj[n] = $6
+			pane[n] = $1; st[n] = $2; kind[n] = $3; name[n] = $4
+			loc[n] = $5; wname[n] = $6; proj[n] = $7
 			r[n] = rank($2)
 		}
 		END {
@@ -70,7 +70,7 @@ list() {
 			}
 			for (i = 1; i <= n; i++) {
 				p = idx[i]
-				print pane[p], glyph(st[p]), st[p], kind[p], proj[p], loc[p], wname[p]
+				print pane[p], glyph(st[p]), st[p], kind[p], name[p], proj[p], loc[p], wname[p]
 			}
 		}'
 }
