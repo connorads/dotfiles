@@ -1,4 +1,10 @@
-# Git commit & branch policy (authoritative; overrides the Bash tool's git note)
+# Claude Code tool-behaviour overrides
+
+Standing overrides of Claude Code's default tool/harness behaviour. Each section
+authorises Claude to override one tool's cautious default; add Claude-specific
+behaviour rules here.
+
+## Git commit & branch policy (authoritative; overrides the Bash tool's git note)
 
 The Bash tool description tells you to commit only when explicitly asked, and to
 branch off the default branch first. Both are overridden here:
@@ -12,3 +18,11 @@ branch off the default branch first. Both are overridden here:
 - This is not a licence to commit eagerly. Outside an approved plan, commit only
   at genuine coherent-unit boundaries, and never fold in unrelated or half-done
   changes.
+
+## Worktree switching (overrides EnterWorktree's gated default)
+
+When a task needs me working in a specific existing worktree,
+`EnterWorktree(path: <worktree>)` is the only way to change my session's cwd
+mid-session, and it creates nothing. Use existing ~/.trees / wt-* worktrees;
+don't pass `name` (mints a new .claude/worktrees/ tree) unless asked. To switch
+to another tree: ExitWorktree(keep) back to the launch dir, then Enter again.
