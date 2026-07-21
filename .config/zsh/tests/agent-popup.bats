@@ -90,6 +90,29 @@ attach_client() {
   [[ "$output" == *"38;2;243;139;168"* ]]
 }
 
+# Pins the @agent_name column position (field 5, after kind): pane_id stays the
+# hidden field 1 jump key, and an unnamed pane renders an empty column rather
+# than shifting later fields.
+@test "list surfaces @agent_name in field 5 and keeps pane_id in field 1" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx set-option -p -t "$p1" @agent_name backend
+  run sh "$SCRIPT" list
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | cut -f1)" = "$p1" ]
+  [ "$(printf '%s\n' "$output" | cut -f5)" = backend ]
+}
+
+@test "list renders an empty name column without shifting fields" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  run sh "$SCRIPT" list
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | cut -f1)" = "$p1" ]
+  [ -z "$(printf '%s\n' "$output" | cut -f5)" ]
+  [ "$(printf '%s\n' "$output" | awk -F '\t' '{ print NF }')" = 8 ]
+}
+
 @test "pick with no agents prints a notice and exits 0" {
   run sh "$SCRIPT" pick
   [ "$status" -eq 0 ]
