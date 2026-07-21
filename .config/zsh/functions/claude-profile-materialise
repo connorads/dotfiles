@@ -1,0 +1,32 @@
+#!/usr/bin/env zsh
+# claude-profile-materialise: derive an isolated ccp profile's user config from
+# the shared ~/.claude config so statusLine, hooks, env and permissions apply to
+# every account.
+#
+# CLAUDE_CONFIG_DIR fully relocates the user scope, so an isolated profile never
+# reads shared ~/.claude config. base = shared settings with machine-local
+# per-account keys removed (model); base wins the merge, so shared keys stay
+# fresh each launch while the profile keeps model/theme it is not handed. A
+# shared key later deleted from base lingers in the profile until reset -
+# accepted (base-wins only overrides keys it defines). Fail-open: no jq or no
+# base = merge skipped, matching resurrect-claude-launch.sh's own jq guard.
+emulate -L zsh
+setopt pipefail
+
+local profile_dir="${1:-}"
+[[ -n "$profile_dir" ]] || return 0
+
+local shared_settings="$HOME/.claude/settings.json"
+if command -v jq &>/dev/null && [[ -f "$shared_settings" ]]; then
+    local existing='{}' base merged
+    [[ -f "$profile_dir/settings.json" ]] && existing="$(<"$profile_dir/settings.json")"
+    if base="$(jq 'del(.model)' "$shared_settings" 2>/dev/null)" &&
+        merged="$(jq -n --argjson existing "$existing" --argjson base "$base" \
+            '$existing * $base' 2>/dev/null)"; then
+        print -r -- "$merged" > "$profile_dir/settings.json"
+    fi
+fi
+
+# Share user memory (~/.claude/CLAUDE.md -> .agents/AGENTS.md) with the profile.
+[[ -e "$HOME/.claude/CLAUDE.md" ]] && ln -sfn "$HOME/.claude/CLAUDE.md" "$profile_dir/CLAUDE.md"
+return 0
