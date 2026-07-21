@@ -105,8 +105,8 @@ def object_int(obj: JsonObject, key: str) -> int:
     return value if isinstance(value, int) else 0
 
 
-def registry_result(pid: str) -> ResolveResult | None:
-    path = home_path(".claude", "sessions", f"{pid}.json")
+def registry_result(pid: str, config_dir: Path) -> ResolveResult | None:
+    path = config_dir / "sessions" / f"{pid}.json"
     try:
         loaded: object = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
@@ -192,7 +192,7 @@ def session_id_from_jsonl(path: Path) -> str:
     return path.stem if SESSION_ID_RE.match(path.stem) else ""
 
 
-def open_jsonl_result(pid: str, cwd: str) -> ResolveResult | None:
+def open_jsonl_result(pid: str, cwd: str, config_dir: Path) -> ResolveResult | None:
     paths: list[Path] = []
     seen: set[str] = set()
 
@@ -202,8 +202,9 @@ def open_jsonl_result(pid: str, cwd: str) -> ResolveResult | None:
         out = run(["lsof", "-p", pid])
         candidates = [line.split()[-1] for line in out.splitlines() if line.split()]
 
+    projects_prefix = f"{config_dir}/projects/"
     for candidate in candidates:
-        if "/.claude/projects/" not in candidate or not candidate.endswith(".jsonl"):
+        if projects_prefix not in candidate or not candidate.endswith(".jsonl"):
             continue
         if candidate not in seen:
             seen.add(candidate)
@@ -227,10 +228,10 @@ def project_slug(cwd: str) -> str:
     return cwd.replace("/", "-")
 
 
-def candidate_jsonls(cwd: str) -> list[Path]:
+def candidate_jsonls(cwd: str, config_dir: Path) -> list[Path]:
     if not cwd:
         return []
-    project_dir = home_path(".claude", "projects", project_slug(cwd))
+    project_dir = config_dir / "projects" / project_slug(cwd)
     try:
         return sorted(project_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
     except OSError:
@@ -313,11 +314,13 @@ def score_jsonl(path: Path, capture_norm: str) -> JsonObject:
     return {"path": str(path), "sessionId": sid or path.stem, "score": score, "hits": hits}
 
 
-def content_match_result(pid: str, pane: str, cwd: str, capture_file: str) -> ResolveResult | None:
+def content_match_result(
+    pid: str, pane: str, cwd: str, capture_file: str, config_dir: Path
+) -> ResolveResult | None:
     capture_norm = normalise(capture_text(pane, capture_file))
     if len(capture_norm) < 40:
         return None
-    scored = [score_jsonl(path, capture_norm) for path in candidate_jsonls(cwd)]
+    scored = [score_jsonl(path, capture_norm) for path in candidate_jsonls(cwd, config_dir)]
     scored = [item for item in scored if object_int(item, "score") > 0]
     if not scored:
         return ResolveResult("unresolved", pid=int(pid), reason="no transcript matched visible pane text")
@@ -354,11 +357,12 @@ def content_match_result(pid: str, pane: str, cwd: str, capture_file: str) -> Re
 def resolve(args: argparse.Namespace) -> ResolveResult:
     pid = str(args.pid)
     cwd = args.cwd or cwd_for_pid(pid)
+    config_dir = Path(args.config_dir) if args.config_dir else home_path(".claude")
     for resolver in (
-        lambda: registry_result(pid),
+        lambda: registry_result(pid, config_dir),
         lambda: launch_arg_result(pid, cwd),
-        lambda: open_jsonl_result(pid, cwd),
-        lambda: content_match_result(pid, args.pane or "", cwd, args.capture_file or ""),
+        lambda: open_jsonl_result(pid, cwd, config_dir),
+        lambda: content_match_result(pid, args.pane or "", cwd, args.capture_file or "", config_dir),
     ):
         resolved = resolver()
         if not resolved:
@@ -377,6 +381,7 @@ def main() -> int:
     parser.add_argument("--pid", required=True, type=int)
     parser.add_argument("--pane", default="")
     parser.add_argument("--cwd", default="")
+    parser.add_argument("--config-dir", default="")
     parser.add_argument("--capture-file", default="")
     parser.add_argument("--format", choices=["json", "session-id"], default="json")
     args = parser.parse_args()
