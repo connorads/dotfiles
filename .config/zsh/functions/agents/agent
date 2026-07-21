@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state)
-# usage: agent <ls|state> [args]
+# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait)
+# usage: agent <ls|state|wait> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -23,10 +23,13 @@ usage: agent <subcommand> [args]
   ls [--json]       list live agent panes (pane/state/kind/name/loc/window/cwd),
                     ranked blocked > done > working > idle
   state <target>    print a pane's @agent_state (bare word; empty if untracked)
+  wait <target> [--for state[,state]] [--timeout secs]
+                    block until @agent_state reaches a wanted state
+                    (default --for done,idle,blocked; timeout 120s)
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
-exit codes: 0 ok · 2 usage · 3 target unresolvable/pane gone
+exit codes: 0 ok · 1 wait timeout · 2 usage · 3 target unresolvable/pane gone
 EOF
 }
 
@@ -76,11 +79,89 @@ _agent_state() {
   agent_pane_state "$pane"
 }
 
+# agent wait — block until the pane's @agent_state reaches a wanted state.
+# Polls the option (the documented pattern: done/idle both mean turn-complete);
+# the journal was rejected as the mechanism - it is fail-open and transition-
+# only, so a waiter starting after the transition would hang. Re-resolves the
+# pane each loop so a killed pane exits 3, not 1.
+_agent_wait() {
+  local forset="done,idle,blocked" timeout=120 target=
+  while (( $# )); do
+    case $1 in
+      --for)
+        [[ -n ${2:-} ]] || {
+          print -u2 "agent wait: --for needs a value"
+          return 2
+        }
+        forset=$2
+        shift 2
+        ;;
+      --timeout)
+        [[ ${2:-} == <-> ]] || {
+          print -u2 "agent wait: --timeout needs a number of seconds"
+          return 2
+        }
+        timeout=$2
+        shift 2
+        ;;
+      -h|--help) _agent_usage; return 0 ;;
+      -*) print -u2 "agent wait: unknown flag: $1"; return 2 ;;
+      *)
+        [[ -z $target ]] || {
+          print -u2 "agent wait: too many targets"
+          return 2
+        }
+        target=$1
+        shift
+        ;;
+    esac
+  done
+  [[ -n $target ]] || {
+    print -u2 "usage: agent wait <target> [--for state[,state]] [--timeout secs]"
+    return 2
+  }
+
+  local tok
+  for tok in ${(s:,:)forset}; do
+    case $tok in
+      blocked|done|working|idle) ;;
+      *)
+        print -u2 "agent wait: invalid state '$tok' (blocked|done|working|idle)"
+        return 2
+        ;;
+    esac
+  done
+
+  local pane
+  pane=$(agent_resolve_target "$target") || return $?
+
+  local poll=${AGENT_WAIT_POLL:-2} s
+  local deadline=$(( SECONDS + timeout ))
+  while :; do
+    # Liveness: check the output, not the exit status - display-message on a
+    # dead pane id prints empty and still exits 0.
+    [[ -n $(tmux display-message -p -t "$pane" '#{pane_id}' 2>/dev/null) ]] || {
+      print -u2 "agent wait: pane gone: $pane"
+      return 3
+    }
+    s=$(agent_pane_state "$pane")
+    if agent_state_matches "$s" "$forset"; then
+      return 0
+    fi
+    (( SECONDS >= deadline )) && {
+      print -u2 "agent wait: timeout after ${timeout}s (state: ${s:-none})"
+      return 1
+    }
+    sleep "$poll"
+  done
+}
+
 local _agent_sub=${1:-}
 (( $# )) && shift
 case ${_agent_sub:-ls} in
   ls|list) _agent_ls "$@" ;;
   state) _agent_state "$@" ;;
+  wait) _agent_wait "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"
