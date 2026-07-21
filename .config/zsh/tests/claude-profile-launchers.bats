@@ -6,6 +6,14 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 DESKTOP_PROFILE="$FUNCTIONS_DIR/claude-desktop-profile"
 CODE_PROFILE="$FUNCTIONS_DIR/claude-code-profile"
+MATERIALISE="$FUNCTIONS_DIR/claude-profile-materialise"
+
+# Make a real tool discoverable on the test PATH via a TEST_BIN symlink.
+link_real() {
+  local name=$1 real
+  real="$(command -v "$name" 2>/dev/null)" || return 0
+  ln -sf "$real" "$TEST_BIN/$name"
+}
 
 setup() {
   setup_test_home
@@ -74,6 +82,30 @@ EOF
   [[ "$output" == *"CLAUDE_CODE_USE_FOUNDRY:unset"* ]]
   [[ "$output" == *"ARGS:--version"* ]]
   [ -d "$HOME/.claude-profiles/code/work" ]
+}
+
+@test "claude-code-profile materialises shared settings into the profile" {
+  # Wire the real helper + jq onto PATH so the bare-name call runs the real
+  # merge (a stub would mirror-test the wiring and stay green if merge broke).
+  ln -sf "$MATERIALISE" "$TEST_BIN/claude-profile-materialise"
+  link_real jq
+  mkdir -p "$HOME/.claude"
+  cat >"$HOME/.claude/settings.json" <<'EOF'
+{"model": "shared-model", "statusLine": {"type": "command", "command": "statusline"}}
+EOF
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  local acct=work
+  run_zsh_function "$CODE_PROFILE" "$acct" --version
+
+  [ "$status" -eq 0 ]
+  run jq -r '.statusLine.command' "$HOME/.claude-profiles/code/$acct/settings.json"
+  [ "$output" = "statusline" ]
+  run jq -r 'has("model")' "$HOME/.claude-profiles/code/$acct/settings.json"
+  [ "$output" = "false" ]
 }
 
 @test "claude-code-profile rejects names with slashes" {

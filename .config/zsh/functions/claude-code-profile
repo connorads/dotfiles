@@ -30,6 +30,12 @@ local profile_dir="$root/$name"
 mkdir -p "$profile_dir" || return
 chmod 700 "$HOME/.claude-profiles" "$root" "$profile_dir" 2>/dev/null || true
 
+# CLAUDE_CONFIG_DIR fully relocates the user scope, so an isolated profile never
+# reads shared ~/.claude config. Materialise it into the profile so statusLine,
+# hooks, env, permissions and CLAUDE.md memory apply to every account. Bare-name
+# call resolves via ~/.local/bin (same convention ccp uses to call this).
+claude-profile-materialise "$profile_dir"
+
 # Claude Code auth precedence lets ambient env vars override subscription OAuth.
 # Make profile selection explicit and avoid silently billing an unrelated API key.
 env \
