@@ -14,7 +14,15 @@ REAL_CODEX_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/codex_session_id.s
 REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_session_id.sh"
 REAL_CLAUDE_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-claude-launch.sh"
 REAL_CODEX_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-codex-launch.sh"
+REAL_CLAUDE_MATERIALISE="$BATS_TEST_DIRNAME/../functions/claude-profile-materialise"
 REAL_BASH="$(command -v bash)"
+
+# Make a real tool discoverable on the test PATH via a TEST_BIN symlink.
+link_real() {
+  local name=$1 real
+  real="$(command -v "$name" 2>/dev/null)" || return 0
+  ln -sf "$real" "$TEST_BIN/$name"
+}
 
 setup() {
   setup_test_home
@@ -351,6 +359,35 @@ EOF
 
   [ "$status" -eq 0 ]
   [ "$output" = "CFG=$cfg args=--dangerously-skip-permissions --resume session-two" ]
+}
+
+@test "claude launcher materialises the restored profile's shared config before exec" {
+  local acct=work
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$cfg"
+  # Install the real helper at the absolute path the launcher invokes, plus a
+  # shared settings.json for it to merge in.
+  mkdir -p "$HOME/.config/zsh/functions"
+  install -m 755 "$REAL_CLAUDE_MATERIALISE" "$HOME/.config/zsh/functions/claude-profile-materialise"
+  cat >"$HOME/.claude/settings.json" <<'EOF'
+{"model": "shared-model", "statusLine": {"type": "command", "command": "statusline"}}
+EOF
+  link_real jq
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.1":{dir:"/Users/connorads",claude:"session-two",claudeConfigDir:$cfg}}}' \
+    >"$SESSION_FILE"
+  write_tmux_display_stub 'main:1.1'
+  write_claude_launch_stub
+
+  TMUX_PANE='%1' run "$REAL_BASH" "$CLAUDE_LAUNCH" --dangerously-skip-permissions
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "CFG=$cfg args=--dangerously-skip-permissions --resume session-two" ]
+  # The profile inherited shared config and did not leak the base model.
+  run jq -r '.statusLine.command' "$cfg/settings.json"
+  [ "$output" = "statusline" ]
+  run jq -r 'has("model")' "$cfg/settings.json"
+  [ "$output" = "false" ]
 }
 
 @test "claude launcher exports a config dir containing spaces and quotes safely" {
