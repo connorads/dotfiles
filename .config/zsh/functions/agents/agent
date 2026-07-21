@@ -1,0 +1,90 @@
+#!/usr/bin/env zsh
+# agent: orchestrate coding-agent panes over @agent_state (ls/state)
+# usage: agent <ls|state> [args]
+emulate -L zsh
+setopt local_options pipe_fail
+
+# Path seams (agent-popup.sh's env-var style) so bats can inject.
+local _agent_scripts=${AGENT_SCRIPTS_DIR:-$HOME/.config/tmux/scripts}
+local _agent_cli_lib=${AGENT_CLI_LIB:-$_agent_scripts/agent-cli-lib.sh}
+local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
+
+[[ -r $_agent_cli_lib ]] || {
+  print -u2 "agent: lib not found: $_agent_cli_lib"
+  return 1
+}
+# shellcheck disable=SC1090
+source "$_agent_cli_lib"
+
+_agent_usage() {
+  cat <<'EOF'
+usage: agent <subcommand> [args]
+
+  ls [--json]       list live agent panes (pane/state/kind/name/loc/window/cwd),
+                    ranked blocked > done > working > idle
+  state <target>    print a pane's @agent_state (bare word; empty if untracked)
+
+<target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
+
+exit codes: 0 ok · 2 usage · 3 target unresolvable/pane gone
+EOF
+}
+
+# agent ls [--json] — the enumerator, human (column) or machine (JSON) shaped.
+_agent_ls() {
+  local json=0
+  while (( $# )); do
+    case $1 in
+      --json) json=1; shift ;;
+      -h|--help) _agent_usage; return 0 ;;
+      *) print -u2 "agent ls: unknown argument: $1"; return 2 ;;
+    esac
+  done
+
+  local rows
+  rows=$(agent_list_rows)
+  if (( json )); then
+    printf '%s\n' "$rows" | jq -R -s '
+      split("\n") | map(select(length > 0)) | map(split("\t"))
+      | map({
+          pane: .[0],
+          state: .[1],
+          kind: (if .[2] == "" then null else .[2] end),
+          name: (if .[3] == "" then null else .[3] end),
+          loc: .[4],
+          window: .[5],
+          cwd: .[6]
+        })'
+  else
+    [[ -n $rows ]] || return 0
+    # Empty fields become "-" so BSD column (which merges consecutive
+    # delimiters) cannot shift later columns.
+    printf '%s\n' "$rows" | awk -F '\t' 'BEGIN { OFS = "\t" }
+      { for (i = 1; i <= NF; i++) if ($i == "") $i = "-"; print }' |
+      column -t -s '	'
+  fi
+}
+
+# agent state <target> — cheapest read primitive; no polling.
+_agent_state() {
+  (( $# == 1 )) || {
+    print -u2 "usage: agent state <target>"
+    return 2
+  }
+  local pane
+  pane=$(agent_resolve_target "$1") || return $?
+  agent_pane_state "$pane"
+}
+
+local _agent_sub=${1:-}
+(( $# )) && shift
+case ${_agent_sub:-ls} in
+  ls|list) _agent_ls "$@" ;;
+  state) _agent_state "$@" ;;
+  help|-h|--help) _agent_usage ;;
+  *)
+    print -u2 "agent: unknown subcommand: $_agent_sub"
+    _agent_usage >&2
+    return 2
+    ;;
+esac
