@@ -490,6 +490,24 @@ wait_nonshell() {
   [ "$output" = working ]
 }
 
+# --- agent pick ---
+
+@test "agent pick requires fzf" {
+  # Minimal PATH: fzf lives in the nix/brew dir, not /usr/bin or /bin (zsh is
+  # invoked by absolute path so it needs no PATH entry).
+  run env PATH=/usr/bin:/bin "$(command -v zsh)" --no-rcs "$AGENT" pick
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fzf required"* ]]
+}
+
+@test "agent pick delegates to the popup's pick (no-agents notice path)" {
+  command -v fzf >/dev/null 2>&1 || skip "fzf not installed"
+  # Empty private server → pick()'s pre-fzf notice proves the delegation.
+  run_zsh_function "$AGENT" pick
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No active agents"* ]]
+}
+
 @test "agent rejects an unknown subcommand with exit 2" {
   run_zsh_function "$AGENT" frobnicate
   [ "$status" -eq 2 ]
