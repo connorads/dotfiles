@@ -152,12 +152,29 @@ tokens kept verbatim and in order, stale resume/continue state stripped
 
 Claude multi-account caveat: a client pane runs under
 `CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>` (set by `ccp`), invisible in
-argv, so the save hook records that one var per pane (`claudeConfigDir`;
-`/proc` environ on Linux, `ps -E` token scan on macOS). The launcher `export`s
-it before `exec` (a real env var, so spaces/quotes need no shell quoting).
-Without it a restored client pane reverts to the personal `~/.claude` account -
-a cross-billing risk. Only `CLAUDE_CONFIG_DIR` is persisted; never any other env
-var - both sources expose the process's full environment, secrets included.
+argv, so the save hook records that one var per pane (`claudeConfigDir`). It reads
+it from the live claude PID's real environment via the shared
+`claude_config_dir_for_pid` in
+[`scripts/lib/agent-session.sh`](./scripts/lib/agent-session.sh) (`/proc` environ
+on Linux, `ps -E` token scan on macOS - env introspection is authoritative and
+never stale). The launcher `export`s it before `exec` (a real env var, so
+spaces/quotes need no shell quoting). Without it a restored client pane reverts to
+the personal `~/.claude` account - a cross-billing risk. Only `CLAUDE_CONFIG_DIR`
+is persisted; never any other env var - both sources expose the process's full
+environment, secrets included.
+
+Account-awareness is not only a restore concern. The **branch/fork** path
+(`prefix + Alt+b`, [`scripts/claude-branch-menu.sh`](./scripts/claude-branch-menu.sh))
+and the **resurrect save** hook both resolve the pane's account through the same
+`claude_config_dir_for_pid`, matching the restore path. A profile pane's live
+session lives under `<config_dir>/sessions/<pid>.json` and
+`<config_dir>/projects/`, so the resolver
+([`scripts/claude-session-resolve.py`](./scripts/claude-session-resolve.py)) takes
+`--config-dir` (default `~/.claude`) and reads the registry / open-transcript /
+content-match candidates from there. The fork command carries the account inline
+as `CLAUDE_CONFIG_DIR=<dir> claude … -r <sid> --fork-session` (tmux panes don't
+inherit the source pane's env), so a branched pane runs under the same account as
+its source rather than silently reverting to `~/.claude`.
 
 With the config dir restored, the launcher then re-materialises the profile's
 shared user config (settings + `CLAUDE.md` memory) via
