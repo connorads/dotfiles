@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait)
-# usage: agent <ls|state|wait> [args]
+# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt)
+# usage: agent <ls|state|wait|prompt> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -26,10 +26,14 @@ usage: agent <subcommand> [args]
   wait <target> [--for state[,state]] [--timeout secs]
                     block until @agent_state reaches a wanted state
                     (default --for done,idle,blocked; timeout 120s)
+  prompt <target> <text...> [--force]
+                    paste a prompt + submit, then verify the agent starts;
+                    refuses blocked/working panes unless --force
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
 exit codes: 0 ok · 1 wait timeout · 2 usage · 3 target unresolvable/pane gone
+            · 4 prompt refused · 5 prompt stall (sent but agent never started)
 EOF
 }
 
@@ -156,12 +160,108 @@ _agent_wait() {
   done
 }
 
+# _agent_prompt_verify SNAPSHOT PANE — poll @agent_state for any transition
+# away from SNAPSHOT (working, blocked, or a fresh done: a fast no-tool turn
+# can pass through working between polls). Empty reads never count - a cleared
+# state means the agent died, not that the prompt landed.
+_agent_prompt_verify() {
+  local snapshot=$1 pane=$2 s
+  local vpoll=${AGENT_PROMPT_VERIFY_POLL:-0.3}
+  local -i iters=$(( ${AGENT_PROMPT_VERIFY_TIMEOUT:-5} / vpoll ))
+  (( iters >= 1 )) || iters=1
+  local -i i
+  for (( i = 0; i < iters; i++ )); do
+    s=$(agent_pane_state "$pane")
+    [[ -n $s && $s != "$snapshot" ]] && return 0
+    sleep "$vpoll"
+  done
+  return 1
+}
+
+# agent prompt — the only mutating verb: paste the prompt into the pane and
+# submit it, never touching @agent_state (it only sends keystrokes and observes
+# the option the agent's own hooks set).
+_agent_prompt() {
+  local force=0 target=
+  local -a words
+  while (( $# )); do
+    case $1 in
+      --force) force=1; shift ;;
+      -h|--help) _agent_usage; return 0 ;;
+      -*) print -u2 "agent prompt: unknown flag: $1"; return 2 ;;
+      *)
+        if [[ -z $target ]]; then
+          target=$1
+        else
+          words+=("$1")
+        fi
+        shift
+        ;;
+    esac
+  done
+  [[ -n $target && ${#words} -gt 0 ]] || {
+    print -u2 "usage: agent prompt <target> <text...> [--force]"
+    return 2
+  }
+  local text="${(j: :)words}"
+
+  local pane
+  pane=$(agent_resolve_target "$target") || return $?
+
+  local snapshot kind gate
+  snapshot=$(agent_pane_state "$pane")
+  kind=$(agent_pane_kind "$pane")
+  gate=$(agent_prompt_gate "$snapshot" "$force")
+  case $gate in
+    refuse-blocked)
+      print -u2 "agent prompt: $pane is blocked (a human approval surface); use --force to override"
+      return 4
+      ;;
+    refuse-working)
+      print -u2 "agent prompt: $pane is working; compose with \`agent wait $target && agent prompt ...\` or use --force"
+      return 4
+      ;;
+  esac
+
+  # Send: buffer-paste the body atomically (bracketed-paste-safe, multi-line
+  # arrives as one paste), settle, then submit with a *separate* keystroke -
+  # pasting text and Enter together races bracketed paste and the TUI can
+  # swallow the submit.
+  printf '%s' "$text" | tmux load-buffer -b agent-input - || {
+    print -u2 "agent prompt: load-buffer failed"
+    return 3
+  }
+  tmux paste-buffer -d -p -b agent-input -t "$pane" || {
+    print -u2 "agent prompt: paste-buffer failed (pane gone?)"
+    return 3
+  }
+  sleep "${AGENT_PROMPT_SETTLE:-0.4}"
+  local key
+  key=$(agent_submit_key "$kind")
+  tmux send-keys -t "$pane" "$key"
+
+  # Stall verify - only for kinds whose hooks verifiably set @agent_state on
+  # prompt submit (claude and codex fire `working` synchronously); other kinds
+  # send-and-return.
+  local verify_kinds=${AGENT_PROMPT_VERIFY_KINDS:-claude codex}
+  [[ " $verify_kinds " == *" $kind "* ]] || return 0
+
+  _agent_prompt_verify "$snapshot" "$pane" && return 0
+  # The text may have landed unsubmitted (the Enter-swallow race): retry the
+  # submit key once, then give up.
+  tmux send-keys -t "$pane" "$key"
+  _agent_prompt_verify "$snapshot" "$pane" && return 0
+  print -u2 "agent prompt: sent but $pane never left '${snapshot:-none}' (stall)"
+  return 5
+}
+
 local _agent_sub=${1:-}
 (( $# )) && shift
 case ${_agent_sub:-ls} in
   ls|list) _agent_ls "$@" ;;
   state) _agent_state "$@" ;;
   wait) _agent_wait "$@" ;;
+  prompt) _agent_prompt "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"
