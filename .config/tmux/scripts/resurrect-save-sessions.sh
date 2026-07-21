@@ -40,20 +40,32 @@ find_claude_session() {
 	local tty="$3"
 	local session_id=""
 	local claude_pid=""
+	local config_dir=""
 
 	claude_pid=$(agent_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
 
+	# A ccp pane's session lives under its profile config dir, not ~/.claude, so
+	# resolve the account first and read the registry from there.
+	if [ -n "$claude_pid" ]; then
+		config_dir=$(claude_config_dir_for_pid "$claude_pid")
+	fi
+
 	# Claude Code writes the active session ID keyed by its process PID.
 	if [ -n "$claude_pid" ]; then
-		session_id=$(claude_session_meta_for_pid "$claude_pid" |
+		session_id=$(claude_session_meta_for_pid "$claude_pid" "$config_dir" |
 			jq -r --arg dir "$dir" 'select((.cwd // $dir) == $dir) | .sessionId // empty' 2>/dev/null || true)
 	fi
 
 	# Fallback for older Claude versions — find .jsonl files the process has open.
+	# Match either the default ~/.claude/projects/ or the profile's <dir>/projects/.
 	if [ -z "$session_id" ] && [ -n "$claude_pid" ] && kill -0 "$claude_pid" 2>/dev/null; then
+		local projects_re='\.claude/projects/'
+		if [ -n "$config_dir" ]; then
+			projects_re="${config_dir}/projects/"
+		fi
 		session_id=$(lsof -p "$claude_pid" 2>/dev/null |
 			grep '\.jsonl$' |
-			grep '\.claude/projects/' |
+			grep -F "$projects_re" |
 			awk '{print $NF}' |
 			head -1 |
 			xargs -I{} basename {} .jsonl 2>/dev/null || true)
