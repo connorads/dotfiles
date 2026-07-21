@@ -159,6 +159,14 @@ Without it a restored client pane reverts to the personal `~/.claude` account -
 a cross-billing risk. Only `CLAUDE_CONFIG_DIR` is persisted; never any other env
 var - both sources expose the process's full environment, secrets included.
 
+With the config dir restored, the launcher then re-materialises the profile's
+shared user config (settings + `CLAUDE.md` memory) via
+[`claude-profile-materialise`](../zsh/functions/claude-profile-materialise) - the
+same helper `ccp`'s launcher runs - so a resumed account inherits the current
+shared `statusLine`/`hooks`/`permissions` rather than whatever was last
+materialised. Guarded on the helper being present (`-x`); it fails open without
+jq or a shared base.
+
 OpenCode is left on the eval-time strategy (no launcher): it has no live
 active-session marker, so it still uses the per-dir cwd map (single live pane
 per cwd) and re-emits its `OPENCODE_CONFIG_CONTENT` (`opencodeEnv`, yolo mode

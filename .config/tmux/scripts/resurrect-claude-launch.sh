@@ -36,7 +36,16 @@ if command -v jq &>/dev/null && [ -f "$SESSION_FILE" ] && [ -n "${TMUX_PANE:-}" 
 	fi
 fi
 
-[ -n "$config_dir" ] && export CLAUDE_CONFIG_DIR="$config_dir"
+if [ -n "$config_dir" ]; then
+	export CLAUDE_CONFIG_DIR="$config_dir"
+	# Refresh the restored profile's shared user config (settings + CLAUDE.md
+	# memory) so a resumed ccp pane inherits the same statusLine/hooks/permissions
+	# a fresh `ccp` launch materialises. Absolute path matches how the strategy
+	# invokes this launcher; guarded like every other dep here (jq/session/pane),
+	# and the helper itself fails open without jq/base.
+	materialise="$HOME/.config/zsh/functions/claude-profile-materialise"
+	[ -x "$materialise" ] && "$materialise" "$config_dir"
+fi
 
 if [ -n "$resume" ]; then
 	exec claude "$@" --resume "$resume"
