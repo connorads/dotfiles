@@ -6,9 +6,11 @@
 #   agent-popup.sh            # pick (default): sweep, then list | fzf | jump
 #   agent-popup.sh list       # emit ranked TAB rows (hidden pane_id first)
 #   agent-popup.sh jump PANE  # switch to PANE and age its done → idle
+#   agent-popup.sh cycle WANT [CUR]  # jump to next WANT-state pane after CUR
 #
-# Split into subcommands so list/jump are unit-testable without driving fzf
-# (which needs a real TTY). Bound to `prefix + A` via display-popup -E.
+# Split into subcommands so list/jump/cycle are unit-testable without driving
+# fzf (which needs a real TTY). Bound to `prefix + A` (pick) and `prefix +
+# Alt+a` (cycle blocked) via display-popup -E / run-shell.
 
 set -u
 
@@ -82,6 +84,54 @@ jump() {
 	AGENT_STATE_PANE="$_pane" sh "$AGENT_STATE_SH" seen
 }
 
+# _next_pane WANT CUR (rows `pane_id<TAB>state` on stdin) — echo the pane_id of
+# the first row with state == WANT strictly after CUR in row order, wrapping
+# past the end; empty if none. CUR absent or not in the list → start at the
+# top. Pure (no tmux) so ordering/wrap are unit-testable from stdin.
+_next_pane() {
+	awk -F '\t' -v want="$1" -v cur="$2" '
+		{ pane[NR] = $1; st[NR] = $2 }
+		END {
+			n = NR; if (n == 0) exit
+			start = 0
+			for (i = 1; i <= n; i++) if (pane[i] == cur) { start = i; break }
+			for (k = 1; k <= n; k++) {
+				i = ((start + k - 1) % n) + 1
+				if (st[i] == want) { print pane[i]; exit }
+			}
+		}'
+}
+
+# cycle WANT [CURRENT_PANE] — jump to the next agent pane whose @agent_state is
+# WANT, in positional order (session → window index → pane index, built here:
+# list() sorts by rank, which would revisit the top-ranked pane forever),
+# wrapping past CURRENT_PANE. Falls back to `done` when nothing is WANT.
+# Reuses jump() for the move — including its seen ageing, which is correct
+# here: cycling to a pane is viewing it.
+cycle() {
+	_want=${1:-blocked}
+	_cur=${2:-}
+	_tab=$(printf '\t')
+	_rows=$(tmux list-panes -a -F \
+		'#{session_name}	#{window_index}	#{pane_index}	#{pane_id}	#{@agent_state}' \
+		2>/dev/null |
+		sort -t "$_tab" -k1,1 -k2,2n -k3,3n |
+		awk -F '\t' 'BEGIN { OFS = "\t" } $5 != "" { print $4, $5 }')
+	[ -n "$_rows" ] || {
+		tmux display-message "no active agents" 2>/dev/null || true
+		return 0
+	}
+
+	_target=$(printf '%s\n' "$_rows" | _next_pane "$_want" "$_cur")
+	[ -n "$_target" ] || _target=$(printf '%s\n' "$_rows" | _next_pane 'done' "$_cur")
+
+	if [ -n "$_target" ]; then
+		jump "$_target"
+	else
+		tmux display-message "no $_want or done agents" 2>/dev/null || true
+	fi
+}
+
 # pick — sweep (keep the list fresh), then list | fzf | jump. Empty list prints a
 # notice and returns (fzf on empty input would flash an empty popup).
 pick() {
@@ -116,9 +166,13 @@ jump)
 	shift
 	jump "${1:-}"
 	;;
+cycle)
+	shift
+	cycle "$@"
+	;;
 pick | "") pick ;;
 *)
-	echo "usage: agent-popup.sh [list|jump <pane_id>|pick]" >&2
+	echo "usage: agent-popup.sh [list|jump <pane_id>|cycle <state> [cur_pane]|pick]" >&2
 	exit 2
 	;;
 esac

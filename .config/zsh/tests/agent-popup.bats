@@ -148,6 +148,73 @@ attach_client() {
   [ "$status" -eq 2 ]
 }
 
+# --- cycle: positional next-blocked jump (headless, like the jump tests) ---
+
+# _next_pane is pure (rows on stdin, no tmux): extract just the function (the
+# script's trailing dispatch would run on a full source) and exercise it.
+next_pane() {
+  sed -n '/^_next_pane()/,/^}/p' "$SCRIPT" >"$BATS_TEST_TMPDIR/next_pane.sh"
+  sh -c ". \"$BATS_TEST_TMPDIR/next_pane.sh\"; _next_pane \"\$1\" \"\$2\"" _ "$@"
+}
+
+@test "_next_pane picks the first match strictly after the current pane, wrapping" {
+  rows=$'%1\tblocked\n%2\tworking\n%3\tblocked'
+  [ "$(printf '%s\n' "$rows" | next_pane blocked %1)" = %3 ]
+  [ "$(printf '%s\n' "$rows" | next_pane blocked %3)" = %1 ] # wraps
+  [ "$(printf '%s\n' "$rows" | next_pane blocked '')" = %1 ] # no current → top
+  [ "$(printf '%s\n' "$rows" | next_pane blocked %9)" = %1 ] # unknown current → top
+  [ -z "$(printf '%s\n' "$rows" | next_pane idle %1)" ]      # no match → empty
+}
+
+@test "cycle blocked moves the active pane to the next blocked pane" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx new-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state blocked
+  tx new-window -t s
+  p3=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p3" @agent_state blocked
+  tx select-window -t "$p1"
+  run sh "$SCRIPT" cycle blocked "$p1"
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p '#{pane_id}')" = "$p2" ]
+}
+
+@test "cycle blocked wraps past the end back to an earlier blocked pane" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state blocked
+  tx new-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state working
+  # current = p2 (after the only blocked pane) → wraps back to p1
+  run sh "$SCRIPT" cycle blocked "$p2"
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p '#{pane_id}')" = "$p1" ]
+}
+
+@test "cycle blocked falls back to done and ages it to idle" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s # p1's window inactive so the done dot is unseen
+  win1=$(tx list-windows -t s -F '#{window_id}' | head -n1)
+  tx set-option -p -t "$p1" @agent_state done
+  tx set-option -w -t "$win1" @win_agent_state done
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  run sh "$SCRIPT" cycle blocked "$p2"
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p '#{pane_id}')" = "$p1" ]
+  # jump()'s seen call ages the visited done pane, exactly as the popup does.
+  [ "$(tx show-options -pqv -t "$p1" @agent_state)" = idle ]
+  [ "$(tx show-options -wqv -t "$win1" @win_agent_state)" = idle ]
+}
+
+@test "cycle with no agents is a quiet no-op" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  run sh "$SCRIPT" cycle blocked "$p1"
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p '#{pane_id}')" = "$p1" ]
+}
+
 # Headed coverage of the one behaviour the headless tests cannot reach: jump's
 # switch-client moving an *attached* client. The client is parked on a SECOND
 # session so only switch-client (not select-window/select-pane, which the headless
