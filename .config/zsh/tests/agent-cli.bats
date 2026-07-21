@@ -236,6 +236,146 @@ teardown() {
   [ "$status" -eq 2 ]
 }
 
+# --- agent prompt (PATH tmux stub: send mechanics without a live agent) ---
+#
+# The stub logs every tmux call to $TEST_LOG and serves scripted reads:
+# @agent_state pops lines from $AGENT_STATE_SEQ (last line repeats), pane_id
+# echoes the -t argument (resolve succeeds), @agent_kind echoes
+# $AGENT_STUB_KIND, load-buffer captures stdin to $AGENT_STUB_BUFFER.
+
+write_tmux_stub() {
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+echo "tmux $*" >>"$TEST_LOG"
+case "$*" in
+  *'#{pane_id}'*)
+    prev=
+    for a in "$@"; do
+      [ "$prev" = -t ] && { echo "$a"; break; }
+      prev=$a
+    done
+    ;;
+  *'#{@agent_state}'*)
+    if [ -n "${AGENT_STATE_SEQ:-}" ] && [ -s "$AGENT_STATE_SEQ" ]; then
+      head -n1 "$AGENT_STATE_SEQ"
+      if [ "$(wc -l <"$AGENT_STATE_SEQ")" -gt 1 ]; then
+        tail -n +2 "$AGENT_STATE_SEQ" >"$AGENT_STATE_SEQ.tmp"
+        mv "$AGENT_STATE_SEQ.tmp" "$AGENT_STATE_SEQ"
+      fi
+    fi
+    ;;
+  *'#{@agent_kind}'*)
+    echo "${AGENT_STUB_KIND:-claude}"
+    ;;
+  'load-buffer'*)
+    cat >"${AGENT_STUB_BUFFER:-/dev/null}"
+    ;;
+esac
+exit 0
+EOF
+}
+
+# prompt_env — common fast-poll env for the prompt tests.
+run_prompt() {
+  run env AGENT_PROMPT_SETTLE=0 AGENT_PROMPT_VERIFY_POLL=0.05 \
+    AGENT_PROMPT_VERIFY_TIMEOUT=0.2 zsh --no-rcs "$AGENT" prompt "$@"
+}
+
+@test "agent prompt buffer-pastes then submits with a separate Enter" {
+  setup_test_home
+  write_tmux_stub
+  printf 'idle\nworking\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STUB_BUFFER="$BATS_TEST_TMPDIR/buffer"
+  run_prompt %1 hello world
+  [ "$status" -eq 0 ]
+  [ "$(cat "$AGENT_STUB_BUFFER")" = "hello world" ]
+  grep -q 'tmux load-buffer -b agent-input -' "$TEST_LOG"
+  grep -q 'tmux paste-buffer -d -p -b agent-input -t %1' "$TEST_LOG"
+  grep -q 'tmux send-keys -t %1 C-m' "$TEST_LOG"
+  # Load < paste < submit, and the body never goes through send-keys -l.
+  load=$(grep -n 'load-buffer' "$TEST_LOG" | cut -d: -f1)
+  paste=$(grep -n 'paste-buffer' "$TEST_LOG" | cut -d: -f1)
+  submit=$(grep -n 'send-keys' "$TEST_LOG" | head -n1 | cut -d: -f1)
+  [ "$load" -lt "$paste" ]
+  [ "$paste" -lt "$submit" ]
+  ! grep -q 'send-keys.*-l' "$TEST_LOG"
+}
+
+@test "agent prompt sends a multi-line body as one buffer paste" {
+  setup_test_home
+  write_tmux_stub
+  printf 'idle\nworking\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STUB_BUFFER="$BATS_TEST_TMPDIR/buffer"
+  run_prompt %1 "$(printf 'line1\nline2')"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$AGENT_STUB_BUFFER")" = "$(printf 'line1\nline2')" ]
+  [ "$(grep -c 'load-buffer' "$TEST_LOG")" = 1 ]
+  [ "$(grep -c 'paste-buffer' "$TEST_LOG")" = 1 ]
+}
+
+@test "agent prompt refuses a blocked pane with exit 4 and sends nothing" {
+  setup_test_home
+  write_tmux_stub
+  printf 'blocked\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  run_prompt %1 hello
+  [ "$status" -eq 4 ]
+  [[ "$output" == *blocked* ]]
+  ! grep -q 'load-buffer\|paste-buffer\|send-keys' "$TEST_LOG"
+}
+
+@test "agent prompt refuses a working pane with exit 4" {
+  setup_test_home
+  write_tmux_stub
+  printf 'working\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  run_prompt %1 hello
+  [ "$status" -eq 4 ]
+  [[ "$output" == *working* ]]
+  ! grep -q 'send-keys' "$TEST_LOG"
+}
+
+@test "agent prompt --force overrides the blocked gate" {
+  setup_test_home
+  write_tmux_stub
+  printf 'blocked\nworking\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  run_prompt %1 hello --force
+  [ "$status" -eq 0 ]
+  grep -q 'paste-buffer' "$TEST_LOG"
+}
+
+@test "agent prompt retries the submit key once then stalls with exit 5" {
+  setup_test_home
+  write_tmux_stub
+  printf 'idle\n' >"$BATS_TEST_TMPDIR/stateseq" # never transitions
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  run_prompt %1 hello
+  [ "$status" -eq 5 ]
+  [[ "$output" == *stall* ]]
+  [ "$(grep -c 'send-keys -t %1 C-m' "$TEST_LOG")" = 2 ]
+}
+
+@test "agent prompt skips the verify for kinds outside the allowlist" {
+  setup_test_home
+  write_tmux_stub
+  printf 'idle\n' >"$BATS_TEST_TMPDIR/stateseq" # never transitions
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STUB_KIND=opencode
+  run_prompt %1 hello
+  [ "$status" -eq 0 ]
+  # Only the gate read state; no verify polling happened.
+  [ "$(grep -c '@agent_state' "$TEST_LOG")" = 1 ]
+  [ "$(grep -c 'send-keys -t %1 C-m' "$TEST_LOG")" = 1 ]
+}
+
+@test "agent prompt without text exits 2" {
+  run_zsh_function "$AGENT" prompt %1
+  [ "$status" -eq 2 ]
+}
+
 @test "agent rejects an unknown subcommand with exit 2" {
   run_zsh_function "$AGENT" frobnicate
   [ "$status" -eq 2 ]
