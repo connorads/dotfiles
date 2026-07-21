@@ -8,6 +8,9 @@ load test_helper
 AGENT="$FUNCTIONS_DIR/agents/agent"
 CLI_LIB="$TESTS_DIR/../../tmux/scripts/agent-cli-lib.sh"
 STATE_LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
+STATE_SH="$TESTS_DIR/../../tmux/scripts/agent-state.sh"
+SWEEP="$TESTS_DIR/../../tmux/scripts/agent-sweep.sh"
+SHELLS=" zsh bash sh fish dash ash "
 
 # Throwaway private tmux server (-f /dev/null: bare, no real config) — the CLI
 # and the lib only read/write the @agent_* options they manage; the real
@@ -24,6 +27,12 @@ setup() {
   export TMUX
   export AGENT_STATE_LIB="$STATE_LIB"
   export AGENT_CLI_LIB="$CLI_LIB"
+  export AGENT_STATE_SH="$STATE_SH"
+  # The name tests set the pane state out-of-band on bare shell panes; the
+  # real sweep would clear it (shell foreground = agent dead), so the pre-name
+  # sweep is disabled by default and enabled per-test where the death-clear is
+  # the behaviour under test.
+  export AGENT_SWEEP=/nonexistent
 }
 
 teardown() {
@@ -374,6 +383,111 @@ run_prompt() {
 @test "agent prompt without text exits 2" {
   run_zsh_function "$AGENT" prompt %1
   [ "$status" -eq 2 ]
+}
+
+# --- agent name / unname ---
+
+# Wait until a pane's foreground is no longer a bare shell (the respawned child
+# owns it) — mirrors agent-sweep.bats; callers skip on timeout.
+wait_nonshell() {
+  local pane=$1 cmd i
+  for i in $(seq 1 30); do
+    cmd=$(tx display-message -p -t "$pane" '#{pane_current_command}')
+    case "$SHELLS" in *" $cmd "*) sleep 0.2 ;; *) return 0 ;; esac
+  done
+  return 1
+}
+
+@test "agent name labels the current pane via TMUX_PANE" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  run env TMUX_PANE="$p1" zsh --no-rcs "$AGENT" name backend
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$p1" @agent_name)" = backend ]
+}
+
+@test "agent name labels an explicit target pane" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  run_zsh_function "$AGENT" name "$p1" backend
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$p1" @agent_name)" = backend ]
+}
+
+@test "agent name rejects a duplicate live name" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx set-option -p -t "$p1" @agent_name backend
+  tx split-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state working
+  run_zsh_function "$AGENT" name "$p2" backend
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"already held"* ]]
+  [ -z "$(tx show-options -pqv -t "$p2" @agent_name)" ]
+}
+
+@test "agent name re-applies a pane's own name without a self-collision" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx set-option -p -t "$p1" @agent_name backend
+  run_zsh_function "$AGENT" name "$p1" backend
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$p1" @agent_name)" = backend ]
+}
+
+@test "agent name frees a dead pane's name via the pre-sweep" {
+  p1=$(tx display-message -p -t s '#{pane_id}') # bare shell = dead agent
+  tx set-option -p -t "$p1" @agent_state done
+  tx set-option -p -t "$p1" @agent_name backend
+  tx split-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$p2" 'sh -c "exec sleep 300"' # live agent stand-in
+  wait_nonshell "$p2" || skip "pane shell did not yield the foreground in time"
+  tx set-option -p -t "$p2" @agent_state working
+  run env AGENT_SWEEP="$SWEEP" zsh --no-rcs "$AGENT" name "$p2" backend
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$p2" @agent_name)" = backend ]
+  [ -z "$(tx show-options -pqv -t "$p1" @agent_name)" ]
+}
+
+@test "agent name rejects an invalid label before mutating" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  run_zsh_function "$AGENT" name "$p1" Backend
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"invalid name"* ]]
+  [ -z "$(tx show-options -pqv -t "$p1" @agent_name)" ]
+}
+
+@test "agent name on a stateless pane surfaces the mutator's refusal" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  run_zsh_function "$AGENT" name "$p1" backend
+  [ "$status" -eq 2 ]
+  [ -z "$(tx show-options -pqv -t "$p1" @agent_name)" ]
+}
+
+@test "agent unname clears the label" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx set-option -p -t "$p1" @agent_name backend
+  run_zsh_function "$AGENT" unname "$p1"
+  [ "$status" -eq 0 ]
+  [ -z "$(tx show-options -pqv -t "$p1" @agent_name)" ]
+}
+
+@test "agent name outside tmux without a target exits 3" {
+  run env -u TMUX_PANE zsh --no-rcs "$AGENT" name backend
+  [ "$status" -eq 3 ]
+}
+
+@test "a name target resolves through @agent_name (agent state backend)" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx set-option -p -t "$p1" @agent_name backend
+  run_zsh_function "$AGENT" state backend
+  [ "$status" -eq 0 ]
+  [ "$output" = working ]
 }
 
 @test "agent rejects an unknown subcommand with exit 2" {

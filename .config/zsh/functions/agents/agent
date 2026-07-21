@@ -1,12 +1,14 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt)
-# usage: agent <ls|state|wait|prompt> [args]
+# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name)
+# usage: agent <ls|state|wait|prompt|name|unname> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
 # Path seams (agent-popup.sh's env-var style) so bats can inject.
 local _agent_scripts=${AGENT_SCRIPTS_DIR:-$HOME/.config/tmux/scripts}
 local _agent_cli_lib=${AGENT_CLI_LIB:-$_agent_scripts/agent-cli-lib.sh}
+local _agent_state_sh=${AGENT_STATE_SH:-$_agent_scripts/agent-state.sh}
+local _agent_sweep=${AGENT_SWEEP:-$_agent_scripts/agent-sweep.sh}
 local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
 
 [[ -r $_agent_cli_lib ]] || {
@@ -29,6 +31,10 @@ usage: agent <subcommand> [args]
   prompt <target> <text...> [--force]
                     paste a prompt + submit, then verify the agent starts;
                     refuses blocked/working panes unless --force
+  name [<target>] <name>
+                    label a pane (default: this pane); unique among live
+                    agents, grammar [a-z][a-z0-9_-]{0,31}
+  unname [<target>] remove a pane's label (default: this pane)
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
@@ -255,6 +261,59 @@ _agent_prompt() {
   return 5
 }
 
+# _agent_pane_or_self [TARGET] — resolve TARGET, or default to this pane.
+_agent_pane_or_self() {
+  if [[ -n ${1:-} ]]; then
+    agent_resolve_target "$1"
+  elif [[ -n ${TMUX_PANE:-} ]]; then
+    printf '%s\n' "$TMUX_PANE"
+  else
+    print -u2 "agent: not inside tmux; pass a target pane"
+    return 3
+  fi
+}
+
+# agent name — thin wrapper over agent-state.sh's name verb (the canonical
+# @agent_* mutator, which owns the grammar + has-state checks) plus the
+# cross-pane live-uniqueness check the mutator cannot do alone: sweep first so
+# a dead pane's name is freed, then reject a collision with a survivor.
+# Check-then-set spans two tmux calls (tmux has no compare-and-set), so two
+# concurrent `agent name` calls can race - accepted single-user limitation.
+_agent_name() {
+  local target= name=
+  case $# in
+    1) name=$1 ;;
+    2) target=$1 name=$2 ;;
+    *)
+      print -u2 "usage: agent name [<target>] <name>"
+      return 2
+      ;;
+  esac
+  local pane
+  pane=$(_agent_pane_or_self "$target") || return $?
+  valid_agent_name "$name" || {
+    print -u2 "agent name: invalid name '$name' (grammar: [a-z][a-z0-9_-]{0,31})"
+    return 2
+  }
+  [[ -r $_agent_sweep ]] && sh "$_agent_sweep" >/dev/null 2>&1 || true
+  if agent_name_taken "$name" "$pane"; then
+    print -u2 "agent name: '$name' is already held by a live agent"
+    return 2
+  fi
+  AGENT_STATE_PANE=$pane sh "$_agent_state_sh" name "$name"
+}
+
+# agent unname — drop the label; no validation or uniqueness needed.
+_agent_unname() {
+  (( $# <= 1 )) || {
+    print -u2 "usage: agent unname [<target>]"
+    return 2
+  }
+  local pane
+  pane=$(_agent_pane_or_self "${1:-}") || return $?
+  AGENT_STATE_PANE=$pane sh "$_agent_state_sh" unname
+}
+
 local _agent_sub=${1:-}
 (( $# )) && shift
 case ${_agent_sub:-ls} in
@@ -262,6 +321,8 @@ case ${_agent_sub:-ls} in
   state) _agent_state "$@" ;;
   wait) _agent_wait "$@" ;;
   prompt) _agent_prompt "$@" ;;
+  name) _agent_name "$@" ;;
+  unname) _agent_unname "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"
