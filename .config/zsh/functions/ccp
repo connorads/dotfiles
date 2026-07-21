@@ -12,9 +12,11 @@ _ccp_usage() {
 
 local root="$HOME/.claude-profiles/code"
 local choice
-# Flags injected ahead of the user's claude-args. -y mirrors the `cy` alias:
-# the git-policy system prompt plus --dangerously-skip-permissions.
+# Flags injected ahead of the user's claude-args. The system-prompt append (git +
+# worktree overrides) is always injected - ccp launches are interactive, mirroring
+# the `c` alias. -y adds --dangerously-skip-permissions on top, mirroring `cy`.
 local -a inject
+inject=( --append-system-prompt-file "$HOME/.claude/system-append.md" )
 
 # Leading flags own the front of the arg list; everything after the account
 # name forwards to claude untouched.
@@ -25,10 +27,7 @@ while [[ "${1:-}" == -* ]]; do
             return 0
             ;;
         -y|--yolo)
-            inject=(
-                --append-system-prompt-file "$HOME/.claude/system-append.md"
-                --dangerously-skip-permissions
-            )
+            inject+=( --dangerously-skip-permissions )
             shift
             ;;
         --)
