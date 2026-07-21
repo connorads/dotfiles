@@ -242,6 +242,17 @@ sbx list               # List sbx boxes; sbx stop/rm [name] to stop / nuke (box 
 lazydocker             # TUI to browse/exec/log/prune containers (nix)
 ```
 
+### ccp account config inheritance
+
+`CLAUDE_CONFIG_DIR` fully relocates the user scope, so a `ccp` account would
+otherwise read none of the shared `~/.claude` config. Each launch (and resurrect
+restore) runs [`claude-profile-materialise`](./.config/zsh/functions/claude-profile-materialise),
+which merges the shared `settings.json` (statusline, hooks, env, permissions)
+over the profile's own - base winning, `model` stripped - and symlinks
+`CLAUDE.md` at the shared memory. So isolated accounts inherit the shared user
+config while keeping their own auth/session and per-account `model`/`theme`.
+`settings.local.json` (the local permissions/sandbox scope) stays per-account.
+
 ### GitHub CLI auth
 
 Desktop/granting hosts use normal `gh auth` keyring auth. `gh-gate` controls `gh`
