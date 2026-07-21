@@ -141,11 +141,50 @@ EOF
   [ "$output" = "false" ]
 }
 
+@test "save hook records a Claude session for a profile pane under its config dir" {
+  # The pane's registry lives under the profile config dir, not ~/.claude, so the
+  # save hook must resolve the account before reading the registry.
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$cfg/sessions" "$BATS_TEST_TMPDIR/proc/901"
+  printf 'CLAUDE_CONFIG_DIR=%s\0' "$cfg" >"$BATS_TEST_TMPDIR/proc/901/environ"
+  cat >"$cfg/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-profile","cwd":"/Users/connorads"}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*-E*) exit 1 ;;
+	*ttys001*) printf ' 901 S+ claude\n' ;;
+	*) exit 1 ;;
+esac
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
+  [ "$output" = "session-profile" ]
+  run jq -r '.panes["main:1.1"].claudeConfigDir' "$SESSION_FILE"
+  [ "$output" = "$cfg" ]
+}
+
 @test "save hook records CLAUDE_CONFIG_DIR via ps -E without leaking other env vars" {
   # Build the config dir via a var so no concrete profile path is committed.
   local acct=acme
   export CLAUDE_CFG="$HOME/.claude-profiles/code/$acct"
-  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+  # A profile pane's session lives under its config dir, not ~/.claude.
+  mkdir -p "$CLAUDE_CFG/sessions"
+  cat >"$CLAUDE_CFG/sessions/901.json" <<'EOF'
 {"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
 EOF
   write_stub tmux <<'EOF'
@@ -188,7 +227,9 @@ EOF
   mkdir -p "$BATS_TEST_TMPDIR/proc/901"
   printf 'HOME=%s\0CLAUDE_CONFIG_DIR=%s\0SECRET_TOKEN=hunter2\0' "$HOME" "$CLAUDE_CFG" \
     >"$BATS_TEST_TMPDIR/proc/901/environ"
-  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+  # A profile pane's session lives under its config dir, not ~/.claude.
+  mkdir -p "$CLAUDE_CFG/sessions"
+  cat >"$CLAUDE_CFG/sessions/901.json" <<'EOF'
 {"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
 EOF
   write_stub tmux <<'EOF'
