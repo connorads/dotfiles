@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name)
-# usage: agent <ls|state|wait|prompt|name|unname> [args]
+# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name/pick)
+# usage: agent <ls|state|wait|prompt|name|unname|pick> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -35,6 +35,7 @@ usage: agent <subcommand> [args]
                     label a pane (default: this pane); unique among live
                     agents, grammar [a-z][a-z0-9_-]{0,31}
   unname [<target>] remove a pane's label (default: this pane)
+  pick              fzf picker over live agents; Enter jumps to the pane
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
@@ -314,6 +315,22 @@ _agent_unname() {
   AGENT_STATE_PANE=$pane sh "$_agent_state_sh" unname
 }
 
+# agent pick — the shell-callable "wts for agents": delegate to the popup
+# script's pick (sweep + shared enumerator + fzf + jump) on this TTY. The
+# prefix + A binding keeps its display-popup; running from a shell needs none.
+_agent_pick() {
+  command -v fzf >/dev/null 2>&1 || {
+    print -u2 "agent pick: fzf required"
+    return 1
+  }
+  local popup=${AGENT_POPUP:-$_agent_scripts/agent-popup.sh}
+  [[ -r $popup ]] || {
+    print -u2 "agent pick: script not found: $popup"
+    return 1
+  }
+  sh "$popup" pick
+}
+
 local _agent_sub=${1:-}
 (( $# )) && shift
 case ${_agent_sub:-ls} in
@@ -323,6 +340,7 @@ case ${_agent_sub:-ls} in
   prompt) _agent_prompt "$@" ;;
   name) _agent_name "$@" ;;
   unname) _agent_unname "$@" ;;
+  pick) _agent_pick "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"
