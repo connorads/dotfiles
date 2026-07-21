@@ -66,9 +66,8 @@ find_claude_session() {
 # A client pane runs under CLAUDE_CONFIG_DIR=~/.claude-profiles/code/<name>,
 # invisible in argv, so fidelity restore needs this one env var recorded at save
 # time - without it a restored client pane silently reverts to the personal
-# account (a cross-billing risk).
-# SECURITY: /proc environ and `ps -E` expose the process's FULL environment
-# including real secrets - extract only this var, never persist anything else.
+# account (a cross-billing risk). Delegates to the shared
+# claude_config_dir_for_pid (env introspection, secret-safe by construction).
 find_claude_env() {
 	local pane_pid="$1"
 	local tty="$2"
@@ -77,19 +76,7 @@ find_claude_env() {
 	claude_pid=$(agent_foreground_pid_for_tty "$tty" "claude" "$pane_pid")
 	[ -n "$claude_pid" ] || return 0
 
-	# Linux: null-delimited environ file (RESURRECT_PROC_ROOT overrides for tests).
-	local environ="${RESURRECT_PROC_ROOT:-/proc}/$claude_pid/environ"
-	if [ -r "$environ" ]; then
-		tr '\0' '\n' <"$environ" 2>/dev/null |
-			grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
-		return 0
-	fi
-
-	# macOS: ps -E appends the env as space-separated tokens. Space-containing
-	# values are unsupported here (config dir paths contain none).
-	ps -E -o command= -p "$claude_pid" 2>/dev/null |
-		tr ' ' '\n' |
-		grep -m1 '^CLAUDE_CONFIG_DIR=' | cut -d= -f2- || true
+	claude_config_dir_for_pid "$claude_pid"
 }
 
 # --- Codex session discovery ---
