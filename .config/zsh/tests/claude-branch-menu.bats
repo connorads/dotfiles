@@ -106,6 +106,47 @@ EOF
   assert_log_missing "No Claude in this pane"
 }
 
+@test "profile pane -> fork command carries CLAUDE_CONFIG_DIR from the live env" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$cfg/sessions" "$BATS_TEST_TMPDIR/proc/711"
+  printf 'CLAUDE_CONFIG_DIR=%s\0SECRET_TOKEN=hunter2\0' "$cfg" >"$BATS_TEST_TMPDIR/proc/711/environ"
+  cat >"$cfg/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+  stub_ps_with_foreground_claude
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -qF "CLAUDE_CONFIG_DIR=$cfg claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+  # The prompt sub-modes must carry the account through too.
+  grep -qF "prompt-worktree /Users/connorads session-xyz $cfg" "$TEST_LOG"
+  # Never persist any other env var from the live environ.
+  assert_log_missing "hunter2"
+}
+
+@test "default-account pane -> fork command stays bare (no CLAUDE_CONFIG_DIR)" {
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -qF "claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+  assert_log_missing "CLAUDE_CONFIG_DIR="
+}
+
+@test "fork-repeat threads the config dir into every fork command" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  run "$MENU" fork-repeat split-right 3 "%1" "/tmp/work space" "session-xyz" "$cfg"
+  [ "$status" -eq 0 ]
+  [ "$(log_count "CLAUDE_CONFIG_DIR=$cfg claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 3 ]
+}
+
 @test "menu offers forking into a new worktree window" {
   stub_ps_with_foreground_claude
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
