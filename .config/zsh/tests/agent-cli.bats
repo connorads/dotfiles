@@ -187,6 +187,55 @@ teardown() {
   [ "$status" -eq 2 ]
 }
 
+# --- agent wait ---
+
+@test "agent wait returns 0 immediately when the state already matches" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state idle
+  run_zsh_function "$AGENT" wait "$p1" # default --for done,idle,blocked
+  [ "$status" -eq 0 ]
+}
+
+@test "agent wait matches an explicit --for state" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state blocked
+  run env AGENT_WAIT_POLL=0.2 zsh --no-rcs "$AGENT" wait "$p1" --for blocked --timeout 5
+  [ "$status" -eq 0 ]
+}
+
+@test "agent wait times out with exit 1" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state idle
+  run env AGENT_WAIT_POLL=0.2 zsh --no-rcs "$AGENT" wait "$p1" --for working --timeout 1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *timeout* ]]
+}
+
+@test "agent wait exits 3 when the pane dies mid-wait" {
+  tx split-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state working
+  (
+    sleep 0.6
+    tx kill-pane -t "$p2"
+  ) &
+  run env AGENT_WAIT_POLL=0.2 zsh --no-rcs "$AGENT" wait "$p2" --for done --timeout 10
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"pane gone"* ]]
+}
+
+@test "agent wait rejects a bad --for token with exit 2" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  run_zsh_function "$AGENT" wait "$p1" --for bogus
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"invalid state"* ]]
+}
+
+@test "agent wait without a target exits 2" {
+  run_zsh_function "$AGENT" wait
+  [ "$status" -eq 2 ]
+}
+
 @test "agent rejects an unknown subcommand with exit 2" {
   run_zsh_function "$AGENT" frobnicate
   [ "$status" -eq 2 ]
