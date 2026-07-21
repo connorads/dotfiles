@@ -27,8 +27,10 @@ EOF
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
   [ "${lines[0]}" = "acme" ]
-  [ "${lines[1]}" = "--model" ]
-  [ "${lines[2]}" = "fable" ]
+  [ "${lines[1]}" = "--append-system-prompt-file" ]
+  [ "${lines[2]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[3]}" = "--model" ]
+  [ "${lines[4]}" = "fable" ]
 }
 
 @test "-y injects the cy flags ahead of a named account's args" {
@@ -85,15 +87,17 @@ EOF
   [ "${#lines[@]}" -eq 4 ]
 }
 
-@test "default launches bare claude on the plain config" {
+@test "default injects the append on the plain config" {
   stub_arg_logger claude
 
   run_zsh_function "$CCP" default --resume abc
 
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
-  [ "${lines[0]}" = "--resume" ]
-  [ "${lines[1]}" = "abc" ]
+  [ "${lines[0]}" = "--append-system-prompt-file" ]
+  [ "${lines[1]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[2]}" = "--resume" ]
+  [ "${lines[3]}" = "abc" ]
 }
 
 @test "no argument and no fzf errors with usage" {
@@ -127,10 +131,12 @@ EOF
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
   [ "${lines[0]}" = "acme" ]
-  [ "${#lines[@]}" -eq 1 ]
+  [ "${lines[1]}" = "--append-system-prompt-file" ]
+  [ "${lines[2]}" = "$HOME/.claude/system-append.md" ]
+  [ "${#lines[@]}" -eq 3 ]
 }
 
-@test "picker selecting default launches bare claude" {
+@test "picker selecting default injects the append" {
   write_stub fzf <<'EOF'
 #!/usr/bin/env bash
 cat >/dev/null
@@ -145,7 +151,7 @@ EOF
 
   [ "$status" -eq 0 ]
   run cat "$TEST_LOG"
-  [ "${lines[0]}" = "claude-called:" ]
+  [[ "${lines[0]}" == "claude-called:--append-system-prompt-file "*"system-append.md" ]]
 }
 
 @test "picker cancelled (empty selection) exits without launching" {
