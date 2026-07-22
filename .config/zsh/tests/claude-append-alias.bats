@@ -11,6 +11,9 @@ setup() {
   setup_test_home
   mkdir -p "$HOME/.claude"
   : >"$HOME/$APPEND_REL"
+  # The aliases word-split $(claude-launch-flags); install the real owner so the
+  # substitution resolves on the isolated PATH.
+  install -m 0755 "$FUNCTIONS_DIR/claude-launch-flags" "$TEST_BIN/claude-launch-flags"
   write_stub claude <<'EOF'
 #!/usr/bin/env bash
 printf 'ARGS:%s\n' "$*"
