@@ -243,9 +243,7 @@ _agent_prompt() {
     return 3
   }
   sleep "${AGENT_PROMPT_SETTLE:-0.4}"
-  local key
-  key=$(agent_submit_key "$kind")
-  tmux send-keys -t "$pane" "$key"
+  tmux send-keys -t "$pane" C-m
 
   # Stall verify - only for kinds whose hooks verifiably set @agent_state on
   # prompt submit (claude and codex fire `working` synchronously); other kinds
@@ -256,7 +254,7 @@ _agent_prompt() {
   _agent_prompt_verify "$snapshot" "$pane" && return 0
   # The text may have landed unsubmitted (the Enter-swallow race): retry the
   # submit key once, then give up.
-  tmux send-keys -t "$pane" "$key"
+  tmux send-keys -t "$pane" C-m
   _agent_prompt_verify "$snapshot" "$pane" && return 0
   print -u2 "agent prompt: sent but $pane never left '${snapshot:-none}' (stall)"
   return 5

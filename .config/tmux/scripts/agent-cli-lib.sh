@@ -50,13 +50,6 @@ agent_prompt_gate() {
 	esac
 }
 
-# agent_submit_key KIND — the tmux key that submits a typed prompt for KIND.
-# Every tracked kind submits with Enter today; KIND stays the seam for future
-# per-kind tuning. Pure.
-agent_submit_key() {
-	echo "C-m"
-}
-
 # agent_resolve_target TARGET — echo TARGET's canonical pane_id (%N). TARGET is
 # a pane id (%N), a tmux target address (session:win.pane), or an exact
 # @agent_name match. 0-match and ambiguous-name both diagnose to stderr and
