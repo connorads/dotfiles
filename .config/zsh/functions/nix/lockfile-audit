@@ -22,9 +22,14 @@ done
 # Discover targets from the dotfiles index so new projects are swept
 # automatically. ls-files reports paths relative to (and only under) the cwd,
 # so pin it to $HOME in a subshell or any other cwd hides lockfiles.
+# Exclude lockfiles under a `fixtures/` path segment: skill eval/test fixtures
+# are inert text, never installed, and some deliberately pin known-malware
+# versions for grading (e.g. supply-chain-hardening's compromised-lockfile).
+# Scanning them as if they were real deps would let a grading fixture brick `up`.
 local -a tracked args
 tracked=("${(f)$(cd "$HOME" && dotfiles ls-files \
-  | grep -E '(^|/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lock|Cargo\.lock|uv\.lock|poetry\.lock)$')}")
+  | grep -E '(^|/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lock|Cargo\.lock|uv\.lock|poetry\.lock)$' \
+  | grep -vE '(^|/)fixtures/')}")
 local f
 for f in $tracked; do
   [[ -n $f && -f $HOME/$f ]] && args+=(-L "$HOME/$f")
