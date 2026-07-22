@@ -344,3 +344,41 @@ Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary)
 and the RAM/mem pills in [`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats).
 Keep the gauge legend in [`help.md`](./help.md) in sync with the lib. The popup's
 own awk and the `memwatch` notifier are not yet unit-tested.
+
+## Resurrect save freshness (custom subsystem)
+
+Same one-lib-many-surfaces shape as the memory gauge, for a different failure:
+**detecting when session saving silently stops.** continuum advances its
+save-timestamp unconditionally every 5 min, so a save path that stops producing
+files ticks on without error — it did exactly that for 3.5 weeks (saves froze at
+28 Jun) until a kernel panic found no recent session to restore. The write path
+was healthy; the *silence* was the bug. This subsystem makes save-freshness a
+visible, alarming state.
+
+Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file.
+
+- [`scripts/resurrect-lib.sh`](./scripts/resurrect-lib.sh) — **canonical**
+  thresholds (`RESURRECT_AGING_SECS` 10 min / `RESURRECT_STALE_SECS` 15 min,
+  env-overridable for tests), the save-dir resolver (`resurrect_dir`, replicating
+  the plugin's `helpers.sh` default), newest-save age (`resurrect_newest_age_secs`
+  — max mtime over `tmux_resurrect_*.txt` plus the `last` symlink *target*,
+  `_resurrect_mtime` dereferencing with `-L` and handling GNU/BSD `stat`), the
+  state mapping (`resurrect_state`), and the colour/glyph/token language
+  (`resurrect_state_colour` green/yellow/red, `resurrect_state_glyph` ⟳ turning /
+  ⚠ wrong, `resurrect_token` age / `stale` / `none`). Sourced, never run.
+  Cross-platform (no macOS-only syscalls), so it works on Linux hosts too.
+  Caveat: tmux-resurrect only keeps a timestamped file when session state changed
+  since the previous save, so `age` is the age of the last *content-changing*
+  save — exactly the signal that went stale in the incident.
+- [`scripts/status-right.sh`](./scripts/status-right.sh) — `resurrect_segment()`,
+  the always-shown pill (width ≥ 80). Unlike the quiet-when-healthy mem pill, a
+  live green `⟳ 2m` is wanted as the running-confidence signal the incident
+  lacked; it reddens to yellow/red the moment saving stops. Placed between the AI
+  pill and the cpu pill — the one slot where its surface1 (`#45475a`) shade isn't
+  adjacent to another surface1 pill (mem/disk/git), so it stays a distinct
+  segment.
+
+Tests: [`../zsh/tests/resurrect-lib.bats`](../zsh/tests/resurrect-lib.bats)
+(state transitions across the age bands via threshold overrides + aged files,
+colour/glyph/token, `last`-target deref). The pill itself is verified manually
+(`status-right.sh 200 "$HOME" "" "" ""`, then `touch -t` an aged save and re-run).
