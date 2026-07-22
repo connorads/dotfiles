@@ -234,6 +234,35 @@
     };
   };
 
+  # -- tmux-resurrect keepalive (independent save driver) --
+  # continuum's autosave is injected into tmux's status-right and advances its
+  # save-timestamp unconditionally, so a save path that stops producing files
+  # ticks on silently — it did for 3.5 weeks until a kernel panic found no
+  # session to restore. This agent makes saving depend on launchd instead: it
+  # runs the keepalive every 5 min, which drives save.sh with its errors logged
+  # (not swallowed) and reddens the status pill / nags clients when saves go
+  # stale. Reaches both Macs because darwin-shared is imported by every darwin
+  # config; the mini is the headless dev box the incident happened on.
+  #
+  # ProgramArguments points at the TRACKED script path, not a nix-store wrapper,
+  # so edits to the keepalive take effect next tick without a rebuild. PATH
+  # carries the per-user profile (where tmux and GNU stat resolve) plus system
+  # bins. A user agent (not a system daemon): it drives the user's tmux server.
+  launchd.user.agents.tmux-resurrect-save = {
+    serviceConfig = {
+      Label = "dev.connorads.tmux-resurrect-save";
+      ProgramArguments = [
+        "/bin/bash"
+        "/Users/connorads/.config/tmux/scripts/resurrect-keepalive.sh"
+      ];
+      StartInterval = 300; # every 5 min, independent of tmux status refresh
+      RunAtLoad = true; # save promptly after a crash-reboot / drs
+      ProcessType = "Background";
+      EnvironmentVariables.PATH = "/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+      StandardErrorPath = "/Users/connorads/.cache/tmux-resurrect-save.err.log";
+    };
+  };
+
   # MagicDNS resolver (OSS tailscaled doesn't create this automatically).
   # See: https://github.com/tailscale/tailscale/issues/13461
   #
