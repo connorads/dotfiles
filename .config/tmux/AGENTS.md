@@ -377,8 +377,28 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   pill and the cpu pill — the one slot where its surface1 (`#45475a`) shade isn't
   adjacent to another surface1 pill (mem/disk/git), so it stays a distinct
   segment.
+- [`scripts/resurrect-keepalive.sh`](./scripts/resurrect-keepalive.sh) — the
+  **drive** layer (macOS): an independent save driver run every 5 min by a
+  launchd agent (`dev.connorads.tmux-resurrect-save`, defined in
+  [`darwin-shared.nix`](../nix/modules/darwin-shared.nix), both Macs), so saving
+  depends on launchd rather than continuum's status-refresh-injected autosave.
+  It runs `save.sh quiet` capturing exit code + stderr to
+  `~/.cache/tmux-resurrect-keepalive.log` (the opposite of continuum's
+  `>/dev/null 2>&1`), then verifies freshness via the lib: on `STALE`/`NONE` it
+  sets the `@resurrect_stale` tmux option and nags each attached client by name
+  (`display-message -c` — from launchd there is no current client, so an
+  untargeted message would no-op), else clears the flag. No tmux server ⇒ logs
+  `no server, skip` and exits 0. continuum stays enabled as cross-platform
+  redundancy (Linux hosts get the detect pill but no keepalive yet — a deferred
+  systemd-timer follow-up); the minor double-save on macs is harmless.
+
+Restore stays manual (`prefix + Ctrl-r`); `@continuum-restore` is deliberately
+`off` (see the resurrect agent-session restore subsystem above).
 
 Tests: [`../zsh/tests/resurrect-lib.bats`](../zsh/tests/resurrect-lib.bats)
 (state transitions across the age bands via threshold overrides + aged files,
-colour/glyph/token, `last`-target deref). The pill itself is verified manually
+colour/glyph/token, `last`-target deref) and
+[`../zsh/tests/resurrect-keepalive.bats`](../zsh/tests/resurrect-keepalive.bats)
+(integration: drives a real save against a throwaway default-socket server, the
+skip/alarm/clear/error-capture paths). The pill itself is verified manually
 (`status-right.sh 200 "$HOME" "" "" ""`, then `touch -t` an aged save and re-run).
