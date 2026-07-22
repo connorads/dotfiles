@@ -1,0 +1,16 @@
+#!/usr/bin/env zsh
+# claude-launch-flags: emit the interactive Claude launch flag set on one line.
+# The single owner of "how I launch Claude interactively" - the `c`/`cy`/`cyc`/
+# `cspy` aliases and `ccp` word-split this instead of re-typing the flags, so the
+# append-prompt path lives in exactly one place. Base = the system-prompt append
+# (git commit/branch + worktree overrides); --yolo/-y adds skip-permissions.
+emulate -L zsh
+
+local -a flags
+flags=(--append-system-prompt-file "$HOME/.claude/system-append.md")
+
+case "${1:-}" in
+-y | --yolo) flags+=(--dangerously-skip-permissions) ;;
+esac
+
+print -r -- "${flags[@]}"
