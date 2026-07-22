@@ -1,0 +1,630 @@
+#!/usr/bin/env zsh
+# agent-teleport: ship a live Claude/Codex session to another machine over ssh
+# alias: atp
+#
+# Forks the focused pane's (or a picked) live session under a FRESH id, rewrites
+# the transcript locally (session id + recorded cwd), ships it to the target via
+# `ts ssh`, and resumes it there - either as a new window in the target's tmux
+# or as a ready-to-paste resume command on the clipboard. The origin session is
+# left running untouched; a fresh id is mandatory because resuming one Claude id
+# in two places interleaves transcripts and duplicate Codex ids collide.
+#
+# Remote needs only ssh, the agent CLI, tmux (window mode) and - profile mode -
+# the dotfiles-shipped claude-profile-materialise. All rewriting happens locally.
+emulate -L zsh
+setopt pipefail
+
+local usage="Usage: agent-teleport [--host HOST] [--dest PATH] [--window|--copy]
+                      [--pane %id | --pid PID] [--choose] [--list-hosts]
+
+Teleport the live Claude Code or Codex session of a tmux pane to another
+machine: fork the transcript under a fresh session id, ship it over ssh
+(Tailscale), and resume it there.
+
+  --host HOST   target ssh host (default: fzf over ~/.ssh/config hosts)
+  --dest PATH   working directory on the target (default: origin cwd with the
+                target's \$HOME substituted; prompts on a missing guess)
+  --window      open a new window in the target's tmux (default)
+  --copy        copy the full remote resume command to the clipboard instead
+  --pane %id    resolve the agent from this tmux pane
+  --pid PID     resolve the agent from this process id
+  --choose      pick window/copy interactively (used by the tmux binding)
+  --list-hosts  print candidate hosts and exit
+
+With neither --pane nor --pid, picks from live sessions via fzf.
+Exit: 0 ok · 1 error · 2 usage · 130 cancelled"
+
+local scripts_dir="${ATP_TMUX_SCRIPTS:-$HOME/.config/tmux/scripts}"
+local session_lib="$scripts_dir/lib/agent-session.sh"
+local argv_lib="$scripts_dir/lib/resurrect-argv.sh"
+
+_atp_die() {
+  print -u2 -- "agent-teleport: $1"
+  return 1
+}
+
+_atp_warn() {
+  print -u2 -- "agent-teleport: warning: $1"
+}
+
+# Call a bash-only lib function (agent-session.sh / resurrect-argv.sh are bash;
+# sourcing them into zsh is not supported - same shim the resurrect scripts use).
+_atp_lib() {
+  local lib="$1"
+  shift
+  CLAUDE_SESSION_RESOLVER="$scripts_dir/claude-session-resolve.py" \
+    bash -c 'source "$1"; shift; "$@"' bash "$lib" "$@"
+}
+
+# Mirror of project_slug in claude-session-resolve.py: Claude slugs EVERY
+# non-alphanumeric cwd char (dots included) to "-".
+_atp_slugify() {
+  print -r -- "${1//[^A-Za-z0-9]/-}"
+}
+
+# RFC 9562 UUIDv7 (48-bit ms timestamp + version/variant + random), lowercase.
+_atp_uuid7() {
+  python3 - <<'PY'
+import os, time
+b = bytearray(int(time.time() * 1000).to_bytes(6, "big") + os.urandom(10))
+b[6] = 0x70 | (b[6] & 0x0F)
+b[8] = 0x80 | (b[8] & 0x3F)
+h = b.hex()
+print(f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}")
+PY
+}
+
+# _atp_rewrite_claude <src> <out> <newid> <dest_cwd>
+# Claude resume keys on the FILENAME, but keep every line's internal sessionId
+# in step; rewrite the recorded cwd so the fork is native to the target path.
+_atp_rewrite_claude() {
+  jq -c --arg id "$3" --arg cwd "$4" '
+    if type == "object" then
+      (if has("sessionId") then .sessionId = $id else . end
+       | if has("cwd") then .cwd = $cwd else . end)
+    else . end
+  ' <"$1" >"$2"
+}
+
+# _atp_rewrite_codex <src> <out> <newid>
+# Only line 1 (session_meta) carries identity; the rest ships byte-identical.
+_atp_rewrite_codex() {
+  head -n 1 "$1" | jq -c --arg id "$3" '
+    .payload |= (if has("id") then .id = $id else . end
+                 | if has("session_id") then .session_id = $id else . end)
+  ' >"$2" || return 1
+  tail -n +2 "$1" >>"$2"
+}
+
+# _atp_codex_fork_name <orig_basename> <newid>
+# rollout-<ts>-<olduuid>.jsonl -> rollout-<ts>-<newid>.jsonl
+_atp_codex_fork_name() {
+  local base="${1%.jsonl}"
+  if [[ ! "$base" =~ '^rollout-(.+)-[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' ]]; then
+    return 1
+  fi
+  print -r -- "rollout-${match[1]}-$2.jsonl"
+}
+
+# _atp_remap_flags <origin_home> <target_home> [token...]
+# Swap the origin-$HOME prefix on path-valued flag tokens (bare or --flag=path)
+# so replayed flags like --append-system-prompt-file resolve on the target.
+# Emits one token per line.
+_atp_remap_flags() {
+  local oh="$1" th="$2" tok
+  shift 2
+  for tok in "$@"; do
+    if [[ "$tok" == "$oh"/* ]]; then
+      print -r -- "$th${tok#"$oh"}"
+    elif [[ "$tok" == --*="$oh"/* ]]; then
+      print -r -- "${tok%%=*}=$th${${tok#*=}#"$oh"}"
+    else
+      print -r -- "$tok"
+    fi
+  done
+}
+
+# Pickers need a tty; ATP_PICKER=1 forces them on (popups always have one -
+# this is the test/emergency override, same shape as shotpath's SHOTPATH_PICKER).
+_atp_picker_ok() {
+  [[ "${ATP_PICKER:-}" == 1 ]] || [[ -t 0 && -t 1 ]]
+}
+
+_atp_ssh_hosts() {
+  local ssh_config="$HOME/.ssh/config"
+  [[ -r "$ssh_config" ]] || return 0
+  awk 'tolower($1) == "host" { for (i = 2; i <= NF; i++) if ($i !~ /[*?]/) print $i }' "$ssh_config" |
+    awk '!seen[$0]++'
+}
+
+_atp_copy_clipboard() {
+  if command -v pbcopy >/dev/null 2>&1; then
+    print -rn -- "$1" | pbcopy
+  elif command -v wl-copy >/dev/null 2>&1; then
+    print -rn -- "$1" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    print -rn -- "$1" | xclip -selection clipboard
+  else
+    _atp_warn "no clipboard writer found (pbcopy/wl-copy/xclip)"
+    return 1
+  fi
+}
+
+# Test hooks: expose the pure helpers so bats can drive them directly.
+if [[ "${1:-}" == "--internal" ]]; then
+  shift
+  local fn="${1:-}"
+  shift 2>/dev/null || true
+  case "$fn" in
+  slugify) _atp_slugify "$@" ;;
+  uuid7) _atp_uuid7 ;;
+  rewrite-claude) _atp_rewrite_claude "$@" ;;
+  rewrite-codex) _atp_rewrite_codex "$@" ;;
+  codex-fork-name) _atp_codex_fork_name "$@" ;;
+  remap-flags) _atp_remap_flags "$@" ;;
+  *)
+    print -u2 -- "agent-teleport: unknown internal helper: $fn"
+    return 2
+    ;;
+  esac
+  return $?
+fi
+
+local host="" opt_dest="" mode="window" mode_explicit=0 opt_pane="" opt_pid="" opt_choose=0
+while (($# > 0)); do
+  case "$1" in
+  --host)
+    [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --host needs a value"; return 2; }
+    host="$2"
+    shift 2
+    ;;
+  --dest)
+    [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --dest needs a value"; return 2; }
+    opt_dest="$2"
+    shift 2
+    ;;
+  --window)
+    mode="window" mode_explicit=1
+    shift
+    ;;
+  --copy)
+    mode="copy" mode_explicit=1
+    shift
+    ;;
+  --pane)
+    [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --pane needs a value"; return 2; }
+    opt_pane="$2"
+    shift 2
+    ;;
+  --pid)
+    [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --pid needs a value"; return 2; }
+    opt_pid="$2"
+    shift 2
+    ;;
+  --choose)
+    opt_choose=1
+    shift
+    ;;
+  --list-hosts)
+    _atp_ssh_hosts
+    return 0
+    ;;
+  -h | --help)
+    print -r -- "$usage"
+    return 0
+    ;;
+  *)
+    print -u2 -- "agent-teleport: unknown argument: $1"
+    print -u2 -- "$usage"
+    return 2
+    ;;
+  esac
+done
+
+if [[ -n "$opt_pane" && -n "$opt_pid" ]]; then
+  print -u2 -- "agent-teleport: pass either --pane or --pid, not both"
+  return 2
+fi
+
+command -v jq >/dev/null 2>&1 || { _atp_die "jq not found"; return 1; }
+command -v ts >/dev/null 2>&1 || { _atp_die "ts (tailscale wrapper) not found"; return 1; }
+
+# ---------------------------------------------------------------- resolve agent
+
+local agent="" apid=""
+
+if [[ -n "$opt_pane" ]]; then
+  local pane_tty pane_root_pid pane_path
+  pane_tty=$(tmux display-message -pt "$opt_pane" '#{pane_tty}' 2>/dev/null) ||
+    { _atp_die "cannot read tmux pane $opt_pane"; return 1; }
+  pane_root_pid=$(tmux display-message -pt "$opt_pane" '#{pane_pid}' 2>/dev/null)
+  pane_path=$(tmux display-message -pt "$opt_pane" '#{pane_current_path}' 2>/dev/null)
+  apid=$(_atp_lib "$session_lib" agent_foreground_pid_for_tty "$pane_tty" claude "$pane_root_pid")
+  if [[ -n "$apid" ]]; then
+    agent=claude
+  else
+    apid=$(_atp_lib "$session_lib" agent_foreground_pid_for_tty "$pane_tty" codex "$pane_root_pid")
+    [[ -n "$apid" ]] && agent=codex
+  fi
+  [[ -n "$agent" ]] || { _atp_die "no Claude or Codex running in pane $opt_pane"; return 1; }
+elif [[ -n "$opt_pid" ]]; then
+  apid="$opt_pid"
+else
+  # No pane context: fzf over live sessions (Claude pid registries across the
+  # default account + every ccp profile; Codex via live process scan).
+  _atp_picker_ok || { _atp_die "no --pane/--pid and no tty for the session picker"; return 1; }
+  command -v fzf >/dev/null 2>&1 || { _atp_die "fzf not found for the session picker"; return 1; }
+  local -a live_lines
+  live_lines=()
+  local dir f reg_pid reg_cwd label
+  for dir in "$HOME/.claude" "$HOME"/.claude-profiles/code/*(N/); do
+    [[ "$dir" == "$HOME/.claude" ]] && label=default || label="${dir:t}"
+    for f in "$dir"/sessions/*.json(N); do
+      reg_pid="${f:t:r}"
+      [[ "$reg_pid" == <-> ]] || continue
+      kill -0 "$reg_pid" 2>/dev/null || continue
+      reg_cwd=$(jq -r '.cwd // empty' "$f" 2>/dev/null)
+      live_lines+=("claude	$reg_pid	$label	$reg_cwd")
+    done
+  done
+  local cpid cmeta
+  for cpid in $(pgrep -x codex 2>/dev/null); do
+    cmeta=$(_atp_lib "$session_lib" codex_session_resolve_for_pid "$cpid" "" 2>/dev/null) || continue
+    [[ -n "$cmeta" ]] || continue
+    reg_cwd=$(print -r -- "$cmeta" | jq -r '.cwd // empty' 2>/dev/null)
+    live_lines+=("codex	$cpid	-	$reg_cwd")
+  done
+  (( ${#live_lines} > 0 )) || { _atp_die "no live Claude/Codex sessions found"; return 1; }
+  local picked
+  picked=$(print -rl -- "${live_lines[@]}" |
+    fzf --prompt='Teleport session: ' --height=40% --reverse \
+      --header='agent · pid · account · cwd' --delimiter='\t') || return 130
+  [[ -n "$picked" ]] || return 130
+  apid="${${(s:	:)picked}[2]}"
+fi
+
+if [[ -z "$agent" ]]; then
+  local comm
+  comm=$(ps -o comm= -p "$apid" 2>/dev/null)
+  case "${comm:t}" in
+  claude) agent=claude ;;
+  codex) agent=codex ;;
+  *)
+    _atp_die "pid $apid is not a claude or codex process (${comm:-gone})"
+    return 1
+    ;;
+  esac
+fi
+
+# -------------------------------------------------------------- resolve session
+
+local sid="" origin_cwd="" transcript="" config_dir=""
+
+if [[ "$agent" == claude ]]; then
+  config_dir=$(_atp_lib "$session_lib" claude_config_dir_for_pid "$apid")
+  local meta
+  meta=$(_atp_lib "$session_lib" claude_session_meta_for_pid "$apid" "${config_dir:-$HOME/.claude}")
+  if [[ -z "$meta" ]]; then
+    meta=$(_atp_lib "$session_lib" claude_session_resolve_for_pid \
+      "$apid" "${opt_pane:-}" "${pane_path:-}" "$config_dir" 2>/dev/null) || meta=""
+    local rstatus
+    rstatus=$(print -r -- "$meta" | jq -r '.status // empty' 2>/dev/null)
+    if [[ "$rstatus" != resolved && -n "$rstatus" && "$rstatus" != null ]]; then
+      # Registry meta has no .status field; resolver output does.
+      _atp_die "cannot resolve the Claude session for pid $apid ($rstatus) - try: claude-session-adopt --pid $apid"
+      return 1
+    fi
+  fi
+  sid=$(print -r -- "$meta" | jq -r '.sessionId // empty' 2>/dev/null)
+  [[ -n "$sid" ]] ||
+    { _atp_die "cannot resolve the Claude session for pid $apid - try: claude-session-adopt --pid $apid"; return 1; }
+  # Use the recorded cwd verbatim - it is what determines the transcript's slug.
+  origin_cwd=$(print -r -- "$meta" | jq -r '.cwd // empty' 2>/dev/null)
+  [[ -n "$origin_cwd" ]] || origin_cwd="${pane_path:-$PWD}"
+  transcript="${config_dir:-$HOME/.claude}/projects/$(_atp_slugify "$origin_cwd")/$sid.jsonl"
+  [[ -f "$transcript" ]] || { _atp_die "transcript not found: $transcript"; return 1; }
+else
+  local cmeta
+  cmeta=$(_atp_lib "$session_lib" codex_session_resolve_for_pid "$apid" "" 2>/dev/null)
+  [[ -n "$cmeta" ]] || { _atp_die "cannot resolve the Codex rollout for pid $apid"; return 1; }
+  sid=$(print -r -- "$cmeta" | jq -r '.sessionId // empty' 2>/dev/null)
+  origin_cwd=$(print -r -- "$cmeta" | jq -r '.cwd // empty' 2>/dev/null)
+  transcript=$(print -r -- "$cmeta" | jq -r '.rolloutPath // empty' 2>/dev/null)
+  [[ -n "$sid" && -f "$transcript" ]] ||
+    { _atp_die "cannot resolve the Codex rollout for pid $apid"; return 1; }
+  [[ -n "$origin_cwd" ]] || origin_cwd="${pane_path:-$PWD}"
+fi
+
+# Flag replay from the live argv (permission mode, system-prompt append, model -
+# none persist in the session, so a bare resume would restore a gated pane).
+local saved_cmd flags_str
+saved_cmd=$(ps -o args= -p "$apid" 2>/dev/null)
+flags_str=$(_atp_lib "$argv_lib" "resurrect_argv_${agent}_flags" "$saved_cmd" 2>/dev/null) || flags_str=""
+local -a flags
+flags=(${(z)flags_str})
+
+# ------------------------------------------------------------------- pick host
+
+if [[ -z "$host" ]]; then
+  _atp_picker_ok || { _atp_die "no --host and no tty for the host picker"; return 1; }
+  command -v fzf >/dev/null 2>&1 || { _atp_die "fzf not found for the host picker"; return 1; }
+  local hosts
+  hosts=$(_atp_ssh_hosts)
+  [[ -n "$hosts" ]] || { _atp_die "no hosts found in ~/.ssh/config - pass --host"; return 1; }
+  host=$(print -r -- "$hosts" | fzf --prompt='Teleport to host: ' --height=40% --reverse) || return 130
+  [[ -n "$host" ]] || return 130
+fi
+
+if (( opt_choose )) && (( ! mode_explicit )) && _atp_picker_ok; then
+  local delivery
+  delivery=$(printf 'window\topen in %s tmux\ncopy\tcopy resume command to clipboard\n' "$host" |
+    fzf --prompt='Deliver as: ' --height=40% --reverse --delimiter='\t' --with-nth=1,2) || return 130
+  [[ -n "$delivery" ]] || return 130
+  mode="${${(s:	:)delivery}[1]}"
+fi
+
+_atp_ssh() {
+  ts ssh "$host" "$@"
+}
+
+# ------------------------------------------------- target home + combined probe
+
+local out target_home="" l
+out=$(_atp_ssh 'echo "$HOME"' 2>/dev/null) ||
+  { _atp_die "cannot reach $host over ssh (is Remote Login enabled?)"; return 1; }
+for l in ${(f)out}; do
+  [[ "$l" == /* ]] && target_home="${l%$'\r'}"
+done
+[[ -n "$target_home" ]] || { _atp_die "could not resolve \$HOME on $host"; return 1; }
+
+local dest_guess
+if [[ -n "$opt_dest" ]]; then
+  dest_guess="$opt_dest"
+elif [[ "$origin_cwd" == "$HOME" ]]; then
+  dest_guess="$target_home"
+elif [[ "$origin_cwd" == "$HOME"/* ]]; then
+  dest_guess="$target_home${origin_cwd#"$HOME"}"
+else
+  dest_guess="$origin_cwd"
+fi
+
+# Origin ccp profile: reuse it on the target when present, else degrade to the
+# default ~/.claude with a warning (transcript carries no auth - billing only).
+local profile_name="" profile_dir_guess=""
+if [[ "$agent" == claude && -n "$config_dir" && "$config_dir" != "$HOME/.claude" ]]; then
+  profile_name="${config_dir:t}"
+  profile_dir_guess="$target_home/.claude-profiles/code/$profile_name"
+fi
+
+# One round-trip: dest existence, profile presence, remote agent version. The
+# version probe needs the mise shims, hence the zshrc-sourcing zsh -c wrapper
+# (the CLAUDE.md remote-shell pattern); everything else is plain POSIX.
+local -a probe_parts
+probe_parts=("test -d ${(q)dest_guess} && echo dest=ok || echo dest=missing")
+[[ -n "$profile_dir_guess" ]] &&
+  probe_parts+=("test -d ${(q)profile_dir_guess} && echo profile=ok || echo profile=missing")
+local vcode="source \"\$HOME/.zshrc\" >/dev/null 2>&1; $agent --version 2>/dev/null"
+probe_parts+=("zsh -c ${(q)vcode} </dev/null 2>/dev/null | head -n 1 | sed 's/^/version=/'")
+
+local probe_out dest_state="" profile_state="" remote_version=""
+probe_out=$(_atp_ssh "${(j:; :)probe_parts}" 2>/dev/null) ||
+  { _atp_die "probe failed on $host"; return 1; }
+for l in ${(f)probe_out}; do
+  case "$l" in
+  dest=*) dest_state="${l#dest=}" ;;
+  profile=*) profile_state="${l#profile=}" ;;
+  version=*) remote_version="${l#version=}" ;;
+  esac
+done
+
+# ------------------------------------------------------------- confirm the dest
+
+while [[ "$dest_state" == missing ]]; do
+  if [[ -n "$opt_dest" ]]; then
+    _atp_die "destination $dest_guess does not exist on $host"
+    return 1
+  fi
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    _atp_die "destination $dest_guess does not exist on $host - pass --dest"
+    return 1
+  fi
+  print -u2 -- "agent-teleport: $dest_guess does not exist on $host - edit (empty aborts):"
+  vared -p "dest on $host> " dest_guess || return 130
+  [[ -n "$dest_guess" ]] || return 130
+  local recheck
+  recheck=$(_atp_ssh "test -d ${(q)dest_guess} && echo dest=ok || echo dest=missing" 2>/dev/null)
+  dest_state="${recheck#dest=}"
+done
+local dest="$dest_guess"
+
+local remote_config_dir="" claude_base="$target_home/.claude" use_materialise=0
+if [[ -n "$profile_name" ]]; then
+  if [[ "$profile_state" == ok ]]; then
+    remote_config_dir="$profile_dir_guess"
+    claude_base="$profile_dir_guess"
+    use_materialise=1
+  else
+    _atp_warn "profile '$profile_name' not present on $host - resuming under the default ~/.claude account (account/billing differs; the transcript carries no auth)"
+  fi
+fi
+
+# Warn-only version skew note: the session format is internal and unversioned,
+# so a major.minor gap is worth a heads-up (patch churn is constant, ignore it).
+if [[ -n "$remote_version" ]]; then
+  local local_version local_mm remote_mm
+  local_version=$("$agent" --version 2>/dev/null | head -n 1)
+  local_mm=$(print -r -- "$local_version" | grep -oE '[0-9]+\.[0-9]+' | head -n 1)
+  remote_mm=$(print -r -- "$remote_version" | grep -oE '[0-9]+\.[0-9]+' | head -n 1)
+  if [[ -n "$local_mm" && -n "$remote_mm" && "$local_mm" != "$remote_mm" ]]; then
+    _atp_warn "$agent version differs (local ${local_version:-?}, $host $remote_version) - session format is internal, resume may misbehave"
+  fi
+fi
+
+# ------------------------------------------------------- fork + rewrite locally
+
+local scratch newid remote_dir remote_path
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/agent-teleport.XXXXXX") ||
+  { _atp_die "mktemp failed"; return 1; }
+local forked="$scratch/forked.jsonl"
+
+if [[ "$agent" == claude ]]; then
+  newid=$(uuidgen | tr '[:upper:]' '[:lower:]')
+  _atp_rewrite_claude "$transcript" "$forked" "$newid" "$dest" ||
+    { rm -rf "$scratch"; _atp_die "transcript rewrite failed"; return 1; }
+  remote_dir="$claude_base/projects/$(_atp_slugify "$dest")"
+  remote_path="$remote_dir/$newid.jsonl"
+else
+  newid=$(_atp_uuid7)
+  _atp_rewrite_codex "$transcript" "$forked" "$newid" ||
+    { rm -rf "$scratch"; _atp_die "rollout rewrite failed"; return 1; }
+  local datepart fork_name
+  if [[ "$transcript" =~ '/sessions/([0-9]{4}/[0-9]{2}/[0-9]{2})/' ]]; then
+    datepart="${match[1]}"
+  else
+    datepart=$(date +%Y/%m/%d)
+  fi
+  fork_name=$(_atp_codex_fork_name "${transcript:t}" "$newid") ||
+    { rm -rf "$scratch"; _atp_die "unexpected rollout filename: ${transcript:t}"; return 1; }
+  remote_dir="$target_home/.codex/sessions/$datepart"
+  remote_path="$remote_dir/$fork_name"
+fi
+
+# ------------------------------------------------ flag remap + ship (one trip)
+
+local -a kept_flags
+kept_flags=()
+local i=1 tok
+if [[ "$agent" == codex ]]; then
+  # Drop -C/--cd (+ value): the launch command cds into the dest itself.
+  while (( i <= ${#flags} )); do
+    tok="${flags[$i]}"
+    if [[ "$tok" == "-C" || "$tok" == "--cd" ]]; then
+      (( i += 2 ))
+      continue
+    fi
+    kept_flags+=("$tok")
+    (( i += 1 ))
+  done
+else
+  kept_flags=("${flags[@]}")
+fi
+
+local -a remapped flag_paths
+remapped=()
+flag_paths=()
+if (( ${#kept_flags} > 0 )); then
+  remapped=(${(f)"$(_atp_remap_flags "$HOME" "$target_home" "${kept_flags[@]}")"})
+  for tok in "${remapped[@]}"; do
+    if [[ "$tok" == "$target_home"/* ]]; then
+      flag_paths+=("$tok")
+    elif [[ "$tok" == --*="$target_home"/* ]]; then
+      flag_paths+=("${tok#*=}")
+    fi
+  done
+fi
+
+local ship="mkdir -p ${(q)remote_dir} && cat > ${(q)remote_path}"
+local p
+for p in "${flag_paths[@]}"; do
+  ship+="; test -e ${(q)p} || echo flagmissing=${(q)p}"
+done
+local ship_out
+if ! ship_out=$(_atp_ssh "$ship" <"$forked"); then
+  rm -rf "$scratch"
+  _atp_die "failed to ship the session file to $host"
+  return 1
+fi
+rm -rf "$scratch"
+for l in ${(f)ship_out}; do
+  [[ "$l" == flagmissing=* ]] &&
+    _atp_warn "flag path missing on $host: ${l#flagmissing=} (launch may fail; edit the flag by hand)"
+done
+
+# ------------------------------------------------------- build the resume command
+
+local zshrc_pre='source "$HOME/.zshrc" >/dev/null 2>&1; '
+local -a inner_parts
+inner_parts=("cd ${(q)dest} &&")
+if [[ "$agent" == claude ]]; then
+  (( use_materialise )) && inner_parts+=("claude-profile-materialise ${(q)remote_config_dir} &&")
+  [[ -n "$remote_config_dir" ]] && inner_parts+=("CLAUDE_CONFIG_DIR=${(q)remote_config_dir}")
+  inner_parts+=(claude)
+  (( ${#remapped} > 0 )) && inner_parts+=("${(q)remapped[@]}")
+  inner_parts+=(--resume "$newid")
+else
+  inner_parts+=(codex resume "$newid")
+  (( ${#remapped} > 0 )) && inner_parts+=("${(q)remapped[@]}")
+fi
+local inner="${(j: :)inner_parts}"
+
+# ----------------------------------------------------------------------- deliver
+
+local delivered=""
+
+if [[ "$mode" == window ]]; then
+  # Target session: most-recently-active attached one, else the single running
+  # session; no server / ambiguous detached -> degrade to copy with a note.
+  local list_code="${zshrc_pre}tmux list-sessions -F '#{session_attached} #{session_activity} #{session_name}' 2>/dev/null"
+  local sess_out target_sess=""
+  sess_out=$(_atp_ssh "zsh -c ${(q)list_code}" 2>/dev/null) || sess_out=""
+  local -a attached_lines all_lines
+  attached_lines=()
+  all_lines=()
+  for l in ${(f)sess_out}; do
+    [[ "$l" == *' '* ]] || continue
+    all_lines+=("$l")
+    [[ "${l%% *}" == <1-> ]] && attached_lines+=("${l#* }")
+  done
+  if (( ${#attached_lines} > 0 )); then
+    target_sess="${$(print -rl -- "${attached_lines[@]}" | sort -rn | head -n 1)#* }"
+  elif (( ${#all_lines} == 1 )); then
+    target_sess="${${all_lines[1]#* }#* }"
+  fi
+  if [[ -z "$target_sess" ]]; then
+    _atp_warn "no usable tmux session on $host - falling back to --copy"
+    mode=copy
+  else
+    local win_name="tp:${dest:t}"
+    local win_shell_code="${zshrc_pre}${inner}"
+    local sess_target="${target_sess}:"
+    # Single ${(q)} only: tmux itself requotes each argv token when it builds
+    # the window's `sh -c` string, so that layer must not be escaped here.
+    local launch_code="${zshrc_pre}tmux new-window -t ${(q)sess_target} -n ${(q)win_name} zsh -c ${(q)win_shell_code}"
+    if _atp_ssh "zsh -c ${(q)launch_code}"; then
+      delivered="window $win_name in tmux session '$target_sess' on $host"
+    else
+      _atp_die "failed to open the window on $host"
+      return 1
+    fi
+  fi
+fi
+
+if [[ "$mode" == copy ]]; then
+  local login_code="zsh -ilc ${(q)inner}"
+  local copy_cmd="ts ssh ${(q)host} -t ${(q)login_code}"
+  _atp_copy_clipboard "$copy_cmd" || true
+  print -r -- "run from any machine:"
+  print -r -- "  $copy_cmd"
+  print -r -- "or already on $host:"
+  print -r -- "  $inner"
+  delivered="resume command copied to clipboard"
+fi
+
+# ----------------------------------------------------------------------- summary
+
+local git_note=""
+if git -C "$origin_cwd" rev-parse --git-dir >/dev/null 2>&1; then
+  local br sha
+  br=$(git -C "$origin_cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  sha=$(git -C "$origin_cwd" rev-parse --short HEAD 2>/dev/null)
+  git_note="$br@$sha"
+  if [[ -n $(git -C "$origin_cwd" status --porcelain 2>/dev/null | head -n 1) ]]; then
+    _atp_warn "origin tree is dirty ($git_note) - the conversation may reference uncommitted changes that don't exist on $host"
+  fi
+fi
+
+print -r -- "teleported $agent session $sid -> $newid"
+print -r -- "  host $host · dest $dest${git_note:+ · origin $git_note}"
+[[ -n "$remote_config_dir" ]] && print -r -- "  profile $profile_name"
+print -r -- "  $delivered"
+return 0

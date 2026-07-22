@@ -15,3 +15,4 @@ alias cyc='claude $(claude-launch-flags --yolo) --channels plugin:telegram@claud
 alias cspy='env -u DISABLE_TELEMETRY -u DO_NOT_TRACK claude $(claude-launch-flags)'
 # claude-usage is now a function in ~/.config/zsh/functions/
 alias aiu='ai-usage'
+alias atp='agent-teleport'
