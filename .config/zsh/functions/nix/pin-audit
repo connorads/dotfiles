@@ -20,31 +20,6 @@ emulate -L zsh
 
 local mise_cfg=~/.config/mise/config.toml
 
-# --- fnox exact pin (mise config.toml [tools] fnox) ---------------------------
-# Guard: 1.27.0 shipped no binaries, so a "1.27" range resolves to an assetless
-# release and every `mise run` aborts. Loosen once a newer release ships assets.
-local fnox_pin fnox_latest fnox_assets
-fnox_pin=$(grep -Eo '^fnox = "[^"]+"' "$mise_cfg" 2>/dev/null | cut -d'"' -f2)
-if [[ -z $fnox_pin ]]; then
-  echo "pin-audit: OK   fnox - exact pin gone from $mise_cfg; drop this check"
-else
-  fnox_latest=$(mise ls-remote fnox 2>/dev/null | grep -E '^[0-9]+(\.[0-9]+)+$' | tail -1)
-  if [[ -z $fnox_latest ]]; then
-    echo "pin-audit: SKIP fnox $fnox_pin - version probe failed (offline?)"
-  elif [[ $fnox_latest == "$fnox_pin" ]]; then
-    echo "pin-audit: OK   fnox $fnox_pin - still the newest release"
-  else
-    fnox_assets=$(gh release view "v$fnox_latest" --repo jdx/fnox --json assets --jq '.assets | length' 2>/dev/null)
-    if [[ -z $fnox_assets ]]; then
-      echo "pin-audit: SKIP fnox $fnox_pin - newer $fnox_latest exists; asset probe failed (gh auth/offline?)"
-    elif (( fnox_assets > 0 )); then
-      echo "pin-audit: FLAG fnox $fnox_pin - $fnox_latest ships $fnox_assets assets; loosen the exact pin ($mise_cfg [tools] fnox)"
-    else
-      echo "pin-audit: OK   fnox $fnox_pin - newer $fnox_latest still ships no assets; keep the exact pin"
-    fi
-  fi
-fi
-
 # --- rembg exact pin (mise config.toml [tools] pipx:rembg) --------------------
 # Guard: 2.0.70+ hard-pins numpy>=2.3, which the numba/llvmlite chain can't
 # satisfy. Whether a given release fixed that is not probeable from metadata.

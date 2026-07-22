@@ -58,11 +58,7 @@ pandoc = "3"
 # update is never blocked; chained with ; so later steps still run if an earlier
 # one warns.
 claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-channels-allowlist-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
-# Pinned to EXACT 1.27.1: v1.27.1 ships binaries (8 assets) but v1.27.0 shipped
-# none AND was published ~20 min later, so the github backend resolves a "1.27"
-# range to the assetless 1.27.0 and every `mise run` aborts. The exact pin
-# sidesteps the bad sibling; loosen toward a range once 1.28 lands.
-fnox = "1.27.1"
+fnox = "1"
 
 # github:/aqua tools: undateable releases slip the 4d gate, so the pin — not the
 # age gate — is the supply-chain control here. Keep these exact/known-good.
