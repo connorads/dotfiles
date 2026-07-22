@@ -198,9 +198,20 @@ session lives under `<config_dir>/sessions/<pid>.json` and
 ([`scripts/claude-session-resolve.py`](./scripts/claude-session-resolve.py)) takes
 `--config-dir` (default `~/.claude`) and reads the registry / open-transcript /
 content-match candidates from there. The fork command carries the account inline
-as `CLAUDE_CONFIG_DIR=<dir> claude … -r <sid> --fork-session` (tmux panes don't
-inherit the source pane's env), so a branched pane runs under the same account as
-its source rather than silently reverting to `~/.claude`.
+as `CLAUDE_CONFIG_DIR=<dir> claude <source-flags> -r <sid> --fork-session` (tmux
+panes don't inherit the source pane's env), so a branched pane runs under the
+same account as its source rather than silently reverting to `~/.claude`.
+
+The fork also **mirrors the source pane's launch flags** (append, model, perm
+mode), read from its live argv (`ps -o args=`) through the same
+`resurrect_argv_claude_flags` the restore path uses - so a fork of a non-yolo `c`
+pane stays non-yolo, and a `cy`/`ccp` source carries its system-prompt append.
+The lib strips the source's own stale `-r`/`--fork-session`/`--continue`, so a
+fork-of-fork is clean; a source with no override (bare `claude --resume <id>`)
+forks bare. The origin launchers themselves - the `c`/`cy`/`cyc`/`cspy` aliases
+and `ccp` - no longer re-type the flag set: it lives once in the shared
+[`claude-launch-flags`](../zsh/functions/claude-launch-flags) owner, which they
+word-split.
 
 With the config dir restored, the launcher then re-materialises the profile's
 shared user config (settings + `CLAUDE.md` memory) via
