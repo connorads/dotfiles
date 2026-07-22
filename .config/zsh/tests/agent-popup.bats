@@ -193,19 +193,33 @@ next_pane() {
   [ "$(tx display-message -p '#{pane_id}')" = "$p1" ]
 }
 
-@test "cycle blocked falls back to done and ages it to idle" {
+@test "cycle blocked,done falls back to done and ages it to idle" {
   p1=$(tx display-message -p -t s '#{pane_id}')
   tx new-window -t s # p1's window inactive so the done dot is unseen
   win1=$(tx list-windows -t s -F '#{window_id}' | head -n1)
   tx set-option -p -t "$p1" @agent_state done
   tx set-option -w -t "$win1" @win_agent_state done
   p2=$(tx display-message -p -t s '#{pane_id}')
-  run sh "$SCRIPT" cycle blocked "$p2"
+  run sh "$SCRIPT" cycle blocked,done "$p2"
   [ "$status" -eq 0 ]
   [ "$(tx display-message -p '#{pane_id}')" = "$p1" ]
   # jump()'s seen call ages the visited done pane, exactly as the popup does.
   [ "$(tx show-options -pqv -t "$p1" @agent_state)" = idle ]
   [ "$(tx show-options -wqv -t "$win1" @win_agent_state)" = idle ]
+}
+
+@test "cycle blocked alone does not fall back to done (message path)" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx new-window -t s
+  win1=$(tx list-windows -t s -F '#{window_id}' | head -n1)
+  tx set-option -p -t "$p1" @agent_state done
+  tx set-option -w -t "$win1" @win_agent_state done
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  run sh "$SCRIPT" cycle blocked "$p2"
+  [ "$status" -eq 0 ]
+  # No jump: the active pane stays put and the done dot is untouched (unaged).
+  [ "$(tx display-message -p '#{pane_id}')" = "$p2" ]
+  [ "$(tx show-options -pqv -t "$p1" @agent_state)" = done ]
 }
 
 @test "cycle with no agents is a quiet no-op" {

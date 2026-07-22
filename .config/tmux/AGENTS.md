@@ -117,8 +117,9 @@ The logic is spread across several files — change them as a set:
   `agent-state.sh`; `prompt` only sends keystrokes and observes the option the
   agent's own hooks set.
 - Navigation: `prefix + A` popup (fzf pick) and `prefix + Alt+a` cycle-jump
-  (`agent-popup.sh cycle blocked` — positional order, wraps, falls back to
-  `done`; the visited pane is aged seen like any jump).
+  (`agent-popup.sh cycle blocked,done` — a CSV state priority list, positional
+  order within a state, wraps; the fallback-to-done policy is the binding's
+  list, not cycle's. The visited pane is aged seen like any jump).
 
 Tests (run `mise run zsh-tests`):
 

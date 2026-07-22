@@ -6,11 +6,12 @@
 #   agent-popup.sh            # pick (default): sweep, then list | fzf | jump
 #   agent-popup.sh list       # emit ranked TAB rows (hidden pane_id first)
 #   agent-popup.sh jump PANE  # switch to PANE and age its done → idle
-#   agent-popup.sh cycle WANT [CUR]  # jump to next WANT-state pane after CUR
+#   agent-popup.sh cycle WANTS [CUR]  # jump to next pane matching WANTS
+#                                     # (CSV priority list, e.g. blocked,done)
 #
 # Split into subcommands so list/jump/cycle are unit-testable without driving
 # fzf (which needs a real TTY). Bound to `prefix + A` (pick) and `prefix +
-# Alt+a` (cycle blocked) via display-popup -E / run-shell.
+# Alt+a` (cycle blocked,done) via display-popup -E / run-shell.
 
 set -u
 
@@ -103,14 +104,17 @@ _next_pane() {
 		}'
 }
 
-# cycle WANT [CURRENT_PANE] — jump to the next agent pane whose @agent_state is
-# WANT, in positional order (session → window index → pane index —
-# agent_list_rows' native order; list()'s rank order would revisit the
-# top-ranked pane forever), wrapping past CURRENT_PANE. Falls back to `done`
-# when nothing is WANT. Reuses jump() for the move — including its seen
-# ageing, which is correct here: cycling to a pane is viewing it.
+# cycle WANTS [CURRENT_PANE] — jump to the next agent pane whose @agent_state
+# matches the first satisfiable state in WANTS, a CSV priority list (e.g.
+# blocked,done: every blocked pane before any done one). Order within a state
+# is positional (session → window index → pane index — agent_list_rows' native
+# order; list()'s rank order would revisit the top-ranked pane forever),
+# wrapping past CURRENT_PANE. Fallback policy lives in the caller's list, not
+# here: bare `cycle blocked` jumps to blocked panes only. Reuses jump() for
+# the move — including its seen ageing, which is correct here: cycling to a
+# pane is viewing it.
 cycle() {
-	_want=${1:-blocked}
+	_wants=${1:-blocked}
 	_cur=${2:-}
 	_rows=$(agent_list_rows | cut -f1,2)
 	[ -n "$_rows" ] || {
@@ -118,13 +122,16 @@ cycle() {
 		return 0
 	}
 
-	_target=$(printf '%s\n' "$_rows" | _next_pane "$_want" "$_cur")
-	[ -n "$_target" ] || _target=$(printf '%s\n' "$_rows" | _next_pane 'done' "$_cur")
+	_target=
+	for _want in $(printf '%s' "$_wants" | tr ',' ' '); do
+		_target=$(printf '%s\n' "$_rows" | _next_pane "$_want" "$_cur")
+		[ -n "$_target" ] && break
+	done
 
 	if [ -n "$_target" ]; then
 		jump "$_target"
 	else
-		tmux display-message "no $_want or done agents" 2>/dev/null || true
+		tmux display-message "no $_wants agents" 2>/dev/null || true
 	fi
 }
 
@@ -168,7 +175,7 @@ cycle)
 	;;
 pick | "") pick ;;
 *)
-	echo "usage: agent-popup.sh [list|jump <pane_id>|cycle <state> [cur_pane]|pick]" >&2
+	echo "usage: agent-popup.sh [list|jump <pane_id>|cycle <state[,state]> [cur_pane]|pick]" >&2
 	exit 2
 	;;
 esac
