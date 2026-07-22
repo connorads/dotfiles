@@ -10,7 +10,8 @@
 #   - no desktop casks/masApps (homebrew zap removes them on first switch;
 #     MAS apps RunCat Neo/Perplexity are NOT zapped — remove manually)
 #   - no sudo_local → sudo falls through to password (no Touch ID / key here)
-#   - no GUI app packages, no UI defaults, no app associations / credential helper
+#   - no GUI app packages, no desktop-app UI defaults, no app associations /
+#     credential helper (shared personal UI defaults still apply via darwin-ui.nix)
 #   - never sleeps, auto-restarts after power loss, manual OS updates only
 #
 # FileVault is ON (manual `sudo fdesetup enable`; nix-darwin has no option for

@@ -135,10 +135,12 @@
   };
 
   # -- System Defaults (macOS preferences) --
+  # Host-neutral personal defaults (dark mode, scroll, key-repeat, Finder, etc.)
+  # live in darwin-ui.nix, shared by both Macs. Only app/hardware-coupled defaults
+  # stay here: the Dock's persistent-apps (Air-only apps), the ⌘-Space disable
+  # (coupled to Raycast, the replacement launcher), and KeyCastr's Sparkle kill.
   system.defaults = {
     dock = {
-      autohide = true;
-      show-recents = false;
       persistent-apps = [
         "/Applications/kitty.app"
         "/Applications/Google Chrome.app"
@@ -146,30 +148,6 @@
         # which can appear as a separate running app in the Dock.
         "/Applications/Sublime Text.app"
       ];
-    };
-    finder = {
-      _FXShowPosixPathInTitle = true;
-      AppleShowAllExtensions = true;
-      QuitMenuItem = true;
-      ShowPathbar = true;
-      ShowStatusBar = true;
-      FXPreferredViewStyle = "clmv"; # Column view
-      FXDefaultSearchScope = "SCcf"; # Search current folder by default
-    };
-    controlcenter = {
-      Sound = true;
-      Bluetooth = true;
-      FocusModes = true;
-    };
-    menuExtraClock = {
-      ShowSeconds = true;
-      Show24Hour = true;
-    };
-    NSGlobalDomain = {
-      "com.apple.swipescrolldirection" = false;
-      AppleInterfaceStyle = "Dark";
-      KeyRepeat = 2;
-      InitialKeyRepeat = 25;
     };
     CustomUserPreferences = {
       "com.apple.symbolichotkeys" = {
@@ -183,28 +161,6 @@
             enabled = false;
           };
         };
-      };
-
-      # Keyboard: British - PC layout (ID 250)
-      "com.apple.HIToolbox" = {
-        AppleCurrentKeyboardLayoutInputSourceID = "com.apple.keylayout.British-PC";
-        AppleEnabledInputSources = [
-          {
-            InputSourceKind = "Keyboard Layout";
-            "KeyboardLayout ID" = 250;
-            "KeyboardLayout Name" = "British-PC";
-          }
-        ];
-      };
-
-      # Finder > Settings > Advanced > "Remove items from the Trash after 30 days"
-      "com.apple.finder" = {
-        FXRemoveOldTrashItems = true;
-      };
-
-      # Hide the keyboard input source ("A" / "British – PC") menu bar icon
-      "com.apple.TextInputMenu" = {
-        visible = false;
       };
 
       # KeyCastr: kill Sparkle auto-update. The binary is pinned+read-only via nix
