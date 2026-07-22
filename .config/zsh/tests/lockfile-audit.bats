@@ -14,6 +14,8 @@ setup() {
 
   mkdir -p "$TEST_HOME/project"
   : >"$TEST_HOME/project/pnpm-lock.yaml"
+  mkdir -p "$TEST_HOME/skill/evals/fixtures/compromised"
+  : >"$TEST_HOME/skill/evals/fixtures/compromised/package-lock.json"
 
   write_stub dotfiles <<'EOF'
 #!/usr/bin/env bash
@@ -21,6 +23,7 @@ echo "dotfiles $*" >>"$TEST_LOG"
 if [ "$1" = "ls-files" ]; then
   echo "project/pnpm-lock.yaml"
   echo "project/README.md"
+  echo "skill/evals/fixtures/compromised/package-lock.json"
 fi
 exit 0
 EOF
@@ -51,6 +54,14 @@ EOF
   # only lockfiles from ls-files become -L args (README.md filtered out)
   grep -qF -- '-L '"$TEST_HOME"'/project/pnpm-lock.yaml' "$TEST_LOG"
   ! grep -qF 'README.md' "$TEST_LOG"
+}
+
+@test "lockfiles under a fixtures/ path are excluded from the sweep" {
+  run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  # grading/test fixtures are inert - never handed to the scanner
+  grep -qF -- '-L '"$TEST_HOME"'/project/pnpm-lock.yaml' "$TEST_LOG"
+  ! grep -qF 'fixtures/compromised/package-lock.json' "$TEST_LOG"
 }
 
 @test "CVE findings report but do not block" {
