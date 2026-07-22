@@ -283,17 +283,6 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
   done
 }
 
-# --- agent_name_taken: live-name collision check (real server) ---
-
-@test "agent_name_taken sees another pane's name but excludes self" {
-  . "$LIB"
-  p1=$(tx display-message -p -t s '#{pane_id}')
-  tx set-option -p -t "$p1" @agent_name backend
-  agent_name_taken backend
-  ! agent_name_taken backend "$p1"
-  ! agent_name_taken other
-}
-
 # --- is_viewing: "you are looking at the pane" (pure predicate) ---
 
 @test "is_viewing: active pane, active window, attached -> viewed" {

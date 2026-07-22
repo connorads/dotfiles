@@ -79,18 +79,6 @@ valid_agent_name() {
 	printf '%s' "$1" | grep -Eq '^[a-z][a-z0-9_-]{0,31}$'
 }
 
-# agent_name_taken NAME [EXCLUDE_PANE] — true iff some *other* pane already
-# carries @agent_name == NAME. Callers sweep first (agent-sweep.sh clears dead
-# panes' names), so this is the "unique among live agents" check. EXCLUDE_PANE
-# lets a pane re-apply its own name without a self-collision.
-agent_name_taken() {
-	_name=$1
-	_exclude=${2:-}
-	_hit=$(tmux list-panes -a -F '#{pane_id}	#{@agent_name}' 2>/dev/null |
-		awk -F '\t' -v n="$_name" -v x="$_exclude" '$1 != x && $2 == n { print 1; exit }')
-	[ -n "$_hit" ]
-}
-
 # ring_bell PANE — write a BEL (\a) to every writable client TTY of the pane's
 # session. Writes direct to the client TTY, bypassing tmux's monitor-bell so
 # window_bell_flag stays clear — the red agent dot already covers the in-tmux

@@ -24,8 +24,9 @@ AGENT_STATE_SH=${AGENT_STATE_SH:-$SELF_DIR/agent-state.sh}
 AGENT_SWEEP=${AGENT_SWEEP:-$SELF_DIR/agent-sweep.sh}
 
 # list — one row per pane with agent state, ranked by attention. Hidden pane_id
-# is field 1 (the jump key); fzf shows fields 2.. Enumeration + ranking live in
-# the shared agent_list_rows (agent-cli-lib.sh); this wrapper is display-only:
+# is field 1 (the jump key); fzf shows fields 2.. Enumeration lives in the
+# shared agent_list_rows and ranking in agent_rank_sort (both
+# agent-cli-lib.sh); this wrapper is display-only:
 # it decorates each row with the state glyph and shortens cwd to its basename.
 # The glyph (state colour + shape) is the single source of truth in
 # agent-state-lib.sh: computed once per state in sh via agent_glyph, then passed
@@ -37,7 +38,7 @@ list() {
 	_g_done=$(agent_glyph 'done')
 	_g_idle=$(agent_glyph idle)
 	_g_unknown=$(agent_glyph unknown)
-	agent_list_rows |
+	agent_list_rows | agent_rank_sort |
 		awk -F '\t' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
 			-v g_done="$_g_done" -v g_idle="$_g_idle" -v g_unknown="$_g_unknown" '
@@ -103,20 +104,15 @@ _next_pane() {
 }
 
 # cycle WANT [CURRENT_PANE] — jump to the next agent pane whose @agent_state is
-# WANT, in positional order (session → window index → pane index, built here:
-# list() sorts by rank, which would revisit the top-ranked pane forever),
-# wrapping past CURRENT_PANE. Falls back to `done` when nothing is WANT.
-# Reuses jump() for the move — including its seen ageing, which is correct
-# here: cycling to a pane is viewing it.
+# WANT, in positional order (session → window index → pane index —
+# agent_list_rows' native order; list()'s rank order would revisit the
+# top-ranked pane forever), wrapping past CURRENT_PANE. Falls back to `done`
+# when nothing is WANT. Reuses jump() for the move — including its seen
+# ageing, which is correct here: cycling to a pane is viewing it.
 cycle() {
 	_want=${1:-blocked}
 	_cur=${2:-}
-	_tab=$(printf '\t')
-	_rows=$(tmux list-panes -a -F \
-		'#{session_name}	#{window_index}	#{pane_index}	#{pane_id}	#{@agent_state}' \
-		2>/dev/null |
-		sort -t "$_tab" -k1,1 -k2,2n -k3,3n |
-		awk -F '\t' 'BEGIN { OFS = "\t" } $5 != "" { print $4, $5 }')
+	_rows=$(agent_list_rows | cut -f1,2)
 	[ -n "$_rows" ] || {
 		tmux display-message "no active agents" 2>/dev/null || true
 		return 0
