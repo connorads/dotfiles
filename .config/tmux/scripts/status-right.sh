@@ -26,6 +26,12 @@ ram_script="$HOME/.config/tmux/plugins/tmux-cpu/scripts/ram_percentage.sh"
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=/dev/null
 . "$SELF_DIR/mem-lib.sh"
+# Shared resurrect-freshness vocabulary (FRESH/AGING/STALE/NONE → colour + glyph
+# + age token). Reads the newest save file's mtime each render — cheap, no
+# caching — so a live green "saved 2m" is visible confidence that saving works,
+# reddening to yellow/red the moment it stops. See resurrect_segment below.
+# shellcheck source=/dev/null
+. "$SELF_DIR/resurrect-lib.sh"
 
 cpu_percentage() {
 	if [ -x "$cpu_script" ]; then
@@ -67,6 +73,27 @@ mem_segment() {
 	else
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
 			"$colour" "$glyph" "$(mem_token)"
+	fi
+}
+
+# resurrect_segment — session-save freshness gauge in the powerline-pill shape,
+# parallel to mem_segment. State is encoded by colour (green FRESH / yellow AGING
+# / red STALE+NONE) plus glyph (⟳ turning / ⚠ wrong) plus the age token; bold
+# escalates on any non-FRESH state as the extra non-colour cue. Always shown: a
+# live green "⟳ 2m" is the running-confidence signal the 3.5-week silent-save
+# incident lacked. Reads one file mtime per 15 s render — cheap, no caching.
+# Cross-platform: Linux hosts (continuum-driven) get the same detect pill.
+resurrect_segment() {
+	local state colour glyph
+	state="$(resurrect_state)"
+	colour="$(resurrect_state_colour "$state")"
+	glyph="$(resurrect_state_glyph "$state")"
+	if [ "$state" = "FRESH" ]; then
+		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
+			"$colour" "$glyph" "$(resurrect_token)"
+	else
+		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
+			"$colour" "$glyph" "$(resurrect_token)"
 	fi
 }
 
@@ -617,6 +644,12 @@ print_full() {
 	host="$(host_label)"
 
 	ai_usage
+	# Resurrect freshness pill sits here — between the AI pill (#232334) and the
+	# cpu pill (#313244) — the one slot where it isn't adjacent to another
+	# surface1 (#45475a) pill (mem/disk/git), so its own #45475a shade stays a
+	# distinct segment rather than merging. Width-gated with the rest of
+	# print_full (>= 80).
+	resurrect_segment
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
 	# RAM% pill (shown alongside mem_segment by design — both wanted). Dark pill
