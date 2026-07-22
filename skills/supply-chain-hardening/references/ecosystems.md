@@ -19,6 +19,7 @@ facts in the skill.
 - [Python: uv](#python-uv)
 - [Python: pip](#python-pip)
 - [Rust / Cargo](#rust--cargo)
+- [GitHub Actions (Dependabot cooldown)](#github-actions-dependabot-cooldown)
 - [Undateable sources: GitHub releases, aqua, tool managers](#undateable-sources-github-releases-aqua-tool-managers)
 - [Gate-evasion and escape-hatch asymmetries](#gate-evasion-and-escape-hatch-asymmetries)
 
@@ -39,6 +40,7 @@ the policy by orders of magnitude.
 | pip (`pip.conf`) | `uploaded-prior-to` | ISO-8601 duration or datetime | `P4D` |
 | Deno (`deno.json`) | `minimumDependencyAge` | duration string | `"4d"` |
 | mise (`config.toml`) | `minimum_release_age` | duration string | `"4d"` |
+| Dependabot (`.github/dependabot.yml`, per `updates:` entry) | `cooldown.default-days` | days | `4` |
 
 After converting, enforce agreement mechanically: when one policy value is
 hand-spelled across several configs, add a drift-guard pre-commit check — one
@@ -222,6 +224,40 @@ proc-macros run arbitrary code at *compile* time with no global off-switch.
 - Sandbox builds of untrusted crates: `build.rs` at compile time has the same
   privileges as an install script, so compile untrusted code inside the same
   containment you'd give an install.
+
+## GitHub Actions (Dependabot cooldown)
+
+Actions are SHA-pinned (mechanical-enforcement's zizmor `unpinned-uses`), so the
+exposure isn't resolution but the *bump*: a Dependabot PR that adopts a
+freshly-compromised action tag. Dependabot's `cooldown` is the release-age gate
+on that bump.
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"                 # covers .github/workflows/ and .github/actions/
+    schedule: { interval: weekly }
+    cooldown:
+      default-days: 7              # zizmor's dependabot-cooldown audit wants >= 7
+```
+
+- **Unit is days**; keys are `cooldown.default-days` plus optional
+  `semver-major-days` / `semver-minor-days` / `semver-patch-days` and
+  `include` / `exclude` globs (≤ 150 each).
+- **Enforcement point is the update PR, not the running workflow, and only
+  version updates** — Dependabot *security* updates open immediately, so a
+  patched CVE is never delayed by the cooldown.
+- Since 2026-07-14 Dependabot applies an automatic **3-day** default cooldown to
+  version updates across all ecosystems including `github-actions`, no config
+  needed; set `default-days: 7` to clear zizmor's audit and widen the window.
+- **Verify it actually holds for Actions.** dependabot-core#14645 (April 2026)
+  reported the `github-actions` cooldown being ignored (a bump landed hours
+  after release). Confirm bump PRs respect the window rather than assuming it.
+- zizmor also audits `dependabot-execution` (`insecure-external-code-execution:
+  allow`, permitting build-time code exec during resolution) — keep the `deny`
+  default.
 
 ## Undateable sources: GitHub releases, aqua, tool managers
 
