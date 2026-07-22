@@ -225,7 +225,9 @@ def open_jsonl_result(pid: str, cwd: str, config_dir: Path) -> ResolveResult | N
 
 
 def project_slug(cwd: str) -> str:
-    return cwd.replace("/", "-")
+    # Claude slugs EVERY non-alphanumeric char to "-" (dots included), so
+    # ~/.trees/x becomes --trees-x; a bare "/" replace misses dotted paths.
+    return re.sub(r"[^A-Za-z0-9]", "-", cwd)
 
 
 def candidate_jsonls(cwd: str, config_dir: Path) -> list[Path]:

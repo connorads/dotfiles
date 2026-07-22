@@ -151,6 +151,32 @@ EOF
   [ "$(printf '%s' "$output" | jq -r '.sessionId')" = "session-content" ]
 }
 
+@test "content matching slugs dotted cwds like Claude (every non-alphanumeric char)" {
+  # /tmp/.trees/work must map to projects/-tmp--trees-work, not -tmp-.trees-work.
+  mkdir -p "$HOME/.claude/projects/-tmp--trees-work"
+  cat >"$HOME/.claude/projects/-tmp--trees-work/session-dotted.jsonl" <<'EOF'
+{"sessionId":"session-dotted","type":"user","message":{"content":"Could you look into reverse engineering claude maybe in order to devise some way of always getting the pid from sandboxed panes"}}
+EOF
+  capture="$BATS_TEST_TMPDIR/capture.txt"
+  cat >"$capture" <<'EOF'
+Could you look into reverse engineering claude maybe in order to devise some way of always getting the pid from sandboxed panes
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  write_stub lsof <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run python3 "$RESOLVER" --pid 711 --cwd /tmp/.trees/work --capture-file "$capture"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.source')" = "content-match" ]
+  [ "$(printf '%s' "$output" | jq -r '.sessionId')" = "session-dotted" ]
+}
+
 @test "content matching refuses equal-scored transcript candidates" {
   for name in one two; do
     cat >"$HOME/.claude/projects/-tmp-work/session-$name.jsonl" <<'EOF'
