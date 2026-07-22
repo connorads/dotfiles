@@ -18,11 +18,3 @@ allowedUnpopularPackages = [
   "@kitlangton/ghui",
   "critique",
 ]
-
-# CI bug, not an attack: @mariozechner/clipboard-* platform packages dropped
-# SLSA provenance after a workflow refactor at 0.3.3 (root pkg kept it).
-# Same publisher, same npm signing key, identical tarball shape.
-# Track: https://github.com/badlogic/clipboard — remove once provenance restored.
-trustPolicyExclude = [
-  "@mariozechner/clipboard-*",
-]

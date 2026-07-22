@@ -19,7 +19,6 @@
 emulate -L zsh
 
 local mise_cfg=~/.config/mise/config.toml
-local aube_cfg=~/.config/aube/config.toml
 
 # --- fnox exact pin (mise config.toml [tools] fnox) ---------------------------
 # Guard: 1.27.0 shipped no binaries, so a "1.27" range resolves to an assetless
@@ -43,24 +42,6 @@ else
     else
       echo "pin-audit: OK   fnox $fnox_pin - newer $fnox_latest still ships no assets; keep the exact pin"
     fi
-  fi
-fi
-
-# --- aube trustPolicyExclude @mariozechner/clipboard-* ------------------------
-# Guard: platform packages lost SLSA provenance after a CI refactor at 0.3.3.
-# Remove the exclude once npm shows attestations again.
-local clip_att clip_rc
-if ! grep -q 'clipboard-\*' "$aube_cfg" 2>/dev/null; then
-  echo "pin-audit: OK   clipboard trustPolicyExclude - gone from $aube_cfg; drop this check"
-else
-  clip_att=$(npm view @mariozechner/clipboard-darwin-arm64 dist.attestations --json 2>/dev/null)
-  clip_rc=$?
-  if (( clip_rc != 0 )); then
-    echo "pin-audit: SKIP clipboard trustPolicyExclude - npm probe failed (offline?)"
-  elif [[ -n $clip_att && $clip_att != null ]]; then
-    echo "pin-audit: FLAG clipboard trustPolicyExclude - @mariozechner/clipboard-darwin-arm64 has attestations again; remove the exclude ($aube_cfg trustPolicyExclude)"
-  else
-    echo "pin-audit: OK   clipboard trustPolicyExclude - still no attestations; keep the exclude"
   fi
 fi
 
