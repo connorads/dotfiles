@@ -56,7 +56,7 @@ _agent_ls() {
   done
 
   local rows
-  rows=$(agent_list_rows)
+  rows=$(agent_list_rows | agent_rank_sort)
   if (( json )); then
     printf '%s\n' "$rows" | jq -R -s '
       split("\n") | map(select(length > 0)) | map(split("\t"))
@@ -93,8 +93,8 @@ _agent_state() {
 # agent wait — block until the pane's @agent_state reaches a wanted state.
 # Polls the option (the documented pattern: done/idle both mean turn-complete);
 # the journal was rejected as the mechanism - it is fail-open and transition-
-# only, so a waiter starting after the transition would hang. Re-resolves the
-# pane each loop so a killed pane exits 3, not 1.
+# only, so a waiter starting after the transition would hang. Liveness-checks
+# the resolved pane each loop so a killed pane exits 3, not 1.
 _agent_wait() {
   local forset="done,idle,blocked" timeout=120 target=
   while (( $# )); do
@@ -296,7 +296,7 @@ _agent_name() {
     print -u2 "agent name: invalid name '$name' (grammar: [a-z][a-z0-9_-]{0,31})"
     return 2
   }
-  [[ -r $_agent_sweep ]] && sh "$_agent_sweep" >/dev/null 2>&1 || true
+  [[ -r $_agent_sweep ]] && sh "$_agent_sweep" >/dev/null 2>&1
   if agent_name_taken "$name" "$pane"; then
     print -u2 "agent name: '$name' is already held by a live agent"
     return 2

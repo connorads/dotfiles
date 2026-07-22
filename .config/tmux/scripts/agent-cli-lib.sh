@@ -5,14 +5,14 @@
 # agent-state-lib.sh; function-locals are _underscore-prefixed and always
 # assigned before use so `set -u` callers are not clobbered or tripped.
 #
-# Requires agent-state-lib.sh. When the caller has not already sourced it
-# (agent-popup.sh has), the guard pulls it in from $AGENT_STATE_LIB (default:
-# the sibling file) — the lib cannot self-locate portably when sourced.
+# Requires agent-state-lib.sh (rank() backs agent_rank_sort). Sourced
+# unconditionally from $AGENT_STATE_LIB (default: the sibling file — the lib
+# cannot self-locate portably when sourced); it is pure function definitions,
+# so re-sourcing is idempotent for callers that already pulled it in
+# (agent-popup.sh has).
 
-if ! command -v rank >/dev/null 2>&1; then
-	# shellcheck disable=SC1090,SC1091
-	. "${AGENT_STATE_LIB:-$HOME/.config/tmux/scripts/agent-state-lib.sh}"
-fi
+# shellcheck disable=SC1090,SC1091
+. "${AGENT_STATE_LIB:-$HOME/.config/tmux/scripts/agent-state-lib.sh}"
 
 # agent_pane_state PANE — echo PANE's @agent_state (empty when unset or gone).
 agent_pane_state() {
@@ -78,8 +78,7 @@ agent_resolve_target() {
 		fi
 		;;
 	*)
-		_matches=$(tmux list-panes -a -F '#{pane_id}	#{@agent_name}' 2>/dev/null |
-			awk -F '\t' -v n="$_t" '$2 == n { print $1 }')
+		_matches=$(agent_list_rows | awk -F '\t' -v n="$_t" '$4 == n { print $1 }')
 		_count=0
 		_first=
 		while IFS= read -r _m; do
@@ -105,33 +104,52 @@ EOF
 }
 
 # agent_list_rows — the single agent-pane enumerator: one TSV row per pane
-# carrying @agent_state, ranked by attention (rank desc, ties keep tmux's
-# enumeration order). Fields:
+# carrying @agent_state, in positional order (session → window index → pane
+# index). Fields:
 #   pane_id  state  kind  name  session:win.pane  window_name  cwd(full)
-# The agents popup decorates these rows with glyphs for fzf; the CLI prints
-# them as-is. rank() mirrors agent-state-lib.sh (awk cannot call sh; trivial
-# + pinned by agent-popup.bats/agent-cli.bats).
+# cycle() consumes positional order directly; consumers wanting attention
+# order (the popup's list, `agent ls`) pipe through agent_rank_sort.
 agent_list_rows() {
+	_tab=$(printf '\t')
 	tmux list-panes -a -F \
-		"#{pane_id}	#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}	#{pane_current_path}" \
+		"#{session_name}	#{window_index}	#{pane_index}	#{pane_id}	#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{pane_current_path}" \
 		2>/dev/null |
-		awk -F '\t' '
-		function rank(s) {
-			if (s == "blocked") return 4
-			if (s == "done")    return 3
-			if (s == "working") return 2
-			if (s == "idle")    return 1
-			return 0
+		sort -t "$_tab" -k1,1 -k2,2n -k3,3n |
+		awk -F '\t' 'BEGIN { OFS = "\t" }
+		$5 != "" { print $4, $5, $6, $7, $1 ":" $2 "." $3, $8, $9 }'
+}
+
+# agent_rank_sort — filter agent_list_rows output into attention order:
+# rank desc (blocked > done > working > idle), positional order as the
+# tie-break (`sort -s`: the stable sort keeps input order within a rank).
+# The rank values are the canonical rank() from agent-state-lib.sh, injected
+# into awk via -v (awk cannot call sh) — the same idiom the popup uses for
+# glyphs, so the mapping lives in exactly one place.
+agent_rank_sort() {
+	_tab=$(printf '\t')
+	awk -F '\t' -v OFS='\t' \
+		-v r_blocked="$(rank blocked)" -v r_done="$(rank 'done')" \
+		-v r_working="$(rank working)" -v r_idle="$(rank idle)" '
+		BEGIN {
+			r["blocked"] = r_blocked; r["done"] = r_done
+			r["working"] = r_working; r["idle"] = r_idle
 		}
-		$2 != "" { n++; row[n] = $0; r[n] = rank($2) }
-		END {
-			# Stable insertion sort by rank desc (ties keep enumeration order).
-			for (i = 1; i <= n; i++) idx[i] = i
-			for (i = 2; i <= n; i++) {
-				key = idx[i]; j = i - 1
-				while (j >= 1 && r[idx[j]] < r[key]) { idx[j + 1] = idx[j]; j-- }
-				idx[j + 1] = key
-			}
-			for (i = 1; i <= n; i++) print row[idx[i]]
-		}'
+		{ print ($2 in r ? r[$2] : 0), $0 }' |
+		sort -t "$_tab" -k1,1rn -s |
+		cut -f2-
+}
+
+# agent_name_taken NAME [EXCLUDE_PANE] — true iff some *other* live agent pane
+# already carries @agent_name == NAME. Callers sweep first (agent-sweep.sh
+# clears dead panes' names), so this is the "unique among live agents" check.
+# EXCLUDE_PANE lets a pane re-apply its own name without a self-collision.
+# Scoped to agent_list_rows' view — state-carrying panes — so a ghost name on
+# a stateless pane (only settable out-of-band; the mutator refuses it) does
+# not count as taken.
+agent_name_taken() {
+	_name=$1
+	_exclude=${2:-}
+	_hit=$(agent_list_rows |
+		awk -F '\t' -v n="$_name" -v x="$_exclude" '$1 != x && $4 == n { print 1; exit }')
+	[ -n "$_hit" ]
 }
