@@ -62,7 +62,7 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -q -- "claude --dangerously-skip-permissions -r claude-session --fork-session" "$TEST_LOG"
+  grep -q -- "claude -r claude-session --fork-session" "$TEST_LOG"
   ! grep -q -- "codex --dangerously-bypass-approvals-and-sandbox" "$TEST_LOG"
 }
 
@@ -106,6 +106,6 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -q -- "claude --dangerously-skip-permissions -r claude-session --fork-session" "$TEST_LOG"
+  grep -q -- "claude -r claude-session --fork-session" "$TEST_LOG"
   ! grep -q -- "codex --dangerously-bypass-approvals-and-sandbox" "$TEST_LOG"
 }

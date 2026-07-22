@@ -30,7 +30,9 @@ printf '%s\n' "$*" >>"$TEST_LOG"
 EOF
 }
 
-# ps stub: a live foreground claude (pid 711) on ttys010.
+# ps stub: a live foreground claude (pid 711) on ttys010. The fork mirrors the
+# source pane's launch flags, read from `ps -o args= -p 711`; PS_SOURCE_ARGV sets
+# that argv (default bare `claude` -> empty flags -> bare fork).
 stub_ps_with_foreground_claude() {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash
@@ -38,6 +40,9 @@ case "$*" in
   *-t\ ttys010*)
     printf '  700 Ss zsh\n'
     printf '  711 S+ claude\n'
+    ;;
+  *"args= -p 711"*)
+    printf '%s\n' "${PS_SOURCE_ARGV:-claude}"
     ;;
   *) exit 1 ;;
 esac
@@ -119,14 +124,15 @@ EOF
   RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -qF "CLAUDE_CONFIG_DIR=$cfg claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+  grep -qF "CLAUDE_CONFIG_DIR=$cfg claude -r session-xyz --fork-session" "$TEST_LOG"
   # The prompt sub-modes must carry the account through too.
   grep -qF "prompt-worktree /Users/connorads session-xyz $cfg" "$TEST_LOG"
   # Never persist any other env var from the live environ.
   assert_log_missing "hunter2"
 }
 
-@test "default-account pane -> fork command stays bare (no CLAUDE_CONFIG_DIR)" {
+@test "plain source pane -> bare fork (match-source, no skip-perms)" {
+  # A bare `claude --resume <id>` / older launch has no override to carry.
   stub_ps_with_foreground_claude
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
 {"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
@@ -135,8 +141,56 @@ EOF
   RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -qF "claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+  grep -qF "claude -r session-xyz --fork-session" "$TEST_LOG"
   assert_log_missing "CLAUDE_CONFIG_DIR="
+  assert_log_missing "dangerously-skip-permissions"
+}
+
+@test "cy-style source pane -> fork mirrors append + skip-perms" {
+  export PS_SOURCE_ARGV="claude --append-system-prompt-file /home/x/append.md --dangerously-skip-permissions"
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -qF "claude --append-system-prompt-file /home/x/append.md --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+}
+
+@test "model flag on the source pane is mirrored into the fork" {
+  export PS_SOURCE_ARGV="claude --model fable"
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -qF "claude --model fable -r session-xyz --fork-session" "$TEST_LOG"
+}
+
+@test "fork-of-fork source -> stale resume/fork state stripped from the mirror" {
+  export PS_SOURCE_ARGV="claude --append-system-prompt-file /home/x/append.md -r old-session --fork-session"
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -qF "claude --append-system-prompt-file /home/x/append.md -r session-xyz --fork-session" "$TEST_LOG"
+  assert_log_missing "old-session"
+}
+
+@test "fork-repeat threads the mirrored flags into every fork command" {
+  # Flags arrive as one positional (shell_quoted upstream) and expand back into
+  # separate flags in the fork command.
+  local flags="--append-system-prompt-file /home/x/append.md --dangerously-skip-permissions"
+  run "$MENU" fork-repeat split-right 3 "%1" "/tmp/work space" "session-xyz" "" "$flags"
+  [ "$status" -eq 0 ]
+  [ "$(log_count "claude --append-system-prompt-file /home/x/append.md --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 3 ]
 }
 
 @test "fork-repeat threads the config dir into every fork command" {
@@ -144,7 +198,7 @@ EOF
   local cfg="$HOME/.claude-profiles/code/$acct"
   run "$MENU" fork-repeat split-right 3 "%1" "/tmp/work space" "session-xyz" "$cfg"
   [ "$status" -eq 0 ]
-  [ "$(log_count "CLAUDE_CONFIG_DIR=$cfg claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 3 ]
+  [ "$(log_count "CLAUDE_CONFIG_DIR=$cfg claude -r session-xyz --fork-session")" -eq 3 ]
 }
 
 @test "menu offers forking into a new worktree window" {
@@ -202,7 +256,7 @@ EOF
   run "$MENU" fork-repeat split-right 4 "%1" "/tmp/work space" "session-xyz"
   [ "$status" -eq 0 ]
   [ "$(log_count "split-window -h")" -eq 4 ]
-  [ "$(log_count "claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 4 ]
+  [ "$(log_count "claude -r session-xyz --fork-session")" -eq 4 ]
   grep -q -- "select-layout -t %1 even-horizontal" "$TEST_LOG"
   assert_log_missing "select-layout -t %1 even-vertical"
 }
@@ -211,7 +265,7 @@ EOF
   run "$MENU" fork-repeat split-down 4 "%1" "/tmp/work space" "session-xyz"
   [ "$status" -eq 0 ]
   [ "$(log_count "split-window -v")" -eq 4 ]
-  [ "$(log_count "claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 4 ]
+  [ "$(log_count "claude -r session-xyz --fork-session")" -eq 4 ]
   grep -q -- "select-layout -t %1 even-vertical" "$TEST_LOG"
   assert_log_missing "select-layout -t %1 even-horizontal"
 }
@@ -220,7 +274,7 @@ EOF
   run "$MENU" fork-repeat new-window 4 "%1" "/tmp/work space" "session-xyz"
   [ "$status" -eq 0 ]
   [ "$(log_count "new-window -c /tmp/work space")" -eq 4 ]
-  [ "$(log_count "claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 4 ]
+  [ "$(log_count "claude -r session-xyz --fork-session")" -eq 4 ]
   assert_log_missing "select-layout"
 }
 
@@ -246,7 +300,7 @@ EOF
   run "$MENU" fork-worktree "feat/x" "session-xyz"
   [ "$status" -eq 0 ]
   grep -q "wt-add feat/x" "$TEST_LOG"
-  grep -q -- "new-window -c /tmp/trees/repo/feat/x claude --dangerously-skip-permissions -r session-xyz --fork-session" "$TEST_LOG"
+  grep -q -- "new-window -c /tmp/trees/repo/feat/x claude -r session-xyz --fork-session" "$TEST_LOG"
 }
 
 @test "fork-worktree outside a git repository soft-fails without opening a window" {
@@ -286,7 +340,7 @@ EOF
   grep -q -- "wt-add feat/foo-3" "$TEST_LOG"
   grep -q -- "wt-add feat/foo-4" "$TEST_LOG"
   [ "$(log_count "new-window -c /tmp/trees/repo/feat/foo-")" -eq 4 ]
-  [ "$(log_count "claude --dangerously-skip-permissions -r session-xyz --fork-session")" -eq 4 ]
+  [ "$(log_count "claude -r session-xyz --fork-session")" -eq 4 ]
 }
 
 @test "fork-worktrees outside a git repository soft-fails without opening windows" {

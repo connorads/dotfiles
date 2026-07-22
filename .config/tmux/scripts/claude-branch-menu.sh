@@ -2,9 +2,10 @@
 # claude-branch-menu.sh: fork the focused pane's live Claude session into a new
 # pane/window (prefix + Alt+b). Resolves pane -> claude PID -> the live
 # ~/.claude/sessions/<pid>.json golden source, then offers a display-menu palette
-# that runs `claude --dangerously-skip-permissions -r <sid> --fork-session` in a
-# split/window (spatial branch: bypass-permissions mode matches the `cy` alias;
-# the original pane is left untouched).
+# that runs `claude <source-flags> -r <sid> --fork-session` in a split/window
+# (spatial branch: the fork mirrors the source pane's live launch flags - append,
+# model, perm mode - via resurrect_argv_claude_flags, like the restore path, so a
+# fork of a non-yolo pane stays non-yolo; the original pane is left untouched).
 #
 # Usage: claude-branch-menu.sh <pane_id> <pane_tty> <pane_current_path> [pane_pid]
 #        claude-branch-menu.sh prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id>
@@ -44,6 +45,7 @@ normalise_fork_count() {
 claude_fork_cmd() {
 	local sid=$1
 	local config_dir=${2:-}
+	local flags=${3:-}
 
 	# A ccp pane relocates the account to CLAUDE_CONFIG_DIR; tmux panes don't
 	# inherit the source pane's env, so the fork must carry it inline or it would
@@ -53,24 +55,29 @@ claude_fork_cmd() {
 	local prefix=""
 	[ -n "$config_dir" ] && prefix="CLAUDE_CONFIG_DIR=$(shell_quote "$config_dir") "
 
-	printf '%sclaude --dangerously-skip-permissions -r %s --fork-session' "$prefix" "$(shell_quote "$sid")"
+	# flags mirrors the source pane's launch flags (append/model/skip-perms) from
+	# resurrect_argv_claude_flags. Inserted unquoted so it word-splits back into
+	# separate flags; the append path has no spaces (the assumption that lib
+	# documents). Empty flags -> bare fork (a source with no override to carry).
+	printf '%sclaude%s -r %s --fork-session' "$prefix" "${flags:+ $flags}" "$(shell_quote "$sid")"
 }
 
 fork_worktree_window() {
 	local branch=$1
 	local sid=$2
 	local config_dir=${3:-}
+	local flags=${4:-}
 	local path
 
 	path=$(wt-add "$branch") || soft_fail "wt-add failed for $branch"
-	tmux new-window -c "$path" "$(claude_fork_cmd "$sid" "$config_dir")"
+	tmux new-window -c "$path" "$(claude_fork_cmd "$sid" "$config_dir" "$flags")"
 }
 
 # Script modes are used by menu commands after the live session has already
 # been resolved, so keep them before the jq/session discovery path.
 case "${1:-}" in
 prompt-repeat)
-	{ [ "$#" -eq 5 ] || [ "$#" -eq 6 ]; } || soft_fail "usage: prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id> [config-dir]"
+	{ [ "$#" -ge 5 ] && [ "$#" -le 7 ]; } || soft_fail "usage: prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id> [config-dir] [flags]"
 	action=$2
 	case "$action" in
 	split-right | split-down | new-window) ;;
@@ -81,32 +88,35 @@ prompt-repeat)
 	cwd_arg=$(shell_quote "$4")
 	sid_arg=$(shell_quote "$5")
 	config_dir_arg=$(shell_quote "${6:-}")
-	repeat_cmd="$self_arg fork-repeat $action %% $pane_arg $cwd_arg $sid_arg $config_dir_arg"
+	flags_arg=$(shell_quote "${7:-}")
+	repeat_cmd="$self_arg fork-repeat $action %% $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
 	tmux command-prompt -I "4" -p "Fork count:" "run-shell $(tmux_quote "$repeat_cmd")"
 	exit 0
 	;;
 prompt-worktree)
-	{ [ "$#" -eq 3 ] || [ "$#" -eq 4 ]; } || soft_fail "usage: prompt-worktree <cwd> <session-id> [config-dir]"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 5 ]; } || soft_fail "usage: prompt-worktree <cwd> <session-id> [config-dir] [flags]"
 	self_arg=$(shell_quote "${BASH_SOURCE[0]}")
 	cwd=$2
 	sid_arg=$(shell_quote "$3")
 	config_dir_arg=$(shell_quote "${4:-}")
-	worktree_cmd="$self_arg fork-worktree %% $sid_arg $config_dir_arg"
+	flags_arg=$(shell_quote "${5:-}")
+	worktree_cmd="$self_arg fork-worktree %% $sid_arg $config_dir_arg $flags_arg"
 	tmux command-prompt -p "Worktree branch:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktree_cmd")"
 	exit 0
 	;;
 prompt-worktrees)
-	{ [ "$#" -eq 3 ] || [ "$#" -eq 4 ]; } || soft_fail "usage: prompt-worktrees <cwd> <session-id> [config-dir]"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 5 ]; } || soft_fail "usage: prompt-worktrees <cwd> <session-id> [config-dir] [flags]"
 	self_arg=$(shell_quote "${BASH_SOURCE[0]}")
 	cwd=$2
 	sid_arg=$(shell_quote "$3")
 	config_dir_arg=$(shell_quote "${4:-}")
-	worktrees_cmd="$self_arg fork-worktrees %% %2 $sid_arg $config_dir_arg"
+	flags_arg=$(shell_quote "${5:-}")
+	worktrees_cmd="$self_arg fork-worktrees %% %2 $sid_arg $config_dir_arg $flags_arg"
 	tmux command-prompt -I "4," -p "Fork count:,Worktree branch prefix:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktrees_cmd")"
 	exit 0
 	;;
 fork-repeat)
-	{ [ "$#" -eq 6 ] || [ "$#" -eq 7 ]; } || soft_fail "usage: fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id> [config-dir]"
+	{ [ "$#" -ge 6 ] && [ "$#" -le 8 ]; } || soft_fail "usage: fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id> [config-dir] [flags]"
 	action=$2
 	count=$(normalise_fork_count "$3") ||
 		soft_fail "Fork count must be between 1 and 8: ${3:-<empty>}"
@@ -114,7 +124,8 @@ fork-repeat)
 	cwd=$5
 	sid=$6
 	config_dir=${7:-}
-	fork_cmd=$(claude_fork_cmd "$sid" "$config_dir")
+	flags=${8:-}
+	fork_cmd=$(claude_fork_cmd "$sid" "$config_dir" "$flags")
 	case "$action" in
 	split-right)
 		for ((i = 1; i <= count; i++)); do
@@ -143,26 +154,28 @@ fork-worktree)
 	PATH="$HOME/.local/bin:$PATH"
 	# A branch typed with spaces splits the command-prompt %% substitution into
 	# extra argv words - surface that instead of forking into a wrong branch.
-	{ [ "$#" -eq 3 ] || [ "$#" -eq 4 ]; } || soft_fail "usage: fork-worktree <branch> <session-id> [config-dir] (branch must not contain spaces)"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 5 ]; } || soft_fail "usage: fork-worktree <branch> <session-id> [config-dir] [flags] (branch must not contain spaces)"
 	branch=$2
 	sid=$3
 	config_dir=${4:-}
+	flags=${5:-}
 	case "$branch" in
 	*[[:space:]]*) soft_fail "Branch name must not contain spaces: $branch" ;;
 	esac
 	git rev-parse --show-toplevel >/dev/null 2>&1 ||
 		soft_fail "Not in a git repository: $PWD"
-	fork_worktree_window "$branch" "$sid" "$config_dir"
+	fork_worktree_window "$branch" "$sid" "$config_dir" "$flags"
 	exit 0
 	;;
 fork-worktrees)
 	PATH="$HOME/.local/bin:$PATH"
-	{ [ "$#" -eq 4 ] || [ "$#" -eq 5 ]; } || soft_fail "usage: fork-worktrees <count> <branch-prefix> <session-id> [config-dir] (prefix must not contain spaces)"
+	{ [ "$#" -ge 4 ] && [ "$#" -le 6 ]; } || soft_fail "usage: fork-worktrees <count> <branch-prefix> <session-id> [config-dir] [flags] (prefix must not contain spaces)"
 	count=$(normalise_fork_count "$2") ||
 		soft_fail "Fork count must be between 1 and 8: ${2:-<empty>}"
 	prefix=$3
 	sid=$4
 	config_dir=${5:-}
+	flags=${6:-}
 	[ -n "$prefix" ] || soft_fail "Worktree branch prefix is required"
 	case "$prefix" in
 	*[[:space:]]*) soft_fail "Branch prefix must not contain spaces: $prefix" ;;
@@ -170,7 +183,7 @@ fork-worktrees)
 	git rev-parse --show-toplevel >/dev/null 2>&1 ||
 		soft_fail "Not in a git repository: $PWD"
 	for ((i = 1; i <= count; i++)); do
-		fork_worktree_window "$prefix-$i" "$sid" "$config_dir"
+		fork_worktree_window "$prefix-$i" "$sid" "$config_dir" "$flags"
 	done
 	exit 0
 	;;
@@ -178,6 +191,13 @@ esac
 
 # shellcheck source=lib/agent-session.sh disable=SC1091
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
+
+# resurrect_argv_claude_flags preserves the source pane's launch flags so the
+# fork mirrors it (the same lib the restore path uses). Guarded on existence
+# like the resurrect strategy does; missing -> empty flags -> bare fork.
+# shellcheck source=lib/resurrect-argv.sh disable=SC1091
+[ -f "$(dirname "${BASH_SOURCE[0]}")/lib/resurrect-argv.sh" ] &&
+	. "$(dirname "${BASH_SOURCE[0]}")/lib/resurrect-argv.sh"
 
 pane_id="${1:?pane_id required}"
 pane_tty="${2:-}"
@@ -238,9 +258,16 @@ cwd=$(printf '%s' "$meta" | jq -r '.cwd // empty' 2>/dev/null || true)
 [ -n "$status" ] || status="idle"
 
 title=" Branch · $name [$status] "
-# Fork in bypass-permissions mode (matches the `cy` alias) so the branched pane
-# is immediately usable without re-approving the fork.
-fork_cmd=$(claude_fork_cmd "$sid" "$config_dir")
+# Mirror the source pane's launch flags (append, model, perm mode) into the fork,
+# like the resurrect restore path - a fork of a non-yolo pane stays non-yolo.
+# resurrect_argv_claude_flags keeps them verbatim, strips the source's own stale
+# -r/--fork-session/--continue (clean fork-of-fork), and returns non-zero on
+# argv0 mismatch (wrapper) - empty fork_flags then yields a bare fork.
+fork_flags=""
+if command -v resurrect_argv_claude_flags >/dev/null 2>&1; then
+	fork_flags=$(resurrect_argv_claude_flags "$(ps -o args= -p "$claude_pid")" 2>/dev/null || true)
+fi
+fork_cmd=$(claude_fork_cmd "$sid" "$config_dir" "$fork_flags")
 
 # Fork into a brand-new worktree window: prompt for a branch, then run this
 # script's fork-worktree mode in a popup rooted at the session's repo so wt-add
@@ -253,12 +280,16 @@ pane_arg=$(shell_quote "$pane_target")
 cwd_arg=$(shell_quote "$cwd")
 sid_arg=$(shell_quote "$sid")
 config_dir_arg=$(shell_quote "$config_dir")
+# The mirrored flags carry spaces (append path + its value); shell_quote threads
+# them as one positional that expands unquoted back into separate flags in
+# claude_fork_cmd - the same round-trip config_dir uses.
+flags_arg=$(shell_quote "$fork_flags")
 
-prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg $config_dir_arg"
-prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg $config_dir_arg"
-prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $config_dir_arg"
-prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $config_dir_arg"
-prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg"
+prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg $flags_arg"
 
 fork_split_right_n="run-shell $(tmux_quote "$prompt_right_cmd")"
 fork_split_down_n="run-shell $(tmux_quote "$prompt_down_cmd")"
