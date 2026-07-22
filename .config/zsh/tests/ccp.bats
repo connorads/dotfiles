@@ -9,6 +9,9 @@ REAL_CLAUDE_CODE_PROFILE="$FUNCTIONS_DIR/claude-code-profile"
 
 setup() {
   setup_test_home
+  # ccp builds its inject array from $(claude-launch-flags); install the real
+  # owner so the substitution resolves on the isolated PATH.
+  install -m 0755 "$FUNCTIONS_DIR/claude-launch-flags" "$TEST_BIN/claude-launch-flags"
 }
 
 # Log every arg on its own line so tests can assert exact forwarding.
