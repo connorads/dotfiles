@@ -12,11 +12,7 @@ _ccp_usage() {
 
 local root="$HOME/.claude-profiles/code"
 local choice
-# Flags injected ahead of the user's claude-args. The system-prompt append (git +
-# worktree overrides) is always injected - ccp launches are interactive, mirroring
-# the `c` alias. -y adds --dangerously-skip-permissions on top, mirroring `cy`.
-local -a inject
-inject=( --append-system-prompt-file "$HOME/.claude/system-append.md" )
+local yolo=""
 
 # Leading flags own the front of the arg list; everything after the account
 # name forwards to claude untouched.
@@ -27,7 +23,7 @@ while [[ "${1:-}" == -* ]]; do
             return 0
             ;;
         -y|--yolo)
-            inject+=( --dangerously-skip-permissions )
+            yolo=1
             shift
             ;;
         --)
@@ -39,6 +35,12 @@ while [[ "${1:-}" == -* ]]; do
             ;;
     esac
 done
+
+# Flags injected ahead of the user's claude-args, from the shared owner - ccp
+# launches are interactive, mirroring the `c` alias (append), and -y adds
+# skip-permissions on top, mirroring `cy`. zsh word-splits the substitution.
+local -a inject
+inject=( $(claude-launch-flags ${yolo:+--yolo}) )
 
 if [[ -z "${1:-}" ]]; then
     # No account given: pick from default + discovered profiles via fzf.
