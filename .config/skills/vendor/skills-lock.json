@@ -320,6 +320,13 @@
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
       "computedHash": "45fd0e5f600e946cfcca44bd47d89619dc23c21c126734ff7d43d1e55eb39ad8"
     },
+    "no-ai-slop": {
+      "source": "petergyang/no-ai-slop",
+      "ref": "61c21c351da4dcb40946a11fead978f2078a2c65",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "6a9b8465173b188a389961d514d68b0bbf00032b12ae89f5267b10e23d85e6bb"
+    },
     "pick-ui-library": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
