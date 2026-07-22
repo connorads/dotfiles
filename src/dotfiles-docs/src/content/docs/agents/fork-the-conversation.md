@@ -33,6 +33,14 @@ Both panes now hold the *same conversation up to this point*, diverging from
 here. Ask one to take the safe approach and the other the ambitious one.
 Neither knows about the other; both remember everything that came before.
 
+The same idea stretches across machines: `prefix + Alt+t` teleports the
+focused session to another of my computers over Tailscale. It forks the
+transcript under a fresh session id, ships the file over ssh, and resumes it
+in the target machine's tmux (or just copies a ready-to-paste resume command).
+Start a conversation on the MacBook at a cafe, land it on the Mac mini at
+home - same history, new hardware. The origin session keeps running; it's a
+fork, not a move, so the two can never corrupt each other's transcript.
+
 ## Why it compounds
 
 Forking removes the cost of curiosity. When trying the second idea costs one
@@ -61,3 +69,9 @@ claude -r <session-id> --fork-session
 Run it in a second terminal and you have a fork. The tmux binding just
 removes the friction: no finding session IDs, no arranging windows - one
 chord, and the conversation splits in front of you.
+
+Cross-machine forking needs no cloud service either: a Claude session is one
+self-contained JSONL file under `~/.claude/projects/`. Copy it to the same
+path on another machine (the directory name encodes the project path; the
+filename is the session id) and `claude --resume <id>` there picks it up.
+My `atp` command just automates the renaming, shipping, and resuming.
