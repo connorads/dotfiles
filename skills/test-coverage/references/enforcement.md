@@ -336,28 +336,42 @@ For projects not yet at their target threshold.
 
 ### Ratcheting rules
 
-- **Ratchet on merge, not on PR.** Set the threshold to the new level after a coverage-improving PR merges.
+- **Let the raise ride along in the PR that earned it.** With the runner's built-in auto-raise (below), the bumped floor lands in that PR's own diff — reviewed with the tests that justify it. Only when ratcheting by hand, do it as a deliberate step (never let a red PR lower the floor); an auto-raise that only ever raises is safe to run locally.
 - **Document each ratchet.** The comment on the threshold line should include the date and what was added.
 - **Set a target date.** "100% by end of Q2" gives the team a goal to work toward.
 - **Protect against gaming.** Deleting tested code raises the percentage but doesn't improve quality. Review PRs that significantly change coverage.
 
-### Automated ratcheting (advanced)
+### Automated ratcheting (prefer the runner's built-in)
 
-```bash
-#!/usr/bin/env bash
-# scripts/ratchet-coverage.sh
-# After tests pass, update threshold to current level
+Reach for the runner's own auto-raise before hand-rolling a script — Vitest's
+`coverage.thresholds.autoUpdate: true` (flat `thresholdAutoUpdate` pre-1.0)
+rewrites the threshold values in the config file whenever measured coverage
+beats them. It **only ever raises**, so it's safe to run locally: the bumped
+floor lands in the diff of the PR that earned the coverage, and rides along in
+that PR — no separate job.
 
-CURRENT=$(jq '.total.lines.pct' coverage/unit/coverage-summary.json)
-CURRENT_INT=${CURRENT%.*}  # truncate to integer
-
-# Update vitest config threshold
-sed -i "s/lines: [0-9]*/lines: $CURRENT_INT/" vitest.unit.config.mts
-
-echo "Ratcheted coverage threshold to ${CURRENT_INT}%"
+```ts
+// vitest.config.ts
+coverage: {
+  thresholds: {
+    lines: 60,          // floor; autoUpdate rewrites this upward, never down
+    autoUpdate: true,
+  },
+}
 ```
 
-Run after merge to main, not on every commit.
+This replaces the older pattern of a custom `sed`-the-config script run on a
+`push: [main]` job that recomputes the suite just to self-commit a baseline
+bump. That pattern needs write-to-`main` permissions, adds a main-only job, and
+keeps the number in a **separate baseline file that silently drifts** from
+reality (a real case: a stale baseline claimed 34% while the suite actually
+measured 65%, so the "protective" floor governed nothing). Keeping the floor in
+the test config — the single source of truth the suite re-measures every run —
+removes the drift and the extra job.
+
+Only fall back to a custom script (`jq` the summary + rewrite the config) when
+the runner has no auto-update option; run it locally so the raise is committed
+in the PR, never in an ephemeral CI job that can't persist the edit.
 
 ---
 
