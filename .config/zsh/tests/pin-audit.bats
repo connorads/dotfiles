@@ -16,15 +16,10 @@ fnox = "1.27.1"
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu" }
 EOF
-  cat >"$TEST_HOME/.config/aube/config.toml" <<'EOF'
-trustPolicyExclude = [
-  "@mariozechner/clipboard-*",
-]
-EOF
 }
 
 # Probe stubs keyed by env vars so each test picks its scenario:
-#   FNOX_LATEST / FNOX_ASSETS, CLIP_ATT, SRT_LATEST, COS_JSON; unset any of
+#   FNOX_LATEST / FNOX_ASSETS, SRT_LATEST, COS_JSON; unset any of
 #   MISE_OK/GH_OK/NPM_OK to simulate that probe failing (offline).
 write_probe_stubs() {
   write_stub mise <<'EOF'
@@ -47,7 +42,6 @@ EOF
 #!/usr/bin/env bash
 [ -n "${NPM_OK:-}" ] || exit 1
 case "$3" in
-  dist.attestations) echo "${CLIP_ATT:-}" ;;
   version) echo "${SRT_LATEST:-0.0.66}" ;;
 esac
 EOF
@@ -64,7 +58,6 @@ setup() {
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK   fnox 1.27.1 - still the newest"* ]]
-  [[ "$output" == *"OK   clipboard trustPolicyExclude - still no attestations"* ]]
   [[ "$output" == *"INFO rembg pinned 2.0.69"* ]]
   [[ "$output" == *"OK   sandbox-runtime 0.0.62 - latest 0.0.66 still pre-1.0"* ]]
   [[ "$output" == *"OK   CosineAI/cli - all versioned releases still pre-release"* ]]
@@ -72,11 +65,10 @@ setup() {
 }
 
 @test "cleared conditions FLAG each pin but still exit 0" {
-  FNOX_LATEST=1.30.0 FNOX_ASSETS=8 CLIP_ATT='{"p":1}' SRT_LATEST=1.0.0 \
+  FNOX_LATEST=1.30.0 FNOX_ASSETS=8 SRT_LATEST=1.0.0 \
     COS_STABLE=v2.1.0 run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"FLAG fnox 1.27.1 - 1.30.0 ships 8 assets"* ]]
-  [[ "$output" == *"FLAG clipboard trustPolicyExclude"* ]]
   [[ "$output" == *"FLAG sandbox-runtime 0.0.62 - 1.0.0 landed"* ]]
   [[ "$output" == *"FLAG CosineAI/cli - stable release v2.1.0 exists"* ]]
 }
@@ -92,7 +84,6 @@ setup() {
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"SKIP fnox 1.27.1 - version probe failed"* ]]
-  [[ "$output" == *"SKIP clipboard trustPolicyExclude - npm probe failed"* ]]
   [[ "$output" == *"SKIP sandbox-runtime 0.0.62 - npm probe failed"* ]]
   [[ "$output" == *"SKIP CosineAI/cli prerelease=true - gh probe failed"* ]]
   [[ "$output" != *"FLAG"* ]]
@@ -104,7 +95,6 @@ setup() {
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK   fnox - exact pin gone"* ]]
-  [[ "$output" == *"OK   clipboard trustPolicyExclude - gone"* ]]
   [[ "$output" == *"OK   rembg - exact pin gone"* ]]
   [[ "$output" == *"OK   sandbox-runtime - exact pin gone"* ]]
   [[ "$output" == *"OK   CosineAI/cli - prerelease=true gone"* ]]
