@@ -90,6 +90,7 @@
           };
           modules = [
             ./modules/darwin-shared.nix
+            ./modules/darwin-ui.nix
             home-manager.darwinModules.home-manager
           ]
           ++ extraModules;

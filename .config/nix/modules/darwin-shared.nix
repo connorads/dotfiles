@@ -2,8 +2,9 @@
 # macOS (nix-darwin) Configuration — Shared base (both Macs)
 # ==============================================================================
 #
-# Host-neutral foundation imported by every darwinConfiguration. Per-host
-# concerns live in darwin-desktop.nix (Air) and darwin-server.nix (mini).
+# Host-neutral foundation imported by every darwinConfiguration. Shared personal
+# UI defaults live alongside in darwin-ui.nix (also both Macs); per-host concerns
+# live in darwin-desktop.nix (Air) and darwin-server.nix (mini).
 #
 # The home-manager.users.connorads submodule references `pkgs`/`packages` by
 # closing over this function's args (home-manager sets no extraSpecialArgs on
