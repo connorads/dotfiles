@@ -213,6 +213,7 @@ agent wait <target> [--for s,s] [--timeout n]  # block until @agent_state reache
 agent prompt <target> <text> [--force]         # paste prompt + Enter, verify the agent starts
 agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
 agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
+atp [--host H] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there (tmux: prefix + Alt+t; alias for agent-teleport)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
 zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
