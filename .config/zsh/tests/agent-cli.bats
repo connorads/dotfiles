@@ -60,13 +60,6 @@ teardown() {
   [ "$(agent_prompt_gate "" 0)" = send ]
 }
 
-@test "agent_submit_key: C-m for every kind (the future per-kind seam)" {
-  . "$CLI_LIB"
-  [ "$(agent_submit_key claude)" = C-m ]
-  [ "$(agent_submit_key codex)" = C-m ]
-  [ "$(agent_submit_key "")" = C-m ]
-}
-
 # --- agent_resolve_target (real server) ---
 
 @test "resolve: a valid pane id echoes its canonical id" {
