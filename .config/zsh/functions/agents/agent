@@ -28,9 +28,10 @@ usage: agent <subcommand> [args]
   wait <target> [--for state[,state]] [--timeout secs]
                     block until @agent_state reaches a wanted state
                     (default --for done,idle,blocked; timeout 120s)
-  prompt <target> <text...> [--force]
+  prompt <target> [--force] [--] <text...>
                     paste a prompt + submit, then verify the agent starts;
                     refuses blocked/working panes unless --force
+                    (-- ends flag parsing: text may then begin with -)
   name [<target>] <name>
                     label a pane (default: this pane); unique among live
                     agents, grammar [a-z][a-z0-9_-]{0,31}
@@ -195,6 +196,17 @@ _agent_prompt() {
     case $1 in
       --force) force=1; shift ;;
       -h|--help) _agent_usage; return 0 ;;
+      --) # end of flags: the rest is positional (target first if unset, then text)
+        shift
+        while (( $# )); do
+          if [[ -z $target ]]; then
+            target=$1
+          else
+            words+=("$1")
+          fi
+          shift
+        done
+        ;;
       -*) print -u2 "agent prompt: unknown flag: $1"; return 2 ;;
       *)
         if [[ -z $target ]]; then
@@ -207,7 +219,7 @@ _agent_prompt() {
     esac
   done
   [[ -n $target && ${#words} -gt 0 ]] || {
-    print -u2 "usage: agent prompt <target> <text...> [--force]"
+    print -u2 "usage: agent prompt <target> [--force] [--] <text...>"
     return 2
   }
   local text="${(j: :)words}"

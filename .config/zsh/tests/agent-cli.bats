@@ -403,6 +403,17 @@ run_prompt() {
   [ "$status" -eq 2 ]
 }
 
+@test "agent prompt -- lets the text begin with a dash" {
+  setup_test_home
+  write_tmux_stub
+  printf 'idle\nworking\n' >"$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STATE_SEQ="$BATS_TEST_TMPDIR/stateseq"
+  export AGENT_STUB_BUFFER="$BATS_TEST_TMPDIR/buffer"
+  run_prompt %1 -- -v please
+  [ "$status" -eq 0 ]
+  [ "$(cat "$AGENT_STUB_BUFFER")" = "-v please" ]
+}
+
 # --- agent name / unname ---
 
 # Wait until a pane's foreground is no longer a bare shell (the respawned child
