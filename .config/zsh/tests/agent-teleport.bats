@@ -517,12 +517,18 @@ setup_tree_flow() {
   export TS_BUNDLE="$BATS_TEST_TMPDIR/shipped.bundle"
   export TS_WORKTREE="/remote/home/.trees/proj/atp-wt"
   export TS_PROBE_EXTRA=$'git=ok\nwtadd=ok'
+  export TS_DEST_STATE="dest=ok"
   write_stub ts <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$TS_LOG"
 cmd="$3"
 case "$cmd" in
   *'echo "$HOME"'*) echo /remote/home ;;
+  *atpland=initfail*)
+    # Conjure land: init+fetch+checkout, answers with the new repo path.
+    cat >"$TS_BUNDLE"
+    echo /remote/home/proj
+    ;;
   *wt-add*--no-fetch*)
     case "$cmd" in
       *atpland=fetchfail*) cat >"$TS_BUNDLE" ;;
@@ -531,7 +537,7 @@ case "$cmd" in
     ;;
   *"cat > "*) cat >"$TS_SHIP" ;;
   *"dest="*)
-    echo "dest=ok"
+    echo "$TS_DEST_STATE"
     [ -n "$TS_PROBE_EXTRA" ] && printf '%s\n' "$TS_PROBE_EXTRA"
     ;;
   *list-sessions*) cat "$TS_SESSIONS" ;;
@@ -624,8 +630,36 @@ EOF
   # The land command branches directly from the sha the target already has
   # (branch variant, not the bundle-fetch variant).
   grep -q "atpland=branchfail" "$TS_LOG"
-  ! grep -q "atpland=fetchfail" "$TS_LOG"
+  run ! grep -q "atpland=fetchfail" "$TS_LOG"
   [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "$TS_WORKTREE" ]
+}
+
+@test "--with-tree conjures a missing dest via git init + bundle fetch" {
+  setup_tree_flow
+  export TS_DEST_STATE="dest=missing"
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree shipped"* ]]
+  # The init+fetch+checkout land variant ran (never wt-add), the shipped
+  # bundle is a valid full-history one, and the resume cwd is the new repo.
+  grep -q "atpland=initfail" "$TS_LOG"
+  # No wt-add-based land ran (the probe alone mentions wt-add, sans flag).
+  run ! grep -E "wt-add.*--no-fetch" "$TS_LOG"
+  [ -s "$TS_BUNDLE" ]
+  git -C "$ORIGIN_CWD" bundle verify "$TS_BUNDLE" >/dev/null
+  [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "/remote/home/proj" ]
+}
+
+@test "missing dest without tree shipping keeps today's hard failure" {
+  setup_tree_flow
+  export TS_DEST_STATE="dest=missing"
+
+  atp --pid 4242 --host mac-mini --copy
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pass --dest"* ]]
 }
 
 @test "--with-tree and --no-tree together exit 2" {
