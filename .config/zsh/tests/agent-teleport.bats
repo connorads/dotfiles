@@ -119,6 +119,111 @@ EOF
   [ "${lines[5]}" = "/Users/originother/keep" ]
 }
 
+# --- tree-shipping pure helpers ------------------------------------------------
+
+make_repo() {
+  local repo=$1
+
+  git init -q "$repo"
+  git -C "$repo" config user.name "Bats"
+  git -C "$repo" config user.email "bats@example.com"
+  echo "base" >"$repo/base.txt"
+  git -C "$repo" add base.txt
+  git -C "$repo" commit -qm "initial"
+}
+
+@test "branch-name slugs the origin branch and appends 8 id hex chars" {
+  atp --internal branch-name "4ab29cb2-19a1-4c7c-9f30-5f4d3aab6c10" "feature/foo.bar"
+  [ "$status" -eq 0 ]
+  [ "$output" = "atp/feature-foo-bar-4ab29cb2" ]
+}
+
+@test "branch-name without an origin branch is atp/<short8>" {
+  atp --internal branch-name "4ab29cb2-19a1-4c7c-9f30-5f4d3aab6c10"
+  [ "$status" -eq 0 ]
+  [ "$output" = "atp/4ab29cb2" ]
+}
+
+@test "snapshot-ref captures staged+unstaged+untracked, origin untouched" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  local head_before status_before index_before
+  head_before=$(git -C "$repo" rev-parse HEAD)
+  echo staged >"$repo/staged.txt"
+  git -C "$repo" add staged.txt
+  echo unstaged >>"$repo/base.txt"
+  echo untracked >"$repo/untracked.txt"
+  echo ignored >"$repo/ignored.txt"
+  echo "/ignored.txt" >"$repo/.git/info/exclude"
+  status_before=$(git -C "$repo" status --porcelain)
+  index_before=$(shasum "$repo/.git/index")
+
+  atp --internal snapshot-ref "$repo" refs/atp/test
+
+  [ "$status" -eq 0 ]
+  local snap="$output"
+  # One synthetic commit parented on HEAD, parked on the ref.
+  [ "$(git -C "$repo" rev-parse "$snap^")" = "$head_before" ]
+  [ "$(git -C "$repo" rev-parse refs/atp/test)" = "$snap" ]
+  [ "$(git -C "$repo" show "$snap:staged.txt")" = "staged" ]
+  [ "$(git -C "$repo" show "$snap:untracked.txt")" = "untracked" ]
+  [ "$(git -C "$repo" show "$snap:base.txt")" = "$(printf 'base\nunstaged')" ]
+  run git -C "$repo" cat-file -e "$snap:ignored.txt"
+  [ "$status" -ne 0 ]
+  # Origin repo state is byte-identical.
+  [ "$(git -C "$repo" rev-parse HEAD)" = "$head_before" ]
+  [ "$(git -C "$repo" status --porcelain)" = "$status_before" ]
+  [ "$(shasum "$repo/.git/index")" = "$index_before" ]
+}
+
+@test "snapshot-ref on a clean tree returns HEAD and writes no ref" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  atp --internal snapshot-ref "$repo" refs/atp/test
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(git -C "$repo" rev-parse HEAD)" ]
+  run git -C "$repo" show-ref --verify refs/atp/test
+  [ "$status" -ne 0 ]
+}
+
+@test "snapshot-ref fails on a repo with no commits" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  git init -q "$repo"
+  echo x >"$repo/f.txt"
+
+  atp --internal snapshot-ref "$repo" refs/atp/test
+
+  [ "$status" -ne 0 ]
+}
+
+@test "bundle-prereqs keeps only locally-present shas, deduped" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  local have absent="deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  have=$(git -C "$repo" rev-parse HEAD)
+
+  atp --internal bundle-prereqs "$repo" "$have" "$absent" "$have" "not-a-sha"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$have" ]
+}
+
+@test "tree-decision truth table" {
+  local ATP_BIN="$ATP"
+  decide() { zsh --no-rcs "$ATP_BIN" --internal tree-decision "$@"; }
+  # with_tree no_tree is_git is_dirty tty_ok
+  [ "$(decide 1 0 1 1 1)" = "on" ]     # explicit flag, git repo
+  [ "$(decide 1 0 1 0 0)" = "on" ]     # explicit flag needs no tty
+  [ "$(decide 1 0 0 0 1)" = "error" ]  # explicit flag, non-git cwd
+  [ "$(decide 0 1 1 1 1)" = "off" ]    # --no-tree wins
+  [ "$(decide 0 0 0 1 1)" = "off" ]    # non-git, no flags
+  [ "$(decide 0 0 1 1 1)" = "prompt" ] # dirty + tty -> ask
+  [ "$(decide 0 0 1 1 0)" = "off" ]    # dirty but no tty
+  [ "$(decide 0 0 1 0 1)" = "off" ]    # clean, no flags
+}
+
 # --- argument handling -------------------------------------------------------
 
 @test "unknown argument exits 2" {
