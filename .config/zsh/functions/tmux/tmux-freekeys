@@ -1,0 +1,165 @@
+#!/usr/bin/env zsh
+# tmux-freekeys: report free/bound tmux keys per key-table against the live server
+#
+# Edit-time advisor for picking a new keybinding. Queries the *running* server
+# (honours $TMUX) so plugin-injected binds (tmux-fingers, copy-mode, custom
+# modes) are visible - a static grep of tmux.conf would call a plugin-owned key
+# free. Terminal key aliasing is baked in: C-i≡Tab, C-m≡Enter, C-h≡BSpace,
+# C-[≡Escape send the same byte in most terminals, so a "free" Ctrl key can
+# already be taken by its named partner.
+emulate -L zsh
+
+local usage='usage:
+  tmux-freekeys [table]              report free vs used keys for TABLE (default: prefix)
+  tmux-freekeys -a | --all | all     list all key-tables on the running server with bound-counts
+  tmux-freekeys check <key> [table]  is KEY bound in TABLE (default: prefix)?
+  tmux-freekeys -h | --help          this help
+
+Reports against the running server ($TMUX), so plugin binds are visible.
+Aliasing caveat: C-i≡Tab, C-m≡Enter, C-h≡BSpace, C-[≡Escape send the same byte,
+so a "free" Ctrl key can already be taken by its named partner.'
+
+command -v tmux >/dev/null 2>&1 || { print -u2 'tmux-freekeys: tmux not found'; return 1 }
+
+# Terminal-aliasing partners (bidirectional): same byte, so binding either
+# reaches the other. Only these four collide in practice.
+local -A alias_partner=(
+  'C-i' Tab    Tab    'C-i'
+  'C-m' Enter  Enter  'C-m'
+  'C-h' BSpace BSpace 'C-h'
+  'C-[' Escape Escape 'C-['
+)
+
+# --- --all: list every table on the running server with its bound-count ------
+if [[ "${1:-}" == (-a|--all|all) ]]; then
+  local all
+  all="$(command tmux list-keys 2>/dev/null)" || {
+    print -u2 'tmux-freekeys: cannot query tmux (no server / not in $TMUX?)'; return 1
+  }
+  print -r -- 'Key tables on the running server (bound-count · table):'
+  print -r -- "$all" \
+    | perl -ne 'print "$1\n" if /-T\s+(\S+)/' \
+    | sort | uniq -c | sort -rn \
+    | while read -r cnt tbl; do printf '  %4d  %s\n' "$cnt" "$tbl"; done
+  return 0
+fi
+
+# --- check <key> [table]: membership test against the extracted bound set ----
+if [[ "${1:-}" == check ]]; then
+  shift
+  local key="${1:-}"
+  [[ -n "$key" ]] || { print -u2 "tmux-freekeys: check needs a key"$'\n'"$usage"; return 2 }
+  local ctable="${2:-prefix}"
+
+  local raw
+  raw="$(command tmux list-keys -T "$ctable" 2>/dev/null)" || {
+    print -u2 "tmux-freekeys: cannot query tmux (no server / not in \$TMUX?)"; return 1
+  }
+
+  typeset -A bound
+  local b
+  for b in ${(f)"$(print -r -- "$raw" | perl -s -ne 'print "$1\n" if /-T\s+\Q$t\E\s+(\S+)/' -- -t="$ctable" | sort -u)"}; do
+    bound[$b]=1
+  done
+
+  if [[ -n ${bound[$key]:-} ]]; then
+    local mapping
+    mapping="$(print -r -- "$raw" | perl -s -ne 'if (/-T\s+\Q$t\E\s+(\S+)\s+(.*)$/ && $1 eq $k) { print "$2\n"; exit }' -- -t="$ctable" -k="$key")"
+    print -r -- "$key is BOUND in $ctable -> ${mapping:-?}"
+    return 0
+  fi
+
+  local partner=${alias_partner[$key]:-}
+  if [[ -n "$partner" && -n ${bound[$partner]:-} ]]; then
+    print -r -- "$key is not bound directly, but EFFECTIVELY TAKEN in $ctable: its terminal-alias partner '$partner' is bound (same byte)"
+    return 0
+  fi
+  print -r -- "$key is FREE in $ctable"
+  return 0
+fi
+
+# --- report [table] ----------------------------------------------------------
+case "${1:-}" in
+  -h|--help) print -r -- "$usage"; return 0 ;;
+  -*) print -u2 "tmux-freekeys: unknown option $1"$'\n'"$usage"; return 2 ;;
+esac
+
+local table="${1:-prefix}"
+
+local raw
+raw="$(command tmux list-keys -T "$table" 2>/dev/null)" || {
+  print -u2 "tmux-freekeys: cannot query tmux (no server / not in \$TMUX?)"; return 1
+}
+
+local -a boundlist
+boundlist=( ${(f)"$(print -r -- "$raw" | perl -s -ne 'print "$1\n" if /-T\s+\Q$t\E\s+(\S+)/' -- -t="$table" | sort -u)"} )
+typeset -A bound
+local b
+for b in $boundlist; do bound[$b]=1; done
+
+# Candidate keyspaces - the "free" universe.
+local -a lower upper digits ctrl alt_l alt_u named
+lower=( {a..z} ); upper=( {A..Z} ); digits=( {0..9} )
+local c
+for c in {a..z}; do ctrl+=( "C-$c" ); done
+for c in {a..z}; do alt_l+=( "M-$c" ); done
+for c in {A..Z}; do alt_u+=( "M-$c" ); done
+named=( F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 Tab BSpace Enter Space Home End IC DC PPage NPage Up Down Left Right )
+
+print -r -- "Key table: $table   (total bound: ${#boundlist})"
+
+# Generic classes (no aliasing subtlety). Declare loop-locals once, up front:
+# re-running `local` on an existing local inside a loop makes zsh echo it.
+local entry label arrname k
+local -a free used
+local -a plain=(
+  'lowercase a-z:lower'
+  'uppercase A-Z:upper'
+  'digits 0-9:digits'
+  'Alt   M-a..M-z:alt_l'
+  'Alt   M-A..M-Z:alt_u'
+  'named / function:named'
+)
+for entry in $plain; do
+  label=${entry%%:*}; arrname=${entry##*:}
+  free=(); used=()
+  for k in ${(P)arrname}; do
+    if [[ -n ${bound[$k]:-} ]]; then used+=( "$k" ); else free+=( "$k" ); fi
+  done
+  print -r --
+  print -r -- "== $label =="
+  print -r -- "  FREE (${#free}): ${${(j: :)free}:-—}"
+  print -r -- "  used (${#used}): ${${(j: :)used}:-—}"
+done
+
+# Ctrl class: a key whose alias partner is bound is not really free.
+local -a cfree cused caliased
+for k in $ctrl; do
+  if [[ -n ${bound[$k]:-} ]]; then
+    cused+=( "$k" )
+  elif [[ -n ${alias_partner[$k]:-} && -n ${bound[${alias_partner[$k]}]:-} ]]; then
+    caliased+=( "$k" )
+  else
+    cfree+=( "$k" )
+  fi
+done
+print -r --
+print -r -- "== Ctrl  C-a..C-z =="
+print -r -- "  FREE (${#cfree}): ${${(j: :)cfree}:-—}"
+print -r -- "  used (${#cused}): ${${(j: :)cused}:-—}"
+print -r -- "  aliased (${#caliased}): ${${(j: :)caliased}:-—}"
+
+# Aliasing caveat - always shown, for all four pairs, so it can't be missed.
+print -r --
+print -r -- "== Aliasing (same byte in most terminals) =="
+local pair ck pk
+for pair in 'C-i:Tab' 'C-m:Enter' 'C-h:BSpace' 'C-[:Escape'; do
+  ck=${pair%%:*}; pk=${pair##*:}
+  if [[ -n ${bound[$ck]:-} ]]; then
+    print -r -- "  $ck ≡ $pk : bound directly ($ck)"
+  elif [[ -n ${bound[$pk]:-} ]]; then
+    print -r -- "  $ck ≡ $pk : effectively taken ($pk is bound)"
+  else
+    print -r -- "  $ck ≡ $pk : free"
+  fi
+done
