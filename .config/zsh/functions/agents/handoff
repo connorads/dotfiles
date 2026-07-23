@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# handoff: translate session history between Claude Code and Codex
+emulate -L zsh
+
+PYTHONPATH="$HOME/src/handoff/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m handoff "$@"
