@@ -223,16 +223,24 @@ panes don't inherit the source pane's env), so a branched pane runs under the
 same account as its source rather than silently reverting to `~/.claude`.
 
 The branch menu can also **fork into a *different* account** ("Fork → other
-ACCOUNT"), to shift billing or dodge a rate limit mid-chat. Because the
-transcript carries no auth and each config dir owns its own
-`projects/<slug>/<sid>.jsonl` tree, this is: pick a target account (fzf over
-`account_candidates`, the source excluded), copy the source transcript into the
-target's `projects/<slug>/` (`relocate_transcript`), materialise the target
-profile's shared config, then fork under it with `CLAUDE_CONFIG_DIR=<target>`.
-Native `--fork-session` reads the copied `<sid>` under the target dir and mints a
-fresh id there, so **the origin is left running untouched under the source
-account** - different files in different config dirs, no session-lock conflict.
-The slug maths / candidate listing / copy are the executable-free
+ACCOUNT"), to shift billing or dodge a rate limit mid-chat. Account is modelled
+as a **mode that composes with every placement**, not a placement of its own:
+the branch menu has two orthogonal axes - *placement* (split / window / worktree
+/ ×N) and *account* (source / other) - and the source render offers the full
+placement palette for the pane's own account plus a single "other ACCOUNT" row.
+Picking it chains (menu → `run-shell` → menu, the same idiom the whole branch
+menu uses) into `account-menu`: a `display-menu` of the *other* accounts
+(`account_candidates` - default + each ccp profile, the source excluded), titled
+by the source account so its own absence is self-explaining. Choosing one lands
+in `account-chosen`, which copies the source transcript into the target's
+`projects/<slug>/` (`relocate_transcript`), materialises the target profile's
+shared config, then **re-renders the same placement palette for the target
+account** (`render_branch_menu`, `with_account=0` so there is no further account
+hop). Every placement then forks under `CLAUDE_CONFIG_DIR=<target>`. Native
+`--fork-session` reads the copied `<sid>` under the target dir and mints a fresh
+id there, so **the origin is left running untouched under the source account** -
+different files in different config dirs, no session-lock conflict. The slug
+maths / candidate listing / copy are the executable-free
 [`scripts/lib/claude-account.sh`](./scripts/lib/claude-account.sh)
 (`claude_account_slug` mirrors `project_slug` in `claude-session-resolve.py`).
 The copied base transcript lingers harmlessly as a branch-point session under

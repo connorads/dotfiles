@@ -212,7 +212,7 @@ EOF
   grep -q "prompt-worktree /Users/connorads session-xyz" "$TEST_LOG"
 }
 
-@test "menu offers forking into a different account" {
+@test "menu offers forking into a different account (opens the account picker)" {
   stub_ps_with_foreground_claude
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
 {"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
@@ -221,9 +221,10 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
   [ "$status" -eq 0 ]
   grep -q -- "Fork → other ACCOUNT" "$TEST_LOG"
-  # popup runs this script's account-pick mode, threading sid + source dir + cwd.
-  grep -q -- "account-pick session-xyz" "$TEST_LOG"
-  grep -q -- "display-popup -E" "$TEST_LOG"
+  # the row chains via run-shell into this script's account-menu mode (menu-native,
+  # no popup), threading the session id + source dir + pane target.
+  grep -q -- "account-menu session-xyz" "$TEST_LOG"
+  assert_log_missing "display-popup"
 }
 
 @test "menu offers counted branch actions with expected labels and prompts" {
@@ -244,59 +245,93 @@ EOF
   grep -q -- "prompt-worktrees" "$TEST_LOG"
 }
 
-@test "account-pick relocates the transcript, materialises, and forks under the target" {
+# count occurrences of a pattern across the whole log (the tmux stub logs a
+# whole display-menu on one line, so a per-row count needs -o, not -c).
+occur_count() {
+  grep -o -- "$1" "$TEST_LOG" | wc -l | tr -d ' '
+}
+
+@test "account-menu lists the other accounts, titling by the source" {
+  # code/$aN dodges the claude-profile-leak-guard concrete-path check.
+  local a1=one a2=two
+  mkdir -p "$HOME/.claude-profiles/code/$a1" "$HOME/.claude-profiles/code/$a2"
+  local src="$HOME/.claude-profiles/code/$a1"
+
+  run "$MENU" account-menu "session-xyz" "$src" "" "/Users/connorads" "sess:@1.0"
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  # title names the source account (Q1: explain the source's own absence)
+  grep -q -- "Fork from $a1" "$TEST_LOG"
+  # default + the other profile are offered as account-chosen targets
+  [ "$(occur_count 'account-chosen session-xyz')" -eq 2 ]
+  grep -q -- "default" "$TEST_LOG"
+  grep -q -- "$a2" "$TEST_LOG"
+  assert_log_missing "display-popup"
+}
+
+@test "account-menu with no other account shows a message, no menu" {
+  # source is the default account and no profiles exist -> nothing to offer.
+  run "$MENU" account-menu "session-xyz" "" "" "/Users/connorads" "sess:@1.0"
+  [ "$status" -eq 0 ]
+  grep -q -- "No other account to fork into" "$TEST_LOG"
+  assert_log_missing "display-menu"
+}
+
+@test "account-chosen relocates, materialises, and renders the target placement menu" {
   local slug="-Users-connorads-proj" sid="session-xyz" cwd="/Users/connorads/proj"
-  # code/$acct dodges the claude-profile-leak-guard concrete-path check.
-  local acct=acme target="$HOME/.claude-profiles/code/$acct"
+  local acct=acme
+  local target="$HOME/.claude-profiles/code/$acct"
   mkdir -p "$HOME/.claude/projects/$slug" "$target"
   printf 'transcript\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
-
-  # fzf picks the target account (full label<TAB>dir line).
-  write_stub fzf <<EOF
-#!/usr/bin/env bash
-cat >/dev/null
-printf 'work\t%s\n' "$target"
-EOF
   write_stub claude-profile-materialise <<'EOF'
 #!/usr/bin/env bash
 printf 'materialise %s\n' "$*" >>"$TEST_LOG"
 EOF
 
-  run "$MENU" account-pick "$sid" "" "" "$cwd" </dev/null
+  # source-config-dir "" = default account (~/.claude).
+  run "$MENU" account-chosen "$sid" "$target" "" "$cwd" "sess:@1.0" ""
   [ "$status" -eq 0 ]
   # transcript copied into the target account's projects tree
   [ -f "$target/projects/$slug/$sid.jsonl" ]
   # target profile materialised
   grep -qF "materialise $target" "$TEST_LOG"
-  # forked in a new window under the target account
-  grep -qF "new-window -c $cwd CLAUDE_CONFIG_DIR=$target claude -r $sid --fork-session" "$TEST_LOG"
+  # the placement palette is re-rendered for the target, titled by its account
+  grep -q "display-menu" "$TEST_LOG"
+  grep -q -- "Branch → $acct" "$TEST_LOG"
+  # every placement row forks under the target account
+  grep -qF "CLAUDE_CONFIG_DIR=$target claude -r $sid --fork-session" "$TEST_LOG"
+  # the target render must not re-offer an account hop
+  assert_log_missing "Fork → other ACCOUNT"
+  assert_log_missing "account-menu"
 }
 
-@test "account-pick backs out silently when the source transcript is missing" {
-  local acct=acme target="$HOME/.claude-profiles/code/$acct"
+@test "account-chosen offers the full placement palette (splits, windows, worktrees, xN)" {
+  local slug="-Users-connorads-proj" sid="session-xyz" cwd="/Users/connorads/proj"
+  local acct=acme
+  local target="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$HOME/.claude/projects/$slug" "$target"
+  printf 'transcript\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
+
+  run "$MENU" account-chosen "$sid" "$target" "" "$cwd" "sess:@1.0" ""
+  [ "$status" -eq 0 ]
+  grep -q -- "Split right x N R" "$TEST_LOG"
+  grep -q -- "Split down x N D" "$TEST_LOG"
+  grep -q -- "New windows x N N" "$TEST_LOG"
+  grep -q -- "WORKTREE windows x N T" "$TEST_LOG"
+  # the xN / worktree prompt modes carry the target config dir through
+  grep -qF -- "prompt-repeat split-right sess:@1.0 $cwd $sid $target" "$TEST_LOG"
+  grep -qF -- "prompt-worktree $cwd $sid $target" "$TEST_LOG"
+}
+
+@test "account-chosen shows a message and no menu when the transcript is missing" {
+  local acct=acme
+  local target="$HOME/.claude-profiles/code/$acct"
   mkdir -p "$target"
-  write_stub fzf <<EOF
-#!/usr/bin/env bash
-cat >/dev/null
-printf 'work\t%s\n' "$target"
-EOF
 
-  run --separate-stderr "$MENU" account-pick "no-such-sid" "" "" "/Users/connorads/proj" </dev/null
+  run "$MENU" account-chosen "no-such-sid" "$target" "" "/Users/connorads/proj" "sess:@1.0" ""
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"could not copy the transcript"* ]]
-  assert_log_missing "new-window"
-}
-
-@test "account-pick on fzf cancel exits without forking" {
-  write_stub fzf <<'EOF'
-#!/usr/bin/env bash
-cat >/dev/null
-exit 130
-EOF
-
-  run "$MENU" account-pick "session-xyz" "" "" "/Users/connorads/proj" </dev/null
-  [ "$status" -eq 0 ]
-  assert_log_missing "new-window"
+  grep -q -- "Could not copy the transcript" "$TEST_LOG"
+  assert_log_missing "display-menu"
 }
 
 @test "prompt-repeat opens the count prompt for a repeated action" {
