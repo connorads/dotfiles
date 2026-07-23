@@ -44,15 +44,11 @@ DIM='\033[2m'
 # Account tag: ccp sets CLAUDE_CONFIG_DIR per account (absent == default ~/.claude).
 # Show the profile's short label file, colour-coded, so the active account is
 # obvious at a glance. Runs inside the claude process, so it needs no detection
-# beyond its own inherited env - correct for fresh/resume/default alike.
-cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
-acct=$(cat "$cfg/label" 2>/dev/null) || acct=""
-if [ -z "$acct" ]; then
-	case "${cfg##*/}" in
-	.claude) acct="def" ;;
-	*) acct="${cfg##*/}" ;;
-	esac
-fi
+# beyond its own inherited env - correct for fresh/resume/default alike. The
+# derivation lives in profile-label.sh so the pane-border tag can never disagree.
+# shellcheck source=hooks/profile-label.sh disable=SC1091
+. "$HOME/.claude/hooks/profile-label.sh"
+acct=$(claude_profile_label)
 # Colour the tag deterministically from the label so a given account is always
 # the same colour, without naming any account in-repo. "def" (default) is dim.
 if [ "$acct" = "def" ]; then
