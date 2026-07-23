@@ -150,6 +150,83 @@ _atp_copy_clipboard() {
   fi
 }
 
+# _atp_branch_name <newid> [origin_branch]
+# atp/<slugged-branch>-<short8> (or atp/<short8> when branchless/detached).
+# Branch name and fork id share the id so the worktree is traceable to the
+# session; output stays within [A-Za-z0-9/-] so it never needs quoting.
+_atp_branch_name() {
+  local short="${${1//-/}[1,8]}"
+  if [[ -n "${2:-}" ]]; then
+    print -r -- "atp/${2//[^A-Za-z0-9]/-}-$short"
+  else
+    print -r -- "atp/$short"
+  fi
+}
+
+# _atp_snapshot_ref <repo> <ref>
+# Snapshot the repo's working state (staged+unstaged+untracked; ignored files
+# excluded) as a synthetic commit parented on HEAD, parked on <ref>; prints the
+# sha. A TEMP index copy takes the add -A so the real index, working tree and
+# HEAD stay byte-identical. Clean tree => prints HEAD, writes no ref (the
+# staged/unstaged distinction is deliberately squashed either way).
+_atp_snapshot_ref() {
+  local repo="$1" ref="$2"
+  local head scratch tmpidx tree snap
+  head=$(git -C "$repo" rev-parse --verify HEAD 2>/dev/null) || return 1
+  scratch=$(mktemp -d "${TMPDIR:-/tmp}/atp-snap.XXXXXX") || return 1
+  tmpidx="$scratch/index"
+  # A missing source index (fresh checkout) is fine - add recreates it - but
+  # never pre-create an empty file: git treats a zero-byte index as corrupt.
+  cp "$(git -C "$repo" rev-parse --path-format=absolute --git-path index)" "$tmpidx" 2>/dev/null || true
+  if ! tree=$(GIT_INDEX_FILE="$tmpidx" git -C "$repo" add -A 2>/dev/null &&
+    GIT_INDEX_FILE="$tmpidx" git -C "$repo" write-tree 2>/dev/null); then
+    rm -rf "$scratch"
+    return 1
+  fi
+  rm -rf "$scratch"
+  if [[ "$tree" == "$(git -C "$repo" rev-parse "HEAD^{tree}" 2>/dev/null)" ]]; then
+    print -r -- "$head"
+    return 0
+  fi
+  snap=$(git -C "$repo" commit-tree "$tree" -p HEAD -m "atp: working-tree snapshot") || return 1
+  git -C "$repo" update-ref "$ref" "$snap" || return 1
+  print -r -- "$snap"
+}
+
+# _atp_bundle_prereqs <repo> <sha...>
+# Filter probe-reported target shas down to ones that also exist locally,
+# deduped, one per line - bundle exclusions must be commits BOTH sides have,
+# or the target rejects the bundle at fetch time.
+_atp_bundle_prereqs() {
+  local repo="$1" sha
+  shift
+  local -A seen
+  for sha in "$@"; do
+    [[ "$sha" =~ ^[0-9a-f]{40,64}$ ]] || continue
+    [[ -n "${seen[$sha]:-}" ]] && continue
+    git -C "$repo" cat-file -e "$sha^{commit}" 2>/dev/null || continue
+    seen[$sha]=1
+    print -r -- "$sha"
+  done
+}
+
+# _atp_tree_decision <with_tree> <no_tree> <is_git> <is_dirty> <tty_ok>
+# Pure gate for tree shipping -> error|on|prompt|off. Explicit --with-tree on
+# a non-git cwd is a hard error; a dirty tree with a tty earns a prompt; every
+# other combination quietly keeps today's transcript-only behaviour.
+_atp_tree_decision() {
+  local with_tree="$1" no_tree="$2" is_git="$3" is_dirty="$4" tty_ok="$5"
+  if (( with_tree )); then
+    if (( is_git )); then print -r -- on; else print -r -- error; fi
+  elif (( no_tree )) || (( ! is_git )); then
+    print -r -- off
+  elif (( is_dirty )) && (( tty_ok )); then
+    print -r -- prompt
+  else
+    print -r -- off
+  fi
+}
+
 # Test hooks: expose the pure helpers so bats can drive them directly.
 if [[ "${1:-}" == "--internal" ]]; then
   shift
@@ -162,6 +239,10 @@ if [[ "${1:-}" == "--internal" ]]; then
   rewrite-codex) _atp_rewrite_codex "$@" ;;
   codex-fork-name) _atp_codex_fork_name "$@" ;;
   remap-flags) _atp_remap_flags "$@" ;;
+  branch-name) _atp_branch_name "$@" ;;
+  snapshot-ref) _atp_snapshot_ref "$@" ;;
+  bundle-prereqs) _atp_bundle_prereqs "$@" ;;
+  tree-decision) _atp_tree_decision "$@" ;;
   *)
     print -u2 -- "agent-teleport: unknown internal helper: $fn"
     return 2
