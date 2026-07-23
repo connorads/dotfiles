@@ -628,6 +628,46 @@ EOF
   [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "$TS_WORKTREE" ]
 }
 
+@test "--with-tree and --no-tree together exit 2" {
+  atp --with-tree --no-tree
+  [ "$status" -eq 2 ]
+}
+
+@test "dirty tree with a tty prompts; y ships the tree" {
+  setup_tree_flow
+  export ATP_PICKER=1
+
+  run zsh --no-rcs "$ATP" --pid 4242 --host mac-mini --copy <<<"y"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree shipped"* ]]
+  # The prompt itself mentions the dirty tree; the WARNING must not fire.
+  [[ "$output" != *"uncommitted changes"* ]]
+  [ -s "$TS_BUNDLE" ]
+}
+
+@test "dirty tree prompt declined keeps transcript-only behaviour" {
+  setup_tree_flow
+  export ATP_PICKER=1
+
+  run zsh --no-rcs "$ATP" --pid 4242 --host mac-mini --copy <<<"n"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree is dirty"* ]]
+  [ ! -e "$TS_BUNDLE" ]
+}
+
+@test "--no-tree suppresses the dirty-tree prompt and ships no bundle" {
+  setup_tree_flow
+  export ATP_PICKER=1
+
+  atp --pid 4242 --host mac-mini --copy --no-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree is dirty"* ]]
+  [ ! -e "$TS_BUNDLE" ]
+}
+
 @test "codex --with-tree lands the tree and resumes in the worktree" {
   export ORIGIN_CWD="$HOME/proj"
   mkdir -p "$ORIGIN_CWD" "$RESURRECT_PROC_ROOT/5353"

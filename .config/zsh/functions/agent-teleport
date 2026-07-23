@@ -15,8 +15,8 @@ emulate -L zsh
 setopt pipefail
 
 local usage="Usage: agent-teleport [--host HOST] [--dest PATH] [--window|--copy]
-                      [--with-tree] [--pane %id | --pid PID] [--choose]
-                      [--list-hosts]
+                      [--with-tree|--no-tree] [--pane %id | --pid PID]
+                      [--choose] [--list-hosts]
 
 Teleport the live Claude Code or Codex session of a tmux pane to another
 machine: fork the transcript under a fresh session id, ship it over ssh
@@ -30,6 +30,7 @@ machine: fork the transcript under a fresh session id, ship it over ssh
   --with-tree   also ship the origin git working tree (commit + staged +
                 unstaged + untracked) as a bundle; it lands in a fresh
                 worktree on the target, which becomes the resume cwd
+  --no-tree     never ship the tree; suppresses the dirty-tree prompt
   --pane %id    resolve the agent from this tmux pane
   --pid PID     resolve the agent from this process id
   --choose      pick window/copy interactively (used by the tmux binding)
@@ -263,6 +264,10 @@ while (($# > 0)); do
     opt_with_tree=1
     shift
     ;;
+  --no-tree)
+    opt_no_tree=1
+    shift
+    ;;
   --host)
     [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --host needs a value"; return 2; }
     host="$2"
@@ -313,6 +318,11 @@ done
 
 if [[ -n "$opt_pane" && -n "$opt_pid" ]]; then
   print -u2 -- "agent-teleport: pass either --pane or --pid, not both"
+  return 2
+fi
+
+if (( opt_with_tree && opt_no_tree )); then
+  print -u2 -- "agent-teleport: pass either --with-tree or --no-tree, not both"
   return 2
 fi
 
@@ -469,6 +479,18 @@ if (( opt_choose )) && (( ! mode_explicit )) && _atp_picker_ok; then
     fzf --prompt='Deliver as: ' --height=40% --reverse --delimiter='\t' --with-nth=1,2) || return 130
   [[ -n "$delivery" ]] || return 130
   mode="${${(s:	:)delivery}[1]}"
+fi
+
+# Dirty tree, no explicit flag: offer to ship it now that the host is known.
+# read -u 0 (not -q, which insists on opening the terminal) so one keypress
+# answers interactively and the ATP_PICKER test override can pipe a reply;
+# anything but y - EOF included - defaults to no.
+if [[ "$tree_verdict" == prompt ]]; then
+  local tree_reply=""
+  print -u2 -n -- "agent-teleport: origin tree is dirty ($git_note) - ship working-tree state to $host? [y/N] "
+  read -k 1 -u 0 tree_reply 2>/dev/null || tree_reply=""
+  print -u2 ""
+  [[ "$tree_reply" == [yY] ]] && tree_on=1
 fi
 
 _atp_ssh() {
