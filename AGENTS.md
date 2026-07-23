@@ -206,6 +206,7 @@ dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
+mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
@@ -337,6 +338,8 @@ Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `i
 
 **Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude, Codex and Amp are exempted from quarantine via the `minimum_release_age_excludes` mise setting. Exception: `npm:@typescript/native-preview` (tsgo, used by the `ts-typecheck-*` hk steps and `mise run ts-checks`) is pinned to an exact dev build - the package publishes prereleases only, so a `"7"` range matches nothing (node-semver skips prereleases); bump it manually.
 
+**Python tooling** (ruff / pyrefly / ty): `ruff = "0.15"` (registry-backed `aqua:astral-sh/ruff`) is the first-party lint + format gate (`ruff-check` / `ruff-format` hk steps, `mise run py-checks`). `"pipx:pyrefly" = "1"` is the typecheck gate for the two hook dirs (`py-typecheck-*` hk steps); pipx backend (no aqua entry, mirrors `pipx:ty`) forwards the quarantine to uv's `--exclude-newer`. `pipx:ty = "0"` is kept for editor/LSP use only - pyrefly owns the gate. pyrefly's default `basic` preset does gradual typing and **skips the bodies of unannotated functions**, so a green would be shallow; the two `pyrefly.toml` set `untyped-def-behavior = "check-and-infer-return-type"`, which checks bodies without forcing annotations - a meaningful gate on untyped code.
+
 **How `up` works**: by default it *bumps* both lockfiles and commits each change (symmetric with the nix flake model) - `mise upgrade` within ranges (4-day quarantine, selected tools exempt), which auto-locks **every** `lockfile_platforms` entry for each changed tool plus current-platform provenance (so no separate `mise lock` refresh is needed), then `dotfiles commit` the lock if it changed; updates brew/apt; `nfu` + commits `flake.lock`; rebuilds. **`--frozen` / `-s` / `--skip-flake`** is the *frozen* path: bump nothing - converge tools to the committed `mise.lock` via `mise install`, skip brew/apt, skip the flake bump/commit - then rebuild. Use it to reproduce a known-good toolchain (e.g. on a fresh Linux box).
 
 ```bash
@@ -415,7 +418,12 @@ The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
 Custom steps beyond the builtin formatters/linters include `zsh-fn-header`
 (shell-function header + shebang/`# zsh-only:` conventions), `oxlint`
 (first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
-skills and eval-fixture/reference snippets excluded), and `quarantine-drift`
+skills and eval-fixture/reference snippets excluded), `ruff-check` +
+`ruff-format` (first-party Python lint + format, rule set `E,F,UP,B,SIM,I,RUF`;
+config `.hk-hooks/ruff.toml` passed with `--config` so it gates without becoming
+the global XDG default; same vendored/fixture exclude set as oxlint;
+`ruff-format` runs after `ruff-check` so import fixes land before the final
+formatter pass), and `quarantine-drift`
 (`~/.hk-hooks/quarantine-drift.py`: the 4-day quarantine is hand-spelled in
 nine config files across four time units; the checker normalises each to days
 and blocks the commit on disagreement, with warn-only staleness checks on the
@@ -431,6 +439,15 @@ glob-scoped so only staged-project changes pay the cost. The shared
 `~/.hk-hooks/ts-typecheck.sh` warns and exits 0 when a project's
 `node_modules` is absent (fresh/offline machines); `mise run ts-checks`
 installs deps and runs typecheck + tests across all of them.
+
+The `py-typecheck-*` steps are the Python analogue: `pyrefly` gates the two hook
+dirs (`.claude/hooks`, `.hk-hooks`) that import no uninstalled third-party deps,
+one glob-scoped step per dir with a per-dir `pyrefly.toml` (each dir its own
+project so intra-package imports resolve). tmux/skill scripts stay out - they
+import uninstalled deps, which would be `missing-import` noise. The shared
+`~/.hk-hooks/py-typecheck.sh` warns and exits 0 when `pyrefly` is absent;
+`mise run py-checks` runs ruff + pyrefly + the hook pytest suites across all
+first-party Python.
 
 ## Agent Skills
 

@@ -82,6 +82,38 @@ local fast_steps = new Mapping<String, Step> {
         check = "oxlint --deny-warnings {{files}}"
     }
 
+    // First-party Python lint + format (ruff via mise). Config passed with
+    // --config so .hk-hooks/ruff.toml gates the repo without becoming the
+    // user's global XDG ruff default. Extension glob over the whole tree so
+    // future first-party Python is covered; vendored mirrors and fixture/
+    // reference snippets are excluded (same set as oxlint).
+    ["ruff-check"] {
+        batch = true
+        glob = List("**/*.py", "**/*.pyi")
+        exclude = vendored_skills + List(
+            "**/evals/fixtures/**",
+            "skills/**/references/**",
+            ".config/skills/**/references/**"
+        )
+        check = "ruff check --config .hk-hooks/ruff.toml {{files}}"
+        fix = "ruff check --config .hk-hooks/ruff.toml --fix {{files}}"
+    }
+
+    // Runs after ruff-check so lint fixes (import sorting) land before the
+    // formatter takes the final pass.
+    ["ruff-format"] {
+        batch = true
+        depends = List("ruff-check")
+        glob = List("**/*.py", "**/*.pyi")
+        exclude = vendored_skills + List(
+            "**/evals/fixtures/**",
+            "skills/**/references/**",
+            ".config/skills/**/references/**"
+        )
+        check = "ruff format --config .hk-hooks/ruff.toml --check {{files}}"
+        fix = "ruff format --config .hk-hooks/ruff.toml {{files}}"
+    }
+
     ["mise"] = Builtins.mise
 
     // Guard the tmux dimming patches against accidental removal. Vanilla tmux
@@ -219,6 +251,22 @@ local fast_steps = new Mapping<String, Step> {
             ".pi/agent/extensions/tsconfig.json"
         )
         check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions"
+    }
+
+    // First-party Python typecheck gates (pyrefly via mise), scoped to the two
+    // hook dirs that import no uninstalled third-party deps. One glob-scoped
+    // step per dir so only staged-dir changes pay the cost; per-dir
+    // pyrefly.toml makes each its own project so intra-package imports resolve.
+    // Typecheck only - tests live in `mise run py-checks`. The shared script
+    // warns + exits 0 when pyrefly is absent (fresh/offline machines), so the
+    // gate never bricks a commit it can't evaluate. Mirrors ts-typecheck-*.
+    ["py-typecheck-claude-hooks"] {
+        glob = List(".claude/hooks/*.py", ".claude/hooks/pyrefly.toml")
+        check = "bash .hk-hooks/py-typecheck.sh .claude/hooks"
+    }
+    ["py-typecheck-hk-hooks"] {
+        glob = List(".hk-hooks/*.py", ".hk-hooks/pyrefly.toml")
+        check = "bash .hk-hooks/py-typecheck.sh .hk-hooks"
     }
 
     // Secret scan: block staged secrets before they enter this public repo.

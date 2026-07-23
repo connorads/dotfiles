@@ -1,0 +1,9 @@
+# Typecheck gate for the hk guard-hook sources (hk py-typecheck-hk-hooks).
+# Per-dir so this dir is its own project - the Python analogue of a per-project
+# tsconfig.json.
+project-includes = ["*.py"]
+project-excludes = ["test_*.py"]  # tests run via pytest, not type-gated (mirrors ts-typecheck)
+# `basic` does gradual typing and skips the bodies of unannotated functions, so
+# green would be shallow. check-and-infer-return-type checks bodies without
+# forcing annotations, making the gate meaningful on untyped code.
+untyped-def-behavior = "check-and-infer-return-type"
