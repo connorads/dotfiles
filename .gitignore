@@ -149,6 +149,13 @@
 !/src/dotfiles-docs/
 !/src/dotfiles-docs/**
 
+# handoff: Claude Code <-> Codex session translator
+!/src/handoff/
+!/src/handoff/**
+/src/handoff/.venv/
+/src/handoff/.pytest_cache/
+/src/handoff/**/__pycache__/
+
 !/.pi/
 /.pi/**
 !/.pi/agent/

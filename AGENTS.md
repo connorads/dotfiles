@@ -87,6 +87,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md)                   | Astro Starlight site ("How I work") explaining the workflow these dotfiles encode; deploys later to dotfiles.connoradams.co.uk. Scope commits with `dotfiles commit -- src/dotfiles-docs` |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
 | [mcpz](./.config/zsh/functions/agents/mcpz)                            | Render+launch MCP bundles into each agent's native form (Claude/Codex/OpenCode), resolving secrets fresh at launch. Reads a gitignored registry (the only place client names/URLs live). Subsystem docs + schema: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
+| [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Tests: `cd ~/src/handoff && uv run --group dev pytest` |
 
 ## Shell Function Conventions
 
@@ -221,6 +222,7 @@ agent prompt <target> <text> [--force]         # paste prompt + Enter, verify th
 agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
 agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
 atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
+handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
 ts                     # Tailscale wrapper (defined in .zshrc)
 zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
