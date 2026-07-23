@@ -7,12 +7,13 @@ emulate -L zsh
 setopt pipefail
 
 _ccp_usage() {
-    print -u2 "usage: ccp [-y|--yolo] [<name>|default] [claude-args...]"
+    print -u2 "usage: ccp [-y|--yolo] [--mcp <bundle>] [<name>|default] [claude-args...]"
 }
 
 local root="$HOME/.claude-profiles/code"
 local choice
 local yolo=""
+local mcp_bundle=""
 
 # Leading flags own the front of the arg list; everything after the account
 # name forwards to claude untouched.
@@ -25,6 +26,11 @@ while [[ "${1:-}" == -* ]]; do
         -y|--yolo)
             yolo=1
             shift
+            ;;
+        --mcp)
+            mcp_bundle="${2:-}"
+            [[ -n "$mcp_bundle" ]] || { print -u2 "ccp: --mcp needs a bundle"; return 2 }
+            shift 2
             ;;
         --)
             shift
@@ -62,11 +68,42 @@ else
     shift
 fi
 
+# --mcp may also follow the account name (`ccp <acct> --mcp <bundle>`), the shape
+# the tmux launcher and the human aliases use. Consume it here too; a bare `--`
+# ends ccp option parsing, and any other flag (e.g. --model) forwards untouched.
+while [[ "${1:-}" == -* ]]; do
+    case "$1" in
+        --mcp)
+            mcp_bundle="${2:-}"
+            [[ -n "$mcp_bundle" ]] || { print -u2 "ccp: --mcp needs a bundle"; return 2 }
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# --mcp delegates the terminal claude exec to `mcpz run claude <bundle>`, which
+# adds the inline --mcp-config/--strict-mcp-config and resolves secrets fresh.
+# ccp keeps owning account isolation; an unknown bundle makes mcpz exit 2.
+
 # "default" is the plain ~/.claude config - no profile isolation, ambient env as-is.
 if [[ "$choice" == "default" ]]; then
-    claude "${inject[@]}" "$@"
+    if [[ -n "$mcp_bundle" ]]; then
+        mcpz run claude "$mcp_bundle" -- "${inject[@]}" "$@"
+    else
+        claude "${inject[@]}" "$@"
+    fi
     return
 fi
 
-# Delegate name validation + auth scrubbing to claude-code-profile.
-claude-code-profile "$choice" "${inject[@]}" "$@"
+# Delegate name validation + auth scrubbing to claude-code-profile; pass the
+# bundle through so it runs mcpz under the scrubbed, relocated env.
+local -a mcp_flag=()
+[[ -n "$mcp_bundle" ]] && mcp_flag=(--mcp "$mcp_bundle")
+claude-code-profile "${mcp_flag[@]}" "$choice" "${inject[@]}" "$@"

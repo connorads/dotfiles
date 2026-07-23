@@ -174,6 +174,62 @@ EOF
   [ ! -s "$TEST_LOG" ]
 }
 
+@test "default --mcp delegates the claude exec to mcpz run" {
+  stub_arg_logger mcpz
+
+  run_zsh_function "$CCP" default --mcp stretch -- --resume abc
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "run" ]
+  [ "${lines[1]}" = "claude" ]
+  [ "${lines[2]}" = "stretch" ]
+  [ "${lines[3]}" = "--" ]
+  [ "${lines[4]}" = "--append-system-prompt-file" ]
+  [ "${lines[5]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[6]}" = "--resume" ]
+  [ "${lines[7]}" = "abc" ]
+}
+
+@test "named account --mcp passes the bundle through to the profile launcher" {
+  stub_arg_logger claude-code-profile
+
+  run_zsh_function "$CCP" acme --mcp stretch --model fable
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "--mcp" ]
+  [ "${lines[1]}" = "stretch" ]
+  [ "${lines[2]}" = "acme" ]
+  [ "${lines[3]}" = "--append-system-prompt-file" ]
+  [ "${lines[4]}" = "$HOME/.claude/system-append.md" ]
+  [ "${lines[5]}" = "--model" ]
+  [ "${lines[6]}" = "fable" ]
+}
+
+@test "--mcp before the account is also accepted" {
+  stub_arg_logger claude-code-profile
+
+  run_zsh_function "$CCP" --mcp stretch acme
+
+  [ "$status" -eq 0 ]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "--mcp" ]
+  [ "${lines[1]}" = "stretch" ]
+  [ "${lines[2]}" = "acme" ]
+}
+
+@test "--mcp with no bundle value errors" {
+  stub_arg_logger claude-code-profile
+  stub_arg_logger mcpz
+
+  run_zsh_function "$CCP" acme --mcp
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--mcp needs a bundle"* ]]
+  [ ! -s "$TEST_LOG" ]
+}
+
 @test "an invalid account name is rejected by claude-code-profile" {
   cp "$REAL_CLAUDE_CODE_PROFILE" "$TEST_BIN/claude-code-profile"
   chmod +x "$TEST_BIN/claude-code-profile"
