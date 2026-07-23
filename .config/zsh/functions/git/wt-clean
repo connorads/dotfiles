@@ -63,13 +63,16 @@ rows=$(printf '%s' "$status_json" | jq -r '
 typeset -a candidates=()
 
 # `path` is a zsh special (tied to $PATH); use wt_path for the worktree path.
+# Loop-body vars are declared once here: at script scope `local` is `typeset`,
+# and a bare `local x` (no assignment) on an already-set var re-runs each
+# iteration prints `x=value` to stdout — so never re-declare inside the loop.
 local wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url
+local wk base pr_eligible reason eligible reclaimable
 while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url; do
   [[ -n "$wt_path" ]] || continue
 
   # Scope filter: skip worktrees outside the current repo unless --all.
   if (( ! all )); then
-    local wk
     wk=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
     [[ "$wk" == "$scope_key" ]] || continue
   fi
@@ -78,13 +81,12 @@ while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind p
   [[ -n "$current_path" ]] && _wt_same_path "$wt_path" "$current_path" && continue
 
   # Never reap a worktree sitting on its repo's base branch.
-  local base
   base=$(_wt_resolve_base "$wt_path" "" 2>/dev/null)
   [[ -n "$base" && "$branch" == "$base" ]] && continue
 
   # PR-state eligibility: MERGED always; CLOSED only with --include-closed.
   # OPEN / none / unknown are always spared.
-  local pr_eligible=0
+  pr_eligible=0
   if [[ "$pr_state" == "MERGED" ]]; then
     pr_eligible=1
   elif [[ "$pr_state" == "CLOSED" ]] && (( include_closed )); then
@@ -93,7 +95,7 @@ while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind p
   (( pr_eligible )) || continue
 
   # Safety filter: unsaved or unpushed work blocks removal unless --force.
-  local reason=""
+  reason=""
   if [[ "$conflicted" == true ]]; then
     reason="conflicted"
   elif [[ "$dirty" == true ]]; then
@@ -104,11 +106,11 @@ while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind p
     reason="unpushed ($ahead ahead)"
   fi
 
-  local eligible=1
+  eligible=1
   [[ -n "$reason" ]] && (( ! force )) && eligible=0
 
   # Disk size, computed lazily and only for candidates.
-  local reclaimable="-"
+  reclaimable="-"
   if (( ! no_disk )); then
     reclaimable=$(du -sh "$wt_path" 2>/dev/null | awk '{print $1}')
     [[ -n "$reclaimable" ]] || reclaimable="?"
