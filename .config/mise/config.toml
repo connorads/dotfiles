@@ -46,6 +46,11 @@ gitleaks = "8"
 # oxlint: first-party JS/TS lint for the hk pipeline - default correctness
 # rules only, no type-aware rules (several first-party dirs lack tsconfigs).
 oxlint = "1"
+# ruff: first-party Python lint + format gate (hk ruff-check/ruff-format +
+# `mise run py-checks`). Registry-backed (aqua:astral-sh/ruff) so it carries
+# native attestation/checksums. Config: .hk-hooks/ruff.toml, passed with
+# --config so it stays a gate config, not the global XDG default.
+ruff = "0.15"
 gcloud = "573"
 aws = "2"
 codex = "latest"
@@ -150,6 +155,11 @@ fnox = "1"
 # danielgatis/rembg: numpy floor bump broke the numba dep chain.
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu", uvx_args = "--with numpy<2.3" }
 "pipx:ty" = "0"
+# pyrefly: first-party Python typecheck gate (hk py-typecheck-*), scoped to the
+# two green hook dirs. No aqua registry entry, so pipx backend (mirrors pipx:ty)
+# - weaker provenance than aqua, but forwards minimum_release_age to uv's
+# --exclude-newer. ty above is kept for editor/LSP use; pyrefly owns the gate.
+"pipx:pyrefly" = "1"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
 # Sandboxes build.rs for every cargo build via ~/.cargo/config.toml's linker
@@ -184,6 +194,19 @@ done
 (cd .pi/agent/extensions/pi-palette && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test)
 (cd .pi/agent/extensions && pnpm install --frozen-lockfile && pnpm run typecheck)
 (cd .pi/agent/extensions/web-search && node --test core.test.mjs)
+"""
+
+[tasks.py-checks]
+description = "Lint + typecheck + test all first-party Python (ruff, pyrefly, pytest)"
+run = """
+set -e
+cd "$HOME"
+git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" ls-files '*.py' '*.pyi' \
+  | grep -vE '/vendor/\\.agents/skills/|/\\.agents/skills/playwright-cli/|\\.config/skills/vendor/patches/|/evals/fixtures/|^skills/.*/references/|\\.config/skills/.*/references/' \
+  | xargs ruff check --config .hk-hooks/ruff.toml
+for d in .claude/hooks .hk-hooks; do (cd "$d" && pyrefly check); done
+(cd .claude/hooks && uv run --with pytest python -m pytest -q)
+(cd .hk-hooks && uv run --with pytest python -m pytest -q)
 """
 
 [tasks.supply-audit]
