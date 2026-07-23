@@ -67,9 +67,8 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
-| `Ctrl+b i` | Claude Code plan (pane or latest) |
 | `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; copy cmd/id) |
 | `Ctrl+b Alt+t` | teleport this pane's Claude/Codex session to another host (fork + ship over ssh; window in target tmux or copy resume cmd) |
@@ -159,6 +158,7 @@ threshold); a number = swap worth noting.
 | `Ctrl+b I` | install plugins (TPM) |
 | `Ctrl+b U` | update plugins (TPM) |
 | clean unused plugins (TPM) | now in the `Ctrl+b T` Tools launcher |
+| Claude Code plan (pane or latest) | now in the `Ctrl+b T` Tools launcher |
 
 ## Usage Tracking
 
