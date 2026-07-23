@@ -5,68 +5,101 @@ _wt_common_dir="${${functions_source[wtui]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
 source "$_wt_common_dir/_wt-common"
 
-local selection wt_path target action
+local selection action
+typeset -a lines paths
 
+# Rows carry real PR state (one batched gh call, done by wt-status --pr). The
+# preview stays local-only — no gh per row — since PR data is already in the row.
 selection=$(
-  wt-status --all | awk -F'\t' 'NF {
-    state=($5=="1" ? "conflict" : ($3=="1" ? "dirty" : "clean"))
-    lock=($9=="1" ? "yes" : "no")
-    merged=($11=="1" ? "yes" : "no")
-    printf "%s\t%s\t%s\t+%s/-%s\tlock:%s\tmerged:%s\n", $1, $2, state, $7, $8, lock, merged
+  wt-status --all --pr | awk -F'\t' 'NF {
+    state=($5=="1" ? "conflict" : (($3=="1" || $4=="1") ? "dirty" : "clean"))
+    lock=($9=="1" ? "lock" : "")
+    prn=$12; prs=$13
+    pr=(prn=="" ? "-" : "#" prn)
+    reap=((prs=="MERGED" && $3=="0" && $4=="0" && $5=="0" && $7=="0") ? "reap" : "")
+    printf "%s\t%s\t%s\t%s %s\t%s\t+%s/-%s\t%s\n", $1, $2, state, pr, prs, reap, $7, $8, lock
   }' | fzf \
+    --multi \
     --prompt="Worktree: " \
-    --header='enter=open  alt-f=finish-local  alt-p=publish-pr  alt-r=remove  alt-l=lazyworktree' \
-    --expect=enter,alt-f,alt-p,alt-r,alt-l \
+    --header='enter=open  alt-p=publish-pr  alt-r=remove(sel)  alt-R=reap-merged  alt-l=lazyworktree  tab=multi-select' \
+    --expect=enter,alt-p,alt-r,alt-R,alt-l \
     --delimiter=$'\t' \
     --with-nth=2.. \
-    --preview='git -C "{1}" status --short 2>/dev/null || true' \
+    --preview='
+      p={1};
+      printf "branch : %s\n" {2};
+      printf "pr     : %s\n" {4};
+      printf "state  : %s   %s\n" {3} {5};
+      printf "sync   : %s\n" {6};
+      printf "path   : %s\n" "$p";
+      echo;
+      git -C "$p" status --short 2>/dev/null | head -20;
+      echo;
+      du -sh "$p" 2>/dev/null;
+      echo;
+      git -C "$p" log -1 --oneline 2>/dev/null
+    ' \
     --preview-window=right:60%:wrap
 ) || return 0
 
 action=$(printf '%s\n' "$selection" | sed -n '1p')
-wt_path=$(printf '%s\n' "$selection" | sed -n '2p' | awk -F'\t' '{print $1}')
-target="$wt_path"
+# Selected rows follow the key line; field 1 is the worktree path.
+lines=("${(@f)$(printf '%s\n' "$selection" | sed -n '2,$p')}")
+paths=()
+local line
+for line in "${lines[@]}"; do
+  [[ -n "$line" ]] || continue
+  paths+=("${line%%$'\t'*}")
+done
 
-[[ -d "$target" ]] || {
-  echo "error: worktree not found: $target" >&2
-  return 1
+(( ${#paths} )) || return 0
+local target="${paths[1]}"
+
+# `path` is a zsh special (tied to $PATH); use wt_path for the worktree path.
+remove_one() {
+  local wt_path=$1
+  [[ -d "$wt_path" ]] || { echo "skip (gone): $wt_path" >&2; return 0; }
+  local dirty_state dirty rest untracked
+  dirty_state=$(_wt_dirty_state "$wt_path")
+  dirty=${dirty_state%%$'\t'*}
+  rest=${dirty_state#*$'\t'}
+  untracked=${rest%%$'\t'*}
+  if [[ "$dirty" == 1 || "$untracked" == 1 ]]; then
+    echo "Worktree has uncommitted changes: $wt_path"
+    git -C "$wt_path" status --short 2>/dev/null
+    local answer
+    read -r "answer?Remove anyway with --force? [y/N] "
+    if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
+      echo "Skipped: $wt_path"
+      return 0
+    fi
+    wt-remove --force "$wt_path"
+  else
+    wt-remove "$wt_path"
+  fi
 }
 
 case "$action" in
-  alt-f)
-    cd "$target" && wt-finish --mode local
-    ;;
   alt-p)
+    [[ -d "$target" ]] || { echo "error: worktree not found: $target" >&2; return 1; }
     cd "$target" && wt-publish --pr
     ;;
   alt-r)
-    local dirty_state
-    dirty_state=$(_wt_dirty_state "$target")
-    local dirty=${dirty_state%%$'\t'*}
-    local rest=${dirty_state#*$'\t'}
-    local untracked=${rest%%$'\t'*}
-    if [[ "$dirty" == 1 || "$untracked" == 1 ]]; then
-      echo "Worktree has uncommitted changes:"
-      git -C "$target" status --short 2>/dev/null
-      echo
-      local answer
-      read -r "answer?Remove anyway with --force? [y/N] "
-      if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
-        echo "Aborted."
-        return 1
-      fi
-      wt-remove --force "$target"
-    else
-      wt-remove "$target"
-    fi
+    local wt_path
+    for wt_path in "${paths[@]}"; do
+      remove_one "$wt_path"
+    done
+    ;;
+  alt-R)
+    # PR-aware sweep across every managed repo; wt-clean runs its own confirm.
+    wt-clean --all
     ;;
   alt-l)
+    [[ -d "$target" ]] || { echo "error: worktree not found: $target" >&2; return 1; }
     cd "$target" && lazyworktree
     ;;
-  ""|enter)
-    cd "$target"
-    ;;
-  *)
+  ""|enter|*)
+    [[ -d "$target" ]] || { echo "error: worktree not found: $target" >&2; return 1; }
     cd "$target"
     ;;
 esac
