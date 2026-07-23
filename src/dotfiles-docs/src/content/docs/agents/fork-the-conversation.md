@@ -41,6 +41,15 @@ Start a conversation on the MacBook at a cafe, land it on the Mac mini at
 home - same history, new hardware. The origin session keeps running; it's a
 fork, not a move, so the two can never corrupt each other's transcript.
 
+By default only the conversation travels; `atp --with-tree` ships the code
+state too. It snapshots the origin working tree - commit, staged, unstaged
+and untracked files alike - as a synthetic commit, sends it as a delta git
+bundle over the same ssh pipe as the transcript, and lands it in a fresh
+worktree on the target. The resumed session wakes up in a checkout that
+matches what the conversation believes exists, and `wt-finish` merges the
+work back when it's done. The origin tree is never touched, and the worktree
+is additive, so nothing on the target can be clobbered either.
+
 ## Why it compounds
 
 Forking removes the cost of curiosity. When trying the second idea costs one

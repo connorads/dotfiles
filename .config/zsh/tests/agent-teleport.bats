@@ -499,6 +499,216 @@ EOF
   [[ "$(cat "$CLIP")" == *"/remote/home/proj"* ]]
 }
 
+# --- tree shipping flows ------------------------------------------------------
+
+# On top of setup_claude_flow: ORIGIN_CWD becomes a dirty git repo and the ts
+# stub gains probe facts (TS_PROBE_EXTRA) plus a land arm that swallows the
+# bundle and answers with a fake worktree path (TS_WORKTREE).
+setup_tree_flow() {
+  setup_claude_flow
+  git init -q "$ORIGIN_CWD"
+  git -C "$ORIGIN_CWD" config user.name "Bats"
+  git -C "$ORIGIN_CWD" config user.email "bats@example.com"
+  echo base >"$ORIGIN_CWD/base.txt"
+  git -C "$ORIGIN_CWD" add base.txt
+  git -C "$ORIGIN_CWD" commit -qm initial
+  echo dirty >"$ORIGIN_CWD/dirty.txt"
+
+  export TS_BUNDLE="$BATS_TEST_TMPDIR/shipped.bundle"
+  export TS_WORKTREE="/remote/home/.trees/proj/atp-wt"
+  export TS_PROBE_EXTRA=$'git=ok\nwtadd=ok'
+  write_stub ts <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$TS_LOG"
+cmd="$3"
+case "$cmd" in
+  *'echo "$HOME"'*) echo /remote/home ;;
+  *wt-add*--no-fetch*)
+    case "$cmd" in
+      *atpland=fetchfail*) cat >"$TS_BUNDLE" ;;
+    esac
+    echo "$TS_WORKTREE"
+    ;;
+  *"cat > "*) cat >"$TS_SHIP" ;;
+  *"dest="*)
+    echo "dest=ok"
+    [ -n "$TS_PROBE_EXTRA" ] && printf '%s\n' "$TS_PROBE_EXTRA"
+    ;;
+  *list-sessions*) cat "$TS_SESSIONS" ;;
+esac
+exit 0
+EOF
+}
+
+@test "--with-tree ships a valid delta bundle and resumes in the landed worktree" {
+  setup_tree_flow
+  local head_before status_before
+  head_before=$(git -C "$ORIGIN_CWD" rev-parse HEAD)
+  status_before=$(git -C "$ORIGIN_CWD" status --porcelain)
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree shipped (atp/"* ]]
+  [[ "$output" != *"origin tree is dirty"* ]]
+
+  # The shipped bundle is valid and carries one atp/ branch tipped at a
+  # synthetic commit parented on origin HEAD.
+  [ -s "$TS_BUNDLE" ]
+  git -C "$ORIGIN_CWD" bundle verify "$TS_BUNDLE" >/dev/null
+  local tip_line tip_sha tip_ref
+  tip_line=$(git -C "$ORIGIN_CWD" bundle list-heads "$TS_BUNDLE")
+  tip_sha="${tip_line%% *}"
+  tip_ref="${tip_line##* }"
+  [[ "$tip_ref" == refs/atp/* ]]
+  [ "$(git -C "$ORIGIN_CWD" rev-parse "$tip_sha^")" = "$head_before" ]
+  git -C "$ORIGIN_CWD" cat-file -e "$tip_sha:dirty.txt"
+
+  # Resume cd, rewritten .cwd, and the Claude slug dir all use the worktree.
+  [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "$TS_WORKTREE" ]
+  grep -q "projects/-remote-home--trees-proj-atp-wt/" "$TS_LOG"
+  [[ "$(cat "$CLIP")" == *"$TS_WORKTREE"* ]]
+
+  # Origin repo untouched: HEAD, status, and no leftover refs/atp/*.
+  [ "$(git -C "$ORIGIN_CWD" rev-parse HEAD)" = "$head_before" ]
+  [ "$(git -C "$ORIGIN_CWD" status --porcelain)" = "$status_before" ]
+  [ -z "$(git -C "$ORIGIN_CWD" for-each-ref refs/atp)" ]
+}
+
+@test "--with-tree degrades to transcript-only when the target lacks wt-add" {
+  setup_tree_flow
+  export TS_PROBE_EXTRA=$'git=ok\nwtadd=missing'
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"wt-add not found"* ]]
+  [[ "$output" == *"origin tree is dirty"* ]]
+  [ ! -e "$TS_BUNDLE" ]
+  # Resumes in the plain dest guess, as today.
+  [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "/remote/home/proj" ]
+}
+
+@test "--with-tree on a non-git origin cwd errors" {
+  setup_claude_flow
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not a git repository"* ]]
+}
+
+@test "--with-tree with a clean tree ships HEAD itself, no synthetic commit" {
+  setup_tree_flow
+  rm "$ORIGIN_CWD/dirty.txt"
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  local tip_line
+  tip_line=$(git -C "$ORIGIN_CWD" bundle list-heads "$TS_BUNDLE")
+  [ "${tip_line%% *}" = "$(git -C "$ORIGIN_CWD" rev-parse HEAD)" ]
+  [ -z "$(git -C "$ORIGIN_CWD" for-each-ref refs/atp)" ]
+}
+
+@test "--with-tree skips the bundle when the target already has the snapshot" {
+  setup_tree_flow
+  rm "$ORIGIN_CWD/dirty.txt"
+  export TS_PROBE_EXTRA=$'git=ok\nwtadd=ok\ndesthead='$(git -C "$ORIGIN_CWD" rev-parse HEAD)
+
+  atp --pid 4242 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree shipped"* ]]
+  [ ! -e "$TS_BUNDLE" ]
+  # The land command branches directly from the sha the target already has
+  # (branch variant, not the bundle-fetch variant).
+  grep -q "atpland=branchfail" "$TS_LOG"
+  ! grep -q "atpland=fetchfail" "$TS_LOG"
+  [ "$(jq -rs '[.[] | .cwd] | unique | .[]' "$TS_SHIP")" = "$TS_WORKTREE" ]
+}
+
+@test "codex --with-tree lands the tree and resumes in the worktree" {
+  export ORIGIN_CWD="$HOME/proj"
+  mkdir -p "$ORIGIN_CWD" "$RESURRECT_PROC_ROOT/5353"
+  : >"$RESURRECT_PROC_ROOT/5353/environ"
+  git init -q "$ORIGIN_CWD"
+  git -C "$ORIGIN_CWD" config user.name "Bats"
+  git -C "$ORIGIN_CWD" config user.email "bats@example.com"
+  echo base >"$ORIGIN_CWD/base.txt"
+  git -C "$ORIGIN_CWD" add base.txt
+  git -C "$ORIGIN_CWD" commit -qm initial
+  echo dirty >"$ORIGIN_CWD/dirty.txt"
+  local oldid="01890a5d-ac96-774b-bcce-b302099a8056"
+  local rollout_dir="$HOME/.codex/sessions/2026/07/22"
+  mkdir -p "$rollout_dir"
+  local rollout="$rollout_dir/rollout-2026-07-22T10-30-00-$oldid.jsonl"
+  cat >"$rollout" <<EOF
+{"timestamp":"2026-07-22T10:30:00.000Z","type":"session_meta","payload":{"id":"$oldid","cwd":"$ORIGIN_CWD","cli_version":"0.9.0"}}
+{"timestamp":"2026-07-22T10:30:01.000Z","type":"event_msg","payload":{"type":"user_message","message":"codeword courgette"}}
+EOF
+
+  write_stub ps <<EOF
+#!/usr/bin/env bash
+case "\$*" in
+  *"-o comm= -p 5353"*) echo codex ;;
+  *"-o args= -p 5353"*) echo "codex -C $ORIGIN_CWD" ;;
+  *) exit 1 ;;
+esac
+EOF
+  write_stub lsof <<EOF
+#!/usr/bin/env bash
+case "\$*" in
+  *"-p 5353"*) printf 'codex 5353 u txt REG 1,4 1 1 %s\n' "$rollout" ;;
+  *) exit 1 ;;
+esac
+EOF
+
+  export TS_LOG="$BATS_TEST_TMPDIR/ts.log"
+  export TS_SHIP="$BATS_TEST_TMPDIR/shipped.jsonl"
+  export TS_SESSIONS="$BATS_TEST_TMPDIR/sessions.out"
+  : >"$TS_SESSIONS"
+  export TS_BUNDLE="$BATS_TEST_TMPDIR/shipped.bundle"
+  export TS_WORKTREE="/remote/home/.trees/proj/atp-wt"
+  export TS_PROBE_EXTRA=$'git=ok\nwtadd=ok'
+  write_stub ts <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$TS_LOG"
+cmd="$3"
+case "$cmd" in
+  *'echo "$HOME"'*) echo /remote/home ;;
+  *wt-add*--no-fetch*)
+    case "$cmd" in
+      *atpland=fetchfail*) cat >"$TS_BUNDLE" ;;
+    esac
+    echo "$TS_WORKTREE"
+    ;;
+  *"cat > "*) cat >"$TS_SHIP" ;;
+  *"dest="*)
+    echo "dest=ok"
+    [ -n "$TS_PROBE_EXTRA" ] && printf '%s\n' "$TS_PROBE_EXTRA"
+    ;;
+esac
+exit 0
+EOF
+  export CLIP="$BATS_TEST_TMPDIR/clipboard.txt"
+  write_stub pbcopy <<'EOF'
+#!/usr/bin/env bash
+cat >"$CLIP"
+EOF
+
+  atp --pid 5353 --host mac-mini --copy --with-tree
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"origin tree shipped (atp/"* ]]
+  [ -s "$TS_BUNDLE" ]
+  git -C "$ORIGIN_CWD" bundle verify "$TS_BUNDLE" >/dev/null
+  # The rollout still ships, and the resume command cds into the worktree.
+  [ -s "$TS_SHIP" ]
+  [[ "$(cat "$CLIP")" == *"$TS_WORKTREE"* ]]
+  [[ "$(cat "$CLIP")" == *"resume"* ]]
+}
+
 @test "missing origin profile on target degrades to the default account" {
   setup_claude_flow
   # Mark the live pid as running under a ccp profile via its environ.
