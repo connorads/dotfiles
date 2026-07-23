@@ -12,7 +12,6 @@ import argparse
 import json
 import sys
 
-
 TARGETS = {
     "normal-text": ("AA normal text", 4.5),
     "large-text": ("AA large text", 3.0),

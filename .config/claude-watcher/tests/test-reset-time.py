@@ -12,7 +12,7 @@ Run: python3 test-reset-time.py   (exits non-zero on any failure)
 
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 

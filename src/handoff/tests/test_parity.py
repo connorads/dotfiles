@@ -13,18 +13,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
 from handoff._ids import is_uuid, normalize_uuid
 from handoff._json import timestamp_millis
 from handoff.errors import HandoffError
-from handoff.formats import codex
-from handoff.formats import claude
+from handoff.formats import claude, codex
 from handoff.ir import (
     SessionFormat,
     ToolCallEvent,
     UniversalSession,
 )
-
 
 # --- _ids: strict UUID parsing (Uuid::parse_str) -----------------------------------
 
@@ -105,7 +102,7 @@ def test_codex_load_keeps_unicode_line_separators_intact(tmp_path: Path) -> None
         "payload": {
             "type": "message",
             "role": "user",
-            "content": [{"type": "input_text", "text": "para1 para2"}],
+            "content": [{"type": "input_text", "text": "para1 para2"}],  # noqa: RUF001 - U+2028 is deliberate test data
         },
     }
     path = tmp_path / "rollout.jsonl"
@@ -121,12 +118,8 @@ def test_codex_load_keeps_unicode_line_separators_intact(tmp_path: Path) -> None
     assert path.read_text(encoding="utf-8").count("\n") == 2
 
     session = codex.load(path)
-    texts = [
-        block.text
-        for event in session.events
-        for block in getattr(event, "blocks", [])
-    ]
-    assert "para1 para2" in texts
+    texts = [block.text for event in session.events for block in getattr(event, "blocks", [])]
+    assert "para1 para2" in texts  # noqa: RUF001 - U+2028 is deliberate test data
 
 
 # --- codex: empty-string metadata preserved (unwrap_or_else vs `or`) ----------------
@@ -185,9 +178,9 @@ def test_codex_write_preserves_empty_approval_policy(tmp_path: Path) -> None:
 
         codex.write(session, tmp_path)
 
-        approval_mode = connection.execute(
-            "SELECT approval_mode FROM threads LIMIT 1"
-        ).fetchone()[0]
+        approval_mode = connection.execute("SELECT approval_mode FROM threads LIMIT 1").fetchone()[
+            0
+        ]
         assert approval_mode == ""
     finally:
         connection.close()

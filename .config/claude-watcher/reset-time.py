@@ -19,16 +19,14 @@ import argparse
 import re
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # --- ANSI strip (defensive; watcher already strips) ---
 _ANSI = re.compile(r"\x1b\[[\x20-\x3f]*[\x40-\x7e]|\x1b\][\s\S]*?(?:\x07|\x1b\\)")
 
 # Clock time: "resets 3pm" / "reset at 3:00 PM" / "resets at 11" (NB: no zone here)
-_RESET_CLOCK = re.compile(
-    r"resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.IGNORECASE
-)
+_RESET_CLOCK = re.compile(r"resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.IGNORECASE)
 # Absolute calendar date: "resets Oct 6, 1pm" (the weekly/Opus multi-day form).
 # No year in the banner -> we pick the next future occurrence of that date.
 _RESET_DATE = re.compile(
@@ -39,8 +37,18 @@ _RESET_DATE = re.compile(
     re.IGNORECASE,
 )
 _MONTHS = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 # Relative: "try again in 5 hours" / "resets in 45 minutes" / "wait 2 h"
 _RELATIVE = re.compile(
@@ -100,7 +108,7 @@ def next_occurrence(hour, minute, tz, now_dt):
 
 def compute(banner, now_epoch, margin):
     banner = strip_ansi(banner)
-    now_dt = datetime.fromtimestamp(now_epoch, tz=timezone.utc)
+    now_dt = datetime.fromtimestamp(now_epoch, tz=UTC)
 
     # Calendar date first (weekly/Opus "resets Oct 6, 1pm") — most specific, and
     # days-away so it trips the watcher's wait ceiling rather than a 5h fallback.

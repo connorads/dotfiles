@@ -16,10 +16,10 @@ import time
 import uuid
 
 __all__ = [
+    "is_uuid",
     "new_uuid4",
     "new_uuid4_simple",
     "new_uuid7",
-    "is_uuid",
     "normalize_uuid",
 ]
 

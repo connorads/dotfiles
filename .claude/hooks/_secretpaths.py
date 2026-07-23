@@ -107,7 +107,7 @@ def _matched_secret(candidate: str) -> str | None:
     components = _home_relative_components(candidate)
     if not components:
         return None
-    for secret, secret_components in zip(SECRET_PATHS, _SECRET_COMPONENTS):
+    for secret, secret_components in zip(SECRET_PATHS, _SECRET_COMPONENTS, strict=True):
         if components[: len(secret_components)] == secret_components:
             return secret
     return None

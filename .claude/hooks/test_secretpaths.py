@@ -7,7 +7,6 @@
 from pathlib import Path
 
 import pytest
-
 from _secretpaths import SECRET_PATHS, secret_access_reason
 
 HOME = str(Path.home())
@@ -106,8 +105,6 @@ class TestParity:
         # fails fast when srt gains a path this module lacks.
         import json
 
-        srt = json.loads(
-            (Path.home() / ".config" / "srt" / "base.json").read_text()
-        )
+        srt = json.loads((Path.home() / ".config" / "srt" / "base.json").read_text())
         srt_paths = {p.removeprefix("~/") for p in srt["filesystem"]["denyRead"]}
         assert srt_paths <= set(SECRET_PATHS)

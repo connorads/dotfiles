@@ -14,7 +14,6 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 OSC_RE = re.compile(r"\x1b\][^\x07]*(?:\x07|\x1b\\)")
 
@@ -59,8 +58,12 @@ def parse_args() -> argparse.Namespace:
     socket_group.add_argument("-S", "--socket-path", help="tmux socket path")
     parser.add_argument("-p", "--pattern", help="Python regex to wait for")
     parser.add_argument("-T", "--timeout", type=float, default=30.0, help="timeout in seconds")
-    parser.add_argument("-n", "--lines", type=int, default=40, help="normalised tail lines to retain")
-    parser.add_argument("--no-seed", action="store_true", help="do not seed from capture-pane before attaching")
+    parser.add_argument(
+        "-n", "--lines", type=int, default=40, help="normalised tail lines to retain"
+    )
+    parser.add_argument(
+        "--no-seed", action="store_true", help="do not seed from capture-pane before attaching"
+    )
     return parser.parse_args()
 
 
@@ -80,8 +83,7 @@ def run_tmux(args: argparse.Namespace, command: Sequence[str]) -> subprocess.Com
         tmux_command(args, command),
         check=False,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
 
 

@@ -84,9 +84,7 @@ def test_detects_and_imports_current_claude_fixture(
     assert session.metadata.platform_version == "2.1.215"
     assert session.metadata.model == "claude-opus-4.8"
     assert any(isinstance(event, ReasoningEvent) for event in session.events)
-    message_count = sum(
-        1 for event in session.events if isinstance(event, MessageEvent)
-    )
+    message_count = sum(1 for event in session.events if isinstance(event, MessageEvent))
     assert message_count == 3
     assert any(isinstance(event, ToolCallEvent) for event in session.events)
     assert any(isinstance(event, ToolResultEvent) for event in session.events)

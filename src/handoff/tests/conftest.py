@@ -47,9 +47,7 @@ def run_cli() -> Callable[..., subprocess.CompletedProcess[str]]:
     ) -> subprocess.CompletedProcess[str]:
         child_env = dict(os.environ)
         existing = child_env.get("PYTHONPATH", "")
-        child_env["PYTHONPATH"] = (
-            f"{SRC_DIR}{os.pathsep}{existing}" if existing else str(SRC_DIR)
-        )
+        child_env["PYTHONPATH"] = f"{SRC_DIR}{os.pathsep}{existing}" if existing else str(SRC_DIR)
         for key in remove_env:
             child_env.pop(key, None)
         if env:

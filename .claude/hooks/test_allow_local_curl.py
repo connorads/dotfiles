@@ -35,7 +35,7 @@ class TestIsLocalCurl:
             "curl http://[::1]:3000",
             "curl https://localhost/health",
             # POST with data
-            "curl -s -X POST http://localhost:3000/api -d '{\"key\":\"val\"}'",
+            'curl -s -X POST http://localhost:3000/api -d \'{"key":"val"}\'',
             # Headers before URL
             'curl -H "Content-Type: application/json" http://localhost:3000',
             # Output flag

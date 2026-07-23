@@ -111,9 +111,7 @@ def test_materializes_canonical_codex_layout(
         index = tmp_path / "session_index.jsonl"
         assert index.exists()
 
-        registered_count = connection.execute(
-            "SELECT COUNT(*) FROM threads"
-        ).fetchone()[0]
+        registered_count = connection.execute("SELECT COUNT(*) FROM threads").fetchone()[0]
         assert registered_count == 1
 
         row_id, title, first_user_message = connection.execute(
@@ -143,11 +141,7 @@ def test_materialized_codex_sessions_include_turn_events(tmp_path: Path) -> None
         session.events.append(
             MessageEvent(
                 role="developer",
-                blocks=[
-                    ContentBlock.make_text(
-                        "input_text", "Repository instructions apply."
-                    )
-                ],
+                blocks=[ContentBlock.make_text("input_text", "Repository instructions apply.")],
             )
         )
         session.events.append(
@@ -156,17 +150,11 @@ def test_materialized_codex_sessions_include_turn_events(tmp_path: Path) -> None
                 blocks=[ContentBlock.make_text("input_text", "First prompt")],
             )
         )
-        session.events.append(
-            ReasoningEvent(summary=["Thinking through the task."])
-        )
+        session.events.append(ReasoningEvent(summary=["Thinking through the task."]))
         session.events.append(
             MessageEvent(
                 role="assistant",
-                blocks=[
-                    ContentBlock.make_text(
-                        "output_text", "First answer with context."
-                    )
-                ],
+                blocks=[ContentBlock.make_text("output_text", "First answer with context.")],
             )
         )
         session.events.append(
@@ -183,23 +171,16 @@ def test_materialized_codex_sessions_include_turn_events(tmp_path: Path) -> None
         )
 
         path = materialize(session, SessionFormat.CODEX, tmp_path)
-        lines = [
-            json.loads(line)
-            for line in path.read_text(encoding="utf-8").splitlines()
-        ]
+        lines = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
         type_counts = Counter(
-            value["type"]
-            for value in lines
-            if isinstance(value.get("type"), str)
+            value["type"] for value in lines if isinstance(value.get("type"), str)
         )
         assert type_counts.get("session_meta") == 1
         assert type_counts.get("turn_context") is None
         assert type_counts.get("event_msg") == 9
 
-        session_meta = next(
-            value for value in lines if value.get("type") == "session_meta"
-        )
+        session_meta = next(value for value in lines if value.get("type") == "session_meta")
         payload = session_meta["payload"]
         assert payload.get("model_provider") == "OpenAI"
         assert payload.get("cli_version") == "0.144.6"
@@ -265,8 +246,7 @@ def test_materializes_canonical_claude_layout(
                     content = block["content"]
                     if isinstance(content, list):
                         assert all(
-                            item.get("type") in ("text", "image", "document")
-                            for item in content
+                            item.get("type") in ("text", "image", "document") for item in content
                         )
                         saw_structured_tool_result = True
     assert saw_image
@@ -290,9 +270,7 @@ def test_projects_codex_developer_messages_into_claude(tmp_path: Path) -> None:
         MessageEvent(
             role="developer",
             blocks=[
-                ContentBlock.make_text(
-                    "input_text", "Follow the project instructions carefully."
-                )
+                ContentBlock.make_text("input_text", "Follow the project instructions carefully.")
             ],
         )
     )
@@ -302,9 +280,7 @@ def test_projects_codex_developer_messages_into_claude(tmp_path: Path) -> None:
     assert "[handoff imported developer message]" in text
 
 
-def test_ir_roundtrip_reload_addition(
-    fixture: Callable[[str], Path], tmp_path: Path
-) -> None:
+def test_ir_roundtrip_reload_addition(fixture: Callable[[str], Path], tmp_path: Path) -> None:
     """ADDITION (not in the Rust suite): IR materialise -> load_ir round-trips.
 
     Trivially derived from the `claude_sample` fixture and the `writes_ir_json`

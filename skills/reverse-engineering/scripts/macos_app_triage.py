@@ -8,6 +8,7 @@ Finder, and detached before the process exits.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -19,7 +20,6 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
-
 
 MAX_ARTIFACT_BYTES = 32 * 1024 * 1024
 MAX_INVENTORY_ENTRIES = 10_000
@@ -126,8 +126,7 @@ class Triage:
             completed = subprocess.run(
                 command,
                 stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 timeout=timeout,
                 check=False,
             )
@@ -297,9 +296,7 @@ def inspect_binary(triage: Triage, binary: Path, prefix: str) -> None:
     arch_output = triage.out_dir / f"{prefix}-architectures.txt"
     if dyld_info and arch_output.is_file():
         words = arch_output.read_text(encoding="utf-8", errors="replace").split()
-        architectures = [
-            word for word in words if word in {"arm64", "arm64e", "x86_64", "i386"}
-        ]
+        architectures = [word for word in words if word in {"arm64", "arm64e", "x86_64", "i386"}]
         for architecture in architectures[:4]:
             triage.run(
                 f"{prefix}-objc-{architecture}",
@@ -340,9 +337,7 @@ def inspect_app(triage: Triage, app: Path) -> None:
 
     inventory, asset_catalogues = inventory_bundle(app)
     triage.write_text("app-inventory.txt", "\n".join(inventory) + "\n")
-    triage.metadata["asset_catalogues"] = [
-        str(path.relative_to(app)) for path in asset_catalogues
-    ]
+    triage.metadata["asset_catalogues"] = [str(path.relative_to(app)) for path in asset_catalogues]
 
     if codesign := available("codesign"):
         triage.run(
@@ -456,10 +451,8 @@ def inspect_dmg(triage: Triage, allow_mount: bool) -> None:
             triage.metadata["detached"] = detach["returncode"] == 0
             if detach["returncode"] != 0:
                 raise TriageError(f"failed to detach DMG mountpoint: {mountpoint}")
-        try:
+        with contextlib.suppress(OSError):
             mountpoint.rmdir()
-        except OSError:
-            pass
 
 
 def parse_args() -> argparse.Namespace:

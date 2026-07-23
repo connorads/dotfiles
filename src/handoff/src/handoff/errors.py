@@ -22,7 +22,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import NoReturn
 
-__all__ = ["HandoffError", "ctx", "bail"]
+__all__ = ["HandoffError", "bail", "ctx"]
 
 
 class HandoffError(Exception):
@@ -56,6 +56,6 @@ def ctx(message: str | Callable[[], str]) -> Iterator[None]:
     """
     try:
         yield
-    except Exception as exc:  # noqa: BLE001 - deliberate boundary translation
+    except Exception as exc:
         text = message() if callable(message) else message
         raise HandoffError(text) from exc

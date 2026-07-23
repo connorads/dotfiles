@@ -75,10 +75,18 @@ ENV_AGE_RE = re.compile(
 # Conservative fallback when the command can't be tokenised: only the unambiguous
 # =glued forms, so a parse failure never silently misses the obvious bypasses.
 FALLBACK_RES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"--ignore-scripts=false\b", re.IGNORECASE), "re-enables install scripts (--ignore-scripts=false)"),
-    (re.compile(r"--no-ignore-scripts\b", re.IGNORECASE), "re-enables install scripts (--no-ignore-scripts)"),
     (
-        re.compile(r"--(?:min(?:imum)?-release-age|minimum-dependency-age)=0[a-z]*\b", re.IGNORECASE),
+        re.compile(r"--ignore-scripts=false\b", re.IGNORECASE),
+        "re-enables install scripts (--ignore-scripts=false)",
+    ),
+    (
+        re.compile(r"--no-ignore-scripts\b", re.IGNORECASE),
+        "re-enables install scripts (--no-ignore-scripts)",
+    ),
+    (
+        re.compile(
+            r"--(?:min(?:imum)?-release-age|minimum-dependency-age)=0[a-z]*\b", re.IGNORECASE
+        ),
         "zeroes the package age-gate",
     ),
 )

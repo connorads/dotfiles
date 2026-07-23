@@ -20,6 +20,7 @@ Serialisation parity: every JSONL line is a free-form JSON object, so
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 from dataclasses import dataclass
@@ -178,9 +179,7 @@ def _import_turn_context(metadata: SessionMetadata, value: dict[str, Any]) -> No
         metadata.extra["codex_personality"] = payload["personality"]
     _copy_if_present(payload, metadata, "approval_policy", "codex_approval_policy")
     _copy_if_present(payload, metadata, "sandbox_policy", "codex_sandbox_policy")
-    _copy_if_present(
-        payload, metadata, "collaboration_mode", "codex_collaboration_mode"
-    )
+    _copy_if_present(payload, metadata, "collaboration_mode", "codex_collaboration_mode")
     _copy_if_present(payload, metadata, "user_instructions", "codex_user_instructions")
     _copy_if_present(payload, metadata, "timezone", "codex_timezone")
     _copy_if_present(payload, metadata, "current_date", "codex_current_date")
@@ -216,11 +215,7 @@ def _import_message(
         role = "assistant"
 
     content = payload.get("content")
-    blocks = (
-        [_normalize_block(item) for item in content]
-        if isinstance(content, list)
-        else []
-    )
+    blocks = [_normalize_block(item) for item in content] if isinstance(content, list) else []
     if not blocks:
         return
 
@@ -293,7 +288,7 @@ def _import_tool_call(
 def _import_tool_result(
     events: list[SessionEvent], payload: dict[str, Any], timestamp: datetime | None
 ) -> None:
-    output = payload["output"] if "output" in payload else ""
+    output = payload.get("output", "")
 
     call_id = payload.get("call_id")
     tool_id = payload.get("id")
@@ -326,9 +321,7 @@ def _normalize_block(value: Any) -> ContentBlock:
             break
 
     remainder = {
-        key: val
-        for key, val in value.items()
-        if key not in ("type", "text", "thinking", "content")
+        key: val for key, val in value.items() if key not in ("type", "text", "thinking", "content")
     }
     data = remainder if remainder else None
 
@@ -351,9 +344,7 @@ def write(session: UniversalSession, output: Path) -> Path:
     with ctx(lambda: f"failed to create {parent}"):
         parent.mkdir(parents=True, exist_ok=True)
 
-    with ctx(
-        lambda: f"failed to create Codex session file {materialization.session_file}"
-    ):
+    with ctx(lambda: f"failed to create Codex session file {materialization.session_file}"):
         handle = open(  # noqa: SIM115 - closed explicitly below
             materialization.session_file, "w", encoding="utf-8", newline="\n"
         )
@@ -463,11 +454,7 @@ def _write_session_meta(
         "cwd": cwd,
         "originator": originator,
         "cli_version": CODEX_CLI_VERSION,
-        "source": (
-            session.metadata.extra["codex_source"]
-            if "codex_source" in session.metadata.extra
-            else "cli"
-        ),
+        "source": session.metadata.extra.get("codex_source", "cli"),
         "model_provider": CODEX_MODEL_PROVIDER,
         "thread_source": "user",
         "history_mode": "legacy",
@@ -518,9 +505,7 @@ def _write_message_event(
         active_turn = _start_turn(handle, timestamp)
         _write_message_response_item(handle, message, updated_at)
         images = [
-            url
-            for url in (_codex_image_url(block) for block in message.blocks)
-            if url is not None
+            url for url in (_codex_image_url(block) for block in message.blocks) if url is not None
         ]
         if rendered_text is not None or images:
             write_json_line(
@@ -594,10 +579,7 @@ def _write_reasoning_event(
             "type": "response_item",
             "payload": {
                 "type": "reasoning",
-                "summary": [
-                    {"type": "summary_text", "text": text}
-                    for text in reasoning.summary
-                ],
+                "summary": [{"type": "summary_text", "text": text} for text in reasoning.summary],
             },
         },
     )
@@ -677,14 +659,10 @@ def _start_turn(handle: IO[str], timestamp: datetime) -> ActiveTurn:
             },
         },
     )
-    return ActiveTurn(
-        turn_id=turn_id, last_agent_message=None, last_timestamp=timestamp
-    )
+    return ActiveTurn(turn_id=turn_id, last_agent_message=None, last_timestamp=timestamp)
 
 
-def _close_turn(
-    handle: IO[str], active_turn: ActiveTurn | None, fallback: datetime
-) -> None:
+def _close_turn(handle: IO[str], active_turn: ActiveTurn | None, fallback: datetime) -> None:
     if active_turn is None:
         return
     write_json_line(
@@ -765,9 +743,7 @@ def _render_ts(timestamp: datetime | None, fallback: datetime) -> str:
     return format_millis(timestamp if timestamp is not None else fallback)
 
 
-def _update_time_bounds(
-    metadata: SessionMetadata, timestamp: datetime | None
-) -> None:
+def _update_time_bounds(metadata: SessionMetadata, timestamp: datetime | None) -> None:
     if timestamp is None:
         return
     if metadata.created_at is None:
@@ -872,12 +848,7 @@ def _render_message_text(message: MessageEvent) -> str | None:
 
 
 def _render_reasoning_text(reasoning: ReasoningEvent) -> str:
-    parts = [
-        stripped
-        for item in reasoning.summary
-        for stripped in (item.strip(),)
-        if stripped
-    ]
+    parts = [stripped for item in reasoning.summary for stripped in (item.strip(),) if stripped]
     return "\n\n".join(parts)
 
 
@@ -913,9 +884,7 @@ def _register_thread_in_sqlite(
         first_user = first_message if first_message is not None else title
         cwd = session.metadata.cwd if session.metadata.cwd is not None else "."
         if "codex_sandbox_policy" in session.metadata.extra:
-            sandbox_policy = _json_to_string(
-                session.metadata.extra["codex_sandbox_policy"]
-            )
+            sandbox_policy = _json_to_string(session.metadata.extra["codex_sandbox_policy"])
         else:
             sandbox_policy = '{"type":"workspace-write"}'
         approval_mode = _extra_string(session.metadata, "codex_approval_policy")
@@ -924,14 +893,11 @@ def _register_thread_in_sqlite(
         git_branch = session.metadata.git_branch
         has_user_event = int(
             any(
-                isinstance(event, MessageEvent) and event.role == "user"
-                for event in session.events
+                isinstance(event, MessageEvent) and event.role == "user" for event in session.events
             )
         )
 
-        with ctx(
-            lambda: f"failed to register thread {session_id} in {sqlite_path}"
-        ):
+        with ctx(lambda: f"failed to register thread {session_id} in {sqlite_path}"):
             connection.execute(
                 """INSERT INTO threads (
                     id,
@@ -991,14 +957,12 @@ def _register_thread_in_sqlite(
             )
 
         # Codex 0.144+ hides rows without a preview; older state DBs lack these columns.
-        try:
+        with contextlib.suppress(sqlite3.Error):
             connection.execute(
                 "UPDATE threads SET preview = ?1, thread_source = 'user', "
                 "history_mode = 'legacy' WHERE id = ?2",
                 (first_user, session_id),
             )
-        except sqlite3.Error:
-            pass
 
     connection.close()
 

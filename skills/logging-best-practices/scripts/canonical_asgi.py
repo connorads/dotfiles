@@ -32,6 +32,7 @@ Notes
 
 from __future__ import annotations
 
+import contextlib
 import time
 import uuid
 from contextvars import ContextVar
@@ -51,10 +52,8 @@ def annotate(**fields: Any) -> None:
     Safe to call from anywhere in the request lifecycle. No-op outside a
     request (e.g. from a background task without its own canonical context).
     """
-    try:
+    with contextlib.suppress(LookupError):
         _event.get().update(fields)
-    except LookupError:
-        pass
 
 
 class CanonicalLogMiddleware:
@@ -68,11 +67,11 @@ class CanonicalLogMiddleware:
 
         request_id = _header(scope, b"x-request-id") or str(uuid.uuid4())
         event: dict[str, Any] = {
-            "request_id":  request_id,
+            "request_id": request_id,
             "http.method": scope["method"],
-            "http.path":   scope.get("path", ""),
+            "http.path": scope.get("path", ""),
             "db.calls": 0,
-            "db.ms":    0,
+            "db.ms": 0,
         }
         event_token = _event.set(event)
 

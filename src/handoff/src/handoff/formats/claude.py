@@ -80,8 +80,10 @@ def _as_array(value: Any) -> list[Any] | None:
 
 def load(path: Path) -> UniversalSession:
     """Load a Claude `.jsonl` session into the IR (`claude::load`)."""
+    # open and read are split so each carries its own error context; a plain
+    # `with open(...)` would collapse the two ctx() messages into one.
     with ctx(lambda: f"failed to open Claude session {path}"):
-        handle = open(path, encoding="utf-8", newline="")
+        handle = open(path, encoding="utf-8", newline="")  # noqa: SIM115
     try:
         with ctx(lambda: f"failed to read {path}"):
             lines = handle.readlines()
@@ -99,9 +101,7 @@ def load(path: Path) -> UniversalSession:
             value = json.loads(line)
 
         _import_metadata(session.metadata, value)
-        if _as_bool(_get(value, "isMeta")) is True or _as_bool(
-            _get(value, "isSidechain")
-        ) is True:
+        if _as_bool(_get(value, "isMeta")) is True or _as_bool(_get(value, "isSidechain")) is True:
             continue
 
         match _as_str(_get(value, "type")):
@@ -410,20 +410,14 @@ def _normalize_block(value: Any) -> ContentBlock:
     return ContentBlock(kind=kind, text=text, data=data)
 
 
-def _update_time_bounds(
-    metadata: SessionMetadata, timestamp: datetime | None
-) -> None:
+def _update_time_bounds(metadata: SessionMetadata, timestamp: datetime | None) -> None:
     if timestamp is None:
         return
     metadata.created_at = (
-        timestamp
-        if metadata.created_at is None
-        else min(metadata.created_at, timestamp)
+        timestamp if metadata.created_at is None else min(metadata.created_at, timestamp)
     )
     metadata.updated_at = (
-        timestamp
-        if metadata.updated_at is None
-        else max(metadata.updated_at, timestamp)
+        timestamp if metadata.updated_at is None else max(metadata.updated_at, timestamp)
     )
 
 
@@ -460,19 +454,16 @@ def write(session: UniversalSession, output: Path) -> Path:
 
     session_id = _claude_session_id(session.metadata.session_id)
     cwd = session.metadata.cwd if session.metadata.cwd is not None else "."
-    git_branch = (
-        session.metadata.git_branch
-        if session.metadata.git_branch is not None
-        else "HEAD"
-    )
+    git_branch = session.metadata.git_branch if session.metadata.git_branch is not None else "HEAD"
     created_at = session.metadata.created_at
     if created_at is None:
         times = [e.timestamp for e in session.events if e.timestamp is not None]
         created_at = min(times) if times else None
     version = CLAUDE_CODE_VERSION
 
+    # open and write are split so each carries its own error context (see load).
     with ctx(lambda: f"failed to create Claude session {session_file}"):
-        handle = open(session_file, "w", encoding="utf-8", newline="\n")
+        handle = open(session_file, "w", encoding="utf-8", newline="\n")  # noqa: SIM115
 
     try:
         previous_uuid: str | None = None
@@ -482,9 +473,7 @@ def write(session: UniversalSession, output: Path) -> Path:
             match event:
                 case MessageEvent():
                     event_uuid = new_uuid4()
-                    projected_role, projected_blocks = _project_message_for_claude(
-                        event
-                    )
+                    projected_role, projected_blocks = _project_message_for_claude(event)
                     content = _encode_message_blocks(projected_blocks)
                     if content is None:
                         continue
@@ -525,10 +514,7 @@ def write(session: UniversalSession, output: Path) -> Path:
                     previous_uuid = event_uuid
                 case ReasoningEvent():
                     event_uuid = new_uuid4()
-                    content = [
-                        {"type": "thinking", "thinking": text}
-                        for text in event.summary
-                    ]
+                    content = [{"type": "thinking", "thinking": text} for text in event.summary]
                     assistant_message = _claude_assistant_message(content, None)
                     line = {
                         "parentUuid": previous_uuid,
@@ -603,9 +589,7 @@ def write(session: UniversalSession, output: Path) -> Path:
                         },
                         "uuid": event_uuid,
                         "timestamp": _event_timestamp(event.timestamp),
-                        "toolUseResult": _tool_result_summary(
-                            event.output, event.is_error
-                        ),
+                        "toolUseResult": _tool_result_summary(event.output, event.is_error),
                         "sourceToolAssistantUUID": source_uuid,
                     }
                     write_json_line(handle, line)
@@ -621,27 +605,25 @@ def write(session: UniversalSession, output: Path) -> Path:
 
         title = _derive_title(session)
         stamp = created_at if created_at is not None else now_utc()
-        with ctx(lambda: f"failed to open {history_file}"):
-            with open(history_file, "a", encoding="utf-8", newline="\n") as history:
-                write_json_line(
-                    history,
-                    {
-                        "display": title
-                        if title is not None
-                        else "Imported session",
-                        "pastedContents": {},
-                        "timestamp": timestamp_millis(stamp),
-                        "project": cwd,
-                        "sessionId": session_id,
-                    },
-                )
+        with (
+            ctx(lambda: f"failed to open {history_file}"),
+            open(history_file, "a", encoding="utf-8", newline="\n") as history,
+        ):
+            write_json_line(
+                history,
+                {
+                    "display": title if title is not None else "Imported session",
+                    "pastedContents": {},
+                    "timestamp": timestamp_millis(stamp),
+                    "project": cwd,
+                    "sessionId": session_id,
+                },
+            )
 
     return session_file
 
 
-def _plan_output(
-    session: UniversalSession, output: Path
-) -> tuple[Path, Path | None]:
+def _plan_output(session: UniversalSession, output: Path) -> tuple[Path, Path | None]:
     """`plan_output`: pick the session-file path and optional history file."""
     if output.suffix == ".jsonl":
         return output, None
@@ -710,9 +692,7 @@ def _encode_tool_result_output(output: JsonValue) -> Any:
             match _as_str(_get(item, "type")):
                 case "input_text" | "output_text":
                     text = _as_str(_get(item, "text"))
-                    encoded.append(
-                        {"type": "text", "text": text if text is not None else ""}
-                    )
+                    encoded.append({"type": "text", "text": text if text is not None else ""})
                 case "input_image":
                     image_url = _as_str(_get(item, "image_url"))
                     if image_url is None:

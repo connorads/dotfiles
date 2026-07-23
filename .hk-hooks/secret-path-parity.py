@@ -38,9 +38,7 @@ from pathlib import Path
 # as a directory and needs both forms.
 FILE_PATHS = frozenset({"~/.netrc", "~/.zshrc.local", "~/.docker/config.json", "~/.zshenv"})
 
-_TS_SECRET_ARRAY_RE = re.compile(
-    r"export const SECRET_PATHS = \[(.*?)\] as const;", re.DOTALL
-)
+_TS_SECRET_ARRAY_RE = re.compile(r"export const SECRET_PATHS = \[(.*?)\] as const;", re.DOTALL)
 _TS_STRING_RE = re.compile(r'"([^"]+)"')
 
 

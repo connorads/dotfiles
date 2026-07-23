@@ -119,9 +119,7 @@ def check_gh_api_gate(settings: dict, hook_exists: bool) -> list[str]:
         for hook in entry.get("hooks", [])
     )
     if not wired:
-        errors.append(
-            "guard-mutating-api.py is not wired under hooks.PreToolUse (matcher Bash)"
-        )
+        errors.append("guard-mutating-api.py is not wired under hooks.PreToolUse (matcher Bash)")
     return errors
 
 
@@ -148,12 +146,8 @@ def main() -> int:
         return 1
 
     errors = []
-    errors += check_canonical_denies(
-        claude_deny_bases(settings), opencode_deny_bases(opencode)
-    )
-    errors += check_allow_not_denied(
-        claude_allow_bases(settings), opencode_deny_globs(opencode)
-    )
+    errors += check_canonical_denies(claude_deny_bases(settings), opencode_deny_bases(opencode))
+    errors += check_allow_not_denied(claude_allow_bases(settings), opencode_deny_globs(opencode))
     errors += check_gh_api_gate(settings, hook_path.exists())
 
     if errors:

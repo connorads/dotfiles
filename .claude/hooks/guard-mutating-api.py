@@ -121,11 +121,7 @@ def _methods_and_implicit(tokens: list[str]) -> tuple[set[str], bool]:
 
 def _gh_api_arg_vectors(tokens: list[str]) -> list[list[str]]:
     """Return argv slices after each `gh api` token pair in a segment."""
-    starts = [
-        i
-        for i in range(len(tokens) - 1)
-        if tokens[i] == "gh" and tokens[i + 1] == "api"
-    ]
+    starts = [i for i in range(len(tokens) - 1) if tokens[i] == "gh" and tokens[i + 1] == "api"]
     invocations: list[list[str]] = []
     for index, start in enumerate(starts):
         end = starts[index + 1] if index + 1 < len(starts) else len(tokens)

@@ -1,0 +1,43 @@
+# Ruff lint + format gate for first-party Python.
+# Kept here (not ~/.config/ruff/) and passed with `--config` from the hk steps so
+# it gates the repo without becoming the user's global XDG ruff default.
+# Derived from skills/mechanical-enforcement/references/python-ruff.toml.
+required-version = ">=0.15,<0.16"
+target-version = "py312"
+line-length = 100
+force-exclude = true
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+docstring-code-format = false
+
+[lint]
+# Explicit stable baseline. Never "ALL": new Ruff releases add rules and would
+# turn a tool bump into a behaviour change.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    # Ruff format owns wrapping.
+    "E501",
+]
+fixable = ["ALL"]
+# Safe fixes only (ruff's default). Unsafe fixes are opt-in via the CLI
+# `--unsafe-fixes` flag - not a config key in ruff 0.15 - so the gate stays safe
+# by never passing it.
+preview = false
+
+[lint.per-file-ignores]
+# Tests intentionally use asserts, fixture names, literals, compact setup, and
+# mutable class-level fixture constants (RUF012).
+"**/test_*.py" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN", "RUF012"]
+"tests/**" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN", "RUF012"]

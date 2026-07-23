@@ -103,7 +103,7 @@ def nudge_reason(command: str) -> str | None:
 
         if head == "npm":
             sub = _first_subcommand(command_tokens)
-            if sub in NUDGE_NPM_SUBCMDS:
+            if sub is not None and sub in NUDGE_NPM_SUBCMDS:
                 return f"Prefer pnpm over npm (AGENTS.md): use `{PNPM_EQUIV[sub]}`"
 
     return None

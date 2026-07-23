@@ -22,7 +22,6 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-
 from handoff.formats import load_session, materialize
 from handoff.ir import SessionFormat, SourceFormat
 
@@ -185,9 +184,7 @@ def test_quick_cli_opens_codex_target_by_default_bootstraps_auth(
     installed_home = tmp_path_factory.mktemp("installed_home")
     source_session.metadata.cwd = str(target_home / "missing-session-cwd")
     materialize(source_session, SessionFormat.CLAUDE, source_home)
-    (installed_home / "auth.json").write_text(
-        '{"access_token":"test"}', encoding="utf-8"
-    )
+    (installed_home / "auth.json").write_text('{"access_token":"test"}', encoding="utf-8")
 
     log_path = target_home / "launcher.log"
     script_path = target_home / "fake-codex.sh"
