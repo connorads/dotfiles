@@ -1,18 +1,19 @@
 #!/usr/bin/env zsh
 # wt-add: create a worktree under ~/.trees/<repo>/<branch>, print its path
-# usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>
+# usage: wt-add [--base <ref>] [--no-setup] [--no-fetch] [--json] [--lock [reason]] <branch>
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-add]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
 source "$_wt_common_dir/_wt-common"
 
-local base="" setup=1 json=0 branch="" lock=0 lock_reason=""
+local base="" setup=1 fetch=1 json=0 branch="" lock=0 lock_reason=""
 
 while (( $# )); do
   case $1 in
-    -h|--help)   echo "usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>" >&2; return 0 ;;
+    -h|--help)   echo "usage: wt-add [--base <ref>] [--no-setup] [--no-fetch] [--json] [--lock [reason]] <branch>" >&2; return 0 ;;
     --base)      base=$2; shift 2 ;;
     --no-setup)  setup=0; shift ;;
+    --no-fetch)  fetch=0; shift ;;
     --json)      json=1; shift ;;
     --lock)
       lock=1
@@ -29,7 +30,7 @@ while (( $# )); do
 done
 
 if [[ -z "$branch" ]]; then
-  echo "usage: wt-add [--base <ref>] [--no-setup] [--json] [--lock [reason]] <branch>" >&2
+  echo "usage: wt-add [--base <ref>] [--no-setup] [--no-fetch] [--json] [--lock [reason]] <branch>" >&2
   return 1
 fi
 
@@ -62,11 +63,15 @@ fi
 
 local preferred_remote=""
 preferred_remote=$(_wt_resolve_remote "$repo_root" "" 2>/dev/null) || true
-local fetch_remote=""
-while IFS= read -r fetch_remote; do
-  [[ -n "$fetch_remote" ]] || continue
-  git fetch "$fetch_remote" 2>/dev/null >&2 || echo "warning: fetch failed for $fetch_remote, using local refs only" >&2
-done < <(_wt_candidate_remotes "$repo_root" "$preferred_remote")
+# --no-fetch: callers that guarantee a local branch (e.g. agent-teleport after
+# landing a bundle) skip the network round-trip; lookup uses local refs only.
+if (( fetch )); then
+  local fetch_remote=""
+  while IFS= read -r fetch_remote; do
+    [[ -n "$fetch_remote" ]] || continue
+    git fetch "$fetch_remote" 2>/dev/null >&2 || echo "warning: fetch failed for $fetch_remote, using local refs only" >&2
+  done < <(_wt_candidate_remotes "$repo_root" "$preferred_remote")
+fi
 
 local remote_ref=""
 remote_ref=$(_wt_find_remote_branch "$repo_root" "$branch" "$preferred_remote") || true
