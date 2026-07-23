@@ -70,6 +70,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b i` | Claude Code plan (pane or latest) |
+| `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window or a new worktree window, bypass perms; copy cmd/id) |
 | `Ctrl+b Alt+t` | teleport this pane's Claude/Codex session to another host (fork + ship over ssh; window in target tmux or copy resume cmd) |
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
