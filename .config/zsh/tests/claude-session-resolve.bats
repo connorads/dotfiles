@@ -12,6 +12,20 @@ setup() {
   mkdir -p "$HOME/.claude/sessions" "$HOME/.claude/projects/-tmp-work"
 }
 
+# Portability guard: the resolver runs under `env python3`, which is macOS
+# system python 3.9 whenever mise is not first on PATH. ruff's target-version is
+# py312, so pyupgrade will keep proposing runtime PEP-604 unions that crash on
+# import before 3.10 (regressed once, commit 7620de1a). Pin the oldest likely
+# interpreter and assert a clean run, so a re-break fails here not in production.
+@test "imports and runs under system python 3.9 (oldest likely interpreter)" {
+  [ -x /usr/bin/python3 ] || skip "no system /usr/bin/python3 (non-macOS host)"
+
+  run /usr/bin/python3 "$RESOLVER" --pid 1 --config-dir /nonexistent
+
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s' "$output" | jq -r '.status')" = "unresolved" ]
+}
+
 @test "resolves from the live pid registry first" {
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
 {"pid":711,"sessionId":"session-registry","cwd":"/tmp/work","name":"demo","status":"busy"}
