@@ -409,7 +409,11 @@ skills and eval-fixture/reference snippets excluded), and `quarantine-drift`
 (`~/.hk-hooks/quarantine-drift.py`: the 4-day quarantine is hand-spelled in
 nine config files across four time units; the checker normalises each to days
 and blocks the commit on disagreement, with warn-only staleness checks on the
-docs that cite literal values).
+docs that cite literal values), and `tmux-bind-lint`
+(`~/.hk-hooks/tmux-bind-lint.py`: statically parses `.config/tmux/tmux.conf` and
+blocks a key bound twice in one key-table, or both members of a terminal-alias
+pair, i.e. a self-collision that silently kills the earlier bind - the
+commit-time complement to the edit-time `tmux-freekeys` advisor).
 
 The `ts-typecheck-*` steps gate first-party TS projects (skl, pi goal /
 workflows / pi-palette, and the small pi extensions) with the global `tsgo`,
