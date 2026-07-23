@@ -73,6 +73,91 @@ fork_worktree_window() {
 	tmux new-window -c "$path" "$(claude_fork_cmd "$sid" "$config_dir" "$flags")"
 }
 
+# render_branch_menu <split_target> <pane_target> <cwd> <sid> <config_dir> <flags> <title> <with_account>
+# Draw the fork palette (splits / windows / worktrees / xN + copy rows). Shared
+# by two renders so account choice composes with every placement rather than
+# being a placement of its own: the SOURCE render (the pane's own account,
+# with_account=1) offers a "Fork → other ACCOUNT" row; picking one lands in the
+# account-chosen mode, which relocates the transcript then calls this SAME
+# function for the target account (with_account=0) - so the target gets the
+# identical split/window/worktree vocabulary. split_target drives the direct
+# split/new-window -t (the source pane); the xN prompt modes carry pane_target
+# (the stable session:window.pane form). with_account=0 omits the account row so
+# you never chain account -> account -> account.
+render_branch_menu() {
+	local split_target=$1
+	local pane_target=$2
+	local cwd=$3
+	local sid=$4
+	local config_dir=$5
+	local flags=$6
+	local title=$7
+	local with_account=${8:-0}
+
+	local self self_arg pane_arg cwd_arg sid_arg config_dir_arg flags_arg fork_cmd
+	self="${BASH_SOURCE[0]}"
+	self_arg=$(shell_quote "$self")
+	pane_arg=$(shell_quote "$pane_target")
+	cwd_arg=$(shell_quote "$cwd")
+	sid_arg=$(shell_quote "$sid")
+	config_dir_arg=$(shell_quote "$config_dir")
+	# The mirrored flags carry spaces (append path + value); shell_quote threads
+	# them as one positional that expands unquoted back into separate flags in
+	# claude_fork_cmd - the same round-trip config_dir uses.
+	flags_arg=$(shell_quote "$flags")
+	fork_cmd=$(claude_fork_cmd "$sid" "$config_dir" "$flags")
+
+	local prompt_right_cmd prompt_down_cmd prompt_window_cmd prompt_worktree_cmd prompt_worktrees_cmd
+	prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+	prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+	prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+	prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+	prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg $flags_arg"
+
+	local -a menu
+	menu=(
+		"Split right" "|" "split-window -h -t $split_target -c \"$cwd\" \"$fork_cmd\""
+		"Split right x N" "R" "run-shell $(tmux_quote "$prompt_right_cmd")"
+		"Split down" "-" "split-window -v -t $split_target -c \"$cwd\" \"$fork_cmd\""
+		"Split down x N" "D" "run-shell $(tmux_quote "$prompt_down_cmd")"
+		"New window" "w" "new-window -c \"$cwd\" \"$fork_cmd\""
+		"New windows x N" "N" "run-shell $(tmux_quote "$prompt_window_cmd")"
+		""
+		"Fork → new WORKTREE window" "W" "run-shell $(tmux_quote "$prompt_worktree_cmd")"
+		"WORKTREE windows x N" "T" "run-shell $(tmux_quote "$prompt_worktrees_cmd")"
+		""
+	)
+	if [ "$with_account" = 1 ]; then
+		# The account picker forks FROM this render's config_dir, so it threads
+		# config_dir as the source to exclude + copy from. pane_target rides
+		# along so the target render can split next to this pane.
+		local account_menu_cmd account_action
+		account_menu_cmd="$self_arg account-menu $sid_arg $config_dir_arg $flags_arg $cwd_arg $pane_arg"
+		account_action="run-shell $(tmux_quote "$account_menu_cmd")"
+		menu+=("Fork → other ACCOUNT" "a" "$account_action" "")
+	fi
+	menu+=(
+		"Copy fork command" "c" "set-buffer -w -- \"$fork_cmd\" ; display-message \"Copied fork command\""
+		"Copy session id" "y" "set-buffer -w -- \"$sid\" ; display-message \"Copied session id\""
+	)
+
+	tmux display-menu -T "$title" -x C -y C "${menu[@]}"
+}
+
+# claude_account_label <config_dir>
+# Human name for an account: "default" for empty / ~/.claude, else the profile
+# dir basename. Used in the account picker title and target menu title.
+claude_account_label() {
+	local config_dir=${1:-}
+	# Strip any trailing slash so the basename never comes back empty.
+	config_dir="${config_dir%/}"
+	if [ -z "$config_dir" ] || [ "$config_dir" = "$HOME/.claude" ]; then
+		printf 'default'
+	else
+		printf '%s' "${config_dir##*/}"
+	fi
+}
+
 # Script modes are used by menu commands after the live session has already
 # been resolved, so keep them before the jq/session discovery path.
 case "${1:-}" in
@@ -187,16 +272,67 @@ fork-worktrees)
 	done
 	exit 0
 	;;
-account-pick)
-	# Popup body: pick a *different* account, copy the transcript into its
-	# projects/ tree, materialise its shared config, then fork under it. The
-	# origin keeps running under the source account (--fork-session mints a
-	# fresh id in the target dir).
-	{ [ "$#" -ge 5 ] && [ "$#" -le 5 ]; } || soft_fail "usage: account-pick <sid> <source-config-dir> <flags> <cwd>"
+account-menu)
+	# Step 1 of the cross-account fork: show a display-menu of the *other*
+	# accounts (default + each ccp profile, the source excluded). Reached via
+	# run-shell from the source branch menu's "Fork → other ACCOUNT" row, so it
+	# renders like the rest of the branch menu (no popup/fzf). The title names
+	# the source account, so its own absence from the list is self-explaining.
+	{ [ "$#" -ge 6 ] && [ "$#" -le 6 ]; } || soft_fail "usage: account-menu <sid> <source-config-dir> <flags> <cwd> <pane-target>"
 	sid=$2
 	source_config_dir=$3
 	flags=$4
 	cwd=$5
+	pane_target=$6
+
+	account_lib="$(dirname "${BASH_SOURCE[0]}")/lib/claude-account.sh"
+	[ -f "$account_lib" ] || soft_fail "missing lib: $account_lib"
+	# shellcheck source=lib/claude-account.sh disable=SC1091
+	. "$account_lib"
+
+	self="${BASH_SOURCE[0]}"
+	self_arg=$(shell_quote "$self")
+	sid_arg=$(shell_quote "$sid")
+	flags_arg=$(shell_quote "$flags")
+	cwd_arg=$(shell_quote "$cwd")
+	pane_arg=$(shell_quote "$pane_target")
+	src_arg=$(shell_quote "$source_config_dir")
+	src_label=$(claude_account_label "$source_config_dir")
+
+	acct_menu=()
+	acct_i=0
+	while IFS=$'\t' read -r acct_label acct_dir; do
+		[ -n "$acct_dir" ] || continue
+		acct_i=$((acct_i + 1))
+		# 1-9 give mnemonic number keys; extras stay arrow-selectable.
+		acct_key=""
+		[ "$acct_i" -le 9 ] && acct_key="$acct_i"
+		dir_arg=$(shell_quote "$acct_dir")
+		chosen_cmd="$self_arg account-chosen $sid_arg $dir_arg $flags_arg $cwd_arg $pane_arg $src_arg"
+		acct_menu+=("$acct_label" "$acct_key" "run-shell $(tmux_quote "$chosen_cmd")")
+	done < <(account_candidates "$source_config_dir")
+
+	if [ "${#acct_menu[@]}" -eq 0 ]; then
+		tmux display-message "No other account to fork into (only $src_label exists)"
+		exit 0
+	fi
+
+	tmux display-menu -T " Fork from $src_label → account " -x C -y C "${acct_menu[@]}"
+	exit 0
+	;;
+account-chosen)
+	# Step 2: an account was picked. Copy the transcript into its projects/ tree,
+	# materialise its shared config, then re-render the placement palette for the
+	# target account (with_account=0 - no further account hop). Native
+	# --fork-session then mints a fresh id under the target dir, leaving the
+	# origin running untouched under the source account.
+	{ [ "$#" -ge 7 ] && [ "$#" -le 7 ]; } || soft_fail "usage: account-chosen <sid> <target-dir> <flags> <cwd> <pane-target> <source-config-dir>"
+	sid=$2
+	target_dir=$3
+	flags=$4
+	cwd=$5
+	pane_target=$6
+	source_config_dir=$7
 
 	# claude-profile-materialise is a dual-mode zsh function exposed via
 	# ~/.local/bin; the tmux server's PATH may not carry that dir.
@@ -207,32 +343,21 @@ account-pick)
 	# shellcheck source=lib/claude-account.sh disable=SC1091
 	. "$account_lib"
 
-	picked=$(account_candidates "$source_config_dir" |
-		fzf --with-nth=1 --delimiter=$'\t' --prompt="Fork to account: ") || {
-		rc=$?
-		# 130 = fzf cancel: back out silently, no pause-tax.
-		[ "$rc" -eq 130 ] && exit 0
-		soft_fail "account picker failed"
-	}
-	[ -n "$picked" ] || exit 0
+	if ! relocate_transcript "$source_config_dir" "$target_dir" "$cwd" "$sid" >/dev/null; then
+		tmux display-message "Could not copy the transcript into the target account"
+		exit 0
+	fi
 
-	target_dir=${picked#*$'\t'}
-	[ -n "$target_dir" ] || soft_fail "no config dir for the picked account"
-
-	dst=$(relocate_transcript "$source_config_dir" "$target_dir" "$cwd" "$sid") ||
-		soft_fail "could not copy the transcript into the target account"
-
-	# Never materialise onto the shared ~/.claude itself (that is the base the
-	# profiles derive from).
+	# Never materialise onto the shared ~/.claude itself (the base profiles
+	# derive from).
 	if [ "$target_dir" != "$HOME/.claude" ] && command -v claude-profile-materialise >/dev/null 2>&1; then
 		claude-profile-materialise "$target_dir" || true
 	fi
 
-	tmux new-window -c "$cwd" "$(claude_fork_cmd "$sid" "$target_dir" "$flags")"
-
-	printf 'Forked session %s into %s\n(copied transcript: %s)\n' "$sid" "$target_dir" "$dst" >&2
-	printf 'Press any key…' >&2
-	read -rsn1 || true
+	tgt_label=$(claude_account_label "$target_dir")
+	# split_target = pane_target (the stable id) so a split lands next to the
+	# origin pane even from this run-shell context.
+	render_branch_menu "$pane_target" "$pane_target" "$cwd" "$sid" "$target_dir" "$flags" " Branch → $tgt_label " 0
 	exit 0
 	;;
 esac
@@ -315,53 +440,11 @@ fork_flags=""
 if command -v resurrect_argv_claude_flags >/dev/null 2>&1; then
 	fork_flags=$(resurrect_argv_claude_flags "$(ps -o args= -p "$claude_pid")" 2>/dev/null || true)
 fi
-fork_cmd=$(claude_fork_cmd "$sid" "$config_dir" "$fork_flags")
 
-# Fork into a brand-new worktree window: prompt for a branch, then run this
-# script's fork-worktree mode in a popup rooted at the session's repo so wt-add
-# resolves it and its setup output stays visible. %% is the typed branch.
-self="${BASH_SOURCE[0]}"
-self_arg=$(shell_quote "$self")
+# pane_target is the stable session:window.pane id the xN prompt modes carry;
+# pane_id ("%N") drives the direct split/new-window -t. with_account=1 adds the
+# "Fork → other ACCOUNT" row (source render only).
 pane_target=$(tmux display-message -p -t "$pane_id" '#{session_id}:#{window_id}.#{pane_index}' 2>/dev/null || true)
 [ -n "$pane_target" ] || pane_target="$pane_id"
-pane_arg=$(shell_quote "$pane_target")
-cwd_arg=$(shell_quote "$cwd")
-sid_arg=$(shell_quote "$sid")
-config_dir_arg=$(shell_quote "$config_dir")
-# The mirrored flags carry spaces (append path + its value); shell_quote threads
-# them as one positional that expands unquoted back into separate flags in
-# claude_fork_cmd - the same round-trip config_dir uses.
-flags_arg=$(shell_quote "$fork_flags")
 
-prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
-prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
-prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $config_dir_arg $flags_arg"
-prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $config_dir_arg $flags_arg"
-prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg $flags_arg"
-# Cross-account fork: the popup body needs a tty for the fzf account picker. Arg
-# order is account-pick's own (sid, source-config-dir, flags, cwd) - the source
-# config_dir is the account being forked *away* from, so the picker can exclude it.
-account_pick_cmd="$self_arg account-pick $sid_arg $config_dir_arg $flags_arg $cwd_arg"
-
-fork_split_right_n="run-shell $(tmux_quote "$prompt_right_cmd")"
-fork_split_down_n="run-shell $(tmux_quote "$prompt_down_cmd")"
-fork_window_n="run-shell $(tmux_quote "$prompt_window_cmd")"
-fork_wt="run-shell $(tmux_quote "$prompt_worktree_cmd")"
-fork_wts_n="run-shell $(tmux_quote "$prompt_worktrees_cmd")"
-fork_account="display-popup -E -w 80% -h 70% $(tmux_quote "$account_pick_cmd")"
-
-tmux display-menu -T "$title" -x C -y C \
-	"Split right" "|" "split-window -h -t $pane_id -c \"$cwd\" \"$fork_cmd\"" \
-	"Split right x N" "R" "$fork_split_right_n" \
-	"Split down" "-" "split-window -v -t $pane_id -c \"$cwd\" \"$fork_cmd\"" \
-	"Split down x N" "D" "$fork_split_down_n" \
-	"New window" "w" "new-window -c \"$cwd\" \"$fork_cmd\"" \
-	"New windows x N" "N" "$fork_window_n" \
-	"" \
-	"Fork → new WORKTREE window" "W" "$fork_wt" \
-	"WORKTREE windows x N" "T" "$fork_wts_n" \
-	"" \
-	"Fork → other ACCOUNT" "a" "$fork_account" \
-	"" \
-	"Copy fork command" "c" "set-buffer -w -- \"$fork_cmd\" ; display-message \"Copied fork command\"" \
-	"Copy session id" "y" "set-buffer -w -- \"$sid\" ; display-message \"Copied session id\""
+render_branch_menu "$pane_id" "$pane_target" "$cwd" "$sid" "$config_dir" "$fork_flags" "$title" 1
