@@ -106,6 +106,9 @@ EOF
 		tmux set-option -pu -t "$_p" @agent_state 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_kind 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_name 2>/dev/null || true
+		# Backstop the profile tag too: a pane whose claude died without a clean
+		# SessionEnd (SIGKILL, crash, abrupt close) still drops its @claude_profile.
+		tmux set-option -pu -t "$_p" @claude_profile 2>/dev/null || true
 	done
 
 	printf '%s' "$_seen" | while IFS= read -r _p; do

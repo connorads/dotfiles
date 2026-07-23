@@ -22,7 +22,11 @@ seed_shared_config() {
 {
   "model": "shared-model",
   "statusLine": {"type": "command", "command": "statusline"},
-  "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "agent-state.sh"}]}]}
+  "hooks": {
+    "Stop": [{"hooks": [{"type": "command", "command": "agent-state.sh"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh"}]}],
+    "SessionEnd": [{"hooks": [{"type": "command", "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh clear || true"}]}]
+  }
 }
 EOF
   printf '@.agents/AGENTS.md\n' >"$HOME/.claude/CLAUDE.md"
@@ -48,6 +52,20 @@ setup() {
   [ "$output" = "statusline" ]
   run jq -r '.hooks.Stop[0].hooks[0].command' "$PROFILE_DIR/settings.json"
   [ "$output" = "agent-state.sh" ]
+}
+
+@test "materialise inherits the SessionStart/End profile-tag hooks into the profile" {
+  seed_shared_config
+
+  run_zsh_function "$MATERIALISE" "$PROFILE_DIR"
+
+  [ "$status" -eq 0 ]
+  # Every ccp account inherits the pane-border tag hooks, so a resumed/restored
+  # session re-tags its pane regardless of how it was launched.
+  run jq -r '.hooks.SessionStart[0].hooks[0].command' "$PROFILE_DIR/settings.json"
+  [[ "$output" == *"claude-profile-tag.sh"* ]]
+  run jq -r '.hooks.SessionEnd[0].hooks[0].command' "$PROFILE_DIR/settings.json"
+  [[ "$output" == *"claude-profile-tag.sh clear"* ]]
 }
 
 @test "materialise preserves a per-account model and theme the base does not define" {
