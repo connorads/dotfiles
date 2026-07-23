@@ -38,4 +38,4 @@ image_scheme: SchemeEntry = {
 user_schemes: list[SchemeEntry] = [image_scheme]
 rm_default_schemes: list[str] = []
 
-__all__ = ["user_schemes", "rm_default_schemes"]
+__all__ = ["rm_default_schemes", "user_schemes"]

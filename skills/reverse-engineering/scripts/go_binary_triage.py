@@ -77,9 +77,11 @@ def build_commands(binary: Path, go_cmd: list[str]) -> list[tuple[str, list[str]
         add("sha256", ["sha256sum", str(binary)])
 
     if command_exists(go_cmd):
-        commands.append(("go-version-m", go_cmd + ["version", "-m", str(binary)], 120))
-        commands.append(("go-version-m-json", go_cmd + ["version", "-m", "-json", str(binary)], 120))
-        commands.append(("go-tool-nm", go_cmd + ["tool", "nm", str(binary)], 240))
+        commands.append(("go-version-m", [*go_cmd, "version", "-m", str(binary)], 120))
+        commands.append(
+            ("go-version-m-json", [*go_cmd, "version", "-m", "-json", str(binary)], 120)
+        )
+        commands.append(("go-tool-nm", [*go_cmd, "tool", "nm", str(binary)], 240))
 
     add("strings", ["strings", "-a", str(binary)], timeout=240)
 

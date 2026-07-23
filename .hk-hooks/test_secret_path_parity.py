@@ -32,8 +32,10 @@ class TestClaudeDeny:
         settings = {
             "permissions": {
                 "deny": [
-                    "Read(~/.ssh)", "Read(~/.ssh/**)",
-                    "Edit(~/.ssh)", "Edit(~/.ssh/**)",
+                    "Read(~/.ssh)",
+                    "Read(~/.ssh/**)",
+                    "Edit(~/.ssh)",
+                    "Edit(~/.ssh/**)",
                     "Edit(~/.zshenv)",
                 ]
             }

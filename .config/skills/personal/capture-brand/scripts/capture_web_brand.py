@@ -9,6 +9,7 @@ final brand system.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import gzip
 import hashlib
@@ -25,18 +26,16 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-
-USER_AGENT = (
-    "Mozilla/5.0 (compatible; capture-brand/1.0; "
-    "+https://agents.local/capture-brand)"
-)
+USER_AGENT = "Mozilla/5.0 (compatible; capture-brand/1.0; +https://agents.local/capture-brand)"
 
 HEX_RE = re.compile(r"(?<![\w-])#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![\w-])")
 FUNC_COLOUR_RE = re.compile(r"\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\([^)]{3,120}\)", re.I)
 GRADIENT_RE = re.compile(r"\b(?:linear|radial|conic)-gradient\([^;}{]{3,400}\)", re.I)
 FONT_FAMILY_RE = re.compile(r"font-family\s*:\s*([^;}{]+)", re.I)
 FONT_FACE_RE = re.compile(r"@font-face\s*{[^}]*font-family\s*:\s*([^;}{]+)", re.I | re.S)
-CSS_VAR_RE = re.compile(r"--([\w-]*(?:color|colour|font|radius|shadow|space|spacing)[\w-]*)\s*:\s*([^;}{]+)", re.I)
+CSS_VAR_RE = re.compile(
+    r"--([\w-]*(?:color|colour|font|radius|shadow|space|spacing)[\w-]*)\s*:\s*([^;}{]+)", re.I
+)
 RADIUS_RE = re.compile(r"(?:border-radius|--[\w-]*radius[\w-]*)\s*:\s*([^;}{]+)", re.I)
 SHADOW_RE = re.compile(r"(?:box-shadow|--[\w-]*shadow[\w-]*)\s*:\s*([^;}{]+)", re.I)
 RGB_TRIPLET_RE = re.compile(r"^\s*(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(?:\s*/\s*[\d.]+%?)?\s*$")
@@ -103,7 +102,9 @@ def normalise_input(value: str) -> str:
 
 
 def request_url(url: str, timeout: int, max_bytes: int) -> tuple[bytes, str, str]:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "identity"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "identity"}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as res:
         final_url = res.geturl()
         content_type = res.headers.get("content-type", "").split(";")[0].strip()
@@ -120,10 +121,8 @@ def request_url(url: str, timeout: int, max_bytes: int) -> tuple[bytes, str, str
                 raise ValueError(f"response exceeds {max_bytes} bytes: {url}")
         data = b"".join(chunks)
         if "gzip" in content_encoding or data.startswith(b"\x1f\x8b"):
-            try:
+            with contextlib.suppress(OSError):
                 data = gzip.decompress(data)
-            except OSError:
-                pass
         return data, final_url, content_type
 
 
@@ -151,7 +150,9 @@ def abs_url(base: str, value: str) -> str:
 def is_archive_chrome_asset(url: str) -> bool:
     parsed = urllib.parse.urlparse(url)
     host = parsed.netloc.lower()
-    return host in {"web-static.archive.org", "web.archive.org"} and parsed.path.startswith("/_static/")
+    return host in {"web-static.archive.org", "web.archive.org"} and parsed.path.startswith(
+        "/_static/"
+    )
 
 
 def safe_filename(url: str, fallback_ext: str = "") -> str:
@@ -222,9 +223,10 @@ def extract_style_signals(named_texts: list[tuple[str, str]]) -> dict[str, Any]:
             var_name = f"--{name}"
             clean_value = clean_css_value(value)
             css_vars.append({"name": var_name, "value": clean_value, "source": source})
-            if "color" in name.lower() or "colour" in name.lower():
-                if converted := css_rgb_triplet_to_hex(clean_value):
-                    add_count(colours, converted, f"{source}:{var_name}")
+            if ("color" in name.lower() or "colour" in name.lower()) and (
+                converted := css_rgb_triplet_to_hex(clean_value)
+            ):
+                add_count(colours, converted, f"{source}:{var_name}")
         for match in RADIUS_RE.finditer(text):
             add_count(radii, clean_css_value(match.group(1)), source)
         for match in SHADOW_RE.finditer(text):
@@ -232,7 +234,9 @@ def extract_style_signals(named_texts: list[tuple[str, str]]) -> dict[str, Any]:
 
     return {
         "hex_colours": sorted(colours.values(), key=lambda item: (-item["count"], item["value"])),
-        "function_colours": sorted(function_colours.values(), key=lambda item: (-item["count"], item["value"])),
+        "function_colours": sorted(
+            function_colours.values(), key=lambda item: (-item["count"], item["value"])
+        ),
         "gradients": sorted(gradients.values(), key=lambda item: (-item["count"], item["value"])),
         "font_families": sorted(fonts.values(), key=lambda item: (-item["count"], item["value"])),
         "font_faces": sorted(font_faces.values(), key=lambda item: (-item["count"], item["value"])),
@@ -264,7 +268,9 @@ def google_font_families(url: str) -> list[str]:
     return families
 
 
-def collect_candidates(parser: HeadParser, base_url: str) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, str]]:
+def collect_candidates(
+    parser: HeadParser, base_url: str
+) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, str]]:
     css_links: list[dict[str, str]] = []
     asset_links: list[dict[str, str]] = []
     metadata: dict[str, str] = {}
@@ -282,10 +288,19 @@ def collect_candidates(parser: HeadParser, base_url: str) -> tuple[list[dict[str
         if is_archive_chrome_asset(absolute):
             continue
         if "stylesheet" in rels:
-            css_links.append({"url": absolute, "rel": link.get("rel", ""), "media": link.get("media", "")})
+            css_links.append(
+                {"url": absolute, "rel": link.get("rel", ""), "media": link.get("media", "")}
+            )
         if rels.intersection({"icon", "shortcut", "apple-touch-icon", "mask-icon", "manifest"}):
             kind = "manifest" if "manifest" in rels else "icon"
-            append_asset({"url": absolute, "kind": kind, "rel": link.get("rel", ""), "sizes": link.get("sizes", "")})
+            append_asset(
+                {
+                    "url": absolute,
+                    "kind": kind,
+                    "rel": link.get("rel", ""),
+                    "sizes": link.get("sizes", ""),
+                }
+            )
         for family in google_font_families(absolute):
             metadata.setdefault("google_fonts", "")
             metadata["google_fonts"] += (", " if metadata["google_fonts"] else "") + family
@@ -309,8 +324,16 @@ def collect_candidates(parser: HeadParser, base_url: str) -> tuple[list[dict[str
             "msapplication-tilecolor",
         }:
             metadata[key] = content
-        if key in {"og:image", "og:image:url", "twitter:image", "twitter:image:src", "msapplication-tileimage"}:
-            append_asset({"url": abs_url(base_url, content), "kind": "social-image", "rel": key, "sizes": ""})
+        if key in {
+            "og:image",
+            "og:image:url",
+            "twitter:image",
+            "twitter:image:src",
+            "msapplication-tileimage",
+        }:
+            append_asset(
+                {"url": abs_url(base_url, content), "kind": "social-image", "rel": key, "sizes": ""}
+            )
 
     logoish = re.compile(r"logo|brand|wordmark|mark", re.I)
     for image in parser.images:
@@ -318,7 +341,9 @@ def collect_candidates(parser: HeadParser, base_url: str) -> tuple[list[dict[str
         label = " ".join([image.get("alt", ""), image.get("class", ""), image.get("id", "")])
         image_url = abs_url(base_url, src) if src else ""
         if image_url and logoish.search(src + " " + label):
-            append_asset({"url": image_url, "kind": "logo-candidate", "rel": label.strip(), "sizes": ""})
+            append_asset(
+                {"url": image_url, "kind": "logo-candidate", "rel": label.strip(), "sizes": ""}
+            )
 
     for item in extract_jsonld_assets(parser.jsonld, base_url):
         append_asset(item)
@@ -348,7 +373,7 @@ def merge_asset_fields(existing: dict[str, str], incoming: dict[str, str]) -> No
         current = existing.get(field, "").strip()
         current_parts = [part.strip() for part in current.split(",") if part.strip()]
         if value not in current_parts:
-            existing[field] = ", ".join(current_parts + [value])
+            existing[field] = ", ".join([*current_parts, value])
 
 
 def extract_jsonld_assets(blocks: list[str], base_url: str) -> list[dict[str, str]]:
@@ -362,7 +387,9 @@ def extract_jsonld_assets(blocks: list[str], base_url: str) -> list[dict[str, st
     return assets
 
 
-def walk_jsonld(value: Any, base_url: str, assets: list[dict[str, str]], key_hint: str = "") -> None:
+def walk_jsonld(
+    value: Any, base_url: str, assets: list[dict[str, str]], key_hint: str = ""
+) -> None:
     if isinstance(value, list):
         for item in value:
             walk_jsonld(item, base_url, assets, key_hint)
@@ -396,10 +423,15 @@ def walk_jsonld(value: Any, base_url: str, assets: list[dict[str, str]], key_hin
                 walk_jsonld(item, base_url, assets, key_hint)
 
 
-def download_asset(item: dict[str, str], out_dir: Path, root_dir: Path, timeout: int, max_bytes: int) -> dict[str, str]:
+def download_asset(
+    item: dict[str, str], out_dir: Path, root_dir: Path, timeout: int, max_bytes: int
+) -> dict[str, str]:
     url = item["url"]
     data, final_url, content_type = request_url(url, timeout=timeout, max_bytes=max_bytes)
-    ext = mimetypes.guess_extension(content_type) or Path(urllib.parse.urlparse(final_url).path).suffix
+    ext = (
+        mimetypes.guess_extension(content_type)
+        or Path(urllib.parse.urlparse(final_url).path).suffix
+    )
     filename = safe_filename(final_url, ext or "")
     if ext:
         stem, _old_ext = os.path.splitext(filename)
@@ -431,7 +463,9 @@ def fetch_manifests(
 
     for index, item in enumerate(manifest_items, start=1):
         try:
-            data, final_url, content_type = request_url(item["url"], timeout=timeout, max_bytes=max_bytes)
+            data, final_url, content_type = request_url(
+                item["url"], timeout=timeout, max_bytes=max_bytes
+            )
             text = decode_text(data, content_type)
             filename = f"manifest-{index:02d}-{safe_filename(final_url, '.json')}"
             path = raw_dir / filename
@@ -446,7 +480,9 @@ def fetch_manifests(
                 value = parsed.get(field)
                 if isinstance(value, str) and value.strip():
                     metadata[f"manifest:{field}"] = value.strip()
-            for icon in parsed.get("icons", []) if isinstance(parsed.get("icons", []), list) else []:
+            for icon in (
+                parsed.get("icons", []) if isinstance(parsed.get("icons", []), list) else []
+            ):
                 if isinstance(icon, dict) and isinstance(icon.get("src"), str):
                     icon_url = abs_url(final_url, icon["src"])
                     if not is_archive_chrome_asset(icon_url):
@@ -458,7 +494,7 @@ def fetch_manifests(
                                 "sizes": str(icon.get("sizes", "")),
                             }
                         )
-        except Exception as exc:  # noqa: BLE001 - manifest is useful but non-critical evidence
+        except Exception as exc:
             manifest_sources.append({**item, "error": str(exc)})
 
     return manifest_sources, manifest_assets, metadata
@@ -475,7 +511,9 @@ def run(args: argparse.Namespace) -> int:
     for asset_subdir in ("logos", "icons", "images", "screenshots"):
         (out_dir / "assets" / asset_subdir).mkdir(parents=True, exist_ok=True)
 
-    html_bytes, final_url, content_type = request_url(input_url, timeout=args.timeout, max_bytes=args.max_html_bytes)
+    html_bytes, final_url, content_type = request_url(
+        input_url, timeout=args.timeout, max_bytes=args.max_html_bytes
+    )
     html_text = decode_text(html_bytes, content_type)
     (raw_dir / "index.html").write_text(html_text, encoding="utf-8")
 
@@ -495,7 +533,7 @@ def run(args: argparse.Namespace) -> int:
             (css_dir / filename).write_text(text, encoding="utf-8")
             css_texts.append((f"raw/css/{filename}", text))
             css_fetches.append({**css, "final_url": css_final_url, "path": f"raw/css/{filename}"})
-        except Exception as exc:  # noqa: BLE001 - report and continue gathering evidence
+        except Exception as exc:
             css_fetches.append({**css, "error": str(exc)})
 
     manifest_candidates = [item for item in asset_candidates if item["kind"] == "manifest"]
@@ -512,12 +550,16 @@ def run(args: argparse.Namespace) -> int:
     failed_assets: list[dict[str, str]] = []
     for item in dedupe_assets(non_manifest_candidates + manifest_assets)[: args.max_assets]:
         try:
-            downloaded_assets.append(download_asset(item, asset_dir, out_dir, args.timeout, args.max_asset_bytes))
-        except Exception as exc:  # noqa: BLE001 - asset candidates are best effort
+            downloaded_assets.append(
+                download_asset(item, asset_dir, out_dir, args.timeout, args.max_asset_bytes)
+            )
+        except Exception as exc:
             failed_assets.append({**item, "error": str(exc)})
 
     style_inputs = [("raw/index.html", html_text)]
-    style_inputs.extend((f"inline-style-{i}", text) for i, text in enumerate(parser.styles, start=1))
+    style_inputs.extend(
+        (f"inline-style-{i}", text) for i, text in enumerate(parser.styles, start=1)
+    )
     style_inputs.extend(css_texts)
     signals = extract_style_signals(style_inputs)
     for meta_name in ("theme-color", "msapplication-tilecolor"):
@@ -527,7 +569,9 @@ def run(args: argparse.Namespace) -> int:
         # Only promote values that parse to real hex so hex_colours stays hex;
         # named colours (e.g. "white") and rgb() forms are skipped here.
         hex_match = HEX_RE.search(raw_value)
-        hex_value = expand_hex(hex_match.group(1)) if hex_match else css_rgb_triplet_to_hex(raw_value)
+        hex_value = (
+            expand_hex(hex_match.group(1)) if hex_match else css_rgb_triplet_to_hex(raw_value)
+        )
         if not hex_value:
             continue
         signals["hex_colours"].insert(
@@ -544,7 +588,7 @@ def run(args: argparse.Namespace) -> int:
             "input": args.url,
             "resolved_url": final_url,
             "title": parser.title,
-            "captured_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+            "captured_at": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat(),
             "confidence": "unreviewed",
         },
         "metadata": metadata,
@@ -620,7 +664,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", default="brand-capture", help="Output directory")
     parser.add_argument("--timeout", type=int, default=20, help="Network timeout in seconds")
     parser.add_argument("--max-css", type=int, default=12, help="Maximum stylesheets to fetch")
-    parser.add_argument("--max-assets", type=int, default=24, help="Maximum candidate assets to fetch")
+    parser.add_argument(
+        "--max-assets", type=int, default=24, help="Maximum candidate assets to fetch"
+    )
     parser.add_argument("--max-html-bytes", type=int, default=2_000_000)
     parser.add_argument("--max-css-bytes", type=int, default=1_000_000)
     parser.add_argument("--max-asset-bytes", type=int, default=5_000_000)

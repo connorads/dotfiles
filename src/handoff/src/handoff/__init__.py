@@ -6,7 +6,7 @@ The package is deliberately import-light at the top level (no `cli` import here)
 
 from __future__ import annotations
 
-__all__ = ["__version__", "CURRENT_IR_VERSION"]
+__all__ = ["CURRENT_IR_VERSION", "__version__"]
 
 __version__ = "0.1.3"
 

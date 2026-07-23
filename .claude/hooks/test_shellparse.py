@@ -5,7 +5,6 @@
 """Characterisation tests for _shellparse (behaviour extracted from the hooks)."""
 
 import pytest
-
 from _shellparse import (
     COMMAND_SEPARATORS,
     NOT_COMMIT_RE,
@@ -25,7 +24,15 @@ class TestTokenise:
 
     def test_separators_are_own_tokens(self) -> None:
         assert tokenise("a && b || c ; d | e") == [
-            "a", "&&", "b", "||", "c", ";", "d", "|", "e",
+            "a",
+            "&&",
+            "b",
+            "||",
+            "c",
+            ";",
+            "d",
+            "|",
+            "e",
         ]
 
     def test_hash_is_not_a_comment(self) -> None:
@@ -51,13 +58,14 @@ class TestCommandSegments:
         assert command_segments(["cat", "f"]) == [["cat", "f"]]
 
     def test_separator_set(self) -> None:
-        assert COMMAND_SEPARATORS == {";", "&&", "||", "|"}
+        assert {";", "&&", "||", "|"} == COMMAND_SEPARATORS
 
 
 class TestStripEnvPrefix:
     def test_strips_leading_assignments(self) -> None:
         assert strip_env_prefix(["FOO=1", "BAR=x y", "npm", "install"]) == [
-            "npm", "install",
+            "npm",
+            "install",
         ]
 
     def test_empty_value_is_assignment(self) -> None:
@@ -76,7 +84,8 @@ class TestStripEnvPrefix:
 class TestEnvAssignments:
     def test_collects_leading_prefix(self) -> None:
         assert env_assignments(["A=1", "B=two", "cmd", "C=3"]) == {
-            "A": "1", "B": "two",
+            "A": "1",
+            "B": "two",
         }
 
     def test_stops_at_command(self) -> None:

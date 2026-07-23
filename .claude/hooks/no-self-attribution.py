@@ -40,9 +40,7 @@ def _strip_lines_matching(text: str, patterns: list[str]) -> str:
     """Remove lines matching any pattern from multiline text, strip trailing blank lines."""
     lines = text.split("\n")
     filtered = [
-        line
-        for line in lines
-        if not any(re.search(p, line, re.IGNORECASE) for p in patterns)
+        line for line in lines if not any(re.search(p, line, re.IGNORECASE) for p in patterns)
     ]
     # Strip trailing blank lines
     while filtered and filtered[-1].strip() == "":

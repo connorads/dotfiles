@@ -39,7 +39,12 @@ CHECKS: list[tuple[str, str, str, str]] = [
     (".config/uv/uv.toml", "exclude-newer", r'exclude-newer\s*=\s*"(\d+)\s*days?"', "days"),
     (".config/pip/pip.conf", "uploaded-prior-to", r"uploaded-prior-to\s*=\s*P(\d+)D", "days"),
     (".yarnrc.yml", "npmMinimalAgeGate", r"npmMinimalAgeGate:\s*(\d+)d", "days"),
-    (".config/mise/config.toml", "minimum_release_age", r'minimum_release_age\s*=\s*"(\d+)d"', "days"),
+    (
+        ".config/mise/config.toml",
+        "minimum_release_age",
+        r'minimum_release_age\s*=\s*"(\d+)d"',
+        "days",
+    ),
     (".config/aube/config.toml", "minimumReleaseAge", r"minimumReleaseAge\s*=\s*(\d+)", "minutes"),
 ]
 

@@ -86,9 +86,7 @@ def _quick_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,
     )
-    parser.add_argument(
-        "--version", action="version", version=f"handoff {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"handoff {__version__}")
     parser.add_argument("--from", dest="from_", type=_source_format, metavar="FROM")
     parser.add_argument("--to", dest="to", type=_session_format, metavar="TO")
     parser.add_argument("--output", dest="output", metavar="OUTPUT")
@@ -102,7 +100,10 @@ def _inspect_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="handoff inspect", allow_abbrev=False)
     parser.add_argument("input")
     parser.add_argument(
-        "--from", dest="from_", type=_source_format, default=SourceFormat.AUTO,
+        "--from",
+        dest="from_",
+        type=_source_format,
+        default=SourceFormat.AUTO,
         metavar="FROM",
     )
     parser.add_argument("--json", dest="json", action="store_true")
@@ -114,7 +115,10 @@ def _import_parser() -> argparse.ArgumentParser:
     parser.add_argument("input")
     parser.add_argument("output")
     parser.add_argument(
-        "--from", dest="from_", type=_source_format, default=SourceFormat.AUTO,
+        "--from",
+        dest="from_",
+        type=_source_format,
+        default=SourceFormat.AUTO,
         metavar="FROM",
     )
     return parser
@@ -124,12 +128,8 @@ def _export_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="handoff export", allow_abbrev=False)
     parser.add_argument("input")
     parser.add_argument("output")
-    parser.add_argument(
-        "--to", dest="to", type=_session_format, required=True, metavar="TO"
-    )
-    parser.add_argument(
-        "--new-session-id", dest="new_session_id", action="store_true"
-    )
+    parser.add_argument("--to", dest="to", type=_session_format, required=True, metavar="TO")
+    parser.add_argument("--new-session-id", dest="new_session_id", action="store_true")
     return parser
 
 
@@ -138,15 +138,14 @@ def _convert_parser() -> argparse.ArgumentParser:
     parser.add_argument("input")
     parser.add_argument("output")
     parser.add_argument(
-        "--from", dest="from_", type=_source_format, default=SourceFormat.AUTO,
+        "--from",
+        dest="from_",
+        type=_source_format,
+        default=SourceFormat.AUTO,
         metavar="FROM",
     )
-    parser.add_argument(
-        "--to", dest="to", type=_session_format, required=True, metavar="TO"
-    )
-    parser.add_argument(
-        "--new-session-id", dest="new_session_id", action="store_true"
-    )
+    parser.add_argument("--to", dest="to", type=_session_format, required=True, metavar="TO")
+    parser.add_argument("--new-session-id", dest="new_session_id", action="store_true")
     return parser
 
 
@@ -177,15 +176,11 @@ def run(argv: list[str] | None = None) -> None:
                 _export(args.input, args.output, args.to, args.new_session_id)
             case "convert":
                 args = _convert_parser().parse_args(rest)
-                _convert(
-                    args.input, args.output, args.from_, args.to, args.new_session_id
-                )
+                _convert(args.input, args.output, args.from_, args.to, args.new_session_id)
         return
 
     args = _quick_parser().parse_args(argv)
-    _quick_convert(
-        args.input, args.from_, args.to, args.output, args.keep_session_id, args.no_open
-    )
+    _quick_convert(args.input, args.from_, args.to, args.output, args.keep_session_id, args.no_open)
 
 
 def main() -> None:
@@ -198,7 +193,7 @@ def main() -> None:
         run()
     except HandoffError as exc:
         print(_format_error_chain(exc), file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 # --- quick convert -----------------------------------------------------------------
@@ -216,9 +211,7 @@ def _quick_convert(
         bail("missing input session id or path")
     source_format = from_ if from_ is not None else SourceFormat.AUTO
     if to is None:
-        bail(
-            "missing --to; example: handoff --from claude --to codex <SESSION_ID>"
-        )
+        bail("missing --to; example: handoff --from claude --to codex <SESSION_ID>")
 
     with ctx(lambda: f"failed to load source session {input_}"):
         session = load_session(Path(input_), source_format)
@@ -229,9 +222,7 @@ def _quick_convert(
     output_path = Path(output) if output is not None else default_output_root(to)
     wrote_standalone_jsonl = output_path.suffix == ".jsonl"
 
-    _maybe_rekey_session(
-        session, (not keep_session_id) and to is not SessionFormat.IR, to
-    )
+    _maybe_rekey_session(session, (not keep_session_id) and to is not SessionFormat.IR, to)
     path = materialize(session, to, output_path)
 
     print(f"created {to.value} session: {session.metadata.session_id}")
@@ -278,9 +269,7 @@ def _import(input_: str, output: str, from_: SourceFormat) -> None:
     print(output)
 
 
-def _export(
-    input_: str, output: str, to: SessionFormat, new_session_id: bool
-) -> None:
+def _export(input_: str, output: str, to: SessionFormat, new_session_id: bool) -> None:
     session = load_ir(Path(input_))
     _maybe_rekey_session(session, new_session_id, to)
     path = materialize(session, to, Path(output))
@@ -446,9 +435,7 @@ def _bootstrap_codex_auth(output_root: Path) -> None:
     if target_auth.exists():
         return
 
-    with ctx(
-        lambda: f"failed to link Codex auth from {source_auth} to {target_auth}"
-    ):
+    with ctx(lambda: f"failed to link Codex auth from {source_auth} to {target_auth}"):
         os.symlink(source_auth, target_auth)
 
 

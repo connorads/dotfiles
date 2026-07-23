@@ -13,7 +13,6 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-
 ASSET_LINK_RELS = {
     "apple-touch-icon",
     "dns-prefetch",
@@ -76,7 +75,9 @@ def is_url(value: str) -> bool:
 def default_output(target: str) -> Path:
     if is_url(target):
         parsed = urllib.parse.urlparse(target)
-        slug = "-".join(part for part in [parsed.netloc, parsed.path.strip("/").replace("/", "-")] if part)
+        slug = "-".join(
+            part for part in [parsed.netloc, parsed.path.strip("/").replace("/", "-")] if part
+        )
         slug = re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip(".-") or "page"
         return Path(f"{slug}-shareable.html")
     path = Path(target)
@@ -155,7 +156,11 @@ def is_embedded_or_safe(value: str) -> bool:
 def remaining_asset_refs(text: str) -> list[str]:
     parser = AssetRefParser()
     parser.feed(text)
-    refs = [f"<{tag} {attr}={value}>" for tag, attr, value in parser.refs if not is_embedded_or_safe(value)]
+    refs = [
+        f"<{tag} {attr}={value}>"
+        for tag, attr, value in parser.refs
+        if not is_embedded_or_safe(value)
+    ]
 
     for match in CSS_URL_RE.finditer(text):
         value = clean_ref(match.group(1))
@@ -174,9 +179,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", help="Local HTML file, URL, or '-' for stdin")
     parser.add_argument("-o", "--output", type=Path, help="Output HTML path")
-    parser.add_argument("--timeout", type=int, default=60, help="Network timeout passed to monolith")
+    parser.add_argument(
+        "--timeout", type=int, default=60, help="Network timeout passed to monolith"
+    )
     parser.add_argument("--strict", action="store_true", help="Fail monolith on network errors")
-    parser.add_argument("--keep-network-hints", action="store_true", help="Keep preconnect/prefetch link tags")
+    parser.add_argument(
+        "--keep-network-hints", action="store_true", help="Keep preconnect/prefetch link tags"
+    )
     parser.add_argument("--user-agent", help="Custom user agent passed to monolith")
     parser.add_argument("--no-js", action="store_true", help="Remove JavaScript")
     parser.add_argument("--no-frames", action="store_true", help="Remove frames and iframes")

@@ -28,14 +28,14 @@ from datetime import UTC, datetime
 from typing import IO, Any
 
 __all__ = [
-    "parse_datetime",
-    "format_millis",
-    "format_auto",
-    "timestamp_millis",
-    "now_utc",
-    "sort_value",
     "dumps_compact",
     "dumps_pretty",
+    "format_auto",
+    "format_millis",
+    "now_utc",
+    "parse_datetime",
+    "sort_value",
+    "timestamp_millis",
     "write_json_line",
 ]
 
@@ -120,8 +120,7 @@ def timestamp_millis(value: datetime) -> int:
 
 def _ymd_hms(dt: datetime) -> str:
     return (
-        f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}"
-        f"T{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}"
+        f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d}T{dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}"
     )
 
 

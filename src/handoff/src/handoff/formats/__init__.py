@@ -14,22 +14,22 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .._json import dumps_pretty
 from ..errors import HandoffError, bail, ctx
 from ..ir import SessionFormat, SourceFormat, UniversalSession
-from .._json import dumps_pretty
 from . import claude, codex
 
 __all__ = [
     "ResolvedInput",
-    "detect_format",
-    "resolve_input",
-    "load_session",
-    "write_ir",
-    "load_ir",
-    "materialize",
-    "default_output_root",
-    "codex_root",
     "claude_root",
+    "codex_root",
+    "default_output_root",
+    "detect_format",
+    "load_ir",
+    "load_session",
+    "materialize",
+    "resolve_input",
+    "write_ir",
 ]
 
 
@@ -100,9 +100,7 @@ def resolve_input(path: Path, source_format: SourceFormat) -> ResolvedInput:
             "session-id lookup only works for Codex and Claude"
         )
     if explicit is SessionFormat.CODEX:
-        return ResolvedInput(
-            path=_resolve_codex_session_id(session_id), format=SessionFormat.CODEX
-        )
+        return ResolvedInput(path=_resolve_codex_session_id(session_id), format=SessionFormat.CODEX)
     if explicit is SessionFormat.CLAUDE:
         return ResolvedInput(
             path=_resolve_claude_session_id(session_id), format=SessionFormat.CLAUDE
@@ -116,10 +114,7 @@ def resolve_input(path: Path, source_format: SourceFormat) -> ResolvedInput:
         case (None, Path() as found):
             return ResolvedInput(path=found, format=SessionFormat.CLAUDE)
         case (Path(), Path()):
-            bail(
-                f"session id {session_id} exists in both Codex and Claude stores; "
-                "specify --from"
-            )
+            bail(f"session id {session_id} exists in both Codex and Claude stores; specify --from")
         case _:
             bail(
                 f"could not resolve {session_id} as a path or native session id "
@@ -166,9 +161,7 @@ def load_ir(path: Path) -> UniversalSession:
         return UniversalSession.from_json_dict(json.loads(text))
 
 
-def materialize(
-    session: UniversalSession, target: SessionFormat, output: Path
-) -> Path:
+def materialize(session: UniversalSession, target: SessionFormat, output: Path) -> Path:
     """Write the session in `target` format, returning the primary file (`materialize`)."""
     match target:
         case SessionFormat.IR:
@@ -194,18 +187,14 @@ def default_output_root(target: SessionFormat) -> Path:
 def _resolve_codex_session_id(session_id: str) -> Path:
     sessions_root = codex_root() / "sessions"
     suffix = f"-{session_id}.jsonl"
-    with ctx(
-        lambda: f"could not find Codex session {session_id} under {sessions_root}"
-    ):
+    with ctx(lambda: f"could not find Codex session {session_id} under {sessions_root}"):
         return _find_in_tree(sessions_root, lambda p: p.name.endswith(suffix))
 
 
 def _resolve_claude_session_id(session_id: str) -> Path:
     projects_root = claude_root() / "projects"
     target_name = f"{session_id}.jsonl"
-    with ctx(
-        lambda: f"could not find Claude session {session_id} under {projects_root}"
-    ):
+    with ctx(lambda: f"could not find Claude session {session_id} under {projects_root}"):
         return _find_in_tree(projects_root, lambda p: p.name == target_name)
 
 
@@ -216,9 +205,7 @@ def codex_root() -> Path:
 
 def claude_root() -> Path:
     """Claude home (`claude_root`): $HANDOFF_CLAUDE_HOME > $CLAUDE_CONFIG_DIR > $CLAUDE_HOME > ~/.claude."""
-    return _discover_root(
-        "HANDOFF_CLAUDE_HOME", ["CLAUDE_CONFIG_DIR", "CLAUDE_HOME"], ".claude"
-    )
+    return _discover_root("HANDOFF_CLAUDE_HOME", ["CLAUDE_CONFIG_DIR", "CLAUDE_HOME"], ".claude")
 
 
 def _discover_root(primary_env: str, secondary_envs: list[str], suffix: str) -> Path:

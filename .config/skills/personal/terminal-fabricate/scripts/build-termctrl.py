@@ -42,9 +42,7 @@ def build(spec: dict) -> str:
             raise ValueError(f"step {i} needs both 'at_ms' and 'text'")
         payload = expand_escapes(str(step["text"])).encode("utf-8")
         lines.append(
-            json.dumps(
-                {"type": "output", "at_ms": int(step["at_ms"]), "bytes": list(payload)}
-            )
+            json.dumps({"type": "output", "at_ms": int(step["at_ms"]), "bytes": list(payload)})
         )
     return "\n".join(lines) + "\n"
 
@@ -55,7 +53,11 @@ def main() -> int:
     ap.add_argument("--out", dest="outfile", default="-", help="output .termctrl, or - for stdout")
     args = ap.parse_args()
 
-    raw = sys.stdin.read() if args.infile == "-" else open(args.infile, encoding="utf-8").read()
+    if args.infile == "-":
+        raw = sys.stdin.read()
+    else:
+        with open(args.infile, encoding="utf-8") as f:
+            raw = f.read()
     try:
         spec = json.loads(raw)
     except json.JSONDecodeError as e:

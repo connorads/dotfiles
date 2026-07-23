@@ -59,7 +59,7 @@ class TestRemoveTrailerArgs:
         cmd = 'git commit -m "feat" --trailer "Co-Authored-By: Claude <noreply@anthropic.com>"'
         result = _remove_trailer_args(cmd, COMMIT_PATTERNS)
         assert "--trailer" not in result
-        assert 'git commit -m "feat"' == result.strip()
+        assert result.strip() == 'git commit -m "feat"'
 
     def test_removes_trailer_single_quoted(self) -> None:
         cmd = "git commit -m 'feat' --trailer 'Co-Authored-By: Claude <noreply@anthropic.com>'"
@@ -77,9 +77,7 @@ class TestRemoveTrailerArgs:
 
 class TestCleanFile:
     def test_cleans_file_in_place(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("feat: stuff\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n")
             f.flush()
             assert _clean_file(f.name, COMMIT_PATTERNS) is True
@@ -88,9 +86,7 @@ class TestCleanFile:
             assert "feat: stuff" in content
 
     def test_returns_false_when_no_match(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("feat: clean commit\n")
             f.flush()
             assert _clean_file(f.name, COMMIT_PATTERNS) is False
@@ -144,9 +140,7 @@ class TestCleanGitCommit:
         assert "feat" in result
 
     def test_strips_attribution_from_file(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("feat: stuff\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n")
             f.flush()
             result = clean_git_commit(f"git commit -F {f.name}")
@@ -156,9 +150,7 @@ class TestCleanGitCommit:
         assert "Co-Authored-By" not in content
 
     def test_strips_attribution_from_file_long_flag(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("Co-Authored-By: Claude <noreply@anthropic.com>\n")
             f.flush()
             result = clean_git_commit(f"git commit --file={f.name}")
@@ -208,22 +200,16 @@ class TestCleanGhCommand:
             ),
         ],
     )
-    def test_strips_attribution_from_command(
-        self, command: str, expected_absent: str
-    ) -> None:
+    def test_strips_attribution_from_command(self, command: str, expected_absent: str) -> None:
         result = clean_gh_command(command)
         assert result is not None
         assert expected_absent not in result
 
     def test_strips_attribution_from_body_file(self) -> None:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".md", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("## Summary\n\n\U0001f916 Generated with [Claude Code]\n")
             f.flush()
-            result = clean_gh_command(
-                f"gh pr create --title t --body-file {f.name}"
-            )
+            result = clean_gh_command(f"gh pr create --title t --body-file {f.name}")
         assert result is not None
         content = Path(f.name).read_text()
         assert "Generated with" not in content
@@ -255,9 +241,7 @@ class TestIntegration:
         )
 
     def test_strips_and_returns_json(self) -> None:
-        r = self._run(
-            'git commit -m "x\\nCo-Authored-By: Claude <noreply@anthropic.com>"'
-        )
+        r = self._run('git commit -m "x\\nCo-Authored-By: Claude <noreply@anthropic.com>"')
         assert r.returncode == 0
         output = json.loads(r.stdout)
         cleaned_cmd = output["hookSpecificOutput"]["updatedInput"]["command"]

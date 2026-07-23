@@ -8,15 +8,14 @@ arguments, open transcript files, and pane-content verification.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 import json
 import os
 import re
 import shlex
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Union, cast
-
+from typing import cast
 
 SESSION_ID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
@@ -24,8 +23,8 @@ SESSION_ID_RE = re.compile(
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
-JsonScalar = Union[str, int, float, bool, None]
-JsonValue = Union[JsonScalar, dict[str, "JsonValue"], list["JsonValue"]]
+JsonScalar = str | int | float | bool | None
+JsonValue = JsonScalar | dict[str, "JsonValue"] | list["JsonValue"]
 JsonObject = dict[str, JsonValue]
 
 
@@ -325,7 +324,9 @@ def content_match_result(
     scored = [score_jsonl(path, capture_norm) for path in candidate_jsonls(cwd, config_dir)]
     scored = [item for item in scored if object_int(item, "score") > 0]
     if not scored:
-        return ResolveResult("unresolved", pid=int(pid), reason="no transcript matched visible pane text")
+        return ResolveResult(
+            "unresolved", pid=int(pid), reason="no transcript matched visible pane text"
+        )
     scored.sort(key=lambda item: object_int(item, "score"), reverse=True)
     top = scored[0]
     top_score = object_int(top, "score")
@@ -364,7 +365,9 @@ def resolve(args: argparse.Namespace) -> ResolveResult:
         lambda: registry_result(pid, config_dir),
         lambda: launch_arg_result(pid, cwd),
         lambda: open_jsonl_result(pid, cwd, config_dir),
-        lambda: content_match_result(pid, args.pane or "", cwd, args.capture_file or "", config_dir),
+        lambda: content_match_result(
+            pid, args.pane or "", cwd, args.capture_file or "", config_dir
+        ),
     ):
         resolved = resolver()
         if not resolved:

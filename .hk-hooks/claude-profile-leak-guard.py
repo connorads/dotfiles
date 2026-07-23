@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Block staged Claude profile/auth leaks that can bypass .gitignore via add -f."""
+
 from __future__ import annotations
 
 import re
@@ -62,13 +63,17 @@ def staged_paths() -> list[str]:
 
 def added_lines(path: str) -> list[tuple[int, str]]:
     try:
-        raw = git_bytes("diff", "--cached", "--unified=0", "--no-ext-diff", "--no-color", "--", path)
+        raw = git_bytes(
+            "diff", "--cached", "--unified=0", "--no-ext-diff", "--no-color", "--", path
+        )
     except subprocess.CalledProcessError:
         return []
 
     lines: list[tuple[int, str]] = []
     for idx, raw_line in enumerate(raw.decode("utf-8", "replace").splitlines(), start=1):
-        if raw_line.startswith("+") and not raw_line.startswith("+++"):  # added content, not diff header
+        if raw_line.startswith("+") and not raw_line.startswith(
+            "+++"
+        ):  # added content, not diff header
             lines.append((idx, raw_line[1:]))
     return lines
 
