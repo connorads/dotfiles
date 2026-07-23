@@ -239,6 +239,77 @@ _wt_merged_into_base() {
   git -C "$repo_path" merge-base --is-ancestor HEAD "refs/heads/$base_branch" >/dev/null 2>&1
 }
 
+# --- PR state (gh) -----------------------------------------------------------
+# Real PR truth from GitHub, keyed by branch. fittr merges PRs via squash/rebase,
+# so local ancestry (`_wt_merged_into_base`) never reports a squash-merged branch
+# as merged; the PR's own MERGED/OPEN/CLOSED state is the signal cleanup trusts.
+
+# Per-invocation memoisation, keyed by a repo's git common dir (shared across all
+# its worktrees) so a `--all` sweep makes one `gh` call per distinct repo, not
+# per worktree. Fresh state each process (these helpers live in a sourced lib).
+typeset -gA _wt_pr_cache _wt_pr_cache_loaded _wt_pr_cache_status
+
+_wt_pr_repo_key() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null
+}
+
+# _wt_pr_map <repo_path>: one `gh` call listing every PR (any state) for the
+# repo the worktree belongs to. Run from within the worktree so gh resolves the
+# repo. Emits TSV `headRefName<TAB>state<TAB>number<TAB>url<TAB>isDraft`, one row
+# per PR. Returns non-zero (no output) when gh is absent, unauthenticated,
+# gate-locked, or offline — the caller degrades that repo to `unknown`.
+_wt_pr_map() {
+  local repo_path=$1
+  command -v gh >/dev/null 2>&1 || return 1
+  local limit=${WT_PR_LIMIT:-200}
+  local jq_prog='.[] | [.headRefName, .state, (.number|tostring), .url, (.isDraft|tostring)] | @tsv'
+  ( cd "$repo_path" 2>/dev/null &&
+      gh pr list --state all -L "$limit" \
+        --json number,state,url,headRefName,isDraft --jq "$jq_prog" 2>/dev/null )
+}
+
+# _wt_pr_lookup <repo_path> <branch>: PR state for one branch, populating the
+# per-repo cache on first miss. Emits `state<TAB>number<TAB>url<TAB>isDraft` when
+# a PR exists; empty when gh succeeded but the branch has no PR (=> `none`); the
+# single field `unknown` (state, no other data) when the repo's map call failed,
+# so we never retry gh per worktree of a repo we already know is unreachable.
+_wt_pr_lookup() {
+  local repo_path=$1 branch=$2
+  local key
+  key=$(_wt_pr_repo_key "$repo_path")
+  if [[ -z "$key" ]]; then
+    print -r -- "unknown"
+    return 0
+  fi
+
+  if [[ -z "${_wt_pr_cache_loaded[$key]:-}" ]]; then
+    local map
+    if map=$(_wt_pr_map "$repo_path"); then
+      _wt_pr_cache[$key]=$map
+      _wt_pr_cache_status[$key]=ok
+    else
+      _wt_pr_cache_status[$key]=unknown
+    fi
+    _wt_pr_cache_loaded[$key]=1
+  fi
+
+  if [[ "${_wt_pr_cache_status[$key]}" == unknown ]]; then
+    print -r -- "unknown"
+    return 0
+  fi
+
+  local line
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    if [[ "${line%%$'\t'*}" == "$branch" ]]; then
+      print -r -- "${line#*$'\t'}"
+      return 0
+    fi
+  done <<< "${_wt_pr_cache[$key]:-}"
+
+  return 0
+}
+
 _wt_worktree_records() {
   git worktree list --porcelain 2>/dev/null
 }

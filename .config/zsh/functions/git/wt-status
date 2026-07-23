@@ -1,17 +1,18 @@
 #!/usr/bin/env zsh
 # wt-status: report worktree status for agents and humans
-# usage: wt-status [--all] [--json] [worktree-path]
+# usage: wt-status [--all] [--pr] [--json] [worktree-path]
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-status]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
 source "$_wt_common_dir/_wt-common"
 
-local all=0 json=0 target=""
+local all=0 json=0 pr=0 target=""
 
 while (( $# )); do
   case $1 in
-    -h|--help) echo "usage: wt-status [--all] [--json] [worktree-path]" >&2; return 0 ;;
+    -h|--help) echo "usage: wt-status [--all] [--pr] [--json] [worktree-path]" >&2; return 0 ;;
     --all)     all=1; shift ;;
+    --pr)      pr=1; shift ;;
     --json)    json=1; shift ;;
     -*)        echo "error: unknown flag $1" >&2; return 1 ;;
     *)         target=$1; shift ;;
@@ -63,7 +64,28 @@ print_record() {
     merged=1
   fi
 
-  records+=("$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+  # PR fields default to "no lookup performed": pr_state=unknown, rest empty.
+  # A gh call only fires with --pr, so the default output stays gh-free.
+  local pr_number="" pr_state="unknown" pr_url="" pr_is_draft="false"
+  if (( pr )); then
+    local pr_info
+    pr_info=$(_wt_pr_lookup "$wt_path" "$branch")
+    if [[ -z "$pr_info" ]]; then
+      pr_state="none"
+    elif [[ "$pr_info" == "unknown" ]]; then
+      pr_state="unknown"
+    else
+      pr_state=${pr_info%%$'\t'*}
+      local pr_rest=${pr_info#*$'\t'}
+      pr_number=${pr_rest%%$'\t'*}
+      pr_rest=${pr_rest#*$'\t'}
+      pr_url=${pr_rest%%$'\t'*}
+      pr_is_draft=${pr_rest##*$'\t'}
+    fi
+  fi
+
+  local record
+  record=$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "$wt_path" \
     "$branch" \
     "$dirty" \
@@ -74,7 +96,11 @@ print_record() {
     "$behind" \
     "$locked" \
     "$prunable" \
-    "$merged")")
+    "$merged")
+  if (( pr )); then
+    record+=$(printf '\t%s\t%s\t%s\t%s' "$pr_number" "$pr_state" "$pr_url" "$pr_is_draft")
+  fi
+  records+=("$record")
 }
 
 collect_all_records() {
@@ -143,7 +169,11 @@ if (( json )); then
         behind: (.[7] | tonumber),
         locked: (.[8] == "1"),
         prunable: (.[9] == "1"),
-        merged_into_base: (.[10] == "1")
+        merged_into_base: (.[10] == "1"),
+        pr_number: (if (.[11] // "") == "" then null else (.[11] | tonumber) end),
+        pr_state: (if (.[12] // "") == "" then "unknown" else .[12] end),
+        pr_url: (if (.[13] // "") == "" then null else .[13] end),
+        pr_is_draft: (.[14] == "true")
       })'
 else
   printf '%s\n' "$joined_records"
