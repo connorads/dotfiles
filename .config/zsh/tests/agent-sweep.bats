@@ -217,16 +217,17 @@ wait_nonshell() {
   wait_file "$pidfile"
   tx set-option -p -t "$pane" @agent_state working
   tx set-option -w -t "$win" @win_agent_state working
+  # Poll for BOTH dots: the daemon clears the window dot on a later step than
+  # the pane dot, so asserting wstate right after pstate clears is a race.
   cleared=0
   for i in $(seq 1 20); do
-    [ -z "$(pstate "$pane")" ] && {
+    [ -z "$(pstate "$pane")" ] && [ -z "$(wstate "$win")" ] && {
       cleared=1
       break
     }
     sleep 0.2
   done
   [ "$cleared" -eq 1 ]
-  [ -z "$(wstate "$win")" ]
 }
 
 @test "daemon exits when the server dies" {

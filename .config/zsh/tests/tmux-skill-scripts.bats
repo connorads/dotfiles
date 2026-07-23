@@ -197,7 +197,10 @@ PY
     out=$4
     err=$5
 
-    "$control_tail" -L "$sock" -t s -p "missing-pattern" -T 0.8 --no-seed >"$out" 2>"$err" &
+    # 3s timeout, sentinel sent at 0.2s: the pane must render the sentinel
+    # before the deadline, and under parallel suite load a sub-second margin
+    # loses that race.
+    "$control_tail" -L "$sock" -t s -p "missing-pattern" -T 3 --no-seed >"$out" 2>"$err" &
     pid=$!
     sleep 0.2
     "$tmux_bin" -L "$sock" send-keys -t s "printf '\''tail-sentinel\n'\''" Enter
@@ -206,7 +209,7 @@ PY
 
   [ "$status" -eq 1 ]
   [[ "$(cat "$out")" == "" ]]
-  [[ "$(cat "$err")" == *"Timeout after 0.8s waiting for pattern 'missing-pattern'"* ]]
+  [[ "$(cat "$err")" == *"Timeout after 3s waiting for pattern 'missing-pattern'"* ]]
   [[ "$(cat "$err")" == *"tail-sentinel"* ]]
 }
 
