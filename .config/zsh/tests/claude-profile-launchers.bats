@@ -108,6 +108,42 @@ EOF
   [ "$output" = "false" ]
 }
 
+@test "claude-code-profile --mcp delegates to mcpz run under the scrubbed env" {
+  write_stub mcpz <<EOF
+#!/usr/bin/env bash
+printf 'CLAUDE_CONFIG_DIR:%s\n' "\${CLAUDE_CONFIG_DIR-unset}"
+printf 'ANTHROPIC_API_KEY:%s\n' "\${ANTHROPIC_API_KEY-unset}"
+printf '%s\n' "\$@" >"$TEST_LOG"
+EOF
+  export ANTHROPIC_API_KEY=sk-ant-test
+
+  run_zsh_function "$CODE_PROFILE" --mcp stretch work --resume abc
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"CLAUDE_CONFIG_DIR:$HOME/.claude-profiles/code/work"* ]]
+  [[ "$output" == *"ANTHROPIC_API_KEY:unset"* ]]
+  run cat "$TEST_LOG"
+  [ "${lines[0]}" = "run" ]
+  [ "${lines[1]}" = "claude" ]
+  [ "${lines[2]}" = "stretch" ]
+  [ "${lines[3]}" = "--" ]
+  [ "${lines[4]}" = "--resume" ]
+  [ "${lines[5]}" = "abc" ]
+}
+
+@test "claude-code-profile --mcp with no bundle value errors" {
+  write_stub mcpz <<EOF
+#!/usr/bin/env bash
+printf 'should-not-run\n' >"$TEST_LOG"
+EOF
+
+  run_zsh_function "$CODE_PROFILE" --mcp
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--mcp needs a bundle"* ]]
+  [ ! -s "$TEST_LOG" ]
+}
+
 @test "claude-code-profile rejects names with slashes" {
   write_stub claude <<'EOF'
 #!/usr/bin/env bash
