@@ -86,6 +86,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/src/raycast/shotpath](./src/raycast/shotpath)                       | Local Raycast extension wrapping the `shotpath` command; kept outside dot dirs because Raycast rejects hidden development source paths |
 | [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md)                   | Astro Starlight site ("How I work") explaining the workflow these dotfiles encode; deploys later to dotfiles.connoradams.co.uk. Scope commits with `dotfiles commit -- src/dotfiles-docs` |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
+| [mcpz](./.config/zsh/functions/agents/mcpz)                            | Render+launch MCP bundles into each agent's native form (Claude/Codex/OpenCode), resolving secrets fresh at launch. Reads a gitignored registry (the only place client names/URLs live). Subsystem docs + schema: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
 
 ## Shell Function Conventions
 
@@ -207,6 +208,11 @@ mise run ts-checks     # Typecheck + test all first-party TS projects (installs 
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
+mcpz list [--json]     # list MCP bundles (gitignored registry ~/.config/mcp/registry.local.json)
+mcpz show <bundle>     # servers in a bundle, secrets redacted
+mcpz render <agent> <bundle>       # print exact launch form; agent = claude|cc, codex, opencode|oc
+mcpz run <agent> <bundle> [-- ...] # resolve secrets → env → exec agent with the bundle
+mcpz                   # bare on a TTY: fzf-pick bundle + agent, then run
 agent ls [--json]      # list live agent panes (pane/state/kind/name/loc/window/cwd), ranked
 agent state <target>   # print a pane's @agent_state (target = %N | sess:win.pane | agent name)
 agent wait <target> [--for s,s] [--timeout n]  # block until @agent_state reaches a state
