@@ -206,6 +206,7 @@ dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
+ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
 claude-watch [on|off|status]  # arm/disarm Claude auto-continue on a pane (tmux: prefix + T Tools)
 mcpz list [--json]     # list MCP bundles (gitignored registry ~/.config/mcp/registry.local.json)
