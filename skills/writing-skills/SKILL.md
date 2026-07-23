@@ -64,6 +64,12 @@ The two need opposite instruction forms — read
 [references/instruction-forms.md](references/instruction-forms.md) before
 drafting if the answer isn't obvious.
 
+**Recipe skills invert this.** When the payload is commands the agent runs,
+there's no baseline failure to watch — it lives in your own unrun commands. Run
+every fragile line live before it ships, ideally via a fresh-context agent that
+shares none of your drafting assumptions. A run that hangs, times out, or
+returns empty is a failure to investigate, not a pass.
+
 ### 2. Draft the minimum
 
 Write the **description first** — it alone decides whether the body is ever
@@ -214,8 +220,10 @@ contents list. Then verify the things a script can't:
 - Bundled scripts and resources are reviewed as executable or instructive
   content: flag network access, broad filesystem access, secret handling, or
   any path that could move data outside the user's intent.
-- The skill's executable claims — commands, flags, type names, API fields —
-  are spot-checked against the live tool. Craft review alone ships domain
+- The skill's executable claims — commands, flags, type names, API fields, and
+  any environmental assumption the procedure rests on (what another process can
+  see, whether a tool exists in that context) — are spot-checked against the
+  live tool. Craft review alone ships domain
   bugs: a skill can be structurally perfect while its first example errors.
   "Couldn't verify" is only true after `command -v <tool>` fails; run that
   check before writing it.
