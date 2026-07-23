@@ -8,9 +8,14 @@
 #   pane <path>   split the summoning pane, new pane cd'd to <path>
 #   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
 #                 then [enter] new window · [v] pane here
-#   pick          fzf over managed worktrees (wt-status --all): repo + status
-#                 columns (open/dirty/merged/ahead/behind) with a git log +
-#                 status preview; enter → open, ctrl-v → pane here,
+#   pick          fzf over managed worktrees (wt-status --all --pr): columns are
+#                 repo, a fixed-width PR-state verdict (✓ reap / ✓ merged /
+#                 ○ open / ✗ closed / · - / ? …), branch, then a truncatable
+#                 local-flags column (◉ live / ● dirty / ↑ahead / ↓behind).
+#                 State is glyph + colour, so it reads without colour and the
+#                 verdict survives truncation (fixed column, ahead of branch).
+#                 Offline (no gh) degrades to ? with the local merged hint.
+#                 git log + status preview; enter → open, ctrl-v → pane here,
 #                 ctrl-x → remove (wt-remove --delete-branch: merged branch
 #                 deleted, unmerged kept)
 set -euo pipefail
@@ -75,29 +80,37 @@ new)
 	;;
 pick)
 	# Rows: path (hidden), repo (path component after ~/.trees), branch, then
-	# marker fields: dirty/untracked, merged into base, ahead/behind of
-	# upstream. Markers are information, not guards - removal deletes only
-	# branches already merged into base (git branch -d), so removing a clean
-	# tree loses nothing.
-	rows=$(wt-status --all --json |
+	# PR state (from --pr), pr number, and local fields: dirty/untracked,
+	# merged-into-base (offline hint), ahead/behind of upstream. Field order
+	# keeps repo=2, branch=3 so the repo-then-branch sort below is unchanged.
+	# --pr adds the real (squash/rebase-aware) merge signal; fields are read
+	# defensively so a caller/stub without --pr still parses. Markers are
+	# information, not guards - removal deletes only branches already merged
+	# into base (git branch -d), so removing a clean tree loses nothing.
+	rows=$(wt-status --all --pr --json |
 		jq -r '.[] | [.path,
 			((.path | split("/.trees/")[1] // "") | split("/")[0]),
 			.branch,
-			(if .dirty or .untracked then "dirty" else "" end),
-			(if .merged_into_base then "merged" else "" end),
-			(if .ahead > 0 then "ahead \(.ahead)" else "" end),
-			(if .behind > 0 then "behind \(.behind)" else "" end)] | @tsv' |
+			(.pr_state // "unknown"),
+			((.pr_number // "") | tostring),
+			(if .dirty or .untracked then "1" else "0" end),
+			(if .merged_into_base then "1" else "0" end),
+			(.ahead // 0 | tostring),
+			(.behind // 0 | tostring)] | @tsv' |
 		sort -t'	' -k2,2 -k3,3)
 	[ -n "$rows" ] || soft_fail 'No managed worktrees - prefix + Alt+w creates one'
 	panes=$(tmux list-panes -a -F '#{window_id}	#{pane_current_path}')
-	# Render display columns; "open" marks a live pane at or inside the
-	# worktree (same path-boundary match as the open subcommand).
+	# Render display columns. The PR-state verdict is a fixed-width column
+	# placed after repo, before branch: it folds reap-eligibility into the
+	# token (MERGED + clean + not-ahead = ✓ reap, safe to ctrl-x) so the
+	# actionable answer survives a long branch truncating the tail. Plain text
+	# is padded to a set width first, then wrapped in ANSI, so the padding
+	# maths ignores escape bytes. Local flags trail (may truncate harmlessly);
+	# ◉ live marks a pane at or inside the worktree (path-boundary match).
 	display=$(printf '%s\n' "$rows" | PANES="$panes" awk '
 		BEGIN {
 			FS = "\t"
-			# Marker colours by field: dirty red, merged green, ahead yellow,
-			# behind magenta; the pane-scan "open" is blue.
-			col[4] = 31; col[5] = 32; col[6] = 33; col[7] = 35
+			E = "\033["; R = "\033[0m"; W = 8
 			np = split(ENVIRON["PANES"], pl, "\n")
 			for (i = 1; i <= np; i++) {
 				split(pl[i], pf, "\t")
@@ -106,24 +119,43 @@ pick)
 		}
 		$1 == "" { next }
 		{
-			m = ""
+			path = $1; repo = $2; branch = $3; st = $4
+			dirty = ($6 == "1"); merged = ($7 == "1")
+			ahead = $8 + 0; behind = $9 + 0
+
+			# PR-state verdict: glyph + word + colour + plain display width.
+			if (st == "MERGED") {
+				if (!dirty && ahead == 0) { g = "✓"; w = "reap"; c = "92"; dw = 6 }
+				else { g = "✓"; w = "merged"; c = "2;32"; dw = 8 }
+			} else if (st == "OPEN") { g = "○"; w = "open"; c = "36"; dw = 6 }
+			else if (st == "CLOSED") { g = "✗"; w = "closed"; c = "31"; dw = 8 }
+			else if (st == "none") { g = "·"; w = "-"; c = "2"; dw = 3 }
+			else if (merged) { g = "?"; w = "merged"; c = "2"; dw = 8 }
+			else { g = "?"; w = "…"; c = "2"; dw = 3 }
+			pad = ""
+			for (i = dw; i < W; i++) pad = pad " "
+			tok = E c "m" g " " w R pad
+
+			# Trailing local flags (glyph + colour); truncatable detail.
+			m = ""; sep = ""
 			for (i = 1; i <= pn; i++)
-				if (pc[i] == $1 || index(pc[i], $1 "/") == 1) {
-					m = "\033[34mopen\033[0m"
-					break
+				if (pc[i] == path || index(pc[i], path "/") == 1) {
+					m = E "34m◉ live" R; sep = " "; break
 				}
-			for (f = 4; f <= NF; f++)
-				if ($f != "")
-					m = m (m == "" ? "" : " ") "\033[" col[f] "m" $f "\033[0m"
+			if (dirty) { m = m sep E "31m● dirty" R; sep = " " }
+			if (ahead > 0) { m = m sep E "33m↑" ahead R; sep = " " }
+			if (behind > 0) { m = m sep E "35m↓" behind R; sep = " " }
+
 			nr++
-			paths[nr] = $1; repos[nr] = $2; branches[nr] = $3; marks[nr] = m
-			if (length($2) > rw) rw = length($2)
-			if (length($3) > bw) bw = length($3)
+			paths[nr] = path; repos[nr] = repo; prtok[nr] = tok
+			branches[nr] = branch; flags[nr] = m
+			if (length(repo) > rw) rw = length(repo)
+			if (length(branch) > bw) bw = length(branch)
 		}
 		END {
-			fmt = "%s\t%-" rw "s  %-" bw "s  %s\n"
+			fmt = "%s\t%-" rw "s  %s  %-" bw "s  %s\n"
 			for (i = 1; i <= nr; i++)
-				printf fmt, paths[i], repos[i], branches[i], marks[i]
+				printf fmt, paths[i], repos[i], prtok[i], branches[i], flags[i]
 		}')
 	out=$(printf '%s\n' "$display" |
 		fzf --reverse --ansi \

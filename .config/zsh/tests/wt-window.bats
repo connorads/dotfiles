@@ -159,13 +159,16 @@ printf 'ctrl-x\n%s\n' "$FZF_SELECT"
 EOF
 }
 
-@test "pick rows carry repo column and status markers" {
+@test "pick rows carry repo, a fixed PR-state column, then branch and flags" {
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
+printf 'wt-status %s\n' "$*" >>"$TEST_LOG"
 cat <<'JSON'
 [
-  {"path":"/tmp/x/.trees/beta/fix","branch":"fix","dirty":false,"untracked":false,"ahead":2,"behind":1,"merged_into_base":true},
-  {"path":"/tmp/x/.trees/alpha/feat","branch":"feat","dirty":false,"untracked":true,"ahead":0,"merged_into_base":false}
+  {"path":"/tmp/x/.trees/delta/rebased","branch":"rebased","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"MERGED","pr_number":966},
+  {"path":"/tmp/x/.trees/gamma/keep","branch":"keep","dirty":true,"untracked":false,"ahead":1,"behind":0,"merged_into_base":true,"pr_state":"MERGED","pr_number":42},
+  {"path":"/tmp/x/.trees/beta/wip","branch":"wip","dirty":false,"untracked":false,"ahead":2,"behind":1,"merged_into_base":false,"pr_state":"OPEN","pr_number":7},
+  {"path":"/tmp/x/.trees/alpha/feat","branch":"feat","dirty":false,"untracked":true,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}
 ]
 JSON
 EOF
@@ -180,19 +183,54 @@ EOF
   run "$WT_WINDOW" pick
 
   [ "$status" -eq 0 ]
+  # wt-status is queried for the real (squash/rebase-aware) PR signal.
+  grep -q -- "wt-status --all --pr --json" "$TEST_LOG"
   # Markers are ANSI-coloured; strip codes for the layout assertions.
   sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
-  # Sorted by repo: alpha first although wt-status emitted beta first.
+  # Sorted by repo: alpha first although wt-status emitted it last.
   head -1 "$HOME/fzf-plain" | grep -q "alpha"
-  # Hidden path field 1, then repo + branch display columns.
+  # Hidden path field 1, then repo, then the PR verdict ahead of branch.
   grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/fzf-plain"
-  # open (pane inside the tree) + dirty (untracked counts as dirty).
-  grep -Eq 'alpha +feat +open dirty$' "$HOME/fzf-plain"
-  grep -Eq 'beta +fix +merged ahead 2 behind 1$' "$HOME/fzf-plain"
-  # dirty renders red; fzf is told to interpret colours and show a preview.
-  grep -q $'\x1b\\[31mdirty' "$HOME/fzf-input"
+  # MERGED + clean + not-ahead → reap; PR token sits before the branch.
+  grep -Eq 'delta +✓ reap +rebased' "$HOME/fzf-plain"
+  # MERGED + dirty/unpushed → merged (not reap), local flags trail.
+  grep -Eq 'gamma +✓ merged +keep +● dirty ↑1$' "$HOME/fzf-plain"
+  # OPEN state, with ahead/behind flags trailing after the branch.
+  grep -Eq 'beta +○ open +wip +↑2 ↓1$' "$HOME/fzf-plain"
+  # No PR → the "-" verdict; live pane (inside the tree) leads the flags,
+  # ahead of the dirty marker (untracked counts as dirty).
+  grep -Eq 'alpha +· - +feat +◉ live ● dirty$' "$HOME/fzf-plain"
+  # reap renders bright-green; fzf interprets colours and shows a preview.
+  grep -q $'\x1b\\[92m✓ reap' "$HOME/fzf-input"
   grep -q -- "--ansi" "$TEST_LOG"
   grep -q -- "--preview" "$TEST_LOG"
+}
+
+@test "pick degrades to the local merged hint when PR state is unknown" {
+  # Offline / no gh: wt-status --pr yields pr_state=unknown; the picker falls
+  # back to the local merged_into_base ancestry hint rather than crashing.
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+cat <<'JSON'
+[
+  {"path":"/tmp/x/.trees/repo/anc","branch":"anc","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":true,"pr_state":"unknown","pr_number":null},
+  {"path":"/tmp/x/.trees/repo/live","branch":"live","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"unknown","pr_number":null}
+]
+JSON
+EOF
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >>"$HOME/fzf-input"
+exit 130
+EOF
+
+  run "$WT_WINDOW" pick
+
+  [ "$status" -eq 0 ]
+  sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
+  # merged_into_base → "? merged" hint; otherwise "? …".
+  grep -Eq 'repo +\? merged +anc' "$HOME/fzf-plain"
+  grep -Eq 'repo +\? … +live' "$HOME/fzf-plain"
 }
 
 @test "pick with no managed worktrees soft-fails before fzf" {
