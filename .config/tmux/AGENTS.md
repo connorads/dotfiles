@@ -22,6 +22,12 @@ the keybinds section in [`tmux.conf`](./tmux.conf)):
 - Occasional utilities that each ran at ~0 tracked uses live in the `prefix + T`
   Tools launcher ([`tools.tsv`](./tools.tsv)), not a key each.
 
+Pick a free key with `tmux-freekeys`, the free-key/conflict advisor: it
+reports free vs used keys per table against the *running* server, so it sees
+plugin-injected binds a tmux.conf grep can't, and flags terminal aliasing
+(`C-i≡Tab`, `C-m≡Enter`, `C-h≡BSpace`, `C-[≡Escape`). `tmux-freekeys check <key>
+[table]` answers "is this taken, and by what?".
+
 Verify a binding before committing: live-test on a throwaway server
 (`tmux -L test new-session -d; tmux -L test source-file <(grep '^bind ...' tmux.conf); tmux -L test list-keys -T prefix | grep '<desc>'`),
 or `tmux source-file ~/.config/tmux/tmux.conf` to reload the running server.
