@@ -1,6 +1,12 @@
 [settings]
 experimental = true
 npm.package_manager = "aube"
+# `mise run` must not converge the global toolset as a side effect: a stale
+# mise.lock (pulled from another machine) otherwise blocks every task on
+# registry access, which hard-fails in sandboxed agent sessions (aube does
+# its own DNS over UDP:53, which the sandbox denies). Tasks run with the
+# tools already installed; provisioning stays with `up` / `mise install`.
+task.run_auto_install = false
 # Prefer prebuilt binaries; compile-from-source fails on NixOS (no FHS toolchain)
 node.compile = false
 python.compile = false
