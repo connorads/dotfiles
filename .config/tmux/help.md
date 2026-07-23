@@ -83,7 +83,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff |
-| `Ctrl+b Alt+g` | GitHub triage (ghfzf: PRs, issues, Actions runs) |
+| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
 | `Ctrl+b f` | Fresh editor |
