@@ -5,6 +5,9 @@ agent's native launch form, resolving secrets fresh at launch. It is MCP-only:
 it does not select accounts/profiles, it inherits ambient env (e.g.
 `CLAUDE_CONFIG_DIR` set by `ccp`).
 
+Account + bundle are picked together via [`ccp --mcp <bundle>`](#account-aware-launch-ccp---mcp)
+(the engine) and the tmux `prefix + Alt+c` launcher.
+
 CLI: [`~/.config/zsh/functions/agents/mcpz`](../zsh/functions/agents/mcpz)
 (dual-mode, on PATH as `mcpz`). Tests:
 [`~/.config/zsh/tests/mcpz.bats`](../zsh/tests/mcpz.bats).
@@ -111,6 +114,30 @@ target (pure over the registry); `run` and the picker are smoke-only.
 reads persisted config, so verify connection with a live session (Claude
 `-d --debug-file <log>` connection logs are the reliable signal).
 
+## Account-aware launch (`ccp --mcp`)
+
+Each client engagement lives in its own `ccp` Claude profile, so picking a
+client means picking **account + bundle together**. `mcpz` stays MCP-only; `ccp`
+owns account isolation and delegates the MCP wiring to `mcpz`.
+
+- `ccp [<acct>] --mcp <bundle>` ([`~/.config/zsh/functions/ccp`](../zsh/functions/ccp)):
+  `--mcp` is accepted before or after the account name. `ccp` keeps owning
+  isolation (`CLAUDE_CONFIG_DIR`, auth-scrub, materialise, `claude-launch-flags`)
+  and runs `mcpz run claude <bundle> -- <inject> <args>` for the terminal exec.
+  For a named account this happens inside `claude-code-profile`'s scrubbed,
+  relocated `env`, so `mcpz` resolves secrets there and execs claude with the
+  scrub + `CLAUDE_CONFIG_DIR` + secret vars inherited. `--strict-mcp-config`
+  keeps the inline bundle authoritative, and `claude-profile-materialise` never
+  writes MCP config, so there is zero conflict. An unknown bundle makes `mcpz`
+  exit `2` and `ccp` propagates it.
+- tmux `prefix + Alt+c` ([`~/.config/tmux/scripts/mcp-launch.sh`](../tmux/scripts/mcp-launch.sh)):
+  pick account → pick bundle → launch claude in a **new window** via
+  `ccp <acct> --mcp <bundle>`. A fresh window can't inherit the origin pane's
+  `CLAUDE_CONFIG_DIR`, so the account is chosen explicitly - isolation intact.
+- Scope: the flow is claude-account-aware. codex/opencode have no ccp-style
+  profiles - the bare `mcpz` picker (bundle → agent → run) launches them from
+  any shell. A multi-agent tmux launcher is an easy extension, not built.
+
 ## Verify changes
 
 ```bash
@@ -120,7 +147,6 @@ mcpz render claude <bundle> | sed -n 2p | jq .   # eyeball the generated config
 
 ## Follow-ups (not v1)
 
-Renderers for the other MCP-capable tools (schema already covers them);
-optional `ccp --mcp <bundle>` integration; a real `mcpz doctor`; tool-filter
-and timeout fields; a documented Codex `-p <bundle>` file fallback if `-c`
-quoting ever proves too brittle for stdio arrays/tables.
+Renderers for the other MCP-capable tools (schema already covers them); a real
+`mcpz doctor`; tool-filter and timeout fields; a documented Codex `-p <bundle>`
+file fallback if `-c` quoting ever proves too brittle for stdio arrays/tables.
