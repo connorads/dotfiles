@@ -1,0 +1,289 @@
+#!/usr/bin/env zsh
+# mcpz: render+launch MCP bundles for coding agents
+# usage: mcpz <list|show|render|run|pick|doctor> [args]
+#   list [--json]                  list bundle names
+#   show <bundle>                  servers in a bundle (secrets redacted)
+#   render <agent> <bundle>        print launch form (secrets as ${VAR} refs)
+#   run <agent> <bundle> [-- ...]  resolve secrets, exec agent with the bundle
+#   (bare, on a TTY)               fzf-pick bundle + agent, then run
+#   agent: claude|cc · codex · opencode|oc
+#
+# The registry (gitignored, the only place client names/URLs live) is at
+# $MCPZ_REGISTRY, default ~/.config/mcp/registry.local.json. See
+# ~/.config/mcp/AGENTS.md for the schema and design.
+emulate -L zsh
+setopt pipefail
+
+_mcpz_usage() {
+  cat <<'EOF'
+Usage: mcpz <command> [args]
+
+  list [--json]                  list bundle names
+  show <bundle>                  servers in a bundle (secrets redacted)
+  render <agent> <bundle>        print launch form (secrets as ${VAR} refs)
+  run <agent> <bundle> [-- ...]  resolve secrets, exec agent with the bundle
+  pick                           fzf-pick bundle + agent, then run (bare on a TTY)
+  doctor                         warn if a client server leaked into a base config
+
+Agents: claude|cc, codex, opencode|oc
+
+Registry: $MCPZ_REGISTRY (default ~/.config/mcp/registry.local.json), gitignored.
+EOF
+}
+
+_mcpz_regfile() {
+  local f="${MCPZ_REGISTRY:-$HOME/.config/mcp/registry.local.json}"
+  if [[ ! -f $f ]]; then
+    print -u2 "error: registry not found: $f"
+    print -u2 "hint: cp ~/.config/mcp/registry.example.json \"$f\" and edit"
+    return 1
+  fi
+  print -r -- "$f"
+}
+
+_mcpz_bundle_ok() {
+  local reg=$1 b=$2
+  jq -e --arg b "$b" '.bundles | has($b)' "$reg" >/dev/null 2>&1
+}
+
+# --- list ---
+
+_mcpz_list() {
+  local reg; reg=$(_mcpz_regfile) || return 1
+  if [[ ${1:-} == --json ]]; then
+    jq '.bundles | keys' "$reg"
+  else
+    jq -r '.bundles | keys[]' "$reg"
+  fi
+}
+
+# --- show (human, secrets redacted) ---
+
+_mcpz_show() {
+  local reg; reg=$(_mcpz_regfile) || return 1
+  local b=${1:-}
+  [[ -n $b ]] || { print -u2 "error: show requires a bundle name"; return 2; }
+  _mcpz_bundle_ok "$reg" "$b" || { print -u2 "error: unknown bundle '$b'"; return 2; }
+  jq -r --arg b "$b" '
+    .bundles[$b].servers | to_entries[] |
+    "server: " + .key,
+    "  transport: " + (.value.transport // "?"),
+    (if .value.url then "  url: " + .value.url else empty end),
+    (if .value.command then "  command: " + (.value.command | if type=="array" then join(" ") else . end) else empty end),
+    (if .value.args then "  args: " + (.value.args | join(" ")) else empty end),
+    (if .value.bearer then "  bearer: [redacted]" else empty end),
+    (if .value.headers then (.value.headers | keys[] | "  header: " + . + ": [redacted]") else empty end),
+    (if .value.env then (.value.env | keys[] | "  env: " + .) else empty end),
+    (if .value.secrets then (.value.secrets | keys[] | "  secret: " + .) else empty end)
+  ' "$reg"
+}
+
+# --- render (pure over the registry; secrets shown as ${VAR} refs) ---
+
+# Claude Code: inline JSON {"mcpServers":{…}}, ${VAR} expanded from env at launch.
+_mcpz_claude_json() {
+  local reg=$1 b=$2
+  jq -c --arg b "$b" '
+    def refval: if type=="object" and has("secret") then "${" + .secret + "}" else . end;
+    .bundles[$b].servers | map_values(
+      (if (.command|type)=="array" then .command[0] else .command end) as $cmd
+      | ((if (.command|type)=="array" then .command[1:] else [] end) + (.args // [])) as $cargs
+      | if .transport=="http" then
+          ( ((.headers // {}) | map_values(refval))
+            + (if .bearer then {Authorization: ("Bearer " + (.bearer|refval))} else {} end)
+          ) as $h
+          | {type:"http", url:.url}
+            + (if ($h|length)>0 then {headers:$h} else {} end)
+        else
+          {type:"stdio", command:$cmd}
+          + (if ($cargs|length)>0 then {args:$cargs} else {} end)
+          + (if .env then {env:(.env|map_values(refval))} else {} end)
+        end
+    ) | {mcpServers: .}
+  ' "$reg"
+}
+
+_mcpz_render_claude() {
+  local reg=$1 b=$2 json
+  json=$(_mcpz_claude_json "$reg" "$b") || return 1
+  print -r -- "--mcp-config"
+  print -r -- "$json"
+  print -r -- "--strict-mcp-config"
+}
+
+# Codex: NUL-delimited `-c key=value` args (TOML values), layered onto base.
+_mcpz_codex_kv() {
+  local reg=$1 b=$2
+  jq -j --arg b "$b" '
+    def q: @json;
+    [ .bundles[$b].servers | to_entries[] | .key as $n | .value as $s |
+      if $s.transport=="http" then
+        ("mcp_servers." + $n + ".url=" + ($s.url|q)),
+        (if ($s.bearer|type)=="object" and ($s.bearer|has("secret"))
+           then ("mcp_servers." + $n + ".bearer_token_env_var=" + ($s.bearer.secret|q)) else empty end),
+        (if $s.headers then ($s.headers | to_entries[] |
+           if (.value|type)=="object" and (.value|has("secret"))
+           then ("mcp_servers." + $n + ".env_http_headers." + .key + "=" + (.value.secret|q))
+           else ("mcp_servers." + $n + ".http_headers." + .key + "=" + (.value|q)) end)
+         else empty end)
+      else
+        ("mcp_servers." + $n + ".command=" + ((if ($s.command|type)=="array" then $s.command[0] else $s.command end)|q)),
+        (((if ($s.command|type)=="array" then $s.command[1:] else [] end) + ($s.args // [])) as $a
+         | if ($a|length)>0 then ("mcp_servers." + $n + ".args=" + ($a|q)) else empty end),
+        (if $s.env then ("mcp_servers." + $n + ".env=" +
+           "{ " + ([$s.env | to_entries[] | .key + " = " +
+             ((if (.value|type)=="object" and (.value|has("secret")) then ("${" + .value.secret + "}") else .value end)|q)]
+            | join(", ")) + " }")
+         else empty end)
+      end
+    ] | .[] + "\u0000"
+  ' "$reg"
+}
+
+_mcpz_render_codex() {
+  local reg=$1 b=$2 kv
+  while IFS= read -r -d '' kv; do
+    print -r -- "-c"
+    print -r -- "$kv"
+  done < <(_mcpz_codex_kv "$reg" "$b")
+}
+
+# OpenCode: {"mcp":{…}} written to one ephemeral file, {env:VAR} refs.
+_mcpz_opencode_json() {
+  local reg=$1 b=$2
+  jq -c --arg b "$b" '
+    def refval: if type=="object" and has("secret") then "{env:" + .secret + "}" else . end;
+    .bundles[$b].servers | map_values(
+      ( (if (.command|type)=="array" then .command
+         elif .command then [.command] else [] end) + (.args // []) ) as $cmdarr
+      | if .transport=="http" then
+          ( ((.headers // {}) | map_values(refval))
+            + (if .bearer then {Authorization: ("Bearer " + (.bearer|refval))} else {} end)
+          ) as $h
+          | {type:"remote", url:.url, enabled:true}
+            + (if ($h|length)>0 then {headers:$h} else {} end)
+        else
+          {type:"local", command:$cmdarr, enabled:true}
+          + (if .env then {environment:(.env|map_values(refval))} else {} end)
+        end
+    ) | {mcp: .}
+  ' "$reg"
+}
+
+_mcpz_render_opencode() {
+  local reg=$1 b=$2 json
+  json=$(_mcpz_opencode_json "$reg" "$b") || return 1
+  print -r -- "OPENCODE_DISABLE_PROJECT_CONFIG=1"
+  print -r -- "OPENCODE_CONFIG=<written at launch>"
+  print -r -- "$json"
+}
+
+_mcpz_render() {
+  local agent=${1:-} b=${2:-}
+  [[ -n $agent && -n $b ]] || { print -u2 "error: render requires <agent> <bundle>"; return 2; }
+  local reg; reg=$(_mcpz_regfile) || return 1
+  _mcpz_bundle_ok "$reg" "$b" || { print -u2 "error: unknown bundle '$b'"; return 2; }
+  case $agent in
+    claude|cc)   _mcpz_render_claude "$reg" "$b" ;;
+    codex)       _mcpz_render_codex "$reg" "$b" ;;
+    opencode|oc) _mcpz_render_opencode "$reg" "$b" ;;
+    *) print -u2 "error: unknown agent '$agent' (claude|codex|opencode)"; return 2 ;;
+  esac
+}
+
+# --- run (resolve secrets → env → exec) ---
+
+_mcpz_resolve_secrets() {
+  local reg=$1 b=$2 name kind spec val
+  while IFS=$'\t' read -r name kind spec; do
+    [[ -z $name ]] && continue
+    case $kind in
+      cmd)     val=$(eval "$spec") ;;
+      env)     val=${(P)spec} ;;
+      file)    val=$(<"${~spec}") ;;
+      literal) val=$spec ;;
+      *) print -u2 "error: unknown secret producer '$kind' for $name"; return 1 ;;
+    esac
+    if [[ -z $val ]]; then
+      print -u2 "error: secret '$name' resolved empty"
+      return 1
+    fi
+    export "$name=$val"
+  done < <(jq -r --arg b "$b" '
+    .bundles[$b].servers | to_entries[] | (.value.secrets // {}) | to_entries[] |
+    [ .key, (.value|keys[0]), (.value|to_entries[0].value) ] | @tsv
+  ' "$reg")
+}
+
+_mcpz_run() {
+  local agent=${1:-} b=${2:-}
+  [[ -n $agent && -n $b ]] || { print -u2 "error: run requires <agent> <bundle>"; return 2; }
+  shift 2
+  [[ ${1:-} == -- ]] && shift
+  local reg; reg=$(_mcpz_regfile) || return 1
+  _mcpz_bundle_ok "$reg" "$b" || { print -u2 "error: unknown bundle '$b'"; return 2; }
+  _mcpz_resolve_secrets "$reg" "$b" || return 1
+  case $agent in
+    claude|cc)
+      local json; json=$(_mcpz_claude_json "$reg" "$b") || return 1
+      exec claude --mcp-config "$json" --strict-mcp-config "$@"
+      ;;
+    codex)
+      local -a cargs=(); local kv
+      while IFS= read -r -d '' kv; do cargs+=(-c "$kv"); done < <(_mcpz_codex_kv "$reg" "$b")
+      exec codex "${cargs[@]}" "$@"
+      ;;
+    opencode|oc)
+      local dir="${XDG_RUNTIME_DIR:-$TMPDIR}/mcpz"
+      mkdir -p "$dir" && chmod 700 "$dir" 2>/dev/null
+      local f; f=$(mktemp "$dir/${b}.XXXXXX.json") || return 1
+      _mcpz_opencode_json "$reg" "$b" > "$f" || return 1
+      export OPENCODE_CONFIG="$f" OPENCODE_DISABLE_PROJECT_CONFIG=1
+      exec opencode "$@"
+      ;;
+    *) print -u2 "error: unknown agent '$agent' (claude|codex|opencode)"; return 2 ;;
+  esac
+}
+
+# --- pick (bare, TTY) ---
+
+_mcpz_pick() {
+  command -v fzf >/dev/null 2>&1 || { print -u2 "error: fzf required for interactive pick"; return 1; }
+  local reg; reg=$(_mcpz_regfile) || return 1
+  local bundle agent
+  bundle=$(_mcpz_list | fzf --reverse --prompt='bundle> ' \
+    --preview 'mcpz show {}' --preview-window=right:60%) || return 130
+  [[ -z $bundle ]] && return 130
+  agent=$(print -l claude codex opencode | fzf --reverse --prompt='agent> ') || return 130
+  [[ -z $agent ]] && return 130
+  _mcpz_run "$agent" "$bundle"
+}
+
+# --- doctor (leak guard; fuller implementation is a follow-up) ---
+
+_mcpz_doctor() {
+  print -u2 "doctor: not implemented yet - asserts no client server leaked into an agent base/global config"
+  return 0
+}
+
+# --- dispatch ---
+
+local sub=""
+if [[ $# -gt 0 ]]; then
+  sub=$1; shift
+elif [[ -t 0 && -t 1 ]]; then
+  sub=pick
+else
+  sub=list
+fi
+
+case $sub in
+  list)           _mcpz_list "$@" ;;
+  show)           _mcpz_show "$@" ;;
+  render)         _mcpz_render "$@" ;;
+  run)            _mcpz_run "$@" ;;
+  pick)           _mcpz_pick ;;
+  doctor)         _mcpz_doctor ;;
+  help|-h|--help) _mcpz_usage ;;
+  *) print -u2 "error: unknown subcommand '$sub'"; _mcpz_usage; return 2 ;;
+esac

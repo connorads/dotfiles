@@ -213,6 +213,12 @@
 !/.config/micro/colorschemes/
 !/.config/micro/colorschemes/**
 
+# mcp: track the example registry + subsystem doc only; registry.local.json
+# (the only place client names/URLs live) stays ignored by the /.config/** rule.
+!/.config/mcp/
+!/.config/mcp/registry.example.json
+!/.config/mcp/AGENTS.md
+
 !/.config/mise/
 !/.config/mise/**
 

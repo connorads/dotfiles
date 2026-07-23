@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "bundles": {
+    "example-http": {
+      "servers": {
+        "demo": {
+          "transport": "http",
+          "url": "https://mcp.example.test/toolkits/demo",
+          "bearer": { "secret": "DEMO_TOKEN" },
+          "secrets": {
+            "DEMO_TOKEN": { "cmd": "printf %s fake_token" }
+          }
+        }
+      }
+    },
+    "example-stdio": {
+      "servers": {
+        "files": {
+          "transport": "stdio",
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+          "env": { "FS_ROOT": "/tmp" }
+        }
+      }
+    }
+  }
+}
