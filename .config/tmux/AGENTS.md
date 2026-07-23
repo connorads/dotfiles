@@ -222,6 +222,22 @@ as `CLAUDE_CONFIG_DIR=<dir> claude <source-flags> -r <sid> --fork-session` (tmux
 panes don't inherit the source pane's env), so a branched pane runs under the
 same account as its source rather than silently reverting to `~/.claude`.
 
+The branch menu can also **fork into a *different* account** ("Fork → other
+ACCOUNT"), to shift billing or dodge a rate limit mid-chat. Because the
+transcript carries no auth and each config dir owns its own
+`projects/<slug>/<sid>.jsonl` tree, this is: pick a target account (fzf over
+`account_candidates`, the source excluded), copy the source transcript into the
+target's `projects/<slug>/` (`relocate_transcript`), materialise the target
+profile's shared config, then fork under it with `CLAUDE_CONFIG_DIR=<target>`.
+Native `--fork-session` reads the copied `<sid>` under the target dir and mints a
+fresh id there, so **the origin is left running untouched under the source
+account** - different files in different config dirs, no session-lock conflict.
+The slug maths / candidate listing / copy are the executable-free
+[`scripts/lib/claude-account.sh`](./scripts/lib/claude-account.sh)
+(`claude_account_slug` mirrors `project_slug` in `claude-session-resolve.py`).
+The copied base transcript lingers harmlessly as a branch-point session under
+the target account.
+
 The fork also **mirrors the source pane's launch flags** (append, model, perm
 mode), read from its live argv (`ps -o args=`) through the same
 `resurrect_argv_claude_flags` the restore path uses - so a fork of a non-yolo `c`

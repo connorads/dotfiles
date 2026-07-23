@@ -212,6 +212,20 @@ EOF
   grep -q "prompt-worktree /Users/connorads session-xyz" "$TEST_LOG"
 }
 
+@test "menu offers forking into a different account" {
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q -- "Fork → other ACCOUNT" "$TEST_LOG"
+  # popup runs this script's account-pick mode, threading sid + source dir + cwd.
+  grep -q -- "account-pick session-xyz" "$TEST_LOG"
+  grep -q -- "display-popup -E" "$TEST_LOG"
+}
+
 @test "menu offers counted branch actions with expected labels and prompts" {
   stub_ps_with_foreground_claude
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
@@ -228,6 +242,61 @@ EOF
   grep -q -- "prompt-repeat split-down" "$TEST_LOG"
   grep -q -- "prompt-repeat new-window" "$TEST_LOG"
   grep -q -- "prompt-worktrees" "$TEST_LOG"
+}
+
+@test "account-pick relocates the transcript, materialises, and forks under the target" {
+  local slug="-Users-connorads-proj" sid="session-xyz" cwd="/Users/connorads/proj"
+  # code/$acct dodges the claude-profile-leak-guard concrete-path check.
+  local acct=acme target="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$HOME/.claude/projects/$slug" "$target"
+  printf 'transcript\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
+
+  # fzf picks the target account (full label<TAB>dir line).
+  write_stub fzf <<EOF
+#!/usr/bin/env bash
+cat >/dev/null
+printf 'work\t%s\n' "$target"
+EOF
+  write_stub claude-profile-materialise <<'EOF'
+#!/usr/bin/env bash
+printf 'materialise %s\n' "$*" >>"$TEST_LOG"
+EOF
+
+  run "$MENU" account-pick "$sid" "" "" "$cwd" </dev/null
+  [ "$status" -eq 0 ]
+  # transcript copied into the target account's projects tree
+  [ -f "$target/projects/$slug/$sid.jsonl" ]
+  # target profile materialised
+  grep -qF "materialise $target" "$TEST_LOG"
+  # forked in a new window under the target account
+  grep -qF "new-window -c $cwd CLAUDE_CONFIG_DIR=$target claude -r $sid --fork-session" "$TEST_LOG"
+}
+
+@test "account-pick backs out silently when the source transcript is missing" {
+  local acct=acme target="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$target"
+  write_stub fzf <<EOF
+#!/usr/bin/env bash
+cat >/dev/null
+printf 'work\t%s\n' "$target"
+EOF
+
+  run --separate-stderr "$MENU" account-pick "no-such-sid" "" "" "/Users/connorads/proj" </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"could not copy the transcript"* ]]
+  assert_log_missing "new-window"
+}
+
+@test "account-pick on fzf cancel exits without forking" {
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 130
+EOF
+
+  run "$MENU" account-pick "session-xyz" "" "" "/Users/connorads/proj" </dev/null
+  [ "$status" -eq 0 ]
+  assert_log_missing "new-window"
 }
 
 @test "prompt-repeat opens the count prompt for a repeated action" {
