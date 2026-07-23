@@ -1,0 +1,215 @@
+#!/usr/bin/env zsh
+# wt-clean: reap merged/stale worktrees for a repo
+# usage: wt-clean [--all] [--include-closed] [--force] [--yes|-y] [--dry-run] [--no-disk] [--json]
+emulate -L zsh
+_wt_common_dir="${${functions_source[wt-clean]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_wt_common_dir/_wt-common"
+
+local all=0 include_closed=0 force=0 yes=0 dry_run=0 json=0 no_disk=0
+
+while (( $# )); do
+  case $1 in
+    -h|--help)
+      echo "usage: wt-clean [--all] [--include-closed] [--force] [--yes|-y] [--dry-run] [--no-disk] [--json]" >&2
+      return 0 ;;
+    --all)            all=1; shift ;;
+    --include-closed) include_closed=1; shift ;;
+    --force)          force=1; shift ;;
+    -y|--yes)         yes=1; shift ;;
+    --dry-run)        dry_run=1; shift ;;
+    --no-disk)        no_disk=1; shift ;;
+    --json)           json=1; shift ;;
+    -*)               echo "error: unknown flag $1" >&2; return 1 ;;
+    *)                echo "error: unexpected argument: $1" >&2; return 1 ;;
+  esac
+done
+
+# --json is a preview format; it never removes.
+(( json )) && dry_run=1
+
+# Scope: current repo by default, every managed repo with --all. The scope key is
+# a repo's git common dir, shared by all its worktrees.
+local current_path="" scope_key=""
+current_path=$(_wt_current_path 2>/dev/null)
+if (( ! all )); then
+  if [[ -z "$current_path" ]]; then
+    echo "error: not in a git repository (use --all to sweep every repo)" >&2
+    return 1
+  fi
+  scope_key=$(git -C "$current_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || {
+    echo "error: unable to resolve repo for: $current_path" >&2
+    return 1
+  }
+fi
+
+local status_json
+status_json=$(wt-status --all --pr --json) || {
+  echo "error: wt-status failed" >&2
+  return 1
+}
+
+# Rows: path, branch, dirty, untracked, conflicted, ahead, behind, pr_state, pr_number, pr_url
+local rows
+rows=$(printf '%s' "$status_json" | jq -r '
+  .[] | [
+    .path, .branch,
+    (.dirty|tostring), (.untracked|tostring), (.conflicted|tostring),
+    (.ahead|tostring), (.behind|tostring),
+    .pr_state, (.pr_number // "" | tostring), (.pr_url // "")
+  ] | @tsv')
+
+# Candidate records (TSV): path, branch, pr_state, pr_number, reclaimable, eligible(0/1), reason
+typeset -a candidates=()
+
+# `path` is a zsh special (tied to $PATH); use wt_path for the worktree path.
+local wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url
+while IFS=$'\t' read -r wt_path branch dirty untracked conflicted ahead behind pr_state pr_number pr_url; do
+  [[ -n "$wt_path" ]] || continue
+
+  # Scope filter: skip worktrees outside the current repo unless --all.
+  if (( ! all )); then
+    local wk
+    wk=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+    [[ "$wk" == "$scope_key" ]] || continue
+  fi
+
+  # Never reap the current worktree.
+  [[ -n "$current_path" ]] && _wt_same_path "$wt_path" "$current_path" && continue
+
+  # Never reap a worktree sitting on its repo's base branch.
+  local base
+  base=$(_wt_resolve_base "$wt_path" "" 2>/dev/null)
+  [[ -n "$base" && "$branch" == "$base" ]] && continue
+
+  # PR-state eligibility: MERGED always; CLOSED only with --include-closed.
+  # OPEN / none / unknown are always spared.
+  local pr_eligible=0
+  if [[ "$pr_state" == "MERGED" ]]; then
+    pr_eligible=1
+  elif [[ "$pr_state" == "CLOSED" ]] && (( include_closed )); then
+    pr_eligible=1
+  fi
+  (( pr_eligible )) || continue
+
+  # Safety filter: unsaved or unpushed work blocks removal unless --force.
+  local reason=""
+  if [[ "$conflicted" == true ]]; then
+    reason="conflicted"
+  elif [[ "$dirty" == true ]]; then
+    reason="dirty"
+  elif [[ "$untracked" == true ]]; then
+    reason="untracked"
+  elif [[ "$ahead" != 0 && -n "$ahead" ]]; then
+    reason="unpushed ($ahead ahead)"
+  fi
+
+  local eligible=1
+  [[ -n "$reason" ]] && (( ! force )) && eligible=0
+
+  # Disk size, computed lazily and only for candidates.
+  local reclaimable="-"
+  if (( ! no_disk )); then
+    reclaimable=$(du -sh "$wt_path" 2>/dev/null | awk '{print $1}')
+    [[ -n "$reclaimable" ]] || reclaimable="?"
+  fi
+
+  candidates+=("$wt_path"$'\t'"$branch"$'\t'"$pr_state"$'\t'"$pr_number"$'\t'"$reclaimable"$'\t'"$eligible"$'\t'"$reason")
+done <<< "$rows"
+
+if (( json )); then
+  printf '%s\n' "${(F)candidates}" | jq -R -s '
+    split("\n") | map(select(length > 0)) | map(split("\t"))
+    | map({
+        path: .[0],
+        branch: .[1],
+        pr_state: .[2],
+        pr_number: (if .[3] == "" then null else (.[3] | tonumber) end),
+        reclaimable: .[4],
+        eligible: (.[5] == "1"),
+        blocked_reason: (if .[6] == "" then null else .[6] end)
+      })'
+  return 0
+fi
+
+# Split candidates into removable and blocked for display. Parse via `read`
+# with a tab IFS so empty fields (pr_number, reason) keep their position — zsh's
+# ${(s)} split silently drops empty fields.
+typeset -a removable=() blocked=()
+local rec c_path c_branch c_state c_num c_size c_elig c_reason
+for rec in "${candidates[@]}"; do
+  IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
+  if [[ "$c_elig" == 1 ]]; then
+    removable+=("$rec")
+  else
+    blocked+=("$rec")
+  fi
+done
+
+if (( ${#removable} == 0 && ${#blocked} == 0 )); then
+  echo "Nothing to reap."
+  return 0
+fi
+
+if (( ${#removable} )); then
+  echo "Reap candidates:"
+  for rec in "${removable[@]}"; do
+    IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
+    printf '  %-8s %-6s %6s  %s\n' "$c_state" "#${c_num:-?}" "$c_size" "$c_branch"
+  done
+fi
+
+if (( ${#blocked} )); then
+  echo "Blocked (uncommitted or unpushed work; use --force to include):"
+  for rec in "${blocked[@]}"; do
+    IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
+    printf '  %-8s %-6s %6s  %s  (%s)\n' "$c_state" "#${c_num:-?}" "$c_size" "$c_branch" "$c_reason"
+  done
+fi
+
+if (( ${#removable} == 0 )); then
+  echo "Nothing eligible to reap."
+  return 0
+fi
+
+# Total reclaimable across removable trees.
+local total="?"
+if (( ! no_disk )); then
+  typeset -a rm_paths=()
+  for rec in "${removable[@]}"; do
+    IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
+    rm_paths+=("$c_path")
+  done
+  total=$(du -sch "${rm_paths[@]}" 2>/dev/null | tail -1 | awk '{print $1}')
+  [[ -n "$total" ]] || total="?"
+fi
+
+if (( dry_run )); then
+  echo "Dry run: ${#removable} worktree(s) would be reaped (~${total})."
+  return 0
+fi
+
+if (( ! yes )); then
+  local answer
+  read -r "answer?Reap ${#removable} worktree(s) (~${total})? [y/N] "
+  if [[ "$answer" != [yY] && "$answer" != [yY][eE][sS] ]]; then
+    echo "Aborted."
+    return 1
+  fi
+fi
+
+local -a rm_flags=(--delete-branch --json)
+(( force )) && rm_flags=(--force "${rm_flags[@]}")
+
+local reaped=0
+for rec in "${removable[@]}"; do
+  IFS=$'\t' read -r c_path c_branch c_state c_num c_size c_elig c_reason <<< "$rec"
+  if wt-remove "${rm_flags[@]}" "$c_path" >/dev/null; then
+    (( reaped++ ))
+    echo "reaped: $c_path"
+  else
+    echo "warning: failed to remove $c_path" >&2
+  fi
+done
+
+echo "Reaped ${reaped}/${#removable} worktree(s)."
