@@ -76,6 +76,34 @@ make_repo() {
   [ ! -s "$TEST_LOG" ]
 }
 
+@test "--no-fetch skips remote fetch and still checks out a local branch" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  git -C "$repo" branch topic >/dev/null
+  # A remote that would fail loudly if contacted: the fetch block warns on
+  # failure, so any contact shows up in output.
+  git -C "$repo" remote add origin "$BATS_TEST_TMPDIR/no-such-remote.git"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup --no-fetch topic"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$HOME/.trees/repo/topic"* ]]
+  [[ "$output" != *"fetch failed"* ]]
+  [ -e "$HOME/.trees/repo/topic/.git" ]
+}
+
+@test "without --no-fetch an unreachable remote is contacted and warned about" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  git -C "$repo" branch topic >/dev/null
+  git -C "$repo" remote add origin "$BATS_TEST_TMPDIR/no-such-remote.git"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic 2>&1"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"fetch failed"* ]]
+}
+
 @test "supports slash branch names and json output" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
