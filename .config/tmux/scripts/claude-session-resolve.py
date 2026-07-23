@@ -23,9 +23,14 @@ SESSION_ID_RE = re.compile(
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 
-JsonScalar = str | int | float | bool | None
-JsonValue = JsonScalar | dict[str, "JsonValue"] | list["JsonValue"]
-JsonObject = dict[str, JsonValue]
+# These aliases are quoted strings, not bare `str | int | ...`, because this
+# resolver runs under `env python3` - macOS system python 3.9 whenever mise is
+# not first on PATH (a tmux server started outside a mise context). A bare
+# PEP-604 union is a runtime expression evaluated at import and raises TypeError
+# before 3.10; a string is never evaluated, so it stays 3.9-safe.
+JsonScalar = "str | int | float | bool | None"
+JsonValue = "JsonScalar | dict[str, JsonValue] | list[JsonValue]"
+JsonObject = "dict[str, JsonValue]"
 
 
 @dataclass(frozen=True)
