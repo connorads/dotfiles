@@ -136,6 +136,16 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/quarantine-drift.py"
     }
 
+    // Static guard against self-collision in tmux.conf: a key bound twice in one
+    // key-table (tmux keeps only the last, so the earlier bind is dead) or both
+    // members of a terminal-alias pair (C-i=Tab etc.). Commit-time complement to
+    // the edit-time tmux-freekeys advisor. Self-path in the glob so editing the
+    // checker re-triggers it.
+    ["tmux-bind-lint"] {
+        glob = List(".config/tmux/tmux.conf", ".hk-hooks/tmux-bind-lint.py")
+        check = "python3 .hk-hooks/tmux-bind-lint.py"
+    }
+
     // Keep Claude and OpenCode security denies in lock-step (R6 drift guard).
     // Fires whenever a relevant config, the gh-api gate hook, or the checker
     // itself is staged. Runs from $HOME, so the checker's cwd-relative paths
