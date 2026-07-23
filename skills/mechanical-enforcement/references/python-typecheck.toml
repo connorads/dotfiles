@@ -40,6 +40,10 @@ exclude = [
 # [tool.pyrefly]
 # project-includes = ["src", "tests"]
 # python-version = "3.12"
+# # pyrefly's default `basic` preset does gradual typing and skips the bodies of
+# # unannotated functions, so green can be shallow on untyped code. Set this to
+# # check those bodies without forcing annotations - a meaningful gate:
+# untyped-def-behavior = "check-and-infer-return-type"
 
 # ty is faster still and fits the uv/ruff ecosystem, but upstream treats it as
 # beta/0.0.x with explicitly-unstable diagnostics — watch/advisory only, do not

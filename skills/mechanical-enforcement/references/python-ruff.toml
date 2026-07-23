@@ -19,6 +19,10 @@ exclude = [
     "build",
     "dist",
 ]
+# Never enable unsafe fixes in hooks or CI. Use `ruff check --unsafe-fixes` only
+# as a reviewed one-off when accepting semantic rewrites deliberately. This is a
+# top-level `[tool.ruff]` key; ruff rejects it under `[tool.ruff.lint]`.
+unsafe-fixes = false
 
 [tool.ruff.format]
 quote-style = "double"
@@ -46,9 +50,6 @@ ignore = [
     "E501",
 ]
 fixable = ["ALL"]
-# Never enable unsafe fixes in hooks or CI. Use `ruff check --unsafe-fixes`
-# only as a reviewed one-off when accepting semantic rewrites deliberately.
-unsafe-fixes = false
 preview = false
 
 [tool.ruff.lint.per-file-ignores]
