@@ -224,13 +224,14 @@ svc restart <name>     # Restart a service
 svc ui                 # fzf service picker (default in TTY)
 wt-add <branch>        # Create worktree under ~/.trees, run rs, print path (agent-callable)
 wta <branch>           # wt-add + cd into it (human workflow)
-wt-status [path]       # Report worktree status; use --all / --json for agent flows
+wt-status [path]       # Report worktree status; --all / --json for agents; --pr adds real PR state from gh
 wt-publish             # Push current worktree branch and optionally open a PR
 wt-finish --mode local # Merge feature→base, remove worktree, delete branch
 wt-finish --mode pr    # Push + open PR via wt-publish (worktree remains)
+wt-clean [--all]       # Reap worktrees whose PR is MERGED (squash/rebase-aware); spares open/no-PR/dirty/unpushed. Preview+confirm; --dry-run/--json/--force/--include-closed/--yes
 wt-remove [path]       # Non-interactive managed worktree removal primitive
 wti                    # Alias for `wt-status --all`
-wtu                    # Human TUI for opening/finishing/publishing/removing worktrees
+wtu                    # Human TUI: multi-select open/publish/remove; alt-R sweeps merged PRs via wt-clean
 wts                    # fzf switch to a worktree (works outside git repos)
 wt-prune               # Prune stale git worktree metadata after crashes/manual deletes
 wt-repair [path...]    # Repair moved worktree metadata
