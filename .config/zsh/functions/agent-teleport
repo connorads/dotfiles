@@ -15,7 +15,8 @@ emulate -L zsh
 setopt pipefail
 
 local usage="Usage: agent-teleport [--host HOST] [--dest PATH] [--window|--copy]
-                      [--pane %id | --pid PID] [--choose] [--list-hosts]
+                      [--with-tree] [--pane %id | --pid PID] [--choose]
+                      [--list-hosts]
 
 Teleport the live Claude Code or Codex session of a tmux pane to another
 machine: fork the transcript under a fresh session id, ship it over ssh
@@ -26,6 +27,9 @@ machine: fork the transcript under a fresh session id, ship it over ssh
                 target's \$HOME substituted; prompts on a missing guess)
   --window      open a new window in the target's tmux (default)
   --copy        copy the full remote resume command to the clipboard instead
+  --with-tree   also ship the origin git working tree (commit + staged +
+                unstaged + untracked) as a bundle; it lands in a fresh
+                worktree on the target, which becomes the resume cwd
   --pane %id    resolve the agent from this tmux pane
   --pid PID     resolve the agent from this process id
   --choose      pick window/copy interactively (used by the tmux binding)
@@ -252,8 +256,13 @@ if [[ "${1:-}" == "--internal" ]]; then
 fi
 
 local host="" opt_dest="" mode="window" mode_explicit=0 opt_pane="" opt_pid="" opt_choose=0
+local opt_with_tree=0 opt_no_tree=0
 while (($# > 0)); do
   case "$1" in
+  --with-tree)
+    opt_with_tree=1
+    shift
+    ;;
   --host)
     [[ -n "${2:-}" ]] || { print -u2 -- "agent-teleport: --host needs a value"; return 2; }
     host="$2"
@@ -424,6 +433,24 @@ flags_str=$(_atp_lib "$argv_lib" "resurrect_argv_${agent}_flags" "$saved_cmd" 2>
 local -a flags
 flags=(${(z)flags_str})
 
+# ------------------------------------------------------- tree-shipping decision
+
+local is_git=0 is_dirty=0 git_note=""
+if git -C "$origin_cwd" rev-parse --git-dir >/dev/null 2>&1; then
+  is_git=1
+  git_note="$(git -C "$origin_cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)@$(git -C "$origin_cwd" rev-parse --short HEAD 2>/dev/null)"
+  [[ -n $(git -C "$origin_cwd" status --porcelain 2>/dev/null | head -n 1) ]] && is_dirty=1
+fi
+
+local tree_verdict tree_on=0
+tree_verdict=$(_atp_tree_decision "$opt_with_tree" "$opt_no_tree" "$is_git" "$is_dirty" \
+  "$(_atp_picker_ok && print 1 || print 0)")
+if [[ "$tree_verdict" == error ]]; then
+  _atp_die "--with-tree: origin cwd is not a git repository ($origin_cwd)"
+  return 1
+fi
+[[ "$tree_verdict" == on ]] && tree_on=1
+
 # ------------------------------------------------------------------- pick host
 
 if [[ -z "$host" ]]; then
@@ -486,8 +513,21 @@ probe_parts=("test -d ${(q)dest_guess} && echo dest=ok || echo dest=missing")
   probe_parts+=("test -d ${(q)profile_dir_guess} && echo profile=ok || echo profile=missing")
 local vcode="source \"\$HOME/.zshrc\" >/dev/null 2>&1; $agent --version 2>/dev/null"
 probe_parts+=("zsh -c ${(q)vcode} </dev/null 2>/dev/null | head -n 1 | sed 's/^/version=/'")
+if (( tree_on )); then
+  # Tree-landing facts, riding the same round-trip: can the target land a
+  # bundle (git + the dotfiles-shipped wt-add), and which commits does its
+  # repo already have (HEAD + up to 8 branch tips feed the delta bundle).
+  probe_parts+=("command -v git >/dev/null 2>&1 && echo git=ok || echo git=missing")
+  local wcode="source \"\$HOME/.zshrc\" >/dev/null 2>&1; command -v wt-add >/dev/null 2>&1 && echo wtadd=ok || echo wtadd=missing"
+  probe_parts+=("zsh -c ${(q)wcode} </dev/null 2>/dev/null")
+  probe_parts+=("git -C ${(q)dest_guess} rev-parse HEAD 2>/dev/null | sed 's/^/desthead=/'")
+  probe_parts+=("git -C ${(q)dest_guess} for-each-ref --count=8 --format='desttip=%(objectname)' refs/heads 2>/dev/null")
+fi
 
 local probe_out dest_state="" profile_state="" remote_version=""
+local remote_git="" remote_wtadd="" dest_head=""
+local -a dest_tips
+dest_tips=()
 probe_out=$(_atp_ssh "${(j:; :)probe_parts}" 2>/dev/null) ||
   { _atp_die "probe failed on $host"; return 1; }
 for l in ${(f)probe_out}; do
@@ -495,6 +535,10 @@ for l in ${(f)probe_out}; do
   dest=*) dest_state="${l#dest=}" ;;
   profile=*) profile_state="${l#profile=}" ;;
   version=*) remote_version="${l#version=}" ;;
+  git=*) remote_git="${l#git=}" ;;
+  wtadd=*) remote_wtadd="${l#wtadd=}" ;;
+  desthead=*) dest_head="${l#desthead=}" ;;
+  desttip=*) dest_tips+=("${l#desttip=}") ;;
   esac
 done
 
@@ -541,21 +585,116 @@ if [[ -n "$remote_version" ]]; then
   fi
 fi
 
-# ------------------------------------------------------- fork + rewrite locally
+# ---------------------------------------------------- fresh id + local scratch
 
+# Hoisted above the tree phase: the branch name and the fork share one id, and
+# the transcript rewrite depends on the final cwd (the landed worktree path),
+# so the tree must land before the fork is rewritten. One scratch dir holds
+# both the bundle and the forked transcript.
 local scratch newid remote_dir remote_path
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/agent-teleport.XXXXXX") ||
   { _atp_die "mktemp failed"; return 1; }
+if [[ "$agent" == claude ]]; then
+  newid=$(uuidgen | tr '[:upper:]' '[:lower:]')
+else
+  newid=$(_atp_uuid7)
+fi
+
+# -------------------------------------------------------------- ship the tree
+
+local tree_shipped=0 tree_branch="" snap_sha=""
+if (( tree_on )) && [[ "$remote_git" != ok ]]; then
+  _atp_warn "git not found on $host - tree not shipped"
+  tree_on=0
+fi
+if (( tree_on )) && [[ "$remote_wtadd" != ok ]]; then
+  _atp_warn "wt-add not found on $host - tree not shipped"
+  tree_on=0
+fi
+if (( tree_on )); then
+  local origin_repo origin_branch
+  origin_repo=$(git -C "$origin_cwd" rev-parse --show-toplevel 2>/dev/null)
+  origin_branch=$(git -C "$origin_cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  [[ "$origin_branch" == HEAD ]] && origin_branch=""  # detached: id-only name
+  tree_branch=$(_atp_branch_name "$newid" "$origin_branch")
+  snap_sha=$(_atp_snapshot_ref "$origin_repo" "refs/$tree_branch") || snap_sha=""
+  if [[ -z "$snap_sha" ]]; then
+    _atp_warn "could not snapshot the origin tree (no commits yet?) - tree not shipped"
+    tree_on=0
+  fi
+fi
+if (( tree_on )); then
+  local -a prereqs
+  prereqs=(${(f)"$(_atp_bundle_prereqs "$origin_repo" "$dest_head" "${dest_tips[@]}")"})
+  if [[ -n "$dest_head" ]] && (( ${#prereqs} == 0 )); then
+    _atp_warn "repo at $dest_guess on $host shares no history with the origin repo - shipping full history (lands as an orphan branch)"
+  fi
+  # A prereq that already contains the snapshot (clean tree, target in sync)
+  # would make an empty bundle, which git refuses - branch directly instead.
+  local need_bundle=1 pq
+  for pq in "${prereqs[@]}"; do
+    if git -C "$origin_repo" merge-base --is-ancestor "$snap_sha" "$pq" 2>/dev/null; then
+      need_bundle=0
+      break
+    fi
+  done
+  local bundle="$scratch/snapshot.bundle" bundle_ok=1
+  if (( need_bundle )); then
+    # Park the transient ref (snapshot-ref writes it only for a synthetic
+    # commit) so the bundle records the branch name the target fetches.
+    git -C "$origin_repo" update-ref "refs/$tree_branch" "$snap_sha"
+    git -C "$origin_repo" bundle create -q "$bundle" "refs/$tree_branch" \
+      ${prereqs:+--not} "${prereqs[@]}" 2>/dev/null || bundle_ok=0
+  fi
+  git -C "$origin_repo" update-ref -d "refs/$tree_branch" 2>/dev/null || true
+  if (( ! bundle_ok )); then
+    _atp_warn "could not bundle the snapshot - tree not shipped"
+    tree_on=0
+  else
+    # One round-trip: land the snapshot in the target repo, then wt-add
+    # checks out the (now-local) branch in a fresh worktree - additive by
+    # construction, nothing on the target can be clobbered. wt-add prints
+    # the worktree path as its sole stdout line; that becomes the dest.
+    local dest_repo="$dest"
+    # Braces are load-bearing: "$tree_branch:refs" would parse :r as a modifier.
+    local fetch_spec="refs/${tree_branch}:refs/heads/${tree_branch}"
+    local land_code="source \"\$HOME/.zshrc\" >/dev/null 2>&1"
+    if (( need_bundle )); then
+      land_code+="; b=\$(mktemp \"\${TMPDIR:-/tmp}/atp-bundle.XXXXXX\") || exit 1"
+      land_code+="; trap 'rm -f \"\$b\"' EXIT"
+      land_code+="; cat >\"\$b\""
+      land_code+="; git -C ${(q)dest_repo} fetch \"\$b\" ${(q)fetch_spec} >/dev/null 2>&1 || { echo atpland=fetchfail; exit 1; }"
+    else
+      land_code+="; git -C ${(q)dest_repo} branch ${(q)tree_branch} ${(q)snap_sha} >/dev/null 2>&1 || { echo atpland=branchfail; exit 1; }"
+    fi
+    land_code+="; cd ${(q)dest_repo} && wt-add --no-fetch ${(q)tree_branch}"
+    local land_in="$bundle" land_out land_rc=0 wt_dest=""
+    (( need_bundle )) || land_in=/dev/null
+    land_out=$(_atp_ssh "zsh -c ${(q)land_code}" <"$land_in" 2>/dev/null) || land_rc=1
+    for l in ${(f)land_out}; do
+      [[ "$l" == atpland=* ]] && land_rc=1
+      [[ "$l" == /* ]] && wt_dest="${l%$'\r'}"
+    done
+    if (( land_rc )) || [[ -z "$wt_dest" ]]; then
+      _atp_warn "failed to land the tree on $host - resuming in $dest without it"
+      tree_on=0
+    else
+      dest="$wt_dest"
+      tree_shipped=1
+    fi
+  fi
+fi
+
+# ------------------------------------------------------- fork + rewrite locally
+
 local forked="$scratch/forked.jsonl"
 
 if [[ "$agent" == claude ]]; then
-  newid=$(uuidgen | tr '[:upper:]' '[:lower:]')
   _atp_rewrite_claude "$transcript" "$forked" "$newid" "$dest" ||
     { rm -rf "$scratch"; _atp_die "transcript rewrite failed"; return 1; }
   remote_dir="$claude_base/projects/$(_atp_slugify "$dest")"
   remote_path="$remote_dir/$newid.jsonl"
 else
-  newid=$(_atp_uuid7)
   _atp_rewrite_codex "$transcript" "$forked" "$newid" ||
     { rm -rf "$scratch"; _atp_die "rollout rewrite failed"; return 1; }
   local datepart fork_name
@@ -612,6 +751,8 @@ done
 local ship_out
 if ! ship_out=$(_atp_ssh "$ship" <"$forked"); then
   rm -rf "$scratch"
+  (( tree_shipped )) &&
+    _atp_warn "the tree already landed in worktree $dest on $host - wt-remove it there to discard"
   _atp_die "failed to ship the session file to $host"
   return 1
 fi
@@ -693,19 +834,15 @@ fi
 
 # ----------------------------------------------------------------------- summary
 
-local git_note=""
-if git -C "$origin_cwd" rev-parse --git-dir >/dev/null 2>&1; then
-  local br sha
-  br=$(git -C "$origin_cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)
-  sha=$(git -C "$origin_cwd" rev-parse --short HEAD 2>/dev/null)
-  git_note="$br@$sha"
-  if [[ -n $(git -C "$origin_cwd" status --porcelain 2>/dev/null | head -n 1) ]]; then
-    _atp_warn "origin tree is dirty ($git_note) - the conversation may reference uncommitted changes that don't exist on $host"
-  fi
+# is_git/is_dirty/git_note were computed up front, before the tree phase; the
+# dirty warning only applies when the tree did NOT travel with the session.
+if (( is_dirty )) && (( ! tree_shipped )); then
+  _atp_warn "origin tree is dirty ($git_note) - the conversation may reference uncommitted changes that don't exist on $host"
 fi
 
 print -r -- "teleported $agent session $sid -> $newid"
 print -r -- "  host $host · dest $dest${git_note:+ · origin $git_note}"
+(( tree_shipped )) && print -r -- "  origin tree shipped ($tree_branch@${snap_sha[1,8]})"
 [[ -n "$remote_config_dir" ]] && print -r -- "  profile $profile_name"
 print -r -- "  $delivered"
 return 0
