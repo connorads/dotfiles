@@ -32,6 +32,15 @@ Verify a binding before committing: live-test on a throwaway server
 (`tmux -L test new-session -d; tmux -L test source-file <(grep '^bind ...' tmux.conf); tmux -L test list-keys -T prefix | grep '<desc>'`),
 or `tmux source-file ~/.config/tmux/tmux.conf` to reload the running server.
 
+At commit time the `tmux-bind-lint` hk step
+([`.hk-hooks/tmux-bind-lint.py`](../../.hk-hooks/tmux-bind-lint.py)) statically
+parses [`tmux.conf`](./tmux.conf) and blocks a key bound twice in one key-table
+(tmux keeps only the last, so the earlier bind is dead) or both members of a
+terminal-alias pair (`C-i≡Tab` etc.) in one table. It is the commit-time
+complement to the edit-time `tmux-freekeys` advisor: freekeys queries the
+running server (so it sees plugin binds) but only ever shows the *surviving*
+bind, whereas the lint reads the source and catches the clobber.
+
 ## Agent state dots (custom subsystem)
 
 Window tabs show a per-window dot for the *worst* agent state across their panes.
