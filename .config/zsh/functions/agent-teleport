@@ -566,7 +566,14 @@ done
 
 # ------------------------------------------------------------- confirm the dest
 
-while [[ "$dest_state" == missing ]]; do
+# --with-tree conjures a missing dest from the bundle itself (git init +
+# fetch + checkout on the target); only transcript-only resumes need an
+# existing directory.
+local conjure=0
+if [[ "$dest_state" == missing ]] && (( tree_on )); then
+  conjure=1
+fi
+while [[ "$dest_state" == missing ]] && (( ! conjure )); do
   if [[ -n "$opt_dest" ]]; then
     _atp_die "destination $dest_guess does not exist on $host"
     return 1
@@ -624,12 +631,20 @@ fi
 
 # -------------------------------------------------------------- ship the tree
 
+# A conjure has no fallback dest to degrade to, so its failure modes die
+# where a plain tree ship merely warns and continues transcript-only.
 local tree_shipped=0 tree_branch="" snap_sha=""
 if (( tree_on )) && [[ "$remote_git" != ok ]]; then
+  if (( conjure )); then
+    rm -rf "$scratch"
+    _atp_die "git not found on $host - cannot conjure $dest"
+    return 1
+  fi
   _atp_warn "git not found on $host - tree not shipped"
   tree_on=0
 fi
-if (( tree_on )) && [[ "$remote_wtadd" != ok ]]; then
+if (( tree_on )) && (( ! conjure )) && [[ "$remote_wtadd" != ok ]]; then
+  # Conjure lands via init+fetch+checkout and never needs wt-add.
   _atp_warn "wt-add not found on $host - tree not shipped"
   tree_on=0
 fi
@@ -641,6 +656,11 @@ if (( tree_on )); then
   tree_branch=$(_atp_branch_name "$newid" "$origin_branch")
   snap_sha=$(_atp_snapshot_ref "$origin_repo" "refs/$tree_branch") || snap_sha=""
   if [[ -z "$snap_sha" ]]; then
+    if (( conjure )); then
+      rm -rf "$scratch"
+      _atp_die "could not snapshot the origin tree (no commits yet?) - cannot conjure $dest on $host"
+      return 1
+    fi
     _atp_warn "could not snapshot the origin tree (no commits yet?) - tree not shipped"
     tree_on=0
   fi
@@ -670,6 +690,11 @@ if (( tree_on )); then
   fi
   git -C "$origin_repo" update-ref -d "refs/$tree_branch" 2>/dev/null || true
   if (( ! bundle_ok )); then
+    if (( conjure )); then
+      rm -rf "$scratch"
+      _atp_die "could not bundle the snapshot - cannot conjure $dest on $host"
+      return 1
+    fi
     _atp_warn "could not bundle the snapshot - tree not shipped"
     tree_on=0
   else
@@ -685,11 +710,26 @@ if (( tree_on )); then
       land_code+="; b=\$(mktemp \"\${TMPDIR:-/tmp}/atp-bundle.XXXXXX\") || exit 1"
       land_code+="; trap 'rm -f \"\$b\"' EXIT"
       land_code+="; cat >\"\$b\""
+    fi
+    if (( conjure )); then
+      # No repo on the target: init+fetch+checkout, resume in the new repo
+      # directly (no worktree). Deliberately NOT `git clone <bundle>`: clone
+      # semantics for a bundle carrying no refs/heads/* are unverified, this
+      # path uses only guaranteed behaviour. rs is best-effort dep setup.
+      # A conjure always ships a full-history bundle (the target had nothing
+      # to negotiate a delta against).
+      land_code+="; git init -q ${(q)dest_repo} >/dev/null 2>&1 || { echo atpland=initfail; exit 1; }"
       land_code+="; git -C ${(q)dest_repo} fetch \"\$b\" ${(q)fetch_spec} >/dev/null 2>&1 || { echo atpland=fetchfail; exit 1; }"
+      land_code+="; cd ${(q)dest_repo} || { echo atpland=cdfail; exit 1; }"
+      land_code+="; git checkout -q ${(q)tree_branch} >/dev/null 2>&1 || { echo atpland=checkoutfail; exit 1; }"
+      land_code+="; rs >/dev/null 2>&1 || true; pwd"
+    elif (( need_bundle )); then
+      land_code+="; git -C ${(q)dest_repo} fetch \"\$b\" ${(q)fetch_spec} >/dev/null 2>&1 || { echo atpland=fetchfail; exit 1; }"
+      land_code+="; cd ${(q)dest_repo} && wt-add --no-fetch ${(q)tree_branch}"
     else
       land_code+="; git -C ${(q)dest_repo} branch ${(q)tree_branch} ${(q)snap_sha} >/dev/null 2>&1 || { echo atpland=branchfail; exit 1; }"
+      land_code+="; cd ${(q)dest_repo} && wt-add --no-fetch ${(q)tree_branch}"
     fi
-    land_code+="; cd ${(q)dest_repo} && wt-add --no-fetch ${(q)tree_branch}"
     local land_in="$bundle" land_out land_rc=0 wt_dest=""
     (( need_bundle )) || land_in=/dev/null
     land_out=$(_atp_ssh "zsh -c ${(q)land_code}" <"$land_in" 2>/dev/null) || land_rc=1
@@ -698,6 +738,11 @@ if (( tree_on )); then
       [[ "$l" == /* ]] && wt_dest="${l%$'\r'}"
     done
     if (( land_rc )) || [[ -z "$wt_dest" ]]; then
+      if (( conjure )); then
+        rm -rf "$scratch"
+        _atp_die "failed to conjure $dest on $host"
+        return 1
+      fi
       _atp_warn "failed to land the tree on $host - resuming in $dest without it"
       tree_on=0
     else
