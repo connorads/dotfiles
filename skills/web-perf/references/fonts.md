@@ -172,9 +172,10 @@ metric fallbacks.
    })
    ```
 
-2. **`@capsizecss/core` `createFontStack([unpack.fromFile(real), metrics.georgia])`**
-   - programmatic, if you want to commit the CSS yourself. `@capsizecss/unpack` reads
-   metrics off your own woff2; `@capsizecss/metrics` supplies system-font metrics.
+2. **`@capsizecss/core` `createFontStack([await unpack.fromBuffer(readFileSync(real)), metrics.georgia])`**
+   - programmatic, if you want to commit the CSS yourself. `@capsizecss/unpack`
+   reads metrics off your own woff2 (v4 exposes `fromBuffer`/`fromUrl`/`fromBlob`,
+   NOT `fromFile`); `@capsizecss/metrics` supplies system-font metrics.
 3. **screenspan.net/fallback** or **Malte Ubl's calculator** - manual/visual, but
    Google-font-oriented (they do not read a bespoke serif file), so weaker here.
 
@@ -236,6 +237,13 @@ asymmetry, per style rather than per weight).
 - <https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_fonts/Variable_fonts_guide>
 
 ## Subsetting
+
+> **Format-only conversion is not subsetting.** To change only the container
+> (OTF/CFF -> woff2, same glyphs) re-flavour with fontTools ttLib
+> (`f = TTFont(src); f.flavor = 'woff2'; f.save(dst)`), NOT `pyftsubset` - the
+> subsetter drops glyphs and layout features unless fully told to keep them
+> (`--glyphs='*' --unicodes='*' --layout-features='*'`). ttLib keeps outlines
+> byte-identical, so it stays pixel-neutral under a fidelity guard.
 
 `@fontsource` splits by subset (latin / latin-ext / vietnamese / greek ...). Preload only
 the subset(s) actually rendered above the fold (usually latin), and only the weights in

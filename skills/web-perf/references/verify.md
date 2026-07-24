@@ -240,7 +240,7 @@ with less code, inject the `web-vitals` **attribution build** via
 
 ### 4d. When `load` never fires: probing a load-gated page
 
-Two probe traps on badly-gated pages (symptoms.md B7 and its load-event
+Probe traps on badly-gated pages (symptoms.md B7 and its load-event
 amplifier), where the defect itself breaks the naive harness:
 
 - **Do not `waitUntil: 'load'` on the page you are diagnosing** - under
@@ -258,6 +258,11 @@ amplifier), where the defect itself breaks the naive harness:
   and diff the sets at DCL and at your budget cut-off - the survivors (30
   lazy gallery images, an unbounded video manifest) are the reveal's real
   gate when the init runs at `load`.
+- **The no-JS check needs a screenshot, not injected JS.** Verifying B7's no-JS
+  branch (does the hero paint with scripts off?) in a `javaScriptEnabled: false`
+  context also disables `addInitScript` and `page.evaluate` - LCP/FCP observers
+  and `getComputedStyle` reads all come back empty/null. Assert the paint from a
+  `screenshot()` (or locator `boundingBox()` + pixel sample), not page JS.
 
 **Attribute a shift to the font swap**: log each `layout-shift` entry's
 `startTime` (4b collector) and compare against when `document.fonts.ready`
