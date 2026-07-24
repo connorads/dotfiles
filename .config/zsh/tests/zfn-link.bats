@@ -12,11 +12,11 @@ setup() {
 }
 
 @test "links only shebang-marked functions with relative symlinks" {
-  cat > "$HOME/.config/zsh/functions/git/dual" <<'EOF'
+  cat >"$HOME/.config/zsh/functions/git/dual" <<'EOF'
 #!/usr/bin/env zsh
 echo dual
 EOF
-  cat > "$HOME/.config/zsh/functions/git/plain" <<'EOF'
+  cat >"$HOME/.config/zsh/functions/git/plain" <<'EOF'
 # plain zsh helper
 echo plain
 EOF
@@ -29,7 +29,7 @@ EOF
 }
 
 @test "removes stale links whose targets are no longer expected" {
-  cat > "$HOME/.config/zsh/functions/git/dual" <<'EOF'
+  cat >"$HOME/.config/zsh/functions/git/dual" <<'EOF'
 #!/usr/bin/env zsh
 echo dual
 EOF
@@ -42,7 +42,7 @@ EOF
 }
 
 @test "dry-run does not create links" {
-  cat > "$HOME/.config/zsh/functions/git/dual" <<'EOF'
+  cat >"$HOME/.config/zsh/functions/git/dual" <<'EOF'
 #!/usr/bin/env zsh
 echo dual
 EOF

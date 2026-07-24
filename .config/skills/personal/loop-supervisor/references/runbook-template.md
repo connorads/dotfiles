@@ -166,7 +166,8 @@ anything you can't classify):
    - Do not re-launch — re-launching a running loop will corrupt
      state
 4. Begin §3–§4 supervision cycle.
-```
+
+```text
 
 ## Adaptation notes
 

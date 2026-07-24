@@ -38,7 +38,7 @@ Defaults to Exa when `EXA_API_KEY` / `exaApiKey` is set, otherwise Brave. Overri
 
 The tool registers as `web_search`. Use it for URL discovery, then fetch pages separately with bash/curl.
 
-```
+```text
 web_search query="rust async runtimes" limit=5
 web_search query="WCAG 2.2 changes" provider="brave"
 ```

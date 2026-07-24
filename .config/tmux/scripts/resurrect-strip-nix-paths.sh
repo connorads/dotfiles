@@ -9,7 +9,7 @@ SAVE_FILE="$1"
 
 # macOS (BSD) sed requires '' for -i; GNU sed doesn't
 if [[ "$(uname)" == "Darwin" ]]; then
-  sed -i '' 's|/nix/store/[^/]*/bin/||g' "$SAVE_FILE"
+	sed -i '' 's|/nix/store/[^/]*/bin/||g' "$SAVE_FILE"
 else
-  sed -i 's|/nix/store/[^/]*/bin/||g' "$SAVE_FILE"
+	sed -i 's|/nix/store/[^/]*/bin/||g' "$SAVE_FILE"
 fi

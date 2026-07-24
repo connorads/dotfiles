@@ -6,7 +6,7 @@ Analyse the bash commands from recent sessions and identify commands that are sa
 
 Add qualifying commands to the bash permissions "allow" list in ~/.config/opencode/opencode.json.
 
-## Safe — allow these:
+## Safe — allow these
 
 - **Read-only operations**: ls, cat, grep, git status, git diff, git log, --version, --help, list, view, etc.
 - **Local file creation tools**: yt-dlp, ffmpeg, ffprobe, python image/QR generators, etc. — these create local files but don't execute external code or modify system state
@@ -14,7 +14,7 @@ Add qualifying commands to the bash permissions "allow" list in ~/.config/openco
 - **Git staging and committing**: git add, git commit — local and reversible
 - **Dev servers**: pnpm dev, npm run dev, wrangler dev, etc.
 
-## Unsafe — DO NOT allow:
+## Unsafe — DO NOT allow
 
 - **External code installation**: npm/pnpm/pip/cargo/brew install, pnpm add — an agent could edit a manifest then install malicious packages
 - **Arbitrary curl/wget**: curl to arbitrary URLs could fetch and pipe malicious scripts. Only allow specific safe patterns (curl -I, curl -s -o /dev/null -w)
