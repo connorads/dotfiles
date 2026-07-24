@@ -54,6 +54,10 @@ ruff = "0.15"
 # typos: spell gate for the hk pipeline (default locale - both en variants
 # pass, only genuine misspellings flag). Config: ~/.typos.toml.
 typos = "1"
+# actionlint + zizmor: GitHub workflow lint + security audit for the hk
+# pipeline (zizmor runs --offline in the hook; no network at commit time).
+actionlint = "1"
+zizmor = "1"
 ast-grep = "0.44"
 gcloud = "573"
 aws = "2"

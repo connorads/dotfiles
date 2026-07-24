@@ -130,6 +130,16 @@ local fast_steps = new Mapping<String, Step> {
 
     ["mise"] = Builtins.mise
 
+    // GitHub workflow gates: actionlint (correctness) + zizmor (security).
+    // Both builtins glob to .github/workflows/** so they only fire on staged
+    // workflow changes. zizmor runs --offline: no network audits at commit
+    // time (online-only audits like known-vulnerable-actions run in CI).
+    ["actionlint"] = (Builtins.actionlint) {}
+    ["zizmor"] = (Builtins.zizmor) {
+        check_diff = "zizmor --offline --no-progress {{ files }}"
+        fix = "zizmor --offline --no-progress --fix {{ files }}"
+    }
+
     // Guard the tmux dimming patches against accidental removal. Vanilla tmux
     // builds fine without them, so dropping a patch from the flake overlay
     // silently loses inactive-pane dimming with no build error. Fire whenever
