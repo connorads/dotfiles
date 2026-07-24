@@ -1,0 +1,8 @@
+# Security floors for transitive deps that upstream still pins to vulnerable
+# versions. Each is within the parents' existing semver range (verified), so
+# these only pull the patched release, not a breaking bump. Drop an entry once
+# the dependency tree carries the fix on its own.
+overrides:
+  sharp: "^0.35.0" # GHSA-f88m-g3jw-g9cj (libvips memory safety); astro/miniflare pin 0.34.5
+  postcss: "^8.5.18" # GHSA-r28c-9q8g-f849 (source-map path traversal); vite/expressive-code pin 8.5.17
+  fast-uri: "^3.1.4" # GHSA-v2hh-gcrm-f6hx (host confusion); ajv under @astrojs/check pins 3.1.3
