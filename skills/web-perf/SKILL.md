@@ -75,7 +75,10 @@ causes and fixes live in `references/symptoms.md`.
   CSS that ships content at `opacity: 0` until client JS reveals it turns
   first paint into a JS race, never paints with no-JS, and delays LCP
   (opacity-0 content is excluded from the metric). The entrance must be an
-  enhancement, not the delivery mechanism (symptoms.md B7).
+  enhancement, not the delivery mechanism (symptoms.md B7). But un-gating the
+  reveal can make LCP *fire* without moving the score - the paint may still be
+  bound elsewhere (render-blocking CSS); A/B the vital before shipping a change
+  that costs something, e.g. a fidelity deviation (verify.md 5a).
 - **Edge/privacy leak**: where the response is assembled per request, pre-auth
   anonymity limits what you may preload or inline - 103 Early Hints can replay
   cached preload URLs ahead of an auth check (resource-hints.md). Collapses
@@ -145,8 +148,9 @@ causes and fixes live in `references/symptoms.md`.
 **Prove:**
 
 - `references/verify.md` - how to prove a fix cold-cache: Tier 0 asserts on the
-  static `dist/*.html` bytes; Tier 1 boots the route for SSR; shared CLS probe +
-  measurement-tool gotchas. The lens no other loading skill carries.
+  static `dist/*.html` bytes; Tier 1 boots the route for SSR; shared CLS probe,
+  measurement-tool gotchas, and a local Lighthouse A/B across the change (5a).
+  The lens no other loading skill carries.
 
 **Templates (read-as-reference, brand-agnostic - adapt per project):**
 
@@ -160,6 +164,10 @@ causes and fixes live in `references/symptoms.md`.
 - `scripts/font-subset.config.mjs` - the single shared coverage module the subset
   generator and `check-dist.mjs` both import, so the shipped woff2 and the
   assertion can't drift.
+- `scripts/lh-ab.mjs` - local Lighthouse A/B between two git refs (build ->
+  serve `dist` -> median-of-N -> delta): prove a *costly* fix moves the targeted
+  vital before shipping, no deploy. Corroboration / decision aid, not a gate
+  (verify.md 5a).
 
 `evals/` holds the behaviour eval set (see writing-skills); it is intentionally
 not routed from the workflow above.
