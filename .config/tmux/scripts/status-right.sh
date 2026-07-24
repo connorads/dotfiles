@@ -39,12 +39,32 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=/dev/null
 . "$SELF_DIR/agent-state-lib.sh"
 
+# cpu_percentage — CPU% via tmux-cpu's cpu_percentage.sh, which runs
+# `iostat -c 2 disk0` and blocks ~1s by design. tmux-cpu caches with a hardcoded
+# 2s TTL — always stale at our 15s status-interval — and the after-select-pane /
+# session-window-changed `refresh-client -S` hooks re-fire the render on every
+# pane switch, each forcing a fresh 1s iostat. Cache here at the status-interval
+# cadence (15s) so rapid pane navigation stops re-spawning the blocking sampler.
+# RAM stays uncached (ram_percentage.sh is vm_stat-based and non-blocking).
 cpu_percentage() {
-	if [ -x "$cpu_script" ]; then
-		"$cpu_script" 2>/dev/null | tr -d '\n'
-	else
-		printf "--%%"
+	if [ ! -x "$cpu_script" ]; then
+		printf "%s" "--%%"
+		return
 	fi
+	local cache="$HOME/.cache/tmux-cpu-percentage" ttl=15 now mtime age value
+	now=$(date +%s)
+	if [ -f "$cache" ]; then
+		mtime=$(stat -c '%Y' "$cache" 2>/dev/null || stat -f%m "$cache" 2>/dev/null || echo 0)
+		age=$((now - mtime))
+		if [ "$age" -lt "$ttl" ] 2>/dev/null; then
+			cat "$cache"
+			return
+		fi
+	fi
+	value="$("$cpu_script" 2>/dev/null | tr -d '\n')" || true
+	mkdir -p "$(dirname "$cache")"
+	printf "%s" "$value" >"$cache"
+	printf "%s" "$value"
 }
 
 # ram_percentage — RAM-used % from tmux-cpu, shown ALONGSIDE mem_segment by
