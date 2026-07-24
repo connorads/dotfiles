@@ -44,14 +44,14 @@ steps {
         check = "pnpm tsc --noEmit"
       }
       ["test-unit"] {
-        check = "scripts/quiet-on-success.sh pnpm test:unit:coverage"
+        check = "pnpm test:unit:coverage"
       }
       ["test-int"] {
-        check = "scripts/quiet-on-success.sh pnpm test:int:coverage"
+        check = "pnpm test:int:coverage"
         depends = List("test-unit")  // no point running slow tests if fast ones fail
       }
       ["test-components"] {
-        check = "scripts/quiet-on-success.sh pnpm test:components"
+        check = "pnpm test:components"
         depends = List("test-unit")
       }
     }
@@ -75,7 +75,7 @@ steps {
 
 **Order tiers by speed.** Unit tests run first (fastest feedback). Integration and component tests depend on unit tests passing — no point running expensive tests if cheap ones fail.
 
-**Wrap in quiet-on-success.** Passing tests produce no output. Only failures are visible. This keeps commit output clean. See hk skill's `assets/quiet-on-success.sh`.
+**Quiet on success is wrapper-level.** Run the hook with `hk run <hook> -q` (hk ≥ 1.51.0, owned by the hk skill): passing tests produce no output, only failures are visible.
 
 ### Stash-aware testing
 
@@ -92,10 +92,10 @@ This means coverage thresholds apply to what you're actually committing, not you
 
 ```pkl
 ["test-unit"] {
-  check = "scripts/quiet-on-success.sh pytest -m unit --cov --cov-fail-under=100"
+  check = "pytest -m unit --cov --cov-fail-under=100"
 }
 ["test-int"] {
-  check = "scripts/quiet-on-success.sh pytest -m integration --cov --cov-fail-under=100"
+  check = "pytest -m integration --cov --cov-fail-under=100"
   depends = List("test-unit")
 }
 ```
@@ -104,7 +104,7 @@ This means coverage thresholds apply to what you're actually committing, not you
 
 ```pkl
 ["test-unit"] {
-  check = "scripts/quiet-on-success.sh scripts/check-coverage.sh 95"
+  check = "scripts/check-coverage.sh 95"
 }
 ```
 
@@ -385,7 +385,7 @@ When both skills are loaded:
 | Coverage thresholds | test-coverage | Test runner config files |
 | Hook wiring | hk | `hk.pkl` |
 | Step ordering | hk | `depends` in `hk.pkl` |
-| Output formatting | hk | `quiet-on-success.sh` |
+| Output formatting | hk | wrapper-level `hk run <hook> -q` |
 | CI pipeline | test-coverage | `.github/workflows/` |
 | Exclusion docs | test-coverage | Config file comments |
 
@@ -396,4 +396,4 @@ When setting up a new project:
 1. Use test-coverage to establish the test architecture (tiers, configs, thresholds)
 2. Use hk to wire the coverage commands into pre-commit hooks
 3. Use test-coverage to set up CI coverage reporting
-4. Both skills reference `scripts/quiet-on-success.sh` — hk owns the file, test-coverage documents its usage
+4. Quieting is hk's wrapper-level `-q` — the hk skill owns it, test-coverage just assumes clean success output
