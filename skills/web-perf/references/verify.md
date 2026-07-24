@@ -11,6 +11,7 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 - [3. Tier 1 - SSR / per-request: boot the route, assert on rendered bytes](#3-tier-1---ssr--per-request-boot-the-route-assert-on-rendered-bytes)
 - [4. Shared probes (either tier): cold-cache by eye + CLS/LCP](#4-shared-probes-either-tier-cold-cache-by-eye--clslcp)
 - [5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)](#5-measurement-tool-gotchas-lighthouse-ci--unlighthouse)
+- [5a. A/B the built output across the change (before shipping a costly fix)](#5a-ab-the-built-output-across-the-change-before-shipping-a-costly-fix)
 - [6. DevTools Performance panel](#6-devtools-performance-panel)
 - [7. Wire it into the build where it matters](#7-wire-it-into-the-build-where-it-matters)
 - [8. Regression-guard the trade-offs](#8-regression-guard-the-trade-offs)
@@ -306,6 +307,36 @@ most time:
   it. Both need a served preview + Chrome, so neither is as cheap as Tier 0.
 - <https://github.com/GoogleChrome/lighthouse-ci/blob/main/docs/configuration.md> ·
   <https://unlighthouse.dev/>
+
+### 5a. A/B the built output across the change (before shipping a costly fix)
+
+The gotchas above are about distrusting one number. The trap one level up is
+trusting the *mechanism* over the *outcome*: a first-paint fix can make the
+mechanism fire - LCP goes from "never fired" to firing, and the 4c probe
+confirms it - while the Lighthouse **score / targeted vital stays flat**,
+because the real bottleneck is elsewhere (a render-blocking stylesheet, not the
+reveal you un-gated). Proving the mechanism is not proving the win.
+
+So when a fix carries a **cost** - a fidelity deviation on a pixel-locked clone,
+added preload bytes, extra complexity - settle it on an A/B of the built output
+*before* shipping: build each side, serve the static output, Lighthouse
+median-of-N (section 5), compare the vital you targeted. A flat delta means the
+lever is wrong; don't pay the cost.
+
+`scripts/lh-ab.mjs` (EXECUTE; adapt via env) runs exactly that loop between two
+git refs - checkout -> build -> serve `dist` -> Lighthouse median-of-N -> delta -
+and restores your branch in a `finally`. Static output only (Tier 0); for SSR,
+boot each ref yourself (Tier 1). Its header documents the
+`LH_BUILD`/`LH_DIST`/`LH_RUNS`/`LH_FORM` env. Two limits it can't paper over:
+localhost throttling is *simulated* (the delta is the signal - absolute numbers
+are not prod), and it checks out refs in the work tree, so it needs a clean tree
+or a fresh `git worktree` and won't co-exist with another agent editing tracked
+files on the branch.
+
+This stays **corroboration, not the gate** - the deterministic Tier 0/1
+structural checks are what you wire into CI (section 7). The A/B is the
+pre-implementation decision aid that stops an implement-then-revert cycle on a
+fix that turns out not to move the needle.
 
 ## 6. DevTools Performance panel
 
