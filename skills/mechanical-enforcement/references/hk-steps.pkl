@@ -1,8 +1,14 @@
 // Worked example: hk.pkl step graph for a TypeScript / React / Next project.
 // Copy into a project's hk.pkl and trim for stacks that don't apply.
 // See the `hk` skill for wiring (mise.toml, .hk-hooks/, prepare script).
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+//
+// Match the pin below to your installed `hk --version`; the `hk` skill mandates a
+// minimum of hk 1.51.0. On hk >= 1.51.0 add `-q` to the pre-commit wrapper
+// (`hk run pre-commit -q`, see the `hk` skill): it quiets every step on success
+// (0 bytes) while keeping the failing step's full output — so steps here run their
+// plain commands, no per-step output wrapper.
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 display_skip_reasons = List()
@@ -38,8 +44,8 @@ hooks {
             // Biome (via Ultracite) owns formatting + general linting.
             ["biome"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.json", "*.css")
-                check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"
-                fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
+                check = "pnpm exec ultracite check --error-on-warnings=true {{files}}"
+                fix = "pnpm exec ultracite fix {{files}}"
             }
             // oxlint (Rust) runs the boundary rules in-tree with no Node dep
             // graph: no-restricted-imports, no-restricted-syntax, jsx-a11y, and
@@ -47,16 +53,16 @@ hooks {
             // levels in .oxlintrc.json; gate on non-zero exit.
             ["oxlint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
-                check = "scripts/quiet-on-success.sh pnpm exec oxlint --max-warnings=0 {{files}}"
-                fix = "scripts/quiet-on-success.sh pnpm exec oxlint --fix {{files}}"
+                check = "pnpm exec oxlint --max-warnings=0 {{files}}"
+                fix = "pnpm exec oxlint --fix {{files}}"
             }
             // ESLint owns only what oxlint/Biome can't yet express: import-type-
             // aware boundary rules (allowTypeImports) and framework plugins
             // (plugin:next, plugin:storybook).
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
-                check = "scripts/quiet-on-success.sh pnpm exec eslint {{files}}"
-                fix = "scripts/quiet-on-success.sh pnpm exec eslint --fix {{files}}"
+                check = "pnpm exec eslint {{files}}"
+                fix = "pnpm exec eslint --fix {{files}}"
             }
 
             // --- Tier 2: lint / format Python code ---
@@ -64,20 +70,20 @@ hooks {
             // imports and the formatter gets the final pass.
             // ["ruff-check"] {
             //     glob = List("*.py", "*.pyi")
-            //     check = "scripts/quiet-on-success.sh uv run ruff check {{files}}"
-            //     fix = "scripts/quiet-on-success.sh uv run ruff check --fix --show-fixes {{files}}"
+            //     check = "uv run ruff check {{files}}"
+            //     fix = "uv run ruff check --fix --show-fixes {{files}}"
             // }
             // ["ruff-format"] {
             //     glob = List("*.py", "*.pyi")
-            //     check = "scripts/quiet-on-success.sh uv run ruff format --check {{files}}"
-            //     fix = "scripts/quiet-on-success.sh uv run ruff format {{files}}"
+            //     check = "uv run ruff format --check {{files}}"
+            //     fix = "uv run ruff format {{files}}"
             // }
 
             // --- Tier 2 cont.: validation gates (no auto-fix) ---
             ["yamllint"] = (Builtins.yamllint) {}
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
             ["gitleaks"] {
-                check = "scripts/quiet-on-success.sh gitleaks detect --no-banner --redact --log-level=error"
+                check = "gitleaks detect --no-banner --redact --log-level=error"
             }
             // dependency-cruiser enforces transitive graph boundaries that
             // direct import rules cannot see. Whole-repo, so no glob/{{files}}.
@@ -85,14 +91,14 @@ hooks {
             // Add a package script such as:
             // "check:deps": "depcruise src --config .dependency-cruiser.cjs --output-type err-long --no-progress --no-cache"
             // ["depcruise"] {
-            //     check = "scripts/quiet-on-success.sh pnpm --silent check:deps"
+            //     check = "pnpm --silent check:deps"
             // }
             // Detective supply-chain layer: scan lockfiles against the OSV DB
             // (CVEs + MAL-* malware advisories) — catches what the release-age
             // quarantine can't. Whole-repo, gate on non-zero exit. Heavier than
             // the other gates, so move to pre-push / CI if it slows commits.
             ["osv-scanner"] {
-                check = "scripts/quiet-on-success.sh osv-scanner scan source -r ."
+                check = "osv-scanner scan source -r ."
             }
 
             // --- Tier 3: typecheck ---
@@ -101,18 +107,18 @@ hooks {
             // local gate; keep a `tsc --noEmit` (TS 6) job in CI as the
             // authoritative check until tsgo GA is verified on the project.
             ["typecheck"] {
-                check = "scripts/quiet-on-success.sh pnpm typecheck:fast"
+                check = "pnpm typecheck:fast"
             }
             // Python typecheck gate. Keep basedpyright as the default blocking
             // check; add pinned `ty check` only as an advisory/secondary gate
             // while ty remains beta.
             // ["basedpyright"] {
             //     glob = List("*.py", "*.pyi")
-            //     check = "scripts/quiet-on-success.sh uv run basedpyright"
+            //     check = "uv run basedpyright"
             // }
             // ["ty"] {
             //     glob = List("*.py", "*.pyi")
-            //     check = "scripts/quiet-on-success.sh uv run ty check"
+            //     check = "uv run ty check"
             // }
 
             // --- Tier 4: tests ---
@@ -121,19 +127,19 @@ hooks {
             // threshold you want) and use `/* v8 ignore next */` for unreachable
             // defensive code.
             ["test-gate"] {
-                check = "scripts/quiet-on-success.sh pnpm test:unit --coverage"
+                check = "pnpm test:unit --coverage"
             }
             // knip is the TS dead-code gate (the vulture analogue): unused
             // files, exports, types, and unused/unlisted deps. Whole-repo, so no
             // glob/{{files}}. Run --production so test-only exports aren't
             // flagged; adopt report-only first, then gate on exit code.
             ["knip"] {
-                check = "scripts/quiet-on-success.sh pnpm exec knip --production"
+                check = "pnpm exec knip --production"
             }
             // Vulture needs whole-repo visibility. Enable only after baseline
             // cleanup and keep min_confidence=100 for commit gates.
             // ["vulture"] {
-            //     check = "scripts/quiet-on-success.sh uv run vulture"
+            //     check = "uv run vulture"
             // }
         }
     }
@@ -160,10 +166,10 @@ hooks {
             // so wire them into the release workflow if the build doesn't run on
             // push. Pin both under the release-age quarantine.
             // ["publint"] {
-            //     check = "scripts/quiet-on-success.sh pnpm exec publint"
+            //     check = "pnpm exec publint"
             // }
             // ["attw"] {
-            //     check = "scripts/quiet-on-success.sh pnpm exec attw --pack --profile node16"
+            //     check = "pnpm exec attw --pack --profile node16"
             // }
         }
     }
