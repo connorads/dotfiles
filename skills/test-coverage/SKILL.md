@@ -207,10 +207,10 @@ If using the hk skill, add coverage test steps to `hk.pkl`:
 
 ```pkl
 ["test-unit"] {
-  check = "scripts/quiet-on-success.sh pnpm test:unit:coverage"
+  check = "pnpm test:unit:coverage"
 }
 ["test-int"] {
-  check = "scripts/quiet-on-success.sh pnpm test:int:coverage"
+  check = "pnpm test:int:coverage"
   depends = List("test-unit")
 }
 ```
@@ -220,7 +220,7 @@ If using the hk skill, add coverage test steps to `hk.pkl`:
 - Coverage thresholds live in the test config, not in hook config
 - E2E tests are too slow for pre-commit — run in CI or manually
 - Order tiers by speed: unit first (fastest fail), then integration, then components
-- Wrap in quiet-on-success so passing tests produce no output
+- Quieting is wrapper-level: run the hook with `hk run <hook> -q` (hk ≥ 1.51.0, owned by the hk skill), so passing tests produce no output
 
 ### CI
 

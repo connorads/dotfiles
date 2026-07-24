@@ -98,7 +98,7 @@ Mutation testing is too slow for the fast pre-commit path. Keep it in CI (or a m
 ```pkl
 // hk.pkl — manual/scheduled only, never in the default pre-commit group
 ["mutation"] {
-  check = "scripts/quiet-on-success.sh cargo mutants --no-shuffle --in-diff git.diff"
+  check = "cargo mutants --no-shuffle --in-diff git.diff"
   depends = List("test-unit")  // no point mutating if tests are red
 }
 ```
