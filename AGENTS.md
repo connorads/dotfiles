@@ -415,9 +415,18 @@ Dotfiles commit hooks are tracked in `~/.hk-hooks/` and configured via:
 dotfiles config core.hooksPath .hk-hooks
 ```
 
-The pre-commit hook runs `hk run pre-commit` using `hk.pkl` at `~/hk.pkl`.
+The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
+(`-q`, hk >= 1.51.0: success is silent, step chatter only surfaces on failure).
 
-Custom steps beyond the builtin formatters/linters include `zsh-fn-header`
+Builtin gates include `typos` (spell check, default locale so both en variants
+pass; config + false-positive allow-list in `~/.typos.toml`), `actionlint` and
+`zizmor` (GitHub workflow correctness + security; zizmor runs `--offline` at
+commit time), plus the formatters/linters (shfmt, shellcheck, rumdl, nixfmt...).
+
+Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
+host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever
+`.config/nix/**` is staged, so a config authored on one host can't silently
+break another; ~25s, skippable with `HK_SKIP_STEPS=nix-eval`), `zsh-fn-header`
 (shell-function header + shebang/`# zsh-only:` conventions), `oxlint`
 (first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
 skills and eval-fixture/reference snippets excluded), `ruff-check` +
@@ -450,6 +459,12 @@ import uninstalled deps, which would be `missing-import` noise. The shared
 `~/.hk-hooks/py-typecheck.sh` warns and exits 0 when `pyrefly` is absent;
 `mise run py-checks` runs ruff + pyrefly + the hook pytest suites across all
 first-party Python.
+
+CI (`.github/workflows/check.yml`) is PR-only: one ubuntu job runs
+`hk check --all` - the same gate as the hook, full-tree - plus manual dispatch.
+Nothing runs on push; local commits are already gated by pre-commit.
+`.github/dependabot.yml` bumps the SHA-pinned actions weekly with a 7-day
+cooldown (the Actions arm of the release-age quarantine).
 
 ## Agent Skills
 
