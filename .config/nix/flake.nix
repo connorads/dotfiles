@@ -66,6 +66,18 @@
               redress = prev.callPackage ./packages/redress.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
 
+              # TODO(pipx-check): remove once nixpkgs ships a pipx whose test
+              # suite passes against its pinned pytest. pipx 1.14.0's
+              # tests/test_inject.py calls @parametrize with a single argname
+              # ("pkg_spec") but a comma-joined value string, which newer pytest
+              # rejects (names count != values count) - collection errors fail
+              # the check phase and break every build depending on pipx. Skip the
+              # tests locally; the package itself is fine. Recheck on flake bumps.
+              pipx = prev.pipx.overridePythonAttrs (old: {
+                doCheck = false;
+                doInstallCheck = false;
+              });
+
               tmux = prev.tmux.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [
                   ./patches/dim-inactive-panes.patch
