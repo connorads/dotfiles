@@ -69,7 +69,9 @@ print_record() {
   local pr_number="" pr_state="unknown" pr_url="" pr_is_draft="false"
   if (( pr )); then
     local pr_info
-    pr_info=$(_wt_pr_lookup "$wt_path" "$branch")
+    _wt_pr_reply=""
+    _wt_pr_lookup "$wt_path" "$branch"
+    pr_info=$_wt_pr_reply
     if [[ -z "$pr_info" ]]; then
       pr_state="none"
     elif [[ "$pr_info" == "unknown" ]]; then
