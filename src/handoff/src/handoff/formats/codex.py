@@ -54,7 +54,10 @@ __all__ = ["load", "write"]
 CODEX_CLI_VERSION = "0.144.6"
 """`CODEX_CLI_VERSION`."""
 
-CODEX_MODEL_PROVIDER = "OpenAI"
+# Codex resolves the session's provider by this exact key against its
+# `model_providers` config; the built-in default is lowercase `openai`. A
+# capitalised `OpenAI` fails resume with "Model provider `OpenAI` not found".
+CODEX_MODEL_PROVIDER = "openai"
 """`CODEX_MODEL_PROVIDER`."""
 
 

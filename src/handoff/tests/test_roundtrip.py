@@ -182,7 +182,7 @@ def test_materialized_codex_sessions_include_turn_events(tmp_path: Path) -> None
 
         session_meta = next(value for value in lines if value.get("type") == "session_meta")
         payload = session_meta["payload"]
-        assert payload.get("model_provider") == "OpenAI"
+        assert payload.get("model_provider") == "openai"
         assert payload.get("cli_version") == "0.144.6"
         assert payload.get("history_mode") == "legacy"
         assert payload.get("base_instructions") is None
