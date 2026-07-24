@@ -1,11 +1,17 @@
 name: check
 
-# Evaluate (not build or activate) every Nix configuration so a config authored
-# on one host can't silently break another — e.g. a typo in a Linux module only
-# surfacing on the next `hms`. Eval needs no target builder; each config is
-# still evaluated on a matching-platform runner to stay closest to reality.
+# PR-only lint: one job running `hk check --all` - the same gate as the local
+# pre-commit hook, full-tree. Nothing runs on push; the owner commits through
+# the pre-commit hook, so CI exists for contributor PRs (and manual dispatch).
+# Cross-host nix eval is covered by the nix-eval hk step
+# (.hk-hooks/nix-eval.sh owns the target list).
+#
+# Known, accepted limitations in CI:
+# - ts-typecheck-* / py-typecheck-* / skill-check hit their graceful-skip
+#   paths (node_modules, pyrefly, and ~/skills resolve via $HOME/the checkout
+#   and are absent here).
+# - gitleaks scans the staged diff, so it is a no-op under check --all.
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -13,40 +19,30 @@ permissions:
   contents: read
 
 jobs:
-  eval:
-    name: eval (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: darwin
-            os: macos-latest
-          - name: linux
-            os: ubuntu-latest
+  check:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-      - name: eval configurations
-        working-directory: .config/nix
-        run: |
-          set -euo pipefail
-          if [ "${{ matrix.name }}" = darwin ]; then
-            targets=(
-              'darwinConfigurations."Connors-MacBook-Air".system'
-              'darwinConfigurations."Connors-Mac-mini".system'
-            )
-          else
-            targets=(
-              'homeConfigurations."connor@penguin".activationPackage'
-              'homeConfigurations."connor@dev".activationPackage'
-              'homeConfigurations."connor@rpi5".activationPackage'
-              'homeConfigurations."codespace".activationPackage'
-            )
-          fi
-          for t in "${targets[@]}"; do
-            echo "::group::eval $t"
-            nix eval --raw ".#${t}.drvPath"
-            echo
-            echo "::endgroup::"
-          done
+      - name: install nixfmt (from the flake's locked nixpkgs)
+        run: nix profile install ./.config/nix#formatter.x86_64-linux
+      - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
+        with:
+          # Selective install mirroring the tools hk.pkl steps invoke - NOT a
+          # bare `mise install`, which would pull the whole global toolset
+          # (claude/codex/runtimes). pyrefly is skipped; its hk step
+          # gracefully no-ops when absent.
+          install_args: >-
+            hk pkl shfmt shellcheck rumdl gitleaks oxlint ruff typos
+            actionlint zizmor
+        env:
+          # oxlint is npm-backed; the aube package manager from the global
+          # config is not installed here, so use plain npm (node is on the
+          # runner image). The version is still pinned by mise.lock.
+          MISE_NPM_PACKAGE_MANAGER: npm
+      - name: install shell deps
+        run: sudo apt-get update && sudo apt-get install -y zsh ripgrep
+      - name: hk check --all
+        run: hk check --all
