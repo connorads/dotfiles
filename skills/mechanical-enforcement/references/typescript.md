@@ -12,6 +12,7 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 - [Error handling](#error-handling)
 - [Formatting (oxfmt, with Biome as the stable fallback)](#formatting-oxfmt-with-biome-as-the-stable-fallback)
 - [What Biome 2.x covers (and the ESLint hold-outs)](#what-biome-2x-covers-and-the-eslint-hold-outs)
+- [Framework single-file components (.astro / .vue / .svelte)](#framework-single-file-components-astro--vue--svelte)
 - [UI hygiene (React / Next)](#ui-hygiene-react--next)
 - [Import hygiene](#import-hygiene)
 - [Dead code (knip)](#dead-code-knip)
@@ -49,6 +50,7 @@ Hard caveats while pre-GA:
 
 - **Library builds stay on `tsc`.** tsgo declaration (`.d.ts`) emit still has gaps (declaration maps, `--build` / project-reference orchestration) — do not generate published artefacts with it yet.
 - **The lint stack stays on TS 6.** The programmatic API (Strada) lands in 7.1, so typescript-eslint / ts-morph / custom transformers can't ride tsgo until then. Install side-by-side via `typescript@npm:@typescript/typescript6` if a tool needs the old API.
+- **A browser/Workers app plus Node build scripts are two tsconfig programs, not one.** Don't widen the app's strict `include` to pull the Node scripts in — it leaks `process` / `node:*` globals into app code that has no runtime access to them. Scope the app `include` to app source + tests, and give Node tooling (`scripts/`) its own tsconfig with the Node lib/types; or leave the `.ts` scripts to the linter + execution (Node 24 type-strips them at runtime, so they never need the app program's typecheck).
 
 ## Error handling
 
@@ -107,6 +109,26 @@ cross-repo invariant pack still lives in a shared ESLint config or the
 greppable-invariants tier. Enabling the `types` / `project` domains turns on
 Biome's project scanner — real perf cost, so treat those rules as advisory, not
 a blocking gate.
+
+## Framework single-file components (.astro / .vue / .svelte)
+
+The Rust JS linters don't parse framework SFCs. Point oxlint at a `.astro` file
+and it reads the frontmatter but misreads the template — an Astro expression like
+`{cond && <script />}` trips `no-unused-expressions` as a false positive, because
+oxlint is parsing template JSX as if it were plain JS. Biome has the same blind
+spot. So:
+
+- **Scope the JS linter to `*.ts` / `*.js` / `*.mjs`** and exclude the SFC
+  extension from that step. The glob is the fix — see `hk` (glob each step to
+  what the tool actually handles).
+- **Let the framework's own checker own the SFC**: `astro check` (uses the Astro
+  language server + `tsc` under the hood), `vue-tsc`, `svelte-check`. This is the
+  type-check + template-diagnostic gate for the file the JS linter can't read.
+- **To lint *inside* the SFC's `<script>` blocks**, add the framework's ESLint
+  parser (`astro-eslint-parser` + `eslint-plugin-astro`; `eslint-plugin-vue`;
+  `eslint-plugin-svelte`) — oxlint / Biome can't stand in for it. Reach for this
+  only when you need lint rules on the script logic beyond what the framework
+  checker gives.
 
 ## UI hygiene (React / Next)
 
