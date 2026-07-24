@@ -169,11 +169,13 @@ grep step in `references/typescript.md` is the same technique applied to one rul
 so it false-positives on comments and string literals and false-negatives across
 reformatting. [ast-grep](https://ast-grep.github.io/) (`sg`, Rust, production)
 matches tree-sitter AST patterns with `$VAR` metavariables and gates via
-`sg scan` (non-zero exit, YAML rules), polyglot from one binary. Use `rg` for
+`ast-grep scan` (non-zero exit, YAML rules), polyglot from one binary. Use `rg` for
 quick / throwaway assertions and ast-grep for the boundary rules you want to
 keep — it also subsumes `no-restricted-syntax` rules that don't need type
 information. It is syntax-only, so type-aware boundaries (import resolution,
-`allowTypeImports`) still belong in ESLint / oxlint.
+`allowTypeImports`) still belong in ESLint / oxlint. In a committed hook invoke
+it as `ast-grep scan` — the short `sg` alias collides with `setgroup(1)` on Linux
+(the wired step is in `references/hk-steps.pkl`).
 
 **When the rule needs data flow, not one AST shape, Opengrep is the next tier.**
 ast-grep matches a single syntactic pattern; taint/injection, cross-function, and
@@ -208,7 +210,7 @@ through. What works:
   infra directories) in the same scoped block, with `allowTypeImports` for port
   types.
 - **ast-grep** for cross-language or call-shape precision — zero-arg
-  `new Date()`, method chains — as YAML rules gated by `sg scan`.
+  `new Date()`, method chains — as YAML rules gated by `ast-grep scan`.
 - **Rust**: clippy `disallowed-methods` (`std::env::var`,
   `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
   crate-wide, so give the pure core its own crate.
