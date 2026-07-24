@@ -50,22 +50,35 @@ _resurrect_mtime() {
 	stat -L -c %Y "$1" 2>/dev/null || stat -L -f %m "$1" 2>/dev/null || echo 0
 }
 
-# resurrect_newest_age_secs — seconds since the newest save file was written
-# (now − max mtime over tmux_resurrect_*.txt plus the `last` symlink target).
+# resurrect_newest_age_secs — seconds since the newest save file was written.
 # RESURRECT_NONE_AGE when no save exists. tmux-resurrect only keeps a timestamped
 # file when the session state changed since the previous save, so this is the age
 # of the last *content-changing* save — which is exactly what went stale in the
 # incident.
+#
+# Fast path is the `last` symlink: tmux-resurrect repoints it at the newest save
+# on every write, and it freezes the moment saving stops — precisely the
+# staleness signal — so its (dereferenced) target mtime is authoritative. Statting
+# it alone keeps render O(1) regardless of how many saves have piled up in the dir
+# (1700+ in practice), instead of forking a stat per file every render — the cause
+# of a ~12 s status-right that tmux rendered as "<… not ready>". The full glob is
+# kept only as the fallback for when `last` is absent or dangling (fresh dir, or a
+# prune that left just timestamped files).
 resurrect_newest_age_secs() {
 	_dir=$(resurrect_dir)
 	_newest_mtime=0
-	# The `last` symlink target is always among the txt files, but resolve it too
-	# in case the glob is ever pruned to just the symlink.
-	for _f in "$_dir"/last "$_dir"/tmux_resurrect_*.txt; do
-		[ -e "$_f" ] || continue
-		_m=$(_resurrect_mtime "$_f")
-		[ "$_m" -gt "$_newest_mtime" ] 2>/dev/null && _newest_mtime=$_m
-	done
+	# -e follows the link, so a dangling `last` falls through to the glob below.
+	if [ -e "$_dir/last" ]; then
+		_newest_mtime=$(_resurrect_mtime "$_dir/last")
+	fi
+	if [ "${_newest_mtime:-0}" -eq 0 ] 2>/dev/null; then
+		_newest_mtime=0
+		for _f in "$_dir"/tmux_resurrect_*.txt; do
+			[ -e "$_f" ] || continue
+			_m=$(_resurrect_mtime "$_f")
+			[ "$_m" -gt "$_newest_mtime" ] 2>/dev/null && _newest_mtime=$_m
+		done
+	fi
 	if [ "$_newest_mtime" -eq 0 ]; then
 		echo "$RESURRECT_NONE_AGE"
 		return
