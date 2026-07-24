@@ -108,6 +108,15 @@ agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without 
 Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
 it `done` (blue) before you leave — like marking an email unread.
 
+### Cross-session agents (status bar)
+
+When agents run across multiple sessions, the tab dots only show the session
+you're attached to. A right-side status pill fills that gap: the same five glyphs,
+counting blocked + done agents in *other* sessions (`◆1` = one blocked elsewhere),
+coloured by the worst state. It self-hides when none are elsewhere, so
+single-session working shows nothing. It complements `Ctrl+b A` — the badge is the
+passive glance, the popup the jump. Disable with `tmux set -g @cross_session_badge off`.
+
 ## Memory pressure (status bar)
 
 Right-side gauge (macOS, width ≥ 80). Swap-used is shown — including when

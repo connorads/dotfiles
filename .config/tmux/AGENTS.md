@@ -78,7 +78,17 @@ The logic is spread across several files — change them as a set:
   `agent_glyph`). **Shape** encodes state as well as colour so it reads on a
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
-  legend.
+  legend. Also hosts **`other_sessions_badge`** — the read-only cross-session
+  attention rollup (worst of blocked>done + a count of such agent panes in
+  sessions other than the attached one), rendered by
+  [`scripts/status-right.sh`](./scripts/status-right.sh)'s
+  `agent_elsewhere_segment` as a right-side pill (leftmost of the right cluster,
+  in `print_full`/`print_medium`). It restores the ambient signal the
+  per-attached-session tab dots lose once work spreads across sessions,
+  self-hides when nothing is elsewhere, and is disabled by
+  `tmux set -g @cross_session_badge off`. Semantically aligned with `prefix + A`:
+  it counts exactly the panes that popup would jump to elsewhere. Tested by
+  [`../zsh/tests/agent-badge.bats`](../zsh/tests/agent-badge.bats).
 - [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) — Claude `Stop`/`StopFailure`
   hook adapter. Claude fires `Stop` at every clean turn-end, even while a
   background dynamic workflow / subagent is still draining; turns that end via
