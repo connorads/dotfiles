@@ -56,7 +56,11 @@
 
   # -- Homebrew (desktop casks / MAS apps / taps) --
   homebrew = {
-    taps = [ "manaflow-ai/cmux" ];
+    taps = [
+      "manaflow-ai/cmux"
+      "steipete/tap"
+    ];
+    brews = [ "peekaboo" ];
     casks = [
       # Apps
       "rectangle"
