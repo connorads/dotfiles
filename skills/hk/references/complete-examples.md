@@ -18,13 +18,13 @@ Real configurations for different tech stacks. Bump the version in the `amends`/
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".wrangler")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -43,8 +43,8 @@ hooks {
             }
             ["prettier"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.json", "*.css", "*.astro", "*.md", "*.mdx")
-                check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"  // prints on success; wrapper suppresses it
-                fix = "scripts/quiet-on-success.sh pnpm exec prettier --write {{files}}"
+                check = "pnpm exec prettier --check {{files}}"
+                fix = "pnpm exec prettier --write {{files}}"
             }
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.astro")
@@ -58,10 +58,10 @@ hooks {
                 check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
             ["typecheck"] {
-                check = "scripts/quiet-on-success.sh pnpm exec astro check"  // prints result summary; wrapper suppresses it
+                check = "pnpm exec astro check"
             }
             ["vitest"] {
-                check = "scripts/quiet-on-success.sh pnpm exec vitest run"  // prints on success; wrapper suppresses it
+                check = "pnpm exec vitest run"
             }
         }
     }
@@ -87,13 +87,13 @@ the soft-protected pre-push asset when advisory branch push protection is needed
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -114,8 +114,8 @@ hooks {
             ["biome"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
                 exclude = List(".vscode/*")
-                check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"  // prints success summary; wrapper suppresses it
-                fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
+                check = "pnpm exec ultracite check --error-on-warnings=true {{files}}"
+                fix = "pnpm exec ultracite fix {{files}}"
             }
             ["eslint"] {
                 glob = List("*.ts", "*.tsx", "*.js", "*.jsx")
@@ -146,27 +146,27 @@ hooks {
             }
             ["check-migrations"] {
                 glob = List("src/collections/*", "src/blocks/*", "src/globals/*", "payload.config.ts")
-                check = "scripts/quiet-on-success.sh pnpm check:migrations"
+                check = "pnpm check:migrations"
             }
             ["typecheck"] {
-                check = "scripts/quiet-on-success.sh pnpm typecheck:fast"
+                check = "pnpm typecheck:fast"
             }
 
             // Tests
             ["test-unit"] {
-                check = "scripts/quiet-on-success.sh pnpm test:unit:coverage"
+                check = "pnpm test:unit:coverage"
             }
             ["test-int"] {
-                check = "scripts/quiet-on-success.sh pnpm test:int:coverage"
+                check = "pnpm test:int:coverage"
             }
             ["test-components"] {
-                check = "scripts/quiet-on-success.sh pnpm test:components"
+                check = "pnpm test:components"
             }
             ["lint-stories"] {
-                check = "scripts/quiet-on-success.sh pnpm lint:stories"
+                check = "pnpm lint:stories"
             }
             ["test-storybook"] {
-                check = "scripts/quiet-on-success.sh pnpm test:storybook:ci"
+                check = "pnpm test:storybook:ci"
             }
         }
     }
@@ -204,13 +204,13 @@ No package.json. Uses local variable to share steps across pre-commit/fix/check 
 
 ```pkl
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
 
 local fast_steps = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) {}
@@ -280,11 +280,11 @@ git config --local core.hooksPath .hk-hooks
 ## Go Service
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -304,7 +304,7 @@ hooks {
             ["go-vet"] = (Builtins.go_vet) {}
             ["golangci-lint"] = (Builtins.golangci_lint) {}
             ["go-test"] {
-                check = "scripts/quiet-on-success.sh go test ./..."   // prints on success; wrapper suppresses it
+                check = "go test ./..."
             }
         }
     }
@@ -326,13 +326,13 @@ gitleaks = "latest"
 ## Python (ruff + mypy)
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
 exclude = List(".venv", "__pycache__", ".mypy_cache", ".ruff_cache", "dist")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet steps at the source — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -348,11 +348,11 @@ hooks {
             }
             ["ruff-format"] = (Builtins.ruff_format) {}   // builtin passes --quiet (silent)
             ["ruff"] = (Builtins.ruff) {
-                check = "ruff check -q --force-exclude {{files}}"   // -q silences `All checks passed!` (tier 2)
+                check = "ruff check -q --force-exclude {{files}}"   // -q silences `All checks passed!`
             }
             ["mypy"] = (Builtins.mypy) { stomp = true }
             ["pytest"] {
-                check = "scripts/quiet-on-success.sh pytest"   // prints on success; wrapper suppresses it
+                check = "pytest"   // chatty on success; wrapper-level -q drops it
             }
         }
     }

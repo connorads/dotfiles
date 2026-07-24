@@ -32,10 +32,11 @@
 
 Reference for choosing steps when setting up hk in a new repo. Run `hk builtins` for the full list.
 
-**On `scripts/quiet-on-success.sh`:** it wraps only steps that print *on success*. Truly-silent
-linters (eslint, `tsc --noEmit`, shellcheck, gitleaks `--log-level=error`) are **not** wrapped here;
-`ruff check` uses its `-q` flag; only chatty test runners and summary-printing tools keep the
-wrapper. See `references/output-noise.md` for the 3-tier decision and how to check a tool.
+**On keeping output quiet:** steps below run their plain commands. Success noise is dropped at
+the hook level by `hk run pre-commit -q` (hk ≥ 1.51.0: 0 bytes on success, full failing-step
+output on failure) — no per-step wrapper. Harmless tool-native flags (`ruff check -q`,
+`gitleaks --log-level=error`) are kept where they also cut redundant output. See
+`references/output-noise.md`.
 
 ## Universal (always add)
 
@@ -123,14 +124,13 @@ extend_rule_off = ["MD013", "MD033"]  # disable line-length and inline HTML rule
 
 ### Formatter: Biome (signal: `biome.json` or `biome.jsonc`)
 
-biome/ultracite print a `Checked N files…` summary on success (no verified silence flag here),
-so they keep the wrapper (tier 3):
+biome/ultracite print a `Checked N files…` summary on success — dropped by wrapper-level `-q`:
 
 ```pkl
 ["biome"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
-    check = "scripts/quiet-on-success.sh pnpm exec biome check {{files}}"  // prints success summary; wrapper suppresses it
-    fix = "scripts/quiet-on-success.sh pnpm exec biome check --write {{files}}"
+    check = "pnpm exec biome check {{files}}"
+    fix = "pnpm exec biome check --write {{files}}"
 }
 ```
 
@@ -139,21 +139,21 @@ Or via [ultracite](https://github.com/haydenbleasel/ultracite) wrapper:
 ```pkl
 ["biome"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.css")
-    check = "scripts/quiet-on-success.sh pnpm exec ultracite check --error-on-warnings=true {{files}}"  // prints success summary; wrapper suppresses it
-    fix = "scripts/quiet-on-success.sh pnpm exec ultracite fix {{files}}"
+    check = "pnpm exec ultracite check --error-on-warnings=true {{files}}"
+    fix = "pnpm exec ultracite fix {{files}}"
 }
 ```
 
 ### Formatter: Prettier (signal: `.prettierrc*` or no biome)
 
-prettier `--check` prints `All matched files use Prettier code style!` on success. `--log-level warn`
-should silence that — verify it reaches 0 bytes before relying on it; otherwise keep the wrapper (tier 3):
+prettier `--check` prints `All matched files use Prettier code style!` on success — dropped by
+wrapper-level `-q`:
 
 ```pkl
 ["prettier"] {
     glob = List("*.ts", "*.tsx", "*.js", "*.mjs", "*.json", "*.css", "*.md", "*.mdx")
-    check = "scripts/quiet-on-success.sh pnpm exec prettier --check {{files}}"  // prints on success; wrapper suppresses it
-    fix = "scripts/quiet-on-success.sh pnpm exec prettier --write {{files}}"
+    check = "pnpm exec prettier --check {{files}}"
+    fix = "pnpm exec prettier --write {{files}}"
 }
 ```
 
@@ -161,7 +161,7 @@ Add framework-specific globs as needed: `"*.astro"`, `"*.svelte"`, `"*.vue"`.
 
 ### Linter: ESLint (signal: `eslint.config.*`)
 
-eslint is silent on success (tier 1) — no wrapper:
+eslint is silent on success anyway:
 
 ```pkl
 ["eslint"] {
@@ -175,8 +175,8 @@ Add `"*.astro"`, `"*.svelte"`, `"*.vue"` to glob if using those frameworks.
 
 ### Type checking
 
-`tsc`/`tsgo --noEmit` are silent on success (tier 1) — no wrapper. `astro check` / `svelte-check`
-print a result summary (tier 3) — keep the wrapper.
+`tsc`/`tsgo --noEmit` are silent on success. `astro check` / `svelte-check` print a result
+summary on success, dropped by wrapper-level `-q`.
 
 **Plain TypeScript (`tsconfig.json`):**
 
@@ -198,7 +198,7 @@ print a result summary (tier 3) — keep the wrapper.
 
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec astro check"   // prints result summary; wrapper suppresses it
+    check = "pnpm exec astro check"
 }
 ```
 
@@ -206,7 +206,7 @@ print a result summary (tier 3) — keep the wrapper.
 
 ```pkl
 ["typecheck"] {
-    check = "scripts/quiet-on-success.sh pnpm exec svelte-kit sync && pnpm exec svelte-check"   // svelte-check prints a summary; wrapper suppresses it
+    check = "pnpm exec svelte-kit sync && pnpm exec svelte-check"
 }
 ```
 
@@ -215,13 +215,14 @@ print a result summary (tier 3) — keep the wrapper.
 ### Test runners
 
 Test runners print a reporter summary on success and have no true silence flag
-(`--silent` only mutes test `console.log`, not the reporter) — tier 3, keep the wrapper.
+(their own `--silent` only mutes test `console.log`, not the reporter) — wrapper-level `-q`
+drops it on success and keeps it on failure.
 
 **Vitest:**
 
 ```pkl
 ["vitest"] {
-    check = "scripts/quiet-on-success.sh pnpm exec vitest run"   // prints on success; wrapper suppresses it
+    check = "pnpm exec vitest run"
 }
 ```
 
@@ -229,7 +230,7 @@ Test runners print a reporter summary on success and have no true silence flag
 
 ```pkl
 ["jest"] {
-    check = "scripts/quiet-on-success.sh pnpm exec jest --passWithNoTests"   // prints on success; wrapper suppresses it
+    check = "pnpm exec jest --passWithNoTests"
 }
 ```
 
@@ -273,7 +274,7 @@ Tests:
 
 ```pkl
 ["go-test"] {
-    check = "scripts/quiet-on-success.sh go test ./..."   // prints ok/PASS lines on success; wrapper suppresses them
+    check = "go test ./..."
 }
 ```
 
@@ -290,7 +291,7 @@ Tests:
 
 ```pkl
 ["cargo-test"] {
-    check = "scripts/quiet-on-success.sh cargo test"   // prints on success; wrapper suppresses it
+    check = "cargo test"
 }
 ```
 
@@ -303,8 +304,8 @@ Tests:
 ```pkl
 ["ruff-format"] = (Builtins.ruff_format) {}   // builtin already passes --quiet (silent on success)
 ["ruff"] = (Builtins.ruff) {
-    // Builtins.ruff runs `ruff check` which prints `All checks passed!` (tier 2).
-    // Override with -q (verified 0 bytes on success) — more direct than the wrapper.
+    // Builtins.ruff runs `ruff check`, which prints `All checks passed!`.
+    // Keep its native -q (0 bytes on success); wrapper-level -q covers it too.
     check = "ruff check -q --force-exclude {{files}}"
 }
 ```
@@ -326,7 +327,7 @@ Tests:
 
 ```pkl
 ["pytest"] {
-    check = "scripts/quiet-on-success.sh pytest"   // prints dots + summary on success (even `-q`); wrapper suppresses it
+    check = "pytest"   // prints dots + summary on success (even its own `-q`); wrapper-level -q drops it
 }
 ```
 
