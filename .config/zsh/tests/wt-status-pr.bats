@@ -122,3 +122,44 @@ EOF
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | awk -F'\t' '{print NF}')" -eq 11 ]
 }
+
+# gh stub that counts every `gh pr list` invocation into $HOME/gh-calls. Guards
+# the regression where _wt_pr_lookup ran under command-substitution: its per-repo
+# cache was written inside the subshell and discarded, so gh was called once per
+# worktree instead of once per repo.
+stub_gh_pr_list_counting() {
+  local rows=$1
+  : >"$HOME/gh-calls"
+  write_stub gh <<EOF
+#!/usr/bin/env bash
+if [ "\$1" = "pr" ] && [ "\$2" = "list" ]; then
+  printf 'x\n' >> "\$HOME/gh-calls"
+  printf '%b' "$rows"
+  exit 0
+fi
+exit 1
+EOF
+}
+
+@test "wt-status --pr calls gh once per repo across many worktrees" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  # Three worktrees, all sharing the one repo's common dir -> one gh call.
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feat"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup fix"
+  [ "$status" -eq 0 ]
+
+  stub_gh_pr_list_counting 'topic\tMERGED\t42\thttps://example.test/pr/42\tfalse\n'
+
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --pr --json"
+
+  [ "$status" -eq 0 ]
+  # PR state still resolved correctly from the single shared cache.
+  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .pr_state')" = "MERGED" ]
+  # One gh call for three worktrees of the same repo (was three before the fix).
+  [ "$(wc -l <"$HOME/gh-calls" | tr -d ' ')" -eq 1 ]
+}

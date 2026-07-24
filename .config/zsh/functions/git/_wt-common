@@ -269,16 +269,20 @@ _wt_pr_map() {
 }
 
 # _wt_pr_lookup <repo_path> <branch>: PR state for one branch, populating the
-# per-repo cache on first miss. Emits `state<TAB>number<TAB>url<TAB>isDraft` when
-# a PR exists; empty when gh succeeded but the branch has no PR (=> `none`); the
-# single field `unknown` (state, no other data) when the repo's map call failed,
-# so we never retry gh per worktree of a repo we already know is unreachable.
+# per-repo cache on first miss. Sets `_wt_pr_reply` to `state<TAB>number<TAB>url<TAB>isDraft`
+# when a PR exists; empty when gh succeeded but the branch has no PR (=> `none`);
+# the single field `unknown` (state, no other data) when the repo's map call
+# failed, so we never retry gh per worktree of a repo we already know is
+# unreachable. Returns via a reply global (not stdout) so the per-repo cache
+# populated here survives into the caller's shell — a command-substitution would
+# run the whole helper in a subshell and discard every cache write, defeating
+# the one-gh-call-per-repo memoisation (17 gh calls for 17 worktrees vs 1).
 _wt_pr_lookup() {
   local repo_path=$1 branch=$2
   local key
   key=$(_wt_pr_repo_key "$repo_path")
   if [[ -z "$key" ]]; then
-    print -r -- "unknown"
+    typeset -g _wt_pr_reply="unknown"
     return 0
   fi
 
@@ -294,7 +298,7 @@ _wt_pr_lookup() {
   fi
 
   if [[ "${_wt_pr_cache_status[$key]}" == unknown ]]; then
-    print -r -- "unknown"
+    typeset -g _wt_pr_reply="unknown"
     return 0
   fi
 
@@ -302,11 +306,12 @@ _wt_pr_lookup() {
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     if [[ "${line%%$'\t'*}" == "$branch" ]]; then
-      print -r -- "${line#*$'\t'}"
+      typeset -g _wt_pr_reply="${line#*$'\t'}"
       return 0
     fi
   done <<< "${_wt_pr_cache[$key]:-}"
 
+  typeset -g _wt_pr_reply=""
   return 0
 }
 
