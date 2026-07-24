@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # skill-check: run writing-skills' check.sh on each authored skill touched by
 # the staged files. Spec errors exit 1 and block the commit; hygiene warnings
-# print but pass (same quiet-on-success split as the other hooks).
+# print but pass (quieting is hk's wrapper-level `-q` in .hk-hooks/pre-commit).
 set -euo pipefail
 
 CHECK="$HOME/skills/writing-skills/scripts/check.sh"
