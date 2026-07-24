@@ -80,6 +80,20 @@ hooks {
             // }
 
             // --- Tier 2 cont.: validation gates (no auto-fix) ---
+            // ast-grep gates durable boundary rules that outlive grep: tree-sitter AST
+            // patterns with $VAR metavariables, polyglot from one binary. Subsumes
+            // no-restricted-syntax rules needing no type info (zero-arg `new Date()`,
+            // banned call-shapes, framework-free dirs). Rules live in sgconfig.yml -> a
+            // rules/ dir; `scan` exits 1 on an error-severity match, so it gates on exit
+            // code. {{files}}-scoped is correct: rules are per-file (syntax-only, no
+            // cross-file resolution). Invoke `ast-grep`, not `sg` (collides with
+            // setgroup(1) on Linux). No fix key — boundary violations block, not rewrite.
+            // Type-aware boundaries (import resolution, allowTypeImports) stay in oxlint/
+            // eslint above.
+            ["ast-grep"] {
+                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.py", "*.rs")
+                check = "ast-grep scan {{files}}"
+            }
             ["yamllint"] = (Builtins.yamllint) {}
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
             ["gitleaks"] {

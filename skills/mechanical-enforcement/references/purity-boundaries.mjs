@@ -70,7 +70,7 @@ export default [
 
 /*
 ast-grep equivalent — cross-language, call-shape precise, gates via
-`sg scan` (non-zero exit). Rule file, e.g. rules/no-ambient-clock.yml:
+`ast-grep scan` (non-zero exit). Rule file, e.g. rules/no-ambient-clock.yml:
 
   id: no-ambient-clock-in-domain
   language: typescript
@@ -85,5 +85,5 @@ ast-grep equivalent — cross-language, call-shape precise, gates via
   message: Inject clock/rng/config through a port — the domain stays pure.
   severity: error
 
-Run: sg scan --rule rules/no-ambient-clock.yml src/
+Run: ast-grep scan --rule rules/no-ambient-clock.yml src/
 */
