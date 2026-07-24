@@ -175,6 +175,23 @@ keep — it also subsumes `no-restricted-syntax` rules that don't need type
 information. It is syntax-only, so type-aware boundaries (import resolution,
 `allowTypeImports`) still belong in ESLint / oxlint.
 
+**When the rule needs data flow, not one AST shape, Opengrep is the next tier.**
+ast-grep matches a single syntactic pattern; taint/injection, cross-function, and
+"tainted input reaches this sink" rules need dataflow the pattern engines can't
+express. [Opengrep](https://github.com/opengrep/opengrep) — the OSS Semgrep fork
+(engine LGPL-2.1) that a consortium spun up after Semgrep relicensed
+`semgrep-rules` in December 2024 and moved CE engine features behind its
+commercial licence — runs Semgrep-format YAML (taint mode, cross-file) and emits
+SARIF, polyglot across 20+ languages from one binary. Gate with
+`opengrep scan --config <dir> --error`; **the default exit code is 0 even with
+findings, so `--error` is load-bearing** — omit it and CI silently passes.
+Install is the curl script or a GHCR Docker image (no npm package). It complements
+gitleaks (secrets) and the fixed-ruleset language linters: this is the tier for
+custom bug-class rules no off-the-shelf linter encodes. Reach for ast-grep first
+for syntactic rules (faster, lighter pre-commit); escalate to Opengrep when the
+rule is a dataflow or security property. `severity: ERROR` in a rule doesn't
+change the CLI exit on its own — `--error` is what fails the build.
+
 ## Purity: keeping the functional core pure
 
 The `architecture` skill's functional-core rules — inject clock and randomness,
