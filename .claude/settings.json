@@ -1125,5 +1125,6 @@
   "alwaysThinkingEnabled": true,
   "showClearContextOnPlanAccept": true,
   "autoMemoryEnabled": false,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark"
 }
