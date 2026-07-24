@@ -227,6 +227,41 @@ EOF
   assert_log_missing "display-popup"
 }
 
+@test "menu offers handing off to Codex (opens the handoff submenu)" {
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -q -- "Handoff → Codex" "$TEST_LOG"
+  # the row chains via run-shell into this script's handoff-menu mode (menu-native,
+  # no popup), threading the session id.
+  grep -q -- "handoff-menu session-xyz" "$TEST_LOG"
+  assert_log_missing "display-popup"
+}
+
+@test "handoff-menu emits the claude->codex handoff command via the absolute wrapper" {
+  run "$MENU" handoff-menu "session-xyz" "" "/Users/connorads" "sess:@1.0"
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -q -- "Handoff → Codex" "$TEST_LOG"
+  grep -qF -- "$HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
+  # default account -> no config-dir prefix
+  assert_log_missing "CLAUDE_CONFIG_DIR="
+  # splits target the stable pane id, not "%N"
+  grep -qF -- "split-window -h -t sess:@1.0" "$TEST_LOG"
+}
+
+@test "handoff-menu carries the source CLAUDE_CONFIG_DIR for a profile pane" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  run "$MENU" handoff-menu "session-xyz" "$cfg" "/Users/connorads" "sess:@1.0"
+  [ "$status" -eq 0 ]
+  grep -qF -- "CLAUDE_CONFIG_DIR=$cfg $HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
+}
+
 @test "menu offers counted branch actions with expected labels and prompts" {
   stub_ps_with_foreground_claude
   cat >"$HOME/.claude/sessions/711.json" <<'EOF'
