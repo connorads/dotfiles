@@ -14,6 +14,7 @@ alias wtl='git worktree list'
 alias wtu='wtui'
 alias wti='wt-status --all'
 alias wtm='wt-finish --mode local'
+alias wtc='wt-clean'
 
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
