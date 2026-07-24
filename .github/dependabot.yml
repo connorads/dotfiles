@@ -1,0 +1,11 @@
+# Keeps the SHA-pinned actions in workflows current. The 7-day cooldown is the
+# Actions arm of the release-age quarantine (mise/pnpm/npm/uv all gate at 4d;
+# zizmor's dependabot-cooldown audit wants >= 7 for actions).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
