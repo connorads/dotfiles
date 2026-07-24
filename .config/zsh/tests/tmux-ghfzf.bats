@@ -17,7 +17,7 @@ TMUX_DIR="$TESTS_DIR/../../tmux"
 
 @test "help and tmux AGENTS document the ghfzf binding" {
   grep -F '| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |' "$TMUX_DIR/help.md"
-  grep -F '| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, connections, ports, pclose, bandwhich, tsp, tpm-clean) |' "$TMUX_DIR/help.md"
+  grep -F '| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |' "$TMUX_DIR/help.md"
 
   grep -F '`M-g` ghfzf' "$TMUX_DIR/AGENTS.md"
 }
