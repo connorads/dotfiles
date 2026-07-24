@@ -272,6 +272,14 @@ semantically meaningful serialised output — but they fail *open* and degrade:
   code currently does", not what it *should*.
 - **Over-broad snapshots** bury the one meaningful line among hundreds of
   irrelevant ones; every change churns the snapshot and nobody reads the diff.
+- **Regenerate from a fresh build, and gate the guard.** When a golden is
+  produced by a generator that reads build output (a script over `dist/`),
+  regenerate only after a fresh build - a stale build bakes stale goldens that
+  pass review while being wrong. And an upstream change to a *derived input*
+  (adopting a formatter, bumping a codegen tool) rots every golden with no test
+  edit; if the golden guard is not in the commit gate, the drift lands silently.
+  Keep the regen guard in CI/pre-commit, or regenerate deliberately in the same
+  change and review the diff.
 
 Use them well: keep snapshots **small and targeted** (snapshot the one derived
 value, not the whole DOM/object), review every update as real code, and prefer
