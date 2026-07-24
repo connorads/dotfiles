@@ -17,13 +17,8 @@ alias wtm='wt-finish --mode local'
 
 # https://github.com/jesseduffield/lazygit
 alias lg='lazygit --use-config-dir ~/.config/lazygit'
-# Refresh codex/claude config stat data through the dotfiles wrapper first so
-# stripped machine-local blocks stay out of lazygit without staging real edits.
-lgdf() {
-  dotfiles status --short .codex/config.toml .claude/settings.json >/dev/null 2>&1
-  lazygit --use-config-dir ~/.config/lazygit \
-    --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
-}
+# lgdf (lazygit on the bare dotfiles repo) is a dual-mode PATH function:
+# ~/.config/zsh/functions/git/lgdf, so tmux popups reach it without sourcing rc.
 
 # https://github.com/Wilfred/difftastic
 alias gdd='GIT_EXTERNAL_DIFF=difft git diff'
