@@ -1,165 +1,138 @@
 #!/usr/bin/env bash
-# claude-plan-popup: render the active Claude Code plan in the current TTY
-# Usage: claude-plan-popup <pane_id>   (run from the prefix + T Tools launcher)
-# Plans are read from the pane's own account (its CLAUDE_CONFIG_DIR, set by ccp),
-# defaulting to ~/.claude; the latest-plan fallback scans that account's plans/.
+# claude-plan-popup: view a live Claude Code plan in the current TTY.
+# Usage: claude-plan-popup [<pane_id>]   (run from the prefix + T Tools launcher)
+#        claude-plan-popup --preview <planFilePath> <pane>   (fzf preview helper)
+#
+# This is a supervision tool: "show what agent X is planning, from wherever I am,
+# across accounts" — so *selection* is part of the job, not an error path. Plans
+# are read from the agent journal (lib/claude-plan.sh), never scraped from live
+# processes: the ExitPlanMode hook already records `.plan.planFilePath` (which
+# encodes the account) per pane. Given $1 = the launching pane, a plan-bearing
+# live pane renders straight away; otherwise an fzf picker lists every live
+# agent's plan (account · name · title · age + a preview) to choose from.
 set -euo pipefail
 
-CLAUDE_DIR="$HOME/.claude"
-PLANS_DIR="$CLAUDE_DIR/plans"
-SESSIONS_DIR="$CLAUDE_DIR/sessions"
-PROJECTS_DIR="$CLAUDE_DIR/projects"
+SELF="$0"
+SELF_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/claude-plan.sh disable=SC1091
+. "$SELF_DIR/lib/claude-plan.sh"
 
-# shellcheck source=lib/agent-session.sh disable=SC1091
-. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
+# --- Rendering ---
 
-# --- Detection functions ---
-
-find_claude_pane_pid() {
-	local pane_pid="$1" pane_cmd="$2"
-	# Fast path: focused pane is already running claude
-	if [[ "$pane_cmd" == "claude" ]]; then
-		printf "%s" "$pane_pid"
-		return 0
-	fi
-	# Scan current tmux session for a claude pane
-	local line
-	line=$(tmux list-panes -s -F '#{pane_pid} #{pane_current_command}' | grep ' claude$' | head -1)
-	if [[ -n "$line" ]]; then
-		printf "%s" "${line%% *}"
-		return 0
-	fi
-	return 1
-}
-
-find_claude_pid() {
-	local pane_pid="$1"
-	local child comm
-	for child in $(pgrep -P "$pane_pid" 2>/dev/null); do
-		comm=$(ps -o comm= -p "$child" 2>/dev/null) || continue
-		if [[ "$comm" == "claude" ]]; then
-			printf "%s" "$child"
-			return 0
-		fi
-		# One level deeper (mise shims etc.)
-		local gc
-		for gc in $(pgrep -P "$child" 2>/dev/null); do
-			comm=$(ps -o comm= -p "$gc" 2>/dev/null) || continue
-			if [[ "$comm" == "claude" ]]; then
-				printf "%s" "$gc"
-				return 0
-			fi
-		done
-	done
-	return 1
-}
-
-find_session_id() {
-	local claude_pid="$1"
-	local session_file="$SESSIONS_DIR/$claude_pid.json"
-	[[ -f "$session_file" ]] || return 1
-	grep -o '"sessionId":"[^"]*"' "$session_file" | head -1 | sed 's/"sessionId":"//;s/"//'
-}
-
-find_plan_slug() {
-	local session_id="$1"
-	local jsonl
-	jsonl=$(find "$PROJECTS_DIR" -name "${session_id}.jsonl" -print -quit 2>/dev/null)
-	[[ -n "$jsonl" ]] || return 1
-	grep -o '"slug":"[^"]*"' "$jsonl" | tail -1 | sed 's/"slug":"//;s/"//'
-}
-
-resolve_plan_file() {
-	local slug="$1" session_id="$2"
-	local jsonl agent_id agent_plan main_plan
-
-	main_plan="$PLANS_DIR/${slug}.md"
-
-	# Try to find agent-specific variant
-	jsonl=$(find "$PROJECTS_DIR" -name "${session_id}.jsonl" -print -quit 2>/dev/null)
-	if [[ -n "$jsonl" ]]; then
-		agent_id=$(grep -o '"agentId":"[^"]*"' "$jsonl" | tail -1 | sed 's/"agentId":"//;s/"//')
-		if [[ -n "$agent_id" ]]; then
-			agent_plan="$PLANS_DIR/${slug}-agent-${agent_id}.md"
-			if [[ -f "$agent_plan" ]]; then
-				printf "%s" "$agent_plan"
-				return 0
-			fi
-		fi
-	fi
-
-	if [[ -f "$main_plan" ]]; then
-		printf "%s" "$main_plan"
-		return 0
-	fi
-	return 1
-}
-
-find_latest_plan() {
-	# shellcheck disable=SC2012
-	ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1
-}
-
-# --- Render plan in the current TTY ---
-
-show_plan() {
-	local plan_file="$1"
+# render_file <file> — full-screen paged render of a plan file.
+render_file() {
 	if command -v glow >/dev/null 2>&1; then
-		glow -p -s dark "$plan_file"
+		glow -p -s dark "$1"
 	elif command -v bat >/dev/null 2>&1; then
-		bat --style=plain --paging=always --language=markdown "$plan_file"
+		bat --style=plain --paging=always --language=markdown "$1"
 	else
-		less "$plan_file"
+		less "$1"
 	fi
 }
+
+# render_stdin_paged — full-screen paged render of markdown on stdin (the inline
+# journal snapshot when a plan file is gone). glow -p pages when stdout is a TTY.
+render_stdin_paged() {
+	if command -v glow >/dev/null 2>&1; then
+		glow -p -s dark
+	elif command -v bat >/dev/null 2>&1; then
+		bat --style=plain --paging=always --language=markdown
+	else
+		less
+	fi
+}
+
+# render_preview [file] — non-paged render for the fzf preview (file arg, else
+# stdin). No pager: a pager inside an fzf preview would hang. Precedent:
+# cmd-palette.sh's render().
+render_preview() {
+	local width=${FZF_PREVIEW_COLUMNS:-${COLUMNS:-80}}
+	if command -v glow >/dev/null 2>&1; then
+		glow -s dark -w "$width" "${1:--}"
+	elif command -v bat >/dev/null 2>&1; then
+		bat --style=plain --color=always --language=markdown "${1:--}"
+	else
+		cat "${1:--}"
+	fi
+}
+
+# show_for_pane PANE PLANFILE — render PANE's plan: the file when it still exists,
+# else the inline journal snapshot (labelled as such). PLANFILE may be empty.
+show_for_pane() {
+	local pane="$1" pf="$2" text
+	if [ -n "$pf" ] && [ -f "$pf" ]; then
+		render_file "$pf"
+		return 0
+	fi
+	text=$(claude_plan_inline_for_pane "$pane")
+	if [ -z "$text" ]; then
+		tmux display-message "No recorded plan for that pane"
+		return 0
+	fi
+	printf '> Journal snapshot — the plan file is no longer on disk.\n\n%s\n' "$text" |
+		render_stdin_paged
+}
+
+# --- fzf preview subcommand ---
+# Invoked by the picker's --preview. Renders the plan head for one row: its
+# planFilePath when present on disk, else the pane's inline journal snapshot.
+if [ "${1:-}" = "--preview" ]; then
+	pf=${2:-}
+	pane=${3:-}
+	if [ -n "$pf" ] && [ -f "$pf" ]; then
+		render_preview "$pf"
+	else
+		claude_plan_inline_for_pane "$pane" | render_preview
+	fi
+	exit 0
+fi
 
 # --- Entrypoint ---
-# Invoked from the prefix + T Tools launcher, which already owns a popup TTY, so
-# we resolve the plan for the originating pane and render it here - no nested
-# popup. $1 is that pane's id (TMUX_TOOLS_PANE), e.g. %5; empty falls back to the
-# latest plan.
+# $1 is the launching pane id (TMUX_TOOLS_PANE), e.g. %5; empty when invoked bare.
 
 pane_id="${1:-}"
-pane_pid="" pane_cmd=""
-if [[ -n "$pane_id" ]]; then
-	pane_pid=$(tmux display-message -p -t "$pane_id" '#{pane_pid}' 2>/dev/null) || true
-	pane_cmd=$(tmux display-message -p -t "$pane_id" '#{pane_current_command}' 2>/dev/null) || true
-fi
 
-plan_file=""
-if [[ -n "$pane_pid" ]]; then
-	claude_pane_pid=$(find_claude_pane_pid "$pane_pid" "${pane_cmd:-zsh}") || true
-	if [[ -n "${claude_pane_pid:-}" ]]; then
-		claude_pid=$(find_claude_pid "$claude_pane_pid") || true
-		if [[ -n "${claude_pid:-}" ]]; then
-			# Resolve the pane's account so its plan reads from that
-			# profile's dirs, not the default ~/.claude (ccp panes).
-			config_dir=$(claude_config_dir_for_pid "$claude_pid") || true
-			config_dir="${config_dir%/}" # strip any trailing slash defensively
-			if [[ -n "${config_dir:-}" ]]; then
-				SESSIONS_DIR="$config_dir/sessions"
-				PROJECTS_DIR="$config_dir/projects"
-				PLANS_DIR="$config_dir/plans"
-			fi
-			session_id=$(find_session_id "$claude_pid") || true
-			if [[ -n "${session_id:-}" ]]; then
-				slug=$(find_plan_slug "$session_id") || true
-				if [[ -n "${slug:-}" ]]; then
-					plan_file=$(resolve_plan_file "$slug" "$session_id") || true
-				fi
-			fi
-		fi
+rows=$(claude_plan_live_rows)
+
+if [ -z "$rows" ]; then
+	if ! command -v jq >/dev/null 2>&1; then
+		tmux display-message "Plan viewer needs jq (not found)"
+	elif [ "${AGENT_JOURNAL_DISABLE:-0}" = 1 ]; then
+		tmux display-message "Agent journal is disabled; no plans to show"
+	else
+		tmux display-message "No live Claude agent has a recorded plan"
 	fi
+	exit 0
 fi
 
-# Fallback: most recently modified plan
-if [[ -z "$plan_file" ]]; then
-	plan_file=$(find_latest_plan) || true
-	if [[ -z "$plan_file" ]]; then
-		tmux display-message "No Claude Code plans found"
+# Fast path: the launching pane has a recorded plan → render it, no list.
+if [ -n "$pane_id" ]; then
+	fast_row=$(printf '%s\n' "$rows" | awk -F '\t' -v p="$pane_id" '$1 == p { print; exit }')
+	if [ -n "$fast_row" ]; then
+		pf=$(printf '%s' "$fast_row" | cut -f7)
+		show_for_pane "$pane_id" "$pf"
 		exit 0
 	fi
-	tmux display-message "No active plan in pane; showing latest: $(basename "$plan_file" .md)"
 fi
 
-show_plan "$plan_file"
+# Picker: a non-claude / planless / bare launch chooses among live plans. A lone
+# row auto-opens (no needless one-item list). fzf style mirrors agent-popup.sh:
+# hidden pane (field 1) is the join key, with-nth=2.. shows account onward.
+row_count=$(printf '%s\n' "$rows" | grep -c .)
+if [ "$row_count" -eq 1 ]; then
+	choice="$rows"
+else
+	choice=$(printf '%s\n' "$rows" | fzf \
+		--ansi --reverse --no-multi --info=hidden \
+		--delimiter='\t' --with-nth=2..6 \
+		--prompt='plan › ' \
+		--header='account · name · dir · title · age' \
+		--preview "bash '$SELF' --preview {7} {1}" \
+		--preview-window=right:60%:wrap) || exit 0
+fi
+
+[ -n "$choice" ] || exit 0
+target=$(printf '%s' "$choice" | cut -f1)
+pf=$(printf '%s' "$choice" | cut -f7)
+[ -n "$target" ] || exit 0
+show_for_pane "$target" "$pf"

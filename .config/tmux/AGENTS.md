@@ -69,7 +69,16 @@ The logic is spread across several files — change them as a set:
   sequencing. Full tool inputs are deliberately not recorded (file contents /
   command lines can carry secrets). Fail-open, needs jq; disable with
   `AGENT_JOURNAL_DISABLE=1`, relocate with `AGENT_JOURNAL_DIR`. Monthly files:
-  retention is deleting old months.
+  retention is deleting old months. The **plan viewer**
+  ([`scripts/claude-plan-popup.sh`](./scripts/claude-plan-popup.sh) via `prefix +
+  T` → "Claude: view plan") is a live *reader* of this journal, not only a
+  history consumer: its pure core
+  ([`scripts/lib/claude-plan.sh`](./scripts/lib/claude-plan.sh)) takes the latest
+  `.plan.planFilePath` per pane (the path encodes the account), gates on *live*
+  tmux panes (a reused `%N` only ever shows its current occupant's plan), and
+  renders the launching pane's plan straight away or falls back to an fzf picker
+  across accounts. No process scraping. Tested by
+  [`../zsh/tests/claude-plan-popup.bats`](../zsh/tests/claude-plan-popup.bats).
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
   rollup, bell, and `is_viewing` helpers (also used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
