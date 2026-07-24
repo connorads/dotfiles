@@ -7,6 +7,7 @@ pane_path="${2:-$HOME}"
 host_short="${3:-}"
 host_full="${4:-}"
 hostname_full_flag="${5:-}"
+attached_session="${6:-}"
 
 if ! [[ "$width_raw" =~ ^[0-9]+$ ]]; then
 	width_raw=0
@@ -32,6 +33,11 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # reddening to yellow/red the moment it stops. See resurrect_segment below.
 # shellcheck source=/dev/null
 . "$SELF_DIR/resurrect-lib.sh"
+# Canonical agent-state helpers: other_sessions_badge (the cross-session
+# attention rollup) plus the agent_hex/agent_char glyph mapping it echoes. See
+# agent_elsewhere_segment below.
+# shellcheck source=/dev/null
+. "$SELF_DIR/agent-state-lib.sh"
 
 cpu_percentage() {
 	if [ -x "$cpu_script" ]; then
@@ -95,6 +101,22 @@ resurrect_segment() {
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
 			"$colour" "$glyph" "$(resurrect_token)"
 	fi
+}
+
+# agent_elsewhere_segment — the cross-session attention badge: a bright pill
+# showing the worst attention state's glyph + a count of blocked/done agent panes
+# living in *other* sessions (exactly what prefix + A / Alt+a would jump to). It
+# restores the ambient "agents need you elsewhere" signal that the per-attached-
+# session tab dots lose the moment work spreads across sessions. Self-hides when
+# nothing is elsewhere (early return, like ssh_info) and when disabled via
+# `@cross_session_badge off` (handled in other_sessions_badge). Placed leftmost in
+# the right-aligned cluster so it sits toward screen-centre where it catches the eye.
+agent_elsewhere_segment() {
+	local badge hex char count
+	badge="$(other_sessions_badge "$attached_session")"
+	[ -n "$badge" ] || return 0
+	read -r hex char count <<<"$badge"
+	printf "#[fg=#313244]#[bg=#313244]#[fg=#%s]#[bold] %s%s " "$hex" "$char" "$count"
 }
 
 disk_percentage() {
@@ -643,6 +665,7 @@ print_full() {
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
+	agent_elsewhere_segment
 	ai_usage
 	# Resurrect freshness pill sits here — between the AI pill (#232334) and the
 	# cpu pill (#313244) — the one slot where it isn't adjacent to another
@@ -675,6 +698,7 @@ print_medium() {
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
+	agent_elsewhere_segment
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#a6e3a1]  %s " "$git_ref"
 	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold] %s" "$host"

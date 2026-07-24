@@ -134,3 +134,38 @@ agent_glyph() {
 	_b=$((0x$(echo "$_hex" | cut -c5-6)))
 	printf '\033[38;2;%d;%d;%dm%s\033[0m' "$_r" "$_g" "$_b" "$_char"
 }
+
+# other_sessions_badge ATTACHED — the ambient cross-session attention signal.
+# Echoes "HEX CHAR COUNT" for the worst attention state (blocked > done — the same
+# states prefix + A / Alt+a jump to) counted across every agent pane in a session
+# OTHER than ATTACHED, or nothing when there are none. Read-only: adds no writer,
+# so the agent-state.sh / agent-sweep.sh writer set is untouched. Reuses rank()
+# for "worst" (canonical ordering) and agent_hex/agent_char for the glyph — NOT
+# agent_glyph, whose raw ANSI is unsuitable inside a tmux format string. Hard
+# opt-out: `tmux set -g @cross_session_badge off` echoes nothing.
+other_sessions_badge() {
+	_attached=${1:-}
+	[ "$(tmux show-option -gqv @cross_session_badge 2>/dev/null)" = off ] && return 0
+
+	# One tmux fork: emit the attention state of every agent pane not in ATTACHED.
+	_states=$(tmux list-panes -a -F '#{session_name} #{@agent_state}' 2>/dev/null |
+		awk -v att="$_attached" '$1 == att { next } $2 == "blocked" || $2 == "done" { print $2 }')
+	[ -n "$_states" ] || return 0
+
+	_count=0
+	_worst=
+	_worst_rank=0
+	while IFS= read -r _s; do
+		[ -n "$_s" ] || continue
+		_count=$((_count + 1))
+		_r=$(rank "$_s")
+		[ "$_r" -gt "$_worst_rank" ] && {
+			_worst_rank=$_r
+			_worst=$_s
+		}
+	done <<EOF
+$_states
+EOF
+	[ "$_count" -gt 0 ] || return 0
+	echo "$(agent_hex "$_worst") $(agent_char "$_worst") $_count"
+}
