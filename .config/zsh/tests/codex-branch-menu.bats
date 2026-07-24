@@ -170,6 +170,31 @@ EOF
   grep -q -- "prompt-worktrees" "$TEST_LOG"
 }
 
+@test "menu offers handing off to Claude (opens the handoff submenu)" {
+  stub_ps_with_foreground_codex
+  stub_lsof_rollout
+  write_valid_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -q -- "Handoff → Claude" "$TEST_LOG"
+  # the row chains via run-shell into this script's handoff-menu mode, threading
+  # the session id and the stable pane target.
+  grep -q -- "handoff-menu codex-thread" "$TEST_LOG"
+}
+
+@test "handoff-menu emits the codex->claude handoff command via the absolute wrapper" {
+  run "$MENU" handoff-menu "codex-thread" "/Users/connorads" "sess:@1.0"
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -q -- "Handoff → Claude" "$TEST_LOG"
+  grep -qF -- "$HOME/.local/bin/handoff --from codex --to claude codex-thread" "$TEST_LOG"
+  # codex source is single-store -> no account prefix
+  assert_log_missing "CLAUDE_CONFIG_DIR="
+  # splits target the stable pane id, not "%N"
+  grep -qF -- "split-window -h -t sess:@1.0" "$TEST_LOG"
+}
+
 @test "prompt-repeat opens the count prompt for a repeated action" {
   run "$MENU" prompt-repeat split-right "\$0:@1.0" "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]

@@ -70,7 +70,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
-| `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; copy cmd/id) |
+| `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; hand off to the other agent Claude↔Codex via handoff; copy cmd/id) |
 | `Ctrl+b Alt+t` | teleport this pane's Claude/Codex session to another host (fork + ship over ssh; window in target tmux or copy resume cmd) |
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |

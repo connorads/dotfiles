@@ -47,6 +47,19 @@ codex_fork_cmd() {
 		"$(shell_quote "$cwd")" "$(shell_quote "$sid")"
 }
 
+# codex_handoff_cmd <sid>
+# Hand the pane's live Codex session off to Claude: translate its transcript into
+# Claude's store and resume it there (handoff self-opens the target in
+# foreground, so no --no-open). No account prefix - Codex is a single store and
+# the target lands in the default ~/.claude account. Uses the absolute
+# ~/.local/bin wrapper path because the tmux server's PATH may not carry that dir.
+codex_handoff_cmd() {
+	local sid="$1"
+
+	printf '%s --from codex --to claude %s' \
+		"$(shell_quote "$HOME/.local/bin/handoff")" "$(shell_quote "$sid")"
+}
+
 fork_worktree_window() {
 	local branch="$1"
 	local sid="$2"
@@ -156,6 +169,22 @@ fork-worktrees)
 	done
 	exit 0
 	;;
+handoff-menu)
+	# The Handoff → Claude placement submenu (split right/down / new window),
+	# reached via run-shell from the branch menu's "Handoff → Claude" row. Splits
+	# against the stable pane_target (session:window.pane), not "%N".
+	[ "$#" -eq 4 ] || soft_fail "usage: handoff-menu <sid> <cwd> <pane-target>"
+	sid="$2"
+	cwd="$3"
+	pane_target="$4"
+
+	handoff_cmd=$(codex_handoff_cmd "$sid")
+	tmux display-menu -T " Handoff → Claude " -x C -y C \
+		"Split right" "|" "split-window -h -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
+		"Split down" "-" "split-window -v -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
+		"New window" "w" "new-window -c \"$cwd\" \"$handoff_cmd\""
+	exit 0
+	;;
 esac
 
 # shellcheck source=lib/agent-session.sh disable=SC1091
@@ -218,12 +247,14 @@ prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg"
 prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg"
 prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg"
 prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg"
+handoff_menu_cmd="$self_arg handoff-menu $sid_arg $cwd_arg $pane_arg"
 
 fork_split_right_n="run-shell $(tmux_quote "$prompt_right_cmd")"
 fork_split_down_n="run-shell $(tmux_quote "$prompt_down_cmd")"
 fork_window_n="run-shell $(tmux_quote "$prompt_window_cmd")"
 fork_wt="run-shell $(tmux_quote "$prompt_worktree_cmd")"
 fork_wts_n="run-shell $(tmux_quote "$prompt_worktrees_cmd")"
+handoff_menu="run-shell $(tmux_quote "$handoff_menu_cmd")"
 
 tmux display-menu -T "$title" -x C -y C \
 	"Split right" "|" "split-window -h -t $pane_id -c \"$cwd\" \"$fork_cmd\"" \
@@ -235,6 +266,8 @@ tmux display-menu -T "$title" -x C -y C \
 	"" \
 	"Fork → new WORKTREE window" "W" "$fork_wt" \
 	"WORKTREE windows x N" "T" "$fork_wts_n" \
+	"" \
+	"Handoff → Claude" "x" "$handoff_menu" \
 	"" \
 	"Copy fork command" "c" "set-buffer -w -- \"$fork_cmd\" ; display-message \"Copied fork command\"" \
 	"Copy session id" "y" "set-buffer -w -- \"$sid\" ; display-message \"Copied session id\""

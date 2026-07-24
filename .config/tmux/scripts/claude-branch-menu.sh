@@ -62,6 +62,24 @@ claude_fork_cmd() {
 	printf '%sclaude%s -r %s --fork-session' "$prefix" "${flags:+ $flags}" "$(shell_quote "$sid")"
 }
 
+# claude_handoff_cmd <sid> [config_dir]
+# Hand the pane's live Claude session off to Codex: translate its transcript into
+# Codex's store and resume it there (handoff self-opens the target in foreground,
+# so no --no-open). Carries the source CLAUDE_CONFIG_DIR inline (same reason as
+# claude_fork_cmd - tmux panes don't inherit the source env) so handoff resolves
+# the source under the right account; empty = default ~/.claude. Uses the absolute
+# ~/.local/bin wrapper path because the tmux server's PATH may not carry that dir.
+claude_handoff_cmd() {
+	local sid=$1
+	local config_dir=${2:-}
+
+	local prefix=""
+	[ -n "$config_dir" ] && prefix="CLAUDE_CONFIG_DIR=$(shell_quote "$config_dir") "
+
+	printf '%s%s --from claude --to codex %s' \
+		"$prefix" "$(shell_quote "$HOME/.local/bin/handoff")" "$(shell_quote "$sid")"
+}
+
 fork_worktree_window() {
 	local branch=$1
 	local sid=$2
@@ -114,6 +132,11 @@ render_branch_menu() {
 	prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $config_dir_arg $flags_arg"
 	prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg $flags_arg"
 
+	# Handoff → Codex opens a placement submenu (same one-row→submenu idiom as the
+	# account row). It carries this render's config_dir so the source resolves.
+	local handoff_menu_cmd
+	handoff_menu_cmd="$self_arg handoff-menu $sid_arg $config_dir_arg $cwd_arg $pane_arg"
+
 	local -a menu
 	menu=(
 		"Split right" "|" "split-window -h -t $split_target -c \"$cwd\" \"$fork_cmd\""
@@ -136,6 +159,7 @@ render_branch_menu() {
 		account_action="run-shell $(tmux_quote "$account_menu_cmd")"
 		menu+=("Fork → other ACCOUNT" "a" "$account_action" "")
 	fi
+	menu+=("Handoff → Codex" "x" "run-shell $(tmux_quote "$handoff_menu_cmd")" "")
 	menu+=(
 		"Copy fork command" "c" "set-buffer -w -- \"$fork_cmd\" ; display-message \"Copied fork command\""
 		"Copy session id" "y" "set-buffer -w -- \"$sid\" ; display-message \"Copied session id\""
@@ -358,6 +382,24 @@ account-chosen)
 	# split_target = pane_target (the stable id) so a split lands next to the
 	# origin pane even from this run-shell context.
 	render_branch_menu "$pane_target" "$pane_target" "$cwd" "$sid" "$target_dir" "$flags" " Branch → $tgt_label " 0
+	exit 0
+	;;
+handoff-menu)
+	# The Handoff → Codex placement submenu (split right/down / new window),
+	# reached via run-shell from the branch menu's "Handoff → Codex" row. Like
+	# account-chosen it runs from a run-shell context, so it splits against the
+	# stable pane_target (session:window.pane), not "%N".
+	[ "$#" -eq 5 ] || soft_fail "usage: handoff-menu <sid> <config-dir> <cwd> <pane-target>"
+	sid=$2
+	config_dir=$3
+	cwd=$4
+	pane_target=$5
+
+	handoff_cmd=$(claude_handoff_cmd "$sid" "$config_dir")
+	tmux display-menu -T " Handoff → Codex " -x C -y C \
+		"Split right" "|" "split-window -h -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
+		"Split down" "-" "split-window -v -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
+		"New window" "w" "new-window -c \"$cwd\" \"$handoff_cmd\""
 	exit 0
 	;;
 esac
