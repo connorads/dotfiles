@@ -9,6 +9,9 @@ WT_WINDOW="$BATS_TEST_DIRNAME/../../tmux/scripts/wt-window.sh"
 
 setup() {
   setup_test_home
+  # Fast render sources _wt_managed_worktrees from _wt-common; point at the repo
+  # copy since the throwaway HOME carries no dotfiles.
+  export WT_COMMON="$FUNCTIONS_DIR/git/_wt-common"
   # tmux stub: logs every invocation; answers list-panes from $TMUX_PANES and
   # display-message (summoning pane) with %9.
   write_stub tmux <<'EOF'
@@ -159,7 +162,7 @@ printf 'ctrl-x\n%s\n' "$FZF_SELECT"
 EOF
 }
 
-@test "pick rows carry repo, a fixed PR-state column, then branch and flags" {
+@test "pick-render full rows carry repo, a fixed PR-state column, then branch and flags" {
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
 printf 'wt-status %s\n' "$*" >>"$TEST_LOG"
@@ -172,42 +175,34 @@ cat <<'JSON'
 ]
 JSON
 EOF
-  write_stub fzf <<'EOF'
-#!/usr/bin/env bash
-printf 'fzf %s\n' "$*" >>"$TEST_LOG"
-cat >>"$HOME/fzf-input"
-exit 130
-EOF
   export TMUX_PANES=$'@7\t/tmp/x/.trees/alpha/feat/src'
 
-  run "$WT_WINDOW" pick
+  run "$WT_WINDOW" pick-render full
 
   [ "$status" -eq 0 ]
   # wt-status is queried for the real (squash/rebase-aware) PR signal.
   grep -q -- "wt-status --all --pr --json" "$TEST_LOG"
   # Markers are ANSI-coloured; strip codes for the layout assertions.
-  sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
   # Sorted by repo: alpha first although wt-status emitted it last.
-  head -1 "$HOME/fzf-plain" | grep -q "alpha"
+  head -1 "$HOME/plain" | grep -q "alpha"
   # Hidden path field 1, then repo, then the PR verdict ahead of branch.
-  grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/fzf-plain"
+  grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/plain"
   # MERGED + clean + not-ahead → reap; PR token sits before the branch.
-  grep -Eq 'delta +✓ reap +rebased' "$HOME/fzf-plain"
+  grep -Eq 'delta +✓ reap +rebased' "$HOME/plain"
   # MERGED + dirty/unpushed → merged (not reap), local flags trail.
-  grep -Eq 'gamma +✓ merged +keep +● dirty ↑1$' "$HOME/fzf-plain"
+  grep -Eq 'gamma +✓ merged +keep +● dirty ↑1$' "$HOME/plain"
   # OPEN state, with ahead/behind flags trailing after the branch.
-  grep -Eq 'beta +○ open +wip +↑2 ↓1$' "$HOME/fzf-plain"
+  grep -Eq 'beta +○ open +wip +↑2 ↓1$' "$HOME/plain"
   # No PR → the "-" verdict; live pane (inside the tree) leads the flags,
   # ahead of the dirty marker (untracked counts as dirty).
-  grep -Eq 'alpha +· - +feat +◉ live ● dirty$' "$HOME/fzf-plain"
-  # reap renders bright-green; fzf interprets colours and shows a preview.
-  grep -q $'\x1b\\[92m✓ reap' "$HOME/fzf-input"
-  grep -q -- "--ansi" "$TEST_LOG"
-  grep -q -- "--preview" "$TEST_LOG"
+  grep -Eq 'alpha +· - +feat +◉ live ● dirty$' "$HOME/plain"
+  # reap renders bright-green so fzf --ansi shows it coloured.
+  printf '%s\n' "$output" | grep -q $'\x1b\\[92m✓ reap'
 }
 
-@test "pick degrades to the local merged hint when PR state is unknown" {
-  # Offline / no gh: wt-status --pr yields pr_state=unknown; the picker falls
+@test "pick-render full degrades to the local merged hint when PR state is unknown" {
+  # Offline / no gh: wt-status --pr yields pr_state=unknown; the renderer falls
   # back to the local merged_into_base ancestry hint rather than crashing.
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
@@ -218,33 +213,84 @@ cat <<'JSON'
 ]
 JSON
 EOF
-  write_stub fzf <<'EOF'
-#!/usr/bin/env bash
-cat >>"$HOME/fzf-input"
-exit 130
-EOF
 
-  run "$WT_WINDOW" pick
+  run "$WT_WINDOW" pick-render full
 
   [ "$status" -eq 0 ]
-  sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
   # merged_into_base → "? merged" hint; otherwise "? …".
-  grep -Eq 'repo +\? merged +anc' "$HOME/fzf-plain"
-  grep -Eq 'repo +\? … +live' "$HOME/fzf-plain"
+  grep -Eq 'repo +\? merged +anc' "$HOME/plain"
+  grep -Eq 'repo +\? … +live' "$HOME/plain"
 }
 
-@test "pick with no managed worktrees soft-fails before fzf" {
+@test "pick-render fast paints repo, branch, a loading PR token, and the live flag" {
+  # Managed-worktree fixture: two dirs holding a .git marker under ~/.trees.
+  mkdir -p "$HOME/.trees/repo/foo" "$HOME/.trees/repo/bar"
+  : >"$HOME/.trees/repo/foo/.git"
+  : >"$HOME/.trees/repo/bar/.git"
+  # branch via `git -C <wt> branch --show-current`; no git status / gh.
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+if [ "$3" = "branch" ] && [ "$4" = "--show-current" ]; then
+  case "$2" in
+  */foo) echo "foo-branch" ;;
+  */bar) echo "bar-branch" ;;
+  esac
+fi
+EOF
+  export TMUX_PANES=$'@2\t'"$HOME/.trees/repo/foo"
+
+  run "$WT_WINDOW" pick-render fast
+
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
+  # Hidden path field 1, then repo. Sorted by branch: bar before foo.
+  head -1 "$HOME/plain" | grep -q $'^'"$HOME"'/.trees/repo/bar\trepo'
+  # Loading PR token; the live pane (inside foo) flags foo, not bar.
+  grep -Eq 'repo +⋯ … +bar-branch *$' "$HOME/plain"
+  grep -Eq 'repo +⋯ … +foo-branch +◉ live$' "$HOME/plain"
+}
+
+@test "pick-render emits nothing when there are no managed worktrees" {
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
 echo '[]'
 EOF
 
-  run --separate-stderr "$WT_WINDOW" pick </dev/null
+  run "$WT_WINDOW" pick-render fast </dev/null
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  run "$WT_WINDOW" pick-render full </dev/null
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "pick feeds the fast render to fzf and wires a full-reload load bind" {
+  mkdir -p "$HOME/.trees/repo/foo"
+  : >"$HOME/.trees/repo/foo/.git"
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+[ "$3" = "branch" ] && echo "foo"
+EOF
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+printf 'fzf %s\n' "$*" >>"$TEST_LOG"
+cat >>"$HOME/fzf-input"
+exit 130
+EOF
+
+  run "$WT_WINDOW" pick </dev/null
 
   [ "$status" -eq 0 ]
-  [[ "$stderr" == *"No managed worktrees"* ]]
-  # Soft-fails before the pane scan (and so before fzf).
-  ! grep -q "list-panes" "$TEST_LOG"
+  grep -q -- "--ansi" "$TEST_LOG"
+  grep -q -- "--preview" "$TEST_LOG"
+  # load-triggered transform reloads the full render as a fresh process.
+  grep -q "load:transform" "$TEST_LOG"
+  grep -q "pick-render full" "$TEST_LOG"
+  # The initial pipe is the FAST render: its loading token reaches fzf's stdin.
+  sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
+  grep -Eq 'repo +⋯ … +foo *$' "$HOME/fzf-plain"
 }
 
 @test "pick ctrl-x removes a clean pane-free worktree and reloads the list" {

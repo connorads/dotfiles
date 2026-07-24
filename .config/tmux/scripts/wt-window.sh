@@ -8,16 +8,25 @@
 #   pane <path>   split the summoning pane, new pane cd'd to <path>
 #   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
 #                 then [enter] new window · [v] pane here
-#   pick          fzf over managed worktrees (wt-status --all --pr): columns are
-#                 repo, a fixed-width PR-state verdict (✓ reap / ✓ merged /
-#                 ○ open / ✗ closed / · - / ? …), branch, then a truncatable
+#   pick          fzf over managed worktrees: columns are repo, a fixed-width
+#                 PR-state verdict (✓ reap / ✓ merged / ○ open / ✗ closed /
+#                 · - / ? … / ⋯ … loading), branch, then a truncatable
 #                 local-flags column (◉ live / ● dirty / ↑ahead / ↓behind).
 #                 State is glyph + colour, so it reads without colour and the
 #                 verdict survives truncation (fixed column, ahead of branch).
-#                 Offline (no gh) degrades to ? with the local merged hint.
-#                 git log + status preview; enter → open, ctrl-v → pane here,
-#                 ctrl-x → remove (wt-remove --delete-branch: merged branch
-#                 deleted, unmerged kept)
+#                 Opens instantly via a two-phase load: the fast local render
+#                 (repo + branch, no git status, ~0.1s) paints first with a
+#                 ⋯ … loading PR token, then an fzf load-triggered reload swaps
+#                 in the full wt-status --all --pr render (PR verdict + local
+#                 flags, ~3s) once ready. Offline (no gh) degrades to ? with the
+#                 local merged hint. git log + status preview; enter → open,
+#                 ctrl-v → pane here, ctrl-x → remove (wt-remove
+#                 --delete-branch: merged branch deleted, unmerged kept)
+#   pick-render <fast|full>
+#                 internal: emit the fzf display TSV (hidden path field 1, then
+#                 repo, PR verdict, branch, trailing local flags). fast = local
+#                 enumerate only; full = wt-status --all --pr enrichment. Kept a
+#                 subcommand so fzf's reload can re-invoke it as a fresh process.
 set -euo pipefail
 
 # wt-add / wt-status are dual-mode zsh functions exposed via ~/.local/bin;
@@ -25,6 +34,12 @@ set -euo pipefail
 PATH="$HOME/.local/bin:$PATH"
 
 self="${BASH_SOURCE[0]}"
+
+# _wt-common (zsh lib) owns _wt_managed_worktrees, the vetted ~/.trees walk that
+# skips phantom submodule/node_modules .git markers. The fast render reuses it
+# rather than reimplementing the walk here (single source of truth). Overridable
+# so tests can point at the repo copy under a throwaway HOME.
+: "${WT_COMMON:=$HOME/.config/zsh/functions/git/_wt-common}"
 
 # Popup-friendly notice: show the message, wait for a key, carry on.
 pause_msg() {
@@ -78,27 +93,52 @@ new)
 	*) tmux new-window -c "$path" ;;
 	esac
 	;;
-pick)
-	# Rows: path (hidden), repo (path component after ~/.trees), branch, then
-	# PR state (from --pr), pr number, and local fields: dirty/untracked,
-	# merged-into-base (offline hint), ahead/behind of upstream. Field order
-	# keeps repo=2, branch=3 so the repo-then-branch sort below is unchanged.
-	# --pr adds the real (squash/rebase-aware) merge signal; fields are read
-	# defensively so a caller/stub without --pr still parses. Markers are
-	# information, not guards - removal deletes only branches already merged
-	# into base (git branch -d), so removing a clean tree loses nothing.
-	rows=$(wt-status --all --pr --json |
-		jq -r '.[] | [.path,
-			((.path | split("/.trees/")[1] // "") | split("/")[0]),
-			.branch,
-			(.pr_state // "unknown"),
-			((.pr_number // "") | tostring),
-			(if .dirty or .untracked then "1" else "0" end),
-			(if .merged_into_base then "1" else "0" end),
-			(.ahead // 0 | tostring),
-			(.behind // 0 | tostring)] | @tsv' |
-		sort -t'	' -k2,2 -k3,3)
-	[ -n "$rows" ] || soft_fail 'No managed worktrees - prefix + Alt+w creates one'
+pick-render)
+	# Emit the fzf display TSV. Two modes feed one shared awk renderer so the
+	# fast and full passes are byte-compatible (same columns, sort, field-1
+	# path), letting fzf swap one for the other via reload without re-laying-out.
+	#   full  wt-status --all --pr --json -> full PR verdict + local flags (~3s)
+	#   fast  local enumerate only (repo + branch, no git status) -> ⋯ loading PR
+	#         token, ~0.1s, so the picker opens instantly
+	# Row shape (9 TSV fields): path (hidden), repo (path component after
+	# ~/.trees), branch, pr_state, pr_number, dirty/untracked, merged-into-base
+	# (offline hint), ahead, behind. Field order keeps repo=2, branch=3 so the
+	# repo-then-branch sort is stable across modes.
+	mode="${2:-full}"
+	if [ "$mode" = fast ]; then
+		# One cheap `git branch` per worktree; no git status/upstream/gh. PR
+		# state = loading, local counters 0, so only the ◉ live flag can show.
+		rows=$(
+			zsh -fc 'source "$1"; _wt_managed_worktrees' zsh "$WT_COMMON" |
+				while IFS= read -r wt; do
+					[ -n "$wt" ] || continue
+					after=${wt##*/.trees/}
+					repo=${after%%/*}
+					br=$(git -C "$wt" branch --show-current 2>/dev/null) || br=""
+					printf '%s\t%s\t%s\tloading\t\t0\t0\t0\t0\n' "$wt" "$repo" "$br"
+				done |
+				sort -t'	' -k2,2 -k3,3
+		)
+	else
+		# --pr adds the real (squash/rebase-aware) merge signal; fields are read
+		# defensively so a caller/stub without --pr still parses. Markers are
+		# information, not guards - removal deletes only branches already merged
+		# into base (git branch -d), so removing a clean tree loses nothing.
+		rows=$(wt-status --all --pr --json |
+			jq -r '.[] | [.path,
+				((.path | split("/.trees/")[1] // "") | split("/")[0]),
+				.branch,
+				(.pr_state // "unknown"),
+				((.pr_number // "") | tostring),
+				(if .dirty or .untracked then "1" else "0" end),
+				(if .merged_into_base then "1" else "0" end),
+				(.ahead // 0 | tostring),
+				(.behind // 0 | tostring)] | @tsv' |
+			sort -t'	' -k2,2 -k3,3)
+	fi
+	[ -n "$rows" ] || exit 0
+	# A fresh process (fzf's reload) computes its own pane set rather than
+	# inheriting a stale env snapshot.
 	panes=$(tmux list-panes -a -F '#{window_id}	#{pane_current_path}')
 	# Render display columns. The PR-state verdict is a fixed-width column
 	# placed after repo, before branch: it folds reap-eligibility into the
@@ -107,7 +147,7 @@ pick)
 	# is padded to a set width first, then wrapped in ANSI, so the padding
 	# maths ignores escape bytes. Local flags trail (may truncate harmlessly);
 	# ◉ live marks a pane at or inside the worktree (path-boundary match).
-	display=$(printf '%s\n' "$rows" | PANES="$panes" awk '
+	printf '%s\n' "$rows" | PANES="$panes" awk '
 		BEGIN {
 			FS = "\t"
 			E = "\033["; R = "\033[0m"; W = 8
@@ -130,6 +170,7 @@ pick)
 			} else if (st == "OPEN") { g = "○"; w = "open"; c = "36"; dw = 6 }
 			else if (st == "CLOSED") { g = "✗"; w = "closed"; c = "31"; dw = 8 }
 			else if (st == "none") { g = "·"; w = "-"; c = "2"; dw = 3 }
+			else if (st == "loading") { g = "⋯"; w = "…"; c = "2"; dw = 3 }
 			else if (merged) { g = "?"; w = "merged"; c = "2"; dw = 8 }
 			else { g = "?"; w = "…"; c = "2"; dw = 3 }
 			pad = ""
@@ -156,12 +197,25 @@ pick)
 			fmt = "%s\t%-" rw "s  %s  %-" bw "s  %s\n"
 			for (i = 1; i <= nr; i++)
 				printf fmt, paths[i], repos[i], prtok[i], branches[i], flags[i]
-		}')
-	out=$(printf '%s\n' "$display" |
+		}'
+	;;
+pick)
+	# Async two-phase render: pipe the fast local paint into fzf so it opens in
+	# ~0.1s, then fzf's first `load` (fast stdin drained) fires a guarded
+	# `transform` that reloads the full --pr render. A one-shot sentinel breaks
+	# fzf's load->reload->load loop: the full pass's own load sees the sentinel
+	# and emits nothing. The list is usable (open/pane/remove) throughout.
+	sentinel=$(mktemp -u "${TMPDIR:-/tmp}/wtpick.XXXXXX")
+	out=$("$self" pick-render fast |
 		fzf --reverse --ansi \
 			--header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
 			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x \
-			--preview 'git -C {1} log --oneline --decorate -10; echo; git -C {1} status --short') || exit 0
+			--bind "load:transform:[ -e $sentinel ] && exit 0; : > $sentinel; printf 'reload(%s pick-render full)' \"$self\"" \
+			--preview 'git -C {1} log --oneline --decorate -10; echo; git -C {1} status --short') || {
+		rm -f "$sentinel"
+		exit 0
+	}
+	rm -f "$sentinel"
 	key="${out%%$'\n'*}"
 	line="${out#*$'\n'}"
 	path="${line%%	*}"
@@ -186,7 +240,7 @@ pick)
 	esac
 	;;
 *)
-	echo "usage: wt-window.sh open <path> | pane <path> | new <branch> | pick" >&2
+	echo "usage: wt-window.sh open <path> | pane <path> | new <branch> | pick | pick-render <fast|full>" >&2
 	exit 1
 	;;
 esac
