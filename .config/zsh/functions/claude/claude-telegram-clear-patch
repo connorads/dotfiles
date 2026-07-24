@@ -14,7 +14,7 @@
 # inference, and it fires even when the session is stuck mid-turn.
 #
 # The plugin cache is overwritten on plugin update, so this is idempotent (keyed
-# on a sentinel comment) and re-appliable. Insertion, not a length-preserving
+# on a sentinel comment) and safe to re-apply. Insertion, not a length-preserving
 # byte-swap, so it is a sibling of claude-channels-patch rather than a user of
 # _needle-patch-lib. Backup at <server.ts>.unpatched; --restore reverts.
 

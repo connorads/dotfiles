@@ -1,0 +1,51 @@
+# typos config for the dotfiles repo (spell gate via the hk pre-commit step).
+# Default locale on purpose: it accepts both British and US spellings, so only
+# genuine misspellings flag and prose is never rewritten between variants.
+
+[files]
+# Vendored third-party mirrors and patch hunks must stay byte-faithful to
+# upstream (same set as `no_reformat` in hk.pkl), and binary/font assets are
+# not prose. summon persona references are verbatim quote collections (a
+# source's own spelling is not ours to correct); lazy-lock.json is generated.
+extend-exclude = [
+  "vendor/.agents/skills/",
+  ".agents/skills/playwright-cli/",
+  ".config/skills/vendor/patches/",
+  ".config/skills/personal/summon/references/",
+  ".config/nvim/lazy-lock.json",
+  "*.patch",
+  "*.png",
+  "*.jpg",
+  "*.gif",
+  "*.ttf",
+  "*.otf",
+  "*.woff",
+  "*.woff2",
+]
+
+[default]
+# C4 docs spell out the four diagram names with a bold initial (**C**ontext),
+# which tokenises as headless word fragments.
+extend-ignore-re = ["\\*\\*C\\*\\*(ontext|ontainers|omponents|ode)"]
+
+[default.extend-words]
+# Accepted variant spellings used consistently in first-party prose - not
+# misspellings, so pinned as identities rather than rewritten.
+unparseable = "unparseable"
+browseable = "browseable"
+invokable = "invokable"
+# External identifiers: tool/product names and ecosystem symbols.
+sherif = "sherif" # JS monorepo linter
+cros = "cros"     # ChromeOS cros-garcon service
+sur = "sur"       # Homebrew :big_sur symbol
+aks = "aks"       # aks-desktop cask
+iif = "iif"       # IIFE tokenised as IIF + Es
+fpr = "fpr"       # false-positive rate
+# Code identifiers and deliberate fragments in first-party sources.
+caliased = "caliased" # tmux-freekeys c-prefixed array (cfree/cused/caliased)
+temporar = "temporar" # regex stem matching temporary/temporarily
+pn = "pn"             # pnpm alias, awk counter
+nd = "nd"             # ordinal-suffix regex (st|nd|rd|th), Nd age token
+ba = "ba"             # catppuccin hex f38ba8; "a BA owns" (business analyst)
+anc = "anc"           # wt-window.bats fixture branch name
+mis = "mis"           # hyphenated prefix (mis-routed, mis-enforce)

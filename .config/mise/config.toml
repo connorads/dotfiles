@@ -51,6 +51,9 @@ oxlint = "1"
 # native attestation/checksums. Config: .hk-hooks/ruff.toml, passed with
 # --config so it stays a gate config, not the global XDG default.
 ruff = "0.15"
+# typos: spell gate for the hk pipeline (default locale - both en variants
+# pass, only genuine misspellings flag). Config: ~/.typos.toml.
+typos = "1"
 ast-grep = "0.44"
 gcloud = "573"
 aws = "2"

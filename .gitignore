@@ -19,6 +19,7 @@
 !/.yarnrc.yml
 !/.bunfig.toml
 !/.rumdl.toml
+!/.typos.toml
 !/hk.pkl
 
 !/.hk-hooks/
