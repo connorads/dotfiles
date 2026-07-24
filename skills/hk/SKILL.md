@@ -86,15 +86,13 @@ Three files to create/update, plus optional extras:
 
 1. `mise.toml` — add hk, pkl, tool binaries
 2. `hk.pkl` — configuration
-3. `.hk-hooks/pre-commit` — tracked hook wrapper
-4. `scripts/quiet-on-success.sh` — **optional**, only if you have chatty-on-success steps (test runners, tools with no silent mode). Most check-style linters are already silent on success — don't wrap them. See `references/output-noise.md`. Copy from `assets/quiet-on-success.sh` in this skill.
-5. `.hk-hooks/pre-push` — **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
+3. `.hk-hooks/pre-commit` — tracked hook wrapper (runs `hk run pre-commit -q`; `-q` quiets every step on success — see `references/output-noise.md`)
+4. `.hk-hooks/pre-push` — **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
 
 Then:
 
 ```bash
 chmod +x .hk-hooks/*
-[ -f scripts/quiet-on-success.sh ] && chmod +x scripts/quiet-on-success.sh
 git config --local core.hooksPath .hk-hooks
 ```
 
@@ -152,23 +150,23 @@ local binary_excludes = List(
 }
 ```
 
-### Keeping steps quiet — suppress at the source
+### Keeping steps quiet — one flag on the hook wrapper
 
-hk has **no native quiet-on-success** in a non-TTY/agentic context — `-q`, `--silent`,
-`HK_LOG`, etc. are no-ops on the log dump. So if a step is noisy on success, quiet the
-*command it runs*, not hk: most check-style linters are already silent (do nothing), some
-have a true silence flag (`ruff check -q`), and chatty test runners get wrapped with
-`scripts/quiet-on-success.sh`. Decide per tool — see `references/output-noise.md` for the
-3-tier model, verification steps, and measured numbers.
+On hk ≥ 1.51.0 the quiet lever is **`hk run <hook> -q`** on the `.hk-hooks/pre-commit`
+wrapper. `-q` natively quiets *every* step on success: **success → 0 bytes**,
+**failure → the failing step's full stdout+stderr survives** (only hk's progress chrome is
+dropped). No per-step wrapping, no per-tool tiering — steps run their plain commands.
 
 ```pkl
 ["vitest"] {
-    check = "scripts/quiet-on-success.sh pnpm exec vitest run"  // prints on success; wrapper suppresses it
+    check = "pnpm exec vitest run"   // chatty on success — silenced by wrapper-level -q
 }
 ```
 
-Copy `assets/quiet-on-success.sh` from this skill directory into `scripts/` in the target
-repo (only needed if you have any tier-3 steps).
+**Never use `--silent`**: it reaches 0 bytes on success too, but on failure it drops the
+diagnostics (you get only `See .../output.log`). `-q` is the only safe choice. `-n`,
+`HK_LOG`, `RUST_LOG` are no-ops on step success output. See `references/output-noise.md` for
+the mechanism, the TTY-vs-no-TTY nuance, and measured numbers.
 
 ### Whole-graph checks
 
@@ -183,7 +181,7 @@ For dependency-cruiser:
 
 ```pkl
 local depcruise_step = new Step {
-    check = "scripts/quiet-on-success.sh pnpm --silent check:deps"
+    check = "pnpm --silent check:deps"
 }
 ```
 
@@ -201,9 +199,10 @@ the added latency is acceptable for normal commits.
 ### The .hk-hooks/pre-commit wrapper
 
 This is the file git actually executes. It's tracked in git (unlike `.git/hooks/`).
-Don't capture hk's output — let it stream so colour, progress, and slow-run feedback
-survive (and so a successful run visibly *ran*). The wrapper just adds an `HK=0` bypass
-and discovers hk via mise when it isn't on `PATH`:
+Don't capture hk's output — `exec` it so colour, progress, and failure diagnostics stream
+through. The `-q` flag drops only *success* chrome (0 bytes on a clean run); a failing step
+still streams its full stdout+stderr. The wrapper also adds an `HK=0` bypass and discovers hk
+via mise when it isn't on `PATH`:
 
 ```sh
 #!/bin/sh
@@ -227,7 +226,7 @@ if [ -z "$HK_BIN" ]; then
   exit 1
 fi
 
-exec "$HK_BIN" run pre-commit "$@"
+exec "$HK_BIN" run pre-commit -q "$@"
 ```
 
 For hooks that only delegate to hk, use simpler wrappers:
@@ -274,11 +273,13 @@ Pattern:
 ### Required first lines
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 ```
 
-**Always match the version in `amends` and `import` to the installed hk version** (`hk --version`).
+**Always match the version in `amends` and `import` to the installed hk version** (`hk --version`),
+and require **hk ≥ 1.51.0** — the wrapper-level `-q` success quieting (see above) needs it. The
+skill installs `hk = "latest"`, so fresh setups qualify; for an older pinned repo, upgrade hk.
 
 ### Builtin step (use as-is)
 
@@ -295,10 +296,18 @@ import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtin
 }
 ```
 
-### Native per-step output controls
+### Output controls
 
-hk exposes two per-step knobs that trim *its* chrome — neither suppresses a command's own
-output (only a silent command or the wrapper does that):
+**Run-level (preferred):** flags on `hk run <hook>`.
+
+| Flag | Effect |
+|------|--------|
+| `-q` | **Quiet-on-success** (hk ≥ 1.51.0): success → 0 bytes; failure keeps the failing step's full stdout+stderr. Put this on the wrapper. |
+| `--silent` | 0 bytes on success **and on failure** — drops diagnostics. **Never use it.** |
+| `-n` / `--no-progress` | No-op on step success output (touches progress rendering only). |
+
+**Per-step:** two knobs that trim *hk's* chrome — neither suppresses a command's own output
+(only wrapper-level `-q` does that):
 
 ```pkl
 ["typecheck"] {
@@ -308,10 +317,10 @@ output (only a silent command or the wrapper does that):
 }
 ```
 
-On failure hk prints the output **twice** (live stream + end summary). `output_summary = "hide"`
-drops the duplicate summary, but it's **only safe under head-keeping output truncation** (the
-live error survives) and **unsafe under tail-keeping harnesses** (the summary is the only
-survivor). Default: leave hk's default. See `references/output-noise.md` for the caveat.
+Without `-q`, on failure hk prints the output **twice** (live stream + end summary), and
+`output_summary = "hide"` drops the duplicate summary but is **only safe under head-keeping
+output truncation**. Wrapper-level `-q` sidesteps this: it yields a single small failure copy,
+safe under both head- and tail-keeping truncation. See `references/output-noise.md`.
 
 ### Custom step
 
@@ -421,11 +430,11 @@ Insert into `hk.pkl` under the appropriate section. Check `hk builtins` for avai
 hk --version   # check current
 ```
 
-Bump both URLs in `hk.pkl` to the installed version, e.g.:
+Bump both URLs in `hk.pkl` to the installed version (minimum **v1.51.0**), e.g.:
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.48.0/hk@1.48.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 ```
 
 ### Bypass hooks temporarily
@@ -453,7 +462,7 @@ hooks {
     ["pre-commit"] {
         steps {
             ["vitest"] {
-                check = "scripts/quiet-on-success.sh pnpm exec vitest run --testPathPattern=fast"
+                check = "pnpm exec vitest run --testPathPattern=fast"
             }
         }
     }
@@ -474,7 +483,7 @@ hooks {
 | Binary files fail spell check | Add binary excludes to typos/trailing-whitespace/newlines steps |
 | Git worktrees: `hk install` fails | Automatic since v1.35.0; if using older version use `.hk-hooks/` + `core.hooksPath` |
 | Fix auto-stages wrong files | Use explicit `stage` glob on the step, or ensure step `glob` covers fixed files |
-| Noisy output on success | Quiet the *command*, not hk (hk has no non-TTY quiet mode). Silent flag (`ruff check -q`) or `scripts/quiet-on-success.sh` for chatty runners; native `output_summary`/`hide` only trim chrome — see `references/output-noise.md` |
+| Noisy output on success | Add `-q` to the pre-commit wrapper (`hk run pre-commit -q`, hk ≥ 1.51.0): 0 bytes on success, full failing-step output on failure. **Never `--silent`** (drops failure diagnostics). See `references/output-noise.md` |
 | Hook runs in CI unnecessarily | Add `[ -n "$CI" ] && exit 0` to `prepare` script |
 | `hk.local.pkl` uses amends not being honoured | First line must be `amends "./hk.pkl"` |
 
@@ -482,12 +491,10 @@ hooks {
 
 ## References
 
-- `references/builtins-by-language.md` — step selection by ecosystem (which steps to wrap)
+- `references/builtins-by-language.md` — step selection by ecosystem
 - `references/complete-examples.md` — full hk.pkl configs for different stacks
-- `references/output-noise.md` — how to keep steps quiet correctly (the 3-tier model, hk's native controls, harness-truncation caveat)
-- `assets/quiet-on-success.sh` — copy into `scripts/` in target repo (only for tier-3 chatty steps)
+- `references/output-noise.md` — how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
 - `assets/soft-protected-branch-pre-push.sh` — copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
-- `tests/quiet-on-success.bats` — behavioural tests for the asset (`bats tests/`)
 - `tests/soft-protected-branch-pre-push.bats` — behavioural tests for the advisory branch-protection asset
 - [hk docs](https://hk.jdx.dev) — official documentation
 - `hk builtins` — list all available built-in linters
