@@ -140,6 +140,15 @@ local fast_steps = new Mapping<String, Step> {
         fix = "zizmor --offline --no-progress --fix {{ files }}"
     }
 
+    // Cross-host guard: a config authored on one host must still evaluate for
+    // every other host (eval is platform-independent; ~25s, only when nix
+    // files are staged). The script owns the target list; CI reuses it via
+    // `hk check --all`. Escape hatch: HK_SKIP_STEPS=nix-eval git commit ...
+    ["nix-eval"] {
+        glob = List(".config/nix/**")
+        check = "bash .hk-hooks/nix-eval.sh"
+    }
+
     // Guard the tmux dimming patches against accidental removal. Vanilla tmux
     // builds fine without them, so dropping a patch from the flake overlay
     // silently loses inactive-pane dimming with no build error. Fire whenever
