@@ -62,6 +62,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | Key | Action |
 |-----|--------|
 | `Ctrl+b s` / `w` | session / window tree (tmux default choose-tree) |
+| `Ctrl+b S` | session switch/create (fzf: pick existing, or type a new name to create + switch) |
 | `Ctrl+b Alt+Shift+W` | worktree picker: repo + status markers (`open`/`dirty`/`merged`/`ahead N`/`behind N`) + git log/status preview; enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; merged branch deleted, unmerged kept) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle; shows agent name) |
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
