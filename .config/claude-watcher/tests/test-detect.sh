@@ -13,19 +13,21 @@ fails=0
 # 3pm is 2h away (< 6h ceiling -> five-hour); Oct 6 is months away (-> over-ceiling).
 NOW=$(python3 -c "from datetime import datetime; from zoneinfo import ZoneInfo; print(int(datetime(2026,5,31,13,0,tzinfo=ZoneInfo('America/Santiago')).timestamp()))")
 
-expect_detect() {  # $1 fixture, $2 = yes|no
-  if sh "$WATCHER" __detect < "$FIX/$1" >/dev/null 2>&1; then got=yes; else got=no; fi
-  want=$2
-  if [ "$got" != "$want" ]; then
-    echo "  - detect $1: want $want, got $got"; fails=$((fails + 1))
-  fi
+expect_detect() { # $1 fixture, $2 = yes|no
+	if sh "$WATCHER" __detect <"$FIX/$1" >/dev/null 2>&1; then got=yes; else got=no; fi
+	want=$2
+	if [ "$got" != "$want" ]; then
+		echo "  - detect $1: want $want, got $got"
+		fails=$((fails + 1))
+	fi
 }
 
-expect_class() {  # $1 fixture, $2 = none|five-hour|over-ceiling
-  got=$(sh "$WATCHER" __classify --now "$NOW" < "$FIX/$1" 2>/dev/null)
-  if [ "$got" != "$2" ]; then
-    echo "  - classify $1: want $2, got '$got'"; fails=$((fails + 1))
-  fi
+expect_class() { # $1 fixture, $2 = none|five-hour|over-ceiling
+	got=$(sh "$WATCHER" __classify --now "$NOW" <"$FIX/$1" 2>/dev/null)
+	if [ "$got" != "$2" ]; then
+		echo "  - classify $1: want $2, got '$got'"
+		fails=$((fails + 1))
+	fi
 }
 
 # Positive: the two banner forms + the wrapped (within-6-lines) render.
@@ -44,7 +46,7 @@ expect_class normal-output.txt none
 expect_class mid-stream.txt none
 
 if [ "$fails" -ne 0 ]; then
-  echo "FAIL: $fails detection assertion(s) failed"
-  exit 1
+	echo "FAIL: $fails detection assertion(s) failed"
+	exit 1
 fi
 echo "ok - watcher.sh detection/classification: all fixtures passed"

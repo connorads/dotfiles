@@ -9,7 +9,7 @@ TSSSH="$FUNCTIONS_DIR/tailscale/tsssh"
 setup() {
   setup_test_home
   export TSSSH_STATE="$BATS_TEST_TMPDIR/tsssh-state"
-  echo false > "$TSSSH_STATE"
+  echo false >"$TSSSH_STATE"
 
   write_stub ts <<'EOF'
 #!/usr/bin/env bash
