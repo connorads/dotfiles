@@ -242,6 +242,7 @@ wt-finish --mode pr    # Push + open PR via wt-publish (worktree remains)
 wt-clean [--all]       # Reap worktrees whose PR is MERGED (squash/rebase-aware); spares open/no-PR/dirty/unpushed. Preview+confirm; --dry-run/--json/--force/--include-closed/--yes
 wt-remove [path]       # Non-interactive managed worktree removal primitive
 wti                    # Alias for `wt-status --all`
+wtc                    # Alias for `wt-clean`
 wtu                    # Human TUI: multi-select open/publish/remove; alt-R sweeps merged PRs via wt-clean
 wts                    # fzf switch to a worktree (works outside git repos)
 wt-prune               # Prune stale git worktree metadata after crashes/manual deletes
