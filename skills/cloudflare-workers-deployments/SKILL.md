@@ -91,6 +91,10 @@ Read only the reference needed for the task:
 4. Configure Workers Builds.
    - For a missing Worker project, prefer creating a Worker shell without a live
      version, then attaching a Git build trigger. See `references/workers-builds.md`.
+   - Pick the setup path by context: interactive with a browser -> hand the user
+     the dashboard deep link (it authorises GitHub and creates the build token);
+     headless, scripted, or reproducible -> the cf CLI path. See
+     `references/workers-builds.md` (Choose A Setup Path).
    - Connect the Git repository, select/create a build token, and create a
      production trigger.
    - Use build/deploy commands that work in a non-interactive CI environment.

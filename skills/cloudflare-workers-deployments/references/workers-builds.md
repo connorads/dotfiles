@@ -8,7 +8,9 @@ all angle-bracket placeholders before running commands.
 - [Repo Preparation](#repo-preparation)
 - [Tooling And Auth](#tooling-and-auth)
 - [Read Checks](#read-checks)
+- [Choose A Setup Path](#choose-a-setup-path)
 - [Create A Worker Project Without Local Deployment](#create-a-worker-project-without-local-deployment)
+- [Create A Build Token](#create-a-build-token)
 - [Connect Git Repository](#connect-git-repository)
 - [Create Or Update Triggers](#create-or-update-triggers)
 - [Trigger And Monitor Builds](#trigger-and-monitor-builds)
@@ -161,6 +163,47 @@ cf workers-builds triggers list --external-script-id <worker-tag>
 cf workers-builds builds list --external-script-id <worker-tag>
 ```
 
+## Choose A Setup Path
+
+The Worker must already exist for either path - a prior `wrangler deploy` or a
+Worker shell (below). The dashboard deep link 404s until it does. Pick by
+context; do not offer both as an equal menu.
+
+- Interactive, browser available -> dashboard. Least setup: the "Connect to
+  Git" flow authorises the GitHub app and creates the build token in one
+  click-through. Build the deep link and hand it to the user:
+
+  ```text
+  https://dash.cloudflare.com/<account-id>/workers/services/view/<worker-name>/production/settings
+  ```
+
+  `<account-id>` comes from `cf context show`; `<worker-name>` from the repo's
+  wrangler config `name` (or `cf workers scripts search`). Then: Build ->
+  Connect. Offer to open it with the platform opener (`open` on macOS,
+  `xdg-open` on Linux), falling back to printing the link; do not launch it
+  unprompted. No display is itself the signal to take the CLI path instead.
+
+- Headless, scripted, or reproducible -> cf CLI. No browser (SSH/CI), or the
+  setup must be repeatable. Follow the CLI sections below: create a build token,
+  connect the repo, create the trigger.
+
+The dashboard reuses an existing user build token if one exists; the CLI path
+lets you mint a dedicated, per-project, least-privilege token. The dashboard
+also creates two triggers (production branch + non-production preview); a single
+CLI `triggers create` covers production only unless you create a preview trigger
+too.
+
+### cf CLI write calls: use `--body`
+
+For Builds write calls (`repos connections upsert`, `triggers create`,
+`triggers create-build`), pass a JSON body via `--body '<json>'` rather than the
+individual `--flag` options. On cf v0.2.0 (observed 2026-07) the flags serialise
+to flat hyphenated keys the API rejects: a manual build via `--seed-repo-*`
+flags returns HTTP 500, while the same call with `--body '{"branch":"main"}'`
+succeeds. If a `--flag` write call fails with 500 or a validation error, switch
+to `--body`. The body fields match the REST API, so the JSON bodies shown in
+this file work verbatim as `--body` payloads.
+
 ## Create A Worker Project Without Local Deployment
 
 When the Worker does not exist and the user wants Workers Builds, create the
@@ -188,21 +231,72 @@ cf workers deployments list --script-name <worker-name>
 Expected for a new shell: scripts search returns the Worker, versions list is
 empty, and deployments list is empty.
 
+## Create A Build Token
+
+CLI path only. A build token is the credential CI uses to deploy on your behalf.
+The dashboard creates one silently; the CLI path requires you to supply one.
+Reusing an existing user token works but is shared across projects (revoke
+affects all); prefer a dedicated, least-privilege token per project. To reuse
+instead, take a `build_token_uuid` from `cf workers-builds tokens list`.
+
+A build token wraps a Cloudflare API token: mint the API token, then register
+it.
+
+1. Mint the API token. Scope it to the minimum the deploy needs - for a Worker
+   with no bindings and no routes, `Workers Scripts Write` +
+   `Account Settings Read` on the account is enough (verified deploying an
+   assets-only Worker). Add one permission group per binding (KV, R2, D1,
+   Queues) or `Workers Routes Write` (zone-scoped) for custom routes. List group
+   IDs with `cf user tokens permission-groups list`. Keep the returned secret
+   out of logs - capture it into a variable, never echo it:
+
+   ```bash
+   ACCT=<account-id>
+   RESP=$(cf user tokens create --body '{
+     "name": "<worker-name> build token",
+     "policies": [{
+       "effect": "allow",
+       "resources": { "com.cloudflare.api.account.'"$ACCT"'": "*" },
+       "permission_groups": [
+         { "id": "<workers-scripts-write-group-id>" },
+         { "id": "<account-settings-read-group-id>" }
+       ]
+     }]
+   }')
+   TOKEN_ID=$(printf '%s' "$RESP" | jq -r '.id // .result.id')
+   TOKEN_VALUE=$(printf '%s' "$RESP" | jq -r '.value // .result.value')
+   ```
+
+2. Register it as a build token (still without printing the secret):
+
+   ```bash
+   cf workers-builds tokens create \
+     --build-token-name "<worker-name> build token" \
+     --cloudflare-token-id "$TOKEN_ID" \
+     --build-token-secret "$TOKEN_VALUE"
+   ```
+
+Save `build_token_uuid` from the response for the trigger.
+
 ## Connect Git Repository
 
 Cloudflare's GitHub or GitLab app must already be authorised for the owner/repo.
-Then upsert the repository connection:
+Then upsert the repository connection via `--body` (see the `--body` note under
+Choose A Setup Path):
 
 ```bash
-cf workers-builds repos connections upsert \
-  --provider-type <github-or-gitlab> \
-  --provider-account-id <provider-owner-id> \
-  --provider-account-name <owner> \
-  --repo-id <provider-repo-id> \
-  --repo-name <repo>
+cf workers-builds repos connections upsert --body '{
+  "provider_type": "github",
+  "provider_account_id": "<provider-owner-id>",
+  "provider_account_name": "<owner>",
+  "repo_id": "<provider-repo-id>",
+  "repo_name": "<repo>"
+}'
 ```
 
-Save `repo_connection_uuid`.
+Get the numeric owner/repo IDs from `gh api` (see Read Checks). Save
+`repo_connection_uuid` from the response. `upsert` is idempotent - re-running
+returns the existing connection.
 
 ## Create Or Update Triggers
 
@@ -246,6 +340,11 @@ console.log(JSON.stringify({
   trigger_uuid: created.result?.id || created.result?.uuid
 }));
 ```
+
+Or create it with the cf CLI using the same body:
+`cf workers-builds triggers create --body '<json>'` (the JSON fields are
+identical). `deploy_command` must run in non-interactive CI - with pnpm use
+`pnpm run deploy` (or `npx wrangler deploy`), never `pnpm deploy`.
 
 Preview/non-production builds usually use `wrangler versions upload` or a
 project-specific equivalent, producing preview URLs instead of live deployments.
@@ -291,6 +390,13 @@ console.log(JSON.stringify({
   build_uuid: build.result?.id || build.result?.uuid,
   status: build.result?.status
 }));
+```
+
+Or with the cf CLI (use `--body`; the `--seed-repo-*` flags fail - see the
+`--body` note):
+
+```bash
+cf workers-builds triggers create-build <trigger-uuid> --body '{"branch":"<production-branch>"}'
 ```
 
 Monitor status:
