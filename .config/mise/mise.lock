@@ -8,23 +8,23 @@ backend = "npm:@ampcode/cli"
 allow_builds = '["@ampcode/cli"]'
 
 [[tools."aqua:anomalyco/opencode"]]
-version = "1.18.3"
+version = "1.18.4"
 backend = "aqua:anomalyco/opencode"
 
 [tools."aqua:anomalyco/opencode"."platforms.linux-arm64"]
-checksum = "sha256:da0a631174eba380b2a1d51f9d364fa3812da433e72743c72471d4b5da59c69d"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.3/opencode-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/479302069"
+checksum = "sha256:eba87efba3976d533a24cca0316f8ef375b5f8e797c0a95c25ee919700b7ba35"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.4/opencode-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/483582199"
 
 [tools."aqua:anomalyco/opencode"."platforms.linux-x64"]
-checksum = "sha256:60f27b2679f00a511b6539f97e02448afaf58d9c66e2448285ea0c517ca84583"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.3/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/479302078"
+checksum = "sha256:bab463c3fb3224d388bb7cfad63f38703df9cf0be2cfd2ce8cb49d886b53a174"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.4/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/483582201"
 
 [tools."aqua:anomalyco/opencode"."platforms.macos-arm64"]
-checksum = "sha256:946f62b155638b911144b7bef520ee4a6442f696297907873463bca3524e40ef"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.3/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/479301949"
+checksum = "sha256:04fb881b632b323c712dfda6dcbbc6fce736394f07ba76176e52d6665925d4e6"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.4/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/483582182"
 
 [[tools."aqua:google/osv-scanner"]]
 version = "2.4.0"
@@ -90,18 +90,18 @@ url_api = "https://api.github.com/repos/jdx/aube/releases/assets/479812346"
 provenance = "github-attestations"
 
 [[tools.aws]]
-version = "2.36.6"
+version = "2.36.7"
 backend = "aqua:aws/aws-cli"
 
 [tools.aws."platforms.linux-arm64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.36.6.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.36.7.zip"
 
 [tools.aws."platforms.linux-x64"]
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.6.zip"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.7.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "blake3:14bc4bae92b40b18c8fa19b5ad8c5eb2af204977a83fd5b557185e20f1a912d1"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.36.6.pkg"
+checksum = "blake3:f961e64686646608599bca812124ace038428366d49da27822d98c08bb420abd"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.36.7.pkg"
 
 [[tools.bats]]
 version = "1.13.0"
@@ -153,18 +153,18 @@ version = "0.7.0"
 backend = "cargo:build-wrap"
 
 [[tools.claude]]
-version = "2.1.217"
+version = "2.1.218"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.217/linux-arm64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.218/linux-arm64/claude"
 
 [tools.claude."platforms.linux-x64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.217/linux-x64/claude"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.218/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "blake3:095734bad2bc054214a5504ef3df083013b9610709a34e1d3b0dc1852d08cfc5"
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.217/darwin-arm64/claude"
+checksum = "blake3:e3c9f86571c14c5dee9ab6e0906a24a25575da55ceea1045d44b0bdc56bd04ca"
+url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.218/darwin-arm64/claude"
 
 [[tools.codex]]
 version = "0.145.0"
@@ -202,25 +202,25 @@ checksum = "sha256:fecdfd2f962061c796eda4ce4c5753fdec33cdea4af4b5d1c513cf68f4e98
 url = "https://dl.deno.land/release/v2.9.3/deno-aarch64-apple-darwin.zip"
 
 [[tools.fnox]]
-version = "1.27.1"
+version = "1.31.0"
 backend = "github:jdx/fnox"
 
 [tools.fnox."platforms.linux-arm64"]
-checksum = "sha256:5f18410dd9a777386d9dbdd4029e13436195dcfaa55f594a99ff6a4bc1b3ca03"
-url = "https://github.com/jdx/fnox/releases/download/v1.27.1/fnox-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/450745507"
+checksum = "sha256:627f93c5fac35c08f613415e25904ed6775c50e19bc8e9c6d61fe5d02014635d"
+url = "https://github.com/jdx/fnox/releases/download/v1.31.0/fnox-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/480276465"
 provenance = "github-attestations"
 
 [tools.fnox."platforms.linux-x64"]
-checksum = "sha256:fe272bebbb0825ba1df0c7502054979815fae8251b4a90c61c28cd13d64887bf"
-url = "https://github.com/jdx/fnox/releases/download/v1.27.1/fnox-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/450745538"
+checksum = "sha256:5cfc8f5746e44188418174fd8338ffcbf22531626a439d166ec81b20203ea520"
+url = "https://github.com/jdx/fnox/releases/download/v1.31.0/fnox-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/480276475"
 provenance = "github-attestations"
 
 [tools.fnox."platforms.macos-arm64"]
-checksum = "sha256:0f82d0346872bc98843c8428bfd05e72ca9f8ac9eb699be4549e7a21d2cf0a7f"
-url = "https://github.com/jdx/fnox/releases/download/v1.27.1/fnox-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/450745511"
+checksum = "sha256:a4f7b576ce0a4ba5d3075db59dc0c2f0749f6fa6d8a08f2b546588d3bf96b44c"
+url = "https://github.com/jdx/fnox/releases/download/v1.31.0/fnox-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/480276462"
 provenance = "github-attestations"
 
 [[tools.gcloud]]
@@ -434,7 +434,7 @@ version = "7.0.0-dev.20260707.2"
 backend = "npm:@typescript/native-preview"
 
 [[tools."npm:agent-browser"]]
-version = "0.32.2"
+version = "0.32.3"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
@@ -458,7 +458,7 @@ version = "0.5.5"
 backend = "npm:ctx7"
 
 [[tools."npm:deepsec"]]
-version = "2.2.1"
+version = "2.2.4"
 backend = "npm:deepsec"
 
 [[tools."npm:executor"]]
@@ -466,11 +466,11 @@ version = "1.5.34"
 backend = "npm:executor"
 
 [[tools."npm:firecrawl-cli"]]
-version = "1.19.26"
+version = "1.19.27"
 backend = "npm:firecrawl-cli"
 
 [[tools."npm:hunkdiff"]]
-version = "0.17.2"
+version = "0.17.3"
 backend = "npm:hunkdiff"
 
 [[tools."npm:obsidian-headless"]]
@@ -567,11 +567,11 @@ extras = "cli,cpu"
 uvx_args = "--with numpy<2.3"
 
 [[tools."pipx:tau-ai"]]
-version = "0.2.0"
+version = "0.2.2"
 backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
-version = "0.0.60"
+version = "0.0.61"
 backend = "pipx:ty"
 
 [[tools.pkl]]
@@ -591,25 +591,25 @@ checksum = "sha256:1b6a5438d9624cd2798a7530721bbbfa27ef72efe5c878a1b6c546c6e7ca0
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-aarch64"
 
 [[tools.pnpm]]
-version = "11.15.0"
+version = "11.15.1"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:d0c62d5953a9ba168267d81d178edf0fcdd9ea947da7b3e21ff8f65a679dd4ba"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.0/pnpm-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/481462338"
+checksum = "sha256:361e385867146972d0635a41a1871cb44c9c23f65acce78a5f1ca1d44ac0afcd"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780455"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:f9fb813541b04a9c63f0b87d4116794b24ecf6c61f1c0757f3f32b03bb3b55b3"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.0/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/481462340"
+checksum = "sha256:0c1373b6390f6b89ff8b896d3647c9826577ddc49173a2f732da69b36569f9e0"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780457"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:662da4d7515b268c20fae097147a0ddcb91f9eba23b79c1c8d403e0d6fea1900"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.0/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/481462336"
+checksum = "sha256:4ff53ecc9de8df115d4efef60eab77f91be4f8237cdaca078351a22e707d1849"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780456"
 provenance = "github-attestations"
 
 [[tools.python]]
@@ -654,25 +654,25 @@ url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/479313898
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.36"
+version = "0.2.37"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:7ba1c83e52203a433a693b7e929e4f6a94720b58db5b9390e1341ce864e5fb89"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.36/rumdl-v0.2.36-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/481811656"
+checksum = "sha256:2cee94dbc4e577c54869723245be548589e80a5e5a93fe25a3cc535d51e1ac6d"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.37/rumdl-v0.2.37-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/482465207"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:084db61b28270fd357dd55b3edcd326f9620d50ffe2a3c2f024d8a8a86eb58d4"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.36/rumdl-v0.2.36-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/481811646"
+checksum = "sha256:0999d31c6f1429f0b3b5ed86d3ebb2768e5b4a16b373a51a41a7af2d7eb43b7c"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.37/rumdl-v0.2.37-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/482465203"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:8b6c69fbc33c2f503b61c85eea6ea347522888121b582205958575b1e24eaced"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.36/rumdl-v0.2.36-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/481811651"
+checksum = "sha256:ac5f31077c492c3303d27264d8d8840b1279cb5a8cd62f863a2045e1427a6c79"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.37/rumdl-v0.2.37-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/482465206"
 provenance = "github-attestations"
 
 [[tools.rust]]
@@ -731,23 +731,23 @@ url = "https://github.com/jdx/usage/releases/download/v3.5.5/usage-universal-app
 url_api = "https://api.github.com/repos/jdx/usage/releases/assets/476575330"
 
 [[tools.uv]]
-version = "0.11.29"
+version = "0.11.30"
 backend = "aqua:astral-sh/uv"
 
 [tools.uv."platforms.linux-arm64"]
-checksum = "sha256:593d79a797ece3f1dfaaf3e0a973263422a135d9262c7dbc6cd75d9c11acc0b4"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261262"
+checksum = "sha256:7562a40e4e08b1bfd566bd6aeca55a16ee5ac45211554543e8cdb3c395b47416"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.30/uv-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/483891898"
 provenance = "github-attestations"
 
 [tools.uv."platforms.linux-x64"]
-checksum = "sha256:46711858adb2a3acaa9cee00f9060688ad1fd5706aecc005b96a6a7f285a00b7"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261352"
+checksum = "sha256:023fdd3b59fccfb67b365c69fb34182aaaed1d685d367a57571e3c1468a4c70c"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.30/uv-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/483891981"
 provenance = "github-attestations"
 
 [tools.uv."platforms.macos-arm64"]
-checksum = "sha256:61c04acc52a33ef0f331e494bdfbedcdb6c26c6970c022ed3699e5860f8930e3"
-url = "https://github.com/astral-sh/uv/releases/download/0.11.29/uv-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/478261245"
+checksum = "sha256:9bed3567d496d8dab84ecf7a1247551ac94ef1baaebb7b65df008dd93e9dc357"
+url = "https://github.com/astral-sh/uv/releases/download/0.11.30/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/483891875"
 provenance = "github-attestations"
