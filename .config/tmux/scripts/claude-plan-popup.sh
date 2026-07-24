@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 # claude-plan-popup: render the active Claude Code plan in the current TTY
 # Usage: claude-plan-popup <pane_id>   (run from the prefix + T Tools launcher)
+# Plans are read from the pane's own account (its CLAUDE_CONFIG_DIR, set by ccp),
+# defaulting to ~/.claude; the latest-plan fallback scans that account's plans/.
 set -euo pipefail
 
 CLAUDE_DIR="$HOME/.claude"
 PLANS_DIR="$CLAUDE_DIR/plans"
 SESSIONS_DIR="$CLAUDE_DIR/sessions"
 PROJECTS_DIR="$CLAUDE_DIR/projects"
+
+# shellcheck source=lib/agent-session.sh disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
 
 # --- Detection functions ---
 
@@ -127,6 +132,15 @@ if [[ -n "$pane_pid" ]]; then
 	if [[ -n "${claude_pane_pid:-}" ]]; then
 		claude_pid=$(find_claude_pid "$claude_pane_pid") || true
 		if [[ -n "${claude_pid:-}" ]]; then
+			# Resolve the pane's account so its plan reads from that
+			# profile's dirs, not the default ~/.claude (ccp panes).
+			config_dir=$(claude_config_dir_for_pid "$claude_pid") || true
+			config_dir="${config_dir%/}" # strip any trailing slash defensively
+			if [[ -n "${config_dir:-}" ]]; then
+				SESSIONS_DIR="$config_dir/sessions"
+				PROJECTS_DIR="$config_dir/projects"
+				PLANS_DIR="$config_dir/plans"
+			fi
 			session_id=$(find_session_id "$claude_pid") || true
 			if [[ -n "${session_id:-}" ]]; then
 				slug=$(find_plan_slug "$session_id") || true
