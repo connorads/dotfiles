@@ -54,6 +54,13 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | API / event contracts | — | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor; vacuum for baseline-free OpenAPI spec governance | — | Baseline-diff gates for cross-service contracts — see `references/architecture-boundaries.md` (Boundary contracts); spec-shape governance in `references/contract-gates.md`. |
 | Custom rules / SAST | — | Opengrep (`opengrep scan --config <dir> --error`) | ast-grep for syntax-only structural rules — see `references/architecture-boundaries.md` | — | The OSS Semgrep fork (engine LGPL-2.1) after the Dec-2024 semgrep-rules relicensing: dataflow/taint custom rules across 20+ languages, Semgrep-format YAML, SARIF. Install via curl/Docker (no npm). **Default exits 0 even with findings — `--error` is load-bearing.** For authoring your own bug-class rules; see "Adding a new rule" and `references/architecture-boundaries.md` (Greppable invariants). |
 
+> **Framework single-file components** (`.astro` / `.vue` / `.svelte`) have no
+> picks row: the Rust JS linters can't parse them and misread their template
+> syntax as false positives. Scope the JS linter to `*.ts/*.js/*.mjs` and let the
+> framework's own checker (`astro check` / `vue-tsc` / `svelte-check`) plus its
+> ESLint parser own the SFC — see `references/typescript.md` (Framework
+> single-file components).
+>
 > **Locale spell-checker caveat.** A locale-rewriting spell hook (typos `en-gb`,
 > aspell) treats US spellings as errors and auto-"fixes" them — including
 > US-spelled **external identifiers inside string literals**: CLI flags
