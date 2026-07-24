@@ -5,5 +5,11 @@
 # makes prose diffs noisier. MD033 (inline HTML) is occasionally needed. Disable just
 # those two; keep the rest of rumdl's defaults (trailing newline, heading style, fenced
 # code-block language, etc.). Mirrors the per-project .rumdl.toml convention in ~/git/*.
+# MD041 (first line must be H1) is off because slash-command prompt files
+# (.claude/commands/, .config/opencode/command/) open with frontmatter + prompt text;
+# an injected heading would become part of the prompt sent to the agent.
 [global]
-disable = ["MD013", "MD033"]
+disable = ["MD013", "MD033", "MD041"]
+# summon persona references are quote collections; their blockquote/emphasis
+# layout is voice content (mirrors the rumdl step exclude in hk.pkl).
+exclude = [".config/skills/personal/summon/references/"]
