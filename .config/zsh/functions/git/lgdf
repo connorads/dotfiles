@@ -1,0 +1,9 @@
+#!/usr/bin/env zsh
+# lgdf: lazygit on the bare dotfiles repo (git-dir/work-tree pinned, cwd-agnostic)
+emulate -L zsh
+
+# Refresh codex/claude config stat data through the dotfiles wrapper first so
+# stripped machine-local blocks stay out of lazygit without staging real edits.
+dotfiles status --short .codex/config.toml .claude/settings.json >/dev/null 2>&1
+lazygit --use-config-dir ~/.config/lazygit \
+  --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
