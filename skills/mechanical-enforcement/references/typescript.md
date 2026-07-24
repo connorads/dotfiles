@@ -117,6 +117,10 @@ a blocking gate.
 | No inline styles | Biome `noInlineStyles` (or ESLint `react/forbid-dom-props`) | Design-system bypass | Allow `style` on one or two charting components with a disable comment. |
 | `useTopLevelRegex` (Biome) | default in Ultracite | Regex recompiled on every call; inline regex in test assertions | Prefer `.toThrow("Cannot submit:")` over `.toThrow(/Cannot submit:/)`. |
 
+`jsx-a11y` is static-only. Its deliberate runtime complement — colour contrast,
+computed ARIA, DOM/focus structure, which no static rule can see — is the
+axe/pa11y gate in `references/web-delivery.md`. Run both.
+
 ## Import hygiene
 
 | Rule | Encode with | Prevents |
@@ -177,6 +181,10 @@ surface. Three tiers, cheapest-to-verify first:
 | Byte / time budgets | yes | **size-limit** (`@size-limit/file` for raw bytes, `preset-app` for time-to-run); non-zero exit in CI. `size-limit-action` (andresz1) wraps it for PR comments — a *community* action, not first-party. |
 | Runtime metrics (LCP / CLS / perf score) | yes | **Lighthouse CI** (`budget.json` or per-URL assertions) + **unlighthouse** (site-wide crawl). Both need a served preview + Chrome; sample multiple runs — perf assertions flake. |
 | Semantic first-load HTML invariants | no — bespoke | a Node checker that reads `dist/*.html` and exits non-zero |
+
+The perf/byte tiers here have accessibility, SEO, social-metadata, and
+broken-link siblings that gate the same built output — see
+`references/web-delivery.md`.
 
 **Don't reach for** bundlesize (unmaintained — last release 0.18.x, 2024) or
 statoscope (webpack/rspack `stats.json` only — no Astro/Vite fit). Treat the
