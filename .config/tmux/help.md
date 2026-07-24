@@ -168,7 +168,7 @@ threshold); a number = swap worth noting.
 | `Ctrl+b I` | install plugins (TPM) |
 | `Ctrl+b U` | update plugins (TPM) |
 | clean unused plugins (TPM) | now in the `Ctrl+b T` Tools launcher |
-| Claude Code plan (pane or latest) | now in the `Ctrl+b T` Tools launcher |
+| Claude Code plan (pane or picker) | now in the `Ctrl+b T` Tools launcher |
 
 ## Usage Tracking
 
