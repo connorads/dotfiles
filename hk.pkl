@@ -62,6 +62,15 @@ local fast_steps = new Mapping<String, Step> {
         batch = true
     }
 
+    // Spell gate (default locale: both en variants pass, only genuine
+    // misspellings flag). --force-exclude in the builtin makes the
+    // .typos.toml excludes hold even for explicitly-passed files, so the
+    // vendored mirrors stay byte-faithful; no_reformat here is belt-and-braces.
+    ["typos"] = (Builtins.typos) {
+        batch = true
+        exclude = no_reformat
+    }
+
     // summon persona references are quote collections: blockquote spacing and
     // emphasis-as-heading are the voice content, so markdown style rules
     // (MD028/MD036) fight the format. Lint the skill's SKILL.md, not the quotes.
