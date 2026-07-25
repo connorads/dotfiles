@@ -30,6 +30,17 @@ The act of making a chosen skill available to the agent *right now*, without it 
 autoloaded. Mechanism: inject a **pointer** (see below) into the active agent's tmux
 pane via `tmux send-keys`; the agent then reads the SKILL.md itself.
 
+### Install (deliberate)
+
+The act of making a chosen skill (or a whole `<source>/` group) **stick in a project** —
+the persistent counterpart to `load`'s session-only injection. `skl install <ref>` copies
+the skill's vetted local bytes into the enclosing git work-tree by delegating to `skills
+add <source-root> --skill <names…>` (one call per source root). The catalogue path *is*
+the local source, so it is a frozen local copy (`sourceType: "local"` in the project's
+`skills-lock.json`), never a re-fetch — local edits travel too. Refuses to install into
+`$HOME` or outside a work-tree. Mental model: **load** puts a skill in this session;
+**install** puts it in a project; a group of skills is a source. See ADR-0008.
+
 ### Pointer
 
 The minimal payload injected on load: skill name, absolute path, a `tree` of the
@@ -97,13 +108,13 @@ loads/copies, stdin loads, and inline bundles; it does not change source discove
 
 ### History record
 
-One JSONL line appended per **successful** load (inject or copy) to the machine-local
-usage log at `${XDG_STATE_HOME:-~/.local/state}/skl/history.jsonl`:
-`schema_version`, ISO-8601 UTC `ts`, `source`, `name`, `mode` (`inject`/`copy`),
-`target` (pane id, or null for copies), `submit`. Best-effort - a failed write warns
-on stderr and never fails the load. `skl history` summarises the file into
-`count  source/name  last <date>` rows. `SKL_HISTORY_FILE` overrides the path (test
-seam). See ADR-0007.
+One JSONL line appended per **successful** load (inject or copy) or install to the
+machine-local usage log at `${XDG_STATE_HOME:-~/.local/state}/skl/history.jsonl`:
+`schema_version`, ISO-8601 UTC `ts`, `source`, `name`, `mode`
+(`inject`/`copy`/`install`), `target` (pane id for inject, null for copy, project root
+for install), `submit`. Best-effort - a failed write warns on stderr and never fails the
+load. `skl history` summarises the file into `count  source/name  last <date>` rows
+(mode-agnostic). `SKL_HISTORY_FILE` overrides the path (test seam). See ADR-0007.
 
 ## Resolved decisions
 

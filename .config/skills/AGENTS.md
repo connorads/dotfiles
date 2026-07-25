@@ -143,6 +143,17 @@ bypasses npm/aube/quarantine posture — review the clone before trusting it.
 From `~/.config/skills/vendor`: `skills update -p` (project scope) refreshes **in place**
 against `skills-lock.json`. No global/symlink resurrection problem.
 
+### Install a catalogue skill/group into a project (frozen local copy)
+
+`skl install <ref>` copies a catalogue skill — or a whole group with `skl install
+<source>/` — into the current repo's `.agents/skills/`, delegating to `skills add
+<local-path>`. Because the source is the local catalogue, it is a **frozen local copy**
+(`sourceType: "local"` in the project's `skills-lock.json`), not an upstream-tracked pin:
+the vetted bytes travel and `skills update` won't auto-change them. Use this to pin the
+exact reviewed bytes into a repo. Picker: `ctrl-i`. Refuses `$HOME` / non-work-tree. This
+differs from the fetch path below (`skills add <owner/repo>`), which clones upstream and
+stays `skills update`-able. See `skl` ADR-0008.
+
 ### Promote to per-project
 
 When working in a repo whose stack matches a skill, `cd <repo>` and `skills add <owner/repo>
