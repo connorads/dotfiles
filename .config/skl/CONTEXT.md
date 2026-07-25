@@ -157,12 +157,22 @@ seam). See ADR-0007.
   telemetry for catalogue curation. Readout via `skl history` (needs no config or
   discovery). Not fzf `--history` (records typed queries, not selections, and misses
   CLI/`--stdin` loads). ADR-0007.
+- **Groups are sources**: a curated group is one more source (a per-set `skills`-CLI
+  project dir at `~/.config/skills/sets/<name>/`, registered in config). No new data
+  model — the `<source>/` whole-source ref (trailing slash) loads a group whole.
+  Rejected: a manifest `pkg:` model (a second invisible truth). ADR-0008.
 
 ### Source
 
 A configured root directory of skills, given a short **label** (set in config, or
 defaulting to the root dir's basename). Sources are meaningful, not just dedup buckets
 (e.g. `myrepo` = curated personal repo, `fixture` = agentskills test set).
+
+A **curated group** is a source: a related set of skills (elevenlabs, expo) realised as
+its own `skills`-CLI project dir at `~/.config/skills/sets/<name>/` and registered as one
+more `paths` entry. Grouping needs no new data model — rows are already `source/name` and
+the picker filters on `<name>`, so typing `expo` narrows to the group and `skl load expo/`
+loads it whole. `vendor` is the unsorted bucket for skills not yet grouped.
 
 ### Skill identity
 
@@ -174,6 +184,10 @@ Skills discovered via `Bun.Glob("**/SKILL.md")` under each source root.
 - **Bare** `skl <name>` → resolves by config **order** (PATH semantics, first source
   wins) and **prints the resolved source** (visibility of system status).
 - **Qualified** `skl <source>/<name>` → exact, unambiguous.
+- **Whole-source** `skl <source>/` (trailing slash) → every member of that source, in
+  discovery order. `parseRef` reads an empty name after the first slash as the group ref,
+  so it never collides with a concrete ref; `resolveRefs` expands it in place. Single-skill
+  callers (`preview`/`inline`) reject a group ref — the picker only ever sends concrete rows.
 - **Popup** tags every row with its source (`source/name`), so collisions are visible
   and you pick the intended copy directly.
 - **Config** lists ordered sources `{ path, name? }`; order = precedence.
