@@ -9,6 +9,7 @@
 # source's own spelling is not ours to correct); lazy-lock.json is generated.
 extend-exclude = [
   "vendor/.agents/skills/",
+  ".config/skills/sets/",
   ".agents/skills/playwright-cli/",
   ".config/skills/vendor/patches/",
   ".config/skills/personal/summon/references/",
