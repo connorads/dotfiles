@@ -8,7 +8,7 @@
 #   skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>
 #
 # enter injects into the origin pane; ctrl-y copies the pointer(s) to the
-# system clipboard instead (`skl load --copy`); ctrl-i installs the selection
+# system clipboard instead (`skl load --copy`); alt-i installs the selection
 # into the origin pane's project (`skl install --stdin`, run from its cwd).
 #
 # Usage: skl-pick [target-pane]   (target forwarded to `skl load`). Bound to
@@ -37,18 +37,18 @@ out=$(skl list \
   | fzf --reverse --multi --scheme=path --no-hscroll \
       --preview 'skl preview {1}' \
       --preview-window 'right,60%,wrap' \
-      --header 'tab: mark · enter: load · ctrl-y: copy · ctrl-i: install · esc: cancel' \
+      --header 'tab: mark · enter: load · ctrl-y: copy · alt-i: install · esc: cancel' \
       --bind 'tab:toggle+down,btab:toggle+up' \
-      --expect 'ctrl-y,ctrl-i')
+      --expect 'ctrl-y,alt-i')
 [[ -z $out ]] && exit 0   # cancelled (esc / ctrl-c)
 
-key=${out%%$'\n'*}        # line 1: "" (enter), "ctrl-y", or "ctrl-i"
+key=${out%%$'\n'*}        # line 1: "" (enter), "ctrl-y", or "alt-i"
 sel=${out#"$key"}         # rest: selected rows (empty if accepted with no match)
 sel=${sel#$'\n'}
 
 if [[ $key == ctrl-y ]]; then
   print -r -- "$sel" | skl load --stdin --copy
-elif [[ $key == ctrl-i ]]; then
+elif [[ $key == alt-i ]]; then
   # Install into the origin pane's PROJECT: skl resolves the project from cwd,
   # so cd to that pane's current path first. Same query technique as $pane above
   # (a popup doesn't change the active pane, so target the resolved origin pane).
