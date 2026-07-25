@@ -36,6 +36,7 @@ npm install @elevenlabs/react@latest   # React hooks
 ```
 
 **Import changes:**
+
 ```javascript
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Scribe } from "@elevenlabs/client";

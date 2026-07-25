@@ -111,6 +111,7 @@ except Exception as e:
 ```
 
 Common errors:
+
 - **401**: Invalid API key
 - **422**: Invalid parameters (check duration range, prompt_influence range)
 - **429**: Rate limit exceeded

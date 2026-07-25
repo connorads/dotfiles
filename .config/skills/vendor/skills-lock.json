@@ -19,12 +19,6 @@
       "skillPath": "skills/agent-device/SKILL.md",
       "computedHash": "d76647cbe0e151da0b1019dc3da7bffd17b735704a45a50a2f2f4aeed0afe8b2"
     },
-    "agents": {
-      "source": "elevenlabs/skills",
-      "sourceType": "github",
-      "skillPath": "agents/SKILL.md",
-      "computedHash": "990f8e57d0a982a4eafdd5167e4e4da6a767ee652ff000a86b4d74b09953080a"
-    },
     "animation-vocabulary": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
@@ -278,12 +272,6 @@
       "skillPath": "skills/motion-graphics/SKILL.md",
       "computedHash": "79a65357280bcdf044843b751a79ef65878636c000aceb86aed952a8efbba3d9"
     },
-    "music": {
-      "source": "elevenlabs/skills",
-      "sourceType": "github",
-      "skillPath": "music/SKILL.md",
-      "computedHash": "8eb2ab5ca4f8a6d5f4c20964bc98d5e76eda5e0f0c532f34ea8dadde48e8974f"
-    },
     "music-to-video": {
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
@@ -399,18 +387,6 @@
       "skillPath": "skills/slideshow/SKILL.md",
       "computedHash": "7b31f30f522435f18a89ab447b6f7f179a6021c44c501ef3d31a513d05ddfb74"
     },
-    "sound-effects": {
-      "source": "elevenlabs/skills",
-      "sourceType": "github",
-      "skillPath": "sound-effects/SKILL.md",
-      "computedHash": "54ec05122413cbc956b28fbd81c676e44eb0fdbbf6459ee3b367b2c7a1350b02"
-    },
-    "speech-to-text": {
-      "source": "elevenlabs/skills",
-      "sourceType": "github",
-      "skillPath": "speech-to-text/SKILL.md",
-      "computedHash": "d13a8bf2e72d2fffb4e00b5849b4566f9eba419459280b48eb13a02a44bab366"
-    },
     "talking-head-recut": {
       "source": "heygen-com/hyperframes",
       "sourceType": "github",
@@ -435,12 +411,6 @@
       "sourceType": "github",
       "skillPath": "skills/terminal-control/SKILL.md",
       "computedHash": "9ad2a1739894c7a60d6568be93e765d441bb8f84c19a591e796509a4d11ff6a2"
-    },
-    "text-to-speech": {
-      "source": "elevenlabs/skills",
-      "sourceType": "github",
-      "skillPath": "text-to-speech/SKILL.md",
-      "computedHash": "ce96454df84df2c8196ce7a650ac178185f3a62b32c2f1fd6250f05ec4982ff0"
     },
     "thermo-nuclear-code-quality-review": {
       "source": "cursor/plugins",

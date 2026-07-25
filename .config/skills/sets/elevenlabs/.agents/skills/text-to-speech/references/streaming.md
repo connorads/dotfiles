@@ -80,7 +80,7 @@ For text-streaming input where you send text chunks as they arrive (e.g., from a
 
 ### Connection
 
-```
+```text
 wss://api.elevenlabs.io/v1/text-to-speech/{voiceId}/stream-input?model_id={modelId}
 ```
 
