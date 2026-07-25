@@ -89,6 +89,8 @@ describe("parseArgs", () => {
         submit: true,
         copy: false,
         all: false,
+        global: false,
+        yes: false,
       });
     }
   });
@@ -106,6 +108,39 @@ describe("parseArgs", () => {
     const r = parseArgs(["--stdin", "--copy"]);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toMatchObject({ kind: "load", ref: null, options: { copy: true, all: false } });
+  });
+
+  test("install subcommand carries the ref", () => {
+    const r = parseArgs(["install", "expo/expo-router"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "install", ref: "expo/expo-router" });
+  });
+
+  test("install --stdin → null ref (refs from the picker)", () => {
+    const r = parseArgs(["install", "--stdin"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "install", ref: null });
+  });
+
+  test("install --stdin with a positional ref → too-many-args", () => {
+    expect(parseArgs(["install", "--stdin", "expo/expo-router"])).toEqual({
+      ok: false,
+      error: { kind: "too-many-args", args: ["expo/expo-router"] },
+    });
+  });
+
+  test("install accepts a whole-source ref (trailing slash)", () => {
+    const r = parseArgs(["install", "expo/"]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toMatchObject({ kind: "install", ref: "expo/" });
+  });
+
+  test("--global and --yes parse into install options", () => {
+    const r = parseArgs(["install", "expo/", "--global", "--yes"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "install") {
+      expect(r.value.options).toMatchObject({ global: true, yes: true });
+    }
   });
 
   test("missing flag value → missing-value", () => {
