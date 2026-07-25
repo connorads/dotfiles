@@ -30,9 +30,9 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 | Index-signature keys need bracket access | `"noPropertyAccessFromIndexSignature": true` | Typo'd dynamic keys (`cfg.hostnam`) silently typed instead of flagged | Stricter than `strict`. Declared properties keep dot access. |
 | Dead code fails build | `"noUnusedLocals": true`, `"noUnusedParameters": true` | Drifted imports, zombie variables | Prefix with `_` to intentionally keep an unused param. |
 | Only erasable TS syntax | `"erasableSyntaxOnly": true` (TS 5.8+) | `enum`, `namespace`, constructor param props — things that don't survive pure type-stripping | Enables deno/bun/swc/esbuild interop without a TS runtime. Breaks existing code using `enum`; migrate to `as const` unions. |
-| No `any` | Biome `noExplicitAny` (error) | Escape hatch from the type system | Use `unknown` + narrowing. |
+| No `any` | oxlint `typescript/no-explicit-any` (native, needs `"plugins": ["typescript"]`) or Biome `noExplicitAny` (error) | Escape hatch from the type system | Use `unknown` + narrowing. |
 | No `as Type` assertions | ESLint `@typescript-eslint/consistent-type-assertions` with `assertionStyle: "never"` | Silent lies to the compiler | Allowed exceptions (document each with `eslint-disable-next-line` + reason): `as const`, DOM APIs after null checks, untyped-library interop, intentionally-invalid test fixtures. |
-| No `!` non-null assertion | ESLint `@typescript-eslint/no-non-null-assertion` | Silent runtime crashes | Use a proper null check or throw a narrowed error. |
+| No `!` non-null assertion | oxlint `typescript/no-non-null-assertion` (native) or ESLint `@typescript-eslint/no-non-null-assertion` | Silent runtime crashes | Use a proper null check or throw a narrowed error. |
 | Prefer `import type` | Biome `useImportType` | Accidental runtime imports of type-only modules | Auto-fixable. |
 
 ## Type checking
@@ -59,7 +59,7 @@ Hard caveats while pre-GA:
 | No bare `catch` / swallowed errors | Biome `noCatchAssign`, `useErrorMessage`; ESLint `no-empty` with `allowEmptyCatch: false` | Errors disappearing into the void | Narrow in the catch (`catch (e) { if (e instanceof FooError) ... }`) or rethrow. |
 | No catch-all re-throw without cause | Custom `no-restricted-syntax` catching rethrows without `{ cause }` | Losing error context | Required pattern: `throw new Error("while doing X", { cause: e })`. |
 | Prefer Result types at domain boundaries | Convention + review; no linter | Exception-driven control flow in pure code | Exceptions live at the imperative shell only. |
-| No `console.*` in prod code | Biome `noConsole` with `allow: ["warn", "error"]` | Logs leaking to user consoles | Use the project's logger. |
+| No `console.*` in prod code | oxlint `no-console` (native, bans all levels) or Biome `noConsole` with `allow: ["warn", "error"]` | Logs leaking to user consoles | Use the project's logger. |
 
 ## Formatting (oxfmt, with Biome as the stable fallback)
 
@@ -101,7 +101,7 @@ into `biome.json` and keep ESLint only for what genuinely remains.
 Genuine ESLint hold-outs — keep ESLint for these:
 
 - **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
-- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, so `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint — see Purity in `references/architecture-boundaries.md`.
+- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, and oxlint (as of 1.74) doesn't ship `no-restricted-syntax` natively — the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`); it needs the alpha `oxlint-plugin-eslint` JS plugin. So `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint, or ride a greppable grep-then-`exit 1` hk step (the zero-dependency route — see Greppable invariants / Purity in `references/architecture-boundaries.md`). Note `no-restricted-imports` *is* native in oxlint; only the syntax/member-expression variant is not.
 - **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
 
 GritQL plugins can't be shared across repos (by design), so a reusable
