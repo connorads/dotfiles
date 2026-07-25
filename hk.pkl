@@ -217,6 +217,16 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/tmux-bind-lint.py"
     }
 
+    // Sibling of tmux-bind-lint for fzf argument strings: an fzf call that names
+    // both members of a terminal-alias pair (C-i=Tab etc.) - one via --expect,
+    // the other via --bind - is ambiguous; --expect accepts before --bind fires
+    // (the skl picker Tab-installs bug). Self-path in the glob so editing the
+    // checker re-triggers it.
+    ["fzf-bind-lint"] {
+        glob = List(".config/skl/bin/pick", ".config/zsh/functions/**/*", ".config/tmux/scripts/**/*", ".hk-hooks/fzf-bind-lint.py")
+        check = "python3 .hk-hooks/fzf-bind-lint.py"
+    }
+
     // Keep Claude and OpenCode security denies in lock-step (R6 drift guard).
     // Fires whenever a relevant config, the gh-api gate hook, or the checker
     // itself is staged. Runs from $HOME, so the checker's cwd-relative paths
