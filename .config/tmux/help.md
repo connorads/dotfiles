@@ -78,6 +78,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b b` | system monitor (bottom) |
 | `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
+| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (lgdf, bare repo from any pane) |
