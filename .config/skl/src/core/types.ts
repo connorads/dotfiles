@@ -33,7 +33,10 @@ export interface BundleFile {
 /** A parsed reference token from the CLI. */
 export type SkillRef =
   | { readonly kind: "bare"; readonly name: string }
-  | { readonly kind: "qualified"; readonly source: string; readonly name: string };
+  | { readonly kind: "qualified"; readonly source: string; readonly name: string }
+  // A whole-source group ref (trailing slash, e.g. `expo/`): every member of a
+  // source. Expanded to its skills by `resolveRefs`; single-skill callers reject it.
+  | { readonly kind: "source"; readonly source: string };
 
 /** The minimal payload injected on load (progressive disclosure). */
 export interface Pointer {
@@ -61,7 +64,9 @@ export type FrontmatterError =
 
 export type ResolveError =
   | { readonly kind: "not-found"; readonly name: string }
-  | { readonly kind: "source-unknown"; readonly source: string };
+  | { readonly kind: "source-unknown"; readonly source: string }
+  // A single-skill caller (preview/inline) was handed a whole-source group ref.
+  | { readonly kind: "expects-skill"; readonly source: string };
 
 export type ConfigError =
   | { readonly kind: "not-object" }

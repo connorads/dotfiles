@@ -78,4 +78,24 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
     // No Enter: each pointer's un-terminated final instruction line appears once.
     expect(captured.split("and follow it.").length - 1).toBe(2);
   });
+
+  test("a whole-source ref loads every member of the group", async () => {
+    // `repo/` (trailing slash) expands to all three fixture skills — the un-spam
+    // win: load a group in one keystroke, no cli.ts change (loadRefs batch-resolves).
+    const historyFile = join(mkdtempSync(join(tmpdir(), "skl-group-hist-")), "history.jsonl");
+    const load = Bun.spawnSync(
+      [process.execPath, CLI, "load", "--stdin", "--target", pane, "--path", REPO],
+      {
+        stdin: new TextEncoder().encode("repo/"),
+        env: { ...process.env, SKL_HISTORY_FILE: historyFile },
+      },
+    );
+    expect(load.exitCode).toBe(0);
+    await sleep(200);
+
+    const captured = await capturePane(pane);
+    for (const tag of ["(skl: repo/alpha)", "(skl: repo/beta)", "(skl: repo/noname)"]) {
+      expect(captured).toContain(tag);
+    }
+  });
 });
