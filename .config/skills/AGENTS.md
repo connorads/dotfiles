@@ -74,7 +74,9 @@ above) are curation calls.
 ~/.config/skills/
   AGENTS.md                this file (canonical)  ·  CLAUDE.md → symlink
   public                   → symlink to ../../skills (compat: skl/autoload/refs resolve through it)
-  private                  → symlink (gitignored) · skl source 'private'
+  private                  → symlink (gitignored) to a standalone clone with its OWN git
+                             history - commit in the resolved repo, not via dotfiles; its
+                             root AGENTS.md documents the wiring · skl source 'private'
   personal/<name>/         authored, personal (public-in-dotfiles, not showcased) · skl source 'personal'
   vendor/                  third-party "project"     · skl sources 'vendor' + 'vendored'
     <name>/                manually-vendored skills at depth 4 (skills.sh-registerable) · skl source 'vendored'
