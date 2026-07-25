@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { resolveRef, resolveRefs } from "./resolve.ts";
+import { resolveRef, resolveRefs, resolveSourceRef } from "./resolve.ts";
 import { parseRef } from "./ref.ts";
 import type { DiscoveredSkill, Source } from "./types.ts";
 
@@ -54,6 +54,28 @@ describe("resolveRef", () => {
       error: { kind: "not-found", name: "ghost" },
     });
   });
+
+  test("source ref → expects-skill (single-skill callers reject groups)", () => {
+    expect(resolveRef(parseRef("repo/"), skills)).toEqual({
+      ok: false,
+      error: { kind: "expects-skill", source: "repo" },
+    });
+  });
+});
+
+describe("resolveSourceRef", () => {
+  test("returns every member in discovery order", () => {
+    const r = resolveSourceRef("repo", skills);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.map((s) => s.name)).toEqual(["alpha", "beta"]);
+  });
+
+  test("unknown source → source-unknown", () => {
+    expect(resolveSourceRef("ghost", skills)).toEqual({
+      ok: false,
+      error: { kind: "source-unknown", source: "ghost" },
+    });
+  });
 });
 
 describe("resolveRefs (all-or-nothing batch)", () => {
@@ -72,6 +94,31 @@ describe("resolveRefs (all-or-nothing batch)", () => {
     expect(resolveRefs(["alpha", "typo", "beta"], skills)).toEqual({
       ok: false,
       error: { kind: "not-found", name: "typo" },
+    });
+  });
+
+  test("a source ref expands to all its members", () => {
+    const r = resolveRefs(["repo/"], skills);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.map((s) => `${s.source.name}/${s.name}`)).toEqual([
+      "repo/alpha",
+      "repo/beta",
+    ]);
+  });
+
+  test("mixes source refs and skill refs in input order", () => {
+    const r = resolveRefs(["fixtureB/", "repo/beta"], skills);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.map((s) => `${s.source.name}/${s.name}`)).toEqual([
+      "fixtureB/alpha",
+      "repo/beta",
+    ]);
+  });
+
+  test("an unknown source ref fails the whole batch", () => {
+    expect(resolveRefs(["repo/", "ghost/"], skills)).toEqual({
+      ok: false,
+      error: { kind: "source-unknown", source: "ghost" },
     });
   });
 });

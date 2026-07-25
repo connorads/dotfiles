@@ -103,6 +103,8 @@ const fmtResolveError = (e: ResolveError): string => {
       return `no skill named "${e.name}"`;
     case "source-unknown":
       return `unknown source "${e.source}"`;
+    case "expects-skill":
+      return `"${e.source}/" is a whole source — name a skill (e.g. ${e.source}/<name>)`;
   }
 };
 
