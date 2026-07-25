@@ -33,6 +33,10 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # reddening to yellow/red the moment it stops. See resurrect_segment below.
 # shellcheck source=/dev/null
 . "$SELF_DIR/resurrect-lib.sh"
+# Shared keep-awake vocabulary (ON/OFF → colour + glyph + ∞/remaining token).
+# Reads the caffeinate pidfile; OFF → the pill self-hides. See caffeine_segment.
+# shellcheck source=/dev/null
+. "$SELF_DIR/caffeine-lib.sh"
 # Canonical agent-state helpers: other_sessions_badge (the cross-session
 # attention rollup) plus the agent_hex/agent_char glyph mapping it echoes. See
 # agent_elsewhere_segment below.
@@ -121,6 +125,22 @@ resurrect_segment() {
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
 			"$colour" "$glyph" "$(resurrect_token)"
 	fi
+}
+
+# caffeine_segment — keep-awake indicator, self-hiding: OFF prints nothing (like
+# agent_elsewhere_segment), so an idle Mac shows no pill. ON is a bright peach
+# accent pill (dark text on #fab387, the reboot/battery bright-pill idiom) so an
+# active caffeinate is never silently left running — the surface1-adjacency
+# caveat the resurrect pill raises doesn't apply to a bright accent bg. Token is
+# ∞ (indefinite) or the remaining time (ticks down to the self-clearing deadline).
+caffeine_segment() {
+	local state colour glyph
+	state="$(caffeine_state)"
+	[ "$state" = "OFF" ] && return 0
+	colour="$(caffeine_state_colour "$state")"
+	glyph="$(caffeine_state_glyph "$state")"
+	printf "#[fg=#%s]#[bg=#%s]#[fg=#1e1e2e]#[bold] %s %s " \
+		"$colour" "$colour" "$glyph" "$(caffeine_token)"
 }
 
 # agent_elsewhere_segment — the cross-session attention badge: a bright pill
@@ -693,6 +713,9 @@ print_full() {
 	# distinct segment rather than merging. Width-gated with the rest of
 	# print_full (>= 80).
 	resurrect_segment
+	# Keep-awake pill sits with the other custom-lib pills. Self-hiding, so it
+	# adds nothing while off; a bright peach accent when on.
+	caffeine_segment
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
 	# RAM% pill (shown alongside mem_segment by design — both wanted). Dark pill

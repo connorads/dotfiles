@@ -135,6 +135,19 @@ glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
 `▲` in the figure slot = kernel pressure is the cause (swap itself is below
 threshold); a number = swap worth noting.
 
+## Caffeine (status bar)
+
+A bright peach pill (macOS, width ≥ 80) shows **only** while a managed
+`caffeinate -i` keeps the Mac awake — it holds *system* sleep while the displays
+still sleep on their normal schedule. It self-hides when off, so an active
+keep-awake is never silently left running. `Ctrl+b Alt+k` toggles it.
+
+| Pill | State | Meaning |
+|------|-------|---------|
+| `☼ ∞` peach | on, indefinite | awake until you turn it off |
+| `☼ 42m` peach | on, timed | awake for the remaining time, then self-clears |
+| (hidden) | off | Mac sleeps on its normal schedule |
+
 ## Copy mode navigation
 
 | Key | Action |
