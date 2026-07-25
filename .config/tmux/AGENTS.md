@@ -460,3 +460,38 @@ colour/glyph/token, `last`-target deref) and
 (integration: drives a real save against a throwaway default-socket server, the
 skip/alarm/clear/error-capture paths). The pill itself is verified manually
 (`status-right.sh 200 "$HOME" "" "" ""`, then `touch -t` an aged save and re-run).
+
+## Caffeine (keep-awake, custom subsystem)
+
+macOS-only keep-awake toggle in the same one-lib-many-surfaces shape as the mem
+gauge. `caffeinate -i` holds *system* sleep while, by omitting `-d`, letting the
+displays sleep normally. State is a single managed process so an active
+caffeinate is never silently left running in a forgotten shell. Change as a set:
+
+- [`scripts/caffeine-lib.sh`](./scripts/caffeine-lib.sh) — **canonical** state
+  (`caffeine_state` ON/OFF from pidfile-pid liveness), the colour/glyph/token
+  language (`caffeine_state_colour` peach `fab387`, `caffeine_state_glyph` ☼ —
+  a single-width sun, not the double-width ☕ emoji that would break the pill,
+  `caffeine_token` ∞ / remaining), and the **drive layer**
+  (`caffeine_start [secs]` / `caffeine_stop` / `caffeine_toggle`). Sourced, never
+  run. **Pidfile contract**: `${CAFFEINE_PIDFILE:-$HOME/.cache/tmux-caffeinate.pid}`
+  holds one line `pid deadline_epoch` (`deadline 0` = indefinite). `caffeinate -t`
+  self-exits at the deadline, so ON-timed clears itself once the pid dies; a stale
+  pidfile reads as OFF. No `uname` branch: on Linux the pidfile never exists → OFF.
+- [`scripts/caffeine-popup.sh`](./scripts/caffeine-popup.sh) — `prefix + Alt+k`
+  key-loop popup (mem-popup shape). OFF: `i` indefinite, `t` timed
+  (30m/1h/2h/4h/8h via fzf), `q` close. ON: `space`/`o` off, `q` close. Refreshes
+  the client after each toggle so the pill updates at once. Only the *start*
+  action is macOS-gated (`command -v caffeinate`); Linux explains it is
+  unsupported and waits for a key.
+- [`scripts/status-right.sh`](./scripts/status-right.sh) — `caffeine_segment()`,
+  a **self-hiding** bright peach accent pill (width ≥ 80): OFF prints nothing, ON
+  shows `☼ ∞` / `☼ 42m`. Grouped with the other custom-lib pills after
+  `resurrect_segment`.
+
+Tests: [`../zsh/tests/caffeine-lib.bats`](../zsh/tests/caffeine-lib.bats) (pure
+lib: state via real pidfiles, remaining/token, colour/glyph, human-age matrix).
+The drive layer (`caffeine_start`/`_stop`) and the popup are verified by a manual
+smoke test (start → `pgrep -fl 'caffeinate -i'` + `pmset -g assertions` shows
+`PreventUserIdleSystemSleep` held but not display sleep → stop → process gone).
+Keep the pill legend in [`help.md`](./help.md) in sync with the lib.
