@@ -70,7 +70,6 @@ curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb" 
 ## Use Case Recommendations
 
 ### Audiobooks / Narration
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.7,        # Consistent tone
@@ -80,7 +79,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### Conversational / Chatbots
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.4,        # More expressive
@@ -90,7 +88,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### News / Professional
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.8,        # Very consistent
@@ -100,7 +97,6 @@ voice_settings=VoiceSettings(
 ```
 
 ### Character Voices / Drama
-
 ```python
 voice_settings=VoiceSettings(
     stability=0.3,        # Highly expressive

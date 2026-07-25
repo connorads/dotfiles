@@ -309,7 +309,7 @@ curl -N -X POST "https://api.elevenlabs.io/v1/music/detailed/stream?output_forma
 ## Inpainting
 
 Inpainting edits or extends a stored song by mixing **audio reference chunks** (unchanged slices
-of a stored song) with new **generation chunks** in a single composition plan.
+of a stored song) with new **generation chunks** in a single composition plan. 
 
 Step 1 — get a `song_id`, either by storing a fresh generation or uploading existing audio:
 

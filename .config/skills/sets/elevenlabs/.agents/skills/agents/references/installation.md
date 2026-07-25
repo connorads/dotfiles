@@ -89,7 +89,6 @@ There is a known LiveKit server compatibility issue where WebRTC startup may hit
 This belongs in the app's `package.json`. Apply it when logs include `/rtc/v1` 404s, `v1 RTC path not found`, or `could not establish pc connection`. Remove the override once the ElevenLabs LiveKit server or SDK no longer requires the workaround.
 
 **Import changes:**
-
 ```javascript
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { Conversation } from "@elevenlabs/client";
