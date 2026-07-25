@@ -5,6 +5,8 @@
 //   skl <ref>                → load <ref>          (`load` verb optional)
 //   skl load <ref>           → load <ref>
 //   skl load --stdin         → load refs read from stdin (one per line)
+//   skl install <ref>        → install <ref> into the project (copy vetted bytes)
+//   skl install --stdin      → install refs read from stdin (the picker's ctrl-i)
 //   skl list                 → list   (fed to fzf in the pipeline)
 //   skl preview <ref>        → preview <ref>   (the fzf preview command)
 //   skl inline <ref>         → inline <ref>    (full content bundle for web paste)
@@ -12,7 +14,8 @@
 //   skl --help | -h          → help
 // Verbs shadow bare skill names (a skill named "history" needs `skl load
 // history` or a qualified ref) — same precedence as list/preview/inline.
-// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy, --all.
+// Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy,
+// --all, --global (install into autoload dir), --yes (skip install confirmation).
 
 import { ok, err, type Result } from "./result.ts";
 import type { ArgError, Command, Options } from "./types.ts";
@@ -26,6 +29,8 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   let stdin = false;
   let copy = false;
   let all = false;
+  let global = false;
+  let yes = false;
   const positionals: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -48,6 +53,14 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
       all = true;
       continue;
     }
+    if (arg === "--global") {
+      global = true;
+      continue;
+    }
+    if (arg === "--yes") {
+      yes = true;
+      continue;
+    }
     if (VALUE_FLAGS.has(arg)) {
       const value = argv[i + 1];
       if (value === undefined) return err({ kind: "missing-value", flag: arg });
@@ -60,7 +73,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     positionals.push(arg);
   }
 
-  const options: Options = { target, paths, submit, copy, all };
+  const options: Options = { target, paths, submit, copy, all, global, yes };
 
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });
@@ -80,6 +93,18 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   if (positionals[0] === "inline") {
     if (positionals.length !== 2) return err({ kind: "too-many-args", args: positionals });
     return ok({ kind: "inline", ref: positionals[1] ?? "", options });
+  }
+
+  // `install <ref>` (single positional) or `install --stdin` (picker feeds refs),
+  // mirroring `load`. A whole-source ref (`expo/`) is expanded downstream.
+  if (positionals[0] === "install") {
+    const refArgs = positionals.slice(1);
+    if (stdin) {
+      if (refArgs.length > 0) return err({ kind: "too-many-args", args: refArgs });
+      return ok({ kind: "install", ref: null, options });
+    }
+    if (refArgs.length !== 1) return err({ kind: "too-many-args", args: positionals });
+    return ok({ kind: "install", ref: refArgs[0] ?? "", options });
   }
 
   // Everything else is a load. The `load` verb is optional, so strip a leading

@@ -90,6 +90,10 @@ export interface Options {
   readonly copy: boolean;
   /** Disable payload excludes for this invocation. */
   readonly all: boolean;
+  /** `install` only: target the global autoload dir (`skills add -g`) not the project. */
+  readonly global: boolean;
+  /** `install` only: skip the whole-source confirmation prompt (`skills add -y`). */
+  readonly yes: boolean;
 }
 
 /** A fully-parsed CLI invocation. `load.ref` is null when refs come from stdin. */
@@ -97,6 +101,9 @@ export type Command =
   | { readonly kind: "help" }
   | { readonly kind: "list"; readonly options: Options }
   | { readonly kind: "load"; readonly ref: string | null; readonly options: Options }
+  // `install` copies chosen skills' vetted local bytes into a project (delegating
+  // to `skills add <local-path>`). `ref` is null when refs come from stdin.
+  | { readonly kind: "install"; readonly ref: string | null; readonly options: Options }
   | { readonly kind: "preview"; readonly ref: string; readonly options: Options }
   | { readonly kind: "inline"; readonly ref: string; readonly options: Options }
   | { readonly kind: "history"; readonly options: Options };

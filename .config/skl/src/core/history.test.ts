@@ -33,6 +33,11 @@ describe("historyLine", () => {
     const line = historyLine(skill("repo", "alpha"), "copy", null, false, "2026-07-16T10:00:00.000Z");
     expect(JSON.parse(line)).toMatchObject({ mode: "copy", target: null, submit: false });
   });
+
+  test("install mode records the project root as target", () => {
+    const line = historyLine(skill("expo", "expo-router"), "install", "/repo", false, "2026-07-16T10:00:00.000Z");
+    expect(JSON.parse(line)).toMatchObject({ mode: "install", target: "/repo" });
+  });
 });
 
 describe("summariseHistory", () => {

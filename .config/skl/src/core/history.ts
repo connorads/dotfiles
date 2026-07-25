@@ -12,8 +12,8 @@ export interface HistoryRecord {
   readonly ts: string;
   readonly source: string;
   readonly name: string;
-  readonly mode: "inject" | "copy";
-  /** tmux pane the pointer landed in; null for clipboard copies. */
+  readonly mode: "inject" | "copy" | "install";
+  /** tmux pane (inject), null (copy), or the project root (install). */
   readonly target: string | null;
   readonly submit: boolean;
 }
@@ -21,7 +21,7 @@ export interface HistoryRecord {
 /** Build the JSONL line (record + trailing newline) for one successful load. */
 export const historyLine = (
   skill: DiscoveredSkill,
-  mode: "inject" | "copy",
+  mode: "inject" | "copy" | "install",
   target: string | null,
   submit: boolean,
   ts: string,

@@ -8,6 +8,7 @@ import { parseRef } from "./core/ref.ts";
 import { resolveRef, resolveRefs } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
 import { renderBundle } from "./core/bundle.ts";
+import { buildInstallPlan } from "./core/install.ts";
 import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
 import { historyLine, summariseHistory, renderHistory } from "./core/history.ts";
 import type {
@@ -23,6 +24,12 @@ import { env } from "./shell/env.ts";
 import { loadConfigFile, discoverAll, readSkillFiles, type ConfigFileError } from "./shell/fs.ts";
 import { appendHistory, readHistoryFile } from "./shell/history.ts";
 import { copyToClipboard, injectPointer, resolveTarget } from "./shell/tmux.ts";
+import {
+  installGroups,
+  resolveProjectRoot,
+  type InstallError,
+  type ProjectError,
+} from "./shell/install.ts";
 
 const HELP = `skl — deliberate agent-skill loader for tmux
 
@@ -34,7 +41,10 @@ composes this CLI with fzf:
 Usage:
   skl <name>                resolve by config precedence, inject pointer
   skl <source>/<name>       inject the exact skill copy
+  skl <source>/             inject every skill in a source (a curated group)
   skl --stdin               inject pointers for refs read from stdin
+  skl install <ref>         copy skill(s) into the current project (skills add)
+  skl install <source>/     copy a whole group into the current project
   skl list                  list discovered skills (fed to fzf)
   skl preview <ref>         render a skill's pointer (the fzf preview)
   skl inline <ref>          print the full content bundle (SKILL.md + retained
@@ -48,6 +58,8 @@ Options:
   --submit                  press Enter after injecting (default: never)
   --copy                    copy pointer(s) to the system clipboard, no injection
   --all                     include files excluded from normal payloads in trees/bundles
+  --global                  install: into the global autoload dir, not the project
+  --yes                     install: skip the whole-source confirmation prompt
 `;
 
 const DEFAULT_CONFIG = `${import.meta.dir}/../config.json`;
@@ -108,6 +120,18 @@ const fmtResolveError = (e: ResolveError): string => {
   }
 };
 
+const fmtProjectError = (e: ProjectError): string => {
+  switch (e.kind) {
+    case "not-a-work-tree":
+      return `not inside a git work-tree (${e.cwd}) — cd into a project first`;
+    case "is-home":
+      return `refusing to install into your home directory (${e.path})`;
+  }
+};
+
+const fmtInstallError = (e: InstallError): string =>
+  `skills add failed for ${e.sourceRoot}: ${e.stderr || e.command}`;
+
 // Pointers must carry absolute paths (the agent reads SKILL.md from its own
 // cwd). Tilde/$HOME stay for the core to expand; a bare relative path is
 // resolved against this process's cwd here, at the boundary.
@@ -134,7 +158,7 @@ const buildConfig = async (
 // the load itself succeeded, and curation data is not worth failing it for.
 const recordLoad = async (
   skill: DiscoveredSkill,
-  mode: "inject" | "copy",
+  mode: "inject" | "copy" | "install",
   target: string | null,
   submit: boolean,
 ): Promise<void> => {
@@ -197,6 +221,69 @@ const loadRefs = async (
     env.stdout(`skl: loaded ${skillRef(skill)} → ${target.value}\n`);
     await recordLoad(skill, "inject", target.value, options.submit);
   }
+  return 0;
+};
+
+// Copy the chosen skills' vetted local bytes into the enclosing project, by
+// delegating to `skills add <source-root> --skill <names…>` (one call per source).
+// Refs resolve up front (source refs expand) so a bad ref fails before any copy.
+const installRefs = async (
+  refs: readonly string[],
+  skills: readonly DiscoveredSkill[],
+  ref: string | null,
+  options: Options,
+): Promise<number> => {
+  if (refs.length === 0) return 0; // nothing selected (e.g. fzf cancelled)
+
+  const resolved = resolveRefs(refs, skills);
+  if (!resolved.ok) {
+    env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
+    return 1;
+  }
+
+  // Resolve the target project once, before any install (impureim sandwich).
+  const projectRoot = await resolveProjectRoot(env.cwd(), env.home());
+  if (!projectRoot.ok) {
+    env.stderr(`skl: ${fmtProjectError(projectRoot.error)}\n`);
+    return 1;
+  }
+
+  // A whole-source positional install is a big action — on a TTY, list the
+  // members and confirm once. Individual installs and --stdin (the picker,
+  // where selection IS the confirmation) never prompt.
+  const wholeSource = ref !== null && parseRef(ref).kind === "source";
+  if (wholeSource && !options.yes && env.isInteractive()) {
+    env.stdout(`skl: install ${resolved.value.length} skills into ${projectRoot.value}:\n`);
+    for (const skill of resolved.value) env.stdout(`  ${skillRef(skill)}\n`);
+    const answer = env.confirm("proceed? [y/N] ");
+    if (answer === null || !/^y(es)?$/i.test(answer.trim())) {
+      env.stdout("skl: cancelled\n");
+      return 0;
+    }
+  }
+
+  const plan = buildInstallPlan(resolved.value, { global: options.global });
+  const outcomes = await installGroups(plan, projectRoot.value);
+
+  const okRoots = new Set(
+    outcomes.filter((o) => o.result.ok).map((o) => o.group.sourceRoot),
+  );
+  for (const outcome of outcomes) {
+    if (!outcome.result.ok) env.stderr(`skl: ${fmtInstallError(outcome.result.error)}\n`);
+  }
+  for (const skill of resolved.value) {
+    if (!okRoots.has(skill.source.path)) continue;
+    env.stdout(`skl: installed ${skillRef(skill)} → ${projectRoot.value}\n`);
+    await recordLoad(skill, "install", projectRoot.value, options.submit);
+  }
+
+  const failed = outcomes.length - okRoots.size;
+  if (failed > 0) return 1;
+  // Progressive disclosure: the copy is on disk but the running agent hasn't
+  // read it — say how to use it now vs on next session.
+  env.stdout(
+    "skl: restart the agent session to autoload, or `skl load <name>` to use now\n",
+  );
   return 0;
 };
 
@@ -265,6 +352,15 @@ const main = async (argv: readonly string[]): Promise<number> => {
         ? linesToRefs((await env.stdin()).split("\n"))
         : [command.ref];
       return loadRefs(refs, skills, command.options);
+    }
+    case "install": {
+      // Same ref sourcing as load: single positional, or one-per-line from stdin
+      // (the picker's ctrl-i). `command.ref` is threaded through for the
+      // whole-source confirmation gate.
+      const refs = command.ref === null
+        ? linesToRefs((await env.stdin()).split("\n"))
+        : [command.ref];
+      return installRefs(refs, skills, command.ref, command.options);
     }
   }
 };
