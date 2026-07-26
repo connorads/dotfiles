@@ -7,7 +7,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 # Captured at file-load, before setup_test_home swaps HOME for an isolated tmp
 # dir. The lib reads $HOME at call time (account_candidates scans
-# ~/.claude-profiles/code, relocate_transcript defaults to ~/.claude), so
+# ~/.claude-profiles/code, stage_session_for_fork defaults to ~/.claude), so
 # sourcing the real file against the isolated HOME is correct.
 ACCT_LIB="$HOME/.config/tmux/scripts/lib/claude-account.sh"
 
@@ -95,57 +95,214 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   grep -q '^default	' <<<"$output"
 }
 
-# --- relocate_transcript ----------------------------------------------------
+# --- stage_session_for_fork ------------------------------------------------
 
-@test "relocate_transcript copies the transcript to the target projects tree" {
+@test "stage_session_for_fork copies the transcript to the target projects tree" {
   local src="$HOME/.claude" dst
   dst=$(prof a1)
   local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-1"
   mkdir -p "$src/projects/$slug"
-  printf 'line1\nline2\n' >"$src/projects/$slug/$sid.jsonl"
+  printf '{"type":"user"}\n{"type":"assistant"}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; relocate_transcript '$src' '$dst' '$cwd' '$sid'"
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
   diff "$src/projects/$slug/$sid.jsonl" "$dst/projects/$slug/$sid.jsonl"
 }
 
-@test "relocate_transcript fails and writes nothing when the source is missing" {
+@test "stage_session_for_fork fails and writes nothing when the source is missing" {
   local src="$HOME/.claude" dst
   dst=$(prof a1)
   local cwd="/Users/connorads/proj" sid="nope"
 
-  run bash -c "source '$ACCT_LIB'; relocate_transcript '$src' '$dst' '$cwd' '$sid'"
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -ne 0 ]
   [[ "$output" == *"source transcript not found"* ]]
   [ ! -d "$dst/projects" ]
 }
 
-@test "relocate_transcript normalises an empty source dir to ~/.claude" {
+@test "stage_session_for_fork normalises an empty source dir to ~/.claude" {
   # Empty src -> ~/.claude is the source; a profile is the dest.
   local dst
   dst=$(prof a1)
   local slug="-Users-connorads-proj" sid="sess-2" cwd="/Users/connorads/proj"
   mkdir -p "$HOME/.claude/projects/$slug"
-  printf 'x\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
+  printf '{"type":"user"}\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; relocate_transcript '' '$dst' '$cwd' '$sid'"
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
 }
 
-@test "relocate_transcript normalises an empty dest dir to ~/.claude" {
+@test "stage_session_for_fork normalises an empty dest dir to ~/.claude" {
   # A profile is the source; empty dst -> ~/.claude is the dest.
   local src
   src=$(prof a1)
   local slug="-Users-connorads-proj" sid="sess-3" cwd="/Users/connorads/proj"
   mkdir -p "$src/projects/$slug"
-  printf 'y\n' >"$src/projects/$slug/$sid.jsonl"
+  printf '{"type":"user"}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; relocate_transcript '$src' '' '$cwd' '$sid'"
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$HOME/.claude/projects/$slug/$sid.jsonl" ]
   [ -f "$HOME/.claude/projects/$slug/$sid.jsonl" ]
+}
+
+@test "stage_session_for_fork stages the latest non-empty plan despite stale planExists" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-plan"
+  mkdir -p "$src/projects/$slug" "$src/plans"
+  printf 'old plan\n' >"$src/plans/old.md"
+  printf 'active plan\n' >"$src/plans/active.md"
+  printf '%s\n' \
+    '{"attachment":{"type":"plan_mode","planFilePath":"'$src'/plans/old.md","planExists":true}}' \
+    '{"attachment":{"type":"plan_mode","planFilePath":"'$src'/plans/active.md","planExists":false}}' \
+    >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
+  [ "$(<"$dst/plans/active.md")" = "active plan" ]
+  [ ! -e "$dst/plans/old.md" ]
+}
+
+@test "stage_session_for_fork succeeds when the transcript has no plan attachment" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-no-plan"
+  mkdir -p "$src/projects/$slug"
+  printf '{"type":"user"}\n' >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 0 ]
+  [ ! -d "$dst/plans" ]
+}
+
+@test "stage_session_for_fork returns 2 after copying the transcript when its plan is missing" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-missing-plan"
+  mkdir -p "$src/projects/$slug"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/missing.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"source plan not found"* ]]
+  [ -f "$dst/projects/$slug/$sid.jsonl" ]
+}
+
+@test "stage_session_for_fork returns 2 for an empty plan" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-empty-plan"
+  mkdir -p "$src/projects/$slug" "$src/plans"
+  : >"$src/plans/empty.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/empty.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"source plan is empty"* ]]
+}
+
+@test "stage_session_for_fork rejects a plan outside the source plans directory" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-unsafe-plan"
+  mkdir -p "$src/projects/$slug"
+  printf 'external plan\n' >"$HOME/external.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/external.md"}}\n' "$HOME" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unsafe source plan path"* ]]
+  [ ! -d "$dst/plans" ]
+}
+
+@test "stage_session_for_fork returns 2 when the transcript cannot be parsed" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-bad-json"
+  mkdir -p "$src/projects/$slug"
+  printf '{bad json}\n' >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"could not parse plan attachment"* ]]
+  [ -f "$dst/projects/$slug/$sid.jsonl" ]
+}
+
+@test "stage_session_for_fork returns 2 when the plan cannot be staged" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-copy-fail"
+  mkdir -p "$src/projects/$slug" "$src/plans" "$dst"
+  printf 'active plan\n' >"$src/plans/active.md"
+  printf 'blocks plans directory\n' >"$dst/plans"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"could not create target plans directory"* ]]
+}
+
+@test "stage_session_for_fork returns 2 when copying the plan fails" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-plan-copy-fail"
+  mkdir -p "$src/projects/$slug" "$src/plans"
+  printf 'active plan\n' >"$src/plans/active.md"
+  chmod 000 "$src/plans/active.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  chmod 600 "$src/plans/active.md"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"could not copy plan"* ]]
+  [ ! -e "$dst/plans/active.md" ]
+}
+
+@test "stage_session_for_fork leaves an unrelated colliding target plan untouched" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-collision"
+  mkdir -p "$src/projects/$slug" "$src/plans" "$dst/plans"
+  printf 'source plan\n' >"$src/plans/active.md"
+  printf 'target plan\n' >"$dst/plans/active.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"target plan already exists"* ]]
+  [ "$(<"$dst/plans/active.md")" = "target plan" ]
+}
+
+@test "stage_session_for_fork accepts an identical target plan" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-identical"
+  mkdir -p "$src/projects/$slug" "$src/plans" "$dst/plans"
+  printf 'same plan\n' >"$src/plans/active.md"
+  cp "$src/plans/active.md" "$dst/plans/active.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 0 ]
+}
+
+@test "stage_session_for_fork refreshes the plan when staging repeats" {
+  local src="$HOME/.claude" dst
+  dst=$(prof a1)
+  local cwd="/Users/connorads/proj" slug="-Users-connorads-proj" sid="sess-repeat"
+  mkdir -p "$src/projects/$slug" "$src/plans"
+  printf 'first plan\n' >"$src/plans/active.md"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
+  bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'" >/dev/null
+  printf 'second plan\n' >"$src/plans/active.md"
+
+  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  [ "$status" -eq 0 ]
+  [ "$(<"$dst/plans/active.md")" = "second plan" ]
 }

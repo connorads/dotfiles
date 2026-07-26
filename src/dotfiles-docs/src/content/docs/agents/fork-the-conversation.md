@@ -33,6 +33,13 @@ Both panes now hold the *same conversation up to this point*, diverging from
 here. Ask one to take the safe approach and the other the ambitious one.
 Neither knows about the other; both remember everything that came before.
 
+A Claude session is normally just that transcript. Plan mode adds a Markdown
+plan sidecar under the account's `plans/` directory. When the tmux menu forks a
+conversation into another Claude account, it stages both files before invoking
+native `--fork-session`; Claude then gives the fork its own plan copy. The
+transcript stays the source of truth for ordinary sessions, while an active plan
+crosses the account boundary with it.
+
 The same idea stretches across machines: `prefix + Alt+t` teleports the
 focused session to another of my computers over Tailscale. It forks the
 transcript under a fresh session id, ships the file over ssh, and resumes it

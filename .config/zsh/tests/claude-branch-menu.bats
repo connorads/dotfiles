@@ -312,12 +312,12 @@ occur_count() {
   assert_log_missing "display-menu"
 }
 
-@test "account-chosen relocates, materialises, and renders the target placement menu" {
+@test "account-chosen stages, materialises, and renders the target placement menu" {
   local slug="-Users-connorads-proj" sid="session-xyz" cwd="/Users/connorads/proj"
   local acct=acme
   local target="$HOME/.claude-profiles/code/$acct"
   mkdir -p "$HOME/.claude/projects/$slug" "$target"
-  printf 'transcript\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
+  printf '{"type":"user"}\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
   write_stub claude-profile-materialise <<'EOF'
 #!/usr/bin/env bash
 printf 'materialise %s\n' "$*" >>"$TEST_LOG"
@@ -345,7 +345,7 @@ EOF
   local acct=acme
   local target="$HOME/.claude-profiles/code/$acct"
   mkdir -p "$HOME/.claude/projects/$slug" "$target"
-  printf 'transcript\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
+  printf '{"type":"user"}\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
 
   run "$MENU" account-chosen "$sid" "$target" "" "$cwd" "sess:@1.0" ""
   [ "$status" -eq 0 ]
@@ -367,6 +367,25 @@ EOF
   [ "$status" -eq 0 ]
   grep -q -- "Could not copy the transcript" "$TEST_LOG"
   assert_log_missing "display-menu"
+}
+
+@test "account-chosen continues with a visible warning when the plan is not copied" {
+  local slug="-Users-connorads-proj" sid="session-plan-warning" cwd="/Users/connorads/proj"
+  local acct=acme
+  local target="$HOME/.claude-profiles/code/$acct"
+  mkdir -p "$HOME/.claude/projects/$slug" "$target"
+  printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/.claude/plans/missing.md"}}\n' "$HOME" >"$HOME/.claude/projects/$slug/$sid.jsonl"
+  write_stub claude-profile-materialise <<'EOF'
+#!/usr/bin/env bash
+printf 'materialise %s\n' "$*" >>"$TEST_LOG"
+EOF
+
+  run "$MENU" account-chosen "$sid" "$target" "" "$cwd" "sess:@1.0" ""
+  [ "$status" -eq 0 ]
+  grep -qF "materialise $target" "$TEST_LOG"
+  grep -q -- "source plan not found" "$TEST_LOG"
+  grep -q -- "plan not copied" "$TEST_LOG"
+  grep -q -- "display-menu" "$TEST_LOG"
 }
 
 @test "prompt-repeat opens the count prompt for a repeated action" {

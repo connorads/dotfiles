@@ -96,7 +96,7 @@ fork_worktree_window() {
 # by two renders so account choice composes with every placement rather than
 # being a placement of its own: the SOURCE render (the pane's own account,
 # with_account=1) offers a "Fork → other ACCOUNT" row; picking one lands in the
-# account-chosen mode, which relocates the transcript then calls this SAME
+# account-chosen mode, which stages the transcript then calls this SAME
 # function for the target account (with_account=0) - so the target gets the
 # identical split/window/worktree vocabulary. split_target drives the direct
 # split/new-window -t (the source pane); the xN prompt modes carry pane_target
@@ -345,7 +345,7 @@ account-menu)
 	exit 0
 	;;
 account-chosen)
-	# Step 2: an account was picked. Copy the transcript into its projects/ tree,
+	# Step 2: an account was picked. Relocate its transcript and active plan,
 	# materialise its shared config, then re-render the placement palette for the
 	# target account (with_account=0 - no further account hop). Native
 	# --fork-session then mints a fresh id under the target dir, leaving the
@@ -367,9 +367,20 @@ account-chosen)
 	# shellcheck source=lib/claude-account.sh disable=SC1091
 	. "$account_lib"
 
-	if ! relocate_transcript "$source_config_dir" "$target_dir" "$cwd" "$sid" >/dev/null; then
+	if staging_error=$(stage_session_for_fork "$source_config_dir" "$target_dir" "$cwd" "$sid" 2>&1 >/dev/null); then
+		staging_status=0
+	else
+		staging_status=$?
+	fi
+	if [ "$staging_status" -eq 1 ]; then
 		tmux display-message "Could not copy the transcript into the target account"
 		exit 0
+	fi
+	plan_warning=""
+	if [ "$staging_status" -eq 2 ]; then
+		staging_error="${staging_error##*$'\n'}"
+		tmux display-message "Transcript copied; plan not copied: $staging_error"
+		plan_warning=" (plan not copied)"
 	fi
 
 	# Never materialise onto the shared ~/.claude itself (the base profiles
@@ -381,7 +392,7 @@ account-chosen)
 	tgt_label=$(claude_account_label "$target_dir")
 	# split_target = pane_target (the stable id) so a split lands next to the
 	# origin pane even from this run-shell context.
-	render_branch_menu "$pane_target" "$pane_target" "$cwd" "$sid" "$target_dir" "$flags" " Branch → $tgt_label " 0
+	render_branch_menu "$pane_target" "$pane_target" "$cwd" "$sid" "$target_dir" "$flags" " Branch → $tgt_label$plan_warning " 0
 	exit 0
 	;;
 handoff-menu)

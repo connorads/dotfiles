@@ -251,15 +251,25 @@ Picking it chains (menu → `run-shell` → menu, the same idiom the whole branc
 menu uses) into `account-menu`: a `display-menu` of the *other* accounts
 (`account_candidates` - default + each ccp profile, the source excluded), titled
 by the source account so its own absence is self-explaining. Choosing one lands
-in `account-chosen`, which copies the source transcript into the target's
-`projects/<slug>/` (`relocate_transcript`), materialises the target profile's
-shared config, then **re-renders the same placement palette for the target
-account** (`render_branch_menu`, `with_account=0` so there is no further account
-hop). Every placement then forks under `CLAUDE_CONFIG_DIR=<target>`. Native
-`--fork-session` reads the copied `<sid>` under the target dir and mints a fresh
-id there, so **the origin is left running untouched under the source account** -
-different files in different config dirs, no session-lock conflict. The slug
-maths / candidate listing / copy are the executable-free
+in `account-chosen`, which stages the source session in the target account
+(`stage_session_for_fork`), materialises the target profile's shared config, then
+**re-renders the same placement palette for the target account**
+(`render_branch_menu`, `with_account=0` so there is no further account hop).
+Claude sessions are normally one transcript under `projects/<slug>/`. An active
+plan-mode session also has a plan sidecar referenced by the transcript. The
+staging step copies that non-empty sidecar under the target's `plans/`
+directory before showing the placement menu. It does not rewrite the transcript
+or plan metadata. Native `--fork-session` reads the copied `<sid>` and staged
+plan under the target dir, mints a fresh id, and clones the plan to the fork's
+fresh slug. A missing, unsafe, malformed, or colliding plan is best-effort: tmux
+shows the concrete warning and marks the placement menu `plan not copied`, while
+transcript-only forking remains available. Transcript copying remains
+mandatory.
+
+Every placement forks under `CLAUDE_CONFIG_DIR=<target>`, so **the origin is left
+running untouched under the source account** - different files in different
+config dirs, no session-lock conflict. The slug maths / candidate listing /
+staging are the executable-free
 [`scripts/lib/claude-account.sh`](./scripts/lib/claude-account.sh)
 (`claude_account_slug` mirrors `project_slug` in `claude-session-resolve.py`).
 The copied base transcript lingers harmlessly as a branch-point session under
