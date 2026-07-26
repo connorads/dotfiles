@@ -157,8 +157,11 @@ The logic is spread across several files — change them as a set:
   `agent-pretooluse.sh` (`blocked` on the `request_user_input` question card,
   else `working`). The `after-select-pane` / `session-window-changed` / `client-focus-in`
   hooks fire `seen` (focus = mark read), gated on `#{@agent_state}==done` so idle
-  switches pay no fork. Tmux redraws status natively on navigation; do not add a
-  forced `refresh-client -S` base hook. `client-focus-in` (NOT
+  switches pay no fork. They use stable array index 100 so reloads replace rather
+  than duplicate them; empty historical indexes 0-2 overwrite the retired forced
+  refresh and duplicate seen hooks in long-running servers. Tmux redraws status
+  natively on navigation; do not add
+  a forced `refresh-client -S` base hook. `client-focus-in` (NOT
   `pane-focus-in`, which is inert as a global hook) catches regaining terminal
   focus without a navigation. `agent-sweep.sh` is the backstop when none of them fire.
 - Menus: `prefix + Alt+.` and the right-click pane menu
