@@ -60,8 +60,30 @@ stub_plugin() {
   export RESURRECT_PLUGIN_DIR="$BATS_TEST_TMPDIR/stub-plugin"
 }
 
+# A stub plugin whose save.sh writes a *state-only* save and repoints `last` at
+# it — a fresh file with no panes, exactly what the locale bug produced. Freshness
+# alone reads FRESH here, so only the content check can catch it.
+stub_plugin_empty_save() {
+  local dir="$BATS_TEST_TMPDIR/empty-plugin/scripts"
+  mkdir -p "$dir"
+  cat >"$dir/save.sh" <<'EOF'
+#!/usr/bin/env bash
+save_dir="$HOME/.local/share/tmux/resurrect"
+mkdir -p "$save_dir"
+printf 'state\tmain\t\n' >"$save_dir/tmux_resurrect_empty.txt"
+ln -sf tmux_resurrect_empty.txt "$save_dir/last"
+EOF
+  chmod +x "$dir/save.sh"
+  export RESURRECT_PLUGIN_DIR="$BATS_TEST_TMPDIR/empty-plugin"
+}
+
+# An aged but otherwise *valid* save (it carries a pane line, and `last` points at
+# it), so the freshness tests exercise the age dimension alone rather than also
+# tripping the pane-count check.
 aged_save() {
   mkdir -p "$SAVE_DIR"
+  printf 'pane\ts\t1\t1\t:*\t1\t:t\t:%s\t1\tzsh\t:zsh\n' "$HOME" >"$SAVE_DIR/tmux_resurrect_old.txt"
+  ln -sf tmux_resurrect_old.txt "$SAVE_DIR/last"
   touch -t 200001010000 "$SAVE_DIR/tmux_resurrect_old.txt"
 }
 
@@ -83,7 +105,7 @@ stale_opt() { "$TMUX_BIN" show -gv @resurrect_stale 2>/dev/null; }
   run bash "$KEEPALIVE"
   [ "$status" -eq 0 ]
   compgen -G "$SAVE_DIR/tmux_resurrect_*.txt" >/dev/null
-  grep -q "saved ok age=.*state=FRESH" "$RESURRECT_KEEPALIVE_LOG"
+  grep -q "saved ok panes=.*state=FRESH" "$RESURRECT_KEEPALIVE_LOG"
   [ "$(stale_opt)" = "0" ]
 }
 
@@ -133,6 +155,25 @@ stale_opt() { "$TMUX_BIN" show -gv @resurrect_stale 2>/dev/null; }
   RESURRECT_AGING_SECS=999999999 RESURRECT_STALE_SECS=999999999 run bash "$KEEPALIVE"
   [ "$status" -eq 0 ]
   [ "$(stale_opt)" = "0" ]
+}
+
+# --- content check: a fresh but pane-less save alarms ---------------------
+
+@test "pane-less save alarms even though the file is fresh" {
+  start_server
+  stub_plugin_empty_save
+  run bash "$KEEPALIVE"
+  [ "$status" -eq 0 ]
+  [ "$(stale_opt)" = "1" ]
+  grep -q "SAVE EMPTY panes=0" "$RESURRECT_KEEPALIVE_LOG"
+  grep -q "save has no panes" "$RESURRECT_KEEPALIVE_LOG"
+}
+
+@test "healthy save logs its pane count" {
+  start_server
+  run bash "$KEEPALIVE"
+  [ "$status" -eq 0 ]
+  grep -qE "saved ok panes=[1-9][0-9]* age=" "$RESURRECT_KEEPALIVE_LOG"
 }
 
 # --- error capture: save.sh failure is logged, not swallowed --------------
