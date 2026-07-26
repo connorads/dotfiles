@@ -270,6 +270,15 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/skill-check.sh {{files}}"
     }
 
+    // Colocated skill-script tests (pytest/bats under <skill>/tests/), run
+    // only for skills the staged files touch. Missing runners warn and pass
+    // (same never-brick posture as ts-typecheck.sh); `mise run skill-checks`
+    // runs every suite across all tiers, private included.
+    ["skill-tests"] {
+        glob = List("skills/**", ".config/skills/personal/**")
+        check = "bash .hk-hooks/skill-tests.sh {{files}}"
+    }
+
     // First-party TS typecheck gates (tsgo via mise): one glob-scoped step per
     // project so only staged-project changes pay the cost. Typecheck only -
     // tests live in `mise run ts-checks` to keep hook latency low. The shared

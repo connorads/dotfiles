@@ -208,6 +208,7 @@ dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
+mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
@@ -443,6 +444,12 @@ docs that cite literal values), and `tmux-bind-lint`
 blocks a key bound twice in one key-table, or both members of a terminal-alias
 pair, i.e. a self-collision that silently kills the earlier bind - the
 commit-time complement to the edit-time `tmux-freekeys` advisor).
+
+The `skill-tests` step runs colocated skill-script tests (pytest via uv /
+bats under `<skill>/tests/`) for whichever authored skills the staged files
+touch; the shared `~/.hk-hooks/skill-tests.sh` warns and exits 0 when a
+runner is absent, and `mise run skill-checks` runs every suite across all
+tiers (private included).
 
 The `ts-typecheck-*` steps gate first-party TS projects (skl, pi goal /
 workflows / pi-palette, and the small pi extensions) with the global `tsgo`,
