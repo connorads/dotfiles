@@ -13,6 +13,7 @@ alias cyc='claude $(claude-launch-flags --yolo) --channels plugin:telegram@claud
 # telemetry (DISABLE_TELEMETRY/DO_NOT_TRACK in .zshrc), which puts the client in
 # no-telemetry mode and short-circuits gate eval to bundled defaults (all off).
 alias cspy='env -u DISABLE_TELEMETRY -u DO_NOT_TRACK claude $(claude-launch-flags)'
+alias cdp='claude-desktop-profile'
 # claude-usage is now a function in ~/.config/zsh/functions/
 alias aiu='ai-usage'
 alias atp='agent-teleport'
