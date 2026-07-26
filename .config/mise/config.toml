@@ -190,6 +190,10 @@ run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 description = "Run pytest suite for Claude Code hooks (mise python has no pytest; uv supplies it)"
 run = "cd \"$HOME/.claude/hooks\" && uv run --with pytest python -m pytest -q"
 
+[tasks.skill-checks]
+description = "Run colocated tests for authored skills (pytest via uv + bats, all tiers)"
+run = "bash \"$HOME/.hk-hooks/skill-tests.sh\" --all"
+
 [tasks.ts-checks]
 description = "Typecheck + test all first-party TS projects (installs deps as needed)"
 run = """
