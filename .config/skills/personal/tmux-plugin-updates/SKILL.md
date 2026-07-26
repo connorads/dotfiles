@@ -18,6 +18,12 @@ The immutable sha is the supply-chain control: upstream authors cannot move a
 commit hash the way they can move a branch or tag. `prefix + U` (TPM update) is
 inert on detached HEADs — the pin bump is the only update path.
 
+**Scope:** only the `pin_tmux_plugin` git-checkout plugins. Out of scope —
+and invisible to `tmux-upstream` — are `tmux-fingers` (nixpkgs package
+symlinked from the store; updated by the flake bump) and the vendored
+`scripts/cmd-palette.sh` (which replaced the tmux-command-palette plugin;
+edited in place, not pulled from upstream).
+
 Treat plugin updates like executable supply-chain changes: tmux plugins are shell/Python/Ruby/etc. code that may run inside the user's terminal and tmux server.
 
 ## Default policy
@@ -47,20 +53,22 @@ If the user named one plugin, focus on that plugin. Otherwise review every plugi
 Use a temporary clone so review is independent of the local checkout:
 
 ```bash
+branch=$(gh api repos/<owner>/<plugin> --jq .default_branch)   # master vs main varies
+
 tmp=$(mktemp -d)
 git init -q "$tmp"
 git -C "$tmp" remote add upstream https://github.com/<owner>/<plugin>.git
-git -C "$tmp" fetch -q --no-tags upstream <upstream-branch>
+git -C "$tmp" fetch -q --no-tags upstream "$branch"
 git -C "$tmp" fetch -q upstream <pinned-sha>
 
-git -C "$tmp" rev-list --count <pinned-sha>..upstream/<upstream-branch>   # behind
+git -C "$tmp" rev-list --count <pinned-sha>.."upstream/$branch"   # behind
 
 git -C "$tmp" log --reverse --date=short \
   --format='%h %ad %an <%ae> %s' \
-  <pinned-sha>..upstream/<upstream-branch>
+  <pinned-sha>.."upstream/$branch"
 
-git -C "$tmp" diff --stat <pinned-sha>..upstream/<upstream-branch>
-git -C "$tmp" diff --name-status <pinned-sha>..upstream/<upstream-branch>
+git -C "$tmp" diff --stat <pinned-sha>.."upstream/$branch"
+git -C "$tmp" diff --name-status <pinned-sha>.."upstream/$branch"
 ```
 
 ### 3. Review whether the update is dodgy
@@ -68,18 +76,18 @@ git -C "$tmp" diff --name-status <pinned-sha>..upstream/<upstream-branch>
 Read the diff, not just commit titles. Focus hardest on executable surfaces:
 
 ```bash
-git -C "$tmp" diff --find-renames <pinned-sha>..upstream/<upstream-branch>
+git -C "$tmp" diff --find-renames <pinned-sha>.."upstream/$branch"
 ```
 
 Quick triage helpers:
 
 ```bash
 # Non-documentation changes: highest-risk surface
-git -C "$tmp" diff --name-status <pinned-sha>..upstream/<upstream-branch> \
+git -C "$tmp" diff --name-status <pinned-sha>.."upstream/$branch" \
   | grep -vE '\.(md|txt|png|jpg|gif|webp|cast)$' || true
 
 # Suspicious added lines; investigate matches in context, don't judge by grep alone
-git -C "$tmp" diff --unified=0 <pinned-sha>..upstream/<upstream-branch> \
+git -C "$tmp" diff --unified=0 <pinned-sha>.."upstream/$branch" \
   | rg '^\+.*(curl|wget|nc |netcat|ssh |scp |rsync|token|secret|credential|API_KEY|PRIVATE_KEY|\.ssh|\.aws|eval|exec|base64|chmod|rm -rf|bash -c|sh -c|python -c|osascript|launchctl|crontab|Popen|subprocess|requests|urllib|socket)'
 ```
 
