@@ -10,11 +10,15 @@ Analyze user messages from OpenCode sessions to identify recurring themes, commu
 
 ## How the pieces fit
 
-Chunk files are ~320k chars (~80k tokens) each - reading one inline consumes the orchestrator's entire context, which is why the whole workflow is delegation-shaped:
+Chunk files are ~320k chars (~80k tokens) each - reading one inline consumes the orchestrator's entire context, which is why the workflow is delegation-shaped **when there are 2+ chunks**:
 
 1. Pass chunk file *paths* to subagents; they read and analyze independently
 2. Run subagents in parallel - one per chunk
 3. Subagents return structured JSON; you only synthesize at the end
+
+**Gate the delegation:** with a single chunk (or a total under ~40k tokens),
+analyse it inline - spawning one subagent just adds a hop and loses the
+orchestrator's direct view of the quotes.
 
 ## Workflow
 
@@ -67,7 +71,9 @@ Return ONLY valid JSON in this format:
 }
 ```
 
-Launch ALL chunk subagents in parallel (single message, multiple Task tool calls).
+Launch ALL chunk subagents in parallel (single message, multiple Task tool
+calls). Skip this entirely for a single small chunk - analyse it inline (see
+the gate above).
 
 ### Step 3: Synthesize Results
 
