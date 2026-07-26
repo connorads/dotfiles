@@ -124,7 +124,8 @@ low-download-threshold checks (aube) encode the same defence.
 ## Age-gate units: never copy a number between tools
 
 The same 4-day policy is spelled in days (npm), minutes (pnpm, aube, Yarn),
-seconds (bun), duration strings (mise, Deno, uv), and ISO-8601 (`P4D`, pip).
+seconds (bun), duration strings (mise, uv), and ISO-8601 or minutes
+(`P4D`/`5760` — pip, Deno; Deno rejects `4d`).
 Copying a literal between configs silently changes the policy by orders of
 magnitude. Full table and per-tool keys:
 [references/ecosystems.md](references/ecosystems.md).
