@@ -7,7 +7,8 @@ description: >-
   cross-model or adversarial review, to "have another model check this",
   red-team a diff, or review working-tree changes, unpushed commits, or a
   branch before committing or opening a PR - especially to pair a review rubric
-  skill (e.g. thermo, code-review) with a different model via skl. Not for
+  skill (e.g. thermo-nuclear-code-quality-review, code-review) with a
+  different model via skl. Not for
   shipping a session to another host (that is agent-teleport / atp), branching
   your own session into a pane (tmux Alt+b), or auto-applying fixes - this
   reports only.
@@ -49,7 +50,12 @@ this and many repos use `master`:
 
 ```sh
 BASE=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null)   # e.g. origin/master
+[ "$BASE" = "origin/HEAD" ] && BASE=""   # unresolved symref answers its own name
 ```
+
+Require a non-empty `BASE` before using the branch/no-upstream commands below.
+Empty means `origin/HEAD` is unset (common on fresh clones): fix with
+`git remote set-head origin -a`, or ask the user which branch is the base.
 
 | Unit | Use when | What the reviewer inspects |
 |---|---|---|
@@ -110,7 +116,8 @@ point. Then stop. Applying fixes is a separate step the user asks for.
 ## Rubric composition
 
 The user picks the rubric by loading it alongside this skill (`skl cross-review`
-and `skl thermo`). Embed it in the prompt with `skl inline <rubric-name>`, which
+and `skl thermo-nuclear-code-quality-review`). Embed it in the prompt with
+`skl inline <rubric-name>`, which
 prints the full skill bundle - SKILL.md plus its retained files - to stdout: run
 it yourself and paste the output into the step-3 prompt. This carries the
 rubric's referenced files, which a bare path would drop, and needs no skl or
