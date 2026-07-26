@@ -18,8 +18,7 @@
 #
 # Function-locals are _underscore-prefixed and always assigned before use so
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
-# are bare 6-hex (no leading #), `#`-prefixed at the call site, matching
-# ai_usage's _usage_colour convention in status-right.sh.
+# are bare 6-hex (no leading #), `#`-prefixed at the call site.
 
 # Thresholds — defined once. Swap escalates state even when pressure reads
 # normal (1). Tuned to this 16 GB machine's lived baseline: it idles at ~2.5-3.9 G

@@ -1,12 +1,12 @@
 #!/usr/bin/env zsh
-# usage-debug: inspect Claude/Codex/Cosine usage cache, backoff, and trigger state
+# usage-debug: inspect Claude/Codex/Cosine usage cache, backoff, and lock state
 # Usage: usage-debug [-h|--help]
 emulate -L zsh
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   echo "Usage: usage-debug [-h|--help]"
   echo
-  echo "Shows cache, backoff, lock, and refresh trigger state for:"
+  echo "Shows cache, backoff, and lock state for:"
   echo "  - claude-usage"
   echo "  - codex-usage"
   echo "  - cosine-usage"
@@ -113,12 +113,10 @@ _print_provider() {
   local cache="$2"
   local meta="$3"
   local lockdir="$4"
-  local trigger="$5"
-  local kind="$6"
+  local kind="$5"
 
-  local cache_age trigger_age
+  local cache_age
   cache_age=$(_age "$cache")
-  trigger_age=$(_age "$trigger")
 
   local next_retry=0 fail_count=0 http_status="-" last_error="-" last_success=0
   if [[ -f "$meta" ]]; then
@@ -187,12 +185,6 @@ _print_provider() {
     echo "  lock: none"
   fi
 
-  if [[ "$trigger_age" -ge 0 ]]; then
-    echo "  trigger: age=$(_fmt_secs "$trigger_age") ($trigger)"
-  else
-    echo "  trigger: none"
-  fi
-
   if [[ -f "$cache" ]]; then
     if [[ "$kind" == "claude" ]]; then
       local u5 reset_iso reset_ts rem
@@ -247,7 +239,6 @@ _print_provider \
   "$HOME/.cache/claude-usage.json" \
   "$HOME/.cache/claude-usage.meta.json" \
   "$HOME/.cache/claude-usage.lock" \
-  "$HOME/.cache/claude-usage.trigger" \
   "claude"
 
 _print_provider \
@@ -255,7 +246,6 @@ _print_provider \
   "$HOME/.cache/codex-usage.json" \
   "$HOME/.cache/codex-usage.meta.json" \
   "$HOME/.cache/codex-usage.lock" \
-  "$HOME/.cache/codex-usage.trigger" \
   "codex"
 
 _print_provider \
@@ -263,5 +253,4 @@ _print_provider \
   "$HOME/.cache/cosine-usage.json" \
   "$HOME/.cache/cosine-usage.meta.json" \
   "$HOME/.cache/cosine-usage.lock" \
-  "$HOME/.cache/cosine-usage.trigger" \
   "cosine"

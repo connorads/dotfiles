@@ -19,10 +19,8 @@ EOF
 #!/usr/bin/env bash
 printf '2%%'
 EOF
-  # Host isolation: print_full renders real disk% (df) and battery% (pmset). On a
-  # host at e.g. 38% disk those tokens collide with the AI-usage % assertions
-  # (regression from 637fcff, which loosened specific tokens to bare " 38%"). Stub
-  # both so the suite is host-independent, like the cpu/ram plugin stubs above.
+  # Host isolation: print_full renders real disk% (df) and battery% (pmset), so
+  # stub both like the cpu/ram plugin scripts above.
   write_stub df <<'EOF'
 #!/usr/bin/env bash
 # Header only: disk_percentage() finds no NR==2 row and renders "-" (no number).
@@ -78,37 +76,6 @@ EOF
 {"usedTokens":400,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
 EOF
   touch "$HOME/.cache/claude-usage.json" "$HOME/.cache/codex-usage.json" "$HOME/.cache/cosine-usage.json"
-}
-
-write_cosine_usage_cache() {
-  local used="$1"
-  local total="$2"
-  local start_days="$3"
-  local reset_days="$4"
-
-  python3 - "$HOME" "$used" "$total" "$start_days" "$reset_days" <<'PY'
-import json
-import sys
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-
-home = Path(sys.argv[1])
-used = int(sys.argv[2])
-total = int(sys.argv[3])
-start_days = float(sys.argv[4])
-reset_days = float(sys.argv[5])
-now = datetime.now(timezone.utc)
-
-def iso(delta):
-    return (now + delta).isoformat().replace("+00:00", "Z")
-
-(home / ".cache/cosine-usage.json").write_text(json.dumps({
-    "usedTokens": used,
-    "totalAvailableTokens": total,
-    "billingPeriodStartsAt": iso(timedelta(days=start_days)),
-    "billingPeriodResetsAt": iso(timedelta(days=reset_days)),
-}))
-PY
 }
 
 @test "wide status shows both cpu and the ram percentage pill" {
@@ -216,169 +183,14 @@ EOF
   [[ "$plain" != *"dotfiles-test"* ]]
 }
 
-@test "wide status groups each usage with its reset" {
+@test "wide status omits AI usage even when caches exist" {
   seed_usage_caches
 
   run_status_right 180
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
-  [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
-  [[ "$plain" == *" │ S:40%·"*d* ]]
-}
-
-@test "wide boundary status shows full weekly usage with weekly reset" {
-  seed_usage_caches
-
-  run_status_right 140
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4%·"*" 38%·"*d* ]]
-  [[ "$plain" == *" │ X:10%·3h 86%·2d"* ]]
-  [[ "$plain" == *" │ S:40%·"*d* ]]
-}
-
-@test "medium-wide status keeps 5-hour agent usage but hides weekly details" {
-  seed_usage_caches
-
-  run_status_right 115
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4%·"* ]]
-  [[ "$plain" == *"X:10%·3h"* ]]
-  [[ "$plain" == *"S:40%·"* ]]
-  [[ "$plain" != *" 38%"* ]]
-  [[ "$plain" != *" 86%"* ]]
-}
-
-@test "narrow full status hides agent usage entirely" {
-  seed_usage_caches
-
-  run_status_right 114
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   [[ "$plain" != *"C:"* ]]
   [[ "$plain" != *"X:"* ]]
   [[ "$plain" != *"S:"* ]]
-  [[ "$plain" == *"1%"* ]]
-  [[ "$plain" == *"2%"* ]]
-}
-
-@test "status renders cosine when it is the only usage cache" {
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":720,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
-EOF
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"S:72%·"*d* ]]
-  [[ "$plain" != *"C:"* ]]
-  [[ "$plain" != *"X:"* ]]
-}
-
-@test "status colours cosine yellow when monthly pace is warm" {
-  write_cosine_usage_cache 250 1000 -5 20
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"S"*"#[fg=#f9e2af]25#[fg=#9399b2]%"* ]]
-}
-
-@test "status colours cosine red when monthly pace is critical" {
-  write_cosine_usage_cache 150 1000 -5 45
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"S"*"#[fg=#f38ba8]15#[fg=#9399b2]%"* ]]
-}
-
-@test "status falls back to absolute cosine colour without billing-period start" {
-  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
-{"usedTokens":720,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2099-01-20T00:00:00Z"}
-EOF
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"S"*"#[fg=#f9e2af]72#[fg=#9399b2]%"* ]]
-}
-
-@test "status keeps stale cosine usage dim" {
-  write_cosine_usage_cache 400 1000 -20 20
-  touch -t 202001010000 "$HOME/.cache/cosine-usage.json"
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"S"*"#[fg=#9399b2]40#[fg=#9399b2]%"* ]]
-}
-
-@test "missing weekly fields fall back to 5-hour-only provider output" {
-  cat >"$HOME/.cache/claude-usage.json" <<'EOF'
-{"five_hour":{"utilization":4,"resets_at":"2099-01-01T02:00:00Z"}}
-EOF
-  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
-{"rate_limit":{"primary_window":{"used_percent":10,"reset_after_seconds":10800}}}
-EOF
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:4%·"* ]]
-  [[ "$plain" == *"X:10%·3h"* ]]
-  [[ "$plain" != *" 38%"* ]]
-  [[ "$plain" != *" 86%"* ]]
-}
-
-@test "codex weekly-only window colours the pill by its real duration" {
-  # Live 2026-07 shape: 5h window removed, weekly figure (98%) sits in
-  # primary_window with limit_window_seconds:604800. Pace must use 604800, not a
-  # literal 18000 (which makes elapsed negative and forces a false green).
-  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
-{"rate_limit":{"primary_window":{"used_percent":98,"limit_window_seconds":604800,"reset_after_seconds":530924},"secondary_window":null}}
-EOF
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"X"*"#[fg=#f38ba8]98#[fg=#9399b2]%"* ]]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"X:98%·6d"* ]]
-}
-
-@test "codex 5h window returning renders both slots at wide width" {
-  # Proves the 5h window renders correctly when OpenAI restores it: both
-  # limit_window_seconds present -> session slot (5h) then weekly slot (7d).
-  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
-{"rate_limit":{"primary_window":{"used_percent":30,"limit_window_seconds":18000,"reset_after_seconds":9000},"secondary_window":{"used_percent":86,"limit_window_seconds":604800,"reset_after_seconds":216000}}}
-EOF
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"X:30%·"*" 86%·2d"* ]]
-}
-
-@test "expired stale windows render stale instead of negative reset times" {
-  cat >"$HOME/.cache/claude-usage.json" <<'EOF'
-{"five_hour":{"utilization":90,"resets_at":"2000-01-01T00:00:00Z"},
- "seven_day":{"utilization":95,"resets_at":"2000-01-02T00:00:00Z"}}
-EOF
-  touch -t 202001010000 "$HOME/.cache/claude-usage.json"
-
-  run_status_right 180
-
-  [ "$status" -eq 0 ]
-  plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"C:90%·stale 95%·stale"* ]]
 }
