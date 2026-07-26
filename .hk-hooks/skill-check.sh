@@ -13,12 +13,16 @@ fi
 # Map staged paths to their skill root: skills/<name>/... and
 # .config/skills/personal/<name>/... . Files directly under skills/
 # (e.g. skills/README.md) have no skill root and are skipped.
-roots=$(for f in "$@"; do
-	case $f in
-	skills/*/*) echo "$f" | cut -d/ -f1-2 ;;
-	.config/skills/personal/*/*) echo "$f" | cut -d/ -f1-4 ;;
+# The case lives in a function, not inline in $(...): bash 3.2 (macOS
+# /bin/bash, what `env bash` resolves to on a stock PATH) cannot parse
+# unbalanced case-pattern parens inside command substitution.
+skill_root() {
+	case $1 in
+	skills/*/*) echo "$1" | cut -d/ -f1-2 ;;
+	.config/skills/personal/*/*) echo "$1" | cut -d/ -f1-4 ;;
 	esac
-done | sort -u)
+}
+roots=$(for f in "$@"; do skill_root "$f"; done | sort -u)
 
 fail=0
 for root in $roots; do
