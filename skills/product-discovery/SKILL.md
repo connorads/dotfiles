@@ -36,7 +36,10 @@ is unstated. Four steps, in order, before any speccing:
    pay), feasibility (can we build it), usability (can they use it).
 4. **Propose the cheapest test.** The smallest probe that could kill the
    assumption before committing: a fake door, a throwaway prototype, five
-   user conversations, a query over existing behaviour data.
+   user conversations, a query over existing behaviour data. State the
+   pass/fail bar **up front** — the pre-committed threshold that decides
+   kill or go (e.g. "≥3 of 5 describe the pain unprompted") — so the result
+   can't be rationalised after the fact.
 
 Then stop and present the result; do not continue into design or
 implementation unasked.
@@ -79,5 +82,5 @@ whether and which; the spec defines the end state.
 - **design-forking** — forks solution alternatives at the software-design
   layer; opportunity branching here happens at the problem layer.
 
-`evals/prompts.md` holds this skill's test prompts and expected behaviours —
+`evals/evals.json` holds this skill's test prompts and expected behaviours —
 for revising the skill, not for performing discovery.
