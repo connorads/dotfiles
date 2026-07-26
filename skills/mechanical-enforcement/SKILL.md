@@ -40,6 +40,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Shell / POSIX `sh` | shfmt `-ln=posix` | ShellCheck `--shell=sh` | checkbashisms, multi-shell runtime tests | — | Use for portable `.sh`; run behaviour tests under real target shells. |
 | Bash | shfmt `-ln=bash` | ShellCheck `--shell=bash` | bats-core for black-box CLI tests | — | Bats is Bash-based; good for CLI contracts and Bash scripts. |
 | zsh | shfmt `-ln=zsh` | — | `zsh -n`, isolated zsh runtime tests | — | ShellCheck does not support zsh; use parser/format checks plus native tests. |
+| PowerShell | PSScriptAnalyzer (`Invoke-Formatter`) | PSScriptAnalyzer (`Invoke-ScriptAnalyzer -EnableExit`) | `PSUseCompatibleSyntax` / `PSUseCompatibleCommands` / `PSUseCompatibleTypes` for the version-floor gate; a grep step for `$IsWindows` / `$IsMacOS` / `$IsLinux` (the compat rules do **not** cover automatic variables); Pester for behaviour tests | — | Target the **Windows PowerShell 5.1 floor** when the script must run on a stock Windows — the default shell is `powershell.exe` 5.1, not pwsh 7 — the pwsh analogue of the bash-3.2 contract. Point `PSUseCompatibleCommands`/`Types` at the bundled 5.1 profile (`win-8_x64_10.0.14393.0_5.1.14393.2791_x64_4.0.30319.42000_framework` — the full `compatibility_profiles` filename base; the short `desktop-5.1.*` alias doesn't resolve in 1.25). **`-EnableExit` is load-bearing** — without it the analyzer exits 0 even with findings. Config lives in a `PSScriptAnalyzerSettings.psd1`; run tests under pwsh 7 + Pester 5 (the compat gate, not the test runtime, enforces 5.1). |
 | Markdown | rumdl | rumdl | — | — | Handles frontmatter too. In oxc-stack repos oxfmt also formats Markdown — see `references/typescript.md` (formatting). |
 | CSS / SCSS | Biome or oxfmt (format only) | stylelint (`stylelint "**/*.css" --max-warnings=0`) | Biome's own CSS linter (recommended-tier, vanilla CSS only — no SCSS, no property order) when already on Biome; eslint-plugin-better-tailwindcss for Tailwind class *validation* (`no-unknown-classes` / `no-conflicting-classes`) | — | Extend `stylelint-config-standard` (v40, ESM-only, needs stylelint 17 / Node ≥20.19) + `stylelint-order` + `stylelint-config-css-modules`. Stylelint removed stylistic rules in v16 — a formatter owns those. Class *ordering* is now formatter territory (oxfmt native Tailwind sort / prettier-plugin-tailwindcss), so run the Tailwind plugin for validation only. Gale (Rust drop-in) is a watch — v0.1.x, single-maintainer, can't run JS plugins. |
 | HTML | — | html-validate (`html-validate "**/*.html"`) | — | — | Static offline HTML5 conformance; exits non-zero on errors (`--max-warnings 0` also fails on warnings). Aggressive Node floor (22.22+/24.8+). No `<html lang>` rule — runtime a11y (axe/pa11y) owns that. See `references/web-delivery.md`. |
@@ -85,13 +86,14 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 
 The cross-stack concerns below stay inline.
 
-### Shell and zsh correctness
+### Shell, zsh, and PowerShell correctness
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
 | POSIX scripts stay POSIX | `shellcheck --shell=sh`, `checkbashisms`, tests under target shells (`dash`, `busybox sh`, `bash --posix`, etc.) | Bashisms and portability drift | ShellCheck's `sh` dialect means POSIX `sh`, not whatever `/bin/sh` points to locally. |
 | Bash scripts pass static analysis | `shellcheck --shell=bash`, `shfmt -ln=bash --diff` | Quoting, globbing, parse, and maintainability footguns | Keep ShellCheck disables narrow and documented. |
 | zsh parses cleanly | `zsh -n`, `shfmt -ln=zsh --diff` | Syntax and formatting drift | ShellCheck does not support zsh; do not fake it with `--shell=bash`. |
+| PowerShell stays on the 5.1 floor | `PSUseCompatibleSyntax`/`Commands`/`Types` against the bundled 5.1 profile (Error), + a grep failing on `$IsWindows`/`$IsMacOS`/`$IsLinux` outside the one OS-detection file | 7-only syntax (ternary `?:`, `??`, `&&`/`||`, `ForEach-Object -Parallel`) and cmdlets/types/automatic-vars absent in Windows PowerShell 5.1 silently breaking on a stock Windows | The compat rules cover syntax/commands/types but **not** automatic variables — hence the grep. Back with a dynamic 5.1 smoke (`powershell.exe -File …`) since static analysis can't see a `$null` deref. |
 | Shell tests are hermetic | Test harness owns `PATH`, temp dirs, `HOME`/`ZDOTDIR`, and shell options | Ambient-machine failures | Put exact harness patterns in the testing skill; this skill gates the invariant. |
 
 See `references/shell-quality.md` for copy-paste hook and CI command patterns.
