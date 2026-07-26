@@ -127,8 +127,11 @@ tests.
 
 Use `assertNever` (alias `casesHandled`) on the `default` branch of a union
 switch so a new variant becomes a compile error. Construct branded values only
-through parsers — never an `as` cast. Avoid `any` and `!`. Any non-`as const`
-cast needs a `// SAFETY:` comment. (Lint that enforces these: `mechanical-enforcement`.)
+through parsers — never an `as` cast. Avoid `any` and `!`. Prefer
+`satisfies T` to check a literal against a type without widening it — no cast,
+no SAFETY note; reserve `as` for brand internals and interop. Any non-`as
+const` cast needs a `// SAFETY:` comment. (Lint that enforces these:
+`mechanical-enforcement`.)
 See `references/conventions.md` for JSDoc and the full cast/`any`/`!` rules.
 
 ## References

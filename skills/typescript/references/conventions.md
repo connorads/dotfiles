@@ -18,6 +18,11 @@ skill cares about:
 return normalized as EmailAddress;
 ```
 
+- Prefer `satisfies T` where the goal is "check this literal against T":
+  it validates the value **without widening** its inferred type, so no cast
+  happens and no SAFETY note is needed. Reserve `as` for brand internals and
+  interop; `satisfies` covers the config-object/record cases that used to
+  tempt an `as T`.
 - Rare `any` in a generic helper also needs a targeted lint-ignore + reason.
 - Prefer immutable values (`readonly`, `ReadonlyArray`); mutation is fine inside
   localised shell code, builders, or perf-sensitive internals behind a precise
