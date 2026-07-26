@@ -153,7 +153,14 @@
   };
 
   # -- Programs --
-  programs.zsh.enable = true;
+  programs.zsh = {
+    enable = true;
+    # Interactive completion and Powerlevel10k are initialised in ~/.zshrc.
+    # Avoid repeating compinit/bashcompinit and the system prompt on every shell.
+    enableGlobalCompInit = false;
+    enableBashCompletion = false;
+    promptInit = "";
+  };
 
   # -- Services --
   # enable = false actively disables Remote Login on every activation. Keeping
