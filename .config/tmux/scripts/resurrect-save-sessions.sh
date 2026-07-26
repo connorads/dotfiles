@@ -29,6 +29,7 @@ declare -A OPENCODE_PANE_ENVS
 declare -A OPENCODE_SESSIONS
 declare -A OPENCODE_ENVS
 declare -A OPENCODE_DIR_COUNTS
+declare -A LIVE_AGENT_DIRS
 found_sessions=0
 
 # --- Claude Code session discovery ---
@@ -192,6 +193,13 @@ done <<<"$live_panes"
 
 while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 	[ -n "${pane_key:-}" ] || continue
+	# Every live agent pane, resolved or not — the guard for carrying an
+	# unconfirmed entry through this save (see the carried map below).
+	case "$cmd" in
+	claude | codex | opencode)
+		LIVE_AGENT_DIRS["$pane_key"]="$dir"
+		;;
+	esac
 	case "$cmd" in
 	claude)
 		sid=$(find_claude_session "$dir" "$pid" "$tty")
@@ -240,14 +248,38 @@ done <<<"$live_panes"
 declare -A ALL_DIRS
 for dir in "${!OPENCODE_SESSIONS[@]}"; do ALL_DIRS["$dir"]=1; done
 
-if [ "$found_sessions" -eq 0 ]; then
-	# No sessions found — remove stale file if present
+# --- Carried entries: a save that can't confirm an entry must not destroy it ---
+# A pane can be a live agent yet resolve to nothing (agent still starting, a
+# trust prompt, a transient ps miss). Rewriting the map from this save's
+# findings alone would drop that pane's session id and account, so an old entry
+# is carried when its pane key still holds a live agent pane in the *same* cwd.
+# Keys that are dead or whose slot moved on are pruned, keeping the file
+# self-cleaning and this save idempotent.
+live_json=$(
+	for pane_key in "${!LIVE_AGENT_DIRS[@]}"; do
+		jq -n --arg k "$pane_key" --arg v "${LIVE_AGENT_DIRS[$pane_key]}" '{($k): $v}'
+	done | jq -cs 'add // {}'
+)
+carried='{}'
+if [ -f "$SESSION_FILE" ]; then
+	# A missing, malformed or v1 file carries nothing and never fails the save.
+	carried=$(jq -c --argjson live "$live_json" '
+		(.panes // {}) | with_entries(
+			select(($live[.key] // null) != null and .value.dir == $live[.key]))
+	' "$SESSION_FILE" 2>/dev/null || echo '{}')
+	[ -n "$carried" ] || carried='{}'
+fi
+carried_count=$(jq -n --argjson carried "$carried" '$carried | length' 2>/dev/null || echo 0)
+
+if [ "$found_sessions" -eq 0 ] && [ "$carried_count" -eq 0 ]; then
+	# Nothing recorded and nothing to carry — remove stale file if present
 	rm -f "$SESSION_FILE"
 	exit 0
 fi
 
-# Build JSON with jq
-json='{"version":2,"panes":{}}'
+# Build JSON with jq, seeded with the carried entries so this save's freshly
+# resolved ones overlay them.
+json=$(jq -n --argjson carried "$carried" '{version: 2, panes: $carried}')
 for pane_key in "${!CLAUDE_PANE_SESSIONS[@]}"; do
 	entry=$(jq -n --arg dir "${CLAUDE_PANE_DIRS[$pane_key]}" --arg sid "${CLAUDE_PANE_SESSIONS[$pane_key]}" '{dir: $dir, claude: $sid}')
 	if [ -n "${CLAUDE_PANE_ENVS[$pane_key]:-}" ]; then

@@ -303,6 +303,154 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# Save hook: session_ids.json is merged, not rewritten
+# ---------------------------------------------------------------------------
+
+# A save that resolves no session for a live agent pane (agent still starting, a
+# trust prompt, a transient ps miss) must not destroy that pane's recorded id.
+
+# tmux stub: one resolvable claude pane, one that resolves to nothing, a claude
+# pane whose cwd moved on, and a plain shell pane.
+write_tmux_stub_for_merge() {
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+	printf 'main:1.2\t222\tclaude\t/Users/connorads\t/dev/ttys002\n'
+	printf 'main:1.3\t333\tclaude\t/Users/connorads/moved\t/dev/ttys003\n'
+	printf 'main:2.1\t444\tzsh\t/Users/connorads\t/dev/ttys004\n'
+	exit 0
+fi
+exit 1
+EOF
+}
+
+# ps stub resolving only the first pane's agent - every other pane is a live
+# agent that this save cannot confirm.
+write_ps_stub_for_merge() {
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*ttys001*) printf ' 901 S+ claude\n' ;;
+	*) exit 1 ;;
+esac
+EOF
+}
+
+@test "save hook carries an unconfirmed entry whose pane is still a live agent in the same cwd" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{
+      "main:1.1":{dir:"/Users/connorads",claude:"stale-one"},
+      "main:1.2":{dir:"/Users/connorads",claude:"old-two",claudeConfigDir:$cfg}}}' \
+    >"$SESSION_FILE"
+  write_tmux_stub_for_merge
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  # The resolved pane overlays its carried entry.
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
+  [ "$output" = "session-one" ]
+  # The unconfirmed pane keeps its id and its account.
+  run jq -r '.panes["main:1.2"].claude' "$SESSION_FILE"
+  [ "$output" = "old-two" ]
+  run jq -r '.panes["main:1.2"].claudeConfigDir' "$SESSION_FILE"
+  [ "$output" = "$cfg" ]
+}
+
+@test "save hook drops an unconfirmed entry whose live pane moved to another cwd" {
+  jq -n '{version:2,panes:{
+      "main:1.3":{dir:"/Users/connorads",claude:"old-three"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_stub_for_merge
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  # The slot now holds a different cwd, so the recorded session is not its own.
+  run jq -r '.panes | has("main:1.3")' "$SESSION_FILE"
+  [ "$output" = "false" ]
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
+  [ "$output" = "session-one" ]
+}
+
+@test "save hook drops an entry whose pane key is no longer an agent pane" {
+  jq -n '{version:2,panes:{
+      "main:2.1":{dir:"/Users/connorads",claude:"old-shell"},
+      "main:9.9":{dir:"/Users/connorads",claude:"old-dead"}}}' \
+    >"$SESSION_FILE"
+  write_tmux_stub_for_merge
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes | has("main:2.1")' "$SESSION_FILE"
+  [ "$output" = "false" ]
+  run jq -r '.panes | has("main:9.9")' "$SESSION_FILE"
+  [ "$output" = "false" ]
+}
+
+@test "save hook keeps the file when nothing resolves but an entry can be carried" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  jq -n --arg cfg "$cfg" \
+    '{version:2,panes:{"main:1.2":{dir:"/Users/connorads",claude:"old-two",claudeConfigDir:$cfg}}}' \
+    >"$SESSION_FILE"
+  write_tmux_stub_for_merge
+  # Nothing resolves at all - the whole-map delete this replaces lost the ids of
+  # panes sitting at Claude's trust prompt.
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  [ -f "$SESSION_FILE" ]
+  run jq -r '.panes["main:1.2"].claude' "$SESSION_FILE"
+  [ "$output" = "old-two" ]
+  run jq -r '.panes["main:1.2"].claudeConfigDir' "$SESSION_FILE"
+  [ "$output" = "$cfg" ]
+}
+
+@test "save hook removes the file when nothing resolves and no agent pane is live" {
+  jq -n '{version:2,panes:{"main:1.2":{dir:"/Users/connorads",claude:"old-two"}}}' \
+    >"$SESSION_FILE"
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:2.1\t444\tzsh\t/Users/connorads\t/dev/ttys004\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "$SESSION_FILE" ]
+}
+
+# ---------------------------------------------------------------------------
 # Flags-only emitters (resurrect-argv.sh)
 # ---------------------------------------------------------------------------
 

@@ -206,6 +206,20 @@ one* recorded `.panes[]` entry has `.dir == $PWD`; 0 or >1 → `--continue` /
 disambiguation is needed - the save hook just records `.panes[$key] = {dir,
 claude|codex, claudeConfigDir?}`.
 
+**`session_ids.json` is merged, not rewritten.** A live agent pane can resolve to
+nothing - the agent is still starting, it sits at Claude's "Do you trust this
+folder?" prompt (no `<config_dir>/sessions/<pid>.json` yet), or `ps` misses it
+once - and a save built from its own findings alone would delete that pane's id
+and account, downgrading the restore to a `--continue` that also drops the ccp
+account (a cross-billing risk). So each save carries an entry it cannot confirm
+while its pane key still holds a live agent pane whose *current* cwd equals the
+recorded `.dir`, and this save's fresh findings overlay the carried map. Dead and
+moved keys are pruned by the same rule, so the file stays self-cleaning and the
+save idempotent; it is removed only when nothing resolves and nothing is
+carryable. The legacy top-level per-dir keys (OpenCode's single-pane-per-cwd
+fallback) are deliberately rebuilt from live findings rather than carried - their
+whole value is being live.
+
 **Fidelity rule**: the launcher preserves the flags from the *saved pane argv*
 (`$1`, from `ps -o args=`) rather than resuming with a bare `<agent> --resume
 <id>` - none of the CLIs persist permission mode / system-prompt append / model
