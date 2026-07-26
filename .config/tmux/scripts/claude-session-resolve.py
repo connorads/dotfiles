@@ -145,7 +145,7 @@ def parse_session_id_from_command(command: str) -> str:
     except ValueError:
         args = command.split()
     for i, arg in enumerate(args):
-        if arg.startswith("--resume=") or arg.startswith("--session-id="):
+        if arg.startswith(("--resume=", "--session-id=")):
             return arg.split("=", 1)[1]
         if arg in {"--resume", "--session-id", "-r"} and i + 1 < len(args):
             return args[i + 1]

@@ -110,6 +110,7 @@ class TestIntegration:
             input=payload,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_bypass_returns_ask(self) -> None:
@@ -135,5 +136,6 @@ class TestIntegration:
             input="not json",
             capture_output=True,
             text=True,
+            check=False,
         )
         assert r.returncode == 0

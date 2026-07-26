@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit guard: no duplicate or alias-colliding tmux binds.
 
 If tmux.conf binds the same key twice in one key-table, tmux silently keeps

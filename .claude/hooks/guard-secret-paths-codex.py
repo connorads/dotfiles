@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Codex hook denying Bash access to secret paths (exit-2 contract).
 
 Same policy core as the Claude twin (guard-secret-paths.py): _secretpaths

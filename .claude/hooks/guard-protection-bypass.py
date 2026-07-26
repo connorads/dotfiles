@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Claude Code hook to gate commands that disable supply-chain protections.
 
 The dotfiles harden every package manager at the config level: 4-day age-gates

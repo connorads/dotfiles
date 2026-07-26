@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit guard: no terminal-alias key collisions inside one fzf call.
 
 At the terminal several keys share one byte on the wire - C-i=Tab, C-m=Enter,

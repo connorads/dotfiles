@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # render-dump.py: replay a recorded tmux client tty stream (from `script`) into
 # a pyte terminal emulator and print the final composited screen, one row per
 # line. This is how tests and sign-offs see what a client actually *rendered*

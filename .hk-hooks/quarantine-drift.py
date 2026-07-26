@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit guard: one quarantine policy, nine spellings, zero drift.
 
 The 4-day supply-chain cooldown is hand-encoded in nine config files across

@@ -362,7 +362,7 @@ def _maybe_open_session(
         sys.stdout.flush()
 
     with ctx(lambda: f"failed to launch {format_.value}"):
-        result = subprocess.run(argv, env=env, cwd=cwd)
+        result = subprocess.run(argv, env=env, cwd=cwd, check=False)
     if result.returncode != 0:
         code = "signal" if result.returncode < 0 else str(result.returncode)
         bail(f"{format_.value} exited with status {code}")

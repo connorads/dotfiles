@@ -49,7 +49,7 @@ def run_command(label: str, cmd: list[str], out_dir: Path, timeout: int = 120) -
         )
         output_path.write_text(proc.stdout, encoding="utf-8", errors="replace")
         record["returncode"] = proc.returncode
-    except Exception as exc:  # pragma: no cover - defensive triage path
+    except Exception as exc:  # noqa: BLE001, RUF100 - defensive triage records failures
         output_path.write_text(str(exc), encoding="utf-8", errors="replace")
         record["error"] = str(exc)
     finally:

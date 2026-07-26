@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Claude Code hook to steer npm/npx towards pnpm.
 
 AGENTS.md: "Never use npm or npx; use pnpm or pnpm dlx." This turns that

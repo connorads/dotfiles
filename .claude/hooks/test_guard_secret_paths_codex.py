@@ -20,6 +20,7 @@ class TestIntegration:
             input=payload,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_secret_read_exits_2_with_reason(self) -> None:
@@ -49,6 +50,7 @@ class TestIntegration:
             input="not json",
             capture_output=True,
             text=True,
+            check=False,
         )
         assert r.returncode == 0
 
@@ -60,5 +62,6 @@ class TestIntegration:
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert r.returncode == 0

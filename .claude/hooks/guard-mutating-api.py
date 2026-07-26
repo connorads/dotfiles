@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Claude Code hook to gate mutating `gh api` calls behind a permission prompt.
 

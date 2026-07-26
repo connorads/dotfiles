@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit guard: keep every secret-path surface in lock-step with srt.
 
 The srt sandbox policy (~/.config/srt/base.json `denyRead`/`denyWrite`) is the

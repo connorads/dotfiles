@@ -26,8 +26,8 @@ ASSET_LINK_RELS = {
     "stylesheet",
 }
 NETWORK_HINT_RELS = {"dns-prefetch", "modulepreload", "preconnect", "prefetch", "preload"}
-CSS_URL_RE = re.compile(r"url\(([^)]+)\)", re.I)
-CSS_IMPORT_RE = re.compile(r"@import\s+(?:url\()?['\"]?([^'\";)]+)", re.I)
+CSS_URL_RE = re.compile(r"url\(([^)]+)\)", re.IGNORECASE)
+CSS_IMPORT_RE = re.compile(r"@import\s+(?:url\()?['\"]?([^'\";)]+)", re.IGNORECASE)
 
 
 class AssetRefParser(html.parser.HTMLParser):
@@ -123,19 +123,21 @@ def run_monolith(args: argparse.Namespace, output: Path) -> None:
 
 
 def strip_base_tags(text: str) -> str:
-    return re.sub(r"<base\b[^>]*>", "", text, flags=re.I)
+    return re.sub(r"<base\b[^>]*>", "", text, flags=re.IGNORECASE)
 
 
 def strip_network_hint_links(text: str) -> str:
     def replace(match: re.Match[str]) -> str:
         tag = match.group(0)
-        rel_match = re.search(r"""\brel\s*=\s*(["']?)([^"'\s>]+(?:\s+[^"'\s>]+)*)\1""", tag, re.I)
+        rel_match = re.search(
+            r"""\brel\s*=\s*(["']?)([^"'\s>]+(?:\s+[^"'\s>]+)*)\1""", tag, re.IGNORECASE
+        )
         if not rel_match:
             return tag
         rels = {part.strip().lower() for part in rel_match.group(2).split() if part.strip()}
         return "" if rels.intersection(NETWORK_HINT_RELS) else tag
 
-    return re.sub(r"<link\b[^>]*>", replace, text, flags=re.I)
+    return re.sub(r"<link\b[^>]*>", replace, text, flags=re.IGNORECASE)
 
 
 def clean_ref(value: str) -> str:

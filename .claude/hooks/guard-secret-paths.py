@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Claude Code hook denying Bash access to secret paths.
 
 The static Read()/Edit() deny rules in settings.json cover the built-in file
