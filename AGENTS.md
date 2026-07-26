@@ -171,7 +171,9 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 darwinConfigurations."Connors-Mac-mini"     # macOS Mac mini via nix-darwin + home-manager
 darwinConfigurations."Connors-MacBook-Air"  # macOS MacBook Air via nix-darwin + home-manager
 homeConfigurations."connor@penguin"         # Chromebook Linux
-homeConfigurations."connor@dev"          # Remote aarch64 Linux
+homeConfigurations."connor@dev"          # Remote x86_64 Linux (bare name = live box's arch)
+homeConfigurations."connor@dev-aarch64-linux"  # Remote dev box, aarch64 variant
+homeConfigurations."connor@dev-x86_64-linux"   # Remote dev box, x86_64 variant
 homeConfigurations."connor@rpi5"         # Raspberry Pi 5 (aarch64, server packages, user env only)
 homeConfigurations."codespace"           # GitHub Codespaces (minimal)
 # RPi5 NixOS system config: github.com/connorads/rpi5
