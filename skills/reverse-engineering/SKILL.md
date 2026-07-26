@@ -90,10 +90,10 @@ reference.
 7. Use the bundled static helpers when their target matches:
 
    ```bash
-   python scripts/macos_app_triage.py <binary-or-app> --out /tmp/re-<target-name>
-   python scripts/macos_app_triage.py <image.dmg> \
+   python3 scripts/macos_app_triage.py <binary-or-app> --out /tmp/re-<target-name>
+   python3 scripts/macos_app_triage.py <image.dmg> \
      --allow-mount --out /tmp/re-<target-name>
-   python scripts/go_binary_triage.py <binary> --out /tmp/re-<target-name>
+   python3 scripts/go_binary_triage.py <binary> --out /tmp/re-<target-name>
    ```
 
    `macos_app_triage.py` does not mount a DMG unless `--allow-mount` is present.

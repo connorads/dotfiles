@@ -30,8 +30,8 @@ attack surface than container-only inspection.
 The bundled helper enforces this boundary and is the default:
 
 ```bash
-python scripts/macos_app_triage.py <target> --out /tmp/re-<target>
-python scripts/macos_app_triage.py <image.dmg> \
+python3 scripts/macos_app_triage.py <target> --out /tmp/re-<target>
+python3 scripts/macos_app_triage.py <image.dmg> \
   --allow-mount --out /tmp/re-<target>
 ```
 
