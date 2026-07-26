@@ -196,6 +196,67 @@ wait_nonshell() {
   [ -z "$output" ]
 }
 
+# --- codex title-spinner working detection ---
+#
+# A `sleep 300` pane is non-shell (so the stale-clear never fires) and emits no
+# OSC title, so `select-pane -T` sets a stable #{pane_title} the sweep reads.
+
+@test "sweep flips an idle codex pane with a spinner title to working" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  tx set-option -p -t "$pane" @agent_kind codex
+  tx set-option -p -t "$pane" @agent_state idle
+  tx select-pane -t "$pane" -T '⠋ codex ~/proj'
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  [ "$(wstate "$win")" = working ]
+}
+
+@test "sweep retires a working codex pane to idle only after two spinner-less sweeps" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  tx set-option -p -t "$pane" @agent_kind codex
+  tx set-option -p -t "$pane" @agent_state working
+  tx select-pane -t "$pane" -T 'codex ~/proj' # no spinner
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ] # held after one absent poll
+  [ "$(tx show-options -pqv -t "$pane" @agent_poll_absent)" = 1 ]
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ] # retired on the second
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_poll_absent)" ]
+}
+
+@test "sweep leaves a done codex pane with no spinner untouched" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  tx set-option -p -t "$pane" @agent_kind codex
+  tx set-option -p -t "$pane" @agent_state done
+  tx select-pane -t "$pane" -T 'codex ~/proj'
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = done ]
+}
+
+@test "@codex_title_poll off disables the codex title reconcile" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
+  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  tx set-option -g @codex_title_poll off
+  tx set-option -p -t "$pane" @agent_kind codex
+  tx set-option -p -t "$pane" @agent_state idle
+  tx select-pane -t "$pane" -T '⠋ codex ~/proj'
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ] # untouched
+}
+
 @test "daemon starts one process with a pidfile and is idempotent" {
   pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
   launch_daemon
