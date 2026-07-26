@@ -89,7 +89,8 @@ cf dns records list --zone-id <zone-id> --name <hostname>
 ```
 
 If the `cf` command shape differs, inspect `cf schema <command>` or use the
-current Cloudflare API docs before writing.
+current Cloudflare API docs before writing. `cf agent-context workers` (and
+`dns`, `zones`) prints the current command surface for these read checks.
 
 ## Verification
 

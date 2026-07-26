@@ -22,6 +22,10 @@ deploy`.
 
 - Check current Cloudflare docs or API schema before control-plane changes.
   Workers Builds and the `cf` CLI move quickly.
+- Load the CLI's own context before control-plane work:
+  `cf agent-context workers-builds` (also `workers` for Worker scripts,
+  `zero-trust` for Access) prints the current command surface and per-command
+  usage - fresher than any snapshot in this skill.
 - Discover available tools before choosing a path: `cf`, `wrangler`, `jq`,
   package manager, and whether the Cloudflare dashboard is already configured.
 - Read existing state first. Do not create duplicate Workers, repo connections,
