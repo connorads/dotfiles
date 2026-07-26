@@ -151,3 +151,16 @@ assert_tab_label() {
   [[ "$border" == *"range=control|7"* ]]
   [[ "$border" == *"range=control|8"* ]]
 }
+
+@test "session cycle bindings follow the session rail's creation order" {
+  grep -Fq 'bind -N "Previous session (rail order)" -n C-M-h switch-client -p -O creation' "$CONF"
+  grep -Fq 'bind -N "Next session (rail order)" -n C-M-l switch-client -n -O creation' "$CONF"
+  grep -Fq 'bind -T copy-mode-vi C-M-h switch-client -p -O creation' "$CONF"
+  grep -Fq 'bind -T copy-mode-vi C-M-l switch-client -n -O creation' "$CONF"
+  grep -Fq 'bind -N "Previous session (rail order)" '\''('\'' switch-client -p -O creation' "$CONF"
+  grep -Fq 'bind -N "Next session (rail order)" '\'')'\'' switch-client -n -O creation' "$CONF"
+  grep -Fq 'bind -N "Move window left" -n C-M-H swap-window -t -1 \; previous-window' "$CONF"
+  grep -Fq 'bind -N "Move window right" -n C-M-L swap-window -t +1 \; next-window' "$CONF"
+  grep -Fq 'bind -N "Session switch/create popup (fzf)" -n M-S display-popup' "$CONF"
+  grep -Fq 'bind -T copy-mode-vi M-S display-popup' "$CONF"
+}
