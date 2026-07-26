@@ -31,13 +31,18 @@ pretending to be the brand or copying protected product flows.
    ```
 
    The script saves raw HTML/CSS, candidate assets, `sources.md`, and
-   `tokens.raw.json`. Use it as evidence, not as the final judgement. For
+   `tokens.raw.json`. Use it as evidence, not as the final judgement. It
+   fetches with urllib (no JS execution), so on SPA or CSS-in-JS sites the
+   captured HTML/CSS is thin — expect to lean on rendered screenshots and
+   devtools inspection instead. For
    Wayback or other archive URLs, prefer clean replay URLs such as `if_` for
    screenshots and inspection, and treat normal replay pages as potentially
    contaminated by archive toolbar assets.
-4. **Inspect screenshots.** Capture at least desktop and mobile when the final
-   deliverable is visual. Note responsive layout patterns and avoid overfitting
-   to one viewport.
+4. **Inspect screenshots.** Render with a real browser — `playwright-cli` (or
+   the Playwright MCP tools when available) — at roughly 1280px-wide desktop
+   and 390px-wide mobile viewports. Capture at least desktop and mobile when
+   the final deliverable is visual. Note responsive layout patterns and avoid
+   overfitting to one viewport.
 5. **Normalise the kit.** Convert raw evidence into `tokens.json`,
    `brand-brief.md`, and a local `assets/` set. Keep unreviewed downloads under
    `raw/assets/candidates/`; put only selected, renamed assets in

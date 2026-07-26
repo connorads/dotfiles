@@ -45,7 +45,8 @@ When restyling an existing user page with a captured kit:
 
 ## Verification
 
-- Render desktop and mobile screenshots.
+- Render desktop and mobile screenshots with a real browser (`playwright-cli`
+  / Playwright MCP; ~1280px and ~390px wide).
 - Compare against official screenshots or pages for broad fit, not pixel match.
 - Check text contrast for primary foreground/background pairs.
 - Check images and logos load from local assets or approved remote URLs.
