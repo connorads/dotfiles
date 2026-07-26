@@ -6,8 +6,8 @@ bats_require_minimum_version 1.5.0
 load test_helper
 
 # The state → glyph + colour mapping is rendered four ways: the tab dots
-# (@agent_dotfmt), the prefix+Alt+. menu literals, the organiser pane menu
-# (organiser.sh), and the prefix+A popup. They drifted once because nothing
+# (@agent_dotfmt), the prefix+Alt+. menu literals, the organiser menus, and the
+# prefix+A popup. They drifted once because nothing
 # enforced agreement. agent-state-lib.sh is now the single source of truth;
 # this suite derives EVERY expectation from the lib (agent_hex/agent_char/
 # agent_glyph), so it hardcodes no colours/glyphs and stays pure ASCII —
@@ -60,9 +60,9 @@ teardown() {
   done
 }
 
-# D — right-click pane menu literals (organiser.sh): same guard as B for
+# D — organiser menu literals: same guard as B for
 # the fourth renderer. unread shows the done/blue glyph; clear has no glyph.
-@test "context menu literals match the canonical mapping" {
+@test "organiser menu literals match the canonical mapping" {
   for pair in "working:working" "blocked:blocked" "unread:done" "idle:idle"; do
     label=${pair%:*}
     state=${pair#*:}

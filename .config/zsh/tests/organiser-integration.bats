@@ -40,6 +40,21 @@ tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
   ! tx list-windows -t source -F '#{window_id}' | grep -Fxq "$win"
 }
 
+@test "window move background accepts a multi-digit destination session ID" {
+  for i in $(seq 1 14); do
+    tx new-session -d -s "extra-$i" 'sleep 300'
+  done
+  dest_name="$(tx list-sessions -F '#{session_name} #{session_id}' | awk '$2 ~ /^\$[1-9][0-9]+$/ {print $1; exit}')"
+  [ -n "$dest_name" ]
+  dest_id="$(tx display-message -p -t "$dest_name" '#{session_id}')"
+  win="$(tx new-window -d -P -F '#{window_id}' -t source 'sleep 300')"
+
+  run "$ORG" action-window move-background client "$win" "$dest_id"
+
+  [ "$status" -eq 0 ]
+  tx list-windows -t "$dest_id" -F '#{window_id}' | grep -Fxq "$win"
+}
+
 @test "window share and unlink keep one live shared window" {
   win="$(tx new-window -d -P -F '#{window_id}' -t source 'sleep 300')"
   dest_id="$(tx display-message -p -t dest '#{session_id}')"

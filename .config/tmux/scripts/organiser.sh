@@ -11,6 +11,21 @@ tmux_quote() {
 	printf '%s' "$value"
 }
 
+shell_quote() {
+	local value=$1
+	value=${value//\'/\'\\\'\'}
+	printf "'%s'" "$value"
+}
+
+organiser_run_shell() {
+	local command arg
+	command="$(shell_quote "$dir/organiser.sh")"
+	for arg in "$@"; do
+		command+=" $(shell_quote "$arg")"
+	done
+	printf 'run-shell "%s"' "$(tmux_quote "$command")"
+}
+
 format_label() {
 	local value=$1
 	value=${value//#/##}
@@ -142,14 +157,14 @@ window_destination_menu() {
 	title=" $(format_label "$label") → session $((page + 1))/$(((total + size - 1) / size)) "
 	menu_base "$client" "$pane" "$mx" "$my" "$title"
 	if [ "$start" -gt 0 ]; then
-		menu+=("Previous" "<" "run-shell '$dir/organiser.sh window-dest $mode \"$client\" \"$src_win\" \"$pane\" \"$mx\" \"$my\" $((page - 1))'")
+		menu+=("Previous" "<" "$(organiser_run_shell window-dest "$mode" "$client" "$src_win" "$pane" "$mx" "$my" "$((page - 1))")")
 	fi
 	for ((i = start; i < end; i++)); do
 		IFS=$'\t' read -r session_id session_name <<<"${destinations[$i]}"
-		menu+=("$(format_label "$session_name")" "" "run-shell '$dir/organiser.sh action-window $mode \"$client\" \"$src_win\" \"$session_id\"'")
+		menu+=("$(format_label "$session_name")" "" "$(organiser_run_shell action-window "$mode" "$client" "$src_win" "$session_id")")
 	done
 	if [ "$end" -lt "$total" ]; then
-		menu+=("Next" ">" "run-shell '$dir/organiser.sh window-dest $mode \"$client\" \"$src_win\" \"$pane\" \"$mx\" \"$my\" $((page + 1))'")
+		menu+=("Next" ">" "$(organiser_run_shell window-dest "$mode" "$client" "$src_win" "$pane" "$mx" "$my" "$((page + 1))")")
 	fi
 	tmux "${menu[@]}"
 }
@@ -182,14 +197,14 @@ pane_destination_menu() {
 	title=" Break pane → session $((page + 1))/$(((total + size - 1) / size)) "
 	menu_base "$client" "$pane" "$mx" "$my" "$title"
 	if [ "$start" -gt 0 ]; then
-		menu+=("Previous" "<" "run-shell '$dir/organiser.sh pane-dest $mode \"$client\" \"$src_pane\" \"$mx\" \"$my\" $((page - 1))'")
+		menu+=("Previous" "<" "$(organiser_run_shell pane-dest "$mode" "$client" "$src_pane" "$mx" "$my" "$((page - 1))")")
 	fi
 	for ((i = start; i < end; i++)); do
 		IFS=$'\t' read -r session_id session_name <<<"${destinations[$i]}"
-		menu+=("$(format_label "$session_name")" "" "run-shell '$dir/organiser.sh action-pane-break $mode \"$client\" \"$src_pane\" \"$session_id\"'")
+		menu+=("$(format_label "$session_name")" "" "$(organiser_run_shell action-pane-break "$mode" "$client" "$src_pane" "$session_id")")
 	done
 	if [ "$end" -lt "$total" ]; then
-		menu+=("Next" ">" "run-shell '$dir/organiser.sh pane-dest $mode \"$client\" \"$src_pane\" \"$mx\" \"$my\" $((page + 1))'")
+		menu+=("Next" ">" "$(organiser_run_shell pane-dest "$mode" "$client" "$src_pane" "$mx" "$my" "$((page + 1))")")
 	fi
 	tmux "${menu[@]}"
 }
@@ -208,9 +223,9 @@ window_menu() {
 	qlabel="$(tmux_quote "$label")"
 	menu_base "$client" "$pane" "$mx" "$my" " Window · $(format_label "$label") "
 	menu+=(
-		"Move and follow…" "m" "run-shell '$dir/organiser.sh window-dest move-follow \"$client\" \"$window_id\" \"$pane\" \"$mx\" \"$my\" 0'"
-		"Move in background…" "b" "run-shell '$dir/organiser.sh window-dest move-background \"$client\" \"$window_id\" \"$pane\" \"$mx\" \"$my\" 0'"
-		"Share with session…" "s" "run-shell '$dir/organiser.sh window-dest share \"$client\" \"$window_id\" \"$pane\" \"$mx\" \"$my\" 0'"
+		"Move and follow…" "m" "$(organiser_run_shell window-dest move-follow "$client" "$window_id" "$pane" "$mx" "$my" 0)"
+		"Move in background…" "b" "$(organiser_run_shell window-dest move-background "$client" "$window_id" "$pane" "$mx" "$my" 0)"
+		"Share with session…" "s" "$(organiser_run_shell window-dest share "$client" "$window_id" "$pane" "$mx" "$my" 0)"
 	)
 	if [ "$linked" = 1 ]; then
 		menu+=("Remove from this session" "u" "$(confirm_if "$([ "$session_windows" = 1 ] && printf 1 || printf 0)" "remove $label from $session_name and close the session? (y/n)" "unlink-window -t $session_id:$win_index")")
@@ -252,8 +267,8 @@ pane_menu() {
 	menu+=(
 		"#[?window_zoomed_flag,Unzoom,Zoom]" "z" "resize-pane -Z -t $pane_id"
 		"#[?pane_marked,Unmark,Mark]" "m" "select-pane -m -t $pane_id"
-		"Break and follow…" "f" "run-shell '$dir/organiser.sh pane-dest break-follow \"$client\" \"$pane_id\" \"$mx\" \"$my\" 0'"
-		"Break in background…" "b" "run-shell '$dir/organiser.sh pane-dest break-background \"$client\" \"$pane_id\" \"$mx\" \"$my\" 0'"
+		"Break and follow…" "f" "$(organiser_run_shell pane-dest break-follow "$client" "$pane_id" "$mx" "$my" 0)"
+		"Break in background…" "b" "$(organiser_run_shell pane-dest break-background "$client" "$pane_id" "$mx" "$my" 0)"
 	)
 	if [ -n "$marked" ]; then
 		IFS=$'\t' read -r _ _ _ marked_window marked_pane _ _ <<<"$marked"
@@ -261,10 +276,10 @@ pane_menu() {
 			menu+=(
 				""
 				"Join marked pane here…" "" ""
-				"Left" "h" "run-shell '$dir/organiser.sh action-pane-join left \"$client\" \"$marked_pane\" \"$pane_id\"'"
-				"Right" "l" "run-shell '$dir/organiser.sh action-pane-join right \"$client\" \"$marked_pane\" \"$pane_id\"'"
-				"Above" "k" "run-shell '$dir/organiser.sh action-pane-join above \"$client\" \"$marked_pane\" \"$pane_id\"'"
-				"Below" "j" "run-shell '$dir/organiser.sh action-pane-join below \"$client\" \"$marked_pane\" \"$pane_id\"'"
+				"Left" "h" "$(organiser_run_shell action-pane-join left "$client" "$marked_pane" "$pane_id")"
+				"Right" "l" "$(organiser_run_shell action-pane-join right "$client" "$marked_pane" "$pane_id")"
+				"Above" "k" "$(organiser_run_shell action-pane-join above "$client" "$marked_pane" "$pane_id")"
+				"Below" "j" "$(organiser_run_shell action-pane-join below "$client" "$marked_pane" "$pane_id")"
 			)
 		fi
 	fi
@@ -286,7 +301,7 @@ session_menu() {
 	local client=${1:-} mx=${2:-C} my=${3:-C}
 	menu_base "$client" "" "$mx" "$my" " Session #S "
 	menu+=(
-		"Organise window" "W" "run-shell '$dir/organiser.sh window \"$client\" \"#{window_id}\" \"#{pane_id}\" \"#{pane_current_path}\" C C'"
+		"Organise window" "W" "$(organiser_run_shell window "$client" '#{window_id}' '#{pane_id}' '#{pane_current_path}' C C)"
 		"Session picker (fzf)" "s" "display-popup -E \"tmux list-sessions -F '#{session_name}' | fzf --reverse --header='Switch session' | xargs -I{} tmux switch-client -t {}\""
 		"Window tree" "w" "choose-tree -Zw"
 		"Agents popup" "A" "display-popup -E -h 80% -w 85% '$dir/agent-popup.sh'"
