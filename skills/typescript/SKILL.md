@@ -5,7 +5,9 @@ description: >
   branded/domain types, deep domain modules, and correct-by-construction APIs.
   Use when designing or reviewing TypeScript specifically — Result types, tagged
   errors, branded types, smart constructors, schema parsing, module/import
-  layout, JSDoc, or the cast/`any`/`!` discipline. For language-agnostic design
+  layout, JSDoc, or the cast/`any`/`!` discipline. Also covers choosing or
+  migrating TypeScript compiler versions (TS 7 vs 6, tsc/tsc6, JS-API
+  consumers). For language-agnostic design
   use the architecture skill; for lint/tsconfig config use mechanical-enforcement;
   for test strategy use testing.
 ---
@@ -140,3 +142,4 @@ See `references/conventions.md` for JSDoc and the full cast/`any`/`!` rules.
 - `references/parsing.md` — parse-don't-validate, schema ladder, branded types + smart constructors
 - `references/modules.md` — deep/domain/application modules, narrow-port adapters, reuse-audit + ADR, imports/files, config-at-boundary
 - `references/conventions.md` — JSDoc, cast/`any`/`!` discipline, TS testing specifics
+- `references/toolchain.md` — compiler version selection/migration: TS 7 vs 6, tsc/tsc6, JS-API consumers, framework constraints
