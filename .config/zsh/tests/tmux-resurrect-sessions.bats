@@ -318,6 +318,45 @@ EOF
   [ "$output" = "codex-two" ]
 }
 
+@test "save hook records a Codex session when lsof is absent from PATH" {
+  # The launchd shape: the keepalive's plist PATH lists no dir holding lsof, so a
+  # PATH-only lookup found nothing and every Codex pane's id went unrecorded while
+  # Claude's registry-based panes kept resolving - a silent, one-agent-wide gap.
+  mkdir -p "$HOME/.codex/sessions/2026/06/24" "$BATS_TEST_TMPDIR/sbin"
+  cat >"$HOME/.codex/sessions/2026/06/24/rollout-one.jsonl" <<'EOF'
+{"type":"session_meta","payload":{"id":"codex-one","cwd":"/Users/connorads"}}
+EOF
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	printf 'main:1.1\t111\tcodex\t/Users/connorads\t/dev/ttys001\n'
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+	*ttys001*) printf ' 901 S+ codex\n' ;;
+	*) exit 1 ;;
+esac
+EOF
+  cat >"$BATS_TEST_TMPDIR/sbin/lsof" <<'EOF'
+#!/usr/bin/env bash
+printf 'codex 901 user 10r REG 1,2 0 1 %s/.codex/sessions/2026/06/24/rollout-one.jsonl\n' "$HOME"
+EOF
+  chmod +x "$BATS_TEST_TMPDIR/sbin/lsof"
+
+  # No lsof on PATH (setup_test_home's own PATH carries /usr/sbin, where macOS
+  # keeps it), only at the fallback location.
+  PATH="$TEST_BIN:/usr/bin:/bin" AGENT_LSOF_FALLBACK="$BATS_TEST_TMPDIR/sbin/lsof" \
+    run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.1"].codex' "$SESSION_FILE"
+  [ "$output" = "codex-one" ]
+}
+
 # ---------------------------------------------------------------------------
 # Save hook: session_ids.json is merged, not rewritten
 # ---------------------------------------------------------------------------

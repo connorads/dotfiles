@@ -220,6 +220,16 @@ carryable. The legacy top-level per-dir keys (OpenCode's single-pane-per-cwd
 fallback) are deliberately rebuilt from live findings rather than carried - their
 whole value is being live.
 
+**Codex ids need `lsof`, so the lookup does not rely on `PATH` alone.** Claude
+publishes a per-PID registry file, but Codex's thread id is only discoverable from
+the rollout transcript the process holds open, which `codex_session_file_for_pid`
+finds with `lsof`. macOS keeps `lsof` in `/usr/sbin`, a dir a launchd agent's
+`PATH` carries only if its plist lists it - and the hook fails open on a missing
+tool, so a `PATH`-only lookup recorded *no* Codex id at all while Claude panes
+kept resolving. `agent_lsof_command` therefore falls back to `/usr/sbin/lsof`
+(`AGENT_LSOF_FALLBACK` overrides for tests), and the keepalive plist lists
+`/usr/sbin` too - defence in depth, since either alone closes the gap.
+
 **Every pane running an agent is saved with a command.** The `foreground`
 save-command strategy
 ([`save_command_strategies/foreground.sh`](./save_command_strategies/foreground.sh),
@@ -493,8 +503,13 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   which the keepalive strips by design — tmux sanitises the tabs its format
   output delimits fields with to `_`, so `save.sh` reads an empty session name,
   treats every pane as a grouped session, skips it, and writes a state-only save
-  with no panes, while the session-ids hook matches no agent panes and deletes
-  `session_ids.json`.
+  with no panes, while the session-ids hook matches no agent panes and records
+  nothing (the map itself survives such a save: unconfirmed entries are carried,
+  not rewritten — see the restore subsystem above).
+  Its plist `PATH` must also carry **`/usr/sbin`**, where macOS keeps `lsof`: the
+  session-ids hook needs it for Codex ids and fails open on a missing tool, so
+  without it Codex panes save no session id at all. The lib's `/usr/sbin/lsof`
+  fallback is the second line of defence for any other narrow-`PATH` caller.
 
 Restore stays manual (`prefix + Ctrl-r`); `@continuum-restore` is deliberately
 `off` (see the resurrect agent-session restore subsystem above).

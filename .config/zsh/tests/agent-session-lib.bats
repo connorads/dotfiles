@@ -212,3 +212,62 @@ EOF
   [ "$status" -eq 0 ]
   [ "$output" = "711" ]
 }
+
+# --- lsof resolution -------------------------------------------------------
+# Codex ids are resolved from the transcript the process holds open, so a caller
+# with a narrow PATH (a launchd agent gets only what its plist lists) would
+# otherwise record nothing at all rather than reporting a missing tool.
+
+# An lsof stub reporting one open Codex rollout for any pid.
+write_lsof_stub_at() {
+  local path="$1"
+  mkdir -p "$(dirname "$path")"
+  cat >"$path" <<EOF
+#!/usr/bin/env bash
+printf 'codex 901 user 10r REG 1,2 0 1 %s/.codex/sessions/2026/06/24/rollout-one.jsonl\n' "\$HOME"
+EOF
+  chmod +x "$path"
+}
+
+# A PATH with no lsof anywhere - the launchd shape (the plist lists none of the
+# dirs holding it). setup_test_home's own PATH includes /usr/sbin, where macOS
+# keeps lsof, so a test must drop it to exercise the fallback at all.
+lsofless_path() { printf '%s' "$TEST_BIN:/usr/bin:/bin"; }
+
+@test "agent_lsof_command prefers lsof on PATH" {
+  write_lsof_stub_at "$TEST_BIN/lsof"
+
+  run agent_lsof_command
+  [ "$status" -eq 0 ]
+  [ "$output" = "lsof" ]
+}
+
+@test "agent_lsof_command falls back to the system lsof when PATH has none" {
+  local fallback="$BATS_TEST_TMPDIR/sbin/lsof"
+  write_lsof_stub_at "$fallback"
+
+  PATH="$(lsofless_path)" AGENT_LSOF_FALLBACK="$fallback" run agent_lsof_command
+  [ "$status" -eq 0 ]
+  [ "$output" = "$fallback" ]
+}
+
+@test "agent_lsof_command is empty when lsof is absent everywhere" {
+  PATH="$(lsofless_path)" AGENT_LSOF_FALLBACK="$BATS_TEST_TMPDIR/sbin/absent" run agent_lsof_command
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "codex_session_file_for_pid resolves via the fallback lsof with none on PATH" {
+  local fallback="$BATS_TEST_TMPDIR/sbin/lsof"
+  write_lsof_stub_at "$fallback"
+
+  PATH="$(lsofless_path)" AGENT_LSOF_FALLBACK="$fallback" run codex_session_file_for_pid 901
+  [ "$status" -eq 0 ]
+  [ "$output" = "$HOME/.codex/sessions/2026/06/24/rollout-one.jsonl" ]
+}
+
+@test "codex_session_file_for_pid is empty when no lsof can be found" {
+  PATH="$(lsofless_path)" AGENT_LSOF_FALLBACK="$BATS_TEST_TMPDIR/sbin/absent" run codex_session_file_for_pid 901
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}

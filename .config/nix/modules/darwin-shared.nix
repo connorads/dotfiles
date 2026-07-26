@@ -247,7 +247,11 @@
   # ProgramArguments points at the TRACKED script path, not a nix-store wrapper,
   # so edits to the keepalive take effect next tick without a rebuild. PATH
   # carries the per-user profile (where tmux and GNU stat resolve) plus system
-  # bins; LANG supplies the UTF-8 locale launchd otherwise omits entirely, without
+  # bins, /usr/sbin among them because the session-ids hook shells out to `lsof`
+  # to find the transcript Codex holds open — same reason tailscaled needs it
+  # above, and without it every Codex pane's session id goes silently unrecorded
+  # (the hook fails open on a missing tool). LANG supplies the UTF-8 locale
+  # launchd otherwise omits entirely, without
   # which tmux sanitises the tabs its format output delimits fields with and every
   # tab-delimited consumer (save.sh, the session-ids hook) parses garbage. A user
   # agent (not a system daemon): it drives the user's tmux server.
@@ -262,7 +266,7 @@
       RunAtLoad = true; # save promptly after a crash-reboot / drs
       ProcessType = "Background";
       EnvironmentVariables = {
-        PATH = "/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+        PATH = "/usr/sbin:/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         # Keeps tabs intact in tmux format output (see block comment above).
         LANG = "en_GB.UTF-8";
       };
