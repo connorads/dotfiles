@@ -40,6 +40,34 @@ set. Promote only when you catch yourself wishing something fired automatically.
 add -g` clones a *second* copy into the dotfiles-tracked `~/.agents/skills`; the symlink
 keeps one real copy in `~/skills`).
 
+## Vendored shapes
+
+Everything third-party is **vendored** and lives under the single `vendor/` root. There is
+no provenance split above it — the shapes below differ only in *how they are refreshed and
+promoted*, not in where they come from:
+
+- **set** (`vendor/<name>/`) — a *cohesive* multi-skill upstream, one skills-CLI project dir
+  with its **own lockfile**. `skills update -p` from the set dir refreshes it as a unit, and
+  `skl install <set>/` copies the whole set into a matching-stack repo. Examples: `expo`,
+  `elevenlabs`.
+- **unsorted bucket** (`vendor/.agents/skills/`) — CLI-vendored *singletons* sharing one
+  lockfile (`vendor/skills-lock.json`). Skills that don't belong to a cohesive upstream group.
+- **manual bucket** (`vendor/manual/<name>/`) — hand-placed skills with **no upstream and no
+  lockfile** (gist / tweet / distillation). Refreshed individually by re-cloning and
+  re-applying; never `skills update`-able. Examples: `govuk-style`, `ponytail`, `bro`.
+
+**Promotion unit is the deciding axis for a set.** The strongest reason a group earns set
+status is that a set is the unit you `skl install <set>/` into a repo whose stack matches —
+the whole cohesive group travels together as vetted bytes. Update-isolation (its own
+lockfile) is a consequence, not the point.
+
+**Threshold — when a vendored group becomes a set:** a vendored *single* stays in the
+unsorted bucket. Promote a group to a set **iff** it is a cohesive multi-skill upstream you
+will `skills update` / `skl install` as one unit — either a generic-name collision risk (as
+elevenlabs's `agents` / `music`) or a whole stack you enter and leave as a unit (as `expo`).
+The **manual** skills are a bucket regardless of count: they share only provenance (no
+upstream, no lockfile, refreshed individually), so they never become a set.
+
 ## The rubric (apply to every future skill)
 
 ```text
@@ -211,6 +239,12 @@ philosophy anyway.
 - **One-folder lockfile split** (keep all vendored skills in one dir, slice the lockfile by
   tier) — rejected: the CLI manages one lockfile per dir; splitting it by hand fights the
   tool. Project scope gives a real per-tier lockfile for free.
+- **Top-level `sets/` dir separate from `vendor/`** (the original layout) — rejected: sets
+  and the `vendor` bucket are *both* skills-CLI clones, so two sibling roots implied a
+  provenance split that does not exist and invited the abstraction to accrete. Folded into
+  one `vendor/` root holding all shapes (set / unsorted bucket / manual bucket); `skl`
+  discovery is per-source-root with `dot:false`, so a set nested under `vendor/` never
+  collides with the unsorted `vendor` source (its `.agents/` is dot-skipped).
 - **Tracking the empty global skill-lock** (incl. committing its `lastSelectedAgents` /
   `dismissed` UI keys, or a clean filter à la `codex-config-clean` to strip them) — rejected:
   `skillsync` ignores the lockfile and the UI keys don't touch autoload or session cost, so
