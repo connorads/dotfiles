@@ -30,7 +30,7 @@ CLI's two scopes *are* our two managed tiers:
 
 | Tier | Where | Autoloaded? | Session cost | Managed by |
 |------|-------|-------------|--------------|------------|
-| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `sets/<name>/.agents/skills` (curated third-party groups) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/<name>` (manually-vendored) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (sets + vendor) |
+| **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/<name>/.agents/skills` (vendored sets) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/manual/<name>` (manual bucket) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (sets + vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
 | **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
 
@@ -78,13 +78,14 @@ above) are curation calls.
                              history - commit in the resolved repo, not via dotfiles; its
                              root AGENTS.md documents the wiring · skl source 'private'
   personal/<name>/         authored, personal (public-in-dotfiles, not showcased) · skl source 'personal'
-  sets/<name>/             curated GROUP = one skills-CLI project dir per group · skl source '<name>'
-    .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope)
-    skills-lock.json       the group's lockfile (`skills update -p` from here refreshes in place)
-  vendor/                  UNSORTED third-party bucket · skl sources 'vendor' + 'vendored'
-    manual/<name>/         manually-vendored skills (no upstream, no lock) · skl source 'manual'
-    .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope) · skl source 'vendor'
-    skills-lock.json       project lockfile (`skills update` from here refreshes in place)
+  vendor/                  single third-party (VENDORED) root · skl sources 'expo'/'elevenlabs'/'vendor'/'manual'
+    <set>/                 vendored SET = one skills-CLI project dir per cohesive group · skl source '<set>'
+      .agents/skills/<name>/  real CLI-cloned files (CLI-managed, project scope)
+      skills-lock.json     the set's own lockfile (`skills update -p` from here refreshes in place)
+    .agents/skills/<name>/ unsorted bucket: real CLI-cloned singletons (project scope) · skl source 'vendor'
+    skills-lock.json       the unsorted bucket's lockfile (`skills update` from vendor/ refreshes in place)
+    manual/<name>/         manual bucket: manually-vendored skills (no upstream, no lock) · skl source 'manual'
+    patches/               local-patch definitions (skill-patch source of truth)
 
 ~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
   <authored-name> → symlink to ~/skills/<name> (authored; fanned out by skillsync)
@@ -96,22 +97,23 @@ above) are curation calls.
 
 `skl` config (`~/.config/skl/config.json`), order = precedence (first match wins). `public`
 and `private` are symlinks skl follows; a missing/uncloned source yields no skills (friendly
-empty, not a throw — verified in `skl/src/shell/fs.ts`), so config may list a set before its
-dir exists. Each curated group (`sets/<name>`) is one more source, rooted at its
-`.agents/skills` like `vendor`; they sit between `public` and `vendor` so a grouped skill
-wins over an unsorted vendor copy. The `vendored` source roots at `vendor/` so its non-dot
-Glob serves the depth-4 manually-vendored skills while naturally skipping the `.agents/`
-nested CLI clones (no overlap with `vendor`):
+empty, not a throw — verified in `skl/src/shell/fs.ts`), so config may list a source before its
+dir exists. Each vendored set (`vendor/<name>`) is one more source, rooted at its own
+`.agents/skills` exactly like the unsorted `vendor` bucket; the sets sit *above* the `vendor`
+source so a grouped skill wins over an unsorted singleton of the same name. The `manual`
+source roots directly at `vendor/manual`, a plain subtree with no `.agents/` nesting, so it
+never overlaps the CLI-managed sources; it stays last. All four vendored sources share the
+one `vendor/` root:
 
 ```json
 { "paths": [
-  { "path": "~/.config/skills/private",                       "name": "private" },
-  { "path": "~/.config/skills/personal",                      "name": "personal" },
-  { "path": "~/.config/skills/public",                        "name": "public" },
-  { "path": "~/.config/skills/sets/elevenlabs/.agents/skills", "name": "elevenlabs" },
-  { "path": "~/.config/skills/sets/expo/.agents/skills",       "name": "expo" },
-  { "path": "~/.config/skills/vendor/.agents/skills",         "name": "vendor" },
-  { "path": "~/.config/skills/vendor",                        "name": "vendored" }
+  { "path": "~/.config/skills/private",                         "name": "private" },
+  { "path": "~/.config/skills/personal",                        "name": "personal" },
+  { "path": "~/.config/skills/public",                          "name": "public" },
+  { "path": "~/.config/skills/vendor/elevenlabs/.agents/skills", "name": "elevenlabs" },
+  { "path": "~/.config/skills/vendor/expo/.agents/skills",       "name": "expo" },
+  { "path": "~/.config/skills/vendor/.agents/skills",           "name": "vendor" },
+  { "path": "~/.config/skills/vendor/manual",                   "name": "manual" }
 ] }
 ```
 
@@ -253,9 +255,9 @@ and diff-review clones against the prior vetted copy before trusting them.
   `.agents/skills/<name>`. Machine-generated, regenerated on every update, and gitignored
   (`/.config/skills/vendor/.claude/` in `~/.gitignore`) — the tracked copy is
   `.agents/skills/`. Only effect: those skills autoload for agent sessions started *inside*
-  the vendor dir, which is not a working dir. The same holds for each curated group:
-  `sets/*/.claude/` is gitignored (one wildcard covers every set) — tracked copy is
-  `sets/<name>/.agents/skills`.
+  the vendor dir, which is not a working dir. The same holds for each vendored set:
+  `vendor/*/.claude/` is gitignored (one wildcard covers every set) — tracked copy is
+  `vendor/<name>/.agents/skills`.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them, and they are **absent from any `skills-lock.json` by design**. These three —

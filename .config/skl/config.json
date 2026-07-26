@@ -4,8 +4,8 @@
     { "path": "~/.config/skills/private", "name": "private" },
     { "path": "~/.config/skills/personal", "name": "personal" },
     { "path": "~/.config/skills/public", "name": "public" },
-    { "path": "~/.config/skills/sets/elevenlabs/.agents/skills", "name": "elevenlabs" },
-    { "path": "~/.config/skills/sets/expo/.agents/skills", "name": "expo" },
+    { "path": "~/.config/skills/vendor/elevenlabs/.agents/skills", "name": "elevenlabs" },
+    { "path": "~/.config/skills/vendor/expo/.agents/skills", "name": "expo" },
     { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
     { "path": "~/.config/skills/vendor/manual", "name": "manual" }
   ]

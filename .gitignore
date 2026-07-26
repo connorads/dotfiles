@@ -130,13 +130,11 @@
 !/.config/skills/vendor/
 !/.config/skills/vendor/**
 # skills CLI fans project skills into .claude/skills as symlinks on every
-# `skills update` (machine-generated; the tracked copy is .agents/skills)
+# `skills update` (machine-generated; the tracked copy is .agents/skills).
+# Covers the unsorted bucket (vendor/.claude) and each set's project
+# .claude/ fan-out (vendor/*/.claude, e.g. vendor/expo, vendor/elevenlabs).
 /.config/skills/vendor/.claude/
-# curated groups: one skills-CLI project dir per set. Wildcard because there
-# are many; re-ignore each set's machine-generated .claude/ fan-out.
-!/.config/skills/sets/
-!/.config/skills/sets/**
-/.config/skills/sets/*/.claude/
+/.config/skills/vendor/*/.claude/
 
 # Raycast extension source (tracked source-only; the built bundle lives in the
 # machine-local ~/.config/raycast/, which stays untracked). pnpm-lock.yaml IS

@@ -13,9 +13,9 @@ terminal_progress = false
 // diff-review the update-vendored-skills skill relies on. Exclude them from the
 // formatting steps only; gitleaks + merge-conflict checks still run on them.
 // skill-patch hunk files (patches/**) mirror upstream bytes too and must not
-// be reformatted/linted either. Curated group sets (sets/<name>/.agents/skills)
-// are the same faithful upstream mirror, one project dir per group.
-local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**", ".config/skills/vendor/patches/**", ".config/skills/sets/*/.agents/skills/**")
+// be reformatted/linted either. Vendored sets (vendor/<name>/.agents/skills)
+// are the same faithful upstream mirror, one project dir per set.
+local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**", ".config/skills/vendor/patches/**", ".config/skills/vendor/*/.agents/skills/**")
 
 // Patch files are byte-exact: a blank context line is a single space and
 // trailing whitespace can be significant, so reformatting them silently
