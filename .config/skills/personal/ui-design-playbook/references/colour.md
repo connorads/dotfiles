@@ -4,12 +4,16 @@ A working palette is a system, not a mood board. Define colours in a perceptual 
 
 ## Colour model
 
-- **Work in HSL, not hex.** Define and edit colours as HSL rather than hex or RGB, because HSL tracks how people perceive colour, so related colours stay related in code and adjustments are predictable.
+- **Prefer OKLCH; work in a perceptual model, never hex.** OKLCH's lightness is perceptually uniform - two hues at the same L actually look equally light, which HSL cannot promise (50% yellow and 50% blue are worlds apart). That makes ramps and cross-hue comparisons honest, and it is what `references/tailwind.md` already uses (Tailwind v4's palette is OKLCH). HSL remains the workable legacy fallback when tooling demands it - its axes still beat hex/RGB for reasoning.
 
   ```css
   /* same hue, two shades - relationship is obvious */
-  --blue-500: hsl(220, 80%, 55%);
-  --blue-700: hsl(222, 84%, 38%);
+  --blue-500: oklch(63% 0.20 255);
+  --blue-700: oklch(48% 0.19 255);
+
+  /* HSL fallback: same idea, less uniform lightness */
+  --blue-500-hsl: hsl(220, 80%, 55%);
+  --blue-700-hsl: hsl(222, 84%, 38%);
   ```
 
 - **Know the three axes.** Hue is position on the wheel (0deg red, 120deg green, 240deg blue), saturation is vividness (0% grey to 100% intense), lightness is black-to-white (0% black, 50% pure colour, 100% white). Reasoning per-channel beats guessing.
@@ -52,6 +56,10 @@ A working palette is a system, not a mood board. Define colours in a perceptual 
 - **Resist palette creep.** Once the scale is set, don't add new shades casually. An ever-growing palette is no system at all.
 
 ## Making ramps feel natural
+
+These tricks are HSL-era compensations for HSL's non-uniform lightness. In
+OKLCH much of the correction happens for free - equal-L steps already look
+even - so apply them when authoring in HSL, and only by eye in OKLCH.
 
 - **Raise saturation at the extremes.** Increase saturation as a shade moves away from 50% lightness toward 0% or 100%, because saturation's visual impact weakens near black and white - constant saturation leaves light and dark shades washed out.
 

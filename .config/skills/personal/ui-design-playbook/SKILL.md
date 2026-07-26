@@ -74,11 +74,18 @@ all-caps.
 
 ### Colour → `references/colour.md`
 
-Work in HSL · build a full palette (greys, primaries, accents, semantics), not
-five swatches · predefine ~9 shades per colour, never compute on the fly · avoid
-pure black · trust eyes over maths · use perceived brightness and small hue
-rotations for natural ramps · tint and keep greys consistent in temperature ·
-meet contrast minimums and never rely on colour alone.
+Work in OKLCH (HSL as legacy fallback) · build a full palette (greys,
+primaries, accents, semantics), not five swatches · predefine ~9 shades per
+colour, never compute on the fly · avoid pure black · trust eyes over maths ·
+use perceived brightness and small hue rotations for natural ramps · tint and
+keep greys consistent in temperature · meet contrast minimums and never rely
+on colour alone.
+
+### Dark mode → `references/dark-mode.md`
+
+Elevation via surface lightness, not shadows · a separate dark ramp, never an
+inversion of the light one · avoid pure black surfaces · secondary text as
+lower-lightness same-hue steps, not opacity.
 
 ### Depth & elevation → `references/depth.md`
 
