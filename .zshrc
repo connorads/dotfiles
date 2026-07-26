@@ -25,8 +25,25 @@ setopt HIST_IGNORE_SPACE
 bindkey "^[[3~" delete-char
 
 # https://github.com/mattmc3/antidote
+# Pinned bootstrap: fresh machines fetch exactly this commit (a SHA, not a
+# tag - tags are mutable). v2.1.1+13: includes 744fc85, which stops a failed
+# `antidote load` truncating the static file (broken in the v2.1.1 tag). The
+# antidote.pin git config marks the self clone pinned so `antidote update -b`
+# skips it too (the v2.1 bundle updater otherwise treats its own clone as a
+# bundle and moves it to origin main). Bump antidote by editing the SHA here,
+# then on live machines: git -C "$ANTIDOTE_HOME" fetch origin <sha> &&
+# git -C "$ANTIDOTE_HOME" checkout <sha> + set antidote.pin to the same SHA.
+# Update bundles with `antidote update -b` (pin:-annotated bundles are skipped).
 ANTIDOTE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/antidote"
-[[ -d "$ANTIDOTE_HOME" ]] || git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_HOME"
+if [[ ! -d "$ANTIDOTE_HOME" ]]; then
+  _antidote_sha=71a29af0b4a7831f60a8c1aff752901c0e2739c0
+  git init -q "$ANTIDOTE_HOME" &&
+    git -C "$ANTIDOTE_HOME" remote add origin https://github.com/mattmc3/antidote.git &&
+    git -C "$ANTIDOTE_HOME" fetch -q --depth=1 origin "$_antidote_sha" &&
+    git -C "$ANTIDOTE_HOME" checkout -q "$_antidote_sha" &&
+    git -C "$ANTIDOTE_HOME" config antidote.pin "$_antidote_sha"
+  unset _antidote_sha
+fi
 source "$ANTIDOTE_HOME"/antidote.zsh
 
 # Initialise completion system. Regenerate the dump — full compinit, including
