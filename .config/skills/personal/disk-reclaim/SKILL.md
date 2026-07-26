@@ -87,12 +87,21 @@ project cleaner or its docs, where present, is the fastest classifier.
   not disposable cache. Do not delete it: it leaves mise tool shims dangling.
   `aube store prune` is the supported way to reclaim unreferenced package data;
   its saving may be zero and cannot be estimated from the whole store size.
-- **mise HTTP tarballs:** `mise prune` can remove an old tool while extracted
-  archives remain under `~/.local/share/mise/http-tarballs`, even when
-  `mise cache path` points elsewhere. For a large entry, read `metadata.json`
-  and confirm that no installed tool or symlink references it before treating
-  it as re-downloadable and removing that entry after a nod. Do not expect
-  `mise cache clear` to clear this legacy root.
+- **mise downloads:** `mise prune` can remove an old tool while its downloaded
+  archives remain under `~/.local/share/mise/downloads/<tool>/`. That root is
+  in mise's *data* dir, not its cache dir (`~/Library/Caches/mise`), so
+  `mise cache clear` never touches it. For a large entry, confirm no installed
+  tool still references it (`mise ls <tool>`) before treating it as
+  re-downloadable and removing it after a nod. If a legacy
+  `~/.local/share/mise/http-tarballs` dir still exists
+  (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there — read
+  an entry's `metadata.json` before removing it.
+- **APFS local snapshots pin deleted blocks.** After big deletions the `df`
+  figure can refuse to move: Time Machine local snapshots keep the old blocks
+  live. Inspect with `tmutil listlocalsnapshots /`; reclaim with
+  `tmutil thinlocalsnapshots / <bytes> 4`, or wait — macOS thins them under
+  pressure. Never quote purgeable or snapshot space as a saving; it is not
+  yours to promise.
 - **`/nix/store` size is not reclaimable space.** Most of it is live. Trust
   `cleanup`'s nix probe, which sizes dead paths only; `nix-collect-garbage -d`
   routinely frees nothing while costing rollback generations. Never quote the
