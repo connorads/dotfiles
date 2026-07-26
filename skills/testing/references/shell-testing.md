@@ -228,6 +228,30 @@ the faked subset, and ~70s for the full suite run in parallel).
 
 ## Assertion quality
 
+### Mid-body `[[ ]]` assertions silently pass on macOS bash 3.2
+
+Bats fails a test via errexit plus the body's final exit status. On macOS
+stock bash 3.2 (what `#!/usr/bin/env bats` typically resolves to), a false
+`[[ ]]` or `(( ))` that is **not the test's last command** does not trigger
+errexit — the test reports `ok` with the assertion unenforced. Plain commands
+(`[ ]`, `grep -q`, `false`) fail correctly, and the *final* `[[ ]]` is caught
+via the body's exit status, which is why suites look healthy until a
+multi-assert test rots. Verified with a minimal repro (bash 3.2.57, bats 1.14,
+2026-07):
+
+```bash
+@test "looks green, asserts nothing" {
+  [[ "a" == "b" ]]   # false, swallowed - not the last command
+  echo after
+}
+```
+
+Fix: append `|| false` (a plain command, which errexit honours) to every
+non-final `[[ ]]`/`(( ))` assertion, or use `bats-assert` helpers (plain
+commands, immune). Audit existing suites with a grep for `[[` lines that are
+followed by more commands. Modern bash (4.1+) does not have the quirk, but a
+suite that must run on stock macOS needs the guard.
+
 - Assert status, stdout, stderr, and side effects separately when they carry
   different meaning.
 - Prefer named examples for bugs and edge cases.
