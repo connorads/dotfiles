@@ -90,3 +90,6 @@ Per maxim 11, point at these rather than restating them:
 - **architecture** - domain modelling, ports/adapters, making illegal states unrepresentable (theme 5.3).
 - **testing** / **test-coverage** - reconciliation tests, contract tests, enforcement gates (themes 1, 5).
 - **hk** - wiring pre-commit hooks and local checks for the mechanisms above.
+- **writing-skills** - how to author a skill (structure, description, checks);
+  [references/agent-docs.md](references/agent-docs.md) keeps only what living
+  documentation adds to skills.
