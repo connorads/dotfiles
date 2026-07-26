@@ -488,8 +488,16 @@ duration rule inline (low-stakes, not the failure mode), not the shared jq.
 Surfaces:
 
 - [`../zsh/functions/agents/ai-usage`](../zsh/functions/agents/ai-usage)
-  (`aiu`, popup via `prefix + a`) refreshes providers and renders plain or fancy
-  combined usage.
+  (`aiu`, popup via `prefix + a`) renders combined usage. `--cache-only` renders
+  the fancy dashboard without contacting providers; `--refresh-only` refreshes
+  all providers silently, waiting for both its children and any live provider
+  lock (bounded to 20 seconds). Direct `--fancy` retains refresh-then-render
+  compatibility.
+- [`scripts/ai-usage-popup.sh`](./scripts/ai-usage-popup.sh) renders
+  `--cache-only` first, then starts a detached `--refresh-only`. A key dismisses
+  within the 100 ms TTY poll interval without cancelling refresh. Natural
+  completion redraws once only when a usage cache or metadata file changed;
+  cleanup always restores the saved TTY state, cursor, and alternate screen.
 - [`../zsh/functions/usage-debug`](../zsh/functions/usage-debug) prints cache,
   backoff, lock, and provider usage details.
 
@@ -499,6 +507,7 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 [`../zsh/tests/codex-usage.bats`](../zsh/tests/codex-usage.bats),
 [`../zsh/tests/cosine-usage.bats`](../zsh/tests/cosine-usage.bats),
 [`../zsh/tests/ai-usage.bats`](../zsh/tests/ai-usage.bats),
+[`../zsh/tests/ai-usage-popup.bats`](../zsh/tests/ai-usage-popup.bats),
 [`../zsh/tests/usage-debug.bats`](../zsh/tests/usage-debug.bats).
 
 ## Memory-pressure monitoring (custom subsystem)
