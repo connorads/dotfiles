@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ts-typecheck: typecheck one first-party TS project with the global tsgo.
+# ts-typecheck: typecheck one first-party TS project with the global tsc (TS 7).
 # Skips gracefully (warn, exit 0) when devDeps are declared but node_modules is
 # absent, so fresh/offline machines aren't blocked; `mise run ts-checks` installs.
 set -euo pipefail
@@ -12,4 +12,4 @@ if [ -f package.json ] && grep -q '"devDependencies"' package.json && [ ! -d nod
 	echo "ts-typecheck: skipping $root (node_modules absent; run 'mise run ts-checks')" >&2
 	exit 0
 fi
-exec tsgo -p tsconfig.json
+exec tsc -p tsconfig.json

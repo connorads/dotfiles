@@ -474,10 +474,6 @@ backend = "npm:@redwoodjs/agent-ci"
 version = "2.5.3"
 backend = "npm:@tobilu/qmd"
 
-[[tools."npm:@typescript/native-preview"]]
-version = "7.0.0-dev.20260707.2"
-backend = "npm:@typescript/native-preview"
-
 [[tools."npm:agent-browser"]]
 version = "0.32.3"
 backend = "npm:agent-browser"
@@ -549,6 +545,10 @@ backend = "npm:skills"
 [[tools."npm:svgo"]]
 version = "4.0.2"
 backend = "npm:svgo"
+
+[[tools."npm:typescript"]]
+version = "7.0.2"
+backend = "npm:typescript"
 
 [[tools."npm:vercel"]]
 version = "50.44.0"

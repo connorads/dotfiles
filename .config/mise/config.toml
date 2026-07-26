@@ -104,10 +104,9 @@ fnox = "1"
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
 "npm:@playwright/cli" = "0"
-# tsgo: native-preview TypeScript compiler for first-party TS typecheck steps
-# (hk ts-typecheck-* + `mise run ts-checks`). Prerelease-only package, so pin an
-# exact dev build - a "7" range matches nothing (node-semver skips prereleases).
-"npm:@typescript/native-preview" = "7.0.0-dev.20260707.2"
+# TypeScript 7 (Go-native tsc) for first-party TS typecheck steps
+# (hk ts-typecheck-* + `mise run ts-checks`).
+"npm:typescript" = "7"
 "npm:@redwoodjs/agent-ci" = "0"
 # Local hybrid search (FTS + vector + rerank) over the kb Obsidian vault; also
 # pinned in ~/git/kb/mise.toml so the repo documents its own dependency.
@@ -199,7 +198,7 @@ description = "Typecheck + test all first-party TS projects (installs deps as ne
 run = """
 set -e
 cd "$HOME"
-(cd .config/skl && bun install --frozen-lockfile && tsgo -p tsconfig.json && bun test)
+(cd .config/skl && bun install --frozen-lockfile && tsc -p tsconfig.json && bun test)
 for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows; do
   (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test)
 done

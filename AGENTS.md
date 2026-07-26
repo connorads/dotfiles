@@ -341,7 +341,7 @@ Mise tools use a **4-day quarantine** (`minimum_release_age = "4d"`, formerly `i
 
 **Lockfile** (`lockfile = true`, `lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]`): the committed `~/.config/mise/mise.lock` pins exact versions **and** checksums per platform - the mise analogue of `flake.lock`. The quarantine gates *resolution time* but pins nothing; the lockfile makes every machine install the identical vetted artifact rather than independently re-resolving ranges. The current platform is always locked regardless; the three listed cover the Macs (`macos-arm64`), dev/rpi5 (`linux-arm64`), and penguin/codespaces (`linux-x64`). Complementary, not a replacement: keep `minimum_release_age` / excludes / attestation / slsa.
 
-**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude, Codex and Amp are exempted from quarantine via the `minimum_release_age_excludes` mise setting. Exception: `npm:@typescript/native-preview` (tsgo, used by the `ts-typecheck-*` hk steps and `mise run ts-checks`) is pinned to an exact dev build - the package publishes prereleases only, so a `"7"` range matches nothing (node-semver skips prereleases); bump it manually.
+**Version ranges, not "latest"**: tools are pinned to major or major.minor ranges (e.g., `deno = "2"`, `pkl = "0.31"`). `mise upgrade` pulls patches within the range; `--bump` crosses boundaries. Claude, Codex and Amp are exempted from quarantine via the `minimum_release_age_excludes` mise setting.
 
 **Python tooling** (ruff / pyrefly / ty): `ruff = "0.15"` (registry-backed `aqua:astral-sh/ruff`) is the first-party lint + format gate (`ruff-check` / `ruff-format` hk steps, `mise run py-checks`). `"pipx:pyrefly" = "1"` is the typecheck gate for the two hook dirs (`py-typecheck-*` hk steps); pipx backend (no aqua entry, mirrors `pipx:ty`) forwards the quarantine to uv's `--exclude-newer`. `pipx:ty = "0"` is kept for editor/LSP use only - pyrefly owns the gate. pyrefly's default `basic` preset does gradual typing and **skips the bodies of unannotated functions**, so a green would be shallow; the two `pyrefly.toml` set `untyped-def-behavior = "check-and-infer-return-type"`, which checks bodies without forcing annotations - a meaningful gate on untyped code.
 
@@ -454,7 +454,8 @@ runner is absent, and `mise run skill-checks` runs every suite across all
 tiers (private included).
 
 The `ts-typecheck-*` steps gate first-party TS projects (skl, pi goal /
-workflows / pi-palette, and the small pi extensions) with the global `tsgo`,
+workflows / pi-palette, and the small pi extensions) with the global `tsc`
+(typescript 7),
 glob-scoped so only staged-project changes pay the cost. The shared
 `~/.hk-hooks/ts-typecheck.sh` warns and exits 0 when a project's
 `node_modules` is absent (fresh/offline machines); `mise run ts-checks`

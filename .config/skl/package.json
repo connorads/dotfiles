@@ -6,7 +6,7 @@
   "description": "Deliberate agent-skill loader for tmux",
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsgo -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14"

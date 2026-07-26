@@ -11,10 +11,10 @@
   },
   "scripts": {
     "test": "node --test guard.test.ts",
-    "typecheck": "tsgo -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260623.1"
+    "typescript": "^7.0.2"
   }
 }
