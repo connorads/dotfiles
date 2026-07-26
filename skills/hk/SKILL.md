@@ -99,8 +99,15 @@ git config --local core.hooksPath .hk-hooks
 And add to `package.json` prepare script (JS projects):
 
 ```json
-"prepare": "[ -n \"$CI\" ] && exit 0 || command -v hk >/dev/null && (hk install 2>/dev/null || git config --local core.hooksPath .hk-hooks) || echo 'Note: hk not found, skipping git hooks. Install mise to enable.'"
+"prepare": "[ -n \"$CI\" ] && exit 0 || git config --local core.hooksPath .hk-hooks"
 ```
+
+Wire `core.hooksPath` directly — don't use `hk install` here. `hk install`
+succeeds on modern hk/Git and wires hk's own generated hooks, silently
+diverging from the tracked `.hk-hooks/` wrappers this skill sets up (the
+wrapper adds the `HK=0` bypass, mise discovery, and `-q`). One wiring path,
+the tracked one. hk needn't be installed at prepare time — the wrapper
+discovers it at commit time and errors clearly if missing.
 
 For non-JS projects, set `core.hooksPath` manually or via a Makefile `setup` target.
 
