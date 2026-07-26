@@ -217,6 +217,16 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/tmux-bind-lint.py"
     }
 
+    // Sibling of tmux-bind-lint for the prefix+T launcher table: the popup
+    // parser (tools-popup.sh) runs everything after the FIRST tab, so a
+    // tab-less row lists in fzf but silently runs nothing when chosen.
+    // Embedded tabs in the command are legal (assert >= 2 fields, never == 2).
+    // Self-path in the glob so editing the checker re-triggers it.
+    ["tools-tsv-lint"] {
+        glob = List(".config/tmux/tools.tsv", ".hk-hooks/tools-tsv-lint.sh")
+        check = "bash .hk-hooks/tools-tsv-lint.sh"
+    }
+
     // Sibling of tmux-bind-lint for fzf argument strings: an fzf call that names
     // both members of a terminal-alias pair (C-i=Tab etc.) - one via --expect,
     // the other via --bind - is ambiguous; --expect accepts before --bind fires
