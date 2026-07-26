@@ -32,13 +32,14 @@ CLI's two scopes *are* our two managed tiers:
 |------|-------|-------------|--------------|------------|
 | **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/<name>/.agents/skills` (vendored sets) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/manual/<name>` (manual bucket) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (sets + vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
-| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | `skills add -g` (vendored) · symlink + `skillsync` (authored) |
+| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | symlink + `skillsync` (authored → `~/skills`, vendored → the vendor copy); `skills add -g` only for a non-catalogue global |
 
 **Autoload is kept deliberately minimal** — inspect `~/.agents/skills/` for the current
-set. Promote only when you catch yourself wishing something fired automatically. Vendored →
-`skills add -g <x>`; authored → symlink into `~/.agents/skills` then `skillsync` (`skills
-add -g` clones a *second* copy into the dotfiles-tracked `~/.agents/skills`; the symlink
-keeps one real copy in `~/skills`).
+set. Promote only when you catch yourself wishing something fired automatically. Either
+provenance promotes by symlink + `skillsync`: authored skills link to `~/skills/<name>`,
+vendored ones to their vendor-tier copy (one real clone, patches/refreshes apply once).
+`skills add -g` clones a *second* copy into the dotfiles-tracked `~/.agents/skills` — use
+it only for a global you deliberately keep out of the catalogue.
 
 ## Vendored shapes
 
@@ -77,8 +78,9 @@ upstream, no lockfile, refreshed individually), so they never become a set.
 2. Keep?  off-domain / unused / redundant → REMOVE (reinstall from upstream later).
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
-5. + Global autoload iff broad AND must-auto-fire AND regular. Vendored: `skills add -g`.
-     Authored: symlink into ~/.agents/skills + `skillsync`. Current set: `ls ~/.agents/skills`.
+5. + Global autoload iff broad AND must-auto-fire AND regular. Symlink into
+     ~/.agents/skills + `skillsync` (authored → ~/skills; vendored → its vendor copy).
+     Current set: `ls ~/.agents/skills`.
 6. Authored routing: showcase → ~/skills (future connorads/skills) ; personal → personal/ ;
      private → private/.
 ```
@@ -117,10 +119,13 @@ above) are curation calls.
 
 ~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
   <authored-name> → symlink to ~/skills/<name> (authored; fanned out by skillsync)
-  <vendored-name>/ real CLI clone (vendored; `skills add -g`, upstream-tracked)
+  <vendored-name> → symlink to ../../.config/skills/vendor/.agents/skills/<name>
+                    (vendored global: ONE real clone lives in the vendor tier, so
+                    refreshes + local patches apply once; currently playwright-cli)
 ~/.agents/.skill-lock.json TRACKED (un-ignored in ~/.gitignore): skills-CLI global lockfile —
-                           records CLI-managed globals only. Authored symlinks are
-                           skillsync-managed and absent here by design.
+                           records CLI-managed globals only, and every current global is
+                           a symlink, so its skills map is empty. Symlinked globals
+                           (authored and vendored alike) are absent here by design.
 ```
 
 `skl` config (`~/.config/skl/config.json`), order = precedence (first match wins). `public`
@@ -197,10 +202,20 @@ When working in a repo whose stack matches a skill, `cd <repo>` and `skills add 
 Reserve for broad + must-auto-fire + regular skills. Two paths by provenance, because the
 deciding axis is **upstream tracking**:
 
-**Vendored** (real upstream) → `skills add -g <owner/repo> --skill <name>`. Lands a clone in
-`~/.agents/skills/`, the CLI fans it into every selected tool (more than `skillsync`'s list:
-cline, zed, warp, deepagents, …) and `skills update -g` pulls upstream fixes.
-`~/.agents/.skill-lock.json` records the CLI-managed set (currently `playwright-cli`).
+**Vendored** (real upstream) → vendor it into the catalogue first (project scope, above),
+then symlink the vendor copy into the autoload dir and fan out:
+
+```bash
+ln -s ../../.config/skills/vendor/.agents/skills/<name> ~/.agents/skills/<name>
+skillsync
+```
+
+One real clone serves both tiers, so a `skills update -p` refresh and any
+`vendor/patches/` local patch apply once and reach every tool (playwright-cli is this
+shape: patched allowed-tools, globally autoloaded). A separate `skills add -g` clone is
+the fallback only for a skill you deliberately do NOT want in the catalogue — it lands a
+second CLI-managed copy in `~/.agents/skills/` recorded in `~/.agents/.skill-lock.json`
+and refreshed with `skills update -g` (that set is currently empty).
 
 **Authored** (you *are* upstream) → symlink the skill into `~/.agents/skills/`, then run
 `skillsync` to fan out:
@@ -217,8 +232,8 @@ Why not `skills add -g` for authored skills? They already live in a public repo 
 into the repo it came from (circular, and the duplication we're avoiding). `skills update`
 is pointless on your own code anyway. The symlink keeps **one** real copy in `~/skills`.
 `skillsync` follows symlinked entries (the `(-/)` glob) and never reads `.skill-lock.json`,
-so authored autoloads are absent from the global lockfile by design — which is also why
-`skills update -g` (playwright) never clobbers them.
+so symlinked autoloads are absent from the global lockfile by design — which is also why
+`skills update -g` never clobbers them.
 
 Caveat for a *personal* authored autoload: dotfiles are public, so its installed copy needs
 gitignoring — and "personal + autoloaded everywhere" cuts against the keep-autoload-small
