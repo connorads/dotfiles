@@ -39,6 +39,10 @@ Route elsewhere when the request is really:
   as `ui-design-playbook` when available.
 - **Performance or motion:** first paint, layout shift, animation timing, and
   perceived jank belong in a performance or motion-design skill when available.
+- **Deciding what to build:** prioritising features, choosing the riskiest
+  assumption to test, or evidence-before-building questions belong in
+  `product-discovery` - this skill assumes the what is decided and works on
+  whether the experience of it holds together.
 
 When routing elsewhere, stop after naming the boundary and the target skill or
 discipline. You may add one sentence about the user risk, but do not provide the
