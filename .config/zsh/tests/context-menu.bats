@@ -116,3 +116,11 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$stderr" == *"usage:"* ]]
 }
+
+@test "legacy menu modes are rejected" {
+  for mode in pane-legacy window-legacy session-legacy; do
+    run --separate-stderr "$CTX" "$mode"
+    [ "$status" -eq 1 ]
+    [[ "$stderr" == *"usage:"* ]]
+  done
+}

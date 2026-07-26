@@ -57,6 +57,34 @@ EOF
   grep -q 'session 1/2' "$TEST_LOG"
 }
 
+@test "window destination commands shell-quote multi-digit session IDs" {
+  export TMUX_SESSIONS='$1\tsrc\n$13\tdest\n'
+
+  run "$ORG" window-dest move-background "client one" "@7" "%5" 1 2 0
+
+  [ "$status" -eq 0 ]
+  grep -Fq "'action-window' 'move-background' 'client one' '@7' '\$13'" "$TEST_LOG"
+}
+
+@test "pane destination commands shell-quote multi-digit session IDs" {
+  export TMUX_SESSIONS='$1\tsrc\n$13\tdest\n'
+
+  run "$ORG" pane-dest break-background "client one" "%5" 1 2 0
+
+  [ "$status" -eq 0 ]
+  grep -Fq "'action-pane-break' 'break-background' 'client one' '%5' '\$13'" "$TEST_LOG"
+}
+
+@test "paging commands preserve client names and tmux IDs" {
+  export TMUX_CLIENT_HEIGHT=12
+  export TMUX_SESSIONS='$1\tsrc\n$2\ta\n$3\tb\n$4\tc\n$5\td\n$6\te\n$7\tf\n$13\tg\n'
+
+  run "$ORG" window-dest move-follow "client one's" "@7" "%5" 1 2 0
+
+  [ "$status" -eq 0 ]
+  grep -Fq "'window-dest' 'move-follow' 'client one'\\\\''s' '@7' '%5' '1' '2' '1'" "$TEST_LOG"
+}
+
 @test "window menu uses IDs for commands and escaped names only for labels" {
   export TMUX_WINDOW_INFO='$1	source	@7	1	win #{danger}	0	1	2'
 
@@ -103,10 +131,10 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -q 'Join marked pane here' "$TEST_LOG"
-  grep -q 'action-pane-join left' "$TEST_LOG"
-  grep -q 'action-pane-join right' "$TEST_LOG"
-  grep -q 'action-pane-join above' "$TEST_LOG"
-  grep -q 'action-pane-join below' "$TEST_LOG"
+  grep -Fq "'action-pane-join' 'left' 'clientA' '%9' '%5'" "$TEST_LOG"
+  grep -Fq "'action-pane-join' 'right' 'clientA' '%9' '%5'" "$TEST_LOG"
+  grep -Fq "'action-pane-join' 'above' 'clientA' '%9' '%5'" "$TEST_LOG"
+  grep -Fq "'action-pane-join' 'below' 'clientA' '%9' '%5'" "$TEST_LOG"
 }
 
 @test "pane join directions map to join-pane flags and return to destination" {
