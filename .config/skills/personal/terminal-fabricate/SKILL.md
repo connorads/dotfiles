@@ -96,3 +96,7 @@ with hand-authored building blocks as the fallback.
 `termctrl` (the `terminal-control` skill's binary; here it is nix-managed via
 `packages/terminal-control.nix`). If `command -v termctrl` fails, rebuild
 (`drs` on macOS, `hms` on Linux) rather than `cargo install`.
+
+Motion export (`termctrl video`) additionally needs `ffmpeg` — install via
+nix, not brew, if `command -v ffmpeg` fails. Stills (PNG/SVG/text) need only
+termctrl.
