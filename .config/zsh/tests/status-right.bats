@@ -8,6 +8,11 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 STATUS_RIGHT="$HOME/.config/tmux/scripts/status-right.sh"
 
+# NOTE: bats runs under macOS bash 3.2, where a false `[[ ]]` mid-test does
+# NOT trigger errexit - only the test's *last* command fails it. Every
+# non-final `[[ ]]` assertion therefore carries `|| false` (a plain command,
+# which errexit does honour) so it can actually fail the test.
+
 setup() {
   setup_test_home
   mkdir -p "$HOME/.cache" "$HOME/.config/tmux/plugins/tmux-cpu/scripts"
@@ -84,7 +89,7 @@ EOF
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
   # cpu stub → 1%, ram stub → 2%; both pills present side by side at width >=80.
-  [[ "$plain" == *"1%"* ]]
+  [[ "$plain" == *"1%"* ]] || false
   [[ "$plain" == *"2%"* ]]
 }
 
@@ -92,7 +97,7 @@ EOF
   run_status_right 90
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"#[range=user|mem]"* ]]
+  [[ "$output" == *"#[range=user|mem]"* ]] || false
   [[ "$output" == *"#[norange]"* ]]
 }
 
@@ -102,7 +107,7 @@ EOF
   run bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" "Connors-MacBook-Air" "Connors-MacBook-Air.local" ""
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"Air"* ]]
+  [[ "$plain" == *"Air"* ]] || false
   [[ "$plain" != *"Conno"* ]]
 }
 
@@ -154,7 +159,7 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"▲"* ]]
+  [[ "$plain" == *"▲"* ]] || false
   [[ "$plain" != *"3.0G"* ]]
 }
 
@@ -207,7 +212,7 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"1↓1↑"* ]]
+  [[ "$plain" == *"1↓1↑"* ]] || false
   # lsof blocks on network-fs mounts; both direction counts must come from one
   # capture, not one query per direction.
   [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
@@ -226,7 +231,7 @@ EOF
   [ "$status" -eq 0 ]
 
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *"7%"* ]]
+  [[ "$plain" == *"7%"* ]] || false
   # Second render within the 15s TTL must hit the cache, not re-run the ~1s
   # blocking iostat sampler.
   [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
@@ -243,7 +248,7 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" != *"C:"* ]]
-  [[ "$plain" != *"X:"* ]]
+  [[ "$plain" != *"C:"* ]] || false
+  [[ "$plain" != *"X:"* ]] || false
   [[ "$plain" != *"S:"* ]]
 }
