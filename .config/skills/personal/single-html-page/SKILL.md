@@ -66,3 +66,8 @@ verification cannot detect this, so rely on the step 3 screenshot to catch it.
 The CSS `url(...)`/`@import` check scans the whole document, so a `url(...)`
 literal inside a `<script>` body or attribute string can surface as a false
 positive; inspect flagged references rather than trusting the exit code alone.
+
+The bundler's pure helpers (base-URL derivation, output naming, base-tag and
+network-hint stripping, asset-ref detection) are pinned by
+`tests/test_single_html_page.py` - `uv run --with pytest -- pytest tests/`
+from the skill dir.
