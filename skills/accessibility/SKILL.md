@@ -161,10 +161,10 @@ Check exact foreground/background pairs from the `accessibility` skill
 directory:
 
 ```bash
-python scripts/contrast-check.py '#333333' '#ffffff'
-python scripts/contrast-check.py '#767676' '#ffffff' --json
-python scripts/contrast-check.py '#949494' '#ffffff' --target large-text
-python scripts/contrast-check.py '#949494' '#ffffff' --target ui-component
+python3 scripts/contrast-check.py '#333333' '#ffffff'
+python3 scripts/contrast-check.py '#767676' '#ffffff' --json
+python3 scripts/contrast-check.py '#949494' '#ffffff' --target large-text
+python3 scripts/contrast-check.py '#949494' '#ffffff' --target ui-component
 ```
 
 Use `--target normal-text` (default), `large-text`, `ui-component`,
@@ -186,3 +186,4 @@ a `4.5:1` requirement.
 | **references/wcag-checklist.md** | WCAG 2.2 AA criterion-by-criterion checklist with pass/fail examples |
 | **references/common-fixes.md** | Code-level fix templates for the 20 most common audit findings |
 | **scripts/contrast-check.py** | Deterministic WCAG contrast ratio checker for foreground/background hex pairs |
+| **tests/test_contrast_check.py** | Behavioural tests for the checker (ratios, exit codes, hex parsing) - `uv run --with pytest -- pytest tests/` |
