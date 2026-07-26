@@ -7,6 +7,6 @@
     { "path": "~/.config/skills/sets/elevenlabs/.agents/skills", "name": "elevenlabs" },
     { "path": "~/.config/skills/sets/expo/.agents/skills", "name": "expo" },
     { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
-    { "path": "~/.config/skills/vendor", "name": "vendored" }
+    { "path": "~/.config/skills/vendor/manual", "name": "manual" }
   ]
 }

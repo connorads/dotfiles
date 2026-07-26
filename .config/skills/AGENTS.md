@@ -82,7 +82,7 @@ above) are curation calls.
     .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope)
     skills-lock.json       the group's lockfile (`skills update -p` from here refreshes in place)
   vendor/                  UNSORTED third-party bucket · skl sources 'vendor' + 'vendored'
-    <name>/                manually-vendored skills at depth 4 (skills.sh-registerable) · skl source 'vendored'
+    manual/<name>/         manually-vendored skills (no upstream, no lock) · skl source 'manual'
     .agents/skills/<name>/ real CLI-cloned files (CLI-managed, project scope) · skl source 'vendor'
     skills-lock.json       project lockfile (`skills update` from here refreshes in place)
 
@@ -258,16 +258,16 @@ and diff-review clones against the prior vetted copy before trusting them.
   `sets/<name>/.agents/skills`.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
-  can't refresh them, and they are **absent from `skills-lock.json` by design**. These three —
-  `govuk-style`, `ponytail`, `bro` — live one level up at `vendor/<name>/` (depth 4), not under
-  `.agents/skills/`, so they are **discoverable by `skills add` / registerable on skills.sh**
-  (the CLI's `findSkillDirs` caps at `maxDepth = 5`; depth 6 under `.agents/skills/` was never
-  reached). skl serves them via the `vendored` source. The CLI-cloned, lock-tracked skills
-  stay nested under `.agents/skills/`. List the manually-vendored (un-locked) ones:
+  can't refresh them, and they are **absent from any `skills-lock.json` by design**. These three —
+  `govuk-style`, `ponytail`, `bro` — live in the manual bucket at `vendor/manual/<name>/`
+  (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
+  / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
+  `vendor/manual/<name>` sits exactly at; depth 6 under `.agents/skills/` was never reached).
+  skl serves them via the `manual` source. The CLI-cloned, lock-tracked skills stay nested
+  under `.agents/skills/`. List the manual bucket:
 
   ```bash
-  comm -23 <(find ~/.config/skills/vendor -mindepth 1 -maxdepth 1 -type d ! -name .agents ! -name patches -exec basename {} \; | sort) \
-           <(jq -r '.skills|keys[]' ~/.config/skills/vendor/skills-lock.json | sort)
+  find ~/.config/skills/vendor/manual -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort
   ```
 
   `govuk-style` — from a **gist**
