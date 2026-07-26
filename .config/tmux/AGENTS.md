@@ -234,6 +234,9 @@ tmux-resurrect restores Claude/Codex/OpenCode panes via the custom strategies in
 in [`tmux.conf`](./tmux.conf)). Session IDs come from `session_ids.json`, keyed
 by pane (`session:window.pane`), written by the post-save hook
 [`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh).
+The hook target is [`scripts/resurrect-post-save.sh`](./scripts/resurrect-post-save.sh):
+it always attempts both Nix-path stripping and session-map saving, and logs
+non-fatal companion failures to `~/.cache/tmux-resurrect-post-save.log`.
 
 **Identity is resolved inside the restored pane, not at eval time (Claude/Codex).**
 The strategy emits a *launcher* invocation
