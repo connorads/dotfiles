@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Deterministic tests for reset-time.py.
 
 Every case pins `--now` to a fixed epoch, so the expected reset epoch is
@@ -26,7 +25,7 @@ def run(banner, now_epoch, margin=None):
     args = [sys.executable, str(SCRIPT), "--now", str(now_epoch)]
     if margin is not None:
         args += ["--margin", str(margin)]
-    p = subprocess.run(args, input=banner, capture_output=True, text=True)
+    p = subprocess.run(args, input=banner, capture_output=True, text=True, check=False)
     out = p.stdout.strip()
     val = int(out) if (p.returncode == 0 and out) else None
     return p.returncode, val

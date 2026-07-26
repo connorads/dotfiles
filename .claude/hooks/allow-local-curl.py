@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Claude Code hook to auto-allow curl commands targeting only local hosts.
 
@@ -57,7 +56,7 @@ def is_local_curl(command: str) -> bool:
     for url in urls:
         try:
             parsed = urlparse(url)
-        except Exception:
+        except ValueError:
             return False
 
         hostname = parsed.hostname

@@ -238,6 +238,7 @@ class TestIntegration:
             input=payload,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_strips_and_returns_json(self) -> None:
@@ -264,6 +265,7 @@ class TestIntegration:
             input="not json",
             capture_output=True,
             text=True,
+            check=False,
         )
         assert r.returncode == 0
 

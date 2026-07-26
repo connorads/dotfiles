@@ -214,7 +214,7 @@ run = """
 set -e
 cd "$HOME"
 git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" ls-files '*.py' '*.pyi' \
-  | grep -vE '/vendor/\\.agents/skills/|/\\.agents/skills/playwright-cli/|\\.config/skills/vendor/patches/|/evals/fixtures/|^skills/.*/references/|\\.config/skills/.*/references/' \
+  | grep -vE '/vendor/\\.agents/skills/|/\\.agents/skills/playwright-cli/|\\.config/skills/vendor/(patches|manual)/|/evals/fixtures/|^skills/.*/references/|\\.config/skills/.*/references/' \
   | xargs ruff check --config .hk-hooks/ruff.toml
 for d in .claude/hooks .hk-hooks; do (cd "$d" && pyrefly check); done
 (cd .claude/hooks && uv run --with pytest python -m pytest -q)

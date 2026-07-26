@@ -20,6 +20,7 @@ class TestIntegration:
             input=payload,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_secret_read_returns_deny(self) -> None:
@@ -60,6 +61,7 @@ class TestIntegration:
             input="not json",
             capture_output=True,
             text=True,
+            check=False,
         )
         assert r.returncode == 0
         assert r.stdout == ""

@@ -29,15 +29,20 @@ from typing import Any
 USER_AGENT = "Mozilla/5.0 (compatible; capture-brand/1.0; +https://agents.local/capture-brand)"
 
 HEX_RE = re.compile(r"(?<![\w-])#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![\w-])")
-FUNC_COLOUR_RE = re.compile(r"\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\([^)]{3,120}\)", re.I)
-GRADIENT_RE = re.compile(r"\b(?:linear|radial|conic)-gradient\([^;}{]{3,400}\)", re.I)
-FONT_FAMILY_RE = re.compile(r"font-family\s*:\s*([^;}{]+)", re.I)
-FONT_FACE_RE = re.compile(r"@font-face\s*{[^}]*font-family\s*:\s*([^;}{]+)", re.I | re.S)
-CSS_VAR_RE = re.compile(
-    r"--([\w-]*(?:color|colour|font|radius|shadow|space|spacing)[\w-]*)\s*:\s*([^;}{]+)", re.I
+FUNC_COLOUR_RE = re.compile(
+    r"\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\([^)]{3,120}\)", re.IGNORECASE
 )
-RADIUS_RE = re.compile(r"(?:border-radius|--[\w-]*radius[\w-]*)\s*:\s*([^;}{]+)", re.I)
-SHADOW_RE = re.compile(r"(?:box-shadow|--[\w-]*shadow[\w-]*)\s*:\s*([^;}{]+)", re.I)
+GRADIENT_RE = re.compile(r"\b(?:linear|radial|conic)-gradient\([^;}{]{3,400}\)", re.IGNORECASE)
+FONT_FAMILY_RE = re.compile(r"font-family\s*:\s*([^;}{]+)", re.IGNORECASE)
+FONT_FACE_RE = re.compile(
+    r"@font-face\s*{[^}]*font-family\s*:\s*([^;}{]+)", re.IGNORECASE | re.DOTALL
+)
+CSS_VAR_RE = re.compile(
+    r"--([\w-]*(?:color|colour|font|radius|shadow|space|spacing)[\w-]*)\s*:\s*([^;}{]+)",
+    re.IGNORECASE,
+)
+RADIUS_RE = re.compile(r"(?:border-radius|--[\w-]*radius[\w-]*)\s*:\s*([^;}{]+)", re.IGNORECASE)
+SHADOW_RE = re.compile(r"(?:box-shadow|--[\w-]*shadow[\w-]*)\s*:\s*([^;}{]+)", re.IGNORECASE)
 RGB_TRIPLET_RE = re.compile(r"^\s*(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(?:\s*/\s*[\d.]+%?)?\s*$")
 
 
@@ -127,7 +132,7 @@ def request_url(url: str, timeout: int, max_bytes: int) -> tuple[bytes, str, str
 
 
 def decode_text(data: bytes, content_type: str) -> str:
-    match = re.search(r"charset=([^;]+)", content_type, re.I)
+    match = re.search(r"charset=([^;]+)", content_type, re.IGNORECASE)
     charset = match.group(1).strip() if match else "utf-8"
     try:
         return data.decode(charset, errors="replace")
@@ -335,7 +340,7 @@ def collect_candidates(
                 {"url": abs_url(base_url, content), "kind": "social-image", "rel": key, "sizes": ""}
             )
 
-    logoish = re.compile(r"logo|brand|wordmark|mark", re.I)
+    logoish = re.compile(r"logo|brand|wordmark|mark", re.IGNORECASE)
     for image in parser.images:
         src = image.get("src") or image.get("data-src") or ""
         label = " ".join([image.get("alt", ""), image.get("class", ""), image.get("id", "")])
@@ -494,7 +499,7 @@ def fetch_manifests(
                                 "sizes": str(icon.get("sizes", "")),
                             }
                         )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001, RUF100 - record per-manifest failure
             manifest_sources.append({**item, "error": str(exc)})
 
     return manifest_sources, manifest_assets, metadata
@@ -533,7 +538,7 @@ def run(args: argparse.Namespace) -> int:
             (css_dir / filename).write_text(text, encoding="utf-8")
             css_texts.append((f"raw/css/{filename}", text))
             css_fetches.append({**css, "final_url": css_final_url, "path": f"raw/css/{filename}"})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001, RUF100 - record per-stylesheet failure
             css_fetches.append({**css, "error": str(exc)})
 
     manifest_candidates = [item for item in asset_candidates if item["kind"] == "manifest"]
@@ -553,7 +558,7 @@ def run(args: argparse.Namespace) -> int:
             downloaded_assets.append(
                 download_asset(item, asset_dir, out_dir, args.timeout, args.max_asset_bytes)
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001, RUF100 - record per-asset failure
             failed_assets.append({**item, "error": str(exc)})
 
     style_inputs = [("raw/index.html", html_text)]

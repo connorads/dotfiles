@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pre-commit guard: keep Claude and OpenCode security denies in lock-step.
 
 The two tools keep independent, structurally different *allow* lists (a
@@ -57,14 +56,13 @@ def normalise_claude(entry: str) -> str | None:
     if not m:
         return None
     inner = m.group(1)
-    if inner.endswith(":*"):
-        inner = inner[:-2]
+    inner = inner.removesuffix(":*")
     return inner
 
 
 def normalise_opencode(pattern: str) -> str:
     """Reduce an OpenCode `cmd*` glob to its bare command."""
-    return pattern[:-1] if pattern.endswith("*") else pattern
+    return pattern.removesuffix("*")
 
 
 def claude_deny_bases(settings: dict) -> set[str]:

@@ -77,5 +77,6 @@ class TestLiveTree:
             capture_output=True,
             text=True,
             cwd=Path.home(),
+            check=False,
         )
         assert r.returncode == 0, r.stderr
