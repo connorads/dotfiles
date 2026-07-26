@@ -13,8 +13,6 @@
   - 3. Write the Cask Definition
   - 4. Handle Different Architectures
 - Validation Checklist
-  - For All Casks (New or Updated)
-  - For New Casks Only
 - Testing Tips
   - Dry Run (See What Would Happen)
   - Force Reinstall (After Changes)
@@ -88,39 +86,16 @@ brew tap homebrew/cask
 
 ### Pre-flight Checks
 
-Before creating a new cask, verify the app meets Homebrew's acceptance criteria:
-
-1. **Notability**: GitHub projects with <30 forks/watchers or <75 stars are likely rejected. The app must have meaningful public presence beyond "just `brew install`". See [Acceptable Casks](https://docs.brew.sh/Acceptable-Casks).
-2. **Repo age**: GitHub repos less than 30 days old cause a hard `brew audit --new` failure.
-3. **Prior refusals**: Search [closed unmerged PRs](https://github.com/search?q=repo%3AHomebrew%2Fhomebrew-cask+is%3Aclosed+is%3Aunmerged+&type=pullrequests) for the token.
-4. **Existing PRs**: Check [open PRs](https://github.com/Homebrew/homebrew-cask/pulls) to avoid duplicates.
+SKILL.md "Pre-flight checks" owns the full list (six checks, including the 3×
+self-submission notability bar and the modern-macOS rule) — run those, not a
+subset remembered from here.
 
 ### 1. Determine the Token
 
-The token is the unique identifier for your cask. Follow these rules:
-
-**From app name to token:**
-
-- Start with app bundle name (e.g., `Google Chrome.app`)
-- Remove `.app` extension
-- Remove suffixes: "App", version numbers, "for macOS"
-- Remove "Mac" unless it distinguishes the product
-- Drop "Desktop" by default; keep it only when it's part of the product brand (`Docker Desktop.app` → `docker-desktop`) or a bare-named sibling already ships in Homebrew — see the full rule in SKILL.md (token naming)
-- Convert to lowercase
-- Replace spaces/underscores with hyphens
-- Remove non-alphanumeric characters (except hyphens)
-
-**Examples:**
-
-- `Google Chrome.app` → `google-chrome`
-- `VLC Media Player.app` → `vlc`
-- `Sublime Text 2.app` → `sublime-text`
-- `Docker Desktop.app` → `docker-desktop`
-
-**Special cases:**
-
-- Beta/nightly: `app-name@beta`, `app-name@nightly`
-- Version-specific: `app-name@5`
+SKILL.md §1 (Choose the token) owns the naming rules, including the "Desktop"
+suffix rule and `@beta`/`@<major>` variants. Examples: `Google Chrome.app` →
+`google-chrome`, `VLC Media Player.app` → `vlc`, `Docker Desktop.app` →
+`docker-desktop`.
 
 ### 2. Create the Cask File
 
@@ -181,92 +156,16 @@ Run `brew style --fix <token>` to auto-correct ordering.
 
 ### 4. Handle Different Architectures
 
-If the app has separate downloads for Apple Silicon and Intel:
-
-```ruby
-cask "app-name" do
-  arch arm: "aarch64", intel: "x86-64"
-
-  version "1.2.3"
-  sha256 arm:   "abc123...",
-         intel: "def456..."
-
-  url "https://example.com/app-#{version}-#{arch}.dmg"
-  # ...
-end
-```
-
-If versions differ by architecture:
-
-```ruby
-cask "app-name" do
-  arch arm: "arm64", intel: "x86_64"
-
-  on_arm do
-    version "1.2.3"
-    sha256 "abc123..."
-  end
-  on_intel do
-    version "1.2.2"
-    sha256 "def456..."
-  end
-
-  url "https://example.com/app-#{version}-#{arch}.dmg"
-  # ...
-end
-```
+SKILL.md §3 (Handle architecture) owns the decision rules — `lipo -archs`
+first, then arch gate / keyed `sha256` / `on_arm`-`on_intel` by what you find.
+The cross-platform patterns below show the shapes in full worked casks.
 
 ## Validation Checklist
 
-Follow the PR template requirements exactly:
-
-### For All Casks (New or Updated)
-
-```bash
-# 1. Fix code style
-brew style --fix <token>
-
-# 2. Run audit (checks structure, URLs, naming)
-brew audit --cask --online <token>
-```
-
-Both commands must pass with no errors before proceeding.
-
-### For New Casks Only
-
-```bash
-# 1. Check token follows naming rules
-# Manually verify against docs: https://docs.brew.sh/Cask-Cookbook#token-reference
-
-# 2. Check cask wasn't previously refused
-# Search: https://github.com/Homebrew/homebrew-cask/pulls?q=is%3Apr+is%3Aclosed+is%3Aunmerged+<token>
-
-# 3. Run new cask audit
-brew audit --cask --new <token>
-
-# 4. Test installation — always use TOKEN, never file path
-HOMEBREW_NO_INSTALL_FROM_API=1 brew install --cask <token>
-
-# 5. Verify the app works
-open /Applications/AppName.app
-
-# 6. Test uninstallation
-brew uninstall --cask <token>
-
-# 7. Verify cleanup
-ls /Applications/ | grep AppName  # Should return nothing
-```
-
-**Important:** Always install by token name (e.g., `brew install --cask my-app`), never by file path (e.g., `./Casks/m/my-app.rb`). File path installs fail when using the tap symlink workflow.
-
-**Common audit issues:**
-
-- Missing `verified:` when URL domain ≠ homepage domain
-- Description too long (>80 chars) or contains marketing fluff
-- Token doesn't follow naming conventions
-- SHA256 mismatch
-- GitHub repo less than 30 days old (hard failure for `--new` audit)
-- App doesn't meet notability thresholds (<30 forks/watchers or <75 stars)
+SKILL.md §6 (Validate and test locally) owns the full sequence: `brew style
+--fix` → `brew audit --cask --online` → (new casks) `--new` audit, local
+install/uninstall by **token, never file path**, and zap-path validation with
+the app running. Common audit failures are under Troubleshooting below.
 
 ## Testing Tips
 
@@ -558,6 +457,10 @@ there is no `asset_regex` parameter. A `regex` only narrows which *version* is s
 not reduce API calls (`:github_latest` is a single unpaginated request regardless).
 
 ## Submitting Your Contribution
+
+**Version bump of an existing cask?** Use `brew bump-cask-pr <token> --version
+<new>` (SKILL.md §7) — it does everything below in one step. The manual flow
+here is for new casks or bumps that also change stanzas.
 
 ### 1. Commit Your Changes
 

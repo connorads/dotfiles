@@ -182,6 +182,19 @@ If install fails:
 
 ### 7) PR hygiene
 
+**Version bumps: `brew bump-cask-pr` is the default path** — it fetches the
+new artifact, recalculates every sha, runs style+audit, commits, and opens
+the PR in one step:
+
+```bash
+brew bump-cask-pr <token> --version <new>            # end-to-end bump PR
+brew bump-cask-pr <token> --version <new> --dry-run  # print what it would do
+brew bump-cask-pr <token> --version <new> --write-only [--commit]  # edit the file, no PR
+```
+
+Fall back to the manual flow below only for **new casks** (bump-cask-pr
+updates existing ones) or when the bump also changes stanzas.
+
 Before suggesting submission:
 
 - Ensure `brew style` and all relevant `brew audit` commands pass.
