@@ -9,16 +9,26 @@ case "${1:-}" in
     mode="fancy"
     shift
     ;;
+  --cache-only)
+    mode="cache-only"
+    shift
+    ;;
+  --refresh-only)
+    mode="refresh-only"
+    shift
+    ;;
   --plain|plain|"")
     [[ "${1:-}" == "--plain" || "${1:-}" == "plain" ]] && shift
     ;;
   -h|--help)
     cat <<'EOF'
-Usage: ai-usage [--plain|--fancy]
+Usage: ai-usage [--plain|--fancy|--cache-only|--refresh-only]
 
 Show combined Claude + Codex + Cosine usage.
   --plain   Original text output from claude-usage/codex-usage/cosine-usage
   --fancy   Dashboard with usage bars and recent agent-run totals
+  --cache-only    Render the dashboard without contacting providers
+  --refresh-only  Refresh provider caches without rendering output
 EOF
     return 0
     ;;
@@ -79,6 +89,56 @@ _refresh_tool_quiet() {
 
   tool=$(_resolve_tool "$command_name" "$file_path") || return 0
   "$tool" >/dev/null 2>&1 || true
+}
+
+_refresh_claude_all() {
+  local tool=""
+  tool=$(_resolve_tool "claude-usage" "$HOME/.config/zsh/functions/claude-usage") || return 0
+  "$tool" --all >/dev/null 2>&1 || true
+}
+
+_usage_locks_present() {
+  setopt local_options null_glob
+  local lock
+  for lock in "$HOME/.cache/claude-usage.lock" \
+    "$HOME/.cache/claude-usage-"*.lock \
+    "$HOME/.cache/codex-usage.lock" \
+    "$HOME/.cache/cosine-usage.lock"; do
+    [[ -d "$lock" ]] && return 0
+  done
+  return 1
+}
+
+_refresh_all_quiet() {
+  local -a refresh_pids
+  local refresh_interrupted=0
+
+  _refresh_claude_all &
+  refresh_pids+=($!)
+  _refresh_tool_quiet "codex-usage" "$HOME/.config/zsh/functions/codex-usage" &
+  refresh_pids+=($!)
+  _refresh_tool_quiet "cosine-usage" "$HOME/.config/zsh/functions/cosine-usage" &
+  refresh_pids+=($!)
+
+  trap 'refresh_interrupted=1; kill $refresh_pids 2>/dev/null' INT TERM
+  local pid
+  for pid in $refresh_pids; do
+    wait "$pid" 2>/dev/null || true
+  done
+  trap - INT TERM
+  (( refresh_interrupted )) && return 130
+
+  # A provider exits immediately when a different process owns its lock. Wait
+  # for that owner too, otherwise refresh-only can report completion while the
+  # cache is still being written. The deadline keeps abandoned locks harmless.
+  local timeout=${AI_USAGE_REFRESH_TIMEOUT_SECONDS:-20}
+  [[ "$timeout" == <-> ]] || timeout=20
+  local deadline=$(( SECONDS + timeout ))
+  while _usage_locks_present; do
+    (( SECONDS >= deadline )) && break
+    sleep 0.1
+  done
+  return 0
 }
 
 _render_fancy() {
@@ -842,22 +902,21 @@ render()
 PY
 }
 
-if [[ "$mode" == "fancy" ]]; then
-  # --all refreshes the default Claude account plus every profile in parallel.
-  _refresh_claude_all() {
-    local tool=""
-    tool=$(_resolve_tool "claude-usage" "$HOME/.config/zsh/functions/claude-usage") || return 0
-    "$tool" --all >/dev/null 2>&1 || true
+if [[ "$mode" == "refresh-only" ]]; then
+  _refresh_all_quiet
+  return $?
+fi
+
+if [[ "$mode" == "cache-only" ]]; then
+  _render_fancy || {
+    print -u2 "ai-usage: cache renderer failed"
+    return 1
   }
-  _refresh_claude_all &
-  local claude_pid=$!
-  _refresh_tool_quiet "codex-usage" "$HOME/.config/zsh/functions/codex-usage" &
-  local codex_pid=$!
-  _refresh_tool_quiet "cosine-usage" "$HOME/.config/zsh/functions/cosine-usage" &
-  local cosine_pid=$!
-  wait "$claude_pid" 2>/dev/null || true
-  wait "$codex_pid" 2>/dev/null || true
-  wait "$cosine_pid" 2>/dev/null || true
+  return 0
+fi
+
+if [[ "$mode" == "fancy" ]]; then
+  _refresh_all_quiet || return $?
 
   _render_fancy || {
     print -u2 "ai-usage: fancy renderer failed; falling back to plain output"

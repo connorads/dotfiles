@@ -11,6 +11,16 @@ setup() {
   mkdir -p "$HOME/.cache" "$HOME/.local/state/agents"
 }
 
+write_provider_stubs() {
+  local provider
+  for provider in claude codex cosine; do
+    write_stub "$provider-usage" <<EOF
+#!/usr/bin/env sh
+printf '%s:%s\\n' '$provider' "\$*" >>"\$TEST_LOG"
+EOF
+  done
+}
+
 write_usage_caches() {
   python3 - "$HOME" <<'PY'
 import json
@@ -119,6 +129,72 @@ PY
   [[ "$output" != *"Claude cache"* ]]
   [[ "$output" != *"Codex cache"* ]]
   [[ "$output" != *"Claude extra disabled"* ]]
+}
+
+@test "cache-only renders existing caches without invoking providers" {
+  write_usage_caches
+  write_provider_stubs
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"AI usage"* ]]
+  [ ! -s "$TEST_LOG" ]
+}
+
+@test "cache-only reports renderer failure without falling back to providers" {
+  write_usage_caches
+  write_provider_stubs
+  write_stub python3 <<'EOF'
+#!/usr/bin/env sh
+exit 9
+EOF
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cache renderer failed"* ]]
+  [ ! -s "$TEST_LOG" ]
+}
+
+@test "refresh-only refreshes every provider without output" {
+  write_provider_stubs
+
+  run_zsh_function "$AI_USAGE" --refresh-only
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  grep -q '^claude:--all$' "$TEST_LOG"
+  grep -q '^codex:$' "$TEST_LOG"
+  grep -q '^cosine:$' "$TEST_LOG"
+}
+
+@test "refresh-only waits for a provider lock owned by another process" {
+  write_provider_stubs
+  mkdir "$HOME/.cache/codex-usage.lock"
+  (
+    sleep 0.6
+    rmdir "$HOME/.cache/codex-usage.lock"
+    touch "$BATS_TEST_TMPDIR/lock-released"
+  ) &
+  local remover_pid=$!
+
+  run_zsh_function "$AI_USAGE" --refresh-only
+  local refresh_status=$status
+  [ -e "$BATS_TEST_TMPDIR/lock-released" ]
+  wait "$remover_pid"
+
+  [ "$refresh_status" -eq 0 ]
+}
+
+@test "refresh-only stops waiting at its lock deadline" {
+  write_provider_stubs
+  mkdir "$HOME/.cache/codex-usage.lock"
+
+  AI_USAGE_REFRESH_TIMEOUT_SECONDS=0 run_zsh_function "$AI_USAGE" --refresh-only
+
+  [ "$status" -eq 0 ]
+  [ -d "$HOME/.cache/codex-usage.lock" ]
 }
 
 @test "a profile cache adds a second labelled Claude group" {
