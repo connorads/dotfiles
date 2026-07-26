@@ -2,6 +2,8 @@
 
 Techniques for making flat pixels read as physical layers: where light comes from, how far an element floats above the page, and how to fake depth even without shadows.
 
+On dark surfaces the shadow-based cues here largely stop working - elevation flips to surface lightness; see `dark-mode.md`.
+
 ## The Light Model
 
 Every depth cue assumes one consistent light source. Get the model right and raised vs. inset reads instantly.
