@@ -11,7 +11,7 @@ Author and maintain Homebrew **formulae** (open-source software built from sourc
 
 ## Operating rules
 
-- Prefer the official Homebrew docs (Formula Cookbook, Acceptable Formulae) when uncertain. Don't author from memory — the DSL and policy change.
+- Prefer the official Homebrew docs (Formula Cookbook, Acceptable Formulae, Package-Acceptance-Policy — the latter now holds the notability, fork, and acceptance rules) when uncertain. Don't author from memory — the DSL and policy change.
 - Keep formulae minimal: only stanzas required for a correct build, runtime, and test.
 - **Never hand-write a `bottle do` block for a homebrew-core formula.** BrewTestBot builds bottles on CI; a maintainer commits the block on merge via `brew pr-pull`. Authors only write `bottle` blocks in their own third-party taps.
 - Build from source must be reproducible on the latest 3 macOS versions (Apple Silicon + Intel) **and** x86_64 Linux, with the latest stable Xcode Clang.
