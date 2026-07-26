@@ -117,7 +117,7 @@ information. ~$50k/month in lost conversions.
   credentials, receive tokens. Hides hashing, token signing, refresh logic.
 
 ## Testing Strategy
-- AuthService: integration tests against real DB (prior art: tests/int/)
+- AuthService: integration tests against real DB (prior art: existing integration-test suite)
 - Token validation: unit tests for expiry, malformed tokens, refresh flows
 
 ## Boundary Tiers
