@@ -21,17 +21,31 @@ setup() {
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 12
   conf="$BATS_TEST_TMPDIR/agent.conf"
   # Isolate the tab additions: label formats, dot mapping and the seen hooks.
-  # Navigation uses appended hooks so other plugin hooks survive; client-focus-in
-  # sets plainly so config reloads cannot accumulate duplicate seen hooks.
-  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -ga (after-select-pane|session-window-changed) |^set-hook -g client-focus-in ' "$CONF" >"$conf"
+  # Navigation uses stable indexed hooks so reloads replace rather than append;
+  # client-focus-in remains a scalar hook.
+  grep -E '^set -g @agent_dotfmt |^set -g window-status(-current)?-format |^set-hook -g '\''(after-select-pane|session-window-changed)\[[0-9]+\]'\'' |^set-hook -g client-focus-in ' "$CONF" >"$conf"
   tx source-file "$conf"
 }
 
 @test "navigation relies on native redraws while preserving seen hooks" {
   run grep -E '^set-hook -g (after-select-pane|session-window-changed) .*refresh-client -S' "$CONF"
   [ "$status" -eq 1 ]
-  grep -Fq 'set-hook -ga after-select-pane "if -F' "$CONF"
-  grep -Fq 'set-hook -ga session-window-changed "if -F' "$CONF"
+  grep -Fq "set-hook -g 'after-select-pane[100]' \"if -F" "$CONF"
+  grep -Fq "set-hook -g 'session-window-changed[100]' \"if -F" "$CONF"
+}
+
+@test "navigation hooks stay singular across config reloads" {
+  tx source-file "$conf"
+
+  run tx show-hooks -g after-select-pane
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | grep -c 'agent-state.sh seen')" -eq 1 ]
+  [[ "$output" != *"refresh-client -S"* ]]
+
+  run tx show-hooks -g session-window-changed
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | grep -c 'agent-state.sh seen')" -eq 1 ]
+  [[ "$output" != *"refresh-client -S"* ]]
 }
 
 @test "custom mode indicator uses recursive native option expansion" {
