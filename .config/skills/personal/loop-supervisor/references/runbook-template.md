@@ -151,7 +151,7 @@ anything you can't classify):
 **Launch command (only if the session doesn't already exist):**
 
 ```bash
-<launch command, e.g. rl 100 -- cxys 'TASKS/<name>/PROMPT.md'>
+<launch command, e.g. rl 100 -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md">
 ```
 
 **Startup sequence:**

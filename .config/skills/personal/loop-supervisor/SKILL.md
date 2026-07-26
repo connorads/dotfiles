@@ -81,8 +81,12 @@ Before asking any questions, read what's already on disk:
   Inherit what the loop already says rather than imposing a default.
 - **Launch command** — if the loop ships a run command in its README
   or `PROMPT.md`, use it verbatim. For task-loop / rl-shaped loops
-  this typically looks like `rl <N> -- cxys '<PROMPT.md path>'`.
-  Iteration count defaults to 100 unless specified or mentioned.
+  this typically looks like
+  `rl <N> -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md"`
+  (`cxys` for a codex loop — mirror the agent the loop was built for,
+  and keep a per-iteration `-t` timeout so one stuck iteration can't
+  hang the run). Iteration count defaults to 100 unless specified or
+  mentioned.
 - **Existing contract / preconditions** — read the loop's `PROMPT.md`
   (or equivalent) end-to-end. Absorb its declared preconditions
   (e.g. "build must be green before committing"), its own stop
