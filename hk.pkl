@@ -14,8 +14,8 @@ terminal_progress = false
 // formatting steps only; gitleaks + merge-conflict checks still run on them.
 // skill-patch hunk files (patches/**) mirror upstream bytes too and must not
 // be reformatted/linted either. Vendored sets (vendor/<name>/.agents/skills)
-// are the same faithful upstream mirror, one project dir per set.
-local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**", ".config/skills/vendor/patches/**", ".config/skills/vendor/*/.agents/skills/**")
+// and manually-vendored skills (vendor/manual/<name>) carry the same rule.
+local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/playwright-cli/**", ".config/skills/vendor/patches/**", ".config/skills/vendor/*/.agents/skills/**", ".config/skills/vendor/manual/**")
 
 // Patch files are byte-exact: a blank context line is a single space and
 // trailing whitespace can be significant, so reformatting them silently
