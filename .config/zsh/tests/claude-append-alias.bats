@@ -21,6 +21,10 @@ printf 'DISABLE_TELEMETRY:%s\n' "${DISABLE_TELEMETRY-unset}"
 printf 'DO_NOT_TRACK:%s\n' "${DO_NOT_TRACK-unset}"
 exit 0
 EOF
+  write_stub claude-desktop-profile <<'EOF'
+#!/usr/bin/env bash
+printf 'ARGS:%s\n' "$*"
+EOF
 }
 
 run_alias_script() {
@@ -71,6 +75,13 @@ run_alias_script() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"ARGS:update --flag"* ]]
+}
+
+@test "cdp launches a named Claude Desktop profile" {
+  run_alias_script 'cdp work --foo bar'
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "ARGS:work --foo bar" ]
 }
 
 @test "aliases propagate the real claude exit status" {
