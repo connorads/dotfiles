@@ -34,7 +34,7 @@ For stateful systems (caches, state machines, data structures, APIs), generate a
 | **TypeScript / JS** | [fast-check](https://github.com/dubzzz/fast-check) | Integrates with Vitest/Jest; reports `Shrunk N time(s)`; rich arbitraries; async support |
 | **Python** | [Hypothesis](https://hypothesis.readthedocs.io/) | `@given`, strategies, `@example` for regressions; persists failing examples in `.hypothesis/` |
 | **Rust** | [proptest](https://github.com/proptest-rs/proptest) (Hypothesis-inspired) / quickcheck | `proptest!` macro; saves regressions to `proptest-regressions/` |
-| **Go** | [rapid](https://github.com/flyingmutant/rapid) (modern, fully automatic shrinking, generics) / [gopter](https://github.com/leanovate/gopter) (older, pre-generics, `interface{}`) / stdlib `testing/quick` (minimal) | Prefer rapid for new code; note rapid self-describes as alpha |
+| **Go** | [rapid](https://github.com/flyingmutant/rapid) (modern, fully automatic shrinking, generics) / [gopter](https://github.com/leanovate/gopter) (older, pre-generics, `interface{}`) / stdlib `testing/quick` (minimal) | Prefer rapid for new code; stable — backward-compatible within a major version |
 
 PBT generators count toward normal coverage because the properties run as ordinary unit tests — co-locate them with the tier's other unit tests (`*.unit.spec.ts`, `_test.go`, etc.).
 
