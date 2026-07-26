@@ -57,6 +57,7 @@ with current Node LTS) you must set them yourself:
 min-release-age=4
 ignore-scripts=true
 allow-git=none
+allow-remote=none   # npm >= 11.15
 ```
 
 - npm 12+ defaults: install scripts and implicit `node-gyp rebuild` off,
@@ -65,6 +66,10 @@ allow-git=none
   the same policy.
 - `allow-git=none` matters even with scripts off: git dependencies can execute
   code at install regardless of lifecycle-script settings.
+- `allow-remote=none` (npm ≥ 11.15) closes the sibling route: remote-tarball
+  dependencies (direct or transitive URL deps) are a separate code-execution
+  vector. Values `all|none|root` — `root` permits URL deps only in your own
+  `package.json`. `none` is the npm 12 default.
 - No trust-policy equivalent (no provenance-downgrade check).
 - Deno also reads `min-release-age` from `.npmrc` for npm dependencies, so a
   project `.npmrc` covers both.
