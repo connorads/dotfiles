@@ -50,3 +50,19 @@ curl -sL -o image.png "https://private-user-images.githubusercontent.com/..."
 ```
 
 The key insight: `application/vnd.github.full+json` returns `body_html` containing JWT-signed URLs for private image attachments. These URLs expire after ~5 minutes.
+
+## Limitations
+
+`ghimg` queries only the issue/PR body and **issue comments** — images in PR
+**inline (review) comments** and **review summaries** are not fetched. Get
+those manually with the same Accept header:
+
+```bash
+gh api repos/owner/repo/pulls/42/comments \
+  -H "Accept: application/vnd.github.full+json" \
+  --paginate --jq '.[].body_html'
+
+gh api repos/owner/repo/pulls/42/reviews \
+  -H "Accept: application/vnd.github.full+json" \
+  --paginate --jq '.[].body_html'
+```
