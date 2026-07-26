@@ -3,7 +3,7 @@
 # Docs: https://docs.astral.sh/ruff/
 
 [tool.ruff]
-required-version = ">=0.15,<0.16"
+required-version = ">=0.16,<0.17"
 target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
@@ -20,8 +20,7 @@ exclude = [
     "dist",
 ]
 # Never enable unsafe fixes in hooks or CI. Use `ruff check --unsafe-fixes` only
-# as a reviewed one-off when accepting semantic rewrites deliberately. This is a
-# top-level `[tool.ruff]` key; ruff rejects it under `[tool.ruff.lint]`.
+# as a reviewed one-off when accepting semantic rewrites deliberately.
 unsafe-fixes = false
 
 [tool.ruff.format]
@@ -33,9 +32,10 @@ skip-magic-trailing-comma = false
 docstring-code-format = false
 
 [tool.ruff.lint]
-# Explicit stable baseline. Do not use "ALL" in shared templates: new Ruff
-# releases can add rules and turn upgrades into behaviour changes.
-select = [
+# Keep Ruff's curated defaults, then preserve the established full-family
+# coverage. `select` would replace the defaults. The required-version range
+# makes every future stable default-set change an explicit minor upgrade.
+extend-select = [
     "E",   # pycodestyle errors
     "F",   # Pyflakes
     "UP",  # pyupgrade
@@ -63,7 +63,8 @@ preview = false
 # must stay in the lint input for import/reachability checks.
 "**/generated/**" = ["ALL"]
 
-# Optional rule families to add once a project is ready:
+# Optional rule families to add once a project is ready. Some individual rules
+# from these families are already present in Ruff's curated defaults:
 # C4   comprehensions
 # PIE  small correctness/style checks
 # RET  return statement cleanup

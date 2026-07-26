@@ -193,7 +193,7 @@ Write the baseline once during adoption; never refresh it in CI.
 | ESLint | `eslint --suppress-all` → committed `eslint-suppressions.json` (v9.24+) | New violations still fail; `--prune-suppressions` as debt is paid. |
 | dependency-cruiser | `depcruise-baseline` + `--ignore-known` | Makes graph/boundary rules adoptable on an already-tangled repo. |
 | basedpyright | `--writebaseline` — the exemplar workflow in `references/python-typecheck.toml` | Baselined errors downgrade to hints; fixed ones auto-prune. |
-| ruff | `ruff check --select CODE --add-noqa`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file — scope per rule. |
+| ruff | `ruff check --select CODE --add-ignore`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file — scope per rule and prefer a reason on manually added suppressions. Requires Ruff 0.16+. |
 | golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating; no baseline file. |
 | Coverage (Vitest) | `coverage.thresholds.autoUpdate: true` | Self-tightening: bumps thresholds up as coverage rises. Run where the config edit can be committed, not in a gated CI job. |
 
