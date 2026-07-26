@@ -13,23 +13,33 @@ dfgit() {
 setup() {
   setup_test_home
 
-  mkdir -p "$HOME/git" "$HOME/.codex" "$HOME/.pi/agent"
+  mkdir -p "$HOME/git" "$HOME/.codex" "$HOME/.claude" "$HOME/.pi/agent"
   git init --quiet --separate-git-dir="$HOME/git/dotfiles" "$HOME"
   dfgit config user.email "tester@users.noreply.github.com"
   dfgit config user.name "Dotfiles Test"
   dfgit config filter.codex-config.clean "$FUNCTIONS_DIR/codex-config-clean"
   dfgit config filter.codex-config.smudge cat
   dfgit config filter.codex-config.required true
+  dfgit config filter.claude-settings.clean "$FUNCTIONS_DIR/claude-settings-clean"
+  dfgit config filter.claude-settings.smudge cat
+  dfgit config filter.claude-settings.required true
   dfgit config filter.pi-agent-settings.clean "$FUNCTIONS_DIR/pi-agent-settings-clean"
   dfgit config filter.pi-agent-settings.smudge cat
   dfgit config filter.pi-agent-settings.required true
 
-  printf '.codex/config.toml filter=codex-config\n.pi/agent/settings.json filter=pi-agent-settings\n' >"$HOME/.gitattributes"
+  printf '.codex/config.toml filter=codex-config\n.claude/settings.json filter=claude-settings\n.pi/agent/settings.json filter=pi-agent-settings\n' >"$HOME/.gitattributes"
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
 tool_output_token_limit = 25000
 plan_mode_reasoning_effort = "high"
+EOF
+  cat >"$HOME/.claude/settings.json" <<'EOF'
+{
+  "permissions": {
+    "allow": ["Bash(git status:*)"]
+  }
+}
 EOF
   cat >"$HOME/.pi/agent/settings.json" <<'EOF'
 {
@@ -40,8 +50,51 @@ EOF
 }
 EOF
 
-  dfgit add .gitattributes .codex/config.toml .pi/agent/settings.json
+  dfgit add .gitattributes .codex/config.toml .claude/settings.json .pi/agent/settings.json
   dfgit commit -qm init
+}
+
+@test "status batches clean-only churn across all controlled settings" {
+  sed 's/model = "gpt-5.5"/model = "gpt-5.4"/' "$HOME/.codex/config.toml" >"$HOME/.codex/config.tmp"
+  mv "$HOME/.codex/config.tmp" "$HOME/.codex/config.toml"
+  jq '.model = "opus"' "$HOME/.claude/settings.json" >"$HOME/.claude/settings.tmp"
+  mv "$HOME/.claude/settings.tmp" "$HOME/.claude/settings.json"
+  jq '.defaultModel = "claude-opus-4-8"' "$HOME/.pi/agent/settings.json" >"$HOME/.pi/agent/settings.tmp"
+  mv "$HOME/.pi/agent/settings.tmp" "$HOME/.pi/agent/settings.json"
+
+  run "$DOTFILES" status --short -- .codex/config.toml .claude/settings.json .pi/agent/settings.json
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+}
+
+@test "status preserves a real edit while hiding another file's clean-only churn" {
+  jq '.model = "opus"' "$HOME/.claude/settings.json" >"$HOME/.claude/settings.tmp"
+  mv "$HOME/.claude/settings.tmp" "$HOME/.claude/settings.json"
+  jq '.theme = "light"' "$HOME/.pi/agent/settings.json" >"$HOME/.pi/agent/settings.tmp"
+  mv "$HOME/.pi/agent/settings.tmp" "$HOME/.pi/agent/settings.json"
+
+  run "$DOTFILES" status --short -- .claude/settings.json .pi/agent/settings.json
+
+  [ "$status" -eq 0 ]
+  [ "$output" = " M .pi/agent/settings.json" ]
+  dfgit diff --cached --quiet -- .claude/settings.json .pi/agent/settings.json
+}
+
+@test "status leaves missing and untracked controlled paths untouched" {
+  dfgit rm -q --cached .claude/settings.json
+  rm "$HOME/.claude/settings.json"
+  cat >"$HOME/.claude/settings.json" <<'EOF'
+{"model":"local-only"}
+EOF
+  rm "$HOME/.pi/agent/settings.json"
+
+  run "$DOTFILES" status --short -- .claude/settings.json .pi/agent/settings.json
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"D  .claude/settings.json"* ]]
+  [[ "$output" == *" D .pi/agent/settings.json"* ]]
+  [[ "$output" == *"?? .claude/settings.json"* ]]
 }
 
 @test "status hides stripped codex blocks without staging" {

@@ -7,23 +7,29 @@ _dotfiles_git() {
 }
 
 _dotfiles_refresh_clean_filtered() {
-  local file line mode oid
-  for file in .codex/config.toml .claude/settings.json .pi/agent/settings.json; do
-    _dotfiles_git ls-files --error-unmatch -- "$file" >/dev/null 2>&1 || continue
-    [[ -e "$HOME/$file" ]] || continue
+  local line file_path stage
+  local -a files changed index_lines
+  local -A changed_paths
+  files=(.codex/config.toml .claude/settings.json .pi/agent/settings.json)
 
-    # If the clean-filtered worktree matches the index, update only the cached
-    # stat data. Real cleaned content changes stay unstaged and visible.
-    if _dotfiles_git diff --quiet -- "$file"; then
-      line="$(_dotfiles_git ls-files -s -- "$file" 2>/dev/null)" || continue
-      [[ -n "$line" ]] || continue
-      mode="${line%% *}"
-      line="${line#* }"
-      oid="${line%% *}"
-      [[ -n "$mode" && -n "$oid" ]] || continue
-      _dotfiles_git update-index --cacheinfo "$mode,$oid,$file" 2>/dev/null
-    fi
+  # One filtered comparison finds real worktree changes. Clean-only churn is
+  # absent, so its existing index entry can be reinserted to invalidate stat
+  # data. The requested Git command then performs the authoritative refresh.
+  changed=("${(@f)$(_dotfiles_git diff --name-only -- "${files[@]}")}")
+  for file_path in "${changed[@]}"; do
+    [[ -n "$file_path" ]] && changed_paths[$file_path]=1
   done
+
+  while IFS= read -r line; do
+    file_path="${line#*$'\t'}"
+    stage="${${line%%$'\t'*}##* }"
+    [[ "$stage" == 0 ]] || continue
+    [[ -e "$HOME/$file_path" && -z "${changed_paths[$file_path]:-}" ]] || continue
+    index_lines+=("$line")
+  done < <(_dotfiles_git ls-files -s -- "${files[@]}")
+
+  (( ${#index_lines} )) || return 0
+  printf '%s\n' "${index_lines[@]}" | _dotfiles_git update-index --index-info 2>/dev/null
 }
 
 case ${1:-} in
