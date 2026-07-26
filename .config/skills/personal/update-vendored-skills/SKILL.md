@@ -146,18 +146,15 @@ vendored tree from the formatting steps (rumdl/whitespace), so no `--no-verify` 
 gitleaks still scans. If a commit suddenly reformats vendored `.md`, that exclude regressed —
 fix it rather than committing the churn.
 
-### 5. Global autoload skill (`playwright-cli`)
+### 5. Globally autoloaded vendored skills (`playwright-cli`)
 
-The one CLI-lock-tracked global vendored skill (recorded in `~/.agents/.skill-lock.json`); it lives outside the project dir and updates
-via global scope:
-
-```bash
-skills update playwright-cli -g -y
-dotfiles diff -- ~/.agents/skills/playwright-cli ~/.agents/.skill-lock.json
-```
-
-Same rules. Stage `~/.agents/skills/playwright-cli`
-and `~/.agents/.skill-lock.json`.
+Vendored globals are symlinks in `~/.agents/skills/` pointing at the one real
+clone in `vendor/.agents/skills/`, so the step-2 batch update already
+refreshed them and `skill-patch apply` already re-applied their patches
+(playwright-cli carries the `playwright-cli-no-npx-npm` allowed-tools patch).
+Nothing extra to run — just include the skill in the normal per-skill review
+and commit. The CLI-managed global set (`skills update -g`,
+`~/.agents/.skill-lock.json`) is empty.
 
 ### 6. Report
 
@@ -168,7 +165,8 @@ an un-reviewed skill silently committed is the exact failure this skill prevents
 ## Notes
 
 - Authored skills (`public`/`personal`) are edited in place, not touched here — this skill
-  only refreshes the CLI-managed `vendor/` tier and the global `playwright-cli`.
+  only refreshes the CLI-managed `vendor/` tier (which the vendored global symlinks
+  follow automatically).
 - **Several vendored SKILL.mds carry local patches** stripping upstream's runtime
   self-install directives. The declarative definitions in
   `~/.config/skills/vendor/patches/` are the source of truth; `skill-patch apply` in
