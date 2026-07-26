@@ -527,10 +527,14 @@ colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a
   driver, names the cause. Sourced, never run.
   On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `mem_segment()`, the
-  quiet-when-healthy pill (width ≥ 80 only). The tmux-cpu RAM% pill
-  (`ram_percentage()`, bright-mauve) renders **alongside** it by design — both
-  are wanted: RAM% is the total-used headline, mem_segment the swap/pressure
-  signal.
+  quiet-when-healthy pill (width ≥ 80 only). It gathers pressure and swap once,
+  then uses the lib's pure `*_from` derivations. `ram_percentage()` parses one
+  `vm_stat` capture directly on macOS and renders **alongside** it by design —
+  RAM% is the total-used headline, mem_segment the swap/pressure signal.
+  CPU is stale-while-revalidate: a render returns cached data (or `--%`) at
+  once, while one lock-guarded, five-second-bounded sampler writes atomically in
+  the background. Fresh data appears on the next native status tick; never force
+  a refresh from the sampler.
 - [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` bounded
   triage (top 5 sampled `phys_footprint` apps + 3 agents). `k` chooses a visible
   app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
@@ -571,7 +575,9 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   since the previous save, so `age` is the age of the last *content-changing*
   save — exactly the signal that went stale in the incident.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `resurrect_segment()`,
-  the always-shown pill (width ≥ 80). Unlike the quiet-when-healthy mem pill, a
+  the always-shown pill (width ≥ 80). It gathers newest-save age once, then uses
+  the lib's pure `resurrect_state_from` / `resurrect_token_from` derivations.
+  Unlike the quiet-when-healthy mem pill, a
   live green `⟳ 2m` is wanted as the running-confidence signal the incident
   lacked; it reddens to yellow/red the moment saving stops. It is the first
   persistent system pill, followed by the darker CPU pill, so its surface1

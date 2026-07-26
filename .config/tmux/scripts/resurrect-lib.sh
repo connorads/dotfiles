@@ -92,6 +92,13 @@ resurrect_newest_age_secs() {
 # the amber warning band; FRESH is healthy.
 resurrect_state() {
 	_age=$(resurrect_newest_age_secs)
+	resurrect_state_from "$_age"
+}
+
+# resurrect_state_from AGE — pure state mapping for callers that gather the
+# newest save age once and reuse it for both state and token rendering.
+resurrect_state_from() {
+	_age=${1:-$RESURRECT_NONE_AGE}
 	if [ "$_age" -ge "$RESURRECT_NONE_AGE" ]; then
 		echo NONE
 	elif [ "$_age" -ge "$RESURRECT_STALE_SECS" ]; then
@@ -146,9 +153,24 @@ resurrect_human_age() {
 # "stale" when past the stale line (age is beside the point — it's broken), else
 # the human age of the newest save ("2m", "1h") as the live confidence signal.
 resurrect_token() {
-	case "$(resurrect_state)" in
+	_age=$(resurrect_newest_age_secs)
+	resurrect_token_from "$_age"
+}
+
+# resurrect_token_from AGE — pure token rendering over one gathered age.
+resurrect_token_from() {
+	_age=${1:-$RESURRECT_NONE_AGE}
+	case "$(resurrect_state_from "$_age")" in
 	NONE) printf 'none' ;;
 	STALE) printf 'stale' ;;
-	*) resurrect_human_age "$(resurrect_newest_age_secs)" ;;
+	*) resurrect_human_age "$_age" ;;
 	esac
+}
+
+# resurrect_attrs_from AGE — one status-render payload. Output:
+# state<TAB>colour<TAB>glyph<TAB>token.
+resurrect_attrs_from() {
+	_state=$(resurrect_state_from "${1:-$RESURRECT_NONE_AGE}")
+	printf '%s\t%s\t%s\t%s' "$_state" "$(resurrect_state_colour "$_state")" \
+		"$(resurrect_state_glyph "$_state")" "$(resurrect_token_from "${1:-$RESURRECT_NONE_AGE}")"
 }

@@ -43,34 +43,53 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=/dev/null
 . "$SELF_DIR/agent-state-lib.sh"
 
-# cpu_percentage — CPU% via tmux-cpu's cpu_percentage.sh, which runs
-# `iostat -c 2 disk0` and blocks ~1s by design. tmux-cpu caches with a hardcoded
-# 2s TTL — always stale at our 15s status-interval — and the after-select-pane /
-# session-window-changed `refresh-client -S` hooks re-fire the render on every
-# pane switch, each forcing a fresh 1s iostat. Cache here at the status-interval
-# cadence (15s) so rapid pane navigation stops re-spawning the blocking sampler.
-# RAM stays uncached (ram_percentage.sh is vm_stat-based and non-blocking).
+# cpu_percentage — serve the last sample immediately and refresh stale data in
+# the background. The tmux-cpu sampler blocks for ~1s; it must never hold up a
+# pane navigation or status render.
 cpu_percentage() {
-	if [ ! -x "$cpu_script" ]; then
-		printf "%s" "--%%"
-		return
-	fi
-	local cache="$HOME/.cache/tmux-cpu-percentage" ttl=15 now mtime age value
+	local cache="$HOME/.cache/tmux-cpu-percentage" lock="${HOME}/.cache/tmux-cpu-percentage.lock"
+	local ttl=15 now mtime age stale="--%"
 	now=$(date +%s)
 	if [ -f "$cache" ]; then
+		stale=$(cat "$cache")
 		mtime=$(stat -c '%Y' "$cache" 2>/dev/null || stat -f%m "$cache" 2>/dev/null || echo 0)
 		age=$((now - mtime))
 		if [ "$age" -lt "$ttl" ] 2>/dev/null; then
-			cat "$cache"
+			printf '%s' "$stale"
 			return
 		fi
 	fi
-	value="$("$cpu_script" 2>/dev/null | tr -d '\n')" || true
+
 	mkdir -p "$(dirname "$cache")"
-	# tmp + rename so a concurrent render never reads a torn value (the
-	# usage-cache-lib idiom).
-	printf "%s" "$value" >"${cache}.tmp.$$" && mv -f "${cache}.tmp.$$" "$cache"
-	printf "%s" "$value"
+	if ! mkdir "$lock" 2>/dev/null; then
+		mtime=$(stat -c '%Y' "$lock" 2>/dev/null || stat -f%m "$lock" 2>/dev/null || echo "$now")
+		age=$((now - mtime))
+		if [ "$age" -gt 10 ] 2>/dev/null; then
+			rmdir "$lock" 2>/dev/null || true
+			mkdir "$lock" 2>/dev/null || {
+				printf '%s' "$stale"
+				return
+			}
+		else
+			printf '%s' "$stale"
+			return
+		fi
+	fi
+
+	if [ -x "$cpu_script" ]; then
+		(
+			trap 'rmdir "$lock" 2>/dev/null || true' EXIT INT TERM
+			value=$(timeout 5 "$cpu_script" 2>/dev/null | tr -d '\n') || value=""
+			if [ -n "$value" ]; then
+				printf '%s' "$value" >"${cache}.tmp.$$" && mv -f "${cache}.tmp.$$" "$cache"
+			fi
+			rmdir "$lock" 2>/dev/null || true
+			trap - EXIT
+		) </dev/null >/dev/null 2>&1 &
+	else
+		rmdir "$lock" 2>/dev/null || true
+	fi
+	printf '%s' "$stale"
 }
 
 # ram_percentage — RAM-used % from tmux-cpu, shown ALONGSIDE mem_segment by
@@ -80,7 +99,23 @@ cpu_percentage() {
 # it as a rough ceiling and trust mem_segment for actual pressure. On Linux
 # mem_segment's sysctls are absent (flat OK), so ram% is the meaningful gauge.
 ram_percentage() {
-	if [ -x "$ram_script" ]; then
+	if command -v vm_stat >/dev/null 2>&1; then
+		vm_stat 2>/dev/null | awk '
+			/Pages active:/ { active=$NF }
+			/Pages inactive:/ { inactive=$NF }
+			/Pages speculative:/ { speculative=$NF }
+			/Pages wired down:/ { wired=$NF }
+			/Pages occupied by compressor:/ { compressor=$NF }
+			/Pages purgeable:/ { purgeable=$NF }
+			/File-backed pages:/ { filebacked=$NF }
+			/Pages free:/ { free=$NF }
+			END {
+				used_cached=active+inactive+speculative+wired+compressor
+				used=used_cached-purgeable-filebacked
+				total=used_cached+free
+				if (total > 0) printf "%.0f%%", 100*used/total
+			}'
+	elif [ -x "$ram_script" ]; then
 		"$ram_script" 2>/dev/null | tr -d '\n'
 	else
 		printf "--%%"
@@ -95,16 +130,23 @@ ram_percentage() {
 # elsewhere). See mem_token. Sysctl-only, cheap at the 15 s status-interval, so
 # no caching.
 mem_segment() {
-	local state colour glyph
-	state="$(mem_state)"
-	colour="$(mem_state_colour "$state")"
-	glyph="$(mem_state_glyph "$state")"
+	local reading pressure swap_raw swap state colour glyph token
+	reading="$(sysctl -n kern.memorystatus_vm_pressure_level vm.swapusage 2>/dev/null || true)"
+	pressure="${reading%%$'\n'*}"
+	case "$pressure" in 1 | 2 | 4) ;; *) pressure=1 ;; esac
+	if [[ "$reading" == *$'\n'* ]]; then
+		swap_raw="${reading#*$'\n'}"
+	else
+		swap_raw=""
+	fi
+	swap="$(mem_swap_used_mb_from "$swap_raw")"
+	IFS=$'\t' read -r state colour glyph token <<<"$(mem_attrs_from "$pressure" "$swap")"
 	if [ "$state" = "OK" ]; then
 		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
-			"$colour" "$glyph" "$(mem_token)"
+			"$colour" "$glyph" "$token"
 	else
 		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s #[norange]" \
-			"$colour" "$glyph" "$(mem_token)"
+			"$colour" "$glyph" "$token"
 	fi
 }
 
@@ -116,16 +158,15 @@ mem_segment() {
 # incident lacked. Reads one file mtime per 15 s render — cheap, no caching.
 # Cross-platform: Linux hosts (continuum-driven) get the same detect pill.
 resurrect_segment() {
-	local state colour glyph
-	state="$(resurrect_state)"
-	colour="$(resurrect_state_colour "$state")"
-	glyph="$(resurrect_state_glyph "$state")"
+	local age state colour glyph token
+	age="$(resurrect_newest_age_secs)"
+	IFS=$'\t' read -r state colour glyph token <<<"$(resurrect_attrs_from "$age")"
 	if [ "$state" = "FRESH" ]; then
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
-			"$colour" "$glyph" "$(resurrect_token)"
+			"$colour" "$glyph" "$token"
 	else
 		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
-			"$colour" "$glyph" "$(resurrect_token)"
+			"$colour" "$glyph" "$token"
 	fi
 }
 
@@ -287,12 +328,14 @@ compute_git_branch_and_dirty() {
 ssh_info() {
 	local inbound=0 outbound=0
 	if [ "$(uname)" = "Darwin" ]; then
-		# One lsof capture, filtered twice: lsof walks every open TCP socket
-		# (~100ms+), so querying per direction doubled the cost of each render.
+		# One lsof capture and one parser: lsof walks every open TCP socket, so
+		# avoid querying or scanning the result once per direction.
 		local conns
 		conns="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null || true)"
-		inbound="$(printf '%s\n' "$conns" | awk '$9 ~ /:22->/' | wc -l | tr -d ' ')"
-		outbound="$(printf '%s\n' "$conns" | awk '$9 ~ /->.*:22$/' | wc -l | tr -d ' ')"
+		read -r inbound outbound <<<"$(awk '
+			$9 ~ /:22->/ { inbound++ }
+			$9 ~ /->.*:22$/ { outbound++ }
+			END { print inbound + 0, outbound + 0 }' <<<"$conns")"
 	else
 		inbound="$(ss -tn state established '( sport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
 		outbound="$(ss -tn state established '( dport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"

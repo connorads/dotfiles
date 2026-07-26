@@ -14,6 +14,15 @@ setup() {
   setup_test_home
 }
 
+@test "pure resurrect derivation reuses a gathered age" {
+  RESURRECT_AGING_SECS=600 RESURRECT_STALE_SECS=900 lib 'resurrect_state_from 700'
+  [ "$output" = "AGING" ]
+  lib 'resurrect_token_from 700'
+  [ "$output" = "11m" ]
+  lib 'resurrect_token_from 999999999'
+  [ "$output" = "none" ]
+}
+
 # The plugin-default save dir under the isolated HOME (no ~/.tmux/resurrect, so
 # resurrect_dir resolves to the XDG path).
 save_dir() { echo "$HOME/.local/share/tmux/resurrect"; }
