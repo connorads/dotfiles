@@ -159,8 +159,69 @@ assert_tab_label() {
   grep -Fq 'bind -T copy-mode-vi C-M-l switch-client -n -O creation' "$CONF"
   grep -Fq 'bind -N "Previous session (rail order)" '\''('\'' switch-client -p -O creation' "$CONF"
   grep -Fq 'bind -N "Next session (rail order)" '\'')'\'' switch-client -n -O creation' "$CONF"
-  grep -Fq 'bind -N "Move window left" -n C-M-H swap-window -t -1 \; previous-window' "$CONF"
-  grep -Fq 'bind -N "Move window right" -n C-M-L swap-window -t +1 \; next-window' "$CONF"
   grep -Fq 'bind -N "Session switch/create popup (fzf)" -n M-S display-popup' "$CONF"
   grep -Fq 'bind -T copy-mode-vi M-S display-popup' "$CONF"
+}
+
+@test "window move mode has persistent movement and explicit exits" {
+  grep -Fq 'bind -N "Enter window move mode" -n M-M switch-client -T window-move \; display-message "Move window: h/l, q/Esc exits"' "$CONF"
+  grep -Fq 'bind -T copy-mode-vi M-M switch-client -T window-move \; display-message "Move window: h/l, q/Esc exits"' "$CONF"
+  grep -Fq 'bind -T window-move h swap-window -t -1 \; previous-window \; switch-client -T window-move \; display-message "Move window: h/l, q/Esc exits"' "$CONF"
+  grep -Fq 'bind -T window-move l swap-window -t +1 \; next-window \; switch-client -T window-move \; display-message "Move window: h/l, q/Esc exits"' "$CONF"
+  grep -Fq 'bind -T window-move q switch-client -T root' "$CONF"
+  grep -Fq 'bind -T window-move Escape switch-client -T root' "$CONF"
+  ! grep -Fq 'C-M-H swap-window' "$CONF"
+  ! grep -Fq 'C-M-L swap-window' "$CONF"
+}
+
+@test "window move mode repeats, follows the window, wraps, and exits" {
+  grep -E 'window-move|Enter window move mode' "$CONF" >"$BATS_TEST_TMPDIR/window-move.conf"
+  tx source-file "$BATS_TEST_TMPDIR/window-move.conf"
+  tx rename-window -t s:0 one
+  tx new-window -d -a -t s:one -n two
+  tx new-window -d -a -t s:two -n three
+  tx select-window -t s:one
+
+  mkfifo "$BATS_TEST_TMPDIR/client.in"
+  exec 9<>"$BATS_TEST_TMPDIR/client.in"
+  (
+    exec 9>&-
+    "$TMUX_BIN" -L "$SOCK" -C attach-session -t s <"$BATS_TEST_TMPDIR/client.in" >"$BATS_TEST_TMPDIR/client.out"
+  ) &
+  client_pid=$!
+  for _ in {1..20}; do
+    client="$(tx list-clients -F '#{client_name}' 2>/dev/null | head -1)"
+    [ -n "$client" ] && break
+    sleep 0.05
+  done
+  [ -n "$client" ]
+  [ "$(tx display-message -p -c "$client" '#W')" = one ]
+  initial_order="$(tx list-windows -t s -F '#W' | paste -sd, -)"
+  [ "$(tx display-message -p -c "$client" '#{window_index}')" = 0 ]
+
+  tx send-keys -K -c "$client" M-M
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = window-move ]
+
+  tx send-keys -K -c "$client" h
+  [ "$(tx display-message -p -c "$client" '#W')" = one ]
+  [ "$(tx display-message -p -c "$client" '#{window_index}')" = 2 ]
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = window-move ]
+
+  tx send-keys -K -c "$client" h
+  [ "$(tx display-message -p -c "$client" '#W')" = one ]
+  [ "$(tx display-message -p -c "$client" '#{window_index}')" = 1 ]
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = window-move ]
+
+  tx send-keys -K -c "$client" l l
+  [ "$(tx display-message -p -c "$client" '#W')" = one ]
+  [ "$(tx display-message -p -c "$client" '#{window_index}')" = 0 ]
+  [ "$(tx list-windows -t s -F '#W' | paste -sd, -)" = "$initial_order" ]
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = window-move ]
+
+  tx send-keys -K -c "$client" Escape
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = root ]
+  tx send-keys -K -c "$client" M-M q
+  [ "$(tx display-message -p -c "$client" '#{client_key_table}')" = root ]
+  exec 9>&-
+  wait "$client_pid" 2>/dev/null || true
 }
