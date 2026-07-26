@@ -10,18 +10,23 @@ the text - no grep can notice that a linter count grew or a flag was renamed.
 The sweep re-derives each checkable claim from its live source and proposes
 fixes for whatever drifted.
 
-Scope is the authored catalogue only: `~/skills` (public) and
-`~/.config/skills/personal`. Vendored skills are upstream's problem - refresh
-them via `update-vendored-skills`, never rewrite them here.
+Scope is the authored catalogue only: `~/skills` (public),
+`~/.config/skills/personal`, and `~/.config/skills/private` (a standalone
+repo - commit its fixes there, not via dotfiles). Vendored skills are
+upstream's problem - refresh them via `update-vendored-skills`, never rewrite
+them here.
 
 ## 1 - Inventory targets
 
 Anchor on the markers the lint deliberately tolerates:
 
 ```sh
-rg -n 'current as of|as of (19|20)[0-9]{2}|last verified|verified against' \
-  ~/skills ~/.config/skills/personal --glob '*.md'
+rg -ni 'current as of|as of|last verified|verified against' \
+  ~/skills ~/.config/skills/personal ~/.config/skills/private --glob '*.md'
 ```
+
+(Case-insensitive and no forced year, mirroring writing-skills' banner
+regex - "As of July 2026" and dateless banners must both surface.)
 
 Anchors are the floor, not the list. For each skill under review, read
 SKILL.md (and any reference it leans on) and collect every *checkable* claim:
