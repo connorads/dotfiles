@@ -49,22 +49,15 @@ names, pointers to the right place - not narrative.
 ## Skills (SKILL.md + references/)
 
 A skill is **progressive disclosure made concrete** (themes 2.3, 6.3): a thin,
-always-loaded `SKILL.md` plus `references/` loaded only on demand.
+always-loaded `SKILL.md` plus `references/` loaded only on demand. How to
+author one - structure, description triggers, scoping, pre-ship checks - is
+the **writing-skills** skill's job; this file keeps only the living-doc
+deltas:
 
-- **One skill, one job** (theme 6.3). Scope each skill to a single message. If it
-  needs many caveats, that is "shameful documentation" (theme 8.2) - simplify the
-  underlying workflow before documenting around it.
-- **Pass the two-minute test on SKILL.md** (theme 8.3). If the front matter plus
-  body cannot be grasped in two minutes, move depth into `references/`.
-- **Greppable triggers** (theme 6.5). Write the `description` with the distinctive
-  terms and phrases a future you would search for, so the loader surfaces the
-  right skill.
 - **Cite canonical sources; write only your delta** (theme 2.4). Lead with the
   pattern name + a link (a man page, an RFC, a sibling skill, the source book) and
   add only the project-specific 1%. A precise name carries its constraints for
   free and compresses the prose.
-- **Point at exemplars** (theme 6.2). Name the best real implementation as "do it
-  like this" rather than restating the rules abstractly.
 - **Check the skill's own pointers** (theme 5.4). A `SKILL.md` that tells the agent
   to run `scripts/foo` is itself a doc with zero accuracy mechanism unless
   something asserts `scripts/foo` exists. Link-check the skill's internal
