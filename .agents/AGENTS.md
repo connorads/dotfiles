@@ -44,6 +44,7 @@ Don't assume the reader is holding earlier context - restate what each step need
 
 - Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
 - Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
+- Show intended atomic commit boundaries and verification in implementation plans; revise them when the work reveals a better split.
 - Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
 - A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
 - Commit after each coherent unit rather than batching unrelated work.
