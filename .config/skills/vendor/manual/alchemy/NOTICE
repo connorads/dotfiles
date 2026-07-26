@@ -1,0 +1,8 @@
+Alchemy Agent Skill
+
+This product includes documentation derived from alchemy-run/alchemy:
+https://github.com/alchemy-run/alchemy
+
+The exact source revision, subtree, exclusions, and file count are recorded in
+references/upstream.json. Vendored documentation files retain their upstream
+content unchanged; only their filesystem paths are flattened.

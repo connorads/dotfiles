@@ -1,0 +1,10 @@
+{
+  "excluded": [
+    "blog"
+  ],
+  "file_count": 195,
+  "path_encoding": "slash-to-double-hyphen",
+  "repository": "https://github.com/alchemy-run/alchemy.git",
+  "revision": "4f6754d3d486dac7d50e8e2170555bd67e1ef7bc",
+  "subtree": "website/src/content/docs"
+}
