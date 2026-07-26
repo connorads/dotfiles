@@ -174,11 +174,13 @@ tmux send-keys -t "$pane" Enter
 
 ## Coding Agents in Panes
 
-When the target pane runs a coding agent (Claude Code, Codex), read
-[references/coding-agents.md](references/coding-agents.md) first: pane state is
-already tracked as `#{@agent_state}` (`blocked|done|working|idle`, hook-driven),
-so wait on that option instead of scraping the screen, treat `done`/`idle` as
-turn-complete, and handle `blocked` as a modal prompt needing the safety loop.
+When the target pane runs a coding agent (Claude Code, Codex), switch to the
+**coding-agents** skill: it owns the `agent` CLI
+(`ls`/`wait`/`prompt`/`name`/`pick`) and the hook-driven `#{@agent_state}`
+vocabulary, so you wait on state instead of scraping the screen. Come back
+here the moment the agent is `blocked` (a modal prompt needing the
+observe-before-commit loop) or the pane is untracked (capture-based
+observation).
 
 ## Remote Execution (Codespaces/SSH)
 
