@@ -68,9 +68,10 @@ keep-or-remove curation call (per `~/.config/skills/CLAUDE.md`), don't auto-dele
 the user vendored.
 
 Why the **commit** is still per-skill: `skills-lock.json` holds every skill's `computedHash`
-in one file, so a partial commit that stages the whole lockfile while holding some skills
-would record held skills' new hashes without their files — an inconsistent lockfile.
-Per-skill commits keep each skill's files and its lockfile entry together.
+in one file, and the batch update has **already rewritten** every entry in the work-tree. A
+partial commit that stages the whole lockfile while holding some skills would record held
+skills' new hashes without their files — an inconsistent lockfile. Per-skill commits stage
+each skill's files plus *only its lockfile hunk* (via `dotfiles hunks`, step 4).
 
 **Shortcut when nothing is held:** if *every* changed skill reviews clean, the
 entanglement can't happen — commit them as one batch (`dotfiles add .agents/skills
@@ -122,9 +123,19 @@ documenting one. When unsure, treat it as dodgy and hold.
   EOF
   ```
 
-- **Some clean, some held** → commit the clean ones per-skill, staging each skill path
-  together with the lockfile, so held skills' lockfile entries stay unstaged with their
-  files.
+- **Some clean, some held** → commit the clean ones per-skill. Do **not**
+  `dotfiles add skills-lock.json` — the batch update already rewrote every entry, so
+  staging the whole file commits the held skills' new hashes too. Stage the skill's
+  files, then only its lockfile hunk:
+
+  ```bash
+  dotfiles add .agents/skills/<name>
+  dotfiles hunks list                # find the skills-lock.json hunk with <name>'s entry
+  dotfiles hunks add '<hunk-id>'     # e.g. '.config/skills/vendor/skills-lock.json:@-12,8+12,8'
+  ```
+
+  If two skills' entries share one hunk and only one is clean, hold both commits
+  rather than committing the dodgy skill's hash.
 
 - **Anything dodgy** → do **not** commit. Leave it in the work-tree, summarise what changed
   and why it's held, and ask the user to sign off. Commit only after explicit approval.
