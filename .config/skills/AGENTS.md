@@ -53,9 +53,12 @@ promoted*, not in where they come from:
   `elevenlabs`.
 - **unsorted bucket** (`vendor/.agents/skills/`) — CLI-vendored *singletons* sharing one
   lockfile (`vendor/skills-lock.json`). Skills that don't belong to a cohesive upstream group.
-- **manual bucket** (`vendor/manual/<name>/`) — hand-placed skills with **no upstream and no
-  lockfile** (gist / tweet / distillation). Refreshed individually by re-cloning and
-  re-applying; never `skills update`-able. Examples: `govuk-style`, `ponytail`, `bro`.
+- **manual bucket** (`vendor/manual/<name>/`) — hand-placed skills with **no skills-CLI
+  upstream and no lockfile** (gist / tweet / distillation, or a locally-authored skill
+  wrapped around third-party reference material). A source repository may exist even when
+  it does not publish an installable Agent Skill; keep any custom, preview-first refresh
+  script with that skill. Refresh individually by re-cloning and re-applying; never run
+  `skills update` for this tier. Examples: `govuk-style`, `ponytail`, `bro`.
 
 **Promotion unit is the deciding axis for a set.** The strongest reason a group earns set
 status is that a set is the unit you `skl install <set>/` into a repo whose stack matches —
@@ -74,7 +77,7 @@ upstream, no lockfile, refreshed individually), so they never become a set.
 ```text
 1. Provenance → home.
      authored   → ~/.config/skills/{public|personal|private}  (edit in place)
-     third-party→ ~/.config/skills/vendor                     (skills CLI, project scope)
+     third-party→ ~/.config/skills/vendor                     (skills CLI or manual bucket)
 2. Keep?  off-domain / unused / redundant → REMOVE (reinstall from upstream later).
 3. Default tier = catalogue (skl), zero session cost. Everything kept lands here.
 4. + Per-project (`skills add` into a repo) iff stack-specific (auto-fires only in that stack).
