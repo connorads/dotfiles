@@ -63,7 +63,7 @@ go version -m -json <binary>
 If `go` is managed by mise and the shim has no selected version, either run the whole command under mise or pass an explicit Go command to the bundled helper:
 
 ```bash
-python scripts/go_binary_triage.py <binary> --go-cmd "mise exec go@1.25 -- go"
+python3 scripts/go_binary_triage.py <binary> --go-cmd "mise exec go@1.25 -- go"
 ```
 
 Build info can reveal:
