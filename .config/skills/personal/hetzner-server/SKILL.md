@@ -66,6 +66,13 @@ hcloud server create \
   --without-ipv4
 ```
 
+**IPv6-only caveat:** `hcloud server ip <name>` and `hcssh` assume IPv4 —
+`server ip` prints nothing useful and hcssh reads only the ipv4 column, so
+the managed Host entries come out empty. For a `--without-ipv4` server use
+`hcloud server ip --ipv6 <name>` (returns the /64; the host is `...::1`) and
+write the SSH Host entry by hand, or just reach it over Tailscale once
+`ts up` has run.
+
 ### With user-data (auto-run install script)
 
 ```bash
