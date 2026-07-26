@@ -15,6 +15,11 @@ Turn any input source into a structured backlog that an agent can execute
 one task at a time in an automated loop. Each task is self-contained,
 verifiable, and completable in a single iteration.
 
+**Boundaries:** `prd` decides the WHAT and WHY and produces the spec; this
+skill decomposes a *committed* spec into tasks (a PRD is the primary step-1
+input); `task-loop` scaffolds the loop directory that executes the backlog.
+If the what/why is still open, route to `prd` first.
+
 ## When to use
 
 Invoke when the user has an input source (PRD, design feedback, issue list,
