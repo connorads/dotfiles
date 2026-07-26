@@ -115,8 +115,9 @@ layout.
 
 ## Rendering (you must pick one)
 
-No paid cloud needed. On this machine `java` and `docker`/`colima` are present
-but the Structurizr CLI is not installed, so **Docker is the reliable path**:
+No paid cloud needed. Use the `structurizr` CLI if it is on `PATH`; otherwise
+run the `structurizr/cli` Docker image (`scripts/render.sh` already detects
+which is available):
 
 ```bash
 # Export DSL -> Mermaid (then embed/render as Mermaid), or -> SVG/PNG:
