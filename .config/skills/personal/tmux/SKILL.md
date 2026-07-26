@@ -1,6 +1,15 @@
 ---
 name: tmux
-description: Control interactive CLIs and TUIs via tmux sessions - safely target panes, send keystrokes, scrape output, and operate modal prompts with observe-before-commit guardrails.
+description: >
+  Control interactive CLIs and TUIs via tmux - safely target panes, send
+  keystrokes, scrape output, and operate modal prompts with
+  observe-before-commit guardrails. Use when a command needs a real PTY
+  (REPLs like python/psql, debuggers like gdb/lldb), when an installer or
+  wizard presents modal prompts or menus, when a long-running interactive
+  command must be watched without blocking, when something asks for
+  confirmation or a permission prompt mid-run, or when a tool has no
+  non-interactive flag and the only path is driving its TUI. For observing
+  or prompting coding-agent panes, use the coding-agents skill.
 ---
 
 # tmux Skill
