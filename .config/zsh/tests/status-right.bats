@@ -88,6 +88,14 @@ EOF
   [[ "$plain" == *"2%"* ]]
 }
 
+@test "wide status marks memory pill as a tappable user range" {
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"#[range=user|mem]"* ]]
+  [[ "$output" == *"#[norange]"* ]]
+}
+
 @test "hostname shows the distinctive tail, not a shared prefix" {
   # Connors-MacBook-Air / Connors-Mac-mini share "Connors-"; the tail is what
   # tells the machines apart, so print that — never collapse to "Conno…".
