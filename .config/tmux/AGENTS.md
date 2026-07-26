@@ -352,8 +352,8 @@ The AI usage surfaces track three providers:
   popup (`ai-usage --fancy`) renders one labelled Claude group per account;
   column 1 is always the owner, so model-scoped weekly windows are
   account-labelled too, with the model folded into the window token (`7d·S`
-  Sonnet, `7d·F` Fable) to stay distinguishable across accounts. The compact
-  status pill stays default-account only. Accounts are launched with `ccp`.
+  Sonnet, `7d·F` Fable) to stay distinguishable across accounts. Accounts are
+  launched with `ccp`.
 - Codex: [`../zsh/functions/codex-usage`](../zsh/functions/codex-usage)
   reads Codex auth and caches `~/.cache/codex-usage.json`.
 - Cosine: [`../zsh/functions/cosine-usage`](../zsh/functions/cosine-usage)
@@ -361,9 +361,8 @@ The AI usage surfaces track three providers:
   bearer via `cosine-bearer`, and caches `~/.cache/cosine-usage.json`.
 
 Each provider shares [`../zsh/functions/usage-cache-lib`](../zsh/functions/usage-cache-lib):
-`*.meta.json` stores backoff state, `*.lock` prevents concurrent fetches, and
-`*.trigger` debounces tmux background refreshes. Do not print bearer/access
-tokens in diagnostics.
+`*.meta.json` stores backoff state and `*.lock` prevents concurrent fetches. Do
+not print bearer/access tokens in diagnostics.
 
 ### Codex window classification
 
@@ -372,34 +371,28 @@ slot. [`../zsh/functions/codex-windows.jq`](../zsh/functions/codex-windows.jq) i
 the shared pure core: it turns a raw Codex usage object into a duration-sorted
 `[{seconds, used_percent, reset_after_seconds}]` list (shortest window first),
 using the `primary`/`secondary` slot only as a fallback duration when the API
-omits `limit_window_seconds`. All three surfaces render that list - the pill and
-`codex-usage` shell out to `jq -f`, the fancy dashboard shells out from Python;
+omits `limit_window_seconds`. Both surfaces render that list - `codex-usage`
+shells out to `jq -f`, while the fancy dashboard shells out from Python;
 `window_label(seconds)` gives canonical `5-hour`/`7-day` (`5h`/`7d`) wording and
 adapts to any other duration. Pace/colour maths uses each window's real length.
 
 Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
 no return date, collapsing usage to a single weekly window that arrives in the
 `primary_window` slot. Positional classification (primary=5h, secondary=7d)
-mislabelled that weekly figure as 5h and forced a false green pill. Duration
-classification is adaptive: it renders only the windows that exist and stays
-correct whether the 5h window is gone now or returns later, in either slot. Claude
-is deliberately left positional - its `five_hour`/`seven_day` keys are named and
-contractually fixed, so they can't suffer the same collapse. Spark extras
-(`additional_rate_limits`) apply the same duration rule inline (low-stakes, not the
-failure mode), not the shared jq.
+mislabels that weekly figure as 5h. Duration classification is adaptive: it
+renders only the windows that exist and stays correct whether the 5h window is
+gone now or returns later, in either slot. Claude stays positional because its
+`five_hour`/`seven_day` keys are named and contractually fixed, so they can't
+suffer the same collapse. Spark extras (`additional_rate_limits`) apply the same
+duration rule inline (low-stakes, not the failure mode), not the shared jq.
 
 Surfaces:
 
-- [`scripts/status-right.sh`](./scripts/status-right.sh) renders the compact
-  status pill: `C:` Claude windows, `X:` Codex windows, and `S:` Cosine monthly
-  credit pool. `S:` keeps the compact `S:<used>%·<reset>` text; its colour uses
-  the worse of absolute pool usage and billing-period pace when Cosine provides
-  `billingPeriodStartsAt`.
 - [`../zsh/functions/agents/ai-usage`](../zsh/functions/agents/ai-usage)
   (`aiu`, popup via `prefix + a`) refreshes providers and renders plain or fancy
   combined usage.
 - [`../zsh/functions/usage-debug`](../zsh/functions/usage-debug) prints cache,
-  backoff, lock, trigger, and provider usage details.
+  backoff, lock, and provider usage details.
 
 Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 (the classifier's combinatorial matrix),
@@ -407,7 +400,6 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 [`../zsh/tests/codex-usage.bats`](../zsh/tests/codex-usage.bats),
 [`../zsh/tests/cosine-usage.bats`](../zsh/tests/cosine-usage.bats),
 [`../zsh/tests/ai-usage.bats`](../zsh/tests/ai-usage.bats),
-[`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats), and
 [`../zsh/tests/usage-debug.bats`](../zsh/tests/usage-debug.bats).
 
 ## Memory-pressure monitoring (custom subsystem)
@@ -473,10 +465,9 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `resurrect_segment()`,
   the always-shown pill (width ≥ 80). Unlike the quiet-when-healthy mem pill, a
   live green `⟳ 2m` is wanted as the running-confidence signal the incident
-  lacked; it reddens to yellow/red the moment saving stops. Placed between the AI
-  pill and the cpu pill — the one slot where its surface1 (`#45475a`) shade isn't
-  adjacent to another surface1 pill (mem/disk/git), so it stays a distinct
-  segment.
+  lacked; it reddens to yellow/red the moment saving stops. It is the first
+  persistent system pill, followed by the darker CPU pill, so its surface1
+  (`#45475a`) shade stays distinct.
 - [`scripts/resurrect-keepalive.sh`](./scripts/resurrect-keepalive.sh) — the
   **drive** layer (macOS): an independent save driver run every 5 min by a
   launchd agent (`dev.connorads.tmux-resurrect-save`, defined in
