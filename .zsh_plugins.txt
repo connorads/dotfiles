@@ -1,20 +1,26 @@
+# Every bundle carries pin:<full-sha> - antidote checks out exactly that
+# commit, skips it on `antidote update`, and ignores min-age for it. Bump a
+# plugin by editing its SHA (review the upstream diff first). Lines sharing
+# one repo (the ohmyzsh ones) must carry the same pin or antidote errors.
+
 # Powerlevel10k (load first for instant prompt)
-romkatv/powerlevel10k
+romkatv/powerlevel10k pin:604f19a9eaa18e76db2e60b8d446d5f879065f90
 
 # OMZ libs
-ohmyzsh/ohmyzsh path:lib/git.zsh
-ohmyzsh/ohmyzsh path:lib/clipboard.zsh
+ohmyzsh/ohmyzsh path:lib/git.zsh pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
+ohmyzsh/ohmyzsh path:lib/clipboard.zsh pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
 
 # OMZ plugins
-ohmyzsh/ohmyzsh path:plugins/git
-ohmyzsh/ohmyzsh path:plugins/command-not-found
-ohmyzsh/ohmyzsh path:plugins/brew
+ohmyzsh/ohmyzsh path:plugins/git pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
+ohmyzsh/ohmyzsh path:plugins/command-not-found pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
+ohmyzsh/ohmyzsh path:plugins/brew pin:9e2c1548c3dfeefd055e1c6606f66657093ae928
 
 # Community plugins
-zsh-users/zsh-autosuggestions
-zsh-users/zsh-completions
-Aloxaf/fzf-tab
-# fast-syntax-highlighting: zdharma-continuum is the community recovery fork after
-# the original zdharma org was deleted (Oct 2021). antidote pins by commit, so
-# updates are reviewed, not auto-applied. Alt: zsh-users/zsh-syntax-highlighting.
-zdharma-continuum/fast-syntax-highlighting
+zsh-users/zsh-autosuggestions pin:85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5
+zsh-users/zsh-completions pin:f0b1a348a15d9ce710c9487725e103ab8239b828
+Aloxaf/fzf-tab pin:0983009f8666f11e91a2ee1f88cfdb748d14f656
+# fast-syntax-highlighting: zdharma-continuum is the community recovery fork
+# after the original zdharma org was deleted (Oct 2021). The pin above all:
+# this repo's history is the one that was hijacked, so updates must be
+# reviewed diffs, never auto-applied. Alt: zsh-users/zsh-syntax-highlighting.
+zdharma-continuum/fast-syntax-highlighting pin:3d574ccf48804b10dca52625df13da5edae7f553
