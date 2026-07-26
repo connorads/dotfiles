@@ -1,6 +1,6 @@
 #!/bin/sh
 # fix-ssh-agent: repoint ~/.ssh/agent.sock to the newest live forwarded socket
-# Called by tmux client-attached hook and Ctrl+b F keybinding
+# Called by the tmux client-attached hook
 
 STABLE="$HOME/.ssh/agent.sock"
 best=""
@@ -10,8 +10,13 @@ for sock in /tmp/ssh-*/agent.* "$HOME"/.ssh/agent/s.* "$HOME"/.bitwarden-ssh-age
 	[ -S "$sock" ] || continue
 	# skip the stable symlink itself
 	[ "$sock" = "$STABLE" ] && continue
-	# check the socket is actually alive
-	SSH_AUTH_SOCK="$sock" ssh-add -l >/dev/null 2>&1 || continue
+	# check the socket is actually alive; a dead forwarded socket can hang
+	# ssh-add indefinitely, so bound the probe (status-right.sh does the same)
+	if command -v timeout >/dev/null 2>&1; then
+		SSH_AUTH_SOCK="$sock" timeout 1 ssh-add -l >/dev/null 2>&1 || continue
+	else
+		SSH_AUTH_SOCK="$sock" ssh-add -l >/dev/null 2>&1 || continue
+	fi
 	mtime=$(stat -c %Y "$sock" 2>/dev/null || stat -f %m "$sock" 2>/dev/null) || continue
 	if [ "$mtime" -gt "$best_mtime" ]; then
 		best_mtime="$mtime"
