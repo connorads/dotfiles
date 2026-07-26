@@ -395,6 +395,7 @@ brew bump-formula-pr --url=<new-url> --sha256=<new-sha> <name>
 
 - Formula Cookbook: <https://docs.brew.sh/Formula-Cookbook>
 - Acceptable Formulae: <https://docs.brew.sh/Acceptable-Formulae>
+- Package Acceptance Policy (notability, fork, acceptance rules): <https://docs.brew.sh/Package-Acceptance-Policy>
 - Versions: <https://docs.brew.sh/Versions>
 - Python for Formula Authors: <https://docs.brew.sh/Python-for-Formula-Authors>
 - Node for Formula Authors: <https://docs.brew.sh/Node-for-Formula-Authors>
