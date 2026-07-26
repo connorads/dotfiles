@@ -88,19 +88,20 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
-| `Ctrl+b b` | system monitor (bottom) |
+| `Ctrl+b b` | system monitor (bottom, floating pane) |
 | `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
-| `Ctrl+b g` | lazygit (dotfiles if in ~) |
+| `Ctrl+b g` | lazygit (floating pane; dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (native floating pane; persists while switching windows) |
+| `Ctrl+b Alt+j` | jjui (floating pane) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
-| `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
+| `Ctrl+b D` | hunk git diff / stage (floating pane; hunk.dev) |
 | `Ctrl+b C` | critique git diff |
 | `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
-| `Ctrl+b v` | neovim |
+| `Ctrl+b v` | neovim (floating pane) |
 | `Ctrl+b V` | neovim help |
-| `Ctrl+b f` | Fresh editor |
+| `Ctrl+b f` | Fresh editor (floating pane) |
 | `Ctrl+b F` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
