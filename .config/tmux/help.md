@@ -93,7 +93,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
-| `Ctrl+b G` | lazygit dotfiles (lgdf, bare repo from any pane) |
+| `Ctrl+b G` | lazygit dotfiles (native floating pane; persists while switching windows) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff |
