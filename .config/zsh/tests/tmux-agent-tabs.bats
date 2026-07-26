@@ -141,3 +141,13 @@ assert_tab_label() {
   [ -n "$line" ]
   [[ "$line" == *"agent-state.sh seen"* ]]
 }
+
+@test "status row carries session rail and pane header control ranges" {
+  row="$(grep "^set -g 'status-format\\[1\\]'" "$CONF")"
+  border="$(grep '^set -g pane-border-format' "$CONF")"
+  [[ "$row" == *"#{S:"* ]]
+  [[ "$row" == *"range=session|#{session_id}"* ]]
+  [[ "$row" == *"list=focus"* ]]
+  [[ "$border" == *"range=control|7"* ]]
+  [[ "$border" == *"range=control|8"* ]]
+}

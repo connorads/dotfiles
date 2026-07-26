@@ -98,10 +98,10 @@ mem_segment() {
 	colour="$(mem_state_colour "$state")"
 	glyph="$(mem_state_glyph "$state")"
 	if [ "$state" = "OK" ]; then
-		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
+		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
 			"$colour" "$glyph" "$(mem_token)"
 	else
-		printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s " \
+		printf "#[range=user|mem]#[fg=#45475a]#[bg=#45475a]#[fg=#%s]#[bold] %s %s #[norange]" \
 			"$colour" "$glyph" "$(mem_token)"
 	fi
 }
@@ -156,7 +156,7 @@ agent_elsewhere_segment() {
 	badge="$(other_sessions_badge "$attached_session")"
 	[ -n "$badge" ] || return 0
 	read -r hex char count <<<"$badge"
-	printf "#[fg=#313244]#[bg=#313244]#[fg=#%s]#[bold] %s%s " "$hex" "$char" "$count"
+	printf "#[range=user|agents]#[fg=#313244]#[bg=#313244]#[fg=#%s]#[bold] %s%s #[norange]" "$hex" "$char" "$count"
 }
 
 disk_percentage() {
