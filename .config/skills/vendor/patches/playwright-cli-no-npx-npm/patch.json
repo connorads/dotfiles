@@ -1,0 +1,6 @@
+{
+  "reason": "playwright-cli is mise-managed; npx/npm in allowed-tools invites unpinned installs",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}
