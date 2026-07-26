@@ -77,6 +77,9 @@ enabled = true
 [plugins."template-creator@openai-primary-runtime"]
 enabled = true
 
+[plugins."sites@openai-bundled"]
+enabled = true
+
 [tui]
 status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-remaining"]
 terminal_title = ["spinner", "project", "git-branch", "model"]
@@ -85,3 +88,5 @@ terminal_title = ["spinner", "project", "git-branch", "model"]
 followUpQueueMode = "queue"
 
 [hooks.state]
+
+[shell_environment_policy.set]
