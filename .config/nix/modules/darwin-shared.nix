@@ -247,7 +247,10 @@
   # ProgramArguments points at the TRACKED script path, not a nix-store wrapper,
   # so edits to the keepalive take effect next tick without a rebuild. PATH
   # carries the per-user profile (where tmux and GNU stat resolve) plus system
-  # bins. A user agent (not a system daemon): it drives the user's tmux server.
+  # bins; LANG supplies the UTF-8 locale launchd otherwise omits entirely, without
+  # which tmux sanitises the tabs its format output delimits fields with and every
+  # tab-delimited consumer (save.sh, the session-ids hook) parses garbage. A user
+  # agent (not a system daemon): it drives the user's tmux server.
   launchd.user.agents.tmux-resurrect-save = {
     serviceConfig = {
       Label = "dev.connorads.tmux-resurrect-save";
@@ -258,7 +261,11 @@
       StartInterval = 300; # every 5 min, independent of tmux status refresh
       RunAtLoad = true; # save promptly after a crash-reboot / drs
       ProcessType = "Background";
-      EnvironmentVariables.PATH = "/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+      EnvironmentVariables = {
+        PATH = "/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+        # Keeps tabs intact in tmux format output (see block comment above).
+        LANG = "en_GB.UTF-8";
+      };
       StandardErrorPath = "/Users/connorads/.cache/tmux-resurrect-save.err.log";
     };
   };

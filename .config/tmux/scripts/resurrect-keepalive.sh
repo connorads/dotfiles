@@ -15,6 +15,16 @@
 # double-save on macs is harmless (distinct timestamped files).
 set -euo pipefail
 
+# tmux sanitises tabs in format output to `_` outside a UTF-8 locale, and launchd
+# starts jobs with no locale at all. Everything downstream is tab-delimited: save.sh
+# reads an empty session_name, treats every pane as a grouped session and skips it,
+# and the session-ids hook matches no agent panes and deletes its JSON. A UTF-8
+# locale keeps the delimiter intact.
+case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+*UTF-8 | *utf8) ;;
+*) export LC_ALL=en_GB.UTF-8 ;;
+esac
+
 # shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # Shared freshness vocabulary (resurrect_dir / resurrect_newest_age_secs /
