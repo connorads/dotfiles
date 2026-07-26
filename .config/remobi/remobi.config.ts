@@ -2,6 +2,30 @@
 
 const customDrawerButtons = [
 	{
+		id: 'organise',
+		label: 'Organise',
+		description: 'Open tmux window organiser',
+		action: { type: 'send', data: '\x02W' },
+	},
+	{
+		id: 'sessions',
+		label: 'Sessions',
+		description: 'Open tmux session picker',
+		action: { type: 'send', data: '\x02s' },
+	},
+	{
+		id: 'windows',
+		label: 'Windows',
+		description: 'Open tmux window tree',
+		action: { type: 'send', data: '\x02w' },
+	},
+	{
+		id: 'agents',
+		label: 'Agents',
+		description: 'Open agents popup',
+		action: { type: 'send', data: '\x02A' },
+	},
+	{
 		id: 'tmux-split-vertical',
 		label: 'Split |',
 		description: 'Split pane vertically in cwd',
@@ -100,6 +124,10 @@ const customDrawerButtons = [
 ] as const
 
 const preferredDrawerOrder = [
+	'organise',
+	'sessions',
+	'windows',
+	'agents',
 	'ai-usage',
 	'critique',
 	'review',
