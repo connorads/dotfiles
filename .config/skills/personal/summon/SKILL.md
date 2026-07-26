@@ -19,9 +19,15 @@ Channel the spirit of a real person — their mental models, decision frameworks
 
 ## Name Resolution
 
-Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; the [Available Personas](#available-personas) table below maps personas to domains and files.
+Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; the [Available Personas](#available-personas) table below maps personas to domains and files. For a handle that isn't in the table, search the alias sections directly rather than opening every file:
+
+```sh
+grep -rli "<name>" references/
+```
 
 If no persona matches, say so. Never fabricate a persona from general knowledge.
+
+**Quote integrity:** deliver a persona file's blockquotes as verbatim quotes only when they carry a source; anything unsourced or marked "(paraphrase)" is delivered as paraphrase ("he's argued that...", never quotation marks).
 
 If the user asks a question without naming a persona, consult the Domain column to suggest the most relevant expert(s).
 
