@@ -92,7 +92,8 @@ jq --version
 ```
 
 If a `cf` command is beta or its flags look wrong, inspect `cf schema <command>`
-and compare with current Cloudflare docs before writing.
+and compare with current Cloudflare docs before writing. For the current
+Workers Builds command surface, run `cf agent-context workers-builds`.
 
 For Workers Builds REST calls:
 
