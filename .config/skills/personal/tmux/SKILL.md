@@ -42,16 +42,21 @@ Never combine selection and confirmation in one tmux command for an unfamiliar T
 ## Core Setup Pattern
 
 ```bash
-tmux new-session -d -s "$SESSION" -x 120 -y 40
-tmux send-keys -t "$SESSION" "python3" Enter
-pane=$(tmux display-message -p -t "$SESSION" '#{pane_id}')
+tmux -L agent new-session -d -s "$SESSION" -x 120 -y 40
+tmux -L agent send-keys -t "$SESSION" "python3" Enter
+pane=$(tmux -L agent display-message -p -t "$SESSION" '#{pane_id}')
 
-scripts/wait-for-text.sh --control -t "$pane" -p '^>>> ?$' -T 15
+scripts/wait-for-text.sh --control -L agent -t "$pane" -p '^>>> ?$' -T 15
 
-tmux kill-session -t "$SESSION"
+tmux -L agent kill-session -t "$SESSION"
 ```
 
-Use `-x 120 -y 40` for predictable wrapping. Prefer stable pane IDs like `%1` over active/default targets.
+Default to a private socket (`-L agent`): a session you create for automation
+can't then collide with - or crash - the user's live default-socket server
+(see Mechanics on socket consistency). Drop `-L` only when the task is
+explicitly about the user's own running session. Use `-x 120 -y 40` for
+predictable wrapping. Prefer stable pane IDs like `%1` over active/default
+targets.
 
 ## Key Risk Classes
 
@@ -225,6 +230,11 @@ scripts/control-tail.py -t %1
 scripts/control-tail.py -t %1 -p 'READY|ERROR' -T 30
 scripts/control-tail.py -L private -t repl:0.0 -p '^>>> ?$' --no-seed
 ```
+
+Its parsing helpers (`decode_tmux_payload` octal escapes, `parse_output_line`
+`%output`/`%extended-output` handling) are pinned by
+[tests/test_control_tail.py](tests/test_control_tail.py) —
+`uv run --with pytest -- pytest tests/` from the skill dir.
 
 ### [find-sessions.sh](scripts/find-sessions.sh)
 
