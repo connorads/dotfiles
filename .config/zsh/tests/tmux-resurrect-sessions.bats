@@ -15,7 +15,13 @@ REAL_OPENCODE_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/strategies/opencode_sessio
 REAL_CLAUDE_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-claude-launch.sh"
 REAL_CODEX_LAUNCH="$BATS_TEST_DIRNAME/../../tmux/scripts/resurrect-codex-launch.sh"
 REAL_CLAUDE_MATERIALISE="$BATS_TEST_DIRNAME/../functions/claude-profile-materialise"
+REAL_FOREGROUND_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/save_command_strategies/foreground.sh"
+# The bundled upstream strategy, for the regression comparison. The plugin dir is
+# a local checkout, so tests using it skip when it is absent.
+REAL_PS_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/plugins/tmux-resurrect/save_command_strategies/ps.sh"
 REAL_BASH="$(command -v bash)"
+# Captured before setup_test_home narrows PATH.
+REAL_TMUX="$(command -v tmux || true)"
 
 # Make a real tool discoverable on the test PATH via a TEST_BIN symlink.
 link_real() {
@@ -37,8 +43,10 @@ setup() {
   OPENCODE_STRATEGY="$HOME/.config/tmux/strategies/opencode_session_id.sh"
   CLAUDE_LAUNCH="$HOME/.config/tmux/scripts/resurrect-claude-launch.sh"
   CODEX_LAUNCH="$HOME/.config/tmux/scripts/resurrect-codex-launch.sh"
+  FOREGROUND_STRATEGY="$HOME/.config/tmux/save_command_strategies/foreground.sh"
   SESSION_FILE="$HOME/.local/share/tmux/resurrect/session_ids.json"
-  mkdir -p "$HOME/.config/tmux/scripts/lib" "$HOME/.config/tmux/strategies" "$HOME/.local/share/tmux/resurrect" "$HOME/.claude/sessions"
+  mkdir -p "$HOME/.config/tmux/scripts/lib" "$HOME/.config/tmux/strategies" "$HOME/.config/tmux/save_command_strategies" "$HOME/.local/share/tmux/resurrect" "$HOME/.claude/sessions"
+  cp "$REAL_FOREGROUND_STRATEGY" "$FOREGROUND_STRATEGY"
   cp "$REAL_SAVE_SESSIONS" "$SAVE_SESSIONS"
   cp "$REAL_SESSION_LIB" "$HOME/.config/tmux/scripts/lib/agent-session.sh"
   cp "$REAL_ARGV_LIB" "$ARGV_LIB"
@@ -47,7 +55,15 @@ setup() {
   cp "$REAL_OPENCODE_STRATEGY" "$OPENCODE_STRATEGY"
   cp "$REAL_CLAUDE_LAUNCH" "$CLAUDE_LAUNCH"
   cp "$REAL_CODEX_LAUNCH" "$CODEX_LAUNCH"
-  chmod +x "$SAVE_SESSIONS" "$CLAUDE_STRATEGY" "$CODEX_STRATEGY" "$OPENCODE_STRATEGY" "$CLAUDE_LAUNCH" "$CODEX_LAUNCH"
+  chmod +x "$SAVE_SESSIONS" "$CLAUDE_STRATEGY" "$CODEX_STRATEGY" "$OPENCODE_STRATEGY" "$CLAUDE_LAUNCH" "$CODEX_LAUNCH" "$FOREGROUND_STRATEGY"
+}
+
+teardown() {
+  # Only the save-command-strategy tests start a server (PRIVATE_TMUX set there).
+  # That wrapper carries the `-L <unique socket>`, so this can only ever kill the
+  # test's own server, never the real one.
+  [ -n "${PRIVATE_TMUX:-}" ] && "$PRIVATE_TMUX" kill-server 2>/dev/null
+  return 0
 }
 
 # --- Stubs shared by launcher tests ---
@@ -448,6 +464,112 @@ EOF
 
   [ "$status" -eq 0 ]
   [ ! -f "$SESSION_FILE" ]
+}
+
+# ---------------------------------------------------------------------------
+# Save-command strategy: record the command for exec'd / re-parented panes
+# ---------------------------------------------------------------------------
+
+# The bug needs no stubs to reproduce, so these run against a real throwaway
+# server with real tmux/ps: an exec'd pane has no child of pane_pid, which is the
+# only thing upstream's strategy looks at.
+#
+# Isolation is belt and braces, because the script under test calls bare `tmux`
+# and the real server holds live work: a unique *named* socket (`-L`, the
+# never-reaches-the-real-one pattern) injected through a tmux wrapper on the test
+# PATH, so no invocation from a test or from the strategy can address the default
+# socket, plus a private TMUX_TMPDIR.
+start_private_server() {
+  [ -n "$REAL_TMUX" ] || skip "tmux not installed"
+  unset TMUX
+  local socket="rsc-$$-${BATS_TEST_NUMBER}"
+  # Short TMUX_TMPDIR under /tmp: the AF_UNIX socket path must stay under ~104
+  # chars, which the long macOS BATS_TEST_TMPDIR blows.
+  export TMUX_TMPDIR="/tmp/$socket"
+  mkdir -p "$TMUX_TMPDIR"
+  write_stub tmux <<EOF
+#!/usr/bin/env bash
+exec "$REAL_TMUX" -L "$socket" "\$@"
+EOF
+  link_real awk
+  PRIVATE_TMUX="$TEST_BIN/tmux"
+  "$PRIVATE_TMUX" -f /dev/null new-session -d -s s -x 80 -y 24 "$@"
+}
+
+pane_pid_of() {
+  "$PRIVATE_TMUX" list-panes -a -F '#{pane_pid}' | head -1
+}
+
+# Wait for a pane's foreground command, so a test never races process startup.
+wait_for_pane_command() {
+  local want="$1" i
+  for i in $(seq 1 50); do
+    [ "$("$PRIVATE_TMUX" list-panes -a -F '#{pane_current_command}' | head -1)" = "$want" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+@test "foreground strategy records the command of a pane that exec'd it" {
+  # The branch/fork menu's pane shape: tmux split-window '<cmd>', shell exec's it,
+  # so pane_pid IS the process and there is no child to find.
+  # /bin/sleep, not a bare `sleep`: the nix coreutils multi-call binary reports
+  # `coreutils` as the pane command, which would make the assertion PATH-dependent.
+  start_private_server 'exec /bin/sleep 300'
+  wait_for_pane_command sleep
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$(pane_pid_of)"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "/bin/sleep 300" ]
+}
+
+@test "bundled ps strategy records nothing for an exec'd pane (the regression)" {
+  [ -f "$REAL_PS_STRATEGY" ] || skip "tmux-resurrect plugin not checked out"
+  # /bin/sleep, not a bare `sleep`: the nix coreutils multi-call binary reports
+  # `coreutils` as the pane command, which would make the assertion PATH-dependent.
+  start_private_server 'exec /bin/sleep 300'
+  wait_for_pane_command sleep
+
+  run "$REAL_BASH" "$REAL_PS_STRATEGY" "$(pane_pid_of)"
+
+  # An empty command field is what restore.sh filters out, so the pane comes back
+  # as a bare shell however good the restore strategy is.
+  [ -z "$output" ]
+}
+
+@test "foreground strategy records a child process of a shell pane" {
+  start_private_server
+  local pid
+  pid="$(pane_pid_of)"
+  "$PRIVATE_TMUX" send-keys '/bin/sleep 300' Enter
+  wait_for_pane_command sleep
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$pid"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "/bin/sleep 300" ]
+}
+
+@test "foreground strategy records nothing for an idle shell pane" {
+  start_private_server
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$(pane_pid_of)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "foreground strategy records nothing for an empty or unknown pane pid" {
+  start_private_server
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" ""
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" 999999
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 # ---------------------------------------------------------------------------

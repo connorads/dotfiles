@@ -220,6 +220,24 @@ carryable. The legacy top-level per-dir keys (OpenCode's single-pane-per-cwd
 fallback) are deliberately rebuilt from live findings rather than carried - their
 whole value is being live.
 
+**Every pane running an agent is saved with a command.** The `foreground`
+save-command strategy
+([`save_command_strategies/foreground.sh`](./save_command_strategies/foreground.sh),
+selected by `@resurrect-save-command-strategy` and copied into the plugin's own
+`save_command_strategies/` by the same `run-shell cp` as the restore strategies)
+keeps upstream's child-of-`pane_pid` scan as its primary, then falls back to the
+pane's *foreground* process. Upstream's ppid-only scan misses a pane whose top
+process **is** the agent - `tmux split-window '<cmd>'` (the branch/fork menu) has
+the shell exec the command, so there is no child to find - and `restore.sh`
+filters pane lines whose full-command field is empty *before* any restore
+strategy runs, so such a pane silently returns as a bare shell however good the
+strategy is. The fallback asks tmux for the pane's tty and foreground command,
+leaves shells empty (an idle shell pane must save no command), and resolves the
+PID through the same `agent_foreground_pid_for_tty` the session-id hook uses, so
+both halves of the subsystem agree on how to find a pane's agent - by tty, which
+also covers a re-parented/grandchild agent. A missing copy in the plugin dir
+fails open to the bundled `ps` strategy.
+
 **Fidelity rule**: the launcher preserves the flags from the *saved pane argv*
 (`$1`, from `ps -o args=`) rather than resuming with a bare `<agent> --resume
 <id>` - none of the CLIs persist permission mode / system-prompt append / model
