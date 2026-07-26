@@ -71,7 +71,41 @@ def setup_logging(env: str = os.getenv("ENV", "dev"), level: str = "INFO") -> No
     })
 ```
 
-For very hot paths (>10k events/s), swap `LoggerFactory` for `BytesLoggerFactory` and the JSON renderer for `JSONRenderer(serializer=orjson.dumps)`. This is the fastest known structlog configuration.
+**Hot-path tuning.** The drop-in win inside the config above is the serialiser:
+`JSONRenderer(serializer=orjson.dumps)` (orjson returns bytes; the
+`ProcessorFormatter` path needs `serializer=lambda *a, **kw:
+orjson.dumps(*a, **kw).decode()`). The full structlog speed configuration —
+`BytesLoggerFactory` + `JSONRenderer(serializer=orjson.dumps)` as the *final
+processor* — is a **separate config, not a swap**: `BytesLoggerFactory`
+writes bytes straight to stdout, which is incompatible with
+`wrap_for_formatter`/`ProcessorFormatter`, so it drops the whole stdlib
+bridge (no `dictConfig`, no consistent `uvicorn`/`sqlalchemy` rendering).
+Reach for it only on >10k events/s paths where losing the bridge is
+acceptable.
+
+## Redaction
+
+Structured events make it easy to log a whole object and leak a secret with
+it. Prefer **field allowlists** (pick the fields you need — same rule as the
+`**huge_dict` anti-pattern below); back that up with a masking processor
+inserted **before the renderer**:
+
+```python
+SENSITIVE_KEYS = {"authorization", "password", "token", "secret", "card_number"}
+MAX_VALUE_LEN = 2_000
+
+def redact(_, __, event_dict: EventDict) -> EventDict:
+    for key, value in event_dict.items():
+        if key.lower() in SENSITIVE_KEYS:
+            event_dict[key] = "[REDACTED]"
+        elif isinstance(value, str) and len(value) > MAX_VALUE_LEN:
+            event_dict[key] = value[:MAX_VALUE_LEN] + "…[truncated]"
+    return event_dict
+```
+
+Nested payloads need a recursive walk or, better, not logging the raw payload
+at all. Redaction here is defence in depth — the aggregator retains whatever
+gets past it.
 
 ## Context binding — bind once, read everywhere
 
