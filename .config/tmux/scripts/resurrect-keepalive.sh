@@ -8,9 +8,10 @@
 # Two fixes over continuum's fire-and-forget autosave (which runs
 # `save.sh …>/dev/null 2>&1 &` then advances its timestamp unconditionally):
 #   1. Capture save.sh's exit code + stderr to a log — stop swallowing errors.
-#   2. Verify the newest save's freshness afterwards and raise a loud alarm
-#      (@resurrect_stale option + a nag to each attached client) when saves have
-#      gone stale, so failure surfaces within 15 min instead of invisibly.
+#   2. Verify the newest save's freshness *and content* afterwards and raise a
+#      loud alarm (@resurrect_stale option + a nag to each attached client) when
+#      saves have gone stale or carry no panes, so failure surfaces within
+#      15 min instead of invisibly.
 # continuum stays enabled as cross-platform redundancy; the resulting minor
 # double-save on macs is harmless (distinct timestamped files).
 set -euo pipefail
@@ -64,26 +65,39 @@ save_err=$(env -u TMUX "$SAVE_SH" quiet 2>&1 >/dev/null)
 rc=$?
 set -e
 
-# 3. Verify against the shared lib: age of the newest save + its state.
+# 3. Verify against the shared lib: age of the newest save + its state, plus the
+#    newest save's *content*. Freshness alone is not enough: a corrupt save is
+#    still a new file, so its mtime reads FRESH — the locale bug wrote 12-byte
+#    pane-less saves for two days behind a green pill. A server always has at
+#    least one pane and the no-server case exited above, so zero pane lines is
+#    unambiguously corruption rather than an empty-but-valid state.
 age=$(resurrect_newest_age_secs)
 state=$(resurrect_state)
+saved_panes=$(grep -c '^pane' "$(resurrect_dir)/last" 2>/dev/null || true)
+saved_panes=${saved_panes:-0}
 if [ "$rc" -ne 0 ]; then
 	log "SAVE FAILED rc=$rc${save_err:+ err=${save_err//$'\n'/ }}"
+elif [ "$saved_panes" -eq 0 ]; then
+	log "SAVE EMPTY panes=0 age=${age}s state=$state"
 else
-	log "saved ok age=${age}s state=$state"
+	log "saved ok panes=$saved_panes age=${age}s state=$state"
 fi
 
-# 4. Alarm on staleness (independent of this run's rc — a rc=0 save that still
-#    leaves the newest file older than the stale line is the failure we care
-#    about; NONE = no save file at all is worse). Set the @resurrect_stale
-#    option for any consumer, and actively nag each attached client — from
-#    launchd there is no "current client", so an untargeted display-message
-#    would no-op; iterate the client list and target each by name. The pill
-#    already reddens from mtime, so it is the primary surface; this is the poke.
-if [ "$state" = "STALE" ] || [ "$state" = "NONE" ]; then
+# 4. Alarm on staleness or a pane-less save (independent of this run's rc — a
+#    rc=0 save that still leaves the newest file older than the stale line is
+#    the failure we care about; NONE = no save file at all is worse, and a
+#    pane-less save is a fresh file with nothing to restore from). Set the
+#    @resurrect_stale option for any consumer, and actively nag each attached
+#    client — from launchd there is no "current client", so an untargeted
+#    display-message would no-op; iterate the client list and target each by
+#    name. The pill already reddens from mtime, so it is the primary surface for
+#    staleness; the nag is the poke, and the only surface for an empty save.
+if [ "$state" = "STALE" ] || [ "$state" = "NONE" ] || [ "$saved_panes" -eq 0 ]; then
 	tmux_default set -g @resurrect_stale 1
 	if [ "$state" = "NONE" ]; then
 		msg="⚠ resurrect: no save file"
+	elif [ "$saved_panes" -eq 0 ]; then
+		msg="⚠ resurrect: save has no panes"
 	else
 		msg="⚠ resurrect saves stale ($(resurrect_human_age "$age"))"
 	fi

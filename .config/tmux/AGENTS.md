@@ -452,11 +452,16 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   depends on launchd rather than continuum's status-refresh-injected autosave.
   It runs `save.sh quiet` capturing exit code + stderr to
   `~/.cache/tmux-resurrect-keepalive.log` (the opposite of continuum's
-  `>/dev/null 2>&1`), then verifies freshness via the lib: on `STALE`/`NONE` it
-  sets the `@resurrect_stale` tmux option and nags each attached client by name
+  `>/dev/null 2>&1`), then verifies both freshness (via the lib) and **content**:
+  on `STALE`/`NONE`, or a newest save carrying no `pane` lines, it sets the
+  `@resurrect_stale` tmux option and nags each attached client by name
   (`display-message -c` — from launchd there is no current client, so an
-  untargeted message would no-op), else clears the flag. No tmux server ⇒ logs
-  `no server, skip` and exits 0. continuum stays enabled as cross-platform
+  untargeted message would no-op), else clears the flag. The pane count is the
+  content half of the check because a corrupt save is still a *new* file, so the
+  mtime-only pill reads it as healthy; a server always has at least one pane and
+  the no-server case exits earlier, so zero pane lines is unambiguous corruption.
+  The success log carries `panes=N`, an empty save logs `SAVE EMPTY`. No tmux
+  server ⇒ logs `no server, skip` and exits 0. continuum stays enabled as cross-platform
   redundancy (Linux hosts get the detect pill but no keepalive yet — a deferred
   systemd-timer follow-up); the minor double-save on macs is harmless.
   It **requires a UTF-8 locale**, which it forces when the environment carries
@@ -476,7 +481,8 @@ Tests: [`../zsh/tests/resurrect-lib.bats`](../zsh/tests/resurrect-lib.bats)
 colour/glyph/token, `last`-target deref) and
 [`../zsh/tests/resurrect-keepalive.bats`](../zsh/tests/resurrect-keepalive.bats)
 (integration: drives a real save against a throwaway default-socket server, the
-skip/alarm/clear/error-capture paths). The pill itself is verified manually
+skip/alarm/clear/error-capture paths, the locale-less environment, and the
+pane-less-save alarm). The pill itself is verified manually
 (`status-right.sh 200 "$HOME" "" "" ""`, then `touch -t` an aged save and re-run).
 
 ## Caffeine (keep-awake, custom subsystem)
