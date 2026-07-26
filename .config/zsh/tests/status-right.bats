@@ -192,7 +192,62 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  [[ "$plain" == *" - "* ]]
+  [[ "$plain" == *" - "* ]] || false
+  [[ "$plain" != *"dotfiles-test"* ]]
+}
+
+@test "git segment is cached per pane path and recomputed after the TTL" {
+  repo="$BATS_TEST_TMPDIR/repo"
+  mkdir -p "$repo"
+  git init -q -b git-cache-test "$repo"
+  git -C "$repo" config user.email "bats@example.com"
+  git -C "$repo" config user.name "Bats Test"
+  printf 'tracked\n' >"$repo/file"
+  git -C "$repo" add file
+  git -C "$repo" commit -q -m initial
+
+  run_status_right_for_path 45 "$repo"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" git-cache-test "* ]] || false
+
+  # Dirty the repo: a render inside the TTL serves the cached clean value (the
+  # point of the cache - pane switches re-fire renders and paid 4 git forks
+  # each), an aged cache recomputes and shows the dirty marker.
+  printf 'changed\n' >"$repo/file"
+
+  run_status_right_for_path 45 "$repo"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" git-cache-test "* ]] || false
+
+  touch -t 202001010000 "$HOME"/.cache/tmux-git-branch-*
+
+  run_status_right_for_path 45 "$repo"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" git-cache-test* "* ]]
+}
+
+@test "git segment caches are keyed per pane path" {
+  init_dotfiles_repo
+  repo="$BATS_TEST_TMPDIR/repo"
+  mkdir -p "$repo"
+  git init -q -b other-branch "$repo"
+  printf 'tracked\n' >"$repo/file"
+  git -C "$repo" add file
+  git -C "$repo" -c user.email=bats@example.com -c user.name=Bats commit -q -m initial
+
+  run_status_right_for_path 45 "$HOME"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" dotfiles-test"* ]] || false
+
+  # A different pane path must not be served $HOME's cached branch.
+  run_status_right_for_path 45 "$repo"
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *" other-branch"* ]] || false
   [[ "$plain" != *"dotfiles-test"* ]]
 }
 

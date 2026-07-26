@@ -219,7 +219,31 @@ battery_percentage() {
 	fi
 }
 
+# git_branch_and_dirty — cached wrapper: the raw probe below costs 4 git forks
+# (rev-parse + 2x diff + ls-files) and re-ran on every render, including every
+# pane switch via the refresh-client hooks. Same mtime/TTL idiom as
+# cpu_percentage, keyed per pane path (cksum of the cwd in the filename) so
+# panes in different repos never share an entry. Worst case is a ~15s-stale
+# branch/dirty marker.
 git_branch_and_dirty() {
+	local cache ttl=15 now mtime age value
+	cache="$HOME/.cache/tmux-git-branch-$(printf '%s' "$pane_path" | cksum | tr ' ' '-')"
+	now=$(date +%s)
+	if [ -f "$cache" ]; then
+		mtime=$(stat -c '%Y' "$cache" 2>/dev/null || stat -f%m "$cache" 2>/dev/null || echo 0)
+		age=$((now - mtime))
+		if [ "$age" -lt "$ttl" ] 2>/dev/null; then
+			cat "$cache"
+			return
+		fi
+	fi
+	value="$(compute_git_branch_and_dirty)"
+	mkdir -p "$(dirname "$cache")"
+	printf "%s" "$value" >"${cache}.tmp.$$" && mv -f "${cache}.tmp.$$" "$cache"
+	printf "%s" "$value"
+}
+
+compute_git_branch_and_dirty() {
 	local branch
 	local dirty
 	branch="-"
