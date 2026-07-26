@@ -10,6 +10,7 @@
 | `Ctrl+Alt+h/l` | move window left/right |
 | `Ctrl+b Tab` | last window |
 | `Ctrl+b c` | new window |
+| `Ctrl+b W` | window organiser (move/share/remove linked windows; same menu as right-click tab and Remobi Organise) |
 | `Ctrl+b Alt+w` | new worktree (prompts for branch, `wt-add`; enter→window, `v`→pane here) |
 | `Ctrl+b ,` | set manual window label (visible in tab; disables auto name) |
 | `Ctrl+b &` | kill window |
@@ -23,6 +24,8 @@
 | `Ctrl+b \|` | split vertical |
 | `Ctrl+b -` | split horizontal |
 | `Ctrl+b !` | break pane into new window |
+| pane header `[⋯]` | pane organiser (break to session, join marked pane here, pane actions) |
+| pane header `[zoom]` | zoom pane |
 | `Ctrl+b \` | join pane from picker (left/right) |
 | `Ctrl+b _` | join pane from picker (top/bottom) |
 | `Ctrl+b z` | zoom pane |
@@ -92,6 +95,27 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b F` | Fresh help |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
+
+## Organiser
+
+`Ctrl+b W`, right-clicked window tabs, the session badge menu and Remobi
+Organise all use the same native tmux organiser menus. Window moves and shares
+target existing sessions only; no relocation action creates a session.
+
+| Action | Meaning |
+|--------|---------|
+| Move and follow… | move this window to another session and switch this client there |
+| Move in background… | move this window to another session and stay here |
+| Share with session… | link the same live window into another session and stay here |
+| Remove from this session | unlink a shared window from this session only |
+| Kill shared window everywhere | kill the linked window in every session |
+| Break and follow… | make this pane a new window in a chosen session and switch there |
+| Break in background… | make this pane a new window in a chosen session and stay here |
+| Join marked pane here… | move the marked pane into this window, left/right/above/below |
+
+Move, unlink, join and kill prompts appear when the action closes a source
+session or affects every link. Break is disabled when the pane is already the
+window's only pane.
 
 ## Agent tab dots
 
@@ -197,12 +221,15 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | Gesture | Action |
 |---------|--------|
 | left-click | select pane/window |
+| left-click session rail | switch session |
+| left-click session badge | session menu |
+| left-click agent badge / memory pill | agents popup / memory popup |
 | scroll | scroll the pane under the pointer; keyboard focus stays put (type/dictate in one pane while scrolling another) |
 | drag border | resize pane |
 | double-click pane | zoom toggle |
-| right-click pane | context menu (zoom, mark, copy info, open cwd, claude-watch, agent dot, kill pane) |
-| right-click window tab | window menu (swap, manual label, reset to auto name, kill, agent dot; `~/.trees` windows add publish PR / finish / remove worktree) |
-| right-click session name (status left) | session menu (pickers, layouts, memory, detach) |
+| right-click pane | pane organiser (zoom, mark, break, join marked pane, copy info, claude-watch, agent dot, kill pane) |
+| right-click window tab | window organiser (move, share, unlink, rename, kill; `~/.trees` windows add publish PR / finish / remove worktree) |
+| right-click session name (status left) | session menu (organise, pickers, agents, memory, detach) |
 | Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |
 
 When an app owns the mouse (nvim, `less --mouse`, …) a plain right-click passes
