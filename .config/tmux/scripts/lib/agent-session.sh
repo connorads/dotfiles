@@ -106,15 +106,35 @@ claude_session_resolve_for_pid() {
 	"$resolver" "${args[@]}"
 }
 
+# agent_lsof_command
+# Resolve lsof, falling back to its macOS home /usr/sbin/lsof
+# (AGENT_LSOF_FALLBACK overrides for tests). Callers run from sanitised
+# environments too - a launchd agent's PATH carries only what its plist lists -
+# and a PATH-only lookup there finds nothing, silently costing every session id
+# that lsof resolves rather than reporting a missing tool. Empty output when lsof
+# is genuinely absent, so callers still fail open.
+agent_lsof_command() {
+	if command -v lsof >/dev/null 2>&1; then
+		echo lsof
+		return 0
+	fi
+
+	local fallback="${AGENT_LSOF_FALLBACK:-/usr/sbin/lsof}"
+	[ -x "$fallback" ] && echo "$fallback"
+	return 0
+}
+
 # codex_session_file_for_pid <pid>
 # Return the active ~/.codex/sessions/.../rollout-*.jsonl held open by Codex.
 codex_session_file_for_pid() {
 	local pid="$1"
+	local lsof_bin=""
 
 	[ -n "$pid" ] || return 0
-	command -v lsof >/dev/null 2>&1 || return 0
+	lsof_bin=$(agent_lsof_command)
+	[ -n "$lsof_bin" ] || return 0
 
-	lsof -p "$pid" 2>/dev/null |
+	"$lsof_bin" -p "$pid" 2>/dev/null |
 		grep '\.jsonl$' |
 		grep '/\.codex/sessions/' |
 		awk '{print $NF}' |

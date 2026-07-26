@@ -64,7 +64,10 @@ find_claude_session() {
 		if [ -n "$config_dir" ]; then
 			projects_re="${config_dir}/projects/"
 		fi
-		session_id=$(lsof -p "$claude_pid" 2>/dev/null |
+		local lsof_bin
+		lsof_bin=$(agent_lsof_command)
+		[ -n "$lsof_bin" ] || lsof_bin=lsof
+		session_id=$("$lsof_bin" -p "$claude_pid" 2>/dev/null |
 			grep '\.jsonl$' |
 			grep -F "$projects_re" |
 			awk '{print $NF}' |
