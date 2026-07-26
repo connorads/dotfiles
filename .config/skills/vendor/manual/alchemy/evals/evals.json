@@ -1,0 +1,48 @@
+{
+  "skill_name": "alchemy",
+  "how_to_run": "Run each prompt in a fresh Alchemy project session with and without the skill. Grade the transcript for search use, reference reads, and verification of version-sensitive claims, not only the final code.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "cloudflare-durable-object-migration",
+      "prompt": "our alchemy.run.ts has a cloudflare durable object and i need to rename the class without nuking prod state. work out the resource/migration shape and show the smallest safe change",
+      "assertions": [
+        "Runs scripts/search.py with Durable Object and migration terms",
+        "Reads the relevant Cloudflare reference rather than a whole provider bundle",
+        "Separates Alchemy configuration from generic Cloudflare behaviour",
+        "Verifies any version-sensitive exported names against installed source or current upstream"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "adopt-existing-resource-and-state",
+      "prompt": "we already have the bucket in aws and alchemy wants to create another one. can we adopt it, and where does the state end up in ci? please inspect the local setup before proposing commands",
+      "assertions": [
+        "Searches separately for resource adoption and state or CI guidance",
+        "Reads references for both domains when one page does not own the full answer",
+        "Inspects the project before selecting package-manager or CLI commands",
+        "Does not invent state defaults from memory"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "test-harness-provider",
+      "prompt": "my alchemy provider test passes alone but leaks resources in the suite. figure out the intended test harness lifecycle and suggest a behavioural regression test",
+      "assertions": [
+        "Searches testing and provider references",
+        "Preserves Alchemy's Effect-based lifecycle model",
+        "Distinguishes documented behaviour from hypotheses about the local leak",
+        "Proposes an observable regression test rather than mocking the lifecycle under test"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "blockchain-alchemy-near-miss",
+      "prompt": "use Alchemy's Ethereum JSON-RPC API to fetch an NFT owner's token balances",
+      "assertions": [
+        "Does not invoke this skill",
+        "Does not use the vendored alchemy-run infrastructure references"
+      ]
+    }
+  ]
+}
