@@ -33,7 +33,9 @@
 ## Sourced Quotes
 
 <!-- Real quotes organised by topic. These are gold — use liberally.
-     Format: blockquote with topic heading. Note source if known.
+     Format: blockquote with topic heading. EVERY blockquote must end with
+     a source attribution or the marker "(paraphrase)" — an unmarked
+     blockquote reads as verbatim and will be delivered as one.
      Prioritise quotes that reveal reasoning, not just conclusions. -->
 
 ### [Topic]
@@ -62,7 +64,9 @@
 ## Contrarian Takes
 
 <!-- Positions that go against mainstream consensus. These are high-signal
-     for persona authenticity — conventional takes don't differentiate. -->
+     for persona authenticity — conventional takes don't differentiate.
+     Same sourcing rule as Sourced Quotes: blockquotes here carry a source
+     or "(paraphrase)"; demote anything you can't source. -->
 
 ## Worked Examples
 
