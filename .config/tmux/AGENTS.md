@@ -82,9 +82,10 @@ The logic is spread across several files — change them as a set:
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
   rollup, bell, and `is_viewing` helpers (also used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
-  the `done` branch and the sweep), **and the canonical
-  state → glyph + colour mapping** (`agent_attrs`/`agent_hex`/`agent_char`/
-  `agent_glyph`). **Shape** encodes state as well as colour so it reads on a
+  the `done` branch and the sweep), the codex title-spinner pure core
+  (`has_spinner` + `codex_working_step`, the working↔idle FSM the sweep drives),
+  **and the canonical state → glyph + colour mapping**
+  (`agent_attrs`/`agent_hex`/`agent_char`/`agent_glyph`). **Shape** encodes state as well as colour so it reads on a
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
   legend. Also hosts **`other_sessions_badge`** — the read-only cross-session
@@ -110,23 +111,51 @@ The logic is spread across several files — change them as a set:
   for the same reason — background shells are often never-exiting dev servers,
   and a false `working` never self-corrects, whereas a finite build showing
   `done` early does (its completion wakes a fresh turn that re-fires the hooks).
+- [`scripts/agent-pretooluse.sh`](./scripts/agent-pretooluse.sh) — Codex
+  `PreToolUse` hook adapter (sibling of `agent-stop.sh`). Codex's question card is
+  the `request_user_input` tool, and unlike Claude's `AskUserQuestion` it fires
+  **no** `PermissionRequest` — only `PreToolUse`/`PostToolUse` → `working` — so a
+  pane awaiting your answer would sit peach, never red. The adapter jq-inspects
+  `tool_name`: `request_user_input` → `blocked`, else `working`, re-piping the
+  payload so `agent-state.sh`'s journal capture stays intact. Fail-open to
+  `working` if jq is missing or the payload won't parse. Blocked deliberately
+  stays on this instant, precise hook (lag on "needs you" is worse than on
+  "working"); the codex title poller below is working-only.
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
-  Two jobs: (1) clear a stale dot whose agent died without a clean done/clear
+  Three jobs: (1) clear a stale dot whose agent died without a clean done/clear
   (shell foreground = agent gone); (2) age a `done` dot you are currently viewing
   (`is_viewing`: active pane, active window, `session_attached>0`) to idle — the
   deterministic backstop for the `done` branch's seen-at-birth and the focus
   hooks' `seen`, which they miss when the finish races your focus or you watch one
   agent while another finishes then return by switching windows (no fresh
   select-pane/window-changed). The attached-session gate keeps detached sessions
-  unread (nobody looking).
+  unread (nobody looking); (3) **codex title-spinner working detection** — Codex
+  has no "model generating" hook event, so a pane the Stop hook aged to idle (or a
+  turn resumed without a fresh `UserPromptSubmit`) sits green while actively
+  computing. Codex's OSC title carries a braille spinner while working
+  (`terminal_title = ["spinner", …]`), which tmux exposes as `#{pane_title}`;
+  reading it is allowed because it is **the app's own OSC status broadcast, a
+  status channel distinct from screen-body scraping**. The pure FSM
+  (`codex_working_step` in `agent-state-lib.sh`) reconciles the spinner to
+  `working↔idle`: a spinner corrects idle/done → working; a `working` pane retires
+  to idle only after `CODEX_POLL_CONFIRM` (2) consecutive spinner-less polls
+  (counted in `@agent_poll_absent`), debouncing the momentary reasoning↔tool gap.
+  **Ownership split** (no marker/lease): for codex panes the poller owns
+  `working↔idle`, the hooks own `blocked`/`done`, so `blocked` is left alone and
+  `agent-state.sh` is untouched. Precedence stays `blocked > done(unseen) >
+  working > idle` (the canonical `rank`). Opt out with
+  `tmux set -g @codex_title_poll off` (mirrors `@cross_session_badge off`).
 - `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
-  `agent-state.sh` on lifecycle events; `Stop`/`StopFailure` route through
-  `agent-stop.sh` (`working` while `background_tasks` holds finite in-flight
-  work, `done` once drained). The `after-select-pane` / `session-window-changed` / `client-focus-in`
+  `agent-state.sh` on lifecycle events; Claude's `Stop`/`StopFailure` route
+  through `agent-stop.sh` (`working` while `background_tasks` holds finite
+  in-flight work, `done` once drained), and Codex's `PreToolUse`
+  ([`~/.codex/hooks.json`](../../.codex/hooks.json)) routes through
+  `agent-pretooluse.sh` (`blocked` on the `request_user_input` question card,
+  else `working`). The `after-select-pane` / `session-window-changed` / `client-focus-in`
   hooks fire `seen` (focus = mark read), gated on `#{@agent_state}==done` so idle
   switches skip the fork and pay only `refresh-client -S`; `client-focus-in` (NOT
   `pane-focus-in`, which is inert as a global hook) catches regaining terminal
@@ -157,7 +186,12 @@ The logic is spread across several files — change them as a set:
 
 Tests (run `mise run zsh-tests`):
 
-- [`../zsh/tests/agent-state.bats`](../zsh/tests/agent-state.bats) — verb behaviour + rollup.
+- [`../zsh/tests/agent-state.bats`](../zsh/tests/agent-state.bats) — verb
+  behaviour + rollup; also the pure `has_spinner` glyph matrix and
+  `codex_working_step` FSM (lie/resume/stop-debounce/momentary-gap/blocked cases).
+- [`../zsh/tests/agent-pretooluse.bats`](../zsh/tests/agent-pretooluse.bats) — the
+  Codex `PreToolUse` adapter: `request_user_input` → blocked, else working,
+  fail-open, and payload passthrough to the journal.
 - [`../zsh/tests/agent-journal.bats`](../zsh/tests/agent-journal.bats) — journal
   lines: curated fields, ExitPlanMode plan capture, no tool_input leak,
   disable/no-stdin/no-op-seen cases, Stop payload pass-through.
@@ -169,7 +203,9 @@ Tests (run `mise run zsh-tests`):
   prefix+Alt+. menu, right-click pane menu, popup) match it; the drift guard
   for the mapping.
 - [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot
-  clearing + the viewed-`done` → idle reconcile (attached/inactive/detached gates).
+  clearing + the viewed-`done` → idle reconcile (attached/inactive/detached
+  gates) + the codex title-spinner working detection (spinner → working, the
+  two-poll retire to idle, done-left-alone, `@codex_title_poll off`).
 - [`../zsh/tests/agent-popup.bats`](../zsh/tests/agent-popup.bats) — list ranking,
   the name column, jump's move + seen ageing, cycle order/wrap/fallback.
 - [`../zsh/tests/agent-cli.bats`](../zsh/tests/agent-cli.bats) — the `agent` CLI:
