@@ -59,6 +59,65 @@ should_ring() {
 	[ "$1" != blocked ]
 }
 
+# CODEX_POLL_CONFIRM — consecutive spinner-absent poll cycles a `working` codex
+# pane must show before the title poller retires it to `idle`. Debounces the
+# momentary spinner gap between reasoning and a tool call so it doesn't flap the
+# dot to idle mid-turn. At AGENT_SWEEP_POLL=10s this is a ~20s grace.
+CODEX_POLL_CONFIRM=${CODEX_POLL_CONFIRM:-2}
+
+# has_spinner TITLE — true if TITLE contains any Codex braille spinner glyph (the
+# ten phases of `terminal_title = ["spinner", …]`). Pure `case`-glob per glyph:
+# fork-free and byte-safe (each pattern matches that glyph's exact UTF-8 bytes).
+# Reading the pane title (Codex's own OSC status broadcast) is a status channel,
+# not screen-body scraping.
+has_spinner() {
+	case ${1:-} in
+	*⠋* | *⠙* | *⠹* | *⠸* | *⠼* | *⠴* | *⠦* | *⠧* | *⠇* | *⠏*) return 0 ;;
+	esac
+	return 1
+}
+
+# codex_working_step CUR SPIN ABSENT — pure FSM for the codex title-spinner
+# working detector; echoes "NEWSTATE NEWABSENT". SPIN is 1 when the pane title
+# carries a spinner (has_spinner), else 0; ABSENT is the pane's consecutive
+# spinner-absent count so far. Callers parse with `${x% *}` / `${x##* }` so an
+# empty CUR (echoed as " 0") round-trips as an unchanged empty state.
+#
+#   spinner present → working, count 0 — corrects an idle/done the hooks aged or
+#     missed (the "lie" and "resume" gaps). `blocked` is left alone: it is
+#     hook-owned and precise (needs-you-now), so a stray spinner can't clear the red.
+#   spinner absent + CUR=working → count up; retire to idle at CODEX_POLL_CONFIRM,
+#     else hold working (debounce a momentary reasoning↔tool spinner gap).
+#   otherwise → CUR unchanged, count 0 (idle/done/blocked with no spinner are the
+#     hooks' to own; the poller only reconciles working↔idle).
+codex_working_step() {
+	_cur=${1:-}
+	_spin=${2:-0}
+	_absent=${3:-0}
+	case $_absent in '' | *[!0-9]*) _absent=0 ;; esac
+
+	if [ "$_spin" = 1 ]; then
+		if [ "$_cur" = blocked ]; then
+			echo "blocked 0"
+		else
+			echo "working 0"
+		fi
+		return 0
+	fi
+
+	if [ "$_cur" = working ]; then
+		_absent=$((_absent + 1))
+		if [ "$_absent" -ge "$CODEX_POLL_CONFIRM" ]; then
+			echo "idle 0"
+		else
+			echo "working $_absent"
+		fi
+		return 0
+	fi
+
+	echo "$_cur 0"
+}
+
 # stop_state COUNT — map a count of in-flight background tasks to the verb the
 # Stop hook should forward: a positive count means work is still draining
 # (working), zero means the turn is genuinely finished (done). Non-numeric or

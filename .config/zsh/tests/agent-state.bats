@@ -315,6 +315,65 @@ LIB="$TESTS_DIR/../../tmux/scripts/agent-state-lib.sh"
   ! is_viewing
 }
 
+# --- has_spinner: codex title-spinner glyph detection (pure) ---
+
+@test "has_spinner matches every codex spinner glyph phase" {
+  . "$LIB"
+  for g in ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏; do
+    has_spinner "$g codex ~/proj"
+  done
+}
+
+@test "has_spinner is false for a spinner-less title" {
+  . "$LIB"
+  ! has_spinner "codex ~/proj"
+  ! has_spinner ""
+}
+
+# --- codex_working_step: title-spinner working FSM (pure). This is the replay
+# spike pinned: lie / resume / stop-debounce / momentary-gap / blocked-left-alone. ---
+
+@test "codex_working_step: idle + spinner -> working (the lie)" {
+  . "$LIB"
+  [ "$(codex_working_step idle 1 0)" = "working 0" ]
+}
+
+@test "codex_working_step: done + spinner -> working (resume)" {
+  . "$LIB"
+  [ "$(codex_working_step done 1 0)" = "working 0" ]
+}
+
+@test "codex_working_step: working + spinner stays working, count reset" {
+  . "$LIB"
+  [ "$(codex_working_step working 1 2)" = "working 0" ]
+}
+
+@test "codex_working_step: working, one absent poll holds (momentary gap)" {
+  . "$LIB"
+  [ "$(codex_working_step working 0 0)" = "working 1" ]
+}
+
+@test "codex_working_step: working, second absent poll retires to idle" {
+  . "$LIB"
+  [ "$(codex_working_step working 0 1)" = "idle 0" ]
+}
+
+@test "codex_working_step: blocked left alone with or without a spinner" {
+  . "$LIB"
+  [ "$(codex_working_step blocked 1 0)" = "blocked 0" ]
+  [ "$(codex_working_step blocked 0 0)" = "blocked 0" ]
+}
+
+@test "codex_working_step: idle with no spinner is left idle" {
+  . "$LIB"
+  [ "$(codex_working_step idle 0 0)" = "idle 0" ]
+}
+
+@test "codex_working_step: non-numeric absent count is treated as zero" {
+  . "$LIB"
+  [ "$(codex_working_step working 0 "")" = "working 1" ]
+}
+
 # --- agent-stop.sh adapter: Stop payload on stdin -> pane state ---
 #
 # Counts only finite work (workflow|subagent): pending work keeps the dot

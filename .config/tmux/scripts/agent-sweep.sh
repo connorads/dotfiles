@@ -38,13 +38,25 @@ sweep_once() {
 	command -v tmux >/dev/null 2>&1 || return 0
 	tmux list-sessions >/dev/null 2>&1 || return 0
 
+	# @agent_kind and pane_title feed the codex title-spinner reconcile below;
+	# pane_title is last because it is freeform (a stray tab in a title can't then
+	# misalign the earlier columns).
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}" \
+		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{pane_title}" \
 		2>/dev/null) || return 0
+
+	# Codex has no "model generating" hook event, so a pane the Stop hook aged to
+	# idle (or a turn resumed without a fresh UserPromptSubmit) sits green while
+	# actively computing. Its OSC title carries a braille spinner while working,
+	# which tmux exposes as #{pane_title} — the app's own status channel, read
+	# once here. Global opt-out mirrors @cross_session_badge.
+	_codex_poll=$(tmux show-options -gqv @codex_title_poll 2>/dev/null) || _codex_poll=
 
 	_tab=$(printf '\t')
 	_panes=
 	_seen=
+	_cxstate=
+	_cxabsent=
 	_windows=
 	# Manual tab-split (not IFS read): tab is IFS-whitespace, so consecutive tabs
 	# from an empty @agent_state field would collapse and misalign the columns.
@@ -63,7 +75,11 @@ sweep_once() {
 		_pactive=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_wactive=${_line%%"$_tab"*}
-		_sattached=${_line#*"$_tab"}
+		_line=${_line#*"$_tab"}
+		_sattached=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_kind=${_line%%"$_tab"*}
+		_ptitle=${_line#*"$_tab"}
 
 		if [ -n "$_astate" ]; then
 			case "$SHELLS" in
@@ -87,6 +103,30 @@ sweep_once() {
 					_windows="$_windows$_win
 "
 				fi
+				# Codex title-spinner reconcile: for a codex pane (foreground is
+				# codex, or the pane carries @agent_kind=codex before the runtime
+				# reads back), map the spinner in its title to working↔idle. This
+				# fills the hook-silent gap without touching agent-state.sh; hooks
+				# still own blocked/done and the instant fast path.
+				if [ "$_codex_poll" != off ] &&
+					{ [ "$_cmd" = codex ] || [ "$_kind" = codex ]; }; then
+					_spin=0
+					has_spinner "$_ptitle" && _spin=1
+					_pabsent=$(tmux show-options -pqv -t "$_pane" @agent_poll_absent 2>/dev/null) || _pabsent=
+					_step=$(codex_working_step "$_astate" "$_spin" "${_pabsent:-0}")
+					_nstate=${_step% *}
+					_nabsent=${_step##* }
+					if [ "$_nstate" != "$_astate" ]; then
+						_cxstate="$_cxstate$_pane $_nstate
+"
+						_windows="$_windows$_win
+"
+					fi
+					if [ "$_nabsent" != "${_pabsent:-0}" ]; then
+						_cxabsent="$_cxabsent$_pane $_nabsent
+"
+					fi
+				fi
 				;;
 			esac
 		fi
@@ -99,13 +139,15 @@ sweep_once() {
 $_rows
 EOF
 
-	[ -n "$_panes$_seen$_windows" ] || return 0
+	[ -n "$_panes$_seen$_cxstate$_cxabsent$_windows" ] || return 0
 
 	printf '%s' "$_panes" | while IFS= read -r _p; do
 		[ -n "$_p" ] || continue
 		tmux set-option -pu -t "$_p" @agent_state 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_kind 2>/dev/null || true
 		tmux set-option -pu -t "$_p" @agent_name 2>/dev/null || true
+		# Drop the codex title-poll counter alongside the state it tracks.
+		tmux set-option -pu -t "$_p" @agent_poll_absent 2>/dev/null || true
 		# Backstop the profile tag too: a pane whose claude died without a clean
 		# SessionEnd (SIGKILL, crash, abrupt close) still drops its @claude_profile.
 		tmux set-option -pu -t "$_p" @claude_profile 2>/dev/null || true
@@ -114,6 +156,25 @@ EOF
 	printf '%s' "$_seen" | while IFS= read -r _p; do
 		[ -n "$_p" ] || continue
 		tmux set-option -p -t "$_p" @agent_state idle 2>/dev/null || true
+	done
+
+	# Codex title-spinner writes: "PANE STATE" / "PANE ABSENT" lines staged above.
+	printf '%s' "$_cxstate" | while IFS= read -r _row; do
+		[ -n "$_row" ] || continue
+		_p=${_row%% *}
+		_st=${_row#* }
+		tmux set-option -p -t "$_p" @agent_state "$_st" 2>/dev/null || true
+	done
+
+	printf '%s' "$_cxabsent" | while IFS= read -r _row; do
+		[ -n "$_row" ] || continue
+		_p=${_row%% *}
+		_ab=${_row#* }
+		if [ "$_ab" = 0 ]; then
+			tmux set-option -pu -t "$_p" @agent_poll_absent 2>/dev/null || true
+		else
+			tmux set-option -p -t "$_p" @agent_poll_absent "$_ab" 2>/dev/null || true
+		fi
 	done
 
 	printf '%s' "$_windows" | sort -u | while IFS= read -r _w; do
