@@ -6,8 +6,8 @@ bats_require_minimum_version 1.5.0
 load test_helper
 
 # The state → glyph + colour mapping is rendered four ways: the tab dots
-# (@agent_dotfmt), the prefix+Alt+. menu literals, the right-click pane menu
-# (context-menu.sh), and the prefix+A popup. They drifted once because nothing
+# (@agent_dotfmt), the prefix+Alt+. menu literals, the organiser pane menu
+# (organiser.sh), and the prefix+A popup. They drifted once because nothing
 # enforced agreement. agent-state-lib.sh is now the single source of truth;
 # this suite derives EVERY expectation from the lib (agent_hex/agent_char/
 # agent_glyph), so it hardcodes no colours/glyphs and stays pure ASCII —
@@ -15,7 +15,7 @@ load test_helper
 LIB="$HOME/.config/tmux/scripts/agent-state-lib.sh"
 CONF="$HOME/.config/tmux/tmux.conf"
 POPUP="$HOME/.config/tmux/scripts/agent-popup.sh"
-CTXMENU="$HOME/.config/tmux/scripts/context-menu.sh"
+ORGANISER="$HOME/.config/tmux/scripts/organiser.sh"
 
 # shellcheck disable=SC1090
 . "$LIB"
@@ -60,13 +60,13 @@ teardown() {
   done
 }
 
-# D — right-click pane menu literals (context-menu.sh): same guard as B for
+# D — right-click pane menu literals (organiser.sh): same guard as B for
 # the fourth renderer. unread shows the done/blue glyph; clear has no glyph.
 @test "context menu literals match the canonical mapping" {
   for pair in "working:working" "blocked:blocked" "unread:done" "idle:idle"; do
     label=${pair%:*}
     state=${pair#*:}
-    line=$(grep -E "^[[:space:]]*\"$label " "$CTXMENU")
+    line=$(grep -E "^[[:space:]]*\"$label " "$ORGANISER")
     [ -n "$line" ]
     want="#[fg=#$(agent_hex "$state")]$(agent_char "$state")"
     [[ "$line" == *"$want"* ]]

@@ -53,6 +53,9 @@ append_agent_dot_items() {
 
 case "${1:-}" in
 pane)
+	exec "$dir/organiser.sh" pane "" "${2:?pane_id required}" "${3:-C}" "${4:-C}"
+	;;
+pane-legacy)
 	pane="${2:?pane_id required}"
 	mx="${3:-C}"
 	my="${4:-C}"
@@ -90,6 +93,9 @@ pane)
 	tmux "${menu[@]}"
 	;;
 window)
+	exec "$dir/organiser.sh" window "" "${2:?window_id required}" "${3:?active pane required}" "${4:-}" "${5:-C}" "${6:-C}"
+	;;
+window-legacy)
 	win="${2:?window_id required}"
 	active_pane="${3:?active pane required}"
 	cwd="${4:-}"
@@ -156,6 +162,9 @@ wt-remove)
 	fi
 	;;
 session)
+	exec "$dir/organiser.sh" session "" "${2:-C}" "${3:-C}"
+	;;
+session-legacy)
 	mx="${2:-C}"
 	my="${3:-C}"
 	# Picker/popup bodies mirror the prefix+S / W / L / Alt+m binds in tmux.conf.
