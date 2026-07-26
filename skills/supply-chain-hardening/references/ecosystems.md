@@ -38,7 +38,7 @@ the policy by orders of magnitude.
 | aube (`config.toml`) | `minimumReleaseAge` | minutes | `5760` |
 | uv (`uv.toml` / `pyproject.toml`) | `exclude-newer` | duration string or timestamp | `"4 days"` |
 | pip (`pip.conf`) | `uploaded-prior-to` | ISO-8601 duration or datetime | `P4D` |
-| Deno (`deno.json`) | `minimumDependencyAge` | duration string | `"4d"` |
+| Deno (`deno.json`) | `minimumDependencyAge` | ISO-8601 duration, bare minutes, or RFC3339 timestamp | `"P4D"` (= `5760`) |
 | mise (`config.toml`) | `minimum_release_age` | duration string | `"4d"` |
 | Dependabot (`.github/dependabot.yml`, per `updates:` entry) | `cooldown.default-days` | days | `4` |
 
