@@ -24,6 +24,25 @@ EOF
 #!/usr/bin/env bash
 printf '2%%'
 EOF
+  write_stub vm_stat <<'EOF'
+#!/usr/bin/env bash
+cat <<'STATS'
+Mach Virtual Memory Statistics: (page size of 4096 bytes)
+Pages free:                               98.
+Pages active:                              2.
+Pages inactive:                            0.
+Pages speculative:                         0.
+Pages wired down:                          0.
+Pages purgeable:                           0.
+File-backed pages:                         0.
+Pages occupied by compressor:              0.
+STATS
+EOF
+  write_stub timeout <<'EOF'
+#!/usr/bin/env bash
+shift
+exec "$@"
+EOF
   # Host isolation: print_full renders real disk% (df) and battery% (pmset), so
   # stub both like the cpu/ram plugin scripts above.
   write_stub df <<'EOF'
@@ -85,6 +104,11 @@ EOF
 
 @test "wide status shows both cpu and the ram percentage pill" {
   run_status_right 90
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ -f "$HOME/.cache/tmux-cpu-percentage" ] && break
+    sleep 0.1
+  done
+  run_status_right 90
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
@@ -131,10 +155,13 @@ EOF
   # visible.
   write_stub sysctl <<'EOF'
 #!/usr/bin/env bash
-case "$2" in
-  kern.memorystatus_vm_pressure_level) echo 1 ;;
-  vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M  (encrypted)" ;;
-esac
+shift
+for key in "$@"; do
+  case "$key" in
+    kern.memorystatus_vm_pressure_level) echo 1 ;;
+    vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M  (encrypted)" ;;
+  esac
+done
 EOF
 
   run_status_right 90
@@ -149,10 +176,13 @@ EOF
   # pressure. The figure slot shows ▲ (swap is fine, look elsewhere), no G figure.
   write_stub sysctl <<'EOF'
 #!/usr/bin/env bash
-case "$2" in
-  kern.memorystatus_vm_pressure_level) echo 2 ;;
-  vm.swapusage) echo "total = 4096.00M  used = 3000.00M  free = 100.00M  (encrypted)" ;;
-esac
+shift
+for key in "$@"; do
+  case "$key" in
+    kern.memorystatus_vm_pressure_level) echo 2 ;;
+    vm.swapusage) echo "total = 4096.00M  used = 3000.00M  free = 100.00M  (encrypted)" ;;
+  esac
+done
 EOF
 
   run_status_right 90
@@ -282,6 +312,10 @@ EOF
 
   run_status_right 90
   [ "$status" -eq 0 ]
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ -f "$HOME/.cache/tmux-cpu-percentage" ] && break
+    sleep 0.1
+  done
   run_status_right 90
   [ "$status" -eq 0 ]
 
@@ -294,6 +328,108 @@ EOF
   # the tmp file must not linger.
   run bash -c 'ls "$HOME"/.cache/tmux-cpu-percentage.tmp.* 2>/dev/null'
   [ -z "$output" ]
+}
+
+@test "stale cpu cache returns immediately while one sampler refreshes it" {
+  printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
+  touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
+#!/usr/bin/env bash
+echo x >>"$TEST_LOG"
+sleep 1
+printf '9%%'
+EOF
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"3%"* ]] || false
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "3%" ]
+  sleep 1.2
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "9%" ]
+  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
+}
+
+@test "concurrent stale renders launch only one cpu sampler" {
+  printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
+  touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
+#!/usr/bin/env bash
+echo x >>"$TEST_LOG"
+sleep 0.3
+printf '8%%'
+EOF
+
+  bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" host host.local "" "" >/dev/null &
+  first=$!
+  bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" host host.local "" "" >/dev/null &
+  second=$!
+  wait "$first" "$second"
+  sleep 0.5
+
+  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]
+}
+
+@test "failed cpu sampler keeps the last good value and clears its lock" {
+  printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
+  touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
+#!/usr/bin/env bash
+exit 9
+EOF
+
+  run_status_right 90
+  [ "$status" -eq 0 ]
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ] && break
+    sleep 0.1
+  done
+
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "3%" ]
+  [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]
+}
+
+@test "stale cpu lock is reclaimed" {
+  printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
+  touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
+  mkdir "$HOME/.cache/tmux-cpu-percentage.lock"
+  touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage.lock"
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '8%%'
+EOF
+
+  run_status_right 90
+  [ "$status" -eq 0 ]
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ] && break
+    sleep 0.1
+  done
+
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]
+  [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]
+}
+
+@test "memory status gathers pressure and swap once" {
+  write_stub sysctl <<'EOF'
+#!/usr/bin/env bash
+shift
+for key in "$@"; do
+  echo "$key" >>"$TEST_LOG"
+  case "$key" in
+    kern.memorystatus_vm_pressure_level) echo 1 ;;
+    vm.swapusage) echo "total = 4096.00M  used = 2662.40M  free = 100.00M" ;;
+  esac
+done
+EOF
+
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^kern.memorystatus_vm_pressure_level$' "$TEST_LOG")" -eq 1 ]
+  [ "$(grep -c '^vm.swapusage$' "$TEST_LOG")" -eq 1 ]
 }
 
 @test "wide status omits AI usage even when caches exist" {

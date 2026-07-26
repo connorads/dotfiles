@@ -54,6 +54,13 @@ mem_pressure_level() {
 # ("total = 4096.00M  used = 3109.69M  free = …"). Absent (Linux) → 0.
 mem_swap_used_mb() {
 	_su=$(sysctl -n vm.swapusage 2>/dev/null) || _su=""
+	mem_swap_used_mb_from "$_su"
+}
+
+# mem_swap_used_mb_from VALUE — pure parser for a previously gathered
+# vm.swapusage line. Absent or malformed input maps to zero.
+mem_swap_used_mb_from() {
+	_su=${1:-}
 	if [ -z "$_su" ]; then
 		echo 0
 		return
@@ -88,6 +95,14 @@ mem_swap_human() {
 mem_state() {
 	_lvl=$(mem_pressure_level)
 	_swap=$(mem_swap_used_mb)
+	mem_state_from "$_lvl" "$_swap"
+}
+
+# mem_state_from PRESSURE SWAP_MB — pure state mapping for callers that gather
+# both kernel values once and reuse them across state, cause and token rendering.
+mem_state_from() {
+	_lvl=${1:-1}
+	_swap=${2:-0}
 	if [ "$_lvl" -ge 4 ] || [ "$_swap" -ge "$MEM_CRITICAL_SWAP_MB" ]; then
 		echo CRITICAL
 	elif [ "$_lvl" -ge 2 ] || [ "$_swap" -ge "$MEM_BUSY_SWAP_MB" ]; then
@@ -130,7 +145,14 @@ mem_state_glyph() {
 mem_cause() {
 	_lvl=$(mem_pressure_level)
 	_swap=$(mem_swap_used_mb)
-	case "$(mem_state)" in
+	mem_cause_from "$_lvl" "$_swap"
+}
+
+# mem_cause_from PRESSURE SWAP_MB — pure cause mapping over gathered inputs.
+mem_cause_from() {
+	_lvl=${1:-1}
+	_swap=${2:-0}
+	case "$(mem_state_from "$_lvl" "$_swap")" in
 	OK) echo none ;;
 	CRITICAL) if [ "$_lvl" -ge 4 ]; then echo pressure; else echo swap; fi ;;
 	BUSY) if [ "$_lvl" -ge 2 ]; then echo pressure; else echo swap; fi ;;
@@ -140,10 +162,27 @@ mem_cause() {
 # mem_token — figure-slot content: the ▲ cause-marker when pressure drives the
 # state (swap is fine, look elsewhere), else the swap figure (the real cause).
 mem_token() {
-	case "$(mem_cause)" in
+	_lvl=$(mem_pressure_level)
+	_swap=$(mem_swap_used_mb)
+	mem_token_from "$_lvl" "$_swap"
+}
+
+# mem_token_from PRESSURE SWAP_MB — pure figure rendering over gathered inputs.
+mem_token_from() {
+	_lvl=${1:-1}
+	_swap=${2:-0}
+	case "$(mem_cause_from "$_lvl" "$_swap")" in
 	pressure) printf '%s' "$MEM_CAUSE_GLYPH" ;;
-	*) mem_swap_human ;;
+	*) mem_human_mb "$_swap" ;;
 	esac
+}
+
+# mem_attrs_from PRESSURE SWAP_MB — one status-render payload so callers do not
+# fork once per derived attribute. Output: state<TAB>colour<TAB>glyph<TAB>token.
+mem_attrs_from() {
+	_state=$(mem_state_from "${1:-1}" "${2:-0}")
+	printf '%s\t%s\t%s\t%s' "$_state" "$(mem_state_colour "$_state")" \
+		"$(mem_state_glyph "$_state")" "$(mem_token_from "${1:-1}" "${2:-0}")"
 }
 
 # mem_parse_mb VALUE UNIT — normalise a footprint value+unit to integer MB.

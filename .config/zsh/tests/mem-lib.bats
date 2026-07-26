@@ -36,6 +36,15 @@ lib() {
 
 # --- mem_state mapping across (pressure, swap) -----------------------------
 
+@test "pure memory derivation reuses gathered pressure and swap" {
+  lib 'mem_state_from 2 3000'
+  [ "$output" = "BUSY" ]
+  lib 'mem_cause_from 2 3000'
+  [ "$output" = "pressure" ]
+  lib 'mem_token_from 2 3000'
+  [ "$output" = "▲" ]
+}
+
 @test "OK when pressure normal and swap below the BUSY threshold" {
   FAKE_PRESSURE=1 FAKE_SWAP=500.00M lib mem_state
   [ "$output" = "OK" ]
