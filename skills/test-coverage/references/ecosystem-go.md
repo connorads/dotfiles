@@ -22,7 +22,10 @@ go tool cover -func=coverage/unit.out | grep total:
 #!/usr/bin/env bash
 # scripts/check-coverage.sh
 THRESHOLD=90
-COVERAGE=$(go test -coverprofile=coverage.out ./... 2>&1 | grep -oP 'coverage: \K[0-9.]+')
+# Parse the aggregate `total:` line — the per-package `coverage:` lines from
+# `go test` would feed multiple numbers into the comparison below.
+go test -coverprofile=coverage.out ./...
+COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | tr -d '%')
 if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
   echo "Coverage $COVERAGE% below threshold $THRESHOLD%"
   exit 1

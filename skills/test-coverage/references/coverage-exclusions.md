@@ -161,8 +161,12 @@ raise AssertionError(f"Unexpected status: {status}")
 ### Rust
 
 ```rust
-// tarpaulin: skip next line — defensive unwrap, value always Some after builder
-let value = optional.unwrap();
+// Tarpaulin has no per-line ignore comment; the finest granularity is an
+// attribute on the item. Extract the defensive line into its own function:
+#[cfg(not(tarpaulin_include))]
+fn unwrap_after_builder(optional: Option<Value>) -> Value {
+    optional.unwrap() // value always Some after builder
+}
 ```
 
 ### Rules for inline ignores

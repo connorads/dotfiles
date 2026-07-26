@@ -40,11 +40,12 @@ cargo llvm-cov --text
 fn platform_specific_code() {
     // Only runs on specific OS — tested via integration tests on CI matrix
 }
-
-// Exclude a single line (tarpaulin)
-// tarpaulin: skip next line — defensive unwrap, value always Some after init
-let value = optional.unwrap();
 ```
+
+Tarpaulin has no per-line exclusion comment — `#[cfg(not(tarpaulin_include))]`
+on the item (function, module, impl) is the granularity available. To skip a
+single defensive line, extract it into its own annotated function or
+restructure to remove the unreachable branch.
 
 ## Property testing with proptest
 
