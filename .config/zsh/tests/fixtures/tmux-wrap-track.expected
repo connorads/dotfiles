@@ -1,0 +1,8 @@
+bind-key -N "Lazygit" -T prefix g run-shell -b "sh @TRACKER@ g lazygit #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; display-popup -E -d "#{pane_current_path}" -h "98%" -w "98%" "zsh -ic \"lazygit\""
+bind-key -N "Skill loader (skl)" -T prefix M-s run-shell -b "sh @TRACKER@ M-s skill-loader-skl #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; display-popup -E -h "90%" -w "90%" /Users/connorads/.config/skl/bin/pick
+bind-key -N "Resize pane up" -r -T prefix C-Up run-shell -b "sh @TRACKER@ C-Up resize-pane-up #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; resize-pane -U
+bind-key -N "Join pane from picker (left/right)" -T prefix \\ run-shell -b "sh @TRACKER@ special join-pane-from-picker-leftright #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; choose-tree -Zw "join-pane -h -s '%%'"
+bind-key -N "Quote \"message\"" -T prefix \" run-shell -b "sh @TRACKER@ special quote-message #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; display-message 'quote #S %%'
+bind-key -N "Hash #message" -T prefix \# run-shell -b "sh @TRACKER@ special hash-message #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; display-message 'hash #S %%'
+bind-key -N "Percent %message" -T prefix \% run-shell -b "sh @TRACKER@ special percent-message #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; display-message 'percent #S %%'
+bind-key -T prefix z run-shell -b "sh @TRACKER@ z z #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \; resize-pane -Z

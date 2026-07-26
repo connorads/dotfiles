@@ -2,36 +2,25 @@
 # wrap-track: dynamically wrap all prefix-table bindings with usage tracking
 # Run once at config load (after TPM) via run-shell. Idempotent on reload.
 set -e
+
 TRACKER="$HOME/.config/tmux/scripts/track-bind.sh"
-TMPFILE="$(mktemp)"
 NOTEFILE="$(mktemp)"
-trap 'rm -f "$TMPFILE" "$NOTEFILE"' EXIT
+KEYFILE="$(mktemp)"
+TMPFILE="$(mktemp)"
+trap 'rm -f "$NOTEFILE" "$KEYFILE" "$TMPFILE"' EXIT
 
-# Build note lookup: key<TAB>name<TAB>note (from -N annotations).
-# Newer tmux prefixes each -N line with the client key-prefix, e.g.
-# "C-b <key>  <note text>"; strip that leading "C-b " so the first field is the
-# key, not the prefix. Older tmux omits it (line starts with the key) and the
-# guard leaves it untouched.
-prefix_key=$(tmux show-options -gv prefix 2>/dev/null)
-tmux list-keys -N -T prefix | while IFS= read -r line; do
-	case "$line" in
-	"$prefix_key "*) line=${line#"$prefix_key" } ;;
-	esac
-	key=$(printf '%s' "$line" | awk '{print $1}')
-	note=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//')
-	name=$(printf '%s' "$note" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9-')
-	printf '%s\t%s\t%s\n' "$key" "$name" "$note"
-	escaped_key=$(printf '%s' "$key" | sed 's/[\\"%]/\\&/g')
-	[ "$escaped_key" = "$key" ] || printf '%s\t%s\t%s\n' "$escaped_key" "$name" "$note"
-done >"$NOTEFILE"
+# Capture tmux once per view. The join and transformation below happen in one
+# AWK process; this keeps config reload cost proportional to tmux itself rather
+# than spawning parsers for every binding.
+tmux list-keys -N -T prefix >"$NOTEFILE"
+tmux list-keys -T prefix >"$KEYFILE"
 
-quote_tmux_double() {
-	printf '%s' "$1" | sed 's/[\\"]/\\&/g'
-}
+awk -v tracker="$TRACKER" '
+  FILENAME == ARGV[1] {
+    notes[++note_count] = $0
+    next
+  }
 
-# Parse each prefix binding. tmux pads list-keys output for alignment, so match
-# whitespace flexibly and keep the command tail opaque.
-tmux list-keys -T prefix | awk '
   {
     line = $0
     repeat = "n"
@@ -55,38 +44,89 @@ tmux list-keys -T prefix | awk '
     }
 
     if (key == "" || cmd == "" || cmd == key || key == "\\;") next
-    printf "%s\t%s\t%s\n", repeat, key, cmd
+    binding_key[++binding_count] = key
+    binding_repeat[binding_count] = repeat
+    binding_cmd[binding_count] = cmd
+    known_key[key] = 1
+    known_key[unescape_key(key)] = 1
   }
-' | while IFS="$(printf '\t')" read -r repeat key cmd; do
-	rflag=""
-	[ "$repeat" = "r" ] && rflag="-r "
 
-	# Look up friendly name (exact key match). list-keys escapes some key tokens
-	# (for example \\ in command form, but \ in -N output), so retry with one
-	# backslash layer removed before falling back to the raw key.
-	name=$(awk -F'\t' -v k="$key" '$1 == k {print $2; exit}' "$NOTEFILE")
-	note=$(awk -F'\t' -v k="$key" '$1 == k {print $3; exit}' "$NOTEFILE")
-	if [ -z "$name" ] && [ -z "$note" ]; then
-		note_key=$(printf '%s' "$key" | sed 's/\\\(.\)/\1/g')
-		name=$(awk -F'\t' -v k="$note_key" '$1 == k {print $2; exit}' "$NOTEFILE")
-		note=$(awk -F'\t' -v k="$note_key" '$1 == k {print $3; exit}' "$NOTEFILE")
-	fi
-	[ -z "$name" ] && name=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
-	[ -z "$name" ] && name="special"
+  function strip_token(line) {
+    sub(/^[^[:space:]]+[[:space:]]*/, "", line)
+    return line
+  }
 
-	# Sanitise key for shell arg
-	safe_key=$(printf '%s' "$key" | tr -cd 'a-zA-Z0-9-')
-	[ -z "$safe_key" ] && safe_key="special"
+  function unescape_key(key,    result, i, char) {
+    result = ""
+    for (i = 1; i <= length(key); i++) {
+      char = substr(key, i, 1)
+      if (char == "\\" && i < length(key)) {
+        i++
+        char = substr(key, i, 1)
+      }
+      result = result char
+    }
+    return result
+  }
 
-	# Build -N flag if annotation exists
-	nflag=""
-	if [ -n "$note" ]; then
-		nflag="-N \"$(quote_tmux_double "$note")\" "
-	fi
+  function slug(value,    result) {
+    result = tolower(value)
+    gsub(/ /, "-", result)
+    gsub(/[^a-z0-9-]/, "", result)
+    return result
+  }
 
-	printf 'bind-key %s%s-T prefix %s run-shell -b "sh %s %s %s #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}" \\; %s\n' \
-		"$nflag" "$rflag" "$key" "$TRACKER" "$safe_key" "$name" "$cmd" >>"$TMPFILE"
-done
+  function safe_key(value,    result) {
+    result = value
+    gsub(/[^a-zA-Z0-9-]/, "", result)
+    return result == "" ? "special" : result
+  }
 
-# Apply all wrapped bindings at once
+  function quote_double(value,    result) {
+    result = value
+    gsub(/\\/, "\\\\", result)
+    gsub(/"/, "\\\"", result)
+    return result
+  }
+
+  END {
+    # New tmux prefixes annotation rows with the client prefix ("C-b key note");
+    # older tmux starts with the key. Prefer the second token only when it names
+    # a captured binding, which supports both forms without a third tmux query.
+    for (i = 1; i <= note_count; i++) {
+      raw = notes[i]
+      first = raw
+      sub(/[[:space:]].*$/, "", first)
+      rest = strip_token(raw)
+      second = rest
+      sub(/[[:space:]].*$/, "", second)
+      if (known_key[second]) {
+        note_key = second
+        note = strip_token(rest)
+      } else {
+        note_key = first
+        note = rest
+      }
+      note_for[note_key] = note
+      name_for[note_key] = slug(note)
+    }
+
+    for (i = 1; i <= binding_count; i++) {
+      key = binding_key[i]
+      lookup = key
+      if (!(lookup in note_for)) lookup = unescape_key(key)
+      note = note_for[lookup]
+      name = name_for[lookup]
+      if (name == "") name = safe_key(key)
+      if (name == "") name = "special"
+
+      nflag = note == "" ? "" : "-N \"" quote_double(note) "\" "
+      rflag = binding_repeat[i] == "r" ? "-r " : ""
+      printf "bind-key %s%s-T prefix %s run-shell -b \"sh %s %s %s #{q:session_name} #{window_index} #{pane_index} #{q:pane_current_path} #{q:host_short}\" \\; %s\n", \
+        nflag, rflag, key, tracker, safe_key(key), name, binding_cmd[i]
+    }
+  }
+' "$NOTEFILE" "$KEYFILE" >"$TMPFILE"
+
+# Apply all wrapped bindings at once.
 [ -s "$TMPFILE" ] && tmux source-file "$TMPFILE" || true

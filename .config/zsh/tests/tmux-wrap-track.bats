@@ -21,6 +21,9 @@ C-b g       Lazygit
 C-b M-s     Skill loader (skl)
 C-b C-Up    Resize pane up
 C-b \      Join pane from picker (left/right)
+C-b "       Quote "message"
+C-b #       Hash #message
+C-b %       Percent %message
 NOTES
     ;;
   "list-keys -T prefix")
@@ -29,6 +32,9 @@ bind-key    -T prefix g       display-popup -E -d "#{pane_current_path}" -h "98%
 bind-key    -T prefix M-s     display-popup -E -h "90%" -w "90%" /Users/connorads/.config/skl/bin/pick
 bind-key -r -T prefix C-Up    resize-pane -U
 bind-key    -T prefix \\      choose-tree -Zw "join-pane -h -s '%%'"
+bind-key    -T prefix \"      display-message 'quote #S %%'
+bind-key    -T prefix \#      display-message 'hash #S %%'
+bind-key    -T prefix \%      display-message 'percent #S %%'
 bind-key    -T prefix z       run-shell -b "sh /Users/connorads/.config/tmux/scripts/track-bind.sh z zoom #{session_name} #{window_index} #{pane_index} #{pane_current_path} #{host_short}" \; resize-pane -Z
 KEYS
     ;;
@@ -68,10 +74,19 @@ EOF
   [ "$status" -eq 0 ]
 
   grep -F 'bind-key -N "Join pane from picker (left/right)" -T prefix \\ run-shell -b' "$SOURCE_FILE_CAPTURE"
-  [ "$(grep -c 'track-bind.sh' "$SOURCE_FILE_CAPTURE")" -eq 5 ]
+  [ "$(grep -c 'track-bind.sh' "$SOURCE_FILE_CAPTURE")" -eq 8 ]
   grep -F 'bind-key -T prefix z run-shell -b' "$SOURCE_FILE_CAPTURE"
   grep -F '#{q:pane_current_path} #{q:host_short}' "$SOURCE_FILE_CAPTURE"
   grep -F 'resize-pane -Z' "$SOURCE_FILE_CAPTURE"
+}
+
+@test "wrap-track output matches the complex binding fixture" {
+  run sh "$TESTS_DIR/../../tmux/scripts/wrap-track.sh"
+  [ "$status" -eq 0 ]
+
+  sed "s|$HOME/.config/tmux/scripts/track-bind.sh|@TRACKER@|g" \
+    "$SOURCE_FILE_CAPTURE" >"$BATS_TEST_TMPDIR/wrapped.normalised"
+  diff -u "$TESTS_DIR/fixtures/tmux-wrap-track.expected" "$BATS_TEST_TMPDIR/wrapped.normalised"
 }
 
 @test "wrap-track preserves notes on older tmux without the key-prefix column" {
