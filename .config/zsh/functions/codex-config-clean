@@ -24,6 +24,15 @@ emulate -L zsh
 #   notify = [...]                absolute machine-local app paths
 #   js_repl = ...                 app-flipped browser-feature flag (regenerated)
 #   dock-icon-preference = ...    desktop UI preference written by Codex.app
+#   selected-avatar-id = ...      desktop avatar UI preference written by Codex.app
+#   NODE_REPL_* / BROWSER_USE_*   app-injected browser/REPL feature env wiring under
+#                                 [shell_environment_policy.set]: absolute CODEX_HOME
+#                                 path + per-app client SHA256s + backend list, all
+#                                 regenerated per machine. Matched BY KEY PREFIX so a
+#                                 hand-added portable env var under the same section
+#                                 survives; when every key drops, the bare
+#                                 [shell_environment_policy.set] header remains, valid
+#                                 empty TOML like the kept [hooks.state] marker.
 # The browser feature regenerates all of the above per machine from the portable
 # [plugins."browser@openai-bundled"] enable, which is kept.
 # Section drops swallow the header + key-value lines until the next section/EOF.
@@ -58,6 +67,9 @@ awk '
   /^notify[[:space:]]*=/ { next }
   /^js_repl[[:space:]]*=/ { next }
   /^dock-icon-preference[[:space:]]*=/ { next }
+  /^selected-avatar-id[[:space:]]*=/ { next }
+  /^NODE_REPL_[A-Z0-9_]+[[:space:]]*=/ { next }
+  /^BROWSER_USE_[A-Z0-9_]+[[:space:]]*=/ { next }
   /^[[:space:]]*$/ {
     if (prev_blank) next
     prev_blank = 1
