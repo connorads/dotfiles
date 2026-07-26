@@ -124,10 +124,20 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   autoload dir; use `--path` for any ad-hoc fixture.
 - **Trigger/target**: tmux popup (keybind `prefix + Alt+s`) → fzf picker → inject into the
   pane it was summoned from. The picker is a **shell pipeline**, not Bun-driven:
-  `skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>`
+  `skl list --folders | fzf --nth=1 --preview 'skl preview {1}' | skl load --stdin --target <pane>`
   (`bin/pick`, symlinked `~/.local/bin/skl-pick`). fzf runs in the popup's real TTY —
   the `skl` CLI never spawns it. The CLI stays a thin, TTY-free wrapper over the core.
   See ADR-0004 for why the earlier Bun-spawned fzf was dropped.
+- **Folder rows (group-as-entry)**: `skl list --folders` leads each source block with a
+  `source/  (count)` folder row, then that source's skills; the picker uses it. `enter`
+  on a folder row loads the whole group, `enter` on a skill row loads that one — one
+  gesture, object-appropriate (file-manager mental model). The folder row's first token is
+  `source/`, so it round-trips as a whole-source ref with no new data model. Search is
+  **scoped to the ref** (`--nth=1`), not the hidden description — description-fuzzy search
+  shattered grouping (a query's subsequence dragged unrelated skills under the wrong
+  header). The preview starts hidden (`ctrl-/` toggles). `alt-i` on a folder prompts before
+  installing the whole group (the `--stdin` path skips skl's own whole-source confirm). See
+  ADR-0009.
 - **Runtime**: Bun + TypeScript, **zero external deps** (Bun.file/Bun.spawn/Bun.Glob).
   Functional core (discovery, frontmatter parse, pointer render) pure + unit-tested;
   imperative shell (fs, tmux) thin. fzf orchestration is shell, not Bun. `bun test`.
@@ -197,8 +207,10 @@ Skills discovered via `Bun.Glob("**/SKILL.md")` under each source root.
 - **Qualified** `skl <source>/<name>` → exact, unambiguous.
 - **Whole-source** `skl <source>/` (trailing slash) → every member of that source, in
   discovery order. `parseRef` reads an empty name after the first slash as the group ref,
-  so it never collides with a concrete ref; `resolveRefs` expands it in place. Single-skill
-  callers (`preview`/`inline`) reject a group ref — the picker only ever sends concrete rows.
+  so it never collides with a concrete ref; `resolveRefs` expands it in place. `skl preview
+  <source>/` renders the group's member list (for the picker's folder-row preview); `inline`
+  still rejects a group ref (bundling a whole source is out of scope). The picker now emits
+  folder rows (`skl list --folders`), so a group ref reaches `load`/`install` from a row.
 - **Popup** tags every row with its source (`source/name`), so collisions are visible
   and you pick the intended copy directly.
 - **Config** lists ordered sources `{ path, name? }`; order = precedence.

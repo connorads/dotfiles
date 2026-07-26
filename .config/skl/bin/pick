@@ -5,11 +5,14 @@
 # popup's real terminal, so there is no Bun-pipe / pseudo-terminal problem
 # (the reason the old Bun-spawned picker was dropped; see docs/adr/0004).
 #
-#   skl list | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>
+#   skl list --folders | fzf --preview 'skl preview {1}' | skl load --stdin --target <pane>
 #
-# enter injects into the origin pane; ctrl-y copies the pointer(s) to the
-# system clipboard instead (`skl load --copy`); alt-i installs the selection
-# into the origin pane's project (`skl install --stdin`, run from its cwd).
+# Rows are folder rows (`source/  (count)`) leading each source block, then that
+# source's skills. enter injects the selection into the origin pane — a folder
+# row loads the whole group. ctrl-y copies the pointer(s) to the system clipboard
+# instead (`skl load --copy`); alt-i installs the selection into the origin
+# pane's project (`skl install --stdin`, run from its cwd), prompting first when a
+# folder row would install a whole group. ctrl-/ toggles the (hidden) preview.
 #
 # Usage: skl-pick [target-pane]   (target forwarded to `skl load`). Bound to
 # tmux prefix + Alt+s.
@@ -33,12 +36,17 @@ pane="${1-}"
 
 # --expect makes fzf print the accepting key on line 1, selections after — the
 # glue routes on it rather than piping fzf straight into `skl load`.
-out=$(skl list \
-  | fzf --reverse --multi --scheme=path --no-hscroll \
+# --folders leads each source block with a `source/  (count)` row: enter on it
+# loads the whole group (the row's ref is `source/`, which resolveRefs expands).
+# --nth=1 scopes search to the ref (field 1), so fuzzy-matching keeps groups
+# intact instead of dragging in skills whose hidden description happens to match.
+# Preview starts hidden (ctrl-/ toggles) to keep the list scannable.
+out=$(skl list --folders \
+  | fzf --reverse --multi --scheme=path --nth=1 --no-hscroll \
       --preview 'skl preview {1}' \
-      --preview-window 'right,60%,wrap' \
-      --header 'tab: mark · enter: load · ctrl-y: copy · alt-i: install · esc: cancel' \
-      --bind 'tab:toggle+down,btab:toggle+up' \
+      --preview-window 'hidden,right,60%,wrap' \
+      --header 'tab: mark · enter: load (folder = whole group) · ctrl-y: copy · alt-i: install · ctrl-/: preview · esc: cancel' \
+      --bind 'tab:toggle+down,btab:toggle+up,ctrl-/:toggle-preview' \
       --expect 'ctrl-y,alt-i')
 [[ -z $out ]] && exit 0   # cancelled (esc / ctrl-c)
 
@@ -55,6 +63,25 @@ elif [[ $key == alt-i ]]; then
   cwd=""
   [[ -n $pane ]] && cwd=$(tmux display-message -p -t "$pane" '#{pane_current_path}')
   [[ -n $cwd ]] && cd -- "$cwd"
+
+  # A folder row installs a WHOLE group, and `--stdin` skips skl's own whole-
+  # source confirm (selection IS the confirmation for concrete rows). So guard
+  # group installs here, in the popup's real TTY. Collect each selected ref (the
+  # first token per line); if any is a group ref (trailing slash), confirm first.
+  typeset -a groups
+  local line ref
+  while IFS= read -r line; do
+    ref=${line%%[[:space:]]*}
+    [[ $ref == */ ]] && groups+=("$ref")
+  done <<< "$sel"
+  if (( ${#groups} > 0 )); then
+    print -r -- "install skills from ${groups[*]} into ${PWD}?"
+    if ! read -q "?[y/N] "; then
+      print
+      exit 0
+    fi
+    print
+  fi
   print -r -- "$sel" | skl install --stdin
 else
   print -r -- "$sel" | skl load --stdin "$target[@]"

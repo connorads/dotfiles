@@ -4,8 +4,12 @@ The picker is a shell script (`bin/pick`, symlinked as `~/.local/bin/skl-pick`)
 that pipes the (TTY-free) `skl` CLI through fzf:
 
 ```text
-skl list | fzf --multi --preview 'skl preview {1}' | skl load --stdin --target <pane>
+skl list --folders | fzf --multi --nth=1 --preview 'skl preview {1}' \
+  --bind 'ctrl-/:toggle-preview' | skl load --stdin --target <pane>
 ```
+
+`--folders` leads each source block with a `source/  (count)` folder row (ADR-0009);
+`--nth=1` scopes search to the ref; the preview starts hidden, toggled with `ctrl-/`.
 
 The tmux keybind (`prefix + Alt+s`) runs `skl-pick #{pane_id}` in a `display-popup`.
 fzf runs in the popup's **real terminal**; the `skl` binary never spawns fzf.
