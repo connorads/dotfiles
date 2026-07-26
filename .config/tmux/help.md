@@ -1,5 +1,14 @@
 # tmux keybindings
 
+## Sessions
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+Alt+h/l` | previous/next session in the session rail's stable order |
+| `Alt+Shift+s` | session switch/create popup |
+| `Ctrl+b (` / `)` | previous/next session in the session rail's stable order |
+| `Ctrl+b s` | session tree |
+
 ## Windows
 
 | Key | Action |
@@ -7,7 +16,7 @@
 | `Alt+Shift+H/L` | prev/next window |
 | `Ctrl+b n/p` | next/prev window |
 | `Ctrl+b 1-9` | go to window N |
-| `Ctrl+Alt+h/l` | move window left/right |
+| `Ctrl+Alt+Shift+h/l` | move window left/right |
 | `Ctrl+b Tab` | last window |
 | `Ctrl+b c` | new window |
 | `Ctrl+b W` | window organiser (move/share/remove linked windows; same menu as right-click tab and Remobi Organise) |
