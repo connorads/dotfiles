@@ -12,27 +12,37 @@ import boundaries. Routed from the picks table and rules-catalogue index in
 ## Ruff format + lint
 
 Ruff is the default Python formatter and linter. It replaces Black, isort,
-Flake8, pyupgrade, and most Pylint-style low-level checks. Use an explicit,
-stable rule set in shared templates; do not use `ALL` as the baseline because
-new Ruff releases can add rules and turn upgrades into behaviour changes. See
-`references/python-ruff.toml` for a drop-in `pyproject.toml` snippet.
+Flake8, pyupgrade, and most Pylint-style low-level checks. Use Ruff's curated
+defaults plus deliberate additions through `extend-select`; `select` replaces
+the defaults entirely. Pin one minor release with `required-version`: Ruff's
+[`versioning policy`](https://docs.astral.sh/ruff/versioning/) reserves stable
+default-set changes for minor releases, so a minor bump remains the explicit
+review point. Do not use `ALL` as a baseline.
+See `references/python-ruff.toml` for a drop-in `pyproject.toml` snippet.
 
 Ruff 0.15 (2026) shipped a one-time style-guide reformat and block-level
 suppression comments (`# ruff: disable[RULE]` / `# ruff: enable[RULE]`);
 Ruff 0.16 (2026-07) adds the line form `# ruff: ignore[RULE]`, Markdown
-code-block formatting, and grows the default rule set from 59 to 413 rules —
-which is exactly why shared templates pin an explicit `select` instead of
-inheriting defaults. Prefer the scoped suppression comments over file-wide
-`noqa`, and let reformats land deliberately under the release-age quarantine
-rather than as surprise churn on upgrade.
+code-block formatting, and grows the
+[`default rule set`](https://docs.astral.sh/ruff/default-rules/) from 59 to 413
+rules.
+Prefer reason-bearing scoped suppression comments over file-wide `noqa`, and
+let minor upgrades and reformats land deliberately under the release-age
+quarantine rather than as surprise churn. Markdown code-block formatting is
+opt-in when another formatter already owns Markdown files.
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| Stable baseline checks | `select = ["E", "F", "UP", "B", "SIM", "I", "RUF"]` | Syntax/style drift, Pyflakes bugs, stale Python syntax, common bug patterns, import disorder | Add noisier families per project once clean. |
+| Stable baseline checks | Ruff defaults + `extend-select = ["E", "F", "UP", "B", "SIM", "I", "RUF"]`, with one pinned minor | Curated cross-family correctness checks plus the established full-family coverage | `select` replaces the defaults; use it only when that is deliberate. Add noisier families per project once clean. |
 | Formatter owns wrapping | Ruff format + ignore `E501` | Formatter/linter disagreement on line length | Re-enable `E501` only when the team wants hard line-length gates. |
 | Safe fixes only by default | `ruff check --fix --show-fixes`; no `--unsafe-fixes` in hooks/CI | Mechanical rewrites changing semantics | Run unsafe fixes only as reviewed one-offs. |
 | Tests get test-shaped ignores | per-file ignores for `tests/**` | Lints fighting idiomatic tests | Commonly relax `S101`, `ARG`, `FBT`, `PLR2004`, `D`, `ANN`. |
 | Generated/migration files stay explicit | `exclude` for generated trees; per-file ignores for migrations | Generated/framework output obscuring real failures | Ignore whole generated trees; relax migrations narrowly. |
+
+Use `# ruff: ignore[CODE] reason` for one logical line and paired
+`# ruff: disable[CODE]` / `# ruff: enable[CODE]` comments for a range. For bulk
+adoption, `ruff check --select CODE --add-ignore` records scoped debt; keep
+`RUF100` enabled so stale suppressions expire.
 
 Optional high-signal rule families once a project is ready: `C4`, `PIE`, `RET`,
 `PTH`, `LOG`/`G`, `T10`, `T20`, `PT`, `S`, `ARG`, `TC`, `PERF`. Treat `D`,
