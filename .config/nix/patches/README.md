@@ -31,6 +31,8 @@ Pulled from [`higorhgon/arch-script`](https://github.com/higorhgon/arch-script/t
 on 2026-05-27, originally targeting tmux 3.6_a. Algorithm matches the
 "synchronised inactive pane dimming" pattern (Rec. 601 weights, 30%/35%
 blends) — likely shared lineage with other forks of the same idea.
+Verified applying cleanly against tmux 3.7b (2026-07; running binary carries
+`_colour_dim`).
 
 ## Bump procedure
 

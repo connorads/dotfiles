@@ -9,7 +9,7 @@
 # order) rather than shared: module merge is `shared ++ host`, which would
 # reorder a shared list and change the Air's .system derivation. Listing the
 # whole list in one module keeps the Air byte-for-byte. The server lists its
-# own subset (4 pkgs duplicated across host modules — accepted).
+# own subset (5 pkgs duplicated across host modules — accepted).
 {
   lib,
   config,
