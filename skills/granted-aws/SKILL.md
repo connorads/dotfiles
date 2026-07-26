@@ -67,9 +67,17 @@ granted stores the secret in the OS keychain and writes only a
    ```sh
    assume <profile>
    aws sts get-caller-identity        # prints the account + user ARN
-   exit
    ```
 
+   Don't `exit` afterwards - `assume` exports credentials into the *current*
+   shell (no subshell is spawned), so `exit` closes your real shell. The
+   credentials expire on their own; `assume --unset` clears them sooner.
+
+   Scripts and agents can skip `assume` entirely: once the profile exists,
+   `aws --profile <profile> sts get-caller-identity` works directly via
+   `credential_process`. `assume` and `granted credentials add` are
+   interactive-only (prompts, browser hand-offs) - use `aws --profile` in
+   anything unattended.
 7. **Console from the CLI, in a chosen browser profile:**
 
    ```sh
