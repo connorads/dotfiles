@@ -11,12 +11,12 @@
   },
   "scripts": {
     "test": "node --test core.test.ts prompts.test.ts index.test.ts",
-    "typecheck": "tsgo -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "0.79.10",
     "@types/node": "^26.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260623.1",
-    "typebox": "1.1.38"
+    "typebox": "1.1.38",
+    "typescript": "^7.0.2"
   }
 }
