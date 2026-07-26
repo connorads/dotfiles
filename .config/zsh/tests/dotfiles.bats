@@ -137,6 +137,65 @@ EOF
   dfgit diff --cached --quiet -- .codex/config.toml
 }
 
+@test "status hides codex avatar and shell-env browser wiring churn" {
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[desktop]
+followUpQueueMode = "queue"
+
+[shell_environment_policy.set]
+EOF
+  dfgit add .codex/config.toml
+  dfgit commit -qm codex-shellenv-baseline
+
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[desktop]
+followUpQueueMode = "queue"
+selected-avatar-id = "custom:connor"
+
+[shell_environment_policy.set]
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/connorads/.codex"
+EOF
+
+  run "$DOTFILES" status --short .codex/config.toml
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  dfgit diff --cached --quiet -- .codex/config.toml
+}
+
+@test "clean keeps a portable env var under shell_environment_policy.set" {
+  cat >"$HOME/.codex/config.toml" <<'EOF'
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+tool_output_token_limit = 25000
+plan_mode_reasoning_effort = "high"
+
+[shell_environment_policy.set]
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+MY_PORTABLE_VAR = "keep-me"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/connorads/.codex"
+EOF
+
+  run "$FUNCTIONS_DIR/codex-config-clean" <"$HOME/.codex/config.toml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'MY_PORTABLE_VAR = "keep-me"'* ]]
+  [[ "$output" != *'BROWSER_USE_AVAILABLE_BACKENDS'* ]]
+  [[ "$output" != *'NODE_REPL_TRUSTED_CODE_PATHS'* ]]
+}
+
 @test "status hides pi model picker churn and missing final newline" {
   printf '%s' '{
   "defaultProvider": "cosine",
