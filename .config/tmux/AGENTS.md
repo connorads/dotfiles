@@ -459,6 +459,14 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   `no server, skip` and exits 0. continuum stays enabled as cross-platform
   redundancy (Linux hosts get the detect pill but no keepalive yet — a deferred
   systemd-timer follow-up); the minor double-save on macs is harmless.
+  It **requires a UTF-8 locale**, which it forces when the environment carries
+  none or a non-UTF-8 one (the plist sets `LANG` too, but the script guard also
+  covers a hand-run from a sanitised env). Outside UTF-8 — and with no `$TMUX`,
+  which the keepalive strips by design — tmux sanitises the tabs its format
+  output delimits fields with to `_`, so `save.sh` reads an empty session name,
+  treats every pane as a grouped session, skips it, and writes a state-only save
+  with no panes, while the session-ids hook matches no agent panes and deletes
+  `session_ids.json`.
 
 Restore stays manual (`prefix + Ctrl-r`); `@continuum-restore` is deliberately
 `off` (see the resurrect agent-session restore subsystem above).

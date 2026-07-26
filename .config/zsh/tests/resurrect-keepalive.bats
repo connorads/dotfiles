@@ -87,6 +87,20 @@ stale_opt() { "$TMUX_BIN" show -gv @resurrect_stale 2>/dev/null; }
   [ "$(stale_opt)" = "0" ]
 }
 
+# --- locale: tabs survive a locale-less environment ------------------------
+
+# Outside a UTF-8 locale tmux sanitises tabs in format output to `_`, and launchd
+# starts the agent with no locale at all. Everything downstream is tab-delimited,
+# so save.sh then reads an empty session_name, treats every pane as belonging to a
+# grouped session, and skips it — a state-only save with no panes or windows.
+@test "locale-less environment still saves panes and windows" {
+  start_server
+  run env -u LANG -u LC_ALL -u LC_CTYPE bash "$KEEPALIVE"
+  [ "$status" -eq 0 ]
+  grep -q '^pane' "$SAVE_DIR/last"
+  grep -q '^window' "$SAVE_DIR/last"
+}
+
 # --- staleness alarm: aged save + a no-op save can't refresh it -----------
 
 @test "stale newest save: sets @resurrect_stale=1 and logs the alarm" {
