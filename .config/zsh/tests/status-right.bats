@@ -191,6 +191,51 @@ EOF
   [[ "$plain" != *"dotfiles-test"* ]]
 }
 
+@test "ssh segment reports both directions from a single lsof query" {
+  write_stub uname <<'EOF'
+#!/usr/bin/env bash
+echo Darwin
+EOF
+  write_stub lsof <<'EOF'
+#!/usr/bin/env bash
+echo x >>"$TEST_LOG"
+echo "sshd 100 u 3u IPv4 0x0 0t0 TCP 10.0.0.1:22->10.0.0.2:50000"
+echo "ssh 200 u 3u IPv4 0x0 0t0 TCP 10.0.0.1:50001->10.0.0.9:22"
+EOF
+
+  run_status_right 45
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"1↓1↑"* ]]
+  # lsof blocks on network-fs mounts; both direction counts must come from one
+  # capture, not one query per direction.
+  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
+}
+
+@test "cpu sampler runs once within the cache TTL and leaves no temp files" {
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
+#!/usr/bin/env bash
+echo x >>"$TEST_LOG"
+printf '7%%'
+EOF
+
+  run_status_right 90
+  [ "$status" -eq 0 ]
+  run_status_right 90
+  [ "$status" -eq 0 ]
+
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"7%"* ]]
+  # Second render within the 15s TTL must hit the cache, not re-run the ~1s
+  # blocking iostat sampler.
+  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
+  # The cache write is tmp-file + rename (a reader never sees a torn value);
+  # the tmp file must not linger.
+  run bash -c 'ls "$HOME"/.cache/tmux-cpu-percentage.tmp.* 2>/dev/null'
+  [ -z "$output" ]
+}
+
 @test "wide status omits AI usage even when caches exist" {
   seed_usage_caches
 

@@ -67,7 +67,9 @@ cpu_percentage() {
 	fi
 	value="$("$cpu_script" 2>/dev/null | tr -d '\n')" || true
 	mkdir -p "$(dirname "$cache")"
-	printf "%s" "$value" >"$cache"
+	# tmp + rename so a concurrent render never reads a torn value (the
+	# usage-cache-lib idiom).
+	printf "%s" "$value" >"${cache}.tmp.$$" && mv -f "${cache}.tmp.$$" "$cache"
 	printf "%s" "$value"
 }
 
@@ -261,8 +263,12 @@ git_branch_and_dirty() {
 ssh_info() {
 	local inbound=0 outbound=0
 	if [ "$(uname)" = "Darwin" ]; then
-		inbound="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | awk '$9 ~ /:22->/' | wc -l | tr -d ' ')"
-		outbound="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null | awk '$9 ~ /->.*:22$/' | wc -l | tr -d ' ')"
+		# One lsof capture, filtered twice: lsof walks every open TCP socket
+		# (~100ms+), so querying per direction doubled the cost of each render.
+		local conns
+		conns="$(lsof -iTCP:22 -sTCP:ESTABLISHED -n -P 2>/dev/null || true)"
+		inbound="$(printf '%s\n' "$conns" | awk '$9 ~ /:22->/' | wc -l | tr -d ' ')"
+		outbound="$(printf '%s\n' "$conns" | awk '$9 ~ /->.*:22$/' | wc -l | tr -d ' ')"
 	else
 		inbound="$(ss -tn state established '( sport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
 		outbound="$(ss -tn state established '( dport = :22 )' 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')"
