@@ -33,8 +33,18 @@ What kind of change is this?
 |   `-- separate decisions from effects; introduce purpose-named ports
 |-- Domain states are unclear
 |   `-- model states explicitly and parse untrusted input at boundaries
-`-- Failures are unclear
-    `-- make domain/application errors explicit and translate at the shell
+|-- Failures are unclear
+|   `-- make domain/application errors explicit and translate at the shell
+|-- A boundary feels wrong / "should we decouple this?"
+|   `-- score strength, distance, volatility (references/balancing-coupling.md)
+|-- Retries, sagas, consistency, concurrent writers
+|   `-- references/workflows-transactions.md
+|-- Query shapes fighting the domain model / CQRS question
+|   `-- references/reads-and-writes.md
+|-- Production behaviour hard to debug
+|   `-- references/observability.md
+`-- Wiring a service: config, bootstrap, dependency injection
+    `-- references/configuration-lifecycle.md
 ```
 
 ## Functional Core, Imperative Shell
@@ -83,8 +93,8 @@ model into your domain types at the edge so their shape never leaks inward. In
 a migration this is the seam where the new model meets the old — and unlike
 transitional scaffolding, it endures for as long as the foreign system does.
 The exception is a genuinely frozen upstream: when the foreign model will not
-change, an unwrapped boundary can be the cheaper trade (see Balancing
-Coupling's volatility tie-breaker).
+change, an unwrapped boundary can be the cheaper trade (see
+references/balancing-coupling.md's volatility tie-breaker).
 
 Before adding a new adapter, audit existing ones: reuse through a narrow port,
 then extend an existing adapter when the capability fits, then create a new one
@@ -132,56 +142,14 @@ queries (see Scale Rule).
 
 ## Balancing Coupling
 
-When a boundary feels wrong, do not reflexively "decouple it". Score it on three
-axes (Khononov) and rebalance the one you can actually move:
-
-- **Strength** - how much knowledge crosses, weakest to strongest: a purpose-built
-  *contract* < sharing your internal *domain model* < *functional* coupling
-  (interrelated rules, a shared transaction, enforced ordering, or a duplicated
-  rule) < *intrusive* coupling (reaching past the interface into private internals
-  or another service's database). Strength predicts how often a change on one side
-  ripples to the other.
-- **Distance** - the effort a joint change costs: methods in a class < classes in a
-  module < modules < services < separate systems. Separate teams, time zones, and
-  ownership widen it (Conway); a synchronous runtime dependency narrows it.
-- **Volatility** - how often the upstream side actually changes. A
-  core/differentiating domain is volatile; supporting, generic, and frozen-legacy
-  code are not (identified as in Scale Rule).
-
-**Strength and distance should be inverse.** Strong coupling belongs close - that
-is cohesion, so put it in one module or aggregate. Weak coupling can live far
-apart - that is loose coupling. Matching values are the two failure modes:
-
-- strong + far - the distributed-mud trap: a rule ripples across services, easy to
-  miss one copy and leave the system inconsistent. Fix by cutting strength
-  (introduce a contract) or pulling the pieces together.
-- weak + close - clutter: unrelated code crammed together, so every change means
-  hunting for the part that matters. Fix by pulling it apart.
-
-Volatility is the tie-breaker: an imbalanced boundary is tolerable while its
-upstream rarely changes, because there is no cascade to pay for - reading a frozen
-legacy database directly can be fine (cf. the anti-corruption layer in Ports And
-Adapters, which optimises for model integrity rather than maintenance cost). The
-same boundary becomes a problem the moment its upstream turns core; then rebalance
-by cutting strength or distance.
-
-You cannot always cut strength. When the business genuinely needs one transaction,
-strict ordering, or strong consistency, the coupling is essential - no refactor
-removes it, so distance is the only lever: colocate the pieces. That is what an
-aggregate does (bind transactionally-coupled entities close, reference the rest by
-id).
-
-Two corrections to common instincts:
-
-- **A duplicated business rule is among the strongest coupling there is**, yet
-  nothing in the dependency graph reveals it. Two services that each decide
-  "qualifies for free shipping" must change in lockstep or contradict each other.
-  Prefer a single owner; duplicate only a rule that is trivial and stable.
-- **Async is not decoupling.** Moving a call onto a message bus changes runtime and
-  availability coupling, not how much knowledge the two sides share. If the message
-  carries your internal model or the consumer reimplements your rule, the boundary
-  is as strongly coupled as the synchronous version. Shrink shared knowledge with a
-  contract; the transport is a separate concern (`event-driven-architecture`).
+When a boundary feels wrong, do not reflexively "decouple it". Score it on
+three axes (Khononov) — **strength** (how much knowledge crosses), **distance**
+(the effort a joint change costs), **volatility** (how often the upstream
+actually changes) — and rebalance the one you can actually move. Strength and
+distance should be inverse: strong coupling belongs close (cohesion), weak can
+live far apart. The full model — the strength ladder, the two failure modes,
+the volatility tie-breaker, and why duplicated rules and async transports fool
+the instinct — is in references/balancing-coupling.md.
 
 ## API Contracts
 
@@ -189,7 +157,7 @@ An API is a module's public surface at a system boundary; the same
 encapsulation rule applies with the stakes raised, because consumers are far
 away and cannot be refactored with you. An API shaped by your schema shares
 your internal model at maximum distance — the strong-plus-far trap (see
-Balancing Coupling).
+references/balancing-coupling.md).
 
 Derive endpoints from consumer jobs, not from the schema. Given a vague ask
 ("an API to manage bookings"), the reflex failure is anchoring on the central
@@ -279,45 +247,6 @@ made unrepresentable, applied to behaviour rather than data. This is not licence
 to swallow real failures — if a domain expert would want the edge surfaced, it is
 a domain error: keep it a typed value and let the triage stand.
 
-## Observability
-
-Design system boundaries with observability in mind:
-
-- structured logs over free-text logs
-- operation names
-- relevant entity IDs
-- request/correlation IDs
-- timing and outcome at HTTP, database, queue, and external-service boundaries
-
-The core should decide what happened. The shell should record it with the
-context needed to debug production behaviour.
-
-Across a message boundary the same discipline needs trace context propagated in
-message headers rather than carried on a call stack; the
-`event-driven-architecture` skill's "Reaching Out" covers async tracing (W3C Trace
-Context, OTel messaging conventions).
-
-## Configuration And Lifecycle
-
-Parse configuration at startup, or the earliest boundary, into typed values with
-useful failure context. Do not read environment or settings throughout the code.
-
-Avoid top-level side effects outside true entrypoint/bootstrap code: modules
-should not open connections, read configuration, register handlers, or start
-servers at import time. Own resource creation and cleanup explicitly in the
-shell. Inject clock and randomness into dependency-bearing code; let pure
-functions take time and random values as arguments. The env/clock/rng bans are
-mechanically enforceable — see the `mechanical-enforcement` skill's purity rules.
-
-Wire dependencies in one composition root in the bootstrap/entrypoint and pass
-them inward as explicit arguments. That single wiring point is also the one place
-to substitute every dependency with a fake in tests, which beats patching
-imports. A port can be a plain function for a single-method dependency — reserve a
-richer interface for a genuinely multi-method one. Reach for manual injection
-once you have more than one adapter, and for a dependency-injection framework only
-when dependencies have their own dependencies (chained graphs); below that it is
-overengineering.
-
 ## Workflows as Pipelines
 
 Reach for this apparatus — workflows-as-pipelines, aggregates, domain events,
@@ -344,65 +273,9 @@ are heavy; use them only when the coordination genuinely warrants it, not as a
 default. Cross-context scenarios are then choreographed by events, not one giant
 function. Once an event crosses a process or service boundary, the
 `event-driven-architecture` skill owns the mechanics — propagation, reliable
-publication, delivery semantics, and versioning.
-
-## Workflows, Transactions, Idempotency
-
-An aggregate is both the consistency boundary and the unit of persistence: route
-all changes through its root, and update only one aggregate per transaction.
-Link aggregates by id, never by embedding one in another. When an operation
-seems to need two aggregates atomically, suspect a missing entity (model the
-operation itself) or use eventual consistency. Across services, prefer async
-events to distributed transactions, with an explicit recovery path — reconcile
-or compensate. Eventual consistency is not optional consistency; it must still
-converge.
-
-Use a plain call or a single database transaction for simple single-boundary
-operations. Reach for a saga or durable workflow when the process needs retries,
-compensation, idempotency, resumability, timers, human approval, or coordination
-across services and multiple transaction boundaries. Both buy ACD, not ACID - you
-get atomicity, consistency, and durability (plus resumability and compensation),
-but not isolation, so
-intermediate states stay visible; design the countermeasures the
-`event-driven-architecture` skill's `topology.md` lists (semantic locks, a
-`pending` status, re-reads).
-
-Do not hold a database transaction open across network calls or long-running
-work. Any command, job, or step that may be retried needs an explicit
-idempotency strategy — idempotency key, natural unique constraint, deduplication
-record, state-machine guard, or transactional outbox/inbox (see
-`event-driven-architecture` for the outbox/inbox mechanism and idempotent
-consumers). Do not rely on "probably safe" repeated side effects.
-
-Concurrency control is distinct from idempotency: idempotency makes a retry safe;
-concurrency control stops two simultaneous writers clobbering each other — the
-lost update. Hold the consistency boundary under concurrent writes by versioning
-the aggregate (optimistic locking): bump a version on write, let one transaction
-commit, and make the loser reload and retry. Reach for pessimistic locks
-(`SELECT ... FOR UPDATE`) when conflicts are frequent and a retry is expensive,
-minding deadlocks; raising the isolation level to `SERIALIZABLE` lets the database
-enforce the rule but is slower, so prefer a targeted version check. Pick by
-conflict rate and the cost of a lost update.
-
-Make the transaction boundary safe by default: the only path that commits is
-total success plus an explicit commit, and any exception or early exit rolls
-back. Design the default to change nothing and require a positive act to persist.
-
-## Reads And Writes
-
-Separate reads from writes. At the call level, a function either changes state or
-answers a question, never both (command-query separation). At system scale the
-same split is CQRS: the write model is shaped by invariants, not by how screens
-query it — a domain model is not a data model — so reads need not travel through
-the aggregate. Default to the same store and repository for both. Reach for a
-separate read model — a denormalised view keyed for the query, kept fresh from
-the domain events the write side already emits — only when the read shape
-genuinely diverges or a performance wall demands it. This is an in-process read
-model fed by your own events; a consumer in another service keeping its own
-replica from your published events is event-carried state transfer — a different
-thing with its own contract, see `event-driven-architecture`. Treat CQRS as a
-last resort, not a default: splitting read-only views out from command handlers
-captures most of the benefit without a second store.
+publication, delivery semantics, and versioning. The transactional side —
+aggregates as consistency boundaries, sagas, idempotency, concurrency control —
+is in references/workflows-transactions.md.
 
 ## Scale Rule
 
@@ -420,3 +293,16 @@ bought or kept plain (a ride-hailing journey flow, a payments integration).
 Invest the rich model where differentiation potential and model complexity are
 both high, and re-score over time — today's core drifts toward supporting as
 competitors catch up.
+
+## Deep-dives (references/)
+
+Read only when the situation matches; each file opens with its own
+when-to-read line.
+
+| Reference | Read when |
+|---|---|
+| references/balancing-coupling.md | a boundary feels wrong, "decouple it" is proposed, a rule ripples across services |
+| references/workflows-transactions.md | operations span aggregates/services; retries, sagas, idempotency, lost updates |
+| references/reads-and-writes.md | query shapes fight the domain model; CQRS or a read model is on the table |
+| references/observability.md | designing a new boundary; production behaviour is hard to debug |
+| references/configuration-lifecycle.md | wiring a service: config parsing, bootstrap, composition root, DI |
