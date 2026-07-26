@@ -114,7 +114,11 @@ Show the user:
 - The generated directory structure
 - The PROMPT.md content (or a summary if long)
 - How to run it, e.g.:
-  `rl <n> -t 30m -- claude -p "Read and follow TASKS/<name>/PROMPT.md"`
+  `rl <n> -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md"`
+
+Use `cys` (claude yolo stream: skip-permissions + `-p` baked in), not
+bare `claude -p` — interactive-permission claude stalls the loop the
+first time it hits a permission prompt with nobody watching.
 
 ## PROMPT.md anatomy
 
@@ -123,11 +127,8 @@ Every generated PROMPT.md has these sections:
 1. **Heading** — `# Prompt`
 2. **Preamble** — "You are running in an automated loop. Read these
    files before doing anything else:" followed by the three file paths
-3. **Protocol** — the state machine:
-   - No state file or status `done` → append run-log entry, pick next task
-   - No unchecked tasks remain → emit `__PROMISE_RL_DONE__` and exit
-   - Status `in_progress` or `verifying` → resume from checklist
-   - Status `blocked` → log blocker, skip to next task
+3. **Protocol** — the loop state machine; the canonical version lives in
+   [references/loop-protocol.md](references/loop-protocol.md)
 4. **Verification** — rules adapted from the backlog, referencing
    external docs where appropriate
 5. **Completion rule** — the four conditions that must all be true
