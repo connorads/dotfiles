@@ -29,14 +29,21 @@ restore, a 6G photo library is gone forever.
    can live there while `cleanup` checks only `~/.cache`.
 4. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home - background
    it, or use `dust`. Scan named roots separately: cloud-managed or protected
-   trees can stall a broad scan. A stalled path is unclassified, not zero.
-   `ncdu` is for the user to drive: it's a TUI and gives an agent nothing
-   non-interactively.
+   trees can stall a broad scan. A stalled path is unclassified, not zero. A
+   per-dir scan that emits *no line* for a named directory stalled on it - that
+   dir is the prime suspect, not empty; re-scan it alone with a timeout. On a
+   dev machine the source root (`~/git`, `~/src`, `~/code`) is routinely the
+   single largest tree and the classic stall culprit - build outputs and caches
+   nested inside repos - so size it early and on its own. `ncdu` is for the user
+   to drive: it's a TUI and gives an agent nothing non-interactively.
 5. Reconcile `du` home subtotals against the `df` *used* figure before
    concluding. Home rarely equals the disk: a large shortfall lives outside
    `~` - probe `/private/tmp`, `/opt/homebrew`, `/nix`, `/Library`. On a
    shared APFS container every volume's `df` reports the *same* container
-   free, so read one volume, don't sum them.
+   free, so read one volume, don't sum them. Until the accounted total (home +
+   out-of-home roots) approaches `df` *used*, the survey is unfinished: a large
+   unexplained remainder is not a footnote, it is the reclaim target - keep
+   drilling before presenting any plan.
 
 Quote a reclaim estimate only for things you have actually probed. Sizes on
 this machine change; check every time rather than trusting a remembered figure.
@@ -75,6 +82,11 @@ project cleaner or its docs, where present, is the fastest classifier.
   `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
   prune`. `rm -f` on named files is allowed. Bundling several removals into one
   command gets the whole command denied, so keep them separate.
+- **Confirm reclaim with `df`, not the command's exit code.** macOS
+  `/usr/bin/trash` exits non-zero if *any* path arg is missing while still
+  trashing the rest, and says nothing about bytes freed; `~/.Trash` can read
+  `0` even when space was reclaimed. After any delete/clean, re-check `df` (or
+  the target's `du`) - that is ground truth, not exit status.
 - **A mounted DMG under `/tmp`** (cask/`.pkg` install leftover) reports
   `Read-only file system` and blocks its parent's deletion until
   `hdiutil detach /dev/diskN` (find it via `hdiutil info`); the leftover
