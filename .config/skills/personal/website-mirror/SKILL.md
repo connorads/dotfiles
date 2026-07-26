@@ -43,9 +43,12 @@ firecrawl, yt-dlp.
 | JS/API content, or rendered HTML → markdown | firecrawl | `firecrawl scrape <url>` / `firecrawl crawl <url>` (also firecrawl MCP) |
 | Video / audio from a page | yt-dlp | `yt-dlp <url>` |
 
-- **monolith crawls nothing** - one page only. It inlines CSS/JS/images but
-  leaves cross-domain refs (analytics, Turnstile, social buttons) external by
-  design, so those die offline - not a mirror bug.
+- **monolith crawls nothing** - one page only. It DOES inline
+  statically-referenced assets, cross-domain included (a CDN stylesheet or
+  image ends up embedded). What dies offline is anything that injects or
+  fetches at *runtime* - analytics, Turnstile, social buttons - because the
+  script runs (or fails) when the page is opened, not when it is captured.
+  Not a mirror bug.
 - wget's `--mirror` = `-r -N -l inf`; the `-k -E -p` flags are what make the
   copy actually browseable offline (converted links, `.html` extensions, page
   requisites). Bare `wget -r` gives broken links and missing assets.
