@@ -73,6 +73,9 @@
     newline                   # \n
   )
 
+  # Only resolve Node in projects; invoking it in every directory delays cold prompts.
+  typeset -g POWERLEVEL9K_NODE_VERSION_PROJECT_ONLY=true
+
   # Basic style options that define the overall prompt look.
   typeset -g POWERLEVEL9K_BACKGROUND=                            # transparent background
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_{LEFT,RIGHT}_WHITESPACE=  # no surrounding whitespace
