@@ -1,5 +1,13 @@
 import { expect, test, describe } from "bun:test";
-import { skillToLine, skillsToLines, linesToRefs, skillRef } from "./display.ts";
+import {
+  skillToLine,
+  skillsToLines,
+  skillsToLinesWithFolders,
+  renderSourcePreview,
+  linesToRefs,
+  skillRef,
+} from "./display.ts";
+import { parseRef } from "./ref.ts";
 import type { DiscoveredSkill } from "./types.ts";
 
 const skill = (name: string, description: string): DiscoveredSkill => ({
@@ -7,6 +15,14 @@ const skill = (name: string, description: string): DiscoveredSkill => ({
   name,
   description,
   dir: `/repo/${name}`,
+  files: ["SKILL.md"],
+});
+
+const inSource = (source: string, name: string): DiscoveredSkill => ({
+  source: { path: `/${source}`, name: source, exclude: [] },
+  name,
+  description: "",
+  dir: `/${source}/${name}`,
   files: ["SKILL.md"],
 });
 
@@ -29,6 +45,49 @@ describe("skillToLine", () => {
 describe("skillRef", () => {
   test("source/name", () => {
     expect(skillRef(skill("alpha", ""))).toBe("repo/alpha");
+  });
+});
+
+describe("skillsToLinesWithFolders", () => {
+  test("leads each source block with a folder row carrying its count", () => {
+    const lines = skillsToLinesWithFolders([
+      inSource("elevenlabs", "agents"),
+      inSource("elevenlabs", "tts"),
+      inSource("expo", "router"),
+    ]);
+    expect(lines).toEqual([
+      "elevenlabs/  (2)",
+      "elevenlabs/agents",
+      "elevenlabs/tts",
+      "expo/  (1)",
+      "expo/router",
+    ]);
+  });
+
+  test("a folder row round-trips to a source ref", () => {
+    const [folderLine] = skillsToLinesWithFolders([inSource("expo", "router")]);
+    const ref = linesToRefs([folderLine ?? ""])[0] ?? "";
+    expect(ref).toBe("expo/");
+    expect(parseRef(ref)).toEqual({ kind: "source", source: "expo" });
+  });
+
+  test("empty skills → no lines", () => {
+    expect(skillsToLinesWithFolders([])).toEqual([]);
+  });
+});
+
+describe("renderSourcePreview", () => {
+  test("header names the group and size, then member lines", () => {
+    const members = [inSource("expo", "router"), inSource("expo", "web")];
+    expect(renderSourcePreview("expo", members)).toBe(
+      "expo/  (2 skills)\n\nexpo/router\nexpo/web",
+    );
+  });
+
+  test("singular for one member", () => {
+    expect(renderSourcePreview("expo", [inSource("expo", "router")])).toBe(
+      "expo/  (1 skill)\n\nexpo/router",
+    );
   });
 });
 

@@ -15,7 +15,8 @@
 // Verbs shadow bare skill names (a skill named "history" needs `skl load
 // history` or a qualified ref) — same precedence as list/preview/inline.
 // Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy,
-// --all, --global (install into autoload dir), --yes (skip install confirmation).
+// --all, --folders (list: folder rows lead each source block), --global (install
+// into autoload dir), --yes (skip install confirmation).
 
 import { ok, err, type Result } from "./result.ts";
 import type { ArgError, Command, Options } from "./types.ts";
@@ -29,6 +30,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
   let stdin = false;
   let copy = false;
   let all = false;
+  let folders = false;
   let global = false;
   let yes = false;
   const positionals: string[] = [];
@@ -53,6 +55,10 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
       all = true;
       continue;
     }
+    if (arg === "--folders") {
+      folders = true;
+      continue;
+    }
     if (arg === "--global") {
       global = true;
       continue;
@@ -73,7 +79,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, ArgError> =>
     positionals.push(arg);
   }
 
-  const options: Options = { target, paths, submit, copy, all, global, yes };
+  const options: Options = { target, paths, submit, copy, all, folders, global, yes };
 
   if (positionals[0] === "list") {
     if (positionals.length > 1) return err({ kind: "too-many-args", args: positionals.slice(1) });

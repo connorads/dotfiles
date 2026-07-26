@@ -5,11 +5,17 @@
 import { parseArgs } from "./core/args.ts";
 import { parseConfig, configFromPaths } from "./core/config.ts";
 import { parseRef } from "./core/ref.ts";
-import { resolveRef, resolveRefs } from "./core/resolve.ts";
+import { resolveRef, resolveRefs, resolveSourceRef } from "./core/resolve.ts";
 import { renderPointer } from "./core/pointer.ts";
 import { renderBundle } from "./core/bundle.ts";
 import { buildInstallPlan } from "./core/install.ts";
-import { skillRef, skillsToLines, linesToRefs } from "./core/display.ts";
+import {
+  skillRef,
+  skillsToLines,
+  skillsToLinesWithFolders,
+  renderSourcePreview,
+  linesToRefs,
+} from "./core/display.ts";
 import { historyLine, summariseHistory, renderHistory } from "./core/history.ts";
 import type {
   ArgError,
@@ -46,6 +52,7 @@ Usage:
   skl install <ref>         copy skill(s) into the current project (skills add)
   skl install <source>/     copy a whole group into the current project
   skl list                  list discovered skills (fed to fzf)
+  skl list --folders        ...with a folder row leading each source block
   skl preview <ref>         render a skill's pointer (the fzf preview)
   skl inline <ref>          print the full content bundle (SKILL.md + retained
                             text files) for pasting where there is no filesystem
@@ -58,6 +65,7 @@ Options:
   --submit                  press Enter after injecting (default: never)
   --copy                    copy pointer(s) to the system clipboard, no injection
   --all                     include files excluded from normal payloads in trees/bundles
+  --folders                 list: lead each source block with a "source/  (count)" folder row
   --global                  install: into the global autoload dir, not the project
   --yes                     install: skip the whole-source confirmation prompt
 `;
@@ -320,11 +328,26 @@ const main = async (argv: readonly string[]): Promise<number> => {
 
   switch (command.kind) {
     case "list": {
-      for (const line of skillsToLines(skills)) env.stdout(`${line}\n`);
+      const lines = command.options.folders
+        ? skillsToLinesWithFolders(skills)
+        : skillsToLines(skills);
+      for (const line of lines) env.stdout(`${line}\n`);
       return 0;
     }
     case "preview": {
-      const resolved = resolveRef(parseRef(command.ref), skills);
+      // A folder row (`source/`) previews the whole group's member list; a
+      // concrete ref previews that one skill's pointer.
+      const ref = parseRef(command.ref);
+      if (ref.kind === "source") {
+        const members = resolveSourceRef(ref.source, skills);
+        if (!members.ok) {
+          env.stderr(`skl: ${fmtResolveError(members.error)}\n`);
+          return 1;
+        }
+        env.stdout(`${renderSourcePreview(ref.source, members.value)}\n`);
+        return 0;
+      }
+      const resolved = resolveRef(ref, skills);
       if (!resolved.ok) {
         env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
         return 1;

@@ -23,6 +23,18 @@ describe("parseArgs", () => {
     if (r.ok && r.value.kind === "preview") expect(r.value.options.all).toBe(true);
   });
 
+  test("--folders parses into list options (the picker's grouped view)", () => {
+    const r = parseArgs(["list", "--folders"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "list") expect(r.value.options.folders).toBe(true);
+  });
+
+  test("--folders defaults to false", () => {
+    const r = parseArgs(["list"]);
+    expect(r.ok).toBe(true);
+    if (r.ok && r.value.kind === "list") expect(r.value.options.folders).toBe(false);
+  });
+
   test("--stdin with a positional ref → too-many-args", () => {
     expect(parseArgs(["--stdin", "alpha"])).toEqual({
       ok: false,
@@ -89,6 +101,7 @@ describe("parseArgs", () => {
         submit: true,
         copy: false,
         all: false,
+        folders: false,
         global: false,
         yes: false,
       });

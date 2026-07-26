@@ -90,6 +90,8 @@ export interface Options {
   readonly copy: boolean;
   /** Disable payload excludes for this invocation. */
   readonly all: boolean;
+  /** `list` only: emit a folder row before each source block (the picker's grouped view). */
+  readonly folders: boolean;
   /** `install` only: target the global autoload dir (`skills add -g`) not the project. */
   readonly global: boolean;
   /** `install` only: skip the whole-source confirmation prompt (`skills add -y`). */
