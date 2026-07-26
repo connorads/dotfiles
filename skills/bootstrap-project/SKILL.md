@@ -34,7 +34,7 @@ commit discipline - which changes rarely. Churny per-stack knowledge lives in
 |---|---|---|
 | Which linters/rules per stack, strict tsconfig | `mechanical-enforcement` | invokes it at the harden phase |
 | Wiring hooks (`hk.pkl`, mise tasks, prepare) | `hk` | invokes it at the harden phase |
-| Seeding the project's own verify skill | `verify` skill | invokes it at the seed phase |
+| Seeding the project's own verify skill | this skill (§5, content informed by `testing` / `test-coverage`) | writes it at the seed phase |
 | TS idioms once code exists | `typescript` | points there |
 | Test strategy | `testing` | points there |
 | Workers Builds, custom domains, Access | `cloudflare-workers-deployments` | invokes it at the deploy phase |
@@ -112,8 +112,14 @@ Writing config is not enough - prove each layer works:
   linter enforces stay in lint config; keep the empty Gotchas section as the
   landing place for future surprises. Present tense, timeless - no bootstrap
   narrative. Symlink `CLAUDE.md -> AGENTS.md`.
-- Invoke the `verify` skill to bootstrap the project's own verify skill - do
-  not reimplement it.
+- Seed the project's own verify skill: write
+  `.agents/skills/verify/SKILL.md` capturing how to prove a change works in
+  *this* project - the exact commands phase 4 just proved green (typecheck,
+  lint, tests, dev-server smoke), scaled per change type. It is the
+  project-local answer to "what do I run before saying done", so future
+  sessions verify instead of guessing. For test strategy and coverage
+  posture, route to the `testing` and `test-coverage` skills rather than
+  restating them.
 
 ### 6. Commit in coherent units
 
