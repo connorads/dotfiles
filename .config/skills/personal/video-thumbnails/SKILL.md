@@ -104,3 +104,7 @@ Verify current platform specs online before delivering. Long-standing
 baselines: YouTube 1280x720 (16:9, ≤2MB); LinkedIn wants the thumbnail to
 match the video's aspect ratio (1920x1080 for 16:9 video, ≤2MB) — the
 1200x627 figure floating around is for link previews, not video.
+
+Check the file size before delivering (`ls -lh out.png`); screenshots of
+busy frames blow the 2MB cap easily. Over the cap, re-encode to JPG:
+`magick out.png -quality 90 out.jpg`.
