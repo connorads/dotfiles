@@ -7,7 +7,8 @@
 # `hk check --all`. Escape hatch: HK_SKIP_STEPS=nix-eval git commit ...
 set -euo pipefail
 
-# hk exports GIT_DIR/GIT_WORK_TREE for the dotfiles bare-repo layout. Nix's
+# The dhk and pre-commit wrappers export GIT_DIR/GIT_WORK_TREE for the dotfiles
+# bare-repo layout, and hk passes them to every step. Nix's
 # flake fetcher must keep treating ~/.config/nix as a plain path, not a git
 # work-tree rooted at $HOME, so drop them before calling nix.
 unset GIT_DIR GIT_WORK_TREE
