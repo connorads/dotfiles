@@ -250,7 +250,7 @@ EOF
 # A PATH with no lsof anywhere - the launchd shape (the plist lists none of the
 # dirs holding it). setup_test_home's own PATH includes /usr/sbin, where macOS
 # keeps lsof, so a test must drop it to exercise the fallback at all.
-lsofless_path() { printf '%s' "$TEST_BIN:/usr/bin:/bin"; }
+lsofless_path() { path_without lsof; }
 
 @test "agent_lsof_command prefers lsof on PATH" {
   write_lsof_stub_at "$TEST_BIN/lsof"

@@ -350,9 +350,10 @@ printf 'codex 901 user 10r REG 1,2 0 1 %s/.codex/sessions/2026/06/24/rollout-one
 EOF
   chmod +x "$BATS_TEST_TMPDIR/sbin/lsof"
 
-  # No lsof on PATH (setup_test_home's own PATH carries /usr/sbin, where macOS
-  # keeps it), only at the fallback location.
-  PATH="$TEST_BIN:/usr/bin:/bin" AGENT_LSOF_FALLBACK="$BATS_TEST_TMPDIR/sbin/lsof" \
+  # No lsof on PATH at all, only at the fallback location. path_without is what
+  # makes that true on Linux too, where lsof lives in /usr/bin rather than the
+  # /usr/sbin that setup_test_home's own PATH carries.
+  PATH="$(path_without lsof)" AGENT_LSOF_FALLBACK="$BATS_TEST_TMPDIR/sbin/lsof" \
     run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
 
   [ "$status" -eq 0 ]

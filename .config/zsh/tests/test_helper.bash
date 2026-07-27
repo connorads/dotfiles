@@ -75,6 +75,34 @@ setup_test_home() {
   : >"$TEST_LOG"
 }
 
+# path_without NAME - a PATH carrying the usual system tools but genuinely no
+# NAME, with $TEST_BIN in front.
+#
+# "Tool absent from PATH" cannot be spelled by listing fewer system dirs: macOS
+# keeps lsof in /usr/sbin, so "$TEST_BIN:/usr/bin:/bin" excludes it, while Linux
+# keeps it in /usr/bin, so the same list includes it. Symlinking a filtered view
+# of the system dirs is the only spelling that means the same thing on both.
+path_without() {
+  local drop=$1
+  # Cached per file, not per test: building it costs a symlink per system binary.
+  local dir="${BATS_FILE_TMPDIR:-$BATS_TEST_TMPDIR}/path-without-$drop"
+  if [ ! -d "$dir" ]; then
+    mkdir -p "$dir"
+    local sysdir entry name
+    for sysdir in /usr/bin /bin; do
+      [ -d "$sysdir" ] || continue
+      for entry in "$sysdir"/*; do
+        [ -f "$entry" ] && [ -x "$entry" ] || continue
+        name="${entry##*/}"
+        if [ "$name" != "$drop" ]; then
+          ln -sf "$entry" "$dir/$name"
+        fi
+      done
+    done
+  fi
+  printf '%s' "$TEST_BIN:$dir"
+}
+
 write_executable() {
   local path=$1
   shift
