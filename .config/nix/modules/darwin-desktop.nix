@@ -58,9 +58,7 @@
   homebrew = {
     taps = [
       "manaflow-ai/cmux"
-      "steipete/tap"
     ];
-    brews = [ "peekaboo" ];
     casks = [
       # Apps
       "rectangle"
