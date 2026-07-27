@@ -37,6 +37,32 @@ direct session file path. By default it searches:
 
 So you can usually use the same id you would pass to `codex resume` or `claude -r`.
 
+## Opening the target with extra flags
+
+`handoff` opens the target agent with a bare `claude -r <id>` / `codex resume <id>`.
+Two environment variables append flags to that launch:
+
+- `HANDOFF_CLAUDE_OPEN_ARGS`
+- `HANDOFF_CODEX_OPEN_ARGS`
+
+```bash
+HANDOFF_CLAUDE_OPEN_ARGS='--dangerously-skip-permissions' \
+  handoff --from codex --to claude <SESSION_ID>
+# runs: claude --dangerously-skip-permissions -r <NEW_ID>
+```
+
+Rules:
+
+- Only the **target** tool's variable is read; the other is ignored.
+- The flags go **before** the resume token, because `codex` takes root-level args
+  ahead of its `resume` subcommand.
+- The value is split POSIX-style with **no shell**: a quoted path containing spaces
+  stays one token, and `$HOME` is *not* expanded (write the path out in full).
+- The tokens are forwarded verbatim. `handoff` never invents or rewrites a flag, so
+  the caller decides what authority the opened session gets. An unbalanced quote is
+  a normal `handoff` error.
+- The printed `resume with:` hint shows the same argv that is launched.
+
 ## Advanced usage
 
 A portable intermediate representation (IR) is available for debugging and advanced

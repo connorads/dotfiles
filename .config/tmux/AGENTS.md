@@ -483,6 +483,10 @@ and `ccp` - no longer re-type the flag set: it lives once in the shared
 [`claude-launch-flags`](../zsh/functions/claude-launch-flags) owner, which they
 word-split.
 
+[`scripts/codex-branch-menu.sh`](./scripts/codex-branch-menu.sh) does the same
+through `resurrect_argv_codex_flags`, so a plain `cx` source forks sandboxed and
+only a `cxy` source carries `--dangerously-bypass-approvals-and-sandbox`.
+
 With the config dir restored, the launcher then re-materialises the profile's
 shared user config (settings + `CLAUDE.md` memory) via
 [`claude-profile-materialise`](../zsh/functions/claude-profile-materialise) - the
@@ -501,6 +505,38 @@ a passive marker.
 Because launcher resolution is client-independent, `@continuum-restore`
 (currently `off`) could be enabled for reliable auto-restore after a crash - the
 old eval-time mechanism could not support it. Left as a separate decision.
+
+### Handoff carries posture, it never chooses it
+
+The **invariant across every new pane** - fork, restore, and handoff - is that a
+new pane has no more authority than the one it came from, and never silently
+less. The handoff rows (`Handoff → Claude` / `Handoff → Codex`) are bound by it
+too, which fixes a pane that used to open with *nothing*.
+
+The boundary between the two halves:
+
+- **The menu owns authority**, decided from the live source pane's argv
+  (`ps -o args=`) - the exact launch authority, next to a living witness. Not
+  from the transcript: Claude's `permissionMode` is the shift-tab UI state (a
+  quarter of substantive sessions end in `plan` despite launching yolo), and
+  `handoff`'s `resolve_input` accepts any existing path, so inferring there would
+  mean taking launch authority from an input file.
+- **`handoff` only forwards.** One dumb seam -
+  `HANDOFF_{CLAUDE,CODEX}_OPEN_ARGS`, appended verbatim to the resume argv before
+  the resume token - mirroring its existing `HANDOFF_{CLAUDE,CODEX}_BIN`
+  override. It never invents a flag. See
+  [`~/src/handoff/README.md`](../../src/handoff/README.md).
+- **Only the posture boolean crosses agents.** The menus translate
+  `--dangerously-skip-permissions` ↔ `--dangerously-bypass-approvals-and-sandbox`
+  and forward nothing else: `--model` and `-c key=val` are meaningless in the
+  other CLI. Claude's interactive baseline (the system-prompt append) is added by
+  the [`handoff`](../zsh/functions/agents/handoff) wrapper from the same
+  `claude-launch-flags` owner, not re-typed by the menu.
+
+Not durable across a *second* hop: `formats/claude.py` writes
+`"permissionMode": "default"` on user lines and the Codex writer emits no
+`turn_context`, so a handed-off session's *stored* posture is still wrong. Fixing
+that is a writer change with a byte-parity cost.
 
 Tests: [`../zsh/tests/tmux-resurrect-sessions.bats`](../zsh/tests/tmux-resurrect-sessions.bats).
 
