@@ -1,5 +1,5 @@
-import { StringEnum, Type } from "@mariozechner/pi-ai";
-import { defineTool, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { StringEnum, Type } from "@earendil-works/pi-ai";
+import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { formatSearchResults, searchWeb } from "./core.mjs";
 

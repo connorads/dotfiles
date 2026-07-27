@@ -4,7 +4,7 @@
  * Core interfaces for the fuzzy finder provider system.
  */
 
-import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 
 /** An action available for a provider's items. */
 export interface ProviderAction {

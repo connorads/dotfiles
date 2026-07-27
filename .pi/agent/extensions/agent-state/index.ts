@@ -16,7 +16,7 @@
 //   - Release (clear) only on a real quit. Pi tears down + rebinds extension
 //     runtimes for /reload, /new, /resume, /fork — those must NOT release.
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
