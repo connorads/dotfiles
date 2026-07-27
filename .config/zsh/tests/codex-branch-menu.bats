@@ -29,7 +29,9 @@ printf '%s\n' "$*" >>"$TEST_LOG"
 EOF
 }
 
-# ps stub: a live foreground codex (pid 811) on ttys010.
+# ps stub: a live foreground codex (pid 811) on ttys010. The fork mirrors the
+# source pane's launch flags, read from `ps -o args= -p 811`; PS_SOURCE_ARGV sets
+# that argv (default bare `codex` -> empty flags -> bare fork).
 stub_ps_with_foreground_codex() {
   write_stub ps <<'EOF'
 #!/usr/bin/env bash
@@ -37,6 +39,9 @@ case "$*" in
   *-t\ ttys010*)
     printf '  800 Ss zsh\n'
     printf '  811 S+ codex\n'
+    ;;
+  *"args= -p 811"*)
+    printf '%s\n' "${PS_SOURCE_ARGV:-codex}"
     ;;
   *) exit 1 ;;
 esac
@@ -124,9 +129,46 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -q -- "codex --dangerously-bypass-approvals-and-sandbox -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  grep -q -- "codex -C /Users/connorads fork codex-thread" "$TEST_LOG"
   grep -q "codex-thread" "$TEST_LOG"
   assert_log_missing "wrong-session"
+}
+
+@test "plain cx source pane -> bare fork (match-source, no bypass)" {
+  # A plain `cx` pane has no override to carry; forking must not escalate it.
+  stub_ps_with_foreground_codex
+  stub_lsof_rollout
+  write_valid_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -qF -- "codex -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  assert_log_missing "dangerously-bypass-approvals-and-sandbox"
+}
+
+@test "cxy source pane -> fork mirrors the bypass flag" {
+  export PS_SOURCE_ARGV="codex --dangerously-bypass-approvals-and-sandbox"
+  stub_ps_with_foreground_codex
+  stub_lsof_rollout
+  write_valid_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -qF -- "codex --dangerously-bypass-approvals-and-sandbox -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  # the prompt sub-modes carry the mirrored flags through too
+  grep -qF -- "prompt-worktree /Users/connorads codex-thread --dangerously-bypass-approvals-and-sandbox" "$TEST_LOG"
+}
+
+@test "fork-of-fork source -> stale resume state stripped from the mirror" {
+  export PS_SOURCE_ARGV="codex --dangerously-bypass-approvals-and-sandbox resume old-thread"
+  stub_ps_with_foreground_codex
+  stub_lsof_rollout
+  write_valid_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -qF -- "codex --dangerously-bypass-approvals-and-sandbox -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  assert_log_missing "old-thread"
 }
 
 @test "rollout from a different cwd is not forkable for this pane" {
@@ -221,7 +263,7 @@ EOF
   run "$MENU" fork-repeat split-right 4 "%1" "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]
   [ "$(log_count "split-window -h")" -eq 4 ]
-  [ "$(log_count "codex --dangerously-bypass-approvals-and-sandbox -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
+  [ "$(log_count "codex -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
   grep -q -- "select-layout -t %1 even-horizontal" "$TEST_LOG"
   assert_log_missing "select-layout -t %1 even-vertical"
 }
@@ -230,7 +272,7 @@ EOF
   run "$MENU" fork-repeat split-down 4 "%1" "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]
   [ "$(log_count "split-window -v")" -eq 4 ]
-  [ "$(log_count "codex --dangerously-bypass-approvals-and-sandbox -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
+  [ "$(log_count "codex -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
   grep -q -- "select-layout -t %1 even-vertical" "$TEST_LOG"
   assert_log_missing "select-layout -t %1 even-horizontal"
 }
@@ -239,8 +281,32 @@ EOF
   run "$MENU" fork-repeat new-window 4 "%1" "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]
   [ "$(log_count "new-window -c /tmp/work space")" -eq 4 ]
-  [ "$(log_count "codex --dangerously-bypass-approvals-and-sandbox -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
+  [ "$(log_count "codex -C /tmp/work\\\\ space fork codex-thread")" -eq 4 ]
   assert_log_missing "select-layout"
+}
+
+@test "fork-repeat threads the mirrored flags into every fork command" {
+  # Flags arrive as one positional (shell_quoted upstream) and expand back into
+  # separate flags in the fork command.
+  local flags="--dangerously-bypass-approvals-and-sandbox --model gpt-5"
+  run "$MENU" fork-repeat split-right 3 "%1" "/tmp/work space" "codex-thread" "$flags"
+  [ "$status" -eq 0 ]
+  [ "$(log_count "codex --dangerously-bypass-approvals-and-sandbox --model gpt-5 -C /tmp/work\\\\ space fork codex-thread")" -eq 3 ]
+}
+
+@test "fork-worktree threads the mirrored flags into the fork command" {
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  write_stub wt-add <<'EOF'
+#!/usr/bin/env bash
+echo "/tmp/trees/repo/feat/x"
+EOF
+
+  run "$MENU" fork-worktree "feat/x" "codex-thread" "--dangerously-bypass-approvals-and-sandbox"
+  [ "$status" -eq 0 ]
+  grep -qF -- "codex --dangerously-bypass-approvals-and-sandbox -C /tmp/trees/repo/feat/x fork codex-thread" "$TEST_LOG"
 }
 
 @test "fork-repeat rejects invalid counts without launching forks" {
@@ -265,7 +331,7 @@ EOF
   run "$MENU" fork-worktree "feat/x" "codex-thread"
   [ "$status" -eq 0 ]
   grep -q "wt-add feat/x" "$TEST_LOG"
-  grep -q -- "new-window -c /tmp/trees/repo/feat/x codex --dangerously-bypass-approvals-and-sandbox -C /tmp/trees/repo/feat/x fork codex-thread" "$TEST_LOG"
+  grep -q -- "new-window -c /tmp/trees/repo/feat/x codex -C /tmp/trees/repo/feat/x fork codex-thread" "$TEST_LOG"
 }
 
 @test "fork-worktree outside a git repository soft-fails without opening a window" {
@@ -305,7 +371,7 @@ EOF
   grep -q -- "wt-add feat/foo-3" "$TEST_LOG"
   grep -q -- "wt-add feat/foo-4" "$TEST_LOG"
   [ "$(log_count "new-window -c /tmp/trees/repo/feat/foo-")" -eq 4 ]
-  [ "$(log_count "codex --dangerously-bypass-approvals-and-sandbox -C /tmp/trees/repo/feat/foo-")" -eq 4 ]
+  [ "$(log_count "codex -C /tmp/trees/repo/feat/foo-")" -eq 4 ]
 }
 
 @test "fork-worktrees outside a git repository soft-fails without opening windows" {
