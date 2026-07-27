@@ -1,8 +1,10 @@
 name: check
 
-# PR-only lint: one job running `hk check --all` - the same gate as the local
-# pre-commit hook, full-tree. Nothing runs on push; the owner commits through
-# the pre-commit hook, so CI exists for contributor PRs (and manual dispatch).
+# PR-only. Two jobs: `check` runs `hk check --all` - the same gate as the local
+# pre-commit hook, full-tree - and `bats` runs a focused slice of the shell test
+# suite on Linux, which is the only place a macOS-developed suite's portability
+# bugs can surface. Nothing runs on push; the owner commits through the
+# pre-commit hook, so CI exists for contributor PRs (and manual dispatch).
 # Cross-host nix eval is covered by the nix-eval hk step
 # (.hk-hooks/nix-eval.sh owns the target list).
 #
@@ -46,3 +48,54 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y zsh ripgrep
       - name: hk check --all
         run: hk check --all
+
+  # The bats suite is macOS-developed, so a Linux run is the only guard against
+  # a portability bug landing unseen - and this file set is exactly where those
+  # bugs live (interpreter pinning, PATH assumptions, GNU-vs-BSD tool flags).
+  #
+  # Deliberately a focused set, not `mise run zsh-tests`: the full suite has
+  # pre-existing failures on Linux that have nothing to do with what is gated
+  # here, and a permanently red job gates nothing. Excluded, each with one
+  # unrelated platform-specific failure:
+  #   papercut.bats        - "repeated adds in the same second get unique ids"
+  #   rl.bats              - "autoload resolves sibling helpers from fpath"
+  #   agent-teleport.bats  - "copy mode ships a rewritten fork" (needs a clipboard)
+  # Add a file here once it is green on Linux.
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
+        with:
+          install_args: bats
+        env:
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/.config/mise/config.toml
+      - name: install shell deps
+        # lsof is load-bearing: the Codex session lookup needs it, and the tests
+        # that assert the "absent from PATH" fallback are only meaningful when a
+        # real lsof exists to be excluded.
+        run: sudo apt-get update && sudo apt-get install -y zsh tmux jq lsof ripgrep
+      - name: stage the work-tree at $HOME
+        # The dotfiles work-tree IS $HOME, and the tests resolve real paths
+        # through it ($HOME/.hk-hooks/..., $HOME/.config/tmux/scripts/...).
+        # Copying is simpler than overriding $HOME, which would move mise's own
+        # data dir out from under the shims installed above.
+        run: |
+          shopt -s dotglob
+          cp -a "$GITHUB_WORKSPACE"/. "$HOME"/
+      - name: bats (files covering the bash-5 interpreter contract)
+        run: |
+          cd "$HOME"
+          export PATH="$HOME/.local/bin:$PATH"
+          bats --print-output-on-failure \
+            .config/zsh/tests/bash5-preamble.bats \
+            .config/zsh/tests/tmux-resurrect-post-save.bats \
+            .config/zsh/tests/tmux-resurrect-sessions.bats \
+            .config/zsh/tests/agent-session-lib.bats \
+            .config/zsh/tests/claude-account-lib.bats \
+            .config/zsh/tests/claude-plan-popup.bats \
+            .config/zsh/tests/claude-branch-menu.bats \
+            .config/zsh/tests/claude-session-adopt.bats \
+            .config/zsh/tests/cleanup.bats
