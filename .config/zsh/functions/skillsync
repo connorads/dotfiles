@@ -33,7 +33,6 @@ if [[ ! -d "$canonical" ]]; then
 fi
 
 typeset -A paths=(
-  [amp]="$HOME/.config/agents/skills"
   [claude-code]="$HOME/.claude/skills"
   [codex]="$HOME/.codex/skills"
   [opencode]="$HOME/.config/opencode/skills"
@@ -42,6 +41,11 @@ typeset -A paths=(
 # Fan-out is scoped to agents in regular use. cursor/gemini/kiro/copilot were
 # dropped: they cluttered $HOME with skills dirs (and husk parent dirs) for
 # tools not used. Re-add a line here to opt an agent back in.
+#
+# Amp needs no arm: it reads $canonical directly (~/.agents/skills is #2 in its
+# precedence list), so a second root at ~/.config/agents/skills only duplicated
+# what Amp already loads. ~/.agents/ is the single agents root — see
+# ~/docs/adr/0002-agents-root.md.
 
 # nullglob (N): the canonical dir may legitimately be empty (autoload-none).
 # (-/): match directories, following symlinks — authored skills are symlinked
