@@ -62,7 +62,6 @@
 !/.codex/rules/safety.rules
 !/.codex/skills/
 /.codex/skills/**
-!/.codex/skills/*
 !/.codex/skills/playwright-interactive/
 !/.codex/skills/playwright-interactive/**
 
@@ -75,9 +74,6 @@
 !/.config/opencode/themes/catppuccin-mocha.json
 !/.config/opencode/command/
 !/.config/opencode/command/**
-!/.config/opencode/skills/
-/.config/opencode/skills/**
-!/.config/opencode/skills/*
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
 !/.config/opencode/plugin-disabled/
@@ -173,9 +169,6 @@
 !/.pi/agent/extensions/pi-palette/pnpm-lock.yaml
 !/.pi/agent/extensions/goal/pnpm-lock.yaml
 !/.pi/agent/extensions/workflows/pnpm-lock.yaml
-!/.pi/agent/skills/
-/.pi/agent/skills/**
-!/.pi/agent/skills/*
 
 !/.config/nix/
 !/.config/nix/**

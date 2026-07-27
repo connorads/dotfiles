@@ -8,9 +8,10 @@ them. This is the **single home for curation intent** — it lives with the conf
 
 ## The problem this solves
 
-Every skill installed under `~/.agents/skills/` is symlinked into ~10 agent tools by
-`skillsync`, and each tool injects *every* installed skill's `name`+`description` into
-*every* session as fixed context. 68 skills = 68 descriptions loaded in every session,
+Every skill installed under `~/.agents/skills/` is loaded by every agent tool - most read
+that dir themselves, Claude Code via a `skillsync` symlink - and each tool injects *every*
+installed skill's `name`+`description` into *every* session as fixed context. 68 skills =
+68 descriptions loaded in every session,
 most for skills that are rarely used and never need to auto-fire. The fix: keep the
 **autoloaded** set tiny and intentional — the filesystem at `~/.agents/skills/` is the
 source of truth for what is currently global — keep everything else one `skl` popup away
@@ -32,7 +33,17 @@ CLI's two scopes *are* our two managed tiers:
 |------|-------|-------------|--------------|------------|
 | **Catalogue** (default) | `~/skills` (public, symlinked from `.config/skills/public`) + `~/.config/skills/personal` (authored, public-in-dotfiles) + `~/.config/skills/private` (authored) + `vendor/<name>/.agents/skills` (vendored sets) + `vendor/.agents/skills` (unsorted CLI-vendored) + `vendor/manual/<name>` (manual bucket) | No | ~zero (pointer on demand) | hand-edit (authored); `skills add`/`update` project scope (sets + vendor) |
 | **Per-project** | `<repo>/.agents/skills/<name>` | Only in that repo's sessions | one repo's worth | `skills add` (no `-g`) from the repo |
-| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | symlink + `skillsync` (authored → `~/skills`, vendored → the vendor copy); `skills add -g` only for a non-catalogue global |
+| **Autoload (global)** | `~/.agents/skills/` | Yes — every session, every tool | every session | symlink into `~/.agents/skills` (authored → `~/skills`, vendored → the vendor copy), then `skillsync` for Claude Code; `skills add -g` only for a non-catalogue global |
+
+`~/.agents/skills/` is the one autoload root. Codex, opencode, pi and Amp read it
+natively, so they need no fan-out. Claude Code does not - its user scope is
+`~/.claude/skills` - which is the single arm `skillsync` still has. Verified by
+renaming a tool's own skills dir *and* `~/.claude/skills` away and confirming the set
+still loaded from `~/.agents/skills`: `codex debug prompt-input` and
+`opencode debug skill` both name the source path. Note `~/.codex/skills` is read too,
+but it is absent from Codex's published scope list and marked deprecated in OpenAI's
+own loader, so prefer the documented path. Rationale:
+[`~/docs/adr/0002-agents-root.md`](../../docs/adr/0002-agents-root.md).
 
 **Autoload is kept deliberately minimal** — inspect `~/.agents/skills/` for the current
 set. Promote only when you catch yourself wishing something fired automatically. Either
@@ -120,8 +131,10 @@ above) are curation calls.
     manual/<name>/         manual bucket: manually-vendored skills (no upstream, no lock) · skl source 'manual'
     patches/               local-patch definitions (skill-patch source of truth)
 
-~/.agents/skills/          AUTOLOAD tier (every session, every tool). Deliberately small:
-  <authored-name> → symlink to ~/skills/<name> (authored; fanned out by skillsync)
+~/.agents/skills/          AUTOLOAD tier (every session, every tool — read natively by
+                           Codex/opencode/pi/Amp; skillsync links it for Claude Code).
+                           Deliberately small:
+  <authored-name> → symlink to ~/skills/<name> (authored)
   <vendored-name> → symlink to ../../.config/skills/vendor/.agents/skills/<name>
                     (vendored global: ONE real clone lives in the vendor tier, so
                     refreshes + local patches apply once; currently playwright-cli)
@@ -206,11 +219,11 @@ Reserve for broad + must-auto-fire + regular skills. Two paths by provenance, be
 deciding axis is **upstream tracking**:
 
 **Vendored** (real upstream) → vendor it into the catalogue first (project scope, above),
-then symlink the vendor copy into the autoload dir and fan out:
+then symlink the vendor copy into the autoload dir and give Claude Code its link:
 
 ```bash
 ln -s ../../.config/skills/vendor/.agents/skills/<name> ~/.agents/skills/<name>
-skillsync
+skillsync   # only Claude Code needs an arm; the rest read ~/.agents/skills
 ```
 
 One real clone serves both tiers, so a `skills update -p` refresh and any
@@ -221,11 +234,11 @@ second CLI-managed copy in `~/.agents/skills/` recorded in `~/.agents/.skill-loc
 and refreshed with `skills update -g` (that set is currently empty).
 
 **Authored** (you *are* upstream) → symlink the skill into `~/.agents/skills/`, then run
-`skillsync` to fan out:
+`skillsync` for Claude Code:
 
 ```bash
 ln -s ../../skills/<name> ~/.agents/skills/<name>   # real files stay in ~/skills
-skillsync                                           # → per-tool symlinks (resolve to ~/skills)
+skillsync                                           # → ~/.claude/skills link (resolves to ~/skills)
 ```
 
 Why not `skills add -g` for authored skills? They already live in a public repo —

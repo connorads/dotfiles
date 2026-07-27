@@ -34,18 +34,20 @@ fi
 
 typeset -A paths=(
   [claude-code]="$HOME/.claude/skills"
-  [codex]="$HOME/.codex/skills"
-  [opencode]="$HOME/.config/opencode/skills"
-  [pi]="$HOME/.pi/agent/skills"
 )
-# Fan-out is scoped to agents in regular use. cursor/gemini/kiro/copilot were
-# dropped: they cluttered $HOME with skills dirs (and husk parent dirs) for
-# tools not used. Re-add a line here to opt an agent back in.
+# Only Claude Code needs an arm: its user scope is ~/.claude/skills and it does
+# not read $canonical. Codex, opencode, pi and Amp all read ~/.agents/skills
+# themselves, so an arm for them just duplicated skills they already load.
 #
-# Amp needs no arm: it reads $canonical directly (~/.agents/skills is #2 in its
-# precedence list), so a second root at ~/.config/agents/skills only duplicated
-# what Amp already loads. ~/.agents/ is the single agents root — see
-# ~/docs/adr/0002-agents-root.md.
+# Verified, not assumed (docs are not behaviour): with a tool's own skills dir
+# AND ~/.claude/skills renamed away, so ~/.agents/skills was the only source
+# left, all four autoload skills still loaded — `codex debug prompt-input`,
+# `opencode debug skill` (both name the source path), and pi asked directly.
+# ~/.agents/ is the single agents root: ~/docs/adr/0002-agents-root.md.
+#
+# cursor/gemini/kiro/copilot were dropped earlier for a different reason: they
+# cluttered $HOME with skills dirs (and husk parent dirs) for tools not used.
+# Re-add a line here to opt an agent back in.
 
 # nullglob (N): the canonical dir may legitimately be empty (autoload-none).
 # (-/): match directories, following symlinks — authored skills are symlinked
