@@ -2,15 +2,20 @@
 # codex-branch-menu.sh: fork the focused pane's live Codex session into a new
 # pane/window (prefix + Alt+b via agent-branch-menu.sh). Resolves pane -> codex
 # PID -> active ~/.codex/sessions/.../rollout-*.jsonl, then offers a
-# display-menu palette that runs `codex ... fork <sid>`.
+# display-menu palette that runs `codex <source-flags> ... fork <sid>`.
+#
+# The fork mirrors the source pane's live launch flags via
+# resurrect_argv_codex_flags, like the restore path: a fork never has more
+# authority than the pane it came from, so a plain `cx` source stays sandboxed
+# and only a `cxy` source carries --dangerously-bypass-approvals-and-sandbox.
 #
 # Usage: codex-branch-menu.sh <pane_id> <pane_tty> <pane_current_path> [pane_pid]
-#        codex-branch-menu.sh prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id>
-#        codex-branch-menu.sh prompt-worktree <cwd> <session-id>
-#        codex-branch-menu.sh prompt-worktrees <cwd> <session-id>
-#        codex-branch-menu.sh fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id>
-#        codex-branch-menu.sh fork-worktree <branch> <session-id>
-#        codex-branch-menu.sh fork-worktrees <count> <branch-prefix> <session-id>
+#        codex-branch-menu.sh prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id> [flags]
+#        codex-branch-menu.sh prompt-worktree <cwd> <session-id> [flags]
+#        codex-branch-menu.sh prompt-worktrees <cwd> <session-id> [flags]
+#        codex-branch-menu.sh fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id> [flags]
+#        codex-branch-menu.sh fork-worktree <branch> <session-id> [flags]
+#        codex-branch-menu.sh fork-worktrees <count> <branch-prefix> <session-id> [flags]
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
 # the nix bash 5 that is already installed but ordered behind /bin in PATH.
@@ -67,9 +72,14 @@ normalise_fork_count() {
 codex_fork_cmd() {
 	local cwd="$1"
 	local sid="$2"
+	local flags="${3:-}"
 
-	printf 'codex --dangerously-bypass-approvals-and-sandbox -C %s fork %s' \
-		"$(shell_quote "$cwd")" "$(shell_quote "$sid")"
+	# flags mirrors the source pane's launch flags (approval/sandbox mode, model,
+	# -c overrides) from resurrect_argv_codex_flags. Inserted unquoted so it
+	# word-splits back into separate flags. Empty flags -> bare fork: a plain `cx`
+	# source must NOT be escalated to bypass by the act of forking it.
+	printf 'codex%s -C %s fork %s' \
+		"${flags:+ $flags}" "$(shell_quote "$cwd")" "$(shell_quote "$sid")"
 }
 
 # codex_handoff_cmd <sid>
@@ -88,11 +98,12 @@ codex_handoff_cmd() {
 fork_worktree_window() {
 	local branch="$1"
 	local sid="$2"
+	local flags="${3:-}"
 	local path
 	local fork_cmd
 
 	path=$(wt-add "$branch") || soft_fail "wt-add failed for $branch"
-	fork_cmd=$(codex_fork_cmd "$path" "$sid")
+	fork_cmd=$(codex_fork_cmd "$path" "$sid" "$flags")
 	tmux new-window -c "$path" "$fork_cmd"
 }
 
@@ -100,7 +111,7 @@ fork_worktree_window() {
 # been resolved, so keep them before the jq/session discovery path.
 case "${1:-}" in
 prompt-repeat)
-	[ "$#" -eq 5 ] || soft_fail "usage: prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id>"
+	{ [ "$#" -ge 5 ] && [ "$#" -le 6 ]; } || soft_fail "usage: prompt-repeat <split-right|split-down|new-window> <pane-id> <cwd> <session-id> [flags]"
 	action="$2"
 	case "$action" in
 	split-right | split-down | new-window) ;;
@@ -110,37 +121,41 @@ prompt-repeat)
 	pane_arg=$(shell_quote "$3")
 	cwd_arg=$(shell_quote "$4")
 	sid_arg=$(shell_quote "$5")
-	repeat_cmd="$self_arg fork-repeat $action %% $pane_arg $cwd_arg $sid_arg"
+	flags_arg=$(shell_quote "${6:-}")
+	repeat_cmd="$self_arg fork-repeat $action %% $pane_arg $cwd_arg $sid_arg $flags_arg"
 	tmux command-prompt -I "4" -p "Fork count:" "run-shell $(tmux_quote "$repeat_cmd")"
 	exit 0
 	;;
 prompt-worktree)
-	[ "$#" -eq 3 ] || soft_fail "usage: prompt-worktree <cwd> <session-id>"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 4 ]; } || soft_fail "usage: prompt-worktree <cwd> <session-id> [flags]"
 	self_arg=$(shell_quote "${BASH_SOURCE[0]}")
 	cwd="$2"
 	sid_arg=$(shell_quote "$3")
-	worktree_cmd="$self_arg fork-worktree %% $sid_arg"
+	flags_arg=$(shell_quote "${4:-}")
+	worktree_cmd="$self_arg fork-worktree %% $sid_arg $flags_arg"
 	tmux command-prompt -p "Worktree branch:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktree_cmd")"
 	exit 0
 	;;
 prompt-worktrees)
-	[ "$#" -eq 3 ] || soft_fail "usage: prompt-worktrees <cwd> <session-id>"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 4 ]; } || soft_fail "usage: prompt-worktrees <cwd> <session-id> [flags]"
 	self_arg=$(shell_quote "${BASH_SOURCE[0]}")
 	cwd="$2"
 	sid_arg=$(shell_quote "$3")
-	worktrees_cmd="$self_arg fork-worktrees %% %2 $sid_arg"
+	flags_arg=$(shell_quote "${4:-}")
+	worktrees_cmd="$self_arg fork-worktrees %% %2 $sid_arg $flags_arg"
 	tmux command-prompt -I "4," -p "Fork count:,Worktree branch prefix:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktrees_cmd")"
 	exit 0
 	;;
 fork-repeat)
-	[ "$#" -eq 6 ] || soft_fail "usage: fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id>"
+	{ [ "$#" -ge 6 ] && [ "$#" -le 7 ]; } || soft_fail "usage: fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id> [flags]"
 	action="$2"
 	count=$(normalise_fork_count "$3") ||
 		soft_fail "Fork count must be between 1 and 8: ${3:-<empty>}"
 	pane_id="$4"
 	cwd="$5"
 	sid="$6"
-	fork_cmd=$(codex_fork_cmd "$cwd" "$sid")
+	flags="${7:-}"
+	fork_cmd=$(codex_fork_cmd "$cwd" "$sid" "$flags")
 	case "$action" in
 	split-right)
 		for ((i = 1; i <= count; i++)); do
@@ -165,24 +180,26 @@ fork-repeat)
 	;;
 fork-worktree)
 	PATH="$HOME/.local/bin:$PATH"
-	[ "$#" -eq 3 ] || soft_fail "usage: fork-worktree <branch> <session-id> (branch must not contain spaces)"
+	{ [ "$#" -ge 3 ] && [ "$#" -le 4 ]; } || soft_fail "usage: fork-worktree <branch> <session-id> [flags] (branch must not contain spaces)"
 	branch="$2"
 	sid="$3"
+	flags="${4:-}"
 	case "$branch" in
 	*[[:space:]]*) soft_fail "Branch name must not contain spaces: $branch" ;;
 	esac
 	git rev-parse --show-toplevel >/dev/null 2>&1 ||
 		soft_fail "Not in a git repository: $PWD"
-	fork_worktree_window "$branch" "$sid"
+	fork_worktree_window "$branch" "$sid" "$flags"
 	exit 0
 	;;
 fork-worktrees)
 	PATH="$HOME/.local/bin:$PATH"
-	[ "$#" -eq 4 ] || soft_fail "usage: fork-worktrees <count> <branch-prefix> <session-id> (prefix must not contain spaces)"
+	{ [ "$#" -ge 4 ] && [ "$#" -le 5 ]; } || soft_fail "usage: fork-worktrees <count> <branch-prefix> <session-id> [flags] (prefix must not contain spaces)"
 	count=$(normalise_fork_count "$2") ||
 		soft_fail "Fork count must be between 1 and 8: ${2:-<empty>}"
 	prefix="$3"
 	sid="$4"
+	flags="${5:-}"
 	[ -n "$prefix" ] || soft_fail "Worktree branch prefix is required"
 	case "$prefix" in
 	*[[:space:]]*) soft_fail "Branch prefix must not contain spaces: $prefix" ;;
@@ -190,7 +207,7 @@ fork-worktrees)
 	git rev-parse --show-toplevel >/dev/null 2>&1 ||
 		soft_fail "Not in a git repository: $PWD"
 	for ((i = 1; i <= count; i++)); do
-		fork_worktree_window "$prefix-$i" "$sid"
+		fork_worktree_window "$prefix-$i" "$sid" "$flags"
 	done
 	exit 0
 	;;
@@ -214,6 +231,13 @@ esac
 
 # shellcheck source=lib/agent-session.sh disable=SC1091
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-session.sh"
+
+# resurrect_argv_codex_flags preserves the source pane's launch flags so the fork
+# mirrors it (the same lib the restore path uses). Guarded on existence like the
+# resurrect strategy does; missing -> empty flags -> bare fork.
+# shellcheck source=lib/resurrect-argv.sh disable=SC1091
+[ -f "$(dirname "${BASH_SOURCE[0]}")/lib/resurrect-argv.sh" ] &&
+	. "$(dirname "${BASH_SOURCE[0]}")/lib/resurrect-argv.sh"
 
 pane_id="${1:?pane_id required}"
 pane_tty="${2:-}"
@@ -257,7 +281,18 @@ label="${cwd##*/}"
 [ -n "$label" ] || label="session"
 
 title=" Branch Codex · $label "
-fork_cmd=$(codex_fork_cmd "$cwd" "$sid")
+# Mirror the source pane's launch flags (approval/sandbox mode, model, -c
+# overrides) into the fork, like the resurrect restore path - a fork of a plain
+# `cx` pane stays sandboxed, a `cxy` pane keeps its bypass.
+# resurrect_argv_codex_flags keeps them verbatim, strips the source's own stale
+# resume/--last state (clean fork-of-fork), and returns non-zero on argv0
+# mismatch (wrapper) - empty fork_flags then yields a bare fork.
+fork_flags=""
+if command -v resurrect_argv_codex_flags >/dev/null 2>&1; then
+	fork_flags=$(resurrect_argv_codex_flags "$(ps -o args= -p "$codex_pid")" 2>/dev/null || true)
+fi
+
+fork_cmd=$(codex_fork_cmd "$cwd" "$sid" "$fork_flags")
 
 self="${BASH_SOURCE[0]}"
 self_arg=$(shell_quote "$self")
@@ -266,12 +301,15 @@ pane_target=$(tmux display-message -p -t "$pane_id" '#{session_id}:#{window_id}.
 pane_arg=$(shell_quote "$pane_target")
 cwd_arg=$(shell_quote "$cwd")
 sid_arg=$(shell_quote "$sid")
+# The mirrored flags carry spaces; shell_quote threads them as one positional
+# that expands unquoted back into separate flags in codex_fork_cmd.
+flags_arg=$(shell_quote "$fork_flags")
 
-prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg"
-prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg"
-prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg"
-prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg"
-prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg"
+prompt_right_cmd="$self_arg prompt-repeat split-right $pane_arg $cwd_arg $sid_arg $flags_arg"
+prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg $flags_arg"
+prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $flags_arg"
+prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $flags_arg"
+prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $flags_arg"
 handoff_menu_cmd="$self_arg handoff-menu $sid_arg $cwd_arg $pane_arg"
 
 fork_split_right_n="run-shell $(tmux_quote "$prompt_right_cmd")"
