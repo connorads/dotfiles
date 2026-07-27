@@ -16,20 +16,20 @@ setup() {
 
   [ "$status" -eq 0 ]
   assert_symlink_target "$HOME/.claude/skills/git-skill" "../../.agents/skills/git-skill"
-  assert_symlink_target "$HOME/.codex/skills/tmux-skill" "../../.agents/skills/tmux-skill"
+  assert_symlink_target "$HOME/.claude/skills/tmux-skill" "../../.agents/skills/tmux-skill"
 }
 
 @test "removes a legacy directory symlink before creating skill links" {
   mkdir -p "$HOME/.legacy-skills"
-  mkdir -p "$HOME/.codex"
-  ln -s "$HOME/.legacy-skills" "$HOME/.codex/skills"
+  mkdir -p "$HOME/.claude"
+  ln -s "$HOME/.legacy-skills" "$HOME/.claude/skills"
 
   run_zsh_function "$SKILLSYNC"
 
   [ "$status" -eq 0 ]
-  [ -d "$HOME/.codex/skills" ]
-  [ ! -L "$HOME/.codex/skills" ]
-  assert_symlink_target "$HOME/.codex/skills/git-skill" "../../.agents/skills/git-skill"
+  [ -d "$HOME/.claude/skills" ]
+  [ ! -L "$HOME/.claude/skills" ]
+  assert_symlink_target "$HOME/.claude/skills/git-skill" "../../.agents/skills/git-skill"
 }
 
 @test "dry-run reports planned links without writing them" {
@@ -61,14 +61,14 @@ setup() {
   [ "$status" -eq 0 ]
 
   # A real (non-symlink) skill dir living directly in an agent dir.
-  mkdir -p "$HOME/.codex/skills/local-only"
+  mkdir -p "$HOME/.claude/skills/local-only"
 
   run_zsh_function "$SKILLSYNC" --prune
 
   [ "$status" -eq 0 ]
-  [ -d "$HOME/.codex/skills/local-only" ]
-  [ ! -L "$HOME/.codex/skills/local-only" ]
-  assert_symlink_target "$HOME/.codex/skills/git-skill" "../../.agents/skills/git-skill"
+  [ -d "$HOME/.claude/skills/local-only" ]
+  [ ! -L "$HOME/.claude/skills/local-only" ]
+  assert_symlink_target "$HOME/.claude/skills/git-skill" "../../.agents/skills/git-skill"
 }
 
 @test "prune dry-run reports removals without deleting" {
@@ -97,5 +97,5 @@ setup() {
 
   [ "$status" -eq 0 ]
   [ ! -e "$HOME/.claude/skills/git-skill" ]
-  [ ! -e "$HOME/.codex/skills/tmux-skill" ]
+  [ ! -e "$HOME/.claude/skills/tmux-skill" ]
 }

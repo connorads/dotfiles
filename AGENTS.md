@@ -508,6 +508,14 @@ deliberately small global autoload dir.
    and authored globals use symlink + `skillsync`. `skillsync` is deprecated for catalogue
    sync, but remains the supported path for authored global autoload symlinks.
 
+`~/.agents/` is the single agents root, for skills and for instructions
+(`~/.agents/AGENTS.md`). Codex, opencode, pi and Amp read `~/.agents/skills` natively;
+Claude Code does not - its user scope is `~/.claude/skills`, which is the one arm
+`skillsync` fans out to. `~/.codex/skills` is read as well, despite being absent from
+Codex's published scope list and marked deprecated upstream, so prefer the documented
+path. Why this root and not an XDG one:
+[docs/adr/0002](./docs/adr/0002-agents-root.md).
+
 Bookmarked skills live in `~/.agents/README.md` (references only, not installed).
 
 **Curation intent, the rubric, tiers, and lockfile/skillsync rationale live in
