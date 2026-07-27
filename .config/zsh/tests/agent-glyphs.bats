@@ -29,7 +29,7 @@ setup() {
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 24
 }
 
-@test "session attention dots match blocked and done canonical glyphs" {
+@test "inactive session attention dots match blocked and done canonical glyphs" {
   conf="$BATS_TEST_TMPDIR/session-dot.conf"
   grep -E '^set -g @session_agent_attention_fmt ' "$CONF" >"$conf"
   tx source-file "$conf"
@@ -43,6 +43,22 @@ setup() {
       [ -z "$got" ]
     fi
   done
+}
+
+@test "current session attention stays on the selected background" {
+  conf="$BATS_TEST_TMPDIR/current-session-dot.conf"
+  grep -E '^set -g @session_agent_attention_current_fmt ' "$CONF" >"$conf"
+  tx source-file "$conf"
+
+  tx set-option -t s @session_agent_attention blocked
+  blocked=$(tx display-message -p -t s '#{E:@session_agent_attention_current_fmt}')
+  [[ "$blocked" == *"#[fg=#$(agent_hex blocked)] ◆"* ]]
+  [[ "$blocked" != *"bg="* ]]
+
+  tx set-option -t s @session_agent_attention done
+  done=$(tx display-message -p -t s '#{E:@session_agent_attention_current_fmt}')
+  [[ "$done" == *"#[fg=#1e1e2e] ●"* ]]
+  [[ "$done" != *"bg="* ]]
 }
 
 teardown() {
