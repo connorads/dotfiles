@@ -16,6 +16,7 @@
 #        codex-branch-menu.sh fork-repeat <split-right|split-down|new-window> <count> <pane-id> <cwd> <session-id> [flags]
 #        codex-branch-menu.sh fork-worktree <branch> <session-id> [flags]
 #        codex-branch-menu.sh fork-worktrees <count> <branch-prefix> <session-id> [flags]
+#        codex-branch-menu.sh handoff-menu <session-id> <cwd> <pane-target> [flags]
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
 # the nix bash 5 that is already installed but ordered behind /bin in PATH.
@@ -82,17 +83,40 @@ codex_fork_cmd() {
 		"${flags:+ $flags}" "$(shell_quote "$cwd")" "$(shell_quote "$sid")"
 }
 
-# codex_handoff_cmd <sid>
+# codex_flags_are_bypass <flags>
+# True when the mirrored source flags carry Codex's full-bypass mode. The one bit
+# of the source pane's authority that means anything in the other CLI.
+codex_flags_are_bypass() {
+	case " ${1:-} " in
+	*" --dangerously-bypass-approvals-and-sandbox "*) return 0 ;;
+	esac
+	return 1
+}
+
+# codex_handoff_cmd <sid> [flags]
 # Hand the pane's live Codex session off to Claude: translate its transcript into
 # Claude's store and resume it there (handoff self-opens the target in
 # foreground, so no --no-open). No account prefix - Codex is a single store and
 # the target lands in the default ~/.claude account. Uses the absolute
 # ~/.local/bin wrapper path because the tmux server's PATH may not carry that dir.
+#
+# A bypass source pane hands off as a bypass Claude pane: handoff appends
+# HANDOFF_CLAUDE_OPEN_ARGS verbatim to its `claude -r <sid>` launch, so the menu
+# keeps deciding authority and handoff only carries it. Only the posture boolean
+# crosses agents - --model / -c key=val are meaningless in the other CLI. The
+# inline VAR=val prefix is the same idiom claude_handoff_cmd uses for
+# CLAUDE_CONFIG_DIR, and is POSIX-sh safe under tmux's `sh -c`.
 codex_handoff_cmd() {
 	local sid="$1"
+	local flags="${2:-}"
 
-	printf '%s --from codex --to claude %s' \
-		"$(shell_quote "$HOME/.local/bin/handoff")" "$(shell_quote "$sid")"
+	local prefix=""
+	if codex_flags_are_bypass "$flags"; then
+		prefix="HANDOFF_CLAUDE_OPEN_ARGS='--dangerously-skip-permissions' "
+	fi
+
+	printf '%s%s --from codex --to claude %s' \
+		"$prefix" "$(shell_quote "$HOME/.local/bin/handoff")" "$(shell_quote "$sid")"
 }
 
 fork_worktree_window() {
@@ -215,12 +239,13 @@ handoff-menu)
 	# The Handoff → Claude placement submenu (split right/down / new window),
 	# reached via run-shell from the branch menu's "Handoff → Claude" row. Splits
 	# against the stable pane_target (session:window.pane), not "%N".
-	[ "$#" -eq 4 ] || soft_fail "usage: handoff-menu <sid> <cwd> <pane-target>"
+	{ [ "$#" -ge 4 ] && [ "$#" -le 5 ]; } || soft_fail "usage: handoff-menu <sid> <cwd> <pane-target> [flags]"
 	sid="$2"
 	cwd="$3"
 	pane_target="$4"
+	flags="${5:-}"
 
-	handoff_cmd=$(codex_handoff_cmd "$sid")
+	handoff_cmd=$(codex_handoff_cmd "$sid" "$flags")
 	tmux display-menu -T " Handoff → Claude " -x C -y C \
 		"Split right" "|" "split-window -h -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
 		"Split down" "-" "split-window -v -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
@@ -310,7 +335,7 @@ prompt_down_cmd="$self_arg prompt-repeat split-down $pane_arg $cwd_arg $sid_arg 
 prompt_window_cmd="$self_arg prompt-repeat new-window $pane_arg $cwd_arg $sid_arg $flags_arg"
 prompt_worktree_cmd="$self_arg prompt-worktree $cwd_arg $sid_arg $flags_arg"
 prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $flags_arg"
-handoff_menu_cmd="$self_arg handoff-menu $sid_arg $cwd_arg $pane_arg"
+handoff_menu_cmd="$self_arg handoff-menu $sid_arg $cwd_arg $pane_arg $flags_arg"
 
 fork_split_right_n="run-shell $(tmux_quote "$prompt_right_cmd")"
 fork_split_down_n="run-shell $(tmux_quote "$prompt_down_cmd")"
