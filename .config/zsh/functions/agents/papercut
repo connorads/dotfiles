@@ -273,7 +273,7 @@ papercut_export_markdown() {
     return 0
   fi
 
-  jq -rsr '
+  jq -rs '
     def line($label; $value):
       if $value == null or $value == "" then empty else "- \($label): \($value)" end;
 

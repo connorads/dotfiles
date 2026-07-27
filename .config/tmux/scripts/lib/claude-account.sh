@@ -85,7 +85,7 @@ stage_session_for_fork() {
 	printf '%s\n' "$dst_file"
 
 	local plan_file
-	if ! plan_file=$(jq -rsr '
+	if ! plan_file=$(jq -rs '
 		[.[] | select(.attachment?.type? == "plan_mode")]
 		| if length == 0 then ""
 		  elif (.[-1].attachment.planFilePath | type) == "string"
