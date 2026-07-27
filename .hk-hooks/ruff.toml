@@ -2,7 +2,7 @@
 # Kept here (not ~/.config/ruff/) and passed with `--config` from the hk steps so
 # it gates the repo without becoming the user's global XDG ruff default.
 # Derived from skills/mechanical-enforcement/references/python-ruff.toml.
-required-version = ">=0.15,<0.16"
+required-version = ">=0.16,<0.17"
 target-version = "py312"
 line-length = 100
 force-exclude = true
