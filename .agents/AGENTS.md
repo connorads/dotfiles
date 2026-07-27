@@ -102,7 +102,7 @@ Use `hk` to wire git hooks and local checks.
 Document why and intent when it would otherwise be lost; the what/how should usually be clear from code.
 Comments and docs (`AGENTS.md`, `README`, ADRs) are for future readers: describe the standing state, rule or constraint in the present tense, timelessly. Keep change history - "replaced X", "now uses Y", "previously", "no longer" - in commit messages, not the comment or doc body.
 If the user's goal or reasoning is unclear, ask before encoding assumptions.
-When a decision has trade-offs or rejected alternatives worth preserving, write an ADR or capture it in docs/commit messages.
+When a decision has trade-offs or rejected alternatives worth preserving, write an ADR (the `adr` skill) or capture it in docs/commit messages. A record that changes is superseded by a new one, never edited into a changelog of itself.
 When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
 Keep `AGENTS.md`, `CLAUDE.md`, docs, and code comments in sync with reality.
 

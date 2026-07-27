@@ -9,51 +9,31 @@ modules, hooks, the test harness.
 
 ## When to write one
 
-Write an ADR when a decision:
-
-- has more than one defensible answer, and the losing options are not obviously bad;
-- constrains future work (a rule others must follow, a shape others must copy);
-- was expensive to reach, so re-deriving it would waste the next reader's time.
-
-Do not write one for a choice with a conventional default, or one a comment in the
-code can carry. Prefer a comment, then a subsystem `AGENTS.md`, then an ADR.
+Write an ADR when you can name an option that lost **and** the specific thing that
+killed it here - a mechanism, a measured number, a pinned version, a verbatim
+error, an incident. A reason that would read the same in any repo is not a
+decision: prefer a comment, then a subsystem `AGENTS.md`, then an ADR.
 
 ## Format
 
-File name: `NNNN-slug.md`, sequential. Scan this dir for the highest number and
-increment. Numbers are never reused, and an ADR is never deleted - a decision that
-gets reversed earns a new ADR that says so.
+One required section, spelled `## Alternatives considered`, in which every option
+carries the reason it lost. Everything else is free - `## Context`, `## Decision`,
+`## Consequences`, a known limit, a parked list - used where each earns its place.
+Length is not the measure: a short record that names the losers beats a long one
+that does not.
 
-Start with an H1 title and a short paragraph of the decision in plain terms, then
-these **four required sections**:
+File name: `NNNN-slug.md`, keeping the digit width already in use. Numbers are
+never reused, so the next one is the highest on disk **and** in
+`git log --all --diff-filter=A --name-only`. No Status field - a record on disk is
+in force, and a decision not yet made is a draft rather than a file.
 
-| Section               | Holds                                                    |
-| --------------------- | -------------------------------------------------------- |
-| `## Context`          | the problem, the constraints, what forced a decision      |
-| `## Decision`         | what we chose, in the present tense                       |
-| `## Considered Options` | **every alternative weighed, each with why it lost**    |
-| `## Consequences`     | what this costs, what it forecloses, what to watch        |
+Write timelessly, in the present tense. Change history ("we used to...", "this
+replaced...") belongs in commit messages. A reversed decision earns a new record
+plus one blockquote line under the old record's H1; the old body stays as written.
 
-Optional `### Parked` for follow-ups that were deliberately deferred, so a reader
-can tell "not done yet" from "decided against".
+Records already here and in the subprojects stand as they are; this format governs
+new ones.
 
-Write timelessly, in the present tense: an ADR states the standing decision and the
-reasoning behind it. Change history ("we used to...", "this replaced...") belongs in
-commit messages.
-
-### Divergence from the `domain-modeling` skill's ADR-FORMAT
-
-The vendored
-[`ADR-FORMAT.md`](../../.config/skills/vendor/.agents/skills/domain-modeling/ADR-FORMAT.md)
-lists **Considered Options** and **Consequences** as optional. Here they are
-required.
-
-The reason is specific: an ADR whose rejected alternatives were not recorded is
-exactly the failure that motivated this dir. A proposal arrived naming a direction
-but not why the others lost, so the whole comparison had to be redone from scratch.
-Recording the losers is most of an ADR's value; recording only the winner is a
-commit message.
-
-This is a deliberate local rule, not drift. All nine existing
-[`.config/skl/docs/adr/`](../../.config/skl/docs/adr/) ADRs already use all four
-sections, so it codifies practice rather than inventing it.
+The `adr` skill (`skl adr`) carries the rest - the trigger test, what not to write
+a record for, supersession, and the read-before-you-change path - and is the source
+of truth for the mechanics. This file states only what is local to these dotfiles.
