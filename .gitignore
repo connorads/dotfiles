@@ -25,6 +25,9 @@
 !/.hk-hooks/
 !/.hk-hooks/**
 
+!/docs/
+!/docs/**
+
 !/.github/
 !/.github/**
 
