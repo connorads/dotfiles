@@ -17,6 +17,7 @@ launchers are POSIX shell scripts, matching the Rust `fake-claude.sh` / `fake-co
 
 from __future__ import annotations
 
+import shlex
 import stat
 from collections.abc import Callable
 from pathlib import Path
@@ -260,3 +261,282 @@ def test_quick_cli_opens_target_agent_by_default(
     log = log_path.read_text(encoding="utf-8")
     assert "resume" in log
     assert "CODEX_HOME=" in log
+
+
+# --- open-args seam (ADDITION: not in the Rust suite) --------------------------------
+#
+# `HANDOFF_{CLAUDE,CODEX}_OPEN_ARGS` append caller-chosen flags to the resume argv, so
+# a handed-off pane can carry its source pane's permission posture. handoff forwards
+# the tokens verbatim; it never invents a flag.
+
+
+def _launcher(target_home: Path, name: str) -> tuple[Path, Path]:
+    """A fake agent binary that logs one argv token per line, and its log path."""
+    log_path = target_home / f"{name}.log"
+    script_path = target_home / f"fake-{name}.sh"
+    _make_executable(
+        script_path,
+        f'#!/bin/sh\nprintf \'%s\\n\' "$@" > "{log_path}"\n',
+    )
+    return script_path, log_path
+
+
+def _codex_to_claude(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+) -> tuple[Path, Path, Path, str]:
+    """Stage a Codex source session and a fake `claude`; returns homes, log, and id."""
+    session_id = "019cd6bd-10df-7e61-8506-e9ac5bdf4e6e"
+    source_session = load_session(fixture("codex_sample.jsonl"), SourceFormat.CODEX)
+    source_home = tmp_path_factory.mktemp("source_home")
+    target_home = tmp_path_factory.mktemp("target_home")
+    source_session.metadata.cwd = str(target_home / "missing-session-cwd")
+    materialize(source_session, SessionFormat.CODEX, source_home)
+    _, log_path = _launcher(target_home, "claude")
+    return source_home, target_home, log_path, session_id
+
+
+def _run_to_claude(
+    run_cli: Callable[..., object],
+    source_home: Path,
+    target_home: Path,
+    session_id: str,
+    open_args: str | None,
+) -> object:
+    env: dict[str, object] = {
+        "HANDOFF_CODEX_HOME": source_home,
+        "HANDOFF_CLAUDE_BIN": target_home / "fake-claude.sh",
+    }
+    if open_args is not None:
+        env["HANDOFF_CLAUDE_OPEN_ARGS"] = open_args
+    return run_cli(
+        "--from",
+        "codex",
+        "--to",
+        "claude",
+        "--keep-session-id",
+        session_id,
+        "--output",
+        target_home,
+        remove_env=("HANDOFF_CLAUDE_OPEN_ARGS", "HANDOFF_CODEX_OPEN_ARGS"),
+        env=env,
+    )
+
+
+def test_claude_open_args_land_before_the_resume_token(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: the env flags are launched, ahead of `-r <sid>`."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(
+        run_cli,
+        source_home,
+        target_home,
+        session_id,
+        "--dangerously-skip-permissions --append-system-prompt-file /tmp/append.md",
+    )
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == [
+        "--dangerously-skip-permissions",
+        "--append-system-prompt-file",
+        "/tmp/append.md",
+        "-r",
+        session_id,
+    ]
+
+
+def test_claude_open_args_keep_a_quoted_path_as_one_token(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: POSIX split, no shell - a quoted path with a space stays one token."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(
+        run_cli,
+        source_home,
+        target_home,
+        session_id,
+        "--append-system-prompt-file '/tmp/my notes/append.md'",
+    )
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == [
+        "--append-system-prompt-file",
+        "/tmp/my notes/append.md",
+        "-r",
+        session_id,
+    ]
+
+
+def test_claude_open_args_do_not_expand_home(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: no shell means no variable expansion - `$HOME` arrives literal."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(
+        run_cli, source_home, target_home, session_id, "--append-system-prompt-file $HOME/a.md"
+    )
+
+    assert result.returncode == 0
+    assert "$HOME/a.md" in log_path.read_text(encoding="utf-8").splitlines()
+
+
+def test_the_other_targets_open_args_are_ignored(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: only the *target* CLI's var is read - a Codex flag is meaningless here."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = run_cli(
+        "--from",
+        "codex",
+        "--to",
+        "claude",
+        "--keep-session-id",
+        session_id,
+        "--output",
+        target_home,
+        remove_env=("HANDOFF_CLAUDE_OPEN_ARGS", "HANDOFF_CODEX_OPEN_ARGS"),
+        env={
+            "HANDOFF_CODEX_HOME": source_home,
+            "HANDOFF_CLAUDE_BIN": target_home / "fake-claude.sh",
+            "HANDOFF_CODEX_OPEN_ARGS": "--dangerously-bypass-approvals-and-sandbox",
+        },
+    )
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == ["-r", session_id]
+
+
+def test_unset_open_args_leave_the_resume_argv_unchanged(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: the seam is inert when unset - argv is exactly `-r <sid>`."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(run_cli, source_home, target_home, session_id, None)
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == ["-r", session_id]
+
+
+def test_blank_open_args_leave_the_resume_argv_unchanged(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: a whitespace-only value is the same as unset (the wrapper's default)."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(run_cli, source_home, target_home, session_id, "   ")
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == ["-r", session_id]
+
+
+def test_unbalanced_quote_in_open_args_fails_with_a_clear_message(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: a malformed value is a normal handoff error, not a traceback."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(
+        run_cli, source_home, target_home, session_id, "--append-system-prompt-file '/tmp/a.md"
+    )
+
+    assert result.returncode == 1
+    assert "failed to parse $HANDOFF_CLAUDE_OPEN_ARGS" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert not log_path.exists()
+
+
+def test_printed_resume_hint_matches_the_launched_argv(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: the hint is derived from the same argv builder, under `claude`."""
+    source_home, target_home, log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+
+    result = _run_to_claude(
+        run_cli, source_home, target_home, session_id, "--dangerously-skip-permissions"
+    )
+
+    assert result.returncode == 0
+    hint = next(
+        line[len("resume with: ") :]
+        for line in result.stdout.splitlines()
+        if line.startswith("resume with: ")
+    )
+    launched = log_path.read_text(encoding="utf-8").splitlines()
+    assert shlex.split(hint) == ["claude", *launched]
+
+
+def test_codex_open_args_precede_the_resume_subcommand(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: Codex takes root-level args *before* `resume`, so order is mandatory."""
+    session_id = "d89e26cd-11f2-47e8-bea5-a73ad5458483"
+    source_session = load_session(fixture("claude_sample.jsonl"), SourceFormat.CLAUDE)
+    source_home = tmp_path_factory.mktemp("source_home")
+    target_home = tmp_path_factory.mktemp("target_home")
+    source_session.metadata.cwd = str(target_home / "missing-session-cwd")
+    materialize(source_session, SessionFormat.CLAUDE, source_home)
+    script_path, log_path = _launcher(target_home, "codex")
+
+    result = run_cli(
+        "--from",
+        "claude",
+        "--to",
+        "codex",
+        "--keep-session-id",
+        session_id,
+        "--output",
+        target_home,
+        remove_env=("HANDOFF_CLAUDE_OPEN_ARGS", "HANDOFF_CODEX_OPEN_ARGS"),
+        env={
+            "HANDOFF_CLAUDE_HOME": source_home,
+            "HANDOFF_CODEX_BIN": script_path,
+            "HANDOFF_CODEX_OPEN_ARGS": "--dangerously-bypass-approvals-and-sandbox",
+        },
+    )
+
+    assert result.returncode == 0
+    assert log_path.read_text(encoding="utf-8").splitlines() == [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "resume",
+        session_id,
+    ]
+
+
+def test_a_rejected_flag_is_diagnosable_from_the_error(
+    fixture: Callable[[str], Path],
+    tmp_path_factory: pytest.TempPathFactory,
+    run_cli: Callable[..., object],
+) -> None:
+    """ADDITION: the non-zero-exit bail names the whole command it launched."""
+    source_home, target_home, _log_path, session_id = _codex_to_claude(fixture, tmp_path_factory)
+    _make_executable(target_home / "fake-claude.sh", "#!/bin/sh\nexit 2\n")
+
+    result = _run_to_claude(run_cli, source_home, target_home, session_id, "--nope")
+
+    assert result.returncode == 1
+    assert "claude exited with status 2" in result.stderr
+    assert "--nope" in result.stderr
