@@ -14,12 +14,18 @@ we parse the quick-convert surface. See the module docstring notes on the deviat
 
 Errors mirror `anyhow`: every failure is a :class:`HandoffError`, and :func:`main`
 prints it to stderr in anyhow's ``Error: ...`` / ``Caused by:`` chain form, exiting 1.
+
+One env seam has no Rust counterpart: ``HANDOFF_{CLAUDE,CODEX}_OPEN_ARGS`` append
+caller-chosen flags to the resume argv (see :func:`_open_args`). It sits alongside the
+existing ``HANDOFF_{CLAUDE,CODEX}_BIN`` overrides and touches no format or IR code, so
+the byte-parity contract in ``PORTING.md`` is unaffected.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -327,12 +333,16 @@ def _maybe_rekey_session(
 
 
 def _resume_hint(format_: SessionFormat, session_id: str) -> str | None:
-    """The `resume with:` hint for a target format (`resume_hint`)."""
+    """The `resume with:` hint for a target format (`resume_hint`).
+
+    Derived from the same pure :func:`_resume_argv` the launch path uses, under the
+    canonical binary name, so the printed hint can never drift from what is run.
+    """
     match format_:
         case SessionFormat.CODEX:
-            return f"codex resume {session_id}"
+            return shlex.join(_resume_argv(format_, session_id, "codex"))
         case SessionFormat.CLAUDE:
-            return f"claude -r {session_id}"
+            return shlex.join(_resume_argv(format_, session_id, "claude"))
         case SessionFormat.IR:
             return None
 
@@ -365,7 +375,27 @@ def _maybe_open_session(
         result = subprocess.run(argv, env=env, cwd=cwd, check=False)
     if result.returncode != 0:
         code = "signal" if result.returncode < 0 else str(result.returncode)
-        bail(f"{format_.value} exited with status {code}")
+        # Name the whole launched command: the caller-supplied open args are the
+        # one part handoff does not author, so a CLI rejecting a flag must be
+        # diagnosable from the error alone.
+        bail(f"{format_.value} exited with status {code}: {shlex.join(argv)}")
+
+
+def _resume_argv(format_: SessionFormat, session_id: str, binary: str) -> list[str]:
+    """The resume argv for a target format (pure).
+
+    Caller-supplied open args go **before** the resume token: Codex takes
+    root-level args ahead of its `resume` subcommand, and Claude is order-agnostic,
+    so one shape serves both.
+    """
+    flags = _open_args(format_)
+    match format_:
+        case SessionFormat.CODEX:
+            return [binary, *flags, "resume", session_id]
+        case SessionFormat.CLAUDE:
+            return [binary, *flags, "-r", session_id]
+        case SessionFormat.IR:
+            bail("cannot open IR directly")
 
 
 def _resume_command(
@@ -374,14 +404,17 @@ def _resume_command(
     output_root: Path,
     session_cwd: str | None,
 ) -> tuple[list[str], dict[str, str], str | None]:
-    """Build the resume command's argv, environment, and cwd (`resume_command`)."""
+    """Build the resume command's argv, environment, and cwd (`resume_command`).
+
+    Effectful: prepares the target home before deriving the pure argv.
+    """
     _prepare_runtime_home(format_, output_root)
 
     match format_:
         case SessionFormat.CODEX:
-            argv = [_codex_binary(), "resume", session_id]
+            argv = _resume_argv(format_, session_id, _codex_binary())
         case SessionFormat.CLAUDE:
-            argv = [_claude_binary(), "-r", session_id]
+            argv = _resume_argv(format_, session_id, _claude_binary())
         case SessionFormat.IR:
             bail("cannot open IR directly")
 
@@ -410,6 +443,33 @@ def _codex_binary() -> str:
 def _claude_binary() -> str:
     """Claude binary, overridable via `$HANDOFF_CLAUDE_BIN` (`claude_binary`)."""
     return os.environ.get("HANDOFF_CLAUDE_BIN", "claude")
+
+
+def _open_args(format_: SessionFormat) -> list[str]:
+    """Extra launch flags for the target CLI, from `$HANDOFF_{CLAUDE,CODEX}_OPEN_ARGS`.
+
+    The seam that carries a source pane's permission posture across a handoff. The
+    caller decides the authority - the tmux branch menu reads it from the live source
+    pane's argv, the zsh wrapper adds the interactive baseline - and spells it here;
+    handoff forwards the tokens verbatim and never invents a flag.
+
+    Split POSIX-style with no shell, so a quoted path containing spaces stays one
+    token and `$HOME` is *not* expanded. An unbalanced quote is a normal handoff
+    error rather than a traceback.
+    """
+    match format_:
+        case SessionFormat.CODEX:
+            name = "HANDOFF_CODEX_OPEN_ARGS"
+        case SessionFormat.CLAUDE:
+            name = "HANDOFF_CLAUDE_OPEN_ARGS"
+        case SessionFormat.IR:
+            return []
+
+    raw = os.environ.get(name, "")
+    if not raw.strip():
+        return []
+    with ctx(lambda: f"failed to parse ${name}"):
+        return shlex.split(raw)
 
 
 def _prepare_runtime_home(format_: SessionFormat, output_root: Path) -> None:
