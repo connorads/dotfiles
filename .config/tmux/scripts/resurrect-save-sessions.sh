@@ -313,4 +313,14 @@ for dir in "${!ALL_DIRS[@]}"; do
 	json=$(echo "$json" | jq --arg dir "$dir" --argjson entry "$entry" '. + {($dir): $entry}')
 done
 
-echo "$json" | jq '.' >"$SESSION_FILE"
+# Write via a sibling temp file. A direct `>"$SESSION_FILE"` truncates the file
+# before jq runs, so a jq failure destroys the session index instead of leaving
+# the previous save intact. Same directory keeps the rename atomic.
+tmp_file="$SESSION_FILE.tmp.$$"
+if ! printf '%s\n' "$json" | jq '.' >"$tmp_file"; then
+	rm -f "$tmp_file"
+	printf '%s: refusing to overwrite %s with malformed JSON\n' \
+		"${0##*/}" "$SESSION_FILE" >&2
+	exit 1
+fi
+mv -f "$tmp_file" "$SESSION_FILE"
