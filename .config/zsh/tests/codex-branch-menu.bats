@@ -225,6 +225,18 @@ EOF
   grep -q -- "handoff-menu codex-thread" "$TEST_LOG"
 }
 
+@test "the handoff row carries the source pane's mirrored flags" {
+  export PS_SOURCE_ARGV="codex --dangerously-bypass-approvals-and-sandbox"
+  stub_ps_with_foreground_codex
+  stub_lsof_rollout
+  write_valid_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -qF -- "handoff-menu codex-thread /Users/connorads" "$TEST_LOG"
+  grep -qF -- "--dangerously-bypass-approvals-and-sandbox" "$TEST_LOG"
+}
+
 @test "handoff-menu emits the codex->claude handoff command via the absolute wrapper" {
   run "$MENU" handoff-menu "codex-thread" "/Users/connorads" "sess:@1.0"
   [ "$status" -eq 0 ]
@@ -233,8 +245,26 @@ EOF
   grep -qF -- "$HOME/.local/bin/handoff --from codex --to claude codex-thread" "$TEST_LOG"
   # codex source is single-store -> no account prefix
   assert_log_missing "CLAUDE_CONFIG_DIR="
+  # a plain source pane hands off with no posture escalation
+  assert_log_missing "HANDOFF_CLAUDE_OPEN_ARGS"
   # splits target the stable pane id, not "%N"
   grep -qF -- "split-window -h -t sess:@1.0" "$TEST_LOG"
+}
+
+@test "handoff-menu from a bypass source hands off as a bypass Claude pane" {
+  run "$MENU" handoff-menu "codex-thread" "/Users/connorads" "sess:@1.0" \
+    "--dangerously-bypass-approvals-and-sandbox --model gpt-5"
+  [ "$status" -eq 0 ]
+  grep -qF -- "HANDOFF_CLAUDE_OPEN_ARGS='--dangerously-skip-permissions' $HOME/.local/bin/handoff --from codex --to claude codex-thread" "$TEST_LOG"
+  # only the posture boolean crosses agents - --model means nothing to claude
+  assert_log_missing "--model"
+}
+
+@test "handoff-menu from a non-bypass source adds no posture" {
+  run "$MENU" handoff-menu "codex-thread" "/Users/connorads" "sess:@1.0" "--model gpt-5"
+  [ "$status" -eq 0 ]
+  grep -qF -- "$HOME/.local/bin/handoff --from codex --to claude codex-thread" "$TEST_LOG"
+  assert_log_missing "HANDOFF_CLAUDE_OPEN_ARGS"
 }
 
 @test "prompt-repeat opens the count prompt for a repeated action" {
