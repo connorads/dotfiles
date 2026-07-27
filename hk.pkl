@@ -217,6 +217,17 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/tmux-bind-lint.py"
     }
 
+    // The tmux shell glue must not depend on which bash the caller's PATH
+    // supplies: macOS hands run-shell the 2007-era /bin/bash, which has no
+    // mapfile and no `declare -A`. Entry points carry a re-exec preamble, libs
+    // under scripts/lib/ assert instead (you cannot exec a sourced file), and
+    // sh-shebang files must carry neither. See docs/adr/0001. Self-path in the
+    // glob so editing the checker re-triggers it.
+    ["bash5-preamble"] {
+        glob = List(".config/tmux/scripts/**/*", ".config/tmux/strategies/**/*", ".config/tmux/save_command_strategies/**/*", ".hk-hooks/bash5-preamble.py")
+        check = "python3 .hk-hooks/bash5-preamble.py"
+    }
+
     // Sibling of tmux-bind-lint for the prefix+T launcher table: the popup
     // parser (tools-popup.sh) runs everything after the FIRST tab, so a
     // tab-less row lists in fzf but silently runs nothing when chosen.
