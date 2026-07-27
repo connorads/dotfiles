@@ -265,8 +265,12 @@
   launchd.user.agents.tmux-resurrect-save = {
     serviceConfig = {
       Label = "dev.connorads.tmux-resurrect-save";
+      # A store path, not "/bin/bash": launchd needs an absolute
+      # ProgramArguments[0] anyway, and /bin/bash does not exist on NixOS. The
+      # script re-execs itself under bash >= 5 regardless (docs/adr/0001), so
+      # this is about not spreading a macOS-only path, not a live bug.
       ProgramArguments = [
-        "/bin/bash"
+        "${pkgs.bash}/bin/bash"
         "/Users/connorads/.config/tmux/scripts/resurrect-keepalive.sh"
       ];
       StartInterval = 300; # every 5 min, independent of tmux status refresh
