@@ -5,6 +5,50 @@ ZSH_DIR="$(cd "$TESTS_DIR/.." && pwd)"
 # shellcheck disable=SC2034  # read by the .bats files that source this helper
 FUNCTIONS_DIR="$ZSH_DIR/functions"
 
+# The real home, captured at source time: setup_test_home replaces $HOME with a
+# throwaway dir, and the nix profile discovery below still needs the real one.
+REAL_HOME="$HOME"
+
+# Nix profile bin dirs, existence unchecked here and filtered at use.
+_nix_profile_bins=(
+  "/etc/profiles/per-user/${USER:-${LOGNAME:-}}/bin"
+  "/run/current-system/sw/bin"
+  "$REAL_HOME/.nix-profile/bin"
+  "/nix/var/nix/profiles/default/bin"
+)
+
+# Candidates for a bash >= 5, in the SAME order as the bash5 re-exec preamble in
+# the tmux scripts: nix profiles first, Homebrew as the last-resort fallback.
+# Kept aligned deliberately - if the two ever disagree, a test can pass under an
+# interpreter production never picks.
+_bash5_bins=("${_nix_profile_bins[@]}" "/opt/homebrew/bin")
+
+_discover_bash5() {
+  local dir ver
+  for dir in "${_bash5_bins[@]}"; do
+    [ -x "$dir/bash" ] || continue
+    # shellcheck disable=SC2016  # the CHILD bash must expand this, not us
+    ver="$("$dir/bash" -c 'echo ${BASH_VERSINFO[0]}' 2>/dev/null || echo 0)"
+    [ "${ver:-0}" -ge 5 ] 2>/dev/null || continue
+    printf '%s\n' "$dir/bash"
+    return 0
+  done
+  # Linux hosts: the ambient bash is already 5.x, so no nix path is needed.
+  # shellcheck disable=SC2016  # the CHILD bash must expand this, not us
+  ver="$(bash -c 'echo ${BASH_VERSINFO[0]}' 2>/dev/null || echo 0)"
+  if [ "${ver:-0}" -ge 5 ] 2>/dev/null; then
+    command -v bash
+    return 0
+  fi
+  return 1
+}
+
+# BASH5: an interpreter guaranteed to be bash >= 5. On macOS `command -v bash`
+# is Apple's 3.2, which cannot run the bash-4+ syntax the tmux scripts use, so a
+# test that invokes bash directly must use "$BASH5" rather than plain `bash`.
+BASH5="$(_discover_bash5 || true)"
+export BASH5
+
 setup_test_home() {
   export TEST_HOME="$BATS_TEST_TMPDIR/home"
   export TEST_BIN="$BATS_TEST_TMPDIR/bin"
@@ -12,10 +56,22 @@ setup_test_home() {
 
   mkdir -p "$TEST_HOME" "$TEST_BIN"
   export HOME="$TEST_HOME"
-  # Preserve the path to zsh (may be nix-managed, not in /usr/bin)
-  local zsh_dir
-  zsh_dir="$(dirname "$(command -v zsh 2>/dev/null || echo /usr/bin/zsh)")"
-  export PATH="$TEST_BIN:$zsh_dir:/usr/bin:/bin:/usr/sbin:/sbin"
+  # An explicit PATH, not one derived from wherever the caller's zsh happened to
+  # live. Order: stubs, then the native host dirs, then whichever nix profile
+  # dirs exist. Native-first mirrors production - in the tmux server's PATH /bin
+  # precedes the nix profiles - so a test sees the same Apple bash/jq/touch the
+  # scripts see. That is safe because the scripts re-exec themselves under
+  # bash >= 5; it is also what makes a macOS-only portability bug fail here
+  # rather than only in production. Existing dirs only, de-duplicated.
+  local dir new_path=""
+  for dir in "$TEST_BIN" /usr/bin /bin /usr/sbin /sbin "${_nix_profile_bins[@]}"; do
+    [ -d "$dir" ] || continue
+    case ":$new_path:" in
+    *":$dir:"*) continue ;;
+    esac
+    new_path="${new_path:+$new_path:}$dir"
+  done
+  export PATH="$new_path"
   : >"$TEST_LOG"
 }
 

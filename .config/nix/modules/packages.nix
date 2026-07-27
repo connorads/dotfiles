@@ -27,6 +27,10 @@ let
   baseCorePackages = with pkgs; [
     # Shell & terminal
     zsh
+    # The tmux shell glue re-execs itself under bash >= 5 (macOS ships 3.2 at
+    # /bin/bash and hands it to run-shell), so declare that guarantee here
+    # rather than inheriting it incidentally from the nix-darwin system profile.
+    bash
     tmux
     zellij
     kitty.terminfo

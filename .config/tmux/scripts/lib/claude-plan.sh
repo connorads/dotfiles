@@ -12,6 +12,15 @@
 # Testable with AGENT_JOURNAL_DIR (relocate the journal) plus a `tmux` stub on
 # PATH (for the live-pane intersection). Requires jq.
 
+# Under bash this needs bash >= 5, so the entry point that sources it must carry
+# the re-exec preamble. Gated on BASH_VERSION because zsh callers source this
+# too (agent-teleport, claude-session-adopt) and are unaffected.
+if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]:-0}" -lt 5 ]; then
+	printf '%s: requires bash >= 5 (got %s)\n' "claude-plan.sh" "$BASH_VERSION" >&2
+	# shellcheck disable=SC2317  # reachable: this file is sourced, not executed
+	return 1 2>/dev/null || exit 1
+fi
+
 # claude_plan_journal_files — journal files newest month first, capped at the two
 # most recent (a live pane's plan is never months old). Mirrors the path in
 # agent-journal.sh; nullglob-safe (skips the literal glob when no file matches).

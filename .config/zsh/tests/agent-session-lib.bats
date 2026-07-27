@@ -7,11 +7,29 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 REAL_SESSION_LIB="$BATS_TEST_DIRNAME/../../tmux/scripts/lib/agent-session.sh"
 
+# _call_lib FN [ARGS...] — run one lib function in a $BASH5 subprocess.
+#
+# The lib requires bash >= 5 and bats itself runs under whatever `env bash`
+# gives it, which on macOS is Apple's 3.2 - so it cannot be sourced into this
+# shell at all. Each public function is re-exposed below as a thin wrapper, so
+# the test bodies keep their `run <fn> <args>` shape and env-var prefixes
+# (RESURRECT_PROC_ROOT=..., PATH=...) still reach the lib, exported through to
+# the subprocess.
+_call_lib() {
+  local fn="$1"
+  shift
+  "$BASH5" -c '. "$1"; shift; fn="$1"; shift; "$fn" "$@"' _ "$REAL_SESSION_LIB" "$fn" "$@"
+}
+
 setup() {
   setup_test_home
   mkdir -p "$HOME/.claude/sessions"
-  # shellcheck disable=SC1090
-  source "$REAL_SESSION_LIB"
+  # Names discovered from the lib itself, so adding a function there needs no
+  # edit here - and a renamed one fails loudly as "command not found".
+  local fn
+  while IFS= read -r fn; do
+    eval "${fn}() { _call_lib ${fn} \"\$@\"; }"
+  done < <(grep -oE '^[a-z_][a-z0-9_]*\(\)' "$REAL_SESSION_LIB" | tr -d '()')
 }
 
 @test "claude_session_meta_for_pid emits the live JSON and jq extracts sessionId" {

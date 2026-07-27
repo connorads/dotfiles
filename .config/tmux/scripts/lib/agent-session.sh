@@ -7,6 +7,15 @@
 # session_ids.json map is a stale save-time cache and must NOT be used for live
 # actions.
 
+# Under bash this needs bash >= 5, so the entry point that sources it must carry
+# the re-exec preamble. Gated on BASH_VERSION because zsh callers source this
+# too (agent-teleport, claude-session-adopt) and are unaffected.
+if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]:-0}" -lt 5 ]; then
+	printf '%s: requires bash >= 5 (got %s)\n' "agent-session.sh" "$BASH_VERSION" >&2
+	# shellcheck disable=SC2317  # reachable: this file is sourced, not executed
+	return 1 2>/dev/null || exit 1
+fi
+
 # agent_foreground_pid_for_tty <tty> <command> [pane_pid]
 # Resolve the foreground process named <command> on <tty>. Falls back to a child
 # of <pane_pid> when the tty scan finds nothing. Command basename is matched so

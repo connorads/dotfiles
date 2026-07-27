@@ -19,7 +19,10 @@ REAL_FOREGROUND_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/save_command_strategies/
 # The bundled upstream strategy, for the regression comparison. The plugin dir is
 # a local checkout, so tests using it skip when it is absent.
 REAL_PS_STRATEGY="$BATS_TEST_DIRNAME/../../tmux/plugins/tmux-resurrect/save_command_strategies/ps.sh"
-REAL_BASH="$(command -v bash)"
+# The scripts under test need bash >= 5; on macOS `command -v bash` is Apple's
+# 3.2. $BASH5 (test_helper.bash) is the same interpreter their re-exec preamble
+# would land on.
+REAL_BASH="$BASH5"
 # Captured before setup_test_home narrows PATH.
 REAL_TMUX="$(command -v tmux || true)"
 

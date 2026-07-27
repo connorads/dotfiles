@@ -18,6 +18,15 @@
 # OpenCode: no in-pane launcher (no live active-session marker), so
 # resurrect_argv_opencode still rebuilds the full command from a save-time sid.
 
+# Under bash this needs bash >= 5, so the entry point that sources it must carry
+# the re-exec preamble. Gated on BASH_VERSION because zsh callers source this
+# too (agent-teleport, claude-session-adopt) and are unaffected.
+if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]:-0}" -lt 5 ]; then
+	printf '%s: requires bash >= 5 (got %s)\n' "resurrect-argv.sh" "$BASH_VERSION" >&2
+	# shellcheck disable=SC2317  # reachable: this file is sourced, not executed
+	return 1 2>/dev/null || exit 1
+fi
+
 # _resurrect_argv0_matches <expected> <argv0>
 # True when argv0's basename is the expected agent command.
 _resurrect_argv0_matches() {

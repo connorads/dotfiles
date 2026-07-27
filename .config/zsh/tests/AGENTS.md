@@ -26,6 +26,44 @@ Conventions: isolate `$HOME`/`$PATH` via `setup_test_home` (`test_helper.bash`);
 observable behaviour (args, exit status, stdout, fs/option effects) not internals; prefer
 real infrastructure or fakes over mocks. The wider testing rules live in `~/CLAUDE.md`.
 
+## The `setup_test_home` PATH contract
+
+`setup_test_home` builds `$PATH` explicitly, in this order, keeping only dirs that
+exist and dropping duplicates:
+
+1. `$TEST_BIN` - the stub dir, so `write_stub` always wins.
+2. The native host dirs: `/usr/bin`, `/bin`, `/usr/sbin`, `/sbin`.
+3. Whichever nix profile bin dirs exist (`_nix_profile_bins` in `test_helper.bash`).
+
+**Native-first is deliberate.** It mirrors production: in the tmux server's `PATH`,
+`/bin` precedes the nix profiles. So a test sees the same Apple `bash`, `jq` and
+`touch` the scripts see, and a macOS-only portability bug (GNU-only `touch -d`, a
+duplicated `jq` flag) fails here rather than only in production. It is safe because
+the tmux entry points re-exec themselves under bash >= 5 - see the interpreter
+contract in [`../../tmux/AGENTS.md`](../../tmux/AGENTS.md).
+
+Do not derive `$PATH` from where some tool happens to live (the old
+`dirname $(command -v zsh)`): that made the set of visible tools depend on the
+caller's environment.
+
+### `$BASH5`
+
+`test_helper.bash` exports **`BASH5`**, an absolute path to an interpreter that is
+bash >= 5. Discovery walks the same candidate list, in the same order, as the
+re-exec preamble the tmux scripts carry, falling back to the ambient `bash` on
+hosts where that is already 5.x (Linux).
+
+**A test that invokes bash directly must use `"$BASH5"`, never plain `bash` or
+`command -v bash`** - on macOS those are Apple's 3.2, which cannot run the scripts'
+`mapfile` / `declare -A`, so the test would exercise an interpreter production never
+picks. Keeping the two candidate lists aligned is the point; if they drift, a test
+can pass under a bash the scripts would never land on.
+
+The one case that wants the *old* bash on purpose is the re-exec regression test in
+`tmux-resurrect-post-save.bats`, which drives `/bin/bash` deliberately (and skips
+when `/bin/bash` is already >= 5) to prove a re-exec'd parent does not suppress its
+child's own re-exec.
+
 ## tmux tests: bare servers (`-f /dev/null`), never the real config
 
 Tests that need a real tmux server (`agent-state`, `agent-sweep`, `*-agent-hooks`,

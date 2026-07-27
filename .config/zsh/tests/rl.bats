@@ -42,8 +42,10 @@ SCRIPT
   # Sequential: start-1, end-1, start-2, end-2, start-3, end-3
   # Parallel bug produces: start-1, start-2, start-3, end-1, end-2, end-3
   [ -f "$SEQ_LOG" ]
-  local lines
-  mapfile -t lines <"$SEQ_LOG"
+  # A plain `while read` loop, not `mapfile`: this runs under bats's own bash,
+  # which on macOS is Apple's 3.2 and has no mapfile.
+  local lines=() line
+  while IFS= read -r line; do lines+=("$line"); done <"$SEQ_LOG"
   [ "${lines[0]}" = "start-1" ]
   [ "${lines[1]}" = "end-1" ]
   [ "${lines[2]}" = "start-2" ]

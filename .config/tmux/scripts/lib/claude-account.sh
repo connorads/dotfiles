@@ -12,6 +12,15 @@
 # the origin untouched). These helpers do the slug maths, candidate listing,
 # and staging.
 
+# Under bash this needs bash >= 5, so the entry point that sources it must carry
+# the re-exec preamble. Gated on BASH_VERSION because zsh callers source this
+# too (agent-teleport, claude-session-adopt) and are unaffected.
+if [ -n "${BASH_VERSION:-}" ] && [ "${BASH_VERSINFO[0]:-0}" -lt 5 ]; then
+	printf '%s: requires bash >= 5 (got %s)\n' "claude-account.sh" "$BASH_VERSION" >&2
+	# shellcheck disable=SC2317  # reachable: this file is sourced, not executed
+	return 1 2>/dev/null || exit 1
+fi
+
 # claude_account_slug <cwd>
 # Claude slugs EVERY non-alphanumeric char (dots included) to "-" when it names
 # a project dir. Mirrors project_slug in claude-session-resolve.py exactly - a

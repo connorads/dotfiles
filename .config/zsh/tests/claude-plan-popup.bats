@@ -50,9 +50,10 @@ live_row() {
   printf '%s\t%s\t%s\n' "$1" "${2:-}" "${3:-win}" >>"$LIVE_PANES"
 }
 
-# Run one lib function in a fresh bash, printing its output.
+# Run one lib function in a fresh bash, printing its output. $BASH5, not plain
+# `bash`: the lib asserts bash >= 5 and macOS's ambient bash is 3.2.
 run_lib() {
-  run bash -c ". '$LIB'; $*"
+  run "$BASH5" -c ". '$LIB'; $*"
 }
 
 # acct is built into the path at runtime so the source never carries a concrete
