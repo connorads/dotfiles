@@ -79,8 +79,11 @@ setup() {
   touch "$HOME/.cache/camoufox/browser/data"
   touch "$CLEANUP_TMPDIR_ROOT/old-dir/data"
   touch "$CLEANUP_TMPDIR_ROOT/new-dir/data"
-  touch -d '10 days ago' "$CLEANUP_TMPDIR_ROOT/old-dir"
-  touch -d '10 days ago' "$CLEANUP_TMPDIR_ROOT/old-dir/data"
+  # A fixed past timestamp, not a relative date: `touch -d` is GNU-only, while
+  # `-t [[CC]YY]MMDDhhmm` is POSIX. The reaper's threshold is `-mtime +7`, so
+  # any long-past date serves; the test only needs "older than the threshold".
+  touch -t 202001010000 "$CLEANUP_TMPDIR_ROOT/old-dir"
+  touch -t 202001010000 "$CLEANUP_TMPDIR_ROOT/old-dir/data"
 
   write_stub cargo <<'EOF'
 #!/usr/bin/env bash
