@@ -56,9 +56,6 @@
 
   # -- Homebrew (desktop casks / MAS apps / taps) --
   homebrew = {
-    taps = [
-      "manaflow-ai/cmux"
-    ];
     casks = [
       # Apps
       "rectangle"
@@ -68,7 +65,6 @@
       "bitwarden"
       "chatgpt"
       "claude"
-      "cmux"
       "codex-app"
       "blender"
       "comfy"
