@@ -83,6 +83,14 @@ Design system boundaries with observability in mind: structured logs, operation 
 Use the `architecture` skill for domain modelling, ports/adapters, error design, observability, and hard-to-test designs.
 For TypeScript specifically - errors-as-values, branded types, domain modules, parse-don't-validate mechanics - use the `typescript` skill (`architecture` stays the language-agnostic spine).
 
+## Compatibility
+
+Whether external callers exist is the user's call, not the agent's: a change's exposed surface is visible in the code, its consumers are not. Deployed, published, or still present is not evidence of a consumer.
+Default to changing the thing outright and updating every caller in the repo; deleting the old path beats deprecating it.
+When a change alters a surface others could call - exported API, CLI flags, config schema, HTTP route, stored data shape, published package - ask before adding or skipping compatibility. Do not decide it silently either way.
+Where compatibility is agreed, use expand-migrate-contract with a named deletion condition (`refactoring` skill), and note the decision in the commit message.
+Never add an unrequested shim, legacy flag, or silent fallback.
+
 ## Enforcement
 
 Rules reviewers would otherwise have to remember should become types, linters, tests, or hooks where practical.
