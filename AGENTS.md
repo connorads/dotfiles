@@ -46,6 +46,7 @@ Then `dotfiles add .newfile` works without `-f`.
 ## Key Documentation
 
 - [~/README.md](./README.md) - how the dotfiles system works (git-dir + work-tree, nix-darwin, home-manager)
+- [docs/adr/](./docs/adr/) - repo-level ADRs; [README](./docs/adr/README.md) defines the house format (Context / Decision / Considered Options / Consequences, all four required). Subprojects keep their own, e.g. [`.config/skl/docs/adr/`](./.config/skl/docs/adr/)
 - [connorads/rpi5](https://github.com/connorads/rpi5) - RPi5 NixOS configuration (standalone repo)
 
 ## Configuration Files
