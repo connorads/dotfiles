@@ -145,12 +145,16 @@ it `done` (blue) before you leave — like marking an email unread.
 
 ### Cross-session agents (status bar)
 
-When agents run across multiple sessions, the tab dots only show the session
-you're attached to. A right-side status pill fills that gap: the same five glyphs,
-counting blocked + done agents in *other* sessions (`◆1` = one blocked elsewhere),
-coloured by the worst state. It self-hides when none are elsewhere, so
-single-session working shows nothing. It complements `Ctrl+b A` — the badge is the
-passive glance, the popup the jump. Disable with `tmux set -g @cross_session_badge off`.
+The bottom session rail adds attention-only summaries beside each session:
+red `◆` for blocked, blue `●` for finished and unseen. Working and idle stay at
+window level, so the rail answers where attention lives without becoming fleet
+telemetry. Linked agent windows mark every session through which they are reachable.
+
+Below 80 columns, where the session rail is likely to trim, the right side also
+shows the worst blocked/done state plus a count from *other* sessions (`◆1`). The
+fallback self-hides when nothing is elsewhere and opens the same ranked agent
+popup as `Ctrl+b A`. Disable only this compact fallback with
+`tmux set -g @cross_session_badge off`; session dots remain enabled.
 
 ## Memory pressure (status bar)
 

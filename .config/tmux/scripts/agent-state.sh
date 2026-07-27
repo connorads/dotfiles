@@ -132,5 +132,8 @@ esac
 
 # Roll the worst pane state in this window up to the option the tabs render.
 roll_window "$window"
+# Roll blocked/done attention into every session containing this window. Linked
+# windows therefore annotate every session through which the agent is reachable.
+roll_sessions_for_window "$window"
 
 tmux refresh-client -S 2>/dev/null || true

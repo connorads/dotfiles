@@ -174,8 +174,16 @@ assert_tab_label() {
   [[ "$row" == *"#{S:"* ]]
   [[ "$row" == *"range=session|#{session_id}"* ]]
   [[ "$row" == *"list=focus"* ]]
+  [[ "$row" == *"#{E:@session_agent_attention_fmt}"* ]]
   [[ "$border" == *"range=control|7"* ]]
   [[ "$border" == *"range=control|8"* ]]
+}
+
+@test "pane and window topology hooks reconcile cached agent rollups" {
+  for hook in after-kill-pane after-split-window window-linked window-unlinked; do
+    line="$(grep "set-hook -g '$hook\[100\]'" "$CONF")"
+    [[ "$line" == *"agent-sweep.sh sync"* ]]
+  done
 }
 
 @test "session cycle bindings follow the session rail's creation order" {
