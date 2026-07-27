@@ -87,19 +87,38 @@ claude_fork_cmd() {
 	printf '%sclaude%s -r %s --fork-session' "$prefix" "${flags:+ $flags}" "$(shell_quote "$sid")"
 }
 
-# claude_handoff_cmd <sid> [config_dir]
+# claude_flags_are_bypass <flags>
+# True when the mirrored source flags carry Claude's skip-permissions mode. The
+# one bit of the source pane's authority that means anything in the other CLI.
+claude_flags_are_bypass() {
+	case " ${1:-} " in
+	*" --dangerously-skip-permissions "*) return 0 ;;
+	esac
+	return 1
+}
+
+# claude_handoff_cmd <sid> [config_dir] [flags]
 # Hand the pane's live Claude session off to Codex: translate its transcript into
 # Codex's store and resume it there (handoff self-opens the target in foreground,
 # so no --no-open). Carries the source CLAUDE_CONFIG_DIR inline (same reason as
 # claude_fork_cmd - tmux panes don't inherit the source env) so handoff resolves
 # the source under the right account; empty = default ~/.claude. Uses the absolute
 # ~/.local/bin wrapper path because the tmux server's PATH may not carry that dir.
+#
+# A yolo source pane hands off as a yolo Codex pane: handoff appends
+# HANDOFF_CODEX_OPEN_ARGS verbatim to its `codex resume <sid>` launch, so the menu
+# keeps deciding authority and handoff only carries it. Only the posture boolean
+# crosses agents - --model / --append-system-prompt-file are meaningless in Codex.
 claude_handoff_cmd() {
 	local sid=$1
 	local config_dir=${2:-}
+	local flags=${3:-}
 
 	local prefix=""
 	[ -n "$config_dir" ] && prefix="CLAUDE_CONFIG_DIR=$(shell_quote "$config_dir") "
+	if claude_flags_are_bypass "$flags"; then
+		prefix="${prefix}HANDOFF_CODEX_OPEN_ARGS='--dangerously-bypass-approvals-and-sandbox' "
+	fi
 
 	printf '%s%s --from claude --to codex %s' \
 		"$prefix" "$(shell_quote "$HOME/.local/bin/handoff")" "$(shell_quote "$sid")"
@@ -158,9 +177,10 @@ render_branch_menu() {
 	prompt_worktrees_cmd="$self_arg prompt-worktrees $cwd_arg $sid_arg $config_dir_arg $flags_arg"
 
 	# Handoff → Codex opens a placement submenu (same one-row→submenu idiom as the
-	# account row). It carries this render's config_dir so the source resolves.
+	# account row). It carries this render's config_dir so the source resolves, and
+	# the mirrored flags so the target pane inherits the source pane's posture.
 	local handoff_menu_cmd
-	handoff_menu_cmd="$self_arg handoff-menu $sid_arg $config_dir_arg $cwd_arg $pane_arg"
+	handoff_menu_cmd="$self_arg handoff-menu $sid_arg $config_dir_arg $cwd_arg $pane_arg $flags_arg"
 
 	local -a menu
 	menu=(
@@ -425,13 +445,14 @@ handoff-menu)
 	# reached via run-shell from the branch menu's "Handoff → Codex" row. Like
 	# account-chosen it runs from a run-shell context, so it splits against the
 	# stable pane_target (session:window.pane), not "%N".
-	[ "$#" -eq 5 ] || soft_fail "usage: handoff-menu <sid> <config-dir> <cwd> <pane-target>"
+	{ [ "$#" -ge 5 ] && [ "$#" -le 6 ]; } || soft_fail "usage: handoff-menu <sid> <config-dir> <cwd> <pane-target> [flags]"
 	sid=$2
 	config_dir=$3
 	cwd=$4
 	pane_target=$5
+	flags=${6:-}
 
-	handoff_cmd=$(claude_handoff_cmd "$sid" "$config_dir")
+	handoff_cmd=$(claude_handoff_cmd "$sid" "$config_dir" "$flags")
 	tmux display-menu -T " Handoff → Codex " -x C -y C \
 		"Split right" "|" "split-window -h -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
 		"Split down" "-" "split-window -v -t $pane_target -c \"$cwd\" \"$handoff_cmd\"" \
