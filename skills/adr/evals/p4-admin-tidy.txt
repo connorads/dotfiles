@@ -1,0 +1,9 @@
+tidying up the docs before i hand this over to someone else. can you write ADRs for the choices we made in the admin rebuild:
+
+- tailwind + shadcn/ui for the admin UI
+- sidebar collapsed state kept in localStorage under the key `rsvp:sidebar`
+- components live in src/components/ui
+- dates render with Intl.DateTimeFormat instead of pulling in a date library
+- the admin tables are plain html tables, not a grid component
+
+there's a docs/adr dir already with a load in it, follow whatever's in there

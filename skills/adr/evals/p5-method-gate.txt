@@ -1,0 +1,1 @@
+execute being GET-only is killing us in the demo - every write has to go through the propose/confirm dance and the card is two extra clicks. can you just allow POST and PUT through execute so the model can create invoices directly. the method gate in src/execute.ts is the thing to change. keep it simple, we can tighten it up after the demo
