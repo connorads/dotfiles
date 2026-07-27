@@ -10,8 +10,8 @@ import type {
   ExtensionAPI,
   ExtensionContext,
   Theme,
-} from "@mariozechner/pi-coding-agent";
-import { matchesKey, parseKey, Key } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { matchesKey, parseKey, Key } from "@earendil-works/pi-tui";
 import { OverlayFrame } from "../shared/frame.js";
 import { buildEntries } from "./entries.js";
 import type { ActionItem, ActionGroup, TopLevelEntry } from "./types.js";

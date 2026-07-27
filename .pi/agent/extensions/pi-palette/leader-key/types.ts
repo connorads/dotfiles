@@ -2,7 +2,7 @@
  * Leader Key Types
  */
 
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 export interface ActionItem {
   readonly key: string;

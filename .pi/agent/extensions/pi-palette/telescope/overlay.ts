@@ -6,13 +6,13 @@
  * frecency recording, provider switching, and preview.
  */
 
-import type { ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
+import type { ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import {
   matchesKey,
   Key,
   visibleWidth,
   truncateToWidth,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import type {
   TelescopeProvider,
   ScoredItem,

@@ -4,7 +4,7 @@
  * Eliminates duplicated box-drawing across telescope and leader-key overlays.
  */
 
-import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
+import { visibleWidth, truncateToWidth } from "@earendil-works/pi-tui";
 
 type ThemeRole = "accent" | "border" | "dim" | "success" | "text" | "warning";
 
