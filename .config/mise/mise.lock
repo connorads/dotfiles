@@ -231,20 +231,20 @@ url = "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-pac
 url_api = "https://api.github.com/repos/openai/codex/releases/assets/485000998"
 
 [[tools.deno]]
-version = "2.9.3"
+version = "2.9.4"
 backend = "core:deno"
 
 [tools.deno."platforms.linux-arm64"]
-checksum = "sha256:1a9b610fb536ac72ded978a2bec9d8bc2af96365709bea10ba02e617b1410133"
-url = "https://dl.deno.land/release/v2.9.3/deno-aarch64-unknown-linux-gnu.zip"
+checksum = "sha256:111da5c05c240cfdc4340f234a0e3539d39dbcb6755221f19dcd60bacc8be5aa"
+url = "https://dl.deno.land/release/v2.9.4/deno-aarch64-unknown-linux-gnu.zip"
 
 [tools.deno."platforms.linux-x64"]
-checksum = "sha256:c4b10edac3e33cba510bd0e5783526d753a148071a9f0e86c693ea48b50512f2"
-url = "https://dl.deno.land/release/v2.9.3/deno-x86_64-unknown-linux-gnu.zip"
+checksum = "sha256:c24f955d9fbfe0ea5ae2b501c8e71ae76e31e4c9782390a54a284b3364fda725"
+url = "https://dl.deno.land/release/v2.9.4/deno-x86_64-unknown-linux-gnu.zip"
 
 [tools.deno."platforms.macos-arm64"]
-checksum = "sha256:fecdfd2f962061c796eda4ce4c5753fdec33cdea4af4b5d1c513cf68f4e98955"
-url = "https://dl.deno.land/release/v2.9.3/deno-aarch64-apple-darwin.zip"
+checksum = "sha256:6d17647fdbf9c587a581dba205054c4ccf732dae0a196cc1e9b44c07589db412"
+url = "https://dl.deno.land/release/v2.9.4/deno-aarch64-apple-darwin.zip"
 
 [[tools.fnox]]
 version = "1.31.0"
@@ -409,23 +409,23 @@ checksum = "sha256:b602f1e0d9d0ea6cb721e297688f61adb5508247ff8867c87778a2449fa2f
 url = "https://github.com/hetznercloud/cli/releases/download/v1.66.0/hcloud-darwin-arm64.tar.gz"
 
 [[tools.hk]]
-version = "1.52.0"
+version = "1.53.0"
 backend = "aqua:jdx/hk"
 
 [tools.hk."platforms.linux-arm64"]
-checksum = "sha256:84504df54a3a945493eeb739d2fe6bf0eef392d74795eeb02eabadfee78a53f8"
-url = "https://github.com/jdx/hk/releases/download/v1.52.0/hk-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/484573027"
+checksum = "sha256:3cf58d268a9114f0923a06c38cf0995b9da43bf2279b09aac3c3c615a615b3e4"
+url = "https://github.com/jdx/hk/releases/download/v1.53.0/hk-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/hk/releases/assets/487429257"
 
 [tools.hk."platforms.linux-x64"]
-checksum = "sha256:d381ec061fda51d5765e7831757107e4c565f195b206feae6fdd298162ab8baa"
-url = "https://github.com/jdx/hk/releases/download/v1.52.0/hk-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/484573049"
+checksum = "sha256:960c14b3bcd61e36dcb42c304e3cc23b22ef2e6f28ac6559e3856d27acf6b54a"
+url = "https://github.com/jdx/hk/releases/download/v1.53.0/hk-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/hk/releases/assets/487429267"
 
 [tools.hk."platforms.macos-arm64"]
-checksum = "sha256:a711ed6d6359ca3084c73e1025af4e9a158727297a8dbe308d6eab44bcad372c"
-url = "https://github.com/jdx/hk/releases/download/v1.52.0/hk-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/hk/releases/assets/484573025"
+checksum = "sha256:d5c1f9a4c3598cc72c9f15908af6e036b138b9dd97c8891e4d08f699c98a5069"
+url = "https://github.com/jdx/hk/releases/download/v1.53.0/hk-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/hk/releases/assets/487429255"
 
 [[tools.node]]
 version = "24.18.0"
@@ -475,7 +475,7 @@ version = "2.5.3"
 backend = "npm:@tobilu/qmd"
 
 [[tools."npm:agent-browser"]]
-version = "0.32.3"
+version = "0.33.0"
 backend = "npm:agent-browser"
 
 [[tools."npm:agent-device"]]
@@ -487,7 +487,7 @@ version = "1.7.1"
 backend = "npm:apify-cli"
 
 [[tools."npm:cf"]]
-version = "0.4.0"
+version = "0.5.0"
 backend = "npm:cf"
 
 [[tools."npm:critique"]]
@@ -555,7 +555,7 @@ version = "50.44.0"
 backend = "npm:vercel"
 
 [[tools."npm:wrangler"]]
-version = "4.113.0"
+version = "4.114.0"
 backend = "npm:wrangler"
 
 [[tools.oxlint]]
@@ -612,11 +612,11 @@ extras = "cli,cpu"
 uvx_args = "--with numpy<2.3"
 
 [[tools."pipx:tau-ai"]]
-version = "0.2.3"
+version = "0.3.0"
 backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
-version = "0.0.61"
+version = "0.0.62"
 backend = "pipx:ty"
 
 [[tools.pkl]]
@@ -636,25 +636,25 @@ checksum = "sha256:1b6a5438d9624cd2798a7530721bbbfa27ef72efe5c878a1b6c546c6e7ca0
 url = "https://github.com/apple/pkl/releases/download/0.31.1/pkl-macos-aarch64"
 
 [[tools.pnpm]]
-version = "11.15.1"
+version = "11.17.0"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:361e385867146972d0635a41a1871cb44c9c23f65acce78a5f1ca1d44ac0afcd"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780455"
+checksum = "sha256:730d17de742a3efbb020ba91d7acfc0456c6ba6ad1cd8eb49f4c229fe9f504d3"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.17.0/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/487422123"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:0c1373b6390f6b89ff8b896d3647c9826577ddc49173a2f732da69b36569f9e0"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780457"
+checksum = "sha256:bdb1db01bf0f757495405a59a09c5c287f315889dc98d3b14bc374b9fe43a0bf"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.17.0/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/487422122"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:4ff53ecc9de8df115d4efef60eab77f91be4f8237cdaca078351a22e707d1849"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.15.1/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/482780456"
+checksum = "sha256:1e9a35d76f9d382af365d95c64f3abf7815e24350653f5bb1a37e4546265bc2b"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.17.0/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/487422117"
 provenance = "github-attestations"
 
 [[tools.python]]
@@ -699,25 +699,25 @@ url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/479313898
 provenance = "github-attestations"
 
 [[tools.rumdl]]
-version = "0.2.40"
+version = "0.2.41"
 backend = "aqua:rvben/rumdl"
 
 [tools.rumdl."platforms.linux-arm64"]
-checksum = "sha256:545cdc814ee2492dd5fee0994dc8ec5e5c9d44b53774f895492b61b98b4361ba"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.40/rumdl-v0.2.40-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/485787534"
+checksum = "sha256:51161dbb0f70c8c9adfa154aca62d4dea09166db15636096acedd70cd54baca1"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.41/rumdl-v0.2.41-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/487015980"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.linux-x64"]
-checksum = "sha256:959df95c5e5ebe47b2c6917f12248c4bee85ad42ac8506eb4cb7db1f0be1394e"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.40/rumdl-v0.2.40-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/485787533"
+checksum = "sha256:f2a6e5f11b2bae89b3319ad909a5df76b79a8e23a6ec9394c3e738b71ef11a74"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.41/rumdl-v0.2.41-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/487015981"
 provenance = "github-attestations"
 
 [tools.rumdl."platforms.macos-arm64"]
-checksum = "sha256:91b099ce0a28089e551465b20c0513f4102a0a714c01f30b08d6dd18950ded26"
-url = "https://github.com/rvben/rumdl/releases/download/v0.2.40/rumdl-v0.2.40-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/485787530"
+checksum = "sha256:c0ad8e4e91f0f3799d0f42cdfe6aa5f4f32d928b4cb770579b0d2223c50f6fb5"
+url = "https://github.com/rvben/rumdl/releases/download/v0.2.41/rumdl-v0.2.41-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/487015969"
 provenance = "github-attestations"
 
 [[tools.rust]]
