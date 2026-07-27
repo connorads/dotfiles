@@ -1,0 +1,17 @@
+S1	yes	the caching change is in, write an ADR for it
+S2	yes	we settled on postgres over dynamo yesterday, record that decision somewhere sensible
+S3	yes	document why we chose the queue-based approach for the importer
+S4	yes	why did we do it this way? nothing in the repo explains the auth split and i need to know before i touch it
+S5	yes	supersede ADR 0007, we've moved off the shared cache
+S6	yes	add this to docs/adr - we're pinning node 22 because 24 breaks the native module
+S7	yes	can you write up a decision log entry for dropping the websocket transport
+S8	yes	rate limiter change is done, get the reasoning written down properly before i forget it
+N1	no	compare three approaches for this refactor and tell me which one you'd pick
+N2	no	should we migrate to the new payments API now or wait until Q3?
+N3	no	design the module boundaries for the billing service
+N4	no	our docs keep going stale no matter what we do, what should we change about how we write them
+N5	no	write a README for this package
+N6	no	add a comment explaining why this retry loop is capped at 3 attempts
+N7	no	update the changelog for the 2.0 release
+N8	no	summarise what this repo does
+N9	no	rename the invitation table to household everywhere and update the migrations
