@@ -68,7 +68,8 @@ EOF
   OSV_STUB_MODE=cve run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"esbuild@0.17.0"* ]]
-  [[ "$output" == *"non-blocking"* ]]
+  [[ "$output" == *"non-blocking"* ]] || false
+  [[ "$output" == *"mise run lockfile-audit --block-cves"* ]]
 }
 
 @test "--block-cves turns CVE findings into a failure" {
