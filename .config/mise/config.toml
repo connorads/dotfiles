@@ -50,7 +50,7 @@ oxlint = "1"
 # `mise run py-checks`). Registry-backed (aqua:astral-sh/ruff) so it carries
 # native attestation/checksums. Config: .hk-hooks/ruff.toml, passed with
 # --config so it stays a gate config, not the global XDG default.
-ruff = "0.15"
+ruff = "0.16"
 # typos: spell gate for the hk pipeline (default locale - both en variants
 # pass, only genuine misspellings flag). Config: ~/.typos.toml.
 typos = "1"

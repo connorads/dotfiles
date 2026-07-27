@@ -43,7 +43,7 @@ __all__ = [
     "event_to_json_dict",
 ]
 
-type JsonValue = None | bool | int | float | str | list[Any] | dict[str, Any]
+type JsonValue = bool | int | float | str | list[Any] | dict[str, Any] | None
 
 CURRENT_IR_VERSION = "handoff/v1"
 """`UniversalSession::CURRENT_IR_VERSION`."""
