@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# resurrect-post-save.sh: post-save maintenance hook for tmux-resurrect
-# Runs companion maintenance steps independently so one failure cannot suppress
-# the other, while keeping tmux-resurrect's layout save non-fatal.
+# lib-call.sh: call one function from a lib/ file, under a guaranteed bash >= 5.
+#
+# The libs under lib/ are bash and assert bash >= 5. A zsh caller (agent-teleport)
+# cannot source them into its own shell, so it shells out - and a bare `bash -c`
+# lands on whatever the caller's PATH supplies, which on macOS is 3.2. Routing
+# through this entry point makes the standard re-exec preamble do the pinning, so
+# the interpreter candidate list lives in exactly one place and stays under the
+# bash5-preamble hk gate.
+#
+# Usage: lib-call.sh <lib-path> <function> [args...]
 
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -28,42 +35,13 @@ fi
 unset TMUX_BASH5_REEXEC _b5
 # --- end bash5 preamble ---
 
-set -uo pipefail
+set -euo pipefail
 
-SAVE_FILE="${1:-}"
-SELF_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
-LOG="${RESURRECT_POST_SAVE_LOG:-$HOME/.cache/tmux-resurrect-post-save.log}"
+lib="${1:?lib path required}"
+shift
+fn="${1:?function name required}"
+shift
 
-log_warn() {
-	local message="$1"
-
-	mkdir -p "$(dirname "$LOG")"
-	printf '%s WARN %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$message" >>"$LOG"
-}
-
-run_step() {
-	local name="$1"
-	local script="$SELF_DIR/$name"
-	local rc
-
-	"$script" "$SAVE_FILE"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		log_warn "$name failed rc=$rc save=$SAVE_FILE"
-	fi
-}
-
-if [ -z "$SAVE_FILE" ]; then
-	log_warn "missing save file path"
-	exit 0
-fi
-
-if [ ! -f "$SAVE_FILE" ]; then
-	log_warn "save file does not exist path=$SAVE_FILE"
-	exit 0
-fi
-
-run_step resurrect-strip-nix-paths.sh
-run_step resurrect-save-sessions.sh
-
-exit 0
+# shellcheck disable=SC1090
+. "$lib"
+"$fn" "$@"

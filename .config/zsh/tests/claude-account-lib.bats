@@ -15,8 +15,10 @@ setup() {
   setup_test_home
 }
 
+# $BASH5, not plain `bash`: the lib asserts bash >= 5 and macOS's ambient bash
+# (which bats itself runs under) is 3.2.
 lib() {
-  run bash -c "source '$ACCT_LIB'; $*"
+  run "$BASH5" -c "source '$ACCT_LIB'; $*"
 }
 
 # --- claude_account_slug ----------------------------------------------------
@@ -52,7 +54,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mk_profiles a1 a2 a3
   local src
   src=$(prof a3)
-  run bash -c "source '$ACCT_LIB'; account_candidates '$src'"
+  run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
   # default present, real dir in column 2
   grep -qF "$(printf 'default\t%s/.claude' "$HOME")" <<<"$output"
@@ -64,7 +66,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mk_profiles a1 a2
   local src
   src=$(prof a1)
-  run bash -c "source '$ACCT_LIB'; account_candidates '$src'"
+  run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
   grep -q '^a2	' <<<"$output"
   grep -q '^default	' <<<"$output"
@@ -73,7 +75,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
 
 @test "account_candidates excludes the default account when source is empty" {
   mk_profiles a1
-  run bash -c "source '$ACCT_LIB'; account_candidates ''"
+  run "$BASH5" -c "source '$ACCT_LIB'; account_candidates ''"
   [ "$status" -eq 0 ]
   grep -q '^a1	' <<<"$output"
   ! grep -q '^default	' <<<"$output"
@@ -81,7 +83,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
 
 @test "account_candidates excludes default when source is the explicit ~/.claude" {
   mk_profiles a1
-  run bash -c "source '$ACCT_LIB'; account_candidates '$HOME/.claude'"
+  run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$HOME/.claude'"
   [ "$status" -eq 0 ]
   grep -q '^a1	' <<<"$output"
   ! grep -q '^default	' <<<"$output"
@@ -90,7 +92,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
 @test "account_candidates with no profiles dir emits only default" {
   local src
   src=$(prof a1)
-  run bash -c "source '$ACCT_LIB'; account_candidates '$src'"
+  run "$BASH5" -c "source '$ACCT_LIB'; account_candidates '$src'"
   [ "$status" -eq 0 ]
   grep -q '^default	' <<<"$output"
 }
@@ -104,7 +106,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug"
   printf '{"type":"user"}\n{"type":"assistant"}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
@@ -116,7 +118,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   dst=$(prof a1)
   local cwd="/Users/connorads/proj" sid="nope"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -ne 0 ]
   [[ "$output" == *"source transcript not found"* ]]
   [ ! -d "$dst/projects" ]
@@ -130,7 +132,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$HOME/.claude/projects/$slug"
   printf '{"type":"user"}\n' >"$HOME/.claude/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
@@ -144,7 +146,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug"
   printf '{"type":"user"}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$HOME/.claude/projects/$slug/$sid.jsonl" ]
   [ -f "$HOME/.claude/projects/$slug/$sid.jsonl" ]
@@ -162,7 +164,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
     '{"attachment":{"type":"plan_mode","planFilePath":"'$src'/plans/active.md","planExists":false}}' \
     >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$output" = "$dst/projects/$slug/$sid.jsonl" ]
   [ "$(<"$dst/plans/active.md")" = "active plan" ]
@@ -176,7 +178,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug"
   printf '{"type":"user"}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ ! -d "$dst/plans" ]
 }
@@ -188,7 +190,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/missing.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"source plan not found"* ]]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
@@ -202,7 +204,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   : >"$src/plans/empty.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/empty.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"source plan is empty"* ]]
 }
@@ -215,7 +217,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   printf 'external plan\n' >"$HOME/external.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/external.md"}}\n' "$HOME" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"unsafe source plan path"* ]]
   [ ! -d "$dst/plans" ]
@@ -228,7 +230,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug"
   printf '{bad json}\n' >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"could not parse plan attachment"* ]]
   [ -f "$dst/projects/$slug/$sid.jsonl" ]
@@ -243,7 +245,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   printf 'blocks plans directory\n' >"$dst/plans"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"could not create target plans directory"* ]]
 }
@@ -257,7 +259,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   chmod 000 "$src/plans/active.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   chmod 600 "$src/plans/active.md"
   [ "$status" -eq 2 ]
   [[ "$output" == *"could not copy plan"* ]]
@@ -273,7 +275,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   printf 'target plan\n' >"$dst/plans/active.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 2 ]
   [[ "$output" == *"target plan already exists"* ]]
   [ "$(<"$dst/plans/active.md")" = "target plan" ]
@@ -288,7 +290,7 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   cp "$src/plans/active.md" "$dst/plans/active.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
 }
 
@@ -299,10 +301,10 @@ prof() { printf '%s/.claude-profiles/code/%s' "$HOME" "$1"; }
   mkdir -p "$src/projects/$slug" "$src/plans"
   printf 'first plan\n' >"$src/plans/active.md"
   printf '{"attachment":{"type":"plan_mode","planFilePath":"%s/plans/active.md"}}\n' "$src" >"$src/projects/$slug/$sid.jsonl"
-  bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'" >/dev/null
+  "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'" >/dev/null
   printf 'second plan\n' >"$src/plans/active.md"
 
-  run bash -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
+  run "$BASH5" -c "source '$ACCT_LIB'; stage_session_for_fork '$src' '$dst' '$cwd' '$sid'"
   [ "$status" -eq 0 ]
   [ "$(<"$dst/plans/active.md")" = "second plan" ]
 }

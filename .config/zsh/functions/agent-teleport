@@ -54,11 +54,14 @@ _atp_warn() {
 
 # Call a bash-only lib function (agent-session.sh / resurrect-argv.sh are bash;
 # sourcing them into zsh is not supported - same shim the resurrect scripts use).
+# Goes through lib-call.sh rather than a bare `bash -c`: those libs require
+# bash >= 5, and ambient `bash` is 3.2 on macOS. lib-call.sh carries the standard
+# re-exec preamble, so the interpreter is pinned in one gate-covered place.
 _atp_lib() {
   local lib="$1"
   shift
   CLAUDE_SESSION_RESOLVER="$scripts_dir/claude-session-resolve.py" \
-    bash -c 'source "$1"; shift; "$@"' bash "$lib" "$@"
+    "$scripts_dir/lib-call.sh" "$lib" "$@"
 }
 
 # Mirror of project_slug in claude-session-resolve.py: Claude slugs EVERY
