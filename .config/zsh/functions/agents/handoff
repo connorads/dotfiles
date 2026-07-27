@@ -1,5 +1,44 @@
 #!/usr/bin/env zsh
 # handoff: translate session history between Claude Code and Codex
+#
+# A quick-convert run opens the target agent, and handoff forwards
+# HANDOFF_CLAUDE_OPEN_ARGS verbatim into that launch. Claude has an interactive
+# baseline every launcher here applies - the system-prompt append, owned once by
+# claude-launch-flags - so apply it when this run will open Claude; otherwise a
+# handed-off pane starts bare. Posture (yolo) is the caller's decision and is
+# never added here. Codex has no baseline equivalent.
 emulate -L zsh
 
-PYTHONPATH="$HOME/src/handoff/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m handoff "$@"
+local arg to="" expect_to=0 no_open=0 subcommand=0
+case "${1:-}" in
+inspect | import | export | convert) subcommand=1 ;;
+esac
+for arg in "$@"; do
+	case "$arg" in
+	--to) expect_to=1 ;;
+	--to=*)
+		to="${arg#--to=}"
+		expect_to=0
+		;;
+	--no-open) no_open=1 ;;
+	*)
+		if (( expect_to )); then
+			to="$arg"
+			expect_to=0
+		fi
+		;;
+	esac
+done
+
+# Preserve any value the caller already set (the tmux menu's posture) and extend it.
+local open_args="${HANDOFF_CLAUDE_OPEN_ARGS:-}"
+if (( ! subcommand && ! no_open )) && [[ "$to" == claude ]]; then
+	local baseline
+	# PATH prefix is command-scoped, so nothing leaks into an interactive shell;
+	# the tmux server's PATH may not carry ~/.local/bin.
+	baseline="$(PATH="$HOME/.local/bin:$PATH" claude-launch-flags)" || baseline=""
+	open_args="${open_args:+$open_args }$baseline"
+fi
+
+HANDOFF_CLAUDE_OPEN_ARGS="$open_args" \
+	PYTHONPATH="$HOME/src/handoff/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m handoff "$@"
