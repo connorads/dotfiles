@@ -9,6 +9,11 @@ setup() {
 	SCRIPT="$BATS_TEST_DIRNAME/../assets/soft-protected-branch-pre-push.sh"
 	[ -x "$SCRIPT" ] || skip "soft-protected-branch-pre-push.sh not executable"
 
+	# GIT_DIR beats both cwd discovery and `git init`'s path argument, so neither
+	# the init nor the cd is isolation on its own: inherited from a dhk shell, the
+	# mutating git calls below would hit the dotfiles repo instead of the fixture.
+	unset GIT_DIR GIT_WORK_TREE
+
 	TEST_ROOT="$(mktemp -d)"
 	REPO="$TEST_ROOT/repo"
 	git init -q "$REPO"
