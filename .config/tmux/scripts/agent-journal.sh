@@ -40,7 +40,9 @@ journal_event() {
 	mkdir -p "$_dir" 2>/dev/null || return 0
 	_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 	_file=$_dir/events-$(printf '%.7s' "$_ts").jsonl
-	printf '%s' "${AGENT_JOURNAL_PAYLOAD:-}" | jq -cn \
+	# Redirection, not a producer pipe: jq deliberately reads one JSON value, so
+	# a large multi-value payload must not make printf lose a broken-pipe race.
+	jq -cn \
 		--arg ts "$_ts" --arg state "$1" --arg kind "$2" \
 		--arg pane "$3" --arg window "$4" '
 		(try input catch null) as $h |
@@ -55,5 +57,7 @@ journal_event() {
 		 tool_name: $h.tool_name?,
 		 stop_reason: $h.stop_reason?,
 		 plan: (if $h.tool_name? == "ExitPlanMode" then $h.tool_input? else null end)}
-	' >>"$_file" 2>/dev/null || true
+	' >>"$_file" 2>/dev/null <<EOF || true
+${AGENT_JOURNAL_PAYLOAD:-}
+EOF
 }
