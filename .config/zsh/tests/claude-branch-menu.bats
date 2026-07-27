@@ -250,8 +250,49 @@ EOF
   grep -qF -- "$HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
   # default account -> no config-dir prefix
   assert_log_missing "CLAUDE_CONFIG_DIR="
+  # a plain source pane hands off with no posture escalation
+  assert_log_missing "HANDOFF_CODEX_OPEN_ARGS"
   # splits target the stable pane id, not "%N"
   grep -qF -- "split-window -h -t sess:@1.0" "$TEST_LOG"
+}
+
+@test "handoff-menu from a yolo source hands off as a yolo Codex pane" {
+  run "$MENU" handoff-menu "session-xyz" "" "/Users/connorads" "sess:@1.0" \
+    "--append-system-prompt-file /home/x/append.md --dangerously-skip-permissions"
+  [ "$status" -eq 0 ]
+  grep -qF -- "HANDOFF_CODEX_OPEN_ARGS='--dangerously-bypass-approvals-and-sandbox' $HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
+  # only the posture boolean crosses agents - the append path means nothing to codex
+  assert_log_missing "append-system-prompt-file"
+}
+
+@test "handoff-menu from a non-yolo source adds no posture" {
+  run "$MENU" handoff-menu "session-xyz" "" "/Users/connorads" "sess:@1.0" \
+    "--append-system-prompt-file /home/x/append.md"
+  [ "$status" -eq 0 ]
+  grep -qF -- "$HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
+  assert_log_missing "HANDOFF_CODEX_OPEN_ARGS"
+}
+
+@test "handoff-menu keeps both the account and the posture prefix" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  run "$MENU" handoff-menu "session-xyz" "$cfg" "/Users/connorads" "sess:@1.0" \
+    "--dangerously-skip-permissions"
+  [ "$status" -eq 0 ]
+  grep -qF -- "CLAUDE_CONFIG_DIR=$cfg HANDOFF_CODEX_OPEN_ARGS='--dangerously-bypass-approvals-and-sandbox' $HOME/.local/bin/handoff --from claude --to codex session-xyz" "$TEST_LOG"
+}
+
+@test "the handoff row carries the source pane's mirrored flags" {
+  export PS_SOURCE_ARGV="claude --dangerously-skip-permissions"
+  stub_ps_with_foreground_claude
+  cat >"$HOME/.claude/sessions/711.json" <<'EOF'
+{"pid":711,"sessionId":"session-xyz","cwd":"/Users/connorads","name":"demo","status":"busy"}
+EOF
+
+  RESURRECT_PROC_ROOT="$BATS_TEST_TMPDIR/no-proc" run "$MENU" "%1" "/dev/ttys010" "/tmp" ""
+  [ "$status" -eq 0 ]
+  grep -qF -- "handoff-menu session-xyz '' /Users/connorads" "$TEST_LOG"
+  grep -qF -- "--dangerously-skip-permissions" "$TEST_LOG"
 }
 
 @test "handoff-menu carries the source CLAUDE_CONFIG_DIR for a profile pane" {
