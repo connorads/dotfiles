@@ -76,6 +76,16 @@ run_status_right_for_path() {
   run bash "$STATUS_RIGHT" "$width" "$pane_path" "host" "host.local" "" "$@"
 }
 
+stub_attention_elsewhere() {
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+  show-option) exit 0 ;;
+  list-panes) printf 'current idle\nother done\n' ;;
+esac
+EOF
+}
+
 init_dotfiles_repo() {
   mkdir -p "$HOME/git"
   git init --bare "$HOME/git/dotfiles" >/dev/null
@@ -123,6 +133,20 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"#[range=user|mem]"* ]] || false
   [[ "$output" == *"#[norange]"* ]]
+}
+
+@test "cross-session badge is a sub-80 overflow fallback" {
+  stub_attention_elsewhere
+
+  for width in 79 44 34; do
+    run_status_right "$width" current
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"#[range=user|agents]"* ]]
+  done
+
+  run_status_right 80 current
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"#[range=user|agents]"* ]]
 }
 
 @test "hostname shows the distinctive tail, not a shared prefix" {

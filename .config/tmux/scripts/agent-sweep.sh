@@ -180,6 +180,7 @@ EOF
 	printf '%s' "$_windows" | sort -u | while IFS= read -r _w; do
 		[ -n "$_w" ] || continue
 		roll_window "$_w"
+		roll_sessions_for_window "$_w"
 	done
 
 	tmux refresh-client -S 2>/dev/null || true
@@ -238,9 +239,10 @@ daemon() {
 
 case "${1:-}" in
 "" | sweep | sweep_once) sweep_once ;;
+sync) sync_agent_rollups ;;
 daemon) daemon ;;
 *)
-	printf 'usage: %s [sweep|daemon]\n' "$(basename -- "$0")" >&2
+	printf 'usage: %s [sweep|sync|daemon]\n' "$(basename -- "$0")" >&2
 	exit 2
 	;;
 esac

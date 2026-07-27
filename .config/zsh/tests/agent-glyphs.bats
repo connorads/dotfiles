@@ -5,9 +5,9 @@ bats_require_minimum_version 1.5.0
 
 load test_helper
 
-# The state → glyph + colour mapping is rendered four ways: the tab dots
-# (@agent_dotfmt), the prefix+Alt+. menu literals, the organiser menus, and the
-# prefix+A popup. They drifted once because nothing
+# The state → glyph + colour mapping is rendered five ways: the tab dots,
+# session attention dots, the prefix+Alt+. menu literals, organiser menus, and
+# the prefix+A popup. They drifted once because nothing
 # enforced agreement. agent-state-lib.sh is now the single source of truth;
 # this suite derives EVERY expectation from the lib (agent_hex/agent_char/
 # agent_glyph), so it hardcodes no colours/glyphs and stays pure ASCII —
@@ -27,6 +27,22 @@ setup() {
   [ -n "$TMUX_BIN" ] || skip "tmux not installed"
   SOCK="agentglyphs_${BATS_TEST_NUMBER}_$$"
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 24
+}
+
+@test "session attention dots match blocked and done canonical glyphs" {
+  conf="$BATS_TEST_TMPDIR/session-dot.conf"
+  grep -E '^set -g @session_agent_attention_fmt ' "$CONF" >"$conf"
+  tx source-file "$conf"
+  for state in blocked done working idle; do
+    tx set-option -t s @session_agent_attention "$state"
+    got=$(tx display-message -p -t s '#{E:@session_agent_attention_fmt}')
+    if [ "$state" = blocked ] || [ "$state" = done ]; then
+      want="#[fg=#$(agent_hex "$state")]$(agent_char "$state")"
+      [[ "$got" == *"$want"* ]]
+    else
+      [ -z "$got" ]
+    fi
+  done
 }
 
 teardown() {

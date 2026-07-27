@@ -404,7 +404,6 @@ print_full() {
 	git_ref="$(git_branch_and_dirty)"
 	host="$(host_label)"
 
-	agent_elsewhere_segment
 	# Resurrect freshness is the first persistent system pill. Its surface1
 	# (#45475a) shade stays distinct from the following CPU pill (#313244).
 	# Width-gated with the rest of print_full (>= 80).
@@ -446,6 +445,7 @@ print_medium() {
 print_compact() {
 	local host
 	host="$(host_label)"
+	agent_elsewhere_segment
 	ssh_info
 	printf "#[fg=#89b4fa]#[bg=#89b4fa]#[fg=#1e1e2e]#[bold] %s" "$host"
 }
@@ -461,5 +461,8 @@ elif [ "$width_raw" -ge 45 ]; then
 	print_medium
 elif [ "$width_raw" -ge 35 ]; then
 	print_compact
+else
+	agent_elsewhere_segment
 fi
-# < 35: output nothing except reboot indicator (clock-only from tmux.conf)
+# < 35: aggregate agent attention only (plus reboot when present); tmux.conf
+# supplies the clock. The rail is most likely to trim at this width.

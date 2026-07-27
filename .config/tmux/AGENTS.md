@@ -143,7 +143,8 @@ The logic is spread across several files — change them as a set:
   across accounts. No process scraping. Tested by
   [`../zsh/tests/claude-plan-popup.bats`](../zsh/tests/claude-plan-popup.bats).
 - [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
-  rollup, bell, and `is_viewing` helpers (also used by `agent-sweep.sh`;
+  pane→window and window→session rollups, bell, and `is_viewing` helpers (also
+  used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
   the `done` branch and the sweep), the codex title-spinner pure core
   (`has_spinner` + `codex_working_step`, the working↔idle FSM the sweep drives),
@@ -151,14 +152,18 @@ The logic is spread across several files — change them as a set:
   (`agent_attrs`/`agent_hex`/`agent_char`/`agent_glyph`). **Shape** encodes state as well as colour so it reads on a
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
-  legend. Also hosts **`other_sessions_badge`** — the read-only cross-session
-  attention rollup (worst of blocked>done + a count of such agent panes in
-  sessions other than the attached one), rendered by
+  legend. `@session_agent_attention` caches each session's attention-only
+  `blocked > done` summary; working/idle deliberately render only on window tabs.
+  The bottom rail shows that glyph beside every session, including each session
+  containing a linked agent window. Topology hooks call `agent-sweep.sh sync` to
+  rebuild both cached levels after pane/window moves. The lib also hosts
+  **`other_sessions_badge`** — the read-only cross-session fallback (worst of
+  blocked>done + a count of such agent panes in sessions other than the attached
+  one), rendered by
   [`scripts/status-right.sh`](./scripts/status-right.sh)'s
-  `agent_elsewhere_segment` as a right-side pill (leftmost of the right cluster,
-  in `print_full`/`print_medium`). It restores the ambient signal the
-  per-attached-session tab dots lose once work spreads across sessions,
-  self-hides when nothing is elsewhere, and is disabled by
+  `agent_elsewhere_segment` as a right-side pill below 80 columns. It preserves
+  the ambient signal when the session rail is likely to trim, self-hides when
+  nothing is elsewhere, and is disabled by
   `tmux set -g @cross_session_badge off`. Semantically aligned with `prefix + A`:
   it counts exactly the panes that popup would jump to elsewhere. Tested by
   [`../zsh/tests/agent-badge.bats`](../zsh/tests/agent-badge.bats).
@@ -313,8 +318,9 @@ Design rules:
   window in place. Joining a marked pane stays on the destination after the join.
 - The second status row stays the only bottom row. It contains a native `S:`
   session rail on the left and the existing status-right chrome on the right.
-  The rail uses `range=session|#{session_id}` and native list trimming with
-  `<`/`>` markers. The cross-session agent badge and memory pill are
+  The rail uses `range=session|#{session_id}`, native list trimming with `<`/`>`
+  markers, and attention-only blocked/done dots. The sub-80 cross-session
+  fallback badge and memory pill are
   `range=user|agents` / `range=user|mem`; `MouseDown1Status` handles those and
   falls back to tmux's stock `switch-client -t =` for every other status click.
 - Pane-header `[⋯]` and `[zoom]` are tmux control ranges (`control|7` and

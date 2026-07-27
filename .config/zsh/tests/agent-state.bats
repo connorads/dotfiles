@@ -35,6 +35,7 @@ ason() { run env AGENT_STATE_PANE="$1" sh "$SCRIPT" "$2" "${3:-}"; }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
+sstate() { tx show-options -qv -t "$1" @session_agent_attention; }
 large_hook_payload() {
   awk 'BEGIN { for (i = 0; i < 5000; i++) print "{\"tool\":\"PostToolUse\",\"payload\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}" }'
 }
@@ -82,6 +83,29 @@ large_hook_payload() {
   ason "$p2" blocked
   [ "$status" -eq 0 ]
   [ "$(wstate "$win")" = blocked ]
+  [ "$(sstate s)" = blocked ]
+}
+
+@test "session rollup includes attention only and clears once seen" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" working
+  [ -z "$(sstate s)" ]
+  ason "$pane" unread
+  [ "$(sstate s)" = done ]
+  ason "$pane" seen
+  [ -z "$(sstate s)" ]
+}
+
+@test "linked agent window marks every containing session" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx new-session -d -s other
+  tx link-window -d -s "$win" -t other:
+
+  ason "$pane" blocked
+
+  [ "$(sstate s)" = blocked ]
+  [ "$(sstate other)" = blocked ]
 }
 
 @test "done in an inactive window stays done" {

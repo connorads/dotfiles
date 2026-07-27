@@ -42,6 +42,57 @@ EOF
 	fi
 }
 
+# roll_session SESSION_ID - recompute the session's attention-only summary from
+# its window rollups. Working and idle deliberately collapse to no session dot:
+# the bottom rail routes interruptions, while the top window row shows activity.
+roll_session() {
+	_session=$1
+	_best=
+	_best_rank=0
+	while IFS= read -r _s; do
+		case $_s in blocked | done) ;; *) continue ;; esac
+		_r=$(rank "$_s")
+		[ "$_r" -gt "$_best_rank" ] && {
+			_best_rank=$_r
+			_best=$_s
+		}
+	done <<EOF
+$(tmux list-windows -t "$_session" -F '#{@win_agent_state}' 2>/dev/null)
+EOF
+
+	if [ -n "$_best" ]; then
+		tmux set-option -t "$_session" @session_agent_attention "$_best"
+	else
+		tmux set-option -u -t "$_session" @session_agent_attention 2>/dev/null || true
+	fi
+}
+
+# roll_sessions_for_window WINDOW_ID - update every session containing WINDOW_ID.
+# Linked windows intentionally mark each session through which the agent is reachable.
+roll_sessions_for_window() {
+	_window=$1
+	tmux list-windows -a -F '#{session_id}	#{window_id}' 2>/dev/null |
+		awk -F '\t' -v window="$_window" '$2 == window { print $1 }' |
+		sort -u |
+		while IFS= read -r _session; do
+			[ -n "$_session" ] && roll_session "$_session"
+		done
+}
+
+# sync_agent_rollups - rebuild both cached levels after tmux topology changes.
+# State hooks use the narrower window/session path; link/unlink/pane hooks call
+# this full reconciliation because panes can move without an agent lifecycle event.
+sync_agent_rollups() {
+	tmux list-windows -a -F '#{window_id}' 2>/dev/null | sort -u |
+		while IFS= read -r _window; do
+			[ -n "$_window" ] && roll_window "$_window"
+		done
+	tmux list-sessions -F '#{session_id}' 2>/dev/null |
+		while IFS= read -r _session; do
+			[ -n "$_session" ] && roll_session "$_session"
+		done
+}
+
 # is_viewing PANE_ACTIVE WINDOW_ACTIVE SESSION_ATTACHED — pure predicate: true
 # when these three pane fields together mean a human is demonstrably looking at
 # the pane (the active pane of the active window of an attached session). The
