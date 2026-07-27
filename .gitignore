@@ -83,12 +83,6 @@
 !/.config/opencode/plugin-disabled/
 !/.config/opencode/plugin-disabled/**
 
-!/.config/agents/
-/.config/agents/**
-!/.config/agents/skills/
-/.config/agents/skills/**
-!/.config/agents/skills/*
-
 !/.config/skl/
 !/.config/skl/**
 /.config/skl/node_modules/
