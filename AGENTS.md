@@ -448,6 +448,17 @@ blocks a key bound twice in one key-table, or both members of a terminal-alias
 pair, i.e. a self-collision that silently kills the earlier bind - the
 commit-time complement to the edit-time `tmux-freekeys` advisor).
 
+The `bash5-preamble` step (`~/.hk-hooks/bash5-preamble.py`) keeps the tmux
+shell glue from depending on which bash the caller's PATH supplies - macOS
+hands `run-shell` the 2007-era `/bin/bash`, with no `mapfile` and no
+`declare -A`. Three assertions over `.config/tmux/{scripts,strategies,save_command_strategies}`:
+an executable `env bash` entry point must carry the re-exec preamble, anything
+under `scripts/lib/` must carry the `bash >= 5` assert instead (you cannot
+`exec` a sourced file), and an `sh`-shebang file must carry neither. It keys on
+the **shebang, not the `.sh` extension**. Rationale and rejected alternatives:
+[docs/adr/0001](./docs/adr/0001-tmux-scripts-re-exec-under-bash-5.md); the
+subsystem contract is in [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md).
+
 The `skill-tests` step runs colocated skill-script tests (pytest via uv /
 bats under `<skill>/tests/`) for whichever authored skills the staged files
 touch; the shared `~/.hk-hooks/skill-tests.sh` warns and exits 0 when a
