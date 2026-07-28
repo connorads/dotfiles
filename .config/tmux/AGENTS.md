@@ -1011,6 +1011,17 @@ Change as a set:
   no longer matches the store path the caller passed in.
 - **The model is pinned per invocation** (`mw transcribe --model …`), never via
   `mw models select`, which mutates the GUI app's own state.
+- **`mw` emits a top-level `"text"` key even when it transcribed nothing.** So
+  `vox_session_kind` tests positively for a segment object (`"segments":[{`
+  after stripping whitespace, because mw pretty-prints); looking for the word
+  `"text"` called every silent system track `2-way`. Hand-written fixtures could
+  not catch this, which is why `vox-contract.bats` now drives real `mw` over
+  real silence.
+- **A quiet room is nowhere near digital silence.** Measured here: a system
+  track that captured nothing reads **-91 dB**, a microphone in a quiet room
+  **-55 dB**. `VOX_SILENCE_DB` therefore sits at -70, between them - above the
+  mic's floor and `prune --empty` finds a monologue's *mic* track silent too,
+  and skips the recording as having captured nothing.
 
 ### Known skew
 

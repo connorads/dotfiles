@@ -390,6 +390,43 @@ statefile() {
   [ "$output" = "solo" ]
 }
 
+@test "mw's own empty output reads solo, top-level text key and all" {
+  # Byte-for-byte what `mw transcribe` writes for a track nobody spoke on:
+  # pretty-printed, and carrying a TOP-LEVEL "text" key that is present but
+  # empty. Looking for the word "text" called every silent system track 2-way,
+  # and the hand-written fixture above could not have caught it.
+  mkdir -p "$HOME/rec"
+  cat >"$HOME/rec/sys.json" <<'JSON'
+{
+  "segments" : [
+
+  ],
+  "text" : ""
+}
+JSON
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "solo" ]
+}
+
+@test "mw's pretty-printed segments still read 2-way" {
+  mkdir -p "$HOME/rec"
+  cat >"$HOME/rec/sys.json" <<'JSON'
+{
+  "segments" : [
+    {
+      "id" : 0,
+      "start" : 0,
+      "end" : 1000,
+      "text" : "yes hello"
+    }
+  ],
+  "text" : "yes hello"
+}
+JSON
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "2-way" ]
+}
+
 @test "no system track at all reads solo, not an error" {
   # What VOX_MIC_ONLY=1 produces, and what a recording pruned back to its
   # transcript still reads as.
@@ -431,4 +468,13 @@ statefile() {
 @test "the silence floor is env-overridable" {
   VOX_SILENCE_DB=-20 lib_stdin "$FIXTURES/vox-volumedetect-speech.txt" vox_classify_track
   [ "$output" = "MONOLOGUE" ]
+}
+
+@test "the floor sits between digital silence and a quiet room" {
+  # Measured on real recordings: a system track that captured nothing reads
+  # -91 dB, a microphone in a quiet room about -55 dB. A floor above the latter
+  # makes prune --empty treat every monologue as "captured nothing" and skip it.
+  lib 'printf %s "$VOX_SILENCE_DB"'
+  [ "$output" -lt -70 ] || [ "$output" -eq -70 ]
+  [ "$output" -gt -91 ]
 }

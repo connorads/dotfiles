@@ -121,6 +121,23 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [[ "${lines[0]}" =~ ^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\ Me:\  ]]
 }
 
+@test "mw's output for a silent track reads solo, not 2-way" {
+  require_mw
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  # The failure this guards was invisible to a hand-written fixture: mw emits a
+  # TOP-LEVEL "text" key that is present but empty when nothing was
+  # transcribed, so a check for the word "text" called every monologue 2-way.
+  ffmpeg -hide_banner -loglevel error -f lavfi -i 'anullsrc=r=16000:cl=mono' \
+    -t 2 -c:a pcm_s16le -y "$BATS_TEST_TMPDIR/silence.wav"
+  mkdir -p "$BATS_TEST_TMPDIR/rec"
+  mw transcribe "$BATS_TEST_TMPDIR/silence.wav" --format json --speakers \
+    >"$BATS_TEST_TMPDIR/rec/sys.json" 2>/dev/null || skip "mw refused the silent track"
+
+  run bash -c "source '$HOME/.config/tmux/scripts/vox-lib.sh'; vox_session_kind '$BATS_TEST_TMPDIR/rec'"
+
+  [ "$output" = "solo" ]
+}
+
 # --- voxtap: the padding invariant ------------------------------------------
 #
 # `--probe N` measures the stream instead of writing it, so these need no audio
