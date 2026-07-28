@@ -17,6 +17,8 @@ setup() {
   export VOX_MERGE="$MERGE_REAL"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
+  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
+  export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_VOCAB="$HOME/vocab.tsv"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
 }
@@ -571,7 +573,7 @@ aged_recording() {
   grep -q "^mw transcribe $dir/sys.wav --model .* --format json --speakers$" "$TEST_LOG"
 }
 
-@test "stop clears the state so the next status reads IDLE" {
+@test "stop clears the capture state and leaves a transcript to read" {
   require_macos
   stub_ffmpeg
   stub_mw
@@ -581,6 +583,40 @@ aged_recording() {
   vox stop
   vox status
 
+  # Not IDLE: the capture is over and the transcript it produced is newer than
+  # the seen marker, which is exactly what READY means. Opening the picker (or
+  # starting the next recording) clears it.
+  [ "$output" = "READY 1" ]
+}
+
+@test "stop leaves no transcribe job behind" {
+  require_macos
+  stub_ffmpeg
+  stub_mw
+  stub_voxtap
+
+  vox
+  vox stop
+
+  # The job file exists only while mw is running, so nothing can be left
+  # claiming to transcribe.
+  [ ! -f "$VOX_JOBFILE" ]
+}
+
+@test "starting a capture marks earlier recordings as looked at" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+  recording 2026-07-26-090000-standup
+  vox status
+  [ "$output" = "READY 1" ] # unread before
+
+  vox
+  kill_capture
+  vox status
+
+  # Starting a new recording means you have moved on from the pile: the state
+  # is about this capture, not about what was waiting.
   [ "$output" = "IDLE" ]
 }
 

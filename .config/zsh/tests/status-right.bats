@@ -467,3 +467,71 @@ EOF
   [[ "$plain" != *"X:"* ]] || false
   [[ "$plain" != *"S:"* ]]
 }
+
+# --- vox pill: one capture, from start to read ------------------------------
+#
+# Additions here stay on the pure renderer: this file is already the suite's
+# most expensive, so no test below starts a capture or spends real time.
+
+# vox_recording SECONDS_AGO - a live capture the pill can render.
+vox_recording() {
+  sleep 100 >/dev/null 2>&1 &
+  echo $! >>"$BATS_TEST_TMPDIR/vox-pids"
+  printf '%s %s %s\n' "$!" "$(($(date +%s) - $1))" "$HOME/rec" \
+    >"$HOME/.cache/tmux-vox.state"
+}
+
+vox_transcribing() {
+  sleep 100 >/dev/null 2>&1 &
+  echo $! >>"$BATS_TEST_TMPDIR/vox-pids"
+  printf '%s %s %s\n' "$!" "$(($(date +%s) - $1))" "$HOME/rec" \
+    >"$HOME/.cache/tmux-vox.job"
+}
+
+reap_vox() {
+  [ -f "$BATS_TEST_TMPDIR/vox-pids" ] || return 0
+  while read -r pid; do kill "$pid" 2>/dev/null || true; done <"$BATS_TEST_TMPDIR/vox-pids"
+}
+
+@test "vox pill is hidden while nothing is recorded or waiting" {
+  run_status_right 90
+
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" != *"~ "* ]]
+}
+
+@test "vox pill shows elapsed capture time" {
+  vox_recording 720
+  run_status_right 90
+  reap_vox
+
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"~ 12m"* ]] || false
+  [[ "$output" == *"#[fg=#a6adc8]"* ]]
+}
+
+@test "vox pill follows the capture into transcription" {
+  # 90 s, not 40: a seconds-scale token would tick between the fixture and the
+  # render, which this file's cold first run is slow enough to do.
+  vox_transcribing 90
+  run_status_right 90
+  reap_vox
+
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"≈ 1m"* ]] || false
+  # Still ambient: transcription is ongoing work, not news.
+  [[ "$output" == *"#[fg=#a6adc8]"* ]]
+}
+
+@test "vox pill counts finished transcripts in the unread blue" {
+  mkdir -p "$HOME/Recordings/vox/2026-07-28-140312"
+  printf '[00:00:00] Me: hello\n' >"$HOME/Recordings/vox/2026-07-28-140312/transcript.md"
+
+  run_status_right 90
+
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"✓ 1"* ]] || false
+  # The same blue the agent dots use for "finished, not looked at yet".
+  [[ "$output" == *"#[fg=#89b4fa]"* ]]
+}

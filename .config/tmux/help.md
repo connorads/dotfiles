@@ -192,16 +192,19 @@ keep-awake is never silently left running. `Ctrl+b Alt+k` toggles it.
 
 ## Recording (status bar)
 
-A muted pill (macOS, width ≥ 80) shows **only** while `vox` is capturing audio -
-your mic and the system-audio loopback, to two tracks. It is deliberately quiet
-rather than an accent colour, because it is visible during screen shares.
-`Ctrl+b Alt+v` opens the picker; `vox stop` in any pane ends the recording and
-transcribes it locally.
+A muted pill (macOS, width ≥ 80) follows one recording from start to read - your
+mic and the system's own audio, to two tracks. It is deliberately quiet rather
+than an accent colour, because it is visible during screen shares; only the
+"ready" state, which cannot appear mid-recording, uses the same blue as an unread
+agent tab. `Ctrl+b Alt+v` opens the picker; `vox stop` in any pane ends the
+recording and transcribes it locally.
 
 | Pill | State | Meaning |
 |------|-------|---------|
 | `~ 12m` muted | recording | capturing, elapsed time so far |
-| (hidden) | idle | nothing is being recorded |
+| `≈ 40s` muted | transcribing | stopped; transcribing locally, elapsed so far |
+| `✓ 2` blue | ready | that many transcripts finished since you last looked |
+| (hidden) | idle | nothing recording, nothing waiting |
 
 ## Copy mode navigation
 

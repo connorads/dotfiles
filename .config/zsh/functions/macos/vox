@@ -203,6 +203,8 @@ _vox_start() {
 	fi
 
 	vox_write_state "${(j:,:)pids}" "$(date +%s)" "$dir"
+	# Starting a new one means you have moved on from whatever was waiting.
+	vox_touch_seen
 	print -u2 -- "vox: recording — \`vox stop\` when done"
 	print -r -- "$dir"
 }
@@ -244,10 +246,19 @@ _vox_halt() {
 }
 
 # _vox_stop - halt the capture, then transcribe and merge.
+#
+# The job file is written around the transcription, not by whoever called stop,
+# so the pill says TRANSCRIBING whether this was typed in a pane or detached by
+# the tmux toggle. $$ is this process: if it dies mid-transcription the file
+# reads as finished by pid liveness alone.
 _vox_stop() {
 	local dir
 	dir=$(_vox_halt) || return 1
-	_vox_transcribe "$dir" || return 1
+	vox_write_job "$$" "$(date +%s)" "$dir"
+	_vox_transcribe "$dir"
+	local rc=$?
+	vox_clear_job
+	(( rc == 0 )) || return "$rc"
 	print -r -- "$dir"
 }
 
@@ -345,11 +356,12 @@ _vox_last() {
 _vox_status() {
 	local state
 	state=$(vox_state)
-	if [[ "$state" == RECORDING ]]; then
-		print -r -- "RECORDING $(vox_token) $(vox_dir)"
-	else
-		print -r -- IDLE
-	fi
+	case "$state" in
+	RECORDING) print -r -- "RECORDING $(vox_token "$state") $(vox_dir)" ;;
+	TRANSCRIBING) print -r -- "TRANSCRIBING $(vox_token "$state") $(vox_job_dir)" ;;
+	READY) print -r -- "READY $(vox_token "$state")" ;;
+	*) print -r -- IDLE ;;
+	esac
 }
 
 # _vox_rename REC SLUG - retitle a recording, keeping its timestamp prefix. An

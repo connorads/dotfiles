@@ -15,7 +15,42 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 setup() {
   setup_test_home
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  mkdir -p "$HOME/.cache"
+  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
+  export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
+  export VOX_STORE="$HOME/Recordings/vox"
+  mkdir -p "$HOME/.cache" "$VOX_STORE"
+}
+
+# Write "pid start_epoch dir" to the transcribe-job file.
+jobfile() {
+  printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_JOBFILE"
+}
+
+# transcript NAME - a finished recording in the store. Ages are set with touch,
+# so the seen-marker comparison runs against real mtimes and no clock is mocked.
+transcript() {
+  mkdir -p "$VOX_STORE/$1"
+  printf '[00:00:00] Me: hello\n' >"$VOX_STORE/$1/transcript.md"
+  printf '%s\n' "$VOX_STORE/$1/transcript.md"
+}
+
+# spawn - a live process whose pid the test can record, reaped by teardown.
+#
+# stdout and stderr are redirected because spawn is called inside a command
+# substitution: a background child inheriting that pipe holds it open, so the
+# substitution would block until the sleep finished rather than returning a pid.
+# The pid list goes through a file for the same reason - a variable set inside
+# the substitution's subshell never reaches teardown.
+spawn() {
+  sleep 100 >/dev/null 2>&1 &
+  printf '%s\n' "$!" | tee -a "$BATS_TEST_TMPDIR/spawned"
+}
+
+teardown() {
+  if [ -f "$BATS_TEST_TMPDIR/spawned" ]; then
+    while read -r pid; do kill "$pid" 2>/dev/null || true; done <"$BATS_TEST_TMPDIR/spawned"
+  fi
+  true
 }
 
 lib() {
@@ -129,6 +164,121 @@ statefile() {
   [ "$output" = "IDLE" ]
 }
 
+# --- the four states, and their precedence -----------------------------------
+
+@test "TRANSCRIBING while the transcribe job's pid is alive" {
+  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  [ "$output" = "TRANSCRIBING" ]
+}
+
+@test "a dead transcribe job reads as finished, not stuck" {
+  # mw crashed, or the machine rebooted: pid liveness self-clears the state, so
+  # there is no reaper and no way to be pinned at TRANSCRIBING forever.
+  sleep 100 &
+  dead=$!
+  kill "$dead" 2>/dev/null || true
+  wait "$dead" 2>/dev/null || true
+  jobfile "$dead" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  [ "$output" = "IDLE" ]
+}
+
+@test "READY when a transcript is newer than the seen marker" {
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  transcript 2026-07-28-140312 >/dev/null
+  lib vox_state
+  [ "$output" = "READY" ]
+}
+
+@test "not READY when the marker is newer than every transcript" {
+  transcript 2026-07-28-140312 >/dev/null
+  : >"$VOX_SEENFILE" # touched last, so it wins
+  lib vox_state
+  [ "$output" = "IDLE" ]
+}
+
+@test "READY counts every transcript finished since you last looked" {
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  transcript 2026-07-28-140312 >/dev/null
+  transcript 2026-07-28-150000 >/dev/null
+  lib vox_unread_count
+  [ "$output" = "2" ]
+}
+
+@test "an empty transcript does not count as ready to read" {
+  # A failed merge still leaves the file behind; there is nothing to go and read.
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  mkdir -p "$VOX_STORE/2026-07-28-140312"
+  : >"$VOX_STORE/2026-07-28-140312/transcript.md"
+  lib vox_state
+  [ "$output" = "IDLE" ]
+}
+
+@test "touching the seen marker clears READY" {
+  transcript 2026-07-28-140312 >/dev/null
+  lib vox_state
+  [ "$output" = "READY" ] # no marker at all: everything is unread
+  lib 'vox_touch_seen; vox_state'
+  [ "$output" = "IDLE" ]
+}
+
+@test "recording outranks transcribing, ready and idle" {
+  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  transcript 2026-07-28-140312 >/dev/null
+  statefile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  [ "$output" = "RECORDING" ]
+}
+
+@test "transcribing outranks ready" {
+  # The recording that just finished is exactly the one being transcribed, so
+  # showing it as ready to read would be a lie for the length of the job.
+  transcript 2026-07-28-140312 >/dev/null
+  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  [ "$output" = "TRANSCRIBING" ]
+}
+
+@test "the transcribing token is the job's elapsed time" {
+  jobfile "$(spawn)" "$(($(date +%s) - 90))" "$HOME/rec"
+  lib 'vox_token TRANSCRIBING'
+  [ "$output" = "1m" ]
+}
+
+@test "the ready token is the number waiting" {
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  transcript 2026-07-28-140312 >/dev/null
+  lib 'vox_token READY'
+  [ "$output" = "1" ]
+}
+
+@test "the transcribed recording is readable from the job file" {
+  jobfile 123 "$(date +%s)" "$HOME/Recordings/vox/2026-07-28-140312-triver kickoff"
+  lib vox_job_dir
+  [ "$output" = "$HOME/Recordings/vox/2026-07-28-140312-triver kickoff" ]
+}
+
+@test "TRANSCRIBING and READY carry their own glyph, RECORDING keeps the tilde" {
+  lib 'vox_state_glyph TRANSCRIBING'
+  [ "$output" = "≈" ]
+  lib 'vox_state_glyph READY'
+  [ "$output" = "✓" ]
+  lib 'vox_state_glyph RECORDING'
+  [ "$output" = "~" ]
+}
+
+@test "READY is the agent-dot unread blue; the working states stay muted" {
+  lib 'vox_state_colour READY'
+  [ "$output" = "89b4fa" ]
+  lib 'vox_state_colour TRANSCRIBING'
+  [ "$output" = "a6adc8" ]
+}
+
 # --- elapsed time -----------------------------------------------------------
 
 @test "elapsed is measured from the recorded start epoch" {
@@ -158,9 +308,16 @@ statefile() {
 # --- token, colour and glyph vocabulary -------------------------------------
 
 @test "token is the human elapsed time" {
-  statefile 123 "$(($(date +%s) - 720))" "$HOME/rec"
+  # A live pid, because the token now follows the state: a dead capture is IDLE,
+  # and IDLE has nothing to say.
+  statefile "$(spawn)" "$(($(date +%s) - 720))" "$HOME/rec"
   lib vox_token
   [ "$output" = "12m" ]
+}
+
+@test "an idle token is empty" {
+  lib vox_token
+  [ -z "$output" ]
 }
 
 @test "RECORDING maps to the muted subtext0 pill colour" {

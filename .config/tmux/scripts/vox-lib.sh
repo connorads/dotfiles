@@ -32,6 +32,19 @@
 # it to an isolated HOME without spawning a real capture.
 VOX_STATEFILE=${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}
 
+# Transcribe-job file holding "pid start_epoch dir" — written by `vox stop`
+# around the transcription it is about to spend minutes on, so the pill can say
+# TRANSCRIBING whether the stop was typed in a pane or detached by the toggle. A
+# dead pid reads as not transcribing, so a crashed `mw` needs no reaper either.
+VOX_JOBFILE=${VOX_JOBFILE:-$HOME/.cache/tmux-vox.job}
+
+# Marker whose MTIME is the last time you looked at the recordings. READY is
+# "the newest transcript is newer than this", which handles any number of
+# finished recordings without tracking any of them, and makes touching the
+# marker the only write. Cleared by opening the picker, and by starting a new
+# capture (you have moved on).
+VOX_SEENFILE=${VOX_SEENFILE:-$HOME/.cache/tmux-vox.seen}
+
 # Recording store root. One directory per recording, named
 # "YYYY-MM-DD-HHMMSS-slug" — the directory name IS the title, so renaming is
 # `mv` and nothing can drift out of sync. Only the timestamp prefix is parsed.
@@ -40,14 +53,27 @@ VOX_STORE=${VOX_STORE:-$HOME/Recordings/vox}
 # RECORDING pill colour — catppuccin subtext0, the muted data-pill foreground
 # shared with disk/git, on surface1. Deliberately *not* a bright accent: the
 # pill is visible during screen shares, so it must read as ambient chrome
-# rather than an alarm. Still clears WCAG AA on #45475a.
+# rather than an alarm. Still clears WCAG AA on #45475a. TRANSCRIBING shares it:
+# it is the same ongoing, uninteresting work.
 VOX_COLOUR=a6adc8
+
+# READY pill colour — catppuccin blue, the SAME blue the agent dots use for
+# "finished, and you have not looked yet". Reusing it is the point: unread is
+# one idea across this config, so a blue pill means the same thing as a blue
+# tab dot. It appears only after a capture has stopped, never mid-recording.
+VOX_READY_COLOUR=89b4fa
 
 # RECORDING glyph — plain ASCII tilde. Zero rendering risk (no emoji
 # presentation, no ambiguous-width trap of the kind caffeine-lib documents for
 # ☕), and it collides with no existing vocabulary: mem ⬡⊟⊠, resurrect ⟳⚠,
 # agent dots ◆◐●○·, caffeine ☼. Quoted so the assignment does not tilde-expand.
 VOX_GLYPH="${VOX_GLYPH:-~}"
+
+# TRANSCRIBING / READY glyphs — narrow, non-emoji, and shaped so the states read
+# apart on a colour clash: a wave still moving, then a tick. Neither has an emoji
+# presentation form, which is the trap ☕ documents.
+VOX_TRANSCRIBING_GLYPH="${VOX_TRANSCRIBING_GLYPH:-≈}"
+VOX_READY_GLYPH="${VOX_READY_GLYPH:-✓}"
 
 # Mean-volume floor, in dBFS, below which a track counts as silent. A truly
 # silent BlackHole capture measures about -91 dB, so -50 is a wide margin.
@@ -98,13 +124,104 @@ vox_active() {
 	kill -0 "$_vox_pid" 2>/dev/null
 }
 
-# vox_state — RECORDING while the capture is live, else IDLE.
+# vox_read_job — load the transcribe-job file into _vox_job_pid /
+# _vox_job_start / _vox_job_dir. Returns 1 (fields zeroed) when there is none.
+vox_read_job() {
+	_vox_job_pid=""
+	_vox_job_start=0
+	_vox_job_dir=""
+	[ -f "$VOX_JOBFILE" ] || return 1
+	IFS=' ' read -r _vox_job_pid _vox_job_start _vox_job_dir <"$VOX_JOBFILE" || return 1
+	: "${_vox_job_start:=0}"
+	return 0
+}
+
+# vox_job_dir — the recording being transcribed, empty when none is.
+vox_job_dir() {
+	vox_read_job || true
+	printf '%s' "$_vox_job_dir"
+}
+
+# vox_job_active — true while the transcribe job's pid is alive. A job that died
+# (mw crashed, the machine rebooted) reads as finished, so this self-clears the
+# same way the capture state does.
+vox_job_active() {
+	vox_read_job || return 1
+	[ -n "$_vox_job_pid" ] || return 1
+	kill -0 "$_vox_job_pid" 2>/dev/null
+}
+
+# vox_write_job PID START_EPOCH DIR — record a running transcription.
+vox_write_job() {
+	mkdir -p "$(dirname "$VOX_JOBFILE")"
+	printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_JOBFILE"
+}
+
+# vox_clear_job — drop the transcribe-job file.
+vox_clear_job() {
+	rm -f "$VOX_JOBFILE" 2>/dev/null || true
+}
+
+# vox_touch_seen — mark everything as looked-at. One write, no list of what was
+# seen: the mtime IS the record.
+vox_touch_seen() {
+	mkdir -p "$(dirname "$VOX_SEENFILE")"
+	: >"$VOX_SEENFILE"
+}
+
+# vox_unread_count — transcripts finished since you last looked.
+#
+# `-size +0` because a failed merge still leaves an empty transcript.md behind,
+# and an empty transcript is not something to go and read. With no marker at all
+# (a fresh machine) every transcript counts as unread, which one keypress
+# clears — the alternative would hide the first recording you ever make.
+vox_unread_count() {
+	[ -d "$VOX_STORE" ] || {
+		echo 0
+		return
+	}
+	if [ -e "$VOX_SEENFILE" ]; then
+		find "$VOX_STORE" -maxdepth 2 -name transcript.md -size +0 \
+			-newer "$VOX_SEENFILE" 2>/dev/null | wc -l | tr -d ' '
+	else
+		find "$VOX_STORE" -maxdepth 2 -name transcript.md -size +0 2>/dev/null |
+			wc -l | tr -d ' '
+	fi
+}
+
+# vox_state — RECORDING > TRANSCRIBING > READY > IDLE, in that precedence: the
+# same "worst first" shape as the agent dots' rank. Each state is derived from a
+# file whose staleness cannot lie (a pid's liveness, an mtime comparison), so
+# nothing here needs a reaper.
 vox_state() {
 	if vox_active; then
 		echo RECORDING
+	elif vox_job_active; then
+		echo TRANSCRIBING
+	elif [ "$(vox_unread_count)" -gt 0 ] 2>/dev/null; then
+		echo READY
 	else
 		echo IDLE
 	fi
+}
+
+# vox_job_elapsed_secs — seconds the current transcription has been running; 0
+# when none is.
+vox_job_elapsed_secs() {
+	vox_read_job || {
+		echo 0
+		return
+	}
+	case "${_vox_job_start:-}" in
+	'' | *[!0-9]*)
+		echo 0
+		return
+		;;
+	esac
+	_vox_now=$(date +%s)
+	_vox_el=$((_vox_now - _vox_job_start))
+	[ "$_vox_el" -lt 0 ] && _vox_el=0
+	echo "$_vox_el"
 }
 
 # vox_elapsed_secs — seconds since the capture started; 0 when idle or when the
@@ -140,10 +257,11 @@ vox_human_age() {
 	}'
 }
 
-# vox_state_colour STATE — bare 6-hex pill colour. Only RECORDING is rendered
-# (IDLE self-hides); the signature stays parallel to the other libs.
+# vox_state_colour STATE — bare 6-hex pill colour. IDLE self-hides, so its
+# colour is never rendered; the signature stays parallel to the other libs.
 vox_state_colour() {
 	case "$1" in
+	READY) printf '%s' "$VOX_READY_COLOUR" ;;
 	*) printf '%s' "$VOX_COLOUR" ;;
 	esac
 }
@@ -151,13 +269,24 @@ vox_state_colour() {
 # vox_state_glyph STATE — the pill glyph. Parallel signature to the other libs.
 vox_state_glyph() {
 	case "$1" in
+	TRANSCRIBING) printf '%s' "$VOX_TRANSCRIBING_GLYPH" ;;
+	READY) printf '%s' "$VOX_READY_GLYPH" ;;
 	*) printf '%s' "$VOX_GLYPH" ;;
 	esac
 }
 
-# vox_token — figure-slot content: how long the capture has been running.
+# vox_token [STATE] — figure-slot content: elapsed while capturing or
+# transcribing, and how many transcripts are waiting once one is ready. The
+# state is an argument so a caller that already computed it does not pay for it
+# twice; omitted, it is derived.
 vox_token() {
-	vox_human_age "$(vox_elapsed_secs)"
+	_vox_state=${1:-$(vox_state)}
+	case "$_vox_state" in
+	TRANSCRIBING) vox_human_age "$(vox_job_elapsed_secs)" ;;
+	READY) vox_unread_count ;;
+	IDLE) printf '' ;;
+	*) vox_human_age "$(vox_elapsed_secs)" ;;
+	esac
 }
 
 # vox_write_state PIDS START_EPOCH DIR — record a live capture. PIDS is the
