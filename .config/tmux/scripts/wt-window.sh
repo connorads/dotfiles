@@ -5,8 +5,10 @@
 # Subcommands:
 #   open <path>   focus the window whose pane cwd is <path> (or inside it),
 #                 else open a new window there
-#   pane <path>   split the summoning pane, new pane cd'd to <path>
-#   new <branch>  wt-add <branch> in $PWD's repo (popup shows setup output),
+#   pane <path> [origin]
+#                 split the summoning pane, new pane cd'd to <path>
+#   new <branch> [origin]
+#                 wt-add <branch> in $PWD's repo (setup output stays visible),
 #                 then [enter] new window · [v] pane here
 #   pick          fzf over managed worktrees: columns are repo, a fixed-width
 #                 PR-state verdict (✓ reap / ✓ merged / ○ open / ✗ closed /
@@ -96,15 +98,18 @@ open)
 	;;
 pane)
 	path="${2:?path required}"
-	# A popup doesn't change which pane is active, so querying from inside one
-	# returns the summoning pane; #{pane_id} in the keybind would arrive
-	# verbatim (see the skl pick note in tmux.conf).
-	origin=$(tmux display-message -p '#{pane_id}')
+	# Origin is passed by float callers and resolved live by popup callers: a
+	# float becomes the active pane, so asking tmux from inside one would split
+	# the float itself, while a popup leaves the active pane alone and cannot
+	# expand #{pane_id} in its command (run-shell can, so float binds pass it).
+	origin="${3:-}"
+	[ -n "$origin" ] || origin=$(tmux display-message -p '#{pane_id}')
 	tmux split-window -h -t "$origin" -c "$path"
 	;;
 new)
 	branch="${2:-}"
-	[ -n "$branch" ] || soft_fail "usage: wt-window.sh new <branch>"
+	origin="${3:-}"
+	[ -n "$branch" ] || soft_fail "usage: wt-window.sh new <branch> [origin]"
 	case "$branch" in
 	*[[:space:]]*) soft_fail "Branch name must not contain spaces: $branch" ;;
 	esac
@@ -114,7 +119,7 @@ new)
 	printf 'worktree ready: %s\n[enter] new window · [v] pane here ' "$path" >&2
 	read -rsn1 key || key=''
 	case "$key" in
-	v | V) exec "$self" pane "$path" ;;
+	v | V) exec "$self" pane "$path" "$origin" ;;
 	*) tmux new-window -c "$path" ;;
 	esac
 	;;
@@ -265,7 +270,7 @@ pick)
 	esac
 	;;
 *)
-	echo "usage: wt-window.sh open <path> | pane <path> | new <branch> | pick | pick-render <fast|full>" >&2
+	echo "usage: wt-window.sh open <path> | pane <path> [origin] | new <branch> [origin] | pick | pick-render <fast|full>" >&2
 	exit 1
 	;;
 esac
