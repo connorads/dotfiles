@@ -63,15 +63,20 @@ has_changes_dotfiles() {
 	[ -n "$(git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" status --porcelain --untracked-files=all 2>/dev/null)" ]
 }
 
-open_popup() {
+# A floating pane, not a popup: critique is a place you dwell (a long review you
+# read while working elsewhere), and a float leaves the client free to switch
+# windows and answer an agent. flt is the single door to a float, carrying the
+# tmux#5327 unzoom guard. Mode/action/agent are already resolved here, so the
+# re-entry is direct argv rather than a shell string.
+open_float() {
 	local pane_path mode action agent
 	pane_path="$1"
 	mode="$2"
 	action="$3"
 	agent="$4"
 
-	tmux display-popup -E -h 95% -w 100% -d "$pane_path" \
-		"$HOME/.config/tmux/scripts/critique-popup.sh --exec $mode $action $agent"
+	"$HOME/.local/bin/flt" -c "$pane_path" big \
+		"$HOME/.config/tmux/scripts/critique-popup.sh" --exec "$mode" "$action" "$agent"
 }
 
 normalize_action() {
@@ -126,7 +131,7 @@ run_action() {
 	esac
 }
 
-run_in_popup() {
+run_in_float() {
 	local mode action agent label status
 	mode="$1"
 	action="$(normalize_action "${2:-diff}")"
@@ -177,7 +182,7 @@ preflight() {
 
 	if is_in_git_repo "$pane_path"; then
 		if has_changes_repo "$pane_path"; then
-			open_popup "$pane_path" normal "$action" "$agent"
+			open_float "$pane_path" normal "$action" "$agent"
 		else
 			tmux display-message "$label: no changes"
 		fi
@@ -186,7 +191,7 @@ preflight() {
 
 	if [ -d "$HOME/git/dotfiles" ] && is_home_root_path "$pane_path"; then
 		if has_changes_dotfiles; then
-			open_popup "$pane_path" dotfiles "$action" "$agent"
+			open_float "$pane_path" dotfiles "$action" "$agent"
 		else
 			tmux display-message "$label: no changes"
 		fi
@@ -197,7 +202,7 @@ preflight() {
 }
 
 if [ "${1:-}" = "--exec" ]; then
-	run_in_popup "${2:-auto}" "${3:-diff}" "${4:-opencode}"
+	run_in_float "${2:-auto}" "${3:-diff}" "${4:-opencode}"
 else
 	preflight "${1:-$PWD}" "${2:-diff}" "${3:-opencode}"
 fi
