@@ -1,12 +1,15 @@
 #!/usr/bin/env zsh
 # vox: record mic + system audio, transcribe locally
 #
-# One detached ffmpeg captures two inputs to two mono 16 kHz WAVs - your mic and
-# the system-audio loopback - and on stop each is transcribed on-device by the
-# MacWhisper CLI, then merged into one timestamped markdown script.
+# One detached ffmpeg captures two inputs to two mono 16 kHz WAVs - your mic via
+# avfoundation, and the system's own output via `voxtap` on a pipe - and on stop
+# each is transcribed on-device by the MacWhisper CLI, then merged into one
+# timestamped markdown script.
 #
 #   vox                      start (no args, no thinking)
+#   vox --name <title>       start with a title
 #   vox stop                 finalise -> transcribe -> merge -> print the path
+#   vox cancel               stop and discard, without transcribing
 #   vox status               state + elapsed
 #   vox ls                   every recording, newest first, one path per line
 #   vox last                 newest recording's path
@@ -50,15 +53,12 @@ source "$vox_lib"
 # Model pinned per invocation rather than via `mw models select`, which mutates
 # the GUI app's own state - a CLI run must not change what the app does next.
 local vox_model="${VOX_MODEL:-parakeet-pro:nvidia_parakeet-v3_494MB}"
-# Devices are resolved by NAME at start, never by a recorded index: avfoundation
+# The mic is resolved by NAME at start, never by a recorded index: avfoundation
 # renumbers every input when one appears or disappears (connecting AirPods is
-# enough), so a stored index silently captures the wrong thing.
+# enough), so a stored index silently captures the wrong thing. System audio
+# needs no such lookup - voxtap taps whatever the default output is playing.
 local vox_mic_device="${VOX_MIC_DEVICE:-Microphone}"
-local vox_sys_device="${VOX_SYS_DEVICE:-BlackHole}"
-# The Multi-Output device that fans system audio to both the speakers and
-# BlackHole. Created once by hand in Audio MIDI Setup; without it sys.wav is
-# silent, which reads as "monologue" rather than as an error.
-local vox_output_device="${VOX_OUTPUT_DEVICE:-Capture}"
+local vox_voxtap="${VOX_VOXTAP:-voxtap}"
 local vox_merge="${VOX_MERGE:-$HOME/.config/vox/merge.py}"
 local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
 local vox_python="${VOX_PYTHON:-python3}"
@@ -93,39 +93,25 @@ _vox_need() {
 	done
 }
 
-# _vox_default_output - read `system_profiler SPAudioDataType` on stdin and print
-# the name of the current default output device. The device name is the indented
-# "Name:" line that precedes its properties, so the last one seen when
-# "Default Output Device: Yes" appears is the answer.
-_vox_default_output() {
-	awk '
-		/^[[:space:]]+[^:]+:[[:space:]]*$/ {
-			name = $0
-			sub(/^[[:space:]]+/, "", name)
-			sub(/:[[:space:]]*$/, "", name)
-		}
-		/Default Output Device: Yes/ { print name; exit }
-	'
+# _vox_await_output PID FILE - wait (up to 10s) for a detached capture to open
+# its output file, which ffmpeg does only once every input is open. So the file
+# appearing IS "this source is live", and it is also the ordering signal the tap
+# depends on. Returns 1 if the process dies or the file never appears.
+_vox_await_output() {
+	local pid=$1 file=$2 waited=0
+	while (( waited < 100 )); do
+		kill -0 "$pid" 2>/dev/null || return 1
+		[[ -e "$file" ]] && return 0
+		sleep 0.1
+		(( waited++ ))
+	done
+	return 1
 }
 
-# _vox_warn_output - warn when a meeting app is running but system audio is not
-# routed through the loopback, which would leave sys.wav silent.
-#
-# Gated on a meeting app being up so the monologue path - the latency-sensitive
-# one, where you want to start talking now - stays frictionless. It only detects
-# and warns: switching the output would need switchaudio-osx, a dependency this
-# does not justify.
-_vox_warn_output() {
-	pgrep -f 'MSTeams|Microsoft Teams|zoom\.us|Slack' >/dev/null 2>&1 || return 0
-	local current
-	current=$(system_profiler SPAudioDataType 2>/dev/null | _vox_default_output)
-	[[ -n "$current" && "$current" != *"$vox_output_device"* ]] || return 0
-	print -u2 -- "vox: default output is \"$current\", not \"$vox_output_device\" — the other side may not be recorded"
-	print -u2 -- "vox: switch output to \"$vox_output_device\" (and wear headphones) to capture them"
-}
-
-# _vox_start - resolve both devices, then detach one ffmpeg writing both tracks.
+# _vox_start [TITLE] - resolve the mic, verify the tap, then detach one capture
+# per source.
 _vox_start() {
+	local title=${1:-}
 	[[ "$OSTYPE" == darwin* ]] || {
 		_vox_die "recording needs macOS (avfoundation)"
 		return 1
@@ -138,74 +124,148 @@ _vox_start() {
 	fi
 	vox_clear_state
 
-	local listing mic sys
+	local listing mic
 	listing=$(ffmpeg -hide_banner -f avfoundation -list_devices true -i "" 2>&1)
 	mic=$(print -r -- "$listing" | vox_audio_device_index "$vox_mic_device") || {
 		_vox_die "no audio input matching \"$vox_mic_device\""
 		return 1
 	}
-	sys=$(print -r -- "$listing" | vox_audio_device_index "$vox_sys_device") || {
-		_vox_die "no audio input matching \"$vox_sys_device\" — install BlackHole to capture system audio"
+
+	# Refuse rather than half-capture: a meeting recorded with only your own
+	# side is worse than one you knew not to start. VOX_MIC_ONLY is the
+	# deliberate escape hatch (dictation, or a machine without the helper).
+	local sys=1
+	if [[ -n "${VOX_MIC_ONLY:-}" ]]; then
+		sys=0
+	else
+		command -v "$vox_voxtap" >/dev/null 2>&1 || {
+			_vox_die "$vox_voxtap not found — run drs to install it, or VOX_MIC_ONLY=1 to record the mic alone"
+			return 1
+		}
+		"$vox_voxtap" --check || {
+			_vox_die "system audio capture is unavailable — VOX_MIC_ONLY=1 records the mic alone"
+			return 1
+		}
+	fi
+
+	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)"
+	local clean
+	clean=$(_vox_slug "$title")
+	[[ -n "$clean" ]] && dir="$dir-$clean"
+	mkdir -p "$dir" || return 1
+
+	# pan on the mic, not -ac 1: a multichannel input would get a surround
+	# downmix matrix (LFE and height coefficients) rather than the channel apps
+	# actually write. No -t either: duration is driven externally by `vox stop`,
+	# because -t misbehaves alongside -use_wallclock_as_timestamps (the first
+	# pts starts at device uptime).
+	nohup ffmpeg -hide_banner -loglevel warning -nostdin \
+		-use_wallclock_as_timestamps 1 -f avfoundation -i ":$mic" \
+		-filter_complex "[0:a]pan=mono|c0=c0[me]" \
+		-map "[me]" -ar 16000 -c:a pcm_s16le "$dir/mic.wav" \
+		</dev/null >>"$dir/vox.log" 2>&1 &!
+	local pid=$!
+	local -a pids=("$pid")
+
+	# A statefile pointing at a corpse would read RECORDING until the next
+	# start, so nothing is recorded until the mic is confirmed live.
+	_vox_await_output "$pid" "$dir/mic.wav" || {
+		kill -INT "$pid" 2>/dev/null
+		print -u2 -- "vox: the microphone capture did not start; last log lines:"
+		tail -n 5 "$dir/vox.log" >&2 2>/dev/null
 		return 1
 	}
 
-	_vox_warn_output
-
-	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)"
-	mkdir -p "$dir" || return 1
-
-	# pan, not -ac 1: ffmpeg reports BlackHole as 9.1.6, so -ac 1 would apply a
-	# surround downmix matrix (LFE and height coefficients) instead of taking
-	# the stereo pair apps actually write. No -t either: duration is driven
-	# externally by `vox stop`, because -t misbehaves alongside
-	# -use_wallclock_as_timestamps (the first pts starts at device uptime).
-	nohup ffmpeg -hide_banner -loglevel warning -nostdin \
-		-use_wallclock_as_timestamps 1 -f avfoundation -i ":$mic" \
-		-use_wallclock_as_timestamps 1 -f avfoundation -i ":$sys" \
-		-filter_complex "[0:a]pan=mono|c0=c0[me];[1:a]pan=mono|c0=0.5*c0+0.5*c1[them]" \
-		-map "[me]" -ar 16000 -c:a pcm_s16le "$dir/mic.wav" \
-		-map "[them]" -ar 16000 -c:a pcm_s16le "$dir/sys.wav" \
-		</dev/null >>"$dir/vox.log" 2>&1 &!
-	local pid=$!
-
-	# ffmpeg dies early on a device it cannot open, and a statefile pointing at
-	# a corpse would read RECORDING until the next start. Confirm it survived.
-	sleep 0.5
-	if ! kill -0 "$pid" 2>/dev/null; then
-		print -u2 -- "vox: ffmpeg exited immediately; last log lines:"
-		tail -n 5 "$dir/vox.log" >&2 2>/dev/null
-		return 1
+	if (( sys )); then
+		# Started only now, and this ordering is load-bearing: while a process
+		# tap is live, avfoundation refuses to open ANY audio input - it simply
+		# blocks - so a tap created first would leave the mic capture hanging
+		# forever. A live tap does not disturb a capture already running.
+		#
+		# A second ffmpeg, not a second input on the first: one ffmpeg reads
+		# whichever input has the earlier timestamp and starves the other, and
+		# the two sources' timestamps start in different epochs. voxtap reaps
+		# itself by SIGPIPE when this one exits, so it needs no pid of its own.
+		nohup ffmpeg -hide_banner -loglevel warning -nostdin \
+			-f f32le -ar 48000 -ac 1 -i <(exec "$vox_voxtap" 2>>"$dir/vox.log") \
+			-ar 16000 -c:a pcm_s16le "$dir/sys.wav" \
+			</dev/null >>"$dir/vox.log" 2>&1 &!
+		pids+=("$!")
+		# Same refusal as the missing helper, one layer down: a recording that
+		# quietly captured only your own side is the failure this guards.
+		_vox_await_output "$pids[-1]" "$dir/sys.wav" || {
+			kill -INT "${pids[@]}" 2>/dev/null
+			print -u2 -- "vox: the system-audio capture did not start; last log lines:"
+			tail -n 5 "$dir/vox.log" >&2 2>/dev/null
+			return 1
+		}
 	fi
 
-	vox_write_state "$pid" "$(date +%s)" "$dir"
+	vox_write_state "${(j:,:)pids}" "$(date +%s)" "$dir"
 	print -u2 -- "vox: recording — \`vox stop\` when done"
 	print -r -- "$dir"
 }
 
-# _vox_stop - SIGINT the capture, wait for the WAV headers to be finalised, then
-# transcribe and merge.
-_vox_stop() {
+# _vox_halt - SIGINT the capture and wait for the WAV headers to be finalised.
+# Prints the directory it was writing into.
+#
+# SIGINT, never SIGTERM: ffmpeg treats TERM as "immediate exit requested" and
+# leaves a WAV with no valid header - an unreadable recording. INT is the
+# clean-shutdown path that rewrites the header with the real length.
+_vox_halt() {
 	vox_active || {
 		_vox_die "not recording"
 		return 1
 	}
-	local pid dir
-	pid=$(vox_pid)
+	local dir pid
 	dir=$(vox_dir)
+	local -a pids
+	pids=(${=$(vox_pids)})
 
-	# SIGINT, never SIGTERM: ffmpeg treats TERM as "immediate exit requested"
-	# and leaves a WAV with no valid header - an unreadable recording. INT is
-	# the clean-shutdown path that rewrites the header with the real length.
-	kill -INT "$pid" 2>/dev/null
-	local waited=0
-	while kill -0 "$pid" 2>/dev/null && (( waited < 100 )); do
+	for pid in "${pids[@]}"; do
+		kill -INT "$pid" 2>/dev/null
+	done
+	# Wait for every capture, not just the leader: the sys track's header is
+	# rewritten on its own ffmpeg's clean exit, and transcribing before that
+	# would read a WAV that claims to be empty.
+	local waited=0 alive=1
+	while (( alive && waited < 100 )); do
+		alive=0
+		for pid in "${pids[@]}"; do
+			kill -0 "$pid" 2>/dev/null && alive=1
+		done
+		(( alive )) || break
 		sleep 0.1
 		(( waited++ ))
 	done
 	vox_clear_state
+	print -r -- "$dir"
+}
 
+# _vox_stop - halt the capture, then transcribe and merge.
+_vox_stop() {
+	local dir
+	dir=$(_vox_halt) || return 1
 	_vox_transcribe "$dir" || return 1
 	print -r -- "$dir"
+}
+
+# _vox_cancel - halt the capture and delete the recording, transcribing nothing.
+# For the take you knew was wrong before it finished; `vox stop` is the only path
+# that spends transcription time.
+_vox_cancel() {
+	local dir
+	dir=$(_vox_halt) || return 1
+	# Only ever a directory this command created: under the store, and named
+	# with the timestamp prefix vox writes. A recursive delete deserves the
+	# guard even when the path came from our own statefile.
+	if [[ "$dir" == "$VOX_STORE"/* && "${dir:t}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}' ]]; then
+		rm -rf "$dir"
+		print -u2 -- "vox: discarded ${dir:t}"
+	else
+		_vox_die "refusing to delete an unexpected path: $dir"
+		return 1
+	fi
 }
 
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
@@ -328,6 +388,14 @@ _vox_rename() {
 			return 1
 		}
 		mv "$full" "$target" || return 1
+		# Renaming the live capture is safe - ffmpeg's fds follow the inode -
+		# but the statefile would still name the old path, and the pill and
+		# `vox stop` both read it. Naming a recording mid-flight is the normal
+		# case now that the toggle prompts for a title after starting.
+		if vox_active && [[ "$(vox_dir)" == "$full" ]]; then
+			vox_read_state
+			vox_write_state "$_vox_pids" "$_vox_start" "$target"
+		fi
 	fi
 	print -r -- "$target"
 }
@@ -487,7 +555,9 @@ _vox_help() {
 	print -r -- 'vox — record mic + system audio, transcribe locally
 
   vox                      start recording
+  vox --name <title>       start recording, titled
   vox stop                 stop, transcribe, merge, print the path
+  vox cancel               stop and discard, without transcribing
   vox status               state + elapsed
   vox ls                   every recording, newest first
   vox last                 newest recording
@@ -499,13 +569,25 @@ _vox_help() {
 Both reclaim commands take --dry-run and --force (skip the confirmation).
 There is deliberately no `vox rm`: `rm -rf` is already correct.
 
+System audio is captured by voxtap (a Core Audio process tap), so there is
+nothing to route by hand. vox refuses to start without it; VOX_MIC_ONLY=1
+records the mic alone.
+
 Recordings live in '"$VOX_STORE"'; each holds mic/sys WAV + JSON,
 transcript.md and vox.log. The directory name is the title.'
 }
 
 case "${1:-}" in
 '') _vox_start ;;
+# A flag, not a bare argument: the *) branch below treats a bare argument as a
+# file to transcribe, so a mistyped path would silently become a title and
+# record nothing.
+--name)
+	shift
+	_vox_start "${1:-}"
+	;;
 stop) _vox_stop ;;
+cancel) _vox_cancel ;;
 status) _vox_status ;;
 ls) _vox_ls ;;
 last) _vox_last ;;

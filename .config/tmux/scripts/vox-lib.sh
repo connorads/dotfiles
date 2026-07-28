@@ -4,12 +4,19 @@
 # speak one language — IDLE | RECORDING, one colour/glyph/token set — defined
 # once here. Mirrors caffeine-lib.sh / mem-lib.sh's one-lib-many-surfaces role.
 #
-# What it drives: `vox` runs one detached ffmpeg capturing the mic and the
-# system-audio loopback to two WAVs, then transcribes each locally with the
-# MacWhisper CLI. State is that single capture process, tracked by a statefile
-# holding "pid start_epoch dir" so a recording is never silently left running.
+# What it drives: `vox` runs one detached ffmpeg per source - the mic through
+# avfoundation, the system's own output through `voxtap` on a pipe - writing two
+# WAVs, then transcribes each locally with the MacWhisper CLI. State is those
+# capture processes, tracked by a statefile holding "pids start_epoch dir", where
+# pids is a comma-separated list whose FIRST entry is the mic capture, the leader
+# that defines whether a recording is running.
 #
-# The statefile is the only state: a dead pid reads IDLE, so the state
+# Two processes rather than one because a single ffmpeg cannot fairly read two
+# real-time inputs whose timestamps start in different epochs: it reads whichever
+# is "behind" and starves the other (measured: the mic delivered 2 s of audio in
+# 8 s of wall-clock). See docs/adr/0003.
+#
+# The statefile is the only state: a dead leader pid reads IDLE, so the state
 # self-clears without a reaper (as caffeine-lib's pidfile does).
 #
 # It also owns the two *pure text parsers* the capture path needs — audio device
@@ -21,7 +28,7 @@
 # are bare 6-hex (no leading #), `#`-prefixed at the call site, matching
 # mem_state_colour / caffeine_state_colour.
 
-# Statefile holding "pid start_epoch dir". Env-overridable so bats can redirect
+# Statefile holding "pids start_epoch dir". Env-overridable so bats can redirect
 # it to an isolated HOME without spawning a real capture.
 VOX_STATEFILE=${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}
 
@@ -46,24 +53,34 @@ VOX_GLYPH="${VOX_GLYPH:-~}"
 # silent BlackHole capture measures about -91 dB, so -50 is a wide margin.
 VOX_SILENCE_DB=${VOX_SILENCE_DB:--50}
 
-# vox_read_state — load the statefile into _vox_pid / _vox_start / _vox_dir.
-# Returns 1 (with the fields zeroed) when there is no statefile. `read` with
-# three names puts the whole remainder in the last, so a directory containing
-# spaces survives.
+# vox_read_state — load the statefile into _vox_pids / _vox_pid / _vox_start /
+# _vox_dir. Returns 1 (with the fields zeroed) when there is no statefile. `read`
+# with three names puts the whole remainder in the last, so a directory
+# containing spaces survives.
 vox_read_state() {
+	_vox_pids=""
 	_vox_pid=""
 	_vox_start=0
 	_vox_dir=""
 	[ -f "$VOX_STATEFILE" ] || return 1
-	IFS=' ' read -r _vox_pid _vox_start _vox_dir <"$VOX_STATEFILE" || return 1
+	IFS=' ' read -r _vox_pids _vox_start _vox_dir <"$VOX_STATEFILE" || return 1
+	# The leader is the mic capture: it is what "recording" means, and the one
+	# whose death makes the state stale.
+	_vox_pid=${_vox_pids%%,*}
 	: "${_vox_start:=0}"
 	return 0
 }
 
-# vox_pid — the capture pid, empty when there is no statefile.
+# vox_pid — the leading (mic) capture pid, empty when there is no statefile.
 vox_pid() {
 	vox_read_state || true
 	printf '%s' "$_vox_pid"
+}
+
+# vox_pids — every capture pid, space-separated, so a caller can signal the set.
+vox_pids() {
+	vox_read_state || true
+	printf '%s' "$(echo "$_vox_pids" | tr ',' ' ')"
 }
 
 # vox_dir — the directory the live capture is writing into, empty when idle.
@@ -143,7 +160,8 @@ vox_token() {
 	vox_human_age "$(vox_elapsed_secs)"
 }
 
-# vox_write_state PID START_EPOCH DIR — record a live capture.
+# vox_write_state PIDS START_EPOCH DIR — record a live capture. PIDS is the
+# comma-separated capture pid list, leader (mic) first.
 vox_write_state() {
 	mkdir -p "$(dirname "$VOX_STATEFILE")"
 	printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_STATEFILE"
