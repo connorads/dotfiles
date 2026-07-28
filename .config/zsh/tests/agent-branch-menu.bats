@@ -82,7 +82,10 @@ EOF
   run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
   [ "$status" -eq 0 ]
   grep -q "display-menu" "$TEST_LOG"
-  grep -q -- "codex --dangerously-bypass-approvals-and-sandbox -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  grep -q -- "codex -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  # A fork inherits the source pane's authority and never escalates: this stub
+  # pane is a plain `codex`, so no bypass flag may appear anywhere in the menu.
+  ! grep -q -- "--dangerously-bypass-approvals-and-sandbox" "$TEST_LOG"
   ! grep -q -- "claude --dangerously-skip-permissions" "$TEST_LOG"
 }
 
