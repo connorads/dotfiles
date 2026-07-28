@@ -12,6 +12,8 @@
 #   vox last                 newest recording's path
 #   vox <file>               transcribe an audio/video file that already exists
 #   vox rename <path> <slug> retitle, preserving the timestamp prefix
+#   vox compact [--older 30d]  WAV -> Opus 32k mono, preview + confirm
+#   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
 #
 # The store convention is the load-bearing decision:
 #
@@ -330,6 +332,157 @@ _vox_rename() {
 	print -r -- "$target"
 }
 
+# _vox_age_secs SPEC - "30d" / "2w" / "12h" / a bare number of days, in seconds.
+# Pure, so the age arithmetic is testable without touching any recording.
+_vox_age_secs() {
+	local spec=${1:-}
+	local n=${spec%%[a-zA-Z]*} unit=${spec##*[0-9]}
+	[[ -n "$n" && "$n" != *[!0-9]* ]] || return 1
+	case "$unit" in
+	'' | d) print -r -- $((n * 86400)) ;;
+	w) print -r -- $((n * 604800)) ;;
+	h) print -r -- $((n * 3600)) ;;
+	*) return 1 ;;
+	esac
+}
+
+# _vox_stamp_epoch STAMP - a YYYY-MM-DD-HHMMSS prefix as a unix epoch.
+#
+# The prefix, not the directory's mtime: transcribing, renaming and compacting
+# all touch the directory long after the recording happened, so mtime would make
+# an old recording look new. zsh's own strftime -r parses it, which dodges the
+# BSD (`date -j -f`) vs GNU (`date -d`) split entirely.
+_vox_stamp_epoch() {
+	local stamp=${1:-}
+	[[ "$stamp" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}$' ]] || return 1
+	zmodload -F zsh/datetime b:strftime 2>/dev/null || return 1
+	local epoch
+	strftime -r -s epoch '%Y-%m-%d-%H%M%S' "$stamp" 2>/dev/null || return 1
+	print -r -- "$epoch"
+}
+
+# _vox_reclaim MODE [--older SPEC] [--dry-run] [--force] - the shared body of
+# `vox compact` and `vox prune`: select recordings older than SPEC, preview what
+# would go, confirm, then act. Manual only - nothing here runs on a timer.
+#
+# Candidate paths go to stdout one per line (so it pipes, like every other
+# subcommand); the preview, totals and confirmation are stderr.
+_vox_reclaim() {
+	local mode=$1
+	shift
+	local older dry=0 force=0
+	[[ "$mode" == compact ]] && older=30d || older=90d
+	while (( $# )); do
+		case "$1" in
+		--older)
+			older=${2:-}
+			shift 2
+			;;
+		--older=*)
+			older=${1#--older=}
+			shift
+			;;
+		--dry-run)
+			dry=1
+			shift
+			;;
+		--force)
+			force=1
+			shift
+			;;
+		*)
+			_vox_die "unknown option \"$1\" — usage: vox $mode [--older 30d] [--dry-run] [--force]"
+			return 1
+			;;
+		esac
+	done
+
+	local age
+	age=$(_vox_age_secs "$older") || {
+		_vox_die "bad --older value: $older (try 30d, 2w, 12h)"
+		return 1
+	}
+	local cutoff=$(($(date +%s) - age))
+	# Never touch the capture that is running right now.
+	local live
+	live=$(vox_dir)
+
+	local -a candidates=() targets=()
+	local dir stamp epoch
+	local -a audio
+	for dir in "$VOX_STORE"/*(N/on); do
+		[[ -n "$live" && "$dir" == "$live" ]] && continue
+		stamp=${${dir:t}[1,17]}
+		epoch=$(_vox_stamp_epoch "$stamp") || continue
+		(( epoch < cutoff )) || continue
+		if [[ "$mode" == compact ]]; then
+			audio=("$dir"/*.wav(N.))
+		else
+			audio=("$dir"/*.wav(N.) "$dir"/*.opus(N.))
+		fi
+		(( $#audio )) || continue
+		candidates+=("$dir")
+		targets+=("${audio[@]}")
+	done
+
+	if (( ! $#candidates )); then
+		print -u2 -- "vox: nothing to $mode (no recordings older than $older with audio left)"
+		return 0
+	fi
+
+	local total
+	total=$(du -ch "${targets[@]}" 2>/dev/null | tail -1 | awk '{ print $1 }')
+	print -u2 -- "vox $mode — $#candidates recording(s) older than $older, ${total:-?} of audio:"
+	for dir in "${candidates[@]}"; do
+		print -u2 -- "  ${dir:t}"
+	done
+
+	print -rl -- "${candidates[@]}"
+
+	if (( dry )); then
+		if [[ "$mode" == compact ]]; then
+			print -u2 -- "vox: dry run — would re-encode to Opus 32k mono (~90% of ${total:-?} reclaimed)"
+		else
+			print -u2 -- "vox: dry run — would delete ${total:-?} of audio, keeping transcripts"
+		fi
+		return 0
+	fi
+
+	if (( ! force )); then
+		local answer
+		if [[ "$mode" == compact ]]; then
+			read -r "answer?Compact $#candidates recording(s) to Opus (~${total:-?} of WAV)? [y/N] "
+		else
+			read -r "answer?DELETE ${total:-?} of audio from $#candidates recording(s)? [y/N] "
+		fi
+		[[ "$answer" == [yY] || "$answer" == [yY][eE][sS] ]] || {
+			print -u2 -- "vox: aborted"
+			return 1
+		}
+	fi
+
+	if [[ "$mode" == compact ]]; then
+		_vox_need ffmpeg || return 1
+		local wav opus
+		for wav in "${targets[@]}"; do
+			opus="${wav:r}.opus"
+			# Speech at 16 kHz mono: Opus at 32k is transparent enough to
+			# re-transcribe from, at roughly a tenth of the WAV. The WAV goes
+			# only once its replacement exists and is non-empty.
+			if ffmpeg -hide_banner -loglevel error -y -i "$wav" \
+				-c:a libopus -b:a 32k -ac 1 "$opus" 2>>"${wav:h}/vox.log" && [[ -s "$opus" ]]; then
+				rm -f "$wav"
+			else
+				print -u2 -- "vox: could not compact $wav — see ${wav:h}/vox.log"
+			fi
+		done
+	else
+		# Only the audio: transcript.md, the per-track JSON and vox.log stay, so
+		# a pruned recording is still fully readable and re-mergeable.
+		rm -f "${targets[@]}"
+	fi
+}
+
 _vox_help() {
 	print -r -- 'vox — record mic + system audio, transcribe locally
 
@@ -340,6 +493,11 @@ _vox_help() {
   vox last                 newest recording
   vox <file>               transcribe an existing audio/video file
   vox rename <path> <slug> retitle, keeping the timestamp prefix
+  vox compact [--older 30d]  WAV -> Opus 32k mono (preview + confirm)
+  vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
+
+Both reclaim commands take --dry-run and --force (skip the confirmation).
+There is deliberately no `vox rm`: `rm -rf` is already correct.
 
 Recordings live in '"$VOX_STORE"'; each holds mic/sys WAV + JSON,
 transcript.md and vox.log. The directory name is the title.'
@@ -354,6 +512,9 @@ last) _vox_last ;;
 rename)
 	shift
 	_vox_rename "$@"
+	;;
+compact | prune)
+	_vox_reclaim "$@"
 	;;
 -h | --help | help) _vox_help ;;
 *)

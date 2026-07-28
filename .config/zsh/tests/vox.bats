@@ -126,6 +126,25 @@ require_macos() {
   [[ "$OSTYPE" == darwin* ]] || skip "capture needs macOS (avfoundation)"
 }
 
+# Like vox(), but answering the confirmation prompt from stdin.
+vox_answer() {
+  local answer=$1
+  shift
+  run --separate-stderr zsh --no-rcs "$VOX" "$@" <<<"$answer"
+}
+
+# A recording carrying audio, timestamped N days ago.
+aged_recording() {
+  local days=$1 stamp
+  stamp=$(date -v "-${days}d" '+%Y-%m-%d-%H%M%S' 2>/dev/null ||
+    date -d "-${days} days" '+%Y-%m-%d-%H%M%S')
+  mkdir -p "$VOX_STORE/$stamp"
+  printf 'RIFFplaceholder' >"$VOX_STORE/$stamp/mic.wav"
+  printf '{"segments":[]}' >"$VOX_STORE/$stamp/mic.json"
+  printf '[00:00:00] Me: hello\n' >"$VOX_STORE/$stamp/transcript.md"
+  printf '%s\n' "$VOX_STORE/$stamp"
+}
+
 # --- ls / last: bare paths, one per line ------------------------------------
 
 @test "ls prints bare paths, newest first" {
@@ -417,4 +436,144 @@ EOF
   [ -s "$output/mic.json" ]
   [ -s "$output/transcript.md" ]
   [ -L "$output/source.wav" ]
+}
+
+# --- compact / prune: reclaiming disk ---------------------------------------
+#
+# Selection is by the directory's TIMESTAMP PREFIX, not its mtime: transcribing,
+# renaming and compacting all touch the directory long after the recording.
+
+@test "compact selects only recordings older than the window" {
+  old=$(aged_recording 60)
+  recent=$(aged_recording 3)
+
+  vox compact --dry-run
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$old" ]
+  [[ "$stderr" != *"$(basename "$recent")"* ]]
+}
+
+@test "compact --dry-run reports the reclaimable bytes without touching files" {
+  old=$(aged_recording 60)
+
+  vox compact --dry-run
+
+  [ -f "$old/mic.wav" ]
+  [ ! -e "$old/mic.opus" ]
+  [[ "$stderr" == *"dry run"* ]]
+}
+
+@test "the --older window is honoured, units included" {
+  aged_recording 10 >/dev/null
+
+  vox compact --older 2w --dry-run
+  [ -z "$output" ] # 10 days is inside a 2-week window
+
+  vox compact --older 1w --dry-run
+  [ -n "$output" ]
+}
+
+@test "an unparseable --older value is an error, not a default" {
+  old=$(aged_recording 60)
+
+  vox compact --older forever
+
+  [ "$status" -ne 0 ]
+  [ -f "$old/mic.wav" ]
+}
+
+@test "an unknown reclaim option is rejected" {
+  aged_recording 60 >/dev/null
+
+  vox prune --oldest 5d
+
+  [ "$status" -ne 0 ]
+}
+
+@test "compact re-encodes the WAV to Opus and drops the original" {
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  old=$(aged_recording 60)
+  # A real (tiny) WAV, so this exercises the actual encode rather than asserting
+  # on an argv string.
+  ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=300:duration=1' \
+    -ar 16000 -ac 1 -c:a pcm_s16le -y "$old/mic.wav"
+  before=$(wc -c <"$old/mic.wav")
+
+  vox compact --force
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$old/mic.wav" ]
+  [ -s "$old/mic.opus" ]
+  [ "$(wc -c <"$old/mic.opus")" -lt "$before" ]
+  [ -f "$old/transcript.md" ] # the artefact everything consumes survives
+}
+
+@test "compact keeps the WAV when the encode fails" {
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  old=$(aged_recording 60) # the placeholder WAV has no valid header
+
+  vox compact --force
+
+  [ -f "$old/mic.wav" ]
+}
+
+@test "prune deletes the audio and keeps the transcript and JSON" {
+  old=$(aged_recording 120)
+
+  vox prune --force
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$old/mic.wav" ]
+  [ -f "$old/transcript.md" ]
+  [ -f "$old/mic.json" ]
+}
+
+@test "prune leaves a compacted recording's Opus in scope too" {
+  old=$(aged_recording 120)
+  mv "$old/mic.wav" "$old/mic.opus"
+
+  vox prune --force
+
+  [ ! -e "$old/mic.opus" ]
+}
+
+@test "declining the confirmation removes nothing" {
+  old=$(aged_recording 120)
+
+  vox_answer n prune
+
+  [ "$status" -ne 0 ]
+  [ -f "$old/mic.wav" ]
+}
+
+@test "accepting the confirmation removes the audio" {
+  old=$(aged_recording 120)
+
+  vox_answer y prune
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$old/mic.wav" ]
+}
+
+@test "reclaim never touches the recording currently in progress" {
+  old=$(aged_recording 120)
+  sleep 100 &
+  pid=$!
+  printf '%s %s %s\n' "$pid" "$(date +%s)" "$old" >"$VOX_STATEFILE"
+
+  vox prune --force
+  kill "$pid" 2>/dev/null || true
+
+  [ -f "$old/mic.wav" ]
+}
+
+@test "reclaim says so when there is nothing old enough" {
+  aged_recording 1 >/dev/null
+
+  vox prune
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"nothing to prune"* ]]
 }
