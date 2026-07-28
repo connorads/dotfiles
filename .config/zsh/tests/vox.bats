@@ -19,13 +19,6 @@ setup() {
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
   export VOX_VOCAB="$HOME/vocab.tsv"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
-  # The output-device check shells out to pgrep and (if a meeting app is up)
-  # system_profiler. Stub pgrep to "nothing running" so tests neither depend on
-  # what the developer happens to have open nor pay for a hardware probe.
-  write_stub pgrep <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
 }
 
 # --separate-stderr: "bare paths to stdout, diagnostics to stderr" is part of
@@ -97,11 +90,51 @@ EOF
   export VOX_DEVICES_FIXTURE="$FIXTURES/vox-avfoundation-devices.txt"
 }
 
+# voxtap stub: --check answers "is the tap usable" with its exit status
+# (VOXTAP_STUB_UNAVAILABLE=1 makes it say no), otherwise it streams f32le zeros
+# at the real rate until the reader goes away.
+#
+# Python for the same reason the ffmpeg stub is: it has to emit binary at a
+# genuine 48 kHz, which no shell fake can model. It also has to die quietly on a
+# closed pipe, which is exactly how the real one is reaped.
+stub_voxtap() {
+  write_stub voxtap <<'EOF'
+#!/usr/bin/env python3
+import os
+import sys
+import time
+
+argv = sys.argv[1:]
+with open(os.environ["TEST_LOG"], "a") as fh:
+    fh.write(" ".join(["voxtap", *argv]) + "\n")
+
+if "--check" in argv:
+    sys.exit(1 if os.environ.get("VOXTAP_STUB_UNAVAILABLE") else 0)
+
+chunk = b"\x00" * (4 * 4800)  # 100 ms of 48 kHz mono float32
+try:
+    while True:
+        sys.stdout.buffer.write(chunk)
+        sys.stdout.buffer.flush()
+        time.sleep(0.1)
+except (BrokenPipeError, KeyboardInterrupt):
+    pass
+EOF
+}
+
+# kill_capture - reap every process a start left behind. The statefile's first
+# field is a comma-separated pid list (mic capture first, system capture second).
+kill_capture() {
+  [ -f "${VOX_STATEFILE:-}" ] || return 0
+  local pids
+  pids=$(awk 'NR == 1 { print $1 }' "$VOX_STATEFILE" | tr ',' ' ')
+  # shellcheck disable=SC2086  # deliberate word splitting: one kill for the set
+  kill $pids 2>/dev/null || true
+}
+
 # Reap any capture a test left running, so a failure cannot leak a process.
 teardown() {
-  if [ -f "${VOX_STATEFILE:-}" ]; then
-    kill "$(awk 'NR == 1 { print $1 }' "$VOX_STATEFILE")" 2>/dev/null || true
-  fi
+  kill_capture
 }
 
 # mw stub: logs its argv and emits the JSON schema the real CLI emits.
@@ -286,55 +319,119 @@ aged_recording() {
 # PATH-shadow fakes rather than function mocks, so real command lookup and
 # argument passing are exercised and the logged argv is the assertion target.
 
-@test "start launches one ffmpeg carrying both inputs and records the state" {
+@test "start launches one capture per source and records both pids" {
   require_macos
   stub_ffmpeg
+  stub_voxtap
 
   vox
-  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  pid=$(awk '{ print $1 }' "$VOX_STATEFILE")
-  kill "$pid" 2>/dev/null || true
+  micargv=$(grep '^ffmpeg ' "$TEST_LOG" | grep avfoundation | grep -v list_devices)
+  sysargv=$(grep '^ffmpeg ' "$TEST_LOG" | grep f32le)
+  kill_capture
 
   [ "$status" -eq 0 ]
-  [ "$(grep -c '^ffmpeg ' "$TEST_LOG")" -eq 2 ] # the listing probe, then the capture
-  [[ "$argv" == *"-f avfoundation -i :0"* ]]    # mic, resolved by name
-  [[ "$argv" == *"-f avfoundation -i :2"* ]]    # BlackHole, resolved by name
-  [[ "$argv" == *"$output/mic.wav"* ]]
-  [[ "$argv" == *"$output/sys.wav"* ]]
+  [ "$(grep -c '^ffmpeg ' "$TEST_LOG")" -eq 3 ] # listing probe, mic, system
+  [[ "$micargv" == *"-f avfoundation -i :0"* ]] # mic, resolved by name
+  [[ "$micargv" == *"$output/mic.wav"* ]]
+  [[ "$micargv" != *"sys.wav"* ]]
+  # System audio is voxtap on a pipe, at the format voxtap fixes: no device
+  # lookup, no BlackHole, nothing to route by hand.
+  [[ "$sysargv" == *"-f f32le -ar 48000 -ac 1 -i /dev/fd/"* ]]
+  [[ "$sysargv" == *"$output/sys.wav"* ]]
+  # Leader first, so a reader that wants "is it recording" reads the mic.
+  [[ "$(awk '{ print $1 }' "$VOX_STATEFILE")" == *,* ]]
 }
 
-@test "capture downmixes with pan, never -ac 1" {
+@test "the system capture starts only once the microphone is open" {
   require_macos
   stub_ffmpeg
+  stub_voxtap
+
+  vox
+  kill_capture
+
+  # While a process tap is live, avfoundation blocks on opening any audio
+  # input, so a tap created first would hang the mic capture forever.
+  micline=$(grep -n '^ffmpeg .*avfoundation -i :0' "$TEST_LOG" | grep -v list_devices | cut -d: -f1)
+  tapline=$(grep -n '^voxtap$' "$TEST_LOG" | cut -d: -f1)
+  [ -n "$micline" ]
+  [ -n "$tapline" ]
+  [ "$micline" -lt "$tapline" ]
+}
+
+@test "start verifies the tap before opening a recording" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+
+  vox
+  kill_capture
+
+  grep -q '^voxtap --check$' "$TEST_LOG"
+}
+
+@test "capture downmixes the mic with pan, never -ac 1" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
 
   vox
   argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill "$(awk '{ print $1 }' "$VOX_STATEFILE")" 2>/dev/null || true
+  kill_capture
 
-  # ffmpeg reports BlackHole as 9.1.6, so -ac 1 applies a surround downmix
-  # matrix instead of taking the stereo pair apps actually write.
+  # A mic ffmpeg reports as multichannel would get a surround downmix matrix
+  # from -ac 1 instead of the channel apps actually write. The tap needs none of
+  # this: it is mono at source, so the only -ac 1 here is the pipe's format.
   [[ "$argv" == *"pan=mono"* ]]
-  [[ "$argv" != *"-ac 1"* ]]
+  [[ "$argv" != *"avfoundation -i :0 -ac 1"* ]]
 }
 
 @test "capture passes no -t: duration is driven by vox stop" {
   require_macos
   stub_ffmpeg
+  stub_voxtap
 
   vox
   argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill "$(awk '{ print $1 }' "$VOX_STATEFILE")" 2>/dev/null || true
+  kill_capture
 
   # -t misbehaves alongside -use_wallclock_as_timestamps: the first pts starts
   # at device uptime, so the recording is truncated to nothing.
   [[ "$argv" != *" -t "* ]]
-  [[ "$argv" == *"-use_wallclock_as_timestamps 1"* ]]
+  [[ "$argv" == *"-use_wallclock_as_timestamps 1 -f avfoundation"* ]]
 }
 
-@test "start refuses when the loopback device is absent" {
+@test "the wallclock timestamp flag is never applied to the pipe" {
   require_macos
   stub_ffmpeg
-  export VOX_SYS_DEVICE="NoSuchLoopback"
+  stub_voxtap
+
+  vox
+  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
+  kill_capture
+
+  # Same first-pts trap as -t, and on a pipe it produces an empty output file.
+  [[ "$argv" != *"-use_wallclock_as_timestamps 1 -f f32le"* ]]
+}
+
+@test "start refuses when system audio capture is unavailable" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+  export VOXTAP_STUB_UNAVAILABLE=1
+
+  vox
+
+  # A meeting half-captured by accident is worse than one not started.
+  [ "$status" -ne 0 ]
+  [ ! -f "$VOX_STATEFILE" ]
+  [ -z "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1)" ]
+}
+
+@test "start refuses when the helper is not installed" {
+  require_macos
+  stub_ffmpeg
+  export VOX_VOXTAP=definitely-not-installed
 
   vox
 
@@ -342,17 +439,99 @@ aged_recording() {
   [ ! -f "$VOX_STATEFILE" ]
 }
 
+@test "VOX_MIC_ONLY records the mic alone, with no tap and no sys track" {
+  require_macos
+  stub_ffmpeg
+  export VOX_VOXTAP=definitely-not-installed
+  export VOX_MIC_ONLY=1
+
+  vox
+  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  [[ "$argv" == *"$output/mic.wav"* ]]
+  [[ "$argv" != *"sys.wav"* ]]
+  [[ "$argv" != *"f32le"* ]]
+}
+
 @test "start refuses a second capture while one is live" {
   require_macos
   stub_ffmpeg
+  stub_voxtap
 
   vox
   first=$output
   vox
-  kill "$(awk '{ print $1 }' "$VOX_STATEFILE")" 2>/dev/null || true
+  kill_capture
 
   [ "$status" -ne 0 ]
   [ "$output" = "$first" ] # points at the recording already running
+}
+
+# --- titles: --name, and renaming a live capture ----------------------------
+
+@test "--name titles the recording at the moment it starts" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+
+  vox --name "Triver Kickoff"
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  [[ "$(basename "$output")" == *-triver-kickoff ]]
+}
+
+@test "a bare argument is still a file to transcribe, never a title" {
+  # Why --name is a flag: the *) branch treats a bare argument as a file, so a
+  # mistyped path would silently become a title and record nothing.
+  vox "Triver Kickoff"
+
+  [ "$status" -ne 0 ]
+  [ ! -f "$VOX_STATEFILE" ]
+}
+
+@test "renaming the live recording moves the statefile with it" {
+  require_macos
+  stub_ffmpeg
+  stub_voxtap
+
+  vox
+  dir=$output
+  vox rename "$dir" "mid flight"
+  renamed=$output
+  kill_capture
+
+  # ffmpeg's fds follow the inode, so the capture is unharmed - but the pill and
+  # `vox stop` read the statefile, which would otherwise point at a dead path.
+  [ "$status" -eq 0 ]
+  [ -d "$renamed" ]
+  [ "$(awk '{ print $3 }' "$VOX_STATEFILE")" = "$renamed" ]
+}
+
+# --- cancel: stop without transcribing --------------------------------------
+
+@test "cancel stops the capture and removes the recording" {
+  require_macos
+  stub_ffmpeg
+  stub_mw
+  stub_voxtap
+
+  vox
+  dir=$output
+  vox cancel
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$dir" ]
+  [ ! -f "$VOX_STATEFILE" ]
+  ! grep -q '^mw ' "$TEST_LOG"
+}
+
+@test "cancel fails cleanly when nothing is recording" {
+  vox cancel
+
+  [ "$status" -ne 0 ]
 }
 
 # --- stop: signal, transcription and merge ----------------------------------
@@ -361,6 +540,7 @@ aged_recording() {
   require_macos
   stub_ffmpeg
   stub_mw
+  stub_voxtap
 
   vox
   vox stop
@@ -374,6 +554,7 @@ aged_recording() {
   require_macos
   stub_mw
   stub_ffmpeg
+  stub_voxtap
 
   vox
   vox stop
@@ -394,6 +575,7 @@ aged_recording() {
   require_macos
   stub_ffmpeg
   stub_mw
+  stub_voxtap
 
   vox
   vox stop
@@ -405,6 +587,7 @@ aged_recording() {
 @test "stop applies the vocabulary map to the transcript" {
   require_macos
   stub_ffmpeg
+  stub_voxtap
   write_stub mw <<'EOF'
 #!/usr/bin/env bash
 printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"talking to admit today"}]}\n'

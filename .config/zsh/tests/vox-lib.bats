@@ -85,6 +85,43 @@ statefile() {
   [ "$output" = "$HOME/Recordings/vox/2026-07-28-140312-triver kickoff" ]
 }
 
+# --- the pid list: mic capture first, system capture second -----------------
+
+@test "the leader pid is the first of the list" {
+  statefile 4242,4243 "$(date +%s)" "$HOME/rec"
+  lib vox_pid
+  [ "$output" = "4242" ]
+}
+
+@test "every capture pid is readable, space-separated" {
+  statefile 4242,4243 "$(date +%s)" "$HOME/rec"
+  lib vox_pids
+  [ "$output" = "4242 4243" ]
+}
+
+@test "state follows the leader, not the system capture" {
+  # The mic capture is what "recording" means: a system capture that died
+  # leaves a live recording, while a dead mic leaves nothing worth showing.
+  sleep 100 &
+  leader=$!
+  sleep 100 &
+  follower=$!
+  kill "$follower" 2>/dev/null || true
+  wait "$follower" 2>/dev/null || true
+  statefile "$leader,$follower" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  kill "$leader" 2>/dev/null || true
+  [ "$output" = "RECORDING" ]
+}
+
+@test "a single pid still reads as the leader" {
+  statefile 4242 "$(date +%s)" "$HOME/rec"
+  lib vox_pid
+  [ "$output" = "4242" ]
+  lib vox_pids
+  [ "$output" = "4242" ]
+}
+
 @test "write_state then clear_state round-trips the state" {
   lib 'vox_write_state 4242 111 /tmp/rec; vox_pid'
   [ "$output" = "4242" ]
