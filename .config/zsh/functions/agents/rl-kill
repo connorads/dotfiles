@@ -1,6 +1,23 @@
 #!/usr/bin/env zsh
 # rl-kill: find and kill orphaned rl process trees
+#
+# Reads the session registry rl writes ($(agent_usage_state_dir)/rl-registry/),
+# never the process table. Safety property: rl-kill can only ever signal a
+# process group named in that registry - a process it did not record is
+# invisible to it, whatever its environment or arguments say.
 emulate -L zsh
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local agent_file=
+local candidate_dir
+for candidate_dir in $fpath; do
+  if [[ -r "$candidate_dir/$self_name" ]]; then
+    agent_file="$candidate_dir/$self_name"
+    break
+  fi
+done
+[[ -n "$agent_file" ]] || agent_file="${${(%):-%N}:A}"
+[[ -r "$agent_file" ]] || agent_file="${0:A}"
+source "${agent_file:A:h}/agent-usage-log"
 
 local mode=kill  # kill (default), list, force
 while [[ $# -gt 0 ]]; do
@@ -17,82 +34,92 @@ Options:
   -f, --force  Kill without prompting
   -h, --help   Show this help
 
-Finds processes with RL_SESSION in their environment where the
-parent rl process is no longer running (orphans). Without -l,
-sends SIGTERM then SIGKILL after 1s to orphaned process groups.'
+Reads the registry rl writes for each live session. A session is orphaned when
+its rl process is gone but its process group is still running. Without -l,
+sends SIGTERM then SIGKILL after 1s to those process groups.'
       return 0
       ;;
     *) print -P "%F{red}[rl-kill]%f unknown option: $1"; return 1 ;;
   esac
 done
 
-# Discover processes with RL_SESSION in their environment
-# Returns lines of: pid session_value
-typeset -A session_pids  # session -> space-separated pids
+local registry_dir="$(agent_usage_state_dir)/rl-registry"
+local -a records
+records=("$registry_dir"/*(N.))
 
-if [[ -d /proc/1 ]]; then
-  # Linux: read /proc/<pid>/environ
-  local f pid val
-  for f in /proc/[0-9]*/environ(N); do
-    pid=${${f:h}:t}
-    # skip our own process
-    (( pid == $$ )) && continue
-    [[ -r $f ]] || continue
-    val=$(tr '\0' '\n' < "$f" 2>/dev/null | grep -m1 '^RL_SESSION=' | cut -d= -f2-)
-    [[ -n $val ]] || continue
-    session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
-  done
-else
-  # macOS: axeww includes command arguments followed by the environment.
-  local line pid rest val
-  ps axeww -o pid=,command= 2>/dev/null | while IFS= read -r line; do
-    if [[ ! $line =~ '^[[:space:]]*([0-9]+)[[:space:]]+(.*)$' ]]; then
-      continue
-    fi
-    pid=$match[1]
-    rest=$match[2]
-    (( pid == $$ )) && continue
-
-    if [[ ! $rest =~ '(^|[[:space:]])RL_SESSION=([^[:space:]]+)' ]]; then
-      continue
-    fi
-    val=$match[2]
-    [[ -n $val ]] || continue
-    session_pids[$val]="${session_pids[$val]:+${session_pids[$val]} }$pid"
-  done
-fi
-
-if (( ${#session_pids} == 0 )); then
+if (( ${#records} == 0 )); then
   print -P "%F{green}[rl-kill]%f no rl processes found"
   return 0
 fi
 
-# Filter to orphaned sessions (parent rl PID is dead)
-typeset -A orphaned  # session -> pids
-local session parent_pid
-for session in ${(k)session_pids}; do
-  parent_pid=${session%%:*}
-  if ! kill -0 "$parent_pid" 2>/dev/null; then
-    orphaned[$session]="${session_pids[$session]}"
+# Read a record's tab-separated key/value lines into the assoc array `rec`.
+read_record() {
+  local file="$1" key value
+  rec=()
+  while IFS=$'\t' read -r key value; do
+    [[ -n $key ]] || continue
+    rec[$key]="$value"
+  done < "$file"
+  return 0
+}
+
+typeset -A rec
+typeset -A orphaned  # session -> space-separated live pids
+typeset -A orphan_pgid
+local record session rl_pid leader_pid pgid live_pgid
+local active=0
+local -a members
+
+for record in $records; do
+  read_record "$record" || continue
+  session="${rec[session]}"
+  rl_pid="${rec[rl_pid]}"
+  leader_pid="${rec[leader_pid]}"
+  pgid="${rec[pgid]}"
+  [[ -n $session && -n $rl_pid && -n $leader_pid && -n $pgid ]] || { rm -f "$record"; continue }
+
+  # The rl that wrote this is still running, so its own teardown owns the group.
+  if kill -0 "$rl_pid" 2>/dev/null; then
+    (( active++ ))
+    continue
   fi
+
+  # Stale-record guard: if the leader's group is no longer the recorded one, the
+  # group is gone or the pid was recycled. Exact, and no time arithmetic.
+  live_pgid=$(ps -o pgid= -p "$leader_pid" 2>/dev/null | tr -d ' ')
+  if [[ $live_pgid != $pgid ]]; then
+    rm -f "$record"
+    continue
+  fi
+
+  # Live members of the recorded group. Numeric fields only, so there is no
+  # text-parsing failure mode on either OS.
+  members=(${(f)"$(ps -A -o pid=,pgid= 2>/dev/null | awk -v g="$pgid" '$2 == g { print $1 }')"})
+  if (( ${#members} == 0 )); then
+    rm -f "$record"
+    continue
+  fi
+
+  orphaned[$session]="${members}"
+  orphan_pgid[$session]="$pgid"
 done
 
 if (( ${#orphaned} == 0 )); then
-  print -P "%F{green}[rl-kill]%f no orphaned rl processes found (${#session_pids} active session(s))"
+  print -P "%F{green}[rl-kill]%f no orphaned rl processes found ($active active session(s))"
   return 0
 fi
 
 # Display orphaned sessions
 local total=0
+local pid cmd
 for session in ${(k)orphaned}; do
   local pids=(${=orphaned[$session]})
   total=$(( total + ${#pids} ))
   print -P "%F{yellow}[rl-kill]%f session $session: ${#pids} process(es)"
-  local pid
   for pid in $pids; do
-    local cmd
-    cmd=$(ps -o args= -p "$pid" 2>/dev/null || echo "<exited>")
-    print "  pid $pid: $cmd"
+    # First line only: a multi-line argv would otherwise garble the listing.
+    cmd=$(ps -o args= -p "$pid" 2>/dev/null | head -1)
+    print "  pid $pid: ${cmd:-<exited>}"
   done
 done
 
@@ -113,24 +140,31 @@ if [[ $mode != force ]]; then
   fi
 fi
 
-# Kill: SIGTERM, wait 1s, SIGKILL survivors
-local all_pids=()
+# Kill by process group, matching how rl groups its children: SIGTERM, 1s, SIGKILL.
+local -a groups
 for session in ${(k)orphaned}; do
-  all_pids+=(${=orphaned[$session]})
+  groups+=(${orphan_pgid[$session]})
 done
 
-kill -TERM $all_pids 2>/dev/null
+local group
+for group in $groups; do
+  kill -TERM -"$group" 2>/dev/null
+done
 sleep 1
 
-local survivors=()
-local pid
-for pid in $all_pids; do
-  kill -0 "$pid" 2>/dev/null && survivors+=($pid)
+local survivors=0
+for group in $groups; do
+  if kill -0 -"$group" 2>/dev/null; then
+    kill -KILL -"$group" 2>/dev/null
+    (( survivors++ ))
+  fi
 done
-
-if (( ${#survivors} > 0 )); then
-  kill -KILL $survivors 2>/dev/null
-  print -P "%F{red}[rl-kill]%f sent SIGKILL to ${#survivors} survivor(s)"
+if (( survivors > 0 )); then
+  print -P "%F{red}[rl-kill]%f sent SIGKILL to $survivors surviving group(s)"
 fi
+
+for session in ${(k)orphaned}; do
+  rm -f "$registry_dir/${session//:/-}"
+done
 
 print -P "%F{green}[rl-kill]%f killed $total orphaned process(es)"

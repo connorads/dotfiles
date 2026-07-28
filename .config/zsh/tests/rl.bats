@@ -15,6 +15,43 @@ setup() {
   setup_test_home
 }
 
+# rl-kill reads only the session registry rl writes, so pointing
+# AGENT_USAGE_STATE_DIR at a temp dir makes even the kill test hermetic: rl-kill
+# can only ever signal a process group named in that registry, and nothing real
+# is ever named there.
+rl_registry_setup() {
+  export AGENT_USAGE_STATE_DIR="$BATS_TEST_TMPDIR/state"
+  RL_REGISTRY="$AGENT_USAGE_STATE_DIR/rl-registry"
+  mkdir -p "$RL_REGISTRY"
+}
+
+# write_registry_record <session> <rl_pid> <leader_pid> <pgid>
+write_registry_record() {
+  printf '%s\t%s\n' \
+    session "$1" \
+    rl_pid "$2" \
+    started 1234567890 \
+    leader_pid "$3" \
+    pgid "$4" \
+    iteration 1 \
+    cmd "sleep 300" \
+    >"$RL_REGISTRY/${1//:/-}"
+}
+
+# Spawn a real process into its own group — the perl -MPOSIX idiom rl uses —
+# and set LEADER_PID / LEADER_PGID once setsid has taken effect.
+spawn_group_leader() {
+  perl -MPOSIX=setsid -e 'POSIX::setsid(); exec "sleep", "300"' </dev/null >/dev/null 2>&1 &
+  LEADER_PID=$!
+  local attempt
+  for attempt in $(seq 20); do
+    LEADER_PGID=$(ps -o pgid= -p "$LEADER_PID" 2>/dev/null | tr -d ' ')
+    [ "$LEADER_PGID" = "$LEADER_PID" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
 # The critical bug: with MONITOR (job control) on, `setsid cmd &` puts setsid
 # in its own process group, making it a pg leader. setsid then forks internally
 # and the parent exits immediately, so `wait $pid` returns instantly and all
@@ -566,31 +603,82 @@ SCRIPT
   [[ "$output" == *"total, in 6, cached 14, out 8, 2.4s, \$0.02 across 2 runs"* || "$output" == *"total, in 6, cached 14, out 8, 2.4s, \$0.0200 across 2 runs"* ]]
 }
 
-@test "rl-kill lists orphaned processes" {
-  # Spawn a process with a fake RL_SESSION (simulating an orphan)
-  RL_SESSION="99999:1234567890" sleep 300 &
-  local orphan_pid=$!
+@test "rl records a live session and removes the record on a clean exit" {
+  rl_registry_setup
+  export RECORD_MARKER="$BATS_TEST_TMPDIR/record.copy"
+  local helper="$BATS_TEST_TMPDIR/probe_cmd.sh"
+  # The record is written once refresh_child_pgid resolves the group, i.e.
+  # shortly after this starts - so poll rather than look once.
+  write_executable "$helper" <<'SCRIPT'
+#!/usr/bin/env bash
+for _ in $(seq 30); do
+  if [ -n "$(ls -A "$AGENT_USAGE_STATE_DIR/rl-registry" 2>/dev/null)" ]; then
+    cat "$AGENT_USAGE_STATE_DIR"/rl-registry/* >"$RECORD_MARKER"
+    exit 0
+  fi
+  sleep 0.1
+done
+exit 1
+SCRIPT
+
+  run zsh "$RL" 1 -- "$helper"
+
+  [ "$status" -eq 0 ]
+  grep -q "^rl_pid	" "$RECORD_MARKER"
+  grep -q "^pgid	" "$RECORD_MARKER"
+  # Gone once rl returns: a record that outlives its rl IS the orphan signal.
+  [ -z "$(ls -A "$RL_REGISTRY")" ]
+}
+
+@test "rl-kill lists an orphaned session from the registry" {
+  rl_registry_setup
+  spawn_group_leader
+  # A real group of ours, recorded against an rl pid that no longer exists.
+  write_registry_record "99999:1234567890" 99999 "$LEADER_PID" "$LEADER_PGID"
 
   run zsh "$RL_KILL" -l
 
-  # Should find the orphan (PID 99999 doesn't exist)
+  [ "$status" -eq 0 ]
   [[ "$output" == *"99999:1234567890"* ]]
   [[ "$output" == *"orphaned"* ]]
 
-  # Clean up
-  kill "$orphan_pid" 2>/dev/null
-  wait "$orphan_pid" 2>/dev/null || true
+  kill -TERM -"$LEADER_PGID" 2>/dev/null || true
 }
 
-@test "rl-kill force-kills orphaned processes" {
-  RL_SESSION="99999:1234567890" sleep 300 &
-  local orphan_pid=$!
+@test "rl-kill skips a session whose rl is still running" {
+  rl_registry_setup
+  write_registry_record "$$:1234567890" "$$" "$$" "$$"
+
+  run zsh "$RL_KILL" -l
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no orphaned"* ]]
+  [[ "$output" == *"1 active session(s)"* ]]
+}
+
+@test "rl-kill prunes a record whose process group is gone" {
+  rl_registry_setup
+  # leader_pid 99998 is either absent or (if recycled) in some other group;
+  # either way the recorded group no longer exists.
+  write_registry_record "99999:1234567890" 99999 99998 99998
+
+  run zsh "$RL_KILL" -l
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"99999:1234567890"* ]]
+  [ ! -f "$RL_REGISTRY/99999-1234567890" ]
+}
+
+@test "rl-kill reaps the recorded process group" {
+  rl_registry_setup
+  spawn_group_leader
+  write_registry_record "99999:1234567890" 99999 "$LEADER_PID" "$LEADER_PGID"
 
   run zsh "$RL_KILL" -f
 
-  # Process should be gone
-  sleep 0.2
-  ! kill -0 "$orphan_pid" 2>/dev/null
+  [ "$status" -eq 0 ]
+  ! kill -0 "$LEADER_PID" 2>/dev/null
+  [ ! -f "$RL_REGISTRY/99999-1234567890" ]
 }
 
 @test "timeout kills stuck iteration and moves to next" {
@@ -702,19 +790,4 @@ SCRIPT
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"unknown option"* ]]
-}
-
-@test "rl-kill skips active sessions" {
-  # Use our own PID as the parent — it's alive, so not orphaned
-  RL_SESSION="$$:1234567890" sleep 300 &
-  local active_pid=$!
-
-  run zsh "$RL_KILL" -l
-
-  # Should report no orphans
-  [[ "$output" == *"no orphaned"* ]]
-
-  # Clean up
-  kill "$active_pid" 2>/dev/null
-  wait "$active_pid" 2>/dev/null || true
 }
