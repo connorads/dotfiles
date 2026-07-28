@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
 bats_require_minimum_version 1.5.0
-# bats file_tags=integration
 
 load test_helper
 
@@ -37,7 +36,9 @@ setup() {
     tx set-option -t s @session_agent_attention "$state"
     got=$(tx display-message -p -t s '#{E:@session_agent_attention_fmt}')
     if [ "$state" = blocked ] || [ "$state" = done ]; then
-      want="#[fg=#$(agent_hex "$state")]$(agent_char "$state")"
+      # Leading pad space: the format emits one before the glyph, as the
+      # sibling `current session attention` test asserts.
+      want="#[fg=#$(agent_hex "$state")] $(agent_char "$state")"
       [[ "$got" == *"$want"* ]]
     else
       [ -z "$got" ]
