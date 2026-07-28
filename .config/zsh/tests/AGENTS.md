@@ -26,6 +26,30 @@ Conventions: isolate `$HOME`/`$PATH` via `setup_test_home` (`test_helper.bash`);
 observable behaviour (args, exit status, stdout, fs/option effects) not internals; prefer
 real infrastructure or fakes over mocks. The wider testing rules live in `~/CLAUDE.md`.
 
+## What runs the suite
+
+Two hk gates, both driving `~/.hk-hooks/bats-tests.sh`:
+
+- **At commit** (`bats-scoped`, pre-commit): only the suites the staged files touch. A
+  staged `*.bats` runs itself; a staged script under `../functions/**` or
+  `../../tmux/scripts/**` runs the suite named after it, plus any suite that names it.
+- **At push** (`bats-full`, pre-push): the whole suite, via `mise run zsh-tests`.
+  Everything else already ran at commit time.
+
+`bats` absent warns and passes, so the gate never bricks a commit it can't evaluate.
+CI (`.github/workflows/check.yml`) is PR-only and commits land through the hook, so
+before these gates existed nothing ran the suite at all - four suites rotted with zero
+signal, one of them never having passed since it was written.
+
+## The `integration` tag means slow or environment-coupled
+
+Not "touches anything real". Tagging is what excludes a file from `zsh-tests-fast`, i.e.
+from the inner loop, so the bar is cost, not purity: a suite that starts a bare tmux
+server or reads a tracked file with `jq` runs in ~1s and belongs in the fast set. Reserve
+the tag for suites that spend real wall-clock (sleeps, retry loops, `script(1)` TTY runs)
+or depend on machine state a bare server can't stand in for. A suite that skips cleanly
+when its dependency is missing is not thereby `integration`.
+
 ## The `setup_test_home` PATH contract
 
 `setup_test_home` builds `$PATH` explicitly, in this order, keeping only dirs that

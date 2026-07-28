@@ -1,0 +1,33 @@
+#!/bin/sh
+
+if [ "${HK:-1}" = "0" ]; then
+	exit 0
+fi
+
+HK_BIN=""
+if command -v hk >/dev/null 2>&1; then
+	HK_BIN="$(command -v hk)"
+elif command -v mise >/dev/null 2>&1; then
+	HK_BIN="$(mise which hk 2>/dev/null || true)"
+elif [ -x "$HOME/.nix-profile/bin/mise" ]; then
+	HK_BIN="$("$HOME/.nix-profile/bin/mise" which hk 2>/dev/null || true)"
+elif [ -x "$HOME/.local/bin/mise" ]; then
+	HK_BIN="$("$HOME/.local/bin/mise" which hk 2>/dev/null || true)"
+fi
+
+if [ -z "$HK_BIN" ]; then
+	echo "hk not found. Install tools with: mise install" >&2
+	exit 1
+fi
+
+# Mirror of .hk-hooks/pre-commit; see its comments for why hk runs from $HOME
+# with an explicit GIT_DIR/GIT_WORK_TREE and HK_STASH_UNTRACKED=false.
+#
+# The pre-push hook runs the full bats suite (~2min) and nothing else —
+# everything else already ran at commit time. HK=0 skips it.
+cd "$HOME" || exit 1
+export GIT_DIR="$HOME/git/dotfiles"
+export GIT_WORK_TREE="$HOME"
+export HK_STASH_UNTRACKED=false
+# -q (hk >= 1.51.0): quiet on success — step chatter only surfaces on failure.
+exec "$HK_BIN" run pre-push -q "$@"

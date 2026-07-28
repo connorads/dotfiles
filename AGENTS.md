@@ -491,6 +491,19 @@ import uninstalled deps, which would be `missing-import` noise. The shared
 `mise run py-checks` runs ruff + pyrefly + the hook pytest suites across all
 first-party Python.
 
+The `bats-scoped` step (pre-commit) and `bats-full` step (pre-push) gate the
+zsh bats suite (`~/.config/zsh/tests`, 115 files), both via
+`~/.hk-hooks/bats-tests.sh`. At commit it runs only the suites the staged files
+touch - a staged `*.bats` runs itself, a staged script under
+`.config/zsh/functions/**` or `.config/tmux/scripts/**` runs the suite named
+after it plus any suite that names it. At push, `.hk-hooks/pre-push` (mirror of
+`pre-commit`) runs the whole suite via `mise run zsh-tests` (~2min) and nothing
+else; everything else already ran at commit time. `bats` absent warns and exits
+0, same never-brick posture as `ts-typecheck.sh`. Both gates exist because
+nothing ran the suite before: CI is PR-only and commits land through the hook,
+so four suites rotted unnoticed. Conventions and the meaning of the
+`integration` tag: [.config/zsh/tests/AGENTS.md](./.config/zsh/tests/AGENTS.md).
+
 CI (`.github/workflows/check.yml`) is PR-only: one ubuntu job runs
 `hk check --all` - the same gate as the hook, full-tree - plus manual dispatch.
 Nothing runs on push; local commits are already gated by pre-commit.
