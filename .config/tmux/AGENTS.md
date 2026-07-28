@@ -867,8 +867,13 @@ The directory name **is** the title — no metadata file holding a duplicate tha
 can drift — so renaming is `mv`, and Finder, hand and the picker are one
 operation. Only the timestamp prefix is ever parsed, never the slug. Colons are
 hostile in filenames, hence `YYYY-MM-DD-HHMMSS` rather than strict ISO 8601.
-Silence on `sys.wav` is the monologue/meeting classifier, not an error — which is
-what removes any need to declare a mode at start.
+
+**`solo` vs `2-way` is derived, never stored.** `vox_session_kind` reads whether
+`sys.json` carries any segments: if the system track transcribed to nothing,
+nobody else spoke. Already on disk, free to read, and self-healing after a
+re-transcription — which is why there is still no metadata file. Silence is
+therefore a *label*, not an error, and that is what removes any need to declare a
+mode at start.
 
 Change as a set:
 
@@ -890,7 +895,11 @@ Change as a set:
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
   `<file>` / `rename` / `compact` / `prune`). Every subcommand prints **bare
   paths to stdout, one per line**, with progress and diagnostics on stderr, so it
-  composes without glue.
+  composes without glue. `prune --empty` selects by *content* instead of age —
+  the silent track of a monologue, keeping the one that carries the recording —
+  and is the production caller of the lib's loudness parsers. It measures only
+  its candidates, at the moment you ask, and refuses a recording whose every
+  track is silent: that is a delete-the-recording decision, not a reclaim one.
 - [`../nix/voxtap/main.swift`](../nix/voxtap/main.swift) — the system-audio
   helper, built by [`../nix/modules/voxtap.nix`](../nix/modules/voxtap.nix) with
   the system `swiftc` (desktop-only, like `biokc`/`imagepaste`). Streams 48 kHz

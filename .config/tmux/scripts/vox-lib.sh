@@ -210,6 +210,23 @@ vox_mean_volume() {
 	'
 }
 
+# vox_session_kind DIR — "2-way" when the system track produced transcript
+# segments, else "solo".
+#
+# Derived, never stored: the answer is already on disk in sys.json, so there is
+# no metadata file to drift, and a re-transcription updates the label for free. A
+# missing or empty system track reads "solo", the conservative call (a missing
+# other side, not a fabricated one) — and the one `VOX_MIC_ONLY=1` produces.
+vox_session_kind() {
+	_vox_sys="$1/sys.json"
+	if [ -s "$_vox_sys" ] && grep -q '"text"' "$_vox_sys" 2>/dev/null; then
+		# Every segment carries a text key; an empty run is {"segments":[]}.
+		echo 2-way
+	else
+		echo solo
+	fi
+}
+
 # vox_classify_track — read `ffmpeg -af volumedetect` output for the *system*
 # track on stdin and print MONOLOGUE (silent — nobody else was on the call) or
 # MEETING (audible). Silence is the classifier, not an error: it is what removes
