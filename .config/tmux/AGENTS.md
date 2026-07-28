@@ -878,10 +878,23 @@ mode at start.
 Change as a set:
 
 - [`scripts/vox-lib.sh`](./scripts/vox-lib.sh) — **canonical** state
-  (`vox_state` IDLE/RECORDING from statefile-pid liveness; a dead pid reads IDLE,
-  so it self-clears without a reaper) and the colour/glyph/token language
-  (`vox_state_colour` subtext0 `a6adc8`, `vox_state_glyph` `~`, `vox_token`
-  elapsed via the shared `human_age`). **Statefile contract**:
+  (`vox_state`: `RECORDING > TRANSCRIBING > READY > IDLE`, in that precedence,
+  the same worst-first shape as the agent dots' `rank`) and the
+  colour/glyph/token language (`vox_state_colour` subtext0 `a6adc8`, blue
+  `89b4fa` for READY, `vox_state_glyph` `~` `≈` `✓`, `vox_token` elapsed via the
+  shared `human_age`, or the unread count). Every state is derived from a file
+  whose staleness cannot lie, so none of them needs a reaper:
+  **`${VOX_JOBFILE:-~/.cache/tmux-vox.job}`** holds `pid start_epoch dir` for the
+  transcription `vox stop` is spending minutes on — written by `stop` itself, so
+  the pill says TRANSCRIBING whether it was typed in a pane or detached by the
+  toggle, and a crashed `mw` reads as finished by pid liveness alone.
+  **`${VOX_SEENFILE:-~/.cache/tmux-vox.seen}`** is a marker whose *mtime* is the
+  last time you looked: READY is "a non-empty `transcript.md` is newer than
+  this", which covers any number of finished recordings without tracking one of
+  them, and makes touching the marker the only write. Cleared by opening the
+  picker and by starting a new capture. `-size +0` in the count is load-bearing:
+  a failed merge still leaves an empty transcript, and that is not something to
+  go and read. **Statefile contract**:
   `${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}` holds one line
   `pids start_epoch dir`, where `pids` is comma-separated with the **mic capture
   first** — it is the leader, and the one whose liveness means RECORDING (`read`
@@ -918,12 +931,14 @@ Change as a set:
   `ctrl-r` renames. Actions run **after** fzf exits (`--expect`), not inside
   `--bind execute()`, so each owns the popup's real tty.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
-  **self-hiding** pill (width ≥ 80): IDLE prints nothing, RECORDING shows
-  `~ 12m`. Deliberately the *opposite* treatment to caffeine's bright peach
+  **self-hiding** pill (width ≥ 80) following one capture from start to read:
+  IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`
+  waiting. Deliberately the *opposite* treatment to caffeine's bright peach
   alarm — muted subtext0 on the surface1 data-pill shade — because it is visible
-  during screen shares and should read as ambient chrome. Elapsed uses
-  `human_age`, not mm:ss, which would tick in 15 s jumps at this
-  `status-interval` and read as broken.
+  during screen shares and should read as ambient chrome. READY is the one
+  exception, in the agent dots' unread blue, and it can only appear once the
+  capture has stopped. Elapsed uses `human_age`, not mm:ss, which would tick in
+  15 s jumps at this `status-interval` and read as broken.
 
 ### Findings that are load-bearing, not tidiness
 

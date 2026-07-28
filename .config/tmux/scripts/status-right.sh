@@ -216,13 +216,15 @@ caffeine_segment() {
 }
 
 # vox_segment — recording indicator, self-hiding: IDLE prints nothing, so the
-# pill exists only while a capture is running. Deliberately the opposite
-# treatment to caffeine's bright peach alarm: muted subtext0 on the surface1
-# data-pill shade (shared with disk/git), because this is visible during screen
-# shares and should read as ambient chrome, not as a warning. Still clears WCAG
-# AA on that background. Token is elapsed time via the shared human_age
-# formatter — not mm:ss, which would tick in 15 s jumps at this status-interval
-# and read as broken.
+# pill exists only while there is something to say. It follows one capture from
+# start to read: `~ 12m` recording, `≈ 40s` transcribing, `✓ 2` waiting to be
+# read. Deliberately the opposite treatment to caffeine's bright peach alarm:
+# muted subtext0 on the surface1 data-pill shade (shared with disk/git), because
+# this is visible during screen shares and should read as ambient chrome, not as
+# a warning. READY is the one exception, in the same blue the agent dots use for
+# unread. Still clears WCAG AA on that background. Elapsed comes from the shared
+# human_age formatter — not mm:ss, which would tick in 15 s jumps at this
+# status-interval and read as broken.
 vox_segment() {
 	local state colour glyph
 	state="$(vox_state)"
@@ -230,7 +232,7 @@ vox_segment() {
 	colour="$(vox_state_colour "$state")"
 	glyph="$(vox_state_glyph "$state")"
 	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
-		"$colour" "$glyph" "$(vox_token)"
+		"$colour" "$glyph" "$(vox_token "$state")"
 }
 
 # agent_elsewhere_segment — the cross-session attention badge: a bright pill
