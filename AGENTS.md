@@ -89,6 +89,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [~/src/dotfiles-docs](./src/dotfiles-docs/AGENTS.md)                   | Astro Starlight site ("How I work") explaining the workflow these dotfiles encode; deploys later to dotfiles.connoradams.co.uk. Scope commits with `dotfiles commit -- src/dotfiles-docs` |
 | [gh-gate](./.config/zsh/functions/git/gh-gate)                         | Scoped gh CLI tokens via GitHub App (`gh-gate --help` for full setup); key is Touch ID-gated via biokc on the desktop |
 | [mcpz](./.config/zsh/functions/agents/mcpz)                            | Render+launch MCP bundles into each agent's native form (Claude/Codex/OpenCode), resolving secrets fresh at launch. Reads a gitignored registry (the only place client names/URLs live). Subsystem docs + schema: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
+| [.config/vox/](./.config/vox/)                                         | `vox` merge filter (`merge.py`, stdlib-only) + its pytest and the `wrong<TAB>right` vocabulary map. Subsystem docs: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Tests: `cd ~/src/handoff && uv run --group dev pytest` |
 
 ## Shell Function Conventions
@@ -230,6 +231,12 @@ agent pick             # fzf jump picker over live agents (tmux keys: prefix + A
 atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
 handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
+vox                    # record mic + system audio; `vox stop` transcribes locally and prints the recording's path (tmux: prefix + Alt+v picker)
+vox ls | vox last      # recording paths, newest first (`cat "$(vox last)/transcript.md"` is the whole integration story)
+vox <file>             # transcribe an audio/video file that already exists
+vox rename <path> <slug>   # retitle a recording, keeping its timestamp prefix
+vox compact [--older 30d]  # WAV -> Opus 32k mono, preview + confirm (--dry-run/--force)
+vox prune   [--older 90d]  # delete audio, keep transcripts (destructive; preview + confirm)
 ts                     # Tailscale wrapper (defined in .zshrc)
 zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
 svc ls                 # List agent services with status
