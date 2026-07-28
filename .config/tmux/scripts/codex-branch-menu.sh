@@ -55,6 +55,16 @@ tmux_quote() {
 	printf '"%s"' "$value"
 }
 
+# float_cmd <cwd> <shell-command>
+# The shell string run-shell executes to open <shell-command> in a big floating
+# pane rooted at <cwd>. A float, not a popup: wt-add runs the repo's setup (rs),
+# which is slow, and a modal popup would hold the client for the whole run.
+# flt is the single door to a float, carrying the tmux#5327 unzoom guard.
+float_cmd() {
+	printf '%s -c %s big %s' \
+		"$(shell_quote "$HOME/.local/bin/flt")" "$(shell_quote "$1")" "$(shell_quote "$2")"
+}
+
 soft_fail() {
 	printf '%s\n' "$1" >&2
 	printf 'Press any key…' >&2
@@ -157,7 +167,8 @@ prompt-worktree)
 	sid_arg=$(shell_quote "$3")
 	flags_arg=$(shell_quote "${4:-}")
 	worktree_cmd="$self_arg fork-worktree %% $sid_arg $flags_arg"
-	tmux command-prompt -p "Worktree branch:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktree_cmd")"
+	tmux command-prompt -p "Worktree branch:" \
+		"run-shell $(tmux_quote "$(float_cmd "$cwd" "$worktree_cmd")")"
 	exit 0
 	;;
 prompt-worktrees)
@@ -167,7 +178,8 @@ prompt-worktrees)
 	sid_arg=$(shell_quote "$3")
 	flags_arg=$(shell_quote "${4:-}")
 	worktrees_cmd="$self_arg fork-worktrees %% %2 $sid_arg $flags_arg"
-	tmux command-prompt -I "4," -p "Fork count:,Worktree branch prefix:" "display-popup -E -w 80% -h 60% -d $(tmux_quote "$cwd") $(tmux_quote "$worktrees_cmd")"
+	tmux command-prompt -I "4," -p "Fork count:,Worktree branch prefix:" \
+		"run-shell $(tmux_quote "$(float_cmd "$cwd" "$worktrees_cmd")")"
 	exit 0
 	;;
 fork-repeat)
