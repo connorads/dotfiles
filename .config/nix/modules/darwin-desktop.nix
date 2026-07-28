@@ -21,6 +21,7 @@
   imports = [
     ./biokc.nix
     ./imagepaste.nix
+    ./voxtap.nix
   ];
 
   # Converge LocalHostName so bare `drs`/`up` resolve to this config after the

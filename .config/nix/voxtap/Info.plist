@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>dev.connorads.voxtap</string>
+	<key>CFBundleName</key>
+	<string>voxtap</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>vox captures system audio so the other side of a call appears in your transcript.</string>
+</dict>
+</plist>

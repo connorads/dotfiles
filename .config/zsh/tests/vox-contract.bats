@@ -2,15 +2,23 @@
 
 # bats file_tags=integration
 #
-# Contract test for the one thing in vox that is not ours: the JSON MacWhisper's
-# CLI emits. merge.py trusts `segments[].{start,end,text}` with start/end as
-# integer MILLISECONDS, and `speaker` present only under --speakers. A
-# MacWhisper update can change any of that silently, and every faked test in
-# vox.bats would stay green — so this drives the real binary and asserts the
-# shape merge.py parses.
+# The two contracts vox depends on that no fake can keep for it, both driven
+# against the real thing here:
 #
-# Skips when `mw` is absent (Linux, or a machine without MacWhisper), keeping
-# the fast subset fast: `mise run zsh-tests-fast` filters this file out.
+#   1. The JSON MacWhisper's CLI emits. merge.py trusts
+#      `segments[].{start,end,text}` with start/end as integer MILLISECONDS, and
+#      `speaker` present only under --speakers. A MacWhisper update can change
+#      any of that silently while every faked test in vox.bats stays green.
+#   2. voxtap's padding invariant — one second of stream is one second of
+#      wall-clock even when nothing is playing. The tap delivers no callbacks at
+#      all through silence, so without padding the system track would compress
+#      every quiet stretch out of existence and drift away from the mic track it
+#      is merged against. Needs no audio to check, and holds regardless of what
+#      the Mac happens to be doing.
+#
+# Each half skips when its binary is absent (Linux, or a machine without
+# MacWhisper / before `drs`), keeping the fast subset fast: `mise run
+# zsh-tests-fast` filters this file out.
 
 bats_require_minimum_version 1.5.0
 
@@ -34,11 +42,15 @@ setup_file() {
   fi
 }
 
-setup() {
+require_mw() {
   command -v mw >/dev/null 2>&1 || skip "MacWhisper CLI (mw) not installed"
   command -v say >/dev/null 2>&1 || skip "say not available to build a fixture"
   [ -s "$BATS_FILE_TMPDIR/plain.json" ] || skip "mw produced no output for the fixture"
   PLAIN="$BATS_FILE_TMPDIR/plain.json"
+}
+
+require_voxtap() {
+  command -v voxtap >/dev/null 2>&1 || skip "voxtap not installed (run drs)"
 }
 
 # assert_schema FILE - the shape merge.py depends on.
@@ -64,10 +76,12 @@ PY
 }
 
 @test "mw --format json emits the segment schema merge.py parses" {
+  require_mw
   assert_schema "$PLAIN"
 }
 
 @test "mw --format json writes pure JSON to stdout, progress to stderr" {
+  require_mw
   # This is what lets vox pipe mw straight into a file with no -o flag.
   run python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$PLAIN"
   [ "$status" -eq 0 ]
@@ -75,6 +89,7 @@ PY
 }
 
 @test "--no-speakers omits the speaker key entirely" {
+  require_mw
   # merge.py treats speaker as optional precisely because of this.
   run python3 -c '
 import json, sys
@@ -85,6 +100,7 @@ print(any("speaker" in s for s in segments))
 }
 
 @test "--speakers keeps the same schema and may add a speaker key" {
+  require_mw
   mw transcribe "$VOX_CONTRACT_WAV" --format json --speakers \
     >"$BATS_TEST_TMPDIR/diarised.json" 2>/dev/null || skip "diarised run failed"
   assert_schema "$BATS_TEST_TMPDIR/diarised.json"
@@ -98,8 +114,56 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
 }
 
 @test "merge.py renders real mw output into a timestamped transcript" {
+  require_mw
   run python3 "$MERGE_REAL" --me "$PLAIN"
 
   [ "$status" -eq 0 ]
   [[ "${lines[0]}" =~ ^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\ Me:\  ]]
+}
+
+# --- voxtap: the padding invariant ------------------------------------------
+#
+# `--probe N` measures the stream instead of writing it, so these need no audio
+# playing and no pipe reader. The frame count is the assertion because it is the
+# invariant: whatever the tap did or did not deliver, N seconds of stream must
+# hold N × 48000 frames.
+
+@test "voxtap --check verifies the tap without emitting anything" {
+  require_voxtap
+
+  run --separate-stderr voxtap --check
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "voxtap pads silence so stream time tracks wall-clock" {
+  require_voxtap
+  seconds=3
+
+  run --separate-stderr voxtap --probe "$seconds"
+  frames=$(printf '%s\n' "$stderr" | sed -n 's/.*frames: \([0-9]*\).*/\1/p')
+
+  [ "$status" -eq 0 ]
+  [ -n "$frames" ]
+  # Tolerance, not equality: padding tops the stream up only once it is 0.2 s
+  # behind, so the count trails wall-clock by up to that much, and real
+  # callbacks arriving mid-tick can push it slightly ahead. A regression here
+  # is total (0 frames through silence), not a few per cent.
+  python3 -c '
+import sys
+frames, seconds = int(sys.argv[1]), int(sys.argv[2])
+expected = seconds * 48000
+assert 0.9 * expected <= frames <= 1.1 * expected, f"{frames} frames for {seconds}s"
+' "$frames" "$seconds"
+}
+
+@test "voxtap probe reports how much of the stream was padded" {
+  require_voxtap
+
+  run --separate-stderr voxtap --probe 1
+
+  # Nothing may be playing, so padded frames are not asserted non-zero — only
+  # that the figure is reported, which is what makes a silent run diagnosable.
+  [[ "$stderr" == *"padded: "* ]]
 }
