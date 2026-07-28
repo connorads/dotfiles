@@ -945,12 +945,18 @@ Change as a set:
   the only `confirm-before` row: it throws audio away, while stopping only
   spends time.
 - [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
-  picker over `vox ls`, previewing each transcript: enter copies it (tmux buffer
-  - OSC52), `ctrl-y` pastes the path into the calling pane, `ctrl-e` edits,
-  `ctrl-r` renames. Opening it is what marks everything looked-at, so it is the
-  thing that clears the READY pill. Actions run **after** fzf exits
-  (`--expect`), not inside `--bind execute()`, so each owns the popup's real
-  tty.
+  library over `vox ls`, previewing each transcript and carrying the derived
+  `solo`/`2-way` column: enter copies it (tmux buffer plus OSC52), `ctrl-y`
+  pastes the path into the calling pane, `ctrl-e` edits, `ctrl-r` renames,
+  `ctrl-o` reveals in Finder, `ctrl-p` plays (both tracks mixed when there are
+  two, via a temp file because `afplay` cannot read a pipe), `ctrl-d` deletes and
+  `ctrl-x` reclaims audio, both confirmed and both over the whole `tab`
+  selection. Reclaiming shells out to **`vox prune <path>...`** rather than
+  deleting audio here — which files count as audio and what survives has one
+  owner, and that is why the CLI grew explicit paths. Opening it is what marks
+  everything looked-at, so it is the thing that clears the READY pill. Actions
+  run **after** fzf exits (`--expect`), not inside `--bind execute()`, so each
+  owns the popup's real tty.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
   **self-hiding** pill (width ≥ 80) following one capture from start to read:
   IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`
@@ -1014,11 +1020,18 @@ skew, or drift over a long call, would show up as an `ffprobe` duration gap that
 grows with the recording; the fix would be one aggregate device carrying both the
 input device and the tap (see the ADR), not a second clock.
 
-Tests: [`../zsh/tests/vox-lib.bats`](../zsh/tests/vox-lib.bats) (pure lib: state
-via real statefiles, elapsed, colour/glyph/token, and both text parsers against
-captured fixtures), [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) (the command:
-ls/last/status/rename/compact/prune, plus the ffmpeg argv and SIGINT stop via
-PATH-shadow fakes), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)
+Tests: [`../zsh/tests/vox-lib.bats`](../zsh/tests/vox-lib.bats) (pure lib: the
+four states and their precedence via real statefiles and marker mtimes, elapsed,
+colour/glyph/token, and both text parsers against captured fixtures),
+[`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) (the command:
+ls/last/status/rename/cancel/compact/prune, plus the ffmpeg argv and SIGINT stop
+via PATH-shadow fakes - both the ffmpeg and voxtap fakes are Python, for the
+reasons in the findings above),
+[`../zsh/tests/vox-toggle.bats`](../zsh/tests/vox-toggle.bats) (the binding, on a
+bare server: start-then-prompt order and the detached stop),
+[`../zsh/tests/vox-menu.bats`](../zsh/tests/vox-menu.bats) (the pill menu's rows
+per state), [`../zsh/tests/vox-popup.bats`](../zsh/tests/vox-popup.bats) (the
+library's actions, driven through a stubbed fzf), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)
 (integration-tagged: drives the **real** `mw` against the JSON schema `merge.py`
 parses — the one contract here that is not ours to keep — and the **real**
 `voxtap` against the padding invariant) and

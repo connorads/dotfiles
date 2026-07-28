@@ -104,7 +104,7 @@ From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
 | `Ctrl+b Alt+v` | record (vox) — start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
-| `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames) |
+| `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |

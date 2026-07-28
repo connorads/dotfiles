@@ -453,9 +453,9 @@ _vox_track_silent() {
 	[[ "$kind" == MONOLOGUE ]]
 }
 
-# _vox_reclaim MODE [--older SPEC] [--empty] [--dry-run] [--force] - the shared
-# body of `vox compact` and `vox prune`: select recordings, preview what would
-# go, confirm, then act. Manual only - nothing here runs on a timer.
+# _vox_reclaim MODE [--older SPEC] [--empty] [--dry-run] [--force] [PATH...] -
+# the shared body of `vox compact` and `vox prune`: select recordings, preview
+# what would go, confirm, then act. Manual only - nothing here runs on a timer.
 #
 # `prune --empty` selects by CONTENT rather than age: a track nobody spoke on -
 # almost always the system track of a monologue - while keeping the track that
@@ -463,12 +463,17 @@ _vox_track_silent() {
 # moment you ask, because pruning is rare and a stored figure would be one more
 # thing to keep true.
 #
+# Explicit PATHs narrow the selection to those recordings, ageless, so a picker
+# that already knows which ones you chose reuses this body rather than growing a
+# second implementation of "delete the audio, keep the transcript".
+#
 # Candidate paths go to stdout one per line (so it pipes, like every other
 # subcommand); the preview, totals and confirmation are stderr.
 _vox_reclaim() {
 	local mode=$1
 	shift
 	local older dry=0 force=0 empty=0 aged=0
+	local -a chosen=()
 	[[ "$mode" == compact ]] && older=30d || older=90d
 	while (( $# )); do
 		case "$1" in
@@ -494,9 +499,17 @@ _vox_reclaim() {
 			force=1
 			shift
 			;;
-		*)
-			_vox_die "unknown option \"$1\" — usage: vox $mode [--older 30d] [--dry-run] [--force]"
+		-*)
+			_vox_die "unknown option \"$1\" — usage: vox $mode [--older 30d] [--empty] [--dry-run] [--force] [path...]"
 			return 1
+			;;
+		*)
+			[[ -d "$1" ]] || {
+				_vox_die "no such recording: $1"
+				return 1
+			}
+			chosen+=("${1:a}")
+			shift
 			;;
 		esac
 	done
@@ -508,9 +521,10 @@ _vox_reclaim() {
 		_vox_need ffmpeg || return 1
 	fi
 	# Age is a separate axis from silence: `--empty` alone means "however old",
-	# including a recording made a minute ago.
+	# including a recording made a minute ago. Naming recordings explicitly says
+	# the same thing - you have already chosen them.
 	local ageless=0
-	(( empty && ! aged )) && ageless=1
+	(( (empty || $#chosen) && ! aged )) && ageless=1
 
 	local age
 	age=$(_vox_age_secs "$older") || {
@@ -522,10 +536,12 @@ _vox_reclaim() {
 	local live
 	live=$(vox_dir)
 
-	local -a candidates=() targets=()
+	local -a candidates=() targets=() pool
+	pool=("$VOX_STORE"/*(N/on))
+	(( $#chosen )) && pool=("${chosen[@]}")
 	local dir stamp epoch track
 	local -a audio silent
-	for dir in "$VOX_STORE"/*(N/on); do
+	for dir in "${pool[@]}"; do
 		[[ -n "$live" && "$dir" == "$live" ]] && continue
 		stamp=${${dir:t}[1,17]}
 		# The stamp must parse either way: it is also what says "this directory
@@ -554,7 +570,9 @@ _vox_reclaim() {
 	done
 
 	if (( ! $#candidates )); then
-		if (( empty )); then
+		if (( $#chosen )); then
+			print -u2 -- "vox: nothing to $mode in the chosen recording(s)"
+		elif (( empty )); then
 			print -u2 -- "vox: nothing to prune (no recording has a silent track beside a spoken one)"
 		else
 			print -u2 -- "vox: nothing to $mode (no recordings older than $older with audio left)"
@@ -637,6 +655,7 @@ _vox_help() {
   vox compact [--older 30d]  WAV -> Opus 32k mono (preview + confirm)
   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
   vox prune --empty          delete only silent tracks, keeping their siblings
+  vox prune <path>...        reclaim exactly the recordings you name
 
 Both reclaim commands take --dry-run and --force (skip the confirmation).
 There is deliberately no `vox rm`: `rm -rf` is already correct.
