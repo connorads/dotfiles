@@ -300,6 +300,17 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/skill-tests.sh {{files}}"
     }
 
+    // The zsh bats suite (.config/zsh/tests), scoped to the change: a staged
+    // suite runs itself, a staged script runs the suite named after it plus any
+    // suite that names it. The whole suite runs at push time (`bats-full`
+    // below) - four suites had rotted for months because nothing ran them at
+    // all. bats absent warns and passes, same never-brick posture as
+    // ts-typecheck.sh; `mise run zsh-tests` runs everything by hand.
+    ["bats-scoped"] {
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**")
+        check = "bash .hk-hooks/bats-tests.sh {{files}}"
+    }
+
     // First-party TS typecheck gates (tsgo via mise): one glob-scoped step per
     // project so only staged-project changes pay the cost. Typecheck only -
     // tests live in `mise run ts-checks` to keep hook latency low. The shared
@@ -379,5 +390,16 @@ hooks {
 
     ["check"] {
         steps = fast_steps
+    }
+
+    // Push-time backstop: the whole bats suite (~2min), not just the slice the
+    // commit touched. Only this - everything else already ran at commit time.
+    ["pre-push"] {
+        steps = new Mapping<String, Step> {
+            ["bats-full"] {
+                glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**")
+                check = "bash .hk-hooks/bats-tests.sh --all"
+            }
+        }
     }
 }
