@@ -104,6 +104,65 @@ complement to the edit-time `tmux-freekeys` advisor: freekeys queries the
 running server (so it sees plugin binds) but only ever shows the *surviving*
 bind, whereas the lint reads the source and catches the clobber.
 
+## Popups vs floating panes
+
+**A popup is a transaction; a float is a place you dwell. Default to a float.**
+
+`display-popup` is modal: while one is up the client's keys belong to it, so you
+cannot switch windows, navigate panes or answer an agent without discarding the
+popup and its state. That cost is highest here precisely because the agent
+attention system (dots, the blocked bell, `prefix + A`, the cross-session badge)
+exists so you can act the moment an agent needs you — every open popup is a
+window in which that is false. Floats (`new-pane`, tmux 3.7+, wrapped by
+[`../zsh/functions/tmux/flt`](../zsh/functions/tmux/flt)) are non-modal real
+panes: switch away and come back and the tool is still there.
+
+Three blockers force a popup. Nothing else does:
+
+| Blocker | Why |
+|---|---|
+| Calls `switch-client` / opens a window | A float belongs to a *window*. Switch away mid-selection and the float and its fzf are stranded. |
+| Acts on "the pane I came from" | Popups do not change the active pane; **floats become the active pane**, so origin-by-active-pane resolves to the float itself. |
+| Must work from any window | Float scope is per-window, so you get one per window, not one summonable scratch. |
+
+The second blocker is mechanically removable: `run-shell` format-expands its
+command before running it (`man tmux`, run-shell: *"Before being executed,
+shell-command is expanded using the rules specified in the FORMATS section"*),
+so a float binding can pass `#{pane_id}` explicitly and the script takes the
+origin as an argument — see `prefix + Alt+w` and `wt-window.sh pane <path>
+[origin]`. `display-popup` cannot do this reliably, which is why the popup
+callers resolve the origin live instead.
+
+Every float goes through `flt`, the single door carrying the tmux#5327 unzoom
+guard; presets live there, so bindings never spell out geometry. Floats are
+drag-resizable, so per-binding sizes are not worth the divergence — `big` unless
+there is a reason.
+
+These bindings must stay popups, with the blocker each hits:
+
+| Binding | Blocker |
+|---|---|
+| `prefix + S` (and `M-S`) session switch/create | switch-client |
+| `prefix + A` agents popup | switch-client |
+| `prefix + Alt+Shift+W` worktree picker | focuses / opens windows |
+| `prefix + Alt+s` skl loader | injects the pointer into the origin pane |
+| `prefix + Alt+v` vox picker | `ctrl-y` pastes the path into the origin pane |
+| `prefix + Alt+Shift+I` shotpath remote | pastes the remote path into the origin pane |
+
+`prefix + Alt+g` → `t` (ghfzf triage) stays a popup as a transaction — pick one
+thing, act, done — while the `d`/`u` dashboards on the same menu are floats.
+The three origin-pane cases above are now unblockable via the `#{pane_id}`
+pattern, but each needs its own script change.
+
+**Floats do not survive a resurrect restore as floats.** tmux 3.7 emits a float
+in `#{window_layout}` as a trailing `<…>` cell, but `select-layout` rejects that
+string (`invalid layout`), and `restore.sh` replays exactly that saved layout.
+Verified on a private socket (save a tiled pane + a float, restore, read
+`#{pane_floating_flag}`): every pane comes back, with its command and cwd, as an
+ordinary tiled pane. Nothing is lost but the floatness and the geometry. This
+exposure predates the popup→float migration — it comes with any float binding —
+and is a tmux limitation to revisit on 3.8.
+
 ## Agent state dots (custom subsystem)
 
 Window tabs show a per-window dot for the *worst* agent state across their panes.
