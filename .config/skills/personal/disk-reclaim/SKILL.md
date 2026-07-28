@@ -130,6 +130,12 @@ project cleaner or its docs, where present, is the fastest classifier.
   host bytes, and it discards every image, container and volume — a nod, never
   a default. Never quote a VM disk's size as reclaimable; like `/nix/store`,
   the estimate would equal the total.
+  `colima delete` also leaves the *named data disk* behind (`colima list` goes
+  empty while `_lima/_disks/<name>` still holds gigabytes). Check
+  `LIMA_HOME=~/.colima/_lima limactl disk list` for an entry with an empty
+  `IN-USE-BY` and remove it with `limactl disk delete <name>`. nix's colima
+  package doesn't expose `limactl` on PATH; it lives in the `lima-full` store
+  path colima references.
 - **`brew cleanup -n` under-reports.** It applies brew's 120-day policy, so it
   can print nothing while gigabytes sit in `$(brew --cache)/downloads`. Use
   `cleanup --target brew` (or `brew cleanup --prune=all -n`) for the true
