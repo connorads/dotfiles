@@ -248,6 +248,12 @@ The logic is spread across several files — change them as a set:
   `working` if jq is missing or the payload won't parse. Blocked deliberately
   stays on this instant, precise hook (lag on "needs you" is worse than on
   "working"); the codex title poller below is working-only.
+  Adapters like this are the general shape, so the wiring contract is a role,
+  not a binary: every `~/.codex/hooks.json` agent-state command either invokes
+  `agent-state.sh` directly, or an `agent-*.sh` adapter in `scripts/` that
+  forwards to it. `codex-agent-hooks.bats` checks that by grepping the adapter,
+  so a new adapter needs no test edit — but one that never reaches
+  `agent-state.sh` fails the gate.
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
   Three jobs: (1) clear a stale dot whose agent died without a clean done/clear

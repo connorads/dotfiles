@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
 bats_require_minimum_version 1.5.0
-# bats file_tags=integration
 
 load test_helper
 
@@ -88,8 +87,8 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
   [ "$(jq -r '.hooks.SubagentStop' "$HOOKS")" = null ]
 }
 
-@test "every hook command targets agent-state.sh with kind codex and tolerates failure" {
-  local cmd seen=0
+@test "every agent-state hook reaches agent-state.sh with kind codex and tolerates failure" {
+  local cmd script seen=0
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
     # The atuin command-capture hook (see ~/CLAUDE.md "Agent command history")
@@ -98,7 +97,16 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
     [[ "$cmd" == "atuin hook codex"* ]] && continue
     [[ "$cmd" == *"guard-secret-paths-codex.py"* ]] && continue
     seen=1
-    [[ "$cmd" == *"agent-state.sh"* ]]
+    # By role, not by binary: a hook either calls agent-state.sh directly, or
+    # calls an agent-*.sh adapter that forwards to it (agent-pretooluse.sh
+    # reads the tool payload first). The forwarding is verified against the
+    # adapter itself, so a new adapter needs no edit here.
+    if [[ "$cmd" != *"agent-state.sh"* ]]; then
+      [[ "$cmd" =~ agent-[a-z-]+\.sh ]]
+      script="$HOME/.config/tmux/scripts/${BASH_REMATCH[0]}"
+      [ -f "$script" ]
+      grep -q 'agent-state\.sh' "$script"
+    fi
     [[ "$cmd" == *" codex "* ]]
     [[ "$cmd" == *"|| true"* ]]
   done < <(jq -r '.hooks[][].hooks[].command' "$HOOKS")
