@@ -75,9 +75,14 @@ VOX_GLYPH="${VOX_GLYPH:-~}"
 VOX_TRANSCRIBING_GLYPH="${VOX_TRANSCRIBING_GLYPH:-≈}"
 VOX_READY_GLYPH="${VOX_READY_GLYPH:-✓}"
 
-# Mean-volume floor, in dBFS, below which a track counts as silent. A truly
-# silent BlackHole capture measures about -91 dB, so -50 is a wide margin.
-VOX_SILENCE_DB=${VOX_SILENCE_DB:--50}
+# Mean-volume floor, in dBFS, below which a track counts as silent.
+#
+# Measured on this hardware: a system track that captured nothing reads -91 dB
+# (digital silence), while a MICROPHONE in a quiet room reads about -55 dB. The
+# floor has to sit between them, or `prune --empty` finds every monologue's mic
+# track "silent" too and skips the recording as captured-nothing. -70 leaves
+# ~20 dB of headroom on both sides.
+VOX_SILENCE_DB=${VOX_SILENCE_DB:--70}
 
 # vox_read_state — load the statefile into _vox_pids / _vox_pid / _vox_start /
 # _vox_dir. Returns 1 (with the fields zeroed) when there is no statefile. `read`
@@ -348,8 +353,13 @@ vox_mean_volume() {
 # other side, not a fabricated one) — and the one `VOX_MIC_ONLY=1` produces.
 vox_session_kind() {
 	_vox_sys="$1/sys.json"
-	if [ -s "$_vox_sys" ] && grep -q '"text"' "$_vox_sys" 2>/dev/null; then
-		# Every segment carries a text key; an empty run is {"segments":[]}.
+	# A POSITIVE test for a segment object, not for the word "text": real mw
+	# output carries a TOP-LEVEL "text" key that is present (and empty) even when
+	# nothing was transcribed, so looking for the word alone calls every silent
+	# system track 2-way. Whitespace is stripped first because mw pretty-prints,
+	# so the array and its first brace are on different lines. Anything
+	# unrecognisable reads solo, the conservative call.
+	if [ -s "$_vox_sys" ] && tr -d ' \t\n' <"$_vox_sys" | grep -q '"segments":\[{'; then
 		echo 2-way
 	else
 		echo solo
