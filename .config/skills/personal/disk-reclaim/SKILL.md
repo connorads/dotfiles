@@ -122,6 +122,18 @@ project cleaner or its docs, where present, is the fastest classifier.
   cleanup look empty while `~/.local/share/containers/podman/machine` remains
   large. Inspect `podman machine list`; remove a machine only with a nod,
   because it discards its images, containers, and volumes.
+- **VM disks are sparse and never shrink.** Even a *successful* in-guest prune
+  leaves host `df` unmoved: `~/.colima/_lima/_disks/colima/datadisk` is 100 GiB
+  apparent against 38G allocated, and a sparse file only grows, so
+  `docker system prune` frees blocks inside the guest filesystem while the host
+  allocation stays put. Only `colima delete` (or the Podman equivalent) returns
+  host bytes, and it discards every image, container and volume — a nod, never
+  a default. Never quote a VM disk's size as reclaimable; like `/nix/store`,
+  the estimate would equal the total.
+- **`brew cleanup -n` under-reports.** It applies brew's 120-day policy, so it
+  can print nothing while gigabytes sit in `$(brew --cache)/downloads`. Use
+  `cleanup --target brew` (or `brew cleanup --prune=all -n`) for the true
+  figure.
 - **Steam: uninstall in the app**, never delete `steamapps/common/*` — the
   manifests desync. Usually the largest single win, and the user must do it.
 - **Yarn v1:** do not probe `yarn cache clean` with `--help` - it runs the
