@@ -872,3 +872,36 @@ two_track_recording() {
   [ -z "$output" ]
   [[ "$stderr" == *"nothing to prune"* ]]
 }
+
+# --- reclaiming recordings you name ------------------------------------------
+
+@test "prune takes explicit recordings, ignoring the age window" {
+  old=$(aged_recording 120)
+  fresh=$(aged_recording 1)
+
+  vox prune --force "$fresh"
+
+  # You chose it, so its age is not a second opinion to overrule you with.
+  [ "$status" -eq 0 ]
+  [ ! -e "$fresh/mic.wav" ]
+  [ -f "$fresh/transcript.md" ]
+  [ -f "$old/mic.wav" ] # untouched: it was not named
+}
+
+@test "a named recording that does not exist is an error, not a silent skip" {
+  vox prune --force "$VOX_STORE/2026-07-28-999999"
+
+  [ "$status" -ne 0 ]
+}
+
+@test "the live recording is spared even when named" {
+  old=$(aged_recording 120)
+  sleep 100 &
+  pid=$!
+  printf '%s %s %s\n' "$pid" "$(date +%s)" "$old" >"$VOX_STATEFILE"
+
+  vox prune --force "$old"
+  kill "$pid" 2>/dev/null || true
+
+  [ -f "$old/mic.wav" ]
+}
