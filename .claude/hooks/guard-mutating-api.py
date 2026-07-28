@@ -1,10 +1,11 @@
 """
-Claude Code hook to gate mutating `gh api` calls behind a permission prompt.
+Claude Code hook to require explicit intent for mutating `gh api` calls.
 
 Read-only `gh api` calls are auto-allowed via the `Bash(gh api *)` allow rule.
-This hook catches both explicit mutating methods (-X/-method POST/PUT/PATCH/DELETE)
-and implicit POST triggers (-f, -F, --raw-field, --field, --input) and returns
-permissionDecision: "ask" so the user is prompted for confirmation.
+This hook asks for confirmation on explicit mutating methods
+(-X/--method POST/PUT/PATCH/DELETE), while implicit POST triggers
+(-f, -F, --raw-field, --field, --input) are denied with guidance that tells
+Claude to retry with an explicit GET or mutating method.
 
 gh api switches from GET to POST implicitly when body params or --input are present,
 so `gh api repos/o/r/issues/1/comments -f body='hi'` would POST without -X.
@@ -16,18 +17,19 @@ string), so `gh api path -X GET -f ref=x` is treated as read-only and not flagge
 For GraphQL the read/write signal is the operation type in the `query` document
 (query/subscription/fragment = read, mutation = write), so a read-only inline query
 is allowed while a mutation - or any document we cannot inspect (@file, @- stdin,
-query field absent) - still asks.
+query field absent) - must state POST intent before asking.
 
 Limitation: if the whole shell command can't be tokenised (e.g. an unescaped `'`
 inside the document) detection drops to the regex fallback, which has no GraphQL
-awareness and flags the read as mutating. That is a false positive (extra prompt),
-not a false negative, so it stays safe.
+awareness and flags the read as an implicit write. That is a false positive
+(rejected with retry guidance), not a false negative, so it stays safe.
 
 Exit codes:
   0 - Always
 
 Output:
-  JSON with permissionDecision "ask" for mutating calls, nothing otherwise.
+  JSON with permissionDecision "deny" for implicit writes, "ask" for explicit
+  writes, and nothing for read-only calls.
 
 Tests: uv run --with pytest pytest ~/.claude/hooks/test_guard_mutating_api.py -v
 """
@@ -38,12 +40,30 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Literal, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 import _shellparse
 
 # HTTP methods considered mutating
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+class ApiDecision(NamedTuple):
+    permission: Literal["deny", "ask"]
+    reason: str
+
+
+IMPLICIT_WRITE_DECISION = ApiDecision(
+    permission="deny",
+    reason=(
+        "Blocked implicit POST: `gh api` defaults to POST when "
+        "-f/-F/--field/--raw-field/--input is used without `--method`. For a "
+        "read, retry with `--method GET`; for an intended write, retry with an "
+        "explicit mutating method such as `--method POST`, which will request "
+        "user confirmation."
+    ),
+)
 
 # Pattern to detect `gh api` (with optional flags before `api`)
 GH_API_RE = re.compile(r"\bgh\s+api\b")
@@ -81,16 +101,38 @@ def _fallback_invocations(command: str) -> list[str]:
     return invocations
 
 
-def _is_mutating_args_regex(args: str) -> bool:
-    """Return True when a rough `gh api` argument string looks mutating."""
-    if METHOD_FLAG_RE.search(args) is not None:
-        return True
-    return IMPLICIT_POST_RE.search(args) is not None and GET_METHOD_FLAG_RE.search(args) is None
+def _explicit_write_decision(methods: set[str]) -> ApiDecision:
+    verbs = "/".join(sorted(methods & MUTATING_METHODS))
+    return ApiDecision(
+        permission="ask",
+        reason=(
+            f"This command explicitly sends a mutating `gh api` {verbs} request. "
+            "Confirm only if the write is intended."
+        ),
+    )
 
 
-def _regex_fallback(command: str) -> bool:
-    """Safe-erring detection for commands that can't be shell-tokenised."""
-    return any(_is_mutating_args_regex(args) for args in _fallback_invocations(command))
+def _decision_args_regex(args: str) -> ApiDecision | None:
+    """Classify a rough `gh api` argument string when tokenisation fails."""
+    method_match = METHOD_FLAG_RE.search(args)
+    if method_match is not None:
+        return _explicit_write_decision({method_match.group(1).upper()})
+    if IMPLICIT_POST_RE.search(args) is not None and GET_METHOD_FLAG_RE.search(args) is None:
+        return IMPLICIT_WRITE_DECISION
+    return None
+
+
+def _regex_fallback(command: str) -> ApiDecision | None:
+    """Safely classify commands that can't be shell-tokenised."""
+    pending: ApiDecision | None = None
+    for args in _fallback_invocations(command):
+        decision = _decision_args_regex(args)
+        if decision is None:
+            continue
+        if decision.permission == "deny":
+            return decision
+        pending = decision
+    return pending
 
 
 def _methods_and_implicit(tokens: list[str]) -> tuple[set[str], bool]:
@@ -235,40 +277,45 @@ def _is_graphql_invocation(args: list[str]) -> bool:
     return any(a == "graphql" for a in args)
 
 
-def is_mutating_gh_api(command: str) -> bool:
-    """Return True if command issues a mutating `gh api` request.
+def gh_api_decision(command: str) -> ApiDecision | None:
+    """Return the strongest hook decision required by a command.
 
-    Detects explicit methods (-X POST, --method DELETE) and implicit POST via
-    body-param flags (-f, -F, --field, --raw-field, --input). An explicit
-    -X GET / --method GET keeps body params as a query string, so it stays a read.
+    Explicit writes ask for confirmation. Implicit writes are denied so Claude
+    can retry with an explicit method. Read-only commands return no decision.
 
     Compound commands are analysed per shell command segment so a GET override
-    only affects the `gh api` invocation in the same segment.
+    only affects the `gh api` invocation in the same segment. Deny takes
+    precedence over ask, matching Claude Code's PreToolUse decision order.
     """
     if _shellparse.NOT_COMMIT_RE.search(command):
-        return False
+        return None
     if not GH_API_RE.search(command):
-        return False
+        return None
 
     tokens = _shellparse.tokenise(command)
     if tokens is None:
         return _regex_fallback(command)
 
+    pending: ApiDecision | None = None
     for segment in _shellparse.command_segments(tokens):
         for args in _gh_api_arg_vectors(segment):
             methods, implicit = _methods_and_implicit(args)
             if methods & MUTATING_METHODS:
-                return True
-            if implicit and "GET" not in methods:
-                if _is_graphql_invocation(args):
-                    # graphql POSTs unconditionally; gate on operation type, not
-                    # verb. Unknown (None) errs safe -> ask.
-                    if _graphql_doc_mutates(_gql_query_doc(args)) is not False:
-                        return True
-                else:
-                    return True
+                pending = _explicit_write_decision(methods)
+                continue
+            # GraphQL reads POST unconditionally, so they remain allowed.
+            # A mutation or uninspectable document must state POST intent.
+            if (
+                implicit
+                and "GET" not in methods
+                and (
+                    not _is_graphql_invocation(args)
+                    or _graphql_doc_mutates(_gql_query_doc(args)) is not False
+                )
+            ):
+                return IMPLICIT_WRITE_DECISION
 
-    return False
+    return pending
 
 
 def main() -> int:
@@ -283,11 +330,13 @@ def main() -> int:
     if not command:
         return 0
 
-    if is_mutating_gh_api(command):
+    decision = gh_api_decision(command)
+    if decision is not None:
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "ask",
+                "permissionDecision": decision.permission,
+                "permissionDecisionReason": decision.reason,
             }
         }
         json.dump(output, sys.stdout)

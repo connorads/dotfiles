@@ -19,10 +19,10 @@ _spec = importlib.util.spec_from_file_location(
 assert _spec and _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
-is_mutating_gh_api = _mod.is_mutating_gh_api
+gh_api_decision = _mod.gh_api_decision
 
 
-# --- is_mutating_gh_api ---
+# --- gh_api_decision ---
 
 
 class TestIsMutatingGhApi:
@@ -84,7 +84,7 @@ class TestIsMutatingGhApi:
         ],
     )
     def test_detects_mutating_calls(self, command: str) -> None:
-        assert is_mutating_gh_api(command) is True
+        assert gh_api_decision(command) is not None
 
     @pytest.mark.parametrize(
         "command",
@@ -129,7 +129,7 @@ class TestIsMutatingGhApi:
         ],
     )
     def test_allows_read_only_calls(self, command: str) -> None:
-        assert is_mutating_gh_api(command) is False
+        assert gh_api_decision(command) is None
 
     @pytest.mark.parametrize(
         "command",
@@ -142,7 +142,7 @@ class TestIsMutatingGhApi:
         ],
     )
     def test_ignores_non_gh_api_commands(self, command: str) -> None:
-        assert is_mutating_gh_api(command) is False
+        assert gh_api_decision(command) is None
 
     @pytest.mark.parametrize(
         "command",
@@ -154,7 +154,7 @@ class TestIsMutatingGhApi:
         ],
     )
     def test_ignores_gh_api_in_commit_messages(self, command: str) -> None:
-        assert is_mutating_gh_api(command) is False
+        assert gh_api_decision(command) is None
 
 
 # --- Integration test via subprocess ---
@@ -176,8 +176,40 @@ class TestIntegration:
     def test_mutating_returns_ask(self) -> None:
         r = self._run("gh api repos/foo/bar -X POST")
         assert r.returncode == 0
-        output = json.loads(r.stdout)
-        assert output["hookSpecificOutput"]["permissionDecision"] == "ask"
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "ask"
+        assert "POST" in output["permissionDecisionReason"]
+        assert "write is intended" in output["permissionDecisionReason"]
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api repos/makeusabrew/audiotee/git/trees/main --field recursive=1 --jq '.tree[].path'",
+            "gh api search/code -f q='repo:cschneegans/unattend-generator arm64' --jq '.total_count'",
+            "gh api repos/microsoft/winget-cli/releases -f per_page=10 --jq '.[].tag_name'",
+        ],
+    )
+    def test_implicit_read_queries_are_denied_with_retry_guidance(self, command: str) -> None:
+        r = self._run(command)
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "deny"
+        reason = output["permissionDecisionReason"]
+        assert "--method GET" in reason
+        assert "--method POST" in reason
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api repos/makeusabrew/audiotee/git/trees/main --method GET --field recursive=1 --jq '.tree[].path'",
+            "gh api --method GET search/code -f q='repo:cschneegans/unattend-generator arm64' --jq '.total_count'",
+            "gh api --method GET repos/microsoft/winget-cli/releases -f per_page=10 --jq '.[].tag_name'",
+        ],
+    )
+    def test_explicit_get_corrections_return_no_output(self, command: str) -> None:
+        r = self._run(command)
+        assert r.returncode == 0
+        assert r.stdout == ""
 
     def test_read_only_returns_no_output(self) -> None:
         r = self._run("gh api repos/foo/bar/releases --jq '.[0].tag_name'")
@@ -215,7 +247,7 @@ class TestIntegration:
             output = json.loads(r.stdout)
             assert output["hookSpecificOutput"]["permissionDecision"] == "ask", cmd
 
-    def test_implicit_post_via_field_flags(self) -> None:
+    def test_implicit_post_via_field_flags_returns_deny(self) -> None:
         for cmd in [
             "gh api repos/foo/bar/issues/1/comments -f body='hi'",
             "gh api gists -F 'files[f][content]=@f'",
@@ -225,5 +257,53 @@ class TestIntegration:
         ]:
             r = self._run(cmd)
             assert r.returncode == 0
-            output = json.loads(r.stdout)
-            assert output["hookSpecificOutput"]["permissionDecision"] == "ask", cmd
+            output = json.loads(r.stdout)["hookSpecificOutput"]
+            assert output["permissionDecision"] == "deny", cmd
+            assert "--method GET" in output["permissionDecisionReason"], cmd
+
+    def test_graphql_read_returns_no_output(self) -> None:
+        r = self._run("gh api graphql -f query='{ viewer { login } }'")
+        assert r.returncode == 0
+        assert r.stdout == ""
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api graphql -f query='mutation { addStar(input:{}){ id } }'",
+            "gh api graphql -f query=@query.graphql",
+        ],
+    )
+    def test_implicit_graphql_writes_return_deny(self, command: str) -> None:
+        r = self._run(command)
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "deny"
+        assert "--method POST" in output["permissionDecisionReason"]
+
+    def test_explicit_graphql_post_returns_ask(self) -> None:
+        r = self._run("gh api graphql --method POST -f query='mutation { x }'")
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "ask"
+        assert "POST" in output["permissionDecisionReason"]
+
+    def test_implicit_deny_takes_precedence_over_explicit_ask(self) -> None:
+        r = self._run("gh api repos/foo/bar --method DELETE; gh api search/code -f q=foo")
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "deny"
+        assert "--method GET" in output["permissionDecisionReason"]
+
+    @pytest.mark.parametrize(
+        ("command", "expected"),
+        [
+            ("gh api repos/foo/bar -X POST 'unterminated", "ask"),
+            ("gh api search/code -f q=foo 'unterminated", "deny"),
+        ],
+    )
+    def test_tokenisation_fallback_preserves_decision(self, command: str, expected: str) -> None:
+        r = self._run(command)
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == expected
+        assert output["permissionDecisionReason"]
