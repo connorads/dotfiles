@@ -332,8 +332,8 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions"
     }
 
-    // First-party Python typecheck gates (pyrefly via mise), scoped to the two
-    // hook dirs that import no uninstalled third-party deps. One glob-scoped
+    // First-party Python typecheck gates (pyrefly via mise), scoped to the
+    // dirs that import no uninstalled third-party deps. One glob-scoped
     // step per dir so only staged-dir changes pay the cost; per-dir
     // pyrefly.toml makes each its own project so intra-package imports resolve.
     // Typecheck only - tests live in `mise run py-checks`. The shared script
@@ -346,6 +346,12 @@ local fast_steps = new Mapping<String, Step> {
     ["py-typecheck-hk-hooks"] {
         glob = List(".hk-hooks/*.py", ".hk-hooks/pyrefly.toml")
         check = "bash .hk-hooks/py-typecheck.sh .hk-hooks"
+    }
+    // vox's merge filter is stdlib-only for exactly this reason: it stays
+    // eligible for the gate without a virtualenv.
+    ["py-typecheck-vox"] {
+        glob = List(".config/vox/*.py", ".config/vox/pyrefly.toml")
+        check = "bash .hk-hooks/py-typecheck.sh .config/vox"
     }
 
     // Secret scan: block staged secrets before they enter this public repo.

@@ -105,6 +105,13 @@
 !/.config/sbx/
 !/.config/sbx/**
 
+# vox: the merge filter, its tests and the vocabulary map. Recordings live in
+# ~/Recordings, which the /* deny-all already covers.
+!/.config/vox/
+!/.config/vox/**
+/.config/vox/__pycache__/
+/.config/vox/.pytest_cache/
+
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/
 /.config/jj/**

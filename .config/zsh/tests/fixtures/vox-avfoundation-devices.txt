@@ -1,0 +1,16 @@
+[AVFoundation indev @ 0x7f8000000000] AVFoundation video devices:
+[AVFoundation indev @ 0x7f8000000000] [0] Logitech BRIO
+[AVFoundation indev @ 0x7f8000000000] [1] MacBook Air Camera
+[AVFoundation indev @ 0x7f8000000000] [2] MacBook Air Desk View Camera
+[AVFoundation indev @ 0x7f8000000000] [3] Capture screen 0
+[AVFoundation indev @ 0x7f8000000000] [4] Capture screen 1
+[AVFoundation indev @ 0x7f8000000000] AVFoundation audio devices:
+[AVFoundation indev @ 0x7f8000000000] [0] MacBook Air Microphone
+[AVFoundation indev @ 0x7f8000000000] [1] Microsoft Teams Audio
+[AVFoundation indev @ 0x7f8000000000] [2] BlackHole 16ch
+[AVFoundation indev @ 0x7f8000000000] [3] Logitech BRIO
+[AVFoundation indev @ 0x7f8000000000] [4] USB Audio CODEC
+[AVFoundation indev @ 0x7f8000000000] [5] Virtual Desktop Mic
+[AVFoundation indev @ 0x7f8000000000] [6] Virtual Desktop Speakers
+[AVFoundation indev @ 0x7f8000000000] [7] USB PnP Audio Device
+[in#0 @ 0x7f8000000001] Error opening input: Input/output error
