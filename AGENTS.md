@@ -231,7 +231,7 @@ agent pick             # fzf jump picker over live agents (tmux keys: prefix + A
 atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
 handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
-vox [--name <title>]   # record mic + system audio (Core Audio tap, no setup); `vox stop` transcribes locally and prints the recording's path (tmux: prefix + Alt+v picker)
+vox [--name <title>]   # record mic + system audio (Core Audio tap, no setup); `vox stop` transcribes locally and prints the recording's path (tmux: prefix + Alt+v starts/stops, prefix + Alt+Shift+V opens the picker)
 vox cancel             # stop and discard, without transcribing
 vox ls | vox last      # recording paths, newest first (`cat "$(vox last)/transcript.md"` is the whole integration story)
 vox <file>             # transcribe an audio/video file that already exists

@@ -103,7 +103,8 @@ From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
 | `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
-| `Ctrl+b Alt+v` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames) |
+| `Ctrl+b Alt+v` | record (vox) — start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
+| `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
@@ -196,8 +197,8 @@ A muted pill (macOS, width ≥ 80) follows one recording from start to read - yo
 mic and the system's own audio, to two tracks. It is deliberately quiet rather
 than an accent colour, because it is visible during screen shares; only the
 "ready" state, which cannot appear mid-recording, uses the same blue as an unread
-agent tab. `Ctrl+b Alt+v` opens the picker; `vox stop` in any pane ends the
-recording and transcribes it locally.
+agent tab. `Ctrl+b Alt+v` starts and stops a recording; `Ctrl+b Alt+Shift+V` opens the
+picker, which also marks everything as looked at.
 
 | Pill | State | Meaning |
 |------|-------|---------|

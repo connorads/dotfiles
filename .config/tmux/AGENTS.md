@@ -925,11 +925,23 @@ Change as a set:
   gate. Applies [`../vox/vocabulary.tsv`](../vox/vocabulary.tsv) (`wrong<TAB>right`,
   whole-word and case-insensitive) because `mw transcribe` has no
   `--vocabulary`/`--prompt` flag and no replacement dictionary in its prefs.
-- [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+v` fzf picker
-  over `vox ls`, previewing each transcript: enter copies it (tmux buffer +
-  OSC52), `ctrl-y` pastes the path into the calling pane, `ctrl-e` edits,
-  `ctrl-r` renames. Actions run **after** fzf exits (`--expect`), not inside
-  `--bind execute()`, so each owns the popup's real tty.
+- [`scripts/vox-toggle.sh`](./scripts/vox-toggle.sh) — `prefix + Alt+v`, the
+  key the subsystem is actually used through: idle starts, recording stops. Two
+  orderings are the design. **Capture starts before the title prompt appears**
+  and the answer is applied with `vox rename`, so no audio is lost to typing and
+  escaping the prompt leaves the recording running (hence the prompt says
+  "recording", not "name"). **Stopping detaches**: `vox stop` stays synchronous
+  by contract, and a key press has nowhere to put minutes of transcription, so
+  the pill carries the wait and a `display-message` plus `ring_bell` reports the
+  end. Pressed while TRANSCRIBING it starts a new capture — transcription is
+  per-directory and detached, so the two never contend.
+- [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
+  picker over `vox ls`, previewing each transcript: enter copies it (tmux buffer
+  - OSC52), `ctrl-y` pastes the path into the calling pane, `ctrl-e` edits,
+  `ctrl-r` renames. Opening it is what marks everything looked-at, so it is the
+  thing that clears the READY pill. Actions run **after** fzf exits
+  (`--expect`), not inside `--bind execute()`, so each owns the popup's real
+  tty.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
   **self-hiding** pill (width ≥ 80) following one capture from start to read:
   IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`
