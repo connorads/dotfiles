@@ -1,0 +1,13 @@
+# vox vocabulary: wrong<TAB>right, applied to transcripts after transcription.
+#
+# MacWhisper's CLI has no --vocabulary/--prompt flag and no replacement
+# dictionary in its preferences, so names it reliably mangles are corrected
+# here instead. Matching is whole-word and case-insensitive (see merge.py).
+#
+# Add a pair only for a mangling you have actually seen in a transcript: every
+# entry is a rewrite that fires on ordinary prose too, so "admit" -> "Admyt"
+# is a deliberate trade you make per name, not a guess.
+admit	Admyt
+Decera	Discera
+Ascendix	Ascendx
+AscendC	Ascendx

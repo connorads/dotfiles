@@ -1,0 +1,4 @@
+[Parsed_volumedetect_0 @ 0x600002a1c000] n_samples: 480000
+[Parsed_volumedetect_0 @ 0x600002a1c000] mean_volume: -27.3 dB
+[Parsed_volumedetect_0 @ 0x600002a1c000] max_volume: -3.1 dB
+[Parsed_volumedetect_0 @ 0x600002a1c000] histogram_3db: 12

@@ -1,0 +1,366 @@
+#!/usr/bin/env zsh
+# vox: record mic + system audio, transcribe locally
+#
+# One detached ffmpeg captures two inputs to two mono 16 kHz WAVs - your mic and
+# the system-audio loopback - and on stop each is transcribed on-device by the
+# MacWhisper CLI, then merged into one timestamped markdown script.
+#
+#   vox                      start (no args, no thinking)
+#   vox stop                 finalise -> transcribe -> merge -> print the path
+#   vox status               state + elapsed
+#   vox ls                   every recording, newest first, one path per line
+#   vox last                 newest recording's path
+#   vox <file>               transcribe an audio/video file that already exists
+#   vox rename <path> <slug> retitle, preserving the timestamp prefix
+#
+# The store convention is the load-bearing decision:
+#
+#   ~/Recordings/vox/2026-07-28-140312-triver-kickoff/
+#       mic.wav  sys.wav      you / them (sys silent => it was a monologue)
+#       mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
+#       transcript.md         merged, name-fixed - the artefact everything consumes
+#       vox.log               ffmpeg + mw stderr (mw reports progress there)
+#
+# The directory name IS the title - no metadata file holding a duplicate that
+# can drift - so renaming is `mv`, and Finder, hand and the tmux picker are one
+# operation. Only the timestamp prefix is ever parsed, never the slug. Colons
+# are hostile in filenames, hence YYYY-MM-DD-HHMMSS rather than strict ISO 8601.
+#
+# Every subcommand prints bare paths to stdout, one per line, with progress and
+# diagnostics on stderr - so it composes:
+#
+#   cat "$(vox last)/transcript.md" | claude -p 'summarise the actions'
+#
+# State, colours and the two pure text parsers live in vox-lib.sh, shared with
+# the status pill and the picker popup.
+
+emulate -L zsh
+setopt local_options no_unset
+
+local vox_lib="${VOX_LIB:-$HOME/.config/tmux/scripts/vox-lib.sh}"
+[[ -r "$vox_lib" ]] || {
+	print -u2 "vox: missing vox-lib at $vox_lib"
+	return 1
+}
+# shellcheck source=/dev/null
+source "$vox_lib"
+
+# Model pinned per invocation rather than via `mw models select`, which mutates
+# the GUI app's own state - a CLI run must not change what the app does next.
+local vox_model="${VOX_MODEL:-parakeet-pro:nvidia_parakeet-v3_494MB}"
+# Devices are resolved by NAME at start, never by a recorded index: avfoundation
+# renumbers every input when one appears or disappears (connecting AirPods is
+# enough), so a stored index silently captures the wrong thing.
+local vox_mic_device="${VOX_MIC_DEVICE:-Microphone}"
+local vox_sys_device="${VOX_SYS_DEVICE:-BlackHole}"
+# The Multi-Output device that fans system audio to both the speakers and
+# BlackHole. Created once by hand in Audio MIDI Setup; without it sys.wav is
+# silent, which reads as "monologue" rather than as an error.
+local vox_output_device="${VOX_OUTPUT_DEVICE:-Capture}"
+local vox_merge="${VOX_MERGE:-$HOME/.config/vox/merge.py}"
+local vox_vocab="${VOX_VOCAB:-$HOME/.config/vox/vocabulary.tsv}"
+local vox_python="${VOX_PYTHON:-python3}"
+
+_vox_die() {
+	print -u2 -- "vox: $*"
+	return 1
+}
+
+# _vox_slug TEXT - a filename-safe slug: lowercase, non-alphanumerics collapsed
+# to single dashes, no leading or trailing dash. Empty input yields empty output
+# (the caller then keeps the bare timestamp).
+_vox_slug() {
+	emulate -L zsh
+	setopt extended_glob
+	local s=${(L)${1:-}}
+	s=${s//[^a-z0-9]/-}
+	s=${s//-##/-}
+	s=${s##-}
+	s=${s%%-}
+	print -r -- "$s"
+}
+
+# _vox_need CMD... - fail with a single clear message if any is missing.
+_vox_need() {
+	local cmd
+	for cmd in "$@"; do
+		command -v "$cmd" >/dev/null 2>&1 || {
+			_vox_die "$cmd not found on PATH"
+			return 1
+		}
+	done
+}
+
+# _vox_default_output - read `system_profiler SPAudioDataType` on stdin and print
+# the name of the current default output device. The device name is the indented
+# "Name:" line that precedes its properties, so the last one seen when
+# "Default Output Device: Yes" appears is the answer.
+_vox_default_output() {
+	awk '
+		/^[[:space:]]+[^:]+:[[:space:]]*$/ {
+			name = $0
+			sub(/^[[:space:]]+/, "", name)
+			sub(/:[[:space:]]*$/, "", name)
+		}
+		/Default Output Device: Yes/ { print name; exit }
+	'
+}
+
+# _vox_warn_output - warn when a meeting app is running but system audio is not
+# routed through the loopback, which would leave sys.wav silent.
+#
+# Gated on a meeting app being up so the monologue path - the latency-sensitive
+# one, where you want to start talking now - stays frictionless. It only detects
+# and warns: switching the output would need switchaudio-osx, a dependency this
+# does not justify.
+_vox_warn_output() {
+	pgrep -f 'MSTeams|Microsoft Teams|zoom\.us|Slack' >/dev/null 2>&1 || return 0
+	local current
+	current=$(system_profiler SPAudioDataType 2>/dev/null | _vox_default_output)
+	[[ -n "$current" && "$current" != *"$vox_output_device"* ]] || return 0
+	print -u2 -- "vox: default output is \"$current\", not \"$vox_output_device\" — the other side may not be recorded"
+	print -u2 -- "vox: switch output to \"$vox_output_device\" (and wear headphones) to capture them"
+}
+
+# _vox_start - resolve both devices, then detach one ffmpeg writing both tracks.
+_vox_start() {
+	[[ "$OSTYPE" == darwin* ]] || {
+		_vox_die "recording needs macOS (avfoundation)"
+		return 1
+	}
+	_vox_need ffmpeg || return 1
+	if vox_active; then
+		print -u2 -- "vox: already recording since $(vox_token) ago"
+		print -r -- "$(vox_dir)"
+		return 1
+	fi
+	vox_clear_state
+
+	local listing mic sys
+	listing=$(ffmpeg -hide_banner -f avfoundation -list_devices true -i "" 2>&1)
+	mic=$(print -r -- "$listing" | vox_audio_device_index "$vox_mic_device") || {
+		_vox_die "no audio input matching \"$vox_mic_device\""
+		return 1
+	}
+	sys=$(print -r -- "$listing" | vox_audio_device_index "$vox_sys_device") || {
+		_vox_die "no audio input matching \"$vox_sys_device\" — install BlackHole to capture system audio"
+		return 1
+	}
+
+	_vox_warn_output
+
+	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)"
+	mkdir -p "$dir" || return 1
+
+	# pan, not -ac 1: ffmpeg reports BlackHole as 9.1.6, so -ac 1 would apply a
+	# surround downmix matrix (LFE and height coefficients) instead of taking
+	# the stereo pair apps actually write. No -t either: duration is driven
+	# externally by `vox stop`, because -t misbehaves alongside
+	# -use_wallclock_as_timestamps (the first pts starts at device uptime).
+	nohup ffmpeg -hide_banner -loglevel warning -nostdin \
+		-use_wallclock_as_timestamps 1 -f avfoundation -i ":$mic" \
+		-use_wallclock_as_timestamps 1 -f avfoundation -i ":$sys" \
+		-filter_complex "[0:a]pan=mono|c0=c0[me];[1:a]pan=mono|c0=0.5*c0+0.5*c1[them]" \
+		-map "[me]" -ar 16000 -c:a pcm_s16le "$dir/mic.wav" \
+		-map "[them]" -ar 16000 -c:a pcm_s16le "$dir/sys.wav" \
+		</dev/null >>"$dir/vox.log" 2>&1 &!
+	local pid=$!
+
+	# ffmpeg dies early on a device it cannot open, and a statefile pointing at
+	# a corpse would read RECORDING until the next start. Confirm it survived.
+	sleep 0.5
+	if ! kill -0 "$pid" 2>/dev/null; then
+		print -u2 -- "vox: ffmpeg exited immediately; last log lines:"
+		tail -n 5 "$dir/vox.log" >&2 2>/dev/null
+		return 1
+	fi
+
+	vox_write_state "$pid" "$(date +%s)" "$dir"
+	print -u2 -- "vox: recording — \`vox stop\` when done"
+	print -r -- "$dir"
+}
+
+# _vox_stop - SIGINT the capture, wait for the WAV headers to be finalised, then
+# transcribe and merge.
+_vox_stop() {
+	vox_active || {
+		_vox_die "not recording"
+		return 1
+	}
+	local pid dir
+	pid=$(vox_pid)
+	dir=$(vox_dir)
+
+	# SIGINT, never SIGTERM: ffmpeg treats TERM as "immediate exit requested"
+	# and leaves a WAV with no valid header - an unreadable recording. INT is
+	# the clean-shutdown path that rewrites the header with the real length.
+	kill -INT "$pid" 2>/dev/null
+	local waited=0
+	while kill -0 "$pid" 2>/dev/null && (( waited < 100 )); do
+		sleep 0.1
+		(( waited++ ))
+	done
+	vox_clear_state
+
+	_vox_transcribe "$dir" || return 1
+	print -r -- "$dir"
+}
+
+# _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
+# per-track JSON is kept so a re-merge (new vocabulary, changed gap) never
+# re-transcribes.
+_vox_transcribe() {
+	local dir=$1
+	_vox_need mw "$vox_python" || return 1
+
+	local track speakers
+	for track in mic sys; do
+		[[ -s "$dir/$track.wav" ]] || continue
+		# --no-speakers on the mic track: it is definitionally you, and asking
+		# for diarisation would only invent a second speaker out of noise.
+		[[ "$track" == sys ]] && speakers=--speakers || speakers=--no-speakers
+		print -u2 -- "vox: transcribing $track…"
+		mw transcribe "$dir/$track.wav" --model "$vox_model" --format json "$speakers" \
+			>"$dir/$track.json" 2>>"$dir/vox.log" ||
+			print -u2 -- "vox: transcribing $track failed — see $dir/vox.log"
+	done
+
+	local -a merge_args=(--me "$dir/mic.json" --them "$dir/sys.json")
+	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
+	"$vox_python" "$vox_merge" "${merge_args[@]}" >"$dir/transcript.md" || {
+		_vox_die "merge failed"
+		return 1
+	}
+}
+
+# _vox_transcribe_file FILE - transcribe an audio/video file that already exists
+# into a new store directory. An imported file is genuinely one track, so it
+# occupies the mic slot; `--speakers` is on because, unlike a live mic capture,
+# an imported file may well hold several people.
+_vox_transcribe_file() {
+	local file=$1
+	_vox_need mw "$vox_python" || return 1
+	local dir="$VOX_STORE/$(date +%Y-%m-%d-%H%M%S)-$(_vox_slug "${${file:t}:r}")"
+	mkdir -p "$dir" || return 1
+	# A symlink back to the source keeps the directory self-contained for `vox
+	# ls` without copying the (possibly large) original into the store.
+	ln -sfn "${file:A}" "$dir/source.${file:e}" 2>/dev/null
+
+	print -u2 -- "vox: transcribing ${file:t}…"
+	mw transcribe "$file" --model "$vox_model" --format json --speakers \
+		>"$dir/mic.json" 2>>"$dir/vox.log" || {
+		_vox_die "transcription failed — see $dir/vox.log"
+		return 1
+	}
+
+	local -a merge_args=(--me "$dir/mic.json" --me-name Speaker)
+	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
+	"$vox_python" "$vox_merge" "${merge_args[@]}" >"$dir/transcript.md" || {
+		_vox_die "merge failed"
+		return 1
+	}
+	print -r -- "$dir"
+}
+
+# _vox_ls - every recording, newest first. Names start with the timestamp, so
+# reverse name order IS reverse chronological - no stat call per entry.
+_vox_ls() {
+	local -a dirs=("$VOX_STORE"/*(N/On))
+	(( $#dirs )) || return 0
+	print -rl -- "${dirs[@]}"
+}
+
+_vox_last() {
+	local -a dirs=("$VOX_STORE"/*(N/On))
+	(( $#dirs )) || {
+		_vox_die "no recordings in $VOX_STORE"
+		return 1
+	}
+	print -r -- "${dirs[1]}"
+}
+
+_vox_status() {
+	local state
+	state=$(vox_state)
+	if [[ "$state" == RECORDING ]]; then
+		print -r -- "RECORDING $(vox_token) $(vox_dir)"
+	else
+		print -r -- IDLE
+	fi
+}
+
+# _vox_rename REC SLUG - retitle a recording, keeping its timestamp prefix. An
+# empty slug strips the title back to the bare timestamp.
+#
+# The local is `rec`, never `path`: zsh ties the `path` array to $PATH, so a
+# scalar `local path=...` empties PATH for the whole function and every external
+# command in it stops resolving.
+_vox_rename() {
+	local rec=${1:-} slug=${2:-}
+	[[ -n "$rec" ]] || {
+		_vox_die "usage: vox rename <path> <slug>"
+		return 1
+	}
+	[[ -d "$rec" ]] || {
+		_vox_die "no such recording: $rec"
+		return 1
+	}
+
+	# :a absolutises without resolving symlinks, unlike :A. Resolving would make
+	# the printed path jump to the physical one (/var -> /private/var on macOS),
+	# which no longer matches the store path the caller passed in.
+	local full=${rec:a}
+	local base=${full:t} parent=${full:h}
+	[[ "$base" =~ '^([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6})' ]] || {
+		_vox_die "not a vox recording (no timestamp prefix): $base"
+		return 1
+	}
+	local stamp=${match[1]}
+
+	local clean
+	clean=$(_vox_slug "$slug")
+	local target="$parent/$stamp${clean:+-$clean}"
+	if [[ "$target" != "$full" ]]; then
+		[[ -e "$target" ]] && {
+			_vox_die "already exists: $target"
+			return 1
+		}
+		mv "$full" "$target" || return 1
+	fi
+	print -r -- "$target"
+}
+
+_vox_help() {
+	print -r -- 'vox — record mic + system audio, transcribe locally
+
+  vox                      start recording
+  vox stop                 stop, transcribe, merge, print the path
+  vox status               state + elapsed
+  vox ls                   every recording, newest first
+  vox last                 newest recording
+  vox <file>               transcribe an existing audio/video file
+  vox rename <path> <slug> retitle, keeping the timestamp prefix
+
+Recordings live in '"$VOX_STORE"'; each holds mic/sys WAV + JSON,
+transcript.md and vox.log. The directory name is the title.'
+}
+
+case "${1:-}" in
+'') _vox_start ;;
+stop) _vox_stop ;;
+status) _vox_status ;;
+ls) _vox_ls ;;
+last) _vox_last ;;
+rename)
+	shift
+	_vox_rename "$@"
+	;;
+-h | --help | help) _vox_help ;;
+*)
+	if [[ -f "$1" ]]; then
+		_vox_transcribe_file "$1"
+	else
+		_vox_die "unknown argument \"$1\" (and no such file) — try \`vox --help\`"
+	fi
+	;;
+esac
