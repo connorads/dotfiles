@@ -385,7 +385,7 @@ mise lock -g                                # refresh global lockfile checksums 
 
 Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/aube/config.toml` (aube-only keys). Keep aube-specific keys in the latter to avoid npm warnings ("Unknown user config 'minimum-release-age'") when mise calls `npm view` for metadata. CLI: `aube config set <key> <value>` routes correctly.
 
-Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.cache/aube/{virtual-store,packuments-full-v1}` (plus `aube cache prune --age-days 0`). It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
+Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable cache `~/.cache/aube/packuments-full-v1` (plus `aube cache prune --age-days 0`). `~/.cache/aube/virtual-store` is preserved: it is live working set for mise npm-backend tools, and removing it dangles every `npm:*` tool bin symlinked into it. It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
 
 `cleanup`'s `brew` target runs `brew cleanup --prune=all`, not brew's default 120-day policy: with `homebrew.onActivation.upgrade = true` every `drs`/`up` fetches fresh bottles and casks and leaves the superseded downloads behind, so `brew cleanup -n` reports 0 while gigabytes sit in `$(brew --cache)`. `brew autoremove` is excluded - it uninstalls dependencies, and `cleanup = "zap"` means nix-darwin already owns which packages exist.
 
