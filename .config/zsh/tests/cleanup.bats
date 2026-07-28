@@ -185,6 +185,20 @@ fi
 exit 0
 EOF
 
+  # Reproduces brew's real dry-run wording; the probe parses this sentence, and
+  # the `brew probe` test below pins it so an upstream rewording fails loudly
+  # rather than silently zeroing the estimate.
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+if [ "${1:-}" = "cleanup" ] && [ "${*: -1}" = "-n" ]; then
+  printf 'Would remove: %s/Library/Caches/Homebrew/downloads/abc--kitty.dmg (48.7MB)\n' "$HOME"
+  printf '==> This operation would free approximately 7.3GB of disk space.\n'
+  exit 0
+fi
+exit 0
+EOF
+
   write_stub nix-collect-garbage <<'EOF'
 #!/usr/bin/env bash
 echo "nix-collect-garbage $*" >>"$TEST_LOG"
@@ -230,6 +244,7 @@ EOF
   grep -F "docker system prune -af" "$TEST_LOG"
   grep -F "nix-collect-garbage --delete-older-than 30d" "$TEST_LOG"
   grep -F "aube cache prune --age-days 0" "$TEST_LOG"
+  grep -Fx "brew cleanup --prune=all" "$TEST_LOG"
   [ ! -e "$HOME/.local/share/yarn/berry/cache" ]
   [ ! -e "$HOME/.cache/yarn" ]
   [ ! -e "$HOME/.cache/node-gyp" ]
@@ -353,6 +368,44 @@ EOF
   grep -F -- "nix-store --gc --print-dead" "$TEST_LOG"
   [[ "$output" == *"2.0M"* ]]
   [[ "$output" == *"nix"* ]]
+}
+
+@test "brew probe parses homebrew's own dry-run estimate" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --brew
+
+  [ "$status" -eq 0 ]
+  grep -F -- "brew cleanup --prune=all -n" "$TEST_LOG"
+  [[ "$output" == *"7.3G"* ]]
+  [[ "$output" == *"Homebrew download cache"* ]]
+}
+
+@test "brew cleanup prunes all cached downloads" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --brew
+
+  [ "$status" -eq 0 ]
+  # Exact line: the probe logs the `-n` variant too, so only a whole-line match
+  # proves the cleanup itself ran.
+  grep -Fx -- "brew cleanup --prune=all" "$TEST_LOG"
+  # autoremove uninstalls dependencies (a tooling state change) and fights the
+  # nix-darwin `cleanup = "zap"` model, so this target must never invoke it.
+  [[ "$(cat "$TEST_LOG")" != *"autoremove"* ]]
+}
+
+@test "brew skips when nothing is cached" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+exit 0
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --brew
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skip: not available on this host"* ]]
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --brew
+  [ "$status" -eq 0 ]
+  ! grep -Fx -- "brew cleanup --prune=all" "$TEST_LOG"
 }
 
 @test "selector flags replace the default target set" {
