@@ -769,3 +769,123 @@ The drive layer (`caffeine_start`/`_stop`) and the popup are verified by a manua
 smoke test (start → `pgrep -fl 'caffeinate -i'` + `pmset -g assertions` shows
 `PreventUserIdleSystemSleep` held but not display sleep → stop → process gone).
 Keep the pill legend in [`help.md`](./help.md) in sync with the lib.
+
+## vox (recording + transcription, custom subsystem)
+
+Local audio capture and on-device transcription, in the same
+one-lib-many-surfaces shape as the caffeine toggle. One detached `ffmpeg`
+captures the mic and the system-audio loopback to two mono 16 kHz WAVs; `vox
+stop` finalises them, transcribes each with the MacWhisper CLI (`mw`) and merges
+them into one timestamped `transcript.md`. General-purpose by design — meetings,
+monologues, dictation — with no consumer baked in: integration is
+`cat "$(vox last)/transcript.md" | claude -p …`.
+
+**The store convention is the load-bearing decision.** One directory per
+recording under `${VOX_STORE:-~/Recordings/vox}`:
+
+```text
+2026-07-28-140312-triver-kickoff/
+    mic.wav  sys.wav      you / them (sys silent => it was a monologue)
+    mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
+    transcript.md         merged, name-fixed - the artefact everything consumes
+    vox.log               ffmpeg + mw stderr (mw reports progress there)
+```
+
+The directory name **is** the title — no metadata file holding a duplicate that
+can drift — so renaming is `mv`, and Finder, hand and the picker are one
+operation. Only the timestamp prefix is ever parsed, never the slug. Colons are
+hostile in filenames, hence `YYYY-MM-DD-HHMMSS` rather than strict ISO 8601.
+Silence on `sys.wav` is the monologue/meeting classifier, not an error — which is
+what removes any need to declare a mode at start.
+
+Change as a set:
+
+- [`scripts/vox-lib.sh`](./scripts/vox-lib.sh) — **canonical** state
+  (`vox_state` IDLE/RECORDING from statefile-pid liveness; a dead pid reads IDLE,
+  so it self-clears without a reaper) and the colour/glyph/token language
+  (`vox_state_colour` subtext0 `a6adc8`, `vox_state_glyph` `~`, `vox_token`
+  elapsed via the shared `human_age`). **Statefile contract**:
+  `${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}` holds one line
+  `pid start_epoch dir` (`read` puts the remainder in the last field, so a
+  directory with spaces survives). It also owns the two **pure text parsers** the
+  capture path needs — `vox_audio_device_index` (over
+  `ffmpeg -list_devices` output) and `vox_mean_volume` /
+  `vox_classify_track` (over `volumedetect` output) — so device resolution and
+  the monologue/meeting call are testable with fixtures and no audio hardware.
+  Sourced, never run.
+- [`../zsh/functions/macos/vox`](../zsh/functions/macos/vox) — the dual-mode
+  command (`vox` / `stop` / `status` / `ls` / `last` / `<file>` / `rename` /
+  `compact` / `prune`). Every subcommand prints **bare paths to stdout, one per
+  line**, with progress and diagnostics on stderr, so it composes without glue.
+- [`../vox/merge.py`](../vox/merge.py) — a real Unix filter: two `mw` JSON files
+  in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
+  Stdlib-only so the directory stays eligible for the `py-typecheck-vox` pyrefly
+  gate. Applies [`../vox/vocabulary.tsv`](../vox/vocabulary.tsv) (`wrong<TAB>right`,
+  whole-word and case-insensitive) because `mw transcribe` has no
+  `--vocabulary`/`--prompt` flag and no replacement dictionary in its prefs.
+- [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+v` fzf picker
+  over `vox ls`, previewing each transcript: enter copies it (tmux buffer +
+  OSC52), `ctrl-y` pastes the path into the calling pane, `ctrl-e` edits,
+  `ctrl-r` renames. Actions run **after** fzf exits (`--expect`), not inside
+  `--bind execute()`, so each owns the popup's real tty.
+- [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
+  **self-hiding** pill (width ≥ 80): IDLE prints nothing, RECORDING shows
+  `~ 12m`. Deliberately the *opposite* treatment to caffeine's bright peach
+  alarm — muted subtext0 on the surface1 data-pill shade — because it is visible
+  during screen shares and should read as ambient chrome. Elapsed uses
+  `human_age`, not mm:ss, which would tick in 15 s jumps at this
+  `status-interval` and read as broken.
+
+### Findings that are load-bearing, not tidiness
+
+- **Stop must be SIGINT, never SIGTERM.** ffmpeg treats TERM as "immediate exit
+  requested" and leaves a WAV with **no valid header** — an unreadable recording.
+  INT is the clean-shutdown path that rewrites the header with the real length.
+- **A background job from a non-interactive shell inherits SIGINT as `SIG_IGN`**
+  (POSIX), and a shell cannot then `trap` it. Real ffmpeg calls
+  `signal(SIGINT, …)` unconditionally, which overrides the inherited ignore — so
+  `vox stop` works — but a `trap … INT` shell *fake* cannot model that and would
+  appear to prove the opposite. The ffmpeg stub in
+  [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) is therefore Python.
+- **`pan`, not `-ac 1`.** ffmpeg reports BlackHole as `9.1.6`, so `-ac 1` applies
+  a surround downmix matrix (LFE and height coefficients) instead of taking the
+  stereo pair apps actually write.
+- **No `-t`.** Duration is driven externally by `vox stop`, because `-t`
+  misbehaves alongside `-use_wallclock_as_timestamps 1` (the first pts starts at
+  device uptime).
+- **Devices are resolved by name at start**, never by a recorded index:
+  avfoundation renumbers every input when one appears or disappears (connecting
+  AirPods is enough).
+- **`local path=…` in zsh empties `$PATH`.** zsh ties the `path` array to `PATH`,
+  so a scalar local of that name kills external command lookup for the whole
+  function. `_vox_rename` uses `rec`/`full` for exactly this reason.
+- **`:a`, not `:A`, when echoing a path back.** `:A` resolves symlinks, so the
+  printed path jumps to the physical one (`/var` → `/private/var` on macOS) and
+  no longer matches the store path the caller passed in.
+- **The model is pinned per invocation** (`mw transcribe --model …`), never via
+  `mw models select`, which mutates the GUI app's own state.
+
+### Manual prerequisite
+
+System audio reaches BlackHole only through a **Multi-Output Device** created by
+hand in Audio MIDI Setup (named `Capture` by default, `VOX_OUTPUT_DEVICE`
+overrides), with the speakers first as clock source and BlackHole second, drift
+correction on. Until it exists `sys.wav` records silence — which reads as
+"monologue", not as an error. Headphones are required during meetings, or the mic
+re-records the remote side. `vox` warns about a mismatched default output *only*
+when a meeting app is running, so the monologue path stays frictionless; it
+detects and warns rather than switching, which would need `switchaudio-osx`.
+
+Unmeasured: two-device clock drift over a long meeting. Compare the two
+`ffprobe` durations after the first 90-minute call; beyond ~2 s, move to an
+Aggregate Device.
+
+Tests: [`../zsh/tests/vox-lib.bats`](../zsh/tests/vox-lib.bats) (pure lib: state
+via real statefiles, elapsed, colour/glyph/token, and both text parsers against
+captured fixtures), [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) (the command:
+ls/last/status/rename/compact/prune, plus the ffmpeg argv and SIGINT stop via
+PATH-shadow fakes), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)
+(integration-tagged: drives the **real** `mw` against the JSON schema `merge.py`
+parses — the one contract here that is not ours to keep) and
+[`../vox/test_merge.py`](../vox/test_merge.py) (the filter). Keep the pill legend
+in [`help.md`](./help.md) in sync with the lib.
