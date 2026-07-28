@@ -228,6 +228,12 @@ pty_supported() {
 }
 
 refresh_child_pgid() {
+  resolve_child_pgid
+  # Record the live group for rl-kill. No-ops until a group is resolved.
+  registry_write
+}
+
+resolve_child_pgid() {
   local attempt
   local parent_pgid
 
@@ -291,6 +297,37 @@ usage_session_file="$usage_session_dir/${RL_SESSION//:/-}.jsonl"
 mkdir -p "$usage_session_dir" 2>/dev/null || true
 local -x RL_USAGE_SESSION_FILE="$usage_session_file"
 local -x RL_ITERATION=
+
+# Session registry: one record per live rl, naming the process group its
+# iteration runs in. rl-kill reads these instead of scraping the process table,
+# so it can only ever signal a group rl itself recorded. A record outliving its
+# rl process IS the orphan signal; every normal exit path removes it.
+# This is a backstop: the perl watchdog in start_child already reaps the group
+# when rl dies. The registry covers the case where the watchdog itself is lost.
+local registry_dir="$usage_state_dir/rl-registry"
+local registry_file="$registry_dir/${RL_SESSION//:/-}"
+local registry_cmd="${${(j: :)@}//$'\n'/ }"
+registry_cmd=${registry_cmd[1,200]}
+
+registry_write() {
+  [[ -n $child_pid && -n $child_pgid ]] || return 0
+  mkdir -p "$registry_dir" 2>/dev/null || return 0
+  local tmp="$registry_file.$$.tmp"
+  if printf '%s\t%s\n' \
+    session "$RL_SESSION" \
+    rl_pid "$$" \
+    started "${RL_SESSION##*:}" \
+    leader_pid "$child_pid" \
+    pgid "$child_pgid" \
+    iteration "$i" \
+    cmd "$registry_cmd" >"$tmp" 2>/dev/null; then
+    mv -f "$tmp" "$registry_file" 2>/dev/null
+  fi
+  rm -f "$tmp" 2>/dev/null
+  return 0
+}
+
+registry_remove() { rm -f "$registry_file" 2>/dev/null; return 0 }
 
 while (( max == 0 || i < max )); do
   (( stop_requested )) && break
@@ -444,6 +481,8 @@ while (( max == 0 || i < max )); do
 done
 
 RL_ITERATION=
+# Every path out of the loop is a clean exit, so the record must not survive it.
+registry_remove
 
 if [[ -f "$usage_session_file" ]]; then
   local session_totals summary_line
