@@ -259,6 +259,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | left-click session rail | switch session |
 | left-click session badge | session menu |
 | left-click agent badge / memory pill | agents popup / memory popup |
+| left-click recording pill | vox menu, rows matching the state (recording: stop, name, discard; otherwise: recordings) |
 | scroll | scroll the pane under the pointer; keyboard focus stays put (type/dictate in one pane while scrolling another) |
 | drag border | resize pane |
 | double-click pane | zoom toggle |

@@ -935,6 +935,15 @@ Change as a set:
   the pill carries the wait and a `display-message` plus `ring_bell` reports the
   end. Pressed while TRANSCRIBING it starts a new capture — transcription is
   per-directory and detached, so the two never contend.
+- [`scripts/vox-menu.sh`](./scripts/vox-menu.sh) — the menu behind a click on
+  the pill (`#[range=user|vox]`, dispatched from the `MouseDown1Status` chain in
+  [`tmux.conf`](./tmux.conf) beside `agents` and `mem`). **Its rows match the
+  state**: recording offers Stop / Name… / Discard / Recordings, everything else
+  offers Recordings alone. A Stop row with nothing to stop is exactly the drift
+  the one-lib rule exists to prevent, which is why the menu is a script reading
+  `vox_state` rather than a literal in the config. Discard is `vox cancel` and
+  the only `confirm-before` row: it throws audio away, while stopping only
+  spends time.
 - [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
   picker over `vox ls`, previewing each transcript: enter copies it (tmux buffer
   - OSC52), `ctrl-y` pastes the path into the calling pane, `ctrl-e` edits,

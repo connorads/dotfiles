@@ -231,7 +231,9 @@ vox_segment() {
 	[ "$state" = "IDLE" ] && return 0
 	colour="$(vox_state_colour "$state")"
 	glyph="$(vox_state_glyph "$state")"
-	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
+	# Tappable, like the memory pill: clicking it opens a menu whose rows match
+	# the state (vox-menu.sh), so the pill is a control and not only a report.
+	printf "#[range=user|vox]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
 		"$colour" "$glyph" "$(vox_token "$state")"
 }
 
