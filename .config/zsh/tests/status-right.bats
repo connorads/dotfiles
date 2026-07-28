@@ -511,6 +511,17 @@ reap_vox() {
   [[ "$output" == *"#[fg=#a6adc8]"* ]]
 }
 
+@test "vox pill is a tappable user range" {
+  vox_recording 720
+  run_status_right 90
+  reap_vox
+
+  # Clicking it opens a menu whose rows match the state; the range is what
+  # MouseDown1Status keys on.
+  [[ "$output" == *"#[range=user|vox]"* ]] || false
+  [[ "$output" == *"#[norange]"* ]]
+}
+
 @test "vox pill follows the capture into transcription" {
   # 90 s, not 40: a seconds-scale token would tick between the fixture and the
   # render, which this file's cold first run is slow enough to do.
