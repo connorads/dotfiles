@@ -387,6 +387,8 @@ Settings routing: aube reads both `~/.npmrc` (npm-shared keys) and `~/.config/au
 
 Disk reclaim: `cleanup`'s `aube` target flushes only the regenerable caches `~/.cache/aube/{virtual-store,packuments-full-v1}` (plus `aube cache prune --age-days 0`). It never touches the durable CAS at `~/.local/share/aube/store`, nor `~/.cache/aube/primer` / `adaptive-state.json`.
 
+`cleanup`'s `brew` target runs `brew cleanup --prune=all`, not brew's default 120-day policy: with `homebrew.onActivation.upgrade = true` every `drs`/`up` fetches fresh bottles and casks and leaves the superseded downloads behind, so `brew cleanup -n` reports 0 while gigabytes sit in `$(brew --cache)`. `brew autoremove` is excluded - it uninstalls dependencies, and `cleanup = "zap"` means nix-darwin already owns which packages exist.
+
 **bun**: global 4-day quarantine (`minimumReleaseAge = 345600`, seconds) in `~/.bunfig.toml` for direct `bun` use (mise now uses aube as the npm backend). **Must be `$HOME/.bunfig.toml`** - bun 1.3.14 silently ignores `$XDG_CONFIG_HOME/.bunfig.toml` ([oven-sh/bun#26408](https://github.com/oven-sh/bun/issues/26408)). Bun blocks dependency postinstall scripts by default; allow with `bun pm trust`. No `trust-policy` equivalent exists. **Caveat**: project-local `bunfig.toml` shallow-merges and *replaces* the whole `[install]` table from global. For urgent one-offs, use `bun install --minimum-release-age=0`; there is no known env override like npm/pnpm/uv/pip expose.
 
 **Deno**: Deno 2.8+ reads `min-release-age` from `.npmrc` for npm dependencies. `deno install --minimum-dependency-age=0` disables it for an explicit one-off. Lifecycle scripts still require explicit `--allow-scripts`.

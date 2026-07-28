@@ -3,17 +3,17 @@
 # usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
-#            --temp, --docker, --nix, --volumes
+#            --temp, --docker, --nix, --brew, --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers temp docker nix mise codex)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers temp docker nix mise codex brew)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
 # costs a full recompile to restore.
-CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers temp docker nix mise codex)
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers temp docker nix mise codex brew)
 CLEANUP_SELECTED_TARGETS=()
 
 # Roots scanned for Rust build dirs. Space-separated; override to scan elsewhere.
@@ -48,6 +48,7 @@ CLEANUP_LABELS=(
   nix "Nix garbage collection"
   mise "mise unused tool versions"
   codex "Codex TUI log and old session files"
+  brew "Homebrew download cache"
 )
 CLEANUP_DEFAULT_FLAGS=(
   bun 1
@@ -68,6 +69,7 @@ CLEANUP_DEFAULT_FLAGS=(
   nix 1
   mise 1
   codex 1
+  brew 1
 )
 
 typeset -gA CLEANUP_PROBE_APPLICABLE CLEANUP_PROBE_KB CLEANUP_PROBE_SIZE CLEANUP_PROBE_DETAILS CLEANUP_PROBE_COMMAND
@@ -86,7 +88,7 @@ Usage:
 
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
-  nvim, browsers, temp, docker, nix, mise, codex
+  nvim, browsers, temp, docker, nix, mise, codex, brew
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
@@ -417,6 +419,26 @@ _cleanup_probe_target() {
       detail="Truncate: $log_file; prune sessions older than 30d"
       command="truncate -s 0 codex-tui.log; rm stale session files"
       ;;
+    brew)
+      command -v brew >/dev/null 2>&1 || applicable=0
+      if (( applicable )); then
+        # brew's own figure, not du: only brew knows which cached downloads are
+        # superseded. --prune=all is deliberate - brew's default policy only
+        # prunes >120d, so `brew cleanup -n` reports 0 while the cache still
+        # holds gigabytes of bottles/casks for already-installed versions.
+        # No du fallback on purpose: du'ing $(brew --cache) would report the
+        # whole cache as reclaimable the moment brew's wording drifts - the
+        # overstatement the nix probe above was fixed for. Failing
+        # quiet-and-zero is the safe direction; a bats test pins the wording.
+        local freed
+        freed=$(brew cleanup --prune=all -n 2>/dev/null \
+          | awk '/would free approximately/ { for (i=1;i<=NF;i++) if ($i=="approximately") print $(i+1) }')
+        kb=$(_cleanup_parse_size_to_kb "${freed:-0}")
+        (( kb > 0 )) || applicable=0
+        detail="Source: brew cleanup --prune=all -n"
+        command="brew cleanup --prune=all"
+      fi
+      ;;
   esac
 
   CLEANUP_PROBE_APPLICABLE[$target]=$applicable
@@ -564,6 +586,15 @@ _cleanup_run_target() {
         find "$HOME/.codex/sessions" -type f -mtime +30 -delete 2>/dev/null
         find "$HOME/.codex/sessions" -type d -empty -delete 2>/dev/null
       fi
+      ;;
+    brew)
+      command -v brew >/dev/null 2>&1 || return 0
+      # Cache only. `brew autoremove` is deliberately excluded: it uninstalls
+      # no-longer-needed dependencies, a tooling state change of the
+      # rustup/cargo-target class, and nix-darwin already owns which packages
+      # exist (homebrew.onActivation.cleanup = "zap"), so autoremove would
+      # fight the declarative model.
+      brew cleanup --prune=all
       ;;
   esac
 }
@@ -717,7 +748,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex|--brew)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
