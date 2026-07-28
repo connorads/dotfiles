@@ -368,8 +368,11 @@ EOF
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
+  # The rendered value is the whole claim: it served the stale figure rather
+  # than waiting for the sampler. Asserting the cache still holds 3% here as
+  # well says nothing extra and races the sampler's 1 s sleep - under `-j` this
+  # file is contended enough for the render itself to outlast it.
   [[ "$plain" == *"3%"* ]] || false
-  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "3%" ]
   sleep 1.2
   [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "9%" ]
   [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
