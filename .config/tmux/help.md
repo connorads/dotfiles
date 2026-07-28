@@ -91,6 +91,7 @@ with `Ctrl+b x`. From any shell: `flt [preset] [command]` (presets: `c` centre,
 | `Ctrl+b b` | system monitor (bottom, floating pane) |
 | `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
+| `Ctrl+b Alt+v` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b g` | lazygit (floating pane; dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (native floating pane; persists while switching windows) |
@@ -185,6 +186,19 @@ keep-awake is never silently left running. `Ctrl+b Alt+k` toggles it.
 | `☼ ∞` peach | on, indefinite | awake until you turn it off |
 | `☼ 42m` peach | on, timed | awake for the remaining time, then self-clears |
 | (hidden) | off | Mac sleeps on its normal schedule |
+
+## Recording (status bar)
+
+A muted pill (macOS, width ≥ 80) shows **only** while `vox` is capturing audio -
+your mic and the system-audio loopback, to two tracks. It is deliberately quiet
+rather than an accent colour, because it is visible during screen shares.
+`Ctrl+b Alt+v` opens the picker; `vox stop` in any pane ends the recording and
+transcribes it locally.
+
+| Pill | State | Meaning |
+|------|-------|---------|
+| `~ 12m` muted | recording | capturing, elapsed time so far |
+| (hidden) | idle | nothing is being recorded |
 
 ## Copy mode navigation
 

@@ -62,6 +62,10 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # Reads the caffeinate pidfile; OFF → the pill self-hides. See caffeine_segment.
 # shellcheck source=/dev/null
 . "$SELF_DIR/caffeine-lib.sh"
+# Shared recording vocabulary (IDLE/RECORDING → colour + glyph + elapsed token).
+# Reads the vox statefile; IDLE → the pill self-hides. See vox_segment below.
+# shellcheck source=/dev/null
+. "$SELF_DIR/vox-lib.sh"
 # Canonical agent-state helpers: other_sessions_badge (the cross-session
 # attention rollup) plus the agent_hex/agent_char glyph mapping it echoes. See
 # agent_elsewhere_segment below.
@@ -209,6 +213,24 @@ caffeine_segment() {
 	glyph="$(caffeine_state_glyph "$state")"
 	printf "#[fg=#%s]#[bg=#%s]#[fg=#1e1e2e]#[bold] %s %s " \
 		"$colour" "$colour" "$glyph" "$(caffeine_token)"
+}
+
+# vox_segment — recording indicator, self-hiding: IDLE prints nothing, so the
+# pill exists only while a capture is running. Deliberately the opposite
+# treatment to caffeine's bright peach alarm: muted subtext0 on the surface1
+# data-pill shade (shared with disk/git), because this is visible during screen
+# shares and should read as ambient chrome, not as a warning. Still clears WCAG
+# AA on that background. Token is elapsed time via the shared human_age
+# formatter — not mm:ss, which would tick in 15 s jumps at this status-interval
+# and read as broken.
+vox_segment() {
+	local state colour glyph
+	state="$(vox_state)"
+	[ "$state" = "IDLE" ] && return 0
+	colour="$(vox_state_colour "$state")"
+	glyph="$(vox_state_glyph "$state")"
+	printf "#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s " \
+		"$colour" "$glyph" "$(vox_token)"
 }
 
 # agent_elsewhere_segment — the cross-session attention badge: a bright pill
@@ -411,6 +433,9 @@ print_full() {
 	# Keep-awake pill sits with the other custom-lib pills. Self-hiding, so it
 	# adds nothing while off; a bright peach accent when on.
 	caffeine_segment
+	# Recording pill, also self-hiding. Muted rather than accented on purpose —
+	# see vox_segment.
+	vox_segment
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
 	# RAM% pill (shown alongside mem_segment by design — both wanted). Dark pill
