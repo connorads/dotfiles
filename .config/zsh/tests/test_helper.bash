@@ -56,6 +56,13 @@ setup_test_home() {
 
   mkdir -p "$TEST_HOME" "$TEST_BIN"
   export HOME="$TEST_HOME"
+  # Git's own environment, dropped: `dotfiles commit` runs the pre-commit hook
+  # with GIT_DIR/GIT_WORK_TREE exported (the wrapper's --git-dir/--work-tree
+  # flags become env vars for hooks), and the hook runs this suite. A test that
+  # builds its own repo under the isolated HOME would silently address the REAL
+  # dotfiles repo instead - which failed with "invalid object" while committing,
+  # and passed when the same test was run by hand.
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
   # An explicit PATH, not one derived from wherever the caller's zsh happened to
   # live. Order: stubs, then the native host dirs, then whichever nix profile
   # dirs exist. Native-first mirrors production - in the tmux server's PATH /bin
