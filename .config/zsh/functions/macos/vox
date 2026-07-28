@@ -17,6 +17,7 @@
 #   vox rename <path> <slug> retitle, preserving the timestamp prefix
 #   vox compact [--older 30d]  WAV -> Opus 32k mono, preview + confirm
 #   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
+#   vox prune --empty        delete only silent tracks, keeping their siblings
 #
 # The store convention is the load-bearing decision:
 #
@@ -429,25 +430,48 @@ _vox_stamp_epoch() {
 	print -r -- "$epoch"
 }
 
-# _vox_reclaim MODE [--older SPEC] [--dry-run] [--force] - the shared body of
-# `vox compact` and `vox prune`: select recordings older than SPEC, preview what
-# would go, confirm, then act. Manual only - nothing here runs on a timer.
+# _vox_track_silent FILE - true when a track carries nobody audible. MONOLOGUE is
+# vox-lib's word for that, and an unmeasurable track reads silent, which is the
+# conservative call for the classifier but NOT for deletion - so `prune --empty`
+# only ever deletes a track whose sibling has content.
+_vox_track_silent() {
+	local kind
+	kind=$(ffmpeg -hide_banner -nostats -i "$1" -af volumedetect -f null - 2>&1 |
+		vox_classify_track)
+	[[ "$kind" == MONOLOGUE ]]
+}
+
+# _vox_reclaim MODE [--older SPEC] [--empty] [--dry-run] [--force] - the shared
+# body of `vox compact` and `vox prune`: select recordings, preview what would
+# go, confirm, then act. Manual only - nothing here runs on a timer.
+#
+# `prune --empty` selects by CONTENT rather than age: a track nobody spoke on -
+# almost always the system track of a monologue - while keeping the track that
+# carries the recording. Loudness is measured only on the candidates, at the
+# moment you ask, because pruning is rare and a stored figure would be one more
+# thing to keep true.
 #
 # Candidate paths go to stdout one per line (so it pipes, like every other
 # subcommand); the preview, totals and confirmation are stderr.
 _vox_reclaim() {
 	local mode=$1
 	shift
-	local older dry=0 force=0
+	local older dry=0 force=0 empty=0 aged=0
 	[[ "$mode" == compact ]] && older=30d || older=90d
 	while (( $# )); do
 		case "$1" in
 		--older)
 			older=${2:-}
+			aged=1
 			shift 2
 			;;
 		--older=*)
 			older=${1#--older=}
+			aged=1
+			shift
+			;;
+		--empty)
+			empty=1
 			shift
 			;;
 		--dry-run)
@@ -464,6 +488,17 @@ _vox_reclaim() {
 			;;
 		esac
 	done
+	if (( empty )); then
+		[[ "$mode" == prune ]] || {
+			_vox_die "--empty is a prune option (silence is not worth re-encoding)"
+			return 1
+		}
+		_vox_need ffmpeg || return 1
+	fi
+	# Age is a separate axis from silence: `--empty` alone means "however old",
+	# including a recording made a minute ago.
+	local ageless=0
+	(( empty && ! aged )) && ageless=1
 
 	local age
 	age=$(_vox_age_secs "$older") || {
@@ -476,34 +511,58 @@ _vox_reclaim() {
 	live=$(vox_dir)
 
 	local -a candidates=() targets=()
-	local dir stamp epoch
-	local -a audio
+	local dir stamp epoch track
+	local -a audio silent
 	for dir in "$VOX_STORE"/*(N/on); do
 		[[ -n "$live" && "$dir" == "$live" ]] && continue
 		stamp=${${dir:t}[1,17]}
+		# The stamp must parse either way: it is also what says "this directory
+		# is a vox recording" rather than something else under the store.
 		epoch=$(_vox_stamp_epoch "$stamp") || continue
-		(( epoch < cutoff )) || continue
+		(( ageless )) || (( epoch < cutoff )) || continue
 		if [[ "$mode" == compact ]]; then
 			audio=("$dir"/*.wav(N.))
 		else
 			audio=("$dir"/*.wav(N.) "$dir"/*.opus(N.))
 		fi
 		(( $#audio )) || continue
+		if (( empty )); then
+			silent=()
+			for track in "${audio[@]}"; do
+				_vox_track_silent "$track" && silent+=("$track")
+			done
+			# All silent means the whole recording captured nothing, which is a
+			# `rm -rf` decision rather than a reclaim one. Only ever drop a
+			# track whose sibling holds the conversation.
+			(( $#silent && $#silent < $#audio )) || continue
+			audio=("${silent[@]}")
+		fi
 		candidates+=("$dir")
 		targets+=("${audio[@]}")
 	done
 
 	if (( ! $#candidates )); then
-		print -u2 -- "vox: nothing to $mode (no recordings older than $older with audio left)"
+		if (( empty )); then
+			print -u2 -- "vox: nothing to prune (no recording has a silent track beside a spoken one)"
+		else
+			print -u2 -- "vox: nothing to $mode (no recordings older than $older with audio left)"
+		fi
 		return 0
 	fi
 
 	local total
 	total=$(du -ch "${targets[@]}" 2>/dev/null | tail -1 | awk '{ print $1 }')
-	print -u2 -- "vox $mode — $#candidates recording(s) older than $older, ${total:-?} of audio:"
-	for dir in "${candidates[@]}"; do
-		print -u2 -- "  ${dir:t}"
-	done
+	if (( empty )); then
+		print -u2 -- "vox prune --empty — $#targets silent track(s) in $#candidates recording(s), ${total:-?}:"
+		for track in "${targets[@]}"; do
+			print -u2 -- "  ${track:h:t}/${track:t}"
+		done
+	else
+		print -u2 -- "vox $mode — $#candidates recording(s) older than $older, ${total:-?} of audio:"
+		for dir in "${candidates[@]}"; do
+			print -u2 -- "  ${dir:t}"
+		done
+	fi
 
 	print -rl -- "${candidates[@]}"
 
@@ -565,6 +624,7 @@ _vox_help() {
   vox rename <path> <slug> retitle, keeping the timestamp prefix
   vox compact [--older 30d]  WAV -> Opus 32k mono (preview + confirm)
   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
+  vox prune --empty          delete only silent tracks, keeping their siblings
 
 Both reclaim commands take --dry-run and --force (skip the confirmation).
 There is deliberately no `vox rm`: `rm -rf` is already correct.

@@ -217,6 +217,31 @@ statefile() {
   [ -z "$output" ]
 }
 
+# --- solo / 2-way, derived from the system track's transcript ---------------
+
+@test "a system track with segments makes the session 2-way" {
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[{"id":0,"start":0,"end":1,"text":"yes hello"}]}' >"$HOME/rec/sys.json"
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "2-way" ]
+}
+
+@test "a system track with no segments makes the session solo" {
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[]}' >"$HOME/rec/sys.json"
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$output" = "solo" ]
+}
+
+@test "no system track at all reads solo, not an error" {
+  # What VOX_MIC_ONLY=1 produces, and what a recording pruned back to its
+  # transcript still reads as.
+  mkdir -p "$HOME/rec"
+  lib "vox_session_kind '$HOME/rec'"
+  [ "$status" -eq 0 ]
+  [ "$output" = "solo" ]
+}
+
 # --- pure parser: track loudness / session classification -------------------
 
 @test "mean volume is read from volumedetect output" {

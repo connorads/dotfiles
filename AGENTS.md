@@ -238,6 +238,7 @@ vox <file>             # transcribe an audio/video file that already exists
 vox rename <path> <slug>   # retitle a recording, keeping its timestamp prefix
 vox compact [--older 30d]  # WAV -> Opus 32k mono, preview + confirm (--dry-run/--force)
 vox prune   [--older 90d]  # delete audio, keep transcripts (destructive; preview + confirm)
+vox prune --empty          # delete only silent tracks, keeping the one that carries the recording
 ts                     # Tailscale wrapper (defined in .zshrc)
 zellij                  # Alternative multiplexer (Nix-installed; config ~/.config/zellij/config.kdl)
 svc ls                 # List agent services with status
