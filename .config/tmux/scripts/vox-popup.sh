@@ -46,6 +46,8 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # rather than assuming the popup shell inherited it.
 VOX_BIN=${VOX_BIN:-$HOME/.local/bin/vox}
 OSC52="$SELF_DIR/osc52-copy-to-client.sh"
+# shellcheck source=/dev/null
+. "$SELF_DIR/vox-lib.sh"
 
 # preview DIR — the transcript, or an honest note about what is there instead.
 preview() {
@@ -69,6 +71,10 @@ fi
 # and unlike passing #{pane_id} from the keybind, it actually expands (a
 # display-popup -E command string reaches the shell verbatim).
 pane=$(tmux display-message -p '#{pane_id}' 2>/dev/null || true)
+
+# Opening the library IS looking: it clears the READY pill, whether or not you
+# then pick anything. One write, no record of what was read.
+vox_touch_seen
 
 rows=""
 while IFS= read -r dir; do
