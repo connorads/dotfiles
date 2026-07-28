@@ -74,6 +74,16 @@ EOF
   ! grep -q "new-window" "$TEST_LOG"
 }
 
+@test "pane splits the explicit origin when one is supplied" {
+  # A float becomes the active pane, so float callers pass the origin rather
+  # than letting the dynamic lookup resolve to the float itself.
+  run "$WT_WINDOW" pane "/tmp/trees/repo/foo" "%3"
+
+  [ "$status" -eq 0 ]
+  grep -q -- "split-window -h -t %3 -c /tmp/trees/repo/foo" "$TEST_LOG"
+  ! grep -q "display-message" "$TEST_LOG"
+}
+
 @test "new runs wt-add and opens a window in the printed path on enter" {
   write_stub git <<'EOF'
 #!/usr/bin/env bash
@@ -108,6 +118,23 @@ EOF
   [ "$status" -eq 0 ]
   grep -q -- "split-window -h -t %9 -c /tmp/trees/repo/feat/x" "$TEST_LOG"
   ! grep -q "new-window" "$TEST_LOG"
+}
+
+@test "new threads its explicit origin through to the v pane split" {
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  write_stub wt-add <<'EOF'
+#!/usr/bin/env bash
+echo "/tmp/trees/repo/feat/x"
+EOF
+
+  run "$WT_WINDOW" new "feat/x" "%3" <<<"v"
+
+  [ "$status" -eq 0 ]
+  grep -q -- "split-window -h -t %3 -c /tmp/trees/repo/feat/x" "$TEST_LOG"
+  ! grep -q "display-message" "$TEST_LOG"
 }
 
 @test "pick routes ctrl-v to a pane in the summoning window" {
