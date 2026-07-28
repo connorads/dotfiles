@@ -5,6 +5,10 @@
 #   2. `#!/usr/bin/env zsh` shebang XOR a `# zsh-only: <reason>` marker in the
 #      first 5 lines - every function is either a dual-mode PATH command or
 #      self-declares why it must stay autoload-only.
+#   3. a dual-mode file is executable. The shebang is what makes `zfn-link`
+#      publish a ~/.local/bin symlink, and a mode-644 target turns every call
+#      through that symlink into "permission denied" - while the interactive
+#      autoload path keeps working, so the breakage is invisible to the author.
 # Quiet on success; names each offending file on stderr and exits 1 to block.
 set -euo pipefail
 
@@ -44,6 +48,10 @@ for f in "$@"; do
 		err "$f" "dual-mode (shebang) files must not carry a '# zsh-only:' marker"
 	elif ((!dual)) && ((!has_marker)); then
 		err "$f" "add '#!/usr/bin/env zsh' (dual-mode) or a '# zsh-only: <reason>' marker"
+	fi
+
+	if ((dual)) && [[ ! -x $f ]]; then
+		err "$f" "dual-mode files must be executable (chmod +x), or zfn-link's PATH symlink fails"
 	fi
 done
 exit $fail
