@@ -20,7 +20,7 @@
 | `Ctrl+b Tab` | last window |
 | `Ctrl+b c` | new window |
 | `Ctrl+b W` | window organiser (move/share/remove linked windows; same menu as right-click tab and Remobi Organise) |
-| `Ctrl+b Alt+w` | new worktree (prompts for branch, `wt-add`; enter→window, `v`→pane here) |
+| `Ctrl+b Alt+w` | new worktree (prompts for branch, then `wt-add` runs in a float; enter→window, `v`→pane in the window you came from) |
 | `Ctrl+b ,` | set manual window label (visible in tab; disables auto name) |
 | `Ctrl+b &` | kill window |
 

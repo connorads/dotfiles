@@ -275,18 +275,24 @@ EOF
   grep -qF -- '/tmp/work\\ space' "$TEST_LOG"
 }
 
-@test "prompt-worktree opens the single worktree prompt" {
+@test "prompt-worktree opens the single worktree prompt in a float" {
   run "$MENU" prompt-worktree "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]
   grep -q -- "command-prompt -p Worktree branch:" "$TEST_LOG"
-  grep -q -- "fork-worktree %% codex-thread" "$TEST_LOG"
+  # wt-add runs the repo's setup, so the fork opens as a non-modal float.
+  grep -qF -- 'run-shell "' "$TEST_LOG"
+  grep -qF -- 'flt -c /tmp/work\\ space big' "$TEST_LOG"
+  grep -qF -- 'fork-worktree\\ %%\\ codex-thread' "$TEST_LOG"
+  assert_log_missing "display-popup"
 }
 
 @test "prompt-worktrees opens one multi-prompt for count and branch prefix" {
   run "$MENU" prompt-worktrees "/tmp/work space" "codex-thread"
   [ "$status" -eq 0 ]
   grep -q -- "command-prompt -I 4, -p Fork count:,Worktree branch prefix:" "$TEST_LOG"
-  grep -q -- "fork-worktrees %% %2 codex-thread" "$TEST_LOG"
+  grep -qF -- 'flt -c /tmp/work\\ space big' "$TEST_LOG"
+  grep -qF -- 'fork-worktrees\\ %%\\ %2\\ codex-thread' "$TEST_LOG"
+  assert_log_missing "display-popup"
 }
 
 @test "fork-repeat split-right creates counted horizontal splits then evens layout" {
