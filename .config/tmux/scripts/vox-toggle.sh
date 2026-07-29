@@ -22,9 +22,10 @@
 #   `cat "$(vox stop)/transcript.md"` still works), and a key press has nowhere
 #   to put the minutes of transcription that follow. The pill covers the wait.
 #
-#   vox-toggle.sh [PANE]           # the binding's entry point
-#   vox-toggle.sh name DIR TITLE   # internal: the command-prompt's callback
-#   vox-toggle.sh finish DIR PANE  # internal: the detached stop
+#   vox-toggle.sh [PANE]               # the binding's entry point
+#   vox-toggle.sh prompt DIR [CLIENT]  # the title prompt, also the menu's Name…
+#   vox-toggle.sh name DIR TITLE       # internal: the command-prompt's callback
+#   vox-toggle.sh finish DIR PANE      # internal: the detached stop
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
 # the nix bash 5 that is already installed but ordered behind /bin in PATH.
@@ -66,6 +67,33 @@ VOX_BIN=${VOX_BIN:-$HOME/.local/bin/vox}
 . "$SELF_DIR/agent-state-lib.sh"
 
 note() { tmux display-message "$1" 2>/dev/null || true; }
+
+# raise_prompt DIR [CLIENT] — the title question, asked in one place. The pill
+# menu's Name… row asks the same thing and reaches it through the `prompt`
+# subcommand, so the wording, the flags and the callback have a single owner.
+#
+# The prompt appears over a capture that is already running, so escaping it
+# costs nothing. %% is tmux's substitution for what you typed. CLIENT is the one
+# that pressed the key or clicked the pill, so with several clients attached the
+# question lands where it was asked for.
+raise_prompt() {
+	local dir=$1 client=${2:-}
+	# -l: `-p` splits on commas into a *sequence* of prompts, so without it this
+	# wording asks twice and the second question eats your keys.
+	local -a cmd=(command-prompt -l -p 'title (recording, empty = none)')
+	[ -n "$client" ] && cmd+=(-t "$client")
+	# If no client can be prompted the recording is still running, and saying so
+	# beats reporting the start as failed.
+	tmux "${cmd[@]}" "run-shell '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
+		note "vox: recording ${dir##*/}"
+}
+
+# prompt DIR [CLIENT] — the menu's door to the same question.
+if [ "${1:-}" = prompt ]; then
+	[ -n "${2:-}" ] || exit 0
+	raise_prompt "$2" "${3:-}"
+	exit 0
+fi
 
 # name DIR TITLE — the command-prompt callback. An empty title is the common
 # case (you pressed enter), and means "leave it at the timestamp".
@@ -117,15 +145,7 @@ fi
 err=$(mktemp)
 if dir=$("$VOX_BIN" 2>"$err"); then
 	rm -f "$err"
-	# The prompt appears over a capture that is already running, so escaping it
-	# costs nothing. %% is tmux's substitution for what you typed. If no client
-	# can be prompted the recording is still running, and saying so beats
-	# reporting the start as failed.
-	# -l: `-p` splits on commas into a *sequence* of prompts, so without it this
-	# wording asks twice and the second question eats your keys.
-	tmux command-prompt -l -p 'title (recording, empty = none)' \
-		"run-shell '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
-		note "vox: recording ${dir##*/}"
+	raise_prompt "$dir"
 else
 	note "vox: $(tail -1 "$err")"
 	rm -f "$err"

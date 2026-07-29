@@ -135,16 +135,15 @@ menu() {
   [[ "$(cat "$TEST_LOG")" == *"2026-07-28-140312-standup"* ]]
 }
 
-@test "the name row asks one question" {
+@test "the name row delegates the question to the toggle" {
   recording_state
 
-  menu
+  menu client7 10 S
 
-  # `command-prompt -p` splits on commas into a sequence of prompts, so this
-  # wording is two questions unless it is asked literally (`-l`).
-  line=$(grep -m1 'command-prompt' "$TEST_LOG")
-  [ -n "$line" ]
-  prompt=${line#*-p }
-  prompt=${prompt%%run-shell*}
-  [[ "$line" == *" -l "* ]] || [[ "$prompt" != *,* ]]
+  rows=$(cat "$TEST_LOG")
+  # One owner for the wording and the flags: a second spelling here is how the
+  # comma-split prompt survived in two places at once.
+  [[ "$rows" == *"vox-toggle.sh\" prompt"* ]] || false
+  [[ "$rows" == *"client7"* ]] || false
+  [[ "$rows" != *"command-prompt"* ]]
 }
