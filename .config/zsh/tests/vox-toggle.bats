@@ -139,7 +139,9 @@ toggle() {
   # baked into the callback - a rename mid-capture keeps that true.
   [[ "$line" == *" -l "* ]] || false
   [[ "$line" == *"-t client7"* ]] || false
-  [[ "$line" == *"name \"$VOX_STORE/2026-07-28-140312-standup\""* ]]
+  [[ "$line" == *"name \"$VOX_STORE/2026-07-28-140312-standup\""* ]] || false
+  # Detached: a foreground run-shell queues the keys pressed while it lives.
+  [[ "$line" == *"run-shell -b"* ]]
 }
 
 @test "the prompt callback renames the live recording" {

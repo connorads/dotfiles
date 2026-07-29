@@ -84,7 +84,10 @@ raise_prompt() {
 	[ -n "$client" ] && cmd+=(-t "$client")
 	# If no client can be prompted the recording is still running, and saying so
 	# beats reporting the start as failed.
-	tmux "${cmd[@]}" "run-shell '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
+	# -b on the callback for the same reason as the binding: a foreground
+	# run-shell queues the keys pressed while it lives, and no vox path needs an
+	# exit status - they all report with display-message.
+	tmux "${cmd[@]}" "run-shell -b '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
 		note "vox: recording ${dir##*/}"
 }
 
