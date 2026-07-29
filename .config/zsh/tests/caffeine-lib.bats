@@ -21,9 +21,28 @@ lib() {
   run bash -c "source '$CALF_LIB'; $*"
 }
 
-# Write "pid deadline" to the pidfile.
+# Write "pid deadline" to the pidfile — the two-field form written before lid
+# mode existed, kept as the backwards-compatibility fixture.
 pidfile() {
   printf '%s %s\n' "$1" "$2" >"$CAFFEINE_PIDFILE"
+}
+
+# Write the current three-field form "pid deadline mode".
+pidfile3() {
+  printf '%s %s %s\n' "$1" "$2" "$3" >"$CAFFEINE_PIDFILE"
+}
+
+# Stub `pmset -g`, whose output caffeine_sleep_disabled parses. The real pmset
+# omits the SleepDisabled key entirely when the flag is clear, so the stub does
+# too — that absence is the case the parser has to get right.
+stub_pmset() {
+  local flag=$1
+  write_stub pmset <<EOF
+#!/usr/bin/env bash
+[ "\$1" = "-g" ] || exit 0
+printf 'System-wide power settings:\nCurrently in use:\n sleep 1\n disksleep 10\n'
+[ "$flag" = "absent" ] || printf ' SleepDisabled %s\n' "$flag"
+EOF
 }
 
 # --- pidfile default resolution --------------------------------------------
@@ -63,6 +82,87 @@ pidfile() {
   lib caffeine_state
   kill "$pid" 2>/dev/null || true
   [ "$output" = "ON" ]
+}
+
+# --- mode: the pidfile's third field ---------------------------------------
+
+@test "mode defaults to idle for a two-field pidfile" {
+  # The backwards-compatibility contract: a pidfile written before lid mode
+  # existed keeps working, with no migration.
+  pidfile 123 0
+  lib caffeine_mode
+  [ "$output" = "idle" ]
+}
+
+@test "mode is idle when no pidfile exists" {
+  lib caffeine_mode
+  [ "$output" = "idle" ]
+}
+
+@test "mode reads lid from the third field" {
+  future=$(($(date +%s) + 600))
+  pidfile3 123 "$future" lid
+  lib caffeine_mode
+  [ "$output" = "lid" ]
+}
+
+@test "an unrecognised third field reads as idle, never lid" {
+  # Fail towards the unprivileged mode: a garbled field must not let anything
+  # claim the mode that holds a kernel flag.
+  pidfile3 123 0 wat
+  lib caffeine_mode
+  [ "$output" = "idle" ]
+}
+
+# --- state: ON-LID ----------------------------------------------------------
+
+@test "ON-LID for a live pid in lid mode" {
+  sleep 100 &
+  pid=$!
+  future=$(($(date +%s) + 600))
+  pidfile3 "$pid" "$future" lid
+  lib caffeine_state
+  kill "$pid" 2>/dev/null || true
+  [ "$output" = "ON-LID" ]
+}
+
+@test "ON for a live pid explicitly in idle mode" {
+  sleep 100 &
+  pid=$!
+  pidfile3 "$pid" 0 idle
+  lib caffeine_state
+  kill "$pid" 2>/dev/null || true
+  [ "$output" = "ON" ]
+}
+
+@test "OFF for a stale lid pidfile whose supervisor is dead" {
+  # The pill must not claim ON-LID for a supervisor that has gone; the kernel
+  # flag it left behind is the reconciler's job, not the state's.
+  sleep 100 &
+  dead=$!
+  kill "$dead" 2>/dev/null || true
+  wait "$dead" 2>/dev/null || true
+  future=$(($(date +%s) + 600))
+  pidfile3 "$dead" "$future" lid
+  lib caffeine_state
+  [ "$output" = "OFF" ]
+}
+
+@test "caffeine_state never shells out to pmset" {
+  # It renders on every status tick, so a fork per tick is the bug. A pmset stub
+  # that fails loudly proves the state path never reaches it.
+  write_stub pmset <<'EOF'
+#!/usr/bin/env bash
+echo "caffeine_state must not fork pmset" >&2
+exit 99
+EOF
+  sleep 100 &
+  pid=$!
+  pidfile3 "$pid" 0 lid
+  lib caffeine_state
+  kill "$pid" 2>/dev/null || true
+  [ "$status" -eq 0 ]
+  [ "$output" = "ON-LID" ]
 }
 
 # --- remaining seconds and the deadline field ------------------------------
@@ -131,4 +231,112 @@ pidfile() {
   [ "$output" = "2h" ]
   lib 'caffeine_human_age 172800'
   [ "$output" = "2d" ]
+}
+
+@test "ON-LID maps to catppuccin maroon" {
+  lib 'caffeine_state_colour ON-LID'
+  [ "$output" = "eba0ac" ]
+}
+
+@test "ON-LID glyph is the eight-pointed star" {
+  lib 'caffeine_state_glyph ON-LID'
+  [ "$output" = "✷" ]
+}
+
+@test "lid glyph honours a CAFFEINE_LID_GLYPH override" {
+  CAFFEINE_LID_GLYPH="◈" lib 'caffeine_state_glyph ON-LID'
+  [ "$output" = "◈" ]
+}
+
+@test "the lid override does not leak into the idle glyph" {
+  CAFFEINE_LID_GLYPH="◈" lib 'caffeine_state_glyph ON'
+  [ "$output" = "☼" ]
+}
+
+# --- the real kernel flag ---------------------------------------------------
+
+@test "sleep_disabled is true when pmset reports SleepDisabled 1" {
+  stub_pmset 1
+  lib caffeine_sleep_disabled
+  [ "$status" -eq 0 ]
+}
+
+@test "sleep_disabled is false when pmset reports SleepDisabled 0" {
+  stub_pmset 0
+  lib caffeine_sleep_disabled
+  [ "$status" -ne 0 ]
+}
+
+@test "sleep_disabled is false when pmset omits the key entirely" {
+  # The ordinary case: pmset prints no SleepDisabled line at all when clear.
+  stub_pmset absent
+  lib caffeine_sleep_disabled
+  [ "$status" -ne 0 ]
+}
+
+@test "sleep_disabled is false where there is no pmset at all" {
+  # Linux, and any sanitised PATH: the flag cannot be raised, so it is not.
+  run bash -c "source '$CALF_LIB'; PATH=/nonexistent caffeine_sleep_disabled"
+  [ "$status" -ne 0 ]
+}
+
+# --- drive layer: the constraints, not the privileged path ------------------
+# Starting a real lid session needs sudo and mutates a machine-wide kernel flag,
+# so the happy path stays a manual smoke test (see ../../tmux/AGENTS.md). What is
+# asserted here is what a caller can rely on without ever reaching sudo.
+
+@test "lid mode refuses an indefinite session" {
+  # No indefinite variant exists: an indefinite lid session is the exact
+  # artefact the subsystem exists to prevent.
+  lib 'caffeine_start_lid 0'
+  [ "$status" -eq 2 ]
+  lib 'caffeine_start_lid'
+  [ "$status" -eq 2 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
+@test "lid mode refuses a non-numeric duration" {
+  lib 'caffeine_start_lid abc'
+  [ "$status" -eq 2 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
+@test "lid mode refuses a host with no pmset" {
+  run bash -c "source '$CALF_LIB'; PATH=/nonexistent caffeine_start_lid 1800"
+  [ "$status" -eq 3 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
+@test "start records idle as the mode" {
+  write_stub caffeinate <<'EOF'
+#!/usr/bin/env bash
+exec sleep 100
+EOF
+  lib 'caffeine_start 600'
+  [ "$status" -eq 0 ]
+  read -r _pid _deadline _mode <"$CAFFEINE_PIDFILE"
+  [ "$_mode" = "idle" ]
+  [ "$_deadline" -gt 0 ]
+  kill "$_pid" 2>/dev/null || true
+}
+
+@test "stop waits for the managed pid to actually die" {
+  # Load-bearing: caffeine_start* stops first, and without the wait an outgoing
+  # lid supervisor's trap can fire after the incoming one raised the flag,
+  # silently disarming a session the pill reports as ON-LID.
+  sleep 100 &
+  pid=$!
+  pidfile3 "$pid" 0 lid
+  lib caffeine_stop
+  [ "$status" -eq 0 ]
+  # The pid is gone by the time stop returned, not merely signalled.
+  run kill -0 "$pid"
+  [ "$status" -ne 0 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
+}
+
+@test "stop is a no-op with no pidfile" {
+  lib caffeine_stop
+  [ "$status" -eq 0 ]
+  [ ! -f "$CAFFEINE_PIDFILE" ]
 }
