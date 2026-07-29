@@ -934,7 +934,13 @@ Change as a set:
   by contract, and a key press has nowhere to put minutes of transcription, so
   the pill carries the wait and a `display-message` plus `ring_bell` reports the
   end. Pressed while TRANSCRIBING it starts a new capture — transcription is
-  per-directory and detached, so the two never contend.
+  per-directory and detached, so the two never contend. **The title prompt is one
+  literal question** (`command-prompt -l`, see the findings below) and the script
+  owns it: `vox-toggle.sh prompt DIR [CLIENT]` is the single door, so the pill
+  menu asks the same wording with the same flags. **The key runs detached**
+  (`run-shell -b`, in [`tmux.conf`](./tmux.conf) and on the prompt's own `name`
+  callback): a foreground job queues every key pressed while it lives, and the
+  job lives for as long as the prompt is open.
 - [`scripts/vox-menu.sh`](./scripts/vox-menu.sh) — the menu behind a click on
   the pill (`#[range=user|vox]`, dispatched from the `MouseDown1Status` chain in
   [`tmux.conf`](./tmux.conf) beside `agents` and `mem`). **Its rows match the
@@ -943,7 +949,11 @@ Change as a set:
   the one-lib rule exists to prevent, which is why the menu is a script reading
   `vox_state` rather than a literal in the config. Discard is `vox cancel` and
   the only `confirm-before` row: it throws audio away, while stopping only
-  spends time.
+  spends time. **Name… delegates to `vox-toggle.sh prompt`** rather than
+  re-spelling a `command-prompt` inside four levels of escaping, and passes the
+  clicking client through so the question lands where it was asked for; the
+  pill-click row is `run-shell -b` because `display-menu` blocks its caller the
+  same way `command-prompt` does.
 - [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
   library over `vox ls`, previewing each transcript and carrying the derived
   `solo`/`2-way` column: enter copies it (tmux buffer plus OSC52), `ctrl-y`
@@ -969,6 +979,21 @@ Change as a set:
 
 ### Findings that are load-bearing, not tidiness
 
+- **`command-prompt` splits `-p` and `-I` on commas**, into a *sequence* of
+  prompts with one answer each (`%%`, `%1`, `%2`, …). So any prompt holding
+  **text** — a title, a window label, a path — needs **`-l`** (tmux 3.6+), which
+  takes both flags literally. Without it the status line shows the truncated
+  first half, and Enter opens a second prompt that swallows every keystroke: the
+  "tmux is frozen" symptom, from a wording change nobody thought was a flag
+  change. The splitting is deliberate in
+  [`scripts/claude-branch-menu.sh`](./scripts/claude-branch-menu.sh) and
+  [`scripts/codex-branch-menu.sh`](./scripts/codex-branch-menu.sh), which ask for
+  several values at once — hence a rule, not a blanket `-l`.
+- **A foreground `run-shell` queues the client's keys.** Keys pressed while the
+  job is alive are delivered only once it exits (measured on 3.7b), and a job
+  that raises a `command-prompt` or `display-menu` from the CLI lives until that
+  prompt or menu closes. A binding whose script prompts therefore needs
+  `run-shell -b`, unless something genuinely needs the exit status.
 - **Stop must be SIGINT, never SIGTERM.** ffmpeg treats TERM as "immediate exit
   requested" and leaves a WAV with **no valid header** — an unreadable recording.
   INT is the clean-shutdown path that rewrites the header with the real length.
