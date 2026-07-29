@@ -144,8 +144,11 @@ assert_tab_label() {
   tx set-option -p -t "$p1" @agent_state done
   tx select-pane -t "$p2" || true
   tx select-pane -t "$p1" || true
-  sleep 0.3
-  [ "$(tx show-options -pqv -t "$p1" @agent_state)" = idle ]
+  # The hook fires `run-shell -b`, i.e. detached: the option write lands some
+  # time after select-pane returns, and how long is not a number this test can
+  # know.
+  wait_until -d 'tx show-options -pqv -t "$p1" @agent_state' \
+    '[ "$(tx show-options -pqv -t "$p1" @agent_state)" = idle ]'
 }
 
 @test "session-window-changed ages a done pane to idle" {
@@ -153,8 +156,8 @@ assert_tab_label() {
   tx set-option -p -t "$w1" @agent_state done
   tx new-window -t s
   tx select-window -t "$(tx display-message -p -t "$w1" '#{window_id}')" || true
-  sleep 0.3
-  [ "$(tx show-options -pqv -t "$w1" @agent_state)" = idle ]
+  wait_until -d 'tx show-options -pqv -t "$w1" @agent_state' \
+    '[ "$(tx show-options -pqv -t "$w1" @agent_state)" = idle ]'
 }
 
 # client-focus-in fires on a real terminal focus event, which cannot be driven
