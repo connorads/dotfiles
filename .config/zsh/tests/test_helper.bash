@@ -266,8 +266,45 @@ attach_pty_client() {
   ATTACH_PID=$!
 
   # shellcheck disable=SC2016  # a wait_until predicate expands per poll, not here
-  wait_until -d '"$TMUX_BIN" -L "$SOCK" list-clients' \
-    '[ "$("$TMUX_BIN" -L "$SOCK" display-message -p -t "$sess" "#{session_attached}")" != 0 ]'
+  wait_until -d '"$TMUX_BIN" -L "$SOCK" list-clients' "_session_has_client $sess"
+}
+
+# True only when SESSION really has an attached client. `[ "$(...)" != 0 ]` was
+# not that test: display-message printing nothing - a dead server, a missing
+# session, any error - also satisfies "not 0", so the poll would report a client
+# where there was not even a server.
+_session_has_client() {
+  local n
+  n=$("$TMUX_BIN" -L "$SOCK" display-message -p -t "$1" '#{session_attached}' 2>/dev/null)
+  case "$n" in
+  '' | *[!0-9]*) return 1 ;;
+  esac
+  [ "$n" -gt 0 ]
+}
+
+# read_pidfile FILE - the pid a process wrote to FILE, once it is actually there.
+#
+# A pidfile is created by the shell redirection *before* the writing process has
+# put anything in it, so "the file exists" and "the file names a pid" are
+# different moments. Polling the first and reading anyway yields an empty pid,
+# and every check downstream then passes vacuously: `kill -0 ""` fails, so a
+# test asking "has it exited yet?" answers yes immediately and proves nothing
+# about the process it was watching.
+read_pidfile() {
+  local file=$1
+  # shellcheck disable=SC2016  # a wait_until predicate expands per poll, not here
+  wait_until -d 'printf "%s exists=%s content=[%s]\n" "$file" "$([ -e "$file" ] && echo y || echo n)" "$(cat "$file" 2>/dev/null)"' \
+    '_pidfile_has_pid "$file"' || return 1
+  cat "$file"
+}
+
+_pidfile_has_pid() {
+  local content
+  content=$(cat "$1" 2>/dev/null | tr -d ' \n')
+  case "$content" in
+  '' | *[!0-9]*) return 1 ;;
+  esac
+  return 0
 }
 
 run_in_tty() {

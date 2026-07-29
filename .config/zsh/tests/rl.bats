@@ -63,6 +63,11 @@ _leader_group_settled() {
 # succeeds on a zombie, so "still signalable" is not the same as "still alive" -
 # a poll that only asks `kill -0` waits for the reap, which may never come.
 _process_reaped() {
+  # An empty or non-numeric pid is not "reaped", it is a bug in the caller:
+  # `kill -0 ""` fails, which would otherwise read as "already gone".
+  case "${1:-}" in
+  '' | *[!0-9]*) return 1 ;;
+  esac
   kill -0 "$1" 2>/dev/null || return 0
   case "$(ps -o stat= -p "$1" 2>/dev/null | tr -d ' ')" in
   Z*) return 0 ;;
@@ -394,12 +399,13 @@ SCRIPT
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
-  wait_until -i 0.1 '[ -f "$RL_CHILD_PID_FILE" ] && [ -f "$RL_GRANDCHILD_PID_FILE" ]'
-
+  # read_pidfile, not `[ -f ]`: an empty read gives an empty pid, and
+  # _process_reaped on an empty pid would report "already gone" the instant it
+  # was asked - the whole point of this test passing without proving anything.
   local child_pid
   local grandchild_pid
-  child_pid=$(cat "$RL_CHILD_PID_FILE")
-  grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
+  child_pid=$(read_pidfile "$RL_CHILD_PID_FILE")
+  grandchild_pid=$(read_pidfile "$RL_GRANDCHILD_PID_FILE")
 
   # rl announces the first INT, which is the only observable saying it has been
   # handled rather than merely delivered.
@@ -452,7 +458,7 @@ SCRIPT
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
 
-  wait_until -i 0.1 '[ -f "$RL_CHILD_PID_FILE" ]'
+  read_pidfile "$RL_CHILD_PID_FILE" >/dev/null
 
   # Both INTs land inside the window. Each is driven off rl's own announcement,
   # so "rapid" no longer depends on how fast the test happens to be scheduled.
