@@ -348,49 +348,76 @@ EOF
   [ -z "$output" ]
 }
 
+# A cpu sampler that logs one line, then blocks until the test releases it.
+# The gate is what turns "the cache is still stale" and "only one sampler ran"
+# into assertions: both claims are about what happens WHILE a sampler is in
+# flight, and a sampler that merely sleeps has to be slower than everything the
+# test does next for them to hold. Under `-j` it is not. Blocked on a file the
+# test owns, the window stays open for as long as the test needs it.
+write_gated_cpu_sampler() {
+  export CPU_RELEASE="$BATS_TEST_TMPDIR/cpu-release"
+  rm -f "$CPU_RELEASE"
+  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<EOF
+#!/usr/bin/env bash
+echo x >>"\$TEST_LOG"
+while [ ! -e "\$CPU_RELEASE" ]; do sleep 0.02; done
+printf '$1'
+EOF
+}
+
+# One line in $TEST_LOG per sampler start, so this is "the sampler is running
+# and holding the lock" - the readiness signal the gate tests wait on.
+samplers_started() {
+  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq "$1" ]
+}
+
 @test "stale cpu cache returns immediately while one sampler refreshes it" {
   printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
   touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
-  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
-#!/usr/bin/env bash
-echo x >>"$TEST_LOG"
-sleep 1
-printf '9%%'
-EOF
+  write_gated_cpu_sampler '9%%'
 
   run_status_right 90
 
   [ "$status" -eq 0 ]
   plain=$(printf '%s' "$output" | strip_tmux_styles)
-  # The rendered value is the whole claim: it served the stale figure rather
-  # than waiting for the sampler. Asserting the cache still holds 3% here as
-  # well says nothing extra and races the sampler's 1 s sleep - under `-j` this
-  # file is contended enough for the render itself to outlast it.
+  # The rendered value is the claim: it served the stale figure rather than
+  # waiting for the sampler.
   [[ "$plain" == *"3%"* ]] || false
-  sleep 1.2
-  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "9%" ]
-  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
+  # With the sampler provably held at the gate, the cache cannot have moved -
+  # its only writer is blocked. An invariant now, not a bet on being first.
+  wait_until -d 'cat "$TEST_LOG"' 'samplers_started 1'
+  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "3%" ]
+
+  touch "$CPU_RELEASE"
+  wait_until -d 'cat "$HOME/.cache/tmux-cpu-percentage"' \
+    '[ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "9%" ]'
+  samplers_started 1
 }
 
 @test "concurrent stale renders launch only one cpu sampler" {
   printf '3%%' >"$HOME/.cache/tmux-cpu-percentage"
   touch -t 202001010000 "$HOME/.cache/tmux-cpu-percentage"
-  write_executable "$HOME/.config/tmux/plugins/tmux-cpu/scripts/cpu_percentage.sh" <<'EOF'
-#!/usr/bin/env bash
-echo x >>"$TEST_LOG"
-sleep 0.3
-printf '8%%'
-EOF
+  write_gated_cpu_sampler '8%%'
 
-  bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" host host.local "" "" >/dev/null &
-  first=$!
-  bash "$STATUS_RIGHT" 90 "$BATS_TEST_TMPDIR" host host.local "" "" >/dev/null &
-  second=$!
-  wait "$first" "$second"
-  sleep 0.5
+  # Backgrounding both renders and `wait`ing on them proves nothing: the sampler
+  # is a detached subshell the script never waits for (status-right.sh), so both
+  # renders return long before any sampler does. Holding the first sampler at
+  # the gate is what makes the second render genuinely concurrent with it, which
+  # is the mutual exclusion being claimed.
+  run_status_right 90
+  [ "$status" -eq 0 ]
+  wait_until -d 'cat "$TEST_LOG"' 'samplers_started 1'
 
-  [ "$(wc -l <"$TEST_LOG" | tr -d ' ')" -eq 1 ]
-  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]
+  run_status_right 90
+  [ "$status" -eq 0 ]
+  plain=$(printf '%s' "$output" | strip_tmux_styles)
+  [[ "$plain" == *"3%"* ]] || false
+
+  touch "$CPU_RELEASE"
+  wait_until -d 'cat "$HOME/.cache/tmux-cpu-percentage"' \
+    '[ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]'
+  # A second sampler would have logged its own line, gate or no gate.
+  samplers_started 1
 }
 
 @test "failed cpu sampler keeps the last good value and clears its lock" {
