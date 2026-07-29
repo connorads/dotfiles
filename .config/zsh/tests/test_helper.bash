@@ -49,6 +49,75 @@ _discover_bash5() {
 BASH5="$(_discover_bash5 || true)"
 export BASH5
 
+# wait_until [-t SECS] [-i SECS] [-d DIAG] 'PREDICATE'
+#
+# Poll PREDICATE until it succeeds, or the budget expires. The suite's only
+# sanctioned way to wait for something asynchronous.
+#
+# A fixed `sleep` long enough to outlast the work on an idle machine is not long
+# enough under `-j`, where fork/exec chains inflate several-fold - and every
+# second of it is paid on every run whether the work finished in 10ms or not.
+# A poll is both faster and stable: it costs one interval when the work is
+# quick, and only spends the budget when something is genuinely wrong.
+#
+#   -t  wall-clock budget, whole seconds (default 10). A backstop, not an
+#       expectation. Raising it slows a passing test by nothing, so prefer a
+#       generous one over a tuned one.
+#   -i  poll interval, fractional allowed (default 0.05).
+#   -d  a command run once on timeout, its output printed as the diagnostic -
+#       so the failure says what WAS observed, not only what was wanted.
+#
+# PREDICATE is a shell command string, re-evaluated every poll. **Single-quote
+# it**: in double quotes a `$(...)` is expanded once at the call, and the poll
+# then re-tests that one frozen value forever.
+#
+#   wait_until -t 5 '[ -s "$pidfile" ]'
+#   wait_until -d 'cat "$log"' 'grep -q ready "$log"'
+#
+# Returns 0 as soon as PREDICATE succeeds, 1 on timeout - which fails the test,
+# since bats runs test bodies under errexit. Inside a function invoked with
+# `run`, errexit is off, so use `wait_until ... || return 1` there.
+wait_until() {
+  local timeout=10 interval=0.05 diagnostic=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -t)
+      timeout=$2
+      shift 2
+      ;;
+    -i)
+      interval=$2
+      shift 2
+      ;;
+    -d)
+      diagnostic=$2
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) break ;;
+    esac
+  done
+
+  # A deadline read off $SECONDS, rather than a fixed iteration count: the
+  # budget must bound wall-clock, and under contention a single poll iteration
+  # can itself cost more than the interval.
+  local deadline=$((SECONDS + timeout))
+  while :; do
+    eval "$*" && return 0
+    [ "$SECONDS" -lt "$deadline" ] || break
+    sleep "$interval"
+  done
+
+  printf 'wait_until: timed out after %ss waiting for: %s\n' "$timeout" "$*" >&2
+  if [ -n "$diagnostic" ]; then
+    printf 'wait_until: last observed: %s\n' "$(eval "$diagnostic" 2>&1)" >&2
+  fi
+  return 1
+}
+
 setup_test_home() {
   export TEST_HOME="$BATS_TEST_TMPDIR/home"
   export TEST_BIN="$BATS_TEST_TMPDIR/bin"
