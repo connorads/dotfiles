@@ -175,11 +175,7 @@ PY
   [ "$status" -eq 0 ]
   [ ! -e "$REFRESH_DONE" ]
   touch "$REFRESH_RELEASE"
-  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    [ -e "$REFRESH_DONE" ] && break
-    sleep 0.1
-  done
-  [ -e "$REFRESH_DONE" ]
+  wait_until -i 0.1 '[ -e "$REFRESH_DONE" ]'
 }
 
 @test "SIGTERM restores the popup display while detached refresh continues" {
@@ -191,11 +187,7 @@ PY
   [[ "$output" == *$'\033[?25h'* ]]
   [ ! -e "$REFRESH_DONE" ]
   touch "$REFRESH_RELEASE"
-  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    [ -e "$REFRESH_DONE" ] && break
-    sleep 0.1
-  done
-  [ -e "$REFRESH_DONE" ]
+  wait_until -i 0.1 '[ -e "$REFRESH_DONE" ]'
 }
 
 @test "natural refresh completion redraws once when a cache changed" {

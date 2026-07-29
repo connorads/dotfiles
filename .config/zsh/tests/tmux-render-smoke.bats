@@ -119,11 +119,7 @@ start_client() {
 
 wait_for_client() {
   local i
-  for i in $(seq 1 50); do
-    [ -n "$(tx list-clients -F '#{client_name}' 2>/dev/null)" ] && return 0
-    sleep 0.2
-  done
-  return 1
+  wait_until -i 0.2 '[ -n "$(tx list-clients -F "#{client_name}" 2>/dev/null)" ]'
 }
 
 reap_client() {

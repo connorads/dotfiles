@@ -224,11 +224,8 @@ assert_tab_label() {
     "$TMUX_BIN" -L "$SOCK" -C attach-session -t s <"$BATS_TEST_TMPDIR/client.in" >"$BATS_TEST_TMPDIR/client.out"
   ) &
   client_pid=$!
-  for _ in {1..20}; do
-    client="$(tx list-clients -F '#{client_name}' 2>/dev/null | head -1)"
-    [ -n "$client" ] && break
-    sleep 0.05
-  done
+  wait_until '[ -n "$(tx list-clients -F "#{client_name}" 2>/dev/null)" ]'
+  client="$(tx list-clients -F '#{client_name}' 2>/dev/null | head -1)"
   [ -n "$client" ]
   [ "$(tx display-message -p -c "$client" '#W')" = one ]
   initial_order="$(tx list-windows -t s -F '#W' | paste -sd, -)"

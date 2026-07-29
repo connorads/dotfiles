@@ -2,6 +2,10 @@
 
 bats_require_minimum_version 1.5.0
 
+# Sourced for wait_until only - this file deliberately does not call
+# setup_test_home (see below).
+source "$BATS_TEST_DIRNAME/test_helper.bash"
+
 # Behavioural regression for the skl picker's Tab-marks-not-installs fix.
 #
 # Drives the REAL ~/.config/skl/bin/pick through fzf in a pane on a throwaway
@@ -54,18 +58,11 @@ teardown() {
   tmux -L "$SOCK" kill-server 2>/dev/null || true
 }
 
-# Poll (up to ~6s) until $2 predicate succeeds; fail with context otherwise.
+# Poll until the predicate succeeds; on timeout dump the pane as context.
 _wait_for() {
   local what=$1
   shift
-  local i
-  for i in $(seq 1 60); do
-    if "$@"; then return 0; fi
-    sleep 0.1
-  done
-  echo "timed out waiting for: $what" >&2
-  tmux -L "$SOCK" capture-pane -t s -p 2>&1 >&2 || true
-  return 1
+  wait_until -i 0.1 -d "echo 'waiting for: $what'; tmux -L '$SOCK' capture-pane -t s -p 2>&1" "$*"
 }
 
 _pane_shows_list() { tmux -L "$SOCK" capture-pane -t s -p 2>/dev/null | grep -q 'ref-alpha'; }

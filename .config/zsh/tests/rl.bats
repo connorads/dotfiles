@@ -43,12 +43,22 @@ write_registry_record() {
 spawn_group_leader() {
   perl -MPOSIX=setsid -e 'POSIX::setsid(); exec "sleep", "300"' </dev/null >/dev/null 2>&1 &
   LEADER_PID=$!
-  local attempt
-  for attempt in $(seq 20); do
-    LEADER_PGID=$(ps -o pgid= -p "$LEADER_PID" 2>/dev/null | tr -d ' ')
-    [ "$LEADER_PGID" = "$LEADER_PID" ] && return 0
-    sleep 0.1
-  done
+  wait_until -i 0.1 -d 'ps -o pid=,pgid= -p "$LEADER_PID"' '_leader_group_settled'
+}
+
+_leader_group_settled() {
+  LEADER_PGID=$(ps -o pgid= -p "$LEADER_PID" 2>/dev/null | tr -d ' ')
+  [ "$LEADER_PGID" = "$LEADER_PID" ]
+}
+
+# True once a pid is gone, or a zombie its parent has not reaped yet. `kill -0`
+# succeeds on a zombie, so "still signalable" is not the same as "still alive" -
+# a poll that only asks `kill -0` waits for the reap, which may never come.
+_process_reaped() {
+  kill -0 "$1" 2>/dev/null || return 0
+  case "$(ps -o stat= -p "$1" 2>/dev/null | tr -d ' ')" in
+  Z*) return 0 ;;
+  esac
   return 1
 }
 
@@ -371,19 +381,7 @@ SCRIPT
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
-  local ready=0
-
-  for _ in {1..50}; do
-    if [[ -f "$RL_CHILD_PID_FILE" && -f "$RL_GRANDCHILD_PID_FILE" ]]; then
-      ready=1
-      break
-    fi
-    sleep 0.1
-  done
-
-  [ "$ready" -eq 1 ]
-  [ -f "$RL_CHILD_PID_FILE" ]
-  [ -f "$RL_GRANDCHILD_PID_FILE" ]
+  wait_until -i 0.1 '[ -f "$RL_CHILD_PID_FILE" ] && [ -f "$RL_GRANDCHILD_PID_FILE" ]'
 
   local child_pid
   local grandchild_pid
@@ -401,43 +399,8 @@ SCRIPT
   fi
 
   [ "$exit_status" -eq 130 ]
-  local child_stopped=0
-  for _ in {1..20}; do
-    if ! kill -0 "$child_pid" 2>/dev/null; then
-      child_stopped=1
-      break
-    fi
-
-    local child_state
-    child_state=$(ps -o stat= -p "$child_pid" 2>/dev/null | tr -d ' ')
-    if [[ "$child_state" == Z* ]]; then
-      child_stopped=1
-      break
-    fi
-
-    sleep 0.05
-  done
-
-  [ "$child_stopped" -eq 1 ]
-
-  local grandchild_stopped=0
-  for _ in {1..20}; do
-    if ! kill -0 "$grandchild_pid" 2>/dev/null; then
-      grandchild_stopped=1
-      break
-    fi
-
-    local state
-    state=$(ps -o stat= -p "$grandchild_pid" 2>/dev/null | tr -d ' ')
-    if [[ "$state" == Z* ]]; then
-      grandchild_stopped=1
-      break
-    fi
-
-    sleep 0.05
-  done
-
-  [ "$grandchild_stopped" -eq 1 ]
+  wait_until -d 'ps -o pid=,stat=,command= -p "$child_pid"' "_process_reaped $child_pid"
+  wait_until -d 'ps -o pid=,stat=,command= -p "$grandchild_pid"' "_process_reaped $grandchild_pid"
   grep -Fq "force stopping" "$output_file"
 }
 
@@ -470,16 +433,7 @@ SCRIPT
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
 
-  # Wait for child to start
-  local ready=0
-  for _ in {1..50}; do
-    if [[ -f "$RL_CHILD_PID_FILE" ]]; then
-      ready=1
-      break
-    fi
-    sleep 0.1
-  done
-  [ "$ready" -eq 1 ]
+  wait_until -i 0.1 '[ -f "$RL_CHILD_PID_FILE" ]'
 
   # Send two SIGINTs rapidly (within debounce window)
   kill -INT "$rl_pid"

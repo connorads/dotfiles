@@ -171,11 +171,7 @@ toggle() {
 
   # The toggle returns at once; the stop runs detached behind it.
   [ "$status" -eq 0 ]
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    grep -q '^vox stop$' "$TEST_LOG" && break
-    sleep 0.2
-  done
-  grep -q '^vox stop$' "$TEST_LOG"
+  wait_until -i 0.2 -d 'cat "$TEST_LOG"' 'grep -q "^vox stop$" "$TEST_LOG"'
 }
 
 @test "a finished transcription says so" {

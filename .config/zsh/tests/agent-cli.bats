@@ -418,13 +418,16 @@ run_prompt() {
 
 # Wait until a pane's foreground is no longer a bare shell (the respawned child
 # owns it) — mirrors agent-sweep.bats; callers skip on timeout.
+_pane_is_nonshell() {
+  local cmd
+  cmd=$(tx display-message -p -t "$1" '#{pane_current_command}')
+  case "$SHELLS" in *" $cmd "*) return 1 ;; esac
+  return 0
+}
+
 wait_nonshell() {
-  local pane=$1 cmd i
-  for i in $(seq 1 30); do
-    cmd=$(tx display-message -p -t "$pane" '#{pane_current_command}')
-    case "$SHELLS" in *" $cmd "*) sleep 0.2 ;; *) return 0 ;; esac
-  done
-  return 1
+  # stderr dropped: a timeout here is a tolerated outcome (callers skip).
+  wait_until -i 0.2 "_pane_is_nonshell $1" 2>/dev/null
 }
 
 @test "agent name labels the current pane via TMUX_PANE" {
