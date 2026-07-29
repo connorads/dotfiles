@@ -30,9 +30,11 @@ setup() {
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   PANE=$("$TMUX_BIN" -L "$SOCK" display-message -p '#{pane_id}')
   export TMUX_SOCKET="$SOCK"
-  # The scripts call bare `tmux`, so route it at the private server.
+  # The scripts call bare `tmux`, so route it at the private server - logging the
+  # argv on the way through, because how the prompt is *asked* is behaviour too.
   write_stub tmux <<EOF
 #!/usr/bin/env bash
+printf 'tmux %s\n' "\$*" >>"\$TEST_LOG"
 exec "$TMUX_BIN" -L "$SOCK" "\$@"
 EOF
 }
@@ -107,6 +109,22 @@ toggle() {
   grep -q '^vox *$' "$TEST_LOG"
   # The recording exists on disk before any answer is given.
   [ -d "$VOX_STORE/2026-07-28-140312" ]
+}
+
+@test "the title prompt asks one question" {
+  stub_vox
+
+  toggle "$PANE"
+
+  # `command-prompt -p` splits its argument on commas into a *sequence* of
+  # prompts, so this wording would otherwise be two questions - the second one
+  # swallowing every keystroke while the pane looks frozen. `-l` says the text is
+  # literal; a comma-free prompt would say the same thing.
+  line=$(grep -m1 'command-prompt' "$TEST_LOG")
+  [ -n "$line" ]
+  prompt=${line#*-p }
+  prompt=${prompt%%run-shell*}
+  [[ "$line" == *" -l "* ]] || [[ "$prompt" != *,* ]]
 }
 
 @test "the prompt callback renames the live recording" {

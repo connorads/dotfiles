@@ -134,3 +134,17 @@ menu() {
   # currently names - which a rename mid-capture keeps true.
   [[ "$(cat "$TEST_LOG")" == *"2026-07-28-140312-standup"* ]]
 }
+
+@test "the name row asks one question" {
+  recording_state
+
+  menu
+
+  # `command-prompt -p` splits on commas into a sequence of prompts, so this
+  # wording is two questions unless it is asked literally (`-l`).
+  line=$(grep -m1 'command-prompt' "$TEST_LOG")
+  [ -n "$line" ]
+  prompt=${line#*-p }
+  prompt=${prompt%%run-shell*}
+  [[ "$line" == *" -l "* ]] || [[ "$prompt" != *,* ]]
+}

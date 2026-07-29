@@ -62,7 +62,7 @@ menu+=(-x "$mx" -y "$my" -T "$title")
 if [ "$state" = RECORDING ]; then
 	menu+=(
 		"Stop and transcribe" s "run-shell '\"$TOGGLE\"'"
-		"Name…" n "command-prompt -p 'title (recording, empty = none)' \"run-shell '\\\"$TOGGLE\\\" name \\\"$dir\\\" \\\"%%\\\"'\""
+		"Name…" n "command-prompt -l -p 'title (recording, empty = none)' \"run-shell '\\\"$TOGGLE\\\" name \\\"$dir\\\" \\\"%%\\\"'\""
 		""
 		"Discard without transcribing" d "confirm-before -p 'discard this recording? (y/n)' \"run-shell '\\\"$VOX_BIN\\\" cancel'\""
 		""

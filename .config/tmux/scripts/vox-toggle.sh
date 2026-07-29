@@ -121,7 +121,9 @@ if dir=$("$VOX_BIN" 2>"$err"); then
 	# costs nothing. %% is tmux's substitution for what you typed. If no client
 	# can be prompted the recording is still running, and saying so beats
 	# reporting the start as failed.
-	tmux command-prompt -p 'title (recording, empty = none)' \
+	# -l: `-p` splits on commas into a *sequence* of prompts, so without it this
+	# wording asks twice and the second question eats your keys.
+	tmux command-prompt -l -p 'title (recording, empty = none)' \
 		"run-shell '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
 		note "vox: recording ${dir##*/}"
 else
