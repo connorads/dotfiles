@@ -54,17 +54,40 @@ if (MODE === "noop") {
   const handlers = await load()
   handlers["session_start"]({}, { hasUI: false })
   handlers["agent_start"]({}, {})
-  await sleep(220)
+  // A settle, not a poll: the claim is that nothing writes the dot, and only
+  // elapsed time can falsify that.
+  await sleep(300)
   console.log("state=" + st())
 } else {
   process.env.TMUX_PANE = PANE
   const handlers = await load()
-  const step = async (label, fn) => { fn(); await sleep(220); console.log(label + "=" + st()) }
+  const CHANGE_BUDGET_MS = 5000
+  // Poll until the dot changes, rather than sleeping a guess at how long the
+  // write takes. The handler writes with a detached `tmux set-option` and the
+  // read-back is another fork, so "has it landed?" is an observable, not a
+  // duration - and a duration tuned on an idle machine is not long enough under
+  // the parallel runner.
+  const stepChange = async (label, fn) => {
+    const before = st()
+    await fn()
+    const deadline = Date.now() + CHANGE_BUDGET_MS
+    let now = before
+    while (Date.now() < deadline) {
+      now = st()
+      if (now !== before) break
+      await sleep(50)
+    }
+    console.log(label + "=" + now)
+  }
+  // A step that must NOT change the dot keeps a fixed settle: there is no event
+  // to wait for, so the only way to catch a spurious write is to leave time for
+  // one to happen.
+  const stepSettle = async (label, fn) => { await fn(); await sleep(300); console.log(label + "=" + st()) }
   handlers["session_start"]({}, { hasUI: true })
-  await step("agent_start", () => handlers["agent_start"]({}, {}))
-  await step("agent_end", () => handlers["agent_end"]({}, {}))
-  await step("shutdown_reload", () => handlers["session_shutdown"]({ reason: "reload" }))
-  await step("shutdown_quit", () => handlers["session_shutdown"]({ reason: "quit" }))
+  await stepChange("agent_start", () => handlers["agent_start"]({}, {}))
+  await stepChange("agent_end", () => handlers["agent_end"]({}, {}))
+  await stepSettle("shutdown_reload", () => handlers["session_shutdown"]({ reason: "reload" })) // /reload must not clear
+  await stepChange("shutdown_quit", () => handlers["session_shutdown"]({ reason: "quit" }))
 }
 JS
 }

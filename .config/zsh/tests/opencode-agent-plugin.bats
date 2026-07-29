@@ -50,33 +50,54 @@ if (MODE === "noop") {
   const { AgentStatePlugin } = await import(PLUGIN)
   const h = await AgentStatePlugin({})
   const ev = (type, properties = {}) => h.event({ event: { type, properties } })
-  const step = async (label, fn) => { await fn(); await sleep(220); console.log(label + "=" + st()) }
+  const CHANGE_BUDGET_MS = 5000
+  // Poll until the dot changes, rather than sleeping a guess at how long the
+  // write takes. The handler writes with a detached `tmux set-option` and the
+  // read-back is another fork, so "has it landed?" is an observable, not a
+  // duration - and a duration tuned on an idle machine is not long enough under
+  // the parallel runner.
+  const stepChange = async (label, fn) => {
+    const before = st()
+    await fn()
+    const deadline = Date.now() + CHANGE_BUDGET_MS
+    let now = before
+    while (Date.now() < deadline) {
+      now = st()
+      if (now !== before) break
+      await sleep(50)
+    }
+    console.log(label + "=" + now)
+  }
+  // A step that must NOT change the dot keeps a fixed settle: there is no event
+  // to wait for, so the only way to catch a spurious write is to leave time for
+  // one to happen.
+  const stepSettle = async (label, fn) => { await fn(); await sleep(300); console.log(label + "=" + st()) }
   if (MODE === "lifecycle") {
-    await step("chat.message", () => h["chat.message"]({ sessionID: "root" }))
-    await step("permission.asked", () => ev("permission.asked", { sessionID: "root" }))
-    await step("permission.replied", () => ev("permission.replied", { sessionID: "root" }))
+    await stepChange("chat.message", () => h["chat.message"]({ sessionID: "root" }))
+    await stepChange("permission.asked", () => ev("permission.asked", { sessionID: "root" }))
+    await stepChange("permission.replied", () => ev("permission.replied", { sessionID: "root" }))
     h.event({ event: { type: "session.updated", properties: { info: { id: "child", parentID: "root" } } } })
-    await step("child.idle", () => ev("session.idle", { sessionID: "child" }))
-    await step("root.idle", () => ev("session.idle", { sessionID: "root" }))
-    await step("deleted", () => ev("session.deleted", { sessionID: "root" }))
+    await stepSettle("child.idle", () => ev("session.idle", { sessionID: "child" }))
+    await stepChange("root.idle", () => ev("session.idle", { sessionID: "root" }))
+    await stepChange("deleted", () => ev("session.deleted", { sessionID: "root" }))
   } else if (MODE === "subagent") {
     // Foreground subagent whose root parks (goes idle) while it runs: the dot
     // must keep working and only retire on a deferred done.
-    await step("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
+    await stepChange("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
     h.event({ event: { type: "session.created", properties: { info: { id: "child", parentID: "root" } } } })
-    await step("child.busy", () => ev("session.status", { sessionID: "child", status: { type: "busy" } }))
-    await step("root.idle", () => ev("session.status", { sessionID: "root", status: { type: "idle" } }))
-    await step("child.idle", () => ev("session.idle", { sessionID: "child" }))
-    await step("clear", () => ev("session.deleted", { sessionID: "root" }))
+    await stepSettle("child.busy", () => ev("session.status", { sessionID: "child", status: { type: "busy" } }))
+    await stepSettle("root.idle", () => ev("session.status", { sessionID: "root", status: { type: "idle" } }))
+    await stepChange("child.idle", () => ev("session.idle", { sessionID: "child" }))
+    await stepChange("clear", () => ev("session.deleted", { sessionID: "root" }))
   } else if (MODE === "background") {
     // Background subagent: parent turn ends (done) then the bg sub keeps the
     // dot busy until it completes.
-    await step("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
-    await step("root.idle", () => ev("session.idle", { sessionID: "root" }))
+    await stepChange("root.busy", () => ev("session.status", { sessionID: "root", status: { type: "busy" } }))
+    await stepChange("root.idle", () => ev("session.idle", { sessionID: "root" }))
     h.event({ event: { type: "session.created", properties: { info: { id: "bg", parentID: "root" } } } })
-    await step("bg.busy", () => ev("session.status", { sessionID: "bg", status: { type: "busy" } }))
-    await step("bg.idle", () => ev("session.status", { sessionID: "bg", status: { type: "idle" } }))
-    await step("clear", () => ev("global.disposed", {}))
+    await stepChange("bg.busy", () => ev("session.status", { sessionID: "bg", status: { type: "busy" } }))
+    await stepChange("bg.idle", () => ev("session.status", { sessionID: "bg", status: { type: "idle" } }))
+    await stepChange("clear", () => ev("global.disposed", {}))
   }
 }
 JS
