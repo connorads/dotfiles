@@ -11,6 +11,14 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 RL="$FUNCTIONS_DIR/agents/rl"
 RL_KILL="$FUNCTIONS_DIR/agents/rl-kill"
 
+setup_file() {
+  # A hang backstop, not a budget. Several tests drive rl through its SIGINT
+  # paths, and a mishandled signal leaves `wait` blocked on a helper's
+  # `sleep 300` - five minutes in which the suite looks hung rather than a test
+  # that failed. Nothing here should take anywhere near this.
+  export BATS_TEST_TIMEOUT=120
+}
+
 setup() {
   setup_test_home
 }
@@ -377,7 +385,12 @@ SCRIPT
 
   export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
   export RL_GRANDCHILD_PID_FILE="$BATS_TEST_TMPDIR/grandchild.pid"
-  export RL_FORCE_STOP_WINDOW_SECS=0.3
+  # No cooldown at all, so the second INT force-stops unconditionally. The old
+  # 0.3s window had to be out-waited by a fixed 0.5s sleep, and that sleep was
+  # measured from the `kill` while rl measures the window from the moment it
+  # *handled* the signal - two clocks that only agree on an idle machine. The
+  # window's own behaviour is covered by the debounce test below.
+  export RL_FORCE_STOP_WINDOW_SECS=0
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
@@ -388,8 +401,11 @@ SCRIPT
   child_pid=$(cat "$RL_CHILD_PID_FILE")
   grandchild_pid=$(cat "$RL_GRANDCHILD_PID_FILE")
 
+  # rl announces the first INT, which is the only observable saying it has been
+  # handled rather than merely delivered.
   kill -INT "$rl_pid"
-  sleep 0.5 # must exceed the 0.3s debounce cooldown
+  wait_until -d 'cat "$output_file"' \
+    'grep -Fq "stopping after current iteration" "$output_file"'
   kill -INT "$rl_pid"
   local exit_status
   if wait "$rl_pid"; then
@@ -428,31 +444,32 @@ sleep 300
 SCRIPT
 
   export RL_CHILD_PID_FILE="$BATS_TEST_TMPDIR/child.pid"
-  export RL_FORCE_STOP_WINDOW_SECS=0.3
+  # A window wide enough that no amount of scheduling jitter can put the second
+  # INT outside it. At 0.3s "rapid" was a claim about the test's own timing on
+  # an idle machine; at 30s it is a property of the run.
+  export RL_FORCE_STOP_WINDOW_SECS=30
 
   zsh "$RL" -- "$helper" >"$output_file" 2>&1 &
   local rl_pid=$!
 
   wait_until -i 0.1 '[ -f "$RL_CHILD_PID_FILE" ]'
 
-  # Send two SIGINTs rapidly (within debounce window)
+  # Both INTs land inside the window. Each is driven off rl's own announcement,
+  # so "rapid" no longer depends on how fast the test happens to be scheduled.
   kill -INT "$rl_pid"
-  sleep 0.1
+  wait_until -d 'cat "$output_file"' \
+    'grep -Fq "stopping after current iteration" "$output_file"'
   kill -INT "$rl_pid"
-  sleep 0.5
+  wait_until -d 'cat "$output_file"' 'grep -Fq "hold on" "$output_file"'
 
-  # rl should still be running (debounce blocked force-stop)
+  # Still running: the debounce blocked the force-stop.
   kill -0 "$rl_pid" 2>/dev/null
-  local still_running=$?
-  [ "$still_running" -eq 0 ]
-
-  # Output should contain the debounce message, not force-stop
-  grep -Fq "hold on" "$output_file"
   ! grep -Fq "force stopping" "$output_file"
 
-  # Clean up: wait for debounce then force-stop
-  sleep 0.4
-  kill -INT "$rl_pid" 2>/dev/null
+  # Cleaned up by signal, not by out-waiting the window: a debounced INT leaves
+  # `wait` blocked on the helper's `sleep 300` - 300s of a suite that looks hung.
+  kill -KILL "$(cat "$RL_CHILD_PID_FILE")" 2>/dev/null || true
+  kill -KILL "$rl_pid" 2>/dev/null || true
   wait "$rl_pid" 2>/dev/null || true
 }
 
@@ -631,7 +648,11 @@ SCRIPT
   run zsh "$RL_KILL" -f
 
   [ "$status" -eq 0 ]
-  ! kill -0 "$LEADER_PID" 2>/dev/null
+  # Not a bare `kill -0`: the leader is this shell's own background job, so
+  # between the TERM landing and this shell reaping it the pid is a zombie -
+  # signalable, and therefore "alive" to `kill -0` - and the assertion had no
+  # poll at all besides.
+  wait_until -d 'ps -o pid=,stat=,command= -p "$LEADER_PID"' "_process_reaped $LEADER_PID"
   [ ! -f "$RL_REGISTRY/99999-1234567890" ]
 }
 
@@ -687,16 +708,24 @@ n=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
 n=$((n + 1))
 echo "$n" > "$COUNT_FILE"
 if [ "$n" -eq 1 ]; then
-  sleep 5   # bounded: a broken (unarmed) watchdog exits here after 5s, not "timed out"
-else
-  exit 0
+  # exec, and fds detached from rl: whatever the watchdog ends up killing, no
+  # survivor is left holding rl's stdout - which `run` would otherwise wait on,
+  # making the passing path pay this sleep in full. Bounded, so an unarmed
+  # watchdog fails on the assertions rather than on the file's hang backstop.
+  exec sleep 60 </dev/null >/dev/null 2>&1
 fi
+exit 0
 SCRIPT
 
   export COUNT_FILE="$BATS_TEST_TMPDIR/nopgid_count"
   export RL_RETRY_PAUSE_SECS=0
 
-  run zsh "$RL" 2 -t 0.5s -- "$helper"
+  # 5s, not 0.5s - the same fix the sibling test above already carries. The
+  # watchdog arms before the child's setsid->zsh startup chain reaches the
+  # helper body, so under load a sub-second timeout kills the child before it
+  # writes COUNT_FILE and the counter never reaches 2. The helper's own sleep
+  # grows with it, so an unarmed watchdog is still told apart from a firing one.
+  run zsh "$RL" 2 -t 5s -- "$helper"
 
   [ "$(cat "$COUNT_FILE")" -eq 2 ]
   [[ "$output" == *"timed out"* ]]
