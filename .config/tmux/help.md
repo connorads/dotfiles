@@ -102,7 +102,7 @@ From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
-| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, space off) |
+| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), space off) |
 | `Ctrl+b Alt+v` | record (vox) — start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
 | `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
@@ -180,16 +180,30 @@ threshold); a number = swap worth noting.
 
 ## Caffeine (status bar)
 
-A bright peach pill (macOS, width ≥ 80) shows **only** while a managed
-`caffeinate -i` keeps the Mac awake — it holds *system* sleep while the displays
-still sleep on their normal schedule. It self-hides when off, so an active
-keep-awake is never silently left running. `Ctrl+b Alt+k` toggles it.
+A bright pill (macOS, width ≥ 80) shows **only** while a managed keep-awake is
+running. It self-hides when off, so an active keep-awake is never silently left
+running. `Ctrl+b Alt+k` opens it.
+
+Peach `☼` is `caffeinate -i`: it holds *system* sleep while the displays still
+sleep on their normal schedule. **Closing the lid still sleeps the Mac** —
+clamshell sleep ignores power assertions entirely.
+
+Maroon `✷` is lid mode, which additionally raises the `SleepDisabled` kernel
+flag, the only thing that survives the lid closing. It is **always timed**, and
+clears the flag when it ends. For a genuinely long unattended run, prefer
+`atp --host dev` — moving the session to a machine meant to be on beats holding
+a laptop awake in a closed shell.
 
 | Pill | State | Meaning |
 |------|-------|---------|
-| `☼ ∞` peach | on, indefinite | awake until you turn it off |
-| `☼ 42m` peach | on, timed | awake for the remaining time, then self-clears |
+| `☼ ∞` peach | on, indefinite | awake until you turn it off; lid still sleeps it |
+| `☼ 42m` peach | on, timed | as above, for the remaining time, then self-clears |
+| `✷ 4h` maroon | on, lid closed | cannot sleep at all, lid included; always timed |
 | (hidden) | off | Mac sleeps on its normal schedule |
+
+If the popup shows a maroon `⚠ This Mac still cannot sleep at all`, a lid
+session died without clearing the flag. Press `c` to clear it now; a launchd
+reconciler clears it within 5 minutes regardless, and at every login.
 
 ## Recording (status bar)
 
