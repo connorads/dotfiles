@@ -189,14 +189,13 @@ EOF
   "$REMOTE_SCRIPT" </dev/null >"$output_file" 2>&1 &
   local popup_pid=$!
 
+  # Not bare: a timeout must not abort the test before the release below, or the
+  # gated popup outlives it and `run`'s fd keeps bats hanging.
   local visible=0
-  for _ in {1..500}; do
-    if grep -q "Tailscale SSH authentication required" "$output_file"; then
-      visible=1
-      break
-    fi
-    sleep 0.02
-  done
+  if wait_until -i 0.02 -d 'cat "$output_file"' \
+    'grep -q "Tailscale SSH authentication required" "$output_file"'; then
+    visible=1
+  fi
 
   local running=0
   kill -0 "$popup_pid" 2>/dev/null && running=1

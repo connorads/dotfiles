@@ -54,14 +54,8 @@ launch_daemon() {
   DAEMON_PID=$!
 }
 
-# Poll up to ~6s for a file to appear.
 wait_file() {
-  local i
-  for i in $(seq 1 30); do
-    [ -f "$1" ] && return 0
-    sleep 0.2
-  done
-  return 1
+  wait_until -i 0.2 "[ -f '$1' ]"
 }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
@@ -69,18 +63,22 @@ wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
 sstate() { tx show-options -qv -t "$1" @session_agent_attention; }
 
 # Wait until a pane's foreground command is no longer a bare shell — i.e. the
-# respawned child has taken over. Returns non-zero on timeout (~6s) so callers
+# respawned child has taken over. Returns non-zero on timeout so callers
 # can skip rather than assert a precondition the pane never reached (the sweep
 # correctly clears shell-foreground dots, so asserting on one is wrong). Panes
 # are respawned with a child that has no rc files, so the only non-shell that
 # ever appears is that child — no interactive-startup transient can fool this.
+_pane_is_nonshell() {
+  local cmd
+  cmd=$(tx display-message -p -t "$1" '#{pane_current_command}')
+  case "$SHELLS" in *" $cmd "*) return 1 ;; esac
+  return 0
+}
+
 wait_nonshell() {
-  local pane=$1 cmd i
-  for i in $(seq 1 30); do
-    cmd=$(tx display-message -p -t "$pane" '#{pane_current_command}')
-    case "$SHELLS" in *" $cmd "*) sleep 0.2 ;; *) return 0 ;; esac
-  done
-  return 1
+  # stderr dropped: a timeout here is a tolerated outcome (callers skip), not a
+  # failure worth a diagnostic.
+  wait_until -i 0.2 "_pane_is_nonshell $1" 2>/dev/null
 }
 
 @test "sweep clears a stale dot on a shell-foreground pane" {
@@ -296,15 +294,8 @@ wait_nonshell() {
   tx set-option -w -t "$win" @win_agent_state working
   # Poll for BOTH dots: the daemon clears the window dot on a later step than
   # the pane dot, so asserting wstate right after pstate clears is a race.
-  cleared=0
-  for i in $(seq 1 20); do
-    [ -z "$(pstate "$pane")" ] && [ -z "$(wstate "$win")" ] && {
-      cleared=1
-      break
-    }
-    sleep 0.2
-  done
-  [ "$cleared" -eq 1 ]
+  wait_until -i 0.2 -d 'echo "pane=$(pstate "$pane") win=$(wstate "$win")"' \
+    '[ -z "$(pstate "$pane")" ] && [ -z "$(wstate "$win")" ]'
 }
 
 @test "daemon exits when the server dies" {
@@ -313,13 +304,5 @@ wait_nonshell() {
   wait_file "$pidfile"
   dpid=$(cat "$pidfile")
   tx kill-server 2>/dev/null || true
-  gone=0
-  for i in $(seq 1 30); do
-    kill -0 "$dpid" 2>/dev/null || {
-      gone=1
-      break
-    }
-    sleep 0.2
-  done
-  [ "$gone" -eq 1 ]
+  wait_until -i 0.2 -d 'ps -o pid=,stat=,command= -p "$dpid"' '! kill -0 "$dpid" 2>/dev/null'
 }

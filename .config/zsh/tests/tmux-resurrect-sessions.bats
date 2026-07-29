@@ -545,12 +545,9 @@ pane_pid_of() {
 
 # Wait for a pane's foreground command, so a test never races process startup.
 wait_for_pane_command() {
-  local want="$1" i
-  for i in $(seq 1 50); do
-    [ "$("$PRIVATE_TMUX" list-panes -a -F '#{pane_current_command}' | head -1)" = "$want" ] && return 0
-    sleep 0.1
-  done
-  return 1
+  local want="$1"
+  wait_until -i 0.1 -d '"$PRIVATE_TMUX" list-panes -a -F "#{pane_current_command}"' \
+    '[ "$("$PRIVATE_TMUX" list-panes -a -F "#{pane_current_command}" | head -1)" = "$want" ]'
 }
 
 @test "foreground strategy records the command of a pane that exec'd it" {

@@ -46,13 +46,8 @@ wait_until_visible() {
   local target=$1
   local pattern=$2
 
-  for _ in {1..40}; do
-    if tx capture-pane -pt "$target" | grep -qE "$pattern"; then
-      return 0
-    fi
-    sleep 0.05
-  done
-  return 1
+  wait_until -d 'tx capture-pane -pt "$target"' \
+    'tx capture-pane -pt "$target" | grep -qE "$pattern"'
 }
 
 @test "control-tail protocol helpers decode tmux payloads and normalise text" {

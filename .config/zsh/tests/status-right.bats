@@ -114,10 +114,7 @@ EOF
 
 @test "wide status shows both cpu and the ram percentage pill" {
   run_status_right 90
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [ -f "$HOME/.cache/tmux-cpu-percentage" ] && break
-    sleep 0.1
-  done
+  wait_until -i 0.1 '[ -f "$HOME/.cache/tmux-cpu-percentage" ]'
   run_status_right 90
 
   [ "$status" -eq 0 ]
@@ -336,10 +333,7 @@ EOF
 
   run_status_right 90
   [ "$status" -eq 0 ]
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [ -f "$HOME/.cache/tmux-cpu-percentage" ] && break
-    sleep 0.1
-  done
+  wait_until -i 0.1 '[ -f "$HOME/.cache/tmux-cpu-percentage" ]'
   run_status_right 90
   [ "$status" -eq 0 ]
 
@@ -409,13 +403,9 @@ EOF
 
   run_status_right 90
   [ "$status" -eq 0 ]
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ] && break
-    sleep 0.1
-  done
+  wait_until -i 0.1 '[ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]'
 
   [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "3%" ]
-  [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]
 }
 
 @test "stale cpu lock is reclaimed" {
@@ -430,12 +420,8 @@ EOF
 
   run_status_right 90
   [ "$status" -eq 0 ]
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ] && break
-    sleep 0.1
-  done
-
-  [ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]
+  wait_until -i 0.1 -d 'cat "$HOME/.cache/tmux-cpu-percentage"' \
+    '[ "$(cat "$HOME/.cache/tmux-cpu-percentage")" = "8%" ]'
   [ ! -d "$HOME/.cache/tmux-cpu-percentage.lock" ]
 }
 

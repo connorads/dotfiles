@@ -233,10 +233,7 @@ next_pane() {
   # window/pane formats update asynchronously after switch-client (observed on
   # tmux 3.7b: ~1-2s behind while #{client_session} is already current), so
   # poll for the move instead of asserting the instant state.
-  for i in $(seq 1 25); do
-    [ "$(tx display -p -c "$cl" '#{pane_id}')" = "$p0" ] && break
-    sleep 0.2
-  done
+  wait_until -i 0.2 '[ "$(tx display -p -c "$cl" "#{pane_id}")" = "$p0" ]'
   [ "$(tx display -p -c "$cl" '#{client_session}')" = s ]
   [ "$(tx display -p -c "$cl" '#{window_id}')" = "$w0" ]
   [ "$(tx display -p -c "$cl" '#{pane_id}')" = "$p0" ]
