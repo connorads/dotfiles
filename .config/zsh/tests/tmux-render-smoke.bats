@@ -295,10 +295,14 @@ reset_panes() {
 @test "message and command-prompt render on the split status rows" {
   reset_panes
   tx display-message 'render smoke message row'
-  sleep 0.3
-  "$TMUX_BIN" -L "$SOCK" command-prompt </dev/null >/dev/null 2>&1 &
+  # Both waits poll the client's own log for the text that must appear on the
+  # status row. Blind sleeps here made the test pass whether or not anything
+  # rendered - a silent coverage hole in the one file whose entire purpose is
+  # driving the real config through the redraw path.
+  wait_until -i 0.1 -d 'tail -c 400 "$LOG"' 'grep -q "render smoke message row" "$LOG"'
+  "$TMUX_BIN" -L "$SOCK" command-prompt -p 'MARKERPROMPT:' </dev/null >/dev/null 2>&1 &
   cp_pid=$!
-  sleep 0.5
+  wait_until -i 0.1 -d 'tail -c 400 "$LOG"' 'grep -q MARKERPROMPT "$LOG"'
   assert_alive
   kill "$cp_pid" 2>/dev/null || true
   reap_client
@@ -365,9 +369,19 @@ reset_panes() {
   reap_client
   pyte_log="$BATS_FILE_TMPDIR/pyte.log"
   start_client "$pyte_log"
-  sleep 1
+  # The float and the status row have reached the client, so it has received the
+  # composite it is about to be asked about. 1.5s of sleep was a guess at that,
+  # and under `-j` the four content assertions below could all have been reading
+  # a half-drawn screen. Not MARKERTILE: the float covers the tiled pane, so
+  # those cells are never sent - which is itself what the last assertion checks.
+  wait_until -i 0.1 -d 'wc -c <"$pyte_log"' \
+    'grep -q MARKERFLOAT "$pyte_log" && grep -q SMOKE "$pyte_log"'
+  local before
+  before=$(wc -c <"$pyte_log")
   tx refresh-client
-  sleep 0.5
+  # refresh-client repaints the whole screen: the log growing past the mark is
+  # the client having received that repaint.
+  wait_until -i 0.1 -d 'wc -c <"$pyte_log"' '[ "$(wc -c <"$pyte_log")" -gt "$before" ]'
   size=$(tx display-message -p '#{client_width}x#{client_height}')
   # Snapshot while attached: detach teardown wipes the composited screen.
   cp "$pyte_log" "$BATS_FILE_TMPDIR/pyte.snap"
