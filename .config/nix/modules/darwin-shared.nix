@@ -308,6 +308,43 @@
     };
   };
 
+  # -- tmux caffeine reconciler (lid mode's backstop) --
+  # Lid mode raises the SleepDisabled kernel flag, which has no process to hang
+  # its lifetime on. The supervisor's trap clears it on every ordinary exit; this
+  # covers the cases where no trap can run — SIGKILL, crash, kernel panic and
+  # reboot — by clearing the flag whenever it is raised with no live lid session
+  # behind it. Without it, a panicked Mac comes back up unable to sleep with
+  # nothing on screen saying why: exactly the silent never-sleeps failure lid
+  # mode exists to avoid creating.
+  #
+  # RunAtLoad is the load-bearing half, not belt-and-braces: SleepDisabled
+  # survives a reboot, so login is the moment that has to be checked. The 5-min
+  # StartInterval catches a supervisor killed mid-session. Both are needed —
+  # neither the interval alone (a reboot could sit wrong for 5 min) nor load
+  # alone (a mid-session kill would never be seen) is sufficient.
+  #
+  # Same shape as tmux-resurrect-save above: the TRACKED script path so edits
+  # take effect next tick without a rebuild, and a PATH carrying the per-user
+  # profile plus system bins — /usr/bin for pmset and sudo, which are the whole
+  # point of this job. No LANG needed: nothing here parses tab-delimited tmux
+  # format output.
+  launchd.user.agents.tmux-caffeine-reconcile = {
+    serviceConfig = {
+      Label = "dev.connorads.tmux-caffeine-reconcile";
+      ProgramArguments = [
+        "${pkgs.bash}/bin/bash"
+        "/Users/connorads/.config/tmux/scripts/caffeine-reconcile.sh"
+      ];
+      StartInterval = 300; # every 5 min: catches a killed supervisor
+      RunAtLoad = true; # covers the panic and reboot cases
+      ProcessType = "Background";
+      EnvironmentVariables = {
+        PATH = "/usr/bin:/etc/profiles/per-user/connorads/bin:/run/current-system/sw/bin:/bin:/usr/sbin";
+      };
+      StandardErrorPath = "/Users/connorads/.cache/tmux-caffeine-reconcile.err.log";
+    };
+  };
+
   # MagicDNS resolver (OSS tailscaled doesn't create this automatically).
   # See: https://github.com/tailscale/tailscale/issues/13461
   #
