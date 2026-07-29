@@ -205,6 +205,13 @@ resurrect_segment() {
 # active caffeinate is never silently left running — the surface1-adjacency
 # caveat the resurrect pill raises doesn't apply to a bright accent bg. Token is
 # ∞ (indefinite) or the remaining time (ticks down to the self-clearing deadline).
+#
+# ON-LID renders through the identical path, differing only in what the lib
+# returns: maroon ✷ rather than peach ☼, for a session that also holds the
+# SleepDisabled kernel flag and so survives the lid closing. Escalated colour for
+# an escalated claim on the machine. Lid sessions are always timed, so `✷ ∞` is
+# unreachable. The state is three-valued now, so the self-hide guard tests for
+# OFF specifically rather than for "not ON".
 caffeine_segment() {
 	local state colour glyph
 	state="$(caffeine_state)"
