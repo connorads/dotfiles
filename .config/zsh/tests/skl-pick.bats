@@ -79,8 +79,10 @@ _run_done() { [ -f "$T/done" ]; }
   # tab:toggle+down marks the current row then advances: two Tabs mark
   # ref-alpha + ref-bravo; Enter accepts (not an --expect key -> load path).
   tmux -L "$SOCK" send-keys -t s Tab
+  # ast-grep-ignore: no-hard-wait - fzf keystroke pacing: Tab's mark has no observable the pane exposes
   sleep 0.1
   tmux -L "$SOCK" send-keys -t s Tab
+  # ast-grep-ignore: no-hard-wait - fzf keystroke pacing: Tab's mark has no observable the pane exposes
   sleep 0.1
   tmux -L "$SOCK" send-keys -t s Enter
 

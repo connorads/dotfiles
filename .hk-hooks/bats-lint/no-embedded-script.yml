@@ -1,0 +1,25 @@
+# Closes no-hard-wait's one blind spot, and does it by blocking the construct
+# rather than trusting nobody writes it.
+#
+# Multi-line shell inside a quoted string is a string to every AST tool, so a
+# `sleep 0.3` in there is invisible to the rule above. One of the two failures
+# that prompted all of this lived in exactly such a blob. It is also how plain
+# `bash` sneaks past the $BASH5 contract (.config/zsh/tests/AGENTS.md): on macOS
+# that is Apple's 3.2, an interpreter production never picks.
+#
+# Lift the body into a bats helper function and `run <fn>` it. Note that `run`
+# turns errexit off, so a `set -e` the blob relied on becomes explicit
+# `|| return 1` per step.
+id: no-embedded-script
+language: bash
+severity: error
+message: "multi-line shell inside a quoted string is invisible to the linters and to the $BASH5 contract - lift it into a bats helper function and `run <fn>` it"
+rule:
+  any:
+    - pattern: run bash -c $S
+    - pattern: run sh -c $S
+    - pattern: bash -c $S
+    - pattern: sh -c $S
+constraints:
+  S:
+    regex: "\n"

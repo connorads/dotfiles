@@ -98,6 +98,7 @@ start_client() {
   wait_for_client || return 1
   # Proven risk: the client must persist past its stdin EOF. If this tmux/script
   # combination drops the client on EOF, hold the pty open from a FIFO instead.
+  # ast-grep-ignore: no-hard-wait - probing whether this tmux/script pair drops the client on EOF
   sleep 1
   [ -n "$(tx list-clients 2>/dev/null)" ] && return 0
   reap_client
@@ -178,6 +179,7 @@ reset_panes() {
   tx new-pane -- sh -c 'printf MARKERFLOAT; exec sleep 300'
   fp=$(tx display-message -p '#{pane_id}')
   [ "$(tx display-message -p -t "$fp" '#{pane_floating_flag}')" = 1 ]
+  # ast-grep-ignore: no-hard-wait - letting the float render before it is torn down again
   sleep 0.3
   tx kill-pane -t "$fp"
   assert_alive
@@ -193,6 +195,7 @@ reset_panes() {
   tx new-pane -x $((cw - 2)) -y $((ch - 4)) -- sh -c 'exec sleep 300'
   fp=$(tx display-message -p '#{pane_id}')
   [ "$(tx display-message -p -t "$fp" '#{pane_floating_flag}')" = 1 ]
+  # ast-grep-ignore: no-hard-wait - letting the float render before it is torn down again
   sleep 0.3
   tx kill-pane -t "$fp"
   assert_alive
@@ -218,6 +221,7 @@ reset_panes() {
   reset_panes
   tx split-window -t SMOKE -- sh -c 'seq 1 500; exec sleep 300'
   p=$(tx display-message -p '#{pane_id}')
+  # ast-grep-ignore: no-hard-wait - letting 500 lines land in the pane before entering copy-mode
   sleep 0.5
   tx copy-mode -t "$p"
   tx send-keys -t "$p" -X -N 10 scroll-up
@@ -233,6 +237,7 @@ reset_panes() {
   tx new-pane -- sh -c 'seq 1 500; exec sleep 300'
   fp=$(tx display-message -p '#{pane_id}')
   [ "$(tx display-message -p -t "$fp" '#{pane_floating_flag}')" = 1 ]
+  # ast-grep-ignore: no-hard-wait - letting 500 lines land in the float before entering copy-mode
   sleep 0.5
   tx copy-mode -t "$fp"
   tx send-keys -t "$fp" -X -N 10 scroll-up
@@ -245,6 +250,7 @@ reset_panes() {
   reset_panes
   tx split-window -t SMOKE -- sh -c 'exec sleep 300'
   tx display-panes -d 200
+  # ast-grep-ignore: no-hard-wait - display-panes' own -d 200 overlay has no completion event
   sleep 0.5
   reset_panes
   assert_alive
@@ -253,6 +259,7 @@ reset_panes() {
 @test "popup renders and closes" {
   reset_panes
   tx display-popup -E true
+  # ast-grep-ignore: no-hard-wait - the popup's draw and teardown have no completion event
   sleep 0.5
   assert_alive
 }
@@ -278,11 +285,14 @@ reset_panes() {
   cw=$(tx display-message -p '#{client_width}')
   ch=$(tx display-message -p '#{client_height}')
   tx resize-window -t SMOKE -x $((cw + 20)) -y $((ch + 6))
+  # ast-grep-ignore: no-hard-wait - letting the resize repaint before the next one
   sleep 0.3
   tx resize-window -t SMOKE -x $((cw - 20)) -y $((ch - 6))
+  # ast-grep-ignore: no-hard-wait - letting the resize repaint before the next one
   sleep 0.3
   tx set-option -wu -t SMOKE window-size
   tx resize-window -t SMOKE -A
+  # ast-grep-ignore: no-hard-wait - letting -A repaint before reading the restored width
   sleep 0.3
   [ "$(tx display-message -p '#{window_width}')" = "$cw" ]
   assert_alive
@@ -315,6 +325,7 @@ reset_panes() {
   tx set-option -g pane-scrollbars on
   tx split-window -t SMOKE -- sh -c 'seq 1 500; exec sleep 300'
   p=$(tx display-message -p '#{pane_id}')
+  # ast-grep-ignore: no-hard-wait - letting 500 lines land in the pane before entering copy-mode
   sleep 0.5
   tx copy-mode -t "$p"
   tx send-keys -t "$p" -X -N 10 scroll-up
@@ -331,6 +342,7 @@ reset_panes() {
   tx set-option -g pane-scrollbars modal
   tx split-window -t SMOKE -- sh -c 'seq 1 500; exec sleep 300'
   p=$(tx display-message -p '#{pane_id}')
+  # ast-grep-ignore: no-hard-wait - letting 500 lines land in the pane before entering copy-mode
   sleep 0.5
   tx copy-mode -t "$p"
   tx send-keys -t "$p" -X -N 20 scroll-up
