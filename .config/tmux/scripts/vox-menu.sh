@@ -11,6 +11,10 @@
 # Discard is `vox cancel`: it throws the audio away without spending minutes
 # transcribing it, so it is the only destructive row and the only confirmed one.
 #
+# Name… hands the title question to `vox-toggle.sh prompt`, the key's own owner
+# of it, rather than re-spelling a command-prompt here — same wording, same
+# flags, one place to get them right.
+#
 #   vox-menu.sh CLIENT MOUSE_X MOUSE_Y
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -62,7 +66,7 @@ menu+=(-x "$mx" -y "$my" -T "$title")
 if [ "$state" = RECORDING ]; then
 	menu+=(
 		"Stop and transcribe" s "run-shell '\"$TOGGLE\"'"
-		"Name…" n "command-prompt -l -p 'title (recording, empty = none)' \"run-shell '\\\"$TOGGLE\\\" name \\\"$dir\\\" \\\"%%\\\"'\""
+		"Name…" n "run-shell '\"$TOGGLE\" prompt \"$dir\" \"$client\"'"
 		""
 		"Discard without transcribing" d "confirm-before -p 'discard this recording? (y/n)' \"run-shell '\\\"$VOX_BIN\\\" cancel'\""
 		""

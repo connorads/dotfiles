@@ -127,6 +127,21 @@ toggle() {
   [[ "$line" == *" -l "* ]] || [[ "$prompt" != *,* ]]
 }
 
+@test "prompt asks the pill menu's question too, on the client that asked" {
+  stub_vox
+
+  toggle prompt "$VOX_STORE/2026-07-28-140312-standup" client7
+
+  [ "$status" -eq 0 ]
+  line=$(grep -m1 'command-prompt' "$TEST_LOG")
+  [ -n "$line" ]
+  # One question, aimed at the client that clicked, with the recording it names
+  # baked into the callback - a rename mid-capture keeps that true.
+  [[ "$line" == *" -l "* ]] || false
+  [[ "$line" == *"-t client7"* ]] || false
+  [[ "$line" == *"name \"$VOX_STORE/2026-07-28-140312-standup\""* ]]
+}
+
 @test "the prompt callback renames the live recording" {
   stub_vox
 
