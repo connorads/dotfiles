@@ -226,6 +226,50 @@ sock.close()
 PY
 }
 
+# attach_pty_client [SESSION] - attach a real background client over a pseudo-tty
+# to SESSION (default `s`) on the private server named by $TMUX_BIN and $SOCK, so
+# commands that need a real client (switch-client, popups, the sweep's
+# "someone is viewing" gate) have one. Sets ATTACH_PID for teardown; returns
+# non-zero if no client appears, so callers can `skip` - some CI environments
+# refuse to allocate a pty.
+#
+# Two `script` spellings because BSD (macOS) and util-linux take different flags.
+# TERM is forced: CI leaves it unset, tmux then fails to open the terminal, and
+# the test would silently skip rather than fail. 3>&- closes bats's status fd so
+# the backgrounded client cannot hang the run.
+#
+# **Stdin is a FIFO this shell holds open on fd 9, never the caller's.** `script`
+# exits the instant its input reaches EOF and takes the pty client down with it,
+# so a backgrounded client inheriting an already-drained stdin lives only a few
+# milliseconds - long enough for `#{session_attached}` to flip, not long enough
+# to still be attached when the test uses it. The client's lifetime has to be
+# owned, not inferred: without this the caller is racing a process it never
+# asked to be short-lived, and wins only by accident. tmux-render-smoke.bats
+# reaches the same conclusion from the other direction.
+attach_pty_client() {
+  local sess=${1:-s}
+  local fifo="$BATS_TEST_TMPDIR/attach-stdin.fifo"
+
+  rm -f "$fifo"
+  mkfifo "$fifo"
+  # Read-write, so this shell is itself the writer keeping the pipe from EOF.
+  exec 9<>"$fifo"
+
+  if script --help 2>&1 | grep -q 'illegal option'; then # BSD
+    TERM=${TERM:-screen} script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t "$sess" \
+      <&9 >/dev/null 2>&1 3>&- &
+  else # util-linux
+    TERM=${TERM:-screen} script -qec "$TMUX_BIN -L $SOCK attach -t $sess" /dev/null \
+      <&9 >/dev/null 2>&1 3>&- &
+  fi
+  # shellcheck disable=SC2034  # read by the calling .bats file's teardown
+  ATTACH_PID=$!
+
+  # shellcheck disable=SC2016  # a wait_until predicate expands per poll, not here
+  wait_until -d '"$TMUX_BIN" -L "$SOCK" list-clients' \
+    '[ "$("$TMUX_BIN" -L "$SOCK" display-message -p -t "$sess" "#{session_attached}")" != 0 ]'
+}
+
 run_in_tty() {
   local command=$1
 

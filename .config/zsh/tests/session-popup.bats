@@ -30,24 +30,10 @@ teardown() {
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
 }
 
-# attach_client — attach a real client through a pty so switch-client has a
-# client to move. `script` differs across BSD (macOS) and util-linux, so try both.
-# Backgrounded; ATTACH_PID is killed in teardown. Returns non-zero if no pty
-# attaches so callers can `skip`.
-attach_client() {
-  if script --version >/dev/null 2>&1; then
-    script -qec "$TMUX_BIN -L $SOCK attach -t main" /dev/null >/dev/null 2>&1 &
-  else
-    script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t main >/dev/null 2>&1 &
-  fi
-  ATTACH_PID=$!
-  local i
-  for i in $(seq 1 25); do
-    [ "$(tx display-message -p -t main '#{session_attached}')" != 0 ] && return 0
-    sleep 0.2
-  done
-  return 1
-}
+# A real client through a pty, so switch-client has one to move
+# (attach_pty_client, test_helper.bash). Returns non-zero if no pty attaches, so
+# callers can `skip`; ATTACH_PID is killed in teardown.
+attach_client() { attach_pty_client main; }
 
 # client_session — the session the (single) attached client currently shows.
 client_session() { tx list-clients -F '#{client_session}' | head -n1; }
