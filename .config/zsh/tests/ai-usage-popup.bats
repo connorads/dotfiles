@@ -71,26 +71,53 @@ raise SystemExit(os.waitstatus_to_exitcode(status))
 PY
 }
 
+# run_popup_after_refresh WANT_CACHE_RENDERS - let the detached refresh finish,
+# then quit the popup.
+#
+# The redraw is the thing under test, so when one is expected this waits for it
+# to appear in $POPUP_LOG rather than guessing how long it takes: quitting 0.2s
+# after the done-file races the popup's second render, and losing that race
+# looks exactly like "it never redrew".
+#
+# When no redraw is expected there is nothing to wait for, and only elapsed time
+# can show that one did not happen - so that case keeps a settle.
 run_popup_after_refresh() {
-  run python3 - "$POPUP" "$REFRESH_DONE" <<'PY'
+  run python3 - "$POPUP" "$REFRESH_DONE" "$POPUP_LOG" "$1" <<'PY'
 import os
 import pty
 import select
 import sys
 import time
 
-command, done_file = sys.argv[1:]
+command, done_file, log_file, want = sys.argv[1:]
+want = int(want)
+SETTLE_SECS = 1.0
+
+
+def cache_renders():
+    try:
+        with open(log_file) as fh:
+            return fh.read().count("--cache-only\n")
+    except OSError:
+        return 0
+
+
 pid, fd = pty.fork()
 if pid == 0:
     os.execve(command, [command], os.environ)
 started = time.monotonic()
 sent = False
+done_at = None
 chunks = []
 while True:
-    if not sent and os.path.exists(done_file):
-        time.sleep(0.2)
-        os.write(fd, b"q")
-        sent = True
+    if not sent:
+        if done_at is None and os.path.exists(done_file):
+            done_at = time.monotonic()
+        if done_at is not None:
+            settled = time.monotonic() - done_at > SETTLE_SECS
+            if (want > 1 and cache_renders() >= want) or settled:
+                os.write(fd, b"q")
+                sent = True
     ready, _, _ = select.select([fd], [], [], 0.02)
     if ready:
         try:
@@ -193,7 +220,7 @@ PY
 @test "natural refresh completion redraws once when a cache changed" {
   write_ai_usage_stub 'printf updated >"$HOME/.cache/codex-usage.json"'
 
-  run_popup_after_refresh
+  run_popup_after_refresh 2
 
   [ "$status" -eq 0 ]
   [ "$(grep -c '^--cache-only$' "$POPUP_LOG")" -eq 2 ]
@@ -203,7 +230,7 @@ PY
 @test "natural refresh completion does not redraw unchanged data" {
   write_ai_usage_stub ':'
 
-  run_popup_after_refresh
+  run_popup_after_refresh 1
 
   [ "$status" -eq 0 ]
   [ "$(grep -c '^--cache-only$' "$POPUP_LOG")" -eq 1 ]

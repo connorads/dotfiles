@@ -181,8 +181,11 @@ EOF
 
   run_zsh_function "$AI_USAGE" --refresh-only
   local refresh_status=$status
-  [ -e "$BATS_TEST_TMPDIR/lock-released" ]
+  # `wait` first: the remover rmdir's the lock and only then touches the marker,
+  # so ai-usage can return in between and the assertion would be reading a file
+  # the process it is about has not written yet.
   wait "$remover_pid"
+  [ -e "$BATS_TEST_TMPDIR/lock-released" ]
 
   [ "$refresh_status" -eq 0 ]
 }
