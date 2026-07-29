@@ -96,6 +96,19 @@ EOF
   ! grep -q 'rename-window -t win' "$TEST_LOG"
 }
 
+@test "the rename prompt takes a label, not a comma-split list" {
+  export TMUX_WINDOW_INFO='$1	source	@7	1	notes, drafts	0	1	2'
+
+  run "$ORG" window clientA "@7" "%5" "/tmp/has space" 9 3
+
+  [ "$status" -eq 0 ]
+  # `command-prompt` splits -I and -p on commas into a sequence of prompts, so a
+  # label holding one would ask twice and pre-fill neither half. `-l` is literal.
+  line=$(grep -m1 'command-prompt' "$TEST_LOG")
+  [ -n "$line" ]
+  [[ "$line" == *" -l "* ]]
+}
+
 @test "linked window menu relabels kill and enables unlink" {
   export TMUX_WINDOW_INFO='$1	source	@7	1	shared	1	2	3'
 
