@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# nosleep: keep mac awake (prevents system sleep on AC power)
+# nosleep: keep mac awake while on AC power (caffeinate -s; lid must stay open)
 emulate -L zsh
 
 if ! command -v caffeinate >/dev/null 2>&1; then
@@ -9,9 +9,14 @@ fi
 
 if [[ "$1" == "--help" || "$1" == "-h" ]]; then
   echo "Usage: nosleep [duration] [-- command...]"
-  echo "  Prevents system sleep on AC power (caffeinate -s)"
+  echo "  Holds system sleep while on AC power only (caffeinate -s)."
   echo "  Duration: 30, 5m, 2h"
   echo "  Command:  nosleep -- long-running-task"
+  echo
+  echo "  Closing the lid still sleeps the Mac. Clamshell sleep is a separate"
+  echo "  kernel path that ignores power assertions, so no caffeinate flag can"
+  echo "  stop it. For that use tmux 'prefix + Alt+k' -> [l] (lid mode), which"
+  echo "  raises the SleepDisabled kernel flag and clears it on a deadline."
   return 0
 fi
 
