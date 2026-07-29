@@ -54,8 +54,11 @@ launch_daemon() {
   DAEMON_PID=$!
 }
 
-wait_file() {
-  wait_until -i 0.2 "[ -f '$1' ]"
+# The daemon's pidfile, once it names a pid. Not `[ -f ]`: the redirection
+# creates the file before the daemon writes to it, and an empty read makes every
+# check downstream vacuous (read_pidfile, test_helper.bash).
+daemon_pid() {
+  read_pidfile "$1"
 }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
@@ -274,9 +277,7 @@ wait_nonshell() {
 @test "daemon starts one process with a pidfile and is idempotent" {
   pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
   launch_daemon
-  wait_file "$pidfile"
-  [ -f "$pidfile" ]
-  first=$(cat "$pidfile")
+  first=$(daemon_pid "$pidfile")
   kill -0 "$first"
   # A second invocation finds the live daemon and no-ops without touching the pidfile.
   run env AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 sh "$SCRIPT" daemon
@@ -289,7 +290,7 @@ wait_nonshell() {
   win=$(tx display-message -p -t s '#{window_id}')
   pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
   launch_daemon
-  wait_file "$pidfile"
+  daemon_pid "$pidfile" >/dev/null
   tx set-option -p -t "$pane" @agent_state working
   tx set-option -w -t "$win" @win_agent_state working
   # Poll for BOTH dots: the daemon clears the window dot on a later step than
@@ -301,8 +302,7 @@ wait_nonshell() {
 @test "daemon exits when the server dies" {
   pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
   launch_daemon
-  wait_file "$pidfile"
-  dpid=$(cat "$pidfile")
+  dpid=$(daemon_pid "$pidfile")
   tx kill-server 2>/dev/null || true
   wait_until -i 0.2 -d 'ps -o pid=,stat=,command= -p "$dpid"' '! kill -0 "$dpid" 2>/dev/null'
 }
