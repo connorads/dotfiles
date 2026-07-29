@@ -26,6 +26,41 @@ Conventions: isolate `$HOME`/`$PATH` via `setup_test_home` (`test_helper.bash`);
 observable behaviour (args, exit status, stdout, fs/option effects) not internals; prefer
 real infrastructure or fakes over mocks. The wider testing rules live in `~/CLAUDE.md`.
 
+## Waiting: poll for a signal, never sleep for a duration
+
+`test_helper.bash` exports **`wait_until`**, and asynchronous waits go through it:
+
+```sh
+wait_until -t 5 '[ -s "$pidfile" ]'                 # budget 5s, default interval 0.05
+wait_until -d 'cat "$log"' 'grep -q ready "$log"'   # -d names what WAS observed on timeout
+```
+
+The predicate is a shell command string re-evaluated every poll, so **single-quote
+it** - in double quotes a `$(...)` is expanded once at the call site and the poll
+then re-tests that one frozen value until it times out.
+
+A fixed `sleep` tuned on an idle machine is not a wait, it is a guess about
+someone else's scheduling. Under `-j` the fork/exec chains behind a render or a
+tmux round-trip inflate several-fold and the guess loses; the answer is never a
+bigger number, because the number is also paid in full on every run where the
+work took 10ms. A poll is both faster in the common case and stable in the bad
+one. Three shapes to recognise:
+
+- **Gate** - asserting state has *not* changed yet, relying on the racing work
+  being slow. No timeout fixes this: the assertion *depends* on losing the race.
+  Use a gate file the test owns and the fake blocks on, so the window is held
+  open rather than hoped for (`shotpath-copy.bats` is the reference).
+- **Handshake** - signalling a background process after a blind sleep. If startup
+  overruns, the signal is missed *forever* (tmux never replays `%output` to a
+  client that was not yet attached). Poll for an observable readiness signal
+  first - `#{client_control_mode}` for control-mode clients.
+- **Budget** - a sleep before asserting state *has* changed. Only ever a bigger
+  guess; `wait_until` is the whole fix.
+
+`BATS_TEST_RETRIES` is deliberately not used. Re-running until green hides the
+defect and ships it. Bounded polling is the opposite: it waits on a genuinely
+asynchronous result and still fails if it never arrives.
+
 ## What runs the suite
 
 Two hk gates, both driving `~/.hk-hooks/bats-tests.sh`:
