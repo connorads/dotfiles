@@ -58,6 +58,9 @@ typos = "1"
 # pipeline (zizmor runs --offline in the hook; no network at commit time).
 actionlint = "1"
 zizmor = "1"
+# ast-grep: structural lint for the bats suite - the `bats-lint` hk step's two
+# rules (.hk-hooks/bats-lint/) block a fixed sleep used as synchronisation and
+# the multi-line `bash -c '...'` blob that would hide one. See docs/adr/0004.
 ast-grep = "0.44"
 gcloud = "573"
 aws = "2"
@@ -184,6 +187,30 @@ run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)
 description = "Run only fast (non-integration) BATS tests (parallel)"
 env = { BATS_PARALLEL_BINARY_NAME = "rush" }
 run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)\" --no-parallelize-within-files --filter-tags '!integration' --recursive .config/zsh/tests"
+
+# Ordinary green is not evidence for a de-flake: a timing race passes on an idle
+# machine by definition. This runs the real pre-push gate repeatedly and reports
+# anything short of 100% stable, which is the only signal that says the class is
+# gone rather than dormant. Runs ~2min per iteration - background it.
+#   RUNS=10 mise run zsh-tests-stress
+[tasks.zsh-tests-stress]
+description = "Run the full BATS suite N times (RUNS, default 10) and report any non-deterministic file"
+run = """
+set -u
+runs=${RUNS:-10}
+failed=0
+for i in $(seq 1 "$runs"); do
+  if out=$(mise run zsh-tests 2>&1); then
+    echo "run $i/$runs: clean"
+  else
+    failed=$((failed + 1))
+    echo "run $i/$runs: FAILED"
+    printf '%s\n' "$out" | grep -E '^not ok' || true
+  fi
+done
+echo "--- $((runs - failed))/$runs clean ---"
+[ "$failed" -eq 0 ]
+"""
 
 [tasks.claude-hook-tests]
 description = "Run pytest suite for Claude Code hooks (mise python has no pytest; uv supplies it)"

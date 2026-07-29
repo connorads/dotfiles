@@ -59,7 +59,39 @@ one. Three shapes to recognise:
 
 `BATS_TEST_RETRIES` is deliberately not used. Re-running until green hides the
 defect and ships it. Bounded polling is the opposite: it waits on a genuinely
-asynchronous result and still fails if it never arrives.
+asynchronous result and still fails if it never arrives. `BATS_TEST_TIMEOUT` *is*
+used, in `rl.bats`'s `setup_file`, as a hang backstop rather than a budget.
+
+### The rule is enforced, not remembered
+
+The `bats-lint` hk step runs two `ast-grep` rules (`~/.hk-hooks/bats-lint/`) over
+this directory:
+
+- **`no-hard-wait`** blocks a fixed `sleep`. It does not flag a sleep in a loop
+  body (a poll's own interval), a backgrounded `sleep 100 &` (a keep-alive that
+  delays nothing), or a sleep inside a backgrounded subshell (a fixture producing
+  the condition under test). Where none of those apply and there is genuinely no
+  observable - a tmux overlay draw, a popup teardown, fzf keystroke pacing - waive
+  it one line at a time and say why:
+
+  ```sh
+  # ast-grep-ignore: no-hard-wait - display-panes' own -d 200 overlay has no completion event
+  sleep 0.5
+  ```
+
+- **`no-embedded-script`** blocks multi-line shell inside a quoted string
+  (`run bash -c '…'`). Such a blob is a string to every AST tool, so it hides
+  sleeps from the rule above, and it is how plain `bash` - Apple's 3.2 - slips
+  past the `$BASH5` contract. Lift the body into a helper function and `run <fn>`
+  it, remembering that `run` disables errexit, so a `set -e` the blob leaned on
+  becomes explicit `|| return 1` per step.
+
+`bats-lint.bats` gates the rules themselves: the real tree is clean today, and
+each rule demonstrably fires. Static analysis cannot see a *semantic* race - an
+assertion placed before its own `wait` needs no `sleep` at all - so
+`mise run zsh-tests-stress` runs the real gate repeatedly and reports anything
+short of 100% stable. The decision and what lost:
+[`docs/adr/0004`](../../../docs/adr/0004-bats-hard-wait-lint.md).
 
 ## What runs the suite
 

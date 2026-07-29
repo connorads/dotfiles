@@ -1,0 +1,52 @@
+# A fixed sleep as a synchronisation primitive is a guess about someone else's
+# scheduling. Tuned on an idle machine it is too short under `-j`, where the
+# fork/exec chains behind a render or a tmux round-trip inflate several-fold -
+# and it is also paid in full on every run where the work took 10ms. Poll for an
+# observable instead: `wait_until` in .config/zsh/tests/test_helper.bash.
+#
+# Three things are deliberately NOT flagged, because none of them is a wait:
+#
+#   - a sleep in a loop body, which is a poll's own interval;
+#   - a backgrounded sleep (`sleep 100 &`), which holds a pid or a pane open and
+#     delays nothing;
+#   - a sleep inside a backgrounded subshell (`( sleep 0.6; release ) &`), which
+#     is a fixture producing the condition under test, not the test waiting.
+#
+# Loop and heredoc awareness come free from the grammar. Backgrounding does not:
+# tree-sitter-bash leaves `&` as an anonymous sibling token, so it is matched by
+# regex on the following node, and separately through whichever wrapper stands
+# between the sleep and that token.
+#
+# Escape hatch, one line above the sleep, and it must say why:
+#   # ast-grep-ignore: no-hard-wait - <reason>
+id: no-hard-wait
+language: bash
+severity: error
+message: "fixed sleep used as synchronisation - poll with wait_until instead, or annotate the line above with: # ast-grep-ignore: no-hard-wait - <reason>"
+rule:
+  all:
+    - pattern: sleep $N
+    # A poll's own interval.
+    - not:
+        inside:
+          any:
+            - kind: for_statement
+            - kind: while_statement
+            - kind: c_style_for_statement
+          stopBy: end
+    # `sleep 100 &` - a keep-alive, not a wait.
+    - not:
+        precedes:
+          regex: "^&$"
+    # The same, with something between the sleep and the `&`: a redirection, a
+    # subshell, a brace group, a pipeline.
+    - not:
+        inside:
+          any:
+            - kind: redirected_statement
+            - kind: subshell
+            - kind: compound_statement
+            - kind: pipeline
+          precedes:
+            regex: "^&$"
+          stopBy: end

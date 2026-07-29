@@ -248,6 +248,23 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/fzf-bind-lint.py"
     }
 
+    // The bats suite's flake class, made unwritable. A fixed `sleep` used to
+    // synchronise is a guess about someone else's scheduling: tuned on an idle
+    // machine it loses under `-j`, and it is paid in full on every run where the
+    // work took 10ms. Two tests failed the bats-full pre-push gate that way, and
+    // a sweep found five more that passed vacuously - worse, because a flake is
+    // loud and a false green is silent. no-hard-wait blocks the sleep;
+    // no-embedded-script blocks the multi-line `bash -c '...'` blob that would
+    // otherwise hide one from any AST tool (and smuggle Apple's bash 3.2 past the
+    // $BASH5 contract). Rationale and what lost: docs/adr/0004. Rule dir in the
+    // glob so editing a rule re-triggers it.
+    //
+    // `ast-grep scan`, never `sg`: that name belongs to another tool.
+    ["bats-lint"] {
+        glob = List(".config/zsh/tests/**/*.bats", ".hk-hooks/bats-lint/**/*.yml", ".hk-hooks/bats-lint.sgconfig.yml")
+        check = "ast-grep scan -c .hk-hooks/bats-lint.sgconfig.yml .config/zsh/tests"
+    }
+
     // Keep Claude and OpenCode security denies in lock-step (R6 drift guard).
     // Fires whenever a relevant config, the gh-api gate hook, or the checker
     // itself is staged. Runs from $HOME, so the checker's cwd-relative paths
