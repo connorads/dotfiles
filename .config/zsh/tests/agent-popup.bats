@@ -29,30 +29,13 @@ teardown() {
   # Plain kill hangs up the pty so `tmux attach` exits; kill-server then reaps the
   # private server. (No process-group kill: under bats the backgrounded client is
   # not a group leader, so it shares this shell's group — a -PGID kill is a no-op.)
-  if [ -n "${CLIENT_BG:-}" ]; then kill "$CLIENT_BG" 2>/dev/null || true; fi
+  if [ -n "${ATTACH_PID:-}" ]; then kill "$ATTACH_PID" 2>/dev/null || true; fi
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
 }
 
-# Attach a background client to session $1 over a pseudo-tty so switch-client has a
-# real client to move. Dual `script` syntax (BSD vs util-linux) mirrors test_helper
-# run_in_tty; TERM is forced because CI runners leave it unset/dumb and tmux's
-# client then fails to open the terminal (which would silently skip this test).
-# 3>&- closes bats's status fd so the attached client does not hang the run.
-attach_client() {
-  local sess=${1:-s}
-  if script --help 2>&1 | grep -q 'illegal option'; then
-    TERM=${TERM:-screen} script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t "$sess" >/dev/null 2>&1 3>&- &
-  else
-    TERM=${TERM:-screen} script -qc "$TMUX_BIN -L $SOCK attach -t $sess" /dev/null >/dev/null 2>&1 3>&- &
-  fi
-  CLIENT_BG=$!
-  local i
-  for i in $(seq 1 30); do
-    [ -n "$(tx list-clients -F '#{client_name}' 2>/dev/null)" ] && return 0
-    sleep 0.2
-  done
-  return 1
-}
+# A background client on session $1 over a pseudo-tty, so switch-client has a
+# real one to move (attach_pty_client, test_helper.bash).
+attach_client() { attach_pty_client "${1:-s}"; }
 
 @test "list ranks blocked > done > working > idle and hides pane_id in field 1" {
   p1=$(tx display-message -p -t s '#{pane_id}')

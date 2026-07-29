@@ -41,25 +41,10 @@ teardown() {
   [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
 }
 
-# attach_client — attach a real client to session s through a pty so
-# session_attached becomes >0 (the sweep's "someone is viewing" gate). `script`
-# differs across BSD (macOS) and util-linux, so try both forms. Backgrounded;
-# ATTACH_PID is killed in teardown. Returns non-zero if the pty never attaches so
-# callers can `skip` (some CI environments refuse to allocate one).
-attach_client() {
-  if script --version >/dev/null 2>&1; then
-    script -qec "$TMUX_BIN -L $SOCK attach -t s" /dev/null >/dev/null 2>&1 &
-  else
-    script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t s >/dev/null 2>&1 &
-  fi
-  ATTACH_PID=$!
-  local i
-  for i in $(seq 1 25); do
-    [ "$(tx display-message -p -t s '#{session_attached}')" != 0 ] && return 0
-    sleep 0.2
-  done
-  return 1
-}
+# A real client on session s, so session_attached is >0 - the sweep's
+# "someone is viewing" gate (attach_pty_client, test_helper.bash). Returns
+# non-zero if the pty never attaches, so callers can `skip`.
+attach_client() { attach_pty_client s; }
 
 # Launch the daemon backgrounded with an isolated state dir + 1s poll. 3>&- closes
 # bats's status fd so the loop does not keep the run hanging; fds 1/2 → /dev/null.
