@@ -13,6 +13,7 @@
 # (home.username/homeDirectory/stateVersion) are defined HERE, exactly once.
 {
   self,
+  config,
   pkgs,
   ...
 }:
@@ -240,6 +241,28 @@
       };
     };
   };
+
+  # -- tmux caffeine lid mode: the root capability --
+  # `caffeinate -i` cannot keep this Mac awake with the lid shut. Clamshell sleep
+  # is a separate kernel path that never consults power assertions, so the whole
+  # assertion family (-i/-s/-d) is structurally unable to stop it: verified here
+  # as `Entering Sleep state due to 'Clamshell Sleep'` in `pmset -g log` while a
+  # live PreventUserIdleSystemSleep assertion was held. The only lever that works
+  # is the SleepDisabled kernel flag, checked before the clamshell path.
+  #
+  # Exactly two argument vectors, no wildcard: this grants the ability to set and
+  # clear that one flag, nothing else. `sudo -n` with no prompt is required, not
+  # convenience — the supervisor's trap must clear the flag unattended at 04:00,
+  # and the reconciler runs from launchd with no tty, so a Touch ID or password
+  # prompt would break the auto-clear and leave the Mac unable to sleep. This
+  # adds a rule; it does not relax normal sudo, so the desktop's
+  # security.pam.services.sudo_local (Touch ID) is unaffected.
+  #
+  # Consumed by scripts/caffeine-lib.sh (caffeine_start_lid's supervisor trap)
+  # and scripts/caffeine-reconcile.sh. See .config/tmux/AGENTS.md "Caffeine".
+  environment.etc."sudoers.d/20-caffeine-pmset".text = ''
+    ${config.system.primaryUser} ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
+  '';
 
   # -- tmux-resurrect keepalive (independent save driver) --
   # continuum's autosave is injected into tmux's status-right and advances its
