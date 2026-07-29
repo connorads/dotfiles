@@ -263,7 +263,7 @@ window_menu() {
 		""
 		"Swap left" "<" "swap-window -s $window_id -t :-1"
 		"Swap right" ">" "swap-window -s $window_id -t :+1"
-		"Rename" "r" "command-prompt -I \"$qlabel\" -p \"Manual window label:\" \"rename-window -t $window_id '%%'\""
+		"Rename" "r" "command-prompt -l -I \"$qlabel\" -p \"Manual window label:\" \"rename-window -t $window_id '%%'\""
 		"Auto name" "a" "set-window-option -t $window_id automatic-rename on"
 	)
 	menu+=("")
