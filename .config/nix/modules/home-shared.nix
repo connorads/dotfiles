@@ -25,7 +25,6 @@
       user.name = "Connor Adams";
       user.email = "connorads@users.noreply.github.com";
       init.defaultBranch = "main";
-      init.templateDir = "${config.xdg.configHome}/git/template";
       pull.rebase = true;
       push.autoSetupRemote = true;
       rebase.autosquash = true;
@@ -49,6 +48,11 @@
       delta.dark = true;
       delta.line-numbers = true;
       commit.verbose = true;
+      # Config-based hook (git >= 2.54): runs in addition to any directory hook,
+      # so the guard also covers repos that set core.hooksPath. See the guard
+      # script below.
+      hook.identity-guard.command = "${config.xdg.configHome}/git/hooks/identity-guard";
+      hook.identity-guard.event = "pre-commit";
       filter.codex-config.clean = "codex-config-clean";
       filter.codex-config.smudge = "cat";
       filter.codex-config.required = true;
@@ -62,14 +66,17 @@
   };
 
   # Central identity guard: the single source of truth for the commit hook logic.
-  # New repos get a tiny stub (below) that delegates here, so improving this
-  # script updates behaviour everywhere with no drift.
+  # Every repo runs it, via the global hook.identity-guard config hook above -
+  # nothing is copied into a repo, so there is one copy to improve and no repo
+  # can hold a stale one. home-manager re-points this path on every switch,
+  # which is what keeps a nix GC from breaking it.
   xdg.configFile."git/hooks/identity-guard" = {
     executable = true;
     text = ''
       #!/bin/sh
       # Block commits whose author email is not a GitHub noreply address.
-      # Installed into new repos via init.templateDir (see programs.git below).
+      # Runs in every repo as a global pre-commit config hook (see programs.git
+      # above), including repos whose core.hooksPath replaces .git/hooks.
       # Why: agents/tools sometimes run `git config user.email <personal>` in a
       # fresh repo, baking a private address into commit metadata.
 
@@ -102,20 +109,6 @@
         git config guard.allowNonGithubEmail true
       MSG
       exit 1
-    '';
-  };
-
-  # Template stub copied into every new repo via init.templateDir. Stays trivial
-  # (no drift) and delegates to the central guard above.
-  xdg.configFile."git/template/hooks/pre-commit" = {
-    executable = true;
-    text = ''
-      #!/bin/sh
-      # Delegates to the central identity guard so the logic lives in one place
-      # and updates apply to every repo. Installed via init.templateDir.
-      guard="$HOME/.config/git/hooks/identity-guard"
-      [ -x "$guard" ] && exec "$guard" "$@"
-      exit 0
     '';
   };
 
