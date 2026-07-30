@@ -1,5 +1,8 @@
 #!/usr/bin/env zsh
-# hmsr: rollback home-manager (uses hms)
+# hmsr: home-manager switch --rollback using ~/.config/nix flake
 emulate -L zsh
 
-hms --rollback
+# Names --rollback itself rather than delegating to `hms`, so the flag cannot be
+# dropped by a wrapper that forgets to forward "$@". home-manager only accepts
+# --rollback once `switch` has been parsed, so the flag must trail it.
+home-manager switch --flake ~/.config/nix --rollback "$@"

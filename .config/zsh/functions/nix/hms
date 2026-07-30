@@ -2,4 +2,4 @@
 # hms: home-manager switch using ~/.config/nix flake
 emulate -L zsh
 
-home-manager switch --flake ~/.config/nix
+home-manager switch --flake ~/.config/nix "$@"

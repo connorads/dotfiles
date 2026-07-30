@@ -1,5 +1,8 @@
 #!/usr/bin/env zsh
-# drsr: rollback darwin-rebuild (uses drs)
+# drsr: darwin-rebuild switch --rollback using ~/.config/nix flake
 emulate -L zsh
 
-drs --rollback
+# Names --rollback itself rather than delegating to `drs`, so the flag cannot be
+# dropped by a wrapper that forgets to forward "$@". darwin-rebuild skips the
+# build for a rollback, so --flake is inert here and kept only for symmetry.
+sudo darwin-rebuild switch --flake ~/.config/nix --rollback "$@"
