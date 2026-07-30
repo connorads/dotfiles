@@ -80,4 +80,9 @@ if [[ -f pubspec.lock ]]; then
   dart pub get || return 1
 fi
 
+# Git hooks (report only - arming is a deliberate act, see `git hooks`)
+if [[ -z "$CI" ]] && command -v git-hooks &>/dev/null && git rev-parse --git-dir &>/dev/null; then
+  git hooks status --quiet
+fi
+
 echo "=> done"
