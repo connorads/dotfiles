@@ -258,8 +258,10 @@ _vox_stop() {
 	_vox_transcribe "$dir"
 	local rc=$?
 	vox_clear_job
-	(( rc == 0 )) || return "$rc"
+	# The path even when the transcript came back empty: the recording exists and
+	# its audio is intact, so there is somewhere to go and look either way.
 	print -r -- "$dir"
+	return "$rc"
 }
 
 # _vox_cancel - halt the capture and delete the recording, transcribing nothing.
@@ -303,17 +305,34 @@ _vox_trim_tail() {
 }
 
 # _vox_audio_secs DIR - the recording's length in whole seconds, read from
-# whichever track survives (audio may have been pruned). Best-effort: no ffprobe,
-# or a track it cannot measure, prints nothing and fails.
+# whichever track survives: a capture's own tracks, or the source an imported
+# file is symlinked to. Best-effort: no ffprobe, or a track it cannot measure,
+# prints nothing and fails. `-.` follows the symlink rather than skipping it.
 _vox_audio_secs() {
 	command -v ffprobe >/dev/null 2>&1 || return 1
 	local track secs
-	for track in "$1"/{mic,sys}.{wav,opus}(N.); do
+	for track in "$1"/{mic,sys}.{wav,opus}(N-.) "$1"/source.*(N-.); do
 		secs=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$track" 2>/dev/null)
 		[[ "$secs" =~ '^[0-9]+(\.[0-9]+)?$' ]] || continue
 		printf '%.0f' "$secs"
 		return 0
 	done
+	return 1
+}
+
+# _vox_require_transcript DIR - true when the merge left something to read.
+#
+# An empty transcript is a FAILURE to report, not a success to announce: mw's
+# exit status says nothing about content, so without this every surface said
+# "transcript ready" over a 0-byte file. One message covers both "nobody said
+# anything recognisable" and "mw fell over", because nothing here can tell them
+# apart and vox.log carries the detail in either case.
+_vox_require_transcript() {
+	local dir=$1
+	[[ -s "$dir/transcript.md" ]] && return 0
+	local secs
+	secs=$(_vox_audio_secs "$dir") || secs=""
+	print -u2 -- "vox: no speech recognised in ${dir:t}${secs:+ ($(vox_human_age "$secs") of audio)} — see $dir/vox.log"
 	return 1
 }
 
@@ -351,6 +370,7 @@ _vox_transcribe() {
 		_vox_die "merge failed"
 		return 1
 	}
+	_vox_require_transcript "$dir"
 }
 
 # _vox_transcribe_file FILE - transcribe an audio/video file that already exists
@@ -388,7 +408,12 @@ _vox_transcribe_file() {
 		_vox_die "merge failed"
 		return 1
 	}
+	# Same contract as `vox stop`: the path either way, the status says whether
+	# there is anything in it.
+	local rc=0
+	_vox_require_transcript "$dir" || rc=1
 	print -r -- "$dir"
+	return "$rc"
 }
 
 # _vox_ls - every recording, newest first. Names start with the timestamp, so
@@ -714,6 +739,9 @@ _vox_help() {
 
 Both reclaim commands take --dry-run and --force (skip the confirmation).
 There is deliberately no `vox rm`: `rm -rf` is already correct.
+
+`stop` and `<file>` exit 0 only when the transcript has content. They print the
+path either way; an empty transcript means no speech was recognised.
 
 System audio is captured by voxtap (a Core Audio process tap), so there is
 nothing to route by hand. vox refuses to start without it; VOX_MIC_ONLY=1
