@@ -193,8 +193,10 @@ The `up` function runs both on NixOS. An agent on rpi5 can modify the system con
 ## Common Commands
 
 ```bash
-drs                    # darwin-rebuild switch (macOS)
-hms                    # home-manager switch (Linux)
+drs                    # darwin-rebuild switch (macOS); extra args forwarded
+drsr                   # darwin-rebuild switch --rollback (macOS)
+hms                    # home-manager switch (Linux); extra args forwarded
+hmsr                   # home-manager switch --rollback (Linux)
 nrs                    # nixos-rebuild switch (reads $NIXOS_FLAKE, default: ~/.config/nix)
 nrsr                   # nixos-rebuild switch --rollback
 up                     # update everything: bump mise.lock + flake.lock, brew/apt, rebuild (NixOS: nrs + hms)
