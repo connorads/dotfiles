@@ -120,14 +120,21 @@ fi
 if [ "${1:-}" = finish ]; then
 	dir=${2:-}
 	pane=${3:-}
-	if "$VOX_BIN" stop >/dev/null 2>&1; then
+	# The exit status, not just success or not: `vox stop` returns non-zero for a
+	# transcript with nothing in it as well as for a transcription that fell over,
+	# and announcing either as ready is the lie this replaces.
+	"$VOX_BIN" stop >/dev/null 2>&1
+	rc=$?
+	if [ "$rc" -eq 0 ]; then
 		note "vox: transcript ready — ${dir##*/}"
-		[ -n "$pane" ] && ring_bell "$pane"
 	else
-		# No READY on failure: the recording is still listed in the picker,
-		# which says "No transcript yet" honestly, and the log names itself.
-		note "vox: transcription failed — see ${dir}/vox.log"
+		# One message for both, because the log is what distinguishes them. The
+		# picker lists the recording as `empty`, which is the honest label.
+		note "vox: no speech transcribed — see ${dir}/vox.log"
 	fi
+	# The bell either way: a recording that produced nothing needs your attention
+	# more than one that worked, not less.
+	[ -n "$pane" ] && ring_bell "$pane"
 	exit 0
 fi
 
