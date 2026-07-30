@@ -9,8 +9,9 @@ AUDIT="$FUNCTIONS_DIR/nix/pin-audit"
 # Writes the config lines pin-audit greps for its pin inventory. Individual
 # tests overwrite these to exercise the pin-removed self-healing branches.
 write_configs() {
-  mkdir -p "$TEST_HOME/.config/mise" "$TEST_HOME/.config/aube"
+  mkdir -p "$TEST_HOME/.config/mise"
   cat >"$TEST_HOME/.config/mise/config.toml" <<'EOF'
+[tools]
 "github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu" }
@@ -78,7 +79,6 @@ setup() {
 
 @test "removed pins self-report as removable checks" {
   : >"$TEST_HOME/.config/mise/config.toml"
-  : >"$TEST_HOME/.config/aube/config.toml"
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"OK   rembg - exact pin gone"* ]]
