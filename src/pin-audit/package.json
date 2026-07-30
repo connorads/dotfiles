@@ -1,0 +1,14 @@
+{
+  "name": "pin-audit",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Recheck conditional version pins so escape hatches don't age into permanence",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14"
+  }
+}
