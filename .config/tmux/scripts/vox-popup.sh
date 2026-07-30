@@ -3,7 +3,7 @@
 # previewing each recording's transcript, so the thing you actually want (the
 # text) is one keypress from wherever you are. Each row carries whether anyone
 # else was on the call: `solo` or `2-way`, derived from the system track rather
-# than stored.
+# than stored — or `empty`, for one that transcribed to nothing at all.
 #
 #   enter    copy the transcript to the clipboard (tmux buffer + OSC52)
 #   ctrl-y   paste the recording's path into the pane you opened this from
@@ -62,11 +62,16 @@ OSC52="$SELF_DIR/osc52-copy-to-client.sh"
 . "$SELF_DIR/vox-lib.sh"
 
 # preview DIR — the transcript, or an honest note about what is there instead.
+# Three cases, not two: a transcript that exists and is empty is FINISHED, and
+# saying "not yet" about it reads as still-pending forever.
 preview() {
 	local dir=${1:-}
 	[ -d "$dir" ] || return 0
 	if [ -s "$dir/transcript.md" ]; then
 		cat "$dir/transcript.md"
+	elif [ -e "$dir/transcript.md" ]; then
+		printf 'Transcribed to nothing — no speech recognised.\n\n'
+		[ -s "$dir/vox.log" ] && tail -n 10 "$dir/vox.log"
 	else
 		printf 'No transcript yet.\n\n'
 		ls -lh "$dir"
@@ -91,7 +96,11 @@ vox_touch_seen
 rows=""
 while IFS= read -r dir; do
 	[ -n "$dir" ] || continue
-	rows+="$dir"$'\t'"${dir##*/}"$'\t'"$(vox_session_kind "$dir")"$'\t'"$(du -sh "$dir" 2>/dev/null | cut -f1)"$'\n'
+	kind=$(vox_session_kind "$dir")
+	# A recording that transcribed to nothing is not a monologue: `solo` would
+	# make it indistinguishable from a real one.
+	[ -e "$dir/transcript.md" ] && [ ! -s "$dir/transcript.md" ] && kind=empty
+	rows+="$dir"$'\t'"${dir##*/}"$'\t'"$kind"$'\t'"$(du -sh "$dir" 2>/dev/null | cut -f1)"$'\n'
 done < <("$VOX_BIN" ls 2>/dev/null)
 
 if [ -z "$rows" ]; then
@@ -208,6 +217,8 @@ ctrl-x)
 		tmux load-buffer -w "$dir/transcript.md" 2>/dev/null || true
 		[ -x "$OSC52" ] && "$OSC52" <"$dir/transcript.md"
 		tmux display-message "copied transcript: ${dir##*/}" 2>/dev/null || true
+	elif [ -e "$dir/transcript.md" ]; then
+		tmux display-message "${dir##*/} transcribed to nothing — no speech recognised" 2>/dev/null || true
 	else
 		tmux display-message "no transcript in ${dir##*/}" 2>/dev/null || true
 	fi

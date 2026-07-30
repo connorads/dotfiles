@@ -181,10 +181,13 @@ toggle() {
 
   [ "$status" -eq 0 ]
   grep -q '^vox stop$' "$TEST_LOG"
+  grep -q 'display-message vox: transcript ready' "$TEST_LOG"
 }
 
-@test "a failed transcription names the log and sets nothing ready" {
+@test "a transcription that produced nothing is reported as such" {
   stub_vox
+  # `vox stop` returns non-zero for a transcript with nothing in it as well as
+  # for one that fell over, and announcing either as ready is the lie here.
   export VOX_STUB_STOP_FAILS=1
   run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
@@ -192,9 +195,26 @@ toggle() {
     "$TOGGLE" finish "$VOX_STORE/2026-07-28-140312" "$PANE"
 
   [ "$status" -eq 0 ]
-  # Nothing marks the seen file, so a later transcript can still read READY -
-  # and the failure is reported rather than hanging as TRANSCRIBING.
+  grep -q 'display-message vox: no speech transcribed' "$TEST_LOG"
+  grep -q "$VOX_STORE/2026-07-28-140312/vox.log" "$TEST_LOG"
+  ! grep -q 'transcript ready' "$TEST_LOG"
+  # Nothing marks the seen file, so a later transcript can still read READY.
   [ ! -f "$VOX_SEENFILE" ]
+}
+
+@test "the bell rings whether or not there was anything to transcribe" {
+  stub_vox
+  # A recording that produced nothing needs your attention more than one that
+  # worked, not less. ring_bell reaches the clients through tmux, so the lookup
+  # is what says it ran.
+  export VOX_STUB_STOP_FAILS=1
+  run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+    VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
+    TEST_LOG="$TEST_LOG" VOX_STUB_STOP_FAILS=1 \
+    "$TOGGLE" finish "$VOX_STORE/2026-07-28-140312" "$PANE"
+
+  [ "$status" -eq 0 ]
+  grep -q 'list-clients' "$TEST_LOG"
 }
 
 @test "pressing it while transcribing starts a new capture" {

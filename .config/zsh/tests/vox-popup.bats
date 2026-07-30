@@ -105,6 +105,44 @@ popup() {
   [[ "$rows" == *"2026-07-26-090000-standup"*"solo"* ]]
 }
 
+@test "a recording that transcribed to nothing reads empty, not solo" {
+  dir=$(recording 2026-07-28-140312)
+  : >"$dir/transcript.md"
+  stub_fzf ""
+
+  popup
+
+  # `solo` would make it indistinguishable from a real monologue.
+  [[ "$(cat "$FZF_ROWS")" == *"2026-07-28-140312"*"empty"* ]]
+}
+
+@test "the preview tells an empty transcript from an absent one" {
+  present=$(recording 2026-07-28-140312)
+  : >"$present/transcript.md"
+  printf 'mw: nothing to do\n' >"$present/vox.log"
+  absent=$(recording 2026-07-28-150000)
+  rm -f "$absent/transcript.md"
+
+  run "$POPUP" preview "$present"
+  [[ "$output" == *"Transcribed to nothing"* ]]
+  [[ "$output" == *"mw: nothing to do"* ]] # the log, which names why
+
+  run "$POPUP" preview "$absent"
+  # "No transcript yet" over a finished recording reads as still-pending forever.
+  [[ "$output" == *"No transcript yet"* ]]
+}
+
+@test "enter on an empty transcript says so rather than copying nothing" {
+  dir=$(recording 2026-07-28-140312)
+  : >"$dir/transcript.md"
+  stub_fzf ""
+
+  popup
+
+  grep -q 'transcribed to nothing' "$TEST_LOG"
+  ! grep -q '^tmux load-buffer' "$TEST_LOG"
+}
+
 @test "opening the library marks everything as looked at" {
   recording 2026-07-28-140312 >/dev/null
   stub_fzf ""

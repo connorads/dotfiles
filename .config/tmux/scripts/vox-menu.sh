@@ -6,6 +6,7 @@
 #
 #   RECORDING      Stop · Name… · Discard (confirmed) · Recordings
 #   TRANSCRIBING   Recordings
+#   EMPTY          Recordings
 #   READY          Recordings
 #
 # Discard is `vox cancel`: it throws the audio away without spending minutes
