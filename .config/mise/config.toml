@@ -226,6 +226,7 @@ run = """
 set -e
 cd "$HOME"
 (cd .config/skl && bun install --frozen-lockfile && tsc -p tsconfig.json && bun test)
+(cd src/pin-audit && bun install --frozen-lockfile && tsc -p tsconfig.json && bun test)
 for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows; do
   (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test)
 done
