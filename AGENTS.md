@@ -210,6 +210,7 @@ dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
+git hooks status       # Which hooks a repo declares vs what actually fires (manager, mechanism, identity guard, stale stubs); --json / --check (exit 2 when declared but unarmed) / --quiet (what `rs` calls). Reports only - arming is a deliberate act
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
 mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
@@ -410,6 +411,8 @@ Native modules and codegen need scripts to build. When a project errors out:
    - **npm**: project-level `.npmrc` with `ignore-scripts=false` (no per-package primitive exists).
 
 **Agents: do not disable this globally.** Ask first, then allow-list narrowly. The friction is the security control.
+
+The same block stops husky/hk wiring themselves, since both do it from `prepare`: a repo's declared hooks stay unarmed, silently. That is intended - a clone that armed itself would run repo-authored code on every later commit - so the fix is visibility, not auto-install. `git hooks status` names what a repo declares versus what fires, and `rs` reports it at the end of setup. Arming stays a hand-typed command; the reasoning and the rejected alternatives are in [docs/adr/0005](./docs/adr/0005-repo-hooks-are-reported-not-armed.md).
 
 **Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* - they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter. The sweep also runs automatically on every non-frozen `up` via `lockfile-audit` (`mise run lockfile-audit`), which scans every dotfiles-tracked lockfile *before any mutation*: a `MAL-*` advisory (id or alias) aborts the update with the tree still clean, ordinary CVEs print a table but never block (triage separately), and scanner errors/offline only warn - a detective control must not brick updates. `up --no-audit` is the escape hatch. Note osv-scanner cannot parse `mise.lock`/`flake.lock`; the tool bump itself stays covered by the preventive layer (quarantine + attestations + SLSA + aube's bloom check), so this is a re-check of project lockfiles against an ever-growing advisory DB, not a guard on the bump.
 

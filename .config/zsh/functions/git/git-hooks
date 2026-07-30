@@ -1,0 +1,448 @@
+#!/usr/bin/env zsh
+# git-hooks: report which git hooks are declared, armed, and trusted
+# usage: git hooks status [--json] [--check] [--quiet]
+emulate -L zsh
+
+# Reports only. Arming a repo's own hooks is a deliberate act - a clone that
+# armed itself would turn every later commit into arbitrary code execution,
+# with no notice when someone edits the hook in a PR.
+
+# The three events repo hook managers actually wire. Not every git event: the
+# report has to stay short enough to read at a glance.
+local -a GH_EVENTS=(pre-commit commit-msg pre-push)
+
+local usage="usage: git hooks status [--json] [--check] [--quiet]"
+local json=0 check=0 quiet=0 subcommand=""
+
+while (( $# )); do
+  case $1 in
+    -h|--help) echo "$usage" >&2; return 0 ;;
+    --json)    json=1; shift ;;
+    --check)   check=1; shift ;;
+    --quiet)   quiet=1; shift ;;
+    -*)        echo "error: unknown flag $1" >&2; return 1 ;;
+    *)
+      if [[ -n "$subcommand" ]]; then
+        echo "error: unexpected argument: $1" >&2
+        return 1
+      fi
+      subcommand=$1; shift ;;
+  esac
+done
+
+[[ -z "$subcommand" ]] && subcommand=status
+if [[ "$subcommand" != status ]]; then
+  echo "error: unknown subcommand: $subcommand ($usage)" >&2
+  return 1
+fi
+
+local repo_root="" git_dir=""
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "error: not in a git repository" >&2
+  return 1
+}
+git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null)
+
+# The hookdir git would run a directory hook from: core.hooksPath when set
+# (which replaces .git/hooks wholesale), else .git/hooks. Needed because
+# `git hook list` reports a directory hook as the opaque string "hook from
+# hookdir" - no path, no scope - so attribution has to resolve it itself.
+local hooks_path="" hookdir="" hookdir_label=""
+hooks_path=$(git config --get core.hooksPath 2>/dev/null)
+if [[ -n "$hooks_path" ]]; then
+  case $hooks_path in
+    /*) hookdir=$hooks_path ;;
+    *)  hookdir=$repo_root/$hooks_path ;;
+  esac
+  hookdir_label=$hooks_path
+else
+  hookdir=$git_dir/hooks
+  hookdir_label=.git/hooks
+fi
+
+# Config hooks and `git hook list` both need git >= 2.54 (the subcommand appeared
+# briefly in 2.36, was dropped, and returned with config hooks). On older git the
+# armed state is unknowable, so say so rather than report a false "not armed".
+#
+# Version, not a probe: `git hook list <event>` exits 1 with "no hooks found for
+# event" when a repo simply has none, which is indistinguishable from an
+# unsupported subcommand - reading that as unsupported would silently downgrade
+# the report for exactly the repos it exists to flag.
+local hook_list_supported=0
+local -a git_version=(${(s:.:)${${(z)"$(git --version 2>/dev/null)"}[3]}})
+if [[ "${git_version[1]}" == <-> && "${git_version[2]}" == <-> ]]; then
+  (( git_version[1] > 2 || (git_version[1] == 2 && git_version[2] >= 54) )) && hook_list_supported=1
+fi
+
+# --- detection -------------------------------------------------------------
+
+# Records are tab-separated; the arrays are read back with ${(@ps:\t:)...}.
+typeset -a gh_managers=()  # name, evidence, events(csv), arm hint
+typeset -a gh_payloads=()  # manager, display line
+typeset -a gh_fires=()     # event, kind, scope, name, manager, via
+typeset -a gh_stale=()     # path, target, dangling(0|1)
+
+# A manager's own wiring, recognised in a hookdir file.
+#
+# The hookdir *path* is checked before the file's contents, because a manager's
+# generated hook need not name it: husky's `.husky/_/pre-commit` is two lines
+# sourcing `h`, and a tracked hk wrapper reaches hk through `$HK_BIN`. Contents
+# are the fallback for a hook installed into a plain `.git/hooks`. Every
+# pre-commit file mentions "pre-commit", so the python framework is matched on
+# its runner rather than on the event name.
+_gh_classify_hookdir() {
+  local file=$1 body="" rec=""
+  [[ -f "$file" ]] && body=$(cat -- "$file" 2>/dev/null)
+
+  case $body in
+    (*identity-guard*) print -r -- identity-guard; return 0 ;;
+  esac
+
+  # The hookdir is inside a declared manager's own directory.
+  for rec in $gh_managers; do
+    local -a f=("${(@ps:\t:)rec}")
+    local evidence_path=$repo_root/${f[2]}
+    [[ -d "$evidence_path" ]] || continue
+    if [[ "$hookdir" == "$evidence_path" || "$hookdir" == "$evidence_path"/* ]]; then
+      print -r -- "${f[1]}"
+      return 0
+    fi
+  done
+
+  case $hookdir in
+    (*/.husky|*/.husky/*)         print -r -- husky; return 0 ;;
+    (*/.hk-hooks|*/.hk-hooks/*)   print -r -- hk; return 0 ;;
+    (*/.lefthook|*/.lefthook/*)   print -r -- lefthook; return 0 ;;
+  esac
+
+  case $body in
+    (*"hk run"*|*HK_BIN*|*hk.pkl*)       print -r -- hk ;;
+    (*husky*)                            print -r -- husky ;;
+    (*lefthook*)                         print -r -- lefthook ;;
+    (*simple-git-hooks*)                 print -r -- simple-git-hooks ;;
+    (*"pre-commit run"*|*INSTALL_PYTHON*|*"generated by pre-commit"*)
+                                         print -r -- pre-commit ;;
+    (*)                                  print -r -- unknown ;;
+  esac
+}
+
+# Config hooks are named by whoever installed them (hk uses hk-<event>), so the
+# name's leading token is the attribution.
+_gh_classify_config() {
+  case $1 in
+    (identity-guard|identity-guard-*)     print -r -- identity-guard ;;
+    (hk|hk-*)                             print -r -- hk ;;
+    (husky|husky-*)                       print -r -- husky ;;
+    (lefthook|lefthook-*)                 print -r -- lefthook ;;
+    (pre-commit|pre-commit-*)             print -r -- pre-commit ;;
+    (simple-git-hooks|simple-git-hooks-*) print -r -- simple-git-hooks ;;
+    (*)                                   print -r -- unknown ;;
+  esac
+}
+
+# First line of a hook script that is neither blank, shebang, nor comment - the
+# payload a reader wants to see before arming anything.
+_gh_first_command() {
+  local line=""
+  while IFS= read -r line; do
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "$line" == '#'* ]] && continue
+    print -r -- "${line##[[:space:]]##}"
+    return 0
+  done < "$1"
+  return 1
+}
+
+# Events a config file names, in GH_EVENTS order. Coarse by design: substring
+# rather than schema, because five managers spell their event lists five ways.
+_gh_events_named_in() {
+  local file=$1 ev=""
+  local -a found=()
+  for ev in $GH_EVENTS; do
+    grep -q -- "$ev" "$file" 2>/dev/null && found+=("$ev")
+  done
+  print -r -- "${(j:,:)found}"
+}
+
+_gh_add_manager() {
+  local name=$1 evidence=$2 events=$3 hint=$4
+  gh_managers+=("$name"$'\t'"$evidence"$'\t'"$events"$'\t'"$hint")
+}
+
+_gh_detect_husky() {
+  local ev="" cmd=""
+  local -a events=()
+  [[ -d "$repo_root/.husky" ]] || return 0
+  for ev in $GH_EVENTS; do
+    [[ -f "$repo_root/.husky/$ev" ]] || continue
+    events+=("$ev")
+    cmd=$(_gh_first_command "$repo_root/.husky/$ev") || cmd="(empty)"
+    gh_payloads+=("husky"$'\t'".husky/$ev  ->  $cmd")
+  done
+  (( ${#events} )) || return 0
+  _gh_add_manager husky .husky "${(j:,:)events}" "npx husky"
+}
+
+_gh_detect_hk() {
+  local cand="" evidence="" ev=""
+  local -a events=()
+  for cand in hk.pkl .hk.pkl; do
+    [[ -f "$repo_root/$cand" ]] && { evidence=$cand; break }
+  done
+  [[ -z "$evidence" && -d "$repo_root/.hk-hooks" ]] && evidence=.hk-hooks
+  [[ -n "$evidence" ]] || return 0
+  if [[ "$evidence" == .hk-hooks ]]; then
+    for ev in $GH_EVENTS; do
+      [[ -f "$repo_root/.hk-hooks/$ev" ]] && events+=("$ev")
+    done
+  else
+    events=(${(s:,:)$(_gh_events_named_in "$repo_root/$evidence")})
+  fi
+  (( ${#events} )) || events=(pre-commit)
+  for ev in $events; do
+    gh_payloads+=("hk"$'\t'"$evidence  ->  hk run $ev")
+  done
+  _gh_add_manager hk "$evidence" "${(j:,:)events}" "hk install"
+}
+
+_gh_detect_lefthook() {
+  local cand="" evidence="" ev=""
+  local -a events=()
+  for cand in lefthook.yml lefthook.yaml lefthook.toml lefthook.json \
+              .lefthook.yml .lefthook.yaml .lefthook.toml .lefthook.json; do
+    [[ -f "$repo_root/$cand" ]] && { evidence=$cand; break }
+  done
+  [[ -n "$evidence" ]] || return 0
+  events=(${(s:,:)$(_gh_events_named_in "$repo_root/$evidence")})
+  (( ${#events} )) || events=(pre-commit)
+  for ev in $events; do
+    gh_payloads+=("lefthook"$'\t'"$evidence  ->  lefthook run $ev")
+  done
+  _gh_add_manager lefthook "$evidence" "${(j:,:)events}" "lefthook install"
+}
+
+_gh_detect_pre_commit() {
+  local evidence=.pre-commit-config.yaml ev=""
+  local -a events=()
+  [[ -f "$repo_root/$evidence" ]] || return 0
+  events=(${(s:,:)$(_gh_events_named_in "$repo_root/$evidence")})
+  (( ${#events} )) || events=(pre-commit)
+  for ev in $events; do
+    gh_payloads+=("pre-commit"$'\t'"$evidence  ->  pre-commit run --hook-stage $ev")
+  done
+  _gh_add_manager pre-commit "$evidence" "${(j:,:)events}" "pre-commit install"
+}
+
+_gh_detect_simple_git_hooks() {
+  local cand="" evidence="" ev=""
+  local -a events=()
+  for cand in .simple-git-hooks.js .simple-git-hooks.cjs .simple-git-hooks.mjs \
+              .simple-git-hooks.json .simple-git-hooks.yml .simple-git-hooks.yaml \
+              simple-git-hooks.json; do
+    [[ -f "$repo_root/$cand" ]] && { evidence=$cand; break }
+  done
+  if [[ -z "$evidence" ]] && grep -q '"simple-git-hooks"' "$repo_root/package.json" 2>/dev/null; then
+    evidence=package.json
+  fi
+  [[ -n "$evidence" ]] || return 0
+  events=(${(s:,:)$(_gh_events_named_in "$repo_root/$evidence")})
+  (( ${#events} )) || events=(pre-commit)
+  for ev in $events; do
+    gh_payloads+=("simple-git-hooks"$'\t'"$evidence  ->  $ev")
+  done
+  _gh_add_manager simple-git-hooks "$evidence" "${(j:,:)events}" "npx simple-git-hooks"
+}
+
+# What git will actually run. `git hook list` is authoritative - it knows both
+# mechanisms and skips a dangling hookdir symlink - so armed state comes from it
+# and never from the detection above.
+_gh_collect_fires() {
+  local ev="" line="" kind="" scope="" name="" manager="" via=""
+  (( hook_list_supported )) || return 0
+  for ev in $GH_EVENTS; do
+    while IFS= read -r line; do
+      [[ -n "$line" ]] || continue
+      if [[ "$line" == "hook from hookdir" ]]; then
+        kind=hookdir
+        scope=hookdir
+        name="$hookdir_label/$ev"
+        manager=$(_gh_classify_hookdir "$hookdir/$ev")
+        # The mechanism, not the file: one hookdir arms every event it holds, so
+        # naming the dir keeps a three-event repo to one line. Which events
+        # actually fire is in `fires` (and --json).
+        if [[ -n "$hooks_path" ]]; then
+          via="core.hooksPath=$hooks_path"
+        else
+          via="$hookdir_label"
+        fi
+      else
+        kind=config
+        scope=${line%%$'\t'*}
+        name=${line##*$'\t'}
+        manager=$(_gh_classify_config "$name")
+        via="hook.$name.command"
+      fi
+      gh_fires+=("$ev"$'\t'"$kind"$'\t'"$scope"$'\t'"$name"$'\t'"$manager"$'\t'"$via")
+    done < <(git hook list "$ev" --show-scope 2>/dev/null)
+  done
+}
+
+# A hook file left behind by an old wiring mechanism. Dangling ones git skips
+# silently, which is exactly why they need saying out loud.
+_gh_collect_stale() {
+  local dir="" ev="" file="" target=""
+  local -a dirs=("$hookdir")
+  [[ "$git_dir/hooks" != "$hookdir" ]] && dirs+=("$git_dir/hooks")
+  for dir in $dirs; do
+    for ev in $GH_EVENTS; do
+      file=$dir/$ev
+      [[ -L "$file" ]] || continue
+      target=$(readlink -- "$file")
+      if [[ ! -e "$file" ]]; then
+        gh_stale+=("$file"$'\t'"$target"$'\t'1)
+      elif [[ "$target" == /nix/store/* ]]; then
+        gh_stale+=("$file"$'\t'"$target"$'\t'0)
+      fi
+    done
+  done
+}
+
+# Every distinct wiring mechanism firing for a manager, comma-joined; empty when
+# the manager is not armed.
+_gh_manager_via() {
+  local want=$1 rec="" via=""
+  local -a out=()
+  for rec in $gh_fires; do
+    local -a f=("${(@ps:\t:)rec}")
+    [[ "${f[5]}" == "$want" ]] || continue
+    via=${f[6]}
+    (( ${out[(Ie)$via]} )) || out+=("$via")
+  done
+  print -r -- "${(j:, :)out}"
+}
+
+_gh_detect_husky
+_gh_detect_hk
+_gh_detect_lefthook
+_gh_detect_pre_commit
+_gh_detect_simple_git_hooks
+_gh_collect_fires
+_gh_collect_stale
+
+# --- report ----------------------------------------------------------------
+
+local guard_via="" unarmed=0 rec="" name="" evidence="" events="" hint="" via=""
+guard_via=$(_gh_manager_via identity-guard)
+
+typeset -a unarmed_lines=() armed_lines=()
+for rec in $gh_managers; do
+  local -a f=("${(@ps:\t:)rec}")
+  name=${f[1]} evidence=${f[2]} events=${f[3]} hint=${f[4]}
+  via=$(_gh_manager_via "$name")
+  if [[ -n "$via" ]]; then
+    armed_lines+=("hooks: $name - armed ($via)")
+  elif (( ! hook_list_supported )); then
+    armed_lines+=("hooks: $name - declared ($evidence), armed state unknown")
+  else
+    (( unarmed++ ))
+    unarmed_lines+=("hooks: $name - declared, not armed")
+    local payload=""
+    for payload in $gh_payloads; do
+      [[ "${payload%%$'\t'*}" == "$name" ]] || continue
+      unarmed_lines+=("  ${payload#*$'\t'}")
+    done
+    unarmed_lines+=("  arm: $hint")
+  fi
+done
+
+_gh_emit_text() {
+  local line=""
+  for line in $unarmed_lines; do
+    print -r -- "$line"
+  done
+  # --quiet is what `rs` calls: an unarmed manager is the only thing worth
+  # interrupting a setup run for.
+  (( quiet )) && return 0
+
+  for line in $armed_lines; do
+    print -r -- "$line"
+  done
+  (( ${#gh_managers} )) || print -r -- "hooks: none declared"
+
+  # A hookdir hook nothing declared accounts for: another manager, or something
+  # hand-installed. Either way it runs on every commit.
+  local fire=""
+  for fire in $gh_fires; do
+    local -a f=("${(@ps:\t:)fire}")
+    [[ "${f[5]}" == unknown ]] || continue
+    print -r -- "other: ${f[1]} fires from ${f[6]} (unrecognised manager)"
+  done
+
+  if [[ -n "$guard_via" ]]; then
+    print -r -- "guard: identity-guard fires ($guard_via)"
+  elif (( hook_list_supported )); then
+    print -r -- "guard: identity-guard NOT firing - run drs/hms to install the global config hook"
+  else
+    print -r -- "guard: unknown - this git has no 'git hook list' (needs >= 2.54)"
+  fi
+
+  local stale_rec=""
+  for stale_rec in $gh_stale; do
+    local -a f=("${(@ps:\t:)stale_rec}")
+    if [[ "${f[3]}" == 1 ]]; then
+      print -r -- "stale: ${f[1]} -> ${f[2]} (dangling; git skips it)"
+    else
+      print -r -- "stale: ${f[1]} -> ${f[2]} (legacy stub; the guard is a global config hook now)"
+    fi
+  done
+}
+
+if (( json )); then
+  jq -n \
+    --arg repo "$repo_root" \
+    --arg hookdir "$hookdir" \
+    --arg hooks_path "$hooks_path" \
+    --arg supported "$hook_list_supported" \
+    --arg managers "${(F)gh_managers}" \
+    --arg payloads "${(F)gh_payloads}" \
+    --arg fires "${(F)gh_fires}" \
+    --arg stale "${(F)gh_stale}" '
+    def rows: split("\n") | map(select(length > 0)) | map(split("\t"));
+    ($fires | rows | map({event: .[0], kind: .[1], scope: .[2], name: .[3], manager: .[4], via: .[5]})) as $f
+    | ($payloads | rows | map({manager: .[0], text: .[1]})) as $p
+    | {
+        repo: $repo,
+        hookdir: $hookdir,
+        hooks_path: (if $hooks_path == "" then null else $hooks_path end),
+        hook_list_supported: ($supported == "1"),
+        managers: ($managers | rows | map(
+          .[0] as $n
+          | ($f | map(select(.manager == $n))) as $mf
+          | {
+              name: $n,
+              declared: true,
+              evidence: .[1],
+              events: (.[2] | split(",")),
+              armed: ($mf | length > 0),
+              armed_via: ($mf | map(.via) | unique),
+              arm_hint: .[3],
+              payload: ($p | map(select(.manager == $n) | .text))
+            })),
+        fires: $f,
+        guard: {
+          armed: ($f | any(.manager == "identity-guard")),
+          via: ($f | map(select(.manager == "identity-guard") | .via) | unique)
+        },
+        stale: ($stale | rows | map({path: .[0], target: .[1], dangling: (.[2] == "1")}))
+      }
+    | . + {actionable: (.hook_list_supported and (.managers | any(.armed | not)))}'
+else
+  _gh_emit_text
+fi
+
+# Default `status` always exits 0 so it can never break a caller like `rs`;
+# --check is the opt-in failure mode.
+if (( check && unarmed && hook_list_supported )); then
+  return 2
+fi
+return 0
