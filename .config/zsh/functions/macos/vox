@@ -439,6 +439,7 @@ _vox_status() {
 	case "$state" in
 	RECORDING) print -r -- "RECORDING $(vox_token "$state") $(vox_dir)" ;;
 	TRANSCRIBING) print -r -- "TRANSCRIBING $(vox_token "$state") $(vox_job_dir)" ;;
+	EMPTY) print -r -- "EMPTY $(vox_token "$state")" ;;
 	READY) print -r -- "READY $(vox_token "$state")" ;;
 	*) print -r -- IDLE ;;
 	esac

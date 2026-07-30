@@ -214,8 +214,81 @@ statefile() {
   touch -t 202607010000 "$VOX_SEENFILE"
   mkdir -p "$VOX_STORE/2026-07-28-140312"
   : >"$VOX_STORE/2026-07-28-140312/transcript.md"
+  lib vox_unread_count
+  [ "$output" = "0" ]
+}
+
+# --- EMPTY: a recording that transcribed to nothing --------------------------
+
+# empty NAME - a finished recording whose transcript came back with nothing in
+# it. `vox stop` reports this as a failure; the pill has to say so too, or it
+# drops straight back to IDLE as if nothing had happened.
+empty() {
+  mkdir -p "$VOX_STORE/$1"
+  : >"$VOX_STORE/$1/transcript.md"
+  printf '%s\n' "$VOX_STORE/$1/transcript.md"
+}
+
+@test "EMPTY when a transcript newer than the marker has nothing in it" {
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  empty 2026-07-28-140312 >/dev/null
   lib vox_state
+  [ "$output" = "EMPTY" ]
+}
+
+@test "empty transcripts are counted, marker or no marker" {
+  empty 2026-07-28-140312 >/dev/null
+  empty 2026-07-28-150000 >/dev/null
+  lib vox_empty_count
+  [ "$output" = "2" ] # no marker at all: nothing has been looked at yet
+  : >"$VOX_SEENFILE"
+  lib vox_empty_count
+  [ "$output" = "0" ]
+}
+
+@test "a transcript with content is not counted as empty" {
+  # The two counts mirror each other, so every finished transcript lands in
+  # exactly one of them.
+  transcript 2026-07-28-140312 >/dev/null
+  lib vox_empty_count
+  [ "$output" = "0" ]
+  lib vox_unread_count
+  [ "$output" = "1" ]
+}
+
+@test "empty outranks ready" {
+  # The recording that produced nothing is the one that needs you; the good one
+  # is still there once the picker clears both from the same marker.
+  transcript 2026-07-28-140312 >/dev/null
+  empty 2026-07-28-150000 >/dev/null
+  lib vox_state
+  [ "$output" = "EMPTY" ]
+}
+
+@test "transcribing outranks empty" {
+  empty 2026-07-28-140312 >/dev/null
+  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  lib vox_state
+  [ "$output" = "TRANSCRIBING" ]
+}
+
+@test "touching the seen marker clears EMPTY too" {
+  empty 2026-07-28-140312 >/dev/null
+  lib 'vox_touch_seen; vox_state'
   [ "$output" = "IDLE" ]
+}
+
+@test "EMPTY is red, with its own glyph and the count as its token" {
+  : >"$VOX_SEENFILE"
+  touch -t 202607010000 "$VOX_SEENFILE"
+  empty 2026-07-28-140312 >/dev/null
+  lib 'vox_state_colour EMPTY'
+  [ "$output" = "f38ba8" ]
+  lib 'vox_state_glyph EMPTY'
+  [ "$output" = "!" ]
+  lib 'vox_token EMPTY'
+  [ "$output" = "1" ]
 }
 
 @test "touching the seen marker clears READY" {

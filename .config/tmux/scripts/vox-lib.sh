@@ -63,6 +63,11 @@ VOX_COLOUR=a6adc8
 # tab dot. It appears only after a capture has stopped, never mid-recording.
 VOX_READY_COLOUR=89b4fa
 
+# EMPTY pill colour — catppuccin red. The one state in this subsystem that is a
+# failure rather than a phase, so it is the one that gets an alarm colour: a
+# recording that transcribed to nothing used to drop silently back to IDLE.
+VOX_EMPTY_COLOUR=f38ba8
+
 # RECORDING glyph — plain ASCII tilde. Zero rendering risk (no emoji
 # presentation, no ambiguous-width trap of the kind caffeine-lib documents for
 # ☕), and it collides with no existing vocabulary: mem ⬡⊟⊠, resurrect ⟳⚠,
@@ -74,6 +79,10 @@ VOX_GLYPH="${VOX_GLYPH:-~}"
 # presentation form, which is the trap ☕ documents.
 VOX_TRANSCRIBING_GLYPH="${VOX_TRANSCRIBING_GLYPH:-≈}"
 VOX_READY_GLYPH="${VOX_READY_GLYPH:-✓}"
+
+# EMPTY glyph — a plain ASCII bang. Single-width, no emoji presentation form,
+# and it collides with nothing already in this config's vocabulary.
+VOX_EMPTY_GLYPH="${VOX_EMPTY_GLYPH:-!}"
 
 # Mean-volume floor, in dBFS, below which a track counts as silent.
 #
@@ -194,15 +203,39 @@ vox_unread_count() {
 	fi
 }
 
-# vox_state — RECORDING > TRANSCRIBING > READY > IDLE, in that precedence: the
-# same "worst first" shape as the agent dots' rank. Each state is derived from a
-# file whose staleness cannot lie (a pid's liveness, an mtime comparison), so
-# nothing here needs a reaper.
+# vox_empty_count — transcripts that came back with nothing in them since you
+# last looked. The mirror of vox_unread_count, `-size 0c` where that has
+# `-size +0`, so between them every finished transcript is counted exactly once
+# and the one seen-marker clears both.
+vox_empty_count() {
+	[ -d "$VOX_STORE" ] || {
+		echo 0
+		return
+	}
+	if [ -e "$VOX_SEENFILE" ]; then
+		find "$VOX_STORE" -maxdepth 2 -name transcript.md -size 0c \
+			-newer "$VOX_SEENFILE" 2>/dev/null | wc -l | tr -d ' '
+	else
+		find "$VOX_STORE" -maxdepth 2 -name transcript.md -size 0c 2>/dev/null |
+			wc -l | tr -d ' '
+	fi
+}
+
+# vox_state — RECORDING > TRANSCRIBING > EMPTY > READY > IDLE, in that
+# precedence: the same "worst first" shape as the agent dots' rank. Each state is
+# derived from a file whose staleness cannot lie (a pid's liveness, an mtime
+# comparison), so nothing here needs a reaper.
+#
+# EMPTY outranks READY because a recording that produced nothing is the one that
+# needs you: it masks an unread good one until the picker is opened, which clears
+# both from the same marker.
 vox_state() {
 	if vox_active; then
 		echo RECORDING
 	elif vox_job_active; then
 		echo TRANSCRIBING
+	elif [ "$(vox_empty_count)" -gt 0 ] 2>/dev/null; then
+		echo EMPTY
 	elif [ "$(vox_unread_count)" -gt 0 ] 2>/dev/null; then
 		echo READY
 	else
@@ -266,6 +299,7 @@ vox_human_age() {
 # colour is never rendered; the signature stays parallel to the other libs.
 vox_state_colour() {
 	case "$1" in
+	EMPTY) printf '%s' "$VOX_EMPTY_COLOUR" ;;
 	READY) printf '%s' "$VOX_READY_COLOUR" ;;
 	*) printf '%s' "$VOX_COLOUR" ;;
 	esac
@@ -275,19 +309,21 @@ vox_state_colour() {
 vox_state_glyph() {
 	case "$1" in
 	TRANSCRIBING) printf '%s' "$VOX_TRANSCRIBING_GLYPH" ;;
+	EMPTY) printf '%s' "$VOX_EMPTY_GLYPH" ;;
 	READY) printf '%s' "$VOX_READY_GLYPH" ;;
 	*) printf '%s' "$VOX_GLYPH" ;;
 	esac
 }
 
 # vox_token [STATE] — figure-slot content: elapsed while capturing or
-# transcribing, and how many transcripts are waiting once one is ready. The
-# state is an argument so a caller that already computed it does not pay for it
-# twice; omitted, it is derived.
+# transcribing, and how many transcripts are waiting once one is ready or came
+# back empty. The state is an argument so a caller that already computed it does
+# not pay for it twice; omitted, it is derived.
 vox_token() {
 	_vox_state=${1:-$(vox_state)}
 	case "$_vox_state" in
 	TRANSCRIBING) vox_human_age "$(vox_job_elapsed_secs)" ;;
+	EMPTY) vox_empty_count ;;
 	READY) vox_unread_count ;;
 	IDLE) printf '' ;;
 	*) vox_human_age "$(vox_elapsed_secs)" ;;
