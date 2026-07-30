@@ -121,6 +121,23 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [[ "${lines[0]}" =~ ^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\ Me:\  ]]
 }
 
+@test "vox turns a real audio file into a real transcript" {
+  require_mw
+  # The journey, not the seams. Every other test here checks one contract in
+  # isolation, which is how four recordings in a row could produce a 0-byte
+  # transcript.md while the suite stayed green: nothing ran audio in one end and
+  # read markdown out of the other.
+  export VOX_STORE="$BATS_TEST_TMPDIR/journey-store"
+
+  # --separate-stderr: the path is on stdout, the progress lines are not.
+  run --separate-stderr zsh --no-rcs \
+    "$HOME/.config/zsh/functions/macos/vox" "$VOX_CONTRACT_WAV"
+
+  [ "$status" -eq 0 ]
+  [ -s "$output/transcript.md" ]
+  grep -q '^\[00:00:' "$output/transcript.md"
+}
+
 @test "trimming a zero-padded tail leaves the speech mw hears intact" {
   require_mw
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
