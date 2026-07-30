@@ -34,18 +34,33 @@ restore, a 6G photo library is gone forever.
    dir is the prime suspect, not empty; re-scan it alone with a timeout. On a
    dev machine the source root (`~/git`, `~/src`, `~/code`) is routinely the
    single largest tree and the classic stall culprit - build outputs and caches
-   nested inside repos - so size it early and on its own. `ncdu` is for the user
-   to drive: it's a TUI and gives an agent nothing non-interactively.
-5. Reconcile `du` home subtotals against the `df` *used* figure before
-   concluding. Home rarely equals the disk: a large shortfall lives outside
-   `~` - probe `/private/tmp`, `/opt/homebrew`, `/nix`, `/Library`. On a
-   shared APFS container every volume's `df` reports the *same* container
-   free, so read one volume, don't sum them. Until the accounted total (home +
-   out-of-home roots) approaches `df` *used*, the survey is unfinished: a large
-   unexplained remainder is not a footnote, it is the reclaim target - keep
-   drilling before presenting any plan.
+   nested inside repos - so size it early and on its own. The one stall that is
+   *not* a suspect is `~/Library/Containers` (see Gotchas). `ncdu` is for the
+   user to drive: it's a TUI and gives an agent nothing non-interactively.
+5. Reconcile `du` home subtotals against the volume's *own* used figure before
+   concluding. **`df` is the wrong denominator for this**: on a shared APFS
+   container it reports container-wide usage - Data volume plus the System
+   volume, `/nix`, and snapshots - so every volume prints the *same* numbers
+   and none of them is what `du ~` can add up to. Read the Data volume alone:
 
-Quote a reclaim estimate only for things you have actually probed. Sizes on
+   ```bash
+   diskutil info /System/Volumes/Data | grep 'Volume Used'
+   ```
+
+   It prints **decimal GB**; divide by 1.074 to compare with `du -h`. The gap
+   is not small - one verified reading had `df` at 131G used against a Data
+   volume holding 99.0 GB (92 GiB). Home rarely equals even that: a shortfall
+   lives outside `~` - probe `/private/tmp`, `/opt/homebrew`, `/Library`
+   (`/nix` is its own volume, so it is outside the Data figure entirely).
+   Until the accounted total approaches *Volume Used*, the survey is
+   unfinished: a large unexplained remainder is not a footnote, it is the
+   reclaim target - keep drilling before presenting any plan.
+
+Quote a reclaim estimate only for things you have actually probed - and that
+binds the *options you offer* as much as the totals you report. Bucket a tree
+before proposing a cut-off through it: dir names carry issue numbers, not
+dates, and a plausible-sounding "delete everything before July" split of a
+10.9G tree once freed 45M. Size the buckets, then offer the split. Sizes on
 this machine change; check every time rather than trusting a remembered figure.
 
 Where large things tend to hide: `~/Library/Application Support` (games, model
@@ -61,6 +76,12 @@ rebooting or deleting named entries.
 | Rebuildable | `target/`, `node_modules/`, caches | Proceed |
 | Re-downloadable | Steam games, LLM/Whisper models, media rips | Name it and the size, proceed on a nod |
 | Irreplaceable | Photos, documents, anything authored | Never without an explicit yes |
+
+Before classifying a language cache, check its tool still exists:
+`command -v dart flutter gradle`. A cache whose toolchain is gone is not
+"re-downloadable pending a nod", it is dead weight - `~/.pub-cache`,
+`~/.gradle` and `~/.dartServer` held 1.6G between them on a machine with no
+Dart, Flutter or Gradle installed at all.
 
 **Ask before deleting anything in `~/Downloads`** — it mixes all three classes.
 Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
@@ -82,11 +103,25 @@ project cleaner or its docs, where present, is the fastest classifier.
   `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
   prune`. `rm -f` on named files is allowed. Bundling several removals into one
   command gets the whole command denied, so keep them separate.
-- **Confirm reclaim with `df`, not the command's exit code.** macOS
-  `/usr/bin/trash` exits non-zero if *any* path arg is missing while still
-  trashing the rest, and says nothing about bytes freed; `~/.Trash` can read
-  `0` even when space was reclaimed. After any delete/clean, re-check `df` (or
-  the target's `du`) - that is ground truth, not exit status.
+- **Confirm reclaim with `df`, not the command's exit code - nor its reported
+  total.** macOS `/usr/bin/trash` exits non-zero if *any* path arg is missing
+  while still trashing the rest, and says nothing about bytes freed; `~/.Trash`
+  can read `0` even when space was reclaimed. Cleaners that *do* report a
+  figure report **apparent** size: `cargo clean` printed `Removed 704697 files,
+  219.3GiB total` for a tree `du` and `df` both put at 63 GiB - a 3.5x
+  overstatement from hardlinks and sparse files. Never pass a cleaner's own
+  number to the user. After any delete/clean, re-check `df` (or the target's
+  `du`) - that is ground truth, not exit status.
+- **`trash` on a many-file tree takes minutes** (it moves, it doesn't unlink),
+  so it outlives tool timeouts and gets killed mid-move, leaving some args done
+  and some untouched. Background it, and verify per-path afterwards with `ls
+  -d` rather than trusting one exit code for the whole list.
+- **`~/Library/Containers` stalls every `du` and is never the answer.** It is
+  hundreds of `com.apple.*` sandboxes (600 on this machine, all Apple, largest
+  44K). It is the one directory where a stall means TCC-protected paths, not
+  size - don't spend three scans on it as the "prime suspect". Confirm cheaply
+  with `ls ~/Library/Containers | grep -vc '^com\.apple\.'`; if that is 0,
+  move on.
 - **A mounted DMG under `/tmp`** (cask/`.pkg` install leftover) reports
   `Read-only file system` and blocks its parent's deletion until
   `hdiutil detach /dev/diskN` (find it via `hdiutil info`); the leftover
