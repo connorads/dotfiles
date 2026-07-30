@@ -997,11 +997,12 @@ mode at start.
 Change as a set:
 
 - [`scripts/vox-lib.sh`](./scripts/vox-lib.sh) — **canonical** state
-  (`vox_state`: `RECORDING > TRANSCRIBING > READY > IDLE`, in that precedence,
-  the same worst-first shape as the agent dots' `rank`) and the
+  (`vox_state`: `RECORDING > TRANSCRIBING > EMPTY > READY > IDLE`, in that
+  precedence, the same worst-first shape as the agent dots' `rank`) and the
   colour/glyph/token language (`vox_state_colour` subtext0 `a6adc8`, blue
-  `89b4fa` for READY, `vox_state_glyph` `~` `≈` `✓`, `vox_token` elapsed via the
-  shared `human_age`, or the unread count). Every state is derived from a file
+  `89b4fa` for READY, red `f38ba8` for EMPTY, `vox_state_glyph` `~` `≈` `!` `✓`,
+  `vox_token` elapsed via the
+  shared `human_age`, or the unread/empty count). Every state is derived from a file
   whose staleness cannot lie, so none of them needs a reaper:
   **`${VOX_JOBFILE:-~/.cache/tmux-vox.job}`** holds `pid start_epoch dir` for the
   transcription `vox stop` is spending minutes on — written by `stop` itself, so
@@ -1012,8 +1013,12 @@ Change as a set:
   this", which covers any number of finished recordings without tracking one of
   them, and makes touching the marker the only write. Cleared by opening the
   picker and by starting a new capture. `-size +0` in the count is load-bearing:
-  a failed merge still leaves an empty transcript, and that is not something to
-  go and read. **Statefile contract**:
+  a transcript with nothing in it is not something to go and read. It is instead
+  counted by **`vox_empty_count`**, that count's mirror (`-size 0c`, same
+  no-marker branch), so every finished transcript lands in exactly one of the two
+  and the one marker clears both. EMPTY outranks READY: a recording that produced
+  nothing is the one that needs you, and it masks an unread good one only until
+  the picker is opened. **Statefile contract**:
   `${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}` holds one line
   `pids start_epoch dir`, where `pids` is comma-separated with the **mic capture
   first** — it is the leader, and the one whose liveness means RECORDING (`read`
@@ -1027,7 +1032,12 @@ Change as a set:
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
   `<file>` / `rename` / `compact` / `prune`). Every subcommand prints **bare
   paths to stdout, one per line**, with progress and diagnostics on stderr, so it
-  composes without glue. `prune --empty` selects by *content* instead of age —
+  composes without glue. **Exit 0 means the transcript has content**: `stop` and
+  `<file>` print the recording's path either way — the audio is intact, so there
+  is somewhere to look — but return non-zero, with one line naming what was not
+  recognised, how long the audio was and where the log is. `mw` exits 0 whatever
+  it heard, so nothing upstream of this check can tell "no speech" from "mw fell
+  over", and one message covers both. `prune --empty` selects by *content* instead of age —
   the silent track of a monologue, keeping the one that carries the recording —
   and is the production caller of the lib's loudness parsers. It measures only
   its candidates, at the moment you ask, and refuses a recording whose every
@@ -1052,7 +1062,10 @@ Change as a set:
   "recording", not "name"). **Stopping detaches**: `vox stop` stays synchronous
   by contract, and a key press has nowhere to put minutes of transcription, so
   the pill carries the wait and a `display-message` plus `ring_bell` reports the
-  end. Pressed while TRANSCRIBING it starts a new capture — transcription is
+  end. It reports the **exit code**, not merely whether the command ran: a
+  transcript with nothing in it says "no speech transcribed" and names the log,
+  and the bell rings either way — a recording that produced nothing needs you
+  more than one that worked. Pressed while TRANSCRIBING it starts a new capture — transcription is
   per-directory and detached, so the two never contend. **The title prompt is one
   literal question** (`command-prompt -l`, see the findings below) and the script
   owns it: `vox-toggle.sh prompt DIR [CLIENT]` is the single door, so the pill
@@ -1075,7 +1088,11 @@ Change as a set:
   same way `command-prompt` does.
 - [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
   library over `vox ls`, previewing each transcript and carrying the derived
-  `solo`/`2-way` column: enter copies it (tmux buffer plus OSC52), `ctrl-y`
+  `solo`/`2-way` column — or `empty`, for a recording that transcribed to
+  nothing, which `solo` would make indistinguishable from a real monologue. The
+  preview is three-way for the same reason: a transcript that exists and is empty
+  is *finished*, so "No transcript yet" over it reads as pending forever. Enter
+  copies it (tmux buffer plus OSC52), `ctrl-y`
   pastes the path into the calling pane, `ctrl-e` edits, `ctrl-r` renames,
   `ctrl-o` reveals in Finder, `ctrl-p` plays (both tracks mixed when there are
   two, via a temp file because `afplay` cannot read a pipe), `ctrl-d` deletes and
@@ -1089,7 +1106,9 @@ Change as a set:
 - [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
   **self-hiding** pill (width ≥ 80) following one capture from start to read:
   IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`
-  waiting. Deliberately the *opposite* treatment to caffeine's bright peach
+  waiting, `! 1` red for a recording that transcribed to nothing. It reads the
+  lib, so the EMPTY pill needed no change here.
+  Deliberately the *opposite* treatment to caffeine's bright peach
   alarm — muted subtext0 on the surface1 data-pill shade — because it is visible
   during screen shares and should read as ambient chrome. READY is the one
   exception, in the agent dots' unread blue, and it can only appear once the
@@ -1138,6 +1157,23 @@ Change as a set:
   seconds, not zeros — so `voxtap` pads to a monotonic clock on a 100 ms timer.
   Without it every quiet stretch would vanish and the two tracks would drift
   apart. The padding invariant is regression-tested in `vox-contract.bats`.
+- **That padding is digital zeros, and Parakeet blanks on a zero-padded tail.**
+  A clip ending in enough of them transcribes to an EMPTY string
+  ([NVIDIA-NeMo/Speech#15757](https://github.com/NVIDIA-NeMo/Speech/issues/15757)).
+  Measured on one 2.6 s quiet utterance: intact at +5 s of zeros, gone at +12,
+  and fine at +12 or +24 s of *real room tone* — so it is the zeros, not the
+  length and not the level. A live mic never emits zeros, so `mic.wav` is immune;
+  `sys.wav` is speech followed by exactly that shape, so **on a call whose far
+  side speaks briefly then goes quiet, their words were silently dropped**.
+  `_vox_trim_tail` therefore hands `mw` a trimmed COPY of each track (one
+  `silenceremove` with a POSITIVE `stop_periods`, which trims the end alone — a
+  negative one strips internal silence and shifts every timestamp `merge.py`
+  interleaves on), at the existing `VOX_SILENCE_DB` threshold. The stored WAV is
+  the archive and is never modified. Measured: 14.60 s → 4.61 s on the padded
+  case, and 15.38 s → 15.38 s on a real mic track that transcribes identically.
+  A synthetic fixture cannot reproduce the blanking (clean `say` speech survives
+  60 s of zeros), so the regression guard in `vox.bats` measures **what mw was
+  handed** instead, with a fake mw that keeps its input.
 - **`pan`, not `-ac 1`, on the mic.** A multichannel input would get a surround
   downmix matrix (LFE and height coefficients) instead of the channels apps
   actually write. The tap needs none of it: it is mono at source.
