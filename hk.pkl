@@ -408,15 +408,4 @@ hooks {
     ["check"] {
         steps = fast_steps
     }
-
-    // Push-time backstop: the whole bats suite (~2min), not just the slice the
-    // commit touched. Only this - everything else already ran at commit time.
-    ["pre-push"] {
-        steps = new Mapping<String, Step> {
-            ["bats-full"] {
-                glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**")
-                check = "bash .hk-hooks/bats-tests.sh --all"
-            }
-        }
-    }
 }

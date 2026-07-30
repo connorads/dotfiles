@@ -522,18 +522,23 @@ import uninstalled deps, which would be `missing-import` noise. The shared
 `mise run py-checks` runs ruff + pyrefly + the hook pytest suites across all
 first-party Python.
 
-The `bats-scoped` step (pre-commit) and `bats-full` step (pre-push) gate the
-zsh bats suite (`~/.config/zsh/tests`, 115 files), both via
-`~/.hk-hooks/bats-tests.sh`. At commit it runs only the suites the staged files
-touch - a staged `*.bats` runs itself, a staged script under
-`.config/zsh/functions/**` or `.config/tmux/scripts/**` runs the suite named
-after it plus any suite that names it. At push, `.hk-hooks/pre-push` (mirror of
-`pre-commit`) runs the whole suite via `mise run zsh-tests` (~2min) and nothing
-else; everything else already ran at commit time. `bats` absent warns and exits
-0, same never-brick posture as `ts-typecheck.sh`. Both gates exist because
+The `bats-scoped` step (pre-commit) gates the zsh bats suite
+(`~/.config/zsh/tests`, 115 files) via `~/.hk-hooks/bats-tests.sh`, running only
+the suites the staged files touch - a staged `*.bats` runs itself, a staged
+script under `.config/zsh/functions/**` or `.config/tmux/scripts/**` runs the
+suite named after it plus any suite that names it. `bats` absent warns and exits
+0, same never-brick posture as `ts-typecheck.sh`. The gate exists because
 nothing ran the suite before: CI is PR-only and commits land through the hook,
 so four suites rotted unnoticed. Conventions and the meaning of the
 `integration` tag: [.config/zsh/tests/AGENTS.md](./.config/zsh/tests/AGENTS.md).
+
+**There is deliberately no pre-push gate.** `git push` opens the connection and
+fetches remote refs *before* running `pre-push` (the hook needs them on stdin),
+so a whole-suite run holds that connection idle for its full duration and GitHub
+closes it - the push then fails with `Connection to github.com closed by remote
+host`, and `--no-verify` is the only way through. The suite is ~2min idle but
+several times that under load, which is exactly when a push is likeliest to be
+attempted. Run the whole suite by hand with `mise run zsh-tests`.
 
 CI (`.github/workflows/check.yml`) is PR-only: one ubuntu job runs
 `hk check --all` - the same gate as the hook, full-tree - plus manual dispatch.

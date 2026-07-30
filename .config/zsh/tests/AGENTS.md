@@ -95,18 +95,20 @@ short of 100% stable. The decision and what lost:
 
 ## What runs the suite
 
-Two hk gates, both driving `~/.hk-hooks/bats-tests.sh`:
+One hk gate, driving `~/.hk-hooks/bats-tests.sh`:
 
 - **At commit** (`bats-scoped`, pre-commit): only the suites the staged files touch. A
   staged `*.bats` runs itself; a staged script under `../functions/**` or
   `../../tmux/scripts/**` runs the suite named after it, plus any suite that names it.
-- **At push** (`bats-full`, pre-push): the whole suite, via `mise run zsh-tests`.
-  Everything else already ran at commit time.
 
 `bats` absent warns and passes, so the gate never bricks a commit it can't evaluate.
 CI (`.github/workflows/check.yml`) is PR-only and commits land through the hook, so
-before these gates existed nothing ran the suite at all - four suites rotted with zero
+before this gate existed nothing ran the suite at all - four suites rotted with zero
 signal, one of them never having passed since it was written.
+
+**No pre-push gate, deliberately.** `git push` dials the remote and fetches refs
+*before* `pre-push` runs, so a whole-suite run holds that connection idle until GitHub
+closes it and the push fails outright. The whole suite is a manual `mise run zsh-tests`.
 
 ## The `integration` tag means slow or environment-coupled
 
