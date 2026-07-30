@@ -121,6 +121,33 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [[ "${lines[0]}" =~ ^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\ Me:\  ]]
 }
 
+@test "trimming a zero-padded tail leaves the speech mw hears intact" {
+  require_mw
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  # voxtap pads silence with digital ZEROS to a monotonic clock (docs/adr/0003),
+  # and Parakeet returns an EMPTY transcript for a clip ending in enough of them
+  # (NVIDIA-NeMo/Speech#15757), so vox trims that tail off mw's input. What the
+  # trim must never do is eat the speech, and only the real mw can say whether
+  # it did.
+  #
+  # This is a guard on the trim, NOT a reproduction of the model bug: the `say`
+  # fixture is clean enough to survive the padding untrimmed. Blanking needs a
+  # marginal recording (measured: a 2.6 s quiet utterance at -48 dB mean vanishes
+  # under 12 s of zeros, survives 5 s), which no synthetic fixture imitates —
+  # `vox.bats` guards the trim itself, deterministically.
+  ffmpeg -hide_banner -loglevel error -i "$VOX_CONTRACT_WAV" \
+    -af 'apad=pad_dur=12' -c:a pcm_s16le -y "$BATS_TEST_TMPDIR/padded.wav"
+  export VOX_STORE="$BATS_TEST_TMPDIR/padded-store"
+
+  # --separate-stderr: the path is on stdout, the progress lines are not.
+  run --separate-stderr zsh --no-rcs \
+    "$HOME/.config/zsh/functions/macos/vox" "$BATS_TEST_TMPDIR/padded.wav"
+
+  [ "$status" -eq 0 ]
+  [ -s "$output/transcript.md" ]
+  grep -qi 'kick' "$output/transcript.md"
+}
+
 @test "mw's output for a silent track reads solo, not 2-way" {
   require_mw
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
