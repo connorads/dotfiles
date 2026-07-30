@@ -160,6 +160,11 @@
 /src/handoff/.pytest_cache/
 /src/handoff/**/__pycache__/
 
+# pin-audit: conditional-pin recheck (bun/TS; zsh wrapper in functions/nix)
+!/src/pin-audit/
+!/src/pin-audit/**
+/src/pin-audit/node_modules/
+
 !/.pi/
 /.pi/**
 !/.pi/agent/

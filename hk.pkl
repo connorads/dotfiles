@@ -337,6 +337,10 @@ local fast_steps = new Mapping<String, Step> {
         glob = List(".config/skl/src/**/*.ts", ".config/skl/tests/**/*.ts", ".config/skl/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .config/skl"
     }
+    ["ts-typecheck-pin-audit"] {
+        glob = List("src/pin-audit/src/**/*.ts", "src/pin-audit/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh src/pin-audit"
+    }
     ["ts-typecheck-goal"] {
         glob = List(".pi/agent/extensions/goal/*.ts", ".pi/agent/extensions/goal/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/goal"
