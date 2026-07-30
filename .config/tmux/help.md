@@ -218,8 +218,14 @@ picker, which also marks everything as looked at.
 |------|-------|---------|
 | `~ 12m` muted | recording | capturing, elapsed time so far |
 | `≈ 40s` muted | transcribing | stopped; transcribing locally, elapsed so far |
+| `! 1` red | empty | that many recordings transcribed to nothing - no speech recognised |
 | `✓ 2` blue | ready | that many transcripts finished since you last looked |
 | (hidden) | idle | nothing recording, nothing waiting |
+
+Empty outranks ready, so a recording that produced nothing hides an unread good
+one until you open the picker - which clears both. The picker labels such a
+recording `empty` and its preview says so; the audio is intact, and `ctrl-d`
+throws it away.
 
 ## Copy mode navigation
 
