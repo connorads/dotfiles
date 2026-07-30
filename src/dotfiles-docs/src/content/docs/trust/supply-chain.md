@@ -61,6 +61,16 @@ aube runs nothing unless a package is explicitly approved. When a native
 module genuinely needs its build script, it gets allow-listed narrowly, per
 package, per project - never globally re-enabled.
 
+It has a cost I'd rather name than hide: husky and hk wire themselves from
+`prepare`, so a repo's own git hooks quietly never install. Nine of my repos
+were in that state, declaring a lint hook that had never once run. Turning
+scripts back on to fix that is the wrong trade twice over - it re-enables the
+whole dependency graph to run one hook, and a clone that arms itself runs
+repo-authored code on every later commit, edited by whoever last touched the
+branch. So the fix is visibility instead: `git hooks status` says what a repo
+declares versus what actually fires, repo setup reports it, and arming stays
+something I type on purpose.
+
 ### Trust that can only go up
 
 Age gates don't help when an attacker compromises a package you already use.
