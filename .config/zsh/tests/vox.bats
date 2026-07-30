@@ -667,6 +667,68 @@ EOF
   [ "$status" -ne 0 ]
 }
 
+# --- an empty transcript is a failure, not a success ------------------------
+
+# mw stub for a recording nobody said anything recognisable on: the real CLI
+# exits 0 and emits a top-level "text" key that is present but empty, which is
+# why exit status alone can never carry this.
+stub_mw_silent() {
+  write_stub mw <<'EOF'
+#!/usr/bin/env bash
+printf 'mw %s\n' "$*" >>"$TEST_LOG"
+printf '{\n  "segments" : [\n\n  ],\n  "text" : ""\n}\n'
+EOF
+}
+
+@test "stop reports a transcript that came back empty" {
+  require_macos
+  stub_ffmpeg
+  stub_mw_silent
+  stub_voxtap
+
+  vox
+  vox stop
+
+  # Not a success: every surface downstream took mw's exit 0 as "transcript
+  # ready" and announced a 0-byte file.
+  [ "$status" -ne 0 ]
+  [[ "$stderr" == *"no speech recognised"* ]]
+  [[ "$stderr" == *"vox.log"* ]]
+}
+
+@test "stop prints the path even when the transcript is empty" {
+  require_macos
+  stub_ffmpeg
+  stub_mw_silent
+  stub_voxtap
+
+  vox
+  dir=$output
+  vox stop
+
+  # The recording exists and its audio is intact, so there is somewhere to go
+  # and look — `cat "$(vox stop)/transcript.md"` still resolves.
+  [ "$output" = "$dir" ]
+  [ -s "$dir/mic.wav" ]
+}
+
+@test "transcribing a file to nothing fails the same way" {
+  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
+  stub_mw_silent
+  # Real audio, so the message can name how long the thing it heard nothing in
+  # was — the one figure that says "you recorded 2 seconds" rather than "mw is
+  # broken".
+  ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=300:duration=2' \
+    -ar 16000 -ac 1 -c:a pcm_s16le -y "$HOME/Team Sync.wav"
+
+  vox "$HOME/Team Sync.wav"
+
+  [ "$status" -ne 0 ]
+  [ -n "$output" ] # the path, so the log it names is reachable
+  [[ "$stderr" == *"no speech recognised"* ]]
+  [[ "$stderr" == *"2s of audio"* ]]
+}
+
 # --- the trailing silence mw is never handed --------------------------------
 
 # mw stub that keeps whatever file it was given, so a test can measure it. argv
