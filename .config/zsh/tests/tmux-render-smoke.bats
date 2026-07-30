@@ -386,14 +386,20 @@ reset_panes() {
   # and under `-j` the four content assertions below could all have been reading
   # a half-drawn screen. Not MARKERTILE: the float covers the tiled pane, so
   # those cells are never sent - which is itself what the last assertion checks.
-  wait_until -i 0.1 -d 'wc -c <"$pyte_log"' \
+  #
+  # -t 60, not the 10s default: this is the one test that waits on a fresh pty
+  # client's first full paint of the real config, behind two pane spawns, and in
+  # the full 1476-test suite it timed out at 10s with the log at 14KB and still
+  # filling. A backstop costs a passing run nothing; the poll returns as soon as
+  # the composite is there.
+  wait_until -t 60 -i 0.1 -d 'wc -c <"$pyte_log"' \
     'grep -q MARKERFLOAT "$pyte_log" && grep -q SMOKE "$pyte_log"'
   local before
   before=$(wc -c <"$pyte_log")
   tx refresh-client
   # refresh-client repaints the whole screen: the log growing past the mark is
   # the client having received that repaint.
-  wait_until -i 0.1 -d 'wc -c <"$pyte_log"' '[ "$(wc -c <"$pyte_log")" -gt "$before" ]'
+  wait_until -t 60 -i 0.1 -d 'wc -c <"$pyte_log"' '[ "$(wc -c <"$pyte_log")" -gt "$before" ]'
   size=$(tx display-message -p '#{client_width}x#{client_height}')
   # Snapshot while attached: detach teardown wipes the composited screen.
   cp "$pyte_log" "$BATS_FILE_TMPDIR/pyte.snap"
