@@ -91,6 +91,7 @@ Then `dotfiles add .newfile` works without `-f`.
 | [mcpz](./.config/zsh/functions/agents/mcpz)                            | Render+launch MCP bundles into each agent's native form (Claude/Codex/OpenCode), resolving secrets fresh at launch. Reads a gitignored registry (the only place client names/URLs live). Subsystem docs + schema: [.config/mcp/AGENTS.md](./.config/mcp/AGENTS.md) |
 | [.config/vox/](./.config/vox/)                                         | `vox` merge filter (`merge.py`, stdlib-only) + its pytest and the `wrong<TAB>right` vocabulary map. Subsystem docs: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Tests: `cd ~/src/handoff && uv run --group dev pytest` |
+| [~/src/pin-audit](./src/pin-audit/)                                    | `pin-audit`'s implementation: pure core (readPin/judge) + shell adapters (`Bun.TOML.parse`, argv-form `Bun.spawn`), bun with zero runtime deps. The zsh function in `functions/nix` is a wrapper. Tests: `cd ~/src/pin-audit && bun test` (unit) plus `.config/zsh/tests/pin-audit.bats` (CLI contract) |
 
 ## Shell Function Conventions
 
@@ -204,7 +205,7 @@ up -s / up --frozen    # frozen rebuild: converge to committed locks (no bumps, 
 up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
 up --no-audit          # skip the pre-bump OSV lockfile sweep (escape hatch; offline already warns-not-blocks)
 lockfile-audit         # OSV sweep of tracked repo lockfiles: MAL-* blocks, CVEs report (also: mise run lockfile-audit)
-pin-audit              # recheck conditional version pins/excludes; report-only, FLAG = safe to loosen (also: mise run pin-audit)
+pin-audit              # recheck conditional version pins/excludes; report-only, FLAG = safe to loosen (also: mise run pin-audit). Thin zsh wrapper over ~/src/pin-audit (TS/bun); no bun = one SKIP line, never a failure
 macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
 macup-check            # report pending macOS updates (cached daily scan; --scan to force)
 nfu                    # nix flake update

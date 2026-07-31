@@ -6,7 +6,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 AUDIT="$FUNCTIONS_DIR/nix/pin-audit"
 
-# Writes the config lines pin-audit greps for its pin inventory. Individual
+# Writes the [tools] entries pin-audit reads for its pin inventory. Individual
 # tests overwrite these to exercise the pin-removed self-healing branches.
 write_configs() {
   mkdir -p "$TEST_HOME/.config/mise"
@@ -46,7 +46,22 @@ EOF
 }
 
 setup() {
+  # The implementation is TypeScript (~/src/pin-audit), so the suite needs bun
+  # on the isolated PATH. Resolve it from the ambient environment first, before
+  # setup_test_home rewrites PATH, and prefer `mise which` over `command -v` so
+  # a shims-only PATH can't hand back a shim that re-invokes the stubbed mise.
+  local bun_bin
+  bun_bin=$(mise which bun 2>/dev/null) || bun_bin=$(command -v bun 2>/dev/null) || true
+  [ -n "$bun_bin" ] || skip "bun absent (mise install bun)"
+
   setup_test_home
+  # Just bun, not its whole directory: the mise/gh/npm stubs stay the only
+  # spelling of those commands.
+  ln -s "$bun_bin" "$TEST_BIN/bun"
+  # The wrapper resolves its implementation as ~/src/pin-audit, so the isolated
+  # home has to carry it too. Zero runtime deps, so the sources are enough.
+  mkdir -p "$TEST_HOME/src"
+  ln -s "$REAL_HOME/src/pin-audit" "$TEST_HOME/src/pin-audit"
   write_configs
   write_probe_stubs
   export MISE_OK=1 GH_OK=1 NPM_OK=1
@@ -75,6 +90,15 @@ setup() {
   [[ "$output" == *"SKIP sandbox-runtime 0.0.62 - npm probe failed"* ]]
   [[ "$output" == *"SKIP CosineAI/cli prerelease=true - gh probe failed"* ]]
   [[ "$output" != *"FLAG"* ]]
+}
+
+# `up` calls pin-audit unconditionally, so a missing runtime must degrade, not
+# error: no bun means one SKIP line, never a non-zero exit.
+@test "bun absent degrades to a SKIP line and still exits 0" {
+  rm "$TEST_BIN/bun"
+  run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SKIP bun absent"* ]]
 }
 
 @test "removed pins self-report as removable checks" {
