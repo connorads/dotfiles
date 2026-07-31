@@ -48,6 +48,11 @@ suites=$(
 			fi
 			grep -rlw --include='*.bats' -- "$stem" "$TESTS_DIR" 2>/dev/null || true
 			;;
+		# pin-audit's implementation is TypeScript under ~/src; the bats suite
+		# is still its CLI contract, so staged sources have to run it.
+		src/pin-audit/*)
+			echo "$TESTS_DIR/pin-audit.bats"
+			;;
 		esac
 	done | sort -u
 )
