@@ -43,6 +43,7 @@ Don't assume the reader is holding earlier context - restate what each step need
 ## Git
 
 - Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
+- Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - wording like "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` is ask-ruled in settings, so the prompt is the authorisation.
 - Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
 - Show intended atomic commit boundaries and verification in implementation plans; revise them when the work reveals a better split.
 - Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
