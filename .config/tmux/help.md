@@ -102,7 +102,7 @@ From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
-| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), space off) |
+| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), `+` add time to a running one, space off) |
 | `Ctrl+b Alt+v` | record (vox) — start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
 | `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
@@ -187,6 +187,11 @@ running. `Ctrl+b Alt+k` opens it.
 Peach `☼` is `caffeinate -i`: it holds *system* sleep while the displays still
 sleep on their normal schedule. **Closing the lid still sleeps the Mac** —
 clamshell sleep ignores power assertions entirely.
+
+A timed session can be extended without dropping the hold: reopen the popup and
+press `+` to add to what is left. The picker names the resulting end time, so
+"will it outlast this run" is answerable without arithmetic. Both modes extend;
+an indefinite session has nothing to add to, so it offers no `+`.
 
 Maroon `✷` is lid mode, which additionally raises the `SleepDisabled` kernel
 flag, the only thing that survives the lid closing. It is **always timed**, and

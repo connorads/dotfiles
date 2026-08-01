@@ -4,8 +4,8 @@
 # the caffeine-lib state. One key, three states:
 #
 #   OFF     [i] indefinitely, [t] for a set time, [l] with the lid closed
-#   ON      [space]/[o] turn off
-#   ON-LID  [space]/[o] turn off
+#   ON      [+] add time (timed only), [space]/[o] turn off
+#   ON-LID  [+] add time, [space]/[o] turn off
 #
 # Plus a recovery row, rendered in any state whenever the real SleepDisabled
 # kernel flag is raised without a live lid session behind it — the SIGKILL /
@@ -92,8 +92,10 @@ render() {
 		_rem=$(caffeine_remaining_secs)
 		printf '%s %s  Keep awake\n\n' "$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" ON-LID)"
 		printf '  The lid can be closed — the Mac cannot sleep at all.\n'
-		printf '  %s remaining, then it self-clears and normal sleep returns.\n\n' \
-			"$(caffeine_human_age "$_rem")"
+		printf '  %s remaining, until %s — then it self-clears and\n' \
+			"$(caffeine_human_age "$_rem")" "$(caffeine_clock_at "$(($(date +%s) + _rem))")"
+		printf '  normal sleep returns.\n\n'
+		printf '  [+]             add time\n'
 		printf '  [space] / [o]   turn off\n'
 		printf '  [q]             close\n'
 		;;
@@ -102,12 +104,15 @@ render() {
 		if [ "$_rem" -lt 0 ] 2>/dev/null; then
 			_detail="on indefinitely — until you turn it off"
 		else
-			_detail="$(caffeine_human_age "$_rem") remaining, then self-clears"
+			_detail="$(caffeine_human_age "$_rem") remaining, until $(caffeine_clock_at "$(($(date +%s) + _rem))") — then it self-clears"
 		fi
 		printf '%s %s   Keep awake\n\n' "$(ansi "$_colour" "$_glyph")" "$(ansi "$_colour" ON)"
 		printf '  System sleep is held; the displays still sleep normally.\n'
 		printf '  Closing the lid still sleeps the Mac — use [l] from OFF for that.\n'
 		printf '  %s\n\n' "$_detail"
+		# No add-time row while indefinite: there is no bounded thing to add to,
+		# and offering the key would make it look as though there were.
+		[ "$_rem" -ge 0 ] 2>/dev/null && printf '  [+]             add time\n'
 		printf '  [space] / [o]   turn off\n'
 		printf '  [q]             close\n'
 		;;
@@ -147,6 +152,45 @@ choose_timed() {
 	refresh
 }
 
+# choose_extend — add time to a running session, keeping its mode. The rows name
+# the resulting end time, not the amount alone: the question being answered here
+# is "will it outlast the run", which a bare "+1 hour" does not answer.
+#
+# It restarts the session rather than editing it — `caffeinate -t` fixes its
+# deadline at exec. For lid mode that briefly drops the kernel flag between the
+# outgoing trap and the new supervisor, which is safe by construction: reaching
+# this key means a hand on the keyboard and an open lid, so the clamshell path
+# the flag guards cannot fire in the gap.
+choose_extend() {
+	_rem=$(caffeine_remaining_secs)
+	[ "$_rem" -ge 0 ] 2>/dev/null || return 0
+	_mode=$(caffeine_mode)
+	_now=$(date +%s)
+	_rows=$(
+		for _opt in '30 minutes:1800' '1 hour:3600' '2 hours:7200' '4 hours:14400' '8 hours:28800'; do
+			_add=${_opt#*:}
+			printf '+%s  (until %s)\t%s\n' "${_opt%:*}" \
+				"$(caffeine_clock_at $((_now + _rem + _add)))" "$_add"
+		done
+	)
+	_choice=$(printf '%s\n' "$_rows" |
+		fzf --reverse --delimiter="$(printf '\t')" --with-nth=1 \
+			--header="Add to $(caffeine_human_age "$_rem") remaining…" 2>/dev/null) || return 0
+	_add=$(printf '%s' "$_choice" | cut -f2)
+	case "$_add" in
+	'' | *[!0-9]*) return 0 ;;
+	esac
+	# Re-read the remainder here rather than reusing the one the labels were built
+	# from, so the time spent choosing is not silently added on top.
+	_total=$(caffeine_extend_total "$_add") || return 0
+	if [ "$_mode" = "lid" ]; then
+		start_lid "$_total" extend
+	else
+		caffeine_start "$_total"
+	fi
+	refresh
+}
+
 # confirm_battery — name the risk in the user's own terms before a lid session on
 # battery. Not a generic "are you sure": the two costs that actually apply are a
 # battery drained flat and a machine running hot in a closed shell with no
@@ -167,12 +211,17 @@ confirm_battery() {
 	esac
 }
 
-# start_lid SECS — confirm if needed, start, and report a refused or ineffective
-# set rather than silently showing nothing. caffeine_start_lid verifies the
-# kernel flag before it claims anything, so a non-zero return here means the Mac
-# is *not* being kept awake — which the user has to be told, or the lie is worse
-# than the failure.
+# start_lid SECS [CTX] — confirm if needed, start, and report a refused or
+# ineffective set rather than silently showing nothing. caffeine_start_lid
+# verifies the kernel flag before it claims anything, so a non-zero return here
+# means the Mac is *not* being kept awake — which the user has to be told, or the
+# lie is worse than the failure.
+#
+# CTX is `extend` when this is replacing a session that was already running, so
+# the failure text can say that session is gone too. The battery confirm runs
+# before anything is stopped, so declining one leaves the running session intact.
 start_lid() {
+	_ctx=${2:-start}
 	if on_battery && ! confirm_battery; then
 		return 0
 	fi
@@ -192,6 +241,10 @@ start_lid() {
 		;;
 	*) printf '  Refused: a lid session must be given a duration.\n' ;;
 	esac
+	# An extension has already stopped what it was extending, so the rc-4 line's
+	# "nothing was started" would otherwise read as "nothing changed".
+	[ "$_ctx" = "extend" ] &&
+		printf '\n  The session you were extending has stopped, so the Mac is no\n  longer being kept awake.\n'
 	printf '\n  Press any key to close.\n'
 	read_key >/dev/null
 	return 0
@@ -226,6 +279,9 @@ while :; do
 	case "$(caffeine_state)" in
 	ON | ON-LID)
 		case "$_key" in
+		# `=` is `+` unshifted, accepted for the same reason vim and tmux's own
+		# resize bindings take both.
+		'+' | '=') choose_extend ;;
 		' ' | o | O)
 			caffeine_stop
 			refresh

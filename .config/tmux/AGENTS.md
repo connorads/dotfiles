@@ -863,6 +863,32 @@ Two constraints remove failure states by construction rather than by discipline:
   a failed set never produces an ON-LID pill. A pill that lies about keeping the
   Mac awake reproduces the original bug with extra steps.
 
+### Extending a running session
+
+A session that is nearly up and a run that is not finished is the ordinary case,
+and before `[+]` the only route to more time was off → `t` → re-pick, which drops
+the hold. Three things about the extension are load-bearing:
+
+- **It adds to the remainder, never sets a fresh total.** `caffeine_extend_total`
+  is remaining + picked. Setting would silently *shorten* a session with more
+  left on it than the amount picked — the opposite of what the key promises.
+- **It is a restart, not an edit.** `caffeinate -t` fixes its deadline at exec and
+  offers no way to move it, so extending is `caffeine_start*` with a bigger
+  number. In lid mode that briefly drops the kernel flag between the outgoing
+  supervisor's trap and the new one. Safe by construction: reaching the key means
+  a hand on the keyboard and an open lid, so the clamshell path the flag guards
+  cannot fire in the gap.
+- **A failed lid extension has already stopped what it was extending**, so the
+  popup's failure screen says so. The rc-4 text's "nothing was started" is true
+  and, on its own, would read as "nothing changed". The battery confirm runs
+  *before* anything is stopped, so declining one costs the running session
+  nothing.
+
+Indefinite sessions offer no `[+]` — there is no bounded thing to add to — and
+`caffeine_extend_total` returns 3 rather than inventing a total. Lid sessions
+extend like any other, and each extension is itself timed, so the always-timed
+invariant survives any number of them.
+
 **Dependency: a sudoers rule.** `environment.etc."sudoers.d/20-caffeine-pmset"`
 in [`../nix/modules/darwin-shared.nix`](../nix/modules/darwin-shared.nix) grants
 exactly two argument vectors, no wildcard. `NOPASSWD` is load-bearing rather than
@@ -888,7 +914,10 @@ Change as a set:
   double-width ☕ emoji that would break the pill, `caffeine_token` ∞ /
   remaining), and the **drive layer** (`caffeine_start [secs]` /
   `caffeine_start_lid secs` / `caffeine_stop` / `caffeine_toggle` /
-  `caffeine_clear_sleep_disabled`). Sourced, never run.
+  `caffeine_clear_sleep_disabled`), plus `caffeine_clock_at epoch` (wall-clock
+  `HH:MM`, trying BSD `date -r` then GNU `date -d @`) and `caffeine_extend_total
+  add` — the pure arithmetic behind extending a running session. Sourced, never
+  run.
   **Pidfile contract**: `${CAFFEINE_PIDFILE:-$HOME/.cache/tmux-caffeinate.pid}`
   holds one line `pid deadline_epoch mode` (`deadline 0` = indefinite, mode
   `idle`|`lid`). **Field 3 is optional and anything not exactly `lid` reads as
@@ -906,8 +935,13 @@ Change as a set:
 - [`scripts/caffeine-popup.sh`](./scripts/caffeine-popup.sh) — `prefix + Alt+k`
   key-loop popup (mem-popup shape). OFF: `i` indefinite, `t` timed
   (30m/1h/2h/4h/8h via fzf), `l` lid-closed (straight to the same picker — lid
-  mode has no indefinite path to offer), `q` close. ON / ON-LID: `space`/`o` off,
-  `q` close. The lid row shows the live power source, and on battery a confirm
+  mode has no indefinite path to offer), `q` close. ON / ON-LID: `+` (or `=`) add
+  time to what is left — an fzf picker whose rows name the resulting *end time*,
+  because "will it outlast the run" is the question being asked and "+1 hour"
+  does not answer it — `space`/`o` off, `q` close. The `+` row is hidden while
+  indefinite. Both running states also render the end time beside the remaining
+  figure, which is what makes the extend decision answerable before the picker is
+  even opened. The lid row shows the live power source, and on battery a confirm
   names the costs in the user's terms (drained flat, hot in a closed shell with no
   airflow) and points at `atp --host dev`. A **recovery row** renders in any
   non-ON-LID state whenever `caffeine_sleep_disabled` is true, with `c` to clear
@@ -938,7 +972,9 @@ Tests: [`../zsh/tests/caffeine-lib.bats`](../zsh/tests/caffeine-lib.bats) (pure
 lib: state via real pidfiles including the three-field and legacy two-field
 forms, mode, remaining/token, colour/glyph, human-age matrix, the
 `caffeine_state`-never-forks-pmset guard, `caffeine_sleep_disabled` against a
-`pmset` stub, the always-timed refusals, and the stop-wait) and
+`pmset` stub, the always-timed refusals, the extend arithmetic with its three
+refusals (nothing running / bad addition / indefinite), the cross-platform
+wall-clock, and the stop-wait) and
 [`../zsh/tests/caffeine-reconcile.bats`](../zsh/tests/caffeine-reconcile.bats)
 (the reconciler's branches, driving `sudo`/`pmset` stubs over a flag *file* so
 the two failure shapes — refused, and returns 0 without taking — can be provoked
