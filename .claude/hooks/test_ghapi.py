@@ -5,7 +5,13 @@
 """Tests for the _ghapi shared core."""
 
 import pytest
-from _ghapi import gh_api_decision
+from _ghapi import (
+    BYPASS_VAR,
+    IMPLICIT_WRITE_DECISION,
+    MERGE_DECISION,
+    PROTECTION_DECISION,
+    gh_api_decision,
+)
 
 
 class TestIsMutatingGhApi:
@@ -138,3 +144,197 @@ class TestIsMutatingGhApi:
     )
     def test_ignores_gh_api_in_commit_messages(self, command: str) -> None:
         assert gh_api_decision(command) is None
+
+
+class TestEveryDecisionDenies:
+    # An "ask" decision is inert under bypassPermissions, so the core must never
+    # produce one - that inertness is the bug this guard exists to close.
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api repos/foo/bar -X POST",
+            "gh api repos/foo/bar --method DELETE",
+            "gh api repos/foo/bar/issues -f title=bug",
+            "gh api graphql -f query='mutation { addStar(input:{}){ id } }'",
+            "gh api -X PUT repos/foo/bar/rulesets/1 --input a.json",
+            "gh api -X PUT repos/foo/bar/pulls/7/merge",
+        ],
+    )
+    def test_decision_is_always_deny(self, command: str) -> None:
+        decision = gh_api_decision(command)
+        assert decision is not None
+        assert decision.permission == "deny"
+
+
+class TestBypassHatch:
+    @pytest.mark.parametrize(
+        "command",
+        [
+            f"{BYPASS_VAR}=1 gh api repos/foo/bar -X POST",
+            f"{BYPASS_VAR}=1 gh api -X POST repos/foo/bar/issues/1/comments -f body=hi",
+            f"{BYPASS_VAR}=true gh api repos/foo/bar --method DELETE",
+        ],
+    )
+    def test_hatch_clears_ordinary_writes(self, command: str) -> None:
+        assert gh_api_decision(command) is None
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            f"{BYPASS_VAR}=0 gh api repos/foo/bar -X POST",
+            f"{BYPASS_VAR}= gh api repos/foo/bar -X POST",
+        ],
+    )
+    def test_falsey_hatch_does_not_clear(self, command: str) -> None:
+        assert gh_api_decision(command) is not None
+
+    def test_hatch_scoped_to_its_own_segment(self) -> None:
+        cmd = f"{BYPASS_VAR}=1 gh api repos/a/b -X POST && gh api repos/c/d -X POST"
+        assert gh_api_decision(cmd) is not None
+
+    def test_explicit_write_reason_names_the_hatch(self) -> None:
+        decision = gh_api_decision("gh api -X POST repos/foo/bar/issues/1/comments -f body=hi")
+        assert decision is not None
+        assert BYPASS_VAR in decision.reason
+
+    def test_hatch_still_requires_an_explicit_method(self) -> None:
+        # The implicit-POST deny is a read-or-write ambiguity, not a permission
+        # gate, so the hatch does not resolve it.
+        cmd = f"{BYPASS_VAR}=1 gh api repos/foo/bar/issues -f title=bug"
+        assert gh_api_decision(cmd) == IMPLICIT_WRITE_DECISION
+
+
+class TestUnhatchedClasses:
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api -X PUT repos/foo/bar/pulls/7/merge",
+            "gh api repos/foo/bar/pulls/7/merge -X PUT -f merge_method=squash",
+            "gh api repos/foo/bar/pulls/7/merge -f merge_method=squash",
+            "gh api --method PUT /repos/foo/bar/pulls/7/merge",
+            "gh api -X PUT https://api.github.com/repos/foo/bar/pulls/7/merge",
+        ],
+    )
+    def test_merge_paths_denied(self, command: str) -> None:
+        assert gh_api_decision(command) == MERGE_DECISION
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api -X PUT repos/foo/bar/rulesets/1 --input a.json",
+            "gh api -X POST repos/foo/bar/rulesets --input a.json",
+            "gh api repos/foo/bar/rulesets --input a.json",
+            "gh api -X DELETE repos/foo/bar/rulesets/1",
+            "gh api -X PUT repos/foo/bar/branches/main/protection --input a.json",
+            "gh api -X DELETE repos/foo/bar/branches/main/protection",
+            "gh api -X POST repos/foo/bar/branches/main/protection/enforce_admins",
+        ],
+    )
+    def test_protection_paths_denied(self, command: str) -> None:
+        assert gh_api_decision(command) == PROTECTION_DECISION
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            f"{BYPASS_VAR}=1 gh api -X PUT repos/foo/bar/pulls/7/merge",
+            f"{BYPASS_VAR}=1 gh api -X PUT repos/foo/bar/rulesets/1 --input a.json",
+            f"{BYPASS_VAR}=1 gh api -X DELETE repos/foo/bar/branches/main/protection",
+        ],
+    )
+    def test_hatch_does_not_open_these(self, command: str) -> None:
+        assert gh_api_decision(command) is not None
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api repos/foo/bar/rulesets --jq '.[].name'",
+            "gh api repos/foo/bar/rulesets/1 --jq .name",
+            "gh api repos/foo/bar/branches/main/protection",
+            "gh api repos/foo/bar/pulls/7/merge",
+            "gh api -X GET repos/foo/bar/rulesets -f per_page=10",
+        ],
+    )
+    def test_reads_of_these_paths_are_unaffected(self, command: str) -> None:
+        # `pulls/*/merge` on GET is the "is it merged?" check, not a merge.
+        assert gh_api_decision(command) is None
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api -X PUT repos/foo/bar/rulesets/1 --input a.json",
+            "gh api -X PUT repos/foo/bar/pulls/7/merge",
+        ],
+    )
+    def test_reason_does_not_offer_the_hatch(self, command: str) -> None:
+        decision = gh_api_decision(command)
+        assert decision is not None
+        # The reason must name the hatch only to rule it out, never as a way out.
+        assert "re-run" not in decision.reason
+        assert "no `MUTATE_OK` bypass" in decision.reason or "has no" in decision.reason
+
+
+class TestGhPrMerge:
+    MERGE_COMMANDS = (
+        "gh pr merge 1002 --squash",
+        "gh pr merge --squash --delete-branch 1002",
+        "gh pr merge",
+        f"{BYPASS_VAR}=1 gh pr merge 1002 --squash",
+        "gh pr view 1 && gh pr merge 1002 --squash",
+    )
+
+    @pytest.mark.parametrize("command", MERGE_COMMANDS)
+    def test_denied_when_covered(self, command: str) -> None:
+        assert gh_api_decision(command, cover_pr_merge=True) == MERGE_DECISION
+
+    @pytest.mark.parametrize("command", MERGE_COMMANDS)
+    def test_ignored_when_not_covered(self, command: str) -> None:
+        # Claude leaves this to its `Bash(gh pr merge:*)` ask rule; a hook deny
+        # is evaluated first and would make that prompt unreachable.
+        assert gh_api_decision(command) is None
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh pr list",
+            "gh pr view 1002 --json mergeable",
+            "gh pr checks 1002",
+            "git merge main",
+            "gh pr comment 1002 --body 'ready to merge'",
+        ],
+    )
+    def test_other_pr_commands_unaffected(self, command: str) -> None:
+        assert gh_api_decision(command, cover_pr_merge=True) is None
+
+    def test_commit_message_mentioning_merge_unaffected(self) -> None:
+        cmd = 'git commit -m "docs: never run gh pr merge unprompted"'
+        assert gh_api_decision(cmd, cover_pr_merge=True) is None
+
+
+class TestFallback:
+    # An unclosed quote defeats shlex; the regex fallback must still classify.
+    def test_unparseable_explicit_write_flagged(self) -> None:
+        decision = gh_api_decision("gh api repos/foo/bar -X POST 'unterminated")
+        assert decision is not None
+        assert BYPASS_VAR in decision.reason
+
+    def test_unparseable_implicit_write_flagged(self) -> None:
+        assert gh_api_decision("gh api search/code -f q=foo 'unterminated") is not None
+
+    def test_unparseable_hatch_honoured(self) -> None:
+        cmd = f"{BYPASS_VAR}=1 gh api repos/foo/bar -X POST 'unterminated"
+        assert gh_api_decision(cmd) is None
+
+    def test_unparseable_protection_write_has_no_hatch(self) -> None:
+        cmd = f"{BYPASS_VAR}=1 gh api -X PUT repos/foo/bar/rulesets/1 --input 'unterminated"
+        assert gh_api_decision(cmd) == PROTECTION_DECISION
+
+    def test_unparseable_merge_write_has_no_hatch(self) -> None:
+        cmd = f"{BYPASS_VAR}=1 gh api -X PUT repos/foo/bar/pulls/7/merge 'unterminated"
+        assert gh_api_decision(cmd) == MERGE_DECISION
+
+    def test_unparseable_gh_pr_merge_flagged_when_covered(self) -> None:
+        cmd = "gh pr merge 1002 --body 'unterminated"
+        assert gh_api_decision(cmd, cover_pr_merge=True) == MERGE_DECISION
+
+    def test_unparseable_read_not_flagged(self) -> None:
+        assert gh_api_decision("gh api repos/foo/bar --jq 'unterminated") is None
