@@ -508,13 +508,29 @@ touch; the shared `~/.hk-hooks/skill-tests.sh` warns and exits 0 when a
 runner is absent, and `mise run skill-checks` runs every suite across all
 tiers (private included).
 
-The `ts-typecheck-*` steps gate first-party TS projects (skl, pi goal /
-workflows / pi-palette, and the small pi extensions) with the global `tsc`
-(typescript 7),
+The `ts-typecheck-*` steps gate first-party TS projects (skl, pin-audit, pi
+goal / workflows / pi-palette / agent-guard, and the small pi extensions) with
+the global `tsc` (typescript 7),
 glob-scoped so only staged-project changes pay the cost. The shared
 `~/.hk-hooks/ts-typecheck.sh` warns and exits 0 when a project's
 `node_modules` is absent (fresh/offline machines); `mise run ts-checks`
 installs deps and runs typecheck + tests across all of them.
+
+The `ts-tests-scoped` step runs those projects' test suites at commit time,
+via `~/.hk-hooks/ts-tests.sh`. It is one **discovering** step rather than one
+per project: each staged file resolves to its nearest `package.json`, and that
+project's `test` script runs under the package manager its lockfile names
+(`bun.lock` → `bun run test`, `pnpm-lock.yaml` → `pnpm run test`), so
+`node --test`, `vitest` and `bun test` all dispatch through one gate and a new
+project is covered the day it exists. Enumeration is what left `agent-guard`
+ungated for its whole life. Latency is affordable because the gate assumes
+`node_modules` is present - the slow half of `mise run ts-checks` is its
+frozen-lockfile installs, not the tests. Missing `jq`, runner or `node_modules`
+warns and exits 0, same never-brick posture as `ts-typecheck.sh`;
+`bash ~/.hk-hooks/ts-tests.sh --all` (what `ts-checks` calls) is the full run,
+and `~/.config/zsh/tests/ts-tests.bats` pins the gate's own contract. The three
+discovery roots are spelled in both `hk.pkl`'s glob and the script - keep them
+in step.
 
 The `py-typecheck-*` steps are the Python analogue: `pyrefly` gates the two hook
 dirs (`.claude/hooks`, `.hk-hooks`) that import no uninstalled third-party deps,
