@@ -328,11 +328,26 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 
+    // First-party TS test gate, scoped to the change: each staged file resolves
+    // to its nearest package.json and that project's `test` script runs, via
+    // the lockfile's package manager. One discovering step rather than one per
+    // project - the ts-typecheck-* enumeration below is what left agent-guard
+    // ungated for its whole life. Viable at commit time because it assumes
+    // node_modules is present: the slow half of `mise run ts-checks` is its
+    // frozen-lockfile installs, not the tests (0.1-3.1s scoped, ~8s for all).
+    // The three roots are duplicated in ts-tests.sh's own list - keep in step.
+    // Missing jq/runner/node_modules warns and passes, same never-brick posture
+    // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
+    ["ts-tests-scoped"] {
+        glob = List(".config/skl/**", "src/pin-audit/**", ".pi/agent/extensions/**")
+        check = "bash .hk-hooks/ts-tests.sh {{files}}"
+    }
+
     // First-party TS typecheck gates (tsgo via mise): one glob-scoped step per
-    // project so only staged-project changes pay the cost. Typecheck only -
-    // tests live in `mise run ts-checks` to keep hook latency low. The shared
-    // script warns + exits 0 when node_modules is absent (fresh/offline
-    // machines), so the gate never bricks a commit it can't evaluate.
+    // project so only staged-project changes pay the cost. Tests are the
+    // separate ts-tests-scoped step above. The shared script warns + exits 0
+    // when node_modules is absent (fresh/offline machines), so the gate never
+    // bricks a commit it can't evaluate.
     ["ts-typecheck-skl"] {
         glob = List(".config/skl/src/**/*.ts", ".config/skl/tests/**/*.ts", ".config/skl/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .config/skl"
