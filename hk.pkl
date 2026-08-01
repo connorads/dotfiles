@@ -349,6 +349,10 @@ local fast_steps = new Mapping<String, Step> {
         glob = List(".pi/agent/extensions/workflows/*.ts", ".pi/agent/extensions/workflows/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/workflows"
     }
+    ["ts-typecheck-agent-guard"] {
+        glob = List(".pi/agent/extensions/agent-guard/*.ts", ".pi/agent/extensions/agent-guard/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/agent-guard"
+    }
     ["ts-typecheck-pi-palette"] {
         glob = List(".pi/agent/extensions/pi-palette/**/*.ts", ".pi/agent/extensions/pi-palette/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh .pi/agent/extensions/pi-palette"

@@ -227,7 +227,7 @@ set -e
 cd "$HOME"
 (cd .config/skl && bun install --frozen-lockfile && tsc -p tsconfig.json && bun test)
 (cd src/pin-audit && bun install --frozen-lockfile && tsc -p tsconfig.json && bun test)
-for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows; do
+for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows .pi/agent/extensions/agent-guard; do
   (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test)
 done
 (cd .pi/agent/extensions/pi-palette && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test)
