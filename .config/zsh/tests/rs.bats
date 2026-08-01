@@ -44,6 +44,135 @@ EOF
   grep -q 'git-hooks status --quiet' "$TEST_LOG"
 }
 
+make_js_repo() {
+  local repo=$1 lockfile=$2 scripts=$3
+
+  make_repo "$repo"
+  : >"$repo/$lockfile"
+  cat >"$repo/package.json" <<EOF
+{ "name": "fixture", "scripts": $scripts }
+EOF
+}
+
+# A package-manager stub that logs argv, answers `config get ignore-scripts`
+# from $IGNORE_SCRIPTS, and succeeds for everything else (`install`).
+write_pm_stub() {
+  local name=$1
+
+  write_stub "$name" <<EOF
+#!/usr/bin/env bash
+printf '$name %s\n' "\$*" >>"\$TEST_LOG"
+if [ "\$1 \$2 \$3" = "config get ignore-scripts" ]; then
+  echo "\${IGNORE_SCRIPTS:-true}"
+fi
+exit 0
+EOF
+}
+
+run_rs_js() {
+  local repo=$1
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' TEST_LOG='$TEST_LOG' CI='' IGNORE_SCRIPTS='${IGNORE_SCRIPTS:-true}' zsh --no-rcs '$RS'"
+}
+
+@test "rs reports npm install scripts the ignore-scripts block skipped" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json '{ "postinstall": "patch-package" }'
+  write_pm_stub npm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"scripts: postinstall - not run (npm ignore-scripts)"* ]]
+  [[ "$output" == *"  run: npm run postinstall"* ]]
+}
+
+@test "rs never runs the skipped scripts, it only names them" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json '{ "postinstall": "patch-package" }'
+  write_pm_stub npm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  grep -q 'npm install' "$TEST_LOG"
+  ! grep -q 'run postinstall' "$TEST_LOG"
+}
+
+@test "rs leaves prepare to the hooks report" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json '{ "prepare": "husky" }'
+  write_pm_stub npm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"scripts:"* ]]
+}
+
+@test "rs stays silent when the repo opts out of ignore-scripts" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json '{ "postinstall": "patch-package" }'
+  write_pm_stub npm
+  IGNORE_SCRIPTS=false
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"scripts:"* ]]
+}
+
+@test "rs lists only the scripts present, in npm execution order" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json \
+    '{ "postinstall": "b", "preinstall": "a", "prepare": "husky" }'
+  write_pm_stub npm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"scripts: preinstall, postinstall - not run (npm ignore-scripts)"* ]]
+  [[ "$output" == *"  run: npm run preinstall"* ]]
+  [[ "$output" == *"  run: npm run postinstall"* ]]
+}
+
+@test "rs names pnpm as the manager in a pnpm repo" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" pnpm-lock.yaml '{ "postinstall": "wxt prepare" }'
+  write_pm_stub pnpm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"scripts: postinstall - not run (pnpm ignore-scripts)"* ]]
+  [[ "$output" == *"  run: pnpm run postinstall"* ]]
+}
+
+@test "rs stays silent when the repo has no package.json" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+  : >"$repo/package-lock.json"
+  write_pm_stub npm
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"scripts:"* ]]
+}
+
+@test "rs stays silent when jq is absent" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_js_repo "$repo" package-lock.json '{ "postinstall": "patch-package" }'
+  write_pm_stub npm
+  PATH="$(path_without jq)"
+
+  run_rs_js "$repo"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"=> npm install"* ]]
+  [[ "$output" != *"scripts:"* ]]
+}
+
 @test "rs finishes when git-hooks is absent from PATH" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
