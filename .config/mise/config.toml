@@ -231,8 +231,7 @@ for d in .pi/agent/extensions/goal .pi/agent/extensions/workflows; do
   (cd "$d" && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test)
 done
 (cd .pi/agent/extensions/pi-palette && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test)
-(cd .pi/agent/extensions && pnpm install --frozen-lockfile && pnpm run typecheck)
-(cd .pi/agent/extensions/web-search && node --test core.test.mjs)
+(cd .pi/agent/extensions && pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test)
 """
 
 [tasks.py-checks]
