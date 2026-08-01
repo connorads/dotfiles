@@ -28,13 +28,40 @@ class TestIntegration:
             check=False,
         )
 
-    def test_mutating_returns_ask(self) -> None:
+    def test_mutating_returns_deny_naming_the_hatch(self) -> None:
         r = self._run("gh api repos/foo/bar -X POST")
         assert r.returncode == 0
         output = json.loads(r.stdout)["hookSpecificOutput"]
-        assert output["permissionDecision"] == "ask"
+        assert output["permissionDecision"] == "deny"
         assert "POST" in output["permissionDecisionReason"]
-        assert "write is intended" in output["permissionDecisionReason"]
+        assert "MUTATE_OK=1" in output["permissionDecisionReason"]
+
+    def test_hatched_mutation_returns_no_output(self) -> None:
+        r = self._run("MUTATE_OK=1 gh api repos/foo/bar -X POST")
+        assert r.returncode == 0
+        assert r.stdout == ""
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "gh api -X PUT repos/foo/bar/pulls/7/merge",
+            "gh api -X PUT repos/foo/bar/rulesets/1 --input a.json",
+            "MUTATE_OK=1 gh api -X DELETE repos/foo/bar/branches/main/protection",
+        ],
+    )
+    def test_unhatched_classes_return_deny(self, command: str) -> None:
+        r = self._run(command)
+        assert r.returncode == 0
+        output = json.loads(r.stdout)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "deny"
+        assert "no `MUTATE_OK` bypass" in output["permissionDecisionReason"]
+
+    def test_gh_pr_merge_is_left_to_the_ask_rule(self) -> None:
+        # Claude gates this with `Bash(gh pr merge:*)` in permissions.ask; a
+        # hook deny is evaluated first and would make that prompt unreachable.
+        r = self._run("gh pr merge 1002 --squash")
+        assert r.returncode == 0
+        assert r.stdout == ""
 
     @pytest.mark.parametrize(
         "command",
@@ -97,7 +124,9 @@ class TestIntegration:
             "gh api gists -F 'files[f][content]=@f'",
             "gh api repos/foo/bar/issues --field title=bug",
             "gh api repos/foo/bar/issues --raw-field body=hi",
-            "gh api repos/foo/bar/rulesets --input payload.json",
+            # A rulesets --input write is the protection class, so it lands in
+            # test_unhatched_classes_return_deny with its own reason instead.
+            "gh api repos/foo/bar/labels --input payload.json",
         ]:
             r = self._run(cmd)
             assert r.returncode == 0
@@ -124,14 +153,14 @@ class TestIntegration:
         assert output["permissionDecision"] == "deny"
         assert "--method POST" in output["permissionDecisionReason"]
 
-    def test_explicit_graphql_post_returns_ask(self) -> None:
+    def test_explicit_graphql_post_returns_deny(self) -> None:
         r = self._run("gh api graphql --method POST -f query='mutation { x }'")
         assert r.returncode == 0
         output = json.loads(r.stdout)["hookSpecificOutput"]
-        assert output["permissionDecision"] == "ask"
+        assert output["permissionDecision"] == "deny"
         assert "POST" in output["permissionDecisionReason"]
 
-    def test_implicit_deny_takes_precedence_over_explicit_ask(self) -> None:
+    def test_implicit_guidance_takes_precedence_over_hatchable_deny(self) -> None:
         r = self._run("gh api repos/foo/bar --method DELETE; gh api search/code -f q=foo")
         assert r.returncode == 0
         output = json.loads(r.stdout)["hookSpecificOutput"]
@@ -139,17 +168,17 @@ class TestIntegration:
         assert "--method GET" in output["permissionDecisionReason"]
 
     @pytest.mark.parametrize(
-        ("command", "expected"),
+        "command",
         [
-            ("gh api repos/foo/bar -X POST 'unterminated", "ask"),
-            ("gh api search/code -f q=foo 'unterminated", "deny"),
+            "gh api repos/foo/bar -X POST 'unterminated",
+            "gh api search/code -f q=foo 'unterminated",
         ],
     )
-    def test_tokenisation_fallback_preserves_decision(self, command: str, expected: str) -> None:
+    def test_tokenisation_fallback_still_denies(self, command: str) -> None:
         r = self._run(command)
         assert r.returncode == 0
         output = json.loads(r.stdout)["hookSpecificOutput"]
-        assert output["permissionDecision"] == expected
+        assert output["permissionDecision"] == "deny"
         assert output["permissionDecisionReason"]
 
     def test_method_flag_variants(self) -> None:
@@ -161,4 +190,4 @@ class TestIntegration:
             r = self._run(cmd)
             assert r.returncode == 0
             output = json.loads(r.stdout)
-            assert output["hookSpecificOutput"]["permissionDecision"] == "ask", cmd
+            assert output["hookSpecificOutput"]["permissionDecision"] == "deny", cmd
