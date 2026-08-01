@@ -92,10 +92,11 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
     # The atuin command-capture hook (see ~/CLAUDE.md "Agent command history")
-    # and the secret-path guard (deliberately blocking, exit 2) coexist with
-    # the agent-state hooks and are exempt from these assertions.
+    # and the Bash guards (deliberately blocking, exit 2) coexist with the
+    # agent-state hooks and are exempt from these assertions. Exempted by
+    # naming convention, so a new guard-*-codex.py needs no edit here.
     [[ "$cmd" == "atuin hook codex"* ]] && continue
-    [[ "$cmd" == *"guard-secret-paths-codex.py"* ]] && continue
+    [[ "$cmd" == *"guard-"*"-codex.py"* ]] && continue
     seen=1
     # By role, not by binary: a hook either calls agent-state.sh directly, or
     # calls an agent-*.sh adapter that forwards to it (agent-pretooluse.sh
@@ -116,4 +117,11 @@ pstate() { tx show-options -pqv -t "$PANE" @agent_state; }
 @test "PreToolUse wires the secret-path guard on Bash" {
   jq -r '.hooks.PreToolUse[] | select(.matcher=="^Bash$") | .hooks[].command' "$HOOKS" |
     grep -qF 'guard-secret-paths-codex.py'
+}
+
+@test "PreToolUse wires the mutating gh api guard on Bash" {
+  # Codex has no permissions.ask, so this hook is its only cover for PR merges
+  # and branch-protection writes.
+  jq -r '.hooks.PreToolUse[] | select(.matcher=="^Bash$") | .hooks[].command' "$HOOKS" |
+    grep -qF 'guard-mutating-api-codex.py'
 }

@@ -9,6 +9,7 @@
     "PreToolUse": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-pretooluse.sh\" codex || true", "timeout": 10 } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-secret-paths-codex.py\"" } ] },
+      { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/guard-mutating-api-codex.py\"" } ] },
       { "matcher": "^Bash$", "hooks": [ { "type": "command", "command": "atuin hook codex" } ] }
     ],
     "PostToolUse": [
