@@ -251,8 +251,8 @@ local fast_steps = new Mapping<String, Step> {
     // The bats suite's flake class, made unwritable. A fixed `sleep` used to
     // synchronise is a guess about someone else's scheduling: tuned on an idle
     // machine it loses under `-j`, and it is paid in full on every run where the
-    // work took 10ms. Two tests failed the bats-full pre-push gate that way, and
-    // a sweep found five more that passed vacuously - worse, because a flake is
+    // work took 10ms. Two tests failed a whole-suite run that way, and a sweep
+    // found five more that passed vacuously - worse, because a flake is
     // loud and a false green is silent. no-hard-wait blocks the sleep;
     // no-embedded-script blocks the multi-line `bash -c '...'` blob that would
     // otherwise hide one from any AST tool (and smuggle Apple's bash 3.2 past the
@@ -319,10 +319,12 @@ local fast_steps = new Mapping<String, Step> {
 
     // The zsh bats suite (.config/zsh/tests), scoped to the change: a staged
     // suite runs itself, a staged script runs the suite named after it plus any
-    // suite that names it. The whole suite runs at push time (`bats-full`
-    // below) - four suites had rotted for months because nothing ran them at
-    // all. bats absent warns and passes, same never-brick posture as
-    // ts-typecheck.sh; `mise run zsh-tests` runs everything by hand.
+    // suite that names it. Four suites had rotted for months because nothing
+    // ran them at all. There is deliberately no pre-push gate: `git push`
+    // fetches remote refs before pre-push runs, so a whole-suite run holds that
+    // connection until GitHub closes it. bats absent warns and passes, same
+    // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
+    // everything by hand.
     ["bats-scoped"] {
         glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
