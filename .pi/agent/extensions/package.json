@@ -2,8 +2,9 @@
   "name": "pi-extensions-tooling",
   "version": "0.1.0",
   "private": true,
-  "description": "Typecheck-only tooling for the single-file/small pi extensions (atuin, agent-state, web-search). Deliberately has NO \"pi\" field so the pi host never registers it as an extension; runtime module resolution stays with the host.",
+  "description": "Tooling for the single-file/small pi extensions (atuin, agent-state, web-search): their typecheck project, and the test script for those without a package.json of their own. Deliberately has NO \"pi\" field so the pi host never registers it as an extension; runtime module resolution stays with the host.",
   "scripts": {
+    "test": "node --test web-search/core.test.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
