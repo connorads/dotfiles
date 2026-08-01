@@ -152,6 +152,36 @@ caffeine_remaining_secs() {
 	echo "$_rem"
 }
 
+# caffeine_clock_at EPOCH — local wall-clock HH:MM for an epoch second, for
+# surfaces that answer "until when" rather than "how much longer". BSD date takes
+# -r, GNU date takes -d @, and neither accepts the other's flag (GNU's -r means
+# "reference file", so it fails on a bare number and falls through), so both are
+# tried. Prints nothing where neither works; every caller renders it optionally.
+caffeine_clock_at() {
+	date -r "$1" +%H:%M 2>/dev/null || date -d "@$1" +%H:%M 2>/dev/null || printf ''
+}
+
+# caffeine_extend_total ADD — the duration a running session becomes when ADD
+# seconds are added to what is left of it. Prints seconds-from-now, which is what
+# the drive layer takes, so extending is `caffeine_start*` with a bigger number:
+# `caffeinate -t` fixes its deadline at exec and offers no way to move it, so an
+# extension is always a stop-and-restart, never an in-place edit.
+#
+# Adding to the *remainder* rather than setting a fresh total is what makes this
+# an extension: setting would silently shorten a session with more left on it
+# than the amount picked.
+#
+# Returns: 0 printed · 1 nothing is running · 2 ADD is not a positive integer ·
+# 3 the session is indefinite, so there is no bounded thing to add to.
+caffeine_extend_total() {
+	_add=${1:-0}
+	[ "${_add:-0}" -gt 0 ] 2>/dev/null || return 2
+	caffeine_active || return 1
+	_rem=$(caffeine_remaining_secs)
+	[ "$_rem" -ge 0 ] 2>/dev/null || return 3
+	echo $((_rem + _add))
+}
+
 # caffeine_human_age SECS — compact human age: Nd / Nh / Nm / Ns. The shared
 # token formatter, identical to resurrect_human_age.
 caffeine_human_age() {

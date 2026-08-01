@@ -188,6 +188,80 @@ EOF
   [ "$output" = "0" ]
 }
 
+# --- wall clock -------------------------------------------------------------
+
+@test "clock_at renders local wall-clock HH:MM" {
+  # Portability is the point: BSD date takes -r and GNU date takes -d @, and the
+  # lib has to work on whichever this host has.
+  lib "caffeine_clock_at $(date +%s)"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ ^[0-9][0-9]:[0-9][0-9]$ ]]
+}
+
+@test "clock_at moves with the epoch it is given" {
+  now=$(date +%s)
+  lib "caffeine_clock_at $now"
+  local at_now=$output
+  lib "caffeine_clock_at $((now + 3600))"
+  [ "$output" != "$at_now" ]
+}
+
+# --- extending a running session --------------------------------------------
+
+@test "extend_total adds to what is LEFT, not to the original duration" {
+  # The distinction is the whole feature: setting a fresh total would silently
+  # shorten a session with more left on it than the amount picked.
+  sleep 100 &
+  pid=$!
+  future=$(($(date +%s) + 600))
+  pidfile3 "$pid" "$future" idle
+  lib 'caffeine_extend_total 1800'
+  kill "$pid" 2>/dev/null || true
+  [ "$status" -eq 0 ]
+  [ "$output" -gt 2390 ]
+  [ "$output" -le 2400 ]
+}
+
+@test "extend_total refuses when nothing is running" {
+  lib 'caffeine_extend_total 1800'
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+}
+
+@test "extend_total refuses a non-positive or non-numeric addition" {
+  lib 'caffeine_extend_total 0'
+  [ "$status" -eq 2 ]
+  lib 'caffeine_extend_total abc'
+  [ "$status" -eq 2 ]
+  lib 'caffeine_extend_total'
+  [ "$status" -eq 2 ]
+}
+
+@test "extend_total refuses an indefinite session" {
+  # Nothing bounded to add to; the popup hides the key in this state for the
+  # same reason.
+  sleep 100 &
+  pid=$!
+  pidfile3 "$pid" 0 idle
+  lib 'caffeine_extend_total 1800'
+  kill "$pid" 2>/dev/null || true
+  [ "$status" -eq 3 ]
+  [ -z "$output" ]
+}
+
+@test "extend_total keeps a lid session bounded" {
+  # A lid extension is still a timed session, so the always-timed invariant
+  # survives any number of extensions.
+  sleep 100 &
+  pid=$!
+  future=$(($(date +%s) + 600))
+  pidfile3 "$pid" "$future" lid
+  lib 'caffeine_extend_total 1800'
+  kill "$pid" 2>/dev/null || true
+  [ "$status" -eq 0 ]
+  [ "$output" -gt 0 ]
+}
+
 # --- token: figure-slot content --------------------------------------------
 
 @test "token is the infinity glyph for an indefinite deadline" {
