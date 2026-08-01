@@ -9,17 +9,22 @@ if [[ -f mise.toml ]] || [[ -f .mise.toml ]]; then
 fi
 
 # JS/TS (mutually exclusive — a repo uses one JS package manager)
+local js_pm=""
 if [[ -f bun.lock ]] || [[ -f bun.lockb ]]; then
   echo "=> bun install"
+  js_pm=bun
   bun install || return 1
 elif [[ -f pnpm-lock.yaml ]]; then
   echo "=> pnpm install"
+  js_pm=pnpm
   pnpm install || return 1
 elif [[ -f yarn.lock ]]; then
   echo "=> yarn install"
+  js_pm=yarn
   yarn install || return 1
 elif [[ -f package-lock.json ]]; then
   echo "=> npm install"
+  js_pm=npm
   npm install || return 1
 fi
 
@@ -78,6 +83,31 @@ fi
 if [[ -f pubspec.lock ]]; then
   echo "=> dart pub get"
   dart pub get || return 1
+fi
+
+# Install scripts the global ignore-scripts block suppressed (report only - it
+# never runs repo-authored code, same posture as docs/adr/0005 for hooks).
+# `prepare` is deliberately omitted: the hooks report below already owns it and
+# prints a better instruction for it (`arm: npx husky`), so a `run: npm run
+# prepare` beside that would name two commands for one job. A `prepare` doing
+# non-hook work is therefore not reported. No CI guard either: in CI
+# ignore-scripts is normally unset, so the config check self-silences, and where
+# it is set deliberately the line is wanted.
+if [[ "$js_pm" == (npm|pnpm) ]] && [[ -f package.json ]] && command -v jq &>/dev/null; then
+  if [[ "$($js_pm config get ignore-scripts 2>/dev/null)" == true ]]; then
+    local -a skipped
+    local script
+    # `(.scripts // {})` needs its parens: `//` binds looser than `as`, so the
+    # unparenthesised form is `.scripts // ({} as $s | ...)` and prints the whole
+    # scripts object whenever the key exists.
+    skipped=(${(f)"$(jq -r '(.scripts // {}) as $s | ["preinstall","install","postinstall"] | map(select($s[.])) | .[]' package.json 2>/dev/null)"})
+    if (( ${#skipped} )); then
+      echo "scripts: ${(j:, :)skipped} - not run ($js_pm ignore-scripts)"
+      for script in $skipped; do
+        echo "  run: $js_pm run $script"
+      done
+    fi
+  fi
 fi
 
 # Git hooks (report only - arming is a deliberate act, see `git hooks`)
