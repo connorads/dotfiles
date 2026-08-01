@@ -867,6 +867,10 @@
       "mcp__ide",
       "mcp__playwright"
     ],
+    "ask": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh repo edit:*)"
+    ],
     "deny": [
       "Bash(rm -rf /)",
       "Bash(rm -rf:*)",
