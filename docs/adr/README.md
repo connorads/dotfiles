@@ -3,7 +3,7 @@
 Repo-level ADRs for these dotfiles: decisions with real trade-offs, where a future
 reader would otherwise have to re-derive why the obvious alternative was not taken.
 
-Subprojects keep their own ADR dirs (e.g. [`../../.config/skl/docs/adr/`](../../.config/skl/docs/adr/)).
+Subprojects keep their own ADR dirs (e.g. [`../../src/skl/docs/adr/`](../../src/skl/docs/adr/)).
 This dir is for decisions that span the dotfiles themselves - shell glue, nix
 modules, hooks, the test harness.
 

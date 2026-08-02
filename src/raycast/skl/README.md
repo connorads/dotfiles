@@ -1,6 +1,6 @@
 # Skill Loader (skl)
 
-Browse the [`skl`](../../../.config/skl) skill catalogue from Raycast and copy or
+Browse the [`skl`](../../skl) skill catalogue from Raycast and copy or
 paste a skill pointer — the same payload `skl` injects into a tmux pane, but
 usable **outside tmux** (claude.ai, a bare terminal, any editor).
 

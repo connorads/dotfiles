@@ -19,7 +19,8 @@ CLI-contract suite in `.config/zsh/tests/pin-audit.bats`.
 `.config` accumulated things that are not configuration. `skl` is a Bun CLI with
 its own `package.json`, `bun.lock`, `tsconfig.json`, nine ADRs and colocated
 tests - a project by every measure - while its own Raycast wrapper already lives
-at `src/raycast/skl` and reaches back across the tree as `../../../.config/skl`.
+at `src/raycast/skl`, reaching back across the tree into a dot-dir for its own
+implementation.
 
 The cost is not aesthetic. A tool split across `.config` and `src` is read by
 whichever gate happens to name each half, and the gates key on hard-coded path

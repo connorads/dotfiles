@@ -115,7 +115,7 @@ def parse_hk_steps(text: str) -> dict[str, Step]:
 def literal_prefix(pattern: str) -> str:
     """The wildcard-free head of a glob - the deepest path it is anchored at.
 
-    `.config/skl/**` -> `.config/skl`; `**/*.ts` -> `` (anchored nowhere, so
+    `src/skl/**` -> `src/skl`; `**/*.ts` -> `` (anchored nowhere, so
     nothing to assert about it).
     """
     kept: list[str] = []

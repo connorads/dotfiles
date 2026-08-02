@@ -68,12 +68,12 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 - Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
-- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `raycast/shotpath`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
 
 ## Key Documentation
 
 - [~/README.md](./README.md) - how the dotfiles system works (git-dir + work-tree, nix-darwin, home-manager)
-- [docs/adr/](./docs/adr/) - repo-level ADRs; [README](./docs/adr/README.md) states what is local to these dotfiles, the `adr` skill (`skl adr`) owns the format and mechanics. Subprojects keep their own, e.g. [`.config/skl/docs/adr/`](./.config/skl/docs/adr/)
+- [docs/adr/](./docs/adr/) - repo-level ADRs; [README](./docs/adr/README.md) states what is local to these dotfiles, the `adr` skill (`skl adr`) owns the format and mechanics. Subprojects keep their own, e.g. [`src/skl/docs/adr/`](./src/skl/docs/adr/)
 - [connorads/rpi5](https://github.com/connorads/rpi5) - RPi5 NixOS configuration (standalone repo)
 
 ## Configuration Files
@@ -119,6 +119,8 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [.config/vox/](./.config/vox/)                                         | `vox` merge filter (`merge.py`, stdlib-only) + its pytest and the `wrong<TAB>right` vocabulary map. Subsystem docs: [.config/tmux/AGENTS.md](./.config/tmux/AGENTS.md) |
 | [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Tests: `cd ~/src/handoff && uv run --group dev pytest` |
 | [~/src/pin-audit](./src/pin-audit/)                                    | `pin-audit`'s implementation: pure core (readPin/judge) + shell adapters (`Bun.TOML.parse`, argv-form `Bun.spawn`), bun with zero runtime deps. The zsh function in `functions/nix` is a wrapper. Tests: `cd ~/src/pin-audit && bun test` (unit) plus `.config/zsh/tests/pin-audit.bats` (CLI contract) |
+| [~/src/skl](./src/skl/CONTEXT.md)                                      | `skl`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/skl/docs/adr/). Config stays at `.config/skl/config.json` (`SKL_CONFIG` overrides); `.local/bin/skl` execs `src/cli.ts`, `bin/pick` is the fzf picker. Tests: `cd ~/src/skl && bun test`, plus `.config/zsh/tests/skl-pick.bats` (picker contract) |
+| [~/src/raycast/skl](./src/raycast/skl/README.md)                       | Local Raycast extension over the `skl` catalogue: copy or paste a pointer outside tmux. Couples to the `~/.local/bin/skl` shim, not to skl's source tree |
 
 ## Shell Function Conventions
 
