@@ -19,7 +19,7 @@ source of truth for what is currently global — keep everything else one `skl` 
 
 ## Tiers — and the CLI scopes that map to them
 
-`skl` (`~/.config/skl/`) is a **deliberate skill loader**: it scans configured source
+`skl` (`~/src/skl/`, config at `~/.config/skl/config.json`) is a **deliberate skill loader**: it scans configured source
 dirs and injects a tiny pointer (name + path + tree + "read SKILL.md") into the agent's
 tmux pane on demand — progressive disclosure, no autoload, ~zero session cost.
 
