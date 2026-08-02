@@ -252,6 +252,10 @@ for d in .claude/hooks .hk-hooks .config/vox; do (cd "$d" && pyrefly check); don
 (cd .config/vox && uv run --with pytest python -m pytest -q)
 """
 
+[tasks.gate-coverage]
+description = "Assert hk's hard-coded gate path lists still match the tree (paired lists, literals, projects)"
+run = "cd \"$HOME\" && python3 .hk-hooks/gate-coverage.py"
+
 [tasks.supply-audit]
 description = "Scan CWD lockfiles for vulnerable/malicious deps via OSV (npm, Cargo, uv, ...)"
 run = "osv-scanner scan source -r ."
