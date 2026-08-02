@@ -207,6 +207,29 @@ local fast_steps = new Mapping<String, Step> {
         check = "python3 .hk-hooks/quarantine-drift.py"
     }
 
+    // hk steps key on hard-coded path prefixes and fail OPEN - a glob matching
+    // nothing exits 0 - so a gate that stops covering its project goes quiet
+    // instead of failing the commit. Three steps spell their roots twice (glob
+    // + the script they run) and said so only in a comment. The checker asserts
+    // the paired lists agree, every path literal still resolves, and every
+    // discovered first-party project is claimed by the gates for its language.
+    // Manifest globs so a new project trips it the day it is staged.
+    ["gate-coverage"] {
+        glob = List(
+            "hk.pkl",
+            ".config/mise/config.toml",
+            ".hk-hooks/ts-tests.sh",
+            ".hk-hooks/bats-tests.sh",
+            ".hk-hooks/fzf-bind-lint.py",
+            ".hk-hooks/gate-coverage.py",
+            "**/package.json",
+            "**/tsconfig.json",
+            "**/pyproject.toml",
+            "**/pyrefly.toml"
+        )
+        check = "python3 .hk-hooks/gate-coverage.py"
+    }
+
     // Static guard against self-collision in tmux.conf: a key bound twice in one
     // key-table (tmux keeps only the last, so the earlier bind is dead) or both
     // members of a terminal-alias pair (C-i=Tab etc.). Commit-time complement to
@@ -326,7 +349,7 @@ local fast_steps = new Mapping<String, Step> {
     // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
     // everything by hand.
     ["bats-scoped"] {
-        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**")
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/pin-audit/**")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 
