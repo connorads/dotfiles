@@ -267,7 +267,7 @@ local fast_steps = new Mapping<String, Step> {
     // (the skl picker Tab-installs bug). Self-path in the glob so editing the
     // checker re-triggers it.
     ["fzf-bind-lint"] {
-        glob = List(".config/skl/bin/pick", ".config/zsh/functions/**/*", ".config/tmux/scripts/**/*", ".hk-hooks/fzf-bind-lint.py")
+        glob = List("src/skl/bin/pick", ".config/zsh/functions/**/*", ".config/tmux/scripts/**/*", ".hk-hooks/fzf-bind-lint.py")
         check = "python3 .hk-hooks/fzf-bind-lint.py"
     }
 
@@ -349,7 +349,7 @@ local fast_steps = new Mapping<String, Step> {
     // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
     // everything by hand.
     ["bats-scoped"] {
-        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/pin-audit/**")
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/pin-audit/**", "src/skl/**")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 
@@ -365,7 +365,7 @@ local fast_steps = new Mapping<String, Step> {
     // Missing jq/runner/node_modules warns and passes, same never-brick posture
     // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
     ["ts-tests-scoped"] {
-        glob = List(".config/skl/**", "src/pin-audit/**", ".pi/agent/extensions/**")
+        glob = List("src/skl/**", "src/pin-audit/**", ".pi/agent/extensions/**")
         check = "bash .hk-hooks/ts-tests.sh {{files}}"
     }
 
@@ -375,8 +375,8 @@ local fast_steps = new Mapping<String, Step> {
     // when node_modules is absent (fresh/offline machines), so the gate never
     // bricks a commit it can't evaluate.
     ["ts-typecheck-skl"] {
-        glob = List(".config/skl/src/**/*.ts", ".config/skl/tests/**/*.ts", ".config/skl/tsconfig.json")
-        check = "bash .hk-hooks/ts-typecheck.sh .config/skl"
+        glob = List("src/skl/src/**/*.ts", "src/skl/tests/**/*.ts", "src/skl/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh src/skl"
     }
     ["ts-typecheck-pin-audit"] {
         glob = List("src/pin-audit/src/**/*.ts", "src/pin-audit/tsconfig.json")

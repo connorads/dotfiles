@@ -79,9 +79,9 @@
 !/.config/opencode/plugin-disabled/
 !/.config/opencode/plugin-disabled/**
 
+# skl config only; the implementation lives in /src/skl (docs/adr/0006)
 !/.config/skl/
-!/.config/skl/**
-/.config/skl/node_modules/
+!/.config/skl/config.json
 
 
 # public skills home (authoring root; symlinked from .config/skills/public).
@@ -164,6 +164,11 @@
 !/src/pin-audit/
 !/src/pin-audit/**
 /src/pin-audit/node_modules/
+
+# skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
+!/src/skl/
+!/src/skl/**
+/src/skl/node_modules/
 
 !/.pi/
 /.pi/**

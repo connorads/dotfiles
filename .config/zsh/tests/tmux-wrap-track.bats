@@ -29,7 +29,7 @@ NOTES
   "list-keys -T prefix")
     cat <<'KEYS'
 bind-key    -T prefix g       display-popup -E -d "#{pane_current_path}" -h "98%" -w "98%" "zsh -ic \"lazygit\""
-bind-key    -T prefix M-s     display-popup -E -h "90%" -w "90%" /Users/connorads/.config/skl/bin/pick
+bind-key    -T prefix M-s     display-popup -E -h "90%" -w "90%" /Users/connorads/src/skl/bin/pick
 bind-key -r -T prefix C-Up    resize-pane -U
 bind-key    -T prefix \\      choose-tree -Zw "join-pane -h -s '%%'"
 bind-key    -T prefix \"      display-message 'quote #S %%'

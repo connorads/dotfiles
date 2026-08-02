@@ -53,6 +53,12 @@ suites=$(
 		src/pin-audit/*)
 			echo "$TESTS_DIR/pin-audit.bats"
 			;;
+		# skl's fzf picker is a shell script whose contract is a bats suite -
+		# it drives the real bin/pick through fzf on a throwaway tmux socket.
+		# Only bin/ maps here; the TS half is covered by ts-tests-scoped.
+		src/skl/bin/*)
+			echo "$TESTS_DIR/skl-pick.bats"
+			;;
 		esac
 	done | sort -u
 )

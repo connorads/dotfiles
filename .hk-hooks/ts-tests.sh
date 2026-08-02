@@ -23,7 +23,7 @@ unset GIT_DIR GIT_WORK_TREE
 # Invariant: these roots are duplicated in hk.pkl's `ts-tests-scoped` glob - a
 # root here that hk doesn't glob is never reached at commit time, and a root hk
 # globs but this misses is a silent skip. gate-coverage.py asserts both.
-ROOTS=".config/skl src/pin-audit .pi/agent/extensions"
+ROOTS="src/skl src/pin-audit .pi/agent/extensions"
 
 if ! command -v jq >/dev/null 2>&1; then
 	echo "ts-tests: jq absent; skipping (run 'mise run ts-checks')" >&2

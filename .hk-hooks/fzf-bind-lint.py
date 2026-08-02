@@ -35,7 +35,7 @@ from pathlib import Path
 # Roots scanned for fzf invocations (cwd-relative first, then $HOME - hk checks
 # run from $HOME). Every fzf call in the repo lives under one of these.
 ROOTS: tuple[str, ...] = (
-    ".config/skl/bin",
+    "src/skl/bin",
     ".config/zsh/functions",
     ".config/tmux/scripts",
 )

@@ -19,8 +19,8 @@ CHECK="$HOME/.hk-hooks/fzf-bind-lint.py"
 
 @test "ctrl-i + tab in one fzf invocation blocks and names both keys" {
   cd "$BATS_TEST_TMPDIR"
-  mkdir -p .config/skl/bin
-  cat >.config/skl/bin/pick <<'EOF'
+  mkdir -p src/skl/bin
+  cat >src/skl/bin/pick <<'EOF'
 out=$(skl list \
   | fzf --reverse --multi \
       --bind 'tab:toggle+down,btab:toggle+up' \
@@ -36,8 +36,8 @@ EOF
 
 @test "the patched alt-i form passes (no alias collision)" {
   cd "$BATS_TEST_TMPDIR"
-  mkdir -p .config/skl/bin
-  cat >.config/skl/bin/pick <<'EOF'
+  mkdir -p src/skl/bin
+  cat >src/skl/bin/pick <<'EOF'
 out=$(skl list \
   | fzf --reverse --multi \
       --bind 'tab:toggle+down,btab:toggle+up' \
