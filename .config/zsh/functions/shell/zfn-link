@@ -84,7 +84,7 @@ for link in "$bin_dir"/*(N@); do
   fi
 
   # Only manage symlinks that point into the functions dir — others (e.g.
-  # skl-pick -> ~/.config/skl/bin/pick) are not ours to remove
+  # skl-pick -> ~/src/skl/bin/pick) are not ours to remove
   [[ "${abs_target:A}" == "$fn_dir"/* ]] || continue
 
   # Stale if dangling or name not in expected set

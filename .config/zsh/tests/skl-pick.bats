@@ -8,7 +8,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 # Behavioural regression for the skl picker's Tab-marks-not-installs fix.
 #
-# Drives the REAL ~/.config/skl/bin/pick through fzf in a pane on a throwaway
+# Drives the REAL ~/src/skl/bin/pick through fzf in a pane on a throwaway
 # `tmux -L` server (never the real server, per the tmux-safety rule), with a
 # PATH-stubbed `skl` that logs its invocations + stdin. Sends Tab Tab Enter and
 # asserts pick routed to `skl load --stdin` with the two marked refs, NOT to
@@ -20,7 +20,7 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 # $HOME/.local/bin (where the stub is planted) + tmux, so HOME is overridden for
 # the pane alone via `tmux new-session -e`.
 
-REAL_PICK="$HOME/.config/skl/bin/pick"
+REAL_PICK="$HOME/src/skl/bin/pick"
 
 setup() {
   T="$BATS_TEST_TMPDIR"

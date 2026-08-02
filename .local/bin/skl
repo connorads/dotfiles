@@ -1,6 +1,6 @@
 #!/bin/sh
 # skl: launcher shim for the deliberate skill loader
-# Runs the Bun CLI at ~/.config/skl/src/cli.ts (zero-dep, no build step)
+# Runs the Bun CLI at ~/src/skl/src/cli.ts (zero-dep, no build step)
 
 # Find bun, skipping this wrapper's directory just in case
 real_bun=""
@@ -18,4 +18,4 @@ if [ -z "$real_bun" ]; then
   exit 127
 fi
 
-exec "$real_bun" "$HOME/.config/skl/src/cli.ts" "$@"
+exec "$real_bun" "$HOME/src/skl/src/cli.ts" "$@"

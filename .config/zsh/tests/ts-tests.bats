@@ -68,9 +68,9 @@ make_project() {
 
 @test "test suites do not inherit the dotfiles GIT_DIR/GIT_WORK_TREE" {
   write_runner_stub bun
-  make_project .config/skl bun.lock "bun test"
+  make_project src/skl bun.lock "bun test"
 
-  run bash "$SCRIPT" .config/skl/src/core/args.ts
+  run bash "$SCRIPT" src/skl/src/core/args.ts
 
   [ "$status" -eq 0 ]
   [[ "$(cat "$RUNNER_LOG")" == *"GIT_DIR=[] GIT_WORK_TREE=[]"* ]]
@@ -101,13 +101,13 @@ make_project() {
 @test "the lockfile picks the runner" {
   write_runner_stub bun
   write_runner_stub pnpm
-  make_project .config/skl bun.lock "bun test"
+  make_project src/skl bun.lock "bun test"
   make_project .pi/agent/extensions/goal pnpm-lock.yaml "node --test core.test.ts"
 
-  run bash "$SCRIPT" .config/skl/src/core/args.ts .pi/agent/extensions/goal/index.ts
+  run bash "$SCRIPT" src/skl/src/core/args.ts .pi/agent/extensions/goal/index.ts
 
   [ "$status" -eq 0 ]
-  [[ "$(cat "$RUNNER_LOG")" == *"bun run test cwd=.config/skl"* ]]
+  [[ "$(cat "$RUNNER_LOG")" == *"bun run test cwd=src/skl"* ]]
   [[ "$(cat "$RUNNER_LOG")" == *"pnpm run test cwd=.pi/agent/extensions/goal"* ]]
 }
 
@@ -115,10 +115,10 @@ make_project() {
   write_runner_stub bun
   write_runner_stub pnpm
   export BUN_EXIT=1
-  make_project .config/skl bun.lock "bun test"
+  make_project src/skl bun.lock "bun test"
   make_project .pi/agent/extensions/goal pnpm-lock.yaml "node --test core.test.ts"
 
-  run bash "$SCRIPT" .config/skl/src/core/args.ts .pi/agent/extensions/goal/index.ts
+  run bash "$SCRIPT" src/skl/src/core/args.ts .pi/agent/extensions/goal/index.ts
 
   [ "$status" -eq 1 ]
   [ "$(wc -l <"$RUNNER_LOG" | tr -d ' ')" -eq 2 ]
@@ -135,9 +135,9 @@ make_project() {
 }
 
 @test "an absent runner skips rather than failing" {
-  make_project .config/skl bun.lock "bun test"
+  make_project src/skl bun.lock "bun test"
 
-  run bash "$SCRIPT" .config/skl/src/core/args.ts
+  run bash "$SCRIPT" src/skl/src/core/args.ts
 
   [ "$status" -eq 0 ]
   [ ! -s "$RUNNER_LOG" ]
@@ -146,9 +146,9 @@ make_project() {
 
 @test "absent node_modules skips rather than failing" {
   write_runner_stub bun
-  NO_MODULES=1 make_project .config/skl bun.lock "bun test"
+  NO_MODULES=1 make_project src/skl bun.lock "bun test"
 
-  run bash "$SCRIPT" .config/skl/src/core/args.ts
+  run bash "$SCRIPT" src/skl/src/core/args.ts
 
   [ "$status" -eq 0 ]
   [ ! -s "$RUNNER_LOG" ]
@@ -158,7 +158,7 @@ make_project() {
 @test "--all discovers every project with tests across the roots" {
   write_runner_stub bun
   write_runner_stub pnpm
-  make_project .config/skl bun.lock "bun test"
+  make_project src/skl bun.lock "bun test"
   make_project src/pin-audit bun.lock "bun test"
   make_project .pi/agent/extensions pnpm-lock.yaml "node --test web-search/core.test.mjs"
   make_project .pi/agent/extensions/agent-guard pnpm-lock.yaml "node --test guard.test.ts"
@@ -173,10 +173,10 @@ make_project() {
 
 @test "node_modules is never itself discovered as a project" {
   write_runner_stub bun
-  make_project .config/skl bun.lock "bun test"
-  mkdir -p "$HOME/.config/skl/node_modules/dep"
+  make_project src/skl bun.lock "bun test"
+  mkdir -p "$HOME/src/skl/node_modules/dep"
   printf '{"name":"dep","scripts":{"test":"exit 1"}}\n' \
-    >"$HOME/.config/skl/node_modules/dep/package.json"
+    >"$HOME/src/skl/node_modules/dep/package.json"
 
   run bash "$SCRIPT" --all
 

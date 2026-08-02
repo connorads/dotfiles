@@ -138,6 +138,6 @@ class TestFindConflicts:
 
 def test_render_names_file_line_and_both_keys() -> None:
     c = _mod.Collision(line=36, key="ctrl-i", alias="tab")
-    msg = _mod.render(".config/skl/bin/pick", c)
-    assert msg.startswith("fzf-bind-lint: .config/skl/bin/pick:36 ")
+    msg = _mod.render("src/skl/bin/pick", c)
+    assert msg.startswith("fzf-bind-lint: src/skl/bin/pick:36 ")
     assert "ctrl-i" in msg and "tab" in msg

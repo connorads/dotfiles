@@ -75,8 +75,22 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
     expect(captured).toContain("(skl: repo/alpha)");
     expect(captured).toContain("beta");
     expect(captured).toContain("(skl: repo/beta)");
-    // No Enter: each pointer's un-terminated final instruction line appears once.
-    expect(captured.split("and follow it.").length - 1).toBe(2);
+
+    // No Enter, proven by `cat` being line-buffered: an injected pointer's
+    // final instruction line carries no newline, so cat holds it. The NEXT
+    // pointer's bytes flush it, which is why alpha's line shows twice (the
+    // terminal's echo plus cat's flush) while beta's - the last one, with
+    // nothing following to flush it - shows exactly once. Pressing Enter would
+    // flush beta's too, making it two.
+    //
+    // Count on the capture with newlines removed: tmux wraps at pane width, so
+    // a raw capture can split the phrase across two lines and undercount. That
+    // is what made this assertion pass at skl's old, 4-characters-longer path
+    // while the real count was unchanged.
+    const flat = captured.replaceAll("\n", "");
+    const occurrences = (needle: string): number => flat.split(needle).length - 1;
+    expect(occurrences(`${REPO}/alpha/SKILL.md and follow it.`)).toBe(2);
+    expect(occurrences(`${REPO}/nested/deep/beta/SKILL.md and follow it.`)).toBe(1);
   });
 
   test("a whole-source ref loads every member of the group", async () => {
