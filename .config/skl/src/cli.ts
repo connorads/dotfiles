@@ -70,7 +70,11 @@ Options:
   --yes                     install: skip the whole-source confirmation prompt
 `;
 
-const DEFAULT_CONFIG = `${import.meta.dir}/../config.json`;
+// Config is found by XDG lookup, never relative to this file: the implementation
+// lives in ~/src and its config in ~/.config, and only the config path is an
+// interface anyone else reads.
+const configFile = (): string =>
+  env.configFileOverride() ?? `${env.xdgConfigHome()}/skl/config.json`;
 
 const fmtArgError = (e: ArgError): string => {
   switch (e.kind) {
@@ -155,7 +159,7 @@ const buildConfig = async (
   if (options.paths.length > 0) {
     return { ok: true, value: configFromPaths(options.paths.map(absolutise), home) };
   }
-  const loaded = await loadConfigFile(DEFAULT_CONFIG);
+  const loaded = await loadConfigFile(configFile());
   if (!loaded.ok) return { ok: false, error: fmtConfigFileError(loaded.error) };
   const parsed = parseConfig(loaded.value, home);
   if (!parsed.ok) return { ok: false, error: fmtConfigError(parsed.error) };

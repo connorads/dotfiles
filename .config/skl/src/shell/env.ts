@@ -14,8 +14,12 @@ export const env = {
   home: (): string => process.env["HOME"] ?? "",
   xdgStateHome: (): string =>
     process.env["XDG_STATE_HOME"] ?? `${process.env["HOME"] ?? ""}/.local/state`,
+  xdgConfigHome: (): string =>
+    process.env["XDG_CONFIG_HOME"] ?? `${process.env["HOME"] ?? ""}/.config`,
   /** `SKL_HISTORY_FILE` — usage-history path override (the test seam). */
   historyFileOverride: (): string | null => process.env["SKL_HISTORY_FILE"] ?? null,
+  /** `SKL_CONFIG` — config-file override. A different file, not `--path`'s different sources. */
+  configFileOverride: (): string | null => process.env["SKL_CONFIG"] ?? null,
   /** ISO-8601 UTC timestamp — the clock stays out of cli.ts and the core. */
   now: (): string => new Date().toISOString(),
   argv: (): string[] => Bun.argv.slice(2),
