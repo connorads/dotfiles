@@ -34,6 +34,33 @@ The `dotfiles` wrapper (installed via Nix) handles the git-dir/work-tree flags a
 
 Then `dotfiles add .newfile` works without `-f`.
 
+## Source vs config
+
+One question decides where a thing lives:
+
+> Does a consumer I don't control read that path?
+>
+> - **Yes** → `.config/` (or the dot-dir the tool names). The path is the interface.
+> - **No**, and it has its own manifest or test suite → `~/src/<name>/`.
+>
+> Where a tool has both, split them: source in `src/`, config and state in `.config/`.
+
+Sort by who reads the path, not by what the file holds. `init.lua`, `hk.pkl` and `opencode.json` are all code and all stay - nvim, hk and opencode go looking for them there. Rationale and what lost: [docs/adr/0006](./docs/adr/0006-source-in-src-config-in-config.md).
+
+[`~/src/pin-audit`](./src/pin-audit/) is the worked layout: TS implementation under `src/`, a thin dual-mode zsh wrapper in `.config/zsh/functions/`, a `zfn-link` symlink on `PATH`, and its CLI contract in `.config/zsh/tests/pin-audit.bats`.
+
+Hard-coupled, staying put:
+
+| Path | Why it cannot move |
+| --- | --- |
+| `.pi/agent/extensions` | pi composes the dir as `join(<agent dir>, "extensions")`. The `extensions` settings key is an enable/disable pattern list, not a search path; only `PI_CODING_AGENT_DIR` relocates it, and that drags auth + sessions too |
+| `.config/nix/{voxtap,biokc,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
+| `.hk-hooks` | `core.hooksPath` is set to `.hk-hooks` |
+| `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
+| `.config/opencode/plugin` | Directory convention; `opencode.json`'s `plugin` array takes npm refs |
+
+Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS`, the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
+
 ## Git Hygiene
 
 - Ignore unrelated git changes; do not reset/revert/discard them.
@@ -531,8 +558,8 @@ frozen-lockfile installs, not the tests. Missing `jq`, runner or `node_modules`
 warns and exits 0, same never-brick posture as `ts-typecheck.sh`;
 `bash ~/.hk-hooks/ts-tests.sh --all` (what `ts-checks` calls) is the full run,
 and `~/.config/zsh/tests/ts-tests.bats` pins the gate's own contract. The three
-discovery roots are spelled in both `hk.pkl`'s glob and the script - keep them
-in step.
+discovery roots are spelled in both `hk.pkl`'s glob and the script; the
+`gate-coverage` step asserts the two agree.
 
 The `py-typecheck-*` steps are the Python analogue: `pyrefly` gates the two hook
 dirs (`.claude/hooks`, `.hk-hooks`) that import no uninstalled third-party deps,
