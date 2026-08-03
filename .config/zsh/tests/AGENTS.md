@@ -168,9 +168,11 @@ loads no real config:
 SOCK="<name>_${BATS_TEST_NUMBER}_$$"
 "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }   # later commands; -f only matters at server start
+
+teardown() { stop_private_server; }     # kills the server AND unlinks the socket
 ```
 
-Two reasons, both load-bearing:
+Two reasons for `-f /dev/null`, both load-bearing:
 
 - **Correctness (the real one).** `../../tmux/tmux.conf` registers focus hooks
   (`set-hook -ga after-select-pane` / `session-window-changed`) that fire
@@ -193,6 +195,20 @@ socket - its purpose is to drive the actual `tmux.conf` + local nix render patch
 the tty redraw path. It pays the config parse once via a shared `setup_file` server and
 silences the config's journal side-effects with `AGENT_JOURNAL_DISABLE=1`; see its header
 comment before copying the pattern.
+
+### The teardown is half the pattern, not an afterthought
+
+tmux does not unlink the socket file when the server exits, so a teardown that only ran
+`kill-server` left one file behind per *test execution* - `/private/tmp/tmux-501` reached
+15k entries that way, on the clean path, with no interrupted run involved.
+`stop_private_server` (`test_helper.bash`) does both, taking `$TMUX_BIN`/`$SOCK` as its
+implicit contract the same way `attach_pty_client` does. The `no-orphan-socket` rule
+below keeps a bare `kill-server` out of `*.bats`, so the next suite cannot copy the gap.
+
+`tmux -S <path>` under `$BATS_TEST_TMPDIR` is not an alternative: the ~104-char `AF_UNIX`
+`sun_path` limit is blown by a macOS bats tmpdir path. Keep `-L`, unlink in teardown. A
+suite that instead points `TMUX_TMPDIR` at a short private dir (`resurrect-keepalive`,
+`tmux-resurrect-sessions`) owns that whole directory, and removes it in teardown.
 
 ### The discipline
 

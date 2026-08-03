@@ -53,14 +53,14 @@ setup_file() {
   export LOG="$BATS_FILE_TMPDIR/client.log"
   start_server
   if ! start_client; then
-    tx kill-server 2>/dev/null || true
+    stop_private_server
     export SMOKE_SKIP="could not attach a pty client in this environment"
   fi
 }
 
 teardown_file() {
   reap_client
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 setup() {

@@ -36,7 +36,7 @@ setup() {
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # --- pure helpers (sourced; the lib sources agent-state-lib.sh itself) ---

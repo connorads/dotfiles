@@ -269,6 +269,19 @@ attach_pty_client() {
   wait_until -d '"$TMUX_BIN" -L "$SOCK" list-clients' "_session_has_client $sess"
 }
 
+# stop_private_server - kill the suite's bare server and unlink its socket.
+#
+# tmux leaves the socket file behind when the server exits, so a teardown that
+# only kills the server leaks one file per test execution; /private/tmp/tmux-501
+# had grown to 15k that way. $TMUX_BIN and $SOCK are the same implicit contract
+# attach_pty_client takes. The socket path is recomputed from $SOCK rather than
+# captured at setup, so this also works when the server never started.
+stop_private_server() {
+  [ -n "${SOCK:-}" ] || return 0
+  "${TMUX_BIN:-tmux}" -L "$SOCK" kill-server 2>/dev/null || true
+  rm -f "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)/$SOCK"
+}
+
 # True only when SESSION really has an attached client. `[ "$(...)" != 0 ]` was
 # not that test: display-message printing nothing - a dead server, a missing
 # session, any error - also satisfies "not 0", so the poll would report a client

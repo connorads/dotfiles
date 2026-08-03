@@ -55,7 +55,7 @@ STUB
 }
 
 teardown() {
-  tmux -L "$SOCK" kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # Poll until the predicate succeeds; on timeout dump the pane as context.

@@ -29,9 +29,7 @@ setup() {
 }
 
 teardown() {
-  if [[ -n ${SOCK:-} && -n ${TMUX_BIN:-} ]]; then
-    "$TMUX_BIN" -L "$SOCK" kill-server >/dev/null 2>&1 || true
-  fi
+  stop_private_server
 }
 
 tx() {

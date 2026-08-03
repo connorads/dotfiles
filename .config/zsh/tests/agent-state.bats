@@ -27,7 +27,7 @@ setup() {
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # ason PANE STATE [KIND] — run agent-state.sh against a pane on the private server.
