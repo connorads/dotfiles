@@ -38,7 +38,7 @@ teardown() {
     [ -n "$p" ] && kill "$p" 2>/dev/null || true
   done
   [ -n "${ATTACH_PID:-}" ] && kill "$ATTACH_PID" 2>/dev/null || true
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # A real client on session s, so session_attached is >0 - the sweep's

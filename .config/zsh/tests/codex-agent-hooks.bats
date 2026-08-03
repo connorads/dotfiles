@@ -30,7 +30,7 @@ setup() {
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # Run every command Codex would run for EVENT, against PANE on the private server

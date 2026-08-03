@@ -40,7 +40,7 @@ EOF
 }
 
 teardown() {
-  [ -n "${SOCK:-}" ] && "$TMUX_BIN" -L "$SOCK" kill-server 2>/dev/null
+  stop_private_server
   if [ -f "$VOX_STATEFILE" ]; then
     kill "$(awk 'NR == 1 { print $1 }' "$VOX_STATEFILE" | tr ',' ' ')" 2>/dev/null || true
   fi

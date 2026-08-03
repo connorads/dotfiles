@@ -63,7 +63,7 @@ setup() {
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # A — tab dots: source the real @agent_dotfmt into a throwaway server and read its

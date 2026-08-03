@@ -26,11 +26,11 @@ setup() {
 }
 
 teardown() {
-  # Plain kill hangs up the pty so `tmux attach` exits; kill-server then reaps the
-  # private server. (No process-group kill: under bats the backgrounded client is
+  # Plain kill hangs up the pty so `tmux attach` exits; the server is reaped
+  # after it. (No process-group kill: under bats the backgrounded client is
   # not a group leader, so it shares this shell's group — a -PGID kill is a no-op.)
   if [ -n "${ATTACH_PID:-}" ]; then kill "$ATTACH_PID" 2>/dev/null || true; fi
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 # A background client on session $1 over a pseudo-tty, so switch-client has a

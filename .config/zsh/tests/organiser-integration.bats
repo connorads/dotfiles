@@ -24,7 +24,7 @@ EOF
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && "$TMUX_BIN" -L "$SOCK" kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }

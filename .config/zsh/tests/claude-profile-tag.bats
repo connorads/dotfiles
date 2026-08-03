@@ -24,7 +24,7 @@ setup() {
 }
 
 teardown() {
-  [ -n "${TMUX_BIN:-}" ] && [ -n "${SOCK:-}" ] && tx kill-server 2>/dev/null || true
+  stop_private_server
 }
 
 tag() { tx show-options -pqv -t "$1" @claude_profile; }
