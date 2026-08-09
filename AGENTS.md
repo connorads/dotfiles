@@ -307,7 +307,33 @@ sbx net on|off [name]  # Toggle network for a running box
 sbx cp <path> [name]   # Copy a host path into the box's /work
 sbx list               # List sbx boxes; sbx stop/rm [name] to stop / nuke (box + volume)
 lazydocker             # TUI to browse/exec/log/prune containers (nix)
+xcodes list            # Xcode versions available to install (Apple ID login required to download)
+xcodes install --latest [--directory /Applications]  # install an Xcode; several coexist side by side
+xcodes installed       # what is installed locally
+xcodes select 26.2     # make a version active (wraps sudo xcode-select -s)
+xcodes select --print-path    # active developer dir
 ```
+
+### Xcode
+
+Nix cannot own Xcode - it is an unfree Apple bundle behind an Apple ID login - so
+`xcodes` (mise, macOS-only via `os = ["macos"]`) owns the install and the pin,
+and the lockfile pins `xcodes` itself. Preferred over `masApps`, which needs a
+one-time GUI "Get" and then forces latest with no way to hold a version.
+
+The Command Line Tools stay installed as the baseline: `xcode-select -p` points
+at `/Library/Developer/CommandLineTools` until a `xcodes select` moves it. Three
+derivations compile against whatever `xcrun --show-sdk-path` returns -
+[biokc.nix](./.config/nix/modules/biokc.nix),
+[imagepaste.nix](./.config/nix/modules/imagepaste.nix),
+[voxtap.nix](./.config/nix/modules/voxtap.nix), plus the shim in
+[terminal-control.nix](./.config/nix/packages/terminal-control.nix) - so
+selecting an Xcode changes their SDK on the next `drs`. Each falls back to the
+CLT SDK path when `xcrun` fails, which is why the CLT must not be removed.
+
+First run of a fresh Xcode needs `sudo xcodebuild -license accept` and
+`xcodebuild -runFirstLaunch`. Simulator runtimes are a separate ~7-10 GB each
+(`xcodebuild -downloadPlatform iOS`); install them only when a project needs one.
 
 ### ccp account config inheritance
 
