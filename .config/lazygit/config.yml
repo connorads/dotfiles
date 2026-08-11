@@ -20,11 +20,10 @@ gui:
     searchingActiveBorderColor:
       - '#f9e2af'
 git:
-  pagers:
+  diffRenderers:
     - colorArg: always
       # Lazygit is the pager; prevent delta paging inside it.
-      pager: delta --paging=never
-      useConfig: false
+      command: delta --paging=never
 customCommands:
   - key: 't'
     command: 'git stash && git pull --rebase && git stash pop'
