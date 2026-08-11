@@ -127,9 +127,17 @@
 
       "blackhole-16ch"
     ];
+    # Requires an Apple Account signed in to the App Store; nothing here installs
+    # without it (nix-darwin puts pkgs.mas on PATH for the bundle run only, so
+    # `which mas` finding nothing on a normal shell says nothing either way).
     masApps = {
       RunCatNeo = 6757801838;
       Perplexity = 6714467650;
+      # Xcode is free, so brew bundle's `mas install || mas get` acquires it on
+      # an account that never had it. MAS serves latest only - no pinning, and
+      # it upgrades itself across majors. Take xcodes (mise) instead if a
+      # project ever needs a held-back Xcode.
+      Xcode = 497799835;
     };
   };
 

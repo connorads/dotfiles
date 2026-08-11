@@ -822,15 +822,6 @@ url = "https://github.com/astral-sh/uv/releases/download/0.11.33/uv-aarch64-appl
 url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/492592443"
 provenance = "github-attestations"
 
-[[tools.xcodes]]
-version = "2.0.3"
-backend = "aqua:XcodesOrg/xcodes"
-
-[tools.xcodes."platforms.macos-arm64"]
-checksum = "sha256:9ccb3398dc72aca17174b705ee1657c69747fec25663fc85d2dffb8702ff37aa"
-url = "https://github.com/XcodesOrg/xcodes/releases/download/2.0.3/xcodes.zip"
-url_api = "https://api.github.com/repos/XcodesOrg/xcodes/releases/assets/469874299"
-
 [[tools.zizmor]]
 version = "1.29.0"
 backend = "aqua:zizmorcore/zizmor"
