@@ -64,7 +64,7 @@ used, in `rl.bats`'s `setup_file`, as a hang backstop rather than a budget.
 
 ### The rule is enforced, not remembered
 
-The `bats-lint` hk step runs two `ast-grep` rules (`~/.hk-hooks/bats-lint/`) over
+The `bats-lint` hk step runs three `ast-grep` rules (`~/.hk-hooks/bats-lint/`) over
 this directory:
 
 - **`no-hard-wait`** blocks a fixed `sleep`. It does not flag a sleep in a loop
@@ -85,6 +85,15 @@ this directory:
   past the `$BASH5` contract. Lift the body into a helper function and `run <fn>`
   it, remembering that `run` disables errexit, so a `set -e` the blob leaned on
   becomes explicit `|| return 1` per step.
+
+- **`no-orphan-socket`** blocks a bare `kill-server`, which stops the server but
+  leaves its socket file behind - see the tmux section above. Call
+  `stop_private_server` instead. It looks for `kill-server` as an argument
+  *word*, so naming it in a test title or a `grep` is not a match, and it is
+  scoped to `*.bats` so `test_helper.bash` can hold the one real call. The two
+  shapes that waive it, one line at a time and with a reason, are a mid-test
+  kill that *simulates* the server dying (`agent-sweep.bats`) and a suite whose
+  socket sits in a private `TMUX_TMPDIR` it removes wholesale.
 
 `bats-lint.bats` gates the rules themselves: the real tree is clean today, and
 each rule demonstrably fires. Static analysis cannot see a *semantic* race - an

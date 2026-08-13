@@ -150,6 +150,75 @@ EOF
   [[ "$output" == *"no-embedded-script"* ]]
 }
 
+@test "a bare kill-server is blocked" {
+  cat >"$FIXTURE" <<'EOF'
+teardown() {
+  tx kill-server 2>/dev/null || true
+}
+EOF
+  scan "$FIXTURE"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no-orphan-socket"* ]]
+  [[ "$output" == *"stop_private_server"* ]]
+}
+
+# The two shapes that legitimately kill a server: one that *simulates* the
+# server dying mid-test, and one whose socket sits in a private TMUX_TMPDIR the
+# suite removes wholesale. Both are waived one line at a time, with a reason.
+@test "an annotated kill-server passes, and the annotation must name the rule" {
+  cat >"$FIXTURE" <<'EOF'
+@test "x" {
+  # ast-grep-ignore: no-orphan-socket - killing the server IS the scenario
+  tx kill-server 2>/dev/null || true
+}
+EOF
+  scan "$FIXTURE"
+  [ "$status" -eq 0 ]
+
+  cat >"$FIXTURE" <<'EOF'
+@test "x" {
+  # ast-grep-ignore: no-hard-wait - wrong rule
+  tx kill-server 2>/dev/null || true
+}
+EOF
+  scan "$FIXTURE"
+  [ "$status" -eq 1 ]
+}
+
+# The helper is where the one sanctioned kill-server lives, so the rule is
+# scoped to the step's own glob. Without that, test_helper.bash would fail the
+# rule that exists to point at it - and "the real bats suite is clean today"
+# above is what proves the scoping holds.
+@test "the helper's own kill-server is out of scope" {
+  cp "$BATS_TEST_DIRNAME/test_helper.bash" "$BATS_TEST_TMPDIR/helper.bash"
+  grep -q 'kill-server' "$BATS_TEST_TMPDIR/helper.bash"
+  scan "$BATS_TEST_TMPDIR/helper.bash"
+  [ "$status" -eq 0 ]
+}
+
+@test "a teardown calling stop_private_server is clean" {
+  cat >"$FIXTURE" <<'EOF'
+teardown() { stop_private_server; }
+EOF
+  scan "$FIXTURE"
+  [ "$status" -eq 0 ]
+}
+
+# kill-server is only ever an argument word. Matching the command node's text
+# instead flagged every @test whose NAME says kill-server, and the grep a test
+# uses to assert on a file - a rule that cannot be satisfied is a rule that gets
+# blanket-waived.
+@test "merely naming kill-server is not killing a server" {
+  cat >"$FIXTURE" <<'EOF'
+@test "kill-server leaves the socket behind" {
+  grep -q 'kill-server' "$file"
+  echo "kill-server"
+}
+EOF
+  scan "$FIXTURE"
+  [ "$status" -eq 0 ]
+}
+
 @test "a single-line sh -c is left alone" {
   cat >"$FIXTURE" <<'EOF'
 @test "x" {

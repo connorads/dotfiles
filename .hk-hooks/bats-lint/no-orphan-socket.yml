@@ -1,0 +1,32 @@
+# tmux does not unlink the socket file when the server exits, so a teardown
+# that only ran `kill-server` left one file behind per *test execution*.
+# /private/tmp/tmux-501 reached 15,968 entries that way, on the clean path -
+# 23 suites had copied the same gap from a canonical snippet that showed only
+# how to *start* a private server. `stop_private_server`
+# (.config/zsh/tests/test_helper.bash) kills the server and unlinks the socket.
+#
+# Scoped to *.bats, matching the step's own glob: test_helper.bash is where the
+# one legitimate `kill-server` lives.
+#
+# Escape hatch, one line above the kill, and it must say why:
+#   # ast-grep-ignore: no-orphan-socket - <reason>
+# The two shapes that legitimately take it: a mid-test kill that *simulates* the
+# server dying, and a suite that owns a private TMUX_TMPDIR and removes the
+# whole directory instead.
+id: no-orphan-socket
+language: bash
+severity: error
+files:
+  - "**/*.bats"
+message: "kill-server leaves the socket file behind - call stop_private_server, or annotate the line above with: # ast-grep-ignore: no-orphan-socket - <reason>"
+#
+# `kill-server` has to be an actual argument word, not the node's text: matching
+# the text alone flagged every @test whose *name* says kill-server, and the
+# `grep -q 'kill-server'` a test uses to assert on a file. It is only ever an
+# argument (to `tx`, to `"$TMUX_BIN" -L "$SOCK"`, to bare `tmux`), never the
+# command name.
+rule:
+  kind: command
+  has:
+    field: argument
+    regex: ^kill-server$
