@@ -25,7 +25,7 @@ setup() {
   unset TMUX
   # Short TMUX_TMPDIR under /tmp: the AF_UNIX socket path (TMUX_TMPDIR/tmux-UID/
   # default) must stay under ~104 chars, which the long macOS BATS_TEST_TMPDIR
-  # blows. Per-test unique; left for system /tmp cleanup.
+  # blows. Per-test unique, and removed in teardown.
   export TMUX_TMPDIR="/tmp/rka-$$-${BATS_TEST_NUMBER}"
   mkdir -p "$TMUX_TMPDIR"
   ln -sf "$TMUX_BIN" "$TEST_BIN/tmux"
@@ -38,6 +38,11 @@ setup() {
 
 teardown() {
   [ -n "${TMUX_BIN:-}" ] && "$TMUX_BIN" kill-server 2>/dev/null || true
+  # tmux leaves the socket file behind when the server exits, and the socket
+  # lives inside this dir - which the suite owns outright - so removing the dir
+  # is what unlinks it.
+  [ -n "${TMUX_TMPDIR:-}" ] && rm -rf "$TMUX_TMPDIR"
+  return 0
 }
 
 start_server() {
