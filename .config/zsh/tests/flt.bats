@@ -9,6 +9,12 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
 # Pure assertions run against --print (no server); the one real-server test is
 # integration-tagged and guards on new-pane support (tmux 3.7+).
 
+# The server-starting tests set SOCK and TMUX_BIN in their own bodies, so this
+# is a no-op for the --print tests and the whole cleanup for the others - a
+# failed assertion cannot leave a live server behind, which an inline kill on
+# the happy path could.
+teardown() { stop_private_server; }
+
 @test "default is a centred 70% float in the caller's cwd" {
   run -0 zsh --no-rcs "$FLT" --print
   [ "$output" = "tmux new-pane -x 70% -y 70% -X 15% -Y 15% -c $PWD" ]
@@ -70,10 +76,7 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
   SOCK="flt_${BATS_TEST_NUMBER}_$$"
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24 'exec sleep 60'
   tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
-  tx list-commands | grep -q '^new-pane' || {
-    tx kill-server
-    skip "no floating-pane support in this tmux"
-  }
+  tx list-commands | grep -q '^new-pane' || skip "no floating-pane support in this tmux"
   tx split-window -d 'exec sleep 60'
   tx resize-pane -Z
   TMUX="$(tx display -p '#{socket_path}'),$(tx display -p '#{pid}'),0"
@@ -82,7 +85,6 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
   [ "$output" = "0" ]
   run -0 tx list-panes -F '#{pane_floating_flag}'
   [[ "$output" == *"1"* ]]
-  tx kill-server 2>/dev/null || true
 }
 
 # bats test_tags=integration
@@ -92,13 +94,9 @@ FLT="$TESTS_DIR/../functions/tmux/flt"
   SOCK="flt_${BATS_TEST_NUMBER}_$$"
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24 'exec sleep 60'
   tx() { "$TMUX_BIN" -L "$SOCK" "$@"; }
-  tx list-commands | grep -q '^new-pane' || {
-    tx kill-server
-    skip "no floating-pane support in this tmux"
-  }
+  tx list-commands | grep -q '^new-pane' || skip "no floating-pane support in this tmux"
   TMUX="$(tx display -p '#{socket_path}'),$(tx display -p '#{pid}'),0"
   run -0 env TMUX="$TMUX" zsh --no-rcs "$FLT" tr 'sleep 60'
   run -0 tx list-panes -F '#{pane_floating_flag} #{pane_left},#{pane_top}'
   [[ "$output" == *"1 60,1"* ]] # 25% of 80 = 20 wide flush right at 60; 5% top inset = row 1
-  tx kill-server 2>/dev/null || true
 }

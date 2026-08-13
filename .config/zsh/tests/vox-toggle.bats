@@ -29,7 +29,6 @@ setup() {
   SOCK="voxtoggle_${BATS_TEST_NUMBER}_$$"
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24
   PANE=$("$TMUX_BIN" -L "$SOCK" display-message -p '#{pane_id}')
-  export TMUX_SOCKET="$SOCK"
   # The scripts call bare `tmux`, so route it at the private server - logging the
   # argv on the way through, because how the prompt is *asked* is behaviour too.
   write_stub tmux <<EOF
