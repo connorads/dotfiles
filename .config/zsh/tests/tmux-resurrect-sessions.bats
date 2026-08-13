@@ -65,6 +65,7 @@ teardown() {
   # Only the save-command-strategy tests start a server (PRIVATE_TMUX set there).
   # That wrapper carries the `-L <unique socket>`, so this can only ever kill the
   # test's own server, never the real one.
+  # ast-grep-ignore: no-orphan-socket - the socket lives in this suite's own TMUX_TMPDIR, removed below
   [ -n "${PRIVATE_TMUX:-}" ] && "$PRIVATE_TMUX" kill-server 2>/dev/null
   # tmux leaves the socket file behind when the server exits, and the socket
   # lives inside this dir - which start_private_server owns outright - so

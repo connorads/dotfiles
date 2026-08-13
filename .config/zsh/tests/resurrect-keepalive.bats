@@ -37,6 +37,7 @@ setup() {
 }
 
 teardown() {
+  # ast-grep-ignore: no-orphan-socket - the socket lives in this suite's own TMUX_TMPDIR, removed below
   [ -n "${TMUX_BIN:-}" ] && "$TMUX_BIN" kill-server 2>/dev/null || true
   # tmux leaves the socket file behind when the server exits, and the socket
   # lives inside this dir - which the suite owns outright - so removing the dir

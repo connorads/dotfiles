@@ -207,6 +207,7 @@ wait_nonshell() {
 }
 
 @test "sweep is a quiet no-op when the server is gone" {
+  # ast-grep-ignore: no-orphan-socket - killing the server IS the scenario; teardown unlinks the socket
   tx kill-server 2>/dev/null || true
   run sh "$SCRIPT"
   [ "$status" -eq 0 ]
@@ -303,6 +304,7 @@ wait_nonshell() {
   pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
   launch_daemon
   dpid=$(daemon_pid "$pidfile")
+  # ast-grep-ignore: no-orphan-socket - killing the server IS the scenario; teardown unlinks the socket
   tx kill-server 2>/dev/null || true
   wait_until -i 0.2 -d 'ps -o pid=,stat=,command= -p "$dpid"' '! kill -0 "$dpid" 2>/dev/null'
 }
