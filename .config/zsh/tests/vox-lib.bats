@@ -41,9 +41,39 @@ transcript() {
 # substitution would block until the sleep finished rather than returning a pid.
 # The pid list goes through a file for the same reason - a variable set inside
 # the substitution's subshell never reaches teardown.
+#
+# The `prev` check is the fork-failure guard: bash leaves $! at its PREVIOUS
+# value when a & cannot fork, so under the process ceiling of a full parallel
+# run two spawns can hand back the same pid, and a test that kills one kills the
+# other. It has to be a delta check rather than `kill -0`, because a stale $!
+# points at a live process - and a subshell inherits its parent's value, so the
+# two are indistinguishable by liveness alone. Fail loudly instead of flakily.
 spawn() {
+  local prev=$! # empty when no & has run yet; bats does not set -u
   sleep 100 >/dev/null 2>&1 &
+  [ "$!" != "$prev" ] || {
+    echo "spawn: fork failed" >&2
+    return 1
+  }
   printf '%s\n' "$!" | tee -a "$BATS_TEST_TMPDIR/spawned"
+}
+
+# dead_pid - a pid that has certainly exited, so `kill -0` on it is false: what
+# a stale statefile or a crashed job leaves behind. The wait is what makes it
+# deterministic - without reaping, the child is still a zombie, which `kill -0`
+# reports as alive. Same fork-failure guard as spawn, and the pid is recorded
+# too so teardown's reaper stays the single owner.
+dead_pid() {
+  local prev=$!
+  sleep 100 >/dev/null 2>&1 &
+  [ "$!" != "$prev" ] || {
+    echo "dead_pid: fork failed" >&2
+    return 1
+  }
+  local pid=$!
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  printf '%s\n' "$pid" | tee -a "$BATS_TEST_TMPDIR/spawned"
 }
 
 teardown() {
@@ -94,22 +124,14 @@ statefile() {
 }
 
 @test "IDLE for a stale statefile whose pid is dead" {
-  # Spawn a process, record its pid, then kill+reap it so the state is stale.
-  sleep 100 &
-  dead=$!
-  kill "$dead" 2>/dev/null || true
-  wait "$dead" 2>/dev/null || true
-  statefile "$dead" "$(date +%s)" "$HOME/rec"
+  statefile "$(dead_pid)" "$(date +%s)" "$HOME/rec"
   lib vox_state
   [ "$output" = "IDLE" ]
 }
 
 @test "RECORDING for a live capture pid" {
-  sleep 100 &
-  pid=$!
-  statefile "$pid" "$(date +%s)" "$HOME/rec"
+  statefile "$(spawn)" "$(date +%s)" "$HOME/rec"
   lib vox_state
-  kill "$pid" 2>/dev/null || true
   [ "$output" = "RECORDING" ]
 }
 
@@ -137,15 +159,13 @@ statefile() {
 @test "state follows the leader, not the system capture" {
   # The mic capture is what "recording" means: a system capture that died
   # leaves a live recording, while a dead mic leaves nothing worth showing.
-  sleep 100 &
-  leader=$!
-  sleep 100 &
-  follower=$!
-  kill "$follower" 2>/dev/null || true
-  wait "$follower" 2>/dev/null || true
+  leader=$(spawn)
+  follower=$(dead_pid)
+  # The whole point of the case: two distinct pids, one live and one not. A
+  # fork failure that aliased them would kill the leader and read as IDLE.
+  [ "$leader" != "$follower" ]
   statefile "$leader,$follower" "$(date +%s)" "$HOME/rec"
   lib vox_state
-  kill "$leader" 2>/dev/null || true
   [ "$output" = "RECORDING" ]
 }
 
@@ -175,11 +195,7 @@ statefile() {
 @test "a dead transcribe job reads as finished, not stuck" {
   # mw crashed, or the machine rebooted: pid liveness self-clears the state, so
   # there is no reaper and no way to be pinned at TRANSCRIBING forever.
-  sleep 100 &
-  dead=$!
-  kill "$dead" 2>/dev/null || true
-  wait "$dead" 2>/dev/null || true
-  jobfile "$dead" "$(date +%s)" "$HOME/rec"
+  jobfile "$(dead_pid)" "$(date +%s)" "$HOME/rec"
   lib vox_state
   [ "$output" = "IDLE" ]
 }
