@@ -66,6 +66,10 @@ teardown() {
   # That wrapper carries the `-L <unique socket>`, so this can only ever kill the
   # test's own server, never the real one.
   [ -n "${PRIVATE_TMUX:-}" ] && "$PRIVATE_TMUX" kill-server 2>/dev/null
+  # tmux leaves the socket file behind when the server exits, and the socket
+  # lives inside this dir - which start_private_server owns outright - so
+  # removing the dir is what unlinks it.
+  [ -n "${TMUX_TMPDIR:-}" ] && rm -rf "$TMUX_TMPDIR"
   return 0
 }
 
