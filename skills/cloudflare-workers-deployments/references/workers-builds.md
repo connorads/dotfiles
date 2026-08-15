@@ -164,11 +164,29 @@ cf workers-builds triggers list --external-script-id <worker-tag>
 cf workers-builds builds list --external-script-id <worker-tag>
 ```
 
+A Worker shell created with `cf workers beta workers create` has no script
+tag - `scripts search` returns none. Use the worker `id` UUID from the create
+response as `external_script_id` instead; triggers and builds accept it.
+
 ## Choose A Setup Path
 
 The Worker must already exist for either path - a prior `wrangler deploy` or a
 Worker shell (below). The dashboard deep link 404s until it does. Pick by
 context; do not offer both as an equal menu.
+
+Before picking, probe whether the browser step is needed at all: if the account
+has ever used Workers Builds (`cf workers-builds tokens list` is non-empty),
+the Git app is likely already authorised. Confirm with a read-only call:
+
+```bash
+cf workers-builds repos config-autofill get <provider-repo-id> \
+  --provider-type github --provider-account-id <provider-owner-id> --branch <branch>
+```
+
+Success (it returns the repo's detected config) proves the app is installed
+with access to that repo - take the CLI path with no browser step. Do not
+probe via `gh api user/installations`: it 403s, because that endpoint needs a
+GitHub-App-authorised token, which gh's OAuth token is not.
 
 - Interactive, browser available -> dashboard. Least setup: the "Connect to
   Git" flow authorises the GitHub app and creates the build token in one
@@ -201,8 +219,9 @@ For Builds write calls (`repos connections upsert`, `triggers create`,
 individual `--flag` options. On cf v0.2.0 (observed 2026-07) the flags serialise
 to flat hyphenated keys the API rejects: a manual build via `--seed-repo-*`
 flags returns HTTP 500, while the same call with `--body '{"branch":"main"}'`
-succeeds. If a `--flag` write call fails with 500 or a validation error, switch
-to `--body`. The body fields match the REST API, so the JSON bodies shown in
+succeeds. `--body` re-verified working for all three calls on v0.6.0
+(2026-08). If a `--flag` write call fails with 500 or a validation error,
+switch to `--body`. The body fields match the REST API, so the JSON bodies shown in
 this file work verbatim as `--body` payloads.
 
 ## Create A Worker Project Without Local Deployment
@@ -407,6 +426,10 @@ cf workers-builds builds list --external-script-id <worker-tag>
 cf workers-builds builds get <build-uuid>
 ```
 
+Read the verdict from `build_outcome` (`success` / `failed`), not `status`:
+a finished successful build reports `status: "stopped"`, which reads as a
+failure if you poll on status alone.
+
 Fetch logs only when needed, redact tokens/URLs, and summarise the failing
 commands. Do not paste raw logs into chat by default.
 
@@ -434,7 +457,9 @@ clean build unless the user wants cache disabled.
 
 ## Verify Deployment
 
-Use layered checks and avoid dumping protected content:
+Use layered checks and avoid dumping protected content. For a workers.dev
+hostname, get the account subdomain with `cf workers subdomains get` - the URL
+is `<worker-name>.<subdomain>.workers.dev`.
 
 ```bash
 cf workers deployments list --script-name <worker-name>
