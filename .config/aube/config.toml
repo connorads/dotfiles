@@ -12,9 +12,17 @@ minimumReleaseAgeExclude = [
 # Bloom-filter OSV MAL-* prefilter on lockfile installs (~380KB, ~0.1% FPR)
 advisoryBloomCheck = "on"
 
-# Pinned niche tools — intentionally low-download. Bypass `lowDownloadThreshold` (default 1000).
+# Glob patterns exempted from aube's add-time reputation gates.
+# Note: one list, three gates — a match skips the similar-name, package-age
+# and lowDownloadThreshold checks alike. The OSV malicious-package check is
+# unaffected. Verify a package out-of-band before adding it here.
 allowedUnpopularPackages = [
+  # Pinned niche tools — genuinely below `lowDownloadThreshold` (1000/week).
   "remobi",
   "@kitlangton/ghui",
   "critique",
+  # Name-similarity false positives (ERR_AUBE_SIMILAR_PACKAGE_NAME, aube >= 1.38).
+  # Both are well over the download threshold; the short name is the whole problem.
+  "cf",       # Cloudflare CLI — resembles `co` (rank #1245, distance 1)
+  "hunkdiff", # modem-dev/hunk — resembles `unidiff` (rank #13353, distance 2)
 ]
