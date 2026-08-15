@@ -36,7 +36,15 @@ else
   # entry (not just the current one) for each changed tool, plus current-platform
   # provenance — so no separate `mise lock` refresh is needed here.
   mise upgrade
-  if [[ -f $lock ]]; then
+  local rc=$?
+  # A failed upgrade still rewrites the lock for tools that resolved, so
+  # committing here would pin versions nothing can install (and `up --frozen`
+  # elsewhere would then hit the same wall). Leave it dirty rather than revert:
+  # one failing tool shouldn't discard every other tool's legitimate bump.
+  if (( rc )); then
+    print -u2 "!! mise upgrade failed (exit $rc) - NOT committing mise.lock"
+    print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
+  elif [[ -f $lock ]]; then
     dotfiles add "$lock"
     dotfiles diff --cached --quiet -- "$lock" \
       || dotfiles commit -m "chore(mise): update tool lock"

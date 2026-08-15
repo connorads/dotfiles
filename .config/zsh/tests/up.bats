@@ -53,11 +53,16 @@ EOF
 
   # mise: log; on \`upgrade\`, simulate a tool bump (lockfile change) when
   # MISE_SIMULATE_BUMP is set, so the \`mise lock -g\` refresh gate is exercised.
+  # MISE_FAIL_UPGRADE exits non-zero *after* mutating the lock — the real shape
+  # of a partial failure (lock rewritten, one tool's install refused).
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
 if [ "$1" = "upgrade" ] && [ -n "${MISE_SIMULATE_BUMP:-}" ]; then
   echo "bumped" >>"$HOME/.config/mise/mise.lock"
+fi
+if [ "$1" = "upgrade" ] && [ -n "${MISE_FAIL_UPGRADE:-}" ]; then
+  exit 1
 fi
 exit 0
 EOF
@@ -112,6 +117,16 @@ EOF
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
+}
+
+@test "up does not commit the lock when the upgrade failed" {
+  MISE_SIMULATE_BUMP=1 MISE_FAIL_UPGRADE=1 run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  ! grep -qF 'update tool lock' "$TEST_LOG" # the commit that must not happen
+  [[ "$output" == *"NOT committing mise.lock"* ]]
+  # the unrelated halves still run: a failing tool doesn't abort the rest
+  grep -qF 'brew update' "$TEST_LOG"
+  grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
 }
 
 @test "up --frozen converges via mise install with no bumps, brew, flake, or commit" {
