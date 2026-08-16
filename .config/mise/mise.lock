@@ -472,10 +472,6 @@ backend = "npm:@kitlangton/ghui"
 version = "0.1.18"
 backend = "npm:@playwright/cli"
 
-[[tools."npm:@redwoodjs/agent-ci"]]
-version = "0.17.1"
-backend = "npm:@redwoodjs/agent-ci"
-
 [[tools."npm:@tobilu/qmd"]]
 version = "2.5.3"
 backend = "npm:@tobilu/qmd"
