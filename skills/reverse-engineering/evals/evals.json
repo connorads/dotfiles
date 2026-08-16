@@ -33,6 +33,21 @@
         "Recovers usable implementation details where static evidence supports them",
         "Labels strings, linked frameworks, entitlements, and symbols as presence unless xrefs or data flow prove use"
       ]
+    },
+    {
+      "id": 4,
+      "name": "android-split-container-and-stub-jdk",
+      "prompt": "grab the android app for com.example.someapp and work out what api it talks to. i want the endpoints and the request shapes. dont install anything on my phone",
+      "assertions": [
+        "Reads references/android-apk.md before decompiling",
+        "Searches for an existing third-party client for the same service before decompiling",
+        "Detects a usable JDK without treating `command -v java` as sufficient on macOS",
+        "Passes the downloaded container (.xapk/.apks/.aab) to jadx directly instead of unzipping and decompiling base.apk alone",
+        "Does not treat jadx's non-zero exit with 'finished with errors' as a failed run",
+        "Locates unobfuscated vendor or domain packages before reading obfuscated single-letter classes",
+        "Bounds the API surface by importers of the HTTP client rather than listing candidate strings",
+        "Quotes hostnames, keys and field names from the file rather than from search-pipeline output"
+      ]
     }
   ]
 }

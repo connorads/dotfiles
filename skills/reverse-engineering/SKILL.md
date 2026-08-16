@@ -81,10 +81,11 @@ reference.
    | DMG, `.app`, Mach-O, Swift, Objective-C | [references/macos-apps.md](references/macos-apps.md) |
    | Standard Go compiler | [references/go.md](references/go.md) |
    | Bun compile, Node SEA, `pkg`/`nexe`, Deno compile | [references/package-js-cli.md](references/package-js-cli.md) |
+   | APK, XAPK, APKS, AAB, DEX, Android, Kotlin | [references/android-apk.md](references/android-apk.md) |
 
-   No runtime-specific reference is bundled yet for .NET, JVM, Rust, Electron,
-   Tauri, PE, ELF, WASM, or firmware. Apply the generic workflow, label the
-   coverage limit, and add a reference only after a real analysis exposes
+   No runtime-specific reference is bundled yet for .NET, desktop JVM, Rust,
+   Electron, Tauri, PE, ELF, WASM, or firmware. Apply the generic workflow, label
+   the coverage limit, and add a reference only after a real analysis exposes
    repeatable failures.
 
 7. Use the bundled static helpers when their target matches:
