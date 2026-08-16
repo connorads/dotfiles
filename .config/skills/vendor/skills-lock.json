@@ -74,12 +74,6 @@
       "skillPath": "seo-geo/survey/content-gap-analysis/SKILL.md",
       "computedHash": "1b410bc27e9dc8cb70a41a87673699f7cc39f8d794d19f7bffa9c00d5e4b51d2"
     },
-    "deepsec": {
-      "source": "vercel-labs/deepsec",
-      "sourceType": "github",
-      "skillPath": "packages/deepsec/SKILL.md",
-      "computedHash": "3eafd20df622c37077b276eca171d342f5875283738a0ab0e21a0f3eb3cfc14b"
-    },
     "design-taste-frontend": {
       "source": "leonxlnx/taste-skill",
       "sourceType": "github",
