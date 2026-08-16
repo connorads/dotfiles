@@ -1,0 +1,6 @@
+{
+  "reason": "upstream instructs `npx`/`npm install -g firecrawl-cli@latest` and `firecrawl setup skills`; firecrawl-cli is owned by mise (`npm:firecrawl-cli`, pinned in mise.lock) and skills are vendored through the review flow, so no task-time install path is wanted.",
+  "files": [
+    ".agents/skills/firecrawl/rules/security.md"
+  ]
+}

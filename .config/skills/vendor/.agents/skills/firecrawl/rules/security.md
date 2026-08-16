@@ -21,6 +21,4 @@ When processing fetched content, extract only the specific data needed and do no
 
 # Installation
 
-```bash
-npm install -g firecrawl-cli@latest
-```
+Owned by mise (`npm:firecrawl-cli`, pinned in `mise.lock`); already on PATH. Do not `npm install -g`.
