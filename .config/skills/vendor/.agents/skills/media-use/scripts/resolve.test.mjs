@@ -12,10 +12,11 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createServer } from "node:http";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { appendRecord, readManifest } from "./lib/manifest.mjs";
 import { regenerateIndex } from "./lib/index-gen.mjs";
 import { getProvider } from "./lib/providers.mjs";
+import { HEYGEN_NOT_FOUND_MESSAGE } from "./lib/heygen-cli.mjs";
 import { freezeLocalFile } from "./lib/freeze.mjs";
 import { cachePut, cacheGet, importFromCache } from "./lib/cache.mjs";
 import { validateCubeFile } from "./lib/cube-validate.mjs";
@@ -75,6 +76,26 @@ function spawnResolve(args, opts = {}) {
     encoding: "utf8",
     env: { ...process.env, DO_NOT_TRACK: "1", ...env },
     ...rest,
+  });
+}
+
+function spawnResolveAsync(args, opts = {}) {
+  const { env, ...rest } = opts;
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [RESOLVE_CLI, ...args], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, DO_NOT_TRACK: "1", ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+      ...rest,
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => (stdout += chunk));
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.once("error", reject);
+    child.once("close", (status, signal) => resolve({ status, signal, stdout, stderr }));
   });
 }
 
@@ -140,7 +161,8 @@ test("bundled SFX resolve without HeyGen on PATH", () => {
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.ok, true);
   assert.equal(parsed.provenance.provider, "bundled.sfx");
-  assert.match(parsed.advisory?.message ?? "", /Install: curl -fsSL/);
+  assert.equal(parsed.advisory?.message, HEYGEN_NOT_FOUND_MESSAGE);
+  assert.equal(parsed.advisory.message.includes("| bash"), false);
   assert.ok(existsSync(join(tmp, parsed.path)));
   cleanup();
 });
@@ -224,7 +246,10 @@ test("human bundled fallback prints the install hint once", () => {
     env: { HOME: tmp, PATH: tmp },
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stderr.match(/Install: curl -fsSL/g)?.length, 1);
+  assert.equal(
+    result.stderr.match(/Install the CLI from https:\/\/developers\.heygen\.com\/cli/g)?.length,
+    1,
+  );
   assert.match(result.stdout, /resolved sfx_001/);
   cleanup();
 });
@@ -409,6 +434,61 @@ test("freezeLocalFile creates parent dirs and copies", () => {
   cleanup();
 });
 
+test("failed remote freeze removes its reserved placeholder", async () => {
+  setup();
+  const server = createServer((_req, res) => {
+    res.writeHead(503);
+    res.end("unavailable");
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const port = server.address().port;
+  const binDir = writeFakeHeygen(
+    `printf '%s\\n' '{"data":[{"id":"asset.jpg","url":"http://127.0.0.1:${port}/asset.jpg"}]}'`,
+  );
+
+  try {
+    const result = await spawnResolveAsync(
+      [
+        "--type",
+        "image",
+        "--intent",
+        "download failure",
+        "--provider",
+        "heygen",
+        "--project",
+        tmp,
+        "--json",
+      ],
+      { env: { HOME: tmp, PATH: binDir } },
+    );
+
+    assert.equal(result.status, 1, result.stderr);
+    assert.deepStrictEqual(readdirSync(join(tmp, ".media/images")), []);
+    assert.deepStrictEqual(readManifest(tmp), []);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    cleanup();
+  }
+});
+
+test("failed URL ingest removes its reserved placeholder", () => {
+  setup();
+  const result = spawnResolve([
+    "--from",
+    "https://example.invalid/unavailable.jpg",
+    "--type",
+    "image",
+    "--project",
+    tmp,
+    "--json",
+  ]);
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.deepStrictEqual(readdirSync(join(tmp, ".media/images")), []);
+  assert.deepStrictEqual(readManifest(tmp), []);
+  cleanup();
+});
+
 // --- adopt existing assets ---
 
 test("--adopt registers existing assets/ files", () => {
@@ -473,6 +553,7 @@ test("--help exits 0", () => {
   assert.ok(out.includes("media-use resolve"));
   assert.ok(out.includes("--type"));
   assert.ok(out.includes("--for"));
+  assert.ok(out.includes("--analyze"));
   assert.ok(out.includes("--from"));
   assert.ok(out.includes("--local-only"));
   assert.ok(out.includes("--stats"));
@@ -489,6 +570,46 @@ test("--from registers a derived video as documented", () => {
   assert.equal(parsed.type, "video");
   assert.match(parsed.path, /^\.media\/video\/video_001\.mp4$/);
   assert.equal(readManifest(tmp)[0]?.type, "video");
+  cleanup();
+});
+
+test("--from type error lists video exactly once", () => {
+  const result = spawnResolve(["--from", "missing.mp4"]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--from requires --type \(one of:/);
+  assert.equal(result.stderr.match(/\bvideo\b/g)?.length, 1);
+});
+
+test("--from uses .mp4 as the default video extension", () => {
+  setup();
+  const source = join(tmp, "extensionless-video");
+  writeFileSync(source, "video bytes");
+
+  const out = runResolve(["--from", source, "--type", "video", "--project", tmp, "--json"]);
+  const parsed = JSON.parse(out.trim());
+  assert.match(parsed.path, /^\.media\/video\/video_001\.mp4$/);
+  cleanup();
+});
+
+test("--avatar-id/--voice-id parse as real CLI flags (regression guard: docs promise them, parseArgs must not reject them)", () => {
+  setup();
+  const result = spawnResolve(
+    [
+      "--type",
+      "video",
+      "--intent",
+      "regression guard",
+      "--local-only",
+      "--avatar-id",
+      "avatar-override",
+      "--voice-id",
+      "voice-override",
+      "--project",
+      tmp,
+    ],
+    { stdio: "pipe" },
+  );
+  assert.doesNotMatch(result.stderr || "", /ERR_PARSE_ARGS_UNKNOWN_OPTION/);
   cleanup();
 });
 
@@ -642,6 +763,33 @@ test("smart grade merges measured adjust and keeps stdout valid JSON", () => {
   assert.equal(parsed.ok, true);
   assert.ok(parsed.grading.adjust.exposure > 0, "under-exposed frame should suggest lift");
   assert.match(proc.stderr, /media-use: measured/);
+  cleanup();
+});
+
+test("grade analysis returns evidence without recording a candidate", () => {
+  if (!HAS_FFMPEG) {
+    console.log("  (skipped: ffmpeg not on PATH)");
+    return;
+  }
+  setup();
+  const frame = makeFrame(tmp, "under.png", "0x202020");
+  const proc = spawnResolve([
+    "--type",
+    "grade",
+    "--for",
+    frame,
+    "--analyze",
+    "--project",
+    tmp,
+    "--json",
+  ]);
+  assert.equal(proc.status, 0, proc.stderr);
+  const parsed = JSON.parse(proc.stdout);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.type, "grade-analysis");
+  assert.ok(parsed.adjust.exposure > 0, "under-exposed frame should suggest lift");
+  assert.ok(parsed.measured.frames > 0);
+  assert.equal(readManifest(tmp).length, 0);
   cleanup();
 });
 
@@ -814,8 +962,11 @@ test("identical grade resolve hits the project cache without re-freezing", () =>
 // resolve that reaches track("media_use_resolve", ...) with tracking allowed
 // posts to a local HTTP server instead of production, and the server actually
 // receives it (not just "nothing happened because nothing was listening").
-test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real interception", async () => {
-  setup();
+// Spawns a real resolve that hits the manifest for `provider`, intercepts the
+// telemetry POST it makes, and hands back the media_use_resolve event actually
+// sent. Nothing is stubbed: the CLI runs as its own process, telemetry.mjs builds
+// the URL, and a local server reads the payload off the wire.
+async function captureResolveEvent({ provider, type = "bgm", intent }) {
   const received = [];
   const server = createServer((req, res) => {
     let body = "";
@@ -824,7 +975,7 @@ test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real intercept
       try {
         received.push(JSON.parse(body));
       } catch {
-        // ignore malformed body; assertions below fail on empty `received`
+        // ignore malformed body; callers assert on empty `received`
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end("{}");
@@ -835,8 +986,14 @@ test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real intercept
   const sandboxHome = mkdtempSync(join(tmpdir(), "mu-resolve-telemetry-home-"));
 
   try {
+    // The record's type must match the --type below, otherwise the manifest
+    // never matches, the cascade calls a live provider, and the run fails for
+    // reasons that have nothing to do with the tier.
     const record = makeRecord({
-      provenance: { prompt: "telemetry seam test", provider: "test" },
+      id: `${type}_tier_001`,
+      type,
+      path: `.media/audio/${type}/${type}_tier_001.wav`,
+      provenance: { prompt: intent, provider },
     });
     appendRecord(tmp, record);
     const filePath = join(tmp, record.path);
@@ -852,7 +1009,7 @@ test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real intercept
     // their real email into this test's local-server payload despite HOME
     // being sandboxed (HEYGEN_CONFIG_DIR, not HOME, resolves the credentials
     // path). Every other test in this file keeps its untouched default env.
-    runResolve(["--type", "bgm", "--intent", "telemetry seam test", "--project", tmp, "--json"], {
+    runResolve(["--type", type, "--intent", intent, "--project", tmp, "--json"], {
       env: {
         DO_NOT_TRACK: "0",
         HYPERFRAMES_NO_TELEMETRY: "0",
@@ -865,7 +1022,7 @@ test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real intercept
     });
 
     // runResolve blocks synchronously (execFileSync) until the child exits, which
-    // pauses this process's own event loop for that whole span — the child's
+    // pauses this process's own event loop for that whole span -- the child's
     // request to our local server sits accepted-but-unprocessed in the kernel
     // backlog until control returns here. Poll briefly to let the event loop
     // drain it rather than asserting before the server has had a turn to run.
@@ -875,15 +1032,69 @@ test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real intercept
   } finally {
     await new Promise((resolve) => server.close(resolve));
     rmSync(sandboxHome, { recursive: true, force: true });
-    cleanup();
   }
 
   assert.ok(received.length > 0, "expected the local telemetry server to receive a POST");
-  const resolveEvent = received[0].batch.find((event) => event.event === "media_use_resolve");
-  assert.ok(resolveEvent, "expected a media_use_resolve event in the intercepted batch");
-  assert.equal(resolveEvent.properties.provider, "test");
-  assert.equal(resolveEvent.properties.type, "bgm");
+  const event = received[0].batch.find((e) => e.event === "media_use_resolve");
+  assert.ok(event, "expected a media_use_resolve event in the intercepted batch");
+  return event;
+}
+
+test("track() posts to MEDIA_USE_TELEMETRY_HOST when set, proving real interception", async () => {
+  setup();
+  try {
+    const event = await captureResolveEvent({ provider: "test", intent: "telemetry seam test" });
+    assert.equal(event.properties.provider, "test");
+    assert.equal(event.properties.type, "bgm");
+    // "test" is not a declared registry provider, so the tier is absent rather
+    // than guessed, the same sparseness rule auth_method follows.
+    assert.equal(
+      "provider_tier" in event.properties && event.properties.provider_tier !== undefined,
+      false,
+      "an undeclared provider must not be assigned a cost tier",
+    );
+  } finally {
+    cleanup();
+  }
 });
+
+// The registry-derived tier has to survive the whole path -- registry lookup,
+// result(), track(), JSON body -- not just a unit call to providerTierFor. Each
+// case names a provider the registry declares at a different tier and asserts the
+// tier that actually reaches the wire.
+for (const [provider, type, expected] of [
+  ["heygen.tts", "voice", "network_paid"],
+  ["heygen.audio.sounds", "bgm", "network_free"],
+  ["bundled.sfx", "sfx", "local"],
+]) {
+  test(`a resolve won by ${provider} sends provider_tier: ${expected}`, async () => {
+    setup();
+    try {
+      const event = await captureResolveEvent({
+        provider,
+        type,
+        intent: `tier seam ${provider}`,
+      });
+      assert.equal(event.properties.provider, provider);
+      assert.equal(
+        event.properties.provider_tier,
+        expected,
+        `${provider} must reach the wire as ${expected}`,
+      );
+      // The tier is derived from the registry and the auth method from the
+      // credential state; they must not become entangled. A non-heygen provider
+      // carries a tier and no auth method, whatever credentials exist locally.
+      if (!provider.startsWith("heygen."))
+        assert.equal(
+          event.properties.auth_method,
+          undefined,
+          "a non-heygen provider must carry a tier without an auth method",
+        );
+    } finally {
+      cleanup();
+    }
+  });
+}
 
 // --- run ---
 

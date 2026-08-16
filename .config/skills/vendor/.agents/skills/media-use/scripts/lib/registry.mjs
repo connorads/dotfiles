@@ -32,6 +32,8 @@ import {
   faviconSearch,
 } from "./logo-provider.mjs";
 import { heygenTtsGenerate } from "./voice-provider.mjs";
+import { heygenVideoGenerate } from "./heygen-video-provider.mjs";
+import { ltxVideoGenerate } from "./ltx-video-provider.mjs";
 import { localTtsGenerate } from "./tts-local-provider.mjs";
 import { codexImageGenerate } from "./codex-provider.mjs";
 import { mfluxImageGenerate } from "./mflux-provider.mjs";
@@ -83,6 +85,12 @@ const REGISTRY = {
     P("heygen.tts", { generate: heygenTtsGenerate }),
     A("kokoro.local", { generate: localTtsGenerate }),
   ],
+  video: [
+    // HeyGen avatar video first when credentialed; --local-only skips it and
+    // keeps LTX as the local fallback.
+    P("heygen.video", { generate: heygenVideoGenerate }),
+    A("ltx.local", { generate: ltxVideoGenerate }),
+  ],
   brand: [
     // Local design spec, not heygen — reads frame.md / design.md tokens.
     A("design_spec", { search: brandProvider.search }),
@@ -117,6 +125,44 @@ export function listTypes() {
 /** Provider names available for a type, in cascade order (for --provider validation). */
 export function providerNamesFor(type) {
   return listFor(type).map((p) => p.name);
+}
+
+/**
+ * name -> cost tier ("local" | "network_free" | "network_paid") over a collection
+ * of ordered provider lists, i.e. the A / N / P distinction the constructors above
+ * already declare. Exported so the conflict rule below is testable against a
+ * fixture; production reads the REGISTRY-wide index built from it.
+ *
+ * A name declared under two media types must carry the same tier in both. If it
+ * didn't, "did this resolve cost credit" would depend on which type happened to
+ * serve it, and the telemetry property would mean nothing — so this throws at
+ * import rather than silently picking one.
+ */
+export function buildProviderTierIndex(providerLists) {
+  const tiers = new Map();
+  for (const list of providerLists) {
+    for (const p of list) {
+      const tier = p.paid ? "network_paid" : p.network ? "network_free" : "local";
+      const prior = tiers.get(p.name);
+      if (prior && prior !== tier)
+        throw new Error(
+          `provider "${p.name}" is declared ${prior} under one media type and ${tier} under another`,
+        );
+      tiers.set(p.name, tier);
+    }
+  }
+  return tiers;
+}
+
+const PROVIDER_TIERS = buildProviderTierIndex(Object.values(REGISTRY));
+
+/**
+ * Cost tier of a provider by name, or undefined for a name the registry doesn't
+ * declare. The registry stays the single owner of "does this cost credit", so
+ * dashboards and callers never re-derive it from provider-name string matching.
+ */
+export function providerTierFor(name) {
+  return PROVIDER_TIERS.get(name);
 }
 
 /**

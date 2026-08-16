@@ -1,43 +1,20 @@
 ---
 name: agent-device
-description: Automates Apple-platform apps (iOS, tvOS, macOS) and Android devices. Use when navigating apps, taking snapshots/screenshots, tapping, typing, scrolling, extracting UI info, collecting logs/network/perf evidence, or planning agent-device CLI commands.
+description: Automates Apple-platform apps (iOS, tvOS, macOS), Android devices, and Amazon Vega OS TV apps in Vega Virtual Devices. Use when navigating apps, taking snapshots/screenshots where supported, driving TV remotes, tapping, typing, scrolling, extracting UI info, collecting evidence, or planning agent-device CLI commands.
 ---
 
 # agent-device
 
-Router only. Private setup before using this skill:
+For a normal app-driving task, start immediately. Do not probe first with `--help`, `--version`, `devices`, `appstate`, `snapshot`, or `screenshot`:
 
 ```bash
-agent-device --version
+agent-device open <app> --foreground
 ```
 
-If that fails but the user may have installed `agent-device` globally, check the user's configured login/interactive shell and environment before using `npx`. Resolve the command the same way the user would from a normal terminal session, then run the absolute binary path if found. This may require inspecting shell startup behavior or package-manager/global bin locations; do not assume the Codex process `PATH` is the user's `PATH`.
+That starts the session and returns the initial interactive snapshot with `@refs`.
 
-Require `agent-device >= 0.19.1`; older CLIs lack these help topics. If older, stop and tell the user to upgrade the trusted install or approve an exact-version npm command. Do not run `npm install -g agent-device@latest` or `npx -y agent-device@latest` autonomously, and do not include version/upgrade commands in final plans.
+Loop: act with `press|click|fill|longpress <target> ... --settle`, `scroll <direction> --settle`, or `back --settle`; continue from the printed diff, verify the named expectation (`wait text "..."`, `is`, `get`, or `find`), then run `agent-device close`.
 
-Before your first agent-device command or plan, read the smallest version-matched CLI guide that fits the task:
+Copy refs byte-for-byte: `@e12`, `@e12~s4` — keep the `@` and any `~sN`. Prefer current refs, then `id`/`label`/`role` selectors; coordinates are a last resort. If snapshot reports sparse/AX-unavailable, its refs and selectors are invalid: run `agent-device screenshot`, inspect the image, use coordinates, then retry `snapshot -i` after navigating. Otherwise run `snapshot -i` only when the diff lacks the next target.
 
-```bash
-agent-device help manual-qa   # scripted/manual QA, acceptance checks, checklist execution
-agent-device help validate    # code/runtime validation, stale build or daemon risk
-agent-device help dogfood     # exploratory app dogfooding and evidence collection
-agent-device help workflow    # fallback reference for general app driving or mixed tasks
-```
-
-Read additional topics only when relevant:
-
-```bash
-agent-device help debugging
-agent-device help react-native
-agent-device help react-devtools
-agent-device help cdp
-agent-device help remote
-agent-device help macos
-agent-device help dogfood
-```
-
-Default loop: `open -> snapshot/-i -> get/is/find or press/fill/scroll/wait -> verify -> close`.
-
-Use this skill only to route into version-matched CLI help. Let the selected help topic provide exact command shapes, platform limits, and current workflow guidance; use `help workflow` as the full reference when a task-specific topic is too narrow.
-
-For precise location workflows, read the installed `settings` help before planning so coordinate support and platform limits come from the active CLI version.
+Error output includes corrective hints; follow them instead of re-planning. Only when the task is specialized (for example gestures, scripting, TV, macOS, remote, or debugging) or a command shape is unclear, run `agent-device help <topic>`. `agent-device --help` lists topics, but is not a startup step.

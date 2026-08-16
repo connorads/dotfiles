@@ -16,13 +16,14 @@ Run commands as `npx hyperframes ...` unless project instructions provide a wrap
 ## Development loop
 
 1. **Scaffold:** `npx hyperframes init <project>` or capture a site. In non-TTY mode, pass `--non-interactive --example=<name>`.
-2. **Author:** write the composition using `/hyperframes-core`.
-3. **Get fast feedback while editing:** run `npx hyperframes lint` after the first HTML pass and after structural changes.
-4. **Run the final gate:** run `npx hyperframes check`; it reruns lint before opening the browser. Do not prepend a redundant standalone lint invocation. Add `--snapshots` for annotated overview frames and finding crops.
-5. **Inspect sub-compositions:** when `index.html` mounts `data-composition-src`, capture midpoint snapshots and inspect each mounted scene.
-6. **Open the final Studio preview:** run `npx hyperframes preview`, hand the timeline project URL to the user, and ask whether to revise or render.
-7. **Render only after approval:** use draft quality for iteration and high quality for delivery.
-8. **Verify the output:** confirm the file exists, is non-empty, and has a plausible duration.
+2. **Find the move:** before authoring motion by hand, search for a primitive that already does it: `npx hyperframes catalog --query "reveal a headline one line at a time"`. Ask for the effect you want rather than the mechanism you have in mind. Install with `npx hyperframes add <name>` (see `/hyperframes-registry`). Author by hand only once nothing fits.
+3. **Author:** write the composition using `/hyperframes-core`.
+4. **Get fast feedback while editing:** run `npx hyperframes lint` after the first HTML pass and after structural changes.
+5. **Run the final gate:** run `npx hyperframes check`; it reruns lint before opening the browser. Do not prepend a redundant standalone lint invocation. Add `--snapshots` for annotated overview frames and finding crops.
+6. **Inspect sub-compositions:** when `index.html` mounts `data-composition-src`, capture midpoint snapshots and inspect each mounted scene.
+7. **Open the final Studio preview:** run `npx hyperframes preview`, hand the timeline project URL to the user, and ask whether to revise or render.
+8. **Render only after approval:** use draft quality for iteration and high quality for delivery.
+9. **Verify the output:** confirm the file exists, is non-empty, and has a plausible duration.
 
 ```bash
 # Fast iteration check; repeat while authoring as needed.
@@ -61,6 +62,11 @@ Treat tiny unstyled content, canvas-sized icons, missing hero elements, or timel
 
 ## Agent conventions
 
+- **Search the catalog before writing motion by hand.** `npx hyperframes catalog --query "<the beat, in plain language>"`. Search is entirely local: there is no hosted tier, no account, and the query text is never sent anywhere. By default it ranks on vocabulary shared with the item's name, title and description, which misses any phrasing that does not reuse the catalog's own wording. Add `--on-device` to rank by meaning instead (see the offline tier below).
+- **Read which tier answered; never infer it from results appearing.** With `--json` the envelope carries `query`, `tier` (`on-device` or `words`), `tier_detail`, `dropped`, `unindexed`, `shown`, `total` and `results`, plus `top_score` when the answering tier produces one and `warnings` when a tier was asked for and could not run. A weak result on `words` is expected; the same result on `on-device` is a bug. `top_score` is on-device only and has no threshold behind it: the ranker returns the whole catalog in some order for every query, so read it as evidence rather than as a pass or fail.
+- **`dropped` and `unindexed` are opposite skews between the registry and the on-device index, and rewording the query fixes neither.** `dropped` counts ranked names this registry cannot install, so the strongest matches are the ones being lost. `unindexed` counts registry moves the index cannot see at all, which no query can ever return. Refreshing the registry is not the answer to either: its manifest carries a 24h TTL and heals itself, while the vectors are a separately published artifact fetched into `~/.hyperframes/catalog/`. Re-running with `--on-device` refetches that index when `unindexed` is above zero, so that is the remedy to hand the user. A pure over-coverage skew (`dropped` above zero while `unindexed` is zero) does not trigger the refetch; clearing `~/.hyperframes/catalog/` is the only way out of that one. Both counts are of names rather than of results, so either can exceed `total`.
+- **Offer the offline tier; never enable it silently.** A one-time ~33 MB download (a quantized ONNX build of `bge-small-en-v1.5` plus its tokenizer, pinned to a fixed revision) and the catalog vectors from the registry, both cached under `~/.hyperframes/`, neither added to the project or any package. Once cached it ranks by meaning with nothing sent. Say the size out loud and let the person decide, then pass `--on-device` (with `-y` to skip the prompt) once they agree. The interactive offer only fires on a TTY, and under `--json` nothing about it is printed at all, so in an agent run you have to raise it with the user yourself.
+
 - Prefer `--json` for agent and CI calls. Server-mode `render`, `preview`, and `play` do not provide ordinary JSON output; `preview --selection --json` and `preview --context --json` are query-mode exceptions.
 - `doctor --json` always exits zero. Gate on its payload:
 
@@ -72,6 +78,7 @@ Treat tiny unstyled content, canvas-sized icons, missing hero elements, or timel
 - Use one `HYPERFRAMES_RUN_ID` for all commands in the same verification loop.
 - Use `--strict`, `--strict-all`, and `--strict-variables` when the corresponding warnings, variables, or CI conditions must gate the render.
 - JSON paths redact the home directory as `$HOME`; do not try to reverse the redaction.
+- When a hosted cloud project approaches or exceeds the 200 MB upload limit, use `cloud render --dry-run --json` and follow the `.hyperframesignore` investigation in `references/cloud.md`. Never ignore an asset merely because it is large.
 - Never render merely because checks pass. Pause at the final preview and wait for approval.
 
 ## Studio-directed edits
@@ -96,6 +103,8 @@ Use `selection.target.hfId` when available, otherwise its selector and source fi
 | Self-managed distributed AWS render      | `npx hyperframes lambda render <project> --width 1920 --height 1080 --wait`   |
 | Self-managed distributed GCP render      | `npx hyperframes cloudrun render <project> --width 1920 --height 1080 --wait` |
 
+Skill attribution is automatic — the examples above need no `--skill`. A project scaffolded by a workflow (`hyperframes init --skill=<workflow>`) records its owning skill in `hyperframes.json`, and every later render inherits it on anonymous telemetry: re-renders, `npm run render`, and `--batch` alike. Pass `--skill=<slug>` explicitly only to stamp a project that was not created through a workflow (its first render then persists it).
+
 Use cloud rendering when the user wants hosted rendering without local Chrome, FFmpeg, or AWS. Use Lambda only when AWS ownership is a requirement. Use Cloud Run only when GCP ownership is a requirement. Read the matching reference before running any cloud path.
 
 After verifying a successful render, send one feedback report unless telemetry is disabled or the user opted out:
@@ -104,7 +113,7 @@ After verifying a successful render, send one feedback report unless telemetry i
 npx hyperframes feedback --rating <0-10> --comment "<specific result or friction>"
 ```
 
-Keep clean-run feedback concise. For any bug or friction, capture a **reproduction packet** before submitting; do not send only a symptom summary. Include the rerunnable command and working directory, expected versus actual behavior, exact error, whether output completed/fell back/failed, workaround, and repro-project status. For a rating ≤ 7 that describes a visual defect (black frame, flicker, corrupt output, wrong frame, blank output, other visual anomaly), also include a `COMPOSITION_STRUCTURE:` block — a privacy-preserving structural anatomy (element census + attribute presence + timeline shape) so maintainers can pattern-match against known bug families without the composition ZIP. Agents auto-fill this via the composition-census helper; the human user does not fill it by hand. If the issue did not reproduce again, say so and still include the last failing command and logs. Use `--file-issue` only with consent: it publishes a minimal reproduction to a public URL. The required packet format and privacy warning live in `references/preview-render.md`.
+Keep clean-run feedback concise. For any bug or friction, capture a **reproduction packet** before submitting; do not send only a symptom summary. Include the rerunnable command (relative to the project directory — feedback is submitted to a public channel, so do **not** paste absolute paths, home-directory prefixes, or user/machine identifiers), expected versus actual behavior, exact error (also strip absolute paths from stack traces — keep basename + line, drop the leading directory), whether output completed/fell back/failed, workaround, and repro-project status. For a rating ≤ 7 that describes a visual defect (black frame, flicker, corrupt output, wrong frame, blank output, other visual anomaly), also include a `COMPOSITION_STRUCTURE:` block — a privacy-preserving structural anatomy (element census + attribute presence + timeline shape) so maintainers can pattern-match against known bug families without the composition ZIP. Agents auto-fill this via the composition-census helper; the human user does not fill it by hand. If the issue did not reproduce again, say so and still include the last failing command and logs. Use `--file-issue` only with consent: it publishes a minimal reproduction to a public URL. The required packet format and privacy warning live in `references/preview-render.md`.
 
 ## Read the matching reference before running a command
 
