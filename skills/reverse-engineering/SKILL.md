@@ -6,11 +6,11 @@ description: >-
   recover symbols/types/strings, identify endpoints/models/dependencies, explain
   executable behaviour, or recover implementation patterns from an unknown,
   stripped, packed, or obfuscated binary, CLI, DMG, macOS app bundle, Mach-O,
-  ELF, PE, WASM, firmware image, Go binary, or packaged JavaScript/TypeScript
-  executable. Also use for Ghidra, IDA, Binary Ninja, radare2, strings, xrefs,
-  Swift/Objective-C metadata, Bun compile, Node SEA, pkg/nexe, and Deno compile
-  analysis. Not for source-only code review or ordinary archive extraction where
-  executable behaviour is irrelevant.
+  ELF, PE, WASM, firmware image, Go binary, Android APK/XAPK/AAB, or packaged
+  JavaScript/TypeScript executable. Also use for jadx, apktool, Ghidra, IDA,
+  Binary Ninja, radare2, strings, xrefs, Swift/Objective-C metadata, Bun compile,
+  Node SEA, pkg/nexe, and Deno compile analysis. Not for source-only code review
+  or ordinary archive extraction where executable behaviour is irrelevant.
 ---
 
 # Reverse Engineering
