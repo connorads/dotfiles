@@ -9,36 +9,15 @@ description: |
 
 # Firecrawl CLI Installation
 
-## Quick Setup (Recommended)
+<!-- LOCAL PATCH (connorads dotfiles): upstream instructs `npx`/`npm install -g firecrawl-cli@latest` and `firecrawl setup skills`; firecrawl-cli is owned by mise (`npm:firecrawl-cli`, pinned in mise.lock) and skills are vendored through the review flow, so no task-time install path is wanted. -->
 
-```bash
-npx -y firecrawl-cli@latest init -y --browser
-```
+## Setup
 
-This installs `firecrawl-cli` globally, authenticates via browser, and installs core, build, and workflow skills.
+`firecrawl-cli` is owned by mise (`npm:firecrawl-cli` in `~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`) and is already on PATH. Do not install, update, or shadow it: no `npx firecrawl-cli`, no `npm install -g`, no `npm update -g`. It moves with the rest of the toolchain via `up`, or `mise upgrade npm:firecrawl-cli` for a one-off.
 
-This setup is safe to re-run when the CLI is missing, stale, or only partially configured.
+Do not run `firecrawl setup skills` or `firecrawl setup workflows` either. Those install skills globally into every detected editor, which bypasses the vendored pin-and-review flow. Firecrawl skills are vendored under `~/.config/skills/vendor` and refreshed there.
 
-If `firecrawl` is already installed and you want to update it first:
-
-```bash
-npm update -g firecrawl-cli
-```
-
-Skills are installed globally across all detected coding editors by default.
-
-To install skills manually:
-
-```bash
-firecrawl setup skills
-firecrawl setup workflows
-```
-
-## Manual Install
-
-```bash
-npm install -g firecrawl-cli@latest
-```
+Authenticate with the binary already on PATH (see Authentication, below).
 
 ## Verify
 
@@ -80,6 +59,6 @@ If you cannot obtain a key and the user cannot sign up, search, scrape, and inte
 
 If `firecrawl` is not found after installation:
 
-1. Ensure npm global bin is in PATH
-2. Try: `npx firecrawl-cli@latest --version`
-3. Reinstall: `npm install -g firecrawl-cli@latest`
+1. Confirm mise has it: `mise ls npm:firecrawl-cli` and `mise which firecrawl`
+2. If missing, reinstall from the lockfile: `mise install npm:firecrawl-cli`
+3. Ensure the mise shims are on PATH (`eval "$(mise activate zsh)"` in the shell profile)
