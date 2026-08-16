@@ -23,12 +23,17 @@ restore, a 6G photo library is gone forever.
 2. `cleanup --dry-run` sizes its known cache targets without touching anything
    (`--json` to parse it, `cleanup --help` for the target list). Do this
    *before* hand-rolling deletion, but do not mistake it for a complete cache
-   inventory.
+   inventory. Give it the login PATH: each target probes for its tool, and a
+   bare non-interactive shell without mise shims or `/opt/homebrew/bin` reports
+   those as `not available on this host` and silently drops them from the
+   total.
 3. Then probe `~/Library/Caches` as well as the large home directories.
    Individual tools use different cache roots - for example, a browser cache
    can live there while `cleanup` checks only `~/.cache`.
 4. Only then drill. `du -sh ~/* ~/.[!.]*` is slow on a large home - background
-   it, or use `dust`. Scan named roots separately: cloud-managed or protected
+   it, or use `dust`. A glob over a directory holding tens of thousands of
+   entries dies with `argument list too long`; `du -d1 -xh <dir>` walks it
+   instead. Scan named roots separately: cloud-managed or protected
    trees can stall a broad scan. A stalled path is unclassified, not zero. A
    per-dir scan that emits *no line* for a named directory stalled on it - that
    dir is the prime suspect, not empty; re-scan it alone with a timeout. On a
@@ -81,7 +86,12 @@ Before classifying a language cache, check its tool still exists:
 `command -v dart flutter gradle`. A cache whose toolchain is gone is not
 "re-downloadable pending a nod", it is dead weight - `~/.pub-cache`,
 `~/.gradle` and `~/.dartServer` held 1.6G between them on a machine with no
-Dart, Flutter or Gradle installed at all.
+Dart, Flutter or Gradle installed at all. The check extends to the *manager*:
+Android's `sdkmanager` is a JVM wrapper, so with no `java` it cannot list or
+uninstall the packages it installed, and the idiomatic-cleaner route is closed
+before you reach it (9.1G of `system-images`, `ndk` and `emulator` sat under a
+`sdkmanager` that could not run). Hand-delete those, leaving the
+package-manager-owned `cmdline-tools` alone.
 
 **Ask before deleting anything in `~/Downloads`** — it mixes all three classes.
 Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
@@ -105,8 +115,9 @@ project cleaner or its docs, where present, is the fastest classifier.
   command gets the whole command denied, so keep them separate.
 - **Confirm reclaim with `df`, not the command's exit code - nor its reported
   total.** macOS `/usr/bin/trash` exits non-zero if *any* path arg is missing
-  while still trashing the rest, and says nothing about bytes freed; `~/.Trash`
-  can read `0` even when space was reclaimed. Cleaners that *do* report a
+  while still trashing the rest, and says nothing about bytes freed; `du
+  ~/.Trash` reads `0` whether or not anything is in it, because the directory
+  is TCC-protected rather than empty. Cleaners that *do* report a
   figure report **apparent** size: `cargo clean` printed `Removed 704697 files,
   219.3GiB total` for a tree `du` and `df` both put at 63 GiB - a 3.5x
   overstatement from hardlinks and sparse files. Never pass a cleaner's own
@@ -116,6 +127,18 @@ project cleaner or its docs, where present, is the fastest classifier.
   so it outlives tool timeouts and gets killed mid-move, leaving some args done
   and some untouched. Background it, and verify per-path afterwards with `ls
   -d` rather than trusting one exit code for the whole list.
+- **Over SSH, trashing is close to one-way, and frees nothing.** A headless
+  session can neither read `~/.Trash` (that needs Full Disk Access) nor drive
+  Finder (Automation consent cannot be prompted with no GUI), so
+  `osascript -e 'tell application "Finder" to empty trash'` times out with
+  AppleEvent `-1712`. That code means missing consent, not a wedged Finder:
+  `killall Finder` changes nothing, and polling `df` for it wastes the whole
+  timeout. Recovery hangs on knowing the exact names, so run `trash -v` and
+  keep its `Moved "<src>" to "/Users/<you>/.Trash/<name>"` lines - the
+  directory is writable even when unreadable, so `mv ~/.Trash/<name>
+  /private/tmp/<name>` retrieves an item by name, and it can be deleted there.
+  Where the deletion is plainly rebuildable and the box is headless, prefer a
+  cleaner or an in-tmp delete over `trash` in the first place.
 - **`~/Library/Containers` stalls every `du` and is never the answer.** It is
   hundreds of `com.apple.*` sandboxes (600 on this machine, all Apple, largest
   44K). It is the one directory where a stall means TCC-protected paths, not
@@ -130,6 +153,15 @@ project cleaner or its docs, where present, is the fastest classifier.
   `$CLEANUP_CARGO_ROOTS`). `cleanup`'s `cargo` target is the registry cache
   only and does not touch `target/`. These dirs get large enough to dominate a
   survey while `.git` beside them stays small.
+- **Agent worktrees under `<repo>/.claude/worktrees/`** each carry their own
+  build tree, so one repo holds several copies of its own `target/` (23G across
+  three here, against 40G in the repo's live one). They read as irreplaceable
+  because their `worktree-agent-*` branches hold unmerged commits, but
+  `git worktree remove` drops only the checkout - the branch and its commits
+  stay in the main repo, so a clean one goes with no loss. Check
+  `git status --porcelain` in each first, and confirm the branch survives
+  afterwards. Being inside the repo, they hide from a `~/git/*` scan behind the
+  repo's own total.
 - **Aube:** `~/.cache/aube/virtual-store` is a live mise npm-tool working set,
   not disposable cache. Do not delete it: it leaves mise tool shims dangling.
   `aube store prune` is the supported way to reclaim unreferenced package data;
