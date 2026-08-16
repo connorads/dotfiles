@@ -1,0 +1,1 @@
+The only legitimate reason to skip the dev loop is a real technical blocker: no network, no npm, read-only filesystem. If you skip, name the specific blocker in your final report.

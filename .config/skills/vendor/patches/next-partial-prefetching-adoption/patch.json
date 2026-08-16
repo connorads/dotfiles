@@ -1,5 +1,5 @@
 {
-  "reason": "upstream instructs a task-time `npx skills add .../next-dev-loop`; it is vendored alongside this skill instead.",
+  "reason": "upstream instructs a task-time `npx skills add .../next-dev-loop` (and, alongside it, to install it without asking); next-dev-loop is vendored alongside this skill instead, and refreshes go through the vendored-skills review flow, not runtime installs.",
   "files": [
     ".agents/skills/next-partial-prefetching-adoption/SKILL.md"
   ]
