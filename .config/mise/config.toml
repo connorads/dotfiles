@@ -110,7 +110,6 @@ fnox = "1"
 # TypeScript 7 (Go-native tsc) for first-party TS typecheck steps
 # (hk ts-typecheck-* + `mise run ts-checks`).
 "npm:typescript" = "7"
-"npm:@redwoodjs/agent-ci" = "0"
 # Local hybrid search (FTS + vector + rerank) over the kb Obsidian vault; also
 # pinned in ~/git/kb/mise.toml so the repo documents its own dependency.
 # qmd pulls native deps (better-sqlite3, node-llama-cpp, tree-sitter-*) whose
