@@ -118,6 +118,9 @@ reference.
 
 ## Evidence Levels
 
+- **Observed**: a request you sent and the response you received, recorded
+  verbatim. The strongest evidence available for a network API, and the only kind
+  that can refute a static reading.
 - **Confirmed**: container metadata, build information, recovered
   function/package metadata, disassembly/xref, or reachable data flow.
 - **Likely**: multiple independent static signals align, but exact control flow
@@ -129,6 +132,35 @@ reference.
 
 Never turn linkage, an entitlement, a raw string, or a valid signature into an
 execution claim.
+
+Static reading and live behaviour disagree more often than either seems to
+warrant. Where a claim is load-bearing, establish it both ways.
+
+## Probing a Live Service
+
+A network API has a second evidence source the binary cannot provide: the server
+itself. Probing is not running the target, and it settles what static analysis
+cannot — which inputs are genuinely required, what the real limits are, and
+whether something you could not find exists after all.
+
+It is also the only step here that writes to infrastructure you do not own.
+
+- Probe resources you created for the purpose, never someone else's.
+- Establish what is reversible **before** the first write. Many services have no
+  delete: test data may be permanent, and the volume you generate is the
+  operator's cost to carry.
+- Stay read-only until you have a throwaway target to write to.
+- Keep request rates indistinguishable from ordinary use.
+- Do not probe authentication or authorisation boundaries, and do not enumerate
+  identifiers to reach other people's data.
+- Record every request and response to a file as you go.
+
+Get the user's agreement before the first write to a service you do not operate.
+
+A constant read from the binary is a client default, not a server limit. Page
+sizes, batch sizes, timeouts, and retry counts tell you what this client chooses,
+not what the server permits. Label them as client behaviour until a probe
+establishes the ceiling.
 
 ## Report Shape
 
