@@ -1,6 +1,6 @@
 ---
-name: agent-ci
-description: Run GitHub Actions CI locally with Agent CI to validate changes before pushing. Use when testing, running checks, or validating code changes.
+name: local-ci
+description: Run GitHub Actions CI locally with Local CI to validate changes before pushing. Use when testing, running checks, or validating code changes.
 license: MIT
 compatibility: Requires Node.js 18+ and Docker
 metadata:
@@ -8,14 +8,14 @@ metadata:
   version: "1.0.0"
 ---
 
-# Agent CI
+# Local CI
 
 Run the full CI pipeline locally before pushing. CI was green before you started — any failure is caused by your changes.
 
 ## Run
 
 ```bash
-npx @redwoodjs/agent-ci run --quiet --all --pause-on-failure
+npx run-local-ci run --quiet --all --pause-on-failure
 ```
 
 Pipes are safe — pause-on-failure works through `| tee log`, `> log.txt`, etc. When stdout isn't a TTY the launcher detaches the run and the foreground process exits **77** the moment a step pauses, freeing the pipe while the container stays paused for `retry`.
@@ -25,20 +25,20 @@ Pipes are safe — pause-on-failure works through `| tee log`, `> log.txt`, etc.
 When a step fails, the run pauses automatically. Fix the issue, then retry:
 
 ```bash
-npx @redwoodjs/agent-ci retry --name <runner-name>
+npx run-local-ci retry --name <runner-name>
 ```
 
 To re-run from an earlier step:
 
 ```bash
-npx @redwoodjs/agent-ci retry --name <runner-name> --from-step <N>
+npx run-local-ci retry --name <runner-name> --from-step <N>
 ```
 
-Repeat until all jobs pass. Do not push to trigger remote CI when agent-ci can run it locally.
+Repeat until all jobs pass. Do not push to trigger remote CI when local-ci can run it locally.
 
 ## Machine-readable output (`--json`)
 
-For programmatic monitoring, add `--json` (or set `AGENT_CI_JSON=1`) to emit an NDJSON event stream on stdout — one JSON object per line. Events:
+For programmatic monitoring, add `--json` (or set `LOCAL_CI_JSON=1`) to emit an NDJSON event stream on stdout — one JSON object per line. Events:
 
 - `run.start` (with `schemaVersion: 1`, `runId`)
 - `job.start`, `job.finish` (`status: passed|failed`)

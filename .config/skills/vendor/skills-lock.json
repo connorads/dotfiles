@@ -7,12 +7,6 @@
       "skillPath": "skills/agent-browser/SKILL.md",
       "computedHash": "a674b7d81066e3cc471a7512ddb4ae724418cbfefa75cbb050b0dc430e4d57a0"
     },
-    "agent-ci": {
-      "source": "redwoodjs/agent-ci",
-      "sourceType": "github",
-      "skillPath": "skills/agent-ci/SKILL.md",
-      "computedHash": "cb70ff1e30519819f8f93edc59ee0e7e96cdbb26b716c4bd4d3c098331ed3638"
-    },
     "agent-device": {
       "source": "callstack/agent-device",
       "sourceType": "github",
@@ -223,6 +217,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "4a02bd01030d5ed6a5040c0382b9f56fbf02c7c8b8fd68aa1bcc55628963f760"
+    },
+    "local-ci": {
+      "source": "redwoodjs/agent-ci",
+      "sourceType": "github",
+      "skillPath": "skills/local-ci/SKILL.md",
+      "computedHash": "1aef09c4bd7cd48779cefa61c75103b0a828b63f9229e6c876909a90e7021dd4"
     },
     "make-interfaces-feel-better": {
       "source": "jakubkrehel/make-interfaces-feel-better",
