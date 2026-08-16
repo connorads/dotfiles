@@ -186,8 +186,26 @@ skills add <owner/repo> --skill <name>     # project scope → vendor/.agents/sk
 ```
 
 Use **fully-qualified** `owner/repo` + `--skill`, never fuzzy `skills find`. Pin to a
-`ref`/commit where the upstream offers one. Re-fetching is an unvetted git clone that
+`ref` where the upstream offers a **tag**. Re-fetching is an unvetted git clone that
 bypasses npm/aube/quarantine posture — review the clone before trusting it.
+
+**A bare commit SHA in `ref` breaks `skills update`.** The CLI shallow-clones, and GitHub
+won't serve an arbitrary SHA that way, so every refresh of that entry fails
+(`Failed to update <name>`) — silently stale until someone reads the output.
+A tag or branch name resolves fine. Verified against `petergyang/no-ai-slop`: identical
+entry updates cleanly with `ref` absent or a branch, fails with a SHA.
+
+A tag is only worth pinning if it is **current with the layout**. A tag cut before an
+upstream restructure still resolves, but `skillPath` then points at a file that doesn't
+exist in it, and `skills update` reports the skill as *deleted upstream* rather than
+erroring. Where the newest tag predates the move, leave `ref` off and track the default
+branch: refreshable and reviewed beats pinned and silently broken.
+
+**Skills also take a directory, not a file.** `skills add` copies the directory containing
+`SKILL.md`, and there is no file-only flag, so a repo whose `SKILL.md` sits at its root
+vendors the entire repo. Check what sits alongside the `SKILL.md` before adding; when
+nothing packages it cleanly and the file is self-contained, the manual bucket is the
+right home (see the deepsec note under Caveats).
 
 ### Update vendored skills
 
