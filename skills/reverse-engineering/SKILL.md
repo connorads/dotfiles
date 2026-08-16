@@ -44,6 +44,12 @@ reference.
    documentation and public artefacts first. Build an expected feature matrix so
    documented behaviour is not misreported as a binary discovery.
 
+   Search for an existing third-party client or SDK for the same target, in any
+   language. Someone may already have done this work, and their source names
+   endpoints, field semantics, and gotchas directly. Treat it as a hypothesis to
+   verify against the binary, never as ground truth: it may be stale, may target
+   the other platform's client, and may carry bugs of its own.
+
 3. Create a disposable workspace:
 
    ```bash
@@ -102,11 +108,17 @@ reference.
    version manager needs an explicit Go invocation.
 
 8. Recover metadata with at least two independent paths where practical.
-   A parser failure is evidence about that parser, not proof that metadata is
-   absent. Record conflicts and try the next native or runtime-aware tool.
+   A parser failure — or an empty search result — is evidence about your tool and
+   your command, not proof that the thing is absent. A mistyped path, a glob the
+   shell ate, or a wrong `--include` is silent in exactly the same way as genuine
+   absence, so reproduce a negative a second way before reporting it. Record
+   conflicts and try the next native or runtime-aware tool.
 
 9. Use raw strings as leads. For important literals, confirm offsets,
    pointer/length use, xrefs, or reachable code flow before claiming runtime use.
+   Search to locate, read to quote: take load-bearing literals — hostnames, keys,
+   field names, numeric constants — from the file itself, not from the terminal
+   output of a search pipeline.
 
 10. Import recovered names and types into a workbench only after container and
     runtime triage:
