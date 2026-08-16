@@ -325,8 +325,8 @@ and diff-review clones against the prior vetted copy before trusting them.
   `vendor/<name>/.agents/skills`.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
-  can't refresh them, and they are **absent from any `skills-lock.json` by design**. These three —
-  `govuk-style`, `ponytail`, `bro` — live in the manual bucket at `vendor/manual/<name>/`
+  can't refresh them, and they are **absent from any `skills-lock.json` by design**. These five —
+  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs` — live in the manual bucket at `vendor/manual/<name>/`
   (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
   / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
   `vendor/manual/<name>` sits exactly at; depth 6 under `.agents/skills/` was never reached).
@@ -362,6 +362,18 @@ and diff-review clones against the prior vetted copy before trusting them.
   (`x.com/dillon_mulroy/status/2079257150824620312`), so there's no repo/gist for `skills
   update` to refresh. Single `SKILL.md`, no scripts. Restates your last message in plain
   human language, no jargon; `disable-model-invocation: true` (deliberate `/bro` invoke only).
+
+  `deepsec` (the `/deepsec` scan runbook) and `deepsec-docs` (init, config, matchers,
+  plugins) — from [`vercel-labs/deepsec`](https://github.com/vercel-labs/deepsec)
+  (Apache-2.0, taken at `d8b133d`), one `SKILL.md` each plus `LICENSE` for attribution.
+  Manual because **neither SKILL.md sits in a skill directory**: `skills add` copies the
+  directory containing the file, and upstream's two live at the repo root (751 files,
+  5.9 MB, including `pnpm-lock.yaml` — which `lockfile-audit` would then sweep on every
+  `up`) and at `packages/deepsec/` (109 files, 108 of them the npm package's TypeScript
+  source). Both files are self-contained prose citing only runtime paths inside a target
+  project's `.deepsec/`, never a vendored sibling, so the source trees were pure carrying
+  cost. The CLI they drive is `npm:deepsec` in mise. Refresh by re-fetching the two files
+  from upstream and diffing against these copies.
 
 - `connorads/skills` public repo is **deferred** — public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
