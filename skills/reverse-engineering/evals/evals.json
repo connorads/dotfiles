@@ -61,6 +61,19 @@
         "Distinguishes a client-side constant from a server-enforced limit",
         "Records request and response pairs to files as the evidence for each claim"
       ]
+    },
+    {
+      "id": 6,
+      "name": "android-react-native-hermes-second-runtime",
+      "prompt": "statically inspect this android app and work out whether i can export my own data. dont launch it. jadx only shows a small native file-sharing module, so maybe that is all there is?",
+      "assertions": [
+        "Researches official product documentation before reversing authentication",
+        "Does not treat the DEX tree as the complete application",
+        "Detects the React Native Hermes bundle under assets",
+        "Checks the Hermes bytecode version before choosing a decompiler",
+        "Uses native bridge code and Hermes call sites as independent evidence",
+        "Does not reconstruct behaviour from concatenated raw strings alone"
+      ]
     }
   ]
 }
