@@ -96,6 +96,48 @@ not necessarily all the code.
    costs nothing and gives package id, `version_code`, `version_name`, min/target
    SDK, and the permission list without invoking a tool.
 
+## Detect Hybrid Application Runtimes
+
+DEX may contain only the platform shell. Before treating the Java/Kotlin tree
+as the application, inspect APK assets and native libraries for a second
+runtime:
+
+```bash
+find out/resources -type f | \
+  rg '/assets/.*(index\.android\.bundle|\.bundle|\.hbc|\.js)$|libflutter\.so'
+```
+
+For React Native, read `MainApplication` to establish whether Hermes is
+enabled, then identify the bundle:
+
+```bash
+file out/resources/<base-apk>/assets/index.android.bundle
+```
+
+If it is Hermes bytecode and `uvx` is available, decompile it separately:
+
+```bash
+uvx --from 'hermes-dec>=0.1.2' hbc-decompiler \
+  out/resources/<base-apk>/assets/index.android.bundle \
+  /tmp/re-<target-name>/decompiled.js
+```
+
+`hermes-dec` support is bytecode-version-specific. Version 96 requires 0.1.2
+or newer; check the version reported by `file` against the tool's release notes
+for other versions. If `uvx` is unavailable, use another isolated Python
+environment rather than installing into the system interpreter.
+
+Treat the layers separately:
+
+- Java/Kotlin may define activities, native modules, and platform bridges.
+- Hermes may hold application workflows, API calls, models, and export logic.
+- A native method proves that JavaScript can call the bridge, not that a
+  particular screen reaches it.
+
+Raw strings from Hermes are leads only. Adjacent constants are commonly
+concatenated from unrelated functions. Confirm important findings in
+decompiled functions or disassembly.
+
 ## Working an Obfuscated Tree
 
 Assume R8. It is the default from AGP 3.4 and AGP 8.x offers no supported way to
