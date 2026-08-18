@@ -103,6 +103,10 @@ Writing config is not enough - prove each layer works:
 - **The gate gates**: attempt a deliberately bad commit (trailing whitespace,
   a lint error) and confirm hk rejects it. Config that exists but doesn't
   fire is the most common bootstrap failure; this catches it. Clean up after.
+  Run this test only **after** the hardening commit lands: hk's `stash = "git"`
+  stashes unstaged changes during the hook, so uncommitted `package.json` /
+  lockfile edits revert to pre-hardening versions and `pnpm exec <linter>`
+  fails with a misleading "Command not found" instead of the lint error.
 
 ### 5. Seed docs
 
