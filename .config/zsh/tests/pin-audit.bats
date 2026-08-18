@@ -19,12 +19,18 @@ EOF
 }
 
 # Probe stubs keyed by env vars so each test picks its scenario:
-#   SRT_LATEST, COS_JSON; unset any of
+#   SRT_LATEST, COS_JSON, OUTDATED_JSON; unset any of
 #   MISE_OK/GH_OK/NPM_OK to simulate that probe failing (offline).
 write_probe_stubs() {
+  # `mise` answers two probes: `ls-remote <tool>` (rembg) and the drift sweep
+  # `outdated --bump --json`. The latter defaults to an empty object - no tool
+  # has drifted - so the pre-existing cases stay FLAG-free.
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 [ -n "${MISE_OK:-}" ] || exit 1
+case "$1" in
+  outdated) echo "${OUTDATED_JSON:-{\}}" ; exit 0 ;;
+esac
 case "$2" in
   pipx:rembg) echo "${REMBG_LATEST:-2.0.76}" ;;
 esac
@@ -99,6 +105,43 @@ setup() {
   run_zsh_function "$AUDIT"
   [ "$status" -eq 0 ]
   [[ "$output" == *"SKIP bun absent"* ]]
+}
+
+# The drift sweep: `up` runs `mise upgrade`, which only moves within a range, so
+# a range pin the newest release has outgrown is invisible until something says
+# so. These pin that report end-to-end, JSON boundary included.
+@test "a range pin the newest release outgrew is FLAGged" {
+  OUTDATED_JSON='{"uv":{"requested":"0.11","current":"0.11.33","bump":"0.12","latest":"0.12.4"}}' \
+    run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"FLAG uv pinned 0.11, 0.12.4 available"* ]]
+  [[ "$output" == *"mise upgrade --bump uv"* ]]
+}
+
+@test "a pin the newest release still satisfies is not FLAGged" {
+  OUTDATED_JSON='{"uv":{"requested":"0.11","current":"0.11.33","bump":null,"latest":"0.11.33"}}' \
+    run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OK   drift - every range pin still covers the newest release"* ]]
+  [[ "$output" != *"FLAG"* ]]
+}
+
+# The deliberate holds are the conditional checks' business; re-flagging them
+# every `up` is what would train the eye to skip the whole report.
+@test "deliberate pins are excluded from drift" {
+  OUTDATED_JSON='{"npm:executor":{"requested":"1","current":"1.5.40","bump":"2","latest":"2.0.0"}}' \
+    run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"FLAG npm:executor"* ]]
+}
+
+# Unreadable output must not read as "nothing drifted" - the false OK this
+# whole audit exists to avoid.
+@test "unparseable drift output degrades to SKIP, not to an all-clear" {
+  OUTDATED_JSON='not json' run_zsh_function "$AUDIT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SKIP drift - \`mise outdated --bump\` failed"* ]]
+  [[ "$output" != *"OK   drift"* ]]
 }
 
 @test "removed pins self-report as removable checks" {

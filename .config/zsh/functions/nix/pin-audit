@@ -1,10 +1,14 @@
 #!/usr/bin/env zsh
-# pin-audit: recheck conditional version pins so escape hatches don't age into permanence
+# pin-audit: recheck version pins so escape hatches and stale ranges don't age into permanence
 # Wrapper around the TypeScript implementation at ~/src/pin-audit (bun, zero
-# runtime deps). Report-only companion to lockfile-audit: every exact pin /
-# trust exclude that exists because of a temporary upstream condition is
-# re-probed there. FLAG means the condition has cleared - action the loosening
-# by hand. Run by `up` (non-frozen) and `mise run pin-audit`.
+# runtime deps). Report-only companion to lockfile-audit, covering two classes:
+#   conditional  every exact pin / trust exclude that exists because of a
+#                temporary upstream condition is re-probed; FLAG means the
+#                condition has cleared - action the loosening by hand.
+#   drift        every *range* pin the newest release has outgrown. `up` runs
+#                `mise upgrade`, which only moves within a range, so these are
+#                otherwise invisible - and nobody wrote a condition to recheck.
+# Run by `up` (non-frozen) and `mise run pin-audit`.
 #
 # Verdicts: OK   condition still holds, keep the pin
 #           FLAG condition cleared, loosen/remove the pin

@@ -6,13 +6,15 @@
 // Verdict wording is byte-for-byte the zsh original's; the bats suite is the
 // differential oracle, so changing the format is a separate job.
 //
-// Not audited - intentional (deliberate pins with no recheck condition):
+// Not audited by a *conditional* check - deliberate pins with no recheck
+// condition. DELIBERATE_PINS below is this list made executable, because the
+// drift check would otherwise re-flag all four on every `up`:
 //   npm:executor = "1"  (mise config.toml) - 2.0.0 is a stray off-`latest`
 //     major, so `mise upgrade --bump` would regress; hold on 1.x by design.
 //   amp exact pin (mise config.toml) - Amp releases several times a day and is
 //     exempt from the age gate; the global exact pin is the control itself.
 
-import type { MiseConfig, PinState, Probe, ToolEntry, Verdict } from "./types.ts";
+import type { DriftRow, MiseConfig, PinState, Probe, ToolEntry, Verdict } from "./types.ts";
 
 /** Upstream probes as a port; the adapters live in ../shell/probe.ts. */
 export interface Probes {
@@ -22,13 +24,16 @@ export interface Probes {
   readonly npmLatest: (pkg: string) => Promise<Probe>;
   /** Newest versioned non-prerelease release tag on a GitHub repo. */
   readonly ghStableRelease: (repo: string) => Promise<Probe>;
+  /** Every tool's requested range vs newest release (`mise outdated --bump`). */
+  readonly miseOutdatedBump: () => Promise<Probe>;
 }
 
 export interface Check {
   readonly id: string;
   readonly readPin: (cfg: MiseConfig) => PinState;
   readonly probe: (pin: PinState) => Promise<Probe>;
-  readonly judge: (pin: PinState, probe: Probe, cfgPath: string) => Verdict;
+  /** One verdict per conditional pin; the drift check emits one per tool. */
+  readonly judge: (pin: PinState, probe: Probe, cfgPath: string) => Verdict | readonly Verdict[];
 }
 
 /** A pin is present only when the entry exists and carries a version. */
@@ -135,11 +140,68 @@ const cosineCli = (probes: Probes): Check => ({
   },
 });
 
+/**
+ * Deliberate pins, excluded from drift so the report stays worth reading. Two
+ * are already covered by a conditional check above (which states the condition
+ * for lifting them); the other two are documented holds in the file header.
+ * A range pin absent from this set and drifting is exactly the bug this check
+ * exists to surface - `npm:vercel = "50"` sat 9 majors behind for four months
+ * because `up` runs `mise upgrade`, which only ever moves *within* a range.
+ */
+const DELIBERATE_PINS: ReadonlySet<string> = new Set([
+  "npm:executor",
+  "npm:@anthropic-ai/sandbox-runtime",
+  "pipx:rembg",
+  "amp",
+]);
+
+/** `usage 3 -> 5` reads as further behind than `uv 0.11 -> 0.12`; say so. */
+const majorsBehind = (requested: string, bump: string): string => {
+  const lead = (range: string): number | null => {
+    const first = range.split(".")[0];
+    return first !== undefined && /^[0-9]+$/.test(first) ? Number(first) : null;
+  };
+  const from = lead(requested);
+  const to = lead(bump);
+  if (from === null || to === null || to - from < 2) return "";
+  return ` (${to - from} majors)`;
+};
+
+/**
+ * Guard: none - this is the unconditional sweep. Every check above watches one
+ * *documented* escape hatch; this one watches the range pins nobody wrote a
+ * condition for, which is where drift hides. Report-only, like the rest.
+ */
+const drift = (probes: Probes): Check => ({
+  id: "drift",
+  readPin: () => ({ kind: "always" }),
+  probe: () => probes.miseOutdatedBump(),
+  judge: (_pin, probe, cfgPath) => {
+    if (probe.kind !== "outdated") {
+      return { kind: "skip", detail: "drift - `mise outdated --bump` failed (offline?)" };
+    }
+    const drifted = probe.rows.filter(
+      (row: DriftRow) => row.bump !== null && !DELIBERATE_PINS.has(row.tool),
+    );
+    if (drifted.length === 0) {
+      return { kind: "ok", detail: "drift - every range pin still covers the newest release" };
+    }
+    return drifted.map((row) => ({
+      kind: "flag" as const,
+      detail:
+        `${row.tool} pinned ${row.requested}, ${row.latest} available` +
+        `${majorsBehind(row.requested, row.bump ?? "")} - \`mise upgrade\` cannot cross this ` +
+        `range; bump the pin or run \`mise upgrade --bump ${row.tool}\` (${cfgPath} [tools])`,
+    }));
+  },
+});
+
 /** Declaration order is output order, so the report stays stable. */
 export const buildChecks = (probes: Probes): readonly Check[] => [
   rembg(probes),
   sandboxRuntime(probes),
   cosineCli(probes),
+  drift(probes),
 ];
 
 /**
@@ -147,10 +209,13 @@ export const buildChecks = (probes: Probes): readonly Check[] => [
  * runs synchronously up to its own await), so the three independent upstream
  * calls overlap; Promise.all preserves declaration order in the output.
  */
-export const audit = (cfg: MiseConfig, checks: readonly Check[]): Promise<Verdict[]> =>
-  Promise.all(
+export const audit = async (cfg: MiseConfig, checks: readonly Check[]): Promise<Verdict[]> => {
+  const judged = await Promise.all(
     checks.map(async (check) => {
       const pin = check.readPin(cfg);
       return check.judge(pin, await check.probe(pin), cfg.path);
     }),
   );
+  // A check yields one verdict, except drift, which yields one per drifted tool.
+  return judged.flatMap((verdicts) => (Array.isArray(verdicts) ? [...verdicts] : [verdicts]));
+};
