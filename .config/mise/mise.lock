@@ -553,7 +553,7 @@ version = "7.0.2"
 backend = "npm:typescript"
 
 [[tools."npm:vercel"]]
-version = "50.44.0"
+version = "59.0.0"
 backend = "npm:vercel"
 
 [[tools."npm:wrangler"]]
