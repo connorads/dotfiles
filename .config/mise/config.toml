@@ -140,7 +140,7 @@ fnox = "1"
 "npm:sharp-cli" = "5"
 "npm:skills" = "1"
 "npm:svgo" = "4"
-"npm:vercel" = "50"
+"npm:vercel" = "latest"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
