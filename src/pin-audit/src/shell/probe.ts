@@ -69,4 +69,39 @@ const ghStableRelease = async (repo: string): Promise<Probe> => {
   return { kind: "stableRelease", tag: tag === "" ? null : tag };
 };
 
-export const probes: Probes = { miseLatest, npmLatest, ghStableRelease };
+/** A `mise outdated --bump --json` value, before it is trusted as a DriftRow. */
+const isRow = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const str = (value: unknown): string | null => (typeof value === "string" ? value : null);
+
+/**
+ * `mise outdated --bump --json` keys tools by config key and sets `bump` only
+ * when the newest release falls outside the requested range. Parsed rather than
+ * column-scraped: the table's alignment is presentation, and mis-reading it as
+ * "no drift" would be the same silent false OK the TOML port removed.
+ */
+const miseOutdatedBump = async (): Promise<Probe> => {
+  const ran = await run(["mise", "outdated", "--bump", "--json"]);
+  if (!ran.ok) return { kind: "unavailable", why: "mise outdated failed" };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(ran.stdout);
+  } catch {
+    return { kind: "unavailable", why: "mise outdated returned invalid JSON" };
+  }
+  if (!isRow(parsed)) return { kind: "unavailable", why: "mise outdated returned no object" };
+  const rows = Object.entries(parsed).flatMap(([tool, value]) => {
+    if (!isRow(value)) return [];
+    const requested = str(value["requested"]);
+    const current = str(value["current"]);
+    const latest = str(value["latest"]);
+    // A row missing any of these is unreadable, not undrifted - drop it rather
+    // than default it to "fine" and report a false OK.
+    if (requested === null || current === null || latest === null) return [];
+    return [{ tool, requested, current, bump: str(value["bump"]), latest }];
+  });
+  return { kind: "outdated", rows };
+};
+
+export const probes: Probes = { miseLatest, npmLatest, ghStableRelease, miseOutdatedBump };

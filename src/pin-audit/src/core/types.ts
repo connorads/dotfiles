@@ -28,7 +28,29 @@ export type PinState =
   /** An exact version pin. */
   | { readonly kind: "pinned"; readonly version: string }
   /** A boolean escape hatch, e.g. `prerelease = true`. */
-  | { readonly kind: "flagSet" };
+  | { readonly kind: "flagSet" }
+  /**
+   * The check reads no pin from config and so is always active. `mise
+   * outdated` reports each tool's requested range itself, so the drift check
+   * needs nothing from the parsed `[tools]` table.
+   */
+  | { readonly kind: "always" };
+
+/**
+ * One tool as `mise outdated --bump --json` reports it. `bump` is the range the
+ * pin would move to and is null while the newest release still satisfies the
+ * current range - so a non-null `bump` *is* the drift predicate.
+ */
+export interface DriftRow {
+  /** Config key, backend prefix included: `npm:vercel`, `pipx:rembg`, `uv`. */
+  readonly tool: string;
+  /** The range as written in `[tools]`. */
+  readonly requested: string;
+  readonly current: string;
+  /** Non-null only when the newest release falls outside `requested`. */
+  readonly bump: string | null;
+  readonly latest: string;
+}
 
 /** What upstream told us. Probe failure is a value, never a throw. */
 export type Probe =
@@ -37,7 +59,9 @@ export type Probe =
   /** Newest version upstream publishes; null when the listing was empty. */
   | { readonly kind: "latestVersion"; readonly version: string | null }
   /** Newest versioned non-prerelease tag; null when none exists yet. */
-  | { readonly kind: "stableRelease"; readonly tag: string | null };
+  | { readonly kind: "stableRelease"; readonly tag: string | null }
+  /** Every tool mise resolved, drifted or not; the check filters. */
+  | { readonly kind: "outdated"; readonly rows: readonly DriftRow[] };
 
 /**
  * OK   condition still holds, keep the pin
