@@ -107,6 +107,11 @@ fnox = "1"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
 "github:CosineAI/argusred-dist" = { version = "0.1", bin = "argusred" }
+# vercel-labs/fx (Zig coding-agent harness), not the registry's `fx`, which is
+# antonmedv's JSON viewer - a name clash, so spell the owner. Its release
+# workflow attests nothing, so the exact pin is the only control: pre-1.0 and
+# experimental, where every release is a breaking one. Bump by hand.
+"github:vercel-labs/fx" = "0.0.3"
 
 # OS-level sandbox runtime (srt) wrapping CLI agents via agent-sandbox. Exact
 # pin: config schema is pre-1.0 and churns; the validate-before-mv render + the
