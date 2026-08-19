@@ -934,7 +934,7 @@ Change as a set:
   raised the flag, silently disarming a session the pill reports as ON-LID.
 - [`scripts/caffeine-popup.sh`](./scripts/caffeine-popup.sh) — `prefix + Alt+k`
   key-loop popup (mem-popup shape). OFF: `i` indefinite, `t` timed
-  (30m/1h/2h/4h/8h via fzf), `l` lid-closed (straight to the same picker — lid
+  (30m/1h/2h/4h/8h/12h via fzf), `l` lid-closed (straight to the same picker — lid
   mode has no indefinite path to offer), `q` close. ON / ON-LID: `+` (or `=`) add
   time to what is left — an fzf picker whose rows name the resulting *end time*,
   because "will it outlast the run" is the question being asked and "+1 hour"

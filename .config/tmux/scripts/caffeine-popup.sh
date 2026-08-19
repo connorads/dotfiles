@@ -137,7 +137,7 @@ choose_timed() {
 	_mode=${1:-idle}
 	_header='Keep awake for…'
 	[ "$_mode" = "lid" ] && _header='Keep awake with the lid closed for…'
-	_choice=$(printf '30 minutes\t1800\n1 hour\t3600\n2 hours\t7200\n4 hours\t14400\n8 hours\t28800\n' |
+	_choice=$(printf '30 minutes\t1800\n1 hour\t3600\n2 hours\t7200\n4 hours\t14400\n8 hours\t28800\n12 hours\t43200\n' |
 		fzf --reverse --delimiter="$(printf '\t')" --with-nth=1 \
 			--header="$_header" 2>/dev/null) || return 0
 	_secs=$(printf '%s' "$_choice" | cut -f2)
@@ -167,7 +167,7 @@ choose_extend() {
 	_mode=$(caffeine_mode)
 	_now=$(date +%s)
 	_rows=$(
-		for _opt in '30 minutes:1800' '1 hour:3600' '2 hours:7200' '4 hours:14400' '8 hours:28800'; do
+		for _opt in '30 minutes:1800' '1 hour:3600' '2 hours:7200' '4 hours:14400' '8 hours:28800' '12 hours:43200'; do
 			_add=${_opt#*:}
 			printf '+%s  (until %s)\t%s\n' "${_opt%:*}" \
 				"$(caffeine_clock_at $((_now + _rem + _add)))" "$_add"
