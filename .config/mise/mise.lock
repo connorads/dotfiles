@@ -398,6 +398,25 @@ checksum = "sha256:ceebc138b413efd8bcd2db201097ee74486d989f3ec899318860f1bf0b7d3
 url = "https://github.com/tamnd/kage/releases/download/v0.3.11/kage_0.3.11_darwin_arm64.tar.gz"
 url_api = "https://api.github.com/repos/tamnd/kage/releases/assets/497441556"
 
+[[tools."github:vercel-labs/fx"]]
+version = "0.0.3"
+backend = "github:vercel-labs/fx"
+
+[tools."github:vercel-labs/fx"."platforms.linux-arm64"]
+checksum = "sha256:867eb2d669693ae0b5e3453a571230ba3b67465626d566cbca83ae8432b1e03a"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.3/fx-linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/519961716"
+
+[tools."github:vercel-labs/fx"."platforms.linux-x64"]
+checksum = "sha256:23d32e60233b24581b9ce1965b65bab6a46d5693a24add7817854aef3adf5bfb"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.3/fx-linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/519961714"
+
+[tools."github:vercel-labs/fx"."platforms.macos-arm64"]
+checksum = "sha256:87c4939621b0c028e4506f18416b8722ded0dbace6358380011400c8ed127a8b"
+url = "https://github.com/vercel-labs/fx/releases/download/v0.0.3/fx-macos-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/vercel-labs/fx/releases/assets/519961713"
+
 [[tools.gitleaks]]
 version = "8.30.1"
 backend = "aqua:gitleaks/gitleaks"
