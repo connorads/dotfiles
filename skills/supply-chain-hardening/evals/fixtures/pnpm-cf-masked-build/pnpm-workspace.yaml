@@ -1,0 +1,7 @@
+minimumReleaseAge: 5760
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+
+peerDependencyRules:
+  allowedVersions:
+    eslint-plugin-jsx-a11y>eslint: "10"
