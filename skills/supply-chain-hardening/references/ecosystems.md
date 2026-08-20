@@ -106,6 +106,23 @@ blockExoticSubdeps: true         # v11 default; explicit keeps the posture audit
   global `ignoreScripts` masks it locally. Record per-package approvals in
   `pnpm-workspace.yaml` `allowBuilds` (pnpm 11 reads only the workspace YAML
   for this, not `package.json#pnpm`).
+- **The mask hides the missing decision, not just the error.** Where a global
+  `ignoreScripts` is set, nothing local surfaces an undeclared build script:
+  a normal install is green, a *cold* install after deleting `node_modules`
+  is green, setting `strictDepBuilds: true` explicitly is still green (there
+  is no gate to fail — the scripts were never attempted), and pnpm's own
+  reporting is computed under the same setting, so `pnpm ignored-builds` and
+  `node_modules/.modules.yaml`'s `ignoredBuilds`/`pendingBuilds` report the
+  mask rather than the decision. Verified on pnpm 11.20.0: `.modules.yaml`
+  carries no merged `allowBuilds` view at all. So the first machine without
+  the mask — CI, a platform build, a teammate — is where it fails.
+  `pnpm install --ignore-scripts=false` does reproduce it locally, but it
+  reproduces by *running the scripts*, so it is a de-protection, not a check.
+  Assert the decisions statically instead: a pre-commit checker that reads
+  installed manifests against `allowBuilds` (the hk skill ships
+  `assets/pnpm-build-scripts-check.mjs`). Its limit: the installed tree is
+  platform-resolved, so a `linux-x64`-only postinstall needs a CI job on the
+  target platform.
 - macOS gotcha: the global config lives at `~/Library/Preferences/pnpm/config.yaml`,
   not `~/.config/pnpm/` — verify which file the tool actually reads.
 

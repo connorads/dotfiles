@@ -1,0 +1,19 @@
+{
+  "name": "site",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "astro build",
+    "deploy": "pnpm run build && wrangler deploy",
+    "prepare": "[ -n \"$CI\" ] && exit 0 || git config --local core.hooksPath .hk-hooks"
+  },
+  "packageManager": "pnpm@11.20.0",
+  "dependencies": {
+    "astro": "^7.0.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.48.0"
+  }
+}

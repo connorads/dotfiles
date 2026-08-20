@@ -49,7 +49,12 @@ machine or global config, and an agent mid-task when a gate fires.
    `minimumReleaseAgeStrict = true`; pnpm's *built-in* default gate is
    non-strict, though explicitly configuring the gate flips strict on).
    After configuring any gate, verify it fails closed — try to install
-   something that should be refused.
+   something that should be refused. **When a broader control masks a
+   narrower one, that verification is unavailable**: the narrow gate has
+   nothing to refuse, so it stays silent locally and fires on the first
+   machine without the mask. Reproducing it means turning the broad control
+   off, which is a de-protection, not a check — assert the missing decision
+   statically instead (read the config, run no install).
 5. **The agent proposes; the user decides; something boring verifies.**
    Allowlisting, bypassing, and weakening are the user's security decisions.
    Enforcement belongs in config, hooks, and CI — never in anyone's memory.
@@ -150,17 +155,24 @@ working — the burden of proof is on the bypass.
    however small the exception seems. Present the narrowest option and what
    it trades away.
 4. **Allowlist narrowly**: per-package `allowBuilds`/`approve-scripts`/
-   scoped exclude — never a global disable, never `ignore-scripts=false`
-   globally, never removing the gate.
+   scoped exclude — never a global disable, never `ignore-scripts=false`,
+   never removing the gate. **Project-level is not the narrow option**: it
+   is not per-package, and it re-arms scripts the per-package allowlist
+   does not govern — the *root package's own* `preinstall`/`install`/
+   `postinstall` run again (silently arming repo git hooks from `prepare`,
+   among other things), and every `allowBuilds: { x: true }` in the repo
+   flips from inert to executing. Turning the mask off changes what runs;
+   it is a de-protection, never a diagnostic.
 5. **Document scope, reason, and exit criterion in the config** where the
    exception lives — see [references/exceptions.md](references/exceptions.md)
    for the template and worked examples (publishing-bug-vs-attack, aged
    backports).
 
 Hard lines: never `--no-verify` past a supply-chain hook; never disable a
-gate globally to save a round-trip; a one-off env/flag bypass is for
-human-attended one-shots only (the per-tool asymmetry — which tools even
-offer one — is in [references/ecosystems.md](references/ecosystems.md)).
+gate globally *or project-wide* to save a round-trip; a one-off env/flag
+bypass is for human-attended one-shots only (the per-tool asymmetry — which
+tools even offer one — is in
+[references/ecosystems.md](references/ecosystems.md)).
 
 ## Composition with neighbouring skills
 
