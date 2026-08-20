@@ -78,6 +78,7 @@ Identify:
 | `.dependency-cruiser.*` or `check:deps` exists | whole-graph architecture check |
 | `.yamllint*` exists | yamllint |
 | Team/shared repo | no-commit-to-branch (pre-commit), branch guard (pre-push). For advisory private-repo protection with owner opt-out, use the soft-protected pre-push asset below. |
+| `pnpm-lock.yaml` exists | pnpm build-script decision check — copy `assets/pnpm-build-scripts-check.mjs` (see below) |
 | Test runner detected | test step(s) — vitest/jest/go test/cargo test/pytest |
 
 ### 3. Wire the hooks
@@ -274,6 +275,48 @@ Pattern:
   `git config --local hooks.allowMainPush true`.
 - Keep one-off automation escape hatch explicit: `HK_ALLOW_MAIN_PUSH=1 git push`.
 - Document the advisory nature and opt-out in repo docs/agent instructions.
+
+### pnpm build-script decision check
+
+A dependency with a lifecycle script (`preinstall`/`install`/`postinstall`, or
+a `binding.gyp`) needs a decision recorded in `pnpm-workspace.yaml`
+`allowBuilds`. Without one, pnpm 11 fails the install closed
+(`ERR_PNPM_IGNORED_BUILDS`) — but **only where nothing masks its check**. On a
+machine with a global `ignoreScripts`, the install is green, a cold reinstall
+is green, and the failure lands in CI or a platform build instead.
+
+Copy `assets/pnpm-build-scripts-check.mjs` to `.hk-hooks/` and glob the step on
+the files that can change the dependency tree:
+
+```pkl
+["pnpm-build-scripts"] {
+    glob = List("package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml")
+    check = "node .hk-hooks/pnpm-build-scripts-check.mjs"
+}
+```
+
+Pattern:
+
+- **Read config, run nothing.** The checker parses installed manifests and
+  `pnpm-workspace.yaml`. pnpm has no detect-without-execute mode, and its own
+  reporting (`pnpm ignored-builds`, `.modules.yaml`) is computed under the
+  masking setting, so it reports the mask rather than the missing decision. The
+  one local command that does reproduce CI —
+  `pnpm install --ignore-scripts=false` — re-enables the scripts the posture
+  blocks, so it is not a check.
+- **Never brick what it can't evaluate**: absent `node_modules`, or no pnpm
+  project, warns and exits 0 (same posture as a typecheck step on a fresh
+  clone).
+- `--json` for machine consumption; the human output caps the listing and
+  reports the true total.
+- **Whether a package gets `true` or `false` is the user's security decision** —
+  the supply-chain-hardening skill owns that call. This step only insists the
+  decision exists.
+
+Known limit: it reads the *installed* tree, so it sees the optional
+dependencies resolved for this platform. A postinstall that only ships in a
+`linux-x64` package is invisible to any local check; only a CI job on the
+target platform closes that gap.
 
 ## Pkl Syntax Reference
 
@@ -503,5 +546,7 @@ hooks {
 - `references/output-noise.md` — how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
 - `assets/soft-protected-branch-pre-push.sh` — copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
 - `tests/soft-protected-branch-pre-push.bats` — behavioural tests for the advisory branch-protection asset
+- `assets/pnpm-build-scripts-check.mjs` — copy to `.hk-hooks/` to fail a commit when a dependency's build script has no `allowBuilds` decision
+- `tests/pnpm-build-scripts-check.bats` — behavioural tests for the build-script decision checker
 - [hk docs](https://hk.jdx.dev) — official documentation
 - `hk builtins` — list all available built-in linters
