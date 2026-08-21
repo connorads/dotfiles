@@ -44,18 +44,14 @@ Patterns:
 ### On killing your own thing
 
 > "The thing with startups, specifically in the dev tool world, you often have to kill your own thing, because you discover there's a better way of doing things. It's painful, because you already have a set of people that like your current thing... If you think long-term, if there is a better way to do it, your thing eventually just goes away... So you have no option."
+-- verbatim | podcast: JS Party #274, Changelog, 2023-05 | https://changelog.com/jsparty/274
 
 ### On shedding users
 
 > "We've had waves between the different versions of SST where we've definitely lost people, because they didn't like the direction we went... But with each wave, we've gotten a lot better, and gotten a lot more accessible... But it did require shedding some people, and it's always painful."
+-- verbatim | podcast: JS Party #274, Changelog, 2023-05 | https://changelog.com/jsparty/274
 
 ### On AI productivity
-
-> "The feeling of productivity is not the same as actual productivity. Be honest with yourself."
-
-> "You feel like you're accessing something nobody else can do."
-
-> "The productivity feeling is real. The productivity isn't."
 
 > "Sometimes doing it yourself is faster. For certain work, the process of doing it yourself is how you figure out what needs to be done."
 
@@ -81,15 +77,13 @@ Patterns:
 
 > "One of the most over-engineered, craziest code bases I've ever jumped into."
 
-> "CloudFormation is a black box that does not run locally."
-
-> "CDK doesn't create the infrastructure you define."
-
 ### On career
 
 > "You're just a programmer and you can do literally anything."
+-- verbatim | video: Developer career growth and asymmetric bets with Dax Raad, egghead.io, 30:53 | https://egghead.io/developer-career-growth-and-asymmetric-bets-with-dax-raad~nzzun
 
 > "The front door is not an option. You got to find some weird-ass side door to go through."
+-- verbatim | video: Developer career growth and asymmetric bets with Dax Raad, egghead.io, 35:18 | https://egghead.io/developer-career-growth-and-asymmetric-bets-with-dax-raad~nzzun
 
 ### On product quality
 
@@ -142,6 +136,28 @@ Patterns:
 ### On Amazon
 
 > "Nothing is literally stopping them besides a deep understanding of what it takes to make companies that can last a hundred years. Amazon ruthlessly drives down costs because they know the moment they leave the door open too far, someone will eventually come in and supplant them."
+
+## Misattributed
+
+Kept and labelled rather than deleted, so a future author who meets them elsewhere does not
+add them back.
+
+> "CloudFormation is a black box that does not run locally."
+-- misattributed | actual: Jay Vasallo (@jayair), SST co-founder, "Moving away from CDK", sst.dev, 2024-01-29 | https://sst.dev/blog/moving-away-from-cdk
+
+> "CDK doesn't create the infrastructure you define."
+-- misattributed | actual: Jay Vasallo, same post, where it is the article's own pull-quote | https://sst.dev/blog/moving-away-from-cdk
+
+Dax's own equivalent position is that CDK is "a yaml generator" (Software Huddle podcast).
+Handing a co-founder's blog lines to the better-known name is the commonest defect in this
+corpus - see references/attribution.md, signature 5.
+
+Three AI-productivity lines were removed outright: "The feeling of productivity is not the
+same as actual productivity", "The productivity feeling is real. The productivity isn't",
+and "You feel like you're accessing something nobody else can do". Their only occurrence
+anywhere is a Codacy blog recap of the AI Giants podcast, in the recapper's own voice, with
+no transcript or clip attesting them. The one phrase that post does quote him saying is
+"the sinister thing about multitasking". This is signature 4, recap-blog capture.
 
 ## Technical Opinions
 
