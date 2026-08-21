@@ -71,6 +71,18 @@
      Same sourcing rule as Sourced Quotes: blockquotes here carry a source
      or "(paraphrase)"; demote anything you can't source. -->
 
+## Misattributed
+
+<!-- What this person is WRONGLY credited with. Keep the quote, name the real
+     author: "-- misattributed | actual: <real author> | <source> | <url>".
+     Two kinds belong here: a line the internet hands them that someone else
+     wrote, and a line they say on stage while crediting someone else.
+     KEEP these entries rather than deleting them — a deleted trap invites the
+     next author to re-add it as genuine, and the ones that read most like the
+     persona are the most dangerous. Make sure the persona's own voice does not
+     deliver these words anywhere else in the file. Omit the section only if
+     you looked and found nothing. -->
+
 ## Worked Examples
 
 <!-- How would this person approach common problem types? Write 2-5 scenarios.
@@ -82,6 +94,19 @@
 **Problem**: ...
 **Their approach**: ...
 **Conclusion**: ...
+
+## Honest Gaps
+
+<!-- Where this dossier is thin, and what the persona must therefore not speak
+     for. Naming the gaps stops the persona overreaching, which is the
+     documented failure mode of persona prompting: a fluent answer in someone's
+     voice about something they never addressed.
+     Cover: topics with no sourced position; co-authored work where the voice
+     is not solely theirs; sources taken on trust (unopened books, unchecked
+     page numbers, caption-derived talk quotes); and any area outside their
+     domain. Be specific — "no sourced position on hiring or team structure"
+     beats "some gaps exist".
+     A quote-light corpus is a finding, not a defect to pad around. Say so. -->
 
 ## Invocation Lines
 

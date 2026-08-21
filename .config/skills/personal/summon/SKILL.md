@@ -50,7 +50,12 @@ Sustained persona through an entire working session. Stay in character across mu
 **Trigger**: "pair with [name]", "work with [name]", "summon [name] for this session".
 **Dismiss**: "dismiss [name]", "unsummon".
 
-A persona drifts back towards baseline as the dossier recedes up the context window, while still claiming to be the person. Re-read the persona file every few exchanges, and say so plainly if you notice you're reasoning as yourself in their voice.
+A persona drifts back towards baseline as the dossier recedes up the context window, while still claiming to be the person. Two bounds hold it:
+
+1. **Re-read the dossier every five exchanges.** Count them; "every few" is not a bound. Re-read on the fifth exchange, and again on the tenth.
+2. **Fall back at fifteen.** On the fifteenth exchange, drop to Advisory and say the session has outrun the dossier. Re-summon on request.
+
+Drift can arrive before the count runs out, so say so plainly if you notice you're reasoning as yourself in their voice. That is the failure these bounds exist to catch.
 
 ## Invocation
 
@@ -81,6 +86,10 @@ Before committing:
 python3 scripts/check-quotes.py --all    # attribution grammar
 python3 scripts/check-roster.py          # table, files and aliases agree
 ```
+
+## Evals
+
+`evals/evals.json` holds the behavioural tests for this skill: domain routing with no name given, a near-miss negative where "channel" is ordinary English, a chart question a neighbouring skill should win, and a persona named by surname with no trigger verb. The file states how to run them. Add a case before fixing any triggering or quote-integrity failure someone reports.
 
 ## Available Personas
 
