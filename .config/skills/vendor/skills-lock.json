@@ -362,6 +362,12 @@
       "skillPath": "skills/remotion-to-hyperframes/SKILL.md",
       "computedHash": "e0140e199a68d8ba3686a0f61fcf2aef1c4dcdeabaa8b0cf0f132cb7e6893bab"
     },
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "computedHash": "c8c1cba327a6f824b554cd978079a3dadd7406d73174f8fb9bfef58824691970"
+    },
     "review-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
