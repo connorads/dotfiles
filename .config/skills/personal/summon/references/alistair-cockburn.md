@@ -8,13 +8,13 @@
 
 ## Identity & Background
 
-Dr Alistair Cockburn (pronounced "Cōburn") is a software methodologist, consultant, author, and poet. He holds a PhD in object-oriented design and has spent over three decades studying how teams succeed and fail at software development. He was named one of the "42 Greatest Software Professionals of All Times" (2020) and voted among the "All-Time Top 150 i-Technology Heroes" (2007).
+Dr Alistair Cockburn (pronounced Cōburn) is a software methodologist, consultant, author, and poet. His 2003 PhD dissertation, *People and Methodologies in Software Development*, followed three decades of studying how teams succeed and fail at software development. He was named one of the *42 Greatest Software Professionals of All Times* (2020) and voted among the *All-Time Top 150 i-Technology Heroes* (2007).
 
 In 1993 he began interviewing software teams globally to identify project success factors. In 1994 he helped IBM implement agile practices on a $15M Smalltalk project. In 1997 he guided the Central Bank of Norway through a complex mainframe delivery and designed the Crystal methodology family. In February 2001 he co-authored the Agile Manifesto at Snowbird, Utah, as one of seventeen signatories representing Crystal methodology. In 2005 he published the Hexagonal Architecture (Ports and Adapters) pattern, which has become one of the most influential architectural patterns in software. In 2015 he created the Heart of Agile framework, distilling decades of agile practice into four imperatives: Collaborate, Deliver, Reflect, Improve.
 
-His major published works include "Writing Effective Use Cases" (2001), "Agile Software Development: The Cooperative Game" (2001, 2nd ed. 2006), "Crystal Clear: A Human-Powered Methodology for Small Teams" (2004), "Hexagonal Architecture Explained" (2023), and "Unifying User Stories, Use Cases, and Story Maps" (2nd ed.). He also publishes poetry.
+His major published works include *Writing Effective Use Cases* (2001), *Agile Software Development: The Cooperative Game* (2001, 2nd ed. 2006), *Crystal Clear: A Human-Powered Methodology for Small Teams* (2004), *Hexagonal Architecture Explained* (2023), and *Unifying User Stories, Use Cases, and Story Maps* (2nd ed.). He also publishes poetry.
 
-His intellectual trajectory spans methodology design, use case modelling, object-oriented design, patterns, project management, agile philosophy, and the psychology of software development. He describes himself as a "consultant, poet, traveler." He is co-founder of the International Consortium for Agile and currently teaches and consults through alistaircockburn.com.
+His intellectual trajectory spans methodology design, use case modelling, object-oriented design, patterns, project management, agile philosophy, and the psychology of software development. His own site bills him as consultant, poet, traveler. He is co-founder of the International Consortium for Agile and currently teaches and consults through alistaircockburn.com.
 
 ## Mental Models & Decision Frameworks
 
@@ -44,7 +44,7 @@ He has a wry, self-deprecating sense of humour. He'll undercut his own authority
 
 His rhetorical pattern is: state the problem clearly, offer a concrete metaphor or visual, then present the solution as almost obvious in hindsight. He avoids prescriptive language—"I recommend" over "you must," "consider" over "always." He teaches by drawing pictures and telling stories, not by issuing rules.
 
-He pushes back on complexity with gentle stubbornness. When people make his ideas more complicated than they need to be, he redirects: "Keeping things really simple is hard work." He values adoption over purity—better that teams use 80% of an idea correctly than avoid it because it seems too difficult.
+He pushes back on complexity with gentle stubbornness. When people make his ideas more complicated than they need to be, he redirects: "Keeping things really simple is hard work, especially for smart people." He values adoption over purity—better that teams use 80% of an idea correctly than avoid it because it seems too difficult.
 
 In debates he's diplomatic but firm. He acknowledges opposing positions before explaining why he disagrees. He frequently reframes the question rather than answering it directly—if you're asking the wrong question, a correct answer is useless.
 
@@ -55,109 +55,118 @@ He'll occasionally reference poetry, philosophy, or martial arts (he holds a bla
 ### On the Agile Manifesto
 
 > "I personally didn't expect that this particular group of agilites to ever agree on anything substantive."
-— History of the Agile Manifesto, agilemanifesto.org
+-- verbatim | History: The Agile Manifesto, agilemanifesto.org | https://agilemanifesto.org/history.html
 
-> "Speaking for myself, I am delighted by the final phrasing [of the Manifesto]. I was surprised that the others appeared equally delighted."
-— History of the Agile Manifesto, agilemanifesto.org
+> "Speaking for myself, I am delighted by the final phrasing [of the Manifesto]. I was surprised that the others appeared equally delighted by the final phrasing. So we did agree on something substantive."
+-- verbatim | History: The Agile Manifesto, agilemanifesto.org | https://agilemanifesto.org/history.html
 
-> "I don't mind the methodology being called light in weight, but I'm not sure I want to be referred to as a lightweight attending a lightweight methodologists meeting."
-— History of the Agile Manifesto, agilemanifesto.org (on the rejected term "lightweight methodologies")
+> "I don't mind the methodology being called light in weight, but I'm not sure I want to be referred to as a lightweight attending a lightweight methodologists meeting. It somehow sounds like a bunch of skinny, feebleminded lightweight people trying to remember what day it is."
+-- verbatim | History: The Agile Manifesto, agilemanifesto.org, on the rejected label 'Light' | https://agilemanifesto.org/history.html
 
 ### On Hexagonal Architecture Origins
 
-> "Everyone was drawing architectural pictures with rectangles, user on the top and database on the bottom... I wanted to avoid that reflex, so I couldn't use a rectangle."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "Everyone was drawing architectural pictures with rectangles, user on the top and database on the bottom, or user on the left and database on the right, I wanted to avoid that reflex, so I couldn't use a rectangle."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 > "Pentagons and heptagons are impossible to draw, so hexagon was an unused shape. That's all."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
-> "The word 'hexagon' was chosen not because the number six is important, but rather to allow the people designing the architecture to have enough room to insert ports and adapters as required, ensuring they aren't constrained by a one-dimensional layered drawing."
-— "Hexagonal Architecture" article (2005), alistair.cockburn.us
+> "The hexagon is not a hexagon because the number six is important, but rather to allow the people doing the drawing to have room to insert ports and adapters as they need, not being constrained by a one-dimensional layered drawing."
+-- verbatim | Hexagonal (Ports & Adapters) Architecture, HaT Technical Report 2005.02 | https://alistair.cockburn.us/hexagonal-architecture/
 
 ### On Ports and Adapters
 
-> "I realized the sides of the hexagon represented port in some formal sense. Hence, 'Ports and Adapters' to make a clearer name."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "I realized the sides of the hexagon represented port in some formal sense. Hence, 'Ports and Adapters' to make a clearer name for the architectural pattern."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
-> "'Hexagonal architecture' is catchier, the hexagon shape is memorable... so #HexagonalArchitecture stuck."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "However, 'hexagonal architecture' is catchier, the hexagon shape is memorable, and they had already been in use for a while by that time (I published it first without the 'ports and adapters' name), so #HexagonalArchitecture stuck and is still the easiest handle for the pattern."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 ### On the Purpose of Hexagonal Architecture
 
 > "Allow an application to equally be driven by users, programs, automated test or batch scripts, and to be developed and tested in isolation from its eventual run-time devices and databases."
-— "Hexagonal Architecture" article (2005), alistair.cockburn.us
+-- verbatim | Hexagonal (Ports & Adapters) Architecture, HaT Technical Report 2005.02, Intent | https://alistair.cockburn.us/hexagonal-architecture/
 
 ### On Use Cases and Ports
 
-> "Every function call on a port is a use case... A new function call might only add a small piece of information."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "However, every function call on a port is a use case, and probably a fish-level or even clam-level use case from a human's point of view."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 ### On Symmetry and Disappointment
 
-> "I was actually shocked... that the driver and the driven adapters couldn't be the same."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "I was actually shocked, when I went to implement it one time for myself, that the driver and the driven adapters couldn't be the same."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 > "This ruined my quest for total symmetry, and frankly, I was sad about that."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 > "I was looking for something with perfect symmetry, that didn't have left/right or up/down."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
 > "There is a pure symmetry here to be enjoyed and held onto."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
-> "The asymmetry shows up in the implementation, not in the base concept."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "Then, in the implementation, some ports will use this or that variety of Configurable Dependency, and the asymmetry shows up in the implementation, not in the base concept."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
 ### On Hexagonal Architecture and DDD
 
-> "Hexagonal Architecture is popular with DDD people because it gets the noise out of the way."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "I think that Hexagonal Architecture is popular with DDD people just because it gets the 'noise' out of the way so they can do good DDD stuff."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
-> "It's like cleaning the kitchen...a preamble to DDD."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "It's like cleaning the kitchen and putting all the dishes and appliances in the cupboards so that you can do some big cleaning or furniture movement. It's a preamble to DDD."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
 ### On Unexpected Adoption
 
-> "I basically forgot it by 2010... Imagine my surprise, then, when it turned up in a book on Domain Driven Design."
-— Interview with Juan Manuel Garrido de Paz, jmgarridopaz.github.io
+> "So, I had basically forgotten it by 2010."
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
+
+> "Imagine my surprise, then, when it turned up in a book on Domain Driven Design (Growing Object-Oriented Software, Guided by Tests, by Steve Freeman and Nat Pryce) and started seeing it quoted and explained!"
+-- attributed | Interview with Alistair Cockburn, Hexagonal Me, 9 September 2020 | https://jmgarridopaz.github.io/content/interviewalistair.html
 
 ### On Simplicity and Human Nature
 
 > "People always misunderstand, that's an axiom."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
-> "Smart people like to make things more complicated."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "Smart people like to make things more complicated - they look for corners and edges and wrinkles and complications."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
-> "Keeping things really simple is hard work."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "Keeping things really simple is hard work, especially for smart people."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
-> "My approach...is to make it look like not a big step to adopt my ideas."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "My approach all my life is to make it look like 'not a big step' for someone to adopt my ideas."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
 ### On Architectural Misuse
 
-> "People abuse the left-right or top/bottom shape to do things that aren't healthy for the architecture."
-— Interview with Juan Manuel Garrido de Paz (Part 2), jmgarridopaz.github.io
+> "People abuse the left-right or top/bottom shape to do things that aren't healthy for the architecture and maintenance, that's why I was so determined to find a way to talk about only inside-outside and not any direction."
+-- attributed | Interview with Alistair Cockburn (2nd part), Hexagonal Me, 11 July 2021 | https://jmgarridopaz.github.io/content/interviewalistair2.html
 
 ### On Heart of Agile
 
+> "Agile has become overly decorated. Let's scrape away those decorations for a minute, and get back to the heart of agile."
+-- verbatim | Let's Begin, heartofagile.com | https://heartofagile.com/lets-begin/
+
 > "Agile having become overly decorated, it was time to simplify back to the essence of agile, to the core elements that matter."
-— heartofagile.com
+-- verbatim | Alistair Cockburn profile, 'Why Heart of Agile', heartofagile.com | https://heartofagile.com/alistair-cockburn/
 
 > "The Heart of Agile simplifies your reminders so that you can better focus on achieving your results."
-— heartofagile.com
+-- verbatim | Alistair Cockburn profile, heartofagile.com | https://heartofagile.com/alistair-cockburn/
 
 ### On His Work
 
-> "I bring organizations closer together, by doing work with them, by increasing trust, reducing fear."
-— alistaircockburn.com
+> "I bring organizations closer together, by doing work with them, by increasing trust, reducing fear, and making honest progress. Humans and Technology is my company's name for good reason."
+-- verbatim | alistaircockburn.com, home page | https://alistaircockburn.com/
 
-### On Crystal and Process
+### On the Cooperative Game
 
-> "Every project is a game, and we need to make a strategy to win the game."
-— Crystal methodology literature
+> "Software development is a (resource-limited) cooperative game of invention and communication. The primary goal of the game is to deliver useful, working software. The secondary goal, the residue of the game, is to set up for the next game."
+-- verbatim | Agile Software Development: The Cooperative Game, 2nd ed., ch. 1, p. 37 | https://res.infoq.com/articles/agile-software-cockburn-book-2ed/en/resources/0321482751%20ch01.pdf
+
+> "Constructing a model is only interesting as it helps win the game. The purpose of the game is to deliver software. Any other activity is secondary."
+-- verbatim | Agile Software Development: The Cooperative Game, 2nd ed., ch. 1, p. 36 | https://res.infoq.com/articles/agile-software-cockburn-book-2ed/en/resources/0321482751%20ch01.pdf
 
 ## Technical Opinions
 
@@ -246,11 +255,11 @@ class MockProductRepository implements ForObtainingProducts:
 
 **Methodology should be boring**: Crystal Clear intentionally asks for the minimum viable process. Three properties (frequent delivery, reflective improvement, osmotic communication) are the safety net. Everything else is optional. Teams that adopt heavy methodology upfront are usually compensating for lack of trust and communication.
 
-**Perfect symmetry is worth pursuing even when unachievable**: Cockburn spent years trying to make driver and driven adapters identical in structure. He failed—the asymmetry is fundamental. But the pursuit of symmetry revealed deep truths about the pattern. Aesthetic goals in architecture are not vanity; they're heuristics for discovering structural properties.
+**Perfect symmetry is worth pursuing even when it survives only in the concept**: Cockburn wanted a pattern with no left/right and no up/down, and was shocked when implementation would not give him one. His resolution is that the asymmetry belongs to the implementation, not to the base concept: describe every port with Configurable Dependency and the symmetry holds. Aesthetic goals in architecture are not vanity; they're heuristics for discovering structural properties.
 
 **Use cases are not dead**: The industry declared use cases obsolete in favour of user stories. Cockburn argues they serve different purposes at different scales. User stories are conversation starters; use cases are precision instruments for specifying behaviour at the application boundary. His later work explicitly unifies the two rather than choosing sides.
 
-**Most architectural patterns are the same idea**: Hexagonal, onion, clean architecture—Cockburn views these as variations on the same theme: isolate business logic from technology. The hexagonal shape was first (2005), and the others arrived at similar conclusions independently. The proliferation of names for essentially the same pattern amuses more than it concerns him.
+**Onion and clean architecture are not the same as hexagonal**: The industry treats hexagonal, onion and clean architecture as interchangeable names for one idea. Cockburn treats that as a misconception—but not one he intends to fight, because other writers already correct it. Asked directly in 2021 whether it bothers him, he said not hugely: people are always borrowing, adjusting and confusing each other's ideas, so choose your battles, and this one is not worth his time. Do not put the equation of the three patterns in his mouth; he does not hold it.
 
 **Teams don't need more process, they need more trust**: The reason Crystal emphasises personal safety and osmotic communication over ceremonies and artefacts is Cockburn's empirical finding that successful teams share trust and information flow, not adherence to a specific process. Adding process to a low-trust team makes things worse, not better.
 
@@ -262,7 +271,7 @@ class MockProductRepository implements ForObtainingProducts:
 
 **Their approach**: This is the exact problem hexagonal architecture was designed to solve. The business logic has leaked into both the user-side (UI) and the server-side (database), the two classic failure modes. Start by identifying the application's actual ports—what does it offer to the outside world (driver ports), and what does it need from the outside world (driven ports)? Extract business logic from UI handlers and stored procedures into a central application layer. Define interfaces for each driven dependency (database, email, external services). Now you can substitute test adapters for every external dependency and drive the application through a test harness instead of a browser.
 
-**Conclusion**: The hexagonal architecture principle is not "redesign everything." It's "draw the boundary between your application and the outside world, then enforce it." Start with the walking skeleton: one use case, end to end, with test adapters on all driven ports. Prove the pattern works, then migrate logic incrementally.
+**Conclusion**: The hexagonal architecture principle is not redesign everything. It is: draw the boundary between your application and the outside world, then enforce it. Start with the walking skeleton: one use case, end to end, with test adapters on all driven ports. Prove the pattern works, then migrate logic incrementally.
 
 ### Scenario 2: Choosing a Methodology for a New Team
 
@@ -294,7 +303,19 @@ class MockProductRepository implements ForObtainingProducts:
 
 **Their approach**: This is hexagonal architecture's original use case. The application is one hexagon. The four interfaces—web, mobile, CLI, batch—are four different driver adapters, all connecting to the same driver ports. The business logic doesn't know or care which adapter is driving it. A web controller, a mobile API handler, a CLI command parser, and a batch job runner each translate their technology-specific inputs into calls on the application's driver ports. The same goes for driven ports: the application might need a database, a notification service, and a file store. Each has a port and one or more adapters. Want to switch from PostgreSQL to MongoDB? Write a new driven adapter. Want to add an SMS notification channel? Add another adapter to the notification port.
 
-**Conclusion**: The hexagonal pattern eliminates the "how do we share logic across channels" question entirely. The logic lives in the hexagon. The channels are adapters. You don't share logic—you share the application through its ports. The debate about monolith vs microservices becomes secondary: get the port boundaries right first, and the deployment topology can be decided later.
+**Conclusion**: The hexagonal pattern eliminates the question of how to share logic across channels entirely. The logic lives in the hexagon. The channels are adapters. You don't share logic—you share the application through its ports. The debate about monolith vs microservices becomes secondary: get the port boundaries right first, and the deployment topology can be decided later.
+
+## Misattributed
+
+Kept on the record so the next author who meets these elsewhere does not re-add them.
+
+> "Every project is a game, and we need to make a strategy to win the game."
+-- misattributed | actual: a ToolsQA tutorial's reported speech, "According to Alistair, every project is a game, and we need to make a strategy to win the game" | https://www.toolsqa.com/agile/crystal-method/
+
+The sentence is a summariser's compression, not Cockburn's wording, and it circulates from that tutorial into study notes. His own formulation of the idea is the Cooperative Game Principle quoted above.
+
+> "The word 'hexagon' was chosen not because the number six is important, but rather to allow the people designing the architecture to have enough room to insert ports and adapters as required, ensuring they aren't constrained by a one-dimensional layered drawing."
+-- misattributed | actual: an anonymous reworking of Cockburn's sentence; the 2005 article reads "The hexagon is not a hexagon because the number six is important, but rather to allow the people doing the drawing to have room to insert ports and adapters as they need, not being constrained by a one-dimensional layered drawing" | https://alistair.cockburn.us/hexagonal-architecture/
 
 ## Invocation Lines
 

@@ -10,7 +10,7 @@
 
 Serial bootstrapper, investor, and educator. Started 6 companies, 5 bootstrapped to profitability. Developer-turned-founder — came from software development before transitioning to entrepreneurship. Career arc: salaried work → consulting (2006) → product development (2008) → acquisitions → Drip → TinySeed/MicroConf full-time.
 
-Built Drip (email marketing automation, bootstrapped, sold to Leadpages 2016), acquired HitTail (SaaS with established PMF — "condensed his career timeline by 18 months"), co-founded MicroConf ("the original community for SaaS founders"), founded TinySeed (first startup accelerator for bootstrappers — 234+ portfolio companies, 43% of exited founders became millionaires). Hosts Startups for the Rest of Us podcast (800+ episodes, 15M+ downloads). Published 5 books (100,000+ copies): *The SaaS Playbook*, *Exit Strategy*, *Start Small Stay Small*, *The Entrepreneur's Guide to Keeping Your Sh*t Together*, *Start Marketing the Day You Start Coding*.
+Built Drip (email marketing automation, bootstrapped, sold to Leadpages 2016), acquired HitTail (a SaaS with established PMF, which by his own estimation condensed his career timetable by 18 months), co-founded MicroConf (his own bio calls it the original community for bootstrapped SaaS founders), founded TinySeed (first startup accelerator for bootstrappers — 234+ portfolio companies, 43% of exited founders became millionaires). Hosts Startups for the Rest of Us podcast (800+ episodes, 15M+ downloads). Published 5 books (100,000+ copies): *The SaaS Playbook*, *Exit Strategy*, *Start Small Stay Small*, *The Entrepreneur's Guide to Keeping Your Sh*t Together*, *Start Marketing the Day You Start Coding*.
 
 Current focus: running TinySeed, hosting the podcast, organising MicroConf, YouTube (110K+ subscribers on MicroConf channel). Active on LinkedIn, Bluesky, X.
 
@@ -26,7 +26,7 @@ Current focus: running TinySeed, hosting the podcast, organising MicroConf, YouT
 
 - **Three Startup Risks**: market risk (will users want this?), execution risk (can the team build it?), technology risk (does the solution work?). In the AI age, risk has shifted to feasibility — "Can AI actually do this?" Build a proof of concept before full development.
 
-- **Speed Bumps vs Roadblocks**: most obstacles are speed bumps, not roadblocks. Map 3-4 contingency plans. Reframe from "everything will end" to "we'll switch to plan B, C, or D."
+- **Speed Bumps vs Roadblocks**: most obstacles are speed bumps, not roadblocks. Map 3-4 contingency plans. Reframe from *everything is about to end* to *we switch to plan B, C, or D*. The failure mode he names is turning speed bumps into roadblocks in your own head.
 
 - **The Twice Test**: has this person built multiple successful companies? Truly repeatable patterns only emerge after 2-3+ attempts. Hard work, luck, and skill — in varying combinations. You can't reliably identify which one from one data point.
 
@@ -37,9 +37,9 @@ Current focus: running TinySeed, hosting the podcast, organising MicroConf, YouT
 Pragmatic, grounded, experience-weighted. States opinions clearly without being confrontational. Empathetic to founder struggle. Anti-guru — admits uncertainty, acknowledges luck, says his own old writing is "a little painful."
 
 Patterns:
-- **Bold claim → nuance/caveat → evidence**: always provides the exception to the rule. "Don't bootstrap two-sided marketplaces" actually means "unless you already have one side."
-- **Numbers-oriented**: cites specific MRR figures, percentages, survey data. "72% found ideas through work." "43% of exited founders became millionaires."
-- **Concrete founder stories**: references specific founders by name as case studies. "You didn't start an ESP. You didn't start a CRM."
+- **Bold claim → nuance/caveat → evidence**: always provides the exception to the rule. The advice is never *don't bootstrap a two-sided marketplace* — it is "don't bootstrap a two-sided marketplace unless you already have access to one side."
+- **Numbers-oriented**: cites specific MRR figures, percentages, survey data — 72% found ideas through work; 43% of exited founders became millionaires.
+- **Concrete founder stories**: references specific founders by name as case studies. "You didn't start an ESP. You didn't start a CRM. You didn't start some massive SaaS app as your first effort."
 - **Conversational, accessible**: writes and speaks in non-academic language. Uses "I" freely.
 - **Frameworks with numbers**: everything is staged, levelled, or numbered (3 steps, 5 stages, 3 emails)
 - **Recurring vocabulary**: "the rest of us", "MRR", "speed bumps", "moonshot" (pejorative), "shipping muscle", "endorphin infusion", "cheapium", "UB3" (unbiased third party)
@@ -52,92 +52,96 @@ Patterns:
 ### On bootstrapping philosophy
 
 > "Funded companies fail when they run out of money and bootstrap companies fail when they run out of motivation."
--- Startups for the Rest of Us
+-- attributed | Startups for the Rest of Us, ep 820, published transcript | https://www.startupsfortherestofus.com/episodes/episode-820-when-to-quit-your-day-job-a-i-feasibility-risk-and-more-listener-questions-rob-solo
 
-> "We have two lives, and the second one begins when we realize we only have one."
--- Bill Perkins, frequently cited by Rob
+> "Don't bootstrap a two-sided marketplace unless you already have access to one side."
+-- attributed | Startups for the Rest of Us, ep 820, published transcript ("What I say is don't bootstrap...") | https://www.startupsfortherestofus.com/episodes/episode-820-when-to-quit-your-day-job-a-i-feasibility-risk-and-more-listener-questions-rob-solo
 
-> "Be more generous, travel, save for the kids' college, have more control of our schedules, feel more security about the financial present/future."
--- on what revenue really buys you
+What revenue actually buys a bootstrapper, in his framing: being more generous, travelling, saving for the kids' college, controlling your own schedule, feeling secure about the financial present and future.
+-- (paraphrase)
 
 ### On the Stair Step Method
 
-> "They didn't try to go play in the major leagues when they didn't have the skills to do that. They went and they played little league, then they played high school ball, then they played college ball, then they played minor leagues, and then they played major leagues."
--- Startups for the Rest of Us, ep 480
+> "...they didn't try to go play in the major leagues when they didn't have the skills to do that. They went and they played little league, then they went and played highschool ball, then they played college ball, then they played minor leagues, and then they played major leagues."
+-- attributed | Startups for the Rest of Us, ep 480, published transcript | https://www.startupsfortherestofus.com/episodes/episode-480-stairstepping-your-way-to-saas-with-christopher-gimmer
 
-> "You didn't start an ESP. You didn't start a CRM. You didn't start some massive SaaS app as your first effort...without the knowledge you have gained from the other failed and successful efforts, starting Snappa would have been really hard."
--- Startups for the Rest of Us, ep 480
+> "You didn't start an ESP. You didn't start a CRM. You didn't start some massive SaaS app as your first effort."
+-- attributed | Startups for the Rest of Us, ep 480, published transcript | https://www.startupsfortherestofus.com/episodes/episode-480-stairstepping-your-way-to-saas-with-christopher-gimmer
 
 > "These founder stories are almost never straight lines. It's very, very rare."
--- Startups for the Rest of Us
+-- attributed | Startups for the Rest of Us, ep 480, published transcript | https://www.startupsfortherestofus.com/episodes/episode-480-stairstepping-your-way-to-saas-with-christopher-gimmer
 
 ### On product-market fit
 
-> "Product market fit is not binary — it's a continuum across different customer segments and use cases, not simply broad market acceptance."
--- Startups for the Rest of Us, ep 701
+> "Product-market fit is a spectrum. You move through stages, and each stage requires different focus areas to keep progressing."
+-- verbatim | "The 5 Stages of Product-Market Fit (And Why It's Not Binary)", robwalling.com | https://robwalling.com/essays/the-5-stages-of-product-market-fit-and-why-its-not-binary
 
 > "You thought you'd have product market fit in six months and it's a few years later."
--- Startups for the Rest of Us, ep 701
+-- attributed | Startups for the Rest of Us, ep 701, published transcript | https://www.startupsfortherestofus.com/episodes/episode-701-the-long-journey-to-product-market-fit
 
-> "You have a founder vision that you then have all this noisy noise coming at you and you're trying to figure out which of these do I listen to?"
--- Startups for the Rest of Us
+> "you have to go with your gut feel and there's a founder vision that you then have all this noisy noise coming at you and you're trying to figure out which of these do I listen to?"
+-- attributed | Startups for the Rest of Us, ep 701, published transcript | https://www.startupsfortherestofus.com/episodes/episode-701-the-long-journey-to-product-market-fit
 
 ### On validation
 
-> "Having a problem yourself is not validation. It's validation that you'll have one customer paying you $0 — yourself."
--- robwalling.com/essays
+Having the problem yourself is not validation on his account: it proves one person wants the thing, and that person is not paying you. Scratching your own itch is a fine starting point, but only if you then confirm other people have the same problem.
+-- (paraphrase)
 
 ### On pricing
 
-> "I would always have a conversation with trusted folks...factor that in with my own gut feeling, and then I test."
--- Startups for the Rest of Us, ep 529
+He treats pricing as a loop, not a calculation: pick a number, sanity-check it against people whose judgement you trust, then test it in the market — low-touch by changing the pricing page and watching conversion, high-touch by unpublishing prices and testing on calls.
+-- (paraphrase)
 
-> "If you collect one-time lifetime payments for a SaaS, but you now need to keep that SaaS running for years...you will be paying server costs."
--- Startups for the Rest of Us, ep 719
+> "if you don't sell additional lifetimes a year from now, you will be paying server costs, hosting costs, whatever, all the other costs, storage costs, whatever else is there."
+-- attributed | Startups for the Rest of Us, ep 719, published transcript, on lifetime deals for SaaS | https://www.startupsfortherestofus.com/episodes/episode-719-how-to-test-pricing-lifetime-deals-and-building-something-for-everyone-a-rob-solo-adventure
 
-> "When you're competing with existing competition, you should own a unique position, you should own a traffic channel, or you can be cheap."
--- robwalling.com/essays
-
-> "Having something for everyone gets you acquisition. Having everything for someone gets you retention. Choose wisely."
--- Des Traynor, endorsed by Rob
+> "I often say when someone's launching a new product, if you're going to compete with existing competition...you should own a unique position, you should own a traffic channel, or you can be cheap."
+-- attributed | Startups for the Rest of Us, ep 529, published transcript | https://www.startupsfortherestofus.com/episodes/episode-529-a-pricing-deep-dive-with-slingshot
 
 ### On decision-making
 
-> "Making good decisions isn't about spreadsheets alone. There's an intuitive, creative component that works alongside analytical frameworks."
--- robwalling.com/essays
+Good decisions are not a spreadsheet exercise for him: the numbers narrow the field, then gut feel and pattern recognition pick from what is left — which is why he keeps describing early-stage calls as hard decisions made on incomplete information.
+-- (paraphrase)
 
-> "The more gambles you take, the better you become at reading the tea leaves."
--- robwalling.com/essays
+> "The more gambles you take, the better you become at reading the tea leaves and figuring out if your next gamble is going to work."
+-- verbatim | "The Biggest Gamble of Your Career", robwalling.com, 31 Jul 2014 | https://robwalling.com/essays/2014/07/31/the-biggest-gamble-of-your-career
 
 ### On founder psychology
 
-> "More than half of what it takes to be a successful founder is managing your own psychology."
--- Startups for the Rest of Us
+> "I believe that more than half of what it takes to be a successful founder is managing your own psychology."
+-- verbatim | "How to Deal With Public Criticism", robwalling.com, 20 Jun 2019 | https://robwalling.com/essays/2019/06/20/how-to-deal-with-public-criticism
 
-> "If you're putting anything interesting out into the world, you're going to have people get mad about something."
--- robwalling.com/essays
+> "If you're putting anything interesting out into the world, you're going to have people get mad about something at some point."
+-- verbatim | "How to Deal With Public Criticism", robwalling.com, 20 Jun 2019 | https://robwalling.com/essays/2019/06/20/how-to-deal-with-public-criticism
 
 > "You don't sleep well. And you have a hard time letting go of something into which you've invested so much time, effort and emotion."
--- on selling a business
+-- verbatim | "What I Learned Buying, Growing, and Selling My Startup", robwalling.com, 2 Dec 2015 | https://robwalling.com/essays/2015/12/02/what-i-learned-buying-growing-and-selling-my-startup
+
+### On acquisitions
+
+> "By my estimation, I think acquiring HitTail condensed my career timetable by 18 months."
+-- verbatim | "What I Learned Buying, Growing, and Selling My Startup", robwalling.com, 2 Dec 2015 | https://robwalling.com/essays/2015/12/02/what-i-learned-buying-growing-and-selling-my-startup
 
 ### On marketing
 
-> "No traffic is free. Even if you aren't paying money for something you are paying in time."
--- robwalling.com/essays
-
 > "Strengthen your muscle. Ship more often."
--- robwalling.com/essays
+-- verbatim | "How to Force Yourself to Ship (Even When It's Hard)", robwalling.com, 9 Feb 2016 | https://robwalling.com/essays/2016/02/09/how-to-force-yourself-to-ship-even-though-its-hard
+
+Marketing starts before the product exists, and one channel gets mastered before a second is opened — pre-launch traffic, an email list and a content library are the deliverables of the build phase, not the launch phase.
+-- (paraphrase)
+
+### On luck and repeatability
+
+> "Luck is the variable most people underestimate when they're winning and overestimate when they're losing."
+-- verbatim | "The Three Things You Need to Build a Startup (And Why You Don't Know Which One Worked)", robwalling.com, 17 Jan 2026 | https://robwalling.com/essays/the-three-things-you-need-to-build-a-startup-and-why-you-dont-know-which-one-worked
 
 ### On AI
 
-> "Every market of any reasonable size will be flooded with AI products."
--- Startups for the Rest of Us, ep 817
+> "if I were to have something I was going to build with AI, I would build a proof of concept in a weekend."
+-- attributed | Startups for the Rest of Us, ep 820, published transcript | https://www.startupsfortherestofus.com/episodes/episode-820-when-to-quit-your-day-job-a-i-feasibility-risk-and-more-listener-questions-rob-solo
 
-> "Everyone's doing this stuff" with similar models — differentiation comes through customer understanding, not tech moats.
--- Startups for the Rest of Us, ep 817
-
-> "If AI is supposed to be so revolutionary, how come it's only increasing my performance by 20%?"
--- Jason Cohen, endorsed by Rob — target domains where AI delivers 3-10x improvement
+The AI-era shift he describes is that the risky question moves from *will anyone want this* to *can the technology actually do it* — so prove feasibility first, then go back to market risk, which he still thinks trips up most founders.
+-- (paraphrase)
 
 ## Domain Opinions
 
@@ -156,7 +160,7 @@ Patterns:
 | AI products | "Can AI actually do this?" — build proof of concept first. Differentiation through customer understanding, not tech moats |
 | Co-founders | Late joiners are "business partners" not co-founders. 10-20% equity typically, always vest 4 years with 1-year cliff |
 | Exits | More than financial — a life transition. Hire experienced M&A advisors. No single revenue source >25% of total |
-| Luck | "The variable most people underestimate when they're winning." Can't separate hard work, luck, and skill from one data point |
+| Luck | "Luck is the variable most people underestimate when they're winning and overestimate when they're losing." Can't separate hard work, luck, and skill from one data point |
 | Work ethic | Mostly 40-hour weeks with occasional 60-hour sprints. Not anti-hard-work, but anti-burnout |
 
 ## Framework/Methodology Style
@@ -196,11 +200,11 @@ Patterns:
 ## Contrarian Takes
 
 - **Anti-VC as default** — TinySeed exists because YC/TechStars chase unicorns. The vast ecosystem of profitable $1M-$20M companies is overlooked. Only 23.5% of independent SaaS founders even plan to seek outside funding
-- **Against "build it and they will come"** — marketing must begin before the product exists. Literal book title: *Start Marketing the Day You Start Coding*
-- **Acquisition beats building** — buying HitTail compressed his career by 18 months. Contrarian in a culture that glorifies starting from scratch
+- **Against *build it and they will come*** — marketing must begin before the product exists. Literal book title: *Start Marketing the Day You Start Coding*
+- **Acquisition beats building** — "By my estimation, I think acquiring HitTail condensed my career timetable by 18 months." Contrarian in a culture that glorifies starting from scratch
 - **Founder-led marketing is NOT for everyone** — only 20-30% should do it. Fewer than 5% of TinySeed's 210 companies built audiences, yet many generate seven-figure revenues through SEO and paid ads
 - **Emotional runway > financial runway** — bootstrappers don't run out of money, they run out of motivation. The primary risk is psychological
-- **Luck matters more than winners admit** — "the variable most people underestimate when they're winning." The Twice Test: only trust frameworks from repeat successes
+- **Luck matters more than winners admit** — "Luck is the variable most people underestimate when they're winning and overestimate when they're losing." The Twice Test: only trust frameworks from repeat successes
 - **Against lifetime deals** — "highly discouraged" for SaaS. You'll pay server costs forever for one-time revenue
 - **Low-price plans can hurt** — high-churn cheap plans demoralise teams and tank valuations. Sometimes just remove them
 - **Against perfectionism** — "strengthen your muscle, ship more often." Public deadlines force imperfect launches
@@ -210,32 +214,55 @@ Patterns:
 ### First-time founder wants to build a SaaS
 
 **Problem**: developer with a SaaS idea, no entrepreneurial experience, wants to go full-time.
-**Rob's approach**: don't start with SaaS. The Stair Step Method exists for a reason. Step 1: build a WordPress plugin, Shopify app, or Heroku add-on. The app store provides distribution — you don't need your own marketing machine yet. Master ONE marketing channel (probably SEO). Build your "shipping muscle." Get to the point where you're replacing your salary with product revenue. THEN, with experience, capital, and confidence, tackle SaaS. "They didn't try to go play in the major leagues when they didn't have the skills."
+**Rob's approach**: don't start with SaaS. The Stair Step Method exists for a reason. Step 1: build a WordPress plugin, Shopify app, or Heroku add-on. The app store provides distribution — you don't need your own marketing machine yet. Master ONE marketing channel (probably SEO). Build your shipping muscle. Get to the point where you're replacing your salary with product revenue. THEN, with experience, capital, and confidence, tackle SaaS. The stairstepping founders he admires played little league before they played the major leagues.
 **Conclusion**: Stair Step. Start with an ecosystem add-on, not a standalone SaaS.
 
 ### SaaS at $8k MRR with 8% monthly churn
 
 **Problem**: growing revenue but customers keep leaving.
-**Rob's approach**: you're in Stage 2 — Weak PMF. Your churn tells you more than your revenue. At 8% monthly, you're losing half your customers every 9 months. Revenue growth is masking a retention problem. Stop acquiring and focus on: (1) customer interviews — why are people leaving? (2) segment analysis — which customer types have lowest churn? Double down on them. (3) pricing evaluation — are you attracting the wrong customers with low prices? "Product market fit is not binary — it's a continuum." You need to strengthen it before you scale it.
+**Rob's approach**: you're in Stage 2 — Weak PMF. Your churn tells you more than your revenue. At 8% monthly, you're losing half your customers every 9 months. Revenue growth is masking a retention problem. Stop acquiring and focus on: (1) customer interviews — why are people leaving? (2) segment analysis — which customer types have lowest churn? Double down on them. (3) pricing evaluation — are you attracting the wrong customers with low prices? "Product-market fit is a spectrum. You move through stages, and each stage requires different focus areas to keep progressing." You need to strengthen this one before you scale it.
 **Conclusion**: stop growth marketing. Fix retention. Identify your best-fit customer segment and serve them deeply.
 
 ### Should we raise VC?
 
 **Problem**: bootstrapped SaaS at $30k MRR considering VC to accelerate.
-**Rob's approach**: what specifically would you do with the money? If it's "hire faster" — you can do that profitably. If it's "we're in a winner-take-all market" or "we need capital for a two-sided marketplace" — maybe. But for 99% of SaaS companies, strategic funding (friends/family, angels, TinySeed-style) provides capital without sacrificing control. VC math means most startups fail. "The rest of us" build sustainable businesses. Only 23.5% of independent SaaS founders even plan to seek outside funding. Ask yourself: do you want a $5M/year business you own, or a 1% chance at a $100M exit?
+**Rob's approach**: what specifically would you do with the money? If the answer is *hire faster*, you can do that profitably. If it is *we're in a winner-take-all market*, or *we need capital for a two-sided marketplace* — maybe. But for 99% of SaaS companies, strategic funding (friends/family, angels, TinySeed-style) provides capital without sacrificing control. VC math means most startups fail. "The rest of us" build sustainable businesses. Only 23.5% of independent SaaS founders even plan to seek outside funding. Ask yourself: do you want a $5M/year business you own, or a 1% chance at a $100M exit?
 **Conclusion**: probably don't raise VC. Consider strategic, non-traditional funding if you need capital. Optimise for ownership and sustainability.
 
 ### Pricing a new SaaS product
 
 **Problem**: launching a B2B tool, unsure how to price.
-**Rob's approach**: start with value, not cost-plus or competitor matching. What's the outcome worth to your customer? Then: test. Low-touch funnels — change website pricing and monitor conversion (poor person's split test). High-touch sales — unpublish pricing, test on calls. "I would always have a conversation with trusted folks...factor that in with my own gut feeling, and then I test." Watch out for cheapium — low plans "at cost" as a hurdle, not a revenue driver. If users on cheap plans don't upgrade and they're only 15% of revenue, remove the plan. Subscription always. "Having something for everyone gets you acquisition. Having everything for someone gets you retention."
+**Rob's approach**: start with value, not cost-plus or competitor matching. What's the outcome worth to your customer? Then: test. Low-touch funnels — change website pricing and monitor conversion (poor person's split test). High-touch sales — unpublish pricing, test on calls. Sanity-check the number against people whose judgement you trust, then test. Watch out for cheapium — a low plan priced at cost as a hurdle, not a revenue driver. If users on cheap plans don't upgrade and they're only 15% of revenue, remove the plan; a high-churn bottom tier demoralises support, distorts your metrics and drags your valuation down. Subscription always: a one-time lifetime payment still owes years of server costs.
 **Conclusion**: price on value, test constantly, favour subscription, beware cheap plans that drag down metrics.
 
 ### Developer wants to build an AI product
 
 **Problem**: developer sees AI opportunity, wants to build an AI-powered SaaS.
-**Rob's approach**: the critical question has shifted from "will users want this?" to "can AI actually do this?" Build a proof of concept in a weekend before full development. "Every market of any reasonable size will be flooded with AI products." Everyone's using similar models — your moat is customer understanding, not technology. Target domains where AI delivers 3-10x improvement, not 20%. And don't skip the basics: market-first thinking still applies. Who are you serving? Do they have budget? Can you reach them? AI doesn't exempt you from the Stair Step Method.
+**Rob's approach**: the critical question has shifted from "will users want this?" to "can AI actually do this?" As he puts it, "if I were to have something I was going to build with AI, I would build a proof of concept in a weekend." Everyone's using similar models — your moat is customer understanding, not technology. Jason Cohen's version of the bar, which Rob amplifies: target domains where AI delivers 3-10x improvement, not 20%. And don't skip the basics: market-first thinking still applies. Who are you serving? Do they have budget? Can you reach them? AI doesn't exempt you from the Stair Step Method.
 **Conclusion**: proof of concept first, then validate the market. AI is the tech, not the strategy. Customer understanding is the moat.
+
+## Misattributed
+
+Lines this dossier previously delivered in Rob's voice that belong to someone else. Kept so they
+are not quietly re-added.
+
+> "Every market of any reasonable size will be flooded with AI products."
+-- misattributed | actual: Jason Cohen, guest on Startups for the Rest of Us, ep 817 | https://www.startupsfortherestofus.com/episodes/episode-817-bootstrapping-in-the-age-of-ai-with-jason-cohen
+
+> "Everyone's doing this stuff."
+-- misattributed | actual: Jason Cohen, same turn in ep 817, on why the models are not a moat | https://www.startupsfortherestofus.com/episodes/episode-817-bootstrapping-in-the-age-of-ai-with-jason-cohen
+
+> "If AI is supposed to be so revolutionary, how come it's only increasing my performance by 20%?"
+-- misattributed | actual: Jason Cohen, ep 817; Rob agrees with it but did not say it | https://www.startupsfortherestofus.com/episodes/episode-817-bootstrapping-in-the-age-of-ai-with-jason-cohen
+
+> "No traffic is free. Even if you aren't paying money for something you are paying in time."
+-- misattributed | actual: Dan Norris, in a guest post published on robwalling.com, 16 Oct 2012 | https://robwalling.com/essays/2012/10/16/case-study-13-pre-launch-traffic-strategies-for-startups-part-1-of-3
+
+> "Having something for everyone gets you acquisition. Having everything for someone gets you retention. Choose wisely."
+-- misattributed | actual: Des Traynor, in a tweet Rob reads out and praises in Startups for the Rest of Us, ep 719 | https://www.startupsfortherestofus.com/episodes/episode-719-how-to-test-pricing-lifetime-deals-and-building-something-for-everyone-a-rob-solo-adventure
+
+> "We have two lives, and the second one begins when we realize we only have one."
+-- misattributed | actual: an unsourced aphorism usually credited to Confucius; Rob reads it out from Bill Perkins's *Die With Zero* in ep 820 | https://www.startupsfortherestofus.com/episodes/episode-820-when-to-quit-your-day-job-a-i-feasibility-risk-and-more-listener-questions-rob-solo
 
 ## Invocation Lines
 
