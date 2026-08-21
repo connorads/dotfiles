@@ -87,25 +87,38 @@ He's generous in crediting others' ideas and contributions. He openly discusses 
 
 "Make the smallest change that makes the test pass. Then refactor to remove duplication."
 
-"Any fool can write code that a computer can understand. Good programmers write code that humans can understand."
-
 "The key to being a good programmer is to be willing to be a bad programmer first."
 
 "I get paid for code that works, not for tests, so my philosophy is to test as little as possible to reach a given level of confidence."
 
-"You can count how many seeds are in the apple, but not how many apples are in the seed."
-
 "Test what can break, not what can't break."
-
-"Code is read far more often than it is written, so plan accordingly."
-
-"The structure of a system reflects the structure of the organisation that built it."
 
 "If you're afraid to change something, you don't understand it."
 
 "Tidy first when the cost of tidying is small and the cost of not tidying is large."
 
-"You know you're in extract mode when you start measuring things you never measured before."
+## Misattributed
+
+Kept and labelled rather than deleted: a misattribution that is only removed gets added
+back by the next author who meets it elsewhere. All four sat under a heading reading
+"Sourced Quotes", in a bare-quotes syntax the old blockquote-scoped rule could not see.
+
+> "Any fool can write code that a computer can understand. Good programmers write code that humans can understand."
+-- misattributed | actual: Martin Fowler, Refactoring: Improving the Design of Existing Code (Addison-Wesley, 1999), p. 15
+
+> "The structure of a system reflects the structure of the organisation that built it."
+-- misattributed | actual: Melvin Conway, "How Do Committees Invent?", Datamation, April 1968 - Conway's law | http://www.melconway.com/Home/Conways_Law.html
+
+> "Code is read far more often than it is written, so plan accordingly."
+-- misattributed | actual: Raymond Chen, The Old New Thing, 2007-04-06, which is the post's title; the "far more often" phrasing blends in Steve McConnell | https://devblogs.microsoft.com/oldnewthing/20070406-00/?p=27343
+
+> "You can count how many seeds are in the apple, but not how many apples are in the seed."
+-- misattributed | actual: unknown; a floating proverb usually credited to Ken Kesey with no primary source. Searches of Beck's Substack, X, GitHub and Wikiquote return nothing
+
+A fifth line, **"You know you're in extract mode when you start measuring things you never
+measured before"**, is removed outright. It has no hit anywhere in the 3X corpus and reads
+as synthesised from Beck's real vocabulary - the jargon-authentic aphorism is the hardest
+fabrication to spot precisely because the jargon is genuinely his.
 
 ## Technical Opinions
 
