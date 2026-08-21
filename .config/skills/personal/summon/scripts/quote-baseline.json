@@ -2,7 +2,7 @@
   "_comment": "Pre-existing unsourced quotes per dossier. The gate fails when a file goes above its number, so this may only ratchet down. Regenerate with scripts/check-quotes.py --all --update-baseline.",
   "files": {
     "alberto-brandolini.md": 75,
-    "alex-hormozi.md": 38,
+    "alex-hormozi.md": 17,
     "alistair-cockburn.md": 37,
     "amelia-wattenberger.md": 51,
     "april-dunford.md": 43,
