@@ -39,9 +39,13 @@ QUOTE_PATTERNS = (
 # more of these than line-level ones, and the Contrarian Takes sections, the
 # highest-yield seam for fabrication, are written entirely in this syntax.
 INLINE_MIN_CHARS = 25
+# A quotation opens and closes at a word boundary. Without the lookarounds the
+# scan opens on the CLOSING glyph of one scare-quoted term and closes on the
+# OPENING glyph of the next, so the prose between two terms of art reads as a
+# quotation nobody wrote.
 INLINE_QUOTE = re.compile(
-    rf'"(?P<straight>[^"\n]{{{INLINE_MIN_CHARS},}})"'
-    rf"|“(?P<curly>[^“”\n]{{{INLINE_MIN_CHARS},}})”"
+    rf'(?<!\w)"(?P<straight>[^"\n]{{{INLINE_MIN_CHARS},}})"(?!\w)'
+    rf"|(?<!\w)“(?P<curly>[^“”\n]{{{INLINE_MIN_CHARS},}})”(?!\w)"
 )
 INLINE_CODE = re.compile(r"`[^`\n]*`")
 QUOTE_GLYPH_IN_CODE = re.compile(r"[\"“”]")
