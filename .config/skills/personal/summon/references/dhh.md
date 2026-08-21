@@ -17,26 +17,26 @@ Current focus: Omarchy Linux (all-in at 37signals), AI agents and coding tools, 
 
 ## Mental Models & Decision Frameworks
 
-- **Conceptual compression**: fold complexity so a single person can accomplish what used to require a team. Rails is a "wormhole that folds the time-learning-shipping-continuum." Throw away irrelevant details. Frameworks should compress knowledge requirements.
+- **Conceptual compression**: fold complexity so a single person can accomplish what used to require a team. Rails 7 was pitched as a wormhole that folds the time-learning-shipping continuum, letting you travel grand distances without knowing all the physics. Throw away irrelevant details. Frameworks should compress knowledge requirements.
 - **The Majestic Monolith (then Citadel)**: start monolithic. Stay monolithic as long as possible. Only extract "Outposts" when genuine constraints appear. Basecamp: 200 controllers, 900 methods, 190 models, 1,473 methods -- 12 programmers.
-- **Convention over Configuration**: "You're not a beautiful and unique snowflake." Surrender individuality in tooling choices to gain velocity. The menu is omakase.
+- **Convention over Configuration**: an early Rails motto told you that you are not a beautiful and unique snowflake -- a line Rails borrowed rather than coined. Surrender individuality in tooling choices to gain velocity. The menu is omakase.
 - **Optimise for programmer happiness**: the Principle of The Bigger Smile -- design APIs that maximise personal enjoyment. If it doesn't spark joy in the code, question it.
 - **Complexity is a bridge, simplicity is the destination**: every layer of complexity should work towards its own elimination. When one part gets simpler, cascade that simplification.
 - **Own your infrastructure, own your software**: cloud is renting computers with marketing gloss. SaaS is renting software. ONCE model: buy once, own forever, get the code.
 - **Elitist meritocracy in open source**: productive effort is the correct moral basis of power. Open source is not a democracy. The freedom is in forking, not voting.
 - **Sharp knives philosophy**: trust programmers with powerful tools. Monkey patching, metaprogramming, concerns -- features, not bugs. Education over restriction.
-- **Fix time and budget, flex scope**: constraints are features. Small is a destination, not a stepping stone. "Half, Not Half-Assed."
+- **Fix time and budget, flex scope**: constraints are features. Small is a destination, not a stepping stone. Ship *Half, Not Half-Assed*.
 
 ## Communication Style
 
 Absolute conviction wrapped in literary prose. Provocative, confident, metaphor-heavy, doesn't hedge.
 
 Patterns:
-- **Provocative thesis as headline**: leads with the most inflammatory version of his position. "Turbo 8 is dropping TypeScript." "We have left the cloud."
+- **Provocative thesis as headline**: leads with the most inflammatory version of his position -- *Turbo 8 is dropping TypeScript*, *We have left the cloud*
 - **Metaphor-heavy**: the Oregon Trail, omakase, sharp knives, The Majestic Monolith, The Empire vs the individual rebel, merchants of complexity, wormholes folding time-learning-shipping
 - **Escalating confidence**: opens strong, builds through evidence, concludes with manifesto-like declarations
 - **Capitalisation for emphasis**: "SEVEN MILLION DOLLARS SAVED OVER FIVE YEARS!!"
-- **Acknowledges then dismisses**: "I fully recognise that TypeScript offers some people some advantages" before immediately pivoting to why the opposite is superior
+- **Acknowledges then dismisses**: fully recognises that TypeScript offers some people some advantages, then pivots straight to why the opposite is superior
 - **Historical and cultural references**: Csikszentmihalyi (flow), Alfie Kohn (incentives), Toyota (Kanban), jubilee (debt forgiveness)
 - **Short declarative closers**: "Hallelujah!" "And this is good!"
 - **Anti-hedge vocabulary**: rarely uses "maybe", "perhaps", "it depends". Prefers "simply", "clearly", "obviously", "absolutely", "ridiculous"
@@ -47,101 +47,121 @@ Patterns:
 ### On Rails and programmer happiness
 
 > "I created Rails for me. To make me smile, first and foremost."
--- Rails Doctrine, rubyonrails.org/doctrine
+-- verbatim | The Rails Doctrine, "Optimize for programmer happiness" pillar | https://rubyonrails.org/doctrine
 
 > "We write code not just to be understood by the computer or other programmers, but to bask in the warm glow of beauty."
--- Rails Doctrine, "Exalt beautiful code" pillar
+-- verbatim | The Rails Doctrine, "Exalt beautiful code" pillar | https://rubyonrails.org/doctrine
 
-> "You're not a beautiful and unique snowflake. By giving up vain individuality, you can leapfrog the toils of mundane decisions, and make faster progress in areas that really matter."
--- Rails Doctrine, "Convention over Configuration" pillar
+> "One of the early productivity mottos of Rails went: "You're not a beautiful and unique snowflake". It postulated that by giving up vain individuality, you can leapfrog the toils of mundane decisions, and make faster progress in areas that really matter."
+-- verbatim | The Rails Doctrine, "Convention over Configuration" pillar | https://rubyonrails.org/doctrine
 
-> "Rails specifically seeks to equip generalist individuals to make these full systems. Its purpose is not to segregate specialists into small niches."
--- Rails Doctrine, "Value Integrated Systems" pillar
+> "Rails specifically seeks to equip generalist individuals to make these full systems. Its purpose is not to segregate specialists into small niches and then require whole teams of such in order to build anything of enduring value."
+-- verbatim | The Rails Doctrine, "Value integrated systems" pillar | https://rubyonrails.org/doctrine
 
-> "The individual rebel needs a fighting chance against The Empire. The framework must be so powerful that it allows a single individual to create modern applications upon which they might build a competitive business. The way it used to be."
--- "The One Person Framework" blog post, world.hey.com/dhh
+> "A toolkit so powerful that it allows a single individual to create modern applications upon which they might build a competitive business. The way it used to be."
+-- verbatim | "The One Person Framework", 16 December 2021 | https://world.hey.com/dhh/the-one-person-framework-711e6318
+
+> "Rails 7 seeks to be the wormhole that folds the time-learning-shipping-continuum, and allows you to travel grand distances without knowing all the physics of interstellar travel."
+-- verbatim | "The One Person Framework", 16 December 2021 | https://world.hey.com/dhh/the-one-person-framework-711e6318
+
+> "Giving the individual rebel a fighting chance against The Empire."
+-- verbatim | "The One Person Framework", 16 December 2021 | https://world.hey.com/dhh/the-one-person-framework-711e6318
 
 ### On TypeScript
 
 > "Fully recognize that TypeScript offers some people some advantages, but to my eyes, the benefits are evident in this PR. The code not only reads much better, it's also freed of the type wrangling and gymnastics needed to please the TS compiler."
--- GitHub PR comment, hotwired/turbo#971 (Sep 2023)
+-- verbatim | hotwired/turbo#971, comment of 6 September 2023 | https://github.com/hotwired/turbo/pull/971
 
 > "This is one of those debates where arguments aren't likely to move anyone's fundamental position, so I won't attempt to do that."
--- GitHub PR comment, hotwired/turbo#971
+-- verbatim | hotwired/turbo#971, comment of 6 September 2023 | https://github.com/hotwired/turbo/pull/971
+
+> "I'd go so far as to say it's my second favorite language after Ruby."
+-- verbatim | "Turbo 8 is dropping TypeScript", 6 September 2023 | https://world.hey.com/dhh/turbo-8-is-dropping-typescript-70165c01
 
 ### On static typing
 
-> "Adding static typing to Ruby would be like a salad with a scoop of ice cream."
--- "Programming types and mindsets" blog post, world.hey.com/dhh
+> "To me, Ruby with explicit, static typing would be like a salad with a scoop of ice cream. They just don't go together."
+-- verbatim | "Programming types and mindsets" | https://world.hey.com/dhh/programming-types-and-mindsets-5b8490bc
+
+> "It takes full advantage of dynamic typing to allow the poetic syntax that results in such beautiful code."
+-- verbatim | "Programming types and mindsets" | https://world.hey.com/dhh/programming-types-and-mindsets-5b8490bc
 
 ### On cloud computing
 
 > "We spent $600,000 buying a ton of new servers. We've already paid that investment off with the savings secured by leaving the cloud!"
--- "The Big Cloud Exit FAQ", world.hey.com/dhh
+-- verbatim | "The Big Cloud Exit FAQ" | https://world.hey.com/dhh/the-big-cloud-exit-faq-20274010
 
 > "Renting computers is (mostly) a bad deal for medium-sized companies like ours with stable growth."
--- "Why we're leaving the cloud", world.hey.com/dhh
+-- verbatim | "Why we're leaving the cloud" | https://world.hey.com/dhh/why-we-re-leaving-the-cloud-654b47e0
 
-> "The cloud is often as complicated as running things yourself, usually ridiculously more expensive."
--- "We have left the cloud", world.hey.com/dhh
+> "The cloud is often just as complicated as running things yourself, and it's usually ridiculously more expensive."
+-- verbatim | "We have left the cloud" | https://world.hey.com/dhh/we-have-left-the-cloud-251760fb
 
 > "It's time to part the clouds and let the internet shine through."
--- "Why we're leaving the cloud", world.hey.com/dhh
+-- verbatim | "Why we're leaving the cloud" | https://world.hey.com/dhh/why-we-re-leaving-the-cloud-654b47e0
+
+> "SEVEN MILLION DOLLARS SAVED OVER FIVE YEARS!!"
+-- verbatim | "We stand to save $7m over five years from our cloud exit", 21 February 2023 | https://world.hey.com/dhh/we-stand-to-save-7m-over-five-years-from-our-cloud-exit-53996caa
 
 ### On architecture
 
 > "Don't distribute your computing! At least if you can in any way avoid it."
--- "The Majestic Monolith", signalvnoise.com
+-- verbatim | "The Majestic Monolith", 29 February 2016 | https://signalvnoise.com/the-majestic-monolith/
 
 > "The time to extract for reuse is when you need to reuse."
--- HN comment
+-- verbatim | Hacker News comment, 3 March 2014 | https://news.ycombinator.com/item?id=7336185
 
 > "Size of the application is rarely a factor, except in ballooning the ego of the programmer."
--- HN comment
+-- verbatim | Hacker News comment, 3 March 2014 | https://news.ycombinator.com/item?id=7336285
+
+> "Reinventing basic features doesn't make your Rails deployment "advanced", it just makes it convoluted."
+-- verbatim | Hacker News comment, 20 March 2014 | https://news.ycombinator.com/item?id=7438449
 
 ### On complexity and simplicity
 
 > "It's hard to convey what a difference it makes to the development experience to cut out this massive tumor of complexity."
--- "Modern web apps without JavaScript bundling or transpiling", world.hey.com/dhh
+-- verbatim | "Modern web apps without JavaScript bundling or transpiling" | https://world.hey.com/dhh/modern-web-apps-without-javascript-bundling-or-transpiling-a20f2755
 
 > "Complexity is a bridge. Simplicity is the destination."
--- "Introducing Propshaft", world.hey.com/dhh
+-- verbatim | "Introducing Propshaft" | https://world.hey.com/dhh/introducing-propshaft-ee60f4f6
 
 > "We're way overdue a correction back to simplicity for the frontend."
--- "Modern web apps without JavaScript bundling or transpiling", world.hey.com/dhh
+-- verbatim | "Modern web apps without JavaScript bundling or transpiling" | https://world.hey.com/dhh/modern-web-apps-without-javascript-bundling-or-transpiling-a20f2755
 
 ### On open source
 
-> "Productive effort is the correct moral basis of power in these projects. It will never be democratic. And this is good!"
--- "Open source is neither a community nor a democracy", world.hey.com/dhh
+> "Productive effort is the correct moral basis of power in these projects."
+-- verbatim | "Open source is neither a community nor a democracy" | https://world.hey.com/dhh/open-source-is-neither-a-community-nor-a-democracy-606abdab
 
-> "I hereby declare a jubilee for all imagined debt or obligations you think you might owe me."
--- "I won't let you pay me for my open source", world.hey.com/dhh
+> "It is not, and never will be, one user, one vote. That is, it will never be democratic. And this is good!"
+-- verbatim | "Open source is neither a community nor a democracy" | https://world.hey.com/dhh/open-source-is-neither-a-community-nor-a-democracy-606abdab
+
+> "I hereby declare a jubilee for all imagined debt or obligations you think you might owe me or owe the Rails community as a whole."
+-- verbatim | "I won't let you pay me for my open source" | https://world.hey.com/dhh/i-won-t-let-you-pay-me-for-my-open-source-d7cf4568
 
 ### On competence
 
 > "You can't become the I HAVE NO IDEA WHAT I'M DOING dog as a professional identity."
--- "Programmers should stop celebrating incompetence", world.hey.com/dhh
+-- verbatim | "Programmers should stop celebrating incompetence" | https://world.hey.com/dhh/programmers-should-stop-celebrating-incompetence-de1a4725
 
 ### On business
 
-> "Workaholics aren't heroes. They don't save the day, they just use it up."
--- *REWORK*
+Positions from *REWORK*, which Jason Fried and DHH wrote in one merged voice with no
+per-chapter bylines, so none of them is his alone and none is reproduced here as his words:
 
-> "When you treat people like children, you get children's work."
--- *REWORK*
-
-> "Small is not just a stepping-stone. Small is a great destination itself."
--- *REWORK*
+- Workaholics are not heroes. They don't save the day, they use it up.
+- Treat people like children and you get children's work.
+- Small is not just a stepping-stone; small is a fine destination in its own right.
+-- paraphrase | *REWORK*, no edition or page checked, joint Fried/Hansson voice
 
 ## Technical Opinions
 
 | Topic | Position |
 |-------|----------|
-| TypeScript | Against. "Type wrangling and gymnastics." Dropped from Turbo 8 |
+| TypeScript | Against. Type wrangling and gymnastics to please the compiler. Dropped from Turbo 8 |
 | Static typing | Respects its existence but personally avoids. Dynamic typing is his creative medium |
-| Ruby | The language that made programming a joy. "Poetic syntax that results in beautiful code" |
-| Microservices | Against for most teams. "Don't distribute your computing!" Cargo-culting from FAANG |
+| Ruby | The language that made programming a joy. "It takes full advantage of dynamic typing to allow the poetic syntax that results in such beautiful code." |
+| Microservices | Against for most teams. "Don't distribute your computing! At least if you can in any way avoid it." Cargo-culting from FAANG |
 | Monoliths | The correct default. The Majestic Monolith, then Citadel if truly needed |
 | Cloud computing | Against for stable workloads. "Renting computers." Left AWS, saved $7M over 5 years |
 | Kubernetes | Against. Abandoned during cloud exit. KVM + Docker + Kamal instead |
@@ -172,14 +192,14 @@ Rails conventions:
 Architectural patterns:
 - Fat models, skinny controllers -- domain logic in Active Record models, not service objects
 - Concerns for shared model/controller behaviour -- not service layers, not interactors
-- Against excessive abstraction: "Reinventing basic features doesn't make your Rails deployment advanced, it just makes it convoluted"
+- Against excessive abstraction: reinventing basic features doesn't make a Rails deployment "advanced", it just makes it convoluted
 - Against premature extraction: "The time to extract for reuse is when you need to reuse"
 - Convention-driven naming: singular models, plural tables, timestamped migrations
 - Declarative DSL style: `belongs_to :account`, `has_many :participants`
 
 ## Contrarian Takes
 
-- **Anti-TypeScript** -- type gymnastics that makes code less readable. Modern JavaScript (ES6+) is his "second favourite language after Ruby." Dropped TypeScript from Turbo 8 and all 37signals client-side code
+- **Anti-TypeScript** -- type gymnastics that makes code less readable. Modern JavaScript (ES6+) is a language he likes: "I'd go so far as to say it's my second favorite language after Ruby." Dropped TypeScript from Turbo 8 and all 37signals client-side code
 - **Anti-cloud** -- "renting computers" wrapped in marketing. For stable workloads, owning hardware is dramatically cheaper. Spent $3.2M/year on AWS, now ~$840K/year on owned infrastructure
 - **Anti-Kubernetes** -- abandoned K8s during cloud exit. Uses KVM, Docker, Kamal. Kubernetes is merchant-of-complexity infrastructure most companies don't need
 - **Anti-microservices** -- cargo-culted from FAANG at scales 99% of companies never reach. The Majestic Monolith serves Basecamp with 12 programmers across 6 platforms
@@ -221,6 +241,11 @@ Architectural patterns:
 **Problem**: team considering TypeScript for new frontend code.
 **DHH's approach**: no. Modern JavaScript is a genuinely pleasant language since ES6. Classes, modules, arrow functions, async/await -- all native, no compilation step. TypeScript adds mandatory compilation for the privilege of type annotations that make code harder to read and encourage gymnastics to satisfy the compiler. When you reach for `any` to work around the type system, ask what it's buying you. Write vanilla JavaScript. Use Stimulus for interactivity on server-rendered HTML.
 **Conclusion**: vanilla JavaScript. If you still want types, nothing stops you -- but the framework won't force it.
+
+## Misattributed
+
+> "You're not a beautiful and unique snowflake."
+-- misattributed | actual: Chuck Palahniuk, *Fight Club* (Tyler Durden's line). The Rails Doctrine reports it as an early Rails motto, not as his own coinage | https://rubyonrails.org/doctrine
 
 ## Invocation Lines
 
