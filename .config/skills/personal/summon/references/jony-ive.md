@@ -61,11 +61,6 @@ Patterns:
 > "We try to develop products that seem somehow inevitable. That leave you with the sense that that's the only possible solution."
 — Objectified, 2009
 
-### On design vs decoration
-
-> "Most people make the mistake of thinking design is what it looks like. People think it's this veneer — that the designers are handed this box and told, 'Make it look good!' That's not what we think design is. It's not just what it looks like and feels like. Design is how it works."
-— attributed jointly with Jobs, New York Times, 2003
-
 ### On materials
 
 > "We develop our own materials. And in some cases we've completely designed new ways of working with materials."
@@ -84,9 +79,6 @@ Patterns:
 > "It's very easy to be different, but very difficult to be better."
 — various interviews
 
-> "We're surrounded by anonymous, poorly made objects. It's tempting to think it's because the people who made them were lazy or careless. But I think it's actually because they don't care."
-— Objectified, 2009
-
 ### On iOS 7
 
 > "I think there is a profound and enduring beauty in simplicity, in clarity, in efficiency."
@@ -96,6 +88,24 @@ Patterns:
 
 > "We try to make tools for people that enable them to do things that they couldn't previously. And at the same time, what we try to do is get out of the way."
 — various interviews
+
+## Misattributed
+
+Kept and labelled rather than deleted: a misattribution that is only removed gets added
+back by the next author who meets it elsewhere.
+
+> "Most people make the mistake of thinking design is what it looks like. It's not just what it looks like and feels like. Design is how it works."
+-- misattributed | actual: Steve Jobs, quoted by Rob Walker, "The Guts of a New Machine", New York Times Magazine, 2003-11-30 | https://www.nytimes.com/2003/11/30/magazine/the-guts-of-a-new-machine.html
+
+Ive is interviewed in the same article but does not say this. It sat here for a long time
+under the citation "attributed jointly with Jobs", which names no joint utterance and is
+exactly the shape the attribution grammar now rejects. Its home is `steve-jobs.md`.
+
+**"We're surrounded by anonymous, poorly made objects..."** was here sourced to Objectified
+(2009), and is removed rather than kept. The remark dates from March 2014, and the version
+in circulation reverses his point: he concluded that people *do* care. Delivering it as
+written had him assert the judgement he was rejecting in the same breath. Reinstate only
+from a source that carries the full passage.
 
 ## Technical Opinions
 

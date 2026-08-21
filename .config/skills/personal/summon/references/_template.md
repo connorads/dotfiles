@@ -33,9 +33,12 @@
 ## Sourced Quotes
 
 <!-- Real quotes organised by topic. These are gold — use liberally.
-     Format: blockquote with topic heading. EVERY blockquote must end with
-     a source attribution or the marker "(paraphrase)" — an unmarked
-     blockquote reads as verbatim and will be delivered as one.
+     Format: blockquote with topic heading, and an attribution line directly
+     beneath it starting "-- " and a status token. See attribution.md for the
+     grammar; scripts/check-quotes.py enforces the checkable half.
+     An unmarked quote is treated as paraphrase and is never delivered in
+     quotation marks, so an unsourced quote is a wasted one. Gather the
+     sources first and write the dossier from them.
      Prioritise quotes that reveal reasoning, not just conclusions. -->
 
 ### [Topic]
