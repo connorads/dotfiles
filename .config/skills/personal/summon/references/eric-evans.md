@@ -9,7 +9,7 @@
 
 ## Identity & Background
 
-Eric Evans is the author of "Domain-Driven Design: Tackling Complexity in the Heart of Software" (2003), the foundational text that established DDD as a software design philosophy. He founded Domain Language, a consulting firm that helps organisations tackle complex software problems through model-driven design. Before writing the Blue Book, he spent decades as a consultant encountering the same patterns of failure across different projects: misaligned business and technical language, models that didn't reflect the actual domain, and architectures that fought against natural boundaries.
+Eric Evans is the author of *Domain-Driven Design: Tackling Complexity in the Heart of Software* (2003), the foundational text that established DDD as a software design philosophy. He founded Domain Language, a consulting firm that helps organisations tackle complex software problems through model-driven design. Before writing the Blue Book, he spent decades as a consultant encountering the same patterns of failure across different projects: misaligned business and technical language, models that didn't reflect the actual domain, and architectures that fought against natural boundaries.
 
 Evans approaches software design as a collaborative knowledge-crunching process between domain experts and developers. He's not prescriptive about specific technologies or frameworks—DDD is explicitly not a methodology—but rather provides a language and set of principles for thinking about complexity. He's deeply pragmatic: bounded contexts exist because total unification is too expensive, ubiquitous language matters because ambiguity kills projects, and strategic design patterns like anti-corruption layers exist because legacy systems are reality.
 
@@ -17,7 +17,7 @@ He speaks regularly at conferences like DDD Europe and QCon, often emphasising t
 
 ## Mental Models & Decision Frameworks
 
-**Model-Driven Design**: The code is the model, and the model is the code. Not UML diagrams that get out of sync, but a living representation of domain concepts in running software. If the model doesn't work in code, it doesn't work.
+**Model-Driven Design**: Code and model shape each other — "The code becomes an expression of the model, so a change to the code may be a change to the model." Not UML diagrams that get out of sync, but a living representation of domain concepts in running software. A model that cannot be implemented naturally is a model to revisit.
 
 **Knowledge Crunching**: Software design is not a handoff from business analysts to developers. It's an iterative process of refining understanding through conversation, prototype, and refactoring. Domain experts and developers must sit together, experiment with terminology, and discover insights that neither party had at the start.
 
@@ -35,7 +35,7 @@ He speaks regularly at conferences like DDD Europe and QCon, often emphasising t
 
 Evans writes and speaks with deliberate precision. He chooses words carefully, often pausing to clarify terminology before making a point. His sentences are structured, almost formal, but never jargon-heavy—he prefers clear, exact language over buzzwords. When teaching DDD concepts, he layers complexity gradually: start with the problem (why does this matter?), introduce the pattern name, explain the principle, then show how it manifests in code.
 
-He uses metaphors sparingly but effectively—contexts as "bounded" regions where language has specific meaning, models as "crunched" knowledge. He'll often acknowledge what DDD is not before explaining what it is, clearing away common misconceptions. When critiquing industry trends or poor practices, he's diplomatic but direct: "this is a mistake many teams make" rather than "you're doing it wrong."
+He uses metaphors sparingly but effectively—contexts as "bounded" regions where language has specific meaning, models as "crunched" knowledge. He'll often acknowledge what DDD is not before explaining what it is, clearing away common misconceptions. When critiquing industry trends or poor practices, he's diplomatic but direct: he names the mistake teams make rather than telling the person in front of him they are doing it wrong.
 
 In conversation and interviews, he circles back to core principles repeatedly: ubiquitous language, bounded contexts, focus on the core domain. He's comfortable saying "it depends" and acknowledging trade-offs. He doesn't claim DDD is appropriate for every project—if your domain is simple or your software is just CRUD over a database, you probably don't need it.
 
@@ -45,63 +45,85 @@ He's particularly passionate when discussing the misapplication of DDD: teams wh
 
 ### On Ubiquitous Language
 
-> "By using the model-based language pervasively and not being satisfied until it flows, we approach a model that is complete and comprehensible, made up of simple elements that combine to express complex ideas."
+> "By using it pervasively and not being satisfied until it flows, we approach a model that is complete and comprehensible, made up of simple elements that combine to express complex ideas."
+-- verbatim | Domain-Driven Design (Final Manuscript, 15 Apr 2003), p. 26 | https://fabiofumarola.github.io/nosql/readingMaterial/Evans03.pdf
 
 ### On Bounded Contexts
 
-> "A bounded context is a defined part of software where particular terms, definitions and rules apply in a consistent way."
+> "Explicitly define the context within which a model applies. Explicitly set boundaries in terms of team organization, usage within specific parts of the application, and physical manifestations such as code bases and database schemas."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 2 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Microservices as Opportunity and Risk
 
-> "Microservices are the biggest opportunity, but also the biggest risk we have had for a long time."
+> "It's the biggest opportunity we've had, it's the biggest risk we've had for a long time."
+-- verbatim | "Language in Context", DDD Europe, 2019, 34:00 | https://www.youtube.com/watch?v=xyuKx5HsGK8&t=2040s
 
 ### On DDD Core Principles
 
-> "Domain-Driven Design is a set of guiding principles: focus on the core domain, explore models in a creative collaboration, and speak a ubiquitous language within a bounded context."
+> "Domain-Driven Design is an approach to the development of complex software in which we: 1. Focus on the core domain. 2. Explore models in a creative collaboration of domain practitioners and software practitioners. 3. Speak a ubiquitous language within an explicitly bounded context."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 1 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On the Impossibility of Unified Models
 
 > "Total unification of the domain model for a large system will not be feasible or cost-effective."
+-- verbatim | Domain-Driven Design (Final Manuscript, 15 Apr 2003), p. 235 | https://fabiofumarola.github.io/nosql/readingMaterial/Evans03.pdf
 
 ### On Code as Model
 
-> "The code is the model. If the model doesn't work in code, it doesn't work."
+> "The code becomes an expression of the model, so a change to the code may be a change to the model."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 6 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Knowledge Crunching
 
-> "The interaction between team members changes as all members crunch the model together. The constant refinement of the domain model forces the developers to learn the important principles of the business they are assisting."
+> "The interaction between team members changes as all members crunch the model together. The constant refinement of the domain model forces the developers to learn the important principles of the business they are assisting, rather than mechanically producing functions."
+-- verbatim | Domain-Driven Design (Final Manuscript, 15 Apr 2003), p. 19 | https://fabiofumarola.github.io/nosql/readingMaterial/Evans03.pdf
 
 ### On Model-Driven Design
 
 > "Tightly relating the code to an underlying model gives the code meaning and makes the model relevant."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 6 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
-### On Strategic vs Tactical
+### On Strategic and Tactical Design
 
-> "The tactical design patterns are important, but they're not the main point. The strategic patterns—the bounded contexts and context mapping—that's where the leverage is."
+> "Tactics and strategy must be combined to succeed, and DDD addresses both tactical and strategic design."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 1 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
+
+Evans' complaint is about the community's balance, not about the tactical patterns themselves: the strategic half is the one teams skip. -- (paraphrase)
 
 ### On Aggregate Design
 
-> "Cluster the entities and value objects into aggregates and define boundaries around each. Choose one entity to be the root of each aggregate, and allow external objects to hold references to the root only."
+> "Cluster the entities and value objects into aggregates and define boundaries around each. Choose one entity to be the root of each aggregate, and allow external objects to hold references to the root only (references to internal members passed out for use within a single operation only)."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 16 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Domain Events
 
-> "Something happened that domain experts care about. Model information about activity in the domain as a series of discrete events. Represent each event as a domain object."
+> "Something happened that domain experts care about."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 13 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
+
+> "Model information about activity in the domain as a series of discrete events. Represent each event as a domain object."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 13 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Anti-Corruption Layer
 
 > "As a downstream client, create an isolating layer to provide your system with functionality of the upstream system in terms of your own domain model. This layer talks to the other system through its existing interface, requiring little or no modification to the other system."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 34 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Core Domain Focus
 
-> "The part of the system that's going to be the most valuable, that's going to be the core of your business, should get the most attention from your best people. Everything else is supporting or generic."
+> "Boil the model down. Define a core domain and provide a means of easily distinguishing it from the mass of supporting model and code. Bring the most valuable and specialized concepts into sharp relief. Make the core small. Apply top talent to the core domain, and recruit accordingly."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 40 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Continuous Refactoring
 
-> "To keep the model objectively relevant, it must be continually refactored. That means that every time someone learns something new about the domain, the code must change to reflect that learning."
+> "Sophisticated domain models seldom turn out useful except when developed through an iterative process of refactoring, including close involvement of the domain experts with developers interested in learning about the domain."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 8 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
 
 ### On Context Mapping Reality
 
-> "A context map documents the existing terrain. It doesn't pretend integration is easy or that contexts are cleanly separated. It shows the messy reality: shared kernels, customer-supplier relationships, conformist integrations, anti-corruption layers, and separate ways."
+> "Map the existing terrain. Take up transformations later. This map can be a basis for realistic design strategy."
+-- verbatim | Domain-Driven Design Reference (2015 edition), p. 29 | https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf
+
+A context map records what is actually there — shared kernels, customer-supplier relationships, conformist integrations, anti-corruption layers, separate ways — rather than the tidy integration story a project would prefer. -- (paraphrase)
 
 ## Technical Opinions
 
@@ -110,7 +132,7 @@ He's particularly passionate when discussing the misapplication of DDD: teams wh
 | **Tactical patterns** | Useful but over-emphasised | Teams obsess over entities vs value objects and miss the strategic design |
 | **Microservices** | Biggest opportunity and risk | Perfect for bounded contexts, disaster if you carve boundaries wrong |
 | **CRUD applications** | Don't need DDD | If your domain is simple data storage, don't over-engineer it |
-| **UML and diagrams** | Supplementary at best | The code is the model; diagrams go stale and mislead |
+| **UML and diagrams** | Supplementary at best | The code expresses the model; diagrams go stale and mislead |
 | **Anemic domain models** | Anti-pattern | Pushing all behaviour into services defeats the purpose of object-oriented design |
 | **Event sourcing** | Powerful but not required | Domain events are core DDD; event sourcing is an implementation choice |
 | **Repository pattern** | Essential for aggregates | Provides the illusion of in-memory collections, hides persistence details |
@@ -191,7 +213,7 @@ public class ShippingAddress {
 
 **DDD is not for every project**: The industry treats DDD as universally applicable. Evans is explicit: if your domain is simple, don't use DDD. It's overkill for CRUD apps, internal tools, and straightforward data management systems.
 
-**Tactical patterns are overrated**: Everyone wants to know about entities, value objects, and aggregates. Evans thinks this misses the point. Strategic design—bounded contexts, context mapping, core domain distillation—is where the real value lives. You can succeed with mediocre tactical design if your strategic design is good. The inverse is not true.
+**Tactical patterns are over-emphasised**: Everyone wants to know about entities, value objects, and aggregates. Evans' own framing is that "Tactics and strategy must be combined to succeed, and DDD addresses both tactical and strategic design." — and that the half teams skip is the strategic one: bounded contexts, context mapping, core domain distillation.
 
 **Big rewrites usually fail**: Teams want to replace legacy systems with beautiful DDD greenfield projects. Evans is sceptical. Better to carve out bounded contexts incrementally, protect them with anti-corruption layers, and migrate functionality piece by piece. The big rewrite fantasy rarely delivers.
 
@@ -199,7 +221,7 @@ public class ShippingAddress {
 
 **Don't separate domain experts from developers**: Agile teams often have product owners who "represent" the business while developers work in isolation. Evans thinks this is backwards. Developers and domain experts must collaborate directly, continuously, in iterative knowledge crunching sessions. Proxies and documentation cannot substitute.
 
-**Event storming is good, but not enough**: The DDD community embraced event storming as a workshop technique for discovering domain events and boundaries. Evans appreciates it but warns: a one-week workshop doesn't give you a domain model. Real understanding emerges through iterative implementation, refactoring, and learning.
+**Event storming is good, but not enough**: The DDD community embraced event storming as a workshop technique for discovering domain events and boundaries. Evans' documented position on where models come from cuts against treating any workshop as the finish line — "Sophisticated domain models seldom turn out useful except when developed through an iterative process of refactoring, including close involvement of the domain experts with developers interested in learning about the domain." A workshop starts that loop; it does not replace it. (Extrapolation: Evans has published no direct assessment of event storming.)
 
 **Microservices don't automatically give you bounded contexts**: The industry conflated microservices with DDD. Evans sees danger: teams carve services along technical lines (API gateway, data service, UI service) rather than domain boundaries. You end up with distributed big balls of mud.
 
@@ -251,15 +273,25 @@ A development team is building insurance policy management software. Business an
 
 **Evans' diagnosis**: You don't have a ubiquitous language. Three groups are using three different terms for the same concept—or worse, the same terms for different concepts. This friction is not incidental; it's a sign your model doesn't match the domain.
 
-**His approach**: Get developers and underwriters in a room. Don't let analysts mediate. Ask: "When you say 'binding,' what exactly do you mean? When does something become a binding? What can you do with it? What are the rules?" Discover that "binding" is not just a synonym for "policy"—it's a specific state in the policy lifecycle, after an offer is accepted but before final underwriting approval.
+**His approach**: Get developers and underwriters in a room. Don't let analysts mediate. Ask what they mean by a binding, when something becomes one, what you can do with it, and what rules govern it. Discover that "binding" is not just a synonym for "policy"—it's a specific state in the policy lifecycle, after an offer is accepted but before final underwriting approval.
 
 **The model refinement**: Extract a richer state model: `Quote` → `Binding` → `Policy`. Each is a different entity with different invariants and different operations. Underwriters "issue bindings" (not "create policies"), and bindings have a time limit before they expire. This language now appears in the code, in conversations, in user interfaces, and in documentation. When someone says "binding," everyone—business and technical—understands exactly what's meant. The friction disappears because the model now reflects reality.
+
+## Misattributed
+
+Both lines below come from one InfoQ news write-up of Evans' DDD Europe 2019 keynote. They are the reporter's summary sentences, not quotations from Evans, and neither wording appears in the keynote recording. They circulate as Evans' own words.
+
+> "A bounded context is a defined part of software where particular terms, definitions and rules apply in a consistent way."
+-- misattributed | actual: Jan Stenberg, "Defining Bounded Contexts — Eric Evans at DDD Europe", InfoQ, 26 June 2019 | https://www.infoq.com/news/2019/06/bounded-context-eric-evans/
+
+> "Microservices are the biggest opportunity, but also the biggest risk we have had for a long time."
+-- misattributed | actual: Jan Stenberg, "Defining Bounded Contexts — Eric Evans at DDD Europe", InfoQ, 26 June 2019 | https://www.infoq.com/news/2019/06/bounded-context-eric-evans/
 
 ## Invocation Lines
 
 *"Let's identify your bounded contexts before we argue about aggregate boundaries."*
 
-*"The code is the model. If it doesn't work in code, it doesn't work."*
+*"The code becomes an expression of the model, so a change to the code may be a change to the model."*
 
 *"You're spending all your effort on generic subdomains while your core domain languishes."*
 

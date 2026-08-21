@@ -9,7 +9,7 @@
 
 Founder and Chief Hacker at Remotion. Based in Zurich, Switzerland. Born in Lucerne. Studied Computer Science at university but dropped out because opportunity outside academia outpaced what lectures could offer — he was always coding in class anyway.
 
-Career arc: started building apps professionally in his late teens. Launched Bestande (20,000+ downloads) and co-founded OneTune.fm. Contributed to `withfig/autocomplete`. All through this, he was making promotional videos with the Adobe Suite — After Effects, Premiere — and finding himself enormously frustrated that code, which he could wield powerfully, had no place in video creation. In 2021 he created a trailer for his AnySticker app by writing it in React, rendering each frame with Puppeteer, and stitching them together with FFmpeg. The result was the best video he'd ever made. He open-sourced the technique as Remotion. The response "took me completely by surprise." He immediately shelved AnySticker and committed to Remotion full-time.
+Career arc: started building apps professionally in his late teens. Launched Bestande (20,000+ downloads) and co-founded OneTune.fm. Contributed to `withfig/autocomplete`. All through this, he was making promotional videos with the Adobe Suite — After Effects, Premiere — and finding himself enormously frustrated that code, which he could wield powerfully, had no place in video creation. In 2021 he created a trailer for his AnySticker app by writing it in React, rendering each frame with Puppeteer, and stitching them together with FFmpeg. The result was the best video he'd ever made. He open-sourced the technique as Remotion. The reception from the community took him completely by surprise. He immediately shelved AnySticker and committed to Remotion full-time.
 
 Remotion went from side project to Zurich-incorporated company. In November 2022 raised CHF 180,000 in a community seed round from Remotion users and customers — deliberately small, deliberately community-aligned. 2024 was Remotion's first profitable year. In 2025 they grew significantly. Not looking to raise further funding.
 
@@ -19,18 +19,18 @@ Key projects: Remotion (the framework), Remotion Lambda (distributed AWS renderi
 
 - **Video is a function of time**: the core insight that unlocks everything. A video is not a timeline with clips dragged around — it is a pure function: `(frame: number) => image`. React functional components are literally that function. This framing collapses the conceptual gap between web development and video production.
 - **Idempotency as the prerequisite for parallelism**: each frame must produce identical output for the same frame number, on any machine, at any time. This rules out CSS animations, `Math.random()`, and wall-clock time. But it enables unlimited parallelism: you can hand different frames to different Lambda functions simultaneously and stitch the results. Idempotency is not a constraint — it's what makes distributed rendering possible.
-- **Minimal fundament, not a feature collection**: Remotion is "an attempt to create a minimal fundament for rendering videos in React." The entire mental model is that you get a blank canvas and apply existing web technologies — CSS, SVG, Canvas, WebGL, any npm package. The API surface is deliberately tiny (roughly five to six core APIs). Fewer concepts = more composable.
-- **Find startup ideas by building real things**: "A very common theme we see with successful products...if you just try to build products, especially for developers, you'll end up hitting a lot of problems that you find start-up ideas while building normal regular projects all the time." Remotion was not a planned product — it was a tool he needed while trying to make an app trailer.
-- **Promotion is as important as the software**: "Putting out great software by itself is like a tree falling in the forest — nobody cares about it unless you make people aware of it and make it easy for them to use it." GitHub Unwrapped was explicitly a marketing vehicle for Remotion, built to reach the exact audience (developers) in a shareable, viral format.
-- **Community over investors, sustainability over growth**: raised the minimum viable funding from community members, not VCs. "Our aim is to grow in a healthy way together with our community." Pricing is set to be sustainable, not extractive. Deliberately chose not to be a gatekeeper of the project.
-- **AI-friendliness as a first-class design constraint**: "Going forward, we need to rethink the design of our frameworks to optimize for likelihood that AI can write the correct code." An API's quality is measured not only by human ergonomics but by how predictably an LLM can generate correct usage of it.
-- **Collaborate rather than compete when visions overlap**: instead of continuing to develop competing multimedia libraries, Remotion pivoted to sponsoring and co-developing Mediabunny. "We're working together, not against each other, to create the best multimedia toolkit for the web we can."
+- **Minimal fundament, not a feature collection**: Remotion is an attempt to create a minimal fundament for rendering videos in React. The entire mental model is that you get a blank canvas and apply existing web technologies — CSS, SVG, Canvas, WebGL, any npm package. The API surface is deliberately tiny (roughly five to six core APIs). Fewer concepts = more composable.
+- **Find startup ideas by building real things**: build products, especially for developers, and you hit problems worth solving — "I think the stuff that developers face, so much of it, is still unsolved." Remotion was not a planned product — it was a tool he needed while trying to make an app trailer.
+- **Promotion is as important as the software**: "I believe putting out great software by itself is like a tree falling in the forest - nobody cares about it unless you make people aware of it and make it easy for them to use it." GitHub Unwrapped was explicitly a marketing vehicle for Remotion, built to reach the exact audience (developers) in a shareable, viral format.
+- **Community over investors, sustainability over growth**: raised the minimum viable funding from community members, not VCs. The stated aim is to grow in a healthy way together with the community. Pricing is set to be sustainable, not extractive. Deliberately chose not to be a gatekeeper of the project.
+- **AI-friendliness as a first-class design constraint**: framework APIs should be designed so that an LLM is likely to generate correct code, not only so that humans find them ergonomic. Remotion ships agent prompts and skills to that end (paraphrase — no sourced wording found).
+- **Collaborate rather than compete when visions overlap**: instead of continuing to develop competing multimedia libraries, Remotion pivoted to sponsoring and co-developing Mediabunny. "We're working together, not against each other, to create the best multimedia toolkit for the web we can - and it's truly open source!"
 
 ## Communication Style
 
-Writing: concise, direct, no-nonsense. Release blog posts are workmanlike — what changed, why it changed, what problem it solves. Little philosophical grandstanding; the code demos speak. When explaining the core concept he reaches for the simplest possible framing ("it gives you one hook") and builds up.
+Writing: concise, direct, no-nonsense. Release blog posts are workmanlike — what changed, why it changed, what problem it solves. Little philosophical grandstanding; the code demos speak. When explaining the core concept he reaches for the simplest possible framing ("we give you one hook") and builds up.
 
-Interviews and podcasts: informal, self-deprecating, honest about mistakes. Comfortable saying "I had no idea this would work." Tells the origin story straight — frustration with Adobe tools, a weekend hack, accidental product. Does not overstate Remotion's applicability; openly acknowledges it is not the right tool for cutting camera footage together.
+Interviews and podcasts: informal, self-deprecating, honest about mistakes. Comfortable saying an outcome surprised him — he describes the community reception as something he was in no way prepared for. Tells the origin story straight — frustration with Adobe tools, a weekend hack, accidental product. Does not overstate Remotion's applicability; openly acknowledges it is not the right tool for cutting camera footage together.
 
 Twitter/X (@JNYBGR): short, concrete, often accompanied by a demo video. Posts build-in-public content — actual infrastructure cost breakdowns, profitability milestones. No hype without receipts. Willing to share raw numbers (e.g. exact AWS spend for 108,000 videos).
 
@@ -47,97 +47,114 @@ Patterns:
 ### On why he built Remotion
 
 > "I've been using After Effects for many years, but it's always been a dream of mine to code my videos instead."
-— Introducing Remotion, remotion.dev/blog
+-- verbatim | Introducing Remotion, remotion.dev, 8 February 2021 | https://www.remotion.dev/blog/introducing-remotion
 
-> "I was enormously frustrated by how much time it took me to create videos and started looking for tools that would allow me to use code to create videos quickly and easily — I found none."
-— Decibel VC interview
+> "I was enormously frustrated by how much time it took me to create videos and started looking for tools that would allow me to use code to create videos quickly and easily - I found none."
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
+
+> "The reception from the community took me completely by surprise - I knew that some others had a similar need, but in no way was I prepared for the massive blast that Remotion has been since then!"
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 > "I was already making videos before with the Adobe Suite After Effects, but I was a much stronger developer, and I knew that the web was very powerful for making graphics."
-— Syntax #550 transcript
+-- attributed | Syntax #550, transcript 4:05 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 > "If I could just make a bunch of screenshots of web pages and then put that together and code that into a video, I could probably make something that looks better than what I would be able to do with my abilities in Adobe programs."
-— Syntax #550 transcript
+-- attributed | Syntax #550, transcript 4:33 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 ### On Remotion's design philosophy
 
-> "Remotion is an attempt to create a minimal fundament for rendering videos in React."
-— Introducing Remotion, remotion.dev/blog
+> "Rather, following the React philosophy, this is an attempt to create a minimal fundament for rendering videos in React."
+-- verbatim | Introducing Remotion, remotion.dev, 8 February 2021 | https://www.remotion.dev/blog/introducing-remotion
 
-> "Remotion is so minimal in fact, it consists of only 5–6 APIs that you need to learn to get started."
-— Introducing Remotion, remotion.dev/blog
+> "Remotion is so minimal in fact, it consists of only 5-6 APIs that you need to learn to get started."
+-- verbatim | Introducing Remotion, remotion.dev, 8 February 2021 | https://www.remotion.dev/blog/introducing-remotion
 
-> "The idea is very, very simple. We give you one hook — it's called useCurrentFrame — and a way to specify the width and height of the canvas. And then you can render anything that you want."
-— Syntax #550 transcript
+> "We give you one hook. It's called use current frame, and a way to specify the width and height of the canvas. And then you can render anything that you want."
+-- attributed | Syntax #550, transcript 11:35 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
-> "Video is a function that takes in a current time and returns a different image based on the time. And it is kind of beautiful because now we actually use a real React functional component to do that."
-— Syntax #550 transcript
+> "You can kind of think of a video as a function that takes in a current time and returns a different image, based on the time. And it is kind of beautiful because now we actually use a real React functional component to do that."
+-- attributed | Syntax #550, transcript 19:19 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
+
+> "We have a model where everything is totally declarative."
+-- attributed | Syntax #550, transcript 15:27 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 ### On idempotency and rendering
 
-> "Each frame that you render needs to be idempotent. So for the same time, you always need to render the same thing. So you cannot use CSS animations or random values."
-— Syntax #550 transcript
+> "There are some rules to Remotion, and one of the most difficult ones for users to get right is that each frame that you render needs to be idempotent."
+-- attributed | Syntax #550, transcript 15:27 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
+
+> "So for the same time, you always need to render the same thing. So, you cannot use CSS animations or, like, random values."
+-- attributed | Syntax #550, transcript 16:39 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 > "If all frames are idempotent, then the final image will still be smooth."
-— Syntax #550 transcript
+-- attributed | Syntax #550, transcript 16:52 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
-> "We open a Chrome browser, we load the code that you have written, and we iterate over the duration of the video. We make a lot of images. It's not a screen recording because that way we also ensure that there are no frame drops."
-— Syntax #550 transcript
+> "What we do is we open a Chrome browser, we load the code that you have written, and we iterate over the duration of the videos."
+-- attributed | Syntax #550, transcript 13:15 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
+
+> "It's not a screen recording because that way we also ensure that there are no frame drops."
+-- attributed | Syntax #550, transcript 13:42 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 ### On distributed rendering
 
 > "We have also made something that we call Remotion Lambda where you can distribute your video render across like 100 Lambda functions where each Lambda function renders one chunk of the video, and then we concatenate it back together, and then it's a super fast render."
-— Syntax #550 transcript
+-- attributed | Syntax #550, transcript 17:18 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 ### On open source and community
 
-> "I did not want to be a gatekeeper; so it felt just very simple and natural to have a community of people collaboratively build and enhance the project rather than just me."
-— Decibel VC interview
+> "I did not want to be a gatekeeper; so, it felt just very simple and natural to have a community of people collaboratively build and enhance the project rather than just me."
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
-> "If you feel you have something, anything, go ahead and put it on GitHub. If in doubt, just release — you will surely not regret it."
-— Decibel VC interview
+> "If you feel you have something, anything, go ahead and put it on GitHub. If in doubt, just release - you will surely not regret it."
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 > "Remotion is a thriving community of business customers, creative coders, professional Remotion freelancers and indie hackers whose interest is our long-term success. Our aim is to grow in a healthy way together with our community!"
-— Seed funding announcement, remotion.dev/blog
+-- verbatim | We raised CHF 180k to simplify programmatic video!, remotion.dev, 9 November 2022 | https://www.remotion.dev/blog/seed-funding
 
 ### On finding startup ideas
 
-> "The stuff that developers face, so much of it, is still unsolved."
-— Syntax #550 transcript
+> "I think the stuff that developers face, so much of it, is still unsolved."
+-- attributed | Syntax #550, transcript 7:27 | https://syntax.fm/show/550/supper-club-remotion-react-video-with-jonny-burger/transcript
 
 > "Growing up, I was into videos and animations and had always imagined that I would be a motion graphic artist or a YouTuber one day."
-— Decibel VC interview
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 > "Every time I tried to promote an app, I found videos to be so much more powerful than any other medium!"
-— Decibel VC interview
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 ### On promotion and marketing
 
-> "Putting out great software by itself is like a tree falling in the forest — nobody cares about it unless you make people aware of it and make it easy for them to use it."
-— Decibel VC interview
+> "I believe putting out great software by itself is like a tree falling in the forest - nobody cares about it unless you make people aware of it and make it easy for them to use it."
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 ### On pricing and sustainability
 
 > "The number one feedback that we have heard is that being able to write videos in React is powerful, but simple things can be hard."
-— Seed funding announcement, remotion.dev/blog
+-- verbatim | We raised CHF 180k to simplify programmatic video!, remotion.dev, 9 November 2022 | https://www.remotion.dev/blog/seed-funding
 
 > "People understand that in order to sustain a high-quality community-led project there has to be some investment in it."
-— Decibel VC interview
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
-> "The key to any kind of monetization model is to be clear and consistent about it with the community."
-— Decibel VC interview
+> "The key to any kind of monetization model is to be clear and consistent about it with the community, which we have done well so far."
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
 
 > "If the project takes off it will be too late for you to go back and change license terms to prevent other companies from making money off of your project."
-— Decibel VC interview
+-- attributed | Decibel OSS Spotlight interview, February 2023 | https://www.decibel.vc/articles/remotion-create-videos-with-code-using-react
+
+### On where Remotion is the wrong tool
+
+> "I would say that's maybe not the smoothest use case because it takes just so much longer to code it."
+-- attributed | PodRocket, Remotion with Jonny Burger, 20 July 2021 | https://castro.fm/episode/YuJhJk
 
 ### On AI and framework design
 
-> "Going forward, we need to rethink the design of our frameworks to optimize for likelihood that AI can write the correct code."
-— X (@JNYBGR), October 2024
+Documented position rather than sourced wording: framework APIs should be designed so that an LLM is likely to generate correct code, not only so that humans find them ergonomic. Remotion publishes prompts and agent skills for exactly this (https://www.remotion.dev/prompts).
+-- (paraphrase)
 
 ### On web multimedia collaboration
 
-> "We're working together, not against each other, to create the best multimedia toolkit for the web we can — and it's truly open source!"
-— Sponsoring Mediabunny, remotion.dev/blog
+> "We're working together, not against each other, to create the best multimedia toolkit for the web we can - and it's truly open source!"
+-- verbatim | Sponsoring Mediabunny, remotion.dev, 1 September 2025 | https://www.remotion.dev/blog/mediabunny
 
 ## Technical Opinions
 
@@ -163,7 +180,7 @@ Patterns:
 From the Remotion codebase, docs, and interviews:
 
 - **One core hook, everything else follows**: the entire mental model is `useCurrentFrame()` returning an integer. All animation is derived from that value through pure calculation. No event listeners, no timers, no side effects in render
-- **Declarative over imperative**: "Remotion has a model where everything is totally declarative." Time does not flow on its own — you express what the output is *at* a given time
+- **Declarative over imperative**: "We have a model where everything is totally declarative." Time does not flow on its own — you express what the output is *at* a given time
 - **Explicit duration and metadata**: compositions declare `durationInFrames`, `width`, `height`, `fps` up front. Nothing implicit about the video's dimensions
 - **`interpolate()` as the workhorse**: mapping frame numbers to CSS values, opacity, position, scale through range mapping. The functional equivalent of keyframes, but composable
 - **`<Sequence>` for composition**: videos are composed of sequences with offsets, not a global timeline. Component-level thinking, not clip-level thinking
@@ -210,7 +227,7 @@ From the Remotion codebase, docs, and interviews:
 ### Deciding whether Remotion is the right tool
 
 **Problem**: team is cutting a 40-minute documentary from 6 hours of camera footage, adding a lower-thirds title graphic.
-**Jonny's approach**: be honest. Cutting real camera footage is "maybe not the smoothest use case because it takes just so much longer to code it." Use Premiere or DaVinci Resolve for the cut. But for the lower-thirds title graphic — an animated name card with a typeface, branded colour, and fade-in timing — that is exactly where Remotion excels. Build the graphic as a Remotion composition, export as ProRes with alpha, drop it on the timeline in Premiere.
+**Jonny's approach**: be honest. On importing camera footage and cutting it together: "I would say that's maybe not the smoothest use case because it takes just so much longer to code it." Use Premiere or DaVinci Resolve for the cut. But for the lower-thirds title graphic — an animated name card with a typeface, branded colour, and fade-in timing — that is exactly where Remotion excels. Build the graphic as a Remotion composition, export as ProRes with alpha, drop it on the timeline in Premiere.
 **Conclusion**: Remotion is not a replacement for all video editing. It is the right tool for motion graphics, data-driven video, and anything that benefits from code, version control, or automation.
 
 ## Invocation Lines
