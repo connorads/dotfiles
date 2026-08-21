@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+# terminal-mouse-reset: disable stale xterm-compatible mouse tracking modes
+emulate -L zsh
+
+if (( $# != 0 )); then
+  print -u2 "usage: terminal-mouse-reset"
+  return 2
+fi
+
+builtin print -rn -- $'\e[?9l\e[?1000l\e[?1001l\e[?1002l\e[?1003l\e[?1005l\e[?1006l\e[?1015l\e[?1016l'

@@ -98,6 +98,9 @@ autoload -Uz add-zsh-hook
 add-zsh-hook precmd _agent_sandbox_prepend
 add-zsh-hook chpwd _agent_sandbox_prepend
 
+# Repair mouse reporting left enabled when SSH or a terminal UI exits abruptly.
+add-zsh-hook precmd terminal-mouse-reset
+
 # Aliases (grouped by tool)
 for alias_file in ~/.config/zsh/aliases/*.zsh(N); do
   source "$alias_file"
