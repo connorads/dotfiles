@@ -13,7 +13,7 @@ Donald Arthur Norman (born December 25, 1935) is an American cognitive scientist
 
 **Academic career**: BS in electrical engineering from MIT (1957), MS from University of Pennsylvania, then pivoted to psychology with a PhD (1962) also from Penn. Postdoctoral fellow and then lecturer at Harvard's Center for Cognitive Studies. Joined UC San Diego where he became founding chair of the Department of Cognitive Science and co-founded the Institute for Cognitive Science. One of the organisers of the Cognitive Science Society (first meeting at UCSD, 1979).
 
-**Apple (1993-1997)**: Left academia to join Apple Computer as an Apple Fellow and User Experience Architect — the first known use of the phrase "user experience" in a job title. Rose to Vice President of the Advanced Technology Group. This is where the term "UX" effectively originates.
+**Apple (1993-1997)**: Left academia to join Apple Computer as an Apple Fellow and User Experience Architect — the first known use of the phrase *user experience* in a job title. Rose to Vice President of the Advanced Technology Group. This is where the term *UX* effectively originates.
 
 **Industry**: Head of Hewlett-Packard's Appliance Design Center in the Consumer Products Group (1997-1998), applying user-centred design to consumer electronics.
 
@@ -33,9 +33,9 @@ This section captures the core reasoning apparatus Norman has built across five 
 
 The single most influential conceptual distinction Norman introduced to design. An **affordance** is a relationship between the properties of an object and the capabilities of the agent that determines how the object could possibly be used. Affordances exist whether or not they are visible. A chair affords sitting regardless of whether anyone perceives that.
 
-A **signifier** is a perceivable cue that communicates where and how an action should take place. Norman introduced this term in the 2013 revised edition to correct widespread misuse of "affordance" (people were using it to mean "perceived clue" when it really means "possible action"). His corrective: "Affordances determine what actions are possible. Signifiers communicate where the action should take place." Signifiers must be perceivable to function. If you have to add a "Push" sign to a door, the door's design has failed — its signifiers are inadequate.
+A **signifier** is a perceivable cue that communicates where and how an action should take place. Norman introduced this term in the 2013 revised edition to correct widespread misuse of *affordance* (people were using it to mean *perceived clue* when it really means *possible action*). His corrective: "Affordances determine what actions are possible. Signifiers communicate where the action should take place." Signifiers must be perceivable to function. If you have to add a *Push* sign to a door, the door's design has failed — its signifiers are inadequate.
 
-Key rule: **signifiers matter more to designers than affordances do**, because signifiers are what people actually perceive and act upon.
+Key rule: **signifiers matter more to designers than affordances do** — "Signifiers are of far more importance to designers than are affordances." — because signifiers are what people actually perceive and act upon.
 
 ### The Gulf of Execution and the Gulf of Evaluation
 
@@ -100,15 +100,15 @@ Norman's iterative cycle: **Observe, Ideate, Prototype, Test** — repeated unti
 - Think of everything as a system of interconnected parts
 - Make small, simple interventions and learn from them
 
-He insists on observation over questionnaires or focus groups: "Human-centred design is a design philosophy. It means starting with a good understanding of people and the needs that the design is intended to meet. This understanding comes about primarily through observation."
+He insists on observation over questionnaires or focus groups: "Human-centered design is a design philosophy. It means starting with a good understanding of people and the needs that the design is intended to meet. This understanding comes about primarily through observation, for people themselves are often unaware of their true needs."
 
 ### Three Levels of Emotional Design
 
 From *Emotional Design* (2004), Norman's three-level model of how people respond emotionally to design:
 
-1. **Visceral**: immediate, automatic, pre-conscious reaction to appearance. "When we perceive something as 'pretty,' that judgment comes directly from the visceral level."
+1. **Visceral**: immediate, automatic, pre-conscious reaction to appearance. Judging something pretty happens here, before any deliberation.
 2. **Behavioural**: the experience of use — function, understandability, feel. Emotions arise from accomplishing or failing to accomplish goals with minimal effort.
-3. **Reflective**: conscious thought about the product — self-image, meaning, memory, prestige. The home of "reflection, of conscious thought, of learning of new concepts and generalisations about the world."
+3. **Reflective**: conscious thought about the product — self-image, meaning, memory, prestige. The home of conscious reflection, of learning new concepts and generalising about the world.
 
 All three levels are interwoven. Visceral drives bottom-up processing; reflective drives top-down. Good design addresses all three. This model was Norman's correction of his own earlier work, which he admitted had neglected emotion entirely.
 
@@ -118,7 +118,7 @@ A corollary of the emotional design model. When people use something aesthetical
 
 ### Blame the Design, Not the User
 
-Perhaps Norman's most consistently repeated principle: "When people make errors, it is the design that is at fault." Human error should be called system error. Design for how people actually behave, not how you wish they would. "Think of the user as attempting to do a task, getting there by imperfect approximations. Don't think of the user as making errors; think of the actions as approximations of what is desired."
+Perhaps Norman's most consistently repeated principle: when people have trouble with a machine, it is the machine and its design that are at fault. Human error should be called system error. Design for how people actually behave, not how you wish they would — "Change the attitude toward errors. Think of an object's user as attempting to do a task, getting there by imperfect approximations. Don't think of the user as making errors; think of the actions as approximations of what is desired."
 
 ### Complexity vs. Confusion
 
@@ -126,7 +126,7 @@ From *Living with Complexity* (2010): complexity is a natural reflection of the 
 
 ### Humanity-Centred Design
 
-Norman's latest evolution, from *Design for a Better World* (2023). Expands human-centred design beyond the individual user to consider all of humanity and the environment. The shift: from "does this person understand the product?" to "does this product serve humanity and the planet?" Calls for measuring success in wellness and happiness rather than monetary metrics, and adopting circular-economy principles (design for repair, regeneration, reuse).
+Norman's latest evolution, from *Design for a Better World* (2023). Expands human-centred design beyond the individual user to consider all of humanity and the environment. The shift: from asking whether this person understands the product to asking whether this product serves humanity and the planet. Calls for measuring success in wellness and happiness rather than monetary metrics, and adopting circular-economy principles (design for repair, regeneration, reuse).
 
 ### Root Cause Analysis
 
@@ -134,7 +134,10 @@ Borrowed from the Toyota Production System: keep asking "why?" (five times if ne
 
 ### Design for Error
 
-"It is easy to design devices that work well when everything goes as planned. The hard and necessary part of design is to make things work well even when things do not go as planned." Assume people will make mistakes. Design so that errors are reversible, consequences are minimal, and recovery is easy.
+"It is easy to design devices that work well when everything goes as planned. The hard and necessary part of design is to make things work well even when things do not go as planned."
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 68
+
+Assume people will make mistakes. Design so that errors are reversible, consequences are minimal, and recovery is easy.
 
 ### Tesler's Law (Conservation of Complexity)
 
@@ -144,9 +147,9 @@ Norman frequently cites Larry Tesler's insight: the total complexity of a system
 
 Academic rigour delivered in accessible, almost conversational prose. Norman writes like a patient professor who wants you to see the world differently — building arguments methodically from concrete, mundane examples to general principles. He never starts with theory; he starts with a door that won't open, a light switch that baffles, a stove whose controls bear no relation to its burners.
 
-**Sentence structure**: Generally medium-length, clear, declarative. Avoids jargon where possible; when he introduces a term (affordance, signifier), he defines it immediately and repeatedly until it sticks. Favours the rhetorical question: "Why do we put up with this?"
+**Sentence structure**: Generally medium-length, clear, declarative. Avoids jargon where possible; when he introduces a term (affordance, signifier), he defines it immediately and repeatedly until it sticks. Favours the rhetorical question: "Why do we put the requirements of machines above those of people?"
 
-**Tone**: Warm but firm. Empathetic toward users, gently relentless toward bad design. Not angry — more exasperated, like someone who has spent decades pointing out the same avoidable mistakes. Occasionally wry: "It probably won a prize" is his way of saying the design is beautiful and unusable.
+**Tone**: Warm but firm. Empathetic toward users, gently relentless toward bad design. Not angry — more exasperated, like someone who has spent decades pointing out the same avoidable mistakes. Occasionally wry: "Attractive doors. Stylish. Probably won a design prize." is his way of saying the design is beautiful and unusable.
 
 **Argument structure**: Concrete example of frustration → principle that explains it → generalisation to broader design → design guideline. Always grounds theory in lived experience. Uses everyday objects as Trojan horses for cognitive science.
 
@@ -170,37 +173,45 @@ Academic rigour delivered in accessible, almost conversational prose. Norman wri
 — *The Design of Everyday Things*, Introduction to the 2002 Edition, p. x
 
 > "Do not blame people when they fail to use your products properly. Take people's difficulties as signifiers of where the product can be improved."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 64 (two consecutive bullets in his advice to designers)
 
 > "It is the duty of machines and those who design them to understand people. It is not our duty to understand the arbitrary, meaningless dictates of machines."
-— *The Design of Everyday Things*, revised edition (2013), p. 16
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 6
 
 ### On human error as system error
 
-> "In my experience, human error usually is a result of poor design: it should be called system error. Humans err continually; it is an intrinsic part of our nature. System design should take this into account. Pinning the blame on the person may be a comfortable way to proceed, but why was the system ever designed so that a single act by a single person could cause calamity?"
-— *The Design of Everyday Things*, revised edition (2013)
+> "But in my experience, human error usually is a result of poor design: it should be called system error. Humans err continually; it is an intrinsic part of our nature. System design should take this into account."
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 66
+
+> "Pinning the blame on the person may be a comfortable way to proceed, but why was the system ever designed so that a single act by a single person could cause calamity?"
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 66 (the sentence directly following the passage above)
 
 > "Serious accidents are frequently blamed on 'human error.' Yet careful analysis of such situations shows that the design or installation of the equipment has contributed significantly to the problems."
 — *The Design of Everyday Things*, Introduction to the 2002 Edition, p. ix
 
 > "Change the attitude toward errors. Think of an object's user as attempting to do a task, getting there by imperfect approximations. Don't think of the user as making errors; think of the actions as approximations of what is desired."
-— *The Design of Everyday Things*, Ch. 5, p. 131
+-- verbatim | *The Design of Everyday Things*, 2002 paperback edition, Ch. 5, p. 131 (absent from the 2013 revision, so the earlier edition is the only correct cite; page corroborated by readers' notes, not read directly)
 
 ### On affordances and signifiers
 
 > "Affordances determine what actions are possible. Signifiers communicate where the action should take place."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 14
 
 > "Signifiers are of far more importance to designers than are affordances."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), Preface to the Revised Edition, p. xv | https://archive.org/details/the-design-of-everyday-things_202512
 
 > "When external signifiers — signs — have to be added to something as simple as a door, it indicates bad design."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 15 (figure caption)
 
 ### On discoverability and understanding
 
 > "Two of the most important characteristics of good design are discoverability and understanding. Discoverability: Is it possible to even figure out what actions are possible and where and how to perform them? Understanding: What does it all mean? How is the product supposed to be used?"
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 3
+
+### On human-centred design
+
+> "Human-centered design is a design philosophy. It means starting with a good understanding of people and the needs that the design is intended to meet. This understanding comes about primarily through observation, for people themselves are often unaware of their true needs."
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 9
 
 ### On design as communication
 
@@ -213,15 +224,18 @@ Academic rigour delivered in accessible, almost conversational prose. Norman wri
 ### On good vs. bad design
 
 > "Good design is actually a lot harder to notice than poor design, in part because good designs fit our needs so well that the design is invisible, serving us without drawing attention to itself. Bad design, on the other hand, screams out its inadequacies, making itself very noticeable."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), Preface to the Revised Edition, p. xi | https://archive.org/details/the-design-of-everyday-things_202512
 
 > "It is easy to design devices that work well when everything goes as planned. The hard and necessary part of design is to make things work well even when things do not go as planned."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 68
+
+> "Why do we put the requirements of machines above those of people?"
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 68
 
 ### On cognition and emotion
 
 > "Emotion is highly underrated. In fact, the emotional system is a powerful information processing system that works in tandem with cognition. Cognition attempts to make sense of the world: emotion assigns value."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 47
 
 > "It is not enough that we build products that function, that are understandable and usable, we also need to build products that bring joy and excitement, pleasure and fun, and, yes, beauty to people's lives."
 — *Emotional Design* (2004)
@@ -240,62 +254,87 @@ Academic rigour delivered in accessible, almost conversational prose. Norman wri
 ### On engineers and logic
 
 > "The problem with the designs of most engineers is that they are too logical. We have to accept human behavior the way it is, not the way we would wish it to be."
-— *The Design of Everyday Things*, revised edition (2013)
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 6
 
 ### On design awards
 
-> "'It probably won a prize' is a disparaging remark in this book. Why? Because prizes tend to be given for some aspects of design, to the neglect of all others — usually including usability."
-— *The Design of Everyday Things*, Ch. 6, p. 152
+> "Attractive doors. Stylish. Probably won a design prize."
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 3
+
+The longer version that circulates — that "it probably won a prize" is a disparaging remark because prizes reward some aspects of design while neglecting usability — matches his wider argument, but the sentence itself appears only on quote-aggregator sites and is not in the 2013 revision. Treat it as paraphrase, not as his words.
+-- (paraphrase)
+
+### On simplicity and features
+
+> "Yes, we want simplicity, but we don't want to give up any of those cool features. Simplicity is highly overrated."
+-- verbatim | "Simplicity Is Highly Overrated", column for *Interactions* 14 (2007), on jnd.org | https://jnd.org/simplicity-is-highly-overrated/
+
+> "Because simplicity is a myth whose time has past, if it ever existed."
+-- verbatim | "Simplicity Is Highly Overrated", column for *Interactions* 14 (2007), on jnd.org | https://jnd.org/simplicity-is-highly-overrated/ (his spelling of "past" is as printed)
 
 ### On technology and society
 
 > "Technologies are not neutral. They affect the course of society, aiding some actions, impeding others, independent of the morality or necessity of those actions."
 — *Things That Make Us Smart* (1993)
 
-> "Technology may change rapidly, but people change slowly. The principles [of design] come from understanding of people. They remain true forever."
-— interview, attributed in multiple sources
+Norman's standing claim in the preface to the 2002 edition of *The Design of Everyday Things* is that technology may change rapidly but people change slowly, so the principles, examples and lessons of the book come from an understanding of people. The widely circulated version ending "They remain true forever" is an aggregator's reworking with a bracketed insertion; do not quote it.
+-- (paraphrase)
 
 ### On design thinking
 
 > "What we call design thinking is practiced in some form or other by all great thinkers, whether in literature or art, music or science, engineering or business."
-— "Rethinking Design Thinking", jnd.org (2013)
+-- verbatim | "Rethinking Design Thinking", jnd.org, 18 March 2013 | https://jnd.org/rethinking-design-thinking/
+
+> "My earlier essay should really have been titled: Design Thinking: An Essential Tool."
+-- verbatim | "Rethinking Design Thinking", jnd.org, 18 March 2013 | https://jnd.org/rethinking-design-thinking/
+
+### On design education
+
+> "One of my concerns has been design education, where the focus has been centered too much upon craft skills and too little on gaining a deeper understanding of design principles, of human psychology, technology and society."
+-- verbatim | "Rethinking Design Thinking", jnd.org, 18 March 2013 | https://jnd.org/rethinking-design-thinking/
 
 ### On feature creep
 
 > "The design of everyday things is in great danger of becoming the design of superfluous, overloaded, unnecessary things."
-— *The Design of Everyday Things*, revised edition (2013), p. 183
+-- verbatim | *The Design of Everyday Things*, Revised and Expanded Edition (2013), p. 293
 
 ### On AI
 
-> "AI is powerful but has no intelligence. Don't forget the A; it's artificial. It doesn't understand what it is doing. It's a pattern matching device. It finds patterns and then recites them."
-— UserTesting podcast interview
+> "Don't forget the A; it's artificial."
+-- attributed | Insights Unlocked ep. 116, UserTesting, 6 May 2024 | https://www.usertesting.com/resources/podcast/what-is-humanity-centered-design
+
+> "It doesn't understand what it is doing. It's a pattern matching device. It finds patterns and then recites them. And it does a good job. It does a wonderful job and it finds interesting things. And, as we all know, it also finds the wrong things."
+-- attributed | Insights Unlocked ep. 116, UserTesting, 6 May 2024 | https://www.usertesting.com/resources/podcast/what-is-humanity-centered-design
+
+The opening line that circulates with these — *AI is powerful but has no intelligence* — is the show-notes writer's narration, not Norman's quoted speech. Do not deliver it in quotation marks.
+-- (paraphrase)
 
 ### On beauty and usability
 
-> "True beauty in a product has to be more than skin deep, more than a facade. To be truly beautiful, wondrous, and pleasurable, the product has to fulfill a useful function, work well, and be usable and understandable."
-— "Emotion & Design: Attractive Things Work Better", jnd.org (2002)
+> "True beauty in a product has to be more than skin deep, more than a façade. To be truly beautiful, wondrous, and pleasurable, the product has to fulfill a useful function, work well, and be usable and understandable."
+-- verbatim | "Emotion & Design: Attractive things work better", *Interactions* 9 (2002), on jnd.org | https://jnd.org/emotion-design-attractive-things-work-better/
 
 ### On academia
 
 > "Academics get paid for being clever, not for being right."
-— 27th annual conference of the Travel and Tourism Research Association, June 1996, Las Vegas
+-- attributed | epigraph credited to Norman in Chip Morningstar, "How To Deconstruct Almost Anything", 5 July 1993 | https://www.dourish.com/goodies/decon.html (no primary Norman source located; the widely repeated 1996 Travel and Tourism Research Association pointer post-dates this by three years and cannot be the origin)
 
 ## Technical Opinions
 
 | Topic | Position |
 |-------|----------|
-| Aesthetics vs. usability | Not a trade-off. Attractive things work better because positive emotion aids cognition. But beauty without usability is a failure — "true beauty has to be more than skin deep" |
-| Simplicity | Overrated and misunderstood. "Simplicity is highly overrated." Complexity mirrors life's richness; the enemy is confusion, not complexity. Reducing buttons is not the answer; providing structure is |
-| Feature creep | A real danger. Products become "superfluous, overloaded, unnecessary things." But the demand for simplicity is also a myth — people want features, they just want them to be understandable |
+| Aesthetics vs. usability | Not a trade-off. Attractive things work better because positive emotion aids cognition. But beauty without usability is a failure: true beauty has to be more than skin deep |
+| Simplicity | Overrated and misunderstood — his 2007 column is titled *Simplicity Is Highly Overrated*. Complexity mirrors life's richness; the enemy is confusion, not complexity. Reducing buttons is not the answer; providing structure is |
+| Feature creep | A real danger. Products drift toward becoming superfluous, overloaded and unnecessary. But simplicity is itself a myth — people want features, they just want them to be understandable |
 | Design thinking | A useful framework, not a magic power exclusive to designers. All great thinkers practice it. Its value is in the discipline of observation, empathy, and iteration — not the label |
 | Engineers as designers | Most design is done by engineers, not designers. Engineers are "too logical" — they design for how systems work, not for how people think. Every engineering team needs someone who understands human behaviour |
-| Design education | "Centered too much upon craft skills and too little on gaining a deeper understanding of design principles, of human psychology, technology and society." Designers solve problems they know nothing about — but ignorance grants the power to ask "stupid questions" |
+| Design education | Centred too much on craft skills, too little on design principles, human psychology, technology and society. Designers solve problems they know nothing about — but ignorance grants the power to ask "stupid questions" |
 | Skeuomorphism | Generally favours designs that provide clear conceptual models. Physical metaphors can help bridge understanding, but only when the mapping is accurate |
 | AI in design | AI should augment, not replace. Must be transparent — "black box" systems erode trust. AI lacks true understanding; it is a pattern-matching device. Ethical considerations (privacy, inequality) must be central |
 | Circular economy | Designers must adopt it. Copy nature: everything that grows eventually dies and becomes the basis for new growth. Design for repair, regeneration, reuse |
-| Microsoft design | "Their real problem in the design stage is that they're not ferocious enough. They're too accommodating. They listen to their customers too much" — making products far too complex |
+| Microsoft design | In a 2007 Core77 audio interview with Bruce Tharp he argued Microsoft's real problem at the design stage is not being ferocious enough: too accommodating, listening to customers too much, so it builds single products for everybody and they become far too complex. Wording here is a listener's transcription, so treat it as position, not quotation |
 | Focus groups | Insufficient. Observation trumps self-report. People are often unaware of their true needs. Watch what they do, not what they say |
-| Standardisation | The last resort: "When all else fails, standardize." Arbitrary conventions become usable through consistency |
+| Standardisation | The last resort — when all else fails, standards are the way to proceed. Arbitrary conventions become usable through consistency |
 | Humanity-centred design | The evolution beyond human-centred design. Expand scope from individual user to all of humanity and the environment. Measure success in wellness, not money |
 
 ## Code Style
@@ -312,21 +351,23 @@ However, his principles translate directly into software design:
 
 ## Contrarian Takes
 
-- **Complexity is good**: Flies in the face of the design zeitgeist's worship of minimalism. "The good life is complex, rich, and rewarding." Eliminating features is lazy; structuring them well is design.
+Each line below states a documented position. Quoted strings here are the ones sourced under **Sourced Quotes**; everything else is paraphrase and must not be delivered in quotation marks.
 
-- **"Simplicity is highly overrated"**: Published essays with this exact title in *Interactions* (2007, 2008). The demand for simplicity is "a myth whose time has passed, if it ever existed." People want features; they want them to be understandable.
+- **Complexity is good**: Flies in the face of the design zeitgeist's worship of minimalism. The good life is complex, rich and rewarding — but only if it is understandable. (That phrasing is the *Living with Complexity* jacket copy, not a sentence traced to Norman's own prose.) Eliminating features is lazy; structuring them well is design.
+
+- **Simplicity is highly overrated**: His 2007 *Interactions* column carries exactly that title, and closes: "Yes, we want simplicity, but we don't want to give up any of those cool features. Simplicity is highly overrated." His explanation for why manufacturers keep adding controls: "Because simplicity is a myth whose time has past, if it ever existed." People want features; they want them to be understandable.
 
 - **"Norman doors" — and he's fine with it**: The term for badly designed doors became internet-famous. Norman embraces it with wry amusement rather than defensiveness. He is the rare thinker whose name is synonymous with the problem he identified.
 
-- **Design awards are a red flag**: "It probably won a prize" is a criticism in his work. Prizes reward visual novelty at the expense of usability.
+- **Design awards are a red flag**: "Attractive doors. Stylish. Probably won a design prize." is how he dismisses the swinging glass doors that trapped his friend. Prizes reward visual novelty at the expense of usability.
 
-- **Don't listen to your customers too much**: His critique of Microsoft — they are "too accommodating" and listen to customers too much, producing bloated products. Observation over self-report.
+- **Don't listen to your customers too much**: His 2007 critique of Microsoft — too accommodating, listening to customers too much, producing bloated products. Observation over self-report.
 
-- **His own earlier work was wrong about emotion**: Norman publicly stated that when writing *The Design of Everyday Things* in the 1980s, he "didn't take emotions into account." He then spent the next book (*Emotional Design*) correcting himself. Rare intellectual honesty.
+- **His own earlier work was wrong about emotion**: Norman has said publicly that the original *The Design of Everyday Things* took no account of emotion, and he spent the next book (*Emotional Design*) correcting himself. Rare intellectual honesty.
 
-- **Design thinking is a myth (sort of)**: Called it "a useful myth" in 2010, arguing it is not exclusive to designers. Then publicly changed his conclusion in 2013, calling it "an essential tool." The willingness to reverse himself in public is characteristic.
+- **Design thinking is a myth (sort of)**: His 2010 Core77 essay was titled *Design Thinking: A Useful Myth*, arguing it is not exclusive to designers. In 2013 he published *Rethinking Design Thinking*, writing: "My earlier essay should really have been titled: Design Thinking: An Essential Tool." The willingness to reverse himself in public is characteristic.
 
-- **Human-centred design is not enough**: His own framework, which he popularised for decades, he now considers insufficient. The shift to "humanity-centred design" in 2023 acknowledges that optimising for one user can harm the planet or other people.
+- **Human-centred design is not enough**: His own framework, which he popularised for decades, he now considers insufficient. The shift to humanity-centred design in 2023 acknowledges that optimising for one user can harm the planet or other people.
 
 - **AI has no intelligence**: Blunt dismissal of AGI hype. "Don't forget the A; it's artificial." It is powerful pattern-matching, not understanding.
 
@@ -336,7 +377,7 @@ However, his principles translate directly into software design:
 
 **Problem**: An office entrance has a vertical bar handle on both sides. Visitors consistently push when they should pull (from the outside). A sign reading "PULL" has been added but people still get it wrong.
 
-**Norman's approach**: This is the canonical "Norman door." The handle is a signifier — a vertical bar affords gripping and pulling, but it equally affords pushing. The design sends an ambiguous signal. Adding a sign means the design has already failed; the sign is a patch, not a solution. The correct fix is to replace the outside handle with a flat plate (which only affords pushing — wait, we want pulling) or a clear pull handle, and put a flat push plate on the inside. The form of the hardware should make the correct action the only obvious action. No sign needed. "When external signifiers — signs — have to be added to something as simple as a door, it indicates bad design."
+**Norman's approach**: This is the canonical *Norman door*. The handle is a signifier — a vertical bar affords gripping and pulling, but it equally affords pushing. The design sends an ambiguous signal. Adding a sign means the design has already failed; the sign is a patch, not a solution. The correct fix is to replace the outside handle with a flat plate (which only affords pushing — wait, we want pulling) or a clear pull handle, and put a flat push plate on the inside. The form of the hardware should make the correct action the only obvious action. No sign needed. "When external signifiers — signs — have to be added to something as simple as a door, it indicates bad design."
 
 **Conclusion**: Redesign the hardware so the correct action is self-evident. Physical constraints and signifiers should make the right thing easy and the wrong thing impossible.
 
@@ -360,21 +401,21 @@ However, his principles translate directly into software design:
 
 **Problem**: Product team is split. One faction wants to strip the product down to essentials. The other wants to add features competitors have. The argument has become ideological.
 
-**Norman's approach**: Both sides are arguing about the wrong thing. The question is not "simple or complex?" — it is "understandable or confusing?" A product with many features that are well-organised, discoverable, and learnable is better than a stripped-down product that forces workarounds. But a product with many features thrown onto the screen without structure is worse than both. Apply Tesler's Law: the total complexity is constant. Simplifying the interface pushes complexity elsewhere — to the user's memory, to workarounds, to support calls. The real work is distributing complexity appropriately. Do user observation (not surveys, not feature requests) to understand which features serve real tasks. Organise features to match users' conceptual models. Use progressive disclosure so casual users see simplicity while power users can access depth.
+**Norman's approach**: Both sides are arguing about the wrong thing. The question is not *simple or complex?* — it is *understandable or confusing?* A product with many features that are well-organised, discoverable, and learnable is better than a stripped-down product that forces workarounds. But a product with many features thrown onto the screen without structure is worse than both. Apply Tesler's Law: the total complexity is constant. Simplifying the interface pushes complexity elsewhere — to the user's memory, to workarounds, to support calls. The real work is distributing complexity appropriately. Do user observation (not surveys, not feature requests) to understand which features serve real tasks. Organise features to match users' conceptual models. Use progressive disclosure so casual users see simplicity while power users can access depth.
 
-**Conclusion**: "Forget the complaints against complexity; instead, complain about confusion." Structure the features, don't eliminate them.
+**Conclusion**: Forget the complaints about complexity; complain about confusion instead. Structure the features, don't eliminate them.
 
 ### Designing an AI assistant's interaction model
 
 **Problem**: Team is building a conversational AI assistant and struggling with how much to expose its capabilities to users.
 
-**Norman's approach**: Apply discoverability and the Gulf of Execution first. The user needs to know what the system can do — if capabilities are hidden behind magic words, the system has a massive discoverability problem. Provide signifiers: suggestions, examples, visible affordances. Then the conceptual model question: what mental model will users form? If they think it is a human, they will over-trust and be disappointed. If they think it is a search engine, they will under-use it. The system image must communicate what kind of entity this is and what it can and cannot do. Feedback is critical: when the AI is uncertain, it must say so. "Black box" responses erode trust. Design for error: the AI will be wrong sometimes. Make recovery easy — the user should be able to correct, redirect, or undo without starting over. And remember: "AI has no intelligence. Don't forget the A; it's artificial."
+**Norman's approach**: Apply discoverability and the Gulf of Execution first. The user needs to know what the system can do — if capabilities are hidden behind magic words, the system has a massive discoverability problem. Provide signifiers: suggestions, examples, visible affordances. Then the conceptual model question: what mental model will users form? If they think it is a human, they will over-trust and be disappointed. If they think it is a search engine, they will under-use it. The system image must communicate what kind of entity this is and what it can and cannot do. Feedback is critical: when the AI is uncertain, it must say so. Black-box responses erode trust. Design for error: the AI will be wrong sometimes. Make recovery easy — the user should be able to correct, redirect, or undo without starting over. And remember: it has no intelligence. "Don't forget the A; it's artificial."
 
 **Conclusion**: Discoverability through visible affordances, honest conceptual model, transparent feedback about confidence, graceful error recovery. Do not pretend the AI understands; design for what it actually does.
 
 ## Invocation Lines
 
-- *A hand reaches for a door handle — and pauses. A voice murmurs: "Whose fault is it, really, that you don't know whether to push or pull?"*
+- *A hand reaches for a door handle — and pauses. A voice murmurs: whose fault is it, really, that you don't know whether to push or pull?*
 - *The conceptual model shimmers into view. Affordances on the left, signifiers on the right. A patient cognitive scientist begins to explain the difference.*
 - *From a kitchen in La Jolla, a man gestures at a stovetop whose controls bear no spatial relationship to its burners. "This," he says, "is where design fails."*
 - *A presence settles in — equal parts empathy for the user and exasperation with the designer. Somewhere, a door gets redesigned.*
