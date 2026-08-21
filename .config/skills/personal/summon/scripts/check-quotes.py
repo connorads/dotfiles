@@ -35,6 +35,17 @@ QUOTE_PATTERNS = (
     re.compile(r'^\s*\d+\.\s+\*\*[""“”](?P<quote>.{25,})$'),  # 1. **"..."**  numbered
 )
 
+# Inline quoted strings - the same claim made mid-sentence. The corpus carries
+# more of these than line-level ones, and the Contrarian Takes sections, the
+# highest-yield seam for fabrication, are written entirely in this syntax.
+INLINE_MIN_CHARS = 25
+INLINE_QUOTE = re.compile(
+    rf'"(?P<straight>[^"\n]{{{INLINE_MIN_CHARS},}})"'
+    rf"|“(?P<curly>[^“”\n]{{{INLINE_MIN_CHARS},}})”"
+)
+INLINE_CODE = re.compile(r"`[^`\n]*`")
+QUOTE_GLYPH_IN_CODE = re.compile(r"[\"“”]")
+
 ATTRIBUTION = re.compile(r"^\s*(?:--|—)\s*(?P<body>.+)$")
 STATUS_TOKEN = re.compile(rf"^\s*(?P<status>{'|'.join(STATUSES)})\b", re.IGNORECASE)
 PARAPHRASE_MARKER = re.compile(r"\(paraphrase\)", re.IGNORECASE)
@@ -185,6 +196,43 @@ def parse_quotes(lines: list[str]) -> list[Quote]:
     return quotes
 
 
+def strip_inline_code(line: str) -> str:
+    """Unwrap inline-code spans, blanking only those carrying quote glyphs.
+
+    A code span sits inside a quotation often enough (`debugger`) that dropping
+    the span wholesale would mangle the quote's text and lose the twin it should
+    inherit from. A span that contains quote marks is a code sample instead, and
+    the marks in it are syntax, not a quotation.
+    """
+    return INLINE_CODE.sub(
+        lambda m: " " if QUOTE_GLYPH_IN_CODE.search(m.group()) else m.group()[1:-1], line
+    )
+
+
+def parse_inline_quotes(lines: list[str]) -> list[Quote]:
+    """Quoted strings embedded in prose, as against ones that own their line.
+
+    Skips code fences and inline code spans, attribution lines (a cited article
+    title is metadata, not the persona's voice), and any line the line-level
+    patterns already claim.
+    """
+    quotes: list[Quote] = []
+    in_fence = False
+    for i, raw in enumerate(lines):
+        line = raw.rstrip("\n")
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or ATTRIBUTION.match(line):
+            continue
+        if any(pattern.match(line) for pattern in QUOTE_PATTERNS):
+            continue
+        for match in INLINE_QUOTE.finditer(strip_inline_code(line)):
+            text = match.group("straight") or match.group("curly")
+            quotes.append(Quote(line=i + 1, text=text))
+    return quotes
+
+
 def is_dossier(path: Path) -> bool:
     """A persona file, as against a reference doc that happens to live here."""
     return not path.name.startswith("_") and "\n## Aliases" in path.read_text(encoding="utf-8")
@@ -285,6 +333,16 @@ def check_file(path: Path) -> FileReport:
                 "TOO-LONG",
                 f"quote is {len(quote.text.split())} words (cap {MAX_QUOTE_WORDS})",
             )
+
+    # An inline string inherits from its line-level twin: the corpus is written
+    # by sourcing a line once and restating it in prose, and the twin already
+    # carries the file's judgement on those words. One with no twin anywhere in
+    # the file asserts a quotation the file never accounts for.
+    twins = {key for quote in quotes if (key := normalise(quote.text))}
+    for inline in parse_inline_quotes(lines):
+        key = normalise(inline.text)
+        if key and key not in twins:
+            flag(inline, "INLINE-ORPHAN", "quoted in prose with no line-level twin in this file")
 
     # One quote, one status, everywhere in the file. Without this a fabrication
     # gets sourced once and restated bare three times.

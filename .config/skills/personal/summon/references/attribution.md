@@ -65,6 +65,29 @@ Every one of these was in this corpus. `-- various interviews` is what waved thr
 Jobs line delivered as Jony Ive's, and `-- on content philosophy` is what waved through a
 rival marketer's trademark phrase.
 
+## Inline quotes inherit from a twin
+
+A quotation embedded in prose makes the same claim as one that owns its line, so it carries
+the same obligation. Restating a quote in prose is how the corpus is written, though, and
+re-citing it every time would be noise. So an inline string of 25 characters or more passes
+when its text matches a line-level quote **in the same file**, and inherits that quote's
+status; one with no twin anywhere in the file is a violation.
+
+The practical rule when writing: **source a line once under `## Sourced Quotes`, then quote it
+exactly wherever you restate it.** Matching is exact after folding case, accents, punctuation
+and quote glyphs - an excerpt of a longer sourced sentence does *not* inherit, because
+excerpting is where splices and clause reversals enter. Quote the whole sourced sentence, give
+the excerpt its own sourced entry, or drop the marks.
+
+Not treated as quotations: strings under 25 characters (scare-quoting a term of art claims
+nothing about reproducing a sentence), code fences and inline code spans, and article titles on
+an attribution line, which are metadata rather than the persona's voice.
+
+This is the widest part of the gate and the last to be built. `rich-hickey.md`'s
+`## Contrarian Takes` were fabricated quotes written entirely in this syntax - including a
+Haskell line that inverts his recorded position - and the line-level rule could not see one of
+them.
+
 ## Rules a machine cannot check
 
 Get these right yourself; no lint will catch them.

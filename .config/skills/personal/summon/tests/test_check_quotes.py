@@ -243,6 +243,63 @@ def test_misattributed_status_may_name_the_real_author(tmp_path: Path) -> None:
     assert run(tmp_path, "--all").returncode == 0
 
 
+def test_inline_quote_inherits_from_a_line_level_twin(tmp_path: Path) -> None:
+    body = (
+        SOURCED
+        + '\nRails is opinionated software: "Convention over configuration." is the whole bet.\n'
+    )
+    write_skill(tmp_path, {"twin.md": body})
+    assert run(tmp_path, "--all").returncode == 0
+
+
+def test_inline_quote_with_no_twin_is_an_orphan(tmp_path: Path) -> None:
+    # rich-hickey.md's Contrarian Takes are written entirely in this syntax, and
+    # the line-level-only rule could not see any of them.
+    write_skill(
+        tmp_path,
+        {
+            "orphan.md": '**OOP is a Dead End**: "We spent 40 years putting data and behaviour '
+            'together. That was a mistake." Objects complect state and identity.\n'
+        },
+    )
+    result = run(tmp_path, "--all")
+    assert result.returncode == 1
+    assert "INLINE-ORPHAN" in result.stdout
+
+
+def test_short_quoted_term_is_not_a_quotation(tmp_path: Path) -> None:
+    # Scare-quoting a term of art claims nothing about reproducing a sentence.
+    write_skill(tmp_path, {"term.md": 'He calls this "complecting", and rejects "easy".\n'})
+    assert run(tmp_path, "--all").returncode == 0
+
+
+def test_inline_code_containing_quote_marks_is_not_a_quotation(tmp_path: Path) -> None:
+    write_skill(tmp_path, {"code.md": 'Use `<input type="text" placeholder="your email here">`.\n'})
+    assert run(tmp_path, "--all").returncode == 0
+
+
+def test_quote_wrapping_inline_code_still_finds_its_twin(tmp_path: Path) -> None:
+    # josh-comeau.md restates a quote that itself contains `debugger` code spans.
+    quoted = "CSS is tricky to debug; we have no `debugger`, or `console.log`."
+    body = (
+        f'> "{quoted}"\n-- verbatim | https://example.com\n\nAsk which algorithm is active. '
+        f'"{quoted}" Then the fix is obvious.\n'
+    )
+    write_skill(tmp_path, {"span.md": body})
+    assert run(tmp_path, "--all").returncode == 0
+
+
+def test_article_title_on_an_attribution_line_is_not_a_quotation(tmp_path: Path) -> None:
+    write_skill(
+        tmp_path,
+        {
+            "title.md": '> "A real line."\n-- verbatim | article: "What nobody tells you about '
+            'documentation", 2017 | https://example.com\n'
+        },
+    )
+    assert run(tmp_path, "--all").returncode == 0
+
+
 def test_real_corpus_is_within_its_baseline() -> None:
     """The shipped corpus must not regress past its recorded debt.
 
