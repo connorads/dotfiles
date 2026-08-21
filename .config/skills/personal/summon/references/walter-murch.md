@@ -7,8 +7,11 @@
      Murch's letter to Roger Ebert on 3D, rogerebert.com (2011);
      Declan McGrath's Cineaste interview (Fall 2015);
      NPR All Things Considered, 8 Nov 2005 (incl. an excerpt from Ondaatje's The Conversations);
-     the publisher's excerpt of The Conversations (Ondaatje, 2002), ch. 1;
-     Frank Paine's 1985 interview in Film Sound: Theory and Practice (Columbia UP), p. 359.
+     the publisher's sample text of The Conversations (Ondaatje, 2002) hosted at catdir.loc.gov
+     - the Penguin Random House excerpt page cited previously no longer serves the text;
+     Frank Paine's 1985 interview in Film Sound: Theory and Practice (Columbia UP), p. 359,
+     via Designing Sound's reproduction of the passage;
+     Steve Hullfish's Art of the Cut interview, borisfx.com, 8 March 2024.
      Quotes that circulate only via aggregators (BrainyQuote, AZQuotes, Goodreads, quote blogs)
      have been demoted to unquoted prose - see the note at the end of Sourced Quotes. -->
 
@@ -44,7 +47,7 @@ The instantaneous displacement of a cut has no equivalent in waking life — yet
 **3. The Blink as editorial punctuation.**
 When editing *The Conversation*, Murch noticed his intuitive cut points aligned with Gene Hackman's blinks. He then found that blinks function as the physical correlate of a completed thought — the moment the mind registers that it has got the idea and is ready for the next one. An ideal cut lands at the moment the audience would naturally have blinked. He treats blinking like coughing: an audience deeply *in* a film stops doing both, so mass blink-synchronisation during a screening is the signal that the rhythm is right.
 
-**4. Impureim sandwich for audience feedback.**
+**4. Referred pain: audiences diagnose, they do not operate.**
 Listen to the *emotion* of test-screening audiences, not their specific suggestions. Audiences are excellent diagnosticians — they know something is wrong — but poor surgeons. A quack operates on the elbow when the patient reports elbow pain; an experienced doctor looks for a pinched nerve elsewhere. Apply the reported emotion; ignore the proposed fix.
 
 **5. Always try to do the most with the least.**
@@ -60,13 +63,13 @@ Sound effects travel without passports. Because they appear to be produced by wh
 A string of images relentlessly chained to literal sound has, in his phrasing, the tyrannical power to strangle the very things it is trying to represent. Sounds that are wrong in the literal sense but right metaphorically open a conceptual gap: "This metaphoric use of sound is one of the most flexible and productive means of opening up a conceptual gap into which the fertile imagination of the audience will reflexively rush, eager (even if unconsciously so) to complete circles that are only suggested, to answer questions that are only half-posed."
 
 **9. The inspiration only visits once you begin.**
-Creative work requires motion before insight. Ideas do not arrive while you sit waiting for one to hit you; they arrive once you have taken the first step. The angels of inspiration only help those already on the voyage. — (paraphrase)
+Creative work requires motion before insight. Ideas do not arrive while you sit in a room waiting for an asteroid of an idea to hit your brain; they arrive once you have taken the first step. In his own image, the inspiration angels come to help — but only once you start on the voyage, and the first step is always the hardest to take. — (paraphrase; his own words are under Sourced Quotes, *On starting before the idea arrives*)
 
 **10. Editing as plumbing.**
-"In a real sense, those of us who put images together are doing a kind of metaphysical plumbing—making the ideas and the emotions flow as effectively and as quickly as possible, without any blockage or spillage." This framing resists the Romantic notion of the editor as auteur; it positions editing as a service discipline whose highest achievement is invisibility.
+His own formulation: "In a real sense, those of us who put images together are doing a kind of metaphysical plumbing—making the ideas and the emotions flow as effectively and as quickly as possible, without any blockage or spillage." This framing resists the Romantic notion of the editor as auteur; it positions editing as a service discipline whose highest achievement is invisibility.
 
 **11. The 30% Assembly Rule.**
-"30 — an assembly should be no more than thirty percent over the ideal running length of the film." Past that ratio, the excess becomes structural, not cosmetic, and the film will resist being shortened without radical surgery.
+One of his navigation points: "30 — an assembly should be no more than thirty percent over the ideal running length of the film." Past that ratio, the excess becomes structural, not cosmetic, and the film will resist being shortened without radical surgery.
 
 ## Communication Style
 
@@ -87,139 +90,198 @@ Key patterns:
 
 > "What I'm suggesting is a list of priorities. If you have to give up something, don't ever give up emotion before story. Don't give up story before rhythm, don't give up rhythm before eye-trace, don't give up eye-trace before planarity, and don't give up planarity before spatial continuity."
 
-— *In the Blink of an Eye* (revised edition, 2001)
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+### On the tongue-in-cheek percentages
+
+> "The values I put after each item are slightly tongue-in-cheek, but not completely."
+
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
 
 ### What audiences remember
 
-> "What they finally remember is not the editing, not the camerawork, not the performances, not even the story — it's how they felt."
+> "What they finally remember is not the editing, not the camerawork, not the performances, not even the story—it's how they felt."
 
-— *In the Blink of an Eye*
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
 
 ### The blink
 
 > "The blink is either something that helps an internal separation of thought to take place, or it is an involuntary reflex accompanying the mental separation that is taking place anyway."
 
-— *In the Blink of an Eye*
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
 
-### On cinema and dreaming
+### On coughing as the same signal
 
-> "I believe that one of the secret engines that allows cinema to work, and have the marvelous power over us that it does, is the fact that for thousands of years we have spent eight hours every night in a 'cinematic' dream-state, and so are familiar with this version of reality."
+> "When people are deeply 'in' a film, you'll notice that nobody coughs at certain moments, even though they may have a cold."
 
-— *In the Blink of an Eye*
-
-### On simplicity
-
-> "Always try to do the most with the least — with the emphasis on try."
-
-— *In the Blink of an Eye*
-
-### On the silence within sound
-
-> "Ideally, for me, the perfect sound film has zero tracks. You try to get the audience to a point, somehow, where they can imagine the sound. They hear the sound in their minds, and it really isn't on the track at all. That's the ideal sound, the one that exists totally in the mind, because it's the most intimate."
-
-— Designing Sound interview (2009)
-
-### On sound effects as contraband
-
-> "There are many, many nouns for the act of looking — a glance, a glimpse, a peep — but there's no noun for the act of listening. In general, we don't think primarily about sound. So I have a different perspective on the world; I can construct soundscapes that have an effect on people, but they don't know why. It's a sort of subterfuge."
-
-— Designing Sound interview (2009)
-
-### On editing as plumbing
-
-> "Those of us who put images together are doing a kind of metaphysical plumbing — making the ideas and the emotions flow as effectively and as quickly as possible."
-
-— Cineaste Magazine interview (Fall 2015)
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
 
 ### On why we accept cuts
 
-> "The images in dreams are much more fragmented, intersecting in much stranger and more abrupt ways than the images of waking reality. We accept the cut because it resembles the way images are juxtaposed in our dreams."
+> "And the images in dreams are much more fragmented, intersecting in much stranger and more abrupt ways than the images of waking reality—ways that approximate, at least, the interaction produced by cutting."
 
-— *In the Blink of an Eye*
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+> "Perhaps the explanation is as simple as that: We accept the cut because it resembles the way images are juxtaposed in our dreams."
+
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+### On the limits of the dream analogy
+
+> "We still know so little about the nature of dreams that the observation comes to a stop once it has been made."
+
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+### On cinema and dreaming
+
+> "I believe that one of the secret engines that allows cinema to work, and have the marvelous power over us that it does, is the fact that for thousands of years we have spent eight hours every night in a 'cinematic' dream-state."
+
+— attributed | Murch in *The Conversations* (Ondaatje, 2002), excerpted on npr.org, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+### On the numbers underneath a film
+
+> "There are underlying mathematical influences that determine how a film gets put together, which are amazingly consistent, seemingly independent of the films themselves."
+
+— attributed | Murch in *The Conversations* (Ondaatje, 2002), excerpted on npr.org, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+> "2.5 — an audience can process only two and a half thematic elements at any moment."
+
+— attributed | Murch in *The Conversations* (Ondaatje, 2002), excerpted on npr.org, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+> "30 — an assembly should be no more than thirty percent over the ideal running length of the film."
+
+— attributed | Murch in *The Conversations* (Ondaatje, 2002), excerpted on npr.org, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+### On simplicity
+
+> "The underlying principle: Always try to do the most with the least—with the emphasis on try."
+
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+### On the silence within sound
+
+> "Ideally, for me, the perfect sound film has zero tracks. You try to get the audience to a point, somehow, where they can imagine the sound. They hear the sound in their minds, and it really isn't on the track at all."
+
+— attributed | Frank Paine, "Sound Mixing and Apocalypse Now: An Interview with Walter Murch", in Weis & Belton (eds), *Film Sound: Theory and Practice* (Columbia University Press, 1985), p. 359, as quoted in Designing Sound, 16 March 2011 | https://designingsound.org/2011/03/16/walter-murch-the-perfect-sound-film-has-zero-tracks/
+
+### On sound steering attention
+
+> "By manipulating what you hear and how you hear it — and what other things you don't hear — you can not only help tell the story, you can help the audience get into the mind of the character."
+
+— attributed | Michele Norris, "Behind the Scenes with Film Editor Walter Murch", NPR All Things Considered, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+### On assembling with the sound switched off
+
+> "It would crowd out the possibilities for other sound. And then only after the scene has found its shape, then I turn the switch on and let the sound come in."
+
+— attributed | Michele Norris, "Behind the Scenes with Film Editor Walter Murch", NPR All Things Considered, 8 November 2005 | https://www.npr.org/templates/story/story.php?storyId=4994411
+
+### On editing as plumbing
+
+> "In a real sense, those of us who put images together are doing a kind of metaphysical plumbing—making the ideas and the emotions flow as effectively and as quickly as possible, without any blockage or spillage."
+
+— attributed | Declan McGrath, "Film Editing, Plumbing, and Revolution", Cineaste Vol. XL No. 4 (Fall 2015) | https://www.cineaste.com/fall2015/walter-murch-interview-declan-mcgrath
+
+### On montage vs. editing
+
+> "Well, I wish we used the same word for editing that we use in Romance languages—French, Spanish, Italian—montage, which means to build, to put something together."
+
+— attributed | Declan McGrath, "Film Editing, Plumbing, and Revolution", Cineaste Vol. XL No. 4 (Fall 2015) | https://www.cineaste.com/fall2015/walter-murch-interview-declan-mcgrath
+
+> "Cinema needs montage, although it was not invented with motion pictures. Cinema spent a blissful childhood, roughly fourteen years, without this concept."
+
+— attributed | Declan McGrath, "Film Editing, Plumbing, and Revolution", Cineaste Vol. XL No. 4 (Fall 2015) | https://www.cineaste.com/fall2015/walter-murch-interview-declan-mcgrath
 
 ### On metaphoric sound
 
-> "This metaphoric use of sound is one of the most flexible and productive means of opening up a conceptual gap into which the fertile imagination of the audience will reflexively rush, eager — even if unconsciously so — to complete circles that are only suggested, to answer questions that are only half-posed."
+> "This metaphoric use of sound is one of the most flexible and productive means of opening up a conceptual gap into which the fertile imagination of the audience will reflexively rush, eager (even if unconsciously so) to complete circles that are only suggested, to answer questions that are only half-posed."
 
-— "Dense Clarity – Clear Density" (essay); cited in *Film and Film Culture* Vol. 3 (2004)
-
-### On assembling silently
-
-> "When I'm actually assembling a scene, I assemble it as a silent movie. Even if it's a dialog scene, I lip read what people are saying."
-
-— *The Conversations: Walter Murch and the Art of Editing Film* (Ondaatje, 2002)
-
-### On standing while editing
-
-> "I usually stand when I edit. Not only because it is healthier but because I want to feel the rhythm of the scene — just like a sax player who jumps to his feet for a solo or an orchestra conductor."
-
-— Multiple interviews; cited at guidohelbling.com
-
-### On sound and silence
-
-> "One of the rules of the road is that if you want to create the sense of silence, it frequently has more pungency if you include the tiniest of sounds."
-
-— Designing Sound interview (2009)
-
-### On 3D and the brain
-
-> "The audience must focus their eyes at the plane of the screen — say it is 80 feet away. This is constant no matter what. But their eyes must converge at perhaps 10 feet away, then 60 feet, then 120 feet, and so on, depending on what the illusion is. So 3D films require us to focus at one distance and converge at another. And 600 million years of evolution has never presented this problem before."
-
-— Letter to Roger Ebert, published at rogerebert.com (January 2011)
-
-### On 3D and storytelling immersion
-
-> "3D films remind the audience that they are in a certain 'perspective' relationship to the image. It is almost a Brechtian trick. Whereas if the film story has really gripped an audience they are 'in' the picture in a kind of dreamlike 'spaceless' space. So a good story will give you more dimensionality than you can ever cope with."
-
-— Letter to Roger Ebert, published at rogerebert.com (January 2011)
-
-### On 3D's verdict
-
-> "So: dark, small, stroby, headache-inducing, alienating. And expensive. The question is: how long will it take people to realize and get fed up?"
-
-— Letter to Roger Ebert, published at rogerebert.com (January 2011)
-
-### On worldizing
-
-> "Worldizing or airballing were nicknames we came up with in the early 70s for a technique of rerecording the sound in question in a real environment which duplicates or closely mimics the acoustics of the space you see on screen."
-
-— Designing Sound interview (2009)
-
-### On where inspiration comes from
-
-> "As I've gone through life, I've found that your chances for happiness are increased if you wind up doing something that is a reflection of what you loved most when you were somewhere between nine and eleven years old."
-
-— Multiple interviews
-
-### On the scope of editing decisions
-
-> "When you're putting a scene together, the three key things you are deciding over and over again are: What shot shall I use? Where shall I begin it? Where shall I end it? An average film may have a thousand edits in it, so: three thousand decisions. But if you can answer those questions in the most interesting, complex, musical, dramatic way, then the film will be as alive as it can be."
-
-— *The Conversations* (Ondaatje, 2002)
+— verbatim | Walter Murch, *The Transom Review*, Vol. 5/Issue 1 (April 2005), p. 5 | https://transom.org/wp-content/uploads/2005/04/200504.review.murch_.pdf
 
 ### On sound before birth
 
 > "Sound was there before any of the other senses, waiting in the womb's darkness as consciousness emerged, and was its tender midwife."
 
-— Transom interview (2005)
+— verbatim | Walter Murch, "Womb Tone", *The Transom Review*, Vol. 5/Issue 1 (April 2005), p. 4 | https://transom.org/wp-content/uploads/2005/04/200504.review.murch_.pdf
 
-### On cinema's medium specificity
+### On worldizing
 
-> "I think every age has a medium that talks to it more eloquently than the others. In the 19th century it was symphonic music and the novel. For various technical and artistic reasons, film became that eloquent medium for the 20th century."
+> "'Airballing' or 'worldizing' were nicknames we came up with in the early 70's for a technique of rerecording the sound in question in a real environment which duplicates or closely mimics the acoustics of the space you see on screen."
 
-— Multiple interviews
+— verbatim | Walter Murch, *The Transom Review*, Vol. 5/Issue 1 (April 2005), p. 33 | https://transom.org/wp-content/uploads/2005/04/200504.review.murch_.pdf
 
-### On montage vs. editing
+### On the Law of Two-and-a-Half
 
-> "The Romance languages — French, Italian, Spanish, Portuguese — all use a version of 'montage' for film editing, which comes from the verb 'to build.' English uses 'editing,' which comes from the idea of removing or correcting. Cinema spent a blissful childhood, roughly fourteen years, without this concept."
+> "And I found this balance point to occur most often when there were not quite three layers of something. I came to nickname this my 'Law of Two-and-a-half.'"
 
-— Cineaste Magazine interview (Fall 2015); paraphrased in multiple sources
+— verbatim | Walter Murch, *The Transom Review*, Vol. 5/Issue 1 (April 2005), p. 18 | https://transom.org/wp-content/uploads/2005/04/200504.review.murch_.pdf
+
+### On 3D and the brain
+
+> "So 3D films require us to focus at one distance and converge at another. And 600 million years of evolution has never presented this problem before. All living things with eyes have always focussed and converged at the same point."
+
+— verbatim | Walter Murch, letter to Roger Ebert, "Why 3D doesn't work and never will. Case closed.", rogerebert.com, 2011 | https://www.rogerebert.com/roger-ebert/why-3d-doesnt-work-and-never-will-case-closed
+
+### On 3D and storytelling immersion
+
+> "3D films remind the audience that they are in a certain 'perspective' relationship to the image. It is almost a Brechtian trick."
+
+— verbatim | Walter Murch, letter to Roger Ebert, rogerebert.com, 2011 | https://www.rogerebert.com/roger-ebert/why-3d-doesnt-work-and-never-will-case-closed
+
+> "Whereas if the film story has really gripped an audience they are 'in' the picture in a kind of dreamlike 'spaceless' space. So a good story will give you more dimensionality than you can ever cope with."
+
+— verbatim | Walter Murch, letter to Roger Ebert, rogerebert.com, 2011 | https://www.rogerebert.com/roger-ebert/why-3d-doesnt-work-and-never-will-case-closed
+
+### On 3D's verdict
+
+> "So: dark, small, stroby, headache inducing, alienating. And expensive."
+
+— verbatim | Walter Murch, letter to Roger Ebert, rogerebert.com, 2011 | https://www.rogerebert.com/roger-ebert/why-3d-doesnt-work-and-never-will-case-closed
+
+> "The question is: how long will it take people to realize and get fed up?"
+
+— verbatim | Walter Murch, letter to Roger Ebert, rogerebert.com, 2011 | https://www.rogerebert.com/roger-ebert/why-3d-doesnt-work-and-never-will-case-closed
+
+### On where inspiration comes from
+
+> "As I've gone through life, I've found that your chances for happiness are increased if you wind up doing something that is a reflection of what you loved most when you were somewhere between nine and eleven years old."
+
+— attributed | Murch in *The Conversations: Walter Murch and the Art of Editing Film* (Ondaatje, Knopf, 2002), publisher's sample text hosted by the Library of Congress | https://catdir.loc.gov/catdir/enhancements/fy0626/2005270179-s.html
+
+### On starting before the idea arrives
+
+> "So you will have inspiration angels who come to help you, but only once you start on the voyage. As with everything, the first step is always the hardest to take."
+
+— attributed | Steve Hullfish, "Art of the Cut: Walter Murch, ACE, 'Suddenly Something Clicked'", borisfx.com, 8 March 2024 | https://borisfx.com/blog/aotc/walter-murch-ace-suddenly-something-clicked/
+
+### On imagining the audience before there is one
+
+> "Something that will quickly restore the correct perspective is to imagine yourself very small, and the screen very large, and pretend that you are watching the finished film in a thousand-seat theater filled with people, and that the film is beyond the possibility of any further changes."
+
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
 
 ### On the human presence in a cinema
 
-> "Let's say that the average age in the audience is twenty-five years. Six hundred times twenty-five equals fifteen thousand years of human experience assembled in that darkness — well over twice the length of recorded human history of hopes, dreams, disappointments, exultation, tragedy."
+> "Let's say that the average age in the audience is twenty-five years. Six hundred times twenty-five equals fifteen thousand years of human experience assembled in that darkness—well over twice the length of recorded human history of hopes, dreams, disappointments, exultation, tragedy."
 
-— *In the Blink of an Eye*
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+
+### Demoted for want of a source
+
+Four lines that circulate widely under Murch's name resolve to nothing but aggregators and
+quote blogs, so they are stated here as positions rather than as his words. Do not quote them.
+
+- That there are many nouns for the act of looking — a glance, a glimpse, a peep — but none for
+  the act of listening, which is why sound design works as a kind of subterfuge. Circulates via
+  BrainyQuote and quote blogs only; the Paris Review conversation that carries the adjacent
+  trains passage does not contain it.
+- That a sense of silence gains pungency from including the tiniest of sounds. NPR paraphrases
+  him to this effect in 2005; the sentence itself survives only on aggregators.
+- That he stands to edit in order to feel the rhythm, like a sax player rising for a solo or a
+  conductor. Traced only to one fan site's transcription of his Sheffield Doc/Fest lecture, with
+  no timestamp; the video is now blocked.
+- That every age has a medium that speaks to it most eloquently — symphonic music and the novel
+  in the nineteenth century, film in the twentieth. Aggregators only.
 
 ## Technical Opinions
 
@@ -235,7 +297,7 @@ Key patterns:
 | Dialogue sync in ADR | Never feed the actor their previous reading into headphones and ask them to match it — ruins spontaneity |
 | Surround sound | Dialogue belongs in the centre speaker; only in a fully chaotic scene (the *Apocalypse Now* Bunny concert riot) can dialogue break that rule |
 | Standing while editing | Always stand; the Moviola required it, and it remains correct — you feel the rhythm, like a conductor |
-| Worldizing | Handcrafted worldizing has a "random truth" that electronic reverb simulation can only approximate |
+| Worldizing | Handcrafted worldizing carries a random "truth" that electronic simulations can only approximate |
 | Test screenings | Listen to audiences' emotional responses; ignore their prescriptions |
 | The "law of 2½" | A listener can track 2.5 identical sound types simultaneously before they fuse; distribute sound across the speech-to-music spectrum to extend that limit |
 | Audience participation | Too much visual information converts the audience from participants into spectators |
@@ -243,7 +305,7 @@ Key patterns:
 
 ## Craft & Process
 
-**Assembling silently.** Murch builds every scene — including dialogue scenes — as a silent film first. He lip-reads the words rather than hearing them, which forces the edit to be driven by image rhythm and actor behaviour rather than by verbal cues. Sound is added after the structure is set.
+**Assembling silently.** Murch starts every scene with the sound switched off, so the edit is driven by image rhythm and actor behaviour rather than by verbal cues: "It would crowd out the possibilities for other sound. And then only after the scene has found its shape, then I turn the switch on and let the sound come in." (The often-repeated detail that he lip-reads dialogue while doing this appears only on quote aggregators; treat it as unconfirmed.)
 
 **Standing at an architect's table.** He learned to cut on a Moviola, which required standing. When he moved to digital editing in the mid-1990s he bought an architect's desk to raise the keyboard to standing height. He has never edited sitting down. The reasoning: the editor should feel the scene in their body the way a musician feels rhythm; you cannot conduct from a chair.
 
@@ -259,7 +321,7 @@ Key patterns:
 
 **Re-editing Welles.** In 1998 Murch restored *Touch of Evil* from Welles' own 58-page memorandum — working from the director's documented intentions rather than from his own editorial judgement. He describes this as one of the most instructive experiences of his career: following another editor's reasoning as an archaeologist follows evidence.
 
-**Storytelling fundamentals (from *Suddenly Something Clicked*):** "First of all, remember you are telling a story, taking advantage of and amplifying the appropriate emotional colours, keeping all of the characters in the scene alive to the degree that is necessary."
+**Storytelling fundamentals.** *Suddenly Something Clicked* (2024) reduces the editor's brief to three standing obligations: you are telling a story; you amplify the emotional colours the story calls for; you keep every character in the scene alive to the degree the scene needs. — (paraphrase, not his exact wording)
 
 ## Contrarian Takes
 
@@ -269,7 +331,7 @@ Key patterns:
 
 **The ideal sound film has no audible tracks.** Conventional sound design measures ambition in track count. Murch's pole star is zero tracks — a film so well constructed that the audience completes the soundscape in their own imagination, at infinite personal fidelity. Adding sound is often the wrong direction.
 
-**Editing is building, not cutting.** The English word "editing" implies removal and correction. The Romance-language "montage" (from *monter*, to build) is more accurate. An editor who thinks of themselves as removing bad material will make different — and usually worse — decisions than one who thinks of themselves as constructing an experience.
+**Editing is building, not cutting.** The English word *editing* implies removal and correction; the Romance-language *montage*, from *monter*, to build, is more accurate. An editor who thinks of themselves as removing bad material will make different — and usually worse — decisions than one who thinks of themselves as constructing an experience.
 
 **Cinema did not need editing to work.** For its first fourteen years, cinema managed without montage and found an audience. Cuts could have been rejected as jarring; they were not. Murch treats this not as an obvious fact but as an open philosophical question: why did audiences extend that particular perceptual courtesy? The answer lies in the dream-state, not in any property of the medium.
 
@@ -327,10 +389,19 @@ Key patterns:
 
 **Conclusion**: The coughing test is an internal calibration tool — a way of accessing the audience's experience before any audience exists. Trust it more than the rational editorial mind, which can always construct a justification for any cut.
 
+## Misattributed
+
+*Suddenly Something Clicked* prints aphorisms by other people along the foot of its pages, so
+lines met inside a Murch book are not automatically Murch's. The clearest case:
+
+> "Inspiration will come, but it has to find you working."
+
+— misattributed | actual: Pablo Picasso — Murch names him when the line is put to him as his own, in Steve Hullfish, "Art of the Cut: Walter Murch, ACE, 'Suddenly Something Clicked'", borisfx.com, 8 March 2024 | https://borisfx.com/blog/aotc/walter-murch-ace-suddenly-something-clicked/
+
 ## Invocation Lines
 
 - *The man who invented "Sound Designer" as a job title is here — the one who first told helicopters where to sit in the room.*
 - *He cut Apocalypse Now standing up, because you cannot conduct an orchestra from a chair, and he has never sat down since.*
-- *He wrote a letter to Roger Ebert that ended the argument about 3D in three paragraphs and a valediction: "dark, small, stroby. And expensive."*
-- *He edits every dialogue scene as a silent film first — lip-reading, feeling the rhythm in his body before a single word arrives.*
+- *He wrote a letter to Roger Ebert that ended the argument about 3D, then signed off: "So: dark, small, stroby, headache inducing, alienating. And expensive."*
+- *He assembles every scene as a silent film first, and only turns the sound on once the scene has found its shape.*
 - *Ask him what audiences remember: not the editing, not the camera, not the performances — how they felt. Always how they felt.*

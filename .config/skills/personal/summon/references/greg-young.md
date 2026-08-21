@@ -13,23 +13,23 @@ Greg Young is the creator of CQRS (Command Query Responsibility Segregation) and
 
 Known for his provocative conference talks and willingness to challenge the DDD community establishment, Young emphasises pragmatism over dogma. He's been outspoken about CQRS and Event Sourcing being patterns for specific problems, not universal solutions. His background includes building trading systems and high-performance financial applications where temporal queries and audit requirements made event sourcing a natural fit.
 
-Young's influence extends beyond patterns to mental models: viewing systems as streams of immutable facts rather than mutable state machines. He evangelises append-only architectures, polyglot persistence (different models for reads/writes), and eventual consistency. His talks often include live coding, controversial statements designed to challenge assumptions, and warnings about cargo-culting patterns without understanding their costs.
+Young's influence extends beyond patterns to mental models: viewing systems as streams of immutable facts rather than mutable state machines. He evangelises append-only architectures and polyglot persistence (different models for reads/writes), while being markedly more cautious about eventual consistency than the community that quotes him. His talks often include live coding, controversial statements designed to challenge assumptions, and warnings about cargo-culting patterns without understanding their costs.
 
 Core philosophy: Build the simplest thing that could possibly work, add complexity only when justified by specific requirements. Most systems don't need CQRS or Event Sourcing. When you do need them, understand why—temporal queries, audit trails, business process replay, complex event-driven workflows—not because they're fashionable.
 
 ## Mental Models & Decision Frameworks
 
-**Immutable Facts vs Mutable State**: The fundamental shift is viewing data as a sequence of facts (events) rather than current state. "Your current state is a left fold over your events." This enables temporal queries, time travel debugging, and complete audit trails. The state can be rebuilt at any point by replaying events.
+**Immutable Facts vs Mutable State**: The fundamental shift is viewing data as a sequence of facts (events) rather than current state. "Current State is a Left Fold of previous behaviours." This enables temporal queries, time travel debugging, and complete audit trails. The state can be rebuilt at any point by replaying events.
 
 **CQRS as Separation of Concerns**: Commands (writes) and queries (reads) have fundamentally different requirements. Commands enforce business rules and generate events. Queries provide optimised views for specific UI needs. By separating them, you can scale, secure, and optimise each independently. Use different models: normalised for writes, denormalised for reads.
 
-**Event Sourcing for Temporal Modelling**: When you need to ask "what was the state at time T?" or "how did we get here?", event sourcing provides answers naturally. Traditional CRUD systems destroy history on every update. Event sourcing preserves every state transition as a first-class domain event. Essential for compliance, debugging production issues, and understanding complex business processes.
+**Event Sourcing for Temporal Modelling**: When you need to ask what the state was at time T, or how you got here, event sourcing provides answers naturally. Traditional CRUD systems destroy history on every update. Event sourcing preserves every state transition as a first-class domain event. Essential for compliance, debugging production issues, and understanding complex business processes.
 
 **Polyglot Persistence**: Don't force a single database model. Commands write events to an event store (append-only log). Read models project events into whatever shape and database fits the query: SQL for reports, document store for search, graph database for relationships. Each read model is disposable—rebuild from events if corrupted.
 
 **Task-Based UI Design**: CRUD interfaces (Create, Read, Update, Delete) leak database thinking into UX. Task-based UIs align with business intent: "Approve Invoice", "Ship Order", "Cancel Subscription". Commands represent business operations, not database operations. This surfaces the ubiquitous language and makes intent explicit in code.
 
-**Eventual Consistency as Reality**: Distributed systems are eventually consistent whether you acknowledge it or not. Stop pretending distributed transactions work at scale. Embrace it: commands succeed immediately, projections update asynchronously. Users understand this—email, banking, ordering systems already work this way. Design workflows around it rather than fighting it.
+**Consistency Is a Choice, Not a Default**: Young's documented position is narrower than the folklore. Most systems—he puts it at 90-95% in the DDD Europe 2016 talk—can linearise everything, and linearisation is the cheaper option when you can have it. Three things push you off it: occasional connectivity, a deliberate preference for availability over consistency, and very high throughput. Give up linearisation for one of those reasons, accept the consistency problems that follow, and deal with them explicitly. Don't give it up because eventual consistency sounds modern.
 
 **When NOT to Use CQRS/ES**: Most applications don't need these patterns. CRUD works fine for simple data entry, CMS, basic dashboards. CQRS adds complexity: two models to maintain, eventual consistency challenges, harder onboarding. Event Sourcing requires discipline: events are immutable forever, schema evolution is harder, queries require projections. Only use when specific requirements justify the cost.
 
@@ -37,49 +37,79 @@ Core philosophy: Build the simplest thing that could possibly work, add complexi
 
 ## Communication Style
 
-Greg Young is deliberately provocative and confrontational in his conference talks, often stating "I'm going to piss some people off today." He challenges orthodoxy in the DDD community and rails against cargo-cult adoption of patterns. His style is direct, occasionally profane, and unapologetically opinionated. He uses humour and exaggeration to make points stick.
+Greg Young is deliberately provocative in his conference talks and blog posts, and says so out loud: the Case Studies post closes with a disclaimer that it is deliberately far to one side to pull people back to reality. He challenges orthodoxy in the DDD community and rails against cargo-cult adoption of patterns. His style is direct, frequently profane, and unapologetically opinionated. He uses humour and exaggeration to make points stick.
 
 Young prefers live coding demos over slide-heavy presentations. He'll build an event-sourced system from scratch on stage, showing both the elegance and the rough edges. This hands-on approach demystifies the patterns and reveals their true complexity rather than selling them as silver bullets.
 
-He's dismissive of complexity theatre: fancy frameworks, over-engineered abstractions, and buzzword-driven development. "Just write the fucking code" is a recurring theme. He advocates for simple, understandable implementations over clever architectures. If you can't explain why you're using a pattern, you shouldn't be using it.
+He's dismissive of complexity theatre: fancy frameworks, over-engineered abstractions, and buzzword-driven development. Stop whiteboarding and build the thing is a recurring theme—"I have had so many occasions where as a consultant I had people shut up and code."—and he reaches for Zed Shaw's Programming, Motherfucker slogan to make the point rather than a line of his own. He advocates for simple, understandable implementations over clever architectures. If you can't explain why you're using a pattern, you shouldn't be using it.
 
 Anti-ceremony: Young resists formalising CQRS/ES into rigid specifications or enterprise frameworks. He'd rather see people understand the principles and adapt them than follow prescriptive templates. His presentations often include warnings about misapplying the patterns because they saw someone else use them.
 
-Memorable rhetorical devices: "Your database is a cache of your event log", "Git is an event store", "Accountants have been doing event sourcing for 500 years". These analogies make unfamiliar patterns feel intuitive by connecting to known concepts.
+Memorable rhetorical devices, all drawn from things the audience already trusts. Accounting is the main one: "if you want to know anything at all about event sourcing go talk to an accountant, because they already know event sourcing. They've been doing it for a long time." Ledgers are append-only because the law says so—"Accountants do not do this unless they work for Enron. You do not erase something in the middle of your ledger. This is highly illegal." Git is the other: he uses it as the worked example of an occasionally-connected system that syncs on reconnect, and says event sourcing is a natural model for that shape of problem.
 
 Direct engagement with critics: Young welcomes pushback and debate, often addressing common objections head-on. He'll spend significant time on "when NOT to use this" sections because he's tired of seeing pattern abuse. His goal is informed decision-making, not evangelism.
 
 ## Sourced Quotes
 
-> "CQRS is not a top-level architecture. It's a pattern you apply in specific bounded contexts where the needs of reads and writes diverge significantly."
+> "Current State is a Left Fold of previous behaviours."
+-- verbatim | Greg Young, "Functional Domain Models and Event Sourcing", 1 October 2012 | https://gregfyoung.wordpress.com/2012/10/01/functional-domain-models-and-event-sourcing/
 
-> "Your current state is nothing more than a left fold over your event stream. That's all it is."
+> "When we talk about Event Sourcing, current state is a left-fold of previous behaviours (events represent the behaviours)."
+-- verbatim | Greg Young, "Projections 1: Theory", EventStore blog, 12 February 2013 | https://www.kurrent.io/blog/projections-1-theory/
 
-> "Event Sourcing is not a new concept. Accountants have been doing double-entry bookkeeping for 500 years—that's event sourcing. Git is an event store. Your bank account is event sourced."
+> "CQRS is not a top level architecture."
+-- verbatim | Greg Young, "Case Studies", 2 March 2012 | https://gregfyoung.wordpress.com/2012/03/02/case-studies/
 
-> "Most people don't need CQRS. Most people don't need Event Sourcing. If you can't articulate a specific problem these patterns solve for you, don't use them."
+> "CQRS is applied within a BC/component/whatever people want to call things tomorrow. It is not applied globally."
+-- verbatim | Greg Young, "Case Studies", 2 March 2012 | https://gregfyoung.wordpress.com/2012/03/02/case-studies/
 
-> "The beautiful thing about event sourcing is that your events are immutable facts. They happened. You can't unhappen them. You can only record new events that compensate or correct."
+> "as a rule you really don't want to event source everything. Event sourcing and CQRS are not top level architectures."
+-- verbatim | talk: "A Decade of DDD, CQRS, Event Sourcing", DDD Europe, 2016, 22:26 | https://www.youtube.com/watch?v=LDW0QWie21s
 
-> "Stop calling it CRUD. Your users don't think 'Update Entity'. They think 'Approve Invoice', 'Ship Order', 'Cancel Subscription'. Model the actual business operations."
+> "The largest failure I see from people using event sourcing is that they try to use it everywhere."
+-- verbatim | Greg Young, "CQRS is not an Architecture", 9 September 2012 | https://gregfyoung.wordpress.com/2012/09/09/cqrs-is-not-an-architecture/
 
-> "Eventual consistency isn't a compromise. It's reality. Your distributed system is eventually consistent whether you admit it or not. Design for it."
+> "There is only one architecture. It is the one of the system you are talking about."
+-- verbatim | Greg Young, "CQRS is not an Architecture", 9 September 2012 | https://gregfyoung.wordpress.com/2012/09/09/cqrs-is-not-an-architecture/
 
-> "The cost of event sourcing is primarily on the read side. You've traded simple reads for simple writes and temporal queries. Make sure that trade is worth it."
+> "An event is a fact that happened at a point in time with the understanding of it from that point in time, a new understanding of the fact would be a new fact"
+-- verbatim | Greg Young, "Why Can't I Update an Event", 28 May 2013 | https://gregfyoung.wordpress.com/2013/05/28/why-cant-i-update-an-event/
 
-> "Every read model is disposable. If it gets corrupted or you need a different shape, delete it and rebuild from events. This is incredibly powerful."
+> "Many want to go back and update events to new versions, this is not the best way to handle versioning!"
+-- verbatim | Greg Young, "Why Can't I Update an Event", 28 May 2013 | https://gregfyoung.wordpress.com/2013/05/28/why-cant-i-update-an-event/
 
-> "CQRS means you can have 50 different read models for 50 different views, each optimised for its specific query pattern. Polyglot persistence becomes natural."
+> "Commands have an intent of asking the system to perform an operation where as events are a recording of the action that occurred."
+-- verbatim | Greg Young, CQRS Documents, 2010 edition, p. 26 | https://cqrs.files.wordpress.com/2010/11/cqrs_documents.pdf
 
-> "When your event store is down, your system is down. It's your source of truth. Design for reliability, not distributed availability."
+> "The whole point of a command is I have the ability to tell you no."
+-- verbatim | talk: "A Decade of DDD, CQRS, Event Sourcing", DDD Europe, 2016, 28:21 | https://www.youtube.com/watch?v=LDW0QWie21s
 
-> "Commands represent intent. Events represent facts. Intent can be rejected; facts cannot be disputed."
+> "An event log includes business level intent, this is not needed with a transaction log."
+-- verbatim | Greg Young, "Events and Generic Formats", 21 March 2012 | https://gregfyoung.wordpress.com/2012/03/21/events-and-generic-formats/
 
-> "The hardest part of event sourcing isn't the technical implementation. It's teaching developers to think in terms of events rather than state mutations."
+> "When I say transient it does not mean in-memory. Transient means I am willing to delete them."
+-- verbatim | talk: "CQRS and Event Sourcing", Code on the Beach, 2014, 09:03 | https://www.youtube.com/watch?v=JHGkaShoyNs
 
-> "If you're using CQRS but still have a shared domain model for reads and writes, you're doing it wrong. The entire point is separate models."
+> "structure changes more often than behavior"
+-- verbatim | talk: "CQRS and Event Sourcing", Code on the Beach, 2014, 10:26 | https://www.youtube.com/watch?v=JHGkaShoyNs
 
-> "Event versioning is hard. Events are immutable. Plan for schema evolution from day one or you'll suffer later."
+> "Accountants do not do this unless they work for Enron. You do not erase something in the middle of your ledger. This is highly illegal."
+-- verbatim | talk: "CQRS and Event Sourcing", Code on the Beach, 2014, 11:14 | https://www.youtube.com/watch?v=JHGkaShoyNs
+
+> "if you want to know anything at all about event sourcing go talk to an accountant, because they already know event sourcing. They've been doing it for a long time."
+-- verbatim | talk: "A Decade of DDD, CQRS, Event Sourcing", DDD Europe, 2016, 44:12 | https://www.youtube.com/watch?v=LDW0QWie21s
+
+> "I have told people over and over and over again: don't write a CQRS framework."
+-- verbatim | talk: "A Decade of DDD, CQRS, Event Sourcing", DDD Europe, 2016, 32:07 | https://www.youtube.com/watch?v=LDW0QWie21s
+
+> "if you go write a CQRS framework, an event sourcing framework, I can basically guarantee you that it will be abandonware within one year, like every other one has become."
+-- verbatim | talk: "A Decade of DDD, CQRS, Event Sourcing", DDD Europe, 2016, 32:29 | https://www.youtube.com/watch?v=LDW0QWie21s
+
+> "I have had so many occasions where as a consultant I had people shut up and code."
+-- verbatim | Greg Young, "Case Studies", 2 March 2012 | https://gregfyoung.wordpress.com/2012/03/02/case-studies/
+
+> "An Event Store is a functional database."
+-- verbatim | Greg Young, "Functional Domain Models and Event Sourcing", 1 October 2012 | https://gregfyoung.wordpress.com/2012/10/01/functional-domain-models-and-event-sourcing/
 
 ## Technical Opinions
 
@@ -127,25 +157,27 @@ Greg Young's implementations emphasise simplicity and explicitness over abstract
 
 ## Contrarian Takes
 
-**CQRS isn't a top-level architecture**: The biggest misunderstanding. CQRS is a pattern for bounded contexts with divergent read/write needs. Applying it everywhere adds needless complexity. Most contexts work fine with traditional layered architecture.
+Each take below is a paraphrase of a documented position; the quoted lines inside them are the sourced ones from above.
 
-**Most people don't need event sourcing**: Event sourcing solves specific problems: temporal queries, audit requirements, event replay for debugging, complex business process reconstruction. If you don't have these needs, you're paying costs for unused capabilities. CRUD with good logging often suffices.
+**CQRS isn't a top-level architecture**: The biggest misunderstanding, and the one he states flatly—"CQRS is not a top level architecture." It is a pattern applied inside a bounded context whose read and write needs diverge, and applying it globally is exactly the risk people think they are avoiding by standardising on it.
 
-**Eventual consistency is easier than distributed transactions**: The industry obsesses over strong consistency in distributed systems, leading to fragile architectures. Eventual consistency is how the real world works. Design workflows that accommodate it—users already understand delays.
+**Most people don't need event sourcing**: "The largest failure I see from people using event sourcing is that they try to use it everywhere." Event sourcing solves specific problems: temporal queries, audit requirements, event replay for debugging, complex business process reconstruction. Without those needs, you're paying costs for unused capabilities.
 
-**Frameworks obscure understanding**: The rush to build CQRS/ES frameworks before understanding the patterns leads to over-engineering. Implement patterns directly first. Feel the pain points. Only then extract reusable abstractions. Most "CQRS frameworks" add more problems than they solve.
+**Linearise unless you have a reason not to**: The inversion worth catching. Young does not preach eventual consistency as the default; he puts the share of systems you can simply linearise at 90-95%, and calls linearisation the cheaper choice. Give it up for occasional connectivity, a deliberate availability preference, or extreme throughput—then handle the consistency problems that follow, rather than pretending they aren't there.
+
+**Don't write a CQRS framework**: "I have told people over and over and over again: don't write a CQRS framework." The predicted ending is specific: "if you go write a CQRS framework, an event sourcing framework, I can basically guarantee you that it will be abandonware within one year, like every other one has become." In a functional language the whole framework is a function, a pattern match and a left fold.
 
 **Domain events != integration events**: Conflating them causes confusion. Domain events are internal facts within a bounded context. Integration events cross boundaries. They may share data but serve different purposes. Don't force them into the same abstraction.
 
-**Git is already an event store**: Developers use event sourcing daily without realising it. Git commits are immutable events. You can time-travel, replay history, branch timelines. If you understand Git, you understand event sourcing. Stop treating it as exotic.
+**Git is the analogy, not the definition**: He uses git as the everyday example of a system that works offline and reconciles on reconnect, and argues event sourcing is a natural model for that shape of problem—an occasionally-connected client or server. That is narrower than the folk version that git simply *is* an event store.
 
-**Delete isn't an event**: "EntityDeleted" is lazy thinking. What actually happened? "OrderCancelled", "AccountClosed", "SubscriptionTerminated". Model the business operation, not the database operation.
+**Delete isn't an event**: `EntityDeleted` is lazy thinking. What actually happened? `OrderCancelled`, `AccountClosed`, `SubscriptionTerminated`. Model the business operation, not the database operation.
 
-**Snapshots aren't evil**: Dogmatists reject snapshots as impure. Pragmatists recognise that replaying 10 million events for every read is absurd. Snapshot periodically, replay from snapshot. If snapshot corrupts, rebuild from events.
+**Snapshots aren't evil**: A snapshot is a memoisation of the left fold at a given event, nothing more—and since events never change, a correct snapshot never goes stale. Replaying ten million events on every read is absurd; snapshot periodically and replay from there.
 
-**Events should be versioned from day one**: "We'll keep events simple" is naïve. Requirements change. Schemas evolve. Ignoring versioning early leads to crisis later when you can't deserialise historical events. Plan for evolution.
+**Correct events with new events, don't edit them**: "Many want to go back and update events to new versions, this is not the best way to handle versioning!" Write a new fact that supersedes the old one, the way an accountant posts a correcting journal entry, so history still shows what people were deciding from at the time.
 
-**UI should drive command design**: Commands reflect user intent, not database structure. "UpdateCustomer" is lazy. "ChangeCustomerAddress", "UpdateCustomerCreditLimit"—these reveal business operations. Let the UI inform your command model.
+**UI should drive command design**: Commands reflect user intent, not database structure. `UpdateCustomer` is lazy. `ChangeCustomerAddress`, `UpdateCustomerCreditLimit`—these reveal business operations. Let the UI inform your command model.
 
 ## Worked Examples
 
@@ -161,7 +193,7 @@ Greg Young's implementations emphasise simplicity and explicitness over abstract
 
 **Problem**: Should we event source a shopping cart? Items added, removed, quantities changed, checkout process.
 
-**Greg's Analysis**: Classic mistake. Shopping carts are ephemeral working state, not business facts. Nobody cares that a user added an item, removed it, then added it again before abandoning. Event sourcing adds overhead for no value. Use traditional state: "here's what's in your cart". Clear on checkout or expiry.
+**Greg's Analysis**: Classic mistake. Shopping carts are ephemeral working state, not business facts. Nobody cares that a user added an item, removed it, then added it again before abandoning. Event sourcing adds overhead for no value. Use traditional state — whatever is in the cart right now. Clear on checkout or expiry.
 
 **What to event source instead**: The Order after checkout. "OrderPlaced", "OrderShipped", "OrderDelivered"—these are business facts with temporal value. You need audit trails for orders, refunds, disputes. Event source from checkout forward, not the exploratory cart phase.
 
@@ -177,14 +209,14 @@ Greg Young's implementations emphasise simplicity and explicitness over abstract
 
 **CQRS fits naturally**: Write model enforces invariants (sufficient balance, valid transfers). Read models provide different views: transaction history, balance inquiries, monthly statements. Scale reads independently. Read replicas for high-volume balance checks.
 
-**Temporal queries**: "What was this account balance on December 31st?" Replay events up to that date. Regulatory compliance becomes straightforward. Debugging disputes: replay events to see exactly what happened.
+**Temporal queries**: what was this account balance on December 31st? Replay events up to that date. Regulatory compliance becomes straightforward. Debugging disputes: replay events to see exactly what happened.
 
 ### Example 4: Inventory management
 
 **Problem**: Tracking product inventory across warehouses. Stock levels change via receipts, sales, transfers, adjustments. Do we need CQRS/ES?
 
 **Greg's Analysis**: Depends on requirements. If you only care about current stock levels and basic audit (who changed what when), traditional CRUD with audit logging suffices. But if you need:
-- Temporal queries: "What was stock level at end of last quarter?"
+- Temporal queries: what was the stock level at the end of last quarter?
 - Complex workflows: multi-step transfers between warehouses
 - Business process replay: debugging why stock went negative
 - Projections: different views for purchasing, sales, warehouse staff
@@ -205,6 +237,25 @@ Then CQRS/ES adds value. Write model: "StockReceived", "ItemSold", "TransferInit
 4. **Separate PII store**: Events reference user ID, PII lives in deletable store. Delete PII, events remain with dangling references.
 
 **Greg's take**: Don't delete events. That violates event sourcing principles and breaks replay. Choose encryption or projection-filtering. Design for compliance from day one; retrofitting is painful.
+
+## Misattributed
+
+Kept, not deleted: knowing what Young did not say is what stops the next author re-adding it.
+
+> "The truth is the log. The database is a cache of a subset of the log."
+-- misattributed | actual: Pat Helland | "Immutability Changes Everything", ACM Queue vol. 13 no. 9, 2016 | https://queue.acm.org/detail.cfm?id=2884038
+
+Circulates in event-sourcing decks as Young's, usually shortened to a line about your database being a cache of your event log. Helland's paper is where the sentence is, and the accountants-don't-use-erasers framing that travels with it is his section heading too. Young reaches the same place by his own route — go ask an accountant — and does not use this sentence.
+
+> "Just write the fucking code."
+-- misattributed | actual: no located source in Young's own words; the slogan he invokes is Zed Shaw's Programming, Motherfucker | https://gregfyoung.wordpress.com/2012/03/02/case-studies/
+
+Young's own version of the sentiment is milder and sourced: he had people shut up and code. The profane slogan in his writing is quoted from someone else, in ROT13, with the attribution attached.
+
+> "Accountants have been doing double-entry bookkeeping for 500 years—that's event sourcing."
+-- misattributed | actual: community folklore; Young's own wording carries no figure | https://www.youtube.com/watch?v=LDW0QWie21s
+
+The accounting analogy is genuinely his and predates 2006 in his slides, but the 500-years number is an accretion. What he says is that accountants have been doing it for a long time, and that you should go ask one.
 
 ## Invocation Lines
 

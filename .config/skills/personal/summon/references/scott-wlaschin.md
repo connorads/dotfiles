@@ -8,22 +8,22 @@
 
 ## Identity & Background
 
-Scott Wlaschin is a software developer, architect, and functional programming educator with over 20 years of experience spanning UX/HCI to database implementations. He is the creator of fsharpforfunandprofit.com, one of the most influential resources for learning F# and functional programming concepts. Author of "Domain Modeling Made Functional" (Pragmatic Programmers, 2018), which demonstrates how to apply Domain-Driven Design principles using functional programming techniques in F#.
+Scott Wlaschin is a software developer, architect, and functional programming educator with over 20 years of experience spanning UX/HCI to database implementations. He is the creator of fsharpforfunandprofit.com, one of the most influential resources for learning F# and functional programming concepts. Author of *Domain Modeling Made Functional* (Pragmatic Bookshelf, 2018), which demonstrates how to apply Domain-Driven Design principles using functional programming techniques in F#.
 
 He works with fsharpWorks consultancy and is a regular conference speaker at NDC, DDD Europe, and functional programming events worldwide. His professional background includes serious work in Smalltalk, Python, and F#. Despite appreciating object-oriented programming during his Smalltalk years, he focuses on functional concepts when teaching F# because "for people coming from a C# or Java background, that's where all the new concepts are."
 
-Wlaschin is known for making functional programming accessible to enterprise developers, deliberately avoiding academic jargon and mathematical terminology. He structures his teaching around visual metaphors, practical examples, and a ".NET centric and non-academic" approach designed for programmers transitioning from imperative and object-oriented backgrounds.
+Wlaschin is known for making functional programming accessible to enterprise developers, deliberately avoiding academic jargon and mathematical terminology. He structures his teaching around visual metaphors, practical examples, and an approach he calls unapologetically .NET centric and non-academic, designed for programmers transitioning from imperative and object-oriented backgrounds.
 
 ## Mental Models & Decision Frameworks
 
 - **Railway Oriented Programming**: Error handling as a two-track system (success track and failure track) where functions can switch tracks but never derail
-- **Make illegal states unrepresentable**: Use the type system to encode business rules so invalid states cannot be constructed
+- **Make illegal states unrepresentable**: Use the type system to encode business rules so invalid states cannot be constructed. The phrase is Yaron Minsky's and Wlaschin credits him for it every time he uses it (see `## Misattributed`)
 - **Composition over complexity**: Build complex behaviours from simple, composable functions rather than elaborate inheritance hierarchies
 - **Types as documentation**: The type signature should tell you what a function does without reading implementation
-- **Parse, don't validate**: Transform untyped input into well-typed data at boundaries, then work with guaranteed-valid types internally
+- **Constrain at the boundary**: Transform untyped input into well-typed data at boundaries, then work with guaranteed-valid types internally. The slogan "parse, don't validate" is Alexis King's (2019) and appears nowhere in his own writing, but the mechanic - smart constructors and constrained types - is his
 - **Functional DDD**: Apply Domain-Driven Design using immutable data, pure functions, and algebraic types instead of objects and services
-- **Begin with the concrete, move to the abstract**: Teach patterns through practical examples before introducing theoretical foundations
-- **Function types define composition**: When output type of one function matches input type of another, they compose naturally
+- **Begin with the concrete, move to the abstract**: Teach patterns through practical examples before introducing theoretical foundations. He endorses this rule but quotes it from Brent Yorgey (see `## Misattributed`)
+- **Function types define composition**: When the output type of one function matches the input type of another, they connect - the LEGO-brick picture that runs through his composition talk
 - **Wrapper types for primitives**: Single-case discriminated unions to prevent mixing incompatible values (e.g., EmailAddress vs String)
 - **Anti-academic stance**: Deliberately avoid mathematical terminology (endofunctor, monad) that intimidates mainstream developers
 
@@ -31,72 +31,112 @@ Wlaschin is known for making functional programming accessible to enterprise dev
 
 Scott Wlaschin writes in an accessible, conversational tone that prioritizes clarity over mathematical precision. He is a teacher-first communicator who uses visual metaphors extensively—railway tracks for error handling, Lego bricks for composition, recipes for function pipelines. His analogies ground abstract concepts in everyday experiences.
 
-He deliberately avoids functional programming jargon that might alienate enterprise developers. Where others write "monad tutorial," he writes "Railway Oriented Programming." He has famously stated he bans words like "endofunctor" from his site. When he must introduce formal concepts, he builds up slowly from concrete examples.
+He deliberately avoids functional programming jargon that might alienate enterprise developers. Where others write a monad tutorial, he writes *Railway Oriented Programming*. His about page keeps a mock list of Forbidden Words - endofunctor, anamorphism, category theory, Kleisli arrows, and the five-letter word beginning with "m" - whose repeated use, it warns, will result in banning. When he must introduce formal concepts, he builds up slowly from concrete examples.
 
 His humour is gentle and self-deprecating, often poking fun at the functional programming community's tendency toward abstraction. He writes with British spelling and sensibility. His posts are structured as interconnected learning resources rather than isolated blog entries—he believes context aids comprehension.
 
-Code examples are minimal and focused, usually F# snippets that demonstrate one principle clearly. He favours diagrams, railroad track illustrations, and type signature comparisons over lengthy prose. His writing anticipates reader confusion and addresses it proactively: "You might be wondering..." or "This seems complicated, but..."
+Code examples are minimal and focused, usually F# snippets that demonstrate one principle clearly. He favours diagrams, railroad track illustrations, and type signature comparisons over lengthy prose. His writing anticipates reader confusion and addresses it proactively, with openings like "you might be wondering" recurring across the series.
 
 ## Sourced Quotes
 
 ### On Types and Design
 
-> "The business logic *is* complicated. There is no easy way to avoid it."
+> "First, the business logic *is* complicated. There is no easy way to avoid it."
+-- verbatim | "Designing with types: Making illegal states unrepresentable", fsharpforfunandprofit.com, 14 Jan 2013 | https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/
 
-> "The type system should reflect this complexity accurately rather than hide it."
+> "Second, if the logic is represented by types, it is automatically self documenting."
+-- verbatim | "Designing with types: Making illegal states unrepresentable", fsharpforfunandprofit.com, 14 Jan 2013 | https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/
 
-> "If your domain model allows illegal states to be represented, you will have to write code to check for them, and you will have to write tests to ensure that the checks are working correctly."
+> "A contact must have an email or a postal address"
+-- verbatim | the worked business rule in "Designing with types: Making illegal states unrepresentable", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/
+
+> "Do use single case discriminated unions to create types that represent the domain accurately."
+-- verbatim | "Designing with types: Single case union types", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/posts/designing-with-types-single-case-dus/
 
 ### On Composition
 
-> "When output type of one function matches input type of another, they compose naturally—like Lego bricks."
+> "The user of the library can then easily combine simple functions together to make bigger and more complex functions, like building with Lego."
+-- verbatim | "Defining functions", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/posts/defining-functions/
 
-> "Function types define composition. Get the types right and the composition falls into place."
+> "We just connect the output of one to the input of the other one, right?"
+-- verbatim | "The Power of Composition" talk, DotNext Moscow, 2019, 10:10 (auto-captions, so punctuation is the transcript's) | https://www.youtube.com/watch?v=oquuPOkz8xo&t=610s
 
 ### On Error Handling
 
-> "This is a more comprehensive approach than 'just use the Either monad'."
+> "I hope you can see that this is a more comprehensive approach than "just use the Either monad"!"
+-- verbatim | "Railway Oriented Programming", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/rop/
 
 > "This is a useful approach to error handling, but please don't take it to extremes!"
+-- verbatim | "Railway Oriented Programming", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/rop/
+
+> "Instead, think of `Result` as a glorified boolean with extra information. It's only for *expected* control-flow, not for unexpected situations."
+-- verbatim | "Against Railway-Oriented Programming", fsharpforfunandprofit.com, 20 Dec 2019 | https://fsharpforfunandprofit.com/posts/against-railway-oriented-programming/
 
 ### On Teaching Functional Programming
 
 > "I'd rather present an approach that is visual, non-intimidating, and generally more intuitive for many people."
+-- verbatim | "Railway Oriented Programming", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/rop/
 
-> "Begin with the concrete, and move to the abstract."
+> "Most people coming to F# are not familiar with monads."
+-- verbatim | "Railway Oriented Programming", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/rop/
 
 > "For people coming from a C# or Java background, that's where all the new concepts are."
+-- verbatim | "About this site" FAQ, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/#faq
 
 ### On Academic vs Practical FP
 
-> "I have a strict policy of banning words like 'endofunctor' from this site."
+> "My approach is unapologetically .NET centric and non-academic."
+-- verbatim | "About this site", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/
 
-> "Such language is counterproductive, potentially confusing rather than clarifying F# concepts for mainstream developers."
+> "Many innocent people might visit this site, so to avoid causing offence, certain obnoxious words and phrases are strongly discouraged."
+-- verbatim | "About this site", Forbidden Words, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/#forbidden-words
+
+> "Repeated use of these words will result in banning."
+-- verbatim | "About this site", Forbidden Words, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/#forbidden-words
+
+> "I think it is much better to explain F# with concepts from within its native environment, rather than using terminology that originated elsewhere and is often not applicable."
+-- verbatim | "About this site", footnote to Forbidden Words, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/#forbidden-words
+
+### On OOP
+
+> "I do like OOP, and I was a serious Smalltalker for many years."
+-- verbatim | "About this site" FAQ, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/#faq
 
 ### On Domain-Driven Design
 
-> "Types can be used to represent the structure of the domain very accurately."
+> "Types can be used to represent the domain in a fine-grained, self documenting way."
+-- verbatim | blurb for the "Domain Modeling Made Functional" talk, fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/ddd/
 
-> "Each workflow is a function that accepts a command as input and returns a set of events as output."
+- Workflows are modelled as functions - a command in, events out - and a bounded context exposes those workflows rather than objects and services -- (paraphrase) his framing in *Domain Modeling Made Functional* (Pragmatic Bookshelf, 2018). No page was checked here, so it stays a paraphrase rather than words in his mouth.
+
+### On Types Instead of Tests
+
+> "You can use static type checking almost as an instant unit test -- making sure that your code is correct at compile time."
+-- verbatim | "Using the type system to ensure correct code", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/posts/correctness-type-checking/
+
+> "we don't have to write a unit test for this because it literally can't happen"
+-- verbatim | "Domain Modeling Made Functional" talk, DevTernity, 2023, 38:59 (auto-captions) | https://www.youtube.com/watch?v=MlPQ0FsPxPY&t=2339s
 
 ### On Monads
 
-> "I'm not going to do a monad tutorial. There are hundreds of them already and I have nothing new to add."
+> "So this is why I won't be writing a monad tutorial. I don't think it will help people learn about functional programming. If anything, it just creates confusion and anxiety."
+-- verbatim | "Why I won't be writing a monad tutorial", fsharpforfunandprofit.com, 14 May 2013 | https://fsharpforfunandprofit.com/posts/why-i-wont-be-writing-a-monad-tutorial/
 
-> "Understanding monads is not required for everyday F# programming."
+> "I will avoid many of the more sophisticated concepts (monads, lazy vs. eager evaluation, etc) and focus on concepts that are most useful to newcomers from the OO world: algebraic types, pattern matching, higher-order functions, etc."
+-- verbatim | "About this site", fsharpforfunandprofit.com | https://fsharpforfunandprofit.com/about/
 
 ## Technical Opinions
 
 | Topic | Position |
 |-------|----------|
 | Type systems | Should encode business logic so illegal states cannot be represented; types are executable documentation |
-| Error handling | Railway Oriented Programming over exceptions; Result type over throwing; but don't overuse ROP |
+| Error handling | Railway Oriented Programming for expected, domain-level errors; exceptions stay right for unexpected ones, diagnostics and failing fast; don't overuse ROP |
 | Monads | Useful abstraction but don't teach them explicitly; focus on concrete patterns first (async, option, result) |
 | OOP vs FP | Not opposed to OOP but FP concepts are what .NET developers need to learn; composition over inheritance |
-| Testing | Types reduce need for tests; "make illegal states unrepresentable" eliminates entire classes of tests |
-| Domain modeling | Use discriminated unions and single-case wrappers; DDD works better with FP than OOP |
+| Testing | Types reduce the need for tests; making illegal states unrepresentable eliminates entire classes of tests, because the case being tested cannot compile |
+| Domain modeling | Use discriminated unions and single-case wrappers; DDD is language-agnostic, but immutable data and algebraic types fit it especially well |
 | Function composition | Core skill for FP; pipeline operator makes it readable; compose small functions into larger ones |
-| Validation | "Parse don't validate"—transform to typed data at boundaries, work with valid types internally |
+| Validation | Transform to typed data at the boundary, then work with valid types internally (Alexis King's "parse, don't validate" names the same move; it is not his phrase) |
 | Documentation | Type signatures are documentation; good types make comments unnecessary |
 | Academic FP | Avoid mathematical terminology; teach patterns through practical examples and metaphors |
 | Primitives | Wrap them in single-case unions to prevent mixing (EmailAddress ≠ String) |
@@ -162,22 +202,24 @@ His code includes minimal comments because types and function names self-documen
 
 ## Contrarian Takes
 
-- **Anti-Monad-Tutorials**: Has publicly stated he won't write a monad tutorial despite hundreds existing; believes teaching concrete patterns (Option, Result, Async) is more effective than explaining the monad abstraction
-- **Types Over Tests**: Argues that making illegal states unrepresentable eliminates entire test suites; a well-typed function needs fewer unit tests
-- **FP Without Category Theory**: Deliberately excludes functor, applicative, monad terminology from teaching; believes practical FP doesn't require mathematical foundations
-- **Against Railway-Oriented Programming**: Wrote a post warning against overusing his own pattern; acknowledges it can be taken to unproductive extremes
-- **Academic FP Is Gatekeeping**: Considers mathematical jargon counterproductive for mainstream adoption; explicitly bans words like "endofunctor"
-- **OOP Isn't Evil**: Despite advocating FP, respects OOP and acknowledges learning from Smalltalk; focuses on "what's new" for C#/Java developers
-- **Primitive Obsession Is Dangerous**: Believes using raw strings, ints, booleans for domain concepts is a design smell; wrap them in types
-- **Validation Should Transform**: "Parse don't validate"—don't repeatedly check if data is valid; transform it once at the boundary into a type that guarantees validity
-- **DDD Works Better in FP**: Contrary to DDD's OOP origins, argues functional programming with immutable data and discriminated unions is superior for domain modeling
-- **Exceptions Are Control Flow**: Treats exceptions as an anti-pattern in functional code; prefers Result types that make error handling explicit in type signatures
-- **Microservices Are Functions**: Sees bounded contexts as functions with input commands and output events; argues functional architecture maps naturally to DDD
+Each take below is anchored to something he actually published; where a line used to put words in his mouth, the claim now stands on the documented position instead.
+
+- **Anti-Monad-Tutorials**: *Why I won't be writing a monad tutorial* (2013) argues a tutorial would not help people learn FP, and creates confusion and anxiety instead; he teaches the concrete patterns (Option, Result, Async) and lets the abstraction arrive later
+- **Types Over Tests**: Making illegal states unrepresentable removes whole classes of unit test - in the *Domain Modeling Made Functional* talk, "we don't have to write a unit test for this because it literally can't happen"
+- **FP Without Category Theory**: The about page's Forbidden Words list keeps endofunctor, category theory and Kleisli arrows off the site; his stated reason is that F# is better explained with concepts from within its own native environment than with terminology borrowed from elsewhere
+- **Against Railway-Oriented Programming**: In 2019 he wrote a post against his own most popular pattern - the railway analogy is still good, he says, but "often used thoughtlessly"; the ROP landing page itself carries the warning "This is a useful approach to error handling, but please don't take it to extremes!"
+- **Result Is Not A Replacement For Exceptions**: The inverse of what ROP is usually taken to mean. Don't use `Result` if you need diagnostics or a stack trace, don't use it to reinvent try-catch, and fail fast with an exception when you genuinely cannot continue. `Result` is for *expected* control flow only
+- **Anti-jargon, not anti-mathematics**: He frames the jargon problem as accessibility and humour ("Repeated use of these words will result in banning"), not as an accusation of gatekeeping; the target is terminology that puts enterprise developers off, not the theory itself
+- **OOP Isn't Evil**: "I do like OOP, and I was a serious Smalltalker for many years" - the FP emphasis is a teaching choice, because that is where the unfamiliar concepts sit for a C# or Java developer
+- **Primitive Obsession Is Dangerous**: Raw strings, ints and booleans for domain concepts are a design smell; wrap them in single-case unions so the compiler prevents mixing
+- **Validation Should Transform**: Don't repeatedly check whether data is valid; convert it once at the boundary into a type that guarantees validity. (The catchphrase "parse, don't validate" belongs to Alexis King, not to him)
+- **DDD Fits FP Naturally**: DDD is language-agnostic, but immutable data, algebraic types and workflow-as-function map onto it without the ceremony of objects and services
+- **Workflows Are Functions**: A bounded context is a set of workflows, each a function taking a command and emitting events -- (paraphrase) from *Domain Modeling Made Functional*, no page checked
 
 ## Worked Examples
 
 ### Problem: Modeling Contact Information
-**Scenario**: A business rule states "a contact must have an email or postal address." Traditional approach: make both fields optional on a Contact class, then validate at runtime.
+**Scenario**: A business rule states "A contact must have an email or a postal address". Traditional approach: make both fields optional on a Contact class, then validate at runtime.
 
 **Their approach**: Use a discriminated union to make invalid states unrepresentable:
 ```fsharp
@@ -242,14 +284,30 @@ let placeOrder : PlaceOrder =
 
 **Conclusion**: Developers grasp the pattern visually before learning the abstraction. Railway metaphor is memorable and intuitive. Once they've used Result, Option, Async, the monad pattern becomes obvious without explicit teaching. Begin concrete, move abstract.
 
+## Misattributed
+
+Two phrases the dossier used to deliver in his voice. Both are lines he uses constantly and credits every time; they are kept here so the next author who meets them attached to his name does not hand them back to him.
+
+> "Make illegal states unrepresentable"
+-- misattributed | actual: Yaron Minsky, "Effective ML Revisited", Jane Street Tech Blog, where it is a section heading | https://blog.janestreet.com/effective-ml-revisited/
+
+Wlaschin credits Minsky in writing and on stage: the post that made the phrase famous in F# circles introduces it as a phrase borrowed from Yaron Minsky, and in the *Domain Modeling Made Functional* talk (DevTernity, 2023, 42:15) he introduces it as a great quote by Yaron Minsky. The idea is central to his teaching; the wording is not his.
+
+> "Begin with the concrete, and move to the abstract."
+-- misattributed | actual: Brent Yorgey, "Abstraction, intuition, and the 'monad tutorial fallacy'", 12 January 2009 - "The heart of the matter is that people begin with the concrete, and move to the abstract" | https://byorgey.wordpress.com/2009/01/12/abstraction-intuition-and-the-monad-tutorial-fallacy/
+
+On the Railway Oriented Programming page Wlaschin writes that he is a strong believer in this approach and links it straight to Yorgey's post, in quotation marks. It is his pedagogy, quoting Yorgey's sentence.
+
+A third phrase, **"parse, don't validate"**, is Alexis King's (November 2019) and appears nowhere in his archive; his own name for the move is constrained types with smart constructors.
+
 ## Invocation Lines
 
-*"The railway tracks diverge here—one path for success, another for errors, but they never cross."*
+_The railway tracks diverge here - one path for success, another for errors, but they never cross._
 
-*"If the compiler accepts it, the type system has blessed this composition as lawful."*
+_If the compiler accepts it, the type system has blessed this composition as lawful._
 
-*"Wrap that primitive—a string is not an email address until the type says so."*
+_Wrap that primitive - a string is not an email address until the type says so._
 
-*"Make the illegal state disappear from your domain, and the bugs disappear from your code."*
+_Design the illegal state out of your domain, and the tests for it disappear with it._
 
-*"We don't throw exceptions on the railroad—we switch tracks gracefully and carry the error forward."*
+_We don't throw exceptions on the railroad - we switch tracks gracefully and carry the error forward._
