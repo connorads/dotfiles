@@ -116,6 +116,7 @@ python3 scripts/check-roster.py          # table, files and aliases agree
 | Maggie Appleton | Visual thinking, digital gardens, AI interface design | `references/maggie-appleton.md` |
 | Mark Jaquith | WordPress core, security, performance, caching, deployment | `references/mark-jaquith.md` |
 | Mark Seemann | DI, functional programming, clean architecture | `references/mark-seemann.md` |
+| Martin Kleppmann | Databases, distributed systems, consistency, CRDTs, local-first | `references/martin-kleppmann.md` |
 | Matt Mullenweg | WordPress, open source, distributed work, GPL, CMS ecosystem | `references/matt-mullenweg.md` |
 | Matt Perry | Motion library, spring physics, layout animation | `references/matt-perry.md` |
 | Matt Pocock | TypeScript, type inference, advanced patterns | `references/matt-pocock.md` |
