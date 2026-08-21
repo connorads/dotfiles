@@ -273,6 +273,36 @@ def test_short_quoted_term_is_not_a_quotation(tmp_path: Path) -> None:
     assert run(tmp_path, "--all").returncode == 0
 
 
+def test_two_scare_quoted_terms_do_not_pair_across_the_prose_between_them(tmp_path: Path) -> None:
+    # simon-willison.md carried nine of these. The scan opens on the CLOSING glyph
+    # of the first term and closes on the OPENING glyph of the second, so the
+    # sentence in between is read as a quotation nobody ever wrote.
+    write_skill(
+        tmp_path,
+        {
+            "pair.md": 'He warns that "prompt injection" is a genuinely unsolved problem for '
+            '"agentic" systems.\n'
+        },
+    )
+    result = run(tmp_path, "--all")
+    assert result.returncode == 0, result.stdout
+
+
+def test_a_real_quotation_after_a_scare_quoted_term_is_still_caught(tmp_path: Path) -> None:
+    # The guard against the fix over-reaching: a genuine orphan must still fail
+    # when a short scare-quoted term happens to precede it on the same line.
+    write_skill(
+        tmp_path,
+        {
+            "mixed.md": 'He rejects "easy" and said "we spent 40 years putting data and behaviour '
+            'together, and that was a mistake."\n'
+        },
+    )
+    result = run(tmp_path, "--all")
+    assert result.returncode == 1
+    assert "INLINE-ORPHAN" in result.stdout
+
+
 def test_inline_code_containing_quote_marks_is_not_a_quotation(tmp_path: Path) -> None:
     write_skill(tmp_path, {"code.md": 'Use `<input type="text" placeholder="your email here">`.\n'})
     assert run(tmp_path, "--all").returncode == 0
