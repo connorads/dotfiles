@@ -90,47 +90,47 @@ Key patterns:
 
 > "What I'm suggesting is a list of priorities. If you have to give up something, don't ever give up emotion before story. Don't give up story before rhythm, don't give up rhythm before eye-trace, don't give up eye-trace before planarity, and don't give up planarity before spatial continuity."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On the tongue-in-cheek percentages
 
 > "The values I put after each item are slightly tongue-in-cheek, but not completely."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### What audiences remember
 
 > "What they finally remember is not the editing, not the camerawork, not the performances, not even the story—it's how they felt."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### The blink
 
 > "The blink is either something that helps an internal separation of thought to take place, or it is an involuntary reflex accompanying the mental separation that is taking place anyway."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On coughing as the same signal
 
 > "When people are deeply 'in' a film, you'll notice that nobody coughs at certain moments, even though they may have a cold."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On why we accept cuts
 
 > "And the images in dreams are much more fragmented, intersecting in much stranger and more abrupt ways than the images of waking reality—ways that approximate, at least, the interaction produced by cutting."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 > "Perhaps the explanation is as simple as that: We accept the cut because it resembles the way images are juxtaposed in our dreams."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On the limits of the dream analogy
 
 > "We still know so little about the nature of dreams that the observation comes to a stop once it has been made."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On cinema and dreaming
 
@@ -156,7 +156,7 @@ Key patterns:
 
 > "The underlying principle: Always try to do the most with the least—with the emphasis on try."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On the silence within sound
 
@@ -258,13 +258,13 @@ Key patterns:
 
 > "Something that will quickly restore the correct perspective is to imagine yourself very small, and the screen very large, and pretend that you are watching the finished film in a thousand-seat theater filled with people, and that the film is beyond the possibility of any further changes."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### On the human presence in a cinema
 
 > "Let's say that the average age in the audience is twenty-five years. Six hundred times twenty-five equals fifteen thousand years of human experience assembled in that darkness—well over twice the length of recorded human history of hopes, dreams, disappointments, exultation, tragedy."
 
-— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/download/in-the-blink-of-an-eye-wal-z-library/In%20the%20Blink%20of%20an%20Eye%20%28Wal_%20%28Z-Library%29_djvu.txt
+— verbatim | *In the Blink of an Eye*, 2nd edn (Silman-James Press, 2001) | https://archive.org/details/inblinkofeyepers00murc
 
 ### Demoted for want of a source
 
