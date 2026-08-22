@@ -17,12 +17,23 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
 ROW = re.compile(
     r"^\|\s*(?P<persona>[^|]+?)\s*\|\s*(?P<domain>[^|]+?)\s*\|\s*`(?P<file>[^`]+)`\s*\|\s*$"
 )
+
+
+def sort_key(persona: str) -> str:
+    """Fold accents so a name sorts where a reader scanning the table would look.
+
+    'é' is U+00E9, above 'z' in code-point order, so a raw sort puts Léonie after
+    Luke - which reads as a mistake to every human and to the next author.
+    """
+    folded = unicodedata.normalize("NFKD", persona.lower())
+    return "".join(c for c in folded if not unicodedata.combining(c))
 
 
 def dossiers(references: Path) -> list[Path]:
@@ -88,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"{row['persona']}: empty Domain cell, which is the only routing hint the table gives"
             )
 
-    ordered = [r["persona"].lower() for r in rows]
+    ordered = [sort_key(r["persona"]) for r in rows]
     if ordered != sorted(ordered):
         first = next((a for a, b in zip(ordered, sorted(ordered), strict=True) if a != b), None)
         problems.append(f"table is not alphabetical by persona (first out of order: {first})")
