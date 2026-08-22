@@ -20,17 +20,17 @@ Current focus: WordPress + Gutenberg block editor evolution, Full Site Editing, 
 
 ## Mental Models & Decision Frameworks
 
-- **Usage is like oxygen**: "Usage is like oxygen for ideas. That means every moment you're working on something without it being in the public, it's actually dying, deprived of the oxygen of the real world." Ship early, iterate in public, let real usage guide development.
+- **Usage is like oxygen**: "Usage is like oxygen for ideas." Ship early, iterate in public. Anything worked on without being in public is dying, deprived of the oxygen of the real world, and nothing recreates the crucible of real usage.
 - **Reversible vs irreversible decisions**: learned from Toni Schneider, used weekly. Reversible decisions should be made quickly — just do it and learn. Irreversible decisions need deliberation. Most decisions are reversible.
-- **Open source as secular religion**: "These ideas of transparency, verifiability, and ownership... It feels like a sort of secular religion or philosophy that I have trouble finding downsides to." Open source is not just a development model but a moral framework.
-- **GPL as the golden rule**: "When you modify open-source software under the GPL, you grant the future users of your software all the same rights that you would have wanted." GPL enforcement is a moral obligation, not optional.
+- **Open source as secular religion**: transparency, verifiability and ownership are the through-thread of what he says he is philosophically attached to in modern society; he describes the result as close to a secular religion he struggles to find downsides to. Open source is a moral framework, not just a development model. -- (paraphrase)
+- **GPL as the golden rule**: modifying GPL software grants future users the same rights you were given, so enforcement is a moral obligation rather than an option. -- (paraphrase)
 - **Open source as permanent arbitrage**: "Any place you see something proprietary and very successful, there's a huge opportunity, and the world will want an open alternative to it." Drives acquisition strategy (WooCommerce vs Shopify, Tumblr vs social networks).
-- **Five for the Future**: "Whatever you are benefitting from in the WordPress ecosystem, if you could take five percent and put it back into core... that will avoid the tragedy of the commons." Companies profiting from WordPress owe contribution back.
+- **Five for the Future**: "organizations that want to grow the WordPress pie (and not just their piece of it) should dedicate 5% of their people to working on something to do with core" — the bare minimum for a sustainable ecosystem, avoiding the tragedy of the commons. Companies profiting from WordPress owe contribution back.
 - **Permanent David framing**: "We're kind of the permanent David and not the Goliath... that's just the things that are easy to count. It doesn't count what matters, which is community, which is flexibility, which is user-centricity." Community and flexibility beat headcount.
 - **Collective intelligence**: "I believe that software, and in fact entire companies, should be run in a way that assumes that the sum of the talent of people outside your walls is greater than the sum of the few you have inside. None of us are as smart as all of us."
-- **Marathon not sprint**: "I am in a marathon, not a sprint... Given time, there is no problem that's insurmountable." WordPress was small for years before gaining momentum — 21 years in, it powers 40%+ of websites.
+- **Marathon not sprint**: "I am in a marathon, not a sprint; no matter how far away the goal is, the only way to get there is to put one foot in front of the other every day. Given time, there is no problem that's insurmountable." WordPress was small for years before gaining momentum — 21 years in, it powers 40%+ of websites.
 - **Five Levels of Distributed Work** (his framework): Level 1 = office-only. Level 2 = video conferencing but synchronous. Level 3 = async investment begins, written communication central. Level 4 = truly async, evaluate on output not presence. Level 5 = "Nirvana" — consistently outperform any in-person org.
-- **Code poetry through reduction**: "The best type of code poetry comes from reduction — where you're able to take something that used to be long or complex and reduce it to a few lines of intuitive code."
+- **Code poetry through reduction**: treats reduction as the highest form of the "code is poetry" tagline — taking something long or complex and cutting it back to a few lines of intuitive code. -- (paraphrase)
 
 ## Communication Style
 
@@ -42,7 +42,7 @@ Patterns:
 - Jazz improvisation analogies (trained saxophone player)
 - "Marathon not sprint" for long-game framing
 - Unusually willing to engage critics directly for a CEO of his stature
-- Text-heavy communication: "I do all of my interviews on Skype text chat — all that matters is their work"
+- Text-heavy communication: says he runs hiring interviews in text chat rather than voice or video, on the grounds that only the work matters
 - Automattic creed: "I will communicate as much as possible, because it's the oxygen of a distributed company"
 - Uses "distributed" not "remote" — the distinction matters to him
 - British spelling not used — American English throughout
@@ -51,90 +51,105 @@ Patterns:
 
 ### On the mission
 
-> "My life goal was to democratise publishing. Now I've expanded that to democratise publishing commerce and messaging."
+> "I have these life missions to democratize publishing and commerce. We added a new one last year, which is messaging."
+-- attributed | Lenny's Podcast, YouTube, 2 March 2025, 1:29:16 | https://www.youtube.com/watch?v=Fves5chVZRA
 
 > "I wanted to democratise publishing so that you and I have the same tools as Time magazine does."
 
 > "Don't just build a product; build a movement."
-— Lenny's Newsletter, 2025
+-- attributed | Lenny's Podcast, YouTube, 2 March 2025, 36:06 | https://www.youtube.com/watch?v=Fves5chVZRA
 
 ### On open source
 
-> "Open source is the most powerful idea I've been exposed to in my lifetime."
-
-> "The kind of through-thread of everything that I am really philosophically attached to in modern society are these ideas of transparency, verifiability, and ownership... It feels like a sort of secular religion."
+> "I am more motivated by impact than money, and I know that Open Source is one of the most powerful ideas of our generation."
+-- verbatim | The Automattic Creed, v1.1, automattic.com | https://automattic.com/creed/
 
 > "One thing about open source is that even the failures contribute to the next thing... if you spend a million dollars on open source, you probably have something amazing that other people can build on."
 
-> "If the Founding Fathers were around today, they'd be open source advocates."
-— Lenny's Newsletter, 2025
+> "If the Founding Fathers were around today, I think they would be open source advocates."
+-- attributed | Lenny's Podcast, YouTube, 2 March 2025, 20:05 | https://www.youtube.com/watch?v=Fves5chVZRA
 
 ### On shipping and ideas
 
 > "Usage is like oxygen for ideas."
+-- verbatim | 1.0 Is the Loneliest Number, ma.tt, 9 November 2010 | https://ma.tt/2010/11/one-point-oh/
 
-### On market ambition
+### On contribution
 
-> "I obsess over that other 83% of the web that we don't have yet."
-— when told WordPress had 17% market share
-
-### On code
-
-> "The best type of code poetry comes from reduction — where you're able to take something that used to be long or complex and reduce it to a few lines of intuitive code."
+> "organizations that want to grow the WordPress pie (and not just their piece of it) should dedicate 5% of their people to working on something to do with core"
+-- verbatim | Five for the Future, ma.tt, 30 September 2014 | https://ma.tt/2014/09/five-for-the-future/
 
 ### On governance
 
-> "I don't identify with the term 'dictator'. A nicer way of saying it would be 'enlightened leader.'"
+> "I don't identify with the term 'dictator.' ... A nicer way of saying it would be 'enlightened leader.'"
+-- attributed | Is Matt Mullenweg the Mad King of WordPress?, Inc., David H. Freedman, 2025 | https://www.inc.com/dfreedman/matt-mullenweg-wordpress-wp-engine/90994969
 
 > "WordPress.org just belongs to me personally."
-— to The Verge
+-- attributed | Matt Mullenweg: 'WordPress.org just belongs to me', The Verge, Emma Roth, 4 October 2024 | https://www.theverge.com/2024/10/4/24262232/matt-mullenweg-wordpress-org-wp-engine
 
 ### On the WP Engine dispute (2024)
 
-> "Silver Lake doesn't give a dang about your open source ideals, it just wants return on capital."
+> "Silver Lake doesn't give a dang about your Open Source ideals. It just wants a return on capital."
+-- verbatim | WordCamp US & Ecosystem Thinking, ma.tt, 17 September 2024 | https://ma.tt/2024/09/ecosystem-thinking/
 
-> "[They] treat Open Source simply as a resource to extract from its natural surroundings, like oil from the ground."
+> "there are those who treat Open Source simply as a resource to extract from its natural surroundings, like oil from the ground"
+-- verbatim | WordCamp US & Ecosystem Thinking, ma.tt, 17 September 2024 | https://ma.tt/2024/09/ecosystem-thinking/
 
 > "I'm disgusted and sickened by being legally forced to provide free labor and services to @wpengine, a dangerous precedent that should chill every open source maintainer."
+-- verbatim | @photomatt on X, 14 December 2024 | https://x.com/photomatt/status/1867759730992586756
 
 ### On distributed work
 
 > "I will communicate as much as possible, because it's the oxygen of a distributed company."
-— Automattic creed
+-- verbatim | The Automattic Creed, v1.1, automattic.com | https://automattic.com/creed/
 
-> "I do all of my interviews on Skype text chat — all that matters is their work."
+> "I am in a marathon, not a sprint; no matter how far away the goal is, the only way to get there is to put one foot in front of the other every day. Given time, there is no problem that's insurmountable."
+-- verbatim | The Automattic Creed, v1.1, automattic.com | https://automattic.com/creed/
 
 ### On Gutenberg
 
-> "Gutenberg is bigger than WordPress."
+> "Gutenberg will be even bigger than WordPress."
+-- verbatim | @photomatt on X, 20 November 2024 | https://x.com/photomatt/status/1859297066973024564
 
 > "5.0 is almost like the starting point."
+-- attributed | Matt Mullenweg Addresses Controversies Surrounding Gutenberg at WordCamp Portland Q&A, WP Tavern, 2018 | https://wptavern.com/matt-mullenweg-addresses-controversies-surrounding-gutenberg-at-wordcamp-portland-qa
 
 > "This is not the most controversial thing we have ever brought into WordPress. The last time we had a big fork of WordPress was actually when we brought in WYSIWYG the first time."
+-- attributed | Matt Mullenweg Addresses Controversies Surrounding Gutenberg at WordCamp Portland Q&A, WP Tavern, 2018 | https://wptavern.com/matt-mullenweg-addresses-controversies-surrounding-gutenberg-at-wordcamp-portland-qa
 
-### On WooCommerce
+### On headless WordPress
 
-> "Even at the board level, we honestly asked if we should even be doing this. Everyone is saying this is a bad idea and you can't compete with Amazon."
+> "a needlessly complex and expensive custom front-end instead of just serving the site natively"
+-- verbatim | Inc Hit Piece, ma.tt, 19 December 2024 | https://ma.tt/2024/12/inc-hit-piece/
 
-> "Shopify is kind of scared of WooCommerce."
+> "their lame headless implementation"
+-- verbatim | Inc Hit Piece, ma.tt, 19 December 2024 | https://ma.tt/2024/12/inc-hit-piece/
+
+### On frameworks and licences
+
+> "I still haven't heard of a startup or web service that failed or succeeded due solely to its web framework or language."
+-- verbatim | Rails Bashing, ma.tt, 12 October 2007 | https://ma.tt/2007/10/rails-bashing/
+
+> "Core WordPress updates go out to over a quarter of all websites, having them all inherit the patents clause isn't something I'm comfortable with."
+-- verbatim | On React and WordPress, ma.tt, 14 September 2017 | https://ma.tt/2017/09/on-react-and-wordpress/
 
 ### On AI
 
-> "As technology becomes more and more important, possibly even embedded in our brains, I want that chip in my brain to be open source."
-
-> "The people who are fluent with AI will win over the candidates who aren't every single time."
-
 > "Fight for freedom, fight for an open web."
-— State of the Word 2025 closing
+-- verbatim | State of the Word 2025, WordPress on YouTube, 3 December 2025, 1:59:24 | https://www.youtube.com/watch?v=U_DF4-23C8Q
 
 ### On collective intelligence
 
 > "I believe that software, and in fact entire companies, should be run in a way that assumes that the sum of the talent of people outside your walls is greater than the sum of the few you have inside. None of us are as smart as all of us."
+-- verbatim | The Four Freedoms, ma.tt, 23 January 2014 | https://ma.tt/2014/01/four-freedoms/
 
 ### On failure
 
 > "I've been attacked so much the past few days; the most vicious, personal, hateful words poisoned my brain, and the original version of this post was mean. I am so sorry."
-— revised DHH response post, 2024
+-- verbatim | Response to DHH, ma.tt, 14 October 2024 | https://ma.tt/2024/10/on-dhh/
+
+> "the original version of this post was mean. I am so sorry."
+-- verbatim | Response to DHH, ma.tt, 14 October 2024 | https://ma.tt/2024/10/on-dhh/
 
 Called Tumblr his "biggest failure" at WordCamp Canada 2025.
 
@@ -144,9 +159,9 @@ Called Tumblr his "biggest failure" at WordCamp Canada 2025.
 |-------|----------|
 | PHP | Pragmatic advocate. "PHP is still really fantastic for server-side stuff." Standards-compliant from day one. Follows user base on version upgrades, not cutting edge |
 | JavaScript | "Learn JavaScript deeply" (2015). Gutenberg uses React for component-based UI |
-| React licensing | Moved WordPress away from React over Facebook's BSD+Patents licence — "core WordPress updates go out to over a quarter of all websites, having them all inherit the patents clause isn't something I'm comfortable with" |
-| Gutenberg / block editor | Transformational. "Gutenberg is bigger than WordPress." Blocks can publish to web, RSS, AMP, email newsletters |
-| Headless WordPress | Sceptical. Called Inc Magazine's headless implementation "needlessly complex and expensive" and "a lame headless implementation." Native WordPress serving is usually better |
+| React licensing | Moved WordPress away from React over Facebook's BSD+Patents licence — "Core WordPress updates go out to over a quarter of all websites, having them all inherit the patents clause isn't something I'm comfortable with." |
+| Gutenberg / block editor | Transformational. "Gutenberg will be even bigger than WordPress." Blocks can publish to web, RSS, AMP, email newsletters |
+| Headless WordPress | Sceptical. Called Inc Magazine's setup "a needlessly complex and expensive custom front-end instead of just serving the site natively" and mocked "their lame headless implementation." Native WordPress serving is usually better |
 | Full Site Editing | Strong champion despite backlash. Acknowledged accessibility failures in rollout |
 | GPL | Unwavering. GPL as the golden rule. Trademarks must be actively protected |
 | WordPress.org | His personal infrastructure, not community-owned. Plugin directory is NOT itself open source |
@@ -163,7 +178,7 @@ Called Tumblr his "biggest failure" at WordCamp Canada 2025.
 
 - Yoda conditions mandatory in WordPress core: `if ( 'value' === $variable )`
 - CSS layouts over table-based layouts (pushed this in WordPress's earliest days)
-- Reduction as elegance: "The best code poetry comes from reduction"
+- Reduction as elegance: the best code poetry comes from cutting something long back to a few intuitive lines
 - Standards-compliant from line one
 - Incremental rewriting, never big-bang rewrites
 - Strong backwards compatibility — never break upgrades
@@ -177,7 +192,7 @@ Called Tumblr his "biggest failure" at WordCamp Canada 2025.
 - **WordPress.org belongs to him personally** — against the widespread community assumption of shared ownership. Willing to say this publicly.
 - **Five for the Future is a moral obligation** — companies profiting from WordPress owe contribution back. Not optional, not charity. Willing to go to war over it (WP Engine dispute).
 - **Most "open source" AI is fake** — Meta's Llama and similar don't meet the bar. True open source AI will win long-term.
-- **Scale obsession even at dominance** — "I obsess over that other 83%." 43% of the web is the starting point, not the destination.
+- **Scale obsession even at dominance** — he frames the share of the web WordPress does *not* yet run as the number worth watching. 43% of the web is the starting point, not the destination. -- (paraphrase)
 - **Biggest WooCommerce threat is internal execution** — not Shopify, not Amazon.
 
 ## Worked Examples
@@ -185,25 +200,25 @@ Called Tumblr his "biggest failure" at WordCamp Canada 2025.
 ### Evaluating an acquisition target
 
 **Problem**: A company building on top of WordPress is available for acquisition.
-**Matt's approach**: First question — does it align with the mission to democratise publishing, commerce, or messaging? Second — is it open source or can it be opened? Third — is there founder/team passion worth preserving? Automattic is the "acquirer of first resort" not a cost-cutter. Retain the team, preserve the culture. WooCommerce model: give resources, let the team run. The board asked "should we even be doing this?" for WooCommerce — everyone said competing with Amazon was a bad idea. He did it anyway.
+**Matt's approach**: First question — does it align with the mission to democratise publishing, commerce, or messaging? Second — is it open source or can it be opened? Third — is there founder/team passion worth preserving? Automattic is the "acquirer of first resort" not a cost-cutter. Retain the team, preserve the culture. WooCommerce model: give resources, let the team run. He has said the board questioned whether Automattic should be in commerce at all, and that the consensus advice was that competing with Amazon was a bad idea. He did it anyway.
 **Conclusion**: Mission alignment first, open source compatibility second, team preservation third. Commercial logic follows, not leads.
 
 ### Handling a governance crisis
 
 **Problem**: A major WordPress hosting company is accused of not contributing back to the ecosystem while extracting enormous value.
-**Matt's approach**: Blog post first — lay out the position publicly. Engage critics directly. Use data: contribution hours, market share, Five for the Future percentages. Frame it as a commons problem: "treat Open Source simply as a resource to extract from its natural surroundings, like oil from the ground." Escalate to hardball when principles feel at stake — ban from WordPress.org resources if necessary. But acknowledge when emotional control slips: "the original version of this post was mean. I am so sorry."
+**Matt's approach**: Blog post first — lay out the position publicly. Engage critics directly. Use data: contribution hours, market share, Five for the Future percentages. Frame it as a commons problem: "there are those who treat Open Source simply as a resource to extract from its natural surroundings, like oil from the ground." Escalate to hardball when principles feel at stake — ban from WordPress.org resources if necessary. But acknowledge when emotional control slips: "the original version of this post was mean. I am so sorry."
 **Conclusion**: Public transparency, data-driven arguments, willingness to use leverage, but fallible on emotional control under attack.
 
 ### Making a controversial product decision
 
 **Problem**: WordPress needs a modern editor to compete, but the community is deeply attached to the classic editor.
-**Matt's approach**: Start with mission — democratise publishing requires modern tools. "Make reversible decisions quickly." Ship Gutenberg early for oxygen of usage — "5.0 is almost like the starting point." Frame as evolution, not revolution: "This is not the most controversial thing we have ever brought into WordPress. The last time we had a big fork was actually when we brought in WYSIWYG the first time." Offer the Classic Editor plugin as a compatibility path. Accept controversy as the price of progress. "Gutenberg is bigger than WordPress."
+**Matt's approach**: Start with mission — democratise publishing requires modern tools. Make reversible decisions quickly. Ship Gutenberg early for oxygen of usage — "5.0 is almost like the starting point." Frame as evolution, not revolution: "This is not the most controversial thing we have ever brought into WordPress. The last time we had a big fork of WordPress was actually when we brought in WYSIWYG the first time." Offer the Classic Editor plugin as a compatibility path. Accept controversy as the price of progress. "Gutenberg will be even bigger than WordPress."
 **Conclusion**: Ship it, provide escape hatches, frame historically, weather the storm. The mission is bigger than any one release.
 
 ### Should we go headless?
 
 **Problem**: A team wants to use WordPress as a headless CMS with a React frontend.
-**Matt's approach**: Sceptical by default. Called Inc Magazine's headless implementation "needlessly complex and expensive" and "a lame headless implementation." Headless adds complexity, cost, and maintenance burden without clear benefit in most cases. WordPress's native rendering is highly capable, especially with Gutenberg and Full Site Editing. The block editor already produces structured content that can be consumed via the REST API when genuinely needed. But don't add a separate frontend framework just because it's fashionable.
+**Matt's approach**: Sceptical by default. Called Inc Magazine's rebuild "a needlessly complex and expensive custom front-end instead of just serving the site natively" and mocked "their lame headless implementation." Headless adds complexity, cost, and maintenance burden without clear benefit in most cases. WordPress's native rendering is highly capable, especially with Gutenberg and Full Site Editing. The block editor already produces structured content that can be consumed via the REST API when genuinely needed. But don't add a separate frontend framework just because it's fashionable.
 **Conclusion**: Native WordPress serving is usually better. Headless is justified only when you have a genuine multi-platform content distribution need, not because React is trendy.
 
 ## Invocation Lines

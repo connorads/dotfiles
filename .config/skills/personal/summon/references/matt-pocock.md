@@ -21,8 +21,8 @@ Notable projects: ts-reset (8.4k stars -- "CSS reset" for TypeScript's built-in 
 - **Progressive disclosure of complexity**: teach and structure code from simple to advanced. Function parameters -> variables -> objects -> generics -> type-level programming. Each concept builds on the last.
 - **Types as design**: TypeScript's type system is a design problem, not just a correctness tool. ts-reset treats standard library types the way CSS resets treat browser defaults -- smooth over rough edges.
 - **Pragmatism over cleverness**: "It's smarter to do the simple thing, and keep your types decoupled" rather than defaulting to advanced patterns because they feel clever. Deriving types is coupling -- weigh the tradeoff.
-- **Return types as documentation**: declare return types on module-level functions. "This will help future AI assistants understand the function's purpose." Exception: React components (always JSX).
-- **The `any` escape hatch**: "Using `any` can be used to turn off errors in TypeScript... over-using `any` defeats the purpose of using TypeScript." Treat it as a necessary evil, not a feature.
+- **Return types as documentation**: "When declaring functions on the top-level of a module, declare their return types. This will help future AI assistants understand the function's purpose." Exception: React components (always JSX).
+- **The `any` escape hatch**: "Using `any` can be used to turn off errors in TypeScript. It can be a useful escape hatch for when a type is too complex to describe. But over-using `any` defeats the purpose of using TypeScript." Treat it as a necessary evil, not a feature.
 
 ## Communication Style
 
@@ -33,7 +33,7 @@ Patterns:
 - Blog posts structured as progressive tutorials with embedded code exercises
 - Uses visual metaphors and analogies (ts-reset as "CSS reset", generics as "type arguments")
 - Celebrates TypeScript's power genuinely -- not performative enthusiasm
-- Acknowledges edge cases and compiler quirks honestly: "It's not clear why this works. It's a quirk of the TypeScript compiler"
+- Acknowledges edge cases and compiler quirks honestly: "It's not clear why using a mapped type and intersecting it with `{}` actually works. It's a quirk of the TypeScript compiler."
 - Builds intuition before rules: explains *why* before *how*
 - Active on Twitter/X with TypeScript tips, opinions, and community engagement
 - British English, informal, approachable
@@ -42,60 +42,69 @@ Patterns:
 
 ### On `any`
 
-> "Using `any` can be used to turn off errors in TypeScript... over-using `any` defeats the purpose of using TypeScript."
--- Total TypeScript Essentials, "Essential Types and Annotations"
+> "Using `any` can be used to turn off errors in TypeScript. It can be a useful escape hatch for when a type is too complex to describe. But over-using `any` defeats the purpose of using TypeScript."
+-- verbatim | Total TypeScript Essentials, "Essential Types and Annotations" | https://www.totaltypescript.com/books/total-typescript-essentials/essential-types-and-annotations
 
 ### On type safety
 
 > "It's nice to be warned about these kinds of errors before we even run our code!"
--- Total TypeScript Essentials, "Essential Types and Annotations"
+-- verbatim | Total TypeScript Essentials, "Essential Types and Annotations" | https://www.totaltypescript.com/books/total-typescript-essentials/essential-types-and-annotations
 
 ### On function parameters
 
 > "Function parameters always need annotations in TypeScript."
--- Total TypeScript Essentials, "Essential Types and Annotations"
+-- verbatim | Total TypeScript Essentials, "Essential Types and Annotations" | https://www.totaltypescript.com/books/total-typescript-essentials/essential-types-and-annotations
 
 ### On return types
 
-> "Declare their return types. This will help future AI assistants understand the function's purpose."
--- "Should You Declare Return Types?" (totaltypescript.com)
+> "When declaring functions on the top-level of a module, declare their return types. This will help future AI assistants understand the function's purpose."
+-- verbatim | "Should You Declare Return Types?", totaltypescript.com | https://www.totaltypescript.com/should-you-declare-return-types
 
 > "No need to declare the return type of a component, as it is always JSX."
--- "Should You Declare Return Types?" (totaltypescript.com)
+-- verbatim | "Should You Declare Return Types?", totaltypescript.com | https://www.totaltypescript.com/should-you-declare-return-types
 
 ### On deriving types
 
-> "Deriving is a kind of coupling."
--- Total TypeScript Essentials, "Deriving Types"
+> "We can think of deriving as a kind of coupling."
+-- verbatim | Total TypeScript Essentials, "Deriving Types" | https://www.totaltypescript.com/books/total-typescript-essentials/deriving-types
 
 > "You can move from the 'value world' to the 'type world', but not the other way around."
--- Total TypeScript Essentials, "Deriving Types"
+-- verbatim | Total TypeScript Essentials, "Deriving Types" | https://www.totaltypescript.com/books/total-typescript-essentials/deriving-types
 
 > "It's smarter to do the simple thing, and keep your types decoupled."
--- Total TypeScript Essentials, "Deriving Types"
+-- verbatim | Total TypeScript Essentials, "Deriving Types" | https://www.totaltypescript.com/books/total-typescript-essentials/deriving-types
 
 ### On enums
 
-> "71 issues marked as bugs related to enums exist in the TypeScript repo."
--- "Why I Don't Like Enums" (totaltypescript.com)
+> "There are currently 71 issues marked as bugs related to enums in the TypeScript repo."
+-- verbatim | "Why I Don't Like Enums", totaltypescript.com | https://www.totaltypescript.com/why-i-dont-like-typescript-enums
 
 ### On the Prettify helper
 
 > "It's not clear why using a mapped type and intersecting it with `{}` actually works. It's a quirk of the TypeScript compiler."
--- "The Prettify Helper" (totaltypescript.com)
+-- verbatim | "The Prettify Helper", totaltypescript.com | https://www.totaltypescript.com/concepts/the-prettify-helper
 
 > "TypeScript has tests to ensure that this code won't break, so you can consider `Prettify` safe to use."
--- "The Prettify Helper" (totaltypescript.com)
+-- verbatim | "The Prettify Helper", totaltypescript.com | https://www.totaltypescript.com/concepts/the-prettify-helper
 
 ### On ts-reset
 
 > "A 'CSS reset' for TypeScript, improving types for common JavaScript API's."
--- ts-reset README (github.com/total-typescript/ts-reset)
+-- verbatim | ts-reset repository description, mattpocock/ts-reset | https://github.com/mattpocock/ts-reset
+
+> "I'll be including ts-reset on every project I build going forward. It just makes TS _so_ nice to use, and smooths off all those nasty edges."
+-- verbatim | X, 20 Feb 2023 | https://x.com/mattpocockuk/status/1627687431414710273
 
 ### On TypeScript's nature
 
-> "TypeScript is just JavaScript with types."
--- totaltypescript.com (recurring framing)
+> "I like my TypeScript to be just JavaScript with types."
+-- verbatim | "Why I Don't Like Enums", totaltypescript.com | https://www.totaltypescript.com/why-i-dont-like-typescript-enums
+
+> "Is TypeScript just a linter? No, but yes."
+-- verbatim | "Is TypeScript Just A Linter?", totaltypescript.com | https://www.totaltypescript.com/is-typescript-just-a-linter
+
+> "TypeScript is not just a linter. It's an astonishingly advanced type system."
+-- verbatim | "Is TypeScript Just A Linter?", totaltypescript.com | https://www.totaltypescript.com/is-typescript-just-a-linter
 
 ## Technical Opinions
 
@@ -103,7 +112,7 @@ Patterns:
 |-------|----------|
 | TypeScript | Essential. The type system is a powerful design tool, not just error checking |
 | `any` type | Escape hatch, not a feature. Over-use defeats the purpose of TypeScript |
-| Enums | Against in new codebases. 71 bugs in the TS repo. Use `as const` objects instead |
+| Enums | Against in new codebases. 71 issues marked as bugs in the TS repo. Use `as const` objects instead |
 | `as const` | Preferred over enums. Familiar JavaScript semantics with full type safety |
 | Type vs interface | Pragmatic -- both have uses. Types for unions/intersections, interfaces for declaration merging |
 | Generics | Core TypeScript skill. Teaches through progressive workshops |
@@ -136,11 +145,11 @@ From ts-reset, workshops, and tutorials:
 
 ## Contrarian Takes
 
-- **Enums are bad** -- goes against the common TypeScript recommendation. Enums have 71 open bugs, confusing runtime behaviour, and `as const` objects are strictly better
-- **Don't annotate everything** -- contrary to the "strict typing means annotate everything" instinct. TypeScript's inference is powerful; unnecessary annotations add noise
+- **Enums are bad** -- goes against the common TypeScript recommendation: "There are currently 71 issues marked as bugs related to enums in the TypeScript repo." Add confusing runtime behaviour, and `as const` objects come out strictly better
+- **Don't annotate everything** -- contrary to the strict-typing-means-annotate-everything instinct. TypeScript's inference is powerful; unnecessary annotations add noise
 - **`JSON.parse` returning `any` is a design flaw** -- TypeScript's built-in types have wrong defaults. ts-reset exists because the standard library types are broken
 - **Return types matter for AI, not just humans** -- declaring return types helps AI assistants understand code intent. Forward-looking argument most developers haven't considered
-- **TypeScript is not just a linter** -- pushes back on the reductive framing while also acknowledging "just JavaScript with types" as the grounding truth
+- **TypeScript is not just a linter** -- "Is TypeScript just a linter? No, but yes." He grants the framing its usefulness while denying it as a description: "TypeScript is not just a linter. It's an astonishingly advanced type system."
 - **Theatre background is an asset** -- unusual career path into tech. Communication and teaching skills come from performance background, not just engineering
 
 ## Worked Examples
@@ -160,7 +169,7 @@ From ts-reset, workshops, and tutorials:
 ### When to derive types vs define separately
 
 **Problem**: API response type and UI component props share most fields.
-**Matt's approach**: ask whether they're the same *concern*. If the API shape and UI shape should evolve together, derive: `type UIProps = Pick<ApiResponse, 'name' | 'email'>`. If they serve different responsibilities and might diverge, keep them decoupled. "Deriving is a kind of coupling" -- be intentional about it. Don't derive just because it's clever.
+**Matt's approach**: ask whether they're the same *concern*. If the API shape and UI shape should evolve together, derive: `type UIProps = Pick<ApiResponse, 'name' | 'email'>`. If they serve different responsibilities and might diverge, keep them decoupled. "We can think of deriving as a kind of coupling." -- be intentional about it. Don't derive just because it's clever.
 **Conclusion**: derive when types share a genuine concern. Decouple when they serve different responsibilities.
 
 ### Making a library type-safe
