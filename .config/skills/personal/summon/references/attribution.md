@@ -101,6 +101,31 @@ Get these right yourself; no lint will catch them.
 - **Print pages.** Nothing can confirm words sit on a page, so `book` reaches `verbatim` only
   on a human's say-so.
 
+## Checking a pointer resolves
+
+The lint checks a pointer's *shape*. Confirming the words are actually there means fetching the
+source, normalising both sides (strip punctuation, case, accents; collapse whitespace) and
+substring-matching.
+
+A non-match is not yet a defect. Every one of these has produced a false "fabricated" verdict,
+so rule them out before accusing the corpus:
+
+| Symptom | Cause and route |
+| --- | --- |
+| Every contraction fails | HTML entities. Unescape *after* stripping tags, or `don&#x27;t` normalises to `don x27 t` |
+| A quote with `_emphasis_` never matches | Markdown emphasis. `_` is a word character, so it survives normalisation; strip `_` and `*` |
+| A raw `.md` file loses whole paragraphs | Tag-stripping non-HTML. A stray `<` and a later `>` swallow everything between; only strip tags from real HTML |
+| A video quote is absent from the captions | It may be cited as the video *description*: `yt-dlp --skip-download --print description`. Captions need `--write-auto-subs --write-subs --sub-langs 'en.*'`, and carry no punctuation, so a 10-12 consecutive-word window is the confirmation |
+| A GitHub issue/PR comment is missing | The page is React-rendered. Read `repos/<owner>/<repo>/issues/comments/<id>` via `gh api`; a `/blob/` link needs `raw.githubusercontent.com` |
+| A Reddit comment 404s or returns an interstitial | Reddit blocks CLI fetches and Firecrawl refuses the domain. Use `arctic-shift.photon-reddit.com/api/comments/ids?ids=<comment_id>` |
+| A page returns something non-empty but wrong | Bot-block or rate-limit page. HN throttles bursts; cxl.com, medium.com, newfangled.com and frontlines.io serve 403/429. Firecrawl gets through most of them |
+| A slide quote matches nothing | SlideShare exposes slide text as image alt-text; scrape the deck page. Otherwise slide text is unconfirmable, like print |
+| An archive.org link yields no text | `/details/` is an item page, not the book. Library scans are often lending-restricted: text 401s and search-inside is closed |
+
+Two habits that prevent the rest: test the **full** URL rather than a truncated display form,
+and treat "the fetch failed" and "the words are absent" as different findings. x.com cannot be
+read this way at all - only a logged-in browser sees inside it.
+
 ## Five fabrication signatures
 
 Every defect found in this corpus matched one of these. Check a suspicious quote against them:
