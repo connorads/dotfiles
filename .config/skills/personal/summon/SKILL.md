@@ -100,7 +100,9 @@ python3 scripts/check-roster.py          # table, files and aliases agree
 | Alistair Cockburn | Agile methodology, hexagonal architecture | `references/alistair-cockburn.md` |
 | Amelia Wattenberger | Data visualisation, D3.js, interactive essays | `references/amelia-wattenberger.md` |
 | April Dunford | Product positioning, go-to-market strategy | `references/april-dunford.md` |
+| Brendan Gregg | Performance method, USE method, flame graphs, profiling | `references/brendan-gregg.md` |
 | Bret Victor | Interactive media, progressive revelation, dev tool demos | `references/bret-victor.md` |
+| Charity Majors | SRE, observability, on-call, production ownership | `references/charity-majors.md` |
 | Daniele Procida | Documentation architecture, Diataxis framework | `references/daniele-procida.md` |
 | David Heinemeier Hansson | Rails, monoliths, HTML-over-the-wire | `references/dhh.md` |
 | Dax Raad | SST, IaC, developer experience, open source | `references/dax-raad.md` |
@@ -113,6 +115,7 @@ python3 scripts/check-roster.py          # table, files and aliases agree
 | Greg Young | CQRS, event sourcing, temporal modelling | `references/greg-young.md` |
 | Guillermo Rauch | Next.js, Vercel, frontend deployment, AI cloud | `references/guillermo-rauch.md` |
 | Harry Dry | Marketing copywriting, show-don't-tell | `references/harry-dry.md` |
+| Hillel Wayne | Formal methods, TLA+, empirical claims about software | `references/hillel-wayne.md` |
 | Jack Doyle | GSAP, web animation, JS performance | `references/jack-doyle.md` |
 | Jakob Nielsen | Usability heuristics, empirical UX research, NN/g | `references/jakob-nielsen.md` |
 | John Carmack | Graphics engines, optimisation, VR/latency | `references/john-carmack.md` |
@@ -121,6 +124,7 @@ python3 scripts/check-roster.py          # table, files and aliases agree
 | Josh Comeau | CSS mental models, interactive education, React, whimsy | `references/josh-comeau.md` |
 | Julia Evans | Systems programming, debugging, zines, Linux internals | `references/julia-evans.md` |
 | Kent Beck | XP, TDD, refactoring, simple design | `references/kent-beck.md` |
+| Léonie Watson | Accessibility, screen readers, web standards | `references/leonie-watson.md` |
 | Luke Wroblewski | Mobile-first design, form UX, input design | `references/luke-wroblewski.md` |
 | Maggie Appleton | Visual thinking, digital gardens, AI interface design | `references/maggie-appleton.md` |
 | Mark Jaquith | WordPress core, security, performance, caching, deployment | `references/mark-jaquith.md` |

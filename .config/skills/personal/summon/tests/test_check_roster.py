@@ -101,6 +101,26 @@ def test_unsorted_table_fails(tmp_path: Path) -> None:
     assert "not alphabetical" in result.stdout
 
 
+def test_accented_name_sorts_where_a_reader_expects_it(tmp_path: Path) -> None:
+    # 'é' is U+00E9, which is above 'z' in code-point order, so a naive sort
+    # demands Léonie sit after Luke - where nobody scanning the table would look.
+    write_skill(
+        tmp_path,
+        [
+            ("Kent Beck", "K", "references/kent-beck.md"),
+            ("Léonie Watson", "L", "references/leonie-watson.md"),
+            ("Luke Wroblewski", "L", "references/luke-wroblewski.md"),
+        ],
+        {
+            "kent-beck.md": ["kent"],
+            "leonie-watson.md": ["léonie"],
+            "luke-wroblewski.md": ["luke"],
+        },
+    )
+    result = run(tmp_path)
+    assert result.returncode == 0, result.stdout
+
+
 def test_missing_skill_returns_two(tmp_path: Path) -> None:
     assert run(tmp_path).returncode == 2
 
