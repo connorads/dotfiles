@@ -347,6 +347,30 @@ def test_a_block_page_is_a_skip_not_a_fail() -> None:
     assert verdict.status == "SKIP"
 
 
+def test_an_undecoded_body_is_a_skip_not_a_fail() -> None:
+    # A Wayback `id_` replay serves the capture's original `Content-Encoding`,
+    # so an un-decompressed body decodes to mojibake that matches nothing. That
+    # is a fetch which tested nothing, not a corpus defect.
+    verdict = vp.classify(
+        "Since the visualisation explained why the CPUs were busy",
+        "wayback_raw",
+        fixture("gzip-undecoded-capture.txt"),
+        None,
+    )
+    assert verdict.status == "SKIP"
+    assert "not text" in verdict.reason
+
+
+def test_an_ordinary_page_with_one_mangled_character_is_not_undecoded() -> None:
+    # Every real page in the sweep sat at or below 0.004% replacement characters.
+    assert not vp.looks_undecoded("a page of perfectly ordinary prose with one � in it")
+
+
+def test_the_fetcher_asks_for_and_decodes_compressed_bodies() -> None:
+    # The flag is unreachable from an offline fixture, so it is pinned on the argv.
+    assert "--compressed" in vp.CURL_BASE
+
+
 def test_a_fetch_error_is_a_skip_carrying_its_reason() -> None:
     verdict = vp.classify("anything", "html", None, "yt-dlp is not installed")
     assert verdict.status == "SKIP"
@@ -494,6 +518,19 @@ def test_a_rate_limited_page_skips_rather_than_failing(tmp_path: Path) -> None:
     result = run(tmp_path, "--all")
     assert "SKIP" in result.stdout
     assert "0 pass, 0 fail, 1 skip" in result.stdout
+
+
+def test_an_undecoded_capture_skips_rather_than_failing(tmp_path: Path) -> None:
+    # End to end: a Wayback replay served as gzip must never reach the matcher.
+    body = (
+        '> "Since the visualisation explained why the CPUs were busy."\n'
+        "-- verbatim | article: ACM Queue, 2016-03-01"
+        " | https://web.archive.org/web/20220310181811/https://example.com/queue-article\n"
+    )
+    write_skill(tmp_path, {"gzip.md": body})
+    result = run(tmp_path, "--all")
+    assert "0 pass, 0 fail, 1 skip" in result.stdout
+    assert "bytes that are not text" in result.stdout
 
 
 def test_an_archive_item_page_skips_with_a_named_reason(tmp_path: Path) -> None:
