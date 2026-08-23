@@ -89,15 +89,80 @@ _needle_patch_warn_missing() {
   print -u2 "################################################################"
 }
 
-local rc=0 real before after
+# One python3 helper backs both counting and rewriting, so a needle is matched
+# by exactly the same rules whether we are reporting on it or replacing it.
+# Config crosses as argv, never interpolated into the heredoc - that is what
+# keeps zsh quoting out of the matching semantics.
+#   count <path>  -> "<unpatched-matches> <patched-matches>" on stdout
+#   apply <path>  -> rewrite in place; non-zero exit if nothing matched
+_needle_patch_py() {
+  /usr/bin/python3 - "$1" "$2" "$needle" "$replace" <<'PY'
+import mmap
+import os
+import pathlib
+import re
+import sys
+
+op = sys.argv[1]
+path = pathlib.Path(sys.argv[2])
+# fsencode, not str.encode: a non-ASCII needle reaches argv as surrogates and
+# .encode() raises UnicodeEncodeError on it.
+needle = os.fsencode(sys.argv[3])
+repl = os.fsencode(sys.argv[4])
+
+# The engine's one internal representation: a pattern for the unpatched shape,
+# a callable that emits its replacement, and a pattern for the patched shape.
+# re.escape + a replacement *callable* is byte-for-byte equivalent to
+# bytes.replace here - the callable's return value is literal, so a `\1` or `&`
+# in the replacement is not a backreference.
+unpatched = re.compile(re.escape(needle))
+patched = re.compile(re.escape(repl))
+
+
+def replacement(match: "re.Match[bytes]") -> bytes:
+    return repl
+
+
+if op == "count":
+    # mmap keeps a 300MB+ single-file binary off the heap. An empty file cannot
+    # be mapped at all, and trivially holds no matches.
+    if path.stat().st_size == 0:
+        print("0 0")
+        raise SystemExit(0)
+    with path.open("rb") as fh:
+        with mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as data:
+            print(
+                sum(1 for _ in unpatched.finditer(data)),
+                sum(1 for _ in patched.finditer(data)),
+            )
+    raise SystemExit(0)
+
+mode = path.stat().st_mode
+data = path.read_bytes()
+new, count = unpatched.subn(replacement, data)
+if count == 0:
+    sys.exit("no replacement made")
+tmp = path.with_suffix(path.suffix + ".tmp")
+tmp.write_bytes(new)
+os.chmod(tmp, mode)
+tmp.replace(path)
+PY
+}
+
+local rc=0 real counts before after
 for real in "${targets[@]}"; do
   if [[ ! -f $real ]]; then
     print -u2 "skip (missing): $real"
     rc=1
     continue
   fi
-  before=$(LC_ALL=C /usr/bin/grep -aoF -- "$needle"  "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
-  after=$( LC_ALL=C /usr/bin/grep -aoF -- "$replace" "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+  if ! counts=$(_needle_patch_py count "$real"); then
+    print -u2 "failed to scan: $real"
+    rc=1
+    continue
+  fi
+  before=${counts%% *}
+  after=${counts##* }
 
   case $mode in
     check)
@@ -135,24 +200,16 @@ for real in "${targets[@]}"; do
         continue
       fi
       [[ -f $real.unpatched ]] || cp -p "$real" "$real.unpatched"
-      /usr/bin/python3 - "$real" "$needle" "$replace" <<'PY'
-import os, sys, pathlib
-path, needle, repl = sys.argv[1], sys.argv[2].encode(), sys.argv[3].encode()
-p = pathlib.Path(path)
-mode = p.stat().st_mode
-data = p.read_bytes()
-new = data.replace(needle, repl)
-if new == data:
-    sys.exit("no replacement made")
-tmp = p.with_suffix(p.suffix + ".tmp")
-tmp.write_bytes(new)
-os.chmod(tmp, mode)
-tmp.replace(p)
-PY
+      if ! _needle_patch_py apply "$real"; then
+        print -u2 "failed to patch: $real"
+        rc=1
+        continue
+      fi
       if [[ $OSTYPE == darwin* ]]; then
         /usr/bin/codesign --force --sign - "$real" 2>/dev/null || true
       fi
-      after=$(LC_ALL=C /usr/bin/grep -aoF -- "$replace" "$real" | /usr/bin/wc -l | /usr/bin/tr -d ' ')
+      counts=$(_needle_patch_py count "$real")
+      after=${counts##* }
       print "patched:    $real ($after occurrence(s); backup at $real.unpatched)"
       ;;
   esac
