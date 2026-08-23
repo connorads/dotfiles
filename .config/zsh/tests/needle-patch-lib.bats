@@ -365,6 +365,86 @@ setup() {
   grep -qF 'BEFORE' "$target"
 }
 
+@test "expect_matches=1 patches a single site and reports a second as ambiguous" {
+  local wrapper single double
+  wrapper="$(write_literal_patch_wrapper "'if(!%s.dev){'" "'if(0&&%s.d){'" \
+    $'local needle_kind=slots\nlocal same_length=1\nlocal expect_matches=1')"
+  single="$HOME/single.bundle"
+  double="$HOME/double.bundle"
+  printf 'aa if(!i.dev){ bb' >"$single"
+  printf 'aa if(!o.dev){ bb if(!i.dev){ cc' >"$double"
+
+  run_zsh_function "$wrapper" --check "$single" "$double"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unpatched:  $(realpath_of "$single") (1 occurrence(s))"* ]]
+  [[ "$output" == *"ambiguous:  $(realpath_of "$double") (before=2 expected=1)"* ]]
+}
+
+@test "an ambiguous target is left byte-identical and unbacked-up" {
+  local wrapper target expected
+  wrapper="$(write_literal_patch_wrapper "'if(!%s.dev){'" "'if(0&&%s.d){'" \
+    $'local needle_kind=slots\nlocal same_length=1\nlocal expect_matches=1')"
+  target="$HOME/double.bundle"
+  expected="$HOME/double.expected"
+  printf 'aa if(!o.dev){ bb if(!i.dev){ cc' >"$target"
+  cp "$target" "$expected"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"skip (ambiguous: 2 match(es), expected 1)"* ]]
+  cmp -s "$target" "$expected"
+  [ ! -f "$target.unpatched" ]
+}
+
+@test "--reapply on an ambiguous target warns, marks and exits zero" {
+  local wrapper target expected marker="$HOME/.cache/test-needle-patch.stale"
+  wrapper="$(write_literal_patch_wrapper "'if(!%s.dev){'" "'if(0&&%s.d){'" \
+    $'local needle_kind=slots\nlocal same_length=1\nlocal expect_matches=1')"
+  target="$HOME/double.bundle"
+  expected="$HOME/double.expected"
+  printf 'aa if(!o.dev){ bb if(!i.dev){ cc' >"$target"
+  cp "$target" "$expected"
+
+  run_zsh_function "$wrapper" --reapply "$target"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"NEEDLE AMBIGUOUS"* ]]
+  [[ "$output" != *"NEEDLE NOT FOUND"* ]]
+  [ -f "$marker" ]
+  grep -qF 'reason: the needle matched 2 site(s), expected 1' "$marker"
+  cmp -s "$target" "$expected"
+}
+
+@test "with expect_matches unset a two-site needle still replaces both" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'function %s(e){legacy}'" "'function %s(e){patched}'" \
+    $'local needle_kind=slots\nlocal same_length=0')"
+  target="$HOME/two-site.bundle"
+  printf 'aa function a7s(e){legacy} bb function xC(e){legacy} cc' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"(2 occurrence(s);"* ]]
+  grep -qF 'aa function a7s(e){patched} bb function xC(e){patched} cc' "$target"
+}
+
+@test "a non-positive expect_matches exits 2 and leaves the target untouched" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'BEFORE'" "'AFTER'" \
+    $'local same_length=0\nlocal expect_matches=0')"
+  target="$HOME/app.bundle"
+  printf 'BEFORE' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"expect_matches: expected 'any' or a positive integer"* ]]
+  grep -qF 'BEFORE' "$target"
+}
+
 @test "resolver honours --all and dedupes symlinked targets" {
   local first="$HOME/first.bundle"
   local first_link="$HOME/first-link.bundle"
