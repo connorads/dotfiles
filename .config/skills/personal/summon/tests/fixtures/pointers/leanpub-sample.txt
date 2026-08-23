@@ -1,0 +1,17 @@
+Introducing Example Storming
+
+Preface
+
+How to read this book
+
+The current state is: there is plenty of valuable content in the book, but also
+much work in progress.
+
+  * unfinished chapters;
+  * finished chapters that now look a little obsolete;
+  * redundant content;
+  * I still don't know how to end this book.
+
+Chapter 1
+
+The sample ends here. Everything past this point is behind the purchase.
