@@ -225,6 +225,24 @@ def test_an_ordinary_page_is_not_a_block() -> None:
     assert not vp.looks_blocked(fixture("entity-contractions.html"))
 
 
+def test_an_article_that_discusses_rate_limiting_is_not_a_rate_limit_page() -> None:
+    # The ninth bug of the same class, met live: scanning for the signatures
+    # alone read "request counters per IP address (for rate limiting purposes)"
+    # as a block, and four sourced quotes in martin-kleppmann.md vanished into
+    # SKIPs behind an article that had fetched perfectly.
+    assert not vp.looks_blocked(fixture("long-article-mentioning-rate-limits.html"))
+
+
+def test_a_block_page_is_recognised_by_its_title_however_long_it_is() -> None:
+    body = (
+        "<!doctype html><html><head><title>429 Too Many Requests</title></head>"
+        "<body>"
+        + "<p>Boilerplate that pads this page well past the length cut.</p>" * 60
+        + "</body></html>"
+    )
+    assert vp.looks_blocked(body)
+
+
 # --------------------------------------------------------------------------
 # Matching
 # --------------------------------------------------------------------------
@@ -327,6 +345,11 @@ CASES = {
         '> "Mobile first forces you to focus on the content that matters most"\n'
         "-- verbatim | slides: Mobile First, 2011"
         " | https://www.slideshare.net/slideshow/mobile-first/12345\n"
+    ),
+    "rate-limit-prose": (
+        '> "If you are depending on your lock for correctness, most of the time is not enough."\n'
+        "-- verbatim | blog: How to do distributed locking, example.com, 2016-02-08"
+        " | https://example.com/distributed-locking\n"
     ),
     "truncated-url": (
         '> "Test the one that resolves, not the one that fits the column."\n'
