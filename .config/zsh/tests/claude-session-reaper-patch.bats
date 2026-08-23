@@ -4,6 +4,9 @@ bats_require_minimum_version 1.5.0
 
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
+# Consumer of the shared engine at functions/patch/_needle-patch-lib: this suite
+# is part of that engine's contract, so a staged engine runs it (bats-tests.sh
+# maps a staged script to every suite that names it).
 REAPER_PATCH="$FUNCTIONS_DIR/claude/claude-session-reaper-patch"
 MARKER_REL=".cache/claude-session-reaper-patch.stale"
 
