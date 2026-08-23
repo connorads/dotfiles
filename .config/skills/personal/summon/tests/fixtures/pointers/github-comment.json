@@ -1,0 +1,6 @@
+{
+  "id": 575994,
+  "user": { "login": "mrdoob" },
+  "html_url": "https://github.com/mrdoob/three.js/issues/36#issuecomment-575994",
+  "body": "I don't think moving the whole library to Arrays is a good idea. I still prefer having `object.position.x` instead of `object.position[0]`."
+}

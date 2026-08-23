@@ -1,0 +1,473 @@
+"""Tests for scripts/verify-pointers.py.
+
+Two layers. The unit tests pin the pure core - routing, extraction, matching -
+one test per row of the symptom->cause table in ``references/attribution.md``,
+because every one of those rows was first met as a false "fabricated quote"
+verdict. The CLI tests pin the contract from outside, in the style of
+``test_check_quotes.py``.
+
+Offline and fast by construction: the whole suite runs on every summon commit,
+so nothing here touches the network. ``tests/fixtures/pointers`` holds a small
+hand-written body per bug class, indexed by ``manifest.json``.
+
+Run: uv run --with pytest -- pytest tests/ -q  (from the skill root)
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
+SCRIPT = SCRIPTS / "verify-pointers.py"
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "pointers"
+
+# The script's own directory must be importable before it is loaded: it does
+# `import quotelib`, which resolves off sys.path[0] when run as a script but not
+# when loaded through importlib.
+sys.path.insert(0, str(SCRIPTS))
+
+
+def _load(name: str, path: Path):
+    """Import a dash-named script as a module.
+
+    ``verify-pointers`` is not a legal identifier, so the sibling-import pattern
+    from ``.config/vox/test_merge.py`` needs importlib here. The module has to be
+    registered in ``sys.modules`` before it executes: ``@dataclass`` looks its own
+    class's module up there, and finds nothing if it is absent.
+    """
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+vp = _load("verify_pointers", SCRIPT)
+
+
+def fixture(name: str) -> str:
+    return (FIXTURES / name).read_text(encoding="utf-8")
+
+
+# --------------------------------------------------------------------------
+# Normalisation
+# --------------------------------------------------------------------------
+
+
+def test_emphasis_is_stripped_on_top_of_normalise() -> None:
+    # `_` is a \w character, so it survives normalise and `_enforces_` never
+    # matches the page's `enforces`.
+    assert vp.key("the grammar _enforces_ the shape") == "the grammar enforces the shape"
+
+
+def test_normalise_itself_still_keeps_underscores() -> None:
+    # The gate's inline-twin matching depends on this fold; moving the strip
+    # inside normalise would silently shift check-quotes' baseline.
+    from quotelib import normalise
+
+    assert "_" in normalise("the grammar _enforces_ the shape")
+
+
+def test_entities_are_unescaped_after_tags_are_stripped() -> None:
+    # Unescaping first leaves `don&#x27;t` to normalise as `don x27 t`, and every
+    # contraction in the corpus fails at once.
+    text = vp.extract("html", fixture("entity-contractions.html"))
+    assert "don't know what we don't know" in text
+
+
+def test_escaped_markup_in_a_page_survives_tag_stripping() -> None:
+    # The same ordering rule from the other side: an escaped `&lt;p&gt;` in the
+    # page's own prose must not become a tag the stripper then eats.
+    text = vp.extract("html", fixture("entity-contractions.html"))
+    assert "<p> tag in this sentence is escaped" in text
+
+
+# --------------------------------------------------------------------------
+# Routing
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("url", "kind", "target"),
+    [
+        (
+            "https://github.com/mrdoob/three.js/blob/dev/README.md",
+            "github_raw",
+            "https://raw.githubusercontent.com/mrdoob/three.js/dev/README.md",
+        ),
+        (
+            "https://github.com/mrdoob/three.js/issues/36#issuecomment-575994",
+            "github_comment",
+            "https://api.github.com/repos/mrdoob/three.js/issues/comments/575994",
+        ),
+        (
+            "https://web.archive.org/web/20150413032050/http://example.com/essay",
+            "wayback_raw",
+            "https://web.archive.org/web/20150413032050id_/http://example.com/essay",
+        ),
+        (
+            "https://www.reddit.com/r/programming/comments/abc123/some_title/def4567/",
+            "reddit_comment",
+            "https://arctic-shift.photon-reddit.com/api/comments/ids?ids=def4567",
+        ),
+        (
+            "https://x.com/photomatt/status/1234567890",
+            "x_post",
+            "https://api.fxtwitter.com/photomatt/status/1234567890",
+        ),
+        (
+            "https://arxiv.org/abs/1509.05393",
+            "pdf",
+            "https://arxiv.org/pdf/1509.05393",
+        ),
+    ],
+)
+def test_url_rewrites(url: str, kind: str, target: str) -> None:
+    plan = vp.route(url)
+    assert (plan.kind, plan.url) == (kind, target)
+
+
+def test_a_raw_markdown_url_is_never_treated_as_html() -> None:
+    assert (
+        vp.route("https://example.com/notes/raw-markdown-angle-brackets.md").kind == "raw_markdown"
+    )
+
+
+def test_an_archive_item_page_is_not_full_text() -> None:
+    plan = vp.route("https://archive.org/details/somebook")
+    assert plan.kind == "not_full_text"
+    assert "item page" in plan.reason
+
+
+def test_youtube_falls_back_from_captions_to_the_description() -> None:
+    plan = vp.route("https://www.youtube.com/watch?v=5ZjhNTM8XU8")
+    assert plan.kind == "youtube_captions"
+    assert plan.alternates == ("youtube_description",)
+
+
+def test_a_text_fragment_is_dropped_from_the_fetch_target() -> None:
+    # `#:~:text=` is a scroll target no fetch sends, and keeping it would make
+    # fifteen quotes citing one essay fetch that essay fifteen times.
+    plan = vp.route("https://example.com/essay#:~:text=some%20words")
+    assert plan.url == "https://example.com/essay"
+
+
+def test_a_trailing_sentence_comma_is_not_part_of_the_url() -> None:
+    assert vp.route("https://example.com/essay,").url == "https://example.com/essay"
+
+
+# --------------------------------------------------------------------------
+# Extraction
+# --------------------------------------------------------------------------
+
+
+def test_raw_markdown_keeps_the_paragraph_between_two_angle_brackets() -> None:
+    body = fixture("raw-markdown-angle-brackets.md")
+    assert "a pointer is only evidence" in vp.extract("raw_markdown", body)
+
+
+def test_tag_stripping_that_same_body_would_have_lost_it() -> None:
+    # The reason the route exists, asserted rather than described: a stray `<`
+    # and a later `>` swallow everything between them.
+    body = fixture("raw-markdown-angle-brackets.md")
+    assert "a pointer is only evidence" not in vp.strip_tags(body)
+
+
+def test_rolling_captions_are_de_duplicated() -> None:
+    text = vp.extract("youtube_captions", fixture("vtt-rolling-captions.vtt"))
+    assert text.count("the fastest way to lose a") == 1
+    assert "is to optimise for the wrong thing and call it velocity" in text
+
+
+def test_slide_text_is_read_from_image_alt_attributes() -> None:
+    text = vp.extract("slideshare", fixture("slideshare-alt-text.html"))
+    assert "Mobile first forces you to focus on the content that matters most" in text
+
+
+def test_a_github_comment_body_is_read_out_of_the_api_payload() -> None:
+    text = vp.extract("github_comment", fixture("github-comment.json"))
+    assert text.startswith("I don't think moving the whole library to Arrays")
+
+
+def test_an_x_post_carries_its_author_handle() -> None:
+    # A reply or quote-post under the same URL is someone else's words, so the
+    # handle has to travel with the text.
+    payload = json.dumps({"tweet": {"text": "Ship it.", "author": {"screen_name": "photomatt"}}})
+    assert vp.extract("x_post", payload) == "@photomatt Ship it."
+
+
+def test_a_json_escaped_transcript_inside_a_script_blob_is_read() -> None:
+    body = (
+        "<!doctype html><html><body><p>Loading</p>"
+        '<script id="__NEXT_DATA__">{"transcript":"we don\\u0027t ship on a schedule"}</script>'
+        "</body></html>"
+    )
+    assert "we don't ship on a schedule" in vp.extract("html", body)
+
+
+def test_plain_javascript_is_not_mined_into_the_haystack() -> None:
+    body = "<!doctype html><html><body><p>Real text</p><script>var x = 1;</script></body></html>"
+    assert "var x" not in vp.extract("html", body)
+
+
+def test_a_rate_limit_page_is_recognised_as_a_block() -> None:
+    assert vp.looks_blocked(fixture("rate-limited-page.html"))
+
+
+def test_an_ordinary_page_is_not_a_block() -> None:
+    assert not vp.looks_blocked(fixture("entity-contractions.html"))
+
+
+# --------------------------------------------------------------------------
+# Matching
+# --------------------------------------------------------------------------
+
+
+def test_an_exact_match_reports_as_exact() -> None:
+    result = vp.match("Design is how it works.", "He said design is how it works, plainly.")
+    assert result.exact and result.window == 5
+
+
+def test_a_near_miss_reports_its_longest_window() -> None:
+    result = vp.match("one two three four five", "one two three then something else")
+    assert not result.exact
+    assert result.window == 3
+
+
+def test_no_shared_words_is_a_zero_window() -> None:
+    assert vp.match("nothing here at all", "entirely different prose").window == 0
+
+
+def test_a_caption_window_confirms_a_quote_that_cannot_match_exactly() -> None:
+    haystack = vp.extract("youtube_captions", fixture("vtt-rolling-captions.vtt"))
+    quote = (
+        "The fastest way to lose a team is to optimise for the wrong thing and call it velocity."
+    )
+    verdict = vp.classify(quote, "youtube_captions", fixture("vtt-rolling-captions.vtt"), None)
+    assert not vp.match(quote, haystack).exact
+    assert verdict.status == "PASS"
+    assert verdict.window >= vp.MIN_WINDOW
+
+
+def test_a_short_quote_needs_an_exact_match() -> None:
+    # Below the window threshold a partial run is not evidence of anything.
+    verdict = vp.classify("one two three four five", "html", "<p>one two three only</p>", None)
+    assert verdict.status == "FAIL"
+
+
+# --------------------------------------------------------------------------
+# Classification
+# --------------------------------------------------------------------------
+
+
+def test_a_block_page_is_a_skip_not_a_fail() -> None:
+    verdict = vp.classify("anything at all", "html", fixture("rate-limited-page.html"), None)
+    assert verdict.status == "SKIP"
+
+
+def test_a_fetch_error_is_a_skip_carrying_its_reason() -> None:
+    verdict = vp.classify("anything", "html", None, "yt-dlp is not installed")
+    assert verdict.status == "SKIP"
+    assert "yt-dlp" in verdict.reason
+
+
+def test_an_empty_body_is_a_skip() -> None:
+    assert vp.classify("anything", "html", "   ", None).status == "SKIP"
+
+
+# --------------------------------------------------------------------------
+# CLI contract
+# --------------------------------------------------------------------------
+
+CASES = {
+    "entity-contractions": (
+        "> \"We don't know what we don't know about production.\"\n"
+        "-- verbatim | blog: On production, example.com, 2020-01-01"
+        " | https://example.com/entity-contractions\n"
+    ),
+    "markdown-emphasis": (
+        '> "the grammar _enforces_ the shape of that claim"\n'
+        "-- verbatim | blog: On claims, example.com, 2021-02-02"
+        " | https://example.com/markdown-emphasis\n"
+    ),
+    "raw-markdown": (
+        '> "a pointer is only evidence when the fetch and the parse are both honest"\n'
+        "-- verbatim | notes: Comparison, example.com, 2022-03-03"
+        " | https://example.com/notes/raw-markdown-angle-brackets.md\n"
+    ),
+    "vtt-captions": (
+        '> "The fastest way to lose a team is to optimise for the wrong thing and call it'
+        ' velocity."\n'
+        "-- verbatim | talk: On velocity, Example Conf, 2019, 12:04"
+        " | https://www.youtube.com/watch?v=vttfixture\n"
+    ),
+    "github-blob": (
+        '> "Every allocation matters when you are creating thousands of objects per frame."\n'
+        "-- verbatim | mrdoob/three.js, 2017-10-18"
+        " | https://github.com/mrdoob/three.js/blob/dev/README.md\n"
+    ),
+    "github-comment": (
+        '> "I don\'t think moving the whole library to Arrays is a good idea."\n'
+        "-- verbatim | mrdoob/three.js#36, 30 November 2010"
+        " | https://github.com/mrdoob/three.js/issues/36#issuecomment-575994\n"
+    ),
+    "wayback": (
+        '> "Design is not just what it looks like and feels like. Design is how it works."\n'
+        "-- verbatim | article: NYT Magazine, 2003-11-30"
+        " | https://web.archive.org/web/20150413032050/http://example.com/essay\n"
+    ),
+    "slideshare": (
+        '> "Mobile first forces you to focus on the content that matters most"\n'
+        "-- verbatim | slides: Mobile First, 2011"
+        " | https://www.slideshare.net/slideshow/mobile-first/12345\n"
+    ),
+    "truncated-url": (
+        '> "Test the one that resolves, not the one that fits the column."\n'
+        "-- verbatim | blog: On URLs, example.com, 2023-04-04"
+        " | https://example.com/a/very/long/path/to/an/essay-on-verification"
+        "#:~:text=display%20form\n"
+    ),
+}
+
+
+def write_skill(root: Path, dossiers: dict[str, str]) -> None:
+    (root / "references").mkdir(parents=True, exist_ok=True)
+    for name, body in dossiers.items():
+        text = f"# Persona\n\n## Aliases\n\n- {Path(name).stem}\n\n## Sourced Quotes\n\n{body}"
+        (root / "references" / name).write_text(text, encoding="utf-8")
+
+
+def run(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--offline",
+            "--cache",
+            str(FIXTURES),
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.parametrize("case", sorted(CASES))
+def test_each_bug_class_confirms_its_quote(tmp_path: Path, case: str) -> None:
+    write_skill(tmp_path, {f"{case}.md": CASES[case]})
+    result = run(tmp_path, "--all")
+    assert result.returncode == 0, result.stdout
+    assert "1 pass, 0 fail, 0 skip" in result.stdout, result.stdout
+
+
+def test_an_absent_quote_fails(tmp_path: Path) -> None:
+    body = (
+        '> "A sentence that is nowhere on the fetched page, however plausible it sounds."\n'
+        "-- verbatim | blog: On claims, example.com, 2021-02-02"
+        " | https://example.com/markdown-emphasis\n"
+    )
+    write_skill(tmp_path, {"absent.md": body})
+    result = run(tmp_path, "--all")
+    assert "FAIL" in result.stdout
+    assert "0 pass, 1 fail, 0 skip" in result.stdout
+
+
+def test_a_fail_still_exits_zero_by_default(tmp_path: Path) -> None:
+    # A FAIL is 'look closer', not a verdict; exiting non-zero would teach the
+    # next author to read it as one.
+    write_skill(tmp_path, {"absent.md": CASES["markdown-emphasis"].replace("grammar", "charter")})
+    assert run(tmp_path, "--all").returncode == 0
+
+
+def test_strict_exits_one_on_a_fail(tmp_path: Path) -> None:
+    write_skill(tmp_path, {"absent.md": CASES["markdown-emphasis"].replace("grammar", "charter")})
+    assert run(tmp_path, "--all", "--strict").returncode == 1
+
+
+def test_a_rate_limited_page_skips_rather_than_failing(tmp_path: Path) -> None:
+    body = (
+        '> "A line the rate limit page could never carry, whatever it says."\n'
+        "-- verbatim | blog: Throttled, example.com, 2020-01-01"
+        " | https://example.com/rate-limited\n"
+    )
+    write_skill(tmp_path, {"blocked.md": body})
+    result = run(tmp_path, "--all")
+    assert "SKIP" in result.stdout
+    assert "0 pass, 0 fail, 1 skip" in result.stdout
+
+
+def test_an_archive_item_page_skips_with_a_named_reason(tmp_path: Path) -> None:
+    body = (
+        '> "Words that live in a lending-restricted scan."\n'
+        "-- verbatim | book: Some Title, 1st edn, p. 12"
+        " | https://archive.org/details/some-book\n"
+    )
+    write_skill(tmp_path, {"scan.md": body})
+    result = run(tmp_path, "--all")
+    assert "SKIP" in result.stdout
+    assert "item page" in result.stdout
+
+
+def test_a_pointer_with_no_url_skips(tmp_path: Path) -> None:
+    body = (
+        '> "Words on a printed page, which nothing here can confirm."\n'
+        "-- verbatim | book: Designing Data-Intensive Applications, 1st edn, pp. 161-162\n"
+    )
+    write_skill(tmp_path, {"book.md": body})
+    result = run(tmp_path, "--all")
+    assert "pointer names no URL" in result.stdout
+
+
+def test_an_uncached_url_skips_when_offline(tmp_path: Path) -> None:
+    body = (
+        '> "A line behind a page this run may not fetch."\n'
+        "-- verbatim | blog: Elsewhere, example.org, 2024-01-01"
+        " | https://example.org/never-fetched\n"
+    )
+    write_skill(tmp_path, {"miss.md": body})
+    result = run(tmp_path, "--all")
+    assert "not in cache (--offline)" in result.stdout
+
+
+def test_paraphrase_quotes_are_not_verified(tmp_path: Path) -> None:
+    # Only `verbatim` and `attributed` claim a pointer; the rest make no claim
+    # a fetch could test.
+    write_skill(tmp_path, {"para.md": '> "A remembered position."\n-- paraphrase | (paraphrase)\n'})
+    result = run(tmp_path, "--all")
+    assert "0 pass, 0 fail, 0 skip" in result.stdout
+
+
+def test_named_files_are_verified_without_all(tmp_path: Path) -> None:
+    write_skill(tmp_path, {"one.md": CASES["github-comment"]})
+    result = run(tmp_path, str(tmp_path / "references" / "one.md"))
+    assert "1 pass, 0 fail, 0 skip" in result.stdout
+
+
+def test_no_targets_is_not_an_error(tmp_path: Path) -> None:
+    assert run(tmp_path, str(tmp_path / "README.md")).returncode == 0
+
+
+def test_json_report_is_machine_readable(tmp_path: Path) -> None:
+    write_skill(tmp_path, {"one.md": CASES["wayback"]})
+    result = run(tmp_path, "--all", "--json")
+    payload = json.loads(result.stdout)
+    assert payload["summary"] == {"PASS": 1, "FAIL": 0, "SKIP": 0}
+    assert payload["files"][0]["results"][0]["route"] == "wayback_raw"
+
+
+def test_the_offline_run_writes_nothing_into_the_fixture_cache(tmp_path: Path) -> None:
+    # A fixture dir is reviewed bytes; a verifier run must not add to it.
+    before = sorted(p.name for p in FIXTURES.iterdir())
+    write_skill(tmp_path, {"miss.md": CASES["github-blob"]})
+    run(tmp_path, "--all")
+    assert sorted(p.name for p in FIXTURES.iterdir()) == before

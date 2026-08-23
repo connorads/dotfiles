@@ -1,0 +1,12 @@
+{
+  "https://api.github.com/repos/mrdoob/three.js/issues/comments/575994": "github-comment.json",
+  "https://example.com/a/very/long/path/to/an/essay-on-verification": "truncated-url.html",
+  "https://example.com/entity-contractions": "entity-contractions.html",
+  "https://example.com/markdown-emphasis": "markdown-emphasis.html",
+  "https://example.com/notes/raw-markdown-angle-brackets.md": "raw-markdown-angle-brackets.md",
+  "https://example.com/rate-limited": "rate-limited-page.html",
+  "https://raw.githubusercontent.com/mrdoob/three.js/dev/README.md": "github-blob.md",
+  "https://web.archive.org/web/20150413032050id_/http://example.com/essay": "wayback-wrapper.html",
+  "https://www.slideshare.net/slideshow/mobile-first/12345": "slideshare-alt-text.html",
+  "https://www.youtube.com/watch?v=vttfixture": "vtt-rolling-captions.vtt"
+}
