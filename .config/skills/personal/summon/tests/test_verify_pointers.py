@@ -132,6 +132,11 @@ def test_escaped_markup_in_a_page_survives_tag_stripping() -> None:
             "html",
             "https://www.localfirst.fm/13/transcript",
         ),
+        (
+            "https://leanpub.com/example_storming",
+            "pdf",
+            "https://s3.amazonaws.com/samples.leanpub.com/example_storming-sample.pdf",
+        ),
     ],
 )
 def test_url_rewrites(url: str, kind: str, target: str) -> None:
@@ -162,6 +167,16 @@ def test_a_slideshow_url_alone_is_not_a_slide_locus() -> None:
     assert not vp.names_a_slide(
         "-- verbatim | talk: On velocity, 12:04 | https://www.slideshare.net/slideshow/x/1"
     )
+
+
+def test_a_leanpub_sample_is_marked_partial() -> None:
+    # The store page is a blurb; the only fetchable prose is a chapter or two,
+    # so a miss there proves nothing about the book.
+    assert vp.route("https://leanpub.com/example_storming").partial
+
+
+def test_an_ordinary_route_is_not_partial() -> None:
+    assert not vp.route("https://example.com/essay").partial
 
 
 def test_an_archive_item_page_is_not_full_text() -> None:
@@ -469,6 +484,11 @@ CASES = {
         "-- verbatim | blog: On production, example.com, 2020-01-01"
         " | https://example.com/entity-contractions\n"
     ),
+    "leanpub-sample": (
+        '> "I still don\'t know how to end this book."\n'
+        "-- verbatim | book: Introducing Example Storming, Preface"
+        " | https://leanpub.com/example_storming\n"
+    ),
     "localfirst-transcript": (
         '> "The whole philosophy is redistribute the power away from the urban elite and'
         ' into like the rural masses."\n'
@@ -657,6 +677,21 @@ def test_a_spoken_quote_on_the_same_video_pointer_is_still_verified(tmp_path: Pa
     )
     write_skill(tmp_path, {"spoken.md": body})
     assert "1 pass, 0 fail, 0 skip" in run(tmp_path, "--all").stdout
+
+
+def test_a_quote_beyond_a_book_sample_skips_rather_than_failing(tmp_path: Path) -> None:
+    # Absent from part of an artefact is not absent from the artefact. Without
+    # this, adding the sample route would turn every quote from later in a book
+    # into a fresh accusation.
+    body = (
+        '> "A sentence from chapter nine, well past where the free sample stops."\n'
+        "-- verbatim | book: Introducing Example Storming, ch. 9"
+        " | https://leanpub.com/example_storming\n"
+    )
+    write_skill(tmp_path, {"beyond.md": body})
+    result = run(tmp_path, "--all")
+    assert "0 pass, 0 fail, 1 skip" in result.stdout
+    assert "free sample" in result.stdout
 
 
 def test_an_archive_item_page_skips_with_a_named_reason(tmp_path: Path) -> None:

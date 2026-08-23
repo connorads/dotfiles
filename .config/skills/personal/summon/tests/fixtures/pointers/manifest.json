@@ -9,6 +9,7 @@
   "https://example.com/rate-limited": "rate-limited-page.html",
   "https://example.com/three-things-about-static": "elided-quote.html",
   "https://raw.githubusercontent.com/mrdoob/three.js/dev/README.md": "github-blob.md",
+  "https://s3.amazonaws.com/samples.leanpub.com/example_storming-sample.pdf": "leanpub-sample.txt",
   "https://web.archive.org/web/20150413032050id_/http://example.com/essay": "wayback-wrapper.html",
   "https://web.archive.org/web/20220310181811id_/https://example.com/queue-article": "gzip-undecoded-capture.txt",
   "https://www.localfirst.fm/13/transcript": "localfirst-transcript.html",

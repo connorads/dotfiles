@@ -136,6 +136,10 @@ class Route:
     url: str
     reason: str = ""
     alternates: tuple[str, ...] = ()
+    # Set where the fetch target holds only *part* of the cited artefact - a
+    # book's free sample. Finding the words there confirms them; not finding
+    # them proves nothing, so a miss must be a SKIP naming why, never a FAIL.
+    partial: str = ""
 
 
 GITHUB_BLOB = re.compile(r"^https?://github\.com/([^/]+)/([^/]+)/blob/(.+)$")
@@ -147,6 +151,7 @@ REDDIT_COMMENT = re.compile(r"^https?://(?:\w+\.)?reddit\.com/r/[^/]+/comments/\
 X_POST = re.compile(r"^https?://(?:www\.)?(?:x|twitter)\.com/([^/]+)/status/(\d+)")
 ARXIV_ABS = re.compile(r"^https?://arxiv\.org/abs/(.+)$")
 LOCALFIRST_EPISODE = re.compile(r"^(https?://(?:www\.)?localfirst\.fm/\d+)/?$")
+LEANPUB_BOOK = re.compile(r"^https?://leanpub\.com/([^/]+)/?$")
 
 PLAIN_TEXT_SUFFIXES = (".md", ".markdown", ".txt", ".rst", ".vtt", ".srt")
 
@@ -221,6 +226,18 @@ def route(url: str) -> Route:
             "not_full_text",
             url,
             reason="Reddit blocks CLI fetches and the URL names no comment id",
+        )
+
+    if match := LEANPUB_BOOK.match(url):
+        # The store page is a blurb, a price and a table of contents. The only
+        # fetchable prose is the free sample, which is a chapter or two.
+        # Path-style S3, not the `samples.leanpub.com` vhost: the dotted bucket
+        # name is not covered by the wildcard certificate, so the vhost form
+        # fails TLS verification and the whole route would SKIP on every book.
+        return Route(
+            "pdf",
+            f"https://s3.amazonaws.com/samples.leanpub.com/{match.group(1)}-sample.pdf",
+            partial="only the book's free sample is fetchable",
         )
 
     if match := ARXIV_ABS.match(url):
@@ -812,6 +829,11 @@ def verify_quote(quote: Quote, cache: Cache) -> Result:
     # No attempt confirmed it: report the most informative one. A FAIL says the
     # words were looked for and were absent; a SKIP says they were never tested.
     kind, verdict = max(attempts, key=lambda item: (item[1].status == FAIL, item[1].window))
+    if plan.partial and verdict.status == FAIL:
+        # Absent from *part* of an artefact is not absent from the artefact.
+        verdict = Verdict(
+            SKIP, f"{verdict.reason}, and {plan.partial}", verdict.window, verdict.total
+        )
     return Result(quote.line, quote.text, pointer, kind, verdict)
 
 
