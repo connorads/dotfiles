@@ -180,6 +180,29 @@ def test_tag_stripping_that_same_body_would_have_lost_it() -> None:
     assert "a pointer is only evidence" not in vp.strip_tags(body)
 
 
+def test_a_bare_angle_bracket_in_prose_does_not_swallow_the_paragraph() -> None:
+    # `<1%` in a performance post opened a span the stripper ran to the document's
+    # next `>`, deleting 1,654 characters of brendangregg.com including the quote.
+    text = vp.extract("html", fixture("bare-angle-bracket-in-prose.html"))
+    assert "every benchmark is wrong until you can name the thing it is not measuring" in text
+
+
+def test_real_tags_are_still_stripped_around_it() -> None:
+    # The narrowed pattern must still eat doctypes, comments and ordinary tags.
+    text = vp.extract("html", fixture("bare-angle-bracket-in-prose.html"))
+    assert "doctype" not in text.lower()
+    assert "still gets stripped" not in text
+    assert "<p>" not in text
+
+
+def test_caption_word_timings_are_still_stripped() -> None:
+    # VTT timings genuinely open with a digit, so the caption stripper stays
+    # permissive where the HTML one no longer is.
+    assert vp.extract(
+        "youtube_captions", "WEBVTT\n\n00:01.000 --> 00:02.000\nwe<00:01.500><c> ship</c>\n"
+    ) == ("we ship")
+
+
 def test_rolling_captions_are_de_duplicated() -> None:
     text = vp.extract("youtube_captions", fixture("vtt-rolling-captions.vtt"))
     assert text.count("the fastest way to lose a") == 1
@@ -359,6 +382,11 @@ CASES = {
         ' velocity."\n'
         "-- verbatim | talk: On velocity, Example Conf, 2019, 12:04"
         " | https://www.youtube.com/watch?v=vttfixture\n"
+    ),
+    "bare-angle-bracket": (
+        '> "every benchmark is wrong until you can name the thing it is not measuring"\n'
+        "-- verbatim | blog: On measuring things, example.com, 2024-03-17"
+        " | https://example.com/measuring-things\n"
     ),
     "vtt-disfluency": (
         '> "We should stop treating the schema as an afterthought."\n'

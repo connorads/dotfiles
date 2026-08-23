@@ -116,6 +116,7 @@ so rule them out before accusing the corpus:
 | --- | --- |
 | Every contraction fails | HTML entities. Unescape *after* stripping tags, or `don&#x27;t` normalises to `don x27 t` |
 | A quote with `_emphasis_` never matches | Markdown emphasis. `_` is a word character, so it survives normalisation; strip `_` and `*` |
+| An HTML page loses a paragraph around a `<` in its own prose | Unescaped `<` in text - `<1%`, `count<threshold`. A tag pattern that accepts any `<` runs to the document's next `>` and deletes everything between. Anchor it to a tag-name start character (`</?[A-Za-z!?]`); caption word timings legitimately open with a digit, so their stripper stays permissive |
 | A raw `.md` file loses whole paragraphs | Tag-stripping non-HTML. A stray `<` and a later `>` swallow everything between; only strip tags from real HTML |
 | A video quote is absent from the captions | It may be cited as the video *description*: `yt-dlp --skip-download --print description`. Captions need `--write-auto-subs --write-subs --sub-langs 'en.*'`, and carry no punctuation, so a 10-12 consecutive-word window is the confirmation |
 | A caption quote misses by one repeated word | Speech disfluency, which auto-captions transcribe and no written quotation reproduces ("they're they're"). On caption routes only, collapse a word equal to its predecessor before matching. Adjacent-only, so it can shorten a run but never fuse two parts of a talk into a splice; a doubled word in written prose stays a real difference |
