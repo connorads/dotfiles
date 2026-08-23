@@ -40,6 +40,36 @@ EOF
   printf '%s\n' "$path"
 }
 
+# Same wrapper, but with needle/replace given as zsh $'...' literals so a test
+# can exercise bytes a shell argument cannot carry (newline, NUL).
+write_literal_patch_wrapper() {
+  local needle_literal="$1"
+  local replace_literal="$2"
+  local path="$BATS_TEST_TMPDIR/literal-needle-wrapper"
+  local lib_path="$FUNCTIONS_DIR/patch/_needle-patch-lib"
+
+  cat >"$path" <<EOF
+#!/usr/bin/env zsh
+# literal-needle-wrapper: test wrapper with an arbitrary-byte needle
+# usage: literal-needle-wrapper [--check|--restore|--all|--reapply] [target...]
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="\${\${(%):-%x}:A}"
+local patch_name=test-needle-patch
+local patch_label='test replacement'
+local needle=$needle_literal
+local replace=$replace_literal
+local marker="\$HOME/.cache/test-needle-patch.stale"
+local missing_body='The test patch needle was not found.'
+local missing_banner='test replacement will revert'
+
+source "$lib_path" "\$@"
+EOF
+  chmod +x "$path"
+  printf '%s\n' "$path"
+}
+
 write_broken_patch_wrapper() {
   local path="$BATS_TEST_TMPDIR/broken-needle-wrapper"
   local lib_path="$FUNCTIONS_DIR/patch/_needle-patch-lib"
@@ -186,6 +216,33 @@ setup() {
   grep -qF 'test-needle-patch could not reapply the test replacement patch.' "$marker"
   grep -qF "target: $target_real" "$marker"
   grep -qF 'needle: BEFORE' "$marker"
+}
+
+@test "a needle spanning a newline is found and replaced" {
+  local wrapper target expected
+  wrapper="$(write_literal_patch_wrapper "\$'ALPHA\\nBETA'" "\$'GAMMA\\nDELTA'")"
+  target="$HOME/multiline.bundle"
+  expected="$HOME/multiline.expected"
+  printf 'head\nALPHA\nBETA\ntail\n' >"$target"
+  printf 'head\nGAMMA\nDELTA\ntail\n' >"$expected"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"(1 occurrence(s);"* ]]
+  cmp -s "$target" "$expected"
+}
+
+@test "NUL and newline bytes around the needle survive a patch" {
+  local target="$HOME/binary.bundle"
+  local expected="$HOME/binary.expected"
+  printf 'pre\000\nBEFORE\000\npost' >"$target"
+  printf 'pre\000\nAFTER\000\npost' >"$expected"
+
+  run_zsh_function "$WRAPPER" "$target"
+
+  [ "$status" -eq 0 ]
+  cmp -s "$target" "$expected"
 }
 
 @test "resolver honours --all and dedupes symlinked targets" {
