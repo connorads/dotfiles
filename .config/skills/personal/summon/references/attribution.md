@@ -105,7 +105,9 @@ Get these right yourself; no lint will catch them.
 
 The lint checks a pointer's *shape*. Confirming the words are actually there means fetching the
 source, normalising both sides (strip punctuation, case, accents; collapse whitespace) and
-substring-matching.
+substring-matching. `scripts/verify-pointers.py` is this table's implementation: every row below
+is a route or a normalisation rule in it, with a test pinning that row. Change one and change the
+other.
 
 A non-match is not yet a defect. Every one of these has produced a false "fabricated" verdict,
 so rule them out before accusing the corpus:

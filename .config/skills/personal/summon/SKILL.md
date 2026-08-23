@@ -87,6 +87,10 @@ python3 scripts/check-quotes.py --all    # attribution grammar
 python3 scripts/check-roster.py          # table, files and aliases agree
 ```
 
+## Verifying pointers
+
+`scripts/verify-pointers.py FILE.md` fetches each `verbatim`/`attributed` pointer and checks the words are behind it. Run it by hand after adding or resourcing a persona; it needs the network, so nothing runs it automatically and it is never a gate. A FAIL means *look closer*, not that the corpus is wrong — on the sweep that produced the tool, ten FAILs in a row were bugs in the checker. It exits 0 whatever it finds unless you pass `--strict`.
+
 ## Evals
 
 `evals/evals.json` holds the behavioural tests for this skill: domain routing with no name given, a near-miss negative where "channel" is ordinary English, a chart question a neighbouring skill should win, and a persona named by surname with no trigger verb. The file states how to run them. Add a case before fixing any triggering or quote-integrity failure someone reports.
