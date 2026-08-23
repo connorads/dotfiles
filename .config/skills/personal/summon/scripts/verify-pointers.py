@@ -431,6 +431,24 @@ def looks_blocked(body: str) -> bool:
     return len(visible) <= BLOCK_MAX_CHARS and _signed(visible)
 
 
+# Every real page in the corpus sits at or below 0.004% replacement characters;
+# the two undecoded gzip bodies that prompted this sat at 44%. Anywhere in that
+# gap is safe, so the threshold is set where an argument about it is impossible.
+UNDECODED_RATIO = 0.05
+
+
+def looks_undecoded(body: str) -> bool:
+    """Whether a body is bytes we failed to decode rather than text.
+
+    ``_run`` reads with ``errors="replace"``, which is right for one mangled
+    character in an oddly-encoded page and wrong for a whole compressed body:
+    the result is a haystack of U+FFFD that matches nothing, so a fetch that
+    tested nothing reports as a FAIL. Catching it here means the *next*
+    encoding gap surfaces as "never tested" rather than as an accusation.
+    """
+    return bool(body) and body.count("�") / len(body) > UNDECODED_RATIO
+
+
 def _signed(text: str) -> bool:
     lowered = text.lower()
     return any(signature in lowered for signature in BLOCK_SIGNATURES)
@@ -486,6 +504,8 @@ def classify(quote: str, kind: str, body: str | None, error: str | None) -> Verd
         return Verdict(SKIP, error)
     if body is None:
         return Verdict(SKIP, "nothing fetched")
+    if looks_undecoded(body):
+        return Verdict(SKIP, "fetch returned bytes that are not text")
     if looks_blocked(body):
         return Verdict(SKIP, "fetch returned a block or interstitial page")
 
@@ -567,10 +587,16 @@ def _run(command: list[str], timeout: int = FETCH_TIMEOUT) -> tuple[str | None, 
     return done.stdout, None
 
 
+# `--compressed` is not an optimisation. A Wayback `id_` replay returns the
+# bytes as captured *together with the original* `Content-Encoding: gzip`,
+# whatever the request asked for, so without it curl exits 0 with gzip on
+# stdout and `errors="replace"` turns the whole body into mojibake - a fetch
+# that "succeeded" and tested nothing.
+CURL_BASE = ["curl", "-fsSL", "--compressed", "--max-time", str(FETCH_TIMEOUT), "-A", USER_AGENT]
+
+
 def _curl(url: str) -> tuple[str | None, str | None]:
-    return _run(
-        ["curl", "-fsSL", "--max-time", str(FETCH_TIMEOUT), "-A", USER_AGENT, url],
-    )
+    return _run([*CURL_BASE, url])
 
 
 def _require(tool: str) -> str | None:
@@ -595,19 +621,7 @@ def fetch(url: str, kind: str) -> tuple[str | None, str | None]:
             # Straight to a file: a PDF is bytes, and decoding it as text to
             # hand on would corrupt it before pdftotext ever sees it.
             source = Path(work) / "pointer.pdf"
-            _, error = _run(
-                [
-                    "curl",
-                    "-fsSL",
-                    "--max-time",
-                    str(FETCH_TIMEOUT),
-                    "-A",
-                    USER_AGENT,
-                    "-o",
-                    str(source),
-                    url,
-                ]
-            )
+            _, error = _run([*CURL_BASE, "-o", str(source), url])
             if error is not None:
                 return None, error
             return _run(["pdftotext", "-q", str(source), "-"])
