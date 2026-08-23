@@ -31,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
@@ -42,6 +43,10 @@ from quotelib import NEEDS_POINTER, URL, Quote, is_dossier, normalise, parse_quo
 # and a consecutive-word window is the confirmation. Ten words of prose recurring
 # in order is not coincidence; below that, only an exact match is evidence.
 MIN_WINDOW = 10
+
+# Routes carrying transcribed speech, which records disfluency. A video's
+# *description* is written, so it is not one of these.
+CAPTION_ROUTES = frozenset({"youtube_captions"})
 
 FETCH_TIMEOUT = 30
 # Honest-crawler convention: Mozilla-compatible so ordinary pages render, and
@@ -74,6 +79,34 @@ def strip_emphasis(key: str) -> str:
 def key(text: str) -> str:
     """The comparison key both sides of a match are folded to."""
     return strip_emphasis(normalise(text))
+
+
+def collapse_stutter(folded: str) -> str:
+    """Drop a word equal to its predecessor, in an already-folded key.
+
+    Auto-captions transcribe speech, so they record the stutters no written
+    quotation reproduces: a talk whose caption track says "we should kill rest
+    apis because they're they're not fundamentally publish subscribe" is quoted
+    with one ``they're``. An eleven-word quote leaves no room for the
+    consecutive-word window to absorb a mid-sentence disruption, so it windows
+    at 7 and fails while longer quotes carrying the same noise pass.
+
+    Collapsing *adjacent* duplicates is structurally safe: it can only remove an
+    immediately repeated token, so unlike a looser threshold it cannot fuse text
+    from two parts of a talk into a splice - the failure mode
+    ``references/attribution.md`` says a machine must never manufacture.
+
+    Layered on top of ``key`` in the same spirit as ``strip_emphasis`` sitting
+    on top of ``quotelib.normalise``, and scoped to caption routes: written
+    prose has no disfluency, so a doubled word in an essay is a real difference.
+    """
+    words = folded.split()
+    return " ".join(word for i, word in enumerate(words) if i == 0 or word != words[i - 1])
+
+
+def caption_key(text: str) -> str:
+    """The comparison key for a caption track: ``key``, minus stutters."""
+    return collapse_stutter(key(text))
 
 
 @dataclass(frozen=True)
@@ -406,12 +439,18 @@ class Match:
         return f"best window {self.window}/{self.total} words"
 
 
-def match(needle: str, haystack: str) -> Match:
-    """Longest run of the quote's words found in order on the page."""
-    words = key(needle).split()
+def match(needle: str, haystack: str, fold: Callable[[str], str] = key) -> Match:
+    """Longest run of the quote's words found in order on the page.
+
+    ``fold`` is injected so a route's tolerance stays visible at the judging
+    layer and ``match`` itself stays route-agnostic. It applies to both sides:
+    a dossier that reproduces a caption's stutter must still match one that
+    tidies it away.
+    """
+    words = fold(needle).split()
     if not words:
         return Match(False, 0, 0)
-    padded = f" {key(haystack)} "
+    padded = f" {fold(haystack)} "
     if f" {' '.join(words)} " in padded:
         return Match(True, len(words), len(words))
     for size in range(len(words) - 1, 0, -1):
@@ -445,7 +484,7 @@ def classify(quote: str, kind: str, body: str | None, error: str | None) -> Verd
     if not text.strip():
         return Verdict(SKIP, f"no text extracted from the {kind} body")
 
-    result = match(quote, text)
+    result = match(quote, text, fold=caption_key if kind in CAPTION_ROUTES else key)
     if result.exact:
         return Verdict(PASS, result.describe(), result.window, result.total)
     if result.total >= MIN_WINDOW and result.window >= MIN_WINDOW:
