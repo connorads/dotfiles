@@ -274,6 +274,40 @@ def test_a_caption_window_confirms_a_quote_that_cannot_match_exactly() -> None:
     assert verdict.window >= vp.MIN_WINDOW
 
 
+def test_a_stuttered_caption_still_matches_a_tidied_quote() -> None:
+    # Auto-captions transcribe speech, so they carry stutters no written
+    # quotation reproduces. A nine-word quote has no room for the window rule to
+    # absorb one, so without the caption fold this is a FAIL at 7/9.
+    body = fixture("vtt-disfluency.vtt")
+    quote = "We should stop treating the schema as an afterthought."
+    assert not vp.match(quote, vp.extract("youtube_captions", body)).exact
+    verdict = vp.classify(quote, "youtube_captions", body, None)
+    assert verdict.status == "PASS"
+    assert verdict.reason == "exact, 9 words"
+
+
+def test_the_stutter_fold_only_drops_an_immediately_repeated_word() -> None:
+    # The live case: `they're they're` normalises to an adjacent duplicate.
+    assert vp.caption_key("they're they're not fundamentally") == vp.key(
+        "they're not fundamentally"
+    )
+    # Adjacent-only is what makes it safe. A non-adjacent repeat survives, so
+    # the fold can shorten a run but never fuse two parts of a talk into one.
+    assert vp.caption_key("we ship we ship") == "we ship we ship"
+
+
+def test_a_doubled_word_in_written_prose_stays_a_difference() -> None:
+    # Scoping, pinned. Essays have no disfluency, so the same fold on the html
+    # route would be tolerating a real difference.
+    verdict = vp.classify(
+        "We should stop treating the schema as an afterthought.",
+        "html",
+        "<p>we should should stop treating the schema as an afterthought</p>",
+        None,
+    )
+    assert verdict.status == "FAIL"
+
+
 def test_a_short_quote_needs_an_exact_match() -> None:
     # Below the window threshold a partial run is not evidence of anything.
     verdict = vp.classify("one two three four five", "html", "<p>one two three only</p>", None)
@@ -325,6 +359,11 @@ CASES = {
         ' velocity."\n'
         "-- verbatim | talk: On velocity, Example Conf, 2019, 12:04"
         " | https://www.youtube.com/watch?v=vttfixture\n"
+    ),
+    "vtt-disfluency": (
+        '> "We should stop treating the schema as an afterthought."\n'
+        "-- verbatim | talk: On schemas, Example Conf, 2020, 00:28"
+        " | https://www.youtube.com/watch?v=disfluency\n"
     ),
     "github-blob": (
         '> "Every allocation matters when you are creating thousands of objects per frame."\n'
