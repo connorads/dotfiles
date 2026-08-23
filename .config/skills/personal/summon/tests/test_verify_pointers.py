@@ -140,6 +140,25 @@ def test_a_raw_markdown_url_is_never_treated_as_html() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "attribution",
+    [
+        "-- attributed | Agentifying your product, slide at 18:05 | https://youtu.be/abc",
+        "-- verbatim | slides: Optimized for what, slide 31 of 152 | https://example.com/x",
+        "-- attributed | Talk title, on the slide, 2019 | https://youtu.be/abc",
+    ],
+)
+def test_a_slide_locus_is_recognised(attribution: str) -> None:
+    assert vp.names_a_slide(attribution)
+
+
+def test_a_slideshow_url_alone_is_not_a_slide_locus() -> None:
+    # The locus is what the author wrote, not what the URL happens to contain.
+    assert not vp.names_a_slide(
+        "-- verbatim | talk: On velocity, 12:04 | https://www.slideshare.net/slideshow/x/1"
+    )
+
+
 def test_an_archive_item_page_is_not_full_text() -> None:
     plan = vp.route("https://archive.org/details/somebook")
     assert plan.kind == "not_full_text"
@@ -602,6 +621,31 @@ def test_a_client_challenge_wall_skips_rather_than_failing(tmp_path: Path) -> No
     write_skill(tmp_path, {"walled.md": body})
     result = run(tmp_path, "--all")
     assert "0 pass, 0 fail, 1 skip" in result.stdout
+
+
+def test_a_slide_quote_on_a_video_pointer_skips_rather_than_failing(tmp_path: Path) -> None:
+    # Pinned at the locus layer: no fetch happens, so this passes with an empty
+    # cache. Slide text is rendered into pixels, which no caption track carries.
+    body = (
+        '> "Be as ambitious as you can be, but no more."\n'
+        "-- attributed | Agentifying your product, slide at 21:05"
+        " | https://www.youtube.com/watch?v=neverfetched\n"
+    )
+    write_skill(tmp_path, {"slide.md": body})
+    result = run(tmp_path, "--all")
+    assert "0 pass, 0 fail, 1 skip" in result.stdout
+    assert "cited to a slide" in result.stdout
+
+
+def test_a_spoken_quote_on_the_same_video_pointer_is_still_verified(tmp_path: Path) -> None:
+    # Scoping: only the slide locus opts out, not every quote from the talk.
+    body = (
+        '> "We should stop treating the schema as an afterthought."\n'
+        "-- verbatim | talk: On schemas, Example Conf, 2020, 00:28"
+        " | https://www.youtube.com/watch?v=disfluency\n"
+    )
+    write_skill(tmp_path, {"spoken.md": body})
+    assert "1 pass, 0 fail, 0 skip" in run(tmp_path, "--all").stdout
 
 
 def test_an_archive_item_page_skips_with_a_named_reason(tmp_path: Path) -> None:

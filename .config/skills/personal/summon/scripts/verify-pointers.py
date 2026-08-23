@@ -548,6 +548,23 @@ def match_elided(segments: list[str], folded_haystack: str) -> Match:
     return Match(True, total, total)
 
 
+# Routes behind a video URL. Both read text the speaker or the uploader wrote
+# out; neither reads the pixels, which is where a slide's words are. The
+# `slideshare` route is deliberately absent - a deck page does carry slide text.
+SPEECH_ONLY_ROUTES = frozenset({"youtube_captions", "youtube_description"})
+
+# `slide at 18:05`, `slide 31 of 152`, `on the slide`. The locus is the author
+# saying which artefact the words are in, and it is the only thing that
+# distinguishes a slide quote from a spoken one under the same URL.
+SLIDE_LOCUS = re.compile(r"\bslides?\b", re.IGNORECASE)
+
+
+def names_a_slide(attribution: str) -> bool:
+    """Whether the attribution locates the quote on a slide rather than in speech."""
+    # The URL can hold `/slideshow/`, so it is not part of the locus.
+    return bool(SLIDE_LOCUS.search(URL.sub(" ", attribution)))
+
+
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 
 
@@ -763,6 +780,19 @@ def verify_quote(quote: Quote, cache: Cache) -> Result:
     plan = route(pointer)
     if plan.kind == "not_full_text":
         return Result(quote.line, quote.text, pointer, plan.kind, Verdict(SKIP, plan.reason))
+
+    if names_a_slide(attribution) and plan.kind in SPEECH_ONLY_ROUTES:
+        # The locus says the words are on a slide, and every route behind a video
+        # URL reads speech or the description. Text rendered into pixels is in
+        # neither, so a FAIL here accuses the corpus of something the fetch could
+        # not look at. attribution.md already rules slide text unconfirmable.
+        return Result(
+            quote.line,
+            quote.text,
+            pointer,
+            plan.kind,
+            Verdict(SKIP, "quote is cited to a slide, which no caption track carries"),
+        )
 
     attempts = []
     for kind in (plan.kind, *plan.alternates):
