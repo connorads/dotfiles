@@ -87,6 +87,11 @@ _run_needle_patch() {
   local marker="$HOME/.cache/$patch_name.stale"
   local missing_body=$'Pi likely changed its generated clipboard helper. Ctrl+V image paste\nwill revert until this needle is updated or the patch is removed.'
   local missing_banner='Ctrl+V image paste fallback will revert'
+  # Both replacements deliberately change length: the target is plain generated
+  # JS, not a Bun single-file binary with a byte-offset trailer to corrupt.
+  # Declared local because the lib is sourced once per sub-patch from this
+  # frame, and a global would carry into the second.
+  local same_length=0
   local -a patch_args=()
 
   [[ $mode != patch ]] && patch_args+=("--$mode")
