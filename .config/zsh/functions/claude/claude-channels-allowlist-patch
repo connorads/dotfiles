@@ -28,8 +28,8 @@ setopt no_unset pipe_fail
 local wrapper="${${(%):-%x}:A}"
 local patch_name=claude-channels-allowlist-patch
 local patch_label='--channels allowlist'
-local needle='if(!o.dev){'
-local replace='if(0&&o.d){'
+local needle='if(!i.dev){'
+local replace='if(0&&i.d){'
 local marker="$HOME/.cache/claude-channels-allowlist-patch.stale"
 local missing_body=$'The guard was likely renamed/reminified upstream; the allowlist\ngate will re-block --channels plugins until the needle in\nclaude-channels-allowlist-patch is updated.'
 local missing_banner='--channels allowlist gate will re-block'
