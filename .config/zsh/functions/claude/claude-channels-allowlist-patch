@@ -4,20 +4,59 @@
 # --reapply: install-hook-friendly patch — clears the stale marker on success,
 #            but on a missing needle warns loudly, writes the marker, exits 0.
 #
-# Why: gateChannelServer (YTt) gates every non-dev channel on an allowlist —
-#   if(!o.dev){let{entries:i}=VJn(...);if(!i.some(...))return{...kind:"allowlist"}}
+# Why: gateChannelServer gates every non-dev channel on an allowlist. Its
+# plugin branch reads the effective list and, on no match, returns
+#   {action:"skip",kind:"allowlist"}
+# so the channel never registers. All three registration paths — first connect,
+# reconnect, and the SDK channel_enable control request — are gated on that same
+# call returning "register", so a skip is total.
+#
 # The effective allowlist is either managed-org allowedChannelPlugins or the
 # tengu_harbor_ledger remote-config feature (default []). With telemetry disabled
 # (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1) the ledger read short-circuits to that
-# empty default, so *no* plugin is ever allowlisted and --channels servers skip
-# with "not on the approved channels allowlist" — even the official telegram
-# plugin. There is no user-scope settings key or slash command for this list
-# (anthropics/claude-code#58152); the only self-serve path is the per-launch,
-# dialog-gated --dangerously-load-development-channels flag.
+# empty default, so *no* plugin is ever allowlisted — not even the official
+# telegram plugin. There is no user-scope settings key or slash command for this
+# list (anthropics/claude-code#58152); the only self-serve path is the
+# per-launch, dialog-gated --dangerously-load-development-channels flag.
 #
 # Flipping the guard condition to a constant-false skips the allowlist branch for
 # every entry, so any server explicitly passed via --channels registers without
 # the dev flag or startup dialog: `0&&…` short-circuits, block skipped.
+#
+# Scope: the plugin: branch only. The same function's server:-form arm skips on
+# its own `else if(!<name>.dev)`, which this patch leaves in place, so
+# `--channels server:foo` still needs the dev flag. The cyc alias passes a
+# plugin: entry, so nothing needs that arm today.
+#
+# --check proves the needle applied; it does not prove the channel registered.
+# For that, launch with --debug and grep the session's ~/.claude/debug/*.txt:
+#   "Channel notifications registered" / "re-registered after reconnect"
+#     -> the gate returned register
+#   "Channel notifications skipped: … not on the approved channels allowlist"
+#     -> the gate is still blocking
+# Nothing is written without --debug. The blocked case's on-screen warning is a
+# 12-second toast, and print mode (-p) never connects a channel at all, so
+# neither is a usable check.
+#
+# Two bits of UI look like that answer and are not. Both are render-only, and
+# both were measured against the debug log above on the same session:
+#
+# 1. The startup line
+#      plugin telegram@claude-plugins-official · not on the approved channels allowlist
+#    still renders after patching and is *not* failure. A separate warning
+#    builder (`uAm` in 2.1.227) re-derives allowlist membership for display and
+#    never calls the gate; its result is only mapped into JSX and nothing
+#    branches on it, so it reads identically patched and unpatched. It is also
+#    accurate: this patch bypasses the membership check, it does not add the
+#    plugin to the list, so membership really is unchanged — only the
+#    consequence it implies is wrong. It may sit behind "+1 more · /status".
+#
+# 2. /status's "Channels: Listening for messages from …" is the false positive
+#    the other way round. It is built from the parsed --channels entries and
+#    suppressed only by a non-firstParty provider, the tengu_harbor master gate,
+#    or org policy; the allowlist is never consulted. Measured: it reads
+#    "Listening for messages from plugin:telegram@…" in the very session whose
+#    debug log says "skipped: … not on the approved channels allowlist".
 #
 # The guarded local is a minified name, not a stable one. 2.1.227 reminified the
 # scope and renamed it `o` -> `i`, which silently dropped a fixed-byte needle and
