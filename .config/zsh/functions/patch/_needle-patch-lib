@@ -1,5 +1,30 @@
 # _needle-patch-lib: shared needle-patch engine (patch/check/restore/reapply) for patch wrappers
 # zsh-only: sourced lib, not executed
+#
+# Required wrapper settings:
+#   patch_name patch_label needle replace marker missing_body missing_banner
+#
+# Optional wrapper settings:
+#   needle_kind   literal (default) | slots
+#   same_length   1 (default) assert the replacement is byte-length-identical
+#
+# A minified name is not stable across upstream rebuilds, so `slots` mode lets a
+# needle name one without pinning it: every `%s` matches a minified identifier
+# and is re-emitted verbatim in the replacement, positionally. `%%` is a literal
+# percent. So `if(!%s.dev){` -> `if(0&&%s.d){` patches `if(!o.dev){` and
+# `if(!i.dev){` alike, and survives the next reminification.
+#
+# Slots rather than a raw regex, for three reasons: the patched pattern is
+# derived from `replace` by the same expansion, so --check cannot misreport by
+# having one pattern updated and another forgotten; there is no escaping burden,
+# where one missed backslash before a `.` silently broadens a match across a
+# 300MB binary; and the identifier class cannot match NUL or newline, so binary
+# safety is structural rather than tested for.
+#
+# `same_length` is the Bun invariant: a single-file binary embeds a byte-offset
+# source trailer, so an edit that changes length corrupts it. Each slot re-emits
+# its capture verbatim, so the length delta depends only on the literal chunks
+# and is checkable once at startup, before a target is opened.
 emulate -L zsh
 setopt no_unset pipe_fail
 
@@ -10,6 +35,13 @@ for required in patch_name patch_label needle replace marker missing_body missin
     return 2
   fi
 done
+
+# Optional settings are read into engine-owned locals rather than defaulted in
+# place. pi-image-paste-patch sources this lib twice from one function frame, so
+# assigning back into the caller's names would carry the first sub-patch's
+# config into the second.
+local needle_kind_opt="${needle_kind:-literal}"
+local same_length_opt="${same_length:-1}"
 
 local mode=patch
 local select_all=0
@@ -31,6 +63,142 @@ while (( $# )); do
     *) break ;;
   esac
 done
+
+# One python3 helper backs config validation, counting and rewriting, so a
+# needle is matched by exactly the same rules whether we are checking the
+# config, reporting on it, or replacing it. Config crosses as argv, never
+# interpolated into the heredoc - that is what keeps zsh quoting out of the
+# matching semantics.
+#   compile        -> validate the config alone; exit 2 with a reason if bad
+#   count <path>   -> "<unpatched-matches> <patched-matches>" on stdout
+#   apply <path>   -> rewrite in place; non-zero exit if nothing matched
+_needle_patch_py() {
+  /usr/bin/python3 - "$1" "${2:-}" "$needle" "$replace" \
+    "$needle_kind_opt" "$same_length_opt" <<'PY'
+import mmap
+import os
+import pathlib
+import re
+import sys
+
+op = sys.argv[1]
+# fsencode, not str.encode: a non-ASCII needle reaches argv as surrogates and
+# .encode() raises UnicodeEncodeError on it.
+needle = os.fsencode(sys.argv[3])
+repl = os.fsencode(sys.argv[4])
+kind = sys.argv[5]
+same_length = sys.argv[6]
+
+# A minified local: the JS identifier characters a minifier actually emits.
+# Deliberately narrow - it cannot match NUL or newline, so slot mode is binary
+# safe by construction rather than by test.
+IDENT = rb"[A-Za-z_$][A-Za-z0-9_$]*"
+
+
+def fail(message: str) -> None:
+    print(f"_needle-patch-lib: {message}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def split_slots(spec: bytes, what: str) -> "list[bytes]":
+    """Split a %s-slotted spec into its literal chunks. %% is a literal %."""
+    chunks = [bytearray()]
+    i = 0
+    while i < len(spec):
+        char = spec[i : i + 1]
+        if char != b"%":
+            chunks[-1] += char
+            i += 1
+        elif spec[i + 1 : i + 2] == b"%":
+            chunks[-1] += b"%"
+            i += 2
+        elif spec[i + 1 : i + 2] == b"s":
+            chunks.append(bytearray())
+            i += 2
+        else:
+            fail(f"{what}: '%' must be followed by 's' or '%' (at byte {i})")
+    return [bytes(chunk) for chunk in chunks]
+
+
+if same_length not in ("0", "1"):
+    fail(f"same_length: expected 0 or 1, got {same_length!r}")
+
+if kind == "literal":
+    needle_chunks, repl_chunks = [needle], [repl]
+elif kind == "slots":
+    needle_chunks = split_slots(needle, "needle")
+    repl_chunks = split_slots(repl, "replace")
+else:
+    fail(f"needle_kind: expected 'literal' or 'slots', got {kind!r}")
+
+if len(needle_chunks) != len(repl_chunks):
+    fail(
+        f"slot count mismatch: needle has {len(needle_chunks) - 1} %s, "
+        f"replace has {len(repl_chunks) - 1}"
+    )
+
+# Each slot re-emits its capture verbatim, so the length delta depends only on
+# the literal chunks - knowable here, before any target is opened.
+delta = sum(len(c) for c in repl_chunks) - sum(len(c) for c in needle_chunks)
+if same_length == "1" and delta != 0:
+    fail(
+        f"same_length: replacement changes length by {delta:+d} bytes "
+        "(set same_length=0 if the target has no byte-offset trailer)"
+    )
+
+# The engine's one internal representation: a pattern for the unpatched shape,
+# a callable that emits its replacement, and a pattern for the patched shape
+# derived from the same `replace` - so --check cannot misreport by having one
+# pattern updated and the other forgotten. re.escape plus a replacement
+# *callable* is byte-for-byte equivalent to bytes.replace in literal mode, and
+# the callable returns literally, so a `\1` or `&` is never a backreference.
+CAPTURE = b"(" + IDENT + b")"
+unpatched = re.compile(CAPTURE.join(re.escape(c) for c in needle_chunks))
+patched = re.compile(IDENT.join(re.escape(c) for c in repl_chunks))
+
+
+def replacement(match: "re.Match[bytes]") -> bytes:
+    out = bytearray(repl_chunks[0])
+    for slot, chunk in enumerate(repl_chunks[1:], start=1):
+        out += match.group(slot)
+        out += chunk
+    return bytes(out)
+
+
+if op == "compile":
+    raise SystemExit(0)
+
+path = pathlib.Path(sys.argv[2])
+
+if op == "count":
+    # mmap keeps a 300MB+ single-file binary off the heap. An empty file cannot
+    # be mapped at all, and trivially holds no matches.
+    if path.stat().st_size == 0:
+        print("0 0")
+        raise SystemExit(0)
+    with path.open("rb") as fh:
+        with mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as data:
+            print(
+                sum(1 for _ in unpatched.finditer(data)),
+                sum(1 for _ in patched.finditer(data)),
+            )
+    raise SystemExit(0)
+
+mode = path.stat().st_mode
+data = path.read_bytes()
+new, count = unpatched.subn(replacement, data)
+if count == 0:
+    sys.exit("no replacement made")
+tmp = path.with_suffix(path.suffix + ".tmp")
+tmp.write_bytes(new)
+os.chmod(tmp, mode)
+tmp.replace(path)
+PY
+}
+
+# Malformed config is a wrapper bug, not a target problem, so it exits 2 here -
+# before a target is resolved, let alone opened or backed up.
+_needle_patch_py compile || return 2
 
 # Resolve targets (deduped by realpath so symlinks do not double up). Wrappers
 # should either pass explicit target paths or define needle_patch_resolve_targets,
@@ -87,66 +255,6 @@ _needle_patch_warn_missing() {
   print -u2 "#   needle: $needle"
   print -u2 "# Update the needle in $patch_name. Marker: $marker"
   print -u2 "################################################################"
-}
-
-# One python3 helper backs both counting and rewriting, so a needle is matched
-# by exactly the same rules whether we are reporting on it or replacing it.
-# Config crosses as argv, never interpolated into the heredoc - that is what
-# keeps zsh quoting out of the matching semantics.
-#   count <path>  -> "<unpatched-matches> <patched-matches>" on stdout
-#   apply <path>  -> rewrite in place; non-zero exit if nothing matched
-_needle_patch_py() {
-  /usr/bin/python3 - "$1" "$2" "$needle" "$replace" <<'PY'
-import mmap
-import os
-import pathlib
-import re
-import sys
-
-op = sys.argv[1]
-path = pathlib.Path(sys.argv[2])
-# fsencode, not str.encode: a non-ASCII needle reaches argv as surrogates and
-# .encode() raises UnicodeEncodeError on it.
-needle = os.fsencode(sys.argv[3])
-repl = os.fsencode(sys.argv[4])
-
-# The engine's one internal representation: a pattern for the unpatched shape,
-# a callable that emits its replacement, and a pattern for the patched shape.
-# re.escape + a replacement *callable* is byte-for-byte equivalent to
-# bytes.replace here - the callable's return value is literal, so a `\1` or `&`
-# in the replacement is not a backreference.
-unpatched = re.compile(re.escape(needle))
-patched = re.compile(re.escape(repl))
-
-
-def replacement(match: "re.Match[bytes]") -> bytes:
-    return repl
-
-
-if op == "count":
-    # mmap keeps a 300MB+ single-file binary off the heap. An empty file cannot
-    # be mapped at all, and trivially holds no matches.
-    if path.stat().st_size == 0:
-        print("0 0")
-        raise SystemExit(0)
-    with path.open("rb") as fh:
-        with mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as data:
-            print(
-                sum(1 for _ in unpatched.finditer(data)),
-                sum(1 for _ in patched.finditer(data)),
-            )
-    raise SystemExit(0)
-
-mode = path.stat().st_mode
-data = path.read_bytes()
-new, count = unpatched.subn(replacement, data)
-if count == 0:
-    sys.exit("no replacement made")
-tmp = path.with_suffix(path.suffix + ".tmp")
-tmp.write_bytes(new)
-os.chmod(tmp, mode)
-tmp.replace(path)
-PY
 }
 
 local rc=0 real counts before after

@@ -23,6 +23,8 @@ local replace=AFTER
 local marker="\$HOME/.cache/test-needle-patch.stale"
 local missing_body='The test patch needle was not found.'
 local missing_banner='test replacement will revert'
+# AFTER is a byte shorter than BEFORE, so this wrapper opts out.
+local same_length=0
 
 if [[ \${NEEDLE_PATCH_DEFINE_RESOLVER:-0} == 1 ]]; then
   needle_patch_resolve_targets() {
@@ -40,11 +42,13 @@ EOF
   printf '%s\n' "$path"
 }
 
-# Same wrapper, but with needle/replace given as zsh $'...' literals so a test
-# can exercise bytes a shell argument cannot carry (newline, NUL).
+# Same wrapper, but with needle/replace given as zsh literals (so a test can use
+# bytes a shell argument cannot carry - newline, NUL) plus any extra settings
+# lines the test wants, e.g. 'local needle_kind=slots'.
 write_literal_patch_wrapper() {
   local needle_literal="$1"
   local replace_literal="$2"
+  local extra="${3:-local same_length=0}"
   local path="$BATS_TEST_TMPDIR/literal-needle-wrapper"
   local lib_path="$FUNCTIONS_DIR/patch/_needle-patch-lib"
 
@@ -63,6 +67,7 @@ local replace=$replace_literal
 local marker="\$HOME/.cache/test-needle-patch.stale"
 local missing_body='The test patch needle was not found.'
 local missing_banner='test replacement will revert'
+$extra
 
 source "$lib_path" "\$@"
 EOF
@@ -243,6 +248,121 @@ setup() {
 
   [ "$status" -eq 0 ]
   cmp -s "$target" "$expected"
+}
+
+@test "slot mode patches two different minified names in one run" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'if(!%s.dev){'" "'if(0&&%s.d){'" \
+    $'local needle_kind=slots\nlocal same_length=1')"
+  target="$HOME/renamed.bundle"
+  printf 'aa if(!o.dev){ bb if(!i.dev){ cc' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"(2 occurrence(s);"* ]]
+  grep -qF 'aa if(0&&o.d){ bb if(0&&i.d){ cc' "$target"
+}
+
+@test "slot mode holds same_length for an arbitrarily long identifier" {
+  local wrapper target before_bytes after_bytes
+  wrapper="$(write_literal_patch_wrapper "'if(!%s.dev){'" "'if(0&&%s.d){'" \
+    $'local needle_kind=slots\nlocal same_length=1')"
+  target="$HOME/longname.bundle"
+  printf 'aa if(!$aVeryLongMinifiedName_42.dev){ bb' >"$target"
+  before_bytes=$(wc -c <"$target")
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 0 ]
+  grep -qF 'if(0&&$aVeryLongMinifiedName_42.d){' "$target"
+  after_bytes=$(wc -c <"$target")
+  [ "$before_bytes" -eq "$after_bytes" ]
+}
+
+@test "slot mode does not match a non-identifier or an empty slot" {
+  local wrapper empty_slot digit_lead
+  wrapper="$(write_literal_patch_wrapper "'BEFORE(%s)!'" "'AFTER(%s)!'" \
+    $'local needle_kind=slots\nlocal same_length=0')"
+  empty_slot="$HOME/empty-slot.bundle"
+  digit_lead="$HOME/digit-lead.bundle"
+  printf 'x BEFORE()! y' >"$empty_slot"
+  printf 'x BEFORE(9x)! y' >"$digit_lead"
+
+  run_zsh_function "$wrapper" --check "$empty_slot" "$digit_lead"
+
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | grep -c '^no-pattern:')" -eq 2 ]
+}
+
+@test "slot mode reads %% as a literal percent, not a slot" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'%%d(%s)'" "'%%x(%s)'" \
+    $'local needle_kind=slots\nlocal same_length=1')"
+  target="$HOME/percent.bundle"
+  printf 'aa %%d(fmt) bb' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 0 ]
+  grep -qF 'aa %x(fmt) bb' "$target"
+}
+
+@test "a malformed slot spec exits 2 and leaves the target untouched" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'BEFORE(%d)'" "'AFTER(%d)'" \
+    $'local needle_kind=slots\nlocal same_length=0')"
+  target="$HOME/app.bundle"
+  printf 'BEFORE(x)' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"'%' must be followed by 's' or '%'"* ]]
+  grep -qF 'BEFORE(x)' "$target"
+  [ ! -f "$target.unpatched" ]
+}
+
+@test "a slot count mismatch exits 2 and leaves the target untouched" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'BEFORE(%s)'" "'AFTER(%s,%s)'" \
+    $'local needle_kind=slots\nlocal same_length=0')"
+  target="$HOME/app.bundle"
+  printf 'BEFORE(x)' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"slot count mismatch"* ]]
+  grep -qF 'BEFORE(x)' "$target"
+}
+
+@test "a same_length violation exits 2 before opening the target" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'BEFORE'" "'AFTER'" 'local same_length=1')"
+  target="$HOME/app.bundle"
+  printf 'BEFORE' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"replacement changes length by -1 bytes"* ]]
+  grep -qF 'BEFORE' "$target"
+  [ ! -f "$target.unpatched" ]
+}
+
+@test "an unknown needle_kind exits 2" {
+  local wrapper target
+  wrapper="$(write_literal_patch_wrapper "'BEFORE'" "'AFTER'" \
+    $'local needle_kind=regex\nlocal same_length=0')"
+  target="$HOME/app.bundle"
+  printf 'BEFORE' >"$target"
+
+  run_zsh_function "$wrapper" "$target"
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"needle_kind: expected 'literal' or 'slots'"* ]]
+  grep -qF 'BEFORE' "$target"
 }
 
 @test "resolver honours --all and dedupes symlinked targets" {
