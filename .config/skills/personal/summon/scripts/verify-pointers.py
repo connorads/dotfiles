@@ -273,6 +273,13 @@ JSON_ESCAPE = re.compile(r'\\u([0-9a-fA-F]{4})|\\(["\\/nrtbf])')
 VTT_INLINE_TAG = re.compile(r"(?s)<[^>]*>")
 VTT_CUE = re.compile(r"-->")
 
+# A video publishes several English caption tracks and the quote may be in any
+# of them, so all are fetched into one body. TRACK_BREAK separates them there;
+# TRACK_BARRIER separates the extracted texts. The barrier has to survive
+# `normalise`, which folds punctuation away, so it is a word no quotation holds.
+TRACK_BREAK = "\nNOTE summon-track-break\n"
+TRACK_BARRIER = " summontrackbreak "
+
 
 def looks_like_html(body: str) -> bool:
     """Whether a body is real HTML, as against text that merely holds ``<``.
@@ -373,7 +380,10 @@ def extract(kind: str, body: str) -> str:
         return " ".join(body.split())
 
     if kind == "youtube_captions":
-        return extract_vtt(body)
+        # Per track, then barrier-joined. Reading the concatenation as one track
+        # would let a run of words span the end of one and the start of another,
+        # which is a splice across artefacts - exactly what must never confirm.
+        return TRACK_BARRIER.join(extract_vtt(part) for part in body.split(TRACK_BREAK))
 
     if kind == "youtube_description":
         return " ".join(body.split())
@@ -751,7 +761,14 @@ def fetch(url: str, kind: str) -> tuple[str | None, str | None]:
             tracks = sorted(Path(work).glob("*.vtt"))
             if not tracks:
                 return None, error or "no English caption track published"
-            return tracks[0].read_text(encoding="utf-8", errors="replace"), None
+            # Every English track, not the first one by filename. `en.*` also
+            # matches a manual track that is not a transcript at all - Every
+            # Frame a Painting publishes one naming the films on screen - and
+            # byte order put that ahead of the narration, so a 45-word quote
+            # windowed at 1. TRACK_BREAK keeps the seams visible to `extract`.
+            return TRACK_BREAK.join(
+                track.read_text(encoding="utf-8", errors="replace") for track in tracks
+            ), None
 
     if kind == "youtube_description":
         if missing := _require("yt-dlp"):
