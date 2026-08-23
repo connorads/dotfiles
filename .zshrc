@@ -122,18 +122,16 @@ export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
 export CLAUDE_CODE_NO_FLICKER=1
 
-# Surface a stale --channels patch (needle rename) left by claude-channels-patch
-# --reapply, so an upstream flag rename can't be silently forgotten.
-[[ -f "$HOME/.cache/claude-channels-patch.stale" ]] && \
-  print -P "%F{yellow}claude-channels-patch:%f needle missing - see $HOME/.cache/claude-channels-patch.stale"
-
-# Surface a stale computer-use patch (default-config reshape) the same way.
-[[ -f "$HOME/.cache/claude-computer-use-patch.stale" ]] && \
-  print -P "%F{yellow}claude-computer-use-patch:%f needle missing - see $HOME/.cache/claude-computer-use-patch.stale"
-
-# Surface a stale session-reaper patch (liveness helper reshape) the same way.
-[[ -f "$HOME/.cache/claude-session-reaper-patch.stale" ]] && \
-  print -P "%F{yellow}claude-session-reaper-patch:%f needle missing - see $HOME/.cache/claude-session-reaper-patch.stale"
+# Surface every stale needle-patch marker, so an upstream rename or reshape
+# can't be silently forgotten. A --reapply that cannot apply its needle writes
+# one of these and still exits 0, so this line is the only thing that reports
+# it. Globbed rather than listed per patch: the three that were named here
+# covered four of the markers actually written, and the one that mattered -
+# claude-channels-allowlist-patch - was not among them.
+for _stale in "$HOME"/.cache/*-patch.stale(N); do
+  print -P "%F{yellow}${_stale:t:r}:%f needle missing - see $_stale"
+done
+unset _stale
 
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
