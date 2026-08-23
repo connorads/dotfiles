@@ -78,6 +78,27 @@
                 doInstallCheck = false;
               });
 
+              # TODO(mise-check): remove once nixpkgs ships a mise whose http
+              # tests pass on darwin. 2026.8.6's
+              # test_read_bounded_error_body_honors_deadline mock server writes
+              # its 401 on accept() without reading the request, so on loopback
+              # the response can beat hyper's request flush and `send()` fails
+              # with UnexpectedMessage. Fails the same way on Hydra - no
+              # aarch64-darwin cache entry, while both Linux platforms are
+              # cached - so it is darwin-only, not load flakiness. The package
+              # itself is fine. Guarded on the exact version so the override
+              # evaporates on the next bump rather than quietly costing a
+              # from-source build forever once upstream fixes it.
+              mise =
+                if prev.stdenv.hostPlatform.isDarwin && prev.mise.version == "2026.8.6" then
+                  prev.mise.overrideAttrs (old: {
+                    checkFlags = (old.checkFlags or [ ]) ++ [
+                      "--skip=http::tests::test_read_bounded_error_body_honors_deadline"
+                    ];
+                  })
+                else
+                  prev.mise;
+
               tmux = prev.tmux.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [
                   ./patches/dim-inactive-panes.patch
