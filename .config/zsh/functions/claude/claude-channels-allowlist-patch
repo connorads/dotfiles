@@ -17,9 +17,22 @@
 #
 # Flipping the guard condition to a constant-false skips the allowlist branch for
 # every entry, so any server explicitly passed via --channels registers without
-# the dev flag or startup dialog. This is length-preserving (Bun single-file
-# binaries embed a byte-offset source trailer, so edits must not change length):
-# `if(!o.dev){` (11) -> `if(0&&o.d){` (11); `0&&…` short-circuits, block skipped.
+# the dev flag or startup dialog: `0&&…` short-circuits, block skipped.
+#
+# The guarded local is a minified name, not a stable one. 2.1.227 reminified the
+# scope and renamed it `o` -> `i`, which silently dropped a fixed-byte needle and
+# put the gate back with no signal beyond a marker nothing surfaced. So the
+# needle slots the name and re-emits whatever it captured, absorbing the next
+# rename: `if(!%s.dev){` -> `if(0&&%s.d){`.
+#
+# Length-preserving for any name length, which Bun single-file binaries require
+# (they embed a byte-offset source trailer, so an edit must not change length):
+# the slot re-emits its capture verbatim, and `.dev` -> `.d` gives back exactly
+# the two bytes `if(` -> `if(0&&` takes. same_length=1 asserts that at startup.
+#
+# expect_matches=1 because the site is verified unique: `.dev){` occurs exactly
+# once in each installed binary (257-325MB), so a second match means the pattern
+# has broadened and the patch should refuse rather than guess.
 # Complements claude-channels-patch, which flips the tengu_harbor master gate.
 
 emulate -L zsh
@@ -28,10 +41,13 @@ setopt no_unset pipe_fail
 local wrapper="${${(%):-%x}:A}"
 local patch_name=claude-channels-allowlist-patch
 local patch_label='--channels allowlist'
-local needle='if(!i.dev){'
-local replace='if(0&&i.d){'
+local needle='if(!%s.dev){'
+local replace='if(0&&%s.d){'
+local needle_kind=slots
+local same_length=1
+local expect_matches=1
 local marker="$HOME/.cache/claude-channels-allowlist-patch.stale"
-local missing_body=$'The guard was likely renamed/reminified upstream; the allowlist\ngate will re-block --channels plugins until the needle in\nclaude-channels-allowlist-patch is updated.'
+local missing_body=$'The guard was likely reshaped upstream (a rename alone is absorbed by\nthe %s slot); the allowlist gate will re-block --channels plugins until\nthe needle in claude-channels-allowlist-patch is updated.'
 local missing_banner='--channels allowlist gate will re-block'
 
 source "${wrapper:h}/_claude-patch-targets-lib"
