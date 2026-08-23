@@ -242,6 +242,23 @@ def test_caption_word_timings_are_still_stripped() -> None:
     ) == ("we ship")
 
 
+def test_every_english_caption_track_reaches_the_haystack() -> None:
+    # `--sub-langs en.*` also matches a manual track that is not a transcript -
+    # Every Frame a Painting publishes one naming the films on screen - and byte
+    # order put that ahead of the narration, so a 45-word quote windowed at 1.
+    text = vp.extract("youtube_captions", fixture("vtt-two-tracks.vtt"))
+    assert "Police Story 4" in text
+    assert "in his style action is comedy" in text
+
+
+def test_a_run_of_words_cannot_span_two_caption_tracks() -> None:
+    # Joining the tracks into one haystack would otherwise let the end of one
+    # and the start of the next read as contiguous speech - a splice across
+    # artefacts, which is the one thing a match must never manufacture.
+    text = vp.extract("youtube_captions", fixture("vtt-two-tracks.vtt"))
+    assert not vp.match("Project A 1983 in his style action is comedy", text).exact
+
+
 def test_rolling_captions_are_de_duplicated() -> None:
     text = vp.extract("youtube_captions", fixture("vtt-rolling-captions.vtt"))
     assert text.count("the fastest way to lose a") == 1
@@ -515,6 +532,11 @@ CASES = {
         '> "every benchmark is wrong until you can name the thing it is not measuring"\n'
         "-- verbatim | blog: On measuring things, example.com, 2024-03-17"
         " | https://example.com/measuring-things\n"
+    ),
+    "vtt-two-tracks": (
+        '> "In his style, action IS comedy. And that is what makes him worth watching."\n'
+        "-- verbatim | video: On Jackie Chan, YouTube, 2015, 00:20"
+        " | https://www.youtube.com/watch?v=twotracks\n"
     ),
     "vtt-disfluency": (
         '> "We should stop treating the schema as an afterthought."\n'
