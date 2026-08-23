@@ -146,6 +146,7 @@ WAYBACK = re.compile(r"^(https?://web\.archive\.org/web/)(\d{4,14})(/)(.*)$", re
 REDDIT_COMMENT = re.compile(r"^https?://(?:\w+\.)?reddit\.com/r/[^/]+/comments/\w+/[^/]*/(\w{5,})")
 X_POST = re.compile(r"^https?://(?:www\.)?(?:x|twitter)\.com/([^/]+)/status/(\d+)")
 ARXIV_ABS = re.compile(r"^https?://arxiv\.org/abs/(.+)$")
+LOCALFIRST_EPISODE = re.compile(r"^(https?://(?:www\.)?localfirst\.fm/\d+)/?$")
 
 PLAIN_TEXT_SUFFIXES = (".md", ".markdown", ".txt", ".rst", ".vtt", ".srt")
 
@@ -201,6 +202,12 @@ def route(url: str) -> Route:
         # Two artefacts behind one URL, and the quote may be in either. Captions
         # first because most are; the description is the common near-miss.
         return Route("youtube_captions", url, alternates=("youtube_description",))
+
+    if match := LOCALFIRST_EPISODE.match(url):
+        # The episode page is show notes; the interview is at `/<n>/transcript`.
+        # Named rather than sniffed, in the same spirit as the other per-site
+        # routes: the alternative is guessing at a transcript link on every page.
+        return Route("html", f"{match.group(1)}/transcript")
 
     if host == "archive.org" and path.startswith("/details/"):
         return Route(

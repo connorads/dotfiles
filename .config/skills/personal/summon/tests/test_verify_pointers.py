@@ -127,6 +127,11 @@ def test_escaped_markup_in_a_page_survives_tag_stripping() -> None:
             "pdf",
             "https://arxiv.org/pdf/1509.05393",
         ),
+        (
+            "https://www.localfirst.fm/13",
+            "html",
+            "https://www.localfirst.fm/13/transcript",
+        ),
     ],
 )
 def test_url_rewrites(url: str, kind: str, target: str) -> None:
@@ -463,6 +468,12 @@ CASES = {
         "> \"We don't know what we don't know about production.\"\n"
         "-- verbatim | blog: On production, example.com, 2020-01-01"
         " | https://example.com/entity-contractions\n"
+    ),
+    "localfirst-transcript": (
+        '> "The whole philosophy is redistribute the power away from the urban elite and'
+        ' into like the rural masses."\n'
+        "-- verbatim | podcast: localfirst.fm #13, 2024, 10:30"
+        " | https://www.localfirst.fm/13\n"
     ),
     "markdown-emphasis": (
         '> "the grammar _enforces_ the shape of that claim"\n'
