@@ -104,6 +104,18 @@ def collapse_stutter(folded: str) -> str:
     return " ".join(word for i, word in enumerate(words) if i == 0 or word != words[i - 1])
 
 
+# `[...]`, `[…]`, `…`, or three-or-more dots. The marker may sit against the
+# preceding word - `a wizard... I still` is the ordinary typography - but must
+# be followed by whitespace or the end, which is what keeps `1...2` and a
+# decimal out of it.
+ELISION = re.compile(r"(?:\[\s*(?:\.{3,}|…)\s*\]|\.{3,}|…)(?=\s|$)")
+
+
+def split_elisions(text: str) -> list[str]:
+    """Split a quote on its elision markers."""
+    return ELISION.split(text)
+
+
 def caption_key(text: str) -> str:
     """The comparison key for a caption track: ``key``, minus stutters."""
     return collapse_stutter(key(text))
@@ -474,10 +486,21 @@ def match(needle: str, haystack: str, fold: Callable[[str], str] = key) -> Match
     a dossier that reproduces a caption's stutter must still match one that
     tidies it away.
     """
+    folded_haystack = fold(haystack)
+
+    # Only ever an upgrade: a quote whose segments do not line up falls through
+    # to the contiguous rule below and is judged exactly as it was before, so
+    # the elision rule can turn a FAIL into a PASS and never the reverse.
+    segments = [seg for seg in (fold(part) for part in split_elisions(needle)) if seg]
+    if len(segments) > 1:
+        elided = match_elided(segments, folded_haystack)
+        if elided.exact:
+            return elided
+
     words = fold(needle).split()
     if not words:
         return Match(False, 0, 0)
-    padded = f" {fold(haystack)} "
+    padded = f" {folded_haystack} "
     if f" {' '.join(words)} " in padded:
         return Match(True, len(words), len(words))
     for size in range(len(words) - 1, 0, -1):
@@ -485,6 +508,40 @@ def match(needle: str, haystack: str, fold: Callable[[str], str] = key) -> Match
         if any(f" {span} " in padded for span in spans):
             return Match(False, size, len(words))
     return Match(False, 0, len(words))
+
+
+def match_elided(segments: list[str], folded_haystack: str) -> Match:
+    """Confirm each segment of an elided quote, in order and without overlap.
+
+    A quote that marks an elision - ``[...]``, ``…``, a bare ``...`` - is
+    telling the reader words were removed. ``normalise`` folds the marker away
+    as punctuation, so the surviving segments are demanded contiguous and a
+    quote that was honest about its own elision can never match.
+
+    Every segment must match *exactly*, and each must start after the previous
+    one ended. That is strictly stricter per segment than the window rule, and
+    the ordering is what stops the marker becoming a licence to splice: text
+    quoted out of order fails here, so an ellipsis cannot be used to reverse a
+    source's sense.
+
+    What it deliberately does not check is how much was elided. A marked
+    elision spanning three paragraphs passes, because the alternative is an
+    arbitrary word budget, and `guillermo-rauch.md:64` quotes three separate
+    bullets of one post exactly as a reader would. Whether an elision is
+    *faithful* is a reading of the source, and stays a human's call.
+    """
+    total = sum(len(segment.split()) for segment in segments)
+    padded = f" {folded_haystack} "
+    cursor = 0
+    matched = 0
+    for segment in segments:
+        found = padded.find(f" {segment} ", cursor)
+        if found < 0:
+            return Match(False, matched, total)
+        # Resume past this segment, so two segments cannot claim the same words.
+        cursor = found + len(segment) + 1
+        matched += len(segment.split())
+    return Match(True, total, total)
 
 
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
