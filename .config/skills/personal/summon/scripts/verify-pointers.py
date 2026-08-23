@@ -224,7 +224,12 @@ def route(url: str) -> Route:
 
 
 HTML_SNIFF = re.compile(r"(?is)<(?:!doctype\s+html|html|head|body|div|p|span|meta|a\s)\b")
-TAG = re.compile(r"(?s)<[^>]+>")
+# A tag opens with a name, a closing slash, `!` (doctype, comment) or `?` (PI).
+# Requiring one of those is what stops a bare `<` in the page's own prose - a
+# `<1%` in a performance post - from opening a span the stripper then runs to
+# the next `>` anywhere later in the document. `VTT_INLINE_TAG` stays permissive
+# because a caption's word timings genuinely do open with a digit.
+TAG = re.compile(r"(?s)</?[A-Za-z!?][^>]*>")
 DROPPED_ELEMENT = re.compile(r"(?is)<(script|style|noscript)\b[^>]*>.*?</\1>")
 SCRIPT_BODY = re.compile(r"(?is)<script\b[^>]*>(.*?)</script>")
 ALT_TEXT = re.compile(r"""(?is)\balt\s*=\s*(["'])(.*?)\1""")
@@ -249,6 +254,10 @@ def strip_tags(body: str) -> str:
     own prose into a tag the stripper then eats, and - the symptom that reads as
     mass fabrication - leaves ``don&#x27;t`` to normalise as ``don x27 t``, so
     every contraction in the corpus fails at once.
+
+    An *unescaped* ``<`` in prose is the same wound from the other side, and it
+    is silent: ``TAG`` is anchored to a tag-name start character precisely so
+    ``<1%`` cannot swallow the 1,654 characters up to the document's next ``>``.
     """
     body = DROPPED_ELEMENT.sub(" ", body)
     return " ".join(html.unescape(TAG.sub(" ", body)).split())
