@@ -331,6 +331,53 @@ def test_a_doubled_word_in_written_prose_stays_a_difference() -> None:
     assert verdict.status == "FAIL"
 
 
+def test_a_quote_that_marks_its_elisions_matches_each_segment() -> None:
+    # `normalise` folds `[...]` away as punctuation, so the segments either side
+    # were demanded contiguous and a quote honest about its own elision could
+    # never match.
+    haystack = vp.extract("html", fixture("elided-quote.html"))
+    quote = (
+        "Static is globally fast. [...] Static is consistently fast. [...] Static is always online."
+    )
+    assert vp.match(quote, haystack).exact
+
+
+def test_a_bare_ellipsis_is_an_elision_marker_too() -> None:
+    quote = "Convincing people that these aren't a sentient AI... can come later."
+    page = (
+        "Convincing people that these aren't a sentient AI out of a science fiction "
+        "story can come later. Once people understand their flaws this is easier."
+    )
+    assert vp.match(quote, page).exact
+
+
+def test_elided_segments_must_appear_in_order() -> None:
+    # The ordering rule is what stops an elision marker becoming a licence to
+    # splice: quoting a source backwards is not quoting it.
+    page = "alpha one two three and then beta four five six"
+    assert not vp.match("four five six ... one two three", page).exact
+
+
+def test_elided_segments_may_not_claim_the_same_words_twice() -> None:
+    page = "the only sentence available here"
+    assert not vp.match("the only sentence ... the only sentence", page).exact
+
+
+def test_a_failed_elision_falls_back_rather_than_reporting_zero() -> None:
+    # The rule is additive. A quote whose segments do not line up must be judged
+    # exactly as it was before, not dropped to a 0-word window.
+    page = "one two three four five six seven eight nine ten eleven twelve"
+    result = vp.match("one two three four five six seven eight nine ten ... absent words", page)
+    assert not result.exact
+    assert result.window == 10
+
+
+def test_a_decimal_is_not_an_elision_marker() -> None:
+    assert vp.split_elisions("a ratio of 1...2 and a price of 3.50") == [
+        "a ratio of 1...2 and a price of 3.50"
+    ]
+
+
 def test_a_short_quote_needs_an_exact_match() -> None:
     # Below the window threshold a partial run is not evidence of anything.
     verdict = vp.classify("one two three four five", "html", "<p>one two three only</p>", None)
@@ -416,6 +463,12 @@ CASES = {
         '> "We should stop treating the schema as an afterthought."\n'
         "-- verbatim | talk: On schemas, Example Conf, 2020, 00:28"
         " | https://www.youtube.com/watch?v=disfluency\n"
+    ),
+    "elided-quote": (
+        '> "Static is globally fast. [...] Static is consistently fast. [...] Static is'
+        ' always online."\n'
+        "-- verbatim | blog: Three things about static, example.com, 2020-01-01"
+        " | https://example.com/three-things-about-static\n"
     ),
     "github-blob": (
         '> "Every allocation matters when you are creating thousands of objects per frame."\n'
