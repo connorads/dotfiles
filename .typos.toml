@@ -6,13 +6,15 @@
 # Vendored third-party mirrors and patch hunks must stay byte-faithful to
 # upstream (same set as `no_reformat` in hk.pkl), and binary/font assets are
 # not prose. summon persona references are verbatim quote collections (a
-# source's own spelling is not ours to correct); lazy-lock.json is generated.
+# source's own spelling is not ours to correct), and its pointer fixtures stand
+# in for those sources, garble included; lazy-lock.json is generated.
 extend-exclude = [
   "vendor/.agents/skills/",
   ".config/skills/sets/",
   ".agents/skills/playwright-cli/",
   ".config/skills/vendor/patches/",
   ".config/skills/personal/summon/references/",
+  ".config/skills/personal/summon/tests/fixtures/",
   ".config/nvim/lazy-lock.json",
   "*.patch",
   "*.png",
@@ -42,6 +44,7 @@ sur = "sur"       # Homebrew :big_sur symbol
 aks = "aks"       # aks-desktop cask
 iif = "iif"       # IIFE tokenised as IIF + Es
 fpr = "fpr"       # false-positive rate
+edn = "edn"       # "1st edn" - the edition abbreviation summon's book pointers use
 # Code identifiers and deliberate fragments in first-party sources.
 caliased = "caliased" # tmux-freekeys c-prefixed array (cfree/cused/caliased)
 temporar = "temporar" # regex stem matching temporary/temporarily
