@@ -362,15 +362,36 @@ BLOCK_SIGNATURES = (
 )
 
 
+TITLE = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
+# An interstitial is a stub: a heading, a sentence, a retry. Anything with an
+# article's worth of text is an article.
+BLOCK_MAX_CHARS = 1500
+
+
 def looks_blocked(body: str) -> bool:
     """Whether a non-empty body is an interstitial rather than the page.
 
-    A bot-block, rate-limit or JS-wall page returns plenty of text and none of
-    it is the source, so it must become a SKIP: calling it a FAIL accuses the
-    corpus of something the fetch never tested.
+    A bot-block, rate-limit or JS-wall page returns text and none of it is the
+    source, so it must become a SKIP: calling it a FAIL accuses the corpus of
+    something the fetch never tested.
+
+    Length is half the test, not a refinement of it. Scanning for the signatures
+    alone reads "request counters per IP address (for rate limiting purposes)"
+    as a rate-limit page, which is how four sourced quotes in
+    ``martin-kleppmann.md`` disappeared into SKIPs behind an article that had
+    fetched perfectly. A title still decides on its own: a page called "429 Too
+    Many Requests" is one however much boilerplate it carries.
     """
-    head = body[:4000].lower()
-    return any(signature in head for signature in BLOCK_SIGNATURES)
+    title = TITLE.search(body)
+    if title and _signed(html.unescape(title.group(1))):
+        return True
+    visible = strip_tags(body) if looks_like_html(body) else body
+    return len(visible) <= BLOCK_MAX_CHARS and _signed(visible)
+
+
+def _signed(text: str) -> bool:
+    lowered = text.lower()
+    return any(signature in lowered for signature in BLOCK_SIGNATURES)
 
 
 @dataclass(frozen=True)
