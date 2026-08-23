@@ -118,13 +118,14 @@ so rule them out before accusing the corpus:
 | A video quote is absent from the captions | It may be cited as the video *description*: `yt-dlp --skip-download --print description`. Captions need `--write-auto-subs --write-subs --sub-langs 'en.*'`, and carry no punctuation, so a 10-12 consecutive-word window is the confirmation |
 | A GitHub issue/PR comment is missing | The page is React-rendered. Read `repos/<owner>/<repo>/issues/comments/<id>` via `gh api`; a `/blob/` link needs `raw.githubusercontent.com` |
 | A Reddit comment 404s or returns an interstitial | Reddit blocks CLI fetches and Firecrawl refuses the domain. Use `arctic-shift.photon-reddit.com/api/comments/ids?ids=<comment_id>` |
+| An x.com post cannot be fetched | The site blocks CLI fetches and Firecrawl refuses it, but posts are **public with no auth**: `api.fxtwitter.com/<handle>/status/<id>`, falling back to `cdn.syndication.twimg.com/tweet-result?id=<id>&token=a`. No browser and no logged-in session are needed, and neither should be used - a cookie is a full credential and non-browser API calls get accounts banned. Both return the author `handle`: check it names the persona, because a reply or quote-post is someone else's words. (`~/git/kb`'s `skills/kb/scripts/get_tweet.py` implements both, where that vault is present) |
 | A page returns something non-empty but wrong | Bot-block or rate-limit page. HN throttles bursts; cxl.com, medium.com, newfangled.com and frontlines.io serve 403/429. Firecrawl gets through most of them |
 | A slide quote matches nothing | SlideShare exposes slide text as image alt-text; scrape the deck page. Otherwise slide text is unconfirmable, like print |
 | An archive.org link yields no text | `/details/` is an item page, not the book. Library scans are often lending-restricted: text 401s and search-inside is closed |
 
 Two habits that prevent the rest: test the **full** URL rather than a truncated display form,
-and treat "the fetch failed" and "the words are absent" as different findings. x.com cannot be
-read this way at all - only a logged-in browser sees inside it.
+and treat "the fetch failed" and "the words are absent" as different findings. Only the second
+is evidence; the first is a technical problem to route around.
 
 ## Five fabrication signatures
 
