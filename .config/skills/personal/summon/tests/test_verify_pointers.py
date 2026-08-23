@@ -244,6 +244,13 @@ def test_a_rate_limit_page_is_recognised_as_a_block() -> None:
     assert vp.looks_blocked(fixture("rate-limited-page.html"))
 
 
+def test_a_client_challenge_wall_is_recognised_as_a_block() -> None:
+    # SlideShare's wall serves HTTP 200 and says neither "blocked" nor "rate
+    # limit", so both slideshare quotes in alberto-brandolini.md were scored
+    # FAIL against a page that carried no slide text at all.
+    assert vp.looks_blocked(fixture("client-challenge-wall.html"))
+
+
 def test_an_ordinary_page_is_not_a_block() -> None:
     assert not vp.looks_blocked(fixture("entity-contractions.html"))
 
@@ -584,6 +591,17 @@ def test_an_undecoded_capture_skips_rather_than_failing(tmp_path: Path) -> None:
     result = run(tmp_path, "--all")
     assert "0 pass, 0 fail, 1 skip" in result.stdout
     assert "bytes that are not text" in result.stdout
+
+
+def test_a_client_challenge_wall_skips_rather_than_failing(tmp_path: Path) -> None:
+    body = (
+        '> "A line the deck carries and the challenge page never could."\n'
+        "-- verbatim | slides: Walled deck, SlideShare, 2016-11-20"
+        " | https://www.slideshare.net/slideshow/walled-deck/54321\n"
+    )
+    write_skill(tmp_path, {"walled.md": body})
+    result = run(tmp_path, "--all")
+    assert "0 pass, 0 fail, 1 skip" in result.stdout
 
 
 def test_an_archive_item_page_skips_with_a_named_reason(tmp_path: Path) -> None:

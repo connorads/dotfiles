@@ -413,6 +413,10 @@ BLOCK_SIGNATURES = (
     "are you a robot",
     "captcha",
     "sorry, you have been blocked",
+    # SlideShare's wall, which serves HTTP 200 and says neither "blocked" nor
+    # "rate limit" - the two phrases it does say are both distinctive enough.
+    "client challenge",
+    "a required part of this site couldn't load",
 )
 
 
