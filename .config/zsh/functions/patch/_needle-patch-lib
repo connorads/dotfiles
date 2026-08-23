@@ -5,8 +5,9 @@
 #   patch_name patch_label needle replace marker missing_body missing_banner
 #
 # Optional wrapper settings:
-#   needle_kind   literal (default) | slots
-#   same_length   1 (default) assert the replacement is byte-length-identical
+#   needle_kind     literal (default) | slots
+#   same_length     1 (default) assert the replacement is byte-length-identical
+#   expect_matches  any (default) | a positive integer
 #
 # A minified name is not stable across upstream rebuilds, so `slots` mode lets a
 # needle name one without pinning it: every `%s` matches a minified identifier
@@ -25,6 +26,13 @@
 # source trailer, so an edit that changes length corrupts it. Each slot re-emits
 # its capture verbatim, so the length delta depends only on the literal chunks
 # and is checkable once at startup, before a target is opened.
+#
+# `expect_matches` exists because slot mode introduces a risk literal mode never
+# had: an exact byte needle cannot over-match, a slotted one can. Pin it on a
+# wrapper whose gate is known to be a single site, and more unpatched matches
+# than that reads `ambiguous` - refuse to patch, or in --reapply warn, mark and
+# exit 0. It stays `any` by default because replace-all is right for a wrapper
+# that legitimately patches several copies of the same helper.
 emulate -L zsh
 setopt no_unset pipe_fail
 
@@ -42,6 +50,7 @@ done
 # config into the second.
 local needle_kind_opt="${needle_kind:-literal}"
 local same_length_opt="${same_length:-1}"
+local expect_matches_opt="${expect_matches:-any}"
 
 local mode=patch
 local select_all=0
@@ -74,7 +83,7 @@ done
 #   apply <path>   -> rewrite in place; non-zero exit if nothing matched
 _needle_patch_py() {
   /usr/bin/python3 - "$1" "${2:-}" "$needle" "$replace" \
-    "$needle_kind_opt" "$same_length_opt" <<'PY'
+    "$needle_kind_opt" "$same_length_opt" "$expect_matches_opt" <<'PY'
 import mmap
 import os
 import pathlib
@@ -88,6 +97,7 @@ needle = os.fsencode(sys.argv[3])
 repl = os.fsencode(sys.argv[4])
 kind = sys.argv[5]
 same_length = sys.argv[6]
+expect_matches = sys.argv[7]
 
 # A minified local: the JS identifier characters a minifier actually emits.
 # Deliberately narrow - it cannot match NUL or newline, so slot mode is binary
@@ -122,6 +132,14 @@ def split_slots(spec: bytes, what: str) -> "list[bytes]":
 
 if same_length not in ("0", "1"):
     fail(f"same_length: expected 0 or 1, got {same_length!r}")
+
+if expect_matches != "any" and not (
+    expect_matches.isdigit() and int(expect_matches) >= 1
+):
+    fail(
+        "expect_matches: expected 'any' or a positive integer, "
+        f"got {expect_matches!r}"
+    )
 
 if kind == "literal":
     needle_chunks, repl_chunks = [needle], [repl]
@@ -200,6 +218,11 @@ PY
 # before a target is resolved, let alone opened or backed up.
 _needle_patch_py compile || return 2
 
+# Safe only after the pre-flight has confirmed the value is `any` or a number.
+# 0 means "any", so a single `(( expected && ... ))` covers both.
+local -i expected=0
+[[ $expect_matches_opt == any ]] || expected=$expect_matches_opt
+
 # Resolve targets (deduped by realpath so symlinks do not double up). Wrappers
 # should either pass explicit target paths or define needle_patch_resolve_targets,
 # which receives select_all (0/1) and prints one target path per line.
@@ -233,11 +256,20 @@ fi
 
 local reapply_missing=0
 
-# Warn loudly and drop a marker when the needle is gone (likely an upstream
-# rename). Keeps exit status 0 in --reapply so install/update hooks are never
-# blocked; the next shell start surfaces the marker so the rename is not missed.
+# Warn loudly and drop a marker when the needle cannot be applied - it is gone
+# (likely an upstream rename), or it matches more sites than the wrapper pinned.
+# Keeps exit status 0 in --reapply so install/update hooks are never blocked;
+# the next shell start surfaces the marker so the cause is not missed.
+# $2 = missing (default) | ambiguous.
 _needle_patch_warn_missing() {
   local target="$1"
+  local kind="${2:-missing}"
+  local headline='NEEDLE NOT FOUND'
+  local reason='the needle was not found'
+  if [[ $kind == ambiguous ]]; then
+    headline='NEEDLE AMBIGUOUS'
+    reason="the needle matched $before site(s), expected $expect_matches_opt"
+  fi
   local when
   when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
   mkdir -p "${marker:h}" 2>/dev/null || true
@@ -245,14 +277,16 @@ _needle_patch_warn_missing() {
     print -r -- "$patch_name could not reapply the $patch_label patch."
     print -r -- "target: $target"
     print -r -- "needle: $needle"
+    print -r -- "reason: $reason"
     print -r -- "when:   $when"
     print -r -- "$missing_body"
   } > "$marker" 2>/dev/null || true
   print -u2 ""
   print -u2 "################################################################"
-  print -u2 "# $patch_name: NEEDLE NOT FOUND — $missing_banner"
+  print -u2 "# $patch_name: $headline — $missing_banner"
   print -u2 "#   target: $target"
   print -u2 "#   needle: $needle"
+  print -u2 "#   reason: $reason"
   print -u2 "# Update the needle in $patch_name. Marker: $marker"
   print -u2 "################################################################"
 }
@@ -274,7 +308,9 @@ for real in "${targets[@]}"; do
 
   case $mode in
     check)
-      if   (( after  > 0 && before == 0 )); then print "patched:    $real"
+      if   (( expected && before > expected )); then
+        print "ambiguous:  $real (before=$before expected=$expected)"; rc=1
+      elif (( after  > 0 && before == 0 )); then print "patched:    $real"
       elif (( before > 0 && after  == 0 )); then print "unpatched:  $real ($before occurrence(s))"
       elif (( before == 0 && after == 0 )); then print "no-pattern: $real (different version?)"; rc=1
       else                                       print "mixed:      $real (before=$before after=$after)"; rc=1
@@ -293,6 +329,19 @@ for real in "${targets[@]}"; do
       fi
       ;;
     patch|reapply)
+      # Ambiguity is checked before already-patched: over-matching means the
+      # needle no longer identifies the site the wrapper meant, and a partly
+      # patched target would otherwise read as "already patched" and be left.
+      if (( expected && before > expected )); then
+        if [[ $mode == reapply ]]; then
+          _needle_patch_warn_missing "$real" ambiguous
+          reapply_missing=1
+          continue
+        fi
+        print -u2 "skip (ambiguous: $before match(es), expected $expected): $real"
+        rc=1
+        continue
+      fi
       if (( after > 0 && before == 0 )); then
         print "skip (already patched): $real"
         continue
