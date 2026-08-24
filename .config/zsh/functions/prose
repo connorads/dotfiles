@@ -1,0 +1,30 @@
+#!/usr/bin/env zsh
+# prose: lint markdown against the house prose rules (Vale, Connorads style).
+# Usage: prose [path...]   - paths default to markdown under the current dir.
+#
+# Always passes --config ~/.vale.ini, whose StylesPath resolves relative to
+# itself, so the house rules apply from any cwd and beat a repo's own .vale.ini.
+# The dotfiles hk gate uses the same config, so this is the advisory twin of
+# the blocking gate rather than a second opinion.
+#
+# Exits non-zero on error alerts so agents and CI can gate on it. Missing vale
+# warns and exits 0 - never brick a caller over a checker it can't run (same
+# posture as .hk-hooks/ts-typecheck.sh).
+emulate -L zsh
+
+if ! command -v vale >/dev/null 2>&1; then
+  print -u2 "prose: vale absent; skipping (mise install vale)"
+  return 0
+fi
+
+local config="${HOME}/.vale.ini"
+if [[ ! -f $config ]]; then
+  print -u2 "prose: $config missing; skipping"
+  return 0
+fi
+
+if (( $# )); then
+  vale --config "$config" "$@"
+else
+  vale --config "$config" --glob='*.md' .
+fi

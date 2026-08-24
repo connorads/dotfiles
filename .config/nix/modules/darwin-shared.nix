@@ -403,6 +403,14 @@
         # dotfile so the quarantine + trust-policy settings apply on macOS.
         home.file."Library/Preferences/pnpm/config.yaml".source =
           config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/pnpm/config.yaml";
+
+        # Vale always appends its global styles dir to the search path, so a
+        # style dropped here is reachable from any repo without copying: one
+        # line (`BasedOnStyles = Connorads`) opts a repo in, and refreshes land
+        # everywhere because this is a symlink to the one real copy. Inert
+        # until named - a style is not a config. macOS path; Linux differs.
+        home.file."Library/Application Support/vale/styles/Connorads".source =
+          config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.config/vale/styles/Connorads";
       };
   };
 

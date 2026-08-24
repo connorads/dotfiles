@@ -87,6 +87,8 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.config/srt/base.json](./.config/srt/base.json)                       | `agent-sandbox` (`asb`) srt policies: opt-in OS sandbox for CLI agents. Subsystem docs: [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
 | [.config/sbx/Dockerfile](./.config/sbx/Dockerfile)                     | Image for `sbx` ([zsh/functions/agents/sbx](./.config/zsh/functions/agents/sbx)): VM-isolated (colima) container for running UNTRUSTED software. Inverse of `agentbox` - no host mounts, cap-drop ALL, offline by default. Capable toolbox baked in (build/net/trace tools); no host dotfiles |
+| [.vale.ini](./.vale.ini)                                               | Vale config for the house prose rules. `StylesPath` resolves relative to the file, so `prose` applies it from any cwd; the work-tree root is `$HOME`, so Vale's search-up finds it globally too |
+| [.config/vale/styles/Connorads/](./.config/vale/styles/Connorads/)     | The house style: `Dashes` (the em/en dash ban), `PlainWord`, `Spellings`. Named `Connorads`, not `House`, so it cannot shadow the client repos' own `House` via the global styles dir. Every rule carries `level: error` - without it the rule is a silent no-op under `MinAlertLevel = error`. Tests: [vale-style.bats](./.config/zsh/tests/vale-style.bats) |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
 | [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` - XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
@@ -246,6 +248,7 @@ git hooks status       # Which hooks a repo declares vs what actually fires (man
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
 mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
+prose [path...]        # Lint markdown against the house prose rules (Vale, Connorads style); paths default to markdown under cwd. Always uses ~/.vale.ini, so house rules apply in any repo and beat its own .vale.ini. Non-zero on findings; vale absent = warn + exit 0
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
 claude-usage --all     # refresh usage for the default account + every ~/.claude-profiles/code/* profile
@@ -531,7 +534,17 @@ The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
 Builtin gates include `typos` (spell check, default locale so both en variants
 pass; config + false-positive allow-list in `~/.typos.toml`), `actionlint` and
 `zizmor` (GitHub workflow correctness + security; zizmor runs `--offline` at
-commit time), plus the formatters/linters (shfmt, shellcheck, rumdl, nixfmt...).
+commit time), `fix-smart-quotes` (curly quotes in prose; vendored mirrors and
+summon's verbatim quote collections excluded), plus the formatters/linters
+(shfmt, shellcheck, rumdl, nixfmt...).
+
+The `vale` step gates the house prose rules that a regex can express (config
+`~/.vale.ini`, style `.config/vale/styles/Connorads`). It runs `--no-global` so
+only the tracked style can block a commit, and it drops the builtin's
+`vale sync`: that fetches remote style packages, which would put a network call
+in the pre-commit path. Vale skips fenced blocks and code spans natively, so a
+dash in a command or a diagram is never touched. `prose` is the advisory twin,
+callable from any repo.
 
 Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
 host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever
