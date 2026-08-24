@@ -8,6 +8,7 @@ describe("filterPayloadFiles", () => {
       ".DS_Store",
       ".git/config",
       ".claude/.cc-writes/state.json",
+      ".rumdl_cache/CACHEDIR.TAG",
       ".rumdl_cache/workspace_index.bin",
       "__pycache__/helper.cpython-314.pyc",
       "lib/helper.pyc",
@@ -24,6 +25,28 @@ describe("filterPayloadFiles", () => {
       "SKILL.md",
       "references/guide.md",
     ]);
+  });
+
+  test("a directory tagged CACHEDIR.TAG is dropped with its whole subtree", () => {
+    const files = [
+      "SKILL.md",
+      ".pytest_cache/CACHEDIR.TAG",
+      ".pytest_cache/v/cache/nodeids",
+      "sub/.mypy_cache/CACHEDIR.TAG",
+      "sub/.mypy_cache/3.14/builtins.data.json",
+      "sub/helper.py",
+    ];
+
+    expect(filterPayloadFiles(files, BUILTIN_PAYLOAD_EXCLUDES)).toEqual([
+      "SKILL.md",
+      "sub/helper.py",
+    ]);
+  });
+
+  test("a root-level CACHEDIR.TAG excludes only itself", () => {
+    expect(
+      filterPayloadFiles(["SKILL.md", "CACHEDIR.TAG", "references/guide.md"], []),
+    ).toEqual(["SKILL.md", "references/guide.md"]);
   });
 
   test("SKILL.md is retained even when a pattern matches markdown", () => {

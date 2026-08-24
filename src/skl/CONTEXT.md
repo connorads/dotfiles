@@ -51,8 +51,10 @@ progressive disclosure.
 The file tree is a **payload tree**: useful runtime files under the skill dir after
 built-in and configured payload excludes have removed maintainer-only evals and
 generated/cache artefacts such as
-`__pycache__`, `.pyc`, `.DS_Store`, `.git`, `.claude`, `.rumdl_cache`, `*.backup`, and
-`node_modules`, plus the root `evals/` directory. The root `SKILL.md` is always retained;
+`__pycache__`, `.pyc`, `.DS_Store`, `.git`, `.claude`, `*.backup`, and
+`node_modules`, plus the root `evals/` directory. Any directory a tool self-declares as a
+cache — one holding a `CACHEDIR.TAG` file, e.g. `.pytest_cache`, `.ruff_cache` — goes too.
+The root `SKILL.md` is always retained;
 nested files with that name still respect exclusions. Pass `--all` to show the raw
 sibling payload list for that invocation.
 
@@ -77,7 +79,6 @@ reading `.gitignore`. Defaults:
   "**/.DS_Store",
   "**/.git/**",
   "**/.claude/**",
-  "**/.rumdl_cache/**",
   "**/__pycache__/**",
   "**/*.py[cod]",
   "**/*.backup",
@@ -85,6 +86,10 @@ reading `.gitignore`. Defaults:
   "evals/**"
 ]
 ```
+
+Alongside the glob list, a directory containing a `CACHEDIR.TAG` file (Cache Directory
+Tagging Spec) is excluded with its whole subtree — a self-declaration by the writing tool,
+so no pattern needs adding when a new cache appears. See ADR-0010.
 
 Config may add top-level excludes that apply to every source and per-source excludes:
 
