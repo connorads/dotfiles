@@ -13,7 +13,7 @@ description: >
 
 Scaffold a self-contained loop directory from an existing backlog.
 The directory contains everything a fresh agent session needs to pick
-up a task, execute it, and hand off to the next iteration — with no
+up a task, execute it, and hand off to the next iteration - with no
 session memory between runs.
 
 ## When to use
@@ -66,22 +66,22 @@ Generate these files:
 
 #### PROMPT.md
 
-The loop contract. Self-contained — the agent reads this one file and
+The loop contract. Self-contained - the agent reads this one file and
 has the complete protocol. Built from the core protocol template
 (read [references/loop-protocol.md](references/loop-protocol.md)) plus task-specific adaptations:
 
-- **File paths** — point to this directory's loop-state.md, run-log.md,
+- **File paths** - point to this directory's loop-state.md, run-log.md,
   and backlog.md
-- **Loop completion token** — emit `__PROMISE_RL_DONE__` as a standalone
+- **Loop completion token** - emit `__PROMISE_RL_DONE__` as a standalone
   final line when no unchecked tasks remain so the default `rl`
   promise-token handling can stop cleanly. This is the Ralph-loop
   "completion promise" expressed as a plain token.
-- **Verification rules** — extracted from the backlog's global and
+- **Verification rules** - extracted from the backlog's global and
   per-task verification patterns. Reference external docs if the backlog
   mentions them
-- **Dependency handling** — if the backlog has a dependency graph, add
+- **Dependency handling** - if the backlog has a dependency graph, add
   instructions to respect it when picking the next task
-- **Reference docs** — if the user mentioned helpful docs or skills,
+- **Reference docs** - if the user mentioned helpful docs or skills,
   add them to the prompt so the agent knows where to look
 
 The prompt must start with a level-1 heading (markdown linter requirement).
@@ -89,7 +89,7 @@ The prompt must start with a level-1 heading (markdown linter requirement).
 #### run-log.md
 
 Empty file with `# Run Log` header. Entries are appended by the agent
-during execution — one entry per completed or blocked task.
+during execution - one entry per completed or blocked task.
 
 Entry format:
 
@@ -117,26 +117,26 @@ Show the user:
   `rl <n> -t 30m -- cys "Read and follow TASKS/<name>/PROMPT.md"`
 
 Use `cys` (claude yolo stream: skip-permissions + `-p` baked in), not
-bare `claude -p` — interactive-permission claude stalls the loop the
+bare `claude -p` - interactive-permission claude stalls the loop the
 first time it hits a permission prompt with nobody watching.
 
 ## PROMPT.md anatomy
 
 Every generated PROMPT.md has these sections:
 
-1. **Heading** — `# Prompt`
-2. **Preamble** — "You are running in an automated loop. Read these
+1. **Heading** - `# Prompt`
+2. **Preamble** - "You are running in an automated loop. Read these
    files before doing anything else:" followed by the three file paths
-3. **Protocol** — the loop state machine; the canonical version lives in
+3. **Protocol** - the loop state machine; the canonical version lives in
    [references/loop-protocol.md](references/loop-protocol.md)
-4. **Verification** — rules adapted from the backlog, referencing
+4. **Verification** - rules adapted from the backlog, referencing
    external docs where appropriate
-5. **Completion rule** — the four conditions that must all be true
+5. **Completion rule** - the four conditions that must all be true
    before marking a task done
-6. **Surprises** — instructions to capture unexpected findings
+6. **Surprises** - instructions to capture unexpected findings
 
 Read [references/loop-protocol.md](references/loop-protocol.md) for the core template.
-Adapt it — don't copy it verbatim. Each backlog has different
+Adapt it - don't copy it verbatim. Each backlog has different
 verification needs and reference material.
 
 ## loop-state.md
@@ -165,5 +165,5 @@ blockers: ""
 - (none yet)
 ```
 
-Gitignored via `TASKS/.gitignore` — changes every iteration, noisy in
+Gitignored via `TASKS/.gitignore` - changes every iteration, noisy in
 version control. Clean deletion of the task directory removes it too.

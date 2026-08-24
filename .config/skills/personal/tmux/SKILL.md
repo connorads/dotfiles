@@ -244,7 +244,7 @@ scripts/control-tail.py -L private -t repl:0.0 -p '^>>> ?$' --no-seed
 
 Its parsing helpers (`decode_tmux_payload` octal escapes, `parse_output_line`
 `%output`/`%extended-output` handling) are pinned by
-[tests/test_control_tail.py](tests/test_control_tail.py) —
+[tests/test_control_tail.py](tests/test_control_tail.py) -
 `uv run --with pytest -- pytest tests/` from the skill dir.
 
 ### [find-sessions.sh](scripts/find-sessions.sh)

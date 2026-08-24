@@ -79,7 +79,7 @@ Include only what applies. These anchor the PRD for anyone implementing from it.
 
 Major modules to build or modify, with interface sketches where helpful.
 
-Do NOT include specific file paths or code snippets — they become outdated quickly. Describe modules by name and responsibility.
+Do NOT include specific file paths or code snippets - they become outdated quickly. Describe modules by name and responsibility.
 
 - **Module name:** What it owns, what it hides, how callers interact with it
 - **Module name:** ...
@@ -90,7 +90,7 @@ Do NOT include specific file paths or code snippets — they become outdated qui
 
 - Which modules are tested and at which tier (unit / integration / component / e2e)
 - What makes a good test for this feature (test behaviour through public interfaces, not implementation)
-- Prior art — similar test patterns already in the codebase
+- Prior art - similar test patterns already in the codebase
 
 ---
 
@@ -100,7 +100,7 @@ Do NOT include specific file paths or code snippets — they become outdated qui
 
 Patterns in the codebase to follow (describe by name and purpose, not file paths):
 
-- Pattern name — why relevant, how it applies
+- Pattern name - why relevant, how it applies
 
 ### System Dependencies
 
@@ -130,8 +130,8 @@ Patterns in the codebase to follow (describe by name and purpose, not file paths
 
 ### Never (must not be touched)
 
-- Protected area 1 — why
-- Protected area 2 — why
+- Protected area 1 - why
+- Protected area 2 - why
 
 ---
 
@@ -158,8 +158,8 @@ Patterns in the codebase to follow (describe by name and purpose, not file paths
 
 Explicitly out of scope:
 
-- Thing we're not building — why deferred
-- Future enhancement — why deferred
+- Thing we're not building - why deferred
+- Future enhancement - why deferred
 
 ---
 

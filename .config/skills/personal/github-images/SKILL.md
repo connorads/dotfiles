@@ -53,7 +53,7 @@ The key insight: `application/vnd.github.full+json` returns `body_html` containi
 
 ## Limitations
 
-`ghimg` queries only the issue/PR body and **issue comments** — images in PR
+`ghimg` queries only the issue/PR body and **issue comments** - images in PR
 **inline (review) comments** and **review summaries** are not fetched. Get
 those manually with the same Accept header:
 

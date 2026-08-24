@@ -1,4 +1,4 @@
-# AGENTS.md — mcpz + the MCP registry
+# AGENTS.md - mcpz + the MCP registry
 
 `mcpz` picks which MCP toolset is live per agent launch and renders it into each
 agent's native launch form, resolving secrets fresh at launch. It is MCP-only:
@@ -20,7 +20,7 @@ The registry is the ONLY place client names/URLs live, and it is gitignored.
   by the `/.config/**` rule in `~/.gitignore`. Only
   [`registry.example.json`](./registry.example.json) (fake bundle) and this doc
   are un-ignored and tracked.
-- Secrets are never persisted and never in argv — the registry stores only a
+- Secrets are never persisted and never in argv - the registry stores only a
   secret NAME and a producer that resolves it. At `run`, the value is resolved
   into the process env; renderers emit only env-var *references*
   (`${VAR}` / `bearer_token_env_var` / `{env:VAR}`).
@@ -29,7 +29,7 @@ The registry is the ONLY place client names/URLs live, and it is gitignored.
   client servers live only in `mcpz` bundles, never in an agent's base/global
   config. `mcpz doctor` (follow-up) asserts this.
 - argv exposure: Claude's inline JSON and Codex's `-c` args put URLs and
-  server names in `ps` (same-user only, no secret, no git leak) — accepted.
+  server names in `ps` (same-user only, no secret, no git leak) - accepted.
   OpenCode reads a runtime file instead of argv.
 
 ## Registry (`$MCPZ_REGISTRY`, default `~/.config/mcp/registry.local.json`)
@@ -40,7 +40,7 @@ Strict JSON (parsed by `jq`). To start: copy the example and edit.
 cp ~/.config/mcp/registry.example.json ~/.config/mcp/registry.local.json
 ```
 
-Schema v1 — `stdio` + `http` transports, `headers`, `bearer` sugar, `env`, and
+Schema v1 - `stdio` + `http` transports, `headers`, `bearer` sugar, `env`, and
 named `secrets`:
 
 ```json
@@ -76,7 +76,7 @@ named `secrets`:
   later renderers; v1 renderers ignore them.
 
 The concrete trigger is Executor.app's local MCP gateway, whose bearer token
-(`~/.executor/server-control/server.json`) rotates on daemon restart — so a
+(`~/.executor/server-control/server.json`) rotates on daemon restart - so a
 `cmd` producer that reads it fresh each launch is the whole point. Executor is
 just one `cmd` resolver, not a special case.
 
@@ -108,7 +108,7 @@ target (pure over the registry); `run` and the picker are smoke-only.
   under `${XDG_RUNTIME_DIR:-$TMPDIR}/mcpz/`, launched with
   `OPENCODE_CONFIG=<file> OPENCODE_DISABLE_PROJECT_CONFIG=1`. Merges onto
   global. `{env:VAR}` header syntax, `command` as array, `environment` (not
-  `env`). Inline `OPENCODE_CONFIG_CONTENT` does not take effect — use a file.
+  `env`). Inline `OPENCODE_CONFIG_CONTENT` does not take effect - use a file.
 
 `mcp list` reflects the launch config only for Codex; for Claude/OpenCode it
 reads persisted config, so verify connection with a live session (Claude

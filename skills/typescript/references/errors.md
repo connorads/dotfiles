@@ -29,7 +29,7 @@ Keep error unions precise at module boundaries
 (`Result<User, UserNotFound | UserStoreUnavailable>`). Reserve a broad
 `AppError` for entrypoints, orchestration, logging, and rendering only.
 
-**Ladder:** Effect (when the repo uses it — its `E` channel and `Either` *are*
+**Ladder:** Effect (when the repo uses it - its `E` channel and `Either` *are*
 this) > `better-result` (when present) > the local tagged union above.
 
 ## Custom tagged errors
@@ -54,11 +54,11 @@ Base classes, in order of preference: Effect's `Data.TaggedError` /
 `Schema.TaggedError` (Effect repos) > `TaggedError` from `better-result` > plain
 `Error` with a `readonly _tag`.
 
-## Panic helpers — the defect vocabulary
+## Panic helpers - the defect vocabulary
 
 Defects throw. These typed helpers return `never`, so they slot into expression
 position and still type-check. Keep them as one-liners in `prelude.ts` (the only
-sanctioned home for domain-free one-liners — anything mentioning a domain noun
+sanctioned home for domain-free one-liners - anything mentioning a domain noun
 gets its own module).
 
 ```ts

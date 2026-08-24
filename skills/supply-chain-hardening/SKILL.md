@@ -24,15 +24,15 @@ privileges.** Every control in this skill exists to change what that sentence
 permits: when the code runs, whether it runs at all, what it can do when it
 does, and how you find out it was hostile.
 
-This is a **content skill**, not a tool: it owns the *reasoning* — which
-control, which layer, whether to allow an exception — while config files own
+This is a **content skill**, not a tool: it owns the *reasoning* - which
+control, which layer, whether to allow an exception - while config files own
 the *rules*. It serves three situations: hardening a project, hardening a
 machine or global config, and an agent mid-task when a gate fires.
 
 ## Principles
 
 1. **A dependency is code execution, not data.** Adding a package grants its
-   publisher — and whoever compromises them — execution on your machines and
+   publisher - and whoever compromises them - execution on your machines and
    CI. Vet accordingly, and extend the same reasoning to non-package
    dependencies: GitHub Actions, base images, MCP servers, agent skills.
 2. **Removing triggers is not removing capability.** Blocking install scripts
@@ -48,16 +48,16 @@ machine or global config, and an agent mid-task when a gate fires.
    default (aube falls back to an older version unless
    `minimumReleaseAgeStrict = true`; pnpm's *built-in* default gate is
    non-strict, though explicitly configuring the gate flips strict on).
-   After configuring any gate, verify it fails closed — try to install
+   After configuring any gate, verify it fails closed - try to install
    something that should be refused. **When a broader control masks a
    narrower one, that verification is unavailable**: the narrow gate has
    nothing to refuse, so it stays silent locally and fires on the first
    machine without the mask. Reproducing it means turning the broad control
-   off, which is a de-protection, not a check — assert the missing decision
+   off, which is a de-protection, not a check - assert the missing decision
    statically instead (read the config, run no install).
 5. **The agent proposes; the user decides; something boring verifies.**
    Allowlisting, bypassing, and weakening are the user's security decisions.
-   Enforcement belongs in config, hooks, and CI — never in anyone's memory.
+   Enforcement belongs in config, hooks, and CI - never in anyone's memory.
 6. **Every exception is scoped, reasoned, and has an exit criterion.** An
    exception without an expiry condition is a permanent hole with a
    historical excuse. See [references/exceptions.md](references/exceptions.md).
@@ -79,7 +79,7 @@ machine or global config, and an agent mid-task when a gate fires.
   [references/evaluating-dependencies.md](references/evaluating-dependencies.md).
 
 Scope fence: if the task adds no dependency and touches no package-manager or
-CI config, this skill has nothing to add — do the task without narrating
+CI config, this skill has nothing to add - do the task without narrating
 supply-chain considerations.
 
 ## Trigger vs capability
@@ -90,9 +90,9 @@ the others:
 
 | Ecosystem | Install/build time | Load time |
 |---|---|---|
-| npm family | lifecycle scripts (blockable: npm 12+ default-off, pnpm/bun/aube block by default); git deps execute code even with scripts off | module top-level bodies and IIFEs run on `import`/`require` — not blockable, and where attackers moved when scripts got blocked |
+| npm family | lifecycle scripts (blockable: npm 12+ default-off, pnpm/bun/aube block by default); git deps execute code even with scripts off | module top-level bodies and IIFEs run on `import`/`require` - not blockable, and where attackers moved when scripts got blocked |
 | Python | build backends run at install | `.pth` files execute on **any interpreter startup, no import needed**; import hooks; top-level module code |
-| Rust | `build.rs` and proc-macros run at **compile** time — no off-switch exists | — |
+| Rust | `build.rs` and proc-macros run at **compile** time - no off-switch exists | - |
 
 The load-time column is why "scripts are disabled, we're safe" is false, and
 why the detective layer and containment exist. Runtime containment: real
@@ -114,14 +114,14 @@ escapes).
 Layer 5 is not optional garnish: malware campaigns have shipped with **valid
 SLSA provenance** (a compromised pipeline signs its own malware), and the
 large majority of malicious packages are pulled by registries without ever
-receiving a CVE — so neither provenance nor CVE feeds substitute for `MAL-*`
+receiving a CVE - so neither provenance nor CVE feeds substitute for `MAL-*`
 matching. Provenance ≠ safety.
 
 ## Slopsquatting
 
 Agents hallucinate plausible package names; attackers register them. Before
-installing anything unfamiliar — especially a name suggested by an agent or
-LLM output — verify existence, purpose match, age, downloads, and repository;
+installing anything unfamiliar - especially a name suggested by an agent or
+LLM output - verify existence, purpose match, age, downloads, and repository;
 a brand-new low-download package answering exactly a niche need is the attack
 shape. A strict age gate refuses brand-new names as a side effect;
 low-download-threshold checks (aube) encode the same defence.
@@ -130,13 +130,13 @@ low-download-threshold checks (aube) encode the same defence.
 
 The same 4-day policy is spelled in days (npm), minutes (pnpm, aube, Yarn),
 seconds (bun), duration strings (mise, uv), and ISO-8601 or minutes
-(`P4D`/`5760` — pip, Deno; Deno rejects `4d`).
+(`P4D`/`5760` - pip, Deno; Deno rejects `4d`).
 Copying a literal between configs silently changes the policy by orders of
 magnitude. Full table and per-tool keys:
 [references/ecosystems.md](references/ecosystems.md).
 
 When one policy value is hand-spelled across several configs, enforce
-agreement mechanically — a drift-guard pre-commit checker (one constant, one
+agreement mechanically - a drift-guard pre-commit checker (one constant, one
 file+regex+unit row per config, normalise, fail on drift). The
 mechanical-enforcement skill owns that checker pattern.
 
@@ -144,39 +144,39 @@ mechanical-enforcement skill owns that checker pattern.
 
 The most common agent-facing situation: an install refused, a build script
 blocked, a provenance or trust-policy failure. The gate firing is the system
-working — the burden of proof is on the bypass.
+working - the burden of proof is on the bypass.
 
 1. **Identify which control fired** and what it's protecting against. Read
    the error, not just past it (`ERR_PNPM_IGNORED_BUILDS` = script blocking;
    "no mature version" = age gate; trust/provenance = downgrade check).
 2. **Decide whether a bypass is even wanted.** Often the right move is to
    wait out the quarantine, pick an older version, or drop the dependency.
-3. **Ask the user.** The security decision is theirs — never auto-bypass,
+3. **Ask the user.** The security decision is theirs - never auto-bypass,
    however small the exception seems. Present the narrowest option and what
    it trades away.
 4. **Allowlist narrowly**: per-package `allowBuilds`/`approve-scripts`/
-   scoped exclude — never a global disable, never `ignore-scripts=false`,
+   scoped exclude - never a global disable, never `ignore-scripts=false`,
    never removing the gate. **Project-level is not the narrow option**: it
    is not per-package, and it re-arms scripts the per-package allowlist
-   does not govern — the *root package's own* `preinstall`/`install`/
+   does not govern - the *root package's own* `preinstall`/`install`/
    `postinstall` run again (silently arming repo git hooks from `prepare`,
    among other things), and every `allowBuilds: { x: true }` in the repo
    flips from inert to executing. Turning the mask off changes what runs;
    it is a de-protection, never a diagnostic.
 5. **Document scope, reason, and exit criterion in the config** where the
-   exception lives — see [references/exceptions.md](references/exceptions.md)
+   exception lives - see [references/exceptions.md](references/exceptions.md)
    for the template and worked examples (publishing-bug-vs-attack, aged
    backports).
 
 Hard lines: never `--no-verify` past a supply-chain hook; never disable a
 gate globally *or project-wide* to save a round-trip; a one-off env/flag
-bypass is for human-attended one-shots only (the per-tool asymmetry — which
-tools even offer one — is in
+bypass is for human-attended one-shots only (the per-tool asymmetry - which
+tools even offer one - is in
 [references/ecosystems.md](references/ecosystems.md)).
 
 ## Composition with neighbouring skills
 
-- **mechanical-enforcement** owns linter-shaped controls — gitleaks, zizmor
+- **mechanical-enforcement** owns linter-shaped controls - gitleaks, zizmor
   for GitHub Actions, cargo-deny licence/advisory bans, and the generic
   config-drift-guard checker pattern. This skill owns dependency posture:
   what to gate, what to scan, when to except.
@@ -192,7 +192,7 @@ tools even offer one — is in
 2. Prefer structural removal over runtime mitigation, and automated detective
    wiring over a manual task.
 3. Record the tool's key, unit, and strictness default in
-   [references/ecosystems.md](references/ecosystems.md) — verify each against
+   [references/ecosystems.md](references/ecosystems.md) - verify each against
    the live tool, not memory; units and defaults are where the traps live.
 4. Note the new tool's escape hatches and exception vehicle, and whether its
    gate applies on the frozen/lockfile install path.
@@ -206,6 +206,6 @@ tools even offer one — is in
 | Granting/reviewing an exception, allowlist templates, bypass acceptability | [references/exceptions.md](references/exceptions.md) |
 | Choosing between local-OSS controls and commercial products; skills/MCP as dependencies | [references/evaluating-dependencies.md](references/evaluating-dependencies.md) |
 
-`evals/` holds this skill's test prompts, fixtures, and assertions — run per
+`evals/` holds this skill's test prompts, fixtures, and assertions - run per
 the writing-skills evals harness when revising. The compromised-lockfile
 fixture is inert grading text; never install from it.

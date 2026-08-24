@@ -17,7 +17,7 @@ The Raycast manifest is a **superset of npm's `package.json`**. Add `"$schema": 
 
 ## Common optional root fields
 
-`platforms` (`["macOS"]` and/or `["Windows"]` — restrict install; set accurately if you use platform-specific APIs. The docs conflict on whether it's strictly required — the manifest page marks it required, the store-prep page calls it recommended — so set it explicitly on new extensions rather than relying on a default), `preferences` (extension-wide array), `tools` (AI extensions), `ai` (object: `instructions` + `evals`, or a separate `ai.yaml`), `contributors`/`pastContributors` (Raycast handles), `keywords` (Store search), `owner` + `access` (`"public"|"private"` for org/private), `external` (package names excluded from bundling).
+`platforms` (`["macOS"]` and/or `["Windows"]` - restrict install; set accurately if you use platform-specific APIs. The docs conflict on whether it's strictly required - the manifest page marks it required, the store-prep page calls it recommended - so set it explicitly on new extensions rather than relying on a default), `preferences` (extension-wide array), `tools` (AI extensions), `ai` (object: `instructions` + `evals`, or a separate `ai.yaml`), `contributors`/`pastContributors` (Raycast handles), `keywords` (Store search), `owner` + `access` (`"public"|"private"` for org/private), `external` (package names excluded from bundling).
 
 ## Categories enum (exact values)
 
@@ -27,7 +27,7 @@ The Raycast manifest is a **superset of npm's `package.json`**. Add `"$schema": 
 
 | Field | Req | Notes |
 |---|---|---|
-| `name` | yes | Maps to `src/<name>.ts(x)` **exactly** — mismatch = build failure. kebab-case. |
+| `name` | yes | Maps to `src/<name>.ts(x)` **exactly** - mismatch = build failure. kebab-case. |
 | `title` | yes | Root-search title. `<verb> <noun>` or `<noun>`, no articles ("Create Task"). |
 | `description` | yes | |
 | `mode` | yes | `"view"` (renders React UI) · `"no-view"` (async fn, no UI) · `"menu-bar"` (returns `<MenuBarExtra>`). |
@@ -41,7 +41,7 @@ The Raycast manifest is a **superset of npm's `package.json`**. Add `"$schema": 
 
 ## `arguments[]` (inline root-search input, ordered, max 3)
 
-`name` (becomes a key on `LaunchProps.arguments`), `type` (`"text"|"password"|"dropdown"`), `placeholder` — all required. Optional `required` (default false). `data` (`[{ "title", "value" }]`) required for dropdown.
+`name` (becomes a key on `LaunchProps.arguments`), `type` (`"text"|"password"|"dropdown"`), `placeholder` - all required. Optional `required` (default false). `data` (`[{ "title", "value" }]`) required for dropdown.
 
 ## `preferences[]` (extension-level or command-level)
 
@@ -61,7 +61,7 @@ Use preferences for **all config and credentials** (mark mandatory ones `require
 
 ## `tools[]` (AI extensions)
 
-`name` (→ `src/tools/<name>.ts`), `title`, `description` (this is **AI-facing** — write it for the model), optional `icon`. Full detail in `ai-extensions.md`.
+`name` (→ `src/tools/<name>.ts`), `title`, `description` (this is **AI-facing** - write it for the model), optional `icon`. Full detail in `ai-extensions.md`.
 
 ## Folder layout
 
@@ -82,7 +82,7 @@ my-extension/
     tools/<tool>.ts       # one file per tools[] entry
 ```
 
-Keep `assets/` (runtime), `metadata/` (store screenshots), and `media/` (readme) distinct — conflating them is a frequent rejection.
+Keep `assets/` (runtime), `metadata/` (store screenshots), and `media/` (readme) distinct - conflating them is a frequent rejection.
 
 ## `scripts` (canonical, from real extensions)
 
@@ -109,7 +109,7 @@ The `prepublishOnly` guard blocks an accidental `npm publish` to npmjs. The `ray
 }
 ```
 
-React 19, ESLint 10 flat config (`eslint.config.js`, not legacy `.eslintrc`). JSX uses the automatic runtime — no `import React` needed. Pin the **latest** `@raycast/api` for Store submissions.
+React 19, ESLint 10 flat config (`eslint.config.js`, not legacy `.eslintrc`). JSX uses the automatic runtime - no `import React` needed. Pin the **latest** `@raycast/api` for Store submissions.
 
 ## CHANGELOG.md format
 

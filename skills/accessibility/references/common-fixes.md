@@ -27,7 +27,7 @@
 - 23. Dynamic text change not announced
 - The Visually Hidden Utility Class
 
-Ready-to-use code fixes for the most frequent accessibility audit findings. Each fix is minimal — it targets the specific issue without rewriting surrounding code. Ordered by fix pattern, not by frequency: per the [WebAIM Million](https://webaim.org/projects/million/), the highest-volume real-world failures are low-contrast text (fix 21) and missing form labels/alt text/link text (fixes 2, 15, 6), followed by missing document language (fix 22).
+Ready-to-use code fixes for the most frequent accessibility audit findings. Each fix is minimal - it targets the specific issue without rewriting surrounding code. Ordered by fix pattern, not by frequency: per the [WebAIM Million](https://webaim.org/projects/million/), the highest-volume real-world failures are low-contrast text (fix 21) and missing form labels/alt text/link text (fixes 2, 15, 6), followed by missing document language (fix 22).
 
 ---
 
@@ -49,7 +49,7 @@ Ready-to-use code fixes for the most frequent accessibility audit findings. Each
 </button>
 ```
 
-Note: `aria-hidden="true"` is the load-bearing attribute here — it removes the SVG from the accessibility tree so the button's `aria-label` is the sole accessible name. `focusable="false"` is harmless belt-and-braces that kept inline SVG out of the tab order in legacy engines (IE / old EdgeHTML, both end-of-life); modern browsers don't focus inline SVG by default, so it's effectively a no-op now.
+Note: `aria-hidden="true"` is the load-bearing attribute here - it removes the SVG from the accessibility tree so the button's `aria-label` is the sole accessible name. `focusable="false"` is harmless belt-and-braces that kept inline SVG out of the tab order in legacy engines (IE / old EdgeHTML, both end-of-life); modern browsers don't focus inline SVG by default, so it's effectively a no-op now.
 
 ---
 
@@ -97,7 +97,7 @@ Note: `aria-hidden="true"` is the load-bearing attribute here — it removes the
 </div>
 ```
 
-For inline errors, `aria-invalid` + `aria-describedby` is sufficient — the error is read when the field is focused. No live region needed unless you also want to announce it immediately.
+For inline errors, `aria-invalid` + `aria-describedby` is sufficient - the error is read when the field is focused. No live region needed unless you also want to announce it immediately.
 
 ---
 
@@ -177,7 +177,7 @@ The `role="alert"` announces immediately. Moving focus there ensures keyboard us
 
 ## 7. Link opens in new tab without warning
 
-Best practice (and WCAG 3.2.5 Change on Request, **Level AAA** — so this is a preference, not an AA violation) favours letting users choose when to open a new tab. Prefer removing `target="_blank"` unless a new tab is genuinely required (e.g. so the user doesn't lose a secured or in-progress flow). When it *is* required, warn both visually and programmatically:
+Best practice (and WCAG 3.2.5 Change on Request, **Level AAA** - so this is a preference, not an AA violation) favours letting users choose when to open a new tab. Prefer removing `target="_blank"` unless a new tab is genuinely required (e.g. so the user doesn't lose a secured or in-progress flow). When it *is* required, warn both visually and programmatically:
 
 ```html
 <!-- ❌ Before -->
@@ -485,7 +485,7 @@ For custom selects, prefer a native `<select>` styled with CSS over a custom imp
 
 Keyboard requirements: `Enter`/`Space` opens, arrow keys move between options, `Enter` selects, `Escape` closes. Home/End move to first/last. Type-ahead search is expected.
 
-Consider using Radix UI, Headless UI, or React Aria — all provide fully accessible implementations.
+Consider using Radix UI, Headless UI, or React Aria - all provide fully accessible implementations.
 
 ---
 
@@ -561,14 +561,14 @@ Low-contrast text is the single most common real-world failure (83.9% of home pa
 .subtitle { color: #767676; background: #ffffff; }
 ```
 
-Thresholds — **1.4.3 Contrast (Minimum) (AA)** for text:
+Thresholds - **1.4.3 Contrast (Minimum) (AA)** for text:
 
 - Normal text (< 18pt / 24px, and < 14pt bold / 18.5px): **4.5:1**
 - Large text (≥ 18pt / 24px, or ≥ 14pt bold / 18.5px): **3:1**
 
 **1.4.11 Non-text Contrast (AA)** is a *separate* criterion: UI component boundaries, icons, focus indicators, and meaningful graphics need **3:1** against adjacent colours. Don't conflate it with the large-text 3:1.
 
-Measure against the *actual rendered* background (including any overlay or gradient), and don't round a near miss up — a measured `4.49:1` fails `4.5:1`. Check exact pairs with the skill's `scripts/contrast-check.py`.
+Measure against the *actual rendered* background (including any overlay or gradient), and don't round a near miss up - a measured `4.49:1` fails `4.5:1`. Check exact pairs with the skill's `scripts/contrast-check.py`.
 
 ---
 
@@ -636,4 +636,4 @@ Use for:
 - Skip link text when not focused
 - Live region containers
 
-Do NOT use `display:none` or `visibility:hidden` — those hide from AT too.
+Do NOT use `display:none` or `visibility:hidden` - those hide from AT too.

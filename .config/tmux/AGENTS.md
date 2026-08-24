@@ -1,4 +1,4 @@
-# AGENTS.md — tmux config
+# AGENTS.md - tmux config
 
 ## Interpreter contract: every bash script here runs under bash >= 5
 
@@ -22,7 +22,7 @@ Two halves, because you cannot `exec` a sourced file:
   so it instead asserts `BASH_VERSINFO[0] >= 5` and fails loudly. The rule keys
   on the `lib/` directory, not a shebang, because `lib/claude-plan.sh` has none.
 
-`#!/bin/sh` and `#!/usr/bin/env sh` files are **exempt** — they are genuinely
+`#!/bin/sh` and `#!/usr/bin/env sh` files are **exempt** - they are genuinely
 POSIX-clean. The rule keys on the **shebang, not the `.sh` extension**.
 
 Three details that are load-bearing, not tidiness:
@@ -32,7 +32,7 @@ Three details that are load-bearing, not tidiness:
   [`scripts/resurrect-post-save.sh`](./scripts/resurrect-post-save.sh) re-execs to
   bash 5, then `run_step` spawns
   [`scripts/resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh) as a
-  **child process** whose own `env bash` is still 3.2 — the child inherits the
+  **child process** whose own `env bash` is still 3.2 - the child inherits the
   guard, skips its own re-exec and dies, and `run_step` only `log_warn`s while the
   script `exit 0`s. Silent, which is precisely the 3.5-week failure shape the save
   freshness subsystem below exists to catch. Regression test:
@@ -41,7 +41,7 @@ Three details that are load-bearing, not tidiness:
 - **The `-n guard` branch exits 127** rather than falling through. With the guard
   unset on the success path, a still-too-old interpreter must fail loudly.
 - **No version probe on the candidates.** Probing costs an extra bash startup
-  each. The candidates are nix paths (5.x by construction — `bash` is declared in
+  each. The candidates are nix paths (5.x by construction - `bash` is declared in
   [`../nix/modules/packages.nix`](../nix/modules/packages.nix)) plus Homebrew as a
   last resort, and the `-n guard` branch turns a bad pick into a loud failure
   rather than a loop.
@@ -112,7 +112,7 @@ bind, whereas the lint reads the source and catches the clobber.
 cannot switch windows, navigate panes or answer an agent without discarding the
 popup and its state. That cost is highest here precisely because the agent
 attention system (dots, the blocked bell, `prefix + A`, the cross-session badge)
-exists so you can act the moment an agent needs you — every open popup is a
+exists so you can act the moment an agent needs you - every open popup is a
 window in which that is false. Floats (`new-pane`, tmux 3.7+, wrapped by
 [`../zsh/functions/tmux/flt`](../zsh/functions/tmux/flt)) are non-modal real
 panes: switch away and come back and the tool is still there.
@@ -129,13 +129,13 @@ The second blocker is mechanically removable: `run-shell` format-expands its
 command before running it (`man tmux`, run-shell: *"Before being executed,
 shell-command is expanded using the rules specified in the FORMATS section"*),
 so a float binding can pass `#{pane_id}` explicitly and the script takes the
-origin as an argument — see `prefix + Alt+w` and `wt-window.sh pane <path>
+origin as an argument - see `prefix + Alt+w` and `wt-window.sh pane <path>
 [origin]`. `display-popup` cannot do this reliably, which is why the popup
 callers resolve the origin live instead.
 
 Every float goes through `flt`, the single door carrying the tmux#5327 unzoom
 guard; presets live there, so bindings never spell out geometry. Floats are
-drag-resizable, so per-binding sizes are not worth the divergence — `big` unless
+drag-resizable, so per-binding sizes are not worth the divergence - `big` unless
 there is a reason.
 
 These bindings must stay popups, with the blocker each hits:
@@ -149,8 +149,8 @@ These bindings must stay popups, with the blocker each hits:
 | `prefix + Alt+v` vox picker | `ctrl-y` pastes the path into the origin pane |
 | `prefix + Alt+Shift+I` shotpath remote | pastes the remote path into the origin pane |
 
-`prefix + Alt+g` → `t` (ghfzf triage) stays a popup as a transaction — pick one
-thing, act, done — while the `d`/`u` dashboards on the same menu are floats.
+`prefix + Alt+g` → `t` (ghfzf triage) stays a popup as a transaction - pick one
+thing, act, done - while the `d`/`u` dashboards on the same menu are floats.
 The three origin-pane cases above are now unblockable via the `#{pane_id}`
 pattern, but each needs its own script change.
 
@@ -160,31 +160,31 @@ string (`invalid layout`), and `restore.sh` replays exactly that saved layout.
 Verified on a private socket (save a tiled pane + a float, restore, read
 `#{pane_floating_flag}`): every pane comes back, with its command and cwd, as an
 ordinary tiled pane. Nothing is lost but the floatness and the geometry. This
-exposure predates the popup→float migration — it comes with any float binding —
+exposure predates the popup→float migration - it comes with any float binding -
 and is a tmux limitation to revisit on 3.8.
 
 ## Agent state dots (custom subsystem)
 
 Window tabs show a per-window dot for the *worst* agent state across their panes.
-The logic is spread across several files — change them as a set:
+The logic is spread across several files - change them as a set:
 
-- [`scripts/agent-state.sh`](./scripts/agent-state.sh) — sets `@agent_state` per
+- [`scripts/agent-state.sh`](./scripts/agent-state.sh) - sets `@agent_state` per
   pane, rolls the worst up to `@win_agent_state`. Verbs:
   `working|blocked|done|unread|idle|seen|clear|name|unname`. `unread` is the manual
-  inverse of `seen` (force `done` even on the focused window — mark a read tab blue
+  inverse of `seen` (force `done` even on the focused window - mark a read tab blue
   again). `done` is **seen-at-birth**: if you are already viewing the pane when it
-  finishes (`is_viewing` — the sweep's gate: active pane / active window /
+  finishes (`is_viewing` - the sweep's gate: active pane / active window /
   attached session) it goes straight to idle; otherwise blue until you focus it.
   `name`/`unname` set/drop `@agent_name`, a user-set pane label (grammar
-  `[a-z][a-z0-9_-]{0,31}`, unique among live agents — enforced by the `agent`
+  `[a-z][a-z0-9_-]{0,31}`, unique among live agents - enforced by the `agent`
   CLI). Invariant: `@agent_name ⟹ @agent_state` (`name` refuses a stateless
   pane), so the sweep's state-gated death-clear always covers the name; `clear`
   drops it too. Not journalled (the schema has no name field). Shown on the pane
   border (blue `⟪name⟫`) and as a column in the popup/`agent ls`.
-- [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) — sourced by
+- [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) - sourced by
   `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
   **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
-  permission_mode, notification message, tool_name, stop_reason — plus `tool_input` for
+  permission_mode, notification message, tool_name, stop_reason - plus `tool_input` for
   `ExitPlanMode` only, i.e. the plan text) to
   `~/.local/state/agent-journal/events-YYYY-MM.jsonl`. The dots show current
   state; the journal is the replayable history for audits and future cross-pane
@@ -201,7 +201,7 @@ The logic is spread across several files — change them as a set:
   renders the launching pane's plan straight away or falls back to an fzf picker
   across accounts. No process scraping. Tested by
   [`../zsh/tests/claude-plan-popup.bats`](../zsh/tests/claude-plan-popup.bats).
-- [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) — shared rank,
+- [`scripts/agent-state-lib.sh`](./scripts/agent-state-lib.sh) - shared rank,
   pane→window and window→session rollups, bell, and `is_viewing` helpers (also
   used by `agent-sweep.sh`;
   `is_viewing` is the one definition of "you are looking at the pane", shared by
@@ -216,7 +216,7 @@ The logic is spread across several files — change them as a set:
   The bottom rail shows that glyph beside every session, including each session
   containing a linked agent window. Topology hooks call `agent-sweep.sh sync` to
   rebuild both cached levels after pane/window moves. The lib also hosts
-  **`other_sessions_badge`** — the read-only cross-session fallback (worst of
+  **`other_sessions_badge`** - the read-only cross-session fallback (worst of
   blocked>done + a count of such agent panes in sessions other than the attached
   one), rendered by
   [`scripts/status-right.sh`](./scripts/status-right.sh)'s
@@ -226,7 +226,7 @@ The logic is spread across several files — change them as a set:
   `tmux set -g @cross_session_badge off`. Semantically aligned with `prefix + A`:
   it counts exactly the panes that popup would jump to elsewhere. Tested by
   [`../zsh/tests/agent-badge.bats`](../zsh/tests/agent-badge.bats).
-- [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) — Claude `Stop`/`StopFailure`
+- [`scripts/agent-stop.sh`](./scripts/agent-stop.sh) - Claude `Stop`/`StopFailure`
   hook adapter. Claude fires `Stop` at every clean turn-end, even while a
   background dynamic workflow / subagent is still draining; turns that end via
   API error fire `StopFailure` instead (`Stop` doesn't fire for those) and route
@@ -235,13 +235,13 @@ The logic is spread across several files — change them as a set:
   and forwards `working` while any remain, else `done` (degrades to `done` if jq
   is missing/the payload won't parse). Persistent watchers (`monitor`, `dream`)
   are excluded so they can't pin the dot at working forever; `shell` is excluded
-  for the same reason — background shells are often never-exiting dev servers,
+  for the same reason - background shells are often never-exiting dev servers,
   and a false `working` never self-corrects, whereas a finite build showing
   `done` early does (its completion wakes a fresh turn that re-fires the hooks).
-- [`scripts/agent-pretooluse.sh`](./scripts/agent-pretooluse.sh) — Codex
+- [`scripts/agent-pretooluse.sh`](./scripts/agent-pretooluse.sh) - Codex
   `PreToolUse` hook adapter (sibling of `agent-stop.sh`). Codex's question card is
   the `request_user_input` tool, and unlike Claude's `AskUserQuestion` it fires
-  **no** `PermissionRequest` — only `PreToolUse`/`PostToolUse` → `working` — so a
+  **no** `PermissionRequest` - only `PreToolUse`/`PostToolUse` → `working` - so a
   pane awaiting your answer would sit peach, never red. The adapter jq-inspects
   `tool_name`: `request_user_input` → `blocked`, else `working`, re-piping the
   payload so `agent-state.sh`'s journal capture stays intact. Fail-open to
@@ -252,18 +252,18 @@ The logic is spread across several files — change them as a set:
   not a binary: every `~/.codex/hooks.json` agent-state command either invokes
   `agent-state.sh` directly, or an `agent-*.sh` adapter in `scripts/` that
   forwards to it. `codex-agent-hooks.bats` checks that by grepping the adapter,
-  so a new adapter needs no test edit — but one that never reaches
+  so a new adapter needs no test edit - but one that never reaches
   `agent-state.sh` fails the gate.
-- [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) — phase-5 reconcile net (a
+- [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) - phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
   Three jobs: (1) clear a stale dot whose agent died without a clean done/clear
   (shell foreground = agent gone); (2) age a `done` dot you are currently viewing
-  (`is_viewing`: active pane, active window, `session_attached>0`) to idle — the
+  (`is_viewing`: active pane, active window, `session_attached>0`) to idle - the
   deterministic backstop for the `done` branch's seen-at-birth and the focus
   hooks' `seen`, which they miss when the finish races your focus or you watch one
   agent while another finishes then return by switching windows (no fresh
   select-pane/window-changed). The attached-session gate keeps detached sessions
-  unread (nobody looking); (3) **codex title-spinner working detection** — Codex
+  unread (nobody looking); (3) **codex title-spinner working detection** - Codex
   has no "model generating" hook event, so a pane the Stop hook aged to idle (or a
   turn resumed without a fresh `UserPromptSubmit`) sits green while actively
   computing. Codex's OSC title carries a braille spinner while working
@@ -279,7 +279,7 @@ The logic is spread across several files — change them as a set:
   `agent-state.sh` is untouched. Precedence stays `blocked > done(unseen) >
   working > idle` (the canonical `rank`). Opt out with
   `tmux set -g @codex_title_poll off` (mirrors `@cross_session_badge off`).
-- `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) — renders the tab dot from the
+- `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) - renders the tab dot from the
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
 - Hooks: `~/.claude/settings.json` (and other agents' hooks) call
@@ -299,8 +299,8 @@ The logic is spread across several files — change them as a set:
   focus without a navigation. `agent-sweep.sh` is the backstop when none of them fire.
 - Menus: `prefix + Alt+.` and the right-click pane menu
   ([`scripts/context-menu.sh`](./scripts/context-menu.sh)) set a state by hand
-  (literals must match the lib — see `agent-glyphs.bats`).
-- [`scripts/agent-cli-lib.sh`](./scripts/agent-cli-lib.sh) — functional core
+  (literals must match the lib - see `agent-glyphs.bats`).
+- [`scripts/agent-cli-lib.sh`](./scripts/agent-cli-lib.sh) - functional core
   shared by the `agent` CLI and [`scripts/agent-popup.sh`](./scripts/agent-popup.sh):
   the target resolver (`%N` | `session:win.pane` | exact `@agent_name`) and
   `agent_list_rows`, the **single agent-pane enumerator** (positional TSV:
@@ -310,42 +310,42 @@ The logic is spread across several files — change them as a set:
   `agent_name_taken` (the live-uniqueness check) lives here too, scoped to the
   enumerator's state-carrying view. Sourced, never executed.
 - `agent` CLI ([`../zsh/functions/agents/agent`](../zsh/functions/agents/agent),
-  on PATH via `~/.local/bin`) — the scripting front-end so one agent can drive
+  on PATH via `~/.local/bin`) - the scripting front-end so one agent can drive
   others: `ls`/`state`/`wait` (poll `@agent_state`), `prompt` (gated
   buffer-paste + separate Enter + stall verify with one submit retry), `name`/`unname`,
-  `pick`. It never writes `@agent_state` directly — all mutation goes through
+  `pick`. It never writes `@agent_state` directly - all mutation goes through
   `agent-state.sh`; `prompt` only sends keystrokes and observes the option the
   agent's own hooks set.
 - Navigation: `prefix + A` popup (fzf pick) and `prefix + Alt+a` cycle-jump
-  (`agent-popup.sh cycle blocked,done` — a CSV state priority list, positional
+  (`agent-popup.sh cycle blocked,done` - a CSV state priority list, positional
   order within a state, wraps; the fallback-to-done policy is the binding's
   list, not cycle's. The visited pane is aged seen like any jump).
 
 Tests (run `mise run zsh-tests`):
 
-- [`../zsh/tests/agent-state.bats`](../zsh/tests/agent-state.bats) — verb
+- [`../zsh/tests/agent-state.bats`](../zsh/tests/agent-state.bats) - verb
   behaviour + rollup; also the pure `has_spinner` glyph matrix and
   `codex_working_step` FSM (lie/resume/stop-debounce/momentary-gap/blocked cases).
-- [`../zsh/tests/agent-pretooluse.bats`](../zsh/tests/agent-pretooluse.bats) — the
+- [`../zsh/tests/agent-pretooluse.bats`](../zsh/tests/agent-pretooluse.bats) - the
   Codex `PreToolUse` adapter: `request_user_input` → blocked, else working,
   fail-open, and payload passthrough to the journal.
-- [`../zsh/tests/agent-journal.bats`](../zsh/tests/agent-journal.bats) — journal
+- [`../zsh/tests/agent-journal.bats`](../zsh/tests/agent-journal.bats) - journal
   lines: curated fields, ExitPlanMode plan capture, no tool_input leak,
   disable/no-stdin/no-op-seen cases, Stop payload pass-through.
-- [`../zsh/tests/tmux-agent-tabs.bats`](../zsh/tests/tmux-agent-tabs.bats) —
+- [`../zsh/tests/tmux-agent-tabs.bats`](../zsh/tests/tmux-agent-tabs.bats) -
   asserts the **exact** `@agent_dotfmt` glyph/colour output against the real
   tmux.conf; update it when you change the state → glyph mapping.
-- [`../zsh/tests/agent-glyphs.bats`](../zsh/tests/agent-glyphs.bats) — derives
+- [`../zsh/tests/agent-glyphs.bats`](../zsh/tests/agent-glyphs.bats) - derives
   expectations from `agent-state-lib.sh` and asserts all four renderers (tabs,
   prefix+Alt+. menu, right-click pane menu, popup) match it; the drift guard
   for the mapping.
-- [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) — stale-dot
+- [`../zsh/tests/agent-sweep.bats`](../zsh/tests/agent-sweep.bats) - stale-dot
   clearing + the viewed-`done` → idle reconcile (attached/inactive/detached
   gates) + the codex title-spinner working detection (spinner → working, the
   two-poll retire to idle, done-left-alone, `@codex_title_poll off`).
-- [`../zsh/tests/agent-popup.bats`](../zsh/tests/agent-popup.bats) — list ranking,
+- [`../zsh/tests/agent-popup.bats`](../zsh/tests/agent-popup.bats) - list ranking,
   the name column, jump's move + seen ageing, cycle order/wrap/fallback.
-- [`../zsh/tests/agent-cli.bats`](../zsh/tests/agent-cli.bats) — the `agent` CLI:
+- [`../zsh/tests/agent-cli.bats`](../zsh/tests/agent-cli.bats) - the `agent` CLI:
   resolver, enumerator, ls/state/wait against a private server; prompt send
   mechanics + stall/refusal via a PATH tmux stub; name uniqueness.
 
@@ -686,10 +686,10 @@ Tests: [`../zsh/tests/codex-windows.bats`](../zsh/tests/codex-windows.bats)
 ## Memory-pressure monitoring (custom subsystem)
 
 macOS-only memory gauge, parallel in shape to the agent dots: one shared lib and
-three surfaces speaking one vocabulary — `OK | BUSY | CRITICAL`, encoded as
+three surfaces speaking one vocabulary - `OK | BUSY | CRITICAL`, encoded as
 colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a set:
 
-- [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) — **canonical** thresholds
+- [`scripts/mem-lib.sh`](./scripts/mem-lib.sh) - **canonical** thresholds
   (`MEM_BUSY_SWAP_MB` / `MEM_CRITICAL_SWAP_MB`), state mapping (`mem_state`),
   the colour/glyph language (`mem_state_colour` / `mem_state_glyph`), and the
   figure-slot cause logic (`mem_cause` / `mem_token` / `MEM_CAUSE_GLYPH`): when
@@ -699,20 +699,20 @@ colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a
   state (it often reads normal while actively swapping) and, when it is the
   driver, names the cause. Sourced, never run.
   On Linux the macOS sysctls are absent → swap 0, pressure 1 → flat `OK`.
-- [`scripts/status-right.sh`](./scripts/status-right.sh) — `mem_segment()`, the
+- [`scripts/status-right.sh`](./scripts/status-right.sh) - `mem_segment()`, the
   quiet-when-healthy pill (width ≥ 80 only). It gathers pressure and swap once,
   then uses the lib's pure `*_from` derivations. `ram_percentage()` parses one
-  `vm_stat` capture directly on macOS and renders **alongside** it by design —
+  `vm_stat` capture directly on macOS and renders **alongside** it by design -
   RAM% is the total-used headline, mem_segment the swap/pressure signal.
   CPU is stale-while-revalidate: a render returns cached data (or `--%`) at
   once, while one lock-guarded, five-second-bounded sampler writes atomically in
   the background. Fresh data appears on the next native status tick; never force
   a refresh from the sampler.
-- [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) — `prefix + Alt+m` bounded
+- [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) - `prefix + Alt+m` bounded
   triage (top 5 sampled `phys_footprint` apps + 3 agents). `k` chooses a visible
   app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
   sampled-app/all-agent details; `r` refreshes and `q` closes.
-- [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) — launchd
+- [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) - launchd
   notifier (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
   Banners on sustained pressure; log `~/.cache/memwatch.log`. Reload after edits:
   `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
@@ -727,18 +727,18 @@ own awk and the `memwatch` notifier are not yet unit-tested.
 Same one-lib-many-surfaces shape as the memory gauge, for a different failure:
 **detecting when session saving silently stops.** continuum advances its
 save-timestamp unconditionally every 5 min, so a save path that stops producing
-files ticks on without error — it did exactly that for 3.5 weeks (saves froze at
+files ticks on without error - it did exactly that for 3.5 weeks (saves froze at
 28 Jun) until a kernel panic found no recent session to restore. The write path
 was healthy; the *silence* was the bug. This subsystem makes save-freshness a
 visible, alarming state.
 
 Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file.
 
-- [`scripts/resurrect-lib.sh`](./scripts/resurrect-lib.sh) — **canonical**
+- [`scripts/resurrect-lib.sh`](./scripts/resurrect-lib.sh) - **canonical**
   thresholds (`RESURRECT_AGING_SECS` 10 min / `RESURRECT_STALE_SECS` 15 min,
   env-overridable for tests), the save-dir resolver (`resurrect_dir`, replicating
-  the plugin's `helpers.sh` default), newest-save age (`resurrect_newest_age_secs`
-  — max mtime over `tmux_resurrect_*.txt` plus the `last` symlink *target*,
+  the plugin's `helpers.sh` default), newest-save age (`resurrect_newest_age_secs` -
+  max mtime over `tmux_resurrect_*.txt` plus the `last` symlink *target*,
   `_resurrect_mtime` dereferencing with `-L` and handling GNU/BSD `stat`), the
   state mapping (`resurrect_state`), and the colour/glyph/token language
   (`resurrect_state_colour` green/yellow/red, `resurrect_state_glyph` ⟳ turning /
@@ -746,8 +746,8 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   Cross-platform (no macOS-only syscalls), so it works on Linux hosts too.
   Caveat: tmux-resurrect only keeps a timestamped file when session state changed
   since the previous save, so `age` is the age of the last *content-changing*
-  save — exactly the signal that went stale in the incident.
-- [`scripts/status-right.sh`](./scripts/status-right.sh) — `resurrect_segment()`,
+  save - exactly the signal that went stale in the incident.
+- [`scripts/status-right.sh`](./scripts/status-right.sh) - `resurrect_segment()`,
   the always-shown pill (width ≥ 80). It gathers newest-save age once, then uses
   the lib's pure `resurrect_state_from` / `resurrect_token_from` derivations.
   Unlike the quiet-when-healthy mem pill, a
@@ -755,7 +755,7 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   lacked; it reddens to yellow/red the moment saving stops. It is the first
   persistent system pill, followed by the darker CPU pill, so its surface1
   (`#45475a`) shade stays distinct.
-- [`scripts/resurrect-keepalive.sh`](./scripts/resurrect-keepalive.sh) — the
+- [`scripts/resurrect-keepalive.sh`](./scripts/resurrect-keepalive.sh) - the
   **drive** layer (macOS): an independent save driver run every 5 min by a
   launchd agent (`dev.connorads.tmux-resurrect-save`, defined in
   [`darwin-shared.nix`](../nix/modules/darwin-shared.nix), both Macs), so saving
@@ -765,24 +765,24 @@ Vocabulary: `FRESH | AGING | STALE | NONE`, from the age of the newest save file
   `>/dev/null 2>&1`), then verifies both freshness (via the lib) and **content**:
   on `STALE`/`NONE`, or a newest save carrying no `pane` lines, it sets the
   `@resurrect_stale` tmux option and nags each attached client by name
-  (`display-message -c` — from launchd there is no current client, so an
+  (`display-message -c` - from launchd there is no current client, so an
   untargeted message would no-op), else clears the flag. The pane count is the
   content half of the check because a corrupt save is still a *new* file, so the
   mtime-only pill reads it as healthy; a server always has at least one pane and
   the no-server case exits earlier, so zero pane lines is unambiguous corruption.
   The success log carries `panes=N`, an empty save logs `SAVE EMPTY`. No tmux
   server ⇒ logs `no server, skip` and exits 0. continuum stays enabled as cross-platform
-  redundancy (Linux hosts get the detect pill but no keepalive yet — a deferred
+  redundancy (Linux hosts get the detect pill but no keepalive yet - a deferred
   systemd-timer follow-up); the minor double-save on macs is harmless.
   It **requires a UTF-8 locale**, which it forces when the environment carries
   none or a non-UTF-8 one (the plist sets `LANG` too, but the script guard also
-  covers a hand-run from a sanitised env). Outside UTF-8 — and with no `$TMUX`,
-  which the keepalive strips by design — tmux sanitises the tabs its format
+  covers a hand-run from a sanitised env). Outside UTF-8 - and with no `$TMUX`,
+  which the keepalive strips by design - tmux sanitises the tabs its format
   output delimits fields with to `_`, so `save.sh` reads an empty session name,
   treats every pane as a grouped session, skips it, and writes a state-only save
   with no panes, while the session-ids hook matches no agent panes and records
   nothing (the map itself survives such a save: unconfirmed entries are carried,
-  not rewritten — see the restore subsystem above).
+  not rewritten - see the restore subsystem above).
   Its plist `PATH` must also carry **`/usr/sbin`**, where macOS keeps `lsof`: the
   session-ids hook needs it for Codex ids and fails open on a missing tool, so
   without it Codex panes save no session id at all. The lib's `/usr/sbin/lsof`
@@ -814,12 +814,12 @@ active keep-awake is never silently left running in a forgotten shell.
 can.** Measured here: `pmset -g log` recorded `Entering Sleep state due to
 'Clamshell Sleep'` while `caffeinate -i -t 14400` held a live
 `PreventUserIdleSystemSleep` assertion. Clamshell sleep is a separate kernel path
-that never consults power assertions, so the whole family — `-i`, `-s`, `-d` — is
+that never consults power assertions, so the whole family - `-i`, `-s`, `-d` - is
 *structurally* unable to stop it. This is what killed an overnight agent run.
 
 The only lever that works is `sudo pmset -a disablesleep 1`, a kernel
 `SleepDisabled` flag checked *before* the clamshell path. Its well-known failure
-mode is being silently left on forever — the Mac then never sleeps, in a bag or
+mode is being silently left on forever - the Mac then never sleeps, in a bag or
 on a flight, until the battery dies.
 
 That failure is exactly what this subsystem was built to prevent (managed pid,
@@ -828,7 +828,7 @@ the flag lives in here rather than being typed by hand.
 
 **Scope note: lid mode is the fallback, not the headline answer.** For a
 genuinely long unattended run, `atp --host dev` (agent-teleport, already built)
-moves the live session to a machine meant to be on — no root, no battery risk, no
+moves the live session to a machine meant to be on - no root, no battery risk, no
 heat in a closed shell. Lid mode is for when the work must stay on this machine.
 
 ### The two-layer safety model
@@ -839,13 +839,13 @@ hooks-plus-backstop shape used twice already here (agent-state hooks +
 `agent-sweep.sh`; continuum + `resurrect-keepalive.sh`):
 
 1. **A supervisor owns the flag.** The recorded pid is a wrapper whose trap
-   clears the flag on every *ordinary* exit — manual stop, deadline expiry,
+   clears the flag on every *ordinary* exit - manual stop, deadline expiry,
    SIGTERM.
 2. **A reconciler catches the rest.** SIGKILL, crash, panic and reboot leave no
    trap to run, so `caffeine-reconcile.sh` clears the flag whenever it is set
    with no live lid session, including at login.
 
-**Neither layer alone is sufficient** — this is the part a future reader needs,
+**Neither layer alone is sufficient** - this is the part a future reader needs,
 because "just use the supervisor" is the obvious simplification and it is wrong.
 Layer 1 misses the panic (this machine has had one; it is what exposed the
 resurrect staleness bug). Layer 2 alone would leave up to 5 minutes of wrong
@@ -859,7 +859,7 @@ Two constraints remove failure states by construction rather than by discipline:
   exact artefact this subsystem exists to prevent.
 - **Lid mode verifies the flag took.** A minority of macOS 26 reports say
   `disablesleep` does not stick. After setting it, `SleepDisabled` is read back;
-  if it is not `1` the start aborts, says so plainly, and writes no pidfile — so
+  if it is not `1` the start aborts, says so plainly, and writes no pidfile - so
   a failed set never produces an ON-LID pill. A pill that lies about keeping the
   Mac awake reproduces the original bug with extra steps.
 
@@ -871,7 +871,7 @@ the hold. Three things about the extension are load-bearing:
 
 - **It adds to the remainder, never sets a fresh total.** `caffeine_extend_total`
   is remaining + picked. Setting would silently *shorten* a session with more
-  left on it than the amount picked — the opposite of what the key promises.
+  left on it than the amount picked - the opposite of what the key promises.
 - **It is a restart, not an edit.** `caffeinate -t` fixes its deadline at exec and
   offers no way to move it, so extending is `caffeine_start*` with a bigger
   number. In lid mode that briefly drops the kernel flag between the outgoing
@@ -884,7 +884,7 @@ the hold. Three things about the extension are load-bearing:
   *before* anything is stopped, so declining one costs the running session
   nothing.
 
-Indefinite sessions offer no `[+]` — there is no bounded thing to add to — and
+Indefinite sessions offer no `[+]` - there is no bounded thing to add to - and
 `caffeine_extend_total` returns 3 rather than inventing a total. Lid sessions
 extend like any other, and each extension is itself timed, so the always-timed
 invariant survives any number of them.
@@ -898,7 +898,7 @@ and leave the Mac unable to sleep. It adds a rule, so the desktop's
 `security.pam.services.sudo_local` (Touch ID for normal sudo) is unaffected.
 
 **Open fact:** whether `SleepDisabled` survives a reboot is not yet confirmed on
-this machine (it needs a real reboot to settle). The design holds either way —
+this machine (it needs a real reboot to settle). The design holds either way -
 `RunAtLoad` on the reconciler is load-bearing if it persists and belt-and-braces
 if it does not. Settle it with: set the flag, reboot,
 `pmset -g | grep SleepDisabled`, and replace this paragraph with the answer.
@@ -907,16 +907,16 @@ if it does not. Settle it with: set the flag, reboot,
 
 Change as a set:
 
-- [`scripts/caffeine-lib.sh`](./scripts/caffeine-lib.sh) — **canonical** state
+- [`scripts/caffeine-lib.sh`](./scripts/caffeine-lib.sh) - **canonical** state
   (`caffeine_state` ON / ON-LID / OFF from pidfile-pid liveness plus the mode
   field), the colour/glyph/token language (`caffeine_state_colour` peach `fab387`
-  / maroon `eba0ac`, `caffeine_state_glyph` ☼ / ✷ — both single-width, not the
+  / maroon `eba0ac`, `caffeine_state_glyph` ☼ / ✷ - both single-width, not the
   double-width ☕ emoji that would break the pill, `caffeine_token` ∞ /
   remaining), and the **drive layer** (`caffeine_start [secs]` /
   `caffeine_start_lid secs` / `caffeine_stop` / `caffeine_toggle` /
   `caffeine_clear_sleep_disabled`), plus `caffeine_clock_at epoch` (wall-clock
   `HH:MM`, trying BSD `date -r` then GNU `date -d @`) and `caffeine_extend_total
-  add` — the pure arithmetic behind extending a running session. Sourced, never
+  add` - the pure arithmetic behind extending a running session. Sourced, never
   run.
   **Pidfile contract**: `${CAFFEINE_PIDFILE:-$HOME/.cache/tmux-caffeinate.pid}`
   holds one line `pid deadline_epoch mode` (`deadline 0` = indefinite, mode
@@ -926,19 +926,19 @@ Change as a set:
   the deadline, so ON-timed clears itself once the pid dies; a stale pidfile reads
   as OFF. No `uname` branch: on Linux the pidfile never exists → OFF.
   `caffeine_sleep_disabled` reads the *real* kernel flag and is deliberately kept
-  out of `caffeine_state` — the pill renders every tick and must not fork `pmset`.
+  out of `caffeine_state` - the pill renders every tick and must not fork `pmset`.
   The supervisor `wait`s on its `caffeinate` child rather than `exec`ing it (an
   exec would replace the shell and take the trap with it) and kills it from the
   trap, so a stop leaves no stray caffeinate. `caffeine_stop` **waits** for the
   pid to die: without it an outgoing lid trap can fire *after* a new lid session
   raised the flag, silently disarming a session the pill reports as ON-LID.
-- [`scripts/caffeine-popup.sh`](./scripts/caffeine-popup.sh) — `prefix + Alt+k`
+- [`scripts/caffeine-popup.sh`](./scripts/caffeine-popup.sh) - `prefix + Alt+k`
   key-loop popup (mem-popup shape). OFF: `i` indefinite, `t` timed
-  (30m/1h/2h/4h/8h/12h via fzf), `l` lid-closed (straight to the same picker — lid
+  (30m/1h/2h/4h/8h/12h via fzf), `l` lid-closed (straight to the same picker - lid
   mode has no indefinite path to offer), `q` close. ON / ON-LID: `+` (or `=`) add
-  time to what is left — an fzf picker whose rows name the resulting *end time*,
+  time to what is left - an fzf picker whose rows name the resulting *end time*,
   because "will it outlast the run" is the question being asked and "+1 hour"
-  does not answer it — `space`/`o` off, `q` close. The `+` row is hidden while
+  does not answer it - `space`/`o` off, `q` close. The `+` row is hidden while
   indefinite. Both running states also render the end time beside the remaining
   figure, which is what makes the extend decision answerable before the picker is
   even opened. The lid row shows the live power source, and on battery a confirm
@@ -949,7 +949,7 @@ Change as a set:
   coexist with any state. Refreshes the client after each toggle so the pill
   updates at once. Only the *start* action is macOS-gated
   (`command -v caffeinate`); Linux explains it is unsupported and waits for a key.
-- [`scripts/caffeine-reconcile.sh`](./scripts/caffeine-reconcile.sh) — layer 2,
+- [`scripts/caffeine-reconcile.sh`](./scripts/caffeine-reconcile.sh) - layer 2,
   mirroring `resurrect-keepalive.sh` in shape and logging posture (capture rc and
   stderr, never `>/dev/null`). Flag set + no live ON-LID session → clear it, log
   it, and `display-message -c` each attached client by name (from launchd there is
@@ -960,10 +960,10 @@ Change as a set:
   `dev.connorads.tmux-caffeine-reconcile` in
   [`../nix/modules/darwin-shared.nix`](../nix/modules/darwin-shared.nix), beside
   `dev.connorads.tmux-resurrect-save`: `StartInterval` 300 **and** `RunAtLoad`.
-- [`scripts/status-right.sh`](./scripts/status-right.sh) — `caffeine_segment()`,
+- [`scripts/status-right.sh`](./scripts/status-right.sh) - `caffeine_segment()`,
   a **self-hiding** bright accent pill (width ≥ 80): OFF prints nothing, ON shows
   peach `☼ ∞` / `☼ 42m`, ON-LID maroon `✷ 4h`. No structural change was needed for
-  lid mode — it already passes state to `_colour`/`_glyph`, so the escalated
+  lid mode - it already passes state to `_colour`/`_glyph`, so the escalated
   colour arrives through the existing path; only the self-hide guard has to test
   for OFF specifically rather than for "not ON". Grouped with the other custom-lib
   pills after `resurrect_segment`.
@@ -977,7 +977,7 @@ refusals (nothing running / bad addition / indefinite), the cross-platform
 wall-clock, and the stop-wait) and
 [`../zsh/tests/caffeine-reconcile.bats`](../zsh/tests/caffeine-reconcile.bats)
 (the reconciler's branches, driving `sudo`/`pmset` stubs over a flag *file* so
-the two failure shapes — refused, and returns 0 without taking — can be provoked
+the two failure shapes - refused, and returns 0 without taking - can be provoked
 at all).
 
 The privileged drive path (`caffeine_start_lid`'s happy case) needs real sudo and
@@ -997,11 +997,11 @@ one-lib-many-surfaces shape as the caffeine toggle. Two detached `ffmpeg`s
 capture the mic (avfoundation) and the system's own output (a Core Audio process
 tap, via [`voxtap`](../nix/voxtap/main.swift)) to two mono 16 kHz WAVs; `vox
 stop` finalises them, transcribes each with the MacWhisper CLI (`mw`) and merges
-them into one timestamped `transcript.md`. General-purpose by design — meetings,
-monologues, dictation — with no consumer baked in: integration is
+them into one timestamped `transcript.md`. General-purpose by design - meetings,
+monologues, dictation - with no consumer baked in: integration is
 `cat "$(vox last)/transcript.md" | claude -p …`.
 
-**System audio needs no setup at all** — no loopback driver, no Multi-Output
+**System audio needs no setup at all** - no loopback driver, no Multi-Output
 Device, no default-output switch, headphones optional. `vox` *refuses to start*
 when the tap is unavailable rather than half-capturing a meeting;
 `VOX_MIC_ONLY=1` is the named escape hatch. Why a tap, why no fallback, and why
@@ -1018,21 +1018,21 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
     vox.log               ffmpeg + mw stderr (mw reports progress there)
 ```
 
-The directory name **is** the title — no metadata file holding a duplicate that
-can drift — so renaming is `mv`, and Finder, hand and the picker are one
+The directory name **is** the title - no metadata file holding a duplicate that
+can drift - so renaming is `mv`, and Finder, hand and the picker are one
 operation. Only the timestamp prefix is ever parsed, never the slug. Colons are
 hostile in filenames, hence `YYYY-MM-DD-HHMMSS` rather than strict ISO 8601.
 
 **`solo` vs `2-way` is derived, never stored.** `vox_session_kind` reads whether
 `sys.json` carries any segments: if the system track transcribed to nothing,
 nobody else spoke. Already on disk, free to read, and self-healing after a
-re-transcription — which is why there is still no metadata file. Silence is
+re-transcription - which is why there is still no metadata file. Silence is
 therefore a *label*, not an error, and that is what removes any need to declare a
 mode at start.
 
 Change as a set:
 
-- [`scripts/vox-lib.sh`](./scripts/vox-lib.sh) — **canonical** state
+- [`scripts/vox-lib.sh`](./scripts/vox-lib.sh) - **canonical** state
   (`vox_state`: `RECORDING > TRANSCRIBING > EMPTY > READY > IDLE`, in that
   precedence, the same worst-first shape as the agent dots' `rank`) and the
   colour/glyph/token language (`vox_state_colour` subtext0 `a6adc8`, blue
@@ -1041,7 +1041,7 @@ Change as a set:
   shared `human_age`, or the unread/empty count). Every state is derived from a file
   whose staleness cannot lie, so none of them needs a reaper:
   **`${VOX_JOBFILE:-~/.cache/tmux-vox.job}`** holds `pid start_epoch dir` for the
-  transcription `vox stop` is spending minutes on — written by `stop` itself, so
+  transcription `vox stop` is spending minutes on - written by `stop` itself, so
   the pill says TRANSCRIBING whether it was typed in a pane or detached by the
   toggle, and a crashed `mw` reads as finished by pid liveness alone.
   **`${VOX_SEENFILE:-~/.cache/tmux-vox.seen}`** is a marker whose *mtime* is the
@@ -1057,40 +1057,40 @@ Change as a set:
   the picker is opened. **Statefile contract**:
   `${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}` holds one line
   `pids start_epoch dir`, where `pids` is comma-separated with the **mic capture
-  first** — it is the leader, and the one whose liveness means RECORDING (`read`
+  first** - it is the leader, and the one whose liveness means RECORDING (`read`
   puts the remainder in the last field, so a directory with spaces survives). It
-  also owns the two **pure text parsers** the capture path needs —
+  also owns the two **pure text parsers** the capture path needs -
   `vox_audio_device_index` (over `ffmpeg -list_devices` output) and
-  `vox_mean_volume` / `vox_classify_track` (over `volumedetect` output) — so
+  `vox_mean_volume` / `vox_classify_track` (over `volumedetect` output) - so
   device resolution and the monologue/meeting call are testable with fixtures and
   no audio hardware. Sourced, never run.
-- [`../zsh/functions/macos/vox`](../zsh/functions/macos/vox) — the dual-mode
+- [`../zsh/functions/macos/vox`](../zsh/functions/macos/vox) - the dual-mode
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
   `<file>` / `rename` / `compact` / `prune`). Every subcommand prints **bare
   paths to stdout, one per line**, with progress and diagnostics on stderr, so it
   composes without glue. **Exit 0 means the transcript has content**: `stop` and
-  `<file>` print the recording's path either way — the audio is intact, so there
-  is somewhere to look — but return non-zero, with one line naming what was not
+  `<file>` print the recording's path either way - the audio is intact, so there
+  is somewhere to look - but return non-zero, with one line naming what was not
   recognised, how long the audio was and where the log is. `mw` exits 0 whatever
   it heard, so nothing upstream of this check can tell "no speech" from "mw fell
-  over", and one message covers both. `prune --empty` selects by *content* instead of age —
-  the silent track of a monologue, keeping the one that carries the recording —
+  over", and one message covers both. `prune --empty` selects by *content* instead of age -
+  the silent track of a monologue, keeping the one that carries the recording -
   and is the production caller of the lib's loudness parsers. It measures only
   its candidates, at the moment you ask, and refuses a recording whose every
   track is silent: that is a delete-the-recording decision, not a reclaim one.
-- [`../nix/voxtap/main.swift`](../nix/voxtap/main.swift) — the system-audio
+- [`../nix/voxtap/main.swift`](../nix/voxtap/main.swift) - the system-audio
   helper, built by [`../nix/modules/voxtap.nix`](../nix/modules/voxtap.nix) with
   the system `swiftc` (desktop-only, like `biokc`/`imagepaste`). Streams 48 kHz
   mono float32 to stdout; `--check` answers "is the tap usable" with its exit
   status, which is what lets `vox` refuse to start; `--probe N` measures instead
   of streaming.
-- [`../vox/merge.py`](../vox/merge.py) — a real Unix filter: two `mw` JSON files
+- [`../vox/merge.py`](../vox/merge.py) - a real Unix filter: two `mw` JSON files
   in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
   Stdlib-only so the directory stays eligible for the `py-typecheck-vox` pyrefly
   gate. Applies [`../vox/vocabulary.tsv`](../vox/vocabulary.tsv) (`wrong<TAB>right`,
   whole-word and case-insensitive) because `mw transcribe` has no
   `--vocabulary`/`--prompt` flag and no replacement dictionary in its prefs.
-- [`scripts/vox-toggle.sh`](./scripts/vox-toggle.sh) — `prefix + Alt+v`, the
+- [`scripts/vox-toggle.sh`](./scripts/vox-toggle.sh) - `prefix + Alt+v`, the
   key the subsystem is actually used through: idle starts, recording stops. Two
   orderings are the design. **Capture starts before the title prompt appears**
   and the answer is applied with `vox rename`, so no audio is lost to typing and
@@ -1100,8 +1100,8 @@ Change as a set:
   the pill carries the wait and a `display-message` plus `ring_bell` reports the
   end. It reports the **exit code**, not merely whether the command ran: a
   transcript with nothing in it says "no speech transcribed" and names the log,
-  and the bell rings either way — a recording that produced nothing needs you
-  more than one that worked. Pressed while TRANSCRIBING it starts a new capture — transcription is
+  and the bell rings either way - a recording that produced nothing needs you
+  more than one that worked. Pressed while TRANSCRIBING it starts a new capture - transcription is
   per-directory and detached, so the two never contend. **The title prompt is one
   literal question** (`command-prompt -l`, see the findings below) and the script
   owns it: `vox-toggle.sh prompt DIR [CLIENT]` is the single door, so the pill
@@ -1109,7 +1109,7 @@ Change as a set:
   (`run-shell -b`, in [`tmux.conf`](./tmux.conf) and on the prompt's own `name`
   callback): a foreground job queues every key pressed while it lives, and the
   job lives for as long as the prompt is open.
-- [`scripts/vox-menu.sh`](./scripts/vox-menu.sh) — the menu behind a click on
+- [`scripts/vox-menu.sh`](./scripts/vox-menu.sh) - the menu behind a click on
   the pill (`#[range=user|vox]`, dispatched from the `MouseDown1Status` chain in
   [`tmux.conf`](./tmux.conf) beside `agents` and `mem`). **Its rows match the
   state**: recording offers Stop / Name… / Discard / Recordings, everything else
@@ -1122,9 +1122,9 @@ Change as a set:
   clicking client through so the question lands where it was asked for; the
   pill-click row is `run-shell -b` because `display-menu` blocks its caller the
   same way `command-prompt` does.
-- [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) — `prefix + Alt+Shift+V` fzf
+- [`scripts/vox-popup.sh`](./scripts/vox-popup.sh) - `prefix + Alt+Shift+V` fzf
   library over `vox ls`, previewing each transcript and carrying the derived
-  `solo`/`2-way` column — or `empty`, for a recording that transcribed to
+  `solo`/`2-way` column - or `empty`, for a recording that transcribed to
   nothing, which `solo` would make indistinguishable from a real monologue. The
   preview is three-way for the same reason: a transcript that exists and is empty
   is *finished*, so "No transcript yet" over it reads as pending forever. Enter
@@ -1134,18 +1134,18 @@ Change as a set:
   two, via a temp file because `afplay` cannot read a pipe), `ctrl-d` deletes and
   `ctrl-x` reclaims audio, both confirmed and both over the whole `tab`
   selection. Reclaiming shells out to **`vox prune <path>...`** rather than
-  deleting audio here — which files count as audio and what survives has one
+  deleting audio here - which files count as audio and what survives has one
   owner, and that is why the CLI grew explicit paths. Opening it is what marks
   everything looked-at, so it is the thing that clears the READY pill. Actions
   run **after** fzf exits (`--expect`), not inside `--bind execute()`, so each
   owns the popup's real tty.
-- [`scripts/status-right.sh`](./scripts/status-right.sh) — `vox_segment()`, a
+- [`scripts/status-right.sh`](./scripts/status-right.sh) - `vox_segment()`, a
   **self-hiding** pill (width ≥ 80) following one capture from start to read:
   IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`
   waiting, `! 1` red for a recording that transcribed to nothing. It reads the
   lib, so the EMPTY pill needed no change here.
   Deliberately the *opposite* treatment to caffeine's bright peach
-  alarm — muted subtext0 on the surface1 data-pill shade — because it is visible
+  alarm - muted subtext0 on the surface1 data-pill shade - because it is visible
   during screen shares and should read as ambient chrome. READY is the one
   exception, in the agent dots' unread blue, and it can only appear once the
   capture has stopped. Elapsed uses `human_age`, not mm:ss, which would tick in
@@ -1155,30 +1155,30 @@ Change as a set:
 
 - **`command-prompt` splits `-p` and `-I` on commas**, into a *sequence* of
   prompts with one answer each (`%%`, `%1`, `%2`, …). So any prompt holding
-  **text** — a title, a window label, a path — needs **`-l`** (tmux 3.6+), which
+  **text** - a title, a window label, a path - needs **`-l`** (tmux 3.6+), which
   takes both flags literally. Without it the status line shows the truncated
   first half, and Enter opens a second prompt that swallows every keystroke: the
   "tmux is frozen" symptom, from a wording change nobody thought was a flag
   change. The splitting is deliberate in
   [`scripts/claude-branch-menu.sh`](./scripts/claude-branch-menu.sh) and
   [`scripts/codex-branch-menu.sh`](./scripts/codex-branch-menu.sh), which ask for
-  several values at once — hence a rule, not a blanket `-l`.
+  several values at once - hence a rule, not a blanket `-l`.
 - **A foreground `run-shell` queues the client's keys.** Keys pressed while the
   job is alive are delivered only once it exits (measured on 3.7b), and a job
   that raises a `command-prompt` or `display-menu` from the CLI lives until that
   prompt or menu closes. A binding whose script prompts therefore needs
   `run-shell -b`, unless something genuinely needs the exit status.
 - **Stop must be SIGINT, never SIGTERM.** ffmpeg treats TERM as "immediate exit
-  requested" and leaves a WAV with **no valid header** — an unreadable recording.
+  requested" and leaves a WAV with **no valid header** - an unreadable recording.
   INT is the clean-shutdown path that rewrites the header with the real length.
 - **A background job from a non-interactive shell inherits SIGINT as `SIG_IGN`**
   (POSIX), and a shell cannot then `trap` it. Real ffmpeg calls
-  `signal(SIGINT, …)` unconditionally, which overrides the inherited ignore — so
-  `vox stop` works — but a `trap … INT` shell *fake* cannot model that and would
+  `signal(SIGINT, …)` unconditionally, which overrides the inherited ignore - so
+  `vox stop` works - but a `trap … INT` shell *fake* cannot model that and would
   appear to prove the opposite. The ffmpeg stub in
   [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) is therefore Python.
 - **A live tap blocks avfoundation from OPENING an audio input.** Not from
-  running one — a capture already in flight survives the tap's creation — but
+  running one - a capture already in flight survives the tap's creation - but
   `ffmpeg -f avfoundation -i :0` started while a tap exists blocks forever, with
   no error. So `_vox_start` starts the mic capture, waits for `mic.wav` to appear
   (ffmpeg opens outputs only once every input is open, so the file appearing *is*
@@ -1187,22 +1187,22 @@ Change as a set:
 - **One ffmpeg cannot read both sources fairly.** It reads whichever input is
   behind, and the two start in different timestamp epochs, so the other starves:
   measured, the mic delivered **2.0 s of audio over 8 s of wall-clock**.
-  Wall-clock stamps on the pipe invert it exactly (mic 7.0 s, system 0.26 s) —
+  Wall-clock stamps on the pipe invert it exactly (mic 7.0 s, system 0.26 s) -
   the same first-pts trap as `-t`. Hence one single-input ffmpeg per source.
-- **The tap delivers nothing at all through silence** — 0 bytes over 4 idle
-  seconds, not zeros — so `voxtap` pads to a monotonic clock on a 100 ms timer.
+- **The tap delivers nothing at all through silence** - 0 bytes over 4 idle
+  seconds, not zeros - so `voxtap` pads to a monotonic clock on a 100 ms timer.
   Without it every quiet stretch would vanish and the two tracks would drift
   apart. The padding invariant is regression-tested in `vox-contract.bats`.
 - **That padding is digital zeros, and Parakeet blanks on a zero-padded tail.**
   A clip ending in enough of them transcribes to an EMPTY string
   ([NVIDIA-NeMo/Speech#15757](https://github.com/NVIDIA-NeMo/Speech/issues/15757)).
   Measured on one 2.6 s quiet utterance: intact at +5 s of zeros, gone at +12,
-  and fine at +12 or +24 s of *real room tone* — so it is the zeros, not the
+  and fine at +12 or +24 s of *real room tone* - so it is the zeros, not the
   length and not the level. A live mic never emits zeros, so `mic.wav` is immune;
   `sys.wav` is speech followed by exactly that shape, so **on a call whose far
   side speaks briefly then goes quiet, their words were silently dropped**.
   `_vox_trim_tail` therefore hands `mw` a trimmed COPY of each track (one
-  `silenceremove` with a POSITIVE `stop_periods`, which trims the end alone — a
+  `silenceremove` with a POSITIVE `stop_periods`, which trims the end alone - a
   negative one strips internal silence and shifts every timestamp `merge.py`
   interleaves on), at the existing `VOX_SILENCE_DB` threshold. The stored WAV is
   the archive and is never modified. Measured: 14.60 s → 4.61 s on the padded
@@ -1241,8 +1241,8 @@ Change as a set:
 
 ### Known skew
 
-The system track starts ~0.3 s after the mic — the gate above, plus the tap's own
-setup — and both end together, so the two files differ slightly in length. Larger
+The system track starts ~0.3 s after the mic - the gate above, plus the tap's own
+setup - and both end together, so the two files differ slightly in length. Larger
 skew, or drift over a long call, would show up as an `ffprobe` duration gap that
 grows with the recording; the fix would be one aggregate device carrying both the
 input device and the tap (see the ADR), not a second clock.
@@ -1260,7 +1260,7 @@ bare server: start-then-prompt order and the detached stop),
 per state), [`../zsh/tests/vox-popup.bats`](../zsh/tests/vox-popup.bats) (the
 library's actions, driven through a stubbed fzf), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)
 (integration-tagged: drives the **real** `mw` against the JSON schema `merge.py`
-parses — the one contract here that is not ours to keep — and the **real**
+parses - the one contract here that is not ours to keep - and the **real**
 `voxtap` against the padding invariant) and
 [`../vox/test_merge.py`](../vox/test_merge.py) (the filter). Keep the pill legend
 in [`help.md`](./help.md) in sync with the lib.

@@ -20,7 +20,7 @@ One file per tool; the kebab-case filename **must** equal the tool `name` in `pa
 
 ## Defining a tool
 
-The input schema is derived from a TS type named **exactly `Input`**. **The JSDoc on each field IS the prompt** the model reads to choose arguments — write it carefully.
+The input schema is derived from a TS type named **exactly `Input`**. **The JSDoc on each field IS the prompt** the model reads to choose arguments - write it carefully.
 
 ```ts
 // src/tools/create-issue.ts
@@ -66,8 +66,8 @@ export const confirmation: Tool.Confirmation<Input> = async (input) => {
 ```
 
 - Prefer `info` (the precise side-effect summary) over a long `message`.
-- AI callers often pass `""`/`[]` for optional IDs — guard empties before doing lookups inside `confirmation` or you get "Entity not found"/TypeError before the real op.
-- **Every mutating/deleting tool needs a `confirmation`** — store review flags AI tools that change state without one.
+- AI callers often pass `""`/`[]` for optional IDs - guard empties before doing lookups inside `confirmation` or you get "Entity not found"/TypeError before the real op.
+- **Every mutating/deleting tool needs a `confirmation`** - store review flags AI tools that change state without one.
 
 ## `package.json` config
 
@@ -82,10 +82,10 @@ export const confirmation: Tool.Confirmation<Input> = async (input) => {
 }
 ```
 
-- Tool `description` is shown in the UI **and given to the AI** — write it for the model. No `confirmation` flag here; it's auto-detected from the exported function.
+- Tool `description` is shown in the UI **and given to the AI** - write it for the model. No `confirmation` flag here; it's auto-detected from the exported function.
 - `ai.instructions` = extension-wide guidance (domain facts, output formatting, tool-ordering rules). State concrete constraints, not role-play ("you are a helpful assistant"), and don't assume it's the only extension loaded. For long content, extract to a separate `ai.yaml` at the extension root.
 
-## Evals (`ai.evals[]`) — the regression suite for AI behaviour
+## Evals (`ai.evals[]`) - the regression suite for AI behaviour
 
 Each eval simulates a user prompt and asserts on tool calls / final text; `mocks` stand in for real tool results so runs are deterministic and offline.
 
@@ -106,20 +106,20 @@ Each eval simulates a user prompt and asserts on tool calls / final text; `mocks
 }
 ```
 
-Fields: `input` (prompt, usually `@<name> …`), `mocks` (tool-name → return value), `expected[]` (ALL must pass), `usedAsExample` (default true — set false for assertion-only/edge-case evals so they aren't surfaced as user suggestions).
+Fields: `input` (prompt, usually `@<name> …`), `mocks` (tool-name → return value), `expected[]` (ALL must pass), `usedAsExample` (default true - set false for assertion-only/edge-case evals so they aren't surfaced as user suggestions).
 
 Expectation matchers:
 
-- `{ "callsTool": "name" }` — tool was invoked.
-- `{ "callsTool": { "name", "arguments": { … } } }` — asserts arguments; arg values can nest matchers like `{ "includes": "repo:raycast/extensions" }`.
-- `{ "includes": "added" }` — final response contains the substring (case-insensitive).
-- `{ "matches": "regex" }` — final response matches.
-- `{ "meetsCriteria": "natural-language assertion" }` — LLM-graded.
-- `{ "not": { … } }` — negate any matcher (e.g. assert a tool was NOT called).
+- `{ "callsTool": "name" }` - tool was invoked.
+- `{ "callsTool": { "name", "arguments": { … } } }` - asserts arguments; arg values can nest matchers like `{ "includes": "repo:raycast/extensions" }`.
+- `{ "includes": "added" }` - final response contains the substring (case-insensitive).
+- `{ "matches": "regex" }` - final response matches.
+- `{ "meetsCriteria": "natural-language assertion" }` - LLM-graded.
+- `{ "not": { … } }` - negate any matcher (e.g. assert a tool was NOT called).
 
 Run with `npx ray evals` (prints pass/fail per case). Failing evals usually mean improving a tool's `name`/`description` or the `Input` JSDoc. Ship evals covering the happy path, an argument-shape assertion, and a `not` guard.
 
-## `AI.ask` — calling a model *from inside a command* (distinct feature)
+## `AI.ask` - calling a model *from inside a command* (distinct feature)
 
 ```ts
 import { AI, environment } from "@raycast/api";
@@ -131,6 +131,6 @@ stream.on("data", (chunk) => append(chunk));
 await stream;
 ```
 
-Options: `model` (`AI.Model` enum — **don't hardcode bleeding-edge ids, they churn**; default `OpenAI_GPT-4o_mini`), `creativity` (`"none"…"maximum"` or 0–2), `signal`. Always gate on `environment.canAccess(AI)` and respect the rate limits (~10/min, ~100/hr).
+Options: `model` (`AI.Model` enum - **don't hardcode bleeding-edge ids, they churn**; default `OpenAI_GPT-4o_mini`), `creativity` (`"none"…"maximum"` or 0-2), `signal`. Always gate on `environment.canAccess(AI)` and respect the rate limits (~10/min, ~100/hr).
 
-`tools` (AI calls your extension) and `AI.ask` (your command calls a model) are independent features — don't conflate them.
+`tools` (AI calls your extension) and `AI.ask` (your command calls a model) are independent features - don't conflate them.

@@ -11,23 +11,23 @@ description: >
 
 # Accessibility
 
-Web accessibility done right means your UI is navigable, understandable, and operable by people with disabilities — screen reader users, keyboard-only users, and people with low vision, motor, or cognitive impairments. This skill takes a **screen-reader-first lens** because it surfaces structural failures fastest, but low-vision users (contrast, zoom, reflow) and cognitive users matter just as much — in fact low-contrast text is the single most common barrier on the web, affecting ~84% of home pages. The [WebAIM Million](https://webaim.org/projects/million/) consistently finds ~96% of home pages carry detectable WCAG failures, and just six issue types — low-contrast text, missing alt text, missing form labels, empty links, empty buttons, and missing document language — account for ~96% of all detected failures and have topped the WebAIM Million findings every year they have been published (see link). Most are preventable with the right mental model.
+Web accessibility done right means your UI is navigable, understandable, and operable by people with disabilities - screen reader users, keyboard-only users, and people with low vision, motor, or cognitive impairments. This skill takes a **screen-reader-first lens** because it surfaces structural failures fastest, but low-vision users (contrast, zoom, reflow) and cognitive users matter just as much - in fact low-contrast text is the single most common barrier on the web, affecting ~84% of home pages. The [WebAIM Million](https://webaim.org/projects/million/) consistently finds ~96% of home pages carry detectable WCAG failures, and just six issue types - low-contrast text, missing alt text, missing form labels, empty links, empty buttons, and missing document language - account for ~96% of all detected failures and have topped the WebAIM Million findings every year they have been published (see link). Most are preventable with the right mental model.
 
 ## The Core Mental Model
 
-Screen readers **linearise** a 2D page into a 1D audio stream. A blind user never sees the whole page at once — they navigate sequentially by **headings**, **landmarks**, **form fields**, **links**, and **interactive controls** using keyboard shortcuts. Every decision you make should answer: *"What will a screen reader announce, and does it make sense in isolation?"*
+Screen readers **linearise** a 2D page into a 1D audio stream. A blind user never sees the whole page at once - they navigate sequentially by **headings**, **landmarks**, **form fields**, **links**, and **interactive controls** using keyboard shortcuts. Every decision you make should answer: *"What will a screen reader announce, and does it make sense in isolation?"*
 
 The three rules that flow from this:
 
-1. **Semantics over style** — use native HTML elements (`<button>`, `<nav>`, `<h2>`) before reaching for ARIA. Native elements come with free keyboard support, accessible names, and correct roles.
-2. **Context must travel with the element** — a screen reader user navigating by tab or by links list sees elements stripped of their visual neighbours. Labels, descriptions, and states must be programmatically attached, not implied by proximity.
-3. **Dynamic changes must be announced** — screen readers only notice changes if focus moves to new content or a live region announces it. Silent DOM mutations are invisible to AT.
+1. **Semantics over style** - use native HTML elements (`<button>`, `<nav>`, `<h2>`) before reaching for ARIA. Native elements come with free keyboard support, accessible names, and correct roles.
+2. **Context must travel with the element** - a screen reader user navigating by tab or by links list sees elements stripped of their visual neighbours. Labels, descriptions, and states must be programmatically attached, not implied by proximity.
+3. **Dynamic changes must be announced** - screen readers only notice changes if focus moves to new content or a live region announces it. Silent DOM mutations are invisible to AT.
 
 ---
 
 ## When Auditing Existing UI
 
-Review in this priority order — fix critical issues before polishing low-impact ones:
+Review in this priority order - fix critical issues before polishing low-impact ones:
 
 | Priority | Category | WCAG Level | See |
 |----------|----------|------------|-----|
@@ -84,13 +84,13 @@ Opening a dialog/modal?
 
 ## Five High-Impact Screen-Reader Failures (and their fixes)
 
-These are the failures you will hit most through this skill's screen-reader lens. (The highest-*volume* failures site-wide — low-contrast text, missing alt — are covered under Colour and Contrast and Images below.)
+These are the failures you will hit most through this skill's screen-reader lens. (The highest-*volume* failures site-wide - low-contrast text, missing alt - are covered under Colour and Contrast and Images below.)
 
-1. **Icon-only button with no accessible name** — announces bare "button"; needs `aria-label` on the button, `aria-hidden="true"` on the icon.
-2. **Input with no label** — placeholder is not a label; needs an associated `<label for>`.
-3. **div or span used as a button** — no keyboard support, no role; use `<button>`.
-4. **Error not linked to its field** — visually adjacent text is silent; link with `aria-describedby` + `aria-invalid`.
-5. **Dynamic content updated silently** — DOM mutations are invisible to AT without a live region.
+1. **Icon-only button with no accessible name** - announces bare "button"; needs `aria-label` on the button, `aria-hidden="true"` on the icon.
+2. **Input with no label** - placeholder is not a label; needs an associated `<label for>`.
+3. **div or span used as a button** - no keyboard support, no role; use `<button>`.
+4. **Error not linked to its field** - visually adjacent text is silent; link with `aria-describedby` + `aria-invalid`.
+5. **Dynamic content updated silently** - DOM mutations are invisible to AT without a live region.
 
 Before/after fixes for all five: `references/common-fixes.md` (fixes 1, 2, 5, 3, and 23 respectively).
 
@@ -98,22 +98,22 @@ Before/after fixes for all five: `references/common-fixes.md` (fixes 1, 2, 5, 3,
 
 ## Screen Reader Testing
 
-Automated tools catch ~30–40% of accessibility issues. The rest require AT testing.
+Automated tools catch ~30-40% of accessibility issues. The rest require AT testing.
 
 **Minimum viable test matrix:**
 
-- NVDA + Firefox or Chrome (Windows) — free, strict, and one of the two most-used desktop readers
-- VoiceOver + Safari (macOS/iOS) — the dominant reader across Apple platforms
-- JAWS + Chrome for enterprise contexts — the other leading desktop reader
+- NVDA + Firefox or Chrome (Windows) - free, strict, and one of the two most-used desktop readers
+- VoiceOver + Safari (macOS/iOS) - the dominant reader across Apple platforms
+- JAWS + Chrome for enterprise contexts - the other leading desktop reader
 
 **Core navigation patterns to test manually:**
 
-1. Tab through all interactive elements — are names and roles announced correctly?
-2. Press `H` to navigate by headings — is the page structure logical?
-3. Press `D` to navigate by landmarks — are regions clearly labelled?
-4. Open and close any dialogs — does focus trap, then restore?
-5. Submit a form with errors — are error messages announced?
-6. Trigger any dynamic content update — is the change announced?
+1. Tab through all interactive elements - are names and roles announced correctly?
+2. Press `H` to navigate by headings - is the page structure logical?
+3. Press `D` to navigate by landmarks - are regions clearly labelled?
+4. Open and close any dialogs - does focus trap, then restore?
+5. Submit a form with errors - are error messages announced?
+6. Trigger any dynamic content update - is the change announced?
 
 See **references/screen-readers.md** for NVDA/JAWS/VoiceOver commands, browse vs. forms mode, and testing scripts.
 
@@ -126,7 +126,7 @@ See **references/screen-readers.md** for NVDA/JAWS/VoiceOver commands, browse vs
 **Rule 1:** `aria-label` and `aria-labelledby` provide the accessible name (what the element *is*).
 **Rule 2:** `aria-describedby` provides supplementary description (what it *does* or *needs*).
 **Rule 3:** `aria-live="polite"` for non-urgent updates; `role="alert"` (implicit `assertive`) for errors.
-**Rule 4:** Live regions must exist in the DOM on page load — inject text into them, don't inject the region itself.
+**Rule 4:** Live regions must exist in the DOM on page load - inject text into them, don't inject the region itself.
 **Rule 5:** `aria-hidden="true"` removes from the AT tree completely. Never apply to focusable elements.
 
 Full ARIA pattern library → **references/aria-patterns.md**
@@ -135,7 +135,7 @@ Full ARIA pattern library → **references/aria-patterns.md**
 
 ## Visually Hidden Content
 
-To show content to screen readers but hide it visually, use the `.visually-hidden` utility class — see references/common-fixes.md "The Visually Hidden Utility Class" for the canonical CSS.
+To show content to screen readers but hide it visually, use the `.visually-hidden` utility class - see references/common-fixes.md "The Visually Hidden Utility Class" for the canonical CSS.
 
 Use for: skip links, supplementary link context ("Read more <span class="visually-hidden">about caching</span>"), icon button labels when `aria-label` is impractical for translation reasons.
 
@@ -153,7 +153,7 @@ Do **not** use for: content that sighted users need. Hiding meaningful content f
 | Placeholder text | 4.5:1 |
 | Disabled elements | Exempt |
 
-Never convey information by colour alone — always pair with a shape, pattern, or text label.
+Never convey information by colour alone - always pair with a shape, pattern, or text label.
 
 Respect user colour preferences: support `prefers-color-scheme`, and test under Windows High Contrast / `forced-colors: active` rather than overriding it (never `forced-color-adjust: none` on meaningful content). See references/wcag-checklist.md.
 
@@ -172,7 +172,7 @@ Use `--target normal-text` (default), `large-text`, `ui-component`,
 relevant threshold. Do not round contrast values up. A measured `4.499:1` fails
 a `4.5:1` requirement.
 
-**WCAG 2 AA (this table) is the sole conformance target.** Its ratio maths is symmetric and ignores polarity, so it can over-rate some dark-mode pairings — if a passing pair still reads poorly on dark backgrounds, treat that as a design smell and sanity-check it with a perceptual tool (APCA). APCA is a candidate algorithm for the still-draft, undated [WCAG 3](https://www.w3.org/TR/wcag-3.0/) (it was even pulled from the July 2023 draft pending consensus) — a design aid only, never a compliance substitute.
+**WCAG 2 AA (this table) is the sole conformance target.** Its ratio maths is symmetric and ignores polarity, so it can over-rate some dark-mode pairings - if a passing pair still reads poorly on dark backgrounds, treat that as a design smell and sanity-check it with a perceptual tool (APCA). APCA is a candidate algorithm for the still-draft, undated [WCAG 3](https://www.w3.org/TR/wcag-3.0/) (it was even pulled from the July 2023 draft pending consensus) - a design aid only, never a compliance substitute.
 
 ---
 

@@ -1,4 +1,4 @@
-# claude-watch — per-pane auto-continue for Claude Code
+# claude-watch - per-pane auto-continue for Claude Code
 
 When Claude Code hits its 5-hour rolling usage limit it **blocks input** (it
 doesn't exit) and prints:
@@ -8,11 +8,11 @@ doesn't exit) and prints:
 A long or overnight task then just sits there until you manually resume.
 `claude-watch` watches one pane, detects that banner, waits until the **real**
 reset time, types a continue message, verifies it landed, and keeps watching
-for the next window — until you disarm it or the pane dies.
+for the next window - until you disarm it or the pane dies.
 
 It is **per-pane and opt-in**: nothing runs until you arm a specific pane.
 There is no package, no `claude` wrapper, no shell-rc hook, and no Claude
-internals are touched — the watcher is a `tmux run-shell -b` background job keyed
+internals are touched - the watcher is a `tmux run-shell -b` background job keyed
 to `#{pane_id}`, plus a stdlib-only Python date parser.
 
 ## Quick start
@@ -27,29 +27,29 @@ to `#{pane_id}`, plus a stdlib-only Python date parser.
 
 ## How it works
 
-1. **Detect** — every `POLL`s, `capture-pane` the last ~20 lines, strip ANSI,
+1. **Detect** - every `POLL`s, `capture-pane` the last ~20 lines, strip ANSI,
    and look for a *limit* line and a *reset* line within 6 lines of each other
    (Claude wraps the banner across several TUI box lines).
-2. **Wait** — parse the reset time (`reset-time.py`) and sleep until then
-   `+ margin`. The 5-hour window is *rolling*, so a fixed sleep would waste time
-   — we wait for the actual printed reset. If parsing fails, a fixed fallback
+2. **Wait** - parse the reset time (`reset-time.py`) and sleep until then
+   `+ margin`. The 5-hour window is *rolling*, so a fixed sleep would waste time -
+   we wait for the actual printed reset. If parsing fails, a fixed fallback
    (~5h10m) is used.
-3. **Re-scrape** — when the wait elapses, scrape again; if the banner is gone
+3. **Re-scrape** - when the wait elapses, scrape again; if the banner is gone
    (you already continued), reset and keep monitoring without sending.
-4. **Gate** — only type if the pane still exists and Claude is the foreground
+4. **Gate** - only type if the pane still exists and Claude is the foreground
    process (`pane_current_command` allow-list, refined by a `+` foreground row
-   on the pane tty). Otherwise skip and re-check shortly — never type into vim
+   on the pane tty). Otherwise skip and re-check shortly - never type into vim
    or a shell.
-5. **Send** — `send-keys -l <message>`, ~400ms pause, then a separate `C-m`
+5. **Send** - `send-keys -l <message>`, ~400ms pause, then a separate `C-m`
    (dodges the bracketed-paste / Enter-swallow race). Verify by re-scraping;
    retry up to 3×.
-6. **Re-arm** — go back to monitoring for the next window.
+6. **Re-arm** - go back to monitoring for the next window.
 
 ### Caps & ceiling
 
-- **Wait ceiling** (`CEILING`, default 6h): if the computed wait exceeds it —
+- **Wait ceiling** (`CEILING`, default 6h): if the computed wait exceeds it -
   e.g. the **weekly/Opus** limit (`Opus weekly limit reached ∙ resets Oct 6,
-  1pm`), which is days away — the watcher logs, **notifies (backed-off)**, and
+  1pm`), which is days away - the watcher logs, **notifies (backed-off)**, and
   disarms rather than sleeping for days.
 - **Rapid cap** (`RAPID_CAP`, default 10): consecutive resumes; the counter
   resets after a quiet gap (`RAPID_GAP`, default 30min).
@@ -75,7 +75,7 @@ Only **backed-off** and **gave-up** notify; the happy path is log-only.
 | `CLAUDE_WATCH_PY` | *(unset)* | Python interpreter override (else `python3` from PATH). |
 | `CLAUDE_WATCH_TMUX` | *(unset)* | tmux binary override (else `tmux` from PATH). |
 
-`CLAUDE_WATCH_PY` / `CLAUDE_WATCH_TMUX` are defensive overrides only — the
+`CLAUDE_WATCH_PY` / `CLAUDE_WATCH_TMUX` are defensive overrides only - the
 `claude-watch` toggle resolves both from your interactive PATH and forwards them
 (and any tuning vars above) into the `run-shell` server environment, so you
 rarely need to set them by hand.
@@ -101,7 +101,7 @@ export CLAUDE_WATCH_NOTIFY_CMD='sh -c "curl -s \"https://api.telegram.org/bot$TG
 ## Troubleshooting
 
 - **Nothing happens** → `tail ~/.local/state/claude-watcher/<pane>.log`. Common
-  lines: `foreground is not Claude — skipping` (the gate fired — Claude wasn't
+  lines: `foreground is not Claude — skipping` (the gate fired - Claude wasn't
   at the prompt), `computed wait … exceeds ceiling` (weekly/Opus → disarmed).
 - **It typed but Claude didn't submit** → the bracketed-paste race; the split
   `-l` / pause / `C-m` send plus 3× verify is the mitigation. Increase the pause
@@ -117,14 +117,14 @@ export CLAUDE_WATCH_NOTIFY_CMD='sh -c "curl -s \"https://api.telegram.org/bot$TG
 
 `tests/run.sh` runs both suites with no tmux required:
 
-- `tests/test-reset-time.py` — pure parser, deterministic via `--now` (exact
+- `tests/test-reset-time.py` - pure parser, deterministic via `--now` (exact
   epochs, DST boundary, relative, calendar, garbage → fallback).
-- `tests/test-detect.sh` — detection + classification over real ANSI
+- `tests/test-detect.sh` - detection + classification over real ANSI
   `fixtures/` (5-hour, weekly/Opus over-ceiling, wrapped banner, negatives).
 
 ## Known limitations (by design)
 
-- A tmux server restart / `tmux-resurrect` restore kills watchers — re-arm
+- A tmux server restart / `tmux-resurrect` restore kills watchers - re-arm
   manually (`@claude_armed` does not auto-restore).
 - Detection reads the visible pane; if you're scrolled up in copy-mode at poll
   time it may read stale text (mitigated by the re-check at send time).
@@ -140,7 +140,7 @@ export CLAUDE_WATCH_NOTIFY_CMD='sh -c "curl -s \"https://api.telegram.org/bot$TG
   Polling `capture-pane` fits this design better. Upstream FR for a reset-time
   hook: [anthropics/claude-code#55945](https://github.com/anthropics/claude-code/issues/55945).
 - **Parse the reset time, don't fixed-sleep.** The window is rolling; hitting
-  the limit late means it can reset in well under an hour — a fixed 5h sleep
+  the limit late means it can reset in well under an hour - a fixed 5h sleep
   wastes that.
 - **Date maths in Python (stdlib `zoneinfo`/`datetime`).** BSD `date` lacks
   `-d`, so pure-shell isn't portable; no pip/`tzdata` needed on hosts with
@@ -157,6 +157,6 @@ export CLAUDE_WATCH_NOTIFY_CMD='sh -c "curl -s \"https://api.telegram.org/bot$TG
 
 Reference tool this mirrors:
 [cheapestinference/claude-auto-retry](https://github.com/cheapestinference/claude-auto-retry)
-(an npm package that wraps the `claude` binary) — the algorithms (`stripAnsi`,
+(an npm package that wraps the `claude` binary) - the algorithms (`stripAnsi`,
 detection windows, reset-time parsing, foreground gate, post-wait re-scrape) are
 ported from its `src/`.

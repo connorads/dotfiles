@@ -1,6 +1,6 @@
 # Ecosystem-Specific Coverage Patterns
 
-Language-specific tools, configuration examples, and runner syntax. Each ecosystem has its own reference file — load only the one you need.
+Language-specific tools, configuration examples, and runner syntax. Each ecosystem has its own reference file - load only the one you need.
 
 | Ecosystem | File | Key tools |
 |-----------|------|-----------|

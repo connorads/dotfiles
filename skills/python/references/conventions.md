@@ -3,7 +3,7 @@
 ## The Any / cast / type-ignore discipline
 
 The strict basedpyright/pyright settings and ruff rules are owned by
-`mechanical-enforcement` — that is where the config lives. The *idioms* this skill
+`mechanical-enforcement` - that is where the config lives. The *idioms* this skill
 cares about:
 
 - No bare `Any`. Use `object` plus narrowing (`isinstance`, `TypeGuard`/`TypeIs`),
@@ -27,7 +27,7 @@ return cast(Sent, parsed)
 
 ## Docstrings
 
-Document invariants, trade-offs, non-obvious rules, and safety justifications —
+Document invariants, trade-offs, non-obvious rules, and safety justifications -
 not what the signature already says. A one-line docstring on a domain class or
 public function that states *why* it exists earns its place; a restated parameter
 list does not.
@@ -50,8 +50,8 @@ mutation by `test-coverage`. Python-specific points:
   instead (`ports-persistence.md`). Patching imports couples the test to the
   import form and survives mutation of the real collaborator.
 - Use simple fakes for owned ports: `FakeRepository(set)`, a `FakeUnitOfWork`
-  exposing a `committed` flag. Assert observable behaviour — returned value/error,
-  persisted state, an event recorded in a fake — not that a method was called.
+  exposing a `committed` flag. Assert observable behaviour - returned value/error,
+  persisted state, an event recorded in a fake - not that a method was called.
 - `pytest.raises(DomainError, match="...")` for the failure path; one happy-path
   assertion per behaviour.
 - **hypothesis** for parsers, smart constructors, round-trips, normalisation, and

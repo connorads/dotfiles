@@ -14,7 +14,7 @@ description: >
 
 Coding-agent panes report their own lifecycle: hooks in each agent's config
 call `~/.config/tmux/scripts/agent-state.sh`, so state is already a tmux
-option. **Use the `agent` wrapper — do not reconstruct raw polling loops or
+option. **Use the `agent` wrapper - do not reconstruct raw polling loops or
 scrape the screen.** The wrapper resolves targets by name, handles timeouts
 and exit codes, and verifies prompts actually start the agent.
 

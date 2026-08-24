@@ -1,4 +1,4 @@
-# Python — logging-best-practices reference
+# Python - logging-best-practices reference
 
 Concrete guidance for implementing the wide-event / canonical-log-line pattern in Python services. Read `SKILL.md` first for the principles; this file covers *how*.
 
@@ -6,9 +6,9 @@ Concrete guidance for implementing the wide-event / canonical-log-line pattern i
 
 **Default to `structlog`.** It is the only mainstream Python logger built around structured events with first-class `contextvars` support. stdlib `logging` can be bridged through it for library logs.
 
-- stdlib `logging` alone — OK for one-file scripts. Not enough for a service: producing JSON with contextvars requires significant custom scaffolding.
-- `loguru` — pleasant for CLI tools, but its model is string-templates-with-extras rather than true structured events, and its contextvars story is weaker. Avoid for distributed services.
-- `python-json-logger` — useful as a stdlib *formatter* if you cannot fully bridge through structlog (e.g. a library you cannot control).
+- stdlib `logging` alone - OK for one-file scripts. Not enough for a service: producing JSON with contextvars requires significant custom scaffolding.
+- `loguru` - pleasant for CLI tools, but its model is string-templates-with-extras rather than true structured events, and its contextvars story is weaker. Avoid for distributed services.
+- `python-json-logger` - useful as a stdlib *formatter* if you cannot fully bridge through structlog (e.g. a library you cannot control).
 
 ## Baseline structlog config
 
@@ -74,9 +74,9 @@ def setup_logging(env: str = os.getenv("ENV", "dev"), level: str = "INFO") -> No
 **Hot-path tuning.** The drop-in win inside the config above is the serialiser:
 `JSONRenderer(serializer=orjson.dumps)` (orjson returns bytes; the
 `ProcessorFormatter` path needs `serializer=lambda *a, **kw:
-orjson.dumps(*a, **kw).decode()`). The full structlog speed configuration —
+orjson.dumps(*a, **kw).decode()`). The full structlog speed configuration -
 `BytesLoggerFactory` + `JSONRenderer(serializer=orjson.dumps)` as the *final
-processor* — is a **separate config, not a swap**: `BytesLoggerFactory`
+processor* - is a **separate config, not a swap**: `BytesLoggerFactory`
 writes bytes straight to stdout, which is incompatible with
 `wrap_for_formatter`/`ProcessorFormatter`, so it drops the whole stdlib
 bridge (no `dictConfig`, no consistent `uvicorn`/`sqlalchemy` rendering).
@@ -86,7 +86,7 @@ acceptable.
 ## Redaction
 
 Structured events make it easy to log a whole object and leak a secret with
-it. Prefer **field allowlists** (pick the fields you need — same rule as the
+it. Prefer **field allowlists** (pick the fields you need - same rule as the
 `**huge_dict` anti-pattern below); back that up with a masking processor
 inserted **before the renderer**:
 
@@ -104,10 +104,10 @@ def redact(_, __, event_dict: EventDict) -> EventDict:
 ```
 
 Nested payloads need a recursive walk or, better, not logging the raw payload
-at all. Redaction here is defence in depth — the aggregator retains whatever
+at all. Redaction here is defence in depth - the aggregator retains whatever
 gets past it.
 
-## Context binding — bind once, read everywhere
+## Context binding - bind once, read everywhere
 
 `structlog.contextvars` is how request/job-scoped context reaches every log call without threading it through every function signature. It works correctly for both threads and asyncio tasks.
 
@@ -127,11 +127,11 @@ Two rules that save hours of confusion:
 1. `merge_contextvars` **must be the first processor** in the chain. Otherwise the bound vars are invisible to renderers.
 2. `clear_contextvars()` at the *start* of each request/job. `contextvars` do not automatically reset between requests in async frameworks; stale context leaking between requests is a classic bug.
 
-## Canonical log line — ASGI middleware
+## Canonical log line - ASGI middleware
 
 The middleware is the leverage point: it creates a per-request event dict, binds `request_id` into contextvars, lets handlers annotate via `annotate(...)`, and emits one event in `finally`. Works for FastAPI, Starlette, and anything speaking ASGI.
 
-A vetted implementation ships with this skill at [`scripts/canonical_asgi.py`](../scripts/canonical_asgi.py) — copy it into the target project rather than re-deriving it from scratch. The file handles the subtle cases (case-insensitive header lookup, latin-1 decoding, route template extraction, correct `ContextVar` reset, inheriting `x-request-id` if present). Import it and add to the app:
+A vetted implementation ships with this skill at [`scripts/canonical_asgi.py`](../scripts/canonical_asgi.py) - copy it into the target project rather than re-deriving it from scratch. The file handles the subtle cases (case-insensitive header lookup, latin-1 decoding, route template extraction, correct `ContextVar` reset, inheriting `x-request-id` if present). Import it and add to the app:
 
 ```python
 from canonical_asgi import CanonicalLogMiddleware, annotate
@@ -184,7 +184,7 @@ For auto-shipping logs via OTLP, `opentelemetry-instrument --logs_exporter otlp 
 
 ## Exceptions
 
-- Inside `except`: `log.exception("operation.failed", order_id=oid)` — attaches `exc_info` automatically.
+- Inside `except`: `log.exception("operation.failed", order_id=oid)` - attaches `exc_info` automatically.
 - Production chain should include `structlog.processors.dict_tracebacks` so stack frames serialise as a structured array (queryable by exception type, frame, line) rather than an opaque string.
 - Do not `log.error(exc); raise`. Either `log.exception` and swallow, or just raise and let the boundary (canonical middleware) record `error.class` and `error.message` once. Two events for one failure double-counts in every downstream system.
 
@@ -195,15 +195,15 @@ The generic anti-patterns in `SKILL.md` apply; these are the ones that bite *spe
 | Anti-pattern | Why it breaks | Fix |
 |---|---|---|
 | `log.info(f"user {uid} bought {n}")` | f-string interpolation buries fields in the message text. structlog cannot filter, group, or aggregate by them; you have lost cardinality. | `log.info("purchase.completed", user_id=uid, quantity=n)` |
-| `log.info("user %s bought %s", uid, n)` | Same problem with stdlib `%`-formatting. The `args` tuple is not structured data. | Same fix — use kwargs. |
+| `log.info("user %s bought %s", uid, n)` | Same problem with stdlib `%`-formatting. The `args` tuple is not structured data. | Same fix - use kwargs. |
 | `log.info("done", **huge_dict)` | Splats unbounded keys into the event; you lose schema control and may explode token budgets in your aggregator. | Pick the fields you actually need. Use a serialiser that returns a stable shape. |
 | `print("DEBUG:", x)` left in source | No level, no JSON, no context, races with other writers to stdout. | A logger call, or remove it. |
-| `log.error(exc); raise` | Two events for one failure. The boundary will log it again — now you have double stacks. | Either `log.exception(...)` and swallow, or just `raise` and let middleware record `error.class`/`error.message` once. |
+| `log.error(exc); raise` | Two events for one failure. The boundary will log it again - now you have double stacks. | Either `log.exception(...)` and swallow, or just `raise` and let middleware record `error.class`/`error.message` once. |
 | `BaseHTTPMiddleware` for canonical logging | Copies the context; contextvars bound in handlers are invisible in the middleware's `finally`. The canonical event is missing all the business fields handlers tried to add. | Use raw ASGI middleware (see `scripts/canonical_asgi.py`). Or stash fields on `request.state` and re-bind. |
-| Raising `structlog.DropEvent` inside `ProcessorFormatter` | Crashes the stdlib formatter — `DropEvent` is a structlog protocol, not a stdlib one. | Drop in structlog's own processor chain, before the formatter wrapper. |
+| Raising `structlog.DropEvent` inside `ProcessorFormatter` | Crashes the stdlib formatter - `DropEvent` is a structlog protocol, not a stdlib one. | Drop in structlog's own processor chain, before the formatter wrapper. |
 | `logging.basicConfig(...)` after OTel init | Wipes the OTel log-correlation handler. trace_id/span_id stop appearing in records. | Configure OTel and structlog *first*, leave `basicConfig` alone. |
 | `logger = logging.getLogger(__name__)` per file with bespoke handlers | Each module ends up with its own format/destination; cross-module events look inconsistent. | One config at startup; modules get loggers but inherit handlers from root. |
 
 ## Sampling in Python
 
-Head-based drops (e.g. dropping `/health` noise) and tail sampling both live in [`sampling.md`](sampling.md) — it owns the `structlog.DropEvent` processor pattern, the `ProcessorFormatter` gotcha, and the Collector `tail_sampling` guidance.
+Head-based drops (e.g. dropping `/health` noise) and tail sampling both live in [`sampling.md`](sampling.md) - it owns the `structlog.DropEvent` processor pattern, the `ProcessorFormatter` gotcha, and the Collector `tail_sampling` guidance.

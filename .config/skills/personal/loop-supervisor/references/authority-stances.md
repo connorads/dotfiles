@@ -17,7 +17,7 @@ when it sees a trigger, sends Ctrl-C to the loop pane and explains
 in its final message.
 
 - **Reads:** all state files, tmux pane, git log
-- **Writes:** nothing — no files, no commits, no edits to the loop
+- **Writes:** nothing - no files, no commits, no edits to the loop
   contract
 - **Stops:** yes, Ctrl-C on any trigger that would otherwise require
   a write
@@ -35,16 +35,16 @@ This is the hackmonty pattern.
 
 - **Reads:** all state files, tmux pane, git log
 - **Writes:**
-  - `PROMPT.md` — one-line clarifications / rhythm bullets, never
+  - `PROMPT.md` - one-line clarifications / rhythm bullets, never
     wholesale rewrites
-  - Index files (`INDEX.md`, `frontier-state.yaml`, equivalents) —
+  - Index files (`INDEX.md`, `frontier-state.yaml`, equivalents) -
     status transitions + one-line operator notes, never hypothesis
     bodies or task descriptions
-  - Runner / Docker / hook configs — full edits; these are harness
+  - Runner / Docker / hook configs - full edits; these are harness
     infrastructure
 - **Commits:** yes, for harness / infra fixes only. Conventional
   commit prefix `chore(supervisor):` or project equivalent. Never
-  commit research artefacts or completed task output — that's the
+  commit research artefacts or completed task output - that's the
   loop's job.
 - **Stops:** yes, on success / exhaustion / budget.
 - **Forbidden:** writing probe code, implementing tasks, filling in
@@ -73,10 +73,10 @@ unblock progress.
 - **Stops:** yes, on success / exhaustion / budget; also may pause
   the loop, do work itself, then resume
 - **Guardrails the user should still declare:**
-  - Secrets and credentials — never commit
-  - Production configs / migrations — touch only with explicit
+  - Secrets and credentials - never commit
+  - Production configs / migrations - touch only with explicit
     annotation
-  - `SUPERVISOR.md` itself — not edited mid-run (regardless of
+  - `SUPERVISOR.md` itself - not edited mid-run (regardless of
     stance; see SKILL.md)
 
 **Good for:** mature long-running projects where the user trusts
@@ -103,7 +103,7 @@ listing per-trigger exceptions:
 > - `silent-runner-death` → autonomous (restart the runner with
 >   any pragmatic fix, restart the loop)
 
-Use this sparingly — it's easier to reason about a single baseline
+Use this sparingly - it's easier to reason about a single baseline
 with one or two exceptions than a menu of stances per trigger.
 
 ## Choosing

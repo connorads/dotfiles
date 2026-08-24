@@ -49,7 +49,7 @@ For interview or observation-heavy work, use [research-synthesis.md](research-sy
 
 ### What Is a Service Blueprint?
 
-A service blueprint maps the **full service delivery** — what the user sees, what happens behind the scenes, and what systems support it all.
+A service blueprint maps the **full service delivery** - what the user sees, what happens behind the scenes, and what systems support it all.
 
 ### Structure
 
@@ -346,8 +346,8 @@ be used diagnostically and both should be revised as evidence changes.
 5. **Real**: Prototype with real-world conditions, not just screens
 6. **Holistic**: Consider the complete environment of the service
 
-> "A service is a chain of activities that form a process and have value for the end user."
-> — If one link in the chain breaks, the experience breaks regardless of how good the UI is.
+> "A service is a chain of activities that form a process and have value for the end user." -
+> If one link in the chain breaks, the experience breaks regardless of how good the UI is.
 
 ---
 

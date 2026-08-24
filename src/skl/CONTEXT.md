@@ -3,7 +3,7 @@
 Working glossary and domain notes for `skl`. Terms here are meaningful to the tool's
 domain, not implementation trivia.
 
-## `skl` — deliberate skill loader
+## `skl` - deliberate skill loader
 
 A tmux-based tool for **deliberately** loading agent skills into a running agent
 session, as an alternative to autoloaded skills.
@@ -11,17 +11,17 @@ session, as an alternative to autoloaded skills.
 ### Skill source path
 
 One or more **configured directories** the loader scans for skills. Distinct from
-`~/.agents/skills/` (the autoload set that `skillsync` symlinks into each agent — kept
+`~/.agents/skills/` (the autoload set that `skillsync` symlinks into each agent - kept
 **empty** by design so nothing autoloads). The configured sources are the **catalogue
-tier**: the curation home at `~/.config/skills/` — `public` (label `mine`), `private`,
+tier**: the curation home at `~/.config/skills/` - `public` (label `mine`), `private`,
 and the `vendor/.agents/skills` project dir (label `vendor`). See
-`~/.config/skills/AGENTS.md` for the tier model and curation rubric — that's curation
+`~/.config/skills/AGENTS.md` for the tier model and curation rubric - that's curation
 intent, not `skl`'s domain.
 
 ### Autoloaded skill
 
 A skill registered via `skillsync` whose `description` causes the agent to trigger it
-automatically. The loader deliberately operates *outside* this mechanism — skills it
+automatically. The loader deliberately operates *outside* this mechanism - skills it
 loads are not registered/triggering; they are pulled in on demand.
 
 ### Load (deliberate)
@@ -32,12 +32,12 @@ pane via `tmux send-keys`; the agent then reads the SKILL.md itself.
 
 ### Install (deliberate)
 
-The act of making a chosen skill (or a whole `<source>/` group) **stick in a project** —
+The act of making a chosen skill (or a whole `<source>/` group) **stick in a project** -
 the persistent counterpart to `load`'s session-only injection. `skl install <ref>` copies
 the skill's vetted local bytes into the enclosing git work-tree by delegating to `skills
 add <source-root> --skill <names…>` (one call per source root). The catalogue path *is*
 the local source, so it is a frozen local copy (`sourceType: "local"` in the project's
-`skills-lock.json`), never a re-fetch — local edits travel too. Refuses to install into
+`skills-lock.json`), never a re-fetch - local edits travel too. Refuses to install into
 `$HOME` or outside a work-tree. Mental model: **load** puts a skill in this session;
 **install** puts it in a project; a group of skills is a source. See ADR-0008.
 
@@ -45,7 +45,7 @@ the local source, so it is a frozen local copy (`sourceType: "local"` in the pro
 
 The minimal payload injected on load: skill name, absolute path, a `tree` of the
 skill's files, and a one-line instruction ("Read SKILL.md at this path and follow it").
-Deliberately *not* the SKILL.md content — keeps injected context tiny and honours
+Deliberately *not* the SKILL.md content - keeps injected context tiny and honours
 progressive disclosure.
 
 The file tree is a **payload tree**: useful runtime files under the skill dir after
@@ -53,7 +53,7 @@ built-in and configured payload excludes have removed maintainer-only evals and
 generated/cache artefacts such as
 `__pycache__`, `.pyc`, `.DS_Store`, `.git`, `.claude`, `*.backup`, and
 `node_modules`, plus the root `evals/` directory. Any directory a tool self-declares as a
-cache — one holding a `CACHEDIR.TAG` file, e.g. `.pytest_cache`, `.ruff_cache` — goes too.
+cache - one holding a `CACHEDIR.TAG` file, e.g. `.pytest_cache`, `.ruff_cache` - goes too.
 The root `SKILL.md` is always retained;
 nested files with that name still respect exclusions. Pass `--all` to show the raw
 sibling payload list for that invocation.
@@ -63,7 +63,7 @@ sibling payload list for that invocation.
 The **inverse** of a pointer: SKILL.md *plus every retained text file under the skill
 dir*, inlined verbatim and wrapped in `<skill>`/`<file path="…">` tags (`skl inline
 <ref>`).
-For a target with **no filesystem access** — a web chat, a pasted prompt — the pointer's
+For a target with **no filesystem access** - a web chat, a pasted prompt - the pointer's
 "read SKILL.md at `<path>`" is useless, so the content has to travel with the paste.
 Binaries (NUL-byte sniff) are skipped after payload filtering. XML-ish tags rather than
 
@@ -88,7 +88,7 @@ reading `.gitignore`. Defaults:
 ```
 
 Alongside the glob list, a directory containing a `CACHEDIR.TAG` file (Cache Directory
-Tagging Spec) is excluded with its whole subtree — a self-declaration by the writing tool,
+Tagging Spec) is excluded with its whole subtree - a self-declaration by the writing tool,
 so no pattern needs adding when a new cache appears. See ADR-0010.
 
 Config may add top-level excludes that apply to every source and per-source excludes:
@@ -125,20 +125,20 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
 
 - **Source paths**: configurable, multiple. Default = the three curation-home sources
   (`~/.config/skills/{public,private,vendor/.agents/skills}`, labelled
-  `mine`/`private`/`vendor`). `~/.agents/skills` is *not* a source — it's the (empty)
+  `mine`/`private`/`vendor`). `~/.agents/skills` is *not* a source - it's the (empty)
   autoload dir; use `--path` for any ad-hoc fixture.
 - **Trigger/target**: tmux popup (keybind `prefix + Alt+s`) → fzf picker → inject into the
   pane it was summoned from. The picker is a **shell pipeline**, not Bun-driven:
   `skl list --folders | fzf --nth=1 --preview 'skl preview {1}' | skl load --stdin --target <pane>`
-  (`bin/pick`, symlinked `~/.local/bin/skl-pick`). fzf runs in the popup's real TTY —
+  (`bin/pick`, symlinked `~/.local/bin/skl-pick`). fzf runs in the popup's real TTY -
   the `skl` CLI never spawns it. The CLI stays a thin, TTY-free wrapper over the core.
   See ADR-0004 for why the earlier Bun-spawned fzf was dropped.
 - **Folder rows (group-as-entry)**: `skl list --folders` leads each source block with a
   `source/  (count)` folder row, then that source's skills; the picker uses it. `enter`
-  on a folder row loads the whole group, `enter` on a skill row loads that one — one
+  on a folder row loads the whole group, `enter` on a skill row loads that one - one
   gesture, object-appropriate (file-manager mental model). The folder row's first token is
   `source/`, so it round-trips as a whole-source ref with no new data model. Search is
-  **scoped to the ref** (`--nth=1`), not the hidden description — description-fuzzy search
+  **scoped to the ref** (`--nth=1`), not the hidden description - description-fuzzy search
   shattered grouping (a query's subsequence dragged unrelated skills under the wrong
   header). The preview starts hidden (`ctrl-/` toggles). `alt-i` on a folder prompts before
   installing the whole group (the `--stdin` path skips skl's own whole-source confirm). See
@@ -148,19 +148,19 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   imperative shell (fs, tmux) thin. fzf orchestration is shell, not Bun. `bun test`.
 - **Home**: lives in a folder in the dotfiles repo to start; may graduate to its own
   package/repo later (see Command + location).
-- **Submit behaviour**: never press Enter by default — you may stack multiple skills
+- **Submit behaviour**: never press Enter by default - you may stack multiple skills
   then submit yourself. (Auto-submit could be an opt-in flag later.)
 - **Multi-select**: picker supports selecting several skills at once (fzf Tab, like
   `tmk`); each selected skill injects its own pointer.
 - **Copy to clipboard**: `skl load --copy` (picker: ctrl-y, via fzf `--expect`) writes
-  the pointer(s) to the system clipboard instead of injecting — `tmux load-buffer -w`
+  the pointer(s) to the system clipboard instead of injecting - `tmux load-buffer -w`
   (OSC52 via `set-clipboard on`), no pbcopy/xclip platform branching. A multi-select
   batch is one joined clipboard write (a second write would clobber the first). The
   named tmux buffer remains as a fallback (choose-buffer / prefix + =; named buffers
   sit outside the automatic stack, so prefix + ] won't see them).
 - **Command + location**: command is `skl`; Bun project root at `~/.config/skl/`
   (`src/`, `tests/`, `bin/`, `package.json`, `config.json`, plus this `CONTEXT.md` and
-  `docs/adr/` co-located in the project — not at `~`). `~/.local/bin/skl` is a thin
+  `docs/adr/` co-located in the project - not at `~`). `~/.local/bin/skl` is a thin
   launcher shim (`exec bun ~/.config/skl/src/cli.ts "$@"`); `~/.local/bin/skl-pick`
   symlinks `bin/pick`, the fzf picker glue. The launcher shim is the only Bun-facing
   thing in `bin`.
@@ -169,7 +169,7 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
 - **Path config**: JSON config file (ordered sources `{ path, name? }`) is source of
   truth, parsed + validated at the boundary. Optional `exclude` arrays can appear at the
   top level and per source. `--path` (repeatable) overrides for tests/agents and keeps
-  only the built-in payload excludes. The pure core takes paths as plain args — no env/fs
+  only the built-in payload excludes. The pure core takes paths as plain args - no env/fs
   reads inside it.
   Committed with `~`/`$HOME`-relative paths (tilde-expanded at load) for portability;
   machine-specific roots via `--path` or an uncommitted local override, never absolute
@@ -185,7 +185,7 @@ load. `skl history` summarises the file into `count  source/name  last <date>` r
   CLI/`--stdin` loads). ADR-0007.
 - **Groups are sources**: a curated group is one more source (a per-set `skills`-CLI
   project dir at `~/.config/skills/sets/<name>/`, registered in config). No new data
-  model — the `<source>/` whole-source ref (trailing slash) loads a group whole.
+  model - the `<source>/` whole-source ref (trailing slash) loads a group whole.
   Rejected: a manifest `pkg:` model (a second invisible truth). ADR-0008.
 
 ### Source
@@ -196,7 +196,7 @@ defaulting to the root dir's basename). Sources are meaningful, not just dedup b
 
 A **curated group** is a source: a related set of skills (elevenlabs, expo) realised as
 its own `skills`-CLI project dir at `~/.config/skills/sets/<name>/` and registered as one
-more `paths` entry. Grouping needs no new data model — rows are already `source/name` and
+more `paths` entry. Grouping needs no new data model - rows are already `source/name` and
 the picker filters on `<name>`, so typing `expo` narrows to the group and `skl load expo/`
 loads it whole. `vendor` is the unsorted bucket for skills not yet grouped.
 
@@ -225,5 +225,5 @@ Skills discovered via `Bun.Glob("**/SKILL.md")` under each source root.
 - **Readable paste trick**: agent CLIs collapse bracketed pastes into a
   `[Pasted text +N lines]` blob, hiding which skill was loaded. Mitigation: inject the
   **skill name as visible literal keystrokes**, then a space, then the rest (path/tree/
-  instruction) as the collapsible paste — so stacked skills stay identifiable in the
+  instruction) as the collapsible paste - so stacked skills stay identifiable in the
   input. Delivery-formatting concern of the imperative shell, not the pointer payload.

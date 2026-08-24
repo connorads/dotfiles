@@ -3,7 +3,7 @@ name: typescript
 description: >
   Write idiomatic, type-safe TypeScript: errors as values, parse-don't-validate,
   branded/domain types, deep domain modules, and correct-by-construction APIs.
-  Use when designing or reviewing TypeScript specifically — Result types, tagged
+  Use when designing or reviewing TypeScript specifically - Result types, tagged
   errors, branded types, smart constructors, schema parsing, module/import
   layout, JSDoc, or the cast/`any`/`!` discipline. Also covers choosing or
   migrating TypeScript compiler versions (TS 7 vs 6, tsc/tsc6, JS-API
@@ -16,16 +16,16 @@ description: >
 
 Concrete TypeScript idioms that make the principles from the `architecture`
 skill correct-by-construction. This skill owns the *how* in TypeScript; it does
-not restate the agnostic *why* or the enforceable lint config — see routing.
+not restate the agnostic *why* or the enforceable lint config - see routing.
 
-## Routing — who owns what
+## Routing - who owns what
 
 | Concern | Owner | This skill |
 |---|---|---|
 | Agnostic principles (functional core/shell, ports, error-as-value concept, observability, workflows/idempotency, config-at-boundary) | `architecture` | states the TS idiom + why, points here |
 | Lint rules, strict tsconfig flags, no-`any`/`as`/`!`, no-barrel, direct/transitive module-boundary checks | `mechanical-enforcement` | names the idiom, points there for config |
 | Test strategy, layers, fakes-not-mocks, property tests | `testing` | TS specifics only (fast-check, arbitraries, no `vi.mock`) |
-| Coverage thresholds, CI/hook enforcement | `test-coverage` | — |
+| Coverage thresholds, CI/hook enforcement | `test-coverage` | - |
 
 Rule: state the idiom and *why* it exists here; point out for the agnostic
 principle or the enforceable config. Never copy their tables.
@@ -33,7 +33,7 @@ principle or the enforceable config. Never copy their tables.
 ## Adapt first
 
 Before applying anything below, read the repo. These are defaults for greenfield
-or where the repo has no convention — not a migration mandate.
+or where the repo has no convention - not a migration mandate.
 
 ```text
 Does the repo already have a convention for this concern?
@@ -72,7 +72,7 @@ for the `Result` shape, tagged-error anatomy, panic helpers, and `Redacted`.
 ### Composing fallible steps
 
 Chain `Result` steps with `map` (the step can't fail) and `flatMap`/`andThen`
-(it can) so the first error short-circuits — don't write an `if (!r.ok) return r`
+(it can) so the first error short-circuits - don't write an `if (!r.ok) return r`
 ladder after every call. Give the pipeline one error channel: `mapError` each
 step's error into the shared type before composing (success types may change down
 the pipe, the error type may not). Collapse a `Result<T>[]` into a `Result<T[]>`
@@ -80,26 +80,26 @@ with a `traverse`/`all` helper, never a manual loop. Each stage should output it
 own type, so stage order is compiler-enforced.
 
 Fail-fast (chaining) suits dependent steps; **accumulate every error** for
-independent validations (form fields) — what schema libraries do and a `Result`
-chain does not. Pick by intent. (Effect: `Effect.all`, `Either`, `Match` — the
+independent validations (form fields) - what schema libraries do and a `Result`
+chain does not. Pick by intent. (Effect: `Effect.all`, `Either`, `Match` - the
 railway is built in.) Expand in `references/errors.md`.
 
 ### Make signatures total and honest
 
-A signature that can throw — or returns `void`/`Promise<void>` from pure-core
-logic — is lying: the caller sees neither the failure nor the hidden mutation.
+A signature that can throw - or returns `void`/`Promise<void>` from pure-core
+logic - is lying: the caller sees neither the failure nor the hidden mutation.
 Make a partial function total two ways: **constrain the input** (a branded/parsed
 type so the bad value can't exist) or **widen the output** (`Result`/`Option`).
-Prefer constraining the input where the value recurs — it deletes the failure
+Prefer constraining the input where the value recurs - it deletes the failure
 branch for every caller, not just this one. (Pure core returns the new value;
-effects live at the shell — `architecture`.)
+effects live at the shell - `architecture`.)
 
 ### Parse, don't validate
 
 Turn `unknown` into domain types at the boundary, once, and keep the refined
 type. Name parsers `parseX` (untrusted in), smart constructors `makeX`/`createX`
 (from typed pieces), predicates `isX`. Avoid `validateX` for anything that
-returns a refined value — it parsed. See `references/parsing.md` for schemas and
+returns a refined value - it parsed. See `references/parsing.md` for schemas and
 branded types.
 
 ### Make illegal states unrepresentable
@@ -117,7 +117,7 @@ type Invoice =
 ### Deep, cohesive modules
 
 Centre a module on one concept; expose parsers, smart constructors, combinators,
-predicates. Depend on the narrowest structural shape a caller needs — often a
+predicates. Depend on the narrowest structural shape a caller needs - often a
 single function type, not a fat interface; let concrete adapters be wider. Audit
 existing adapters before creating a new one.
 See `references/modules.md` for domain/application modules, the adapter reuse
@@ -129,8 +129,8 @@ tests.
 
 Use `assertNever` (alias `casesHandled`) on the `default` branch of a union
 switch so a new variant becomes a compile error. Construct branded values only
-through parsers — never an `as` cast. Avoid `any` and `!`. Prefer
-`satisfies T` to check a literal against a type without widening it — no cast,
+through parsers - never an `as` cast. Avoid `any` and `!`. Prefer
+`satisfies T` to check a literal against a type without widening it - no cast,
 no SAFETY note; reserve `as` for brand internals and interop. Any non-`as
 const` cast needs a `// SAFETY:` comment. (Lint that enforces these:
 `mechanical-enforcement`.)
@@ -138,8 +138,8 @@ See `references/conventions.md` for JSDoc and the full cast/`any`/`!` rules.
 
 ## References
 
-- `references/errors.md` — Result shape, tagged errors, panic helpers, Redacted
-- `references/parsing.md` — parse-don't-validate, schema ladder, branded types + smart constructors
-- `references/modules.md` — deep/domain/application modules, narrow-port adapters, reuse-audit + ADR, imports/files, config-at-boundary
-- `references/conventions.md` — JSDoc, cast/`any`/`!` discipline, TS testing specifics
-- `references/toolchain.md` — compiler version selection/migration: TS 7 vs 6, tsc/tsc6, JS-API consumers, framework constraints
+- `references/errors.md` - Result shape, tagged errors, panic helpers, Redacted
+- `references/parsing.md` - parse-don't-validate, schema ladder, branded types + smart constructors
+- `references/modules.md` - deep/domain/application modules, narrow-port adapters, reuse-audit + ADR, imports/files, config-at-boundary
+- `references/conventions.md` - JSDoc, cast/`any`/`!` discipline, TS testing specifics
+- `references/toolchain.md` - compiler version selection/migration: TS 7 vs 6, tsc/tsc6, JS-API consumers, framework constraints

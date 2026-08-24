@@ -14,7 +14,7 @@ Prefer neutral structures:
 - Style tile with components
 
 Avoid trust-sensitive structures (login, checkout, payment, account, banking,
-government, identity verification, …) — see the full list in
+government, identity verification, …) - see the full list in
 [`safety.md`](safety.md).
 
 ## Applying tokens

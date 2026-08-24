@@ -3,9 +3,9 @@ name: hk
 description: Set up and maintain hk git hook manager in any repository. Use when adding pre-commit hooks, configuring linters, setting up code quality automation, working with hk.pkl, or maintaining existing hook configurations. Triggers on tasks involving hk, git hooks, pre-commit checks, commit-msg validation, or linting pipelines.
 ---
 
-# hk — Git Hook Manager
+# hk - Git Hook Manager
 
-[hk](https://hk.jdx.dev) by jdx runs linters and formatters as git hooks with **built-in parallelism**, **file locking** (no race conditions), and **staged-file-only** operation (no separate lint-staged needed). Config is in Pkl — Apple's typed configuration language.
+[hk](https://hk.jdx.dev) by jdx runs linters and formatters as git hooks with **built-in parallelism**, **file locking** (no race conditions), and **staged-file-only** operation (no separate lint-staged needed). Config is in Pkl - Apple's typed configuration language.
 
 ## Mental Model
 
@@ -41,7 +41,7 @@ Identify:
 
 ### 2. Choose steps (tiered)
 
-**Tier 1 — Universal (always add):**
+**Tier 1 - Universal (always add):**
 
 | Step | Builtin |
 |------|---------|
@@ -49,7 +49,7 @@ Identify:
 | newlines | `Builtins.newlines` |
 | check-merge-conflict | `Builtins.check_merge_conflict` |
 
-**Tier 2 — Common tools (add if relevant):**
+**Tier 2 - Common tools (add if relevant):**
 
 | Step | Builtin | When |
 |------|---------|------|
@@ -57,7 +57,7 @@ Identify:
 | gitleaks | custom | Always (secret detection) |
 | rumdl | `Builtins.rumdl` | If `*.md` files exist |
 
-**Tier 3 — Language-specific** (see `references/builtins-by-language.md`):
+**Tier 3 - Language-specific** (see `references/builtins-by-language.md`):
 
 | Signal file | Steps to add |
 |------------|-------------|
@@ -70,7 +70,7 @@ Identify:
 | `flake.nix`/`*.nix` | nix_fmt (nixfmt), deadnix |
 | `*.sh`/`*.zsh` | shfmt, shellcheck |
 
-**Tier 4 — Project-specific (detect from config files):**
+**Tier 4 - Project-specific (detect from config files):**
 
 | Signal | Step |
 |--------|------|
@@ -78,17 +78,17 @@ Identify:
 | `.dependency-cruiser.*` or `check:deps` exists | whole-graph architecture check |
 | `.yamllint*` exists | yamllint |
 | Team/shared repo | no-commit-to-branch (pre-commit), branch guard (pre-push). For advisory private-repo protection with owner opt-out, use the soft-protected pre-push asset below. |
-| `pnpm-lock.yaml` exists | pnpm build-script decision check — copy `assets/pnpm-build-scripts-check.mjs` (see below) |
-| Test runner detected | test step(s) — vitest/jest/go test/cargo test/pytest |
+| `pnpm-lock.yaml` exists | pnpm build-script decision check - copy `assets/pnpm-build-scripts-check.mjs` (see below) |
+| Test runner detected | test step(s) - vitest/jest/go test/cargo test/pytest |
 
 ### 3. Wire the hooks
 
 Three files to create/update, plus optional extras:
 
-1. `mise.toml` — add hk, pkl, tool binaries
-2. `hk.pkl` — configuration
-3. `.hk-hooks/pre-commit` — tracked hook wrapper (runs `hk run pre-commit -q`; `-q` quiets every step on success — see `references/output-noise.md`)
-4. `.hk-hooks/pre-push` — **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
+1. `mise.toml` - add hk, pkl, tool binaries
+2. `hk.pkl` - configuration
+3. `.hk-hooks/pre-commit` - tracked hook wrapper (runs `hk run pre-commit -q`; `-q` quiets every step on success - see `references/output-noise.md`)
+4. `.hk-hooks/pre-push` - **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
 
 Then:
 
@@ -103,11 +103,11 @@ And add to `package.json` prepare script (JS projects):
 "prepare": "[ -n \"$CI\" ] && exit 0 || git config --local core.hooksPath .hk-hooks"
 ```
 
-Wire `core.hooksPath` directly — don't use `hk install` here. `hk install`
+Wire `core.hooksPath` directly - don't use `hk install` here. `hk install`
 succeeds on modern hk/Git and wires hk's own generated hooks, silently
 diverging from the tracked `.hk-hooks/` wrappers this skill sets up (the
 wrapper adds the `HK=0` bypass, mise discovery, and `-q`). One wiring path,
-the tracked one. hk needn't be installed at prepare time — the wrapper
+the tracked one. hk needn't be installed at prepare time - the wrapper
 discovers it at commit time and errors clearly if missing.
 
 For non-JS projects, set `core.hooksPath` manually or via a Makefile `setup` target.
@@ -158,12 +158,12 @@ local binary_excludes = List(
 }
 ```
 
-### Keeping steps quiet — one flag on the hook wrapper
+### Keeping steps quiet - one flag on the hook wrapper
 
 On hk ≥ 1.51.0 the quiet lever is **`hk run <hook> -q`** on the `.hk-hooks/pre-commit`
 wrapper. `-q` natively quiets *every* step on success: **success → 0 bytes**,
 **failure → the failing step's full stdout+stderr survives** (only hk's progress chrome is
-dropped). No per-step wrapping, no per-tool tiering — steps run their plain commands.
+dropped). No per-step wrapping, no per-tool tiering - steps run their plain commands.
 
 ```pkl
 ["vitest"] {
@@ -182,7 +182,7 @@ Some tools inspect the whole repo graph and should not receive `{{files}}`:
 dependency-cruiser, knip, supply-chain scanners, full typechecks, and coverage
 gates. Wire them as ordinary steps with no `glob` when the check must always see
 the full graph. (Which supply-chain scan to run, and its block-vs-report
-severity split, is the supply-chain-hardening skill's call — this skill owns
+severity split, is the supply-chain-hardening skill's call - this skill owns
 the wiring.)
 
 For dependency-cruiser:
@@ -207,7 +207,7 @@ the added latency is acceptable for normal commits.
 ### The .hk-hooks/pre-commit wrapper
 
 This is the file git actually executes. It's tracked in git (unlike `.git/hooks/`).
-Don't capture hk's output — `exec` it so colour, progress, and failure diagnostics stream
+Don't capture hk's output - `exec` it so colour, progress, and failure diagnostics stream
 through. The `-q` flag drops only *success* chrome (0 bytes on a clean run); a failing step
 still streams its full stdout+stderr. The wrapper also adds an `HK=0` bypass and discovers hk
 via mise when it isn't on `PATH`:
@@ -281,7 +281,7 @@ Pattern:
 A dependency with a lifecycle script (`preinstall`/`install`/`postinstall`, or
 a `binding.gyp`) needs a decision recorded in `pnpm-workspace.yaml`
 `allowBuilds`. Without one, pnpm 11 fails the install closed
-(`ERR_PNPM_IGNORED_BUILDS`) — but **only where nothing masks its check**. On a
+(`ERR_PNPM_IGNORED_BUILDS`) - but **only where nothing masks its check**. On a
 machine with a global `ignoreScripts`, the install is green, a cold reinstall
 is green, and the failure lands in CI or a platform build instead.
 
@@ -301,15 +301,15 @@ Pattern:
   `pnpm-workspace.yaml`. pnpm has no detect-without-execute mode, and its own
   reporting (`pnpm ignored-builds`, `.modules.yaml`) is computed under the
   masking setting, so it reports the mask rather than the missing decision. The
-  one local command that does reproduce CI —
-  `pnpm install --ignore-scripts=false` — re-enables the scripts the posture
+  one local command that does reproduce CI -
+  `pnpm install --ignore-scripts=false` - re-enables the scripts the posture
   blocks, so it is not a check.
 - **Never brick what it can't evaluate**: absent `node_modules`, or no pnpm
   project, warns and exits 0 (same posture as a typecheck step on a fresh
   clone).
 - `--json` for machine consumption; the human output caps the listing and
   reports the true total.
-- **Whether a package gets `true` or `false` is the user's security decision** —
+- **Whether a package gets `true` or `false` is the user's security decision** -
   the supply-chain-hardening skill owns that call. This step only insists the
   decision exists.
 
@@ -328,7 +328,7 @@ import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtin
 ```
 
 **Always match the version in `amends` and `import` to the installed hk version** (`hk --version`),
-and require **hk ≥ 1.51.0** — the wrapper-level `-q` success quieting (see above) needs it. The
+and require **hk ≥ 1.51.0** - the wrapper-level `-q` success quieting (see above) needs it. The
 skill installs `hk = "latest"`, so fresh setups qualify; for an older pinned repo, upgrade hk.
 
 ### Builtin step (use as-is)
@@ -353,10 +353,10 @@ skill installs `hk = "latest"`, so fresh setups qualify; for an older pinned rep
 | Flag | Effect |
 |------|--------|
 | `-q` | **Quiet-on-success** (hk ≥ 1.51.0): success → 0 bytes; failure keeps the failing step's full stdout+stderr. Put this on the wrapper. |
-| `--silent` | 0 bytes on success **and on failure** — drops diagnostics. **Never use it.** |
+| `--silent` | 0 bytes on success **and on failure** - drops diagnostics. **Never use it.** |
 | `-n` / `--no-progress` | No-op on step success output (touches progress rendering only). |
 
-**Per-step:** two knobs that trim *hk's* chrome — neither suppresses a command's own output
+**Per-step:** two knobs that trim *hk's* chrome - neither suppresses a command's own output
 (only wrapper-level `-q` does that):
 
 ```pkl
@@ -529,7 +529,7 @@ hooks {
 | `amends` version mismatch | Match amends/import URL version to `hk --version` output |
 | Builtins snake_case vs step names kebab-case | `Builtins.trailing_whitespace` → `["trailing-whitespace"]` |
 | Hook runs but matches nothing | Check glob patterns; use `hk check -v` to see file matching |
-| Step fails when `{{files}}` holds nothing the tool handles | A glob decides what the step *runs on*, not what the tool *accepts*: several exit non-zero on an empty target set rather than no-op. `oxfmt` errors "Expected at least one target file" when every passed path sits in its own `ignorePatterns`; `oxlint` does the same given no lintable file. Glob each step to what that tool actually handles, and keep lint and format as separate steps — a combined one globbing `*.json` fails on a JSON-only commit |
+| Step fails when `{{files}}` holds nothing the tool handles | A glob decides what the step *runs on*, not what the tool *accepts*: several exit non-zero on an empty target set rather than no-op. `oxfmt` errors "Expected at least one target file" when every passed path sits in its own `ignorePatterns`; `oxlint` does the same given no lintable file. Glob each step to what that tool actually handles, and keep lint and format as separate steps - a combined one globbing `*.json` fails on a JSON-only commit |
 | Binary files fail spell check | Add binary excludes to typos/trailing-whitespace/newlines steps |
 | Git worktrees: `hk install` fails | Automatic since v1.35.0; if using older version use `.hk-hooks/` + `core.hooksPath` |
 | Fix auto-stages wrong files | Use explicit `stage` glob on the step, or ensure step `glob` covers fixed files |
@@ -541,12 +541,12 @@ hooks {
 
 ## References
 
-- `references/builtins-by-language.md` — step selection by ecosystem
-- `references/complete-examples.md` — full hk.pkl configs for different stacks
-- `references/output-noise.md` — how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
-- `assets/soft-protected-branch-pre-push.sh` — copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
-- `tests/soft-protected-branch-pre-push.bats` — behavioural tests for the advisory branch-protection asset
-- `assets/pnpm-build-scripts-check.mjs` — copy to `.hk-hooks/` to fail a commit when a dependency's build script has no `allowBuilds` decision
-- `tests/pnpm-build-scripts-check.bats` — behavioural tests for the build-script decision checker
-- [hk docs](https://hk.jdx.dev) — official documentation
-- `hk builtins` — list all available built-in linters
+- `references/builtins-by-language.md` - step selection by ecosystem
+- `references/complete-examples.md` - full hk.pkl configs for different stacks
+- `references/output-noise.md` - how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
+- `assets/soft-protected-branch-pre-push.sh` - copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
+- `tests/soft-protected-branch-pre-push.bats` - behavioural tests for the advisory branch-protection asset
+- `assets/pnpm-build-scripts-check.mjs` - copy to `.hk-hooks/` to fail a commit when a dependency's build script has no `allowBuilds` decision
+- `tests/pnpm-build-scripts-check.bats` - behavioural tests for the build-script decision checker
+- [hk docs](https://hk.jdx.dev) - official documentation
+- `hk builtins` - list all available built-in linters

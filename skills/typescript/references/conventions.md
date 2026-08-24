@@ -3,7 +3,7 @@
 ## Cast / `any` / `!` discipline
 
 The strict tsconfig flags and the no-`any`/no-`as`/no-`!` lint rules are owned by
-`mechanical-enforcement` — that is where the config lives. The *idioms* this
+`mechanical-enforcement` - that is where the config lives. The *idioms* this
 skill cares about:
 
 - No `any`; use `unknown` + narrowing.
@@ -32,7 +32,7 @@ return normalized as EmailAddress;
 
 Every exported function, class, method, constant, and usually exported type gets
 JSDoc. Explain invariants, trade-offs, non-obvious rules, and safety
-justifications — not what the code already says.
+justifications - not what the code already says.
 
 ```ts
 /**
@@ -57,7 +57,7 @@ skill; coverage by `test-coverage`. TS-specific points:
   interfaces/classes, Effect services/layers, SQLite/local DB substitutes, or
   in-memory fakes for simple adapters.
 - Assert observable behaviour (returned value/error, persisted state, emitted
-  event, sent-email record in a fake) — not `expect(spy).toHaveBeenCalledWith`.
+  event, sent-email record in a fake) - not `expect(spy).toHaveBeenCalledWith`.
 - **`fast-check`** for parsers, branded/refined types, state machines,
   serialisation round-trips, normalisation/idempotence, lawful combinators.
 - Export arbitraries next to the domain module they support:

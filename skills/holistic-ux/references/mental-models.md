@@ -60,10 +60,10 @@ Changing mental models is the hardest but most impactful intervention.
 
 When handed a design problem:
 
-1. **Name the event** — What specifically happened?
-2. **Find the pattern** — Has this happened before? Under what conditions?
-3. **Identify the structure** — What system enables this?
-4. **Examine the assumption** — Why was it built this way?
+1. **Name the event** - What specifically happened?
+2. **Find the pattern** - Has this happened before? Under what conditions?
+3. **Identify the structure** - What system enables this?
+4. **Examine the assumption** - Why was it built this way?
 
 Then decide: Do you need a quick fix (event level) or a systemic change (structure level)?
 
@@ -176,7 +176,7 @@ Most UX work happens at the parameter level. The biggest impact is at the inform
 
 > Organisations design systems that mirror their communication structures.
 
-**Implication for UX:** If the billing team and account team don't talk to each other, the user will experience a disjointed billing-to-account flow. You can redesign the interface all you like — the seams will reappear unless the org changes.
+**Implication for UX:** If the billing team and account team don't talk to each other, the user will experience a disjointed billing-to-account flow. You can redesign the interface all you like - the seams will reappear unless the org changes.
 
 **When you spot a UX seam:** Ask whether it mirrors an organisational boundary. If so, the fix is coordination, not just design.
 
@@ -201,7 +201,7 @@ Every design decision has consequences beyond the immediate:
 
 1. **Iceberg:** Event (drop-off at step 4) → Pattern (happens with enterprise users) → Structure (onboarding assumes individual use, not team setup) → Mental model ("users are individuals")
 
-2. **Cynefin:** This is complicated (multiple valid approaches, needs analysis). Don't just A/B test step 4 — that treats it as clear.
+2. **Cynefin:** This is complicated (multiple valid approaches, needs analysis). Don't just A/B test step 4 - that treats it as clear.
 
 3. **Systems:** The enterprise sales team promises "easy setup" → Creates expectations that onboarding can't meet → This is a feedback loop between sales and product.
 

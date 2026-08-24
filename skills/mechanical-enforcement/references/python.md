@@ -1,4 +1,4 @@
-# Mechanical Enforcement — Python
+# Mechanical Enforcement - Python
 
 Per-stack rules for Python: Ruff format + lint, type checking, dead code, and
 import boundaries. Routed from the picks table and rules-catalogue index in
@@ -54,7 +54,7 @@ projects, noisy as defaults.
 Use basedpyright as the default blocking type gate. Its `recommended` mode is
 the best shared default: broad diagnostics, fail-on-warnings behaviour, and a
 baseline workflow for existing projects. The fast Rust newcomers are catching
-up — pyrefly is production (1.x), ty still beta — but basedpyright stays the gate
+up - pyrefly is production (1.x), ty still beta - but basedpyright stays the gate
 on maturity, conformance, and its MIT licence. See
 `references/python-typecheck.toml`.
 
@@ -63,8 +63,8 @@ on maturity, conformance, and its MIT licence. See
 | basedpyright | Primary gate with `typeCheckingMode = "recommended"` | Prefer `[tool.basedpyright]` in `pyproject.toml`; use `--writebaseline` only during adoption, never in CI. |
 | basedpyright `all` | Greenfield or deliberately strict projects | Higher friction; enable only once the codebase wants that contract. |
 | pyright | Compatibility fallback | Use `pyright --warnings` so warnings fail CI. |
-| pyrefly | Fast secondary / migration aid (Rust) | Meta's checker reached stable 1.x (~92% conformance, production at Instagram/PyTorch). Strong fast pre-filter and mypy/pyright-config migration path, but it doesn't follow strict semver — a bump can add errors — so keep basedpyright as the authoritative gate. |
-| ty | Watch (beta, 0.0.x) | Astral's checker; fastest of the field and best uv/ruff fit, but diagnostics are explicitly unstable and conformance trails the others. Advisory only — re-evaluate at 1.0. |
+| pyrefly | Fast secondary / migration aid (Rust) | Meta's checker reached stable 1.x (~92% conformance, production at Instagram/PyTorch). Strong fast pre-filter and mypy/pyright-config migration path, but it doesn't follow strict semver - a bump can add errors - so keep basedpyright as the authoritative gate. |
+| ty | Watch (beta, 0.0.x) | Astral's checker; fastest of the field and best uv/ruff fit, but diagnostics are explicitly unstable and conformance trails the others. Advisory only - re-evaluate at 1.0. |
 
 Suppressions must be narrow and rule-coded: `# pyright: ignore[reportX]`,
 `# pyrefly: ignore[rule]`, `# ty: ignore[rule-name]`, or
@@ -88,7 +88,7 @@ See `references/python-vulture.toml`.
 
 [import-linter](https://import-linter.readthedocs.io/) is the default: declare
 `layers` / `forbidden` / `independence` contracts in `pyproject.toml` and gate
-with `lint-imports` (non-zero exit). Two properties make it the pick — it gates
+with `lint-imports` (non-zero exit). Two properties make it the pick - it gates
 transitive import *chains* natively (an A→B→C path breaks a forbidden A→C
 contract), and it includes `if TYPE_CHECKING:` imports by default, so type-only
 coupling can't launder a boundary. Its grimp graph engine is Rust-accelerated,
@@ -97,13 +97,13 @@ single-maintainer. See `references/python-import-linter.toml`.
 
 **tach** (Rust) is opt-in for the two jobs import-linter has no primitive for:
 `strict` public-interface enforcement (consumers may only import a module's
-declared interface — blocks deep imports of internals) and guided incremental
+declared interface - blocks deep imports of internals) and guided incremental
 adoption on legacy codebases (`tach mod` / `tach sync`). Know its caveats: it
-checks direct declared edges only — it does **not** gate transitive chains; and
+checks direct declared edges only - it does **not** gate transitive chains; and
 `tach sync` auto-allowlists existing imports, so unreviewed output bakes
 accidental coupling in as permanently-allowed edges. It was abandoned once
 (its company pivoted away from dev tools) and revived under a solo community
-maintainer — bus factor ~1 with a prior death, so discount its star lead.
+maintainer - bus factor ~1 with a prior death, so discount its star lead.
 If ArchUnit-style tests inside pytest are wanted instead, prefer PyTestArch
 over pytest-archon.
 

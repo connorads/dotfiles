@@ -1,4 +1,4 @@
-# Mechanical Enforcement — TypeScript / JS
+# Mechanical Enforcement - TypeScript / JS
 
 Per-stack rules for TypeScript and JavaScript: type-safety flags, type
 checking, error handling, formatting, the Biome-vs-ESLint split, UI and import
@@ -29,7 +29,7 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 | Exact optional properties | `"exactOptionalPropertyTypes": true` | Conflating `x?: T` with `x: T \| undefined`; writing `undefined` into a merely-optional field | Stricter than `strict`. Add `\| undefined` to optionals that are genuinely nullable. |
 | Index-signature keys need bracket access | `"noPropertyAccessFromIndexSignature": true` | Typo'd dynamic keys (`cfg.hostnam`) silently typed instead of flagged | Stricter than `strict`. Declared properties keep dot access. |
 | Dead code fails build | `"noUnusedLocals": true`, `"noUnusedParameters": true` | Drifted imports, zombie variables | Prefix with `_` to intentionally keep an unused param. |
-| Only erasable TS syntax | `"erasableSyntaxOnly": true` (TS 5.8+) | `enum`, `namespace`, constructor param props — things that don't survive pure type-stripping | Enables deno/bun/swc/esbuild interop without a TS runtime. Breaks existing code using `enum`; migrate to `as const` unions. |
+| Only erasable TS syntax | `"erasableSyntaxOnly": true` (TS 5.8+) | `enum`, `namespace`, constructor param props - things that don't survive pure type-stripping | Enables deno/bun/swc/esbuild interop without a TS runtime. Breaks existing code using `enum`; migrate to `as const` unions. |
 | No `any` | oxlint `typescript/no-explicit-any` (native, needs `"plugins": ["typescript"]`) or Biome `noExplicitAny` (error) | Escape hatch from the type system | Use `unknown` + narrowing. |
 | No `as Type` assertions | ESLint `@typescript-eslint/consistent-type-assertions` with `assertionStyle: "never"` | Silent lies to the compiler | Allowed exceptions (document each with `eslint-disable-next-line` + reason): `as const`, DOM APIs after null checks, untyped-library interop, intentionally-invalid test fixtures. |
 | No `!` non-null assertion | oxlint `typescript/no-non-null-assertion` (native) or ESLint `@typescript-eslint/no-non-null-assertion` | Silent runtime crashes | Use a proper null check or throw a narrowed error. |
@@ -48,9 +48,9 @@ it earns the fast local / pre-commit slot while `tsc` keeps the blocking gate.
 
 Hard caveats while pre-GA:
 
-- **Library builds stay on `tsc`.** tsgo declaration (`.d.ts`) emit still has gaps (declaration maps, `--build` / project-reference orchestration) — do not generate published artefacts with it yet.
+- **Library builds stay on `tsc`.** tsgo declaration (`.d.ts`) emit still has gaps (declaration maps, `--build` / project-reference orchestration) - do not generate published artefacts with it yet.
 - **The lint stack stays on TS 6.** The programmatic API (Strada) lands in 7.1, so typescript-eslint / ts-morph / custom transformers can't ride tsgo until then. Install side-by-side via `typescript@npm:@typescript/typescript6` if a tool needs the old API.
-- **A browser/Workers app plus Node build scripts are two tsconfig programs, not one.** Don't widen the app's strict `include` to pull the Node scripts in — it leaks `process` / `node:*` globals into app code that has no runtime access to them. Scope the app `include` to app source + tests, and give Node tooling (`scripts/`) its own tsconfig with the Node lib/types; or leave the `.ts` scripts to the linter + execution (Node 24 type-strips them at runtime, so they never need the app program's typecheck).
+- **A browser/Workers app plus Node build scripts are two tsconfig programs, not one.** Don't widen the app's strict `include` to pull the Node scripts in - it leaks `process` / `node:*` globals into app code that has no runtime access to them. Scope the app `include` to app source + tests, and give Node tooling (`scripts/`) its own tsconfig with the Node lib/types; or leave the `.ts` scripts to the linter + execution (Node 24 type-strips them at runtime, so they never need the app program's typecheck).
 
 ## Error handling
 
@@ -65,11 +65,11 @@ Hard caveats while pre-GA:
 
 The recommended default for new projects is the all-oxc stack: oxlint for
 linting (it already owns the boundary rules in `references/architecture-boundaries.md`) plus **oxfmt** for
-formatting, selected together via Ultracite's provider flag —
+formatting, selected together via Ultracite's provider flag -
 `ultracite init --linter oxlint` generates both `oxlint.config.ts` and
 `oxfmt.config.ts` (one flag picks the whole toolchain; there is no separate
 formatter flag). With oxlint doing the linting, Biome's role in this stack is
-format-only — no integrated lint+format advantage — so the faster formatter
+format-only - no integrated lint+format advantage - so the faster formatter
 wins.
 
 Why oxfmt: it passes 100% of Prettier's JS/TS conformance tests, runs ~30×
@@ -92,41 +92,41 @@ into `biome.json` and keep ESLint only for what genuinely remains.
 
 | Capability | Biome rule | Status | Replaces |
 |---|---|---|---|
-| Ban modules / globals by exact specifier | `noRestrictedImports`, `noRestrictedGlobals` | stable | simple ESLint `no-restricted-imports` / `no-restricted-globals` — plain strings only, no glob `patterns`, so path-family bans stay in ESLint |
+| Ban modules / globals by exact specifier | `noRestrictedImports`, `noRestrictedGlobals` | stable | simple ESLint `no-restricted-imports` / `no-restricted-globals` - plain strings only, no glob `patterns`, so path-family bans stay in ESLint |
 | Package privacy via JSDoc visibility | `noPrivateImports` (`@package` / `@private` tags) | stable | the eslint-plugin-import `no-internal-modules` niche |
 | Custom project-local AST rules | GritQL plugins (`.grit` via `linter.plugins`) | stable (code fixes in 2.5) | many `no-restricted-syntax` rules and some greppable invariants |
 | Floating / misused promises | `noFloatingPromises`, `noMisusedPromises` (`types` domain) | nursery → advisory | a typescript-eslint class nothing else here catches |
-| Import cycles | `noImportCycles` (`project` domain) | stable but scanner-heavy | overlaps madge — madge stays primary on perf (see Import hygiene) |
+| Import cycles | `noImportCycles` (`project` domain) | stable but scanner-heavy | overlaps madge - madge stays primary on perf (see Import hygiene) |
 
-Genuine ESLint hold-outs — keep ESLint for these:
+Genuine ESLint hold-outs - keep ESLint for these:
 
 - **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
-- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, and oxlint (as of 1.74) doesn't ship `no-restricted-syntax` natively — the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`); it needs the alpha `oxlint-plugin-eslint` JS plugin. So `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint, or ride a greppable grep-then-`exit 1` hk step (the zero-dependency route — see Greppable invariants / Purity in `references/architecture-boundaries.md`). Note `no-restricted-imports` *is* native in oxlint; only the syntax/member-expression variant is not.
+- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, and oxlint (as of 1.74) doesn't ship `no-restricted-syntax` natively - the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`); it needs the alpha `oxlint-plugin-eslint` JS plugin. So `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint, or ride a greppable grep-then-`exit 1` hk step (the zero-dependency route - see Greppable invariants / Purity in `references/architecture-boundaries.md`). Note `no-restricted-imports` *is* native in oxlint; only the syntax/member-expression variant is not.
 - **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
 
 GritQL plugins can't be shared across repos (by design), so a reusable
 cross-repo invariant pack still lives in a shared ESLint config or the
 greppable-invariants tier. Enabling the `types` / `project` domains turns on
-Biome's project scanner — real perf cost, so treat those rules as advisory, not
+Biome's project scanner - real perf cost, so treat those rules as advisory, not
 a blocking gate.
 
 ## Framework single-file components (.astro / .vue / .svelte)
 
 The Rust JS linters don't parse framework SFCs. Point oxlint at a `.astro` file
-and it reads the frontmatter but misreads the template — an Astro expression like
+and it reads the frontmatter but misreads the template - an Astro expression like
 `{cond && <script />}` trips `no-unused-expressions` as a false positive, because
 oxlint is parsing template JSX as if it were plain JS. Biome has the same blind
 spot. So:
 
 - **Scope the JS linter to `*.ts` / `*.js` / `*.mjs`** and exclude the SFC
-  extension from that step. The glob is the fix — see `hk` (glob each step to
+  extension from that step. The glob is the fix - see `hk` (glob each step to
   what the tool actually handles).
 - **Let the framework's own checker own the SFC**: `astro check` (uses the Astro
   language server + `tsc` under the hood), `vue-tsc`, `svelte-check`. This is the
   type-check + template-diagnostic gate for the file the JS linter can't read.
 - **To lint *inside* the SFC's `<script>` blocks**, add the framework's ESLint
   parser (`astro-eslint-parser` + `eslint-plugin-astro`; `eslint-plugin-vue`;
-  `eslint-plugin-svelte`) — oxlint / Biome can't stand in for it. Reach for this
+  `eslint-plugin-svelte`) - oxlint / Biome can't stand in for it. Reach for this
   only when you need lint rules on the script logic beyond what the framework
   checker gives.
 
@@ -135,12 +135,12 @@ spot. So:
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
 | No raw `<input>` / `<button>` / `<a>` outside the component library | `no-restricted-syntax` on `JSXOpeningElement[name.name='input']` (etc.) in app/feature code | Drift from the design system | Exempt the UI library path (`src/components/ui/**`). Error message points at the wrapper component. |
-| `jsx-a11y/recommended` on | ESLint `plugin:jsx-a11y/recommended` via flat config | Accessibility regressions | Turn off `no-noninteractive-tabindex` — the axe-mandated `scrollable-region-focusable` pattern conflicts. |
+| `jsx-a11y/recommended` on | ESLint `plugin:jsx-a11y/recommended` via flat config | Accessibility regressions | Turn off `no-noninteractive-tabindex` - the axe-mandated `scrollable-region-focusable` pattern conflicts. |
 | No inline styles | Biome `noInlineStyles` (or ESLint `react/forbid-dom-props`) | Design-system bypass | Allow `style` on one or two charting components with a disable comment. |
 | `useTopLevelRegex` (Biome) | default in Ultracite | Regex recompiled on every call; inline regex in test assertions | Prefer `.toThrow("Cannot submit:")` over `.toThrow(/Cannot submit:/)`. |
 
-`jsx-a11y` is static-only. Its deliberate runtime complement — colour contrast,
-computed ARIA, DOM/focus structure, which no static rule can see — is the
+`jsx-a11y` is static-only. Its deliberate runtime complement - colour contrast,
+computed ARIA, DOM/focus structure, which no static rule can see - is the
 axe/pa11y gate in `references/web-delivery.md`. Run both.
 
 ## Import hygiene
@@ -148,7 +148,7 @@ axe/pa11y gate in `references/web-delivery.md`. Run both.
 | Rule | Encode with | Prevents |
 |---|---|---|
 | Sorted + grouped imports | Biome `organizeImports` on format | Merge conflicts; inconsistency |
-| No cycles | oxlint `import/no-cycle` (Rust, multi-file — retires madge) or [madge](https://github.com/pahen/madge) (`madge --circular`); Biome `noImportCycles` is stable but scanner-heavy | Module init-order bugs |
+| No cycles | oxlint `import/no-cycle` (Rust, multi-file - retires madge) or [madge](https://github.com/pahen/madge) (`madge --circular`); Biome `noImportCycles` is stable but scanner-heavy | Module init-order bugs |
 | No default exports (optional) | Biome `noDefaultExport` / ESLint `import/no-default-export` | Inconsistent naming at import sites; poor rename refactoring. Exempt Next.js pages/layouts where defaults are required. |
 | Unique function names | `no-restricted-syntax` on duplicate `FunctionDeclaration` identifiers across a file; fallback is a grep-based hk step | Duplicate helpers being written instead of discovered. Grep check catches the cross-file case ESLint can't. |
 
@@ -156,7 +156,7 @@ axe/pa11y gate in `references/web-delivery.md`. Run both.
 
 The TypeScript analogue of Vulture. `tsc`'s `noUnusedLocals` and madge only see
 inside a file or the cycle graph; they never flag an unused *export*, an
-orphaned file, or an unused / unlisted dependency. knip does — one tool for
+orphaned file, or an unused / unlisted dependency. knip does - one tool for
 unused files, exports, exported types, enum/class members, and unused
 `dependencies` / `devDependencies`. `ts-prune` and `depcheck` are both archived;
 knip is the successor. See `references/knip.jsonc`.
@@ -168,14 +168,14 @@ knip is the successor. See `references/knip.jsonc`.
 | Adopt before blocking | report-only first, then gate on exit code | A noisy first run blocking every commit | Tune `knip.json` for dynamic / implicit entries, then flip to blocking. |
 
 A faster Rust alternative, **fallow**, covers the same dead-code graph plus
-cycles — keep knip as the reference; fallow's boundary limits and open-core
+cycles - keep knip as the reference; fallow's boundary limits and open-core
 risk are covered under Transitive architecture tests in
 `references/architecture-boundaries.md`.
 
 ## Library publishing (publint + attw)
 
 For published packages, nothing in the lint / typecheck stack validates the
-*shipped* shape. Two complementary, production tools close that gap — both gate
+*shipped* shape. Two complementary, production tools close that gap - both gate
 on a non-zero exit:
 
 | Tool | Checks | Notes |
@@ -185,10 +185,10 @@ on a non-zero exit:
 
 These run **after the build**, against the built `dist` + generated `.d.ts`, so
 they belong in a CI / pre-publish gate (pre-push or the release workflow), not
-pre-commit. There is no Rust equivalent — attw drives `tsc` itself and publint
+pre-commit. There is no Rust equivalent - attw drives `tsc` itself and publint
 is already fast pure-JS, so the usual Rust-first preference doesn't apply. If the
 library builds with tsdown (Rust/Rolldown), it can run both inline
-(`tsdown --dts --publint --attw`). Pin both under the release-age quarantine —
+(`tsdown --dts --publint --attw`). Pin both under the release-age quarantine -
 they ship pre-1.0 and move fast. For monorepos, **sherif** (Rust) additionally
 enforces dependency-version consistency across workspaces.
 
@@ -200,22 +200,22 @@ surface. Three tiers, cheapest-to-verify first:
 
 | Layer | Off-the-shelf? | Gate with |
 |---|---|---|
-| Byte / time budgets | yes | **size-limit** (`@size-limit/file` for raw bytes, `preset-app` for time-to-run); non-zero exit in CI. `size-limit-action` (andresz1) wraps it for PR comments — a *community* action, not first-party. |
-| Runtime metrics (LCP / CLS / perf score) | yes | **Lighthouse CI** (`budget.json` or per-URL assertions) + **unlighthouse** (site-wide crawl). Both need a served preview + Chrome; sample multiple runs — perf assertions flake. |
-| Semantic first-load HTML invariants | no — bespoke | a Node checker that reads `dist/*.html` and exits non-zero |
+| Byte / time budgets | yes | **size-limit** (`@size-limit/file` for raw bytes, `preset-app` for time-to-run); non-zero exit in CI. `size-limit-action` (andresz1) wraps it for PR comments - a *community* action, not first-party. |
+| Runtime metrics (LCP / CLS / perf score) | yes | **Lighthouse CI** (`budget.json` or per-URL assertions) + **unlighthouse** (site-wide crawl). Both need a served preview + Chrome; sample multiple runs - perf assertions flake. |
+| Semantic first-load HTML invariants | no - bespoke | a Node checker that reads `dist/*.html` and exits non-zero |
 
 The perf/byte tiers here have accessibility, SEO, social-metadata, and
-broken-link siblings that gate the same built output — see
+broken-link siblings that gate the same built output - see
 `references/web-delivery.md`.
 
-**Don't reach for** bundlesize (unmaintained — last release 0.18.x, 2024) or
-statoscope (webpack/rspack `stats.json` only — no Astro/Vite fit). Treat the
+**Don't reach for** bundlesize (unmaintained - last release 0.18.x, 2024) or
+statoscope (webpack/rspack `stats.json` only - no Astro/Vite fit). Treat the
 version literals here as illustrative; confirm against the live registry.
 
 The third tier is the interesting one: it is the **typed generalisation of the
 greppable-invariants tier** (`references/architecture-boundaries.md`) and a sibling to publint/attw's post-build
 gate. Where grep asserts "this string does not appear", a first-load checker
-asserts structural facts about the shipped HTML — font-preload count within
+asserts structural facts about the shipped HTML - font-preload count within
 budget, `crossorigin` present, the preload `href` matching an inline
 `@font-face url()` byte-for-byte, a metric-matched fallback face present,
 rendered copy staying inside the font subset's glyph coverage. When the site is
@@ -229,14 +229,14 @@ drift. Honest scope: some of these checks are size-limit-able (a raw byte
 ceiling is just a budget), and glyphhanger/subfont already cover the
 *extraction* half of glyph coverage. The genuinely bespoke part is the
 **semantic cross-reference** (preload ↔ `@font-face` href match) and the
-**scoped-coverage assertion against a shared config** — no off-the-shelf tool
+**scoped-coverage assertion against a shared config** - no off-the-shelf tool
 does "rendered copy ⊆ this subset, scoped to text ranges". See the `web-perf`
 skill's `verify.md` (Tier 0 for the checker shape, section 5 for the LHCI /
 unlighthouse measurement-tool gotchas) for why each invariant matters.
 
 ## Testing
 
-Enable Biome's `test` domain — it covers the generic rules natively
+Enable Biome's `test` domain - it covers the generic rules natively
 (`noFocusedTests`, `noSkippedTests`, `noDuplicateTestHooks`, `noExportsInTest`,
 `noExcessiveNestedTestSuites`; nursery: `noConditionalExpect`, `useExpect`).
 Framework-specific rules stay in ESLint; the vitest plugin is
@@ -245,8 +245,8 @@ Framework-specific rules stay in ESLint; the vitest plugin is
 | Rule | Encode with | Prevents |
 |---|---|---|
 | No `.only` / `.skip` committed | Biome `noFocusedTests` (Ultracite default) + `noSkippedTests`; or `@vitest/eslint-plugin` `no-focused-tests` | Accidentally skipping the rest of the suite in CI |
-| Assertion-free tests | Biome `useExpect` (nursery) or `@vitest/eslint-plugin` `expect-expect` | Tests that run code but assert nothing — the mechanical half of the testing skill's Assertion Quality note |
+| Assertion-free tests | Biome `useExpect` (nursery) or `@vitest/eslint-plugin` `expect-expect` | Tests that run code but assert nothing - the mechanical half of the testing skill's Assertion Quality note |
 | No inline regex in assertions | Biome `useTopLevelRegex` | Flaky matches and poor error messages |
 | Coverage threshold enforced pre-commit | hk step running `vitest run --coverage` + vitest config `thresholds: { 100: true }` | Untested branches slipping in. Use `/* v8 ignore next */` for unreachable defensive code. |
 | No mocks in unit tests | Convention + review | Tests that pass but mask integration bugs |
-| Flaky Playwright waits | eslint-plugin-playwright `no-wait-for-timeout`, `missing-playwright-await` | Timeout sleeps and unawaited async assertions — the two commonest flaky-e2e causes. Biome has no Playwright rules. |
+| Flaky Playwright waits | eslint-plugin-playwright `no-wait-for-timeout`, `missing-playwright-await` | Timeout sleeps and unawaited async assertions - the two commonest flaky-e2e causes. Biome has no Playwright rules. |

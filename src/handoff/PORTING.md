@@ -46,7 +46,7 @@ with ctx(lambda: f"failed to open Codex session {path}"):
     text = path.read_text(encoding="utf-8")
 ```
 
-## JSON conventions (`_json.py`) — the parity core
+## JSON conventions (`_json.py`) - the parity core
 
 The Rust depends on `serde_json` **without `preserve_order`**, so `serde_json::Value`
 (and the `json!` macro) is backed by a `BTreeMap`. Consequences, and how to reproduce
@@ -54,7 +54,7 @@ them:
 
 1. **Free-form JSON objects serialise with keys sorted lexicographically, recursively.**
    Every line the JSONL writers build via `json!` is a `Value`, so *the literal key
-   order in the Rust source is irrelevant to the output* — it is re-sorted. So you can
+   order in the Rust source is irrelevant to the output* - it is re-sorted. So you can
    build your line dicts in any readable order and rely on sorting.
    - Use **`dumps_compact(value)`** for JSONL lines: `json.dumps` with
      `sort_keys=True`, `ensure_ascii=False`, `separators=(",", ":")`. Matches
@@ -75,11 +75,11 @@ them:
 
 Helpers you will reuse:
 
-- `dumps_compact(value) -> str`, `write_json_line(stream, value)` — JSONL emission.
-- `sort_value(value)` — recursively key-sort an arbitrary JSON value (rarely needed
+- `dumps_compact(value) -> str`, `write_json_line(stream, value)` - JSONL emission.
+- `sort_value(value)` - recursively key-sort an arbitrary JSON value (rarely needed
   directly in writers, since `dumps_compact` sorts; use if you must compare/build sorted
   intermediates).
-- `now_utc()` — `Utc::now()`.
+- `now_utc()` - `Utc::now()`.
 
 ### Timestamps
 
@@ -87,7 +87,7 @@ Helpers you will reuse:
   .map(with_timezone(Utc))`. Returns an aware UTC datetime, or `None` on failure.
 - **`format_millis(dt) -> str`** == `to_rfc3339_opts(SecondsFormat::Millis, true)`:
   always 3 fractional digits + `Z`. **Use this for every timestamp the JSONL writers
-  emit** — both `claude.rs` and `codex.rs` use `SecondsFormat::Millis`.
+  emit** - both `claude.rs` and `codex.rs` use `SecondsFormat::Millis`.
 - **`format_auto(dt) -> str`** == `chrono`'s default `DateTime` serde encoding
   (0/3/6-digit fraction + `Z`). Used by `ir.py` for `created_at`/`updated_at`; you
   probably will not need it in the writers.
@@ -107,9 +107,9 @@ Python stdlib gained `uuid.uuid7()` only in 3.14; this port targets >=3.12, so a
 hand-rolled RFC 9562 v7 is used unconditionally.
 
 - `new_uuid4() -> str` == `Uuid::new_v4().to_string()` (hyphenated lowercase).
-- `new_uuid4_simple() -> str` == `Uuid::new_v4().simple()` (32 hex, no hyphens) — for
+- `new_uuid4_simple() -> str` == `Uuid::new_v4().simple()` (32 hex, no hyphens) - for
   Claude `msg_{...}` ids.
-- `new_uuid7() -> str` == `Uuid::now_v7().to_string()` — Codex session/turn/call ids.
+- `new_uuid7() -> str` == `Uuid::now_v7().to_string()` - Codex session/turn/call ids.
 - `is_uuid(s) -> bool` == `Uuid::parse_str(s).is_ok()`.
 - `normalize_uuid(s) -> str | None` == `Uuid::parse_str(s).map(|u| u.to_string()).ok()`.
 
@@ -117,7 +117,7 @@ The Rust `codex_session_id` returns the candidate unchanged when it is a valid U
 else a fresh v7; `claude_session_id` normalises a valid UUID (lowercase hyphenated) else
 a fresh v4. Reproduce with `is_uuid` / `normalize_uuid` + `new_uuid7` / `new_uuid4`.
 
-## IR API (`ir.py`) — what the writers consume/produce
+## IR API (`ir.py`) - what the writers consume/produce
 
 `CURRENT_IR_VERSION = "handoff/v1"`.
 
@@ -127,9 +127,9 @@ Enums (`StrEnum`, values are the serde `snake_case` strings):
 
 Types (import from `handoff.ir`):
 
-- `UniversalSession(ir_version, metadata, events)` — **mutable**; `UniversalSession.new(session_id)`
+- `UniversalSession(ir_version, metadata, events)` - **mutable**; `UniversalSession.new(session_id)`
   builds a fresh one (current version, empty events). `.to_json_dict()` / `.from_json_dict(d)`.
-- `SessionMetadata(...)` — **mutable** (loaders mutate it line-by-line, like `&mut`).
+- `SessionMetadata(...)` - **mutable** (loaders mutate it line-by-line, like `&mut`).
   Fields, in serde order: `session_id`, `source_format`, `original_session_id`, `title`,
   `cwd` (str), `git_branch`, `model`, `platform_version`, `created_at`, `updated_at`,
   `extra` (dict). `SessionMetadata.new(session_id)`.
@@ -140,7 +140,7 @@ Types (import from `handoff.ir`):
   - `ToolResultEvent(call_id, output=None, is_error=False, id=None, parent_id=None, timestamp=None, metadata={})`
   - Each carries a `KIND` class attr and `.to_json_dict()`; module helpers
     `event_to_json_dict`, `event_from_json_dict`, `event_timestamp(event)`.
-- `ContentBlock(kind, text=None, data=None)` — frozen; `ContentBlock.make_text(kind, text)`
+- `ContentBlock(kind, text=None, data=None)` - frozen; `ContentBlock.make_text(kind, text)`
   == `ContentBlock::text(...)`. To mutate (e.g. Claude's `project_message_for_claude`
   prefix injection), use `dataclasses.replace(block, text=...)`.
 
@@ -148,7 +148,7 @@ Types (import from `handoff.ir`):
 (`type JsonValue`). Store parsed `json.loads` output directly. `ir.py` sorts them on
 serialisation, matching `serde_json::Value`.
 
-## Load / write signatures — how they compose
+## Load / write signatures - how they compose
 
 `formats/__init__.py` (done) dispatches to your modules. **Do not change these
 signatures**; `formats/__init__.py` and `cli.py` depend on them:
@@ -168,7 +168,7 @@ def write(session: UniversalSession, output: pathlib.Path) -> pathlib.Path: ...
 `detect_format`, `resolve_input`, `load_session`, `write_ir`, `load_ir`, `materialize`,
 `default_output_root`, `codex_root`, `claude_root`, and `ResolvedInput(path, format)`.
 
-## Key-ordering rules — summary
+## Key-ordering rules - summary
 
 | What | Order | Mechanism |
 |---|---|---|

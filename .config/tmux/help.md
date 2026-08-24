@@ -78,7 +78,7 @@
 | `Ctrl+b Alt+g` → `d` / `u` | gh-dash dashboard · ghui cockpit |
 
 Floats are real panes: persistent, non-modal, mouse-drag to move/resize, kill
-with `Ctrl+b x`. Switch windows and come back and the float is still there —
+with `Ctrl+b x`. Switch windows and come back and the float is still there -
 which is why the long-lived tools live here and only transactions stay popups.
 From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 `tl`/`tr`/`bl`/`br` corners), e.g. `flt tr btm`.
@@ -102,9 +102,9 @@ From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
-| `Ctrl+b Alt+k` | caffeine — keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), `+` add time to a running one, space off) |
-| `Ctrl+b Alt+v` | record (vox) — start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
-| `Ctrl+b Alt+Shift+V` | recordings (vox) — pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
+| `Ctrl+b Alt+k` | caffeine - keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), `+` add time to a running one, space off) |
+| `Ctrl+b Alt+v` | record (vox) - start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
+| `Ctrl+b Alt+Shift+V` | recordings (vox) - pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
 | `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
@@ -139,14 +139,14 @@ agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without 
 
 | Dot | State | Meaning |
 |-----|-------|---------|
-| `◆` red | blocked | needs you (permission/input) — also rings the bell |
+| `◆` red | blocked | needs you (permission/input) - also rings the bell |
 | `◐` peach | working | agent mid-turn |
 | `●` blue | done | finished, unseen |
 | `○` green | idle | seen / at rest |
 | `·` grey | unknown | present but unclassified |
 
 Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
-it `done` (blue) before you leave — like marking an email unread.
+it `done` (blue) before you leave - like marking an email unread.
 
 ### Cross-session agents (status bar)
 
@@ -163,8 +163,8 @@ popup as `Ctrl+b A`. Disable only this compact fallback with
 
 ## Memory pressure (status bar)
 
-Right-side gauge (macOS, width ≥ 80). Swap-used is shown — including when
-healthy — so the resting baseline stays visible, *unless* kernel pressure is the
+Right-side gauge (macOS, width ≥ 80). Swap-used is shown - including when
+healthy - so the resting baseline stays visible, *unless* kernel pressure is the
 driver, where a `▲` replaces the figure (swap is fine, look elsewhere). Colour +
 glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
 (swap/RAM, top footprint apps, agents).
@@ -185,7 +185,7 @@ running. It self-hides when off, so an active keep-awake is never silently left
 running. `Ctrl+b Alt+k` opens it.
 
 Peach `☼` is `caffeinate -i`: it holds *system* sleep while the displays still
-sleep on their normal schedule. **Closing the lid still sleeps the Mac** —
+sleep on their normal schedule. **Closing the lid still sleeps the Mac** -
 clamshell sleep ignores power assertions entirely.
 
 A timed session can be extended without dropping the hold: reopen the popup and
@@ -196,7 +196,7 @@ an indefinite session has nothing to add to, so it offers no `+`.
 Maroon `✷` is lid mode, which additionally raises the `SleepDisabled` kernel
 flag, the only thing that survives the lid closing. It is **always timed**, and
 clears the flag when it ends. For a genuinely long unattended run, prefer
-`atp --host dev` — moving the session to a machine meant to be on beats holding
+`atp --host dev` - moving the session to a machine meant to be on beats holding
 a laptop awake in a closed shell.
 
 | Pill | State | Meaning |

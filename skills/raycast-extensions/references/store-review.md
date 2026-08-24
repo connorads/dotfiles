@@ -1,17 +1,17 @@
 # Store preparation & review reference
 
-The real review bar lives at **manual.raycast.com/extensions-guidelines** and **developers.raycast.com/basics/prepare-an-extension-for-store** — `CONTRIBUTING.md` in the repo is a thin stub that just links out.
+The real review bar lives at **manual.raycast.com/extensions-guidelines** and **developers.raycast.com/basics/prepare-an-extension-for-store** - `CONTRIBUTING.md` in the repo is a thin stub that just links out.
 
 ## Publish / contribute flow
 
 - **New extension**: scaffold ("Create Extension") → build → `npm run build` (validates + type-checks) → `npm run lint` → `npm run publish` (= `npx @raycast/api@latest publish`): authenticates via GitHub, forks/commits/squashes, opens a PR to `raycast/extensions` `main`.
 - **Existing extension**: use Raycast's **"Fork Extension"** action (auto-adds you to `contributors`) → edit → add a CHANGELOG entry → `npm run publish`. As a maintainer after others' merged PRs: `npx @raycast/api@latest pull-contributions` before republishing.
 - **Org / private**: `npm run publish` goes to the org's private store (no public PR).
-- **Lockfile / package manager**: Store CI uses **npm** — commit `package-lock.json`, not `pnpm-lock.yaml`/`yarn.lock`. `pnpm publish` is a built-in that targets the npm registry; use `pnpm run publish` (explicit `run`) if working in pnpm locally.
+- **Lockfile / package manager**: Store CI uses **npm** - commit `package-lock.json`, not `pnpm-lock.yaml`/`yarn.lock`. `pnpm publish` is a built-in that targets the npm registry; use `pnpm run publish` (explicit `run`) if working in pnpm locally.
 
 ## Review timeline
 
-Human review by Community Managers, FIFO, first contact ~within a week. PRs go **stale after 14 days** of inactivity and **close after 21** — respond promptly. Open-source MIT is mandatory (review relies on readable source). Post-merge, the author owns ongoing support.
+Human review by Community Managers, FIFO, first contact ~within a week. PRs go **stale after 14 days** of inactivity and **close after 21** - respond promptly. Open-source MIT is mandatory (review relies on readable source). Post-merge, the author owns ongoing support.
 
 ## Asset specs (exact)
 
@@ -46,7 +46,7 @@ Apply top to bottom against an existing extension.
 ## Assets
 
 - [ ] `icon.png` 512×512 PNG, not the default, legible in light + dark (or `@dark` variant)
-- [ ] `metadata/` screenshots 2000×1250 PNG, 3–6, consistent bg, no sensitive data / other apps
+- [ ] `metadata/` screenshots 2000×1250 PNG, 3-6, consistent bg, no sensitive data / other apps
 - [ ] unused assets removed
 
 ## Docs
@@ -56,7 +56,7 @@ Apply top to bottom against an existing extension.
 
 ## Code / UX
 
-- [ ] `package-lock.json` committed (npm — not pnpm/yarn)
+- [ ] `package-lock.json` committed (npm - not pnpm/yarn)
 - [ ] `npm run build` (type-check + dist) passes and `npm run lint` is clean
 - [ ] credentials/config via the preferences API; mandatory ones `required: true`; text fields have placeholders
 - [ ] data fetched via `@raycast/utils` hooks, not hand-rolled `useEffect` + `fetch`
@@ -70,11 +70,11 @@ Apply top to bottom against an existing extension.
 ## Security / policy
 
 - [ ] no Keychain access (auto-reject)
-- [ ] no secrets in source — `password` preferences or OAuth only
+- [ ] no secrets in source - `password` preferences or OAuth only
 - [ ] no external analytics/telemetry; collected data used only to make the connection work
 - [ ] binaries only from a trusted server you DON'T control, with an integrity hash; no opaque/heavy bundled binaries
 - [ ] complies with the third-party service's ToS (no unauthorised scraping)
-- [ ] brings unique value — not duplicating a native Raycast feature (Quicklinks, Snippets, Clipboard History, Calculator) or an existing extension / open PR (prefer contributing to the existing one)
+- [ ] brings unique value - not duplicating a native Raycast feature (Quicklinks, Snippets, Clipboard History, Calculator) or an existing extension / open PR (prefer contributing to the existing one)
 - [ ] AI tools that mutate/delete export a `confirmation` (see `ai-extensions.md`)
 
 ## Highest-frequency rejection causes

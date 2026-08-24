@@ -4,7 +4,7 @@
 
 ADR-0006 filters payload noise with a list of glob patterns, and cache directories are
 named in that list one at a time. Enumeration by name is the defect: a cache only
-disappears once someone notices it and edits the list. `.rumdl_cache` is the evidence —
+disappears once someone notices it and edits the list. `.rumdl_cache` is the evidence -
 it was in the built-ins while `.pytest_cache` and `.ruff_cache` were not, so `skl preview
 personal/summon` listed two test-runner droppings as skill payload.
 
@@ -13,7 +13,7 @@ cache pastes files like `.pytest_cache/v/cache/nodeids` into a web chat as skill
 
 This is not a Git problem. pytest and ruff each write a self-ignoring `.gitignore` inside
 their own cache, so the caches are already invisible to Git and the work-tree is clean.
-`skl` answers a different question — "what is the skill payload?" — and has to answer it
+`skl` answers a different question - "what is the skill payload?" - and has to answer it
 itself.
 
 ## Decision
@@ -37,7 +37,7 @@ prefix and erase the whole skill, so there it excludes nothing but itself. The r
 
 ## Considered Options
 
-- **Keep enumerating cache directory names**: rejected. The list rots silently — a cache
+- **Keep enumerating cache directory names**: rejected. The list rots silently - a cache
   is payload until a human notices it in a tree, and by then it has already been inlined
   into a paste.
 - **Verify the `Signature: 8a477f597d28d172789f06886806bc55` first line, per the spec**:

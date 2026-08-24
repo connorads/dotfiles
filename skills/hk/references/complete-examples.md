@@ -14,7 +14,7 @@ Real configurations for different tech stacks. Bump the version in the `amends`/
 
 ## Astro + Preact + Tailwind + pnpm
 
-9 pre-commit steps. Simple setup — no commit-msg or pre-push hooks needed.
+9 pre-commit steps. Simple setup - no commit-msg or pre-push hooks needed.
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
@@ -200,7 +200,7 @@ yamllint = "latest"
 
 ## Dotfiles (Shell + Nix)
 
-No package.json. Uses local variable to share steps across pre-commit/fix/check hooks. No JS tools — focused on shell, nix, and markdown.
+No package.json. Uses local variable to share steps across pre-commit/fix/check hooks. No JS tools - focused on shell, nix, and markdown.
 
 ```pkl
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
@@ -269,7 +269,7 @@ pkl = "latest"
 rumdl = "latest"
 ```
 
-**Installation** (no `prepare` script — set manually once):
+**Installation** (no `prepare` script - set manually once):
 
 ```bash
 git config --local core.hooksPath .hk-hooks

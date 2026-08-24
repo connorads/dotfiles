@@ -87,7 +87,7 @@ brew tap homebrew/cask
 ### Pre-flight Checks
 
 SKILL.md "Pre-flight checks" owns the full list (six checks, including the 3×
-self-submission notability bar and the modern-macOS rule) — run those, not a
+self-submission notability bar and the modern-macOS rule) - run those, not a
 subset remembered from here.
 
 ### 1. Determine the Token
@@ -134,7 +134,7 @@ Every cask must have: `version`, `sha256`, `url`, `name`, `desc`, `homepage`, an
 
 `arch`/`os` → `version` → `sha256` → `on_macos`/`on_linux` → `url` → `name` → `desc` → `homepage` → `livecheck` → `auto_updates` → `depends_on` → artifacts → `uninstall` → `zap`
 
-`arch`/`os` (and `on_arch_conditional`) lead — before `version` — per Homebrew's `STANZA_ORDER` (`rubocops/cask/constants/stanza.rb`). The group is `[:arch, :on_arch_conditional, :os]`, so a top-level `arch` precedes `os`; `brew style` flags `os` first as "os stanza out of order". The per-OS arch shape (`on_macos do arch … end` / `on_linux do arch … end`) also sits before `version` in real casks (e.g. `bruno`) - there `os` is the first stanza because no top-level `arch` exists to precede it.
+`arch`/`os` (and `on_arch_conditional`) lead - before `version` - per Homebrew's `STANZA_ORDER` (`rubocops/cask/constants/stanza.rb`). The group is `[:arch, :on_arch_conditional, :os]`, so a top-level `arch` precedes `os`; `brew style` flags `os` first as "os stanza out of order". The per-OS arch shape (`on_macos do arch … end` / `on_linux do arch … end`) also sits before `version` in real casks (e.g. `bruno`) - there `os` is the first stanza because no top-level `arch` exists to precede it.
 
 Run `brew style --fix <token>` to auto-correct ordering.
 
@@ -152,11 +152,11 @@ Run `brew style --fix <token>` to auto-correct ordering.
 - `depends_on cask:` - Other required casks (only when genuinely needed)
 - `livecheck` - Version checking automation
 - `uninstall` - Required for `pkg`/`installer` artifacts; optional otherwise
-- `zap` - Thorough cleanup (user files, preferences, caches). Recommended for new casks but not enforced by `brew audit`. Reviewers expect accurate paths — verify them manually.
+- `zap` - Thorough cleanup (user files, preferences, caches). Recommended for new casks but not enforced by `brew audit`. Reviewers expect accurate paths - verify them manually.
 
 ### 4. Handle Different Architectures
 
-SKILL.md §3 (Handle architecture) owns the decision rules — `lipo -archs`
+SKILL.md §3 (Handle architecture) owns the decision rules - `lipo -archs`
 first, then arch gate / keyed `sha256` / `on_arm`-`on_intel` by what you find.
 The cross-platform patterns below show the shapes in full worked casks.
 
@@ -227,7 +227,7 @@ depends_on macos: ">= :monterey"
 depends_on cask: "other-required-app"
 ```
 
-**Deriving the macOS minimum version from the app bundle.** Inside an `on_macos do` block, never use the bare `depends_on :macos` — it's a no-op there (the `:macos` symbol is only a macOS-only marker when used at top level) and it produces a misleading "Required: macOS" line for a cross-platform cask. Instead, read the app's declared minimum from its `Info.plist` and gate with the symbol form:
+**Deriving the macOS minimum version from the app bundle.** Inside an `on_macos do` block, never use the bare `depends_on :macos` - it's a no-op there (the `:macos` symbol is only a macOS-only marker when used at top level) and it produces a misleading "Required: macOS" line for a cross-platform cask. Instead, read the app's declared minimum from its `Info.plist` and gate with the symbol form:
 
 ```bash
 defaults read "/Applications/<AppName>.app/Contents/Info.plist" LSMinimumSystemVersion
@@ -245,11 +245,11 @@ on_macos do
 end
 ```
 
-If `LSMinimumSystemVersion` is absent from the plist (or below Homebrew's own support floor — valid `depends_on macos:` symbols start at `:catalina` / 10.15; older ones like `:high_sierra` / `:mojave` are disabled and fail CI with "Calling strict symbol format for `depends_on macos:` is deprecated! There is no replacement."), omit `depends_on macos:` entirely — don't invent a floor and don't use a disabled symbol.
+If `LSMinimumSystemVersion` is absent from the plist (or below Homebrew's own support floor - valid `depends_on macos:` symbols start at `:catalina` / 10.15; older ones like `:high_sierra` / `:mojave` are disabled and fail CI with "Calling strict symbol format for `depends_on macos:` is deprecated! There is no replacement."), omit `depends_on macos:` entirely - don't invent a floor and don't use a disabled symbol.
 
 ### Cross-platform (macOS + Linux / AppImage)
 
-One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then sibling `on_macos` / `on_linux` blocks for the platform-specific artifacts — don't nest one inside the other (not a brew error; the OS conditions are mutually exclusive, so a nested block is unreachable dead code). On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
+One cask can target both OSes: shared top-level stanzas (`version`, `sha256`, `url`, `name`, `desc`, `homepage`, `livecheck`), then sibling `on_macos` / `on_linux` blocks for the platform-specific artifacts - don't nest one inside the other (not a brew error; the OS conditions are mutually exclusive, so a nested block is unreachable dead code). On Linux the artifact is usually `app_image` (an AppImage), declared inside `on_linux`.
 
 ```ruby
 cask "app-name" do
@@ -295,13 +295,13 @@ end
 
 `app_image` mechanics:
 
-- **Stanza name** is `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage`), not `appimage`. It is **Linux-only**: gate it inside `on_linux`. An ungated `app_image` makes a macOS install raise `This cask requires Linux.` (current main prepends the cask token: `"<cask>: This cask requires Linux."`; the original AppImage commits `3ca53a26`/`48ac0fb5` raised `"Linux is required for this software."`); conversely the macOS-only artifacts (`app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, ...) raise `This cask requires macOS.` on Linux unless gated inside `on_macos`. Top-level `depends_on :linux` is for a *Linux-only* cask — it deliberately blocks macOS install, so don't use it to gate a cross-platform cask.
-- **Signature**: `app_image "<source-filename-in-archive>", target: "<symlink-name>"`. `target:` is optional (defaults to the source basename) — always pass a stable name (e.g. `AppName.AppImage`) when the source embeds version/arch, so upgrades don't accumulate per-version symlinks.
-- **Reuse a whole-filename local; write the literal only when there isn't one.** If the cask defines an `artifact`/`filename` local via `on_system_conditional` that already holds the *whole* Linux filename — done when the stem differs per-OS (case, arch string, or layout) — reuse it: `app_image artifact, target: "…"` (models: `zen`, `t3-code`, `yaak@beta`). Repeating that same string as a literal is the duplication maintainers push back on (homebrew-cask#272343). When the cask instead uses a `url_end` *suffix* local with the stem inline in `url` (shared across OSes), there is no whole-filename value to reuse, so write the source filename literally: `app_image "AppName_#{version}_#{arch}.AppImage", target: "…"` (models: `tabby`, `agentsview`, `zettlr`, `bruno` — 4/4 `url_end`-shape casks, and the canonical example above). Match the URL shape rather than applying a blanket rule: Homebrew's own convention here is still settling — maintainers gave opposite advice weeks apart (be-explicit in homebrew-cask#272068, reuse-the-variable in #272343), both flagging it as unsettled.
-- **Install**: symlinks the source into `appimagedir` (default `~/Applications` on **both** macOS and Linux — `appdir`, by contrast, becomes `~/.config/apps` on Linux) and `chmod +x`s it. `brew uninstall` removes the symlink, so no `uninstall` stanza is needed. Override per-install with `--appimagedir=PATH`; don't hardcode the install path in `zap`.
-- **Linux user-state cleanup**: by convention `zap` is **omitted** from the `on_linux` block for AppImage casks. Verified 2026-07-19 against `agentsview`, `zen`, `tabby` in `homebrew-cask` — all three put `zap trash:` only inside `on_macos` and have no `zap` inside `on_linux`. The install only drops a single symlink into `appimagedir` that `brew uninstall` already removes, so there's nothing for `zap` to reverse. User config/cache (e.g. `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`) is created by the app at *runtime*, not at install time, and Homebrew leaves it alone by the same principle that makes `zap` optional (not required) even on macOS. `brew audit --cask` does not require `zap` on any OS (`cask/audit.rb:audit_required_stanzas` only checks `version`, `sha256`, `url`, `homepage`, `name`, and one activatable artifact; `:zap` and `:uninstall` are explicitly excluded from the activatable count). Only add a Linux `zap` if you have a specific reason and have manually verified the XDG paths (no `generate-zap` on Linux — clone the upstream repo and grep for `os.homedir()` / `env-paths` / `xdg.*` to find them).
+- **Stanza name** is `app_image` (snake_case, auto-derived from `Cask::Artifact::AppImage`), not `appimage`. It is **Linux-only**: gate it inside `on_linux`. An ungated `app_image` makes a macOS install raise `This cask requires Linux.` (current main prepends the cask token: `"<cask>: This cask requires Linux."`; the original AppImage commits `3ca53a26`/`48ac0fb5` raised `"Linux is required for this software."`); conversely the macOS-only artifacts (`app`, `pkg`, `suite`, `qlplugin`, `prefpane`, `vst_plugin`, ...) raise `This cask requires macOS.` on Linux unless gated inside `on_macos`. Top-level `depends_on :linux` is for a *Linux-only* cask - it deliberately blocks macOS install, so don't use it to gate a cross-platform cask.
+- **Signature**: `app_image "<source-filename-in-archive>", target: "<symlink-name>"`. `target:` is optional (defaults to the source basename) - always pass a stable name (e.g. `AppName.AppImage`) when the source embeds version/arch, so upgrades don't accumulate per-version symlinks.
+- **Reuse a whole-filename local; write the literal only when there isn't one.** If the cask defines an `artifact`/`filename` local via `on_system_conditional` that already holds the *whole* Linux filename - done when the stem differs per-OS (case, arch string, or layout) - reuse it: `app_image artifact, target: "…"` (models: `zen`, `t3-code`, `yaak@beta`). Repeating that same string as a literal is the duplication maintainers push back on (homebrew-cask#272343). When the cask instead uses a `url_end` *suffix* local with the stem inline in `url` (shared across OSes), there is no whole-filename value to reuse, so write the source filename literally: `app_image "AppName_#{version}_#{arch}.AppImage", target: "…"` (models: `tabby`, `agentsview`, `zettlr`, `bruno` - 4/4 `url_end`-shape casks, and the canonical example above). Match the URL shape rather than applying a blanket rule: Homebrew's own convention here is still settling - maintainers gave opposite advice weeks apart (be-explicit in homebrew-cask#272068, reuse-the-variable in #272343), both flagging it as unsettled.
+- **Install**: symlinks the source into `appimagedir` (default `~/Applications` on **both** macOS and Linux - `appdir`, by contrast, becomes `~/.config/apps` on Linux) and `chmod +x`s it. `brew uninstall` removes the symlink, so no `uninstall` stanza is needed. Override per-install with `--appimagedir=PATH`; don't hardcode the install path in `zap`.
+- **Linux user-state cleanup**: by convention `zap` is **omitted** from the `on_linux` block for AppImage casks. Verified 2026-07-19 against `agentsview`, `zen`, `tabby` in `homebrew-cask` - all three put `zap trash:` only inside `on_macos` and have no `zap` inside `on_linux`. The install only drops a single symlink into `appimagedir` that `brew uninstall` already removes, so there's nothing for `zap` to reverse. User config/cache (e.g. `~/.config/<appid>`, `~/.cache/<appid>`, `~/.local/share/<appid>`, `~/.<appname>`) is created by the app at *runtime*, not at install time, and Homebrew leaves it alone by the same principle that makes `zap` optional (not required) even on macOS. `brew audit --cask` does not require `zap` on any OS (`cask/audit.rb:audit_required_stanzas` only checks `version`, `sha256`, `url`, `homepage`, `name`, and one activatable artifact; `:zap` and `:uninstall` are explicitly excluded from the activatable count). Only add a Linux `zap` if you have a specific reason and have manually verified the XDG paths (no `generate-zap` on Linux - clone the upstream repo and grep for `os.homedir()` / `env-paths` / `xdg.*` to find them).
 - **`brew style`** has no stanza-order position for `app_image`, so it won't be auto-reordered. Place it alone inside `on_linux` (or after other artifacts if declared at top level) and run `brew style --fix` for everything else.
-- **sha256 / version per OS**: **when all four arches build exist (macOS arm + intel, Linux arm64 + x86_64), put them in a single top-level `sha256` block — this is maintainer-preferred, not split per-OS.** The Cask Cookbook documents inline arch-keyed `sha256` as the default; reserve per-OS / `on_arch` splits for when `version` or build shape differs per arch (4/4 genuine four-arch casks use one block). Split `sha256`/`version` into `on_macos`/`on_linux` blocks only when one OS's sha is unkeyed (single-arch) or the key set genuinely differs. The canonical macOS-Intel key is `x86_64:`; `intel:` is an accepted alias coalesced into it — real four-arch casks like `agentsview` use `x86_64:`. Add an `os macos:/linux:` stanza only when the asset name embeds an OS string (see `tabby`, `git-credential-manager`, `bruno`).
+- **sha256 / version per OS**: **when all four arches build exist (macOS arm + intel, Linux arm64 + x86_64), put them in a single top-level `sha256` block - this is maintainer-preferred, not split per-OS.** The Cask Cookbook documents inline arch-keyed `sha256` as the default; reserve per-OS / `on_arch` splits for when `version` or build shape differs per arch (4/4 genuine four-arch casks use one block). Split `sha256`/`version` into `on_macos`/`on_linux` blocks only when one OS's sha is unkeyed (single-arch) or the key set genuinely differs. The canonical macOS-Intel key is `x86_64:`; `intel:` is an accepted alias coalesced into it - real four-arch casks like `agentsview` use `x86_64:`. Add an `os macos:/linux:` stanza only when the asset name embeds an OS string (see `tabby`, `git-credential-manager`, `bruno`).
   - **Don't confuse `sha256` keys with `arch` keys.** `sha256`'s signature is `sha256(arg, arm:, intel:, x86_64:, x86_64_linux:, arm64_linux:)` (`cask/dsl.rb`), resolving as `on_system_conditional(macos: on_arch_conditional(arm:, intel: intel || x86_64), linux: on_arch_conditional(arm: arm64_linux, intel: x86_64_linux))`. So `arm:`/`intel:`/`x86_64:` are **macOS-only**; Linux shas come from `arm64_linux:`/`x86_64_linux:`. The `arch` stanza, by contrast, takes `arm:`/`intel:` on both OSes - which is why `arch arm:/intel:` is valid inside `on_linux` but `sha256 arm:/intel:` is not (it resolves to `nil` on Linux and fails the Linux CI leg).
 
 ### Cross-platform with per-OS arch strings + `os` stanza
@@ -361,13 +361,13 @@ end
 
 Key points:
 
-- The `os` stanza maps the `on_system_conditional` symbol to the string embedded in the asset filename (`mac`/`linux` for bruno; could be `macos`/`linux` for other apps — **always match the actual upstream asset name**, don't guess).
-- `arch` blocks live inside `on_macos`/`on_linux` because the per-CPU string differs by OS (`x64` vs `x86_64`). When the same string works on both OSes, a single top-level `arch` is simpler — prefer that.
+- The `os` stanza maps the `on_system_conditional` symbol to the string embedded in the asset filename (`mac`/`linux` for bruno; could be `macos`/`linux` for other apps - **always match the actual upstream asset name**, don't guess).
+- `arch` blocks live inside `on_macos`/`on_linux` because the per-CPU string differs by OS (`x64` vs `x86_64`). When the same string works on both OSes, a single top-level `arch` is simpler - prefer that.
 - `sha256` stays top-level and arch-keyed (`arm:`/`intel:`/`arm64_linux:`/`x86_64_linux:`) because the version is shared across all four arches.
 - `auto_updates true` is inside `on_macos` only (AppImage on Linux doesn't self-update).
 - `bruno` (PR #271876) is the canonical example in `homebrew-cask` for this shape.
 
-Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby`, `beekeeper-studio` (AppImage on Linux); `t3-code` (single-arch x86_64 AppImage — see below); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
+Real cross-platform casks to model on: `agentsview`, `zen`, `zettlr`, `tabby`, `beekeeper-studio` (AppImage on Linux); `t3-code` (single-arch x86_64 AppImage - see below); `git-credential-manager` (cross-platform via the `os` stanza, but ships a `binary` on Linux, not an AppImage).
 
 Use the per-OS `arch` block shape (above) when arch strings differ per OS and both OSes are multi-arch; use the top-level `arch` helper + split `sha256` shape (below) when one OS ships a single arch (`t3-code`).
 
@@ -417,7 +417,7 @@ end
 Key points:
 
 - The `arch` helper is declared for the macOS side only (used inside the `#{arch}` interpolation of the macOS `.dmg` name). The Linux artifact name is hardcoded to `x86_64` (no `arm64_linux` build exists to switch on).
-- `sha256` inside `on_linux` is plain/unkeyed — there's only one Linux artifact. Using `x86_64_linux:` here would imply a `arm64_linux:` value that doesn't exist.
+- `sha256` inside `on_linux` is plain/unkeyed - there's only one Linux artifact. Using `x86_64_linux:` here would imply a `arm64_linux:` value that doesn't exist.
 - `depends_on arch: :x86_64` lives inside `on_linux` so it only constrains the Linux install; a top-level `depends_on arch:` would spill onto macOS and block Apple-Silicon users.
 - **`auto_updates true` goes inside `on_macos`**, never top-level, for cross-platform casks. The AppImage side is a static symlink with no in-place updater, so a top-level declaration misrepresents the Linux artifact. Only the macOS `.app` self-updates (Sparkle/Tauri updater); gate the assertion there. Model: `t3-code`, `agentsview`.
 - `t3-code` is the canonical example in `homebrew-cask` (x86_64-only AppImage, macOS+Linux cross-platform).
@@ -433,18 +433,18 @@ livecheck do
 end
 ```
 
-**Preferred strategy order — prefer non-GitHub; GitHub is the last resort.** Homebrew
+**Preferred strategy order - prefer non-GitHub; GitHub is the last resort.** Homebrew
 sets `PRIORITY = 0` on `GithubLatest` and `GithubReleases` (`livecheck/strategy/github_latest.rb`,
-`github_releases.rb`), so livecheck never auto-selects them — you opt in explicitly, and the
+`github_releases.rb`), so livecheck never auto-selects them - you opt in explicitly, and the
 docs say to do so only "when Git isn't sufficient or appropriate"
 ([docs.brew.sh/Brew-Livecheck](https://docs.brew.sh/Brew-Livecheck)). Minimising GitHub REST
 hits matters most for unauthenticated local `brew livecheck` runs (60 req/hr/IP); CI and the
 autobump cron run authenticated (5,000/hr), but keeping casks off the API by default is still
 the documented preference. Work down this list and stop at the first that fits:
 
-1. **`strategy :git`** — the documented default; reads repo tags, no REST API call.
+1. **`strategy :git`** - the documented default; reads repo tags, no REST API call.
 2. **`strategy :electron_builder`** against an upstream `latest-mac.yml` / `latest-linux.yml`
-   (Electron apps — Filen, Zettlr, tabby, agentsview …).
+   (Electron apps - Filen, Zettlr, tabby, agentsview …).
 3. **`url :url` + `strategy :header_match` / `:page_match` / `:sparkle`** against the download
    URL itself or a sibling page (no extra HTTP beyond what `url` already needs).
 4. **`url :url` against the project's own version feed** (`releases.atom`, `releases.json`,
@@ -452,14 +452,14 @@ the documented preference. Work down this list and stop at the first that fits:
 5. **`:github_latest`** (single `GET /releases/latest`) or **`:github_releases`** (`GET /releases`)
    only when the project ships no other checkable source.
 
-Both GitHub strategies match the **`tag_name`** through the `regex:` block, not asset filenames —
+Both GitHub strategies match the **`tag_name`** through the `regex:` block, not asset filenames -
 there is no `asset_regex` parameter. A `regex` only narrows which *version* is selected; it does
 not reduce API calls (`:github_latest` is a single unpaginated request regardless).
 
 ## Submitting Your Contribution
 
 **Version bump of an existing cask?** Use `brew bump-cask-pr <token> --version
-<new>` (SKILL.md §7) — it does everything below in one step. The manual flow
+<new>` (SKILL.md §7) - it does everything below in one step. The manual flow
 here is for new casks or bumps that also change stanzas.
 
 ### 1. Commit Your Changes
@@ -499,7 +499,7 @@ Built and tested locally on macOS [version].
 EOF
 ```
 
-Or via the GitHub web UI — fill in the PR template with:
+Or via the GitHub web UI - fill in the PR template with:
 
 - Brief description
 - Checkboxes ticked ONLY if you completed each step
@@ -507,7 +507,7 @@ Or via the GitHub web UI — fill in the PR template with:
 
 ### 4. AI Disclosure
 
-See SKILL.md §8 (AI disclosure) — check the AI checkbox, split the disclosure into what the agent ran vs what the human verified manually (especially `zap` paths), and call out anything non-obvious the testing surfaced.
+See SKILL.md §8 (AI disclosure) - check the AI checkbox, split the disclosure into what the agent ran vs what the human verified manually (especially `zap` paths), and call out anything non-obvious the testing surfaced.
 
 ### 5. Respond to Review
 

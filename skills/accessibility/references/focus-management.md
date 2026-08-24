@@ -20,7 +20,7 @@
 - Inert Attribute (Modern Alternative)
 - Common Focus Bugs
 
-Focus management is the programmatic control of keyboard focus — moving it, trapping it, and restoring it. This is the area most commonly broken in modern web apps, especially SPAs.
+Focus management is the programmatic control of keyboard focus - moving it, trapping it, and restoring it. This is the area most commonly broken in modern web apps, especially SPAs.
 
 ---
 
@@ -47,7 +47,7 @@ Breaking this contract means keyboard and screen reader users lose their place o
 - [ ] Focus is trapped within dialog while open (Tab and Shift+Tab cycle within)
 - [ ] `Escape` key closes the dialog
 - [ ] Focus returns to the trigger element on close
-- [ ] Background content is made `inert` while the dialog is open (native `<dialog>.showModal()` does this for you) — not bare `aria-hidden`, which leaves the background keyboard-focusable
+- [ ] Background content is made `inert` while the dialog is open (native `<dialog>.showModal()` does this for you) - not bare `aria-hidden`, which leaves the background keyboard-focusable
 
 ### Vanilla JS focus trap implementation
 
@@ -149,7 +149,7 @@ document.getElementById('cancel-btn').addEventListener('click', () => {
 });
 ```
 
-`showModal()`/`show()` record the currently-focused element, and `close()` re-focuses it — so native `<dialog>` restores focus to the trigger for you (baseline since Firefox 98 / Safari 15.4, March 2022). Do **not** add a manual `trigger.focus()` on top; it is redundant. The one exception: if the trigger was removed from the DOM while the dialog was open, the spec's restore does nothing (focus falls to `<body>`), so add a *labelled fallback* for that case (or for pre-2022 browsers):
+`showModal()`/`show()` record the currently-focused element, and `close()` re-focuses it - so native `<dialog>` restores focus to the trigger for you (baseline since Firefox 98 / Safari 15.4, March 2022). Do **not** add a manual `trigger.focus()` on top; it is redundant. The one exception: if the trigger was removed from the DOM while the dialog was open, the spec's restore does nothing (focus falls to `<body>`), so add a *labelled fallback* for that case (or for pre-2022 browsers):
 
 ```javascript
 dialog.addEventListener('close', () => {
@@ -160,7 +160,7 @@ dialog.addEventListener('close', () => {
 });
 ```
 
-**`autofocus` attribute** on the cancel button is correct for destructive dialogs — prevents accidental confirmation. For non-destructive dialogs, focus the first input or the dialog container itself.
+**`autofocus` attribute** on the cancel button is correct for destructive dialogs - prevents accidental confirmation. For non-destructive dialogs, focus the first input or the dialog container itself.
 
 ### React implementation
 
@@ -268,7 +268,7 @@ router.on('navigate', (route) => {
 ```
 
 The mechanism: position the link off-screen (`top: -40px`) and slide it to
-`top: 0` only on `:focus` — visible to keyboard users, hidden otherwise. For the
+`top: 0` only on `:focus` - visible to keyboard users, hidden otherwise. For the
 full styled `.skip-link` CSS, see [common-fixes.md](common-fixes.md) (skip links).
 
 ---
@@ -281,11 +281,11 @@ Never remove focus outlines without providing a visible replacement. Keyboard us
 
 At Level AA, a focus indicator must:
 
-- **Be visible** — 2.4.7 Focus Visible (AA). Never `outline: none` without a replacement.
-- **Meet 3:1 non-text contrast** against adjacent colours — 1.4.11 Non-text Contrast (AA).
-- **Not be entirely hidden** by sticky headers, cookie banners, or other overlaid content — 2.4.11 Focus Not Obscured (Minimum) (AA).
+- **Be visible** - 2.4.7 Focus Visible (AA). Never `outline: none` without a replacement.
+- **Meet 3:1 non-text contrast** against adjacent colours - 1.4.11 Non-text Contrast (AA).
+- **Not be entirely hidden** by sticky headers, cookie banners, or other overlaid content - 2.4.11 Focus Not Obscured (Minimum) (AA).
 
-2.4.13 Focus Appearance is **Level AAA**, not AA — do not cite it as an AA obligation. It is stricter: the indicator must cover at least the area of a 2 CSS pixel thick perimeter of the component, and change by at least 3:1 contrast *between the focused and unfocused states* (a change-of-state contrast, distinct from the 1.4.11 contrast-against-adjacent-colours above). Aim for it where practical.
+2.4.13 Focus Appearance is **Level AAA**, not AA - do not cite it as an AA obligation. It is stricter: the indicator must cover at least the area of a 2 CSS pixel thick perimeter of the component, and change by at least 3:1 contrast *between the focused and unfocused states* (a change-of-state contrast, distinct from the 1.4.11 contrast-against-adjacent-colours above). Aim for it where practical.
 
 ```css
 /* Minimal compliant focus style */
@@ -354,7 +354,7 @@ The **roving tabindex pattern** (used for widgets like tab lists, menus, radio g
 
 ## Inert Attribute (Modern Alternative)
 
-The `inert` attribute makes an element and all its descendants unfocusable, non-interactive, and hidden from the accessibility tree simultaneously — a cleaner alternative to `aria-hidden` + `tabindex` manipulation, and the correct tool for neutralising a modal's background.
+The `inert` attribute makes an element and all its descendants unfocusable, non-interactive, and hidden from the accessibility tree simultaneously - a cleaner alternative to `aria-hidden` + `tabindex` manipulation, and the correct tool for neutralising a modal's background.
 
 ```javascript
 function openModal(modal, appRoot) {
@@ -372,12 +372,12 @@ function closeModal(modal, appRoot, triggerEl) {
 
 Widely supported in current browsers; a `wicg-inert` polyfill covers older ones.
 
-For **non-modal** surfaces (menus, tooltips, disclosure popovers) that should not trap focus or make the page inert, prefer the native **Popover API** (`popover` attribute + `popovertarget`), which gives you light-dismiss, `Escape`, and insertion into the tab order *after* the trigger. Note what it does **not** do: an `auto` popover does **not** move focus into itself on open (focus stays on the invoker — add `autofocus` to the element that should receive it), and it returns focus to the invoker only on *keyboard* (`Escape`) dismissal, not on click-outside. Reserve `<dialog>.showModal()` for true modals.
+For **non-modal** surfaces (menus, tooltips, disclosure popovers) that should not trap focus or make the page inert, prefer the native **Popover API** (`popover` attribute + `popovertarget`), which gives you light-dismiss, `Escape`, and insertion into the tab order *after* the trigger. Note what it does **not** do: an `auto` popover does **not** move focus into itself on open (focus stays on the invoker - add `autofocus` to the element that should receive it), and it returns focus to the invoker only on *keyboard* (`Escape`) dismissal, not on click-outside. Reserve `<dialog>.showModal()` for true modals.
 
 For modals, two newer `<dialog>` primitives are worth knowing:
 
-- **`requestClose()`** (baseline 2025) — like `close()` but fires a cancelable `cancel` event first, so you can intercept `Escape`/dismissal (e.g. warn about unsaved changes).
-- **`closedby="any"`** — native click-outside (light) dismissal for `<dialog>`. Progressive enhancement only: supported in Chrome/Edge 134+ and Firefox 141+, but **not** yet in Safari/iOS ([webkit.org/b/284592](https://bugs.webkit.org/show_bug.cgi?id=284592)), so pair it with a backdrop-click fallback rather than relying on it.
+- **`requestClose()`** (baseline 2025) - like `close()` but fires a cancelable `cancel` event first, so you can intercept `Escape`/dismissal (e.g. warn about unsaved changes).
+- **`closedby="any"`** - native click-outside (light) dismissal for `<dialog>`. Progressive enhancement only: supported in Chrome/Edge 134+ and Firefox 141+, but **not** yet in Safari/iOS ([webkit.org/b/284592](https://bugs.webkit.org/show_bug.cgi?id=284592)), so pair it with a backdrop-click fallback rather than relying on it.
 
 ---
 

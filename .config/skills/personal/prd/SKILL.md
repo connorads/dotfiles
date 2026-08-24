@@ -15,14 +15,14 @@ The PRD describes WHAT to build and WHY, not HOW or in WHAT ORDER.
 
 User describes the problem and any initial ideas. Explore the codebase to understand existing patterns, constraints, and dependencies.
 
-If the request names a solution but no outcome for a product-facing feature, consider running the product-discovery skill first — it decides whether/which feature to build; this skill specs the committed one.
+If the request names a solution but no outcome for a product-facing feature, consider running the product-discovery skill first - it decides whether/which feature to build; this skill specs the committed one.
 
 ### 2. Interview the design tree
 
 Walk through the design decision tree branch by branch. For each decision point:
 
-- **Explore the codebase first** — only ask the user what the code can't answer
-- **One topic per turn** — don't dump multiple questions at once
+- **Explore the codebase first** - only ask the user what the code can't answer
+- **One topic per turn** - don't dump multiple questions at once
 - Resolve dependencies between decisions before moving on
 
 Cover these domains as the tree branches into them:
@@ -41,7 +41,7 @@ Keep going until shared understanding is reached. No artificial cap on questions
 
 ### 3. Identify modules
 
-Sketch the major modules to build or modify. Look for opportunities to extract **deep modules** — small interface hiding lots of implementation, testable in isolation.
+Sketch the major modules to build or modify. Look for opportunities to extract **deep modules** - small interface hiding lots of implementation, testable in isolation.
 
 Check with the user:
 

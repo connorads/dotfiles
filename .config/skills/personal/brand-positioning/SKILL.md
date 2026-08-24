@@ -18,11 +18,11 @@ description: >-
 Every brand artefact sits on three layers:
 
 > **EVIDENCE** (what best customers actually did and said)
-> → **STRATEGY** (positioning, the chosen Job, brand definition — derived from
+> → **STRATEGY** (positioning, the chosen Job, brand definition - derived from
 > evidence in a fixed order)
-> → **EXPRESSION** (copy, name, visual identity — expressing the strategy).
+> → **EXPRESSION** (copy, name, visual identity - expressing the strategy).
 
-Work **downward** only; critique **upward** — a fault at one layer usually
+Work **downward** only; critique **upward** - a fault at one layer usually
 originates one layer up. Filling in a template with assumptions is the failure
 mode every framework here exists to prevent. Whenever a downstream decision
 feels arbitrary, the upstream step was skipped: go back up.
@@ -39,7 +39,7 @@ feels arbitrary, the upstream step was skipped: go back up.
    optional trend. Starting anywhere else imports a frame customers don't
    share.
 3. **"Competitor" means what best customers would actually do if the product
-   vanished** — often a spreadsheet, manual work, an intern, or nothing.
+   vanished** - often a spreadsheet, manual work, an intern, or nothing.
 4. **Real data or declared hypothesis.** Ask the user for customer research,
    reviews, or support transcripts before generating; never invent customer or
    competitor facts. If no evidence exists, label every customer-dependent
@@ -48,17 +48,17 @@ feels arbitrary, the upstream step was skipped: go back up.
    past behaviour, never opinion or hypotheticals. Customers' verbatim words
    become the copy.
 6. **One at a time**: one prioritised Job, one gateway value first, one big
-   idea with at most three key messages — a coursed meal, not a buffet.
+   idea with at most three key messages - a coursed meal, not a buffet.
 7. **Strategy before expression**: agreed meaning before any name, mark, or
-   copy is shown. Naming and architecture sit *between* strategy and design —
+   copy is shown. Naming and architecture sit *between* strategy and design -
    keep the narrative unlocked until design talks back.
-8. **Strategy scenarios and design routes come as options: 3–5 genuinely
-   distinct scenarios or 2–3 routes differentiated by idea** — never one
+8. **Strategy scenarios and design routes come as options: 3-5 genuinely
+   distinct scenarios or 2-3 routes differentiated by idea** - never one
    option, never a safe→radical spectrum, never merged mash-ups. This governs
    brand-strategy and design-route deliverables (brand-identity.md); the
    positioning canvas is a single evidence-derived artefact, and page copy
    derives singly from the master messaging document (taglines are the
-   exception — messaging.md §7).
+   exception - messaging.md §7).
 9. **Provable claims only.** "Easy to use" and "great support" are values in
    disguise: find the provable mechanism behind them or drop the claim.
 10. **Positioning is a pricing and roadmap decision**, and the customer story ≠
@@ -86,14 +86,14 @@ When reviewing an existing artefact:
 
 1. Identify its layer and run the **Critique checklist** at the end of the
    matching reference. Findings cite the violated criterion, the observed
-   evidence, and a concrete fix, ranked by severity — never general
+   evidence, and a concrete fix, ranked by severity - never general
    impressions or taste.
 2. Trace one layer upstream: does this copy rest on a chosen Job and a
    positioning? Does this positioning rest on real alternatives from real
    customers? **A missing upstream layer is the primary finding.**
 3. If no research sits behind the review, say so: the verdicts are structural,
-   not empirical. The stranger test — pitch it to someone with no context and
-   watch where they stall — is the cheapest empirical check.
+   not empirical. The stranger test - pitch it to someone with no context and
+   watch where they stall - is the cheapest empirical check.
 
 Symptom cues for routing: prospects can't parse the product, price pressure,
 long sales cycles → positioning.md. Page converts poorly or reads generic →

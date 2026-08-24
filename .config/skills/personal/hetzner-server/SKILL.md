@@ -14,11 +14,11 @@ Create and manage Hetzner Cloud servers using the `hcloud` CLI.
 
 ## Cloud Firewalls
 
-Reusable firewall profiles applied at server creation. Firewalls can be swapped on running servers — use `apply-to-resource` / `remove-from-resource`.
+Reusable firewall profiles applied at server creation. Firewalls can be swapped on running servers - use `apply-to-resource` / `remove-from-resource`.
 
 | Firewall | Rules | Use case |
 |----------|-------|----------|
-| `ts-ssh` | UDP 41641 (Tailscale) + TCP 22 (SSH) | Dev boxes — initial setup, swap to `ts-only` after `tsonlyssh` |
+| `ts-ssh` | UDP 41641 (Tailscale) + TCP 22 (SSH) | Dev boxes - initial setup, swap to `ts-only` after `tsonlyssh` |
 | `ts-only` | UDP 41641 (Tailscale) | Tailscale-only access, no public ports |
 | `ts-web` | UDP 41641 (Tailscale) + TCP 80,443 (HTTP/S) | Servers accepting public web traffic |
 
@@ -66,7 +66,7 @@ hcloud server create \
   --without-ipv4
 ```
 
-**IPv6-only caveat:** `hcloud server ip <name>` and `hcssh` assume IPv4 —
+**IPv6-only caveat:** `hcloud server ip <name>` and `hcssh` assume IPv4 -
 `server ip` prints nothing useful and hcssh reads only the ipv4 column, so
 the managed Host entries come out empty. For a `--without-ipv4` server use
 `hcloud server ip --ipv6 <name>` (returns the /64; the host is `...::1`) and
@@ -152,7 +152,7 @@ ssh connor@$(hcloud server ip dev) "free -h"
 
 ### Reference lookups
 
-Server types, locations, images, SSH keys, and day-to-day server ops are live queries — look them up, don't memorise:
+Server types, locations, images, SSH keys, and day-to-day server ops are live queries - look them up, don't memorise:
 
 ```bash
 hcloud server-type list                              # ARM cax* preferred (best value); cpx* x86 fallback
@@ -208,8 +208,8 @@ hcssh --dry-run    # preview without writing
 
 This creates two Host entries per server inside a managed block (`# BEGIN/END hetzner-managed`):
 
-- `<name>` — no agent forwarding (safe for AI agents)
-- `<name>-agent` — with agent forwarding (for git push/pull to GitHub)
+- `<name>` - no agent forwarding (safe for AI agents)
+- `<name>-agent` - with agent forwarding (for git push/pull to GitHub)
 
 Run `hcssh` again after creating/deleting servers to keep SSH config in sync.
 This enables VS Code Remote-SSH to show the server in the dropdown.

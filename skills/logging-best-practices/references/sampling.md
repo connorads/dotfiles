@@ -1,22 +1,22 @@
-# Sampling — logging-sucks reference
+# Sampling - logging-sucks reference
 
 Cross-platform sampling strategy. Read `SKILL.md` first. This file covers *why* naive random sampling is wrong and what to do instead.
 
 ## The problem with head-based random sampling
 
-Head sampling decides at request entry: flip a coin, if it's heads keep all logs for this request, otherwise drop them. At 1% head-sampling, you keep 1% of errors. You keep 1% of slow requests. You keep 1% of the requests that broke for your biggest customer. At scale, 1% is often enough for dashboards — but it is catastrophic for debugging, which is exactly when you need the logs.
+Head sampling decides at request entry: flip a coin, if it's heads keep all logs for this request, otherwise drop them. At 1% head-sampling, you keep 1% of errors. You keep 1% of slow requests. You keep 1% of the requests that broke for your biggest customer. At scale, 1% is often enough for dashboards - but it is catastrophic for debugging, which is exactly when you need the logs.
 
 Head sampling has one genuine virtue: it is cheap and it preserves trace coherence (every log in a kept request is kept together). Use it as a *prefilter* for bulk volume reduction, not as the whole strategy.
 
-## Tail sampling — decide based on outcome
+## Tail sampling - decide based on outcome
 
 Tail sampling makes the keep/drop decision *after* the request completes, when the outcome is known. The rules that matter in practice:
 
 1. **Always keep errors.** 100% of `status >= 500`, 100% of unhandled exceptions, 100% of explicit `outcome = "error"`.
-2. **Always keep slow requests.** Requests above the p99 latency threshold — these are the ones that build the tail of your latency distribution and expose cascading slowness.
+2. **Always keep slow requests.** Requests above the p99 latency threshold - these are the ones that build the tail of your latency distribution and expose cascading slowness.
 3. **Always keep VIPs.** Enterprise customers, internal staff, flagged debug users. One angry enterprise customer with missing logs costs more than a month of storage.
 4. **Always keep feature-flag-enabled requests.** When a flag is at 1% rollout, you need 100% visibility into that 1% to evaluate it, not 1%-of-1%.
-5. **Randomly sample the rest at 1–5%.** This fills in the normal-case baseline for dashboards.
+5. **Randomly sample the rest at 1-5%.** This fills in the normal-case baseline for dashboards.
 
 This keeps cardinality where it matters (the failures, the outliers, the important users) and trims it where it does not (the boring successful p50).
 
@@ -32,7 +32,7 @@ function shouldKeep(event):
     return random() < 0.05
 ```
 
-Apply this in the `finally` of the canonical middleware — that is the moment when you have the full event and can make an outcome-aware decision.
+Apply this in the `finally` of the canonical middleware - that is the moment when you have the full event and can make an outcome-aware decision.
 
 ## Where to implement it
 
@@ -40,7 +40,7 @@ Three sensible homes, from closest-to-the-code to furthest:
 
 1. **In-app, in the canonical middleware.** The event is already assembled; gating the `logger.info(event)` call on a keep-rule function is cheap and works everywhere. Downside: you pay the CPU to assemble events you then drop. Usually fine.
 
-2. **In a sidecar / Tail Worker / OTel Collector.** The application emits everything; a downstream process filters before shipping to the expensive tier. This is where outcome-based tail sampling actually belongs when you have distributed tracing — the [OTel Collector's `tail_sampling` processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor) can key on `trace_id` and hold spans until all spans of a trace arrive, then make a whole-trace decision. On Cloudflare, a Tail Worker does the same job.
+2. **In a sidecar / Tail Worker / OTel Collector.** The application emits everything; a downstream process filters before shipping to the expensive tier. This is where outcome-based tail sampling actually belongs when you have distributed tracing - the [OTel Collector's `tail_sampling` processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor) can key on `trace_id` and hold spans until all spans of a trace arrive, then make a whole-trace decision. On Cloudflare, a Tail Worker does the same job.
 
 3. **At the backend (Honeycomb Refinery, vendor-side rules).** Useful when operational control of the collector is awkward. Same shape of rules, just run further from the app.
 
@@ -67,11 +67,11 @@ For tail sampling in Python, the real home is the OpenTelemetry Collector with `
 
 Three practical layers:
 
-- **`observability.head_sampling_rate`** in `wrangler.jsonc` — platform-level head sampling. Whole invocations kept/dropped together, trace coherence preserved.
-- **In the canonical middleware** — only `console.log` the wide event when a keep-rule matches; always `writeDataPoint` to Analytics Engine (AE's own sampling handles volume there with fairness).
-- **In a Tail Worker** — producer emits everything; the Tail Worker filters before shipping to an external backend. This is the right home for expensive outcome-aware rules that shouldn't run on every hot-path invocation.
+- **`observability.head_sampling_rate`** in `wrangler.jsonc` - platform-level head sampling. Whole invocations kept/dropped together, trace coherence preserved.
+- **In the canonical middleware** - only `console.log` the wide event when a keep-rule matches; always `writeDataPoint` to Analytics Engine (AE's own sampling handles volume there with fairness).
+- **In a Tail Worker** - producer emits everything; the Tail Worker filters before shipping to an external backend. This is the right home for expensive outcome-aware rules that shouldn't run on every hot-path invocation.
 
-## What you lose when sampling — and how to mitigate
+## What you lose when sampling - and how to mitigate
 
 The fundamental risk is losing the one event that would have told you what broke. Two mitigations that matter:
 
@@ -80,4 +80,4 @@ The fundamental risk is losing the one event that would have told you what broke
 
 ## Rule of thumb
 
-Start without tail sampling — emit everything. Add tail sampling only when log volume or cost forces it. When you add it, add keep-rules first (errors, slow, VIPs, flags), then random sampling of the remainder. Never flip the order: a 5% random sampler without keep-rules is worse than no sampler at all, because it produces a false sense of observability.
+Start without tail sampling - emit everything. Add tail sampling only when log volume or cost forces it. When you add it, add keep-rules first (errors, slow, VIPs, flags), then random sampling of the remainder. Never flip the order: a 5% random sampler without keep-rules is worse than no sampler at all, because it produces a false sense of observability.

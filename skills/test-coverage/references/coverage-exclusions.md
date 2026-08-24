@@ -171,11 +171,11 @@ fn unwrap_after_builder(optional: Option<Value>) -> Value {
 
 ### Rules for inline ignores
 
-1. **Always include a justification** after the ignore directive — explain why the code is unreachable
+1. **Always include a justification** after the ignore directive - explain why the code is unreachable
 2. **Prefer restructuring** to eliminate the unreachable branch (e.g. use exhaustive pattern matching)
-3. **Review during coverage audits** — ignored lines may become testable after refactoring
-4. **Never ignore entire functions** — if a function needs ignoring, it likely belongs in an exclusion category above
-5. **Count them** — a codebase with many inline ignores has a smell; investigate patterns
+3. **Review during coverage audits** - ignored lines may become testable after refactoring
+4. **Never ignore entire functions** - if a function needs ignoring, it likely belongs in an exclusion category above
+5. **Count them** - a codebase with many inline ignores has a smell; investigate patterns
 
 ## Auditing Exclusions
 

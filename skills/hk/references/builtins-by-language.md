@@ -34,7 +34,7 @@ Reference for choosing steps when setting up hk in a new repo. Run `hk builtins`
 
 **On keeping output quiet:** steps below run their plain commands. Success noise is dropped at
 the hook level by `hk run pre-commit -q` (hk ≥ 1.51.0: 0 bytes on success, full failing-step
-output on failure) — no per-step wrapper. Harmless tool-native flags (`ruff check -q`,
+output on failure) - no per-step wrapper. Harmless tool-native flags (`ruff check -q`,
 `gitleaks --log-level=error`) are kept where they also cut redundant output. See
 `references/output-noise.md`.
 
@@ -72,8 +72,8 @@ locale = "en-gb"   # or "en-us"
 ```
 
 **Locale mode rewrites US-spelled identifiers in code.** With `en-gb`, typos
-"corrects" US spellings even inside string literals — CLI flags, protocol/schema
-names, CSS keywords, API fields — which can silently break the build or the wire.
+"corrects" US spellings even inside string literals - CLI flags, protocol/schema
+names, CSS keywords, API fields - which can silently break the build or the wire.
 Allow-list each as an identity map so the word maps to itself (i.e. is left
 alone). Keep a `why` comment per entry; describe the class you keep hitting, not
 a one-off:
@@ -89,7 +89,7 @@ Organization = "Organization"   # schema.org @type; -> "Organisation" is invalid
 authorization = "authorization" # HTTP header; -> "authorisation" fails auth
 ```
 
-Trade-off: `extend-words` is **repo-global** — an entry also suppresses a genuine
+Trade-off: `extend-words` is **repo-global** - an entry also suppresses a genuine
 en-gb correction of that word in prose (e.g. `color` in body text stays
 US-spelled). That is usually the right call for identifier-heavy repos; if a word
 is a real problem only in code, prefer scoping via `[type.<ext>]` /
@@ -124,7 +124,7 @@ extend_rule_off = ["MD013", "MD033"]  # disable line-length and inline HTML rule
 
 ### Formatter: Biome (signal: `biome.json` or `biome.jsonc`)
 
-biome/ultracite print a `Checked N files…` summary on success — dropped by wrapper-level `-q`:
+biome/ultracite print a `Checked N files…` summary on success - dropped by wrapper-level `-q`:
 
 ```pkl
 ["biome"] {
@@ -146,7 +146,7 @@ Or via [ultracite](https://github.com/haydenbleasel/ultracite) wrapper:
 
 ### Formatter: Prettier (signal: `.prettierrc*` or no biome)
 
-prettier `--check` prints `All matched files use Prettier code style!` on success — dropped by
+prettier `--check` prints `All matched files use Prettier code style!` on success - dropped by
 wrapper-level `-q`:
 
 ```pkl
@@ -186,7 +186,7 @@ summary on success, dropped by wrapper-level `-q`.
 }
 ```
 
-**Native TS compiler preview (tsgo — faster):**
+**Native TS compiler preview (tsgo - faster):**
 
 ```pkl
 ["typecheck"] {
@@ -215,7 +215,7 @@ summary on success, dropped by wrapper-level `-q`.
 ### Test runners
 
 Test runners print a reporter summary on success and have no true silence flag
-(their own `--silent` only mutes test `console.log`, not the reporter) — wrapper-level `-q`
+(their own `--silent` only mutes test `console.log`, not the reporter) - wrapper-level `-q`
 drops it on success and keeps it on failure.
 
 **Vitest:**
@@ -234,7 +234,7 @@ drops it on success and keeps it on failure.
 }
 ```
 
-**Note:** E2E tests (Playwright, Cypress) should NOT be in pre-commit — they're too slow. Run them in CI only.
+**Note:** E2E tests (Playwright, Cypress) should NOT be in pre-commit - they're too slow. Run them in CI only.
 
 ### Commit message validation (signal: `commitlint.config.*`)
 
