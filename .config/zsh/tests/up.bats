@@ -40,7 +40,16 @@ case "${OSV_STUB_MODE:-clean}" in
 esac
 EOF
 
-  for cmd in brew drs macup-check tmux-upstream pin-audit \
+  # drs: log; DRS_FAIL exits non-zero, the shape of a rebuild that can't build
+  # the freshly bumped flake.lock.
+  write_stub drs <<'EOF'
+#!/usr/bin/env bash
+echo "drs $*" >>"$TEST_LOG"
+[ -n "${DRS_FAIL:-}" ] && exit 1
+exit 0
+EOF
+
+  for cmd in brew macup-check tmux-upstream pin-audit \
     claude-channels-patch claude-channels-allowlist-patch \
     claude-computer-use-patch claude-session-reaper-patch \
     claude-telegram-clear-patch; do
@@ -127,6 +136,16 @@ EOF
   # the unrelated halves still run: a failing tool doesn't abort the rest
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
+}
+
+@test "up does not commit flake.lock when the rebuild failed" {
+  MISE_SIMULATE_BUMP=1 DRS_FAIL=1 run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  grep -qF 'nfu' "$TEST_LOG"
+  ! grep -qF 'update flake lock' "$TEST_LOG" # the commit that must not happen
+  [[ "$output" == *"NOT committing flake.lock"* ]]
+  # the mise half is unaffected: its own lock still commits
+  grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
 }
 
 @test "up --frozen converges via mise install with no bumps, brew, flake, or commit" {
