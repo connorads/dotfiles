@@ -1,8 +1,8 @@
-# Cloudflare Workers — logging-best-practices reference
+# Cloudflare Workers - logging-best-practices reference
 
 Concrete guidance for implementing the wide-event / canonical-log-line pattern on Cloudflare Workers. Read `SKILL.md` first for the principles; this file covers *how*.
 
-## Retrieval first — trust live docs over this file
+## Retrieval first - trust live docs over this file
 
 Cloudflare's observability surface changes weekly: limits, `wrangler` config shape, billing status of beta features (native tracing), and which OTLP transports are supported all shift. **Before writing code or citing a specific number, fetch the current docs.** Treat this reference as the *shape of the solution*, not the source of truth for API details.
 
@@ -14,19 +14,19 @@ Cloudflare's observability surface changes weekly: limits, `wrangler` config sha
 | `developers.cloudflare.com/changelog/` | Recent deprecations, new OTLP destinations, billing changes |
 | `@cloudflare/workers-types` | Types for `Request.cf`, `AnalyticsEngineDataset`, `TraceItem` (for Tail Workers) |
 
-If this file and the live docs disagree, **trust the docs** — especially for numeric limits, billing/beta status, supported OTLP formats, and exact config-key names. Numbers in this file are illustrative; use them to understand tradeoffs (e.g. "AE is sampled, Workers Logs is not"), not to hard-code thresholds.
+If this file and the live docs disagree, **trust the docs** - especially for numeric limits, billing/beta status, supported OTLP formats, and exact config-key names. Numbers in this file are illustrative; use them to understand tradeoffs (e.g. "AE is sampled, Workers Logs is not"), not to hard-code thresholds.
 
-## The five observability primitives — pick deliberately
+## The five observability primitives - pick deliberately
 
 Workers offer distinct primitives that are often conflated. The right answer is usually "enable all five, use each for what it's good at".
 
 | Primitive | Best for | Cardinality | Retention | Query |
 |---|---|---|---|---|
-| **Workers Logs** | Canonical wide events (human-readable, per-request) | Unlimited | 3–7d | Dashboard Query Builder |
+| **Workers Logs** | Canonical wide events (human-readable, per-request) | Unlimited | 3-7d | Dashboard Query Builder |
 | **Analytics Engine** | High-cardinality numeric metrics (per-tenant, per-route timings) | Unlimited via index | 3 months | SQL API |
-| **Native Traces (OTel)** | Spans across handlers, fetch, bindings, DOs | — | Backend-dependent | OTLP backend (Honeycomb, Axiom, Sentry, Grafana) |
-| **Tail Workers** | Guaranteed shipping, redaction, aggregation | — | — | Custom Worker |
-| **Logpush** | Bulk archive to R2/S3/SIEM | — | — | Downstream |
+| **Native Traces (OTel)** | Spans across handlers, fetch, bindings, DOs | - | Backend-dependent | OTLP backend (Honeycomb, Axiom, Sentry, Grafana) |
+| **Tail Workers** | Guaranteed shipping, redaction, aggregation | - | - | Custom Worker |
+| **Logpush** | Bulk archive to R2/S3/SIEM | - | - | Downstream |
 
 **Recommended default for a new Worker**: Workers Logs + native Traces + one Analytics Engine dataset, enabled together in `wrangler.jsonc`.
 
@@ -49,7 +49,7 @@ Minimum Wrangler 3.78.6.
 }
 ```
 
-Per-environment: `[env.staging.observability]`. Head sampling decides at request entry and keeps *all* logs in that invocation or drops *all* of them — this preserves trace coherence.
+Per-environment: `[env.staging.observability]`. Head sampling decides at request entry and keeps *all* logs in that invocation or drops *all* of them - this preserves trace coherence.
 
 ## The key behaviour: `console.log` auto-indexes JSON
 
@@ -73,7 +73,7 @@ console.log({
 });
 ```
 
-This is the wide-event pattern on Workers — emit one of these per request at the end of the handler. Limits as of writing: 256 KB per log (then truncated with `$cloudflare.truncated = true`), 20M logs/month included on paid, 5B/day before account-wide sampling kicks in.
+This is the wide-event pattern on Workers - emit one of these per request at the end of the handler. Limits as of writing: 256 KB per log (then truncated with `$cloudflare.truncated = true`), 20M logs/month included on paid, 5B/day before account-wide sampling kicks in.
 
 ## The canonical-event middleware (Hono)
 
@@ -125,7 +125,7 @@ app.use("*", async (c, next) => {
 });
 ```
 
-Handlers annotate via `c.set("user_id", ...)` early in the request; the middleware picks them up in `finally`. Do not use Hono's built-in `logger()` middleware for production — it is dev-time sugar and emits an unstructured string.
+Handlers annotate via `c.set("user_id", ...)` early in the request; the middleware picks them up in `finally`. Do not use Hono's built-in `logger()` middleware for production - it is dev-time sugar and emits an unstructured string.
 
 ## Always-include Cloudflare context
 
@@ -150,7 +150,7 @@ function cfContext(req: Request) {
 
 `cf-ray` is Cloudflare's native request ID (`<hex>-<colo>`). Use it as the correlation key when OTel is not available.
 
-## Analytics Engine — for high-cardinality metrics
+## Analytics Engine - for high-cardinality metrics
 
 Analytics Engine is the right place for per-tenant / per-user timing and count metrics. It uses **weighted adaptive sampling per index value** so rare tenants are preserved while hot ones get downsampled.
 
@@ -168,7 +168,7 @@ env.AE.writeDataPoint({
 
 Limits at time of writing: up to 20 blobs, up to 20 doubles, exactly one index (multiple = silently dropped), 16 KB total blob payload, 250 datapoints per invocation, 3-month retention.
 
-**Index choice matters.** The index is what sampling fairness is keyed by. Pick a stable grouping column (`tenant_id`, `customer_id`, `api_key_hash`), *not* a per-request ID like `request_id` — that defeats the sampling benefit.
+**Index choice matters.** The index is what sampling fairness is keyed by. Pick a stable grouping column (`tenant_id`, `customer_id`, `api_key_hash`), *not* a per-request ID like `request_id` - that defeats the sampling benefit.
 
 **Query with `sum(_sample_interval)`, not `count()`.** Every row carries `_sample_interval` (inverse of sample rate); ignoring it gives you wrong numbers for high-traffic indexes.
 
@@ -176,23 +176,23 @@ Limits at time of writing: up to 20 blobs, up to 20 doubles, exactly one index (
 
 Cloudflare ships automatic tracing for Workers - no instrumentation code required (check the [Workers Observability / Traces docs](https://developers.cloudflare.com/workers/observability/) for current release stage and billing status). Spans are emitted for handler invocations, `fetch()`, cache, KV/R2/D1/Queues/DO bindings. W3C `traceparent` propagates automatically across service bindings, subrequests, and Durable Objects.
 
-Current limitations: OTLP/JSON only (not protobuf), so Datadog/Elastic APM do not work without an intermediary. When the workload needs custom spans or protobuf, use [`@microlabs/otel-cf-workers`](https://github.com/evanderkoogh/otel-cf-workers) instead — it requires `compatibility_flags = ["nodejs_compat"]` and gives full OTel SDK control.
+Current limitations: OTLP/JSON only (not protobuf), so Datadog/Elastic APM do not work without an intermediary. When the workload needs custom spans or protobuf, use [`@microlabs/otel-cf-workers`](https://github.com/evanderkoogh/otel-cf-workers) instead - it requires `compatibility_flags = ["nodejs_compat"]` and gives full OTel SDK control.
 
-When OTel is configured, logs exported via OTLP share the trace ID automatically — backends like Honeycomb/Sentry/Axiom will link traces and logs for you.
+When OTel is configured, logs exported via OTLP share the trace ID automatically - backends like Honeycomb/Sentry/Axiom will link traces and logs for you.
 
 ## Pitfalls unique to Workers
 
-- **`waitUntil` is unreliable for log flushing.** It gives up to 30s of post-response runtime but is best-effort — if the Worker throws, queued work may be dropped. For billing-critical or audit logs, use a Tail Worker or push to Cloudflare Queues from inside the handler. `console.log` itself does not need `waitUntil`; invocation logs flush via the runtime lifecycle.
+- **`waitUntil` is unreliable for log flushing.** It gives up to 30s of post-response runtime but is best-effort - if the Worker throws, queued work may be dropped. For billing-critical or audit logs, use a Tail Worker or push to Cloudflare Queues from inside the handler. `console.log` itself does not need `waitUntil`; invocation logs flush via the runtime lifecycle.
 - **No filesystem, no long-lived process.** No rotating log files. Everything goes through `console.log`, Analytics Engine, Tail Worker, or Logpush.
 - **Isolate reuse.** Module-scope state persists across requests in the same isolate. Per-request state at module scope leaks between users; always scope to the request.
-- **Subrequest budget.** 50 free / 1000 paid-bundled / unlimited unbound. Direct HTTP log shipping from the Worker eats this — prefer Workers Logs, Analytics Engine, or Tail Workers which do not count.
+- **Subrequest budget.** 50 free / 1000 paid-bundled / unlimited unbound. Direct HTTP log shipping from the Worker eats this - prefer Workers Logs, Analytics Engine, or Tail Workers which do not count.
 - **CPU time limit.** Serialising huge objects into a log call can blow the CPU budget. Cap event size.
 - **WebSocket handlers.** `console.log` during a long-lived WebSocket may not appear in `wrangler tail` until the socket closes; prefer Workers Logs or synchronous pushes for visibility.
 - **Field naming is forever.** Workers Logs indexes by exact JSON path. Renaming `userId` → `user_id` mid-flight splits your dashboard. Pick once.
 
-## Tail Workers — when you need guaranteed delivery
+## Tail Workers - when you need guaranteed delivery
 
-A Tail Worker runs once per invocation of a producer Worker, *after* the producer finishes, and receives its logs/exceptions/outcome as input. It runs regardless of whether the producer threw — which makes it the right tool for guaranteed shipping and for centralised redaction before egress.
+A Tail Worker runs once per invocation of a producer Worker, *after* the producer finishes, and receives its logs/exceptions/outcome as input. It runs regardless of whether the producer threw - which makes it the right tool for guaranteed shipping and for centralised redaction before egress.
 
 ```ts
 // tail-worker/src/index.ts
@@ -212,11 +212,11 @@ export default {
 // { "tail_consumers": [{ "service": "tail-worker" }] }
 ```
 
-Request URLs and headers are redacted by default — call `getUnredacted()` if the Tail Worker needs them.
+Request URLs and headers are redacted by default - call `getUnredacted()` if the Tail Worker needs them.
 
 ## Sampling on Workers
 
-Head sampling via `head_sampling_rate` is the simplest lever. For outcome-based tail sampling (keep errors, slow requests, VIP tenants — see `sampling.md`), the pragmatic patterns on Workers are:
+Head sampling via `head_sampling_rate` is the simplest lever. For outcome-based tail sampling (keep errors, slow requests, VIP tenants - see `sampling.md`), the pragmatic patterns on Workers are:
 
 1. In-handler keep-rule: always emit to Analytics Engine; `console.log` only when `status >= 400`, `duration_ms > threshold`, or tenant is flagged important.
 2. Tail Worker filter: emit everything from the producer, let the Tail Worker decide what to ship downstream.

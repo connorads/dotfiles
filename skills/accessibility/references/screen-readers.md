@@ -1,12 +1,12 @@
 # Screen Readers Reference
 
-Practical knowledge for testing with and building for the major screen readers. On desktop, NVDA and JAWS lead — JAWS is ahead for *primary* use, NVDA (free) is close behind, and Windows Narrator is a common third. On mobile, VoiceOver (iOS) dominates and Android TalkBack is a solid second (roughly a third of mobile users). VoiceOver also covers macOS. Most users rely on more than one. (Source: WebAIM Screen Reader User Survey #10, Dec 2023–Jan 2024; re-check for a newer edition and treat the exact percentages as moving, not fixed.)
+Practical knowledge for testing with and building for the major screen readers. On desktop, NVDA and JAWS lead - JAWS is ahead for *primary* use, NVDA (free) is close behind, and Windows Narrator is a common third. On mobile, VoiceOver (iOS) dominates and Android TalkBack is a solid second (roughly a third of mobile users). VoiceOver also covers macOS. Most users rely on more than one. (Source: WebAIM Screen Reader User Survey #10, Dec 2023-Jan 2024; re-check for a newer edition and treat the exact percentages as moving, not fixed.)
 
 ---
 
 ## How Screen Readers Work
 
-Screen readers maintain a **virtual buffer** — a linearised copy of the page's accessibility tree. In **browse mode** (also called virtual cursor / reading mode), users navigate this buffer with single-key shortcuts without interacting with the live DOM. In **forms mode** (interaction mode / focus mode), keystrokes go to the focused control rather than the screen reader.
+Screen readers maintain a **virtual buffer** - a linearised copy of the page's accessibility tree. In **browse mode** (also called virtual cursor / reading mode), users navigate this buffer with single-key shortcuts without interacting with the live DOM. In **forms mode** (interaction mode / focus mode), keystrokes go to the focused control rather than the screen reader.
 
 Understanding this is critical: keyboard commands like `H` for next heading only work in browse mode. Inside a form field or custom widget, those keys type characters. Screen readers switch modes automatically at certain elements, and announce the switch with a sound cue. Users can also switch manually.
 
@@ -16,7 +16,7 @@ Understanding this is critical: keyboard commands like `H` for next heading only
 
 ## NVDA (NonVisual Desktop Access)
 
-**Free, open-source. Best with Firefox or Chrome on Windows. Strict code interpreter — exposes exactly what's in markup.**
+**Free, open-source. Best with Firefox or Chrome on Windows. Strict code interpreter - exposes exactly what's in markup.**
 
 ### Starting NVDA
 
@@ -31,7 +31,7 @@ Understanding this is critical: keyboard commands like `H` for next heading only
 |--------|---------|
 | Next heading | `H` |
 | Previous heading | `Shift+H` |
-| Heading level 1–6 | `1`–`6` |
+| Heading level 1-6 | `1`-`6` |
 | Next landmark | `D` |
 | Next link | `K` |
 | Next form field | `F` |
@@ -54,10 +54,10 @@ Understanding this is critical: keyboard commands like `H` for next heading only
 
 ### Table Navigation (Browse Mode)
 
-- `Ctrl+Alt+Right` — next cell in row
-- `Ctrl+Alt+Left` — previous cell in row
-- `Ctrl+Alt+Down` — cell below (with column header announced)
-- `Ctrl+Alt+Up` — cell above
+- `Ctrl+Alt+Right` - next cell in row
+- `Ctrl+Alt+Left` - previous cell in row
+- `Ctrl+Alt+Down` - cell below (with column header announced)
+- `Ctrl+Alt+Up` - cell above
 
 NVDA announces column and row headers automatically when `<th>` elements are correctly marked up.
 
@@ -65,9 +65,9 @@ NVDA announces column and row headers automatically when `<th>` elements are cor
 
 1. Open page in Firefox or Chrome
 2. Press `Ctrl+Home` to go to top
-3. Press `NVDA+F7` → open elements list → switch to Headings view — is page structure logical?
-4. Press `NVDA+F7` → switch to Landmarks view — are regions present and labelled?
-5. Tab through all interactive elements — does each get announced with role + name?
+3. Press `NVDA+F7` → open elements list → switch to Headings view - is page structure logical?
+4. Press `NVDA+F7` → switch to Landmarks view - are regions present and labelled?
+5. Tab through all interactive elements - does each get announced with role + name?
 6. Test any forms: enter data, trigger errors, check that errors are announced on field focus
 7. Test any dialogs: open, check focus moves inside, check Escape closes and focus returns to trigger
 8. Check any live regions: trigger dynamic updates, verify announcements
@@ -76,14 +76,14 @@ NVDA announces column and row headers automatically when `<th>` elements are cor
 
 ## JAWS (Job Access With Speech)
 
-**Commercial (annual or perpetual licence); the enterprise standard. Uses heuristics to "repair" bad markup — may pass things NVDA fails.** For auditing, this means JAWS passing is not proof of correctness; NVDA is the stricter reference.
+**Commercial (annual or perpetual licence); the enterprise standard. Uses heuristics to "repair" bad markup - may pass things NVDA fails.** For auditing, this means JAWS passing is not proof of correctness; NVDA is the stricter reference.
 
-Unlicensed, JAWS runs in a time-limited 40-minute mode (restart to continue) — usable for spot testing, but NVDA is the better free option for regular use.
+Unlicensed, JAWS runs in a time-limited 40-minute mode (restart to continue) - usable for spot testing, but NVDA is the better free option for regular use.
 
 ### Key Differences from NVDA
 
 - JAWS has **smart navigation** that can infer context from visual layout when ARIA is missing
-- Uses a different virtual buffer implementation — occasional differences in announcement order
+- Uses a different virtual buffer implementation - occasional differences in announcement order
 - Better compatibility with legacy enterprise applications (MS Office, older CRMs)
 - `Insert` is the JAWS modifier (same as NVDA, but settings key is `Insert+J`)
 
@@ -112,7 +112,7 @@ JAWS enters forms mode automatically when focused on an input. You hear a "chime
 - macOS: `Cmd+F5` or System Settings → Accessibility → VoiceOver
 - iOS: Settings → Accessibility → VoiceOver → toggle on
 
-VoiceOver uses a **rotor** (gesture or `VO+U` on Mac) to switch navigation modes — headings, links, form controls, landmarks, etc.
+VoiceOver uses a **rotor** (gesture or `VO+U` on Mac) to switch navigation modes - headings, links, form controls, landmarks, etc.
 
 ### Core macOS Commands
 
@@ -134,16 +134,16 @@ Press `VO+U` to open the rotor wheel. Arrow left/right to select category (Headi
 
 ### iOS VoiceOver Gestures
 
-- Swipe right/left — next/previous element
-- Double tap — activate
-- Two-finger swipe up — read from top
-- Rotor — rotate two fingers to switch navigation mode, swipe up/down to navigate
+- Swipe right/left - next/previous element
+- Double tap - activate
+- Two-finger swipe up - read from top
+- Rotor - rotate two fingers to switch navigation mode, swipe up/down to navigate
 
 ---
 
 ## Narrator (Windows)
 
-**Built into Windows. Best with Edge.** Narrator's **scan mode** is the direct analogue of NVDA/JAWS browse mode — the same browse-vs-forms split described above.
+**Built into Windows. Best with Edge.** Narrator's **scan mode** is the direct analogue of NVDA/JAWS browse mode - the same browse-vs-forms split described above.
 
 - Narrator key (the modifier) defaults to `Caps Lock` or `Insert`
 - Toggle scan mode: `Narrator + Space`. It turns on automatically in browsers (Edge/Chrome/Firefox) and turns off automatically in editable fields
@@ -157,20 +157,20 @@ Press `VO+U` to open the rotor wheel. Arrow left/right to select category (Headi
 **Built into Android. Best with Chrome.** The second most-used mobile reader after VoiceOver.
 
 - Enable: Settings → Accessibility → TalkBack (or the volume-key shortcut)
-- Swipe right/left — next/previous element
-- Double tap — activate; two-finger swipe — scroll
-- **Reading controls** (the rotor analogue): three-finger swipe up/down — or a single-finger up-then-down / down-then-up — cycles granularity (Headings, Links, Controls, Words, Characters, Lines); then single-finger up/down navigates by the selected control. Multi-finger gestures need TalkBack 9.1+; the single-finger angle gesture is the pre-9.1 fallback
+- Swipe right/left - next/previous element
+- Double tap - activate; two-finger swipe - scroll
+- **Reading controls** (the rotor analogue): three-finger swipe up/down - or a single-finger up-then-down / down-then-up - cycles granularity (Headings, Links, Controls, Words, Characters, Lines); then single-finger up/down navigates by the selected control. Multi-finger gestures need TalkBack 9.1+; the single-finger angle gesture is the pre-9.1 fallback
 
 ---
 
 ## Screen Reader + Browser Pairings
 
-Testing with the correct browser pairing matters — some accessibility APIs work differently across combinations.
+Testing with the correct browser pairing matters - some accessibility APIs work differently across combinations.
 
 | Screen Reader | Best Browser | Notes |
 |---|---|---|
 | NVDA | Chrome, Firefox | Test both; NVDA+Chrome is now the most common NVDA pairing (Survey #10). Firefox historically exposed some ARIA slightly more faithfully |
-| JAWS | Chrome, Edge | Both Chromium; JAWS+Edge is the 2nd most common JAWS pairing (Survey #10). IE is retired (June 2022) — legacy enterprise only |
+| JAWS | Chrome, Edge | Both Chromium; JAWS+Edge is the 2nd most common JAWS pairing (Survey #10). IE is retired (June 2022) - legacy enterprise only |
 | VoiceOver macOS | Safari | Safari has the most complete AT support on Mac |
 | VoiceOver iOS | Safari | Always use Safari on iOS |
 | Narrator (Windows) | Edge | Built into Windows, edge cases with complex ARIA |
@@ -182,11 +182,11 @@ Testing with the correct browser pairing matters — some accessibility APIs wor
 
 From WebAIM screen reader surveys, the most common navigation strategies on a new page:
 
-1. **Headings first** — users press `H` repeatedly to understand page structure and jump to sections. If headings are missing or skipped, users lose navigation entirely.
-2. **Forms mode** — entering any input triggers forms mode; `Tab` navigates between fields. Users rely on labels being correctly associated to know what each field is.
-3. **Links list** — `Insert+F7` (JAWS/NVDA) opens all links in a list. Every link must make sense out of context. "Click here" and "Read more" are useless in this view.
-4. **Landmarks** — `D` jumps between regions. Pages without landmarks force linear reading of the entire page to find content.
-5. **Table navigation** — when a table is announced, users use `Ctrl+Alt+Arrow` to navigate cell-by-cell, expecting headers to be re-announced with each cell.
+1. **Headings first** - users press `H` repeatedly to understand page structure and jump to sections. If headings are missing or skipped, users lose navigation entirely.
+2. **Forms mode** - entering any input triggers forms mode; `Tab` navigates between fields. Users rely on labels being correctly associated to know what each field is.
+3. **Links list** - `Insert+F7` (JAWS/NVDA) opens all links in a list. Every link must make sense out of context. "Click here" and "Read more" are useless in this view.
+4. **Landmarks** - `D` jumps between regions. Pages without landmarks force linear reading of the entire page to find content.
+5. **Table navigation** - when a table is announced, users use `Ctrl+Alt+Arrow` to navigate cell-by-cell, expecting headers to be re-announced with each cell.
 
 ---
 
@@ -196,35 +196,35 @@ From WebAIM screen reader surveys, the most common navigation strategies on a ne
 
 1. Tab to the button
 2. What is announced? Should be: `[name], button`
-3. Press `Enter` and `Space` — both should activate
+3. Press `Enter` and `Space` - both should activate
 4. If icon-only: is `aria-label` present? Is the SVG `aria-hidden="true"`?
 
 ### Testing a form
 
-1. Tab to first field — should announce: `[label], edit` (or `[label], required, edit`)
-2. Submit with empty required fields — do errors appear?
-3. Tab to an errored field — should announce: `[label], [error message], invalid data, edit`
+1. Tab to first field - should announce: `[label], edit` (or `[label], required, edit`)
+2. Submit with empty required fields - do errors appear?
+3. Tab to an errored field - should announce: `[label], [error message], invalid data, edit`
 4. Check error message is not just colour change
 
 ### Testing a modal dialog
 
 1. Activate the trigger
 2. Does focus move inside the dialog? (Should announce dialog role + name)
-3. Tab through all elements — does focus wrap within the dialog?
-4. Press `Escape` — does dialog close and focus return to the trigger?
-5. Try tabbing outside — can focus escape the dialog? (It shouldn't)
+3. Tab through all elements - does focus wrap within the dialog?
+4. Press `Escape` - does dialog close and focus return to the trigger?
+5. Try tabbing outside - can focus escape the dialog? (It shouldn't)
 
 ### Testing a dropdown menu
 
-1. Press the toggle button — should announce: `[name], button, expanded`
+1. Press the toggle button - should announce: `[name], button, expanded`
 2. Navigate items with arrow keys (in custom menus) or Tab
-3. Select item — should announce selection and close menu
-4. Press `Escape` — should close menu and return focus to trigger
+3. Select item - should announce selection and close menu
+4. Press `Escape` - should close menu and return focus to trigger
 
 ### Testing a tab panel
 
 1. Tab to the tab list
-2. Arrow keys move between tabs (not Tab key — Tab should move to tab panel content)
+2. Arrow keys move between tabs (not Tab key - Tab should move to tab panel content)
 3. `Enter` or `Space` activates a tab
 4. The active tab should have `aria-selected="true"` announced
 5. `Tab` from the tab moves focus to the panel content
@@ -232,7 +232,7 @@ From WebAIM screen reader surveys, the most common navigation strategies on a ne
 ### Testing live content
 
 1. Trigger the update (add to cart, submit form, filter results)
-2. Wait — within 1–2 seconds the screen reader should announce the change
+2. Wait - within 1-2 seconds the screen reader should announce the change
 3. Verify the announcement is concise and meaningful (not just raw data)
 
 ---

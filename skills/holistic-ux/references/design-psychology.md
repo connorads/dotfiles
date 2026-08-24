@@ -26,7 +26,7 @@
 - Decision-Making in Practice
 - Source Anchors
 
-Psychological principles that inform good UX decisions. These aren't rules to blindly apply — they're lenses for understanding why designs work or fail.
+Psychological principles that inform good UX decisions. These aren't rules to blindly apply - they're lenses for understanding why designs work or fail.
 
 ---
 
@@ -366,11 +366,11 @@ When reviewing a design, use these as diagnostic questions:
 
 | If you observe... | Consider... |
 |-------------------|-------------|
-| Users hesitate | Hick's Law — too many choices? |
-| Users miss the CTA | Fitts's Law — too small/far? Von Restorff — doesn't stand out? |
+| Users hesitate | Hick's Law - too many choices? |
+| Users miss the CTA | Fitts's Law - too small/far? Von Restorff - doesn't stand out? |
 | Users make errors | Extraneous cognitive load? Unclear labels? |
-| Users don't complete flows | Peak-End — is the ending bad? Steps too many (Miller's)? |
-| Users use workarounds | Jakob's Law — breaking conventions? |
+| Users don't complete flows | Peak-End - is the ending bad? Steps too many (Miller's)? |
+| Users use workarounds | Jakob's Law - breaking conventions? |
 | Users say "it feels slow" | Response timing, missing feedback, or cognitive load? |
 | Users say "it's confusing" | Mental model mismatch. Their model does not match your model. |
 

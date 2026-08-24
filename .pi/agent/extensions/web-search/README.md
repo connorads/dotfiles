@@ -15,7 +15,7 @@ export BRAVE_SEARCH_API_KEY=...  # or BRAVE_API_KEY
 
 ### Config file
 
-Create `~/.pi/web-search.json` (recommended — works regardless of how pi is launched):
+Create `~/.pi/web-search.json` (recommended - works regardless of how pi is launched):
 
 ```json
 {

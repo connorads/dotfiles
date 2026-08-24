@@ -1,6 +1,6 @@
 # Skills
 
-A collection of authored, shareable [agent skills](https://agentskills.io) — each a
+A collection of authored, shareable [agent skills](https://agentskills.io) - each a
 `SKILL.md` (plus optional `references/`, `scripts/`, `assets/`) that an AI coding agent
 loads to pick up a focused capability or set of conventions.
 

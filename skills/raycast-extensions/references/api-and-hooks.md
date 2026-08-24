@@ -15,7 +15,7 @@ Covers `@raycast/api` 1.x and `@raycast/utils` 2.x (React 19); confirm exact API
 
 ## List
 
-The workhorse view. Built-in `filtering` (client-side, matches title + `keywords`) is **on by default unless you set `onSearchTextChange`** — then you own filtering (e.g. server search), and must add `throttle` if it triggers network calls.
+The workhorse view. Built-in `filtering` (client-side, matches title + `keywords`) is **on by default unless you set `onSearchTextChange`** - then you own filtering (e.g. server search), and must add `throttle` if it triggers network calls.
 
 ```tsx
 <List isLoading={isLoading} filtering throttle isShowingDetail={showDetail}
@@ -39,7 +39,7 @@ The workhorse view. Built-in `filtering` (client-side, matches title + `keywords
 
 - `accessories` item shape: `{ text?, date?, tag?, icon?, tooltip? }`; `text`/`tag` accept `{ value, color }`. Rendered right-to-left in declared order.
 - `isShowingDetail` enables the split pane; put `<List.Item.Detail markdown … metadata … />` in each item's `detail`.
-- `pagination={{ hasMore, onLoadMore, pageSize }}` — usually obtained directly from a data hook.
+- `pagination={{ hasMore, onLoadMore, pageSize }}` - usually obtained directly from a data hook.
 - Gate `List.EmptyView` on `!isLoading` so it doesn't flash "No Results" during the first fetch.
 
 ## Detail
@@ -66,7 +66,7 @@ Idiomatic validation is `useForm` from `@raycast/utils` (see hooks section). Fie
 
 - Every data field needs `id`. **Uncontrolled** = `defaultValue`; **controlled** = `value` + `onChange`.
 - `<Form>` props: `actions`, `isLoading`, `enableDrafts` (auto-saves inputs; **not** for passwords or nested-navigation forms; pair with `LaunchProps<{ draftValues }>`).
-- Manual validation idiom: set `error` on `onBlur`, clear it on `onChange` — validating on every keystroke flashes errors while typing.
+- Manual validation idiom: set `error` on `onBlur`, clear it on `onChange` - validating on every keystroke flashes errors while typing.
 
 ## Grid
 
@@ -88,21 +88,21 @@ Like `List` but tiled (`<Grid>`, `<Grid.Item content={…}>`, `<Grid.Section>`, 
 </ActionPanel>
 ```
 
-- **First action = primary, second = secondary, auto-shortcuts.** List/Grid/Detail: primary `↵`, secondary `⌘↵`. **Form**: primary `⌘↵`, secondary `⌘⇧↵`. Order deliberately — a destructive first action means Enter deletes.
-- Built-ins: `Action.CopyToClipboard` (`content`, `concealed?`), `Action.Paste`, `Action.OpenInBrowser` (`url`), `Action.Open`/`Action.OpenWith`/`Action.ShowInFinder` (`path`/`target`), `Action.Push` (`target` ReactNode — declarative navigation), `Action.SubmitForm` (`onSubmit`), `Action.Trash` (`paths`), `Action.CreateQuicklink`, `Action.CreateSnippet`, `Action.PickDate`, and the generic `<Action title onAction icon shortcut style />`.
+- **First action = primary, second = secondary, auto-shortcuts.** List/Grid/Detail: primary `↵`, secondary `⌘↵`. **Form**: primary `⌘↵`, secondary `⌘⇧↵`. Order deliberately - a destructive first action means Enter deletes.
+- Built-ins: `Action.CopyToClipboard` (`content`, `concealed?`), `Action.Paste`, `Action.OpenInBrowser` (`url`), `Action.Open`/`Action.OpenWith`/`Action.ShowInFinder` (`path`/`target`), `Action.Push` (`target` ReactNode - declarative navigation), `Action.SubmitForm` (`onSubmit`), `Action.Trash` (`paths`), `Action.CreateQuicklink`, `Action.CreateSnippet`, `Action.PickDate`, and the generic `<Action title onAction icon shortcut style />`.
 - Custom shortcut: `shortcut={{ modifiers: ["cmd","shift"], key: "c" }}` (modifiers ⊂ `cmd|ctrl|opt|shift`).
 - Group with `<ActionPanel.Section title?>`; nest with `<ActionPanel.Submenu>`.
 
 ## Navigation
 
-Prefer declarative `Action.Push`. Imperative: `const { push, pop } = useNavigation()` — `push(<Component/>, onPop?)`, `pop()`. ESC pops automatically. **Never roll your own navigation stack** (store-review rule).
+Prefer declarative `Action.Push`. Imperative: `const { push, pop } = useNavigation()` - `push(<Component/>, onPop?)`, `pop()`. ESC pops automatically. **Never roll your own navigation stack** (store-review rule).
 
 ## Feedback
 
 - **Toast**: `const toast = await showToast({ style: Toast.Style.Animated, title: "Working…" })` then mutate in place: `toast.style = Toast.Style.Success; toast.title = "Done"`. Add `primaryAction: { title, onAction, shortcut }` for a follow-up. The Animated → Success / Failure progression is the universal "do work" UX.
-- **HUD**: `await showHUD("Saved 👋", { popToRootType: PopToRootType.Immediate })` — closes the window; use in no-view commands / after actions. Survives the window closing (unlike a toast).
+- **HUD**: `await showHUD("Saved 👋", { popToRootType: PopToRootType.Immediate })` - closes the window; use in no-view commands / after actions. Survives the window closing (unlike a toast).
 - **Alert**: `await confirmAlert({ title, message?, primaryAction: { title, style: Alert.ActionStyle.Destructive }, rememberUserChoice? })` → `boolean`.
-- **Errors**: `import { showFailureToast } from "@raycast/utils"; showFailureToast(error, { title: "Could not fetch" })` — preferred over hand-rolled failure toasts. `captureException(e)` for reporting.
+- **Errors**: `import { showFailureToast } from "@raycast/utils"; showFailureToast(error, { title: "Could not fetch" })` - preferred over hand-rolled failure toasts. `captureException(e)` for reporting.
 
 ## Storage / Cache / Clipboard / Preferences
 
@@ -141,15 +141,15 @@ Use `onAction` (there is no `onClick`). `alternate` shows on ⌥. Background ref
 
 Pick:
 
-- **`useFetch`** — a REST/JSON endpoint.
-- **`useCachedPromise`** — any async fn whose result should persist to disk and show instantly next launch (stale-while-revalidate). **Default for remote/expensive calls.**
-- **`usePromise`** — async fn, no disk cache (in-memory for the session).
-- **`useExec`** — run a local binary, parse stdout.
-- **`useSQL`** — read a local SQLite DB (returns a `permissionView` for Full Disk Access).
-- **`useAI`** — Raycast AI completion (Pro only).
-- **`useCachedState`** — `useState` persisted + shared across renders/commands (sync).
-- **`useLocalStorage`** — durable async value: `{ value, setValue, removeValue, isLoading }`.
-- **`useForm`** — form state + validation.
+- **`useFetch`** - a REST/JSON endpoint.
+- **`useCachedPromise`** - any async fn whose result should persist to disk and show instantly next launch (stale-while-revalidate). **Default for remote/expensive calls.**
+- **`usePromise`** - async fn, no disk cache (in-memory for the session).
+- **`useExec`** - run a local binary, parse stdout.
+- **`useSQL`** - read a local SQLite DB (returns a `permissionView` for Full Disk Access).
+- **`useAI`** - Raycast AI completion (Pro only).
+- **`useCachedState`** - `useState` persisted + shared across renders/commands (sync).
+- **`useLocalStorage`** - durable async value: `{ value, setValue, removeValue, isLoading }`.
+- **`useForm`** - form state + validation.
 
 ### useCachedPromise
 
@@ -164,7 +164,7 @@ const { isLoading, data, revalidate, mutate } = useCachedPromise(
 
 Options: `initialData`, `keepPreviousData` (anti-flicker on search), `abortable`, `execute` (false = conditional/dependent fetch), `onError`/`onData`, `failureToastOptions`. Put changing inputs in `args`, not the fn body, or refetch won't trigger.
 
-### mutate (optimistic writes — the canonical write pattern)
+### mutate (optimistic writes - the canonical write pattern)
 
 ```ts
 await mutate(
@@ -175,7 +175,7 @@ await mutate(
 );
 ```
 
-Wrap in try/catch with `showFailureToast` — the optimistic update rolls back on throw, but the error is otherwise swallowed.
+Wrap in try/catch with `showFailureToast` - the optimistic update rolls back on throw, but the error is otherwise swallowed.
 
 ### Pagination
 
@@ -240,14 +240,14 @@ export default withAccessToken(service)(async () => { … });    // no-view comm
 const { token, type } = getAccessToken();                      // type: "oauth" | "personal"
 ```
 
-Custom providers: `new OAuth.PKCEClient({ redirectMethod, providerName, providerId, providerIcon })` + `new OAuthService({ client, clientId, authorizeUrl, tokenUrl, scope, onAuthorize })`. Built-ins (GitHub/Slack/Linear) need no redirect setup; Google/Jira/Zoom need your own `clientId`. **Only call `getClient()`/`getAccessToken()` inside a wrapped component/hook/tool** — at module top level they throw before auth runs.
+Custom providers: `new OAuth.PKCEClient({ redirectMethod, providerName, providerId, providerIcon })` + `new OAuthService({ client, clientId, authorizeUrl, tokenUrl, scope, onAuthorize })`. Built-ins (GitHub/Slack/Linear) need no redirect setup; Google/Jira/Zoom need your own `clientId`. **Only call `getClient()`/`getAccessToken()` inside a wrapped component/hook/tool** - at module top level they throw before auth runs.
 
 ## Other utils
 
-`showFailureToast`, `getProgressIcon(fraction, color?)`, `getAvatarIcon(name)`, `getFavicon(url)`, `runAppleScript(script, args?, opts?)` (macOS only — guard cross-platform), `runPowerShellScript`, `createDeeplink({ command, arguments? })`, `withCache`, `useFrecencySorting`, `useStreamJSON`.
+`showFailureToast`, `getProgressIcon(fraction, color?)`, `getAvatarIcon(name)`, `getFavicon(url)`, `runAppleScript(script, args?, opts?)` (macOS only - guard cross-platform), `runPowerShellScript`, `createDeeplink({ command, arguments? })`, `withCache`, `useFrecencySorting`, `useStreamJSON`.
 
 ## Idiomatic loading / empty / error states
 
 - **Loading**: pass the hook's `isLoading` into `<List>/<Detail>/<Form>`; don't block render. With `useCachedPromise`, cached data renders instantly while it revalidates.
 - **Empty**: `<List.EmptyView>`, gated on `!isLoading` so "No Results" doesn't show during the first fetch.
-- **Error**: `showFailureToast(error, { title })` in catch blocks; for fatal data errors render an `EmptyView`/`Detail` with the message. Throwing in a view shows Raycast's red error screen — fine for truly unexpected states, not for handled ones.
+- **Error**: `showFailureToast(error, { title })` in catch blocks; for fatal data errors render an `EmptyView`/`Detail` with the message. Throwing in a view shows Raycast's red error screen - fine for truly unexpected states, not for handled ones.

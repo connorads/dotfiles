@@ -59,8 +59,8 @@ not necessarily all the code.
    its unzipped `base.apk` produced identical output).
 
    Do **not** unzip a container and point the decompiler at `base.apk`. Code
-   normally lives only in `base.apk` — `config.*` splits carry native libraries,
-   localised strings, and density resources — but an app using **dynamic feature
+   normally lives only in `base.apk` - `config.*` splits carry native libraries,
+   localised strings, and density resources - but an app using **dynamic feature
    delivery** ships a feature module's DEX in its own split. Picking `base.apk`
    by hand silently drops that code, and the symptom is subtle: a class is
    referenced but its package is absent from the tree.
@@ -73,7 +73,7 @@ not necessarily all the code.
 
 4. **Expect a non-zero exit from a successful run.** jadx reports
    `finished with errors, count: N` and exits `1` when individual classes fail to
-   decompile — a handful out of thousands is normal and the output is complete
+   decompile - a handful out of thousands is normal and the output is complete
    enough to work with. Judge the run by the class count on disk, not the exit
    code:
 
@@ -89,7 +89,7 @@ not necessarily all the code.
 
    jadx reconstructs many resources, but `apktool` is authoritative for
    `resources.arsc`, the manifest, and `res/xml/`. If you ran jadx with
-   `--no-res`, you have no resources at all — a later hunt for a hostname in
+   `--no-res`, you have no resources at all - a later hunt for a hostname in
    `strings.xml` will come up empty for the wrong reason.
 
    A split container also carries a `manifest.json` describing the set. Reading it
@@ -152,7 +152,7 @@ several categories, and those are the way in:
 | Manifest-declared components | Activities/Services/Receivers/Providers are the graph roots |
 | Native (JNI) method names | Must match the `.so` symbol |
 | `Parcelable.CREATOR`, `Serializable` members, enum `values()`/`valueOf()` | Resolved reflectively by the framework |
-| `@Keep` and anything with a keep rule | Explicitly preserved — and the rule itself leaks intent |
+| `@Keep` and anything with a keep rule | Explicitly preserved - and the rule itself leaks intent |
 | String literals, resource names | Stock R8 does not encrypt strings or rename resource entries |
 
 **So the first move on an obfuscated tree is to find what is not obfuscated.**
@@ -181,7 +181,7 @@ rg -l 'okhttp3|retrofit2|io\.ktor|com\.android\.volley' out/sources
 
 If five files can reach the API, the surface is whatever those five files call,
 and you can say so with confidence. State the bounding argument alongside the
-list — "complete for statically-declared calls" is a much stronger claim than an
+list - "complete for statically-declared calls" is a much stronger claim than an
 unqualified inventory, and an honest one.
 
 The surface is only partial if URLs are assembled at run time, delivered by the
@@ -194,7 +194,7 @@ rg -n '\.url\(|Uri\.parse\(|String\.format\(.*http|HttpURLConnection' out/source
 
 ### Framework-specific anchors
 
-- **Retrofit** — the interface annotations *are* the API documentation. Method
+- **Retrofit** - the interface annotations *are* the API documentation. Method
   signatures give paths, query and body field names, and the model types whose
   fields are the JSON keys.
 
@@ -202,9 +202,9 @@ rg -n '\.url\(|Uri\.parse\(|String\.format\(.*http|HttpURLConnection' out/source
   rg -h '@(GET|POST|PUT|DELETE|PATCH|HTTP)\b' out/sources | sort -u
   ```
 
-- **OkHttp** — `Request.Builder().url(...)`; interceptors are where auth headers
+- **OkHttp** - `Request.Builder().url(...)`; interceptors are where auth headers
   and API keys are attached.
-- **Parse / Volley / Ktor** — find the client initialisation call; it carries the
+- **Parse / Volley / Ktor** - find the client initialisation call; it carries the
   server URL and any application/client keys.
 
 ### Find the environment-switch class
@@ -228,7 +228,7 @@ Before collecting field names by hand, look for the one place the app already
 lists them. ORMs and serialisers centralise this: a `getCustomKeys()`-style
 method, `@SerializedName` annotations, Moshi/Room/Realm declarations, or a base
 model class holding the sync metadata every record carries. One such method can
-give a complete, correctly-spelled field list for every entity — far better
+give a complete, correctly-spelled field list for every entity - far better
 evidence than strings, and it distinguishes wire names from local ones.
 
 ### Read the network security config
@@ -242,8 +242,8 @@ cat out_res/res/xml/network_security_config.xml
 
 ## Evidence Discipline
 
-**A grep pipeline is not a citation.** Confirm every load-bearing literal —
-hostname, application id, key, field name, numeric constant — by reading the file
+**A grep pipeline is not a citation.** Confirm every load-bearing literal -
+hostname, application id, key, field name, numeric constant - by reading the file
 at the offset, not by trusting terminal output. Search to locate; read to quote.
 This costs one extra tool call per claim and is the difference between a spec
 someone can implement and one that fails on first use.
@@ -251,7 +251,7 @@ someone can implement and one that fails on first use.
 **An empty result is a claim about your command, not about the target.** A
 mistyped path, an unquoted glob the shell ate, or a wrong `--include` produces the
 same silence as genuine absence. Before reporting a field or endpoint as missing,
-reproduce the negative a second way — a different tool, a broader pattern, or a
+reproduce the negative a second way - a different tool, a broader pattern, or a
 live request.
 
 **A constant read from the app is a client default, not a server limit.** Page
@@ -271,7 +271,7 @@ single most common way a nearly-correct static finding becomes wrong.
   `META-INF/*.version` marker. Time-box this. If a `META-INF` marker and an
   obvious version constant both come up empty, stop grepping and either
   fingerprint class shapes against upstream tags or record the version as
-  unproven — it is rarely load-bearing anyway.
+  unproven - it is rarely load-bearing anyway.
 
 ## Sources
 

@@ -2,7 +2,7 @@
 
 Private, local Raycast extension wrapping the `shotpath` shell command. Pick an SSH
 host, upload the screenshot that's already on your clipboard, and get the remote path
-copied back — ready to paste into a remote tmux/agent.
+copied back - ready to paste into a remote tmux/agent.
 
 It is a thin wrapper: `shotpath` stays the source of truth for clipboard/image/upload
 behaviour **and** SSH host parsing. The extension only provides the host picker, the
@@ -28,7 +28,7 @@ and re-checks at upload time.
 
 ### Preferences
 
-- **shotpath Binary** — absolute path to the `shotpath` executable. Blank ⇒
+- **shotpath Binary** - absolute path to the `shotpath` executable. Blank ⇒
   `~/.local/bin/shotpath`. `~` is expanded.
 
 The extension prepends the nix profile + Homebrew bin dirs to the child's `PATH` so
@@ -52,7 +52,7 @@ Re-run it to apply code changes; remove the extension via Raycast's *Manage Exte
 ### Why it lives in `~/src/raycast/`, not `~/.config/`
 
 Raycast refuses to install a local extension whose source sits inside `~/.config/`
-("inability to install from local sources") — that tree is reserved for Raycast's own
+("inability to install from local sources") - that tree is reserved for Raycast's own
 managed extension data at `~/.config/raycast/`. The source is therefore tracked (still
 in dotfiles, work-tree `~`) under `~/src/raycast/shotpath/` instead.
 
@@ -60,14 +60,14 @@ in dotfiles, work-tree `~`) under `~/src/raycast/shotpath/` instead.
 
 `pnpm-workspace.yaml` pins `undici-types` to `6.23.0` via an `overrides` entry (pnpm 11
 ignores the `pnpm` field in `package.json`). `@types/node@22` depends on `~6.20.0`, but
-undici-types `6.20.0`/`6.21.0` were published **without** SLSA provenance — which trips
+undici-types `6.20.0`/`6.21.0` were published **without** SLSA provenance - which trips
 pnpm's `trustPolicy: no-downgrade`. `6.23.0` is the earliest version that restored
 provenance (negligible type drift, types-only package), so the override keeps the global
 supply-chain posture strict rather than excluding the package from trust checks.
 
 ## Security posture
 
-Local-push only — no daemon, no bridge, no remote clipboard pull. The remote only ever
+Local-push only - no daemon, no bridge, no remote clipboard pull. The remote only ever
 receives a single image you selected by a local action. On success the clipboard flips
 from the screenshot image to the path text, so sending the same shot to a second host
 needs a re-copy.

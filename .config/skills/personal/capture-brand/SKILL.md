@@ -33,13 +33,13 @@ pretending to be the brand or copying protected product flows.
    The script saves raw HTML/CSS, candidate assets, `sources.md`, and
    `tokens.raw.json`. Use it as evidence, not as the final judgement. It
    fetches with urllib (no JS execution), so on SPA or CSS-in-JS sites the
-   captured HTML/CSS is thin — expect to lean on rendered screenshots and
+   captured HTML/CSS is thin - expect to lean on rendered screenshots and
    devtools inspection instead. For
    Wayback or other archive URLs, prefer clean replay URLs such as `if_` for
    screenshots and inspection, and treat normal replay pages as potentially
    contaminated by archive toolbar assets.
-4. **Inspect screenshots.** Render with a real browser — `playwright-cli` (or
-   the Playwright MCP tools when available) — at roughly 1280px-wide desktop
+4. **Inspect screenshots.** Render with a real browser - `playwright-cli` (or
+   the Playwright MCP tools when available) - at roughly 1280px-wide desktop
    and 390px-wide mobile viewports. Capture at least desktop and mobile when
    the final deliverable is visual. Note responsive layout patterns and avoid
    overfitting to one viewport.
@@ -50,7 +50,7 @@ pretending to be the brand or copying protected product flows.
    colour, font, logo, image, and style claim.
 6. **Hand off a page brief.** If the user wants a page recreation, produce a
    neutral brand-inspired layout brief or implementation. Do not copy
-   trust-sensitive flows (login, payment, checkout, … — full list in
+   trust-sensitive flows (login, payment, checkout, … - full list in
    `references/safety.md`).
 7. **Verify.** Check files open, sources are traceable, `tokens.json` is valid
    JSON, local asset paths exist, fonts are usable or have fallbacks, and the

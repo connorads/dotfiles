@@ -2,16 +2,16 @@
 name: test-coverage
 description: >
   Systematically audit, improve, and enforce test coverage, and gate test quality in
-  CI — across any ecosystem (TypeScript, Python, Go, Rust). Use to raise coverage, set
+  CI - across any ecosystem (TypeScript, Python, Go, Rust). Use to raise coverage, set
   thresholds, audit gaps, manage exclusions, merge reports, wire coverage into CI/hooks,
   or add mutation testing and fuzzing as quality gates. Composes with the hk skill for
-  pre-commit enforcement. For how to design and write good tests — property-based,
-  snapshot/approval, differential, contract, flaky-test handling — use the testing skill.
+  pre-commit enforcement. For how to design and write good tests - property-based,
+  snapshot/approval, differential, contract, flaky-test handling - use the testing skill.
 ---
 
 # Test Coverage
 
-Audit gaps, write targeted tests, enforce thresholds — across any ecosystem.
+Audit gaps, write targeted tests, enforce thresholds - across any ecosystem.
 
 ## Mental Model
 
@@ -75,7 +75,7 @@ pytest -m integration --cov --cov-report=html:coverage/int
 
 ### 3. Set initial thresholds
 
-Run coverage once, note the baseline. Set thresholds at the current level — this prevents regression while you improve.
+Run coverage once, note the baseline. Set thresholds at the current level - this prevents regression while you improve.
 
 ```text
 # Example: start where you are
@@ -113,9 +113,9 @@ Run coverage for each tier and examine the output.
 
 Identify three categories:
 
-- **Untested files** — no coverage at all (highest priority)
-- **Untested branches** — code paths never exercised
-- **Untested functions** — declared but never called in tests
+- **Untested files** - no coverage at all (highest priority)
+- **Untested branches** - code paths never exercised
+- **Untested functions** - declared but never called in tests
 
 ### Phase 2: Classify each gap
 
@@ -218,7 +218,7 @@ If using the hk skill, add coverage test steps to `hk.pkl`:
 **Key principles:**
 
 - Coverage thresholds live in the test config, not in hook config
-- E2E tests are too slow for pre-commit — run in CI or manually
+- E2E tests are too slow for pre-commit - run in CI or manually
 - Order tiers by speed: unit first (fastest fail), then integration, then components
 - Quieting is wrapper-level: run the hook with `hk run <hook> -q` (hk ≥ 1.51.0, owned by the hk skill), so passing tests produce no output
 
@@ -279,19 +279,19 @@ Coverage is **necessary but not sufficient**. It tells you which lines *ran*, ne
 ### Why a coverage number is not a quality target
 
 - **Coverage is weakly correlated with effectiveness.** Controlling for test-suite size, coverage is a poor predictor of fault-detection ability (Inozemtseva & Holmes, *Coverage Is Not Strongly Correlated With Test Suite Effectiveness*, [ICSE 2014](https://dl.acm.org/doi/10.1145/2568225.2568271)). High coverage is consistent with a near-useless suite.
-- **Goodhart's law.** "When a measure becomes a target, it ceases to be a good measure." Mandating a coverage percentage incentivises assertion-free tests, deleted edge cases, and excluded hard files — activity that raises the number while lowering quality. (See [Seemann, *Code coverage is a useless target measure*](https://blog.ploeh.dk/2015/11/16/code-coverage-is-a-useless-target-measure/).)
-- **100% is a smell, not a goal.** Use coverage to *find untested code*, not as a KPI. Well-tested code tends to land in the 80–90s naturally; a hard 100% mandate signals gaming (Fowler, [*TestCoverage*](https://martinfowler.com/bliki/TestCoverage.html)).
+- **Goodhart's law.** "When a measure becomes a target, it ceases to be a good measure." Mandating a coverage percentage incentivises assertion-free tests, deleted edge cases, and excluded hard files - activity that raises the number while lowering quality. (See [Seemann, *Code coverage is a useless target measure*](https://blog.ploeh.dk/2015/11/16/code-coverage-is-a-useless-target-measure/).)
+- **100% is a smell, not a goal.** Use coverage to *find untested code*, not as a KPI. Well-tested code tends to land in the 80-90s naturally; a hard 100% mandate signals gaming (Fowler, [*TestCoverage*](https://martinfowler.com/bliki/TestCoverage.html)).
 
-**Practical stance for this skill:** keep coverage as the *regression gate* (the Enforce section), and use the techniques below to measure and raise *quality*. The single most useful quality signal is the **oracle gap** — high coverage paired with low mutation score flags files where weak tests execute important code (see mutation testing).
+**Practical stance for this skill:** keep coverage as the *regression gate* (the Enforce section), and use the techniques below to measure and raise *quality*. The single most useful quality signal is the **oracle gap** - high coverage paired with low mutation score flags files where weak tests execute important code (see mutation testing).
 
 ### Which technique, when
 
-This skill owns the techniques you **measure and gate in CI** (the left two columns below). The *test-design* techniques (when/how to write a good test) live in the **`testing`** skill — load it for those; this skill only points at them.
+This skill owns the techniques you **measure and gate in CI** (the left two columns below). The *test-design* techniques (when/how to write a good test) live in the **`testing`** skill - load it for those; this skill only points at them.
 
 | Situation | Reach for | Home |
 |-----------|-----------|------|
-| Coverage high but unsure tests *assert* enough | **Mutation testing** | [mutation-testing.md](references/mutation-testing.md) — here |
-| Code ingests untrusted/byte input; want crash-finding | **Coverage-guided fuzzing** | [fuzzing.md](references/fuzzing.md) — here |
+| Coverage high but unsure tests *assert* enough | **Mutation testing** | [mutation-testing.md](references/mutation-testing.md) - here |
+| Code ingests untrusted/byte input; want crash-finding | **Coverage-guided fuzzing** | [fuzzing.md](references/fuzzing.md) - here |
 | Function has a statable invariant / round-trip / model | **Property-based testing** | `testing` skill |
 | No reliable oracle (compilers, ML, numeric, renderers) | **Differential / metamorphic** | `testing` skill |
 | Verifying serialised output / rendered UI | **Snapshot / approval** (carefully) | `testing` skill |
@@ -299,18 +299,18 @@ This skill owns the techniques you **measure and gate in CI** (the left two colu
 | Tests pass but assert nothing | **Assertion-density check** | `testing` skill |
 | Tests fail intermittently | **Flaky-test detection & quarantine** | `testing` skill |
 
-The two quality *metrics* you can gate on each have a dedicated reference here with per-ecosystem tooling and CI/diff enforcement: **[mutation testing](references/mutation-testing.md)** (does the suite *detect* changes — the strongest quality signal, and the rigorous version of "do my assertions matter") and **[fuzzing](references/fuzzing.md)** (coverage-guided crash-finding). The oracle gap above is computed from mutation score.
+The two quality *metrics* you can gate on each have a dedicated reference here with per-ecosystem tooling and CI/diff enforcement: **[mutation testing](references/mutation-testing.md)** (does the suite *detect* changes - the strongest quality signal, and the rigorous version of "do my assertions matter") and **[fuzzing](references/fuzzing.md)** (coverage-guided crash-finding). The oracle gap above is computed from mutation score.
 
-For the design side — **property-based testing** (invariants over generated inputs, shrinking, stateful/model-based), **snapshot/approval pitfalls**, **differential & metamorphic testing**, **assertion density**, and **flaky-test management** — see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md)). That's where "how to write the test" lives; this skill is where "how to measure and enforce it" lives.
+For the design side - **property-based testing** (invariants over generated inputs, shrinking, stateful/model-based), **snapshot/approval pitfalls**, **differential & metamorphic testing**, **assertion density**, and **flaky-test management** - see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md)). That's where "how to write the test" lives; this skill is where "how to measure and enforce it" lives.
 
 ### Enforcing quality techniques in CI/hooks
 
-These are slower than unit tests — keep them **fast and actionable** the same way coverage stays fast:
+These are slower than unit tests - keep them **fast and actionable** the same way coverage stays fast:
 
 - **Diff-scoped:** mutate/fuzz only changed code (mutation `--in-diff`/`--incremental`/`--git-diff-lines`; see refs).
 - **Time-boxed:** fuzzing runs a fixed budget (e.g. 5 min smoke test), never open-ended in PR CI.
 - **Capped & separated:** cap mutants per file; run mutation/fuzz as a **dedicated CI job after the suite passes**, not in the fast pre-commit path. PBT runs *inside* the unit tier with a bounded example count.
-- **Thresholds live in the tool**, per the Enforce-section boundary — `break` (Stryker), `--min-msi` (go-mutesting), exit-code 2 (cargo-mutants), `numRuns` (fast-check). hk/CI just runs the command and checks the exit code.
+- **Thresholds live in the tool**, per the Enforce-section boundary - `break` (Stryker), `--min-msi` (go-mutesting), exit-code 2 (cargo-mutants), `numRuns` (fast-check). hk/CI just runs the command and checks the exit code.
 
 ## Test Organisation Patterns
 
@@ -328,7 +328,7 @@ tests/
 
 ### Naming conventions
 
-Suffix encodes the tier — config `include` patterns use these suffixes for zero-ambiguity matching:
+Suffix encodes the tier - config `include` patterns use these suffixes for zero-ambiguity matching:
 
 | Tier | Suffix | Example |
 |------|--------|---------|
@@ -358,7 +358,7 @@ Counter-based (not random) for deterministic debugging. Reset between test runs 
 ### Mock boundaries
 
 - **Do mock**: External APIs, third-party SDKs, environment-specific runtimes
-- **Do not mock**: Code you own — test through the public API
+- **Do not mock**: Code you own - test through the public API
 - **Database**: Use a real local database for integration tests (SQLite, test containers)
 - **Browser**: Use a real browser for component tests (Playwright, Vitest browser mode)
 - **Server-side imports**: Stub server-only modules when testing in browser context
@@ -393,11 +393,11 @@ Counter-based (not random) for deterministic debugging. Reset between test runs 
 
 ## References
 
-- [Ecosystem Patterns](references/ecosystem-patterns.md) — Index of per-language references:
+- [Ecosystem Patterns](references/ecosystem-patterns.md) - Index of per-language references:
   - [TypeScript/JS](references/ecosystem-typescript.md) | [Python](references/ecosystem-python.md) | [Go](references/ecosystem-go.md) | [Rust](references/ecosystem-rust.md) | [Merging](references/ecosystem-merging.md)
-- [Coverage Exclusions](references/coverage-exclusions.md) — How to document and justify every exclusion
-- [Enforcement](references/enforcement.md) — Wiring coverage into hk hooks, CI pipelines, and PR checks
+- [Coverage Exclusions](references/coverage-exclusions.md) - How to document and justify every exclusion
+- [Enforcement](references/enforcement.md) - Wiring coverage into hk hooks, CI pipelines, and PR checks
 - Test quality you measure & gate (beyond line/branch coverage):
-  - [Mutation Testing](references/mutation-testing.md) — Does the suite *detect* changes? Per-ecosystem tools, the oracle gap, diff-based CI
-  - [Fuzzing](references/fuzzing.md) — Coverage-guided crash-finding (Go native, cargo-fuzz, Atheris, Jazzer, OSS-Fuzz), time-boxed CI
-- For test *design* quality — property-based, snapshot/approval, differential/metamorphic, contract, assertion density, flaky-test management — see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md))
+  - [Mutation Testing](references/mutation-testing.md) - Does the suite *detect* changes? Per-ecosystem tools, the oracle gap, diff-based CI
+  - [Fuzzing](references/fuzzing.md) - Coverage-guided crash-finding (Go native, cargo-fuzz, Atheris, Jazzer, OSS-Fuzz), time-boxed CI
+- For test *design* quality - property-based, snapshot/approval, differential/metamorphic, contract, assertion density, flaky-test management - see the **`testing`** skill ([../testing/SKILL.md](../testing/SKILL.md))

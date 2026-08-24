@@ -24,7 +24,7 @@ If the what/why is still open, route to `prd` first.
 
 Invoke when the user has an input source (PRD, design feedback, issue list,
 requirements doc, or verbal description) and wants it decomposed into
-executable tasks. The output is a `backlog.md` file — a flat task list
+executable tasks. The output is a `backlog.md` file - a flat task list
 with dependency graph and priority ordering.
 
 ## Process
@@ -39,7 +39,7 @@ If none provided, interview the user:
 - What exists today?
 - What constraints matter (timeline, tech stack, compatibility)?
 
-Interview deeply — understand intent, not just surface requirements.
+Interview deeply - understand intent, not just surface requirements.
 The quality of the backlog depends on understanding the why.
 
 ### 2. Explore the codebase
@@ -88,7 +88,7 @@ Break the input into tasks. Each task is a thin vertical slice through
 all relevant layers (model, logic, API, UI, tests), not a horizontal
 layer.
 
-Apply these heuristics — read [references/task-quality.md](references/task-quality.md) for details:
+Apply these heuristics - read [references/task-quality.md](references/task-quality.md) for details:
 
 **The one-iteration test:** Can a fresh agent session complete this task
 in one loop iteration (~30 min)? If not, split it.
@@ -109,20 +109,20 @@ something unrelated, the task isn't self-contained.
 
 Each task needs all of these fields:
 
-- **ID** — short prefix + number (e.g. AU-1, DB-3). Prefix groups
+- **ID** - short prefix + number (e.g. AU-1, DB-3). Prefix groups
   related tasks; see the prefix legend in
   [references/backlog-format.md](references/backlog-format.md)
-- **Title** — what changes, not how
-- **Size** — XS / S / M / L (time bands in
+- **Title** - what changes, not how
+- **Size** - XS / S / M / L (time bands in
   [references/task-quality.md](references/task-quality.md)). If L, strongly
   consider splitting
-- **Deps** — task IDs this depends on, or "none"
-- **Problem** — what's wrong or missing (the why)
-- **What to do** — concrete steps with file paths and current state
-- **Acceptance criteria** — observable outcomes, not implementation details
-- **Verification** — exact commands to run and what to check. Can
+- **Deps** - task IDs this depends on, or "none"
+- **Problem** - what's wrong or missing (the why)
+- **What to do** - concrete steps with file paths and current state
+- **Acceptance criteria** - observable outcomes, not implementation details
+- **Verification** - exact commands to run and what to check. Can
   reference global verification rules or be task-specific
-- **Files** — paths that will be touched
+- **Files** - paths that will be touched
 
 Read [references/backlog-format.md](references/backlog-format.md) for the full template.
 

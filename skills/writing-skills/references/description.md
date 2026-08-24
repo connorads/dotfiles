@@ -3,7 +3,7 @@
 The description is the only part of a skill the agent sees when deciding
 whether to load it. Name + description preload into every session (~100
 tokens); the body loads only after the trigger decision. A vague description
-means the skill silently never fires — the worst failure mode, because
+means the skill silently never fires - the worst failure mode, because
 nothing errors.
 
 ## The formula
@@ -21,23 +21,23 @@ description: >-
 
 Each piece is doing trigger work:
 
-- **What, concretely** — "extracts screenshots and attachments", not "helps
+- **What, concretely** - "extracts screenshots and attachments", not "helps
   with GitHub images".
-- **When, as contexts** — the situations, artifacts, and phrasings that
+- **When, as contexts** - the situations, artifacts, and phrasings that
   should fire it. Include colloquial variants and terms adjacent skills
   *don't* claim.
-- **Negative triggers where useful** — "Not for X" fences off a near-miss
+- **Negative triggers where useful** - "Not for X" fences off a near-miss
   that would otherwise mistrigger, and sharpens the boundary with a sibling
   skill.
 
-Being slightly "pushy" is correct — agents under-trigger skills more often
-than they over-trigger — but pushy means *more concrete trigger contexts*,
+Being slightly "pushy" is correct - agents under-trigger skills more often
+than they over-trigger - but pushy means *more concrete trigger contexts*,
 not adjectives.
 
 ## The failure modes
 
 **What-only.** A description that describes capability but never says when to
-use it forces the agent to infer relevance — and under competition from dozens
+use it forces the agent to infer relevance - and under competition from dozens
 of other loaded descriptions, inference loses:
 
 ```yaml
@@ -53,7 +53,7 @@ description: >-
 
 **Workflow summary.** Never compress the skill's method into the description.
 An agent that can see steps in the description may follow *them* instead of
-reading the body — the description becomes a lossy substitute for the skill.
+reading the body - the description becomes a lossy substitute for the skill.
 Observed failure: a description saying "reviews code in two passes" led the
 agent to do its own idea of two passes without ever loading the body.
 Triggers go in the description; method goes in the body.
@@ -76,12 +76,12 @@ capabilities, it's two skills.
 
 ## Testing a description
 
-Trigger accuracy is testable — realistic prompts, fresh sessions, did it
+Trigger accuracy is testable - realistic prompts, fresh sessions, did it
 load. The harness, including should-trigger and near-miss should-NOT-trigger
 sets, is in [evals.md](evals.md). Two rules of thumb carry over:
 
 - Test with messy, specific prompts (file names, typos, backstory). Clean
   prompts trigger easily and hide real-world failures.
-- Simple one-step requests often don't trigger *any* skill — agents consult
+- Simple one-step requests often don't trigger *any* skill - agents consult
   skills for tasks they can't trivially handle. Don't burn iterations trying
   to make "read this PDF" fire a PDF skill.

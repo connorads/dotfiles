@@ -9,7 +9,7 @@ all changes through its root, and update only one aggregate per transaction.
 Link aggregates by id, never by embedding one in another. When an operation
 seems to need two aggregates atomically, suspect a missing entity (model the
 operation itself) or use eventual consistency. Across services, prefer async
-events to distributed transactions, with an explicit recovery path — reconcile
+events to distributed transactions, with an explicit recovery path - reconcile
 or compensate. Eventual consistency is not optional consistency; it must still
 converge.
 
@@ -24,13 +24,13 @@ countermeasures the `event-driven-architecture` skill's `topology.md` lists
 
 Do not hold a database transaction open across network calls or long-running
 work. Any command, job, or step that may be retried needs an explicit
-idempotency strategy — idempotency key, natural unique constraint, deduplication
+idempotency strategy - idempotency key, natural unique constraint, deduplication
 record, state-machine guard, or transactional outbox/inbox (see
 `event-driven-architecture` for the outbox/inbox mechanism and idempotent
 consumers). Do not rely on "probably safe" repeated side effects.
 
 Concurrency control is distinct from idempotency: idempotency makes a retry safe;
-concurrency control stops two simultaneous writers clobbering each other — the
+concurrency control stops two simultaneous writers clobbering each other - the
 lost update. Hold the consistency boundary under concurrent writes by versioning
 the aggregate (optimistic locking): bump a version on write, let one transaction
 commit, and make the loser reload and retry. Reach for pessimistic locks

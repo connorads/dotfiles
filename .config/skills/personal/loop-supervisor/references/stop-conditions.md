@@ -58,7 +58,7 @@ The outer runner's iteration count is complete.
   and compare to N.
 - **Why it works:** Guarantees bounded wall-clock; forces periodic
   human review
-- **Caveat:** The loop might not have finished useful work — the
+- **Caveat:** The loop might not have finished useful work - the
   final message should make "what's left" obvious
 
 ### Wall-clock cap
@@ -91,7 +91,7 @@ from the skill's convention).
 
 ### Hard-stop triggers
 
-Some triggers are D-class — they stop the run immediately regardless
+Some triggers are D-class - they stop the run immediately regardless
 of budget. See `trigger-examples.md`.
 
 - **Examples:** mutation corrupting main worktree, secrets leaking to
@@ -114,7 +114,7 @@ same way.
 Something happened that isn't in the current `SUPERVISOR.md`
 taxonomy, and the supervisor can't classify it.
 
-- **Detection:** supervisor's own judgement — a state that doesn't
+- **Detection:** supervisor's own judgement - a state that doesn't
   match any trigger pattern
 - **Response:** Stop. Final message explains the novel state. Human
   folds it into the taxonomy before the next run (live-update is
@@ -124,11 +124,11 @@ taxonomy, and the supervisor can't classify it.
 
 At absolute minimum, every `SUPERVISOR.md` needs:
 
-- **One success condition** — so the supervisor knows what winning
+- **One success condition** - so the supervisor knows what winning
   looks like
-- **One exhaustion condition** — so the supervisor doesn't watch
+- **One exhaustion condition** - so the supervisor doesn't watch
   forever on an unwinnable run
-- **The generic failure escalation** — Ctrl-C + final message on
+- **The generic failure escalation** - Ctrl-C + final message on
   anything novel
 
 Three lines of YAML-or-markdown covers this; more is fine.

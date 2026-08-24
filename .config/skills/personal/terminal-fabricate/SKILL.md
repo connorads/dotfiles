@@ -97,6 +97,6 @@ with hand-authored building blocks as the fallback.
 `packages/terminal-control.nix`). If `command -v termctrl` fails, rebuild
 (`drs` on macOS, `hms` on Linux) rather than `cargo install`.
 
-Motion export (`termctrl video`) additionally needs `ffmpeg` — install via
+Motion export (`termctrl video`) additionally needs `ffmpeg` - install via
 nix, not brew, if `command -v ffmpeg` fails. Stills (PNG/SVG/text) need only
 termctrl.

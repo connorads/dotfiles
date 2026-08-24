@@ -11,7 +11,7 @@ Can a fresh agent session complete this task in one loop iteration (~30 min)?
 **Split if:**
 
 - The task requires exploring unfamiliar code AND making changes AND
-  writing tests — that's three phases of work
+  writing tests - that's three phases of work
 - The task touches more than 5-6 files across different concerns
 - The task requires multiple rounds of comparison against a reference
   (design mockup, spec, existing behaviour)
@@ -44,12 +44,12 @@ Could an agent with zero session memory execute this task?
 Every task should include:
 
 - **File paths** that will be read and modified
-- **Current state** — what exists now (not just what should change)
-- **Exact steps** — not "fix the layout" but "change the grid from
+- **Current state** - what exists now (not just what should change)
+- **Exact steps** - not "fix the layout" but "change the grid from
   2 columns to 3 at the md breakpoint in `ProductGrid.tsx`"
-- **Verification commands** — not "check it works" but "run `npm test`
+- **Verification commands** - not "check it works" but "run `npm test`
   and verify the endpoint returns 200 with a valid payload"
-- **Reference material** — links to docs, design files, API specs
+- **Reference material** - links to docs, design files, API specs
 
 The test: if you deleted the problem description and only kept "what to do",
 could the agent still execute correctly? If yes, the context is sufficient.

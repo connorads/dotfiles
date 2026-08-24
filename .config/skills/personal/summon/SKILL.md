@@ -9,11 +9,11 @@ description: >-
 
 # Summon
 
-Channel the spirit of a real person — their mental models, decision frameworks, communication style, and opinions — to approach problems the way they would.
+Channel the spirit of a real person - their mental models, decision frameworks, communication style, and opinions - to approach problems the way they would.
 
 ## Name Resolution
 
-Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; the [Available Personas](#available-personas) table below maps personas to domains and files. For a handle that isn't in the table, match the alias lists directly — an exact match on a list item, not a substring search over prose, which hits nearly every file:
+Each persona file defines aliases in its `## Aliases` section (the canonical list). Match trigger names against aliases case-insensitively; the [Available Personas](#available-personas) table below maps personas to domains and files. For a handle that isn't in the table, match the alias lists directly - an exact match on a list item, not a substring search over prose, which hits nearly every file:
 
 ```sh
 grep -rlix -- "- <name>" <skill dir>/references/
@@ -21,9 +21,9 @@ grep -rlix -- "- <name>" <skill dir>/references/
 
 Use the absolute path the loader gave you; the working directory is rarely the skill directory.
 
-If no persona matches, say so. Never fabricate a persona from general knowledge. If a persona exists but has nothing documented on the question, prefer answering plainly over channelling — a fluent answer in someone's voice about something they never addressed is the failure mode this skill is most prone to.
+If no persona matches, say so. Never fabricate a persona from general knowledge. If a persona exists but has nothing documented on the question, prefer answering plainly over channelling - a fluent answer in someone's voice about something they never addressed is the failure mode this skill is most prone to.
 
-**Quote integrity:** a quotation mark is a claim that the words are reproduced exactly. Deliver *any* quoted string as a verbatim quote — in any syntax, not just blockquotes — only when its attribution line names a locatable artefact. Everything else is delivered as paraphrase ("he's argued that...", never quotation marks). [references/attribution.md](references/attribution.md) is the grammar, and `scripts/check-quotes.py` enforces the machine-checkable half.
+**Quote integrity:** a quotation mark is a claim that the words are reproduced exactly. Deliver *any* quoted string as a verbatim quote - in any syntax, not just blockquotes - only when its attribution line names a locatable artefact. Everything else is delivered as paraphrase ("he's argued that...", never quotation marks). [references/attribution.md](references/attribution.md) is the grammar, and `scripts/check-quotes.py` enforces the machine-checkable half.
 
 If the user asks a question without naming a persona, consult the Domain column to suggest the most relevant expert(s).
 
@@ -59,13 +59,13 @@ Drift can arrive before the count runs out, so say so plainly if you notice you'
 
 ## Invocation
 
-On first message only, open with one italicised atmospheric line from the persona's invocation lines. Then pure substance — no ongoing flavour text, no roleplay theatrics.
+On first message only, open with one italicised atmospheric line from the persona's invocation lines. Then pure substance - no ongoing flavour text, no roleplay theatrics.
 
 ## Extrapolation Protocol
 
 When a problem falls outside the persona's documented opinions and quotes:
 
-1. Flag it, in whatever voice the current mode uses — first person in Full Channel, third in Advisory
+1. Flag it, in whatever voice the current mode uses - first person in Full Channel, third in Advisory
 2. Extrapolate from adjacent documented principles
 3. Stay consistent with their reasoning patterns and values
 4. Never invent specific quotes or attribute fabricated positions
@@ -78,7 +78,7 @@ Read `references/[persona].md` for the full profile. The persona file contains e
 
 Copy `references/_template.md` and fill in each section. The template has guidance comments explaining what to capture and why. Prioritise sourced quotes and real positions over characterisation.
 
-Gather the sources *first* and write the dossier from them. Writing from memory and citing afterwards is how a third of this corpus ended up misattributed — the wrong-but-plausible quote arrives already wearing a citation. Ten quotes that resolve beat sixty that don't.
+Gather the sources *first* and write the dossier from them. Writing from memory and citing afterwards is how a third of this corpus ended up misattributed - the wrong-but-plausible quote arrives already wearing a citation. Ten quotes that resolve beat sixty that don't.
 
 Before committing:
 
@@ -89,7 +89,7 @@ python3 scripts/check-roster.py          # table, files and aliases agree
 
 ## Verifying pointers
 
-`scripts/verify-pointers.py FILE.md` fetches each `verbatim`/`attributed` pointer and checks the words are behind it. Run it by hand after adding or resourcing a persona; it needs the network, so nothing runs it automatically and it is never a gate. A FAIL means *look closer*, not that the corpus is wrong — on the sweep that produced the tool, ten FAILs in a row were bugs in the checker. It exits 0 whatever it finds unless you pass `--strict`.
+`scripts/verify-pointers.py FILE.md` fetches each `verbatim`/`attributed` pointer and checks the words are behind it. Run it by hand after adding or resourcing a persona; it needs the network, so nothing runs it automatically and it is never a gate. A FAIL means *look closer*, not that the corpus is wrong - on the sweep that produced the tool, ten FAILs in a row were bugs in the checker. It exits 0 whatever it finds unless you pass `--strict`.
 
 ## Evals
 

@@ -3,10 +3,10 @@
 ## Contents
 
 - Prerequisites
-- Formula vs Cask — route before you start
+- Formula vs Cask - route before you start
 - Setup: make Homebrew use your working copy
-  - Option A — personal tap (recommended for dogfooding)
-  - Option B — genuine core gate (your fork, or the local core tap on a branch)
+  - Option A - personal tap (recommended for dogfooding)
+  - Option B - genuine core gate (your fork, or the local core tap on a branch)
 - Canonical formula structure
 - Build-system appendix (install patterns)
   - Rust / Cargo
@@ -44,7 +44,7 @@ A complete guide for authoring and contributing **formulae** (open-source, built
 - For a real submission: a fork of `Homebrew/homebrew-core` on GitHub.
 - A target that meets [Acceptable Formulae](https://docs.brew.sh/Acceptable-Formulae): open-source, DFSG-licensed, stable tagged release, notable, non-duplicate, builds on macOS (arm+Intel) and Linux x86_64.
 
-## Formula vs Cask — route before you start
+## Formula vs Cask - route before you start
 
 | | Formula (`homebrew/core`) | Cask (`homebrew/cask`) |
 |---|---|---|
@@ -57,11 +57,11 @@ A complete guide for authoring and contributing **formulae** (open-source, built
 | Self-updating apps | must be **disabled** | fine / supported |
 | Update tool | `brew bump-formula-pr` | `brew bump-cask-pr` |
 
-Binary-only software, GUI `.app`s, and closed-source tools go to a **cask** — use the `homebrew-cask-authoring` skill.
+Binary-only software, GUI `.app`s, and closed-source tools go to a **cask** - use the `homebrew-cask-authoring` skill.
 
 ## Setup: make Homebrew use your working copy
 
-### Option A — personal tap (recommended for dogfooding)
+### Option A - personal tap (recommended for dogfooding)
 
 A tap is just a Git repo of formulae. This exercises the **entire** authoring lifecycle with zero acceptance risk.
 
@@ -78,7 +78,7 @@ brew uninstall <name>
 brew untap <user>/<tap>
 ```
 
-### Option B — genuine core gate (your fork, or the local core tap on a branch)
+### Option B - genuine core gate (your fork, or the local core tap on a branch)
 
 The core auditor can fire cops a personal tap won't (correct `Formula/<first-char>/` path, duplicate-name detection, core-only rules). To reproduce it:
 
@@ -119,11 +119,11 @@ class Name < Formula
 end
 ```
 
-`brew style --fix` enforces component ordering (RuboCop) — rely on it instead of memorising the order. Optional stanzas, roughly in order: `revision` / `version_scheme` (under the url/sha256/license block), `head`, `no_autobump!`, `livecheck do`, `keg_only`, `depends_on` / `uses_from_macos`, `on_macos`/`on_linux`/`on_arm`/`on_intel` blocks, `conflicts_with`, `resource` blocks, `patch`, `def install`, `def post_install`, `service do`, `def caveats`, `test do`, then `__END__` (embedded `:DATA` patch).
+`brew style --fix` enforces component ordering (RuboCop) - rely on it instead of memorising the order. Optional stanzas, roughly in order: `revision` / `version_scheme` (under the url/sha256/license block), `head`, `no_autobump!`, `livecheck do`, `keg_only`, `depends_on` / `uses_from_macos`, `on_macos`/`on_linux`/`on_arm`/`on_intel` blocks, `conflicts_with`, `resource` blocks, `patch`, `def install`, `def post_install`, `service do`, `def caveats`, `test do`, then `__END__` (embedded `:DATA` patch).
 
 ## Build-system appendix (install patterns)
 
-Each `std_*_args` accepts kwargs (e.g. `prefix:`, `install_prefix:`) to retarget into `libexec`. `libexec` is the formula's private dir (not symlinked into the prefix) — vendor language deps and hide internal binaries there, then symlink/wrap the public ones into `bin`.
+Each `std_*_args` accepts kwargs (e.g. `prefix:`, `install_prefix:`) to retarget into `libexec`. `libexec` is the formula's private dir (not symlinked into the prefix) - vendor language deps and hide internal binaries there, then symlink/wrap the public ones into `bin`.
 
 ### Rust / Cargo
 
@@ -183,7 +183,7 @@ def install
 end
 ```
 
-Some `configure` scripts reject `--disable-debug`/`--disable-dependency-tracking` — check the top of the configure output and drop the offending flag. Add `--mandir=#{man}` if it installs to `man/`; `--sysconfdir=#{etc}` for persistent config.
+Some `configure` scripts reject `--disable-debug`/`--disable-dependency-tracking` - check the top of the configure output and drop the offending flag. Add `--mandir=#{man}` if it installs to `man/`; `--sysconfdir=#{etc}` for persistent config.
 
 ### Make-only
 
@@ -198,7 +198,7 @@ Pass Makefile vars as separate `system` args (not `change_make_var!`). If parall
 
 ### Python (virtualenv + resources)
 
-- `include Language::Python::Virtualenv` and call `virtualenv_install_with_resources` — it builds a virtualenv in `libexec` (PEP 668) and installs every `resource`. `depends_on "python@3.y"`.
+- `include Language::Python::Virtualenv` and call `virtualenv_install_with_resources` - it builds a virtualenv in `libexec` (PEP 668) and installs every `resource`. `depends_on "python@3.y"`.
 - All transitive deps as explicit `resource` blocks (pin `url`+`sha256`).
 - `brew update-python-resources <formula>` generates the resource stanzas; `--print-only` previews.
 
@@ -250,11 +250,11 @@ Prefer bundler with the upstream `Gemfile.lock`; file an issue upstream if it's 
 - Wrappers: `write_exec_script`, `write_env_script`, `env_script_all_files`.
 - `inreplace` (not `patch`) for never-upstreamable build edits.
 - Messaging: `ohai` (info), `opoo` (warning), `odie` (error + exit).
-- Platform branching inside `def install`/`test do`: use `OS.mac?`/`OS.linux?`/`Hardware::CPU.arm?` — **not** `on_*` blocks (those are for deps/resources/patches only, never inside install/test).
+- Platform branching inside `def install`/`test do`: use `OS.mac?`/`OS.linux?`/`Hardware::CPU.arm?` - **not** `on_*` blocks (those are for deps/resources/patches only, never inside install/test).
 
 ## Worked example: `choose` (verified end-to-end)
 
-`theryangeary/choose` — a Rust `cut`/`awk` alternative, GPL-3.0-or-later, ~2.2k★, not yet in core: a clean candidate (single crate, pure-Rust deps, deterministic output for a real test).
+`theryangeary/choose` - a Rust `cut`/`awk` alternative, GPL-3.0-or-later, ~2.2k★, not yet in core: a clean candidate (single crate, pure-Rust deps, deterministic output for a real test).
 
 ### Scaffold
 
@@ -312,7 +312,7 @@ Auditing a deliberately bad version produced exactly these `brew audit --new --s
 - `Description shouldn't start with an article.` (also a RuboCop autocorrect)
 - `Formula choose contains deprecated SPDX licenses: ["GPL-3.0"]. You may need to add -only or -or-later ...`
 
-And, importantly, **what did NOT fire**: a `system bin/"choose", "--version"` test was *not* flagged (audit doesn't mechanically reject weak tests — maintainers do), and `desc` containing "command-line"/the formula name was *not* flagged. Write the real test and a clean desc anyway.
+And, importantly, **what did NOT fire**: a `system bin/"choose", "--version"` test was *not* flagged (audit doesn't mechanically reject weak tests - maintainers do), and `desc` containing "command-line"/the formula name was *not* flagged. Write the real test and a clean desc anyway.
 
 ## Acceptable Formulae (detail)
 
@@ -322,9 +322,9 @@ And, importantly, **what did NOT fire**: a `system bin/"choose", "--version"` te
 
 ### keg_only
 
-- `keg_only :provided_by_macos` — duplicates of macOS-shipped software (kept unlinked so it doesn't shadow the system copy).
-- `keg_only :versioned_formula` — a `foo@N` that can't be linked alongside its unversioned counterpart. Must not `post_install` anything into the prefix that duplicates the main formula; must stay ABI-stable for the version's life.
-- `keg_only "reason"` — conflicts with another formula (last resort; prefer removing the offending file).
+- `keg_only :provided_by_macos` - duplicates of macOS-shipped software (kept unlinked so it doesn't shadow the system copy).
+- `keg_only :versioned_formula` - a `foo@N` that can't be linked alongside its unversioned counterpart. Must not `post_install` anything into the prefix that duplicates the main formula; must stay ABI-stable for the version's life.
+- `keg_only "reason"` - conflicts with another formula (last resort; prefer removing the offending file).
 
 ## Test design patterns
 

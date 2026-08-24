@@ -22,12 +22,12 @@ mirrors this loop; this skill's own `evals.json` is the same shape, using
 
 ## Test prompts
 
-Write 2–3 prompts a real user would type. Realism is the load-bearing
-property — sanitised prompts pass trivially and hide the failures that matter:
+Write 2-3 prompts a real user would type. Realism is the load-bearing
+property - sanitised prompts pass trivially and hide the failures that matter:
 
 - **Messy and specific**: file paths, column names, a bit of backstory,
   lowercase, abbreviations, a typo. "ok my boss sent me this xlsx (downloads,
-  'Q4 final FINAL v2.xlsx'), need profit margin as a % — revenue col C, costs
+  'Q4 final FINAL v2.xlsx'), need profit margin as a % - revenue col C, costs
   col D i think" beats "Format this spreadsheet".
 - **Substantive**: agents handle trivial one-step tasks without consulting
   skills, so a too-simple prompt tests nothing.
@@ -49,10 +49,10 @@ overfit the first failures you saw.
 
 For each prompt, run fresh sessions in parallel:
 
-- **With-skill** — the draft under test.
-- **Baseline** — no skill (when creating), or the current/previous version
+- **With-skill** - the draft under test.
+- **Baseline** - no skill (when creating), or the current/previous version
   (when editing; snapshot it before you start).
-- **Ad-hoc arm** (deliberately-invoked skills) — the task plus the one-line
+- **Ad-hoc arm** (deliberately-invoked skills) - the task plus the one-line
   instruction a user could type unaided ("do a bit of product discovery on
   this first"). A steering skill must beat this arm, not just the bare
   baseline: the delta over the sentence is what the skill actually earns.
@@ -78,7 +78,7 @@ machines and network conditions vary.
 
 Grade the transcript, not just the output. The questions that find revisions:
 
-- Did the agent read the skill's references when relevant — or answer from
+- Did the agent read the skill's references when relevant - or answer from
   the body alone? (A never-read reference may be mis-routed, or dead weight.)
 - Did any section change nothing? Candidate for deletion.
 - Did runs independently reinvent the same helper or multi-step dance? That's
@@ -87,19 +87,19 @@ Grade the transcript, not just the output. The questions that find revisions:
   where available: skill invoked, references read, commands run, files created,
   and command order.
 - Did it follow the *description* instead of the body? The signature: the
-  procedure's *content* appears but its control flow doesn't — ordering
+  procedure's *content* appears but its control flow doesn't - ordering
   drifts, stop points and escape hatches vanish. Verify the transcript shows
-  an actual body read. (See [description.md](description.md) — even a
+  an actual body read. (See [description.md](description.md) - even a
   trigger-only description can steer most of the content; the body is
   load-bearing for the behaviours.)
 - Where did it rationalise around a rule? Copy the excuse verbatim into a
   rationalisation table (see
   [instruction-forms.md](instruction-forms.md)).
 - Do the skill's own examples run? Commands, flags, and names a skill asserts
-  are domain claims — verify a sample against the live tool. Reviewing the
+  are domain claims - verify a sample against the live tool. Reviewing the
   prose while trusting the claims misses exactly the bugs users hit first.
 
-For objectively checkable outcomes, write assertions and script the check —
+For objectively checkable outcomes, write assertions and script the check -
 scripts are rerunnable across iterations and don't grade generously.
 Subjective qualities (style, taste) get human review, not forced assertions.
 When comparing two versions rigorously, grade blind: give a judge both
@@ -118,15 +118,15 @@ success, and the *way* a variant fails tells you the next wording.
 
 ## Trigger testing
 
-Descriptions get their own eval: ~15–20 realistic queries, mixed
+Descriptions get their own eval: ~15-20 realistic queries, mixed
 should-trigger and should-not-trigger, run fresh, scored on whether the skill
 loaded.
 
-The valuable negatives are **near-misses** — queries sharing vocabulary with
+The valuable negatives are **near-misses** - queries sharing vocabulary with
 the skill but needing something else. "Write a fibonacci function" as a
 negative for a PDF skill tests nothing; "pull the tables out of this scanned
 contract" (needs OCR, not your PDF-forms skill) tests the boundary. Run each
-query more than once — triggering is stochastic, and a 2/3 trigger rate is a
+query more than once - triggering is stochastic, and a 2/3 trigger rate is a
 different problem (ambiguous description) than 0/3 (wrong description).
 
 Split trigger prompts into training and validation sets when tuning a
@@ -140,5 +140,5 @@ prompt.
 Stop when the user says done, feedback comes back empty, or an iteration
 moves nothing. Convergence across re-runs is the ship signal; variance means
 tighten wording, not add more prose. Diminishing returns on the same stubborn
-failure means change *form*, not intensity — see
+failure means change *form*, not intensity - see
 [instruction-forms.md](instruction-forms.md).

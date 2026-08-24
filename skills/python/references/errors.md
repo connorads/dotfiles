@@ -62,7 +62,7 @@ at the shell, name them for the business outcome, not the mechanism.
 
 ## Translate exceptions at the shell
 
-Exceptions are unavoidable at boundaries — `StopIteration`, `KeyError`, ORM
+Exceptions are unavoidable at boundaries - `StopIteration`, `KeyError`, ORM
 integrity errors, HTTP/socket errors. Catch them at the imperative shell and
 translate into a domain value or error; never let an infrastructure exception
 leak into the pure core as control flow.
@@ -80,7 +80,7 @@ def allocate(line: OrderLine, batches: list[Batch]) -> Reference:
 Preserve the cause (`raise ... from err`) when wrapping an unexpected
 infrastructure failure. Keep the happy path readable.
 
-## Panic vocabulary — defects raise
+## Panic vocabulary - defects raise
 
 Defects are bugs and impossible states: raise and let them crash, caught once at
 the top.
@@ -88,7 +88,7 @@ the top.
 - `raise NotImplementedError` for stubs.
 - `assert_never(x)` on an exhaustive `match` catch-all (a forgotten variant is a
   type error, see `modeling.md`).
-- A bare `assert` documents an invariant in dev, but it is stripped under `-O` —
+- A bare `assert` documents an invariant in dev, but it is stripped under `-O` -
   never use it for input validation or security checks; parse instead.
 
 Reserve docstrings' failure notes for these defect paths, never for expected
@@ -97,8 +97,8 @@ typed errors.
 ## Sensitive values
 
 Never put secrets (tokens, keys, passwords) in errors, traces, logs, or
-snapshots. Wrap them at the boundary — pydantic's `SecretStr`, or a small
-`Redacted` wrapper whose `__repr__`/`__str__` masks the value — and unwrap only
+snapshots. Wrap them at the boundary - pydantic's `SecretStr`, or a small
+`Redacted` wrapper whose `__repr__`/`__str__` masks the value - and unwrap only
 inside the adapter making the external call. Telemetry carries safe fields only:
 domain ids, operation names, provider names, state tags, error tags.
 (Observability principle: `architecture`.)

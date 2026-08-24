@@ -4,7 +4,7 @@ Per-package-manager detail for the controls SKILL.md names. Every claim about a
 default or unit here was verified against the shipping tool or its source
 (as of 2026-07-19: npm 11.16 / npm 12 GA, pnpm 11.12, bun 1.3.14, Yarn 4.12,
 uv 0.11, pip 26.1, Deno 2.9, cargo 1.97, osv-scanner 2.4). Re-verify against
-`--help` or the official docs when revising — these are the fastest-moving
+`--help` or the official docs when revising - these are the fastest-moving
 facts in the skill.
 
 ## Contents
@@ -43,7 +43,7 @@ the policy by orders of magnitude.
 | Dependabot (`.github/dependabot.yml`, per `updates:` entry) | `cooldown.default-days` | days | `4` |
 
 After converting, enforce agreement mechanically: when one policy value is
-hand-spelled across several configs, add a drift-guard pre-commit check — one
+hand-spelled across several configs, add a drift-guard pre-commit check - one
 expected constant, one (file, regex, unit) row per config, normalise, fail on
 disagreement. The mechanical-enforcement skill carries that checker pattern.
 
@@ -62,13 +62,13 @@ allow-remote=none   # npm >= 11.15
 
 - npm 12+ defaults: install scripts and implicit `node-gyp rebuild` off,
   `--allow-git` / `--allow-remote` default `none`. `npm approve-scripts`
-  writes a per-package allowlist into `package.json` — commit it so CI gets
+  writes a per-package allowlist into `package.json` - commit it so CI gets
   the same policy.
 - `allow-git=none` matters even with scripts off: git dependencies can execute
   code at install regardless of lifecycle-script settings.
 - `allow-remote=none` (npm ≥ 11.15) closes the sibling route: remote-tarball
   dependencies (direct or transitive URL deps) are a separate code-execution
-  vector. Values `all|none|root` — `root` permits URL deps only in your own
+  vector. Values `all|none|root` - `root` permits URL deps only in your own
   `package.json`. `none` is the npm 12 default.
 - No trust-policy equivalent (no provenance-downgrade check).
 - Deno also reads `min-release-age` from `.npmrc` for npm dependencies, so a
@@ -77,7 +77,7 @@ allow-remote=none   # npm >= 11.15
 ## pnpm
 
 pnpm 11 reads settings **only from YAML** (`pnpm-workspace.yaml`, or the
-global `config.yaml`) — a `.npmrc` line is silently ignored, so an npm-style
+global `config.yaml`) - a `.npmrc` line is silently ignored, so an npm-style
 config gives no protection while looking like it does.
 
 ```yaml
@@ -96,13 +96,13 @@ blockExoticSubdeps: true         # v11 default; explicit keeps the posture audit
   `minimumReleaseAgeStrict` to default `true`. Pin strict explicitly so the
   posture doesn't depend on remembering that rule.
 - `trustPolicy: no-downgrade` (default `off`) fails the install when a
-  package's trust evidence weakens vs earlier versions — the signature of a
+  package's trust evidence weakens vs earlier versions - the signature of a
   publisher takeover. Its main false-positive class is aged backports
   published without provenance (a maintainer patching an old major line);
   `trustPolicyIgnoreAfter` (minutes) skips the check for versions older than
   the window, because a real takeover is a live incident in its first days.
 - Build scripts are blocked by default and `strictDepBuilds` fails *closed*
-  (`ERR_PNPM_IGNORED_BUILDS`, non-zero exit) — visible in CI even when a
+  (`ERR_PNPM_IGNORED_BUILDS`, non-zero exit) - visible in CI even when a
   global `ignoreScripts` masks it locally. Record per-package approvals in
   `pnpm-workspace.yaml` `allowBuilds` (pnpm 11 reads only the workspace YAML
   for this, not `package.json#pnpm`).
@@ -110,12 +110,12 @@ blockExoticSubdeps: true         # v11 default; explicit keeps the posture audit
   `ignoreScripts` is set, nothing local surfaces an undeclared build script:
   a normal install is green, a *cold* install after deleting `node_modules`
   is green, setting `strictDepBuilds: true` explicitly is still green (there
-  is no gate to fail — the scripts were never attempted), and pnpm's own
+  is no gate to fail - the scripts were never attempted), and pnpm's own
   reporting is computed under the same setting, so `pnpm ignored-builds` and
   `node_modules/.modules.yaml`'s `ignoredBuilds`/`pendingBuilds` report the
   mask rather than the decision. Verified on pnpm 11.20.0: `.modules.yaml`
   carries no merged `allowBuilds` view at all. So the first machine without
-  the mask — CI, a platform build, a teammate — is where it fails.
+  the mask - CI, a platform build, a teammate - is where it fails.
   `pnpm install --ignore-scripts=false` does reproduce it locally, but it
   reproduces by *running the scripts*, so it is a de-protection, not a check.
   Assert the decisions statically instead: a pre-commit checker that reads
@@ -124,7 +124,7 @@ blockExoticSubdeps: true         # v11 default; explicit keeps the posture audit
   platform-resolved, so a `linux-x64`-only postinstall needs a CI job on the
   target platform.
 - macOS gotcha: the global config lives at `~/Library/Preferences/pnpm/config.yaml`,
-  not `~/.config/pnpm/` — verify which file the tool actually reads.
+  not `~/.config/pnpm/` - verify which file the tool actually reads.
 
 ## bun
 
@@ -140,7 +140,7 @@ minimumReleaseAge = 345600   # seconds
   XDG-path configs are silently ignored, so prefer `$HOME/.bunfig.toml` and
   then confirm with a test install of a fresh package.
 - A project `bunfig.toml` shallow-merges and **replaces the whole
-  `[install]` table** from global config — a project file with any
+  `[install]` table** from global config - a project file with any
   `[install]` key silently drops the global gate.
 - Dependency postinstall scripts are blocked by default; allow per-package
   with `bun pm trust`. No trust-policy equivalent.
@@ -148,7 +148,7 @@ minimumReleaseAge = 345600   # seconds
 
 ## Yarn
 
-Modern Yarn (4.10+) only — Yarn 1 silently ignores all of this; prefer pnpm
+Modern Yarn (4.10+) only - Yarn 1 silently ignores all of this; prefer pnpm
 where a project is stuck on Yarn 1.
 
 ```yaml
@@ -159,7 +159,7 @@ npmMinimalAgeGate: 4d   # duration string; a bare number means minutes
 - The value is a duration setting with base unit minutes: `5760` and `4d`
   are equivalent. Current Yarn ships a built-in `1d` default.
 - `npmPreapprovedPackages` (array of descriptors or name globs) is the
-  scoped exception vehicle — it exempts matches from all package gates.
+  scoped exception vehicle - it exempts matches from all package gates.
 
 ## aube
 
@@ -172,7 +172,7 @@ advisoryBloomCheck = "on"         # OSV MAL-* bloom prefilter on lockfile instal
 
 - **The gate defaults to advisory**: without `minimumReleaseAgeStrict = true`
   aube silently falls back to the next-oldest satisfying version. This is the
-  canonical "gate set ≠ fail closed" case — setting the age key alone changes
+  canonical "gate set ≠ fail closed" case - setting the age key alone changes
   resolution preference, not enforcement.
 - `trustPolicy = "no-downgrade"` is the default; scope exceptions via
   `trustPolicyExclude` with the reasoning in a config comment.
@@ -198,20 +198,20 @@ exclude-newer = "4 days"
 
 - **Resolution-only**: `exclude-newer` applies when uv resolves
   (`uv lock`, `uv lock --upgrade`, `uv add`), and is completely blind to
-  `uv sync --frozen` — the frozen path installs whatever the lockfile pins,
+  `uv sync --frozen` - the frozen path installs whatever the lockfile pins,
   including a direct object-storage URL that survived registry takedown.
 - Cover the frozen path with `UV_MALWARE_CHECK=1` (env; preview feature as of
-  uv 0.11, 2026-07 — `--preview-features malware-check` silences the
+  uv 0.11, 2026-07 - `--preview-features malware-check` silences the
   warning): on
   every sync uv checks the locked resolution against OSV `MAL-*` advisories
-  and aborts *before download*. PyPI-sourced + known-malware only — it
+  and aborts *before download*. PyPI-sourced + known-malware only - it
   complements the age gate (pre-advisory window) and a full osv-scanner
   sweep, it does not replace them. `UV_MALWARE_CHECK=0` is the one-off
   bypass.
 - Python's load-time triggers are broader than npm's: `.pth` files execute on
   *any* interpreter startup with no import required, and import hooks and
   top-level module code run on first import. No install-script switch closes
-  these — they are the reason the detective layer and containment matter in
+  these - they are the reason the detective layer and containment matter in
   Python even with a gate configured.
 
 ## Python: pip
@@ -222,7 +222,7 @@ exclude-newer = "4 days"
 uploaded-prior-to = P4D
 ```
 
-Applies to `pip install`, `pip download`, and `pip wheel` — but only against
+Applies to `pip install`, `pip download`, and `pip wheel` - but only against
 indexes that expose upload-time metadata. Private mirrors and proxies that
 strip it leave the gate silently inert. Prefer uv where possible; its
 lockfile makes the resolution auditable.
@@ -235,14 +235,14 @@ proc-macros run arbitrary code at *compile* time with no global off-switch.
 - Age gate: `-Zmin-publish-age` is nightly-only (tracking
   rust-lang/cargo#17009, still open as of cargo 1.97, 2026-07). The registry
   `pubtime`
-  groundwork has stabilised (lazily backfilled, partial coverage) — recheck
+  groundwork has stabilised (lazily backfilled, partial coverage) - recheck
   the issue before claiming "no gate" in future.
 - Working controls today: exact pins in `Cargo.toml`, committed `Cargo.lock`,
   osv-scanner over `Cargo.lock`, and building vendored/pinned source (a
   Nix-style pinned+hashed source rev makes the vetted revision the
   checkpoint instead of a fresh crates.io resolution).
 - `cargo-deny` licence/advisory/ban policy lives with the linter-shaped
-  controls in the mechanical-enforcement skill — don't duplicate it here.
+  controls in the mechanical-enforcement skill - don't duplicate it here.
 - Sandbox builds of untrusted crates: `build.rs` at compile time has the same
   privileges as an install script, so compile untrusted code inside the same
   containment you'd give an install.
@@ -269,7 +269,7 @@ updates:
   `semver-major-days` / `semver-minor-days` / `semver-patch-days` and
   `include` / `exclude` globs (≤ 150 each).
 - **Enforcement point is the update PR, not the running workflow, and only
-  version updates** — Dependabot *security* updates open immediately, so a
+  version updates** - Dependabot *security* updates open immediately, so a
   patched CVE is never delayed by the cooldown.
 - Since 2026-07-14 Dependabot applies an automatic **3-day** default cooldown to
   version updates across all ecosystems including `github-actions`, no config
@@ -278,24 +278,24 @@ updates:
   reported the `github-actions` cooldown being ignored (a bump landed hours
   after release). Confirm bump PRs respect the window rather than assuming it.
 - zizmor also audits `dependabot-execution` (`insecure-external-code-execution:
-  allow`, permitting build-time code exec during resolution) — keep the `deny`
+  allow`, permitting build-time code exec during resolution) - keep the `deny`
   default.
 
 ## Undateable sources: GitHub releases, aqua, tool managers
 
 GitHub-release and aqua-style backends (and tool managers like mise
 installing from them) often expose no reliable publish-time metadata to gate
-on — and even where a manager offers an age gate, it applies at *resolution*
+on - and even where a manager offers an age gate, it applies at *resolution*
 time. For these, **the exact pin is the control**: a committed lockfile with
 per-platform checksums, plus provenance/attestation verification at install
 where the backend supports it (GitHub artifact attestations, SLSA). Two
 caveats to carry:
 
 - Checksums recorded for *other* platforms from registry metadata are not
-  verified by download until a machine of that platform installs — the
+  verified by download until a machine of that platform installs - the
   install-time attestation check is what actually fires there.
 - A lockfile-hit checksum match can skip provenance re-verification unless
-  the tool is told otherwise (e.g. mise `locked_verify_provenance`) — check
+  the tool is told otherwise (e.g. mise `locked_verify_provenance`) - check
   whether your tool re-verifies on lockfile hits or only on first resolve.
 
 ## Gate-evasion and escape-hatch asymmetries
@@ -304,16 +304,16 @@ Two asymmetries decide how an exception should be made (the *discipline* for
 making them is in [exceptions.md](exceptions.md)):
 
 **One-off escape hatches are unevenly available.** Some tools have an
-ephemeral bypass that leaves no trace; others force a config edit — which is
+ephemeral bypass that leaves no trace; others force a config edit - which is
 better, because it's reviewable and revertible:
 
 | Tool | One-off bypass | Tracked exception vehicle |
 |---|---|---|
 | npm | `--before` date pinning (no age-gate env override) | project `.npmrc`; `npm approve-scripts` allowlist |
 | pnpm | CLI/env per install | `minimumReleaseAgeExclude`, `allowBuilds` |
-| bun | `--minimum-release-age=0` | project `bunfig.toml` (replaces whole `[install]` table — re-state the gate) |
-| Yarn | — | `npmPreapprovedPackages` |
-| aube | — | `minimumReleaseAgeExclude`, `trustPolicyExclude`, `allowBuilds` |
+| bun | `--minimum-release-age=0` | project `bunfig.toml` (replaces whole `[install]` table - re-state the gate) |
+| Yarn | - | `npmPreapprovedPackages` |
+| aube | - | `minimumReleaseAgeExclude`, `trustPolicyExclude`, `allowBuilds` |
 | uv | `UV_MALWARE_CHECK=0`, `--exclude-newer` override | `[tool.uv]` per-project |
 | pip | CLI flag override | project `pip.conf` |
 | Deno | `--minimum-dependency-age=0` | `deno.json` |

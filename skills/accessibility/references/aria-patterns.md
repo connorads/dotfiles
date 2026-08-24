@@ -35,13 +35,13 @@ Screen readers compute a control's accessible name using this priority order (hi
 
 1. `aria-labelledby` (references another element's text)
 2. `aria-label` (inline string)
-3. Native markup for the element type — a form control's associated `<label>`, an image's `alt`, or *name from content* (a button's or link's own text)
-4. `title` attribute (tooltip — last-resort fallback; inconsistent support)
-5. `placeholder` attribute (last resort, form fields only; never a substitute for a label — disappears on input)
+3. Native markup for the element type - a form control's associated `<label>`, an image's `alt`, or *name from content* (a button's or link's own text)
+4. `title` attribute (tooltip - last-resort fallback; inconsistent support)
+5. `placeholder` attribute (last resort, form fields only; never a substitute for a label - disappears on input)
 
 The exact native source at step 3 is element-dependent, but `title` then `placeholder` are always the final fallbacks: if anything higher supplies a name, they are ignored.
 
-> Strictly, steps 1–4 follow [accname-1.2](https://www.w3.org/TR/accname-1.2/); `placeholder`-as-name is an input-only fallback defined by [HTML-AAM](https://www.w3.org/TR/html-aam-1.0/), not a step in the accname computation itself. Either way it is a last resort — never a substitute for a `<label>`.
+> Strictly, steps 1-4 follow [accname-1.2](https://www.w3.org/TR/accname-1.2/); `placeholder`-as-name is an input-only fallback defined by [HTML-AAM](https://www.w3.org/TR/html-aam-1.0/), not a step in the accname computation itself. Either way it is a last resort - never a substitute for a `<label>`.
 
 **Accessible description** (supplementary, announced after the name) comes from `aria-describedby`.
 
@@ -140,7 +140,7 @@ Multiple `<nav>` elements must be distinguished with `aria-label`:
 
 Only use when native HTML doesn't provide the semantics. All widget roles require keyboard handling.
 
-**`role="button"`** — use only when you cannot use `<button>`.
+**`role="button"`** - use only when you cannot use `<button>`.
 
 ```html
 <div role="button" tabindex="0"
@@ -164,15 +164,15 @@ Better: just use `<button>`.
 
 Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 
-**`role="switch"`** — for boolean toggles (on/off semantics, not checked/unchecked)
+**`role="switch"`** - for boolean toggles (on/off semantics, not checked/unchecked)
 
 ```html
 <button role="switch" aria-checked="true">Dark mode</button>
 ```
 
-**`role="combobox"`** — autocomplete/select widget (complex — see ARIA APG)
+**`role="combobox"`** - autocomplete/select widget (complex - see ARIA APG)
 
-**`role="dialog"`** — modal overlay
+**`role="dialog"`** - modal overlay
 
 ```html
 <div role="dialog"
@@ -183,17 +183,17 @@ Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 </div>
 ```
 
-`aria-modal="true"` tells screen readers to restrict reading to the dialog. Still implement JS focus trap — `aria-modal` alone is insufficient.
+`aria-modal="true"` tells screen readers to restrict reading to the dialog. Still implement JS focus trap - `aria-modal` alone is insufficient.
 
-**`role="alertdialog"`** — modal requiring immediate response (confirm/deny)
+**`role="alertdialog"`** - modal requiring immediate response (confirm/deny)
 
-**`role="alert"`** — implicit `aria-live="assertive"`. Use for errors and urgent messages.
+**`role="alert"`** - implicit `aria-live="assertive"`. Use for errors and urgent messages.
 
 ```html
 <div role="alert">Your session is about to expire. Save your work.</div>
 ```
 
-**`role="status"`** — implicit `aria-live="polite"`. Use for success messages, counts.
+**`role="status"`** - implicit `aria-live="polite"`. Use for success messages, counts.
 
 ```html
 <div role="status">File uploaded successfully.</div>
@@ -213,7 +213,7 @@ Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 | `aria-pressed` | `true` / `false` | Toggle buttons |
 | `aria-disabled` | `true` / `false` | Non-interactive elements (prefer HTML `disabled` on form controls) |
 | `aria-invalid` | `true` / `false` / `grammar` / `spelling` | Form field with validation error |
-| `aria-busy` | `true` / `false` | Loading states (partial support — pair with live region) |
+| `aria-busy` | `true` / `false` | Loading states (partial support - pair with live region) |
 | `aria-hidden` | `true` | Remove from accessibility tree entirely |
 
 ### Relationship properties
@@ -248,7 +248,7 @@ Keyboard: `Space` toggles `aria-checked`. `Enter` is not required but common.
 
 ## Live Regions
 
-Live regions announce changes to screen readers without moving focus. Use sparingly — overuse causes noise.
+Live regions announce changes to screen readers without moving focus. Use sparingly - overuse causes noise.
 
 ### Choosing the right pattern
 
@@ -263,11 +263,11 @@ Live regions announce changes to screen readers without moving focus. Use sparin
 
 ### Implementation rules
 
-1. **Live regions must be in the DOM on page load** — inject text *into* them, not the region itself
-2. **Start empty** — if pre-populated, the initial content won't be announced
-3. **Register before populating** — if you inject the region dynamically, insert it *empty* first, then set its text in a separate step (a later tick / next frame is enough) so the AT registers it before the change. Better: ship the empty region in the initial HTML (rule 1) and avoid the problem
-4. **Keep messages concise** — they're announced once and cannot be replayed
-5. **`aria-atomic="true"`** — announces the entire region content, not just the changed part (use for counts: "4 items in cart" not just "4")
+1. **Live regions must be in the DOM on page load** - inject text *into* them, not the region itself
+2. **Start empty** - if pre-populated, the initial content won't be announced
+3. **Register before populating** - if you inject the region dynamically, insert it *empty* first, then set its text in a separate step (a later tick / next frame is enough) so the AT registers it before the change. Better: ship the empty region in the initial HTML (rule 1) and avoid the problem
+4. **Keep messages concise** - they're announced once and cannot be replayed
+5. **`aria-atomic="true"`** - announces the entire region content, not just the changed part (use for counts: "4 items in cart" not just "4")
 
 ```html
 <!-- In HTML on page load — always empty initially -->
@@ -284,10 +284,10 @@ requestAnimationFrame(() => { statusEl.textContent = '3 items in cart'; });
 
 ### When NOT to use live regions
 
-- **Focus moves to the new content** — moving focus is already an announcement
-- **Modal opens** — focus trap + role="dialog" handles this
-- **Page navigates** — document title change + focus to `<main>` or `<h1>` announces it
-- **Inline form errors** — `aria-describedby` + `aria-invalid` on the field is sufficient; the error is read when the field receives focus. Use `role="alert"` only for a summary error region at the top of a form.
+- **Focus moves to the new content** - moving focus is already an announcement
+- **Modal opens** - focus trap + role="dialog" handles this
+- **Page navigates** - document title change + focus to `<main>` or `<h1>` announces it
+- **Inline form errors** - `aria-describedby` + `aria-invalid` on the field is sufficient; the error is read when the field receives focus. Use `role="alert"` only for a summary error region at the top of a form.
 
 ---
 
@@ -310,12 +310,12 @@ For complex interactive widgets, follow the **ARIA Authoring Practices Guide** (
 Keyboard:
 
 - `Tab` enters the tab list; **arrow keys** move between tabs (not `Tab`); `Home`/`End` jump to the first/last tab.
-- `Tab` then moves focus *out* of the tab list to the next focusable element — the tabpanel only if it (or its first content) is focusable. Give the panel `tabindex="0"` when it has **no** focusable content, so it isn't skipped.
+- `Tab` then moves focus *out* of the tab list to the next focusable element - the tabpanel only if it (or its first content) is focusable. Give the panel `tabindex="0"` when it has **no** focusable content, so it isn't skipped.
 - **Activation:** *automatic* (selecting a tab on arrow shows its panel immediately) suits cheap panels; *manual* (arrow moves focus, `Enter`/`Space` activates) suits panels that are expensive to render.
 
 ### Menu Button pattern
 
-Use `role="menu"`/`menuitem` **only for application-style action menus** — a list of commands like Edit / Delete / Duplicate. It commits you to the full APG keyboard model below; a partial implementation is worse than none.
+Use `role="menu"`/`menuitem` **only for application-style action menus** - a list of commands like Edit / Delete / Duplicate. It commits you to the full APG keyboard model below; a partial implementation is worse than none.
 
 ```html
 <button aria-haspopup="menu" aria-expanded="false" id="actions-btn">
@@ -330,9 +330,9 @@ Use `role="menu"`/`menuitem` **only for application-style action menus** — a l
 Keyboard:
 
 - **On the button:** `Enter`/`Space` opens the menu and moves focus to the first item. `Down` opens and focuses the first item; `Up` opens and focuses the last item (both optional per APG).
-- **In the menu:** arrow keys move focus between items via a **roving tabindex** — the focused `menuitem` has `tabindex="0"` (all others `-1`) and receives `.focus()`; or use `aria-activedescendant`. `Home`/`End` jump to first/last. First-letter type-ahead is optional. `Escape` closes and returns focus to the button.
+- **In the menu:** arrow keys move focus between items via a **roving tabindex** - the focused `menuitem` has `tabindex="0"` (all others `-1`) and receives `.focus()`; or use `aria-activedescendant`. `Home`/`End` jump to first/last. First-letter type-ahead is optional. `Escape` closes and returns focus to the button.
 
-> **Do not use `role="menu"`/`menuitem` for site navigation** — a dropdown of links (Home, About, Products). That is a *disclosure*, not a menu: a `<button aria-expanded>` toggling a `<ul>` of `<a>` inside `<nav>` (the [Toggle button pattern](#toggle-button-pattern) above), with **no** menu roles. Menu roles suppress link semantics and mislead screen reader users into expecting application-menu keyboard behaviour. ([Roselli: Don't Use ARIA Menu Roles for Site Nav](https://adrianroselli.com/2017/10/dont-use-aria-menu-roles-for-site-nav.html))
+> **Do not use `role="menu"`/`menuitem` for site navigation** - a dropdown of links (Home, About, Products). That is a *disclosure*, not a menu: a `<button aria-expanded>` toggling a `<ul>` of `<a>` inside `<nav>` (the [Toggle button pattern](#toggle-button-pattern) above), with **no** menu roles. Menu roles suppress link semantics and mislead screen reader users into expecting application-menu keyboard behaviour. ([Roselli: Don't Use ARIA Menu Roles for Site Nav](https://adrianroselli.com/2017/10/dont-use-aria-menu-roles-for-site-nav.html))
 
 ### Accordion
 
@@ -347,7 +347,7 @@ Keyboard:
 </div>
 ```
 
-No custom ARIA role needed — the `<button>` inside a heading is sufficient.
+No custom ARIA role needed - the `<button>` inside a heading is sufficient.
 
 ---
 
@@ -357,7 +357,7 @@ No custom ARIA role needed — the `<button>` inside a heading is sufficient.
 
 **Never apply to:**
 
-- Focusable elements (`<button>`, `<a>`, `<input>`) — keyboard focus will land there with no announcement
+- Focusable elements (`<button>`, `<a>`, `<input>`) - keyboard focus will land there with no announcement
 - The currently focused element
 - Parents of focusable elements
 

@@ -1,4 +1,4 @@
-# Mechanical Enforcement — Rust
+# Mechanical Enforcement - Rust
 
 Per-stack rules for Rust: clippy correctness, complexity thresholds, pedantic
 allows, workspace lint wiring, supply chain, unused deps, and crate boundaries.
@@ -17,9 +17,9 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`.
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
 | Deny all default warnings | `clippy -D warnings` | Warnings accumulating silently | Non-negotiable baseline. |
-| Pedantic lints (selective) | `[workspace.lints.clippy] pedantic = { level = "warn", priority = -1 }` | Broader code quality issues | Start at `warn`, promote to `deny` once clean. Allow noisy lints per-project — see common allows table below. |
+| Pedantic lints (selective) | `[workspace.lints.clippy] pedantic = { level = "warn", priority = -1 }` | Broader code quality issues | Start at `warn`, promote to `deny` once clean. Allow noisy lints per-project - see common allows table below. |
 | Unused results | clippy `let_underscore_must_use`, `unused_results` | Silently discarding important return values | Complements `#[must_use]` annotations. |
-| Unsafe visibility | `[workspace.lints.rust] unsafe_code = "warn"` | Unsafe blocks spreading unnoticed | `warn` not `deny` — FFI crates need escape hatch with per-crate override. |
+| Unsafe visibility | `[workspace.lints.rust] unsafe_code = "warn"` | Unsafe blocks spreading unnoticed | `warn` not `deny` - FFI crates need escape hatch with per-crate override. |
 
 ## Complexity thresholds (clippy.toml)
 
@@ -90,21 +90,21 @@ missing-safety-doc = "allow"
 ## Unused dependencies (cargo-machete)
 
 clippy and cargo-deny don't flag dependencies declared in `Cargo.toml` but never
-used. [cargo-machete](https://github.com/bnjbvr/cargo-machete) does — a fast,
+used. [cargo-machete](https://github.com/bnjbvr/cargo-machete) does - a fast,
 text-level scan that gates on a non-zero exit (`cargo machete`) and removes them
 with `--fix`. Fewer deps means a smaller build and attack surface.
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| No unused deps | `cargo machete` (tier-4 hygiene) | Dead dependencies bloating the build and attack surface | False positives for deps used only via proc-macros / build scripts — suppress narrowly with `[package.metadata.cargo-machete] ignored`. |
+| No unused deps | `cargo machete` (tier-4 hygiene) | Dead dependencies bloating the build and attack surface | False positives for deps used only via proc-macros / build scripts - suppress narrowly with `[package.metadata.cargo-machete] ignored`. |
 | Exhaustive variant | `cargo udeps` on demand | Missed unused deps from machete's text-level scan | More precise but needs nightly + a full compile; too slow for a default hook, so keep it on-demand. |
 
 ## Boundaries
 
-There is no import-linter equivalent — the pattern is structural. Make layers
+There is no import-linter equivalent - the pattern is structural. Make layers
 separate workspace crates so the compiler enforces the DAG (the domain crate
 simply has no path to infra). Back it with cargo-deny `[bans]` `wrappers`
-("only app/api may depend on infra" — see `references/cargo-deny.toml`),
+("only app/api may depend on infra" - see `references/cargo-deny.toml`),
 `cargo modules dependencies --acyclic` in CI where layering matters, and clippy
 `disallowed-types` / `disallowed-methods` for coarse in-crate bans (see
 `references/clippy-thresholds.toml`). cargo-pup (declarative architecture

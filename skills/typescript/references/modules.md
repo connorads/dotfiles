@@ -3,7 +3,7 @@
 ## Deep modules
 
 A deep module hides substantial behaviour behind a cohesive, low-burden
-interface. Low-burden ≠ few functions — a domain module may expose many cohesive
+interface. Low-burden ≠ few functions - a domain module may expose many cohesive
 combinators around one concept and still be deep. Avoid shallow modules that
 merely forward calls or mirror tables.
 
@@ -63,7 +63,7 @@ glue.) The agnostic version of this discipline lives in `architecture`.
 
 Avoid repository-per-table. A repository-like adapter is fine when it is a
 cohesive domain persistence capability returning parsed domain types and typed
-errors — not raw rows and ORM errors. Treat rows/ORM models as infrastructure
+errors - not raw rows and ORM errors. Treat rows/ORM models as infrastructure
 DTOs; parse them before core logic. Keep SQL/ORM inside the adapter.
 
 ## Imports, exports, files
@@ -102,7 +102,7 @@ tool that can distinguish type-only imports.
 Parse env/config at startup into typed config with branded/`Redacted` values.
 Do not read `process.env` throughout the app; missing/invalid config is a startup
 failure with useful context. No top-level side effects outside true
-entrypoint/bootstrap files — modules should not open connections, read env, or
+entrypoint/bootstrap files - modules should not open connections, read env, or
 start servers at import time. Inject `Clock`/`Random` into dependency-bearing
 modules; pure functions take explicit `now`/random values. (Agnostic version:
 `architecture`.)

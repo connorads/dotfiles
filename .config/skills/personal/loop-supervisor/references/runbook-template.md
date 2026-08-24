@@ -2,7 +2,7 @@
 
 Skeleton for `TASKS/<name>/SUPERVISOR.md`. Fill in the bracketed bits
 from the discovery interview + auto-inferred values. Leave the overall
-section order unchanged — the consumer reads this file top-to-bottom
+section order unchanged - the consumer reads this file top-to-bottom
 and the order matters (launch before watch, watch before intervene).
 
 ## Template
@@ -156,16 +156,16 @@ anything you can't classify):
 
 **Startup sequence:**
 
-1. `tmux has-session -t <session-name>` — check for an existing session
+1. `tmux has-session -t <session-name>` - check for an existing session
 2. If the session does not exist:
    - Create it and run the launch command
    - Wait for the first `run-log.md` entry to appear (confirms the
      loop is actually making progress, not stuck at a harness error)
 3. If the session already exists:
    - Attach by capturing the pane, confirm it looks healthy
-   - Do not re-launch — re-launching a running loop will corrupt
+   - Do not re-launch - re-launching a running loop will corrupt
      state
-4. Begin §3–§4 supervision cycle.
+4. Begin §3-§4 supervision cycle.
 
 ```text
 

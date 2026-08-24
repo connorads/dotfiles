@@ -15,7 +15,7 @@ description: >-
 A skill is a debugging tool for agent behaviour, not documentation. Everything
 here reduces to one question:
 
-> **What does the agent get wrong without this skill — and how will I know
+> **What does the agent get wrong without this skill - and how will I know
 > it's fixed?**
 
 A skill earns every token only by changing what the agent does. A sentence
@@ -26,24 +26,24 @@ nothing. When any decision below feels unclear, return to the question.
 
 Three mechanisms overlap; pick by trigger, not habit:
 
-- **Skill** — procedural knowledge loaded when the *agent decides* the task
+- **Skill** - procedural knowledge loaded when the *agent decides* the task
   matches. Triggering is a heuristic: it both over- and under-fires.
-- **Command / explicit prompt** — a deterministic, *user-invoked* step (some
+- **Command / explicit prompt** - a deterministic, *user-invoked* step (some
   clients implement commands as skills with invocation controls, so the line
   blurs; the deciding question is deterministic user invocation vs trigger
   heuristic, not which primitive). If something must happen every time, a
   skill's trigger heuristic is the wrong enforcement mechanism.
-- **Tool / MCP** — external capability or connectivity, not knowledge.
+- **Tool / MCP** - external capability or connectivity, not knowledge.
 
 The cheapest fix is often not writing a skill at all.
 
 ## The loop
 
-1. **Watch it fail** — run the task without the skill, capture failures verbatim
+1. **Watch it fail** - run the task without the skill, capture failures verbatim
 2. **Draft the minimum** that addresses those failures
-3. **Test** — eval mode or exploratory mode
+3. **Test** - eval mode or exploratory mode
 4. **Read the transcripts**, not just the outputs
-5. **Revise** — feed gaps back; prune as deliberately as you add
+5. **Revise** - feed gaps back; prune as deliberately as you add
 6. **Re-test**; stop on convergence
 
 One invariant holds the loop together: **no instruction without a failing
@@ -54,25 +54,25 @@ keep it.
 ### 1. Watch it fail
 
 Run the real task in a fresh session *without* the skill (when editing an
-existing skill: with the current version). Copy the failures — and the agent's
-rationalisations for them — verbatim. These quotes are the strongest
+existing skill: with the current version). Copy the failures - and the agent's
+rationalisations for them - verbatim. These quotes are the strongest
 justification any instruction can cite, and they become your first test cases.
 
 While you have the failures in front of you, classify them: is the agent
 producing the *wrong shape of output*, or *breaking a rule under pressure*?
-The two need opposite instruction forms — read
+The two need opposite instruction forms - read
 [references/instruction-forms.md](references/instruction-forms.md) before
 drafting if the answer isn't obvious.
 
 **Recipe skills invert this.** When the payload is commands the agent runs,
-there's no baseline failure to watch — it lives in your own unrun commands. Run
+there's no baseline failure to watch - it lives in your own unrun commands. Run
 every fragile line live before it ships, ideally via a fresh-context agent that
 shares none of your drafting assumptions. A run that hangs, times out, or
 returns empty is a failure to investigate, not a pass.
 
 ### 2. Draft the minimum
 
-Write the **description first** — it alone decides whether the body is ever
+Write the **description first** - it alone decides whether the body is ever
 read, which makes it the highest-leverage sentence in the skill. Read
 [references/description.md](references/description.md) when writing or
 debugging one.
@@ -85,20 +85,20 @@ every sentence:
   the high-signal content; general knowledge is padding. Calibrate this test
   to trigger mode: it applies at full strength to autoloaded skills, where
   every sentence costs every session. A deliberately-invoked skill
-  (catalogue/command-style) is a steering mode — knowledge the model holds
+  (catalogue/command-style) is a steering mode - knowledge the model holds
   but demonstrably won't apply unprompted (shown by a baseline run, not
   predicted) is fair content there, and the bar shifts to "does invoking
   this beat typing an ad-hoc sentence?" It must still encode
-  a specific stance — order, defaults, escape hatches — never a neutral
+  a specific stance - order, defaults, escape hatches - never a neutral
   summary.
 - **Standing rules, not one-time steps.** The body enters the conversation
   once and persists; the agent doesn't re-read the file later. Phrase
   guidance that should apply throughout as an ongoing rule, not an action to
   perform now.
 - **Timeless present, keep load-bearing versions.** A *threshold* stays true
-  whenever it's read (`3.12+`, `since Kafka 3.0`) — not rot, keep it. A
+  whenever it's read (`3.12+`, `since Kafka 3.0`) - not rot, keep it. A
   *snapshot* ages silently (`current 4.3`, prices, `recent changes`); deleting
-  its date only hides the staleness so it reads as eternal truth — repoint to a
+  its date only hides the staleness so it reads as eternal truth - repoint to a
   live source (`--help`, official docs) or keep an honest as-of caveat
   (`verified 2026-06-30 against X`). The checker enforces phrasing only: dated
   caveats pass it, and whether they still hold is the revision-time sweep's
@@ -107,7 +107,7 @@ every sentence:
 - **One source of truth.** Any rule, table, or protocol lives in exactly one
   file; every other mention is a one-line pointer. Duplication drifts as the
   skill evolves and inflates a rule's apparent importance.
-- **One default with an escape hatch**, not a menu of equal options — menus
+- **One default with an escape hatch**, not a menu of equal options - menus
   make the agent waste steps choosing. Use one consistent term for each
   concept throughout.
 
@@ -115,12 +115,12 @@ Anchor the skill on a single mental model or question stated up front (as this
 file does). A checklist covers the cases you listed; a north star lets the
 agent resolve cases you didn't.
 
-Structure follows the three loading levels — metadata (always in context),
+Structure follows the three loading levels - metadata (always in context),
 SKILL.md body (loaded on trigger), bundled files (loaded on demand):
 
 - Keep the body lean; push depth into `references/` behind a routing line or
   table that says *when* to read each file ("when the task involves X, read
-  Y") — a generic "see references/" never fires.
+  Y") - a generic "see references/" never fires.
 - Bundle a script in `scripts/` when you observe the agent reinventing the
   same deterministic logic across runs; mark whether it's to EXECUTE or to
   read as reference. Give scripts clear CLI arguments, check dependencies,
@@ -134,20 +134,20 @@ SKILL.md body (loaded on trigger), bundled files (loaded on demand):
   mixed skill independently.
 
 Spec rules for frontmatter, naming, and layout are in
-[references/spec-and-packaging.md](references/spec-and-packaging.md) — read it
+[references/spec-and-packaging.md](references/spec-and-packaging.md) - read it
 before first shipping rather than mid-draft.
 
 ### 3. Test
 
 Two lanes, same shape, different rigour:
 
-- **Eval mode** — write realistic prompts (messy, specific, the kind a real
-  user types — clean sanitised prompts hide triggering failures). Run each
+- **Eval mode** - write realistic prompts (messy, specific, the kind a real
+  user types - clean sanitised prompts hide triggering failures). Run each
   with-skill and baseline (no skill, or the old version) in **fresh sessions**,
   in parallel where the environment allows. Keep a held-out validation slice
   for description changes so trigger wording doesn't overfit the first misses.
   Read [references/evals.md](references/evals.md) for the full harness.
-- **Exploratory mode (human-reviewed)** — iterate live with the user on real
+- **Exploratory mode (human-reviewed)** - iterate live with the user on real
   tasks when the output is subjective or the user prefers a conversational
   loop. Capture the outputs and feedback; the human review is the eval.
 
@@ -171,19 +171,19 @@ informational because machines vary. Two signals to hunt for:
 
 Feed each observed gap back as a targeted edit, and resist the accretion
 instinct: adding feels safe and removing feels risky, so skills rot by
-growth. Every revision should ask what can be deleted — no-op sentences,
-duplicated rules, hedged clauses — with the same energy it asks what's
+growth. Every revision should ask what can be deleted - no-op sentences,
+duplicated rules, hedged clauses - with the same energy it asks what's
 missing.
 
 When a fix won't stick, don't escalate to shouting (all-caps, bold, MUST).
-Reframe: explain the why, try a different metaphor, or restructure the task —
+Reframe: explain the why, try a different metaphor, or restructure the task -
 [references/instruction-forms.md](references/instruction-forms.md) covers
 which forms work for which failures, and why hedging a working rule breaks it.
 
 ### 6. Re-test and stop
 
 Re-run the same prompts in fresh sessions. Convergence across runs means the
-wording is tight — ship. High variance means the instruction is ambiguous —
+wording is tight - ship. High variance means the instruction is ambiguous -
 tighten and repeat. Stop when the user is happy, the feedback is empty, or
 iterations stop moving the needle.
 
@@ -192,26 +192,26 @@ thing" report becomes a permanent test case before you fix it.
 
 The baseline improves underneath the skill as models get stronger. Periodically
 re-run the eval prompts *without* it and retire or shrink whatever the model now
-does unaided — a skill teaching what the agent already knows is pure context
+does unaided - a skill teaching what the agent already knows is pure context
 cost.
 
-Truth decays underneath it too, and no grep can catch that — the checker flags
+Truth decays underneath it too, and no grep can catch that - the checker flags
 rot-prone *phrasing*; whether a claim still holds is a fact about the world.
 Whenever you revise a skill, sweep it for freshness: re-verify its dated as-of
 caveats and executable claims (counts, versions, flags, API fields) against
 the live tool or source, and update or repoint whatever drifted. The as-of
 markers and version literals the checker tolerates are the sweep's target
-list — grep for them to know what needs re-checking.
+list - grep for them to know what needs re-checking.
 
 ## Ship checklist
 
-Run `scripts/check.sh <skill-dir>` (EXECUTE) — it validates frontmatter
+Run `scripts/check.sh <skill-dir>` (EXECUTE) - it validates frontmatter
 against the spec's closed field set and greps for the common hygiene failures:
 shipped caches, orphaned files, doc-rot phrasing, long references without a
 contents list. Then verify the things a script can't:
 
 - Description states what *and* when, with the trigger words users actually
-  type — and doesn't summarise the workflow.
+  type - and doesn't summarise the workflow.
 - Every bundled file is reachable from SKILL.md; references are one level
   deep from the skill root.
 - No machine-specific paths; bundled scripts are referenced relative to the
@@ -220,9 +220,9 @@ contents list. Then verify the things a script can't:
 - Bundled scripts and resources are reviewed as executable or instructive
   content: flag network access, broad filesystem access, secret handling, or
   any path that could move data outside the user's intent.
-- The skill's executable claims — commands, flags, type names, API fields, and
+- The skill's executable claims - commands, flags, type names, API fields, and
   any environmental assumption the procedure rests on (what another process can
-  see, whether a tool exists in that context) — are spot-checked against the
+  see, whether a tool exists in that context) - are spot-checked against the
   live tool. Craft review alone ships domain
   bugs: a skill can be structurally perfect while its first example errors.
   "Couldn't verify" is only true after `command -v <tool>` fails; run that
@@ -242,6 +242,6 @@ contents list. Then verify the things a script can't:
 | Running the eval harness: prompts, baselines, grading, micro-testing wording | [references/evals.md](references/evals.md) |
 | Frontmatter fields, naming, layout, packaging, validation | [references/spec-and-packaging.md](references/spec-and-packaging.md) |
 
-`evals/` holds this skill's own test prompts, fixture templates, and assertions
-— run them per [references/evals.md](references/evals.md) when revising this
+`evals/` holds this skill's own test prompts, fixture templates, and assertions -
+run them per [references/evals.md](references/evals.md) when revising this
 skill.

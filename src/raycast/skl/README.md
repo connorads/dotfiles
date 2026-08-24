@@ -1,12 +1,12 @@
 # Skill Loader (skl)
 
 Browse the [`skl`](../../skl) skill catalogue from Raycast and copy or
-paste a skill pointer — the same payload `skl` injects into a tmux pane, but
+paste a skill pointer - the same payload `skl` injects into a tmux pane, but
 usable **outside tmux** (claude.ai, a bare terminal, any editor).
 
 It recreates the `tmux prefix + Alt-s` picker:
 
-- **Search Skills** — a list of every catalogue skill, grouped by source
+- **Search Skills** - a list of every catalogue skill, grouped by source
   (`public`, `personal`, `vendor`, `vendored`), with a live pointer preview.
 
 ## Actions
@@ -41,7 +41,7 @@ tmux), this uses Raycast's native `Clipboard` API, so it works anywhere.
 ## Requirements
 
 - The `skl` CLI on `~/.local/bin/skl` (set a custom path in preferences if elsewhere).
-- `bun` resolvable via the mise shim — handled automatically by the extension's PATH.
+- `bun` resolvable via the mise shim - handled automatically by the extension's PATH.
 
 ## Development
 

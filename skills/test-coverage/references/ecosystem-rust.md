@@ -42,7 +42,7 @@ fn platform_specific_code() {
 }
 ```
 
-Tarpaulin has no per-line exclusion comment — `#[cfg(not(tarpaulin_include))]`
+Tarpaulin has no per-line exclusion comment - `#[cfg(not(tarpaulin_include))]`
 on the item (function, module, impl) is the granularity available. To skip a
 single defensive line, extract it into its own annotated function or
 restructure to remove the unreachable branch.

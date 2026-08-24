@@ -1,4 +1,4 @@
-# Mechanical Enforcement — Architectural boundaries
+# Mechanical Enforcement - Architectural boundaries
 
 The cross-stack story for principle 3 (*architectural boundaries are linter
 rules*): making illegal module graphs uncompilable, transitive graph gates,
@@ -20,19 +20,19 @@ table and rules-catalogue index in `SKILL.md`.
 Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs uncompilable. The catalogue of patterns:
 
 - **Pure layer cannot import side-effectful layer.** `files: ["src/utilities/**"]` + `no-restricted-imports` banning `next/cache`, `next/headers`, `next/navigation`, ORM runtime modules. Use `allowTypeImports: true` for types you still want visible. Exempt one or two *intentionally* coupled files (`queries.ts`, `revalidate.ts`) via `ignores`.
-- **UI cannot import schemas directly.** `files: ["src/components/**"]` + `no-restricted-imports patterns` banning `@/collections/*` (or whichever path holds your DB schemas). UI should depend on *generated types*, not schema source — otherwise a UI tweak forces a migration.
-- **Raw SQL only in the query layer.** `no-restricted-syntax` on `TaggedTemplateExpression[tag.name='sql']` everywhere except `src/db/**`. Also ban raw driver imports (`ImportDeclaration[source.value='postgres']`) outside the same directory. **sqruff** (Rust) then lints / formats that quarantined SQL — see the picks table in `SKILL.md`.
+- **UI cannot import schemas directly.** `files: ["src/components/**"]` + `no-restricted-imports patterns` banning `@/collections/*` (or whichever path holds your DB schemas). UI should depend on *generated types*, not schema source - otherwise a UI tweak forces a migration.
+- **Raw SQL only in the query layer.** `no-restricted-syntax` on `TaggedTemplateExpression[tag.name='sql']` everywhere except `src/db/**`. Also ban raw driver imports (`ImportDeclaration[source.value='postgres']`) outside the same directory. **sqruff** (Rust) then lints / formats that quarantined SQL - see the picks table in `SKILL.md`.
 - **Dynamic `import()` only via named wrappers.** `no-restricted-syntax` on `ImportExpression` outside `next/dynamic` / `React.lazy`. Prevents ad-hoc chunking that defeats SSR.
 
 Full working snippets live in `references/eslint-boundaries.mjs`.
 
 **oxlint (Rust) is the fast, Rust-first way to run these.** oxlint is production
 (1.0 shipped 2025) with native `no-restricted-imports`,
-`no-restricted-syntax`, `jsx-a11y`, and a multi-file `import/no-cycle` — so it
+`no-restricted-syntax`, `jsx-a11y`, and a multi-file `import/no-cycle` - so it
 takes the boundary-rule role this skill kept ESLint around for, with no Node
 dependency tree, and retires madge (see Import hygiene in `references/typescript.md`). Two adjacent pieces are
 still pre-stable, so keep them advisory: type-aware rules via tsgolint/tsgo
-(`oxlint --type-aware`, alpha — the only thing here that catches floating /
+(`oxlint --type-aware`, alpha - the only thing here that catches floating /
 misused promises) and custom JS plugins (alpha). The import-type-aware boundary
 rule (`allowTypeImports`) and framework-specific plugins (next, storybook) still
 need typescript-eslint until oxlint's JS plugins stabilise.
@@ -51,7 +51,7 @@ facts only enter through the gated boundary". These are not behavioural tests;
 they are lint-style gates for structural drift.
 
 `dependency-cruiser` is the default TypeScript tool for these transitive graph
-rules — its `reachable` / `via` / `viaNot` rules are the transitive engine, and
+rules - its `reachable` / `via` / `viaNot` rules are the transitive engine, and
 they also cover its one direct-level gap (a re-export through a barrel file can
 evade a plain `from`/`to` rule; the reachability rules see through it). Keep
 direct import bans in oxlint/Biome/ESLint where possible because they are
@@ -60,7 +60,7 @@ faster and show up closer to the editor.
 **fallow** (Rust) is a watch, not the boundary gate. It is fast (~20k files in
 ~1.5s) and covers cycles, dead code, and zone presets, but its boundary
 analysis is direct-import-only and its barrel "parent fallback" rule
-deliberately suppresses barrel violations — so imports laundered through a
+deliberately suppresses barrel violations - so imports laundered through a
 barrel pass. It is TS/JS-only, open-core (paywall-creep risk on the zone
 features), and its config DSL is still unstable (two majors in four months).
 Use it as a complementary fast pass if at all; re-verify at its next major with
@@ -101,7 +101,7 @@ See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
 ## Cycle gating on legacy graphs
 
-The transitive tools above gate cycles as binary — any cycle fails. That is
+The transitive tools above gate cycles as binary - any cycle fails. That is
 the right greenfield default, but it is unadoptable on a legacy graph already
 full of them, and it misses the real signal: a cycle's danger is its *size and
 growth*, not its existence (von Zitzewitz). Small same-package cycles do
@@ -110,7 +110,7 @@ understood, and grow release by release into an unbreakable core. Gate by
 level:
 
 - **Package / namespace / module cycles: zero-tolerance.** These layers carry
-  architectural intent, so any cycle between them is a violation — this is
+  architectural intent, so any cycle between them is a violation - this is
   where `import/no-cycle` / dependency-cruiser / `cargo modules --acyclic`
   earn their keep.
 - **File / class cycles: small and contained is tolerable.** A group of ≤5
@@ -119,18 +119,18 @@ level:
   rewrite.
 - **Legacy adoption: baseline, don't flood.** Wire the cycle rule through a
   committed baseline (`depcruise-baseline` + `--ignore-known`) so only *new*
-  cycles fail, then shrink the baseline — the ratchet recipe in `SKILL.md`
+  cycles fail, then shrink the baseline - the ratchet recipe in `SKILL.md`
   (Ratcheting a gate onto non-conforming code).
 
 No OSS tool gates on cycle-*group* (strongly-connected-component) size
 directly; Sonargraph-Explorer (free but proprietary) computes group-size and
-graph-erosion metrics — a watch, against the local-OSS grain, same posture as
+graph-erosion metrics - a watch, against the local-OSS grain, same posture as
 Socket.
 
 Soft complexity thresholds are the file-local half of the same erosion story
 (von Zitzewitz), enforced by each stack's own linter: file ≤ 800 LoC,
 cyclomatic complexity ≤ 15 (defect rates climb sharply past ~24), and **max
-nesting depth ≤ 4** — a cheap, underused proxy (ESLint `max-depth`, ruff/pylint
+nesting depth ≤ 4** - a cheap, underused proxy (ESLint `max-depth`, ruff/pylint
 equivalents) that catches deeply branched code a cyclomatic cap misses. Rust
 numbers live in `references/rust.md`.
 
@@ -140,7 +140,7 @@ depguard inside golangci-lint covers direct layer gating: multiple named rules
 scoped by `files:` globs (e.g. a `domain` rule denying `myapp/internal/infra`
 and the DB driver). Reach for
 [go-arch-lint](https://github.com/fe3dback/go-arch-lint) when a real component
-architecture warrants a declarative map — `components` + `deps.mayDependOn` in
+architecture warrants a declarative map - `components` + `deps.mayDependOn` in
 `.go-arch-lint.yml`, gated with `go-arch-lint check`. `gomodguard_v2` is the
 module-level sibling: allow/block whole modules with recommended replacements.
 
@@ -149,7 +149,7 @@ module-level sibling: allow/block whole modules with recommended replacements.
 Some boundaries are awkward or impossible for `no-restricted-imports` to see:
 cross-package leaks in a monorepo, raw-string patterns, "this directory must
 stay framework-free". Encode these as **grep assertions that must return zero
-matches** — a cheap pre-flight an agent runs before declaring work done, and
+matches** - a cheap pre-flight an agent runs before declaring work done, and
 that wires into an hk step where it should gate.
 
 ```bash
@@ -159,7 +159,7 @@ that wires into an hk step where it should gate.
 ```
 
 This sits between lint and review. Prefer a real `no-restricted-imports` /
-`no-restricted-syntax` rule when the linter *can* express the boundary — it runs
+`no-restricted-syntax` rule when the linter *can* express the boundary - it runs
 in-editor and is harder to bypass. Reach for grep for the cross-file,
 cross-package, and string-level cases ESLint can't see, and as a portable check
 an agent can run in any repo with no linter config. The "unique function names"
@@ -171,74 +171,74 @@ reformatting. [ast-grep](https://ast-grep.github.io/) (`sg`, Rust, production)
 matches tree-sitter AST patterns with `$VAR` metavariables and gates via
 `ast-grep scan` (non-zero exit, YAML rules), polyglot from one binary. Use `rg` for
 quick / throwaway assertions and ast-grep for the boundary rules you want to
-keep — it also subsumes `no-restricted-syntax` rules that don't need type
+keep - it also subsumes `no-restricted-syntax` rules that don't need type
 information. It is syntax-only, so type-aware boundaries (import resolution,
 `allowTypeImports`) still belong in ESLint / oxlint. In a committed hook invoke
-it as `ast-grep scan` — the short `sg` alias collides with `setgroup(1)` on Linux
+it as `ast-grep scan` - the short `sg` alias collides with `setgroup(1)` on Linux
 (the wired step is in `references/hk-steps.pkl`).
 
 **When the rule needs data flow, not one AST shape, Opengrep is the next tier.**
 ast-grep matches a single syntactic pattern; taint/injection, cross-function, and
 "tainted input reaches this sink" rules need dataflow the pattern engines can't
-express. [Opengrep](https://github.com/opengrep/opengrep) — the OSS Semgrep fork
+express. [Opengrep](https://github.com/opengrep/opengrep) - the OSS Semgrep fork
 (engine LGPL-2.1) that a consortium spun up after Semgrep relicensed
 `semgrep-rules` in December 2024 and moved CE engine features behind its
-commercial licence — runs Semgrep-format YAML (taint mode, cross-file) and emits
+commercial licence - runs Semgrep-format YAML (taint mode, cross-file) and emits
 SARIF, polyglot across 20+ languages from one binary. Gate with
 `opengrep scan --config <dir> --error`; **the default exit code is 0 even with
-findings, so `--error` is load-bearing** — omit it and CI silently passes.
+findings, so `--error` is load-bearing** - omit it and CI silently passes.
 Install is the curl script or a GHCR Docker image (no npm package). It complements
 gitleaks (secrets) and the fixed-ruleset language linters: this is the tier for
 custom bug-class rules no off-the-shelf linter encodes. Reach for ast-grep first
 for syntactic rules (faster, lighter pre-commit); escalate to Opengrep when the
 rule is a dataflow or security property. `severity: ERROR` in a rule doesn't
-change the CLI exit on its own — `--error` is what fails the build.
+change the CLI exit on its own - `--error` is what fails the build.
 
 ## Purity: keeping the functional core pure
 
-The `architecture` skill's functional-core rules — inject clock and randomness,
-parse config at startup, no IO in the domain — are mechanically enforceable,
+The `architecture` skill's functional-core rules - inject clock and randomness,
+parse config at startup, no IO in the domain - are mechanically enforceable,
 but the obvious rules don't work: `no-restricted-globals` and Biome's
 `noRestrictedGlobals` ban **bare identifiers only**, so `Date.now()`,
 `Math.random()`, and `process.env.X` (member expressions) sail straight
 through. What works:
 
 - **ESLint `no-restricted-properties`**, scoped to the pure layer
-  (`files: ["src/domain/**"]`) — the rule that actually catches
+  (`files: ["src/domain/**"]`) - the rule that actually catches
   member-expression effects. No Biome equivalent; a genuine ESLint hold-out.
 - **`no-restricted-imports` patterns** for IO modules (`node:fs`, `node:http`,
   infra directories) in the same scoped block, with `allowTypeImports` for port
   types.
-- **ast-grep** for cross-language or call-shape precision — zero-arg
-  `new Date()`, method chains — as YAML rules gated by `ast-grep scan`.
+- **ast-grep** for cross-language or call-shape precision - zero-arg
+  `new Date()`, method chains - as YAML rules gated by `ast-grep scan`.
 - **Rust**: clippy `disallowed-methods` (`std::env::var`,
   `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
   crate-wide, so give the pure core its own crate.
 
 See `references/purity-boundaries.mjs` for the drop-in flat-config block plus
 the equivalent ast-grep rule. The no-config escape hatch is grep
-(`! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src`) — the
+(`! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src`) - the
 portable greppable-invariants fallback for repos with no linter config; weaker
 than the AST rules because it matches comments and strings too.
 
 ## Boundary contracts (cross-service compatibility)
 
 Anything crossing a service boundary is a public contract (the
-`event-driven-architecture` skill's framing) — and contract breakage is
+`event-driven-architecture` skill's framing) - and contract breakage is
 mechanically checkable by diffing the schema against a baseline. publint/attw
 (see `references/typescript.md`) cover the npm package shape; these cover the wire:
 
 | Contract | Gate with | Notes |
 |---|---|---|
 | Protobuf | `buf breaking --against '.git#branch=main'` | Rule sets ladder from `FILE` (generated-code compat, default) to `WIRE` (wire-only). |
-| OpenAPI 3.0/3.1 | `oasdiff breaking base.yaml revision.yaml --fail-on ERR` | The default over Azure openapi-diff. Core CLI + action are OSS; a hosted/Pro tier exists, so the Atlas-lint paywall precedent applies — watch. |
-| GraphQL | `graphql-inspector diff` (non-zero on breaking) | Single schema. Federated graphs need Cosmo `wgc subgraph check` — composition breaks only show across the supergraph. |
+| OpenAPI 3.0/3.1 | `oasdiff breaking base.yaml revision.yaml --fail-on ERR` | The default over Azure openapi-diff. Core CLI + action are OSS; a hosted/Pro tier exists, so the Atlas-lint paywall precedent applies - watch. |
+| GraphQL | `graphql-inspector diff` (non-zero on breaking) | Single schema. Federated graphs need Cosmo `wgc subgraph check` - composition breaks only show across the supergraph. |
 | Rust public API | `cargo semver-checks` | Diffs rustdoc JSON against the released baseline; auto-run by release-plz; not exhaustive (proves the breaks it finds, not their absence). |
 | TS public `.d.ts` surface | `@microsoft/api-extractor` with a committed `.api.md` report | CI runs *without* `--local` and fails when the surface changed unreviewed; dev regenerates with `--local` and commits the diff. |
 
 For consumer-driven contracts, `pact-broker can-i-deploy` is the deploy gate
 (the method itself lives in the `testing` / `event-driven-architecture`
-skills). Avro/JSON-Schema have no standalone single-binary gate — a schema
+skills). Avro/JSON-Schema have no standalone single-binary gate - a schema
 registry's compatibility check is the production path.
 
 All of these diff against a baseline (git ref, published schema, committed

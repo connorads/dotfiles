@@ -1,19 +1,19 @@
-# Windows 11 on UTM (Apple Silicon) — setup for automation
+# Windows 11 on UTM (Apple Silicon) - setup for automation
 
 ## Contents
 
 - 1. Get the ISO
 - 2. Create the VM (and the install-media trap)
-  - The >4 GB ISO boot hang — read this first
+  - The >4 GB ISO boot hang - read this first
   - The fix: repack the installer onto a FAT32 USB disk image (split WIM)
   - Hardware config
-  - Boot order — avoid the reinstall loop
-- 3. Install Windows — driving the GUI from the host
+  - Boot order - avoid the reinstall loop
+- 3. Install Windows - driving the GUI from the host
 - 4. Enable SSH in the guest (admin PowerShell, once)
 - 5. Reach the guest from the host
-  - Shared networking (default NIC) — primary, faster
-  - Emulated + port forward — deterministic fallback
-  - Driving PowerShell over SSH — host-side gotchas
+  - Shared networking (default NIC) - primary, faster
+  - Emulated + port forward - deterministic fallback
+  - Driving PowerShell over SSH - host-side gotchas
 - 6. End-to-end automation loop
 - Diagnostics & config editing
   - Inspect how QEMU actually launched (the DebugLog)
@@ -33,12 +33,12 @@ QEMU backend. Official guide: <https://docs.getutm.app/guides/windows/>
    builds expected to work). So
    `utmctl ip-address`, `utmctl file push/pull`, and the AppleScript
    `execute … with output capturing` all work. The one gap: **`utmctl exec` runs
-   the command (exit 0) but returns no stdout** — use AppleScript `execute` (it
+   the command (exit 0) but returns no stdout** - use AppleScript `execute` (it
    captures) or SSH when you need output. For interactive/scriptable PowerShell,
    **OpenSSH Server** over the guest IP (shared networking) or a port forward is
    still the most ergonomic channel. Note the agent runs as `NT AUTHORITY\SYSTEM`.
 2. **Windows 11 24H2 ISOs (~4.9 GB) will not boot from a normal attached ISO**
-   on QEMU — they hang at the firmware "Start boot option" screen forever. You
+   on QEMU - they hang at the firmware "Start boot option" screen forever. You
    must repack the installer onto a FAT32 disk image (§2). This burns hours if
    you don't know it; it's the single biggest gotcha here.
 
@@ -54,12 +54,12 @@ the size triggers the boot hang, and "solid" blocks a direct WIM split.
 
 Alternative: Microsoft also publishes a prebuilt Win11 ARM64 **VHDX** (Insider /
 ARM pages). Importing a VHDX skips the installer entirely and sidesteps the
-boot-hang problem — worth suggesting if the user wants the fastest path and
+boot-hang problem - worth suggesting if the user wants the fastest path and
 doesn't care about a clean ISO install.
 
 ## 2. Create the VM (and the install-media trap)
 
-### The >4 GB ISO boot hang — read this first
+### The >4 GB ISO boot hang - read this first
 
 Attach a stock 24H2 ISO the normal way (a removable drive → UTM presents it as a
 USB CD, `usb-storage … media=cdrom`) and the VM hangs at:
@@ -70,15 +70,15 @@ BdsDxe: starting Boot0001 ...
 Start boot option              [full progress bar, never advances]
 ```
 
-- The **"USB HARDDRIVE" label is cosmetic** — it's QEMU's `usb-storage` product
+- The **"USB HARDDRIVE" label is cosmetic** - it's QEMU's `usb-storage` product
   string, shown even for `media=cdrom`. Don't chase it.
 - Re-attaching the raw ISO as `media=disk` (a USB *hard disk*) doesn't help
-  either — a stock Windows ISO is an El Torito optical image with no GPT/ESP, so
+  either - a stock Windows ISO is an El Torito optical image with no GPT/ESP, so
   the firmware finds nothing bootable: `failed to load … Not Found`.
 - Most likely cause: EDK2 / `usb-storage` choke reading a **>4 GiB image over
   emulated USB mass-storage** (512-byte-block SCSI read-count overflow + very
   slow reads). Win11 24H2 is the first consumer image to routinely cross 4 GiB,
-  which is why this surfaced in 2024–2025. The El Torito boot image itself is at
+  which is why this surfaced in 2024-2025. The El Torito boot image itself is at
   a low offset and starts; the loaded Windows boot manager then stalls reading
   the oversized UDF payload.
   Refs: [QEMU #2893](https://gitlab.com/qemu-project/qemu/-/issues/2893),
@@ -157,20 +157,20 @@ make new virtual machine with properties {backend:qemu, configuration:{name:"win
   can't see without drivers; NVMe is visible out of the box.
 - Then attach the FAT32 install image (above) and the guest-tools ISO
   (<https://getutm.app/downloads/utm-guest-tools-latest.iso>) as a removable CD.
-- ≥4 cores, ≥6144 MiB RAM, ≥64 GiB disk (qcow2 is sparse — sizes to what Windows
+- ≥4 cores, ≥6144 MiB RAM, ≥64 GiB disk (qcow2 is sparse - sizes to what Windows
   writes, ~27 GB for a fresh install).
 
-### Boot order — avoid the reinstall loop
+### Boot order - avoid the reinstall loop
 
 If the USB install disk has a lower `bootindex` than the NVMe system disk, the VM
 boots back into the installer after Windows is laid down ("install Windows again?"
 loop). Put **NVMe first** in the drive list, or simply **detach the install disk
 after the copy phase completes**. The guest-tools CD can stay attached.
 
-## 3. Install Windows — driving the GUI from the host
+## 3. Install Windows - driving the GUI from the host
 
 The installer needs GUI interaction. With Screen Recording permission you can
-drive it entirely from the host via screenshots + input injection — see
+drive it entirely from the host via screenshots + input injection - see
 [applescript.md](applescript.md) "Driving the installer". The loop:
 capture the VM window → read the target → `input mouse click` / `input keystroke`.
 
@@ -217,7 +217,7 @@ Refs: [Win32-OpenSSH #900](https://github.com/PowerShell/Win32-OpenSSH/issues/90
 [MS Learn: OpenSSH firstuse](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse).
 
 Deploy your host pubkey to **`C:\ProgramData\ssh\administrators_authorized_keys`**
-(NOT `~/.ssh` — admins use the system file) and lock its ACL:
+(NOT `~/.ssh` - admins use the system file) and lock its ACL:
 
 ```powershell
 Set-Content C:\ProgramData\ssh\administrators_authorized_keys '<your ssh-ed25519 key>'
@@ -229,7 +229,7 @@ icacls C:\ProgramData\ssh\administrators_authorized_keys /inheritance:r /grant "
 Two paths. **Shared networking (direct IP) is faster and needs no port forward;
 emulated + port forward is deterministic.** Prefer shared on the QEMU backend.
 
-### Shared networking (default NIC) — primary, faster
+### Shared networking (default NIC) - primary, faster
 
 The default `shared` (vmnet) NIC puts the guest on the macOS vmnet subnet
 (typically `192.168.64.0/24`, host `.1`, guest `.2`), directly reachable:
@@ -239,7 +239,7 @@ ssh connor@192.168.64.2 'hostname'
 ```
 
 Discover the guest IP from the host **without a guest agent** by reading the
-vmnet DHCP leases (match the VM's MAC from its NIC settings — note the lease
+vmnet DHCP leases (match the VM's MAC from its NIC settings - note the lease
 file stores it as `1,a2:e1:...` with leading zeros stripped):
 
 ```bash
@@ -262,28 +262,28 @@ Host win11
     StrictHostKeyChecking accept-new
 ```
 
-### Emulated + port forward — deterministic fallback
+### Emulated + port forward - deterministic fallback
 
 Pin `127.0.0.1:2222 → 22` (never drifts, backend-independent). Switch the NIC to
-`emulated` mode (slower than shared) and add the forward — AppleScript snippet in
+`emulated` mode (slower than shared) and add the forward - AppleScript snippet in
 [applescript.md](applescript.md):
 
 ```bash
 ssh -p 2222 connor@127.0.0.1 'Get-ComputerInfo | Select OsName'
 ```
 
-### Driving PowerShell over SSH — host-side gotchas
+### Driving PowerShell over SSH - host-side gotchas
 
 Hard-won driving a Win11 ARM guest headlessly (esp. for GUI apps):
 
 - **The admin SSH session comes up elevated (high integrity).** Logging in via
-  `administrators_authorized_keys` (sshd runs as SYSTEM) yields a full token —
+  `administrators_authorized_keys` (sshd runs as SYSTEM) yields a full token -
   `whoami /priv` shows `SeBackupPrivilege Enabled` and installers self-elevate
   with no interactive UAC. So privileged headless ops just work: all-users MSIX
   installs, and reading the ACL-locked `C:\Program Files\WindowsApps\…` (use
-  `robocopy /b` to lean on SeBackupPrivilege — plain copy is "Access is denied").
+  `robocopy /b` to lean on SeBackupPrivilege - plain copy is "Access is denied").
 
-- **If DefaultShell is PowerShell (§4), send PowerShell *directly* — don't wrap it
+- **If DefaultShell is PowerShell (§4), send PowerShell *directly* - don't wrap it
   in `powershell -Command "…"`.** Nesting double-expands `$vars`: the outer shell
   expands `$PSVersionTable` / `$env:…` before the inner one sees it, yielding
   `System.Collections.Hashtable.…` garbage and parser errors. Just
@@ -322,7 +322,7 @@ $UTMCTL stop "win11" --request                         # graceful; --force to po
 
 For richer GUI control enable RDP and forward/route 3389 the same way. For fully
 unattended *installs* (no GUI step), bake an `autounattend.xml` and use
-packer-plugin-utm (<https://github.com/naveenrajm7/packer-plugin-utm>) — suggest it
+packer-plugin-utm (<https://github.com/naveenrajm7/packer-plugin-utm>) - suggest it
 when the user wants reproducible image builds rather than a one-off VM.
 
 ## Diagnostics & config editing
@@ -330,7 +330,7 @@ when the user wants reproducible image builds rather than a one-off VM.
 ### Inspect how QEMU actually launched (the DebugLog)
 
 When a VM misbehaves at the firmware/boot level, see the exact QEMU command line
-(how each drive is presented — `media=cdrom` vs `media=disk`, `removable=`,
+(how each drive is presented - `media=cdrom` vs `media=disk`, `removable=`,
 `bootindex`, display device). Enable it, start the VM, read `Data/debug.log`:
 
 ```bash
@@ -346,7 +346,7 @@ This is the fastest way to confirm a drive is attached the way you intended.
 ### Editing config.plist (for what AppleScript can't set)
 
 Drive `ImageType` (CD vs Disk) and a few other fields aren't in the scripting
-dictionary. Edit the plist directly — but **UTM caches each config at launch**,
+dictionary. Edit the plist directly - but **UTM caches each config at launch**,
 so **quit UTM first**, edit, relaunch:
 
 ```bash
@@ -363,7 +363,7 @@ EOF
 
 Removable-media *source paths* are stored in UTM's prefs
 (`…/Data/Library/Preferences/com.utmapp.UTM.plist`), keyed by the drive's
-`Identifier` — handy to confirm which ISO is actually inserted.
+`Identifier` - handy to confirm which ISO is actually inserted.
 
 ### Clear a stale boot entry (NVRAM reset)
 

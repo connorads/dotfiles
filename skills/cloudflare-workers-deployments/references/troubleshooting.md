@@ -77,7 +77,7 @@ allowBuilds:
   workerd: false
 ```
 
-- `false` keeps the script blocked but marks it intentional — the error goes
+- `false` keeps the script blocked but marks it intentional - the error goes
   away. Prefer this: esbuild/sharp/workerd ship platform binaries as optional
   dependencies and work without their scripts.
 - Only set `true` if the package genuinely needs its script, and treat that as
@@ -219,7 +219,7 @@ Dashboard shows `workers.dev: Disabled` next to the expected
 
 Meaning: a Git-connected Worker created through the dashboard has no
 workers.dev route until the first successful deploy flips it on. Often the
-"problem" resolves itself once a build goes green — check the actual state
+"problem" resolves itself once a build goes green - check the actual state
 before mutating:
 
 ```bash

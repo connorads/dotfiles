@@ -3,7 +3,7 @@
 ## Illegal states unrepresentable
 
 Model a lifecycle as a `Union` of frozen dataclasses, each carrying its own data
-and a `Literal` tag — not one class with a bag of optional fields and booleans.
+and a `Literal` tag - not one class with a bag of optional fields and booleans.
 The compiler then forbids the invalid combinations:
 
 ```python
@@ -41,7 +41,7 @@ For closed unions parsed from input, pydantic's discriminated unions
 
 A value object is defined by its attributes and is immutable.
 `@dataclass(frozen=True, slots=True)` gives value-equality, hashability, and
-immutability for free — the single most reusable Python modelling mechanic:
+immutability for free - the single most reusable Python modelling mechanic:
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -79,6 +79,6 @@ class Batch:
 
 `__hash__` heuristic: leave it as the default (identity hash) unless the entity is
 actually used in a `set`/`dict` *by value*; only then base it on a read-only id.
-Never hash on a mutable field — mutating it after insertion corrupts the
+Never hash on a mutable field - mutating it after insertion corrupts the
 container. Defining `__eq__` on a plain class drops the default `__hash__`, so set
 it explicitly when membership is needed.

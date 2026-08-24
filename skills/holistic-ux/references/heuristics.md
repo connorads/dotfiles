@@ -139,14 +139,14 @@ The user's understanding of how the system works.
 
 Quick reference for interface design evaluation:
 
-1. **Strive for consistency** — same actions, terminology, and layout across screens
-2. **Cater to universal usability** — accommodate novices and experts
-3. **Offer informative feedback** — every action should produce a visible response
-4. **Design dialogues to yield closure** — multi-step tasks need clear beginning, middle, end
-5. **Prevent errors** — design so errors can't happen, or are easy to recover from
-6. **Permit easy reversal of actions** — undo reduces anxiety and encourages exploration
-7. **Keep users in control** — they initiate actions, not the system
-8. **Reduce short-term memory load** — don't require users to remember info across screens
+1. **Strive for consistency** - same actions, terminology, and layout across screens
+2. **Cater to universal usability** - accommodate novices and experts
+3. **Offer informative feedback** - every action should produce a visible response
+4. **Design dialogues to yield closure** - multi-step tasks need clear beginning, middle, end
+5. **Prevent errors** - design so errors can't happen, or are easy to recover from
+6. **Permit easy reversal of actions** - undo reduces anxiety and encourages exploration
+7. **Keep users in control** - they initiate actions, not the system
+8. **Reduce short-term memory load** - don't require users to remember info across screens
 
 ---
 
@@ -154,9 +154,9 @@ Quick reference for interface design evaluation:
 
 ### Setup
 
-1. **Define scope** — which screens/flows to evaluate
-2. **Select heuristics** — Nielsen's 10 is standard; add Norman's if evaluating interaction quality
-3. **Prepare** — walk through the interface as a user first
+1. **Define scope** - which screens/flows to evaluate
+2. **Select heuristics** - Nielsen's 10 is standard; add Norman's if evaluating interaction quality
+3. **Prepare** - walk through the interface as a user first
 
 ### Evaluation
 
@@ -188,7 +188,7 @@ For each screen/interaction:
 - Multiple evaluators catch more issues (3-5 is ideal)
 - Focus on problems, not preferences ("I don't like the colour" isn't a heuristic violation)
 - Prioritise by severity, confidence, affected task, and cost of delay
-- Include positive findings too — what works well and why
+- Include positive findings too - what works well and why
 
 ---
 

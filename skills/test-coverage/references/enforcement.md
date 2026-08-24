@@ -73,7 +73,7 @@ steps {
 - `pnpm build` — catches static generation errors
 ```
 
-**Order tiers by speed.** Unit tests run first (fastest feedback). Integration and component tests depend on unit tests passing — no point running expensive tests if cheap ones fail.
+**Order tiers by speed.** Unit tests run first (fastest feedback). Integration and component tests depend on unit tests passing - no point running expensive tests if cheap ones fail.
 
 **Quiet on success is wrapper-level.** Run the hook with `hk run <hook> -q` (hk ≥ 1.51.0, owned by the hk skill): passing tests produce no output, only failures are visible.
 
@@ -332,23 +332,23 @@ For projects not yet at their target threshold.
    }
    ```
 
-5. **Never lower the threshold**: If a commit lowers coverage, fix it — add tests for the new code or adjust exclusions
+5. **Never lower the threshold**: If a commit lowers coverage, fix it - add tests for the new code or adjust exclusions
 
 ### Ratcheting rules
 
-- **Let the raise ride along in the PR that earned it.** With the runner's built-in auto-raise (below), the bumped floor lands in that PR's own diff — reviewed with the tests that justify it. Only when ratcheting by hand, do it as a deliberate step (never let a red PR lower the floor); an auto-raise that only ever raises is safe to run locally.
+- **Let the raise ride along in the PR that earned it.** With the runner's built-in auto-raise (below), the bumped floor lands in that PR's own diff - reviewed with the tests that justify it. Only when ratcheting by hand, do it as a deliberate step (never let a red PR lower the floor); an auto-raise that only ever raises is safe to run locally.
 - **Document each ratchet.** The comment on the threshold line should include the date and what was added.
 - **Set a target date.** "100% by end of Q2" gives the team a goal to work toward.
 - **Protect against gaming.** Deleting tested code raises the percentage but doesn't improve quality. Review PRs that significantly change coverage.
 
 ### Automated ratcheting (prefer the runner's built-in)
 
-Reach for the runner's own auto-raise before hand-rolling a script — Vitest's
+Reach for the runner's own auto-raise before hand-rolling a script - Vitest's
 `coverage.thresholds.autoUpdate: true` (flat `thresholdAutoUpdate` pre-1.0)
 rewrites the threshold values in the config file whenever measured coverage
 beats them. It **only ever raises**, so it's safe to run locally: the bumped
 floor lands in the diff of the PR that earned the coverage, and rides along in
-that PR — no separate job.
+that PR - no separate job.
 
 ```ts
 // vitest.config.ts
@@ -366,7 +366,7 @@ bump. That pattern needs write-to-`main` permissions, adds a main-only job, and
 keeps the number in a **separate baseline file that silently drifts** from
 reality (a real case: a stale baseline claimed 34% while the suite actually
 measured 65%, so the "protective" floor governed nothing). Keeping the floor in
-the test config — the single source of truth the suite re-measures every run —
+the test config - the single source of truth the suite re-measures every run -
 removes the drift and the extra job.
 
 Only fall back to a custom script (`jq` the summary + rewrite the config) when
@@ -396,4 +396,4 @@ When setting up a new project:
 1. Use test-coverage to establish the test architecture (tiers, configs, thresholds)
 2. Use hk to wire the coverage commands into pre-commit hooks
 3. Use test-coverage to set up CI coverage reporting
-4. Quieting is hk's wrapper-level `-q` — the hk skill owns it, test-coverage just assumes clean success output
+4. Quieting is hk's wrapper-level `-q` - the hk skill owns it, test-coverage just assumes clean success output

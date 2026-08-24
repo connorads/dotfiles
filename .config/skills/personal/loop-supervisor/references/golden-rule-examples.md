@@ -1,10 +1,10 @@
 # Golden Rule Examples
 
-The golden rule is the one-line frame for the supervisor — what's
+The golden rule is the one-line frame for the supervisor - what's
 inside its domain and what's outside. It's load-bearing: every
 ambiguous judgement call during supervision should trace back to it.
 
-Use these as seed material for the interview. Offer 2–3 as prompts
+Use these as seed material for the interview. Offer 2-3 as prompts
 and let the user adapt one, or write their own.
 
 ## By project shape
@@ -16,7 +16,7 @@ and let the user adapt one, or write their own.
 > interpreting results is the inner loop's job.
 
 *Source: hackmonty. The clean harness/research split made
-supervision predictable — when a question came up, the rule
+supervision predictable - when a question came up, the rule
 answered it.*
 
 ### Source-port / long-running multi-lane projects
@@ -71,9 +71,9 @@ the supervisor is essentially a second pair of hands.*
 
 Every good golden rule says two things:
 
-1. **What's yours** — usually some variant of "harness", "infra",
+1. **What's yours** - usually some variant of "harness", "infra",
    "loop rhythm", "unblock"
-2. **What's theirs** — usually some variant of "the actual work",
+2. **What's theirs** - usually some variant of "the actual work",
    "domain decisions", "the research / code / content"
 
 If the rule only says what's yours, the supervisor will drift into
@@ -81,5 +81,5 @@ loop-domain work when things get hard. If it only says what's
 theirs, the supervisor won't know when it's allowed to act.
 
 Keep it one sentence. The moment it becomes a paragraph, it stops
-being a *rule* and starts being a *policy* — and policies get
+being a *rule* and starts being a *policy* - and policies get
 skimmed, not internalised.

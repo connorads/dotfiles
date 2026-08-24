@@ -16,10 +16,10 @@ checkout in `~/.config/tmux/plugins/<name>` to its pinned sha (detached HEAD).
 
 The immutable sha is the supply-chain control: upstream authors cannot move a
 commit hash the way they can move a branch or tag. `prefix + U` (TPM update) is
-inert on detached HEADs — the pin bump is the only update path.
+inert on detached HEADs - the pin bump is the only update path.
 
-**Scope:** only the `pin_tmux_plugin` git-checkout plugins. Out of scope —
-and invisible to `tmux-upstream` — are `tmux-fingers` (nixpkgs package
+**Scope:** only the `pin_tmux_plugin` git-checkout plugins. Out of scope -
+and invisible to `tmux-upstream` - are `tmux-fingers` (nixpkgs package
 symlinked from the store; updated by the flake bump) and the vendored
 `scripts/cmd-palette.sh` (which replaced the tmux-command-palette plugin;
 edited in place, not pulled from upstream).

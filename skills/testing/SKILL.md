@@ -51,30 +51,30 @@ What is the task?
 ## Types Before Tests
 
 The cheapest test is one you never write because the bug cannot compile. Before
-testing an invariant, ask whether a type can make the bad state unrepresentable
-— a constrained type with a smart constructor, a union per lifecycle state,
+testing an invariant, ask whether a type can make the bad state unrepresentable -
+a constrained type with a smart constructor, a union per lifecycle state,
 `NonEmptyList` for "at least one". If it can, change the type instead: that is a
 compile-time check that deletes a whole class of guard tests.
 
 - **Don't test what the type forbids.** Feeding illegal values to an internal
   function that cannot receive them tests the language, not your code. Validate
-  once at a boundary parser / smart constructor, and trust the type inward — an
+  once at a boundary parser / smart constructor, and trust the type inward - an
   always-valid model needs no defensive re-tests at every layer.
 - **Relocate, don't delete.** Making a value a type moves the tests to the
-  constructor — but test the rules *you* authored, not the engine. A hand-rolled
+  constructor - but test the rules *you* authored, not the engine. A hand-rolled
   smart constructor is logic you wrote: cover valid-accepted, invalid-rejected,
   and edges. A schema-library parser (zod, valibot, pydantic) is declarative
   config over a pre-tested engine: test only your custom refinements, transforms,
-  and cross-field constraints — re-testing the library's primitives is testing
+  and cross-field constraints - re-testing the library's primitives is testing
   the framework. Downstream code then needs no tests for inputs it can't hold.
 - **The guarantee is only as strong as the boundary.** Where types are erased at
   runtime (TypeScript), "trust the type inward" holds only if the boundary did a
-  real runtime parse — a schema library, not a cast (`as`) or `any`. A type is a
+  real runtime parse - a schema library, not a cast (`as`) or `any`. A type is a
   compile-time claim the parser makes true at runtime. What no library covers:
-  whether your schema matches what the producer actually sends — guard that drift
+  whether your schema matches what the producer actually sends - guard that drift
   with a contract test or a captured sample (see Contract Testing).
 - **Define errors out of existence, too.** Redefining an operation so the edge
-  case is normal — a total function over a tested special case — deletes its
+  case is normal - a total function over a tested special case - deletes its
   edge-case test with it. Design mechanic in `architecture` → Error Handling.
 
 ## Choosing the Layer
@@ -96,19 +96,19 @@ tests to assert wiring that only fails when components are composed.
 
 The "unit" worth testing is a *behaviour through a stable public contract*, not a
 layer or a class (Ian Cooper, "TDD, Where Did It All Go Wrong"). So don't pick a
-layer — **aim each test at the deepest stable interface that keeps setup cheap and
+layer - **aim each test at the deepest stable interface that keeps setup cheap and
 failures localised**; the level you land on is a consequence, not a goal.
 
-- **Depth, not height, buys refactor-resilience.** A deep module — a narrow
-  interface over a rich, churning implementation — changes its interface rarely
+- **Depth, not height, buys refactor-resilience.** A deep module - a narrow
+  interface over a rich, churning implementation - changes its interface rarely
   while its body churns, so a test pinned to that interface survives the refactor
   and still exercises everything behind it (`architecture` → Module Depth). A
   *shallow* interface is never a good target: make the module deep first, or test
   the pure core beneath it. Tests bound to internal structure (class shape,
-  private methods) are glue that pins the design — the cost this rule avoids.
+  private methods) are glue that pins the design - the cost this rule avoids.
 - **Push combinatorial coverage down to the pure core.** A pure function's
   signature is already a stable contract, so cover branchy logic (pricing, rules
-  matrices, parsers) directly with table or property-based tests — don't enumerate
+  matrices, parsers) directly with table or property-based tests - don't enumerate
   its cases through a deep facade, which adds setup, blurs shrinking, and buries
   the failure.
 - **Keep a low-gear inner loop while a contract is molten.** Testing close to the
@@ -118,7 +118,7 @@ failures localised**; the level you land on is a consequence, not a goal.
 
 "Stable" is an end-state: while the contract churns, low gear is correct, not a
 fallback. Exercise the stable interface heavily for representative behaviours and
-integration — but it is only genuinely cheap once builders/fakes make the arrange
+integration - but it is only genuinely cheap once builders/fakes make the arrange
 step cheap.
 
 ### Shell, zsh and POSIX sh testing
@@ -210,7 +210,7 @@ collaboration.
   mocking.
 
 **The mirror-test trap:** a test that mocks the very collaborator whose
-behaviour it claims to verify proves *wiring*, not behaviour — and stays green
+behaviour it claims to verify proves *wiring*, not behaviour - and stays green
 when the real behaviour breaks. A handler test that stubs `validateBooking` to
 return a rejection and then asserts the handler returns `400` never exercises
 the real rule: delete the rule and the test still passes, because the test
@@ -232,12 +232,12 @@ Use property-based tests when examples under-sample the behaviour:
 Write properties as invariants over generated inputs, not randomised examples.
 Keep generators valid by construction where possible. When an invariant is
 *structural* (non-empty, bounded, exactly-one), prefer encoding it as a type
-(e.g. `NonEmptyList`) over a "never empty" property — a compile-time guarantee
+(e.g. `NonEmptyList`) over a "never empty" property - a compile-time guarantee
 beats a sampled one and needs no generator. Keep named example tests
 for edge cases and regression stories; use property tests to explore the input
 space around them.
 
-Failures shrink automatically to a minimal counterexample — persist that case
+Failures shrink automatically to a minimal counterexample - persist that case
 as a regression example so the specific failure is checked deterministically
 forever. For stateful systems, generate a sequence of operations and check them
 against a simple in-memory model (model-based testing).
@@ -248,16 +248,16 @@ shrinking, stateful/model-based testing, CI integration, and pitfalls.
 
 ## Differential & Metamorphic Testing
 
-Use these when there is **no reliable oracle** — you cannot state the correct
+Use these when there is **no reliable oracle** - you cannot state the correct
 output, only relationships between outputs. They are the backbone of compiler,
 parser, database, numeric, and ML testing.
 
 - **Differential:** run the same input through two independent implementations
   (or old vs new version) and assert they agree. Cheap and powerful for safe
-  refactors and for parsers/compilers — keep the reference implementation as the
+  refactors and for parsers/compilers - keep the reference implementation as the
   oracle.
 - **Metamorphic:** assert a *relation* between related inputs when no single
-  output is checkable — `sin(x) == sin(pi - x)`; permuting training data should
+  output is checkable - `sin(x) == sin(pi - x)`; permuting training data should
   not change a model's accuracy; add-then-remove restores state. Usually
   expressed as a property (see above), so reach for your PBT framework.
 
@@ -265,7 +265,7 @@ parser, database, numeric, and ML testing.
 
 Snapshot tools (Jest/Vitest snapshots, insta for Rust, syrupy for Python,
 ApprovalTests) record output and diff future runs against it. Useful for large,
-semantically meaningful serialised output — but they fail *open* and degrade:
+semantically meaningful serialised output - but they fail *open* and degrade:
 
 - **Snapshot rot / rubber-stamping:** when a snapshot breaks, the path of least
   resistance is update-and-merge, so the snapshot ends up asserting "what the
@@ -293,7 +293,7 @@ A test with no assertion only proves "it did not throw". Make each test's
 assertions name the behaviour they protect. As a cheap guard, flag
 assertion-free tests in lint/CI (e.g. ESLint `jest/expect-expect`, or AST/grep
 checks for test functions lacking `assert`/`expect`/`require`). Assertion
-*count* is a weak, gameable proxy — the rigorous measure of "do my assertions
+*count* is a weak, gameable proxy - the rigorous measure of "do my assertions
 actually catch bugs" is **mutation testing**, owned by the test-coverage skill.
 
 ## Contract Testing
@@ -332,7 +332,7 @@ needed for confidence.
 ## Flaky Tests
 
 A flaky test (passes and fails on the same code) erodes trust in the whole
-suite. **Retry-to-green is an anti-pattern** — auto-rerunning until a pass hides
+suite. **Retry-to-green is an anti-pattern** - auto-rerunning until a pass hides
 a real defect (usually a race, shared state, or order-dependency) and lets it
 ship.
 
@@ -341,7 +341,7 @@ ship.
   order-dependence). CI test-analytics (Datadog, Buildkite, GitHub) track
   per-test pass/fail history over time.
 - **Quarantine, then fix:** move a confirmed-flaky test out of the blocking gate
-  into a tracked quarantine with an owner and a deadline — do not `skip` and
+  into a tracked quarantine with an owner and a deadline - do not `skip` and
   forget, and do not leave it blocking the build. Root-cause it: timing, shared
   state, network, or nondeterministic ordering.
 - **Bounded polling is not retry-to-green.** Polling a genuinely asynchronous
@@ -354,13 +354,13 @@ time/network coupling (see Core Rules).
 
 ## References
 
-- [property-based-testing.md](references/property-based-testing.md) —
+- [property-based-testing.md](references/property-based-testing.md) -
   Per-ecosystem PBT frameworks, shrinking, stateful/model-based testing, CI
   integration, and pitfalls.
 - [scenario-testing.md](references/scenario-testing.md) - Critical-journey
   selection, setup/cleanup through public surfaces, external fakes, accessible
   selectors, runtime policy, and anti-patterns for scenario/e2e suites.
-- [shell-testing.md](references/shell-testing.md) — Bats/ShellSpec/shUnit2/cram
+- [shell-testing.md](references/shell-testing.md) - Bats/ShellSpec/shUnit2/cram
   trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, and keeping
   suites fast (parallelism, fixture amortisation, removing time-coupling).
 - For coverage reports, thresholds, exclusions, **mutation testing**, fuzzing,

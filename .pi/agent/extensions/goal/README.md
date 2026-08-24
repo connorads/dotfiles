@@ -1,6 +1,6 @@
 # goal
 
-A `/goal` command for pi — set a persistent objective that's re-stated to the model
+A `/goal` command for pi - set a persistent objective that's re-stated to the model
 every turn (so it never drifts and **survives context compaction**) and, by default,
 **self-drives**: the agent keeps working toward the objective each turn until it's
 complete, blocked, or out of budget. Inspired by OpenAI Codex's `/goal`, built as a
@@ -28,13 +28,13 @@ steer-only by default (a budget flag or `--auto` still opts an individual goal i
 
 While a goal self-drives the model is given two tools:
 
-- `update_goal{status:"complete"|"blocked", summary}` — the only way the model ends the
+- `update_goal{status:"complete"|"blocked", summary}` - the only way the model ends the
   loop early. `complete` requires the evidence-based completion audit to pass; `blocked`
   requires the 3-consecutive-turn blocked audit. A `complete` whose own summary admits
   unfinished work (failing tests, TODOs, "partial", "not done") is rejected.
-- `get_goal{}` — read the objective, status, and remaining token/iteration budget.
+- `get_goal{}` - read the objective, status, and remaining token/iteration budget.
 
-Press `Esc` to stop the agent — that **pauses** a self-driving goal (the aborted turn is
+Press `Esc` to stop the agent - that **pauses** a self-driving goal (the aborted turn is
 not counted). Sending your own message also pauses it (you've taken over); `/goal resume`
 hands control back to the loop with a fresh runway.
 
@@ -42,27 +42,27 @@ A widget above the editor shows the objective, status, and budget at all times.
 
 ## How it works
 
-- **Persistence / event sourcing** — every command and observation appends an immutable
+- **Persistence / event sourcing** - every command and observation appends an immutable
   `goal` custom entry to the session (`pi.appendEntry`): `set` (carrying the resolved
   mode), `edit`, `pause`, `resume`, `clear`, `progress` (per-turn token metering), and
   `status` (lifecycle transitions with a structured reason). Current state is a
   latest-wins fold over the current branch's entries (`reduceGoal`). Because the budget,
   iteration, and no-progress counters live in this log, they stay correct **by
-  construction** across reload, compaction, `/fork`, and `/tree` — there is no parallel
+  construction** across reload, compaction, `/fork`, and `/tree` - there is no parallel
   in-memory store to drift.
-- **Steering (the anchor)** — while a goal is active, `before_agent_start` appends a fixed
+- **Steering (the anchor)** - while a goal is active, `before_agent_start` appends a fixed
   `<active_goal>` block to the system prompt. The system prompt is regenerated each turn
   and is *not* compactable history, which is what makes the goal compaction-proof. The
-  anchor is a pure function of `(objective, mode kind)` only — no counters — so it is
+  anchor is a pure function of `(objective, mode kind)` only - no counters - so it is
   byte-stable and written to the prompt cache once, then read every turn. Auto mode adds
   the static completion/blocked audit here; steer mode is exactly the v1 anchor.
-- **Self-driving (the loop)** — after each run (`agent_end`) the engine meters the turn,
+- **Self-driving (the loop)** - after each run (`agent_end`) the engine meters the turn,
   folds the new state, and runs a pure truth table (`decideContinuation`) to decide
   whether to queue a follow-up "continuation" message (`sendUserMessage`, `followUp`) that
   triggers the next turn. The volatile budget countdown + update_goal nudge are injected
   per-turn into the live message list via the `context` event (never the cached system
   prompt), so the cache prefix stays stable.
-- **Guard set** — the runtime imposes no recursion cap; the stop condition is entirely
+- **Guard set** - the runtime imposes no recursion cap; the stop condition is entirely
   ours, so the loop bakes in the full set: a token **budget** (one wrap-up turn, then
   stop), a **max-iteration** backstop, a **no-progress** guard (3 consecutive low-output
   turns), a **context-full** guard (95%), a **cooldown** between turns, an in-flight
@@ -75,9 +75,9 @@ A widget above the editor shows the objective, status, and budget at all times.
 |---|---|---|
 | Token budget | `200_000` | `--tokens` |
 | Max iterations | `25` | `--max-iterations` |
-| No-progress | output `<50` tokens × `3` turns | — |
-| Context-full pause | `95%` | — |
-| Continuation cooldown | `~2s` | — |
+| No-progress | output `<50` tokens × `3` turns | - |
+| Context-full pause | `95%` | - |
+| Continuation cooldown | `~2s` | - |
 | Auto vs steer | auto | `--steer-only`, or global `--no-auto` |
 
 ### Lifecycle & edge cases
@@ -101,8 +101,8 @@ A widget above the editor shows the objective, status, and budget at all times.
   renderers) lives in [`prompts.ts`](./prompts.ts), which imports `core.ts` one-way
   (`core.ts` imports nothing back). All pi I/O, the clock, and timers sit behind a port.
 - **A domain-named port, not a structural `Pick`.** The loop depends on
-  [`GoalRuntime`](./runtime.ts) — verbs like `record`, `sendContinuation`,
-  `contextPercent`, `now`, `sleep` — so it is tested against a type-honest in-memory fake
+  [`GoalRuntime`](./runtime.ts) - verbs like `record`, `sendContinuation`,
+  `contextPercent`, `now`, `sleep` - so it is tested against a type-honest in-memory fake
   with **no `as` cast**. Rejected alternatives: a flag-bag of booleans on the engine (hides
   illegal states) and `Pick<ExtensionAPI, …>` (couples the engine to pi's surface and the
   cast that comes with faking it). The real adapter (`createPiRuntime`) is the only place
@@ -111,7 +111,7 @@ A widget above the editor shows the objective, status, and budget at all times.
   *nowhere* to hold a budget/iteration counter; `status` and `GoalEvent` are discriminated
   unions; a new event variant is a compile error via `assertNever`.
 - **Parse, don't cast.** `parseGoalEvent` validates every persisted entry (replacing v1's
-  `entry.data as GoalEvent`) and migrates a v1 `set` with no mode to steer-only — so an
+  `entry.data as GoalEvent`) and migrates a v1 `set` with no mode to steer-only - so an
   existing goal never starts self-driving by surprise on upgrade.
 - **Plain JSON Schema tool params (one documented cast).** The `update_goal`/`get_goal`
   tools pass plain JSON Schema objects rather than importing TypeBox. pi's validator
@@ -136,15 +136,15 @@ node --test core.test.ts prompts.test.ts index.test.ts
 # or: pnpm test
 ```
 
-- `core.test.ts` — parsing (incl. invalid-vs-absent option results and old-shape rejection
+- `core.test.ts` - parsing (incl. invalid-vs-absent option results and old-shape rejection
   in `parseGoalEvent`), `reduceGoal` (mode init, progress/no-progress, resume reset, branch
   slices), the full `decideContinuation` truth table + precedence, `decideCompletion` ±,
   metering + `classifyError`, plus seeded **property-based** tests (zero-dep mulberry32) for
   the reduce invariants, options round-trip, and decision precedence.
-- `prompts.test.ts` — the renderers: anchor byte-stability (cache-stable per objective/mode),
+- `prompts.test.ts` - the renderers: anchor byte-stability (cache-stable per objective/mode),
   tail content (budget countdown + `update_goal` nudge, never the objective), `renderGoalStatus`,
   and the continuation kick.
-- `index.test.ts` — the engine driven against a type-honest fake `GoalRuntime` (set →
+- `index.test.ts` - the engine driven against a type-honest fake `GoalRuntime` (set →
   continuation; budget wrap-up then stop; no-progress → stuck; max-iter; context-full;
   abort; fatal → blocked; human takeover; dedup; update_goal accept/reject; steer-only;
   anchor/tail presence; resume; session_tree), plus a pi+ctx fake that drives the real
@@ -152,7 +152,7 @@ node --test core.test.ts prompts.test.ts index.test.ts
 
 ### Typecheck
 
-A strict `tsgo` (`@typescript/native-preview`) pass guards the types — `tsc` reports
+A strict `tsgo` (`@typescript/native-preview`) pass guards the types - `tsc` reports
 identical results:
 
 ```sh
@@ -162,8 +162,8 @@ pnpm typecheck  # tsgo -p tsconfig.json
 
 The **runtime** stays dependency-free (the only runtime imports are the first-party
 `./core.ts`/`./prompts.ts`; pi and typebox are type-only, erased). The typecheck
-`devDependencies` — `@earendil-works/pi-coding-agent` (pinned to the running runtime so
-the pi API surface is checked for real), `typebox`, `@types/node`, and `tsgo` — are dev
+`devDependencies` - `@earendil-works/pi-coding-agent` (pinned to the running runtime so
+the pi API surface is checked for real), `typebox`, `@types/node`, and `tsgo` - are dev
 tooling only; they are never imported at runtime and `node --test` needs none of them.
 
 Live smoke: `/goal --tokens 1k "tiny task"` → watch one continuation, the budget wrap-up

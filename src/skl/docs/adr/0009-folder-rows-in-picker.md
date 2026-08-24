@@ -14,7 +14,7 @@ a folder row `source/  (count)`, then that source's skills. One gesture, `enter`
 does the object-appropriate thing:
 
 - folder row `elevenlabs/  (5)` → loads the whole group (the row's first token is
-  `elevenlabs/`, which `resolveRefs` already expands to every member — ADR-0008).
+  `elevenlabs/`, which `resolveRefs` already expands to every member - ADR-0008).
 - skill row `elevenlabs/agents` → loads that one.
 
 This replaces the bespoke group keys with recognition over recall (a file-manager
@@ -29,7 +29,7 @@ Folder-row construction lives in **skl core** (`skillsToLinesWithFolders`,
 Two smaller fixes fold in:
 
 - **Search is scoped to the ref** (`--nth=1`), not the hidden description. Fuzzy-
-  matching the description shattered grouping — typing `elev` dragged in unrelated
+  matching the description shattered grouping - typing `elev` dragged in unrelated
   skills whose *description* contained the subsequence, orphaned under the wrong
   header. Ref-scoped search keeps groups honest. Fuzzy (not `--exact`) stays: good
   matches rank top; a few weak cross-source subsequence matches (a source prefix
@@ -39,7 +39,7 @@ Two smaller fixes fold in:
   default.
 
 **Group-install confirm.** `alt-i` on a folder installs the whole group, and
-`--stdin` skips skl's own whole-source confirm (`cli.ts` — selection *is* the
+`--stdin` skips skl's own whole-source confirm (`cli.ts` - selection *is* the
 confirmation for concrete rows). So `bin/pick` guards group installs in the popup's
 real TTY: if any selected ref ends with `/`, it lists the group ref(s) and prompts
 before `skl install --stdin`. Concrete-only selections install as before.
@@ -55,6 +55,6 @@ before `skl install --stdin`. Concrete-only selections install as before.
 
 ## Note on ADR-0008
 
-ADR-0008 parked "nested display within a source". This ADR does *not* nest — it
+ADR-0008 parked "nested display within a source". This ADR does *not* nest - it
 adds a flat folder row per source, which is the group-as-entry the picker needed
 without a tree.

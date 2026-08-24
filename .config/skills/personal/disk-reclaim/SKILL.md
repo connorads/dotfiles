@@ -3,7 +3,7 @@ name: disk-reclaim
 description: >-
   Finds what is consuming disk space on this Mac and reclaims it safely. Use
   when the disk is low or full, or the user asks to analyse disc usage, find
-  what's eating space, free up space, or clean up their Mac — including
+  what's eating space, free up space, or clean up their Mac - including
   mentions of ncdu, du, dust, or "startup disk full". Not for pruning a single
   project's build output, or for disk on a remote server.
 ---
@@ -93,7 +93,7 @@ before you reach it (9.1G of `system-images`, `ndk` and `emulator` sat under a
 `sdkmanager` that could not run). Hand-delete those, leaving the
 package-manager-owned `cmdline-tools` alone.
 
-**Ask before deleting anything in `~/Downloads`** — it mixes all three classes.
+**Ask before deleting anything in `~/Downloads`** - it mixes all three classes.
 Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
 the user's call, however obviously disposable it looks.
 
@@ -173,12 +173,12 @@ project cleaner or its docs, where present, is the fastest classifier.
   tool still references it (`mise ls <tool>`) before treating it as
   re-downloadable and removing it after a nod. If a legacy
   `~/.local/share/mise/http-tarballs` dir still exists
-  (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there — read
+  (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there - read
   an entry's `metadata.json` before removing it.
 - **APFS local snapshots pin deleted blocks.** After big deletions the `df`
   figure can refuse to move: Time Machine local snapshots keep the old blocks
   live. Inspect with `tmutil listlocalsnapshots /`; reclaim with
-  `tmutil thinlocalsnapshots / <bytes> 4`, or wait — macOS thins them under
+  `tmutil thinlocalsnapshots / <bytes> 4`, or wait - macOS thins them under
   pressure. Never quote purgeable or snapshot space as a saving; it is not
   yours to promise.
 - **`/nix/store` size is not reclaimable space.** Most of it is live. Trust
@@ -194,7 +194,7 @@ project cleaner or its docs, where present, is the fastest classifier.
   apparent against 38G allocated, and a sparse file only grows, so
   `docker system prune` frees blocks inside the guest filesystem while the host
   allocation stays put. Only `colima delete` (or the Podman equivalent) returns
-  host bytes, and it discards every image, container and volume — a nod, never
+  host bytes, and it discards every image, container and volume - a nod, never
   a default. Never quote a VM disk's size as reclaimable; like `/nix/store`,
   the estimate would equal the total.
   `colima delete` also leaves the *named data disk* behind (`colima list` goes
@@ -207,7 +207,7 @@ project cleaner or its docs, where present, is the fastest classifier.
   can print nothing while gigabytes sit in `$(brew --cache)/downloads`. Use
   `cleanup --target brew` (or `brew cleanup --prune=all -n`) for the true
   figure.
-- **Steam: uninstall in the app**, never delete `steamapps/common/*` — the
+- **Steam: uninstall in the app**, never delete `steamapps/common/*` - the
   manifests desync. Usually the largest single win, and the user must do it.
 - **Yarn v1:** do not probe `yarn cache clean` with `--help` - it runs the
   cleaner. Use `yarn cache --help` to inspect the parent command instead.

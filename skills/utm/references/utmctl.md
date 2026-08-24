@@ -1,10 +1,10 @@
 # utmctl reference (as of UTM 4.7.x; verify with `utmctl version` / UTM > About)
 
 Binary: `/Applications/UTM.app/Contents/MacOS/utmctl`. Thin client over the
-AppleScript bridge — drives a running UTM.app and launches it if needed.
+AppleScript bridge - drives a running UTM.app and launches it if needed.
 
 Global flags on every VM-targeting subcommand: `-d/--debug`, `--hide` (hide the
-UTM window — cosmetic only, not headless).
+UTM window - cosmetic only, not headless).
 
 `<identifier>` = VM UUID or the exact, complete VM name.
 
@@ -32,7 +32,7 @@ UTM window — cosmetic only, not headless).
 - `exec` argv quoting: each `--cmd` is one argv element, e.g.
   `--cmd /bin/sh --cmd -c --cmd 'echo $HOME'`.
 - `start --disposable` ↔ AppleScript `start ... saving:false`.
-- No create/import/export/configure — AppleScript only.
+- No create/import/export/configure - AppleScript only.
 
 ## Wait-for-boot pattern
 
@@ -46,7 +46,7 @@ done
 ssh "user@$IP" 'uname -a'
 ```
 
-For guests without an agent (Windows ARM), poll the SSH port instead — the
+For guests without an agent (Windows ARM), poll the SSH port instead - the
 shared-network guest IP (`until nc -z -G 3 192.168.64.2 22; do sleep 5; done`)
 or a forwarded port (`until nc -z 127.0.0.1 2222; do sleep 3; done`). See
 windows.md for both networking paths.

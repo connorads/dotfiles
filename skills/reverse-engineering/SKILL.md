@@ -108,7 +108,7 @@ reference.
    version manager needs an explicit Go invocation.
 
 8. Recover metadata with at least two independent paths where practical.
-   A parser failure — or an empty search result — is evidence about your tool and
+   A parser failure - or an empty search result - is evidence about your tool and
    your command, not proof that the thing is absent. A mistyped path, a glob the
    shell ate, or a wrong `--include` is silent in exactly the same way as genuine
    absence, so reproduce a negative a second way before reporting it. Record
@@ -116,8 +116,8 @@ reference.
 
 9. Use raw strings as leads. For important literals, confirm offsets,
    pointer/length use, xrefs, or reachable code flow before claiming runtime use.
-   Search to locate, read to quote: take load-bearing literals — hostnames, keys,
-   field names, numeric constants — from the file itself, not from the terminal
+   Search to locate, read to quote: take load-bearing literals - hostnames, keys,
+   field names, numeric constants - from the file itself, not from the terminal
    output of a search pipeline.
 
 10. Import recovered names and types into a workbench only after container and
@@ -152,7 +152,7 @@ warrant. Where a claim is load-bearing, establish it both ways.
 
 A network API has a second evidence source the binary cannot provide: the server
 itself. Probing is not running the target, and it settles what static analysis
-cannot — which inputs are genuinely required, what the real limits are, and
+cannot - which inputs are genuinely required, what the real limits are, and
 whether something you could not find exists after all.
 
 It is also the only step here that writes to infrastructure you do not own.

@@ -17,14 +17,14 @@ not raw `dict[str, Any]` threaded through the whole app.
 | `make_x(...)` / `create_x(...)` | smart constructor from already-typed pieces |
 | `is_x(value) -> bool` | a true predicate (annotate `TypeGuard`/`TypeIs` when it narrows) |
 
-Avoid `validate_x` when the function returns a refined value — it parsed
+Avoid `validate_x` when the function returns a refined value - it parsed
 something; name it for what it produced. Pydantic `field_validator`s are the
 exception: that *is* the parser, named by the library.
 
 ## Schemas as boundary parsers
 
 Use a schema library at the boundary to produce refined/domain types and typed
-errors — not as ad-hoc checks sprinkled through core logic.
+errors - not as ad-hoc checks sprinkled through core logic.
 
 **Ladder:** repo's established library > pydantic v2 (`BaseModel`,
 `model_validate`, `field_validator`/`model_validator`, `computed_field`) >
@@ -44,12 +44,12 @@ class CreateUserDto(BaseModel):
         return v
 ```
 
-A schema library's primitives are pre-tested — don't re-test them. Test the rules
+A schema library's primitives are pre-tested - don't re-test them. Test the rules
 *you* add (validators, transforms, cross-field `model_validator`s); the engine is
-not your code. A hand-written smart constructor, by contrast, is your logic — test
+not your code. A hand-written smart constructor, by contrast, is your logic - test
 it. See the `testing` skill (Types Before Tests).
 
-## Branded primitives — and where it stops
+## Branded primitives - and where it stops
 
 `typing.NewType` distinguishes meaningful ids at zero runtime cost:
 
@@ -69,7 +69,7 @@ complexity, not safety. Record the trade-off rather than wrapping everything.
 
 ## Push optionality and partiality outward
 
-Avoid `Optional`/`None` parameters in functions that require a value — branch or
+Avoid `Optional`/`None` parameters in functions that require a value - branch or
 parse before calling. Prefer an explicit input dataclass per operation over a
 loose `dict` or a pile of keyword arguments:
 

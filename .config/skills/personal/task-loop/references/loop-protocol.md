@@ -1,7 +1,7 @@
 # Loop Protocol Template
 
 Core protocol for PROMPT.md generation. Adapt this template to the
-specific backlog — don't copy verbatim. Each backlog has different
+specific backlog - don't copy verbatim. Each backlog has different
 verification needs, reference material, and dependency structures.
 
 ## Template
@@ -67,7 +67,7 @@ When generating PROMPT.md from this template, adapt these sections:
 
 Replace `<name>` with the actual directory name.
 
-### Protocol — dependency handling
+### Protocol - dependency handling
 
 If the backlog has a dependency graph, add to the "pick next task" step:
 
@@ -82,11 +82,11 @@ If the backlog has a dependency graph, add to the "pick next task" step:
 
 Extract verification rules from the backlog. Sources:
 
-1. **Global "How to Use" section** — if the backlog has a global
+1. **Global "How to Use" section** - if the backlog has a global
    verification workflow, summarise it here
-2. **Per-task verification** — if tasks have different verification
+2. **Per-task verification** - if tasks have different verification
    needs, add a "minimum per change type" table
-3. **Referenced docs** — if the backlog references external docs
+3. **Referenced docs** - if the backlog references external docs
    (e.g. `docs/figma-workflow.md`), add them here
 
 Example adaptation for a Figma-based backlog:

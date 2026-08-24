@@ -23,7 +23,7 @@
 
 Criterion-by-criterion reference for WCAG 2.2 Level A and AA. Level AAA included where commonly implemented. Focus is on practical pass/fail examples, not abstract definitions.
 
-Conformance target for most projects: **WCAG 2.2 AA**. It underpins the common legal baselines — ADA, Section 508 (US federal), and the European Accessibility Act. WCAG 2.2 has no **4.1.1 Parsing** criterion (markup parsing is handled by modern browsers and AT); disregard audit findings that cite it.
+Conformance target for most projects: **WCAG 2.2 AA**. It underpins the common legal baselines - ADA, Section 508 (US federal), and the European Accessibility Act. WCAG 2.2 has no **4.1.1 Parsing** criterion (markup parsing is handled by modern browsers and AT); disregard audit findings that cite it.
 
 ---
 
@@ -70,13 +70,13 @@ Alt text should convey the **purpose and meaning**, not describe the picture lit
 - Pre-recorded audio: provide a text transcript
 - Pre-recorded video (no audio): provide audio description or text equivalent
 
-**1.2.2 Captions — Pre-recorded (A)**
-All pre-recorded video with audio must have synchronised captions. Auto-generated captions alone (YouTube, etc.) are insufficient — they must be reviewed for accuracy.
+**1.2.2 Captions - Pre-recorded (A)**
+All pre-recorded video with audio must have synchronised captions. Auto-generated captions alone (YouTube, etc.) are insufficient - they must be reviewed for accuracy.
 
 **1.2.3 Audio Description (A)**
 Pre-recorded video must have audio description or a text alternative where visual content conveys information not in the audio track.
 
-**1.2.4 Captions — Live (AA)**
+**1.2.4 Captions - Live (AA)**
 Live synchronised media (webinars, live streams) with audio must have real-time captions.
 
 **1.2.5 Audio Description (AA)**
@@ -213,7 +213,7 @@ When additional content appears on hover or focus (tooltips, sub-menus):
 ```
 
 **Colour preferences and forced colours (best practice beyond a single criterion)**
-Honour `prefers-color-scheme` for dark mode and `prefers-contrast: more` where you offer it. Under Windows High Contrast / `forced-colors: active`, the OS swaps your palette for a limited system set — test there, use CSS system-colour keywords for essential borders and icons, and never suppress it with `forced-color-adjust: none` on meaningful content. `box-shadow`-only focus rings and CSS `background-image` icons disappear in forced-colors mode; provide an `outline` and real `<img>`/SVG fallback.
+Honour `prefers-color-scheme` for dark mode and `prefers-contrast: more` where you offer it. Under Windows High Contrast / `forced-colors: active`, the OS swaps your palette for a limited system set - test there, use CSS system-colour keywords for essential borders and icons, and never suppress it with `forced-color-adjust: none` on meaningful content. `box-shadow`-only focus rings and CSS `background-image` icons disappear in forced-colors mode; provide an `outline` and real `<img>`/SVG fallback.
 
 ---
 
@@ -229,7 +229,7 @@ All functionality must be operable via keyboard. This means:
 - Custom drag-and-drop must have a keyboard alternative
 
 **2.1.2 No Keyboard Trap (A)**
-Users must always be able to move focus away from any component using standard keys (Tab, arrow keys, Escape). Exception: modals — which intentionally trap focus but must release on Escape.
+Users must always be able to move focus away from any component using standard keys (Tab, arrow keys, Escape). Exception: modals - which intentionally trap focus but must release on Escape.
 
 **2.1.4 Character Key Shortcuts (A)**
 Single character keyboard shortcuts that fire on keydown/keypress must be reconfigurable, disableable, or only active when the component has focus.
@@ -249,9 +249,9 @@ Any moving, blinking, scrolling, or auto-updating content that starts automatica
 ### 2.3 Seizures and Physical Reactions
 
 **2.3.1 Three Flashes or Below Threshold (A)**
-Nothing may flash more than **three times in any one second**, unless it stays below the general-flash and red-flash thresholds. This is a safety criterion — flashing content can trigger seizures. Test animation and video with the free PEAT (Photosensitive Epilepsy Analysis Tool).
+Nothing may flash more than **three times in any one second**, unless it stays below the general-flash and red-flash thresholds. This is a safety criterion - flashing content can trigger seizures. Test animation and video with the free PEAT (Photosensitive Epilepsy Analysis Tool).
 
-**Reduced motion** — 2.3.3 Animation from Interactions is Level AAA, but honouring `prefers-reduced-motion` is a baseline expectation. Large parallax, auto-playing motion, and transform-heavy transitions cause nausea and dizziness for people with vestibular disorders. Default to no non-essential animation and layer it in only when motion is allowed:
+**Reduced motion** - 2.3.3 Animation from Interactions is Level AAA, but honouring `prefers-reduced-motion` is a baseline expectation. Large parallax, auto-playing motion, and transform-heavy transitions cause nausea and dizziness for people with vestibular disorders. Default to no non-essential animation and layer it in only when motion is allowed:
 
 ```css
 /* Default: no motion. Opt in only when the user permits it. */
@@ -315,7 +315,7 @@ Link text must make sense in isolation or in context of its surrounding paragrap
 ```
 
 **2.4.5 Multiple Ways (AA)**
-Provide more than one way to locate a page within a site — e.g. a navigation menu plus a search, or a sitemap. Exception: a page that is a step within a process (a checkout flow need not be reachable other ways).
+Provide more than one way to locate a page within a site - e.g. a navigation menu plus a search, or a sitemap. Exception: a page that is a step within a process (a checkout flow need not be reachable other ways).
 
 **2.4.6 Headings and Labels (AA)**
 Headings and form labels must describe their topic or purpose.
@@ -323,14 +323,14 @@ Headings and form labels must describe their topic or purpose.
 **2.4.7 Focus Visible (AA)**
 All focusable elements must have a visible focus indicator. Never `outline: none` without a replacement.
 
-**2.4.11 Focus Not Obscured — Minimum (AA)** *(new in 2.2)*
+**2.4.11 Focus Not Obscured - Minimum (AA)** *(new in 2.2)*
 A focused element must not be entirely hidden by sticky headers, cookie banners, or other overlaid content.
 
-**2.4.12 Focus Not Obscured — Enhanced (AAA)** *(new in 2.2)*
+**2.4.12 Focus Not Obscured - Enhanced (AAA)** *(new in 2.2)*
 The entire focused element must be visible (no partial obscuring).
 
-**2.4.13 Focus Appearance (AAA)** *(new in 2.2 — AAA, not required for AA)*
-Stricter than the AA focus rules. The focus indicator must cover at least the area of a 2 CSS pixel thick perimeter of the component, and change by at least 3:1 contrast *between the focused and unfocused states* (a change-of-state contrast). The **AA** obligations for focus indicators are 2.4.7 Focus Visible, 1.4.11 Non-text Contrast (3:1 against adjacent colours), and 2.4.11 Focus Not Obscured — aim for 2.4.13 where practical but don't cite it as AA.
+**2.4.13 Focus Appearance (AAA)** *(new in 2.2 - AAA, not required for AA)*
+Stricter than the AA focus rules. The focus indicator must cover at least the area of a 2 CSS pixel thick perimeter of the component, and change by at least 3:1 contrast *between the focused and unfocused states* (a change-of-state contrast). The **AA** obligations for focus indicators are 2.4.7 Focus Visible, 1.4.11 Non-text Contrast (3:1 against adjacent colours), and 2.4.11 Focus Not Obscured - aim for 2.4.13 where practical but don't cite it as AA.
 
 ---
 
@@ -361,14 +361,14 @@ Functionality triggered by device motion must have a UI alternative, and motion 
 **2.5.7 Dragging Movements (AA)** *(new in 2.2)*
 Any drag-and-drop functionality must have a single-pointer alternative.
 
-**2.5.8 Target Size — Minimum (AA)** *(new in 2.2)*
+**2.5.8 Target Size - Minimum (AA)** *(new in 2.2)*
 Pointer targets must be at least 24×24 CSS pixels. Exceptions:
 
-- **Spacing** — a 24px-diameter circle centred on each undersized target does not overlap another target (or its circle)
-- **Equivalent** — the same function is available via another control on the page that does meet 24×24
-- **Inline** — the target is within a sentence, or constrained by the line-height of surrounding non-target text (e.g. inline links). *This is the most common legitimate pass — don't fail inline text links.*
-- **User agent control** — the size is set by the browser and not modified by the author (e.g. native date pickers, default form controls)
-- **Essential** — a specific presentation is essential or legally required (e.g. map pins, dense data visualisation)
+- **Spacing** - a 24px-diameter circle centred on each undersized target does not overlap another target (or its circle)
+- **Equivalent** - the same function is available via another control on the page that does meet 24×24
+- **Inline** - the target is within a sentence, or constrained by the line-height of surrounding non-target text (e.g. inline links). *This is the most common legitimate pass - don't fail inline text links.*
+- **User agent control** - the size is set by the browser and not modified by the author (e.g. native date pickers, default form controls)
+- **Essential** - a specific presentation is essential or legally required (e.g. map pins, dense data visualisation)
 
 ---
 
@@ -429,17 +429,17 @@ Labels or instructions are provided for required format or constraints.
 **3.3.3 Error Suggestion (AA)**
 If an error is detected and suggestions for correction are known, provide them.
 
-**3.3.4 Error Prevention — Legal, Financial, Data (AA)**
+**3.3.4 Error Prevention - Legal, Financial, Data (AA)**
 For submissions with legal/financial consequences: provide a review step, ability to correct, or ability to reverse/cancel.
 
 **3.3.7 Redundant Entry (A)** *(new in 2.2)*
 Information already entered in a multi-step process must be auto-populated or available to select, not required to be re-entered.
 
-**3.3.8 Accessible Authentication — Minimum (AA)** *(new in 2.2)*
+**3.3.8 Accessible Authentication - Minimum (AA)** *(new in 2.2)*
 Authentication must not rely solely on a cognitive function test (memorising passwords, solving puzzles) without an alternative. Allowing copy-paste for passwords, password managers, and "show password" toggles all help satisfy this.
 
-**3.3.9 Accessible Authentication — Enhanced (AAA)** *(new in 2.2 — AAA, not required for AA)*
-Stricter than 3.3.8: no cognitive-function test at all, even with an alternative — it also removes 3.3.8's object-recognition and personal-content allowances.
+**3.3.9 Accessible Authentication - Enhanced (AAA)** *(new in 2.2 - AAA, not required for AA)*
+Stricter than 3.3.8: no cognitive-function test at all, even with an alternative - it also removes 3.3.8's object-recognition and personal-content allowances.
 
 ---
 
@@ -473,8 +473,8 @@ Status messages (success, error, loading) must be programmatically determinable 
 
 ## Testing Order by Impact
 
-1. Run automated scan (axe, Lighthouse) — a shift-left check that catches only a minority of issues (~30–40% of success criteria) and never proves compliance
-2. Keyboard-only navigation test — Tab through entire page
+1. Run automated scan (axe, Lighthouse) - a shift-left check that catches only a minority of issues (~30-40% of success criteria) and never proves compliance
+2. Keyboard-only navigation test - Tab through entire page
 3. Screen reader test with NVDA + Firefox (or Chrome)
 4. Colour contrast audit
 5. Zoom/reflow test at 400%
@@ -482,7 +482,7 @@ Status messages (success, error, loading) must be programmatically determinable 
 
 Automated tools to use:
 
-- **axe DevTools** (browser extension) — most accurate automated scanner
-- **Lighthouse** (built into Chrome DevTools) — good for quick audits
-- **WAVE** (browser extension) — good for visual overlay of issues
-- **IBM Equal Access Checker** — good WCAG 2.2 coverage
+- **axe DevTools** (browser extension) - most accurate automated scanner
+- **Lighthouse** (built into Chrome DevTools) - good for quick audits
+- **WAVE** (browser extension) - good for visual overlay of issues
+- **IBM Equal Access Checker** - good WCAG 2.2 coverage

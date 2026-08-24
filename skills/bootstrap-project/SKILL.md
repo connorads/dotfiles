@@ -97,7 +97,7 @@ it does, prefer the house rule and say why in the commit message.
 **pnpm projects: wire hk's build-script decision check** (its
 `assets/pnpm-build-scripts-check.mjs`). The global `ignoreScripts` means an
 undeclared build script installs green here and dies on the first machine
-without the mask — the platform build, usually minutes after this phase. The
+without the mask - the platform build, usually minutes after this phase. The
 check is the only local thing that sees it; `supply-chain-hardening` owns
 whether a given package gets `true` or `false`.
 
@@ -116,7 +116,7 @@ Writing config is not enough - prove each layer works:
   fails with a misleading "Command not found" instead of the lint error.
 - **Build-script decisions are recorded** (pnpm): run the build-script check
   from phase 3 and act on what it names, before the first deploy rather than
-  from a failed build log. A green `pnpm install` here proves nothing — this
+  from a failed build log. A green `pnpm install` here proves nothing - this
   machine masks the check.
 
 ### 5. Seed docs

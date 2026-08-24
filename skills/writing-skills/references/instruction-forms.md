@@ -9,16 +9,16 @@ produce opposite behaviour.
 Classify the baseline failure before writing a word. There are two species,
 and the form that fixes one measurably backfires on the other:
 
-**Output-shaping failures** — the agent produces the wrong *shape* of work
+**Output-shaping failures** - the agent produces the wrong *shape* of work
 (wrong structure, missing sections, weak style). Fix with **positive
 recipes**: show the desired form, give a worked example, state the template.
-Prohibition lists backfire here — enumerating wrong shapes plants them.
+Prohibition lists backfire here - enumerating wrong shapes plants them.
 
-**Rule-violation-under-pressure failures** — the agent knows the rule but
+**Rule-violation-under-pressure failures** - the agent knows the rule but
 talks itself out of it when a competing incentive appears (deadline pressure
 in the prompt, a user asking nicely, sunk cost). Fix with **prohibitions plus
 a rationalisation table**: state the rule, then list the exact excuses the
-agent generates — verbatim from your baseline transcripts — each with its
+agent generates - verbatim from your baseline transcripts - each with its
 rebuttal:
 
 ```markdown
@@ -34,8 +34,8 @@ agent recognises its own excuse mid-generation.
 
 ## Never hedge a winning rule
 
-Appending a nuance clause to a working instruction — "always run the
-validator *(unless the change is trivial)*" — degrades it from consistent to
+Appending a nuance clause to a working instruction - "always run the
+validator *(unless the change is trivial)*" - degrades it from consistent to
 noisy. The clause reopens negotiation under exactly the pressure the rule
 exists to resist: everything becomes "trivial" when the agent wants to skip.
 
@@ -55,12 +55,12 @@ the docs linter alone is sufficient.
 
 All-caps MUST/NEVER/ALWAYS is a yellow flag: it usually marks a rule whose
 rationale the author didn't transmit. Models follow reasoning better than
-volume — a rule with its *why* generalises to cases the author didn't list,
+volume - a rule with its *why* generalises to cases the author didn't list,
 while a bare imperative invites literal-minded compliance and creative
 loopholes.
 
-Reserve absolute language for genuine invariants — destructive operations,
-security boundaries — and pair each with its concrete consequence ("never
+Reserve absolute language for genuine invariants - destructive operations,
+security boundaries - and pair each with its concrete consequence ("never
 force-push here: it destroys teammates' work"). If a skill accumulates
 all-caps with every revision, the fix that's failing is the framing, not the
 emphasis. Try a different metaphor, restructure the task, or check whether
@@ -68,7 +68,7 @@ you're using recipe-form on a violation problem (or vice versa).
 
 ## Degrees of freedom
 
-Match specificity to fragility, per instruction — not one register for the
+Match specificity to fragility, per instruction - not one register for the
 whole skill:
 
 - **High freedom** (principles, heuristics, "prefer X when Y") for
@@ -89,7 +89,7 @@ write a principle; if you'd hand them a runbook, write the runbook.
   the example. Unnamed failure descriptions don't stick.
 - **Inoculate against the plausible-wrong belief.** Where the baseline shows
   the agent confidently holds a misconception, state the wrong explanation
-  explicitly and correct it — pre-empting beats correcting.
+  explicitly and correct it - pre-empting beats correcting.
 - **Force evidence labels on generated claims.** For skills that produce
   analysis from a codebase or corpus, require a confidence vocabulary
   (Observed vs Inferred; Confirmed/Likely/Unclear). It converts confident
@@ -97,6 +97,6 @@ write a principle; if you'd hand them a runbook, write the runbook.
 - **Separate fact from extrapolation in knowledge/persona skills.** Forbid
   fabrication concretely: "never invent quotes; if no source matches, say
   so."
-- **Worked examples over abstractions** — realistic, varied, structured
+- **Worked examples over abstractions** - realistic, varied, structured
   examples beat a paragraph of qualities when the failure is output-shaping.
   Put bulky examples in routed references instead of the main body.

@@ -144,18 +144,18 @@ network/filesystem side effects.
 ## Speed and determinism
 
 Shell suites are slow for the same reasons they are flaky: real time and real
-processes. Profile before optimising — `bats -T` (per-test timing) or
-`/usr/bin/time -p bats <file>` to rank the slow files — then attack the biggest
+processes. Profile before optimising - `bats -T` (per-test timing) or
+`/usr/bin/time -p bats <file>` to rank the slow files - then attack the biggest
 wall-clock items. Wall-clock far above CPU time (`user`+`sys`) means the suite is
 *waiting*, not computing; that waiting is the target.
 
 ### Run files in parallel
 
-`bats -j "$(nproc)"` (`sysctl -n hw.logicalcpu` on macOS) runs files concurrently —
+`bats -j "$(nproc)"` (`sysctl -n hw.logicalcpu` on macOS) runs files concurrently -
 a large win when the bottleneck is waiting. It needs an external dispatcher: GNU
 `parallel` **or** `shenwei356/rush`
 (`bats -j N --parallel-binary-name rush`, or `export BATS_PARALLEL_BINARY_NAME=rush`).
-Trap: with neither installed, bats silently runs **0 tests and exits 1** —
+Trap: with neither installed, bats silently runs **0 tests and exits 1** -
 assert the expected test count in CI rather than trusting the exit code. `-j` enables
 across- *and* within-file parallelism; add `--no-parallelize-within-files` when only
 whole files are independent.
@@ -169,43 +169,43 @@ trusting it.
 
 ### Remove time-coupling
 
-The largest single-file speedups usually come from killing fixed waits — which also
+The largest single-file speedups usually come from killing fixed waits - which also
 removes flakiness. Look in the **code under test**, not just the tests:
 
 - Don't spawn a shell or subprocess to compute what the current shell already knows.
   Resolving a command or alias with `zsh -ic`/`bash -ic` re-sources the whole
-  interactive rc (prompt, completion, plugins, version managers) on *every* call —
-  0.1–4s normally, tens of seconds when it triggers a completion-cache rebuild, and it
+  interactive rc (prompt, completion, plugins, version managers) on *every* call -
+  0.1-4s normally, tens of seconds when it triggers a completion-cache rebuild, and it
   hits real usage, not just tests. Resolve in-process (`whence`/`type`/`command -v`) and
   fall back to an interactive shell only for the rare word unknown in script mode.
 - A poll-with-sleep loop (`for i in {1..20}; do check || sleep 0.05; done`) makes every
   fast test pay the whole loop when the awaited thing never appears. Short-circuit the
-  common case — break the moment the outcome is decided (e.g. `kill -0 "$pid" || break`
+  common case - break the moment the outcome is decided (e.g. `kill -0 "$pid" || break`
   once the child is gone). One such fix took a no-op iteration from ~2.6s to ~0.3s.
 - Hardcoded cooldowns, debounce windows, and retry backoff should be **injectable** via
-  env with the production value as default — `: "${TOOL_DEBOUNCE_SECS:=2}"` — so tests
+  env with the production value as default - `: "${TOOL_DEBOUNCE_SECS:=2}"` - so tests
   drive timing with a small value instead of `sleep`-ing a fixed cushion to "wait long
   enough". A test that sleeps a magic number to outlast a hardcoded delay is both slow
   and racy.
 - Reap backgrounded helpers and close their FDs before returning. A watchdog or output
-  scanner left holding a pipe open blocks the parent until it dies — one test can
+  scanner left holding a pipe open blocks the parent until it dies - one test can
   silently cost tens of seconds with nothing visibly wrong.
 
 Hardcoded environment paths are the related determinism trap: a test that hardcodes
 `/home/<user>/...` either fails or hits a slow fallback on another machine. Derive
 paths from the fixtures.
 
-### Amortise expensive fixtures — after measuring
+### Amortise expensive fixtures - after measuring
 
 Build immutable, costly fixtures **once per file** in `setup_file()` under
 `$BATS_FILE_TMPDIR`; give each test its own *mutable* copy cheaply. For git, build a
 template repo once and `git clone --local` it per test: the clone hardlinks the object
 store but stays self-contained (git objects are append-only, so the clone can commit or
 gc without touching the template), preserving per-test isolation. Only hoist state that
-is read-only for every test — the moment a test writes to it, it must live per-test
+is read-only for every test - the moment a test writes to it, it must live per-test
 under `$BATS_TEST_TMPDIR`. Avoid `git clone --shared`/alternates: that reintroduces a
 shared mutable object store. Amortisation pays only when the fixture is the bottleneck,
-so profile first — hoisting a per-test `git init` can save ~20% of the fixture step yet
+so profile first - hoisting a per-test `git init` can save ~20% of the fixture step yet
 only ~3% of the file when the real cost is subprocess spawns.
 
 ### Tag slow tests and run a fast subset
@@ -221,8 +221,8 @@ bats --filter-status failed tests/          # re-run only last run's failures
 ```
 
 `--filter-status` needs a prior completed run (its run-logs dir must exist). `bats
-<file>` and `-f <regex>` narrow further. Splitting a suite this way — fast faked unit
-files versus slow real-process integration files — routinely turns a multi-minute
+<file>` and `-f <regex>` narrow further. Splitting a suite this way - fast faked unit
+files versus slow real-process integration files - routinely turns a multi-minute
 suite into a tens-of-seconds edit loop (one real suite: ~240s serial full → ~20s for
 the faked subset, and ~70s for the full suite run in parallel).
 
@@ -233,7 +233,7 @@ the faked subset, and ~70s for the full suite run in parallel).
 Bats fails a test via errexit plus the body's final exit status. On macOS
 stock bash 3.2 (what `#!/usr/bin/env bats` typically resolves to), a false
 `[[ ]]` or `(( ))` that is **not the test's last command** does not trigger
-errexit — the test reports `ok` with the assertion unenforced. Plain commands
+errexit - the test reports `ok` with the assertion unenforced. Plain commands
 (`[ ]`, `grep -q`, `false`) fail correctly, and the *final* `[[ ]]` is caught
 via the body's exit status, which is why suites look healthy until a
 multi-assert test rots. Verified with a minimal repro (bash 3.2.57, bats 1.14,

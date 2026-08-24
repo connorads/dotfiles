@@ -18,8 +18,8 @@ retained text file under its dir, wrapped in XML-ish delimiters:
 
 The pointer (ADR-0003, CONTEXT.md) is deliberately *not* the SKILL.md content: it
 injects a name + absolute path + tree + "Read SKILL.md at `<path>`", and the agent
-reads the file itself. That is the right default — tiny context, progressive
-disclosure — and it works **because the agent shares the filesystem** (a tmux pane
+reads the file itself. That is the right default - tiny context, progressive
+disclosure - and it works **because the agent shares the filesystem** (a tmux pane
 running Claude Code).
 
 It breaks the moment the target has no filesystem: a claude.ai / ChatGPT chat, a
@@ -29,7 +29,7 @@ the paste.
 
 ## Decision
 
-Add `inline` as a sibling of `preview` — same shape (resolve one ref), different
+Add `inline` as a sibling of `preview` - same shape (resolve one ref), different
 payload. It reuses the discovery that already powers the pointer's tree:
 `DiscoveredSkill.files` is the retained payload file list, so "inline everything" is
 *read each retained file, concatenate*, no new discovery.
@@ -53,14 +53,14 @@ Split across the layers as everywhere else: `renderBundle` is pure
 ## Consequences
 
 - A new verb that **inverts** the pointer's founding principle ("not the content").
-  That is intentional and scoped to the no-filesystem case — the pointer stays the
+  That is intentional and scoped to the no-filesystem case - the pointer stays the
   default for the tmux flow; `inline` is opt-in for paste targets.
 - Bundles can be large (the raycast-extensions skill is ~55 KB across 8 files). That
-  is inherent to inlining — the alternative is the reader can't see the references.
+  is inherent to inlining - the alternative is the reader can't see the references.
   No truncation: a silently clipped skill is worse than a big paste.
 - A naive escape risk: if a skill file contained a literal `</file>` line it could
   confuse a parser. No catalogue file does, and the consumer is an LLM (robust to
-  it), so we do not escape — revisit only if a real collision appears.
+  it), so we do not escape - revisit only if a real collision appears.
 - Primary consumer is the Raycast extension's "Copy Inlined Skill" action (the
   reason inlining exists is pasting outside tmux), but the CLI verb stands alone and
   works from the terminal (`skl inline <ref> | pbcopy`).

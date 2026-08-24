@@ -2,16 +2,16 @@
 
 Catalogue of "off the rails" patterns seen in autonomous loops. Each
 entry is a trigger the user can lift wholesale, adapt, or ignore.
-Don't copy the whole list into `SUPERVISOR.md` — pick the 3–5 that
+Don't copy the whole list into `SUPERVISOR.md` - pick the 3-5 that
 match the project.
 
 Each trigger has three parts:
 
-- **Detection** — what the supervisor reads to notice it (file
+- **Detection** - what the supervisor reads to notice it (file
   content, git state, tmux pane scan, commit streak)
-- **Response** — what the supervisor does. Bounded by the project's
+- **Response** - what the supervisor does. Bounded by the project's
   authority stance (see `authority-stances.md`)
-- **Provenance** — where the pattern came from, so the user can
+- **Provenance** - where the pattern came from, so the user can
   judge whether it transfers
 
 ## Research / hypothesis-driven loops
@@ -23,9 +23,9 @@ Each trigger has three parts:
   planned" / "checklist" barely changes between entries.
 - **Response:** Mark the item as exhausted in its index file (e.g.
   flip status to `pruned` with a one-line operator note explaining
-  *why* — "cycled 3× without narrowing scope"). Do *not* rewrite the
+  *why* - "cycled 3× without narrowing scope"). Do *not* rewrite the
   hypothesis or task body. Let the loop pick the next item naturally.
-- **Provenance:** hackmonty H007 — 11 probes cycled through variants
+- **Provenance:** hackmonty H007 - 11 probes cycled through variants
   of "go colder / longer delay" without info-gain; one intervention
   marked it pruned, loop resumed and terminated cleanly.
 
@@ -38,7 +38,7 @@ Each trigger has three parts:
   contract (`PROMPT.md`) nudging toward the selection rule the agent
   is drifting from. Don't rewrite the prompt. Commit if the change
   was to harness files.
-- **Provenance:** hackmonty iter 12–82 — agent bisected H001 for 8+
+- **Provenance:** hackmonty iter 12-82 - agent bisected H001 for 8+
   probes ignoring untouched H003/H004/H011 with higher info-gain
   priority. One-bullet nudge to PROMPT.md §5 flipped behaviour on
   the next iteration.
@@ -64,7 +64,7 @@ Each trigger has three parts:
 - **Response:** Capture the pane tail into the supervisor's notes,
   inspect for crash cause (OOM, segfault, network), fix if trivial,
   otherwise escalate.
-- **Provenance:** general pattern — runners die silently more often
+- **Provenance:** general pattern - runners die silently more often
   than expected.
 
 ## Scope creep / contract violations
@@ -77,7 +77,7 @@ Each trigger has three parts:
 - **Response:** Depends on authority stance. Harness-only supervisor:
   revert the out-of-scope hunks with explanation, add a clarifying
   bullet to `PROMPT.md` §out-of-scope. Escalate-only: stop and
-  report. Autonomous: judge case-by-case — sometimes the loop
+  report. Autonomous: judge case-by-case - sometimes the loop
   correctly noticed a harness bug and fixed it.
 - **Provenance:** hackmonty out-of-scope list explicitly forbade the
   loop from committing research state; a stray commit would trigger
@@ -88,10 +88,10 @@ Each trigger has three parts:
 - **Detection:** `PROMPT.md` shows modifications in git log attributed
   to loop iterations (not operator interventions).
 - **Response:** Revert. The loop contract is the supervisor's
-  (or human's) domain — the loop can surface complaints but not
+  (or human's) domain - the loop can surface complaints but not
   edit. Add a `don't-touch` bullet if missing.
 - **Provenance:** hackmonty classified this as intervention-C
-  ("bad loop rhythm") — a symptom the agent was burning tokens on
+  ("bad loop rhythm") - a symptom the agent was burning tokens on
   meta rather than probes.
 
 ## Source-port / long-running multi-lane loops
@@ -99,12 +99,12 @@ Each trigger has three parts:
 ### Mutation / stress testing corrupting main worktree
 
 - **Detection:** `git status` in the main worktree shows modifications
-  to source files that weren't part of any commit — tool-injected
+  to source files that weren't part of any commit - tool-injected
   mutation markers, test fixtures left in place.
 - **Response:** Stop immediately. This is a D-class trigger (hard
-  stop, not fix-and-resume) — background agents must run in isolated
+  stop, not fix-and-resume) - background agents must run in isolated
   worktrees. Document the fix requirement in the final message.
-- **Provenance:** KC — `cargo mutants --in-place` running against
+- **Provenance:** KC - `cargo mutants --in-place` running against
   the main worktree repeatedly corrupted `enemies.rs`, `blocks.rs`,
   `physics.rs`. Root cause: missing worktree isolation in the
   autonomy spawner.
@@ -119,19 +119,19 @@ Each trigger has three parts:
   the strategy-selector config if the harness exposes one). Surface
   in the supervisor's final notes if the root cause is a broken
   prioritiser in the loop contract.
-- **Provenance:** KC autonomy — "loc-coverage-drive" had no throttle
+- **Provenance:** KC autonomy - "loc-coverage-drive" had no throttle
   and produced busywork; selector was blind to ledgers.
 
 ### Ignored handoff / ledger
 
 - **Detection:** Loop produces a handoff doc (`next-agent.md`) or
   rejected-hypothesis ledger, but subsequent iterations don't read
-  it — visible in run-log entries that repeat prior dead-ends.
+  it - visible in run-log entries that repeat prior dead-ends.
 - **Response:** Add a read step to the loop contract's preamble
   pointing at the handoff file. If the loop already has one and is
-  skipping it, escalate — the loop has a reading-order bug, not a
+  skipping it, escalate - the loop has a reading-order bug, not a
   rhythm bug.
-- **Provenance:** KC — rejected-hypothesis ledger was written but
+- **Provenance:** KC - rejected-hypothesis ledger was written but
   never consumed, leading to repeated dead ends.
 
 ## Rhythm / meta drift
@@ -150,7 +150,7 @@ Each trigger has three parts:
 - **Detection:** `run-log.md` entries missing fields the contract
   declares mandatory (e.g. no commit SHA, no verification output).
 - **Response:** Bullet in `PROMPT.md` enforcing the field. If the
-  agent keeps skipping, it's a D-class escalation — something deeper
+  agent keeps skipping, it's a D-class escalation - something deeper
   is wrong.
 
 ## Stop conditions (not triggers, but live in the same section)

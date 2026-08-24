@@ -14,20 +14,20 @@ cross-cutting *how*: one lever quiets every step on success without losing failu
 
 So put `-q` on the `.hk-hooks/pre-commit` wrapper (`exec "$HK_BIN" run pre-commit -q "$@"`) and
 stop quieting individual commands. No per-step wrapper, no per-tool tiering. This needs
-**hk ≥ 1.51.0** — the skill installs `hk = "latest"`, so fresh setups always qualify. On an
+**hk ≥ 1.51.0** - the skill installs `hk = "latest"`, so fresh setups always qualify. On an
 older pinned repo the answer is "upgrade hk".
 
 **Never use `--silent`.** It also reaches 0 bytes on success, but on failure it drops the
-diagnostics too — you get only `See .../output.log`, useless in an agent context that can't
+diagnostics too - you get only `See .../output.log`, useless in an agent context that can't
 read that path. Measured on 1.51.0: `--silent` failure → 73 bytes (path only); `-q` failure →
 full stdout+stderr.
 
-`-n`/`--no-progress`, `HK_LOG`, `RUST_LOG` remain **no-ops on step success output** — they
+`-n`/`--no-progress`, `HK_LOG`, `RUST_LOG` remain **no-ops on step success output** - they
 touch hk's progress rendering, not the log dump. Don't reach for them to quiet steps.
 
 ## Why quieting matters only in the no-TTY agent path
 
-On a real TTY hk writes progress to `/dev/tty`, which bypasses stdout/stderr redirection — so
+On a real TTY hk writes progress to `/dev/tty`, which bypasses stdout/stderr redirection - so
 a human running `git commit` in a terminal sees the same rich output regardless. The bloat
 only lands in the **non-TTY agent-capture path** (hk output piped/redirected, e.g. an agent
 running the commit), which is exactly where `-q` cleans it up.
@@ -77,5 +77,5 @@ truncation. This is another reason to prefer wrapper-level `-q` over `output_sum
 ## What `terminal_progress` actually is
 
 `terminal_progress = false` disables the **OSC terminal-progress escape sequences** hk emits to
-the terminal — it does **not** reduce stdout noise. Set it to keep escape codes out of captured
+the terminal - it does **not** reduce stdout noise. Set it to keep escape codes out of captured
 logs, but don't reach for it expecting quieter step output.
