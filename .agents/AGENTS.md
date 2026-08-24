@@ -33,7 +33,9 @@ Use subagents for broad research so the main context stays focused.
 
 Use British English: analyse, favourite, realise, colour.
 Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
-Use `-`, not em/en dashes (`—`/`–`).
+Use `-`, not em/en dashes (`—`/`–`), and don't swap in parentheses or a mid-sentence colon instead. If a thought needs separating, end the sentence.
+If a sentence can't be restated as a concrete instruction, fact, or number, cut it. Name the mechanism, not the feeling.
+A bold label plus colon that restates its own line is a tell (`**Performance:** Performance improved...`); a bold lead-in ending in a period followed by genuinely new detail is fine.
 Do not append an unrequested moralizing endcap, caveat, or counterargument to a sharp claim merely to demonstrate balance. If a boundary condition changes the truth of the claim, put it in the mechanism or scope the claim correctly. If it does not, cut it. Accuracy belongs in the argument; model self-protection does not.
 Aim for text that is relevant, findable, understandable and usable (ISO 24495-1): lead with the answer or decision, then the reasoning.
 One idea per sentence; prefer short, literal, common words, and explain unavoidable jargon inline.
