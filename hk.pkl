@@ -77,6 +77,16 @@ local fast_steps = new Mapping<String, Step> {
         exclude = no_reformat
     }
 
+    // Curly quotes are the house style's other mechanical tell (AGENTS.md
+    // "Communication"). Built into hk itself - `hk util fix-smart-quotes` - so
+    // no new dependency, and it has a fix mode so `dhk fix` clears a backlog.
+    // Excludes match typos': vendored mirrors and patch hunks stay byte-faithful,
+    // and summon persona references are verbatim quote collections whose own
+    // punctuation is not ours to rewrite.
+    ["fix-smart-quotes"] = (Builtins.fix_smart_quotes) {
+        exclude = no_reformat + List(".config/skills/personal/summon/references/**")
+    }
+
     // summon persona references are quote collections: blockquote spacing and
     // emphasis-as-heading are the voice content, so markdown style rules
     // (MD028/MD036) fight the format. Lint the skill's SKILL.md, not the quotes.
