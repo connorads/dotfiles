@@ -42,6 +42,10 @@ describe("skl preview payload filtering (real CLI)", () => {
     await writeFile(join(skill, "references.md"), "useful reference\n");
     await writeFile(join(skill, "SKILL.md.backup"), "backup copy\n");
     await writeFile(join(skill, ".claude/.cc-writes/state.json"), "{}\n");
+    await writeFile(
+      join(skill, ".rumdl_cache/CACHEDIR.TAG"),
+      "Signature: 8a477f597d28d172789f06886806bc55\n",
+    );
     await writeFile(join(skill, ".rumdl_cache/workspace_index.bin"), "cache index\n");
     await writeFile(join(skill, ".DS_Store"), "finder data\n");
     await writeFile(join(skill, ".git/config"), "git internals\n");

@@ -23,7 +23,6 @@ Built-in excludes:
   "**/.DS_Store",
   "**/.git/**",
   "**/.claude/**",
-  "**/.rumdl_cache/**",
   "**/__pycache__/**",
   "**/*.py[cod]",
   "**/*.backup",
@@ -31,6 +30,9 @@ Built-in excludes:
   "evals/**"
 ]
 ```
+
+Directories that declare themselves caches are excluded by tag rather than by name; see
+ADR-0010.
 
 Only the root `SKILL.md` bypasses these filters. A nested file named `SKILL.md` still
 respects its parent exclusion, so a dependency or eval fixture cannot resurrect an
