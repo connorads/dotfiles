@@ -20,6 +20,7 @@
 !/.bunfig.toml
 !/.rumdl.toml
 !/.typos.toml
+!/.vale.ini
 !/hk.pkl
 
 !/.hk-hooks/
@@ -111,6 +112,11 @@
 !/.config/vox/**
 /.config/vox/__pycache__/
 /.config/vox/.pytest_cache/
+
+# vale: the Connorads prose style. Nix symlinks it into the macOS global styles
+# dir, so this is the one real copy every consumer resolves through.
+!/.config/vale/
+!/.config/vale/**
 
 # jj: track config only; ~/.config/jj/repos/ is machine-local per-repo state
 !/.config/jj/

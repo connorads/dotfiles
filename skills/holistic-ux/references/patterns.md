@@ -16,7 +16,7 @@ Choose navigation by information shape:
 | --- | --- | --- |
 | Top navigation | There are a few stable, high-level destinations | The product has many nested areas |
 | Sidebar | Users need repeated access to many sections or a hierarchy | The experience is simple or mobile-primary |
-| Tabs | Users switch between peer categories within one context | The sections are unrelated or too numerous |
+| Tabs | Users switch between peer categories within one context | The sections are unrelated or too many |
 | Breadcrumbs | Users move through a deep hierarchy | The flow is flat or strictly linear |
 | Mobile menu | Screen space is tight and destinations are secondary to the task | The hidden destinations are core to completion |
 

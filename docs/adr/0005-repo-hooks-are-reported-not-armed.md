@@ -64,7 +64,7 @@ actionable, silent in CI, and absent-tool-tolerant. Plain `status` always exits
 
 - **Per-repo `.npmrc` with `ignore-scripts=false`.** Rejected: npm has no
   per-package allow-list, so it re-enables lifecycle scripts for the entire
-  dependency graph in order to run one `prepare` - the whole vector back, for a
+  dependency graph to run one `prepare` - the whole vector back, for a
   hook. pnpm's `allowBuilds` can do this narrowly; npm cannot, and the unarmed
   repos are npm ones.
 

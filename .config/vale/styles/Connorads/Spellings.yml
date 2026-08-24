@@ -1,0 +1,14 @@
+extends: substitution
+message: "Use '%s', not '%s'."
+# See Dashes.yml: without `level`, MinAlertLevel = error makes the rule inert.
+level: error
+# Case-sensitive on purpose: the point is the capitalisation, so ignorecase
+# would make each pair match its own replacement and never settle.
+ignorecase: false
+# Names with exactly one correct spelling. Zero current hits - this is a
+# ratchet, kept so the backlog can never start.
+swap:
+  Github: GitHub
+  GitHUB: GitHub
+  Javascript: JavaScript
+  Typescript: TypeScript

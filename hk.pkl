@@ -95,6 +95,31 @@ local fast_steps = new Mapping<String, Step> {
         exclude = vendored_skills + List(".config/skills/personal/summon/references/**")
     }
 
+    // House prose rules (~/.vale.ini + .config/vale/styles/Connorads). Vale
+    // skips fenced blocks and code spans natively, so a dash in a command or a
+    // diagram is untouched and only prose is gated.
+    //
+    // Two departures from Builtins.vale. It drops `vale sync`: the builtin runs
+    // `vale sync && vale {{files}}`, and sync fetches remote style packages -
+    // a network call in the pre-commit path, which the zizmor step deliberately
+    // avoids (--offline above). There is no `Packages` key, so there is nothing
+    // to sync. And it adds --no-global, so the gate sees only the tracked style
+    // even once the global styles dir carries a copy for other repos.
+    //
+    // skl/writing-skills test fixtures carry deliberately-malformed frontmatter;
+    // Vale hard-errors (E201) rather than skipping, so they are excluded like
+    // the oxlint/ruff fixture set. summon references are verbatim quotes.
+    ["vale"] {
+        batch = true
+        glob = List("**/*.md", "**/*.markdown", "**/*.mdx")
+        exclude = vendored_skills + List(
+            ".config/skills/personal/summon/references/**",
+            "**/tests/fixtures/**",
+            "**/evals/fixtures/**"
+        )
+        check = "vale --no-global {{files}}"
+    }
+
     // First-party JS/TS lint: default correctness rules only (no type-aware
     // rules - several first-party dirs lack tsconfigs). --deny-warnings is
     // load-bearing: oxlint exits 0 on warnings by default, so without it the
@@ -359,7 +384,7 @@ local fast_steps = new Mapping<String, Step> {
     // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
     // everything by hand.
     ["bats-scoped"] {
-        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/pin-audit/**", "src/skl/**")
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", ".config/vale/**", "src/pin-audit/**", "src/skl/**")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 

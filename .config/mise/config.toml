@@ -54,6 +54,10 @@ ruff = "0.16"
 # typos: spell gate for the hk pipeline (default locale - both en variants
 # pass, only genuine misspellings flag). Config: ~/.typos.toml.
 typos = "1"
+# vale: house prose gate for the hk pipeline and the `prose` command. Config
+# ~/.vale.ini, style .config/vale/styles/Connorads. No `Packages` key, so the
+# gate never needs `vale sync` and stays offline at commit time.
+vale = "3"
 # actionlint + zizmor: GitHub workflow lint + security audit for the hk
 # pipeline (zizmor runs --offline in the hook; no network at commit time).
 actionlint = "1"
