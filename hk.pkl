@@ -80,10 +80,19 @@ local fast_steps = new Mapping<String, Step> {
     // Curly quotes are the house style's other mechanical tell (AGENTS.md
     // "Communication"). Built into hk itself - `hk util fix-smart-quotes` - so
     // no new dependency, and it has a fix mode so `dhk fix` clears a backlog.
-    // Excludes match typos': vendored mirrors and patch hunks stay byte-faithful,
-    // and summon persona references are verbatim quote collections whose own
-    // punctuation is not ours to rewrite.
+    //
+    // Prose files only, same glob as the vale step. The builtin's own glob
+    // reaches source files, where a curly glyph is data rather than
+    // punctuation: summon's quotelib.py carries them inside the regexes that
+    // DETECT them, and rewriting those produced invalid Python. No prose rule
+    // governs a string literal, so the fix is to scope the step, not to
+    // enumerate every file that legitimately holds a glyph.
+    //
+    // Remaining excludes match typos': vendored mirrors and patch hunks stay
+    // byte-faithful, and summon persona references are verbatim quote
+    // collections whose own punctuation is not ours to rewrite.
     ["fix-smart-quotes"] = (Builtins.fix_smart_quotes) {
+        glob = List("**/*.md", "**/*.markdown", "**/*.mdx")
         exclude = no_reformat + List(".config/skills/personal/summon/references/**")
     }
 
