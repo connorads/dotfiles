@@ -1,0 +1,15 @@
+extends: existence
+message: "Use '-', not the em/en dash '%s'."
+# `level` is required on every rule in this style: Vale's extension points
+# default to warning and .vale.ini sets MinAlertLevel = error, so a rule
+# without it is a silent no-op. Two of the three rules here have zero corpus
+# hits, so a clean run proves nothing - vale-style.bats is what proves they load.
+level: error
+# nonword: the tokens are punctuation, not word-boundary-delimited terms.
+nonword: true
+# Vale skips fenced code blocks and code spans natively, so a dash inside a
+# command, a diagram, or the `—` literal in AGENTS.md's own rule line is
+# untouched. That is why the sweep that cleared the backlog was driven by this
+# rule rather than by sed: the gate and the sweep agree by construction.
+tokens:
+  - '[—–]'

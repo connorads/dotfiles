@@ -859,6 +859,25 @@ url = "https://github.com/astral-sh/uv/releases/download/0.12.4/uv-aarch64-apple
 url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/513521194"
 provenance = "github-attestations"
 
+[[tools.vale]]
+version = "3.17.1"
+backend = "aqua:vale-cli/vale"
+
+[tools.vale."platforms.linux-arm64"]
+checksum = "sha256:92d91ebf9ee69ec077379be95cd09e6710ab33d3d5bab66bb482e66ebc80dc23"
+url = "https://github.com/vale-cli/vale/releases/download/v3.17.1/vale_3.17.1_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/502877338"
+
+[tools.vale."platforms.linux-x64"]
+checksum = "sha256:db947f89f2292e6a0381a61de155f6a5f5cb4cb460ca178ea412ef605559cefd"
+url = "https://github.com/vale-cli/vale/releases/download/v3.17.1/vale_3.17.1_Linux_64-bit.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/502877340"
+
+[tools.vale."platforms.macos-arm64"]
+checksum = "sha256:80cacf85ef23f53cfdd77355ec41a6ef99aec136f15dfb3517723482f35593f9"
+url = "https://github.com/vale-cli/vale/releases/download/v3.17.1/vale_3.17.1_macOS_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/502877337"
+
 [[tools.zizmor]]
 version = "1.29.0"
 backend = "aqua:zizmorcore/zizmor"

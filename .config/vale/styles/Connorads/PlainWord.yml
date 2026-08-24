@@ -1,0 +1,15 @@
+extends: substitution
+message: "Use '%s', not '%s'."
+# See Dashes.yml: without `level`, MinAlertLevel = error makes the rule inert.
+level: error
+ignorecase: true
+# AGENTS.md "Communication": prefer short, literal, common words. Only the
+# swaps with one unambiguous replacement live here - anything needing judgement
+# stays prose in AGENTS.md, where a human applies it.
+swap:
+  utilize: use
+  utilise: use
+  facilitate: help
+  numerous: many
+  in order to: to
+  due to the fact that: because
