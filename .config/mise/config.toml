@@ -70,7 +70,7 @@ ast-grep = "0.45"
 # Deliberately not in [env]: gcloud ships its own interpreter and reports
 # `bundled-python3-unix` at runtime, so pinning CLOUDSDK_PYTHON globally would
 # override the interpreter it is actually tested against.
-gcloud = "580"
+gcloud = "latest"
 aws = "2"
 codex = "latest"
 usage = "5"
