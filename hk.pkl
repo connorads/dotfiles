@@ -194,8 +194,14 @@ local fast_steps = new Mapping<String, Step> {
     // every other host (eval is platform-independent; ~25s, only when nix
     // files are staged). The script owns the target list; CI reuses it via
     // `hk check --all`. Escape hatch: HK_SKIP_STEPS=nix-eval git commit ...
+    //
+    // Only what can break an evaluation is in the glob. `.config/nix/**` also
+    // matched patches/README.md, main.swift, Info.plist and *.patch - a
+    // punctuation fix in that README bought a 6-configuration eval, and none of
+    // those files can make evaluation fail. Patch *content* is guarded by
+    // tmux-patches; a build that consumes a bad patch fails at build, not eval.
     ["nix-eval"] {
-        glob = List(".config/nix/**")
+        glob = List(".config/nix/**/*.nix", ".config/nix/flake.lock")
         check = "bash .hk-hooks/nix-eval.sh"
     }
 
