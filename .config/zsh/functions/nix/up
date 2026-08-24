@@ -71,24 +71,36 @@ fi
 
 if (( !frozen )); then
   nfu
-  dotfiles add ~/.config/nix/flake.lock
-  if ! dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock; then
-    dotfiles commit -m "chore(nix): update flake lock"
-  fi
 fi
 
+local rebuild_rc=0
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  drs
+  drs || rebuild_rc=$?
   if (( do_os )); then
     macup --safe   # install no-restart macOS updates; report OS updates only
   else
     macup-check    # cached scan, ~instant: report any pending macOS updates
   fi
 elif [[ -f /etc/NIXOS ]]; then
-  nrs    # system rebuild (reads NIXOS_FLAKE)
-  hms    # user env rebuild (reads ~/.config/nix)
+  nrs || rebuild_rc=$?   # system rebuild (reads NIXOS_FLAKE)
+  hms || rebuild_rc=$?   # user env rebuild (reads ~/.config/nix)
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  hms
+  hms || rebuild_rc=$?
+fi
+
+# flake.lock lands only once the rebuild proves it builds. Same rule as mise.lock
+# above, for the same reason: a lock nothing can build must not reach git, or every
+# later `up` and every other host reproduces the failure. Left dirty rather than
+# reverted, so a bump is never silently discarded.
+if (( !frozen )); then
+  if (( rebuild_rc )); then
+    print -u2 "!! rebuild failed (exit $rebuild_rc) - NOT committing flake.lock"
+    print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
+  else
+    dotfiles add ~/.config/nix/flake.lock
+    dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock \
+      || dotfiles commit -m "chore(nix): update flake lock"
+  fi
 fi
 
 # Check tmux plugin forks for upstream updates
