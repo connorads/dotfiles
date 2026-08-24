@@ -134,7 +134,7 @@ spctl -a -vvv -t execute <App.app>
   are distinct claims.
 
 Check important nested code independently when its provenance or entitlements
-matter. Never turn “signature valid” into “application safe”.
+matter. Never turn "signature valid" into "application safe".
 
 ## Inspect Each Mach-O Slice
 
@@ -166,7 +166,7 @@ Inspect Swift reflection sections such as `__swift5_types`, `__swift5_reflstr`,
 and `__swift5_fieldmd`, plus Objective-C class and selector metadata. Mixed
 Swift and Objective-C metadata is normal in native applications.
 
-Treat “stripped” as a claim about a particular symbol table or parser, not as
+Treat "stripped" as a claim about a particular symbol table or parser, not as
 proof that useful names are absent. If one tool reports a stripped binary,
 still try Apple `nm`, Swift demangling, `dyld_info`, reflection sections, local
 symbols, debug-map records, and strings. Record contradictory tool results.
@@ -189,7 +189,7 @@ Framework and resource combinations are useful classifiers:
 - Electron needs corroborating topology such as Electron Framework and
   `Resources/app.asar`.
 - Runtime libraries can be linked for a narrow feature; linkage alone does not
-  establish the application’s architecture.
+  establish the application's architecture.
 
 Full Electron and Tauri payload workflows are not bundled yet. When those
 fingerprints appear, complete the generic container, bundle, signing, and

@@ -75,7 +75,7 @@ has the complete protocol. Built from the core protocol template
 - **Loop completion token** — emit `__PROMISE_RL_DONE__` as a standalone
   final line when no unchecked tasks remain so the default `rl`
   promise-token handling can stop cleanly. This is the Ralph-loop
-  “completion promise” expressed as a plain token.
+  "completion promise" expressed as a plain token.
 - **Verification rules** — extracted from the backlog's global and
   per-task verification patterns. Reference external docs if the backlog
   mentions them
