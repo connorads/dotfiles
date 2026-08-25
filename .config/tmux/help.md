@@ -63,7 +63,8 @@
 |-----|--------|
 | `Ctrl+b \`` | scratch shell · centred float (70%) |
 | `Ctrl+b ~` | scratch shell · small top-right float |
-| `Ctrl+b *` | new float, stock geometry (reuses window's last float position/size) |
+| `Ctrl+b *` | on a float: tile it back into the layout · anywhere else: new float, stock geometry (reuses window's last float position/size) |
+| `Ctrl+b !` | send this float (or pane) to a window of its own (break-pane) |
 | `Ctrl+b g` | lazygit (dotfiles if in ~) |
 | `Ctrl+b G` | lazygit dotfiles (bare repo; pinned git-dir, so the cwd is irrelevant) |
 | `Ctrl+b Alt+j` | jjui (jj TUI) |
@@ -77,11 +78,13 @@
 | `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b Alt+g` → `d` / `u` | gh-dash dashboard · ghui cockpit |
 
-Floats are real panes: persistent, non-modal, mouse-drag to move/resize, kill
-with `Ctrl+b x`. Switch windows and come back and the float is still there -
-which is why the long-lived tools live here and only transactions stay popups.
-From any shell: `flt [preset] [command]` (presets: `c` centre, `big`,
-`tl`/`tr`/`bl`/`br` corners), e.g. `flt tr btm`.
+Floats are real panes: persistent, non-modal, mouse-drag to move/resize. Switch
+windows and come back and the float is still there - which is why the long-lived
+tools live here and only transactions stay popups. Three ways out: `Ctrl+b *`
+tiles it back into this window, `Ctrl+b !` gives it a window of its own, and
+`Ctrl+b x` kills it. From any shell: `flt [preset] [command]` (presets: `c`
+centre, `big`, `tl`/`tr`/`bl`/`br` corners), e.g. `flt tr btm`; `unflt` is the
+way back (`-v` to join below rather than beside).
 
 ## Popups
 
