@@ -3,7 +3,7 @@
 # usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
-#            --temp, --docker, --nix, --brew, --volumes
+#            --temp, --docker, --nix, --mise, --codex, --brew, --volumes
 emulate -L zsh
 setopt extended_glob
 
