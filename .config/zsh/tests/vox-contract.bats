@@ -14,7 +14,9 @@
 #      all through silence, so without padding the system track would compress
 #      every quiet stretch out of existence and drift away from the mic track it
 #      is merged against. Needs no audio to check, and holds regardless of what
-#      the Mac happens to be doing.
+#      the Mac happens to be doing: the probe reports the clock it answers to,
+#      so the assertion is a relation between two reported numbers rather than a
+#      guess about how long the run should have taken.
 #
 # Each half skips when its binary is absent (Linux, or a machine without
 # MacWhisper / before `drs`), keeping the fast subset fast: `mise run
@@ -186,8 +188,21 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
 #
 # `--probe N` measures the stream instead of writing it, so these need no audio
 # playing and no pipe reader. The frame count is the assertion because it is the
-# invariant: whatever the tap did or did not deliver, N seconds of stream must
-# hold N × 48000 frames.
+# invariant: whatever the tap did or did not deliver, a second of stream holds
+# 48000 frames.
+#
+# The comparison is against the `elapsed` the probe reports, never against N.
+# The stream's clock starts at process start, so it spans the Core Audio tap
+# setup, which sits outside the probe's N-second sleep and takes 0.15–0.60 s
+# depending on load. Against N the padder's back-fill of that window reads as
+# frames the machine's busyness put there, which is a load-dependent verdict on
+# a load-independent property. Against `elapsed` the setup time sits inside both
+# terms and cancels exactly.
+#
+# The lag budget is absolute, not proportional, for the same reason: what the
+# padder owes is bounded by its 0.2 s threshold plus scheduling, not by how long
+# the probe ran. A regression is total — 0 frames through silence, so lag equals
+# elapsed — which the budget clears by ~6x at a 3 s probe.
 
 @test "voxtap --check verifies the tap without emitting anything" {
   require_voxtap
@@ -198,33 +213,29 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [ -z "$output" ]
 }
 
-@test "voxtap pads silence so stream time tracks wall-clock" {
+@test "voxtap's stream tracks the clock through silence" {
   require_voxtap
-  seconds=3
 
-  run --separate-stderr voxtap --probe "$seconds"
-  frames=$(printf '%s\n' "$stderr" | sed -n 's/.*frames: \([0-9]*\).*/\1/p')
-
+  run --separate-stderr voxtap --probe 3
   [ "$status" -eq 0 ]
+
+  frames=$(printf '%s\n' "$stderr" | sed -n 's/.*frames: \([0-9]*\).*/\1/p')
+  elapsed=$(printf '%s\n' "$stderr" | sed -n 's/.*elapsed: \([0-9.]*\).*/\1/p')
+  [ -n "$elapsed" ] || skip "voxtap predates the elapsed field - run drs"
   [ -n "$frames" ]
-  # Tolerance, not equality: padding tops the stream up only once it is 0.2 s
-  # behind, so the count trails wall-clock by up to that much, and real
-  # callbacks arriving mid-tick can push it slightly ahead. A regression here
-  # is total (0 frames through silence), not a few per cent.
-  python3 -c '
-import sys
-frames, seconds = int(sys.argv[1]), int(sys.argv[2])
-expected = seconds * 48000
-assert 0.9 * expected <= frames <= 1.1 * expected, f"{frames} frames for {seconds}s"
-' "$frames" "$seconds"
-}
-
-@test "voxtap probe reports how much of the stream was padded" {
-  require_voxtap
-
-  run --separate-stderr voxtap --probe 1
-
   # Nothing may be playing, so padded frames are not asserted non-zero — only
   # that the figure is reported, which is what makes a silent run diagnosable.
   [[ "$stderr" == *"padded: "* ]]
+
+  # Behind: the padder tops up only once the stream is 0.2 s short, plus timer
+  # and teardown scheduling. Ahead: in silence the top-up cannot overshoot at
+  # all, so the tight bound catches double-counted frames and a wrong-rate
+  # resample; the slack covers one real callback landing mid-tick.
+  python3 -c '
+import sys
+frames, elapsed = int(sys.argv[1]), float(sys.argv[2])
+owed = elapsed * 48000
+assert frames <= owed + 0.1 * 48000, f"{frames} frames ran ahead of {elapsed:.3f}s of clock"
+assert frames >= owed - 0.5 * 48000, f"{frames} frames fell behind {elapsed:.3f}s of clock"
+' "$frames" "$elapsed"
 }
