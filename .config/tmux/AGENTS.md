@@ -123,7 +123,7 @@ Three blockers force a popup. Nothing else does:
 |---|---|
 | Calls `switch-client` / opens a window | A float belongs to a *window*. Switch away mid-selection and the float and its fzf are stranded. |
 | Acts on "the pane I came from" | Popups do not change the active pane; **floats become the active pane**, so origin-by-active-pane resolves to the float itself. |
-| Must work from any window | Float scope is per-window, so you get one per window, not one summonable scratch. |
+| Must work from any window | Float scope is per-window: a float belongs to the window it was made in, so there is no one summonable scratch. (A window can hold *several* floats - what you cannot have is one that follows you.) |
 
 The second blocker is mechanically removable: `run-shell` format-expands its
 command before running it (`man tmux`, run-shell: *"Before being executed,
@@ -137,6 +137,33 @@ Every float goes through `flt`, the single door carrying the tmux#5327 unzoom
 guard; presets live there, so bindings never spell out geometry. Floats are
 drag-resizable, so per-binding sizes are not worth the divergence - `big` unless
 there is a reason.
+
+**A float can hold a resident, not just a glance.** Float work comes in three
+kinds, and the doctrine above names only two of them. A transaction is picked
+and acted on (`prefix + A`). A glance is opened and closed (`prefix + g`
+lazygit, 333 uses). A *resident* stays for days: an agent session forked by
+`prefix + Alt+b` (143 uses), a scratch shell you typed `claude` into. Residents
+are opened into glance containers, so every float needs a door out as well as
+in; without one a long-running agent is stranded in the pane it started in.
+
+`unflt` ([`../zsh/functions/tmux/unflt`](../zsh/functions/tmux/unflt)) is that
+door, and the mirror of `flt`: it joins a float back to a tiled pane of the same
+window, and `prefix + *` calls it when the active pane is floating. What tmux
+3.7b allows, verified on a private socket:
+
+| Direction | 3.7b | Mechanism |
+|---|---|---|
+| float -> tiled, same window | works | `join-pane -s <float> -t <tiled>` |
+| float -> its own window | works | `break-pane`, i.e. stock `prefix + !` |
+| tiled -> float | not possible | `move-pane` has no `-X`/`-Y`; `new-pane` only creates |
+
+So there is no toggle to build: `unflt` is one-way because tmux is. Revisit
+tiled -> float on 3.8, alongside the resurrect limitation below.
+
+**The join destination has to be filtered.** A window can hold several floats,
+so `-t :.+` can land on another one and fail with `size or position can't split
+a floating pane`. Name a non-floating pane instead:
+`tmux list-panes -F '#{pane_id}' -f '#{!:#{pane_floating_flag}}' | head -1`.
 
 These bindings must stay popups, with the blocker each hits:
 
