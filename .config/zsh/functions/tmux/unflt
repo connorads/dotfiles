@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+# unflt: return a floating tmux pane to the window layout
+# usage: unflt [-v] [--print] [target-pane]
+#   target-pane defaults to the active pane (a float is always active when
+#   focused). -v joins below instead of beside; --print prints the tmux command
+#   instead of running it (tests use it).
+# The door back out of a float, and the sibling of flt - bindings create floats,
+# this reverses one. tmux 3.7b can join a float into the layout but cannot float
+# a tiled pane, so there is no toggle to build. Sizing is left alone: prefix + E
+# (spread evenly) is the habit for that.
+emulate -L zsh
+
+local usage='usage: unflt [-v] [--print] [target-pane]
+  -v joins below instead of beside; target defaults to the active pane'
+
+local vertical='' print_only=''
+while (( $# )); do
+  case "$1" in
+  -v) vertical=1; shift ;;
+  --print) print_only=1; shift ;;
+  -h | --help) print -r -- "$usage"; return 0 ;;
+  -*) print -u2 "unflt: unknown option $1"$'\n'"$usage"; return 2 ;;
+  *) break ;;
+  esac
+done
+
+[[ -n "$TMUX" ]] || { print -u2 'unflt: not inside tmux'; return 1 }
+
+# Errors go to display-message, not stderr: the callers are tmux bindings, and
+# run-shell dumps stderr into a viewer window rather than reporting it.
+local target info flag win
+target="${1:-$(command tmux display-message -p '#{pane_id}')}"
+if ! info="$(command tmux display-message -p -t "$target" '#{pane_floating_flag} #{window_id}' 2>/dev/null)"; then
+  command tmux display-message "unflt: no such pane: $target"
+  return 1
+fi
+flag="${info%% *}"
+win="${info##* }"
+
+if [[ "$flag" != 1 ]]; then
+  command tmux display-message "unflt: $target is not a floating pane"
+  return 1
+fi
+
+# The destination must be filtered to a tiled pane. A window can hold several
+# floats, so `-t :.+` can land on another float and fail with "size or position
+# can't split a floating pane".
+local dest
+dest="$(command tmux list-panes -t "$win" -F '#{pane_id}' -f '#{!:#{pane_floating_flag}}' | head -1)"
+if [[ -z "$dest" ]]; then
+  command tmux display-message 'unflt: no tiled pane in this window to join'
+  return 1
+fi
+
+local -a args=(join-pane)
+if [[ -n "$vertical" ]]; then
+  args+=(-v)
+else
+  args+=(-h)
+fi
+args+=(-s "$target" -t "$dest")
+
+if [[ -n "$print_only" ]]; then
+  print -r -- "tmux ${(j: :)args}"
+  return 0
+fi
+
+command tmux "${args[@]}"
