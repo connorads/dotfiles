@@ -343,8 +343,9 @@ and diff-review clones against the prior vetted copy before trusting them.
   `vendor/<name>/.agents/skills`.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
-  can't refresh them, and they are **absent from any `skills-lock.json` by design**. These five -
-  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs` - live in the manual bucket at `vendor/manual/<name>/`
+  can't refresh them, and they are **absent from any `skills-lock.json` by design**.
+  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs`, `product-description` and
+  `alchemy` live in the manual bucket at `vendor/manual/<name>/`
   (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
   / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
   `vendor/manual/<name>` sits exactly at; depth 6 under `.agents/skills/` was never reached).
@@ -392,6 +393,26 @@ and diff-review clones against the prior vetted copy before trusting them.
   project's `.deepsec/`, never a vendored sibling, so the source trees were pure carrying
   cost. The CLI they drive is `npm:deepsec` in mise. Refresh by re-fetching the two files
   from upstream and diffing against these copies.
+
+  `product-description` - from a **gist** by Steve Ruiz
+  (`gist.github.com/steveruizok/83ae5c53f2784ebf8f5fe0a3fb94480f`, taken at `f9435a3`), so
+  `skills update` can't refresh it (the CLI rewrites a gist URL to
+  `github.com/<user>/<id>.git`, which 404s). Builds a repo of prose documents describing what
+  a product does for its user, drafted from code and tests, then hand-verified and triaged
+  into a bug list. **The gist is flat and the skill is not**: `SKILL.md` sits beside a
+  `references/` dir holding the seven templates plus `check-links.py`. `scripts/update.py`
+  owns that mapping - bare for a preview diff, `--apply` to write - and reports any upstream
+  file the mapping does not name, so a layout change surfaces instead of a file being
+  silently dropped. Upstream's `README.md` and `install.sh` are deliberately not vendored:
+  the installer curls the gist into `~/.claude/skills/` (autoload, unreviewed), which is the
+  posture this catalogue exists to avoid. No licence is stated in the gist.
+
+  `alchemy` - a flattened snapshot of
+  [`alchemy-run/alchemy`](https://github.com/alchemy-run/alchemy)'s docs wrapped in a locally
+  authored skill. Self-documenting: `NOTICE` states the derivation,
+  `references/upstream.json` pins the exact revision, subtree and exclusions, and
+  `scripts/update.py` previews or applies a refresh against it (`scripts/search.py` is the
+  skill's own doc search).
 
 - `connorads/skills` public repo is **deferred** - public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
