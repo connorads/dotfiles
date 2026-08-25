@@ -56,6 +56,10 @@ setup() {
   touch "$HOME/.cache/aube/virtual-store/foo@1.0.0/node_modules/foo/bin/foo"
   ln -s "$HOME/.cache/aube/virtual-store/foo@1.0.0/node_modules/foo/bin/foo" \
     "$HOME/.local/share/mise/installs/npm-foo/1.0.0/bin/foo"
+  # aube re-provisions tool installs on next use, so the cache is disposable;
+  # virtual-store next to it is not. See _cleanup_run_target aube case.
+  mkdir -p "$HOME/.cache/aube/tools/node-gyp/v12/node_modules/.aube"
+  touch "$HOME/.cache/aube/tools/node-gyp/v12/package.json"
   touch "$HOME/.cache/aube/primer/data"
   touch "$HOME/.cache/aube/adaptive-state.json"
   touch "$HOME/.local/share/yarn/berry/cache/data"
@@ -260,6 +264,7 @@ EOF
   [ "$status" -eq 0 ]
   grep -F "aube cache prune --age-days 0" "$TEST_LOG"
   [ ! -e "$HOME/.cache/aube/packuments-full-v1" ]
+  [ ! -e "$HOME/.cache/aube/tools" ]
   # virtual-store is preserved: it holds live working set for mise npm tools,
   # and a `rm -rf` here would dangle every `npm:*` tool bin symlinked into it.
   [ -e "$HOME/.cache/aube/virtual-store/pkg/data" ]

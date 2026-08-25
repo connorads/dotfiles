@@ -259,11 +259,16 @@ _cleanup_probe_target() {
       # under ~/.local/share/aube and ~/.cache/aube/primer are preserved.
       # virtual-store is excluded on purpose - it is live working set for mise
       # npm-backend tools, not durable garbage; see _cleanup_run_target.
-      dirs=("$HOME/.cache/aube/packuments-full-v1")
+      # tools/ holds aube-provisioned tool installs (node-gyp). Their store links
+      # are absolute paths into virtual-store, so they break whenever aube
+      # relocates an entry - e.g. across a virtual-store layout bump - and the
+      # bootstrap serves the dangling path rather than re-provisioning. It is
+      # ~48K and fully regenerable, so flush it instead of detecting staleness.
+      dirs=("$HOME/.cache/aube/packuments-full-v1" "$HOME/.cache/aube/tools")
       kb=$(_cleanup_kb_sum "${dirs[@]}")
       (( kb > 0 )) || command -v aube >/dev/null 2>&1 || applicable=0
-      detail="Paths: ${dirs[1]}"
-      command="aube cache prune --age-days 0; rm -rf packuments-full-v1"
+      detail="Paths: ${dirs[1]}, ${dirs[2]}"
+      command="aube cache prune --age-days 0; rm -rf packuments-full-v1 tools"
       ;;
     npm)
       command -v npm >/dev/null 2>&1 || applicable=0
@@ -505,9 +510,11 @@ _cleanup_run_target() {
       # `mise install --force` rebuilds). It is live working set cloned from the
       # preserved CAS, not durable garbage. Stale tool versions are reclaimed
       # safely by the `mise` target (`mise prune`), not here. `aube cache prune`
-      # only touches primer metadata, never virtual-store.
+      # only touches primer metadata, never virtual-store. tools/ does go: unlike
+      # virtual-store it is regenerable, re-provisioned on the next bootstrap.
       command -v aube >/dev/null 2>&1 && aube cache prune --age-days 0
-      command rm -rf -- "$HOME/.cache/aube/packuments-full-v1"
+      command rm -rf -- "$HOME/.cache/aube/packuments-full-v1" \
+        "$HOME/.cache/aube/tools"
       ;;
     npm)
       command -v npm >/dev/null 2>&1 || return 0
