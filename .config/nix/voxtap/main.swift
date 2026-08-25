@@ -3,7 +3,7 @@
 //
 //   voxtap            stream 48 kHz mono float32 to stdout until killed
 //   voxtap --check    create the tap, verify it starts, tear down, exit 0/1
-//   voxtap --probe N  stream for N seconds, report frames + level on stderr
+//   voxtap --probe N  stream for N seconds, report frames + elapsed + level on stderr
 //
 // Written because ffmpeg's avfoundation input cannot use the tap API: system
 // audio only reaches it through BlackHole plus a hand-built Multi-Output device,
@@ -198,12 +198,18 @@ final class Stream {
     /// Reused so padding allocates nothing per tick.
     private var silence = [Float](repeating: 0, count: 4096)
 
-    /// Frames the monotonic clock says should have been emitted by now.
+    /// Seconds of monotonic clock the stream is accountable for. Counted from
+    /// construction, so it spans the tap setup the padder back-fills.
     /// `uptimeNanoseconds` does not advance while the machine sleeps, which is
     /// what we want: a closed lid pauses the mic capture too.
-    private func expectedFrames() -> UInt64 {
+    private func elapsedSeconds() -> Double {
         let elapsed = DispatchTime.now().uptimeNanoseconds - started.uptimeNanoseconds
-        return UInt64(Double(elapsed) / 1_000_000_000 * targetRate)
+        return Double(elapsed) / 1_000_000_000
+    }
+
+    /// Frames the monotonic clock says should have been emitted by now.
+    private func expectedFrames() -> UInt64 {
+        UInt64(elapsedSeconds() * targetRate)
     }
 
     func emit(_ samples: [Float]) {
@@ -241,12 +247,16 @@ final class Stream {
         }
     }
 
-    /// frames, padded frames, mean level in dBFS, peak.
-    func report() -> (UInt64, UInt64, Double, Float) {
+    /// Both halves of the padding invariant — frames emitted and the clock they
+    /// answer to — plus padded frames, mean level in dBFS and peak.
+    func report() -> (frames: UInt64, padded: UInt64, elapsed: Double, meanDB: Double, peak: Float)
+    {
         lock.lock()
         defer { lock.unlock() }
         let rms = framesEmitted > 0 ? (sumSquares / Double(framesEmitted)).squareRoot() : 0
-        return (framesEmitted, paddedFrames, rms > 0 ? 20 * log10(rms) : -120, peak)
+        return (
+            framesEmitted, paddedFrames, elapsedSeconds(), rms > 0 ? 20 * log10(rms) : -120, peak
+        )
     }
 }
 
@@ -501,12 +511,15 @@ _ = signalSources
 
 if case .probe(let seconds) = mode {
     Thread.sleep(forTimeInterval: seconds)
-    let (frames, padded, meanDB, peak) = stream.report()
+    let (frames, padded, elapsed, meanDB, peak) = stream.report()
     capture.stop()
+    // elapsed, not N: the tap setup happens inside the stream but outside the
+    // probe's sleep, so N is not the clock the frame count answers to. Reporting
+    // both halves is what lets a caller check the invariant rather than guess it.
     log(
         String(
-            format: "frames: %llu  padded: %llu  mean: %.1f dBFS  peak: %.4f",
-            frames, padded, meanDB, peak))
+            format: "frames: %llu  padded: %llu  elapsed: %.3f  mean: %.1f dBFS  peak: %.4f",
+            frames, padded, elapsed, meanDB, peak))
     exit(0)
 }
 
