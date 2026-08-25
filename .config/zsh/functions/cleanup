@@ -335,10 +335,15 @@ _cleanup_probe_target() {
       command="rm -rf ~/.cache/nvim"
       ;;
     node-gyp)
-      kb=$(_cleanup_kb_sum "$HOME/.cache/node-gyp")
-      [[ -e "$HOME/.cache/node-gyp" ]] || applicable=0
-      detail="Path: $HOME/.cache/node-gyp"
-      command="rm -rf ~/.cache/node-gyp"
+      # node-gyp resolves its download cache via env-paths, so the location is
+      # platform-dependent: ~/Library/Caches on macOS, XDG on Linux. ~/.node-gyp
+      # is the legacy devdir older toolchains still write. All three are pure
+      # re-downloadable header caches, and this file runs on both platforms.
+      dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      _cleanup_any_exists "${dirs[@]}" || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
+      command="rm -rf ~/Library/Caches/node-gyp ~/.cache/node-gyp ~/.node-gyp"
       ;;
     browsers)
       dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
@@ -558,7 +563,8 @@ _cleanup_run_target() {
       command rm -rf -- "$HOME/.cache/nvim"
       ;;
     node-gyp)
-      command rm -rf -- "$HOME/.cache/node-gyp"
+      dirs=("$HOME/Library/Caches/node-gyp" "$HOME/.cache/node-gyp" "$HOME/.node-gyp")
+      command rm -rf -- "${dirs[@]}"
       ;;
     browsers)
       dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
