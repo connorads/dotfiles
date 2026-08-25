@@ -26,6 +26,7 @@ setup() {
     "$HOME/.local/share/yarn/berry/cache" \
     "$HOME/.cache/yarn/pkg" \
     "$HOME/.cache/node-gyp/22" \
+    "$HOME/Library/Caches/node-gyp/24" \
     "$HOME/.rustup/toolchains/override-named-unmarked/bin" \
     "$HOME/.rustup/toolchains/remove-unmarked/bin" \
     "$HOME/git/realcrate/target/debug" \
@@ -65,6 +66,7 @@ setup() {
   touch "$HOME/.local/share/yarn/berry/cache/data"
   touch "$HOME/.cache/yarn/pkg/data"
   touch "$HOME/.cache/node-gyp/22/data"
+  touch "$HOME/Library/Caches/node-gyp/24/data"
   touch "$HOME/.rustup/toolchains/override-named-unmarked/bin/rustc"
   touch "$HOME/.rustup/toolchains/remove-unmarked/bin/rustc"
   # Cargo build dirs are identified by CACHEDIR.TAG *and* a sibling Cargo.toml.
@@ -283,10 +285,13 @@ EOF
   [[ "$(cat "$TEST_LOG")" != *"yarn "* ]]
 }
 
-@test "node-gyp cleanup removes its cache directory" {
+@test "node-gyp cleanup removes its cache directory on both platforms" {
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --node-gyp
 
   [ "$status" -eq 0 ]
+  # env-paths puts the cache under ~/Library/Caches on macOS and ~/.cache on
+  # Linux, so the target must claim both regardless of the host it runs on.
+  [ ! -e "$HOME/Library/Caches/node-gyp" ]
   [ ! -e "$HOME/.cache/node-gyp" ]
 }
 
