@@ -1,31 +1,35 @@
 ---
 name: web-perf
 description: >-
-  Diagnoses and fixes first-load visual jank - font-swap flashes, image
-  decode pop-in, layout shift (CLS), slow LCP/FCP, blank-then-paint,
-  hydration/theme flips, Core Web Vitals or Lighthouse/PageSpeed complaints
-  about first paint - on any hand-wired stack: static-prerendered (Astro/SSG),
-  Vite SPA/MPA, or SSR from a Worker/edge. Use when the user reports a
-  "flash", "shimmer", "pop", "jump", "flicker", or slow first paint; when
-  content fades in after JS runs (entrance reveals) or the LCP is webfont
-  text; when reviewing font loading (self-hosted, Google Fonts, or Adobe
-  Fonts/Typekit kits) or image loading; when deciding if subsetting fixed
-  copy is safe; when wiring
-  resource hints (preload/preconnect) or metric-matched fallbacks; or when
-  asserting first-load invariants on built HTML or a booted route. Not for
-  backend latency, bundle-size analysis, or runtime interaction (INP)
-  tuning; where a framework layer automates the fix (next/font, next/image,
-  Astro fonts), defer to that layer's output - but still inspect app code
-  wrapping it.
+  Diagnoses and fixes what a user sees on a route's first load - font-swap
+  flashes, image decode pop-in, layout shift (CLS), slow LCP/FCP,
+  blank-then-paint, hydration/theme flips, streamed-SSR skeletons that flash
+  or pop, Lighthouse/PageSpeed complaints - on static (Astro/SSG), Vite SPA,
+  SSR, or streamed/partially-prerendered routes; a soft navigation is that
+  route's first load. Use on "flash", "shimmer", "pop", "jump", "flicker",
+  "skeleton", or slow first paint; when the LCP is webfont text or content
+  fades in after JS; for font loading (self-hosted, Google Fonts, Adobe
+  Fonts), image loading, Suspense boundary placement, skeleton swaps,
+  subsetting fixed copy, resource hints, metric fallbacks; or to assert
+  first-load invariants on built HTML, a booted route, or a streamed shell.
+  Not for bundle-size analysis, steady-state INP, SEO, or backend latency
+  beyond the TTFB-vs-skeleton trade-off; where a framework automates the fix
+  (next/font, next/image, Astro fonts), defer to its output but inspect
+  wrapping code.
 ---
 
-# Web Performance: first-load visual jank
+# Web Performance: the first load of a route
 
-Diagnose and fix the first-load defects a user can *see* on any stack where you
-hand-wire loading instead of leaning on a framework's font/image layer:
-`@font-face` written by hand, fonts pulled from a hosted CDN (Google Fonts),
-native `<img>`, resource hints in your own document head. The framework is not
-doing it for you, so you must - and must verify it yourself.
+Diagnose and fix what a user *sees* on a route's first load. Two territories:
+
+- **Hand-wired loading** - `@font-face` written by hand, fonts pulled from a
+  hosted CDN (Google Fonts), native `<img>`, resource hints in your own
+  document head. No framework layer is doing it for you, so you must - and
+  must verify it yourself.
+- **The rendering path itself** - streamed shells, Suspense fallbacks and the
+  skeleton-to-content swap, hydration timing, router-level pending states.
+  Here the framework's rendering model *is* the mechanism, and the lever is
+  where you place boundaries and what the fallback reserves.
 
 Where a framework *does* automate the fix (Next's `next/font`/`next/image`,
 Astro's Fonts API), defer to that layer's own output - but app code
@@ -33,11 +37,25 @@ Astro's Fonts API), defer to that layer's own output - but app code
 
 ## Out of scope
 
-This skill owns **first-load visual jank** and nothing wider. Not here: backend
-/ TTFB latency, bundle-size analysis (tree-shaking, chunk budgets), runtime
-interaction tuning (INP beyond the hydration flip), or SEO. Those are separate
-concerns; do not grow this skill into them. If the ask is one of those, say so
-and stop rather than stretching a loading fix to fit.
+This skill owns **the first-load experience of a route** - everything the user
+sees between requesting a route and its settled first view, whoever produced
+the HTML. A soft navigation counts as the next route's first load, and a
+Suspense-boundary placement counts even though it shapes TTFB. Still not here:
+
+- **Bundle-size analysis** (tree-shaking, chunk budgets, dependency audits).
+  Naming a large hydration bundle as a C1 *cause* is in scope; auditing and
+  shrinking it is not.
+- **Steady-state interaction (INP) tuning** - interaction latency after the
+  route has settled. Hydration timing is in scope only where it changes what
+  the user sees arriving.
+- **SEO** - the head is shared plumbing; title/canonical/robots concerns
+  belong elsewhere (the status-freeze soft-404 note in static-vs-ssr.md is a
+  first-load fact, not SEO advice).
+- **Backend latency** beyond the TTFB-vs-skeleton-vs-blank boundary
+  trade-off - making the query faster is not this skill.
+
+If the ask is one of those, say so and stop rather than stretching a loading
+fix to fit.
 
 ## The core loop: symptom -> cause -> fix -> proof
 
@@ -112,7 +130,10 @@ causes and fixes live in `references/symptoms.md`.
 - On React stacks, the DOM resource-hint APIs (`preload`, `preconnect`,
   `prefetchDNS`) are tabulated in the `vercel-react-best-practices` skill;
   this skill adds the framework-agnostic *why* (crossOrigin/CORS, exact-file
-  matching, ordering/priority).
+  matching, ordering/priority). The wider border with that skill: it owns
+  steady-state React performance (re-render work, request waterfalls, bundle
+  size); this skill owns what the user sees on a route's first paint,
+  including streamed reveals and hydration-timing flashes.
 
 ## References
 

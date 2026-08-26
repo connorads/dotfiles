@@ -6,9 +6,12 @@
 > adds the *why* and the ordering/matching/budget gotchas that skill omits, NOT the
 > API table.
 
-**Prefetch boundary**: speculative loading of the *next* navigation is out of
-this skill's first-load scope. If a project needs it, use the Speculation
-Rules API, not legacy `<link rel=prefetch>`/`rel=prerender`.
+**Prefetch boundary**: a soft navigation counts as the next route's first
+load, so speculative loading is in scope as that route's first-paint lever.
+Hand-wired, use the Speculation Rules API, not legacy
+`<link rel=prefetch>`/`rel=prerender`; router-level prefetch (Next `<Link>`,
+TanStack `defaultPreload`) is that framework's automation - defer to it and
+inspect the wrapping code (framework-automation.md).
 
 ## What this adds over the vercel skill
 
