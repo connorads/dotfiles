@@ -83,10 +83,15 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
     317934@main). caniuse has no feature for these descriptors; re-check MDN BCD
     or webstatus (`font-metric-overrides`) before dropping the carve-out.
     Meanwhile size-adjust *alone* can be worse than nothing (it scales width
-    and height with no height correction). If Safari shift matters, gate the block: feature-detect
-    with JS (`'ascentOverride' in new FontFace('t', 'local(Arial)')`) or the
-    `@supports (overflow-anchor: auto)` proxy - `@supports` cannot test font
-    descriptors, and Safari is the one evergreen without `overflow-anchor`.
+    and height with no height correction). If Safari shift matters, gate the
+    block by feature-detecting with JS:
+    `'ascentOverride' in new FontFace('t', 'local(Arial)')` - it tests the
+    descriptor itself, so it flips true exactly when a Safari that honours the
+    overrides ships. `@supports` cannot test font descriptors, and do not
+    substitute the `@supports (overflow-anchor: auto)` proxy: Safari 27 ships
+    scroll anchoring while the metric overrides land in a later release, so the
+    proxy reports "not Safari" on exactly the WebKit builds that still shift.
+    There is no CSS-only detect.
   - **Pick the fallback per generic family**: derive a serif face's fallback
     from a serif base (Georgia / Times New Roman), a sans face's from Arial. A
     global generator config like fontaine's `fallbacks: ['Arial']` silently
