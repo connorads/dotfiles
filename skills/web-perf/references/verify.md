@@ -139,7 +139,7 @@ shipping verdict is field data: field CLS is the largest session window over the
 whole page lifecycle (scroll, interaction, SPA nav), not just first load, so a
 lab load-only CLS ~0 can still regress in the field. Before calling a CLS/LCP
 regression closed, confirm against real-user p75 (PageSpeed Insights' field
-section or the DevTools field-data panel, both CrUX). Ref:
+section or the DevTools field-metrics panel, both CrUX). Ref:
 <https://web.dev/articles/cls>.
 
 ### 4a. See it cold-cache, by eye
@@ -284,8 +284,10 @@ most time:
   names and JSON keys are gone, replaced by insight audits: "Eliminate
   render-blocking resources" -> `render-blocking-insight`; the LCP
   lazy-load/preload pair -> `lcp-discovery-insight` (+ `image-delivery-insight`
-  for weight/format); font-display -> `font-display-insight`; unsized-image /
-  layout-shift culprits -> `cls-culprits-insight`. The 0-100 performance
+  for weight/format); font-display -> `font-display-insight`; layout-shift
+  culprits -> `cls-culprits-insight`. Of the ids named here only
+  `unsized-images` survives - still a weight-0 `diagnostics` audit in 13 - so
+  an LHCI assertion keyed on it passes. The 0-100 performance
   *score* is unchanged (metric-driven) - only the diagnostics moved. LHCI
   assertions keyed on old audit ids fail on Lighthouse 13+; check ids against
   the installed version.
@@ -342,9 +344,9 @@ fix that turns out not to move the needle.
 
 1. **Live Metrics (no trace).** Opening the Performance panel reads local
    LCP/CLS/INP live via web-vitals - interact with the page to surface INP and
-   interaction-driven CLS. Enable **Field data** (opt-in; sends the URL to the
-   CrUX API) to read real-user p75 beside the local numbers - the field p75 is
-   the verdict (section 4). The panel can also recommend a throttling preset
+   interaction-driven CLS. Enable **Field metrics** (opt-in; sends the URL to
+   the CrUX API) to read real-user p75 beside the local numbers - the field p75
+   is the verdict (section 4). The panel can also recommend a throttling preset
    derived from your users' p75 RTT; use that for a *field-representative* read,
    but keep section 4a's slowest preset when the goal is reliably reproducing
    FOUT/pop-in (a worst case, not a field average).
@@ -352,8 +354,8 @@ fix that turns out not to move the needle.
    **Disable cache** + throttling -> **3G** first, then read the **Layout
    Shifts** track (purple diamonds grouped into session-window clusters; click
    one for the animated shift + Summary tab with score/elements/culprits). The
-   Insights sidebar "Layout shift culprits" names causes like "Font request" /
-   "Unsized images". (Diamond size is not documented to scale with shift
+   Insights sidebar "Layout shift culprits" names causes like "Web font" /
+   "Unsized image element". (Diamond size is not documented to scale with shift
    magnitude - don't read it that way.)
 3. **PSI** shows CrUX field data (the assessment verdict) above a Lighthouse lab
    run; its lab half corroborates but iterates slower (sample the median,

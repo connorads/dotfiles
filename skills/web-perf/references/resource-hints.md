@@ -81,8 +81,8 @@ The Worker does NOT send 103 itself. Attach a standard
 `Link: </file.woff2>; rel=preload; as=font` header to your normal 200/301/302 HTML
 response; Cloudflare's Early Hints feature harvests + caches those Link headers (keyed
 by URI, query ignored) and replays a cached `103 Early Hints` without waiting for the
-Worker to generate the response. Enable via dashboard Speed > Optimization > Content
-Optimization > Early Hints (zone-level, not on `workers.dev`). It **works for
+Worker to generate the response. Enable via dashboard Speed > Settings > Content
+Optimization tab > Early Hints (zone-level, not on `workers.dev`). It **works for
 dynamic/uncacheable Worker responses** precisely because there is a render-latency gap.
 Requires HTTP/2 or HTTP/3 and applies to navigation requests. Browser support is now
 broad, but per-browser directive handling varies - some browsers act on the hints as
@@ -91,7 +91,10 @@ accelerator, never the only delivery path for a hint. Measurement caveat: since
 Chrome 133 `responseStart` includes the 103, so enabling Early Hints lowers
 *reported* TTFB without changing real server time - judge a fix by LCP/FCP, not
 TTFB. Eligibility:
-`.html`/`.htm`/`.php` or no extension, 200/301/302 only; keep Link headers under ~8KB.
+`.html`/`.htm`/`.php` or no extension, 200/301/302 only, and Link headers carrying
+`rel=preload`/`rel=preconnect` only. Cloudflare documents no Early-Hints-specific size
+cap; the zone budget is 128KB of response headers total (checked Aug 2026). Keep the hint
+list short because over-hinting contends for bandwidth, not to hit a byte cap.
 Responsive `imagesrcset` preloads do NOT work here (or in HTTP-header preload).
 
 - **Privacy caveat (the edge lens):** an unauthenticated visitor can receive a 103 with
@@ -178,9 +181,14 @@ one. Two rules, plus a host default that quietly breaks both:
   Firefox/Safari; Chrome (since the 2025 CCNS rollout) does bfcache `no-store`
   pages under safeguards (evicted on cookie/auth changes, shorter lifetime).
   `no-cache` / short `max-age` never blocked it. `unload` handlers (often
-  third-party analytics) still disqualify the page - use `pagehide` instead
-  (Chrome is deprecating `unload`). Audit: DevTools > Application > Back/forward
-  cache.
+  third-party analytics) disqualify the page on Firefox desktop, and on Chrome
+  desktop wherever `unload` still fires - use `pagehide` instead. Chrome's
+  deprecation rollout turns the `unload` permission off by default, so the
+  listener never registers and cannot block bfcache (80% of Chrome page
+  loads at Chrome 152, 100% planned at Chrome 154; as of Aug 2026). A site that
+  opts back in with `Permissions-Policy: unload=self` keeps the old blocking
+  behaviour. Chrome and Safari on mobile always cached unload pages. Audit:
+  DevTools > Application > Back/forward cache.
 - <https://developers.cloudflare.com/workers/static-assets/headers/> ·
   <https://opennext.js.org/cloudflare> ·
   <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control> ·

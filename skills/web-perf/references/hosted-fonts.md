@@ -139,8 +139,11 @@ package, import the weights you use, delete the CDN links. On a **no-build or
 non-JS site** (hand-wired HTML, plain SSG with no package manager),
 google-webfonts-helper emits the woff2 files plus ready-to-paste `@font-face`
 CSS - pick its Modern (woff2-only) output. Either way, then apply fonts.md end
-to end. Privacy is a bonus: no per-pageview font requests to a third party (GDPR
-rulings have bitten hosted Google Fonts).
+to end. Privacy is a bonus: no per-pageview font requests to a third party. LG
+München I (20 January 2022, 3 O 17493/20) awarded EUR 100 plus an injunction
+against a site loading hosted Google Fonts without consent; German rulings
+since have split, and the BGH referred the underlying questions to the CJEU on
+28 August 2025 (VI ZR 258/24), still pending.
 
 - <https://developers.google.com/fonts/docs/css2> ·
   <https://fontsource.org/docs/getting-started/introduction> ·
