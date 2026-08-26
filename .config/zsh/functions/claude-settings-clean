@@ -13,9 +13,15 @@ emulate -L zsh
 # over subscription OAuth. Keep those in settings.local.json or another ignored
 # local file instead.
 #
+# Key order is machine-local in the same sense: Claude Code rewrites the whole
+# file whenever it persists a setting and does not preserve the order it found,
+# so a /permissions edit that changes nothing still lands as a diff. -S sorts
+# object keys so git never sees a reorder. It sorts keys only, which leaves the
+# permission arrays in their authored order.
+#
 # jq's default 2-space indent matches Claude Code's JSON output, so del() is
 # byte-identical to the committed file apart from the dropped keys.
-jq 'del(
+jq -S 'del(
   .model,
   .apiKeyHelper,
   .awsAuthRefresh,

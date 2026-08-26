@@ -31,6 +31,7 @@ ALLOW_PATTERN_PATHS = {
     ".config/zsh/tests/claude-profile-launchers.bats",
     ".config/zsh/tests/claude-profile-leak-guard.bats",
     ".config/zsh/functions/claude-settings-clean",
+    ".config/zsh/tests/claude-settings-clean.bats",
     ".hk-hooks/claude-profile-leak-guard.py",
     ".zshrc.local.example",
 }
