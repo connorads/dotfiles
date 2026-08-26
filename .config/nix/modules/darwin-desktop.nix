@@ -75,6 +75,7 @@
       "whatsapp"
       "telegram-desktop"
       "steam"
+      "stremio"
       "utm"
       "retroarch"
       "android-studio"
