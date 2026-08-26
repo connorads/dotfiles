@@ -45,10 +45,11 @@ You almost always arrive with a **symptom the user saw** (or a screenshot), not
 a metric. So the spine is diagnostic. For each symptom: name the cause, apply
 the fix, then **prove it cold-cache** - an unverified perf fix is a guess.
 
-First ask: **is the HTML fixed at build (static prerender) or rendered per
-request (SSR)?** - per route, not per site. The axis picks how you *verify*
-and which build-time gates exist; whether a symptom class is *possible* hinges
-on client-reconciliation JS, not on the axis ->
+First ask: **how does the HTML reach the browser - fixed at build (static
+prerender), rendered per request (SSR), or streamed (a shell, then
+flushes)?** - per route, not per site (per *hole* under Cache Components). The
+axis picks how you *verify* and which build-time gates exist; whether a symptom
+class is *possible* hinges on client-reconciliation JS, not on the axis ->
 `references/static-vs-ssr.md`. Then:
 
 1. Identify the symptom -> `references/symptoms.md` (decision tree). START HERE.
@@ -139,18 +140,22 @@ causes and fixes live in `references/symptoms.md`.
 
 **Decide where:**
 
-- `references/static-vs-ssr.md` - the fixed-at-build vs rendered-per-request
-  axis (per route): which verify tier applies, per-route hybrids, embedded
-  surfaces.
+- `references/static-vs-ssr.md` - the fixed-at-build vs rendered-per-request vs
+  streamed axis (per route; per hole under Cache Components): which verify tier
+  applies, the streamed mode's commitment points (shell vs flush, fallback
+  dimensions, boundary placement, status freeze, how to tell a route streams),
+  per-route hybrids, embedded surfaces.
 - `references/framework-automation.md` - what a framework's font/image layer
   automates <-> the hand-rolled equivalent, and the wrapping-code carve-out.
 
 **Prove:**
 
 - `references/verify.md` - how to prove a fix cold-cache: Tier 0 asserts on the
-  static `dist/*.html` bytes; Tier 1 boots the route for SSR; shared CLS probe,
-  measurement-tool gotchas, and a local Lighthouse A/B across the change (5a).
-  The lens no other loading skill carries.
+  static `dist/*.html` bytes; Tier 1 boots the route for SSR - with 3c scoping
+  the same invariants to a streamed route's shell and probing the flush
+  timeline; shared CLS probe, filmstrip/visual metrics for defects that move no
+  vital (4e), measurement-tool gotchas, and a local Lighthouse A/B across the
+  change (5a). The lens no other loading skill carries.
 
 **Templates (read-as-reference, brand-agnostic - adapt per project):**
 
@@ -161,6 +166,10 @@ causes and fixes live in `references/symptoms.md`.
   (block-scoped). Wire into CI after the build.
 - `scripts/check-head.mjs` - Tier-1 booted-route guard: fetch a route (or pipe
   HTML in) and assert the same head invariants on rendered bytes.
+- `scripts/check-stream.mjs` - Tier-1 streamed-route guard: read a booted
+  route's body flush by flush, assert the head invariants on the shell only,
+  print the flush timeline with React's boundary/swap markers, and flag a head
+  split across flushes (verify.md 3c).
 - `scripts/font-subset.config.mjs` - the single shared coverage module the subset
   generator and `check-dist.mjs` both import, so the shipped woff2 and the
   assertion can't drift.
