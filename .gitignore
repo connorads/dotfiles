@@ -231,6 +231,7 @@
 !/.config/lazygit/
 !/.config/lazygit/**
 /.config/lazygit/state.yml
+/.config/lazygit/github_pull_requests.json
 
 !/.config/micro/
 !/.config/micro/settings.json
