@@ -205,10 +205,14 @@ version = "2.1.227"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-arm64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.227/linux-arm64/claude"
+checksum = "sha256:e998df163821c7c2be66139f0b5411e26928b9bc18326edb95576b7bc94168b3"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.227/claude-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/509246732"
 
 [tools.claude."platforms.linux-x64"]
-url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.227/linux-x64/claude"
+checksum = "sha256:ee91648d1c54b978594d43ac1b2c4a83083215c6f609a437cd9cb4da3811ee55"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.227/claude-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/509246774"
 
 [tools.claude."platforms.macos-arm64"]
 checksum = "blake3:5b46a0145ae4df43bbeb553791b9cb860b61ee1113724b1b43d5b9923708c40a"
