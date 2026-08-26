@@ -123,6 +123,11 @@ def test_escaped_markup_in_a_page_survives_tag_stripping() -> None:
             "https://api.fxtwitter.com/photomatt/status/1234567890",
         ),
         (
+            "https://news.ycombinator.com/item?id=3516591",
+            "hn_item",
+            "https://hacker-news.firebaseio.com/v0/item/3516591.json",
+        ),
+        (
             "https://arxiv.org/abs/1509.05393",
             "pdf",
             "https://arxiv.org/pdf/1509.05393",
@@ -280,6 +285,22 @@ def test_an_x_post_carries_its_author_handle() -> None:
     # handle has to travel with the text.
     payload = json.dumps({"tweet": {"text": "Ship it.", "author": {"screen_name": "photomatt"}}})
     assert vp.extract("x_post", payload) == "@photomatt Ship it."
+
+
+def test_an_hn_comment_carries_its_author_handle() -> None:
+    # The reason this route exists at all: an `item?id=` page is the whole
+    # thread, so a match there could confirm a stranger's reply as the
+    # persona's words. The API returns one item, and the handle travels with it.
+    text = vp.extract("hn_item", fixture("hn-item.json"))
+    assert text.startswith("@garybernhardt ")
+
+
+def test_an_hn_comment_body_is_unescaped_after_its_tags_are_stripped() -> None:
+    # HN's `text` is real HTML with escaped entities inside it, so it needs the
+    # same ordering any page does - otherwise every contraction in it fails.
+    text = vp.extract("hn_item", fixture("hn-item.json"))
+    assert "because they're so repeatable" in text
+    assert "<p>" not in text
 
 
 def test_a_json_escaped_transcript_inside_a_script_blob_is_read() -> None:
@@ -500,6 +521,12 @@ CASES = {
         "> \"We don't know what we don't know about production.\"\n"
         "-- verbatim | blog: On production, example.com, 2020-01-01"
         " | https://example.com/entity-contractions\n"
+    ),
+    "hn-item": (
+        '> "I practice my talks a lot, and I can get the timing down perfectly because'
+        " it's always the same.\"\n"
+        "-- verbatim | Hacker News comment, 2012-02-03"
+        " | https://news.ycombinator.com/item?id=3516591\n"
     ),
     "leanpub-sample": (
         '> "I still don\'t know how to end this book."\n'

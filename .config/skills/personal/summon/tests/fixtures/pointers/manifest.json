@@ -8,6 +8,7 @@
   "https://example.com/notes/raw-markdown-angle-brackets.md": "raw-markdown-angle-brackets.md",
   "https://example.com/rate-limited": "rate-limited-page.html",
   "https://example.com/three-things-about-static": "elided-quote.html",
+  "https://hacker-news.firebaseio.com/v0/item/3516591.json": "hn-item.json",
   "https://raw.githubusercontent.com/mrdoob/three.js/dev/README.md": "github-blob.md",
   "https://s3.amazonaws.com/samples.leanpub.com/example_storming-sample.pdf": "leanpub-sample.txt",
   "https://web.archive.org/web/20150413032050id_/http://example.com/essay": "wayback-wrapper.html",

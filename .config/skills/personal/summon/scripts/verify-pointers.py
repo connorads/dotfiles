@@ -149,6 +149,7 @@ GITHUB_COMMENT = re.compile(
 WAYBACK = re.compile(r"^(https?://web\.archive\.org/web/)(\d{4,14})(/)(.*)$", re.IGNORECASE)
 REDDIT_COMMENT = re.compile(r"^https?://(?:\w+\.)?reddit\.com/r/[^/]+/comments/\w+/[^/]*/(\w{5,})")
 X_POST = re.compile(r"^https?://(?:www\.)?(?:x|twitter)\.com/([^/]+)/status/(\d+)")
+HN_ITEM = re.compile(r"^https?://news\.ycombinator\.com/item\?id=(\d+)")
 ARXIV_ABS = re.compile(r"^https?://arxiv\.org/abs/(.+)$")
 LOCALFIRST_EPISODE = re.compile(r"^(https?://(?:www\.)?localfirst\.fm/\d+)/?$")
 LEANPUB_BOOK = re.compile(r"^https?://leanpub\.com/([^/]+)/?$")
@@ -193,6 +194,16 @@ def route(url: str) -> Route:
             "reddit_comment",
             f"https://arctic-shift.photon-reddit.com/api/comments/ids?ids={comment_id}",
         )
+
+    if match := HN_ITEM.match(url):
+        # Not a way round the 429, though it is also that. An `item?id=` page is
+        # the *whole thread*: the one HN quote this checker ever confirmed was
+        # matched against a page carrying seven people's comments, so it would
+        # equally have confirmed a stranger's reply as the persona's words -
+        # adjacent-colleague capture, the commonest signature in
+        # ``attribution.md``. The official Firebase API returns one item and
+        # names its author.
+        return Route("hn_item", f"https://hacker-news.firebaseio.com/v0/item/{match.group(1)}.json")
 
     if match := X_POST.match(url):
         handle, post = match.groups()
@@ -399,6 +410,16 @@ def extract(kind: str, body: str) -> str:
         # The handle travels with the text: a reply or quote-post under the same
         # URL is someone else's words.
         return " ".join(f"@{author} {text}".split())
+
+    if kind == "hn_item":
+        payload = _load_json(body) or {}
+        # A comment carries `text`; a story carries `title`, and `text` too when
+        # it is an Ask HN. The body is real HTML with escaped entities inside it,
+        # so it needs the same strip-then-unescape order any page does.
+        written = " ".join(part for part in (payload.get("title"), payload.get("text")) if part)
+        # Like x_post: the handle travels with the text, because a reply under
+        # the same thread is someone else's words.
+        return " ".join(f"@{payload.get('by', '')} {strip_tags(written)}".split())
 
     if kind == "reddit_comment":
         payload = _load_json(body) or {}
