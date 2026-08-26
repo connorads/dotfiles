@@ -16,7 +16,7 @@ pair, `display=` param, un-preloadable file URLs - see **hosted-fonts.md**.
 > automates provider-level subsetting (`subsets: ['latin']`, `unicodeRange`
 > per font) like next/font; what no framework layer does is re-subset to your
 > *fixed copy* with a drift guard - the custom subsetting + coverage-guard
-> sections below still apply on Astro 6. Hand-wire the rest of this file on
+> sections below still apply on Astro 6+. Hand-wire the rest of this file on
 > Vite, Worker-SSR, or pre-6 Astro. See framework-automation.md for the
 > row-by-row boundary.
 
@@ -75,12 +75,15 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
   `capsize-font-metrics.json`, and `next/font/local`, via fontkit, use the identical
   Capsize-derived algorithm, falling back to Arial/Times New Roman by generic
   family).
-  - **Safari caveat**: WebKit supports `size-adjust` but ignores
-    `ascent-override`/`descent-override`/`line-gap-override` (WebKit bug 219735,
-    open - check caniuse for current status), so a tuned fallback still shifts
-    there - and size-adjust
-    *alone* can be worse than nothing (it scales width and height with no
-    height correction). If Safari shift matters, gate the block: feature-detect
+  - **Safari caveat**: Safari supports `size-adjust` but ignores
+    `ascent-override`/`descent-override`/`line-gap-override`, so a tuned fallback
+    still shifts there. WebKit bug 219735 is RESOLVED FIXED - implemented in trunk
+    and on by default since August 2026 (318680@main) - but no released Safari
+    ships it (26.6 as of 2026-08-26; STP 250 only covers WebKit through
+    317934@main). caniuse has no feature for these descriptors; re-check MDN BCD
+    or webstatus (`font-metric-overrides`) before dropping the carve-out.
+    Meanwhile size-adjust *alone* can be worse than nothing (it scales width
+    and height with no height correction). If Safari shift matters, gate the block: feature-detect
     with JS (`'ascentOverride' in new FontFace('t', 'local(Arial)')`) or the
     `@supports (overflow-anchor: auto)` proxy - `@supports` cannot test font
     descriptors, and Safari is the one evergreen without `overflow-anchor`.
@@ -174,8 +177,10 @@ metric fallbacks.
 
 2. **`@capsizecss/core` `createFontStack([await unpack.fromBuffer(readFileSync(real)), metrics.georgia])`**
    - programmatic, if you want to commit the CSS yourself. `@capsizecss/unpack`
-   reads metrics off your own woff2 (v4 exposes `fromBuffer`/`fromUrl`/`fromBlob`,
-   NOT `fromFile`); `@capsizecss/metrics` supplies system-font metrics.
+   reads metrics off your own woff2 (v4's root entry exposes
+   `fromBuffer`/`fromUrl`/`fromBlob`; `fromFile` moved to the
+   `@capsizecss/unpack/fs` subpath, and v4 is ESM-only);
+   `@capsizecss/metrics` supplies system-font metrics.
 3. **screenspan.net/fallback** or **Malte Ubl's calculator** - manual/visual, but
    Google-font-oriented (they do not read a bespoke serif file), so weaker here.
 

@@ -1,0 +1,419 @@
+{
+  "description": "Version-dated claims in this skill and how to re-check each; maintained by the freshness sweep, consumed by check-currency.mjs",
+  "claims": [
+    {
+      "id": "astro-1a-fonts-api-stability-fonts-md",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "astro-current-major",
+      "url": "https://registry.npmjs.org/astro/latest",
+      "note": "As of 2026-08-26 the framing is correct but the version anchor has aged: Astro's current major is 7 (npm dist-tag latest = astro@7.2.8), not 6.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "fonts-misc-1-capsize-unpack-v4-api",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "@capsizecss/unpack",
+      "url": "https://raw.githubusercontent.com/seek-oss/capsize/master/packages/unpack/CHANGELOG.md",
+      "note": "As of 2026-08-26 the current major is still v4 (`latest` = 4.0.1, published 2026-06-12), so the version pin is right - but 'NOT fromFile' is wrong as written.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "fonts-misc-2-chrome83-preloaded-optional-zero-shift",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "blink-font-display-optional-zero-shift",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/blink/renderer/core/css/remote_font_face_source.cc",
+      "note": "Still true as written, as of 2026-08-26, and confirmed at the source level rather than from the 2020 announcement alone.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "fonts-misc-3-tailwind-weight-scale-v3-v4",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "tailwindcss-font-weight-scale",
+      "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/main/packages/tailwindcss/theme.css",
+      "note": "Confirmed on both counts as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "webkit-metrics-1-bug219735",
+      "file": "references/fonts.md",
+      "check": "webstatus",
+      "handle": "font-metric-overrides",
+      "url": "https://webstatus.dev/features/font-metric-overrides",
+      "note": "As of 2026-08-26 the *behaviour* claim still holds for every shipping Safari, but \"bug 219735, open\" is wrong.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "webkit-metrics-2-overflow-anchor-proxy",
+      "file": "references/fonts.md",
+      "check": "webstatus",
+      "handle": "overflow-anchor",
+      "url": "https://webstatus.dev/features/overflow-anchor",
+      "note": "WebKit has shipped scroll anchoring, so \"Safari is the one evergreen without `overflow-anchor`\" is no longer true and the proxy is now actively wrong.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "astro-1b-fonts-api-framing-framework-automation",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "astro-fonts-api-config-reference",
+      "url": "https://docs.astro.build/en/reference/configuration-reference/#fonts",
+      "note": "Correct as written as of 2026-08-26, and still correct under Astro 7 (current major, 7.2.8).",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "astro-2-image-priority-prop-510",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "astro-image-priority-prop",
+      "url": "https://docs.astro.build/en/reference/modules/astro-assets/#priority",
+      "note": "Exact match as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "next-fonts-arial-times-derived",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "next-font-default-fallback-faces",
+      "url": "https://github.com/vercel/next.js/blob/canary/packages/font/src/local/get-fallback-metrics-from-font-file.ts",
+      "note": "True as of 2026-08-26, canary.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "next-fonts-capsize-formula-and-source-path",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "next-font-utils-size-adjust",
+      "url": "https://github.com/vercel/next.js/blob/canary/packages/next/src/server/font-utils.ts",
+      "note": "True as of 2026-08-26, canary, and the cited source path is still live and still load-bearing.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "next-fonts-fallback-per-family-first-file",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "next-font-local-fallback-file-picker",
+      "url": "https://github.com/vercel/next.js/blob/canary/packages/font/src/local/pick-font-file-for-fallback-generation.ts",
+      "note": "As of 2026-08-26, canary.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "next-fonts-google-self-hosts-at-build",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "next-font-api-reference",
+      "url": "https://nextjs.org/docs/app/api-reference/components/font",
+      "note": "True as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "webkit-metrics-3-framework-automation-echo",
+      "file": "references/framework-automation.md",
+      "check": "manual",
+      "handle": "framework-automation-safari-echo",
+      "url": "https://bugs.webkit.org/show_bug.cgi?id=219735",
+      "note": "Checked for echoes of the two cluster claims: grepping framework-automation.md for overflow-anchor, 219735, ascent-override, descent-override, line-gap-override, size-adjust, WebKit and Safari returns",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "adobe-js-kit-max-age-600",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "adobe-typekit-js-kit-cache-control",
+      "url": "https://use.typekit.net/ajd7quw.js",
+      "note": "True as written, verified live 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "adobe-kit-css-import-p-typekit",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "adobe-typekit-kit-css-p-typekit-import",
+      "url": "https://use.typekit.net/ynd8vkt.css",
+      "note": "True as written, verified live 2026-08-26 against kit `ynd8vkt` (the kit served on typekit.com/fonts.adobe.com).",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "adobe-self-hosting-not-licensed",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "adobe-fonts-product-specific-terms-self-hosting",
+      "url": "https://wwwimages2.adobe.com/content/dam/cc/en/legal/servicetou/Adobe-Fonts-Product-Specific-Terms-en_US-20241007.pdf",
+      "note": "True as written, and stronger than 'usually' in Adobe's own terms.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "gdpr-google-fonts-ruling-anchor",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "lg-muenchen-3-O-17493-20-google-fonts",
+      "url": "https://www.gesetze-bayern.de/Content/Document/Y-300-Z-BECKRS-B-2022-N-612",
+      "note": "The underlying fact is unchanged and still true as of 2026-08-26 - this is an anchoring edit, not a correction.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "astro-4-image-defaults-lazy-async",
+      "file": "references/images.md",
+      "check": "manual",
+      "handle": "astro-image-loading-decoding-defaults",
+      "url": "https://docs.astro.build/en/reference/modules/astro-assets/",
+      "note": "Confirmed as of 2026-08-26 against the astro-assets reference source, which shows the component's rendered output carrying `decoding=\"async\"` and `loading=\"lazy\"` in every example (five separate output",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "images-chrome-1-image-priority-model",
+      "file": "references/images.md",
+      "check": "chrome-changelog",
+      "handle": "2023_10_image_loading_optimizations.md",
+      "url": "https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/platform/loader/fetch/resource_fetcher.cc",
+      "note": "As of 2026-08-26 the model still holds and no later iteration has superseded it, but the file's wording misdescribes what triggers the Medium boost.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "images-chrome-2-source-width-height",
+      "file": "references/images.md",
+      "check": "manual",
+      "handle": "html.elements.source.width",
+      "url": "https://raw.githubusercontent.com/mdn/browser-compat-data/main/html/elements/source.json",
+      "note": "True in all three engines as of 2026-08-26, and has been for years.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "images-chrome-3-sizes-auto",
+      "file": "references/images.md",
+      "check": "webstatus",
+      "handle": "sizes-auto",
+      "url": "https://webstatus.dev/features/sizes-auto",
+      "note": "Correct as written on 2026-08-26, including the 'non-supporting engines' hedge - which is still load-bearing, not stale.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "images-chrome-4-lcp-low-entropy-threshold",
+      "file": "references/images.md",
+      "check": "chrome-changelog",
+      "handle": "2023_04_lcp.md",
+      "url": "https://raw.githubusercontent.com/chromium/chromium/main/third_party/blink/renderer/core/paint/timing/largest_contentful_paint_calculator.cc",
+      "note": "The 0.05 figure is exact and still shipping as of 2026-08-26, confirmed twice over.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "wordpress-decoding-async-lcp-benchmark",
+      "file": "references/images.md",
+      "check": "manual",
+      "handle": "wordpress-core-decoding-async-on-lcp-image",
+      "url": "https://raw.githubusercontent.com/WordPress/wordpress-develop/trunk/src/wp-includes/media.php",
+      "note": "The summary is fair and the behaviour still holds as of 2026-08-26; the edit only pins the anchor the claim currently lacks.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "cf-1-early-hints-dashboard-path",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "cloudflare-early-hints-dashboard-path",
+      "url": "https://developers.cloudflare.com/cache/advanced-configuration/early-hints/",
+      "note": "As of 2026-08-26 Early Hints is still offered, on all plans (Free/Pro/Business/Enterprise), with no deprecation notice.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "cf-1b-early-hints-8kb-link-cap",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "cloudflare-early-hints-eligibility",
+      "url": "https://developers.cloudflare.com/cache/advanced-configuration/early-hints/index.md",
+      "note": "The extension and status-code half is CONFIRMED verbatim upstream.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "cf-2-workers-static-assets-default-cache-control",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "cloudflare-workers-static-assets-default-headers",
+      "url": "https://developers.cloudflare.com/workers/static-assets/headers/",
+      "note": "Confirmed as-of 2026-08-26 against the Workers static-assets headers doc, which gives the default as 'Cache-Control: public, max-age=0, must-revalidate', 'Sent when the request does not have an Author",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "cf-3-opennext-next-static-headers-workaround",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "opennext-cloudflare-next-static-headers",
+      "url": "https://opennext.js.org/cloudflare/caching",
+      "note": "Confirmed as-of 2026-08-26: the OpenNext Cloudflare caching doc still states 'The worker doesn't run in front of static assets, so the headers option of next.config.ts doesn't apply to public files (p",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "hints-chrome-1-chrome133-responsestart",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "chrome-133-responsestart-includes-103",
+      "url": "https://web.dev/articles/ttfb",
+      "note": "True as of 2026-08-26, and now the interoperable behaviour.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "hints-chrome-2a-bfcache-ccns",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "bfcache-ccns-chrome-rollout",
+      "url": "https://developer.chrome.com/docs/web-platform/bfcache-ccns",
+      "note": "All three halves hold as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "hints-chrome-2b-unload-blocks-bfcache",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "chrome-unload-deprecation-rollout",
+      "url": "https://developer.chrome.com/docs/web-platform/deprecating-unload",
+      "note": "The advice (use `pagehide`) stands, but 'still disqualify the page' is now false for most Chrome page loads.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "hints-chrome-3-preload-budget",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "modern-web-guidance-preload-budget",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/modern-web-guidance/main/skills/modern-web-guidance/guides/performance/optimize-preload-priority.md",
+      "note": "Still present at the cited path and still phrased as a budget.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "tanstack-react19-metadata-double-render",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "tanstack-router-issue-3050",
+      "url": "https://github.com/TanStack/router/issues/3050",
+      "note": "As of 2026-08-26 the bug is NOT fixed, so the recommendation stands.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "vite-modulepreload-default",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "vite-build-modulepreload-default",
+      "url": "https://raw.githubusercontent.com/vitejs/vite/main/docs/config/build-options.md",
+      "note": "As of 2026-08-26, verified against the live Vite docs served for v8.2.2 (the current Rolldown-based major): `build.modulePreload` has Type `boolean | { polyfill?: boolean, resolveDependencies?: Resolv",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "astro-3-inline-stylesheets-auto-4kb",
+      "file": "references/symptoms.md",
+      "check": "manual",
+      "handle": "astro-build-inlinestylesheets",
+      "url": "https://docs.astro.build/en/reference/configuration-reference/#buildinlinestylesheets",
+      "note": "Both halves confirmed as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "fonts-misc-3b-tailwind-weight-scale-symptoms-echo",
+      "file": "references/symptoms.md",
+      "check": "manual",
+      "handle": "tailwindcss-font-weight-scale",
+      "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/main/packages/tailwindcss/theme.css",
+      "note": "The B2 echo of the fonts.md claim, and true as of 2026-08-26.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-1b-symptoms-c1-render-blocking-insight",
+      "file": "references/symptoms.md",
+      "check": "manual",
+      "handle": "lighthouse-render-blocking-insight",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/audits/insights/render-blocking-insight.js",
+      "note": "`render-blocking-insight` is present in Lighthouse v13.4.1's default config (audits list entry 'insights/render-blocking-insight', category ref weight 0, group 'insights'), and the legacy `render-bloc",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-1c-symptoms-c2-lcp-discovery-insight",
+      "file": "references/symptoms.md",
+      "check": "manual",
+      "handle": "lighthouse-lcp-discovery-insight",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/audits/insights/lcp-discovery-insight.js",
+      "note": "`lcp-discovery-insight` exists in v13.4.1 (weight 0, group 'insights', file core/audits/insights/lcp-discovery-insight.js).",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-1-lighthouse13-rename",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "lighthouse-insight-audit-ids",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/config/default-config.js",
+      "note": "As of 2026-08-26 Lighthouse 13 is still the current major (v13.4.1, published 20 Jul 2026; v13.0.0 was 10 Oct 2025, so the 'Oct 2025' date is right).",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-1d-unsized-images-still-exists",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "lighthouse-unsized-images-audit",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/config/default-config.js",
+      "note": "The mapping to `cls-culprits-insight` is right, but the sentence claims the old id is 'gone' and `unsized-images` is the one exception: it survives in Lighthouse 13.4.1 (and on main) as `{id: 'unsized",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-2-playwright-headless-shell",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "playwright-chromium-headless-shell-default",
+      "url": "https://raw.githubusercontent.com/microsoft/playwright/main/docs/src/browsers.md",
+      "note": "Playwright's own docs source (docs/src/browsers.md on main, current release line v1.62.1, 30 Jul 2026) still states: 'Playwright ships a regular Chromium build for headed operations and a separate chr",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-3a-devtools-slowest-preset",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "devtools-slow3g-preset-constants",
+      "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/core/sdk/NetworkManager.ts",
+      "note": "DevTools-frontend main, front_end/core/sdk/NetworkManager.ts: the slowest built-in throttling preset is `Slow3GConditions` with key `PredefinedThrottlingConditionKey.SPEED_3G`, download = upload = 500",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-3b-puppeteer-slow3g-cdp-constants",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "puppeteer-predefined-network-conditions",
+      "url": "https://raw.githubusercontent.com/puppeteer/puppeteer/main/packages/puppeteer-core/src/cdp/PredefinedNetworkConditions.ts",
+      "note": "Puppeteer main, packages/puppeteer-core/src/cdp/PredefinedNetworkConditions.ts, 'Slow 3G': download: ((500 * 1000) / 8) * 0.8, upload: ((500 * 1000) / 8) * 0.8, latency: 400 * 5 - i.e.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-4a-devtools-field-data-label",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "devtools-field-metrics-option",
+      "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/panels/timeline/components/FieldSettingsDialog.ts",
+      "note": "The feature is intact - the Performance panel's live view fetches CrUX data behind an explicit opt-in whose privacy disclosure reads 'When DevTools is open, the URLs you visit will be sent to Google t",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-4b-live-metrics-and-recommended-throttling",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "devtools-live-metrics-recommended-throttling",
+      "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/panels/timeline/components/LiveMetricsView.ts",
+      "note": "Live metrics is still what the Performance panel shows before you record: front_end/models/live-metrics/ exists with a web-vitals-injected bundle (the 'via web-vitals' mechanism), rendered by panels/t",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-4c-section4-field-data-panel-label",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "devtools-field-metrics-label",
+      "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/panels/timeline/components/FieldSettingsDialog.ts",
+      "note": "Same rename as lab-4a, second occurrence: the DevTools panel is labelled 'field metrics' (dialog title 'Configure field metrics fetching', section 'Local and field metrics').",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lab-4d-cls-culprit-labels",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "devtools-cls-culprits-labels",
+      "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/models/trace/insights/CLSCulprits.ts",
+      "note": "The insight title 'Layout shift culprits' is exact (front_end/models/trace/insights/CLSCulprits.ts, `title: 'Layout shift culprits'`), but the two example culprit labels quoted are not the strings Dev",
+      "verified": "2026-08-26"
+    }
+  ]
+}

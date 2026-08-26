@@ -66,8 +66,11 @@ eager/lazy split and box reservation, and route the LCP work to fonts
 
 ## Priority & discovery
 
-Images default to **Low** priority (since Chrome 117, the first few large
-in-viewport images start at Medium) and are boosted at layout if in-viewport.
+Images default to **Low** priority and are boosted to **High** at layout if
+in-viewport. Since Chrome 117 the first five *not-small* images the preload scanner
+finds start at **Medium** instead - not-small = area over 10,000px^2, and an image
+whose dimensions aren't known yet counts as not-small. The count runs in document
+order before layout, so that boost is not viewport-aware.
 `fetchpriority="high"` = High immediately. A preload = discovery-only at *default*
 priority, so image preloads also need `fetchpriority="high"`. They are complementary:
 preload fixes *discovery*, fetchpriority fixes *priority*.

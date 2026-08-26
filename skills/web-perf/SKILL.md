@@ -169,5 +169,13 @@ causes and fixes live in `references/symptoms.md`.
   vital before shipping, no deploy. Corroboration / decision aid, not a gate
   (verify.md 5a).
 
+**Maintenance (skill authors, not users of the skill):**
+
+- `scripts/check-currency.mjs` (EXECUTE) + `scripts/currency-claims.json` - the
+  registry of this skill's version-dated claims and how to re-check each one.
+  Run at revision time (needs network, never a gate); a webstatus entry that
+  gained a browser since its `verified` date means re-verify that claim in its
+  file.
+
 `evals/` holds the behaviour eval set (see writing-skills); it is intentionally
 not routed from the workflow above.

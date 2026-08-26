@@ -15,7 +15,9 @@ so check per-concern, not per-framework.
   re-declaration in global CSS that silently drops the `next/font` metric
   fallback, reintroduces the exact jank this skill owns. Two footguns inside
   the automated layer itself: `adjustFontFallback` computes the metric
-  fallback once per family (from the first font file), not per weight - a
+  fallback once per family, not per weight - `next/font/local` derives it
+  from whichever `src` file sits nearest weight 400 (normal style preferred),
+  `next/font/google` from precalculated per-family Capsize metrics - so a
   heavier heading weight added later can still swap with a metric mismatch
   (prefer one variable font, or verify the fallback against every rendered
   weight); and a `weight: ['400','500','600','700']` array whose pages render
