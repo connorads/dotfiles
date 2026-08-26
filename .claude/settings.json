@@ -1,12 +1,187 @@
 {
-  "env": {
-    "DISABLE_INSTALLATION_CHECKS": "1",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
-    "CLAUDE_AFK_TIMEOUT_MS": "2147483647"
-  },
+  "alwaysThinkingEnabled": true,
   "attribution": {
     "commit": "",
     "pr": ""
+  },
+  "autoMemoryEnabled": false,
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "env": {
+    "CLAUDE_AFK_TIMEOUT_MS": "2147483647",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "DISABLE_INSTALLATION_CHECKS": "1"
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh blocked claude || true",
+            "type": "command"
+          }
+        ],
+        "matcher": "permission_prompt"
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh blocked claude || true",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "atuin hook claude-code",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "command": "atuin hook claude-code",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/no-self-attribution.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/guard-mutating-api.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/allow-local-curl.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/guard-protection-bypass.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/prefer-pnpm.py",
+            "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/guard-secret-paths.py",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true",
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "atuin hook claude-code",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh clear || true",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh clear || true",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash ~/.claude/hooks/setup-path.sh",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true",
+            "type": "command"
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
     "allow": [
@@ -949,186 +1124,11 @@
       "Edit(~/.zshenv)"
     ]
   },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/setup-path.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/no-self-attribution.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/guard-mutating-api.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/allow-local-curl.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/guard-protection-bypass.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/prefer-pnpm.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/guard-secret-paths.py"
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "atuin hook claude-code"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "atuin hook claude-code"
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "atuin hook claude-code"
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh blocked claude || true"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "permission_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh blocked claude || true"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true"
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/agent-state.sh clear || true"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ~/.config/tmux/scripts/claude-profile-tag.sh clear || true"
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
-  },
-  "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
   "showClearContextOnPlanAccept": true,
-  "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "command": "~/.claude/statusline.sh",
+    "type": "command"
+  },
   "theme": "dark"
 }
