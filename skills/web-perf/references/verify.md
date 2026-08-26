@@ -9,7 +9,9 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 - [1. First: which artifact are you asserting on?](#1-first-which-artifact-are-you-asserting-on)
 - [2. Tier 0 - static / prerender: assert on the built HTML directly](#2-tier-0---static--prerender-assert-on-the-built-html-directly)
 - [3. Tier 1 - SSR / per-request: boot the route, assert on rendered bytes](#3-tier-1---ssr--per-request-boot-the-route-assert-on-rendered-bytes)
+- [3c. Streamed routes: the shell is the artifact, then the flush timeline](#3c-streamed-routes-the-shell-is-the-artifact-then-the-flush-timeline)
 - [4. Shared probes (either tier): cold-cache by eye + CLS/LCP](#4-shared-probes-either-tier-cold-cache-by-eye--clslcp)
+- [4e. Filmstrip / visual metrics (appearance-only defects and streamed reveals)](#4e-filmstrip--visual-metrics-appearance-only-defects-and-streamed-reveals)
 - [5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)](#5-measurement-tool-gotchas-lighthouse-ci--unlighthouse)
 - [5a. A/B the built output across the change (before shipping a costly fix)](#5a-ab-the-built-output-across-the-change-before-shipping-a-costly-fix)
 - [6. DevTools Performance panel](#6-devtools-performance-panel)
@@ -27,6 +29,13 @@ rendered per request?** (The `static-vs-ssr.md` axis.)
 - **SSR / per-request** (a Worker/edge or Node server renders the head each
   request) - there is no static file to grep, so boot the route and assert on
   the rendered bytes. **Tier 1** below.
+- **Streamed** (a shell flushes first, then Suspense boundaries, a Next
+  `loading.tsx` or PPR shell, or TanStack Start streaming fill the body) - the
+  head ships in the first flush, so the Tier 1 invariants still apply, but
+  assert them on the **shell**, not on the whole document: a route that ships
+  its preloads in a late flush passes a whole-document check and still
+  discovers them a round trip late. The body is a timeline rather than a
+  document, so probe it as one - **3c** below.
 
 **The split can be per-route, not per-site.** Astro's `prerender` is a
 per-route flag, so one build can mix prerendered pages (Tier 0) with SSR
@@ -131,6 +140,74 @@ The preload `href` must be the *same fingerprinted file* the `@font-face src`
 requests. Cross-check the preload hrefs against the built font CSS `url()`s; in
 DevTools Network a mismatch shows the same face fetched twice, and Chrome logs
 the credentials-mode warning ~3s after load (fonts.md).
+
+### 3c. Streamed routes: the shell is the artifact, then the flush timeline
+
+A streamed route (React Suspense, a Next `loading.tsx` or PPR shell, TanStack
+Start streaming) sends a shell first and fills the body over later flushes. The
+head invariants themselves do not change - 3a's assertions still hold - but the
+artifact they apply to does. Assert them on the **shell**: the bytes through
+`</head>` up to and including the first flush that carries body content. A
+whole-document check passes a route whose font preloads moved into a late
+flush; the shell-scoped check fails it (`font preloads in shell within budget
+1-3 (found 0)`, exit 1). The late preload is the regression - the browser
+cannot start a fetch it has not parsed.
+
+`scripts/check-stream.mjs` is the drop-in template for this, sitting beside
+`check-head.mjs`: one fetch, read chunk by chunk. It prints the flush timeline
+(arrival time and bytes per flush), asserts the head invariants on the shell
+only, and maps React's streaming markers onto that timeline so you can see
+which flush actually replaces a skeleton. Only the inline swap *call*
+(`$RC` / `$RR` when the boundary carries `precedence` stylesheets / `$RS`)
+marks the swap - `$RX` is the client-render error handoff, `<!--$?-->` is a
+fallback still pending, `<!--$-->` a boundary the server had already resolved
+inline, `<!--$!-->` an errored one, and `<template id="B:n">` /
+`<div hidden id="S:n">` are the placeholder and the content block, not the
+swap. Each marker is attributed to the flush its last byte arrives in, so one
+cut in half across two flushes is still counted once. Exit codes: 0 OK, 1
+invariant failure, 2 usage/transport/shape error. On a page with many flushes
+the timeline keeps the interesting ones (first, last, `</head>`, shell end,
+any carrying a marker), elides the rest, and says when an elided run carried
+markers - `--max-lines` raises the budget.
+
+```bash
+pnpm dev &
+node check-stream.mjs http://localhost:3000/            # timeline + shell invariants
+node check-stream.mjs http://localhost:3000/ --strict    # a split head fails instead of warning
+```
+
+The matchers are duplicated from `check-head.mjs` deliberately - these templates
+are copied per project and must stay self-contained - so keep local edits to
+both in sync yourself. Mind the probe's user agent on Next: crawler UAs get a
+fully-rendered response with no pending markers, so a bot-like UA measures a
+different code path than your users get (static-vs-ssr.md).
+
+**A head split across flushes warns rather than fails** (`--strict` promotes it
+to exit 1). The cost is real - preloads in the tail are discovered a round trip
+late - but it is not always a defect, so the default must not brick a gate
+adopted mid-project.
+
+**The buffered-vs-streamed tell.** One document, two shapes: streamed spreads
+the swap calls across flushes arriving over time; buffered collapses every
+marker into flush 0. That collapse is the "streaming bought nothing" signature -
+a route that lost its streaming shell and reverted to blocking render. A single
+flush alone does not prove it, because a small streamed document coalesces into
+one read: the script reports BUFFERED only when `Content-Length` is present -
+the length was known before the first byte, strong evidence of a non-streamed
+path, though a known-length body can still be written incrementally - and
+SINGLE FLUSH otherwise.
+
+**The caveat that bounds every number it prints:** a fetch reader yields what
+the transport hands the runtime, not server flush boundaries. HTTP/1.1 chunk
+framing is consumed by the HTTP layer and never surfaces to fetch, so two
+`res.write()` calls landing in one TCP segment arrive as one chunk, and any
+proxy, CDN, HTTP/2 framing or gzip window on the path re-cuts the boundaries
+again. Byte counts are post-decompression. Timings bound when a client could
+first have acted, not when the server wrote - on localhost the first ~40-70ms is
+connect plus process start. Read the timeline as a relative shape to compare
+across runs and commits, never as an absolute budget; for true server-side flush
+points, instrument the server. The probe sees nothing of paint, parse or
+hydration - that needs a real browser (4b/4c, or the filmstrip in 4e).
 
 ## 4. Shared probes (either tier): cold-cache by eye + CLS/LCP
 
@@ -274,6 +351,88 @@ fonts.md A1 levers); one landing at an image response is A2/B5. This turns
 - <https://developer.mozilla.org/en-US/docs/Web/API/LargestContentfulPaint> ·
   <https://github.com/GoogleChrome/web-vitals#attribution> ·
   <https://playwright.dev/docs/browsers#chromium-new-headless-mode>
+
+### 4e. Filmstrip / visual metrics (appearance-only defects and streamed reveals)
+
+Reach for a filmstrip when the defect **moves no vital**. A B2 weight shimmer or
+a B5 image pop changes pixels between frames without shifting layout, so CLS
+stays ~0, LCP is unmoved, and the 4b/4c probes report a clean page that still
+looks wrong. The other case is corroborating a streaming change: 3c times the
+bytes, the filmstrip shows when the skeleton became content on screen.
+
+sitespeed.io (driving Browsertime) is the instrument. It records the run, runs
+VisualMetrics over the frames, and emits First Visual Change, Last Visual
+Change, SpeedIndex, VisualComplete85/95/99, VisualProgress and VisualReadiness
+(Last minus First Visual Change) alongside a per-frame filmstrip. One URL, one
+run:
+
+```bash
+pnpm dlx sitespeed.io -n 1 --visualMetrics http://localhost:3000/
+```
+
+`--visualMetrics` alone is enough: it records a video internally, computes the
+metrics and writes the filmstrip; add `--video` only to keep the mp4 (both are
+off by default outside Docker). Frames land at
+`<output>/pages/<url-slug>/data/filmstrip/<run>/ms_<ms>.jpg` with the timestamp
+zero-padded to six digits (`ms_000260.jpg`), the recording beside them in
+`video/`. The HTML report samples that filmstrip in 100ms steps (200ms once the
+page's max timing passes 10s with `--filmstrip.showAll`) and always includes
+frames carrying a metric timing; recording at 30 fps caps the underlying
+resolution at ~33ms.
+
+Then one flag per question:
+
+- **Last Visual Change lands late with nothing visibly changing.** A browser
+  re-rasterising a finished page leaves sub-pixel noise on glyph edges, which
+  inflates Last Visual Change, SpeedIndex and VisualComplete95/99. Set
+  `--videoParams.noiseTolerance 0.05` (a number 0-100, default 0). It allows
+  `max(5, width * height * tolerance / 100)` differing pixels in the final pass
+  and compares each frame against the last **kept** frame, so a slow real change
+  still survives.
+- **Which pixels moved.** `--videoParams.filmstripDiff` writes a `diff_<ms>.png`
+  per frame (changed pixels red) plus one `instability.png` heatmap per run, on a
+  fixed colour scale so two runs are comparable.
+- **Whether the change is real.** `-n` defaults to 3 and sitespeed.io reports the
+  median, so raise it (the compare plugin warns below ~20 iterations; the docs'
+  examples use `-n 21`) and use the compare plugin (`--compare.saveBaseline`,
+  `--compare.id <id>`, the same `-n` on both sides) instead of eyeballing two
+  filmstrips - it reports p-values, Hodges-Lehmann shift and Cliff's delta over
+  visual metrics as well as vitals. At high iteration counts,
+  `--visualMetrics true --video false --enableVideoRun true` keeps metrics on
+  every run and video from one extra run only.
+
+Like Lighthouse, this is corroboration; the Tier 0/1 structural checks stay the
+gate (section 5).
+
+**Setup, honestly.** Visual metrics need FFmpeg and a python3 carrying numpy
+and Pillow; OpenCV is needed only for `--visualMetricsContentful` and pyssim
+only for `--visualMetricsPerceptual` - no ImageMagick (the shipped
+`visualmetrics-portable.py` is its replacement). On macOS the recorder captures
+the whole physical screen through ffmpeg avfoundation and VisualMetrics then
+locates the browser viewport within those frames, so the browser window must be
+visible, unobstructed and frontmost, the launching terminal needs Screen
+Recording permission, and the capture picks up everything else on screen - treat
+the artefacts as sensitive. A window that is not frontmost fails viewport
+detection, leaving `<run>.mp4.failed.mp4` and an empty filmstrip dir.
+Docker/Linux (Xvfb) is the deterministic path: the standard sitespeed.io
+container ships the full pipeline, the slim one does not and cannot produce
+visual metrics. Under a global `ignore-scripts` posture the bundled
+chromedriver/geckodriver binaries never download - Chrome recovers with
+`--chrome.chromedriverPath <path>` pointing at a Chrome-for-Testing driver
+matching the installed major, Firefox has no equivalent flag.
+
+**What was run and what was read.** Install and flag behaviour were exercised
+locally at sitespeed.io 42.6.0 / Browsertime 28.3.0 (as of Aug 2026), and the
+defaults above come from that binary's own `--help video` and `--help compare`.
+No successful filmstrip was produced there - the macOS viewport-detection
+failure above - so the frame filenames and the diff/instability outputs are read
+from the shipped `visualmetrics-portable.py` and sitespeed.io's `filmstrip.js`
+rather than from observed output. Confirm the paths against your own first run
+before scripting against them.
+
+- <https://www.sitespeed.io/documentation/sitespeed.io/video/> ·
+  <https://www.sitespeed.io/documentation/sitespeed.io/compare/> ·
+  <https://www.sitespeed.io/documentation/sitespeed.io/docker/>
 
 ## 5. Measurement-tool gotchas (Lighthouse CI / unlighthouse)
 
