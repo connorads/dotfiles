@@ -61,3 +61,22 @@ setup() {
   [ "$status" -eq 0 ]
   [[ $output == *"vale absent"* ]]
 }
+
+# Resolving is not running. mise plants a shim on PATH for every tool in its
+# registry, so `command -v vale` succeeds on a machine where no vale version is
+# set - and the shim then exits 1 instead of running. Guarding on the name alone
+# turns this warn-and-skip into a hard failure for every caller.
+@test "warns and passes when vale's shim resolves but cannot run" {
+  printf '%s\n' 'The gate blocks the commit — that is the point.' >doc.md
+  mkdir -p "$BATS_TEST_TMPDIR/shims"
+  cat >"$BATS_TEST_TMPDIR/shims/vale" <<'EOF'
+#!/usr/bin/env bash
+echo "mise ERROR No version is set for shim: vale" >&2
+exit 1
+EOF
+  chmod +x "$BATS_TEST_TMPDIR/shims/vale"
+
+  PATH="$BATS_TEST_TMPDIR/shims:/usr/bin:/bin" run "$PROSE" doc.md
+  [ "$status" -eq 0 ]
+  [[ $output == *"vale absent"* ]]
+}

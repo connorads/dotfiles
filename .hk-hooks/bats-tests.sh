@@ -17,14 +17,20 @@ unset GIT_DIR GIT_WORK_TREE
 
 TESTS_DIR=.config/zsh/tests
 
-if ! command -v bats >/dev/null 2>&1; then
+# Whether a tool can actually RUN, not merely resolve. `command -v` is not
+# enough: mise plants a shim on PATH for every tool in its registry, so the name
+# resolves on a machine where no version is set - and the shim then exits 1
+# ("No version is set for shim"), turning this warn-and-skip into a hard failure.
+runs() { command -v "$1" >/dev/null 2>&1 && "$@" >/dev/null 2>&1; }
+
+if ! runs bats --version; then
 	echo "bats-tests: bats absent; skipping (run 'mise run zsh-tests')" >&2
 	exit 0
 fi
 
 if [[ ${1:-} == "--all" ]]; then
 	# Delegate so the -j / rush wiring stays defined in one place.
-	if ! command -v mise >/dev/null 2>&1; then
+	if ! runs mise --version; then
 		echo "bats-tests: mise absent; skipping full suite" >&2
 		exit 0
 	fi
