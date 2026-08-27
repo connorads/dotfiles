@@ -185,13 +185,10 @@
         ./modules/linux-tailscale.nix
         ./modules/linux-packages.nix
         ./modules/linux-crostini.nix
-        (
-          _:
-          {
-            services.ssh-agent.enable = true;
-            home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
-          }
-        )
+        (_: {
+          services.ssh-agent.enable = true;
+          home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
+        })
       ];
 
       # Bare name resolves for install.sh / `hms` (hostname carries no arch);

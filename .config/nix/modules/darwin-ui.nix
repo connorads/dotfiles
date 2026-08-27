@@ -22,8 +22,7 @@
 # derivation is byte-identical to before this split. This is the attrset-merge
 # property; the desktop module's header warns only about *lists*
 # (packages/casks) reordering, which this file does not touch.
-{ ... }:
-{
+_: {
   system.defaults = {
     dock = {
       autohide = true;

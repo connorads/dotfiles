@@ -5,7 +5,7 @@
 # Only used by the penguin (Chromebook) configuration.
 { pkgs, ... }:
 let
-  vscode = pkgs.vscode;
+  inherit (pkgs) vscode;
 in
 {
   # Extend cros-garcon's PATH and XDG_DATA_DIRS to include Nix profile

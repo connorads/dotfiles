@@ -167,6 +167,18 @@ local fast_steps = new Mapping<String, Step> {
     // entry.
     ["deadnix"] = (Builtins.deadnix) {}
 
+    // Nix anti-patterns: an empty `{ ... }:` pattern that should be `_`, an
+    // `x = pkgs.x` that should be `inherit (pkgs) x`. No builtin at the pinned
+    // hk 1.51, so this is a custom step, and it goes through a wrapper because
+    // statix takes a single target rather than a file list. The wrapper's
+    // header has the whole reason; what statix.toml disables, and why, is in
+    // that file.
+    ["statix"] {
+        glob = List("**/*.nix")
+        check = "bash .hk-hooks/statix.sh check {{files}}"
+        fix = "bash .hk-hooks/statix.sh fix {{files}}"
+    }
+
     // Spell gate (default locale: both en variants pass, only genuine
     // misspellings flag). --force-exclude in the builtin makes the
     // .typos.toml excludes hold even for explicitly-passed files, so the

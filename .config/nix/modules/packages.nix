@@ -96,7 +96,10 @@ let
 
     # Dev tools
     nixfmt
-    deadnix # dead-code gate for the nix tree; not in the mise registry
+    # Gates for the nix tree, neither in the mise registry: deadnix finds dead
+    # code, statix finds anti-patterns. Both nix-installed for that reason.
+    deadnix
+    statix
     tree-sitter
 
     # Clipboard (OSC 52)

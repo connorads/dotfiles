@@ -1,0 +1,11 @@
+# statix lints for the nix tree, passed with --config so this stays a gate
+# config rather than becoming the default statix picks up in any cwd (the same
+# reason ruff.toml lives here).
+
+# repeated_keys wants every dotted path sharing a first segment collapsed into
+# one nested attribute set: `system.defaults.X` and `system.activationScripts.Y`
+# become `system = { defaults.X = ...; activationScripts.Y = ...; }`. Flat
+# dotted attributes are how nix-darwin and home-manager options are written and
+# documented, and the suggestion buries the option name the manual names. It is
+# 16 of this tree's 19 findings, none of them a defect.
+disabled = ["repeated_keys"]
