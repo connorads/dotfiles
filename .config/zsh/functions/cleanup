@@ -3,17 +3,18 @@
 # usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
-#            --temp, --docker, --nix, --mise, --codex, --brew, --volumes
+#            --playwright, --temp, --docker, --nix, --mise, --codex, --brew,
+#            --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers temp docker nix mise codex brew)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright temp docker nix mise codex brew)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
 # costs a full recompile to restore.
-CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers temp docker nix mise codex brew)
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright temp docker nix mise codex brew)
 CLEANUP_SELECTED_TARGETS=()
 
 # Roots scanned for Rust build dirs. Space-separated; override to scan elsewhere.
@@ -48,6 +49,7 @@ CLEANUP_LABELS=(
   rustup "rustup unused toolchains"
   nvim "Neovim cache"
   browsers "Browser automation caches"
+  playwright "Unreferenced Playwright browser revisions"
   temp "Stale temp directories"
   docker "Docker unused images and build cache"
   nix "Nix garbage collection"
@@ -69,6 +71,7 @@ CLEANUP_DEFAULT_FLAGS=(
   rustup 0
   nvim 1
   browsers 1
+  playwright 1
   temp 1
   docker 1
   nix 1
@@ -93,7 +96,7 @@ Usage:
 
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
-  nvim, browsers, temp, docker, nix, mise, codex, brew
+  nvim, browsers, playwright, temp, docker, nix, mise, codex, brew
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
@@ -223,6 +226,89 @@ _cleanup_cargo_target_dirs() {
       -exec test -f '{}/../Cargo.toml' ';' \
       -print 2>/dev/null
   done
+}
+
+_cleanup_playwright_roots() {
+  # PLAYWRIGHT_BROWSERS_PATH relocates the whole registry, so it wins outright.
+  # Otherwise both platform defaults: env-paths puts it under ~/Library/Caches
+  # on macOS and ~/.cache on Linux, and this file runs on both.
+  if [[ -n "$PLAYWRIGHT_BROWSERS_PATH" ]]; then
+    print -r -- "$PLAYWRIGHT_BROWSERS_PATH"
+    return 0
+  fi
+  print -r -- "$HOME/Library/Caches/ms-playwright"
+  print -r -- "$HOME/.cache/ms-playwright"
+}
+
+_cleanup_playwright_unreferenced() {
+  # Several browser revisions side by side is the NORMAL state on a machine with
+  # many repos, not stale build-up: each playwright-core version pins its own.
+  # So resolve the registry's own bookkeeping instead of guessing by age -
+  # <root>/.links holds one file per live install, naming the playwright-core
+  # dir whose browsers.json lists the revisions that install needs.
+  #
+  # python3 for the JSON only; absent, the probe reports not-applicable rather
+  # than making a parser a hard dependency of the whole script.
+  command -v python3 >/dev/null 2>&1 || return 1
+  local -a roots
+  roots=("${(@f)$(_cleanup_playwright_roots)}")
+  python3 - "${roots[@]}" <<'PY'
+import json
+import os
+import re
+import sys
+
+VERSIONED = re.compile(r"-\d+$")
+
+for root in sys.argv[1:]:
+    links = os.path.join(root, ".links")
+    # No .links means no bookkeeping to resolve against. Retain everything:
+    # over-retaining is the safe way to be wrong in a deletion tool.
+    if not os.path.isdir(links):
+        continue
+
+    referenced = set()
+    stale_links = []
+    readable = True
+    for name in sorted(os.listdir(links)):
+        link = os.path.join(links, name)
+        try:
+            with open(link) as fh:
+                install = fh.read().strip()
+        except OSError:
+            readable = False
+            break
+        manifest = os.path.join(install, "browsers.json")
+        if not os.path.isfile(manifest):
+            # The install this link points at is gone; the link is the leftover.
+            stale_links.append(link)
+            continue
+        try:
+            with open(manifest) as fh:
+                browsers = json.load(fh)["browsers"]
+        except (OSError, ValueError, KeyError):
+            readable = False
+            break
+        # EVERY entry, not just installByDefault: an explicitly installed
+        # chromium-tip-of-tree is referenced just as much as a default one.
+        for browser in browsers:
+            name_, revision = browser.get("name"), browser.get("revision")
+            if name_ and revision:
+                # playwright-core's own registry maps the browser name to its
+                # directory with replace(/-/g, "_") - chromium-headless-shell
+                # lands on disk as chromium_headless_shell-<revision>.
+                referenced.add("%s-%s" % (name_.replace("-", "_"), revision))
+    if not readable:
+        continue
+
+    for entry in sorted(os.listdir(root)):
+        # Only versioned revision dirs. .links, .settings, daemon, b and
+        # cli-update-check.json are registry furniture, not browsers.
+        if VERSIONED.search(entry) and entry not in referenced:
+            print(os.path.join(root, entry))
+    for link in stale_links:
+        print(link)
+PY
 }
 
 _cleanup_sparse_vm_disk() {
@@ -380,11 +466,29 @@ _cleanup_probe_target() {
       command="rm -rf ~/Library/Caches/node-gyp ~/.cache/node-gyp ~/.node-gyp"
       ;;
     browsers)
-      dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
+      # Wholesale-delete semantics only. Playwright is deliberately NOT here:
+      # its registry is shared between installs and pruned selectively, which is
+      # a different contract, so it has its own target.
+      dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
       kb=$(_cleanup_kb_sum "${dirs[@]}")
       (( kb > 0 )) || applicable=0
       detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}"
       command="rm -rf browser automation caches"
+      ;;
+    playwright)
+      local -a pw_roots pw_stale
+      pw_roots=("${(@f)$(_cleanup_playwright_roots)}")
+      _cleanup_any_exists "${pw_roots[@]}" || applicable=0
+      if (( applicable )) && ! command -v python3 >/dev/null 2>&1; then
+        applicable=0
+      fi
+      if (( applicable )); then
+        pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
+        pw_stale=("${(@)pw_stale:#}")
+        kb=$(_cleanup_kb_sum "${pw_stale[@]}")
+        detail="Roots: ${(j:, :)pw_roots}; ${#pw_stale[@]} entries no live playwright-core references (0 is the normal answer)"
+        command="rm -rf unreferenced revision dirs and stale .links entries"
+      fi
       ;;
     temp)
       candidates=("${(@f)$(_cleanup_temp_candidates)}")
@@ -612,8 +716,15 @@ _cleanup_run_target() {
       command rm -rf -- "${dirs[@]}"
       ;;
     browsers)
-      dirs=("$HOME/.cache/ms-playwright" "$HOME/.cache/puppeteer" "$HOME/.cache/camoufox")
+      dirs=("$HOME/.cache/puppeteer" "$HOME/.cache/camoufox" "$HOME/Library/Caches/camoufox")
       command rm -rf -- "${dirs[@]}"
+      ;;
+    playwright)
+      local -a pw_stale
+      pw_stale=("${(@f)$(_cleanup_playwright_unreferenced)}")
+      pw_stale=("${(@)pw_stale:#}")
+      (( ${#pw_stale[@]} > 0 )) || return 0
+      command rm -rf -- "${pw_stale[@]}"
       ;;
     temp)
       candidates=("${(@f)$(_cleanup_temp_candidates)}")
@@ -806,7 +917,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--temp|--docker|--nix|--mise|--codex|--brew)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--temp|--docker|--nix|--mise|--codex|--brew)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
