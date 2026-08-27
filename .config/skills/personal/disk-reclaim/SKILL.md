@@ -166,6 +166,12 @@ project cleaner or its docs, where present, is the fastest classifier.
   not disposable cache. Do not delete it: it leaves mise tool shims dangling.
   `aube store prune` is the supported way to reclaim unreferenced package data;
   its saving may be zero and cannot be estimated from the whole store size.
+  Since mise embedded aube as a library, a newer install keeps its store
+  **inside the install** at `<install>/node_modules/.mise` rather than in the
+  shared cache. A sweep finds it as bulk under
+  `~/.local/share/mise/installs/`, and it looks like cache because of the name.
+  It is not: it is the tool's own dependency tree, and deleting it breaks the
+  tool. Reclaim it with `mise prune` / uninstalling the tool, never by hand.
 - **mise downloads:** `mise prune` can remove an old tool while its downloaded
   archives remain under `~/.local/share/mise/downloads/<tool>/`. That root is
   in mise's *data* dir, not its cache dir (`~/Library/Caches/mise`), so
