@@ -7,6 +7,20 @@ source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 CLEANUP="$FUNCTIONS_DIR/cleanup"
 
+# Sparseness is a filesystem property, not something the fixture can assert into
+# being, so confirm the file really is sparse before testing the probe that keys
+# on it. BSD `stat -f` only: GNU stat reads -f as "filesystem" and echoes the
+# format verbatim, which reads as non-numeric here.
+require_sparse() {
+  local apparent blocks
+  apparent=$(stat -f '%z' "$1" 2>/dev/null) || true
+  blocks=$(stat -f '%b' "$1" 2>/dev/null) || true
+  case "${apparent}:${blocks}" in
+  *[!0-9:]* | :* | *:) skip "BSD stat unavailable; cannot detect sparse files" ;;
+  esac
+  [ "$((blocks * 512))" -lt "$apparent" ] || skip "filesystem does not create sparse files"
+}
+
 setup() {
   setup_test_home
   export CLEANUP_TMPDIR_ROOT="$HOME/tmp-root"
@@ -416,6 +430,40 @@ EOF
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --brew
   [ "$status" -eq 0 ]
   ! grep -Fx -- "brew cleanup --prune=all" "$TEST_LOG"
+}
+
+@test "docker estimate is zeroed when the daemon sits on a sparse VM disk" {
+  local disk="$HOME/vm/_disks/colima/datadisk"
+  mkdir -p "${disk%/*}"
+  # 100 MiB apparent, zero blocks written: the shape of a colima datadisk.
+  dd if=/dev/zero of="$disk" bs=1 count=0 seek=100m 2>/dev/null
+  require_sparse "$disk"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" \
+    CLEANUP_VM_DISK_ROOTS="$HOME/vm/_disks/*/datadisk" \
+    zsh --no-rcs "$CLEANUP" --dry-run --json --docker
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"id":"docker"'* ]]
+  # docker system df still reports 2.5G reclaimable, but none of it is host
+  # space: the prune frees blocks inside a file that only ever grows.
+  [[ "$output" == *'"size_kb":0'* ]]
+  [[ "$output" == *"host disk unchanged"* ]]
+  [[ "$output" == *"frees 2.5G inside the VM only"* ]]
+}
+
+@test "docker estimate is unchanged when the backing disk is fully allocated" {
+  local disk="$HOME/vm/_disks/plain/datadisk"
+  mkdir -p "${disk%/*}"
+  dd if=/dev/zero of="$disk" bs=1024 count=64 2>/dev/null
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" \
+    CLEANUP_VM_DISK_ROOTS="$HOME/vm/_disks/*/datadisk" \
+    zsh --no-rcs "$CLEANUP" --dry-run --json --docker
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"size_kb":2621440'* ]]
+  [[ "$output" != *"host disk unchanged"* ]]
 }
 
 @test "selector flags replace the default target set" {
