@@ -4,8 +4,11 @@
 # doesn't bleed into critique's own TSX compilation.
 emulate -L zsh
 
+# mise's npm backend has reshaped its installs three times; <install>/node_modules
+# is only one of the three shapes, so probe rather than assume. The resolver's
+# stderr names every path it tried, so it is deliberately not silenced.
 local cli
-cli="$(mise where npm:critique 2>/dev/null)/node_modules/critique/src/cli.tsx"
+cli="$("$HOME/.config/zsh/functions/mise/mise-npm-where" npm:critique)/src/cli.tsx"
 
 if [[ ! -f "$cli" ]]; then
   print -u2 "critique: cannot find cli.tsx — is npm:critique installed?"
