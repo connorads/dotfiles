@@ -50,24 +50,27 @@ _warn_missing_target() {
   print -u2 "pi-image-paste-patch: $detail (marker: $marker)"
 }
 
-local install_dir="${1:-}"
-if [[ -z $install_dir ]]; then
-  install_dir=$(mise where 'npm:@earendil-works/pi-coding-agent' 2>/dev/null || true)
+# mise's npm backend has reshaped its installs three times, so the package dir
+# is probed rather than inferred - see functions/mise/mise-npm-where. Invoked by
+# absolute path because the bats suite runs `zsh --no-rcs` with a PATH that
+# excludes ~/.local/bin, the same way _needle-patch-lib is reached below.
+local -a where_args=(--package '@earendil-works/pi-coding-agent')
+if [[ -n ${1:-} ]]; then
+  where_args+=(--install-dir "$1")
+else
+  where_args+=('npm:@earendil-works/pi-coding-agent')
 fi
 
-local pi_bin="$install_dir/bin/pi"
-if [[ -z $install_dir || ! -e $pi_bin ]]; then
+local agent_root clipboard
+if ! agent_root=$("$HOME/.config/zsh/functions/mise/mise-npm-where" "${where_args[@]}"); then
   if [[ $mode == reapply ]]; then
-    _warn_missing_target "no pi binary at $pi_bin"
+    _warn_missing_target "could not resolve the pi package dir"
     return 0
   fi
-  print -u2 "pi-image-paste-patch: no pi binary at $pi_bin"
+  print -u2 "pi-image-paste-patch: could not resolve the pi package dir"
   return 1
 fi
 
-local cli_real agent_root clipboard
-cli_real=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$pi_bin")
-agent_root="${cli_real:h:h}"
 clipboard="$agent_root/dist/utils/clipboard-image.js"
 
 if [[ ! -f $clipboard ]]; then
