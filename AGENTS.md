@@ -291,8 +291,8 @@ wt-status [path]       # Report worktree status; --all / --json for agents; --pr
 wt-publish             # Push current worktree branch and optionally open a PR
 wt-finish --mode local # Merge feature→base, remove worktree, delete branch
 wt-finish --mode pr    # Push + open PR via wt-publish (worktree remains)
-wt-clean [--all]       # Reap worktrees whose PR is MERGED (squash/rebase-aware); spares open/no-PR/dirty/unpushed. Preview+confirm; --dry-run/--json/--force/--include-closed/--yes
-wt-remove [path]       # Non-interactive managed worktree removal primitive
+wt-clean [--all]       # Reap worktrees whose PR is MERGED (squash/rebase-aware) AND delete their branches; spares open/no-PR/dirty/unpushed. --force escalates to git branch -D. Preview+confirm; --dry-run/--json/--force/--include-closed/--yes
+wt-remove [path]       # Non-interactive managed worktree removal primitive; keeps the branch unless --delete-branch
 wti                    # Alias for `wt-status --all`
 wtc                    # Alias for `wt-clean`
 wtu                    # Human TUI: multi-select open/publish/remove; alt-R sweeps merged PRs via wt-clean
