@@ -24,7 +24,10 @@ so check per-concern, not per-framework.
   only 400 ships wasted font preloads - trim the array to rendered weights
   (the preload budget, resource-hints.md). The auto fallback is also
   Arial/Times-derived, a poor metric match for pixel/display faces - check
-  the residual shimmer on those.
+  the residual shimmer on those. Every other Next-specific lever - `subsets`
+  gating preload scope rather than shipped bytes, the `priority` -> `preload`
+  rename in Next 16, next/script strategies, route-CSS precedence, and where
+  a hand-rolled `<link>` actually lands in the head - is `next.md`.
 - **Astro** - *version-dependent*. Ships a built-in `<Image>`/`<Picture>`
   (sizing, format negotiation, lazy **by default** - put the `priority` prop on
   the one LCP image), so the image rows are handled. Fonts: where the built-in
@@ -35,6 +38,13 @@ so check per-concern, not per-framework.
   Custom fixed-copy re-subsetting + the coverage guard stay hand-rolled even
   then. Without the Fonts API active (below 5.7, or 5.7+ with the flag off), all
   font rows are this skill.
+- **TanStack Start** - no font layer and no image component; every font and
+  image row below is hand-rolled (the docs point at Fontsource and
+  `@unpic/react`, which cover some rows - tanstack.md says which). What it
+  does own: route `head()` rendered by `<HeadContent />`/`<Scripts />`, route
+  CSS/JS asset discovery and emission, optional CSS inlining, Early Hints
+  collection. Its own first-load levers are router-shaped instead - pending
+  states, `ssr: false` deep links, `defaultPreload` -> `tanstack.md`.
 - **Vite SPA/MPA, plain SSR, static hand-built HTML** - no font/image layer;
   the whole right column is yours.
 
@@ -69,12 +79,13 @@ fullest example); the right column is what you write by hand when it doesn't.
 | Self-host Google/local fonts | Next `next/font/google` / `next/font/local`; Astro 6 Fonts API (`fonts` config) | `@fontsource` (or raw `@font-face`) + bundler asset handling (Vite `?url`) |
 | Zero-CLS font swap | Next `adjustFontFallback` (Capsize-derived: `sizeAdjust` = avg-width ratio, then ascent/descent/lineGap overrides /(unitsPerEm*sizeAdjust)); Astro 6 `optimizedFallbacks` | hand-authored `@font-face` with `size-adjust`/`ascent-override`/`descent-override`, generated via Fontaine/Capsize (fonts.md) |
 | Preload the right font | Next: automatic for the used subset/weights; Astro 6 `<Font preload />` (opt-in) | explicit `?url` import + `<link rel=preload as=font crossorigin>` per weight, below the stylesheet (resource-hints.md) |
-| Only load needed characters | Next `subsets: ['latin']`; Astro 6 `subsets` + `unicodeRange` | `@fontsource` subset imports / `unicode-range`; custom fixed-copy re-subset with a coverage guard stays hand-rolled everywhere (fonts.md) |
+| Only load needed characters | Astro 6 `subsets` + `unicodeRange`. NOT Next: `subsets` there gates which files are preload-marked, not shipped bytes (next.md) | `@fontsource` subset imports / `unicode-range`; custom fixed-copy re-subset with a coverage guard stays hand-rolled everywhere (fonts.md) |
 | Above-the-fold image priority | Next `<Image priority>`; Astro `<Image priority>` (5.10+: sets `loading="eager"` + `decoding="sync"` + `fetchpriority="high"`; the component is lazy by default without it) | `fetchpriority="high"` on the true LCP `<img>` (eager alone does not reprioritise); decorative art stays eager without high priority (images.md) |
 | Below-fold lazy | Next/Astro `<Image>` default lazy | explicit `loading="lazy"` (opt-in - native `<img>` is eager by default) |
 | No-CLS image box | Next width/height/fill required; Astro infers from source | width/height attributes infer `aspect-ratio` and reserve the box; reserve the *un-rotated* box for transforms (images.md) |
 | Placeholder | Next `placeholder="blur"` + blurDataURL | hand-rolled dominant-colour/LQIP, or skip for small art (images.md) |
 | Responsive sources + format | Next `sizes` + auto srcset; Astro `<Picture>` | manual `srcset`/`sizes` + `<picture><source type>` for AVIF/WebP (images.md) |
+| Emit head tags / hints per route | TanStack Start route `head()` via `<HeadContent />` (dedupe/order footguns: tanstack.md) | hand-written tags in your own document head (resource-hints.md) |
 
 **Rule**: per concern, if a framework layer automates the row, defer to it and
 stop; where it doesn't, this skill's job is to make the manual version as

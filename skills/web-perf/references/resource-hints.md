@@ -1,10 +1,10 @@
 # Resource hints (preload / preconnect / prefetch)
 
 > The React DOM hint APIs (`preload`, `preconnect`, `prefetchDNS`, `preloadModule`,
-> `preinit`) are documented in
+> `preinit`, `preinitModule`) are documented in
 > `vercel-react-best-practices/rules/rendering-resource-hints.md`. This reference
-> adds the *why* and the ordering/matching/budget gotchas that skill omits, NOT the
-> API table.
+> adds the *why*, the ordering/matching/budget gotchas that skill omits, and
+> React 19's own emission behaviour (below), NOT the API table.
 
 **Prefetch boundary**: a soft navigation counts as the next route's first
 load, so speculative loading is in scope as that route's first-paint lever.
@@ -12,6 +12,19 @@ Hand-wired, use the Speculation Rules API, not legacy
 `<link rel=prefetch>`/`rel=prerender`; router-level prefetch (Next `<Link>`,
 TanStack `defaultPreload`) is that framework's automation - defer to it and
 inspect the wrapping code (framework-automation.md).
+
+## Contents
+
+- [What this adds over the vercel skill](#what-this-adds-over-the-vercel-skill)
+- [Ordering: it controls priority, not discovery](#ordering-it-controls-priority-not-discovery)
+- [Preload budget](#preload-budget)
+- [preconnect vs dns-prefetch](#preconnect-vs-dns-prefetch)
+- [modulepreload (Vite already does it)](#modulepreload-vite-already-does-it)
+- [103 Early Hints on Cloudflare](#103-early-hints-on-cloudflare)
+- [fetchpriority x preload](#fetchpriority-x-preload)
+- [React 19: how the hint calls emit](#react-19-how-the-hint-calls-emit)
+- [Emitting hints on TanStack Start](#emitting-hints-on-tanstack-start)
+- [Cache-control that shapes repeat-view first paint](#cache-control-that-shapes-repeat-view-first-paint)
 
 ## What this adds over the vercel skill
 
@@ -120,6 +133,123 @@ preload is a no-op (fonts.md).
 
 - <https://web.dev/articles/fetch-priority>
 
+## React 19: how the hint calls emit
+
+On a React 19 stack the hints above are imperative calls made during render
+(`import { preload } from 'react-dom'`), so the ordering, budget and exact-file
+rules still apply - you just control them through call sites and props. The API
+table is the `vercel-react-best-practices` skill's; this is the emission
+behaviour it omits. Verified against react-dom 19.2.8 (Aug 2026); items marked
+*undocumented* are observed implementation behaviour, not contract.
+
+**Where the bytes land is decided by the phase, not by the call site.**
+
+- **Server, during render** - buffered and flushed into the shell `<head>`
+  wherever the calling component sits in the tree (a `preload` called from a
+  component inside `<body>` lands in `<head>` in the first chunk). Emission
+  order is React's priority ranking *across buckets*, call order within one -
+  "links/scripts are prioritized by their utility to early loading, not call
+  order". The buckets, in flush order: charset, dns-prefetch + preconnect
+  (one bucket), viewport, font preloads, high-priority image preloads,
+  stylesheets by precedence, import map, bootstrap scripts, scripts, then the
+  bulk-preload bucket (style/script/plain-image/modulepreload preloads
+  together, by call order), the blocking-render instruction, and finally
+  every plain rendered `<link>`/`<meta>`/`<title>` (hoisted tags come last).
+- **Client, at call time** - the call inserts a node into `document.head`
+  synchronously, with no render involved, which is why an event handler is the
+  documented place to warm the resources a soft navigation will need. It is a
+  silent no-op until a DOM dispatcher exists: with `react-dom` imported but not
+  `react-dom/client`, the identical calls insert nothing.
+- The same hint reads differently in each phase: server HTML carries camelCase
+  attributes (`imageSrcSet`, `fetchPriority`), client-inserted nodes the
+  lowercase DOM ones - so assert attribute names case-insensitively.
+
+**Two calls that emit nothing where you expected bytes.** On the server, "[the
+API] only has an effect if you call it while rendering a component or in an
+async context originating from rendering a component. Any other calls will be
+ignored" - a module-scope `preload` before render emits nothing at all. A call
+made after the shell has flushed does emit, but into that later chunk
+(discovery timing: static-vs-ssr.md), and its shape changes:
+`preinit(href, { as: 'style' })` before the flush emits
+`<link rel="stylesheet" data-precedence>` in the head; after the flush it emits
+only `<link rel="preload" as="style">`, with the sheet insertion deferred to
+the client.
+
+**Dedupe keys - calls dedupe, elements do not.** `preload` keys on `href` -
+except `as: 'image'` with `imageSrcSet` present, which ignores `href` entirely
+and keys on `imageSrcSet` + `imageSizes` (19.2.8 source);
+`preinit`/`preloadModule`/`preinitModule` key on `href`, and
+`preconnect`/`prefetchDNS` on the server. A rendered `<link rel="preload">`
+element gets none of that: three identical elements emit three tags, and a call
+plus a matching element emits two links (the call also adds a font's
+`crossorigin`, the element does not). So pick the call *or* the tag per
+resource, never both. Hoisted `<script src async>` and `<style href precedence>`
+do dedupe, by `src`/`href`.
+
+**Hoisting, and the props that switch it off.** `<link>`, `<meta>` and `<title>`
+hoist to `<head>` from anywhere in the tree; `<script>` hoists only with `src`
+*and* `async={true}` ("The `async` prop must be true to allow scripts to be
+safely moved"); `<style>` only with `href` *and* `precedence`, and React "will
+drop all extraneous props" once `precedence` is set. `itemProp` disables
+hoisting on all of them, and `onLoad`/`onError` disable it on `<link>` and
+`<script>` - with either present you are managing loading yourself. A hoisted
+element lands in tree order among the head's children, in the last flush
+bucket - one more reason to use the call for anything priority-sensitive.
+`precedence` is a first-seen-order group label, not a ranked scale: rendering
+`low` before `reset` puts `low` first and an arbitrary string is accepted, so
+the docs' reset/low/medium/high is a naming convention. The stylesheet
+consequences - a late-discovered sheet, and `<link rel="stylesheet">` being
+inert without `precedence` - are static-vs-ssr.md's.
+
+**`preinit` applies, `preload` only fetches.** "Scripts that you `preinit` are
+executed when they finish downloading", and stylesheets "are inserted into the
+document, which causes them to go into effect right away" - so a shell-phase
+`preinit` of a stylesheet ships a render-blocking sheet, which is the point for
+critical CSS and a regression for anything else. Use `preload` when you want the
+bytes warm but not applied or executed; `preloadModule`/`preinitModule` are the
+same split for ESM. `preinit` takes only `as: 'script' | 'style'`; `precedence`
+is documented as required for a stylesheet, and silently defaults to `default`
+when omitted (19.2.8).
+
+**The responsive-image double download.** Passing `imageSrcSet` makes React omit
+`href` from the emitted link entirely and key the dedupe on
+`imageSrcSet + imageSizes` (above), so the browser resolves the candidate from
+`imagesrcset`/`imagesizes` alone. Any difference from the rendered `<img>`'s
+`srcSet`/`sizes` - whitespace or descriptor order included - selects a different
+URL, so the preload goes unused and the image is fetched twice. This is the
+responsive arm of exact-file matching above; react.dev never states the
+requirement (only that the options "help the browser fetch the correctly sized
+image"), so it falls out of HTML candidate selection plus React's dedupe key.
+**Default: do not hand-write preloads for a plain rendered `<img>` on React 19
+SSR.** React already emits one preload per rendered `<img>`, copying `srcSet`
+-> `imageSrcSet` and `sizes` -> `imageSizes` verbatim, so its own version
+cannot mismatch (undocumented) - and the budget becomes a suppression job:
+`loading="lazy"`, `fetchPriority="low"` or a `data:` URI suppresses the
+auto-preload, and only the first ten image preloads (plus any
+`fetchPriority="high"`) reach the high-priority head bucket. Two carve-outs
+where a hand preload is still yours to write: an `<img>` inside `<picture>` or
+`<noscript>` gets no auto-preload (exactly the art-directed markup images.md
+prescribes), and CSS-background / JS-inserted LCP images (images.md) never had
+one.
+
+**`onHeaders` moves hints into a `Link` header.** Passing it to a streaming
+render diverts preconnect, dns-prefetch, font preloads and plain-`href` image
+preloads out of `<head>` into an HTTP `Link` header - the feed for the 103
+Early Hints path above. Responsive (`imageSrcSet`) preloads never divert, so
+the responsive rule above is unaffected; style and script preloads and
+`preinit` stylesheets stay as head tags too. Undocumented on react.dev, and the
+payload shape differs by entry point: `renderToReadableStream`/`prerender` hand
+the callback a `Headers` instance (read `headers.get('link')`);
+`renderToPipeableStream` hands a plain `{ Link }` object. `maxHeadersLength`
+defaults to 2000; overflow falls back to head tags. Use it only when the host
+consumes `Link` headers.
+
+- <https://react.dev/reference/react-dom/preload> ·
+  <https://react.dev/reference/react-dom/preinit> ·
+  <https://react.dev/blog/2024/12/05/react-19> ·
+  <https://react.dev/reference/react-dom/components/link> ·
+  <https://react.dev/reference/react-dom/components/script>
+
 ## Emitting hints on TanStack Start
 
 Emit hints via the route `head()` option (`{ meta, links, styles, scripts }`) rendered
@@ -127,10 +257,9 @@ by `<HeadContent />` in `<head>` (root route for above-the-fold font preloads). 
 this over React 19 native `<link>` hoisting: Start's SSR-stream path is dedupe/stream-
 aware, and mixing React 19 native metadata has caused double-rendered tags. The router
 dedupes title/meta by deepest route (do not rely on it to dedupe repeated preloads).
-`ReactDOM.preload()` works and dedupes by `href` (`as:image` also keys on
-`imageSrcSet`+`imageSizes`) but must run in the SSR render context, and post-Suspense
-preloads get appended to the stream tail (useless) - keep critical hints in the root
-`head()`. Because the head is framework-rendered per request, verify by parsing the
+`ReactDOM.preload()` works, under the call-site, dedupe and phase rules in the
+React 19 section above - keep critical hints in the root `head()` so they land
+in the shell. Because the head is framework-rendered per request, verify by parsing the
 booted route's bytes, not the source (verify.md).
 
 - <https://tanstack.com/router/latest/docs/guide/document-head-management> ·

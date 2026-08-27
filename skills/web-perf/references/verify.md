@@ -133,6 +133,10 @@ Gotchas:
   taken), and follow any auth/gate redirect (a pre-auth route may 307).
 - Because the head is per-request, curl a booted route (reuse whatever throwaway
   server your test suite already boots), NOT a source template.
+- **Next App Router emits font preloads as HTTP `Link:` headers, not head
+  tags** (next.md), so a head-scoped count here - and the Playwright locator
+  below - is a guaranteed false negative there. Assert on the response headers
+  for Next routes.
 
 ### 3b. Confirm no double-fetch (exact-file matching)
 
