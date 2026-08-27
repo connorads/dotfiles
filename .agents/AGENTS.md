@@ -24,6 +24,7 @@ guarded in Bash by the `guard-secret-paths` hook; these hold even under
 
 Do not rely on memory when the answer can be checked quickly.
 Grep the local codebase first for implementation questions.
+Observing a running system - telemetry, logs, live config and state - shows what it is actually doing; prefer that over inferring from code when actual behaviour or state is the question.
 For external facts, docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, and solutions, check online.
 Grep `~/git/kb/notes/` alongside the web for topics I've researched - my Obsidian vault of compiled notes; `index.md` maps its domains.
 For dependency behaviour, inspect installed source such as `node_modules` when present; otherwise clone the repo into `/tmp` and inspect it.
@@ -60,6 +61,7 @@ Verify every change before moving on; writing code is not enough.
 Run the existing checks first: tests, typecheck, lint/format, hooks (`hk`) or app-specific smoke checks.
 If no automated checks exist, still verify manually: run the command, start the app, curl the endpoint, or use browser automation.
 Scale verification to risk: config tweak -> smoke test; user-facing feature -> relevant automated suite plus manual confirmation when coverage is thin.
+When validating a hypothesis (mine, a ticket's, a report's), isolate the claim it stands or falls on and run the cheapest observation that discriminates it from the rival explanation; evidence consistent with every explanation verifies nothing.
 When writing plans, include how each step will be verified.
 
 ## Deletion Safety
