@@ -2,7 +2,12 @@
 amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
 
-exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
+// `.local` is deliberately absent. It excluded 128 TRACKED entries from every
+// gate - 6 real scripts on PATH plus the 122 zfn-link shims - and the untracked
+// mise/pnpm trees under .local/share and .local/state are already out of scope,
+// because `hk --all` selects tracked files and the staged-file path sees only
+// what git tracks.
+exclude = List(".git", "git", "node_modules", ".cache", ".npm", ".cargo", ".rustup", ".vscode-server")
 
 display_skip_reasons = List()
 terminal_progress = false
@@ -27,6 +32,17 @@ local fast_steps = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) { exclude = no_reformat }
     ["newlines"] = (Builtins.newlines) { exclude = no_reformat }
     ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
+
+    // Dangling symlinks. Only meaningful now that `.local` is in scope: 122 of
+    // its 128 tracked entries are zfn-link shims on PATH, and renaming or
+    // deleting a shell function without re-running `zfn-link` leaves one
+    // pointing at nothing - which the interactive autoload path hides, because
+    // only callers going through PATH break.
+    //
+    // hk filters symlinks out of every step's file list unless the step sets
+    // allow_symlinks, which this builtin does. So it is the only gate that ever
+    // sees them, and no other step's cost changes.
+    ["check-symlinks"] = (Builtins.check_symlinks) {}
 
     // Vendored scripts mirror upstream too: don't reformat (divergence) or lint
     // (upstream's style findings aren't ours to fix) — security review happens
