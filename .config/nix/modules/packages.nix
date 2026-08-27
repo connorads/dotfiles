@@ -19,7 +19,7 @@ let
     '';
   };
 
-  linuxCorePackages = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.trash-cli ];
+  linuxCorePackages = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.trash-cli ];
 
   # ---------------------------------------------------------------------------
   # Tier 1: Minimal — ephemeral environments (codespaces, containers)
