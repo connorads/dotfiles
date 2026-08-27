@@ -244,6 +244,7 @@ dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
 dhk check              # Run hk checks in dotfiles repo
 dhk fix                # Run hk fixes in dotfiles repo
+dhk test               # Run the hk steps' own tests (the `tests {}` blocks in hk.pkl)
 git hooks status       # Which hooks a repo declares vs what actually fires (manager, mechanism, identity guard, stale stubs); --json / --check (exit 2 when declared but unarmed) / --quiet (what `rs` calls). Reports only - arming is a deliberate act
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
@@ -531,12 +532,33 @@ dotfiles config core.hooksPath .hk-hooks
 The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
 (`-q`, hk >= 1.51.0: success is silent, step chatter only surfaces on failure).
 
+There is no `.local` exclude. It hid 128 tracked entries - 6 first-party
+scripts on PATH plus the 122 `zfn-link` shims - from every gate, and the
+untracked mise/pnpm trees under `.local/share` and `.local/state` were never in
+scope anyway: `hk --all` selects tracked files, and the staged path sees only
+what git tracks. What each gate covers, and the candidates that were rejected
+with the evidence against them, is
+[docs/adr/0007](./docs/adr/0007-what-hk-gates-and-what-it-does-not.md).
+
 Builtin gates include `typos` (spell check, default locale so both en variants
 pass; config + false-positive allow-list in `~/.typos.toml`), `actionlint` and
 `zizmor` (GitHub workflow correctness + security; zizmor runs `--offline` at
 commit time), `fix-smart-quotes` (curly quotes in prose; vendored mirrors and
-summon's verbatim quote collections excluded), plus the formatters/linters
-(shfmt, shellcheck, rumdl, nixfmt...).
+summon's verbatim quote collections excluded), `deadnix` (dead code in the nix
+tree - an unused binding or lambda argument evaluates fine, so `nix-eval` can
+never see one), `check-symlinks` (the `.local/bin` shims: renaming a function
+without re-running `zfn-link` leaves a dangling one on PATH, and interactive
+autoload keeps working so nothing says so), `check-case-conflict` (two paths
+differing only in case are one file on macOS and two on the four Linux hosts),
+plus the formatters/linters (shfmt, shellcheck, rumdl, nixfmt...).
+
+The `hk-test` step runs the steps' own `tests {}` blocks whenever `hk.pkl` is
+staged. Gates fail **open** here - a glob matching nothing exits 0 - so
+`gate-coverage.py` asserts the wiring still points at real paths and this
+asserts the checkers still reject what they exist to reject. It strips
+`GIT_DIR`/`GIT_WORK_TREE`: `Builtins.actionlint`'s bundled tests run
+`before = "git init"`, and with the bare-repo split exported that addresses
+`~/git/dotfiles` itself.
 
 The `vale` step gates the house prose rules that a regex can express (config
 `~/.vale.ini`, style `.config/vale/styles/Connorads`). It runs `--no-global` so
@@ -549,8 +571,17 @@ callable from any repo.
 Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
 host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever
 `.config/nix/**` is staged, so a config authored on one host can't silently
-break another; ~25s, skippable with `HK_SKIP_STEPS=nix-eval`), `zsh-fn-header`
-(shell-function header + shebang/`# zsh-only:` conventions), `oxlint`
+break another; ~25s, skippable with `HK_SKIP_STEPS=nix-eval`), `statix`
+(`~/.hk-hooks/statix.sh`: nix anti-patterns, one staged file per call because
+statix takes a single target; `--config .hk-hooks/statix.toml` keeps it a gate
+config rather than the global default, and `repeated_keys` is disabled there -
+it wants flat nix-darwin/home-manager attributes collapsed into nested sets,
+which buries the option name the manual uses), `link-check`
+(`~/.hk-hooks/link-check.sh`: lychee `--offline` over tracked markdown, ~0.1s
+whole-tree; **globless on purpose** - link rot comes from deleting a target, and
+hk never runs a globbed step when the only staged change is a deletion),
+`zsh-fn-header` (shell-function header + shebang/`# zsh-only:` conventions),
+`oxlint`
 (first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
 skills and eval-fixture/reference snippets excluded), `ruff-check` +
 `ruff-format` (first-party Python lint + format, rule set `E,F,UP,B,SIM,I,RUF`;
