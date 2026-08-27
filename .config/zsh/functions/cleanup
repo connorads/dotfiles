@@ -330,11 +330,20 @@ _cleanup_sparse_vm_disk() {
     candidates=(${~pattern}(N))
     for disk in "${candidates[@]}"; do
       [[ -f "$disk" ]] || continue
-      out=$(stat -f '%z %b' "$disk" 2>/dev/null) || continue
+      # Two spellings, BSD first. macOS ships BSD stat at /usr/bin/stat, but a
+      # nix coreutils on PATH shadows it with GNU stat, where -f means
+      # "filesystem" - so a bare `stat` silently reported nothing sparse in a
+      # login shell while working under the tests' native-first PATH. Both
+      # report allocation in 512-byte blocks. Reject anything non-numeric
+      # rather than trusting the parse.
+      out=$(/usr/bin/stat -f '%z %b' "$disk" 2>/dev/null)
       apparent=${out%% *}
       blocks=${out##* }
-      # GNU stat reads -f as "filesystem" and prints the format verbatim, so
-      # reject anything non-numeric rather than trusting the parse.
+      if [[ "$apparent" != <-> || "$blocks" != <-> ]]; then
+        out=$(stat -c '%s %b' "$disk" 2>/dev/null)
+        apparent=${out%% *}
+        blocks=${out##* }
+      fi
       [[ "$apparent" == <-> && "$blocks" == <-> ]] || continue
       if (( apparent > blocks * 512 )); then
         print -r -- "$disk"

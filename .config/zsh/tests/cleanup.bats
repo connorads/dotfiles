@@ -621,6 +621,33 @@ EOF
   [[ "$output" == *"frees 2.5G inside the VM only"* ]]
 }
 
+@test "docker sparse detection survives a GNU stat shadowing the BSD one" {
+  # Regression: nix coreutils is ahead of /usr/bin on the login PATH, and GNU
+  # stat reads -f as --file-system. A bare `stat` therefore found nothing
+  # sparse in real use while passing under the tests' native-first PATH.
+  local disk="$HOME/vm/_disks/colima/datadisk"
+  mkdir -p "${disk%/*}"
+  dd if=/dev/zero of="$disk" bs=1 count=0 seek=100m 2>/dev/null
+  require_sparse "$disk"
+  write_stub stat <<'EOF'
+#!/usr/bin/env bash
+echo "stat $*" >>"$TEST_LOG"
+if [ "${1:-}" = "-f" ]; then
+  echo "stat: cannot read file system information for '$2'" >&2
+  exit 1
+fi
+exec /usr/bin/stat "$@"
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" \
+    CLEANUP_VM_DISK_ROOTS="$HOME/vm/_disks/*/datadisk" \
+    zsh --no-rcs "$CLEANUP" --dry-run --json --docker
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"size_kb":0'* ]]
+  [[ "$output" == *"host disk unchanged"* ]]
+}
+
 @test "docker estimate is unchanged when the backing disk is fully allocated" {
   local disk="$HOME/vm/_disks/plain/datadisk"
   mkdir -p "${disk%/*}"
