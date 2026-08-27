@@ -179,11 +179,18 @@ the mechanism, the TTY-vs-no-TTY nuance, and measured numbers.
 ### Whole-graph checks
 
 Some tools inspect the whole repo graph and should not receive `{{files}}`:
-dependency-cruiser, knip, supply-chain scanners, full typechecks, and coverage
-gates. Wire them as ordinary steps with no `glob` when the check must always see
-the full graph. (Which supply-chain scan to run, and its block-vs-report
-severity split, is the supply-chain-hardening skill's call - this skill owns
-the wiring.)
+dependency-cruiser, knip, supply-chain scanners, link checkers, full typechecks,
+and coverage gates. Wire them as ordinary steps with no `glob` when the check
+must always see the full graph. (Which supply-chain scan to run, and its
+block-vs-report severity split, is the supply-chain-hardening skill's call -
+this skill owns the wiring.)
+
+Globless is not only about what the tool accepts. **A globbed step does not run
+at all when the only staged change is a deletion**: hk resolves the glob to zero
+files and the step never appears in the plan, while a globless step still runs
+(with "0 files"). Any invariant broken by *removing* a file - a link checker, a
+dead-reference check, a manifest-vs-tree gate - must therefore be globless, or
+it goes quiet in exactly the case it exists for.
 
 For dependency-cruiser:
 
@@ -390,6 +397,8 @@ safe under both head- and tail-keeping truncation. See `references/output-noise.
 | `{{commit_msg_file}}` | Path to commit message file (commit-msg hook only) |
 | `{{workspace}}` | Directory containing `workspace_indicator` file |
 | `{{workspace_files}}` | Files relative to workspace directory |
+| `{{root}}` | Repo root. Inside a `tests {}` block it still points at the real root, not the sandbox - that is what lets `before` copy a checker in |
+| `{{tmp}}` | Per-test sandbox directory. `tests {}` only; using it auto-enables `tmpdir` |
 
 ### Multi-line inline script
 
@@ -536,6 +545,11 @@ hooks {
 | Noisy output on success | Add `-q` to the pre-commit wrapper (`hk run pre-commit -q`, hk ≥ 1.51.0): 0 bytes on success, full failing-step output on failure. **Never `--silent`** (drops failure diagnostics). See `references/output-noise.md` |
 | Hook runs in CI unnecessarily | Add `[ -n "$CI" ] && exit 0` to `prepare` script |
 | `hk.local.pkl` uses amends not being honoured | First line must be `amends "./hk.pkl"` |
+| A builtin named in the docs does not resolve | The builtin set is tied to the version in your `amends`/`import` URL, not to the installed `hk`. Check that tag's `pkl/builtins/` before reaching for one - `statix`, for instance, is absent at 1.51.0 while `deadnix`, `lychee`, `check_symlinks`, `check_case_conflict` and `hk_test` are all present |
+| `hk --all` seems to miss files | It selects **tracked** files only. An untracked tree under a directory you excluded for size was never in scope, so the exclude may be hiding tracked files for nothing - check with `hk check --all --stats` before keeping it |
+| `vale` fails on a deliberately-malformed frontmatter fixture | Vale hard-errors (E201) on unparseable frontmatter rather than skipping the file, so test fixtures that are invalid *on purpose* have to be excluded from the step, the same way lint fixtures are |
+| `pinact` fails whenever the machine is offline | It resolves every action ref through the GitHub API (`/repos/<owner>/<repo>/commits/<ref>`) and has no offline mode, so an unreachable API is a hard failure (exit 1 on 3.10.1), identical to the one it reports for a genuinely unpinned action. Put it in CI, not pre-commit - the same reason `zizmor` runs `--offline` in the hook |
+| Step tests write fixtures into the work tree | A bare relative path with no `tmpdir = true` writes into the repo and leaves the file there. Use `{{tmp}}/...`. See `references/testing-steps.md` |
 
 ---
 
@@ -544,6 +558,7 @@ hooks {
 - `references/builtins-by-language.md` - step selection by ecosystem
 - `references/complete-examples.md` - full hk.pkl configs for different stacks
 - `references/output-noise.md` - how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
+- `references/testing-steps.md` - `tests {}` and `hk test`: the fields, the `{{tmp}}` sandbox rule, testing a whole-repo checker with `before` + `{{root}}`, and what `Builtins.hk_test` drags in
 - `assets/soft-protected-branch-pre-push.sh` - copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
 - `tests/soft-protected-branch-pre-push.bats` - behavioural tests for the advisory branch-protection asset
 - `assets/pnpm-build-scripts-check.mjs` - copy to `.hk-hooks/` to fail a commit when a dependency's build script has no `allowBuilds` decision
