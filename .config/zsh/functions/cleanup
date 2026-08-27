@@ -3,18 +3,18 @@
 # usage: cleanup [ui] [--dry-run] [--yes] [--json] [selectors...]
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
-#            --playwright, --temp, --docker, --nix, --mise, --codex, --brew,
-#            --volumes
+#            --playwright, --chrome, --temp, --docker, --nix, --mise,
+#            --mise-cache, --codex, --brew, --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright temp docker nix mise codex brew)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
 # costs a full recompile to restore.
-CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright temp docker nix mise codex brew)
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright chrome temp docker nix mise mise-cache codex brew)
 CLEANUP_SELECTED_TARGETS=()
 
 # Roots scanned for Rust build dirs. Space-separated; override to scan elsewhere.
@@ -50,10 +50,12 @@ CLEANUP_LABELS=(
   nvim "Neovim cache"
   browsers "Browser automation caches"
   playwright "Unreferenced Playwright browser revisions"
+  chrome "Chrome/Chromium HTTP cache"
   temp "Stale temp directories"
   docker "Docker unused images and build cache"
   nix "Nix garbage collection"
   mise "mise unused tool versions"
+  mise-cache "mise download and metadata cache"
   codex "Codex TUI log and old session files"
   brew "Homebrew download cache"
 )
@@ -72,10 +74,12 @@ CLEANUP_DEFAULT_FLAGS=(
   nvim 1
   browsers 1
   playwright 1
+  chrome 1
   temp 1
   docker 1
   nix 1
   mise 1
+  mise-cache 1
   codex 1
   brew 1
 )
@@ -96,7 +100,8 @@ Usage:
 
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
-  nvim, browsers, playwright, temp, docker, nix, mise, codex, brew
+  nvim, browsers, playwright, chrome, temp, docker, nix, mise, mise-cache,
+  codex, brew
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
@@ -490,6 +495,24 @@ _cleanup_probe_target() {
         command="rm -rf unreferenced revision dirs and stale .links entries"
       fi
       ;;
+    chrome)
+      # HTTP cache only. Profiles, cookies, history and extensions live under
+      # ~/Library/Application Support/Google/Chrome, which is never named here.
+      dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium" \
+        "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      detail="Paths: ${dirs[1]}, ${dirs[2]}, ${dirs[3]}, ${dirs[4]}"
+      command="rm -rf Chrome/Chromium HTTP caches"
+      # Guarded on the browser being down, the way docker guards on the daemon
+      # being up: a running Chrome holds these files open and rewrites them as
+      # they are deleted, so the reclaim is both partial and disruptive.
+      if pgrep -x "Google Chrome" >/dev/null 2>&1 || pgrep -x chrome >/dev/null 2>&1; then
+        applicable=0
+        detail="Chrome is running; quit it before reclaiming its HTTP cache"
+      elif (( kb == 0 )); then
+        applicable=0
+      fi
+      ;;
     temp)
       candidates=("${(@f)$(_cleanup_temp_candidates)}")
       kb=$(_cleanup_kb_sum "${candidates[@]}")
@@ -564,6 +587,16 @@ _cleanup_probe_target() {
         detail="Source: mise prune --dry-run"
         command="mise prune --yes"
       fi
+      ;;
+    mise-cache)
+      # Distinct from the `mise` target: that is `mise prune`, which reclaims
+      # unused tool *versions* under the data dir and never touches the cache
+      # root. env-paths again, so both platform locations.
+      dirs=("$HOME/Library/Caches/mise" "$HOME/.cache/mise")
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || command -v mise >/dev/null 2>&1 || applicable=0
+      detail="Paths: ${dirs[1]}, ${dirs[2]}"
+      command="mise cache clear (fallback: rm -rf mise cache roots)"
       ;;
     codex)
       local log_file=$HOME/.codex/log/codex-tui.log
@@ -726,6 +759,11 @@ _cleanup_run_target() {
       (( ${#pw_stale[@]} > 0 )) || return 0
       command rm -rf -- "${pw_stale[@]}"
       ;;
+    chrome)
+      dirs=("$HOME/Library/Caches/Google" "$HOME/Library/Caches/Chromium" \
+        "$HOME/.cache/google-chrome" "$HOME/.cache/chromium")
+      command rm -rf -- "${dirs[@]}"
+      ;;
     temp)
       candidates=("${(@f)$(_cleanup_temp_candidates)}")
       (( ${#candidates[@]} > 0 )) || return 0
@@ -747,6 +785,14 @@ _cleanup_run_target() {
     mise)
       command -v mise >/dev/null 2>&1 || return 0
       mise prune --yes
+      ;;
+    mise-cache)
+      # Prefer mise's own cleaner; fall back to path removal when mise is gone
+      # but its cache is not, the same dual idiom as the bun arm.
+      if command -v mise >/dev/null 2>&1 && mise cache clear >/dev/null 2>&1; then
+        return 0
+      fi
+      command rm -rf -- "$HOME/Library/Caches/mise" "$HOME/.cache/mise"
       ;;
     codex)
       local log_file=$HOME/.codex/log/codex-tui.log
@@ -917,7 +963,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--temp|--docker|--nix|--mise|--codex|--brew)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;

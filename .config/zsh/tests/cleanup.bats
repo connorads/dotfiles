@@ -219,6 +219,30 @@ fi
 exit 0
 EOF
 
+  # Real mise would prune the tester's own tool versions and cache, so stub it
+  # unconditionally rather than only where a test asserts on it.
+  write_stub mise <<'EOF'
+#!/usr/bin/env bash
+echo "mise $*" >>"$TEST_LOG"
+if [ "${1:-}" = "prune" ] && [ "${2:-}" = "--dry-run" ]; then
+  printf '   remove %s/.local/share/mise/installs/dummy/1.0.0\n' "$HOME"
+  exit 0
+fi
+if [ "${1:-}" = "cache" ] && [ "${2:-}" = "clear" ]; then
+  [ -n "${MISE_CACHE_CLEAR_FAIL:-}" ] && exit 1
+  exit 0
+fi
+exit 0
+EOF
+
+  # Chrome absent by default: the real pgrep would make the chrome target's
+  # applicability depend on whether the tester happens to be browsing.
+  write_stub pgrep <<'EOF'
+#!/usr/bin/env bash
+echo "pgrep $*" >>"$TEST_LOG"
+exit 1
+EOF
+
   write_stub nix-collect-garbage <<'EOF'
 #!/usr/bin/env bash
 echo "nix-collect-garbage $*" >>"$TEST_LOG"
@@ -502,6 +526,79 @@ JSON
   # Wholesale deletion is the wrong contract for a registry shared between
   # installs; the playwright target prunes it selectively instead.
   [ -e "$HOME/.cache/ms-playwright/browser/data" ]
+}
+
+seed_chrome_cache() {
+  mkdir -p "$HOME/Library/Caches/Google/Chrome/Default/Cache" \
+    "$HOME/Library/Application Support/Google/Chrome/Default"
+  dd if=/dev/zero of="$HOME/Library/Caches/Google/Chrome/Default/Cache/data" \
+    bs=1024 count=32 2>/dev/null
+  touch "$HOME/Library/Application Support/Google/Chrome/Default/Cookies"
+}
+
+@test "chrome clears the http cache and leaves the profile alone" {
+  seed_chrome_cache
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --chrome
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/Library/Caches/Google" ]
+  # Profiles, cookies and history sit in Application Support, not Caches.
+  [ -e "$HOME/Library/Application Support/Google/Chrome/Default/Cookies" ]
+}
+
+@test "chrome is not applicable while the browser is running" {
+  seed_chrome_cache
+  write_stub pgrep <<'EOF'
+#!/usr/bin/env bash
+echo "pgrep $*" >>"$TEST_LOG"
+if [ "${2:-}" = "Google Chrome" ]; then
+  echo 4242
+  exit 0
+fi
+exit 1
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --chrome
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skip: not available on this host"* ]]
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --chrome
+  [ "$status" -eq 0 ]
+  [ -e "$HOME/Library/Caches/Google/Chrome/Default/Cache/data" ]
+}
+
+@test "mise-cache clears the cache root, distinct from mise prune" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --mise-cache
+
+  [ "$status" -eq 0 ]
+  grep -Fx "mise cache clear" "$TEST_LOG"
+  [[ "$(cat "$TEST_LOG")" != *"mise prune"* ]]
+}
+
+@test "mise-cache falls back to path removal when mise cache clear fails" {
+  mkdir -p "$HOME/Library/Caches/mise/downloads"
+  touch "$HOME/Library/Caches/mise/downloads/node-24.tar.gz"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" MISE_CACHE_CLEAR_FAIL=1 \
+    zsh --no-rcs "$CLEANUP" --yes --mise-cache
+
+  [ "$status" -eq 0 ]
+  grep -Fx "mise cache clear" "$TEST_LOG"
+  [ ! -e "$HOME/Library/Caches/mise" ]
+}
+
+@test "the mise target prunes tool versions and never the cache root" {
+  mkdir -p "$HOME/Library/Caches/mise/downloads"
+  touch "$HOME/Library/Caches/mise/downloads/node-24.tar.gz"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --mise
+
+  [ "$status" -eq 0 ]
+  grep -Fx "mise prune --yes" "$TEST_LOG"
+  # The split is the point: `mise prune` never reached the 3.5G cache root.
+  [[ "$(cat "$TEST_LOG")" != *"cache clear"* ]]
+  [ -e "$HOME/Library/Caches/mise/downloads/node-24.tar.gz" ]
 }
 
 @test "docker estimate is zeroed when the daemon sits on a sparse VM disk" {
