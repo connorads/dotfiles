@@ -534,8 +534,11 @@ version = "0.1.18"
 backend = "npm:@playwright/cli"
 
 [[tools."npm:@tobilu/qmd"]]
-version = "2.5.3"
+version = "2.8.3"
 backend = "npm:@tobilu/qmd"
+
+[tools."npm:@tobilu/qmd".options]
+allow_builds = '["better-sqlite3", "node-llama-cpp", "sqlite-vec", "tree-sitter-go", "tree-sitter-javascript", "tree-sitter-python", "tree-sitter-rust", "tree-sitter-typescript"]'
 
 [[tools."npm:agent-browser"]]
 version = "0.33.2"
