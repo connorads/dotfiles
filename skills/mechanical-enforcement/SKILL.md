@@ -44,7 +44,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | Markdown | rumdl | rumdl | - | - | Handles frontmatter too. In oxc-stack repos oxfmt also formats Markdown - see `references/typescript.md` (formatting). |
 | CSS / SCSS | Biome or oxfmt (format only) | stylelint (`stylelint "**/*.css" --max-warnings=0`) | Biome's own CSS linter (recommended-tier, vanilla CSS only - no SCSS, no property order) when already on Biome; eslint-plugin-better-tailwindcss for Tailwind class *validation* (`no-unknown-classes` / `no-conflicting-classes`) | - | Extend `stylelint-config-standard` (v40, ESM-only, needs stylelint 17 / Node ≥20.19) + `stylelint-order` + `stylelint-config-css-modules`. Stylelint removed stylistic rules in v16 - a formatter owns those. Class *ordering* is now formatter territory (oxfmt native Tailwind sort / prettier-plugin-tailwindcss), so run the Tailwind plugin for validation only. Gale (Rust drop-in) is a watch - v0.1.x, single-maintainer, can't run JS plugins. |
 | HTML | - | html-validate (`html-validate "**/*.html"`) | - | - | Static offline HTML5 conformance; exits non-zero on errors (`--max-warnings 0` also fails on warnings). Aggressive Node floor (22.22+/24.8+). No `<html lang>` rule - runtime a11y (axe/pa11y) owns that. See `references/web-delivery.md`. |
-| Nix | nixfmt | deadnix + statix | - | - | |
+| Nix | nixfmt | deadnix + statix | `nix eval` over every host config's `.drvPath` | - | Evaluation is the real correctness gate; the linters catch the dead code evaluation cannot. Disable statix's `repeated_keys` - it fights idiomatic flat nix-darwin/home-manager attributes. See `references/nix.md`. |
 | YAML | - | yamllint | - | - | In oxc-stack repos oxfmt also formats YAML - see `references/typescript.md` (formatting). |
 | TOML | taplo (`taplo fmt`) | taplo (`taplo lint` + JSON-schema) | - | - | Format + lint + schema-validate `Cargo.toml` / `*.toml` config. Maintenance is in limbo (no release since 0.10.0, May 2025) - watch [`tombi`](https://github.com/tombi-toml/tombi) and oxfmt as successors; taplo's JSON-schema validation has no oxfmt equivalent. |
 | Commit messages | - | commitlint (`@commitlint/config-conventional`) | - | - | One-line config. See `references/commitlint.config.js`. |
@@ -81,6 +81,7 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 - **TypeScript / JS** → `references/typescript.md` - type safety, type checking, error handling, formatting, Biome-vs-ESLint, UI/import hygiene, dead code, library publishing, shipped-artifact gates, test lints.
 - **Python** → `references/python.md` - Ruff, type checking, dead code, boundaries.
 - **Rust** → `references/rust.md` - clippy correctness, thresholds, pedantic allows, workspace wiring, supply chain, unused deps, boundaries.
+- **Nix** → `references/nix.md` - nixfmt, deadnix, statix, and why evaluating every host config is the stronger gate.
 - **Architectural boundaries** (cross-stack) → `references/architecture-boundaries.md` - illegal-graph rules, transitive gates, Go boundaries, greppable invariants, purity, contract gates.
 - **Web delivery gates** (cross-stack) → `references/web-delivery.md` - runtime accessibility (the runtime complement to static `jsx-a11y`), HTML conformance, structured data, Open Graph metadata, broken links. Boundaries: perf → `web-perf` skill; a11y rationale → `accessibility` skill.
 
@@ -212,6 +213,7 @@ release.
 - `references/typescript.md` - TypeScript / JS: type safety, type checking, error handling, formatting, Biome-vs-ESLint, UI/import hygiene, dead code, library publishing, shipped-artifact gates, test lints
 - `references/python.md` - Python: Ruff, type checking, dead code, import boundaries
 - `references/rust.md` - Rust: clippy correctness, thresholds, pedantic allows, workspace wiring, cargo-deny, cargo-machete, crate boundaries
+- `references/nix.md` - Nix: nixfmt, deadnix (`--edit` renames, it does not delete), statix (one target per call, disable `repeated_keys`), evaluation as the correctness gate
 - `references/architecture-boundaries.md` - cross-stack boundaries: illegal-graph rules, transitive graph gates, Go boundaries, greppable invariants, purity, contract gates
 - `references/web-delivery.md` - cross-stack web delivery gates: runtime accessibility (axe/pa11y), HTML conformance (html-validate), structured data (schema-dts), Open Graph metadata, broken links (lychee)
 
