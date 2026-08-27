@@ -35,16 +35,80 @@ write_clipboard() {
   } >"$CLIPBOARD"
 }
 
+PI_PKG='@earendil-works/pi-coding-agent'
+
+# The generated manifest mise writes beside an install; mise-npm-where reads
+# its single dependencies key for the package name.
+write_generated_manifest() {
+  mkdir -p "$(dirname "$1")"
+  cat >"$1" <<EOF
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "dependencies": {
+    "$PI_PKG": "1.0.0"
+  }
+}
+EOF
+}
+
+# Layout A: aube driven as an external CLI. bin/pi is a symlink into a hashed
+# global-aube dir, with a 64-hex sibling symlink pointing at the same hash dir.
+# This is what 156 installs still look like.
+make_layout_a() {
+  local root=$1
+  local hash=1bc6-1a02e683708
+  local hex=c9fdf1237697ab36897fd1bede7bb4b9f52b436ff0615eb7667507413466c7b5
+  local pkgdir="$root/global-aube/$hash/node_modules/$PI_PKG"
+
+  mkdir -p "$pkgdir/dist/utils" "$root/bin"
+  printf '{"name":"%s","version":"1.0.0"}\n' "$PI_PKG" >"$pkgdir/package.json"
+  printf '#!/usr/bin/env node\n' >"$pkgdir/dist/cli.js"
+  chmod +x "$pkgdir/dist/cli.js"
+  ln -s "$pkgdir/dist/cli.js" "$root/bin/pi"
+  ln -s "$root/global-aube/$hash" "$root/global-aube/$hex"
+  write_generated_manifest "$root/global-aube/$hash/package.json"
+  printf '%s\n' "$pkgdir"
+}
+
+# Layout B: the bun era - top-level node_modules plus a real bin/ dir.
+make_layout_b() {
+  local root=$1
+  local pkgdir="$root/node_modules/$PI_PKG"
+
+  mkdir -p "$pkgdir/dist/utils" "$root/bin"
+  printf '{"name":"%s","version":"1.0.0"}\n' "$PI_PKG" >"$pkgdir/package.json"
+  printf '#!/bin/sh\nexit 0\n' >"$root/bin/pi"
+  chmod +x "$root/bin/pi"
+  write_generated_manifest "$root/package.json"
+  printf '%s\n' "$pkgdir"
+}
+
+# Layout C: aube embedded as a library - no bin/ at all. This is the layout the
+# patch silently stopped resolving, and the regression this suite now covers.
+make_layout_c() {
+  local root=$1
+  local pkgdir="$root/node_modules/$PI_PKG"
+
+  mkdir -p "$pkgdir/dist/utils" "$root/node_modules/.bin"
+  printf '{"name":"%s","version":"1.0.0"}\n' "$PI_PKG" >"$pkgdir/package.json"
+  printf '#!/usr/bin/env node\n' >"$pkgdir/dist/cli.js"
+  chmod +x "$pkgdir/dist/cli.js"
+  ln -s "$pkgdir/dist/cli.js" "$root/node_modules/.bin/pi"
+  write_generated_manifest "$root/package.json"
+  printf '%s\n' "$pkgdir"
+}
+
 setup() {
   setup_test_home
   mkdir -p "$HOME/.cache" "$HOME/.config/zsh/functions"
   ln -s "$FUNCTIONS_DIR/patch" "$HOME/.config/zsh/functions/patch"
+  ln -s "$FUNCTIONS_DIR/mise" "$HOME/.config/zsh/functions/mise"
 
   INSTALL_DIR="$HOME/pi-install"
-  CLIPBOARD="$INSTALL_DIR/dist/utils/clipboard-image.js"
-  mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/dist/utils"
-  printf '#!/bin/sh\nexit 0\n' >"$INSTALL_DIR/bin/pi"
-  chmod +x "$INSTALL_DIR/bin/pi"
+  local pkgdir
+  pkgdir=$(make_layout_a "$INSTALL_DIR")
+  CLIPBOARD="$pkgdir/dist/utils/clipboard-image.js"
   write_clipboard "$HASIMAGE_NEEDLE" "$GETIMAGE_NEEDLE"
 }
 
@@ -138,4 +202,70 @@ setup() {
 
   [ "$status" -eq 0 ]
   [ -f "$HOME/.cache/pi-image-paste-patch.stale" ]
+}
+
+# ---- install layouts -------------------------------------------------------
+
+@test "patches a layout C install, which has no bin dir at all" {
+  # The regression this exists for: mise v2026.7.12 embedded aube as a library
+  # and dropped <install>/bin, so resolving via bin/pi found nothing and every
+  # pi update since would have shipped an unpatched Ctrl+V image paste.
+  local root="$HOME/pi-c" pkgdir
+  pkgdir=$(make_layout_c "$root")
+  CLIPBOARD="$pkgdir/dist/utils/clipboard-image.js"
+  write_clipboard "$HASIMAGE_NEEDLE" "$GETIMAGE_NEEDLE"
+  [ ! -d "$root/bin" ]
+
+  run_zsh_function "$PI_PATCH" --reapply "$root"
+
+  [ "$status" -eq 0 ]
+  grep -qF "$HASIMAGE_PATCHED" "$CLIPBOARD"
+  grep -qF "$GETIMAGE_PATCHED" "$CLIPBOARD"
+  [ ! -f "$HOME/.cache/pi-image-paste-patch.stale" ]
+}
+
+@test "patches a layout B install" {
+  local root="$HOME/pi-b" pkgdir
+  pkgdir=$(make_layout_b "$root")
+  CLIPBOARD="$pkgdir/dist/utils/clipboard-image.js"
+  write_clipboard "$HASIMAGE_NEEDLE" "$GETIMAGE_NEEDLE"
+
+  run_zsh_function "$PI_PATCH" --reapply "$root"
+
+  [ "$status" -eq 0 ]
+  grep -qF "$HASIMAGE_PATCHED" "$CLIPBOARD"
+  grep -qF "$GETIMAGE_PATCHED" "$CLIPBOARD"
+}
+
+@test "an unresolvable package dir marks and exits 0 under --reapply" {
+  # A layout mise has not shipped yet. --reapply must never block an update,
+  # and the marker must say the package dir failed, not that a needle is gone.
+  local root="$HOME/pi-unknown"
+  mkdir -p "$root/some/future/shape"
+
+  run_zsh_function "$PI_PATCH" --reapply "$root"
+
+  [ "$status" -eq 0 ]
+  [ -f "$HOME/.cache/pi-image-paste-patch.stale" ]
+  grep -qF 'reason: could not resolve the pi package dir' \
+    "$HOME/.cache/pi-image-paste-patch.stale"
+
+  run_zsh_function "$PI_PATCH" --check "$root"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"could not resolve the pi package dir"* ]]
+}
+
+@test "with no install dir argument it asks mise where" {
+  write_stub mise <<EOF
+#!/usr/bin/env bash
+[ "\$1" = "where" ] || exit 1
+printf '%s\n' "$INSTALL_DIR"
+EOF
+
+  run_zsh_function "$PI_PATCH" --reapply
+
+  [ "$status" -eq 0 ]
+  grep -qF "$HASIMAGE_PATCHED" "$CLIPBOARD"
+  grep -qF "$GETIMAGE_PATCHED" "$CLIPBOARD"
 }
