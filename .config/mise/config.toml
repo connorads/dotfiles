@@ -58,6 +58,11 @@ typos = "1"
 # ~/.vale.ini, style .config/vale/styles/Connorads. No `Packages` key, so the
 # gate never needs `vale sync` and stays offline at commit time.
 vale = "3"
+# lychee: link checker for the hk `link-check` step. Runs --offline, so it
+# resolves relative paths and heading anchors against the tree and makes no
+# network call at commit time (same posture as zizmor below). File list and
+# exclusions live in .hk-hooks/link-check.sh, not here.
+lychee = "0.24"
 # actionlint + zizmor: GitHub workflow lint + security audit for the hk
 # pipeline (zizmor runs --offline in the hook; no network at commit time).
 actionlint = "1"
