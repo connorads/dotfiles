@@ -44,6 +44,25 @@ local fast_steps = new Mapping<String, Step> {
     // sees them, and no other step's cost changes.
     ["check-symlinks"] = (Builtins.check_symlinks) {}
 
+    // The steps' own tests (`hk test`), run whenever hk.pkl is staged. Every
+    // gate here fails OPEN - a glob matching nothing exits 0 - so a checker
+    // that has quietly stopped detecting anything looks exactly like a clean
+    // tree. gate-coverage.py asserts the wiring is still pointed at real
+    // paths; this asserts the checkers still reject what they exist to reject.
+    //
+    // GIT_DIR/GIT_WORK_TREE are stripped, and that is not defensive tidying.
+    // The dhk and pre-commit wrappers export the bare-repo split and hk hands
+    // it to every step, so a test's `before` that runs bare `git` addresses the
+    // REAL dotfiles repo - GIT_DIR beats cwd discovery, so running in a sandbox
+    // dir is no defence. Builtins.actionlint's tests do exactly this
+    // (`before = "git init"`), and at commit time it re-initialised
+    // ~/git/dotfiles and tried to rewrite core.filemode there; it only failed
+    // because the commit in progress held the config lock. Same strip, and the
+    // same reason, as bats-tests.sh / ts-tests.sh / skill-tests.sh.
+    ["hk-test"] = (Builtins.hk_test) {
+        check = "env -u GIT_DIR -u GIT_WORK_TREE hk test --quiet"
+    }
+
     // Vendored scripts mirror upstream too: don't reformat (divergence) or lint
     // (upstream's style findings aren't ours to fix) — security review happens
     // in the update-vendored-skills diff flow instead.
@@ -78,11 +97,68 @@ local fast_steps = new Mapping<String, Step> {
         glob = List(".config/zsh/functions/**")
         exclude = List("**/*.jq")
         check = "bash .hk-hooks/zsh-fn-header-check.sh {{files}}"
+
+        // Fixture paths are {{tmp}}-scoped, which is not cosmetic: with a bare
+        // relative path hk writes the fixture INTO the work tree and leaves it
+        // there, and this work tree is $HOME. {{tmp}} also makes hk run the step
+        // from the sandbox, so the checker is copied in rather than reached at
+        // its real path.
+        tests {
+            ["a dual-mode file whose header names another function fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe"] = "#!/usr/bin/env zsh\n# other: does a thing\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/zsh-fn-header-check.sh .hk-hooks/ && chmod +x {{tmp}}/probe"
+                files = List("{{tmp}}/probe")
+                expect { code = 1 }
+            }
+
+            // The failure zfn-link cannot report: a mode-644 dual-mode file
+            // still works through interactive autoload, so only PATH callers
+            // see "permission denied".
+            ["a non-executable dual-mode file fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe"] = "#!/usr/bin/env zsh\n# probe: does a thing\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/zsh-fn-header-check.sh .hk-hooks/ && chmod 644 {{tmp}}/probe"
+                files = List("{{tmp}}/probe")
+                expect { code = 1 }
+            }
+
+            ["an autoload-only file must self-declare why"] {
+                run = "check"
+                write { ["{{tmp}}/probe"] = "# probe: does a thing\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/zsh-fn-header-check.sh .hk-hooks/"
+                files = List("{{tmp}}/probe")
+                expect { code = 1 }
+            }
+
+            ["both conforming shapes pass"] {
+                run = "check"
+                write {
+                    ["{{tmp}}/dual"] = "#!/usr/bin/env zsh\n# dual: a PATH command\n"
+                    ["{{tmp}}/only"] = "# only: an autoload helper\n# zsh-only: cd's into a directory\n"
+                }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/zsh-fn-header-check.sh .hk-hooks/ && chmod +x {{tmp}}/dual"
+                files = List("{{tmp}}/dual", "{{tmp}}/only")
+                expect { code = 0 }
+            }
+        }
     }
 
     ["nixfmt"] = (Builtins.nix_fmt) {
         batch = true
     }
+
+    // Dead code in the nix tree: an unused `let` binding, lambda argument or
+    // `inputs@` pattern evaluates perfectly, so the nix-eval step below can
+    // never see one. Every tracked .nix file lives under .config/nix, so the
+    // builtin's whole-tree glob costs nothing extra.
+    //
+    // The fix mode renames to a `_` prefix rather than deleting - `_old`,
+    // `_final` - which is nix's own spelling for "declared and deliberately
+    // unused", so `dhk fix` never silently changes what a function accepts.
+    // deadnix is nix-installed (serverExtras), not mise: it has no registry
+    // entry.
+    ["deadnix"] = (Builtins.deadnix) {}
 
     // Spell gate (default locale: both en variants pass, only genuine
     // misspellings flag). --force-exclude in the builtin makes the
@@ -110,6 +186,36 @@ local fast_steps = new Mapping<String, Step> {
     ["fix-smart-quotes"] = (Builtins.fix_smart_quotes) {
         glob = List("**/*.md", "**/*.markdown", "**/*.mdx")
         exclude = no_reformat + List(".config/skills/personal/summon/references/**")
+
+        // Upstream's tests are replaced, not dropped. They write a `file.txt`,
+        // which this step's markdown glob filters out - and hk renders `{{files}}`
+        // through the glob even though it does not use it to decide whether a
+        // test runs, so the command was reached with no FILES at all and exited
+        // 2 on its own usage error. Same coverage, on the extension the step
+        // actually claims.
+        tests = new {
+            ["check flags a curly quote"] {
+                run = "check"
+                tmpdir = true
+                write { ["file.md"] = "A \u{201C}quoted\u{201D} word.\n" }
+                expect { code = 1 }
+            }
+            ["check passes straight quotes"] {
+                run = "check"
+                tmpdir = true
+                write { ["file.md"] = "A \"quoted\" word.\n" }
+                expect { code = 0 }
+            }
+            ["fix straightens them"] {
+                run = "fix"
+                tmpdir = true
+                write { ["file.md"] = "A \u{201C}quoted\u{201D} word.\n" }
+                expect {
+                    code = 0
+                    files { ["file.md"] = "A \"quoted\" word.\n" }
+                }
+            }
+        }
     }
 
     // summon persona references are quote collections: blockquote spacing and
@@ -118,6 +224,15 @@ local fast_steps = new Mapping<String, Step> {
     ["rumdl"] = (Builtins.rumdl) {
         batch = true
         exclude = vendored_skills + List(".config/skills/personal/summon/references/**")
+
+        // Upstream's tests are dropped. Their two fix cases assert that a
+        // `.rumdl.toml` with `[MD007] indent = 2` makes the fixer reindent a
+        // nested list item; rumdl 0.2.52 - the version pinned in mise - fixes
+        // MD012 there and leaves the indent alone, so the expected file never
+        // matches. They pin a rumdl release's behaviour, not this repo's
+        // wiring, and there is nothing here to fix: `mise run` and `dhk check`
+        // both exercise the real step against the real tree.
+        tests = new {}
     }
 
     // House prose rules (~/.vale.ini + .config/vale/styles/Connorads). Vale
@@ -204,6 +319,14 @@ local fast_steps = new Mapping<String, Step> {
     ["zizmor"] = (Builtins.zizmor) {
         check_diff = "zizmor --offline --no-progress {{ files }}"
         fix = "zizmor --offline --no-progress --fix {{ files }}"
+
+        // Upstream's tests are dropped. Every one of their fixtures - the "good"
+        // one included - writes `uses: actions/checkout@v4`, and zizmor 1.29's
+        // unpinned-uses blanket policy wants a hash, so all five exit 14 on a
+        // finding the fixture was never about. Our own workflows are SHA-pinned
+        // (dependabot bumps them weekly), so the step passes on the real tree;
+        // it is the fixtures that have gone stale against the pinned zizmor.
+        tests = new {}
     }
 
     // Cross-host guard: a config authored on one host must still evaluate for
@@ -271,6 +394,44 @@ local fast_steps = new Mapping<String, Step> {
             ".hk-hooks/quarantine-drift.py"
         )
         check = "python3 .hk-hooks/quarantine-drift.py"
+
+        // A whole-repo checker: it takes no {{files}} and reads the nine configs
+        // off cwd. {{tmp}}-scoped fixtures make hk run the step FROM the sandbox,
+        // which is what makes that cwd-relative read testable at all - the
+        // verdict below is only reachable if the sandbox's .npmrc is the file
+        // that got parsed.
+        //
+        // Only .npmrc is planted. The checker falls back to $HOME for a config
+        // the cwd does not hold, so the other eight resolve to the real tracked
+        // ones and supply the agreed 4 days to disagree with.
+        tests {
+            ["one config out of step fails"] {
+                run = "check"
+                write { ["{{tmp}}/.npmrc"] = "min-release-age=9\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
+                expect {
+                    code = 1
+                    stderr = "min-release-age"
+                }
+            }
+
+            ["a config whose key has gone missing fails"] {
+                run = "check"
+                write { ["{{tmp}}/.npmrc"] = "allow-git=none\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
+                expect {
+                    code = 1
+                    stderr = "not found"
+                }
+            }
+
+            ["the agreed value passes"] {
+                run = "check"
+                write { ["{{tmp}}/.npmrc"] = "min-release-age=4\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
+                expect { code = 0 }
+            }
+        }
     }
 
     // hk steps key on hard-coded path prefixes and fail OPEN - a glob matching
