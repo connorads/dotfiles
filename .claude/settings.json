@@ -158,6 +158,12 @@
           {
             "command": "sh ~/.config/tmux/scripts/agent-stop.sh || true",
             "type": "command"
+          },
+          {
+            "command": "python3 ~/.claude/hooks/hk-unstaged-check.py",
+            "statusMessage": "Linting unstaged changes",
+            "timeout": 60,
+            "type": "command"
           }
         ]
       }
