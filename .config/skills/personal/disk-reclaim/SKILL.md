@@ -83,15 +83,20 @@ rebooting or deleting named entries.
 | Irreplaceable | Photos, documents, anything authored | Never without an explicit yes |
 
 Before classifying a language cache, check its tool still exists:
-`command -v dart flutter gradle`. A cache whose toolchain is gone is not
+`command -v dart flutter gradle go`. A cache whose toolchain is gone is not
 "re-downloadable pending a nod", it is dead weight - `~/.pub-cache`,
 `~/.gradle` and `~/.dartServer` held 1.6G between them on a machine with no
-Dart, Flutter or Gradle installed at all. The check extends to the *manager*:
+Dart, Flutter or Gradle installed at all. `go` is the same pair twice over:
+`~/Library/Caches/go-build` and `~/go` (690M and 124M here) are both dead
+weight with no `go` on the machine. The check extends to the *manager*:
 Android's `sdkmanager` is a JVM wrapper, so with no `java` it cannot list or
 uninstall the packages it installed, and the idiomatic-cleaner route is closed
 before you reach it (9.1G of `system-images`, `ndk` and `emulator` sat under a
 `sdkmanager` that could not run). Hand-delete those, leaving the
-package-manager-owned `cmdline-tools` alone.
+package-manager-owned `cmdline-tools` alone. The mirror-image failure is a
+manager that runs but has no removal verb: LM Studio's `lms` has `get`, `load`,
+`ls` and `import` but no `rm`, so a model comes out only by deleting
+`~/.lmstudio/models/<publisher>/` once `lms ps` confirms none are loaded.
 
 **Ask before deleting anything in `~/Downloads`** - it mixes all three classes.
 Zip-alongside-extracted-folder pairs are the reliable safe win there; media is
@@ -123,6 +128,14 @@ project cleaner or its docs, where present, is the fastest classifier.
   overstatement from hardlinks and sparse files. Never pass a cleaner's own
   number to the user. After any delete/clean, re-check `df` (or the target's
   `du`) - that is ground truth, not exit status.
+- **Trashing frees nothing until the Trash is emptied, on a GUI Mac too.** The
+  bytes leave `du ~` and never reach `df`, so a session that trashes its way to
+  a result cannot show the result. An agent can neither read `~/.Trash` (TCC)
+  nor safely empty it - it may hold the user's own items. So for unambiguously
+  rebuildable targets prefer real deletion, via an idiomatic cleaner,
+  `git worktree remove` or `wt-remove`, precisely so `df` moves inside the
+  session. Where `trash` is right, close by reporting how much is pending in it
+  and that emptying is the user's action.
 - **`trash` on a many-file tree takes minutes** (it moves, it doesn't unlink),
   so it outlives tool timeouts and gets killed mid-move, leaving some args done
   and some untouched. Background it, and verify per-path afterwards with `ls
@@ -162,6 +175,28 @@ project cleaner or its docs, where present, is the fastest classifier.
   `git status --porcelain` in each first, and confirm the branch survives
   afterwards. Being inside the repo, they hide from a `~/git/*` scan behind the
   repo's own total.
+- **Managed worktrees under `~/.trees`** are the same trap at ten times the
+  size: each carries its own `node_modules` and build output (~2.4G plus ~2.9G
+  each in a Next.js repo; 25 worktrees held 68G here). `wt-status --all --pr
+  --json` classifies them and `wt-clean --dry-run` previews only the MERGED-PR
+  set. Do not carry the branch-survives advice above across to it: **`wt-clean`
+  deletes the branch too** - it hard-codes `--delete-branch`, so `git branch -d`
+  runs after each removal - and `wt-clean --force` escalates that to `git branch
+  -D`, which destroys unmerged commits. For the merged-but-no-PR worktrees
+  `wt-clean` deliberately spares, bare `wt-remove <path>` is the
+  branch-preserving primitive.
+- **Several Playwright browser revisions is the normal state, not stale
+  build-up.** A machine with many repos pins one revision per `playwright-core`
+  version, so four chromium revisions in `~/Library/Caches/ms-playwright` can
+  all be live, and pruning the "old" ones forces gigabytes of re-download.
+  Resolve it rather than guessing by age: each file under `<root>/.links` names
+  a `playwright-core` install, that install's `browsers.json` lists every
+  `{name, revision}` it needs, and the on-disk directory is the name with
+  hyphens replaced by underscores plus `-<revision>` (`chromium-headless-shell`
+  becomes `chromium_headless_shell-1234`). Anything outside that set is
+  unreferenced. `cleanup --target playwright` walks exactly this; `cleanup`'s
+  `browsers` target historically probed `~/.cache` only and reported 0 against
+  3.3G.
 - **Aube:** `~/.cache/aube/virtual-store` is a live mise npm-tool working set,
   not disposable cache. Do not delete it: it leaves mise tool shims dangling.
   `aube store prune` is the supported way to reclaim unreferenced package data;
