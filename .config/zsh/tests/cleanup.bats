@@ -432,6 +432,78 @@ EOF
   ! grep -Fx -- "brew cleanup --prune=all" "$TEST_LOG"
 }
 
+# A registry with one live install pinning chromium 1234, one superseded
+# revision, and a .links entry whose install has been deleted.
+seed_playwright_registry() {
+  local root=$1 install=$2
+  mkdir -p "$root/.links" "$root/chromium-1234" "$root/chromium_headless_shell-1234" \
+    "$root/.settings" "$install"
+  touch "$root/chromium-1234/data" "$root/chromium_headless_shell-1234/data" \
+    "$root/.settings/data"
+  cat >"$install/browsers.json" <<'JSON'
+{
+  "browsers": [
+    { "name": "chromium", "revision": "1234", "installByDefault": true },
+    { "name": "chromium-headless-shell", "revision": "1234", "installByDefault": true }
+  ]
+}
+JSON
+  printf '%s\n' "$install" >"$root/.links/live"
+}
+
+@test "playwright prunes only revisions no live playwright-core references" {
+  local root="$HOME/pw" install="$HOME/repo/node_modules/playwright-core"
+  seed_playwright_registry "$root" "$install"
+  mkdir -p "$root/chromium-1200"
+  touch "$root/chromium-1200/data"
+  printf '%s\n' "$HOME/repo/node_modules/deleted" >"$root/.links/stale"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" PLAYWRIGHT_BROWSERS_PATH="$root" \
+    zsh --no-rcs "$CLEANUP" --yes --playwright
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$root/chromium-1200" ]
+  # The install this link named is gone, so the link is leftover bookkeeping.
+  [ ! -e "$root/.links/stale" ]
+  [ -e "$root/chromium-1234/data" ]
+  # browsers.json spells the name with hyphens; on disk it is underscores. Get
+  # that mapping wrong and a live revision is deleted for a re-download.
+  [ -e "$root/chromium_headless_shell-1234/data" ]
+  # Registry furniture is not a revision dir.
+  [ -e "$root/.settings/data" ]
+  [ -e "$root/.links/live" ]
+}
+
+@test "playwright reports 0K when every revision on disk is referenced" {
+  local root="$HOME/pw" install="$HOME/repo/node_modules/playwright-core"
+  seed_playwright_registry "$root" "$install"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" PLAYWRIGHT_BROWSERS_PATH="$root" \
+    zsh --no-rcs "$CLEANUP" --dry-run --json --playwright
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"id":"playwright"'* ]]
+  [[ "$output" == *'"applicable":true'* ]]
+  # Several revisions side by side is the normal state, not stale build-up.
+  [[ "$output" == *'"size_kb":0'* ]]
+}
+
+@test "browsers no longer claims the shared playwright registry" {
+  # The target probes itself out when its roots measure 0K, and an empty file
+  # occupies no blocks, so give the fixture real bytes.
+  dd if=/dev/zero of="$HOME/.cache/puppeteer/browser/data" bs=1024 count=32 2>/dev/null
+  dd if=/dev/zero of="$HOME/.cache/camoufox/browser/data" bs=1024 count=32 2>/dev/null
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --browsers
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/.cache/puppeteer" ]
+  [ ! -e "$HOME/.cache/camoufox" ]
+  # Wholesale deletion is the wrong contract for a registry shared between
+  # installs; the playwright target prunes it selectively instead.
+  [ -e "$HOME/.cache/ms-playwright/browser/data" ]
+}
+
 @test "docker estimate is zeroed when the daemon sits on a sparse VM disk" {
   local disk="$HOME/vm/_disks/colima/datadisk"
   mkdir -p "${disk%/*}"
