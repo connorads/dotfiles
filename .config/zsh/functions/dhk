@@ -16,6 +16,20 @@ if [[ -z "$hk_bin" ]]; then
 fi
 
 cd "$HOME" || return 1
+
+# `hk test` runs each step's tests {} block, and a test's `before` runs bare
+# `git` - Builtins.actionlint's is literally `git init`. GIT_DIR beats cwd
+# discovery, so the sandbox directory is no defence: with the split exported
+# that command addresses ~/git/dotfiles itself and rewrites its config. hk
+# resolves its own config from cwd, so the tests need no git environment at
+# all. The hk-test STEP carries the same strip for the pre-commit path.
+if [[ ${1:-} == test ]]; then
+  unset GIT_DIR GIT_WORK_TREE
+  export HK_STASH_UNTRACKED=false
+  "$hk_bin" "$@"
+  return
+fi
+
 export GIT_DIR="$HOME/git/dotfiles"
 export GIT_WORK_TREE="$HOME"
 export HK_STASH_UNTRACKED=false
