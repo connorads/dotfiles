@@ -31,7 +31,7 @@
   };
 
   outputs =
-    inputs@{
+    {
       self,
       nix-darwin,
       nixpkgs,
@@ -62,7 +62,7 @@
             # top window row + bottom stats row, gated by a tmux user option.
             #
             # See ./patches/README.md for lineage and bump procedure.
-            (final: prev: {
+            (_final: prev: {
               redress = prev.callPackage ./packages/redress.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
 
@@ -73,7 +73,7 @@
               # rejects (names count != values count) - collection errors fail
               # the check phase and break every build depending on pipx. Skip the
               # tests locally; the package itself is fine. Recheck on flake bumps.
-              pipx = prev.pipx.overridePythonAttrs (old: {
+              pipx = prev.pipx.overridePythonAttrs (_old: {
                 doCheck = false;
                 doInstallCheck = false;
               });
@@ -186,7 +186,7 @@
         ./modules/linux-packages.nix
         ./modules/linux-crostini.nix
         (
-          { ... }:
+          _:
           {
             services.ssh-agent.enable = true;
             home.sessionVariables.SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
