@@ -128,10 +128,15 @@ export CLAUDE_CODE_NO_FLICKER=1
 # it. Globbed rather than listed per patch: the three that were named here
 # covered four of the markers actually written, and the one that mattered -
 # claude-channels-allowlist-patch - was not among them.
+# The marker's own `reason:` line is what gets printed. A fixed "needle
+# missing" was wrong for every marker written by a resolution failure rather
+# than a needle failure, and sent one investigation looking for an upstream
+# rename that had not happened.
 for _stale in "$HOME"/.cache/*-patch.stale(N); do
-  print -P "%F{yellow}${_stale:t:r}:%f needle missing - see $_stale"
+  _stale_reason=$(sed -n 's/^reason: //p' "$_stale" 2>/dev/null | head -1)
+  print -P "%F{yellow}${_stale:t:r}:%f ${_stale_reason:-stale} - see $_stale"
 done
-unset _stale
+unset _stale _stale_reason
 
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
