@@ -1,12 +1,19 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLinksValidator from 'starlight-links-validator';
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://dotfiles.connoradams.co.uk',
 	integrations: [
 		starlight({
+			// Internal links here are extensionless routes (/trust/supply-chain/),
+			// which no filesystem resolver can follow - the dotfiles-wide lychee
+			// gate skips this directory for that reason. This plugin checks them
+			// at build time, where the route table is known, so a renamed or
+			// deleted page fails `pnpm build` instead of shipping a dead link.
+			plugins: [starlightLinksValidator()],
 			title: 'How I work',
 			description:
 				'My dotfiles, justified - a terminal-first, agent-heavy workflow explained.',
