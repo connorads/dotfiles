@@ -260,6 +260,18 @@ local fast_steps = new Mapping<String, Step> {
         check = "vale --no-global {{files}}"
     }
 
+    // Broken links in tracked markdown (lychee, offline).
+    //
+    // GLOBLESS on purpose, and the one step here where that is load-bearing:
+    // link rot comes from deleting or moving a TARGET, not from editing the
+    // file that holds the link. A staged deletion resolves to zero files, so a
+    // globbed step never fires - it would go quiet in exactly the case it
+    // exists for. The script owns the file list and the exclusions; whole-tree
+    // is ~0.1s, so there is nothing to scope.
+    ["link-check"] {
+        check = "bash .hk-hooks/link-check.sh"
+    }
+
     // First-party JS/TS lint: default correctness rules only (no type-aware
     // rules - several first-party dirs lack tsconfigs). --deny-warnings is
     // load-bearing: oxlint exits 0 on warnings by default, so without it the
