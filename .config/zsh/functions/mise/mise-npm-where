@@ -1,0 +1,144 @@
+#!/usr/bin/env zsh
+# mise-npm-where: print the installed package dir for an npm-backed mise tool
+# usage: mise-npm-where [--install-dir DIR] [--package NAME] [TOOL]
+#
+# Why: mise's npm backend has laid its installs out three different ways in four
+# months, and three call sites here each hardcoded one of them. Layouts seen on
+# disk today:
+#
+#   A  <install>/bin/<cmd> -> <install>/global-aube/<hash>/node_modules/<pkg>/...
+#      with no top-level node_modules       (aube driven as an external CLI)
+#   B  <install>/bin/<cmd> + <install>/node_modules/<pkg>/...        (bun era)
+#   C  <install>/node_modules/<pkg>/..., bins at node_modules/.bin/, no bin/
+#      (mise >= v2026.7.12, aube embedded as a library)
+#
+# So this probes rather than assumes, and on failure names every path it tried -
+# the next reshape should be diagnosable from one error message. Probe order
+# mirrors mise's own `src/backend/npm.rs` (lib/node_modules, then node_modules)
+# with layout A's global-aube glob appended.
+#
+# Not handled here, deliberately:
+#   - locating a bin. `mise which <cmd>` is mise's own probe order and already
+#     resolves all three layouts. Two caveats: it keys on the bin name, not the
+#     tool name, and it fails for a tool inactive in the current config.
+#   - realpathing the result. Callers that need it already do it.
+#
+# Prints one absolute path on stdout and nothing else, so `$(...)` is safe.
+# Exit 1 (with empty stdout) if nothing resolves, 2 on usage error.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local wrapper="${${(%):-%x}:A}"
+local install_dir="" pkg="" tool=""
+local -a positional=()
+
+while (( $# )); do
+  case $1 in
+    --install-dir)   shift; (( $# )) || { print -u2 "mise-npm-where: --install-dir needs a value"; return 2 }; install_dir=$1; shift ;;
+    --install-dir=*) install_dir=${1#*=}; shift ;;
+    --package)       shift; (( $# )) || { print -u2 "mise-npm-where: --package needs a value"; return 2 }; pkg=$1; shift ;;
+    --package=*)     pkg=${1#*=}; shift ;;
+    --help|-h)
+      awk '
+        NR == 1 { next }
+        /^emulate / { exit }
+        { print }
+      ' "$wrapper"
+      return 0
+      ;;
+    --) shift; positional+=("$@"); break ;;
+    -*) print -u2 "mise-npm-where: unknown option: $1"; return 2 ;;
+    *)  positional+=("$1"); shift ;;
+  esac
+done
+
+if (( ${#positional} > 1 )); then
+  print -u2 "mise-npm-where: expected at most one TOOL, got: ${positional[*]}"
+  return 2
+fi
+tool=${positional[1]:-}
+
+if [[ -z $install_dir && -z $tool ]]; then
+  print -u2 "usage: mise-npm-where [--install-dir DIR] [--package NAME] [TOOL]"
+  return 2
+fi
+
+# --install-dir wins over TOOL; TOOL alone means ask mise. Both may be given,
+# in which case TOOL only ever contributes a package-name fallback.
+if [[ -z $install_dir ]]; then
+  install_dir=$(mise where "$tool" 2>/dev/null) || install_dir=""
+fi
+
+if [[ -z $install_dir ]]; then
+  print -u2 "mise-npm-where: could not resolve an install dir for '$tool' (mise where failed)"
+  return 1
+fi
+if [[ ! -d $install_dir ]]; then
+  print -u2 "mise-npm-where: not a directory: $install_dir"
+  return 1
+fi
+
+# The package name is never derived from the install dir's own name: mise
+# mangles it (npm-earendil-works-pi-coding-agent), and that mangling is lossy.
+if [[ -z $pkg ]]; then
+  local -a generated
+  generated=(
+    "$install_dir"/package.json(N)
+    "$install_dir"/lib/package.json(N)
+    "$install_dir"/global-aube/*/package.json(N)
+  )
+  if (( ${#generated} )); then
+    pkg=$(/usr/bin/python3 -c '
+import json, sys
+try:
+    deps = json.load(open(sys.argv[1])).get("dependencies") or {}
+except Exception:
+    sys.exit(1)
+names = list(deps)
+if len(names) == 1:
+    print(names[0])
+' "${generated[1]}" 2>/dev/null) || pkg=""
+  fi
+fi
+
+if [[ -z $pkg && -f ${install_dir:h}/.mise.backend.toml ]]; then
+  local full
+  full=$(grep -m1 '^full[[:space:]]*=' "${install_dir:h}/.mise.backend.toml" 2>/dev/null) || full=""
+  full=${${(Q)${${full#*=}## #}}%% #}
+  [[ $full == npm:* ]] && pkg=${full#npm:}
+fi
+
+[[ -z $pkg ]] && pkg=${tool#npm:}
+
+if [[ -z $pkg ]]; then
+  print -u2 "mise-npm-where: could not determine the package name under $install_dir (pass --package)"
+  return 1
+fi
+
+local -a probes
+probes=(
+  "$install_dir/lib/node_modules/$pkg"
+  "$install_dir/node_modules/$pkg"
+  "$install_dir"/global-aube/*/node_modules/"$pkg"(N)
+)
+
+local dir
+for dir in "${probes[@]}"; do
+  if [[ -f $dir/package.json ]]; then
+    print -r -- "$dir"
+    return 0
+  fi
+done
+
+{
+  print -r -- "mise-npm-where: no package dir for '$pkg' under $install_dir"
+  print -r -- "probed:"
+  for dir in "${probes[@]}"; do
+    print -r -- "  $dir/package.json"
+  done
+  # The glob contributes nothing when global-aube is absent, so say so rather
+  # than leaving a silent gap in the list above.
+  [[ -d $install_dir/global-aube ]] || print -r -- "  (no $install_dir/global-aube to glob)"
+} >&2
+return 1
