@@ -141,6 +141,42 @@
         "Handles the wordmark nuance: swap (default verdict) paints the fallback first; block/optional is a bounded exception for a short brand wordmark if the wrong-face flash is unacceptable - body text stays swap",
         "Advises AGAINST fetchpriority=high on the decorative image (zero-sum bandwidth against the font/critical path), rather than just ignoring the user's proposed fix"
       ]
+    },
+    {
+      "id": 13,
+      "name": "next-streaming-skeleton-cls",
+      "fixture": "",
+      "prompt": "next 16 app router. product page has a loading.tsx skeleton and the page streams in fine, but when the real content replaces the skeleton everything below jumps down like 200px. lighthouse blames CLS. the skeleton looks roughly right to me??",
+      "assertions": [
+        "Fires and routes to the skeleton-swap leaf (symptoms.md A5), not A2/A3",
+        "Names the mechanism from static-vs-ssr.md: the fallback's box IS the layout reservation and the swap is a DOM replacement, so the fix is sizing the skeleton to the content or a fixed/min-height container around the boundary",
+        "Confirms by attributing the shift cluster to the swap (DevTools Layout Shifts culprits, or the flush timeline via check-stream.mjs / verify.md 3c), not just re-running Lighthouse",
+        "Does not recommend bundle-size work or INP fixes (out of scope)"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "tanstack-pendingminms-flash",
+      "fixture": "",
+      "prompt": "tanstack start app - when you hard refresh on a detail route we flash a loading spinner for exactly half a second even when the data is basically instant (comes from cache). soft navs are fine. why the guaranteed flash?",
+      "assertions": [
+        "Fires and identifies the pending-state machinery (tanstack.md): pendingMinMs default 500ms holds the pending component once shown; on ssr:false routes the fallback is held during hydration even with no loader",
+        "Checks the installed @tanstack/react-router version against the v1.117.1 hard-load fix before proposing workarounds (the pre-fix hold was a known bug class: #1646/#2140/#2722)",
+        "Fix shape: raise pendingMs / remove the pendingComponent where the route resolves instantly, or size the fallback so the swap does not jar - not a data-layer rewrite",
+        "Does not misroute to font/image levers"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "psi-score-only-arrival",
+      "fixture": "",
+      "prompt": "boss sent me a pagespeed insights link for our marketing site, score is 58 on mobile and he wants it green. i don't have any specific bug to point at, it just says stuff like render blocking and unsized images. where do i even start?",
+      "assertions": [
+        "Fires and converts the score into symptoms via verify.md section 0 rather than chasing the 0-100 number",
+        "Separates the two halves: CrUX 28-day field p75 vs the single throttled lab run, and checks the field scope label (URL vs origin fallback)",
+        "Maps the named audits onto the tree: render-blocking-insight -> C1 (critical-css.md), unsized-images -> A2 (images.md)",
+        "Sets the expectation that field p75 reflects a fix only over ~28 days and points at the mechanical Tier 0/1 checks as the real feedback loop"
+      ]
     }
   ]
 }

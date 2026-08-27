@@ -6,6 +6,7 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 
 ## Contents
 
+- [0. Arriving with only a score](#0-arriving-with-only-a-score)
 - [1. First: which artifact are you asserting on?](#1-first-which-artifact-are-you-asserting-on)
 - [2. Tier 0 - static / prerender: assert on the built HTML directly](#2-tier-0---static--prerender-assert-on-the-built-html-directly)
 - [3. Tier 1 - SSR / per-request: boot the route, assert on rendered bytes](#3-tier-1---ssr--per-request-boot-the-route-assert-on-rendered-bytes)
@@ -17,6 +18,77 @@ stakes (a preload count is a curl; a CLS claim wants a probe).
 - [6. DevTools Performance panel](#6-devtools-performance-panel)
 - [7. Wire it into the build where it matters](#7-wire-it-into-the-build-where-it-matters)
 - [8. Regression-guard the trade-offs](#8-regression-guard-the-trade-offs)
+
+## 0. Arriving with only a score
+
+Sometimes the arrival is "PageSpeed says 62", with no symptom to type into
+`symptoms.md`. Convert the score into a symptom before diagnosing anything.
+
+**A PSI page is two unrelated measurements stacked.** The top half is CrUX field
+data - the p75 of real Chrome users' FCP, LCP, CLS and INP over a trailing
+28-day collection period, refreshed daily. The bottom half is one Lighthouse lab
+run from a Google datacentre, mobile emulating a mid-range device (a Moto G
+Power 2022 profile in Lighthouse 13) over `mobileSlow4G` (150ms RTT, 1.6 Mbps
+down - roughly the 85th-percentile mobile connection). They can disagree
+without either being wrong. (PSI's own FAQ says "thirty days" where its About
+page and the CrUX methodology say 28; use 28.)
+
+**Check the scope label before believing the field half.** With too little data
+for the URL, PSI falls back to origin level - every page on the site - which
+answers a different question from the URL you typed. An origin p75 is
+page-weighted, so fixing one template barely moves it. Too little data at origin
+level too and there is no field section at all: CrUX needs a "sufficiently
+popular" page, HTTP 200 and no `noindex`, and the visitor threshold is not
+published.
+
+**Field better than lab is the normal case, not a contradiction.** Lab loads
+cold-cache on one device, one network, one location; the field p75 mixes warm
+caches and bfcache restores, which have no lab equivalent (resource-hints.md's
+cache-control section is what shapes that repeat-view mix). The reverse happens
+too - lab carries none of the real device/network tail, no real interaction
+timing (which is why INP is effectively unmeasurable in lab) and no personalised
+content or A/B variants. When the two disagree, field decides what to
+prioritise; lab's job is naming opportunities.
+
+**"I fixed it and the score didn't move."** The lab half re-runs on demand -
+changes show within minutes. The field half is a trailing 28-day p75, which
+**smooths rather than lags**: the data is only ~2 days old, and each post-fix day
+replaces roughly 1/28th of the window, so expect partial movement in about a
+week and full reflection at ~28 days. A p75 still flat after a week of solid
+post-deploy traffic is evidence the fix is not reaching real users - but only
+evidence: at ~25% window replacement a real win can still read flat, so judge
+at the 28-day mark. Low traffic stretches that out, and CrUX fuzzes and filters
+small samples, so they are noisier than they look. So do not use PSI as the
+feedback loop for a fix: the probes in section 4 are the mechanical check, RUM
+gives per-page field data within hours, and CrUX stays the assessment verdict
+(section 4).
+
+**A local Lighthouse run is not PSI.** The network preset is absolute and
+portable; the 4x CPU slowdown is *relative to the host machine*, calibrated to
+land a high-end desktop in the mid-tier mobile bracket - so a laptop or a CI
+runner emulates a different device (the report prints its `benchmarkIndex` under
+CPU/Memory Power). Recalibrate `--throttling.cpuSlowdownMultiplier` before
+comparing a local number with a PSI number, and note that default simulated
+throttling *predicts* the throttled load from one unthrottled observation rather
+than measuring it. For a before/after on your own machine, 5a is the honest form:
+same host, same settings, delta only.
+
+**Then route into the tree.** Each lab insight audit maps to a symptom class
+(ids per Lighthouse 13+, section 5):
+
+- `render-blocking-insight` -> C1 (long blank, then a full paint)
+- `font-display-insight` -> B1 (FOIT) / B2 (weight shimmer)
+- `cls-culprits-insight`, `unsized-images` -> A (A1 font swap, A2 unreserved box)
+- `lcp-discovery-insight`, `image-delivery-insight` -> C2, unless the LCP element
+  is text - that is C3 (4c's `element` read settles which)
+
+A vital with no matching audit is still a symptom: take the field half's worst
+vital and enter `symptoms.md` at the root question.
+
+- <https://developers.google.com/speed/docs/insights/v5/about> ·
+  <https://web.dev/articles/lab-and-field-data-differences> ·
+  <https://developer.chrome.com/docs/crux/methodology> ·
+  <https://github.com/GoogleChrome/lighthouse/blob/main/docs/throttling.md>
 
 ## 1. First: which artifact are you asserting on?
 
@@ -165,9 +237,9 @@ which flush actually replaces a skeleton. Only the inline swap *call*
 (`$RC` / `$RR` when the boundary carries `precedence` stylesheets / `$RS`)
 marks the swap - `$RX` is the client-render error handoff, `<!--$?-->` is a
 fallback still pending, `<!--$-->` a boundary the server had already resolved
-inline, `<!--$!-->` an errored one, and `<template id="B:n">` /
-`<div hidden id="S:n">` are the placeholder and the content block, not the
-swap. Each marker is attributed to the flush its last byte arrives in, so one
+inline, `<!--$!-->` an errored one, `<!--$~-->` a boundary queued for reveal, and
+`<template id="B:n">` / `<div hidden id="S:n">` are the placeholder and the
+content block, not the swap. Each marker is attributed to the flush its last byte arrives in, so one
 cut in half across two flushes is still counted once. Exit codes: 0 OK, 1
 invariant failure, 2 usage/transport/shape error. On a page with many flushes
 the timeline keeps the interesting ones (first, last, `</head>`, shell end,
@@ -290,7 +362,7 @@ above its lab run.
 ### 4c. Prove LCP/FCP claims + attribute a shift to the font swap
 
 Same harness as 4b (collector installed BEFORE navigation, throttle before
-`goto`). Two gotchas make LCP different from CLS:
+`goto`). Three gotchas make LCP different from CLS:
 
 - **LCP must be flushed before you read it** - the browser keeps accepting
   larger candidates until an interaction or the page hides. After `load`,
@@ -301,6 +373,28 @@ Same harness as 4b (collector installed BEFORE navigation, throttle before
   screenshot baselines can diverge from what users see. Use
   `channel: 'chromium'` (new headless) when the assertion hangs on rendered
   font pixels.
+- **A cross-origin LCP image can flatter the number.** Read `entry.startTime`,
+  as the snippet below does: it returns `renderTime` when that is non-zero and
+  `loadTime` otherwise, so it is the built-in form of the hand-rolled
+  `renderTime || loadTime` idiom - and the reason that idiom needs care.
+  `renderTime` was originally 0 for a cross-origin resource served without
+  `Timing-Allow-Origin`, so the fallback substitutes `loadTime` - when the
+  download *finished*, at or before the paint - and LCP reads better than
+  reality. **The tell is an LCP that lands before FCP**, an ordering that is
+  impossible on a single page load. Since Chrome 133 a `renderTime` is exposed
+  for cross-origin entries regardless of TAO (coarsened to a 4ms multiple, as
+  presentation timestamps are unless cross-origin-isolated), so a TAO-less
+  cross-origin LCP jumps by the whole load-to-paint gap across that rollout -
+  read a step there in a long series as instrumentation, not regression. Set
+  `Timing-Allow-Origin` on CDN and image-host responses anyway: other engines
+  and pre-133 Chrome still zero `renderTime`, and TAO separately un-zeroes the
+  resource-timing milestones (redirect/domainLookup/connect/TLS/requestStart/
+  responseStart) plus `transferSize`, and un-blanks `nextHopProtocol` - without
+  it every DNS/TCP/TLS/TTFB breakdown a RUM script computes collapses to zero,
+  and the documented cache-hit heuristic
+  (`transferSize === 0 && decodedBodySize > 0`) reports a false *negative* on
+  every third-party response, because `decodedBodySize` zeroes too.
+  `responseStatus` is gated by `Access-Control-Allow-Origin` instead, not TAO.
 
 ```ts
 await page.addInitScript(() => {
@@ -353,6 +447,9 @@ fonts.md A1 levers); one landing at an image response is A2/B5. This turns
 "CLS got worse" into a named culprit without a trace.
 
 - <https://developer.mozilla.org/en-US/docs/Web/API/LargestContentfulPaint> ·
+  <https://developer.mozilla.org/en-US/docs/Web/API/LargestContentfulPaint/renderTime> ·
+  <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Timing-Allow-Origin> ·
+  <https://developer.chrome.com/release-notes/133> ·
   <https://github.com/GoogleChrome/web-vitals#attribution> ·
   <https://playwright.dev/docs/browsers#chromium-new-headless-mode>
 
@@ -520,9 +617,8 @@ fix that turns out not to move the needle.
    Insights sidebar "Layout shift culprits" names causes like "Web font" /
    "Unsized image element". (Diamond size is not documented to scale with shift
    magnitude - don't read it that way.)
-3. **PSI** shows CrUX field data (the assessment verdict) above a Lighthouse lab
-   run; its lab half corroborates but iterates slower (sample the median,
-   section 5).
+3. **PSI** - section 0 owns what a PSI page shows and how to read it; its lab
+   half corroborates but iterates slower (sample the median, section 5).
 
 - <https://developer.chrome.com/docs/devtools/performance/reference>
 

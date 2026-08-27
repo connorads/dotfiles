@@ -72,13 +72,33 @@ class is *possible* hinges on client-reconciliation JS, not on the axis ->
 
 1. Identify the symptom -> `references/symptoms.md` (decision tree). START HERE.
 2. Apply the matching fix ->
-   `references/{fonts,hosted-fonts,images,resource-hints}.md`.
+   `references/{critical-css,fonts,hosted-fonts,images,resource-hints}.md`.
 3. Prove it -> `references/verify.md`. This step is not optional. Half the value
    of a loading fix is the repeatable check that it actually landed.
 
-Tag each fix by the **Web Vital it moves** (LCP / CLS / INP / TTFB / FCP) as a
-secondary index - useful when the ask does arrive as "improve CLS", and for
-knowing which fixes trade against each other.
+**Arriving with only a score.** A PSI or Lighthouse complaint ("performance is
+62") names no symptom, so it cannot enter the tree at step 1. Convert it first:
+`references/verify.md` section 0 pulls the two halves of a PSI page apart (a
+trailing 28-day CrUX field p75 and one throttled lab run), answers the
+fixed-it-but-unchanged case, and maps each lab insight audit onto a symptom
+class so the arrival rejoins the loop above.
+
+Tag each fix by the **Web Vital it moves** as a secondary index - useful when
+the ask does arrive as "improve CLS", and for knowing which fixes trade
+against each other. Which reference owns the lever:
+
+| Vital (LCP by phase) | Symptom leaves | Owning references |
+| --- | --- | --- |
+| LCP - discovery: bytes requested late | C2 | `images.md`, `resource-hints.md` |
+| LCP - priority: requested, queued behind other work | C2 | `resource-hints.md`, `images.md` |
+| LCP - render: bytes arrived, paint gated | C1, C3, B7 | `critical-css.md`, `fonts.md` (text LCP), `symptoms.md` B7, `static-vs-ssr.md` (fallback box) |
+| CLS | A1-A5 | `fonts.md` (metric fallbacks), `images.md` (reservation), `static-vs-ssr.md` (fallback dimensions) |
+| FCP, and the TTFB it inherits | C1, B7 | `critical-css.md`, `static-vs-ssr.md` (boundary placement) |
+| INP - on arrival only | A4, B6 | `symptoms.md`; steady-state INP is out of scope |
+
+The phase split on LCP is this skill's routing, not a metric definition: ask
+whether the resource was *requested* late, *served* late, or *painted* late,
+and the row names the file.
 
 **Triage root question**: does layout MOVE, does only APPEARANCE change, or
 does NOTHING appear yet? That routes the whole diagnosis - the full tree,
@@ -143,14 +163,22 @@ causes and fixes live in `references/symptoms.md`.
 
 **Fix:**
 
+- `references/critical-css.md` - the "inline critical CSS, defer the rest" fix
+  B3 and C1 both prescribe: when a render-blocking stylesheet is really the
+  cause, beasties as the default post-build pass (and what used-CSS extraction
+  does *not* know about the fold), framework-native inlining and hand-inlining
+  as the escape hatches, nothing on streamed HTML, the print-media async
+  pattern, and `blocking="render"` as the deliberate inverse.
 - `references/fonts.md` - self-hosted font loading: per-weight preload,
-  crossOrigin, exact-file (`?url`) matching, metric-matched fallbacks,
-  `font-display`, variable fonts, subsetting.
+  crossOrigin (attribute and the ACAO response header), exact-file (`?url`)
+  matching, metric-matched fallbacks, `font-display`, variable fonts,
+  subsetting (incl. CJK unicode-range chunking).
 - `references/hosted-fonts.md` - fonts from a hosted CDN (Google Fonts):
   preconnect pair, `display=` param, `@import` chains, why gstatic woff2 can't
   be hand-preloaded, migrate-to-self-host; Adobe Fonts (Typekit): JS kit vs
   CSS embed, dashboard-only `font-display`, the three-preconnect set,
-  self-host-not-licensed.
+  self-host-not-licensed; Cloudflare Fonts' edge rewrite; CSP
+  `font-src`/`style-src` blocks as permanent fallback.
 - `references/images.md` - eager/lazy, decode timing, priority/discovery, CLS
   reservation, responsive `srcset`/`<picture>`, Astro anti-patterns, GIF->video,
   LQIP, content-visibility.
@@ -179,7 +207,8 @@ causes and fixes live in `references/symptoms.md`.
 
 **Prove:**
 
-- `references/verify.md` - how to prove a fix cold-cache: Tier 0 asserts on the
+- `references/verify.md` - how to prove a fix cold-cache - and section 0, the
+  entry point for a score-only (PSI/Lighthouse) arrival: Tier 0 asserts on the
   static `dist/*.html` bytes; Tier 1 boots the route for SSR - with 3c scoping
   the same invariants to a streamed route's shell and probing the flush
   timeline; shared CLS probe, filmstrip/visual metrics for defects that move no

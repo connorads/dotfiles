@@ -27,6 +27,15 @@ add a webfont to apply this file. The near-miss to check first: a font-family
 *named* in CSS or a Tailwind `@theme` token but never delivered loads nothing
 and silently renders the fallback forever (symptoms.md, the gate before B).
 
+## Contents
+
+- [Rules](#rules)
+- [The metric-fallback mechanic (so you can verify any generator)](#the-metric-fallback-mechanic-so-you-can-verify-any-generator)
+- [Generating the overrides (don't hand-compute)](#generating-the-overrides-dont-hand-compute)
+- [font-display strategy (once metrics are matched)](#font-display-strategy-once-metrics-are-matched)
+- [Variable fonts dodge the per-weight preload problem](#variable-fonts-dodge-the-per-weight-preload-problem)
+- [Subsetting](#subsetting)
+
 ## Rules
 
 - **Preload the exact above-the-fold weights, per weight.** Fonts are per-weight
@@ -66,6 +75,33 @@ and silently renders the fallback forever (symptoms.md, the gate before B).
     the fetch is not cross-origin") ·
     <https://web.dev/articles/codelab-preload-web-fonts> · closed spec issue:
     <https://github.com/whatwg/html/issues/7627>
+
+- **The server-side twin: a cross-origin font needs `Access-Control-Allow-Origin`
+  on the *response*.** Same anonymous-CORS mechanic as the rule above, at the
+  other end of the wire - that rule is about the preload attribute, this one is
+  about the header. `cdn.example.com` is a different origin from `example.com`
+  (origin = scheme + host + port), so an asset subdomain you own earns no
+  exemption: without ACAO on the woff2 response the fetch is refused outright.
+  There is no swap and no second chance - the face never loads, the text renders
+  the fallback family permanently, and it presents as "the font looks wrong"
+  rather than a flash (symptoms.md, the gate before B). Chrome console text
+  (Chromium 151, as of 2026-08-27): `Access to font at
+  'https://cdn.example.com/f.woff2' from origin 'https://example.com' has been
+  blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on
+  the requested resource.`, plus a `net::ERR_FAILED` network entry against the
+  font URL. Fix: send `Access-Control-Allow-Origin` on the font response (`*`,
+  or the site origin). Adding `crossorigin` to the preload does not substitute -
+  a preloaded file fails identically.
+  - **The font API reads as success, so confirm on the right signal.** The
+    failed load fires `loadingerror` on `document.fonts` and sets that
+    `FontFace`'s `.status` to `"error"`, but `document.fonts.status` still
+    reads `"loaded"` and `document.fonts.ready` **resolves** - so an "await
+    `fonts.ready`, then reveal" gate proceeds as though the font arrived. When
+    `Failed to decode downloaded font` appears instead (Chrome pairs it with an
+    `OTS parsing error` line naming the parse failure), CORS has already passed
+    and the defect is the bytes themselves - `@font-face` ignores the response
+    Content-Type.
+  - <https://drafts.csswg.org/css-fonts-4/#font-fetching-requirements>
 
 - **Metric-matched fallback `@font-face`.** A local fallback (e.g. Georgia) with
   `size-adjust` + `ascent-override` + `descent-override` tuned to the real face
@@ -300,6 +336,61 @@ text-scope ranges + `pyftsubset --unicodes` / CSS `unicode-range` string), and
 `verify.md` Tier 0 wires the assertion. Note the `--flavor`/`--unicodes` option
 names on `pyftsubset` are US-spelled - a locale spell-checker that "corrects"
 them breaks the build (see the mechanical-enforcement locale caveat).
+
+### Large scripts (CJK): unicode-range chunking IS the strategy
+
+The guard above assumes fixed copy. When the copy is *not* fixed - CMS or
+user-generated text, any i18n route - there is nothing to guard, and a full CJK
+face cannot ship whole anyway (Xiaolai is ~22 MB of TTF for 40,000+
+codepoints). Invert the model: split the face into many small woff2 chunks,
+each `@font-face` carrying its own `unicode-range`. The new constraint at this
+scale: fetch granularity equals chunk granularity - one character in a range
+pulls that whole chunk - so chunk size is the tuning knob (`cn-font-split`
+defaults to 70 KiB; Excalidraw's CJK build ships 209 chunks of 50-70 kB).
+
+**Tool: `cn-font-split`** (Rust + HarfBuzz core, Apache-2.0) emits the chunks
+plus a CSS manifest of `@font-face` rules with `unicode-range`, `local()` first
+and `font-display: swap`: `await fontSplit({ input, outDir: './dist/font' })`,
+or `vite-plugin-font` on a bundler stack. Name the channel when pinning - npm
+`latest` is 7.4.3 (2026-06-12), the newest GitHub tag runs ahead at 7.6.8 and
+crates.io sits behind at 7.4.0, as of 2026-08-27.
+
+Two findings invert Latin intuitions:
+
+- **The recompression dominates, not the glyph work.** Excalidraw measured
+  WOFF2 decompress-then-recompress at up to 80% of per-face computation - in
+  their *runtime, in-browser* re-subsetting for SVG/PNG exports, which they
+  moved to a three-Worker pool for ~3x faster exports. Build-time chunkers
+  already parallelise (cn-font-split via rayon), so read the finding as "the
+  codec is the cost", not as a prescription to thread your build.
+- **At CJK scale the manifest itself becomes the render-blocking problem.**
+  Hundreds of `@font-face` rules is a stylesheet, not a footnote:
+  `css2?family=Noto+Sans+JP:wght@400&display=swap` fetched with a Chrome UA
+  returns 124 blocks, 114 KB raw / ~30 KB gzipped (measured 2026-08-27; css2
+  output is UA-tailored - quote the compressed figure). Past that point the
+  blocking stylesheet is the FCP defect rather than the fonts - diagnose it as
+  symptoms.md C1. Inlining the declarations is a trade, not a free fix: ~30 KB
+  on every HTML response instead of one cacheable request, and on the hosted
+  path you do not own the CSS to inline.
+
+Chunking cannot route by language. `unicode-range` keys on codepoints and
+nothing in the download decision reads content language, so Han unification
+leaves zh-Hans / zh-Hant / ja / ko sharing codepoints: build one family per
+locale and select it with `:lang()`. `lang` steers glyph selection *inside* an
+already-chosen face (OpenType `locl`), never which chunk is fetched.
+
+**On the hosted path this is already done for you**: Google Fonts ships CJK
+pre-sliced - the ~3,000 most frequent characters in ~20 frequency-ranked
+slices (Google's Japanese launch post), the remainder in roughly 100
+codepoint-ordered slices (measured against the served CSS, 2026-08-27) -
+reporting ~80% fewer bytes to Japanese clients than sending the whole font.
+Only self-hosting a large script needs the chunking above.
+
+- <https://github.com/KonghaYao/cn-font-split> ·
+  <https://plus.excalidraw.com/blog/adding-hand-drawn-font-for-chinese-japanese-korean> ·
+  <https://developers.googleblog.com/google-fonts-launches-japanese-support/> ·
+  <https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/unicode-range> ·
+  <https://www.w3.org/International/questions/qa-css-lang>
 
 ### Two silent subsetter regressions
 

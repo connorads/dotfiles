@@ -2,6 +2,33 @@
   "description": "Version-dated claims in this skill and how to re-check each; maintained by the freshness sweep, consumed by check-currency.mjs",
   "claims": [
     {
+      "id": "beasties-version-and-strategies",
+      "file": "references/critical-css.md",
+      "check": "manual",
+      "handle": "beasties",
+      "url": "https://github.com/danielroe/beasties/releases",
+      "note": "0.4.3 as of Aug 2026; media strategy emits media=print + onload swap in shipped dist.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "blocking-render-support",
+      "file": "references/critical-css.md",
+      "check": "webstatus",
+      "handle": "blocking-render",
+      "url": "https://webstatus.dev/features/blocking-render",
+      "note": "Baseline limited; Chrome 105, Safari 18.2, Firefox holdout (bugzil.la/1751383).",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "critical-9-next-unreleased",
+      "file": "references/critical-css.md",
+      "check": "manual",
+      "handle": "critical",
+      "url": "https://github.com/addyosmani/critical/releases",
+      "note": "critical 8.0.0 released; 9.0.0-next.0 two-engine design unreleased.",
+      "verified": "2026-08-27"
+    },
+    {
       "id": "astro-1a-fonts-api-stability-fonts-md",
       "file": "references/fonts.md",
       "check": "manual",
@@ -9,6 +36,15 @@
       "url": "https://registry.npmjs.org/astro/latest",
       "note": "As of 2026-08-26 the framing is correct but the version anchor has aged: Astro's current major is 7 (npm dist-tag latest = astro@7.2.8), not 6.",
       "verified": "2026-08-26"
+    },
+    {
+      "id": "cn-font-split-channels",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "cn-font-split",
+      "url": "https://github.com/KonghaYao/cn-font-split/releases",
+      "note": "npm latest 7.4.3, GitHub tag 7.6.8, crates.io 7.4.0 as of 2026-08-27.",
+      "verified": "2026-08-27"
     },
     {
       "id": "fonts-misc-1-capsize-unpack-v4-api",
@@ -36,6 +72,15 @@
       "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/main/packages/tailwindcss/theme.css",
       "note": "Confirmed on both counts as of 2026-08-26.",
       "verified": "2026-08-26"
+    },
+    {
+      "id": "noto-jp-css2-measurement",
+      "file": "references/fonts.md",
+      "check": "manual",
+      "handle": "css2-noto-jp",
+      "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap",
+      "note": "124 blocks, 114 KB raw / ~30 KB gzip with a Chrome UA, measured 2026-08-27.",
+      "verified": "2026-08-27"
     },
     {
       "id": "webkit-metrics-1-bug219735",
@@ -146,6 +191,24 @@
       "verified": "2026-08-26"
     },
     {
+      "id": "cloudflare-fonts-behaviour",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "cloudflare-fonts",
+      "url": "https://developers.cloudflare.com/speed/optimization/content/fonts/",
+      "note": "Rewrites Google Fonts <link> to zone-served inline CSS; link-form only; inert under APO; no documented plan restriction as of 2026-08-27.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "cors-csp-console-strings",
+      "file": "references/hosted-fonts.md",
+      "check": "manual",
+      "handle": "chromium-console-strings",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/font-src",
+      "note": "CORS/CSP console message wording quoted from Chromium 151 (also in fonts.md server-side twin).",
+      "verified": "2026-08-27"
+    },
+    {
       "id": "gdpr-google-fonts-ruling-anchor",
       "file": "references/hosted-fonts.md",
       "check": "manual",
@@ -207,6 +270,42 @@
       "url": "https://raw.githubusercontent.com/WordPress/wordpress-develop/trunk/src/wp-includes/media.php",
       "note": "The summary is fair and the behaviour still holds as of 2026-08-26; the edit only pins the anchor the claim currently lacks.",
       "verified": "2026-08-26"
+    },
+    {
+      "id": "link-rel-expect-chromium-only",
+      "file": "references/next.md",
+      "check": "webstatus",
+      "handle": "link-rel-expect",
+      "url": "https://webstatus.dev/features/link-rel-expect",
+      "note": "rel=expect Chromium-only (Chrome 124+); Next App Router blocking-render instruction scoping hangs on it.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "next-16-version-context",
+      "file": "references/next.md",
+      "check": "manual",
+      "handle": "next-lts",
+      "url": "https://endoflife.date/nextjs",
+      "note": "Next 16.3.x Active LTS, Turbopack default from 16.0.0, Next 15 Maintenance to 2026-10-21.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "next-image-priority-deprecated",
+      "file": "references/next.md",
+      "check": "manual",
+      "handle": "next-image-preload",
+      "url": "https://nextjs.org/docs/app/api-reference/components/image",
+      "note": "priority deprecated in favour of preload from Next 16; warning matrix as stated.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "turbopack-css-order-issues",
+      "file": "references/next.md",
+      "check": "manual",
+      "handle": "nextjs-css-order",
+      "url": "https://github.com/vercel/next.js/issues?q=is%3Aissue+is%3Aopen+turbopack+css+order",
+      "note": "Issues 94895/83941/94980/64921 open as of Aug 2026.",
+      "verified": "2026-08-27"
     },
     {
       "id": "cf-1-early-hints-dashboard-path",
@@ -281,6 +380,15 @@
       "verified": "2026-08-26"
     },
     {
+      "id": "react-19-emission-behaviour",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "react-dom-releases",
+      "url": "https://github.com/facebook/react/releases",
+      "note": "React 19 section behaviours (onHeaders payload shapes, per-img auto-preload guard, bucket order) verified on react-dom 19.2.8.",
+      "verified": "2026-08-27"
+    },
+    {
       "id": "tanstack-react19-metadata-double-render",
       "file": "references/resource-hints.md",
       "check": "manual",
@@ -290,12 +398,39 @@
       "verified": "2026-08-26"
     },
     {
+      "id": "unload-deprecation-rollout",
+      "file": "references/resource-hints.md",
+      "check": "manual",
+      "handle": "deprecating-unload",
+      "url": "https://developer.chrome.com/docs/web-platform/deprecating-unload",
+      "note": "80% of Chrome page loads at 152, 100% planned at 154 (as of Aug 2026).",
+      "verified": "2026-08-26"
+    },
+    {
       "id": "vite-modulepreload-default",
       "file": "references/resource-hints.md",
       "check": "manual",
       "handle": "vite-build-modulepreload-default",
       "url": "https://raw.githubusercontent.com/vitejs/vite/main/docs/config/build-options.md",
       "note": "As of 2026-08-26, verified against the live Vite docs served for v8.2.2 (the current Rolldown-based major): `build.modulePreload` has Type `boolean | { polyfill?: boolean, resolveDependencies?: Resolv",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "module-map-retry-spec-change",
+      "file": "references/static-vs-ssr.md",
+      "check": "manual",
+      "handle": "whatwg-10327",
+      "url": "https://github.com/whatwg/html/pull/10327",
+      "note": "Spec requires re-fetch after failed module load (July 2026); Chrome/Firefox implementations trailing as of Aug 2026.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "streamed-safari-1024-byte-heuristic",
+      "file": "references/static-vs-ssr.md",
+      "check": "webkit-bug",
+      "handle": "252413",
+      "url": "https://bugs.webkit.org/show_bug.cgi?id=252413",
+      "note": "Safari first-paint heuristic bug open; the 1024-byte rule of thumb hangs on it.",
       "verified": "2026-08-26"
     },
     {
@@ -333,6 +468,33 @@
       "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/audits/insights/lcp-discovery-insight.js",
       "note": "`lcp-discovery-insight` exists in v13.4.1 (weight 0, group 'insights', file core/audits/insights/lcp-discovery-insight.js).",
       "verified": "2026-08-26"
+    },
+    {
+      "id": "tanstack-issue-7910",
+      "file": "references/tanstack.md",
+      "check": "manual",
+      "handle": "7910",
+      "url": "https://github.com/TanStack/router/issues/7910",
+      "note": "ssr:false hydration stale-pending throw undefined - open as of Aug 2026.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "tanstack-versions-and-pending-fix",
+      "file": "references/tanstack.md",
+      "check": "manual",
+      "handle": "tanstack-router-releases",
+      "url": "https://github.com/TanStack/router/releases",
+      "note": "Router 1.170.32 / Start 1.168.49 RC as of Aug 2026; hard-load pending hold fixed in v1.117.1.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "chrome-133-cross-origin-rendertime",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "chrome-133-lcp",
+      "url": "https://developer.chrome.com/release-notes/133",
+      "note": "Coarsened cross-origin renderTime exposed regardless of TAO since Chrome 133.",
+      "verified": "2026-08-27"
     },
     {
       "id": "lab-1-lighthouse13-rename",
@@ -413,6 +575,33 @@
       "handle": "devtools-cls-culprits-labels",
       "url": "https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/main/front_end/models/trace/insights/CLSCulprits.ts",
       "note": "The insight title 'Layout shift culprits' is exact (front_end/models/trace/insights/CLSCulprits.ts, `title: 'Layout shift culprits'`), but the two example culprit labels quoted are not the strings Dev",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "lighthouse-13-device-profile",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "lighthouse-constants",
+      "url": "https://raw.githubusercontent.com/GoogleChrome/lighthouse/main/core/config/constants.js",
+      "note": "Moto G Power 2022 emulation + mobileSlow4G values in Lighthouse 13.",
+      "verified": "2026-08-27"
+    },
+    {
+      "id": "sitespeedio-version-and-flags",
+      "file": "references/verify.md",
+      "check": "manual",
+      "handle": "sitespeed.io",
+      "url": "https://www.sitespeed.io/documentation/sitespeed.io/video/",
+      "note": "4e flag behaviour exercised at sitespeed.io 42.6.0 / Browsertime 28.3.0.",
+      "verified": "2026-08-26"
+    },
+    {
+      "id": "react-swap-markers-19-2",
+      "file": "scripts/check-stream.mjs",
+      "check": "manual",
+      "handle": "react-fizz-markers",
+      "url": "https://raw.githubusercontent.com/facebook/react/main/packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js",
+      "note": "Boundary comment markers + $RC/$RR/$RS swap calls verified against react-dom 19.2.8.",
       "verified": "2026-08-26"
     }
   ]

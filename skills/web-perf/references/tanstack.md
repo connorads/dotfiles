@@ -285,9 +285,11 @@ Which stylesheet reaches the shell is decided by how the CSS is imported:
   `base: ''` - not `'./'`, which breaks the root-relative manifest paths the
   rewrite depends on - or client-navigation chunks resolve to the app server
   while initial-load assets come from the CDN. The docs say nothing at all
-  about version skew: stale HTML pointing at hashed paths a redeploy removed is
-  the app author's problem (static-vs-ssr.md's mode notes; the vendor-neutral
-  name is version skew).
+  about version skew - stale HTML pointing at hashed paths a redeploy removed
+  (static-vs-ssr.md owns the general note) - but route chunks have first-party
+  recovery: `lazyRouteComponent` detects a module-not-found error and reloads
+  once, guarded by a `sessionStorage` key so a permanently missing chunk does
+  not loop; `vite:preloadError` may never fire for route chunks as a result.
 
 ## Scroll: hash scrolling is wired, restoration is not
 

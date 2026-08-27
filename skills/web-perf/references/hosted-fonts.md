@@ -124,6 +124,78 @@ matters:
   apply unless the face is licensed separately. The available levers are the
   embed form, the preconnect trio, and the dashboard `font-display` setting.
 
+## Cloudflare Fonts rewrites the head at the edge
+
+Cloudflare Fonts (zone toggle: Speed > Settings > Content Optimization) removes
+the Google Fonts `<link>` from the HTML response and replaces it with inline
+CSS pointing at font files served from your own zone under the `/cf-fonts/`
+path prefix. It also strips preconnect hints for Google Fonts domains out of
+the response body. With it on:
+
+- **The sections above stop describing the shipped page.** Requests to
+  fonts.googleapis.com and fonts.gstatic.com disappear, the preconnect pair you
+  hand-authored is deleted for you, and the font requests land in your own zone
+  analytics.
+- **Any check that reads origin HTML asserts on pre-rewrite bytes.**
+  `scripts/check-dist.mjs` over a build directory, or `check-head.mjs` against a
+  local boot, still sees the Google `<link>` the browser never receives. Fetch
+  the URL through the proxy when the gate is about fonts (verify.md).
+- **`<link>` form only.** An `@import url('https://fonts.googleapis.com/...')`
+  inside a stylesheet is left untouched and keeps hitting Google - one more
+  reason to replace it. The trigger is a literal `href` pointing at
+  fonts.googleapis.com in the origin HTML, so a site that already self-hosts
+  server-side gives it nothing to rewrite. Google Fonts is the only provider
+  handled, so an Adobe kit is untouched too.
+- **Mutually exclusive with APO.** It does not operate while Automatic Platform
+  Optimization is enabled, which performs a similar Google Fonts rewrite.
+- **It does not modify CSP**, and its output is an injected inline `<style>` -
+  so expect a nonce-or-hash `style-src` to block the injected style (an
+  inference from the docs' silence on CSP, not a documented limit - verify on
+  the zone; the next section is the diagnosis).
+- Requires `unicode-range` + woff2 support (Chrome 36+, Edge 16+, Safari 10+,
+  Firefox 44+). Scope it per hostname with a Configuration Rule rather than
+  enabling the whole zone. The docs state no plan restriction (as of
+  2026-08-27) - confirm the toggle in the dashboard for a given zone.
+- <https://developers.cloudflare.com/speed/optimization/content/fonts/>
+
+## CSP `font-src` / `style-src` blocks = permanent fallback
+
+A blocked font neither flashes nor retries. The block/swap/failure periods are
+rendering states on a timer, not events, and the spec requires the UA to show
+text visibly once a load has failed - so the page renders the fallback family
+for the rest of its life and presents as "the typography is wrong". Same
+presentation as the dead-token case in symptoms.md's gate before B; there the
+face is never requested, here it is refused inside the browser (the request
+never leaves - Chrome shows a `(blocked:csp)` Network entry with no response).
+
+- **`font-src`** (falls back to `default-src`) blocks the woff2. Chrome console,
+  source `security`: `Loading the font 'https://.../f.woff2' violates the
+  following Content Security Policy directive: "font-src 'self'". The action has
+  been blocked.` A log grep for the older wording, "Refused to load the font",
+  misses current Chrome. The message quotes the raw directive that did the
+  blocking, so under a default-src-only policy it reads `"default-src 'self'"`,
+  with a note that `font-src` fell back to it.
+- **`style-src`** blocks the kit stylesheet or an inline `<style>`, and that is
+  the strictly worse case: the `@font-face` rules never exist, so
+  `document.fonts` is empty and no font-loading event fires at all. Font
+  instrumentation is blind and the console entry is the only page-visible
+  signal (`Loading the stylesheet '...' violates ...`; for inline, `Applying
+  inline style violates ... 'style-src 'self''`, naming the hash it wants).
+- **Confirm**: DevTools console (`security` source) and the Issues panel - every
+  violation also fires `securitypolicyviolation` on `document`, whose
+  `effectiveDirective` (`font-src`; `style-src-elem` for a stylesheet,
+  `style-src-attr` for a style attribute) and `blockedURI` name what was
+  refused. That event is the discriminator available to page JS, because a
+  `font-src` block leaves the same deceptive font-API trace as the missing-ACAO
+  case (fonts.md's server-side twin); outside the page, CDP's
+  `Network.loadingFailed` distinguishes `blockedReason: "csp"` from a CORS
+  failure. Message text above is Chromium 151 (as of 2026-08-27); Firefox and
+  WebKit word theirs differently.
+- **Fix**: list the delivering origins in `font-src`, and the stylesheet host in
+  `style-src`. Self-hosting collapses both to `'self'`.
+- <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/font-src> ·
+  <https://drafts.csswg.org/css-fonts-4/#font-display-timeline>
+
 ## The usually-right fix: migrate to self-hosting
 
 Every section above trims a cost that self-hosting deletes: same-origin files
