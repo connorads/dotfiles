@@ -96,6 +96,7 @@ let
 
     # Dev tools
     nixfmt
+    deadnix # dead-code gate for the nix tree; not in the mise registry
     tree-sitter
 
     # Clipboard (OSC 52)

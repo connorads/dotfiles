@@ -46,7 +46,7 @@
     # signed, notarised binary is a supply-chain control; runs read-only from
     # /nix/store so Sparkle can't self-update it. Bump version + hash by hand from
     # upstream's KeyCastr.app.zip - nfu won't move it.
-    (pkgs.keycastr.overrideAttrs (old: rec {
+    (pkgs.keycastr.overrideAttrs (_old: rec {
       version = "0.10.5";
       src = pkgs.fetchurl {
         url = "https://github.com/keycastr/keycastr/releases/download/v${version}/KeyCastr.app.zip";
