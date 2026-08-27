@@ -254,6 +254,10 @@ between `next dev` and `next build`, and the build is the one that counts**.
 Verify ordering against a production build before believing a B3-class
 unstyled-flash or wrong-cascade report is fixed.
 
+**`experimental.optimizeCss`** is the Pages-Router-only critical-CSS pass,
+and it still runs the archived `critters` package - on the App Router prefer
+`inlineCss` below or a beasties pass over exported output (critical-css.md).
+
 **`experimental.inlineCss: true`** swaps every generated `<link>` for a
 `<style precedence href>` in the head. Its documented limits are the trade:
 global only (no per-page opt-in), styles duplicated on initial load (once in
@@ -409,7 +413,8 @@ computes `hasSuspenseBoundary = !ssr || !!loading`, so `ssr: false` always gets
 a Suspense wrapper with `fallback = Loading ? <Loading .../> : null`. With no
 `loading`, the server HTML contains nothing at that position; with one, the
 skeleton is in the HTML. Size that skeleton to the content it replaces - the
-reservation rule is symptoms.md A2, applied to the fallback's box.
+symptom leaf is symptoms.md A5, whose reservation rule is A2's applied to the
+fallback's box.
 
 **It can also FOUC on arrival.** `<PreloadChunks>` - the CSS preload that
 exists "to avoid flash of unstyled content" - is rendered only on the

@@ -7,11 +7,12 @@ cause, the fix, the Web Vital it moves, and how to confirm it was that cause.
 
 - Root question + decision tree (below)
 - A. Layout moves (CLS): A1 font-swap reflow · A2 unreserved image/iframe box ·
-  A3 late-injected content · A4 hydration shift
+  A3 late-injected content · A4 hydration shift · A5 skeleton-swap shift
 - B. Appearance only: B1 FOIT · B2 weight shimmer · B3 FOUC · B4 icon tofu ·
-  B5 image pop · B6 theme flip (FART) · B7 JS-gated entrance reveal
+  B5 image pop · B6 theme flip (FART) · B7 JS-gated entrance reveal ·
+  B8 FOUCE (undefined custom elements)
 - C. Nothing yet: C1 render-blocked blank · C2 late LCP image ·
-  C3 LCP is webfont text
+  C3 LCP is webfont text · C4 consent banner blocks paint / takes LCP
 - D. Scroll jank: D1 long-page paint cost
 
 ## Root question
@@ -26,6 +27,7 @@ A. LAYOUT MOVES  (measurable shift -> CLS)
    A2  moves when an image/iframe loads   = unreserved box
    A3  moves when late content appears    = injected banner/consent/ad/async
    A4  shifts once at hydration           = initial-HTML vs client size mismatch
+   A5  shifts when a skeleton is replaced = fallback box != content box
 
 B. ONLY APPEARANCE CHANGES  (no measurable shift)
    B1  text INVISIBLE then appears        = FOIT (font-display:block/auto)
@@ -35,11 +37,13 @@ B. ONLY APPEARANCE CHANGES  (no measurable shift)
    B5  image pops to opacity 1            = lazy decode
    B6  theme/active state flips at hydrate = initial-HTML/client state mismatch (FART)
    B7  content waits, then fades/slides in = JS-gated entrance reveal (opacity:0 until JS)
+   B8  web components flash, then snap in = FOUCE, custom element not yet upgraded
 
 C. NOTHING APPEARS YET  (blank-then-paint; timing, not shift/restyle)
    C1  long blank then full paint         = render-blocking CSS/JS or huge hydration bundle
    C2  hero/LCP image arrives very late   = late resource discovery
    C3  LCP is display-font TEXT           = the webfont is the LCP dependency
+   C4  banner blocks paint / becomes LCP  = consent/CMP script gating or taking LCP
 
 D. JANK DURING SCROLL/INTERACTION  (not first paint)
    D1  stutter scrolling a long page      = heavy paint/large layers
@@ -87,8 +91,9 @@ because the user describes a fade-in, not a blank.
 ### A3. Layout jumps when late content appears
 
 - **Cause**: content inserted above/within existing flow *after* first paint - a
-  cookie/consent banner, a late-sized ad slot, a notification bar, an async
-  skeleton - pushes rendered content down.
+  cookie/consent banner (shift only; C4 owns one that also gates paint or takes
+  LCP), a late-sized ad slot, a notification bar - pushes rendered content down
+  (a skeleton that itself swaps to different-sized content is A5).
 - **Fix**: reserve space (min-height / aspect-ratio placeholder or a skeleton of
   the final size), OR render out of flow (`position:fixed/absolute` overlay).
   Never insert content above existing content except in response to a user
@@ -104,6 +109,9 @@ because the user describes a fade-in, not a blank.
   classic (always-present) scrollbars (Windows/Linux), not the overlay scrollbars
   default on macOS/mobile, so don't chase it on a macOS-only repro. Reserve the
   gutter with `scrollbar-gutter: stable` on `:root`/the scroll container.
+- **Related (which leaf owns the case)**: a consent banner that *also* blocks
+  first paint or takes the LCP element is C4 - the shift is only half of it. An
+  async skeleton replaced by different-sized content is A5.
 - Ref: <https://web.dev/articles/optimize-cls>
 
 ### A4. Layout shifts once at hydration
@@ -118,13 +126,55 @@ because the user describes a fade-in, not a blank.
   The static-vs-SSR axis picks the verify tier (static-vs-ssr.md), not whether
   this class can occur - what rules it out is the *absence* of reconciling JS.
 
+### A5. Layout jumps when a skeleton is replaced by real content
+
+- **Cause**: the Suspense / `loading` fallback and the resolved content have
+  different boxes, and the fallback's box is the layout reservation -
+  static-vs-ssr.md's "Fallback dimensions are the CLS control" owns the
+  mechanism and the swap timing.
+- **Fix**: static-vs-ssr.md - size the skeleton to the content it stands in
+  for, or reserve the slot around the boundary. Stack-specific holds change
+  *when* the swap lands: TanStack's `pendingMs`/`pendingMinMs` keep a pending
+  component up for a minimum once it has rendered (tanstack.md); on Next,
+  `dynamic`'s `loading` option decides whether a skeleton is in the HTML at
+  all (next.md), and `loading.tsx` is the route-level fallback
+  (static-vs-ssr.md's boundary-placement section).
+- **Vital**: CLS; also LCP when the LCP element sits inside the boundary - it
+  cannot paint until the swap runs (static-vs-ssr.md).
+- **Confirm**: DevTools Performance, Layout shifts track - the shift is a
+  purple diamond in a cluster timed at the swap; hover to highlight the moved
+  element, click for its timings and score. Two panel readings to expect, so
+  you do not mis-attribute it. The swapped-in subtree is not itself the shift
+  (inserting an element or changing its size only counts once other visible
+  elements move), so attribution names a **neighbour below the boundary** with
+  `previousRect` above `currentRect` - and any source whose node is detached
+  by the time you read the entry reports `node === null`. And no culprit is
+  suggested: the "Layout shift culprits" insight covers unsized images,
+  injected iframes, unoptimised animations and web fonts, not placeholder
+  swaps. web-vitals' `largestShiftTarget` is document-order-first, not
+  largest-area-first, so it will not name the boundary either.
+- **Time the swap rather than guess it**: watch the boundary comment go
+  `<!--$?-->` -> `<!--$~-->` -> `<!--$-->` with a MutationObserver, or
+  timestamp the swap calls by installing a setter *before* the stream arrives
+  (`Object.defineProperty(window, '$RC', { set(fn) {...} })` - React assigns
+  the global, so a plain pre-assignment is clobbered), and match against the
+  layout-shift entry's `startTime` (static-vs-ssr.md names the markers and the
+  reveal's timing fingerprint; verify.md #4 owns the probe). A3's 500ms rule
+  decides whether the shift counts at all - on a *same-document* route change:
+  a swap landing within 500ms of the click is excluded from CLS, the same swap
+  at 600ms counts in full. A cross-document navigation starts a new document
+  with no recent input, so its swaps always count.
+- Ref: <https://web.dev/articles/cls>,
+  <https://developer.mozilla.org/en-US/docs/Web/API/LayoutShiftAttribution>,
+  <https://developer.chrome.com/docs/performance/insights/cls-culprit>
+
 ---
 
 ## B. Only appearance changes (no shift)
 
 **Gate before the font branches (B1/B2/B4): confirm a webfont is actually
 loaded.** Check for an `@font-face` (own CSS or @fontsource import) or a CDN
-stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
+stylesheet `<link>`. Three cheap outcomes short-circuit the whole branch:
 
 - **No webfont at all** (pure system-font stack): there is no font jank to
   chase - and no reason to add a webfont to "fix" anything (fonts.md).
@@ -134,6 +184,12 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   "the font looks wrong", not a flash. It is a dead token or missing delivery:
   deliver the face (self-host per fonts.md) or remove the token. Registering
   the token is not loading the font (framework-automation.md).
+- **Delivered but refused**: the face is declared and requested, and the
+  browser rejects the load - a cross-origin response missing
+  `Access-Control-Allow-Origin` (fonts.md, the server-side twin of the
+  crossorigin rule) or a CSP `font-src`/`style-src` block (hosted-fonts.md).
+  Same permanent-fallback presentation, but the console names it; note
+  `document.fonts.ready` still resolves, so a JS gate reads as success.
 
 ### B1. Text is invisible, then appears (FOIT)
 
@@ -182,7 +238,9 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
   (fetch + parse the CSS before the import is even requested) - common with
   hosted Google Fonts (hosted-fonts.md).
 - **Fix**: keep critical/above-the-fold CSS render-blocking or inlined in `<head>`;
-  defer only genuinely non-critical CSS; ensure code-split route CSS is *linked*,
+  defer only genuinely non-critical CSS - inlining the critical set and
+  async-loading the rest is one change, and deferring without inlining is this
+  symptom (critical-css.md owns the ladder and the async patterns); ensure code-split route CSS is *linked*,
   not lazily injected after mount; replace `@import` chains with parallel
   `<link>` tags (or self-host the fonts).
 - **Vital**: none directly (unless a metric-mismatched restyle adds CLS).
@@ -300,6 +358,58 @@ stylesheet `<link>`. Two cheap outcomes short-circuit the whole branch:
 - Ref: <https://web.dev/articles/lcp> (opacity-0 excluded as non-contentful),
   <https://developer.mozilla.org/en-US/docs/Web/CSS/@starting-style>
 
+### B8. Custom elements render bare, then snap into shape (FOUCE)
+
+- **Cause**: FOUCE - flash of undefined custom elements (rhymes with
+  "spouse"). The markup is in the document but `customElements.define()` has
+  not run, so the element is never upgraded and nothing styles or sizes it. A
+  hyphenated (valid) custom-element name gets the `HTMLElement` interface, not
+  `HTMLUnknownElement` - the spec picks that so a later upgrade is a linear
+  prototype transition - and no UA stylesheet rule matches the name, so
+  `display` keeps its initial value `inline`. The un-upgraded element is an
+  inline box sized only by its unstyled light-DOM content, collapsed when it
+  has none. Not B3: the stylesheet applied, the *definition* is missing. Under
+  Turbo/Hotwire the flash recurs on every soft navigation, because new page
+  content renders before registration.
+- **Fix**: gate on `:defined` - `:not(:defined) { visibility: hidden }`
+  (Baseline widely available since Jan 2020). `visibility`, not
+  `display: none`: a hidden box still affects layout as normal, whereas
+  `display: none` removes the box and its reappearance at upgrade
+  re-introduces the shift the hiding exists to avoid. This *reduces* the shift
+  rather than eliminating it - an un-upgraded inline element has no intrinsic
+  size - so reserve the box as well (A2's rule, applied to the element).
+  Elements can then appear one by one; the escape hatch when they must arrive
+  together is a JS gate -
+  `Promise.allSettled([customElements.whenDefined(...), ...])` raced against a
+  timeout, then reveal (`allSettled`, so one element failing to load does not
+  strand the rest).
+- **The gate must time out, or the failure is silent and permanent**: if the
+  definition script never arrives - 404, CSP block, bundle error - a gate with
+  no timeout hides the content for good and no event fires to say so. Both
+  first-party implementations hand-roll a 2s timeout for exactly that reason
+  (a `Promise.race` in the published pattern, the `wa-cloak` autoloader in Web
+  Awesome). It is the dead `--font-*` token from this branch's gate in another
+  guise - declared, never delivered, no swap event ever fires. There is no
+  `font-display` equivalent to lean on, and `blocking="render"` on the
+  definition script is not one either: its block ends at an
+  implementation-defined timeout, and a failed script unblocks rendering
+  before `error` fires - so a missing definition returns the FOUCE rather
+  than holding a blank page (critical-css.md owns that lever).
+- **Vital**: none directly (appearance only) - but hidden content does not
+  paint, so a gate covering the LCP element moves the LCP to the upgrade,
+  which is B7's mechanism in another guise.
+- **Confirm**: `customElements.get('my-el')` returns `undefined` before the
+  definition bundle runs, and `customElements.whenDefined('my-el')` resolves
+  at the moment the snap happens; grep the CSS for `:defined` - its absence is
+  the tell that nothing gates. Block the definition script in DevTools: the
+  elements stay bare permanently, and a JS gate without a timeout leaves a
+  blank page.
+- Ref: <https://www.abeautifulsite.net/posts/flash-of-undefined-custom-elements/>,
+  <https://www.abeautifulsite.net/posts/revisiting-fouce/>,
+  <https://webawesome.com/docs/utilities/fouce/>,
+  <https://developer.mozilla.org/en-US/docs/Web/CSS/:defined>,
+  <https://developer.mozilla.org/en-US/docs/Web/CSS/visibility>
+
 ---
 
 ## C. Nothing appears yet (blank-then-paint)
@@ -323,7 +433,7 @@ is server-side and out of this skill's scope. Ref:
   CSS is fetched and parsed (hosted-fonts.md).
 - **Fix**: ship SSR HTML so first paint does not wait for JS; make scripts
   defer/async (module scripts are deferred by default); inline critical CSS + defer
-  the rest; code-split so the initial bundle is small; keep the head lean. This is
+  the rest (critical-css.md); code-split so the initial bundle is small; keep the head lean. This is
   the counterpart to B3: render-blocking = blank screen (C1); deferred = unstyled
   flash (B3). **Client-only SPA (no SSR available)**: inline a critical
   app-shell/skeleton into `index.html` itself - static markup + a few lines of
@@ -337,6 +447,9 @@ is server-side and out of this skill's scope. Ref:
 - **Confirm**: Lighthouse's `render-blocking-insight` audit (13+; formerly
   "Eliminate render-blocking resources"); Coverage tab shows unused CSS/JS; the
   cold-cache trace's blank period ends only after the blocking resource finishes.
+- **Related (blank only on a stale tab or right after a deploy)**: a cached
+  document whose hashed chunks a redeploy removed is version skew, not
+  render-blocking - static-vs-ssr.md's version-skew section.
 - Ref: <https://web.dev/first-contentful-paint/>,
   <https://developer.chrome.com/docs/lighthouse/performance/render-blocking-resources>
 
@@ -386,6 +499,51 @@ is server-side and out of this skill's scope. Ref:
   sits at first paint, not at `fonts.ready`.
 - Ref: <https://web.dev/articles/optimize-lcp>,
   <https://web.dev/articles/font-best-practices>
+
+### C4. A consent banner blocks first paint, or becomes the LCP element
+
+- **Cause**: one script, two independent mechanisms. (1) A CMP script in
+  `<head>` without `async` is render-blocking, so no page content becomes
+  visible until the banner code has loaded - C1's mechanism in third-party
+  code. (2) The banner is large and arrives late, so it *becomes* the LCP
+  element and LCP tracks the banner's appearance time rather than the
+  content's. Two bounds on how often (2) bites. Google's guidance takes the
+  weak form: most notices are small and typically do not contain the LCP
+  element, but it happens, particularly on mobile. The peer-reviewed emulation
+  takes the strong form: with banners sized from 20% of the viewport (header)
+  to the full viewport (interstitial), the banner is always the largest
+  element, so LCP equals banner appearance time. The measured real-world case
+  sits at the strong end - DebugBear found a OneTrust policy-text block
+  slightly larger than the main content image, taking LCP from 1.43s to 3.61s.
+- **Inline insertion vs true overlay**: inserted into the flow, the banner
+  pushes rendered content down - that is A3, and A3's reservation rule
+  applies; the emulation measured a header banner at CLS 0.05 appearing at
+  half the page-load time and 0.21 at page-load time, later insertion
+  displacing more already-visible content. A modal or interstitial overlay
+  measures CLS 0, but it still takes LCP attribution, so fixing the shift does
+  not fix the metric.
+- **Fix**: load the CMP script `async`, and directly in the document's HTML
+  rather than injected by a tag manager; preconnect/preload its origin
+  (resource-hints.md); prefer an overlay to in-flow insertion; pre-set the
+  consent cookie in synthetic runs so a lab measurement reports the page
+  rather than the banner. **Deferring the notice is not the agent's call**:
+  consent UX is set by legislation that varies by geography, so treat the
+  banner's existence, timing and copy as a constraint and optimise delivery
+  inside it. Do not chase the banner's own vitals as the goal either - with
+  banners present, the study found page load time the metric that moved
+  subjective quality while neither LCP nor CLS did, and the banners added
+  ~2.9s mean / 3.1s median to the first content interaction.
+- **Vital**: LCP (attribution and timing); FCP where the script is
+  render-blocking; CLS only for in-flow insertion (A3).
+- **Confirm**: the DevTools Performance LCP marker names a node inside the
+  banner; re-run with the consent cookie pre-set and the LCP element reverts
+  to real content; on the cold-cache waterfall the page's paint sits after the
+  CMP request completes. Distinct from A3 (which owns the shift alone) and C1
+  (first-party render-blocking).
+- Ref: <https://web.dev/articles/cookie-notice-best-practices>,
+  <https://www.debugbear.com/blog/cookie-consent-banner-performance>,
+  <https://doi.org/10.1007/s41233-023-00058-3> (Wehner et al., "Do you agree?",
+  Quality and User Experience 8:5, 2023)
 
 ---
 

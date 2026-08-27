@@ -23,6 +23,7 @@ points at the reference that carries the detail.
 
 - [What it changes](#what-it-changes)
 - [The axis is per-route, not per-site](#the-axis-is-per-route-not-per-site)
+- [Cached HTML outliving its assets: version skew](#cached-html-outliving-its-assets-version-skew)
 - [The streamed mode: what is fixed at which flush](#the-streamed-mode-what-is-fixed-at-which-flush)
   - [Fallback dimensions are the CLS control](#fallback-dimensions-are-the-cls-control)
   - [Boundary placement is a TTFB / skeleton / blank trade-off](#boundary-placement-is-a-ttfb--skeleton--blank-trade-off)
@@ -88,6 +89,64 @@ and ISR fills in concrete versions after the first visit.
 - <https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents> ·
   <https://nextjs.org/docs/app/getting-started/caching>
 
+## Cached HTML outliving its assets: version skew
+
+Any mode that serves HTML from a cache - ISR, a CDN-cached SSR response, a
+service-worker shell, or the browser's own HTTP cache - can hand a client a
+document whose hashed asset URLs a later deploy deleted. The first load is then
+blank or partial: the entry or a route chunk fails and nothing renders past it.
+Vite names version skew as the first cause of "Failed to fetch dynamically
+imported module" (the others being a flaky network and ad-blockers).
+
+- **Shipped browsers cannot retry the import.** Chrome and Firefox record the
+  failure in the module map, so a second `import()` of the same URL returns the
+  cached rejection with no request at all; Safari re-fetches. The spec has
+  since been changed to require a re-fetch after a failed module load
+  (whatwg/html#10327, July 2026), with engine implementations trailing as of
+  Aug 2026. Vite emits a `vite:preloadError` event carrying the original error
+  in `event.payload`, and `event.preventDefault()` suppresses the rethrow
+  only - it makes nothing loadable. The
+  `Cannot read properties of undefined (reading 'default')` TypeError shows up
+  around the same failures as a broken-lazy-import signature - treat it as a
+  possible skew symptom, not a React bug.
+- **On Cloudflare Pages the failure presents as a parse error, not a 404.** A
+  request for a deleted asset falls through to the SPA fallback: `200` with
+  `content-type: text/html`, which the browser then tries to parse as a module
+  ("is not a valid JavaScript MIME type" / "Failed to load module script"). Fix:
+  `public/assets/404.html` - Pages resolves the closest `404.html` in the
+  request path, so `/assets/<missing>.js` gets an honest 404 while a client
+  route still gets the shell. A **top-level** `public/404.html` instead
+  disables the SPA fallback for every legitimate client route. Assert the
+  triple: missing asset -> 404, a fake SPA route -> 200 `text/html`, current
+  entry JS -> 200 `application/javascript`. Rule out plain MIME
+  misconfiguration and a deploy-propagation race (correct new filename, shell
+  served, cured by a cache purge) before blaming skew.
+- **Recovery is a full navigation, guarded.** Register the handler as an
+  **inline classic** `<script>`: it must have executed before the module
+  runtime loads, a module script is subject to the same failed fetch it exists
+  to recover from, and an external one is a second request the stale deploy can
+  equally fail to serve. Reload once - guard on `sessionStorage` keyed by the
+  error message plus a timestamp (suppress a repeat within a few minutes),
+  which survives the reload but dies with the tab, or a permanently missing
+  chunk becomes an infinite refresh loop. The reload only helps if the HTML is
+  not itself cached: serve it `no-cache`, or it re-serves the same stale
+  document and the handler fires again. A router that loads its own route
+  chunks may never dispatch `vite:preloadError` - TanStack's
+  `lazyRouteComponent` ships its own guarded one-shot reload instead
+  (tanstack.md).
+- **The durable fix is retention, not recovery.** A reload still loses
+  in-flight state and the chunk is still gone; keep the previous deployment's
+  assets alive at release-scoped immutable URLs, so an old tab keeps loading
+  the files its HTML names. To size the problem first, grep an error tracker
+  for "Failed to fetch dynamically imported module", "Failed to load module
+  script", "is not a valid JavaScript MIME type" and the `reading 'default'`
+  TypeError.
+- <https://vite.dev/guide/build> · <https://vite.dev/guide/troubleshooting> ·
+  <https://github.com/whatwg/html/issues/6768> ·
+  <https://github.com/whatwg/html/pull/10327> ·
+  <https://github.com/vitejs/vite/issues/18042> ·
+  <https://ard.ninja/blog/2026-05-16-react-lazy-vite-cloudflare-pages-stale-chunk-errors/>
+
 ## The streamed mode: what is fixed at which flush
 
 A streamed response has two commitment points, not one.
@@ -140,13 +199,24 @@ shell-side: design the skeleton to match the dimensions of the content it
 stands in for, or reserve the slot with a fixed or `min-height` container
 around the boundary. The same geometry governs LCP: an LCP element inside a
 boundary cannot paint until the swap script runs, and `next/image`'s preload
-controls when the image is *fetched*, not when it *paints*. → the reservation
-rule is `symptoms.md` A2's, applied to the fallback's box.
+controls when the image is *fetched*, not when it *paints*. → the symptom leaf
+is `symptoms.md` A5, whose reservation rule is A2's applied to the fallback's
+box.
 
-Do not over-claim swap timing. React's reveal function batches boundaries and
-defers the DOM replacement to the next animation frame or a short timeout
-(observed in the shipped React the Next streaming demo serves, Aug 2026), so
-"instant swap" means next-frame-batched, not synchronous.
+Do not over-claim swap timing: the reveal is throttle-batched, not instant.
+`$RC` marks the boundary queued (comment data `$~`) and pushes it onto a global
+batch; the flush (`$RV`) runs in a `requestAnimationFrame` while no reveal has
+yet stamped its time, and thereafter on a `setTimeout` targeting the last
+reveal's time + 300ms (`FALLBACK_THROTTLE_MS`) - except when the call lands
+between 2000ms and 2300ms, where the reveal is scheduled at 2300ms
+(`TARGET_VANITY_METRIC`, derived from the 2.5s LCP "good" threshold). One
+flush replaces every batched boundary in a single task, so several swaps can
+share one layout-shift entry, and reveal timestamps cluster at ~300ms after
+the previous reveal or at ~2300ms - the fingerprint for matching a
+layout-shift `startTime` to a boundary swap (`symptoms.md` A5). `$RR` delays
+it further: a boundary carrying `precedence` stylesheets sets `$~` itself,
+then waits for those sheets before queueing the reveal. Verified against
+react-dom 19.2.8 (Aug 2026).
 
 - <https://nextjs.org/docs/app/guides/streaming>
 
@@ -226,8 +296,9 @@ progressive delivery.
 **Default: grep the shell for React's boundary markers.** React encodes Suspense
 boundaries as HTML comments - `<!--$?-->` followed by
 `<template id="B:0"></template>` is a *pending* boundary, `<!--$-->` … `<!--/$-->`
-delimit a completed one, and `<!--$!-->` marks one that fell back to client
-rendering. The later flush arrives as `<div hidden id="S:0">…</div>` plus an
+delimit a completed one, `<!--$~-->` is a boundary queued for reveal (its
+pending comment's data rewritten in place), and `<!--$!-->` marks one that
+fell back to client rendering. The later flush arrives as `<div hidden id="S:0">…</div>` plus an
 inline swap call - `$RC("B:0","S:0")`, or `$RR(…)` when the boundary carries
 `precedence` stylesheets, `$RS(…)` for a segment. Pending markers in the first
 bytes mean the route streams and name the holes.
