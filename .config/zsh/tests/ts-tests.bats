@@ -40,11 +40,23 @@ setup() {
 
 # write_runner_stub NAME - records its argv, cwd and inherited git environment,
 # then exits with ${NAME}_EXIT (default 0).
+#
+# `--version` answers successfully and is NOT logged. The gate probes
+# runnability that way before dispatching (a mise shim resolves on PATH even
+# where no version is set, and only fails when run), so the probe is part of the
+# harness rather than a suite invocation - counting it would make every
+# "how many suites ran" assertion below read one high, and honouring
+# ${NAME}_EXIT for it would make the failing-suite case look like an absent
+# runner instead.
 write_runner_stub() {
   local name=$1 upper
   upper=$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')
   write_stub "$name" <<EOF
 #!/usr/bin/env bash
+if [ "\$1" = --version ]; then
+  echo "$name 0.0.0-stub"
+  exit 0
+fi
 printf '%s %s cwd=%s GIT_DIR=[%s] GIT_WORK_TREE=[%s]\n' \\
   "$name" "\$*" "\${PWD#\$HOME/}" "\${GIT_DIR:-}" "\${GIT_WORK_TREE:-}" >>"\$RUNNER_LOG"
 exit "\${${upper}_EXIT:-0}"
@@ -135,6 +147,25 @@ make_project() {
 }
 
 @test "an absent runner skips rather than failing" {
+  make_project src/skl bun.lock "bun test"
+
+  run bash "$SCRIPT" src/skl/src/core/args.ts
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$RUNNER_LOG" ]
+  [[ "$output" == *"bun absent"* ]]
+}
+
+# Resolving is not running. mise plants a shim on PATH for every tool in its
+# registry, so `command -v bun` succeeds on a machine where no bun version is
+# set - and the shim then exits 1 instead of running. Guarding on the name alone
+# turns this warn-and-skip into a hard commit failure.
+@test "a runner whose shim resolves but cannot run skips rather than failing" {
+  write_stub bun <<'EOF'
+#!/usr/bin/env bash
+echo "mise ERROR No version is set for shim: bun" >&2
+exit 1
+EOF
   make_project src/skl bun.lock "bun test"
 
   run bash "$SCRIPT" src/skl/src/core/args.ts

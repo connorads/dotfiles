@@ -25,7 +25,14 @@ unset GIT_DIR GIT_WORK_TREE
 # globs but this misses is a silent skip. gate-coverage.py asserts both.
 ROOTS="src/skl src/pin-audit .pi/agent/extensions"
 
-if ! command -v jq >/dev/null 2>&1; then
+# Whether a tool can actually RUN, not merely resolve. `command -v` is not
+# enough: mise plants a shim on PATH for every tool in its registry, so the name
+# resolves on a machine where no version is set - and the shim then exits 1
+# ("No version is set for shim"), turning these warn-and-skips into hard
+# failures.
+runs() { command -v "$1" >/dev/null 2>&1 && "$@" >/dev/null 2>&1; }
+
+if ! runs jq --version; then
 	echo "ts-tests: jq absent; skipping (run 'mise run ts-checks')" >&2
 	exit 0
 fi
@@ -96,7 +103,7 @@ for project in $projects; do
 		continue
 	fi
 
-	if ! command -v "$runner" >/dev/null 2>&1; then
+	if ! runs "$runner" --version; then
 		echo "ts-tests: $runner absent; skipping $project (run 'mise run ts-checks')" >&2
 		continue
 	fi

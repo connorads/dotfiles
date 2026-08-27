@@ -12,7 +12,11 @@
 # posture as .hk-hooks/ts-typecheck.sh).
 emulate -L zsh
 
-if ! command -v vale >/dev/null 2>&1; then
+# Whether vale can actually RUN, not merely resolve. `command -v` is not enough:
+# mise plants a shim on PATH for every tool in its registry, so the name resolves
+# on a machine where no version is set - and the shim then exits 1 ("No version
+# is set for shim"), turning this warn-and-skip into a hard failure.
+if ! command -v vale >/dev/null 2>&1 || ! vale --version >/dev/null 2>&1; then
   print -u2 "prose: vale absent; skipping (mise install vale)"
   return 0
 fi

@@ -65,6 +65,24 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+# Resolving is not running. mise plants a shim on PATH for every tool in its
+# registry, so `command -v uv` succeeds on a machine where no uv version is set -
+# and the shim then exits 1 instead of running. Guarding on the name alone turns
+# this warn-and-skip into a hard commit failure.
+@test "a runner whose shim resolves but cannot run skips rather than failing" {
+  write_stub uv <<'EOF'
+#!/usr/bin/env bash
+echo "mise ERROR No version is set for shim: uv" >&2
+exit 1
+EOF
+  printf 'def test_probe():\n    assert True\n' >"$PROBE_DIR/test_probe.py"
+
+  run bash "$SCRIPT" --all
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"uv absent"* ]]
+}
+
 @test "a suite's mutating git calls cannot reach the dotfiles repo" {
   # The real offending calls from soft-protected-branch-pre-push.bats, in the
   # same shape: a temp repo created and cd'd into, then bare `git` mutations.

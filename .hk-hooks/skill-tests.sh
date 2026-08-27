@@ -9,6 +9,13 @@ set -euo pipefail
 
 cd "$HOME"
 
+# Whether a tool can actually RUN, not merely resolve. `command -v` is not
+# enough: mise plants a shim on PATH for every tool in its registry, so the name
+# resolves on a machine where no version is set - and the shim then exits 1
+# ("No version is set for shim"), turning these warn-and-skips into hard
+# failures.
+runs() { command -v "$1" >/dev/null 2>&1 && "$@" >/dev/null 2>&1; }
+
 # The dhk and pre-commit wrappers export GIT_DIR/GIT_WORK_TREE for the bare-repo
 # layout and hk passes them to every step. Test suites must not inherit them: a
 # bare `git` in a suite would target the real dotfiles repo instead of its own
@@ -41,7 +48,7 @@ for root in $roots; do
 	[[ -d $tests_dir ]] || continue
 
 	if compgen -G "$tests_dir/*.py" >/dev/null; then
-		if command -v uv >/dev/null 2>&1; then
+		if runs uv --version; then
 			echo "skill-tests: pytest $root"
 			(cd "$root" && uv run --quiet --with pytest -- pytest tests/ -q) || fail=1
 		else
@@ -50,7 +57,7 @@ for root in $roots; do
 	fi
 
 	if compgen -G "$tests_dir/*.bats" >/dev/null; then
-		if command -v bats >/dev/null 2>&1; then
+		if runs bats --version; then
 			echo "skill-tests: bats $root"
 			bats "$tests_dir" || fail=1
 		else
