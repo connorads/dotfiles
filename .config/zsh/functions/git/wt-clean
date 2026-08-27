@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
-# wt-clean: reap merged/stale worktrees for a repo
+# wt-clean: reap merged/stale worktrees for a repo, deleting their branches
 # usage: wt-clean [--all] [--include-closed] [--force] [--yes|-y] [--dry-run] [--no-disk] [--json]
+# note: a reaped worktree's branch goes with it (git branch -d; --force makes
+#       that -D, which discards unmerged commits). wt-remove <path> without
+#       --delete-branch is the branch-preserving primitive.
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-clean]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
@@ -12,6 +15,7 @@ while (( $# )); do
   case $1 in
     -h|--help)
       echo "usage: wt-clean [--all] [--include-closed] [--force] [--yes|-y] [--dry-run] [--no-disk] [--json]" >&2
+      echo "reaps each worktree AND deletes its branch (--force escalates to git branch -D)" >&2
       return 0 ;;
     --all)            all=1; shift ;;
     --include-closed) include_closed=1; shift ;;

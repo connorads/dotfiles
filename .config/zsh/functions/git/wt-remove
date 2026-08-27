@@ -1,6 +1,8 @@
 #!/usr/bin/env zsh
 # wt-remove: remove a managed worktree non-interactively
 # usage: wt-remove [--force] [--delete-branch] [--json] [worktree-path]
+# note: the branch is kept unless --delete-branch is given (git branch -d, or
+#       -D with --force, which discards unmerged commits).
 emulate -L zsh
 _wt_common_dir="${${functions_source[wt-remove]:-${(%):-%x}}:A:h}"
 # shellcheck disable=SC1090
@@ -10,7 +12,9 @@ local force=0 delete_branch=0 json=0 worktree=""
 
 while (( $# )); do
   case $1 in
-    -h|--help)        echo "usage: wt-remove [--force] [--delete-branch] [--json] [worktree-path]" >&2; return 0 ;;
+    -h|--help)        echo "usage: wt-remove [--force] [--delete-branch] [--json] [worktree-path]" >&2
+                      echo "keeps the branch unless --delete-branch (git branch -d; -D with --force)" >&2
+                      return 0 ;;
     --force)          force=1; shift ;;
     --delete-branch)  delete_branch=1; shift ;;
     --json)           json=1; shift ;;
