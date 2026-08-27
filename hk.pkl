@@ -44,6 +44,13 @@ local fast_steps = new Mapping<String, Step> {
     // sees them, and no other step's cost changes.
     ["check-symlinks"] = (Builtins.check_symlinks) {}
 
+    // Two paths differing only in case. This filesystem is case-insensitive, so
+    // both resolve to one file here and the collision is invisible until a
+    // Linux host checks the tree out - and the dotfiles land on four of them
+    // (dev, rpi5, penguin, codespaces). 1535 tracked Markdown files, where
+    // README.md/readme.md is an easy accident.
+    ["check-case-conflict"] = (Builtins.check_case_conflict) {}
+
     // The steps' own tests (`hk test`), run whenever hk.pkl is staged. Every
     // gate here fails OPEN - a glob matching nothing exits 0 - so a checker
     // that has quietly stopped detecting anything looks exactly like a clean
