@@ -17,7 +17,7 @@ writing them - never from memory.
 
 ```bash
 pnpm dev             # dev server, 127.0.0.1:4321 (astro 7: daemonises; stop with `pnpm exec astro dev stop`)
-pnpm build           # static build to dist/
+pnpm build           # static build to dist/; also validates every internal link
 pnpm check           # astro check (typecheck)
 pnpm preview         # build + wrangler dev (real workerd, exercises 404 routing)
 pnpm run deploy      # build + wrangler deploy (NOT `pnpm deploy` - that's pnpm's builtin)
@@ -40,6 +40,11 @@ dhk check            # dotfiles-wide hk checks (rumdl gates the markdown here)
 
 ## Gotchas
 
+- Internal links are extensionless routes (`/trust/supply-chain/`), so no
+  filesystem resolver can follow them - the dotfiles-wide `link-check` hk step
+  skips this directory entirely. `starlight-links-validator` in
+  `astro.config.mjs` is what covers them, and it only runs at build: a renamed
+  or deleted page shows up in `pnpm build`, never at commit time.
 - Astro 7's dev server is a background daemon; a stale `.astro/` content cache
   survives restarts and can throw `ImageNotFound` for since-deleted assets while
   `pnpm build` passes. Stop the daemon, `trash .astro`, restart.
