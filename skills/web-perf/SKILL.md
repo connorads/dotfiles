@@ -5,17 +5,17 @@ description: >-
   flashes, image decode pop-in, layout shift (CLS), slow LCP/FCP,
   blank-then-paint, hydration/theme flips, streamed-SSR skeletons that flash
   or pop, Lighthouse/PageSpeed complaints - on static (Astro/SSG), Vite SPA,
-  SSR, or streamed/partially-prerendered routes; a soft navigation is that
-  route's first load. Use on "flash", "shimmer", "pop", "jump", "flicker",
-  "skeleton", or slow first paint; when the LCP is webfont text or content
-  fades in after JS; for font loading (self-hosted, Google Fonts, Adobe
-  Fonts), image loading, Suspense boundary placement, skeleton swaps,
-  subsetting fixed copy, resource hints, metric fallbacks; or to assert
-  first-load invariants on built HTML, a booted route, or a streamed shell.
-  Not for bundle-size analysis, steady-state INP, SEO, or backend latency
-  beyond the TTFB-vs-skeleton trade-off; where a framework automates the fix
-  (next/font, next/image, Astro fonts), defer to its output but inspect
-  wrapping code.
+  SSR, or streamed routes (Next.js App Router/PPR, TanStack Start); a soft
+  navigation is that route's first load. Use on "flash", "shimmer", "pop",
+  "jump", "flicker", "skeleton", or slow first paint; when the LCP is webfont
+  text or content fades in after JS; for font loading (self-hosted, Google
+  Fonts, Adobe Fonts, next/font), image loading (next/image), Suspense
+  boundary placement, skeleton swaps, subsetting fixed copy, resource hints,
+  metric fallbacks; or to assert first-load invariants on built HTML, a
+  booted route, or a streamed shell. Not for bundle-size analysis,
+  steady-state INP, SEO, or backend latency past the TTFB-vs-skeleton
+  trade-off; where a framework automates the fix, defer to its output but
+  inspect wrapping code.
 ---
 
 # Web Performance: the first load of a route
@@ -168,6 +168,14 @@ causes and fixes live in `references/symptoms.md`.
   per-route hybrids, embedded surfaces.
 - `references/framework-automation.md` - what a framework's font/image layer
   automates <-> the hand-rolled equivalent, and the wrapping-code carve-out.
+- `references/next.md` - where each generic fix lands on a Next route
+  (next/font, metadata vs viewport, next/script, route CSS, next/image,
+  `dynamic` with `ssr: false`) plus the Next-only PPR/streamed-route probes.
+- `references/tanstack.md` - TanStack Router/Start: no font/image layer, so
+  the hand-wired half applies in full; `head()`/`scripts()` routing and its
+  dedupe/order footguns, pending-state (`pendingMs`/`pendingMinMs`) jank,
+  what a deep link to an `ssr: false` route ships, `defaultPreload` as the
+  next route's lever, Early Hints, CSS discovery by import style.
 
 **Prove:**
 
