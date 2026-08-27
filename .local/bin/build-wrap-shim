@@ -11,12 +11,12 @@
 # without mise active can't silently skip the sandbox and leave builds
 # unprotected without anyone noticing.
 for bw in \
-  "$HOME/.local/share/mise/shims/build-wrap" \
-  "$HOME/.cargo/bin/build-wrap" \
-  "$(command -v build-wrap 2>/dev/null)"; do
-  if [ -n "$bw" ] && [ -x "$bw" ]; then
-    exec "$bw" "$@"
-  fi
+	"$HOME/.local/share/mise/shims/build-wrap" \
+	"$HOME/.cargo/bin/build-wrap" \
+	"$(command -v build-wrap 2>/dev/null)"; do
+	if [ -n "$bw" ] && [ -x "$bw" ]; then
+		exec "$bw" "$@"
+	fi
 done
 
 exec "${BUILD_WRAP_LD:-cc}" "$@"

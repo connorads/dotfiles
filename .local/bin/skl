@@ -4,18 +4,19 @@
 
 # Find bun, skipping this wrapper's directory just in case
 real_bun=""
-OLDIFS="$IFS"; IFS=':'
+OLDIFS="$IFS"
+IFS=':'
 for dir in $PATH; do
-  case "$dir" in
-    "$HOME/.local/bin"|"$HOME/.local/bin/") continue ;;
-  esac
-  [ -x "$dir/bun" ] && real_bun="$dir/bun" && break
+	case "$dir" in
+	"$HOME/.local/bin" | "$HOME/.local/bin/") continue ;;
+	esac
+	[ -x "$dir/bun" ] && real_bun="$dir/bun" && break
 done
 IFS="$OLDIFS"
 
 if [ -z "$real_bun" ]; then
-  echo "skl: cannot find bun in PATH" >&2
-  exit 127
+	echo "skl: cannot find bun in PATH" >&2
+	exit 127
 fi
 
 exec "$real_bun" "$HOME/src/skl/src/cli.ts" "$@"
