@@ -8,6 +8,10 @@
 alias c='claude $(claude-launch-flags)'
 alias cy='claude $(claude-launch-flags --yolo)'
 alias cyc='claude $(claude-launch-flags --yolo) --channels plugin:telegram@claude-plugins-official'
+# cyf: yolo on fable. The flag is the durable form of the choice - the /model
+# picker writes `model` into .claude/settings.json, which the claude-settings
+# clean filter strips as machine-local state, so it never reaches other hosts.
+alias cyf='claude $(claude-launch-flags --yolo) --model fable'
 # cspy: launch with telemetry re-enabled so GrowthBook gates fetch and
 # preview/gated features (computer-use, channels) appear. We normally disable
 # telemetry (DISABLE_TELEMETRY/DO_NOT_TRACK in .zshrc), which puts the client in
