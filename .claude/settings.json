@@ -54,6 +54,15 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/telegram-reply-guard-clear.py || true",
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__plugin_telegram_telegram__reply"
       }
     ],
     "PostToolUseFailure": [
@@ -132,6 +141,14 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/telegram-reply-guard-clear.py || true",
+            "type": "command"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -166,6 +183,14 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/telegram-reply-guard-stop.py || true",
+            "type": "command"
+          }
+        ]
       }
     ],
     "StopFailure": [
@@ -183,6 +208,14 @@
         "hooks": [
           {
             "command": "sh ~/.config/tmux/scripts/agent-state.sh working claude || true",
+            "type": "command"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "command": "python3 ~/.claude/hooks/telegram-reply-guard-mark.py || true",
             "type": "command"
           }
         ]
