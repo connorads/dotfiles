@@ -376,7 +376,13 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -q -- "--ansi" "$TEST_LOG"
-  grep -q -- "--preview" "$TEST_LOG"
+  # The preview sits BELOW the list. fzf's default is right:50%, which leaves the
+  # list ~56 of the popup's 111 columns and truncates the branch names the picker
+  # exists to tell apart.
+  grep -q -- "--preview-window=down,40%,wrap" "$TEST_LOG"
+  # ...and the preview command is still wired: --preview-window alone would
+  # satisfy a bare "--preview" grep.
+  grep -qF -- "--preview git -C {1} log" "$TEST_LOG"
   # load-triggered transform reloads the full render as a fresh process.
   grep -q "load:transform" "$TEST_LOG"
   grep -q "pick-render full" "$TEST_LOG"

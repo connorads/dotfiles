@@ -92,7 +92,7 @@ way back (`-v` to join below rather than beside).
 |-----|--------|
 | `Ctrl+b s` / `w` | session / window tree (tmux default choose-tree) |
 | `Ctrl+b S` | session switch/create (fzf: pick existing, or type a new name to create + switch) |
-| `Ctrl+b Alt+Shift+W` | worktree picker: repo, PR verdict (`✓ reap`/`✓ merged`/`○ open`/`✗ closed`/`· -`/`? …`), local flags (`◉ live`/`● dirty`/`↑ahead`/`↓behind`), then branch (last, so only it truncates) + git log/status preview; enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; merged branch deleted, unmerged kept) |
+| `Ctrl+b Alt+Shift+W` | worktree picker: repo, PR verdict (`✓ reap`/`✓ merged`/`○ open`/`✗ closed`/`· -`/`? …`), local flags (`◉ live`/`● dirty`/`↑ahead`/`↓behind`), then branch (last, so only it truncates) + git log/status preview below the list; enter→focus/open window, ctrl-v→pane here, ctrl-x→remove (refused if pane open or dirty; merged branch deleted, unmerged kept) |
 | `Ctrl+b A` | agents popup (fzf: jump to a coding-agent pane, ranked blocked>done>working>idle; shows agent name) |
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
