@@ -12,22 +12,24 @@
 #                 then [enter] new window · [v] pane here
 #   pick          fzf over managed worktrees: columns are repo, a fixed-width
 #                 PR-state verdict (✓ reap / ✓ merged / ○ open / ✗ closed /
-#                 · - / ? … / ⋯ … loading), branch, then a truncatable
-#                 local-flags column (◉ live / ● dirty / ↑ahead / ↓behind).
-#                 State is glyph + colour, so it reads without colour and the
-#                 verdict survives truncation (fixed column, ahead of branch).
-#                 Opens instantly via a two-phase load: the fast local render
-#                 (repo + branch, no git status, ~0.1s) paints first with a
-#                 ⋯ … loading PR token, then an fzf load-triggered reload swaps
-#                 in the full wt-status --all --pr render (PR verdict + local
-#                 flags, ~3s) once ready. Offline (no gh) degrades to ? with the
-#                 local merged hint. git log + status preview; enter → open,
-#                 ctrl-v → pane here, ctrl-x → remove (wt-remove
-#                 --delete-branch: merged branch deleted, unmerged kept)
+#                 · - / ? … / ⋯ … loading), the local flags (◉ live / ● dirty /
+#                 ↑ahead / ↓behind), then branch. State is glyph + colour, so it
+#                 reads without colour. Branch is deliberately last: it is the
+#                 one unbounded-length field, so making it the tail is what
+#                 keeps a long branch name from truncating the answers off the
+#                 right edge of the popup. Opens instantly via a two-phase load:
+#                 the fast local render (repo + branch, no git status, ~0.1s)
+#                 paints first with a ⋯ … loading PR token, then an fzf
+#                 load-triggered reload swaps in the full wt-status --all --pr
+#                 render (PR verdict + local flags) once ready. Offline (no gh)
+#                 degrades to ? with the local merged hint. git log + status
+#                 preview; enter → open, ctrl-v → pane here, ctrl-x → remove
+#                 (wt-remove --delete-branch: merged branch deleted, unmerged
+#                 kept)
 #   pick-render <fast|full>
 #                 internal: emit the fzf display TSV (hidden path field 1, then
-#                 repo, PR verdict, branch, trailing local flags). fast = local
-#                 enumerate only; full = wt-status --all --pr enrichment. Kept a
+#                 repo, PR verdict, local flags, branch). fast = local enumerate
+#                 only; full = wt-status --all --pr enrichment. Kept a
 #                 subcommand so fzf's reload can re-invoke it as a fresh process.
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -170,12 +172,12 @@ pick-render)
 	# A fresh process (fzf's reload) computes its own pane set rather than
 	# inheriting a stale env snapshot.
 	panes=$(tmux list-panes -a -F '#{window_id}	#{pane_current_path}')
-	# Render display columns. The PR-state verdict is a fixed-width column
-	# placed after repo, before branch: it folds reap-eligibility into the
-	# token (MERGED + clean + not-ahead = ✓ reap, safe to ctrl-x) so the
-	# actionable answer survives a long branch truncating the tail. Plain text
-	# is padded to a set width first, then wrapped in ANSI, so the padding
-	# maths ignores escape bytes. Local flags trail (may truncate harmlessly);
+	# Render display columns. Everything actionable sits ahead of the branch,
+	# which is the only field of unbounded length and therefore the only one
+	# safe to truncate: the PR-state verdict (fixed width, folding
+	# reap-eligibility into the token - MERGED + clean + not-ahead = ✓ reap,
+	# safe to ctrl-x), then the local flags. Plain text is padded to width
+	# first, then wrapped in ANSI, so the padding maths ignores escape bytes.
 	# ◉ live marks a pane at or inside the worktree (path-boundary match).
 	printf '%s\n' "$rows" | PANES="$panes" awk '
 		BEGIN {
@@ -207,26 +209,35 @@ pick-render)
 			for (i = dw; i < W; i++) pad = pad " "
 			tok = E c "m" g " " w R pad
 
-			# Trailing local flags (glyph + colour); truncatable detail.
-			m = ""; sep = ""
+			# Local flags (glyph + colour). Display width is accumulated
+			# arithmetically rather than with length(): the string carries ANSI
+			# escapes, and awk counts bytes not glyphs for the multi-byte marks.
+			m = ""; sep = ""; fwid = 0
 			for (i = 1; i <= pn; i++)
 				if (pc[i] == path || index(pc[i], path "/") == 1) {
-					m = E "34m◉ live" R; sep = " "; break
+					m = E "34m◉ live" R; fwid = 6; sep = " "; break
 				}
-			if (dirty) { m = m sep E "31m● dirty" R; sep = " " }
-			if (ahead > 0) { m = m sep E "33m↑" ahead R; sep = " " }
-			if (behind > 0) { m = m sep E "35m↓" behind R; sep = " " }
+			if (dirty) { m = m sep E "31m● dirty" R; fwid += length(sep) + 7; sep = " " }
+			if (ahead > 0) { m = m sep E "33m↑" ahead R; fwid += length(sep) + 1 + length(ahead); sep = " " }
+			if (behind > 0) { m = m sep E "35m↓" behind R; fwid += length(sep) + 1 + length(behind); sep = " " }
 
 			nr++
 			paths[nr] = path; repos[nr] = repo; prtok[nr] = tok
-			branches[nr] = branch; flags[nr] = m
+			branches[nr] = branch; flags[nr] = m; fwids[nr] = fwid
 			if (length(repo) > rw) rw = length(repo)
-			if (length(branch) > bw) bw = length(branch)
+			if (fwid > fw) fw = fwid
 		}
 		END {
-			fmt = "%s\t%-" rw "s  %s  %-" bw "s  %s\n"
-			for (i = 1; i <= nr; i++)
-				printf fmt, paths[i], repos[i], prtok[i], branches[i], flags[i]
+			# Branch is the tail, so it is the only column fzf may truncate.
+			# fw is data-dependent (same treatment as rw), and collapses to no
+			# column at all when no worktree carries a flag.
+			fmt = "%s\t%-" rw "s  %s  %s%s\n"
+			gap = (fw > 0 ? "  " : "")
+			for (i = 1; i <= nr; i++) {
+				pad = ""
+				for (j = fwids[i]; j < fw; j++) pad = pad " "
+				printf fmt, paths[i], repos[i], prtok[i], flags[i] pad gap, branches[i]
+			}
 		}'
 	;;
 pick)

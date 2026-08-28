@@ -189,7 +189,7 @@ printf 'ctrl-x\n%s\n' "$FZF_SELECT"
 EOF
 }
 
-@test "pick-render full rows carry repo, a fixed PR-state column, then branch and flags" {
+@test "pick-render full rows carry repo, a fixed PR-state column, then flags and branch" {
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
 printf 'wt-status %s\n' "$*" >>"$TEST_LOG"
@@ -213,17 +213,17 @@ EOF
   printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
   # Sorted by repo: alpha first although wt-status emitted it last.
   head -1 "$HOME/plain" | grep -q "alpha"
-  # Hidden path field 1, then repo, then the PR verdict ahead of branch.
+  # Hidden path field 1, then repo, then the PR verdict ahead of the flags.
   grep -q $'^/tmp/x/.trees/alpha/feat\talpha' "$HOME/plain"
-  # MERGED + clean + not-ahead → reap; PR token sits before the branch.
-  grep -Eq 'delta +✓ reap +rebased' "$HOME/plain"
-  # MERGED + dirty/unpushed → merged (not reap), local flags trail.
-  grep -Eq 'gamma +✓ merged +keep +● dirty ↑1$' "$HOME/plain"
-  # OPEN state, with ahead/behind flags trailing after the branch.
-  grep -Eq 'beta +○ open +wip +↑2 ↓1$' "$HOME/plain"
+  # MERGED + clean + not-ahead → reap; branch is the tail of every row.
+  grep -Eq 'delta +✓ reap +rebased$' "$HOME/plain"
+  # MERGED + dirty/unpushed → merged (not reap); flags sit before the branch.
+  grep -Eq 'gamma +✓ merged +● dirty ↑1 +keep$' "$HOME/plain"
+  # OPEN state, with ahead/behind flags ahead of the branch.
+  grep -Eq 'beta +○ open +↑2 ↓1 +wip$' "$HOME/plain"
   # No PR → the "-" verdict; live pane (inside the tree) leads the flags,
   # ahead of the dirty marker (untracked counts as dirty).
-  grep -Eq 'alpha +· - +feat +◉ live ● dirty$' "$HOME/plain"
+  grep -Eq 'alpha +· - +◉ live ● dirty +feat$' "$HOME/plain"
   # reap renders bright-green so fzf --ansi shows it coloured.
   printf '%s\n' "$output" | grep -q $'\x1b\\[92m✓ reap'
 }
@@ -274,8 +274,73 @@ EOF
   # Hidden path field 1, then repo. Sorted by branch: bar before foo.
   head -1 "$HOME/plain" | grep -q $'^'"$HOME"'/.trees/repo/bar\trepo'
   # Loading PR token; the live pane (inside foo) flags foo, not bar.
-  grep -Eq 'repo +⋯ … +bar-branch *$' "$HOME/plain"
-  grep -Eq 'repo +⋯ … +foo-branch +◉ live$' "$HOME/plain"
+  grep -Eq 'repo +⋯ … +bar-branch$' "$HOME/plain"
+  grep -Eq 'repo +⋯ … +◉ live +foo-branch$' "$HOME/plain"
+}
+
+# The bug this guards: at the real popup width a long branch name set the column
+# width for every row and pushed the trailing flags off the right edge, so a
+# worktree that was both live and dirty rendered as "◉ l··". Flags now sit ahead
+# of the branch, which makes their offset a property of the flag data alone. No
+# magic number: assert two rows with wildly different branch lengths agree.
+# Offset within the DISPLAY field (2..), not the whole line: field 1 is the
+# hidden path, whose length varies with the branch name and would swamp this.
+flag_offset() {
+  local row=$1 glyph=$2
+  awk -F'\t' -v row="$row" -v g="$glyph" '$0 ~ row { print index($2, g) }' "$HOME/plain"
+}
+
+LONG_BRANCH=averyveryverylongbranchnamethatrunspastanysensiblepopupwidth-0123456789
+
+# Render once and report the flag offset. The comparison has to be BETWEEN
+# renders, not between rows of one render: the old layout padded branch to the
+# widest name in the set, so rows agreed with each other while the whole flag
+# column moved with the longest branch present - which is what pushed it off
+# the popup.
+render_flag_offset() {
+  run "$WT_WINDOW" pick-render "$1"
+  [ "$status" -eq 0 ] || return 1
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
+  flag_offset "$2" "$3"
+}
+
+@test "pick-render full keeps the flag column offset fixed however long the branches are" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+cat "$HOME/rows.json"
+EOF
+
+  printf '[{"path":"/tmp/x/.trees/repo/a","branch":"short","dirty":true,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}]\n' >"$HOME/rows.json"
+  a=$(render_flag_offset full 'short' '●')
+
+  printf '[{"path":"/tmp/x/.trees/repo/a","branch":"%s","dirty":true,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}]\n' "$LONG_BRANCH" >"$HOME/rows.json"
+  b=$(render_flag_offset full "$LONG_BRANCH" '●')
+
+  [ -n "$a" ] || false
+  [ "$a" = "$b" ] || false
+}
+
+@test "pick-render fast keeps the flag column offset fixed however long the branches are" {
+  # Same invariant through the same shared renderer, so the fzf reload from fast
+  # to full cannot move the flags either.
+  mkdir -p "$HOME/.trees/repo/a"
+  : >"$HOME/.trees/repo/a/.git"
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+if [ "$3" = "branch" ] && [ "$4" = "--show-current" ]; then
+  cat "$HOME/branch"
+fi
+EOF
+  export TMUX_PANES=$'@1\t'"$HOME/.trees/repo/a"
+
+  echo short >"$HOME/branch"
+  a=$(render_flag_offset fast 'short' '◉')
+
+  echo "$LONG_BRANCH" >"$HOME/branch"
+  b=$(render_flag_offset fast "$LONG_BRANCH" '◉')
+
+  [ -n "$a" ] || false
+  [ "$a" = "$b" ] || false
 }
 
 @test "pick-render emits nothing when there are no managed worktrees" {
