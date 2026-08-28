@@ -253,74 +253,148 @@ _wt_main_worktree_path() {
 # so local ancestry never reports a squash-merged branch as merged; the PR's own
 # MERGED/OPEN/CLOSED state is the signal cleanup trusts.
 
-# Per-invocation memoisation, keyed by a repo's git common dir (shared across all
-# its worktrees) so a `--all` sweep makes one `gh` call per distinct repo, not
-# per worktree. Fresh state each process (these helpers live in a sourced lib).
-typeset -gA _wt_pr_cache _wt_pr_cache_loaded _wt_pr_cache_status
+# Per-invocation memoisation. `_wt_pr_entry` / `_wt_pr_entry_loaded` are keyed
+# per (repo, branch); `_wt_pr_repo_status` marks a whole repo unreachable so we
+# never retry gh for a repo we already know we cannot reach. The repo half of a
+# key is the git common dir, shared across all a repo's worktrees. Fresh state
+# each process (these helpers live in a sourced lib).
+typeset -gA _wt_pr_entry _wt_pr_entry_loaded _wt_pr_repo_status
 
 _wt_pr_repo_key() {
   git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null
 }
 
-# _wt_pr_map <repo_path>: one `gh` call listing every PR (any state) for the
-# repo the worktree belongs to. Run from within the worktree so gh resolves the
-# repo. Emits TSV `headRefName<TAB>state<TAB>number<TAB>url<TAB>isDraft`, one row
-# per PR. Returns non-zero (no output) when gh is absent, unauthenticated,
-# gate-locked, or offline — the caller degrades that repo to `unknown`.
-_wt_pr_map() {
-  local repo_path=$1
-  command -v gh >/dev/null 2>&1 || return 1
-  local limit=${WT_PR_LIMIT:-200}
-  local jq_prog='.[] | [.headRefName, .state, (.number|tostring), .url, (.isDraft|tostring)] | @tsv'
-  ( cd "$repo_path" 2>/dev/null &&
-      gh pr list --state all -L "$limit" \
-        --json number,state,url,headRefName,isDraft --jq "$jq_prog" 2>/dev/null )
+# Composite cache key. \x1f (unit separator) cannot appear in a git ref name.
+_wt_pr_cache_key() {
+  printf '%s\x1f%s' "$1" "$2"
 }
 
-# _wt_pr_lookup <repo_path> <branch>: PR state for one branch, populating the
-# per-repo cache on first miss. Sets `_wt_pr_reply` to `state<TAB>number<TAB>url<TAB>isDraft`
-# when a PR exists; empty when gh succeeded but the branch has no PR (=> `none`);
-# the single field `unknown` (state, no other data) when the repo's map call
-# failed, so we never retry gh per worktree of a repo we already know is
-# unreachable. Returns via a reply global (not stdout) so the per-repo cache
-# populated here survives into the caller's shell — a command-substitution would
-# run the whole helper in a subshell and discard every cache write, defeating
-# the one-gh-call-per-repo memoisation (17 gh calls for 17 worktrees vs 1).
+# _wt_pr_query <repo_path> <branch>...: one targeted `gh pr list --head <branch>`
+# per branch, run concurrently up to WT_PR_JOBS (8) so a repo with many
+# worktrees cannot fan out into secondary rate limits. Each call writes its own
+# temp file — a shared pipe would interleave partial writes. Run from within the
+# worktree so gh resolves the repo. Emits the TSV
+# `headRefName<TAB>state<TAB>number<TAB>url<TAB>isDraft`, one row per PR found
+# and nothing for a branch that has none.
+#
+# Targeted rather than one `gh pr list -L 200`: cost scaled with the limit
+# (50 -> 0.54s, 200 -> 1.19s, 500 -> 2.50s) while 15 parallel head queries took
+# 0.72s, and the capped list silently reported `none` for any branch whose PR
+# fell outside the 200 most recent — this repo has 1019.
+#
+# Returns non-zero (and emits nothing) if ANY call failed, so the caller degrades
+# the whole repo to `unknown`. gh distinguishes the two cases cleanly: no PR is
+# rc 0 with empty output, a genuine failure is rc 1. Repo-level rather than
+# per-branch keeps a mixed state off the surfaces.
+_wt_pr_query() {
+  local repo_path=$1
+  shift
+  command -v gh >/dev/null 2>&1 || return 1
+  (( $# )) || return 0
+
+  local tmpdir
+  tmpdir=$(mktemp -d) || return 1
+
+  local jq_prog='.[] | [.headRefName, .state, (.number|tostring), .url, (.isDraft|tostring)] | @tsv'
+  local cap=${WT_PR_JOBS:-8}
+  local -a batch=()
+  local branch p rc=0 i=0
+
+  for branch in "$@"; do
+    (( i++ ))
+    (
+      cd "$repo_path" 2>/dev/null &&
+        gh pr list --state all -L 1 --head "$branch" \
+          --json number,state,url,headRefName,isDraft --jq "$jq_prog" >"$tmpdir/$i" 2>/dev/null
+    ) &
+    batch+=($!)
+    if (( ${#batch} >= cap )); then
+      for p in "${batch[@]}"; do wait "$p" || rc=1; done
+      batch=()
+    fi
+  done
+  for p in "${batch[@]}"; do wait "$p" || rc=1; done
+
+  (( rc == 0 )) && cat "$tmpdir"/* 2>/dev/null
+  rm -rf "$tmpdir"
+  return $rc
+}
+
+# _wt_pr_prime <repo_path> <branch>...: fetch every branch not already cached, in
+# one concurrent batch, and record the result for each. A caller that knows a
+# repo's whole branch set (wt-status' `--all` loop) calls this once per repo so
+# the row loop never issues a gh call of its own.
+_wt_pr_prime() {
+  local repo_path=$1
+  shift
+  local key
+  key=$(_wt_pr_repo_key "$repo_path") || key=""
+  [[ -n "$key" ]] || return 0
+  [[ "${_wt_pr_repo_status[$key]:-}" == unknown ]] && return 0
+
+  local -a wanted=()
+  local branch ck
+  for branch in "$@"; do
+    [[ -n "$branch" ]] || continue
+    ck=$(_wt_pr_cache_key "$key" "$branch")
+    [[ -n "${_wt_pr_entry_loaded[$ck]:-}" ]] && continue
+    wanted+=("$branch")
+  done
+  (( ${#wanted} )) || return 0
+
+  local map
+  if ! map=$(_wt_pr_query "$repo_path" "${wanted[@]}"); then
+    _wt_pr_repo_status[$key]=unknown
+    return 0
+  fi
+  _wt_pr_repo_status[$key]=ok
+
+  # Mark every branch asked for as answered first, so one with no PR caches as
+  # "none" rather than falling through to a second query on lookup.
+  for branch in "${wanted[@]}"; do
+    ck=$(_wt_pr_cache_key "$key" "$branch")
+    _wt_pr_entry_loaded[$ck]=1
+    _wt_pr_entry[$ck]=""
+  done
+
+  local line head
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    head=${line%%$'\t'*}
+    ck=$(_wt_pr_cache_key "$key" "$head")
+    [[ -n "${_wt_pr_entry_loaded[$ck]:-}" ]] || continue
+    _wt_pr_entry[$ck]=${line#*$'\t'}
+  done <<< "$map"
+}
+
+# _wt_pr_lookup <repo_path> <branch>: PR state for one branch, priming the cache
+# on a miss. Sets `_wt_pr_reply` to `state<TAB>number<TAB>url<TAB>isDraft` when a
+# PR exists; empty when gh succeeded but the branch has no PR (=> `none`); the
+# single field `unknown` (state, no other data) when the repo is unreachable.
+# Returns via a reply global (not stdout) so the cache populated here survives
+# into the caller's shell — a command-substitution would run the whole helper in
+# a subshell and discard every cache write, so a repo already known unreachable
+# would be retried once per worktree.
 _wt_pr_lookup() {
   local repo_path=$1 branch=$2
-  local key
+  local key ck
   key=$(_wt_pr_repo_key "$repo_path")
   if [[ -z "$key" ]]; then
     typeset -g _wt_pr_reply="unknown"
     return 0
   fi
 
-  if [[ -z "${_wt_pr_cache_loaded[$key]:-}" ]]; then
-    local map
-    if map=$(_wt_pr_map "$repo_path"); then
-      _wt_pr_cache[$key]=$map
-      _wt_pr_cache_status[$key]=ok
-    else
-      _wt_pr_cache_status[$key]=unknown
-    fi
-    _wt_pr_cache_loaded[$key]=1
+  ck=$(_wt_pr_cache_key "$key" "$branch")
+  if [[ -z "${_wt_pr_entry_loaded[$ck]:-}" && "${_wt_pr_repo_status[$key]:-}" != unknown ]]; then
+    _wt_pr_prime "$repo_path" "$branch"
   fi
 
-  if [[ "${_wt_pr_cache_status[$key]}" == unknown ]]; then
+  if [[ "${_wt_pr_repo_status[$key]:-}" == unknown ]]; then
     typeset -g _wt_pr_reply="unknown"
     return 0
   fi
 
-  local line
-  while IFS= read -r line; do
-    [[ -n "$line" ]] || continue
-    if [[ "${line%%$'\t'*}" == "$branch" ]]; then
-      typeset -g _wt_pr_reply="${line#*$'\t'}"
-      return 0
-    fi
-  done <<< "${_wt_pr_cache[$key]:-}"
-
-  typeset -g _wt_pr_reply=""
+  typeset -g _wt_pr_reply="${_wt_pr_entry[$ck]:-}"
   return 0
 }
 
