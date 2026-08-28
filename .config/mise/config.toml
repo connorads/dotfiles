@@ -177,6 +177,12 @@ fnox = "1"
 "npm:skills" = "1"
 "npm:svgo" = "4"
 "npm:vercel" = "latest"
+# WebGPU doc browser (`vgpu docs`). The corpus is compiled into the package
+# (lib/docs imports a generated manifest), so this global serves ITS OWN pinned
+# docs - inside a repo that depends on vgpu, `pnpm exec vgpu` is the version-
+# matched one. Range "0" not "0.3": the payload is documentation, so newest is
+# always wanted and a 0.x minor is not a breaking change to anything here.
+"npm:vgpu" = "0"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
