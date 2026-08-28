@@ -1,0 +1,6 @@
+{
+  "reason": "add-mcp -g writes global MCP config for every detected client; mcpz owns that here",
+  "files": [
+    ".agents/skills/vgpu/references/guides/mcp.docs.md"
+  ]
+}
