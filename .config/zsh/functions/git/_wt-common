@@ -83,15 +83,31 @@ _wt_registered_path() {
   return 1
 }
 
+# _wt_dirty_state <repo_path>: emit `dirty<TAB>untracked<TAB>conflicted`.
+# All three come from one `git status --porcelain`: any line at all means dirty,
+# a `??` line means untracked, and an unmerged XY pair means conflicted. One
+# spawn rather than three, which a `wt-status --all` sweep pays per worktree.
+# `--untracked-files=normal` is load-bearing, not cosmetic: a repo carrying
+# status.showUntrackedFiles=no suppresses the `??` lines this derivation reads,
+# and the flag forces them back.
 _wt_dirty_state() {
   local repo_path=$1
   local dirty=0
   local untracked=0
   local conflicted=0
+  local status_out line
 
-  [[ -n "$(git -C "$repo_path" status --porcelain 2>/dev/null)" ]] && dirty=1
-  [[ -n "$(git -C "$repo_path" ls-files --others --exclude-standard 2>/dev/null)" ]] && untracked=1
-  [[ -n "$(git -C "$repo_path" ls-files --unmerged 2>/dev/null)" ]] && conflicted=1
+  status_out=$(git -C "$repo_path" status --porcelain --untracked-files=normal 2>/dev/null)
+
+  if [[ -n "$status_out" ]]; then
+    dirty=1
+    while IFS= read -r line; do
+      case ${line:0:2} in
+        '??') untracked=1 ;;
+        DD|AU|UD|UA|DU|AA|UU) conflicted=1 ;;
+      esac
+    done <<< "$status_out"
+  fi
 
   printf '%s\t%s\t%s\n' "$dirty" "$untracked" "$conflicted"
 }
