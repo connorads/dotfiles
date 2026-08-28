@@ -264,6 +264,18 @@ local fast_steps = new Mapping<String, Step> {
         tests = new {}
     }
 
+    // rumdl split at hk 1.56: the `rumdl` builtin above narrowed to a linter and
+    // the formatting half moved here. Without this step that half has no gate.
+    // Same exclude set as the linter - vendored mirrors and summon's verbatim
+    // quote references are not ours to reformat. Runs after `rumdl` for the
+    // ruff-check/ruff-format reason: both write the same files in fix mode, so
+    // lint fixes take the first pass and the formatter the last.
+    ["rumdl-format"] = (Builtins.rumdl_format) {
+        batch = true
+        depends = List("rumdl")
+        exclude = vendored_skills + List(".config/skills/personal/summon/references/**")
+    }
+
     // House prose rules (~/.vale.ini + .config/vale/styles/Connorads). Vale
     // skips fenced blocks and code spans natively, so a dash in a command or a
     // diagram is untouched and only prose is gated.
