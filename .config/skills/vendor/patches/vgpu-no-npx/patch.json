@@ -1,0 +1,6 @@
+{
+  "reason": "vgpu CLI is mise-pinned; npx bypasses the pin and is a network call per doc lookup",
+  "files": [
+    ".agents/skills/vgpu/SKILL.md"
+  ]
+}
