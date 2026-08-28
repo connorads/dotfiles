@@ -18,8 +18,8 @@ Real configurations for different tech stacks. Bump the version in the `amends`/
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".wrangler")
 
@@ -87,8 +87,8 @@ the soft-protected pre-push asset when advisory branch push protection is needed
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 
@@ -204,8 +204,8 @@ No package.json. Uses local variable to share steps across pre-commit/fix/check 
 
 ```pkl
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
 
@@ -280,8 +280,8 @@ git config --local core.hooksPath .hk-hooks
 ## Go Service
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 display_skip_reasons = List()   // suppress skip noise
 terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
@@ -326,8 +326,8 @@ gitleaks = "latest"
 ## Python (ruff + mypy)
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 exclude = List(".venv", "__pycache__", ".mypy_cache", ".ruff_cache", "dist")
 

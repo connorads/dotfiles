@@ -7,8 +7,8 @@
 // (`hk run pre-commit -q`, see the `hk` skill): it quiets every step on success
 // (0 bytes) while keeping the failing step's full output — so steps here run their
 // plain commands, no per-step output wrapper.
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 display_skip_reasons = List()

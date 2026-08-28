@@ -55,8 +55,9 @@ Available since hk 1.51.0.
 ## Fixture paths must be sandboxed
 
 A bare relative fixture path with no `tmpdir = true` writes the fixture **into
-the work tree and leaves it there**. Verified on 1.51.0: a test writing
-`fixture-marker.txt` left that file in the repo after a green `hk test`.
+the work tree and leaves it there**. Verified on 1.51.0 and again on 1.56.1: a
+test writing `fixture-marker.txt` left that file in the repo after a green
+`hk test`.
 
 Where the work tree is `$HOME` - a dotfiles repo using the git-dir/work-tree
 split - that is destructive rather than untidy. `write { [".npmrc"] = "..." }`
@@ -142,12 +143,13 @@ you wrote. Two classes fail on contact:
   breaks fixtures written for the unscoped builtin (the `fix_smart_quotes` case
   above). Replace them with equivalents scoped to your step - same coverage, now
   describing what you actually run.
-- **Tests pinned to a tool version you do not have.** `Builtins.rumdl`'s fix
-  cases assert an MD007 reindent that rumdl 0.2.52 no longer performs;
-  `Builtins.zizmor`'s fixtures all write `uses: actions/checkout@v4`, which
-  zizmor 1.29's unpinned-uses policy flags, so even the "good" fixture exits 14.
-  Neither says anything about your wiring. Drop them, with the reason at the
-  step:
+- **Tests pinned to a tool version you do not have.** `Builtins.rumdl`'s
+  `fix bad file violations remain` writes a fixture with no top-level heading
+  and expects `fix` to exit 1 with MD041 unfixed; rumdl 0.2.52 does not flag
+  MD041 there, fixes everything and exits 0. `Builtins.zizmor`'s fixtures all
+  write `uses: actions/checkout@v4`, which zizmor 1.29's unpinned-uses policy
+  flags, so even the "good" fixture exits 14. Neither says anything about your
+  wiring. Drop them, with the reason at the step:
 
   ```pkl
   ["zizmor"] = (Builtins.zizmor) {
@@ -159,6 +161,11 @@ you wrote. Two classes fail on contact:
 
   `tests {}` amends the inherited mapping and clears nothing. `tests = new {}`
   replaces it.
+
+  It is all or nothing: a Test has no skip field, and a pkl Mapping entry cannot
+  be removed by an amend, so one stale case costs every sibling case in that
+  builtin. Say which case failed and why in the comment, so the next tool bump
+  has something to retest against.
 
 ## Strip the git environment
 
