@@ -10,7 +10,9 @@
 #   new <branch> [origin]
 #                 wt-add <branch> in $PWD's repo (setup output stays visible),
 #                 then [enter] new window · [v] pane here
-#   pick          fzf over managed worktrees: columns are repo, a fixed-width
+#   pick          fzf over managed worktrees: columns are repo (only when the
+#                 set spans more than one - identical on every row it
+#                 discriminates nothing and costs 21 columns), a fixed-width
 #                 PR-state verdict (✓ reap / ✓ merged / ○ open / ✗ closed /
 #                 · - / ? … / ⋯ … loading), the local flags (◉ live / ● dirty /
 #                 ↑ahead / ↓behind), then branch. State is glyph + colour, so it
@@ -37,9 +39,14 @@
 #                 kept)
 #   pick-render <fast|full>
 #                 internal: emit the fzf display TSV (hidden path field 1, then
-#                 repo, PR verdict, local flags, branch). fast = local enumerate
-#                 only; full = wt-status --all --pr enrichment. Kept a
-#                 subcommand so fzf's reload can re-invoke it as a fresh process.
+#                 the display: repo when the set spans several, PR verdict,
+#                 local flags, branch). fast = local enumerate only; full =
+#                 wt-status --all --pr enrichment. Kept a subcommand so fzf's
+#                 reload can re-invoke it as a fresh process. Both modes
+#                 enumerate from _wt_managed_worktrees (fast directly, full via
+#                 wt-status --all), so they see one worktree set and agree on
+#                 whether the repo column is rendered - the reload cannot
+#                 add or drop a column mid-list.
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
 # the nix bash 5 that is already installed but ordered behind /bin in PATH.
@@ -233,19 +240,32 @@ pick-render)
 			nr++
 			paths[nr] = path; repos[nr] = repo; prtok[nr] = tok
 			branches[nr] = branch; flags[nr] = m; fwids[nr] = fwid
+			# Keyed on nr, not on repo1 == "": in full mode jq yields "" for a
+			# path outside ~/.trees, and an empty-string sentinel would let a
+			# genuine second repo on row 2 read as the first.
+			if (nr == 1) repo1 = repo; else if (repo != repo1) multirepo = 1
 			if (length(repo) > rw) rw = length(repo)
 			if (fwid > fw) fw = fwid
 		}
 		END {
 			# Branch is the tail, so it is the only column fzf may truncate.
-			# fw is data-dependent (same treatment as rw), and collapses to no
-			# column at all when no worktree carries a flag.
-			fmt = "%s\t%-" rw "s  %s  %s%s\n"
+			# Both leading columns are data-dependent: the flags collapse to no
+			# column when no worktree carries one, and the repo collapses the
+			# same way when every row names the same repo. A name identical on
+			# every row discriminates nothing, and it costs 21 columns taken
+			# from the one field that identifies a worktree.
+			# NOTE: no apostrophes in here - this awk program is single-quoted.
+			# The count of conversions must not vary with it - one fewer and the
+			# remaining %s shift, putting the repo where the verdict belongs -
+			# so the cell is built per row and passed as an argument, exactly as
+			# gap already folds in the flags separator.
+			fmt = "%s\t%s%s  %s%s\n"
 			gap = (fw > 0 ? "  " : "")
 			for (i = 1; i <= nr; i++) {
 				pad = ""
 				for (j = fwids[i]; j < fw; j++) pad = pad " "
-				printf fmt, paths[i], repos[i], prtok[i], flags[i] pad gap, branches[i]
+				rcol = (multirepo ? sprintf("%-" rw "s  ", repos[i]) : "")
+				printf fmt, paths[i], rcol, prtok[i], flags[i] pad gap, branches[i]
 			}
 		}'
 	;;
