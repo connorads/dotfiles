@@ -620,6 +620,10 @@ backend = "npm:typescript"
 version = "59.0.0"
 backend = "npm:vercel"
 
+[[tools."npm:vgpu"]]
+version = "0.3.0"
+backend = "npm:vgpu"
+
 [[tools."npm:wrangler"]]
 version = "4.120.0"
 backend = "npm:wrangler"
