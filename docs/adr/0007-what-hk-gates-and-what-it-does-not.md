@@ -86,8 +86,9 @@ which is exactly when a push is likeliest. `mise run zsh-tests` stays manual.
 
 **Upgrading the hk pkl pin to get more builtins.** Rejected for now, separately
 scoped. Every builtin this work needs - `deadnix`, `lychee`, `check_symlinks`,
-`check_case_conflict`, `hk_test` - is already present at the pinned 1.51.0.
-`statix` is not, which is why it is a custom step rather than a reason to move
+`check_case_conflict`, `hk_test` - was already present at 1.51.0, the pin this
+decision was written against. `statix` is a builtin at neither that version nor
+the current pin, which is why it is a custom step rather than a reason to move
 the pin.
 
 ## Consequences
