@@ -534,6 +534,10 @@ dotfiles config core.hooksPath .hk-hooks
 
 The pre-commit hook runs `hk run pre-commit -q` using `hk.pkl` at `~/hk.pkl`
 (`-q`, hk >= 1.51.0: success is silent, step chatter only surfaces on failure).
+The `amends`/`import` pin in `hk.pkl` and the mise-installed binary must name
+the same version - both are 1.56.1. The pin decides which builtins exist; the
+binary decides what understands them, and a mismatch makes builtin steps fail
+with `no command for test` rather than saying so.
 
 There is no `.local` exclude. It hid 128 tracked entries - 6 first-party
 scripts on PATH plus the 122 `zfn-link` shims - from every gate, and the
@@ -553,7 +557,8 @@ never see one), `check-symlinks` (the `.local/bin` shims: renaming a function
 without re-running `zfn-link` leaves a dangling one on PATH, and interactive
 autoload keeps working so nothing says so), `check-case-conflict` (two paths
 differing only in case are one file on macOS and two on the four Linux hosts),
-plus the formatters/linters (shfmt, shellcheck, rumdl, nixfmt...).
+plus the formatters/linters (shfmt, shellcheck, rumdl for markdown lint,
+`rumdl-format` for its formatting half, nixfmt...).
 
 The `hk-test` step runs the steps' own `tests {}` blocks whenever `hk.pkl` is
 staged. Gates fail **open** here - a glob matching nothing exits 0 - so
