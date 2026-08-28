@@ -22,8 +22,17 @@
 #                 paints first with a ⋯ … loading PR token, then an fzf
 #                 load-triggered reload swaps in the full wt-status --all --pr
 #                 render (PR verdict + local flags) once ready. Offline (no gh)
-#                 degrades to ? with the local merged hint. git log + status
-#                 preview; enter → open, ctrl-v → pane here, ctrl-x → remove
+#                 degrades to ? with the local merged hint.
+#                 The git log + status preview sits BELOW the list, not beside
+#                 it, which is deliberate and the one fzf surface here that does
+#                 not use right:NN%. Side by side the list gets ~56 of the
+#                 popup's 111 columns, and these rows carry a verdict, a flag
+#                 cluster AND an unbounded-length branch name - so the branch
+#                 truncated to ~5 characters and most rows read alike. Short-row
+#                 pickers (agent, vox, cmd-palette) have no such problem and
+#                 stay on the right. Below also gives the preview the full width
+#                 its own `git log --oneline` lines want.
+#                 enter → open, ctrl-v → pane here, ctrl-x → remove
 #                 (wt-remove --delete-branch: merged branch deleted, unmerged
 #                 kept)
 #   pick-render <fast|full>
@@ -252,6 +261,7 @@ pick)
 			--header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
 			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x \
 			--bind "load:transform:[ -e $sentinel ] && exit 0; : > $sentinel; printf 'reload(%s pick-render full)' \"$self\"" \
+			--preview-window='down,40%,wrap' \
 			--preview 'git -C {1} log --oneline --decorate -10; echo; git -C {1} status --short') || {
 		rm -f "$sentinel"
 		exit 0
