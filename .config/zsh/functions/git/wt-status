@@ -30,16 +30,35 @@ fi
 
 typeset -a records=()
 
+# resolve_base_state <repo_path>: emit `base<TAB>base_ref_exists`. Both are repo
+# properties, so `--all` resolves them once per repo rather than once per
+# worktree - together they cost up to 4 git spawns (config, symbolic-ref,
+# show-ref, rev-parse --verify). Assumes worktree.baseBranch is repo-wide, which
+# it is unless extensions.worktreeConfig makes it per-worktree.
+resolve_base_state() {
+  local repo_path=$1
+  local base="" exists=0
+  base=$(_wt_resolve_base "$repo_path" "" 2>/dev/null) || base=""
+  if [[ -n "$base" ]] &&
+    git -C "$repo_path" rev-parse --verify --quiet "refs/heads/$base" >/dev/null 2>&1; then
+    exists=1
+  fi
+  printf '%s\t%s\n' "$base" "$exists"
+}
+
 print_record() {
   local wt_path=$1
   local branch_ref=$2
   local locked=$3
   local prunable=$4
+  # Caller-supplied per-repo constants (see resolve_base_state).
+  local base=$5
+  local base_ref_exists=$6
 
   local branch="${branch_ref#refs/heads/}"
   [[ -z "$branch_ref" ]] && branch="(detached)"
 
-  local state_line dirty untracked conflicted upstream ahead behind base merged
+  local state_line dirty untracked conflicted upstream ahead behind merged
   state_line=$(_wt_dirty_state "$wt_path")
   dirty=${state_line%%$'\t'*}
   local rest=${state_line#*$'\t'}
@@ -58,9 +77,11 @@ print_record() {
     fi
   fi
 
-  base=$(_wt_resolve_base "$wt_path" "" 2>/dev/null) || base=""
+  # The base ref's existence is checked by the caller (once per repo); only the
+  # ancestry test is genuinely per-worktree.
   merged=0
-  if [[ -n "$base" ]] && _wt_merged_into_base "$wt_path" "$base"; then
+  if (( base_ref_exists )) &&
+    git -C "$wt_path" merge-base --is-ancestor HEAD "refs/heads/$base" >/dev/null 2>&1; then
     merged=1
   fi
 
@@ -105,18 +126,83 @@ print_record() {
   records+=("$record")
 }
 
+# load_repo_listing <repo_key>: read one `git worktree list --porcelain` for the
+# repo and record branch + locked for every worktree it names, keyed on the
+# :A-resolved path. git reports realpaths while _wt_managed_worktrees keeps the
+# unresolved ~/.trees form, so both sides are resolved before keying
+# (_wt_same_path's semantics, minus the pairwise scan). Writes into the caller's
+# listing_* maps.
+load_repo_listing() {
+  local repo_key=$1
+  local line current="" branch="" locked=0 key
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ -n "$current" ]]; then
+        key=${current:A}
+        listing_repo[$key]=$repo_key
+        listing_branch[$key]=$branch
+        listing_locked[$key]=$locked
+      fi
+      current=""
+      branch=""
+      locked=0
+      continue
+    fi
+
+    case $line in
+      "worktree "*) current=${line#worktree } ;;
+      "branch "*) branch=${line#branch } ;;
+      locked*) locked=1 ;;
+    esac
+  done < <(git --git-dir="$repo_key" worktree list --porcelain 2>/dev/null; printf '\n')
+}
+
+# Rows come from _wt_managed_worktrees, never from the worktree listing: the
+# listing also names the main worktree and any stray tree registered outside
+# ~/.trees, which no wt-* surface treats as managed. The listing is a lookup
+# table for fields only.
 collect_all_records() {
-  local wt_path branch branch_ref locked prunable
+  local wt_path key repo_key branch branch_ref locked prunable base_state base base_ref_exists
+  local -A listing_repo listing_branch listing_locked repo_base repo_base_exists
 
   while IFS= read -r wt_path; do
     [[ -n "$wt_path" ]] || continue
-    branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
-    branch_ref=""
-    [[ -n "$branch" ]] && branch_ref="refs/heads/$branch"
-    locked=0
-    _wt_worktree_is_locked "$wt_path" "$wt_path" && locked=1
+    key=${wt_path:A}
+
+    # First worktree of a repo pays for its per-repo constants; every sibling
+    # the listing named is then answered from the maps, with no git call at all.
+    if [[ -z "${listing_repo[$key]:-}" ]]; then
+      repo_key=$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || repo_key=""
+      if [[ -n "$repo_key" && -z "${repo_base_exists[$repo_key]:-}" ]]; then
+        load_repo_listing "$repo_key"
+        base_state=$(resolve_base_state "$wt_path")
+        repo_base[$repo_key]=${base_state%%$'\t'*}
+        repo_base_exists[$repo_key]=${base_state##*$'\t'}
+      fi
+    fi
+
+    repo_key=${listing_repo[$key]:-}
+    if [[ -n "$repo_key" ]]; then
+      branch_ref=${listing_branch[$key]}
+      locked=${listing_locked[$key]}
+      base=${repo_base[$repo_key]}
+      base_ref_exists=${repo_base_exists[$repo_key]}
+    else
+      # Not in any listing we loaded (a repo whose common dir would not resolve,
+      # or a tree its own repo does not list): fall back to asking directly.
+      branch=$(git -C "$wt_path" branch --show-current 2>/dev/null)
+      branch_ref=""
+      [[ -n "$branch" ]] && branch_ref="refs/heads/$branch"
+      locked=0
+      _wt_worktree_is_locked "$wt_path" "$wt_path" && locked=1
+      base_state=$(resolve_base_state "$wt_path")
+      base=${base_state%%$'\t'*}
+      base_ref_exists=${base_state##*$'\t'}
+    fi
+
     prunable=0
-    print_record "$wt_path" "$branch_ref" "$locked" "$prunable"
+    print_record "$wt_path" "$branch_ref" "$locked" "$prunable" "$base" "$base_ref_exists"
   done < <(_wt_managed_worktrees)
 }
 
@@ -125,11 +211,14 @@ if (( all )); then
 else
 
 local current_path="" current_branch="" locked=0 prunable=0 matched=0
-local line
+local line base_state
 while IFS= read -r line || [[ -n "$line" ]]; do
   if [[ -z "$line" ]]; then
     if [[ -n "$current_path" && "$target" == "$current_path" ]]; then
-      print_record "$current_path" "$current_branch" "$locked" "$prunable"
+      # One worktree, so there is nothing to hoist: resolve at the call site.
+      base_state=$(resolve_base_state "$current_path")
+      print_record "$current_path" "$current_branch" "$locked" "$prunable" \
+        "${base_state%%$'\t'*}" "${base_state##*$'\t'}"
       matched=1
     fi
     current_path=""

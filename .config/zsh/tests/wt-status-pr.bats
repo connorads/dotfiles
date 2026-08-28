@@ -168,3 +168,49 @@ EOF
   # One gh call for three worktrees of the same repo (was three before the fix).
   [ "$(wc -l <"$HOME/gh-calls" | tr -d ' ')" -eq 1 ]
 }
+
+# git shim that logs every argv then execs the real git, so the run is real and
+# only the call count is observed. The real path is resolved with $TEST_BIN
+# dropped from PATH, because by the time the stub exists `command -v git` would
+# find the stub itself and exec-loop.
+stub_git_counting() {
+  local real_git
+  real_git=$(PATH="${PATH#"$TEST_BIN":}" command -v git)
+  : >"$HOME/git-calls"
+  write_stub git <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>"\$HOME/git-calls"
+exec $real_git "\$@"
+EOF
+}
+
+git_calls_matching() {
+  grep -c -- "$1" "$HOME/git-calls" | tr -d ' '
+}
+
+@test "wt-status --all resolves each per-repo constant with one git call" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  # Three worktrees, one repo: base branch, remote HEAD and the worktree listing
+  # are properties of the repo, so each must be asked for once, not once per tree.
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feat"
+  [ "$status" -eq 0 ]
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup fix"
+  [ "$status" -eq 0 ]
+
+  stub_git_counting
+
+  run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --json"
+  [ "$status" -eq 0 ]
+  # The rows themselves are unaffected by the hoisting.
+  [ "$(printf '%s' "$output" | jq -r 'length')" -eq 3 ]
+
+  # _wt_resolve_base: both probes are repo-wide.
+  [ "$(git_calls_matching 'config --get worktree.baseBranch')" -eq 1 ]
+  [ "$(git_calls_matching 'symbolic-ref')" -eq 1 ]
+  # The worktree listing answers branch + locked for every tree of the repo.
+  [ "$(git_calls_matching 'worktree list --porcelain')" -eq 1 ]
+}

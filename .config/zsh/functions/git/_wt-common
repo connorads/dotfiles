@@ -248,17 +248,10 @@ _wt_main_worktree_path() {
   printf '%s\n' "$wt_path"
 }
 
-_wt_merged_into_base() {
-  local repo_path=$1
-  local base_branch=$2
-  git -C "$repo_path" rev-parse --verify --quiet "refs/heads/$base_branch" >/dev/null 2>&1 || return 1
-  git -C "$repo_path" merge-base --is-ancestor HEAD "refs/heads/$base_branch" >/dev/null 2>&1
-}
-
 # --- PR state (gh) -----------------------------------------------------------
 # Real PR truth from GitHub, keyed by branch. fittr merges PRs via squash/rebase,
-# so local ancestry (`_wt_merged_into_base`) never reports a squash-merged branch
-# as merged; the PR's own MERGED/OPEN/CLOSED state is the signal cleanup trusts.
+# so local ancestry never reports a squash-merged branch as merged; the PR's own
+# MERGED/OPEN/CLOSED state is the signal cleanup trusts.
 
 # Per-invocation memoisation, keyed by a repo's git common dir (shared across all
 # its worktrees) so a `--all` sweep makes one `gh` call per distinct repo, not
