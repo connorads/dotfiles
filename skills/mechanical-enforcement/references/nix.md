@@ -132,7 +132,7 @@ it stays a gate config instead of the default statix picks up in any cwd.
 }
 ```
 
-`Builtins.deadnix` exists at hk 1.51.0; `statix` does not, hence the custom
+`Builtins.deadnix` exists at hk 1.56.1; `statix` does not, hence the custom
 step. Check the tag's `pkl/builtins/` before assuming either way.
 
 Order matters only for `fix`: run `statix fix` and `deadnix --edit` before

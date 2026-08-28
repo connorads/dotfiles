@@ -330,8 +330,8 @@ target platform closes that gap.
 ### Required first lines
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 ```
 
 **Always match the version in `amends` and `import` to the installed hk version** (`hk --version`),
@@ -492,8 +492,8 @@ hk --version   # check current
 Bump both URLs in `hk.pkl` to the installed version (minimum **v1.51.0**), e.g.:
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 ```
 
 ### Bypass hooks temporarily
@@ -545,7 +545,7 @@ hooks {
 | Noisy output on success | Add `-q` to the pre-commit wrapper (`hk run pre-commit -q`, hk ≥ 1.51.0): 0 bytes on success, full failing-step output on failure. **Never `--silent`** (drops failure diagnostics). See `references/output-noise.md` |
 | Hook runs in CI unnecessarily | Add `[ -n "$CI" ] && exit 0` to `prepare` script |
 | `hk.local.pkl` uses amends not being honoured | First line must be `amends "./hk.pkl"` |
-| A builtin named in the docs does not resolve | The builtin set is tied to the version in your `amends`/`import` URL, not to the installed `hk`. Check that tag's `pkl/builtins/` before reaching for one - `statix`, for instance, is absent at 1.51.0 while `deadnix`, `lychee`, `check_symlinks`, `check_case_conflict` and `hk_test` are all present |
+| A builtin named in the docs does not resolve | The builtin set is tied to the version in your `amends`/`import` URL, not to the installed `hk`. Check that tag's `pkl/builtins/` before reaching for one - `statix`, for instance, is absent at 1.56.1 while `deadnix`, `lychee`, `check_symlinks`, `check_case_conflict` and `hk_test` are all present |
 | `hk --all` seems to miss files | It selects **tracked** files only. An untracked tree under a directory you excluded for size was never in scope, so the exclude may be hiding tracked files for nothing - check with `hk check --all --stats` before keeping it |
 | `vale` fails on a deliberately-malformed frontmatter fixture | Vale hard-errors (E201) on unparseable frontmatter rather than skipping the file, so test fixtures that are invalid *on purpose* have to be excluded from the step, the same way lint fixtures are |
 | `pinact` fails whenever the machine is offline | It resolves every action ref through the GitHub API (`/repos/<owner>/<repo>/commits/<ref>`) and has no offline mode, so an unreachable API is a hard failure (exit 1 on 3.10.1), identical to the one it reports for a genuinely unpinned action. Put it in CI, not pre-commit - the same reason `zizmor` runs `--offline` in the hook |
