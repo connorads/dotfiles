@@ -33,7 +33,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 |---|---|---|---|---|---|
 | TypeScript / React / Next | oxfmt or Biome, via [Ultracite](https://www.ultracite.ai/) (`--linter oxlint` / `biome`) - see `references/typescript.md` (formatting) | Biome | oxlint (Rust) for native `no-console` / `typescript/no-explicit-any` / `typescript/no-non-null-assertion` / `no-restricted-imports` / `jsx-a11y` / `import/no-cycle` - **not** `no-restricted-syntax` (not native as of 1.74; needs the alpha JS plugin - member-expression bans ride a grep step, see `references/architecture-boundaries.md`); dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see `references/typescript.md`) | Ultracite is the default for new projects; the all-oxc stack (oxlint + oxfmt) is the recommended provider, Biome the stable fallback. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | oxfmt or Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
-| Python | ruff format | ruff | import-linter for layer / forbidden / independence contracts (tach is a watch - see `references/python.md`); vulture for whole-project dead-code audits | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 + pylint. See `references/python.md`. |
+| Python | ruff format | ruff | import-linter for layer / forbidden / independence contracts (tach is a watch - see `references/python.md`); vulture for whole-project dead-code audits; complexipy for cognitive complexity (ruff has none, and won't until rule categorisation is settled) | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 and most of pylint - but not `R0801` duplicate-code (a cross-file pass ruff's per-file parallel model cannot do), `R0902` too-many-instance-attributes, or `C0302` too-many-lines, which is declined upstream as incompatible with the formatter. See `references/python.md` and `references/complexity.md`. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See `references/rust.md` for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | go-arch-lint for declarative component `mayDependOn` maps; `gomodguard_v2` for module allow/block lists (v1 is deprecated in golangci-lint) | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. depguard with per-`files:` rules gates layers - see `references/architecture-boundaries.md` (Go boundaries). |
 | SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | - | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta - start advisory, verify dialect coverage before blocking. |
@@ -53,6 +53,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 | GitHub Actions / CI | - | [zizmor](https://github.com/zizmorcore/zizmor) + [actionlint](https://github.com/rhysd/actionlint) | - | - | Run both - minimal overlap. zizmor = security audit of `.github/workflows/*.yml` + `action.yml` (SARIF + `--format=github` annotations); actionlint = correctness (expression type-checks, `needs:` graph, runner labels; shells out to an installed ShellCheck for `run:` blocks - not embedded). actionlint is an hk builtin. Both are *static*; to *execute* a workflow locally before push (dynamic complement, not a linter), see [agent-ci](https://github.com/redwoodjs/agent-ci) - runs the real self-hosted runner image in Docker. |
 | Postgres migrations | - | [squawk](https://squawkhq.com/) | eugene (watch - `eugene trace` only) | - | Rust, static - no DB needed in CI (`squawk 'migrations/*.sql'`; failure level configurable). Atlas `migrate lint` is paid. `eugene trace` observes real lock acquisition against a temp Postgres - ad-hoc for high-contention migrations; never wire `eugene lint` (duplicates squawk via the same pg_query.rs parser; pre-1.0, solo-maintained). Neither replaces `lock_timeout` / `statement_timeout` in the migration runner. MySQL/SQLite: gap. |
 | API / event contracts | - | buf breaking / oasdiff / graphql-inspector | cargo-semver-checks, api-extractor; vacuum for baseline-free OpenAPI spec governance | - | Baseline-diff gates for cross-service contracts - see `references/architecture-boundaries.md` (Boundary contracts); spec-shape governance in `references/contract-gates.md`. |
+| Code duplication (cross-stack) | - | jscpd (`jscpd . --min-tokens 50 --threshold 3`) | in-linter halves: `sonarjs/no-identical-functions` (TS), `dupl` (Go, within one package only); similarity-ts/-py/-rs for renamed near-duplicates (advisory - they exit 0 unless an explicit flag is passed) | - | Rabin-Karp over tokens across 223 formats, so one gate covers a polyglot repo. `--threshold` owns the exit code (v5 auto-injects the threshold reporter); **`--exit-code` is a different thing** - it fails on any clone at all, so never combine them. Comparison is strictly greater, so `--threshold 5` passes at exactly 5%. The npm package is a Node shim over six platform binaries and there is **no `linux-arm64-musl`** - on Alpine/arm64 it exits 1 with `Unsupported platform`, which reads as "duplication found". Percentage thresholds are a ratchet, never a defended number. See `references/complexity.md`. |
 | Custom rules / SAST | - | Opengrep (`opengrep scan --config <dir> --error`) | ast-grep for syntax-only structural rules - see `references/architecture-boundaries.md` | - | The OSS Semgrep fork (engine LGPL-2.1) after the Dec-2024 semgrep-rules relicensing: dataflow/taint custom rules across 20+ languages, Semgrep-format YAML, SARIF. Install via curl/Docker (no npm). **Default exits 0 even with findings - `--error` is load-bearing.** For authoring your own bug-class rules; see "Adding a new rule" and `references/architecture-boundaries.md` (Greppable invariants). |
 
 > **Framework single-file components** (`.astro` / `.vue` / `.svelte`) have no
@@ -83,6 +84,7 @@ Rules are organised by **concern**, not by linter. Each entry gives: what it pre
 - **Rust** → `references/rust.md` - clippy correctness, thresholds, pedantic allows, workspace wiring, supply chain, unused deps, boundaries.
 - **Nix** → `references/nix.md` - nixfmt, deadnix, statix, and why evaluating every host config is the stronger gate.
 - **Architectural boundaries** (cross-stack) → `references/architecture-boundaries.md` - illegal-graph rules, transitive gates, Go boundaries, greppable invariants, purity, contract gates.
+- **Complexity and duplication** (cross-stack) → `references/complexity.md` - what each metric is worth as evidence, the cross-stack number table, which metric to run where, duplication gates, Go complexity settings, and the ratchet vehicles.
 - **Web delivery gates** (cross-stack) → `references/web-delivery.md` - runtime accessibility (the runtime complement to static `jsx-a11y`), HTML conformance, structured data, Open Graph metadata, broken links. Boundaries: perf → `web-perf` skill; a11y rationale → `accessibility` skill.
 
 The cross-stack concerns below stay inline.
@@ -196,7 +198,9 @@ Write the baseline once during adoption; never refresh it in CI.
 | dependency-cruiser | `depcruise-baseline` + `--ignore-known` | Makes graph/boundary rules adoptable on an already-tangled repo. |
 | basedpyright | `--writebaseline` - the exemplar workflow in `references/python-typecheck.toml` | Baselined errors downgrade to hints; fixed ones auto-prune. |
 | ruff | `ruff check --select CODE --add-ignore`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file - scope per rule and prefer a reason on manually added suppressions. Requires Ruff 0.16+. |
-| golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating; no baseline file. |
+| golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating; no baseline file. Add `--whole-files` for complexity rules - they report at the function signature line, so editing a long function's middle otherwise hides the finding. Needs `fetch-depth: 0`. |
+| complexipy (Python) | `--snapshot-create` → committed `complexipy-snapshot.json`, then `--snapshot-ignore` to opt out | The only per-site Python complexity baseline; ruff has none. Keyed by (path, file, function name), so a rename reads as a new violation, and it resolves against the invocation directory rather than the repo root. |
+| lizard | `lizard -i <today's count>` | Coarse: a bare warning **count**, not a per-site baseline, so fixing one function and adding another nets zero. Use only for languages with no linter baseline. |
 | Coverage (Vitest) | `coverage.thresholds.autoUpdate: true` | Self-tightening: bumps thresholds up as coverage rises. Run where the config edit can be committed, not in a gated CI job. |
 
 Biome and oxlint have no baseline mechanism (open proposals only) - on a legacy
@@ -205,6 +209,18 @@ instead. Betterer, the generic snapshot-ratchet wrapper, is dormant - avoid.
 Where no vehicle exists, fall back to severity: gate at *warning* first,
 escalate to *error* after a grace window, and tighten the number release by
 release.
+
+Two traps in the vehicles themselves. ESLint's `--suppress-all` only records
+violations from rules configured as **error**, so the common adoption order
+(land the rule at `warn`, tighten later) silently writes an empty baseline; and
+`--suppressions-location` must be passed on *every* run, not just when creating
+the file, or ESLint reads no suppressions and the gate fires on legacy code.
+
+Complexity gates are the archetype of a rule that lands red everywhere at once.
+If the number you actually want produces more than a couple of dozen violations,
+it is a refactoring backlog rather than a gate - carry it as CI reporting until
+the backlog shrinks. A number chosen to make today's worst file pass is not a
+gate.
 
 ## References
 
@@ -215,6 +231,7 @@ release.
 - `references/rust.md` - Rust: clippy correctness, thresholds, pedantic allows, workspace wiring, cargo-deny, cargo-machete, crate boundaries
 - `references/nix.md` - Nix: nixfmt, deadnix (`--edit` renames, it does not delete), statix (one target per call, disable `repeated_keys`), evaluation as the correctness gate
 - `references/architecture-boundaries.md` - cross-stack boundaries: illegal-graph rules, transitive graph gates, Go boundaries, greppable invariants, purity, contract gates
+- `references/complexity.md` - cross-stack complexity and duplication: what the evidence supports gating on, the number table, the off-by-default trap per stack, duplication gates, Go settings, ratchet vehicles
 - `references/web-delivery.md` - cross-stack web delivery gates: runtime accessibility (axe/pa11y), HTML conformance (html-validate), structured data (schema-dts), Open Graph metadata, broken links (lychee)
 
 ### Shell
@@ -247,6 +264,7 @@ release.
 ### Cross-stack
 
 - `references/hk-steps.pkl` - worked hk.pkl step graph
+- `references/golangci-complexity.yml` - golangci-lint v2 complexity gate (cyclop / gocognit / funlen / nestif / dupl / nolintlint), drop-in
 - `references/contract-gates.md` - command patterns + CI placement for buf breaking, oasdiff, graphql-inspector, cargo-semver-checks, api-extractor, pact can-i-deploy
 - [Ultracite](https://www.ultracite.ai/) - Biome preset bundle
 - [hk](https://hk.jdx.dev) - git hook manager

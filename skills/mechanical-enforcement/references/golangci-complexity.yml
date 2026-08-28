@@ -1,0 +1,111 @@
+# golangci-lint v2 complexity gate - drop-in.
+# Verified against golangci-lint v2.13.2 and the .golangci.reference.yml on the
+# `main` branch; schema-validated against golangci-lint's own shipped JSON
+# schema. Note `master` is the dead v1 branch - its defaults differ.
+#
+# v2 SCHEMA: settings live under `linters.settings`, NOT `linters-settings`.
+# v2 rejects the v1 key outright - run `golangci-lint migrate` on old configs.
+#
+# `golangci-lint run` does NOT reject unknown keys (viper drops them silently).
+# Run `golangci-lint config verify` in CI, or a misspelled threshold gates
+# nothing and says so nowhere.
+#
+# Numbers and rationale: references/complexity.md.
+version: "2"
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused.
+  # NONE of the complexity linters are in it. This list is additive, so the
+  # five standard linters stay on; use `none` for only the complexity gate.
+  default: standard
+  enable:
+    - cyclop # McCabe per function, plus a package average
+    - gocognit # real Campbell cognitive complexity (nesting-weighted)
+    - funlen # function length
+    - nestif # nesting-weighted if score
+    - dupl # token duplication (within a package only)
+    - nolintlint # //nolint must be specific and explained
+    - gochecknoglobals # no package-level mutable state (see caveat)
+    # Deliberately NOT enabled:
+    #   gocyclo  - overlaps cyclop and counts `default:` clauses differently,
+    #              so the two disagree on switch-heavy code. Pick one.
+    #   maintidx - maintainability index; composite, unactionable, and its own
+    #              upstream calls it experimental. See references/complexity.md.
+
+  settings:
+    # Default 10, reports when complexity > this. cyclop counts `default:`
+    # clauses; gocyclo does not, so their scores differ by one per `default:`.
+    # `skip-tests` was REMOVED in v2 and is hard-set false - a leftover entry is
+    # silently ignored by `run`. Exclude tests by path instead (below).
+    cyclop:
+      max-complexity: 15
+      # Default 0.0 = disabled. Advisory: an average improves when you add
+      # trivial functions, so treat a breach as a prompt, not a gate.
+      package-average: 10.0
+
+    # Default 30, and the reference config's own comment concedes
+    # "we recommend 10-20" - so the default gates nothing. 15 is SonarSource's
+    # S3776 default and the cross-stack number.
+    gocognit:
+      min-complexity: 15
+
+    # These ARE the v2 defaults, spelled out so the gate is auditable in one
+    # file. `ignore-comments` flipped from false (v1) to true (v2): migrating a
+    # config that omitted it silently loosens the gate. A negative value
+    # disables that half.
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true
+
+    # Default 5. A nesting-WEIGHTED score over if statements, not a depth count,
+    # so this is not the same unit as ESLint's max-depth: 4. It also reports at
+    # >= while cyclop/gocognit/funlen are strictly greater - off by one against
+    # them. Calibrate before blocking.
+    nestif:
+      min-complexity: 4
+
+    # Default 150 tokens. Compares files WITHIN one package only; cross-package
+    # duplication is invisible to it - jscpd owns that (references/complexity.md).
+    dupl:
+      threshold: 150
+
+    # gochecknoglobals has NO settings at all. Its whitelist is hard-coded:
+    # consts, `_`, the bare name `version`, err*/Err* identifiers implementing
+    # error, //go:embed vars, and regexp.MustCompile values. A package logger,
+    # a sync.Once or a metrics registry all report - exclude those by path.
+
+    # Without this, //nolint:cyclop is an unexplained escape hatch. All three
+    # booleans default to false. NB golangci-lint's own bundled JSON schema
+    # wrongly documents allow-unused as defaulting to true; the source says
+    # false.
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+
+  exclusions:
+    warn-unused: true
+    rules:
+      # The v2 replacement for the removed per-linter skip-tests options.
+      # Table fixtures are long, duplicated and nested on purpose.
+      - path: '(.+)_test\.go'
+        linters: [cyclop, gocognit, funlen, nestif, dupl, gochecknoglobals]
+
+      # Observability wiring is the reliable gochecknoglobals false positive.
+      - path: (^|/)(cmd|internal/observability)/
+        linters: [gochecknoglobals]
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+# Ratchet: keep the diff filter on the CI command line, not here, so local runs
+# still see the whole tree.
+#   golangci-lint run --new-from-merge-base=origin/main --whole-files
+# --whole-files matters: a complexity finding is reported at the function
+# SIGNATURE line, so without it, editing the middle of a long function hides it.
+# The flag help text claims --whole-files requires --new-from-rev; that text is
+# stale and no such validation exists in the code.
+# actions/checkout needs fetch-depth: 0 (default 1 leaves no merge base, and the
+# filter then silently sees nothing). Name a remote-tracking ref, not `main`.

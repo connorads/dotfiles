@@ -128,11 +128,9 @@ graph-erosion metrics - a watch, against the local-OSS grain, same posture as
 Socket.
 
 Soft complexity thresholds are the file-local half of the same erosion story
-(von Zitzewitz), enforced by each stack's own linter: file ≤ 800 LoC,
-cyclomatic complexity ≤ 15 (defect rates climb sharply past ~24), and **max
-nesting depth ≤ 4** - a cheap, underused proxy (ESLint `max-depth`, ruff/pylint
-equivalents) that catches deeply branched code a cyclomatic cap misses. Rust
-numbers live in `references/rust.md`.
+(von Zitzewitz): size, nesting depth and parameter count, enforced by each
+stack's own linter. The numbers, the evidence behind each metric, and which of
+them are report-only rather than gates live in `references/complexity.md`.
 
 ## Go boundaries
 

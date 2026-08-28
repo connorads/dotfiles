@@ -43,6 +43,20 @@ extend-select = [
     "SIM", # flake8-simplify
     "I",   # isort
     "RUF", # Ruff-specific rules
+    # --- Complexity. Ruff's 413-rule default set contains NONE of these. ---
+    "C901",     # cyclomatic complexity (mccabe)
+    "PLR0911",  # too-many-return-statements
+    "PLR0912",  # too-many-branches
+    "PLR0913",  # too-many-arguments
+    "PLR0915",  # too-many-statements
+    "PLR0917",  # too-many-positional-arguments (stable since 0.16.0)
+    # Preview rules. Inert unless BOTH preview settings below are set, and named
+    # here by exact code - a bare "PLR" prefix pulls in none of them.
+    "PLR0904",  # too-many-public-methods
+    "PLR0914",  # too-many-locals
+    "PLR0916",  # too-many-boolean-expressions
+    "PLR1702",  # too-many-nested-blocks  <- the nesting-depth gate
+    "PLW0717",  # too-many-statements-in-try-clause
 ]
 ignore = [
     # Ruff format owns wrapping. Re-enable only if the project wants a hard
@@ -50,11 +64,57 @@ ignore = [
     "E501",
 ]
 fixable = ["ALL"]
-preview = false
+
+# Five of the complexity rules above are preview-only, and selecting a preview
+# rule with `preview = false` is a SILENT no-op: ruff prints
+# "warning: Selection PLR1702 has no effect because preview is not enabled"
+# and then "All checks passed!" - configured, apparently gating, checking
+# nothing. Blanket `preview = true` is the opposite failure: it enables every
+# unstable rule in the select set. The pair below is the narrow route - preview
+# rules fire only when named by exact code, so a minor bump still cannot add
+# unstable rules, which is what `preview = false` was protecting.
+preview = true
+explicit-preview-rules = true
+
+[tool.ruff.lint.mccabe]
+# 10 is McCabe's original and Ruff's own default; 15 is the top of the range
+# NIST SP 500-235 sanctions and the cross-stack number. Ratchet legacy code with
+# a snapshot, never by raising this past 15.
+# CAUTION: Ruff counts fewer constructs than radon - `if a and b and c` scores 2
+# here because there is no per-boolean-operator increment. Never port a
+# threshold between the two tools.
+max-complexity = 15
+
+[tool.ruff.lint.pylint]
+max-args = 5              # default. self/cls excluded; @typing.override exempt.
+max-positional-args = 3   # TIGHTENED from 5 (PLR0917). Keyword-only args after
+                          # `*` do not count, so the fix is a `*` in the
+                          # signature, not a refactor.
+max-returns = 6           # default. The weakest rule here - adopt it last, and
+                          # drop it rather than raise it if it fights guard
+                          # clauses.
+max-branches = 12         # default. Looser than max-complexity on purpose, so
+                          # the two catch different shapes.
+max-statements = 50       # default. The ONLY function-length gate Ruff has.
+max-nested-blocks = 4     # TIGHTENED from 5 (PLR1702, preview). Cross-stack depth.
+max-bool-expr = 5         # default (PLR0916, preview).
+max-locals = 15           # default (PLR0914, preview).
+max-public-methods = 20   # default (PLR0904, preview).
+max-statements-in-try = 5 # default (PLW0717, preview).
 
 [tool.ruff.lint.per-file-ignores]
 # Tests intentionally use asserts, fixture names, literals, and compact setup.
-"tests/**" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN"]
+"tests/**" = [
+    "S101", "ARG", "FBT", "PLR2004", "D", "ANN",
+    "C901",                # arrange-heavy tests are long and linear on purpose
+    "PLR0913", "PLR0917",  # pytest injects fixtures as positional parameters
+    "PLR0915",
+    "PLR0904",             # a TestCase subclass is a bag of public methods by design
+]
+# Deliberately NOT relaxed in tests: PLR0912 (branches) and PLR1702 (nesting).
+# A branchy or deeply nested test is a test with logic in it, which is exactly
+# what you want flagged.
+"**/conftest.py" = ["PLR0913", "PLR0917"]
 
 # Migrations are framework output and often preserve generated names/shapes.
 "**/migrations/**" = ["D", "ANN", "E501", "N806", "N815", "RUF012"]

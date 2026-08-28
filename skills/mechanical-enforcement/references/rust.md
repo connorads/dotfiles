@@ -23,17 +23,52 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`.
 
 ## Complexity thresholds (clippy.toml)
 
-All settings go in `clippy.toml` at the workspace root. See `references/clippy-thresholds.toml` for a drop-in file.
+All settings go in `clippy.toml` at the workspace root. See
+`references/clippy-thresholds.toml` for a drop-in file, and
+`references/complexity.md` for the cross-stack numbers and the evidence behind
+them.
 
-| Setting | Default | Recommended | Prevents |
+**A key in `clippy.toml` sets a threshold; it does not enable a lint.** Most of
+the settings below belong to `pedantic` or `restriction` lints, which are
+allow-by-default - so the key produces nothing, silently and with no warning
+that it did nothing, until the lint is enabled in `Cargo.toml`
+(`references/rust-workspace-lints.toml`). This is the same fail-open shape as
+selecting a preview rule in Ruff, and it is easier to miss because clippy says
+nothing at all.
+
+| Setting | Default (tier / level) | Recommended | Prevents |
 |---|---|---|---|
-| `too-many-lines-threshold` | 100 | 100 | Functions too long to review in one screen. Per-fn `#[allow(clippy::too_many_lines)]` for faithful translations (e.g. ASM ports). |
-| `too-many-arguments-threshold` | 7 | 7 | God-functions with too many inputs. |
-| `cognitive-complexity-threshold` | 25 | 25 | Deeply nested/branching logic. |
-| `type-complexity-threshold` | 250 | 250 | Deeply nested generics. |
-| `max-fn-params-bools` | 3 | 3 | Boolean-parameter blindness. |
-| `max-struct-bools` | 3 | 3 | Structs that should use enums instead. |
-| `disallowed-names` | `["foo","baz","quux"]` | `["foo","bar","baz","quux"]` | Placeholder names leaking into prod. |
+| `too-many-arguments-threshold` | 7 (complexity, in `clippy::all`, warn) | 7 | God-functions with too many inputs. Already live under `-D warnings`. |
+| `type-complexity-threshold` | 250 (complexity, in `clippy::all`, warn) | 250 | Deeply nested generics. The lint is `type_complexity`. |
+| `enum-variant-size-threshold` | 200 bytes (perf, in `clippy::all`, warn) | 200 | An enum sized by its fattest variant. Its suggested fix is boxing, which adds an allocation - measure on a hot path before taking it. |
+| `large-error-threshold` | 128 bytes (perf, in `clippy::all`, warn) | 128 | `Result<T, E>` where the error path bloats every return. |
+| `excessive-nesting-threshold` | **0 = disabled** (complexity, in `clippy::all`, warn) | 5 | Arrow code. The one clippy lint that weighs nesting, and it ships inert: the lint returns early at threshold 0, so setting this key is what switches it on - no `Cargo.toml` change needed. Counts **blocks**, so a fn body is level 1 and 5 here is the cross-stack depth 4. |
+| `too-many-lines-threshold` | 100 (pedantic, allow) | 100 | Functions too long to review in one screen. Needs `too_many_lines = "warn"`. Per-fn `#[expect(clippy::too_many_lines)]` for faithful translations (e.g. ASM ports). |
+| `cognitive-complexity-threshold` | 25 (restriction, allow) | 25 | A second branch cap. Needs `cognitive_complexity = "warn"`. **Not Campbell cognitive complexity** - see below. |
+| `pass-by-value-size-limit` | 256 bytes (pedantic, allow) | 256 | Silent memcpy of fat structs across call boundaries. The lint is `large_types_passed_by_value`, and **the key is not named after it**; using the lint name as a key is a hard error, not a no-op. |
+| `trivial-copy-size-limit` | unset, defaults to target pointer width (pedantic, allow) | leave unset | `&u8` / `&bool` parameters. Hard-coding a byte count breaks cross-compilation parity. |
+| `max-fn-params-bools` | 3 (pedantic, allow) | 3 | Boolean-parameter blindness at the call site. |
+| `max-struct-bools` | 3 (pedantic, allow) | 3 | Structs that should use enums instead. Standing false positive on state/config structs - it is in the common-allows table below. |
+| `struct-field-name-threshold` | 3 (pedantic, allow) | 3 | `User { user_id, user_name, user_email }` - stuttering fields that want their own type. |
+| `disallowed-names` | `["foo","baz","quux"]` (style, in `clippy::all`, warn) | `["foo","bar","baz","quux"]` | Placeholder names leaking into prod. Setting the key **replaces** the list; `bar` is absent upstream because it is a real word (progress bar, menu bar), so adding it is a deliberate widening - drop it again in UI or plotting crates. |
+
+**`clippy::cognitive_complexity` does not measure cognitive complexity.** It
+moved nursery → **restriction** in Rust 1.91, so it sits outside both
+`clippy::all` and `clippy::pedantic` and `-D warnings` will never reach it.
+Clippy's own docs disclaim it, keeping it in `restriction` so as not to mislead
+users into treating it as a measurement tool: the implementation counts `if`s,
+multi-arm matches and guards with a return adjustment, and has **no nesting
+weighting** - the defining feature of the Campbell metric is simply absent.
+Treat it as a second cyclomatic cap, or skip it and lean on `excessive_nesting`
+plus `too_many_lines`, which clippy's docs name as the honest replacements.
+
+**Prefer `#[expect(...)]` over `#[allow(...)]`** for per-item suppressions of
+these lints (stable since Rust 1.81). `expect` fires
+`unfulfilled_lint_expectations` once the suppression stops being needed, which
+is the difference between a ratchet and permanent debt.
+
+Rust has no duplication lint, and the crates that claim the job are advisory at
+best - see `references/complexity.md` (Duplication).
 
 ## Common pedantic allows
 

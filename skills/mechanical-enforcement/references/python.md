@@ -6,6 +6,7 @@ import boundaries. Routed from the picks table and rules-catalogue index in
 
 - [Ruff format + lint](#ruff-format--lint)
 - [Type checking](#type-checking)
+- [Complexity](#complexity)
 - [Dead code (Vulture)](#dead-code-vulture)
 - [Boundaries (import-linter)](#boundaries-import-linter)
 
@@ -70,6 +71,59 @@ Suppressions must be narrow and rule-coded: `# pyright: ignore[reportX]`,
 `# pyrefly: ignore[rule]`, `# ty: ignore[rule-name]`, or
 `# type: ignore[ty:rule-name]`. Avoid bare `# type: ignore`; keep unused-ignore
 diagnostics enabled so suppressions expire.
+
+## Complexity
+
+The cross-stack argument and the numbers live in `references/complexity.md`;
+the config block is `references/python-ruff.toml`. This is the rule map.
+
+Ruff's 413-rule default set contains **no** complexity rule, so every code below
+must be named explicitly - and five of them are preview-only.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Branch count | `C901` + `[lint.mccabe] max-complexity = 15` | Functions with more paths than a test suite covers | 10 is McCabe's original and Ruff's default; 15 is the cross-stack number. **Never port a threshold from radon** - see below. |
+| Nesting depth | `PLR1702` (preview) + `max-nested-blocks = 4` | Arrow code, which unbraced Python makes easy to write and hard to see | Counts `with` / `for` / `while` / `try` / `if`. Tightened from the default 5 to the cross-stack number. The only stable alternative, `WPS220`, hard-codes its limit and drags in flake8. |
+| Flat branch arms | `PLR0912` + `max-branches = 12` | God functions that grew one `elif` per requirement | Keep the default: deliberately looser than the branch cap, so the two catch different shapes (wide-but-shallow dispatch). |
+| Function size | `PLR0915` + `max-statements = 50` | Functions no reviewer reads end to end | **The only function-length gate Ruff has** - there is no line-based function rule and no file-length rule. Roughly 60-90 formatted lines. |
+| Parameter count | `PLR0913` + `max-args = 5` | Signatures that need a comment to call correctly | `self` / `cls` excluded; `@typing.override` methods exempt. |
+| Positional-argument count | `PLR0917` + `max-positional-args = 3` | Two same-typed positionals swapped silently at the call site | Stable since ruff 0.16.0 (preview on 0.15.x, where selecting it is a silent no-op). Keyword-only args after `*` do not count, so the fix is a `*` in the signature, not a refactor. |
+| Compound conditions | `PLR0916` (preview) + `max-bool-expr = 5` | `if a and b and c and d and e and f` | Counts the boolean expressions in one `if`. |
+| Over-broad `try` | `PLW0717` (preview) + `max-statements-in-try = 5` | An `except` that cannot tell which of six statements threw | The mechanical form of "narrow the try block"; no other Python linter gates it. Retry and transaction wrappers are the false-positive class. |
+| God classes | `PLR0904` (preview) + `max-public-methods = 20` | Classes carrying too many responsibilities | The nearest proxy for pylint's `R0902` (too-many-instance-attributes), which Ruff does not implement. Relax in tests - a `TestCase` subclass is a bag of public methods by design. |
+| Local-variable count | `PLR0914` (preview) + `max-locals = 15` | Functions carrying too much state at once | Already generous. Do not lower it toward WPS's 5; named intermediates aid readability in numeric code. |
+| Return count | `PLR0911` + `max-returns = 6` | An `if x == "a": return 1` chain that wants to be a dict | The weakest rule here and folklore-adjacent - it descends from single-exit doctrine, which guard clauses deliberately reject. Adopt it last, and drop it rather than raise it if it fights good code. |
+| Cognitive complexity | `complexipy --max-complexity-allowed 15 <paths>` | The read-difficulty half: a flat 12-branch dispatch and a 4-deep nest score alike under C901 | Ruff has no cognitive-complexity rule and will not get one until rule categorisation is settled (astral-sh/ruff#2418, open since 2023, `needs-decision`). complexipy implements the real nesting-weighted Campbell metric, defaults to 15, exits 1, and ships the only Python complexity baseline that exists. Install `pipx:complexipy`. Run it **instead of** tightening C901. |
+| Duplicate code | `pylint --disable=all --enable=duplicate-code` | Copy-paste divergence: the second copy never gets the bug fix | Ruff does not implement `R0801` and structurally cannot - it is per-file and parallel, while R0801 is a whole-project cross-file pass. Raise `min-similarity-lines` to 8; the default 4 floods on imports and boilerplate. **Do not use the standalone `symilar` binary as a gate** - it ends in an unconditional `sys.exit(0)`, so it reports and can never fail. |
+| File length | `radon raw -s`, or a `wc -l` step | A Python tree drifting while TS and Rust gate file size | pylint's `C0302` has no Ruff equivalent and is **declined upstream** as incompatible with the formatter, so this fallback is permanent rather than a stopgap. |
+
+**Preview rules need `explicit-preview-rules`, not blanket preview.** Selecting
+`PLR1702` with preview off prints
+`warning: Selection PLR1702 has no effect because preview is not enabled` and
+then `All checks passed!` - the rule is in the config, appears to gate, and
+checks nothing. Set `preview = true` **and** `explicit-preview-rules = true`,
+then name every preview rule by exact code: under that pairing a bare `PLR`
+prefix enables none of them, which preserves what `preview = false` was buying
+(no surprise preview rules on a minor bump) while letting the five complexity
+rules gate. Verified on ruff 0.16.2.
+
+**complexipy resolves its config against the invocation directory, and does not
+walk up.** Run it from a subdirectory and it silently uses defaults - threshold
+15 rather than your `[tool.complexipy]` - and finds no
+`complexipy-snapshot.json`, which quietly disables grandfathering while the
+plain threshold check still fires. Pin the working directory in the hook step.
+Two more: `--diff <ref>` is a threshold gate, not a no-regressions gate (a
+function going 3 → 4 under a limit of 15 passes), and the 6.0.0 scoring
+conformance pass raised most scores, so a threshold tuned on 5.x will start
+failing. The v7 CLI removed `--output-json` / `--output-csv` / `--ratchet`;
+prefer the long `--max-complexity-allowed` over `-mx`, which the in-progress
+native CLI drops.
+
+**Ruff's C901 counts fewer constructs than radon.** Ruff scores
+`if a and b and c` as 2, having no per-boolean-operator increment; radon adds
+one per extra operand and also counts comprehensions and `assert` higher
+(`radon cc --no-assert` closes the last one). A threshold ported from radon is
+therefore materially stricter in Ruff. Pick one tool and tune the number in it.
 
 ## Dead code (Vulture)
 

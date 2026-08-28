@@ -1,25 +1,65 @@
-# clippy.toml — drop-in complexity thresholds
-# Copy to project root as `clippy.toml`
+# clippy.toml - drop-in complexity thresholds
+# Copy to workspace root as `clippy.toml`
 # Docs: https://doc.rust-lang.org/clippy/lint_configuration.html
+#
+# TIERS MATTER. A key here sets a threshold; it does NOT enable a lint. Lints
+# marked (pedantic) or (restriction) are allow-by-default and produce NOTHING -
+# silently, with no warning that the key did nothing - until they are enabled in
+# Cargo.toml. See references/rust-workspace-lints.toml.
 
-# Function complexity
-too-many-lines-threshold = 100        # pedantic: too_many_lines
-too-many-arguments-threshold = 7      # too_many_arguments
-cognitive-complexity-threshold = 25   # cognitive_complexity
-type-complexity-threshold = 250       # type_complexity_limit
+# --- Function complexity ---
 
-# Struct/param quality
-max-fn-params-bools = 3               # fn_params_excessive_bools
-max-struct-bools = 3                  # struct_excessive_bools
+# (complexity, in clippy::all, warn) - already live under -D warnings
+too-many-arguments-threshold = 7
 
-# Naming
-disallowed-names = ["foo", "bar", "baz", "quux"]  # disallowed_names
+# (pedantic, allow) - inert unless `too_many_lines = "warn"`
+too-many-lines-threshold = 100
+
+# (complexity, in clippy::all, warn) BUT the default 0 means disabled: the lint
+# returns early at threshold 0, so this line is what switches it on. Counts
+# BLOCK nesting, so a fn body is level 1 and 5 here is the cross-stack depth 4.
+excessive-nesting-threshold = 5
+
+# (restriction, allow) - inert unless `cognitive_complexity = "warn"`.
+# Moved nursery -> restriction in Rust 1.91. NOT Campbell cognitive complexity:
+# ifs + multi-arm matches + guards with a return adjustment, and NO nesting
+# weighting. Treat it as a second cyclomatic cap.
+cognitive-complexity-threshold = 25
+
+# --- Types ---
+
+type-complexity-threshold = 250       # (complexity, all, warn) lint: type_complexity
+enum-variant-size-threshold = 200     # (perf, all, warn) bytes; lint: large_enum_variant
+large-error-threshold = 128           # (perf, all, warn) bytes; lint: result_large_err
+
+# (pedantic, allow) - lint: large_types_passed_by_value, in bytes.
+# NOTE the key is NOT named after the lint. Using the lint name as a key is a
+# hard error, not a silent no-op.
+pass-by-value-size-limit = 256
+
+# (pedantic, allow) - lint: trivially_copy_pass_by_ref.
+# Deliberately unset: the default is the target pointer width, which is the
+# right machine-specific answer. A hard-coded byte count breaks cross-compiles.
+# trivial-copy-size-limit = 8
+
+# --- Struct / param quality ---
+
+max-fn-params-bools = 3               # (pedantic, allow) fn_params_excessive_bools
+max-struct-bools = 3                  # (pedantic, allow) struct_excessive_bools
+struct-field-name-threshold = 3       # (pedantic, allow) struct_field_names
+
+# --- Naming ---
+
+# (style, in clippy::all, warn). Upstream default is ["foo", "baz", "quux"] -
+# "bar" is absent because it is a real word (progress bar, menu bar, bar chart).
+# Setting this key REPLACES the list, so adding "bar" is a deliberate widening.
+disallowed-names = ["foo", "bar", "baz", "quux"]
 
 # Purity / boundary bans (clippy::disallowed_methods / disallowed_types).
-# Granularity is crate-wide — scope by putting the pure code in its own crate.
+# Granularity is crate-wide - scope by putting the pure code in its own crate.
 disallowed-methods = [
-    { path = "std::env::var", reason = "read config through a port — parse env at startup in the shell" },
-    { path = "std::time::SystemTime::now", reason = "inject a clock — domain code takes time as an argument" },
+    { path = "std::env::var", reason = "read config through a port - parse env at startup in the shell" },
+    { path = "std::time::SystemTime::now", reason = "inject a clock - domain code takes time as an argument" },
 ]
 disallowed-types = [
     # { path = "sqlx::PgPool", reason = "domain crates depend on a repository trait, not the driver" },
