@@ -6,6 +6,16 @@
 # Enable pedantic at warn; promote to deny once clean
 pedantic = { level = "warn", priority = -1 }
 
+# --- Complexity lints whose thresholds clippy.toml sets ---
+# `pedantic` above already covers too_many_lines, fn_params_excessive_bools,
+# struct_field_names, large_types_passed_by_value and trivially_copy_pass_by_ref.
+# Spell those out individually ONLY if you are not taking all of pedantic.
+#
+# cognitive_complexity is `restriction`: NOT in `all`, NOT in `pedantic`, and
+# -D warnings will never turn it on. Enable it deliberately, knowing it is a
+# cyclomatic count with no nesting term (see references/rust.md).
+cognitive_complexity      = "warn"
+
 # --- Common allows (adjust per-project) ---
 
 # Numeric code (casts) — allow in emulator/embedded/math-heavy projects

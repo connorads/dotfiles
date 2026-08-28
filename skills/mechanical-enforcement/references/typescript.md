@@ -15,6 +15,7 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 - [Framework single-file components (.astro / .vue / .svelte)](#framework-single-file-components-astro--vue--svelte)
 - [UI hygiene (React / Next)](#ui-hygiene-react--next)
 - [Import hygiene](#import-hygiene)
+- [Complexity and duplication](#complexity-and-duplication)
 - [Dead code (knip)](#dead-code-knip)
 - [Library publishing (publint + attw)](#library-publishing-publint--attw)
 - [Asserting on shipped artifacts](#asserting-on-shipped-artifacts)
@@ -151,6 +152,89 @@ axe/pa11y gate in `references/web-delivery.md`. Run both.
 | No cycles | oxlint `import/no-cycle` (Rust, multi-file - retires madge) or [madge](https://github.com/pahen/madge) (`madge --circular`); Biome `noImportCycles` is stable but scanner-heavy | Module init-order bugs |
 | No default exports (optional) | Biome `noDefaultExport` / ESLint `import/no-default-export` | Inconsistent naming at import sites; poor rename refactoring. Exempt Next.js pages/layouts where defaults are required. |
 | Unique function names | `no-restricted-syntax` on duplicate `FunctionDeclaration` identifiers across a file; fallback is a grep-based hk step | Duplicate helpers being written instead of discovered. Grep check catches the cross-file case ESLint can't. |
+
+## Complexity and duplication
+
+The cross-stack argument, the numbers, and what is report-only live in
+`references/complexity.md`. This is the wiring.
+
+**No ESLint layer is needed for these.** All seven ESLint metric rules are
+native Rust in oxlint, including `complexity`'s `variant: "modified"`. Cognitive
+complexity and duplicate-function detection are the only gaps, and oxlint's
+`jsPlugins` bridge (alpha) runs the real `eslint-plugin-sonarjs` to close them.
+
+**Every rule below is off until you name it.** They sit in oxlint's `pedantic` /
+`style` / `restriction` categories, so `-D warnings` does not reach them.
+Verified on oxlint 1.77.0: a 5-deep, 5-parameter function produces **no
+diagnostics at all** on a bare run, and fires the moment the rules are named.
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| Branch count | oxlint `complexity: ["error", { max: 15, variant: "modified" }]` | Functions with more paths than a test suite covers | Default 20 and `classic`. **Set `variant: "modified"`** or the rule punishes the exhaustive discriminated-union `switch` you want: verified that a 5-case switch plus one `if` scores 7 classic and 3 modified. |
+| Nesting depth | oxlint `max-depth: ["error", { max: 4 }]` | Arrow code, which a branch count misses because breadth and depth score alike | 4 is both the oxlint default and the cross-stack number. Keep exactly one nesting gate. |
+| File size | oxlint `max-lines: ["error", { max: 300, skipBlankLines: true, skipComments: true }]` | Files that accrete several reasons to change | Both skip flags default to false. Exclude generated clients, barrels, i18n catalogues and `as const` tables **by glob** - that class is stable. |
+| Function size | oxlint `max-lines-per-function: ["error", { max: 50, skipBlankLines: true, skipComments: true, IIFEs: true }]` | Functions no reviewer reads end to end | Without `IIFEs: true`, module-level setup IIFEs escape the rule entirely. |
+| Statement count | `max-statements: "off"` | Nothing `max-lines-per-function` does not already | A strict subset of function length, and its default of 10 is punitive. Two gates arguing about one concern. |
+| Parameter count | oxlint `max-params: ["error", { max: 4 }]` | Call sites where two same-typed positionals swap silently | 4 rather than the oxlint/ESLint default of 3, which fires on ordinary render props and curried helpers; 4 also matches Biome's `useMaxParams` so the two routes agree. The real fix for swappable args is branded types - see the `typescript` skill. |
+| Callback pyramids | oxlint `max-nested-callbacks: ["error", { max: 3 }]` | Control flow that `async`/`await` would flatten | The default 10 never fires in modern async code, so enabling it at the default buys nothing. Disable in test globs - `describe` / `it` / `beforeEach` is the whole false-positive class. |
+| Anonymous call nesting | oxlint `unicorn/max-nested-calls: ["error", { max: 3 }]` | `a(b(c(d(x))))` - no named intermediates and no readable stack position | The unicorn plugin is on by default in oxlint, but this rule is off in Ultracite's core; turn it back on. |
+| One class per file | oxlint `max-classes-per-file: "error"` | A module name that stops describing its contents | Free in a functional-core codebase. Error hierarchies are the standard exception. |
+| Cognitive complexity | `sonarjs/cognitive-complexity: ["error", 15]` via oxlint `jsPlugins` | Code that is hard to *read* rather than hard to *cover*, because nesting is weighted | 15 is sonarjs's own default. Run this **instead of** tightening `complexity`, not alongside it. |
+| Duplicate function bodies | `sonarjs/no-identical-functions: ["error", 3]` | The agent failure mode: a second copy written instead of the first being found | The threshold counts **lines**, not tokens, and the schema refuses values below 3 - so two byte-identical one-line helpers never fire. |
+| Repeated string literals | `sonarjs/no-duplicate-string: ["error", { threshold: 3 }]` | A magic string typo'd in one of its five call sites | Turn it off in tests: repeated literals in test titles are idiomatic, which is why the rule is absent from sonarjs's own recommended set. Extend `ignoreStrings` rather than dropping it. |
+| Compound conditions | `sonarjs/expression-complexity: ["error", { max: 3 }]` | Four or more `&&` / `\|\|` / `?:` in one expression, where precedence errors hide | The sub-statement gap: `complexity` counts branches, this counts operators inside a single expression. Treat a hit as a prompt to name the predicate. |
+
+**oxlint aborts the entire run on an unknown rule name.** One bad entry rejects
+the whole config (`Failed to parse oxlint configuration file`), exits 1, and
+lints nothing. It fails closed, so a hook still blocks - but any wrapper that
+treats "no diagnostics" as success turns it into a silent hole, and a rule
+renamed between minors takes the gate down on upgrade. `unicorn/try-complexity`
+is the live trap: it exists only in `eslint-plugin-unicorn` and oxlint rejects
+it outright (verified on 1.77.0). Assert the step actually emitted diagnostics
+on a known-bad fixture, not merely that it exited non-zero.
+
+**`jsPlugins` caveats.** Alpha, no type-aware rules, and no custom parsers - so
+no `.vue` / `.svelte` / `.astro`, matching the SFC guidance above. It costs
+roughly a flat per-invocation Node-startup tax rather than something that scales
+with file count, so it fits pre-commit but not a per-keystroke tier. Ultracite's
+`js-plugins` preset declares several plugin packages; re-exporting its array
+while installing only sonarjs leaves the rest unresolvable and hard-fails the
+config, so install them all or hand-write the single entry.
+
+**Ultracite's preset is not a complexity gate.** Ultracite 7.10.7 sets
+`complexity` at oxlint's bare default (20, `classic`), `max-classes-per-file`,
+and `max-nested-callbacks` at the default 10 that async code never reaches - and
+switches `max-depth`, `max-lines`, `max-lines-per-function`, `max-params` and
+`max-statements` **off**. Its two halves also disagree with each other: the
+sonarjs cognitive-complexity limit is set to 20 against Biome's own default of
+15. Take the preset for formatting and correctness, then set these rules
+yourself.
+
+**The Biome route has three holes**, if the repo is on Biome rather than oxlint:
+no cyclomatic rule, no `max-depth`, and no `max-statements` - verified absent
+from the full rule list at 2.5.11, so only oxlint or ESLint can supply them.
+What Biome does have is a native port of the same S3776 cognitive metric.
+Watch three traps:
+
+- **All seven of its cap rules default below `error`** - five at `information`,
+  `useMaxParams` and `noExcessiveNestedCallbacks` at `warning` - and Biome exits
+  non-zero only on error-level diagnostics. A rule enabled without an explicit
+  `"level": "error"` is a report, not a gate.
+- **`noExcessiveLinesPerFunction` counts the body only and has no
+  `skipComments`**, so an ESLint or oxlint threshold does not port across
+  unchanged. Its `skipIifes` also inverts ESLint's `IIFEs` flag.
+- **Group membership is not where you would guess**: `noExcessiveLinesPerFile`
+  and `noExcessiveClassesPerFile` are `style`, not `complexity`, and
+  `noExcessiveNestedCallbacks` is still `nursery`, so its config path will move
+  on promotion. `noExcessiveNestedTestSuites` has no options at all - the depth
+  of 5 is hard-coded.
+
+**Order dead-code before size.** knip has no size dimension and the size rules
+have no reachability analysis, so a `max-lines` hit on a file that is 40%
+unreachable exports produces a split-the-file suggestion where the correct
+action is delete-the-exports. On a large repo, put knip at pre-push/CI and the
+size gate at pre-commit, and accept that the pre-commit number is measured
+against a slightly stale definition of live code.
 
 ## Dead code (knip)
 
