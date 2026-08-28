@@ -131,7 +131,10 @@ print_record() {
 # :A-resolved path. git reports realpaths while _wt_managed_worktrees keeps the
 # unresolved ~/.trees form, so both sides are resolved before keying
 # (_wt_same_path's semantics, minus the pairwise scan). Writes into the caller's
-# listing_* maps.
+# listing_* maps, and collects the repo's MANAGED branch names into
+# repo_branches so the PR cache can be primed for the whole repo at once. Only
+# managed ones: the listing also names the main worktree and any tree registered
+# outside ~/.trees, and querying a PR for those would be work no row consumes.
 load_repo_listing() {
   local repo_key=$1
   local line current="" branch="" locked=0 key
@@ -143,6 +146,9 @@ load_repo_listing() {
         listing_repo[$key]=$repo_key
         listing_branch[$key]=$branch
         listing_locked[$key]=$locked
+        if [[ -n "$branch" ]] && _wt_is_managed_path "$current"; then
+          repo_branches[$repo_key]+="${branch#refs/heads/}"$'\n'
+        fi
       fi
       current=""
       branch=""
@@ -164,7 +170,7 @@ load_repo_listing() {
 # table for fields only.
 collect_all_records() {
   local wt_path key repo_key branch branch_ref locked prunable base_state base base_ref_exists
-  local -A listing_repo listing_branch listing_locked repo_base repo_base_exists
+  local -A listing_repo listing_branch listing_locked repo_base repo_base_exists repo_branches
 
   while IFS= read -r wt_path; do
     [[ -n "$wt_path" ]] || continue
@@ -179,6 +185,11 @@ collect_all_records() {
         base_state=$(resolve_base_state "$wt_path")
         repo_base[$repo_key]=${base_state%%$'\t'*}
         repo_base_exists[$repo_key]=${base_state##*$'\t'}
+        # Prime the whole repo's PR state in one concurrent batch, so the row
+        # loop below never issues a gh call of its own.
+        if (( pr )); then
+          _wt_pr_prime "$wt_path" ${(f)repo_branches[$repo_key]:-}
+        fi
       fi
     fi
 

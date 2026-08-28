@@ -129,9 +129,9 @@ EOF
 }
 
 # gh stub that counts every `gh pr list` invocation into $HOME/gh-calls. Guards
-# the regression where _wt_pr_lookup ran under command-substitution: its per-repo
-# cache was written inside the subshell and discarded, so gh was called once per
-# worktree instead of once per repo.
+# the regression where _wt_pr_lookup ran under command-substitution: its cache
+# was written inside the subshell and discarded, so every branch was queried
+# twice - once by the per-repo prime and again by the row loop's own lookup.
 stub_gh_pr_list_counting() {
   local rows=$1
   : >"$HOME/gh-calls"
@@ -146,11 +146,11 @@ exit 1
 EOF
 }
 
-@test "wt-status --pr calls gh once per repo across many worktrees" {
+@test "wt-status --pr queries each branch once and caches the answer" {
   local repo="$BATS_TEST_TMPDIR/repo"
   make_repo "$repo"
 
-  # Three worktrees, all sharing the one repo's common dir -> one gh call.
+  # Three worktrees, all sharing the one repo's common dir, primed in one batch.
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
   [ "$status" -eq 0 ]
   run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup feat"
@@ -163,10 +163,30 @@ EOF
   run bash -lc "cd /tmp && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --pr --json"
 
   [ "$status" -eq 0 ]
-  # PR state still resolved correctly from the single shared cache.
+  # PR state still resolved correctly from the shared cache.
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .pr_state')" = "MERGED" ]
-  # One gh call for three worktrees of the same repo (was three before the fix).
-  [ "$(wc -l <"$HOME/gh-calls" | tr -d ' ')" -eq 1 ]
+  # One call per branch and no more: the row loop's lookups are all cache hits.
+  # A cache lost to a subshell would double this to six.
+  [ "$(wc -l <"$HOME/gh-calls" | tr -d ' ')" -eq 3 ]
+}
+
+@test "wt-status --pr asks gh only for the branch it wants" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  # Targeted --head queries replace a capped `gh pr list -L 200`, which silently
+  # reported `none` for a branch whose PR fell outside the most recent 200.
+  stub_gh_pr_list 'topic\tOPEN\t9\thttps://example.test/pr/9\tfalse\n'
+
+  run bash -lc "cd /tmp && HOME='$HOME' TEST_LOG='$TEST_LOG' PATH='$PATH' zsh --no-rcs '$WT_STATUS' --all --pr --json"
+
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r '.[] | select(.branch=="topic") | .pr_state')" = "OPEN" ]
+  grep -q -- "--head topic" "$TEST_LOG"
+  ! grep -q -- "-L 200" "$TEST_LOG"
 }
 
 # git shim that logs every argv then execs the real git, so the run is real and
