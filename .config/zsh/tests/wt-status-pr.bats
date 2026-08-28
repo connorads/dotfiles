@@ -23,6 +23,11 @@ make_repo() {
   git -C "$repo" commit -m "initial" >/dev/null
 }
 
+# wt-status's PR memoisation and per-repo hoisting live in `_wt-common`, so this
+# suite covers that file as much as it covers wt-status. Naming it here is what
+# makes the `bats-scoped` hk gate (a `grep -rlw` on the staged file's stem) run
+# this suite for a commit touching only `_wt-common`.
+
 # gh stub: we replace gh wholesale, so it must emit the TSV that real gh would
 # produce *after* applying --jq, i.e. headRefName<TAB>state<TAB>number<TAB>url<TAB>isDraft.
 stub_gh_pr_list() {
