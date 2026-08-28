@@ -245,12 +245,13 @@ EOF
 
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
-  # merged_into_base → "? merged" hint; otherwise "? …".
-  grep -Eq 'repo +\? merged +anc' "$HOME/plain"
-  grep -Eq 'repo +\? … +live' "$HOME/plain"
+  # merged_into_base → "? merged" hint; otherwise "? …". One repo, so the tab is
+  # what the display field starts at - the verdict leads it.
+  grep -Eq $'\t\\? merged +anc' "$HOME/plain"
+  grep -Eq $'\t\\? … +live' "$HOME/plain"
 }
 
-@test "pick-render fast paints repo, branch, a loading PR token, and the live flag" {
+@test "pick-render fast paints branch, a loading PR token, and the live flag" {
   # Managed-worktree fixture: two dirs holding a .git marker under ~/.trees.
   mkdir -p "$HOME/.trees/repo/foo" "$HOME/.trees/repo/bar"
   : >"$HOME/.trees/repo/foo/.git"
@@ -271,11 +272,13 @@ EOF
 
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
-  # Hidden path field 1, then repo. Sorted by branch: bar before foo.
-  head -1 "$HOME/plain" | grep -q $'^'"$HOME"'/.trees/repo/bar\trepo'
+  # Hidden path field 1. Sorted by branch: bar before foo.
+  head -1 "$HOME/plain" | grep -q $'^'"$HOME"'/.trees/repo/bar\t'
   # Loading PR token; the live pane (inside foo) flags foo, not bar.
-  grep -Eq 'repo +⋯ … +bar-branch$' "$HOME/plain"
-  grep -Eq 'repo +⋯ … +◉ live +foo-branch$' "$HOME/plain"
+  grep -Eq $'\t⋯ … +bar-branch$' "$HOME/plain"
+  grep -Eq $'\t⋯ … +◉ live +foo-branch$' "$HOME/plain"
+  # Both worktrees are in the same repo, so its name buys nothing and is dropped.
+  ! awk -F'\t' '{ print $2 }' "$HOME/plain" | grep -q 'repo'
 }
 
 # The bug this guards: at the real popup width a long branch name set the column
@@ -315,6 +318,72 @@ EOF
 
   printf '[{"path":"/tmp/x/.trees/repo/a","branch":"%s","dirty":true,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}]\n' "$LONG_BRANCH" >"$HOME/rows.json"
   b=$(render_flag_offset full "$LONG_BRANCH" '●')
+
+  [ -n "$a" ] || false
+  [ "$a" = "$b" ] || false
+}
+
+@test "pick-render full omits the repo column when every worktree shares one repo" {
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+cat <<'JSON'
+[
+  {"path":"/tmp/x/.trees/solo/anc","branch":"anc","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null},
+  {"path":"/tmp/x/.trees/solo/feat","branch":"feat","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}
+]
+JSON
+EOF
+
+  run "$WT_WINDOW" pick-render full
+
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
+  # Identical on every row, so it discriminates nothing and is not rendered.
+  ! awk -F'\t' '{ print $2 }' "$HOME/plain" | grep -q 'solo'
+  # Field 1 still carries the path fzf reads back, and the branch is still there.
+  grep -q $'^/tmp/x/.trees/solo/anc\t' "$HOME/plain"
+  grep -Eq $'\t· - +anc$' "$HOME/plain"
+}
+
+@test "pick-render keeps the repo column when the set spans more than one repo" {
+  # The guard against collapsing too eagerly: here the name does discriminate.
+  mkdir -p "$HOME/.trees/alpha/a" "$HOME/.trees/beta/b"
+  : >"$HOME/.trees/alpha/a/.git"
+  : >"$HOME/.trees/beta/b/.git"
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+if [ "$3" = "branch" ] && [ "$4" = "--show-current" ]; then
+  case "$2" in
+  */a) echo "a-branch" ;;
+  */b) echo "b-branch" ;;
+  esac
+fi
+EOF
+
+  run "$WT_WINDOW" pick-render fast
+
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | sed $'s/\x1b\\[[0-9;]*m//g' >"$HOME/plain"
+  grep -Eq $'\talpha +⋯ … +a-branch$' "$HOME/plain"
+  grep -Eq $'\tbeta +⋯ … +b-branch$' "$HOME/plain"
+  # ...and it stays padded to a common width, so the verdict still lines up.
+  [ "$(flag_offset 'a-branch' '⋯')" = "$(flag_offset 'b-branch' '⋯')" ] || false
+}
+
+@test "pick-render spends no columns on a repo name every row shares" {
+  # The behavioural payoff, with no magic number: same single row, same branch,
+  # only the repo name's LENGTH differs. A column every row shares would shift
+  # the branch across the two renders; nothing should.
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+cat "$HOME/rows.json"
+EOF
+
+  printf '[{"path":"/tmp/x/.trees/r/a","branch":"solo","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}]\n' >"$HOME/rows.json"
+  a=$(render_flag_offset full 'solo' 'solo')
+
+  printf '[{"path":"/tmp/x/.trees/an-extremely-long-repo-name/a","branch":"solo","dirty":false,"untracked":false,"ahead":0,"behind":0,"merged_into_base":false,"pr_state":"none","pr_number":null}]\n' >"$HOME/rows.json"
+  b=$(render_flag_offset full 'solo' 'solo')
 
   [ -n "$a" ] || false
   [ "$a" = "$b" ] || false
@@ -388,7 +457,7 @@ EOF
   grep -q "pick-render full" "$TEST_LOG"
   # The initial pipe is the FAST render: its loading token reaches fzf's stdin.
   sed $'s/\x1b\\[[0-9;]*m//g' "$HOME/fzf-input" >"$HOME/fzf-plain"
-  grep -Eq 'repo +⋯ … +foo *$' "$HOME/fzf-plain"
+  grep -Eq $'\t⋯ … +foo *$' "$HOME/fzf-plain"
 }
 
 @test "pick ctrl-x removes a clean pane-free worktree and reloads the list" {
