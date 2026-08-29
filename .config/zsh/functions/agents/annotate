@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+# annotate: batch corrections from terminal output into one agent prompt
+# Wrapper around the TypeScript implementation at ~/src/annotate (bun, zero
+# runtime deps). Reviewing an agent's work produces several corrections at
+# once, but the clipboard holds one thing and the next copy clobbers it. This
+# is a spool with more than one slot, where each excerpt carries its own
+# provenance and gets its own comment in the draft.
+#
+#   copy-mode `a`      stash the selection (provenance from the binding)
+#   annotate list      what is waiting to be sent
+#   annotate render    what a draft would look like
+#   annotate drop/clear
+#
+# An excerpt has no comment at capture - that is the point. Comments are
+# written into the draft, which is what actually gets delivered.
+#
+# exit codes match `agent`: 0 ok (including every benign no-op) · 1 store
+# failure · 2 usage · 3 source or target unresolvable · 4 delivery refused ·
+# 5 delivery stall.
+#
+# Degrades to one SKIP line when bun is absent rather than failing: this sits
+# on a keybinding, and a capture key that errors mid-review is worse than one
+# that says it did nothing. Never `exec` here - this file is also autoloaded as
+# a zsh function, and exec would replace the caller's interactive shell.
+emulate -L zsh
+
+local impl=~/src/annotate/src/cli.ts
+local bun_bin="" dir
+
+# mise's shims dir is the fallback for callers whose PATH lacks an activated
+# mise - a tmux copy-pipe child, or a bare agent shell reaching
+# ~/.local/bin/annotate directly.
+for dir in $path "$HOME/.local/share/mise/shims"; do
+	if [[ -x "$dir/bun" ]]; then
+		bun_bin="$dir/bun"
+		break
+	fi
+done
+
+if [[ -z $bun_bin ]]; then
+	echo "annotate: SKIP bun absent - nothing stashed (see ~/src/annotate)"
+	return 0
+fi
+
+"$bun_bin" "$impl" "$@"
