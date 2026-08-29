@@ -118,10 +118,10 @@ The exception is a genuinely frozen upstream: when the foreign model will not
 change, an unwrapped boundary can be the cheaper trade (see
 references/balancing-coupling.md's volatility tie-breaker).
 
-Before adding a new adapter, audit existing ones: reuse through a narrow port,
-then extend an existing adapter when the capability fits, then create a new one
-only when reuse and extension would force bad coupling. Record a meaningful new
-adapter and its rejected alternatives where decisions are kept.
+One adapter per external technology, not per caller: two callers of the same
+technology share one adapter, and a second adapter for the same technology
+usually means the port is too narrow. Record a meaningful new adapter and its
+rejected alternatives where decisions are kept.
 
 After sketching layers and adapters, classify the boundaries by enforcement
 surface. A direct "X must not import Y" rule belongs in the lint stack; a
