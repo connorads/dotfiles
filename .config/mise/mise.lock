@@ -275,6 +275,7 @@ checksum = "sha256:8eac892958b54b01146e103d0aaaf80ca09c4bd77652930a7864da0b7eacd
 url = "https://github.com/jdx/fnox/releases/download/v1.32.0/fnox-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/jdx/fnox/releases/assets/497823872"
 provenance = "github-attestations"
+provenance_verified = true
 
 [[tools.gcloud]]
 version = "582.0.0"
@@ -364,6 +365,8 @@ url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/500422625
 checksum = "sha256:d53a9f93fccfdfcc55632927bf51002f5add0aa7990bcdf508ffbd84ac658178"
 url = "https://github.com/herdrdev/herdr/releases/download/v0.8.0/herdr-macos-aarch64"
 url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/500422629"
+provenance = "github-attestations"
+provenance_verified = true
 
 [[tools."github:ogulcancelik/herdr"]]
 version = "0.7.5"
@@ -654,6 +657,7 @@ checksum = "sha256:8607160694a70ed9aa63776caa44acef3afb729c379c7c283724b7e27455b
 url = "https://github.com/jgm/pandoc/releases/download/3.10.1/pandoc-3.10.1-arm64-macOS.zip"
 url_api = "https://api.github.com/repos/jgm/pandoc/releases/assets/486227385"
 provenance = "github-attestations"
+provenance_verified = true
 
 [[tools."pipx:batrachian-toad"]]
 version = "0.6.20"
