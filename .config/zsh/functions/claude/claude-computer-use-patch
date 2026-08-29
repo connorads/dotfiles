@@ -5,15 +5,30 @@
 # --reapply: install-hook-friendly patch — clears the stale marker on success,
 #            but on a missing needle warns loudly, writes the marker, exits 0.
 #
-# Why: eligibility is GDn() = Bjd() && $Qr().enabled, where Bjd() is the Pro/Max
-# plan check and $Qr() reads the "tengu_malort_pedway" GrowthBook dynamic config,
-# defaulting to the bundled object jca={enabled:!1,...}. When telemetry is disabled
-# (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1),
-# the config fetch short-circuits to that default, so .enabled stays false and the
-# server is hidden even on Pro/Max with claude.ai auth. Patching the bundled default
-# from enabled:!1 to enabled:!0 forces $Qr().enabled true regardless of telemetry.
-# The plan check Bjd() is independent of telemetry, so non-Pro/Max users still won't
-# see it — this only restores what an eligible account would get with telemetry on.
+# Why: eligibility is a HIPAA short-circuit, then the plan check, then the config:
+#   function Xot(){if(_h("hipaa"))return!1;return r()&&o().enabled}
+# where r() is the Pro/Max plan check and o() reads the "tengu_malort_pedway"
+# GrowthBook dynamic config, defaulting to the bundled object {enabled:!1,...}.
+# When telemetry is disabled (DISABLE_TELEMETRY=1, DO_NOT_TRACK=1,
+# CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1), the config fetch short-circuits to
+# that default, so .enabled stays false and the server is hidden even on Pro/Max
+# with claude.ai auth. Patching the bundled default from enabled:!1 to enabled:!0
+# forces o().enabled true regardless of telemetry. The HIPAA and plan checks are
+# both independent of telemetry and both left in place, so an ineligible account
+# still won't see it. This only restores what an eligible account would get with
+# telemetry on.
+#
+# The needle is deliberately the minimal unique anchor, not the whole object
+# literal. Pinning the object's other keys is exactly what broke this in 2.1.251:
+# upstream inserted clipboardGuard, maskFailClosed, adaptiveResolution and
+# coordinateMode into the tail, the 189-byte needle stopped matching, and
+# computer-use silently reverted to enabled:!1 until the marker surfaced it. Every
+# byte beyond what uniqueness requires is surface area for the next reshape.
+#
+# expect_matches=1 is what makes the short anchor safe. A long exact byte needle
+# cannot over-match, so shortening trades that guarantee for a pin: the anchor is
+# verified unique in each installed binary (257-325MB), and a second match means
+# it has broadened, so the patch refuses rather than guessing.
 
 emulate -L zsh
 setopt no_unset pipe_fail
@@ -21,8 +36,9 @@ setopt no_unset pipe_fail
 local wrapper="${${(%):-%x}:A}"
 local patch_name=claude-computer-use-patch
 local patch_label=computer-use
-local needle='{enabled:!1,pixelValidation:!1,clipboardPasteMultiline:!0,mouseAnimation:!0,hideBeforeAction:!0,autoTargetDisplay:!0,clipboardGuard:!0,coordinateMode:"pixels"}'
-local replace='{enabled:!0,pixelValidation:!1,clipboardPasteMultiline:!0,mouseAnimation:!0,hideBeforeAction:!0,autoTargetDisplay:!0,clipboardGuard:!0,coordinateMode:"pixels"}'
+local needle='{enabled:!1,pixelValidation:'
+local replace='{enabled:!0,pixelValidation:'
+local expect_matches=1
 local marker="$HOME/.cache/claude-computer-use-patch.stale"
 local missing_body=$'The default config was likely reshaped upstream; computer-use will\nsilently revert until the needle in claude-computer-use-patch is updated.'
 local missing_banner='computer-use will revert'
