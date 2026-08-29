@@ -441,6 +441,12 @@
       "Bash(gh run watch:*)",
       "Bash(gh search:*)",
       "Bash(gh secret list:*)",
+      "Bash(gh stack bottom:*)",
+      "Bash(gh stack down:*)",
+      "Bash(gh stack top:*)",
+      "Bash(gh stack trunk:*)",
+      "Bash(gh stack up:*)",
+      "Bash(gh stack view:*)",
       "Bash(gh version:*)",
       "Bash(gh workflow list:*)",
       "Bash(gh workflow view:*)",
@@ -1050,7 +1056,8 @@
     ],
     "ask": [
       "Bash(gh pr merge:*)",
-      "Bash(gh repo edit:*)"
+      "Bash(gh repo edit:*)",
+      "Bash(gh stack merge:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
