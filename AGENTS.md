@@ -321,18 +321,16 @@ lazydocker             # TUI to browse/exec/log/prune containers (nix)
 
 ### Xcode
 
-Xcode is a `masApps` entry in [darwin-desktop.nix](./.config/nix/modules/darwin-desktop.nix)
-(`Xcode = 497799835`), so `drs` owns it like any other app. The one prerequisite
-is an Apple Account signed in to the App Store - `mas` cannot sign in, and every
-`masApps` entry silently installs nothing without it. It is free, so brew
-bundle's `mas install || mas get` acquires it on an account that never had it;
-paid apps would still need one GUI purchase.
-
-MAS serves latest only. There is no pinning and no holding a major back. When a
-project needs a specific Xcode, add `xcodes` to mise (`aqua:XcodesOrg/xcodes`,
+Nix does not install Xcode. MAS serves latest only, so a `masApps` entry is a
+standing upgrade across majors with no pinning and no way to hold one back.
+When a project needs Xcode, add `xcodes` to mise (`aqua:XcodesOrg/xcodes`,
 macOS-only via `os = ["macos"]` - its release assets are all Homebrew bottles)
 and let it manage versions side by side; that route authenticates against the
-developer portal instead.
+developer portal rather than the App Store.
+
+`brew bundle cleanup` only uninstalls formulae, casks and taps, so `cleanup =
+"zap"` never removes a MAS app. An Xcode installed while it was a `masApps`
+entry stays on disk until deleted by hand.
 
 The Command Line Tools stay installed as the baseline: `xcode-select -p` points
 at `/Library/Developer/CommandLineTools` until something moves it. Three
