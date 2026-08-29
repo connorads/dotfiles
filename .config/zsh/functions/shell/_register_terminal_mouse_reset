@@ -1,0 +1,9 @@
+# _register_terminal_mouse_reset: arm the mouse-mode repair hook after the first prompt
+# zsh-only: hook
+#
+# terminal-mouse-reset writes CSI private-mode resets to stdout, and at the first
+# prompt stdout is still powerlevel10k's instant-prompt capture. A fresh shell's
+# first prompt has nothing to repair, so arm from the second. zsh snapshots
+# precmd_functions before iterating, so the append below cannot fire this prompt.
+add-zsh-hook -D precmd _register_terminal_mouse_reset
+add-zsh-hook precmd terminal-mouse-reset
