@@ -65,6 +65,11 @@ suites=$(
 		src/pin-audit/*)
 			echo "$TESTS_DIR/pin-audit.bats"
 			;;
+		# .zshenv sits under no functions/** root, so the stem rule cannot
+		# reach it; name its suite explicitly.
+		.zshenv)
+			echo "$TESTS_DIR/zshenv.bats"
+			;;
 		# skl's fzf picker is a shell script whose contract is a bats suite -
 		# it drives the real bin/pick through fzf on a throwaway tmux socket.
 		# Only bin/ maps here; the TS half is covered by ts-tests-scoped.
