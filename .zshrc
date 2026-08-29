@@ -1,3 +1,26 @@
+# Surface every stale needle-patch marker, so an upstream rename or reshape
+# can't be silently forgotten. A --reapply that cannot apply its needle writes
+# one of these and still exits 0, so this line is the only thing that reports
+# it. Globbed rather than listed per patch: the three that were named here
+# covered four of the markers actually written, and the one that mattered -
+# claude-channels-allowlist-patch - was not among them.
+# The marker's own `reason:` line is what gets printed. A fixed "needle
+# missing" was wrong for every marker written by a resolution failure rather
+# than a needle failure, and sent one investigation looking for an upstream
+# rename that had not happened.
+#
+# Above the instant-prompt preamble, which is p10k's own documented remedy for
+# output that has to be visible: after that preamble stdout is p10k's capture
+# file, and anything landing there raises the console-output warning instead of
+# being shown. Safe this early - `print -P`, an (N) glob, sed and head only.
+# .zshenv has already run, and /usr/bin is on PATH whether or not this is a
+# login shell.
+for _stale in "$HOME"/.cache/*-patch.stale(N); do
+  _stale_reason=$(sed -n 's/^reason: //p' "$_stale" 2>/dev/null | head -1)
+  print -P "%F{yellow}${_stale:t:r}:%f ${_stale_reason:-stale} - see $_stale"
+done
+unset _stale _stale_reason
+
 # Powerlevel10k instant prompt (must be at very top)
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
@@ -126,22 +149,6 @@ eval "$(atuin init zsh --disable-up-arrow)"
 export DISABLE_TELEMETRY=1
 export DISABLE_ERROR_REPORTING=1
 export CLAUDE_CODE_NO_FLICKER=1
-
-# Surface every stale needle-patch marker, so an upstream rename or reshape
-# can't be silently forgotten. A --reapply that cannot apply its needle writes
-# one of these and still exits 0, so this line is the only thing that reports
-# it. Globbed rather than listed per patch: the three that were named here
-# covered four of the markers actually written, and the one that mattered -
-# claude-channels-allowlist-patch - was not among them.
-# The marker's own `reason:` line is what gets printed. A fixed "needle
-# missing" was wrong for every marker written by a resolution failure rather
-# than a needle failure, and sent one investigation looking for an upstream
-# rename that had not happened.
-for _stale in "$HOME"/.cache/*-patch.stale(N); do
-  _stale_reason=$(sed -n 's/^reason: //p' "$_stale" 2>/dev/null | head -1)
-  print -P "%F{yellow}${_stale:t:r}:%f ${_stale_reason:-stale} - see $_stale"
-done
-unset _stale _stale_reason
 
 # https://donottrack.sh/
 export DO_NOT_TRACK=1
