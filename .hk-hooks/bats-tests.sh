@@ -70,6 +70,12 @@ suites=$(
 		.zshenv)
 			echo "$TESTS_DIR/zshenv.bats"
 			;;
+		# Same as .zshenv: no functions/** root reaches it, so the stem rule
+		# cannot. Its suite guards what may write to stdout at the first
+		# prompt, which is exactly what editing .zshrc puts at risk.
+		.zshrc)
+			echo "$TESTS_DIR/zshrc.bats"
+			;;
 		# skl's fzf picker is a shell script whose contract is a bats suite -
 		# it drives the real bin/pick through fzf on a throwaway tmux socket.
 		# Only bin/ maps here; the TS half is covered by ts-tests-scoped.
