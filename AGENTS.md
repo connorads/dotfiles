@@ -68,7 +68,7 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 - Treat Pi model picker keys (`defaultProvider`, `defaultModel`, `defaultThinkingLevel`) in [`.pi/agent/settings.json`](./.pi/agent/settings.json) as machine-local state; never commit them. A `pi-agent-settings` clean filter normalises them and restores the final newline on commit.
 - Treat the `model` key in [`.claude/settings.json`](./.claude/settings.json) as machine-local state - Claude Code's `/model` picker writes it back with no opt-out (since v2.1.153; `s` in the picker is session-only). A `claude-settings` clean filter strips it on commit, and sorts keys (`jq -S`) so the reordering Claude Code does on every rewrite stays out of git; permission arrays keep their authored order.
 - Use `dotfiles` commands for dotfiles git operations so config renormalisation (Codex, Claude, and Pi settings clean filters) runs before status/diff/stash.
-- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
+- Vendored `src/` subprojects (`handoff`, `dotfiles-docs`, `pin-audit`, `skl`, `annotate`, `raycast/shotpath`, `raycast/skl`) are tracked in the dotfiles work-tree, not standalone repos. Never `git init` inside one - it creates a nested repo and double-tracks every file. Commit their changes with `dotfiles`.
 
 ## Key Documentation
 
@@ -122,6 +122,7 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [~/src/handoff](./src/handoff/README.md)                               | `handoff`: translate session history between Claude Code and Codex, both directions (stdlib-only Python; wrapper fn in zsh functions/agents). Tests: `cd ~/src/handoff && uv run --group dev pytest` |
 | [~/src/pin-audit](./src/pin-audit/)                                    | `pin-audit`'s implementation: pure core (readPin/judge) + shell adapters (`Bun.TOML.parse`, argv-form `Bun.spawn`), bun with zero runtime deps. The zsh function in `functions/nix` is a wrapper. Tests: `cd ~/src/pin-audit && bun test` (unit) plus `.config/zsh/tests/pin-audit.bats` (CLI contract) |
 | [~/src/skl](./src/skl/CONTEXT.md)                                      | `skl`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/skl/docs/adr/). Config stays at `.config/skl/config.json` (`SKL_CONFIG` overrides); `.local/bin/skl` execs `src/cli.ts`, `bin/pick` is the fzf picker. Tests: `cd ~/src/skl && bun test`, plus `.config/zsh/tests/skl-pick.bats` (picker contract) |
+| [~/src/annotate](./src/annotate/CONTEXT.md)                            | `annotate`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/annotate/docs/adr/). Batch several corrections into one agent prompt - a spool with a slot per excerpt, each keeping its own provenance. Append-only JSONL at `~/.local/state/agents/annotate.jsonl`; wrapper in `functions/agents`, tmux glue in `.config/tmux/scripts/annotate-{stash,pick,lib}.sh`. Tests: `cd ~/src/annotate && bun test`, plus `.config/zsh/tests/annotate.bats` (CLI contract + capture key) and `annotate-lib.bats` (status pill) |
 | [~/src/raycast/skl](./src/raycast/skl/README.md)                       | Local Raycast extension over the `skl` catalogue: copy or paste a pointer outside tmux. Couples to the `~/.local/bin/skl` shim, not to skl's source tree |
 
 ## Shell Function Conventions
@@ -269,6 +270,10 @@ agent pick             # fzf jump picker over live agents (tmux keys: prefix + A
 atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
 handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard
+annotate list          # excerpts stashed for the next agent prompt; --json to script it
+annotate send          # render the spool into one markdown draft, edit it, deliver it to the pane the excerpts came from (tmux: copy-mode `a` stashes, prefix + Alt+e opens the draft, prefix + Alt+Shift+E picks an untruncated Claude transcript message)
+annotate send --to %19 # ...somewhere else; after `annotate undo` this re-aims a mis-targeted send with nothing retyped
+annotate drop <n|last|all> | annotate clear | annotate render | annotate draft [--edit|--discard]
 vox [--name <title>]   # record mic + system audio (Core Audio tap, no setup); `vox stop` transcribes locally and prints the recording's path (tmux: prefix + Alt+v starts/stops, prefix + Alt+Shift+V opens the picker)
 vox cancel             # stop and discard, without transcribing
 vox ls | vox last      # recording paths, newest first (`cat "$(vox last)/transcript.md"` is the whole integration story)
