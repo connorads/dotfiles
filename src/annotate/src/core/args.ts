@@ -56,7 +56,7 @@ export type Command =
   | { readonly kind: "clear" }
   | { readonly kind: "undo" }
   | { readonly kind: "render" }
-  | { readonly kind: "count" }
+  | { readonly kind: "count"; readonly json: boolean }
   | { readonly kind: "path" }
   | { readonly kind: "help" };
 
@@ -73,7 +73,7 @@ export const USAGE = `annotate - batch corrections from terminal output into one
   annotate undo                   restore the draft the last send delivered
   annotate entries [--pane %N] [--json]   transcript messages to stash from
   annotate render                 print what a fresh draft would look like
-  annotate count                  excerpts waiting, for the status pill
+  annotate count [--json]         excerpts waiting, for the status pill
   annotate path                   the event log's path
 
 In the editor: save and quit to send. To keep comments without sending, save
@@ -201,6 +201,18 @@ const parseDrop = (argv: readonly string[]): Result<Command, string> => {
   return ok({ kind: "drop", target: { kind: "index", index } });
 };
 
+// The status pill needs the spool size and whether a draft is open. Both come
+// from the same fold, so one flag on `count` beats a second command reading
+// the store a second way.
+const parseCount = (argv: readonly string[]): Result<Command, string> => {
+  let json = false;
+  for (const arg of argv) {
+    if (arg === "--json") json = true;
+    else return err(`unknown argument: ${arg}`);
+  }
+  return ok({ kind: "count", json });
+};
+
 const parseList = (argv: readonly string[]): Result<Command, string> => {
   let json = false;
   for (const arg of argv) {
@@ -236,7 +248,7 @@ export const parseArgs = (argv: readonly string[]): Result<Command, string> => {
     case "render":
       return bare(rest, { kind: "render" });
     case "count":
-      return bare(rest, { kind: "count" });
+      return parseCount(rest);
     case "path":
       return bare(rest, { kind: "path" });
     case "help":

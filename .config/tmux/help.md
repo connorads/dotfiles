@@ -237,6 +237,36 @@ one until you open the picker - which clears both. The picker labels such a
 recording `empty` and its preview says so; the audio is intact, and `ctrl-d`
 throws it away.
 
+## Annotate (status bar)
+
+A muted pill (width ≥ 80) while there are corrections you have not sent. Reviewing
+an agent's work produces several at once, but the clipboard holds one thing and the
+next copy clobbers it - so this is a spool with a slot per excerpt, each keeping its
+own provenance and getting its own comment in the draft.
+
+`a` in copy mode stashes the selection, with no popup and no comment - at capture
+there is nothing to say yet. `Ctrl+b Alt+e` renders everything stashed into one
+markdown draft, opens it in `$EDITOR`, and delivers it to the pane the excerpts came
+from. `Ctrl+b Alt+Shift+E` stashes a Claude message from the session transcript
+instead of the screen, which is the only way to get it untruncated. Clicking the pill
+opens the draft.
+
+| Pill | State | Meaning |
+|------|-------|---------|
+| `✎ 3` muted | spooled | that many excerpts waiting, no draft yet |
+| `◍ 3` blue | drafting | a draft is open with writing you have not sent |
+| (hidden) | idle | spool empty and no draft |
+
+Drafting outranks spooled, and takes the same blue as an unread agent tab: a blue
+pill always means there is something of yours waiting on you.
+
+In the editor, save and quit to send. To keep comments without sending, save then
+exit non-zero (`:w` then `:cq` in vim); a draft you did not change is never sent, so
+quitting an editor that has no `:cq` is safe too. Quitting keeps the draft - reopening
+resumes with comments intact and anything stashed meanwhile appended below. After a
+send, `annotate undo` restores the draft verbatim, so a mis-targeted one is
+`annotate undo` then `annotate send --to %19` with nothing retyped.
+
 ## Copy mode navigation
 
 | Key | Action |

@@ -66,9 +66,18 @@ describe("bare commands", () => {
   test("take no arguments", () => {
     expect(parsed("clear")).toEqual({ kind: "clear" });
     expect(parsed("render")).toEqual({ kind: "render" });
-    expect(parsed("count")).toEqual({ kind: "count" });
     expect(parsed("path")).toEqual({ kind: "path" });
-    expect(rejected("count", "--json")).toContain("unknown argument");
+    expect(rejected("render", "--json")).toContain("unknown argument");
+  });
+});
+
+describe("count", () => {
+  // The status pill needs the spool size and whether a draft is open, and both
+  // come from the same fold.
+  test("--json carries the draft flag alongside the count", () => {
+    expect(parsed("count")).toEqual({ kind: "count", json: false });
+    expect(parsed("count", "--json")).toEqual({ kind: "count", json: true });
+    expect(rejected("count", "--yaml")).toContain("unknown argument");
   });
 });
 

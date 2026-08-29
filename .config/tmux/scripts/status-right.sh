@@ -66,6 +66,11 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # Reads the vox statefile; IDLE → the pill self-hides. See vox_segment below.
 # shellcheck source=/dev/null
 . "$SELF_DIR/vox-lib.sh"
+# Shared annotate vocabulary (IDLE/SPOOLED/DRAFTING → colour + glyph + count).
+# Reads the event log via `annotate count --json`; IDLE → the pill self-hides.
+# See annotate_segment below.
+# shellcheck source=/dev/null
+. "$SELF_DIR/annotate-lib.sh"
 # Canonical agent-state helpers: other_sessions_badge (the cross-session
 # attention rollup) plus the agent_hex/agent_char glyph mapping it echoes. See
 # agent_elsewhere_segment below.
@@ -242,6 +247,31 @@ vox_segment() {
 	# the state (vox-menu.sh), so the pill is a control and not only a report.
 	printf "#[range=user|vox]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
 		"$colour" "$glyph" "$(vox_token "$state")"
+}
+
+# annotate_segment — corrections waiting to be sent, self-hiding: IDLE prints
+# nothing, so the pill exists only while something is unfinished. `✎ 3` muted
+# means three excerpts stashed and no draft yet; `◍ 3` blue means a draft is
+# open with writing in it that has not been sent. Both are states you can walk
+# away and forget, which is the whole reason the pill exists.
+#
+# Same muted subtext0 on the surface1 data-pill shade as vox, for the same
+# reason: ambient chrome during a screen share, not a warning. DRAFTING takes
+# the blue the agent dots use for unread — one idea, one colour.
+#
+# One `annotate_pill` call carries state and count together, so a repaint
+# spawns the CLI a single time (~26 ms against a 15 s status-interval).
+annotate_segment() {
+	local pill state count colour glyph
+	pill="$(annotate_pill)"
+	state="${pill%% *}"
+	count="${pill##* }"
+	[ "$state" = "IDLE" ] && return 0
+	colour="$(annotate_state_colour "$state")"
+	glyph="$(annotate_state_glyph "$state")"
+	# Tappable like the vox and memory pills: clicking opens the draft.
+	printf "#[range=user|annotate]#[fg=#45475a]#[bg=#45475a]#[fg=#%s] %s %s #[norange]" \
+		"$colour" "$glyph" "$count"
 }
 
 # agent_elsewhere_segment — the cross-session attention badge: a bright pill
@@ -447,6 +477,9 @@ print_full() {
 	# Recording pill, also self-hiding. Muted rather than accented on purpose —
 	# see vox_segment.
 	vox_segment
+	# Corrections waiting to be sent, also self-hiding and also muted — an
+	# unsent draft is something to finish, not an alarm. See annotate_segment.
+	annotate_segment
 	printf "#[fg=#313244]#[bg=#313244]#[fg=#f38ba8]#[bold]  %s " "$cpu"
 	mem_segment
 	# RAM% pill (shown alongside mem_segment by design — both wanted). Dark pill
