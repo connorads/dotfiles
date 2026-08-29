@@ -10,6 +10,11 @@
 - For multiline commit/PR text, use stdin flags: `git commit -F - <<'EOF'` and `gh ... --body-file - <<'EOF'`. Never use `$(cat <<'EOF' ... EOF)`.
 - If stdin is awkward, use repeated `-m` flags.
 
+## Browser automation
+
+- Let Playwright CLI use its configured browser. Use `--browser=chrome` only when system Chrome behaviour is specifically under test.
+- Close disposable Playwright sessions before finishing. Use `playwright-cli -s=<name> close`, or `playwright-cli close-all` only when every open session is disposable.
+
 ## Secrets
 
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
