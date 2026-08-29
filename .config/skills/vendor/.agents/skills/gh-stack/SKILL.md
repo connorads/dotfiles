@@ -29,8 +29,12 @@ layers, read `references/stack-design.md`.
 
 ## Setup
 
+<!-- LOCAL PATCH (connorads dotfiles): gh stack is nix-managed (programs.gh.extensions); the extensions dir is read-only -->
+
 ```bash
-gh extension install github/gh-stack
+# gh stack is nix-managed here (.config/nix/modules/home-shared.nix); `gh extension
+# install` fails because the extensions dir is a read-only nix linkFarm. Rebuild to
+# install or update it: `drs` on macOS, `hms` on Linux.
 git config rerere.enabled true         # remember conflict resolutions
 git config remote.pushDefault origin   # required if the repo has more than one remote
 ```
