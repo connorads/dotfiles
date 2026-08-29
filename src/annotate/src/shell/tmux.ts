@@ -61,3 +61,14 @@ export const paneInfo = async (paneId: string): Promise<PaneInfo | null> => {
     agentName: blankToNull(fields[4]),
   };
 };
+
+/**
+ * A pane's process id, which is what `claude-session-resolve.py` keys on.
+ * Null when the pane is gone.
+ */
+export const panePid = async (paneId: string): Promise<string | null> => {
+  const { code, stdout } = await run(["display-message", "-p", "-t", paneId, "-F", "#{pane_pid}"]);
+  if (code !== 0) return null;
+  const pid = stdout.trim();
+  return pid.length > 0 ? pid : null;
+};

@@ -22,5 +22,5 @@ export const openSelection = async (
   request: SourceRequest,
 ): Promise<Result<Capture, SourceError>> => {
   const origin = await enrich(emptyOrigin("selection"), request);
-  return ok({ text: request.stdin, origin });
+  return ok({ text: await request.readStdin(), origin });
 };

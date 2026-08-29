@@ -13,12 +13,18 @@ import type { Origin, SourceKind } from "../../core/excerpt.ts";
 import type { Result } from "../../core/result.ts";
 import { openPane } from "./pane.ts";
 import { openSelection } from "./selection.ts";
+import { openTranscript } from "./transcript.ts";
 
 /** What the CLI knows before a source runs. */
 export interface SourceRequest {
   readonly kind: SourceKind;
-  /** Whatever arrived on stdin, already read. */
-  readonly stdin: string;
+  /**
+   * Reads stdin, on demand. A thunk rather than a string because the
+   * transcript source never wants it, and reading a stdin that is neither a
+   * TTY nor ever closed blocks forever - which is exactly what a keybinding
+   * invoking `stash` with no pipe would do.
+   */
+  readonly readStdin: () => Promise<string>;
   readonly pane: string | null;
   readonly cwd: string | null;
   readonly session: string | null;
@@ -45,11 +51,6 @@ export const openSource: Source = async (request) => {
     case "pane":
       return openPane(request);
     case "transcript":
-      // Lands with the transcript source. Until then, saying so beats
-      // silently stashing whatever happened to be on stdin.
-      return {
-        ok: false,
-        error: { kind: "unresolvable", message: "the transcript source is not wired up yet" },
-      };
+      return openTranscript(request);
   }
 };

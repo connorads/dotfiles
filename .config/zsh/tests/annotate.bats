@@ -298,6 +298,39 @@ EOF
   [[ "$output" == *"THE CORRECTION"* ]]
 }
 
+# --- the transcript picker ------------------------------------------------
+
+PICK_SH="$TESTS_DIR/../../tmux/scripts/annotate-pick.sh"
+
+@test "the picker needs a pane id" {
+  run "$BASH5" "$PICK_SH" </dev/null
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"needs a pane id"* ]]
+}
+
+@test "the picker surfaces why a pane has no transcript, without failing" {
+  # A pane that resolves to no Claude session: the picker reports and exits 0
+  # rather than leaving an error dialog over the review.
+  write_stub annotate <<'EOF'
+#!/usr/bin/env bash
+echo "annotate: no Claude session for %1 (transcript capture is Claude-only)" >&2
+exit 3
+EOF
+  ANNOTATE_BIN="$TEST_BIN/annotate" run "$BASH5" "$PICK_SH" %1 </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no Claude session"* ]]
+}
+
+@test "the picker says so when the transcript has no messages" {
+  write_stub annotate <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  ANNOTATE_BIN="$TEST_BIN/annotate" run "$BASH5" "$PICK_SH" %1 </dev/null
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"No transcript messages"* ]]
+}
+
 # --- the pane source is a pipe -------------------------------------------
 
 @test "the pane source takes a snapshot on stdin" {

@@ -1,0 +1,4 @@
+{"type": "user", "uuid": "u1", "timestamp": "2026-08-29T10:00:00.000Z", "cwd": "/Users/me/proj", "message": {"role": "user", "content": "please fix the parser"}}
+this line is not json
+{"type": "assistant", "uuid": "a1", "timestamp": "2026-08-29T10:00:05.000Z", "cwd": "/Users/me/proj", "message": {"role": "assistant", "content": [{"type": "thinking", "thinking": "The parser drops the final line."}, {"type": "text", "text": "I'll fix the off-by-one in the line splitter."}, {"type": "tool_use", "name": "Edit", "input": {"file_path": "/Users/me/proj/parse.ts"}}]}}
+{"type":"assistant","uuid":"tr
