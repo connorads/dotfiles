@@ -94,7 +94,7 @@ Rule: no arrow keys during drills.
 
 - Stage 1 (now): use `v` for day-to-day edits.
 - Stage 2: `EDITOR` and `VISUAL` set to `nvim`.
-- Fallback: use `mic` to open micro when needed.
+- Fallback: use `m` to open micro when needed.
 
 ## Panic keys
 
