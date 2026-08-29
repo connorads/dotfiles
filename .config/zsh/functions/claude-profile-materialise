@@ -16,6 +16,14 @@ setopt pipefail
 local profile_dir="${1:-}"
 [[ -n "$profile_dir" ]] || return 0
 
+# The shared ~/.claude IS the base this derives from, so materialising it into
+# itself is a self-merge - and the CLAUDE.md line below would point the link at
+# itself, destroying the tracked ../.agents/AGENTS.md target and silently
+# killing shared user memory. resurrect records claudeConfigDir verbatim for
+# default-account panes, so restore hands us exactly this path.
+local shared_dir="$HOME/.claude"
+[[ "${profile_dir:A}" == "${shared_dir:A}" ]] && return 0
+
 local shared_settings="$HOME/.claude/settings.json"
 if command -v jq &>/dev/null && [[ -f "$shared_settings" ]]; then
     local existing='{}' base merged

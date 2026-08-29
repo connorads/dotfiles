@@ -102,6 +102,41 @@ EOF
   assert_symlink_target "$PROFILE_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 }
 
+@test "materialise is a no-op on the shared ~/.claude" {
+  seed_shared_config
+  # The tracked shared CLAUDE.md is a RELATIVE symlink at ../.agents/AGENTS.md,
+  # not the regular file seed_shared_config writes: pointing `ln -sfn` at its own
+  # path replaces it with an absolute self-reference, killing shared user memory.
+  mkdir -p "$HOME/.agents"
+  printf '# AGENTS\n' >"$HOME/.agents/AGENTS.md"
+  ln -sfn "../.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md"
+  local before
+  before="$(cat "$HOME/.claude/settings.json")"
+
+  run_zsh_function "$MATERIALISE" "$HOME/.claude"
+
+  [ "$status" -eq 0 ]
+  run readlink "$HOME/.claude/CLAUDE.md"
+  [ "$output" = "../.agents/AGENTS.md" ]
+  [ "$(cat "$HOME/.claude/settings.json")" = "$before" ]
+}
+
+@test "materialise recognises the shared dir through a trailing slash" {
+  seed_shared_config
+  mkdir -p "$HOME/.agents"
+  printf '# AGENTS\n' >"$HOME/.agents/AGENTS.md"
+  ln -sfn "../.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md"
+  local before
+  before="$(cat "$HOME/.claude/settings.json")"
+
+  run_zsh_function "$MATERIALISE" "$HOME/.claude/"
+
+  [ "$status" -eq 0 ]
+  run readlink "$HOME/.claude/CLAUDE.md"
+  [ "$output" = "../.agents/AGENTS.md" ]
+  [ "$(cat "$HOME/.claude/settings.json")" = "$before" ]
+}
+
 @test "materialise is idempotent" {
   seed_shared_config
 
