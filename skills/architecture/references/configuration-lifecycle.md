@@ -18,6 +18,10 @@ them inward as explicit arguments. That single wiring point is also the one plac
 to substitute every dependency with a fake in tests, which beats patching
 imports. A port can be a plain function for a single-method dependency - reserve a
 richer interface for a genuinely multi-method one. Reach for manual injection
-once you have more than one adapter, and for a dependency-injection framework only
-when dependencies have their own dependencies (chained graphs); below that it is
-overengineering.
+once you have more than one adapter, and hand-wire the graph in one composition
+root by default (pure DI) - one root per process, however deep the graph: depth
+is not the trigger, and hand-wiring keeps a wrong graph a compile error. A
+container is optional tooling: it earns its keep when convention-based
+registration beats writing the wiring out, or when scoped lifetimes and disposal
+ordering need managing - and it trades compile-time verification for run-time
+resolution errors. Keep every reference to it inside the composition root.
