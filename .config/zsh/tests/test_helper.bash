@@ -132,6 +132,18 @@ setup_test_home() {
   # dotfiles repo instead - which failed with "invalid object" while committing,
   # and passed when the same test was run by hand.
   unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
+  # XDG dirs follow HOME. They are exported in every shell (~/.zshenv sources
+  # home-manager's hm-session-vars.sh), and they are absolute, so swapping HOME
+  # alone leaves them pointing at the REAL user dirs - git then reads
+  # $XDG_CONFIG_HOME/git/config and tmux-resurrect writes under
+  # $XDG_DATA_HOME/tmux, both outside the isolated home. Re-point them at their
+  # spec defaults beneath TEST_HOME, which is what a consumer deriving them from
+  # HOME would compute anyway.
+  export XDG_CONFIG_HOME="$TEST_HOME/.config"
+  export XDG_DATA_HOME="$TEST_HOME/.local/share"
+  export XDG_STATE_HOME="$TEST_HOME/.local/state"
+  export XDG_CACHE_HOME="$TEST_HOME/.cache"
+  export XDG_BIN_HOME="$TEST_HOME/.local/bin"
   # An explicit PATH, not one derived from wherever the caller's zsh happened to
   # live. Order: stubs, then the native host dirs, then whichever nix profile
   # dirs exist. Native-first mirrors production - in the tmux server's PATH /bin
