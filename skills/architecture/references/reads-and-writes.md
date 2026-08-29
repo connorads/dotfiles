@@ -14,7 +14,10 @@ its transactions; most contexts stop there. The last resort is the *second
 store*, not the split: a separately-fed denormalised view - keyed for the query,
 kept fresh from the domain events the write side already emits - means owning
 staleness and rebuilds, so reach for it only when the read shape genuinely
-diverges or a performance wall demands it. This is an in-process read model fed
+diverges or a performance wall demands it. A read model must be rebuildable
+from the write side on demand - if it cannot be, it is a second source of
+truth, not a projection; fix a bad one by rebuilding a corrected copy in
+parallel and cutting readers over. This is an in-process read model fed
 by your own events; a consumer in another service keeping its own replica from
 your published events is event-carried state transfer - a different thing with
 its own contract, see `event-driven-architecture`.
