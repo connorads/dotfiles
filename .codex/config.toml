@@ -32,7 +32,7 @@ network_access = false
 
 [features]
 # request_user_input outside Plan mode (upstream stage: under development);
-# needed so question-me's structured-question rounds work in Default mode.
+# needed so grilling's structured-question rounds work in Default mode.
 default_mode_request_user_input = true
 unified_exec = true
 apply_patch_freeform = true
