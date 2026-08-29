@@ -65,13 +65,19 @@ what should happen - a decision or a list of events - and let the shell perform
 it. Returning events rather than publishing them keeps the core pure and lets a
 test assert on the returned value.
 
-Durable-execution engines (Temporal, Step Functions, Restate) enforce this rule at
-runtime: deterministic workflow code as the pure control flow, with IO, clocks, and
-randomness confined to activities (Temporal: "workflow code must be deterministic
-... put non-deterministic operations in Activities"). They are also the sanctioned
-way to run genuinely *interleaved* effects safely - the case that relaxes "act
-once" when a flow is long-running (timers, human approval, retries over days),
-rather than a smell to design away.
+Durable-execution engines (Temporal, Restate, DBOS) enforce a neighbouring rule
+at runtime: the *control flow* must be deterministic so it can be replayed from a
+journal, with IO, clocks, and randomness confined to journaled steps. Replayable
+is not pure - the workflow still orchestrates effects - but they are the
+sanctioned way to run genuinely *interleaved* effects, the case that relaxes
+"act once" when a flow is long-running (timers, human approval, retries over
+days), rather than a smell to design away. Two things the journal does not buy:
+steps are at-least-once, so a step with an external side effect still needs its
+own idempotency key, and changing the step sequence breaks in-flight executions,
+so pin an execution to the build that started it. Adoption is not one price
+either - DBOS is a library over your own Postgres, Restate a sidecar, Temporal a
+cluster - and Step Functions has no user workflow code at all: the state machine
+is data, so no determinism constraint applies.
 
 ## Ports And Adapters
 
@@ -83,6 +89,16 @@ Define ports in the application's language, not the technology's language.
 Adapters implement ports with specific technology. Application logic depends on
 ports and values. If tests for application decisions require real
 infrastructure, a boundary is probably missing.
+
+Ports are two-sided. **Driven** ports are what the application needs - `Orders`,
+`EmailDelivery`, `Clock` - and adapters implement them. **Driving** ports are
+what it offers: the use cases, implemented by the application and called by
+adapters - HTTP controller, CLI, queue consumer, batch job, test harness.
+Cockburn's intent is an application "driven equally by users, programs,
+automated test or batch scripts", so the test harness is a first-class driver,
+not a testing trick - it is what makes the walking skeleton checkable on day
+one. A port is a purposeful conversation, not one method: group the use cases
+one kind of caller needs into one driving port.
 
 Use fakes for owned ports in application tests. Use contract/integration tests
 to prove adapters fulfil the port.
@@ -133,12 +149,21 @@ a capability, as a private detail.
 The load-bearing mechanism is encapsulation, not folder names: give each
 module one narrow public surface and keep the rest internal - a folder full of
 public types provides no protection however it is named. Keep cross-module
-calls on explicit interfaces so a module can later become a bounded context or
-its own service without rewiring. Default to a modular monolith with enforced
+calls on explicit interfaces so a module can later be deployed separately
+without rewiring. Default to a modular monolith with enforced
 boundaries; split out a deployable only when scaling, deploy cadence, or team
 ownership forces it. Modules need not share one internal shape - a complex
 pricing core earns a rich domain model while a reporting module stays plain
 queries (see Scale Rule).
+
+A bounded context is a language boundary - the span within which one term keeps
+one meaning - not a folder, a module, or a service: one deployable can hold
+many, and extracting a service that was never a context boundary just
+distributes the mud. 'Customer' in shipping is not 'Customer' in billing, and
+unifying them is the error, not the fix (Evans). Name the relationship you
+actually have with each neighbouring context - conformist, customer-supplier,
+shared kernel, open-host, separate ways, anti-corruption layer; the ACL buys
+model integrity at the highest running cost, so pick it deliberately.
 
 ## Balancing Coupling
 
@@ -177,9 +202,10 @@ is a reaction rather than a request, it is an event -
 
 ## Domain Modelling
 
-Parse, don't validate repeatedly. Convert untrusted inputs at the boundary into
-typed values that internal code can trust. Treat every inbound boundary this
-way - including your own database and configuration: parse rows and settings
+Parse, don't validate (King). A check that answers yes/no throws away what it
+learned; convert untrusted inputs at the boundary into typed values that carry
+the evidence, so downstream code cannot face a case already ruled out. Treat
+every inbound boundary this way - including your own database and configuration: parse rows and settings
 back into domain types on the way in rather than trusting them.
 
 Store the input to a business rule, not the value it derives. Persist the raw
@@ -223,9 +249,12 @@ rules such as no `any`, no non-null assertions, and strict type checking.
 ## Error Handling
 
 Use explicit error values in domain and application logic. Exceptions are fine
-at the imperative shell; catch and translate them there.
+as private control flow inside a module, and at the imperative shell where you
+catch and translate them - the test is escape, not layer: they must not cross a
+public boundary. Return a typed error only where a consumer will branch on it;
+one nobody acts on is a log line, not a domain type.
 
-Triage every failure into one of three kinds:
+Triage every failure into one of three kinds (after Wlaschin):
 
 - domain errors - expected business outcomes; model them as typed values in the
   domain language
@@ -262,16 +291,25 @@ contained in a single bounded context. Name events as past-tense facts
 fail; an event is a fact that happened.
 
 Compose a workflow from small single-purpose steps wired output-to-input. Give
-each step a typed input, a typed output that includes its failure case, and
-explicit dependencies. Keep each step stateless and pure so it is testable in
-isolation; push I/O to the ends.
+each step a typed input, a typed output, and explicit dependencies. Only a step
+that can genuinely fail returns an error type - a step that cannot fail is
+lifted into the pipeline, not rewritten to lie about itself. Wlaschin, who named
+railway-oriented programming, warns against taking it to extremes: forcing
+`Result` on every step collapses errors into one lowest-common-denominator
+union and buries the ones a caller branches on. Keep each step stateless and
+pure so it is testable in isolation; push I/O to the ends.
 
 Two weights of "events": returning events as values from the core - a list of
 what happened, instead of a `void` mutation - is cheap and broadly worthwhile,
-even in simple code. Event sourcing and async event choreography across services
-are heavy; use them only when the coordination genuinely warrants it, not as a
-default. Cross-context scenarios are then choreographed by events, not one giant
-function. Once an event crosses a process or service boundary, the
+even in simple code. Event sourcing and async event choreography are independent
+decisions, not one heavy thing. Event source an aggregate when its history *is*
+the requirement - temporal queries, audit or regulatory history, replay for
+debugging or process reconstruction; otherwise current state is enough (a cart's
+add/remove churn before checkout is working state; the order from checkout on is
+a fact). Applying it everywhere is the commonest failure (Young). Choreograph
+across services only when the coordination genuinely warrants it - a separate
+question; cross-context scenarios are then choreographed by events, not one
+giant function. Once an event crosses a process or service boundary, the
 `event-driven-architecture` skill owns the mechanics - propagation, reliable
 publication, delivery semantics, and versioning. The transactional side -
 aggregates as consistency boundaries, sagas, idempotency, concurrency control -
