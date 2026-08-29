@@ -155,7 +155,7 @@ and an agent may go blocked meanwhile, which a popup would hide. The usual popup
 objection - acting on "the pane I came from" - does not apply here, because the
 target pane was recorded in each excerpt's `Origin` at capture.
 
-## Two tmux facts worth not rediscovering
+## Three tmux facts worth not rediscovering
 
 **`copy-pipe` format-expands its command string**, and `#{pane_id}` there
 resolves to the pane the selection was made in. Both obvious alternatives are
@@ -164,6 +164,15 @@ wrong: `$TMUX_PANE` is not set for a copy-pipe child (`man tmux` passes it to
 leaks a stale value inherited from whatever started the server; querying
 `display-message -p '#{pane_id}'` from inside the child returns the **active**
 pane, which is only incidentally the source.
+
+**`display-popup -E` does the opposite: its command string reaches the shell
+verbatim.** A `#{pane_id}` passed from the keybind arrives unexpanded, and every
+lookup then fails with a literal `cannot read pane #{pane_id}`. So the picker
+*queries* instead - a popup is a client overlay and does not change which pane
+is active, so the query resolves to the pane it was summoned from. The two
+bindings get their provenance in opposite ways, and each way is wrong for the
+other. Every other `display-popup` binding in `tmux.conf` passes no formats for
+this reason, and `vox-popup.sh` documents the same trap.
 
 **`display-message` exits 0 for a pane that does not exist**, printing an empty
 line. Resolution has to key on the empty `pane_id`, never on the exit code.

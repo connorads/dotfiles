@@ -302,8 +302,53 @@ EOF
 
 PICK_SH="$TESTS_DIR/../../tmux/scripts/annotate-pick.sh"
 
-@test "the picker needs a pane id" {
-  run "$BASH5" "$PICK_SH" </dev/null
+# The bug this pins: a `display-popup -E` command string reaches the shell
+# VERBATIM, so a `#{pane_id}` passed from the keybind arrives unexpanded and
+# every lookup fails with a literal "cannot read pane #{pane_id}". copy-pipe's
+# command string is the opposite — it does expand — so the two bindings must
+# get their provenance in opposite ways.
+# bats test_tags=integration
+@test "the picker resolves its own origin pane rather than being handed one" {
+  TMUX_BIN="$(command -v tmux || true)"
+  [ -n "$TMUX_BIN" ] || skip "tmux not installed"
+  SOCK="annotate_${BATS_TEST_NUMBER}_$$"
+  "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 80 -y 24 'sleep 60'
+  TMUX="$(tx display-message -p -t s '#{socket_path}'),$(tx display-message -p -t s '#{pid}'),0"
+  export TMUX
+
+  local active
+  active=$(tx display-message -p '#{pane_id}')
+
+  # The CLI stub records which pane it was asked about.
+  write_stub annotate <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$BATS_TEST_TMPDIR/asked"
+exit 0
+EOF
+
+  # No argument at all - the popup case.
+  ANNOTATE_BIN="$TEST_BIN/annotate" run "$BASH5" "$PICK_SH" </dev/null
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/asked"
+  [[ "$output" == *"$active"* ]]
+
+  # An unexpanded format must never reach the CLI as if it were a pane id.
+  ANNOTATE_BIN="$TEST_BIN/annotate" run "$BASH5" "$PICK_SH" '#{pane_id}' </dev/null
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/asked"
+  [[ "$output" != *'#{pane_id}'* ]]
+  [[ "$output" == *"$active"* ]]
+}
+
+@test "the picker says so when it cannot resolve a pane at all" {
+  # A tmux that answers nothing, rather than `env -u TMUX` - without $TMUX the
+  # real binary falls back to the DEFAULT socket, which is the live server, so
+  # the test would both leak out of its isolation and resolve a pane.
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  ANNOTATE_BIN=/nonexistent run "$BASH5" "$PICK_SH" </dev/null
   [ "$status" -eq 2 ]
   [[ "$output" == *"needs a pane id"* ]]
 }
