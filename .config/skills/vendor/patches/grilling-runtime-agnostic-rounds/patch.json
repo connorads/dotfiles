@@ -1,0 +1,6 @@
+{
+  "reason": "find facts without assuming the runtime has sub-agents; open each round with what it unblocks and close with a recap",
+  "files": [
+    ".agents/skills/grilling/SKILL.md"
+  ]
+}
