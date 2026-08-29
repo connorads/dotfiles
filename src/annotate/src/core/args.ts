@@ -4,6 +4,12 @@
 import { isSourceKind, type SourceKind } from "./excerpt.ts";
 import { err, ok, type Result } from "./result.ts";
 
+export const DESTINATION_KINDS = ["agent", "clipboard", "file"] as const;
+export type DestinationKind = (typeof DESTINATION_KINDS)[number];
+
+const isDestinationKind = (value: string): value is DestinationKind =>
+  (DESTINATION_KINDS as readonly string[]).includes(value);
+
 export interface StashCommand {
   readonly kind: "stash";
   readonly source: SourceKind;
@@ -11,6 +17,21 @@ export interface StashCommand {
   readonly cwd: string | null;
   readonly session: string | null;
   readonly entry: string | null;
+}
+
+export interface SendCommand {
+  readonly kind: "send";
+  readonly to: string | null;
+  readonly destination: DestinationKind;
+  /** Where a `file` destination writes. */
+  readonly file: string | null;
+  readonly edit: boolean;
+  readonly dryRun: boolean;
+}
+
+export interface DraftCommand {
+  readonly kind: "draft";
+  readonly action: "show" | "edit" | "discard";
 }
 
 export interface DropCommand {
@@ -21,9 +42,12 @@ export interface DropCommand {
 
 export type Command =
   | StashCommand
+  | SendCommand
+  | DraftCommand
   | DropCommand
   | { readonly kind: "list"; readonly json: boolean }
   | { readonly kind: "clear" }
+  | { readonly kind: "undo" }
   | { readonly kind: "render" }
   | { readonly kind: "count" }
   | { readonly kind: "path" }
@@ -36,9 +60,16 @@ export const USAGE = `annotate - batch corrections from terminal output into one
   annotate list [--json]          excerpts waiting to be sent
   annotate drop <n|last|all>      remove one, the newest, or every excerpt
   annotate clear                  empty the spool
+  annotate send [--to %N] [--dest agent|clipboard|file] [--file PATH]
+                [--no-edit] [--dry-run]
+  annotate draft [--edit|--discard]   show, reopen, or bin the draft
+  annotate undo                   restore the draft the last send delivered
   annotate render                 print what a fresh draft would look like
   annotate count                  excerpts waiting, for the status pill
   annotate path                   the event log's path
+
+In the editor: save and quit to send. To keep comments without sending, save
+then exit non-zero (vim's :w then :cq); an unchanged draft is never sent.
 
 exit: 0 ok · 1 store failure · 2 usage · 3 unresolvable · 4 refused · 5 stall`;
 
@@ -86,6 +117,55 @@ const parseStash = (argv: readonly string[]): Result<Command, string> => {
   return ok({ kind: "stash", source, pane, cwd, session, entry });
 };
 
+const parseSend = (argv: readonly string[]): Result<Command, string> => {
+  let to: string | null = null;
+  let destination: DestinationKind = "agent";
+  let file: string | null = null;
+  let edit = true;
+  let dryRun = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i] as string;
+    switch (arg) {
+      case "--to":
+      case "--dest":
+      case "--file": {
+        const value = wants(argv, i, arg);
+        if (!value.ok) return value;
+        if (arg === "--to") to = value.value;
+        else if (arg === "--file") file = value.value;
+        else {
+          if (!isDestinationKind(value.value)) return err(`unknown destination: ${value.value}`);
+          destination = value.value;
+        }
+        i += 1;
+        break;
+      }
+      case "--no-edit":
+        edit = false;
+        break;
+      case "--dry-run":
+        dryRun = true;
+        break;
+      default:
+        return err(`unknown argument: ${arg}`);
+    }
+  }
+  // `--file` names a destination as plainly as `--dest file` does; taking it
+  // as one saves the caller spelling both.
+  if (file !== null && destination === "agent") destination = "file";
+  return ok({ kind: "send", to, destination, file, edit, dryRun });
+};
+
+const parseDraft = (argv: readonly string[]): Result<Command, string> => {
+  if (argv.length === 0) return ok({ kind: "draft", action: "show" });
+  if (argv.length > 1) return err(`unknown argument: ${argv[1] as string}`);
+  const flag = argv[0] as string;
+  if (flag === "--edit") return ok({ kind: "draft", action: "edit" });
+  if (flag === "--discard") return ok({ kind: "draft", action: "discard" });
+  return err(`unknown argument: ${flag}`);
+};
+
 const parseDrop = (argv: readonly string[]): Result<Command, string> => {
   const target = argv[0];
   if (target === undefined) return err("drop needs <n|last|all>");
@@ -119,8 +199,14 @@ export const parseArgs = (argv: readonly string[]): Result<Command, string> => {
       return parseList(rest);
     case "drop":
       return parseDrop(rest);
+    case "send":
+      return parseSend(rest);
+    case "draft":
+      return parseDraft(rest);
     case "clear":
       return bare(rest, { kind: "clear" });
+    case "undo":
+      return bare(rest, { kind: "undo" });
     case "render":
       return bare(rest, { kind: "render" });
     case "count":

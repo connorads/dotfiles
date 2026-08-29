@@ -201,6 +201,103 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+# --- draft and send -------------------------------------------------------
+
+# An `agent` stub recording its argv, so delivery is observable without a
+# live agent pane.
+write_agent_stub() {
+  export ANNOTATE_AGENT_BIN="$TEST_BIN/agent"
+  AGENT_LOG="$BATS_TEST_TMPDIR/agent.log"
+  export AGENT_LOG
+  write_stub agent <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" > "$AGENT_LOG"
+exit \${AGENT_EXIT:-0}
+EOF
+}
+
+# An editor stub appending a comment, so a "review" is observable.
+write_editor_stub() {
+  export ANNOTATE_EDITOR="$TEST_BIN/fake-editor"
+  write_stub fake-editor <<'EOF'
+#!/usr/bin/env bash
+printf 'THE CORRECTION\n' >> "$1"
+exit ${EDITOR_EXIT:-0}
+EOF
+}
+
+@test "send edits the draft and delivers exactly what was saved" {
+  write_agent_stub
+  write_editor_stub
+  run "$ANNOTATE" stash --pane %12 <<<"the offending output"
+
+  annotate send
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sent to agent:%12"* ]]
+
+  run cat "$AGENT_LOG"
+  [[ "$output" == *"THE CORRECTION"* ]]
+  [[ "$output" == *"the offending output"* ]]
+  # The editing preamble addresses the reader, not the agent.
+  [[ "$output" != *"Delete a section to drop it"* ]]
+
+  annotate count
+  [ "$output" = "0" ]
+}
+
+@test "send never passes --force: a pane at an approval prompt must refuse" {
+  write_agent_stub
+  run "$ANNOTATE" stash --pane %1 <<<"x"
+  annotate send --no-edit
+  run cat "$AGENT_LOG"
+  [[ "$output" != *"--force"* ]]
+}
+
+@test "a refused delivery is exit 4 with spool and draft intact" {
+  write_agent_stub
+  write_editor_stub
+  run "$ANNOTATE" stash --pane %1 <<<"x"
+
+  AGENT_EXIT=4 run "$ANNOTATE" send
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"waiting on you"* ]]
+
+  annotate count
+  [ "$output" = "1" ]
+  annotate draft
+  [[ "$output" == *"THE CORRECTION"* ]]
+}
+
+@test "an editor that exits non-zero keeps the comments and sends nothing" {
+  write_agent_stub
+  write_editor_stub
+  run "$ANNOTATE" stash --pane %1 <<<"x"
+
+  EDITOR_EXIT=1 run "$ANNOTATE" send
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"draft kept, nothing sent"* ]]
+  [ ! -e "$AGENT_LOG" ]
+
+  annotate draft
+  [[ "$output" == *"THE CORRECTION"* ]]
+}
+
+@test "undo restores the delivered draft, ready to re-aim" {
+  write_agent_stub
+  write_editor_stub
+  run "$ANNOTATE" stash --pane %1 <<<"x"
+  annotate send
+
+  annotate undo
+  [ "$status" -eq 0 ]
+
+  annotate send --no-edit --to %19
+  [ "$status" -eq 0 ]
+  run cat "$AGENT_LOG"
+  [[ "$output" == *"%19"* ]]
+  [[ "$output" == *"THE CORRECTION"* ]]
+}
+
 # --- the pane source is a pipe -------------------------------------------
 
 @test "the pane source takes a snapshot on stdin" {

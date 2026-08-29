@@ -87,6 +87,13 @@ describe("renderDraft", () => {
     const text = "  indented\n\tand tabbed  \n\nblank line above";
     expect(renderDraft([make(1, text)])).toContain(text);
   });
+
+  // Callers test emptiness to decide whether there is anything to open an
+  // editor on. A lone preamble would read as a draft and open one.
+  test("no excerpts means no draft, not a lone preamble", () => {
+    expect(renderDraft([])).toBe("");
+    expect(updateDraft([], null, null).markdown).toBe("");
+  });
 });
 
 describe("appendable", () => {

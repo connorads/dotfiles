@@ -54,9 +54,16 @@ export const renderSections = (
   home?: string | undefined,
 ): string => excerpts.map((e, i) => renderExcerpt(e, startIndex + i, home)).join("\n");
 
-/** A fresh draft: preamble plus every excerpt in the spool. */
+/**
+ * A fresh draft: preamble plus every excerpt in the spool.
+ *
+ * No excerpts means no draft, not a lone preamble. The preamble addresses the
+ * reader, so a draft holding only that is empty in every sense that matters -
+ * and callers test emptiness to decide whether there is anything to open an
+ * editor on or send.
+ */
 export const renderDraft = (excerpts: readonly Excerpt[], home?: string | undefined): string =>
-  `${DRAFT_PREAMBLE}\n\n${renderSections(excerpts, 1, home)}`;
+  excerpts.length === 0 ? "" : `${DRAFT_PREAMBLE}\n\n${renderSections(excerpts, 1, home)}`;
 
 /**
  * The excerpts a draft does not yet render.
