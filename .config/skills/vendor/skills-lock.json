@@ -134,6 +134,12 @@
       "skillPath": "skills/general-video/SKILL.md",
       "computedHash": "4f0c6cac18a6ef22765713e59e083af80916b423d3cb5b7f588b49fd0dfb65c8"
     },
+    "gh-stack": {
+      "source": "github/gh-stack",
+      "sourceType": "github",
+      "skillPath": "skills/gh-stack/SKILL.md",
+      "computedHash": "28d42250d52f33424b807add6fbdec75736e835f98752311db321ab51733fea6"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
