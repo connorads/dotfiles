@@ -8,10 +8,12 @@ import { exitCodeFor, isFailure, type Outcome } from "./core/exit.ts";
 import { isoTimestamp } from "./core/ids.ts";
 import { formatList, listRows, renderDraft, updateDraft } from "./core/render.ts";
 import { dropTargets, resolveTarget, spoolJson } from "./core/spool.ts";
+import { pickerRows } from "./core/transcript.ts";
 import { deliver } from "./shell/destinations/index.ts";
 import { edit } from "./shell/editor.ts";
 import { readEnv, type Env } from "./shell/env.ts";
 import { openSource } from "./shell/sources/index.ts";
+import { transcriptFor } from "./shell/sources/transcript.ts";
 import { appendEvent, readState, withLock } from "./shell/store.ts";
 
 const readStdin = async (): Promise<string> => {
@@ -32,7 +34,7 @@ const out = (text: string): void => {
 const runStash = async (command: Extract<Command, { kind: "stash" }>, env: Env): Promise<Outcome> => {
   const capture = await openSource({
     kind: command.source,
-    stdin: await readStdin(),
+    readStdin,
     pane: command.pane,
     cwd: command.cwd,
     session: command.session,
@@ -110,6 +112,29 @@ const runCount = async (env: Env): Promise<Outcome> => {
   // pill", not an error on the status line.
   if (!state.ok) return { kind: "ok", message: "0" };
   return { kind: "ok", message: String(state.value.spool.length) };
+};
+
+/**
+ * The transcript turns a pane can be quoted from. Feeds the picker, which
+ * takes the uuid in field 1 and hides it with `--with-nth=2..`.
+ */
+const runEntries = async (
+  command: Extract<Command, { kind: "entries" }>,
+  env: Env,
+): Promise<Outcome> => {
+  const pane = command.pane ?? env.tmuxPane;
+  if (pane === null) {
+    return { kind: "usage", message: "annotate: entries needs --pane %N" };
+  }
+  const read = await transcriptFor(pane);
+  if (!read.ok) {
+    if (read.error.kind === "empty") return { kind: "ok" };
+    return { kind: "unresolvable", message: `annotate: ${read.error.message}` };
+  }
+  if (command.json) {
+    return { kind: "ok", message: JSON.stringify(read.value.transcript.entries, null, 2) };
+  }
+  return { kind: "ok", message: pickerRows(read.value.transcript).join("\n") };
 };
 
 // ---------------------------------------------------------------------------
@@ -294,6 +319,8 @@ const run = async (command: Command, env: Env): Promise<Outcome> => {
       return runDraft(command, env);
     case "undo":
       return runUndo(env);
+    case "entries":
+      return runEntries(command, env);
     case "count":
       return runCount(env);
   }

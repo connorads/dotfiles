@@ -25,5 +25,5 @@ import type { Capture, SourceError, SourceRequest } from "./index.ts";
 
 export const openPane = async (request: SourceRequest): Promise<Result<Capture, SourceError>> => {
   const origin = await enrich(emptyOrigin("pane"), request);
-  return ok({ text: request.stdin, origin });
+  return ok({ text: await request.readStdin(), origin });
 };

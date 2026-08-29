@@ -40,8 +40,15 @@ export interface DropCommand {
   readonly target: { readonly kind: "index"; readonly index: number } | { readonly kind: "last" } | { readonly kind: "all" };
 }
 
+export interface EntriesCommand {
+  readonly kind: "entries";
+  readonly json: boolean;
+  readonly pane: string | null;
+}
+
 export type Command =
   | StashCommand
+  | EntriesCommand
   | SendCommand
   | DraftCommand
   | DropCommand
@@ -64,6 +71,7 @@ export const USAGE = `annotate - batch corrections from terminal output into one
                 [--no-edit] [--dry-run]
   annotate draft [--edit|--discard]   show, reopen, or bin the draft
   annotate undo                   restore the draft the last send delivered
+  annotate entries [--pane %N] [--json]   transcript messages to stash from
   annotate render                 print what a fresh draft would look like
   annotate count                  excerpts waiting, for the status pill
   annotate path                   the event log's path
@@ -166,6 +174,22 @@ const parseDraft = (argv: readonly string[]): Result<Command, string> => {
   return err(`unknown argument: ${flag}`);
 };
 
+const parseEntries = (argv: readonly string[]): Result<Command, string> => {
+  let json = false;
+  let pane: string | null = null;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i] as string;
+    if (arg === "--json") json = true;
+    else if (arg === "--pane") {
+      const value = wants(argv, i, arg);
+      if (!value.ok) return value;
+      pane = value.value;
+      i += 1;
+    } else return err(`unknown argument: ${arg}`);
+  }
+  return ok({ kind: "entries", json, pane });
+};
+
 const parseDrop = (argv: readonly string[]): Result<Command, string> => {
   const target = argv[0];
   if (target === undefined) return err("drop needs <n|last|all>");
@@ -197,6 +221,8 @@ export const parseArgs = (argv: readonly string[]): Result<Command, string> => {
       return parseStash(rest);
     case "list":
       return parseList(rest);
+    case "entries":
+      return parseEntries(rest);
     case "drop":
       return parseDrop(rest);
     case "send":
