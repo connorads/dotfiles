@@ -99,7 +99,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+a` | jump to next blocked agent pane (wraps across windows/sessions; falls back to done when none blocked) |
 | `Ctrl+b Alt+s` | skill loader (skl picker → enter injects pointer into this pane, ctrl-y copies to clipboard) |
 | `Ctrl+b Alt+f` | function/alias search |
-| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
+| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, annotate undo/reset, connections, ports, pclose, bandwhich, tsp, tpm-clean) |
 | `Ctrl+b a` | AI usage (Claude + Codex + Cosine) |
 | `Ctrl+b Alt+c` | launch claude with an account + mcpz bundle (pick account → pick bundle → new window running `ccp <acct> --mcp <bundle>`) |
 | `Ctrl+b Alt+b` | branch this pane's Claude/Codex session (fork into split/window, a new worktree window, or under a different account; hand off to the other agent Claude↔Codex via handoff; copy cmd/id) |
