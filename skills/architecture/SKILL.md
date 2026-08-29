@@ -35,14 +35,16 @@ What kind of change is this?
 |   `-- model states explicitly and parse untrusted input at boundaries
 |-- Failures are unclear
 |   `-- make domain/application errors explicit and translate at the shell
+|-- Boundaries unknown / new domain / experts disagree
+|   `-- discover before scoring (Finding Boundaries)
 |-- A boundary feels wrong / "should we decouple this?"
 |   `-- score strength, distance, volatility (references/balancing-coupling.md)
 |-- Retries, sagas, consistency, concurrent writers
 |   `-- references/workflows-transactions.md
 |-- Query shapes fighting the domain model / CQRS question
 |   `-- references/reads-and-writes.md
-|-- Production behaviour hard to debug
-|   `-- references/observability.md
+|-- New boundary, or production behaviour hard to debug
+|   `-- decide what it emits before building it (references/observability.md)
 `-- Wiring a service: config, bootstrap, dependency injection
     `-- references/configuration-lifecycle.md
 ```
@@ -140,6 +142,12 @@ pass-through method or thin wrapper that hides nothing adds interface cost for
 no gain, so merge or delete it. The sharper test: a layer whose abstraction is
 the same as its neighbour's is the red flag, whatever its line count.
 
+Over-decomposition is the mirror failure. Split where the pieces are
+independent, not everywhere: two chunks you must read together to understand
+either are entangled, so separating them adds an interface and hides nothing
+(Ousterhout: "if two pieces of code are tightly related, the solution is to
+bring them together"). Step count is not the goal.
+
 These red flags target layers that hide nothing; what earns a seam is
 contributing distinct functionality - deliberate ports/adapters and
 substitutable pipeline steps qualify. The `typescript` skill owns the mechanics
@@ -161,7 +169,12 @@ public types provides no protection however it is named. Keep cross-module
 calls on explicit interfaces so a module can later be deployed separately
 without rewiring. Default to a modular monolith with enforced
 boundaries; split out a deployable only when scaling, deploy cadence, or team
-ownership forces it. Modules need not share one internal shape - a complex
+ownership forces it. When a split is forced, cut on a fracture plane rather
+than convenience (Skeleton & Pais): bounded context first, then change cadence,
+regulatory scope, performance isolation, or team location - the litmus test is
+cognitive load: could one team own this and offer it to the others as a
+service? If several teams must hold the same semantics to ship anything, the
+cut is in the wrong place. Modules need not share one internal shape - a complex
 pricing core earns a rich domain model while a reporting module stays plain
 queries (see Scale Rule).
 
@@ -173,6 +186,16 @@ unifying them is the error, not the fix (Evans). Name the relationship you
 actually have with each neighbouring context - conformist, customer-supplier,
 shared kernel, open-host, separate ways, anti-corruption layer; the ACL buys
 model integrity at the highest running cost, so pick it deliberately.
+
+## Finding Boundaries
+
+Boundaries are an output of modelling, not an input. In a new or contested
+domain, make the flow visible with the people who do the work - past-tense
+events in time order - and mark disagreements rather than resolving them: two
+experts who contradict each other are usually both right in their own place,
+and that is where the context boundary is (Brandolini); a term changing meaning
+is the same signal (Evans). Drive to a plausible end-to-end story, then
+re-inject the corner cases you parked - the rosy scenario proves nothing.
 
 ## Balancing Coupling
 
@@ -208,6 +231,14 @@ operation's side effects (the refund, the freed capacity); an action route
 makes "what happens when this occurs" the unit of design. When the operation
 is a reaction rather than a request, it is an event -
 `event-driven-architecture` owns the mechanics.
+
+Design the second version before shipping the first. Default to additive
+change - new optional fields and new operations, never a repurposed one. When a
+break is genuinely required, keep one canonical implementation and isolate the
+old shape in a version transform at the edge (Stripe's version-change modules:
+consumers pin a version, responses are downgraded on the way out), so the
+domain never grows an `if v1` branch. Publish each break with a named deletion
+condition, not an open-ended shim.
 
 ## Domain Modelling
 
