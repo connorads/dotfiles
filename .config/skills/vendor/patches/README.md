@@ -2,8 +2,11 @@
 
 Declarative local patches for the vendored skills under `.agents/skills/`.
 Each patch strips or rewrites an upstream directive we do not want injected
-into agent sessions (today: "self-install/refresh skills at task time"
-directives that bypass the pin-and-review vendoring posture).
+into agent sessions. Two classes: **posture** patches strip directives that
+bypass the local security posture (self-install / refresh skills at task time,
+`npx`, telemetry), and **preference** patches rewrite behaviour a house rule
+contradicts (a skill hard-coding prose questions where the runtime exposes a
+structured-question tool).
 
 Engine: `skill-patch` (`~/.config/zsh/functions/patch/skill-patch`, on PATH).
 

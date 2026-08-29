@@ -1,0 +1,6 @@
+{
+  "reason": "ask each round through the runtime's structured-question tool (AskUserQuestion / request_user_input); prose numbered lists are the fallback, not the default",
+  "files": [
+    ".agents/skills/grilling/SKILL.md"
+  ]
+}

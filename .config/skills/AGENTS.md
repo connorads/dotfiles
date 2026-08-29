@@ -323,8 +323,11 @@ and diff-review clones against the prior vetted copy before trusting them.
 ## Caveats
 
 - **Some vendored SKILL.mds carry local patches** (marked `LOCAL PATCH (connorads
-  dotfiles)` in the file) stripping upstream directives that make agents self-install or
-  refresh skills at task time - which bypasses pin-and-review vendoring. The declarative
+  dotfiles)` in the file). Two classes: **posture** patches strip upstream directives that
+  make agents self-install or refresh skills at task time - which bypasses pin-and-review
+  vendoring - and **preference** patches rewrite behaviour a house rule contradicts, as
+  `grilling` asking each round through the runtime's structured-question tool rather than
+  a numbered prose list. The declarative
   patch definitions in `vendor/patches/` are the **source of truth** (format spec +
   procedures in its README); `skill-patch apply|check` re-applies/verifies them, the
   update-vendored-skills flow runs apply after every refresh, and the hk
