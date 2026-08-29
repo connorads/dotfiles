@@ -1,0 +1,6 @@
+{
+  "reason": "gh stack is nix-managed (programs.gh.extensions); the extensions dir is read-only",
+  "files": [
+    ".agents/skills/gh-stack/SKILL.md"
+  ]
+}
