@@ -131,13 +131,11 @@
     # Requires an Apple Account signed in to the App Store; nothing here installs
     # without it (nix-darwin puts pkgs.mas on PATH for the bundle run only, so
     # `which mas` finding nothing on a normal shell says nothing either way).
+    # Xcode is deliberately absent: MAS serves latest only, so a masApps entry
+    # is a standing upgrade across majors with no way to hold one back. Install
+    # it via xcodes (mise) when a project needs a specific version.
     masApps = {
       RunCatNeo = 6757801838;
-      # Xcode is free, so brew bundle's `mas install || mas get` acquires it on
-      # an account that never had it. MAS serves latest only - no pinning, and
-      # it upgrades itself across majors. Take xcodes (mise) instead if a
-      # project ever needs a held-back Xcode.
-      Xcode = 497799835;
     };
   };
 
