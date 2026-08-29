@@ -106,12 +106,15 @@ const runDrop = async (command: Extract<Command, { kind: "drop" }>, env: Env): P
     return { kind: "ok", message: `annotate: dropped ${targets.value.length}, ${left} left` };
   });
 
-const runCount = async (env: Env): Promise<Outcome> => {
+const runCount = async (json: boolean, env: Env): Promise<Outcome> => {
   const state = await readState(env.logPath);
   // The status pill calls this every tick. A store it cannot read means "no
   // pill", not an error on the status line.
-  if (!state.ok) return { kind: "ok", message: "0" };
-  return { kind: "ok", message: String(state.value.spool.length) };
+  if (!state.ok) return { kind: "ok", message: json ? '{"spool":0,"draft":false}' : "0" };
+  const spool = state.value.spool.length;
+  if (!json) return { kind: "ok", message: String(spool) };
+  const draft = state.value.draft !== null && state.value.draft.trim().length > 0;
+  return { kind: "ok", message: JSON.stringify({ spool, draft }) };
 };
 
 /**
@@ -322,7 +325,7 @@ const run = async (command: Command, env: Env): Promise<Outcome> => {
     case "entries":
       return runEntries(command, env);
     case "count":
-      return runCount(env);
+      return runCount(command.json, env);
   }
 };
 
