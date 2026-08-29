@@ -99,7 +99,12 @@ add-zsh-hook precmd _agent_sandbox_prepend
 add-zsh-hook chpwd _agent_sandbox_prepend
 
 # Repair mouse reporting left enabled when SSH or a terminal UI exits abruptly.
-add-zsh-hook precmd terminal-mouse-reset
+# Armed from the second prompt, not the first: the reset writes CSI sequences to
+# stdout, which at the first prompt is still powerlevel10k's instant-prompt
+# capture, and anything captured there raises its console-output warning. A fresh
+# shell's first prompt has nothing to repair - the abrupt exit is always a later
+# prompt of an already-running shell - so the deferral loses no coverage.
+add-zsh-hook precmd _register_terminal_mouse_reset
 
 # Aliases (grouped by tool)
 for alias_file in ~/.config/zsh/aliases/*.zsh(N); do
