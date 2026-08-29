@@ -9,6 +9,10 @@
 # I_ short-circuits to the default false, so channels are gated as "not currently available"
 # even with claude.ai auth and managed-settings.json configured. Patching the bundled
 # default from !1 to !0 forces cJH() true regardless of telemetry / rollout.
+#
+# expect_matches=1 because the site is verified unique: the flag literal occurs
+# exactly once in each installed binary (257-325MB), so a second match means the
+# needle has broadened and the patch should refuse rather than guess.
 
 emulate -L zsh
 setopt no_unset pipe_fail
@@ -18,6 +22,7 @@ local patch_name=claude-channels-patch
 local patch_label=--channels
 local needle='tengu_harbor",!1)'
 local replace='tengu_harbor",!0)'
+local expect_matches=1
 local marker="$HOME/.cache/claude-channels-patch.stale"
 local missing_body=$'The flag was likely renamed upstream; --channels will silently\nrevert until the needle in claude-channels-patch is updated.'
 local missing_banner='--channels will revert'
