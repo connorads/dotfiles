@@ -73,9 +73,10 @@ zizmor = "1"
 ast-grep = "0.45"
 # 580+ needs Python >= 3.10 *to install*: the bundled urllib3 uses PEP 604
 # `bytes | str` at import time, and the vfox plugin's install script picks
-# /usr/bin/python3 (3.9.6 on macOS) over mise's own python. A fresh install
-# fails with `TypeError: unsupported operand type(s) for |`; recover with
-#   CLOUDSDK_PYTHON="$(mise which python)" mise install gcloud
+# /usr/bin/python3 (3.9.6 on macOS) over mise's own python. Every install runs
+# that script, so each new release breaks `up` here, not just a first install;
+# it fails with `TypeError: unsupported operand type(s) for |`. Recover with
+#   CLOUDSDK_PYTHON="$(mise which python)" mise upgrade gcloud
 # Deliberately not in [env]: gcloud ships its own interpreter and reports
 # `bundled-python3-unix` at runtime, so pinning CLOUDSDK_PYTHON globally would
 # override the interpreter it is actually tested against.
