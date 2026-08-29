@@ -59,6 +59,10 @@ Use the sandwich:
 gather data and dependencies -> decide with pure values -> perform effects
 ```
 
+The check is the shape: the shell carries the dependencies and almost no
+branches; the core carries every branch and no dependencies (Bernhardt). A
+conditional in the shell is a decision that leaked out of the core.
+
 Challenge effects that appear to need interleaving. Often the code can fetch
 eagerly, decide purely, then act once. Have the core return a value describing
 what should happen - a decision or a list of events - and let the shell perform
@@ -125,15 +129,20 @@ trade-offs; `mechanical-enforcement` owns the exact rule and hook.
 
 ## Module Depth
 
-Pull complexity downward. A module has more callers than authors, so a simple
-interface over a complex body beats the reverse: absorb the hard cases inside
-rather than exposing flags and knobs to callers. A layer whose interface is about
-as complex as its body is shallow - a pass-through method or thin wrapper that
-hides nothing adds interface cost for no gain, so merge or delete it.
+Pull complexity downward (Ousterhout, *A Philosophy of Software Design*) - but
+only where it is closely related to the module's existing job, simplifies many
+call sites, and simplifies the interface; absorbing a caller's concern is
+information leakage wearing a deep module's clothes. A module has more callers
+than authors, so a simple interface over a complex body beats the reverse:
+absorb the hard cases inside rather than exposing flags and knobs to callers. A
+layer whose interface is about as complex as its body is shallow - a
+pass-through method or thin wrapper that hides nothing adds interface cost for
+no gain, so merge or delete it. The sharper test: a layer whose abstraction is
+the same as its neighbour's is the red flag, whatever its line count.
 
-This red flag targets abstraction layers that hide nothing - not deliberate
-ports/adapters, nor pure pipeline steps kept for substitution or isolated
-testability, which earn their seam. The `typescript` skill owns the mechanics
+These red flags target layers that hide nothing; what earns a seam is
+contributing distinct functionality - deliberate ports/adapters and
+substitutable pipeline steps qualify. The `typescript` skill owns the mechanics
 (deep, cohesive modules; the deletion test).
 
 ## Module Organisation
@@ -236,7 +245,8 @@ Prefer:
 Avoid generic names like `data`, `info`, `manager`, and `helper` when the domain
 has better words.
 
-Make illegal states unrepresentable: model meaningful lifecycle states as
+Make illegal states unrepresentable (Minsky's phrase, carried into domain
+modelling by Wlaschin): model meaningful lifecycle states as
 discriminated unions, not bags of `isX`/`isY` flags, so invalid combinations
 cannot be constructed and need no runtime check. Avoid boolean blindness - no
 boolean parameters that switch behaviour; use named options or domain types.
