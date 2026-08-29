@@ -79,6 +79,13 @@ conversation for context:
 - Forward slashes in paths; assume nothing about the working directory -
   scripts are invoked from the skill directory the agent resolved, not a
   fixed location.
+- Name capabilities, not client tool names. A hard-coded tool name
+  (`AskUserQuestion`) fails silently on clients that lack it: the model
+  improvises instead of erroring, so the step is skipped with no signal.
+  Name the capability with known tool names as examples ("the runtime's
+  structured-question tool - e.g. `AskUserQuestion` (Claude Code),
+  `request_user_input` (Codex)"), give a prose fallback, and forbid the
+  silent path explicitly ("never skip the question and assume an answer").
 
 ## Hygiene
 
