@@ -2,12 +2,13 @@
 // writes to stdout, or catches. Everything it decides is decided in core.
 
 import { parseArgs, USAGE, type Command } from "./core/args.ts";
-import { captureExcerpt, emptyOrigin, type Origin } from "./core/excerpt.ts";
+import { captureExcerpt } from "./core/excerpt.ts";
 import { exitCodeFor, isFailure, type Outcome } from "./core/exit.ts";
 import { isoTimestamp } from "./core/ids.ts";
 import { formatList, listRows, renderDraft } from "./core/render.ts";
 import { dropTargets, spoolJson } from "./core/spool.ts";
 import { readEnv, type Env } from "./shell/env.ts";
+import { openSource } from "./shell/sources/index.ts";
 import { appendEvent, readState, withLock } from "./shell/store.ts";
 
 const readStdin = async (): Promise<string> => {
@@ -26,16 +27,24 @@ const out = (text: string): void => {
 // ---------------------------------------------------------------------------
 
 const runStash = async (command: Extract<Command, { kind: "stash" }>, env: Env): Promise<Outcome> => {
-  const text = await readStdin();
-  const origin: Origin = {
-    ...emptyOrigin(command.source),
+  const capture = await openSource({
+    kind: command.source,
+    stdin: await readStdin(),
     pane: command.pane,
     cwd: command.cwd,
     session: command.session,
-    entryId: command.entry,
-  };
+    entry: command.entry,
+  });
+  if (!capture.ok) {
+    if (capture.error.kind === "empty") return { kind: "ok", message: "annotate: nothing selected" };
+    return { kind: "unresolvable", message: `annotate: ${capture.error.message}` };
+  }
+
   const now = Date.now();
-  const excerpt = captureExcerpt(text, origin, { now, random: Math.random() });
+  const excerpt = captureExcerpt(capture.value.text, capture.value.origin, {
+    now,
+    random: Math.random(),
+  });
   if (!excerpt.ok) {
     // An empty selection is the commonest way to press the key by accident.
     // Saying so and exiting 0 keeps the capture key silent-on-success and
