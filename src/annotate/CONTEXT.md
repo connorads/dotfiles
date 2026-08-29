@@ -84,7 +84,7 @@ Naming decisions worth not relitigating:
 Functional core, imperative shell. `src/cli.ts` is the only place that reads
 argv, touches the store, writes to stdout, or catches.
 
-```
+```text
 src/cli.ts                     imperative shell; the only try/catch
 src/core/                      pure: result ids excerpt spool draft events
                                render text args exit transcript
@@ -105,7 +105,7 @@ One append-only JSONL event log at
 `${ANNOTATE_STATE_DIR:-${XDG_STATE_HOME:-~/.local/state}/agents}/annotate.jsonl`,
 matching `papercut`'s state-dir convention.
 
-```
+```text
 stashed  { excerpt }
 dropped  { excerptId }
 drafted  { markdown, renderedThrough }   last-write-wins
@@ -126,7 +126,7 @@ never fatal, because the store outlives the binary.
 
 The same contract as `agent`, so a caller scripting both reads one set:
 
-```
+```text
 0  ok, including every benign no-op (empty selection, empty spool, editor quit)
 1  store or IO failure
 2  usage

@@ -21,7 +21,7 @@ Three shapes were designed independently before choosing.
 Measured on the live tmux server, because the surfaces differ in a way that
 constrains this:
 
-```
+```text
 %1   claude  alt=1  height=39  visible=39  full_scrollback=78
 %417 codex   alt=0  height=39  visible=39  full_scrollback=574
 ```
