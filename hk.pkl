@@ -645,7 +645,7 @@ local fast_steps = new Mapping<String, Step> {
     // Missing jq/runner/node_modules warns and passes, same never-brick posture
     // as ts-typecheck.sh; `mise run ts-checks` runs everything by hand.
     ["ts-tests-scoped"] {
-        glob = List("src/skl/**", "src/pin-audit/**", ".pi/agent/extensions/**")
+        glob = List("src/skl/**", "src/pin-audit/**", "src/annotate/**", ".pi/agent/extensions/**")
         check = "bash .hk-hooks/ts-tests.sh {{files}}"
     }
 
@@ -661,6 +661,10 @@ local fast_steps = new Mapping<String, Step> {
     ["ts-typecheck-pin-audit"] {
         glob = List("src/pin-audit/src/**/*.ts", "src/pin-audit/tsconfig.json")
         check = "bash .hk-hooks/ts-typecheck.sh src/pin-audit"
+    }
+    ["ts-typecheck-annotate"] {
+        glob = List("src/annotate/src/**/*.ts", "src/annotate/tests/**/*.ts", "src/annotate/tsconfig.json")
+        check = "bash .hk-hooks/ts-typecheck.sh src/annotate"
     }
     ["ts-typecheck-goal"] {
         glob = List(".pi/agent/extensions/goal/*.ts", ".pi/agent/extensions/goal/tsconfig.json")

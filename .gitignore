@@ -176,6 +176,12 @@
 !/src/skl/**
 /src/skl/node_modules/
 
+# annotate: batch corrections into one agent prompt (bun/TS; zsh wrapper in
+# functions/agents). The spool lives in ~/.local/state/agents, not here.
+!/src/annotate/
+!/src/annotate/**
+/src/annotate/node_modules/
+
 !/.pi/
 /.pi/**
 !/.pi/agent/

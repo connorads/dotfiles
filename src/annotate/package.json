@@ -1,0 +1,14 @@
+{
+  "name": "annotate",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Batch corrections from terminal output into one agent prompt",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14"
+  }
+}
