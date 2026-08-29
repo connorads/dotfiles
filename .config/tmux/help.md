@@ -249,7 +249,9 @@ there is nothing to say yet. `Ctrl+b Alt+e` renders everything stashed into one
 markdown draft, opens it in `$EDITOR`, and delivers it to the pane the excerpts came
 from. `Ctrl+b Alt+Shift+E` stashes a Claude message from the session transcript
 instead of the screen, which is the only way to get it untruncated. Clicking the pill
-opens the draft.
+opens a menu whose rows match the state - draft/send, drop the newest excerpt, clear
+the spool, discard the draft. Clearing and discarding ask first, because only those
+two lose writing.
 
 | Pill | State | Meaning |
 |------|-------|---------|
