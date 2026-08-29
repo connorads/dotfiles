@@ -67,3 +67,22 @@ setup() {
   [ -f "$HOME/$MARKER_REL" ]
   grep -qF "$HOME/claude" "$HOME/$MARKER_REL"
 }
+
+# The gate is a single site, so expect_matches=1 pins it: a second match means the
+# needle has broadened and the patch must refuse rather than flip both.
+@test "a second gate site is ambiguous: refused, marked, target untouched" {
+  printf 'prefix %s middle %s suffix' "$NEEDLE" "$NEEDLE" >"$HOME/claude"
+  cp "$HOME/claude" "$HOME/claude.expected"
+
+  run_zsh_function "$CHANNELS_PATCH" --reapply "$HOME/claude"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"NEEDLE AMBIGUOUS"* ]]
+  [ -f "$HOME/$MARKER_REL" ]
+  cmp -s "$HOME/claude" "$HOME/claude.expected"
+
+  run_zsh_function "$CHANNELS_PATCH" --check "$HOME/claude"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ambiguous:"* ]]
+}
