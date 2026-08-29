@@ -6,9 +6,17 @@
 [[ -d ~/.nix-profile/share/terminfo ]] && \
   export TERMINFO_DIRS="$HOME/.nix-profile/share/terminfo${TERMINFO_DIRS:+:$TERMINFO_DIRS}:/usr/share/terminfo"
 
-# 3. Source home-manager session vars (LOCALE_ARCHIVE, XDG_DATA_DIRS, XCURSOR_PATH)
-[[ -f ~/.nix-profile/etc/profile.d/hm-session-vars.sh ]] && \
-  source ~/.nix-profile/etc/profile.d/hm-session-vars.sh
+# 3. Source home-manager session vars (EDITOR, VISUAL, XDG_*, TERMINFO_DIRS).
+#    Standalone home-manager writes these under ~/.nix-profile; as a nix-darwin
+#    module it writes them under /etc/profiles/per-user/$USER, and there
+#    ~/.nix-profile does not exist at all. Probe both so one declaration in
+#    home-shared.nix reaches every host.
+for _hm_vars in \
+	"$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" \
+	"/etc/profiles/per-user/${USER:-$(id -un)}/etc/profile.d/hm-session-vars.sh"; do
+	[[ -f $_hm_vars ]] && source "$_hm_vars" && break
+done
+unset _hm_vars
 
 # 4. ~/.local/bin for user executables (XDG standard, zsh function symlinks)
 [[ -d "$HOME/.local/bin" ]] && export PATH="$HOME/.local/bin:$PATH"
