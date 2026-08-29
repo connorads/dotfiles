@@ -2,7 +2,7 @@
 # annotate-pick.sh — the transcript picker. fzf over the messages in a Claude
 # pane's session transcript, stashing whichever you choose.
 #
-#   annotate-pick.sh <pane-id>
+#   annotate-pick.sh [pane-id]
 #
 # This exists because the screen is a lossy render of the transcript. A Claude
 # pane runs on the alternate screen, so tmux holds no scrollback for it, and
@@ -45,7 +45,20 @@ set -uo pipefail
 
 set -uo pipefail
 
+# The pane this popup was summoned from. A popup is a client overlay and does
+# NOT change which pane is active, so querying here returns the origin pane.
+#
+# The keybind must NOT pass #{pane_id}: a `display-popup -E` command string
+# reaches the shell verbatim, so the format arrives unexpanded and every lookup
+# fails with a literal "cannot read pane #{pane_id}". That is the opposite of
+# `copy-pipe`, whose command string *does* expand — which is why the capture
+# key passes its pane in and this one asks. vox-popup.sh documents the same
+# trap. An explicit argument still wins, for calling this by hand or in tests.
 PANE=${1:-}
+case "$PANE" in
+%[0-9]*) ;;
+*) PANE=$(tmux display-message -p '#{pane_id}' 2>/dev/null || true) ;;
+esac
 
 # The tmux server's PATH does not carry ~/.local/bin, so resolve rather than
 # assume the popup shell inherited it.
