@@ -43,6 +43,8 @@ common_dir=$(git -C "$worktree" rev-parse --path-format=absolute --git-common-di
   return 1
 }
 
+_wt_fail_if_stacked "$worktree" || return 1
+
 if (( ! force )); then
   _wt_fail_if_dirty "$worktree" || return 1
 fi

@@ -132,6 +132,24 @@ _wt_fail_if_dirty() {
   fi
 }
 
+# _wt_fail_if_stacked: refuse to destroy a worktree that holds gh stack state.
+# gh stack keeps the stack in $GIT_DIR/gh-stack, which for a worktree is
+# .git/worktrees/<name>/ - so removing the worktree deletes the stack and no
+# other checkout can see it. No --force escape by design: delete the state
+# file by hand if you mean it.
+# Delete this guard when `gh stack init` inside a worktree writes to
+# `git rev-parse --git-common-dir` instead of the per-worktree $GIT_DIR.
+_wt_fail_if_stacked() {
+  local repo_path=$1
+  local git_dir
+  git_dir=$(git -C "$repo_path" rev-parse --absolute-git-dir 2>/dev/null) || return 0
+
+  if [[ -f "$git_dir/gh-stack" ]]; then
+    echo "error: worktree holds gh stack state ($git_dir/gh-stack); removing it destroys the stack" >&2
+    return 1
+  fi
+}
+
 _wt_branch_upstream() {
   local repo_path=$1
   git -C "$repo_path" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null

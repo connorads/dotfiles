@@ -35,6 +35,17 @@ make_remote_repo() {
   git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 }
 
+# Write the state file `gh stack init` leaves in a worktree's own $GIT_DIR
+# (<common>/worktrees/<name>/gh-stack). Written by hand rather than by running
+# `gh stack`, so the suite needs no gh extension installed.
+write_stack_state() {
+  local wt=$1
+  local git_dir
+  git_dir=$(git -C "$wt" rev-parse --absolute-git-dir) || return 1
+  mkdir -p "$git_dir"
+  printf '{"schemaVersion":1}\n' >"$git_dir/gh-stack"
+}
+
 add_origin_and_push_main() {
   local repo=$1
   local remote=$2
@@ -157,6 +168,51 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: worktree has uncommitted changes"* ]]
   [ -d "$HOME/.trees/repo/topic" ]
+}
+
+@test "wt-remove refuses a worktree holding gh stack state" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  write_stack_state "$HOME/.trees/repo/topic"
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"worktree holds gh stack state"* ]]
+  [ -d "$HOME/.trees/repo/topic" ]
+}
+
+@test "wt-remove --force also refuses a worktree holding gh stack state" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  write_stack_state "$HOME/.trees/repo/topic"
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' --force '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"worktree holds gh stack state"* ]]
+  [ -d "$HOME/.trees/repo/topic" ]
+}
+
+@test "wt-remove still removes a worktree with no gh stack state" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  run bash -lc "HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_REMOVE' '$HOME/.trees/repo/topic'"
+
+  [ "$status" -eq 0 ]
+  [ ! -d "$HOME/.trees/repo/topic" ]
 }
 
 @test "wt-remove works from outside the target repository" {
@@ -337,6 +393,30 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"error: worktree has uncommitted changes"* ]]
+}
+
+@test "wt-finish local refuses gh stack state before merging" {
+  local repo="$BATS_TEST_TMPDIR/repo"
+  make_repo "$repo"
+
+  run bash -lc "cd '$repo' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_ADD' --no-setup topic"
+  [ "$status" -eq 0 ]
+
+  echo "topic" >"$HOME/.trees/repo/topic/topic.txt"
+  git -C "$HOME/.trees/repo/topic" add topic.txt
+  git -C "$HOME/.trees/repo/topic" commit -m "add topic" >/dev/null
+
+  write_stack_state "$HOME/.trees/repo/topic"
+  local base_before
+  base_before=$(git -C "$repo" rev-parse main)
+
+  run bash -lc "cd '$HOME/.trees/repo/topic' && HOME='$HOME' PATH='$PATH' zsh --no-rcs '$WT_FINISH' --mode local"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"worktree holds gh stack state"* ]]
+  [ -d "$HOME/.trees/repo/topic" ]
+  [ "$(git -C "$repo" rev-parse main)" = "$base_before" ]
+  [ ! -f "$repo/topic.txt" ]
 }
 
 @test "wt-finish local unlocks a locked worktree before cleanup" {

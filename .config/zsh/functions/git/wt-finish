@@ -65,6 +65,7 @@ if ! _wt_is_managed_path "$wt_path"; then
 fi
 
 _wt_fail_if_dirty "$wt_path" || return 1
+_wt_fail_if_stacked "$wt_path" || return 1
 
 base=$(_wt_resolve_base "$wt_path" "$base") || {
   echo "error: unable to resolve base branch" >&2
