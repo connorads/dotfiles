@@ -46,8 +46,9 @@ Don't assume the reader is holding earlier context - restate what each step need
 ## Git
 
 - Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
-- Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - wording like "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` is ask-ruled in settings, so the prompt is the authorisation.
+- Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - wording like "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` and `gh stack merge` are ask-ruled in settings, so the prompt is the authorisation. `gh stack merge` lands every unmerged PR below its target at once.
 - Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
+- Dependent work that would otherwise be one big PR goes in a stack: `gh stack` (GitHub stacked PRs). Read the `gh-stack` skill first (`skl gh-stack`) - most commands open a TUI under a PTY and hang.
 - Show intended atomic commit boundaries and verification in implementation plans; revise them when the work reveals a better split.
 - Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
 - A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
