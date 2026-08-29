@@ -26,7 +26,12 @@ local vendored_skills = List("**/vendor/.agents/skills/**", "**/.agents/skills/p
 // trailing whitespace can be significant, so reformatting them silently
 // corrupts the diff (git apply rejects it; patch only tolerates it by luck).
 // Exclude every *.patch from the whitespace fixers.
-local no_reformat = vendored_skills + List("**/*.patch")
+// A transcript fixture that ends mid-token, with no trailing newline - what a
+// Claude transcript looks like read while it is still being appended.
+// Terminating it turns "truncated" into "a complete line that is invalid
+// JSON", which parseTranscript scores identically (it skips blank lines), so
+// no test would catch the fixture losing the thing it exists to encode.
+local no_reformat = vendored_skills + List("**/*.patch", "src/annotate/tests/fixtures/transcript-corrupt.jsonl")
 
 local fast_steps = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) { exclude = no_reformat }
