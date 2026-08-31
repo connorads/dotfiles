@@ -2,37 +2,34 @@
 
 ## Tools
 
-- Prefer `mise` for runtime/tool *versions* (not task running). For GitHub Actions, use `jdx/mise-action@v4`; generate new workflows with `mise generate github-action`.
-- Use the repo's existing task runner: in a JS/TS project prefer `package.json` scripts (`pnpm <script>`); reach for `mise` `[tasks]` only in polyglot repos or where no native runner fits. Don't shadow scaffolder-seeded scripts with mise tasks.
-- Never use `npm` or `npx`; use `pnpm` or `pnpm dlx`. Use `bun` only when the project already does.
-- Do not disable package install-script protections globally. If native modules or codegen need install scripts, ask before allow-listing narrowly.
-- Use `gh` CLI for GitHub issues and PRs. If you fix a mentioned issue, close it with `Closes #NO` in the commit message.
-- For multiline commit/PR text, use stdin flags: `git commit -F - <<'EOF'` and `gh ... --body-file - <<'EOF'`. Never use `$(cat <<'EOF' ... EOF)`.
-- If stdin is awkward, use repeated `-m` flags.
+- Prefer `mise` for runtime/tool *versions*, not task running. GitHub Actions: `jdx/mise-action@v4`; scaffold with `mise generate github-action`.
+- Use the repo's existing task runner: JS/TS -> `package.json` scripts (`pnpm <script>`); `mise` `[tasks]` only in polyglot repos or where no native runner fits. Don't shadow scaffolder-seeded scripts with mise tasks.
+- Never `npm`/`npx`; use `pnpm`/`pnpm dlx`. `bun` only when the project already does.
+- Do not disable package install-script protections globally; ask before allow-listing narrowly for native modules or codegen (`supply-chain-hardening` skill).
+- Use `gh` for GitHub issues and PRs. If you fix a mentioned issue, close it with `Closes #NO` in the commit message.
+- Multiline commit/PR text via stdin: `git commit -F - <<'EOF'`, `gh ... --body-file - <<'EOF'`. Never `$(cat <<'EOF' ... EOF)`. If stdin is awkward, repeat `-m`.
 
 ## Browser automation
 
-- Let Playwright CLI use its configured browser. Use `--browser=chrome` only when system Chrome behaviour is specifically under test.
-- Close disposable Playwright sessions before finishing. Use `playwright-cli -s=<name> close`, or `playwright-cli close-all` only when every open session is disposable.
+- Close disposable Playwright sessions before finishing: `playwright-cli -s=<name> close`; `close-all` only when every open session is disposable (it also kills other agents' sessions).
 
 ## Secrets
 
 Do not echo secrets. If checking format or prefix, use `printenv VAR_NAME | head -c 5`.
 
-Secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh-gate`, ... - the srt `denyRead` list in
-`~/.config/srt/base.json`) are deny-ruled for Read/Edit in `~/.claude/settings.json` and
-guarded in Bash by the `guard-secret-paths` hook; these hold even under
-`--dangerously-skip-permissions`. For a deliberate exception, prefix the command with
-`SECRETS_OK=1`. The `secret-path-parity` hk step keeps all surfaces in lock-step with srt.
+Do not read or write secret paths (`~/.ssh`, `~/.aws`, `~/.config/gh-gate`, ... - the srt
+`denyRead` list in `~/.config/srt/base.json`); the deny rules and the Bash guard hold even
+under `--dangerously-skip-permissions`. For a deliberate exception, prefix the command with
+`SECRETS_OK=1`.
 
 ## Research
 
 Do not rely on memory when the answer can be checked quickly.
 Grep the local codebase first for implementation questions.
-Observing a running system - telemetry, logs, live config and state - shows what it is actually doing; prefer that over inferring from code when actual behaviour or state is the question.
-For external facts, docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, and solutions, check online.
-Grep `~/git/kb/notes/` alongside the web for topics I've researched - my Obsidian vault of compiled notes; `index.md` maps its domains.
-For dependency behaviour, inspect installed source such as `node_modules` when present; otherwise clone the repo into `/tmp` and inspect it.
+When actual behaviour or state is the question, observe the running system - telemetry, logs, live config, state - rather than inferring from code.
+Check online for external facts: docs, APIs, tools, dependencies, errors, standards, product behaviour, discussions, issues, solutions.
+Grep `~/git/kb/notes/` alongside the web - my Obsidian vault of compiled notes; `index.md` maps its domains.
+For dependency behaviour, read installed source such as `node_modules`; if absent, clone the repo into `/tmp`.
 Use subagents for broad research so the main context stays focused.
 
 ## Communication
@@ -41,25 +38,24 @@ Use British English: analyse, favourite, realise, colour.
 Be concise: interactions, PRs and commit messages. Sacrifice grammar for concision.
 Use `-`, not em/en dashes (`—`/`–`), and don't swap in parentheses or a mid-sentence colon instead. If a thought needs separating, end the sentence.
 If a sentence can't be restated as a concrete instruction, fact, or number, cut it. Name the mechanism, not the feeling.
-A bold label plus colon that restates its own line is a tell (`**Performance:** Performance improved...`); a bold lead-in ending in a period followed by genuinely new detail is fine.
-Do not append an unrequested moralizing endcap, caveat, or counterargument to a sharp claim merely to demonstrate balance. If a boundary condition changes the truth of the claim, put it in the mechanism or scope the claim correctly. If it does not, cut it. Accuracy belongs in the argument; model self-protection does not.
-Aim for text that is relevant, findable, understandable and usable (ISO 24495-1): lead with the answer or decision, then the reasoning.
+Cut a bold label plus colon that restates its own line (`**Performance:** Performance improved...`); a bold lead-in ending in a period followed by genuinely new detail is fine.
+Do not append an unrequested moralising endcap, caveat or counterargument to a sharp claim for balance. A boundary condition that changes the claim's truth goes into the mechanism or scopes the claim; otherwise cut it. Accuracy belongs in the argument; model self-protection does not.
+Lead with the answer or decision, then the reasoning.
 One idea per sentence; prefer short, literal, common words, and explain unavoidable jargon inline.
 Break procedures into separate ordered steps and keep the critical path short.
-Don't assume the reader is holding earlier context - restate what each step needs rather than relying on memory (W3C cognitive-accessibility guidance).
+Restate what each step needs; don't assume the reader is holding earlier context.
 
 ## Git
 
 - Commit on the current branch by default, `main` included; do not branch first unless asked. Push only when asked.
-- Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - wording like "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` and `gh stack merge` are ask-ruled in settings, so the prompt is the authorisation. `gh stack merge` lands every unmerged PR below its target at once.
-- Make commits as small coherent units: code, tests, and wiring that would make sense as a standalone PR.
-- Dependent work that would otherwise be one big PR goes in a stack: `gh stack` (GitHub stacked PRs). Read the `gh-stack` skill first (`skl gh-stack`) - most commands open a TUI under a PTY and hang.
-- Show intended atomic commit boundaries and verification in implementation plans; revise them when the work reveals a better split.
+- Never merge a PR; stop at "PR open, checks green" and hand back. An approved plan is not merge authorisation - "land", "ship" or "release" names the goal, not permission to press merge. `gh pr merge` and `gh stack merge` are ask-ruled in settings, so the prompt is the authorisation. `gh stack merge` lands every unmerged PR below its target at once.
+- Commit after each coherent unit - code, tests and wiring that would stand as a PR - rather than batching unrelated work.
+- Dependent work that would otherwise be one big PR goes in a stack: `gh stack` (GitHub stacked PRs). Read the `gh-stack` skill first (`skl preview gh-stack`) - most commands open a TUI under a PTY and hang.
+- Show intended atomic commit boundaries in implementation plans; revise them when the work reveals a better split.
 - Split by concern, not file type. Keep renames/moves separate from content changes, including import/reference updates so the build still passes.
-- A good commit should be revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
-- Commit after each coherent unit rather than batching unrelated work.
+- A good commit is revertible without orphaning code or breaking unrelated behaviour, and reviewable without hidden context.
 - Before amending, check whether the commit was pushed with `git log @{u}.. --oneline`; amend only unpushed commits.
-- Never stage with `git add -A`/`--all`/`.` (also denied in settings); they sweep in unintended changes. Stage explicit paths instead.
+- Never stage with `git add -A`/`--all`/`.`; they sweep in unintended changes. Stage explicit paths, or stage hunks non-interactively with `git hunks list` then `git hunks add <id>` when one file holds changes for several concerns.
 
 ## Verification
 
@@ -72,27 +68,14 @@ When writing plans, include how each step will be verified.
 
 ## Deletion Safety
 
-When recursive deletion with `rm -rf` is blocked, do not bypass the restriction with another permanent-deletion command. If the target is outside `/tmp`, `/private/tmp`, `/var/tmp`, and `$TMPDIR`, move it to Trash with `trash`. For agent-created data inside those temporary directories, leave it for system cleanup and create a fresh directory with `mktemp -d` if needed. Prefer a project's native clean command for generated output.
-
-## Selective Staging
-
-Use `git hunks list` and `git hunks add <id>` to stage specific hunks non-interactively when a file contains changes for multiple concerns.
+When `rm -rf` is blocked, do not route around it with another permanent-deletion command. Outside `/tmp`, `/private/tmp`, `/var/tmp` and `$TMPDIR`, move the target to Trash with `trash`. Inside those, leave agent-created data for system cleanup and `mktemp -d` a fresh directory if needed. For generated output, prefer the project's native clean command.
 
 ## Design
 
-Sketch domain types and key workflows before substantial implementation.
-For each major design decision, rough out two or more substantially different approaches before committing; the first idea is rarely the best.
-Make the change easy, then make the easy change; restructure first if the code fights you.
-Follow the conventions already in the file/codebase over personal preference; apply your own defaults only where the repo has none. Change an established convention only with reason, updating every existing use in the same change.
-For substantial domains, prefer functional core / imperative shell, explicit ports, and typed values at boundaries.
-Keep business decisions pure where practical: gather data, decide, then perform effects.
-Model domain states explicitly so illegal states are unrepresentable, not just discouraged.
-Name types and functions in the domain's language; keep filler like Manager/Factory/Helper/Util out of the model.
-Prefer strong types at boundaries and avoid type-system escape hatches unless the project has a documented reason.
-Use explicit error values in domain/application logic; translate exceptions at the shell.
-Design system boundaries with observability in mind: structured logs, operation context, and relevant entity/request IDs.
-Use the `architecture` skill for domain modelling, ports/adapters, error design, observability, and hard-to-test designs.
-For TypeScript specifically - errors-as-values, branded types, domain modules, parse-don't-validate mechanics - use the `typescript` skill (`architecture` stays the language-agnostic spine).
+Sketch domain types, workflows and ports before substantial implementation.
+Follow the conventions already in the file and repo over personal preference; apply your own defaults only where the repo has none. Change an established convention only with reason, updating every use in the same change.
+Fork two or more substantially different approaches for a major or hard-to-reverse decision before committing (`design-forking` skill); the first idea is rarely the best.
+Use the `architecture` skill for domain modelling, ports/adapters, error design, conventions, observability, and hard-to-test designs; the `typescript` skill for the TypeScript specifics (errors-as-values, branded types, domain modules, parse-don't-validate) - `architecture` stays the language-agnostic spine.
 
 ## Compatibility
 
@@ -105,39 +88,29 @@ Never add an unrequested shim, legacy flag, or silent fallback.
 ## Enforcement
 
 Rules reviewers would otherwise have to remember should become types, linters, tests, or hooks where practical.
-Use `mechanical-enforcement` to choose rules and linters.
-Use `hk` to wire git hooks and local checks.
+Use `mechanical-enforcement` to choose rules and linters, `hk` to wire git hooks and local checks.
 
 ## Intent
 
-Document why and intent when it would otherwise be lost; the what/how should usually be clear from code.
-Comments and docs (`AGENTS.md`, `README`, ADRs) are for future readers: describe the standing state, rule or constraint in the present tense, timelessly. Keep change history - "replaced X", "now uses Y", "previously", "no longer" - in commit messages, not the comment or doc body.
+Document why when it would otherwise be lost; the what/how should usually be clear from code.
+Comments and docs (`AGENTS.md`, `README`, ADRs) describe the standing state, rule or constraint in timeless present tense. Change history - "replaced X", "now uses Y", "previously", "no longer" - belongs in commit messages, not the comment or doc body.
 If the user's goal or reasoning is unclear, ask before encoding assumptions.
-When a decision has trade-offs or rejected alternatives worth preserving, write an ADR (the `adr` skill) or capture it in docs/commit messages. A record that changes is superseded by a new one, never edited into a changelog of itself.
+When a decision has trade-offs or rejected alternatives worth preserving, write an ADR (the `adr` skill) or capture it in docs/commit messages. Supersede a changed record with a new one; never edit it into a changelog of itself.
 When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
 Keep `AGENTS.md`, `CLAUDE.md`, docs, and code comments in sync with reality.
 
 ## Self-improvement
 
-Route durable learnings to the strongest home *as you learn them*, not batched to task-end
-(cf. `## Intent`): mechanically checkable -> `## Enforcement`; a decision's *why* -> `## Intent`;
-external research -> KB vault (`~/git/kb/notes/`).
-
-The part those don't cover: a durable **domain** rule / gotcha / framing belongs in the
-**catalogue skill that owns it** (`architecture`, `testing`, `typescript`,
-`mechanical-enforcement`, ...) - these exist to accrete curated detail - and a reusable
-procedure no skill owns (e.g. reverse-engineering a new binary type) is a new-skill candidate
-via `writing-skills`. Don't derail the task: capture the candidate, then *propose* the skill
-edit with its diff; auto-apply only a trivial verified fact (spot-check any command/flag
-live). New skills and trigger/description changes are always suggest-only.
+Route durable learnings to their strongest home *as you learn them*, not batched to task-end:
+mechanically checkable -> `## Enforcement`; a decision's *why* -> `## Intent`; external research
+-> KB vault (`~/git/kb/notes/`); a durable **domain** rule, gotcha or framing -> the catalogue
+skill that owns it (`architecture`, `testing`, `typescript`, `mechanical-enforcement`, ...);
+a reusable procedure no skill owns -> a new-skill candidate via `writing-skills`.
+Don't derail the task: capture the candidate, then *propose* the skill edit with its diff.
+Auto-apply only a trivial verified fact (spot-check the command/flag live). New skills and
+trigger/description changes are always suggest-only.
 
 ## Testing
 
-Prefer TDD for behavioural changes: see the failure, make it pass, then refactor.
-Test observable behaviour through public APIs, not implementation details.
-Prefer pure unit tests for pure logic, contract/integration tests at boundaries, and minimal e2e for critical journeys.
-Avoid mocks by default; use fakes, real values, or real infrastructure at adapter boundaries where practical.
-Verify every change proportionally before committing.
-
-Use the `testing` skill for test strategy, TDD, refactoring tests, and test design.
-Use the `test-coverage` skill for coverage audits, thresholds, and CI/hook enforcement.
+Prefer TDD for behavioural changes: see the failure, make it pass, then refactor. Test observable behaviour through public APIs, not internals; avoid mocks by default.
+Read the `testing` skill for the mechanics - layer choice, fakes, characterisation, flaky tests; `test-coverage` for coverage, thresholds and CI/hook enforcement.
