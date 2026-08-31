@@ -19,6 +19,18 @@ This skill decides the target shape. When existing code must be moved there
 without stopping delivery, the `refactoring` skill owns the path - strangler
 fig, branch by abstraction, parallel change, seams.
 
+The `design-forking` skill owns forking a decision into structurally different
+candidates before committing; `deciding-under-uncertainty` owns committing to
+the winner.
+
+## Adapt First
+
+Read the repo before applying anything below. These are defaults for greenfield
+work or where the repo has no convention: the conventions already in the file
+and codebase beat personal preference. Change an established convention only
+with reason, and update every existing use in the same change - a half-applied
+convention leaves readers two rules to learn instead of one.
+
 ## Decision Tree
 
 ```text
@@ -37,6 +49,8 @@ What kind of change is this?
 |   `-- make domain/application errors explicit and translate at the shell
 |-- Boundaries unknown / new domain / experts disagree
 |   `-- discover before scoring (Finding Boundaries)
+|-- Weighing approaches / the first idea is the only idea
+|   `-- fork structurally different candidates (design-forking)
 |-- A boundary feels wrong / "should we decouple this?"
 |   `-- score strength, distance, volatility (references/balancing-coupling.md)
 |-- Retries, sagas, consistency, concurrent writers
@@ -273,8 +287,8 @@ Prefer:
   foreign system's model gets the anti-corruption layer (see Ports And
   Adapters)
 
-Avoid generic names like `data`, `info`, `manager`, and `helper` when the domain
-has better words.
+Avoid generic names like `data`, `info`, `manager`, `factory`, `helper`, and
+`util` when the domain has better words.
 
 Make illegal states unrepresentable (Minsky's phrase, carried into domain
 modelling by Wlaschin): model meaningful lifecycle states as
