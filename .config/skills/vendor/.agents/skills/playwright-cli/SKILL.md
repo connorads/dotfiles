@@ -208,12 +208,20 @@ playwright-cli list --json
 ```
 
 ## Open parameters
+
+<!-- LOCAL PATCH (connorads dotfiles): omit --browser (config pins bundled Chromium); --browser=chrome and attach drive the user's real Chrome -->
+
+Omit `--browser` unless that browser's own behaviour is what you are testing. The
+configured default (`~/.playwright/cli.config.json`) is bundled Chromium.
+`--browser=chrome` and `--browser=msedge` drive the *system* Chrome/Edge app and take
+over the user's own browser windows.
+
 ```bash
-# Use specific browser when creating session
-playwright-cli open --browser=chrome
+# Name a browser only when that browser's behaviour is under test
 playwright-cli open --browser=firefox
 playwright-cli open --browser=webkit
-playwright-cli open --browser=msedge
+playwright-cli open --browser=chrome   # system Chrome, not a throwaway profile
+playwright-cli open --browser=msedge   # system Edge, not a throwaway profile
 
 # Emulate a generic mobile device (Pixel 10 for Chromium, iPhone 17 for WebKit).
 # Prefer this when a mobile layout is acceptable: mobile pages are usually
@@ -226,10 +234,12 @@ playwright-cli open --persistent
 # Use persistent profile with custom directory
 playwright-cli open --profile=/path/to/profile
 
-# Connect to browser via Playwright Extension
+# Connect to browser via Playwright Extension - drives the user's own Chrome
 playwright-cli attach --extension=chrome
 
-# Connect to a running Chrome or Edge by channel name
+# Connect to a running Chrome or Edge by channel name. `attach` takes over the
+# user's real browser windows and ignores the configured browser, so use it only
+# when that browser's own state or behaviour is what you need.
 playwright-cli attach --cdp=chrome
 playwright-cli attach --cdp=msedge
 
@@ -334,9 +344,11 @@ playwright-cli -s=mysession close  # stop a named browser
 playwright-cli -s=mysession delete-data  # delete user data for persistent session
 
 playwright-cli list
-# Close all browsers
+# Close every session in this workspace, not just yours. The workspace root here is
+# $HOME, so this takes other agents' sessions with it - check `playwright-cli list` first,
+# and prefer `-s=<name> close` above.
 playwright-cli close-all
-# Forcefully kill all browser processes
+# Forcefully kill every playwright-cli process on the machine (wider than close-all)
 playwright-cli kill-all
 ```
 

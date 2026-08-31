@@ -30,15 +30,18 @@ Each browser session has independent:
 
 ## Browser Session Commands
 
+<!-- LOCAL PATCH (connorads dotfiles): close-all closes every session in the workspace, which here is $HOME - other agents' sessions included -->
+
 ```bash
 # List all browser sessions
 playwright-cli list
 
-# Stop a browser session (close the browser)
+# Stop a browser session (close the browser) - prefer this
 playwright-cli close                # stop the default browser
 playwright-cli -s=mysession close   # stop a named browser
 
-# Stop all browser sessions
+# Stop every session in this workspace. The workspace root here is $HOME, so this
+# includes sessions other agents own. Check `playwright-cli list` first.
 playwright-cli close-all
 
 # Forcefully kill all daemon processes (for stale/zombie processes)
@@ -77,8 +80,10 @@ playwright-cli -s=site1 snapshot
 playwright-cli -s=site2 snapshot
 playwright-cli -s=site3 snapshot
 
-# Cleanup
-playwright-cli close-all
+# Cleanup - close the sessions this task opened, not every session in the workspace
+playwright-cli -s=site1 close
+playwright-cli -s=site2 close
+playwright-cli -s=site3 close
 ```
 
 ### A/B Testing Sessions
@@ -210,7 +215,8 @@ playwright-cli -s=s1 open https://github.com
 playwright-cli -s=auth close
 playwright-cli -s=scrape close
 
-# Or stop all at once
+# Or stop all at once - close-all is workspace-wide, not task-wide, and the workspace
+# root here is $HOME, so it takes other agents' sessions with it
 playwright-cli close-all
 
 # If browsers become unresponsive or zombie processes remain
