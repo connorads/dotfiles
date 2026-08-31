@@ -36,7 +36,9 @@
 #                 its own `git log --oneline` lines want.
 #                 enter → open, ctrl-v → pane here, ctrl-x → remove
 #                 (wt-remove --delete-branch: merged branch deleted, unmerged
-#                 kept)
+#                 kept), alt-R → reap every merged worktree across all repos
+#                 (wt-clean, same key as wtu; warns first about panes living in
+#                 a tree it would remove)
 #   pick-render <fast|full>
 #                 internal: emit the fzf display TSV (hidden path field 1, then
 #                 the display: repo when the set spans several, PR verdict,
@@ -97,6 +99,40 @@ pause_msg() {
 soft_fail() {
 	pause_msg "$1"
 	exit 0
+}
+
+# Sweep every merged worktree (wt-clean --all: PR-aware, squash/rebase-aware,
+# spares open/no-PR/dirty/unpushed, and never the current worktree - so the tree
+# the popup was summoned from is safe). ctrl-x refuses a worktree with an open
+# pane; wt-clean has no tmux awareness at all, so the pane warning lives here.
+reap_all() {
+	local cands panes hits
+	# --json is a preview format that removes nothing; --no-disk skips the du
+	# per candidate. A failed dry pass (gh offline, no jq) skips the warning
+	# and sweeps anyway: the warning is a detective aid, not a gate, and
+	# wt-clean prints its own candidates and asks its own confirm regardless.
+	if cands=$(wt-clean --all --no-disk --json 2>/dev/null |
+		jq -r '.[] | select(.eligible) | .path' 2>/dev/null) && [ -n "$cands" ]; then
+		panes=$(tmux list-panes -a -F '#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_current_path}')
+		# Same path-boundary match as open/ctrl-x, never a bare prefix.
+		hits=$(printf '%s\n' "$cands" | PANES="$panes" awk '
+			BEGIN {
+				FS = "\t"
+				np = split(ENVIRON["PANES"], pl, "\n")
+			}
+			$0 != "" {
+				for (i = 1; i <= np; i++) {
+					split(pl[i], pf, "\t")
+					if (pf[3] == $0 || index(pf[3], $0 "/") == 1)
+						printf "  %s %s  %s\n", pf[1], pf[2], $0
+				}
+			}')
+		[ -n "$hits" ] && pause_msg "Panes live in worktrees due for reaping - they would be left in a deleted cwd:
+$hits"
+	fi
+	# Declining wt-clean's confirm returns 1, which errexit would treat as fatal.
+	wt-clean --all || true
+	pause_msg ""
 }
 
 cmd="${1:-}"
@@ -278,8 +314,8 @@ pick)
 	sentinel=$(mktemp -u "${TMPDIR:-/tmp}/wtpick.XXXXXX")
 	out=$("$self" pick-render fast |
 		fzf --reverse --ansi \
-			--header='enter: window · ctrl-v: pane here · ctrl-x: remove' \
-			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x \
+			--header='enter: window · ctrl-v: pane here · ctrl-x: remove · alt-R: reap merged (all repos)' \
+			--delimiter='\t' --with-nth=2.. --expect=ctrl-v,ctrl-x,alt-R \
 			--bind "load:transform:[ -e $sentinel ] && exit 0; : > $sentinel; printf 'reload(%s pick-render full)' \"$self\"" \
 			--preview-window='down,40%,wrap' \
 			--preview 'git -C {1} log --oneline --decorate -10; echo; git -C {1} status --short') || {
@@ -290,6 +326,12 @@ pick)
 	key="${out%%$'\n'*}"
 	line="${out#*$'\n'}"
 	path="${line%%	*}"
+	# alt-R acts on the whole set, so it dispatches ahead of the selection
+	# guard: a query matching nothing carries no path and would swallow the key.
+	if [ "$key" = alt-R ]; then
+		reap_all
+		exec "$self" pick
+	fi
 	[ -n "$path" ] || exit 0
 	case "$key" in
 	ctrl-v) exec "$self" pane "$path" ;;
