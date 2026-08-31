@@ -1,0 +1,6 @@
+{
+  "reason": "close-all closes every session in the workspace, which here is $HOME - other agents' sessions included",
+  "files": [
+    ".agents/skills/playwright-cli/references/session-management.md"
+  ]
+}

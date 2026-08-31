@@ -96,9 +96,10 @@ from `f8398b29^`.
 
 ## Scope
 
-Targets are vendor-root-relative, so only this tier is covered. Patches for
-the global autoload tier (`~/.agents/skills/`, e.g. `playwright-cli`) are a
-future extension - no such patch exists today.
+Targets are vendor-root-relative. A vendored skill promoted to the global
+autoload tier is a symlink into this same tree (`~/.agents/skills/playwright-cli`
+-> `vendor/.agents/skills/playwright-cli`), so patching the vendor copy patches
+the autoloaded skill - there is no separate tier to cover.
 
 Enforcement: the hk `vendored-skill-patches` step runs `skill-patch check` on
 every commit touching vendored skills or `patches/**`; `~/hk.pkl` also

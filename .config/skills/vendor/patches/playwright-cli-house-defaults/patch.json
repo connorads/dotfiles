@@ -1,0 +1,6 @@
+{
+  "reason": "omit --browser (config pins bundled Chromium); --browser=chrome and attach drive the user's real Chrome",
+  "files": [
+    ".agents/skills/playwright-cli/SKILL.md"
+  ]
+}
