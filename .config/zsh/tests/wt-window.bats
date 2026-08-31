@@ -189,6 +189,97 @@ printf 'ctrl-x\n%s\n' "$FZF_SELECT"
 EOF
 }
 
+# Same shape for the alt-R sweep: first call emits the key with NO selection
+# (the sweep needs none, and a query matching nothing is the case the dispatch
+# order has to survive), later calls abort so the re-exec'd pick terminates.
+write_alt_r_fzf_stub() {
+  write_stub fzf <<'EOF'
+#!/usr/bin/env bash
+cat >>"$HOME/fzf-input"
+n=$(( $(cat "$HOME/fzf-calls" 2>/dev/null || echo 0) + 1 ))
+echo "$n" >"$HOME/fzf-calls"
+[ "$n" -gt 1 ] && exit 130
+printf 'alt-R\n\n'
+EOF
+}
+
+# wt-clean stub: logs its argv, answers the --json dry pass from $HOME/cands.json
+# (the pre-flight's candidate list), and exits $WT_CLEAN_RC on the real sweep.
+write_wt_clean_stub() {
+  write_stub wt-clean <<'EOF'
+#!/usr/bin/env bash
+printf 'wt-clean %s\n' "$*" >>"$TEST_LOG"
+for a in "$@"; do
+  [ "$a" = "--json" ] && { cat "$HOME/cands.json"; exit 0; }
+done
+exit "${WT_CLEAN_RC:-0}"
+EOF
+}
+
+@test "pick alt-R sweeps every merged worktree and reloads the list" {
+  write_alt_r_fzf_stub
+  write_wt_clean_stub
+  echo '[]' >"$HOME/cands.json"
+
+  run "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  # The dry pass removes nothing; the sweep is the real call.
+  grep -q -- "wt-clean --all --no-disk --json" "$TEST_LOG"
+  grep -qx -- "wt-clean --all" "$TEST_LOG"
+  # Reload: pick re-execs and fzf runs a second time (aborted by the stub).
+  [ "$(cat "$HOME/fzf-calls")" = "2" ]
+}
+
+@test "pick alt-R warns about panes living in a candidate worktree, then sweeps" {
+  write_alt_r_fzf_stub
+  write_wt_clean_stub
+  cat >"$HOME/cands.json" <<'JSON'
+[{"path":"/tmp/x/.trees/repo/feat","eligible":true},
+ {"path":"/tmp/x/.trees/repo/other","eligible":false}]
+JSON
+  # A pane inside the candidate (path-boundary match), one elsewhere, and one in
+  # the ineligible tree - which wt-clean would not touch, so it must not be named.
+  export TMUX_PANES=$'%5\ts:1.0\t/tmp/x/.trees/repo/feat/src\n%6\ts:2.0\t/tmp/elsewhere\n%7\ts:3.0\t/tmp/x/.trees/repo/other'
+
+  run --separate-stderr "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  [[ "$stderr" == *"deleted cwd"* ]]
+  [[ "$stderr" == *"%5 s:1.0"* ]]
+  [[ "$stderr" != *"%6"* ]]
+  [[ "$stderr" != *"%7"* ]]
+  # A warning is not a gate: the sweep still runs and asks its own confirm.
+  grep -qx -- "wt-clean --all" "$TEST_LOG"
+}
+
+@test "pick alt-R does not warn when no candidate carries a pane" {
+  write_alt_r_fzf_stub
+  write_wt_clean_stub
+  echo '[{"path":"/tmp/x/.trees/repo/feat","eligible":true}]' >"$HOME/cands.json"
+  export TMUX_PANES=$'%6\ts:2.0\t/tmp/x/.trees/repo/feature-branch'
+
+  run --separate-stderr "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  # Bare prefix, not a path boundary: feature-branch is not inside feat.
+  [[ "$stderr" != *"deleted cwd"* ]]
+  grep -qx -- "wt-clean --all" "$TEST_LOG"
+}
+
+@test "pick alt-R survives a declined wt-clean and still reloads" {
+  write_alt_r_fzf_stub
+  write_wt_clean_stub
+  echo '[]' >"$HOME/cands.json"
+  # Declining the confirm returns 1; under set -e that would kill the script.
+  export WT_CLEAN_RC=1
+
+  run "$WT_WINDOW" pick </dev/null
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$HOME/fzf-calls")" = "2" ]
+}
+
 @test "pick-render full rows carry repo, a fixed PR-state column, then flags and branch" {
   write_stub wt-status <<'EOF'
 #!/usr/bin/env bash
