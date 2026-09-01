@@ -66,6 +66,24 @@ large_hook_payload() {
   [ "$output" = "" ]
 }
 
+@test "hibernated sets the pane state and keeps a low-rank window dot" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  ason "$pane" hibernated claude
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = hibernated ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = claude ]
+  # A window of only hibernated panes keeps a (dim) dot...
+  [ "$(wstate "$win")" = hibernated ]
+  # ...and every live state outranks it in the rollup.
+  tx split-window -t s
+  p2=$(tx list-panes -t s -F '#{pane_id}' | tail -n1)
+  ason "$p2" idle
+  [ "$(wstate "$win")" = idle ]
+  # Attention rollup stays blocked/done only: no session dot for hibernated.
+  [ -z "$(sstate s)" ]
+}
+
 @test "agent kind is recorded when supplied" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   ason "$pane" working claude

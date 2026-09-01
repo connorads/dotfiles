@@ -10,7 +10,7 @@
 # status bar renders, and repaints immediately so the dot never waits for
 # status-interval.
 #
-#   agent-state.sh <working|blocked|done|unread|idle|clear|seen|name|unname> [arg]
+#   agent-state.sh <working|blocked|done|unread|idle|hibernated|clear|seen|name|unname> [arg]
 #
 # `unread` is the manual inverse of `seen` (forces done even on the focused
 # window); the dot menu (prefix + Alt+.) drives it and the other states by hand.
@@ -59,7 +59,10 @@ blocked)
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	should_ring "$prev" && ring_bell "$pane"
 	;;
-working | idle)
+working | idle | hibernated)
+	# hibernated: the pane's agent was killed by agent-hibernate.sh and a parked
+	# thawer holds its place; the sweep exempts it from the shell-foreground
+	# death-clear, and thaw ages it back to idle.
 	tmux set-option -p -t "$pane" @agent_state "$state"
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;

@@ -113,8 +113,8 @@ agent_list_rows() {
 }
 
 # agent_rank_sort — filter agent_list_rows output into attention order:
-# rank desc (blocked > done > working > idle), positional order as the
-# tie-break (`sort -s`: the stable sort keeps input order within a rank).
+# rank desc (blocked > done > working > idle > hibernated), positional order as
+# the tie-break (`sort -s`: the stable sort keeps input order within a rank).
 # The rank values are the canonical rank() from agent-state-lib.sh, injected
 # into awk via -v (awk cannot call sh) — the same idiom the popup uses for
 # glyphs, so the mapping lives in exactly one place.
@@ -122,10 +122,12 @@ agent_rank_sort() {
 	_tab=$(printf '\t')
 	awk -F '\t' -v OFS='\t' \
 		-v r_blocked="$(rank blocked)" -v r_done="$(rank 'done')" \
-		-v r_working="$(rank working)" -v r_idle="$(rank idle)" '
+		-v r_working="$(rank working)" -v r_idle="$(rank idle)" \
+		-v r_hibernated="$(rank hibernated)" '
 		BEGIN {
 			r["blocked"] = r_blocked; r["done"] = r_done
 			r["working"] = r_working; r["idle"] = r_idle
+			r["hibernated"] = r_hibernated
 		}
 		{ print ($2 in r ? r[$2] : 0), $0 }' |
 		sort -t "$_tab" -k1,1rn -s |

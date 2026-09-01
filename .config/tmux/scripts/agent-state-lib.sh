@@ -7,13 +7,16 @@
 # (agent-sweep.sh) are not clobbered or tripped.
 
 # Attention ranking — the window dot shows the worst (highest) of its panes:
-# blocked (needs you now) > done (finished, unseen) > working > idle.
+# blocked (needs you now) > done (finished, unseen) > working > idle >
+# hibernated (parked, resumable). hibernated ranks lowest-but-nonzero so a
+# window of only hibernated panes keeps a dim dot instead of losing it.
 rank() {
 	case $1 in
-	blocked) echo 4 ;;
-	done) echo 3 ;;
-	working) echo 2 ;;
-	idle) echo 1 ;;
+	blocked) echo 5 ;;
+	done) echo 4 ;;
+	working) echo 3 ;;
+	idle) echo 2 ;;
+	hibernated) echo 1 ;;
 	*) echo 0 ;;
 	esac
 }
@@ -216,6 +219,7 @@ agent_attrs() {
 	working) echo "fab387 ◐" ;;
 	done) echo "89b4fa ●" ;;
 	idle) echo "a6e3a1 ○" ;;
+	hibernated) echo "585b70 ◌" ;;
 	*) echo "6c7086 ·" ;;
 	esac
 }

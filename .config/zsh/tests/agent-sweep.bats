@@ -99,6 +99,21 @@ wait_nonshell() {
   [ -z "$(wstate "$win")" ]
 }
 
+@test "sweep leaves a hibernated shell-foreground pane untouched" {
+  # The parked thawer's foreground IS a bare shell by design, so hibernated is
+  # exempt from the death-clear; only thaw retires the state.
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  win=$(tx display-message -p -t s '#{window_id}')
+  tx set-option -p -t "$pane" @agent_state hibernated
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -w -t "$win" @win_agent_state hibernated
+  run sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = hibernated ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = claude ]
+  [ "$(wstate "$win")" = hibernated ]
+}
+
 @test "sweep leaves a non-shell foreground pane untouched" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')
