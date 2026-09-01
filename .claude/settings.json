@@ -5,6 +5,7 @@
     "pr": ""
   },
   "autoMemoryEnabled": false,
+  "cleanupPeriodDays": 365,
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true
   },
