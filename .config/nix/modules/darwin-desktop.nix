@@ -110,7 +110,6 @@
       "figma"
       "opencode-desktop"
       "executor"
-      "conductor"
       "knockknock"
       "lulu"
       "slack"
