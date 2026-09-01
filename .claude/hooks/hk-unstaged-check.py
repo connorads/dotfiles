@@ -11,10 +11,11 @@ feed the findings back and make the model keep working, which loops forever on a
 finding it cannot fix - a vendored mirror, a half-finished edit, a step whose
 tool is missing.
 
-Two environment problems are silence, not findings: a cwd with no discoverable
-git repository and a repo with no hk config both make `hk check` exit non-zero
-on its own error. This hook fires in every session on this machine, most of them
-in repos that have never heard of hk.
+Three environment problems are silence, not findings: a cwd with no discoverable
+git repository, a repo with no hk config, and an `hk` too old to know
+`--unstaged` all make `hk check` exit non-zero on its own error. This hook fires
+in every session on this machine, most of them in repos that have never heard of
+hk or that pin an older one.
 """
 
 from __future__ import annotations
@@ -67,6 +68,24 @@ def repo_env() -> tuple[Path, dict[str, str]] | None:
     return None
 
 
+def supports_unstaged(env: dict[str, str]) -> bool:
+    """Whether this `hk` knows `check --unstaged` (added after 1.50.0).
+
+    A feature probe rather than version arithmetic, so nothing here needs
+    updating when hk moves again. ~5ms, negligible against the check itself.
+    """
+    try:
+        out = subprocess.run(
+            ["hk", "check", "--help"],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+    except OSError:
+        return False
+    return "--unstaged" in out.stdout
+
+
 def main() -> int:
     # The payload is not used, but leaving it unread can hand the caller EPIPE.
     sys.stdin.read()
@@ -80,6 +99,10 @@ def main() -> int:
         return 0
 
     env = {**os.environ, **git_env}
+
+    if not supports_unstaged(env):
+        return 0
+
     existing = env.get("HK_SKIP_STEPS", "")
     env["HK_SKIP_STEPS"] = ",".join([s for s in [existing, *SKIP_STEPS] if s])
 
