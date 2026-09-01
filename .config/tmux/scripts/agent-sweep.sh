@@ -85,11 +85,15 @@ sweep_once() {
 			case "$SHELLS" in
 			*" $_cmd "*)
 				# Foreground is a bare shell → the agent is gone. Clear it and
-				# re-roll its window.
-				_panes="$_panes$_pane
+				# re-roll its window. Exception: a hibernated pane's foreground
+				# IS a shell by design (agent-hibernate.sh's parked thawer), so
+				# its dot is cleared by thaw, never by this death-clear.
+				if [ "$_astate" != hibernated ]; then
+					_panes="$_panes$_pane
 "
-				_windows="$_windows$_win
+					_windows="$_windows$_win
 "
+				fi
 				;;
 			*)
 				# Agent still alive: a `done` dot on a pane you are currently

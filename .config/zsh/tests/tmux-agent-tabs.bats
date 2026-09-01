@@ -101,6 +101,11 @@ assert_tab_label() {
   [[ "$(dot)" == *"#[fg=#a6e3a1]○"* ]]
 }
 
+@test "hibernated maps to a dim dotted circle" {
+  tx set-option -w -t s @win_agent_state hibernated
+  [[ "$(dot)" == *"#[fg=#585b70]◌"* ]]
+}
+
 @test "no agent state renders nothing" {
   tx set-option -wu -t s @win_agent_state
   [ -z "$(dot)" ]

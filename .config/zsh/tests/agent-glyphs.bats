@@ -72,7 +72,7 @@ teardown() {
   conf="$BATS_TEST_TMPDIR/dot.conf"
   grep -E '^set -g @agent_dotfmt ' "$CONF" >"$conf"
   tx source-file "$conf"
-  for state in blocked working done idle unknown; do
+  for state in blocked working done idle hibernated unknown; do
     tx set-option -w -t s @win_agent_state "$state"
     want="#[fg=#$(agent_hex "$state")]$(agent_char "$state")"
     got=$(tx list-windows -t s -F '#{E:@agent_dotfmt}')
@@ -113,14 +113,14 @@ teardown() {
   export TMUX
   export AGENT_SWEEP=/nonexistent
   first=1
-  for state in blocked working done idle unknown; do
+  for state in blocked working done idle hibernated unknown; do
     [ "$first" = 1 ] && first=0 || tx new-window -t s
     p=$(tx display-message -p -t s '#{pane_id}')
     tx set-option -p -t "$p" @agent_state "$state"
   done
   run sh "$POPUP" list
   [ "$status" -eq 0 ]
-  for state in blocked working done idle unknown; do
+  for state in blocked working done idle hibernated unknown; do
     want="$(agent_glyph "$state")"
     [[ "$output" == *"$want"* ]]
   done

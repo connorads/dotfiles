@@ -38,17 +38,20 @@ list() {
 	_g_working=$(agent_glyph working)
 	_g_done=$(agent_glyph 'done')
 	_g_idle=$(agent_glyph idle)
+	_g_hibernated=$(agent_glyph hibernated)
 	_g_unknown=$(agent_glyph unknown)
 	agent_list_rows | agent_rank_sort |
 		awk -F '\t' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
-			-v g_done="$_g_done" -v g_idle="$_g_idle" -v g_unknown="$_g_unknown" '
+			-v g_done="$_g_done" -v g_idle="$_g_idle" \
+			-v g_hibernated="$_g_hibernated" -v g_unknown="$_g_unknown" '
 		# Selector over the glyphs agent_glyph computed in sh.
 		function glyph(s) {
-			if (s == "blocked") return g_blocked
-			if (s == "working") return g_working
-			if (s == "done")    return g_done
-			if (s == "idle")    return g_idle
+			if (s == "blocked")    return g_blocked
+			if (s == "working")    return g_working
+			if (s == "done")       return g_done
+			if (s == "idle")       return g_idle
+			if (s == "hibernated") return g_hibernated
 			return g_unknown
 		}
 		BEGIN { OFS = "\t" }
@@ -147,9 +150,9 @@ pick() {
 		return 0
 	fi
 
-	_legend=$(printf '%s blocked  %s working  %s done  %s idle' \
+	_legend=$(printf '%s blocked  %s working  %s done  %s idle  %s hibernated' \
 		"$(agent_glyph blocked)" "$(agent_glyph working)" \
-		"$(agent_glyph 'done')" "$(agent_glyph idle)")
+		"$(agent_glyph 'done')" "$(agent_glyph idle)" "$(agent_glyph hibernated)")
 
 	_choice=$(printf '%s\n' "$_rows" | fzf \
 		--ansi --reverse --no-multi --info=hidden \

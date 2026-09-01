@@ -148,6 +148,7 @@ agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without 
 | `◐` peach | working | agent mid-turn |
 | `●` blue | done | finished, unseen |
 | `○` green | idle | seen / at rest |
+| `◌` dim grey | hibernated | claude killed to free RAM; Enter in the pane (or `agent thaw`) resumes it |
 | `·` grey | unknown | present but unclassified |
 
 Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
