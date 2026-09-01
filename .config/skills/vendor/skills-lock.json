@@ -74,6 +74,12 @@
       "skillPath": "skills/taste-skill/SKILL.md",
       "computedHash": "6d838b246d0e35d0b53f4f23f98ba7a1dd561937e64f7d0c7553b0928e376c3e"
     },
+    "diagnosing-bugs": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+      "computedHash": "37b5e9c624513551da790b52864dc8c84bff996a6d03a380cc6facdcc0a88354"
+    },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
