@@ -448,6 +448,157 @@ EOF
   [ "$output" = "session-one" ]
 }
 
+# ---------------------------------------------------------------------------
+# Save hook: hibernated (parked) panes
+# ---------------------------------------------------------------------------
+
+# A parked pane runs no agent, so the live-pane passes ignore it entirely and the
+# carry rule (a live agent pane in the recorded cwd) would prune its entry. The
+# record store is the truth, so these entries are rewritten from it each save.
+#
+# The stub answers by FORMAT, because the hook now makes three list-panes calls
+# with three different formats.
+write_tmux_stub_for_hibernate() {
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	case "$*" in
+	*pane_id*)
+		# pane_id / key / cwd / agent state
+		printf '%%7\tmain:1.5\t/Users/connorads/parked\thibernated\n'
+		printf '%%8\tmain:1.6\t/Users/connorads/other\t\n'
+		;;
+	*@agent_state*)
+		# key / agent state
+		printf 'main:1.5\thibernated\n'
+		printf 'main:1.6\t\n'
+		;;
+	*)
+		# key / pid / command / cwd / tty (get_live_panes)
+		printf 'main:1.1\t111\tclaude\t/Users/connorads\t/dev/ttys001\n'
+		printf 'main:1.5\t555\tzsh\t/Users/connorads/parked\t/dev/ttys005\n'
+		;;
+	esac
+	exit 0
+fi
+exit 1
+EOF
+}
+
+# Write a hibernation record for the parked pane, and point the hook at it.
+seed_hibernate_record() {
+  export AGENT_HIBERNATE_DIR="$BATS_TEST_TMPDIR/hib"
+  mkdir -p "$AGENT_HIBERNATE_DIR"
+  jq -n --arg cfg "${1:-}" \
+    '{sessionId: "sid-parked", pane: "%7", paneKey: "stale:9.9",
+      cwd: "/Users/connorads/stale", configDir: $cfg,
+      flags: ["--model", "opus"], name: "batch", hibernatedAt: "2026-01-01T00:00:00Z",
+      rssKb: 1024}' >"$AGENT_HIBERNATE_DIR/sid-parked.json"
+}
+
+@test "save hook writes a hibernated entry and re-addresses the record" {
+  local acct=acme
+  local cfg="$HOME/.claude-profiles/code/$acct"
+  seed_hibernate_record "$cfg"
+  write_tmux_stub_for_hibernate
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  # Keyed by the pane's CURRENT key, not the record's stale one.
+  run jq -r '.panes["main:1.5"].claude' "$SESSION_FILE"
+  [ "$output" = "sid-parked" ]
+  run jq -r '.panes["main:1.5"].hibernated' "$SESSION_FILE"
+  [ "$output" = "true" ]
+  run jq -r '.panes["main:1.5"].claudeFlags' "$SESSION_FILE"
+  [ "$output" = "--model opus" ]
+  run jq -r '.panes["main:1.5"].claudeConfigDir' "$SESSION_FILE"
+  [ "$output" = "$cfg" ]
+  # The live agent pane is untouched by the new pass.
+  run jq -r '.panes["main:1.1"].claude' "$SESSION_FILE"
+  [ "$output" = "session-one" ]
+  # The record's own address is refreshed while both halves are known good.
+  run jq -r '.paneKey' "$AGENT_HIBERNATE_DIR/sid-parked.json"
+  [ "$output" = "main:1.5" ]
+  run jq -r '.cwd' "$AGENT_HIBERNATE_DIR/sid-parked.json"
+  [ "$output" = "/Users/connorads/parked" ]
+}
+
+@test "save hook ignores a record whose pane is no longer parked" {
+  seed_hibernate_record
+  # Point the record at the pane that carries no hibernated state: a recycled
+  # pane id after a server restart must not be mistaken for the parked one.
+  jq '.pane = "%8"' "$AGENT_HIBERNATE_DIR/sid-parked.json" >"$BATS_TEST_TMPDIR/r.json"
+  mv "$BATS_TEST_TMPDIR/r.json" "$AGENT_HIBERNATE_DIR/sid-parked.json"
+  write_tmux_stub_for_hibernate
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '[.panes | to_entries[] | select(.value.hibernated == true)] | length' "$SESSION_FILE"
+  [ "$output" = "0" ]
+}
+
+@test "save hook keeps the file for a hibernated pane alone (no live agents)" {
+  seed_hibernate_record
+  write_stub tmux <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "list-panes" ]; then
+	case "$*" in
+	*pane_id*) printf '%%7\tmain:1.5\t/Users/connorads/parked\thibernated\n' ;;
+	*@agent_state*) printf 'main:1.5\thibernated\n' ;;
+	*) printf 'main:1.5\t555\tzsh\t/Users/connorads/parked\t/dev/ttys005\n' ;;
+	esac
+	exit 0
+fi
+exit 1
+EOF
+  write_stub ps <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  # Nothing resolved and nothing carryable, but the parked pane alone must keep
+  # the file alive - deleting it would strand the restore's resolution rung.
+  [ -f "$SESSION_FILE" ]
+  run jq -r '.panes["main:1.5"].claude' "$SESSION_FILE"
+  [ "$output" = "sid-parked" ]
+}
+
+@test "save hook carries a hibernated entry whose pane is still parked" {
+  # The window between a restore and park re-addressing its record: the record's
+  # pane id is stale, so the fresh pass skips it - the pane's own hibernated
+  # state is what keeps the entry.
+  seed_hibernate_record
+  jq '.pane = "%999"' "$AGENT_HIBERNATE_DIR/sid-parked.json" >"$BATS_TEST_TMPDIR/r.json"
+  mv "$BATS_TEST_TMPDIR/r.json" "$AGENT_HIBERNATE_DIR/sid-parked.json"
+  jq -n '{version:2,panes:{
+      "main:1.5":{dir:"/Users/connorads/parked",claude:"sid-parked",hibernated:true}}}' \
+    >"$SESSION_FILE"
+  write_tmux_stub_for_hibernate
+  write_ps_stub_for_merge
+  cat >"$HOME/.claude/sessions/901.json" <<'EOF'
+{"pid":901,"sessionId":"session-one","cwd":"/Users/connorads"}
+EOF
+
+  run "$REAL_BASH" "$SAVE_SESSIONS" "$HOME/.local/share/tmux/resurrect/save.txt"
+
+  [ "$status" -eq 0 ]
+  run jq -r '.panes["main:1.5"].claude' "$SESSION_FILE"
+  [ "$output" = "sid-parked" ]
+}
+
 @test "save hook drops an entry whose pane key is no longer an agent pane" {
   jq -n '{version:2,panes:{
       "main:2.1":{dir:"/Users/connorads",claude:"old-shell"},
@@ -600,6 +751,44 @@ wait_for_pane_command() {
   start_private_server
 
   run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$(pane_pid_of)"
+
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "foreground strategy saves the park command for a hibernated pane" {
+  # A parked pane's foreground IS a bare shell, so without this the pane line
+  # saves an empty command, restore.sh drops it, and the hibernated session comes
+  # back as a plain shell.
+  export AGENT_HIBERNATE_DIR="$BATS_TEST_TMPDIR/hib"
+  mkdir -p "$AGENT_HIBERNATE_DIR"
+  start_private_server
+  local pid pane
+  pid="$(pane_pid_of)"
+  pane="$("$PRIVATE_TMUX" list-panes -a -F '#{pane_id}' | head -1)"
+  "$PRIVATE_TMUX" set-option -p -t "$pane" @agent_state hibernated
+  jq -n --arg pane "$pane" \
+    '{sessionId: "sid-one", pane: $pane, cwd: "/tmp", flags: []}' \
+    >"$AGENT_HIBERNATE_DIR/sid-one.json"
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$pid"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$HOME/.config/tmux/scripts/agent-hibernate.sh park" ]
+}
+
+@test "foreground strategy still records nothing for a shell pane with no record" {
+  # The hibernate check must not weaken the "an idle shell pane saves no command"
+  # semantics: a hibernated dot with no matching record saves nothing.
+  export AGENT_HIBERNATE_DIR="$BATS_TEST_TMPDIR/hib"
+  mkdir -p "$AGENT_HIBERNATE_DIR"
+  start_private_server
+  local pid pane
+  pid="$(pane_pid_of)"
+  pane="$("$PRIVATE_TMUX" list-panes -a -F '#{pane_id}' | head -1)"
+  "$PRIVATE_TMUX" set-option -p -t "$pane" @agent_state hibernated
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$pid"
 
   [ "$status" -eq 0 ]
   [ -z "$output" ]

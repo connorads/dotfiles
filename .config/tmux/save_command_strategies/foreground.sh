@@ -75,6 +75,34 @@ is_shell() {
 	[ -n "$default_shell" ] && [ "$cmd" = "$default_shell" ]
 }
 
+# A hibernated pane (agent-hibernate.sh) parks a thawer whose foreground is a
+# bare shell, so `is_shell` below would save it with no command and restore.sh
+# would drop the pane line - the parked session would come back as a plain
+# shell, unreachable except through the record picker. Its own park invocation
+# is emitted instead (absolute path, no stale args), so the restored pane parks
+# again and Enter still thaws it.
+hibernate_command() {
+	local dir pane state rec
+	dir=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}
+	[ -d "$dir" ] || return 0
+	command -v jq >/dev/null 2>&1 || return 0
+
+	local row
+	row=$(tmux list-panes -a -F '#{pane_pid}	#{pane_id}	#{@agent_state}' 2>/dev/null |
+		awk -F'\t' -v pid="$PANE_PID" '$1 == pid { print; exit }')
+	[ -n "$row" ] || return 0
+	IFS=$'\t' read -r _ pane state <<<"$row"
+	[ "$state" = hibernated ] || return 0
+
+	for rec in "$dir"/*.json; do
+		[ -f "$rec" ] || continue
+		if [ "$(jq -r '.pane // empty' "$rec" 2>/dev/null)" = "$pane" ]; then
+			printf '%s park\n' "$HOME/.config/tmux/scripts/agent-hibernate.sh"
+			return 0
+		fi
+	done
+}
+
 # tmux's own idea of the pane: its tty and foreground command name.
 foreground_command() {
 	local row tty cmd pid
@@ -97,7 +125,10 @@ main() {
 	[ -n "$PANE_PID" ] || exit 0
 
 	local full_command
-	full_command=$(child_command)
+	# The hibernate check runs first: the parked pane's child scan finds nothing
+	# and its foreground is a shell, so both other paths would report empty.
+	full_command=$(hibernate_command)
+	[ -n "$full_command" ] || full_command=$(child_command)
 	[ -n "$full_command" ] || full_command=$(foreground_command)
 	[ -n "$full_command" ] || return 0
 	printf '%s\n' "$full_command"

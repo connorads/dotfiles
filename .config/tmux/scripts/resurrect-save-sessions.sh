@@ -288,18 +288,78 @@ live_json=$(
 		jq -n --arg k "$pane_key" --arg v "${LIVE_AGENT_DIRS[$pane_key]}" '{($k): $v}'
 	done | jq -cs 'add // {}'
 )
+# Parked panes run no agent, so they are absent from live_json - a hibernated
+# entry would be pruned in the window between a restore and park re-addressing
+# its record. Their pane keys are carried on the pane's own hibernated state.
+hib_live_json=$(tmux list-panes -a -F \
+	'#{session_name}:#{window_index}.#{pane_index}	#{@agent_state}' 2>/dev/null |
+	jq -R -s 'split("\n") | map(select(length > 0) | split("\t"))
+		| map(select(.[1] == "hibernated") | {(.[0]): true}) | add // {}' 2>/dev/null || echo '{}')
+[ -n "$hib_live_json" ] || hib_live_json='{}'
+
 carried='{}'
 if [ -f "$SESSION_FILE" ]; then
 	# A missing, malformed or v1 file carries nothing and never fails the save.
-	carried=$(jq -c --argjson live "$live_json" '
+	carried=$(jq -c --argjson live "$live_json" --argjson hib "$hib_live_json" '
 		(.panes // {}) | with_entries(
-			select(($live[.key] // null) != null and .value.dir == $live[.key]))
+			select((($live[.key] // null) != null and .value.dir == $live[.key])
+				or (.value.hibernated == true and ($hib[.key] // false))))
 	' "$SESSION_FILE" 2>/dev/null || echo '{}')
 	[ -n "$carried" ] || carried='{}'
 fi
 carried_count=$(jq -n --argjson carried "$carried" '$carried | length' 2>/dev/null || echo 0)
 
-if [ "$found_sessions" -eq 0 ] && [ "$carried_count" -eq 0 ]; then
+# --- Hibernated panes -------------------------------------------------------
+# A parked pane (agent-hibernate.sh) runs no agent, so every pass above ignores
+# it and the carry rule - which requires a live agent pane in the recorded cwd -
+# would drop its entry. Its record IS the live truth, so each save rewrites
+# these entries fresh from the record store and refreshes the record's own
+# current address at the same time. The restored pane's park mode reads
+# .hibernated back to re-find its record once both saved addresses go stale.
+declare -A HIBERNATE_ENTRIES
+# Counted explicitly: `${#arr[@]}` on an empty associative array trips `set -u`
+# on bash 5.0 (macOS's nix bash is newer, the Linux hosts' may not be).
+hibernate_count=0
+HIBERNATE_DIR=${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}
+if [ -d "$HIBERNATE_DIR" ]; then
+	# One tmux read: every live pane's id, key, cwd and agent state.
+	hib_panes=$(tmux list-panes -a -F \
+		'#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_current_path}	#{@agent_state}' 2>/dev/null || true)
+	for rec in "$HIBERNATE_DIR"/*.json; do
+		[ -f "$rec" ] || continue
+		hib_sid=$(jq -r '.sessionId // empty' "$rec" 2>/dev/null) || continue
+		[ -n "$hib_sid" ] || continue
+		hib_pane=$(jq -r '.pane // empty' "$rec" 2>/dev/null)
+		[ -n "$hib_pane" ] || continue
+		# The pane must still be the parked one: after a restart a recycled pane
+		# id can name an unrelated pane, and @agent_state=hibernated is what
+		# distinguishes them.
+		hib_row=$(awk -F '\t' -v p="$hib_pane" '$1 == p { print; exit }' <<<"$hib_panes")
+		[ -n "$hib_row" ] || continue
+		IFS=$'\t' read -r _ hib_key hib_dir hib_state <<<"$hib_row"
+		[ "$hib_state" = hibernated ] || continue
+
+		hib_cfg=$(jq -r '.configDir // empty' "$rec" 2>/dev/null)
+		hib_flags=$(jq -r '[.flags[]?] | join(" ")' "$rec" 2>/dev/null)
+		hibernate_count=$((hibernate_count + 1))
+		HIBERNATE_ENTRIES["$hib_key"]=$(jq -c -n --arg dir "$hib_dir" --arg sid "$hib_sid" \
+			--arg cfg "$hib_cfg" --arg flags "$hib_flags" \
+			'{dir: $dir, claude: $sid, claudeFlags: $flags, hibernated: true}
+			 + (if $cfg == "" then {} else {claudeConfigDir: $cfg} end)')
+
+		# Refresh the record's own address while both halves are known good.
+		hib_tmp="$rec.tmp.$$"
+		if jq --arg pane "$hib_pane" --arg key "$hib_key" --arg dir "$hib_dir" \
+			'.pane = $pane | .paneKey = $key | .cwd = $dir' "$rec" >"$hib_tmp" 2>/dev/null; then
+			mv -f "$hib_tmp" "$rec"
+		else
+			rm -f "$hib_tmp"
+		fi
+	done
+fi
+
+if [ "$found_sessions" -eq 0 ] && [ "$carried_count" -eq 0 ] &&
+	[ "$hibernate_count" -eq 0 ]; then
 	# Nothing recorded and nothing to carry — remove stale file if present
 	rm -f "$SESSION_FILE"
 	exit 0
@@ -325,6 +385,11 @@ for pane_key in "${!OPENCODE_PANE_SESSIONS[@]}"; do
 		entry=$(echo "$entry" | jq --arg env "${OPENCODE_PANE_ENVS[$pane_key]}" '. + {opencodeEnv: $env}')
 	fi
 	json=$(echo "$json" | jq --arg pane_key "$pane_key" --argjson entry "$entry" '.panes[$pane_key] = (.panes[$pane_key] // {}) + $entry')
+done
+
+for pane_key in ${HIBERNATE_ENTRIES[@]+"${!HIBERNATE_ENTRIES[@]}"}; do
+	json=$(echo "$json" | jq --arg pane_key "$pane_key" \
+		--argjson entry "${HIBERNATE_ENTRIES[$pane_key]}" '.panes[$pane_key] = $entry')
 done
 
 for dir in "${!ALL_DIRS[@]}"; do
