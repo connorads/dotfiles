@@ -59,7 +59,7 @@ Hard-coupled, staying put:
 | `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
 | `.config/opencode/plugin` | Directory convention; `opencode.json`'s `plugin` array takes npm refs |
 
-Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS`, the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
+Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS` (Python: `py-typecheck-*`, the `py-tests-scoped` glob *and* `py-tests.sh`'s `ROOTS`), the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
 
 ## Git Hygiene
 
@@ -249,7 +249,7 @@ dhk fix                # Run hk fixes in dotfiles repo
 dhk test               # Run the hk steps' own tests (the `tests {}` blocks in hk.pkl)
 git hooks status       # Which hooks a repo declares vs what actually fires (manager, mechanism, identity guard, stale stubs); --json / --check (exit 2 when declared but unarmed) / --quiet (what `rs` calls). Reports only - arming is a deliberate act
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
-mise run py-checks     # Lint (ruff) + typecheck (pyrefly) + test all first-party Python
+mise run py-checks     # Lint (ruff) + typecheck (pyrefly strict) + test all first-party Python; handoff also runs lint-imports + deptry
 mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
 prose [path...]        # Lint markdown against the house prose rules (Vale, Connorads style); paths default to markdown under cwd. Always uses ~/.vale.ini, so house rules apply in any repo and beat its own .vale.ini. Non-zero on findings; vale absent = warn + exit 0
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
@@ -652,14 +652,27 @@ and `~/.config/zsh/tests/ts-tests.bats` pins the gate's own contract. The three
 discovery roots are spelled in both `hk.pkl`'s glob and the script; the
 `gate-coverage` step asserts the two agree.
 
-The `py-typecheck-*` steps are the Python analogue: `pyrefly` gates the two hook
-dirs (`.claude/hooks`, `.hk-hooks`) that import no uninstalled third-party deps,
-one glob-scoped step per dir with a per-dir `pyrefly.toml` (each dir its own
-project so intra-package imports resolve). tmux/skill scripts stay out - they
-import uninstalled deps, which would be `missing-import` noise. The shared
-`~/.hk-hooks/py-typecheck.sh` warns and exits 0 when `pyrefly` is absent;
-`mise run py-checks` runs ruff + pyrefly + the hook pytest suites across all
-first-party Python.
+The `py-typecheck-*` steps are the Python analogue: `pyrefly` (`preset =
+"strict"`, invoked with `-c`) gates the three script dirs (`.claude/hooks`,
+`.hk-hooks`, `.config/vox`) and `src/handoff`, one glob-scoped step per root
+with a per-root `pyrefly.toml` (each root its own project so intra-package
+imports resolve). tmux/skill scripts stay out - they import uninstalled deps,
+which would be `missing-import` noise. The shared `~/.hk-hooks/py-typecheck.sh`
+warns and exits 0 when `pyrefly` is absent.
+
+The `py-tests-scoped` step is the Python `ts-tests-scoped`: each staged file
+resolves to its nearest `pyproject.toml` and `~/.hk-hooks/py-tests.sh` runs that
+project's pytest under its own uv env with `-c pyproject.toml` (a stray
+`tests/pytest.ini` would otherwise become the config and silently drop every
+`strict_*` key), then `lint-imports --no-cache` and `deptry` where the
+pyproject declares them. `gate-coverage` distinguishes a packaged project
+(`pyproject.toml`) from a flat script dir (`pyrefly.toml` only): the former must
+be in this step's glob and the script's `ROOTS`, both need a `py-typecheck-*`
+step. The script dirs carry a `pytest.ini` with the plugin-free strictness
+(`strict_markers`, `strict_config`, `strict_xfail`, `empty_parameter_set_mark`,
+`filterwarnings = error`) and run from `mise run py-checks`, which also calls
+`py-tests.sh --all`. Missing `uv` warns and exits 0; the gate's own contract is
+`~/.config/zsh/tests/py-tests.bats`.
 
 The `bats-scoped` step (pre-commit) gates the zsh bats suite
 (`~/.config/zsh/tests`, 115 files) via `~/.hk-hooks/bats-tests.sh`, running only

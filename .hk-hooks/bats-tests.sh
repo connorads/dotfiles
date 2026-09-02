@@ -88,6 +88,14 @@ suites=$(
 		src/annotate/*)
 			echo "$TESTS_DIR/annotate.bats"
 			;;
+		# The two commit-time test gates carry their harness contract as a bats
+		# suite; staging the gate script runs its suite.
+		.hk-hooks/ts-tests.sh)
+			echo "$TESTS_DIR/ts-tests.bats"
+			;;
+		.hk-hooks/py-tests.sh)
+			echo "$TESTS_DIR/py-tests.bats"
+			;;
 		esac
 	done | sort -u
 )

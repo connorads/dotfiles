@@ -119,6 +119,7 @@ class TestCheckPairs:
     def _sources(self, ts_roots: str) -> dict[str, str]:
         return {
             ".hk-hooks/ts-tests.sh": f'ROOTS="{ts_roots}"\n',
+            ".hk-hooks/py-tests.sh": 'ROOTS="src/handoff"\n',
             ".hk-hooks/bats-tests.sh": "TESTS_DIR=t\ncase $f in\nt/*.bats)\n\t;;\nesac\n",
             ".hk-hooks/fzf-bind-lint.py": 'ROOTS: tuple[str, ...] = (\n    "f/bin",\n)\n',
         }
@@ -128,6 +129,8 @@ class TestCheckPairs:
             'x {\n    ["ts-tests-scoped"] {\n'
             '        glob = List(".config/skl/**", "src/pin-audit/**")\n'
             '        check = "a"\n    }\n'
+            '    ["py-tests-scoped"] {\n        glob = List("src/handoff/**")\n'
+            '        check = "p"\n    }\n'
             '    ["bats-scoped"] {\n        glob = List("t/**")\n        check = "b"\n    }\n'
             '    ["fzf-bind-lint"] {\n'
             '        glob = List("f/bin/pick", ".hk-hooks/fzf-bind-lint.py")\n'
@@ -156,7 +159,7 @@ class TestCheckPairs:
     def test_missing_step_is_reported(self) -> None:
         steps = _mod.parse_hk_steps("x {\n}\n")
         errors = _mod.check_pairs(steps, self._sources(".config/skl"))
-        assert len(errors) == 3
+        assert len(errors) == 4
         assert all("not found" in e for e in errors)
 
 
@@ -209,6 +212,13 @@ class TestDiscoverProjects:
             ["src/pin-audit/package.json", "src/pin-audit/tsconfig.json", ".hk-hooks/pyrefly.toml"]
         ) == {"src/pin-audit": "ts", ".hk-hooks": "py"}
 
+    def test_pyproject_marks_a_project_whatever_the_manifest_order(self) -> None:
+        # A root with both manifests is a packaged project, and the answer must
+        # not depend on which manifest ls-files lists first.
+        both = ["src/handoff/pyrefly.toml", "src/handoff/pyproject.toml"]
+        assert _mod.discover_projects(both) == {"src/handoff": "py-project"}
+        assert _mod.discover_projects(both[::-1]) == {"src/handoff": "py-project"}
+
     def test_vendored_and_fixture_trees_are_excluded(self) -> None:
         assert (
             _mod.discover_projects(
@@ -230,11 +240,15 @@ class TestCheckProjects:
         '    ["ts-typecheck-pin-audit"] {\n        glob = List("src/pin-audit/src/**/*.ts")\n'
         '        check = "b"\n    }\n'
         '    ["py-typecheck-hk-hooks"] {\n        glob = List(".hk-hooks/*.py")\n'
-        '        check = "c"\n    }\n}\n'
+        '        check = "c"\n    }\n'
+        '    ["py-tests-scoped"] {\n        glob = List("src/handoff/**")\n'
+        '        check = "d"\n    }\n'
+        '    ["py-typecheck-handoff"] {\n        glob = List("src/handoff/src/**/*.py")\n'
+        '        check = "e"\n    }\n}\n'
     )
 
     def test_fully_wired_project_passes(self) -> None:
-        projects = {"src/pin-audit": "ts", ".hk-hooks": "py"}
+        projects = {"src/pin-audit": "ts", ".hk-hooks": "py", "src/handoff": "py-project"}
         assert _mod.check_projects(projects, self.STEPS, ungated={}) == []
 
     def test_new_ts_project_fails_both_gates(self) -> None:
@@ -247,6 +261,12 @@ class TestCheckProjects:
         errors = _mod.check_projects({"src/newpy": "py"}, self.STEPS, ungated={})
         assert len(errors) == 1
         assert "no py-typecheck-* step" in errors[0]
+
+    def test_new_packaged_py_project_fails_both_gates(self) -> None:
+        errors = _mod.check_projects({"src/newpy": "py-project"}, self.STEPS, ungated={})
+        assert len(errors) == 2
+        assert "py-tests-scoped glob" in errors[0]
+        assert "no py-typecheck-* step" in errors[1]
 
     def test_ungated_root_is_exempt(self) -> None:
         exempt = {"src/new": "reason"}
