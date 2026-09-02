@@ -4,13 +4,13 @@ Per-stack rules for Nix: formatting, dead code, anti-patterns, and where
 evaluation beats linting. Routed from the picks table and rules-catalogue index
 in `SKILL.md`.
 
-- [Tool picks](#tool-picks)
+- [Picks](#picks)
 - [Evaluation is the correctness gate](#evaluation-is-the-correctness-gate)
 - [Dead code (deadnix)](#dead-code-deadnix)
 - [Anti-patterns (statix)](#anti-patterns-statix)
 - [Hook wiring](#hook-wiring)
 
-## Tool picks
+## Picks
 
 | Concern | Tool | Notes |
 |---|---|---|

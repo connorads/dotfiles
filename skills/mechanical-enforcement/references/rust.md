@@ -4,6 +4,7 @@ Per-stack rules for Rust: clippy correctness, complexity thresholds, pedantic
 allows, workspace lint wiring, supply chain, unused deps, and crate boundaries.
 Routed from the picks table and rules-catalogue index in `SKILL.md`.
 
+- [Picks](#picks)
 - [Type safety & correctness](#type-safety--correctness)
 - [Complexity thresholds (clippy.toml)](#complexity-thresholds-clippytoml)
 - [Common pedantic allows](#common-pedantic-allows)
@@ -11,6 +12,24 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`.
 - [Supply chain (cargo-deny)](#supply-chain-cargo-deny)
 - [Unused dependencies (cargo-machete)](#unused-dependencies-cargo-machete)
 - [Boundaries](#boundaries)
+
+## Picks
+
+| Slot | Pick | Why |
+|---|---|---|
+| Formatter | rustfmt | The one formatter in the ecosystem, so there is no style to negotiate. |
+| Primary linter | clippy `-D warnings` | The baseline is [Type safety & correctness](#type-safety--correctness); enable `clippy::pedantic` selectively, because full pedantic is too noisy - the standing allow set is [Common pedantic allows](#common-pedantic-allows), the numbers [Complexity thresholds (clippy.toml)](#complexity-thresholds-clippytoml). |
+| Also | cargo-deny, cargo-machete | Licence, advisory and ban policy is [Supply chain (cargo-deny)](#supply-chain-cargo-deny); crates declared in `Cargo.toml` and never used are [Unused dependencies (cargo-machete)](#unused-dependencies-cargo-machete). |
+| Type-check | `cargo check` | Catches `cfg`-gated code that a clippy run over the default feature set never compiles. |
+
+The typical hook-tier mapping:
+
+```text
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, cargo-fmt
+tier 2 (lint/gate)      → cargo-clippy -D warnings, gitleaks, cargo-deny
+tier 3 (typecheck)      → cargo check (usually redundant with clippy but catches cfg issues)
+tier 4 (deps/test)      → cargo machete (unused deps), cargo test (scoped to changed crates via glob), cargo modules dependencies --acyclic where layering matters
+```
 
 ## Type safety & correctness
 

@@ -1,10 +1,11 @@
 # Mechanical Enforcement - Complexity and duplication
 
 Cross-stack: what each metric is worth as evidence, the numbers and where they
-come from, which metric to run where, duplication gates, Go settings, and the
-ratchet vehicles. Per-stack wiring lives with its stack -
-`references/typescript.md`, `references/python.md`, `references/rust.md`.
-Routed from the picks table and rules-catalogue index in `SKILL.md`.
+come from, which metric to run where, duplication gates, and Go settings.
+Ratchet vehicles live in `references/ratcheting.md`. Per-stack wiring lives with
+its stack - `references/typescript.md`, `references/python.md`,
+`references/rust.md`. Routed from the picks table and rules-catalogue index in
+`SKILL.md`.
 
 - [What the evidence supports](#what-the-evidence-supports)
 - [The numbers](#the-numbers)
@@ -129,8 +130,9 @@ known-bad fixture rather than trusting a green run.
 The bug class is copy-paste divergence, and it is the shape agent-written code
 fails in: a second helper written instead of the first being found.
 
-**jscpd** is the cross-stack gate - Rabin-Karp over tokens, so it survives
-reformatting and renaming better than line comparison, across 223 formats.
+**jscpd** is the cross-stack gate: Rabin-Karp over tokens, which survives
+reformatting and renaming better than line comparison, across 223 formats, so
+one gate covers a polyglot repo.
 
 ```bash
 jscpd . --min-tokens 50 --min-lines 5 --threshold 3 \
@@ -207,38 +209,8 @@ source.
 
 ## Ratcheting a complexity gate
 
-The general vehicles are in `SKILL.md` (Ratcheting a gate onto non-conforming
-code). What is specific to this concern:
-
-- **oxlint and Biome have no baseline mechanism.** On the all-oxc stack the only
-  levers are severity, glob scoping (`src/**` first, then widen) and tightening
-  the number release by release. Do not add an ESLint layer purely to get
-  `--suppress-all`.
-- **Ruff has no baseline either**, and no per-rule severity, so adopting the
-  family is all-or-nothing on a legacy tree. Compare a committed
-  `ruff check --statistics` snapshot in CI, or run complexipy, which does ship
-  one.
-- **complexipy is the only per-site Python baseline.** `--snapshot-create`
-  writes `complexipy-snapshot.json` keyed by (path, file, function name), so
-  fixing one function and adding another is caught, and a passing run rewrites
-  the snapshot merged with current results - it ratchets down automatically.
-  Renaming or moving a grandfathered function reads as a new violation, and the
-  file resolves against the **invocation directory**, so running from a
-  subdirectory silently disables grandfathering.
-- **jscpd's baseline landed after 5.0.16** (`--baseline`,
-  `--update-baseline`, `--fail-on-new-clones`). Until it ships in a release,
-  the percentage threshold is the only lever - check the current release before
-  promising "no new clones".
-- **Go's ratchet is the git-diff filter**, not a file:
-  `golangci-lint run --new-from-merge-base=origin/main --whole-files`. The flag
-  help text claims `--whole-files` requires `--new-from-rev`; that is stale, no
-  such validation exists in the code. `--whole-files` matters because a
-  complexity finding is reported at the function **signature** line, so editing
-  the middle of a long function otherwise hides it. `actions/checkout` defaults
-  to `fetch-depth: 1`, which leaves no merge base and makes the filter silently
-  see nothing - set `fetch-depth: 0` and name a remote-tracking ref. Keep this
-  on the CI command line, not in the committed config, so local runs still see
-  the whole tree.
+The vehicle table and the complexity-specific notes (the all-oxc stack, ruff,
+complexipy, jscpd, Go) live in `references/ratcheting.md`.
 
 ## Report-only, and tools that cannot gate
 
@@ -266,7 +238,7 @@ for in `references/architecture-boundaries.md`.
 **`lizard`** is the fallback for languages nothing else covers (Swift, Kotlin,
 Lua, Solidity, Zig and 20 more). It gates out of the box - `-C 15 -a 5`, any
 warning exits 1 - and its `-End -N 4` extension is the only cross-language
-nesting-depth gate found. Its `-i N` tolerance is a bare warning *count*, not a
-per-site baseline, so fixing one function and adding another nets zero. Pure
+nesting-depth gate found. Its `-i N` tolerance is not a per-site baseline (see
+`references/ratcheting.md`). Pure
 Python and single-threaded by default (`-t $(nproc)`), so glob it to the
 languages nothing else covers, or run it at pre-push.
