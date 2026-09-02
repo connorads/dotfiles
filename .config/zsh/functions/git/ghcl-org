@@ -1,0 +1,403 @@
+#!/usr/bin/env zsh
+# ghcl-org: bulk-clone and re-sync every repo in a GitHub org into cwd
+# usage: ghcl-org <org> [--dry-run] [--yes|-y] [--json] [--limit N]
+#
+# Phases: list (network) -> select (pure) -> scan cwd -> probe (git, read-only)
+# -> plan (PURE) -> execute. The plan is what --dry-run prints, so every fact a
+# decision rests on is observed before planning: if the executor discovered "you
+# are on feat/x, skipping", --dry-run would promise `pull` and the real run would
+# skip - the preview would lie about the commonest outcome of a re-sync.
+emulate -L zsh
+local _ghcl_common_dir="${${functions_source[ghcl-org]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_ghcl_common_dir/_ghcl-common"
+
+# Records are 7 tab-separated fields, fixed order:
+#   1 repo  2 owner  3 action  4 reason  5 default_branch  6 local_branch  7 url
+# owner is empty iff action is `orphaned`; reason is non-empty iff action is
+# `skip`. No field can hold a tab or newline - GitHub names are [A-Za-z0-9._-]
+# and git refs forbid whitespace and control characters - so there is no quoting
+# layer and none should be added.
+#
+# Re-parsing uses "${(@ps:\t:)rec}", NOT `IFS=$'\t' read -r`: tab is IFS
+# whitespace, so `read` collapses a run of tabs into one separator and silently
+# drops every interior empty field, shifting all later positions. `(s)` alone
+# drops them too; `@` inside double quotes is what keeps them, and `p` is what
+# makes the separator an actual tab rather than a literal backslash-t.
+
+# _ghcl_org_list <org> <limit>: raw rows from the API, one per repo -
+# name, nameWithOwner, default branch, isArchived, isFork.
+#
+# Selection is deliberately NOT pushed into gh's --no-archived/--source flags:
+# under a stubbed gh a filter flag is unobservable, so the rule would be
+# untestable, and a repo archived *after* being cloned would vanish from the
+# listing and be reported `orphaned` when it is nothing of the sort.
+_ghcl_org_list() {
+  local org=$1 limit=$2
+  local err_file out rc
+  err_file=$(mktemp) || return 1
+
+  out=$(gh repo list "$org" \
+    --limit "$limit" \
+    --json name,nameWithOwner,defaultBranchRef,isArchived,isFork \
+    --jq '.[] | [.name, .nameWithOwner, (.defaultBranchRef.name // ""), (.isArchived|tostring), (.isFork|tostring)] | @tsv' \
+    2>"$err_file")
+  rc=$?
+
+  local err
+  err=$(<"$err_file")
+  rm -f "$err_file"
+
+  if (( rc != 0 )); then
+    [[ -n $err ]] && print -u2 -r -- "$err"
+    if [[ $err == *SAML* || $err == *"single sign-on"* || $err == *SSO* || $err == *403* ]]; then
+      print -u2 "error: gh's token is not SSO-authorised for '$org'"
+      print -u2 "hint: grant it at https://github.com/settings/applications -> GitHub CLI -> SSO organisation access -> $org"
+    else
+      print -u2 "error: unable to list repos for '$org'"
+    fi
+    return 1
+  fi
+
+  [[ -n $out ]] && print -r -- "$out"
+  return 0
+}
+
+# _ghcl_org_select <raw_blob>: PURE. Drops archived repos and forks, keeps
+# public and private alike, and emits `name<TAB>owner<TAB>default_branch`
+# sorted by name so the table and the plan/results comparison are stable.
+_ghcl_org_select() {
+  local -a rows=()
+  [[ -n $1 ]] && rows=("${(@f)1}")
+
+  local -a kept=()
+  local row name owner_repo default_branch archived fork
+  local -a f
+  for row in "${rows[@]}"; do
+    f=("${(@ps:\t:)row}")
+    name=$f[1] owner_repo=$f[2] default_branch=$f[3] archived=$f[4] fork=$f[5]
+    [[ -n $name ]] || continue
+    [[ $archived == true ]] && continue
+    [[ $fork == true ]] && continue
+    kept+=("$name"$'\t'"${owner_repo%%/*}"$'\t'"$default_branch")
+  done
+
+  (( ${#kept} )) || return 0
+  print -rl -- "${(@o)kept}"
+  return 0
+}
+
+# _ghcl_org_scan_cwd: the directory names in cwd, one per line. Dotted entries
+# are excluded by glob default, which is what keeps .git and friends out.
+_ghcl_org_scan_cwd() {
+  local -a entries=(*(N-/))
+  (( ${#entries} )) || return 0
+  print -rl -- "${entries[@]}"
+  return 0
+}
+
+# _ghcl_org_owner_of_url <url>: the owner/org a clone URL points at.
+_ghcl_org_owner_of_url() {
+  local url=${1%.git}
+  url=${url%/}
+  local owner=${${url:h}:t}
+  # An scp-style URL keeps host and owner in one component: git@github.com:owner
+  printf '%s\n' "${owner##*:}"
+}
+
+# _ghcl_org_probe <name>...: read-only disk observation, one row per name -
+# `name<TAB>state<TAB>origin_owner<TAB>local_branch`. state is one of
+# absent / not-a-repo / no-origin / repo.
+#
+# Every git call carries --no-optional-locks so a probe cannot even refresh the
+# index, which is what makes this safe to run under --dry-run.
+_ghcl_org_probe() {
+  # `git -C` does NOT protect against an inherited GIT_DIR: with GIT_DIR and
+  # GIT_WORK_TREE exported, `git -C /elsewhere rev-parse` ignores -C entirely
+  # and reports the inherited repo. The dotfiles pre-commit hook exports both.
+  # Shadowed rather than unset outright, so an interactive caller keeps its own.
+  local GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
+  local name top origin owner branch
+  for name in "$@"; do
+    if [[ ! -d $name ]]; then
+      printf '%s\t%s\t%s\t%s\n' "$name" absent "" ""
+      continue
+    fi
+
+    top=$(git --no-optional-locks -C "$name" rev-parse --show-toplevel 2>/dev/null)
+    # rev-parse walks UP: inside a checkout a plain directory reports its
+    # ancestor's toplevel, so a non-repo dir would probe as a repo. Compare the
+    # resolved paths; the return code alone does not answer the question.
+    if [[ -z $top || ${top:A} != ${name:A} ]]; then
+      printf '%s\t%s\t%s\t%s\n' "$name" not-a-repo "" ""
+      continue
+    fi
+
+    origin=$(git --no-optional-locks -C "$name" remote get-url origin 2>/dev/null)
+    if [[ -z $origin ]]; then
+      printf '%s\t%s\t%s\t%s\n' "$name" no-origin "" ""
+      continue
+    fi
+
+    owner=$(_ghcl_org_owner_of_url "$origin")
+    # Empty on a detached HEAD, which the plan reads as skip: detached.
+    branch=$(git --no-optional-locks -C "$name" symbolic-ref --short -q HEAD 2>/dev/null)
+    printf '%s\t%s\t%s\t%s\n' "$name" repo "$owner" "$branch"
+  done
+  return 0
+}
+
+# _ghcl_org_plan <selected_blob> <observed_blob> <org>: PURE - two blobs in,
+# plan records out. It calls no external command, which is why --dry-run's
+# output is exactly what a real run decides from.
+_ghcl_org_plan() {
+  local selected_blob=$1 observed_blob=$2 org=$3
+  local -a selected=() observed=()
+  [[ -n $selected_blob ]] && selected=("${(@f)selected_blob}")
+  [[ -n $observed_blob ]] && observed=("${(@f)observed_blob}")
+
+  local -A obs_state obs_owner obs_branch
+  local row o_name
+  local -a f
+  for row in "${observed[@]}"; do
+    f=("${(@ps:\t:)row}")
+    o_name=$f[1]
+    obs_state[$o_name]=$f[2]
+    obs_owner[$o_name]=$f[3]
+    obs_branch[$o_name]=$f[4]
+  done
+
+  # The decision cascade: seven mutually exclusive arms, in this order.
+  local -A listed
+  local name owner default_branch state local_branch action reason url
+  for row in "${selected[@]}"; do
+    f=("${(@ps:\t:)row}")
+    name=$f[1] owner=$f[2] default_branch=$f[3]
+    listed[$name]=1
+    state=${obs_state[$name]:-absent}
+    local_branch=${obs_branch[$name]:-}
+    reason=""
+
+    if [[ -z $default_branch ]]; then
+      action=skip reason=empty                      # tested first: never cloned
+    elif [[ $state == absent ]]; then
+      action=clone
+    elif [[ $state == not-a-repo ]]; then
+      action=skip reason=not-a-repo
+    elif [[ $state == no-origin ]]; then
+      action=skip reason=no-origin
+    elif [[ -z $local_branch ]]; then
+      action=skip reason=detached
+    elif [[ $local_branch != $default_branch ]]; then
+      action=skip reason=not-default-branch
+    else
+      action=pull
+    fi
+
+    url=$(_ghcl_ssh_url "$owner/$name")
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$name" "$owner" "$action" "$reason" "$default_branch" "$local_branch" "$url"
+  done
+
+  # Orphans: a repo on disk whose origin points at this org, which the org no
+  # longer lists. Reported only - this tool contains no delete path. Computable
+  # here because probe_names is the union of listed and on-disk names.
+  for row in "${observed[@]}"; do
+    f=("${(@ps:\t:)row}")
+    o_name=$f[1]
+    [[ -n ${listed[$o_name]:-} ]] && continue
+    [[ $f[2] == repo ]] || continue
+    [[ ${(L)f[3]} == ${(L)org} ]] || continue
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$o_name" "" orphaned "" "" "$f[4]" ""
+  done
+  return 0
+}
+
+# _ghcl_org_counts <plan_blob>: counts by action plus a skip-reason breakdown.
+# The prompt preview - 91 repos listed one per line would be scrolled past.
+_ghcl_org_counts() {
+  local -a records=()
+  [[ -n $1 ]] && records=("${(@f)1}")
+
+  local -A n_action n_reason
+  local rec action reason
+  local -a f
+  for rec in "${records[@]}"; do
+    f=("${(@ps:\t:)rec}")
+    action=$f[3] reason=$f[4]
+    (( n_action[$action]++ ))
+    [[ -n $reason ]] && (( n_reason[$reason]++ ))
+  done
+
+  local a
+  for a in clone pull skip orphaned; do
+    if [[ $a == skip && ${#n_reason} -gt 0 ]]; then
+      local -a parts=()
+      local r
+      for r in ${(ko)n_reason}; do
+        parts+=("$r ${n_reason[$r]}")
+      done
+      printf '  %-9s %4d  (%s)\n' "$a" "${n_action[$a]:-0}" "${(j:, :)parts}"
+    else
+      printf '  %-9s %4d\n' "$a" "${n_action[$a]:-0}"
+    fi
+  done
+  return 0
+}
+
+# _ghcl_org_table <plan_blob>: one row per repo. One printf format string,
+# shared by header and rows.
+_ghcl_org_table() {
+  local -a records=()
+  [[ -n $1 ]] && records=("${(@f)1}")
+  (( ${#records} )) || return 0
+
+  local fmt='%-40s %-9s %s\n'
+  printf "$fmt" REPO ACTION DETAIL
+
+  local rec name action reason default_branch local_branch detail
+  local -a f
+  for rec in "${records[@]}"; do
+    f=("${(@ps:\t:)rec}")
+    name=$f[1] action=$f[3] reason=$f[4] default_branch=$f[5] local_branch=$f[6]
+    case $action in
+      clone|pull) detail=$default_branch ;;
+      orphaned)   detail="no longer listed${local_branch:+ (on $local_branch)}" ;;
+      skip)
+        if [[ $reason == not-default-branch ]]; then
+          detail="not-default-branch (on $local_branch, want $default_branch)"
+        else
+          detail=$reason
+        fi
+        ;;
+      *) detail="" ;;
+    esac
+    printf "$fmt" "$name" "$action" "$detail"
+  done
+  return 0
+}
+
+# _ghcl_org_json <plan_blob>: the plan as JSON. ${(F)arr} on an empty array
+# yields one blank line, so the empty case needs its own guard.
+_ghcl_org_json() {
+  local -a records=()
+  [[ -n $1 ]] && records=("${(@f)1}")
+
+  if (( ${#records} == 0 )); then
+    echo '[]'
+    return 0
+  fi
+
+  printf '%s\n' "${records[@]}" | jq -R -s '
+    split("\n") | map(select(length > 0)) | map(split("\t"))
+    | map({
+        repo: .[0],
+        owner: (if .[1] == "" then null else .[1] end),
+        action: .[2],
+        reason: (if .[3] == "" then null else .[3] end),
+        default_branch: (if .[4] == "" then null else .[4] end),
+        local_branch: (if .[5] == "" then null else .[5] end),
+        url: (if .[6] == "" then null else .[6] end)
+      })'
+}
+
+local org="" dry_run=0 yes=0 json=0 limit=1000
+local usage="usage: ghcl-org <org> [--dry-run] [--yes|-y] [--json] [--limit N]"
+
+while (( $# )); do
+  case $1 in
+    -h|--help)
+      echo "$usage" >&2
+      echo "clones every non-archived, non-fork repo in <org> into cwd, and" >&2
+      echo "re-syncs the ones already there with git pull --ff-only" >&2
+      return 0 ;;
+    --dry-run)  dry_run=1; shift ;;
+    -y|--yes)   yes=1; shift ;;
+    --json)     json=1; shift ;;
+    --limit)    limit=$2; shift 2 ;;
+    -*)         echo "error: unknown flag $1" >&2; return 1 ;;
+    *)
+      if [[ -n $org ]]; then
+        echo "error: unexpected argument: $1" >&2
+        return 1
+      fi
+      org=$1; shift ;;
+  esac
+done
+
+if [[ -z $org ]]; then
+  echo "error: an org is required" >&2
+  echo "$usage" >&2
+  return 1
+fi
+
+if [[ $limit != <-> || $limit -lt 1 ]]; then
+  echo "error: --limit takes a positive integer, got: $limit" >&2
+  return 1
+fi
+
+# --json is a preview format; it never clones or pulls.
+(( json )) && dry_run=1
+
+# Plan-only for now: the execute step lands in the next commit.
+dry_run=1
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "error: gh not found" >&2
+  return 1
+fi
+
+if (( json )) && ! command -v jq >/dev/null 2>&1; then
+  echo "error: jq not found (needed for --json)" >&2
+  return 1
+fi
+
+local raw_blob selected_blob cwd_blob observed_blob plan_blob
+raw_blob=$(_ghcl_org_list "$org" "$limit") || return 1
+
+local -a raw_rows=()
+[[ -n $raw_blob ]] && raw_rows=("${(@f)raw_blob}")
+# A truncated listing would report every repo past the cut as `orphaned`, so
+# refuse rather than mislabel. Fails closed on an exact-limit org too.
+if (( ${#raw_rows} >= limit )); then
+  echo "error: the listing hit --limit $limit; raise it (a truncated listing reports cloned repos as orphaned)" >&2
+  return 1
+fi
+
+selected_blob=$(_ghcl_org_select "$raw_blob")
+cwd_blob=$(_ghcl_org_scan_cwd)
+
+# probe_names is the UNION of listed repo names and cwd directory names. The
+# union is what makes `orphaned` computable inside a pure plan, and a name
+# collision with a plain directory a plan-time fact rather than a clone-time
+# surprise.
+local -a probe_names=()
+local row
+[[ -n $selected_blob ]] && for row in "${(@f)selected_blob}"; do
+  probe_names+=("${row%%$'\t'*}")
+done
+[[ -n $cwd_blob ]] && probe_names+=("${(@f)cwd_blob}")
+probe_names=("${(@u)probe_names}")
+
+observed_blob=""
+(( ${#probe_names} )) && observed_blob=$(_ghcl_org_probe "${probe_names[@]}")
+
+plan_blob=$(_ghcl_org_plan "$selected_blob" "$observed_blob" "$org")
+
+if (( json )); then
+  _ghcl_org_json "$plan_blob"
+  return 0
+fi
+
+if [[ -z $plan_blob ]]; then
+  echo "Nothing to do: $org lists no repos to clone or sync."
+  return 0
+fi
+
+echo "$org -> $PWD"
+_ghcl_org_counts "$plan_blob"
+echo ""
+_ghcl_org_table "$plan_blob"
