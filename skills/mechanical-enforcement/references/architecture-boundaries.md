@@ -7,6 +7,8 @@ Per-language boundary specifics live with their stack: Python in
 `references/python.md`, Rust in `references/rust.md`. Routed from the picks
 table and rules-catalogue index in `SKILL.md`.
 
+## Contents
+
 - [Architectural boundaries](#architectural-boundaries)
 - [Transitive architecture tests](#transitive-architecture-tests)
 - [Cycle gating on legacy graphs](#cycle-gating-on-legacy-graphs)
