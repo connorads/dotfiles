@@ -420,4 +420,6 @@ and diff-review clones against the prior vetted copy before trusting them.
 - `connorads/skills` public repo is **deferred** - public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,
   just a tracking handoff (dotfiles stops tracking its contents). Sanitise any personal refs
-  first; none currently. `~/.config/skills/public` stays as a compat symlink afterwards.
+  first: `bootstrap-project/references/cloudflare-foldkit-alchemy.md` names local worked
+  examples under `~/git/` in a section flagged for exactly this. `~/.config/skills/public`
+  stays as a compat symlink afterwards.
