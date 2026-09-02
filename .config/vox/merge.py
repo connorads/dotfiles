@@ -32,7 +32,7 @@ import re
 import sys
 from operator import attrgetter
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import NamedTuple
 
 # Consecutive same-speaker segments closer together than this are one utterance.
 # Whisper-family models split on breath pauses, so without this a single
@@ -55,7 +55,7 @@ def format_timestamp(ms: int) -> str:
     return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
 
 
-def load_segments(payload: Any, default_speaker: str) -> list[Segment]:
+def load_segments(payload: object, default_speaker: str) -> list[Segment]:
     """Extract segments from an `mw --format json` payload.
 
     `speaker` is optional (absent under `--no-speakers`) and may be blank, so

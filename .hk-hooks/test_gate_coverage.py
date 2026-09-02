@@ -14,7 +14,8 @@ from pathlib import Path
 _spec = importlib.util.spec_from_file_location(
     "gate_coverage", Path(__file__).parent / "gate-coverage.py"
 )
-assert _spec and _spec.loader
+assert _spec
+assert _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["gate_coverage"] = _mod
 _spec.loader.exec_module(_mod)

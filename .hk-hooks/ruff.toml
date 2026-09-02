@@ -25,6 +25,26 @@ select = [
     "SIM", # flake8-simplify
     "I",   # isort
     "RUF", # Ruff-specific rules
+    # --- Rules that back an idiom the python skill states in prose. Each one
+    # is in skills/mechanical-enforcement/references/python-ruff.toml with its
+    # false-positive class; this is the subset that applies to script dirs.
+    "DTZ",      # naive datetimes: with an explicit `select` the family is off
+    "ASYNC",    # blocking call / busy-wait inside an async function
+    "PGH003",   # blanket `# type: ignore` - suppressions must name a rule
+    "PGH004",   # blanket `# noqa`
+    "ANN401",   # bare `Any` in a signature
+    "PLW1641",  # `__eq__` without `__hash__` silently drops hashability
+    "PLW0603",  # `global` statement - hidden mutable state
+    "TRY400",   # `logger.error` inside `except` loses the traceback
+    "TID252",   # relative imports (ban-relative-imports = "all" below)
+    "PT",       # pytest style; PT011 needs raises-require-match-for below
+    # Security subset that is low-noise on scripts (the full verified list is
+    # in the skill template): code execution, deserialisation, shell, SQL,
+    # TLS, hashing, secrets.
+    "S102", "S307", "S301", "S302", "S506", "S202",
+    "S602", "S604", "S605", "S608",
+    "S501", "S507", "S323", "S502", "S503", "S504", "S505", "S324", "S113",
+    "S105", "S106", "S107",
 ]
 ignore = [
     # Ruff format owns wrapping.
@@ -36,8 +56,25 @@ fixable = ["ALL"]
 # by never passing it.
 preview = false
 
+[lint.flake8-tidy-imports]
+# The default "parents" leaves sibling `from . import x` unflagged.
+ban-relative-imports = "all"
+
+[lint.flake8-pytest-style]
+# PT011's built-in list is stdlib-only, so `pytest.raises(DomainError)` with no
+# match= passes clean until every exception is covered.
+raises-require-match-for = ["*"]
+
 [lint.per-file-ignores]
-# Tests intentionally use asserts, fixture names, literals, compact setup, and
-# mutable class-level fixture constants (RUF012).
-"**/test_*.py" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN", "RUF012"]
-"tests/**" = ["S101", "ARG", "FBT", "PLR2004", "D", "ANN", "RUF012"]
+# Tests: password name-heuristics fire on fixtures; a helper taking Any is not
+# an API; mutable class-level fixture constants (RUF012) are deliberate. An
+# ignore for a code that is not selected is inert, so only selected codes are
+# listed.
+"**/test_*.py" = ["S105", "S106", "S107", "ANN401", "RUF012"]
+"tests/**" = ["S105", "S106", "S107", "ANN401", "RUF012"]
+# PT is a tests-only family: everything outside tests ignores it.
+"!**/test_*.py" = ["PT"]
+# handoff's format parsers take raw JSON as `Any` and narrow with isinstance;
+# moving them to `object` + TypeIs is a follow-up, not a lint exemption to keep.
+"src/handoff/src/handoff/formats/**" = ["ANN401"]
+"src/handoff/src/handoff/_json.py" = ["ANN401"]

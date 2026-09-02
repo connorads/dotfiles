@@ -20,7 +20,8 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     "tmux_bind_lint", Path(__file__).parent / "tmux-bind-lint.py"
 )
-assert _spec and _spec.loader
+assert _spec
+assert _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["tmux_bind_lint"] = _mod
 _spec.loader.exec_module(_mod)

@@ -16,7 +16,8 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     "prefer_pnpm", Path(__file__).parent / "prefer-pnpm.py"
 )
-assert _spec and _spec.loader
+assert _spec
+assert _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 nudge_reason = _mod.nudge_reason
