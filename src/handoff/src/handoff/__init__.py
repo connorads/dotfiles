@@ -10,4 +10,4 @@ __all__ = ["CURRENT_IR_VERSION", "__version__"]
 
 __version__ = "0.1.3"
 
-from .ir import CURRENT_IR_VERSION
+from handoff.ir import CURRENT_IR_VERSION

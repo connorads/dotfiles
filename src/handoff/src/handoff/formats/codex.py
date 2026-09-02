@@ -28,16 +28,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import IO, Any
 
-from .._ids import is_uuid, new_uuid7
-from .._json import (
-    dumps_compact,
-    format_millis,
-    now_utc,
-    parse_datetime,
-    write_json_line,
-)
-from ..errors import ctx
-from ..ir import (
+from handoff._ids import is_uuid, new_uuid7
+from handoff._json import dumps_compact, format_millis, now_utc, parse_datetime, write_json_line
+from handoff.errors import ctx
+from handoff.ir import (
     ContentBlock,
     MessageEvent,
     ReasoningEvent,
