@@ -378,6 +378,81 @@ Tests (run `mise run zsh-tests`):
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
+## Agent hibernate / thaw (custom subsystem)
+
+Kill an idle Claude pane to reclaim RAM and swap, park a thawer in its place,
+and resume the same conversation on demand. Killing is what returns memory -
+SIGSTOP keeps every page mapped, so it parks the leak rather than resetting it -
+and `--resume` restores the conversation in full because the transcript, not the
+process, is the session. Mechanism, rejected alternatives and the Claude-only
+scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-resume.md).
+
+- [`scripts/agent-hibernate.sh`](./scripts/agent-hibernate.sh) - the whole
+  engine: `hibernate` / `thaw` / `park` / `list`. Identity is snapshotted with
+  the same resolvers the restore and fork paths use (`claude_config_dir_for_pid`
+  for the ccp account, `claude_session_meta_for_pid` for the session id,
+  `resurrect_argv_claude_flags` for the launch flags), so a thawed pane keeps
+  its account and its posture.
+- **The record store is keyed by session id**, at
+  `~/.local/state/agent-hibernate/<sessionId>.json` (`AGENT_HIBERNATE_DIR`
+  relocates it), with the pane's screen capture beside it as
+  `<sessionId>.screen.txt`. Pane ids die with the server and pane keys drift on
+  a window move, so `pane`/`paneKey` are stored as *current addresses* and
+  refreshed - never used as the key. **No resolvable session id means no
+  hibernation**: `--continue` would resume whichever conversation the directory
+  last touched, which for a directory holding several panes is the wrong one.
+- **The state gate.** `idle`/`done` hibernate freely; `blocked` (a pending
+  permission prompt), `working` (an in-flight tool call) and an empty state each
+  need `--force`, and refusal is **exit 6**.
+- **`remain-on-exit` is raised across the kill.** Both pane shapes occur -
+  claude under a shell, and claude *as* the pane process - and in the second the
+  pane would close on the kill before the thawer could be spawned into it.
+- **The screen is captured before the respawn**, with trailing blank padding
+  trimmed. `respawn-pane -k` discards the visible screen and keeps scrolled
+  history (observed), so park re-prints the capture; re-printing tmux's
+  full-height padding would scroll the content itself off the top.
+- **Park is a key-loop, not a placeholder.** It re-prints the screen, shows
+  `hibernated: <name> (idle Nd, freed NNN MB) - Enter to thaw`, and thaws on
+  Enter via `run-shell -b` - server-side, outside the pane's own process group,
+  or the respawn would kill park mid-thaw before the record is cleaned up.
+- **Idle age comes from the journal** (`last_journal_ts`), grepping only the
+  current and previous month's `events-*.jsonl` on demand - those files run
+  ~60 MB/month.
+- **The sweep exempts `hibernated`.** A parked pane's foreground IS a bare
+  shell, which is the sweep's "the agent died" signal, so without the exemption
+  the dot would be cleared within one poll.
+- **Restore survival.** Three pieces keep a parked pane parked across a tmux
+  restart: [`resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh)
+  rewrites hibernated `session_ids.json` entries fresh from the record store
+  each save (the record is the live truth; the carry rule wants a live *agent*
+  pane, which a parked pane is not) and refreshes each record's address;
+  [`save_command_strategies/foreground.sh`](./save_command_strategies/foreground.sh)
+  emits the park invocation for a pane whose record matches, because a parked
+  pane's shell foreground would otherwise save no command and `restore.sh`
+  drops such pane lines; and `"~agent-hibernate"` in `@resurrect-processes`
+  ([`tmux.conf`](./tmux.conf)) stops that command being filtered out. A record
+  counts only while its pane still carries `@agent_state=hibernated` - after a
+  restart a recycled pane id can name an unrelated pane.
+- **Nothing becomes unreachable.** On restore, park resolves through pane id →
+  pane key → the `session_ids.json` hibernated entry → a *unique* cwd (the same
+  exactly-one rule as `resurrect-claude-launch.sh`), and re-addresses the record
+  under the new pane id. Anything unresolvable holds as an **orphan**, which
+  `agent thaw`'s picker lists and thaws into a fresh window in the recorded cwd.
+- Surfaces: `agent hibernate [target] [--force]` / `agent thaw [target]` (the
+  CLI delegates through `AGENT_HIBERNATE_SH` and, as ever, mutates no
+  `@agent_state` itself), two `prefix + T` Tools rows, and items on
+  `prefix + Alt+.` and the right-click pane menu. No key of its own, per the
+  occasional-utility convention.
+
+Tests: [`../zsh/tests/agent-hibernate.bats`](../zsh/tests/agent-hibernate.bats)
+drives a real private server end to end. Its fake claude is a **symlink to a nix
+bash** running an idle script, and both halves are load-bearing: `ps -o comm=`
+reports a *script's* interpreter (so a shell stub never matches "claude"), and
+macOS withholds a SIP-protected binary's environment from `ps -E` (so
+`/usr/bin/tail` would read back no `CLAUDE_CONFIG_DIR`). The save-side and
+foreground-strategy halves live in
+[`../zsh/tests/tmux-resurrect-sessions.bats`](../zsh/tests/tmux-resurrect-sessions.bats).
+
 ## Touch organiser (custom subsystem)
 
 The touch workspace organiser is a native tmux menu layer backed by one script:
