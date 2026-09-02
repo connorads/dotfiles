@@ -595,6 +595,11 @@ which buries the option name the manual uses), `link-check`
 whole-tree; **globless on purpose** - link rot comes from deleting a target, and
 hk never runs a globbed step when the only staged change is a deletion),
 `zsh-fn-header` (shell-function header + shebang/`# zsh-only:` conventions),
+`skills-no-local-paths` (`~/.hk-hooks/skills-no-local-paths.sh`: the authored
+skill tiers `skills/` and `.config/skills/personal/` are public, so no file in
+them may name a path on this machine - `~/git/<repo>`, `/Users/<user>/`;
+angle-bracket placeholders and the generic users me/you/alice/bob pass; a
+worked example is embedded, never pointed at),
 `oxlint`
 (first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
 skills and eval-fixture/reference snippets excluded), `ruff-check` +
