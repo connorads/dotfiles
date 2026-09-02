@@ -1,51 +1,148 @@
-# import-linter contracts — drop into pyproject.toml
-# Gate: `lint-imports` (non-zero exit on any broken contract).
-# Contracts check import CHAINS (transitive), not just direct edges, and
-# include `if TYPE_CHECKING:` imports by default.
+# import-linter contracts - drop into pyproject.toml. Floor: import-linter 2.14 (`protected`
+# needs 2.5, `acyclic_siblings` 2.6, `broken_contract_guidance` and `--no-logo` 2.14).
+# Unknown contract keys are dropped without a warning, so on an older version the guidance
+# strings vanish silently.
+# Gate: `lint-imports --config pyproject.toml --no-logo` (the logo is ten ASCII lines that otherwise bury the failures)
+#   exit 1 on a broken contract AND on a misconfigured one; 0 when all kept.
+#   --config pins the file: discovery reads setup.cfg FIRST, so an `[importlinter]` section
+#     there runs instead - contracts gone, exit 0.
+#   --contract <id>, repeatable, runs one contract; needs an `id` per block.
+#   --cache-dir / --no-cache: `.import_linter_cache` lands in the working directory and is
+#     not concurrency-safe, so give each parallel hook step its own dir or pass --no-cache.
+#   No filenames (`Error: Got unexpected extra argument`): set `pass_filenames: false` in
+#     pre-commit, globbed but unargumented in hk. Whole-graph only.
+# Every name in `root_packages` must be IMPORTABLE, not merely on disk: a src layout needs `PYTHONPATH=src`
+# or an editable install, else every run aborts with `Could not find package 'myproject' in your Python path.`
+#
+# Transitivity is per contract type. `layers` / `forbidden` / `independence` follow import
+# CHAINS (A -> B -> C breaks a forbidden A -> C), the reason import-linter is the default
+# over tach (`references/python.md`); `protected` / `acyclic_siblings` see DIRECT edges
+# only, so one hop launders either.
+#
+# Silent no-ops in this surface; none warns. The first four report KEPT and exit 0; the last
+# drops a setting and leaves the run's default in force:
+#   - a wildcard module expression matching nothing (an exact INTERNAL name errors
+#     `Module '<name>' does not exist.`)
+#   - an external in `forbidden_modules` nothing imports (in `protected_modules` the same
+#     name errors `"<name>" not present in the graph.`)
+#   - `include_external_packages = "TRUE"`, or any truthy spelling but `true` / `True`,
+#     downgrading the loud external-forbidden refusal to KEPT
+#   - `exhaustive_ignores` without `exhaustive = true`
+#   - `exclude_type_checking_imports` inside a contract (top level only), and
+#     `unmatched_ignore_imports_alerting` at top level (per contract only)
+# Fail-open classes across the stack: `references/python.md`; boundary philosophy: `references/architecture-boundaries.md`.
 
 [tool.importlinter]
 root_packages = ["myproject"]
+# Externals join the graph so `forbidden_modules` / `protected_modules` can name them.
+# TOP-LEVEL NAMES ONLY: `pydantic.dataclasses` errors loudly, so it cannot rot into a pass.
+include_external_packages = true
+# `if TYPE_CHECKING:` imports COUNT as coupling by default, which is what stops a Protocol-shaped
+# import laundering a dependency. TOP LEVEL ONLY and global; inside a contract it is silently ignored.
+# exclude_type_checking_imports = true
 
 # --- Layers: higher layers may import lower, never the reverse ---
 [[tool.importlinter.contracts]]
+id = "layers"
 name = "Layered architecture"
 type = "layers"
-layers = [
+layers = [ # no wildcards: `Missing layer 'myproject.*': module ... does not exist.`
     "myproject.api",         # imperative shell / entrypoints
     "myproject.application", # use-cases
-    "myproject.domain",      # functional core — imports nothing above
+    "myproject.infra",       # adapters
+    "myproject.domain",      # functional core - imports nothing above
 ]
-# For a package-per-context monorepo shape, add:
-# containers = ["myproject.billing", "myproject.shipping"]
+# Prints under the failure, so the fix travels with the rule.
+broken_contract_guidance = "Define a Protocol port in myproject.domain.ports and inject the adapter from myproject.api."
+
+# --- Layers per bounded context, with drift caught by exhaustiveness ---
+[[tool.importlinter.contracts]]
+id = "context-layers"
+name = "Each context is layered, exhaustively"
+type = "layers"
+# Parentheses mark a layer OPTIONAL, needed the moment a sibling context lacks it.
+layers = ["(api)", "(application)", "(domain)"]
+# `myproject.*` works but drags in `myproject.infra`, which then needs an `infra.domain`
+# layer or the run aborts; naming the contexts keeps an exact name a rename breaks on.
+containers = ["myproject.billing", "myproject.shipping"]
+# Fails when a direct child of a container declares no layer - a module nobody assigned a
+# layer to is a design decision nobody made. Requires `containers`.
+exhaustive = true
+# Bare TAIL names matched against EVERY container, so `utils` cannot be exempt in one and
+# banned in another; leading-underscore modules count as undeclared, direct children only.
+exhaustive_ignores = ["utils"]
 
 # --- Forbidden: the core never reaches infrastructure, even indirectly ---
 [[tool.importlinter.contracts]]
+id = "domain-pure"
 name = "Domain does not import infrastructure"
 type = "forbidden"
 source_modules = ["myproject.domain"]
 forbidden_modules = ["myproject.infra", "requests", "sqlalchemy"]
-# `ignore_imports` lists deliberate exceptions explicitly:
-# ignore_imports = ["myproject.domain.legacy -> myproject.infra.db"]
+# Repeat on EVERY contract carrying `ignore_imports`; at top level it is ignored. `error`
+# (the default) fails a stale entry with `No matches for ignored import a -> b.`, exit 1.
+unmatched_ignore_imports_alerting = "error"
+# EXACT EDGES ONLY: a wildcard (`myproject.domain.* -> myproject.infra`) keeps matching while
+# one edge under it exists, so a brand-new violating module leaves the contract KEPT at exit 0.
+ignore_imports = [
+    # 2026-09: legacy report writer, deleted with the v3 reporting cut-over.
+    "myproject.domain.legacy -> myproject.infra.db",
+]
+
+# --- Protected: an adapter is reached only through the approved gate ---
+[[tool.importlinter.contracts]]
+id = "secrets-gate"
+name = "Secrets enter only through the api gate"
+type = "protected"
+# A misspelt entry in either list aborts the run, so neither rots into a vacuous pass.
+protected_modules = ["myproject.infra.secrets"]
+# DIRECT imports only - `application -> api.gate -> infra.secrets` passes here, so pair
+# this with a `forbidden` twin over the same importer and target.
+allowed_importers = ["myproject.api.gate"]
+# `as_packages` (default true) reads both lists as packages, and flipping it narrows ban and allow-list
+# together: at false, `["myproject.api"]` would stop admitting the exact `myproject.api.gate` above.
+# as_packages = false
 
 # --- Independence: bounded contexts stay decoupled from each other ---
 [[tool.importlinter.contracts]]
+id = "contexts"
 name = "Bounded contexts are independent"
 type = "independence"
 modules = ["myproject.billing", "myproject.shipping"]
 
-# ---------------------------------------------------------------------------
-# tach sketch (tach.toml) — opt-in for the two jobs import-linter can't do:
-# `strict` public-interface enforcement (blocks deep imports of a module's
-# internals) and guided adoption on legacy code (`tach mod` / `tach sync`).
-# Caveats: tach checks DIRECT declared edges only (no transitive chains), and
-# `tach sync` auto-allowlists existing imports — review its output or
-# accidental coupling becomes a permanently-allowed edge.
+# --- Acyclic siblings: no cycles between sibling packages ---
+[[tool.importlinter.contracts]]
+id = "acyclic"
+name = "No cycles between sibling packages"
+type = "acyclic_siblings"
+ancestors = ["myproject"]  # required; a typo is a hard error, not a pass
+depth = 1                  # generations checked; 0 = children only, default 10
+skip_descendants = ["myproject.legacy"] # also in `ancestors` = parse-time raise
+broken_contract_guidance = "Break the cycle at the edge the output names, or lift the shared type into myproject.domain."
+# Neither key exempts an import from a parent-level cycle - use `ignore_imports`. DIRECT
+# sibling edges only: a cycle routed outside `ancestors` is invisible, so run it at the parent
+# too - the launder `references/architecture-boundaries.md` records for TS barrels. The named
+# edge set is APPROXIMATE (greedy feedback-arc), truncated at 5 per package. File-level cycles
+# are basedpyright's `reportImportCycles`: on in `recommended`, off in `strict`.
+
+# tach sketch (tach.toml) - opt-in for the one job import-linter has no primitive for:
+# public-interface enforcement, where a deep import of a module's internals fails. Two caveats:
+# 1. tach checks DIRECT declared edges only, so `api -> application` plus
+#    `application -> infra` prints "All modules validated!" at exit 0 while api reaches
+#    infra, as does a re-exporting `__init__`. It supplements the contracts above.
+# 2. `expose` and `from` are ANCHORED REGEXES, not globs: `expose = ["*"]` silently opens
+#    the interface, and `expose = ["c.nnect"]` admits `connect` because `.` is any-char.
+#    Paths are relative to the module root, so `expose = ["connect"]` admits
+#    `from myproject.infra import connect` and blocks the deep
+#    `from myproject.infra.client import connect` - the `__init__` must re-export.
+# `tach check --dependencies` and `--interfaces` each DISABLE the other, so a hook narrowed
+# to one silently stops enforcing the other; bare `tach check` runs both. `tach sync`
+# auto-allowlists existing imports, baking accidental coupling in as an allowed edge.
 #
+# source_roots = ["src"]
 # [[modules]]
-# path = "myproject.domain"
-# depends_on = []
-# strict = true              # consumers may only import the public interface
-#
-# [[modules]]
-# path = "myproject.application"
+# path = "myproject.infra"
 # depends_on = ["myproject.domain"]
+# [[interfaces]]
+# from = ["myproject.infra"]
+# expose = ["connect", "load"]

@@ -1,61 +1,160 @@
-# Python type-checking template.
-# Paste the relevant sections into pyproject.toml.
+# Python type-checking template; routing and fail-open classes: references/python.md (Type
+# checking, Gate integrity). Paste [tool.basedpyright] and the ty/mypy sections into
+# pyproject.toml; pyrefly gets its own pyrefly.toml. As of 2026-09-02 on basedpyright 1.39.10
+# (bundling pyright 1.1.412), pyrefly 1.2.0, ty 0.0.75 and mypy 2.3.1.
 
 [tool.basedpyright]
-# Default gate for new Python projects. `recommended` gives broad diagnostics
-# and fails warnings without the friction of `all`.
+# basedpyright's own default, so this pins the mode rather than switching it on: drop it and a
+# future default change moves the gate silently. It blocks on 94 rules with failOnWarnings, so
+# a warning-only run exits 1 without `--warnings`; `strict` is no tightening (70 rules, the
+# `Any` family off, bare `# type: ignore` back) and only `all` is a superset, by one rule.
 typeCheckingMode = "recommended"
+# The project's floor, not the interpreter in use: version-conditional typeshed and
+# `sys.version_info` branches resolve against it, so the newest version hides older breaks.
 pythonVersion = "3.12"
 include = ["src", "tests"]
+# Spelling `exclude` at all REPLACES the default `["**/node_modules", "**/__pycache__",
+# "**/.*"]`, so every dot-directory under `include` becomes checked - which is what makes the
+# venv and cache entries load-bearing.
 exclude = [
-    "**/.venv",
-    "**/.tox",
-    "**/.nox",
-    "**/__pycache__",
-    "**/build",
-    "**/dist",
-    "**/generated",
+    "**/.venv", "**/.tox", "**/.nox", "**/__pycache__",
+    "**/build", "**/dist", "**/generated",
 ]
+# Each rule below is already enabled by `recommended` - at `warning` bar reportImportCycles,
+# which is `error` there - so spelling it "error" states the contract and keeps it gating under
+# `--level error`, which drops every warning-severity diagnostic from the report and the count.
 
-# Adoption workflow for existing codebases:
-#   basedpyright --writebaseline
-# Commit .basedpyright/baseline.json, then let CI fail on new diagnostics.
-# Do not write or refresh baselines in CI.
+# The only mechanical discarded-Result gate in Python, silent on None- and `Any`-returning
+# calls; `_ = f()` is the escape hatch, a named variable trips reportUnusedVariable.
+reportUnusedCallResult = "error"
+# A `match` omitting a Literal/enum/tagged-union case; its suggested `case _: pass` silences
+# that match forever, so write `case _: assert_never(x)`.
+reportMatchNotExhaustive = "error"
+# `@warnings.deprecated(...)` becomes a call-site error, gating the deprecation step of
+# expand-migrate-contract; the decorator is `typing_extensions.deprecated` below Python 3.13,
+# and typeshed's own deprecations fire too.
+reportDeprecated = "error"
+# Requires `@override`, so renaming a base method is an error rather than a dead subclass
+# method; no tool adds the decorator, so adoption is hand work.
+reportImplicitOverride = "error"
+# Ignore hygiene: the first bans a rule-less `# pyright: ignore`, the second expires one that
+# suppresses nothing; under `recommended` both see `# pyright: ignore[...]` only.
+reportIgnoreCommentWithoutRule = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+# `error` under `recommended` already; an `if TYPE_CHECKING:` guard does NOT silence it (tension
+# with the ruff `TC` rules) and it anchors on one arbitrary member of the chain, so it is
+# unstable under baselining - import-linter stays the deterministic gate.
+reportImportCycles = "error"
 
-# Suppression policy:
-# - Prefer `# pyright: ignore[reportX]` over bare `# type: ignore`.
-# - Keep unnecessary-ignore diagnostics enabled so suppressions expire.
+# `recommended` sets `enableTypeIgnoreComments = false`, so a bare `# type: ignore` suppresses
+# nothing and draws no diagnostic; grep is the sweep for a migrating repo's dead ignores and the
+# only gate on a file-level `# pyright: reportX=false`, which silences a whole module from any
+# line in it.
+# Invocation, in a hook step or CI:
+#   basedpyright -p pyproject.toml
+# A `pyrightconfig.json` outranks pyproject.toml and the search walks up unbounded, so an
+# ancestor copy naming a weaker mode takes a failing tree to exit 0 silently and only
+# `--verbose` names the winner. `-p` pins the FILE, not the section - a pyproject.toml whose
+# `[tool.basedpyright]` section is missing or renamed still exits 0, so pair it with a grep for
+# the section header. Exit codes: 0 clean, 1 diagnostics, 2 fatal, 3 config error or baseline
+# lock, 4 bad CLI parameter; a config error still prints diagnostics before exiting 3, so gate
+# on the exit code, and an unrecognised key here is itself exit 3.
+# Adoption ratchet for an existing codebase:
+#   basedpyright --writebaseline    # once, at adoption; exits 1 while writing
+# Commit `.basedpyright/baseline.json`: baselined diagnostics drop to hints, new ones still
+# fail, count-aware per site. Only an otherwise-clean run rewrites the file, so stale entries
+# are never pruned by a run carrying a new diagnostic. Under `CI=true` the default is
+# `--baselinemode=lock`, which never writes and exits 3 when the baseline needs updating; never
+# `--baselinemode=discard`, which exits 0 on a stale baseline. `baselineMode` is a CLI flag
+# only: in this section every run exits 3 with `Config contains unrecognized setting`, while
+# `baselineFile` is valid.
+# Publishing a py.typed package: `basedpyright --verifytypes <pkg> --ignoreexternal` scores
+# public-interface type completeness, pass/fail at 100% with no threshold flag. It resolves the
+# package from PATH only (`--pythonpath`, the `pythonPath` key and `VIRTUAL_ENV` are silent
+# no-ops), so the gate is:
+#   PATH="$PWD/.venv/bin:$PATH" basedpyright --verifytypes <pkg> --ignoreexternal
+# Assert the printed `Package directory` is inside the venv. Other publishing gates:
+# references/contract-gates.md.
+# Upstream pyright ignores `[tool.basedpyright]` entirely, and under `[tool.pyright]` a rejected
+# `recommended`/`all` mode name or fork-only key is only a notice, so a misconfigured section
+# exits 0 on clean code: name `standard` plus every rule by hand, and never keep both sections.
 
-# Pyright compatibility fallback:
-# - Use `[tool.pyright]` only when the project explicitly wants upstream pyright.
-# - Run `pyright --warnings` in CI so warnings fail the gate.
-
-# pyrefly (Meta, Rust) reached stable 1.x and is the more gate-ready of the two
-# fast Rust newcomers (~92% conformance, production at Instagram/PyTorch). Use it
-# as a fast secondary / migration aid, but it doesn't follow strict semver — a
-# bump can introduce new errors — so keep basedpyright as the authoritative gate
-# and pin pyrefly under the release-age quarantine. See pyrefly docs for the full
-# key set.
+# ---------------------------------------------------------------------------
+# pyrefly (Meta, Rust, MIT) - separate file: pyrefly.toml
+# ---------------------------------------------------------------------------
+# Not the blocking gate: no reportPrivateUsage, reportImportCycles or reportPropertyTypeMismatch
+# analogue, no `basedpyright --verifytypes`, no rule-code requirement on its ignore comments,
+# and it honours a whole-file `# pyrefly: ignore-errors`. ALWAYS invoke as
+# `pyrefly check -c ./pyrefly.toml`: with no config found it applies the `basic` preset, which
+# silences the type diagnostics outright, and it migrates `[tool.pyright]` and `[tool.mypy]` in
+# memory but NOT `[tool.basedpyright]`, so a project on the template above gets a silently inert
+# checker. A missing `-c` target is a fatal error, exit 1.
 #
-# [tool.pyrefly]
+# preset = "strict"   # unset means `default`; never `all` (a bump adds kinds)
 # project-includes = ["src", "tests"]
 # python-version = "3.12"
-# # pyrefly's default `basic` preset does gradual typing and skips the bodies of
-# # unannotated functions, so green can be shallow on untyped code. Set this to
-# # check those bodies without forcing annotations - a meaningful gate:
-# untyped-def-behavior = "check-and-infer-return-type"
+#
+# [errors]   # `strict` enables none of these, and this table overrides the preset both ways,
+#            # so one stray `= false` weakens it
+# non-exhaustive-match = "error"
+# unused-call-result = "error"
+# explicit-any = "error"
+# deprecated = "error"
+# redundant-cast = "error"
+# unnecessary-comparison = "error"
+# implicit-reexport = "error"
+# read-only = "error"
+# unused-ignore = "error"       # expires `# pyrefly: ignore[kind]`
+# unused-type-ignore = "error"  # expires `# type: ignore`; off below preset `all`
+#
+# Spell the values "error", never `true` and never "warn": pyrefly gates on `min-severity`
+# (default `error`), so a "warn" kind is neither printed nor counted (`0 errors (1 warning not
+# shown)`, exit 0), and `min-severity = "warn"` in the config is the lever when warn-level kinds
+# must fail. An unknown `[errors]` kind is fatal (exit 1) behind a misleading leading `WARN`
+# line, so read `$?` rather than the output, while an unknown top-level key only warns. Ratchet
+# with `pyrefly check --suppress-errors`, whose per-line `# pyrefly: ignore[kind]` comments show
+# up in review, and expire them with `--remove-unused-ignores`; not `--baseline`, which matches
+# on (path, kind, start column) and is not count-aware.
 
-# ty is faster still and fits the uv/ruff ecosystem, but upstream treats it as
-# beta/0.0.x with explicitly-unstable diagnostics — watch/advisory only, do not
-# gate on it yet. Pin tightly. Do not use `--error=all`; configure targeted
-# stricter rules.
+# ---------------------------------------------------------------------------
+# ty (Astral) - watch, not a gate
+# ---------------------------------------------------------------------------
+# 0.0.x, releasing every few days, diagnostics documented as unstable, no baseline mechanism
+# (astral-sh/ty#1074 open), and its gaps are mostly unimplemented checks - in CI output
+# indistinguishable from clean.
 #
-# [tool.ty]
-# environment.python-version = "3.12"
+# [tool.ty.environment]
+# python-version = "3.12"
 #
-# [tool.ty.terminal]
-# error-on-warning = true
+# [tool.ty.rules]                       # twelve rules ship at `ignore`; they, not these
+# blanket-ignore-comment = "error"      # three, are the strictness dial. unsound-assignment
+# missing-override-decorator = "error"  # is the nearest thing to reportAny, and its
+# unsound-assignment = "error"          # documented scope may widen
 #
-# [tool.ty.rules]
-# missing-type-argument = "error"
-# possibly-unresolved-reference = "warn"
+# `ty check` already exits 1 on warning-severity diagnostics, so `[tool.ty.terminal]
+# error-on-warning = true` buys nothing and `--exit-zero-on-warning` quietly disarms the gate.
+# A misspelt rule name is `warning[unknown-rule]` and exits 1, but `unknown-rule` is a
+# diagnostic id rather than a settable rule, so spelling it there trips the check it enables.
+
+# ---------------------------------------------------------------------------
+# mypy - for a repo already on mypy
+# ---------------------------------------------------------------------------
+# Match the repo's checker rather than migrate it; mypy has no analogue of
+# reportUnusedCallResult, reportPrivateUsage or reportImportCycles, so an errors-as-values
+# discipline is unenforceable on mypy alone.
+#
+# [tool.mypy]
+# strict = true
+# # This key, not the error code, is what emits [explicit-any]:
+# # `enable_error_code = ["explicit-any"]` is a valid code that gates nothing.
+# disallow_any_explicit = true
+# enable_error_code = [
+#   "exhaustive-match", "deprecated", "explicit-override", "ignore-without-code",
+#   "redundant-expr", "possibly-undefined", "mutable-override", "unused-awaitable",
+# ]
+#
+# A misspelt code fails closed (`Invalid error code(s)`, exit 2, nothing checked), and on the
+# CLI `--enable-error-code` takes one code per occurrence - the comma form exits 2 having
+# checked nothing. There is no native baseline; `mypy src | mypy-baseline filter
+# --allow-unsynced` is the ratchet, its exit code a violation count rather than 1, bare `filter`
+# failing on progress as well as regression, and `set -o pipefail` breaking it.

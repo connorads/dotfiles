@@ -1,0 +1,100 @@
+# deptry - dependency-manifest drift. Paste into pyproject.toml and adapt.
+# Gate: `deptry .` from the project root - exit 0 clean, 1 on any issue (and on a missing
+# manifest), 2 on a bad `[tool.deptry]` key or CLI flag, so gate on non-zero. Whole-tree, and
+# fast enough for a hook. Docs: https://deptry.com/ - verified on deptry 0.25.1, uv 0.12.7.
+#
+# THE FIVE RULES
+#   DEP001  imported, but missing from the dependency definitions
+#   DEP002  declared, but imported nowhere in the scanned tree
+#   DEP003  imported, but only reachable transitively - the coupling import-linter misses
+#   DEP004  imported from production code, declared in a dev group
+#   DEP005  declared, but the name ships in the standard library
+# `asyncio` under [project.dependencies] reports DEP005 and DEP002 - one declaration, two findings.
+#
+# THE ENVIRONMENT RULE - deptry reads distribution-to-module metadata off ITS OWN sys.path,
+# so it must be installed in the analysed environment; otherwise it guesses ("Assuming the
+# corresponding module name of package 'pyyaml' is 'pyyaml'") and reports nonsense. The venv
+# first on PATH or VIRTUAL_ENV exported does NOT help, so a mise-global or aqua-style shim is
+# the broken shape - and deptry is absent from the mise registry anyway.
+#
+#   uv run --with 'deptry==0.25.1' deptry .   # or install deptry in the project's dev group
+
+[tool.deptry]
+# A src layout hides the project's own package from deptry's local-module detection, which
+# looks for top-level modules beside the manifest, so every intra-project import reads as
+# third party (DEP003 self-installed, DEP001 not). Name every first-party top-level module.
+known_first_party = ["myproject"]
+
+# PATTERNS ARE re.match, SO THEY ANCHOR AT THE START OF THE PATH: `'_pb2\.py$'` silently
+# matches nothing where `'.*_pb2\.py$'` removes the file. Lead with `.*` on any non-prefix.
+extend_exclude = ['^docs/', '.*_pb2\.py$']
+
+# The default exclude is ['venv', '\.venv', '\.direnv', 'tests', '\.git', 'setup\.py'], so TESTS
+# ARE UNSCANNED BY DEFAULT: a runtime dependency imported only from tests/ reports DEP002, and an
+# undeclared test-only import is never caught. Park test-only runtime deps under per_rule_ignores
+# DEP002, or drop `tests` and declare what the tests import:
+#   exclude = ['venv', '\.venv', '\.direnv', '\.git', 'setup\.py']
+# Setting `exclude` REPLACES the default AND TURNS OFF .gitignore FILTERING even when written
+# identical to it, so generated trees start producing findings; `extend_exclude` adds and keeps
+# it. .gitignore applies only inside a git work tree, so a hook and a scratch checkout disagree.
+
+# PEP 735 [dependency-groups] are development dependencies by default, which is what makes
+# DEP004 fire. Name any group holding real runtime deps here.
+non_dev_dependency_groups = []
+# PEP 621 [project.optional-dependencies] extras are runtime by default. Name the ones that
+# are really dev groups so their imports from src/ raise DEP004; naming a group that does not
+# exist only warns ("the following groups were not found"). Do not use the deprecated spelling
+# `pep621_dev_dependency_groups`, whose CLI twin's help text names a flag that does not exist
+# (`--dev-optional-dependencies`, rejected with "No such option").
+optional_dependencies_dev_groups = []
+
+# `ignore` blinds the whole tree; prefer per_rule_ignores, and keep DEP003 above all.
+ignore = []
+
+[tool.deptry.per_rule_ignores]
+# Per rule, per package - the shape that keeps the gate strict. A typo'd rule code fails CLOSED
+# (`DEP02 = ["rich"]` parses, suppresses nothing, violation still blocks); a typo'd TOP-LEVEL key
+# fails on a different exit code (`contains invalid configuration options:
+# ['known_first_parties']`, EXIT 2), so a wrapper testing for exit 1 reads a broken config as a
+# clean tree. DEP002's false-positive class is every dependency nothing imports by design -
+# process runners, drivers, pytest plugins - and static-AST analysis sees no dynamic import.
+DEP002 = ["gunicorn", "psycopg", "ruff"]
+DEP003 = []   # a transitive import you deliberately rely on
+DEP004 = []   # a dev dependency a production module legitimately touches
+# DEP001 and DEP005 are keyable here too, but each names a real defect - fix the manifest.
+
+[tool.deptry.package_module_name_map]
+# The remedy when a distribution cannot be installed into the analysed environment (a
+# matrix-build extra); the guess it replaces turns `python-dateutil` into `python_dateutil`.
+# foo-python = "foo"
+# my-sdk = ["my_sdk", "my_sdk_types"]   # list value: one distribution, several modules
+
+# SUPPRESSION AT THE IMPORT SITE (deptry 0.25.0 and later) covers the rules reporting on an import
+# line, each code named: `import soupsieve  # deptry: ignore[DEP003]`, where a bare
+# `ignore[DEP001]` misses that import when it lands as DEP003. DEP002 and DEP005 report against
+# pyproject.toml with no line number, so per_rule_ignores or `ignore` are their only suppression.
+
+# HK / PRE-COMMIT WIRING - whole-repo, so no glob and no {{files}}: deptry needs the whole
+# import graph to decide what is unused (its own hook sets `always_run: true` and
+# `pass_filenames: false`). Check only; a violation blocks, it does not rewrite.
+#   ["deptry"] { check = "uv run --with 'deptry==0.25.1' deptry ." }
+# PIN THE WORKING DIRECTORY: deptry does not walk up for pyproject.toml, so a subdirectory run
+# dies with `DependencySpecificationNotFoundError` at exit 1. hk runs from the repo root; for a
+# Python project in a monorepo subdirectory, `cd` in the command or pass
+# `--config svc/api/pyproject.toml`. ALL OUTPUT GOES TO STDERR, stdout empty even on exit 1, so
+# a wrapper grepping stdout reports clean - gate on the exit code. `--json-output <file>` writes
+# a file rather than printing; `--github-warning-errors DEP002` only REPAINTS THOSE ANNOTATIONS
+# `::warning`, the run still exits 1 and the job still fails.
+
+# SIBLING GATES - the rest of the Python dependency-hygiene tier
+#   uv lock --check   # lockfile drift, tier 2. `uv sync --frozen` IS NOT A DRIFT GATE: it
+#                     # installs from the stale lock at exit 0, where `--locked` exits 1.
+#   uvx --from 'validate-pyproject[all]' validate-pyproject pyproject.toml  # manifest schema.
+#                     # EXIT 0 IS THE FAILURE: without packaging it warns on stderr, prints
+#                     # "Valid file" on stdout, and passes a broken PEP 508 specifier or SPDX id;
+#                     # `[all]` also pulls trove-classifiers, so no run-time PyPI call.
+#   uv audit          # known vulnerabilities, CI only (network, preview); substance in the
+#                     # `supply-chain-hardening` skill.
+#   licensecheck --zero   # licence compatibility, CI, for projects that ship or vendor. Without
+#                     # `--zero` an incompatible row exits 0, and it audits the LATEST PyPI
+#                     # release of each name, ignoring your pins and lockfile.

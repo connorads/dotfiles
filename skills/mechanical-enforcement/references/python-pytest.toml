@@ -1,0 +1,140 @@
+# pytest gate template. Paste [tool.pytest.ini_options] into pyproject.toml; the
+# blocks below it are conftest.py sketches, not TOML. Verified on pytest 9.1.1,
+# pytest-randomly 4.1.0, pytest-socket 0.8.1, pytest-timeout 2.4.0, pytest-xdist
+# 3.8.0, hypothesis 6.165.10, CPython 3.14.3. Strictness lives in ini keys (they
+# survive `-o addopts=""`), invocation shape in addopts. Layers and doubles ->
+# testing; thresholds -> test-coverage; PT rules -> references/python-ruff.toml;
+# banned doubles -> references/python-ast-grep.yml.
+
+[tool.pytest.ini_options]
+
+minversion = "9.1"
+# Remove -> an older runner warns where this block must fail. The strict_* ini
+# keys land in 9.0, and 9.0.0-9.0.3 silently ignore --strict-markers and
+# --strict-config spelled in addopts (pytest #14442), the usual fallback.
+
+testpaths = ["tests"]
+# Scopes a bare `pytest`. Remove -> it walks rootdir, collecting a venv named
+# `env`, vendored trees and build variants. A missing entry is dropped in
+# silence; no match at all falls back to the CURRENT directory.
+
+addopts = "-ra --import-mode=importlib --disable-socket"
+#   -ra: Remove -> skip and xfail reasons vanish, and an unread skip goes
+#     unaudited. Never `-q` either: it hides the `configfile:` header, the one
+#     tell that a stray config has shadowed this block, and the seed line.
+#   --import-mode=importlib: Remove -> two same-named test modules abort
+#     collection at exit 2 as an "import file mismatch". The cost is rootdir off
+#     sys.path, so a project-root helper module becomes a collection error.
+#   --disable-socket: blocks connect and DNS. Remove -> a unit test makes a
+#     real network call, coupled to someone else's uptime. Module-scope and
+#     collection-time calls stay unblocked (the plugin patches in
+#     pytest_runtest_setup); `--allow-hosts` un-patches DNS altogether.
+
+strict_markers = true
+# Remove -> @pytest.mark.slwo is a warning and a CI `-m slow` selection silently
+# deselects the test it exists to select; `-m` expressions go unvalidated.
+strict_config = true
+# Remove -> a typo'd ini key (asyncio_moed) is a warning and the setting you
+# believe is on is off. It is what makes the plugin keys below fail closed.
+strict_xfail = true
+# Remove -> an xfail test that has started PASSING prints "X" at exit 0 and the
+# fixed bug stays marked broken; opt out per test with strict=False. Set exactly
+# one of this and `xfail_strict`: on conflict `strict_xfail` wins whatever the
+# order. pytest 8 spelling: --strict-markers/--strict-config plus xfail_strict.
+
+empty_parameter_set_mark = "fail_at_collect"
+# Remove -> parametrize over a list that came out empty SKIPS silently: one "s",
+# exit 0, a whole matrix gone. It aborts the session, so add
+# `--continue-on-collection-errors` in CI; a legitimate empty set takes
+# `pytest.param(None, marks=pytest.mark.skip(...))`.
+consider_namespace_packages = true
+# Remove -> PEP 420 packages with no __init__.py resolve to the wrong module
+# name. Needs the package importable: editable install, or `pythonpath`.
+required_plugins = ["pytest-randomly", "pytest-socket", "pytest-timeout"]
+# Distribution names, no spaces around a version specifier. Remove -> a CI image
+# or fresh venv missing a plugin runs with that gate ABSENT rather than failing:
+# no shuffle, no socket block, no timeout, exit 0. Disabling plugin autoload by
+# env defeats it too, and recovery takes ENTRY-POINT names (`-p socket`, not `-p
+# pytest_socket`).
+markers = ["slow: long-running integration test", "allow_skip: audited skip"]
+# Remove -> strict_markers rejects every mark in the repo; this is its registry.
+# The guard's opt-out marker needs an entry, `allow_skip` included.
+timeout = 60
+# Per-test, not per-session. Remove -> a deadlocked test burns the job's wall
+# clock until the runner kills it with no traceback. Fixture time counts;
+# `timeout_func_only = true` scopes it to the body, and a marker not spelling
+# func_only inherits the ini rather than resetting it. timeout_method stays
+# unset: an explicit "signal" validates on Windows, then raises arming the
+# alarm, SIGALRM being absent there.
+
+# asyncio_mode = "strict"
+# Commented out because it cannot live in a shared template: with only anyio
+# installed it is an unknown option, which under strict_config is exit 4 with
+# ZERO tests collected. Enable it only where pytest-asyncio is a dependency, and
+# expect a migration - async fixtures then need @pytest_asyncio.fixture.
+
+filterwarnings = [
+  "error",
+  # MUST BE FIRST. Remove -> a forgotten `await` is a RuntimeWarning and the
+  # test passes at exit 0; only a plugin-import warning escapes.
+  "ignore:A test tried to use socket:UserWarning",
+  # pytest-socket >= 0.8.0 warns INSIDE the blocked-socket exception's __init__,
+  # so "error" raises that UserWarning first. Remove -> every
+  # `pytest.raises(SocketBlockedError)` fails with the wrong type.
+  # "ignore:legacy api:DeprecationWarning:vendor.*",
+]
+# The LAST matching filter wins, so an entry above "error" is dead and a
+# trailing broad one ("always") re-opens the gate in silence. A mark, `-W` and
+# `-p no:warnings` override the ini; patterns are prefix-matched, not escaped.
+
+# --- Invocation (command line, not this file) ---------------------------------
+#   pytest -c pyproject.toml -n auto
+# `-c` is the gate, not a convenience: pytest reads exactly ONE config file,
+# walking up from the arguments' common ancestor, so a ZERO-BYTE
+# tests/pytest.toml wins whenever an argument sits below it (any `pytest
+# tests/`) and every key above disappears - the tell is the `configfile:` header
+# `-q` hides. `-c` also sets rootdir, and `--rootdir` inside addopts is ignored
+# in silence. `-n auto` belongs on the command line, not in addopts, where
+# worker stdout is swallowed under `-s`.
+
+# --- hypothesis profiles (conftest.py, not TOML) ------------------------------
+# hypothesis registers a `ci` profile (derandomize, deadline=None,
+# database=None) and auto-loads it whenever CI, GITHUB_ACTIONS or another CI
+# variable it knows is set. So never register a profile named `ci` -
+# register_profile OVERWRITES a built-in silently - and never end the file with
+# an unconditional settings.load_profile(os.getenv(...)): it runs after that
+# auto-load and reverts CI to a weaker profile when the variable is missing from
+# one job. Select with `--hypothesis-profile=NAME`.
+#   from hypothesis import HealthCheck, settings
+#   # Local default: fewer examples, so a red test is fast to iterate on.
+#   settings.register_profile("dev", max_examples=25,
+#       suppress_health_check=[HealthCheck.too_slow])
+#   # Thorough lane: parent off the built-in, change only max_examples.
+#   settings.register_profile("ci-thorough",
+#       parent=settings.get_profile("ci"), max_examples=500)
+#   # One counterexample, reproducibly, plus a @reproduce_failure blob.
+#   settings.register_profile("debug", parent=settings.get_profile("dev"),
+#       max_examples=10, derandomize=True, database=None, print_blob=True)
+# suppress_health_check takes a NAMED list: `list(HealthCheck)` disables
+# function_scoped_fixture, which catches a fixture not reset between generated
+# inputs. derandomize FORCES database=None; setting it False never restores it.
+
+# --- Collection guard (conftest.py, not TOML) ---------------------------------
+# One rule no Python linter reaches: a skip with no stated reason (banned
+# doubles belong to `no-unittest-mock-in-tests` in
+# references/python-ast-grep.yml). Run it as its own `--collect-only -q` step,
+# never under xdist, where the hook raises INTERNALERROR at exit 3.
+#   import pytest
+#   @pytest.hookimpl(trylast=True)   # a plugin that ADDS items runs after this
+#   def pytest_collection_modifyitems(config, items):
+#       bad = []
+#       for item in items:
+#           if item.get_closest_marker("allow_skip"):
+#               continue
+#           for mark in item.iter_markers(name="skip"):
+#               if not (mark.args or mark.kwargs.get("reason")):
+#                   bad.append(f"{item.nodeid}: skip without a reason")
+#       if bad:
+#           raise pytest.UsageError("unexplained skips: " + "; ".join(bad))
+# `mark.args` is load-bearing: `kwargs["reason"]` alone false-positives on the
+# positional form.

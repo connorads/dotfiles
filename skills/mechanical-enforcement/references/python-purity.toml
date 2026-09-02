@@ -1,0 +1,130 @@
+# Ruff half of the functional-core purity gate. Verified on ruff 0.16.5.
+#
+# Scope: the attribute-level effect ban for the pure core. Project-wide rules are in `references/python-ruff.toml`,
+# module-graph contracts in `references/python-import-linter.toml`, and the call shapes ruff cannot structurally see in
+# `references/python-ast-grep.yml`, which spells the same directory as `**/src/myproject/domain/**` (different glob engine).
+#
+# MERGE, DO NOT APPEND: both files declare `[tool.ruff.lint]` and TOML rejects a repeated table header, so a pyproject.toml
+# holding both verbatim fails to parse (ruff exit 2). Fold the `extend-select` codes into python-ruff.toml's array.
+#
+# Gate: `ruff check --no-cache src` - exit 1 on a finding, 0 clean, 2 on a malformed config. TID251 has no fix, safe or
+# unsafe, so `--fix` can never rewrite a violation away, and it resolves through ruff's semantic model, catching aliased
+# bindings, submodules and function-body imports (`from datetime import datetime as dt; dt.now()`). Bare builtins are out of
+# reach - `open`/`input` fire zero times unless the file says `import builtins`; `print` is T201, the rest ast-grep's job.
+
+[tool.ruff.lint]
+# Merge these three into python-ruff.toml's `extend-select`. TID251 is in NEITHER of ruff 0.16's default sets - not the
+# 413-rule stable one, not the `preview = true` one - so a fully populated `banned-api` table with no TID251 selection
+# reports 0 findings and exits 0 with no warning. The likeliest silent no-op here: the table looks self-activating.
+extend-select = [
+    "TID251",   # banned-api. The whole point of this file.
+    "T20",      # print / pprint in the core (T201, T203; neither is in a default set). Not a console-IO ban -
+                # `sys.stdout.write(...)` passes clean.
+    "PLC0415",  # import-outside-top-level. Readability, not enforcement: import-linter and TID251 already see a
+                # function-level import, `importlib.import_module(...)` defeats all three, and the documented exemption
+                # `banned-module-level-imports` is inert unless TID253 is also selected.
+]
+# DTZ, the ASYNC family and PLW0603 are selected project-wide in python-ruff.toml. Do not re-declare them here, and do not
+# add PLW0603 to the negated entry below: that narrows a project-wide rule to the domain package and relaxes it everywhere
+# else, silently. DTZ is clock hygiene, not a purity gate - `datetime.datetime.now(tz=UTC)` produces no DTZ finding under
+# any configuration and is still an ambient clock read; only the TID251 entry below takes it out of the core.
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+# One flat GLOBAL map - ruff has no per-directory ban, hence the negated per-file-ignores entry below. Each key matches a
+# resolved, fully-qualified binding with prefix semantics, so `sqlalchemy` also catches `from sqlalchemy.orm import Session`
+# and `import sqlalchemy.orm`. A typo'd key is a SILENT no-op. `.msg` is required - `"socket" = {}` and `"socket" = "banned"`
+# both abort with exit 2, so that half fails closed.
+# --- Clock. Domain takes time as an argument. ---
+"datetime.datetime.now".msg = "Inject a Clock port and pass the instant in; the core never reads the clock."
+"datetime.datetime.utcnow".msg = "Inject a Clock port. utcnow() also returns a naive datetime, which DTZ003 flags separately."
+"datetime.datetime.today".msg = "Inject a Clock port and pass the instant in."
+"datetime.date.today".msg = "Inject a Clock port and pass the date in."
+"time.time".msg = "Inject a Clock port; a wall-clock read makes the function untestable without freezing time."
+"time.monotonic".msg = "Inject a Clock port. Elapsed time is an input to the core, not something it measures."
+"time.sleep".msg = "Waiting is the shell's job. Return a retry decision; let an adapter sleep on it."
+# --- Randomness. `random.Random(seed)` stays legal - it is the Rng. ---
+"random.random".msg = "Inject an Rng port; the module-level convenience functions share global state."
+"random.randint".msg = "Inject an Rng port."
+"random.choice".msg = "Inject an Rng port."
+"random.shuffle".msg = "Inject an Rng port."
+"random.uniform".msg = "Inject an Rng port."
+"random.seed".msg = "Seeding the module-global generator makes every other caller's output depend on call order."
+"secrets".msg = "Inject a TokenGenerator port; the core must not decide where entropy comes from."
+"uuid.uuid1".msg = "Inject an IdGenerator port. uuid1 also embeds the MAC address and the clock."
+"uuid.uuid4".msg = "Inject an IdGenerator port and pass the id in."
+# --- Config and process. Parse at the boundary, pass typed values in. ---
+"os.environ".msg = "Parse config at startup into typed values and pass it in. Catches the subscript and .get() alike."
+"os.getenv".msg = "Parse config at startup into typed values and pass it in."
+"sys.argv".msg = "Argument parsing belongs in the entry point; the core takes a typed command object."
+# --- IO, network, persistence. Whole modules, so every member is covered. ---
+"subprocess".msg = "Shelling out is an adapter's job - put it behind a port and return a typed result."
+"socket".msg = "Network access lives in an adapter behind a port."
+"requests".msg = "HTTP lives in an adapter behind a port; the core takes the parsed response."
+"httpx".msg = "HTTP lives in an adapter behind a port; the core takes the parsed response."
+"urllib.request".msg = "HTTP lives in an adapter behind a port; the core takes the parsed response."
+"sqlalchemy".msg = "Persistence ignorance: the core depends on a Repository port, never on the ORM."
+"sqlite3".msg = "Persistence ignorance: the core depends on a Repository port, never on a driver."
+"redis".msg = "Persistence ignorance: the core depends on a Cache port, never on a client."
+"boto3".msg = "Cloud SDKs are adapters. Put the call behind a port and pass the result in."
+"logging".msg = "The core returns events; the shell decides how to record them. Add structlog/loguru by name if the project uses them - this key does not cover them."
+# Layer bans (`myproject.infra`, `myproject.api`) belong in python-import-linter.toml: it follows transitive chains and this
+# rule does not, and a second scope in this one map cannot be ignored separately - per-file-ignores toggles the whole TID251
+# code. A relative `from ..infra import repo` is TID252's job (python-ruff.toml sets `ban-relative-imports = "all"`).
+
+[tool.ruff.lint.extend-per-file-ignores]
+# THE SCOPING MECHANISM. banned-api is global, so the only way to confine it to the pure core is to invert: ignore TID251
+# everywhere the core is not. A leading "!" negates the pattern. Behaves identically under `per-file-ignores`; kept here so
+# python-ruff.toml's table stays intact. ONE entry, ONE brace glob: "!src/myproject/{domain,policy}/**" = ["TID251", ...].
+#
+# Five ways this dies silently, all verified on 0.16.5, all "All checks passed!" and exit 0:
+#   1. A SECOND negated entry for the same rule - every file matches one of the two, so it is off everywhere.
+#   2. A typo in the path ("!srcc/myproject/domain/**"). Same outcome.
+#   3. A typo in a banned-api key. That one ban silently does not exist.
+#   4. TID251 missing from extend-select, with the table fully populated.
+#   5. `"TID251"` in python-ruff.toml's `ignore` array. The whole table goes quiet.
+# Assert against all five with the canary below.
+#
+# Nested `.ruff.toml` files per layer are REJECTED: `ruff check --config <file>` switches ruff to a fixed strategy and
+# disables hierarchical discovery, so the nested ban stops firing in exactly the hook that passes `--config`. The negated
+# entry survives `--config`.
+"!src/myproject/domain/**" = ["TID251", "T20", "PLC0415"]
+
+# CANARY. Every mechanism above fails open, so assert the gate is armed and still scoped.
+#
+#   fires() {  # $1 = ABSOLUTE pretend-path. No --select.
+#     local out
+#     out=$(printf 'import os\nx = os.environ["X"]\n' \
+#       | ruff check --no-cache --output-format concise --stdin-filename "$1" - || true)
+#     [[ $out == *TID251* ]]
+#   }
+#   fires "$ROOT/src/myproject/domain/purity_canary.py" || { echo "ban not armed"; exit 1; }
+#   fires "$ROOT/src/myproject/infra/purity_canary.py"  && { echo "ban leaked"; exit 1; }
+#
+# No temp file is written, so this is safe in a pre-commit step. Four details the shorter forms get wrong:
+#   - Match the rule code, not the exit status: the negative half exits 1 on I001 from the snippet alone, so an exit-code test passes whatever the gate does.
+#   - No `--select TID251`: it overrides `select`, `extend-select` AND `ignore` in every resolved config, so disarm modes 4 and 5 both report a healthy gate.
+#   - Absolute `--stdin-filename`: relative paths resolve against the invocation cwd while per-file-ignores globs resolve against the config file, so the same command run from `src/` reports a healthy gate.
+#   - Capture with `|| true`, never a bare pipe into grep: ruff exits 1 whenever it emits a diagnostic, so under `set -o pipefail` the canary calls a good config "not armed".
+# Name the file `purity_canary.py`, not `_canary.py`: python-ruff.toml sets `force-exclude = true` and an `exclude` glob such
+# as `**/_*.py` swallows the positive half while the negative half passes vacuously. Under `preview = true` ruff prints rule
+# NAMES, not codes, so the grep depends on python-ruff.toml's `output-prefer-rule-codes = true`.
+#
+# RUNTIME BACKSTOP. Static bans cover imports and call shapes; pytest-socket 0.8.1 covers what happened at runtime - an
+# adapter leaking into a unit test, a fake falling back to the real client, hidden DNS. It needs BOTH halves:
+# `pytest_runtest_teardown` restores the real socket after every test, so the conftest call alone stops gating from the second
+# test onward; the addopts alone never sees collection time.
+#
+#   # pyproject.toml, and see references/python-pytest.toml
+#   [tool.pytest.ini_options]
+#   addopts = "--disable-socket --allow-unix-socket"
+#
+#   # root conftest.py
+#   from pytest_socket import disable_socket
+#
+#   def pytest_configure(config):
+#       disable_socket(allow_unix_socket=True)
+#
+# A runtime `socket.socket(...)` fails the test (exit 1); a module-level one is a collection error (exit 2), and passes
+# silently with the conftest half removed. Keep `--allow-hosts` out of addopts - any value skips the blanket block and
+# downgrades the gate to "connect() only to allowed targets", leaving socket creation, bind, listen and DNS legal; use the
+# per-test `@pytest.mark.allow_hosts([...])` marker. It patches Python's socket module only, so a subprocess is uncovered.

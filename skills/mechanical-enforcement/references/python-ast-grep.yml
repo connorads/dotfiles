@@ -1,0 +1,170 @@
+# ast-grep rules for Python: the call shapes ruff structurally cannot express.
+# Verified on ast-grep 0.45.2, cross-checked against ruff 0.16.5.
+# One owner per job: import-linter owns the module graph; ruff TID251 (references/python-
+# purity.toml) owns attribute-level effect bans in the pure core, resolving aliases through the
+# semantic model as nothing here can; ast-grep owns what is call-shaped or file-scoped, and only
+# after checking ruff - the SQL rule below NARROWS `S608`, it does not replace it.
+# python-purity.toml spells the same directory `!src/myproject/domain/**`, a ruff glob that needs
+# no `**` prefix, so adapting the path means editing two glob shapes.
+# Gate: `ast-grep scan` - exit 1 when any `severity: error` rule matches; `--rule <file> <path>` runs
+#   one rule file with no sgconfig.yml. Never `ast-grep run`: it is grep-shaped and INVERTS the
+#   convention (exit 0 when the pattern matches), so a hook wired on it passes exactly when the
+#   violation exists. Invoke as `ast-grep`, never `sg` - that alias collides with setgroup(1).
+# Five ways a rule reports nothing and exits 0:
+#   1. `severity: warning` - findings print, exit stays 0. Severity is per-rule and there is no
+#      repo-wide "warnings are errors"; `--warning=<ID>` demotes an error rule the same way.
+#   2. A leading `./` in a `files:` glob matches nothing.
+#   3. A `files:` glob whose first segment is not `**`, in a rule file stored OUTSIDE the scanned
+#      tree, matches nothing; every glob below leads with `**`, which resolves identically anywhere.
+#   4. A nonexistent scan path: `ast-grep scan -r r.yml no-such-dir` prints to stderr and exits 0,
+#      so a typo'd hook path is a permanent silent non-gate. (A typo'd `ruleDirs` entry is the
+#      opposite: exit 6, fails closed.)
+#   5. `--error=<unknown-rule-id>` is accepted with no diagnostic; prefer `severity: error` here.
+#   Loud by contrast: a missing sgconfig.yml is exit 3 and one rule id in two `ruleDirs` files is
+#   exit 8 - so splitting this file across rules/*.yml is safe.
+# sgconfig.yml at the repo root makes `files:` globs resolve against the project root from any cwd;
+# split into rules/*.yml or keep this file whole, adapting `myproject` and the layer names.
+#   ruleDirs:
+#     - rules
+#   testConfigs:
+#     - testDir: rules/__tests__
+---
+# Bare builtins and method shapes in the pure core - the exact gap ruff leaves: TID251 resolves
+# imported names only, so `builtins.open`, a bare `open` entry and `builtins.input` all fire ZERO
+# times against `open(name)` and `input("...")`. Absent here because ruff gates them project-wide:
+# `breakpoint()` (T100) and `exit(1)` (PLR1722) are default-on under both bare `ruff check
+# --isolated` and references/python-ruff.toml's preview-swapped set, while `print` (T201) is
+# default-on in neither, so references/python-purity.toml selects and scopes it to the core - two
+# owners is how one dies unnoticed. False-positive class: the receiver is a metavariable, so an
+# injected port with a `read_text` method matches a real `Path`; rename it or type the receiver.
+id: no-ambient-effects-in-domain
+language: python
+severity: error
+message: "The core performs no IO - take the bytes as an argument and move the read or write into an adapter behind a port."
+files:
+  - "**/src/myproject/domain/**"
+rule:
+  any:
+    - pattern: open($$$)
+    - pattern: input($$$)
+    - pattern: $P.read_text($$$)
+    - pattern: $P.write_text($$$)
+    - pattern: $P.read_bytes($$$)
+    - pattern: $P.write_bytes($$$)
+---
+# String-built SQL at a named sink, narrowing ruff S608: S608 keys on SQL-keyword-shaped strings,
+# not sink identity, so this rule earns the sinks it misses (`qs.extra(where=[f"..."])`), in-house
+# sink names, and a t-string migration neither linter models (both go quiet on ANY t-string SQL).
+# The shape matters: `has: {stopBy: neighbor, kind: identifier}` sees `text(...)` but no
+# attribute-form call (`cursor.execute`, `Model.objects.raw`, `qs.extra`), while `stopBy: end`
+# over-matches onto `logger.info(f"ran {execute} on {text}")`; binding the sink to `field: function`
+# with an `attribute` arm gets both. Count per line: a nested `execute(text(f"..."))` reports twice.
+# Blind spot: syntax-only, so a query assembled three lines earlier is invisible (that needs taint
+# analysis - Opengrep, see SKILL.md), and an aliased sink escapes; add in-house names to both regexes.
+# On SQLAlchemy the safe form is `tstring()`, the 2.1 API - `text()` rejects a Template with TypeError,
+# and `tstring(t"SELECT * FROM {table}")` dies at runtime as `SELECT * FROM :param_1`, a t-string
+# carrying no identifier. PEP 787's subprocess and shlex half is Deferred to Python 3.15, so the shell
+# boundary stays `shell=False` with a list argv.
+id: no-string-built-sql-at-sink
+language: python
+severity: error
+message: "A SQL sink takes a t-string (PEP 750) or bound parameters, never an f-string, %, .format or concatenation."
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        any:
+          - kind: identifier
+            regex: '^(text|tstring|execute|executemany|executescript|raw|extra)$'
+          - kind: attribute
+            has:
+              field: attribute
+              regex: '^(text|tstring|execute|executemany|executescript|raw|extra)$'
+    - has:
+        field: arguments
+        has:
+          stopBy: end
+          any:
+            - kind: string
+              regex: '^[a-zA-Z]*[fF]'
+            - pattern: $A % $B
+            - pattern: $A + $B
+            - pattern: $A.format($$$)
+---
+# Patching over injection, in tests - the sole owner of the ban: it covers the plain `unittest.mock`
+# and `mock` import forms, one under `if TYPE_CHECKING:` included, plus pytest-mock's `mocker`, which
+# arrives by fixture-name injection and never appears in an import. Blind spot: an aliased
+# `import unittest.mock as um` is a different node shape and escapes every pattern below.
+# `monkeypatch` is deliberately absent - banning it condemns every test touching a shared fixture
+# that uses it for process config (`setenv`, `chdir`, `syspath_prepend`), and the report names the
+# test, not the fixture; add that arm only once the suite is clean of `mocker`. False-positive class:
+# a project-local fixture genuinely named `mocker` - rename it, the collision is worse than the rule.
+id: no-unittest-mock-in-tests
+language: python
+severity: error
+message: "Inject a fake through the composition root; do not patch imports or take the mocker fixture."
+files:
+  - "**/tests/**"
+rule:
+  any:
+    - pattern: import unittest.mock
+    - pattern: from unittest.mock import $$$
+    - pattern: from unittest import mock
+    - pattern: import mock
+    - pattern: from mock import $$$
+    - kind: parameters
+      has:
+        kind: identifier
+        regex: '^mocker$'
+    - pattern: mocker.$METHOD($$$)
+---
+# A test that asserts nothing - the Python answer to Biome `useExpect` and vitest `expect-expect`,
+# with no linter equivalent: none of ruff's ~970 rules detects a missing assertion, and the twenty-odd
+# `assert`-named rules police the shape of one that exists. The trailing `^assert(_|[A-Z])` arm is
+# load-bearing: without it `self.assertEqual(...)` and an `assert_valid()` helper both false-positive,
+# which is also the false-positive class - an assertion in a helper NOT named `assert*` trips the rule.
+id: test-without-assertion
+language: python
+severity: error
+message: "Test function contains no assertion. Name an assertion helper assert_* so this rule can see it."
+files:
+  - "**/tests/**"
+rule:
+  kind: function_definition
+  has: { field: name, regex: '^test_' }
+  not:
+    has:
+      stopBy: end
+      any:
+        - kind: assert_statement
+        - pattern: pytest.raises($$$)
+        - pattern: pytest.warns($$$)
+        - pattern: pytest.fail($$$)
+        - pattern: $O.assert_called_with($$$)
+        - pattern: $O.assert_called_once_with($$$)
+        - has: { kind: identifier, regex: '^assert(_|[A-Z])', stopBy: end }
+---
+# OPTIONAL. `@dataclass(frozen=True, slots=True)` is the value-object mechanic and ruff cannot gate
+# it: the `SLOT` family covers only str, tuple and NamedTuple subclasses, so a frozen-but-unslotted
+# dataclass passes every ruff configuration clean. Adopt it only where the whole layer is value
+# objects: `slots=True` breaks `functools.cached_property`, weak references without an explicit
+# `__weakref__` slot, and multiple inheritance from another slotted class, so a layer needing many
+# `# ast-grep-ignore` exceptions has the rule in the wrong directory. It reads the decorator text,
+# so an aliased `@dc(frozen=True)` and a programmatic `dataclass(...)` escape; pair it with
+# `PLW1641` (eq-without-hash) from references/python-ruff.toml, the adjacent bug from the other side.
+id: dataclass-without-slots
+language: python
+severity: error
+message: "Domain value objects are @dataclass(frozen=True, slots=True); without slots every instance carries a __dict__ and stays mutable by attribute injection."
+files:
+  - "**/src/myproject/domain/**"
+rule:
+  kind: decorated_definition
+  has:
+    kind: decorator
+    regex: '^@dataclass'
+  not:
+    has:
+      kind: decorator
+      regex: 'slots\s*=\s*True'

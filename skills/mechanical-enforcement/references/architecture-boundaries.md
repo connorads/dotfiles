@@ -97,6 +97,19 @@ Adoption pattern:
 knip for unused exports, unused files, and unused dependencies (see
 `references/typescript.md`).
 
+**Python routes to import-linter, not to a dependency-cruiser port.** Contracts
+are transitive by default rather than behind a `reachable` flag, they see
+through `__init__.py` re-exports the way `reachable` sees through a barrel, and
+they include `if TYPE_CHECKING:` imports unless `exclude_type_checking_imports`
+is set globally - so there is no per-rule `dependencyTypes` split, only two
+config files and two runs. Three feature gaps are worth knowing before promising
+parity: `via` / `viaNot` has no contract and needs a grimp graph inside a pytest
+test; `no-orphans` has no equivalent at all (vulture owns dead code); and there
+is no `depcruise-baseline` / `--ignore-known`, so the ratchet is exact-edge
+`ignore_imports` entries under `unmatched_ignore_imports_alerting = "error"`,
+which expire themselves when the edge goes. Contracts, the tach carve-out, and
+the wiring notes are in `references/python.md`.
+
 See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
 ## Cycle gating on legacy graphs
@@ -112,11 +125,20 @@ level:
 - **Package / namespace / module cycles: zero-tolerance.** These layers carry
   architectural intent, so any cycle between them is a violation - this is
   where `import/no-cycle` / dependency-cruiser / `cargo modules --acyclic`
-  earn their keep.
+  earn their keep. Python's is import-linter's `acyclic_siblings` contract,
+  which names a cycle-breaking edge in the failure message
+  (`It could be made acyclic by removing 1 dependency: .infra -> .domain`).
+  It compares direct dependencies among the sibling set only, so a chain
+  laundered through a module *outside* the named ancestor reports KEPT and
+  exit 0 - the same evasion a barrel file gives a direct-import rule. Run the
+  contract at the parent package as well, which does catch it.
 - **File / class cycles: small and contained is tolerable.** A group of ≤5
   confined to one package is liveable; break a group before it grows past that
   or spans packages, while the fix is one dependency inversion rather than a
-  rewrite.
+  rewrite. Python needs no extra tool here: basedpyright `reportImportCycles`
+  is an error under `recommended`, so a file-level cycle fails the type gate.
+  It is absent from `strict`, which is one more reason `recommended` is the
+  mode this skill gates on.
 - **Legacy adoption: baseline, don't flood.** Wire the cycle rule through a
   committed baseline (`depcruise-baseline` + `--ignore-known`) so only *new*
   cycles fail, then shrink the baseline - the ratchet recipe in `SKILL.md`
@@ -156,6 +178,29 @@ that wires into an hk step where it should gate.
 ! rg -n "sql\`" packages/*/src --glob '!packages/db/**'   # raw SQL only in the query layer
 ```
 
+**The whole-file type-checker downgrade is the canonical case in Python**,
+because no checker forbids it and no ruff rule sees most of its forms. A
+`# pyright: basic` header swaps the file back to the basic rule set and drops
+every recommended-tier diagnostic. `# pyright: reportUnknownParameterType=false`
+turns off a named rule file-wide; `=none` and `=hint` do the same, and
+`=warning` demotes it below the error severity a gate reads.
+`# pyrefly: ignore-errors` and `# mypy: ignore-errors` silence a file outright. ruff's PGH003 catches only the
+line-level `# type: ignore`, and basedpyright's `enableTypeIgnoreComments =
+false` default closes only the `# type: ignore` family. The residue is a grep:
+
+```bash
+# a pyright directive is only honoured on its own line at column 0 (indented, it
+# errors), so ^# is safe to anchor on. The mode words are strict/standard/basic:
+# `# pyright: off` is not a bypass, it is an unknown-directive error
+! rg -n '^# *(pyright: *(basic|standard|report[A-Za-z]+ *= *(false|none|hint|warning))|pyrefly: *ignore-errors|mypy: *(ignore-errors|disable-error-code))' -g '*.py'
+```
+
+Do not tighten that pattern with a `$` anchor: `# pyrefly: ignore-errors[bad-return]`
+is a real scoped whole-file form, and the pyright per-rule form takes a
+comma-separated list. A pyright mode comment applies to the whole file from
+wherever it sits, so one at line 400 is invisible to a reviewer opening the
+header - only a whole-file grep finds it.
+
 This sits between lint and review. Prefer a real `no-restricted-imports` /
 `no-restricted-syntax` rule when the linter *can* express the boundary - it runs
 in-editor and is harder to bypass. Reach for grep for the cross-file,
@@ -173,7 +218,17 @@ keep - it also subsumes `no-restricted-syntax` rules that don't need type
 information. It is syntax-only, so type-aware boundaries (import resolution,
 `allowTypeImports`) still belong in ESLint / oxlint. In a committed hook invoke
 it as `ast-grep scan` - the short `sg` alias collides with `setgroup(1)` on Linux
-(the wired step is in `references/hk-steps.pkl`).
+(the wired step is in `references/hk-steps.pkl`). Two settings decide whether it
+gates at all: `severity: error` (a rule at `warning` prints and exits 0) and a
+`files:` glob with no leading `./` (which matches nothing, also exit 0).
+
+It is also the only way to gate a test that asserts nothing in Python - ruff has
+no `expect-expect` / `useExpect` equivalent at any rule count. The
+`test-without-assertion` rule in `references/python-ast-grep.yml` is that gate:
+it treats `assert`, `pytest.raises`/`warns`/`fail` and any `assert*`-named
+helper call as an assertion, so delegation to an `assert_valid()` helper and
+unittest's `self.assertEqual` both pass, and the rule doubles as a naming
+convention for assertion helpers.
 
 **When the rule needs data flow, not one AST shape, Opengrep is the next tier.**
 ast-grep matches a single syntactic pattern; taint/injection, cross-function, and
@@ -209,6 +264,23 @@ through. What works:
   types.
 - **ast-grep** for cross-language or call-shape precision - zero-arg
   `new Date()`, method chains - as YAML rules gated by `ast-grep scan`.
+- **Python**: ruff `TID251` with a `[lint.flake8-tidy-imports.banned-api]`
+  table is the `no-restricted-properties` analogue, and a stronger one - it
+  resolves through ruff's semantic model, so `from datetime import datetime as
+  dt` then `dt.now()` is still caught where ESLint's syntactic rule misses the
+  alias. The table is global, so the scope comes from inverting it: **one**
+  negated `extend-per-file-ignores` entry with **one** brace glob
+  (`"!src/pkg/{domain,core}/**"`). Two negated entries for the same rule match
+  every file between them and kill the rule everywhere, exit 0, no warning; so
+  does a typo in the glob, a typo in a `banned-api` key, or omitting
+  `extend-select = ["TID251"]`, which the ban table does not imply. The
+  per-layer nested `ruff.toml` alternative fails closed but dies under
+  `--config <file>`, which disables hierarchical discovery. Bare builtins
+  (`open()`, `input()`) and method shapes (`Path.read_text()`) are invisible to
+  TID251 and belong to ast-grep. `DTZ` is clock hygiene, not a purity gate -
+  `datetime.now(tz=UTC)` passes it and still reads the ambient clock.
+  pytest-socket is the runtime backstop under the whole lot. Drop-ins:
+  `references/python-purity.toml` and `references/python-ast-grep.yml`.
 - **Rust**: clippy `disallowed-methods` (`std::env::var`,
   `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
   crate-wide, so give the pure core its own crate.
@@ -233,6 +305,8 @@ mechanically checkable by diffing the schema against a baseline. publint/attw
 | GraphQL | `graphql-inspector diff` (non-zero on breaking) | Single schema. Federated graphs need Cosmo `wgc subgraph check` - composition breaks only show across the supergraph. |
 | Rust public API | `cargo semver-checks` | Diffs rustdoc JSON against the released baseline; auto-run by release-plz; not exhaustive (proves the breaks it finds, not their absence). |
 | TS public `.d.ts` surface | `@microsoft/api-extractor` with a committed `.api.md` report | CI runs *without* `--local` and fails when the surface changed unreviewed; dev regenerates with `--local` and commits the diff. |
+| Python public API | `griffe check -s src <pkg> -a <git-ref>` | Structure only - every annotation change exits 0. No baseline or ratchet, so a legacy library adopts it advisory-first. The committed-report route is bespoke: `griffe dump` carries line numbers, absolute paths and private members. |
+| Python `py.typed` completeness | `pyright --verifytypes <pkg> --ignoreexternal` | 100%-or-fail, no threshold flag. Run against a non-editable install of the built wheel; an editable install scores the source tree instead. |
 
 For consumer-driven contracts, `pact-broker can-i-deploy` is the deploy gate
 (the method itself lives in the `testing` / `event-driven-architecture`
