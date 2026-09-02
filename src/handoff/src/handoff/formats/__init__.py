@@ -14,10 +14,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .._json import dumps_pretty
-from ..errors import HandoffError, bail, ctx
-from ..ir import SessionFormat, SourceFormat, UniversalSession
-from . import claude, codex
+from handoff._json import dumps_pretty
+from handoff.errors import HandoffError, bail, ctx
+from handoff.formats import claude, codex
+from handoff.ir import SessionFormat, SourceFormat, UniversalSession
 
 __all__ = [
     "ResolvedInput",

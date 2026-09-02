@@ -22,8 +22,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from ._json import format_auto, parse_datetime, sort_value
-from .errors import HandoffError
+from handoff._json import format_auto, parse_datetime, sort_value
+from handoff.errors import HandoffError
 
 __all__ = [
     "CURRENT_IR_VERSION",

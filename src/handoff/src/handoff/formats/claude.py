@@ -23,8 +23,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .._ids import new_uuid4, new_uuid4_simple, normalize_uuid
-from .._json import (
+from handoff._ids import new_uuid4, new_uuid4_simple, normalize_uuid
+from handoff._json import (
     dumps_compact,
     format_millis,
     now_utc,
@@ -32,8 +32,8 @@ from .._json import (
     timestamp_millis,
     write_json_line,
 )
-from ..errors import ctx
-from ..ir import (
+from handoff.errors import ctx
+from handoff.ir import (
     ContentBlock,
     JsonValue,
     MessageEvent,

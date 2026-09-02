@@ -30,11 +30,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __version__
-from ._ids import is_uuid, new_uuid4, new_uuid7
-from ._json import dumps_pretty, sort_value
-from .errors import HandoffError, bail, ctx
-from .formats import (
+from handoff import __version__
+from handoff._ids import is_uuid, new_uuid4, new_uuid7
+from handoff._json import dumps_pretty, sort_value
+from handoff.errors import HandoffError, bail, ctx
+from handoff.formats import (
     default_output_root,
     load_ir,
     load_session,
@@ -42,7 +42,7 @@ from .formats import (
     resolve_input,
     write_ir,
 )
-from .ir import SessionFormat, SourceFormat, UniversalSession
+from handoff.ir import SessionFormat, SourceFormat, UniversalSession
 
 __all__ = ["main", "run"]
 
