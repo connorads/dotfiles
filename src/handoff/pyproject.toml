@@ -20,7 +20,17 @@ dependencies = []
 handoff = "handoff.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=9",
+    # Gates named in [tool.pytest.ini_options].required_plugins; the ini key
+    # makes a missing plugin an error rather than a silently absent gate.
+    "pytest-randomly",
+    "pytest-timeout",
+    "pytest-socket",
+    # Module-graph and dependency-declaration gates (hk py-tests-scoped).
+    "import-linter",
+    "deptry",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/handoff"]
@@ -29,5 +39,48 @@ packages = ["src/handoff"]
 include = ["src", "tests", "README.md", "PORTING.md"]
 
 [tool.pytest.ini_options]
+minversion = "9.0"                 # the strict_* ini keys below are unknown on pytest 8
 pythonpath = ["src"]
 testpaths = ["tests"]
+# -ra: skips/xfails/teardown errors reach the summary (never -q here: it hides
+# the pytest-randomly seed and the configfile: header). --disable-socket: a
+# unit test that opens a socket fails instead of passing on someone's uptime.
+addopts = "-ra --disable-socket"
+strict_markers = true              # a typo'd mark is a collection error, not a no-op
+strict_config = true               # a typo'd ini key is an error, not a warning
+strict_xfail = true                # an xfail that passes is a failure, not an X
+empty_parameter_set_mark = "fail_at_collect"  # an empty parametrize list fails, not skips
+required_plugins = ["pytest-randomly", "pytest-timeout", "pytest-socket"]
+timeout = 60                       # a hung test fails with a traceback
+timeout_method = "signal"          # the thread method calls os._exit and drops the rest of the run
+filterwarnings = [
+    "error",                       # first: a forgotten await is only a RuntimeWarning otherwise
+    # pytest-socket >= 0.8 warns inside SocketBlockedError.__init__, so under
+    # "error" the UserWarning would replace the exception itself.
+    "ignore:A test tried to use socket:UserWarning",
+]
+
+[tool.importlinter]
+root_packages = ["handoff"]
+# Cache is not concurrency-safe across parallel hk steps; the wrapper passes
+# --no-cache so nothing is written.
+
+[[tool.importlinter.contracts]]
+name = "cli -> formats -> ir -> leaves"
+type = "layers"
+# The leaves (errors, _json, _ids) are independent siblings: `|` means none may
+# import another.
+layers = [
+    "handoff.cli",
+    "handoff.formats",
+    "handoff.ir",
+    "handoff.errors | handoff._json | handoff._ids",
+]
+
+[tool.deptry]
+# DEP001 missing, DEP002 unused, DEP003 transitive, DEP004 dev dep in runtime code.
+# stdlib-only package: every finding is a regression. Must run inside the
+# project venv (uv run); a global shim guesses module<->distribution names.
+# [dependency-groups] (PEP 735) is read natively, so DEP004 sees the dev group
+# without extra keys.
+known_first_party = ["handoff"]

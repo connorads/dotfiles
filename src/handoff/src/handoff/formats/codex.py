@@ -218,7 +218,9 @@ def _import_message(
         role = "assistant"
 
     content = payload.get("content")
-    blocks = [_normalize_block(item) for item in content] if isinstance(content, list) else []
+    blocks: list[ContentBlock] = (
+        [_normalize_block(item) for item in content] if isinstance(content, list) else []
+    )
     if not blocks:
         return
 

@@ -1,0 +1,16 @@
+# Typecheck gate for handoff (hk py-typecheck-handoff). Per-project so
+# `handoff.*` resolves from src/, the Python analogue of a per-project
+# tsconfig.json; matches the three script-dir pyrefly.toml files.
+project-includes = ["src/**/*.py"]
+project-excludes = ["tests/**"]  # tests run via pytest, not type-gated (mirrors ts-typecheck)
+search-path = ["src"]
+# `strict` is the gate (a config file present means the preset in effect is
+# `default`; the silent `basic` fallback only applies when no config is found,
+# which is why py-typecheck.sh passes -c). `all` is a moving target, so extra
+# kinds are named under [errors].
+preset = "strict"
+
+[errors]
+# strict expires `# pyrefly: ignore[...]` only; mypy-style `# type: ignore[...]`
+# needs this kind spelled out so stale suppressions fail.
+unused-type-ignore = true
