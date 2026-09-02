@@ -619,6 +619,42 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/skill-check.sh {{files}}"
     }
 
+    // The authored tiers are public (skills/ is the future connorads/skills;
+    // personal/ ships in this repo), so no file in them names a path on this
+    // machine - a worked example is embedded, never pointed at. Angle-bracket
+    // placeholders and generic users (me, you, alice, bob) pass.
+    ["skills-no-local-paths"] {
+        glob = List("skills/**", ".config/skills/personal/**")
+        exclude = List("**/*.png", "**/*.jpg", "**/*.gif", "**/*.mp4", "**/*.webm", "**/*.pdf")
+        check = "bash .hk-hooks/skills-no-local-paths.sh {{files}}"
+
+        tests {
+            ["a real local repo path fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.md"] = "See `~/git/website-comments` for the shape.\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/skills-no-local-paths.sh .hk-hooks/"
+                files = List("{{tmp}}/probe.md")
+                expect { code = 1 }
+            }
+
+            ["an absolute home path fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.md"] = "Run /Users/someone/bin/tool first.\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/skills-no-local-paths.sh .hk-hooks/"
+                files = List("{{tmp}}/probe.md")
+                expect { code = 1 }
+            }
+
+            ["placeholders pass"] {
+                run = "check"
+                write { ["{{tmp}}/probe.md"] = "Default `~/git/<name>`; the ISO at /Users/me/Downloads/x.iso.\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/skills-no-local-paths.sh .hk-hooks/"
+                files = List("{{tmp}}/probe.md")
+                expect { code = 0 }
+            }
+        }
+    }
+
     // Colocated skill-script tests (pytest/bats under <skill>/tests/), run
     // only for skills the staged files touch. Missing runners warn and pass
     // (same never-brick posture as ts-typecheck.sh); `mise run skill-checks`
