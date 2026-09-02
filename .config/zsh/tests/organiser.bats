@@ -15,6 +15,8 @@ printf '%s\n' "$*" >>"$TEST_LOG"
 if [ "$1" = "display-message" ]; then
   case "$*" in
     *client_height*) printf '%s\n' "${TMUX_CLIENT_HEIGHT:-14}" ;;
+    *'#{@agent_state}'*) printf '%s\n' "${TMUX_AGENT_STATE:-idle}" ;;
+    *'#{@agent_kind}'*) printf '%s\n' "${TMUX_AGENT_KIND:-claude}" ;;
     *window_linked*)
       if [ -n "${TMUX_WINDOW_INFO:-}" ]; then printf '%s\n' "$TMUX_WINDOW_INFO"; else printf '$1\tsource @name\t@7\t1\twin ##{x}\t0\t1\t2\n'; fi
       ;;
@@ -35,6 +37,59 @@ elif [ "$1" = "list-panes" ]; then
   printf '%b' "${TMUX_MARKED:-}"
 fi
 EOF
+}
+
+@test "pane menu offers hibernate only for a safe Claude pane" {
+  export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=claude
+
+  run "$ORG" pane clientA "%5" 1 2
+
+  [ "$status" -eq 0 ]
+  grep -q 'hibernate (free RAM)' "$TEST_LOG"
+  grep -q 'agent-hibernate-action.sh.*hibernate.*%5.*clientA' "$TEST_LOG"
+  ! grep -q 'thaw (resume)' "$TEST_LOG"
+}
+
+@test "pane menu explains why a busy Claude pane cannot hibernate" {
+  export TMUX_AGENT_STATE=working TMUX_AGENT_KIND=claude
+
+  run "$ORG" pane clientA "%5" 1 2
+
+  [ "$status" -eq 0 ]
+  grep -q -- '-hibernate (working)' "$TEST_LOG"
+  ! grep -q 'agent-hibernate-action.sh.*hibernate' "$TEST_LOG"
+}
+
+@test "pane menu gives a parked pane only the thaw lifecycle action" {
+  export TMUX_AGENT_STATE=hibernated TMUX_AGENT_KIND=claude
+
+  run "$ORG" pane clientA "%5" 1 2
+
+  [ "$status" -eq 0 ]
+  grep -q 'thaw (resume)' "$TEST_LOG"
+  grep -q 'agent-hibernate-action.sh.*thaw.*%5.*clientA' "$TEST_LOG"
+  ! grep -q 'working  ' "$TEST_LOG"
+  ! grep -q 'clear dot' "$TEST_LOG"
+}
+
+@test "pane menu omits lifecycle actions for non-Claude panes" {
+  export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=codex
+
+  run "$ORG" pane clientA "%5" 1 2
+
+  [ "$status" -eq 0 ]
+  ! grep -q 'hibernate (free RAM)' "$TEST_LOG"
+  ! grep -q 'thaw (resume)' "$TEST_LOG"
+}
+
+@test "window menu never offers pane lifecycle actions" {
+  export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=claude
+
+  run "$ORG" window clientA "@7" "%5" "/tmp/has space" 9 3
+
+  [ "$status" -eq 0 ]
+  ! grep -q 'hibernate (free RAM)' "$TEST_LOG"
+  ! grep -q 'thaw (resume)' "$TEST_LOG"
 }
 
 @test "window destination menu filters source and sessions already containing a shared window" {

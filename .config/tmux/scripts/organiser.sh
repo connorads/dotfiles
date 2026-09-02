@@ -51,6 +51,15 @@ organiser_run_shell() {
 	printf 'run-shell "%s"' "$(tmux_quote "$command")"
 }
 
+hibernate_action_command() {
+	local action=$1 pane=$2 client=$3 command arg
+	command="$(shell_quote "$dir/agent-hibernate-action.sh")"
+	for arg in "$action" "$pane" "$client"; do
+		command+=" $(shell_quote "$arg")"
+	done
+	printf 'run-shell -b "%s"' "$(tmux_quote "$command")"
+}
+
 format_label() {
 	local value=$1
 	value=${value//#/##}
@@ -58,17 +67,35 @@ format_label() {
 }
 
 append_agent_dot_items() {
-	local pane=$1
+	local pane=$1 lifecycle=${2:-0} client=${3:-}
+	local state kind
+	state=$(tmux display-message -p -t "$pane" '#{@agent_state}' 2>/dev/null || true)
+	kind=$(tmux display-message -p -t "$pane" '#{@agent_kind}' 2>/dev/null || true)
+	if [ "$state" = hibernated ]; then
+		menu+=("hibernated #[fg=#585b70]◌#[default]" "" "")
+		if [ "$lifecycle" = 1 ]; then
+			menu+=("thaw (resume)" t "$(hibernate_action_command thaw "$pane" "$client")")
+		fi
+		return
+	fi
 	menu+=(
 		"working  #[fg=#fab387]◐#[default]" w "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh working'"
 		"blocked  #[fg=#f38ba8]◆#[default]" b "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh blocked'"
 		"unread   #[fg=#89b4fa]●#[default]" u "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh unread'"
 		"idle     #[fg=#a6e3a1]○#[default]" i "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh idle'"
 		"clear dot" c "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh clear'"
-		""
-		"hibernate (free RAM)" h "run-shell '$dir/agent-hibernate.sh hibernate $pane'"
-		"thaw (resume)" t "run-shell '$dir/agent-hibernate.sh thaw $pane'"
 	)
+	if [ "$lifecycle" != 1 ]; then
+		return 0
+	fi
+	if [ "$kind" != claude ]; then
+		return 0
+	fi
+	menu+=("")
+	case "$state" in
+	idle | done) menu+=("hibernate (free RAM)" h "$(hibernate_action_command hibernate "$pane" "$client")") ;;
+	working | blocked) menu+=("-hibernate ($state)" "" "") ;;
+	esac
 }
 
 client_height() {
@@ -270,7 +297,7 @@ window_menu() {
 		"Auto name" "a" "set-window-option -t $window_id automatic-rename on"
 	)
 	menu+=("")
-	append_agent_dot_items "$pane"
+	append_agent_dot_items "$pane" 0 "$client"
 	case "$cwd" in
 	"$HOME"/.trees/*)
 		menu+=(
@@ -317,7 +344,7 @@ pane_menu() {
 		"Arm/disarm claude-watch" "a" "run-shell '$HOME/.local/bin/claude-watch $pane_id'"
 		""
 	)
-	append_agent_dot_items "$pane_id"
+	append_agent_dot_items "$pane_id" 1 "$client"
 	menu+=(
 		""
 		"Kill pane" "X" "confirm-before -p \"kill pane $pane_id running $(tmux_quote "$cmd")? (y/n)\" \"kill-pane -t $pane_id\""

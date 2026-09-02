@@ -107,6 +107,8 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
+| `Ctrl+b Alt+z` | hibernate the current idle/done Claude pane and park it in place |
+| `Ctrl+b Alt+Shift+Z` | thaw picker for parked panes and orphaned hibernation records |
 | `Ctrl+b Alt+k` | caffeine - keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), `+` add time to a running one, space off) |
 | `Ctrl+b Alt+v` | record (vox) - start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
 | `Ctrl+b Alt+Shift+V` | recordings (vox) - pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
@@ -327,7 +329,7 @@ Keybinding usage is logged to `~/.local/state/tmux/usage.jsonl`.
 | scroll | scroll the pane under the pointer; keyboard focus stays put (type/dictate in one pane while scrolling another) |
 | drag border | resize pane |
 | double-click pane | zoom toggle |
-| right-click pane | pane organiser (zoom, mark, break, join marked pane, copy info, claude-watch, agent dot, kill pane) |
+| right-click pane | pane organiser (zoom, mark, break, join marked pane, copy info, claude-watch, agent dot, hibernate/thaw, kill pane) |
 | right-click window tab | window organiser (move, share, unlink, rename, kill; `~/.trees` windows add publish PR / finish / remove worktree) |
 | right-click session name (status left) | session menu (organise, pickers, agents, memory, detach) |
 | Alt+right-click | tmux's stock menus (Copy Word/Line, Search, hyperlinks, respawn…) |
