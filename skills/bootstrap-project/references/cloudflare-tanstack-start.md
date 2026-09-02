@@ -130,14 +130,50 @@ Route the real thing to the `cloudflare-workers-deployments` skill: it owns the
 choice between Workers Builds (Cloudflare-hosted, Git-connected) and local
 `wrangler deploy`, plus custom domains and Access.
 
-## Watch-item: Alchemy (alchemy.run)
+## Alternative: Alchemy instead of wrangler
 
-TypeScript-native IaC that replaces `wrangler.jsonc` as the source of truth -
-resources declared in an `alchemy.run.ts` script, deployed via the Cloudflare
-API, env types inferred with no codegen. Not the blessed path because (as of
-mid-2026, v0.93): pre-1.0 with a parallel v2 rewrite on Effect in flight, and
-TanStack Start supported only via example repos, not a first-class create
-template. It still uses wrangler for local dev.
+Alchemy v2 (2.0.0-beta, on Effect v4; the only line now) replaces
+`wrangler.jsonc` as the source of truth: resources declared in
+`alchemy.run.ts`, deployed through the Cloudflare API, `env` types inferred
+from the class. It is the tool the all-Effect path runs on
+(`cloudflare-foldkit-alchemy.md`), and it takes a TanStack Start app too -
+upstream keeps a checked-in `examples/cloudflare-tanstack` with a live test.
+Reach for it when the project already wants Alchemy for its other
+resources; the default TanStack path stays c3 + wrangler.
 
-Re-evaluate when any of: v1.0 ships, the v2/Effect line settles as the single
-line, or a first-class TanStack Start template appears in `alchemy create`.
+Wiring, from one shipped project (2026-06, beta.55) and the upstream guide:
+
+- Scaffold with c3 as above, then **remove `@cloudflare/vite-plugin`** from
+  `vite.config.ts` and the dependency. Alchemy injects its own Cloudflare
+  Vite plugin and is not compatible with c3's. `wrangler.jsonc` goes too;
+  nothing reads it.
+- Declare the site in `alchemy.run.ts` with the class form so bindings can
+  be inferred:
+
+  ```typescript
+  export class Website extends Cloudflare.Website.Vite<Website>()("Website", {
+    compatibility: { flags: ["nodejs_compat"] },
+    env: { DB: db, BUCKET: bucket },
+    assets: { runWorkerFirst: true },
+  }) {}
+  export type WebsiteEnv = Cloudflare.InferEnv<typeof Website>;
+  ```
+
+  `runWorkerFirst: true` makes server routes win over static files.
+- Read bindings through a `Proxy` over `cloudflare:workers` `env`
+  (`src/env.ts`), not a top-level `import { env }`: TanStack Start's dev
+  server evaluates route modules outside the Worker request context.
+- **Drop the scaffold's `build` and `preview` scripts.** A bare `vite build`
+  dies on `cloudflare:workers` (no plugin externalises the scheme), and
+  `alchemy deploy` never runs the script anyway - it drives Vite in-process
+  and uploads from memory. `typecheck` is the local gate, `alchemy dev` the
+  preview, `alchemy deploy` the build.
+- Queue consumers and anything else `Website.Vite` has no override for
+  stand alone as `Cloudflare.Worker` resources. Every logical id must be
+  unique stack-wide: alchemy keys by namespace + id, and a reused id silently
+  no-ops the later resource.
+
+Stages, state, deploy lanes and the rest of the alchemy traps are the same as
+the Effect path - read that file's Dev, Deploy and Traps sections. Versions
+there apply here in part: this variant pins `effect` exact only for
+`alchemy.run.ts`, the React app stays Effect-free.
