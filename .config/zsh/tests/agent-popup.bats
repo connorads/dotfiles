@@ -55,6 +55,29 @@ attach_client() { attach_pty_client "${1:-s}"; }
   [ "$order" = "$p2 $p4 $p1 $p3 " ]
 }
 
+@test "list filters to a state CSV when given one" {
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state working
+  tx new-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state hibernated
+  tx new-window -t s
+  p3=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p3" @agent_state idle
+
+  run sh "$SCRIPT" list hibernated
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')" = "$p2 " ]
+
+  run sh "$SCRIPT" list working,idle
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | cut -f1 | tr '\n' ' ')" = "$p1 $p3 " ]
+
+  # No filter still lists everything.
+  run sh "$SCRIPT" list
+  [ "$(printf '%s\n' "$output" | grep -c .)" = 3 ]
+}
+
 @test "list excludes panes without agent state" {
   p1=$(tx display-message -p -t s '#{pane_id}')
   tx set-option -p -t "$p1" @agent_state working

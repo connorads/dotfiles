@@ -65,6 +65,9 @@ append_agent_dot_items() {
 		"unread   #[fg=#89b4fa]●#[default]" u "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh unread'"
 		"idle     #[fg=#a6e3a1]○#[default]" i "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh idle'"
 		"clear dot" c "run-shell 'AGENT_STATE_PANE=$pane $dir/agent-state.sh clear'"
+		""
+		"hibernate (free RAM)" h "run-shell '$dir/agent-hibernate.sh hibernate $pane'"
+		"thaw (resume)" t "run-shell '$dir/agent-hibernate.sh thaw $pane'"
 	)
 }
 

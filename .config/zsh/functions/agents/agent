@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name/pick)
-# usage: agent <ls|state|wait|prompt|name|unname|pick> [args]
+# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name/pick/hibernate/thaw)
+# usage: agent <ls|state|wait|prompt|name|unname|pick|hibernate|thaw> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -9,6 +9,7 @@ local _agent_scripts=${AGENT_SCRIPTS_DIR:-$HOME/.config/tmux/scripts}
 local _agent_cli_lib=${AGENT_CLI_LIB:-$_agent_scripts/agent-cli-lib.sh}
 local _agent_state_sh=${AGENT_STATE_SH:-$_agent_scripts/agent-state.sh}
 local _agent_sweep=${AGENT_SWEEP:-$_agent_scripts/agent-sweep.sh}
+local _agent_hibernate=${AGENT_HIBERNATE_SH:-$_agent_scripts/agent-hibernate.sh}
 local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
 
 [[ -r $_agent_cli_lib ]] || {
@@ -37,11 +38,18 @@ usage: agent <subcommand> [args]
                     agents, grammar [a-z][a-z0-9_-]{0,31}
   unname [<target>] remove a pane's label (default: this pane)
   pick              fzf picker over live agents; Enter jumps to the pane
+  hibernate [<target>] [--force]
+                    kill a Claude pane to reclaim RAM/swap and park a thawer
+                    in it; the conversation resumes in full on thaw. Only
+                    idle/done panes hibernate without --force
+  thaw [<target>]   resume a hibernated pane (or, with no target, pick from
+                    parked panes plus orphaned records)
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
 exit codes: 0 ok · 1 wait timeout · 2 usage · 3 target unresolvable/pane gone
             · 4 prompt refused · 5 prompt stall (sent but agent never started)
+            · 6 hibernate refused (pane is blocked/working/untracked)
 EOF
 }
 
@@ -325,6 +333,59 @@ _agent_unname() {
   AGENT_STATE_PANE=$pane sh "$_agent_state_sh" unname
 }
 
+# agent hibernate / agent thaw — thin front-ends over agent-hibernate.sh, which
+# owns the record store, the state gate and the kill/park/respawn mechanics. The
+# CLI never writes @agent_state itself (the house invariant): the engine routes
+# every mutation through agent-state.sh.
+_agent_hibernate() {
+  local -a flags
+  local target=
+  while (( $# )); do
+    case $1 in
+      --force) flags+=(--force); shift ;;
+      -h|--help) _agent_usage; return 0 ;;
+      -*) print -u2 "agent hibernate: unknown flag: $1"; return 2 ;;
+      *)
+        [[ -z $target ]] || {
+          print -u2 "agent hibernate: too many targets"
+          return 2
+        }
+        target=$1
+        shift
+        ;;
+    esac
+  done
+  [[ -x $_agent_hibernate ]] || {
+    print -u2 "agent hibernate: script not found: $_agent_hibernate"
+    return 1
+  }
+  local pane
+  pane=$(_agent_pane_or_self "$target") || return $?
+  "$_agent_hibernate" hibernate "$pane" "${flags[@]}"
+}
+
+_agent_thaw() {
+  (( $# <= 1 )) || {
+    print -u2 "usage: agent thaw [<target>]"
+    return 2
+  }
+  [[ -x $_agent_hibernate ]] || {
+    print -u2 "agent thaw: script not found: $_agent_hibernate"
+    return 1
+  }
+  # No target: the engine's picker covers parked panes AND orphan records, so
+  # resolving a pane here would hide the orphans.
+  [[ -n ${1:-} ]] || { "$_agent_hibernate" thaw; return $? }
+  # A session id is a legitimate target (an orphan has no live pane), so an
+  # unresolvable target is passed through rather than refused here.
+  local pane
+  if pane=$(agent_resolve_target "$1" 2>/dev/null); then
+    "$_agent_hibernate" thaw "$pane"
+  else
+    "$_agent_hibernate" thaw "$1"
+  fi
+}
+
 # agent pick — the shell-callable "wts for agents": delegate to the popup
 # script's pick (sweep + shared enumerator + fzf + jump) on this TTY. The
 # prefix + A binding keeps its display-popup; running from a shell needs none.
@@ -351,6 +412,8 @@ case ${_agent_sub:-ls} in
   name) _agent_name "$@" ;;
   unname) _agent_unname "$@" ;;
   pick) _agent_pick "$@" ;;
+  hibernate) _agent_hibernate "$@" ;;
+  thaw) _agent_thaw "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"

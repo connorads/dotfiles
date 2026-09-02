@@ -4,7 +4,8 @@
 # (blocked > done > working > idle), with a live pane-tail preview; Enter jumps.
 #
 #   agent-popup.sh            # pick (default): sweep, then list | fzf | jump
-#   agent-popup.sh list       # emit ranked TAB rows (hidden pane_id first)
+#   agent-popup.sh list [STATES]   # emit ranked TAB rows (hidden pane_id first)
+#   agent-popup.sh pick [STATES]   # ...and pick one; STATES is a CSV filter
 #   agent-popup.sh jump PANE  # switch to PANE and age its done → idle
 #   agent-popup.sh cycle WANTS [CUR]  # jump to next pane matching WANTS
 #                                     # (CSV priority list, e.g. blocked,done)
@@ -33,7 +34,10 @@ AGENT_SWEEP=${AGENT_SWEEP:-$SELF_DIR/agent-sweep.sh}
 # agent-state-lib.sh: computed once per state in sh via agent_glyph, then passed
 # into awk as truecolour-ANSI strings (awk can't source the lib; -v passes the
 # finished bytes through verbatim).
+# list [STATES] — STATES is an optional CSV of @agent_state values to keep
+# (e.g. hibernated, or blocked,done); empty means every agent pane.
 list() {
+	_states=${1:-}
 	_g_blocked=$(agent_glyph blocked)
 	_g_working=$(agent_glyph working)
 	_g_done=$(agent_glyph 'done')
@@ -41,6 +45,8 @@ list() {
 	_g_hibernated=$(agent_glyph hibernated)
 	_g_unknown=$(agent_glyph unknown)
 	agent_list_rows | agent_rank_sort |
+		awk -F '\t' -v states=",$_states," '
+			states == ",," || index(states, "," $2 ",") > 0' |
 		awk -F '\t' \
 			-v g_blocked="$_g_blocked" -v g_working="$_g_working" \
 			-v g_done="$_g_done" -v g_idle="$_g_idle" \
@@ -143,7 +149,7 @@ cycle() {
 pick() {
 	[ -f "$AGENT_SWEEP" ] && sh "$AGENT_SWEEP" >/dev/null 2>&1 || true
 
-	_rows=$(list)
+	_rows=$(list "${1:-}")
 	if [ -z "$_rows" ]; then
 		printf 'No active agents\n'
 		sleep 0.8
@@ -167,7 +173,10 @@ pick() {
 }
 
 case "${1:-}" in
-list) list ;;
+list)
+	shift
+	list "${1:-}"
+	;;
 jump)
 	shift
 	jump "${1:-}"
@@ -176,9 +185,12 @@ cycle)
 	shift
 	cycle "$@"
 	;;
-pick | "") pick ;;
+pick | "")
+	shift 2>/dev/null || true
+	pick "${1:-}"
+	;;
 *)
-	echo "usage: agent-popup.sh [list|jump <pane_id>|cycle <state[,state]> [cur_pane]|pick]" >&2
+	echo "usage: agent-popup.sh [list [states]|jump <pane_id>|cycle <state[,state]> [cur_pane]|pick [states]]" >&2
 	exit 2
 	;;
 esac
