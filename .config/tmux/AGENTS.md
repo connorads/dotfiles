@@ -411,6 +411,12 @@ scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-
   trimmed. `respawn-pane -k` discards the visible screen and keeps scrolled
   history (observed), so park re-prints the capture; re-printing tmux's
   full-height padding would scroll the content itself off the top.
+- **Park gives the pane a title, and that is load-bearing.** `save.sh` parses
+  its own dump with `IFS=<tab> read`, and TAB is IFS whitespace, so a pane with
+  an **empty** title collapses that line's fields - the pid lands in the title
+  slot and the pane saves no command at all (observed: 14 parked panes saved
+  bare). `respawn-pane` leaves the title empty, so park sets one over OSC 2,
+  not `select-pane -T`, which would be a second tmux call from inside the pane.
 - **Park is a key-loop, not a placeholder.** It re-prints the screen, shows
   `hibernated: <name> (idle Nd, freed NNN MB) - Enter to thaw`, and thaws on
   Enter via `run-shell -b` - server-side, outside the pane's own process group,
@@ -418,9 +424,15 @@ scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-
 - **Idle age comes from the journal** (`last_journal_ts`), grepping only the
   current and previous month's `events-*.jsonl` on demand - those files run
   ~60 MB/month.
-- **The sweep exempts `hibernated`.** A parked pane's foreground IS a bare
-  shell, which is the sweep's "the agent died" signal, so without the exemption
-  the dot would be cleared within one poll.
+- **The sweep exempts `hibernated`, and so does `clear`.** A parked pane's
+  foreground IS a bare shell, which is the sweep's "the agent died" signal, so
+  without the exemption the dot goes within one poll. `agent-state.sh clear`
+  skips a hibernated pane for a related reason: killing claude fires *its own*
+  `SessionEnd` hook, which lands mid-park (observed one second before park
+  re-armed the state), and a lost dot drops the pane out of the resurrect save.
+  Note the sweep daemon parses its script once at start, so a long-lived daemon
+  keeps running the code it was launched with - restart it after changing the
+  sweep, or the exemption is not in force.
 - **Restore survival.** Three pieces keep a parked pane parked across a tmux
   restart: [`resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh)
   rewrites hibernated `session_ids.json` entries fresh from the record store
