@@ -20,7 +20,8 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     "fzf_bind_lint", Path(__file__).parent / "fzf-bind-lint.py"
 )
-assert _spec and _spec.loader
+assert _spec
+assert _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["fzf_bind_lint"] = _mod
 _spec.loader.exec_module(_mod)
@@ -65,7 +66,8 @@ class TestExtraction:
         # The comma inside execute(...) must not split the entry - key is `enter`.
         keys = _keys("fzf --bind 'enter:execute(echo a,b)'")
         assert keys == {"enter"}
-        assert "a" not in keys and "b" not in keys
+        assert "a" not in keys
+        assert "b" not in keys
 
     def test_nested_brackets_in_bind_action(self) -> None:
         keys = _keys("fzf --bind 'ctrl-r:reload[find . ,-type f]+first'")
@@ -140,4 +142,5 @@ def test_render_names_file_line_and_both_keys() -> None:
     c = _mod.Collision(line=36, key="ctrl-i", alias="tab")
     msg = _mod.render("src/skl/bin/pick", c)
     assert msg.startswith("fzf-bind-lint: src/skl/bin/pick:36 ")
-    assert "ctrl-i" in msg and "tab" in msg
+    assert "ctrl-i" in msg
+    assert "tab" in msg

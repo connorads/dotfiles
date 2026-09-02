@@ -17,7 +17,8 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     "no_self_attribution", Path(__file__).parent / "no-self-attribution.py"
 )
-assert _spec and _spec.loader
+assert _spec
+assert _spec.loader
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 clean_git_commit = _mod.clean_git_commit
@@ -100,7 +101,7 @@ class TestCleanFile:
 
 class TestCleanGitCommit:
     @pytest.mark.parametrize(
-        "command,expected_absent",
+        ("command", "expected_absent"),
         [
             (
                 'git commit -m "feat: stuff\\nCo-Authored-By: Claude <noreply@anthropic.com>"',
@@ -180,7 +181,7 @@ class TestCleanGitCommit:
 
 class TestCleanGhCommand:
     @pytest.mark.parametrize(
-        "command,expected_absent",
+        ("command", "expected_absent"),
         [
             (
                 'gh pr create --body "Summary\\n\\n\U0001f916 Generated with [Claude Code](https://claude.ai)"',

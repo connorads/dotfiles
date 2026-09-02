@@ -166,12 +166,12 @@ def safe_filename(url: str, fallback_ext: str = "") -> str:
     name = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip(".-") or "asset"
     if "." not in name and fallback_ext:
         name = f"{name}{fallback_ext}"
-    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(url.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     stem, ext = os.path.splitext(name)
     return f"{stem[:60]}-{digest}{ext[:12]}"
 
 
-def write_json(path: Path, data: Any) -> None:
+def write_json(path: Path, data: object) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
@@ -393,7 +393,7 @@ def extract_jsonld_assets(blocks: list[str], base_url: str) -> list[dict[str, st
 
 
 def walk_jsonld(
-    value: Any, base_url: str, assets: list[dict[str, str]], key_hint: str = ""
+    value: object, base_url: str, assets: list[dict[str, str]], key_hint: str = ""
 ) -> None:
     if isinstance(value, list):
         for item in value:

@@ -46,7 +46,7 @@ log = structlog.get_logger("canonical")
 _event: ContextVar[dict[str, Any]] = ContextVar("canonical_event")
 
 
-def annotate(**fields: Any) -> None:
+def annotate(**fields: object) -> None:
     """Add fields to the current request's canonical event.
 
     Safe to call from anywhere in the request lifecycle. No-op outside a

@@ -209,13 +209,13 @@ def _ir(events: list[dict[str, object]]) -> dict[str, object]:
 )
 def test_ir_rejects_events_missing_required_fields(event: dict[str, object]) -> None:
     """Rust `serde_json::from_str` aborts on a missing required field; so must we."""
-    with pytest.raises(HandoffError):
+    with pytest.raises(HandoffError, match=r"missing|must be|expected"):
         UniversalSession.from_json_dict(_ir([event]))
 
 
 def test_ir_rejects_missing_events() -> None:
     """`events` has no serde default, so an IR without it is rejected."""
-    with pytest.raises(HandoffError):
+    with pytest.raises(HandoffError, match="events"):
         UniversalSession.from_json_dict(
             {"ir_version": "handoff/v1", "metadata": {"session_id": "s"}}
         )

@@ -42,7 +42,8 @@ def _load(name: str, path: Path):
     class's module up there, and finds nothing if it is absent.
     """
     spec = importlib.util.spec_from_file_location(name, path)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)
@@ -357,7 +358,8 @@ def test_a_block_page_is_recognised_by_its_title_however_long_it_is() -> None:
 
 def test_an_exact_match_reports_as_exact() -> None:
     result = vp.match("Design is how it works.", "He said design is how it works, plainly.")
-    assert result.exact and result.window == 5
+    assert result.exact
+    assert result.window == 5
 
 
 def test_a_near_miss_reports_its_longest_window() -> None:
