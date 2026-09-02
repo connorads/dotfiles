@@ -1,6 +1,8 @@
 # Errors and failures
 
-Expected failures are values. Defects raise. Keep the two vocabularies distinct.
+Expected failures are values. Defects raise. Keep the two vocabularies
+distinct. Python has no checked exceptions, so the return type is the only
+place a caller learns that a call can fail.
 
 ## Result shape
 
@@ -84,9 +86,9 @@ Pick the form by what the next step needs, not by dogma.
 ### Chain when each step needs only its predecessor
 
 `and_then(map_err(parse_sku(raw), MalformedLine), price)` maps the first step
-into the declared channel, then continues. Python has no `?` and no method
-chaining on a bare union: a third link nests deeper than it reads, so two is the
-practical limit.
+into the declared channel, then continues. Python has no `?`, no do-block and no
+method chaining on a bare union: a third link nests deeper than it reads, so two
+is the practical limit.
 
 ### Ladder the moment a later step needs more than its predecessor
 
@@ -158,6 +160,9 @@ matching: catch the group and `split` it (`concurrency.md`). `except*` cannot -
 
 ## Panic vocabulary - defects raise
 
+- A violated invariant, an impossible branch or a startup misconfiguration is a
+  defect: raise it, so it crashes where it happened instead of becoming a value
+  a caller might branch on.
 - `raise NotImplementedError` for stubs.
 - `assert_never(x)` on an exhaustive `match` catch-all (a forgotten variant is a
   type error, see `modeling.md`).

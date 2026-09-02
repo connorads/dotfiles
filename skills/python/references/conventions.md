@@ -4,8 +4,9 @@
 
 `mechanical-enforcement` owns the basedpyright and ruff config. The idioms:
 
-- No bare `Any`. Use `object` plus narrowing, a `Protocol`, or a precise union; `Any`
-  disables checking both ways, laundering a wrong type through every caller.
+- No bare `Any`. Use `object` plus narrowing (below), a `Protocol`, or a precise
+  union; `Any` disables checking both ways, laundering a wrong type through
+  every caller.
 - `cast()` is a last resort for interop the type system cannot express, and carries a
   Rust-style `# SAFETY:` comment naming the invariant that makes it sound.
 - Prefer `# pyright: ignore[reportReturnType]` over a bare `# pyright: ignore`: the

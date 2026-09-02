@@ -115,9 +115,18 @@ on ruff calling a t-string `invalid-syntax` below a `requires-python` of `>=3.14
 
 ## Push optionality and partiality outward
 
-Avoid `Optional`/`None` parameters in functions that require a value - branch or
-parse before calling. Prefer an explicit input dataclass per operation over a
-loose `dict` or a pile of keyword arguments:
+Two moves make a partial function total: constrain the input to a parsed or
+`NewType` value, or widen the output to a `Result`. Prefer constraining, which
+deletes the branch for every caller rather than adding one to each. `None` is
+not an error channel - `-> User | None` cannot say whether the user was absent
+or the store was down, and Python makes it worse because `None` is also a legal
+stored value - and `-> None` from core logic hides a mutation, so return the new
+value or the events instead. A parameter defaulting to `None` is a partial
+function wearing a total signature: split it into the two operations it is, and
+branch or parse before calling a function that requires a value.
+
+Prefer an explicit input dataclass per operation over a loose `dict` or a pile
+of keyword arguments:
 
 ```python
 @dataclass(frozen=True, slots=True, kw_only=True)
