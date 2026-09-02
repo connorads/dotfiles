@@ -307,6 +307,7 @@ wts                    # fzf switch to a worktree (works outside git repos)
 wt-prune               # Prune stale git worktree metadata after crashes/manual deletes
 wt-repair [path...]    # Repair moved worktree metadata
 ghcl [owner]           # fzf clone from GitHub (SSH)
+ghcl-org <org>         # bulk-clone an org into cwd, flat (SSH, skips archived/forks); re-run to re-sync via pull --ff-only, default branch only. --dry-run/--json preview the plan; no tty needs --yes; orphans reported, never deleted
 ghfzf [pr|issue|run]   # fzf triage for GitHub PRs, issues, and Actions runs
 gh-gate init <host>    # Deploy read-only PAT to a managed remote
 gh-gate grant <host>   # Push 1-hour write token to a managed remote
