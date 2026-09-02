@@ -44,7 +44,9 @@ EOF
 
   # git: a logging wrapper around the real thing, not a replacement. The probe
   # has to observe real repos (that is the half a stub cannot fake), while the
-  # log is what proves the tool only ever reads.
+  # log is what proves the tool only ever reads. Only the two network
+  # subcommands are faked - a clone materialises a plausible repo so a later
+  # re-sync has something to observe.
   REAL_GIT="$(command -v git)"
   export REAL_GIT
   write_stub git <<'EOF'
@@ -56,8 +58,76 @@ EOF
   done
   printf '\n'
 } >>"$GIT_LOG"
+
+sub="" skip=0
+for arg in "$@"; do
+  if [ "$skip" = 1 ]; then skip=0; continue; fi
+  case "$arg" in
+    -C) skip=1 ;;
+    -*) ;;
+    *) sub="$arg"; break ;;
+  esac
+done
+
+case "$sub" in
+clone)
+  [ "${GIT_CLONE_RC:-0}" = 0 ] || exit "$GIT_CLONE_RC"
+  dir="${!#}"
+  url=""
+  for arg in "$@"; do
+    case "$arg" in
+      git@* | http*) url="$arg" ;;
+    esac
+  done
+  "$REAL_GIT" init -q -b "${GIT_CLONE_BRANCH:-main}" "$dir"
+  "$REAL_GIT" -C "$dir" config user.name Bats
+  "$REAL_GIT" -C "$dir" config user.email bats@example.com
+  [ -n "$url" ] && "$REAL_GIT" -C "$dir" remote add origin "$url"
+  exit 0
+  ;;
+pull)
+  # A hook to stage a mid-run branch move, i.e. the TOCTOU the executor
+  # re-checks for.
+  [ -n "${GIT_PULL_HOOK:-}" ] && eval "$GIT_PULL_HOOK"
+  exit "${GIT_PULL_RC:-0}"
+  ;;
+esac
+
 exec "$REAL_GIT" "$@"
 EOF
+
+  PTY_DRIVER="$BATS_TEST_TMPDIR/pty-run.py"
+  export PTY_DRIVER
+  cat >"$PTY_DRIVER" <<'PY'
+"""pty-run ANSWER CMD... - run CMD on a pty, type ANSWER, exit with its status."""
+import os
+import pty
+import subprocess
+import sys
+
+answer = sys.argv[1].encode()
+master, slave = pty.openpty()
+proc = subprocess.Popen(sys.argv[2:], stdin=slave, stdout=slave, stderr=slave)
+os.close(slave)
+# The line discipline holds this until the child reads it, and the master
+# staying open is what keeps the child's stdin from hitting EOF first.
+os.write(master, answer + b"\n")
+
+chunks = []
+while True:
+    try:
+        data = os.read(master, 4096)
+    except OSError:
+        break
+    if not data:
+        break
+    chunks.append(data)
+
+proc.wait()
+os.close(master)
+sys.stdout.buffer.write(b"".join(chunks))
+sys.exit(proc.returncode)
+PY
 }
 
 rows() {
@@ -390,4 +460,185 @@ plan_of() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"usage: ghcl-org"* ]]
   [ ! -s "$GH_LOG" ]
+}
+
+@test "--yes clones the absent repos" {
+  rows "$(row api acme/api main)" "$(row web acme/web main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  grep -Fq 'git <clone> <--quiet> <git@github.com:acme/api.git> <api>' "$GIT_LOG"
+  grep -Fq 'git <clone> <--quiet> <git@github.com:acme/web.git> <web>' "$GIT_LOG"
+  [ -d "$WORK/api/.git" ]
+  [ -d "$WORK/web/.git" ]
+}
+
+@test "--yes pulls a repo sitting on its default branch" {
+  make_repo web main git@github.com:acme/web.git
+  rows "$(row web acme/web main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  grep -Fq 'git <-C> <web> <pull> <--ff-only> <--quiet>' "$GIT_LOG"
+  ! grep -Fq '<clone>' "$GIT_LOG"
+}
+
+@test "a repo on a non-default branch is never pulled" {
+  make_repo web feat/x git@github.com:acme/web.git
+  rows "$(row web acme/web main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  ! grep -Fq '<pull>' "$GIT_LOG"
+  [ "$(git -C web symbolic-ref --short HEAD)" = "feat/x" ]
+}
+
+@test "an orphan is reported and never touched" {
+  make_repo gone main git@github.com:acme/gone.git
+  rows "$(row api acme/api main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"gone"*"orphaned"* ]]
+  ! grep -Fq '<gone>' "$GIT_LOG"
+  [ -d "$WORK/gone/.git" ]
+}
+
+@test "no tty and no --yes refuses and clones nothing" {
+  rows "$(row api acme/api main)"
+
+  run_org acme </dev/null
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"non-interactive execution requires --yes"* ]]
+  ! grep -Fq '<clone>' "$GIT_LOG"
+  [ ! -d "$WORK/api" ]
+}
+
+# Run ghcl-org on a real pty, answering the prompt with ANSWER.
+#
+# Not `script`: it calls tcgetattr on its own stdin, so it refuses a fifo, and
+# with a heredoc instead the pty reaches EOF before the read happens - the
+# prompt then sees ^D and every case answers "no", which passes an abort test
+# for entirely the wrong reason. A pty whose master this driver holds open has
+# neither problem, and it exits with the child's real status.
+tty_org() {
+  : >"$GIT_LOG"
+  run python3 "$PTY_DRIVER" "$1" zsh --no-rcs "$GHCL_ORG" "${@:2}"
+}
+
+@test "a tty answering y proceeds" {
+  rows "$(row api acme/api main)"
+
+  tty_org y acme
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[y/N]"* ]]
+  [ -d "$WORK/api/.git" ]
+}
+
+@test "a tty answering n aborts without cloning" {
+  rows "$(row api acme/api main)"
+
+  tty_org n acme
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Aborted."* ]]
+  [ ! -d "$WORK/api" ]
+  ! grep -Fq '<clone>' "$GIT_LOG"
+}
+
+@test "a failing clone gives a non-zero exit and a failed row" {
+  export GIT_CLONE_RC=128
+  rows "$(row api acme/api main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"clone failed: api"* ]]
+  [[ "$output" == *"api"*"failed"*"clone-failed"* ]]
+  [[ "$output" == *"done: 0 ok, 1 failed"* ]]
+}
+
+@test "a failing pull gives a non-zero exit and a failed row" {
+  make_repo web main git@github.com:acme/web.git
+  export GIT_PULL_RC=1
+  rows "$(row web acme/web main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pull failed: web"* ]]
+  [[ "$output" == *"pull-failed"* ]]
+}
+
+@test "one failure does not stop the rest" {
+  export GIT_CLONE_RC=128
+  make_repo web main git@github.com:acme/web.git
+  rows "$(row api acme/api main)" "$(row web acme/web main)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 1 ]
+  grep -Fq '<pull>' "$GIT_LOG"
+  [[ "$output" == *"done: 1 ok, 1 failed"* ]]
+}
+
+@test "an org of nothing but empty repos succeeds without cloning" {
+  rows "$(row empty acme/empty '')" "$(row other acme/other '')"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$GIT_LOG" ]
+  [[ "$output" == *"empty"*"skip"*"empty"* ]]
+}
+
+@test "the results table agrees with the dry-run table per repo" {
+  make_repo web main git@github.com:acme/web.git
+  make_repo feat feat/x git@github.com:acme/feat.git
+  make_repo gone main git@github.com:acme/gone.git
+  rows \
+    "$(row api acme/api main)" \
+    "$(row web acme/web main)" \
+    "$(row feat acme/feat main)" \
+    "$(row empty acme/empty '')"
+
+  run_org acme --dry-run
+  [ "$status" -eq 0 ]
+  local planned
+  planned="$(printf '%s\n' "$output" | sed -n '/^REPO /,$p')"
+
+  run_org acme --yes
+  [ "$status" -eq 0 ]
+  local actual
+  actual="$(printf '%s\n' "$output" | sed -n '/^REPO /,$p')"
+
+  [ -n "$planned" ]
+  [ "$planned" = "$actual" ]
+}
+
+@test "a branch that moves after the plan is skipped, not pulled" {
+  # The plan is truth as of the plan; the executor re-reads the branch and
+  # refuses to pull one the plan did not name. Staged inside a single run:
+  # records are sorted by name, so pulling `aaa` moves `web` off main while
+  # the same execute pass is still working through the plan.
+  make_repo aaa main git@github.com:acme/aaa.git
+  make_repo web main git@github.com:acme/web.git
+  commit_in web
+  rows "$(row aaa acme/aaa main)" "$(row web acme/web main)"
+  export GIT_PULL_HOOK='"$REAL_GIT" -C "$WORK/web" checkout -q -b moved'
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"branch moved to moved"* ]]
+  [[ "$output" == *"web"*"skip"*"branch-moved"* ]]
+  grep -Fq 'git <-C> <aaa> <pull>' "$GIT_LOG"
+  ! grep -Fq 'git <-C> <web> <pull>' "$GIT_LOG"
+  [ "$(git -C web symbolic-ref --short HEAD)" = "moved" ]
 }

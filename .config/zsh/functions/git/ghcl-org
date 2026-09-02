@@ -197,6 +197,13 @@ _ghcl_org_plan() {
     fi
 
     url=$(_ghcl_ssh_url "$owner/$name")
+    # Field 1 doubles as the clone target directory, so it has to be what
+    # `git clone` would create. Asserting it here makes a disagreement a
+    # plan-time failure rather than a clone-time surprise.
+    if [[ $(_ghcl_repo_dir "$url") != $name ]]; then
+      print -u2 "error: $url would not clone into '$name'"
+      return 1
+    fi
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$name" "$owner" "$action" "$reason" "$default_branch" "$local_branch" "$url"
   done
@@ -229,11 +236,12 @@ _ghcl_org_counts() {
     f=("${(@ps:\t:)rec}")
     action=$f[3] reason=$f[4]
     (( n_action[$action]++ ))
-    [[ -n $reason ]] && (( n_reason[$reason]++ ))
+    [[ $action == skip && -n $reason ]] && (( n_reason[$reason]++ ))
   done
 
   local a
-  for a in clone pull skip orphaned; do
+  for a in clone pull skip orphaned failed; do
+    (( ${n_action[$a]:-0} )) || continue
     if [[ $a == skip && ${#n_reason} -gt 0 ]]; then
       local -a parts=()
       local r
@@ -273,7 +281,7 @@ _ghcl_org_table() {
           detail=$reason
         fi
         ;;
-      *) detail="" ;;
+      *) detail=$reason ;;
     esac
     printf "$fmt" "$name" "$action" "$detail"
   done
@@ -302,6 +310,93 @@ _ghcl_org_json() {
         local_branch: (if .[5] == "" then null else .[5] end),
         url: (if .[6] == "" then null else .[6] end)
       })'
+}
+
+_ghcl_org_confirm() {
+  local prompt=$1 answer
+  read -r "answer?$prompt [y/N] "
+  [[ $answer == [yY] || $answer == [yY][eE][sS] ]]
+}
+
+# _ghcl_org_execute <plan_blob>: carry out the plan. Result records on stdout,
+# progress and the summary on stderr, so a caller can capture the outcome while
+# 91 repos still report live. Returns non-zero if anything genuinely failed.
+#
+# Result records keep the plan's vocabulary - a repo that cloned stays `clone` -
+# so the results table can be compared with the dry-run table row for row. Only
+# two actions are new: `failed`, and skip: branch-moved.
+_ghcl_org_execute() {
+  local -a records=()
+  [[ -n $1 ]] && records=("${(@f)1}")
+
+  # Same reason as the probe: git -C does not override an inherited GIT_DIR.
+  local GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+  unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+
+  local ok=0 failed=0
+  local rec name owner action reason default_branch local_branch url dir now
+  local -a f
+  for rec in "${records[@]}"; do
+    f=("${(@ps:\t:)rec}")
+    name=$f[1] owner=$f[2] action=$f[3] reason=$f[4]
+    default_branch=$f[5] local_branch=$f[6] url=$f[7]
+
+    case $action in
+      clone)
+        print -u2 "clone $name"
+        # The clone target is derived the way git derives it, so the flat
+        # layout and the probe's `absent` test agree by construction. `git
+        # clone` refusing a non-empty directory is the free TOCTOU re-check.
+        dir=$(_ghcl_repo_dir "$url")
+        if git clone --quiet "$url" "$dir"; then
+          (( ok++ ))
+          print -r -- "$rec"
+        else
+          (( failed++ ))
+          print -u2 "error: clone failed: $name"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$name" "$owner" failed clone-failed "$default_branch" "$local_branch" "$url"
+        fi
+        ;;
+      pull)
+        # The plan is truth as of the plan. Re-read the branch and never pull
+        # one the plan did not name; a disagreement is a results-only skip, and
+        # not a failure.
+        now=$(git --no-optional-locks -C "$name" symbolic-ref --short -q HEAD 2>/dev/null)
+        if [[ $now != $local_branch ]]; then
+          print -u2 "skip $name: branch moved to ${now:-a detached HEAD}"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$name" "$owner" skip branch-moved "$default_branch" "$now" "$url"
+          continue
+        fi
+        print -u2 "pull $name"
+        if git -C "$name" pull --ff-only --quiet; then
+          (( ok++ ))
+          print -r -- "$rec"
+        else
+          (( failed++ ))
+          print -u2 "error: pull failed: $name"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$name" "$owner" failed pull-failed "$default_branch" "$local_branch" "$url"
+        fi
+        ;;
+      *)
+        print -r -- "$rec"
+        ;;
+    esac
+  done
+
+  print -u2 "done: $ok ok, $failed failed"
+  (( failed == 0 ))
+}
+
+# _ghcl_org_results <results_blob>: the outcome per repo. Deliberately the same
+# renderer as the plan, so the two tables are comparable.
+_ghcl_org_results() {
+  echo ""
+  echo "Results:"
+  _ghcl_org_table "$1"
+  return 0
 }
 
 local org="" dry_run=0 yes=0 json=0 limit=1000
@@ -341,9 +436,6 @@ fi
 
 # --json is a preview format; it never clones or pulls.
 (( json )) && dry_run=1
-
-# Plan-only for now: the execute step lands in the next commit.
-dry_run=1
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "error: gh not found" >&2
@@ -399,5 +491,43 @@ fi
 
 echo "$org -> $PWD"
 _ghcl_org_counts "$plan_blob"
-echo ""
-_ghcl_org_table "$plan_blob"
+
+if (( dry_run )); then
+  echo ""
+  _ghcl_org_table "$plan_blob"
+  return 0
+fi
+
+# Work is clone plus pull. A plan of nothing but skips and orphans needs no
+# permission and no run.
+local -a work=()
+local rec
+local -a fields
+for rec in "${(@f)plan_blob}"; do
+  fields=("${(@ps:\t:)rec}")
+  [[ $fields[3] == clone || $fields[3] == pull ]] && work+=("$rec")
+done
+
+if (( ${#work} == 0 )); then
+  echo ""
+  _ghcl_org_table "$plan_blob"
+  return 0
+fi
+
+# The guard is a summary, not a listing: 91 repos one per line would be
+# scrolled past rather than read. Without a tty it fails closed, because the
+# command is meant to be callable by an agent.
+if (( ! yes )); then
+  if [[ -t 0 && -t 1 ]]; then
+    _ghcl_org_confirm "Sync ${#work} repo(s) into $PWD?" || { echo "Aborted."; return 1 }
+  else
+    print -u2 "error: non-interactive execution requires --yes"
+    return 1
+  fi
+fi
+
+local results_blob
+local failed=0
+results_blob=$(_ghcl_org_execute "$plan_blob") || failed=1
+_ghcl_org_results "$results_blob"
+(( failed == 0 ))
