@@ -2,6 +2,9 @@
 # zsh-only: cd (must run in caller's shell)
 # usage: ghcl [-c|--cd|-n|--no-cd] [owner|owner/repo|url]
 emulate -L zsh
+local _ghcl_common_dir="${${functions_source[ghcl]:-${(%):-%x}}:A:h}"
+# shellcheck disable=SC1090
+source "$_ghcl_common_dir/_ghcl-common"
 
 local do_cd=1
 local arg=""
@@ -44,20 +47,12 @@ done
 local repo
 
 # Direct clone if arg looks like owner/repo or a full clone URL.
-# clone via git so repo access follows the SSH key, not gh's API token
-# (gh-gate readonly PAT may lack a grant); accept owner/repo or a full URL
 if [[ $arg == */* ]]; then
   local clone_url
-  if [[ $arg == *://* || $arg == *@*:* ]]; then
-    clone_url=$arg                                   # full URL - clone as-is
-  else
-    clone_url="git@github.com:${arg%.git}.git"       # owner/repo -> SSH
-  fi
+  clone_url=$(_ghcl_ssh_url "$arg")
   git clone "$clone_url" || return $?
   if (( do_cd )); then
-    local repo_dir="${clone_url:t}"
-    repo_dir="${repo_dir%.git}"
-    cd "$repo_dir" || return 1
+    cd "$(_ghcl_repo_dir "$clone_url")" || return 1
   fi
   return 0
 fi
@@ -92,12 +87,11 @@ if [[ -z $repo ]]; then
   return 0
 fi
 
-# repo is always owner/name (from nameWithOwner) - clone via git+SSH, as above
-local clone_url="git@github.com:${repo%.git}.git"
+# repo is always owner/name (from nameWithOwner)
+local clone_url
+clone_url=$(_ghcl_ssh_url "$repo")
 git clone "$clone_url" || return $?
 
 if (( do_cd )); then
-  local repo_dir="${clone_url:t}"
-  repo_dir="${repo_dir%.git}"
-  cd "$repo_dir" || return 1
+  cd "$(_ghcl_repo_dir "$clone_url")" || return 1
 fi

@@ -1,0 +1,27 @@
+# _ghcl-common: shared helpers for the ghcl clone commands
+# zsh-only: sourced lib, not executed
+
+# _ghcl_ssh_url <owner/repo | owner/repo.git | url>: the URL to clone from.
+#
+# A full URL passes through untouched; a bare owner/repo shorthand is rewritten
+# to SSH. SSH rather than `gh repo clone` so repo access follows the SSH key,
+# not gh's API token - a gh-gate readonly PAT may lack the grant. Order is
+# load-bearing: the URL test must come first, or `git@github.com:owner/repo.git`
+# would be treated as shorthand.
+_ghcl_ssh_url() {
+  local arg=$1
+  if [[ $arg == *://* || $arg == *@*:* ]]; then
+    printf '%s\n' "$arg"
+  else
+    printf '%s\n' "git@github.com:${arg%.git}.git"
+  fi
+}
+
+# _ghcl_repo_dir <url>: the directory `git clone <url>` creates.
+#
+# Both commands must derive this the way git does - ghcl to cd into it, ghcl-org
+# for its flat layout and its `absent` probe.
+_ghcl_repo_dir() {
+  local dir=${1:t}
+  printf '%s\n' "${dir%.git}"
+}
