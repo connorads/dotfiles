@@ -156,9 +156,41 @@ pstate() { tx show-options -pqv -t "$1" @agent_state; }
 
   # State + park: claude gone, thawer re-prints the screen and shows the banner.
   [ "$(pstate "$pane")" = hibernated ]
+  # A non-empty pane title is load-bearing, not decoration: tmux-resurrect's
+  # save parses its dump with `IFS=<tab> read`, so an empty title collapses the
+  # line's fields and the pane saves no command at all.
+  wait_until -d 'tx display-message -p -t "$pane" "#{pane_title}"' \
+    '[ "$(tx display-message -p -t "$pane" "#{pane_title}")" = hibernated ]'
   wait_until -d 'tx capture-pane -p -t "$pane"' \
     'tx capture-pane -p -t "$pane" | grep -q "Enter to thaw"'
   tx capture-pane -p -t "$pane" | grep -q 'MARKER-SCREEN'
+}
+
+@test "hibernate handles a pane launched with no extra flags" {
+  # `claude --resume <sid>` strips to an empty flag set, which fed jq -R no
+  # input line at all - the record write then died on an empty --argjson.
+  # Observed on a real restored pane, so the record is []-not-crash.
+  ln -sf "$BASH5" "$TEST_BIN/claude"
+  write_boot
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  # The idle script alone: bash needs an argument to stay alive, and the CLI's
+  # own resume flags are exactly what the filter strips.
+  write_executable "$BATS_TEST_TMPDIR/boot-bare.sh" <<'EOF'
+#!/bin/sh
+mkdir -p "$CLAUDE_REG_DIR"
+printf '{"sessionId":"%s","cwd":"%s"}\n' "$SID" "$PWD" >"$CLAUDE_REG_DIR/$$.json"
+exec claude "$IDLE" --resume old-session-id
+EOF
+  tx respawn-pane -k -t "$pane" -c "$PROJ" \
+    -e SID=sid-test -e IDLE="$IDLE" -e CLAUDE_REG_DIR="$HOME/.claude/sessions" \
+    "$BATS_TEST_TMPDIR/boot-bare.sh"
+  wait_until '[ "$(tx display-message -p -t "$pane" "#{pane_current_command}")" = "$FAKE_COMM" ]'
+  tx set-option -p -t "$pane" @agent_state idle
+
+  run "$SCRIPT" hibernate "$pane"
+  [ "$status" -eq 0 ]
+  # The stale resume state is stripped; only the script path remains.
+  [ "$(jq -c '.flags' "$(record)")" = "[\"$IDLE\"]" ]
 }
 
 @test "hibernate records the pane's ccp account (CLAUDE_CONFIG_DIR)" {

@@ -100,9 +100,19 @@ unread)
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 clear)
-	tmux set-option -pu -t "$pane" @agent_state 2>/dev/null || true
-	tmux set-option -pu -t "$pane" @agent_kind 2>/dev/null || true
-	tmux set-option -pu -t "$pane" @agent_name 2>/dev/null || true
+	# A hibernated pane keeps its dot: the state is owned by the hibernate
+	# subsystem, not by the agent, and the agent being gone is the whole point.
+	# Load-bearing against a real race - killing claude fires its own SessionEnd
+	# hook, which arrives while the pane is being parked (observed one second
+	# before park re-armed the state), and a lost dot would strand the parked
+	# pane's entry out of the resurrect save.
+	if [ "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" = hibernated ]; then
+		journal=0
+	else
+		tmux set-option -pu -t "$pane" @agent_state 2>/dev/null || true
+		tmux set-option -pu -t "$pane" @agent_kind 2>/dev/null || true
+		tmux set-option -pu -t "$pane" @agent_name 2>/dev/null || true
+	fi
 	;;
 name)
 	agent_name=${2:-}

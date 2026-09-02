@@ -276,7 +276,11 @@ cmd_hibernate() {
 			>"$STATE_DIR/$sid.screen.txt" || true
 
 	local flags_json tmp="$STATE_DIR/$sid.json.tmp.$$"
-	flags_json=$(printf '%s' "$flags_str" | jq -R 'split(" ") | map(select(length > 0))')
+	# Slurped (-s): a pane launched with no extra flags (`claude --resume <sid>`,
+	# which strips to nothing) gives jq -R no input line at all, so it emits
+	# nothing and --argjson below is handed an empty string.
+	flags_json=$(printf '%s' "$flags_str" |
+		jq -R -s 'split("\n") | map(split(" ")[]?) | map(select(length > 0))')
 	if ! jq -n \
 		--arg sid "$sid" --arg pane "$pane" --arg key "$pane_key" \
 		--arg cwd "$cwd" --arg config_dir "$config_dir" --arg name "$name" \
@@ -373,6 +377,13 @@ cmd_park() {
 
 	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" hibernated claude </dev/null || true
 
+	# Title via OSC 2, and it is not decoration: tmux-resurrect's save.sh parses
+	# its own dump with `IFS=<tab> read`, and TAB is IFS whitespace, so a pane
+	# with an EMPTY title collapses that line's fields - the pid lands in the
+	# title slot and the pane saves no command at all. respawn-pane leaves the
+	# title empty, so park sets one. OSC 2 rather than `select-pane -T`, which
+	# would also move the active pane.
+	printf '\033]2;hibernated\007'
 	printf '\033[2J\033[H'
 	[ -f "$STATE_DIR/$sid.screen.txt" ] && cat "$STATE_DIR/$sid.screen.txt"
 	printf '\n\033[2mhibernated: %s (idle %s, freed %s MB) - Enter to thaw\033[0m\n' \

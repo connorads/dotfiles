@@ -84,6 +84,22 @@ large_hook_payload() {
   [ -z "$(sstate s)" ]
 }
 
+@test "clear leaves a hibernated pane parked (the dying agent's SessionEnd race)" {
+  # Killing claude fires its own SessionEnd hook, which lands while the pane is
+  # being parked - it must not erase the state the hibernate subsystem owns, or
+  # the parked pane drops out of the resurrect save.
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" hibernated claude
+  ason "$pane" clear
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = hibernated ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = claude ]
+  # Any other state clears as before.
+  ason "$pane" idle
+  ason "$pane" clear
+  [ -z "$(pstate "$pane")" ]
+}
+
 @test "agent kind is recorded when supplied" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   ason "$pane" working claude
