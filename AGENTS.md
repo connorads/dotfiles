@@ -267,6 +267,8 @@ agent wait <target> [--for s,s] [--timeout n]  # block until @agent_state reache
 agent prompt <target> <text> [--force]         # paste prompt + Enter, verify the agent starts
 agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
 agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
+agent hibernate [<target>] [--force]  # kill an idle Claude pane to reclaim RAM/swap and park a thawer in it; the conversation resumes in full on thaw. Only idle/done go without --force (refusal = exit 6)
+agent thaw [<target>]  # resume a hibernated pane; bare = pick from parked panes plus orphaned records (a lost pane never strands its session)
 atp [--host H] [--with-tree] [--window|--copy]  # teleport a live Claude/Codex session to another host: fork under a fresh id, ship over ssh, resume there; --with-tree also ships the working tree as a git bundle into a fresh worktree (tmux: prefix + Alt+t; alias for agent-teleport)
 handoff --from claude --to codex <SESSION_ID>  # translate a session into the other agent's store and open it there (--no-open to translate only; both directions; also inspect/import/export/convert subcommands)
 shotpath [host]        # save clipboard image locally or upload to host, then copy resulting path to clipboard

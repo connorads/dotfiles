@@ -31,10 +31,19 @@ across its panes:
 | `◐` peach | working | agent mid-turn |
 | `●` blue | done | finished, unseen |
 | `○` green | idle | seen, at rest |
+| `◌` dim grey | hibernated | killed to free memory; Enter in the pane resumes the conversation |
 
 Shape encodes state as well as colour, so the legend survives a colour
 clash and colour-blindness. The bell rings only for *blocked* - the one
 state where minutes of latency are pure waste.
+
+*Hibernated* is the one state I set by hand. Fifty-odd idle Claude panes on
+a 16 GB machine is gigabytes of leaked memory and a swap file at 91%, so
+`agent hibernate` kills the process and parks a placeholder in the pane.
+The conversation is the transcript on disk, not the process, so Enter
+resumes it in full - same account, same launch flags, same window. Stopping
+the process instead would free nothing: a stopped process keeps every page
+it has mapped.
 
 The semantics are an email inbox. *Done* stays blue until I actually look
 at it: focusing the window marks it read and the dot ages to idle. If I was
