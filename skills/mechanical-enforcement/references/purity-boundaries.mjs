@@ -4,8 +4,9 @@
 // The key nuance: `no-restricted-globals` (and Biome's `noRestrictedGlobals`)
 // only ban BARE identifiers — they cannot see member expressions, so
 // `Date.now()`, `Math.random()`, and `process.env.X` sail straight through.
-// `no-restricted-properties` is the rule that catches them, and it has no
-// Biome equivalent — this is one of the genuine ESLint hold-outs.
+// `no-restricted-properties` is the rule that catches them. It has no Biome
+// equivalent; oxlint ships it natively (verified 2026-09-02 against 1.80), so
+// this ESLint form is for repos that carry an ESLint layer anyway.
 
 export default [
   {

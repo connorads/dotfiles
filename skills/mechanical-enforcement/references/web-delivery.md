@@ -46,7 +46,7 @@ Two gates, chosen by what the repo already has:
 | No e2e suite; gate a URL list or sitemap | **pa11y-ci** | Reads `.pa11yci`; exits code 2 when errors exceed `threshold` (default 0). Runs its own headless Chrome via Puppeteer. |
 
 ```js
-// @axe-core/playwright — bundles axe-core (~4.12.x); only peer dep is playwright-core
+// @axe-core/playwright - bundles axe-core (~4.12.x); only peer dep is playwright-core
 import AxeBuilder from '@axe-core/playwright'; // default export; { AxeBuilder } also works
 const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 expect(results.violations).toEqual([]); // a violation fails the test → non-zero exit
@@ -62,7 +62,7 @@ expect(results.violations).toEqual([]); // a violation fails the test → non-ze
   },
   "urls": ["https://localhost:3000/", "https://localhost:3000/about"]
 }
-// Sitemaps are NOT a urls entry — pass on the CLI: `pa11y-ci --sitemap https://…/sitemap.xml`
+// Sitemaps are NOT a urls entry - pass on the CLI: `pa11y-ci --sitemap https://…/sitemap.xml`
 // (a --sitemap run ignores the urls property entirely).
 ```
 
@@ -96,7 +96,8 @@ Add `--max-warnings 0` to also fail on warnings.
 
 - **It does not enforce `<html lang>`.** `html-has-lang` / `valid-lang` are
   *axe* rule ids, not html-validate rules - configuring them fails html-validate's
-  schema validation. Lang enforcement belongs to the runtime a11y gate above.
+  schema validation. Lang enforcement belongs to the axe / pa11y runtime a11y
+  gate above.
 - **Aggressive Node floor**: `engines` is `^22.22.0 || >= 24.8.0`; older Node
   refuses to install.
 

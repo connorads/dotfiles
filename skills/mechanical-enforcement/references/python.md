@@ -6,6 +6,7 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`.
 
 ## Contents
 
+- [Picks](#picks)
 - [Ruff format + lint](#ruff-format--lint)
 - [Type checking](#type-checking)
 - [Complexity](#complexity)
@@ -18,6 +19,8 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`.
 - [Gate integrity](#gate-integrity)
 - [Maintenance posture](#maintenance-posture)
 
+## Picks
+
 One owner per job: Ruff for per-file lint and the attribute-level effect bans in
 the pure core, import-linter for the module graph, ast-grep for every other
 scoped or call-shaped rule, basedpyright for the type contract. Idiom belongs to
@@ -27,6 +30,31 @@ dependency audits to `supply-chain-hardening`. Drop-ins:
 `references/python-purity.toml`, `references/python-ast-grep.yml`,
 `references/python-pytest.toml`, `references/python-deptry.toml`,
 `references/python-vulture.toml`, `references/python-import-linter.toml`.
+
+Take the first tool named for a job and reach past it only when that tool
+cannot express the rule. Ruff replaces Black, isort, Flake8 and most of Pylint,
+but not `R0801` duplicate-code (a cross-file pass its per-file parallel model
+cannot do), `R0902` too-many-instance-attributes, or `C0302` too-many-lines,
+declined upstream as incompatible with the formatter -
+[Complexity](#complexity) names the fallbacks, and complexipy covers cognitive
+complexity because Ruff has no rule for it. basedpyright `recommended` is the
+blocking type gate; pyrefly (Rust) is the edit-time pre-filter for speed,
+always `-c` with `preset = "strict"`; ty is a watch at 0.0.x -
+[Type checking](#type-checking). deptry is the declared-versus-imported half of
+what knip and cargo-machete do elsewhere, vulture at `min_confidence = 100`
+the unreachable-code half; tach is opt-in for `[[interfaces]]` alone -
+[Boundaries](#boundaries). Every gate here fails open in some configuration -
+[Gate integrity](#gate-integrity).
+
+The typical hook-tier mapping:
+
+```text
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, ruff check --fix, ruff format
+tier 2 (lint/gate)      → ruff check (incl. TID251 purity bans), ast-grep scan, lint-imports (no filenames, --no-cache), validate-pyproject[all], uv lock --check, gitleaks, yamllint, check-merge-conflict
+tier 3 (typecheck)      → basedpyright recommended (the gate); pyrefly -c + strict as the edit-time pre-filter
+tier 4 (deps/dead code/test) → deptry (inside the project env), vulture at min_confidence=100 after baseline cleanup, pytest -c pyproject.toml with the strict block (`references/python-pytest.toml`)
+CI / pre-push            → griffe check, basedpyright --verifytypes, check-wheel-contents, check-manifest, twine check --strict, clean-venv smoke import, uv audit, licensecheck --zero, opengrep --error
+```
 
 ## Ruff format + lint
 

@@ -9,6 +9,7 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 
 ## Contents
 
+- [Picks](#picks)
 - [Type safety](#type-safety)
 - [Type checking](#type-checking)
 - [Error handling](#error-handling)
@@ -22,6 +23,45 @@ rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 - [Library publishing (publint + attw)](#library-publishing-publint--attw)
 - [Asserting on shipped artifacts](#asserting-on-shipped-artifacts)
 - [Testing](#testing)
+
+## Picks
+
+A TypeScript **app** (React / Next) and a **library / node** package share
+one core toolchain and differ only in the *also* tier.
+
+| Concern | Pick | Why |
+|---|---|---|
+| Formatter | oxfmt, Biome the stable fallback, both via [Ultracite](https://www.ultracite.ai/) (`ultracite init --linter oxlint` / `biome`) | See [Formatting](#formatting-oxfmt-with-biome-as-the-stable-fallback). |
+| Primary linter | Biome, with the all-oxc stack (oxlint + oxfmt) the recommended provider | Ultracite is the default for a new project; raw Biome only where Ultracite has no support for the framework. |
+| Type-check | `tsc --noEmit` strict, with `tsgo` as the fast local check | See [Type checking](#type-checking). |
+| Framework SFCs (`.astro` / `.vue` / `.svelte`) | No pick of their own | See [Framework single-file components](#framework-single-file-components-astro--vue--svelte). |
+
+Reach for the *also* tier only when the primary cannot express the rule:
+
+- **oxlint** (Rust) for the rules it owns natively - `no-console`,
+  `typescript/no-explicit-any`, `typescript/no-non-null-assertion`,
+  `no-restricted-imports`, `no-restricted-properties`, `jsx-a11y`,
+  `import/no-cycle` - though not `no-restricted-syntax` (verified 2026-09-02
+  against oxlint 1.80, see [What Biome 2.x covers](#what-biome-2x-covers-and-the-eslint-hold-outs)).
+  A library skips ESLint entirely: oxlint covers most boundary rules, and the
+  rest is the framework-plugin tier only an app needs.
+- **dependency-cruiser** for the transitive graph boundaries a per-file rule
+  cannot see - see `references/architecture-boundaries.md`.
+- **ESLint** flat config for the hold-outs only: import-type boundaries and the
+  framework plugins (next, storybook).
+- **knip** for dead code and unused dependencies - see [Dead code (knip)](#dead-code-knip).
+- **publint + attw** as a library's post-build publish gate - see
+  [Library publishing (publint + attw)](#library-publishing-publint--attw).
+
+The tiers a TypeScript repo wires these into, per the `hk` skill:
+
+```text
+tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, oxfmt (or biome fix)
+tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline + actionlint (hk builtin) (glob: .github/workflows/*.{yml,yaml} + action.yml)
+tier 3 (typecheck)      → tsc --noEmit strict (TS 6, authoritative) + tsgo --noEmit (TS 7, fast local gate)
+tier 4 (test)           → vitest run --coverage
+commit-msg              → commitlint
+```
 
 ## Type safety
 
@@ -76,10 +116,11 @@ format-only - no integrated lint+format advantage - so the faster formatter
 wins.
 
 Why oxfmt: it passes 100% of Prettier's JS/TS conformance tests, runs ~30×
-faster than Prettier and ~3× faster than Biome, formats ~20 file types, is
-adopted by vuejs/core, turborepo and sentry-javascript, and sits under
-VoidZero (acquired by Cloudflare; projects stay MIT under a neutrality
-pledge). `oxfmt --migrate=prettier` / `--migrate=biome` converts existing
+faster than Prettier and ~3× faster than Biome, and formats ~20 file types -
+Markdown and YAML among them, so an oxc-stack repo needs no separate formatter
+for either. It is adopted by vuejs/core, turborepo and sentry-javascript, and
+sits under VoidZero (acquired by Cloudflare; projects stay MIT under a
+neutrality pledge). `oxfmt --migrate=prettier` / `--migrate=biome` converts existing
 config, making the switch near-zero.
 
 It is pre-1.0 (check the oxfmt releases page for current status), so Biome via Ultracite
@@ -89,9 +130,9 @@ land the reformat as an isolated commit.
 
 ## What Biome 2.x covers (and the ESLint hold-outs)
 
-Biome 2.x (pin `$schema` to your installed release) has absorbed much of what
-an ESLint flat config was once needed for. Move those rules
-into `biome.json` and keep ESLint only for what genuinely remains.
+Biome 2.x (pin `$schema` to your installed release) covers much of what would
+otherwise need an ESLint flat config. Put those rules in `biome.json` and keep
+ESLint only for what genuinely remains.
 
 | Capability | Biome rule | Status | Replaces |
 |---|---|---|---|
@@ -104,7 +145,7 @@ into `biome.json` and keep ESLint only for what genuinely remains.
 Genuine ESLint hold-outs - keep ESLint for these:
 
 - **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
-- **Member-expression bans.** Biome has no `no-restricted-properties` equivalent, and oxlint (as of 1.74) doesn't ship `no-restricted-syntax` natively - the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`); it needs the alpha `oxlint-plugin-eslint` JS plugin. So `Date.now` / `Math.random` / `process.env` purity bans stay in ESLint, or ride a greppable grep-then-`exit 1` hk step (the zero-dependency route - see Greppable invariants / Purity in `references/architecture-boundaries.md`). Note `no-restricted-imports` *is* native in oxlint; only the syntax/member-expression variant is not.
+- **Syntactic selectors.** oxlint does not ship `no-restricted-syntax` natively - the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`) and lints nothing, so a rule that genuinely needs an AST selector wants ESLint, the alpha `oxlint-plugin-eslint` JS plugin, or a greppable grep-then-`exit 1` hk step (the zero-dependency route - see Greppable invariants / Purity in `references/architecture-boundaries.md`). **Member-expression bans are not in this class**: Biome has no `no-restricted-properties` equivalent but oxlint ships one natively, so `Date.now` / `Math.random` / `process.env` purity bans need neither ESLint nor a grep step - `no-restricted-properties: ["error", { object: "Date", property: "now", message: "inject the clock" }]` reports `'Date.now' is restricted from being used` and exits 1 (verified 2026-09-02 against oxlint 1.80, likewise for `Math.random` and `process.env`). `no-restricted-imports`, `no-restricted-globals`, `no-restricted-exports` and `typescript/no-restricted-types` are native too.
 - **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
 
 GritQL plugins can't be shared across repos (by design), so a reusable
@@ -167,7 +208,7 @@ complexity and duplicate-function detection are the only gaps, and oxlint's
 
 **Every rule below is off until you name it.** They sit in oxlint's `pedantic` /
 `style` / `restriction` categories, so `-D warnings` does not reach them.
-Verified on oxlint 1.77.0: a 5-deep, 5-parameter function produces **no
+Verified 2026-08-28 on oxlint 1.77.0: a 5-deep, 5-parameter function produces **no
 diagnostics at all** on a bare run, and fires the moment the rules are named.
 
 | Rule | Encode with | Prevents | Notes |
@@ -192,7 +233,7 @@ lints nothing. It fails closed, so a hook still blocks - but any wrapper that
 treats "no diagnostics" as success turns it into a silent hole, and a rule
 renamed between minors takes the gate down on upgrade. `unicorn/try-complexity`
 is the live trap: it exists only in `eslint-plugin-unicorn` and oxlint rejects
-it outright (verified on 1.77.0). Assert the step actually emitted diagnostics
+it outright (verified 2026-08-28 on 1.77.0). Assert the step actually emitted diagnostics
 on a known-bad fixture, not merely that it exited non-zero.
 
 **`jsPlugins` caveats.** Alpha, no type-aware rules, and no custom parsers - so
@@ -214,7 +255,7 @@ yourself.
 
 **The Biome route has three holes**, if the repo is on Biome rather than oxlint:
 no cyclomatic rule, no `max-depth`, and no `max-statements` - verified absent
-from the full rule list at 2.5.11, so only oxlint or ESLint can supply them.
+from the full rule list at 2.5.11 on 2026-08-28, so only oxlint or ESLint can supply them.
 What Biome does have is a native port of the same S3776 cognitive metric.
 Watch three traps:
 

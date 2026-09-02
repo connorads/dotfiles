@@ -237,7 +237,7 @@ ast-grep matches a single syntactic pattern; taint/injection, cross-function, an
 "tainted input reaches this sink" rules need dataflow the pattern engines can't
 express. [Opengrep](https://github.com/opengrep/opengrep) - the OSS Semgrep fork
 (engine LGPL-2.1) that a consortium spun up after Semgrep relicensed
-`semgrep-rules` in December 2024 and moved CE engine features behind its
+`semgrep-rules` in December 2024 and put CE engine features behind its
 commercial licence - runs Semgrep-format YAML (taint mode, cross-file) and emits
 SARIF, polyglot across 20+ languages from one binary. Gate with
 `opengrep scan --config <dir> --error`; **the default exit code is 0 even with
@@ -247,7 +247,8 @@ gitleaks (secrets) and the fixed-ruleset language linters: this is the tier for
 custom bug-class rules no off-the-shelf linter encodes. Reach for ast-grep first
 for syntactic rules (faster, lighter pre-commit); escalate to Opengrep when the
 rule is a dataflow or security property. `severity: ERROR` in a rule doesn't
-change the CLI exit on its own - `--error` is what fails the build.
+change the CLI exit on its own. The authoring workflow for a new bug-class rule
+is `SKILL.md` (Adding a new rule).
 
 ## Purity: keeping the functional core pure
 
@@ -258,9 +259,11 @@ but the obvious rules don't work: `no-restricted-globals` and Biome's
 `Math.random()`, and `process.env.X` (member expressions) sail straight
 through. What works:
 
-- **ESLint `no-restricted-properties`**, scoped to the pure layer
-  (`files: ["src/domain/**"]`) - the rule that actually catches
-  member-expression effects. No Biome equivalent; a genuine ESLint hold-out.
+- **`no-restricted-properties`**, scoped to the pure layer - the rule that
+  actually catches member-expression effects. Native in oxlint (verified
+  2026-09-02 against 1.80: `{ object: "Date", property: "now" }` reports
+  `'Date.now' is restricted from being used` and exits 1) and in ESLint
+  (`files: ["src/domain/**"]`); Biome has no equivalent.
 - **`no-restricted-imports` patterns** for IO modules (`node:fs`, `node:http`,
   infra directories) in the same scoped block, with `allowTypeImports` for port
   types.
