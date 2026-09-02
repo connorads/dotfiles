@@ -14,8 +14,8 @@ source "$_ghcl_common_dir/_ghcl-common"
 
 # Records are 7 tab-separated fields, fixed order:
 #   1 repo  2 owner  3 action  4 reason  5 default_branch  6 local_branch  7 url
-# owner is empty iff action is `orphaned`; reason is non-empty iff action is
-# `skip`. No field can hold a tab or newline - GitHub names are [A-Za-z0-9._-]
+# owner is empty iff action is `orphaned`; reason is non-empty for `skip` and
+# `exclude`. No field can hold a tab or newline - GitHub names are [A-Za-z0-9._-]
 # and git refs forbid whitespace and control characters - so there is no quoting
 # layer and none should be added.
 #
@@ -87,23 +87,31 @@ _ghcl_org_sso_hint() {
   return 0
 }
 
-# _ghcl_org_select <raw_blob>: PURE. Drops archived repos and forks, keeps
-# public and private alike, and emits `name<TAB>owner<TAB>default_branch`
-# sorted by name so the table and the plan/results comparison are stable.
+# _ghcl_org_select <raw_blob>: PURE. Classifies archived repos and forks as
+# exclusions, keeps public and private alike, and emits
+# `name<TAB>owner<TAB>default_branch<TAB>exclusion_reason` sorted by name so
+# the table and the plan/results comparison are stable.
 _ghcl_org_select() {
   local -a rows=()
   [[ -n $1 ]] && rows=("${(@f)1}")
 
   local -a kept=()
-  local row name owner_repo default_branch archived fork
+  local row name owner_repo default_branch archived fork exclusion_reason
   local -a f
   for row in "${rows[@]}"; do
     f=("${(@ps:\t:)row}")
     name=$f[1] owner_repo=$f[2] default_branch=$f[3] archived=$f[4] fork=$f[5]
     [[ -n $name ]] || continue
-    [[ $archived == true ]] && continue
-    [[ $fork == true ]] && continue
-    kept+=("$name"$'\t'"${owner_repo%%/*}"$'\t'"$default_branch")
+    if [[ $archived == true && $fork == true ]]; then
+      exclusion_reason=archived-fork
+    elif [[ $archived == true ]]; then
+      exclusion_reason=archived
+    elif [[ $fork == true ]]; then
+      exclusion_reason=fork
+    else
+      exclusion_reason=""
+    fi
+    kept+=("$name"$'\t'"${owner_repo%%/*}"$'\t'"$default_branch"$'\t'"$exclusion_reason")
   done
 
   (( ${#kept} )) || return 0
@@ -195,16 +203,19 @@ _ghcl_org_plan() {
 
   # The decision cascade: seven mutually exclusive arms, in this order.
   local -A listed
-  local name owner default_branch state local_branch action reason url
+  local name owner default_branch exclusion_reason state local_branch action reason url
   for row in "${selected[@]}"; do
     f=("${(@ps:\t:)row}")
-    name=$f[1] owner=$f[2] default_branch=$f[3]
+    name=$f[1] owner=$f[2] default_branch=$f[3] exclusion_reason=$f[4]
     listed[$name]=1
     state=${obs_state[$name]:-absent}
     local_branch=${obs_branch[$name]:-}
     reason=""
 
-    if [[ -z $default_branch ]]; then
+    if [[ -n $exclusion_reason ]]; then
+      action=exclude reason=$exclusion_reason
+      local_branch=""
+    elif [[ -z $default_branch ]]; then
       action=skip reason=empty                      # tested first: never cloned
     elif [[ $state == absent ]]; then
       action=clone
@@ -253,24 +264,35 @@ _ghcl_org_counts() {
   local -a records=()
   [[ -n $1 ]] && records=("${(@f)1}")
 
-  local -A n_action n_reason
+  local -A n_action n_skip_reason n_exclude_reason
+  local listed=0
   local rec action reason
   local -a f
   for rec in "${records[@]}"; do
     f=("${(@ps:\t:)rec}")
     action=$f[3] reason=$f[4]
     (( n_action[$action]++ ))
-    [[ $action == skip && -n $reason ]] && (( n_reason[$reason]++ ))
+    [[ $action != orphaned ]] && (( listed++ ))
+    [[ $action == skip && -n $reason ]] && (( n_skip_reason[$reason]++ ))
+    [[ $action == exclude && -n $reason ]] && (( n_exclude_reason[$reason]++ ))
   done
 
-  local a
-  for a in clone pull skip orphaned failed; do
+  printf '  %-9s %4d\n' listed "$listed"
+
+  local a reason_name
+  local -a parts
+  for a in clone pull skip exclude orphaned failed; do
     (( ${n_action[$a]:-0} )) || continue
-    if [[ $a == skip && ${#n_reason} -gt 0 ]]; then
-      local -a parts=()
-      local r
-      for r in ${(ko)n_reason}; do
-        parts+=("$r ${n_reason[$r]}")
+    if [[ $a == skip && ${#n_skip_reason} -gt 0 ]]; then
+      parts=()
+      for reason_name in ${(ko)n_skip_reason}; do
+        parts+=("$reason_name ${n_skip_reason[$reason_name]}")
+      done
+      printf '  %-9s %4d  (%s)\n' "$a" "${n_action[$a]:-0}" "${(j:, :)parts}"
+    elif [[ $a == exclude && ${#n_exclude_reason} -gt 0 ]]; then
+      parts=()
+      for reason_name in ${(ko)n_exclude_reason}; do
+        parts+=("$reason_name ${n_exclude_reason[$reason_name]}")
       done
       printf '  %-9s %4d  (%s)\n' "$a" "${n_action[$a]:-0}" "${(j:, :)parts}"
     else
@@ -489,13 +511,23 @@ cwd_blob=$(_ghcl_org_scan_cwd)
 # probe_names is the UNION of listed repo names and cwd directory names. The
 # union is what makes `orphaned` computable inside a pure plan, and a name
 # collision with a plain directory a plan-time fact rather than a clone-time
-# surprise.
+# surprise. Exclusions are already fully decided from the GitHub listing, so
+# they need no local git probe even when a matching directory exists.
 local -a probe_names=()
+local -A excluded_names
 local row
+local -a selected_fields
 [[ -n $selected_blob ]] && for row in "${(@f)selected_blob}"; do
-  probe_names+=("${row%%$'\t'*}")
+  selected_fields=("${(@ps:\t:)row}")
+  if [[ -n $selected_fields[4] ]]; then
+    excluded_names[$selected_fields[1]]=1
+  else
+    probe_names+=("$selected_fields[1]")
+  fi
 done
-[[ -n $cwd_blob ]] && probe_names+=("${(@f)cwd_blob}")
+[[ -n $cwd_blob ]] && for row in "${(@f)cwd_blob}"; do
+  [[ -n ${excluded_names[$row]:-} ]] || probe_names+=("$row")
+done
 probe_names=("${(@u)probe_names}")
 
 observed_blob=""
