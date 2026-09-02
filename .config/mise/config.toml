@@ -104,6 +104,7 @@ fnox = "1"
 # age gate — is the supply-chain control here. Keep these exact/known-good.
 "aqua:anomalyco/opencode" = "1"
 "aqua:google/osv-scanner" = "2"
+"aqua:lindell/multi-gitter" = "0.63"
 # shenwei356/rush: parallel dispatcher for `bats --jobs` (lighter than GNU parallel)
 "aqua:shenwei356/rush" = "0"
 

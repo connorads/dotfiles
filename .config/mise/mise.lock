@@ -76,6 +76,25 @@ url_api = "https://api.github.com/repos/google/osv-scanner/releases/assets/51761
 [tools."aqua:google/osv-scanner"."platforms.macos-arm64".provenance.slsa]
 url = "https://github.com/google/osv-scanner/releases/download/v2.5.1/multiple.intoto.jsonl"
 
+[[tools."aqua:lindell/multi-gitter"]]
+version = "0.63.1"
+backend = "aqua:lindell/multi-gitter"
+
+[tools."aqua:lindell/multi-gitter"."platforms.linux-arm64"]
+checksum = "sha256:f4afde8bf0ab46a433901615e579f3c139ee0347162d615399d4e805e622c1ea"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Linux_ARM64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833835"
+
+[tools."aqua:lindell/multi-gitter"."platforms.linux-x64"]
+checksum = "sha256:94711a96c75975be9cfd9f3bd1d94a371b85716ac40be35f50b7b4cd271caf8d"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833834"
+
+[tools."aqua:lindell/multi-gitter"."platforms.macos-arm64"]
+checksum = "sha256:df3ea56fe2fb5684a4634e00de3c69082a64b09fd68a7cf1c4169ebab92de49b"
+url = "https://github.com/lindell/multi-gitter/releases/download/v0.63.1/multi-gitter_0.63.1_Darwin_ARM64.tar.gz"
+url_api = "https://api.github.com/repos/lindell/multi-gitter/releases/assets/416833832"
+
 [[tools."aqua:shenwei356/rush"]]
 version = "0.9.0"
 backend = "aqua:shenwei356/rush"
