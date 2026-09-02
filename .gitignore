@@ -164,6 +164,7 @@
 !/src/handoff/**
 /src/handoff/.venv/
 /src/handoff/.pytest_cache/
+/src/handoff/.import_linter_cache/
 /src/handoff/**/__pycache__/
 
 # pin-audit: conditional-pin recheck (bun/TS; zsh wrapper in functions/nix)
