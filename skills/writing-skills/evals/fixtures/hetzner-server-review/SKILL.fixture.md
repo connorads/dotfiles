@@ -11,7 +11,7 @@ Create a small ARM dev server in Hetzner Cloud.
 
 - `hcloud`
 - `jq`
-- `/Users/connorads/bin/hcloud-provision`
+- `/Users/alice/bin/hcloud-provision`
 
 ## Defaults
 
@@ -26,7 +26,7 @@ Create a small ARM dev server in Hetzner Cloud.
 Run this command:
 
 ```sh
-/Users/connorads/bin/hcloud-provision --type cax33 --image ubuntu-24.04 --location fsn1
+/Users/alice/bin/hcloud-provision --type cax33 --image ubuntu-24.04 --location fsn1
 ```
 
 If the helper is unavailable, use:
