@@ -150,13 +150,14 @@ class Pair:
 
 PAIRS: tuple[Pair, ...] = (
     Pair(step="ts-tests-scoped", source=".hk-hooks/ts-tests.sh", extract="shell_roots"),
+    Pair(step="py-tests-scoped", source=".hk-hooks/py-tests.sh", extract="shell_roots"),
     Pair(step="bats-scoped", source=".hk-hooks/bats-tests.sh", extract="case_arm_roots"),
     Pair(step="fzf-bind-lint", source=".hk-hooks/fzf-bind-lint.py", extract="python_roots"),
 )
 
 
 def shell_roots(text: str) -> list[str]:
-    """`ROOTS="a b c"` in ts-tests.sh."""
+    """`ROOTS="a b c"` in ts-tests.sh and py-tests.sh."""
     m = re.search(r'^ROOTS="([^"]*)"', text, re.MULTILINE)
     return m.group(1).split() if m else []
 
@@ -327,12 +328,18 @@ def check_paths_exist(
 # (c) projects are discovered, not enumerated
 # --------------------------------------------------------------------------
 
+# `py-project` is a packaged project (pyproject.toml: own uv env, test suite,
+# import-linter/deptry config) and gets the py-tests-scoped gate as well as a
+# typecheck step; `py` is a flat script dir whose only manifest is pyrefly.toml
+# and whose tests run from `mise run py-checks`. A root carrying both is a
+# project: the ranking below makes that win regardless of ls-files order.
 MANIFESTS = {
     "package.json": "ts",
     "tsconfig.json": "ts",
-    "pyproject.toml": "py",
+    "pyproject.toml": "py-project",
     "pyrefly.toml": "py",
 }
+_RANK = {"ts": 2, "py-project": 1, "py": 0}
 
 # Third-party and fixture trees are not ours to gate. Mirrors the intent of the
 # filter in mise's `py-checks`, widened to any vendor set: skills are vendored
@@ -352,7 +359,6 @@ UNGATED: dict[str, str] = {
     "src/dotfiles-docs": "Astro site; `astro check` needs the Astro toolchain, not tsc",
     "src/raycast/shotpath": "Raycast extension; typechecked by `ray build` against raycast-env.d.ts",
     "src/raycast/skl": "Raycast extension; typechecked by `ray build` against raycast-env.d.ts",
-    "src/handoff": "stdlib-only Python; tests run in its own uv project env",
 }
 
 
@@ -365,9 +371,10 @@ def discover_projects(tracked: Iterable[str]) -> dict[str, str]:
         if language is None or DISCOVERY_EXCLUDE.search("/" + path):
             continue
         root = path[: -(len(name) + 1)] if "/" in path else "."
-        # A ts manifest wins over a py one only if both are present; neither
-        # happens today, and first-seen is a stable, explainable rule.
-        projects.setdefault(root, language)
+        # Highest-ranked manifest wins when a root carries several (a project
+        # with both pyproject.toml and pyrefly.toml is a py-project).
+        if _RANK[language] > _RANK.get(projects.get(root, ""), -1):
+            projects[root] = language
     return projects
 
 
@@ -403,11 +410,21 @@ def check_projects(
                     f"{root}: TypeScript project has no ts-typecheck-* step"
                     f" (add one, or add the root to gate-coverage.py UNGATED with a reason)"
                 )
-        elif language == "py" and not claimed_by("py-typecheck-", root):
-            errors.append(
-                f"{root}: Python project has no py-typecheck-* step"
-                f" (add one, or add the root to gate-coverage.py UNGATED with a reason)"
-            )
+        elif language in ("py", "py-project"):
+            if language == "py-project":
+                test_step = steps.get("py-tests-scoped")
+                globs = test_step.globs if test_step else ()
+                if not any(overlaps(root, literal_prefix(g)) for g in globs):
+                    errors.append(
+                        f"{root}: Python project not covered by the py-tests-scoped glob"
+                        f" (add it there and to .hk-hooks/py-tests.sh ROOTS, or to"
+                        f" gate-coverage.py UNGATED with a reason)"
+                    )
+            if not claimed_by("py-typecheck-", root):
+                errors.append(
+                    f"{root}: Python project has no py-typecheck-* step"
+                    f" (add one, or add the root to gate-coverage.py UNGATED with a reason)"
+                )
 
     for root in sorted(exempt):
         if root not in projects:
