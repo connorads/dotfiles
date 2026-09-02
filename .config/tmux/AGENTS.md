@@ -452,9 +452,12 @@ scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-
   `agent thaw`'s picker lists and thaws into a fresh window in the recorded cwd.
 - Surfaces: `agent hibernate [target] [--force]` / `agent thaw [target]` (the
   CLI delegates through `AGENT_HIBERNATE_SH` and, as ever, mutates no
-  `@agent_state` itself), two `prefix + T` Tools rows, and items on
-  `prefix + Alt+.` and the right-click pane menu. No key of its own, per the
-  occasional-utility convention.
+  `@agent_state` itself), `prefix + Alt+z` for the current pane,
+  `prefix + Alt+Shift+Z` for the global thaw picker, Enter in a parked pane,
+  and state-aware lifecycle items in the exact pane's right-click menu.
+  [`scripts/agent-hibernate-action.sh`](./scripts/agent-hibernate-action.sh)
+  turns engine output into client-targeted status feedback. Window-tab menus
+  omit lifecycle actions because a window can contain several agent panes.
 
 Tests: [`../zsh/tests/agent-hibernate.bats`](../zsh/tests/agent-hibernate.bats)
 drives a real private server end to end. Its fake claude is a **symlink to a nix
