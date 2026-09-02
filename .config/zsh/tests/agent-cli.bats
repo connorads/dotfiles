@@ -540,6 +540,59 @@ wait_nonshell() {
   [[ "$output" == *"No active agents"* ]]
 }
 
+# --- agent hibernate / thaw ---
+#
+# The engine (agent-hibernate.sh) is covered by agent-hibernate.bats; these
+# assert the CLI's own contract: target resolution, flag pass-through and the
+# refusal code surfacing unchanged.
+
+write_hibernate_recorder() {
+  write_executable "$BATS_TEST_TMPDIR/hib.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$HIB_LOG"
+[ "${HIB_RC:-0}" = 0 ] || { echo "refusing" >&2; exit "$HIB_RC"; }
+EOF
+  export AGENT_HIBERNATE_SH="$BATS_TEST_TMPDIR/hib.sh"
+  export HIB_LOG="$BATS_TEST_TMPDIR/hib.log"
+}
+
+@test "agent hibernate resolves the target and forwards --force" {
+  write_hibernate_recorder
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p1" @agent_state idle
+  tx set-option -p -t "$p1" @agent_name backend
+
+  run_zsh_function "$AGENT" hibernate backend --force
+  [ "$status" -eq 0 ]
+  [ "$(cat "$HIB_LOG")" = "hibernate $p1 --force" ]
+}
+
+@test "agent hibernate defaults to this pane and surfaces the refusal code" {
+  write_hibernate_recorder
+  p1=$(tx display-message -p -t s '#{pane_id}')
+  export HIB_RC=6
+
+  run env TMUX_PANE="$p1" "$(command -v zsh)" --no-rcs "$AGENT" hibernate
+  [ "$status" -eq 6 ]
+  [ "$(cat "$HIB_LOG")" = "hibernate $p1" ]
+}
+
+@test "agent thaw with no target opens the engine's picker" {
+  write_hibernate_recorder
+  run_zsh_function "$AGENT" thaw
+  [ "$status" -eq 0 ]
+  [ "$(cat "$HIB_LOG")" = "thaw" ]
+}
+
+@test "agent thaw passes an unresolvable target through as a session id" {
+  # An orphan record has no live pane, so refusing an unresolvable target here
+  # would make orphans unreachable from the CLI.
+  write_hibernate_recorder
+  run_zsh_function "$AGENT" thaw 3f2a-not-a-pane
+  [ "$status" -eq 0 ]
+  [ "$(cat "$HIB_LOG")" = "thaw 3f2a-not-a-pane" ]
+}
+
 @test "agent rejects an unknown subcommand with exit 2" {
   run_zsh_function "$AGENT" frobnicate
   [ "$status" -eq 2 ]
