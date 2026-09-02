@@ -419,6 +419,53 @@ plan_of() {
   [[ "$output" == *"SSO organisation access"* ]]
 }
 
+@test "an empty listing under a missing SSO grant answers with the grant path" {
+  # `gh repo list` is GraphQL: an ungranted token gets an empty list and exit 0,
+  # not a 403. Reporting "nothing to do" for a 91-repo org is exactly the
+  # mislabel the hint exists to prevent.
+  write_stub gh <<'EOF'
+#!/usr/bin/env bash
+{
+  printf 'gh'
+  for arg in "$@"; do
+    printf ' <%s>' "$arg"
+  done
+  printf '\n'
+} >>"$GH_LOG"
+if [ "$1" = api ]; then
+  echo 'gh: Resource protected by organization SAML enforcement. (HTTP 403)' >&2
+  exit 1
+fi
+exit 0
+EOF
+
+  run_org acme --dry-run
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not SSO-authorised for 'acme'"* ]]
+  [[ "$output" != *"Nothing to do"* ]]
+  grep -Fq 'gh <api> </orgs/acme>' "$GH_LOG"
+}
+
+@test "an org that genuinely has no repos reports nothing to do" {
+  write_stub gh <<'EOF'
+#!/usr/bin/env bash
+{
+  printf 'gh'
+  for arg in "$@"; do
+    printf ' <%s>' "$arg"
+  done
+  printf '\n'
+} >>"$GH_LOG"
+exit 0
+EOF
+
+  run_org acme --dry-run
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Nothing to do"* ]]
+}
+
 @test "a non-SSO gh failure reports plainly" {
   export GH_RC=1
   export GH_STDERR='could not resolve to an Organization'

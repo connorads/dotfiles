@@ -50,16 +50,40 @@ _ghcl_org_list() {
 
   if (( rc != 0 )); then
     [[ -n $err ]] && print -u2 -r -- "$err"
-    if [[ $err == *SAML* || $err == *"single sign-on"* || $err == *SSO* || $err == *403* ]]; then
-      print -u2 "error: gh's token is not SSO-authorised for '$org'"
-      print -u2 "hint: grant it at https://github.com/settings/applications -> GitHub CLI -> SSO organisation access -> $org"
+    if _ghcl_org_is_sso_error "$err"; then
+      _ghcl_org_sso_hint "$org"
     else
       print -u2 "error: unable to list repos for '$org'"
     fi
     return 1
   fi
 
-  [[ -n $out ]] && print -r -- "$out"
+  # An ungranted token does NOT get a 403 here - `gh repo list` is GraphQL, and
+  # it silently filters SAML-protected repos, returning an empty list and exit
+  # 0. Reporting "nothing to do" for a 91-repo org is the exact mislabel the
+  # hint exists to prevent, so an empty listing is discriminated against a REST
+  # call, which does 403. One extra request, only on an already-terminal path.
+  if [[ -z $out ]]; then
+    local probe
+    probe=$(gh api "/orgs/$org" 2>&1 >/dev/null)
+    if _ghcl_org_is_sso_error "$probe"; then
+      _ghcl_org_sso_hint "$org"
+      return 1
+    fi
+    return 0
+  fi
+
+  print -r -- "$out"
+  return 0
+}
+
+_ghcl_org_is_sso_error() {
+  [[ $1 == *SAML* || $1 == *"single sign-on"* || $1 == *SSO* || $1 == *403* ]]
+}
+
+_ghcl_org_sso_hint() {
+  print -u2 "error: gh's token is not SSO-authorised for '$1'"
+  print -u2 "hint: grant it at https://github.com/settings/applications -> GitHub CLI -> SSO organisation access -> $1"
   return 0
 }
 
