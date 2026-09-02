@@ -29,6 +29,7 @@ import re
 import sys
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import Any
 
 # Commands dangerous enough that BOTH tools must deny them. The reason is the
 # standing justification, kept beside the rule so future edits stay honest.
@@ -65,25 +66,25 @@ def normalise_opencode(pattern: str) -> str:
     return pattern.removesuffix("*")
 
 
-def claude_deny_bases(settings: dict) -> set[str]:
+def claude_deny_bases(settings: dict[str, Any]) -> set[str]:
     deny = settings.get("permissions", {}).get("deny", [])
     return {b for e in deny if (b := normalise_claude(e)) is not None}
 
 
-def claude_allow_bases(settings: dict) -> set[str]:
+def claude_allow_bases(settings: dict[str, Any]) -> set[str]:
     allow = settings.get("permissions", {}).get("allow", [])
     return {b for e in allow if (b := normalise_claude(e)) is not None}
 
 
-def _opencode_bash(config: dict) -> dict:
+def _opencode_bash(config: dict[str, Any]) -> dict[str, Any]:
     return config.get("permission", {}).get("bash", {})
 
 
-def opencode_deny_bases(config: dict) -> set[str]:
+def opencode_deny_bases(config: dict[str, Any]) -> set[str]:
     return {normalise_opencode(k) for k, v in _opencode_bash(config).items() if v == "deny"}
 
 
-def opencode_deny_globs(config: dict) -> list[str]:
+def opencode_deny_globs(config: dict[str, Any]) -> list[str]:
     return [k for k, v in _opencode_bash(config).items() if v == "deny"]
 
 
@@ -106,7 +107,7 @@ def check_allow_not_denied(claude_allow: set[str], opencode_deny_glob_list: list
     return errors
 
 
-def check_gh_api_gate(settings: dict, hook_exists: bool) -> list[str]:
+def check_gh_api_gate(settings: dict[str, Any], hook_exists: bool) -> list[str]:
     errors = []
     if not hook_exists:
         errors.append("guard-mutating-api.py hook file is missing")

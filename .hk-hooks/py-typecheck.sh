@@ -19,4 +19,7 @@ if ! runs pyrefly --version; then
 	echo "py-typecheck: skipping $root (pyrefly absent; run 'mise install')" >&2
 	exit 0
 fi
-exec pyrefly check
+# -c is load-bearing: with no config found pyrefly falls back to the `basic`
+# preset, which reports 0 errors on real type errors and exits 0. A missing or
+# renamed pyrefly.toml must be a fatal configuration error, not a green gate.
+exec pyrefly check -c pyrefly.toml

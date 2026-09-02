@@ -31,6 +31,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 # srt paths that are single files: the contents glob (path/**) is meaningless
 # for them, so only the bare deny rule is required. Everything else is treated
@@ -49,7 +50,9 @@ def required_rules(srt_path: str, kind: str) -> list[str]:
     return rules
 
 
-def check_claude_deny(settings: dict, deny_read: list[str], deny_write: list[str]) -> list[str]:
+def check_claude_deny(
+    settings: dict[str, Any], deny_read: list[str], deny_write: list[str]
+) -> list[str]:
     deny = set(settings.get("permissions", {}).get("deny", []))
     errors = []
     for path in deny_read:
@@ -83,7 +86,9 @@ def check_covers(surface: str, covered: set[str], srt_relative: set[str]) -> lis
     return [f"{surface} is missing srt denyRead path {p!r}" for p in sorted(missing)]
 
 
-def check_wiring(settings: dict, codex_hooks: dict, paths: dict[str, Path]) -> list[str]:
+def check_wiring(
+    settings: dict[str, Any], codex_hooks: dict[str, Any], paths: dict[str, Path]
+) -> list[str]:
     errors = []
     claude_wired = any(
         "guard-secret-paths.py" in hook.get("command", "")

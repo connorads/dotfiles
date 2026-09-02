@@ -30,6 +30,7 @@ import argparse
 import json
 import re
 import sys
+from operator import attrgetter
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -116,7 +117,7 @@ def interleave(tracks: list[list[Segment]]) -> list[Segment]:
     rather than shuffling between runs.
     """
     combined = [segment for track in tracks for segment in track]
-    return sorted(combined, key=lambda s: (s.start, s.end))
+    return sorted(combined, key=attrgetter("start", "end"))
 
 
 def merge_gaps(segments: list[Segment], gap_ms: int = DEFAULT_GAP_MS) -> list[Segment]:
@@ -163,7 +164,9 @@ def build(
     timeline = merge_gaps(
         interleave([read_track(me, me_name), read_track(them, them_name)]), gap_ms
     )
-    pairs = parse_vocabulary(vocab.read_text(encoding="utf-8")) if vocab and vocab.is_file() else []
+    pairs: list[tuple[str, str]] = (
+        parse_vocabulary(vocab.read_text(encoding="utf-8")) if vocab and vocab.is_file() else []
+    )
     if pairs:
         timeline = [s._replace(text=apply_vocabulary(s.text, pairs)) for s in timeline]
     return render(timeline)

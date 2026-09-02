@@ -39,6 +39,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from operator import attrgetter
 from pathlib import Path
 
 HK_PKL = "hk.pkl"
@@ -272,7 +273,7 @@ def hk_path_literals(steps: dict[str, Step]) -> list[tuple[str, int, str]]:
     the command, not the glob, so a glob-only sweep would miss them.
     """
     found: list[tuple[str, int, str]] = []
-    for step in sorted(steps.values(), key=lambda s: s.name):
+    for step in sorted(steps.values(), key=attrgetter("name")):
         for pattern in step.globs:
             prefix = literal_prefix(pattern)
             if prefix:

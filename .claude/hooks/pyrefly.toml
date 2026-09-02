@@ -3,7 +3,15 @@
 # _shellparse) resolve - the Python analogue of a per-project tsconfig.json.
 project-includes = ["*.py"]
 project-excludes = ["test_*.py"]  # tests run via pytest, not type-gated (mirrors ts-typecheck)
-# `basic` does gradual typing and skips the bodies of unannotated functions, so
-# green would be shallow. check-and-infer-return-type checks bodies without
-# forcing annotations, making the gate meaningful on untyped code.
-untyped-def-behavior = "check-and-infer-return-type"
+# `strict` is the gate. A config file present here means the preset in effect
+# is `default` (the `basic` fallback only applies when no config is found, and
+# it silences every type diagnostic - which is why py-typecheck.sh passes -c).
+# strict adds implicit-Any reporting: unannotated `dict`, untyped lambda
+# parameters, empty containers. `all` is a moving target (new error kinds land
+# in minor releases at error severity), so name extra kinds under [errors].
+preset = "strict"
+
+[errors]
+# Stale suppressions must expire. strict expires `# pyrefly: ignore[...]` only;
+# mypy-style `# type: ignore[...]` needs this kind spelled out.
+unused-type-ignore = true
