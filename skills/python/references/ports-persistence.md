@@ -46,7 +46,9 @@ declared field names, so a mistyped `APP_HTTP_TIMEOUT` is never seen and
 `request_timeout` silently keeps its default - where the environment is the only
 source, a field with no default is the honest guard. `SecretStr` keeps the
 credential out of `repr()` and `model_dump_json()`; `get_secret_value()` is the
-one unwrap, at the adapter needing it.
+one unwrap, at the adapter needing it. Give a field the domain type wherever the
+value carries a rule - `PostgresDsn`, a parsed `Slug` - rather than a bare
+`str`, so a malformed value fails at startup instead of at first use.
 
 Nothing outside the composition root touches `os.environ` or `os.getenv`;
 `mechanical-enforcement`'s `python-purity.toml` bans both in the core through
