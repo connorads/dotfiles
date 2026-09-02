@@ -180,16 +180,66 @@ plan_of() {
   [ "$(printf '%s' "$output" | jq -r '.[] | select(.repo == "api") | .url')" = "git@github.com:acme/api.git" ]
 }
 
-@test "archived repos and forks are not selected" {
+@test "archived repos and forks are reported as exclusions" {
   rows \
     "$(row api acme/api main)" \
     "$(row arch acme/arch main true false)" \
-    "$(row oldfork acme/oldfork main false true)"
+    "$(row oldfork acme/oldfork main false true)" \
+    "$(row archivedfork acme/archivedfork main true true)"
 
   run_org acme --json
 
   [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | jq -r '[.[].repo] | join(",")')" = "api" ]
+  [ "$(printf '%s' "$output" | jq -r '[.[].repo] | join(",")')" = "api,arch,archivedfork,oldfork" ]
+  [ "$(plan_of arch)" = "$(printf 'exclude\tarchived')" ]
+  [ "$(plan_of oldfork)" = "$(printf 'exclude\tfork')" ]
+  [ "$(plan_of archivedfork)" = "$(printf 'exclude\tarchived-fork')" ]
+  [ "$(printf '%s' "$output" | jq -r '.[] | select(.repo == "arch") | .local_branch')" = "null" ]
+}
+
+@test "the summary reconciles every listed repo" {
+  rows \
+    "$(row api acme/api main)" \
+    "$(row empty acme/empty '')" \
+    "$(row arch acme/arch main true false)" \
+    "$(row oldfork acme/oldfork main false true)" \
+    "$(row archivedfork acme/archivedfork main true true)"
+
+  run_org acme --dry-run
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"listed"*"5"* ]]
+  [[ "$output" == *"clone"*"1"* ]]
+  [[ "$output" == *"skip"*"1"*"empty 1"* ]]
+  [[ "$output" == *"exclude"*"3"*"archived 1"*"archived-fork 1"*"fork 1"* ]]
+  [[ "$output" == *"arch"*"exclude"*"archived"* ]]
+  [[ "$output" == *"oldfork"*"exclude"*"fork"* ]]
+  [[ "$output" != *$'\nr='* ]]
+}
+
+@test "an excluded repo on disk is not probed or reported as orphaned" {
+  make_repo arch main git@github.com:acme/arch.git
+  rows "$(row arch acme/arch main true false)"
+
+  run_org acme --dry-run
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"arch"*"exclude"*"archived"* ]]
+  [[ "$output" != *"orphaned"* ]]
+  ! grep -Fq '<arch>' "$GIT_LOG"
+}
+
+@test "execution reports exclusions without touching them" {
+  rows \
+    "$(row api acme/api main)" \
+    "$(row arch acme/arch main true false)"
+
+  run_org acme --yes
+
+  [ "$status" -eq 0 ]
+  grep -Fq 'git <clone> <--quiet> <git@github.com:acme/api.git> <api>' "$GIT_LOG"
+  ! grep -Fq '<arch>' "$GIT_LOG"
+  [[ "$output" == *"arch"*"exclude"*"archived"* ]]
 }
 
 @test "an empty repo is skipped, not cloned" {
