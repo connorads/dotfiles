@@ -10,8 +10,7 @@ in SKILL.md).
 ## Contents
 
 What this path is · Versions · Scaffold · Why two Workers · Dev and stages ·
-Harden · Verify · Deploy · Traps · Re-evaluate when · Worked examples ·
-Deeper.
+Harden · Verify · Deploy · Traps · Re-evaluate when · Deeper.
 
 ## What this path is
 
@@ -55,8 +54,8 @@ elsewhere: the scaffolder's own `FOLDKIT.md` for Foldkit, the vendored
   than weakening the gate; a freshly published foldkit or effect prerelease
   can be rejected at install for the same reason.
 - **Node.** The alchemy CLI type-strips `alchemy.run.ts` natively, so it
-  needs Node >= 22.18; observed ceiling 25 (Node 26 has no loader story yet,
-  as of gridguess in 2026-07). `mise use node@24 pnpm@11`.
+  needs Node >= 22.18; observed ceiling 25 (Node 26 had no loader story as
+  of 2026-07). `mise use node@24 pnpm@11`.
 
 ## Scaffold
 
@@ -259,7 +258,7 @@ export default {
 
 The obvious shape is one `Website.*` resource whose `main` is the Effect
 Worker class hosting the DOs. It typechecks and `vite build` succeeds, but
-it cannot run under `alchemy dev` (gridguess ADR 0002, beta.63/64): the Vite
+it cannot run under `alchemy dev` (observed 2026-07, beta.63/64): the Vite
 dev path evaluates `main` through the Cloudflare vite plugin's module
 runner inside workerd, which cannot tree-shake, so importing
 `alchemy/Cloudflare` drags in the CLI arms (workerd launcher, rolldown,
@@ -286,10 +285,10 @@ bridge for the Vite main path.
   `dev:`-prefixed resource ids, no cloud calls) - per the beta.76 docs. Note
   the history: at beta.63 (2026-07) dev provisioned real remote resources
   into `dev_$USER`, and sharing that stage with `deploy` produced a
-  service-binding race (gridguess ADR 0003). Defaults today: dev uses
+  service-binding race (observed 2026-07). Defaults today: dev uses
   `dev_$USER`, deploy uses `live_$USER`; pass `--stage prod` for prod.
 - Browser Rendering under dev is a local headless Chrome, not the real
-  service (observed, quibble). Verify capture-style behaviour on a deployed
+  service (observed 2026-08). Verify capture-style behaviour on a deployed
   stage.
 - State lives in the account-wide state store, never in `.alchemy/`
   (gitignored; legacy `--local` inspection only). First run of `deploy`,
@@ -420,19 +419,6 @@ Any of: alchemy 2.0 GA; effect 4.0 GA; foldkit 1.0; alchemy ships an Effect
 bridge for the Vite `main` path (collapse to one Worker); the `ssr`
 template is proven on a Worker here. Re-date the banner at the top with the
 new versions when you do.
-
-## Worked examples on this machine
-
-Local paths, not links - sanitise before this skill is published:
-
-- `~/git/website-comments` (quibble): the complete shape - protocol,
-  backend with DO and RPC middleware, Foldkit SPA, Workers Builds deploy,
-  11 ADRs, `.agents/skills/verify`. Built on beta.72 with `Website.Vite`.
-- `~/git/foldkit-demo` (gridguess): origin of the two-Worker shape (ADR
-  0002) and the stage-isolation finding (ADR 0003).
-- `~/git/alchemy-cf-app`: TanStack Start + Alchemy, the id-collision trap,
-  the `.node-version` trap, the credentials-as-code CI variant (uncommitted
-  ADR 0008).
 
 ## Deeper
 
