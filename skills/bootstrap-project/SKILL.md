@@ -40,6 +40,7 @@ commit discipline - which changes rarely. Churny per-stack knowledge lives in
 | Workers Builds, custom domains, Access | `cloudflare-workers-deployments` | invokes it at the deploy phase |
 | Cloudflare platform wiring + TanStack Start | `references/cloudflare-tanstack-start.md` | reads it when that's the stack |
 | Cloudflare platform wiring + static Astro | `references/cloudflare-astro-static.md` | reads it when that's the stack |
+| Cloudflare platform wiring + the all-Effect stack (Foldkit + Effect Worker + Alchemy) | `references/cloudflare-foldkit-alchemy.md` | reads it when that's the stack |
 
 `mechanical-enforcement` also triggers on "setting up a new project" - the
 split is: it owns *which rules*; this skill owns *when in the sequence* and
@@ -50,7 +51,10 @@ everything that isn't a lint rule.
 Ask only what is hard to reverse, in one round (skip anything the user's
 request already answered):
 
-1. **Stack** - blessed path (Cloudflare) or an entry from the scaffolder table?
+1. **Stack** - one of the two blessed Cloudflare paths (TanStack Start via
+   c3 and wrangler, or the all-Effect stack: Foldkit + Effect Worker +
+   Alchemy) or an entry from the scaffolder table? The Effect path is
+   opt-in by name - it is pre-release end to end.
 2. **Name and location** - default `~/git/<name>`; confirm, don't assume.
 3. **Remote repo** - none / private / public?
 4. **Deploy now** - or stop at a local green repo?
@@ -73,6 +77,7 @@ starting points:
 | Stack | Scaffolder |
 |---|---|
 | Anything on Cloudflare | `pnpm create cloudflare@latest` - read `references/cloudflare-tanstack-start.md` first; for a static-only Astro site c3 is wrong (SSR adapter forced) - read `references/cloudflare-astro-static.md` |
+| Cloudflare, all-Effect (Foldkit + Effect Worker + Alchemy) | `pnpm dlx create-foldkit-app` for `frontend/`, then hand-add the protocol and backend packages and `alchemy.run.ts` - read `references/cloudflare-foldkit-alchemy.md` first; no wrangler config exists on this path |
 | Vite SPA / frontend | `pnpm create vite` |
 | Python | `uv init` |
 | Rust | `cargo new` |
@@ -188,7 +193,10 @@ stage or commit in the dotfiles repo - the user reviews via `dotfiles diff`.
   deferred, not forgotten - it's the fastest-rotting layer and it competes
   with `architecture`/`typescript`. Revisit when a real project has proven a
   pattern worth encoding; it then graduates into a reference file the way
-  Cloudflare did.
+  Cloudflare did, and the all-Effect stack did after two shipped projects.
+  Even then the reference holds repo shape and platform wiring; code idioms
+  route to the framework's own agent docs and the `effect` / `typescript`
+  skills.
 - **Stacks graduate, tables stay stable.** The scaffolder table holds only
   entries stable for years; anything churny earns its own reference file.
 - If a phase proves purely mechanical and identical across runs, extract it
