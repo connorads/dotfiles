@@ -4,7 +4,12 @@
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "PostHog project API keys (phc_...) are public client-side write-only keys, not secrets; vendored skills ship them hardcoded (e.g. media-use telemetry.mjs)"
 regexTarget = "secret"
 regexes = ['''^phc_[A-Za-z0-9]{30,}$''']
+
+[[allowlists]]
+description = "The 0123456789abcdef... counting placeholder upstream docs use as an example id (vendored alchemy docs: accountId in cli/profile)"
+regexTarget = "secret"
+regexes = ['''^(0123456789abcdef){2,}$''']
