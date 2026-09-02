@@ -832,16 +832,22 @@ colour plus glyph plus swap figure or a `▲` pressure-cause marker. Change as a
 - [`scripts/mem-popup.sh`](./scripts/mem-popup.sh) - `prefix + Alt+m` bounded
   triage (top 5 sampled `phys_footprint` apps + 3 agents). `k` chooses a visible
   app then a process before handing to `pclose --pid`; `a`/`g` open scrollable
-  sampled-app/all-agent details; `r` refreshes and `q` closes.
+  sampled-app/all-agent details. `h` opens a multi-select list of idle/done
+  Claude panes, ranked by the largest physical footprint in each pane's process
+  tree. One selection hibernates directly; several require confirmation. Every
+  selected pane is attempted, and one result line reports hibernated, refused
+  and failed counts. `r` refreshes and `q` closes.
 - [`../zsh/functions/macos/memwatch`](../zsh/functions/macos/memwatch) - launchd
   notifier (desktop-only, [`darwin-desktop.nix`](../nix/modules/darwin-desktop.nix)).
   Banners on sustained pressure; log `~/.cache/memwatch.log`. Reload after edits:
   `launchctl kickstart -k "gui/$(id -u)/dev.connorads.memwatch"`.
 
-Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary)
-and the RAM/mem pills in [`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats).
-Keep the gauge legend in [`help.md`](./help.md) in sync with the lib. The popup's
-own awk and the `memwatch` notifier are not yet unit-tested.
+Tests: [`../zsh/tests/mem-lib.bats`](../zsh/tests/mem-lib.bats) (lib vocabulary),
+[`../zsh/tests/mem-popup.bats`](../zsh/tests/mem-popup.bats) (bounded summary and
+hibernate flow), and the RAM/mem pills in
+[`../zsh/tests/status-right.bats`](../zsh/tests/status-right.bats). Keep the
+gauge legend in [`help.md`](./help.md) in sync with the lib. The `memwatch`
+notifier is not yet unit-tested.
 
 ## Resurrect save freshness (custom subsystem)
 

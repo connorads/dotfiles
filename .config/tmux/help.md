@@ -77,7 +77,7 @@
 | `Ctrl+b f` | Fresh editor |
 | `Ctrl+b F` | Fresh help |
 | `Ctrl+b b` | system monitor (bottom) |
-| `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
+| `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `h` multi-selects safe Claude panes to hibernate, `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b Alt+g` → `d` / `u` | gh-dash dashboard · ghui cockpit |
 
 Floats are real panes: persistent, non-modal, mouse-drag to move/resize. Switch
@@ -175,7 +175,9 @@ Right-side gauge (macOS, width ≥ 80). Swap-used is shown - including when
 healthy - so the resting baseline stays visible, *unless* kernel pressure is the
 driver, where a `▲` replaces the figure (swap is fine, look elsewhere). Colour +
 glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
-(swap/RAM, top footprint apps, agents).
+(swap/RAM, top footprint apps, agents). Press `h` to choose one or more
+idle/done Claude panes, ranked by their largest process footprint. One selection
+hibernates directly; several require confirmation and finish with one summary.
 
 | Pill | State | Meaning |
 |------|-------|---------|

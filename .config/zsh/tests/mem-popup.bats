@@ -45,6 +45,15 @@ case "$*" in
 1 100
 OUT
     ;;
+  *'-axo pid=,ppid='*)
+    cat <<'OUT'
+100 1
+101 100
+200 1
+201 200
+300 1
+OUT
+    ;;
   *'-p 1 -o command='*) echo '/Applications/App1.app/Contents/MacOS/App1' ;;
   *'-p 2 -o command='*) echo '/Applications/App2.app/Contents/MacOS/App2' ;;
   *'-p 3 -o command='*) echo '/Applications/App3.app/Contents/MacOS/App3' ;;
@@ -56,7 +65,9 @@ EOF
 
   write_stub tmux <<'EOF'
 #!/usr/bin/env bash
-exit 0
+if [ "$1" = list-panes ]; then
+  printf '%s\n' "${TMUX_PANES:-}"
+fi
 EOF
 }
 
@@ -76,4 +87,46 @@ EOF
   [[ "$output" != *"App1"* ]]
   [[ "$output" == *"[a] all sampled apps"* ]]
   [[ "$output" == *"[k] manage process"* ]]
+  [[ "$output" == *"[h] hibernate agents"* ]]
+}
+
+@test "hibernate candidates include only safe Claude panes and rank by footprint" {
+  export TMUX_PANES=$'idle\tclaude\t\tapi\tdev:1.0\t100\t%10\nworking\tclaude\tbusy\tworker\tdev:2.0\t200\t%20\ndone\tcodex\tother\tweb\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tjobs\tdev:4.0\t200\t%40'
+
+  run "$MEM_POPUP" _hibernate_rows
+
+  [ "$status" -eq 0 ]
+  [ "$output" = $'%40\t201\tbatch\tdone\tdev:4.0\n%10\t101\tapi\tidle\tdev:1.0' ]
+}
+
+@test "batch hibernate confirms multiple panes, continues after refusal, and summarises" {
+  export HIBERNATE_LOG="$BATS_TEST_TMPDIR/hibernate.log"
+  write_executable "$BATS_TEST_TMPDIR/hibernate" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$HIBERNATE_LOG"
+[ "$2" != %20 ] || exit 6
+EOF
+  export AGENT_HIBERNATE_SH="$BATS_TEST_TMPDIR/hibernate"
+
+  run bash -c "printf 'y\\n' | '$MEM_POPUP' _hibernate_apply %10 %20 %30"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$HIBERNATE_LOG")" = $'hibernate %10\nhibernate %20\nhibernate %30' ]
+  [[ "$output" == *"Hibernate 3 Claude panes?"* ]]
+  [[ "$output" == *"2 hibernated, 1 refused, 0 failed"* ]]
+}
+
+@test "single-pane hibernate needs no confirmation" {
+  export HIBERNATE_LOG="$BATS_TEST_TMPDIR/hibernate.log"
+  write_executable "$BATS_TEST_TMPDIR/hibernate" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$HIBERNATE_LOG"
+EOF
+  export AGENT_HIBERNATE_SH="$BATS_TEST_TMPDIR/hibernate"
+
+  run "$MEM_POPUP" _hibernate_apply %10
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Hibernate 1 Claude pane"* ]]
+  [[ "$output" == *"1 hibernated, 0 refused, 0 failed"* ]]
 }

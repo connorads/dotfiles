@@ -7,6 +7,7 @@ set -u
 
 # shellcheck disable=SC1007  # `CDPATH= cd` is the env-prefix idiom
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+AGENT_HIBERNATE_SH=${AGENT_HIBERNATE_SH:-$SELF_DIR/agent-hibernate.sh}
 # shellcheck source=/dev/null
 . "$SELF_DIR/mem-lib.sh"
 # shellcheck source=/dev/null
@@ -63,31 +64,84 @@ vm_stat_mb() {
 }
 
 heaviest_pid_mb() {
-	_best=$(ps -axo pid=,ppid=,rss= | awk -v root="$1" '
-		{ ppid[$1] = $2; rss[$1] = $3 }
+	_pids=$(ps -axo pid=,ppid= | awk -v root="$1" '
+		{ ppid[$1] = $2 }
 		END {
 			desc[root] = 1; changed = 1
 			while (changed) {
 				changed = 0
 				for (p in ppid) if (!(p in desc) && (ppid[p] in desc)) { desc[p] = 1; changed = 1 }
 			}
-			bestpid = ""; bestrss = -1
-			for (p in desc) {
-				if (p == root) continue
-				if (rss[p] > bestrss) { bestrss = rss[p]; bestpid = p }
-			}
-			print bestpid
+			for (p in desc) print p
 		}')
-	[ -n "$_best" ] || {
-		echo 0
-		return
-	}
-	mem_footprint_mb "$_best"
+	_best=0
+	for _pid in $_pids; do
+		_mb=$(mem_footprint_mb "$_pid")
+		[ "$_mb" -gt "$_best" ] 2>/dev/null && _best=$_mb
+	done
+	printf '%s\n' "$_best"
 }
 
 agent_rows() {
 	tmux list-panes -a -F '#{@agent_state}	#{window_name}	#{pane_pid}' 2>/dev/null |
 		awk -F '\t' '$1 != ""'
+}
+
+hibernate_rows() {
+	tmux list-panes -a -F '#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_id}' 2>/dev/null |
+		awk -F '\t' '$1 ~ /^(idle|done)$/ && $2 == "claude" {
+			label = $3 == "" ? $4 : $3
+			print $6 "\t" $7 "\t" label "\t" $1 "\t" $5
+		}' |
+		while IFS="$(printf '\t')" read -r _ppid _pane _label _state _loc; do
+			[ -n "$_pane" ] || continue
+			printf '%s\t%s\t%s\t%s\t%s\n' \
+				"$_pane" "$(heaviest_pid_mb "$_ppid")" "$_label" "$_state" "$_loc"
+		done | sort -t "$(printf '\t')" -k2,2nr
+}
+
+hibernate_apply() {
+	_count=$#
+	[ "$_count" -gt 0 ] || return 0
+	if [ "$_count" -gt 1 ]; then
+		printf 'Hibernate %s Claude panes? [y/N] ' "$_count"
+		IFS= read -r _answer || _answer=""
+		case "$_answer" in y | Y | yes | YES) ;; *)
+			printf 'Cancelled.\n'
+			return 0
+			;;
+		esac
+	fi
+	_ok=0 _refused=0 _failed=0
+	for _pane in "$@"; do
+		"$AGENT_HIBERNATE_SH" hibernate "$_pane" >/dev/null 2>&1
+		_rc=$?
+		case "$_rc" in
+		0) _ok=$((_ok + 1)) ;;
+		6) _refused=$((_refused + 1)) ;;
+		*) _failed=$((_failed + 1)) ;;
+		esac
+	done
+	printf '%s hibernated, %s refused, %s failed\n' "$_ok" "$_refused" "$_failed"
+}
+
+choose_agents_to_hibernate() {
+	_rows=$(hibernate_rows)
+	if [ -z "$_rows" ]; then
+		printf 'No idle or done Claude panes are safe to hibernate.\n'
+		pause_result
+		return 0
+	fi
+	_selected=$(printf '%s\n' "$_rows" | fzf --multi --reverse \
+		--delimiter="$(printf '\t')" --with-nth=3,2,4,5 \
+		--header='Tab selects multiple · Enter hibernates' \
+		--prompt='hibernate › ' 2>/dev/null) || return 0
+	_panes=$(printf '%s\n' "$_selected" | cut -f1)
+	# Pane ids contain no whitespace; splitting turns the selected lines into argv.
+	# shellcheck disable=SC2086
+	set -- $_panes
+	hibernate_apply "$@"
+	pause_result
 }
 
 render_header() {
@@ -142,7 +196,7 @@ render() {
 	render_apps "$CURRENT_ROWS" "$TOP_APPS"
 	printf '\n  [a] all sampled apps\n\n'
 	render_agents "$(agent_rows)" "$TOP_AGENTS"
-	printf '\n[k] manage process  [a] apps  [g] agents  [r] refresh  [q] close\n'
+	printf '\n[k] manage process  [h] hibernate agents  [a] apps  [g] agents  [r] refresh  [q] close\n'
 }
 
 page() {
@@ -212,6 +266,15 @@ _agents)
 	show_agents
 	exit 0
 	;;
+_hibernate_rows)
+	hibernate_rows
+	exit 0
+	;;
+_hibernate_apply)
+	shift
+	hibernate_apply "$@"
+	exit 0
+	;;
 esac
 
 while :; do
@@ -226,6 +289,7 @@ while :; do
 	r | R) continue ;;
 	a | A) show_apps ;;
 	g | G) show_agents ;;
+	h | H) choose_agents_to_hibernate ;;
 	k | K) choose_process ;;
 	# Wheel events begin with Escape; do not let scrolling dismiss the summary.
 	q | Q | "$(printf '\003')") break ;;
