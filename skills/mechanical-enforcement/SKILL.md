@@ -33,7 +33,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 |---|---|---|---|---|---|
 | TypeScript / React / Next | oxfmt or Biome, via [Ultracite](https://www.ultracite.ai/) (`--linter oxlint` / `biome`) - see `references/typescript.md` (formatting) | Biome | oxlint (Rust) for native `no-console` / `typescript/no-explicit-any` / `typescript/no-non-null-assertion` / `no-restricted-imports` / `jsx-a11y` / `import/no-cycle` - **not** `no-restricted-syntax` (not native as of 1.74; needs the alpha JS plugin - member-expression bans ride a grep step, see `references/architecture-boundaries.md`); dependency-cruiser for transitive graph boundaries; ESLint flat config only for import-type boundaries + framework plugins (next, storybook); knip for dead-code / unused-deps | `tsc --noEmit` strict (+ `tsgo` fast local check - see `references/typescript.md`) | Ultracite is the default for new projects; the all-oxc stack (oxlint + oxfmt) is the recommended provider, Biome the stable fallback. Raw Biome only if Ultracite doesn't support the framework. |
 | TypeScript (library / node) | oxfmt or Biome | Biome | oxlint (Rust) for direct boundary rules; dependency-cruiser for transitive graph boundaries; knip for dead-code / unused-deps | `tsc --noEmit` strict | Skip ESLint - oxlint covers most boundary rules in Rust; reach for ESLint only for import-type boundaries or framework plugins. Add publint + attw as a post-build publish gate. |
-| Python | ruff format | ruff | import-linter for layer / forbidden / independence contracts (tach is a watch - see `references/python.md`); vulture for whole-project dead-code audits; complexipy for cognitive complexity (ruff has none, and won't until rule categorisation is settled) | basedpyright recommended (primary); pyrefly (Rust) fast secondary; ty still beta | `ruff` replaces black + isort + flake8 and most of pylint - but not `R0801` duplicate-code (a cross-file pass ruff's per-file parallel model cannot do), `R0902` too-many-instance-attributes, or `C0302` too-many-lines, which is declined upstream as incompatible with the formatter. See `references/python.md` and `references/complexity.md`. |
+| Python | ruff format | ruff | import-linter for the module graph (layers / forbidden / protected / independence / acyclic_siblings; tach opt-in for `[[interfaces]]` only); ruff `TID251` with one negated per-file-ignore for attribute-level effect bans in the pure core, ast-grep for every other scoped or call-shaped rule (sinks, `unittest.mock`, assertion-free tests); deptry for declared-vs-imported dependencies (the knip / cargo-machete half); vulture at 100 for unreachable code; complexipy for cognitive complexity (ruff has none, and won't until rule categorisation is settled); a strict pytest config (`references/python-pytest.toml`) | basedpyright `recommended` (the gate); pyrefly (Rust) for edit-time speed, always `-c` + `preset = "strict"`; ty a watch at 0.0.x | `ruff` replaces black + isort + flake8 and most of pylint - but not `R0801` duplicate-code (a cross-file pass ruff's per-file parallel model cannot do), `R0902` too-many-instance-attributes, or `C0302` too-many-lines, which is declined upstream as incompatible with the formatter. Every Python gate here fails open in some configuration; `references/python.md` indexes the classes. See also `references/complexity.md`. |
 | Rust | rustfmt | clippy (`-D warnings`) | cargo-deny; cargo-machete (unused deps) | `cargo check` | `clippy::pedantic` selectively; full pedantic is too noisy. See `references/rust.md` for thresholds and common allows. |
 | Go | gofmt / gofumpt | golangci-lint | go-arch-lint for declarative component `mayDependOn` maps; `gomodguard_v2` for module allow/block lists (v1 is deprecated in golangci-lint) | `go vet` | Enable `errcheck`, `govet`, `staticcheck`, `revive`. depguard with per-`files:` rules gates layers - see `references/architecture-boundaries.md` (Go boundaries). |
 | SQL | sqruff (`sqruff fix`) | sqruff (`sqruff lint --dialect <x>`) | sqlfluff (Python) for dbt/Jinja | - | Rust "Ruff for SQL". Lints the SQL the query-layer boundary quarantines. Beta - start advisory, verify dialect coverage before blocking. |
@@ -80,7 +80,7 @@ Use the tool in the **Primary** column first; reach for the **Also** column only
 Rules are organised by **concern**, not by linter. Each entry gives: what it prevents, how to encode it, and known exceptions. Per-stack detail is loaded on demand from `references/`:
 
 - **TypeScript / JS** → `references/typescript.md` - type safety, type checking, error handling, formatting, Biome-vs-ESLint, UI/import hygiene, dead code, library publishing, shipped-artifact gates, test lints.
-- **Python** → `references/python.md` - Ruff, type checking, dead code, boundaries.
+- **Python** → `references/python.md` - Ruff, type checking, complexity, dead code, dependencies, boundaries, purity, testing, publishing, gate integrity.
 - **Rust** → `references/rust.md` - clippy correctness, thresholds, pedantic allows, workspace wiring, supply chain, unused deps, boundaries.
 - **Nix** → `references/nix.md` - nixfmt, deadnix, statix, and why evaluating every host config is the stronger gate.
 - **Architectural boundaries** (cross-stack) → `references/architecture-boundaries.md` - illegal-graph rules, transitive gates, Go boundaries, greppable invariants, purity, contract gates.
@@ -154,9 +154,10 @@ The typical mapping (Python):
 
 ```text
 tier 1 (format/fix)     → trailing-whitespace, newlines, typos, ruff check --fix, ruff format
-tier 2 (lint/gate)      → ruff check, lint-imports (when contracts exist), gitleaks, yamllint, check-merge-conflict
-tier 3 (typecheck)      → basedpyright (primary); optional pinned pyrefly/ty as advisory/secondary
-tier 4 (dead code/test) → vulture at min_confidence=100 after baseline cleanup; pytest/coverage
+tier 2 (lint/gate)      → ruff check (incl. TID251 purity bans), ast-grep scan, lint-imports (no filenames, --no-cache), validate-pyproject[all], uv lock --check, gitleaks, yamllint, check-merge-conflict
+tier 3 (typecheck)      → basedpyright recommended (the gate); pyrefly -c + strict as the edit-time pre-filter
+tier 4 (deps/dead code/test) → deptry (inside the project env), vulture at min_confidence=100 after baseline cleanup, pytest -c pyproject.toml with the strict block (`references/python-pytest.toml`)
+CI / pre-push            → griffe check, basedpyright --verifytypes, check-wheel-contents, check-manifest, twine check --strict, clean-venv smoke import, uv audit, licensecheck --zero, opengrep --error
 ```
 
 The typical mapping (Shell):
@@ -196,7 +197,9 @@ Write the baseline once during adoption; never refresh it in CI.
 |---|---|---|
 | ESLint | `eslint --suppress-all` → committed `eslint-suppressions.json` (v9.24+) | New violations still fail; `--prune-suppressions` as debt is paid. |
 | dependency-cruiser | `depcruise-baseline` + `--ignore-known` | Makes graph/boundary rules adoptable on an already-tangled repo. |
-| basedpyright | `--writebaseline` - the exemplar workflow in `references/python-typecheck.toml` | Baselined errors downgrade to hints; fixed ones auto-prune. |
+| basedpyright | `--writebaseline` - the exemplar workflow in `references/python-typecheck.toml` | Count-aware per column. Prunes fixed entries only on an otherwise-clean run; with `CI=true` the mode defaults to lock and a stale baseline exits 3, so CI passes `--baselinemode=discard` on the command line (a `baselineMode` config key is rejected). pyrefly's baseline is not a vehicle (not count-aware); use `--suppress-errors` + `--remove-unused-ignores` there. |
+| mypy | `mypy \| mypy-baseline filter` | Single-maintainer wrapper; the only mypy ratchet that exists. |
+| import-linter | exact-edge `ignore_imports` entries under `unmatched_ignore_imports_alerting = "error"` | No baseline file. Entries self-expire (a stale edge fails the run), which a dependency-cruiser baseline never does - but a wildcard edge silently absorbs every new violation it matches, so never wildcard an ignore. |
 | ruff | `ruff check --select CODE --add-ignore`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file - scope per rule and prefer a reason on manually added suppressions. Requires Ruff 0.16+. |
 | golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating; no baseline file. Add `--whole-files` for complexity rules - they report at the function signature line, so editing a long function's middle otherwise hides the finding. Needs `fetch-depth: 0`. |
 | complexipy (Python) | `--snapshot-create` → committed `complexipy-snapshot.json`, then `--snapshot-ignore` to opt out | The only per-site Python complexity baseline; ruff has none. Keyed by (path, file, function name), so a rename reads as a new violation, and it resolves against the invocation directory rather than the repo root. |
@@ -227,7 +230,7 @@ gate.
 ### Per-stack rule catalogues
 
 - `references/typescript.md` - TypeScript / JS: type safety, type checking, error handling, formatting, Biome-vs-ESLint, UI/import hygiene, dead code, library publishing, shipped-artifact gates, test lints
-- `references/python.md` - Python: Ruff, type checking, dead code, import boundaries
+- `references/python.md` - Python: Ruff, type checking, complexity, dead code, dependencies, import boundaries, purity, testing, publishing, gate integrity, maintenance posture
 - `references/rust.md` - Rust: clippy correctness, thresholds, pedantic allows, workspace wiring, cargo-deny, cargo-machete, crate boundaries
 - `references/nix.md` - Nix: nixfmt, deadnix (`--edit` renames, it does not delete), statix (one target per call, disable `repeated_keys`), evaluation as the correctness gate
 - `references/architecture-boundaries.md` - cross-stack boundaries: illegal-graph rules, transitive graph gates, Go boundaries, greppable invariants, purity, contract gates
@@ -257,14 +260,18 @@ gate.
 ### Python
 
 - `references/python-ruff.toml` - Ruff formatter/linter `pyproject.toml` snippet (drop-in)
-- `references/python-typecheck.toml` - basedpyright default plus pyright/ty notes (drop-in)
+- `references/python-typecheck.toml` - basedpyright `recommended` with the idiom-enforcing rules named, pyrefly as pre-filter, ty watch, mypy opt-in (drop-in)
 - `references/python-vulture.toml` - conservative Vulture dead-code config (drop-in)
-- `references/python-import-linter.toml` - import-linter layer/forbidden/independence contracts + tach sketch
+- `references/python-import-linter.toml` - import-linter contracts across five types (layers, forbidden, protected, independence, acyclic_siblings) + tach `[[interfaces]]` sketch
+- `references/python-purity.toml` - ruff `TID251` effect bans scoped to the pure core with one negated per-file-ignore, the canary, pytest-socket backstop
+- `references/python-ast-grep.yml` - ast-grep rules: bare-builtin effects in the domain, string-built SQL at a sink, `unittest.mock` in tests, assertion-free tests, dataclass without slots
+- `references/python-pytest.toml` - strict `[tool.pytest.ini_options]` block with a "remove -> what breaks" line per key, hypothesis profiles, reasonless-skip guard
+- `references/python-deptry.toml` - deptry DEP001-DEP005 config plus the sibling `uv lock --check` / validate-pyproject / licence commands
 
 ### Cross-stack
 
 - `references/hk-steps.pkl` - worked hk.pkl step graph
 - `references/golangci-complexity.yml` - golangci-lint v2 complexity gate (cyclop / gocognit / funlen / nestif / dupl / nolintlint), drop-in
-- `references/contract-gates.md` - command patterns + CI placement for buf breaking, oasdiff, graphql-inspector, cargo-semver-checks, api-extractor, pact can-i-deploy
+- `references/contract-gates.md` - command patterns + CI placement for buf breaking, oasdiff, graphql-inspector, cargo-semver-checks, api-extractor, griffe check + basedpyright --verifytypes (Python), pact can-i-deploy
 - [Ultracite](https://www.ultracite.ai/) - Biome preset bundle
 - [hk](https://hk.jdx.dev) - git hook manager

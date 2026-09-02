@@ -1,48 +1,50 @@
-# Ruff formatter + linter template.
-# Paste into pyproject.toml and adapt target-version / src paths per project.
-# Docs: https://docs.astral.sh/ruff/
+# Ruff template for pyproject.toml; adapt target-version / src per project. Docs: https://docs.astral.sh/ruff/
+# The domain purity bans live in references/python-purity.toml and merge into this same `[tool.ruff.lint]` tree; keep
+# them apart, as `banned-api` is one flat global map and two files fighting over it silently drop a boundary ban.
+# Proof: `ruff check --show-settings` prints `linter.rules.enabled` - 413 codes in ruff 0.16.5's stable set, 561 here,
+# with DTZ005/S102/ASYNC110/TID252/PT011 among them; per-file-ignores apply at check time, so PT011 is tests/** only.
 
 [tool.ruff]
 required-version = ">=0.16,<0.17"
 target-version = "py312"
 line-length = 100
+# REPLACES the default `[".", "src"]`: naming "src" drops the project root, moving isort and A005 resolution with it.
 src = ["src", "tests"]
+# Remove -> `exclude` stops applying to paths named on the command line, i.e. every path a hook or CI step passes.
 force-exclude = true
-exclude = [
-    ".git",
-    ".mypy_cache",
-    ".nox",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    "build",
-    "dist",
-]
-# Never enable unsafe fixes in hooks or CI. Use `ruff check --unsafe-fixes` only
-# as a reviewed one-off when accepting semantic rewrites deliberately.
-unsafe-fixes = false
+# `extend-exclude`, NEVER `exclude`: `exclude` REPLACES ruff's 25-entry default, so a short hand-written copy lints
+# `.direnv`, `node_modules`, `venv`, `site-packages` and six more. `dist` is already a default.
+extend-exclude = ["build"]
+# Remove -> diagnostics print rule NAMES not codes (`preview = true` flips 0.16.5 to `none-comparison: ...`), so a CI
+# grep keyed on a code matches nothing while the gate exits 1.
+output-prefer-rule-codes = true
+# `unsafe-fixes` unset (default `hint`) keeps the unsafe-fix count in ruff's output; hooks and CI never pass it.
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-line-ending = "lf"
+line-ending = "lf"  # remove -> the default "auto" keeps CRLF, so a file formats differently per clone
 skip-magic-trailing-comma = false
-# Keep off in shared templates while Ruff still documents this as opt-in.
-docstring-code-format = false
+docstring-code-format = false  # off in shared templates while Ruff calls it opt-in
 
 [tool.ruff.lint]
-# Keep Ruff's curated defaults, then preserve the established full-family
-# coverage. `select` would replace the defaults. The required-version range
-# makes every future stable default-set change an explicit minor upgrade.
+# Extend the curated defaults; `select` would replace them, and the required-version range makes each default-set
+# change an explicit upgrade.
 extend-select = [
+    # E and F look redundant against a 413-rule default set and are not: 0.16.0 DROPPED eighteen stable rules from it,
+    # listed verbatim in ruff's BREAKING_CHANGES.md, so removing either prefix stops comparison-to-None, lambda
+    # assignment, ambiguous names and star-import fallout being checked. E501 (dropped at 0.1.0 as
+    # formatter-conflicting, hence the `ignore` entry below) and E101 sit outside for older reasons.
     "E",   # pycodestyle errors
     "F",   # Pyflakes
     "UP",  # pyupgrade
-    "B",   # flake8-bugbear
+    "B",   # flake8-bugbear (B904 raise-from lives here)
     "SIM", # flake8-simplify
     "I",   # isort
-    "RUF", # Ruff-specific rules
+    "RUF", # Ruff-specific; carries RUF006 asyncio-dangling-task and RUF012
+    # Delta over the default set is ASYNC109/110/212/240/250: a hand-rolled `timeout` parameter (109), the busy-wait
+    # `while ...: await sleep()` (110), and blocking httpx, pathlib and input() calls inside an async function.
+    "ASYNC",
     # --- Complexity. Ruff's 413-rule default set contains NONE of these. ---
     "C901",     # cyclomatic complexity (mccabe)
     "PLR0911",  # too-many-return-statements
@@ -50,51 +52,119 @@ extend-select = [
     "PLR0913",  # too-many-arguments
     "PLR0915",  # too-many-statements
     "PLR0917",  # too-many-positional-arguments (stable since 0.16.0)
-    # Preview rules. Inert unless BOTH preview settings below are set, and named
-    # here by exact code - a bare "PLR" prefix pulls in none of them.
+    # Preview: inert unless both preview settings below are set AND named by exact code; a "PLR" prefix adds none.
     "PLR0904",  # too-many-public-methods
     "PLR0914",  # too-many-locals
     "PLR0916",  # too-many-boolean-expressions
     "PLR1702",  # too-many-nested-blocks  <- the nesting-depth gate
     "PLW0717",  # too-many-statements-in-try-clause
+    # --- Bought back from the preview default set. ---
+    # `preview = true` swaps the default set, which DROPS eight stable rules silently - no warning, "All checks
+    # passed!", exit 0: DTZ001 DTZ005 DTZ006 DTZ007 DTZ011 DTZ012 DTZ901 and S102. Remove "DTZ" -> only DTZ002/003/004
+    # survive and `datetime.now()` stops erroring; drop "S102" and `exec()` does too. Upstream ruff#27197 (open,
+    # v0.17) wants the same DTZ cut in the stable set.
+    "DTZ",      # flake8-datetimez: naive datetimes are a bug class, not a style
+    "S102",     # exec-builtin
+    # --- Security: a NAMED flake8-bandit subset, never the "S" prefix. ---
+    # `extend-select = ["S"]` enables 58 of the family's 73 rules and lands S101 on every assert and S607 on ["git",
+    # "status"], which is why teams turn the family back off wholesale. It fails LOUD - a code retired in a future
+    # ruff aborts with exit 2 ("Rule `S320` was removed") - so the list is an upgrade checkpoint per bump.
+    "S307",  # eval()                        - arbitrary code execution
+    "S301",  # pickle/dill/shelve load       - deserialisation RCE
+    "S302",  # marshal load                  - same class, no safe mode exists
+    "S506",  # yaml.load without SafeLoader  - RCE; yaml.safe_load is the fix
+    "S202",  # tarfile.extractall            - path traversal / arbitrary write
+    "S602",  # subprocess with shell=True    - argv becomes a shell string
+    "S604",  # any callable with shell=True  - the non-subprocess wrapper form
+    "S605",  # os.system / os.popen          - a shell by construction
+    "S608",  # string-built SQL              - f-string, %, .format and concat
+    "S704",  # markupsafe.Markup(non-literal)- XSS
+    "S308",  # django mark_safe              - XSS
+    "S701",  # jinja2 autoescape=False       - XSS; autoescape is not the default
+    "S702",  # mako templates                - no autoescaping exists at all
+    "S501",  # requests verify=False         - silently disables cert checking
+    "S507",  # paramiko AutoAddPolicy        - accepts any SSH host key
+    "S323",  # ssl._create_unverified_context
+    "S502",  # a call passing an insecure ssl_version
+    "S503",  # a function DEFAULT argument set to an insecure ssl version
+    "S504",  # ssl with no version specified
+    "S505",  # weak key size (RSA < 2048 etc)
+    "S324",  # md5/sha1 for security         - honours usedforsecurity=False
+    "S113",  # requests call with no timeout - a hung worker is a DoS
+    "S105",  # hardcoded password string     - name heuristic; see tests ignore
+    "S106",  # hardcoded password argument
+    "S107",  # hardcoded password default
+    # Left off, so nobody re-derives them: S609 (duplicates S602/S604/S605), S101 assert, S104 bind 0.0.0.0, S108 /tmp
+    # (use tempfile, do not gate), S310 urlopen, S311 random, S312/S321 telnet/ftp, S313-S319 xml, S603 argv (fires on
+    # ANY non-literal argv), S607 partial path (["git", "status"]) and the preview band S401-S409/S411-S413/S415,
+    # duplicating the usage rules; S320 and S410 are removed codes aborting ruff with exit 2, S414 never existed.
+    # Uncovered: argv from untrusted input with shell=False - see references/python-ast-grep.yml.
+
+    # Remove -> a bare `# type: ignore`, `# pyright: ignore` or `# noqa` suppresses every diagnostic on the line
+    # forever, including ones a later ruff adds. PGH004 also catches the file-level `# ruff: noqa` / `# flake8: noqa`
+    # and the missing-colon `# noqa F401`; it misses `# ty: ignore`, `# pyrefly: ignore`, `# ruff: disable`.
+    "PGH003",  # blanket-type-ignore
+    "PGH004",  # blanket-noqa
+    # Remove -> a bare `Any` in a parameter or return annotation stops erroring. Redundant under basedpyright
+    # `recommended`: reportExplicitAny/reportAny are a strict superset, catching `dict[str, Any]` forms ANN401 cannot
+    # see. Exempt: `@typing.override`, `@overload`, `allow-star-arg-any`. Blind spots: a type alias (`MyAny = Any`) is
+    # NOT flagged and defeats the rule repo-wide, `.pyi` stubs are checked, `__getattr__`/`__eq__` never exempt.
+    "ANN401",  # any-type
+    # --- State and correctness. ---
+    "PLW1641",  # eq-without-hash: a body `__eq__` drops the inherited __hash__, so instances become unhashable
+                # and set/dict membership raises TypeError. Syntactic, so a generated __eq__ (@dataclass,
+                # attrs.define) is invisible and broken the same way; `__hash__ = None` is the suppression.
+    "PLW0603",  # global-statement: the hidden mutable state a composition root replaces. Gates the keyword only,
+                # so `import mod; mod.X = ...` and `globals()[...]` pass clean.
+    "PLW1514",  # unspecified-encoding (PREVIEW): `open(p)` uses the locale encoding, so a file parses
+                # differently on a dev Mac and a CI container.
+    "A005",     # stdlib-module-shadowing: a `types.py` shadows the stdlib module for every importer; needs
+                # strict-checking below to reach a src layout.
+    "PLE0241",  # duplicate-bases: a hard TypeError at class creation.
+    "PLC0207",  # missing-maxsplit-arg: `s.split(sep)[0]` scans the whole string.
+    "COM818",   # trailing-comma-on-bare-tuple: `x = 1,` binds a tuple.
+    # Those three and the ASYNC delta are in the preview default set anyway; naming them keeps the file neutral.
+    "TRY400",   # error-instead-of-exception: `logger.error(...)` in an except block drops the traceback. A NAME
+                # heuristic on "log", so `audit.error(...)` passes; `lint.logger-objects` widens it to imports.
+    "TID252",   # relative-imports, with ban-relative-imports = "all" below. Remove -> `from ..infra import db`
+                # is legal again, and a layer violation reads as local.
+    "PT",       # flake8-pytest-style, scoped to tests/** by the negated per-file-ignores entry: 28 of its 31 rules
+                # are selectable (PT004/PT005 removed, PT029 preview and unreachable by prefix). PT018, the noisiest,
+                # stays on - a composite assertion hides which half failed.
 ]
 ignore = [
-    # Ruff format owns wrapping. Re-enable only if the project wants a hard
-    # line-length gate in addition to formatter output.
-    "E501",
+    "E501",     # Ruff format owns wrapping; re-add only for a hard length gate as well
+    # Neutralised: rules that arrive only because `preview = true` swaps the default set, so nothing chose them.
+    "C420",     # unnecessary-dict-comprehension-for-iterable
+    "D301",     # escape-sequence-in-docstring (pydocstyle is policy-heavy here)
+    "FURB110",  # if-exp-instead-of-or-operator
+    "FURB171",  # single-item-membership-test
+    "PLW0108",  # unnecessary-lambda
+    # Measured: this file against itself at `preview = false` differs by exactly 16 framework-only rules (AIR, DJ,
+    # FAST, NPY, PD), the five preview complexity codes and PLW1514, nothing more.
 ]
 fixable = ["ALL"]
 
-# Five of the complexity rules above are preview-only, and selecting a preview
-# rule with `preview = false` is a SILENT no-op: ruff prints
-# "warning: Selection PLR1702 has no effect because preview is not enabled"
-# and then "All checks passed!" - configured, apparently gating, checking
-# nothing. Blanket `preview = true` is the opposite failure: it enables every
-# unstable rule in the select set. The pair below is the narrow route - preview
-# rules fire only when named by exact code, so a minor bump still cannot add
-# unstable rules, which is what `preview = false` was protecting.
+# Selecting a preview rule with `preview = false` gates nothing while exiting 0: ruff prints ``warning: Selection
+# `PLR1702` has no effect because preview is not enabled.`` and passes. Under this file's pairing it is worse: a
+# preview family selected by prefix expands to nothing with no warning at all, so name every preview rule by exact
+# code. Blanket `preview = true` is the opposite failure: it swaps the DEFAULT SET, where the eight lost stable rules
+# come from, and `explicit-preview-rules` guards only prefix expansion inside `select`, not that door and not category
+# selectors (`select = ["pedantic"]`).
 preview = true
 explicit-preview-rules = true
 
 [tool.ruff.lint.mccabe]
-# 10 is McCabe's original and Ruff's own default; 15 is the top of the range
-# NIST SP 500-235 sanctions and the cross-stack number. Ratchet legacy code with
-# a snapshot, never by raising this past 15.
-# CAUTION: Ruff counts fewer constructs than radon - `if a and b and c` scores 2
-# here because there is no per-boolean-operator increment. Never port a
-# threshold between the two tools.
+# 10 is McCabe's original and Ruff's default; 15 is the top of the range NIST SP 500-235 sanctions - ratchet legacy
+# code with a snapshot, never by raising past 15. CAUTION: Ruff counts fewer constructs than radon (`if a and b and c`
+# scores 2), so never port a threshold across the two tools.
 max-complexity = 15
 
 [tool.ruff.lint.pylint]
 max-args = 5              # default. self/cls excluded; @typing.override exempt.
-max-positional-args = 3   # TIGHTENED from 5 (PLR0917). Keyword-only args after
-                          # `*` do not count, so the fix is a `*` in the
-                          # signature, not a refactor.
-max-returns = 6           # default. The weakest rule here - adopt it last, and
-                          # drop it rather than raise it if it fights guard
-                          # clauses.
-max-branches = 12         # default. Looser than max-complexity on purpose, so
-                          # the two catch different shapes.
+max-positional-args = 3   # TIGHTENED from 5 (PLR0917). Keyword-only args after `*` do not count.
+max-returns = 6           # default. The weakest rule here - drop it rather than raise it.
+max-branches = 12         # default. Looser than max-complexity on purpose.
 max-statements = 50       # default. The ONLY function-length gate Ruff has.
 max-nested-blocks = 4     # TIGHTENED from 5 (PLR1702, preview). Cross-stack depth.
 max-bool-expr = 5         # default (PLR0916, preview).
@@ -102,45 +172,58 @@ max-locals = 15           # default (PLR0914, preview).
 max-public-methods = 20   # default (PLR0904, preview).
 max-statements-in-try = 5 # default (PLW0717, preview).
 
+[tool.ruff.lint.flake8-builtins]
+# Remove -> A005 gates nothing in a src layout: by default it resolves module paths against the project root or a
+# `src` entry, so `src/types.py` flags and `src/myproject/types.py` does not. Cost: it compares the last path
+# component only, so a deliberate `myproject/utils/logging.py` needs `allowed-modules`.
+strict-checking = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Remove -> TID252 selects nothing worth having: the default "parents" already allows `from .sibling import x`, and
+# "all" is what makes every import absolute and greppable against the layer contracts.
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-pytest-style]
+# PT011 flags `pytest.raises(Err)` with no `match=`, which passes on any instance of the type. Remove -> the gate
+# falls back to seven broad built-ins (BaseException through socket.error), leaving every project-defined error
+# unguarded. "*" and not a base class: PT011 matches the resolved dotted name with NO subclass reasoning, so
+# `["myproj.errors.DomainError"]` leaves every subclass ungated; a module glob (`["myproj.errors.*"]`) is the narrower
+# supported form (ruff's docs: "Supports glob patterns"), and a typo'd or unqualified entry is accepted silently and
+# gates nothing. `check=` (pytest >= 8.4) also satisfies PT011, which never inspects `pytest.raises(Err, fn, *args)`.
+# Note the key: `raises-require-match-for` REPLACES the built-in list, `raises-extend-require-match-for` adds to it.
+raises-require-match-for = ["*"]
+
 [tool.ruff.lint.per-file-ignores]
-# Tests intentionally use asserts, fixture names, literals, and compact setup.
+# Only codes this file selects appear here. A real code it does not select is accepted SILENTLY - no warning, no
+# RUF100 expiry - so it reads as a live relaxation while gating nothing; an unknown selector fails loudly instead,
+# `Unknown rule selector ...`, exit 2.
 "tests/**" = [
-    "S101", "ARG", "FBT", "PLR2004", "D", "ANN",
-    "C901",                # arrange-heavy tests are long and linear on purpose
-    "PLR0913", "PLR0917",  # pytest injects fixtures as positional parameters
+    "S105", "S106", "S107",  # password name-heuristics fire on every fixture credential
+    "ANN401",                # a test helper taking Any is not an API
+    "C901",                  # arrange-heavy tests are long and linear on purpose
+    "PLR0913", "PLR0917",    # pytest injects fixtures as positional parameters
     "PLR0915",
-    "PLR0904",             # a TestCase subclass is a bag of public methods by design
+    "PLR0904",               # a TestCase subclass is a bag of public methods
 ]
-# Deliberately NOT relaxed in tests: PLR0912 (branches) and PLR1702 (nesting).
-# A branchy or deeply nested test is a test with logic in it, which is exactly
-# what you want flagged.
+# NOT relaxed in tests: PLR0912 (branches), PLR1702 (nesting) - a branchy test is a test with logic in it.
 "**/conftest.py" = ["PLR0913", "PLR0917"]
+# PT is test-shaped; outside tests its fixture and raises rules are noise. NEGATED pattern - the leading "!" means
+# "ignore PT in every file that is NOT tests/**". Two traps, both fail-open and silent: a second negated entry for the
+# SAME rule makes every file match one of them and disables it everywhere, and a typo ("!tsts/**") does the same.
+# Assert this entry is still armed with the --stdin-filename canary in python.md's gate integrity section.
+"!tests/**" = ["PT"]
+"**/migrations/**" = ["RUF012"]  # migrations are framework output, generated names and shapes
+"**/generated/**" = ["ALL"]      # generated code kept in the lint input for reachability checks
 
-# Migrations are framework output and often preserve generated names/shapes.
-"**/migrations/**" = ["D", "ANN", "E501", "N806", "N815", "RUF012"]
+# Selecting a policy-heavy family means adding its codes back here in the same change, or it lands on test and
+# migration code the day it is selected: S101, ARG, FBT, PLR2004 -> tests/** (PLR2004 also needs
+# lint.pylint.allow-magic-value-types = []); D, ANN -> tests/** and migrations/**; N806, N815 -> migrations/**.
 
-# Generated files should usually be excluded. Keep this for generated code that
-# must stay in the lint input for import/reachability checks.
-"**/generated/**" = ["ALL"]
-
-# Optional rule families to add once a project is ready. Some individual rules
-# from these families are already present in Ruff's curated defaults:
-# C4   comprehensions
-# PIE  small correctness/style checks
-# RET  return statement cleanup
-# PTH  pathlib over os.path
-# LOG/G logging format hygiene
-# T10/T20 debugger/print bans
-# PT   pytest style
-# S    security checks
-# ARG  unused arguments
-# TC   type-checking-only imports
-# PERF performance traps
-#
-# Policy-heavy families to opt into deliberately:
-# D    docstrings
-# ANN  annotations
-# PL   Pylint
-# TRY  exception style
-# FBT  boolean positional args
-# TD/FIX todos and fixmes
+# Optional families, counted on a bare config with `--show-settings`; references/python.md holds the fuller map, the
+# policy-heavy list (D, ANN, PL, TRY, FBT, TD/FIX) and the rejected ones (N818, ALL). Already covered, buying nothing:
+# PIE 8/8, DTZ 10/10, T10 1/1, C4 17/19, EXE 4/5, LOG 5/7, G 4/8, B006/B008/RUF008/RUF009/RUF012. Real opt-ins: PTH
+# 2/35, ARG 0/5 (overlaps vulture at min_confidence = 100), TC001-003 (TC 4/9), PERF 3/6, T20 0/2 (NEITHER T201 nor
+# T203 is a default - scope it, CLIs print), INP001 in src/, TRY003, EM101/102/103 0/3, SLOT000/001/002 0/3, RET 1/8.
+# Two conflicts: RET503's fix APPENDS `return None` and can push a function past PLR0911, but it is unsafe-only, so a
+# run without `--unsafe-fixes` keeps the two apart; and PLC0415 is NOT a boundary rule - import-linter, tach and `ruff
+# analyze graph` each flag a function-level layer violation without it - so take it as a PEP 8 / import-cost policy.

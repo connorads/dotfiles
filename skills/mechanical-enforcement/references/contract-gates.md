@@ -4,7 +4,9 @@ Every tool here except vacuum diffs the current API surface against a
 **baseline** (a git ref, a published schema, or a committed report), so they
 belong in CI or a pre-push hook - never pre-commit, where no baseline is
 naturally available. Spec governance (vacuum, below) is the baseline-free
-exception and can run pre-commit. Gate on the non-zero exit in every case.
+exception and can run pre-commit. `pyright --verifytypes` is baseline-free too,
+but it scores a *built and installed* wheel, so it stays in CI for the other
+reason. Gate on the non-zero exit in every case.
 
 ## Protobuf - buf breaking
 
@@ -91,8 +93,112 @@ compares and fails on any unreviewed public `.d.ts` surface change:
 
 ```bash
 api-extractor run --local      # dev: rewrite the report, commit the diff
-api-extractor run              # CI: non-zero exit if report differs — no --local
+api-extractor run              # CI: non-zero exit if report differs - no --local
 ```
+
+## Python - griffe check and pyright --verifytypes
+
+Two gates over one surface, and neither sees the other's half. `griffe check`
+diffs *structure* against a baseline ref; `pyright --verifytypes` scores the
+*types* the built wheel actually ships. The wheel/sdist shape gates that pair
+with them live in the Publishing section of `references/python.md`.
+
+```bash
+# structure: exit 0 = no breakage; exit 1 = breakages OR the command itself failed
+uvx --from griffe griffe check -s src mypkg -a v1.2.0
+
+# a PyPI release as the baseline instead of a git ref. griffe 2.2.0 opens a temp
+# dir inside its platformdirs cache without creating that cache first, so a fresh
+# machine dies with FileNotFoundError; pre-create it
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/griffe"   # bare macOS: ~/Library/Caches/griffe
+uvx --from 'griffe[pypi]' griffe check mypkg -b mypkg==2.0 -a mypkg==1.0
+```
+
+It reports removed public objects, removed/renamed/moved parameters, changed
+parameter kinds, changed defaults, newly-required parameters and removed class
+bases. It is **blind to every annotation change**: on griffe 2.2.0 a parameter
+going `list[Order]` to `list[str]`, and a return widening to `Widget | None`,
+both exit 0. Only *deleting* a return annotation is reported, as
+`Return types are incompatible: Widget -> None`, which reads as a type change
+and is not one. So griffe gates shape; `--verifytypes` and review gate types.
+
+Four wiring facts:
+
+- **Findings go to stderr.** `griffe check ... > report.md` writes an empty file
+  and reads as a clean run. Redirect `2>` or `2>&1`.
+- **`-a` defaults to the latest git tag**, so `actions/checkout` needs
+  `fetch-depth: 0` and `fetch-tags: true`. A clone with no tags dies with
+  `RuntimeError: Could not create git worktree`.
+- **Exit 1 does not mean "the API broke".** A wrong `-s` search path, a missing
+  package and an untagged clone each traceback with exit 1 as well, so the exit
+  code alone cannot separate a broken gate from a broken API. Assert on the
+  stderr text where that distinction matters.
+- **It imports the baseline ref's code** from a temporary worktree when static
+  resolution fails. Pass `-X` / `--no-inspection` to keep it static.
+
+`-f github` / `-f azdo` emit CI annotations (`azdo` needs griffe >= 2.1.0).
+
+**There is no baseline or ratchet**, so a legacy library is all-or-nothing: every
+historic breakage fires on the first run and no suppression file exists. griffe's
+own CI runs its API check with `nofail=True` inside a `continue-on-error` job -
+informational, not a gate. Do the same on an unclean history and tighten to a
+gate once the report is empty.
+
+**`griffe dump` is not the Python `.api.md`.** The obvious workaround - commit a
+dump, diff it in CI, as api-extractor does - does not survive contact. The dump
+is deterministic byte-for-byte, but it carries `lineno`/`endlineno` on every
+member, absolute `filepath` values that differ between a dev checkout and CI,
+and every private member; `griffe dump --help` exposes no flag to suppress any
+of the three. So the report churns on edits that are not API changes: adding one
+private helper to a five-symbol package moved 11 of the dump's 102 lines. A
+committed report is therefore bespoke here: `griffe dump` piped through
+a normaliser that strips `lineno`/`endlineno`/`filepath` and filters to `__all__`.
+
+```bash
+# types: exit 0 only at 100% completeness, exit 1 at anything below
+uvx --with dist/mypkg-1.2.0-py3-none-any.whl \
+  basedpyright --verifytypes mypkg --ignoreexternal
+```
+
+Type completeness is what a `py.typed` marker promises a consumer: every symbol
+reachable from the public interface has a known, non-inferred type. One
+unannotated public function in an 18-symbol package scores 94.4% and exits 1;
+annotating it scores 100% and exits 0.
+
+- **Resolution beats configuration.** `--verifytypes` finds the package only in
+  the environment reached through the `python3` on `PATH`, and it *ignores*
+  `--pythonpath` (which the same binary honours for ordinary analysis). The
+  `uvx --with <wheel>` form above works because uv puts its ephemeral env first
+  on `PATH`; `PATH=<venv>/bin:$PATH uvx basedpyright ...` does not, because uvx
+  re-prepends its own bin. The other working shape is a venv holding the
+  non-editable install, on `PATH`, running its own `basedpyright`.
+- **An editable install measures the source tree, not the wheel.** Where the
+  backend writes a path-style `.pth` (hatchling and setuptools both do under
+  `uv pip install -e`), pyright resolves straight into `src/` and scores it - so
+  a `py.typed` missing from the *wheel* is invisible. Install the built artefact.
+- **A broken environment is indistinguishable from a missing marker.** Both
+  print `Package directory: ""`, `error: No py.typed file found` and
+  `Type completeness score: 0%`. Guard on
+  `.typeCompleteness.packageRootDirectory != ""` before trusting the score, or a
+  misconfigured job reports a catastrophic regression on a complete package.
+- **Do not gate on `errorCount` or `generalDiagnostics`; both are inverted.** A
+  real completeness failure gives `errorCount: 0` and `generalDiagnostics: []`;
+  the broken-environment case gives `errorCount: 1` and one diagnostic. Gate on
+  the exit code, or on the score.
+- **There is no threshold flag and no baseline.** It is 100% from day one;
+  basedpyright's `--writebaseline` does not apply. A percentage floor has to be
+  built by hand:
+
+```bash
+uvx --with dist/mypkg-1.2.0-py3-none-any.whl \
+  basedpyright --outputjson --verifytypes mypkg --ignoreexternal |
+  jq -e '.typeCompleteness.packageRootDirectory != "" and
+         .typeCompleteness.completenessScore >= 0.95'
+```
+
+The score is also gameable in the direction upstream documents: renaming a
+symbol to a leading underscore drops it out of the public interface entirely, so
+100% proves the declared surface is typed, not that the surface is right.
 
 ## Consumer-driven contracts - Pact
 
