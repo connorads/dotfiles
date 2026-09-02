@@ -25,7 +25,10 @@ The record store is keyed by **session id**, at
 `~/.local/state/agent-hibernate/<sessionId>.json`. Pane ids die with the tmux
 server and pane keys drift when a window moves, so both are stored as *current
 addresses* and refreshed (by park on restore, by the resurrect save pass while
-live) rather than used as the key.
+live) rather than used as the key. New records snapshot the window name for a
+recognisable parked-pane and picker label. Older records remain valid through
+the pane-key and short-session fallbacks until no stored record lacks that
+field.
 
 A pane whose session id cannot be resolved is **not** hibernated. `--continue`
 would resume whichever conversation that directory last touched, which for a

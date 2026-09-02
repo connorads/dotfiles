@@ -398,7 +398,11 @@ scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-
   relocates it), with the pane's screen capture beside it as
   `<sessionId>.screen.txt`. Pane ids die with the server and pane keys drift on
   a window move, so `pane`/`paneKey` are stored as *current addresses* and
-  refreshed - never used as the key. **No resolvable session id means no
+  refreshed - never used as the key. New records also snapshot `windowName`.
+  Display labels resolve through agent name → live window name → saved window
+  name → pane key → short session id. The fallbacks keep old records readable;
+  remove them only when no stored record lacks `windowName`. **No resolvable
+  session id means no
   hibernation**: `--continue` would resume whichever conversation the directory
   last touched, which for a directory holding several panes is the wrong one.
 - **The state gate.** `idle`/`done` hibernate freely; `blocked` (a pending

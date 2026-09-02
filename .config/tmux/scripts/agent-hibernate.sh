@@ -188,6 +188,24 @@ idle_age() {
 	human_age $((now - epoch))
 }
 
+# record_label RECFILE [PANE] - the most recognisable available label. A live
+# window name wins over the saved one so renames made after hibernation show up.
+# Old records remain readable through the pane-key and short-session fallbacks.
+record_label() {
+	local recfile="$1" pane="${2:-}" label sid
+	label=$(jq -r '.name // empty' "$recfile" 2>/dev/null)
+	if [ -z "$label" ] && [ -n "$pane" ] && pane_is_parked "$pane"; then
+		label=$(tmux display-message -p -t "$pane" '#{window_name}' 2>/dev/null) || label=""
+	fi
+	[ -n "$label" ] || label=$(jq -r '.windowName // empty' "$recfile" 2>/dev/null)
+	[ -n "$label" ] || label=$(jq -r '.paneKey // empty' "$recfile" 2>/dev/null)
+	if [ -z "$label" ]; then
+		sid=$(jq -r '.sessionId // empty' "$recfile" 2>/dev/null)
+		label=${sid:0:8}
+	fi
+	printf '%s\n' "${label:--}"
+}
+
 # --- hibernate --------------------------------------------------------------
 
 cmd_hibernate() {
@@ -202,11 +220,11 @@ cmd_hibernate() {
 	[ -n "$pane" ] || die 2 "usage: agent-hibernate.sh hibernate <pane> [--force]"
 	command -v jq >/dev/null 2>&1 || die 1 "jq required"
 
-	local info pane_pid pane_tty cwd pane_key
+	local info pane_pid pane_tty cwd pane_key window_name
 	info=$(tmux display-message -p -t "$pane" \
-		'#{pane_id}	#{pane_pid}	#{pane_tty}	#{pane_current_path}	#{session_name}:#{window_index}.#{pane_index}' 2>/dev/null)
+		'#{pane_id}	#{pane_pid}	#{pane_tty}	#{pane_current_path}	#{session_name}:#{window_index}.#{pane_index}	#{window_name}' 2>/dev/null)
 	[ -n "$info" ] || die 3 "no such pane: $pane"
-	IFS=$'\t' read -r pane pane_pid pane_tty cwd pane_key <<<"$info"
+	IFS=$'\t' read -r pane pane_pid pane_tty cwd pane_key window_name <<<"$info"
 
 	# Gate on the agent state: idle/done are safe to kill; blocked holds a
 	# pending permission prompt, working an in-flight tool call, and an empty
@@ -284,9 +302,10 @@ cmd_hibernate() {
 	if ! jq -n \
 		--arg sid "$sid" --arg pane "$pane" --arg key "$pane_key" \
 		--arg cwd "$cwd" --arg config_dir "$config_dir" --arg name "$name" \
+		--arg window_name "$window_name" \
 		--arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		--argjson flags "$flags_json" --argjson rss "$rss_kb" \
-		'{sessionId: $sid, pane: $pane, paneKey: $key, cwd: $cwd,
+		'{sessionId: $sid, pane: $pane, paneKey: $key, windowName: $window_name, cwd: $cwd,
 		  configDir: $config_dir, flags: $flags, name: $name,
 		  hibernatedAt: $at, rssKb: $rss}' >"$tmp"; then
 		rm -f "$tmp"
@@ -360,10 +379,10 @@ cmd_park() {
 	fi
 
 	# Age from journal BEFORE re-journalling the hibernated state below.
-	local age sid name rss_kb
+	local age sid label rss_kb
 	age=$(idle_age "$recfile")
 	sid=$(jq -r '.sessionId' "$recfile" 2>/dev/null)
-	name=$(jq -r '.name // empty' "$recfile" 2>/dev/null)
+	label=$(record_label "$recfile" "$pane")
 	rss_kb=$(jq -r '.rssKb // 0' "$recfile" 2>/dev/null)
 	case "$rss_kb" in '' | *[!0-9]*) rss_kb=0 ;; esac
 
@@ -387,7 +406,7 @@ cmd_park() {
 	printf '\033[2J\033[H'
 	[ -f "$STATE_DIR/$sid.screen.txt" ] && cat "$STATE_DIR/$sid.screen.txt"
 	printf '\n\033[2mhibernated: %s (idle %s, freed %s MB) - Enter to thaw\033[0m\n' \
-		"${name:-$sid}" "$age" "$((rss_kb / 1024))"
+		"$label" "$age" "$((rss_kb / 1024))"
 
 	local _key
 	while :; do
@@ -507,17 +526,17 @@ pick_record() {
 
 cmd_list() {
 	command -v jq >/dev/null 2>&1 || die 1 "jq required"
-	local rec sid pane name cwd status
+	local rec sid pane label cwd status
 	for rec in "$STATE_DIR"/*.json; do
 		[ -f "$rec" ] || continue
 		sid=$(jq -r '.sessionId // empty' "$rec" 2>/dev/null)
 		[ -n "$sid" ] || continue
 		pane=$(jq -r '.pane // empty' "$rec" 2>/dev/null)
-		name=$(jq -r '.name // empty' "$rec" 2>/dev/null)
 		cwd=$(jq -r '.cwd // empty' "$rec" 2>/dev/null)
 		if pane_is_parked "$pane"; then status=parked; else status=orphan; fi
+		label=$(record_label "$rec" "$pane")
 		printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-			"$sid" "$status" "${name:--}" "$(idle_age "$rec")" "$cwd" "${pane:--}"
+			"$sid" "$status" "$label" "$(idle_age "$rec")" "$cwd" "${pane:--}"
 	done
 }
 

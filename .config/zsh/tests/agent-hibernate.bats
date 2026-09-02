@@ -137,6 +137,7 @@ pstate() { tx show-options -pqv -t "$1" @agent_state; }
 
 @test "hibernate kills claude, writes the record, parks the thawer" {
   pane=$(launch_claude_pane)
+  tx rename-window -t "$pane" "payments-api"
   tx set-option -p -t "$pane" @agent_state idle
   run "$SCRIPT" hibernate "$pane"
   [ "$status" -eq 0 ]
@@ -147,6 +148,7 @@ pstate() { tx show-options -pqv -t "$1" @agent_state; }
   [ "$(jq -r '.sessionId' "$(record)")" = sid-test ]
   [ "$(jq -r '.pane' "$(record)")" = "$pane" ]
   [ "$(jq -r '.cwd' "$(record)")" = "$PROJ" ]
+  [ "$(jq -r '.windowName' "$(record)")" = payments-api ]
   [ "$(jq -r '.paneKey' "$(record)")" = "$(tx display-message -p -t "$pane" '#{session_name}:#{window_index}.#{pane_index}')" ]
   # Launch flags survive verbatim (stale resume state would be stripped).
   [ "$(jq -c '.flags' "$(record)")" = "[\"$IDLE\",\"-f\",\"/dev/null\"]" ]
@@ -164,6 +166,7 @@ pstate() { tx show-options -pqv -t "$1" @agent_state; }
   wait_until -d 'tx capture-pane -p -t "$pane"' \
     'tx capture-pane -p -t "$pane" | grep -q "Enter to thaw"'
   tx capture-pane -p -t "$pane" | grep -q 'MARKER-SCREEN'
+  tx capture-pane -p -t "$pane" | grep -q 'hibernated: payments-api'
 }
 
 @test "hibernate handles a pane launched with no extra flags" {
@@ -299,6 +302,29 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"sid-test	parked"* ]]
   [[ "$output" == *"sid-dead	orphan"* ]]
+}
+
+@test "list labels records by live window, saved window, pane key, then short session id" {
+  pane=$(launch_claude_pane)
+  tx rename-window -t "$pane" "live-window"
+  tx set-option -p -t "$pane" @agent_state idle
+  run "$SCRIPT" hibernate "$pane"
+  [ "$status" -eq 0 ]
+  key=$(jq -r '.paneKey' "$(record)")
+
+  jq '.sessionId = "sid-saved" | .pane = "%997" | .name = "" | .windowName = "saved-window"' \
+    "$(record)" >"$AGENT_HIBERNATE_DIR/sid-saved.json"
+  jq '.sessionId = "sid-key" | .pane = "%998" | .name = "" | del(.windowName)' \
+    "$(record)" >"$AGENT_HIBERNATE_DIR/sid-key.json"
+  jq '.sessionId = "1234567890abcdef" | .pane = "%999" | .paneKey = "" | .name = "" | del(.windowName)' \
+    "$(record)" >"$AGENT_HIBERNATE_DIR/1234567890abcdef.json"
+
+  run "$SCRIPT" list
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'sid-test\tparked\tlive-window\t'* ]]
+  [[ "$output" == *$'sid-saved\torphan\tsaved-window\t'* ]]
+  [[ "$output" == *$'sid-key\torphan\t'"$key"$'\t'* ]]
+  [[ "$output" == *$'1234567890abcdef\torphan\t12345678\t'* ]]
 }
 
 @test "thaw of an orphan record opens a new window in the recorded cwd" {
