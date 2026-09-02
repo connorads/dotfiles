@@ -112,6 +112,12 @@ is no `depcruise-baseline` / `--ignore-known`, so the ratchet is exact-edge
 which expire themselves when the edge goes. Contracts, the tach carve-out, and
 the wiring notes are in `references/python.md`.
 
+Do not substitute a pytest-native direct-edge DSL for this graph gate. A rule
+that rejects `domain -> infra` but accepts `domain -> application -> infra`
+enforces spelling, not reachability. PyTestArch 4.0.1 and main exhibited that
+behaviour in a positive-control fixture. Reuse import-linter's Grimp graph
+inside pytest when a custom reachability predicate is needed.
+
 See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
 ## Cycle gating on legacy graphs
