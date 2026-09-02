@@ -7,6 +7,8 @@ Routed from the picks table and rules-catalogue index in `SKILL.md`. Boundary
 rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
 `references/architecture-boundaries.md`.
 
+## Contents
+
 - [Type safety](#type-safety)
 - [Type checking](#type-checking)
 - [Error handling](#error-handling)

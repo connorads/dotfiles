@@ -4,6 +4,8 @@ Per-stack rules for Python: Ruff format + lint, type checking, complexity, dead
 code, dependencies, boundaries, purity, testing config and publishing gates.
 Routed from the picks table and rules-catalogue index in `SKILL.md`.
 
+## Contents
+
 - [Ruff format + lint](#ruff-format--lint)
 - [Type checking](#type-checking)
 - [Complexity](#complexity)
