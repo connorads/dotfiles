@@ -137,6 +137,31 @@ EOF
   [[ "$output" == *"=> done"* ]]
 }
 
+@test "up puts the gh wrapper ahead of a stale mise shim for Homebrew" {
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/mise/shims"
+  write_executable "$HOME/.local/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "wrapper gh"
+EOF
+  write_executable "$HOME/.local/share/mise/shims/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "stale mise gh"
+EOF
+  export PATH="$HOME/.local/share/mise/shims:$PATH"
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+command -v gh >>"$TEST_LOG"
+exit 0
+EOF
+
+  run_zsh_function "$UP" --no-audit
+
+  [ "$status" -eq 0 ]
+  grep -qFx "$HOME/.local/bin/gh" "$TEST_LOG"
+  ! grep -qFx "$HOME/.local/share/mise/shims/gh" "$TEST_LOG"
+}
+
 @test "up lock commits leave unrelated staged files alone" {
   local git_dir="$TEST_HOME/git/dotfiles"
   mkdir -p "$git_dir" "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"

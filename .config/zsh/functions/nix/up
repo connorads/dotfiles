@@ -299,7 +299,11 @@ _up_reapply_patches() {
 }
 
 _up_brew() {
-  brew update && brew upgrade --no-ask
+  # Homebrew locates gh itself for bottle attestation. A project-installed mise
+  # shim can otherwise shadow the global wrapper while having no active version
+  # outside that project. Keep the wrapper first for both Homebrew processes.
+  PATH="$HOME/.local/bin:$PATH" brew update &&
+    PATH="$HOME/.local/bin:$PATH" brew upgrade --no-ask
 }
 
 _up_apt() {
