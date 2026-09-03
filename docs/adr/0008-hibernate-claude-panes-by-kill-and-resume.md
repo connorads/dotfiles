@@ -1,5 +1,7 @@
 # Hibernating a Claude pane means killing it and resuming from the transcript
 
+> Superseded by [ADR 0009](./0009-hibernate-agent-panes-through-lifecycle-adapters.md).
+
 ## Context
 
 51 tmux panes run Claude on a 16 GiB Mac mini: ~15 GiB total footprint, ~3-4 GiB
