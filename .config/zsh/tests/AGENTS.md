@@ -166,6 +166,42 @@ The one case that wants the *old* bash on purpose is the re-exec regression test
 when `/bin/bash` is already >= 5) to prove a re-exec'd parent does not suppress its
 child's own re-exec.
 
+## Answering a prompt: `run_on_pty`, never `script(1)`
+
+`test_helper.bash` exports **`run_on_pty ANSWER CMD...`** - the only sanctioned way
+to drive a command that reads a keystroke from a tty. It runs CMD on a pty the
+driver owns, types ANSWER, and `run`s it, so `$status` is CMD's own exit status:
+
+```sh
+run_on_pty y zsh --no-rcs "$SOME_FN" --some-flag   # then assert $status / $output
+```
+
+**`script(1)` cannot do this, and neither of its failures says so.** Handed a FIFO
+on stdin - the `attach_pty_client` fd-9 pattern, which is the spelling that looks
+right - BSD `script` calls `tcgetattr` on its own stdin and aborts with
+`tcgetattr/ioctl: Operation not supported on socket`, so the child never runs.
+Handed a heredoc it starts, but the pty reaches EOF before the child's `read`, so
+the prompt sees `^D`, the answer parses as empty, and **every answer reads as
+"no"**. An abort test then passes for entirely the wrong reason while its proceed
+twin fails - `ghcl-org.bats` hit exactly that, and the passing half was passing
+vacuously. `script`'s exit status is not reliably the child's either, so a
+`script`-based test has to round-trip the code through a file.
+
+**`run_in_tty` is the helper that looks right for this and is not.** It exists
+only to give a command a tty so output gated on one (colour, an interactive
+warning) can be asserted; it cannot answer a prompt. Its two callers
+(`agent-streams.bats`, `cleanup.bats`) assert colour and dry-run output and never
+prompt, which is why nothing broke before `ghcl-org.bats` tried.
+
+The helper is cheap and does **not** earn the `integration` tag: the two pty tests
+in `ghcl-org.bats` cost ~650ms and ~320ms, and that file is untagged. The tag's
+mention of "`script(1)` TTY runs" as a qualifying cost is about suites that spend
+real wall-clock in one, not about touching a pty at all.
+
+The general rule, and the pty mechanics behind it, live in the `testing` skill
+(`references/shell-testing.md`, `## Driving a TTY in tests`); the helper here is
+that rule's instance.
+
 ## tmux tests: bare servers (`-f /dev/null`), never the real config
 
 Tests that need a real tmux server (`agent-state`, `agent-sweep`, `*-agent-hooks`,
