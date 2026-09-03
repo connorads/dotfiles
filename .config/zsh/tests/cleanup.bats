@@ -28,6 +28,7 @@ setup() {
     "$HOME/.bun/install/cache/pkg" \
     "$HOME/.cache/.bun/install/cache/pkg" \
     "$HOME/.local/share/pnpm/store/v10/pkg" \
+    "$HOME/Library/Caches/pnpm/pkg" \
     "$HOME/.cache/pnpm/pkg" \
     "$HOME/.npm/cache" \
     "$HOME/.cache/pip/http-v2" \
@@ -56,6 +57,7 @@ setup() {
   touch "$HOME/.bun/install/cache/pkg/data"
   touch "$HOME/.cache/.bun/install/cache/pkg/data"
   touch "$HOME/.local/share/pnpm/store/v10/pkg/data"
+  touch "$HOME/Library/Caches/pnpm/pkg/data"
   touch "$HOME/.cache/pnpm/pkg/data"
   touch "$HOME/.npm/cache/data"
   touch "$HOME/.cache/pip/http-v2/data"
@@ -142,6 +144,15 @@ if [ "${1:-}" = "store" ] && [ "${2:-}" = "prune" ]; then
   exit 0
 fi
 exit 0
+EOF
+
+  # Stable by default so successful cleanup tests do not depend on concurrent
+  # writes to the host volume. Individual accounting tests replace this stub.
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+echo "df $*" >>"$TEST_LOG"
+printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+printf '/dev/test 1000000 900000 100000 90%% /\n'
 EOF
 
   write_stub npm <<'EOF'
@@ -296,6 +307,52 @@ EOF
   [[ "$(cat "$TEST_LOG")" != *"rustup toolchain uninstall"* ]]
   [ ! -e "$CLEANUP_TMPDIR_ROOT/old-dir" ]
   [ -e "$CLEANUP_TMPDIR_ROOT/new-dir" ]
+}
+
+@test "pnpm estimate counts cache roots but not the selectively-pruned store" {
+  dd if=/dev/zero of="$HOME/.local/share/pnpm/store/v10/pkg/data" bs=1024 count=8192 2>/dev/null
+  dd if=/dev/zero of="$HOME/Library/Caches/pnpm/pkg/data" bs=1024 count=1024 2>/dev/null
+  dd if=/dev/zero of="$HOME/.cache/pnpm/pkg/data" bs=1024 count=1024 2>/dev/null
+  local cache_kb
+  cache_kb=$(du -sk "$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm" | awk '{ total += $1 } END { print total }')
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --json --pnpm
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"estimate_kind":"partial"'* ]]
+  [[ "$output" == *"\"size_kb\":$cache_kb"* ]]
+  [[ "$output" == *'"has_unknown_estimates":true'* ]]
+  [[ "$output" == *'pnpm store prune has unknown additional reclaim'* ]]
+}
+
+@test "human plan labels candidates and warns that physical reclaim may be lower" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --pnpm
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"known candidate total:"* ]]
+  [[ "$output" == *"excludes selective cleanup with unknown size"* ]]
+  [[ "$output" == *"logical/tool estimates; physical reclaim may be lower"* ]]
+  [[ "$output" != *"total estimate:"* ]]
+}
+
+@test "pnpm cleanup prunes the store and removes macOS and XDG cache roots" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --pnpm
+
+  [ "$status" -eq 0 ]
+  grep -Fx "pnpm store prune" "$TEST_LOG"
+  [ ! -e "$HOME/Library/Caches/pnpm" ]
+  [ ! -e "$HOME/.cache/pnpm" ]
+  [ -e "$HOME/.local/share/pnpm/store/v10/pkg/data" ]
+  [[ "$output" == *"Observed volume free-space change: +0K"* ]]
+}
+
+@test "pnpm store prune still runs when its known cache candidate is empty" {
+  rm -rf "$HOME/Library/Caches/pnpm" "$HOME/.cache/pnpm"
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --pnpm
+
+  [ "$status" -eq 0 ]
+  grep -Fx "pnpm store prune" "$TEST_LOG"
 }
 
 @test "aube cleanup flushes caches but preserves the durable store" {
@@ -679,7 +736,111 @@ EOF
   [[ "$output" != *"Probing cleanup targets"* ]]
   [[ "$output" == *'"mode":"dry-run"'* ]]
   [[ "$output" == *'"id":"bun"'* ]]
+  [[ "$output" == *'"estimate_kind":"logical-candidate"'* ]]
+  [[ "$output" == *'"candidate_total_kb":'* ]]
+  [[ "$output" == *'"candidate_total_human":'* ]]
+  [[ "$output" == *'"has_unknown_estimates":false'* ]]
   [[ "$output" == *'"command":"bun pm cache rm (fallback: rm -rf Bun cache roots)"'* ]]
+}
+
+@test "completed cleanup reports the whole-volume available-space increase" {
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+state="$TEST_LOG.df-count"
+count=$(cat "$state" 2>/dev/null || echo 0)
+count=$((count + 1))
+printf '%s\n' "$count" >"$state"
+available=100000
+[ "$count" -gt 1 ] && available=110240
+printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+printf '/dev/test 1000000 900000 %s 90%% /\n' "$available"
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --json --bun
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"ok":1'* ]]
+  [[ "$output" == *'"volume_available_before_kb":100000'* ]]
+  [[ "$output" == *'"volume_available_after_kb":110240'* ]]
+  [[ "$output" == *'"volume_available_delta_kb":10240'* ]]
+}
+
+@test "completed cleanup reports zero and negative volume changes literally" {
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+state="$TEST_LOG.df-count"
+count=$(cat "$state" 2>/dev/null || echo 0)
+count=$((count + 1))
+printf '%s\n' "$count" >"$state"
+available=100000
+[ "$count" -gt 1 ] && available="${DF_AFTER_KB:-100000}"
+printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+printf '/dev/test 1000000 900000 %s 90%% /\n' "$available"
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" DF_AFTER_KB=100000 \
+    zsh --no-rcs "$CLEANUP" --yes --json --bun
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"volume_available_delta_kb":0'* ]]
+
+  rm -f "$TEST_LOG.df-count"
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" DF_AFTER_KB=97952 \
+    zsh --no-rcs "$CLEANUP" --yes --json --bun
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"volume_available_delta_kb":-2048'* ]]
+}
+
+@test "failed space measurement is non-fatal and emits null result fields" {
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+printf 'not a df result\n'
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --json --bun
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"ok":1'* ]]
+  [[ "$output" == *'"volume_available_before_kb":null'* ]]
+  [[ "$output" == *'"volume_available_after_kb":null'* ]]
+  [[ "$output" == *'"volume_available_delta_kb":null'* ]]
+}
+
+@test "target failure still measures the ending volume and reports failure" {
+  write_stub df <<'EOF'
+#!/usr/bin/env bash
+state="$TEST_LOG.df-count"
+count=$(cat "$state" 2>/dev/null || echo 0)
+count=$((count + 1))
+printf '%s\n' "$count" >"$state"
+available=100000
+[ "$count" -gt 1 ] && available=101024
+printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n'
+printf '/dev/test 1000000 900000 %s 90%% /\n' "$available"
+EOF
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+if [ "${*: -1}" = "-n" ]; then
+  printf '==> This operation would free approximately 1MB of disk space.\n'
+  exit 0
+fi
+exit 7
+EOF
+
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --yes --json --brew
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'"ok":0'* ]]
+  [[ "$output" == *'"volume_available_after_kb":101024'* ]]
+  [[ "$output" == *'"volume_available_delta_kb":1024'* ]]
+}
+
+@test "dry-run never invokes the volume measurement" {
+  run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" zsh --no-rcs "$CLEANUP" --dry-run --json --bun
+
+  [ "$status" -eq 0 ]
+  ! grep -F "df " "$TEST_LOG"
+  [[ "$output" != *'volume_available_delta_kb'* ]]
 }
 
 @test "tty dry-run shows probe progress before the final plan" {
