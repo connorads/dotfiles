@@ -50,6 +50,16 @@ echo "drs $*" >>"$TEST_LOG"
 exit 0
 EOF
 
+  write_stub sudo <<'EOF'
+#!/usr/bin/env bash
+echo "sudo $*" >>"$TEST_LOG"
+if [ -n "${UP_SUDO_KEEPALIVE:-}" ]; then
+  echo "sudo-keepalive-parent=$PPID" >>"$TEST_LOG"
+fi
+[ -n "${SUDO_FAIL:-}" ] && exit 1
+exit 0
+EOF
+
   for cmd in brew macup-check tmux-upstream pin-audit \
     claude-channels-patch claude-channels-allowlist-patch \
     claude-computer-use-patch claude-session-reaper-patch \
@@ -69,6 +79,7 @@ EOF
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
 echo "mise $*" >>"$TEST_LOG"
+[ -n "${MISE_DELAY:-}" ] && sleep "$MISE_DELAY"
 if [ "$1" = "upgrade" ] && [ -n "${MISE_SIMULATE_BUMP:-}" ]; then
   echo "bumped" >>"$HOME/.config/mise/mise.lock"
 fi
@@ -266,6 +277,42 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"usage: up"* ]] || false
   [ ! -s "$TEST_LOG" ]
+}
+
+@test "up fails before mutation when non-interactive sudo validation fails" {
+  SUDO_FAIL=1 run_zsh_function "$UP"
+  [ "$status" -ne 0 ]
+  grep -qF 'osv-scanner scan source' "$TEST_LOG"
+  grep -qF 'sudo -n -v' "$TEST_LOG"
+  ! grep -qF 'mise upgrade' "$TEST_LOG"
+  ! grep -qF 'brew' "$TEST_LOG"
+  [[ "$output" == *"sudo"*"FAILED"*"authentication unavailable"* ]] || false
+  [[ "$output" == *"next: rerun up in an interactive terminal"* ]]
+}
+
+@test "up keeps sudo alive during work and reaps the helper" {
+  UP_SUDO_REFRESH_CENTISECONDS=1 MISE_DELAY=0.2 run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  local keepalive_pid
+  keepalive_pid=$(sed -n 's/^sudo-keepalive-parent=//p' "$TEST_LOG" | head -1)
+  [ -n "$keepalive_pid" ]
+  ! kill -0 "$keepalive_pid" 2>/dev/null
+  [[ "$output" == *"sudo"*"DONE"*"ticket held for privileged phases"* ]]
+}
+
+@test "up validates sudo interactively when stdin is a TTY" {
+  run /usr/bin/script -q /dev/null "$UP" --frozen
+  [ "$status" -eq 0 ]
+  grep -qF 'sudo -v' "$TEST_LOG"
+}
+
+@test "up reaps the sudo helper when interrupted" {
+  UP_SUDO_REFRESH_CENTISECONDS=1 MISE_DELAY=5 run timeout -s TERM 1 zsh --no-rcs "$UP" --frozen
+  [ "$status" -eq 124 ]
+  local keepalive_pid
+  keepalive_pid=$(sed -n 's/^sudo-keepalive-parent=//p' "$TEST_LOG" | head -1)
+  [ -n "$keepalive_pid" ]
+  ! kill -0 "$keepalive_pid" 2>/dev/null
 }
 
 @test "up runs the lockfile audit before bumping" {

@@ -41,6 +41,9 @@ local flake_lock=~/.config/nix/flake.lock
 local up_mode=update up_failed=0 up_started=$SECONDS
 ((frozen)) && up_mode=frozen
 local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next
+local up_sudo_pid=""
+local up_unload_zselect=0
+local up_sudo_refresh_centiseconds=${UP_SUDO_REFRESH_CENTISECONDS:-3000}
 
 _up_duration() {
   local seconds=$1
@@ -119,8 +122,101 @@ _up_summary() {
 }
 
 _up_finish() {
+  _up_sudo_stop
   _up_summary
   return $up_failed
+}
+
+_up_sudo_stop() {
+  if [[ -n $up_sudo_pid ]]; then
+    kill "$up_sudo_pid" 2>/dev/null
+    wait "$up_sudo_pid" 2>/dev/null
+    up_sudo_pid=""
+  fi
+  if ((up_unload_zselect)); then
+    zmodload -u zsh/zselect 2>/dev/null
+    up_unload_zselect=0
+  fi
+}
+
+TRAPEXIT() {
+  _up_sudo_stop
+}
+
+TRAPINT() {
+  _up_sudo_stop
+  return $((128 + $1))
+}
+
+TRAPTERM() {
+  _up_sudo_stop
+  return $((128 + $1))
+}
+
+TRAPHUP() {
+  _up_sudo_stop
+  return $((128 + $1))
+}
+
+_up_needs_sudo() {
+  [[ "$OSTYPE" == "darwin"* ]] && return 0
+  [[ -f /etc/NIXOS ]] && return 0
+  ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null
+}
+
+_up_sudo_start() {
+  local started=$SECONDS rc had_monitor=$options[monitor]
+
+  if ! _up_needs_sudo; then
+    _up_skip sudo "not required"
+    return 0
+  fi
+
+  print "=> sudo"
+  if [[ -t 0 ]]; then
+    sudo -v
+  else
+    sudo -n -v
+  fi
+  rc=$?
+  if ((rc)); then
+    up_failed=1
+    _up_record sudo FAILED $((SECONDS - started)) "authentication unavailable"
+    _up_next "rerun up in an interactive terminal"
+    return $rc
+  fi
+
+  if ! zmodload -e zsh/zselect; then
+    if ! zmodload zsh/zselect; then
+      up_failed=1
+      _up_record sudo FAILED $((SECONDS - started)) "zsh/zselect unavailable"
+      return 1
+    fi
+    up_unload_zselect=1
+  fi
+  # Interactive callers keep job control for foreground phases, but the private
+  # refresher must not create start/completion notices in their shell.
+  unsetopt monitor
+  (
+    while true; do
+      UP_SUDO_KEEPALIVE=1 sudo -n -v >/dev/null 2>&1 || return 1
+      zselect -t "$up_sudo_refresh_centiseconds"
+    done
+  ) &
+  up_sudo_pid=$!
+  [[ $had_monitor == on ]] && setopt monitor
+  _up_record sudo DONE $((SECONDS - started)) "ticket held for privileged phases"
+}
+
+_up_sudo_ready() {
+  local phase=$1
+  if sudo -n -v >/dev/null 2>&1; then
+    return 0
+  fi
+  up_failed=1
+  _up_record "$phase" FAILED 0 "sudo ticket unavailable"
+  _up_next "rerun up in an interactive terminal"
+  return 1
 }
 
 _up_preflight() {
@@ -229,6 +325,11 @@ elif ! _up_run required audit "tracked lockfiles" lockfile-audit; then
   return $?
 fi
 
+_up_sudo_start || {
+  _up_finish
+  return $?
+}
+
 local mise_ok=1
 if ((frozen)); then
   _up_run required mise "install committed mise.lock" mise install || mise_ok=0
@@ -259,7 +360,9 @@ fi
 # apt updates (non-NixOS Linux). Each step depends on the previous one so a
 # failed index refresh cannot drive an upgrade from stale package lists.
 if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
-  _up_run required apt "update, upgrade, autoremove" _up_apt || _up_next "sudo apt-get update -y"
+  if _up_sudo_ready apt; then
+    _up_run required apt "update, upgrade, autoremove" _up_apt || _up_next "sudo apt-get update -y"
+  fi
 elif ((frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
   _up_skip apt "frozen mode"
 fi
@@ -276,14 +379,24 @@ fi
 
 local rebuild_ok=1
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  _up_run required rebuild "darwin" drs || rebuild_ok=0
+  if _up_sudo_ready rebuild; then
+    _up_run required rebuild "darwin" drs || rebuild_ok=0
+  else
+    rebuild_ok=0
+  fi
   if ((do_os)); then
-    _up_run required macos "install no-restart updates" macup --safe || _up_next "macup --safe"
+    if _up_sudo_ready macos; then
+      _up_run required macos "install no-restart updates" macup --safe || _up_next "macup --safe"
+    fi
   else
     _up_run advisory macos "check only" macup-check
   fi
 elif [[ -f /etc/NIXOS ]]; then
-  _up_run required "system rebuild" "NixOS" nrs || rebuild_ok=0
+  if _up_sudo_ready "system rebuild"; then
+    _up_run required "system rebuild" "NixOS" nrs || rebuild_ok=0
+  else
+    rebuild_ok=0
+  fi
   _up_run required "home rebuild" "home-manager" hms || rebuild_ok=0
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   _up_run required rebuild "home-manager" hms || rebuild_ok=0
