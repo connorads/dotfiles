@@ -4,18 +4,18 @@
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
 #            --playwright, --chrome, --temp, --docker, --nix, --mise,
-#            --mise-cache, --codex, --brew, --claude-temp, --worktree-build,
+#            --mise-cache, --codex, --brew, --go, --claude-temp, --worktree-build,
 #            --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew claude-temp worktree-build)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go claude-temp worktree-build)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
 # costs a full recompile to restore.
-CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright chrome temp docker nix mise mise-cache codex brew)
+CLEANUP_DEFAULT_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo nvim browsers playwright chrome temp docker nix mise mise-cache codex brew go)
 CLEANUP_SELECTED_TARGETS=()
 
 # Roots scanned for Rust build dirs. Space-separated; override to scan elsewhere.
@@ -64,6 +64,7 @@ CLEANUP_LABELS=(
   mise-cache "mise download and metadata cache"
   codex "Codex TUI log and old session files"
   brew "Homebrew download cache"
+  go "Go build and module caches"
   claude-temp "Inactive Claude scratch sessions"
   worktree-build "Unused worktree build artefacts"
 )
@@ -90,6 +91,7 @@ CLEANUP_DEFAULT_FLAGS=(
   mise-cache 1
   codex 1
   brew 1
+  go 1
   claude-temp 0
   worktree-build 0
 )
@@ -111,7 +113,7 @@ Usage:
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
   nvim, browsers, playwright, chrome, temp, docker, nix, mise, mise-cache,
-  codex, brew, claude-temp, worktree-build
+  codex, brew, go, claude-temp, worktree-build
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
@@ -603,6 +605,21 @@ _cleanup_probe_target() {
       detail="Path: $HOME/.cargo/registry/cache"
       command="rm -rf ~/.cargo/registry/cache"
       ;;
+    go)
+      if command -v go >/dev/null 2>&1; then
+        dirs=("${(@f)$(go env GOCACHE GOMODCACHE 2>/dev/null)}")
+        dirs=("${(@)dirs:#}")
+        (( ${#dirs[@]} == 2 )) || return 1
+        command="go clean -cache -modcache"
+        detail="Tool-resolved paths: ${dirs[1]}, ${dirs[2]}"
+      else
+        dirs=("$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod")
+        command="rm -rf canonical Go cache roots"
+        detail="Go absent; paths: ${dirs[1]}, ${dirs[2]}; preserves ~/go/src and ~/go/bin"
+      fi
+      kb=$(_cleanup_kb_sum "${dirs[@]}")
+      (( kb > 0 )) || applicable=0
+      ;;
     cargo-target)
       local target_dir
       local -a target_dirs
@@ -917,6 +934,16 @@ _cleanup_run_target() {
     cargo)
       command rm -rf -- "$HOME/.cargo/registry/cache"
       ;;
+    go)
+      if command -v go >/dev/null 2>&1; then
+        go clean -cache -modcache
+      else
+        # The Go module cache deliberately stores downloaded files read-only.
+        # Match `go clean -modcache` by restoring owner write permission first.
+        [[ -d "$HOME/go/pkg/mod" ]] && chmod -R u+w "$HOME/go/pkg/mod"
+        command rm -rf -- "$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod"
+      fi
+      ;;
     cargo-target)
       local target_dir
       while IFS= read -r target_dir; do
@@ -1191,7 +1218,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew|--claude-temp|--worktree-build)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew|--go|--claude-temp|--worktree-build)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
