@@ -11,6 +11,7 @@ table and rules-catalogue index in `SKILL.md`.
 
 - [Architectural boundaries](#architectural-boundaries)
 - [Transitive architecture tests](#transitive-architecture-tests)
+- [Boundary tool matrix (TypeScript)](#boundary-tool-matrix-typescript)
 - [Cycle gating on legacy graphs](#cycle-gating-on-legacy-graphs)
 - [Go boundaries](#go-boundaries)
 - [Greppable invariants (agent self-audit tier)](#greppable-invariants-agent-self-audit-tier)
@@ -19,116 +20,146 @@ table and rules-catalogue index in `SKILL.md`.
 
 ## Architectural boundaries
 
-Use `no-restricted-imports` and `no-restricted-syntax` to make illegal graphs uncompilable. The catalogue of patterns:
+Scope an import ban to a layer to make illegal graphs uncompilable. The catalogue of
+patterns:
 
-- **Pure layer cannot import side-effectful layer.** `files: ["src/utilities/**"]` + `no-restricted-imports` banning `next/cache`, `next/headers`, `next/navigation`, ORM runtime modules. Use `allowTypeImports: true` for types you still want visible. Exempt one or two *intentionally* coupled files (`queries.ts`, `revalidate.ts`) via `ignores`.
+- **Pure layer cannot import side-effectful layer.** `files: ["src/utilities/**"]` + `no-restricted-imports` banning `next/cache`, `next/headers`, `next/navigation`, ORM runtime modules. `allowTypeImports: true` keeps port types visible and is native in oxlint (verified 2026-09-03 against oxlint 1.80.0: the `import type` line passes, the value import exits 1). Exempt one or two *intentionally* coupled files (`queries.ts`, `revalidate.ts`) through `excludeFiles`.
 - **UI cannot import schemas directly.** `files: ["src/components/**"]` + `no-restricted-imports patterns` banning `@/collections/*` (or whichever path holds your DB schemas). UI should depend on *generated types*, not schema source - otherwise a UI tweak forces a migration.
-- **Raw SQL only in the query layer.** `no-restricted-syntax` on `TaggedTemplateExpression[tag.name='sql']` everywhere except `src/db/**`. Also ban raw driver imports (`ImportDeclaration[source.value='postgres']`) outside the same directory. **sqruff** (Rust) then lints / formats that quarantined SQL - see the picks table in `SKILL.md`.
-- **Dynamic `import()` only via named wrappers.** `no-restricted-syntax` on `ImportExpression` outside `next/dynamic` / `React.lazy`. Prevents ad-hoc chunking that defeats SSR.
+- **Raw SQL only in the query layer.** Ban the `sql` tagged template outside `src/db/**`, and the raw driver import (`postgres`) with it. The tag needs a syntax selector, so it is an ast-grep rule; the import half is a plain `no-restricted-imports` pattern. **sqruff** (Rust) then lints / formats that quarantined SQL - see the picks table in `SKILL.md`.
+- **Dynamic `import()` only via named wrappers.** A selector on `ImportExpression` outside `next/dynamic` / `React.lazy`. Prevents ad-hoc chunking that defeats SSR.
 
-Full working snippets live in `references/eslint-boundaries.mjs`.
-
-**oxlint (Rust) is the fast, Rust-first way to run these.** oxlint is production
-(1.0 shipped 2025) with native `no-restricted-imports`,
-`no-restricted-syntax`, `jsx-a11y`, and a multi-file `import/no-cycle` - so it
-takes the boundary-rule role this skill kept ESLint around for, with no Node
-dependency tree, and retires madge (see Import hygiene in `references/typescript.md`). Two adjacent pieces are
-still pre-stable, so keep them advisory: type-aware rules via tsgolint/tsgo
-(`oxlint --type-aware`, alpha - the only thing here that catches floating /
-misused promises) and custom JS plugins (alpha). The import-type-aware boundary
-rule (`allowTypeImports`) and framework-specific plugins (next, storybook) still
-need typescript-eslint until oxlint's JS plugins stabilise.
-
-When the bounded-context map is richer than per-rule `no-restricted-imports` can
-express, declare it once instead: **eslint-plugin-boundaries** (assign element
-types to paths, write rules over the types) or **@softarc/sheriff** (tag rules
-plus barrel encapsulation; runs as an ESLint plugin or a standalone CLI).
-dependency-cruiser stays the default for transitive gates (below).
+**oxlint (Rust) runs the direct-edge half.** It has native `no-restricted-imports` (with
+`allowTypeImports`), `no-restricted-properties`, `no-restricted-globals`, `jsx-a11y` and a
+multi-file `import/no-cycle`, needs no Node dependency tree, and survives TypeScript 7 because
+it never loads the project's compiler. It has **no** `no-restricted-syntax`: naming that rule in
+a config file aborts the whole run (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`,
+exit 1, nothing linted), and spelling it as a CLI `-D` flag is a silent no-op at exit 0, so
+selector rules go to ast-grep (`references/typescript-ast-grep.yml`) or to the
+`oxlint-plugin-eslint` jsPlugin under an `eslint-js/` prefix. Direct rules are blind to a
+barrel: a domain file importing `../index.ts`, which re-exports infra, passes at exit 0 while a
+transitive gate flags it (verified 2026-09-03 against oxlint 1.80.0). The rule catalogue and its
+config traps are in `references/typescript.md` (Lint families, Import hygiene); the config
+drop-in is `references/typescript-oxlintrc.jsonc`, and `references/eslint-boundaries.mjs` keeps
+the ESLint form for a TypeScript 6 side-by-side layer.
 
 ## Transitive architecture tests
 
-Use "architecture test" for an executable check over the module graph: "domain
-must never reach runtime", "UI must never reach server-only content", "private
-facts only enter through the gated boundary". These are not behavioural tests;
-they are lint-style gates for structural drift.
+Use "architecture test" for an executable check over the module graph: "domain must never
+reach runtime", "UI must never reach server-only content", "private facts only enter through
+the gated boundary". These are lint-style gates for structural drift, and they exist because
+one hop defeats a direct-edge rule: a domain file importing the barrel that re-exports infra
+passes every `no-restricted-imports` in the repo.
 
-`dependency-cruiser` is the default TypeScript tool for these transitive graph
-rules - its `reachable` / `via` / `viaNot` rules are the transitive engine, and
-they also cover its one direct-level gap (a re-export through a barrel file can
-evade a plain `from`/`to` rule; the reachability rules see through it). Keep
-direct import bans in oxlint/Biome/ESLint where possible because they are
-faster and show up closer to the editor.
+**On TypeScript 7 the gate is a ts-morph test run by vitest**, dropped in as
+`references/typescript-arch-test.ts`. It builds the graph with ts-morph's `Project` over the
+repo's tsconfig and asserts layer rules (no `src/domain/**` module reaches `src/infra/**`),
+reachability with the offending chain named in the failure message, and package cycles,
+filtering type-only edges separately so a boundary allowing shared types but not runtime values
+is two assertions over one graph. Two mechanics are load-bearing, verified 2026-09-03 against
+ts-morph 28.0.0. Edges come from `getLiteralsReferencingOtherSourceFiles()`, not
+`getImportDeclarations()`: a module whose only edges are a dynamic `await
+import("../infra/db.ts")` and an `import("../infra/db.ts").Order` type query returns **zero**
+import and export declarations, so the declaration accessors miss the laundering route outright.
+And the start set is asserted non-empty, because a hand-rolled path predicate has no schema - a
+typo'd prefix yields 0 start modules and a green test, where the corrected form flags all five
+fixture violations, barrel launder and dynamic import among them. ts-morph bundles its own
+TypeScript (6.0.2 at 28.0.0), so the test resolves modules under a different compiler than the
+build, which is also why it survives the cliff below.
 
-**fallow** (Rust) is a watch, not the boundary gate. It is fast (~20k files in
-~1.5s) and covers cycles, dead code, and zone presets, but its boundary
-analysis is direct-import-only and its barrel "parent fallback" rule
-deliberately suppresses barrel violations - so imports laundered through a
-barrel pass. It is TS/JS-only, open-core (paywall-creep risk on the zone
-features), and its config DSL is still unstable (two majors in four months).
-Use it as a complementary fast pass if at all; re-verify at its next major with
-a barrel-laundering fixture before trusting it with boundaries.
+**dependency-cruiser is the richer engine, and it stops at TypeScript 6.** 18.2.0 declares
+`typescript >=2.0.0 <7.0.0`, and that is a removed-API problem rather than a version-range
+oversight, so no range bump fixes it. Under TS 7 every `.ts` extension is disabled and a
+directory target cruises nothing: `✔ no dependency violations found (0 modules, 0 dependencies
+cruised)` at **exit 0**, the reason demoted to a `‼ missing-typescript-transpiler` note that
+prints only when `options.tsConfig` is set (verified 2026-09-03 against dependency-cruiser
+18.2.0 with typescript 7.0.2). Keep it in a sidecar `tools/` package owning its own
+`typescript@6`, or alias the lint stack's compiler as
+`typescript@npm:@typescript/typescript6@6`, an alias that ships bin `tsc6` and **removes
+`node_modules/.bin/tsc`**, so a `tsc -p` script falls through to whatever is on PATH. Either
+route needs its own fail-closed assertion, because the module count is the only tell:
 
-Good dependency-cruiser rules are named like architecture invariants and have a
-short comment explaining the failure mode:
+```bash
+depcruise --info | grep -qE '^[[:space:]]*✔ \.ts$' || { echo "depcruise cannot parse .ts"; exit 1; }
+depcruise src --config .dependency-cruiser.cjs -T err
+```
 
-- `domain-not-to-app-shells`
-- `pure-access-not-to-runtime`
-- `ui-not-to-server-modules`
-- `private-content-through-approved-boundaries`
-- `prod-not-to-tests`
+What its rules can and cannot express, verified 2026-09-03 against 18.2.0 with typescript
+6.0.3 aliased in:
 
-Adoption pattern:
+| Fact | Consequence |
+|---|---|
+| `reachable` accepts only `path` / `pathNot` | Pairing it with `via`, `viaNot` or `dependencyTypes` is a hard schema error at exit 1. A transitive rule and a type-only split are two configs and two runs. |
+| `via*` applies to `circular` rules only | On a non-circular rule a `via` that matches nothing is accepted, ignored, and **widens** the rule - a via of `^MATCHES_NOTHING$` reported 2 violations. `viaNot` is deprecated in favour of `viaOnly.pathNot`. |
+| `scope: "folder"` + `to: { circular: true }` is the package-cycle gate | Granularity is the module's *immediate parent directory*, so a cycle whose legs sit in different subfolders (`pkgc/src` -> `pkgd/src`, `pkgd/util` -> `pkgc/src`) reports clean at exit 0. |
+| `required` rules invert the polarity | `module: { path: "^src/domain/" }, to: { path: "^src/ports/" }` fails every domain module with no port edge. Aim them at directory roots: a `required` rule is defeated by the module being absent from an entry-point cruise. |
+| The exit code is the error count, masked to 8 bits | 255 errors exit 255; **256 errors exit 0**. Test `!= 0` and never `== 1` - exit 1 is also an invalid config, an invalid reporter, an unreadable file and a missing graphviz. |
+| The reporter decides whether it gates | `err`, `err-long`, `teamcity`, `azure-devops` and `null` exit with the count; `json`, `markdown`, `flat`, `text` and `metrics` exit 0 on the same violations, and `github-actions` is not a reporter at all (exit 1 on a clean tree). A rule's `comment` prints under `err-long` alone, so the default `err` drops the guidance that explains the failure. `outputType` is rejected by the config schema, so every invocation site spells `-T` itself. |
+| The baseline is module-precise and never expires | `depcruise-baseline` + `--ignore-known` keys a reachability entry on `from` plus rule name; `to` and the `via` chain are recorded and never compared. Rewiring a baselined module to an infra file absent when the baseline was written stays at exit 0. |
 
-1. Start with `dependency-cruiser/configs/recommended-strict` so findings fail
-   the gate instead of disappearing as warnings.
-2. Add project-specific `forbidden` rules with names and comments.
-3. Pass `options.tsConfig.fileName` so aliases resolve.
-4. Enable `tsPreCompilationDeps` so type-only imports are visible to rules.
-5. Split value-import and type-only-import rules when a boundary allows shared
-   types but not runtime values.
-6. Use `dependencyTypesNot: ["type-only"]` only where type visibility is
-   intentionally allowed but runtime imports are not.
-7. Exclude generated files and list legitimate entry points as orphan
-   exceptions.
-8. Run with `--no-cache` in hooks/CI unless config invalidation has been proven
-   in that repo.
-9. Measure wall time before choosing pre-commit. Whole-graph checks usually fit
-   a full `quality`/CI hook better than staged pre-commit.
+Adoption pattern on a TypeScript 6 stack:
 
-`no-orphans` is a useful sanity check, but it is not a dead-code strategy. Keep
-knip for unused exports, unused files, and unused dependencies (see
-`references/typescript.md`).
+1. Extend `dependency-cruiser/configs/recommended-strict` (7 rules at error plus a
+   node_modules `doNotFollow`). Its `not-to-unresolvable` rule turns an unresolved path
+   alias into a loud error rather than a silent pass. Name your own rules like invariants
+   (`pure-access-not-to-runtime`, `prod-not-to-tests`) and give each a `comment`.
+2. Set `options.tsConfig.fileName` so aliases resolve and `tsPreCompilationDeps: true` so
+   type-only imports enter the graph. Under the default `false` that edge is absent
+   entirely, so an ordinary `domain -> infra` path rule misses it too.
+3. Assert `✔ .ts` from `--info` and a non-zero `summary.totalCruised`; a path
+   regex matching nothing is a silent exit 0. Run `--no-cache` in hooks: the
+   cache never hashes the rule set, and with a `.json` config a warm run after
+   an uncommitted rule addition exited 1 against a `--no-cache` truth of 2.
+4. Measure wall time. Cheap path and circular rules are close to free, each
+   `reachable` rule is not. `no-orphans` is a narrow sanity check rather than a
+   dead-code strategy - an orphan has no incoming *and* no outgoing edges, so
+   dead code that imports anything is invisible, and knip owns unused exports,
+   files and dependencies (`references/typescript.md`).
 
-**Python routes to import-linter, not to a dependency-cruiser port.** Contracts
-are transitive by default rather than behind a `reachable` flag, they see
-through `__init__.py` re-exports the way `reachable` sees through a barrel, and
-they include `if TYPE_CHECKING:` imports unless `exclude_type_checking_imports`
-is set globally - so there is no per-rule `dependencyTypes` split, only two
-config files and two runs. Three feature gaps are worth knowing before promising
-parity: `via` / `viaNot` has no contract and needs a grimp graph inside a pytest
-test; `no-orphans` has no equivalent at all (vulture owns dead code); and there
-is no `depcruise-baseline` / `--ignore-known`, so the ratchet is exact-edge
-`ignore_imports` entries under `unmatched_ignore_imports_alerting = "error"`,
-which expire themselves when the edge goes. Contracts, the tach carve-out, and
-the wiring notes are in `references/python.md`.
+**Python routes to import-linter, not to a dependency-cruiser port.** Contracts are
+transitive by default rather than behind a `reachable` flag, they see through `__init__.py`
+re-exports the way `reachable` sees through a barrel, and they include `if TYPE_CHECKING:`
+imports unless `exclude_type_checking_imports` is set globally - so there is no per-rule
+`dependencyTypes` split, only two config files and two runs. Three feature gaps are worth
+knowing before promising parity: a "reaches infra only through this named module" contract
+does not exist and needs a grimp graph inside a pytest test, the way TypeScript needs the
+ts-morph test above; `no-orphans` has no equivalent at all (vulture owns dead code); and
+there is no `depcruise-baseline` / `--ignore-known`, so the ratchet is exact-edge
+`ignore_imports` entries under `unmatched_ignore_imports_alerting = "error"`, which expire
+themselves when the edge goes. Contracts, the tach carve-out, and the wiring notes are in
+`references/python.md`.
 
-Do not substitute a pytest-native direct-edge DSL for this graph gate. A rule
-that rejects `domain -> infra` but accepts `domain -> application -> infra`
-enforces spelling, not reachability. PyTestArch 4.0.1 and main exhibited that
-behaviour in a positive-control fixture. Reuse import-linter's Grimp graph
-inside pytest when a custom reachability predicate is needed.
+Do not substitute a pytest-native direct-edge DSL for this graph gate. A rule that rejects
+`domain -> infra` but accepts `domain -> application -> infra` enforces spelling, not
+reachability. PyTestArch 4.0.1 and main exhibited that behaviour in a positive-control
+fixture. Reuse import-linter's Grimp graph inside pytest when a custom reachability
+predicate is needed.
 
 See `references/dependency-cruiser.cjs` for a copyable TypeScript config shape.
 
+## Boundary tool matrix (TypeScript)
+
+When the bounded-context map outgrows per-rule import bans, one declarative direct-edge layer is
+optional on top of the two gates above. Every ESLint option below needs typescript-eslint, which
+refuses TypeScript 7 outright (`typescript-eslint does not support TS 7.0.`, exit 2 before a
+file is linted, verified 2026-09-03 against 8.68.0) - a TypeScript 6 side-by-side layer rather
+than a TS 7 option.
+
+| Tool | Standing | Why |
+|---|---|---|
+| eslint-plugin-boundaries 7.2 | optional | Element types assigned to paths, rules written over the types, with a working type/value split. Direct edges only. `configs.recommended` is a no-op gate (its four exhaustiveness rules are off and it needs element descriptors), so wire explicit rule entries or `configs.strict`. An unknown element-type string in a selector matches nothing, silently. Path aliases need `settings["import/resolver"]` plus `eslint-import-resolver-typescript`. |
+| eslint-plugin-import-x 4.17 | optional | The maintained home of `no-restricted-paths`, the zone-ban rule. Same resolver requirement, and without it an aliased crossing passes at exit 0 while relative ones fire - a silent half-gate. |
+| @softarc/sheriff | mention only | Barrel encapsulation is real; the rest is weaker than advertised. Last release 2025-09-22, breaks outright on TypeScript 7 because it loads the compiler, no type/value split, and a missing config downgrades it to the deep-import rule with a green exit. The installable names are `@softarc/sheriff-core` and `@softarc/eslint-plugin-sheriff`. |
+| fallow | watch | Fast and compiler-independent, but direct-edge only: it never sees the domain-to-infra reach and goes fully silent whenever the barrel's own zone is a legal import target, which is the common config. It also misses import cycles longer than 12 modules, and a config under any name but `.fallowrc.*` / `fallow.toml` is undiscovered and silently green. Re-verify with a barrel-laundering fixture at its next major. |
+| `tsc --build` project references | adopt | Literally uncompilable: `composite: true` plus the project's own `include` rejects a cross-project source import with TS6059 + TS6307 at exit 2 (verified 2026-09-03 on typescript 7.0.2), and a plain `tsc -p` enforces it, `--build` adding only orchestration and the TS6202 cycle check. Two escapes: it launders through a built `.d.ts`; and a composite project absent from the root `references` is never visited (`--build` on the root exited 0, aiming tsc at the orphan exited 2), so assert every `*/tsconfig.json` appears there. |
+
 ## Cycle gating on legacy graphs
 
-The transitive tools above gate cycles as binary - any cycle fails. That is
-the right greenfield default, but it is unadoptable on a legacy graph already
-full of them, and it misses the real signal: a cycle's danger is its *size and
-growth*, not its existence (von Zitzewitz). Small same-package cycles do
-little harm; large cycle groups cannot be tested in isolation, replaced, or
-understood, and grow release by release into an unbreakable core. Gate by
-level:
+The transitive tools above gate cycles as binary - any cycle fails. That is the right
+greenfield default, but it is unadoptable on a legacy graph already full of them, and it
+misses the real signal: a cycle's danger is its *size and growth*, not its existence (von
+Zitzewitz). Small same-package cycles do little harm; large cycle groups cannot be tested in
+isolation, replaced, or understood, and grow release by release into an unbreakable core.
+Gate by level:
 
 - **Package / namespace / module cycles: zero-tolerance.** These layers carry
   architectural intent, so any cycle between them is a violation - this is
@@ -147,20 +178,19 @@ level:
   is an error under `recommended`, so a file-level cycle fails the type gate.
   It is absent from `strict`, which is one more reason `recommended` is the
   mode this skill gates on.
-- **Legacy adoption: baseline, don't flood.** Wire the cycle rule through a
-  committed baseline (`depcruise-baseline` + `--ignore-known`) so only *new*
-  cycles fail, then shrink the baseline - the ratchet recipe in `SKILL.md`
+- **Legacy adoption: baseline, don't flood.** Wire the cycle rule through a committed
+  baseline (`depcruise-baseline` + `--ignore-known`, with the module-precision caveat
+  above) so only *new* cycles fail, then shrink it - the ratchet recipe in `SKILL.md`
   (Ratcheting a gate onto non-conforming code).
 
-No OSS tool gates on cycle-*group* (strongly-connected-component) size
-directly; Sonargraph-Explorer (free but proprietary) computes group-size and
-graph-erosion metrics - a watch, against the local-OSS grain, same posture as
-Socket.
+No OSS tool gates on cycle-*group* (strongly-connected-component) size directly;
+Sonargraph-Explorer (free but proprietary) computes group-size and graph-erosion metrics - a
+watch, against the local-OSS grain, same posture as Socket.
 
-Soft complexity thresholds are the file-local half of the same erosion story
-(von Zitzewitz): size, nesting depth and parameter count, enforced by each
-stack's own linter. The numbers, the evidence behind each metric, and which of
-them are report-only rather than gates live in `references/complexity.md`.
+Soft complexity thresholds are the file-local half of the same erosion story (von
+Zitzewitz): size, nesting depth and parameter count, enforced by each stack's own linter.
+The numbers, the evidence behind each metric, and which of them are report-only rather than
+gates live in `references/complexity.md`.
 
 ## Go boundaries
 
@@ -238,69 +268,90 @@ helper call as an assertion, so delegation to an `assert_valid()` helper and
 unittest's `self.assertEqual` both pass, and the rule doubles as a naming
 convention for assertion helpers.
 
-**When the rule needs data flow, not one AST shape, Opengrep is the next tier.**
-ast-grep matches a single syntactic pattern; taint/injection, cross-function, and
-"tainted input reaches this sink" rules need dataflow the pattern engines can't
-express. [Opengrep](https://github.com/opengrep/opengrep) - the OSS Semgrep fork
-(engine LGPL-2.1) that a consortium spun up after Semgrep relicensed
-`semgrep-rules` in December 2024 and put CE engine features behind its
-commercial licence - runs Semgrep-format YAML (taint mode, cross-file) and emits
-SARIF, polyglot across 20+ languages from one binary. Gate with
-`opengrep scan --config <dir> --error`; **the default exit code is 0 even with
-findings, so `--error` is load-bearing** - omit it and CI silently passes.
-Install is the curl script or a GHCR Docker image (no npm package). It complements
-gitleaks (secrets) and the fixed-ruleset language linters: this is the tier for
-custom bug-class rules no off-the-shelf linter encodes. Reach for ast-grep first
-for syntactic rules (faster, lighter pre-commit); escalate to Opengrep when the
-rule is a dataflow or security property. `severity: ERROR` in a rule doesn't
-change the CLI exit on its own. The authoring workflow for a new bug-class rule
-is `SKILL.md` (Adding a new rule).
+**When the rule needs data flow, not one AST shape, Opengrep is the next tier.** ast-grep
+matches a single syntactic pattern; taint/injection, cross-function, and "tainted input
+reaches this sink" rules need dataflow the pattern engines can't express.
+[Opengrep](https://github.com/opengrep/opengrep) - the OSS Semgrep fork (engine LGPL-2.1)
+that a consortium spun up after Semgrep relicensed `semgrep-rules` in December 2024 and put
+CE engine features behind its commercial licence - runs Semgrep-format YAML (taint mode,
+cross-file) and emits SARIF, polyglot across 20+ languages from one binary. Gate with
+`opengrep scan --config <dir> --error --disable-nosem --no-git-ignore`; each flag earns its
+place, verified 2026-09-03 against opengrep 1.29.0. **The default exit code is 0 even with
+findings, so `--error` is load-bearing** - omit it and CI silently passes. A `// nosemgrep`
+comment drops a finding and `--disable-nosem` reports it again (2 findings against 1).
+Gitignored files are skipped in silence: a generated-but-committed directory took the scan
+from 6 files / 2 findings to 7 / 3 under `--no-git-ignore`. The default `.semgrepignore`
+also skips `tests/` - naming that directory explicitly gave `Ran 1 rule on 0 files` at exit
+0, so assert a non-zero scanned-file count. Install is the curl script or a GHCR Docker
+image; the `opengrep` name on npm is an unrelated placeholder. It complements gitleaks
+(secrets) and the fixed-ruleset language linters: this is the tier for custom bug-class
+rules no off-the-shelf linter encodes. Reach for ast-grep first for syntactic rules (faster,
+lighter pre-commit); escalate to Opengrep when the rule is a dataflow or security property.
+`severity: ERROR` in a rule doesn't change the CLI exit on its own. The authoring workflow
+for a new bug-class rule is `SKILL.md` (Adding a new rule).
 
 ## Purity: keeping the functional core pure
 
-The `architecture` skill's functional-core rules - inject clock and randomness,
-parse config at startup, no IO in the domain - are mechanically enforceable,
-but the obvious rules don't work: `no-restricted-globals` and Biome's
-`noRestrictedGlobals` ban **bare identifiers only**, so `Date.now()`,
-`Math.random()`, and `process.env.X` (member expressions) sail straight
-through. What works:
+The `architecture` skill's functional-core rules - inject clock and randomness, parse config
+at startup, no IO in the domain - are mechanically enforceable, but no single rule covers
+every ambient-effect shape. The first two rows are complementary rather than alternatives,
+so a pure layer scopes both to `src/domain/**`. Verified 2026-09-03 against oxlint 1.80.0
+and Biome 2.5.11 on one domain module holding every shape.
 
-- **`no-restricted-properties`**, scoped to the pure layer - the rule that
-  actually catches member-expression effects. Native in oxlint (verified
-  2026-09-02 against 1.80: `{ object: "Date", property: "now" }` reports
-  `'Date.now' is restricted from being used` and exits 1) and in ESLint
-  (`files: ["src/domain/**"]`); Biome has no equivalent.
-- **`no-restricted-imports` patterns** for IO modules (`node:fs`, `node:http`,
-  infra directories) in the same scoped block, with `allowTypeImports` for port
-  types.
-- **ast-grep** for cross-language or call-shape precision - zero-arg
-  `new Date()`, method chains - as YAML rules gated by `ast-grep scan`.
-- **Python**: ruff `TID251` with a `[lint.flake8-tidy-imports.banned-api]`
-  table is the `no-restricted-properties` analogue, and a stronger one - it
-  resolves through ruff's semantic model, so `from datetime import datetime as
-  dt` then `dt.now()` is still caught where ESLint's syntactic rule misses the
-  alias. The table is global, so the scope comes from inverting it: **one**
-  negated `extend-per-file-ignores` entry with **one** brace glob
-  (`"!src/pkg/{domain,core}/**"`). Two negated entries for the same rule match
-  every file between them and kill the rule everywhere, exit 0, no warning; so
-  does a typo in the glob, a typo in a `banned-api` key, or omitting
-  `extend-select = ["TID251"]`, which the ban table does not imply. The
-  per-layer nested `ruff.toml` alternative fails closed but dies under
-  `--config <file>`, which disables hierarchical discovery. Bare builtins
-  (`open()`, `input()`) and method shapes (`Path.read_text()`) are invisible to
-  TID251 and belong to ast-grep. `DTZ` is clock hygiene, not a purity gate -
-  `datetime.now(tz=UTC)` passes it and still reads the ambient clock.
-  pytest-socket is the runtime backstop under the whole lot. Drop-ins:
-  `references/python-purity.toml` and `references/python-ast-grep.yml`.
+| Rule | Catches | Misses |
+|---|---|---|
+| `no-restricted-properties` (oxlint, ESLint) | `Date.now()`, `Math.random()`, `process.env.X` and its bracket form, destructuring, and the `import process from "node:process"` spelling. Leaves `Math.max(1, 2)` and `new Date(ms)` alone. | Zero-arg `new Date()`, the alias `const D = Date`, the `globalThis` cast. |
+| `no-restricted-globals` listing the *object* (oxlint, ESLint, Biome) | The same three member expressions - a member expression's object position is a bare global reference - plus `new Date()` at any arity, and `globalThis.process.env` once `checkGlobalObject: true` is set (7 findings with the flag against 6 without). | Nothing in that set, but it over-bans: `Math.max(1, 2)` and `new Date(1700000000000)` fail with it. An `import process from "node:process"` binding defeats it. |
+| `no-restricted-imports` patterns (native in oxlint) | IO modules (`node:fs`, `node:http`) and infra directories, with `allowTypeImports` sparing port types. | Barrel-laundered edges, which are the transitive gate's job. |
+| `eslint-js/no-restricted-syntax` through the `oxlint-plugin-eslint` jsPlugin | Zero-arg `new Date()` precisely, through `NewExpression[callee.name='Date'][arguments.length=0]`, leaving `new Date(ms)`. The other route is `references/typescript-ast-grep.yml`. | Nothing validates the selector, so a one-character slip in the attribute path exits 0 in silence - this rule needs the canary below most. |
+| Biome `noJsRestrictedProperties` (nursery since 2.5.6) | The same member-expression set from an `overrides[].linter.rules.nursery` block, covering `.tsx` and the `node:process` import with no extension list. | Zero-arg `new Date()`. Nursery membership relocates the config key on promotion. |
+
+- **Python**: ruff `TID251` is the `no-restricted-properties` analogue and a
+  stronger one, because it resolves through ruff's semantic model - `from
+  datetime import datetime as dt` then `dt.now()` is caught, which is the alias
+  every TypeScript rule above misses. Its scope comes from inverting a global
+  table, and that inversion has its own silent-disable traps; the wiring, the
+  `DTZ` caveat and the pytest-socket backstop are in `references/python.md`
+  (Purity), with drop-ins `references/python-purity.toml` and
+  `references/python-ast-grep.yml`.
 - **Rust**: clippy `disallowed-methods` (`std::env::var`,
   `SystemTime::now`) and `disallowed-types` on infra types. Granularity is
   crate-wide, so give the pure core its own crate.
 
-See `references/purity-boundaries.mjs` for the drop-in flat-config block plus
-the equivalent ast-grep rule. The no-config escape hatch is grep
-(`! rg -n "new Date\(|Date\.now\(|Math\.random\(" packages/core/src`) - the
-portable greppable-invariants fallback for repos with no linter config; weaker
-than the AST rules because it matches comments and strings too.
+**Scoping is where this gate rots.** Keep the rules in the root `.oxlintrc.json` under
+`overrides[].files`; those globs resolve against *the directory containing the config file*, not
+the cwd, and every miss is exit 0 with no output. Verified silent no-ops: `srcc/domain/**`, bare
+`src/domain` (which is what `.gitignore` and tsconfig `include` would accept), the same config
+moved into `cfgdir/` with repo-root-relative globs, and `src/domain/**/*.ts` against a `.tsx` or
+`.mts` module - write `src/domain/**/*.{ts,tsx,mts,cts}`. A one-key typo inside a `patterns`
+entry (`allowTypeImport`) discards that entry the same way, and a `.gitignore`d domain directory
+is skipped by a directory sweep at exit 0 while an explicit file path fires. Biome's
+`overrides[].includes` behaves the same.
+
+Because none of that fails closed, the gate needs a canary with this shape:
+
+```bash
+root=$PWD; tmp="$(mktemp -d)"; mkdir -p "$tmp/src/domain"
+cp "$root/.oxlintrc.json" "$tmp/" && cp "$root/fixtures/purity_canary.ts" "$tmp/src/domain/canary.ts"
+out=$(cd "$tmp" && "$root/node_modules/.bin/oxlint" --config .oxlintrc.json src/domain/canary.ts 2>&1) || true
+[[ $out == *no-restricted-properties* ]] || { echo "purity gate not armed"; exit 1; }
+```
+
+Three details are load-bearing: match the **rule name** in the output rather than the exit
+status, because a known-bad file trips unrelated rules and an exit-code test passes whatever the
+gate does; capture with `|| true`, since oxlint exits 1 on any diagnostic; and run against a
+temp copy, or the committed known-bad file reddens the real gate for good. Deleting the rule
+from the config flips this canary to exit 1.
+
+No rule in the lane resolves an alias, so `const D = Date; new D()` escapes them all. The
+runtime backstop that closes the residue, a domain-project setup file whose `Date.now` and
+`Math.random` spies throw, is in `references/typescript-testing.md` (Runtime backstops); the
+purity `overrides` block ships inside `references/typescript-oxlintrc.jsonc`, and
+`references/purity-boundaries.mjs` keeps the ESLint form for a TypeScript 6 side-by-side layer.
+The no-config escape hatch is grep (`rg -n "Date\.now\(|Math\.random\(" packages/core/src`),
+weaker than the AST rules because it matches comments and strings too - and `! rg` is the wrong
+wrapper, because rg exits 2 on a missing or renamed directory and `!` inverts 2 to 0 exactly as
+it inverts 1. Dispatch on the exit code: 1 passes, 0 fails, anything else is an error.
 
 ## Boundary contracts (cross-service compatibility)
 

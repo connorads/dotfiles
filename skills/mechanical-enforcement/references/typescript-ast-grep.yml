@@ -1,0 +1,150 @@
+# ast-grep rules for TypeScript: the shapes oxlint cannot express - it ships no
+# `no-restricted-syntax`, so every ban-this-syntax job lands here. Verified 2026-09-03 against
+# @ast-grep/cli 0.45.2 on TypeScript 7.0.2 (0.45.3 is held by the release-age quarantine, unverified).
+# One owner: oxlint `no-restricted-properties` owns the Date.now / Math.random / process.env /
+# JSON.parse member accesses (references/typescript-oxlintrc.jsonc); knip cycles and the ts-morph test
+# own the module graph (references/architecture-boundaries.md, Transitive architecture tests); each
+# sink earns its place in references/typescript-security.md, Sinks catalogue. Gate: `ast-grep scan -r
+# <this file> src` - exit 1 on any `severity: error` match. The `ast-grep run` inversion, the five
+# silent-exit-0 shapes and why every `files:` glob leads with `**` are stated once in
+# references/python-ast-grep.yml's header. The TypeScript sixth: `language: typescript` skips `.tsx`
+# SILENTLY, so a rule firing in a component needs a `language: tsx` twin; both live here because `-r
+# a.yml -r b.yml` is refused. Syntax-only: `const D = Date; new D()` and a renamed import of a sink
+# escape, and a deliberate exception takes `// ast-grep-ignore: <rule-id>` on the line above. Canary
+# discipline (references/typescript.md, Gate integrity): assert each rule FIRES on a known-bad file
+# outside the scanned tree; an unarmed rule reads like a pass.
+---
+# Zero-arg `new Date()` in the pure core - the gap oxlint leaves: a constructor call is not a
+# property access, and `no-restricted-globals` on `Date` kills the legal `new Date(ms)` too.
+id: no-ambient-clock-in-core
+language: typescript
+severity: error
+message: "The core takes time as an argument - inject a clock port and pass the instant in."
+files: ["**/src/domain/**"]
+rule: { pattern: new Date() }
+---
+# Canary: this twin must fire on a component file of its own, not just the .ts rule above.
+id: no-ambient-clock-in-core-tsx
+language: tsx
+severity: error
+message: "The core takes time as an argument - inject a clock port and pass the instant in."
+files: ["**/src/domain/**"]
+rule: { pattern: new Date() }
+---
+# `ignores` carves the exemption out of `files`, which an oxlint `overrides` block cannot do in
+# reverse. Blind spots: `const P = JSON.parse` and `globalThis.JSON.parse`; the type-aware `no-unsafe-*`
+# family types the returned `any` (references/typescript-security.md, JSON.parse at the boundary).
+id: json-parse-outside-boundary
+language: typescript
+severity: error
+message: "Parse at the boundary: JSON.parse returns any - decode it into a domain type in src/boundary."
+files: ["**/src/**"]
+ignores: ["**/src/boundary/**"]
+rule: { any: [{ pattern: JSON.parse($$$) }, { pattern: 'JSON["parse"]($$$)' }] }
+---
+# The sink no TypeScript linter covers: eslint-plugin-security finds none of these shapes and Biome
+# has no rule for them. Each quoting is a distinct node - the double-quote arm alone misses the
+# single-quote and template spellings; `{ __proto__: null }` is a property, not a member access, so
+# the safe idiom passes. Blind spot: a quoted `o["constructor"].prototype`.
+id: no-prototype-write
+language: typescript
+severity: error
+message: "Reaching __proto__ or constructor.prototype is prototype pollution - use a Map or a null-prototype object."
+files: ["**/src/**"]
+rule: { any: [{ pattern: $O.__proto__ }, { pattern: '$O["__proto__"]' }, { pattern: "$O['__proto__']" }, { pattern: "$O[`__proto__`]" }, { pattern: $O.constructor.prototype }] }
+---
+id: no-prototype-write-tsx
+language: tsx
+severity: error
+message: "Reaching __proto__ or constructor.prototype is prototype pollution - use a Map or a null-prototype object."
+files: ["**/src/**"]
+rule: { any: [{ pattern: $O.__proto__ }, { pattern: '$O["__proto__"]' }, { pattern: "$O['__proto__']" }, { pattern: "$O[`__proto__`]" }, { pattern: $O.constructor.prototype }] }
+---
+# The erasableSyntaxOnly hole and the canary that closes it: `tsc --noEmit --erasableSyntaxOnly`
+# exits 0 on a standard, legacy or parameter decorator and on an `accessor` field, and Node's type
+# stripping refuses all four with a bare `SyntaxError` and no ERR_ code. Delete it, do not weaken
+# it, where a real compiler runs and decorators stay.
+id: no-strip-unsafe-syntax
+language: typescript
+severity: error
+message: "Node's type stripping rejects decorators and `accessor` with a bare SyntaxError; erasableSyntaxOnly cannot see them."
+files: ["**/src/**"]
+rule: { any: [{ kind: decorator }, { kind: public_field_definition, regex: '^accessor[[:space:]]' }] }
+---
+# `exec` and `execSync` take a command string a shell parses, so interpolation is injection;
+# `execFile`/`execFileSync` with an argv array are the safe forms and are off the name list.
+id: shell-sink-non-literal
+language: typescript
+severity: error
+message: "Pass argv to execFile or spawn with a literal command; a computed string reaching exec is shell injection."
+files: ["**/src/**"]
+rule:
+  kind: call_expression
+  all: [{ has: { field: function, regex: '(^|\.)(exec|execSync|spawn|spawnSync)$' } }, { has: { field: arguments, has: { nthChild: 1, not: { kind: string } } } }]
+---
+# Zip-slip, the twin of Python's `tarfile.extractall`, with no rule in any TypeScript linter. It
+# flags the sink whether or not a filter is passed, because a filter argument proves nothing about
+# what it rejects. `$Z.extractAllTo` matches any receiver; `import { x } from "tar"` escapes.
+id: unvalidated-archive-extract
+language: typescript
+severity: error
+message: "Extract only through a reviewed helper that rejects `..` members, which escape the target dir."
+files: ["**/src/**"]
+rule: { any: [{ pattern: tar.x($$$) }, { pattern: $Z.extractAllTo($$$) }] }
+---
+# The pickle/marshal twin. js-yaml v3 `load` and `unsafeLoad` build arbitrary types from
+# `!!js/function` tags; v4's `load` is safe, so a v4 repo drops that arm. The bare `deserialize` arm
+# fires on any function of that name.
+id: unsafe-deserialise
+language: typescript
+severity: error
+message: "Use js-yaml v4 load or a schema parse, and never v8.deserialize on untrusted bytes."
+files: ["**/src/**"]
+rule: { any: [{ pattern: yaml.load($$$) }, { pattern: $Y.unsafeLoad($$$) }, { pattern: v8.deserialize($$$) }, { pattern: deserialize($$$) }] }
+---
+# The S608 twin. Reading the FIRST argument only keeps the safe form green: a driver's `sql` tagged
+# template is a call whose argument node is the template itself, so that tag and
+# ``db.query(sql`...${id}`)`` pass while ``db.query(`...${id}`)`` and `db.query("..." + id)` fire.
+id: string-built-sql-at-sink
+language: typescript
+severity: error
+message: "SQL sinks take bound parameters or a driver's tagged template, never interpolation or concatenation."
+files: ["**/src/**"]
+rule:
+  kind: call_expression
+  all: [{ has: { field: function, regex: '(^|\.)(query|execute|raw|unsafe)$' } }, { has: { field: arguments, has: { nthChild: 1, any: [{ kind: template_string, has: { kind: template_substitution } }, { pattern: $A + $B }] } } }]
+---
+# The S501 twin. Matching the `pair` rather than a call catches it in an https.Agent, a tls.connect
+# options object and an undici dispatcher alike; `rejectUnauthorized: true` passes. Blind spot for a
+# config and Dockerfile grep: `NODE_TLS_REJECT_UNAUTHORIZED=0` in the environment.
+id: tls-verification-off
+language: typescript
+severity: error
+message: "rejectUnauthorized: false accepts any certificate - pin a CA instead of disabling verification."
+files: ["**/src/**"]
+rule:
+  kind: pair
+  all: [{ has: { field: key, regex: '^rejectUnauthorized$' } }, { has: { field: value, kind: "false" } }]
+---
+# The S324 twin. One regex covers both quotings because a string node's text includes its quotes,
+# and JavaScript has no `usedforsecurity=False` hatch, so a non-security checksum takes the ignore.
+id: weak-hash-algorithm
+language: typescript
+severity: error
+message: "md5 and sha1 are broken for signatures and integrity - use sha256 or a keyed HMAC."
+files: ["**/src/**"]
+rule:
+  kind: call_expression
+  all: [{ has: { field: function, regex: '(^|\.)createHash$' } }, { has: { field: arguments, has: { kind: string, regex: '^[''"](md5|sha1)' } } }]
+---
+# The S113 twin and the loosest rule here: `fetch` takes no timeout argument at all, so a request
+# without a signal hangs until the peer closes. `fetch(url, init)` with the signal held in a
+# variable false-positives, so adopt this on service code and not on a UI.
+id: fetch-without-signal
+language: typescript
+severity: error
+message: "Give every fetch a deadline: signal: AbortSignal.timeout(ms)."
+files: ["**/src/**"]
+rule:
+  kind: call_expression
+  all: [{ has: { field: function, kind: identifier, regex: '^fetch$' } }, { not: { has: { field: arguments, has: { stopBy: end, kind: property_identifier, regex: '^signal$' } } } }]

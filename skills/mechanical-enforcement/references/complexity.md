@@ -94,7 +94,7 @@ stack's own default is defensible, adopt it rather than inventing one.
 | Nested call expressions | **3** | eslint-plugin-unicorn's default. `a(b(c(d(x))))` has no named intermediates and no readable stack position. |
 | Operators in one condition | **3** | sonarjs `expression-complexity` default. The sub-statement gap that branch counts and depth caps both miss. |
 | Duplicate block, minimum | **50 tokens / 5 lines** | jscpd's defaults. Below that is noise, which is also why sonarjs's schema refuses a line threshold under 3. |
-| Duplication percentage | **3%**, as a ratchet | Arbitrary as an absolute. Set it just under today's figure and lower it. The honest gate is "no new clone above N tokens", which needs jscpd's baseline. |
+| Duplication percentage | **3%**, as a ratchet | Arbitrary as an absolute. Set it just under today's figure and lower it. The honest gate is "no new clone above N tokens", which needs a clone baseline jscpd does not ship - see `references/ratcheting.md`, Complexity gates. |
 
 ## One metric per concern
 
@@ -132,7 +132,9 @@ fails in: a second helper written instead of the first being found.
 
 **jscpd** is the cross-stack gate: Rabin-Karp over tokens, which survives
 reformatting and renaming better than line comparison, across 223 formats, so
-one gate covers a polyglot repo.
+one gate covers a polyglot repo. It is also the cross-file duplication gate for
+TypeScript - `references/typescript.md`, Complexity, routes here rather than
+carrying a second one.
 
 ```bash
 jscpd . --min-tokens 50 --min-lines 5 --threshold 3 \
@@ -141,7 +143,7 @@ jscpd . --min-tokens 50 --min-lines 5 --threshold 3 \
 
 `--threshold` alone owns the exit code: since the v5 Rust rewrite the binary
 auto-injects the `threshold` reporter whenever the flag is set, prints
-`ERROR: jscpd found too many duplicates`, and exits 1. Three traps:
+`ERROR: jscpd found too many duplicates`, and exits 1. Four traps:
 
 - **`--exit-code` is not a percentage gate.** It fails on *any* clone at all,
   independent of `--threshold`, and only after the threshold check has passed.
@@ -150,6 +152,12 @@ auto-injects the `threshold` reporter whenever the flag is set, prints
 - **The comparison is strictly greater**, so `--threshold 5` passes at exactly
   5.0% - the published docs say `>=` and contradict the source. `--threshold 0`
   is the zero-tolerance gate.
+- **A path that does not exist is a silent pass.** A misspelled or renamed
+  directory (`jscpd dupp`, or any absolute path that is not there) prints
+  `Found 0 clones.` and exits 0 - no "no such file" error - so the gate turns
+  green the day someone moves the tree. Point it at `.` and narrow with
+  `--ignore` rather than naming directories, or assert the reporter counted
+  files. Verified 2026-09-03 against jscpd 5.1.0.
 - **There is no `linux-arm64-musl` artifact.** The npm package is a Node shim
   that resolves one of six platform binaries; on Alpine/arm64 it prints
   `Unsupported platform` and exits 1, which a naive gate reads as "duplication

@@ -1,379 +1,427 @@
-# Mechanical Enforcement - TypeScript / JS
+# Mechanical Enforcement - TypeScript
 
-Per-stack rules for TypeScript and JavaScript: type-safety flags, type
-checking, error handling, formatting, the Biome-vs-ESLint split, UI and import
-hygiene, dead code, library publishing, shipped-artifact gates, and test lints.
-Routed from the picks table and rules-catalogue index in `SKILL.md`. Boundary
-rules (`no-restricted-imports` patterns, transitive graph gates, purity) live in
-`references/architecture-boundaries.md`.
+Per-stack rules for TypeScript and JavaScript: the tsconfig strictness contract,
+the type-check gate, lint families and suppression discipline, formatting, UI
+and import hygiene, dead code, and the fail-open inventory that says which of
+those gates is actually armed. Routed from the picks table and rules-catalogue
+index in `SKILL.md`.
+
+Three siblings carry the rest of the stack, one owner per fact:
+`references/typescript-testing.md` (vitest, test lints, runtime backstops, bun
+test), `references/typescript-publishing.md` (dependencies, lockfile, licences,
+build and publish gates), `references/typescript-security.md` (security rules,
+prototype pollution, ReDoS, sinks). Boundary rules live in
+`references/architecture-boundaries.md`; idiom belongs to the `typescript`
+skill, test strategy to `testing`, coverage to `test-coverage`, dependency
+audits to `supply-chain-hardening`.
 
 ## Contents
 
 - [Picks](#picks)
 - [Type safety](#type-safety)
 - [Type checking](#type-checking)
-- [Error handling](#error-handling)
-- [Formatting (oxfmt, with Biome as the stable fallback)](#formatting-oxfmt-with-biome-as-the-stable-fallback)
-- [What Biome 2.x covers (and the ESLint hold-outs)](#what-biome-2x-covers-and-the-eslint-hold-outs)
-- [Framework single-file components (.astro / .vue / .svelte)](#framework-single-file-components-astro--vue--svelte)
-- [UI hygiene (React / Next)](#ui-hygiene-react--next)
+- [Lint families and suppressions](#lint-families-and-suppressions)
+- [Formatting](#formatting)
+- [Framework single-file components](#framework-single-file-components)
+- [UI hygiene](#ui-hygiene)
 - [Import hygiene](#import-hygiene)
-- [Complexity and duplication](#complexity-and-duplication)
+- [Complexity](#complexity)
 - [Dead code (knip)](#dead-code-knip)
-- [Library publishing (publint + attw)](#library-publishing-publint--attw)
-- [Asserting on shipped artifacts](#asserting-on-shipped-artifacts)
-- [Testing](#testing)
+- [Gate integrity](#gate-integrity)
+- [Maintenance posture](#maintenance-posture)
 
 ## Picks
 
-A TypeScript **app** (React / Next) and a **library / node** package share
-one core toolchain and differ only in the *also* tier.
+One owner per job. Raw oxlint plus oxfmt with a skill-owned config is the
+default lint and format stack; `tsc` is the type contract; oxlint type-aware
+(tsgolint) is the type-aware lint gate; vitest is the runner; knip owns dead
+code and unused dependencies; a ts-morph test in vitest owns transitive
+boundaries.
 
 | Concern | Pick | Why |
 |---|---|---|
-| Formatter | oxfmt, Biome the stable fallback, both via [Ultracite](https://www.ultracite.ai/) (`ultracite init --linter oxlint` / `biome`) | See [Formatting](#formatting-oxfmt-with-biome-as-the-stable-fallback). |
-| Primary linter | Biome, with the all-oxc stack (oxlint + oxfmt) the recommended provider | Ultracite is the default for a new project; raw Biome only where Ultracite has no support for the framework. |
-| Type-check | `tsc --noEmit` strict, with `tsgo` as the fast local check | See [Type checking](#type-checking). |
-| Framework SFCs (`.astro` / `.vue` / `.svelte`) | No pick of their own | See [Framework single-file components](#framework-single-file-components-astro--vue--svelte). |
+| Formatter | oxfmt with `.oxfmtrc.json` | Prettier-conformant, formats JS/TS, JSON and YAML in one pass. See [Formatting](#formatting). |
+| Linter | raw oxlint with `.oxlintrc.json` | Native Rust, runs on any TypeScript, owns the boundary and purity rules. Ultracite is an optional React/Next starting point, not the default. |
+| Type check | `./node_modules/.bin/tsc -p tsconfig.json` (TS 7) | The one whole-program gate. See [Type checking](#type-checking). |
+| Type-aware lint | oxlint `options.typeAware: true` + `oxlint-tsgolint` | The only route to floating promises, exhaustive switch and the `no-unsafe-*` family on TS 7. |
+| ESLint | optional, behind a TS 6 side-by-side alias | typescript-eslint refuses TS 7 outright. Reach for it only for `eslint-plugin-regexp`, `naming-convention` and framework plugins. |
+| Boundaries | ts-morph test + oxlint `import/*` + knip cycles | dependency-cruiser cannot parse TS 7. See `references/architecture-boundaries.md`, Transitive architecture tests. |
+| Runner | vitest, with bun test scoped to bun-runtime zero-dependency projects | See `references/typescript-testing.md`, bun test. |
 
-Reach for the *also* tier only when the primary cannot express the rule:
-
-- **oxlint** (Rust) for the rules it owns natively - `no-console`,
-  `typescript/no-explicit-any`, `typescript/no-non-null-assertion`,
-  `no-restricted-imports`, `no-restricted-properties`, `jsx-a11y`,
-  `import/no-cycle` - though not `no-restricted-syntax` (verified 2026-09-02
-  against oxlint 1.80, see [What Biome 2.x covers](#what-biome-2x-covers-and-the-eslint-hold-outs)).
-  A library skips ESLint entirely: oxlint covers most boundary rules, and the
-  rest is the framework-plugin tier only an app needs.
-- **dependency-cruiser** for the transitive graph boundaries a per-file rule
-  cannot see - see `references/architecture-boundaries.md`.
-- **ESLint** flat config for the hold-outs only: import-type boundaries and the
-  framework plugins (next, storybook).
-- **knip** for dead code and unused dependencies - see [Dead code (knip)](#dead-code-knip).
-- **publint + attw** as a library's post-build publish gate - see
-  [Library publishing (publint + attw)](#library-publishing-publint--attw).
-
-The tiers a TypeScript repo wires these into, per the `hk` skill:
+Reach past the first tool named only when it cannot express the rule. The hook
+tiers a TypeScript repo wires these into, per the `hk` skill:
 
 ```text
-tier 1 (format/fix)     → trailing-whitespace, newlines, typos, rumdl, oxfmt (or biome fix)
-tier 2 (lint/gate)      → biome check, eslint, gitleaks, yamllint, check-merge-conflict, zizmor --offline + actionlint (hk builtin) (glob: .github/workflows/*.{yml,yaml} + action.yml)
-tier 3 (typecheck)      → tsc --noEmit strict (TS 6, authoritative) + tsgo --noEmit (TS 7, fast local gate)
-tier 4 (test)           → vitest run --coverage
-commit-msg              → commitlint
+tier 1 (format/fix)      → trailing-whitespace, newlines, typos, rumdl (Markdown), oxfmt --write
+tier 2 (lint/gate)       → oxlint -c .oxlintrc.json --deny-warnings src tests, ast-grep scan, gitleaks,
+                           yamllint, check-merge-conflict, zizmor --offline + actionlint (hk builtin)
+tier 3 (typecheck)       → ./node_modules/.bin/tsc -p tsconfig.json (whole-project, never staged paths)
+tier 4 (test/dead code)  → vitest run, the ts-morph architecture test, knip --production --strict
+CI / pre-push            → knip --treat-config-hints-as-errors (dev mode), publint, attw, clean-dir smoke,
+                           opengrep --error, pnpm install --frozen-lockfile
+commit-msg               → commitlint
 ```
+
+Drop-ins, each verified on the fixture and each opening with a comment block
+naming what it gates and how to wire it: `references/typescript-strict-app.jsonc`,
+`references/typescript-strict-lib.jsonc`, `references/typescript-oxlintrc.jsonc`,
+`references/typescript-oxfmtrc.jsonc`, `references/typescript-ast-grep.yml`,
+`references/typescript-vitest.config.ts`, `references/typescript-vitest-setup.ts`,
+`references/typescript-arch-test.ts`, `references/dependency-cruiser.cjs`,
+`references/knip.jsonc`, `references/typescript-publish-gates.sh`,
+`references/eslint-boundaries.mjs`, `references/purity-boundaries.mjs`,
+`references/biome-ultracite.jsonc`, `references/hk-steps.pkl`.
 
 ## Type safety
 
+Two profiles, two files: `typescript-strict-app.jsonc` for an app (DOM lib,
+bundler resolution) and `typescript-strict-lib.jsonc` for a published library or
+Node package. Neither is a superset of the other, so copying the app config into
+a library inherits DOM globals it cannot use and a resolution mode wrong for a
+consumer.
+
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| Full strict mode | `tsconfig.json`: `"strict": true` | Most null/undefined footguns | Non-negotiable. |
-| Indexed access returns `T \| undefined` | `"noUncheckedIndexedAccess": true` | `arr[0].foo` crashing on empty arrays | See `references/typescript-strict.jsonc`. |
-| Exact optional properties | `"exactOptionalPropertyTypes": true` | Conflating `x?: T` with `x: T \| undefined`; writing `undefined` into a merely-optional field | Stricter than `strict`. Add `\| undefined` to optionals that are genuinely nullable. |
-| Index-signature keys need bracket access | `"noPropertyAccessFromIndexSignature": true` | Typo'd dynamic keys (`cfg.hostnam`) silently typed instead of flagged | Stricter than `strict`. Declared properties keep dot access. |
-| Dead code fails build | `"noUnusedLocals": true`, `"noUnusedParameters": true` | Drifted imports, zombie variables | Prefix with `_` to intentionally keep an unused param. |
-| Only erasable TS syntax | `"erasableSyntaxOnly": true` (TS 5.8+) | `enum`, `namespace`, constructor param props - things that don't survive pure type-stripping | Enables deno/bun/swc/esbuild interop without a TS runtime. Breaks existing code using `enum`; migrate to `as const` unions. |
-| No `any` | oxlint `typescript/no-explicit-any` (native, needs `"plugins": ["typescript"]`) or Biome `noExplicitAny` (error) | Escape hatch from the type system | Use `unknown` + narrowing. |
-| No `as Type` assertions | ESLint `@typescript-eslint/consistent-type-assertions` with `assertionStyle: "never"` | Silent lies to the compiler | Allowed exceptions (document each with `eslint-disable-next-line` + reason): `as const`, DOM APIs after null checks, untyped-library interop, intentionally-invalid test fixtures. |
-| No `!` non-null assertion | oxlint `typescript/no-non-null-assertion` (native) or ESLint `@typescript-eslint/no-non-null-assertion` | Silent runtime crashes | Use a proper null check or throw a narrowed error. |
-| Prefer `import type` | Biome `useImportType` | Accidental runtime imports of type-only modules | Auto-fixable. |
+| Full strict mode | `"strict": true` | Most null/undefined footguns | Non-negotiable. Default on the TS 7 CLI, explicit in the config so a reader sees it. |
+| Indexed access returns `T \| undefined` | `"noUncheckedIndexedAccess": true` | `arr[0].foo` crashing on an empty array | |
+| Exact optional properties | `"exactOptionalPropertyTypes": true` | Conflating `x?: T` with `x: T \| undefined`, so `undefined` is written into a merely-optional field | Add `\| undefined` to optionals that are genuinely nullable. |
+| Index-signature keys need brackets | `"noPropertyAccessFromIndexSignature": true` | A typo'd dynamic key (`cfg.hostnam`) typed silently instead of flagged | Collides with Biome `useLiteralKeys` - see [Lint families](#lint-families-and-suppressions). |
+| Dead locals fail the build | `"noUnusedLocals"`, `"noUnusedParameters"` | Drifted imports and zombie variables | Prefix with `_` to keep an unused parameter deliberately. |
+| No unreachable statements | `"allowUnreachableCode": false` | A statement after a call to a `never`-returning helper, which no syntactic rule sees | The default is `undefined`, an editor grey-out that never fails a build. oxlint `no-unreachable` catches the plain cases; this catches the type-aware ones. |
+| No unused labels | `"allowUnusedLabels": false` | A label left behind by a deleted loop | Same default trap as above. |
+| Every path returns | `"noImplicitReturns": true` | A `T \| undefined` lookup falling off the end, which `strict` cannot flag because `undefined` is in the annotation | Gates unannotated helpers and arrow callbacks that no explicit return type reaches. |
+| No accidental switch fallthrough | `"noFallthroughCasesInSwitch": true` | A case body that runs into the next one | Verified 2026-09-03 against tsc 7.0.2: `// falls through` does **not** suppress TS7029, and a declaration-only case body counts as non-empty, so shared-setup-then-fall-through is banned too. |
+| `override` is written, not inferred | `"noImplicitOverride": true` | A subclass method silently ceasing to override anything after a base rename | Adds TS4114. Abstract members and `implements` relationships are exempt by design, so an `abstract class Handler` hierarchy is not covered. |
+| Type-only imports are explicit | `"verbatimModuleSyntax": true` | A re-export of a type keeping a runtime edge alive | `isolatedModules` does not cover `import { T } from "./t"; export { T }`. Hard-fails every CommonJS `nodenext` file (TS1295/TS1287), so it is an ESM demand, not a tightening. |
+| Only erasable syntax | `"erasableSyntaxOnly": true` | `enum`, `const enum`, `namespace`, parameter properties, `import =`, `export =` and `<T>x` casts, none of which survive type stripping | Whole-program, not path-scopable: an `include` narrowing does not confine it, because an outward import pulls the other file in. `.d.ts` files are exempt. |
+| Declarations are inferable per file | `"isolatedDeclarations": true` (library only) | A public API whose types only one whole-program compiler can compute, blocking fast `.d.ts` emit | Needs `declaration` or `composite` or it exits 1 with TS5069 and checks nothing else. Verified 2026-09-03 on tsc 7.0.2: `incremental: true` silently drops every TS9013 while unrelated errors still report. |
+| Missing side-effect imports fail | default since TS 6.0 | `import "./deleted.css"` resolving to nothing | Do not write the key: it is on. `declare module "*.css"` buys the silence back for the whole asset class. |
+| One era of syntax and lib | `"target": "es2025"`, `"lib": ["es2025", "esnext.disposable"]` | `using` declarations typed out of existence, or `esnext` typing Temporal into existence before a runtime ships it | `es2025` under-declares node 24 for `DisposableStack`; bare `esnext` over-declares. |
+| Ambient globals are declared | `"types": ["node"]` | Every `process` and `node:*` reference failing as TS2591 | `types` defaults to `[]` from TS 6.0, and `typeRoots` does not substitute. Verified 2026-09-03 on tsc 7.0.2 with @types/node 26.4.0: without the key, `process.env["X"]` is TS2591 and exit 1. |
+| The program is scoped | an explicit `"include"` | Build output and Node tooling being typechecked as app code | Without it the program is `**/*`, which pulls `dist/` and `scripts/` in and leaks `process` into browser code. Give `scripts/` its own tsconfig. |
+
+- **`skipLibCheck` skips first-party `.d.ts` too.** Verified 2026-09-03 on tsc 7.0.2: a hand-written `bad.d.ts` naming an unresolvable type exits 0 with `skipLibCheck: true` and reports TS2304 with it off. Keep it on for the app gate, because turning it off pulls every reachable dependency `.d.ts` into the program and there is no path form of the flag; turn it off only for the release check against generated declarations.
+- The cast, `any` and non-null discipline is lint, not tsconfig: oxlint `typescript/consistent-type-assertions` at `assertionStyle: "never"`, `typescript/no-explicit-any`, `typescript/no-non-null-assertion`. The idiom behind them is the `typescript` skill's.
+- Record shapes: `interface` for object shapes, `type` for unions. `typescript/consistent-type-definitions: ["error", "interface"]` encodes it.
 
 ## Type checking
 
-`tsc --noEmit` strict is the authoritative gate. The native Go compiler
-(Project Corsa, TS 7) is ~10× faster with near-parity `--noEmit` checking, so
-it earns the fast local / pre-commit slot while `tsc` keeps the blocking gate.
+`./node_modules/.bin/tsc -p tsconfig.json` is the gate, invoked by explicit
+path. `pnpm exec tsc` and a bare `tsc` npm script fall through to any global
+compiler on `PATH`, so a missing or mis-aliased local one is invisible: on a
+machine with mise-installed TypeScript the project pins one major and the gate
+checks with another, exit 0 either way (verified 2026-09-03).
 
-| Tool | Default use | Notes |
+**Never branch on exit 1 versus 2.** TS 7 reverses the mapping TS 6 used. Held
+constant on one violation, verified 2026-09-03:
+
+| Condition | tsc 7.0.2 | tsc6 6.0.3 |
 |---|---|---|
-| `tsc --noEmit` (TS 6) | Authoritative blocking gate | The required CI check until tsgo is verified stable on the project, then promote tsgo to primary. |
-| `tsgo --noEmit` (TS 7) | Fast local / pre-commit check | Invoked as `tsgo` from `@typescript/native-preview`, or as `tsc` from `typescript@rc`. Same strict flags. |
+| Type error under `noEmit` | 1 | 2 |
+| Unknown compiler option (TS5023), typo'd tsconfig key, missing `-p` path (TS5058) | 1 | 1 |
+| Diagnostics with output files written | 2 | - |
+| Same, plus `--noEmitOnError` | 1 | - |
 
-Hard caveats while pre-GA:
+On TS 7 the code is a function of the emit configuration, not the diagnostic
+class: a config error and a type error share exit 1, and exit 2 means "errors
+reported and files written anyway". Test for non-zero.
 
-- **Library builds stay on `tsc`.** tsgo declaration (`.d.ts`) emit still has gaps (declaration maps, `--build` / project-reference orchestration) - do not generate published artefacts with it yet.
-- **The lint stack stays on TS 6.** The programmatic API (Strada) lands in 7.1, so typescript-eslint / ts-morph / custom transformers can't ride tsgo until then. Install side-by-side via `typescript@npm:@typescript/typescript6` if a tool needs the old API.
-- **A browser/Workers app plus Node build scripts are two tsconfig programs, not one.** Don't widen the app's strict `include` to pull the Node scripts in - it leaks `process` / `node:*` globals into app code that has no runtime access to them. Scope the app `include` to app source + tests, and give Node tooling (`scripts/`) its own tsconfig with the Node lib/types; or leave the `.ts` scripts to the linter + execution (Node 24 type-strips them at runtime, so they never need the app program's typecheck).
+- **`tsc <file>.ts` is refused below a tsconfig.** TS5112, exit 1, nothing checked. Any per-file triage script needs `--ignoreConfig`, which then discards every flag the config sets, so it typechecks under CLI defaults rather than the project's contract. This is a false-green hazard in the other direction too: TS5112 exits 1, so a script reading only the status reads a config error as a caught violation.
+- **A bare `tsc` walks up the tree** and adopts an ancestor tsconfig, silently checking a different file set from the one in the working directory. Always pass `-p`.
+- **`--showConfig` is not a gate.** Verified 2026-09-03 on tsc 7.0.2: it exits 0 on removed options, unknown options and malformed JSON, echoing illegal values back unflagged. It is a diff aid for `extends` chains, paired with a real run.
+- **Removed options hard-error.** `target: ES5` and `module: amd|system|umd` give TS5108; `baseUrl`, `outFile` and friends give TS5102. `baseUrl` is a two-edit migration: deleting it turns every non-relative `paths` target into TS5090, so each value needs a leading `./`. The `--opt=value` CLI form is rejected as TS5023; use `--opt value`.
+- **`extends` replaces arrays and rebases `include`.** `types`, `lib`, `include` and `exclude` are replaced wholesale, with no union form (`[]` and `null` both drop the base value), and an inherited `include` resolves against the *base* config's directory. Verified 2026-09-03: a child extending `ext/base.json` reports `include: ["ext/../flags/env.ts"]`. A top-level key with a dropped letter in `include` draws no diagnostic at all, so the program silently widens; only keys inside `compilerOptions` are validated.
+- **`tsc --noCheck` and `"noCheck": true` suppress unresolved imports (TS2307) and erasableSyntaxOnly grammar errors (TS1294) as well as type errors.** A deleted module passes. The tsconfig key carries no `tsc` token, so a command-string grep cannot see it; `tsc -p <cfg> --showConfig | grep -qi '"noCheck": true'` can.
 
-## Error handling
+**TS 7 ships no stable JS API.** Verified 2026-09-03: `import ts from
+"typescript"` at 7.0.2 yields `{ version, versionMajorMinor }` and
+`createProgram` is `undefined`; the API lives behind `typescript/unstable/*`.
+Every tool that drives the old API is therefore either dead or running against a
+compiler it bundles itself - ts-morph 28 and api-extractor both vendor an older
+TypeScript, so they "work" silently against a different checker from the gate.
 
-| Rule | Encode with | Prevents | Notes |
-|---|---|---|---|
-| No bare `catch` / swallowed errors | Biome `noCatchAssign`, `useErrorMessage`; ESLint `no-empty` with `allowEmptyCatch: false` | Errors disappearing into the void | Narrow in the catch (`catch (e) { if (e instanceof FooError) ... }`) or rethrow. |
-| No catch-all re-throw without cause | Custom `no-restricted-syntax` catching rethrows without `{ cause }` | Losing error context | Required pattern: `throw new Error("while doing X", { cause: e })`. |
-| Prefer Result types at domain boundaries | Convention + review; no linter | Exception-driven control flow in pure code | Exceptions live at the imperative shell only. |
-| No `console.*` in prod code | oxlint `no-console` (native, bans all levels) or Biome `noConsole` with `allow: ["warn", "error"]` | Logs leaking to user consoles | Use the project's logger. |
+**typescript-eslint refuses TS 7.** Verified 2026-09-03 with eslint 10.9.1 and
+typescript-eslint 8.68.0 against typescript 7.0.2: `typescript-eslint does not
+support TS 7.0.`, exit 2, nothing linted. Support tracks TS 7.1. The documented
+escape is Microsoft's side-by-side Option 2, and it needs both halves:
 
-## Formatting (oxfmt, with Biome as the stable fallback)
+```sh
+pnpm add -D "typescript@npm:@typescript/typescript6@6.0.2"   # bin: tsc6
+pnpm add -D "typescript7@npm:typescript@7.0.2"               # restores .bin/tsc
+```
 
-The recommended default for new projects is the all-oxc stack: oxlint for
-linting (it already owns the boundary rules in `references/architecture-boundaries.md`) plus **oxfmt** for
-formatting, selected together via Ultracite's provider flag -
-`ultracite init --linter oxlint` generates both `oxlint.config.ts` and
-`oxfmt.config.ts` (one flag picks the whole toolchain; there is no separate
-formatter flag). With oxlint doing the linting, Biome's role in this stack is
-format-only - no integrated lint+format advantage - so the faster formatter
-wins.
+Option 1 (aliasing `typescript` alone) is the trap: verified 2026-09-03, it
+deletes `node_modules/.bin/tsc`, so `./node_modules/.bin/tsc` exits 127 while
+`pnpm exec tsc` resolves a global TS 7 and reports as if the gate ran. The
+second alias is what keeps the typecheck script honest.
 
-Why oxfmt: it passes 100% of Prettier's JS/TS conformance tests, runs ~30×
-faster than Prettier and ~3× faster than Biome, and formats ~20 file types -
-Markdown and YAML among them, so an oxc-stack repo needs no separate formatter
-for either. It is adopted by vuejs/core, turborepo and sentry-javascript, and
-sits under VoidZero (acquired by Cloudflare; projects stay MIT under a
-neutrality pledge). `oxfmt --migrate=prettier` / `--migrate=biome` converts existing
-config, making the switch near-zero.
+Type-aware lint rules run through oxlint instead, with no TypeScript dependency
+at all - tsgolint embeds its own typescript-go, so its semantics can diverge
+from the repo's `tsc`. See [Lint families](#lint-families-and-suppressions).
 
-It is pre-1.0 (check the oxfmt releases page for current status), so Biome via Ultracite
-(`--linter biome`) stays the documented stable fallback. Promote oxfmt to the
-sole pick at 1.0. When migrating an existing repo, dry-run the diff first and
-land the reformat as an isolated commit.
+There is **no tsc baseline**, so turning on `noUncheckedIndexedAccess` or
+`exactOptionalPropertyTypes` on a legacy tree has no ratchet vehicle;
+tsc-baseline, typescript-strict-plugin and betterer are all weak. See
+`references/ratcheting.md`.
 
-## What Biome 2.x covers (and the ESLint hold-outs)
+## Lint families and suppressions
 
-Biome 2.x (pin `$schema` to your installed release) covers much of what would
-otherwise need an ESLint flat config. Put those rules in `biome.json` and keep
-ESLint only for what genuinely remains.
+**oxlint's default run is a report, not a gate.** Verified 2026-09-03 against
+oxlint 1.80.0: the default `correctness` category is applied at *warn*, so a
+file with a real `no-debugger` hit prints the diagnostic and exits 0. Only
+`--deny-warnings` (or a per-rule `"error"`) sets the status. oxlint prints no
+"found N problems" footer, so a clean run and a swallowed run are byte-identical.
 
-| Capability | Biome rule | Status | Replaces |
-|---|---|---|---|
-| Ban modules / globals by exact specifier | `noRestrictedImports`, `noRestrictedGlobals` | stable | simple ESLint `no-restricted-imports` / `no-restricted-globals` - plain strings only, no glob `patterns`, so path-family bans stay in ESLint |
-| Package privacy via JSDoc visibility | `noPrivateImports` (`@package` / `@private` tags) | stable | the eslint-plugin-import `no-internal-modules` niche |
-| Custom project-local AST rules | GritQL plugins (`.grit` via `linter.plugins`) | stable (code fixes in 2.5) | many `no-restricted-syntax` rules and some greppable invariants |
-| Floating / misused promises | `noFloatingPromises`, `noMisusedPromises` (`types` domain) | nursery → advisory | a typescript-eslint class nothing else here catches |
-| Import cycles | `noImportCycles` (`project` domain) | stable but scanner-heavy | overlaps madge - madge stays primary on perf (see Import hygiene) |
-
-Genuine ESLint hold-outs - keep ESLint for these:
-
-- **Import-type-aware boundary rules.** `noRestrictedImports` still can't allow `import type X` while banning the value import, so layer rules that must stay type-visible (`allowTypeImports`) need typescript-eslint.
-- **Syntactic selectors.** oxlint does not ship `no-restricted-syntax` natively - the config fails to parse (`Rule 'no-restricted-syntax' not found in plugin 'eslint'`) and lints nothing, so a rule that genuinely needs an AST selector wants ESLint, the alpha `oxlint-plugin-eslint` JS plugin, or a greppable grep-then-`exit 1` hk step (the zero-dependency route - see Greppable invariants / Purity in `references/architecture-boundaries.md`). **Member-expression bans are not in this class**: Biome has no `no-restricted-properties` equivalent but oxlint ships one natively, so `Date.now` / `Math.random` / `process.env` purity bans need neither ESLint nor a grep step - `no-restricted-properties: ["error", { object: "Date", property: "now", message: "inject the clock" }]` reports `'Date.now' is restricted from being used` and exits 1 (verified 2026-09-02 against oxlint 1.80, likewise for `Math.random` and `process.env`). `no-restricted-imports`, `no-restricted-globals`, `no-restricted-exports` and `typescript/no-restricted-types` are native too.
-- **Mature framework / a11y plugins.** `jsx-a11y`, `eslint-plugin-react-hooks` edge cases, and `next/core-web-vitals` remain broader than Biome's ported domains.
-
-GritQL plugins can't be shared across repos (by design), so a reusable
-cross-repo invariant pack still lives in a shared ESLint config or the
-greppable-invariants tier. Enabling the `types` / `project` domains turns on
-Biome's project scanner - real perf cost, so treat those rules as advisory, not
-a blocking gate.
-
-## Framework single-file components (.astro / .vue / .svelte)
-
-The Rust JS linters don't parse framework SFCs. Point oxlint at a `.astro` file
-and it reads the frontmatter but misreads the template - an Astro expression like
-`{cond && <script />}` trips `no-unused-expressions` as a false positive, because
-oxlint is parsing template JSX as if it were plain JS. Biome has the same blind
-spot. So:
-
-- **Scope the JS linter to `*.ts` / `*.js` / `*.mjs`** and exclude the SFC
-  extension from that step. The glob is the fix - see `hk` (glob each step to
-  what the tool actually handles).
-- **Let the framework's own checker own the SFC**: `astro check` (uses the Astro
-  language server + `tsc` under the hood), `vue-tsc`, `svelte-check`. This is the
-  type-check + template-diagnostic gate for the file the JS linter can't read.
-- **To lint *inside* the SFC's `<script>` blocks**, add the framework's ESLint
-  parser (`astro-eslint-parser` + `eslint-plugin-astro`; `eslint-plugin-vue`;
-  `eslint-plugin-svelte`) - oxlint / Biome can't stand in for it. Reach for this
-  only when you need lint rules on the script logic beyond what the framework
-  checker gives.
-
-## UI hygiene (React / Next)
+Category sizes on 1.80.0, measured as the delta over the 111 default correctness
+rules: suspicious 39, pedantic 108, perf 7, style 128, restriction 62, nursery 7.
+None of the idiom rules below sits in `correctness`, so each has to be named.
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| No raw `<input>` / `<button>` / `<a>` outside the component library | `no-restricted-syntax` on `JSXOpeningElement[name.name='input']` (etc.) in app/feature code | Drift from the design system | Exempt the UI library path (`src/components/ui/**`). Error message points at the wrapper component. |
-| `jsx-a11y/recommended` on | ESLint `plugin:jsx-a11y/recommended` via flat config | Accessibility regressions | Turn off `no-noninteractive-tabindex` - the axe-mandated `scrollable-region-focusable` pattern conflicts. |
-| No inline styles | Biome `noInlineStyles` (or ESLint `react/forbid-dom-props`) | Design-system bypass | Allow `style` on one or two charting components with a disable comment. |
-| `useTopLevelRegex` (Biome) | default in Ultracite | Regex recompiled on every call; inline regex in test assertions | Prefer `.toThrow("Cannot submit:")` over `.toThrow(/Cannot submit:/)`. |
+| Type-aware rules actually run | `"options": { "typeAware": true }` + `oxlint-tsgolint` dev dependency | Every type-aware rule configured at `"error"` silently doing nothing | Verified 2026-09-03: the same config without the key exits 0 on a floating promise. The config key beats `--type-aware` because it holds for the editor and any wrapper that drops argv. |
+| Suppressions name their rules | `unicorn/no-abusive-eslint-disable` (restriction) | A bare `/* eslint-disable */` that also hides every rule added later | The ruff PGH004 twin. Defeated by suppressing itself - see below. |
+| `@ts-` directives are disciplined | `typescript/ban-ts-comment` (pedantic) | `@ts-ignore` and description-less `@ts-expect-error` | Options: `ts-expect-error: "allow-with-description"`, `minimumDescriptionLength`, `ts-ignore`, `ts-nocheck`. No `descriptionFormat`, so it cannot demand a rule code the way PGH003 does. `.js` files escape the rule entirely. |
+| Stale suppressions expire | `--report-unused-disable-directives-severity=error` | A disable comment left over the code it once covered | The RUF100 twin. Verified 2026-09-03: reports both `oxlint-disable` and `eslint-disable` spellings; root config only, rejected inside `overrides`. |
+| No casts | `typescript/consistent-type-assertions: ["error", { "assertionStyle": "never" }]` | Silent lies to the compiler | Native, no ESLint needed. A chained `1 as unknown as string` emits two diagnostics at the identical column. Smart constructors need one disable each. |
+| No `console` in production code | `no-console: ["error", { "allow": ["warn", "error"] }]` | Logs leaking to a user console | Syntactic: `const c = console; c.log()` and `globalThis.console.log()` both escape it. An unknown method name in `allow` is accepted and echoed back, so the exemption is inert while the gate stays maximal. |
+| Object shapes are interfaces | `typescript/consistent-type-definitions: ["error", "interface"]` | Two spellings of one record shape drifting apart | Unions stay `type`. |
+| Exhaustive switches | `typescript/switch-exhaustiveness-check` (type-aware, pedantic) | A union arm added without a matching case | Leave `considerDefaultExhaustiveForUnions` false (its default) - true weakens it. Leave `allowDefaultCaseForExhaustiveSwitch` true, or the rule flags the `default: return assertNever(x)` arm the `typescript` skill prescribes. |
+| Promises are handled | `typescript/no-floating-promises`, `no-misused-promises` (type-aware) | A dropped rejection and a `void`-returning async callback | `no-floating-promises` is default-on at warn; `no-misused-promises` is not on at all. |
+| Untyped values do not spread | the `typescript/no-unsafe-*` family (type-aware) | An `any` from an untyped dependency flowing through the whole call graph | The `reportAny` twin. `no-unsafe-type-assertion` flags branded smart constructors, so budget one disable per constructor. |
 
-`jsx-a11y` is static-only. Its deliberate runtime complement - colour contrast,
-computed ARIA, DOM/focus structure, which no static rule can see - is the
-axe/pa11y gate in `references/web-delivery.md`. Run both.
+The rest of the type-aware set worth naming, all native and all needing
+`typeAware`: `only-throw-error`, `restrict-template-expressions`,
+`no-base-to-string`, `no-unnecessary-condition`, `prefer-readonly`,
+`require-await`, `no-deprecated` (the `reportDeprecated` twin),
+`strict-boolean-expressions` (its `allowString` / `allowNumber` /
+`allowNullableObject` defaults let plain `string`, plain `number` and `T | null`
+through, but nullable primitives already error).
+
+Configuration mechanics that decide whether any of it is armed:
+
+- **`plugins` replaces the default set, it does not extend it.** Verified 2026-09-03: with `"plugins": ["import"]`, a `typescript/no-explicit-any` rule at `"error"` exits 0 in silence; deleting the key restores the defaults (typescript, unicorn, oxc) and it exits 1. List every plugin the config uses, `import` and `vitest` included, or half the rules vanish.
+- **An `import/*` rule with no `plugins` entry is discarded silently**, exit 0 with no output. Verified 2026-09-03 on a two-file cycle. The CLI is the opposite: `oxlint -D import/no-cycle` works with no plugin declaration.
+- **The config file fails closed on an unknown rule name; the CLI fails open.** A bad name in `.oxlintrc.json` aborts the run (`Failed to parse oxlint configuration file`, exit 1, nothing linted, on stdout not stderr); inside `overrides[].rules` the header reads `Failed to build configuration.` instead. `oxlint -D no-such-rule-xyz` exits 0 with zero bytes. Keep rules in the config, never in hook flags.
+- **`--rules` is a silent no-op** at 1.80.0: zero bytes, exit 0. Use `--print-config` to inspect an effective config, and note it cannot diagnose the two traps below.
+- **`overrides[].files` globs resolve against the config file's directory.** Verified 2026-09-03: a config holding `files: ["src/domain/**"]` moved one level down into `hooks/` matches nothing and exits 0 with no warning, while the byte-identical file at the root exits 1. `--print-config` prints both identically. Anchor every override glob with a leading `**/`, and keep the config beside the tree it scopes.
+- **An unknown key inside a `no-restricted-imports` pattern object silently drops the whole rule.** Verified 2026-09-03: `allowTypeImport` (singular, one keystroke from the correct `allowTypeImports`) turns a firing gate into exit 0 and zero output. `--print-config` echoes the typo back and `$schema` does not validate at runtime.
+- **Severity `"warn"` exits 0.** A severity typo fails open where a rule-name typo fails closed.
+- **A nested `.oxlintrc.json` in a subdirectory overrides the root rules** and is dropped entirely by `-c <path>`; `--disable-nested-config` turns the mechanism off. `oxlintrc.json` with no leading dot is not discovered at all, and neither is `oxlint.config.mjs`/`.js` (only `oxlint.config.ts`/`.mts` and the dotted JSON forms are).
+- **oxlint walks `node_modules` unless a VCS ignore file excludes it**, drowning the run in dependency diagnostics. Always scope paths: `oxlint -c .oxlintrc.json --deny-warnings src tests`.
+- **The abusive-disable rule can suppress itself.** Verified 2026-09-03: `/* eslint-disable unicorn/no-abusive-eslint-disable */` above a bare `/* eslint-disable */` exits 0 with the rule at error. `respectEslintDisableDirectives: false` does not close it - that key is prefix-scoped to `eslint-` directives, and setting it also removes those directives from the unused-directive report, so it cannot inventory an inherited suppression set. A grep for the literal rule name inside a suppression comment is the only cover.
+
+**Biome**, where a repo is already on it. Its recommended preset is tri-level,
+and the exit code follows severity rather than membership. Verified 2026-09-03
+against Biome 2.5.11 with `biome explain`: `noExplicitAny`, `noNonNullAssertion`,
+`noTsIgnore`, `useConst` and `useImportType` are all recommended and all default
+to **warn**, so a recommended-preset run exits 0 on every one of them.
+
+- `--error-on-warnings` lifts warnings and **not** info. Verified 2026-09-03: `useLiteralKeys` at its default info exits 0 with or without the flag. Spell `"error"` per rule for anything at warn or info; `"on"` keeps the default severity and gates nothing.
+- `--diagnostic-level=error` filters warnings out *before* the exit-code decision, so it silently defeats `--error-on-warnings` and emits no output at all. It is exactly the flag someone adds to quieten a noisy log.
+- **A `biome.json` containing a `//` comment is discarded in silence.** Verified 2026-09-03: `biome rage` reports `Status: Not set` and the linter runs pure defaults at exit 0. Name the file `biome.jsonc`. 2.5.11 also reports `recommended` as deprecated in favour of `preset`.
+- **Nursery rules cannot be enabled from `overrides[]`.** Verified 2026-09-03: `noFloatingPromises` at `"error"` inside an override exits 0, while the same entry under top-level `linter.rules.nursery` exits 1. `domains: { types: "all" }` does not enable it either. Scoping such a rule *off* for a path does work.
+- **Biome needs an ignore file** (`.gitignore`, `.git/info/exclude` or `.ignore`) in the directory holding its config, or the run dies with an `internalError/fs` and zero rule output. A 0-byte `.gitignore` does not satisfy it; one line of content does.
+- **`useLiteralKeys` fights `noPropertyAccessFromIndexSignature`.** Verified 2026-09-03: `biome check --write --unsafe` rewrites `process.env["REGION"]` to `process.env.REGION`, exits 0, and leaves a tree `tsc` rejects with TS4111. The hook order runs fix before typecheck, so the lint tier reports success at the moment it breaks the typecheck tier. Suppress per site, or turn the rule off and accept losing its true positives.
+- `biome migrate` rewrites a whitespace-formatted `"rules": { "recommended": true }` into `preset: "none"`, disabling the linter, and recurses into nested configs. Review its dry-run diff before `--write`; a canary file with a known recommended violation is a better check than parsing the config.
+- Biome's own suppression discipline is the mirror of oxlint's: a `biome-ignore` with no reason is a parse error that fails closed, but there is no scope requirement, `biome-ignore lint:` and `biome-ignore-all` blanket a file unreported, and `suppressions/unused` is a warning. A misspelled directive keyword is invisible - the comment is never parsed as a suppression at all.
+
+**Ultracite is a starting point, not a gate.** Version 7.10.7 generates an
+oxlint or Biome preset with `ultracite init --linter oxlint|biome`. Its traps,
+each of which the drop-in config has to answer: `no-console` and
+`no-restricted-properties` are off on all three routes; `sort-keys` and
+expression-only `func-style` are on; a block of type-aware rules is declared at
+`"error"` with no `oxlint-tsgolint` installed and no `typeAware` key, so they
+fail open; `ultracite init --type-aware` adds the dependency and changes no
+generated config; it resolves linters from `PATH`, so a mise-global oxlint of a
+different minor rejects the pinned config; its generated husky and lefthook hooks
+run `pnpm dlx ultracite fix` repo-wide, unpinned and network-resolved on every
+commit, with no path scoping; `--hooks` configures agent hooks, not git hooks. `ultracite check --error-on-warnings=true` is broken
+on both providers - Biome rejects the `=true` form and oxlint has no such flag.
+
+**anti-slop** (github.com/dmmulroy/anti-slop, MIT, no npm package by design) is
+adopted as an optional JS-plugin block: 15 generic rules plus an Effect rule per
+its README on 2026-09-03, costing roughly +0.05s per run. Read the live rule list
+before wiring it. Install with
+`skills add dmmulroy/anti-slop --skill install-anti-slop`, or copy `src/` to
+`tools/oxlint/anti-slop/`, and wire it through `jsPlugins` with `@oxlint/plugins`
+pinned to the exact installed oxlint version. Turn `no-unknown-parameters` off
+for `src/boundary/**`: it fires on the `(x: unknown)` type-predicate and parser
+shapes the `typescript` skill prescribes, and 14 of the 15 rules expose no
+options to relax it.
+
+## Formatting
+
+oxfmt is the formatter. It passes Prettier's JS/TS conformance suite, runs
+markedly faster than Prettier or Biome, and formats JSON and YAML as well, so an
+oxc repo needs no second formatter for config files. `oxfmt --migrate=prettier`
+or `--migrate=biome` converts existing config.
+
+**rumdl owns Markdown house-wide**, so oxfmt must be told to leave it alone or
+the two fight over every `.md` file. Verified 2026-09-03 against oxfmt 0.65.0
+(0.66.0 held back by the release-age quarantine): `--init` writes
+`.oxfmtrc.json` containing `{"ignorePatterns": []}`, and
+
+```json
+{ "ignorePatterns": ["**/*.md"] }
+```
+
+drops Markdown from the run while YAML, JSON and TS stay in it (4 files checked
+to 3). `oxfmt --check` exits 1 on an unformatted file and 0 when clean. See
+`references/typescript-oxfmtrc.jsonc`.
+
+oxfmt is pre-1.0, so pin it and land any migration reformat as its own commit.
+Biome's formatter is the fallback where a repo is already on Biome.
+
+## Framework single-file components
+
+The Rust linters do not parse framework SFCs. Point oxlint at an `.astro` file
+and it reads the frontmatter but misreads the template - `{cond && <script />}`
+trips `no-unused-expressions` because template JSX is parsed as plain JS. Biome
+has the same blind spot.
+
+- **Scope the JS linter to `*.ts` / `*.tsx` / `*.js` / `*.mjs`** and exclude the SFC extension from that step. The glob is the fix.
+- **Let the framework checker own the SFC**, and check its compiler support before promising a gate. Registry-verified 2026-09-03: `@astrojs/check` 0.9.10 declares `typescript: ^5.0.0 || ^6.0.0` and `svelte-check` 4.7.6 declares `^5.0.0 || ^6.0.0`, both excluding TS 7; `vue-tsc` 3.3.11 declares `>=5.0.0`. All three drive the TypeScript JS API through Volar, and that API is absent from `typescript@7` (see [Type checking](#type-checking)), so an SFC project needs the TS 6 side-by-side alias for its checker. Behaviour of `vue-tsc` under TS 7 is unverified.
+- **To lint inside `<script>` blocks**, add the framework's ESLint parser (`astro-eslint-parser` + `eslint-plugin-astro`, `eslint-plugin-vue`, `eslint-plugin-svelte`). oxlint and Biome cannot stand in for it, and the whole route needs the TS 6 alias.
+
+## UI hygiene
+
+| Rule | Encode with | Prevents | Notes |
+|---|---|---|---|
+| No raw `<input>` / `<button>` / `<a>` outside the component library | ast-grep rule scoped to app and feature code | Drift from the design system | oxlint has no `no-restricted-syntax`, so this is ast-grep or the `oxlint-plugin-eslint` JS-plugin bridge, not a native rule. Exempt `src/components/ui/**`. |
+| Accessibility regressions | oxlint `jsx-a11y` rules, named individually, with `"jsx-a11y"` in `plugins` | Missing labels, roles and keyboard handlers | Verified 2026-09-03: without the plugin entry, `jsx-a11y/alt-text` at `"error"` exits 0 on a bare `<img>`. Turn off `no-noninteractive-tabindex`: it conflicts with the axe-mandated `scrollable-region-focusable` pattern. |
+| No inline styles | Biome `noInlineStyles`, or an ast-grep rule | Design-system bypass | Allow `style` on charting components with a per-site suppression. |
+| Imports stay sorted and grouped | Biome `assist.actions.source.organizeImports` + `biome check` | Merge conflicts on import blocks | It is an **assist** action, not a lint rule: `biome lint` never runs it. `biome check` does, and reports it at error severity. |
+
+`useTopLevelRegex` is a **performance** rule, not a correctness or ReDoS one: it
+asks that a regex literal be hoisted out of a hot function so it is compiled
+once. It exempts the `g` and `y` flags, whose `lastIndex` state makes hoisting
+wrong. It says nothing about catastrophic backtracking - see
+`references/typescript-security.md`, ReDoS.
+
+`jsx-a11y` is static-only. Its runtime complement - colour contrast, computed
+ARIA, focus order - is the axe/pa11y gate in `references/web-delivery.md`. Run
+both.
 
 ## Import hygiene
 
-| Rule | Encode with | Prevents |
-|---|---|---|
-| Sorted + grouped imports | Biome `organizeImports` on format | Merge conflicts; inconsistency |
-| No cycles | oxlint `import/no-cycle` (Rust, multi-file - retires madge) or [madge](https://github.com/pahen/madge) (`madge --circular`); Biome `noImportCycles` is stable but scanner-heavy | Module init-order bugs |
-| No default exports (optional) | Biome `noDefaultExport` / ESLint `import/no-default-export` | Inconsistent naming at import sites; poor rename refactoring. Exempt Next.js pages/layouts where defaults are required. |
-| Unique function names | `no-restricted-syntax` on duplicate `FunctionDeclaration` identifiers across a file; fallback is a grep-based hk step | Duplicate helpers being written instead of discovered. Grep check catches the cross-file case ESLint can't. |
-
-## Complexity and duplication
-
-The cross-stack argument, the numbers, and what is report-only live in
-`references/complexity.md`. This is the wiring.
-
-**No ESLint layer is needed for these.** All seven ESLint metric rules are
-native Rust in oxlint, including `complexity`'s `variant: "modified"`. Cognitive
-complexity and duplicate-function detection are the only gaps, and oxlint's
-`jsPlugins` bridge (alpha) runs the real `eslint-plugin-sonarjs` to close them.
-
-**Every rule below is off until you name it.** They sit in oxlint's `pedantic` /
-`style` / `restriction` categories, so `-D warnings` does not reach them.
-Verified 2026-08-28 on oxlint 1.77.0: a 5-deep, 5-parameter function produces **no
-diagnostics at all** on a bare run, and fires the moment the rules are named.
+oxlint's `import` plugin owns the direct-edge half. It sees one import
+statement at a time, which is why the transitive half needs the ts-morph test in
+`references/architecture-boundaries.md`, Transitive architecture tests.
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| Branch count | oxlint `complexity: ["error", { max: 15, variant: "modified" }]` | Functions with more paths than a test suite covers | Default 20 and `classic`. **Set `variant: "modified"`** or the rule punishes the exhaustive discriminated-union `switch` you want: verified that a 5-case switch plus one `if` scores 7 classic and 3 modified. |
-| Nesting depth | oxlint `max-depth: ["error", { max: 4 }]` | Arrow code, which a branch count misses because breadth and depth score alike | 4 is both the oxlint default and the cross-stack number. Keep exactly one nesting gate. |
-| File size | oxlint `max-lines: ["error", { max: 300, skipBlankLines: true, skipComments: true }]` | Files that accrete several reasons to change | Both skip flags default to false. Exclude generated clients, barrels, i18n catalogues and `as const` tables **by glob** - that class is stable. |
-| Function size | oxlint `max-lines-per-function: ["error", { max: 50, skipBlankLines: true, skipComments: true, IIFEs: true }]` | Functions no reviewer reads end to end | Without `IIFEs: true`, module-level setup IIFEs escape the rule entirely. |
-| Statement count | `max-statements: "off"` | Nothing `max-lines-per-function` does not already | A strict subset of function length, and its default of 10 is punitive. Two gates arguing about one concern. |
-| Parameter count | oxlint `max-params: ["error", { max: 4 }]` | Call sites where two same-typed positionals swap silently | 4 rather than the oxlint/ESLint default of 3, which fires on ordinary render props and curried helpers; 4 also matches Biome's `useMaxParams` so the two routes agree. The real fix for swappable args is branded types - see the `typescript` skill. |
-| Callback pyramids | oxlint `max-nested-callbacks: ["error", { max: 3 }]` | Control flow that `async`/`await` would flatten | The default 10 never fires in modern async code, so enabling it at the default buys nothing. Disable in test globs - `describe` / `it` / `beforeEach` is the whole false-positive class. |
-| Anonymous call nesting | oxlint `unicorn/max-nested-calls: ["error", { max: 3 }]` | `a(b(c(d(x))))` - no named intermediates and no readable stack position | The unicorn plugin is on by default in oxlint, but this rule is off in Ultracite's core; turn it back on. |
-| One class per file | oxlint `max-classes-per-file: "error"` | A module name that stops describing its contents | Free in a functional-core codebase. Error hierarchies are the standard exception. |
-| Cognitive complexity | `sonarjs/cognitive-complexity: ["error", 15]` via oxlint `jsPlugins` | Code that is hard to *read* rather than hard to *cover*, because nesting is weighted | 15 is sonarjs's own default. Run this **instead of** tightening `complexity`, not alongside it. |
-| Duplicate function bodies | `sonarjs/no-identical-functions: ["error", 3]` | The agent failure mode: a second copy written instead of the first being found | The threshold counts **lines**, not tokens, and the schema refuses values below 3 - so two byte-identical one-line helpers never fire. |
-| Repeated string literals | `sonarjs/no-duplicate-string: ["error", { threshold: 3 }]` | A magic string typo'd in one of its five call sites | Turn it off in tests: repeated literals in test titles are idiomatic, which is why the rule is absent from sonarjs's own recommended set. Extend `ignoreStrings` rather than dropping it. |
-| Compound conditions | `sonarjs/expression-complexity: ["error", { max: 3 }]` | Four or more `&&` / `\|\|` / `?:` in one expression, where precedence errors hide | The sub-statement gap: `complexity` counts branches, this counts operators inside a single expression. Treat a hit as a prompt to name the predicate. |
+| No cycles | `import/no-cycle` with `"plugins": ["import"]` | Module init-order bugs | `ignoreTypes` defaults true, so it is a runtime-cycle gate until you set it false. `maxDepth` silently misses deeper cycles. |
+| Layer bans | `no-restricted-imports` with `patterns` in an `overrides` block | A pure layer importing an adapter | `allowTypeImports` is native and works on `patterns` despite the published docs listing it only for `paths`. `group` matches the literal specifier, so `../infra/*` misses `../../infra`: use `**/infra/**`. |
+| No node builtins in the core | `import/no-nodejs-modules` | A domain module reaching for `node:fs` | Has no `allowTypeImports`, so it rejects a legitimate `import type { Stats } from "node:fs"`. Its `allow` list also needs both `node:assert` and bare `assert`. Not a substitute for `no-restricted-imports`. |
+| Barrels stay small | `oxc/no-barrel-file` | A single index re-exporting a whole subsystem | Default `threshold` is 100, which is inert. Verified 2026-09-03: a two-module barrel needs `{ "threshold": 1 }` to fire. |
+| Deep imports into a package | no oxlint rule | A consumer reaching past the package root | The `no-internal-modules` gap; Biome `noPrivateImports` (JSDoc `@package`/`@private`) is the nearest twin. |
 
-**oxlint aborts the entire run on an unknown rule name.** One bad entry rejects
-the whole config (`Failed to parse oxlint configuration file`), exits 1, and
-lints nothing. It fails closed, so a hook still blocks - but any wrapper that
-treats "no diagnostics" as success turns it into a silent hole, and a rule
-renamed between minors takes the gate down on upgrade. `unicorn/try-complexity`
-is the live trap: it exists only in `eslint-plugin-unicorn` and oxlint rejects
-it outright (verified 2026-08-28 on 1.77.0). Assert the step actually emitted diagnostics
-on a known-bad fixture, not merely that it exited non-zero.
+Cycles in code no entry point reaches need knip, and knip only sees
+entry-reachable files, so the two are complementary rather than redundant - see
+[Dead code (knip)](#dead-code-knip).
 
-**`jsPlugins` caveats.** Alpha, no type-aware rules, and no custom parsers - so
-no `.vue` / `.svelte` / `.astro`, matching the SFC guidance above. It costs
-roughly a flat per-invocation Node-startup tax rather than something that scales
-with file count, so it fits pre-commit but not a per-keystroke tier. Ultracite's
-`js-plugins` preset declares several plugin packages; re-exporting its array
-while installing only sonarjs leaves the rest unresolvable and hard-fails the
-config, so install them all or hand-write the single entry.
+Unresolved path aliases are **invisible edges**: with no tsconfig declaring
+`paths`, `import/no-cycle` exits 0 on a real cycle and prints no
+unresolved-import warning. oxlint auto-discovers `tsconfig.json` for this, so an
+alias defined only in the bundler, or a tsconfig outside the discovery walk,
+leaves those edges dark while the gate stays green.
 
-**Ultracite's preset is not a complexity gate.** Ultracite 7.10.7 sets
-`complexity` at oxlint's bare default (20, `classic`), `max-classes-per-file`,
-and `max-nested-callbacks` at the default 10 that async code never reaches - and
-switches `max-depth`, `max-lines`, `max-lines-per-function`, `max-params` and
-`max-statements` **off**. Its two halves also disagree with each other: the
-sonarjs cognitive-complexity limit is set to 20 against Biome's own default of
-15. Take the preset for formatting and correctness, then set these rules
-yourself.
+**madge is rejected.** Its default `fileExtensions` is `["js"]`, so
+`madge --circular src` reports "Processed 0 files" and exits 0 on a pure
+TypeScript tree; `--extensions ts` then skips every `.tsx`; an unknown key in
+`.madgerc` is ignored without a warning; and it parses through
+`@typescript-eslint/typescript-estree`, so it carries the same TS 7 exclusion,
+crashing with the same exit code it uses for a real finding. oxlint `no-cycle`
+plus knip cycles covers it.
 
-**The Biome route has three holes**, if the repo is on Biome rather than oxlint:
-no cyclomatic rule, no `max-depth`, and no `max-statements` - verified absent
-from the full rule list at 2.5.11 on 2026-08-28, so only oxlint or ESLint can supply them.
-What Biome does have is a native port of the same S3776 cognitive metric.
-Watch three traps:
+## Complexity
 
-- **All seven of its cap rules default below `error`** - five at `information`,
-  `useMaxParams` and `noExcessiveNestedCallbacks` at `warning` - and Biome exits
-  non-zero only on error-level diagnostics. A rule enabled without an explicit
-  `"level": "error"` is a report, not a gate.
-- **`noExcessiveLinesPerFunction` counts the body only and has no
-  `skipComments`**, so an ESLint or oxlint threshold does not port across
-  unchanged. Its `skipIifes` also inverts ESLint's `IIFEs` flag.
-- **Group membership is not where you would guess**: `noExcessiveLinesPerFile`
-  and `noExcessiveClassesPerFile` are `style`, not `complexity`, and
-  `noExcessiveNestedCallbacks` is still `nursery`, so its config path will move
-  on promotion. `noExcessiveNestedTestSuites` has no options at all - the depth
-  of 5 is hard-coded.
+The cross-stack argument, the thresholds and the wiring live in
+`references/complexity.md`, including the cross-file duplication gate. Two facts
+belong here because they are properties of the linter rather than of the metric:
 
-**Order dead-code before size.** knip has no size dimension and the size rules
-have no reachability analysis, so a `max-lines` hit on a file that is 40%
-unreachable exports produces a split-the-file suggestion where the correct
-action is delete-the-exports. On a large repo, put knip at pre-push/CI and the
-size gate at pre-commit, and accept that the pre-commit number is measured
-against a slightly stale definition of live code.
+- Every metric rule sits in `pedantic`, `style` or `restriction`, so none is reached by a default run and each must be named. Verified 2026-09-03: a bare `oxlint src tests` on a 5-deep, 5-parameter function produces nothing.
+- All seven ESLint metric rules are native Rust in oxlint, `complexity`'s `variant: "modified"` included. Cognitive complexity and duplicate-function detection are the gaps, closed through the `jsPlugins` bridge running `eslint-plugin-sonarjs`.
 
 ## Dead code (knip)
 
-The TypeScript analogue of Vulture. `tsc`'s `noUnusedLocals` and madge only see
-inside a file or the cycle graph; they never flag an unused *export*, an
-orphaned file, or an unused / unlisted dependency. knip does - one tool for
-unused files, exports, exported types, enum/class members, and unused
-`dependencies` / `devDependencies`. `ts-prune` and `depcheck` are both archived;
-knip is the successor. See `references/knip.jsonc`.
+The TypeScript analogue of vulture, and the only tool here that flags an unused
+*export*, an orphaned file or an unused dependency. `tsc`'s `noUnusedLocals`
+sees inside one file; cycle rules see only the graph. All findings below verified
+2026-09-03 against knip 6.33.0 (6.34.0 held back by the release-age quarantine,
+and it is the release that fixes the `--max-issues` hole below).
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| Whole-project graph | knip from the repo root (it builds the full import graph) | Orphaned files and dead exports drifting in | 150+ framework plugins teach it implicit entry points (next, vitest, storybook). |
-| Gate in production mode | `knip --production` in CI | Test-only utilities being flagged as dead | Default (dev) mode is fine locally; `--production` drops test files for the gate. |
-| Adopt before blocking | report-only first, then gate on exit code | A noisy first run blocking every commit | Tune `knip.json` for dynamic / implicit entries, then flip to blocking. |
+| Whole-project graph | `knip` from the repo root | Orphaned files and dead exports drifting in | 150+ plugins teach it implicit entry points (vitest, next, storybook). |
+| Production gate | `knip --production --strict`, with `!` on every `entry` and `project` pattern | Test-only helpers reported as dead in CI | Without the markers this exits 0 on a dead tree - see below. |
+| Dev-dependency leak | `--strict` | A dev-only import reaching production code | The deptry DEP004 twin. Verified: it reports a `vitest` import from `src/` that `--production` alone passes. |
+| Config drift | a separate dev-mode `knip --treat-config-hints-as-errors` | A glob that stopped matching, so the gate covers nothing | Production mode disables hints entirely, so this cannot ride on the CI gate. |
+| Barrel see-through | `includeEntryExports: true` per workspace | An export dead everywhere but re-exported by `src/index.ts` | Set the config key, not the CLI flag: the flag is global and flags a library's public API too. `/** @public */` exempts a symbol. |
+| Cycles | `--cycles` (or `--include ...,cycles`) plus `rules.cycles: "error"` | Tangles among entry-reachable files | Two independent switches; the default severity is warn. |
 
-A faster Rust alternative, **fallow**, covers the same dead-code graph plus
-cycles - keep knip as the reference; fallow's boundary limits and open-core
-risk are covered under Transitive architecture tests in
-`references/architecture-boundaries.md`.
+- **`--production` reads only patterns suffixed `!`.** Verified: with `{"entry": ["src/index.ts"], "project": ["src/**/*.ts"]}` and a dead file present, dev mode exits 1 and reports it while `--production` exits 0 with empty output; adding `!` restores exit 1. The negation of the unmarked `project` pattern is what empties the analysis, and production mode is the one mode that never volunteers a hint about it. This is the single most dangerous configuration in the file.
+- **A misspelled key inside `rules` is a stderr warning and exit 0.** `{"rules": {"cycle": "error"}}` prints `WARNING: Ignored unknown issue type "cycle" in rules`, reports the cycle, and passes. The outer schema is strict by contrast: an unknown top-level key exits 2 and a bad severity value exits 2. Per-type severities do exist (`"off"`, `"warn"`, `"error"`), so `rules` is both the gate and the soft spot.
+- **`--max-issues` with a non-numeric value silently disables the gate.** Verified on 6.33.0: `--max-issues abc` prints the full report and exits 0, because the comparison is against `Number(...)` and every comparison with `NaN` is false. The realistic trigger is a ratchet wired to a variable set to `none` or misspelled. Floor the tool at 6.34.0, which rejects a non-integer.
+- **`--include` is a strict whitelist and drops what it omits.** In dev mode it silently disables `catalog` and `catalogReferences`; in production it disables `optionalPeerDependencies`. Two runs (`knip --production && knip --production --cycles`) beat one hand-maintained list.
+- **Findings go to stdout and every diagnostic to stderr**, so `knip > report.txt` loses config hints, the misspelled-rule warning and every config error.
+- **Cycles are found only among entry-reachable files**, unlike oxlint `no-cycle`, which walks files. Dead-but-tangled code is invisible to it. Run both.
+- **`--allow-remove-files` implies `--fix`** even with no `--fix` on the command line, and deletes dynamically-imported files. There is no dry run. Never put it in an automated step.
+- `ignoreDependencies` is a permanent mute with no expiry, and `--no-exit-code` is the kill switch. `@internal` is suppressed with no config at all under `--production`; `@public` and `@beta` are the zero-config suppressions in dev mode, and only the JSDoc `/** */` form is read.
 
-## Library publishing (publint + attw)
+The `references/knip.jsonc` drop-in is near-empty with the markers in place and
+the two gate commands in comments. Rejected by name: `depcheck` (archived, exit
+255 for everything), `ts-prune` (archived, exits 0 unless `--error`, cannot
+resolve `.ts` specifiers), `unimported` (deprecated, no test-entry inference, so
+it over-reports where knip is correct, and its `--fix` deletes a live file and
+exits 0). `fallow` is a watch: fast, but verified to miss any import cycle
+longer than 12 modules while documenting no depth limit.
 
-For published packages, nothing in the lint / typecheck stack validates the
-*shipped* shape. Two complementary, production tools close that gap - both gate
-on a non-zero exit:
+The dependency, licence and publish tiers live in
+`references/typescript-publishing.md`, Dependencies and Publishing.
 
-| Tool | Checks | Notes |
-|---|---|---|
-| publint | `package.json` `exports` / `main` / `module` / `types` resolve to real files; ESM/CJS format and condition order | Pure static, fast. Lints the packed tarball, so it only sees what ships. |
-| `@arethetypeswrong/cli` (attw) | the shipped `.d.ts` resolve for consumers across node10 / node16-CJS / node16-ESM / bundler modes | Pick a `--profile` (e.g. node16, esm-only) so you don't fail on modes you don't support. Use `--pack`. |
+## Gate integrity
 
-These run **after the build**, against the built `dist` + generated `.d.ts`, so
-they belong in a CI / pre-publish gate (pre-push or the release workflow), not
-pre-commit. There is no Rust equivalent - attw drives `tsc` itself and publint
-is already fast pure-JS, so the usual Rust-first preference doesn't apply. If the
-library builds with tsdown (Rust/Rolldown), it can run both inline
-(`tsdown --dts --publint --attw`). Pin both under the release-age quarantine -
-they ship pre-1.0 and move fast. For monorepos, **sherif** (Rust) additionally
-enforces dependency-version consistency across workspaces.
+Every gate in this file can fail open. Assume none is armed until a canary
+proves it. One line per class, all verified 2026-09-03:
 
-## Asserting on shipped artifacts
+- **oxlint's default severity is warn**, so a bare run prints correctness diagnostics and exits 0. Only `--deny-warnings` or a per-rule `"error"` gates.
+- **`oxlint -D <unknown-rule>` exits 0 with zero bytes**, as does a typo'd category; the same name in `.oxlintrc.json` aborts the run. Rules belong in the config, never in hook flags.
+- **A type-aware rule with no `options.typeAware`** exits 0 in silence; `--type-check` without it exits 1, so only the config route fails open.
+- **`plugins` replaces the default plugin set**, so listing `["import"]` alone silently disables every `typescript/*` rule; an `import/*` rule with no `plugins` entry is discarded the same way.
+- **`overrides[].files` anchors to the config file's directory**, so a config moved one level down matches nothing and exits 0. `--print-config` cannot see it.
+- **An unknown key inside a `no-restricted-imports` pattern object drops the whole rule**, exit 0, and `$schema` does not validate at runtime.
+- **A nested `.oxlintrc.json` overrides the root** and is dropped by `-c`; `oxlintrc.json` and `oxlint.config.mjs` are not discovered at all.
+- **oxlint lints `node_modules`** absent a VCS ignore file, so the target paths in the gate command are load-bearing.
+- **`/* eslint-disable */` on line 1 mutes every rule**, `no-abusive-eslint-disable` can suppress itself, and `respectEslintDisableDirectives: false` hides the very directives it neuters.
+- **Biome `--error-on-warnings` does not lift info**, `--diagnostic-level=error` defeats it entirely, and a `//` comment makes `biome.json` vanish with no message.
+- **Biome nursery rules cannot be enabled from `overrides[]`** and exit 0 there.
+- **`tsc --showConfig` exits 0** on removed options, unknown options and malformed JSON; **`--noCheck`** hides unresolved imports as well as type errors; **a misspelled top-level tsconfig key** is accepted and silently widens the program; **`skipLibCheck`** hides errors in first-party `.d.ts`; **`incremental`** drops every isolatedDeclarations diagnostic.
+- **`pnpm exec tsc` falls through to a global compiler**, so the gate can pass on a project whose local TypeScript is missing or aliased away.
+- **`knip --production` with no `!` markers** exits 0 on a dead tree; a misspelled key in `rules` warns on stderr and passes; `--max-issues <non-number>` disables the gate; `--treat-config-hints-as-errors` is inert under `--production`.
+- **oxfmt, madge, dependency-cruiser and fallow** each have their own silent-zero-files mode - see [Formatting](#formatting), [Import hygiene](#import-hygiene) and `references/architecture-boundaries.md`.
 
-publint/attw above validate a published package's shape; the same "gate the
-built output, not the source" discipline applies to any site's first-load
-surface. Three tiers, cheapest-to-verify first:
+The canary discipline: feed a gate a known violation and assert the non-zero
+exit **and** that the rule's own name appears in the output, then feed the same
+violation at an exempt path and assert zero. Match the rule name, not the status:
+oxlint config errors and lint failures share exit 1. Keep the positive canary out
+of the tree the real gate scans, in a temp copy - oxlint has no stdin mode
+(verified 2026-09-03 against 1.80.0), so an on-disk canary reddens the very gate
+it exists to prove.
 
-| Layer | Off-the-shelf? | Gate with |
-|---|---|---|
-| Byte / time budgets | yes | **size-limit** (`@size-limit/file` for raw bytes, `preset-app` for time-to-run); non-zero exit in CI. `size-limit-action` (andresz1) wraps it for PR comments - a *community* action, not first-party. |
-| Runtime metrics (LCP / CLS / perf score) | yes | **Lighthouse CI** (`budget.json` or per-URL assertions) + **unlighthouse** (site-wide crawl). Both need a served preview + Chrome; sample multiple runs - perf assertions flake. |
-| Semantic first-load HTML invariants | no - bespoke | a Node checker that reads `dist/*.html` and exits non-zero |
+## Maintenance posture
 
-The perf/byte tiers here have accessibility, SEO, social-metadata, and
-broken-link siblings that gate the same built output - see
-`references/web-delivery.md`.
+TypeScript itself is Microsoft's, and oxc (oxlint, oxfmt, tsgolint) sits under
+VoidZero, acquired by Cloudflare with a neutrality pledge and adopted by
+vuejs/core, turborepo and sentry-javascript. Biome is a community foundation with
+corporate sponsors. Everything else here is effectively bus-factor one: knip,
+publint, attw, sherif, ultracite, dependency-cruiser, fallow, anti-slop.
 
-**Don't reach for** bundlesize (unmaintained - last release 0.18.x, 2024) or
-statoscope (webpack/rspack `stats.json` only - no Astro/Vite fit). Treat the
-version literals here as illustrative; confirm against the live registry.
-
-The third tier is the interesting one: it is the **typed generalisation of the
-greppable-invariants tier** (`references/architecture-boundaries.md`) and a sibling to publint/attw's post-build
-gate. Where grep asserts "this string does not appear", a first-load checker
-asserts structural facts about the shipped HTML - font-preload count within
-budget, `crossorigin` present, the preload `href` matching an inline
-`@font-face url()` byte-for-byte, a metric-matched fallback face present,
-rendered copy staying inside the font subset's glyph coverage. When the site is
-prerendered, `dist/*.html` IS the shipped bytes, so asserting on the files is
-asserting on what users get.
-
-The discipline that makes it trustworthy: **keep the constraint set as one
-shared module** imported by both the generator and the checker (e.g. the glyph
-ranges the subsetter emits and the coverage assertion reads), so they cannot
-drift. Honest scope: some of these checks are size-limit-able (a raw byte
-ceiling is just a budget), and glyphhanger/subfont already cover the
-*extraction* half of glyph coverage. The genuinely bespoke part is the
-**semantic cross-reference** (preload ↔ `@font-face` href match) and the
-**scoped-coverage assertion against a shared config** - no off-the-shelf tool
-does "rendered copy ⊆ this subset, scoped to text ranges". See the `web-perf`
-skill's `verify.md` (Tier 0 for the checker shape, section 5 for the LHCI /
-unlighthouse measurement-tool gotchas) for why each invariant matters.
-
-## Testing
-
-Enable Biome's `test` domain - it covers the generic rules natively
-(`noFocusedTests`, `noSkippedTests`, `noDuplicateTestHooks`, `noExportsInTest`,
-`noExcessiveNestedTestSuites`; nursery: `noConditionalExpect`, `useExpect`).
-Framework-specific rules stay in ESLint; the vitest plugin is
-`@vitest/eslint-plugin` (`eslint-plugin-vitest` is its pre-ESLint-9 name).
-
-| Rule | Encode with | Prevents |
-|---|---|---|
-| No `.only` / `.skip` committed | Biome `noFocusedTests` (Ultracite default) + `noSkippedTests`; or `@vitest/eslint-plugin` `no-focused-tests` | Accidentally skipping the rest of the suite in CI |
-| Assertion-free tests | Biome `useExpect` (nursery) or `@vitest/eslint-plugin` `expect-expect` | Tests that run code but assert nothing - the mechanical half of the testing skill's Assertion Quality note |
-| No inline regex in assertions | Biome `useTopLevelRegex` | Flaky matches and poor error messages |
-| Coverage threshold enforced pre-commit | hk step running `vitest run --coverage` + vitest config `thresholds: { 100: true }` | Untested branches slipping in. Use `/* v8 ignore next */` for unreachable defensive code. |
-| No mocks in unit tests | Convention + review | Tests that pass but mask integration bugs |
-| Flaky Playwright waits | eslint-plugin-playwright `no-wait-for-timeout`, `missing-playwright-await` | Timeout sleeps and unawaited async assertions - the two commonest flaky-e2e causes. Biome has no Playwright rules. |
+That sets a review cadence, not a veto. Pin exact versions and let the 4-day
+release-age quarantine hold the newest back - which is why oxlint pins 1.80.0
+against a published 1.81.0, knip 6.33.0 against 6.34.0, and oxfmt 0.65.0 against
+0.66.0 on 2026-09-03. Prefer a tool that is already a dependency of one you have
+(ts-morph over a second graph library), prefer a loud failure to a silent pass,
+and re-run the canaries after every minor bump. A rule that changes name between
+minors takes an oxlint config down, and a category promotion changes a Biome
+rule's config path.

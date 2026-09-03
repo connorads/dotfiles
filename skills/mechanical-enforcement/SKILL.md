@@ -15,7 +15,7 @@ A **content skill**, not a tool: rules and snippets. Wiring them into git hooks 
 2. **Types first, lint second, tests third**. Prefer `strict` TypeScript / Pydantic / clippy to a custom lint rule. Reach for a lint rule when the type system can't express it. Reach for a test only when neither can.
 3. **Architectural boundaries are linter rules**. Layers (domain <- infra, UI <- schemas) are enforced with `no-restricted-imports` or a graph check when the rule is transitive, never trusted to vigilance.
 4. **Auto-fix where possible, gate where not**. Formatters and whitespace fixers run with `fix = true` and re-stage. Correctness rules gate the commit.
-5. **Prefer opinionated presets, override minimally**. Ultracite for TS lint/format, `@commitlint/config-conventional` for commits, `next/core-web-vitals` for Next. Override only with a comment saying *why*.
+5. **Own the rule list where the rules are the point, take a preset where they are not**. `@commitlint/config-conventional` for commits and `next/core-web-vitals` for Next are presets worth inheriting; the lint set that backs an idiom is a config this catalogue owns, because a preset that silences one of those rules does it silently. Override either only with a comment saying *why*.
 6. **The *why* lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
 
 ## When to use this skill
@@ -31,7 +31,7 @@ The table names the defaults. The **Read** column is where each pick is justifie
 
 | Stack | Format | Lint | Type-check | Read |
 |---|---|---|---|---|
-| TypeScript / JS (app, library, React, Next) | oxfmt or Biome, via Ultracite | oxlint; ESLint only for import-type boundaries and framework plugins; dependency-cruiser; knip | `tsc --noEmit` strict | `references/typescript.md` (Picks) |
+| TypeScript / JS | oxfmt | oxlint (+ type-aware via tsgolint); knip; a ts-morph architecture test; ESLint only behind a TS 6 alias | `tsc -p` (TS 7) | `references/typescript.md` (Picks) |
 | Python | ruff format | ruff; import-linter; ast-grep; deptry; vulture; complexipy | basedpyright `recommended` | `references/python.md` (Picks) |
 | Rust | rustfmt | clippy `-D warnings`; cargo-deny; cargo-machete | `cargo check` | `references/rust.md` (Picks) |
 | Nix | nixfmt | deadnix + statix | `nix eval` of every host's `.drvPath` | `references/nix.md` (Picks) |
@@ -112,16 +112,19 @@ Complexity gates are the archetype. If the number you want produces more than a 
 
 | When the task involves… | Read |
 |---|---|
-| A TypeScript / JS project | `references/typescript.md`; drop-ins `typescript-strict.jsonc`, `biome-ultracite.jsonc`, `eslint-boundaries.mjs`, `purity-boundaries.mjs`, `dependency-cruiser.cjs`, `knip.jsonc` |
+| A TypeScript / JS project: strictness, type check, lint families, formatting, hygiene, dead code | `references/typescript.md`; drop-ins `typescript-strict-app.jsonc`, `typescript-strict-lib.jsonc`, `typescript-oxlintrc.jsonc`, `typescript-oxfmtrc.jsonc`, `typescript-ast-grep.yml`, `knip.jsonc` |
+| TypeScript test gates: vitest keys, test lints, runtime backstops, bun test | `references/typescript-testing.md`; drop-ins `typescript-vitest.config.ts`, `typescript-vitest-setup.ts` |
+| TypeScript dependencies and publishing: lockfile, licences, build, publint, attw, the consumer smoke | `references/typescript-publishing.md`; drop-in `typescript-publish-gates.sh` |
+| TypeScript security: prototype pollution, ReDoS, the parse boundary, runtime flags, sinks | `references/typescript-security.md`; drop-in `typescript-ast-grep.yml` |
 | A Python project | `references/python.md`; drop-ins `python-ruff.toml`, `python-typecheck.toml`, `python-vulture.toml`, `python-import-linter.toml`, `python-purity.toml`, `python-ast-grep.yml`, `python-pytest.toml`, `python-deptry.toml` |
 | A Rust workspace | `references/rust.md`; drop-ins `clippy-thresholds.toml`, `rust-workspace-lints.toml`, `cargo-deny.toml` |
 | Nix | `references/nix.md` |
 | Shell: sh, bash, zsh, PowerShell | `references/shell-quality.md` |
 | Go, SQL, Postgres migrations, CSS / SCSS, Markdown, YAML, TOML | `references/other-stacks.md`; Go complexity drop-in `golangci-complexity.yml` |
-| Layer and graph boundaries, greppable invariants, purity, contract gates (any stack) | `references/architecture-boundaries.md`; command patterns in `references/contract-gates.md` |
+| Layer and graph boundaries, greppable invariants, purity, contract gates (any stack) | `references/architecture-boundaries.md`; drop-ins `typescript-arch-test.ts`, `dependency-cruiser.cjs`, `eslint-boundaries.mjs`, `purity-boundaries.mjs`; command patterns in `references/contract-gates.md` |
 | Complexity and duplication: what to gate on, the numbers, off-by-default traps, jscpd | `references/complexity.md` |
 | Adopting a gate on a codebase that already violates it | `references/ratcheting.md` |
 | Web delivery: runtime a11y, HTML conformance, structured data, Open Graph, broken links | `references/web-delivery.md` |
-| Wiring the tiers into hk | `references/hk-steps.pkl`; `commitlint.config.js` |
+| Wiring the tiers into hk | `references/hk-steps.pkl`; `commitlint.config.js`; the optional Biome preset `biome-ultracite.jsonc` |
 
-External: [Ultracite](https://www.ultracite.ai/) (the TS preset bundle), [hk](https://hk.jdx.dev) (git hook manager).
+External: [hk](https://hk.jdx.dev) (git hook manager), [Ultracite](https://www.ultracite.ai/) (an optional React/Next preset over the oxc stack, with the traps `references/typescript.md` lists).

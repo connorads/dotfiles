@@ -1,0 +1,132 @@
+// typescript-strict-lib.jsonc - the tsconfig.json for a published library or any Node
+// package that runs unbundled. It gates type safety at the compiler tier and the public
+// API's shape: every export's type is written, not inferred, so the .d.ts is generatable
+// without the checker and the contract is a decision rather than a guess.
+//
+// Wire it: copy to tsconfig.json (tsc reads the comments), then gate on the explicit
+// path `./node_modules/.bin/tsc -p tsconfig.json`, since `pnpm exec tsc` and a bare
+// `tsc` script fall through to whatever compiler is on PATH. Emit from a second config
+// (sketched at the foot) so a failed check writes nothing. Invocation, exit codes,
+// `extends` array replacement and the `--noCheck` hole: typescript.md, "Type checking".
+// Flag tables: typescript.md, "Type safety". A bundled app takes
+// typescript-strict-app.jsonc instead.
+//
+// Traps this file exists to avoid:
+// - The package must be ESM. `verbatimModuleSyntax` under `nodenext` turns every
+// import and export in a CommonJS-resolved file into TS1295/TS1287, so package.json
+// needs `"type": "module"` before this config is a tightening rather than a migration.
+// - `isolatedDeclarations` without `declaration` (or `composite`) is TS5069: it fails
+// closed and reports nothing else, so the pair goes in together.
+// - Its scope is this config's `include`. Keep tests out, or every test helper carries
+// a written return type; give tests their own config extending this one.
+//
+// Verified 2026-09-03 against typescript 7.0.2 on the phase-3 fixture: exit 0 over src/;
+// a file violating verbatimModuleSyntax (TS1205), isolatedDeclarations (TS9010) and
+// exactOptionalPropertyTypes (TS2375) exits 1.
+{
+  "compilerOptions": {
+    // tsc's own default; types Set.union/intersection, iterator helpers,
+    // RegExp.escape, Promise.try. Pinning lower is TS2550 on correct code.
+    "target": "es2025",
+    // No DOM: pulling it in types `document` and browser globals into existence, so code
+    // the consumer's Node runtime cannot run compiles clean. esnext.disposable is named
+    // because `using` and DisposableStack are NOT in lib es2025 - they otherwise arrive
+    // invisibly through @types/node and vanish the day `types` changes; bare `esnext`
+    // would drag in Temporal, which node 24 lacks.
+    "lib": ["es2025", "esnext.disposable"],
+    // `types` defaults to [] from TS 6.0, so an ambient global stays unresolved until
+    // listed: `process` is TS2591 with @types/node installed, and `typeRoots` does not
+    // fix it.
+    "types": ["node"],
+
+    // Model the runtime resolver, not a bundler's: nodenext demands the extension on a
+    // relative import (TS2835), where `bundler` lets `./dep` typecheck here and throw
+    // ERR_MODULE_NOT_FOUND in the consumer's process. That demand is ESM-scoped, so
+    // package.json `"type": "module"` is the load-bearing half - under nodenext a
+    // CommonJS-shaped package still typechecks extensionless imports green.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    // Write `./x.ts` in source so node runs a file with no build step. Emitting it needs
+    // rewriteRelativeImportExtensions (below) and conflicts with `paths` (TS2877).
+    "allowImportingTsExtensions": true,
+    // This config checks, the build config emits, so a failed check writes nothing.
+    "noEmit": true,
+
+    // The public-API trio. isolatedDeclarations rejects an export whose type cannot be
+    // written syntactically (TS9010 on an unannotated const, TS9013 on an uninferable
+    // expression, TS9017 on a non-const array, and the rest of the TS90xx family), so
+    // oxc, swc or tsdown emit the .d.ts with no checker and the contract is explicit;
+    // declarationMap aims go-to-definition at src.
+    "declaration": true,
+    "declarationMap": true,
+    "isolatedDeclarations": true,
+
+    // A type-only import must say so. isolatedModules does NOT cover the
+    // `import type { X }` then `export { X }` re-export (TS1205), so an emitter can
+    // leave a runtime import of a types-only module. Adoption is a bulk edit: TS1484
+    // each, plus the CommonJS demand in the header.
+    "verbatimModuleSyntax": true,
+    // Only syntax a pure type-stripper can erase: enum, const enum, a value `namespace`,
+    // parameter properties, `import =`/`export =` and `<T>x`, all as TS1294. Shipping an
+    // enum forces every consumer's build to run a full compiler. Decorators and
+    // `accessor` escape it; typescript-ast-grep.yml carries that canary.
+    "erasableSyntaxOnly": true,
+
+    // Null checks, no implicit any, unknown in catch. A sub-flag opt-out such as
+    // `useUnknownInCatchVariables: false` compiles clean beside `strict: true`, so a
+    // grep of the tsconfig is the only gate on it.
+    "strict": true,
+    // arr[0] and rec[key] are T | undefined: `xs[0].id` is TS2532 until it is checked.
+    "noUncheckedIndexedAccess": true,
+    // Separates `x?: T` (absent) from `x: T | undefined` (present and undefined);
+    // writing undefined into a merely-optional field is TS2375.
+    "exactOptionalPropertyTypes": true,
+    // Index-signature keys need bracket access (TS4111), catching a typo'd dynamic key.
+    "noPropertyAccessFromIndexSignature": true,
+    // Not implied by strict, and it adds exactly TS4114: an override carries the
+    // `override` keyword. TS4113 (a member overriding nothing) fires with the flag off
+    // too, so this buys that check everywhere rather than only where someone typed
+    // `override`. Abstract members and `implements` are exempt.
+    "noImplicitOverride": true,
+    // Not implied by strict. A non-empty case body falling through is TS7029; a bare
+    // `case "a": case "b":` stays legal. No escape comment works - `// falls through`
+    // still errors - and a declaration-only body counts as non-empty. A MISSING case is
+    // a lint rule's job: typescript.md, "Type safety".
+    "noFallthroughCasesInSwitch": true,
+    // Dead code fails the build; an unused parameter takes a `_` prefix.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    // The default `undefined` greys the code out in the editor and leaves CI green. Only
+    // the explicit `false` errors: TS7027 after return/throw, TS7028 for an unused
+    // label. oxlint `no-unreachable` catches the syntactic cases; this adds the
+    // type-aware ones. One `@ts-ignore` line silences TS7027 with no residue.
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    // TS7030 where a code path falls off the end. isolatedDeclarations does not cover
+    // it: an exported `(): string | undefined` that falls off the end is green under
+    // strict, because `undefined` is already in the annotation.
+    "noImplicitReturns": true,
+
+    // Skips checking every .d.ts, matched by file kind and not by path, so a first-party
+    // src/*.d.ts naming an unresolvable type is silenced like a dependency's (syntax
+    // errors still fire). The release check against the built dist, and what turning it
+    // off drags in: typescript-publishing.md, "Publishing gates".
+    "skipLibCheck": true
+
+    // Deliberately absent: `incremental`. Verified 2026-09-03 on tsc 7.0.2, it silently
+    // drops every TS90xx diagnostic while unrelated errors still report, so the flags
+    // above read as adopted on a codebase that never complied. It also writes
+    // <config-name>.tsbuildinfo beside the config even under noEmit.
+  },
+  // src only: build output and tooling stay out, and isolatedDeclarations follows it.
+  "include": ["src"]
+}
+// The emit half is a second config, so the gate above stays noEmit. Its flags, the
+// stale-dist caveat on noEmitOnError and the `paths`/TS2877 conflict are in
+// typescript-publishing.md, "Build config"; build with `rm -rf dist && tsc -p` it.
+// { "extends": "./tsconfig.json", "include": ["src"], "compilerOptions": {
+// "noEmit": false, "noEmitOnError": true, "rootDir": "src", "outDir": "dist",
+// "rewriteRelativeImportExtensions": true } }
+// The rewrite reaches the emitted .js (`./x.ts` becomes `./x.js`) but not the .d.ts,
+// which keeps the `.ts` specifier. Verified 2026-09-03: a consumer typecheck against
+// that dist resolves the types and exits 0. Unverified for non-tsc .d.ts readers.
