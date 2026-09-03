@@ -192,7 +192,11 @@ project cleaner or its docs, where present, is the fastest classifier.
   runs after each removal - and `wt-clean --force` escalates that to `git branch
   -D`, which destroys unmerged commits. For the merged-but-no-PR worktrees
   `wt-clean` deliberately spares, bare `wt-remove <path>` is the
-  branch-preserving primitive.
+  branch-preserving primitive. To keep every worktree and branch while
+  reclaiming rebuildable output, use `cleanup --target worktree-build --yes`.
+  It protects worktrees containing any live or hibernated agent CWD, removes
+  only `node_modules`, `.next`, `.turbo`, and `coverage`, and skips an artefact
+  if Git reports any tracked file beneath it.
 - **Several Playwright browser revisions is the normal state, not stale
   build-up.** A machine with many repos pins one revision per `playwright-core`
   version, so four chromium revisions in `~/Library/Caches/ms-playwright` can
