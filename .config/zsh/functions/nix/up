@@ -1,10 +1,10 @@
 #!/usr/bin/env zsh
 # up: update tools, lockfiles, and rebuild for current OS
 # flags: --frozen / -s / --skip-flake
-#                           frozen rebuild: bump nothing. Converge tools to the
-#                           committed mise.lock (mise install) and skip the flake
-#                           bump/commit + brew/apt. The default (no flag) bumps both
-#                           lockfiles within their ranges and commits each change.
+#                           frozen rebuild: bump nothing. Require a clean
+#                           mise.lock, install it, skip brew/apt and the flake
+#                           bump/commit, then rebuild. A dirty flake.lock is
+#                           allowed so a failed rebuild can be retried.
 #        --os               also install no-restart macOS updates (macOS only);
 #                           restart-required (OS) updates are only reported, never
 #                           applied, so a headless FileVault box is never rebooted.
@@ -12,137 +12,318 @@
 #                           sweep itself already warns-not-blocks when offline).
 emulate -L zsh
 
+_up_usage() {
+  print "usage: up [--frozen|-s|--skip-flake] [--os] [--no-audit]"
+  print "       up -h|--help"
+}
+
 local frozen=0 do_os=0 no_audit=0
-local mise_lock=~/.config/mise/mise.lock
-local flake_lock=~/.config/nix/flake.lock
-for arg in "$@"; do
-  case "$arg" in
+while (($#)); do
+  case "$1" in
   --frozen | -s | --skip-flake) frozen=1 ;;
   --os) do_os=1 ;;
   --no-audit) no_audit=1 ;;
+  -h | --help)
+    _up_usage
+    return 0
+    ;;
+  *)
+    print -u2 "up: unknown argument: $1"
+    _up_usage >&2
+    return 2
+    ;;
   esac
+  shift
 done
 
-_up_require_clean_lock() {
-  local lock=$1 label=${1#$HOME/}
-  if [[ ! -f $lock ]]; then
-    print -u2 "up: required lock missing: $label"
-    return 1
-  fi
-  if ! dotfiles diff --quiet -- "$lock" || ! dotfiles diff --cached --quiet -- "$lock"; then
-    print -u2 "up: refusing to update a dirty lock: $label"
-    print -u2 "    inspect: dotfiles diff -- $label"
-    print -u2 "    staged:  dotfiles diff --cached -- $label"
-    return 1
+local mise_lock=~/.config/mise/mise.lock
+local flake_lock=~/.config/nix/flake.lock
+local up_mode=update up_failed=0 up_started=$SECONDS
+((frozen)) && up_mode=frozen
+local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next
+
+_up_duration() {
+  local seconds=$1
+  if ((seconds >= 60)); then
+    printf '%dm%02ds' $((seconds / 60)) $((seconds % 60))
+  else
+    printf '%ds' "$seconds"
   fi
 }
 
-# A pathspec prevents unrelated staged files from landing in a lock commit, but
-# it cannot distinguish changes within the lock itself. Start from a clean lock
-# so each commit contains only this invocation's update. Frozen rebuilds permit
-# a dirty flake.lock so a failed rebuild can be retried without another bump.
-_up_require_clean_lock "$mise_lock" || return 1
-if ((!frozen)); then
-  _up_require_clean_lock "$flake_lock" || return 1
+_up_record() {
+  up_phase_names+=("$1")
+  up_phase_states+=("$2")
+  up_phase_durations+=("$3")
+  up_phase_details+=("$4")
+}
+
+_up_skip() {
+  _up_record "$1" SKIPPED 0 "$2"
+}
+
+_up_next() {
+  up_next+=("$1")
+}
+
+_up_run() {
+  local policy=$1 name=$2 detail=$3
+  shift 3
+  local started=$SECONDS rc state
+
+  print "=> $name"
+  "$@"
+  rc=$?
+  if ((rc)); then
+    if [[ $policy == required ]]; then
+      state=FAILED
+      up_failed=1
+    else
+      state=WARN
+    fi
+    [[ -n $detail ]] && detail="$detail; exit $rc" || detail="exit $rc"
+  elif [[ $policy == required ]]; then
+    state=DONE
+  else
+    state=REPORTED
+  fi
+  _up_record "$name" "$state" $((SECONDS - started)) "$detail"
+  return $rc
+}
+
+_up_summary() {
+  local i detail
+
+  print ""
+  printf '=> up summary (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+  for ((i = 1; i <= ${#up_phase_names}; i++)); do
+    detail=${up_phase_details[$i]}
+    printf '   %-13s %-9s %7s' \
+      "${up_phase_names[$i]}" \
+      "${up_phase_states[$i]}" \
+      "$(_up_duration "${up_phase_durations[$i]}")"
+    [[ -n $detail ]] && printf '  %s' "$detail"
+    print ""
+  done
+  if ((${#up_next})); then
+    print ""
+    for detail in "${up_next[@]}"; do
+      print "   next: $detail"
+    done
+  fi
+  if ((up_failed)); then
+    print "=> failed (exit 1)"
+  else
+    print "=> done"
+  fi
+}
+
+_up_finish() {
+  _up_summary
+  return $up_failed
+}
+
+_up_preflight() {
+  local started=$SECONDS lock label
+  local -a locks dirty
+
+  locks=("$mise_lock")
+  ((!frozen)) && locks+=("$flake_lock")
+  print "=> preflight"
+  for lock in "${locks[@]}"; do
+    label=${lock#$HOME/}
+    if [[ ! -f $lock ]] || ! dotfiles diff --quiet -- "$lock" || ! dotfiles diff --cached --quiet -- "$lock"; then
+      dirty+=("$label")
+    fi
+  done
+  if ((${#dirty})); then
+    for label in "${dirty[@]}"; do
+      print -u2 "up: refusing to update a missing or dirty lock: $label"
+      print -u2 "    inspect: dotfiles diff -- $label"
+      print -u2 "    staged:  dotfiles diff --cached -- $label"
+      _up_next "dotfiles diff -- $label"
+    done
+    up_failed=1
+    _up_record preflight FAILED $((SECONDS - started)) "${(j:, :)dirty}"
+    return 1
+  fi
+  _up_record preflight DONE $((SECONDS - started)) "locks clean"
+}
+
+_up_commit_lock() {
+  local name=$1 lock=$2 message=$3 label=${2#$HOME/}
+  local started=$SECONDS rc
+
+  print "=> $name"
+  if ! dotfiles add "$lock"; then
+    up_failed=1
+    _up_record "$name" FAILED $((SECONDS - started)) "could not stage $label"
+    _up_next "dotfiles status --short -- $label"
+    return 1
+  fi
+
+  dotfiles diff --cached --quiet -- "$lock"
+  rc=$?
+  case $rc in
+  0)
+    _up_record "$name" DONE $((SECONDS - started)) "unchanged"
+    ;;
+  1)
+    if dotfiles commit -m "$message" -- "$lock"; then
+      _up_record "$name" DONE $((SECONDS - started)) "committed"
+    else
+      up_failed=1
+      _up_record "$name" FAILED $((SECONDS - started)) "commit failed; $label remains staged"
+      _up_next "dhk check"
+      return 1
+    fi
+    ;;
+  *)
+    up_failed=1
+    _up_record "$name" FAILED $((SECONDS - started)) "could not inspect staged $label (exit $rc)"
+    _up_next "dotfiles status --short -- $label"
+    return $rc
+    ;;
+  esac
+}
+
+_up_reapply_patches() {
+  local rc=0 patch
+  local -a patches=(
+    claude-channels-patch
+    claude-channels-allowlist-patch
+    claude-computer-use-patch
+    claude-session-reaper-patch
+    claude-telegram-clear-patch
+  )
+  for patch in "${patches[@]}"; do
+    "$patch" --reapply || rc=1
+  done
+  return $rc
+}
+
+_up_brew() {
+  brew update && brew upgrade --no-ask
+}
+
+_up_apt() {
+  sudo apt-get update -y &&
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y &&
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
+}
+
+_up_preflight || {
+  _up_finish
+  return $?
+}
+
+# Detective OSV sweep before any mutation. MAL-* blocks; CVEs report; scanner
+# errors/offline warn only, as defined by lockfile-audit's exit contract.
+if ((frozen)); then
+  _up_skip audit "frozen mode"
+elif ((no_audit)); then
+  _up_skip audit "--no-audit"
+elif ! _up_run required audit "tracked lockfiles" lockfile-audit; then
+  _up_next "resolve the MAL-* findings above, then rerun up"
+  _up_finish
+  return $?
 fi
 
-# Detective OSV sweep of tracked lockfiles before any mutation: a MAL-* hit
-# aborts with a clean tree (nothing bumped to revert). CVEs report non-blocking;
-# scanner errors/offline warn only. `up` has no set -e, hence the explicit return.
-if ((!frozen && !no_audit)); then
-  lockfile-audit || return 1
+local mise_ok=1
+if ((frozen)); then
+  _up_run required mise "install committed mise.lock" mise install || mise_ok=0
+  _up_skip "mise lock" "frozen mode"
+else
+  _up_run required mise "upgrade within ranges" mise upgrade || mise_ok=0
+  if ((mise_ok)); then
+    _up_commit_lock "mise lock" "$mise_lock" "chore(mise): update tool lock"
+  else
+    print -u2 "!! mise upgrade failed - NOT committing mise.lock"
+    print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
+    _up_skip "mise lock" "mise upgrade failed"
+    _up_next "dotfiles diff -- .config/mise/mise.lock"
+    _up_next "reconcile mise.lock, then rerun up"
+  fi
+fi
+
+# Reassert Claude binary/plugin patches after the mise phase. Each --reapply
+# command owns its warn-only stale-needle policy; unexpected failures aggregate.
+_up_run required patches "reapply Claude patches" _up_reapply_patches
+
+if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
+  _up_run required brew "update and upgrade" _up_brew || _up_next "brew update && brew upgrade --no-ask"
+elif ((frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
+  _up_skip brew "frozen mode"
+fi
+
+# apt updates (non-NixOS Linux). Each step depends on the previous one so a
+# failed index refresh cannot drive an upgrade from stale package lists.
+if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+  _up_run required apt "update, upgrade, autoremove" _up_apt || _up_next "sudo apt-get update -y"
+elif ((frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+  _up_skip apt "frozen mode"
+fi
+
+local flake_update_ok=1
+if ((frozen)); then
+  _up_skip "flake update" "frozen mode"
+else
+  _up_run required "flake update" "nix inputs" nfu || {
+    flake_update_ok=0
+    _up_next "dotfiles diff -- .config/nix/flake.lock"
+  }
+fi
+
+local rebuild_ok=1
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  _up_run required rebuild "darwin" drs || rebuild_ok=0
+  if ((do_os)); then
+    _up_run required macos "install no-restart updates" macup --safe || _up_next "macup --safe"
+  else
+    _up_run advisory macos "check only" macup-check
+  fi
+elif [[ -f /etc/NIXOS ]]; then
+  _up_run required "system rebuild" "NixOS" nrs || rebuild_ok=0
+  _up_run required "home rebuild" "home-manager" hms || rebuild_ok=0
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  _up_run required rebuild "home-manager" hms || rebuild_ok=0
+fi
+
+# A flake lock lands only if both its update and every applicable rebuild
+# succeeded. A failed update may still be rebuilt for diagnosis, but never
+# committed as a successful bump.
+if ((frozen)); then
+  _up_skip "flake lock" "frozen mode"
+elif ((!flake_update_ok)); then
+  print -u2 "!! flake update failed - NOT committing flake.lock"
+  _up_skip "flake lock" "flake update failed"
+elif ((!rebuild_ok)); then
+  print -u2 "!! rebuild failed - NOT committing flake.lock"
+  print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
+  _up_skip "flake lock" "rebuild failed"
+  _up_next "up -s"
+  _up_next "dotfiles diff -- .config/nix/flake.lock"
+else
+  _up_commit_lock "flake lock" "$flake_lock" "chore(nix): update flake lock"
+fi
+
+if command -v tmux-upstream &>/dev/null && command -v tmux &>/dev/null; then
+  _up_run advisory tmux "plugin upstream check" tmux-upstream
+else
+  _up_skip tmux "not available"
 fi
 
 if ((frozen)); then
-  mise install # converge to committed mise.lock, no bump/commit
+  _up_skip pins "frozen mode"
 else
-  # mise upgrade bumps within ranges and auto-locks every lockfile_platforms
-  # entry (not just the current one) for each changed tool, plus current-platform
-  # provenance — so no separate `mise lock` refresh is needed here.
-  mise upgrade
-  local rc=$?
-  # A failed upgrade still rewrites the lock for tools that resolved, so
-  # committing here would pin versions nothing can install (and `up --frozen`
-  # elsewhere would then hit the same wall). Leave it dirty rather than revert:
-  # one failing tool shouldn't discard every other tool's legitimate bump.
-  if ((rc)); then
-    print -u2 "!! mise upgrade failed (exit $rc) - NOT committing mise.lock"
-    print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
-  elif [[ -f $mise_lock ]]; then
-    dotfiles add "$mise_lock"
-    dotfiles diff --cached --quiet -- "$mise_lock" ||
-      dotfiles commit -m "chore(mise): update tool lock" -- "$mise_lock"
-  fi
-fi
-# Reassert Claude binary/plugin patches: covers no-op upgrades (postinstall only
-# fires on an actual install) and manual paths. Idempotent.
-claude-channels-patch --reapply
-claude-channels-allowlist-patch --reapply
-claude-computer-use-patch --reapply
-claude-session-reaper-patch --reapply
-claude-telegram-clear-patch --reapply
-if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
-  brew update && brew upgrade --no-ask
+  _up_run advisory pins "conditional and range pins" pin-audit
 fi
 
-# apt updates (non-NixOS Linux)
-if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
-  echo "=> apt update + upgrade"
-  sudo apt-get update -y
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-  sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
-fi
-
-if ((!frozen)); then
-  nfu
-fi
-
-local rebuild_rc=0
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  drs || rebuild_rc=$?
-  if ((do_os)); then
-    macup --safe # install no-restart macOS updates; report OS updates only
-  else
-    macup-check # cached scan, ~instant: report any pending macOS updates
-  fi
-elif [[ -f /etc/NIXOS ]]; then
-  nrs || rebuild_rc=$? # system rebuild (reads NIXOS_FLAKE)
-  hms || rebuild_rc=$? # user env rebuild (reads ~/.config/nix)
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  hms || rebuild_rc=$?
-fi
-
-# flake.lock lands only once the rebuild proves it builds. Same rule as mise.lock
-# above, for the same reason: a lock nothing can build must not reach git, or every
-# later `up` and every other host reproduces the failure. Left dirty rather than
-# reverted, so a bump is never silently discarded.
-if ((!frozen)); then
-  if ((rebuild_rc)); then
-    print -u2 "!! rebuild failed (exit $rebuild_rc) - NOT committing flake.lock"
-    print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
-  else
-    dotfiles add "$flake_lock"
-    dotfiles diff --cached --quiet -- "$flake_lock" ||
-      dotfiles commit -m "chore(nix): update flake lock" -- "$flake_lock"
-  fi
-fi
-
-# Check tmux plugin forks for upstream updates
-if command -v tmux-upstream &>/dev/null && command -v tmux &>/dev/null; then
-  echo "=> tmux plugin upstream check"
-  tmux-upstream
-fi
-
-# Recheck conditional pins/excludes so escape hatches don't quietly become
-# permanent. Report-only: pin-audit always exits 0 and never blocks `up`.
-if ((!frozen)); then
-  pin-audit
-fi
-
-# Reboot notification (apt-based Linux)
 if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -f /var/run/reboot-required ]]; then
-  echo ""
-  echo "*** Reboot required ***"
+  print ""
+  print "*** Reboot required ***"
   cat /var/run/reboot-required.pkgs 2>/dev/null
-  echo "Run: sudo reboot"
+  _up_next "sudo reboot"
 fi
+
+_up_finish
