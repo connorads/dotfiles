@@ -17,6 +17,7 @@ setup() {
 
   mkdir -p "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"
   : >"$TEST_HOME/.config/mise/mise.lock" # committed lock exists, empty
+  : >"$TEST_HOME/.config/nix/flake.lock" # committed lock exists, empty
 
   # lockfile-audit runs for real (via the shebang) against stubbed
   # osv-scanner/dotfiles, so `up` tests exercise the actual audit wiring.
@@ -111,10 +112,69 @@ EOF
   ! grep -qF 'mise install' "$TEST_LOG" # default path bumps, never frozen-installs
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
+  grep -qF "dotfiles commit -m chore(mise): update tool lock -- $TEST_HOME/.config/mise/mise.lock" "$TEST_LOG"
+  grep -qF "dotfiles commit -m chore(nix): update flake lock -- $TEST_HOME/.config/nix/flake.lock" "$TEST_LOG"
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
+}
+
+@test "up lock commits leave unrelated staged files alone" {
+  local git_dir="$TEST_HOME/git/dotfiles"
+  mkdir -p "$git_dir" "$TEST_HOME/.config/mise" "$TEST_HOME/.config/nix"
+  git init --bare -q "$git_dir"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" config user.name "up test"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" config user.email "up-test@users.noreply.github.com"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" config commit.gpgsign false
+
+  echo "mise-initial" >"$TEST_HOME/.config/mise/mise.lock"
+  echo "flake-initial" >"$TEST_HOME/.config/nix/flake.lock"
+  echo "keep me staged" >"$TEST_HOME/unrelated.txt"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" add \
+    "$TEST_HOME/.config/mise/mise.lock" \
+    "$TEST_HOME/.config/nix/flake.lock" \
+    "$TEST_HOME/unrelated.txt"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" commit -qm initial
+  echo "unrelated change" >>"$TEST_HOME/unrelated.txt"
+  git --git-dir="$git_dir" --work-tree="$TEST_HOME" add "$TEST_HOME/unrelated.txt"
+
+  write_stub dotfiles <<'EOF'
+#!/usr/bin/env bash
+echo "dotfiles $*" >>"$TEST_LOG"
+git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" "$@"
+EOF
+
+  MISE_SIMULATE_BUMP=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [ "$(git --git-dir="$git_dir" --work-tree="$TEST_HOME" log -2 --name-only --format= | grep -c '^unrelated.txt$')" -eq 0 ]
+  [ "$(git --git-dir="$git_dir" --work-tree="$TEST_HOME" diff --cached --name-only)" = "unrelated.txt" ]
+}
+
+@test "up refuses dirty locks before mutation" {
+  echo "local edit" >>"$TEST_HOME/.config/mise/mise.lock"
+
+  run_zsh_function "$UP"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"refusing to update a dirty lock: .config/mise/mise.lock"* ]] || false
+  ! grep -qF 'mise upgrade' "$TEST_LOG"
+  ! grep -qF 'brew' "$TEST_LOG"
+  ! grep -qF 'nfu' "$TEST_LOG"
+}
+
+@test "up --frozen rejects dirty mise.lock but permits dirty flake.lock" {
+  echo "local edit" >>"$TEST_HOME/.config/mise/mise.lock"
+  run_zsh_function "$UP" --frozen
+  [ "$status" -ne 0 ]
+  ! grep -qF 'mise install' "$TEST_LOG"
+
+  : >"$TEST_LOG"
+  : >"$TEST_HOME/.config/mise/mise.lock"
+  echo "failed bump" >"$TEST_HOME/.config/nix/flake.lock"
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  grep -qF 'mise install' "$TEST_LOG"
+  grep -qF 'drs' "$TEST_LOG"
 }
 
 @test "up skips the mise commit when the upgrade changed nothing" {
