@@ -72,7 +72,10 @@ Where large things tend to hide: `~/Library/Application Support` (games, model
 weights), Rust `target/` dirs under repos, `~/Downloads`, LLM/Whisper model
 stores, and `/private/tmp` (dev/agent scratch accumulates there and is cleared
 only on reboot, so a long-uptime Mac hoards tens of GB) - reclaim it by
-rebooting or deleting named entries.
+rebooting or with `cleanup --target claude-temp --yes`. That opt-in target
+removes only current-user Claude session scratch older than 60 minutes. It
+protects live sessions from every configured profile and every hibernation
+record, including orphaned records whose pane is gone.
 
 ## What may be deleted
 
@@ -118,6 +121,11 @@ project cleaner or its docs, where present, is the fastest classifier.
   `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
   prune`. `rm -f` on named files is allowed. Bundling several removals into one
   command gets the whole command denied, so keep them separate.
+- **Hibernated agents still own their scratch state.** Conversation persistence
+  does not prove that scratch files are disposable. `cleanup --target
+  claude-temp` fails closed if any live-agent query or hibernation record is
+  unreadable, and refreshes both sets immediately before deletion. Do not
+  hand-delete `/private/tmp/claude-<uid>` wholesale.
 - **Confirm reclaim with `df`, not the command's exit code - nor its reported
   total.** macOS `/usr/bin/trash` exits non-zero if *any* path arg is missing
   while still trashing the rest, and says nothing about bytes freed; `du

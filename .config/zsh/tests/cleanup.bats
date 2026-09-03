@@ -24,6 +24,9 @@ require_sparse() {
 setup() {
   setup_test_home
   export CLEANUP_TMPDIR_ROOT="$HOME/tmp-root"
+  export CLEANUP_CLAUDE_TMP_ROOT="$HOME/claude-tmp"
+  export CLEANUP_CLAUDE_PROFILES_ROOT="$HOME/claude-profiles"
+  export AGENT_HIBERNATE_DIR="$HOME/agent-hibernate"
   mkdir -p \
     "$HOME/.bun/install/cache/pkg" \
     "$HOME/.cache/.bun/install/cache/pkg" \
@@ -251,6 +254,24 @@ EOF
   write_stub pgrep <<'EOF'
 #!/usr/bin/env bash
 echo "pgrep $*" >>"$TEST_LOG"
+exit 1
+EOF
+
+  write_stub claude <<'EOF'
+#!/usr/bin/env bash
+echo "claude ${CLAUDE_CONFIG_DIR:-} $*" >>"$TEST_LOG"
+if [ "${1:-}" = "agents" ] && [ "${2:-}" = "--json" ]; then
+  state="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents.json"
+  if [ -n "${CLAUDE_AGENTS_FAIL_CONFIG:-}" ] && [ "${CLAUDE_CONFIG_DIR:-}" = "$CLAUDE_AGENTS_FAIL_CONFIG" ]; then
+    exit 1
+  fi
+  if [ -f "$state" ]; then
+    cat "$state"
+  else
+    printf '[]\n'
+  fi
+  exit 0
+fi
 exit 1
 EOF
 
@@ -867,6 +888,79 @@ EOF
   [ "$status" -eq 0 ]
   [ ! -e "$CLEANUP_TMPDIR_ROOT/old-dir" ]
   [ -e "$CLEANUP_TMPDIR_ROOT/new-dir" ]
+}
+
+setup_claude_temp_fixture() {
+  local live_default="11111111-1111-4111-8111-111111111111"
+  local live_profile="22222222-2222-4222-8222-222222222222"
+  local hibernated="33333333-3333-4333-8333-333333333333"
+  local inactive="44444444-4444-4444-8444-444444444444"
+  local recent="55555555-5555-4555-8555-555555555555"
+
+  mkdir -p \
+    "$HOME/.claude" \
+    "$CLEANUP_CLAUDE_PROFILES_ROOT/code/work" \
+    "$AGENT_HIBERNATE_DIR" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$live_default/scratchpad" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$live_profile/scratchpad" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$hibernated/scratchpad" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$inactive/scratchpad" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$recent/scratchpad" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/not-a-session/scratchpad"
+
+  printf '[{"sessionId":"%s"}]\n' "$live_default" >"$HOME/.claude/agents.json"
+  printf '[{"sessionId":"%s"}]\n' "$live_profile" >"$CLEANUP_CLAUDE_PROFILES_ROOT/code/work/agents.json"
+  printf '{"sessionId":"%s","cwd":"%s"}\n' "$hibernated" "$HOME/project" \
+    >"$AGENT_HIBERNATE_DIR/$hibernated.json"
+
+  touch "$CLEANUP_CLAUDE_TMP_ROOT/project/$inactive/scratchpad/data"
+  touch -t 202001010000 \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$live_default" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$live_profile" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$hibernated" \
+    "$CLEANUP_CLAUDE_TMP_ROOT/project/$inactive"
+}
+
+@test "claude-temp removes only old inactive session scratch" {
+  setup_claude_temp_fixture
+
+  run env CLEANUP_CLAUDE_TMP_ROOT="$CLEANUP_CLAUDE_TMP_ROOT" \
+    AGENT_HIBERNATE_DIR="$AGENT_HIBERNATE_DIR" \
+    zsh --no-rcs "$CLEANUP" --yes --claude-temp
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/11111111-1111-4111-8111-111111111111" ]
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/22222222-2222-4222-8222-222222222222" ]
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/33333333-3333-4333-8333-333333333333" ]
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/55555555-5555-4555-8555-555555555555" ]
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/not-a-session" ]
+}
+
+@test "claude-temp dry-run reports candidates without deleting them" {
+  setup_claude_temp_fixture
+
+  run env CLEANUP_CLAUDE_TMP_ROOT="$CLEANUP_CLAUDE_TMP_ROOT" \
+    AGENT_HIBERNATE_DIR="$AGENT_HIBERNATE_DIR" \
+    zsh --no-rcs "$CLEANUP" --dry-run --json --claude-temp
+
+  [ "$status" -eq 0 ]
+  grep -F '"id":"claude-temp"' <<<"$output"
+  grep -F '1 inactive session dir(s)' <<<"$output"
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
+}
+
+@test "claude-temp fails closed when hibernation state is malformed" {
+  setup_claude_temp_fixture
+  printf '{broken\n' >"$AGENT_HIBERNATE_DIR/broken.json"
+
+  run env CLEANUP_CLAUDE_TMP_ROOT="$CLEANUP_CLAUDE_TMP_ROOT" \
+    AGENT_HIBERNATE_DIR="$AGENT_HIBERNATE_DIR" \
+    zsh --no-rcs "$CLEANUP" --yes --claude-temp
+
+  [ "$status" -ne 0 ]
+  grep -F 'cannot read hibernation record' <<<"$output"
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
 }
 
 @test "ui mode errors cleanly when fzf is unavailable" {

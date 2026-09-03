@@ -4,12 +4,12 @@
 # selectors: --target <id>, --bun, --pnpm, --yarn, --aube, --node-gyp, --npm,
 #            --pip, --uv, --cargo, --cargo-target, --rustup, --nvim, --browsers,
 #            --playwright, --chrome, --temp, --docker, --nix, --mise,
-#            --mise-cache, --codex, --brew, --volumes
+#            --mise-cache, --codex, --brew, --claude-temp, --volumes
 emulate -L zsh
 setopt extended_glob
 
 typeset -ga CLEANUP_ALL_TARGETS CLEANUP_DEFAULT_TARGETS CLEANUP_SELECTED_TARGETS
-CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew)
+CLEANUP_ALL_TARGETS=(bun pnpm yarn aube node-gyp npm pip uv cargo cargo-target rustup nvim browsers playwright chrome temp docker nix mise mise-cache codex brew claude-temp)
 # DEFAULT set EXPLICITLY (not a copy of ALL) so rustup and cargo-target are
 # excluded from auto-run: auto-uninstalling toolchains is a tooling state
 # change, not a cache flush, and cargo-target reaches into working repos and
@@ -31,6 +31,10 @@ typeset -g CLEANUP_JSON=0
 typeset -g CLEANUP_INCLUDE_VOLUMES=0
 typeset -g CLEANUP_SUBCOMMAND=""
 typeset -g CLEANUP_TMP_ROOT="${CLEANUP_TMPDIR_ROOT:-/var/tmp}"
+typeset -g CLEANUP_CLAUDE_TMP_ROOT="${CLEANUP_CLAUDE_TMP_ROOT:-/private/tmp/claude-$(id -u)}"
+typeset -g CLEANUP_CLAUDE_PROFILES_ROOT="${CLEANUP_CLAUDE_PROFILES_ROOT:-$HOME/.claude-profiles}"
+typeset -g CLEANUP_HIBERNATE_DIR="${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}"
+typeset -g CLEANUP_PROBE_FAILED=0
 typeset -g CLEANUP_PROGRESS_ENABLED=0
 typeset -g CLEANUP_PROGRESS_START=0
 
@@ -58,6 +62,7 @@ CLEANUP_LABELS=(
   mise-cache "mise download and metadata cache"
   codex "Codex TUI log and old session files"
   brew "Homebrew download cache"
+  claude-temp "Inactive Claude scratch sessions"
 )
 CLEANUP_DEFAULT_FLAGS=(
   bun 1
@@ -82,6 +87,7 @@ CLEANUP_DEFAULT_FLAGS=(
   mise-cache 1
   codex 1
   brew 1
+  claude-temp 0
 )
 
 typeset -gA CLEANUP_PROBE_APPLICABLE CLEANUP_PROBE_KB CLEANUP_PROBE_SIZE CLEANUP_PROBE_KIND CLEANUP_PROBE_DETAILS CLEANUP_PROBE_COMMAND
@@ -101,13 +107,15 @@ Usage:
 Targets:
   bun, pnpm, yarn, aube, node-gyp, npm, pip, uv, cargo, cargo-target, rustup,
   nvim, browsers, playwright, chrome, temp, docker, nix, mise, mise-cache,
-  codex, brew
+  codex, brew, claude-temp
 
 Notes:
   - Plain cleanup executes the default safe set (rustup and cargo-target are
     opt-in only).
   - cargo-target scans $CLEANUP_CARGO_ROOTS and reclaims Rust build dirs;
     rebuildable, but the next build recompiles from scratch.
+  - claude-temp is opt-in. It removes scratch directories older than 60 minutes
+    only after protecting every live and hibernated Claude session.
   - In non-interactive mode, execution requires --yes.
   - --dry-run reports only and never prompts.
   - Planned sizes are logical or tool-reported candidates, not promised
@@ -222,6 +230,62 @@ _cleanup_temp_candidates() {
   [[ -d "$root" ]] || return 0
 
   find "$root" -maxdepth 1 -mindepth 1 -user "${USER:-$(id -un)}" -mtime +7 -print 2>/dev/null
+}
+
+_cleanup_claude_temp_candidates() {
+  local root=$CLEANUP_CLAUDE_TMP_ROOT
+  [[ -d "$root" ]] || return 0
+  command -v claude >/dev/null 2>&1 || {
+    print -u2 "error: cannot inspect live Claude agents"
+    return 1
+  }
+  command -v jq >/dev/null 2>&1 || {
+    print -u2 "error: jq required to inspect Claude agent state"
+    return 1
+  }
+
+  local config state record session_dir session_id
+  local uuid_re='^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$'
+  local -a configs records
+  local -A protected
+  configs=("$HOME/.claude")
+  configs+=("$CLEANUP_CLAUDE_PROFILES_ROOT"/code/*(N/))
+  configs+=("$CLEANUP_CLAUDE_PROFILES_ROOT"/desktop/*(N/))
+
+  for config in "${configs[@]}"; do
+    state=$(command env CLAUDE_CONFIG_DIR="$config" claude agents --json 2>/dev/null) || {
+      print -u2 "error: cannot read live Claude agents for $config"
+      return 1
+    }
+    print -r -- "$state" | jq -e 'type == "array" and all(.[]; (.sessionId | type) == "string")' >/dev/null 2>&1 || {
+      print -u2 "error: cannot read live Claude agents for $config"
+      return 1
+    }
+    while IFS= read -r session_id; do
+      [[ -n "$session_id" ]] && protected[$session_id]=1
+    done < <(print -r -- "$state" | jq -r '.[].sessionId')
+  done
+
+  records=("$CLEANUP_HIBERNATE_DIR"/*.json(N.))
+  for record in "${records[@]}"; do
+    session_id=$(jq -er '.sessionId | select(type == "string")' "$record" 2>/dev/null) || {
+      print -u2 "error: cannot read hibernation record $record"
+      return 1
+    }
+    [[ "$session_id" =~ "$uuid_re" ]] || {
+      print -u2 "error: cannot read hibernation record $record"
+      return 1
+    }
+    protected[$session_id]=1
+  done
+
+  while IFS= read -r session_dir; do
+    session_id=${session_dir:t}
+    [[ "$session_id" =~ "$uuid_re" ]] || continue
+    [[ -n "${protected[$session_id]}" ]] && continue
+    print -r -- "$session_dir"
+  done < <(find "$root" -mindepth 2 -maxdepth 2 -type d \
+    -user "${USER:-$(id -un)}" -mmin +60 -print 2>/dev/null)
 }
 
 _cleanup_rustup_removable() {
@@ -665,6 +729,14 @@ _cleanup_probe_target() {
         estimate_kind="tool-estimate"
       fi
       ;;
+    claude-temp)
+      candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
+      candidates=("${(@)candidates:#}")
+      kb=$(_cleanup_kb_sum "${candidates[@]}")
+      (( ${#candidates[@]} > 0 )) || applicable=0
+      detail="Root: $CLEANUP_CLAUDE_TMP_ROOT; ${#candidates[@]} inactive session dir(s); age: >60m"
+      command="rm -rf inactive Claude scratch session dirs"
+      ;;
   esac
 
   (( applicable )) || estimate_kind="none"
@@ -847,6 +919,14 @@ _cleanup_run_target() {
       # fight the declarative model.
       brew cleanup --prune=all
       ;;
+    claude-temp)
+      # Refresh live and hibernated state immediately before deletion. A probe
+      # may be followed by a prompt, during which a protected session can change.
+      candidates=("${(@f)$(_cleanup_claude_temp_candidates)}") || return 1
+      candidates=("${(@)candidates:#}")
+      (( ${#candidates[@]} > 0 )) || return 0
+      command rm -rf -- "${candidates[@]}"
+      ;;
   esac
 }
 
@@ -860,7 +940,7 @@ _cleanup_probe_all() {
   for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
     (( current += 1 ))
     _cleanup_progress_update "$current" "$total" "$target"
-    _cleanup_probe_target "$target"
+    _cleanup_probe_target "$target" || CLEANUP_PROBE_FAILED=1
     CLEANUP_ROW_CACHE+=("$(printf '%012d\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
       "${CLEANUP_PROBE_KB[$target]:-0}" \
       "$target" \
@@ -1014,7 +1094,7 @@ while [[ $# -gt 0 ]]; do
       _cleanup_add_target "$2" || return 1
       shift 2
       ;;
-    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew)
+    --bun|--pnpm|--yarn|--aube|--node-gyp|--npm|--pip|--uv|--cargo|--cargo-target|--rustup|--nvim|--browsers|--playwright|--chrome|--temp|--docker|--nix|--mise|--mise-cache|--codex|--brew|--claude-temp)
       _cleanup_add_target "${1#--}" || return 1
       shift
       ;;
@@ -1055,6 +1135,8 @@ if (( CLEANUP_JSON )); then
 else
   _cleanup_print_plan "$mode_label"
 fi
+
+(( CLEANUP_PROBE_FAILED )) && return 1
 
 if (( CLEANUP_DRY_RUN )); then
   return 0
