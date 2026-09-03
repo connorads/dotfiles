@@ -54,7 +54,7 @@ EOF
 #!/usr/bin/env bash
 echo "sudo $*" >>"$TEST_LOG"
 if [ -n "${UP_SUDO_KEEPALIVE:-}" ]; then
-  echo "sudo-keepalive-parent=$PPID" >>"$TEST_LOG"
+  echo "sudo-parent=$PPID" >>"$TEST_LOG"
 fi
 [ -n "${SUDO_FAIL:-}" ] && exit 1
 exit 0
@@ -67,6 +67,19 @@ EOF
     write_stub "$cmd" <<EOF
 #!/usr/bin/env bash
 echo "$cmd \$*" >>"$TEST_LOG"
+if [ "$cmd" = "brew" ] && [ "\${1:-}" = "outdated" ] && [ -n "\${BREW_PARTIAL:-}" ]; then
+  if [ -f "$HOME/.brew-upgrade-ran" ]; then
+    echo '{"formulae":[{"name":"podman"}],"casks":[]}'
+  else
+    echo '{"formulae":[{"name":"podman"}],"casks":[{"name":"chatgpt"}]}'
+  fi
+  exit 0
+fi
+if [ "$cmd" = "brew" ] && [ "\${1:-}" = "upgrade" ] && [ -n "\${BREW_PARTIAL:-}" ]; then
+  : >"$HOME/.brew-upgrade-ran"
+  exit 1
+fi
+[ "$cmd" = "brew" ] && [ -n "\${BREW_FAIL:-}" ] && exit 1
 [ "$cmd" = "tmux-upstream" ] && [ -n "\${TMUX_UPSTREAM_FAIL:-}" ] && exit 1
 exit 0
 EOF
@@ -133,8 +146,7 @@ EOF
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
-  [[ "$output" == *"=> up summary (update)"* ]] || false
-  [[ "$output" == *"=> done"* ]]
+  [[ "$output" == *"=> UPDATE COMPLETE (update)"* ]]
 }
 
 @test "up puts the gh wrapper ahead of a stale mise shim for Homebrew" {
@@ -199,7 +211,7 @@ EOF
   run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   [[ "$output" == *"refusing to update a missing or dirty lock: .config/mise/mise.lock"* ]] || false
-  [[ "$output" == *"preflight"*"FAILED"* ]] || false
+  [[ "$output" == *"Failed"*"preflight"* ]] || false
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
   ! grep -qF 'nfu' "$TEST_LOG"
@@ -236,11 +248,77 @@ EOF
   [ "$status" -ne 0 ]
   ! grep -qF 'update tool lock' "$TEST_LOG" # the commit that must not happen
   [[ "$output" == *"NOT committing mise.lock"* ]] || false
-  [[ "$output" == *"mise"*"FAILED"* ]] || false
-  [[ "$output" != *"next: up -s"* ]] || false
-  # the unrelated halves still run: a failing tool doesn't abort the rest
+  [[ "$output" == *"Failed"*"mise"* ]] || false
+  [[ "$output" != *"up -s"* ]] || false
+  ! grep -qF 'brew update' "$TEST_LOG"
+  ! grep -qF 'nfu' "$TEST_LOG"
+  grep -qF 'pin-audit' "$TEST_LOG"
+}
+
+@test "up stops later mutations when Homebrew fails" {
+  BREW_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
   grep -qF 'brew update' "$TEST_LOG"
-  grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
+  ! grep -qF 'nfu' "$TEST_LOG"
+  ! grep -qF 'drs' "$TEST_LOG"
+  grep -qF 'macup-check' "$TEST_LOG"
+  grep -qF 'pin-audit' "$TEST_LOG"
+}
+
+@test "up reports Homebrew partial success from before and after state" {
+  BREW_PARTIAL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"brew"*"1 upgraded; remaining: podman"* ]] || false
+  [[ "$output" == *"Not attempted"*"flake update"*"blocked by brew"* ]] || false
+  [[ "$output" == *'PATH="$HOME/.local/bin:$PATH" brew update && brew upgrade --no-ask'*"rerun up"* ]] || false
+}
+
+@test "up diagnoses an inactive mise gh shim from the captured Homebrew failure" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+if [ "${1:-}" = update ]; then
+  echo 'mise ERROR No version is set for shim: gh' >&2
+  exit 1
+fi
+echo '{"formulae":[],"casks":[]}'
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"inactive mise gh shim selected"* ]] || false
+  [[ "$output" == *"recent output:"*"No version is set for shim: gh"* ]] || false
+  [[ "$output" == *"full log:"* ]]
+}
+
+@test "up logs successful command output instead of streaming it by default" {
+  write_stub mise <<'EOF'
+#!/usr/bin/env bash
+echo "mise $*" >>"$TEST_LOG"
+echo 'mise noisy output'
+exit 0
+EOF
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"mise noisy output"* ]]
+  local log_file
+  log_file=$(find "$XDG_CACHE_HOME/up" -type f -name '*.log' | head -1)
+  [ -n "$log_file" ]
+  grep -qF 'mise noisy output' "$log_file"
+  [ "$(stat -f '%Lp' "$log_file")" = 600 ]
+  [[ "$output" == *"Log"*"$log_file"* ]]
+}
+
+@test "up --verbose streams command output and retains the log" {
+  write_stub mise <<'EOF'
+#!/usr/bin/env bash
+echo "mise $*" >>"$TEST_LOG"
+echo 'mise verbose output'
+exit 0
+EOF
+  run_zsh_function "$UP" --frozen --verbose
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"mise verbose output"* ]]
+  grep -qF 'mise verbose output' "$XDG_CACHE_HOME"/up/*.log
 }
 
 @test "up does not commit flake.lock when the rebuild failed" {
@@ -249,8 +327,8 @@ EOF
   grep -qF 'nfu' "$TEST_LOG"
   ! grep -qF 'update flake lock' "$TEST_LOG" # the commit that must not happen
   [[ "$output" == *"NOT committing flake.lock"* ]] || false
-  [[ "$output" == *"rebuild"*"FAILED"* ]] || false
-  [[ "$output" == *"next: up -s"* ]] || false
+  [[ "$output" == *"Failed"*"rebuild"* ]] || false
+  [[ "$output" == *"up -s"* ]] || false
   # the mise half is unaffected: its own lock still commits
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
 }
@@ -304,40 +382,34 @@ EOF
   [ ! -s "$TEST_LOG" ]
 }
 
-@test "up fails before mutation when non-interactive sudo validation fails" {
+@test "up fails at the privileged phase when non-interactive sudo validation fails" {
   SUDO_FAIL=1 run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   grep -qF 'osv-scanner scan source' "$TEST_LOG"
+  grep -qF 'mise upgrade' "$TEST_LOG"
+  grep -qF 'brew update' "$TEST_LOG"
+  grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'sudo -n -v' "$TEST_LOG"
-  ! grep -qF 'mise upgrade' "$TEST_LOG"
-  ! grep -qF 'brew' "$TEST_LOG"
-  [[ "$output" == *"sudo"*"FAILED"*"authentication unavailable"* ]] || false
-  [[ "$output" == *"next: rerun up in an interactive terminal"* ]]
+  ! grep -qF 'drs' "$TEST_LOG"
+  [[ "$output" == *"Failed"*"rebuild"*"sudo authentication unavailable"* ]] || false
+  [[ "$output" == *"rerun 'up -s' in an interactive terminal"* ]]
 }
 
-@test "up keeps sudo alive during work and reaps the helper" {
-  UP_SUDO_REFRESH_CENTISECONDS=1 MISE_DELAY=0.2 run_zsh_function "$UP" --frozen
+@test "up acquires sudo immediately before privileged work" {
+  MISE_DELAY=0.2 run_zsh_function "$UP" --frozen
   [ "$status" -eq 0 ]
-  local keepalive_pid
-  keepalive_pid=$(sed -n 's/^sudo-keepalive-parent=//p' "$TEST_LOG" | head -1)
-  [ -n "$keepalive_pid" ]
-  ! kill -0 "$keepalive_pid" 2>/dev/null
-  [[ "$output" == *"sudo"*"DONE"*"ticket held for privileged phases"* ]]
+  local mise_line sudo_line drs_line
+  mise_line=$(grep -nF 'mise install' "$TEST_LOG" | cut -d: -f1)
+  sudo_line=$(grep -nF 'sudo -n -v' "$TEST_LOG" | cut -d: -f1)
+  drs_line=$(grep -nF 'drs' "$TEST_LOG" | cut -d: -f1)
+  [ "$mise_line" -lt "$sudo_line" ]
+  [ "$sudo_line" -lt "$drs_line" ]
 }
 
 @test "up validates sudo interactively when stdin is a TTY" {
   run /usr/bin/script -q /dev/null "$UP" --frozen
   [ "$status" -eq 0 ]
   grep -qF 'sudo -v' "$TEST_LOG"
-}
-
-@test "up reaps the sudo helper when interrupted" {
-  UP_SUDO_REFRESH_CENTISECONDS=1 MISE_DELAY=5 run timeout -s TERM 1 zsh --no-rcs "$UP" --frozen
-  [ "$status" -eq 124 ]
-  local keepalive_pid
-  keepalive_pid=$(sed -n 's/^sudo-keepalive-parent=//p' "$TEST_LOG" | head -1)
-  [ -n "$keepalive_pid" ]
-  ! kill -0 "$keepalive_pid" 2>/dev/null
 }
 
 @test "up runs the lockfile audit before bumping" {
@@ -370,33 +442,33 @@ EOF
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'dotfiles commit' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
-  [[ "$output" == *"audit"*"FAILED"* ]] || false
-  [[ "$output" == *"=> failed (exit 1)"* ]]
+  [[ "$output" == *"Failed"*"audit"* ]] || false
+  [[ "$output" == *"=> UPDATE INCOMPLETE"* ]]
 }
 
 @test "up never commits flake.lock when its update failed" {
   NFU_FAIL=1 run_zsh_function "$UP"
   [ "$status" -ne 0 ]
   grep -qF 'nfu' "$TEST_LOG"
-  grep -qF 'drs' "$TEST_LOG"
+  ! grep -qF 'drs' "$TEST_LOG"
   ! grep -qF 'update flake lock' "$TEST_LOG"
-  [[ "$output" == *"flake update"*"FAILED"* ]] || false
-  [[ "$output" == *"flake lock"*"SKIPPED"*"flake update failed"* ]]
+  [[ "$output" == *"Failed"*"flake update"* ]] || false
+  [[ "$output" == *"Not attempted"*"flake lock"*"blocked by flake update"* ]]
 }
 
 @test "up reports commit failures and exits non-zero" {
   MISE_SIMULATE_BUMP=1 DOTFILES_FAIL_COMMIT=1 run_zsh_function "$UP"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"mise lock"*"FAILED"*"commit failed"* ]] || false
-  [[ "$output" == *"next: dhk check"* ]] || false
-  [[ "$output" == *"=> failed (exit 1)"* ]]
+  [[ "$output" == *"Failed"*"mise lock"*"commit failed"* ]] || false
+  [[ "$output" == *"dhk check"* ]] || false
+  [[ "$output" == *"=> UPDATE INCOMPLETE"* ]]
 }
 
 @test "up advisory failures warn without failing the run" {
   TMUX_UPSTREAM_FAIL=1 run_zsh_function "$UP"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"tmux"*"WARN"*"exit 1"* ]] || false
-  [[ "$output" == *"=> done"* ]]
+  [[ "$output" == *"Advisories"*"tmux"*"exit 1"* ]] || false
+  [[ "$output" == *"=> UPDATE COMPLETE"* ]]
 }
 
 @test "up runs the report-only pin-audit on the bump path" {
