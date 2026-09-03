@@ -53,13 +53,12 @@ Priority when rules pull apart: correctness/safety > existing conventions >
 better local design > avoiding broad migrations > documenting the trade-off. A
 new code path follows these standards; an unrelated change migrates nothing.
 
-**Effect boundary.** Adopt Effect when the work needs the typed error channel,
-dependency injection, retry policy and structured concurrency together, or when
-the repo already depends on it; one or two of those alone is a `Result` type
-plus the idioms below. Never introduce it into a repo that has not adopted it.
-Target v4 and install it explicitly (`effect@rc`; `latest` is still v3, verified
-2026-09-03), then read the `effect` skill for everything inside an Effect
-program. This skill owns the seam only: see `references/errors.md`.
+**Effect boundary.** Use Effect when the repo already depends on it. In another
+repo, typed errors, dependency injection, retry policy and structured concurrency
+together justify proposing adoption for discussion, never introducing it silently;
+one or two alone is a `Result` plus the idioms below.
+Discuss the target version, then read the `effect` skill for everything inside an
+Effect program. This skill owns the seam only: see `references/errors.md`.
 
 **Runtime floor.** The compiler is not the runtime: Node strips types and checks
 nothing, so only erasable syntax runs, and a global the `lib` types (Temporal,
@@ -111,8 +110,8 @@ boolean behaviour flags. See `references/modeling.md`.
 
 `interface` for object shapes, `type` for unions and mapped types; a class only
 for nominality through a `#private` field; brands for primitives; `readonly` is
-compile-only and `Object.freeze` is its shallow runtime half. JS has no value
-equality, so entities compare and key by their branded id, never by the object.
+compile-only and `Object.freeze` is its shallow runtime half. JS objects have no
+structural value equality, so entities compare and key by branded id.
 See `references/modeling.md`.
 
 ### Deep, cohesive modules
@@ -126,14 +125,12 @@ barrel rule exists. See `references/modules.md`.
 
 `await using stack = new AsyncDisposableStack()` releases in exact reverse of
 acquisition, and ownership leaves the root only through an eager `stack.move()`.
-Config is parsed once there into a frozen typed value; pure functions take `now`
-as an argument; retries are a named policy in the adapter. See
-`references/resources.md`.
+See `references/resources.md`; config lifetime belongs to `architecture`.
 
 ### Transaction boundaries
 
-A transaction is a closure that commits only on total success plus an explicit
-commit; every other path, including a returned error, must roll back. See
+A transaction is a Result-aware closure that commits only an `ok`; an `err`
+rolls back, while infrastructure failures receive stable tags. See
 `references/resources.md`.
 
 ### Cancellation and task ownership

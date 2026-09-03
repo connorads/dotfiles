@@ -1,25 +1,16 @@
 # Resources, scopes, and time
 
-Cleanup, the transaction and retry boundaries, and the clock port - in an Effect repo,
-`Scope` and `Schedule` from the vendored `effect` skill instead. `architecture` owns the
-principles: `configuration-lifecycle.md` for the one composition root,
-`workflows-transactions.md` for commit-only-on-total-success.
+Cleanup, transaction and retry boundaries, and the clock port. Effect repos use the vendored `effect` skill. Architecture principles live in `configuration-lifecycle.md` and `workflows-transactions.md`.
 
 ## `using`, `await using`, and `DisposableStack`
 
-`using x = r` calls `r[Symbol.dispose]()` at block exit, `await using x = r` awaits
-`r[Symbol.asyncDispose]()`, and release runs in reverse acquisition order on every path,
-return or throw. `DisposableStack` and `AsyncDisposableStack` aggregate them: `.use(r)`
-adopts a resource, `.defer(fn)` closes one with no dispose method, `.move()` hands
-ownership out. Three traps, verified 2026-09-03 on tsc 7.0.2 and node 24.19.0:
+`using x = r` calls `r[Symbol.dispose]()` at block exit, `await using x = r` awaits `r[Symbol.asyncDispose]()`, and release runs in reverse acquisition order on every path, return or throw. `DisposableStack` and `AsyncDisposableStack` aggregate them; `.move()`
+hands ownership out. Three traps:
 
 - **The lib.** `Disposable`, `AsyncDisposable` and `DisposableStack` are absent from
   `lib: ["es2025"]`: `TS2318: Cannot find global type 'Disposable'`, plus `TS2304` on
   `DisposableStack` and `TS2550: Property 'dispose' does not exist on type
-  'SymbolConstructor'`. Name `esnext.disposable`; a node project appears to work without
-  it only because `@types/node/index.d.ts:29` carries `/// <reference
-  lib="esnext.disposable" />`, so dropping `types: ["node"]` loses them silently
-  (`toolchain.md`, "The lib ceiling").
+  'SymbolConstructor'`. Name `esnext.disposable`; see `toolchain.md`, The lib ceiling.
 - **`noUnusedLocals` fires on the canonical shape.** `using span = tracer.start()` is
   held for its side effect alone, so it is `TS6133: 'span' is declared but its value is
   never read`, pointing at the variable, so it reads as "delete the line". `using _span`
@@ -38,8 +29,9 @@ export async function build(url: string): Promise<{ app: App } & AsyncDisposable
   await using stack = new AsyncDisposableStack();
   const pool = await openPool(url);
   stack.defer(() => pool.end());
-  const moved = stack.move(); // eager: ownership leaves the scope here
-  return { app: makeApp(pool), [Symbol.asyncDispose]: () => moved.disposeAsync() };
+  const app = makeApp(pool); // construction can throw while stack still owns pool
+  const moved = stack.move();
+  return { app, [Symbol.asyncDispose]: () => moved.disposeAsync() };
 }
 ```
 
@@ -56,29 +48,37 @@ after rollback. `await using` cannot carry it alone, because a disposer learns n
 about how the body exited.
 
 ```ts
-export async function withTransaction<T>(pool: Pool, work: (tx: Tx) => Promise<T>): Promise<T> {
-  const h = await pool.begin();
-  let commitAttempted = false;
+import { err, type Result } from "./result.js";
+type TxFailure<E> =
+  | { readonly _tag: "TransactionBeginFailed"; readonly cause: unknown }
+  | { readonly _tag: "TransactionCommitFailed"; readonly cause: unknown }
+  | { readonly _tag: "TransactionRollbackFailed"; readonly cause: unknown; readonly original: E };
+
+export async function withTransaction<T, E>(pool: Pool,
+  work: (tx: Tx) => Promise<Result<T, E>>): Promise<Result<T, E | TxFailure<E>>> {
+  let h: Handle;
+  try { h = await pool.begin(); }
+  catch (cause) { return err({ _tag: "TransactionBeginFailed", cause }); }
   try {
     const out = await work(h.tx);
-    commitAttempted = true; // set BEFORE commit: a failed commit must not roll back
-    await h.commit();
-    return out;
-  } catch (error) {
-    if (!commitAttempted) try { await h.rollback(); }
-    catch (e) { throw new SuppressedError(e, error, "rollback failed"); }
-    throw error;
+    if (!out.ok) {
+      try { await h.rollback(); return out; }
+      catch (cause) { return err({ _tag: "TransactionRollbackFailed", cause, original: out.error }); }
+    }
+    try { await h.commit(); return out; }
+    catch (cause) { return err({ _tag: "TransactionCommitFailed", cause }); }
+  } catch (defect) {
+    try { await h.rollback(); }
+    catch (cause) { throw new SuppressedError(cause, defect, "rollback failed after defect"); }
+    throw defect;
   } finally { h.release(); } // the connection returns to the pool on every path
 }
 ```
 
-Each guard repairs a defect of the naive `try { commit } catch { rollback; throw e }`,
-all three reproduced on node 24.19.0: a bare `await h.rollback()` lets the rollback
-rejection pre-empt the `throw`, so a dead connection hands the caller `ECONNRESET`
-instead of `InsufficientFunds`; no `finally` leaks a connection per call; and a commit
-that throws rolls back a transaction the driver has finished. An `err` returned from
-`work` is a normal return, so it **commits**: a rejection that must not persist throws
-inside the module, or gets a Result-aware twin. Say which.
+An expected `err` rolls back and stays in the caller's error union. Infrastructure
+failures gain stable tags; rollback failure also retains the original work error.
+A thrown defect is rolled back and rethrown, with `SuppressedError` preserving both
+failures. A failed commit never rolls back a transaction the driver may have finished.
 
 ## Retries are a named policy value
 
@@ -103,6 +103,7 @@ export async function withRetry<T>(policy: Policy, isTransient: (e: unknown) => 
     if (deadline.aborted) return spent(n); // a pre-aborted caller never reaches op
     try { return { ok: true, value: await op(deadline) }; }
     catch (e) {
+      if (deadline.aborted) return spent(n + 1);
       if (!isTransient(e)) throw e; // a defect is not retried
       if (n === policy.attempts - 1) break; // no sleep after the last attempt
       const b = policy.baseMs * 2 ** n; // exponential
@@ -114,17 +115,15 @@ export async function withRetry<T>(policy: Policy, isTransient: (e: unknown) => 
 }
 ```
 
-Name `isTransient`: a catch-all turns a defect into a domain value the caller reads as
-an outage. Sleeping on `{ signal: deadline }` rejects with an `AbortError`
-byte-identical to the caller's own cancellation, so catching it and splitting on
-`signal.aborted` is what makes exhaustion and cancellation branchable values rather than
-one opaque throw; declare the return type, or `_tag` widens to `string` (`errors.md`).
+Name `isTransient`: a catch-all turns a defect into an outage. The total-time bound is
+cooperative: every adapter must honour the supplied signal. Racing a deaf operation only
+abandons it while it continues mutating state. Split deadline expiry from caller
+cancellation through `signal.aborted`; see `errors.md`, Result shape.
 `AbortSignal.any` returns an already-aborted signal, so without the top-of-loop check a
 cancelled request still charges the card once. `Math.random` for jitter is correct in an
 adapter and banned in the core by the purity glob it sits outside
-(`mechanical-enforcement`); node 24.19.0 has no global `scheduler`, so sleep comes from
-`node:timers/promises`. Retry only what is idempotent (`architecture`,
-`workflows-transactions.md`); versions are `toolchain.md`, "Library facts"; cancellation
+(`mechanical-enforcement`). Sleep comes from `node:timers/promises`. Retry only what is
+idempotent (`architecture`, `workflows-transactions.md`); cancellation
 is `concurrency.md`.
 
 ## Inject the clock
@@ -138,8 +137,8 @@ the pure core, because the purity ban is scoped by path.
 Temporal (the date API, not the durable-execution engine) is typed ahead of the runtime:
 `Temporal.Instant` needs `lib: [..., "esnext.temporal"]` or the namespace is `TS2503:
 Cannot find namespace 'Temporal'`, and with that lib the same code compiles at exit 0
-while `typeof Temporal` is `undefined` on node 24.19.0 and bun 1.3.14. Node 26 ships it
+while `typeof Temporal` is `undefined` on the current runtime floor. The next runtime line ships it
 unflagged and reaches Active LTS on 2026-10-28, the floor for a domain type. The port
-earns its keep past that date: vitest 4.1.11 bundles `@sinonjs/fake-timers` 15.0.0,
+earns its keep past that date: the current runner bundles fake timers,
 whose shipped code holds zero occurrences of `Temporal`, so `vi.useFakeTimers()` freezes
 `Date.now()` and leaves `Temporal.Now` on the wall clock, silently.

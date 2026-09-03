@@ -11,8 +11,6 @@
 // Flag tables: typescript.md, "Type safety". A bundled app takes
 // typescript-strict-app.jsonc instead.
 //
-// Traps this file exists to avoid:
-// - The package must be ESM. `verbatimModuleSyntax` under `nodenext` turns every
 // import and export in a CommonJS-resolved file into TS1295/TS1287, so package.json
 // needs `"type": "module"` before this config is a tightening rather than a migration.
 // - `isolatedDeclarations` without `declaration` (or `composite`) is TS5069: it fails
@@ -20,9 +18,8 @@
 // - Its scope is this config's `include`. Keep tests out, or every test helper carries
 // a written return type; give tests their own config extending this one.
 //
-// Verified 2026-09-03 against typescript 7.0.2 on the phase-3 fixture: exit 0 over src/;
-// a file violating verbatimModuleSyntax (TS1205), isolatedDeclarations (TS9010) and
-// exactOptionalPropertyTypes (TS2375) exits 1.
+// The phase-3 fixture also needs `region: string | undefined` on its exported env value.
+// Without that source annotation this profile correctly exits 1 with TS9010.
 {
   "compilerOptions": {
     // tsc's own default; types Set.union/intersection, iterator helpers,
@@ -38,7 +35,6 @@
     // listed: `process` is TS2591 with @types/node installed, and `typeRoots` does not
     // fix it.
     "types": ["node"],
-
     // Model the runtime resolver, not a bundler's: nodenext demands the extension on a
     // relative import (TS2835), where `bundler` lets `./dep` typecheck here and throw
     // ERR_MODULE_NOT_FOUND in the consumer's process. That demand is ESM-scoped, so
@@ -51,7 +47,6 @@
     "allowImportingTsExtensions": true,
     // This config checks, the build config emits, so a failed check writes nothing.
     "noEmit": true,
-
     // The public-API trio. isolatedDeclarations rejects an export whose type cannot be
     // written syntactically (TS9010 on an unannotated const, TS9013 on an uninferable
     // expression, TS9017 on a non-const array, and the rest of the TS90xx family), so
@@ -60,7 +55,6 @@
     "declaration": true,
     "declarationMap": true,
     "isolatedDeclarations": true,
-
     // A type-only import must say so. isolatedModules does NOT cover the
     // `import type { X }` then `export { X }` re-export (TS1205), so an emitter can
     // leave a runtime import of a types-only module. Adoption is a bulk edit: TS1484
@@ -71,7 +65,6 @@
     // enum forces every consumer's build to run a full compiler. Decorators and
     // `accessor` escape it; typescript-ast-grep.yml carries that canary.
     "erasableSyntaxOnly": true,
-
     // Null checks, no implicit any, unknown in catch. A sub-flag opt-out such as
     // `useUnknownInCatchVariables: false` compiles clean beside `strict: true`, so a
     // grep of the tsconfig is the only gate on it.
@@ -106,13 +99,11 @@
     // it: an exported `(): string | undefined` that falls off the end is green under
     // strict, because `undefined` is already in the annotation.
     "noImplicitReturns": true,
-
     // Skips checking every .d.ts, matched by file kind and not by path, so a first-party
     // src/*.d.ts naming an unresolvable type is silenced like a dependency's (syntax
     // errors still fire). The release check against the built dist, and what turning it
     // off drags in: typescript-publishing.md, "Publishing gates".
     "skipLibCheck": true
-
     // Deliberately absent: `incremental`. Verified 2026-09-03 on tsc 7.0.2, it silently
     // drops every TS90xx diagnostic while unrelated errors still report, so the flags
     // above read as adopted on a codebase that never complied. It also writes
@@ -121,12 +112,9 @@
   // src only: build output and tooling stay out, and isolatedDeclarations follows it.
   "include": ["src"]
 }
-// The emit half is a second config, so the gate above stays noEmit. Its flags, the
-// stale-dist caveat on noEmitOnError and the `paths`/TS2877 conflict are in
-// typescript-publishing.md, "Build config"; build with `rm -rf dist && tsc -p` it.
+// The emit half is a second config. See typescript-publishing.md, "Build config";
+// use the project-owned clean script before `tsc -p`.
 // { "extends": "./tsconfig.json", "include": ["src"], "compilerOptions": {
 // "noEmit": false, "noEmitOnError": true, "rootDir": "src", "outDir": "dist",
 // "rewriteRelativeImportExtensions": true } }
-// The rewrite reaches the emitted .js (`./x.ts` becomes `./x.js`) but not the .d.ts,
-// which keeps the `.ts` specifier. Verified 2026-09-03: a consumer typecheck against
-// that dist resolves the types and exits 0. Unverified for non-tsc .d.ts readers.
+// Rewriting changes emitted JS imports but leaves declaration specifiers unchanged.

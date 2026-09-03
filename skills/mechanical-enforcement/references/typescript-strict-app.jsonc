@@ -32,7 +32,6 @@
     // until listed: `process` is TS2591 with @types/node installed, and `typeRoots`
     // does not fix it. Browser-only app: [] plus what it needs, e.g. vite/client.
     "types": ["node"],
-
     // The bundler owns resolution, so extensionless relative imports are legal,
     // which is why an unbundled package must not copy this file. The extension
     // requirement traded away (TS2835) needs nodenext AND package.json

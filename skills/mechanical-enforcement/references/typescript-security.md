@@ -1,10 +1,6 @@
 # Mechanical Enforcement - TypeScript security
 
-The security-shaped gates for TypeScript: the lint rules worth naming, the
-runtime controls that hold and the ones that do not, the sinks no linter ships a
-rule for, and the parity gaps against `references/python.md`. Routed from
-`references/typescript.md`, section Picks. Verified 2026-09-03 against oxlint
-1.80.0 (1.81.0 held back by the release-age quarantine), @biomejs/biome 2.5.11
+The security-shaped gates for TypeScript: the lint rules worth naming, the runtime controls that hold and the ones that do not, the sinks no linter ships a rule for, and the parity gaps against `references/python.md`. Routed from `references/typescript.md`, section Picks. Verified 2026-09-03 against oxlint 1.80.0 (1.81.0 held back by the release-age quarantine), @biomejs/biome 2.5.11
 (2.5.12 held back), opengrep 1.29.0, typescript 7.0.2 and node 24.19.0.
 
 ## Picks
@@ -12,7 +8,7 @@ rule for, and the parity gaps against `references/python.md`. Routed from
 oxlint's seven core security rules are the free tier and belong in the default
 config (`references/typescript-oxlintrc.jsonc`). Biome's whole security surface
 is six rules, so it adds nothing on an oxc stack. Prototype pollution has no
-sound flag-level control - the ast-grep write rule plus `no-proto` is the gate.
+sound flag-level control - the ast-grep access ban plus `no-proto` is the gate.
 `node --permission` is for ops scripts, never around a test runner. Opengrep is
 the CI-tier dataflow layer. gitleaks stays the secrets gate - see the
 `supply-chain-hardening` skill. Every sink ruff gates through its `S` codes and
@@ -30,7 +26,7 @@ TypeScript has no rule for lives in `references/typescript-ast-grep.yml`.
 | String-bodied timers | `typescript/no-implied-eval` under type-aware | `setTimeout("console.log(1)", 0)` | See the note below - the eslint-spelled rule is inert. |
 | Unicode-aware regexes | `require-unicode-regexp` - watch | Lenient escapes and half-surrogate matches, the input-validation-bypass class | |
 
-- **`no-implied-eval` is registered and inert without type-aware, and it is the only rule here that fails open.** An unknown rule name aborts the whole oxlint run (fail closed); this one parses, resolves to `deny` under `--print-config`, and reports nothing - so a config-level audit cannot distinguish it from a working rule. The type-aware spelling does work: with `options.typeAware: true` and the `oxlint-tsgolint` dev dep, `typescript/no-implied-eval` at `"error"` flags both `new Function(...)` and the string `setTimeout` (exit 1). Type-aware setup and its canary are owned by `references/typescript.md`, section Type checking.
+- **`no-implied-eval` is registered and inert without type-aware, and it is the only rule here that fails open.** An unknown config-file rule name aborts oxlint; CLI `-D <unknown>` does not. This rule parses but reports nothing until type-aware mode is enabled. Setup is owned by `references/typescript.md`, Type checking.
 - **`require-unicode-regexp` is pedantic, not restriction**, so a repo already running `-D pedantic` gets it whether it asked or not. It fires on every existing regex, and adding `u` is not behaviour-preserving - an escape the lenient parser tolerates becomes a parse-time `SyntaxError` - so it is a mechanical sweep, not a flip.
 - **Biome's security group is six rules and that is all of it**: `noBlankTarget`, `noDangerouslySetInnerHtml`, `noDangerouslySetInnerHtmlWithChildren`, `noGlobalEval`, `noScriptUrl`, `noSecrets`. Five are error by default; `noSecrets` is **info**, which Biome's exit code never reflects, and Biome's own description points at dedicated tooling. Treat it as an editor hint. The two `dangerouslySetInnerHtml` rules are React-only and domain-recommended rather than on by default.
 - **eslint-plugin-security 4.0.1 is rejected as a plugin.** All 14 rules are `warn` in its own `recommended` preset and ESLint exits 0 on warnings, so the shipped preset is a report. Three of its rules are unsound beyond the severity: `detect-object-injection` fires on every computed member read (75-100% false positives on the lane's probes) *and* misses the write it exists to catch, because its guard only fires on a bare `Identifier` key, so `o[req.body.key] = v` passes; `detect-non-literal-fs-filename` fires on 100% of a correct filesystem adapter; `detect-child-process` matches an identifier literally spelled `exec`, so `execSync` and `spawn` report nothing. Four more target dead APIs. Verified in the security-runtime lane's run, 2026-09-02.
@@ -38,11 +34,12 @@ TypeScript has no rule for lives in `references/typescript-ast-grep.yml`.
 ## Prototype pollution
 
 **The sink is a recursive merge, not `Object.assign`.** Shallow
-`Object.assign({}, JSON.parse('{"__proto__":{"x":1}}'))` sets an own property on
-the target and leaves `Object.prototype` untouched, while a naive recursive merge
+`Object.assign({}, JSON.parse('{"__proto__":{"x":1}}'))` invokes the inherited
+setter and changes the target's prototype while leaving `Object.prototype` untouched. A naive recursive merge
 of the same payload pollutes it globally. A rule written against `Object.assign`
 produces findings reviewers correctly dismiss while the real deep merge in a
 utility file stays unflagged.
+With `--disable-proto=delete`, the shallow assign creates an own property instead.
 
 Two payloads reach the prototype and the runtime flags treat them differently:
 
@@ -95,7 +92,7 @@ security boundary.
 
 - **The type-level twin catches every spelling**, because it keys on the `any` a parse returns rather than the call shape: the `typescript/no-unsafe-*` family under type-aware flagged both the alias and the `globalThis` form as `no-unsafe-return`. That family is native to oxlint; it needs no ESLint.
 - **Spelling the boundary exemption `"off"` drops every sibling entry.** An override setting `no-restricted-properties: "off"` for `src/boundary/**` also removes the `Date.now` ban that shares the rule, and reports nothing. Restate the entries that should survive in the boundary override instead of switching the rule off.
-- Override glob scoping, and the way a config passed by an out-of-tree path silently matches nothing, are owned by `references/typescript.md`, section Lint families; the purity uses of the same rule by `references/architecture-boundaries.md`, section Purity.
+- Override glob scoping is owned by `references/typescript.md`, Lint families and suppressions. Purity uses are owned by `references/architecture-boundaries.md`, Purity: keeping the functional core pure.
 
 ## ReDoS
 
@@ -137,7 +134,7 @@ opengrep scan --config opengrep-rules --error --taint-intrafile --disable-nosem 
 
 - **`--error` is load-bearing**: without it findings print and the exit is 0, and with it a rule declaring `severity: WARNING` still exits 1 - the flag decides the gate, not the rule's severity.
 - **`--taint-intrafile` is equally load-bearing.** On the commonest real handler shape - source in the handler, `execSync` behind a same-file helper - the same rule and the same file report 0 findings and exit 0 without the flag, and 1 finding and exit 1 with it.
-- **`// nosemgrep` silently disarms the gate, and `--disable-nosem` only half-restores it.** A `nosemgrep` comment on the finding line or the line above it takes the finding to 0 and exit 0. Adding `--disable-nosem` makes the finding print again - and the run still exits **0**. The flag buys visibility, not enforcement, so pair it with `! git grep -nE '(nosem|nosemgrep|noopengrep)' -- src`.
+- **`// nosemgrep` silently disarms the gate, and `--disable-nosem` only half-restores it.** A `nosemgrep` comment on the finding line or the line above it takes the finding to 0 and exit 0. Adding `--disable-nosem` makes the finding print again while the run still exits **0**. Pair it with a grep whose exit dispatch treats 1 as clean, 0 as a finding and greater than 1 as an execution error.
 - **A bare `opengrep scan --error src` is not a no-op.** With no config it resolves `auto` and fires on the fixture's `eval(code)` and `Object.assign({}, JSON.parse(code))` with no custom rule at all - useful as a smoke check, but it puts a network call in the gate path.
 - **Registry packs (`p/typescript`, `p/nodejs`, `p/security-audit`) are rejected**: they are framework-shaped rather than language-shaped, `p/security-audit` announces 225 rules and runs 22 after language filtering, and each pull is a network call. Hand-written rules plus the sinks file are the gate.
 - A `paths.include` glob matching nothing prints `Ran 1 rule on 0 files` and exits 0.
@@ -161,16 +158,19 @@ Biome or eslint-plugin-security. They are hand-written rules in
 is assembled earlier: `child_process` `exec`/`execSync`/`spawn` with a non-literal
 argument (S605/S607), `tar.x` and `extractAllTo` zip-slip (S202), js-yaml v3
 `load`/`unsafeLoad` and `v8.deserialize` (S301/S506), string-built SQL reaching
-`db.query`/`knex.raw`/a `sql` tag (S608), `rejectUnauthorized: false` (S501),
+`db.query`/`knex.raw` (S608), `rejectUnauthorized: false` (S501),
 `crypto.generateKeyPairSync` with a short `modulusLength` (S505),
 `createHash("md5"|"sha1")` (S324), and `fetch` with no `signal` (S113).
 
-Gaps that stay open, stated rather than filled with a weak rule:
+Recognised driver SQL tags parameterise substitutions and are safe. An unknown custom
+tag needs review because syntax alone cannot prove its implementation. Other gaps:
+the fetch rule intentionally reports variable and spread init objects because syntax
+cannot prove they carry a signal; quoted `o["constructor"].prototype` also escapes.
 `NODE_TLS_REJECT_UNAUTHORIZED=0` is invisible in source and needs a config and
 Dockerfile grep; JavaScript has no `usedforsecurity=False`, so an md5 rule cannot
 tell a checksum from a signature and needs an allow-comment convention; a raw
 `el.innerHTML = x` assignment has no rule anywhere, and the Rust linters cannot
-parse `.vue`/`.svelte` at all (`references/typescript.md`, section SFCs); and
+parse `.vue`/`.svelte` at all (`references/typescript.md`, Framework single-file components); and
 ruff's parameter-name secret heuristic (S105-S107) has no twin. In the other
 direction, TypeScript gates prototype pollution, which Python has no bug class
 for, and ReDoS, where ruff ships nothing despite `re` backtracking.

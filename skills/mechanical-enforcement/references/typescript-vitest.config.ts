@@ -1,5 +1,6 @@
 // typescript-vitest.config.ts - the vitest gate config. Copy to `vitest.config.ts` at the
-// repo root and pair with typescript-vitest-setup.ts (copied to `tests/setup/hygiene.ts`).
+// repo root. Copy typescript-vitest-universal-setup.ts to universal-hygiene.ts and
+// typescript-vitest-setup.ts to hygiene.ts.
 //
 // GATES: assertion-free tests, a committed `.only`, a floating rejection, leaked mocks /
 // env stubs / fake timers, order-dependent tests, hangs. Every key below carries the
@@ -29,8 +30,7 @@
 // - `--dangerouslyIgnoreUnhandledErrors` and `onUnhandledError: () => false` both beat
 // the key below; the second exits 0 with output byte-identical to a clean run.
 //
-// Verified 2026-09-03 against vitest 4.1.11 (installed is latest), node 24.19.0,
-// typescript 7.0.2.
+// Verified 2026-09-03 against the quarantined vitest 4.1.11 toolchain.
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -100,9 +100,8 @@ export default defineConfig({
     // `vitest run --sequence.seed=<n>` from the run header, which needs shuffle on in this
     // file (a seed alone with shuffle off runs in source order and exits 0).
     // TRAP: catching a leak is a coin flip - 20 runs over one deliberate dependence exited
-    // 0 eight times. Green is not proof of order independence. The `basic`, `tap`, `json`
-    // and `github-actions` reporters drop the seed line, so a shuffle typo (silent exit 0)
-    // is invisible under the natural CI reporter.
+    // 0 eight times. Green is not proof of order independence. Structured reporters such
+    // as json and junit omit the seed, so preserve the default reporter in blocking runs.
     sequence: { shuffle: { files: true, tests: true } },
 
     // vitest already ships non-infinite defaults (5000 / 10000 / 10000), so these are a
@@ -136,10 +135,17 @@ export default defineConfig({
         test: {
           name: "domain",
           include: ["tests/domain/**/*.test.ts"],
-          setupFiles: ["./tests/setup/hygiene.ts"],
+          setupFiles: ["./tests/setup/universal-hygiene.ts", "./tests/setup/hygiene.ts"],
         },
       },
-      { extends: true, test: { name: "shell", include: ["tests/shell/**/*.test.ts"] } },
+      {
+        extends: true,
+        test: {
+          name: "shell",
+          include: ["tests/shell/**/*.test.ts", "tests/architecture.test.ts"],
+          setupFiles: ["./tests/setup/universal-hygiene.ts"],
+        },
+      },
     ],
   },
 });

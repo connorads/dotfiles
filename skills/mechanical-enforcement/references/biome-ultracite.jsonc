@@ -1,7 +1,7 @@
 // Biome config extending Ultracite's presets - the optional React/Next starting
 // point, not the default. The default TypeScript lint gate is raw oxlint with
 // references/typescript-oxlintrc.jsonc plus oxfmt; Ultracite's traps and the
-// case for demoting it are in references/typescript.md, "Lint families".
+// case for demoting it are in references/typescript.md, "Lint families and suppressions".
 //
 // WHAT IT GATES: Biome's own rule set on top of Ultracite core/react/next, the
 // vitest test-hygiene rules, and the formatter. Every override below states what

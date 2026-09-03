@@ -31,8 +31,16 @@
 //     than trusting a green run.
 {
   "ignorePatterns": [
-    "*.md", "dist/**", "coverage/**", "tools/oxlint/anti-slop/**",
-    ".agents/**", ".claude/**", ".codex/**", ".cursor/**", ".opencode/**", ".pi/**"
+    "*.md",
+    "dist/**",
+    "coverage/**",
+    "tools/oxlint/anti-slop/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".cursor/**",
+    ".opencode/**",
+    ".pi/**"
   ]
 }
 // CANARY. `oxfmt --check` exits 0 both when Markdown is correctly excluded and when oxfmt never

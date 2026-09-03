@@ -7,149 +7,141 @@
 // half - see the sibling drop-in references/typescript-oxfmtrc.jsonc.
 //
 //   pnpm add -D oxlint@1.80.0 oxlint-tsgolint @oxlint/plugins@1.80.0   # see the anti-slop note below
-//   pnpm exec oxlint -c .oxlintrc.json src tests                       # the gate. ALWAYS name paths.
-//
-// Five ways this file fails OPEN, all exit 0 - each is why a key below is spelled as it is. The
-// whole-stack inventory and the canary discipline are references/typescript.md, Gate integrity.
-// All five verified 2026-09-03 on the fixture:
-//   1. Unnamed paths - oxlint walks `node_modules` unless an ignore covers it (`ignorePatterns`).
-//   2. A plugin missing from `plugins`, which REPLACES the defaults: dropping "vitest" lets the
-//      assertion-free test below pass in silence.
-//   3. A rule left at `warn`, which exits 0 (`categories` at "error" plus `options.denyWarnings`).
-//   4. An `overrides[].files` glob matching nothing: globs resolve against THIS FILE'S directory,
-//      so the same config copied to /tmp reports no purity violation at all.
-//   5. `options.typeAware` absent or `oxlint-tsgolint` missing - every type-aware rule goes quiet.
-//      `--type-check` fails closed but is path-scoped, so `tsc` stays the typecheck gate
-//      (references/typescript.md, Type checking).
-// A nested `.oxlintrc.json` in a subdirectory silently overrides these rules; `-c` drops nested configs.
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // Every plugin the rules below name - this array replaces the defaults (trap 2).
   "plugins": ["typescript", "unicorn", "oxc", "import", "vitest"],
-  // The low-churn tiers. pedantic, style and restriction stay off - too much churn - and the few
-  // worth having are named below; the tier sizes are references/typescript.md, Lint families.
   "categories": { "correctness": "error", "suspicious": "error", "perf": "error" },
   "options": {
-    // The type-aware lint gate. `--type-aware` does the same, but `--print-config` reflects only the
-    // key, so the config is the auditable place for it.
     "typeAware": true,
     "denyWarnings": true, // belt and braces for trap 3: a rule left at `warn` still fails the run
-    // Stale `// oxlint-disable-line` becomes an error, in the oxlint- and eslint- spellings alike.
-    // Root config only - the key is rejected inside `overrides`.
     "reportUnusedDisableDirectives": "error"
   },
   "rules": {
-    // --- Suppression discipline: one comment otherwise deletes the whole tier. The
-    // `/* @ts-ignore */` block form defeats a grep on `//`; this rule sees both spellings. ---
-    "typescript/ban-ts-comment": ["error", {
-      "ts-ignore": true, "ts-nocheck": true, "ts-check": false,
-      "ts-expect-error": "allow-with-description", "minimumDescriptionLength": 10
-    }],
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "ts-check": false,
+        "ts-expect-error": "allow-with-description",
+        "minimumDescriptionLength": 10
+      }
+    ],
     "unicorn/no-abusive-eslint-disable": "error", // a bare `// eslint-disable` kills every rule in the file
 
-    // --- Idioms (references/typescript.md, Type safety). ---
     "typescript/consistent-type-definitions": ["error", "interface"], // an interface names itself in errors
-    // `as` is an unchecked claim about a value; banning the syntax pushes the boundary to a parse.
-    // Verified 2026-09-03: this, `no-unsafe-type-assertion` and anti-slop all fire on one `as`, so
-    // relaxing to `{ "assertionStyle": "as" }` still leaves the other two standing.
     "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
     "no-console": ["error", { "allow": ["warn", "error"] }], // logging is the shell's decision
-    // A cycle makes initialisation order load-bearing. Leave `maxDepth` unset - it silently misses
-    // deeper cycles. Direct edges only: references/architecture-boundaries.md, Transitive architecture tests.
     "import/no-cycle": "error",
-    // --- Type-aware. Every one is inert without `options.typeAware`. ---
-    "typescript/no-floating-promises": "error",          // a dropped rejection is an invisible failure
-    "typescript/no-misused-promises": "error",           // `if (asyncFn())` is always true; not on by default
-    "typescript/switch-exhaustiveness-check": "error",   // a new union member must break the build
-    "typescript/only-throw-error": "error",              // `throw "..."` loses the stack
-    "typescript/no-base-to-string": "error",             // "[object Object]" in a log or an id
+    "typescript/no-floating-promises": "error", // a dropped rejection is an invisible failure
+    "typescript/no-misused-promises": "error", // `if (asyncFn())` is always true; not on by default
+    "typescript/switch-exhaustiveness-check": "error", // a new union member must break the build
+    "typescript/only-throw-error": "error", // `throw "..."` loses the stack
+    "typescript/no-base-to-string": "error", // "[object Object]" in a log or an id
     "typescript/restrict-template-expressions": "error", // the same, inside a template literal
-    "typescript/require-await": "error",                 // an async function that never awaits hides a missing await
-    "typescript/prefer-readonly": "error",               // a private field never reassigned is state that is not state
-    // The five-rule `any` firewall, type-level twin of the JSON.parse ban below.
-    "typescript/no-unsafe-argument": "error", "typescript/no-unsafe-assignment": "error",
-    "typescript/no-unsafe-call": "error", "typescript/no-unsafe-member-access": "error",
+    "typescript/require-await": "error", // an async function that never awaits hides a missing await
+    "typescript/prefer-readonly": "error", // a private field never reassigned is state that is not state
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
     "typescript/no-unsafe-return": "error",
-    // --- Security (references/typescript-security.md, Lint rules). ---
-    "no-eval": "error",               // string eval, indirect `(0, eval)` included
-    "no-new-func": "error",           // `new Function(src)` is eval under another name
-    "no-script-url": "error",         // a `javascript:` href is a DOM eval sink
-    "no-proto": "error",              // `__proto__` write is the prototype-pollution primitive
+    "no-eval": "error", // string eval, indirect `(0, eval)` included
+    "no-new-func": "error", // `new Function(src)` is eval under another name
+    "no-script-url": "error", // a `javascript:` href is a DOM eval sink
+    "no-proto": "error", // `__proto__` write is the prototype-pollution primitive
     "no-prototype-builtins": "error", // `obj.hasOwnProperty(k)` is attacker-controllable
-    "no-extend-native": "error",      // a patched built-in breaks every other module in-process
-    "no-control-regex": "error",      // a control char in a pattern is nearly always a paste bug
-    // `no-implied-eval` is registered but inert; shell sinks and TLS opt-outs have no oxlint rule at
-    // all - they belong to references/typescript-ast-grep.yml.
-    // --- anti-slop, all 15 generic rules (live list, verified 2026-09-03). ---
-    "anti-slop/no-chained-type-assertions": "error", "anti-slop/no-widen-then-assert": "error", "anti-slop/no-known-value-widening": "error",
-    "anti-slop/no-unknown-type-aliases": "error", "anti-slop/no-unknown-parameters": "error", "anti-slop/no-unknown-returns": "error",
-    "anti-slop/no-unsafe-dictionary-type": "error", "anti-slop/no-runtime-typeof": "error", "anti-slop/no-object-parameters": "error",
-    "anti-slop/no-module-mocking": "error", "anti-slop/no-conditional-empty-object-spread": "error", "anti-slop/no-reflect-apply": "error",
-    "anti-slop/no-reflect-get": "error", "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "no-extend-native": "error", // a patched built-in breaks every other module in-process
+    "no-control-regex": "error", // a control char in a pattern is nearly always a paste bug
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
     "anti-slop/no-shape-in-symbol-names": "error" // taste, not a defect gate - drop it without regret
   },
   "overrides": [
     {
-      // THE PURITY GATE. Globs are relative to this file (trap 4). Point them at the real core.
       "files": ["src/domain/**/*.{ts,tsx}", "src/policy/**/*.{ts,tsx}"],
       "rules": {
-        // Catches destructuring, `Date["now"]` and optional chaining; misses `new Date()`, the alias
-        // `const D = Date` and a `globalThis` cast - see references/typescript-ast-grep.yml.
-        "no-restricted-properties": ["error",
-          { "object": "Date", "property": "now", "message": "Take the instant as an argument; the core does not read the clock." },
-          { "object": "Math", "property": "random", "message": "Inject an Rng port and pass the draw in." },
-          { "object": "process", "property": "env", "message": "Parse config at the boundary into typed values and pass them in." },
-          { "object": "JSON", "property": "parse", "message": "Parse at the boundary; the core takes an already-typed value." }
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Take the instant as an argument; the core does not read the clock."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Inject an Rng port and pass the draw in."
+          },
+          {
+            "object": "process",
+            "property": "env",
+            "message": "Parse config at the boundary into typed values and pass them in."
+          },
+          {
+            "object": "JSON",
+            "property": "parse",
+            "message": "Parse at the boundary; the core takes an already-typed value."
+          }
         ],
-        // Whole-object bans. This DOES flag member expressions, so `process.env` is covered twice;
-        // `globalThis.process` and `import process from "node:process"` defeat it, hence the import ban
-        // below. Do NOT add `Date` here: it also bans the legitimate `new Date(ms)`.
-        "no-restricted-globals": ["error",
+        "no-restricted-globals": [
+          "error",
           { "name": "process", "message": "The core takes config as an argument." },
           { "name": "fetch", "message": "Network access lives in an adapter behind a port." },
           { "name": "localStorage", "message": "Storage lives in an adapter behind a port." }
         ],
-        // `group` matches the literal specifier text. Verified 2026-09-03: `node:*` alone lets
-        // `node:fs/promises` through, and `**/infra/**` catches `../infra/x`, `../../infra/x` and
-        // `@app/infra/x` where `../infra/*` catches only the first. An unrecognised key drops the object.
-        "no-restricted-imports": ["error", { "patterns": [
-          { "group": ["node:*", "node:*/*", "fs", "path", "child_process"], "message": "The core imports no runtime; put the effect behind a port." },
-          { "group": ["**/infra/**"], "message": "The core does not depend on adapters.", "allowTypeImports": true }
-        ]}],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "node:*/*", "fs", "path", "child_process"],
+                "message": "The core imports no runtime; put the effect behind a port."
+              },
+              {
+                "group": ["**/infra/**"],
+                "message": "The core does not depend on adapters.",
+                "allowTypeImports": true
+              }
+            ]
+          }
+        ],
         "no-console": "error" // no scoped twin exists, so the core repeats it with no allow-list
       }
     },
     {
-      // Tests. `vitest` must be in the top-level `plugins` array or every rule here is dropped.
       "files": ["tests/**/*.{ts,tsx}", "**/*.{test,spec}.{ts,tsx}"],
       "rules": {
-        "vitest/expect-expect": "error",            // a test with no assertion is a green lie
-        "vitest/valid-expect": "error",             // `expect(x)` with no matcher asserts nothing
-        "vitest/no-standalone-expect": "error",     // an assertion outside a test never runs
-        "vitest/no-focused-tests": "error",         // a committed `.only` silently skips the suite
-        "vitest/no-disabled-tests": "error",        // `.skip` is a deleted test that still looks present
+        "vitest/expect-expect": "error", // a test with no assertion is a green lie
+        "vitest/valid-expect": "error", // `expect(x)` with no matcher asserts nothing
+        "vitest/no-standalone-expect": "error", // an assertion outside a test never runs
+        "vitest/no-focused-tests": "error", // a committed `.only` silently skips the suite
+        "vitest/no-disabled-tests": "error", // `.skip` is a deleted test that still looks present
         "vitest/require-to-throw-message": "error", // `toThrow()` passes on any error, a typo included
-        // Fixtures assert shapes production forbids, so the assertion family goes off here together;
-        // what gates tests at runtime is references/typescript-testing.md, Runtime backstops.
-        "typescript/consistent-type-assertions": "off", "typescript/no-unsafe-type-assertion": "off",
-        "typescript/no-unsafe-assignment": "off", "anti-slop/no-module-mocking": "off",
+        "typescript/consistent-type-assertions": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "anti-slop/no-module-mocking": "off",
         "anti-slop/require-safety-comment-for-type-assertion": "off"
       }
     },
     {
-      // Boundary parsers. anti-slop's `no-unknown-parameters` fires on any parameter annotated
-      // `unknown` - what a parse function takes. Verified 2026-09-03: a `catch (e: unknown)` binding
-      // does NOT trip it, only a parameter does.
       "files": ["src/boundary/**/*.{ts,tsx}"],
       "rules": { "anti-slop/no-unknown-parameters": "off" }
     }
   ],
-  // anti-slop (https://github.com/dmmulroy/anti-slop, MIT): JS-plugin rules against the shapes a model
-  // reaches for - `unknown` in signatures, chained assertions, runtime `typeof` dispatch. Install with
-  // `skills add dmmulroy/anti-slop --skill install-anti-slop`, then run that skill's
-  // `scripts/install.mjs` from the repo root; it copies the plugin to tools/oxlint/anti-slop/. No npm
-  // package exists by design - `oxlint-plugin-anti-slop` there is an unrelated 0.0.0 placeholder. The
-  // plugin imports `@oxlint/plugins`, pinned to the EXACT oxlint version so the two move together;
   // with the plugin absent the config aborts at exit 1, so this half fails closed. Tax, +0.04s. A
   // direct `effect` dependency adds a second entry, specifier
   // ./tools/oxlint/anti-slop/effect/index.ts, and `anti-slop-effect/no-service-constructor-imports`.
@@ -157,8 +149,16 @@
   // `node_modules/**` closes trap 1 where no ignore file exists; the rest is build output and
   // agent-tooling trees, none of it application source.
   "ignorePatterns": [
-    "node_modules/**", "dist/**", "coverage/**", "tools/oxlint/anti-slop/**",
-    ".agents/**", ".claude/**", ".codex/**", ".cursor/**", ".opencode/**", ".pi/**"
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    "tools/oxlint/anti-slop/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".cursor/**",
+    ".opencode/**",
+    ".pi/**"
   ]
 }
 // CANARY. Traps 2, 4 and 5 each report a healthy gate, so assert the override really matched. Match

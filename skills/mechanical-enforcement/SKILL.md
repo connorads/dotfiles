@@ -113,7 +113,7 @@ Complexity gates are the archetype. If the number you want produces more than a 
 | When the task involves… | Read |
 |---|---|
 | A TypeScript / JS project: strictness, type check, lint families, formatting, hygiene, dead code | `references/typescript.md`; drop-ins `typescript-strict-app.jsonc`, `typescript-strict-lib.jsonc`, `typescript-oxlintrc.jsonc`, `typescript-oxfmtrc.jsonc`, `typescript-ast-grep.yml`, `knip.jsonc` |
-| TypeScript test gates: vitest keys, test lints, runtime backstops, bun test | `references/typescript-testing.md`; drop-ins `typescript-vitest.config.ts`, `typescript-vitest-setup.ts` |
+| TypeScript test gates: vitest keys, test lints, runtime backstops, bun test | `references/typescript-testing.md`; drop-ins `typescript-vitest.config.ts`, `typescript-vitest-universal-setup.ts`, `typescript-vitest-setup.ts` |
 | TypeScript dependencies and publishing: lockfile, licences, build, publint, attw, the consumer smoke | `references/typescript-publishing.md`; drop-in `typescript-publish-gates.sh` |
 | TypeScript security: prototype pollution, ReDoS, the parse boundary, runtime flags, sinks | `references/typescript-security.md`; drop-in `typescript-ast-grep.yml` |
 | A Python project | `references/python.md`; drop-ins `python-ruff.toml`, `python-typecheck.toml`, `python-vulture.toml`, `python-import-linter.toml`, `python-purity.toml`, `python-ast-grep.yml`, `python-pytest.toml`, `python-deptry.toml` |

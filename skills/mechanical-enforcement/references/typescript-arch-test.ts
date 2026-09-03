@@ -194,11 +194,13 @@ describe("architecture", () => {
 
   it("keeps domain modules out of infrastructure at runtime", () => {
     expect(inLayer(DOMAIN).length).toBeGreaterThan(0);
+    expect(inLayer(INFRA).length).toBeGreaterThan(0);
     expect(chainsInto(DOMAIN, INFRA, { runtimeOnly: true })).toEqual([]);
   });
 
   it("routes the application layer to infrastructure only through ports", () => {
     expect(inLayer(APP).length).toBeGreaterThan(0);
+    expect(inLayer(GATEWAY).length).toBeGreaterThan(0);
     expect(chainsInto(APP, INFRA, { runtimeOnly: true, through: GATEWAY })).toEqual([]);
   });
 

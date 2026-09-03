@@ -66,7 +66,7 @@ Drop-ins, each verified on the fixture and each opening with a comment block
 naming what it gates and how to wire it: `references/typescript-strict-app.jsonc`,
 `references/typescript-strict-lib.jsonc`, `references/typescript-oxlintrc.jsonc`,
 `references/typescript-oxfmtrc.jsonc`, `references/typescript-ast-grep.yml`,
-`references/typescript-vitest.config.ts`, `references/typescript-vitest-setup.ts`,
+`references/typescript-vitest.config.ts`, `references/typescript-vitest-universal-setup.ts`, `references/typescript-vitest-setup.ts`,
 `references/typescript-arch-test.ts`, `references/dependency-cruiser.cjs`,
 `references/knip.jsonc`, `references/typescript-publish-gates.sh`,
 `references/eslint-boundaries.mjs`, `references/purity-boundaries.mjs`,
@@ -147,7 +147,7 @@ escape is Microsoft's side-by-side Option 2, and it needs both halves:
 
 ```sh
 pnpm add -D "typescript@npm:@typescript/typescript6@6.0.2"   # bin: tsc6
-pnpm add -D "typescript7@npm:typescript@7.0.2"               # restores .bin/tsc
+pnpm add -D "@typescript/native@npm:typescript@7.0.2"       # restores .bin/tsc
 ```
 
 Option 1 (aliasing `typescript` alone) is the trap: verified 2026-09-03, it
@@ -197,6 +197,9 @@ The rest of the type-aware set worth naming, all native and all needing
 `allowNullableObject` defaults let plain `string`, plain `number` and `T | null`
 through, but nullable primitives already error).
 
+No current TypeScript lint stack provides a must-use gate for a data-only house
+`Result`; review dropped results explicitly or choose a library with a live rule.
+
 Configuration mechanics that decide whether any of it is armed:
 
 - **`plugins` replaces the default set, it does not extend it.** Verified 2026-09-03: with `"plugins": ["import"]`, a `typescript/no-explicit-any` rule at `"error"` exits 0 in silence; deleting the key restores the defaults (typescript, unicorn, oxc) and it exits 1. List every plugin the config uses, `import` and `vitest` included, or half the rules vanish.
@@ -205,7 +208,7 @@ Configuration mechanics that decide whether any of it is armed:
 - **`--rules` is a silent no-op** at 1.80.0: zero bytes, exit 0. Use `--print-config` to inspect an effective config, and note it cannot diagnose the two traps below.
 - **`overrides[].files` globs resolve against the config file's directory.** Verified 2026-09-03: a config holding `files: ["src/domain/**"]` moved one level down into `hooks/` matches nothing and exits 0 with no warning, while the byte-identical file at the root exits 1. `--print-config` prints both identically. Anchor every override glob with a leading `**/`, and keep the config beside the tree it scopes.
 - **An unknown key inside a `no-restricted-imports` pattern object silently drops the whole rule.** Verified 2026-09-03: `allowTypeImport` (singular, one keystroke from the correct `allowTypeImports`) turns a firing gate into exit 0 and zero output. `--print-config` echoes the typo back and `$schema` does not validate at runtime.
-- **Severity `"warn"` exits 0.** A severity typo fails open where a rule-name typo fails closed.
+- **Severity `"warn"` exits 0.** Invalid severities and config-file rule names exit non-zero. CLI `-D <unknown>` silently does nothing.
 - **A nested `.oxlintrc.json` in a subdirectory overrides the root rules** and is dropped entirely by `-c <path>`; `--disable-nested-config` turns the mechanism off. `oxlintrc.json` with no leading dot is not discovered at all, and neither is `oxlint.config.mjs`/`.js` (only `oxlint.config.ts`/`.mts` and the dotted JSON forms are).
 - **oxlint walks `node_modules` unless a VCS ignore file excludes it**, drowning the run in dependency diagnostics. Always scope paths: `oxlint -c .oxlintrc.json --deny-warnings src tests`.
 - **The abusive-disable rule can suppress itself.** Verified 2026-09-03: `/* eslint-disable unicorn/no-abusive-eslint-disable */` above a bare `/* eslint-disable */` exits 0 with the rule at error. `respectEslintDisableDirectives: false` does not close it - that key is prefix-scoped to `eslint-` directives, and setting it also removes those directives from the unused-directive report, so it cannot inventory an inherited suppression set. A grep for the literal rule name inside a suppression comment is the only cover.

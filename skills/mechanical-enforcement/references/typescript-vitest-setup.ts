@@ -2,9 +2,9 @@
 // Copy to `tests/setup/hygiene.ts` and name it from the domain project's `setupFiles` in
 // typescript-vitest.config.ts. It runs once per test file, before that file is imported.
 //
-// GATES: (1) a domain module reading the ambient clock, randomness or entropy through a
-// helper no lint override scoped; (2) any test opening an HTTP connection; (3) a fake
-// clock installed by one test still running in the next.
+// GATES: a domain module reading the ambient clock, randomness or entropy through a
+// helper no lint override scoped. Universal network and timer hygiene lives in
+// typescript-vitest-universal-setup.ts.
 //
 // SCOPE IT. Wired to the whole run, the clock ban breaks every adapter test that
 // legitimately reads the clock - which is the pressure that gets the backstop deleted.
@@ -14,33 +14,9 @@
 //
 // Verified 2026-09-03 against vitest 4.1.11, nock 14.0.17 (both installed are latest),
 // node 24.19.0, typescript 7.0.2.
-import { afterEach, beforeEach, vi } from "vitest";
-import nock from "nock";
+import { beforeEach, vi } from "vitest";
 
-// ---- 1. no network ----------------------------------------------------------------
-// Remove: a "unit" test reaches a real service and the suite is coupled to someone else's
-// uptime. Called at module top level, NOT in `beforeAll`: hooks run after the test module
-// is evaluated, so a request fired at import time escapes a `beforeAll` install.
-// nock 14 patches node:http, node:https and `globalThis.fetch` (the widely repeated
-// "nock cannot intercept fetch" is true of nock 13 and earlier only). It patches nothing
-// else: a dependency importing `undici` directly, node:http2, raw node:net, dns and a
-// child process all reach the wire with the run at exit 0. It is a no-undeclared-HTTP
-// gate, never a no-network gate.
-// TRAP: `NOCK_OFF=true` in the environment disarms nock wholesale - every interceptor and
-// this block with it - and the suite exits 0 with the request served for real. Never set
-// it in a CI job or a test script; if a recording session needs it, set it for that one
-// command.
-// TRAP: it interacts with the RNG ban below. nock builds a request id with `Math.random`,
-// so an HTTP call from a guarded test surfaces as "Domain read ambient randomness" with a
-// stack through `@mswjs/interceptors/src/createRequestId.ts`, never as
-// `NetConnectNotAllowedError`. The gate holds - read the stack, not the message. A repo
-// that wants the network message keeps this line in the unguarded project's own setup file
-// instead.
-nock.disableNetConnect();
-// Uncomment when a test stands up its own server: 127.0.0.1 is blocked by default.
-// nock.enableNetConnect("127.0.0.1");
-
-// ---- 2. domain clock, randomness and entropy ---------------------------------------
+// ---- domain clock, randomness and entropy ------------------------------------------
 // Remove: a pure-core function reads time or randomness off the ambient global and its
 // tests still pass, because nothing in the test asked where the value came from.
 const ban = (what: string, port: string) => (): never => {
@@ -73,15 +49,6 @@ beforeEach(installBans);
 // - `performance.now()` and `crypto.getRandomValues()` are untouched - add them here when
 // the domain has a reason to know about either;
 // - a worker thread or child process runs in another realm entirely.
-
-// ---- 3. fake timers do not restore themselves ---------------------------------------
-// Remove: a test that calls `vi.useFakeTimers()` freezes the clock for every later test in
-// the file, silently, and a later test passes against a frozen `Date.now()` it never asked
-// for. There is no `restoreTimers` config key and `restoreMocks: true` does not cover
-// timers - this hook is the only fix. Under `isolate: false` the leak crosses files too.
-afterEach(() => {
-  vi.useRealTimers();
-});
 
 // REMINDER, because the config's mock options run BEFORE each test rather than after: a
 // spy created at module scope in a TEST file is torn down before the first test runs, so

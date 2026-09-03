@@ -1,8 +1,6 @@
 # Conventions: types, JSDoc, testing
 
-Diagnostics are verified 2026-09-03 against tsc 7.0.2 under the house strict
-flags; those flags and the lint rules below belong to `mechanical-enforcement`
-and are named here as the cause of a diagnostic, never configured.
+Diagnostics are verified 2026-09-03 against the compiler in `toolchain.md` under the house strict flags; those flags and the lint rules below belong to `mechanical-enforcement` and are named here as the cause of a diagnostic, never configured.
 
 ## Cast / `any` / `!` discipline
 
@@ -29,6 +27,7 @@ return normalised as EmailAddress;
 and no SAFETY note is needed. The load-bearing consequence is key preservation:
 
 ```ts
+type Routes = Record<string, { readonly method: "GET" | "POST"; readonly path: string }>;
 const routes = {
   list: { method: "GET", path: "/orders" },
   create: { method: "POST", path: "/orders" },
@@ -135,9 +134,9 @@ export function validateEmail(raw: string): string { … }
 
 A deprecation with no deletion condition is a permanent second code path;
 migration mechanics belong to `refactoring`. The call-site gate,
-`@typescript-eslint/no-deprecated`, echoes that message verbatim but needs a
-TypeScript 6 checker beside the TS 7 one (`toolchain.md`), and `export *`
-launders the symbol past it.
+oxlint's type-aware `typescript/no-deprecated` echoes that message verbatim.
+`export *` still launders the symbol past it. See
+`mechanical-enforcement/references/typescript.md`, Lint families and suppressions.
 
 ## JSDoc
 

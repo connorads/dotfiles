@@ -38,7 +38,7 @@ export const isActive = (u: User): u is ActiveUser => u.kind === "active";
 export const label = (u: User): string => (isActive(u) ? u.id : u.reason);
 ```
 
-Reading `u.reason` in the `else` proves it (verified 2026-09-03, tsc 7.0.2);
+Reading `u.reason` in the `else` proves it;
 over a non-union `User` refined to `User & { status: "active" }` the `else`
 stays `"active" | "banned"`. See `modeling.md`, Illegal states as tagged unions.
 
@@ -49,33 +49,28 @@ stays `"active" | "banned"`. See `modeling.md`, Illegal states as tagged unions.
   one `return`, and no aliasing or mutation of the parameter, tsc infers
   `x is T` and `filter` narrows. Alias it (`const t = x;`) or add a second
   `return` and it reverts to `boolean` - `TS2322` only if the caller annotates.
-- **`asserts x is T` needs a `function` declaration**, never a `const` arrow:
-  every call site is then `TS2775` ("Assertions require every name in the call
-  target to be declared with an explicit type annotation"). The throwing form
+- **A `function` declaration is the simplest assertion spelling.** A const arrow
+  also narrows when its variable has an explicit assertion-function type; an
+  inferred arrow fails at the call site with `TS2775`. The throwing form
   belongs to `errors.md`, Panic helpers - the defect vocabulary.
 
 ## Schemas as boundary parsers
 
 A schema library belongs at the boundary, producing refined types and typed
 errors, not ad-hoc validators through core logic. **Ladder:** the repo's
-established library > effect `Schema` (Effect repos) > Standard Schema for
-generic helpers > zod 4 > valibot where size decides > a hand-written smart
-constructor. Versions: `toolchain.md`, Library facts; `Schema.*`: `skl effect`.
+established library > Effect Schema in Effect repos > Standard Schema for
+generic helpers > a lightweight schema library > a hand-written smart constructor.
+Effect constructors belong to the vendored `effect` skill.
 
 ```ts
-// effect Schema v4: decodeUnknownResult returns the same Result the core uses.
-const User = Schema.Struct({ email: Schema.String, age: Schema.Number });
-export const parseUser = Schema.decodeUnknownResult(User, {
-  onExcessProperty: "error",
-});
-// zod 4: safeParse returns a discriminated union; bare parse throws.
+// safeParse returns a discriminated union; bare parse throws.
 const ZUser = z.strictObject({ email: z.email(), age: z.int() });
 ```
 
-**All three drop unknown keys by default**, so a renamed field arrives as a
-missing one and the parse still succeeds (verified 2026-09-03 on effect
-4.0.0-rc.112, zod 4.5.4, valibot 1.4.2). Spell `z.strictObject`/`v.strictObject`
-or `{ onExcessProperty: "error" }`. Test only the rules *you* add - a library's
+Default object parsers commonly drop unknown keys. A renamed required field still fails
+as missing, but additive fields and misspelt optional fields can disappear silently.
+Spell `z.strictObject`/`v.strictObject`
+or the library's equivalent. Test only the rules *you* add - a library's
 primitives are pre-tested; a smart constructor is yours (`testing` skill).
 
 ## Branded types
