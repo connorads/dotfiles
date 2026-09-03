@@ -36,6 +36,10 @@ setup() {
   export AGENT_JOURNAL_DIR="$BATS_TEST_TMPDIR/journal"
   export AGENT_HIBERNATE_KILL_WAIT=1
   export AGENT_HIBERNATE_MATERIALISE=/nonexistent
+  export AGENT_HIBERNATE_CODEX_EXIT_WAIT=2
+  export AGENT_HIBERNATE_CODEX_META="$BATS_TEST_TMPDIR/codex-meta"
+  export AGENT_HIBERNATE_CODEX_ARGV="$BATS_TEST_TMPDIR/codex-argv"
+  CODEX_ROLLOUT="$BATS_TEST_TMPDIR/rollout-2026-09-03T00-00-00-sid-codex.jsonl"
 
   # Physical path: tmux reports #{pane_current_path} with symlinks resolved
   # (/var -> /private/var on macOS), and the record stores what tmux reports.
@@ -101,6 +105,29 @@ EOF
 record() { printf '%s\n' "$AGENT_HIBERNATE_DIR/sid-test.json"; }
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 
+launch_codex_pane() {
+  ln -sf "$BASH5" "$TEST_BIN/codex"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"sid-codex","cwd":"'"$PROJ"'","cli_version":"0.152.0"}}' >"$CODEX_ROLLOUT"
+  write_executable "$BATS_TEST_TMPDIR/codex-idle.sh" <<'EOF'
+trap 'exit 0' INT
+while :; do sleep 1; done
+EOF
+  write_executable "$BATS_TEST_TMPDIR/codex-meta" <<EOF
+#!/bin/sh
+printf '%s\n' '{"status":"resolved","sessionId":"sid-codex","cwd":"$PROJ","rolloutPath":"$CODEX_ROLLOUT","cliVersion":"0.152.0"}'
+EOF
+  write_executable "$BATS_TEST_TMPDIR/codex-argv" <<'EOF'
+#!/bin/sh
+printf '%s\n' '["codex","--dangerously-bypass-approvals-and-sandbox","-c","features.code_mode=true"]'
+EOF
+  tx set-environment -g AGENT_HIBERNATE_CODEX_META "$AGENT_HIBERNATE_CODEX_META"
+  tx set-environment -g AGENT_HIBERNATE_CODEX_ARGV "$AGENT_HIBERNATE_CODEX_ARGV"
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$pane" -c "$PROJ" codex "$BATS_TEST_TMPDIR/codex-idle.sh"
+  wait_until '[ "$(tx display-message -p -t "$pane" "#{pane_current_command}")" = "$FAKE_COMM" ]'
+  printf '%s\n' "$pane"
+}
+
 @test "hibernate refuses a working pane with exit 6 and leaves it alive" {
   pane=$(launch_claude_pane)
   tx set-option -p -t "$pane" @agent_state working
@@ -108,6 +135,61 @@ pstate() { tx show-options -pqv -t "$1" @agent_state; }
   [[ "$output" == *"refusing"* ]]
   [ "$(tx display-message -p -t "$pane" '#{pane_current_command}')" = "$FAKE_COMM" ]
   [ ! -f "$(record)" ]
+}
+
+@test "hibernate gracefully parks a Codex thread with exact arguments" {
+  pane=$(launch_codex_pane)
+  tx set-option -p -t "$pane" @agent_state idle
+  run "$SCRIPT" hibernate "$pane"
+  [ "$status" -eq 0 ]
+  rec="$AGENT_HIBERNATE_DIR/sid-codex.json"
+  [ "$(jq -r '.schemaVersion' "$rec")" = 2 ]
+  [ "$(jq -r '.kind' "$rec")" = codex ]
+  [ "$(jq -c '.flags' "$rec")" = '["--dangerously-bypass-approvals-and-sandbox","-c","features.code_mode=true"]' ]
+  [ "$(jq -r '.rolloutPath' "$rec")" = "$CODEX_ROLLOUT" ]
+  [ "$(pstate "$pane")" = hibernated ]
+}
+
+@test "thaw resumes a Codex record by exact id and cwd" {
+  mkdir -p "$AGENT_HIBERNATE_DIR"
+  jq -n --arg cwd "$PROJ" '{schemaVersion: 2, kind: "codex", sessionId: "sid-codex",
+    pane: "%999", paneKey: "gone:9.9", cwd: $cwd, flags: ["--search"], name: "",
+    hibernatedAt: "2026-01-01T00:00:00Z", rssKb: 0, cliVersion: "999.0.0"}' \
+    >"$AGENT_HIBERNATE_DIR/sid-codex.json"
+  write_stub codex <<'EOF'
+#!/bin/sh
+if [ "${1:-}" = --version ]; then
+  printf '%s\n' 'codex-cli 0.147.0'
+  exit 0
+fi
+printf '%s\n' "$*" >"$CODEX_OUT"
+tmux set-option -p -t "$TMUX_PANE" @codex_started_thread sid-codex
+exec tail -f /dev/null
+EOF
+  export CODEX_OUT="$BATS_TEST_TMPDIR/codex.out"
+  tx set-environment -g CODEX_OUT "$CODEX_OUT"
+  run "$SCRIPT" thaw sid-codex
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"older than recorded"* ]]
+  wait_until '[ -s "$CODEX_OUT" ]'
+  grep -q -- '--search -C .* resume sid-codex' "$CODEX_OUT"
+  [ ! -f "$AGENT_HIBERNATE_DIR/sid-codex.json" ]
+}
+
+@test "failed Codex thaw retains its recovery record" {
+  mkdir -p "$AGENT_HIBERNATE_DIR"
+  jq -n --arg cwd "$PROJ" '{schemaVersion: 2, kind: "codex", sessionId: "sid-codex",
+    pane: "%999", paneKey: "gone:9.9", cwd: $cwd, flags: [], name: "",
+    hibernatedAt: "2026-01-01T00:00:00Z", rssKb: 0}' \
+    >"$AGENT_HIBERNATE_DIR/sid-codex.json"
+  write_stub codex <<'EOF'
+#!/bin/sh
+[ "${1:-}" = --version ] && { printf '%s\n' 'codex-cli 0.147.0'; exit 0; }
+exit 1
+EOF
+  run -1 "$SCRIPT" thaw sid-codex
+  [[ "$output" == *"record retained"* ]]
+  [ -f "$AGENT_HIBERNATE_DIR/sid-codex.json" ]
 }
 
 @test "hibernate refuses an untracked (empty-state) pane without --force" {

@@ -340,12 +340,15 @@ if [ -d "$HIBERNATE_DIR" ]; then
 		[ "$hib_state" = hibernated ] || continue
 
 		hib_cfg=$(jq -r '.configDir // empty' "$rec" 2>/dev/null)
+		hib_kind=$(jq -r '.kind // "claude"' "$rec" 2>/dev/null)
 		hib_flags=$(jq -r '[.flags[]?] | join(" ")' "$rec" 2>/dev/null)
 		hibernate_count=$((hibernate_count + 1))
 		HIBERNATE_ENTRIES["$hib_key"]=$(jq -c -n --arg dir "$hib_dir" --arg sid "$hib_sid" \
-			--arg cfg "$hib_cfg" --arg flags "$hib_flags" \
-			'{dir: $dir, claude: $sid, claudeFlags: $flags, hibernated: true}
-			 + (if $cfg == "" then {} else {claudeConfigDir: $cfg} end)')
+			--arg cfg "$hib_cfg" --arg flags "$hib_flags" --arg kind "$hib_kind" \
+			'{dir: $dir, kind: $kind, hibernated: true}
+			 + (if $kind == "codex" then {codex: $sid, codexFlags: $flags}
+			    else {claude: $sid, claudeFlags: $flags}
+			      + (if $cfg == "" then {} else {claudeConfigDir: $cfg} end) end)')
 
 		# Refresh the record's own address while both halves are known good.
 		hib_tmp="$rec.tmp.$$"

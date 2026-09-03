@@ -56,6 +56,8 @@ AGENT_STATE_SH=${AGENT_STATE_SH:-$SELF_DIR/agent-state.sh}
 JOURNAL_DIR=${AGENT_JOURNAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-journal}
 MATERIALISE=${AGENT_HIBERNATE_MATERIALISE:-$HOME/.config/zsh/functions/claude-profile-materialise}
 KILL_WAIT=${AGENT_HIBERNATE_KILL_WAIT:-5}
+CODEX_EXIT_WAIT=${AGENT_HIBERNATE_CODEX_EXIT_WAIT:-15}
+CODEX_ARGV=${AGENT_HIBERNATE_CODEX_ARGV:-$SELF_DIR/codex-process-argv.py}
 
 # Shared pane -> claude PID -> live session resolvers, and the argv flag filter
 # the resurrect/fork paths already use - so hibernate snapshots identity exactly
@@ -188,6 +190,73 @@ idle_age() {
 	human_age $((now - epoch))
 }
 
+record_kind() {
+	jq -r '.kind // "claude"' "$1" 2>/dev/null
+}
+
+# codex_flags_json PID - exact JSON argument array suitable for a later
+# `codex <flags> -C <cwd> resume <id>`. Initial prompts and ambiguous
+# positional arguments are refused rather than replayed into a resumed thread.
+codex_flags_json() {
+	local pid="$1" argv_json
+	[ -x "$CODEX_ARGV" ] || return 1
+	argv_json=$("$CODEX_ARGV" "$pid") || return 1
+	python3 - "$argv_json" <<'PY'
+import json, os, sys
+argv = json.loads(sys.argv[1])
+if not argv or os.path.basename(argv[0]) != "codex":
+    raise SystemExit(1)
+value_options = {
+    "-c", "--config", "-m", "--model", "-p", "--profile", "-s", "--sandbox",
+    "-a", "--ask-for-approval", "-C", "--cd", "--add-dir", "-i", "--image",
+    "--remote", "--remote-auth-token-env",
+}
+drop_options = {"-C", "--cd", "-i", "--image"}
+kept = []
+i = 1
+while i < len(argv):
+    token = argv[i]
+    if token == "resume":
+        i += 1
+        if i < len(argv) and not argv[i].startswith("-"):
+            i += 1
+        continue
+    if token in {"--last", "--all", "--include-non-interactive"}:
+        i += 1
+        continue
+    if token in value_options:
+        if i + 1 >= len(argv):
+            raise SystemExit(1)
+        if token not in drop_options:
+            kept.extend((token, argv[i + 1]))
+        i += 2
+        continue
+    if token.startswith("--") and "=" in token:
+        if not token.startswith(("--cd=", "--image=")):
+            kept.append(token)
+        i += 1
+        continue
+    if token.startswith("-"):
+        kept.append(token)
+        i += 1
+        continue
+    print("agent-hibernate: refusing Codex startup prompt or ambiguous positional argument", file=sys.stderr)
+    raise SystemExit(1)
+print(json.dumps(kept, ensure_ascii=False))
+PY
+}
+
+process_env_value() {
+	local pid="$1" key="$2"
+	local environ="${RESURRECT_PROC_ROOT:-/proc}/$pid/environ"
+	if [ -r "$environ" ]; then
+		tr '\0' '\n' <"$environ" 2>/dev/null | grep -m1 "^$key=" | cut -d= -f2- || true
+		return
+	fi
+	ps -E -o command= -p "$pid" 2>/dev/null | tr ' ' '\n' |
+		grep -m1 "^$key=" | cut -d= -f2- || true
+}
+
 # record_label RECFILE [PANE] - the most recognisable available label. A live
 # window name wins over the saved one so renames made after hibernation show up.
 # Old records remain readable through the pane-key and short-session fallbacks.
@@ -239,29 +308,72 @@ cmd_hibernate() {
 		;;
 	esac
 
-	local pid
+	local pid kind=claude
 	pid=$(agent_foreground_pid_for_tty "$pane_tty" claude "$pane_pid")
-	[ -n "$pid" ] || die 1 "no claude process in pane $pane (only Claude panes hibernate)"
+	if [ -z "$pid" ]; then
+		kind=codex
+		pid=$(agent_foreground_pid_for_tty "$pane_tty" codex "$pane_pid")
+	fi
+	[ -n "$pid" ] || die 1 "no Claude or Codex process in pane $pane"
 
 	# Snapshot identity the way teleport/resurrect do: config dir from the live
 	# env, session id from the per-PID registry (golden source), resolver
 	# fallback; flags from the live argv with stale resume/continue stripped.
-	local config_dir meta sid
-	config_dir=$(claude_config_dir_for_pid "$pid")
-	meta=$(claude_session_meta_for_pid "$pid" "${config_dir:-$HOME/.claude}")
-	sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
-	if [ -z "$sid" ]; then
-		meta=$(claude_session_resolve_for_pid "$pid" "$pane" "$cwd" "$config_dir" 2>/dev/null) || meta=""
-		if [ "$(jq -r '.status // empty' <<<"$meta" 2>/dev/null)" = resolved ]; then
-			sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+	local config_dir="" meta sid rollout_path="" cli_version="" executable="" mcp_bundle="" flags_json
+	if [ "$kind" = claude ]; then
+		config_dir=$(claude_config_dir_for_pid "$pid")
+		meta=$(claude_session_meta_for_pid "$pid" "${config_dir:-$HOME/.claude}")
+		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		if [ -z "$sid" ]; then
+			meta=$(claude_session_resolve_for_pid "$pid" "$pane" "$cwd" "$config_dir" 2>/dev/null) || meta=""
+			[ "$(jq -r '.status // empty' <<<"$meta" 2>/dev/null)" = resolved ] &&
+				sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		fi
+		[ -n "$sid" ] || die 1 "cannot resolve the Claude session for pane $pane - not hibernating"
+		local saved_cmd flags_str
+		saved_cmd=$(ps -o args= -p "$pid" 2>/dev/null)
+		flags_str=$(resurrect_argv_claude_flags "$saved_cmd" 2>/dev/null) || flags_str=""
+		flags_json=$(printf '%s' "$flags_str" | jq -R -s 'split("\n") | map(split(" ")[]?) | map(select(length > 0))')
+	else
+		if [ -n "${AGENT_HIBERNATE_CODEX_META:-}" ]; then
+			meta=$("$AGENT_HIBERNATE_CODEX_META" "$pid" "$cwd" 2>/dev/null) || meta=""
+		else
+			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" 2>/dev/null) || meta=""
+		fi
+		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		rollout_path=$(jq -r '.rolloutPath // empty' <<<"$meta" 2>/dev/null)
+		cli_version=$(jq -r '.cliVersion // empty' <<<"$meta" 2>/dev/null)
+		[ -n "$sid" ] && [ -s "$rollout_path" ] ||
+			die 1 "cannot resolve a materialised local Codex thread for pane $pane - not hibernating"
+		flags_json=$(codex_flags_json "$pid") || die 1 "cannot preserve the Codex launch arguments safely"
+		if jq -e 'any(.[]; . == "--remote" or startswith("--remote="))' <<<"$flags_json" >/dev/null 2>&1; then
+			die 1 "remote Codex sessions are not supported by local hibernation"
+		fi
+		executable=$(lsof -a -p "$pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)
+		mcp_bundle=$(process_env_value "$pid" MCPZ_BUNDLE)
+		if jq -e 'any(.[]; startswith("mcp_servers."))' <<<"$flags_json" >/dev/null 2>&1 && [ -z "$mcp_bundle" ]; then
+			die 1 "Codex uses mcpz arguments but has no MCPZ_BUNDLE marker - restart it through the current mcpz before hibernating"
+		fi
+		if [ -n "$mcp_bundle" ]; then
+			# mcpz regenerates these overrides with freshly resolved secrets at
+			# thaw. Do not replay the captured, potentially stale copy as well.
+			flags_json=$(
+				python3 - "$flags_json" <<'PY'
+import json, sys
+args = json.loads(sys.argv[1])
+kept = []
+i = 0
+while i < len(args):
+    if args[i] in {"-c", "--config"} and i + 1 < len(args) and args[i + 1].startswith("mcp_servers."):
+        i += 2
+    else:
+        kept.append(args[i])
+        i += 1
+print(json.dumps(kept, ensure_ascii=False))
+PY
+			) || die 1 "cannot normalise the mcpz launch arguments"
 		fi
 	fi
-	[ -n "$sid" ] ||
-		die 1 "cannot resolve the Claude session for pane $pane - not hibernating (a blind --continue could resume the wrong conversation)"
-
-	local saved_cmd flags_str
-	saved_cmd=$(ps -o args= -p "$pid" 2>/dev/null)
-	flags_str=$(resurrect_argv_claude_flags "$saved_cmd" 2>/dev/null) || flags_str=""
 
 	local name rss_kb pgid
 	name=$(tmux display-message -p -t "$pane" '#{@agent_name}' 2>/dev/null)
@@ -275,13 +387,13 @@ cmd_hibernate() {
 		die 1 "refusing: this command is running inside pane $pane's process group; hibernate it from another pane"
 	fi
 
-	# Children of claude's process group die with the kill - name them first.
+	# Name the process group before changing it.
 	if [ -n "$pgid" ]; then
 		local kids
 		kids=$(ps -ax -o pid=,pgid=,command= 2>/dev/null |
 			awk -v g="$pgid" -v p="$pid" '$2 == g && $1 != p { print }')
 		[ -n "$kids" ] &&
-			printf 'agent-hibernate: processes in the claude process group (killed with it):\n%s\n' "$kids" >&2
+			printf 'agent-hibernate: processes in the %s process group:\n%s\n' "$kind" "$kids" >&2
 	fi
 
 	mkdir -p "$STATE_DIR" || die 1 "cannot create $STATE_DIR"
@@ -293,43 +405,61 @@ cmd_hibernate() {
 		awk '{ buf = buf $0 "\n" } /[^[:space:]]/ { printf "%s", buf; buf = "" }' \
 			>"$STATE_DIR/$sid.screen.txt" || true
 
-	local flags_json tmp="$STATE_DIR/$sid.json.tmp.$$"
-	# Slurped (-s): a pane launched with no extra flags (`claude --resume <sid>`,
-	# which strips to nothing) gives jq -R no input line at all, so it emits
-	# nothing and --argjson below is handed an empty string.
-	flags_json=$(printf '%s' "$flags_str" |
-		jq -R -s 'split("\n") | map(split(" ")[]?) | map(select(length > 0))')
+	local tmp="$STATE_DIR/$sid.json.tmp.$$"
 	if ! jq -n \
 		--arg sid "$sid" --arg pane "$pane" --arg key "$pane_key" \
 		--arg cwd "$cwd" --arg config_dir "$config_dir" --arg name "$name" \
-		--arg window_name "$window_name" \
+		--arg window_name "$window_name" --arg kind "$kind" \
+		--arg rollout "$rollout_path" --arg cli "$cli_version" \
+		--arg executable "$executable" --arg bundle "$mcp_bundle" \
 		--arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 		--argjson flags "$flags_json" --argjson rss "$rss_kb" \
-		'{sessionId: $sid, pane: $pane, paneKey: $key, windowName: $window_name, cwd: $cwd,
+		'{schemaVersion: 2, kind: $kind, sessionId: $sid, pane: $pane, paneKey: $key, windowName: $window_name, cwd: $cwd,
 		  configDir: $config_dir, flags: $flags, name: $name,
-		  hibernatedAt: $at, rssKb: $rss}' >"$tmp"; then
+		  hibernatedAt: $at, rssKb: $rss}
+		 + (if $kind == "codex" then {rolloutPath: $rollout, cliVersion: $cli,
+		    executable: $executable} + (if $bundle == "" then {} else {mcpBundle: $bundle} end)
+		    else {} end)' >"$tmp"; then
 		rm -f "$tmp"
 		die 1 "failed to write the hibernation record for $sid"
 	fi
 	mv -f "$tmp" "$STATE_DIR/$sid.json"
 
-	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" hibernated claude </dev/null || true
+	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" hibernated "$kind" </dev/null || true
 
 	# Both observed pane shapes must survive the kill: claude under a shell
 	# (pane process = the shell, unaffected) and claude AS the pane process,
 	# where its death would close the pane before park could be spawned.
 	tmux set-option -p -t "$pane" remain-on-exit on 2>/dev/null || true
 
-	# SIGTERM the process group, wait, SIGKILL fallback (sessions can ignore
-	# SIGTERM - anthropics/claude-code#20572). respawn -k mops up any survivor.
-	if [ -n "$pgid" ]; then
-		kill -TERM -- "-$pgid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+	# Claude has no graceful external shutdown contract. Codex does: Ctrl+C with
+	# an empty composer requests ShutdownFirst, which flushes and releases the
+	# writer lock. Earlier presses clear a draft or modal.
+	if [ "$kind" = codex ]; then
+		local presses=0
+		while kill -0 "$pid" 2>/dev/null && [ "$presses" -lt 3 ]; do
+			tmux send-keys -t "$pane" C-c
+			sleep 0.5
+			presses=$((presses + 1))
+		done
 	else
-		kill -TERM "$pid" 2>/dev/null || true
+		if [ -n "$pgid" ]; then
+			kill -TERM -- "-$pgid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+		else
+			kill -TERM "$pid" 2>/dev/null || true
+		fi
 	fi
 	local waited=0
 	while kill -0 "$pid" 2>/dev/null; do
-		if [ "$waited" -ge $((KILL_WAIT * 10)) ]; then
+		local wait_limit=$((KILL_WAIT * 10))
+		[ "$kind" = codex ] && wait_limit=$((CODEX_EXIT_WAIT * 10))
+		if [ "$waited" -ge "$wait_limit" ]; then
+			if [ "$kind" = codex ] && [ "$force" -ne 1 ]; then
+				rm -f "$STATE_DIR/$sid.json" "$STATE_DIR/$sid.screen.txt"
+				AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" "$state" "$kind" </dev/null || true
+				tmux set-option -pu -t "$pane" remain-on-exit 2>/dev/null || true
+				die 1 "Codex did not exit gracefully; left it live (use --force to replace the pane)"
+			fi
 			[ -n "$pgid" ] && kill -KILL -- "-$pgid" 2>/dev/null
 			kill -KILL "$pid" 2>/dev/null || true
 			break
@@ -343,8 +473,8 @@ cmd_hibernate() {
 	# Back to default close-on-exit now that park owns the pane.
 	tmux set-option -pu -t "$pane" remain-on-exit 2>/dev/null || true
 
-	printf 'hibernated %s%s in %s - freed ~%s MB\n' \
-		"$sid" "${name:+ ($name)}" "$pane" "$((rss_kb / 1024))"
+	printf 'hibernated %s %s%s in %s - freed ~%s MB\n' \
+		"$kind" "$sid" "${name:+ ($name)}" "$pane" "$((rss_kb / 1024))"
 }
 
 # --- park (runs inside the parked pane) -------------------------------------
@@ -366,7 +496,7 @@ cmd_park() {
 		command -v jq >/dev/null 2>&1; then
 		local sid_hint
 		sid_hint=$(jq -r --arg k "$key" \
-			'.panes[$k] | select(.hibernated == true) | .claude // empty' \
+			'.panes[$k] | select(.hibernated == true) | .claude // .codex // empty' \
 			"$SESSION_FILE" 2>/dev/null)
 		[ -n "$sid_hint" ] && [ -f "$STATE_DIR/$sid_hint.json" ] &&
 			recfile="$STATE_DIR/$sid_hint.json"
@@ -379,11 +509,12 @@ cmd_park() {
 	fi
 
 	# Age from journal BEFORE re-journalling the hibernated state below.
-	local age sid label rss_kb
+	local age sid label rss_kb kind
 	age=$(idle_age "$recfile")
 	sid=$(jq -r '.sessionId' "$recfile" 2>/dev/null)
 	label=$(record_label "$recfile" "$pane")
 	rss_kb=$(jq -r '.rssKb // 0' "$recfile" 2>/dev/null)
+	kind=$(record_kind "$recfile")
 	case "$rss_kb" in '' | *[!0-9]*) rss_kb=0 ;; esac
 
 	# Re-address: after a restore both the pane id and possibly the key changed.
@@ -394,7 +525,7 @@ cmd_park() {
 		readdress "$recfile" "$pane" "${key:-$cur_key}"
 	fi
 
-	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" hibernated claude </dev/null || true
+	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" hibernated "$kind" </dev/null || true
 
 	# Title via OSC 2, and it is not decoration: tmux-resurrect's save.sh parses
 	# its own dump with `IFS=<tab> read`, and TAB is IFS whitespace, so a pane
@@ -431,13 +562,15 @@ cmd_park() {
 # window for an orphan), clean up, hand the dot back to Claude's hooks.
 thaw_record() {
 	local recfile="$1"
-	local sid cwd config_dir name rec_pane
+	local sid cwd config_dir name rec_pane kind
 	sid=$(jq -r '.sessionId // empty' "$recfile" 2>/dev/null)
 	[ -n "$sid" ] || die 1 "malformed record: $recfile"
 	cwd=$(jq -r '.cwd // empty' "$recfile" 2>/dev/null)
 	config_dir=$(jq -r '.configDir // empty' "$recfile" 2>/dev/null)
 	name=$(jq -r '.name // empty' "$recfile" 2>/dev/null)
 	rec_pane=$(jq -r '.pane // empty' "$recfile" 2>/dev/null)
+	kind=$(record_kind "$recfile")
+	case "$kind" in claude | codex) ;; *) die 1 "malformed record kind: $kind" ;; esac
 	local -a flags=()
 	while IFS= read -r tok; do
 		[ -n "$tok" ] && flags+=("$tok")
@@ -445,28 +578,74 @@ thaw_record() {
 
 	# Same refresh a ccp launch/restore does, so the resumed account inherits
 	# the current shared settings/hooks. Idempotent; fails open.
-	[ -n "$config_dir" ] && [ -x "$MATERIALISE" ] && "$MATERIALISE" "$config_dir" || true
+	[ "$kind" = claude ] && [ -n "$config_dir" ] && [ -x "$MATERIALISE" ] && "$MATERIALISE" "$config_dir" || true
 
 	local -a envargs=()
-	[ -n "$config_dir" ] && envargs=(-e "CLAUDE_CONFIG_DIR=$config_dir")
+	[ "$kind" = claude ] && [ -n "$config_dir" ] && envargs=(-e "CLAUDE_CONFIG_DIR=$config_dir")
+
+	local -a command
+	if [ "$kind" = claude ]; then
+		command=(claude "${flags[@]}" --resume "$sid")
+	else
+		local recorded_version current_version bundle
+		recorded_version=$(jq -r '.cliVersion // empty' "$recfile" 2>/dev/null)
+		current_version=$(codex --version 2>/dev/null | awk '{print $2}')
+		if [ -n "$recorded_version" ] && [ -n "$current_version" ] &&
+			python3 - "$current_version" "$recorded_version" <<'PY' >/dev/null 2>&1; then
+import re, sys
+def version(value):
+    return tuple(int(x) for x in re.findall(r"\d+", value)[:3])
+raise SystemExit(0 if version(sys.argv[1]) < version(sys.argv[2]) else 1)
+PY
+			printf 'agent-hibernate: warning: available Codex %s is older than recorded %s; attempting resume\n' "$current_version" "$recorded_version" >&2
+		fi
+		bundle=$(jq -r '.mcpBundle // empty' "$recfile" 2>/dev/null)
+		if [ -n "$bundle" ]; then
+			command=(mcpz run codex "$bundle" -- "${flags[@]}" -C "$cwd" resume "$sid")
+		else
+			command=(codex "${flags[@]}" -C "$cwd" resume "$sid")
+		fi
+	fi
 
 	local pane
 	if pane_is_parked "$rec_pane"; then
 		tmux respawn-pane -k -t "$rec_pane" -c "$cwd" "${envargs[@]}" \
-			claude "${flags[@]}" --resume "$sid" ||
+			"${command[@]}" ||
 			die 1 "respawn-pane failed for $rec_pane"
 		pane="$rec_pane"
 	else
 		# Orphan (pane gone, or its id was reused by something else after a
 		# server restart): thaw into a fresh window in the recorded cwd.
 		pane=$(tmux new-window -c "$cwd" "${envargs[@]}" -P -F '#{pane_id}' \
-			claude "${flags[@]}" --resume "$sid") ||
+			"${command[@]}") ||
 			die 1 "new-window failed for orphan record $sid"
 	fi
 
+	if [ "$kind" = codex ]; then
+		local verified=0 attempts=0 started pane_tty pane_pid live_pid live_sid
+		while [ "$attempts" -lt 50 ]; do
+			started=$(tmux show-options -pqv -t "$pane" @codex_started_thread 2>/dev/null)
+			if [ "$started" = "$sid" ]; then
+				verified=1
+				break
+			fi
+			IFS=$'\t' read -r pane_tty pane_pid < <(tmux display-message -p -t "$pane" '#{pane_tty}\t#{pane_pid}' 2>/dev/null)
+			live_pid=$(agent_foreground_pid_for_tty "$pane_tty" codex "$pane_pid")
+			if [ -n "$live_pid" ]; then
+				live_sid=$(codex_session_id_for_pid "$live_pid" "$cwd")
+				if [ "$live_sid" = "$sid" ]; then
+					verified=1
+					break
+				fi
+			fi
+			sleep 0.1
+			attempts=$((attempts + 1))
+		done
+		[ "$verified" -eq 1 ] || die 1 "Codex resume was not verified; hibernation record retained"
+	fi
+
 	rm -f "$recfile" "$STATE_DIR/$sid.screen.txt"
-	# idle until Claude's own hooks take over.
-	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" idle claude </dev/null || true
+	AGENT_STATE_PANE="$pane" sh "$AGENT_STATE_SH" idle "$kind" </dev/null || true
 	printf 'thawed %s%s in %s\n' "$sid" "${name:+ ($name)}" "$pane"
 }
 

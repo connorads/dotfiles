@@ -134,7 +134,9 @@ agent_lsof_command() {
 }
 
 # codex_session_file_for_pid <pid>
-# Return the active ~/.codex/sessions/.../rollout-*.jsonl held open by Codex.
+# Return the active Codex rollout held open by Codex. The path may sit below a
+# custom CODEX_HOME, so validate the file by name and session metadata rather
+# than assuming ~/.codex.
 codex_session_file_for_pid() {
 	local pid="$1"
 	local lsof_bin=""
@@ -145,7 +147,7 @@ codex_session_file_for_pid() {
 
 	"$lsof_bin" -p "$pid" 2>/dev/null |
 		grep '\.jsonl$' |
-		grep '/\.codex/sessions/' |
+		grep '/sessions/.*/rollout-.*\.jsonl$' |
 		awk '{print $NF}' |
 		head -1 || true
 }
