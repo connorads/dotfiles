@@ -15,21 +15,21 @@ emulate -L zsh
 local frozen=0 do_os=0 no_audit=0
 for arg in "$@"; do
   case "$arg" in
-    --frozen|-s|--skip-flake) frozen=1 ;;
-    --os) do_os=1 ;;
-    --no-audit) no_audit=1 ;;
+  --frozen | -s | --skip-flake) frozen=1 ;;
+  --os) do_os=1 ;;
+  --no-audit) no_audit=1 ;;
   esac
 done
 
 # Detective OSV sweep of tracked lockfiles before any mutation: a MAL-* hit
 # aborts with a clean tree (nothing bumped to revert). CVEs report non-blocking;
 # scanner errors/offline warn only. `up` has no set -e, hence the explicit return.
-if (( !frozen && !no_audit )); then
+if ((!frozen && !no_audit)); then
   lockfile-audit || return 1
 fi
 
-if (( frozen )); then
-  mise install                  # converge to committed mise.lock, no bump/commit
+if ((frozen)); then
+  mise install # converge to committed mise.lock, no bump/commit
 else
   local lock=~/.config/mise/mise.lock
   # mise upgrade bumps within ranges and auto-locks every lockfile_platforms
@@ -41,13 +41,13 @@ else
   # committing here would pin versions nothing can install (and `up --frozen`
   # elsewhere would then hit the same wall). Leave it dirty rather than revert:
   # one failing tool shouldn't discard every other tool's legitimate bump.
-  if (( rc )); then
+  if ((rc)); then
     print -u2 "!! mise upgrade failed (exit $rc) - NOT committing mise.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
   elif [[ -f $lock ]]; then
     dotfiles add "$lock"
-    dotfiles diff --cached --quiet -- "$lock" \
-      || dotfiles commit -m "chore(mise): update tool lock"
+    dotfiles diff --cached --quiet -- "$lock" ||
+      dotfiles commit -m "chore(mise): update tool lock"
   fi
 fi
 # Reassert Claude binary/plugin patches: covers no-op upgrades (postinstall only
@@ -57,33 +57,33 @@ claude-channels-allowlist-patch --reapply
 claude-computer-use-patch --reapply
 claude-session-reaper-patch --reapply
 claude-telegram-clear-patch --reapply
-if (( !frozen )) && [[ "$OSTYPE" == "darwin"* ]]; then
+if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
   brew update && brew upgrade --no-ask
 fi
 
 # apt updates (non-NixOS Linux)
-if (( !frozen )) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
+if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
   echo "=> apt update + upgrade"
   sudo apt-get update -y
   sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   sudo env DEBIAN_FRONTEND=noninteractive apt-get autoremove -y
 fi
 
-if (( !frozen )); then
+if ((!frozen)); then
   nfu
 fi
 
 local rebuild_rc=0
 if [[ "$OSTYPE" == "darwin"* ]]; then
   drs || rebuild_rc=$?
-  if (( do_os )); then
-    macup --safe   # install no-restart macOS updates; report OS updates only
+  if ((do_os)); then
+    macup --safe # install no-restart macOS updates; report OS updates only
   else
-    macup-check    # cached scan, ~instant: report any pending macOS updates
+    macup-check # cached scan, ~instant: report any pending macOS updates
   fi
 elif [[ -f /etc/NIXOS ]]; then
-  nrs || rebuild_rc=$?   # system rebuild (reads NIXOS_FLAKE)
-  hms || rebuild_rc=$?   # user env rebuild (reads ~/.config/nix)
+  nrs || rebuild_rc=$? # system rebuild (reads NIXOS_FLAKE)
+  hms || rebuild_rc=$? # user env rebuild (reads ~/.config/nix)
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
   hms || rebuild_rc=$?
 fi
@@ -92,14 +92,14 @@ fi
 # above, for the same reason: a lock nothing can build must not reach git, or every
 # later `up` and every other host reproduces the failure. Left dirty rather than
 # reverted, so a bump is never silently discarded.
-if (( !frozen )); then
-  if (( rebuild_rc )); then
+if ((!frozen)); then
+  if ((rebuild_rc)); then
     print -u2 "!! rebuild failed (exit $rebuild_rc) - NOT committing flake.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
   else
     dotfiles add ~/.config/nix/flake.lock
-    dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock \
-      || dotfiles commit -m "chore(nix): update flake lock"
+    dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock ||
+      dotfiles commit -m "chore(nix): update flake lock"
   fi
 fi
 
@@ -111,7 +111,7 @@ fi
 
 # Recheck conditional pins/excludes so escape hatches don't quietly become
 # permanent. Report-only: pin-audit always exits 0 and never blocks `up`.
-if (( !frozen )); then
+if ((!frozen)); then
   pin-audit
 fi
 
