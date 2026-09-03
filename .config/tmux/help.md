@@ -55,6 +55,7 @@
 | `Ctrl+b Ctrl+arrows` | resize pane by 1 |
 | `Ctrl+b Alt+arrows` | resize pane by 5 |
 | `Ctrl+b x` | kill pane |
+| `Ctrl+b y` | copy active pane's retained history and current screen to clipboard |
 | `Ctrl+b Y` | copy active pane's id·tty·cmd·cwd to clipboard (yank; for join-pane/scripts) |
 
 ## Floating panes
