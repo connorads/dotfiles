@@ -71,7 +71,7 @@ Update everything: bump `mise.lock` + `flake.lock` (committing each), upgrade br
 
 ```sh
 up
-# up -s / up --frozen   # frozen: install committed locks only, no bumps/brew/flake
+# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/brew/commit
 ```
 
 `up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
@@ -89,7 +89,7 @@ Update everything: bump `mise.lock` + `flake.lock` (committing each), then rebui
 
 ```sh
 up
-# up -s / up --frozen   # frozen: install committed locks only, no bumps/flake
+# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
 ```
 
 `up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `mise upgrade`) can still be run individually.

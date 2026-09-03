@@ -57,6 +57,7 @@ EOF
     write_stub "$cmd" <<EOF
 #!/usr/bin/env bash
 echo "$cmd \$*" >>"$TEST_LOG"
+[ "$cmd" = "tmux-upstream" ] && [ -n "\${TMUX_UPSTREAM_FAIL:-}" ] && exit 1
 exit 0
 EOF
   done
@@ -74,6 +75,7 @@ fi
 if [ "$1" = "upgrade" ] && [ -n "${MISE_FAIL_UPGRADE:-}" ]; then
   exit 1
 fi
+[ "$1" = "install" ] && [ -n "${MISE_FAIL_INSTALL:-}" ] && exit 1
 exit 0
 EOF
 
@@ -82,6 +84,7 @@ EOF
 #!/usr/bin/env bash
 echo "nfu $*" >>"$TEST_LOG"
 echo "updated" >>"$HOME/.config/nix/flake.lock"
+[ -n "${NFU_FAIL:-}" ] && exit 1
 exit 0
 EOF
 
@@ -100,6 +103,7 @@ if [[ "$*" == *"diff --cached --quiet"* ]]; then
   for a in "$@"; do f="$a"; done # last arg = path
   [ -s "$f" ] && exit 1 || exit 0
 fi
+[ "$1" = "commit" ] && [ -n "${DOTFILES_FAIL_COMMIT:-}" ] && exit 1
 exit 0
 EOF
 }
@@ -118,6 +122,8 @@ EOF
   grep -qF 'brew upgrade --no-ask' "$TEST_LOG"
   grep -qF 'nfu' "$TEST_LOG"
   grep -qF 'claude-session-reaper-patch --reapply' "$TEST_LOG"
+  [[ "$output" == *"=> up summary (update)"* ]] || false
+  [[ "$output" == *"=> done"* ]]
 }
 
 @test "up lock commits leave unrelated staged files alone" {
@@ -156,7 +162,8 @@ EOF
 
   run_zsh_function "$UP"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"refusing to update a dirty lock: .config/mise/mise.lock"* ]] || false
+  [[ "$output" == *"refusing to update a missing or dirty lock: .config/mise/mise.lock"* ]] || false
+  [[ "$output" == *"preflight"*"FAILED"* ]] || false
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
   ! grep -qF 'nfu' "$TEST_LOG"
@@ -190,9 +197,11 @@ EOF
 
 @test "up does not commit the lock when the upgrade failed" {
   MISE_SIMULATE_BUMP=1 MISE_FAIL_UPGRADE=1 run_zsh_function "$UP"
-  [ "$status" -eq 0 ]
+  [ "$status" -ne 0 ]
   ! grep -qF 'update tool lock' "$TEST_LOG" # the commit that must not happen
-  [[ "$output" == *"NOT committing mise.lock"* ]]
+  [[ "$output" == *"NOT committing mise.lock"* ]] || false
+  [[ "$output" == *"mise"*"FAILED"* ]] || false
+  [[ "$output" != *"next: up -s"* ]] || false
   # the unrelated halves still run: a failing tool doesn't abort the rest
   grep -qF 'brew update' "$TEST_LOG"
   grep -qF 'dotfiles commit -m chore(nix): update flake lock' "$TEST_LOG"
@@ -200,10 +209,12 @@ EOF
 
 @test "up does not commit flake.lock when the rebuild failed" {
   MISE_SIMULATE_BUMP=1 DRS_FAIL=1 run_zsh_function "$UP"
-  [ "$status" -eq 0 ]
+  [ "$status" -ne 0 ]
   grep -qF 'nfu' "$TEST_LOG"
   ! grep -qF 'update flake lock' "$TEST_LOG" # the commit that must not happen
-  [[ "$output" == *"NOT committing flake.lock"* ]]
+  [[ "$output" == *"NOT committing flake.lock"* ]] || false
+  [[ "$output" == *"rebuild"*"FAILED"* ]] || false
+  [[ "$output" == *"next: up -s"* ]] || false
   # the mise half is unaffected: its own lock still commits
   grep -qF 'dotfiles commit -m chore(mise): update tool lock' "$TEST_LOG"
 }
@@ -238,6 +249,25 @@ EOF
   ! grep -qF 'nfu' "$TEST_LOG"
 }
 
+@test "up rejects unknown arguments before running anything" {
+  run_zsh_function "$UP" --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unknown argument: --dry-run"* ]] || false
+  [[ "$output" == *"usage: up"* ]] || false
+  [ ! -s "$TEST_LOG" ]
+
+  run_zsh_function "$UP" --frozn
+  [ "$status" -eq 2 ]
+  [ ! -s "$TEST_LOG" ]
+}
+
+@test "up --help reports usage without running anything" {
+  run_zsh_function "$UP" --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"usage: up"* ]] || false
+  [ ! -s "$TEST_LOG" ]
+}
+
 @test "up runs the lockfile audit before bumping" {
   run_zsh_function "$UP"
   [ "$status" -eq 0 ]
@@ -268,6 +298,33 @@ EOF
   ! grep -qF 'mise upgrade' "$TEST_LOG"
   ! grep -qF 'dotfiles commit' "$TEST_LOG"
   ! grep -qF 'brew' "$TEST_LOG"
+  [[ "$output" == *"audit"*"FAILED"* ]] || false
+  [[ "$output" == *"=> failed (exit 1)"* ]]
+}
+
+@test "up never commits flake.lock when its update failed" {
+  NFU_FAIL=1 run_zsh_function "$UP"
+  [ "$status" -ne 0 ]
+  grep -qF 'nfu' "$TEST_LOG"
+  grep -qF 'drs' "$TEST_LOG"
+  ! grep -qF 'update flake lock' "$TEST_LOG"
+  [[ "$output" == *"flake update"*"FAILED"* ]] || false
+  [[ "$output" == *"flake lock"*"SKIPPED"*"flake update failed"* ]]
+}
+
+@test "up reports commit failures and exits non-zero" {
+  MISE_SIMULATE_BUMP=1 DOTFILES_FAIL_COMMIT=1 run_zsh_function "$UP"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mise lock"*"FAILED"*"commit failed"* ]] || false
+  [[ "$output" == *"next: dhk check"* ]] || false
+  [[ "$output" == *"=> failed (exit 1)"* ]]
+}
+
+@test "up advisory failures warn without failing the run" {
+  TMUX_UPSTREAM_FAIL=1 run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"tmux"*"WARN"*"exit 1"* ]] || false
+  [[ "$output" == *"=> done"* ]]
 }
 
 @test "up runs the report-only pin-audit on the bump path" {
