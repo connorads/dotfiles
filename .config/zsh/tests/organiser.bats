@@ -72,8 +72,17 @@ EOF
   ! grep -q 'clear dot' "$TEST_LOG"
 }
 
-@test "pane menu omits lifecycle actions for non-Claude panes" {
+@test "pane menu offers hibernate for a safe Codex pane" {
   export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=codex
+
+  run "$ORG" pane clientA "%5" 1 2
+
+  [ "$status" -eq 0 ]
+  grep -q 'hibernate (free RAM)' "$TEST_LOG"
+}
+
+@test "pane menu omits lifecycle actions for unsupported panes" {
+  export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=opencode
 
   run "$ORG" pane clientA "%5" 1 2
 

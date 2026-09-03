@@ -37,8 +37,8 @@ EOF
 }
 
 @test "dedicated bindings use a collision-free lower and upper pair" {
-  grep -F 'bind -N "Hibernate current Claude pane" M-z' "$CONF"
-  grep -F 'bind -N "Thaw a hibernated Claude session" M-Z' "$CONF"
+  grep -F 'bind -N "Hibernate current Claude/Codex pane" M-z' "$CONF"
+  grep -F 'bind -N "Thaw a hibernated agent session" M-Z' "$CONF"
   ! grep -Eq '^bind .* -n M-[zZ] ' "$CONF"
 }
 

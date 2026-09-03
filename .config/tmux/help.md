@@ -77,7 +77,7 @@
 | `Ctrl+b f` | Fresh editor |
 | `Ctrl+b F` | Fresh help |
 | `Ctrl+b b` | system monitor (bottom) |
-| `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `h` multi-selects safe Claude panes to hibernate, `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
+| `Ctrl+b Alt+m` | memory triage (top 5 sampled footprint offenders + 3 agents; `h` multi-selects safe Claude/Codex panes to hibernate, `k`→app→process→TERM, `a`/`g`→scrollable apps/agents, `r`→refresh) |
 | `Ctrl+b Alt+g` → `d` / `u` | gh-dash dashboard · ghui cockpit |
 
 Floats are real panes: persistent, non-modal, mouse-drag to move/resize. Switch
@@ -107,7 +107,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+i` | save clipboard PNG/GIF, paste its local path into current pane + copy (no popup; result on status line) |
 | `Ctrl+b Alt+Shift+I` | upload clipboard PNG/GIF to remote host, paste remote path into current pane + copy (local tmux only; use `shotpath` from Mac for remote tmux) |
 | `Ctrl+b Alt+.` | agent dot menu (set this tab's state by hand: working/blocked/unread/idle/clear) |
-| `Ctrl+b Alt+z` | hibernate the current idle/done Claude pane and park it in place |
+| `Ctrl+b Alt+z` | hibernate the current idle/done Claude/Codex pane and park it in place |
 | `Ctrl+b Alt+Shift+Z` | thaw picker for parked panes and orphaned hibernation records |
 | `Ctrl+b Alt+k` | caffeine - keep awake, screens still sleep (`i` indefinite, `t` timed, `l` lid-closed (timed only), `+` add time to a running one, space off) |
 | `Ctrl+b Alt+v` | record (vox) - start/stop; starting prompts for a title over a capture already running, stopping transcribes in the background |
@@ -150,7 +150,7 @@ agent hooks → `agent-state.sh`). Shape encodes state too, so it reads without 
 | `◐` peach | working | agent mid-turn |
 | `●` blue | done | finished, unseen |
 | `○` green | idle | seen / at rest |
-| `◌` dim grey | hibernated | claude killed to free RAM; Enter in the pane (or `agent thaw`) resumes it |
+| `◌` dim grey | hibernated | agent stopped to free RAM; Enter in the pane (or `agent thaw`) resumes it |
 | `·` grey | unknown | present but unclassified |
 
 Focusing a window marks `done → idle` (read). `Ctrl+b Alt+.` → **unread** re-flags
@@ -176,7 +176,7 @@ healthy - so the resting baseline stays visible, *unless* kernel pressure is the
 driver, where a `▲` replaces the figure (swap is fine, look elsewhere). Colour +
 glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
 (swap/RAM, top footprint apps, agents). Press `h` to choose one or more
-idle/done Claude panes, ranked by their largest process footprint. One selection
+idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
 
 | Pill | State | Meaning |

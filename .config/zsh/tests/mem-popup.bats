@@ -90,13 +90,13 @@ EOF
   [[ "$output" == *"[h] hibernate agents"* ]]
 }
 
-@test "hibernate candidates include only safe Claude panes and rank by footprint" {
+@test "hibernate candidates include safe Claude and Codex panes and rank by footprint" {
   export TMUX_PANES=$'idle\tclaude\t\tapi\tdev:1.0\t100\t%10\nworking\tclaude\tbusy\tworker\tdev:2.0\t200\t%20\ndone\tcodex\tother\tweb\tdev:3.0\t300\t%30\ndone\tclaude\tbatch\tjobs\tdev:4.0\t200\t%40'
 
   run "$MEM_POPUP" _hibernate_rows
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'%40\t201\tbatch\tdone\tdev:4.0\n%10\t101\tapi\tidle\tdev:1.0' ]
+  [ "$output" = $'%30\t300\tother\tdone\tdev:3.0\n%40\t201\tbatch\tdone\tdev:4.0\n%10\t101\tapi\tidle\tdev:1.0' ]
 }
 
 @test "batch hibernate confirms multiple panes, continues after refusal, and summarises" {
@@ -112,7 +112,7 @@ EOF
 
   [ "$status" -eq 0 ]
   [ "$(cat "$HIBERNATE_LOG")" = $'hibernate %10\nhibernate %20\nhibernate %30' ]
-  [[ "$output" == *"Hibernate 3 Claude panes?"* ]]
+  [[ "$output" == *"Hibernate 3 agent panes?"* ]]
   [[ "$output" == *"2 hibernated, 1 refused, 0 failed"* ]]
 }
 
