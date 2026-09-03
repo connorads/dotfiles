@@ -27,6 +27,7 @@ setup() {
   export CLEANUP_CLAUDE_TMP_ROOT="$HOME/claude-tmp"
   export CLEANUP_CLAUDE_PROFILES_ROOT="$HOME/claude-profiles"
   export AGENT_HIBERNATE_DIR="$HOME/agent-hibernate"
+  export CLEANUP_WORKTREE_ROOT="$HOME/trees"
   mkdir -p \
     "$HOME/.bun/install/cache/pkg" \
     "$HOME/.cache/.bun/install/cache/pkg" \
@@ -961,6 +962,74 @@ setup_claude_temp_fixture() {
   [ "$status" -ne 0 ]
   grep -F 'cannot read hibernation record' <<<"$output"
   [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
+}
+
+setup_worktree_build_fixture() {
+  mkdir -p "$CLEANUP_WORKTREE_ROOT/active/node_modules/pkg" \
+    "$CLEANUP_WORKTREE_ROOT/parked/.next/cache" \
+    "$CLEANUP_WORKTREE_ROOT/inactive/apps/web/node_modules/pkg" \
+    "$CLEANUP_WORKTREE_ROOT/inactive/coverage" "$AGENT_HIBERNATE_DIR"
+  printf '[{"path":"%s"},{"path":"%s"},{"path":"%s"}]\n' \
+    "$CLEANUP_WORKTREE_ROOT/active" "$CLEANUP_WORKTREE_ROOT/parked" \
+    "$CLEANUP_WORKTREE_ROOT/inactive" >"$HOME/worktrees.json"
+  printf '[{"cwd":"%s"}]\n' "$CLEANUP_WORKTREE_ROOT/active/apps/web" >"$HOME/agents.json"
+  printf '{"sessionId":"33333333-3333-4333-8333-333333333333","cwd":"%s"}\n' \
+    "$CLEANUP_WORKTREE_ROOT/parked" >"$AGENT_HIBERNATE_DIR/parked.json"
+
+  write_stub wt-status <<'EOF'
+#!/usr/bin/env bash
+[ "$*" = "--all --json" ] || exit 1
+cat "$HOME/worktrees.json"
+EOF
+  write_stub agent <<'EOF'
+#!/usr/bin/env bash
+[ "$*" = "ls --json" ] || exit 1
+cat "$HOME/agents.json"
+EOF
+  write_stub git <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *tracked-output*) printf 'tracked-output/file\n' ;;
+esac
+EOF
+}
+
+@test "worktree-build removes exact artefacts only from unused managed worktrees" {
+  setup_worktree_build_fixture
+  mkdir -p "$CLEANUP_WORKTREE_ROOT/inactive/notes" "$CLEANUP_WORKTREE_ROOT/inactive/dist"
+
+  run zsh --no-rcs "$CLEANUP" --yes --worktree-build
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$CLEANUP_WORKTREE_ROOT/inactive/apps/web/node_modules" ]
+  [ ! -e "$CLEANUP_WORKTREE_ROOT/inactive/coverage" ]
+  [ -d "$CLEANUP_WORKTREE_ROOT/inactive/notes" ]
+  [ -d "$CLEANUP_WORKTREE_ROOT/inactive/dist" ]
+  [ -d "$CLEANUP_WORKTREE_ROOT/active/node_modules" ]
+  [ -d "$CLEANUP_WORKTREE_ROOT/parked/.next" ]
+}
+
+@test "worktree-build preserves artefacts containing tracked files" {
+  setup_worktree_build_fixture
+  mkdir -p "$CLEANUP_WORKTREE_ROOT/inactive/tracked-output/node_modules"
+  mv "$CLEANUP_WORKTREE_ROOT/inactive/apps/web/node_modules" \
+    "$CLEANUP_WORKTREE_ROOT/inactive/tracked-output/node_modules"
+
+  run zsh --no-rcs "$CLEANUP" --yes --worktree-build
+
+  [ "$status" -eq 0 ]
+  [ -d "$CLEANUP_WORKTREE_ROOT/inactive/tracked-output/node_modules" ]
+}
+
+@test "worktree-build fails closed when live agent state is unreadable" {
+  setup_worktree_build_fixture
+  printf '{broken\n' >"$HOME/agents.json"
+
+  run zsh --no-rcs "$CLEANUP" --yes --worktree-build
+
+  [ "$status" -ne 0 ]
+  grep -F 'cannot read live agent state' <<<"$output"
+  [ -d "$CLEANUP_WORKTREE_ROOT/inactive/apps/web/node_modules" ]
 }
 
 @test "ui mode errors cleanly when fzf is unavailable" {
