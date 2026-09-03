@@ -711,6 +711,10 @@ enter: up  ctrl-a: up :443  ctrl-f: funnel  ctrl-d: down route  ctrl-x: prune st
     [[ -z "$chosen" ]] && continue
 
     local row_type marker eport lport mode health pid proc bind target
+    # Live bug: `bind` (9 of 10) is empty for any serve target that is not
+    # exactly scheme://host:port, and tab is IFS whitespace - so the row
+    # collapses, `target` shifts into `bind`, and ctrl-d acts on a mis-parsed
+    # row. Wants "${(@ps:\t:)chosen}"; see shell-quality.md's `## zsh`.
     IFS=$'\t' read -r row_type marker eport lport mode health pid proc bind target <<< "$chosen"
 
     case "$key" in

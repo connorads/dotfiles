@@ -138,9 +138,23 @@ if (( json )); then
   return 0
 fi
 
-# Split candidates into removable and blocked for display. Parse via `read`
-# with a tab IFS so empty fields (pr_number, reason) keep their position — zsh's
-# ${(s)} split silently drops empty fields.
+# Split candidates into removable and blocked for display.
+#
+# `IFS=$'\t' read` does NOT keep empty fields in position: tab is IFS
+# whitespace, so a run of tabs collapses to one separator and every field after
+# an empty one shifts left. (${(s)} drops them too, from the other direction;
+# "${(@ps:\t:)rec}" is the only spelling that keeps all seven.) This parse is
+# safe only because no *interior* field of a candidate record is ever empty:
+# `branch` falls back to "(detached)" and `pr_state` to "unknown" in wt-status,
+# and `pr_number` is empty only when there is no PR - which the eligibility
+# gate above has already excluded, since it requires MERGED or CLOSED and
+# _wt_pr_lookup sets state and number together. `reason` is genuinely nullable
+# but is last, so its collapse is harmless.
+#
+# One filter change away from a real bug: with pr_number empty the fields shift
+# and c_elig lands empty, so a reapable worktree is silently reclassified as
+# blocked. Do not copy this idiom into a record whose interior fields can be
+# empty - split with "${(@ps:\t:)rec}" instead.
 typeset -a removable=() blocked=()
 local rec c_path c_branch c_state c_num c_size c_elig c_reason
 for rec in "${candidates[@]}"; do
