@@ -61,3 +61,27 @@ journal_event() {
 ${AGENT_JOURNAL_PAYLOAD:-}
 EOF
 }
+
+# journal_presence_event REASON PANE WINDOW PREVIOUS_STATE PREVIOUS_KIND
+# OBSERVED_KIND STATE AGE — append a process-reconciliation transition. This
+# path has no hook payload. Keep it metadata-only so process arguments never
+# enter the journal.
+journal_presence_event() {
+	[ "${AGENT_JOURNAL_DISABLE:-0}" = 1 ] && return 0
+	command -v jq >/dev/null 2>&1 || return 0
+	_dir=${AGENT_JOURNAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-journal}
+	mkdir -p "$_dir" 2>/dev/null || return 0
+	_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+	_file=$_dir/events-$(printf '%.7s' "$_ts").jsonl
+	jq -cn \
+		--arg ts "$_ts" --arg reason "$1" --arg pane "$2" --arg window "$3" \
+		--arg previous_state "$4" --arg previous_kind "$5" \
+		--arg observed_kind "$6" --arg state "$7" --argjson age "${8:-0}" '
+		{ts: $ts, pane: $pane, window: $window, event: "ProcessReconcile",
+		 reason: $reason,
+		 previous_state: (if $previous_state == "" then null else $previous_state end),
+		 previous_kind: (if $previous_kind == "" then null else $previous_kind end),
+		 observed_kind: (if $observed_kind == "" then null else $observed_kind end),
+		 state: (if $state == "" then null else $state end), age_seconds: $age}
+	' >>"$_file" 2>/dev/null || true
+}

@@ -48,6 +48,14 @@ command -v tmux >/dev/null 2>&1 || exit 0
 window=$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null) || exit 0
 [ -n "$window" ] || exit 0
 
+# A native lifecycle event is fresh evidence that the agent is alive. Cancel a
+# pending shell-return retirement before applying the activity transition.
+case $state in
+blocked | working | idle | hibernated | done | unread | clear)
+	tmux set-option -pu -t "$pane" @agent_presence_absent_since 2>/dev/null || true
+	;;
+esac
+
 # Every state-setting verb is journalled; `seen` only when it actually ages a
 # pane (the focus hook fires it on every pane focus — no-ops are noise).
 journal=1

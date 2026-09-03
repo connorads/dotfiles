@@ -125,6 +125,7 @@ _next_pane() {
 cycle() {
 	_wants=${1:-blocked}
 	_cur=${2:-}
+	[ -f "$AGENT_SWEEP" ] && sh "$AGENT_SWEEP" >/dev/null 2>&1 || true
 	_rows=$(agent_list_rows | cut -f1,2)
 	[ -n "$_rows" ] || {
 		tmux display-message "no active agents" 2>/dev/null || true

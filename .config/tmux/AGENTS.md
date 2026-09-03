@@ -209,13 +209,16 @@ The logic is spread across several files - change them as a set:
   drops it too. Not journalled (the schema has no name field). Shown on the pane
   border (blue `⟪name⟫`) and as a column in the popup/`agent ls`.
 - [`scripts/agent-journal.sh`](./scripts/agent-journal.sh) - sourced by
-  `agent-state.sh` (phase 0): captures each hook's stdin payload and appends a
+  `agent-state.sh` and `agent-sweep.sh` (phase 0): captures each hook's stdin
+  payload and appends a
   **curated** JSONL event (ts/pane/window/state/kind + session_id, cwd,
   permission_mode, notification message, tool_name, stop_reason - plus `tool_input` for
   `ExitPlanMode` only, i.e. the plan text) to
   `~/.local/state/agent-journal/events-YYYY-MM.jsonl`. The dots show current
   state; the journal is the replayable history for audits and future cross-pane
-  sequencing. Full tool inputs are deliberately not recorded (file contents /
+  sequencing. Process acquisition, kind change, and release append a
+  metadata-only `ProcessReconcile` event with the reason, prior identity, and
+  absence age. Full tool inputs are deliberately not recorded (file contents /
   command lines can carry secrets). Fail-open, needs jq; disable with
   `AGENT_JOURNAL_DISABLE=1`, relocate with `AGENT_JOURNAL_DIR`. Monthly files:
   retention is deleting old months. The **plan viewer**
@@ -283,8 +286,8 @@ The logic is spread across several files - change them as a set:
   `agent-state.sh` fails the gate.
 - [`scripts/agent-sweep.sh`](./scripts/agent-sweep.sh) - phase-5 reconcile net (a
   one-shot on `client-attached` + a per-server daemon polling every `POLL`, 10s).
-  Three jobs: (1) clear a stale dot whose agent died without a clean done/clear
-  (shell foreground = agent gone); (2) age a `done` dot you are currently viewing
+  Three jobs: (1) reconcile Claude/Codex presence from the pane shell's kernel
+  foreground process group; (2) age a `done` dot you are currently viewing
   (`is_viewing`: active pane, active window, `session_attached>0`) to idle - the
   deterministic backstop for the `done` branch's seen-at-birth and the focus
   hooks' `seen`, which they miss when the finish races your focus or you watch one
@@ -302,10 +305,17 @@ The logic is spread across several files - change them as a set:
   to idle only after `CODEX_POLL_CONFIRM` (2) consecutive spinner-less polls
   (counted in `@agent_poll_absent`), debouncing the momentary reasoning↔tool gap.
   **Ownership split** (no marker/lease): for codex panes the poller owns
-  `working↔idle`, the hooks own `blocked`/`done`, so `blocked` is left alone and
-  `agent-state.sh` is untouched. Precedence stays `blocked > done(unseen) >
+  `working↔idle`, the hooks own `blocked`/`done`, so `blocked` is left alone.
+  Precedence stays `blocked > done(unseen) >
   working > idle` (the canonical `rank`). Opt out with
   `tmux set -g @codex_title_poll off` (mirrors `@cross_session_badge off`).
+  Presence scans the whole foreground group, so zsh/Python launch wrappers do
+  not hide their agent child. Exact argv0 basenames recognise only `claude` and
+  `codex`; later arguments never count. A recognised process acquires a missing
+  pane as idle and preserves hook-owned activity for the same kind. A shell-only
+  group arms `@agent_presence_absent_since`, then clears after 10 continuous
+  seconds; failed, ambiguous, or unknown non-shell probes preserve state. Hook
+  activity cancels pending absence, and hibernated panes remain process-exempt.
 - `@agent_dotfmt` (in [`tmux.conf`](./tmux.conf)) - renders the tab dot from the
   mapping. The popup reads the lib directly (`agent_glyph`); the tabs and the
   menu literals re-encode it and are guarded against drift by `agent-glyphs.bats`.
@@ -342,7 +352,9 @@ The logic is spread across several files - change them as a set:
   buffer-paste + separate Enter + stall verify with one submit retry), `name`/`unname`,
   `pick`. It never writes `@agent_state` directly - all mutation goes through
   `agent-state.sh`; `prompt` only sends keystrokes and observes the option the
-  agent's own hooks set.
+  agent's own hooks set. `ls` reconciles once before reading, so a live direct or
+  wrapped Claude/Codex appears before its first lifecycle hook; its text and JSON
+  schemas are unchanged.
 - Navigation: `prefix + A` popup (fzf pick) and `prefix + Alt+a` cycle-jump
   (`agent-popup.sh cycle blocked,done` - a CSV state priority list, positional
   order within a state, wraps; the fallback-to-done policy is the binding's
@@ -358,7 +370,8 @@ Tests (run `mise run zsh-tests`):
   fail-open, and payload passthrough to the journal.
 - [`../zsh/tests/agent-journal.bats`](../zsh/tests/agent-journal.bats) - journal
   lines: curated fields, ExitPlanMode plan capture, no tool_input leak,
-  disable/no-stdin/no-op-seen cases, Stop payload pass-through.
+  disable/no-stdin/no-op-seen cases, Stop payload pass-through, and the
+  metadata-only process reconciliation schema.
 - [`../zsh/tests/tmux-agent-tabs.bats`](../zsh/tests/tmux-agent-tabs.bats) -
   asserts the **exact** `@agent_dotfmt` glyph/colour output against the real
   tmux.conf; update it when you change the state → glyph mapping.

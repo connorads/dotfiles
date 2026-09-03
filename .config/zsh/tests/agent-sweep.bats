@@ -6,6 +6,7 @@ bats_require_minimum_version 1.5.0
 load test_helper
 
 SCRIPT="$TESTS_DIR/../../tmux/scripts/agent-sweep.sh"
+STATE_SH="$TESTS_DIR/../../tmux/scripts/agent-state.sh"
 SHELLS=" zsh bash sh fish dash ash "
 
 # All assertions run against a throwaway private tmux server (real infrastructure)
@@ -49,7 +50,7 @@ attach_client() { attach_pty_client s; }
 # Launch the daemon backgrounded with an isolated state dir + 1s poll. 3>&- closes
 # bats's status fd so the loop does not keep the run hanging; fds 1/2 → /dev/null.
 launch_daemon() {
-  AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 \
+  AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 AGENT_PRESENCE_GRACE=0 \
     sh "$SCRIPT" daemon >/dev/null 2>&1 3>&- &
   DAEMON_PID=$!
 }
@@ -84,6 +85,83 @@ wait_nonshell() {
   wait_until -i 0.2 "_pane_is_nonshell $1" 2>/dev/null
 }
 
+# Keep zsh as the pane's foreground command while a Python wrapper waits on a
+# fake Codex child. The child's argv0 is exactly `codex`, matching the real
+# handoff stack without launching an agent or touching the real tmux server.
+respawn_wrapped_codex() {
+  local pane=$1 fake="$BATS_TEST_TMPDIR/codex"
+  ln -s /bin/sleep "$fake"
+  tx respawn-pane -k -t "$pane" "zsh -f -c 'python3 -c '\''import subprocess,sys; raise SystemExit(subprocess.run([sys.argv[1],\"300\"]).returncode)'\'' '$fake'; status=\$?; exit \$status'"
+  wait_until -d 'tx display-message -p -t "$pane" "#{pane_current_command}"' \
+    '[ "$(tx display-message -p -t "$pane" "#{pane_current_command}")" = zsh ] && ps -t "$(tx display-message -p -t "$pane" "#{pane_tty}" | sed "s#^/dev/##")" -o args= | grep -q "$fake"'
+}
+
+@test "sweep preserves a live codex behind zsh and Python wrappers" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  respawn_wrapped_codex "$pane"
+  tx set-option -p -t "$pane" @agent_state working
+  tx set-option -p -t "$pane" @agent_kind codex
+
+  run sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = codex ]
+}
+
+@test "sweep acquires a stateless codex behind zsh and Python wrappers" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  respawn_wrapped_codex "$pane"
+
+  run sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = codex ]
+}
+
+@test "sweep replaces stale claude identity with observed codex" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  respawn_wrapped_codex "$pane"
+  tx set-option -p -t "$pane" @agent_state working
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_name backend
+
+  run sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = codex ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_name)" ]
+}
+
+@test "manual clear is reacquired while the codex process remains live" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  respawn_wrapped_codex "$pane"
+  tx set-option -p -t "$pane" @agent_state working
+  tx set-option -p -t "$pane" @agent_kind codex
+  AGENT_STATE_PANE="$pane" sh "$STATE_SH" clear </dev/null
+  [ -z "$(pstate "$pane")" ]
+
+  run sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = idle ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = codex ]
+}
+
+@test "codex in a later argument cannot claim an untracked pane" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx respawn-pane -k -t "$pane" "zsh -f -c 'sleep 300' codex"
+  wait_until '[ "$(tx display-message -p -t "$pane" "#{pane_current_command}")" = zsh ]'
+
+  run sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ -z "$(pstate "$pane")" ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_kind)" ]
+}
+
 @test "sweep clears a stale dot on a shell-foreground pane" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')
@@ -91,7 +169,14 @@ wait_nonshell() {
   tx set-option -p -t "$pane" @agent_kind claude
   tx set-option -p -t "$pane" @agent_name backend
   tx set-option -w -t "$win" @win_agent_state working
-  run sh "$SCRIPT"
+  run env AGENT_PRESENCE_NOW=100 sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_presence_absent_since)" = 100 ]
+  run env AGENT_PRESENCE_NOW=109 sh "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  run env AGENT_PRESENCE_NOW=110 sh "$SCRIPT"
   [ "$status" -eq 0 ]
   [ -z "$(pstate "$pane")" ]
   [ -z "$(tx show-options -pqv -t "$pane" @agent_kind)" ]
@@ -127,6 +212,20 @@ wait_nonshell() {
   [ "$(pstate "$pane")" = working ]
   [ "$(tx show-options -pqv -t "$pane" @agent_name)" = backend ]
   [ "$(wstate "$win")" = working ]
+}
+
+@test "failed process probe preserves state and cancels pending retirement" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$pane" @agent_state working
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_presence_absent_since 100
+
+  run env AGENT_PS=false AGENT_PRESENCE_NOW=200 sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = claude ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_presence_absent_since)" ]
 }
 
 @test "sweep recomputes the window dot down when the worst pane was hard-closed" {
@@ -237,8 +336,7 @@ wait_nonshell() {
 @test "sweep flips an idle codex pane with a spinner title to working" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   win=$(tx display-message -p -t s '#{window_id}')
-  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
-  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  respawn_wrapped_codex "$pane"
   tx set-option -p -t "$pane" @agent_kind codex
   tx set-option -p -t "$pane" @agent_state idle
   tx select-pane -t "$pane" -T '⠋ codex ~/proj'
@@ -250,8 +348,7 @@ wait_nonshell() {
 
 @test "sweep retires a working codex pane to idle only after two spinner-less sweeps" {
   pane=$(tx display-message -p -t s '#{pane_id}')
-  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
-  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  respawn_wrapped_codex "$pane"
   tx set-option -p -t "$pane" @agent_kind codex
   tx set-option -p -t "$pane" @agent_state working
   tx select-pane -t "$pane" -T 'codex ~/proj' # no spinner
@@ -267,8 +364,7 @@ wait_nonshell() {
 
 @test "sweep leaves a done codex pane with no spinner untouched" {
   pane=$(tx display-message -p -t s '#{pane_id}')
-  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
-  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  respawn_wrapped_codex "$pane"
   tx set-option -p -t "$pane" @agent_kind codex
   tx set-option -p -t "$pane" @agent_state done
   tx select-pane -t "$pane" -T 'codex ~/proj'
@@ -279,8 +375,7 @@ wait_nonshell() {
 
 @test "@codex_title_poll off disables the codex title reconcile" {
   pane=$(tx display-message -p -t s '#{pane_id}')
-  tx respawn-pane -k -t "$pane" 'sh -c "exec sleep 300"'
-  wait_nonshell "$pane" || skip "pane shell did not yield the foreground in time"
+  respawn_wrapped_codex "$pane"
   tx set-option -g @codex_title_poll off
   tx set-option -p -t "$pane" @agent_kind codex
   tx set-option -p -t "$pane" @agent_state idle

@@ -1,18 +1,18 @@
 #!/bin/sh
-# agent-sweep.sh — the phase-5 reconcile net behind the hooks-first model. Two jobs:
-#   (1) clear stale agent dots left by agents that died without a clean done/clear
-#       (SIGKILL, crash, pane closed abruptly);
+# agent-sweep.sh — the phase-5 reconcile net behind the hooks-first model. Three jobs:
+#   (1) discover Claude/Codex presence from each pane's foreground process group
+#       and retire stale dots after a confirmed return to the shell;
 #   (2) age a `done` dot you are currently looking at to idle — a backstop for the
 #       focus hooks' `seen`, which the focus events miss under concurrent-agent
 #       churn (you watch one agent while another finishes, then return to it
-#       without a fresh select-pane/window-changed transition).
+#       without a fresh select-pane/window-changed transition);
+#   (3) reconcile Codex's OSC title spinner to working/idle.
 #
-# Liveness signal: a running agent stays its pane's foreground process-group
-# leader, so #{pane_current_command} reads as the runtime (claude/codex-…/node)
-# even while it runs a piped Bash tool. A plain *shell* foreground therefore
-# means the agent exited — only then is the dot cleared. Non-shell foregrounds
-# (vim, sleep, other TUIs) are left alone: the sweep only ever fails to clear,
-# never wrongly clears.
+# Presence and activity are separate evidence channels. The kernel foreground
+# process group owns presence; agent hooks own blocked/done and the instant
+# working path. Inspect the whole group because launchers such as handoff keep a
+# zsh and Python wrapper in front of the real agent. An unknown non-shell group
+# is preserved rather than guessed absent.
 #
 #   agent-sweep.sh            # one-shot sweep (default)
 #   agent-sweep.sh daemon     # single per-server background loop (≤POLL clearing)
@@ -25,10 +25,11 @@ set -u
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=agent-state-lib.sh disable=SC1091
 . "$SELF_DIR/agent-state-lib.sh"
+# shellcheck source=agent-journal.sh disable=SC1091
+. "$SELF_DIR/agent-journal.sh"
 
-# Shells whose foreground presence means the agent that lived in this pane has
-# exited. Space-padded for whole-word `case` matching.
-SHELLS=" zsh bash sh fish dash ash "
+AGENT_PRESENCE_GRACE=${AGENT_PRESENCE_GRACE:-10}
+AGENT_PS=${AGENT_PS:-ps}
 
 # sweep_once — reconcile every dot in one pass: read all panes once, clear panes
 # whose agent died (shell foreground), age a `done` dot you are currently looking
@@ -42,8 +43,82 @@ sweep_once() {
 	# pane_title is last because it is freeform (a stray tab in a title can't then
 	# misalign the earlier columns).
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{pane_title}" \
+		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{pane_title}" \
 		2>/dev/null) || return 0
+
+	# Sanitise the process table immediately: only ids plus an exact argv0 class
+	# leave awk. Full argv can contain secrets and must never reach a shell variable
+	# or the journal. `ps` status is carried through the pipeline so a failed probe
+	# becomes unknown, never false absence.
+	_snapshot=$({
+		"$AGENT_PS" -ww -axo pid=,pgid=,tpgid=,args=
+		printf '__agent_ps_status__ %s\n' "$?"
+	} 2>/dev/null | awk '
+		$1 == "__agent_ps_status__" { print "S\t" $2; next }
+		{
+			arg0 = $4
+			sub(/^.*\//, "", arg0)
+			sub(/^-/, "", arg0)
+			kind = (arg0 == "claude" || arg0 == "codex") ? arg0 : ""
+			shell = (arg0 == "zsh" || arg0 == "bash" || arg0 == "sh" ||
+				arg0 == "fish" || arg0 == "dash" || arg0 == "ash") ? 1 : 0
+			print "R\t" $1 "\t" $2 "\t" $3 "\t" kind "\t" shell
+		}')
+
+	# Join every pane to its foreground group in one awk process. Output starts
+	# with OBSERVATION and OBSERVED_KIND, followed by the untouched tmux row so a
+	# tab in the freeform title remains harmless at the end.
+	_observed_rows=$({
+		while IFS= read -r _row; do
+			[ -n "$_row" ] && printf 'P\t%s\n' "$_row"
+		done <<EOF
+$_rows
+EOF
+		printf '%s\n' "$_snapshot"
+	} | awk -F '\t' '
+		$1 == "P" {
+			pane[++pane_count] = $3
+			pane_pid[$3] = $12
+			raw[$3] = substr($0, 3)
+			next
+		}
+		$1 == "R" {
+			pid[++proc_count] = $2
+			pgid[proc_count] = $3
+			tpgid[$2] = $4
+			kind[proc_count] = $5
+			shell[proc_count] = $6
+			next
+		}
+		$1 == "S" { probe_status = $2 }
+		END {
+			OFS = "\t"
+			for (i = 1; i <= pane_count; i++) {
+				p = pane[i]
+				obs = "unknown"; observed = ""
+				fg = tpgid[pane_pid[p]] + 0
+				if (probe_status == 0 && fg > 0) {
+					leader = ""; leader_shell = 0; claude = 0; codex = 0
+					members = 0
+					for (j = 1; j <= proc_count; j++) {
+						if ((pgid[j] + 0) != fg) continue
+						members++
+						if (kind[j] == "claude") claude = 1
+						if (kind[j] == "codex") codex = 1
+						if ((pid[j] + 0) == fg) {
+							leader = kind[j]
+							leader_shell = shell[j]
+						}
+					}
+					if (leader != "") { obs = "present"; observed = leader }
+					else if (claude + codex == 1) {
+						obs = "present"; observed = claude ? "claude" : "codex"
+					} else if (claude + codex > 1) obs = "unknown"
+					else if (members > 0 && leader_shell == 1) obs = "absent"
+				}
+				print obs, observed, raw[p]
+			}
+		}')
 
 	# Codex has no "model generating" hook event, so a pane the Stop hook aged to
 	# idle (or a turn resumed without a fresh UserPromptSubmit) sits green while
@@ -53,15 +128,19 @@ sweep_once() {
 	_codex_poll=$(tmux show-options -gqv @codex_title_poll 2>/dev/null) || _codex_poll=
 
 	_tab=$(printf '\t')
-	_panes=
-	_seen=
-	_cxstate=
-	_cxabsent=
 	_windows=
+	_changed=0
+	_now=${AGENT_PRESENCE_NOW:-$(date +%s)}
+	case $_now in '' | *[!0-9]*) _now=0 ;; esac
+	case $AGENT_PRESENCE_GRACE in '' | *[!0-9]*) _grace=10 ;; *) _grace=$AGENT_PRESENCE_GRACE ;; esac
 	# Manual tab-split (not IFS read): tab is IFS-whitespace, so consecutive tabs
 	# from an empty @agent_state field would collapse and misalign the columns.
 	while IFS= read -r _line; do
 		[ -n "$_line" ] || continue
+		_observation=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_observed_kind=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
 		_win=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_pane=${_line%%"$_tab"*}
@@ -79,60 +158,111 @@ sweep_once() {
 		_sattached=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_kind=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_absent_since=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_pane_pid=${_line%%"$_tab"*}
 		_ptitle=${_line#*"$_tab"}
 
-		if [ -n "$_astate" ]; then
-			case "$SHELLS" in
-			*" $_cmd "*)
-				# Foreground is a bare shell → the agent is gone. Clear it and
-				# re-roll its window. Exception: a hibernated pane's foreground
-				# IS a shell by design (agent-hibernate.sh's parked thawer), so
-				# its dot is cleared by thaw, never by this death-clear.
-				if [ "$_astate" != hibernated ]; then
-					_panes="$_panes$_pane
-"
+		if [ "$_astate" != hibernated ]; then
+			case $_observation in
+			present)
+				if [ -n "$_absent_since" ]; then
+					tmux set-option -pu -t "$_pane" @agent_presence_absent_since 2>/dev/null || true
+					_absent_since=
+				fi
+				if [ -z "$_astate" ] || [ "$_kind" != "$_observed_kind" ]; then
+					_previous_state=$_astate
+					_previous_kind=$_kind
+					_reason=acquired
+					[ -n "$_kind" ] && _reason=kind-changed
+					if [ -n "$_kind" ] && [ "$_kind" != "$_observed_kind" ]; then
+						tmux set-option -pu -t "$_pane" @agent_name 2>/dev/null || true
+						tmux set-option -pu -t "$_pane" @claude_profile 2>/dev/null || true
+					fi
+					tmux set-option -p -t "$_pane" @agent_kind "$_observed_kind" 2>/dev/null || true
+					tmux set-option -p -t "$_pane" @agent_state idle 2>/dev/null || true
+					_kind=$_observed_kind
+					_astate=idle
+					journal_presence_event "$_reason" "$_pane" "$_win" \
+						"$_previous_state" "$_previous_kind" "$_observed_kind" idle 0
 					_windows="$_windows$_win
 "
+					_changed=1
 				fi
 				;;
-			*)
-				# Agent still alive: a `done` dot on a pane you are currently
-				# looking at (is_viewing: active pane, active window, ≥1 attached
-				# client) is seen — age it to idle. Backstop for both the `done`
-				# branch's seen-at-birth and the focus hooks' `seen`.
-				if [ "$_astate" = "done" ] &&
-					is_viewing "$_pactive" "$_wactive" "$_sattached"; then
-					_seen="$_seen$_pane
+			absent)
+				if [ -n "$_astate" ]; then
+					case $_absent_since in '' | *[!0-9]*)
+						tmux set-option -p -t "$_pane" @agent_presence_absent_since "$_now" 2>/dev/null || true
+						_changed=1
+						;;
+					*)
+						if [ $((_now - _absent_since)) -ge "$_grace" ] 2>/dev/null; then
+							_age=$((_now - _absent_since))
+							_previous_state=$_astate
+							_previous_kind=$_kind
+							tmux set-option -pu -t "$_pane" @agent_state 2>/dev/null || true
+							tmux set-option -pu -t "$_pane" @agent_kind 2>/dev/null || true
+							tmux set-option -pu -t "$_pane" @agent_name 2>/dev/null || true
+							tmux set-option -pu -t "$_pane" @agent_poll_absent 2>/dev/null || true
+							tmux set-option -pu -t "$_pane" @agent_presence_absent_since 2>/dev/null || true
+							tmux set-option -pu -t "$_pane" @claude_profile 2>/dev/null || true
+							_astate=
+							_kind=
+							journal_presence_event released "$_pane" "$_win" \
+								"$_previous_state" "$_previous_kind" "" "" "$_age"
+							_windows="$_windows$_win
 "
-					_windows="$_windows$_win
-"
+							_changed=1
+						fi
+						;;
+					esac
 				fi
-				# Codex title-spinner reconcile: for a codex pane (foreground is
-				# codex, or the pane carries @agent_kind=codex before the runtime
-				# reads back), map the spinner in its title to working↔idle. This
-				# fills the hook-silent gap without touching agent-state.sh; hooks
-				# still own blocked/done and the instant fast path.
-				if [ "$_codex_poll" != off ] &&
-					{ [ "$_cmd" = codex ] || [ "$_kind" = codex ]; }; then
-					_spin=0
-					has_spinner "$_ptitle" && _spin=1
-					_pabsent=$(tmux show-options -pqv -t "$_pane" @agent_poll_absent 2>/dev/null) || _pabsent=
-					_step=$(codex_working_step "$_astate" "$_spin" "${_pabsent:-0}")
-					_nstate=${_step% *}
-					_nabsent=${_step##* }
-					if [ "$_nstate" != "$_astate" ]; then
-						_cxstate="$_cxstate$_pane $_nstate
-"
-						_windows="$_windows$_win
-"
-					fi
-					if [ "$_nabsent" != "${_pabsent:-0}" ]; then
-						_cxabsent="$_cxabsent$_pane $_nabsent
-"
-					fi
+				;;
+			unknown)
+				if [ -n "$_absent_since" ]; then
+					tmux set-option -pu -t "$_pane" @agent_presence_absent_since 2>/dev/null || true
+					_changed=1
 				fi
 				;;
 			esac
+		fi
+
+		# Agent still present (or conservatively unknown): age a viewed done dot.
+		if [ -n "$_astate" ] && [ "$_observation" != absent ] &&
+			[ "$_astate" = "done" ] && is_viewing "$_pactive" "$_wactive" "$_sattached"; then
+			tmux set-option -p -t "$_pane" @agent_state idle 2>/dev/null || true
+			_astate=idle
+			_windows="$_windows$_win
+"
+			_changed=1
+		fi
+
+		# Spinner evidence is meaningful only after the process observer confirms
+		# this foreground group as Codex.
+		if [ "$_observation" = present ] && [ "$_observed_kind" = codex ] &&
+			[ "$_codex_poll" != off ]; then
+			_spin=0
+			has_spinner "$_ptitle" && _spin=1
+			_pabsent=$(tmux show-options -pqv -t "$_pane" @agent_poll_absent 2>/dev/null) || _pabsent=
+			_step=$(codex_working_step "$_astate" "$_spin" "${_pabsent:-0}")
+			_nstate=${_step% *}
+			_nabsent=${_step##* }
+			if [ "$_nstate" != "$_astate" ]; then
+				tmux set-option -p -t "$_pane" @agent_state "$_nstate" 2>/dev/null || true
+				_windows="$_windows$_win
+"
+				_changed=1
+			fi
+			if [ "$_nabsent" != "${_pabsent:-0}" ]; then
+				if [ "$_nabsent" = 0 ]; then
+					tmux set-option -pu -t "$_pane" @agent_poll_absent 2>/dev/null || true
+				else
+					tmux set-option -p -t "$_pane" @agent_poll_absent "$_nabsent" 2>/dev/null || true
+				fi
+				_changed=1
+			fi
 		fi
 		# Re-roll any window still showing a dot too: hard-closing the worst pane
 		# drops its own @agent_state but leaves the rollup stale with no pane to
@@ -140,46 +270,10 @@ sweep_once() {
 		[ -n "$_wstate" ] && _windows="$_windows$_win
 "
 	done <<EOF
-$_rows
+$_observed_rows
 EOF
 
-	[ -n "$_panes$_seen$_cxstate$_cxabsent$_windows" ] || return 0
-
-	printf '%s' "$_panes" | while IFS= read -r _p; do
-		[ -n "$_p" ] || continue
-		tmux set-option -pu -t "$_p" @agent_state 2>/dev/null || true
-		tmux set-option -pu -t "$_p" @agent_kind 2>/dev/null || true
-		tmux set-option -pu -t "$_p" @agent_name 2>/dev/null || true
-		# Drop the codex title-poll counter alongside the state it tracks.
-		tmux set-option -pu -t "$_p" @agent_poll_absent 2>/dev/null || true
-		# Backstop the profile tag too: a pane whose claude died without a clean
-		# SessionEnd (SIGKILL, crash, abrupt close) still drops its @claude_profile.
-		tmux set-option -pu -t "$_p" @claude_profile 2>/dev/null || true
-	done
-
-	printf '%s' "$_seen" | while IFS= read -r _p; do
-		[ -n "$_p" ] || continue
-		tmux set-option -p -t "$_p" @agent_state idle 2>/dev/null || true
-	done
-
-	# Codex title-spinner writes: "PANE STATE" / "PANE ABSENT" lines staged above.
-	printf '%s' "$_cxstate" | while IFS= read -r _row; do
-		[ -n "$_row" ] || continue
-		_p=${_row%% *}
-		_st=${_row#* }
-		tmux set-option -p -t "$_p" @agent_state "$_st" 2>/dev/null || true
-	done
-
-	printf '%s' "$_cxabsent" | while IFS= read -r _row; do
-		[ -n "$_row" ] || continue
-		_p=${_row%% *}
-		_ab=${_row#* }
-		if [ "$_ab" = 0 ]; then
-			tmux set-option -pu -t "$_p" @agent_poll_absent 2>/dev/null || true
-		else
-			tmux set-option -p -t "$_p" @agent_poll_absent "$_ab" 2>/dev/null || true
-		fi
-	done
+	[ "$_changed" = 1 ] || [ -n "$_windows" ] || return 0
 
 	printf '%s' "$_windows" | sort -u | while IFS= read -r _w; do
 		[ -n "$_w" ] || continue

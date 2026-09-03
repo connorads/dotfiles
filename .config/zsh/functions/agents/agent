@@ -64,6 +64,7 @@ _agent_ls() {
     esac
   done
 
+  [[ -f $_agent_sweep ]] && sh "$_agent_sweep" >/dev/null 2>&1 || true
   local rows
   rows=$(agent_list_rows | agent_rank_sort)
   if (( json )); then
