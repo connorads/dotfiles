@@ -424,6 +424,25 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
   slot and the pane saves no command at all (observed: 14 parked panes saved
   bare). `respawn-pane` leaves the title empty, so park sets one over OSC 2,
   not `select-pane -T`, which would be a second tmux call from inside the pane.
+  That fix treats the *producer*, so every `IFS=$'\t' read` parse in the
+  subsystem is still exposed to the next nullable field. The scripts here hold
+  eleven such sites where an interior field can genuinely be empty:
+  `lib/claude-plan.sh:98` (a plan's `title`, blank or a bare `#` first line -
+  the picker renders shifted columns for an untitled plan);
+  `resurrect-save-sessions.sh:213,222` (`#{pane_current_command}`, empty for a
+  dead pane, which `remain-on-exit` makes a designed-for state - the pane's dir
+  is set to a tty path) and `:339` (`#{pane_current_path}` - a hibernated pane
+  drops out of the save); `organiser.sh:204,291,375`
+  (`#{pane_current_command}` - "copy pane info" passes an unquoted cwd in the
+  cmd slot, and the kill prompt names a directory) and `:155,249,347` (a
+  window `label` from `#{b:pane_current_path}` under `automatic-rename`, tmux's
+  default - the "kill shared window everywhere" menu names the wrong branch);
+  `agent-hibernate.sh:209` (`#{pane_current_path}` - an empty `paneKey` in the
+  record); and `mem-popup.sh:132` (`#{window_name}`, spelled
+  `IFS="$(printf '\t')"` so a grep for the usual form misses it - 0 MB
+  reported). The correct split is `"${(@ps:\t:)rec}"` in zsh and an explicit
+  field walk in bash; the mechanism, the repro and the audit method live in the
+  `mechanical-enforcement` skill (`references/shell-quality.md`, `## zsh`).
 - **Park is a key-loop, not a placeholder.** It re-prints the screen, shows
   `hibernated: <name> (idle Nd, freed NNN MB) - Enter to thaw`, and thaws on
   Enter via `run-shell -b` - server-side, outside the pane's own process group,

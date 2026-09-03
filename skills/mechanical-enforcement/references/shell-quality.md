@@ -29,6 +29,7 @@ Reach for the **Also** column only when the **Lint** tool cannot express the rul
 | POSIX scripts stay POSIX | `shellcheck --shell=sh`, `checkbashisms`, tests under target shells such as `dash`, `busybox sh` and `bash --posix` | Bashisms and portability drift | ShellCheck's `sh` dialect means POSIX `sh`, not whatever `/bin/sh` points to locally. |
 | Bash scripts pass static analysis | `shellcheck --shell=bash`, `shfmt -ln=bash --diff` | Quoting, globbing, parse, and maintainability footguns | Keep ShellCheck disables narrow and documented. |
 | zsh parses cleanly | `zsh -n`, `shfmt -ln=zsh --diff` | Syntax and formatting drift | - |
+| Tab-separated records are split, not `read` | convention + review; no linter | Interior empty fields collapsing, so every later field silently holds its neighbour's value | zsh: `"${(@ps:\t:)rec}"`. ShellCheck has no zsh dialect and ast-grep no zsh grammar, so the only mechanical option is a text assertion - and that is a gate only on an already-clean tree. See [zsh](#zsh). |
 | PowerShell stays on the 5.1 floor | `PSUseCompatibleSyntax`/`Commands`/`Types` against the bundled 5.1 profile at Error severity, plus a grep failing on `$IsWindows`/`$IsMacOS`/`$IsLinux` outside the one OS-detection file | 7-only syntax, cmdlets, types and automatic variables absent in Windows PowerShell 5.1 breaking silently on a stock Windows | The compat rules cover syntax, commands and types but **not** automatic variables, hence the grep. Back them with a dynamic 5.1 smoke, `powershell.exe -File …`, since static analysis cannot see a `$null` deref. |
 | Shell tests are hermetic | Test harness owns `PATH`, temp dirs, `HOME`/`ZDOTDIR`, and shell options | Ambient-machine failures | Exact harness patterns belong to the testing skill; this skill gates the invariant. |
 
@@ -85,6 +86,67 @@ the testing layer rather than weakening the parse gate:
 ```sh
 ZDOTDIR=$(mktemp -d) zsh -f -c 'fpath=(./.config/zsh/functions $fpath); autoload -Uz my-fn; my-fn --help >/dev/null'
 ```
+
+### `IFS=$'\t' read` silently drops interior empty fields
+
+Tab is IFS *whitespace*, so `read` collapses a run of tabs into a single
+separator: every interior empty field disappears and each later field shifts
+left. Same result in zsh 5.9.2, GNU bash 5.3.15 and Apple bash 3.2.57 (macOS
+arm64, verified 2026-09-02):
+
+```console
+$ rec=$'a\t\tc\t\t\tf\t'          # 7 fields: a, "", c, "", "", f, ""
+$ IFS=$'\t' read -r f1 f2 f3 f4 f5 f6 f7 <<< "$rec"
+[a][c][f][][][][]                  # 3 values - c and f shifted two places left
+```
+
+The idiom looks safe because with a **non-whitespace** IFS it is completely
+correct:
+
+```console
+$ rec="a::c:::f:"; IFS=: read -r f1 f2 f3 f4 f5 f6 f7 <<< "$rec"
+[a][][c][][][f][]                  # all 7, empties intact
+```
+
+So `IFS=: read` - the `/etc/passwd` idiom everyone learns - is sound, and
+carrying it over to tab-separated records is not. `read -r -A arr` does not
+rescue it: same collapse, `n=4`.
+
+Fix: split with zsh's parameter-expansion flags rather than `read`.
+
+```console
+$ f=("${(@ps:\t:)rec}"); print -r -- "n=${#f}"
+n=7                                # [a][][c][][][f][]
+```
+
+Both flags are load-bearing. `@` inside double quotes is what preserves empty
+elements. `p` is what makes the separator an actual tab: the flag's argument is
+not escape-processed, so `"${(@s:\t:)rec}"` returns **one** field - the whole
+record. Plain `${(s:\t:)rec}` is the trap from the other direction, dropping
+empties.
+
+The damage is positional, not local. One empty field early shifts every field
+after it, so it surfaces as a wrong value in a distant variable - never as an
+error, and never at the parse site. A real instance: a tmux-pane serialiser
+whose record was `pane_id  title  pid  command  path`, where an untitled pane
+collapsed the line and the pid landed in the title slot, saving no command at
+all. The fix taken was to stop *producing* the empty field, which left the
+parse - and the other 40 sites spelling the same idiom - exposed. Fixing the
+producer treats one field of one record; the parse is the thing that generalises.
+
+Audit with `grep -rF "IFS=\$'\t' read"`, then judge each site by whether an
+*interior* field can be empty with a non-empty field after it - a nullable
+*final* field collapses harmlessly, which is why so many sites are correct by
+accident. Two spellings a literal grep misses: `IFS="$(printf '\t')"`, and a
+tab typed literally into the assignment.
+
+Encoding this mechanically is not currently possible: ShellCheck has no zsh
+dialect and ast-grep has no zsh grammar, so the only option is a text
+assertion over the tree - which is a gate only once the tree is already clean.
+Landing one against 17 offending files would be the ratcheting failure this
+skill warns about: a threshold chosen to make today's worst file pass is not a
+gate, and it gets waived or reverted. Convention plus review until the live
+sites are fixed, then the text assertion becomes worth wiring.
 
 ## PowerShell
 

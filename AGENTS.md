@@ -195,6 +195,7 @@ Interactive zsh: autoload takes precedence over PATH (`whence -w killport` → `
 - For behavioural changes to shell functions/scripts, prefer adding or updating Bats tests in `~/.config/zsh/tests/`; run `mise run zsh-tests`.
 - Test shell scripts by public behaviour: args, exit status, stdout/stderr, and filesystem effects; use `test_helper.bash` for isolated `HOME`/`PATH`.
 - oh-my-zsh git plugin defines ~200 `g*` aliases (e.g. `gcl`, `gco`, `gca`). Run `alias <name>` before creating new `g*` functions/aliases to avoid conflicts.
+- Split a tab-separated record with `"${(@ps:\t:)rec}"`, never `IFS=$'\t' read`: tab is IFS whitespace, so `read` collapses runs of tabs and every interior empty field shifts the rest left, silently. This tree is full of TSV-record shell code and 11 live sites are already wrong; mechanism, repro and audit in the `mechanical-enforcement` skill (`references/shell-quality.md`, `## zsh`).
 
 ## Scripts
 
