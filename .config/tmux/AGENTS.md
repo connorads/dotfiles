@@ -380,19 +380,18 @@ Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
 ## Agent hibernate / thaw (custom subsystem)
 
-Kill an idle Claude pane to reclaim RAM and swap, park a thawer in its place,
-and resume the same conversation on demand. Killing is what returns memory -
+Stop an idle Claude or Codex pane to reclaim RAM and swap, park a thawer in its
+place, and resume the same conversation on demand. Stopping is what returns memory -
 SIGSTOP keeps every page mapped, so it parks the leak rather than resetting it -
 and `--resume` restores the conversation in full because the transcript, not the
-process, is the session. Mechanism, rejected alternatives and the Claude-only
-scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-resume.md).
+process, is the session. The lifecycle-specific mechanism and rejected
+alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes-through-lifecycle-adapters.md).
 
 - [`scripts/agent-hibernate.sh`](./scripts/agent-hibernate.sh) - the whole
   engine: `hibernate` / `thaw` / `park` / `list`. Identity is snapshotted with
-  the same resolvers the restore and fork paths use (`claude_config_dir_for_pid`
-  for the ccp account, `claude_session_meta_for_pid` for the session id,
-  `resurrect_argv_claude_flags` for the launch flags), so a thawed pane keeps
-  its account and its posture.
+  the same resolvers the restore and fork paths use. Claude keeps its ccp
+  account and launch posture. Codex keeps the exact current thread ID, cwd,
+  argv boundaries, CLI version and optional `mcpz` bundle name.
 - **The record store is keyed by session id**, at
   `~/.local/state/agent-hibernate/<sessionId>.json` (`AGENT_HIBERNATE_DIR`
   relocates it), with the pane's screen capture beside it as
@@ -408,9 +407,13 @@ scope: [`docs/adr/0008`](../../docs/adr/0008-hibernate-claude-panes-by-kill-and-
 - **The state gate.** `idle`/`done` hibernate freely; `blocked` (a pending
   permission prompt), `working` (an in-flight tool call) and an empty state each
   need `--force`, and refusal is **exit 6**.
-- **`remain-on-exit` is raised across the kill.** Both pane shapes occur -
-  claude under a shell, and claude *as* the pane process - and in the second the
+- **`remain-on-exit` is raised across shutdown.** Both pane shapes occur -
+  an agent under a shell, and an agent *as* the pane process - and in the second the
   pane would close on the kill before the thawer could be spawned into it.
+- **Codex exits through its TUI lifecycle.** Bounded Ctrl+C presses clear a
+  draft or modal and request graceful shutdown. The engine waits for the exact
+  PID to exit before parking. A timeout leaves Codex live unless `--force` was
+  supplied. Claude retains its process-group TERM/KILL path.
 - **The screen is captured before the respawn**, with trailing blank padding
   trimmed. `respawn-pane -k` discards the visible screen and keeps scrolled
   history (observed), so park re-prints the capture; re-printing tmux's
