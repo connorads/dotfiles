@@ -190,6 +190,23 @@ EOF
   dfgit diff --cached --quiet -- .codex/config.toml
 }
 
+@test "status hides codex app-injected plugin churn" {
+  cat >>"$HOME/.codex/config.toml" <<'EOF'
+
+[plugins."codex-app-tools@openai-bundled"]
+enabled = true
+
+[plugins."unified-computer-use@openai-bundled"]
+enabled = true
+EOF
+
+  run "$DOTFILES" status --short .codex/config.toml
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  dfgit diff --cached --quiet -- .codex/config.toml
+}
+
 @test "status hides codex avatar and shell-env browser wiring churn" {
   cat >"$HOME/.codex/config.toml" <<'EOF'
 model = "gpt-5.5"
