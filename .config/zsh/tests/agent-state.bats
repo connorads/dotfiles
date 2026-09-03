@@ -49,6 +49,17 @@ large_hook_payload() {
   [ "$(wstate "$win")" = working ]
 }
 
+@test "hook activity cancels pending process absence" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$pane" @agent_presence_absent_since 100
+
+  ason "$pane" working codex
+
+  [ "$status" -eq 0 ]
+  [ "$(pstate "$pane")" = working ]
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_presence_absent_since)" ]
+}
+
 @test "large ignored hook stdin is drained before setting working" {
   pane=$(tx display-message -p -t s '#{pane_id}')
 

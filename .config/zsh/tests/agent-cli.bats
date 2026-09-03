@@ -184,6 +184,23 @@ teardown() {
   printf '%s' "$output" | jq -e '. == []'
 }
 
+@test "agent ls reconciles and lists a stateless wrapped codex" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  fake="$BATS_TEST_TMPDIR/codex"
+  ln -s /bin/sleep "$fake"
+  tx respawn-pane -k -t "$pane" "zsh -f -c 'python3 -c '\''import subprocess,sys; raise SystemExit(subprocess.run([sys.argv[1],\"300\"]).returncode)'\'' '$fake'; status=\$?; exit \$status'"
+  wait_until -d 'tx display-message -p -t "$pane" "#{pane_current_command}"' \
+    '[ "$(tx display-message -p -t "$pane" "#{pane_current_command}")" = zsh ] && ps -t "$(tx display-message -p -t "$pane" "#{pane_tty}" | sed "s#^/dev/##")" -o args= | grep -q "$fake"'
+
+  run env AGENT_SWEEP="$SWEEP" zsh --no-rcs "$AGENT" ls --json
+
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | jq -e --arg pane "$pane" '
+    length == 1 and .[0].pane == $pane
+    and .[0].state == "idle" and .[0].kind == "codex"'
+}
+
 @test "agent ls rejects an unknown flag with exit 2" {
   run_zsh_function "$AGENT" ls --bogus
   [ "$status" -eq 2 ]
@@ -472,12 +489,13 @@ wait_nonshell() {
   p1=$(tx display-message -p -t s '#{pane_id}') # bare shell = dead agent
   tx set-option -p -t "$p1" @agent_state done
   tx set-option -p -t "$p1" @agent_name backend
+  tx set-option -p -t "$p1" @agent_presence_absent_since 0
   tx split-window -t s
   p2=$(tx display-message -p -t s '#{pane_id}')
   tx respawn-pane -k -t "$p2" 'sh -c "exec sleep 300"' # live agent stand-in
   wait_nonshell "$p2" || skip "pane shell did not yield the foreground in time"
   tx set-option -p -t "$p2" @agent_state working
-  run env AGENT_SWEEP="$SWEEP" zsh --no-rcs "$AGENT" name "$p2" backend
+  run env AGENT_SWEEP="$SWEEP" AGENT_PRESENCE_NOW=10 zsh --no-rcs "$AGENT" name "$p2" backend
   [ "$status" -eq 0 ]
   [ "$(tx show-options -pqv -t "$p2" @agent_name)" = backend ]
   [ -z "$(tx show-options -pqv -t "$p1" @agent_name)" ]

@@ -127,3 +127,18 @@ journal_lines() { cat "$AGENT_JOURNAL_DIR"/events-*.jsonl 2>/dev/null; }
 
   journal_lines | jq -e '.state == "working" and .event == "Stop"'
 }
+
+@test "process reconciliation journal is metadata-only" {
+  run env AGENT_JOURNAL_DIR="$AGENT_JOURNAL_DIR" sh -c \
+    '. "$1"; journal_presence_event released %9 @3 working codex "" "" 10' \
+    sh "$TESTS_DIR/../../tmux/scripts/agent-journal.sh"
+
+  [ "$status" -eq 0 ]
+  journal_lines | jq -e '
+    .event == "ProcessReconcile" and .reason == "released"
+    and .pane == "%9" and .window == "@3"
+    and .previous_state == "working" and .previous_kind == "codex"
+    and .observed_kind == null and .state == null and .age_seconds == 10
+    and (keys | sort) == (["age_seconds", "event", "observed_kind", "pane",
+      "previous_kind", "previous_state", "reason", "state", "ts", "window"] | sort)'
+}
