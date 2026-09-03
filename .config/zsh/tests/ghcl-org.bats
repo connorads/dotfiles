@@ -95,39 +95,6 @@ esac
 
 exec "$REAL_GIT" "$@"
 EOF
-
-  PTY_DRIVER="$BATS_TEST_TMPDIR/pty-run.py"
-  export PTY_DRIVER
-  cat >"$PTY_DRIVER" <<'PY'
-"""pty-run ANSWER CMD... - run CMD on a pty, type ANSWER, exit with its status."""
-import os
-import pty
-import subprocess
-import sys
-
-answer = sys.argv[1].encode()
-master, slave = pty.openpty()
-proc = subprocess.Popen(sys.argv[2:], stdin=slave, stdout=slave, stderr=slave)
-os.close(slave)
-# The line discipline holds this until the child reads it, and the master
-# staying open is what keeps the child's stdin from hitting EOF first.
-os.write(master, answer + b"\n")
-
-chunks = []
-while True:
-    try:
-        data = os.read(master, 4096)
-    except OSError:
-        break
-    if not data:
-        break
-    chunks.append(data)
-
-proc.wait()
-os.close(master)
-sys.stdout.buffer.write(b"".join(chunks))
-sys.exit(proc.returncode)
-PY
 }
 
 rows() {
@@ -616,16 +583,12 @@ EOF
   [ ! -d "$WORK/api" ]
 }
 
-# Run ghcl-org on a real pty, answering the prompt with ANSWER.
-#
-# Not `script`: it calls tcgetattr on its own stdin, so it refuses a fifo, and
-# with a heredoc instead the pty reaches EOF before the read happens - the
-# prompt then sees ^D and every case answers "no", which passes an abort test
-# for entirely the wrong reason. A pty whose master this driver holds open has
-# neither problem, and it exits with the child's real status.
+# Run ghcl-org on a real pty, answering the prompt with ANSWER. `run_on_pty`
+# (test_helper.bash) is the driver, and its header says why `script(1)` cannot
+# stand in for it.
 tty_org() {
   : >"$GIT_LOG"
-  run python3 "$PTY_DRIVER" "$1" zsh --no-rcs "$GHCL_ORG" "${@:2}"
+  run_on_pty "$1" zsh --no-rcs "$GHCL_ORG" "${@:2}"
 }
 
 @test "a tty answering y proceeds" {

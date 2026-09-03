@@ -141,6 +141,97 @@ TEST_LOG="$(mktemp)" PATH="$fakebin:$PATH" ./script-under-test
 This exercises the real command lookup and argument passing while avoiding real
 network/filesystem side effects.
 
+## Driving a TTY in tests
+
+Two different needs get conflated here, and only one of them `script(1)` can serve:
+
+- **The command needs to *see* a tty** - to emit colour, a progress line, or an
+  interactive-only warning. `script -q /dev/null <cmd>` (BSD) / `script -qc <cmd>
+  /dev/null` (util-linux) is fine, and the flags genuinely differ, so branch on
+  the platform.
+- **The command needs to *read* from the tty** - a `[y/N]` confirmation. `script`
+  cannot do this, in either spelling, and neither failure announces itself.
+
+### `script(1)` cannot answer a prompt
+
+Verified on macOS arm64, BSD `script`, 2026-09-02:
+
+- **FIFO on stdin.** `script` calls `tcgetattr` on its own stdin and aborts:
+  `script: tcgetattr/ioctl: Operation not supported on socket`. The child never
+  runs. This is the spelling that looks right, because a FIFO the test holds open
+  is the correct answer to a *different* problem (keeping a backgrounded pty
+  client alive past its stdin draining).
+- **Heredoc on stdin** (`<<<"y"`). `script` starts, but the pty reaches EOF before
+  the child's `read` executes, so the prompt sees `^D` and the answer parses as
+  empty. Observed output was literally `^Dy`.
+
+The second one is the dangerous failure, because **every answer then reads as the
+default**. A "declining aborts" test passes while a "confirming proceeds" test
+fails, so the suite looks like it has one broken test rather than one meaningless
+one - the abort assertion was never exercising the abort path at all. Any time a
+prompt-driven pair splits that way, suspect the harness before the code.
+
+`script`'s own exit status is also not reliably the child's, so a `script`-based
+prompt test has to round-trip the exit code through a file to assert on it.
+
+### The shape that works
+
+Own the pty rather than borrowing one. In Python's stdlib, which needs no
+dependency and is usually already present:
+
+```python
+"""run-on-pty ANSWER CMD... - run CMD on a pty, type ANSWER, exit with its status."""
+import os, pty, subprocess, sys
+
+answer = sys.argv[1].encode()
+master, slave = pty.openpty()
+proc = subprocess.Popen(sys.argv[2:], stdin=slave, stdout=slave, stderr=slave)
+os.close(slave)
+os.write(master, answer + b"\n")          # line discipline holds it until read
+
+chunks = []
+while True:
+    try:
+        data = os.read(master, 4096)
+    except OSError:                        # master goes EIO when the slave closes
+        break
+    if not data:
+        break
+    chunks.append(data)
+
+proc.wait()
+os.close(master)
+sys.stdout.buffer.write(b"".join(chunks))
+sys.exit(proc.returncode)                  # the CHILD's status, not the driver's
+```
+
+Three parts are load-bearing:
+
+- **The driver holds the master open** until the child exits. That is what keeps
+  the child's stdin from hitting EOF before it reads - the heredoc failure above.
+- **stdin, stdout and stderr are all the slave**, so the child sees one tty and
+  `isatty()` is true on each.
+- **It exits with the child's real status**, so the test asserts on it directly.
+
+Wrap it as a harness helper rather than repeating it per suite; a Bats suite can
+inline the script via a heredoc on `python3 -`, since that heredoc is python's own
+stdin and the child's stdin is the pty slave `Popen` sets explicitly.
+
+### Prove the helper discriminates
+
+A pty driver that silently answers nothing, or answers the default, passes the
+decline test either way - which is how the original bug hid. So demonstrate the
+discrimination rather than assuming it: force the driver to write the *opposite*
+answer and confirm the confirm-path test fails while the decline test still
+passes, then restore. (Deleting the write instead makes the run *hang*, which is
+weaker evidence: it proves the write matters, not that the answer reaches the
+prompt.)
+
+No static rule is worth writing for this. There is one correct call site per
+suite and no existing misuse to catch, so a lint rule would gate nothing; the
+enforcement is a shared helper whose header states the two `script` failures, and
+a caveat on whichever `script`-based helper looks like the right tool.
+
 ## Speed and determinism
 
 Shell suites are slow for the same reasons they are flaky: real time and real

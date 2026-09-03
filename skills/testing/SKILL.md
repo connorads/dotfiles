@@ -138,7 +138,8 @@ and filesystem effects. For shell functions, isolate `PATH`, `HOME`/`ZDOTDIR`,
 temp dirs, fixtures, and shell options.
 
 See `references/shell-testing.md` for tool comparison, zsh isolation patterns,
-POSIX multi-shell loops, example harnesses, and keeping suites fast.
+POSIX multi-shell loops, example harnesses, driving a tty (and answering a
+prompt, which `script(1)` cannot do), and keeping suites fast.
 
 ### Scenario (integration) tests
 
@@ -361,7 +362,8 @@ time/network coupling (see Core Rules).
   selection, setup/cleanup through public surfaces, external fakes, accessible
   selectors, runtime policy, and anti-patterns for scenario/e2e suites.
 - [shell-testing.md](references/shell-testing.md) - Bats/ShellSpec/shUnit2/cram
-  trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, and keeping
-  suites fast (parallelism, fixture amortisation, removing time-coupling).
+  trade-offs, zsh isolation, POSIX multi-shell testing, shell fakes, driving a
+  tty and answering a prompt on a pty, and keeping suites fast (parallelism,
+  fixture amortisation, removing time-coupling).
 - For coverage reports, thresholds, exclusions, **mutation testing**, fuzzing,
   and CI/hook enforcement of test quality, use the **test-coverage** skill.

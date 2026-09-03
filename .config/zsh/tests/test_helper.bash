@@ -332,6 +332,13 @@ _pidfile_has_pid() {
   return 0
 }
 
+# run_in_tty COMMAND - run COMMAND under `script(1)` so it sees a tty, for
+# asserting output that is gated on one (colour, a progress line, an
+# interactive-only warning).
+#
+# **It cannot answer a prompt** - `script` gives the child no way to receive a
+# keystroke here, and the failure is silent rather than loud. Use `run_on_pty`
+# below for anything that reads from stdin.
 run_in_tty() {
   local command=$1
 
@@ -340,6 +347,64 @@ run_in_tty() {
   else
     run script -qc "$command" /dev/null
   fi
+}
+
+# run_on_pty ANSWER CMD... - run CMD on a real pseudo-tty, answer its prompt
+# with ANSWER, and `run` it, so $status is CMD's own exit status.
+#
+# `script(1)` cannot do this in either spelling, and neither failure says so.
+# Handed a FIFO on stdin (the `attach_pty_client` fd-9 pattern) BSD `script`
+# calls tcgetattr on its own stdin and aborts - `script: tcgetattr/ioctl:
+# Operation not supported on socket` - so the child never runs at all. Handed a
+# heredoc it starts, but the pty reaches EOF before the child's `read` happens:
+# the prompt sees ^D, the answer parses as empty, and therefore **every answer
+# reads as "no"**. An abort test then passes for entirely the wrong reason while
+# its proceed twin fails, which is exactly how this hid.
+#
+# So the driver owns the pty rather than borrowing one: `pty.openpty()`, the
+# child's stdin/stdout/stderr all the slave, the answer written to the master,
+# and **the master held open until the child exits** - that is what keeps the
+# child's stdin from hitting EOF first. It also exits with the child's real
+# status, which `script`'s own exit status is not reliably; a script-based test
+# has to round-trip the exit code through a file to get it.
+#
+# python3 is already a suite dependency (`create_unix_socket`). The heredoc is
+# python's *own* stdin, while the child's stdin is the pty slave `Popen` sets
+# explicitly, so the two never collide.
+run_on_pty() {
+  local answer=$1
+  shift
+
+  run python3 - "$answer" "$@" <<'PY'
+"""run_on_pty ANSWER CMD... - run CMD on a pty, type ANSWER, exit with its status."""
+import os
+import pty
+import subprocess
+import sys
+
+answer = sys.argv[1].encode()
+master, slave = pty.openpty()
+proc = subprocess.Popen(sys.argv[2:], stdin=slave, stdout=slave, stderr=slave)
+os.close(slave)
+# The line discipline holds this until the child reads it, and the master
+# staying open is what keeps the child's stdin from hitting EOF first.
+os.write(master, answer + b"\n")
+
+chunks = []
+while True:
+    try:
+        data = os.read(master, 4096)
+    except OSError:
+        break
+    if not data:
+        break
+    chunks.append(data)
+
+proc.wait()
+os.close(master)
+sys.stdout.buffer.write(b"".join(chunks))
+sys.exit(proc.returncode)
+PY
 }
 
 # Indexed curl stub for the usage-tracker tests. Each invocation consumes the
