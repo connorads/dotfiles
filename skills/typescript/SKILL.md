@@ -1,145 +1,170 @@
 ---
 name: typescript
 description: >
-  Write idiomatic, type-safe TypeScript: errors as values, parse-don't-validate,
-  branded/domain types, deep domain modules, and correct-by-construction APIs.
-  Use when designing or reviewing TypeScript specifically - Result types, tagged
-  errors, branded types, smart constructors, schema parsing, module/import
-  layout, JSDoc, or the cast/`any`/`!` discipline. Also covers choosing or
-  migrating TypeScript compiler versions (TS 7 vs 6, tsc/tsc6, JS-API
-  consumers). For language-agnostic design
-  use the architecture skill; for lint/tsconfig config use mechanical-enforcement;
-  for test strategy use testing.
+  Write idiomatic, type-safe TypeScript: errors as values and composing them,
+  parse-don't-validate, branded and domain types, the record-type choice
+  (interface, type, class, brand, readonly, as const satisfies), deep domain
+  modules and import cycles, cancellation with AbortSignal and structured
+  concurrency, resource and transaction scopes with using and
+  AsyncDisposableStack, the composition root, retries and the injected clock,
+  exhaustiveness and the cast/`any`/`!` discipline, the Effect adoption
+  boundary, and which compiler and runtime to target (TS 7, Node, Bun, Deno,
+  erasable syntax). Use when designing or reviewing TypeScript specifically.
+  Routing: architecture for agnostic design, mechanical-enforcement for lint
+  and tsconfig config, testing for test strategy, the vendored effect skill
+  for programs written in Effect.
 ---
 
 # TypeScript
 
-Concrete TypeScript idioms that make the principles from the `architecture`
-skill correct-by-construction. This skill owns the *how* in TypeScript; it does
-not restate the agnostic *why* or the enforceable lint config - see routing.
+Concrete TypeScript idioms that make the `architecture` skill's principles
+correct-by-construction: the *how*, not the agnostic *why* or the enforceable
+config - see routing.
 
 ## Routing - who owns what
 
 | Concern | Owner | This skill |
 |---|---|---|
-| Agnostic principles (functional core/shell, ports, error-as-value concept, observability, workflows/idempotency, config-at-boundary) | `architecture` | states the TS idiom + why, points here |
-| Lint rules, strict tsconfig flags, no-`any`/`as`/`!`, no-barrel, direct/transitive module-boundary checks | `mechanical-enforcement` | names the idiom, points there for config |
-| Test strategy, layers, fakes-not-mocks, property tests | `testing` | TS specifics only (fast-check, arbitraries, no `vi.mock`) |
-| Coverage thresholds, CI/hook enforcement | `test-coverage` | - |
+| Agnostic principles (functional core/shell, ports, errors as values, observability, config lifetimes) | `architecture` | states the TS idiom + why, points there |
+| tsconfig flags, lint rules, boundaries, purity bans, test and publish gates | `mechanical-enforcement` (`references/typescript.md`) | names the idiom, points there for config |
+| Inside an Effect program: `Effect.gen`, services, layers, `Schema`, `Schedule`, `Stream` | vendored `effect` skill (`skl effect`) | the adopt/decline boundary and the seam only |
+| Test strategy, layers, fakes-not-mocks, property tests | `testing` | TS specifics only (fast-check, no `vi.mock`) |
+| Coverage, mutation, CI/hook enforcement | `test-coverage` | - |
 
-Rule: state the idiom and *why* it exists here; point out for the agnostic
-principle or the enforceable config. Never copy their tables.
+Rule: state the idiom and its *why* here, point out for the rest, and never copy
+their tables.
 
 ## Adapt first
 
-Before applying anything below, read the repo. These are defaults for greenfield
-or where the repo has no convention - not a migration mandate.
+Read the repo first. These are defaults for greenfield or where the repo has no
+convention - not a migration mandate.
 
 ```text
 Does the repo already have a convention for this concern?
-|-- errors    -> use its Result/error type or Effect; don't introduce a rival
-|-- schema    -> match its parser (zod/valibot/effect Schema); don't add another
-|-- modules   -> match its file layout and import style before "fixing" it
-|-- tests     -> match its runner and double strategy
-`-- none / greenfield -> apply the defaults here; integrate, don't migrate
+|-- errors      -> its Result type or Effect; no rival
+|-- schema      -> its parser (effect Schema / zod / valibot); no second one
+|-- modules     -> its file layout and import style before "fixing" it
+|-- concurrency -> its cancellation convention (signal parameter or none) before adding one
+|-- tests       -> its runner and double strategy
+`-- none        -> the defaults here; integrate, don't migrate
 ```
 
-Decision priority when rules pull apart: correctness/safety > existing project
-conventions > improving local design > avoid broad migrations > document the
-trade-off. New code paths should follow these standards; do not force a
-whole-project migration for an unrelated change.
+Priority when rules pull apart: correctness/safety > existing conventions >
+better local design > avoiding broad migrations > documenting the trade-off. A
+new code path follows these standards; an unrelated change migrates nothing.
 
-**Effect note.** Effect is the aspirational top of every ladder here: its typed
-error channel, `Either`, `Match`, `Redacted`, `Schema`, and layers subsume most
-hand-rolled helpers below. Prefer it *once a repo adopts it*. Until then the
-hand-rolled defaults apply. This skill does not cover deep Effect patterns.
+**Effect boundary.** Adopt Effect when the work needs the typed error channel,
+dependency injection, retry policy and structured concurrency together, or when
+the repo already depends on it; one or two of those alone is a `Result` type
+plus the idioms below. Never introduce it into a repo that has not adopted it.
+Target v4 and install it explicitly (`effect@rc`; `latest` is still v3, verified
+2026-09-03), then read the `effect` skill for everything inside an Effect
+program. This skill owns the seam only: see `references/errors.md`.
+
+**Runtime floor.** The compiler is not the runtime: Node strips types and checks
+nothing, so only erasable syntax runs, and a global the `lib` types (Temporal,
+`DisposableStack`) may not exist where the code runs. `references/toolchain.md`
+owns the floor (Node 24), the capability facts, and every dated library fact -
+no other page carries a version number.
 
 ## Core idioms
 
 ### Errors as values
 
-Expected failures (domain, parsing, auth, I/O, persistence) belong in the return
-type, not in a thrown exception. Promise rejection == throwing.
+Expected failures - domain, parsing, auth, I/O, persistence - belong in the
+return type, not a thrown exception, and a rejected promise is a throw.
 
 ```ts
 Promise<Result<User, UserNotFound | UserStoreUnavailable>>  // not Promise<User>
 ```
 
-Throwing is for unrecoverable *defects* only: violated invariants, impossible
-branches, startup misconfiguration, `notYetImplemented`. See `references/errors.md`
-for the `Result` shape, tagged-error anatomy, panic helpers, and `Redacted`.
+Throwing is for defects only; a boundary exception translates at the shell.
+See `references/errors.md`.
 
 ### Composing fallible steps
 
-Chain `Result` steps with `map` (the step can't fail) and `flatMap`/`andThen`
-(it can) so the first error short-circuits - don't write an `if (!r.ok) return r`
-ladder after every call. Give the pipeline one error channel: `mapError` each
-step's error into the shared type before composing (success types may change down
-the pipe, the error type may not). Collapse a `Result<T>[]` into a `Result<T[]>`
-with a `traverse`/`all` helper, never a manual loop. Each stage should output its
-own type, so stage order is compiler-enforced.
-
-Fail-fast (chaining) suits dependent steps; **accumulate every error** for
-independent validations (form fields) - what schema libraries do and a `Result`
-chain does not. Pick by intent. (Effect: `Effect.all`, `Either`, `Match` - the
-railway is built in.) Expand in `references/errors.md`.
+Chain with `map` and `flatMap` so the first error short-circuits, map every
+step's error into one declared channel, and collapse a `Result[]` with `all`,
+never a hand-rolled loop. Fail fast for dependent steps; accumulate for
+independent validations. See `references/errors.md`.
 
 ### Make signatures total and honest
 
-A signature that can throw - or returns `void`/`Promise<void>` from pure-core
-logic - is lying: the caller sees neither the failure nor the hidden mutation.
-Make a partial function total two ways: **constrain the input** (a branded/parsed
-type so the bad value can't exist) or **widen the output** (`Result`/`Option`).
-Prefer constraining the input where the value recurs - it deletes the failure
-branch for every caller, not just this one. (Pure core returns the new value;
-effects live at the shell - `architecture`.)
+Constrain the input to a parsed or branded value, or widen the output to
+`Result`; constraining is better, deleting the branch for every caller. A
+`void` return from core logic hides a mutation. See `references/parsing.md`.
 
 ### Parse, don't validate
 
-Turn `unknown` into domain types at the boundary, once, and keep the refined
-type. Name parsers `parseX` (untrusted in), smart constructors `makeX`/`createX`
-(from typed pieces), predicates `isX`. Avoid `validateX` for anything that
-returns a refined value - it parsed. See `references/parsing.md` for schemas and
-branded types.
+Turn `unknown` into domain types once at the boundary and keep the refined
+type. Name parsers `parseX`, smart constructors `makeX`, and predicates
+`isX(value): value is X` - a boolean narrows nothing. See
+`references/parsing.md`.
 
 ### Make illegal states unrepresentable
 
-Model lifecycle states as tagged unions, not boolean bags. Avoid boolean
-behaviour-flags in parameters; use named options or domain types. Booleans are
-fine as predicate *return* values. (Agnostic version: `architecture`.)
+A lifecycle is a tagged union, not a bag of booleans, and `assertNever` on the
+default arm turns a new variant into a compile error. Named options replace
+boolean behaviour flags. See `references/modeling.md`.
 
-```ts
-type Invoice =
-  | { readonly _tag: "Draft"; readonly id: InvoiceId; readonly lines: NonEmptyArray<LineItem> }
-  | { readonly _tag: "Sent";  readonly id: InvoiceId; readonly sentAt: Instant };
-```
+### Records, entities, and collections
+
+`interface` for object shapes, `type` for unions and mapped types; a class only
+for nominality through a `#private` field; brands for primitives; `readonly` is
+compile-only and `Object.freeze` is its shallow runtime half. JS has no value
+equality, so entities compare and key by their branded id, never by the object.
+See `references/modeling.md`.
 
 ### Deep, cohesive modules
 
-Centre a module on one concept; expose parsers, smart constructors, combinators,
-predicates. Depend on the narrowest structural shape a caller needs - often a
-single function type, not a fat interface; let concrete adapters be wider. Audit
-existing adapters before creating a new one.
-See `references/modules.md` for domain/application modules, the adapter reuse
-audit + ADR rule, import/file layout, and how to name boundaries before handing
-them to `mechanical-enforcement` for direct import checks or graph architecture
-tests.
+Centre a module on one concept and depend on the narrowest structural shape a
+caller needs, often a single function type. tsc never reports an import cycle;
+the failure is a runtime `ReferenceError` on one import order, which is why the
+barrel rule exists. See `references/modules.md`.
+
+### The composition root is a scope
+
+`await using stack = new AsyncDisposableStack()` releases in exact reverse of
+acquisition, and ownership leaves the root only through an eager `stack.move()`.
+Config is parsed once there into a frozen typed value; pure functions take `now`
+as an argument; retries are a named policy in the adapter. See
+`references/resources.md`.
+
+### Transaction boundaries
+
+A transaction is a closure that commits only on total success plus an explicit
+commit; every other path, including a returned error, must roll back. See
+`references/resources.md`.
+
+### Cancellation and task ownership
+
+A deadline is unenforceable unless the port type takes `signal: AbortSignal`.
+`Promise.all` rejects on the first failure and leaves siblings running with
+their later rejections swallowed - it is not a task group; a scope that spawns
+must also abort and await. See `references/concurrency.md`.
+
+### Bounded fan-out and back-pressure
+
+`Promise.all(items.map(fn))` sets concurrency to the input size; bound it with a
+worker pool whose limit is a checked finite number. A port that streams returns
+`AsyncIterable<T>`, and `await` inside `for await` is the back-pressure. See
+`references/concurrency.md`.
 
 ### Exhaustiveness and the cast discipline
 
-Use `assertNever` (alias `casesHandled`) on the `default` branch of a union
-switch so a new variant becomes a compile error. Construct branded values only
-through parsers - never an `as` cast. Avoid `any` and `!`. Prefer
-`satisfies T` to check a literal against a type without widening it - no cast,
-no SAFETY note; reserve `as` for brand internals and interop. Any non-`as
-const` cast needs a `// SAFETY:` comment. (Lint that enforces these:
-`mechanical-enforcement`.)
-See `references/conventions.md` for JSDoc and the full cast/`any`/`!` rules.
+Construct branded values only through parsers, never an `as` cast; avoid `any`
+and `!`; `satisfies T` checks a literal without widening it, and `as const
+satisfies T` keeps its keys as a literal union. Any other cast carries a
+`// SAFETY:` comment, and `@ts-expect-error` with a reason is the only
+suppression that expires. See `references/conventions.md`.
 
 ## References
 
-- `references/errors.md` - Result shape, tagged errors, panic helpers, Redacted
-- `references/parsing.md` - parse-don't-validate, schema ladder, branded types + smart constructors
-- `references/modules.md` - deep/domain/application modules, narrow-port adapters, reuse-audit + ADR, imports/files, config-at-boundary
-- `references/conventions.md` - JSDoc, cast/`any`/`!` discipline, TS testing specifics
-- `references/toolchain.md` - compiler version selection/migration: TS 7 vs 6, tsc/tsc6, JS-API consumers, framework constraints
+- `references/errors.md` - `Result`, the ladder and the Effect seam, tagged errors, panics, `Redacted`.
+- `references/parsing.md` - schema ladder, narrowing predicates, brands, optionality.
+- `references/modeling.md` - record-type chooser, illegal states, entities, collections.
+- `references/modules.md` - deep modules, ports, layout, import cycles, batching port.
+- `references/resources.md` - `using`, composition root, transactions, retries, clock.
+- `references/concurrency.md` - cancellation, combinators, task ownership, fan-out, back-pressure.
+- `references/conventions.md` - casts, suppressions, `satisfies`, `NoInfer`, JSDoc, testing.
+- `references/toolchain.md` - TS 7, lib ceiling, erasable syntax, runtimes, dated facts.
