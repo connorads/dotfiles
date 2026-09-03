@@ -2,7 +2,7 @@
 # typescript-publish-gates.sh - the pre-publish gate for a TypeScript library: build, pack
 # once, then point publint, attw and a clean-directory smoke test at that one tarball.
 # Verified 2026-09-03 against publint 0.3.24, @arethetypeswrong/cli 0.18.5, typescript 7.0.2,
-# pnpm 11.20.0, jq 1.8.2 on node 24.19.0. All three tool versions are latest today.
+# Verified 2026-09-03 with the versions recorded in typescript-publishing.md.
 #
 # Wire it: save as scripts/publish-gates.sh, `chmod +x`, and run it in the release job
 # immediately before `pnpm publish`. A lifecycle hook is not a substitute - `prepack` and

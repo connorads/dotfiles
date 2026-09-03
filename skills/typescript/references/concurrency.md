@@ -1,9 +1,7 @@
 # Concurrency: cancellation, ownership, back-pressure
 
-Concurrency belongs to the imperative shell (`architecture`, Functional Core,
-Imperative Shell); the pure core has nothing to await, and JavaScript has no task
-group, so ownership is something the code builds. Every runtime claim below is
-verified 2026-09-03 on node 24.19.0 and bun 1.3.14, every sketch on tsc 7.0.2.
+Concurrency belongs to the imperative shell (`architecture`, Functional Core, Imperative Shell); the pure core has nothing to await, and JavaScript has no task group, so ownership is something the code builds. Every runtime claim below is
+verified 2026-09-03 against the floors in `toolchain.md`.
 
 ## Cancellation is a parameter
 
@@ -26,7 +24,7 @@ export const isCancelled = (e: unknown): boolean =>
 | --- | --- |
 | `AbortSignal.timeout` aborts with a **TimeoutError** `DOMException`, `abort()` with an **AbortError** one, `abort(reason)` with that reason verbatim | a predicate matching only `AbortError` is false for every deadline `withDeadline` itself produces |
 | `DOMException` is an `Error` subclass | `e instanceof Error` does not discriminate it; translate it at the shell like any boundary exception (`errors.md`, Translation at the shell) |
-| The timeout does not hold the event loop open: a script whose only pending work is an `AbortSignal.timeout(500)` listener exits in ~0.02s never having fired, node then exiting 13 on the unsettled top-level await where bun waits and fires | work that must outlive its own timer holds the loop itself |
+| The timeout does not hold the event loop open: a listener-only script exits before it fires on node and bun | work that must outlive its own timer holds the loop itself; an unsettled top-level await exits 13 on node, while bun stays alive until the timeout fires |
 | `const f: Fetch = async (url) => fetch(url)` is assignable under parameter bivariance, exit 0 | the signal is offered, never imposed, and tsc cannot see a dropped one |
 
 ## Promise combinators are not a task group
@@ -60,10 +58,12 @@ export class TaskScope implements AsyncDisposable {
   /** The handler is attached here, not in dispose: an unhandled window is fatal. */
   spawn<T>(fn: (signal: AbortSignal) => Promise<T>): void {
     this.#tasks.push(
-      fn(this.#ac.signal).then(
+      Promise.resolve().then(() => fn(this.#ac.signal)).then(
         (): Outcome => ({ failed: false, reason: undefined }),
         (reason: unknown): Outcome => {
-          const echo = this.#ac.signal.aborted && reason === this.#ac.signal.reason;
+          const echo = this.#ac.signal.aborted && (reason === this.#ac.signal.reason ||
+            (reason instanceof Error && (reason.name === "AbortError" || reason.name === "TimeoutError") &&
+              reason.cause === this.#ac.signal.reason));
           this.#ac.abort(reason);
           return { failed: !echo, reason }; // the failure travels on as a value
         },
@@ -80,7 +80,7 @@ export class TaskScope implements AsyncDisposable {
 | Fact | Consequence |
 | --- | --- |
 | The shorter `fn(sig).catch((e) => { abort(e); throw e; })` form stores a rejected promise nothing handles until dispose, and a child failing while the scope body still runs exits 1 on node and bun | attach the handler at spawn: the form above exits 0, reports `AggregateError: task scope failed` carrying the child's error, and returns ~50ms into a 300ms cooperative sibling |
-| A cooperative sibling rejects with `signal.reason`, which is the first failure again | the `echo` test keeps that duplicate out of the `AggregateError`; a sibling wrapping the reason in its own error is reported |
+| A cooperative sibling may reject with `signal.reason` or a native cancellation error whose `cause` is that reason | the `echo` test removes those duplicates; an independent failure remains in the `AggregateError` |
 | `#private` fields are erasable where constructor parameter properties are not (`modeling.md`) | the scope compiles under `erasableSyntaxOnly`; `await using` needs the disposable lib and a disposer that can itself throw (`resources.md`) |
 
 ## Bounded fan-out
@@ -108,7 +108,7 @@ export async function mapLimit<A, B>(items: Iterable<A>, limit: number, signal: 
 
 | Fact | Consequence |
 | --- | --- |
-| `Math.max(1, NaN)` is `NaN`, `Array.from({ length: NaN })` is empty and `Promise.all([])` resolves, and `Number(process.env["CONCURRENCY"])` on an unset variable is `NaN` | the clamped form processes zero rows and returns `[]` at exit 0, so refuse a non-finite limit instead - `Infinity` is the other half, a `RangeError: Invalid array length`. A bad limit is a defect, so it throws (`errors.md`, Panic helpers) |
+| `Math.max(1, NaN)` is `NaN`, `Array.from({ length: NaN })` is empty and `Promise.all([])` resolves, and `Number(process.env["CONCURRENCY"])` on an unset variable is `NaN` | the clamped form processes zero rows and returns `[]` at exit 0, so refuse a non-finite limit instead. A bad limit is a defect, so it throws (`errors.md`, Panic helpers - the defect vocabulary) |
 | Without the signal, surviving workers empty the queue behind a caller that has already rejected: 7 rows started at the rejection, all 20 started 80ms later | spawn the fan-out inside a scope - `scope.spawn((signal) => mapLimit(rows, 4, signal, importOne))` - and the first failure stops it at 7 |
 
 ## Back-pressure is the return type

@@ -17,11 +17,9 @@
 // release-age quarantine holds oxlint 1.81.0, oxfmt 0.66.0 and knip 6.34.0 back.
 amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
-
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 display_skip_reasons = List()
 terminal_progress = false
-
 local binary_excludes = List(
     "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.ico",
     "*.woff", "*.woff2", "*.ttf", "*.eot", "*.pdf", "*.zip"
@@ -177,10 +175,12 @@ hooks {
             // glob/{{files}}. `--production` reads ONLY `entry` and `project` patterns
             // suffixed `!`; without those markers it analyses nothing and exits 0 on a
             // dead tree, and production is the one mode that never hints about it.
-            // `--strict` is the dev-dependency-leak gate and `--cycles` adds cycles among
-            // entry-reachable files; references/knip.jsonc carries the config and the
-            // dev-mode second command (typescript.md, Dead code (knip)).
+            // `--strict` is the dev-dependency-leak gate. `--cycles` is a strict include
+            // filter, so cycles need a second run rather than narrowing this one.
             ["knip"] {
+                check = "pnpm exec knip --production --strict"
+            }
+            ["knip-cycles"] {
                 check = "pnpm exec knip --production --strict --cycles"
             }
             // Vulture needs whole-repo visibility. Enable only after baseline cleanup

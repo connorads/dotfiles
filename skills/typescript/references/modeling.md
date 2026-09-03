@@ -2,8 +2,7 @@
 
 How a domain value is spelled decides what the compiler can refuse; the agnostic
 principle is `architecture` SKILL.md, "Domain Modelling". Diagnostics are
-verified 2026-09-03 against tsc 7.0.2 under the house strict flags, runtime
-behaviour against node 24.19.0; the flags belong to `mechanical-enforcement` and
+verified 2026-09-03 against the floors in `toolchain.md`; the flags belong to `mechanical-enforcement` and
 are named here as a cause, never configured.
 
 ## Which record type
@@ -13,7 +12,7 @@ Reach past that default only for what the other rows buy.
 
 | Form | Buys | Costs |
 |---|---|---|
-| `interface Order { … }` | the default object shape; `extends`, `implements` | any file can reopen it, silently |
+| `interface Order { … }` | the default object shape; `extends`, `implements` | its declaration scope can reopen it silently |
 | `type Order = { … }` | unions, mapped and conditional types; a closed record | a duplicate declaration is TS2300 |
 | `class Money` + a read `#private` field | nominality between look-alike classes; behaviour on the value | the prototype does not survive a repository round trip |
 | brand (`string & { readonly [brand]: "OrderId" }`) | nominality on primitives and plain records, free at runtime | construct only through a parser |
@@ -35,10 +34,10 @@ object-literal alias is accepted. A DTO that has to flow into an index-signature
 type therefore declares its members in a type alias.
 
 **Declaration merging is a safety property, not a style one.** A second
-`interface Reopenable { … }` in any file merges with zero diagnostics; a second
+`interface Reopenable { … }` in the same declaration scope merges with zero diagnostics; a second
 `type Closed = { … }` is `TS2300: Duplicate identifier 'Closed'`. Extensibility
 is the point for a shape third parties implement, and the reason a closed domain
-record is a `type`.
+record is a `type`. Another module needs explicit module augmentation or a global declaration.
 
 **Nominality has two spellings.** A brand rejects the raw primitive:
 `TS2322: Type 'number' is not assignable to type 'Cents'`. A class needs a
@@ -93,8 +92,8 @@ state does not have cannot be read.
 
 ## Entities: compare by id, never by the object
 
-JavaScript has no value equality. `===` is reference identity and `Map`/`Set` key
-on SameValueZero, so on node 24 `new Map([[{ id: 1 }, "x"]]).get({ id: 1 })` is
+JavaScript objects have no structural value equality. `===` is reference identity and `Map`/`Set` key
+on SameValueZero, so `new Map([[{ id: 1 }, "x"]]).get({ id: 1 })` is
 `undefined`. An entity therefore compares and indexes by its branded id:
 
 ```ts
@@ -110,10 +109,10 @@ Brand each entity's id separately: with `ShipmentId` distinct from `OrderId`,
 type 'OrderId'`. A shared `Brand<string, "Id">` accepts the mix-up.
 
 **Identity must not live in a method.** `JSON.parse(JSON.stringify(order))` and
-`structuredClone(order)` both return a prototype-less object: `instanceof Order`
+`structuredClone(order)` both return an object with `Object.prototype`, not the class's custom prototype: `instanceof Order`
 is `false` and `order.equals` is `undefined`, so calling it throws
-`TypeError: row.equals is not a function`. TypeScript accepts that row as an
-`Order` structurally, so the failure surfaces only at the repository boundary
+`TypeError: row.equals is not a function`. JSON parsing is accepted through `any`;
+`structuredClone<T>` promises the input type despite losing its prototype. The failure surfaces at the repository boundary
 doing the round trip (`references/modules.md`, "Repositories and persistence").
 Effect's `Equal`/`Hash` protocol is the rung above a comparison function; the
 vendored `effect` skill owns it (`skl effect`).
@@ -126,7 +125,7 @@ a field-by-field `equals`. Equality and immutability are separate opt-ins.
 `readonly` is compile-only - `TS2540: Cannot assign to 'a' because it is a
 read-only property` - and `Object.freeze` is the runtime half, one level deep:
 tsc accepts `nested.b = 99` on `Object.freeze({ a: 1, nested: { b: 2 } })` and
-node 24 performs it. Freeze at construction, and hold immutable members only.
+the supported runtime performs it. Freeze at construction, and hold immutable members only.
 
 ## Collections in signatures
 
@@ -141,9 +140,9 @@ Employee[]` back to `Employee[]` is `TS4104: The type 'readonly Employee[]' is
 'readonly' and cannot be assigned to the mutable type 'Employee[]'` - and the
 promise is shallow:
 `safe[0]!.name = "mutated"` compiles. No compiler flag makes array variance sound,
-and the type-aware lint rule for a mutable parameter needs a TypeScript 6 checker
+and the type-aware lint rule for a mutable parameter needs a side-by-side checker
 alongside (`references/toolchain.md`), so this rests on habit and review.
 
-`Iterable<T>` is single-pass: a generator handed to an `Iterable<T>` parameter
-and iterated twice yields nothing the second time, with no diagnostic - take
-`readonly T[]` unless one pass is all the function does.
+`Iterable<T>` does not promise repeatability. A generator object yields nothing
+on its second traversal, while an array is repeatable. Take `readonly T[]` when
+repeatability is part of the contract.

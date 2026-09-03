@@ -80,7 +80,7 @@ route needs its own fail-closed assertion, because the module count is the only 
 
 ```bash
 depcruise --info | grep -qE '^[[:space:]]*✔ \.ts$' || { echo "depcruise cannot parse .ts"; exit 1; }
-depcruise src --config .dependency-cruiser.cjs -T err
+depcruise src --config .dependency-cruiser.cjs -T err-long --no-cache
 ```
 
 What its rules can and cannot express, verified 2026-09-03 against 18.2.0 with typescript
@@ -90,7 +90,7 @@ What its rules can and cannot express, verified 2026-09-03 against 18.2.0 with t
 |---|---|
 | `reachable` accepts only `path` / `pathNot` | Pairing it with `via`, `viaNot` or `dependencyTypes` is a hard schema error at exit 1. A transitive rule and a type-only split are two configs and two runs. |
 | `via*` applies to `circular` rules only | On a non-circular rule a `via` that matches nothing is accepted, ignored, and **widens** the rule - a via of `^MATCHES_NOTHING$` reported 2 violations. `viaNot` is deprecated in favour of `viaOnly.pathNot`. |
-| `scope: "folder"` + `to: { circular: true }` is the package-cycle gate | Granularity is the module's *immediate parent directory*, so a cycle whose legs sit in different subfolders (`pkgc/src` -> `pkgd/src`, `pkgd/util` -> `pkgc/src`) reports clean at exit 0. |
+| `scope: "folder"` + `to: { circular: true }` approximates folder cycles | It does not model package identity. Use `typescript-arch-test.ts` or project references for package cycles. |
 | `required` rules invert the polarity | `module: { path: "^src/domain/" }, to: { path: "^src/ports/" }` fails every domain module with no port edge. Aim them at directory roots: a `required` rule is defeated by the module being absent from an entry-point cruise. |
 | The exit code is the error count, masked to 8 bits | 255 errors exit 255; **256 errors exit 0**. Test `!= 0` and never `== 1` - exit 1 is also an invalid config, an invalid reporter, an unreadable file and a missing graphviz. |
 | The reporter decides whether it gates | `err`, `err-long`, `teamcity`, `azure-devops` and `null` exit with the count; `json`, `markdown`, `flat`, `text` and `metrics` exit 0 on the same violations, and `github-actions` is not a reporter at all (exit 1 on a clean tree). A rule's `comment` prints under `err-long` alone, so the default `err` drops the guidance that explains the failure. `outputType` is rejected by the config schema, so every invocation site spells `-T` itself. |
@@ -211,9 +211,9 @@ matches** - a cheap pre-flight an agent runs before declaring work done, and
 that wires into an hk step where it should gate.
 
 ```bash
-# each line must find NOTHING; `! rg` turns a match into a non-zero (failing) exit
-! rg -n "from ['\"]express['\"]" packages/core/src        # core stays framework-free
-! rg -n "sql\`" packages/*/src --glob '!packages/db/**'   # raw SQL only in the query layer
+# Exit 1 means no match. Exit 0 is a finding. Any other status is an execution error.
+if rg -n "from ['\"]express['\"]" packages/core/src; then exit 1; else rc=$?; [ "$rc" -eq 1 ] || exit "$rc"; fi
+if rg -n 'sql`' packages/*/src --glob '!packages/db/**'; then exit 1; else rc=$?; [ "$rc" -eq 1 ] || exit "$rc"; fi
 ```
 
 **The whole-file type-checker downgrade is the canonical case in Python**,
@@ -230,7 +230,7 @@ false` default closes only the `# type: ignore` family. The residue is a grep:
 # a pyright directive is only honoured on its own line at column 0 (indented, it
 # errors), so ^# is safe to anchor on. The mode words are strict/standard/basic:
 # `# pyright: off` is not a bypass, it is an unknown-directive error
-! rg -n '^# *(pyright: *(basic|standard|report[A-Za-z]+ *= *(false|none|hint|warning))|pyrefly: *ignore-errors|mypy: *(ignore-errors|disable-error-code))' -g '*.py'
+if rg -n '^# *(pyright: *(basic|standard|report[A-Za-z]+ *= *(false|none|hint|warning))|pyrefly: *ignore-errors|mypy: *(ignore-errors|disable-error-code))' -g '*.py'; then exit 1; else rc=$?; [ "$rc" -eq 1 ] || exit "$rc"; fi
 ```
 
 Do not tighten that pattern with a `$` anchor: `# pyrefly: ignore-errors[bad-return]`
@@ -274,11 +274,9 @@ reaches this sink" rules need dataflow the pattern engines can't express.
 [Opengrep](https://github.com/opengrep/opengrep) - the OSS Semgrep fork (engine LGPL-2.1)
 that a consortium spun up after Semgrep relicensed `semgrep-rules` in December 2024 and put
 CE engine features behind its commercial licence - runs Semgrep-format YAML (taint mode,
-cross-file) and emits SARIF, polyglot across 20+ languages from one binary. Gate with
-`opengrep scan --config <dir> --error --disable-nosem --no-git-ignore`; each flag earns its
-place, verified 2026-09-03 against opengrep 1.29.0. **The default exit code is 0 even with
-findings, so `--error` is load-bearing** - omit it and CI silently passes. A `// nosemgrep`
-comment drops a finding and `--disable-nosem` reports it again (2 findings against 1).
+cross-file) and emits SARIF, polyglot across 20+ languages from one binary. TypeScript's
+gate recipe and suppression semantics live in `typescript-security.md`, Opengrep for
+dataflow. `--disable-nosem` restores visibility but does not make a suppressed finding fail.
 Gitignored files are skipped in silence: a generated-but-committed directory took the scan
 from 6 files / 2 findings to 7 / 3 under `--no-git-ignore`. The default `.semgrepignore`
 also skips `tests/` - naming that directory explicitly gave `Ran 1 rule on 0 files` at exit

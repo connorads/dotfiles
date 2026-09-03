@@ -7,7 +7,7 @@
 //
 // OPTIONAL LAYER, AND IT COSTS A SECOND COMPILER. oxlint is the default linter
 // and owns the import rules natively (see references/typescript.md, "Lint
-// families"); ESLint earns its place only for `no-restricted-syntax`, which
+// families and suppressions"); ESLint earns its place only for `no-restricted-syntax`, which
 // oxlint has no native rule for (verified 2026-09-02 against oxlint 1.80.0).
 // typescript-eslint 8.68.0 refuses TypeScript 7 outright ("typescript-eslint
 // does not support TS 7.0.", exit 2), so this file runs only under the

@@ -2,8 +2,7 @@
 
 ## Deep modules
 
-A deep module hides substantial behaviour behind a cohesive, low-burden
-interface. Low-burden ≠ few functions - a domain module may expose many cohesive
+A deep module hides substantial behaviour behind a cohesive, low-burden interface. Low-burden ≠ few functions - a domain module may expose many cohesive
 combinators around one concept and still be deep. Avoid modules that merely
 forward calls. Deletion test: if deleting one makes complexity vanish it was
 pass-through waste; if it spreads complexity across callers it earned its keep.
@@ -72,7 +71,7 @@ return ids.flatMap((id) => (byOrg.get(id) ?? []).map((m) => m.name));
 `ReadonlyMap` makes the missing-key branch mandatory, and a loader that drops unknown
 ids is an N+1 fix that loses rows. Omitting `?? []` is `error TS2532: Object is possibly
 'undefined'` under plain `strict`, while `Readonly<Record<OrgId, ...>>` stays clean
-unless `noUncheckedIndexedAccess` is set (verified 2026-09-03, typescript 7.0.2).
+unless `noUncheckedIndexedAccess` is set.
 
 The signature confines the decision without enforcing it - `forOrgs` implemented as
 `Promise.all(ids.map(queryOne))` typechecks. Review that one adapter, and chunk the
@@ -110,7 +109,7 @@ export function describe(): string { return TITLE; }
 
 `tsc` exits 0 on that pair; `node cycle-b.ts` exits 1 with the ReferenceError
 while `node cycle-a.ts` prints the right answer and exits 0 (verified 2026-09-03
-against typescript 7.0.2 and node 24.19.0). Emitted to CommonJS the same source
+against the supported compiler and runtime). Emitted to CommonJS the same source
 never throws: `describe()` returns `title for undefined` at exit 0, since a
 partly populated `exports` object has no dead zone. A cycle whose modules touch
 each other only inside function bodies runs clean too, which is how one survives
@@ -128,7 +127,7 @@ only for a type-only entity, and under `verbatimModuleSyntax` the value form of
 that import is `error TS1484`, so the compiler forces the spelling. That fix
 takes the report with the crash - oxlint `import/no-cycle` and knip
 `--include cycles` both exit 0 on a type-only cycle, while madge exits 1 on it
-(verified 2026-09-03 against oxlint 1.80.0, knip 6.33.0, madge 8.0.0). Detection
+(verified 2026-09-03 against the versions owned by `mechanical-enforcement`). Detection
 is a lint job, not a `tsc` one; wiring: `mechanical-enforcement`.
 
 ## Enforceable module boundaries
@@ -143,13 +142,7 @@ module is not, say so in the rule and encode it with a tool that tells them apar
 
 ## Configuration and resources
 
-Parse env/config at startup into typed config with branded/`Redacted` values;
-invalid config is a startup failure with useful context, and no other module
-reads `process.env`. No top-level side effects outside true entrypoint/bootstrap
-files - a module opens no connection and starts no server at import time. A
-single-method dependency is a plain function type, the clock included
-(`resources.md`, "Inject the clock").
-
-The three config lifetimes and the composition-root rule are agnostic - see
-`architecture`'s `references/configuration-lifecycle.md`. The scope that owns
-those resources is `resources.md`, "The composition root is a scope".
+Configuration lifetimes and import-side-effect policy live in
+`architecture/references/configuration-lifecycle.md`, Configuration lifecycle.
+Resource ownership lives in `resources.md`, The composition root is a scope;
+clock mechanics live in `resources.md`, Inject the clock.

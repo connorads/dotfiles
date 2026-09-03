@@ -6,11 +6,11 @@ table in `typescript.md`, `## Picks`. Test strategy belongs to the `testing`
 skill; coverage thresholds and mutation testing to `test-coverage`; the
 fails-open inventory and the canary discipline to `typescript.md`,
 `## Gate integrity`. Drop-ins: `references/typescript-vitest.config.ts`,
-`references/typescript-vitest-setup.ts`, and the `tests/**` overrides block of
+`references/typescript-vitest-universal-setup.ts`, `references/typescript-vitest-setup.ts`, and the `tests/**` overrides block of
 `references/typescript-oxlintrc.jsonc`.
 
-Every exit code below was observed 2026-09-03 on node 24.19.0 against vitest
-4.1.11, nock 14.0.17 and msw 2.15.0 (each the latest release), plus oxlint 1.80.0
+Every exit code below was observed 2026-09-03. Vitest 4.1.11 remains installed
+because the release-age quarantine holds back 5.0.0; nock and msw are current. oxlint 1.80.0
 and Biome 2.5.11, where the 4-day release-age quarantine holds back oxlint 1.81.0
 and Biome 2.5.12.
 
@@ -40,6 +40,12 @@ see [Structural traps](#structural-traps).
 - **`test.fails` proves only that something threw.** A `beforeEach` that throws satisfies it (exit 0, "1 expected fail"), and so does an unrelated `TypeError` in the body. There is no `raises=`-style narrowing, so pair it with a specific `expect(() => ...).toThrow(X)` inside.
 - **The name filter is not covered by `passWithNoTests`.** `vitest run -t "<typo>"` selects nothing and exits 0 ("2 skipped"), where a *file* filter matching nothing exits 1. Keep `-t` out of any blocking command.
 
+### Runner limits and reporting
+
+- Timeouts report after a promise race; they do not pre-empt synchronous work. Zero disables them, and a hanging global teardown is not interrupted by `teardownTimeout`.
+- Keep `--bail` out of blocking runs. Parallel workers can leave a red process with green or empty JSON/JUnit, `--bail=abc` disables it, and bare `--bail` consumes the next positional.
+- Naming `reporters` or passing `--reporter` replaces Vitest's automatic array. Under GitHub Actions, re-add `github-actions` or inline annotations disappear.
+
 ## Structural traps
 
 The gates above vanish wholesale under four config-shaped changes, each silent.
@@ -49,6 +55,7 @@ The gates above vanish wholesale under four config-shaped changes, each silent.
 - **`vitest.config.ts` replaces `vite.config.ts` outright.** Gates living in `vite.config.ts` are all lost the day a scaffolder drops an empty `vitest.config.ts` beside it (exit 1 becomes exit 0, no message). Precedence runs `.ts` before `.mts`. Pinning `--config` protects only the file it names, so pin it at whichever file holds the `test` block.
 - **`projects` inherits nothing per-test, `setupFiles` included.** A root config carrying `expect.requireAssertions` and a setup file, plus one `projects` entry, runs the assertion-free test at exit 0 and never executes the setup file. `extends: true` fixes it **only** in an inline project object inside the root `projects` array (exit 1, setup file runs); written inside a package's own config file the key is ignored. Root keeps the run-level options - reporters, coverage - and nothing else.
 - **An empty matrix beside a surviving test disappears in silence.** `test.each([])` in a mixed file prints nothing at all and exits 0; alone in its file it fails loudly ("No test suite found in file", exit 1). The guard is a helper that throws at module scope, so it aborts collection:
+- **A header-only template table runs one phantom test.** Guard parsed data rows, not the table including its header.
 
 ```ts
 export function nonEmpty<T>(xs: readonly T[], label: string): readonly T[] {
@@ -68,7 +75,7 @@ alongside TypeScript 7 - ESLint's typescript-eslint parser refuses TS 7 outright
 (`typescript.md`, `## Type checking`). Two plugin-level traps decide whether it
 gates anything:
 
-- **`"plugins": [...]` replaces the default plugin set.** Adding `"vitest"` to a config that relied on the defaults drops `typescript`, `unicorn`, `oxc` and `import` with no message. A `typescript/no-explicit-any` violation goes unreported under `"plugins": ["vitest"]` and is reported again only once the array lists every plugin the repo relies on. See `typescript.md`, `## Lint families`.
+- **`"plugins": [...]` replaces the default plugin set.** Adding `"vitest"` to a config that relied on the defaults drops `typescript`, `unicorn`, `oxc` and `import` with no message. A `typescript/no-explicit-any` violation goes unreported under `"plugins": ["vitest"]` and is reported again only once the array lists every plugin the repo relies on. See `typescript.md`, Lint families and suppressions.
 - **Enabling the plugin puts its whole rule set at `warning`, and warnings exit 0.** A file holding `test.only`, `test.skip`, a bare `expect`, an assertion-free test and a message-less `toThrow` produces 7 warnings and exit 0 under `--vitest-plugin`; `--deny-warnings` makes it exit 1, and so does naming each rule `"error"` (6 errors on the same file). `-D warnings` reaches nothing (exit 0), and `-D vitest` with no config prints zero bytes at exit 0. An unknown rule name in the config aborts the run (exit 1).
 
 | Rule | Encode with | Prevents | Notes |
@@ -87,6 +94,7 @@ and Biome's exit code counts errors only:
 - Spelling `"error"` on `suspicious.noFocusedTests`, `suspicious.noSkippedTests` and `nursery.useExpect` gives 3 errors and exit 1; `--error-on-warnings` also exits 1. A misspelt rule name fails closed (config deserialisation error, exit 1).
 - `nursery.useExpect` takes **no options** (`Found an unknown key 'assertFunctionNames'`, exit 1), so every custom assertion helper is a false positive, and a bare `expect(1)` satisfies it. Biome has no `valid-expect` equivalent.
 - A committed skip that survives review carries its reason in the suppression: `// biome-ignore lint/suspicious/noSkippedTests: blocked on vendor fix #123`. Biome's grammar makes the reason mandatory, which is the nearest thing TypeScript has to a reasoned-skip audit.
+- Biome misses dynamic `ctx.skip(reason)` while oxlint reports it. Both miss `test.todo`; verbose reporting is visibility only and skips still exit 0.
 
 ## Runtime backstops
 

@@ -1,8 +1,6 @@
 # Errors and failures
 
-Expected failures are values. Defects throw. A signature cannot declare what it
-throws, so the return type is the only place a caller learns a call can fail.
-(Agnostic principle: `architecture`, Error Handling.)
+Expected failures are values. Defects throw. A signature cannot declare what it throws, so the return type is the only place a caller learns a call can fail. (Agnostic principle: `architecture`, Error Handling.)
 
 ## Result shape
 
@@ -33,8 +31,8 @@ exist). Where enforcement decides the shape, that absence is the deciding fact.
 first). Write against v4: the `Result` module is this shape under other names
 (`Result.succeed`/`Result.fail`, payloads `.success`/`.failure`), `Effect.result` moves a failure
 into it, and `Effect.catch` handles one inside the channel. Verified 2026-09-03: `effect@latest`
-is 3.22.1, whose module is `Either` and combinator `Effect.either`, so install v4 explicitly with
-`pnpm add effect@rc` (4.0.0-rc.112). Deep Effect patterns: the vendored `effect` skill (`skl effect`).
+is the stable line, whose module is `Either` and combinator `Effect.either`, so install v4 explicitly with
+`pnpm add effect@rc`. Deep Effect patterns: the vendored `effect` skill (`skl effect`).
 
 **`better-result`,** for a `TaggedError` base without Effect. Its subclasses are
 `extends <call expression>`, which no declaration emitter can infer - tsc reports
@@ -48,13 +46,14 @@ package publishing types cannot use it; and it is ESM-only, so a CommonJS file u
 plugin does not run on TS 7. `true-myth` ships the only first-party must-use gate
 (`true-myth/eslint-plugin`), but it imports `@typescript-eslint/utils` without declaring
 it and typescript-eslint refuses TS 7. Versions: `toolchain.md`, Library facts. Do not
-start with `ts-results` (no publish since 2021), `oxide.ts` (abandoned 2022) or `fp-ts`
-(maintenance mode).
+start with inactive or maintenance-only alternatives; dated package facts live in
+`toolchain.md`, Library facts (verified 2026-09-03).
 
 Crossing the seam out of Effect keeps `E` in the value, not in the throw:
 
 ```ts
-import { Effect, Result } from "effect"; // v4; ok, err, Res from ./result.ts
+import { Effect, Result } from "effect";
+import { err, ok, type Result as Res } from "./result.js";
 export const toEffect = <A, E>(r: Res<A, E>): Effect.Effect<A, E> => (r.ok ? Effect.succeed(r.value) : Effect.fail(r.error));
 export const toHouse = <A, E>(e: Effect.Effect<A, E>): Effect.Effect<Res<A, E>> =>
   Effect.map(Effect.result(e), (r) => (Result.isSuccess(r) ? ok(r.success) : err(r.failure)));
@@ -105,9 +104,10 @@ export function notYetImplemented(what: string): never { throw new Error(`not ye
 
 Chain for dependent steps: step two needs step one's value, so there is nothing to
 accumulate. Independent validations accumulate in the parser, in one pass, not in a
-`Result` chain (`parsing.md`). `AggregateError` is the language's only grouped-failure
-type and only `Promise.any` produces one: `Promise.all` rejects with its first error
-alone and discards every sibling failure (verified 2026-09-03 on node 24), so a scope
+`Result` chain (`parsing.md`). `AggregateError` is the language's grouped-failure
+type. `Promise.any` is the only promise combinator that constructs one automatically:
+`Promise.all` rejects with its first error
+alone and discards every sibling failure (verified 2026-09-03 on the supported runtime), so a scope
 reporting all of them builds it by hand (`concurrency.md`).
 
 ## Translation at the shell
@@ -117,7 +117,7 @@ them at the shell and translate to a domain value or typed error; one reaching t
 core is control flow the core cannot type. Cancellation arrives as a `DOMException`, an
 `Error` subclass, so `instanceof Error` does not discriminate it - the `name` does, and
 there are two. `AbortSignal.timeout` aborts with `TimeoutError` and an explicit
-`controller.abort()` with `AbortError` (verified 2026-09-03 on node 24), so a helper
+`controller.abort()` with `AbortError` (verified 2026-09-03 on the supported runtime), so a helper
 testing only `AbortError` reports false for every deadline it sets (`concurrency.md`).
 
 ## Sensitive values

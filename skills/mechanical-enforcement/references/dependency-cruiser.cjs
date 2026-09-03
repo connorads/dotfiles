@@ -2,9 +2,8 @@
  * Transitive graph-boundary gate for TypeScript repos on typescript < 7.
  * Copy to .dependency-cruiser.cjs and adapt the layer regexes.
  *
- * GATES  reachability ("domain must never reach infra through any chain"),
- * folder cycles, `required` rules ("every route reaches the auth guard"), and
- * the direct value/type-import split. Direct one-edge bans belong in oxlint -
+ * GATES  selected reachability rules, immediate-folder cycles, `required`
+ * rules, and the direct value/type-import split. Direct one-edge bans belong in oxlint -
  * see architecture-boundaries.md, "Boundary tool matrix (TypeScript)".
  *
  * HARD PRECONDITION: typescript < 7 (verified 2026-09-03, dependency-cruiser
@@ -107,19 +106,9 @@ module.exports = {
       to: { path: [testFiles, "^src/.*/test-(?:db|helpers|fixtures)\\.ts$"] },
     },
     {
-      name: "domain-not-to-infra",
-      comment:
-        "Domain stays pure: no route, adapter, DB client or framework runtime reachable through any chain, barrels included. Needs tsPreCompilationDeps - see options.",
-      severity: "error",
-      from: { path: domainModules, pathNot: testFiles },
-      // `reachable` is the transitive engine. It takes path/pathNot only:
-      // adding via, viaOnly or dependencyTypes here is a schema error.
-      to: { reachable: true, path: infraModules },
-    },
-    {
       name: "domain-not-to-infra-values",
       comment:
-        "Direct value-import arm of the rule above. A reachable rule cannot express the type/value split, so this catches the one-hop case with the port-type escape hatch intact; the transitive case is covered without the split.",
+        "Direct value imports from domain to infrastructure are forbidden. Type-only port imports stay allowed. references/typescript-arch-test.ts owns the transitive value-edge rule because reachable rules cannot express this split.",
       severity: "error",
       from: { path: domainModules, pathNot: testFiles },
       to: { path: infraModules, dependencyTypesNot: ["type-only"] },
@@ -134,7 +123,7 @@ module.exports = {
     {
       name: "no-folder-cycle",
       comment:
-        "Package-level cycle gate. `scope: folder` keys on the module's IMMEDIATE parent directory, not on package identity, so a monorepo cycle whose two legs sit in different subfolders is missed - references/typescript-arch-test.ts owns the package-identity version.",
+        "Immediate-folder cycle approximation. `scope: folder` does not model package identity, so references/typescript-arch-test.ts owns package cycles.",
       severity: "error",
       scope: "folder",
       from: {},
@@ -158,9 +147,8 @@ module.exports = {
     exclude: { path: ["^src/generated/", "^src/.*/__generated__/"] },
     doNotFollow: { path: "node_modules" },
     tsConfig: { fileName: "tsconfig.json" },
-    // Without this the graph is post-transpile: type-only edges vanish, so
-    // EVERY domain-to-infra rule silently misses them, and edges retag from
-    // export/import to require, changing what a dependencyTypes rule matches.
+    // Keep type-only edges available so the direct rule can exempt them by
+    // dependency type rather than losing the distinction during transpilation.
     // `"specify"` behaves identically on a reachable rule and additionally
     // enables the "pre-compilation-only" dependencyTypes value.
     tsPreCompilationDeps: true,

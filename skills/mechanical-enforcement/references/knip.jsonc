@@ -94,5 +94,10 @@
   // Scope: knip finds cycles among ENTRY-REACHABLE files only, so dead-but-tangled code is
   // invisible here - pair it with oxlint `import/no-cycle`, which walks files.
   // Type-only cycles are not reported, and that is correct: `import type` emits no edge.
+  "cycles": {
+    // Dynamic imports are runtime edges too. Allow only a named intentional lazy cycle.
+    "dynamicImports": true,
+    "allow": []
+  },
   "rules": { "cycles": "error" }
 }

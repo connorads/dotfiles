@@ -1,7 +1,6 @@
 # Toolchain: compiler version, runtime floor, library facts
 
-Scope fence: compiler *version selection and migration*, the runtime floor, and every version
-literal the skill cites live here; lint rules and tsconfig flag values stay with
+Scope fence: compiler *version selection and migration*, the runtime floor, and every version literal the skill cites live here; lint rules and tsconfig flag values stay with
 `mechanical-enforcement`, and a flag is named here only as the reason an idiom compiles or does
 not. The fastest-moving facts in the skill - re-verify the dated blocks when revising (done
 2026-09-03 on typescript 7.0.2 and 6.0.3, node 24.19.0 and 26.8.1, deno 2.9.5, bun 1.3.14).
