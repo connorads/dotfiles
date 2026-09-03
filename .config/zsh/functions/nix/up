@@ -10,19 +10,21 @@
 #                           applied, so a headless FileVault box is never rebooted.
 #        --no-audit         skip the lockfile-audit OSV sweep (escape hatch; the
 #                           sweep itself already warns-not-blocks when offline).
+#        --verbose / -v     stream full command output as well as logging it.
 emulate -L zsh
 
 _up_usage() {
-  print "usage: up [--frozen|-s|--skip-flake] [--os] [--no-audit]"
+  print "usage: up [--frozen|-s|--skip-flake] [--os] [--no-audit] [--verbose|-v]"
   print "       up -h|--help"
 }
 
-local frozen=0 do_os=0 no_audit=0
+local frozen=0 do_os=0 no_audit=0 verbose=0
 while (($#)); do
   case "$1" in
   --frozen | -s | --skip-flake) frozen=1 ;;
   --os) do_os=1 ;;
   --no-audit) no_audit=1 ;;
+  --verbose | -v) verbose=1 ;;
   -h | --help)
     _up_usage
     return 0
@@ -38,12 +40,18 @@ done
 
 local mise_lock=~/.config/mise/mise.lock
 local flake_lock=~/.config/nix/flake.lock
-local up_mode=update up_failed=0 up_started=$SECONDS
+local up_mode=update up_failed=0 up_started=$SECONDS up_blocked_by="" up_sudo_failed=0
 ((frozen)) && up_mode=frozen
-local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next
-local up_sudo_pid=""
-local up_unload_zselect=0
-local up_sudo_refresh_centiseconds=${UP_SUDO_REFRESH_CENTISECONDS:-3000}
+local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next up_dirty_locks
+local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
+local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
+local up_brew_detail=""
+
+(umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
+  print -u2 "up: cannot create log: $up_log"
+  return 1
+}
+print "=> log $up_log"
 
 _up_duration() {
   local seconds=$1
@@ -65,8 +73,51 @@ _up_skip() {
   _up_record "$1" SKIPPED 0 "$2"
 }
 
+_up_not_run() {
+  _up_record "$1" "NOT RUN" 0 "blocked by $up_blocked_by"
+}
+
+_up_block() {
+  [[ -n $up_blocked_by ]] || up_blocked_by=$1
+  up_failed=1
+}
+
+_up_dirty_lock() {
+  [[ -n $1 && ${up_dirty_locks[(Ie)$1]} -eq 0 ]] && up_dirty_locks+=("$1")
+}
+
+_up_track_lock_if_dirty() {
+  local label=$1 path=$2
+  if ! dotfiles diff --quiet -- "$path" || ! dotfiles diff --cached --quiet -- "$path"; then
+    _up_dirty_lock "$label"
+  fi
+}
+
 _up_next() {
-  up_next+=("$1")
+  [[ ${up_next[(Ie)$1]} -eq 0 ]] && up_next+=("$1")
+}
+
+_up_logged() {
+  local name=$1
+  shift
+  {
+    printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$name"
+    printf 'command:'
+    printf ' %q' "$@"
+    print ''
+  } >>"$up_log"
+  if ((verbose)); then
+    "$@" > >(tee -a "$up_log") 2> >(tee -a "$up_log" >&2)
+  else
+    "$@" >>"$up_log" 2>&1
+  fi
+}
+
+_up_failure_excerpt() {
+  local name=$1
+  print -u2 "!! $name failed - recent output:"
+  tail -n 20 "$up_log" >&2
+  print -u2 "   full log: $up_log"
 }
 
 _up_run() {
@@ -75,16 +126,22 @@ _up_run() {
   local started=$SECONDS rc state
 
   print "=> $name"
-  "$@"
+  if [[ $policy == advisory ]]; then
+    printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$name" >>"$up_log"
+    "$@" > >(tee -a "$up_log") 2> >(tee -a "$up_log" >&2)
+  else
+    _up_logged "$name" "$@"
+  fi
   rc=$?
   if ((rc)); then
     if [[ $policy == required ]]; then
       state=FAILED
-      up_failed=1
+      _up_block "$name"
     else
       state=WARN
     fi
     [[ -n $detail ]] && detail="$detail; exit $rc" || detail="exit $rc"
+    _up_failure_excerpt "$name"
   elif [[ $policy == required ]]; then
     state=DONE
   else
@@ -95,128 +152,102 @@ _up_run() {
 }
 
 _up_summary() {
-  local i detail
+  local i detail number=1
+  print ""
+  if ((up_failed)); then
+    printf '=> UPDATE INCOMPLETE (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+  else
+    printf '=> UPDATE COMPLETE (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+  fi
 
   print ""
-  printf '=> up summary (%s)  %s\n' "$up_mode" "$(_up_duration $((SECONDS - up_started)))"
+  print "Applied"
   for ((i = 1; i <= ${#up_phase_names}; i++)); do
+    [[ ${up_phase_states[$i]} == DONE ]] || continue
+    [[ ${up_phase_names[$i]} == preflight || ${up_phase_names[$i]} == audit ]] && continue
     detail=${up_phase_details[$i]}
-    printf '   %-13s %-9s %7s' \
-      "${up_phase_names[$i]}" \
-      "${up_phase_states[$i]}" \
-      "$(_up_duration "${up_phase_durations[$i]}")"
+    printf '  %-13s %7s' "${up_phase_names[$i]}" "$(_up_duration "${up_phase_durations[$i]}")"
     [[ -n $detail ]] && printf '  %s' "$detail"
-    print ""
+    print
   done
-  if ((${#up_next})); then
+
+  if ((up_failed)); then
     print ""
-    for detail in "${up_next[@]}"; do
-      print "   next: $detail"
+    print "Failed"
+    for ((i = 1; i <= ${#up_phase_names}; i++)); do
+      [[ ${up_phase_states[$i]} == FAILED || ${up_phase_states[$i]} == PARTIAL ]] || continue
+      printf '  %-13s  %s\n' "${up_phase_names[$i]}" "${up_phase_details[$i]}"
     done
   fi
-  if ((up_failed)); then
-    print "=> failed (exit 1)"
-  else
-    print "=> done"
+
+  local printed=0
+  for ((i = 1; i <= ${#up_phase_names}; i++)); do
+    [[ ${up_phase_states[$i]} == "NOT RUN" ]] || continue
+    if ((!printed)); then
+      print ""
+      print "Not attempted"
+      printed=1
+    fi
+    printf '  %-13s  %s\n' "${up_phase_names[$i]}" "${up_phase_details[$i]}"
+  done
+
+  printed=0
+  for ((i = 1; i <= ${#up_phase_names}; i++)); do
+    [[ ${up_phase_states[$i]} == REPORTED || ${up_phase_states[$i]} == WARN ]] || continue
+    if ((!printed)); then
+      print ""
+      print "Advisories"
+      printed=1
+    fi
+    printf '  %-13s  %s\n' "${up_phase_names[$i]}" "${up_phase_details[$i]}"
+  done
+
+  if ((${#up_dirty_locks})); then
+    print ""
+    print "Working tree"
+    for detail in "${up_dirty_locks[@]}"; do
+      print "  modified: $detail"
+    done
   fi
+  if ((${#up_next})); then
+    print ""
+    print "Next"
+    for detail in "${up_next[@]}"; do
+      print "  $number. $detail"
+      ((number++))
+    done
+  fi
+  print ""
+  print "Log"
+  print "  $up_log"
 }
 
 _up_finish() {
-  _up_sudo_stop
   _up_summary
   return $up_failed
 }
 
-_up_sudo_stop() {
-  if [[ -n $up_sudo_pid ]]; then
-    kill "$up_sudo_pid" 2>/dev/null
-    wait "$up_sudo_pid" 2>/dev/null
-    up_sudo_pid=""
-  fi
-  if ((up_unload_zselect)); then
-    zmodload -u zsh/zselect 2>/dev/null
-    up_unload_zselect=0
-  fi
-}
-
-TRAPEXIT() {
-  _up_sudo_stop
-}
-
-TRAPINT() {
-  _up_sudo_stop
-  return $((128 + $1))
-}
-
-TRAPTERM() {
-  _up_sudo_stop
-  return $((128 + $1))
-}
-
-TRAPHUP() {
-  _up_sudo_stop
-  return $((128 + $1))
-}
-
-_up_needs_sudo() {
-  [[ "$OSTYPE" == "darwin"* ]] && return 0
-  [[ -f /etc/NIXOS ]] && return 0
-  ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null
-}
-
-_up_sudo_start() {
-  local started=$SECONDS rc had_monitor=$options[monitor]
-
-  if ! _up_needs_sudo; then
-    _up_skip sudo "not required"
-    return 0
-  fi
-
-  print "=> sudo"
+_up_sudo_ready() {
+  local phase=$1 rc
+  print "=> sudo ($phase)"
   if [[ -t 0 ]]; then
     sudo -v
   else
     sudo -n -v
   fi
   rc=$?
-  if ((rc)); then
-    up_failed=1
-    _up_record sudo FAILED $((SECONDS - started)) "authentication unavailable"
-    _up_next "rerun up in an interactive terminal"
-    return $rc
-  fi
-
-  if ! zmodload -e zsh/zselect; then
-    if ! zmodload zsh/zselect; then
-      up_failed=1
-      _up_record sudo FAILED $((SECONDS - started)) "zsh/zselect unavailable"
-      return 1
-    fi
-    up_unload_zselect=1
-  fi
-  # Interactive callers keep job control for foreground phases, but the private
-  # refresher must not create start/completion notices in their shell.
-  unsetopt monitor
-  (
-    while true; do
-      UP_SUDO_KEEPALIVE=1 sudo -n -v >/dev/null 2>&1 || return 1
-      zselect -t "$up_sudo_refresh_centiseconds"
-    done
-  ) &
-  up_sudo_pid=$!
-  [[ $had_monitor == on ]] && setopt monitor
-  _up_record sudo DONE $((SECONDS - started)) "ticket held for privileged phases"
-}
-
-_up_sudo_ready() {
-  local phase=$1
-  if sudo -n -v >/dev/null 2>&1; then
+  if ((rc == 0)); then
     return 0
   fi
-  up_failed=1
-  _up_record "$phase" FAILED 0 "sudo ticket unavailable"
-  _up_next "rerun up in an interactive terminal"
-  return 1
+  _up_block "$phase"
+  up_sudo_failed=1
+  _up_record "$phase" FAILED 0 "sudo authentication unavailable"
+  case $phase in
+  rebuild | "system rebuild" | "home rebuild") _up_next "rerun 'up -s' in an interactive terminal" ;;
+  macos) _up_next "rerun 'macup --safe' in an interactive terminal" ;;
+  apt) _up_next "rerun up in an interactive terminal" ;;
+  esac
+  return $rc
 }
 
 _up_preflight() {
@@ -238,6 +269,7 @@ _up_preflight() {
       print -u2 "    inspect: dotfiles diff -- $label"
       print -u2 "    staged:  dotfiles diff --cached -- $label"
       _up_next "dotfiles diff -- $label"
+      _up_dirty_lock "$label"
     done
     up_failed=1
     _up_record preflight FAILED $((SECONDS - started)) "${(j:, :)dirty}"
@@ -252,7 +284,8 @@ _up_commit_lock() {
 
   print "=> $name"
   if ! dotfiles add "$lock"; then
-    up_failed=1
+    _up_block "$name"
+    _up_dirty_lock "$label"
     _up_record "$name" FAILED $((SECONDS - started)) "could not stage $label"
     _up_next "dotfiles status --short -- $label"
     return 1
@@ -268,14 +301,16 @@ _up_commit_lock() {
     if dotfiles commit -m "$message" -- "$lock"; then
       _up_record "$name" DONE $((SECONDS - started)) "committed"
     else
-      up_failed=1
+      _up_block "$name"
+      _up_dirty_lock "$label"
       _up_record "$name" FAILED $((SECONDS - started)) "commit failed; $label remains staged"
       _up_next "dhk check"
       return 1
     fi
     ;;
   *)
-    up_failed=1
+    _up_block "$name"
+    _up_dirty_lock "$label"
     _up_record "$name" FAILED $((SECONDS - started)) "could not inspect staged $label (exit $rc)"
     _up_next "dotfiles status --short -- $label"
     return $rc
@@ -302,8 +337,25 @@ _up_brew() {
   # Homebrew locates gh itself for bottle attestation. A project-installed mise
   # shim can otherwise shadow the global wrapper while having no active version
   # outside that project. Keep the wrapper first for both Homebrew processes.
-  PATH="$HOME/.local/bin:$PATH" brew update &&
-    PATH="$HOME/.local/bin:$PATH" brew upgrade --no-ask
+  local brew_path="$HOME/.local/bin:$PATH" before="" after="" rc resolved remaining
+  before=$(PATH="$brew_path" brew outdated --json=v2 2>/dev/null) || before=""
+  PATH="$brew_path" brew update && PATH="$brew_path" brew upgrade --no-ask
+  rc=$?
+  after=$(PATH="$brew_path" brew outdated --json=v2 2>/dev/null) || after=""
+
+  if [[ -n $before && -n $after ]] && print -r -- "$before" | jq -e '.formulae and .casks' >/dev/null 2>&1 && print -r -- "$after" | jq -e '.formulae and .casks' >/dev/null 2>&1; then
+    resolved=$(jq -nr --argjson before "$before" --argjson after "$after" '
+      (($before.formulae + $before.casks) | map(.name) | unique) as $b
+      | (($after.formulae + $after.casks) | map(.name) | unique) as $a
+      | ($b - $a) | length')
+    remaining=$(print -r -- "$after" | jq -r '[.formulae[].name, .casks[].name] | unique | join(", ")')
+    if [[ -n $remaining ]]; then
+      up_brew_detail="$resolved upgraded; remaining: $remaining"
+    else
+      up_brew_detail="$resolved upgraded; none remaining"
+    fi
+  fi
+  return $rc
 }
 
 _up_apt() {
@@ -328,11 +380,10 @@ elif ! _up_run required audit "tracked lockfiles" lockfile-audit; then
   _up_finish
   return $?
 fi
-
-_up_sudo_start || {
-  _up_finish
-  return $?
-}
+if grep -qF 'lockfile-audit: CVEs found' "$up_log"; then
+  up_phase_states[-1]=REPORTED
+  up_phase_details[-1]="CVEs found; non-blocking; see log"
+fi
 
 local mise_ok=1
 if ((frozen)); then
@@ -346,6 +397,7 @@ else
     print -u2 "!! mise upgrade failed - NOT committing mise.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
     _up_skip "mise lock" "mise upgrade failed"
+    _up_track_lock_if_dirty ".config/mise/mise.lock" "$mise_lock"
     _up_next "dotfiles diff -- .config/mise/mise.lock"
     _up_next "reconcile mise.lock, then rerun up"
   fi
@@ -353,10 +405,32 @@ fi
 
 # Reassert Claude binary/plugin patches after the mise phase. Each --reapply
 # command owns its warn-only stale-needle policy; unexpected failures aggregate.
-_up_run required patches "reapply Claude patches" _up_reapply_patches
+if [[ -z $up_blocked_by ]]; then
+  _up_run required patches "reapply Claude patches" _up_reapply_patches
+else
+  _up_not_run patches
+fi
 
 if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
-  _up_run required brew "update and upgrade" _up_brew || _up_next "brew update && brew upgrade --no-ask"
+  if [[ -z $up_blocked_by ]]; then
+    _up_run required brew "update and upgrade" _up_brew
+    local brew_rc=$?
+    if [[ -n $up_brew_detail ]]; then
+      up_phase_details[-1]=$up_brew_detail
+      if ((brew_rc)) && [[ $up_brew_detail != "0 upgraded;"* ]]; then
+        up_phase_states[-1]=PARTIAL
+      fi
+    fi
+    if ((brew_rc)); then
+      if grep -qF 'No version is set for shim: gh' "$up_log"; then
+        up_phase_details[-1]="${up_phase_details[-1]}; inactive mise gh shim selected"
+      fi
+      _up_next "PATH=\"\$HOME/.local/bin:\$PATH\" brew update && brew upgrade --no-ask"
+      _up_next "rerun up"
+    fi
+  else
+    _up_not_run brew
+  fi
 elif ((frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
   _up_skip brew "frozen mode"
 fi
@@ -364,64 +438,81 @@ fi
 # apt updates (non-NixOS Linux). Each step depends on the previous one so a
 # failed index refresh cannot drive an upgrade from stale package lists.
 if ((!frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
-  if _up_sudo_ready apt; then
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run apt
+  elif _up_sudo_ready apt; then
     _up_run required apt "update, upgrade, autoremove" _up_apt || _up_next "sudo apt-get update -y"
   fi
 elif ((frozen)) && [[ "$OSTYPE" == "linux-gnu"* ]] && command -v apt-get &>/dev/null && [[ ! -f /etc/NIXOS ]]; then
   _up_skip apt "frozen mode"
 fi
 
-local flake_update_ok=1
 if ((frozen)); then
   _up_skip "flake update" "frozen mode"
+elif [[ -n $up_blocked_by ]]; then
+  _up_not_run "flake update"
 else
-  _up_run required "flake update" "nix inputs" nfu || {
-    flake_update_ok=0
-    _up_next "dotfiles diff -- .config/nix/flake.lock"
-  }
+  _up_run required "flake update" "nix inputs" nfu || _up_next "dotfiles diff -- .config/nix/flake.lock"
 fi
 
-local rebuild_ok=1
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  if _up_sudo_ready rebuild; then
-    _up_run required rebuild "darwin" drs || rebuild_ok=0
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run rebuild
+  elif _up_sudo_ready rebuild; then
+    _up_run required rebuild "darwin" drs
   else
-    rebuild_ok=0
+    :
   fi
+elif [[ -f /etc/NIXOS ]]; then
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run "system rebuild"
+  elif _up_sudo_ready "system rebuild"; then
+    _up_run required "system rebuild" "NixOS" nrs
+  else
+    :
+  fi
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run "home rebuild"
+  else
+    _up_run required "home rebuild" "home-manager" hms
+  fi
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ -n $up_blocked_by ]]; then
+    _up_not_run rebuild
+  else
+    _up_run required rebuild "home-manager" hms
+  fi
+fi
+
+# A flake lock lands only after both its update and every applicable rebuild.
+if ((frozen)); then
+  _up_skip "flake lock" "frozen mode"
+elif [[ -n $up_blocked_by ]]; then
+  _up_not_run "flake lock"
+  if [[ $up_blocked_by == "flake update" ]]; then
+    print -u2 "!! flake update failed - NOT committing flake.lock"
+    _up_track_lock_if_dirty ".config/nix/flake.lock" "$flake_lock"
+    _up_next "dotfiles diff -- .config/nix/flake.lock"
+  elif [[ $up_blocked_by == rebuild || $up_blocked_by == "system rebuild" || $up_blocked_by == "home rebuild" ]]; then
+    print -u2 "!! rebuild failed - NOT committing flake.lock"
+    print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
+    _up_track_lock_if_dirty ".config/nix/flake.lock" "$flake_lock"
+    ((up_sudo_failed)) || _up_next "up -s"
+  fi
+else
+  _up_commit_lock "flake lock" "$flake_lock" "chore(nix): update flake lock"
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
   if ((do_os)); then
-    if _up_sudo_ready macos; then
+    if [[ -n $up_blocked_by ]]; then
+      _up_not_run macos
+    elif _up_sudo_ready macos; then
       _up_run required macos "install no-restart updates" macup --safe || _up_next "macup --safe"
     fi
   else
     _up_run advisory macos "check only" macup-check
   fi
-elif [[ -f /etc/NIXOS ]]; then
-  if _up_sudo_ready "system rebuild"; then
-    _up_run required "system rebuild" "NixOS" nrs || rebuild_ok=0
-  else
-    rebuild_ok=0
-  fi
-  _up_run required "home rebuild" "home-manager" hms || rebuild_ok=0
-elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  _up_run required rebuild "home-manager" hms || rebuild_ok=0
-fi
-
-# A flake lock lands only if both its update and every applicable rebuild
-# succeeded. A failed update may still be rebuilt for diagnosis, but never
-# committed as a successful bump.
-if ((frozen)); then
-  _up_skip "flake lock" "frozen mode"
-elif ((!flake_update_ok)); then
-  print -u2 "!! flake update failed - NOT committing flake.lock"
-  _up_skip "flake lock" "flake update failed"
-elif ((!rebuild_ok)); then
-  print -u2 "!! rebuild failed - NOT committing flake.lock"
-  print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
-  _up_skip "flake lock" "rebuild failed"
-  _up_next "up -s"
-  _up_next "dotfiles diff -- .config/nix/flake.lock"
-else
-  _up_commit_lock "flake lock" "$flake_lock" "chore(nix): update flake lock"
 fi
 
 if command -v tmux-upstream &>/dev/null && command -v tmux &>/dev/null; then

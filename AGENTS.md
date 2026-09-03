@@ -237,6 +237,7 @@ up                     # update everything: bump mise.lock + flake.lock, brew/ap
 up -s / up --frozen    # frozen rebuild: install clean committed mise.lock, permit a dirty flake.lock retry, then rebuild; no bumps/brew/apt/commit
 up --os                # ...plus install no-restart macOS updates (OS updates reported only, never rebooted)
 up --no-audit          # skip the pre-bump OSV lockfile sweep (escape hatch; offline already warns-not-blocks)
+up --verbose           # stream full update output; normal runs keep it in the reported ~/.cache/up log
 lockfile-audit         # OSV sweep of tracked repo lockfiles: MAL-* blocks, CVEs report (also: mise run lockfile-audit)
 pin-audit              # recheck conditional pins/excludes + flag range pins the newest release outgrew; report-only, FLAG = act by hand (also: mise run pin-audit). Thin zsh wrapper over ~/src/pin-audit (TS/bun); no bun = one SKIP line, never a failure
 mise-npm-where [TOOL]  # print the installed package dir for an npm-backed mise tool, probing the three layouts mise's npm backend has shipped. Use `mise which <cmd>` for a bin (mise's own probe order); this is for the package dir. --install-dir/--package override
