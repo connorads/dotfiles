@@ -1,7 +1,10 @@
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" clear codex || true", "timeout": 10 } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-codex-session.sh\" SessionStart codex || true", "timeout": 3 } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-codex-session.sh\" SessionEnd codex || true", "timeout": 3 } ] }
     ],
     "UserPromptSubmit": [
       { "hooks": [ { "type": "command", "command": "sh \"$HOME/.config/tmux/scripts/agent-state.sh\" working codex || true", "timeout": 10 } ] }

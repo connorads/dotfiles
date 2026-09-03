@@ -131,6 +131,17 @@ run_mcpz() { run_zsh_function "$MCPZ" "$@"; }
   [[ "$output" == *'mcp_servers.fs.env={ FS_ROOT = "/data" }'* ]]
 }
 
+@test "run codex exposes the non-secret bundle marker" {
+  write_stub codex <<'EOF'
+#!/bin/sh
+printf 'bundle=%s token=%s\n' "$MCPZ_BUNDLE" "$GW_TOKEN"
+EOF
+  run "$MCPZ" run codex web -- --search
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bundle=web token=tok123"* ]]
+  [[ "$output" != *"MCPZ_BUNDLE=tok123"* ]]
+}
+
 # --- render: opencode ---
 
 @test "render opencode http: remote server, {env:VAR} header ref" {

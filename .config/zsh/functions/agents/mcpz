@@ -231,6 +231,7 @@ _mcpz_run() {
     codex)
       local -a cargs=(); local kv
       while IFS= read -r -d '' kv; do cargs+=(-c "$kv"); done < <(_mcpz_codex_kv "$reg" "$b")
+      export MCPZ_BUNDLE="$b"
       exec codex "${cargs[@]}" "$@"
       ;;
     opencode|oc)
