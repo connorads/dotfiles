@@ -1,26 +1,98 @@
-// Starter knip config — drop in as knip.json(c) at the repo root.
-// knip finds what tsc and the linter miss: unused files, exports, exported
-// types, enum/class members, and unused / unlisted dependencies. Its framework
-// plugins (next, vitest, storybook, …) auto-detect implicit entry points, so
-// most projects need only a small amount of config on top.
+// `knip.jsonc` - the dead-code and unused-dependency gate for a TypeScript repo: orphaned
+// files, dead exports and exported types, unused and unlisted dependencies, unlisted
+// binaries, and import cycles. Verified 2026-09-03 against knip 6.33.0 on TS 7.0.2 / node
+// 24.19.0 (6.34.0 is latest and is held back by the 4-day release-age quarantine).
+//
+// Save as `knip.jsonc` at the repo root. knip reads `.json` and `.jsonc` alike; only
+// `knip.json`, `knip.jsonc` and `package.json#knip` are discovered, and a `-c` path that
+// does not exist exits 2.
+//
+//   pnpm add -D knip@6.33.0
+//
+// TWO RUNS, BECAUSE ONE MODE CANNOT DO BOTH JOBS.
+//   pnpm exec knip --production --strict            # tier 4 / CI: the blocking gate
+//   pnpm exec knip --production --strict --cycles   # second pass, cycles only (see below)
+//   pnpm exec knip --treat-config-hints-as-errors   # dev mode, local: is the config still live?
+// `--production` hard-disables configuration hints, so the hint check can never ride on the
+// CI gate and has to be its own dev-mode invocation. Severities, the `--strict` DEP004
+// mechanism and the rest of the tier: references/typescript.md, "Dead code (knip)".
+//
+// THIS FILE IS NEAR-EMPTY ON PURPOSE. knip's built-in defaults are
+// `entry: ["{index,cli,main}.{js,ts,...}!", "src/{index,cli,main}.{js,ts,...}!"]` and
+// `project: ["**/*.{js,ts,...}!"]`, and its 150+ plugins add framework entry points
+// (vitest, next, storybook) from the manifests they detect. Every default already carries
+// the `!` marker. Adding patterns is the common way to break the gate, not to tighten it.
+//
+// Five ways this file fails OPEN, every one of them silently:
+//   1. A pattern you add to `entry` or `project` without a trailing `!` is invisible to
+//      `--production`, and an unmarked `project` pattern is actively NEGATED, so it excludes
+//      the whole source tree. Verified: with `{"entry":["src/index.ts"],"project":["src/**/*.ts"]}`
+//      the production run drops the dead file, the dead export and the dead exported type and
+//      reports only an unrelated unused dependency; appending `!` to both restores all four.
+//      Production mode is also the one mode that never volunteers a hint about it.
+//   2. A misspelled key inside `rules` is a stderr WARNING and exit 0. `{"rules":{"cycle":"error"}}`
+//      prints `WARNING: Ignored unknown issue type "cycle" in rules`, prints the cycle, and
+//      exits 0. The outer schema is strict by contrast - an unknown top-level key exits 2, and
+//      so does a bad severity value - so `rules` is the one soft spot, and it is the key the
+//      cycles gate depends on.
+//   3. An `include` array narrows rather than adds. `--include` (and this file's `include`
+//      key) is a strict whitelist: `{"include":["cycles"]}` reports the cycle and nothing else,
+//      dropping unused files, exports and dependencies entirely. That is why `cycles` is a
+//      second run and not a key here.
+//   4. A `project` or `entry` glob matching nothing is a Configuration hint at exit 0, so a
+//      renamed source root silently stops gating. `--treat-config-hints-as-errors` is the
+//      counter, and it is inert under `--production` (see the two-run block above).
+//   5. `--no-exit-code` and a non-numeric `--max-issues` both force exit 0 with the full
+//      report still printed. Neither belongs in a gate.
+//
+// Findings go to stdout, every diagnostic to stderr, so `knip > report.txt` throws away the
+// config hints, the misspelled-rule warning and every config error.
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "$schema": "./node_modules/knip/schema-jsonc.json",
 
-  // Entry points the graph starts from. Plugins add framework entries
-  // automatically — list only the extras they can't infer.
-  "entry": ["src/index.ts", "src/main.ts"],
+  // Everything down to `rules` is commented out, and each line is comma-terminated so that
+  // uncommenting one leaves valid JSON. Add a key only when the defaults are demonstrably
+  // wrong for this repo, and re-run the dev-mode hint check afterwards.
+  //
+  // ENTRY POINTS knip cannot infer. These REPLACE the defaults rather than merging with
+  // them, so restate `src/index.ts` and `src/main.ts` when you add a third. Every pattern
+  // needs the trailing `!` or `--production` ignores it (trap 1).
+  // "entry": ["src/index.ts!", "src/main.ts!", "src/plugins/*.ts!"],
+  //
+  // THE OWNED FILE SET - what is reachable-or-dead. Narrowing it silently shrinks the gate:
+  // a file outside the glob is never reported at all, with no hint.
+  // "project": ["src/**/*.ts!", "!src/**/*.generated.*"],
+  //
+  // DYNAMIC IMPORTS ARE THE FALSE-POSITIVE CLASS. A template-literal `import("./p/" + n)` or
+  // `import(nameVariable)` leaves no static edge, so the target file reads as orphaned and
+  // the package reads as unused - reported with no "unresolved" note of any kind, unlike a
+  // broken static import, which knip names. Declare the directory as an `entry` glob and the
+  // package here. A stale entry is a permanent mute with no expiry, so name packages, never
+  // globs, and re-check the list when the dynamic loader changes.
+  // "ignoreDependencies": ["lodash-es"],
+  //
+  // BARREL SEE-THROUGH, for an application. `export * from "./domain/order.ts"` in the entry
+  // file keeps every symbol it re-exports alive, so a function dead everywhere is invisible.
+  // Verified on the fixture: the default run reports 1 dead export, this key reports 4,
+  // adding the barrel-laundered `seed`. Set the KEY, not `--include-entry-exports`: the flag
+  // is global and flags a published library's public API too, while the key is per-workspace
+  // and an explicit `false` in a workspace beats the flag. A library that wants the key can
+  // tag its real API `/** @public */` or `/** @beta */`, which knip honours with no config;
+  // only the JSDoc `/** */` form is read, `// @public` is not.
+  // "includeEntryExports": true,
+  //
+  // PER-WORKSPACE OVERRIDES in a pnpm monorepo. `-W <dir>` narrows the REPORT while still
+  // analysing that workspace's ancestors, dependencies and dependents, so a cross-workspace
+  // import keeps the exporting symbol alive. Write `"."` only when the repo root ships no
+  // source: `{".": {"entry": [], "project": []}}` switches off all file and export analysis
+  // for the root while leaving dependency analysis on, and nothing says so.
+  // "workspaces": { "packages/*": { "project": ["src/**/*.ts!"] } },
 
-  // The set of files knip treats as owned (and therefore reachable-or-dead).
-  // Exclude generated output so codegen isn't reported as dead.
-  "project": ["src/**/*.{ts,tsx}", "!src/**/*.generated.*"],
-
-  // Suppress known-dynamic or intentionally-unreferenced cases narrowly.
-  // Prefer this over broad excludes that could hide real dead code.
-  "ignore": ["**/*.d.ts"],
-  "ignoreDependencies": [],
-
-  // Gate with `knip --production` in CI: production mode drops test-only files
-  // so test utilities aren't flagged as dead. Default (dev) mode is fine
-  // locally. Adoption: run report-only first, tune false positives on dynamic
-  // / implicit entries, then flip to blocking on the non-zero exit code.
+  // Cycles are excluded by default AND default to severity `warn`, so the gate needs both
+  // switches: this key, and `--cycles` on the command line. With only `--cycles` the cycle
+  // prints and the run exits 0; with only this key the cycle is never looked for.
+  // Scope: knip finds cycles among ENTRY-REACHABLE files only, so dead-but-tangled code is
+  // invisible here - pair it with oxlint `import/no-cycle`, which walks files.
+  // Type-only cycles are not reported, and that is correct: `import type` emits no edge.
+  "rules": { "cycles": "error" }
 }

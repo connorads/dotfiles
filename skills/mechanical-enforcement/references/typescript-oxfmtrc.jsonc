@@ -1,0 +1,46 @@
+// `.oxfmtrc.json` - the formatting half of the oxc pair. oxlint's config is
+// references/typescript-oxlintrc.jsonc; two files, two binaries, no shared settings.
+// Verified 2026-09-03 against oxfmt 0.65.0 on node 24 (0.66.0 is published; the 4-day
+// release-age quarantine holds it back, so `ignorePatterns` is confirmed on 0.65.0 only).
+//
+//   pnpm add -D oxfmt@0.65.0
+//   pnpm exec oxfmt --check .   # gate: exit 1 when a file is unformatted, 0 clean
+//   pnpm exec oxfmt .           # `--write` is the default mode, so a bare run rewrites files
+//
+// WHY THE IGNORE. oxfmt formats more than JS/TS: on 0.65.0 it also reformats `.md`, `.yaml` and
+// `.json`. Markdown belongs to rumdl house-wide (`rumdl check`, `rumdl-format`), so leaving it to
+// oxfmt puts two formatters on one file - each rewrites the other's output and both `--check`
+// gates fail forever. Excluding Markdown here keeps one owner per file type. YAML and JSON stay
+// with oxfmt, which has no other owner in this catalogue.
+//
+// Traps, all verified on 0.65.0:
+//   - `ignorePatterns` is the only key in the file `--init` writes, and there is no ignore flag
+//     beside `--ignore-path`. That flag REPLACES the default `.gitignore` + `.prettierignore`
+//     pair rather than adding to it: with `--ignore-path other.ignore`, a path excluded by
+//     `.prettierignore` is formatted again.
+//   - Patterns are gitignore-shaped, not glob-anchored: `*.md` and `**/*.md` both exclude nested
+//     Markdown. `docs/*.md` excludes one level only.
+//   - `--list-different` and `--check` BOTH exit 1 when something is unformatted. `--check` prints
+//     statistics, `--list-different` prints one path per file - which is what the canary needs.
+//   - A path argument containing `..` is refused outright ("PATH must not contain '..'"), so the
+//     gate runs from the repo root over `.`, never from a subdirectory pointing upwards.
+//   - `node_modules` is skipped by default; `--with-node-modules` un-skips it.
+//   - oxfmt reformats `.oxlintrc.json` and this file too. Comments survive, the layout does not -
+//     let it own them (run `oxfmt .` once after dropping either in), or add the paths here.
+//   - A pattern matching nothing is silent, so assert the exclusion with the canary below rather
+//     than trusting a green run.
+{
+  "ignorePatterns": [
+    "*.md", "dist/**", "coverage/**", "tools/oxlint/anti-slop/**",
+    ".agents/**", ".claude/**", ".codex/**", ".cursor/**", ".opencode/**", ".pi/**"
+  ]
+}
+// CANARY. `oxfmt --check` exits 0 both when Markdown is correctly excluded and when oxfmt never
+// looked at the tree at all, so assert on the file list, not the exit code:
+//
+//   printf '# T\n\n*  a\n' > fmt-canary.md
+//   pnpm exec oxfmt --list-different . | grep -q 'fmt-canary.md' && echo "markdown not excluded"
+//   rm -f fmt-canary.md
+//
+// The probe file must be deliberately misformatted (the loose list marker above): a Markdown file
+// oxfmt would not change is absent from the list whether or not the ignore works.

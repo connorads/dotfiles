@@ -1,12 +1,20 @@
-// Worked example: hk.pkl step graph for a TypeScript / React / Next project.
-// Copy into a project's hk.pkl and trim for stacks that don't apply.
-// See the `hk` skill for wiring (mise.toml, .hk-hooks/, prepare script).
+// Worked example: hk.pkl step graph for a TypeScript project on TypeScript 7. Copy
+// into a project's hk.pkl and trim for stacks that don't apply. The `hk` skill owns
+// the wiring and mandates hk >= 1.51.0 with `-q` on the pre-commit wrapper, which
+// quiets a passing step and keeps a failing one's output, so steps here run plain
+// commands. references/typescript.md, Picks owns which tool has which job.
 //
-// Match the pin below to your installed `hk --version`; the `hk` skill mandates a
-// minimum of hk 1.51.0. On hk >= 1.51.0 add `-q` to the pre-commit wrapper
-// (`hk run pre-commit -q`, see the `hk` skill): it quiets every step on success
-// (0 bytes) while keeping the failing step's full output — so steps here run their
-// plain commands, no per-step output wrapper.
+// THE FIX-MODE RULE, verified 2026-09-03 against hk 1.56.1. This hook sets
+// `fix = true`, so a step declaring both keys has its `fix` command run, in one
+// repo in place of `check` entirely: a probe step whose `check` exits 1 and whose
+// `fix` exits 0 passed the hook. A severity flag left off `fix` is therefore
+// decorative at commit time, however red a check-only run looks. Every gate below
+// carries its flag on both commands or declares `check` alone.
+//
+// Commands verified 2026-09-03 on a TypeScript 7.0.2 / node 24.19.0 fixture with
+// oxlint 1.80.0, oxlint-tsgolint 7.0.2001, oxfmt 0.65.0, knip 6.33.0,
+// @ast-grep/cli 0.45.2, vitest 4.1.11, eslint 10.9.1 and pnpm 11.20.0. The 4-day
+// release-age quarantine holds oxlint 1.81.0, oxfmt 0.66.0 and knip 6.34.0 back.
 amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
 import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
 
@@ -19,11 +27,13 @@ local binary_excludes = List(
     "*.woff", "*.woff2", "*.ttf", "*.eot", "*.pdf", "*.zip"
 )
 
+local js_glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
+
 hooks {
     ["pre-commit"] {
-        // fix = true + stash = git means: auto-fix, re-stage fixed files,
-        // stash the rest, run the gates, unstash at the end.
-        // Net effect: a single `git commit` succeeds with fixed content.
+        // fix = true + stash = git means: auto-fix, re-stage fixed files, stash the rest,
+        // run the gates, unstash at the end, so one `git commit` succeeds with fixed
+        // content. It is also what makes the fix-mode rule above bite.
         fix = true
         stash = "git"
 
@@ -35,38 +45,57 @@ hooks {
             ["newlines"] = (Builtins.newlines) {
                 exclude = binary_excludes
             }
+            // rumdl owns Markdown, here and house-wide. oxfmt reformats `.md` too, so
+            // the pair rewrite each other's output and both --check gates stay red
+            // forever; `ignorePatterns` in .oxfmtrc.json keeps one owner per file type
+            // (references/typescript-oxfmtrc.jsonc; typescript.md, Formatting).
             ["rumdl"] = (Builtins.rumdl) {}
             ["typos"] = (Builtins.typos) {
                 exclude = binary_excludes + List("pnpm-lock.yaml", "**/*.generated.*")
             }
+            // oxfmt: JS/TS plus JSON and YAML in one pass. `--check` exits 1 on an
+            // unformatted file and 0 clean; a bare run writes, there being no --write.
+            // The config is load-bearing: with none discovered oxfmt reformats Markdown
+            // too, printing only "No config found, using defaults".
+            ["oxfmt"] {
+                glob = js_glob + List("*.json", "*.jsonc", "*.yaml", "*.yml")
+                check = "pnpm exec oxfmt --check {{files}}"
+                fix = "pnpm exec oxfmt {{files}}"
+            }
 
-            // --- Tier 2: lint / format JS-TS code ---
-            // Biome (via Ultracite) owns formatting + general linting.
-            ["biome"] {
-                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.json", "*.css")
-                check = "pnpm exec ultracite check --error-on-warnings=true {{files}}"
-                fix = "pnpm exec ultracite fix {{files}}"
-            }
-            // oxlint (Rust) runs the boundary rules in-tree with no Node dep
-            // graph: no-restricted-imports, no-restricted-syntax, jsx-a11y, and
-            // a multi-file import/no-cycle (which retires madge). Configure deny
-            // levels in .oxlintrc.json; gate on non-zero exit.
+            // --- Tier 2: lint JS/TS ---
+            // oxlint with the skill's config (references/typescript-oxlintrc.jsonc). Both
+            // flags are load-bearing. `-c`: with no config discovered, oxlint lints the
+            // files and exits 0 in total silence, leaving Date.now, Math.random and
+            // process.env unflagged; a missing -c target exits 1 instead.
+            // `--deny-warnings`: oxlint's default severity is warn and warnings exit 0,
+            // so a correctness hit passes without it. Type-aware rules (floating
+            // promises, no-unsafe-*, exhaustive switch) come from `options.typeAware`
+            // in that config, never a CLI flag, and need `oxlint-tsgolint` as a dev dep;
+            // absent, the run exits 1 with "Failed to find tsgolint executable". Native
+            // restriction rules: no-restricted-imports / -globals / -properties /
+            // -exports, typescript/no-restricted-types, jsx-a11y, a multi-file
+            // import/no-cycle. There is NO no-restricted-syntax: naming it aborts config
+            // parsing, exit 1, nothing linted, so AST-shape bans go to the ast-grep step.
             ["oxlint"] {
-                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
-                check = "pnpm exec oxlint --max-warnings=0 {{files}}"
-                fix = "pnpm exec oxlint --fix {{files}}"
+                glob = js_glob
+                check = "pnpm exec oxlint -c .oxlintrc.json --deny-warnings {{files}}"
+                fix = "pnpm exec oxlint -c .oxlintrc.json --fix --deny-warnings {{files}}"
             }
-            // ESLint owns only what oxlint/Biome can't yet express: import-type-
-            // aware boundary rules (allowTypeImports) and framework plugins
-            // (plugin:next, plugin:storybook).
-            ["eslint"] {
-                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
-                check = "pnpm exec eslint {{files}}"
-                fix = "pnpm exec eslint --fix {{files}}"
-            }
+            // ESLint is optional, reachable only behind the TypeScript 6 side-by-side
+            // alias (references/typescript.md, Type checking), and earns its place for
+            // eslint-plugin-regexp, naming-convention and framework plugins.
+            // `--max-warnings 0` goes on BOTH commands or every warn-level rule is
+            // decorative (eslint 10.9.1 exits 0 on warnings); `--no-warn-ignored` keeps
+            // a staged file eslint itself ignores from failing the commit.
+            // ["eslint"] {
+            //     glob = js_glob
+            //     check = "pnpm exec eslint --max-warnings 0 --no-warn-ignored {{files}}"
+            //     fix = "pnpm exec eslint --fix --max-warnings 0 --no-warn-ignored {{files}}"
+            // }
 
             // --- Tier 2: lint / format Python code ---
-            // Ruff check runs before Ruff format so lint fixes can add/remove
+            // Ruff check runs before Ruff format so lint fixes can add or remove
             // imports and the formatter gets the final pass.
             // ["ruff-check"] {
             //     glob = List("*.py", "*.pyi")
@@ -80,52 +109,43 @@ hooks {
             // }
 
             // --- Tier 2 cont.: validation gates (no auto-fix) ---
-            // ast-grep gates durable boundary rules that outlive grep: tree-sitter AST
-            // patterns with $VAR metavariables, polyglot from one binary. Subsumes
-            // no-restricted-syntax rules needing no type info (zero-arg `new Date()`,
-            // banned call-shapes, framework-free dirs). Rules live in sgconfig.yml -> a
-            // rules/ dir; `scan` exits 1 on an error-severity match, so it gates on exit
-            // code. {{files}}-scoped is correct: rules are per-file (syntax-only, no
-            // cross-file resolution). Invoke `ast-grep`, not `sg` (collides with
-            // setgroup(1) on Linux). No fix key — boundary violations block, not rewrite.
-            // Type-aware boundaries (import resolution, allowTypeImports) stay in oxlint/
-            // eslint above.
+            // ast-grep gates the syntax shapes a linter cannot express: oxlint ships no
+            // no-restricted-syntax, so zero-arg `new Date()` in the core, raw SQL tagged
+            // templates and the sink catalogue land here. Rules: typescript-ast-grep.yml
+            // and python-ast-grep.yml, both under `ruleDirs` in sgconfig.yml. `scan`
+            // exits 1 on an error-severity match, and {{files}}-scoped is right because
+            // the rules are syntax-only.
+            // Both routes fail closed on a rename: a missing sgconfig.yml exits 3 and
+            // `-r <file>` (one rule file only) exits 6. Invoke `ast-grep`, not `sg`,
+            // which collides with setgroup(1). No fix key: a violation blocks.
             ["ast-grep"] {
-                glob = List("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs", "*.py", "*.rs")
-                check = "ast-grep scan {{files}}"
+                glob = js_glob + List("*.py", "*.rs")
+                check = "pnpm exec ast-grep scan {{files}}"
             }
             ["yamllint"] = (Builtins.yamllint) {}
             ["check-merge-conflict"] = (Builtins.check_merge_conflict) {}
             ["gitleaks"] {
                 check = "gitleaks detect --no-banner --redact --log-level=error"
             }
-            // dependency-cruiser enforces transitive graph boundaries that
-            // direct import rules cannot see. Whole-repo, so no glob/{{files}}.
-            // Prefer a full quality/CI hook if it measures too slow for commit.
-            // Add a package script such as:
-            // "check:deps": "depcruise src --config .dependency-cruiser.cjs --output-type err-long --no-progress --no-cache"
-            // ["depcruise"] {
-            //     check = "pnpm --silent check:deps"
-            // }
-            // Detective supply-chain layer: scan lockfiles against the OSV DB
-            // (CVEs + MAL-* malware advisories) — catches what the release-age
-            // quarantine can't. Whole-repo, gate on non-zero exit. Heavier than
-            // the other gates, so move to pre-push / CI if it slows commits.
+            // Detective supply-chain layer: scan lockfiles against the OSV DB (CVEs +
+            // MAL-* malware advisories), catching what the release-age quarantine
+            // cannot. Whole-repo, gate on non-zero exit, and heavier than the other
+            // gates, so move it to pre-push or CI if it slows commits.
             ["osv-scanner"] {
                 check = "osv-scanner scan source -r ."
             }
 
             // --- Tier 3: typecheck ---
-            // Gate, not fix — a failing typecheck must block the commit.
-            // `typecheck:fast` can run tsgo (TS 7 native, ~10x faster) as the
-            // local gate; keep a `tsc --noEmit` (TS 6) job in CI as the
-            // authoritative check until tsgo GA is verified on the project.
+            // Gate, not fix: a failing typecheck must block the commit. Whole project,
+            // never {{files}}, because `tsc <file>` next to a tsconfig refuses outright
+            // (TS5112) and a type error is a whole-program fact. Gate on non-zero, never
+            // on which non-zero: TypeScript 7 reverses the exit codes TypeScript 6 uses
+            // (references/typescript.md, Type checking).
             ["typecheck"] {
-                check = "pnpm typecheck:fast"
+                check = "./node_modules/.bin/tsc -p tsconfig.json"
             }
-            // Python typecheck gate. Keep basedpyright as the default blocking
-            // check; add pinned `ty check` only as an advisory/secondary gate
-            // while ty remains beta.
+            // Python typecheck gate. Keep basedpyright as the default blocking check;
+            // add pinned `ty check` only as an advisory gate while ty remains beta.
             // ["basedpyright"] {
             //     glob = List("*.py", "*.pyi")
             //     check = "uv run basedpyright"
@@ -135,30 +155,43 @@ hooks {
             //     check = "uv run ty check"
             // }
 
-            // --- Tier 4: tests ---
-            // Enforce a coverage threshold via the test runner's config, not hk.
-            // For vitest: set `coverage.thresholds = { 100: true }` (or whatever
-            // threshold you want) and use `/* v8 ignore next */` for unreachable
-            // defensive code.
+            // --- Tier 4: tests, boundaries, dead code ---
+            // Whole suite, no glob: a test elsewhere is what catches the change here.
+            // The runner's hygiene gates belong in the vitest config
+            // (references/typescript-vitest.config.ts) and coverage thresholds to the
+            // `test-coverage` skill, not in flags here.
             ["test-gate"] {
-                check = "pnpm test:unit --coverage"
+                check = "pnpm exec vitest run"
             }
-            // knip is the TS dead-code gate (the vulture analogue): unused
-            // files, exports, types, and unused/unlisted deps. Whole-repo, so no
-            // glob/{{files}}. Run --production so test-only exports aren't
-            // flagged; adopt report-only first, then gate on exit code.
+            // Transitive boundaries: the ts-morph test in vitest
+            // (references/typescript-arch-test.ts; architecture-boundaries.md, Transitive
+            // architecture tests). dependency-cruiser is not the tool on TS 7, capping at
+            // typescript <7, cruising 0 modules and exiting 0. Its own step costs one
+            // vitest start and buys a path check: with the file gone, this exits 1 where
+            // the suite-wide run stays green.
+            ["arch-test"] {
+                check = "pnpm exec vitest run tests/architecture.test.ts"
+            }
+            // knip is the TS dead-code gate (the vulture analogue): unused files,
+            // exports, types, and unused or unlisted dependencies. Whole-repo, so no
+            // glob/{{files}}. `--production` reads ONLY `entry` and `project` patterns
+            // suffixed `!`; without those markers it analyses nothing and exits 0 on a
+            // dead tree, and production is the one mode that never hints about it.
+            // `--strict` is the dev-dependency-leak gate and `--cycles` adds cycles among
+            // entry-reachable files; references/knip.jsonc carries the config and the
+            // dev-mode second command (typescript.md, Dead code (knip)).
             ["knip"] {
-                check = "pnpm exec knip --production"
+                check = "pnpm exec knip --production --strict --cycles"
             }
-            // Vulture needs whole-repo visibility. Enable only after baseline
-            // cleanup and keep min_confidence=100 for commit gates.
+            // Vulture needs whole-repo visibility. Enable only after baseline cleanup
+            // and keep min_confidence=100 for commit gates.
             // ["vulture"] {
             //     check = "uv run vulture"
             // }
         }
     }
 
-    // Commit message validation — conventional commits.
+    // Commit message validation: conventional commits.
     ["commit-msg"] {
         steps {
             ["commitlint"] {
@@ -167,23 +200,20 @@ hooks {
         }
     }
 
-    // Pre-push is a no-op: all gates run pre-commit so the push is already clean.
-    // Keeps `git push` fast and keeps the enforcement surface in one place.
+    // Pre-push is a no-op for a plain application: every gate runs pre-commit, so the
+    // push is clean, `git push` stays fast and enforcement lives in one place.
     ["pre-push"] {
         steps {
             ["noop"] {
                 check = "true"
             }
-            // Library publish gate (post-build): publint validates the
-            // package.json export map and attw checks the shipped .d.ts resolve
-            // across moduleResolution modes. Both need the built dist + .d.ts,
-            // so wire them into the release workflow if the build doesn't run on
-            // push. Pin both under the release-age quarantine.
-            // ["publint"] {
-            //     check = "pnpm exec publint"
-            // }
-            // ["attw"] {
-            //     check = "pnpm exec attw --pack --profile node16"
+            // A publishable library adds one step here, not several: the order (pack
+            // once, then publint, attw and a clean-directory smoke against that one
+            // tarball) is load-bearing and each tool has a fails-open mode of its own.
+            // Script: references/typescript-publish-gates.sh; reasoning in
+            // references/typescript-publishing.md, Publishing gates.
+            // ["publish-gates"] {
+            //     check = "bash tools/publish-gates.sh"
             // }
         }
     }

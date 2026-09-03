@@ -92,9 +92,24 @@ The committed `.api.md` report is the baseline. Dev regenerates it; CI
 compares and fails on any unreviewed public `.d.ts` surface change:
 
 ```bash
-api-extractor run --local      # dev: rewrite the report, commit the diff
-api-extractor run              # CI: non-zero exit if report differs - no --local
+pnpm build && api-extractor run --local   # dev: rewrite the report, commit it
+pnpm build && api-extractor run           # CI: exits 1 on a diff - never --local
 ```
+
+`pnpm build &&` is load-bearing, because the gate reads the emitted `.d.ts` and
+nothing else - against a stale or CI-restored `dist/` it exits 0 on an
+already-changed API. It also exits 1 on *any* warning, not only a report diff,
+and `ae-missing-release-tag` fires once per exported symbol until each carries
+a release tag, so the recipe must either tag the whole surface or set that
+message's `logLevel` to `"none"` under `messages.extractorMessageReporting`;
+undecided is a red gate on a byte-identical report. `apiReport.enabled: false`
+turns the gate off in silence - a changed surface still reports "completed
+successfully" at exit 0. Analysis always runs on api-extractor's own pinned
+TypeScript, never the project's (7.59.0 pins 5.9.3), and its version-mismatch
+notice resolves `typescript` from the project folder inside an empty `catch` -
+under TypeScript 7, whose manifest has no `main`, that resolve throws and
+nothing prints. Verified 2026-09-03 against @microsoft/api-extractor 7.59.0
+with typescript 7.0.2.
 
 ## Python - griffe check and pyright --verifytypes
 

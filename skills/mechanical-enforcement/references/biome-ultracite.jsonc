@@ -1,50 +1,99 @@
-// Biome config extending Ultracite presets.
-// Ultracite bundles opinionated Biome rules for core/react/next — use it
-// instead of hand-rolling a Biome config. Override only with a comment
-// explaining *what would break* if the override were removed.
+// Biome config extending Ultracite's presets - the optional React/Next starting
+// point, not the default. The default TypeScript lint gate is raw oxlint with
+// references/typescript-oxlintrc.jsonc plus oxfmt; Ultracite's traps and the
+// case for demoting it are in references/typescript.md, "Lint families".
+//
+// WHAT IT GATES: Biome's own rule set on top of Ultracite core/react/next, the
+// vitest test-hygiene rules, and the formatter. Every override below states what
+// breaks without it; add none without the same.
+//
+// HOW TO WIRE IT:
+//   pnpm add -D @biomejs/biome ultracite
+//   pnpm exec biome check src tests          # lint + format + assists
+//   pnpm exec biome lint --error-on-warnings src tests
+// Verified 2026-09-03 against biome 2.5.11 and ultracite 7.10.7: this file as
+// shipped exits 1 on a test file carrying `test.only`, `test.skip` and an
+// assertion-free test (3 lint diagnostics), and 0 on a clean file.
+//
+// TRAPS:
+//  - THE EXTENSION IS LOAD-BEARING. Biome silently discards a `biome.json` that
+//    holds `//` comments - the whole file, `extends` chain included - and falls
+//    back to defaults. Measured on the identical content: as `biome.json`,
+//    `biome lint` on the three-violation test file reports 1 warning and EXITS
+//    0; as `biome.jsonc`, 3 errors and exit 1. Keep the name `biome.jsonc`.
+//  - IT NEEDS AN IGNORE FILE. With no `.gitignore`, `.git/info/exclude` or
+//    `.ignore` in the folder holding this config, Biome reports
+//    `internalError/fs ... couldn't find an ignore file` and exits 1 with zero
+//    lint output - a config error dressed as a gate failure. A 0-byte
+//    `.gitignore` does NOT satisfy it (verified: same error); one line of
+//    content does. `git init` alone is enough, because it writes
+//    `.git/info/exclude`, so the case that bites inside a healthy repo is a
+//    monorepo package linted from its own cwd.
+//  - THE `$schema` PIN DRIFTS IN SILENCE. Pinning 2.5.1 or even 2.0.0 against
+//    CLI 2.5.11 produces no diagnostic here and no exit-code change; it only
+//    costs editor completion. Bump it with `biome migrate --write`, and read
+//    that command's diff before applying: it rewrites a pretty-printed
+//    `rules: { recommended: true }` to `preset: "none"`, which switches the
+//    linter off while still exiting 0.
+//  - NURSERY RULES CANNOT BE ENABLED FROM `overrides[]`. `useExpect` below is
+//    nursery and has to sit in the top-level `linter.rules`.
+//  - SEVERITY MUST BE THE LITERAL `"error"`. `"on"` keeps a rule's default
+//    severity, so a rule that visibly reads as enabled still does not gate; and
+//    `--error-on-warnings` lifts warnings only, never the info tier.
+//  - Ultracite's core hard-excludes any directory named `dist`, `build`, `out`,
+//    `.next` and similar with `!!` globs this file cannot re-include. A gate
+//    pointed at such a path exits 1 with `Checked 0 files`.
+//  - A misspelled rule key fails closed (`Found an unknown key`, exit 1, nothing
+//    linted), so config typos are loud. Path globs are the quiet half.
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "extends": [
     "ultracite/biome/core",
     "ultracite/biome/react",
-    "ultracite/biome/next"
+    "ultracite/biome/next",
+    // The test-hygiene rules (noFocusedTests, noSkippedTests, noExportsInTest,
+    // noMisplacedAssertion and the rest) at error severity. Without this entry
+    // a committed `test.only` passes the gate: see references/typescript-
+    // testing.md, "Test lint rules".
+    "ultracite/biome/vitest"
   ],
   "files": {
-    "includes": [
-      "!.next/",
-      "!.open-next/",
-      "!node_modules/",
-      "!**/*.generated.*",
-      "!pnpm-lock.yaml",
-      "!.wrangler/",
-      "!storybook-static/"
-    ]
+    // Project-local exclusions only. The build-output and cache directories are
+    // already excluded by ultracite/biome/core.
+    "includes": ["**", "!**/*.generated.*", "!pnpm-lock.yaml"]
   },
   "linter": {
     "rules": {
       "correctness": {
-        // Tailwind's `theme()` function in CSS is legal but Biome doesn't know.
+        // Tailwind's `theme()` in CSS is legal and Biome does not know it, so
+        // every stylesheet using it reports an unknown function without this.
         "noUnknownFunction": {
           "level": "error",
           "options": { "ignore": ["theme"] }
         }
       },
       "a11y": {
-        // tabIndex={0} on scrollable regions is the axe-mandated pattern
-        // (scrollable-region-focusable). Conflicts with this rule; keep it off.
+        // tabIndex={0} on a scrollable region is the axe-mandated pattern
+        // (scrollable-region-focusable), which this rule reads as a violation.
         "noNoninteractiveTabindex": "off"
       },
       "style": {
-        // Allow filenames that don't match strict kebab-case — Next.js app router
-        // uses `[slug]`, `(group)` etc. that fail camelCase convention checks.
+        // The Next app router names files `[slug]` and `(group)`, which no
+        // case convention accepts.
         "useFilenamingConvention": "off",
-        // Barrel re-exports are a legitimate pattern.
+        // Barrel re-exports are the module layout this codebase uses.
         "noExportedImports": "off"
       },
       "security": {
-        // JSON-LD structured data requires static dangerouslySetInnerHTML blocks.
-        // Keep the override narrow — review any new use sites by hand.
+        // JSON-LD structured data has no route other than a static
+        // dangerouslySetInnerHTML block. Keep the override narrow and review
+        // every new use site by hand.
         "noDangerouslySetInnerHtml": "off"
+      },
+      "nursery": {
+        // A test with no assertion passes whatever the code does. Nursery, so
+        // it is off in every preset and cannot be enabled from overrides.
+        "useExpect": "error"
       }
     }
   }

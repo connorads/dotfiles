@@ -1,0 +1,120 @@
+// typescript-strict-app.jsonc - the tsconfig.json for a bundled TypeScript app (Next,
+// Vite, Remix). It gates type safety at the compiler tier: the whole `strict` family
+// plus every tightening `strict` does not imply.
+//
+// Wire it: copy to tsconfig.json (tsc reads the comments), then gate on the explicit
+// path `./node_modules/.bin/tsc -p tsconfig.json`, since `pnpm exec tsc` and a bare
+// `tsc` script fall through to whatever compiler is on PATH. Invocation, exit codes,
+// `extends` array replacement and the `--noCheck` hole: typescript.md, "Type checking".
+// Flag tables and the lint tier that pairs with this: typescript.md, "Type safety".
+// A published library or an unbundled Node package takes typescript-strict-lib.jsonc
+// instead, and the two are not interchangeable: `moduleResolution: bundler` lets an
+// extensionless import typecheck here and then throw ERR_MODULE_NOT_FOUND under Node,
+// and the DOM lib types browser globals a server runtime lacks.
+//
+// Verified 2026-09-03 against typescript 7.0.2 on the phase-3 fixture: applied as-is
+// over src/ and tests/ it exits 0; a file violating noImplicitOverride (TS4114),
+// noFallthroughCasesInSwitch (TS7029) and allowUnreachableCode (TS7027) exits 1.
+{
+  "compilerOptions": {
+    // tsc's own default; types Set.union, iterator helpers and Promise.try, where
+    // pinning lower is TS2550 on correct code. Pair it with the lib line below.
+    "target": "es2025",
+    // esnext.disposable is named explicitly: `using` and DisposableStack are NOT in
+    // lib es2025, and otherwise arrive invisibly via @types/node's
+    // `/// <reference lib="esnext.disposable" />`, so a browser build or a change to
+    // `types` loses them with no obvious cause. Bare `esnext` is the wrong fix: it
+    // types Temporal, which node 24 does not define. The DOM level is a browserslist
+    // call - es2025's Float16Array and Intl.DurationFormat are newly-available
+    // baseline, not widely available.
+    "lib": ["es2025", "esnext.disposable", "dom", "dom.iterable"],
+    // `types` defaults to [] from TS 6.0, so an ambient global stays unresolved
+    // until listed: `process` is TS2591 with @types/node installed, and `typeRoots`
+    // does not fix it. Browser-only app: [] plus what it needs, e.g. vite/client.
+    "types": ["node"],
+
+    // The bundler owns resolution, so extensionless relative imports are legal,
+    // which is why an unbundled package must not copy this file. The extension
+    // requirement traded away (TS2835) needs nodenext AND package.json
+    // `"type": "module"`; nodenext alone leaves a CommonJS package green.
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    // Without a `jsx` value every .tsx file is TS17004; `preserve` typechecks the JSX
+    // and leaves transforming it to the bundler that ships the code.
+    "jsx": "preserve",
+
+    // Type-check only; the bundler emits. Under noEmit a `./x.ts` specifier is legal,
+    // so one spelling serves the bundler and node's type stripping alike; emitting one
+    // needs rewriteRelativeImportExtensions (TS5096) - see the lib file.
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+
+    // A type-only import must say so. isolatedModules does NOT cover the
+    // `import type { X }` then `export { X }` re-export (TS1205), so a bundler can
+    // emit a runtime import of a module holding nothing but types. It is an ESM
+    // demand, not a tightening: in a file TypeScript resolves as CommonJS every
+    // import and export is TS1295/TS1287. Adoption is a bulk edit - every
+    // value-position import of a type becomes TS1484.
+    "verbatimModuleSyntax": true,
+    // Only syntax a pure type-stripper can erase: enum, const enum, a value
+    // `namespace`, parameter properties, `import =`/`export =` and `<T>x` are all
+    // TS1294, with no per-construct code to triage by. Decorators and `accessor` escape
+    // it; typescript-ast-grep.yml carries that canary.
+    "erasableSyntaxOnly": true,
+
+    // Null checks, no implicit any, unknown in catch. A sub-flag opt-out such as
+    // `useUnknownInCatchVariables: false` compiles clean beside `strict: true` and
+    // no lint rule sees it, so a grep of the tsconfig is the only gate on it.
+    "strict": true,
+    // arr[0] and rec[key] are T | undefined: `xs[0].id` is TS2532 until checked,
+    // rather than a crash on an empty array.
+    "noUncheckedIndexedAccess": true,
+    // Separates `x?: T` (absent) from `x: T | undefined` (present and undefined);
+    // writing undefined into a merely-optional field is TS2375.
+    "exactOptionalPropertyTypes": true,
+    // Index-signature keys need bracket access (TS4111), catching a typo'd dynamic
+    // key. Biome's `useLiteralKeys` rewrites the bracket form back to dot access
+    // and breaks it - typescript.md, "Lint families and suppressions".
+    "noPropertyAccessFromIndexSignature": true,
+    // Not implied by strict, and it adds exactly TS4114: an override carries the
+    // `override` keyword. TS4113 (a member overriding nothing) fires with the flag off
+    // too, so this buys that check everywhere rather than only where someone typed
+    // `override`. Abstract members and `implements` are exempt, so an
+    // `abstract class Handler` hierarchy is uncovered.
+    "noImplicitOverride": true,
+    // Not implied by strict. A non-empty case body that falls through is TS7029; a
+    // bare `case "a": case "b":` stays legal. No escape comment works - `// falls
+    // through` still errors - and a declaration-only body counts as non-empty, so
+    // shared-setup-then-fall-through is banned too. A MISSING case is a lint rule's
+    // job: typescript.md, "Type safety".
+    "noFallthroughCasesInSwitch": true,
+    // Dead code fails the build; an unused parameter takes a `_` prefix. Neither sees
+    // a side-effecting statement after `return`.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    // The default `undefined` greys the code out in the editor and leaves CI green.
+    // Only the explicit `false` errors: TS7027 after return/throw, TS7028 for an
+    // unused label. oxlint `no-unreachable` catches the syntactic cases; this adds
+    // the type-aware ones, such as a statement after a `never`-returning call. One
+    // `@ts-ignore` line silences TS7027 with no residue.
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    // TS7030 where a code path falls off the end. It is the only gate on the ordinary
+    // `T | undefined` lookup, which `strict` cannot flag because `undefined` is already
+    // in the annotation, and it reaches arrow callbacks no return type covers.
+    "noImplicitReturns": true,
+
+    // Skips checking every .d.ts, matched by file kind and not by path, so a
+    // first-party src/*.d.ts naming an unresolvable type is silenced like a
+    // dependency's (syntax errors still fire). Keep it on: it has no path form, so
+    // turning it off pulls every reachable dependency .d.ts in. The library's
+    // release check: typescript-publishing.md, "Publishing gates".
+    "skipLibCheck": true
+
+    // Deliberately absent: `incremental` writes <config-name>.tsbuildinfo beside the
+    // config even under noEmit, an untracked stray.
+  },
+  // Explicit, always. With no `include` the program is `**/*`: build output gets
+  // typechecked and scripts/ leaks node globals in. Give Node tooling its own config.
+  "include": ["src", "tests"]
+}
