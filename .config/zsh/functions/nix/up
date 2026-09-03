@@ -13,6 +13,8 @@
 emulate -L zsh
 
 local frozen=0 do_os=0 no_audit=0
+local mise_lock=~/.config/mise/mise.lock
+local flake_lock=~/.config/nix/flake.lock
 for arg in "$@"; do
   case "$arg" in
   --frozen | -s | --skip-flake) frozen=1 ;;
@@ -20,6 +22,29 @@ for arg in "$@"; do
   --no-audit) no_audit=1 ;;
   esac
 done
+
+_up_require_clean_lock() {
+  local lock=$1 label=${1#$HOME/}
+  if [[ ! -f $lock ]]; then
+    print -u2 "up: required lock missing: $label"
+    return 1
+  fi
+  if ! dotfiles diff --quiet -- "$lock" || ! dotfiles diff --cached --quiet -- "$lock"; then
+    print -u2 "up: refusing to update a dirty lock: $label"
+    print -u2 "    inspect: dotfiles diff -- $label"
+    print -u2 "    staged:  dotfiles diff --cached -- $label"
+    return 1
+  fi
+}
+
+# A pathspec prevents unrelated staged files from landing in a lock commit, but
+# it cannot distinguish changes within the lock itself. Start from a clean lock
+# so each commit contains only this invocation's update. Frozen rebuilds permit
+# a dirty flake.lock so a failed rebuild can be retried without another bump.
+_up_require_clean_lock "$mise_lock" || return 1
+if ((!frozen)); then
+  _up_require_clean_lock "$flake_lock" || return 1
+fi
 
 # Detective OSV sweep of tracked lockfiles before any mutation: a MAL-* hit
 # aborts with a clean tree (nothing bumped to revert). CVEs report non-blocking;
@@ -31,7 +56,6 @@ fi
 if ((frozen)); then
   mise install # converge to committed mise.lock, no bump/commit
 else
-  local lock=~/.config/mise/mise.lock
   # mise upgrade bumps within ranges and auto-locks every lockfile_platforms
   # entry (not just the current one) for each changed tool, plus current-platform
   # provenance — so no separate `mise lock` refresh is needed here.
@@ -44,10 +68,10 @@ else
   if ((rc)); then
     print -u2 "!! mise upgrade failed (exit $rc) - NOT committing mise.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/mise/mise.lock"
-  elif [[ -f $lock ]]; then
-    dotfiles add "$lock"
-    dotfiles diff --cached --quiet -- "$lock" ||
-      dotfiles commit -m "chore(mise): update tool lock"
+  elif [[ -f $mise_lock ]]; then
+    dotfiles add "$mise_lock"
+    dotfiles diff --cached --quiet -- "$mise_lock" ||
+      dotfiles commit -m "chore(mise): update tool lock" -- "$mise_lock"
   fi
 fi
 # Reassert Claude binary/plugin patches: covers no-op upgrades (postinstall only
@@ -97,9 +121,9 @@ if ((!frozen)); then
     print -u2 "!! rebuild failed (exit $rebuild_rc) - NOT committing flake.lock"
     print -u2 "   lock left dirty: dotfiles diff -- .config/nix/flake.lock"
   else
-    dotfiles add ~/.config/nix/flake.lock
-    dotfiles diff --cached --quiet -- ~/.config/nix/flake.lock ||
-      dotfiles commit -m "chore(nix): update flake lock"
+    dotfiles add "$flake_lock"
+    dotfiles diff --cached --quiet -- "$flake_lock" ||
+      dotfiles commit -m "chore(nix): update flake lock" -- "$flake_lock"
   fi
 fi
 
