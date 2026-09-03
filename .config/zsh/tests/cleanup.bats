@@ -1032,6 +1032,41 @@ EOF
   [ -d "$CLEANUP_WORKTREE_ROOT/inactive/apps/web/node_modules" ]
 }
 
+@test "go cleanup without a toolchain removes canonical caches and preserves source and binaries" {
+  mkdir -p "$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod" \
+    "$HOME/go/src/project" "$HOME/go/bin"
+  printf 'cache\n' >"$HOME/Library/Caches/go-build/object"
+  printf 'module\n' >"$HOME/go/pkg/mod/module"
+  chmod a-w "$HOME/go/pkg/mod/module"
+  touch "$HOME/go/src/project/main.go" "$HOME/go/bin/tool"
+
+  run env PATH="$TEST_BIN:/usr/bin:/bin" zsh --no-rcs "$CLEANUP" --yes --go
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/Library/Caches/go-build" ]
+  [ ! -e "$HOME/go/pkg/mod" ]
+  [ -f "$HOME/go/src/project/main.go" ]
+  [ -f "$HOME/go/bin/tool" ]
+}
+
+@test "go cleanup delegates to the installed toolchain" {
+  write_stub go <<'EOF'
+#!/usr/bin/env bash
+echo "go $*" >>"$TEST_LOG"
+if [ "$1" = env ]; then
+  printf '%s\n%s\n' "$HOME/custom-go-build" "$HOME/custom-go-mod"
+fi
+EOF
+  mkdir -p "$HOME/custom-go-build" "$HOME/custom-go-mod"
+  printf 'cache\n' >"$HOME/custom-go-build/object"
+  printf 'module\n' >"$HOME/custom-go-mod/module"
+
+  run zsh --no-rcs "$CLEANUP" --yes --go
+
+  [ "$status" -eq 0 ]
+  grep -Fx 'go clean -cache -modcache' "$TEST_LOG"
+}
+
 @test "ui mode errors cleanly when fzf is unavailable" {
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" PATH="$TEST_BIN" "$(command -v zsh)" --no-rcs "$CLEANUP" ui
 

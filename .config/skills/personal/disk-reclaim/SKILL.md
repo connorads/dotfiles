@@ -90,8 +90,11 @@ Before classifying a language cache, check its tool still exists:
 "re-downloadable pending a nod", it is dead weight - `~/.pub-cache`,
 `~/.gradle` and `~/.dartServer` held 1.6G between them on a machine with no
 Dart, Flutter or Gradle installed at all. `go` is the same pair twice over:
-`~/Library/Caches/go-build` and `~/go` (690M and 124M here) are both dead
-weight with no `go` on the machine. The check extends to the *manager*:
+`~/Library/Caches/go-build` and `~/go/pkg/mod` (690M and 124M here) are both
+dead weight with no `go` on the machine. `cleanup --target go --yes` delegates
+to `go clean -cache -modcache` when Go exists. Without Go it removes only
+those canonical roots and preserves `~/go/src` and `~/go/bin`. The check
+extends to the *manager*:
 Android's `sdkmanager` is a JVM wrapper, so with no `java` it cannot list or
 uninstall the packages it installed, and the idiomatic-cleaner route is closed
 before you reach it (9.1G of `system-images`, `ndk` and `emulator` sat under a
