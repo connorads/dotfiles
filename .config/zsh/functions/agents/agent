@@ -39,7 +39,7 @@ usage: agent <subcommand> [args]
   unname [<target>] remove a pane's label (default: this pane)
   pick              fzf picker over live agents; Enter jumps to the pane
   hibernate [<target>] [--force]
-                    kill a Claude pane to reclaim RAM/swap and park a thawer
+                    stop a Claude/Codex pane to reclaim RAM/swap and park a thawer
                     in it; the conversation resumes in full on thaw. Only
                     idle/done panes hibernate without --force
   thaw [<target>]   resume a hibernated pane (or, with no target, pick from

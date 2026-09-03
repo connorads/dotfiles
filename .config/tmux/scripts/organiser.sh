@@ -88,7 +88,7 @@ append_agent_dot_items() {
 	if [ "$lifecycle" != 1 ]; then
 		return 0
 	fi
-	if [ "$kind" != claude ]; then
+	if [ "$kind" != claude ] && [ "$kind" != codex ]; then
 		return 0
 	fi
 	menu+=("")

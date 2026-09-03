@@ -89,7 +89,7 @@ agent_rows() {
 
 hibernate_rows() {
 	tmux list-panes -a -F '#{@agent_state}	#{@agent_kind}	#{@agent_name}	#{window_name}	#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}	#{pane_id}' 2>/dev/null |
-		awk -F '\t' '$1 ~ /^(idle|done)$/ && $2 == "claude" {
+		awk -F '\t' '$1 ~ /^(idle|done)$/ && $2 ~ /^(claude|codex)$/ {
 			label = $3 == "" ? $4 : $3
 			print $6 "\t" $7 "\t" label "\t" $1 "\t" $5
 		}' |
@@ -104,7 +104,7 @@ hibernate_apply() {
 	_count=$#
 	[ "$_count" -gt 0 ] || return 0
 	if [ "$_count" -gt 1 ]; then
-		printf 'Hibernate %s Claude panes? [y/N] ' "$_count"
+		printf 'Hibernate %s agent panes? [y/N] ' "$_count"
 		IFS= read -r _answer || _answer=""
 		case "$_answer" in y | Y | yes | YES) ;; *)
 			printf 'Cancelled.\n'
@@ -128,7 +128,7 @@ hibernate_apply() {
 choose_agents_to_hibernate() {
 	_rows=$(hibernate_rows)
 	if [ -z "$_rows" ]; then
-		printf 'No idle or done Claude panes are safe to hibernate.\n'
+		printf 'No idle or done Claude or Codex panes are safe to hibernate.\n'
 		pause_result
 		return 0
 	fi
