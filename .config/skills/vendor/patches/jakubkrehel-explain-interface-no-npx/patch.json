@@ -1,0 +1,6 @@
+{
+  "reason": "Use existing browser tooling first; npx bypasses local package-manager policy",
+  "files": [
+    "jakubkrehel/.agents/skills/explain-interface/SKILL.md"
+  ]
+}
