@@ -30,7 +30,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - name: install nixfmt (from the flake's locked nixpkgs)
         run: nix profile install ./.config/nix#formatter.x86_64-linux
-      - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
           # Selective install mirroring the tools hk.pkl steps invoke - NOT a
           # bare `mise install`, which would pull the whole global toolset
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
           install_args: bats
         env:
