@@ -77,8 +77,14 @@
 !/.config/opencode/command/**
 !/.config/opencode/plugin/
 !/.config/opencode/plugin/**
+!/.config/opencode/plugins-v1/
+!/.config/opencode/plugins-v1/**
+!/.config/opencode/plugins-v2/
+!/.config/opencode/plugins-v2/**
 !/.config/opencode/plugin-disabled/
 !/.config/opencode/plugin-disabled/**
+!/.config/opencode/opencode2.json
+!/.config/opencode/opencode2-yolo.json
 
 # skl config only; the implementation lives in /src/skl (docs/adr/0006)
 !/.config/skl/
@@ -171,6 +177,11 @@
 !/src/pin-audit/
 !/src/pin-audit/**
 /src/pin-audit/node_modules/
+
+# opencode-plugins: versioned OpenCode policy adapters and pure TS core
+!/src/opencode-plugins/
+!/src/opencode-plugins/**
+/src/opencode-plugins/node_modules/
 
 # skl: deliberate skill loader (bun/TS; config stays at .config/skl/config.json)
 !/src/skl/
