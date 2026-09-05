@@ -1,0 +1,14 @@
+[
+  {"name":"ordinary command passes","request":{"kind":"shell","command":"git status"},"decision":"pass"},
+  {"name":"shell secret denied","request":{"kind":"shell","command":"cat ~/.ssh/id_ed25519"},"decision":"deny","policy":"secret_path"},
+  {"name":"secret hatch passes","request":{"kind":"shell","command":"SECRETS_OK=1 cat ~/.ssh/id_ed25519"},"decision":"pass"},
+  {"name":"read secret denied","request":{"kind":"path","path":"~/.aws/config"},"decision":"deny","policy":"secret_path"},
+  {"name":"npm install denied","request":{"kind":"shell","command":"npm install left-pad"},"decision":"deny","policy":"prefer_pnpm"},
+  {"name":"npm run passes","request":{"kind":"shell","command":"npm run test"},"decision":"pass"},
+  {"name":"mutating gh api denied","request":{"kind":"shell","command":"gh api repos/o/r/issues -X POST -f title=x"},"decision":"deny","policy":"github_mutation"},
+  {"name":"mutating gh hatch passes","request":{"kind":"shell","command":"MUTATE_OK=1 gh api repos/o/r/issues -X POST -f title=x"},"decision":"pass"},
+  {"name":"merge has no hatch","request":{"kind":"shell","command":"MUTATE_OK=1 gh api repos/o/r/pulls/1/merge -X PUT"},"decision":"deny","policy":"github_merge"},
+  {"name":"read gh api passes","request":{"kind":"shell","command":"gh api repos/o/r/issues -X GET -f state=open"},"decision":"pass"},
+  {"name":"protection bypass asks","request":{"kind":"shell","command":"pnpm install --ignore-scripts=false"},"decision":"ask","policy":"supply_chain_bypass"},
+  {"name":"compound deny wins ask","request":{"kind":"shell","command":"pnpm install --ignore-scripts=false && cat ~/.ssh/key"},"decision":"deny","policy":"secret_path"}
+]
