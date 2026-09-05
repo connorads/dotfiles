@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+# oc2: launch the isolated OpenCode 2 beta
+emulate -L zsh
+
+local config="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode2.json"
+local subcommand="${1:-}"
+case "$subcommand" in
+  serve|service|api|pair|acp)
+    print -u2 "oc2: '$subcommand' is disabled by the isolated launcher; use opencode2 directly when intentional"
+    return 2
+    ;;
+esac
+
+export OPENCODE_DB=opencode2.db
+export OPENCODE_CONFIG="$config"
+case "$subcommand" in
+  "") exec opencode2 --standalone ;;
+  run|mini) shift; exec opencode2 "$subcommand" --standalone "$@" ;;
+  *) exec opencode2 "$@" ;;
+esac

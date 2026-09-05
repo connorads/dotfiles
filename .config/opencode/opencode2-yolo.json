@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "file://{env:HOME}/.config/opencode/plugins-v2/agent-state.ts",
+    "file://{env:HOME}/.config/opencode/plugins-v2/bell-notifications.ts",
+    "file://{env:HOME}/.config/opencode/plugins-v2/security-policy.ts"
+  ],
+  "permissions": [
+    { "action": "*", "effect": "allow" },
+    { "action": "shell", "resource": "eval *", "effect": "deny" },
+    { "action": "shell", "resource": "rm -rf *", "effect": "deny" },
+    { "action": "shell", "resource": "git add .", "effect": "deny" },
+    { "action": "shell", "resource": "git add -A*", "effect": "deny" },
+    { "action": "shell", "resource": "git add --all*", "effect": "deny" },
+    { "action": "shell", "resource": "git push --force*", "effect": "deny" }
+  ]
+}

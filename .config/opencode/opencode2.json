@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "file://{env:HOME}/.config/opencode/plugins-v2/agent-state.ts",
+    "file://{env:HOME}/.config/opencode/plugins-v2/bell-notifications.ts",
+    "file://{env:HOME}/.config/opencode/plugins-v2/security-policy.ts"
+  ]
+}

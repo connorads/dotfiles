@@ -497,6 +497,25 @@ checksum = "sha256:7b10c00e1f1b51d3e43cd5e738cc5fd93bf3ec0b777505744ac37c8b1e171
 url = "https://github.com/jdx/hk/releases/download/v1.57.0/hk-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/jdx/hk/releases/assets/536864261"
 
+[[tools."http:opencode2"]]
+version = "0.0.0-beta-18684"
+backend = "http:opencode2"
+
+[tools."http:opencode2".options]
+strip_components = "1"
+
+[tools."http:opencode2"."platforms.linux-arm64"]
+checksum = "sha512:4ccb3e68bacb8f732c439e34ec8a7d5fb07d3bd0c29f0c2530f1aef54eba38b3a58fca67dc51aff46068e3ebd0663c52f0e61b5d314bf25f526199e094c0f7ba"
+url = "https://registry.npmjs.org/@opencode-ai/cli-linux-arm64/-/cli-linux-arm64-0.0.0-beta-18684.tgz"
+
+[tools."http:opencode2"."platforms.linux-x64"]
+checksum = "sha512:43fba747b40805e8927186b58899628575429733e6bbba235022b51a85da17f1d4f4a94d8615f4d857938f7111a01526d00268c39caac68762b04f8ac5b419db"
+url = "https://registry.npmjs.org/@opencode-ai/cli-linux-x64/-/cli-linux-x64-0.0.0-beta-18684.tgz"
+
+[tools."http:opencode2"."platforms.macos-arm64"]
+checksum = "sha512:1b775858f797205e88cc34400cf6436c5257ced1b32a0b90f77e84f0757ddde4d648128b22a369002f92870e1e1645742d51d71946a379da15f68b26e444b127"
+url = "https://registry.npmjs.org/@opencode-ai/cli-darwin-arm64/-/cli-darwin-arm64-0.0.0-beta-18684.tgz"
+
 [[tools.lychee]]
 version = "0.24.2"
 backend = "aqua:lycheeverse/lychee"
