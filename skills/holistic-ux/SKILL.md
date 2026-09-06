@@ -1,294 +1,151 @@
 ---
 name: holistic-ux
-description: >
-  Strategic UX and service-design skill for framing user problems before code or
-  visual polish. Use when a request involves user experience, journey maps,
-  service blueprints, user flows, low-fidelity wireframes, heuristic reviews,
-  cognitive load, jobs to be done, onboarding/drop-off/trust/confusion, or
-  synthesising user research into design decisions. Prefer this skill when the
-  user asks why an experience is not working, what flow should exist, or what
-  artefact would help stakeholders decide. Do not use it for code-level WCAG,
-  ARIA, screen-reader, or keyboard fixes; route those to an accessibility skill
-  when available, or state the handoff boundary clearly.
+description: >-
+  Diagnoses user-experience and service problems from evidence, then chooses the
+  smallest decision-support artefact: research synthesis, journey map, service
+  blueprint, user flow, heuristic review, or low-fidelity wireframe. Use for
+  onboarding, drop-off, trust, confusion, recovery, cross-channel journeys,
+  backstage operations, user research synthesis, or requests to map or review an
+  experience before implementation or visual polish. Not for choosing which
+  product feature to build, code-level accessibility fixes, visual styling,
+  performance diagnosis, implementation, or presentation graphics.
 ---
 
-# Holistic UX Design
+# Holistic UX
 
-Use this skill to design experiences as systems. The goal is not to make an
-interface look nicer; it is to understand what progress the user is trying to
-make, what blocks that progress, and what artefact will help the next decision.
+> No populated claim or artefact cell may outrun its source evidence.
+
+The useful output is not the fullest map. It is the smallest artefact that helps
+someone make the next decision without turning plausible detail into fact.
 
 ## Boundaries
 
-Use this skill for:
+Use this skill to diagnose or shape an experience once the user-facing outcome
+or capability is known. It covers the user's task across screens, channels,
+people, policies and systems when those surfaces affect completion.
 
-- diagnosing confusing, slow, low-trust, high-drop-off, or hard-to-complete
-  experiences
-- mapping user flows, journey maps, service blueprints, and low-fidelity
-  wireframes
-- running product/flow-level heuristic reviews
-- translating research notes into themes, opportunities, and design principles
-- reasoning about cognitive load, JTBD, backstage processes, and failure paths
+Route away and stop when the request is primarily:
 
-Route elsewhere when the request is really:
+- **Which feature or opportunity to pursue**: use product discovery.
+- **ARIA, semantics, keyboard, focus, contrast or screen-reader code**: use web
+  accessibility.
+- **Typography, colour, spacing, imagery or polished components**: use UI or
+  visual design.
+- **Loading performance, layout shift or runtime responsiveness**: use web
+  performance.
+- **Implementing an agreed flow**: use the relevant engineering skill.
+- **Polishing a journey graphic or presentation**: use presentation design.
 
-- **Code-level accessibility:** WCAG, ARIA, keyboard, focus, screen-reader, or
-  semantic HTML fixes belong in an `accessibility` skill when available.
-- **Visual polish or frontend styling:** spacing, type, colour systems, shadows,
-  imagery, and refined component styling belong in a visual/UI design skill such
-  as `ui-design-playbook` when available.
-- **Performance or motion:** first paint, layout shift, animation timing, and
-  perceived jank belong in a performance or motion-design skill when available.
-- **Deciding what to build:** prioritising features, choosing the riskiest
-  assumption to test, or evidence-before-building questions belong in
-  `product-discovery` - this skill assumes the what is decided and works on
-  whether the experience of it holds together.
+Name the target discipline and add at most one sentence about the experience
+risk. Do not perform the routed task from this skill.
 
-When routing elsewhere, stop after naming the boundary and the target skill or
-discipline. You may add one sentence about the user risk, but do not provide the
-detailed implementation, checklist, code, CSS, WCAG/ARIA fixes, visual spec, or
-performance prescription from this skill.
+Do not use coercive friction to improve retention, conversion, consent, pricing,
+opt-out or cancellation. A choice remains findable, understandable and no harder
+to leave than to enter.
 
-Accessibility still matters here, but at this level it is a design constraint
-and risk note. Do not run a WCAG checklist from this skill. Do assess whether
-people with disabilities, limited language, low confidence, mobile-only access,
-or assisted-digital needs can complete the service end to end.
+## Protocol
 
-Do not solve retention, conversion, consent, opt-out, pricing, or cancellation
-problems with deceptive choice architecture. Keep choices findable, reversible
-where possible, and no harder to leave than to enter.
+### 1. Name the decision
 
-## Operating Protocol
+State the decision this work must support, the user, their task and the context
+in which the task occurs. If the request names an artefact, confirm that the
+artefact supports the decision before producing it.
 
-1. **Gather evidence first.** Inspect the product, screenshot, code, metrics,
-   transcript, research notes, or prompt details before proposing a flow. If
-   evidence is missing, state assumptions and ask only for what blocks the next
-   decision.
-2. **Name the real problem.** Distinguish the visible event from repeated
-   patterns, enabling structures, and underlying assumptions.
-3. **Choose the smallest useful artefact.** Produce the thing that supports the
-   decision: findings, flow, journey map, blueprint, synthesis, or wireframe.
-4. **Design beyond the screen.** Include backstage systems, handoffs, failure
-   modes, recovery paths, and stakeholder ownership when they affect the user's
-   experience.
-5. **Keep fidelity honest.** Do not over-design. If the decision is about
-   sequence or service delivery, a flow or blueprint beats a polished screen.
-6. **Verify the output.** Check that recommendations follow from evidence,
-   reduce extraneous cognitive load, cover critical states, and identify any
-   accessibility handoff.
+### 2. Inventory the evidence
 
-## Problem Framing
+Label every material input:
 
-Most UX requests arrive as symptoms. Look one or two layers deeper before
-solving:
+- **Measured**: a metric with population, event definition and time window.
+- **Observed**: behaviour directly watched or recorded in a named source.
+- **Reported**: what a participant, operator or stakeholder said, with speaker
+  and context.
+- **Inferred**: an explanation that could account for evidence but has not been
+  observed directly.
+- **Assumed**: necessary context that has not been checked.
 
-```text
-Event         Users abandon checkout at shipping address
-Pattern       Mostly mobile, mostly returning customers
-Structure     Address entry is desktop-shaped; saved addresses are hidden
-Assumption    Checkout was modelled as a one-session, new-customer task
-```
+The label applies to each claim, not to a whole document. A metric can establish
+where users leave without establishing why. A stakeholder report is evidence of
+the stakeholder's belief, not automatically evidence of user behaviour.
 
-Use this framing to avoid cosmetic fixes for structural problems.
+When the input includes research notes, conflicting sources, recordings,
+vulnerable participants or personal data, read
+`references/diagnosis-and-evidence.md`.
 
-Classify complexity:
+### 3. Keep rival explanations alive
 
-| Domain | What it looks like | UX response |
-| --- | --- | --- |
-| Clear | Known pattern, obvious cause | Apply a convention or checklist |
-| Complicated | Several plausible designs | Analyse evidence, then choose |
-| Complex | Cause unclear, trust/behaviour involved | Probe with research or experiments |
-| Chaotic | Urgent breakage or live harm | Stabilise first, learn later |
+Do not turn a symptom into a structure or motive. Name the smallest set of
+plausible explanations that still fit the evidence. For each, state the cheapest
+observation whose possible outcomes would distinguish it from the others.
 
-Treat UX laws as diagnostic prompts, not proof. Hick, Fitts, Miller,
-Peak-End, Jakob, and aesthetic-usability can suggest what to inspect; they do
-not replace evidence from the actual context.
+If no available observation discriminates the rivals, the honest deliverable is
+a research or instrumentation step. A polished redesign cannot repair an open
+diagnosis.
 
-## Artefact Selector
+### 4. Choose the smallest useful artefact
 
-Ask: "What decision will this support?"
-
-| Need | Output |
+| Decision need | Artefact |
 | --- | --- |
-| Prioritise issues in an existing flow | Heuristic review |
-| Explain how a user completes one task | User flow |
-| Understand behaviour and emotion over time | Journey map |
-| Align screen work with operations and systems | Service blueprint |
-| Turn research into design direction | Research synthesis |
-| Communicate rough layout and hierarchy | Low-fidelity wireframe |
+| Separate evidence, interpretation and opportunity | Research synthesis |
+| Understand an evidenced experience over time | Journey map |
+| Connect customer actions to delivery and ownership | Service blueprint |
+| Specify one task's decisions, recovery and exits | User flow |
+| Inspect an existing interaction against principles | Heuristic review |
+| Decide rough hierarchy and states before visual design | Low-fidelity wireframe |
 
-If multiple artefacts seem useful, start with the one closest to the decision.
-For example, do not blueprint a simple form fix; do not wireframe before the
-flow is understood.
+Use one primary artefact. Add a second only when the decision depends on a
+different view that the first cannot express.
 
-Read references only when they match the task:
+Read the matching reference before producing it:
 
-| When the task involves | Read |
+| Task | Read |
 | --- | --- |
-| Symptoms, systems, complexity, assumptions, or leverage points | `references/mental-models.md` |
-| Services, channels, backstage work, stakeholders, JTBD, or failure recovery | `references/service-design.md` |
-| Interviews, support tickets, survey notes, analytics, or contradictions | `references/research-synthesis.md` |
-| Cognitive load, UX laws, attention, scanning, memory, or decision friction | `references/design-psychology.md` |
-| Existing screens or flows being reviewed against principles | `references/heuristics.md` |
-| Rough layout, navigation, form, modal, loading, notification, or table choices | `references/patterns.md` |
+| Research synthesis or causal diagnosis | `references/diagnosis-and-evidence.md` |
+| Journey map or service blueprint | `references/service-mapping.md` |
+| User flow, heuristic review or low-fidelity wireframe | `references/artefact-guides.md` |
+| Any retained empirical principle or factual framework claim | `references/evidence.md` |
 
-## Output Formats
+### 5. Preserve unknowns
 
-### Heuristic Review
+Populate an artefact cell only from supplied evidence. Put `Unknown`, `Not
+measured`, or `TBD` where evidence is absent. Never invent a persona, quote,
+emotion, motive, actor, system, policy, frequency or recovery route to make an
+artefact look complete.
 
-Use for an existing product, screen, or flow. Read
-`references/heuristics.md` when doing a detailed review.
+Separate current state from proposed state. Proposed steps are recommendations,
+not discoveries about how the service already works.
 
-```markdown
-## Heuristic review: [screen or flow]
+### 6. Match the recommendation to what is known
 
-### Summary
-[1-2 sentences on the most important user-impacting issues.]
+- **Issue and mechanism evidenced**: recommend a change and the measure that
+  would show whether it helped.
+- **Issue evidenced, mechanism open**: recommend the discriminating observation
+  first. Include only reversible, low-regret changes that help across the live
+  explanations.
+- **Evidence thin or absent**: provide a provisional artefact with visible
+  unknowns and the next research step.
 
-### Scope and evidence
-- User/task:
-- Evidence reviewed:
-- Assumptions:
+Name the primary outcome, guardrails and population. Do not optimise a proxy
+without checking whether completion, error, trust, support demand or another
+downstream outcome worsens.
 
-### Findings
+### 7. Keep research safe
 
-#### [Severity 4] [Finding title]
-**Heuristic:** [Nielsen/Norman principle]
-**Evidence:** [What was observed]
-**Impact:** [Who is affected and how often, if known]
-**Recommendation:** [Specific fix]
+Collect only data needed for the decision. Before recording sessions, personal
+details, vulnerable users or sensitive subjects, define consent, access,
+retention, anonymisation and deletion. Never recommend session replay or broad
+recording without addressing masking and participant privacy.
 
-### Severity guide
-- 4: blocks completion or causes serious harm
-- 3: major friction; users may abandon or need support
-- 2: noticeable friction with a workaround
-- 1: polish issue with low task impact
-- 0: not a usability problem; observation or positive note
-```
+## Output
 
-Severity should be based on task impact, frequency, persistence, and confidence.
-Do not present a heuristic review as a substitute for user research.
+Lead with the decision or finding. Then show:
 
-### User Flow
+1. Evidence and its status.
+2. What remains unknown or contradictory.
+3. The smallest useful artefact.
+4. A recommendation proportional to the evidence.
+5. The observation or measure that decides what happens next.
 
-Use for one user, one goal, and the decisions/error paths needed to complete it.
+Do not narrate this protocol. Apply it.
 
-```text
-[Entry point]
-    |
-    v
-[Step]
-    |
-    v
-{Decision?}
-  | yes                  | no
-  v                      v
-[Next step]          [Recovery / exit]
-```
-
-Include entry points, decision points, errors, recovery paths, and exit points.
-
-### Journey Map
-
-Use when the emotional and cross-touchpoint experience matters.
-
-```markdown
-## Journey map: [user goal]
-
-**Persona or segment:** [Who, based on evidence]
-**Scenario:** [Context]
-**Evidence:** [Research/metrics/source]
-
-| Phase | Phase 1 | Phase 2 | Phase 3 |
-| --- | --- | --- | --- |
-| Doing |  |  |  |
-| Thinking |  |  |  |
-| Feeling |  |  |  |
-| Touchpoints |  |  |  |
-| Pain points |  |  |  |
-| Opportunities |  |  |  |
-```
-
-Mark invented assumptions clearly. Do not fabricate emotions from thin context.
-
-### Service Blueprint
-
-Use when a screen depends on people, policy, backend systems, third parties, or
-operational handoffs. Read `references/service-design.md` for detailed guidance
-and the blueprint template.
-
-### Research Synthesis
-
-Use when the input is interviews, survey notes, support tickets, session
-recordings, or messy feedback. If available, read
-`references/research-synthesis.md` for the workflow and report template.
-
-### Low-Fidelity Wireframe
-
-Use only when rough layout and hierarchy are the decision. Keep it plain and
-annotated; leave visual polish to a UI design skill such as
-`ui-design-playbook` when available.
-
-```text
-+------------------------------------------------+
-| [Logo]                         [Primary nav]   |
-+------------------------------------------------+
-| Main task headline                             |
-| Supporting context                             |
-|                                                |
-| [Primary action]    [Secondary action]         |
-|                                                |
-| Empty/loading/error states noted here          |
-+------------------------------------------------+
-```
-
-Annotations should cover hierarchy, critical states, responsive behaviour, and
-accessibility handoffs.
-
-## Jobs To Be Done
-
-Use JTBD to describe progress, not just features:
-
-```text
-When [situation],
-I want to [motivation],
-so I can [expected outcome].
-```
-
-Also capture:
-
-- functional success: what task gets done
-- emotional success: how the user needs to feel
-- social success: how the user wants to be seen
-- current workaround or competitor
-- anxiety and habits that make switching hard
-
-JTBD complements personas; it does not replace segments, constraints, or
-research evidence.
-
-## Quality Checks
-
-Before delivering:
-
-- Did the output answer the decision that matters now?
-- Did you inspect evidence before proposing a design?
-- Did you distinguish symptoms from structures?
-- Did you consider backstage systems, handoffs, and failure recovery?
-- Did you reduce extraneous cognitive load without pretending intrinsic
-  task complexity can disappear?
-- Did you avoid overclaiming beyond the evidence?
-- Did you consider inclusive service access beyond code conformance?
-- Did you avoid dark patterns and coercive friction?
-- Did you note accessibility risks and hand off detailed WCAG work to an
-  accessibility skill when available?
-- If the request belongs elsewhere, did you stop instead of continuing into
-  implementation guidance?
-
-Reference routing lives in the "Read references only when they match the task"
-table above.
-
-`evals/` holds this skill's trigger and behaviour test prompts; it is
-maintainer-facing and intentionally unrouted.
-
-Remember: good UX work makes the user's task easier and the service more
-coherent. The screen is only one part of the system.
+`evals/` holds maintainer-facing trigger and behaviour tests. It is not task
+guidance.
