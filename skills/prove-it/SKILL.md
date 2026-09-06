@@ -1,158 +1,141 @@
 ---
 name: prove-it
 description: >-
-  Disciplines the inference behind a conclusion: whether the evidence
-  gathered actually entails the claim being made. Use when declaring a bug
-  fixed or a root cause found, closing an investigation, verifying that a
-  fix worked, auditing a diagnosis or conclusion (yours, a ticket's, another
-  agent's), or when the user says prove it, are we sure, or asks whether the
-  evidence really supports this. Not for forward-looking bets on what to
-  build or ship - that is deciding-under-uncertainty.
+  Tests whether evidence warrants an empirical claim at its stated strength
+  and scope. Use when declaring a bug fixed or a root cause found, closing an
+  investigation, validating or verifying a factual conclusion, auditing the
+  factual premises of a plan, or when the user says prove it, are we sure, or
+  asks whether evidence really supports a claim in any domain. Not for
+  mathematical or formal proof, type-system guarantees, choosing among
+  forward-looking options, or designing the test itself.
 ---
 
 # Prove It
 
-> Would this observation look any different if your conclusion were false?
-> If nothing about it would change, it is not evidence for the conclusion -
-> however much of it you have, and however well it fits.
+> What result did each live explanation predict, and how should this
+> observation change their relative weight?
 
-A conclusion is **load-bearing** when it will drive an action, close an
-investigation, or be reported as fact. Load-bearing conclusions go through
-the protocol. Everything else needs only the question above.
+Use the full protocol for a load-bearing claim: one that drives an action,
+closes an investigation, or will be reported as fact. For a minor claim, ask
+the question above and state the evidential strength.
 
 ## The protocol
 
-Each step produces something stated, not just thought.
+Each step produces something stated, not merely considered.
 
-1. **State the claim with its modality.** *Is/was* (actuality), *could/can*
-   (disposition), *will* (prediction). Then check the evidence matches:
-   reading code proves what a system *could* do; only observing the running
-   system - logs, traces, live config, state - proves what it *is* doing. A
-   precise, well-cited answer to the wrong-modality question is still no
-   answer; precision is not relevance.
+1. **State the claim, scope and strength.** Distinguish actuality (*is/was*),
+   disposition (*could/can*) and prediction (*will*). Use calibrated language:
+   **confirmed within stated conditions**, **likely**, **possible**,
+   **bounded**, or **unknown**. Empirical evidence warrants a claim; it rarely
+   entails it. Reading code establishes what a system could do. Logs, traces,
+   live config and state address what it is doing.
 
-2. **Audit inherited premises.** Every premise arriving in the prompt, the
-   ticket, a summary, or your own earlier turn is a claim, not a fact. Check
-   the ones your conclusion stands on before building on them, and report a
-   false one promptly. The reporter's diagnosis - including yours from an
-   earlier session - is Hypothesis #0: a lead ranked alongside the others,
-   not a finding that others must dislodge.
+2. **Audit inherited premises and priors.** Treat every premise from a prompt,
+   ticket, summary or earlier turn as a claim. Check the load-bearing ones and
+   report a false one promptly. Include relevant base rates. The reporter's
+   diagnosis, including yours, is Hypothesis #0 rather than a fact.
 
-3. **Enumerate rivals.** Name at least two live alternatives before any
-   definitive cause. If stuck, sweep categories: config, data, deploy,
-   dependency, concurrency, caching, permissions, clock, network, resource
-   limits. Search for rivals already written down (an old ticket, a closed
-   issue, a comment) - the strongest rival is often recorded and unread.
+3. **Validate the evidence channel.** Before asking what a signal diagnoses,
+   establish its unit and identity, deduplication or aggregation, sampling and
+   retention, proxy semantics, time alignment, and detector coverage. Validate
+   the detector with a known-positive where practical. A thousand rows may be
+   50 retried events. HTTP 200 may show only that a catch handler returned 200.
 
-4. **Check diagnosticity before running a check.** For each possible
-   outcome, write down which hypotheses it would rule out. If every outcome
-   is compatible with every live hypothesis, the check is activity, not a
-   test - redesign it. The commonest failure: the check never exercises the
-   suspected mechanism in the suspected environment, so its result is
-   uninformative whichever way it lands. A deploy that touches no production
-   code cannot test a production-code hypothesis; a quiet weekend after it
-   proves nothing (affirming the consequent).
+4. **Compare live rivals and predictions.** Name at least two plausible
+   alternatives before declaring a cause. For each possible result, record
+   which rivals predict it and which it would weaken. Group signals sharing a
+   source or failure path before treating them as additive. If every rival
+   predicts the observation, it corroborates the setting but discriminates
+   nothing.
 
-5. **Label the chain.** Mark each link of the argument: **observed** (you
-   saw it - cite the command, file, or line), **derived** (follows
-   necessarily from an observed link, not merely plausibly), or **assumed**
-   (unchecked - name what would check it). The conclusion inherits the
-   weakest label in its chain, and a conjunctive claim is exactly as strong
-   as its weakest conjunct - never average confidence across parts.
+5. **Choose a safe, comparable contrast.** Change one candidate cause while
+   keeping build, environment, config, input, starting state, window and
+   detector comparable. Never restore a harmful production failure merely to
+   prove causality. Prefer sandbox, replay, shadow, canary or a valid historical
+   contrast. If no safe discriminating observation exists, lower the claim's
+   strength and name the unresolved rival.
 
-6. **Report with the basis inline.** A load-bearing conclusion names the
-   observation that entails it and what was ruled out, in a sentence or two.
-   Absence claims are bounds, not facts: a search that ran and found nothing
-   is a null result - state the queries and what they rule out; a search you
-   did not run is a blind spot - report it as a gap, never as a null result.
-   For "it stopped happening": zero events in n independent trials bounds
-   the rate near 3/n, so state n and the window, and say whether the
-   historical rate even falls above that bound.
+6. **Label the chain.** Mark material links **observed** (directly seen and
+   cited), **derived** (logic or arithmetic from observations), **inferred**
+   (best explanation under stated assumptions), or **assumed** (unchecked).
+   The weakest load-bearing link limits the conclusion. Confidence in a
+   conjunction is not an average across its parts.
 
-## The stop rule
+7. **Report the warrant and boundary inline.** Name the observation, how it
+   shifted the rivals, and the conditions within which the claim holds. A
+   search that ran and found nothing is a null result; state its query and
+   coverage. A search not run is a blind spot. For zero-event rate claims, read
+   [references/null-results.md](references/null-results.md).
 
-A conclusion whose chain still contains an *assumed* link where *observed*
-is needed does not drive an action and is not reported as fact. Report
-instead what observation would settle it, and go get that observation where
-you can. "I cannot rule out X, because nothing yet discriminates it" is a
-complete, useful answer - not a failure to answer.
+## Root-cause and fix claims
 
-## Fix claims
+For either claim, read
+[references/failure-modes.md](references/failure-modes.md) before concluding.
 
-The everyday load-bearing conclusion is "it's fixed". It needs one of:
+A useful causal account separates the trigger, proximate mechanism,
+contributing conditions, failed defences and intervention points. Mark a
+factor necessary, sufficient or merely present only where evidence supports
+that relation. Do not compress a multi-factor incident into one tidy culprit.
 
-- **The toggle.** Reproduce the failure under the original conditions,
-  apply the fix, observe it pass; remove the fix, observe it fail again. If
-  you didn't see it fail, you don't know your fix is what fixed it.
-- **A bounded quiet period** with the arithmetic stated (the 3/n rule
-  above), trials genuinely independent, and a detector installed on the
-  suspect path so a recurrence is observed rather than hoped absent.
+"Fixed" can mean several different things. State which one the evidence buys:
 
-A symptom that stops after a change that cannot reach the suspect path is
-grounds for more suspicion of a timing-dependent cause, not less.
+- the reproducer passes under stated conditions;
+- the candidate change caused that result;
+- the defect was removed rather than masked or mitigated;
+- production recurrence is bounded over a stated exposure;
+- related failures or general correctness are covered.
 
-## Revision rule
+A sound ABA toggle - fail with the candidate off, pass on, fail off again - is
+strong causal evidence only when the runs are safe and comparable. A quiet
+period supports a recurrence bound only when event identity, denominator,
+independence and detector coverage are valid. Neither alone proves general
+correctness.
 
-Change a conclusion only when a new observation arrives, and name it when
-you do. Pushback, doubt, or "are you sure?" carry no information about the
-system; if you cannot name a new observation, restate the conclusion and
-the evidence behind it. Conceding to unbacked pressure is not politeness,
-it is corrupting the record.
+## Stop and revise
 
-## Independent means different
+Stop when the target strength is reached, no safe feasible observation is
+expected to change the decision enough, the agreed resource bound is reached,
+or decisive evidence is inaccessible. Do not stop after a fixed number of weak
+checks. Report what stands, what remains open and why further work has low or
+unavailable decision value.
 
-A second check confirms the first only if it could have failed where the
-first could not: a different evidence channel, a different framing, or a
-different failure mode probed. Two readers of the same fenced evidence
-under the same framing are one vote, not two. Verified sub-claims do not
-launder the unverified one they are conjoined with.
-
-## The counterweight
-
-Rigour that manufactures doubt is its own failure, not a safe excess:
-
-- A doubt must name the claim it attacks and the mechanism, and pass
-  "would resolving this change the conclusion, or only the wording?" A
-  doubt that fails the test is dropped, not kept as a hedge.
-- Clearing a claim as sound is a complete, expected result. Locate residual
-  uncertainty precisely rather than smearing hedges over the whole answer.
-- After three checks that fail to discriminate the live hypotheses, stop:
-  report what is established, what remains open, and the observation that
-  would decide it.
+Revise when a new observation arrives or when logic, arithmetic, provenance or
+an assumption is corrected. Name the changed link. Pushback or "are you sure?"
+alone carries no information; restate the evidence if nothing material changed.
 
 ## Rationalisations
 
-Excuses observed in real investigations, each with its rebuttal:
-
-| You will think… | But actually… |
+| You will think... | But actually... |
 |---|---|
-| "The mechanism exists in the code, so that's what production is doing" | Code is disposition. Whether that path runs is decided by flags, env, and data living outside the repo - observe them. |
-| "Five separate signals all point at this cause" | Count only signals a rival cannot also explain. Zero-diagnosticity signals sum to zero however many you stack. |
-| "The ticket already established the cause; I only need to confirm it" | That is Hypothesis #0 plus a confirmation plan. Rank it against rivals and look for what would disconfirm it. |
-| "Two investigations agree, so it's confirmed" | Same framing plus same evidence is one vote (a common-mode failure), not independent confirmation. |
-| "It stopped after the deploy, so the fix worked" | Post hoc. Either run the toggle or bound the quiet period; a coincidence in time licenses neither. |
-| "The user is pushing back, I should soften the conclusion" | Revise on new observations only. Name the observation or restate the evidence. |
+| "I saw 1,000 rows, so I saw 1,000 events" | Establish the observation unit, identity and retry or aggregation semantics before counting evidence. |
+| "The request returned 200, so the write succeeded" | A proxy inherits its implementation boundary. Inspect what the status measures and verify the downstream state. |
+| "The vendor documents this exact failure mode and the symptoms fit" | Compatibility raises a hypothesis. Compare the same symptoms against live rivals and base rates. |
+| "The system is healthy now, so the transient rival is ruled out" | A later check cannot settle an earlier state without a valid time bridge. Align the observation window. |
+| "Five signals agree" | Signals derived from one source or failure path are common-mode evidence, not five independent votes. |
+| "It stopped after the deploy, so the fix worked" | Hold other changes constant or report only temporal association and a bounded quiet period. |
+| "The user pushed back, so I should soften it" | Revise on changed evidence or reasoning, not social pressure. |
 
 ## Boundaries
 
-- **deciding-under-uncertainty** owns forward-looking commitments ("should
-  we?"); prove-it owns backward-looking claims ("is it?"). Hand off when
-  the question flips.
-- **testing** owns how to build a test; prove-it owns whether the test that
-  ran discriminates anything and what a green run licenses.
-- **design-forking** widens options for a design; prove-it's rival
-  enumeration exists to be *eliminated by evidence*, not compared on
-  trade-offs.
-- **cross-review** is the escalation when your own checks cannot
-  discriminate: a different model reading the primary evidence fresh.
-- **refactoring** owns changing legacy code safely; prove-it owns knowing
-  what you actually know about it first.
+- **diagnosing-bugs** owns reproducing, minimising and navigating the
+  investigation. Prove-it owns what the resulting observations license.
+- **testing** owns test design and layer choice. Prove-it owns whether the test
+  that ran discriminates anything and what a green result warrants.
+- **deciding-under-uncertainty** owns choices and predictions. Prove-it may
+  audit empirical premises inside a plan without choosing the plan.
+- **typescript** and formal methods own compile-time, mathematical and logical
+  proof. Prove-it addresses claims about observed systems and evidence.
+- **design-forking** widens options for a design. Prove-it's rivals are
+  explanations to update using evidence, not options to compare on trade-offs.
+- **cross-review** supplies a differently framed reader when your own evidence
+  assessment has a common-mode risk.
 
 ## References
 
-| When the task involves… | Read |
+| When the task involves... | Read |
 |---|---|
-| Classifying a suspected reasoning failure; the full failure-mode → discipline map with classical names | [references/failure-modes.md](references/failure-modes.md) |
-| Seeing the protocol applied end-to-end to a realistic incident | [references/worked-example.md](references/worked-example.md) |
+| A root cause, fix claim, or suspected reasoning failure | [references/failure-modes.md](references/failure-modes.md) |
+| Zero observed events, a quiet period, or a rate bound | [references/null-results.md](references/null-results.md) |
+| A telemetry incident worked end to end | [references/worked-example.md](references/worked-example.md) |
 
 <!-- Behavioural and trigger evals: evals/evals.json -->

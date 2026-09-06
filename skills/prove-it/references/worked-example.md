@@ -1,95 +1,84 @@
-# Worked example: the warm cache that proved nothing
+# Worked example: duplicated telemetry and proxy success
 
-A composite of a real incident, genericised. It is worth reading because
-every error in it was committed by capable, careful investigators - the
-failure was never effort, it was inference.
+This sanitised incident shows how individually true observations can support a
+false causal conclusion when their semantics and timing are unchecked.
 
-## The setup
+## Initial case
 
-A staff dashboard computes per-organisation metrics. The slow path fans out
-to a datastore (~1-2s per segment, 8 segments); a nightly job precomputes
-the aggregates and a cached read path serves them, gated on an env flag:
+During a 16-second incident window, a dashboard showed 1,000 rows:
 
-```ts
-if (process.env.METRICS_CACHE_ENABLED !== "true") return null;
-```
+- 300 read-only database errors;
+- 700 apparent successes;
+- HTTP 200 responses from the request handler;
+- a vendor document describing a matching pooler failure mode.
 
-The cache shipped in July: parity checks 10/10, p50 collapsed 4.1s → 300ms.
-A month later the perf board goes red for 4 of 9 organisations. A ticket
-appears:
+A direct connection to the writable primary succeeded just after the last
+error. The first report concluded:
 
-> p95 back over 6s. Slow traces show `getOrgMetrics` dominating, 5-9s
-> spans. KV checked: metrics keys present for all orgs, written last night
-> (cache is warm). Working theory: `METRICS_CACHE_ENABLED` got unset in a
-> recent env change - the fan-out is ~1-2s × 8 segments, which matches the
-> spans exactly.
+> It was the pooler, not the database.
 
-An investigation "verifies the theory against the code" and reports, with
-exact file:line citations, that the mechanism is real and the cache is
-warm. The ticket is treated as confirmed. It is wrong - the flag was on the
-whole time; the tail was serverless cold starts, a rival already recorded
-in an older ticket nobody re-read.
+## Claim and strength
 
-## What the protocol catches, step by step
+The claim names a unique cause. That needs evidence which the pooler hypothesis
+predicts and the live database-state rivals do not. A symptom match alone can
+make the pooler **possible** or **likely**; it cannot confirm exclusivity.
 
-**Step 1 - modality.** The question is "is the cache being read in
-production?" - actuality. Every piece of evidence gathered (code structure,
-docstrings, KV contents) answers disposition or adjacent questions. The
-citations are precise; the modality is wrong. Precision is not relevance.
+## Evidence-channel audit
 
-**Step 2 - premises.** "Suspect the flag got unset" arrived inside the
-ticket and was inherited as the frame by everyone downstream. It is
-Hypothesis #0. Note also what each retelling did: "likely unset" became
-"caches sit warm and unread" became "recomputing metrics live" - hedges
-stripped at every hop.
+The dashboard's unit was a row, not an event. Later inspection showed retries
+and duplicate delivery. The 1,000 rows represented about 50 unique event IDs.
+The apparent ratio of 300 failures to 700 successes therefore did not describe
+1,000 independent outcomes.
 
-**Step 3 - rivals.** The rival was not obscure: an older ticket recorded
-that after the serverless migration the extreme tail flipped from datastore
-time to cold start, and that cold-start time is attributed to whatever the
-first awaited call is. Nobody enumerated rivals, so nobody re-read it. The
-rival also explains the 4-of-9 split (low-traffic orgs cold-start more),
-which a process-wide flag struggles to.
+HTTP 200 was also a proxy. The handler caught downstream write errors and still
+returned 200. The status established handler completion, not a committed write.
 
-**Step 4 - diagnosticity.** Score each evidence item against both
-hypotheses: slow p95 (both), red board (both), slow `getOrgMetrics` spans
-(both - cold start lands inside the first awaited span), warm KV keys
-(both - the writer job never reads the flag, so warm keys are what you see
-whether the read path runs or not). Five items, zero discrimination. The
-case felt strong by volume and proved nothing. Discriminating checks
-existed and were cheap: trace shape (flag off = no KV-get span at all,
-before the fan-out), or p50 for all orgs (flag off = p50 up everywhere;
-cold start = p50 flat, tail only).
+These corrections change the inference without any new system event. The
+provenance and semantics of existing observations changed.
 
-**Step 5 - labels.** "Mechanism exists" - observed. "Cache warm" -
-observed, and irrelevant (see above). "Flag unset in prod" - assumed, and
-marked unverifiable in the report itself. The final confidence was
-effectively averaged across claims; the weakest-conjunct rule says the
-conclusion could never be stronger than that one assumed link.
+## Rivals and timing
 
-**Step 6 - basis.** The honest report is: "Cannot determine from the
-repo whether the cached path runs; the code establishes the mechanism only.
-The warm cache discriminates nothing because the writer is ungated.
-Deciding observation: the env value on the serving deployment, or the
-presence/absence of a KV-get span in one slow trace."
+At least three explanations remained live:
 
-**Stop rule.** With the flag's state assumed, no action (env change,
-"fix" deploy, ticket closure) is licensed. The next step is the deciding
-observation, which was one command away the entire time.
+1. a pooler backend attached to a read-only target;
+2. a failover or maintenance interval changing database writability;
+3. a database read-only state such as a resource-protection mode.
 
-**The arithmetic check, in passing.** 8 segments × 1-2s predicts 8-16s of
-live compute; observed spans were 5-9s. The ticket said the numbers matched
-"exactly". They are incompatible with a full live compute - derived, from
-the ticket's own figures, and nobody ran the multiplication.
+All three predict transient read-only errors across several request paths. The
+vendor document raises the pooler hypothesis but does not discriminate it.
 
-## The follow-on trap this skill was commissioned for
+The writable-primary check landed at or after the last observed error. It says
+the primary was writable then. Without a durable state history, it cannot tell
+which state existed during the earlier 16-second window.
 
-With "cold start" now suspected, a teammate proposed deploying a CI-only
-change and watching the weekend: no recurrence, call it fixed. Step 4 kills
-it in one line - a deploy touching no production code cannot exercise a
-production-code hypothesis, so a quiet weekend is compatible with every
-live hypothesis and rules nothing out. Step 6's arithmetic adds the bound:
-weekend traffic on a staff dashboard yields a handful of independent
-trials; zero events in n trials bounds the rate near 3/n, far above the
-historical rate. The quiet was guaranteed to look like success whatever
-was true - the observation could not have come out differently if the
-conclusion were wrong, which is the north star failing in its purest form.
+## Labelled chain
+
+- **Observed** - read-only error rows existed in the dashboard.
+- **Observed** - about 50 unique event IDs generated roughly 1,000 rows.
+- **Observed** - the handler returned HTTP 200 even on caught write errors.
+- **Observed** - the primary accepted a write after the incident window.
+- **Inferred** - a transient connection or database state affected writes.
+- **Assumed** - the pooler, rather than failover or database state, uniquely
+  produced that transient condition.
+
+The assumed final link limits the unique-cause conclusion.
+
+## Strongest warranted report
+
+> The incident confirms transient read-only write failures. The current
+> evidence does not identify the pooler as the unique cause: dashboard rows are
+> duplicate deliveries, HTTP 200 does not represent write success, and the
+> writable-primary check is later than the failures. Pooler backend state,
+> failover or maintenance, and database read-only protection remain live.
+
+## Next safe discriminating observation
+
+Correlate unique event IDs and timestamps with retained pooler target changes,
+database role or recovery transitions, and resource-protection events during
+the same window. If those histories do not exist, reproduce the relevant state
+transition in an isolated replay with a detector that observes the committed
+write, not the HTTP response.
+
+Do not force a harmful read-only transition in production. If no comparable
+history or safe replay exists, keep the causal conclusion at **unknown** while
+retaining the confirmed bounded symptom claim.
