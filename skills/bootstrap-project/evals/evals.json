@@ -2,6 +2,13 @@
   "skill_name": "bootstrap-project",
   "how_to_run": "Run every behavioural prompt against the current and revised skill in fresh Claude and Codex sessions outside an AGENTS.md tree. Grade the transcript, commands and filesystem effects. Run trigger prompts three times per client. Keep raw transcripts and generated repositories in .cache/bootstrap-project-audit/, not in this skill.",
   "notes": "These cases come from observed bootstrap sessions. The recurring failures were skipped mandatory prose, unsafe hook probes, warm local evidence used against cold CI, accidental product scope, and treating infrastructure success as service success.",
+  "audit_history": {
+    "last_run": "2026-09-06",
+    "behavioural": "Eight current-versus-revised prompts ran in fresh Claude Sonnet and Codex sessions. The current skill passed 2/8 in each client. After transcript-led revisions, the revised skill passed 8/8 in each client. Focused reruns covered every changed assertion.",
+    "triggering": "Ten mixed positive and near-miss prompts ran three times per client. Claude passed 30/30 and Codex passed 30/30 against the revised description.",
+    "freshness": "The ten-recipe network harness exposed invalid Foldkit positional arguments and Vite absolute-path handling. Both commands were corrected and passed live focused reruns. No deployment or Alchemy development command ran.",
+    "raw_outputs": "Kept in an untracked temporary audit directory; retain future runs in an ignored audit cache when long-term comparison is needed."
+  },
   "evals": [
     {
       "id": 1,
@@ -11,7 +18,7 @@
         "Classifies the request as greenfield and selects cloudflare-tanstack-start",
         "Does not repeat questions already answered by the prompt",
         "Resolves only the project location before mutation",
-        "Reads the selected recipe and the owner skills for enforcement, hooks and supply-chain decisions",
+        "Reads the selected recipe and routes enforcement, hooks and supply-chain decisions to their owner skills",
         "Stops at a platform skeleton and does not invent application features"
       ],
       "history": "A 2026-08 bootstrap re-asked settled questions, skipped owner skills and expanded the requested scaffold into product work."
@@ -61,7 +68,7 @@
         "Does not set ignoreScripts false",
         "Runs or wires the canonical pnpm build-script decision checker",
         "Routes each approval decision to supply-chain-hardening",
-        "Adds the observed failure to the eval corpus before revising instructions"
+        "If it changes bootstrap skill instructions, adds the observed failure to the eval corpus before that revision"
       ],
       "history": "A 2026-08 build failed because global ignoreScripts masked missing repository decisions; the first proposed fix weakened protection."
     },

@@ -75,11 +75,11 @@ run_recipe() {
 		;;
 	cloudflare-foldkit-alchemy)
 		command -v pnpm >/dev/null 2>&1 || return 2
-		pnpm dlx create-foldkit-app "$dest" >"$log" 2>&1
+		(cd "$output" && pnpm dlx create-foldkit-app --name "$id" --rendering spa --example counter --package-manager pnpm) >"$log" 2>&1
 		;;
 	vite-react-ts)
 		command -v pnpm >/dev/null 2>&1 || return 2
-		pnpm create vite@latest "$dest" --template react-ts --no-interactive --no-immediate >"$log" 2>&1
+		(cd "$output" && pnpm create vite@latest "$id" --template react-ts --no-interactive --no-immediate) >"$log" 2>&1
 		;;
 	python-app)
 		command -v uv >/dev/null 2>&1 || return 2

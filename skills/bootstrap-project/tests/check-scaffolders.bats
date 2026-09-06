@@ -13,10 +13,19 @@ if [ "${0##*/}" = pnpm ] && [ "${1:-}" = init ]; then
 	printf '{}\n' > package.json
 fi
 for arg in "$@"; do
-		case "$arg" in
-			/*) mkdir -p "$arg/src"; printf '{}\n' > "$arg/package.json"; : > "$arg/pyproject.toml"; : > "$arg/Cargo.toml" ;;
-		esac
+	case "$arg" in
+		/*) mkdir -p "$arg/src"; printf '{}\n' > "$arg/package.json"; : > "$arg/pyproject.toml"; : > "$arg/Cargo.toml" ;;
+	esac
 done
+case "$*" in
+	*'create vite@latest'*) mkdir -p "$3/src"; printf '{}\n' > "$3/package.json" ;;
+	*'create-foldkit-app'*)
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = --name ]; then mkdir -p "$2/src"; printf '{}\n' > "$2/package.json"; break; fi
+			shift
+		done
+		;;
+esac
 exit 0
 EOF
 		chmod +x "$BIN/$name"
