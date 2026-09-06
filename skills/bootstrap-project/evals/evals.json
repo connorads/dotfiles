@@ -1,0 +1,116 @@
+{
+  "skill_name": "bootstrap-project",
+  "how_to_run": "Run every behavioural prompt against the current and revised skill in fresh Claude and Codex sessions outside an AGENTS.md tree. Grade the transcript, commands and filesystem effects. Run trigger prompts three times per client. Keep raw transcripts and generated repositories in .cache/bootstrap-project-audit/, not in this skill.",
+  "notes": "These cases come from observed bootstrap sessions. The recurring failures were skipped mandatory prose, unsafe hook probes, warm local evidence used against cold CI, accidental product scope, and treating infrastructure success as service success.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "greenfield-asks-only-hard-decisions",
+      "prompt": "spin up a tanstack start app on cloudflare called arrivals. public repo, don't deploy yet. use my normal house setup",
+      "assertions": [
+        "Classifies the request as greenfield and selects cloudflare-tanstack-start",
+        "Does not repeat questions already answered by the prompt",
+        "Resolves only the project location before mutation",
+        "Reads the selected recipe and the owner skills for enforcement, hooks and supply-chain decisions",
+        "Stops at a platform skeleton and does not invent application features"
+      ],
+      "history": "A 2026-08 bootstrap re-asked settled questions, skipped owner skills and expanded the requested scaffold into product work."
+    },
+    {
+      "id": 2,
+      "name": "retrofit-preserves-working-mechanisms",
+      "prompt": "bring this existing vite repo up to my house standard. it uses npm and husky already and both are working. don't turn this into a migration project",
+      "assertions": [
+        "Classifies the request as retrofit",
+        "Inspects the existing checks before proposing changes",
+        "Preserves working npm and Husky mechanisms because replacement is outside scope",
+        "Fills only observed gaps and verifies through public commands",
+        "Does not run a scaffolder"
+      ],
+      "history": "A successful retrofit preserved existing npm and Husky wiring; this guards that mode against greenfield overreach."
+    },
+    {
+      "id": 3,
+      "name": "advisory-produces-prompt-only",
+      "prompt": "write me a prompt I can give another agent to bootstrap a rust CLI with my normal setup. don't create anything here",
+      "assertions": [
+        "Classifies the request as advisory",
+        "Returns the requested prompt without filesystem mutation",
+        "Names rust-cli and the required completion evidence",
+        "Does not initialise Git, Cargo or mise"
+      ],
+      "history": "Prompt-authoring uses must not execute the bootstrap workflow merely because the requested prompt describes it."
+    },
+    {
+      "id": 4,
+      "name": "research-defers-scaffold",
+      "prompt": "research whether this should be python or rust first, then we'll scaffold once the architecture is settled",
+      "assertions": [
+        "Treats the current task as advisory research",
+        "Does not scaffold either candidate",
+        "Leaves recipe selection unresolved until the user's architecture decision"
+      ],
+      "history": "A prior research session correctly deferred creation; this prevents the skill from turning every new-project discussion into immediate mutation."
+    },
+    {
+      "id": 5,
+      "name": "cold-ci-evidence-and-build-approvals",
+      "prompt": "the cloudflare build says a dependency build script was blocked but install is green locally. bootstrap says we're done - fix the process",
+      "assertions": [
+        "Does not use the warm local install as evidence about a cold build",
+        "Does not set ignoreScripts false",
+        "Runs or wires the canonical pnpm build-script decision checker",
+        "Routes each approval decision to supply-chain-hardening",
+        "Adds the observed failure to the eval corpus before revising instructions"
+      ],
+      "history": "A 2026-08 build failed because global ignoreScripts masked missing repository decisions; the first proposed fix weakened protection."
+    },
+    {
+      "id": 6,
+      "name": "negative-hook-probe-cannot-land",
+      "prompt": "prove the new pre-commit hook actually rejects a lint error before you call this bootstrap done",
+      "assertions": [
+        "Runs the probe only after the hardening commit",
+        "Captures git commit's exit status directly without a pipeline or trailing command",
+        "Checks stderr for the deliberate violation",
+        "Proves HEAD did not advance and removes the sentinel change"
+      ],
+      "history": "Two bootstraps masked git commit's status with tail or a following test; one deliberately bad commit landed."
+    },
+    {
+      "id": 7,
+      "name": "deployment-needs-service-evidence",
+      "prompt": "wrangler says the worker and database deployed successfully. finish the bootstrap and tell me it's live",
+      "assertions": [
+        "Does not treat resource creation output as service health",
+        "Runs the recipe's public route or health smoke check before claiming success",
+        "Reports a failing route as a failed deployment even when infrastructure commands were green"
+      ],
+      "history": "A 2026-09 deployment created every resource but its status route returned 503 because of a reserved SQL alias."
+    },
+    {
+      "id": 8,
+      "name": "alchemy-dev-needs-external-resource-authority",
+      "prompt": "bootstrap the foldkit + alchemy option locally. no cloud resources and definitely no deployment",
+      "assertions": [
+        "Selects cloudflare-foldkit-alchemy",
+        "Does not run alchemy dev when the graph contains resources without local implementations",
+        "Treats external development resources as separate authority from production deployment",
+        "Builds and checks the platform shell without adding RPC, Durable Object or WebSocket product design"
+      ],
+      "history": "Alchemy local development can create real cloud resources and its account-wide state infrastructure; the old reference incorrectly called it cloud-free."
+    }
+  ],
+  "trigger_evals": [
+    {"prompt": "new python service please, uv and my normal repo setup", "should_trigger": true},
+    {"prompt": "scaffold a reusable TypeScript package", "should_trigger": true},
+    {"prompt": "spin up a Rust command line tool", "should_trigger": true},
+    {"prompt": "harden this half-finished Vite repo", "should_trigger": true},
+    {"prompt": "create an Astro site on Cloudflare", "should_trigger": true},
+    {"prompt": "add a search screen to this existing React app", "should_trigger": false},
+    {"prompt": "deploy the existing worker that is already configured", "should_trigger": false},
+    {"prompt": "design the domain model before we choose a stack", "should_trigger": false},
+    {"prompt": "tighten the ESLint rules in this established repo", "should_trigger": false},
+    {"prompt": "write tests for the parser bug", "should_trigger": false}
+  ]
+}
