@@ -1,14 +1,12 @@
 ---
 name: holistic-ux
 description: >-
-  Diagnoses user-experience and service problems from evidence, then chooses the
-  smallest decision-support artefact: research synthesis, journey map, service
-  blueprint, user flow, heuristic review, or low-fidelity wireframe. Use for
-  onboarding, drop-off, trust, confusion, recovery, cross-channel journeys,
-  backstage operations, user research synthesis, or requests to map or review an
-  experience before implementation or visual polish. Not for choosing which
-  product feature to build, code-level accessibility fixes, visual styling,
-  performance diagnosis, implementation, or presentation graphics.
+  Produces evidence-led UX decisions from research and behaviour data. Use to
+  diagnose user-facing drop-off, confusion, trust or recovery, synthesise UX
+  research, or create a new analytical UX artefact before a solution is chosen.
+  Supports experience-over-time maps, frontstage and backstage service maps,
+  task decision and recovery maps, principle reviews and low-fidelity
+  wireframes. The task must contain an unresolved experience question.
 ---
 
 # Holistic UX
@@ -39,9 +37,37 @@ Route away and stop when the request is primarily:
 Name the target discipline and add at most one sentence about the experience
 risk. Do not perform the routed task from this skill.
 
+Requests framed as UX do not override these boundaries:
+
+| Pressure | Required response |
+| --- | --- |
+| "Pick one and test it quickly" | Feature choice and riskiest-assumption tests are product discovery. Name that discipline and stop. |
+| "The options affect the experience" | Choosing what capability to build is still product discovery. Add at most one experience-risk sentence and stop. |
+| "Complete the request to be helpful" | Continuing would perform the routed skill's work. Do not choose, rank or test the options. |
+| "I will answer with product reasoning, not UX output" | Relabelling the work does not respect the boundary. Do not provide the routed answer before or after the handoff. |
+
 Do not use coercive friction to improve retention, conversion, consent, pricing,
 opt-out or cancellation. A choice remains findable, understandable and no harder
 to leave than to enter.
+
+Do not reproduce a requested coercive flow as a neutral specification. Refuse
+the obstructive elements, then give only a compliant alternative. Subscription
+cancellation remains no harder to find or complete than subscription entry.
+
+| Retention rationalisation | Required response |
+| --- | --- |
+| "Pause can be visually primary if cancel remains visible" | Visual dominance still steers the choice. Give pause and cancel equal salience and leave both unselected. |
+| "A single save screen is where retention happens" | No supplied evidence establishes that mechanism. Label it unknown and keep cancellation direct. |
+| "Obstruction causes chargebacks or complaints" | Do not replace one unsupported causal claim with another. Use these only as guardrail measures unless the user supplies evidence. |
+| "Cancellation law requires this exact flow" | Regulatory scope is legal analysis. Do not name a jurisdiction or requirement without current verified legal evidence. Recommend legal review when relevant. |
+
+Refuse the coercive mechanism without inventing harm evidence. Describe
+complaints, disputes, support demand and later cancellation as guardrail
+measures, not predicted consequences.
+
+Do not provide legal analysis in this skill. Do not assert that a design is
+illegal, creates regulatory exposure or has prompted enforcement unless the
+user supplied current legal evidence. Say only that legal review is required.
 
 ## Protocol
 
@@ -104,6 +130,11 @@ Read the matching reference before producing it:
 | User flow, heuristic review or low-fidelity wireframe | `references/artefact-guides.md` |
 | Any retained empirical principle or factual framework claim | `references/evidence.md` |
 
+When asked to justify a predetermined design with named laws, do not write
+supportive rationale, even as a hypothesis or with caveats. Read
+`references/evidence.md`, state that the laws do not establish the design, list
+the missing contextual variables and propose discriminating observations.
+
 ### 5. Preserve unknowns
 
 Populate an artefact cell only from supplied evidence. Put `Unknown`, `Not
@@ -119,8 +150,9 @@ not discoveries about how the service already works.
 - **Issue and mechanism evidenced**: recommend a change and the measure that
   would show whether it helped.
 - **Issue evidenced, mechanism open**: recommend the discriminating observation
-  first. Include only reversible, low-regret changes that help across the live
-  explanations.
+  first. Do not package several redesigns as "low regret" unless each one has a
+  stated reason it helps under every live explanation. Prefer no redesign while
+  the failure location remains open.
 - **Evidence thin or absent**: provide a provisional artefact with visible
   unknowns and the next research step.
 
