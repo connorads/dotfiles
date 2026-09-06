@@ -154,3 +154,5 @@ Excuses observed in real investigations, each with its rebuttal:
 |---|---|
 | Classifying a suspected reasoning failure; the full failure-mode → discipline map with classical names | [references/failure-modes.md](references/failure-modes.md) |
 | Seeing the protocol applied end-to-end to a realistic incident | [references/worked-example.md](references/worked-example.md) |
+
+<!-- Behavioural and trigger evals: evals/evals.json -->

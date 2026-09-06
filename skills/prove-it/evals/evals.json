@@ -1,0 +1,175 @@
+{
+  "skill_name": "prove-it",
+  "how_to_run": "Use fresh sessions and grade transcripts, not only final answers. Discovery compares bare, ad-hoc instruction, and the pre-edit skill. Validation compares the preserved pre-edit skill with the candidate skill. Run each validation case three times in both Claude Code and Codex. A routed reference counts only when the transcript shows it was read. Record per-assertion results and any critical failure. Accept only with no critical failures, at least 90% behavioural assertions, at least 95% trigger agreement, and every held-out case passing 3/3 in both clients.",
+  "with_skill_prefix": "Read the prove-it SKILL.md supplied for this run. Read every reference it routes this task to. Then answer the task below using that skill.\n\n",
+  "ad_hoc_prefix": "Test whether the supplied evidence really supports the claim. Consider alternative explanations and distinguish observations from assumptions.\n\n",
+  "judge_checklist": [
+    "States the exact claim, scope and calibrated evidential strength instead of treating empirical support as deductive proof",
+    "Validates the evidence channel's identity, transformations, proxy semantics, timing and detector coverage before relying on its output",
+    "Compares observations against named live rivals, relevant base rates and signal dependence",
+    "Uses a safe, comparable contrast or lowers the claim strength when one is unavailable",
+    "Labels material links observed, derived, inferred or assumed and lets the weakest link limit the conclusion",
+    "Separates symptom disappearance, reproducer success, causal attribution, defect removal, production recurrence and general correctness",
+    "Interprets zero events as a scoped bound with a valid denominator rather than proof of zero risk or causality",
+    "Stops by decision value and revises for named changes to evidence, logic, arithmetic, provenance or assumptions"
+  ],
+  "baseline_strengths": [
+    "Asks whether the observation would differ if the conclusion were false",
+    "Treats inherited diagnoses as hypotheses",
+    "Requires rivals before definitive root-cause claims",
+    "Distinguishes running-system observation from code inspection",
+    "Rejects user pressure alone as a reason to change a conclusion"
+  ],
+  "critical_failures": [
+    "Declares a unique root cause from evidence predicted by multiple live rivals",
+    "Treats duplicate, aggregated or proxy telemetry as independent ground truth without checking its semantics",
+    "Claims a fix from a quiet period or incomparable before-after observation",
+    "Recommends deliberately recreating a harmful production failure when a safer contrast exists",
+    "Uses the rule of three without independent comparable trials and a stated detector boundary"
+  ],
+  "cross_run_assertions": [
+    "Answers apply the protocol to the case instead of reciting a fixed template",
+    "Claim language varies with the evidence: confirmed within stated conditions, likely, possible, bounded or unknown",
+    "The skill does not manufacture residual doubt after the requested decision has enough evidence",
+    "Mathematical proof, type-system proof and forward-looking choices remain routed elsewhere"
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "name": "duplicated-telemetry-proxy-success",
+      "prompt": "Audit this incident conclusion: 'It was the database pooler, not the database.' During a 16-second window the dashboard showed 300 read-only errors and 700 successes. The vendor documents a matching pooler failure mode. Requests returned HTTP 200. A direct writable-primary check passed just after the last error. We later learnt the event emitter can retry and the 1,000 dashboard rows represented about 50 unique event IDs. State what is established, what remains live, and the strongest next safe test.",
+      "assertions": [
+        "Rejects row count as 1,000 independent events and identifies event identity/deduplication as load-bearing",
+        "Rejects HTTP 200 as proof of a committed downstream write without handler semantics",
+        "Treats vendor symptom match as compatibility, not unique causal evidence",
+        "Notes that the post-incident primary check is time-misaligned and cannot settle the transient past state",
+        "Keeps at least pooler backend, failover or maintenance, and database read-only state live unless evidence discriminates them",
+        "Does not declare a unique root cause"
+      ],
+      "history": "Sanitised from a live failure. The pre-edit skill was read, but the agent declared a unique cause from duplicated telemetry, proxy success and a time-misaligned health check."
+    },
+    {
+      "id": 2,
+      "name": "base-rate-dependent-signals",
+      "prompt": "A team says a rare network partition caused an outage because five dashboards all dipped at the same time and every chart is fed from the same metrics pipeline. Routine deploy regressions are far more common. Audit the claim and propose the cheapest discriminating observation.",
+      "assertions": [
+        "Uses the relevant base-rate difference when weighting rivals",
+        "Groups the five dashboards as a common-mode evidence source rather than five independent confirmations",
+        "Names predictions that differ between partition and deploy regression",
+        "Proposes an observation from an independent channel or a direct contrast"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "false-null-detector-coverage",
+      "prompt": "We deployed a candidate fix and saw zero checkout failures in 12,000 requests over 24 hours. The alert only fires for one exception class, while the original incident sometimes returned a generic 500 before that exception was recorded. Can we say it is fixed? Give the strongest warranted statement.",
+      "assertions": [
+        "Checks detector coverage and requires a known-positive or equivalent validation",
+        "Does not use 3/12000 as a bound for failure classes the detector cannot observe",
+        "Separates bounded recurrence from causal attribution and defect removal",
+        "Gives a scoped claim instead of either certainty or unbounded doubt"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "safe-comparable-toggle",
+      "prompt": "A deterministic bug reproduces in an isolated staging replay. The same build, data snapshot, configuration and detector fail with patch off, pass with patch on, then fail with patch off again. What exactly does this prove, and what does it not prove?",
+      "assertions": [
+        "Credits the ABA toggle as strong causal evidence within the replay conditions",
+        "States the controlled dimensions that make the comparison sound",
+        "Does not inflate this into proof of all production recurrence or general correctness",
+        "Distinguishes causal effect on the reproducer from broader defect and deployment claims"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "unsafe-incomparable-toggle",
+      "prompt": "An intermittent payment duplication harmed real customers. An engineer proposes disabling the idempotency fix in production until another duplicate occurs, to prove causality. Staging traffic and timing differ from production. Audit this test plan.",
+      "assertions": [
+        "Rejects deliberately restoring the harmful production condition",
+        "Explains why a staging before-after comparison with different traffic and timing is not automatically comparable",
+        "Offers safer replay, shadow, canary or historical-contrast options",
+        "Lowers claim strength if no safe discriminating test is feasible"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "mitigation-is-not-repair",
+      "prompt": "A memory leak stopped after we restarted the service and doubled the memory limit. The service has stayed healthy for a week. Review the statement 'the memory leak is fixed'.",
+      "assertions": [
+        "Classifies restart or added headroom as possible mitigation or masking rather than demonstrated defect removal",
+        "Requests exposure and detector details before interpreting the quiet week",
+        "Keeps causal attribution separate from observed symptom absence",
+        "States a bounded alternative claim"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "multifactor-cause",
+      "prompt": "A queue outage required a traffic spike, a low worker limit, retry amplification and a missing circuit breaker. The last retrying client tipped it over. Write the causal conclusion without collapsing it into one root cause.",
+      "assertions": [
+        "Separates trigger, proximate mechanism, contributing conditions and failed defence",
+        "Does not identify the last client action as the sole root cause",
+        "Names intervention points",
+        "Uses necessary, sufficient or merely present only where supported"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "plan-premise-audit",
+      "prompt": "We plan to replace Redis because the migration proposal says Redis caused last month's latency incident. The only evidence cited is that latency fell after a deploy which also changed query batching and traffic shaping. Audit only the factual premise. Do not choose the future architecture.",
+      "assertions": [
+        "Audits the backward-looking causal premise while leaving the forward-looking decision out of scope",
+        "Identifies the bundled changes as an incomparable contrast",
+        "States what evidence would discriminate Redis from batching and traffic shaping",
+        "Does not recommend an architecture"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "revision-without-new-system-event",
+      "prompt": "Yesterday you concluded that 2% of requests failed because 200 error rows appeared among 10,000 rows. Today no new system event exists, but an audit shows every failure was logged twice. Should the conclusion change? Explain the revision rule.",
+      "assertions": [
+        "Changes the estimate because the provenance or arithmetic premise changed",
+        "Names duplicate logging as the corrected link",
+        "Does not insist that only a new system observation permits revision",
+        "Does not overstate the corrected rate without checking denominator semantics"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "decision-value-stop",
+      "prompt": "Three cheap checks were compatible with both a cache race and an upstream timeout. A production trace that would discriminate them is safe and available in ten minutes. The operational response differs by cause. Should the investigation stop because three checks failed to discriminate?",
+      "assertions": [
+        "Rejects a fixed three-check stopping rule",
+        "Continues because a safe feasible observation can change the decision",
+        "Names the production trace's expected discriminating value",
+        "Would stop if the target strength, resource bound or no-useful-test condition were met"
+      ]
+    }
+  ],
+  "trigger_evals": {
+    "how_to_run": "Build the comparison set from current live descriptions, including prove-it, diagnosing-bugs, testing, deciding-under-uncertainty, typescript, architecture and mechanical-enforcement. Give every prompt and every description to at least three independent panels in each client. A prompt passes only when every panel includes the expected skill and excludes prove-it where expected excludes it.",
+    "held_out_note": "T4, T8, T12, T16 and T18 are held out. Do not tune the description against them.",
+    "prompts": [
+      {"id":"T1","prompt":"prove this bug is actually fixed before we close it","expected":["prove-it"]},
+      {"id":"T2","prompt":"are we sure the logs establish the root cause","expected":["prove-it"]},
+      {"id":"T3","prompt":"validate the evidence behind this incident conclusion","expected":["prove-it"]},
+      {"id":"T4","prompt":"audit the claim that our campaign increased conversion","expected":["prove-it"]},
+      {"id":"T5","prompt":"does this medical study support the headline claim","expected":["prove-it"]},
+      {"id":"T6","prompt":"check whether the factual premises in this migration plan are true, but do not choose the design","expected":["prove-it"]},
+      {"id":"T7","prompt":"the errors stopped after deploy, can we call the issue resolved","expected":["prove-it"]},
+      {"id":"T8","prompt":"stress-test whether these survey results warrant the conclusion","expected":["prove-it"]},
+      {"id":"T9","prompt":"reproduce and minimise this crash, then find the faulty component","expected":["diagnosing-bugs"],"also_acceptable":["prove-it"]},
+      {"id":"T10","prompt":"design a property-based test strategy for this parser","expected":["testing"],"exclude":["prove-it"]},
+      {"id":"T11","prompt":"prove by induction that this recurrence is O(n)","expected":[],"exclude":["prove-it"]},
+      {"id":"T12","prompt":"prove this TypeScript switch is exhaustive at compile time","expected":["typescript"],"exclude":["prove-it"]},
+      {"id":"T13","prompt":"which database should we choose for the new product","expected":["deciding-under-uncertainty"],"exclude":["prove-it"]},
+      {"id":"T14","prompt":"will this market grow next year and should we enter it","expected":["deciding-under-uncertainty"],"exclude":["prove-it"]},
+      {"id":"T15","prompt":"design the ports and domain types for a new billing service","expected":["architecture"],"exclude":["prove-it"]},
+      {"id":"T16","prompt":"add a lint rule banning non-null assertions","expected":["mechanical-enforcement"],"exclude":["prove-it"]},
+      {"id":"T17","prompt":"rewrite this support ticket more clearly","expected":[],"exclude":["prove-it"]},
+      {"id":"T18","prompt":"the dashboard shows no recurrence in a week; what failure rate can we bound","expected":["prove-it"]}
+    ]
+  }
+}
