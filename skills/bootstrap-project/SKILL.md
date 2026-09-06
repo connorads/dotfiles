@@ -27,8 +27,11 @@ house deltas and proof that each gate performs its claimed job.
 In greenfield mode, ask only for unresolved choices that are hard to reverse:
 recipe, name and location, remote visibility, deployment, and permission for
 development commands that create external resources. Do not repeat facts in
-the request. If product or architecture choices still determine the recipe,
-stay advisory until they settle.
+the request. A requested GitHub remote uses the authenticated account unless
+the user names another owner; do not ask or flag the owner as open. CI is
+absent unless requested; do not ask or flag it as open. If product or
+architecture choices still determine the recipe, stay advisory until they
+settle.
 
 ## Route the recipe
 
@@ -122,11 +125,16 @@ present; it does not replace native checks.
 
 For the negative hook probe:
 
-1. Record `HEAD`.
-2. Add one deliberate, identifiable violation.
-3. Run `git commit` without a pipeline or trailing status-changing command.
-4. Require a non-zero exit and stderr naming the deliberate violation.
-5. Prove `HEAD` did not advance, then remove only the sentinel change.
+1. Confirm the hardening commit already exists. Stop and commit it if not.
+2. Record `HEAD`.
+3. Add one deliberate, identifiable violation.
+4. Run `git commit` alone on its line, redirecting stderr to a temporary file.
+5. On the next line assign `commit_status=$?`. Do not pipe the commit, append
+   `&&` or `;`, or use `echo $?` as the capture mechanism.
+6. Require a non-zero captured status and require the temporary stderr file to
+   name the deliberate violation. Stdout or a generic hook failure does not
+   count.
+7. Prove `HEAD` did not advance, then remove only the sentinel change.
 
 ### 6. Seed project guidance
 
@@ -142,7 +150,8 @@ Commit guidance separately.
 Creating a remote, publishing and deploying are distinct external mutations.
 Use `gh` for GitHub work. Deployment output proves resources changed, not that
 the service works. Require the recipe's public route or health smoke before
-calling a deployment successful.
+calling a deployment successful. A failed smoke means the deployment failed,
+even when every infrastructure command was green.
 
 Alchemy development is a separate authority boundary. Resources without local
 implementations may create real cloud infrastructure, including state storage.
@@ -151,9 +160,12 @@ Do not run `alchemy dev` under a local-only request.
 ## Retrofit sequence
 
 Observe the repository's actual runners, hook path and cold-install behaviour.
-Run the checker with the closest recipe to locate stable gaps, then apply only
-the missing layers in greenfield order. Do not run a scaffolder. Keep each
-coherent change and its verification in a separate commit.
+Use the closest recipe's stable assertions to locate gaps, then apply only
+those gaps in greenfield order. The checker describes the full greenfield
+contract; do not use its hk failures to replace or layer hk beside a working
+hook manager. Apply owner skills only after observation shows their layer is
+missing or broken. Do not run a scaffolder. Keep each coherent change and its
+verification in a separate commit.
 
 ## Maintain the recipes
 
@@ -163,7 +175,8 @@ directories. It never deploys or runs `alchemy dev`. Read its `--help` before
 execution. `tests/check-project.bats` and `tests/check-scaffolders.bats` own the
 two script contracts.
 
-When observed output contradicts a recipe, add the failure to
+When a user reports a bootstrap-process failure or observed output contradicts
+a recipe, add the failure to
 [evals/evals.json](evals/evals.json) before changing the instruction. Re-run
 the command, update the recipe's dated verification line and cite a primary
 source. Keep raw transcripts and generated repositories outside the skill.

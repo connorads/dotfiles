@@ -15,7 +15,9 @@ Scaffold the frontend in an isolated temporary directory because the current
 CLI installs dependencies and initialises a nested workspace:
 
 ```sh
-pnpm dlx create-foldkit-app <temporary-directory>
+cd <temporary-parent>
+pnpm dlx create-foldkit-app --name <name> --rendering spa \
+  --example counter --package-manager pnpm
 ```
 
 Copy the generated frontend into `frontend/`, then remove its nested Git data,

@@ -23,7 +23,7 @@ users; this file is for agents and maintainers working on the repo.
 <dev command>        # dev server (127.0.0.1:<port>)
 <build command>
 <test command>
-hk check             # lint + format + hook checks
+hk check --all       # whole-repository lint + format + hook checks
 ```
 
 <!-- Note command traps inline where they exist ("pnpm run deploy, never
