@@ -1,203 +1,169 @@
 ---
 name: bootstrap-project
-description: >
-  Bootstrap a new project from an empty directory to a scaffolded, hardened,
-  verified, committed repo by composing official scaffolder CLIs with house
-  conventions (mise, hk, linting, AGENTS.md seed) - or retrofit those layers
-  onto an existing project. Use whenever the user starts a new project, app,
-  service, library, or CLI tool - "new project", "spin up", "scaffold",
-  "greenfield", "start a repo", "create an app" - even if they only name a
-  framework ("make me a TanStack Start app on Cloudflare"). Also use when the
-  user asks to harden an existing repo or bring it up to house standard.
+description: >-
+  Bootstrap or harden a project into a verified repository with official
+  scaffolders and house conventions. Use for a new app, service, library or
+  CLI; requests to scaffold, spin up or start a repo; and requests to bring an
+  existing repository up to house standard. Also use in advisory mode when the
+  user asks for a bootstrap plan or prompt. Do not use for feature work,
+  deployment-only work, architecture selection before a stack is chosen, or an
+  isolated lint, test or hook change in an established project.
 ---
 
 # Bootstrap Project
 
-Take a project from empty directory to first green commit: interview briefly,
-scaffold with the official CLI, wire the toolchain, harden, verify, seed docs,
-commit in coherent units. This skill owns the **sequence and house defaults**;
-the knowledge for each layer lives in the skills below - route, don't
-duplicate.
+Produce evidence for a green repository, not a tree of plausible config.
+Official scaffolders own their generated trees. This skill owns the sequence,
+house deltas and proof that each gate performs its claimed job.
 
-## Principle: compose, don't vendor
+## Select the mode
 
-Scaffolder output churns with every framework release; anything this skill
-hardcoded about templates would rot in months. Always run the **official
-scaffolder** for the stack and check its current docs at bootstrap time. The
-durable content here is the house layer - toolchain, hardening, verification,
-commit discipline - which changes rarely. Churny per-stack knowledge lives in
-`references/` and is kept honest by the rule at the end of this file.
+- **Greenfield** creates a repository from an empty directory.
+- **Retrofit** inspects an existing repository and fills proven gaps. Preserve
+  working package managers, hooks and runners unless replacement is in scope.
+- **Advisory** returns research, a plan or a prompt. It does not mutate a
+  project.
 
-## Routing - who owns what
+In greenfield mode, ask only for unresolved choices that are hard to reverse:
+recipe, name and location, remote visibility, deployment, and permission for
+development commands that create external resources. Do not repeat facts in
+the request. If product or architecture choices still determine the recipe,
+stay advisory until they settle.
 
-| Concern | Owner | This skill |
-|---|---|---|
-| Which linters/rules per stack, strict tsconfig | `mechanical-enforcement` | invokes it at the harden phase |
-| Wiring hooks (`hk.pkl`, mise tasks, prepare) | `hk` | invokes it at the harden phase |
-| Seeding the project's own verify skill | this skill (§5, content informed by `testing` / `test-coverage`) | writes it at the seed phase |
-| TS idioms once code exists | `typescript` | points there |
-| Test strategy | `testing` | points there |
-| Workers Builds, custom domains, Access | `cloudflare-workers-deployments` | invokes it at the deploy phase |
-| Cloudflare platform wiring + TanStack Start | `references/cloudflare-tanstack-start.md` | reads it when that's the stack |
-| Cloudflare platform wiring + static Astro | `references/cloudflare-astro-static.md` | reads it when that's the stack |
-| Cloudflare platform wiring + the all-Effect stack (Foldkit + Effect Worker + Alchemy) | `references/cloudflare-foldkit-alchemy.md` | reads it when that's the stack |
+## Route the recipe
 
-`mechanical-enforcement` also triggers on "setting up a new project" - the
-split is: it owns *which rules*; this skill owns *when in the sequence* and
-everything that isn't a lint rule.
+Read exactly one recipe before invoking its scaffolder.
 
-## Phase 0 - Interview
-
-Ask only what is hard to reverse, in one round (skip anything the user's
-request already answered):
-
-1. **Stack** - one of the two blessed Cloudflare paths (TanStack Start via
-   c3 and wrangler, or the all-Effect stack: Foldkit + Effect Worker +
-   Alchemy) or an entry from the scaffolder table? The Effect path is
-   opt-in by name - it is pre-release end to end.
-2. **Name and location** - default `~/git/<name>`; confirm, don't assume.
-3. **Remote repo** - none / private / public?
-4. **Deploy now** - or stop at a local green repo?
-
-Everything else takes house defaults silently: pnpm (never npm/npx), mise,
-hk, strict linting. The global supply-chain posture (quarantine,
-ignore-scripts, trust policy) already applies - never weaken it; if a native
-module needs install scripts, ask before allow-listing narrowly.
-
-## The spine
-
-Phases 1-6 are the core. 7-8 run only if the interview asked for them.
-
-### 1. Scaffold
-
-Find the stack's official scaffolder - check current docs rather than memory
-(scaffolders churn; TanStack's own CLI has already migrated once). Stable
-starting points:
-
-| Stack | Scaffolder |
+| Intent | Recipe |
 |---|---|
-| Anything on Cloudflare | `pnpm create cloudflare@latest` - read `references/cloudflare-tanstack-start.md` first; for a static-only Astro site c3 is wrong (SSR adapter forced) - read `references/cloudflare-astro-static.md` |
-| Cloudflare, all-Effect (Foldkit + Effect Worker + Alchemy) | `pnpm dlx create-foldkit-app` for `frontend/`, then hand-add the protocol and backend packages and `alchemy.run.ts` - read `references/cloudflare-foldkit-alchemy.md` first; no wrangler config exists on this path |
-| Vite SPA / frontend | `pnpm create vite` |
-| Python | `uv init` |
-| Rust | `cargo new` |
-| Plain TS library / CLI | `pnpm init` + strict tsconfig from `mechanical-enforcement` |
-| zsh function | not a project - follow the dotfiles shell-function conventions instead |
+| TanStack Start on Cloudflare Workers | [references/cloudflare-tanstack-start.md](references/cloudflare-tanstack-start.md) |
+| Static Astro on Cloudflare Workers | [references/cloudflare-astro-static.md](references/cloudflare-astro-static.md) |
+| Foldkit, minimal Effect Worker and Alchemy | [references/cloudflare-foldkit-alchemy.md](references/cloudflare-foldkit-alchemy.md) |
+| Vite React TypeScript SPA | [references/vite-react-ts.md](references/vite-react-ts.md) |
+| Python application | [references/python-app.md](references/python-app.md) |
+| Python library | [references/python-library.md](references/python-library.md) |
+| Rust CLI | [references/rust-cli.md](references/rust-cli.md) |
+| Rust library | [references/rust-library.md](references/rust-library.md) |
+| TypeScript CLI | [references/typescript-cli.md](references/typescript-cli.md) |
+| TypeScript library | [references/typescript-library.md](references/typescript-library.md) |
 
-Decline the scaffolder's own deploy/git-push offers - those come later,
-deliberately. `git init` if the scaffolder didn't.
+A recipe is platform wiring, not product architecture. Stop before choosing
+databases, authentication, domain modules, RPC surfaces or application
+features. Route those decisions to `architecture` and the language skill.
 
-### 2. Toolchain
+## Compose the owner skills
 
-`mise use <runtime>@<version>` to pin runtimes in `mise.toml`; add the package
-manager if the project needs a pinned one.
+This skill orders work. Other skills own the policy:
 
-### 3. Harden
+| Concern | Owner |
+|---|---|
+| Linter choice, strict compiler settings and mechanical rules | `mechanical-enforcement` |
+| hk configuration, hook installation and the pnpm lifecycle checker | `hk` |
+| Dependency build-script approvals | `supply-chain-hardening` |
+| Test strategy and the project verification skill | `testing` and `test-coverage` |
+| TypeScript design after scaffolding | `typescript` |
+| Deployment and production smoke checks | The target platform's deployment skill |
 
-Apply `mechanical-enforcement` (pick linters from its stack table, copy its
-snippets) and `hk` (compose `hk.pkl` from its tiers, wire hooks via mise).
-Keep scaffolder-generated config unless it conflicts with a house rule; when
-it does, prefer the house rule and say why in the commit message.
+Read the applicable owner skill before changing its layer. Copy hk's canonical
+`assets/pnpm-build-scripts-check.mjs`; do not recreate its policy here.
 
-**pnpm projects: wire hk's build-script decision check** (its
-`assets/pnpm-build-scripts-check.mjs`). The global `ignoreScripts` means an
-undeclared build script installs green here and dies on the first machine
-without the mask - the platform build, usually minutes after this phase. The
-check is the only local thing that sees it; `supply-chain-hardening` owns
-whether a given package gets `true` or `false`.
+## Greenfield sequence
 
-### 4. Verify
+### 1. Preselect the toolchain
 
-Writing config is not enough - prove each layer works:
+Check live `--help` and primary documentation for the chosen scaffolder.
+Resolve tools before scaffolding with ephemeral `mise exec` versions, so the
+official output stays pristine. Use numeric major or major-minor selectors in
+the later repository `mise.toml`; never use `latest` or `lts`.
 
-- Dev server starts, bound to `127.0.0.1` (not `0.0.0.0`).
-- Typecheck, lint, and tests all green.
-- **The gate gates**: attempt a deliberately bad commit (trailing whitespace,
-  a lint error) and confirm hk rejects it. Config that exists but doesn't
-  fire is the most common bootstrap failure; this catches it. Clean up after.
-  Run this test only **after** the hardening commit lands: hk's `stash = "git"`
-  stashes unstaged changes during the hook, so uncommitted `package.json` /
-  lockfile edits revert to pre-hardening versions and `pnpm exec <linter>`
-  fails with a misleading "Command not found" instead of the lint error.
-- **Build-script decisions are recorded** (pnpm): run the build-script check
-  from phase 3 and act on what it names, before the first deploy rather than
-  from a failed build log. A green `pnpm install` here proves nothing - this
-  machine masks the check.
+Use pnpm, never npm or npx, for a new JavaScript project. Record the resolved
+pnpm patch in `package.json#packageManager`. Commit the ecosystem lockfile for
+applications and libraries.
 
-### 5. Seed docs
+### 2. Scaffold and inspect
 
-- Write `AGENTS.md` at the repo root from `assets/AGENTS-template.md`. It is
-  orientation, not reference: commands (with their traps), where things live,
-  conventions code can't show, and links out for everything deeper. Rules a
-  linter enforces stay in lint config; keep the empty Gotchas section as the
-  landing place for future surprises. Present tense, timeless - no bootstrap
-  narrative. Symlink `CLAUDE.md -> AGENTS.md`.
-- Seed the project's own verify skill: write
-  `.agents/skills/verify/SKILL.md` capturing how to prove a change works in
-  *this* project - the exact commands phase 4 just proved green (typecheck,
-  lint, tests, dev-server smoke), scaled per change type. It is the
-  project-local answer to "what do I run before saying done", so future
-  sessions verify instead of guessing. For test strategy and coverage
-  posture, route to the `testing` and `test-coverage` skills rather than
-  restating them.
+Run the recipe's exact official command. Decline Git, remote and deployment
+offers. Inspect files and package metadata instead of trusting a success
+banner. Initialise Git only when the directory is not inside another work
+tree.
 
-### 6. Commit in coherent units
+Commit the untouched scaffold. Stage explicit paths, never `git add -A`.
 
-Commit as you go, not one blob at the end:
+### 3. Add the repository toolchain
 
-1. **Pristine scaffold** - the scaffolder's untouched output (keep the
-   scaffolder's own initial commit if it made one). This makes every later
-   diff reviewable against a known baseline.
-2. **Toolchain** - `mise.toml` and friends.
-3. **Hardening** - lint config + hk wiring, plus any fixes they forced.
-4. **Docs** - `AGENTS.md` and the verify skill.
+Write repository-local mise configuration without shadowing native scripts or
+commands. JavaScript uses package scripts, Python uses uv and Rust uses Cargo.
+Use `mise generate github-action` only when CI is requested, then adapt the
+result to `jdx/mise-action@v4` and the native checks.
 
-Stage explicit paths; never `git add -A`.
+Commit the toolchain separately.
 
-### 7. Remote repo + CI (optional)
+### 4. Harden
 
-- `gh repo create <name> --private --source . --push` (visibility as answered
-  in the interview).
-- `mise generate github-action` for CI; use `jdx/mise-action@v4`. CI runs the
-  same checks the hooks run - one source of truth.
+Apply the owner skills. Keep generated configuration unless it conflicts with
+a house invariant. Explain a replacement in the commit message.
 
-### 8. First deploy (optional)
+For pnpm, review every inherited `allowBuilds` decision with
+`supply-chain-hardening`. A warm local install is not evidence that a cold CI
+or platform install succeeds. Never fix the mismatch by setting
+`ignoreScripts: false`.
 
-Route by target: Cloudflare → the `cloudflare-workers-deployments` skill
-(Workers Builds vs local `wrangler deploy`); elsewhere follow the platform's
-current docs. End state worth aiming for: a live URL recorded in `AGENTS.md`.
+Commit hardening before testing the commit hook. hk's Git stash can otherwise
+hide the dependencies and configuration the hook needs.
 
-## Retrofit
+### 5. Prove the gates
 
-When the project already exists (scaffolded by the user, an earlier session,
-or long ago): skip phase 1, audit which of phases 2-6 are missing, and apply
-only those - same order, same per-phase commits. Don't rip out working config
-that merely differs in style from house defaults; upgrade what's absent or
-broken.
+Run native typecheck, lint, test and build commands. Start servers on
+`127.0.0.1`. Run both the normal commit path and `hk check --all`.
 
-## Keep references honest
+Execute `scripts/check-project.sh --root <repo> --recipe <id>` from this skill.
+The checker is read-only. Exit 0 means the stable repository contract is
+present; it does not replace native checks.
 
-The reference files are snapshots of moving targets, and the only moment
-their accuracy is tested is now, while you bootstrap. When observed reality
-contradicts a reference - a flag changed, generated files differ, a
-documented gap has been fixed, you hit an undocumented one - update the
-reference to match what you observed before finishing, bump its "Last
-verified" line, and flag the edit in your summary. Record only observed,
-reproducible differences, never speculation from a one-off failure. Never
-stage or commit in the dotfiles repo - the user reviews via `dotfiles diff`.
+For the negative hook probe:
 
-## Scope guardrails
+1. Record `HEAD`.
+2. Add one deliberate, identifiable violation.
+3. Run `git commit` without a pipeline or trailing status-changing command.
+4. Require a non-zero exit and stderr naming the deliberate violation.
+5. Prove `HEAD` did not advance, then remove only the sentinel change.
 
-- **Platform wiring only.** This skill stops where app architecture starts.
-  Blessing app-level choices (D1 + ORM, better-auth, Convex) is deliberately
-  deferred, not forgotten - it's the fastest-rotting layer and it competes
-  with `architecture`/`typescript`. Revisit when a real project has proven a
-  pattern worth encoding; it then graduates into a reference file the way
-  Cloudflare did, and the all-Effect stack did after two shipped projects.
-  Even then the reference holds repo shape and platform wiring; code idioms
-  route to the framework's own agent docs and the `effect` / `typescript`
-  skills.
-- **Stacks graduate, tables stay stable.** The scaffolder table holds only
-  entries stable for years; anything churny earns its own reference file.
-- If a phase proves purely mechanical and identical across runs, extract it
-  into `scripts/` rather than re-deriving it in prose each time.
+### 6. Seed project guidance
+
+Create `AGENTS.md` from [assets/AGENTS-template.md](assets/AGENTS-template.md)
+using only commands just proved. Create an actual `CLAUDE.md -> AGENTS.md`
+symlink. Add `.agents/skills/verify/SKILL.md` with the project's exact native
+checks and risk-scaled smoke tests.
+
+Commit guidance separately.
+
+### 7. Add remotes, CI or deployment only when requested
+
+Creating a remote, publishing and deploying are distinct external mutations.
+Use `gh` for GitHub work. Deployment output proves resources changed, not that
+the service works. Require the recipe's public route or health smoke before
+calling a deployment successful.
+
+Alchemy development is a separate authority boundary. Resources without local
+implementations may create real cloud infrastructure, including state storage.
+Do not run `alchemy dev` under a local-only request.
+
+## Retrofit sequence
+
+Observe the repository's actual runners, hook path and cold-install behaviour.
+Run the checker with the closest recipe to locate stable gaps, then apply only
+the missing layers in greenfield order. Do not run a scaffolder. Keep each
+coherent change and its verification in a separate commit.
+
+## Maintain the recipes
+
+`scripts/check-scaffolders.sh` is an opt-in maintainer harness. It uses the
+network and executes third-party package code in isolated temporary
+directories. It never deploys or runs `alchemy dev`. Read its `--help` before
+execution. `tests/check-project.bats` and `tests/check-scaffolders.bats` own the
+two script contracts.
+
+When observed output contradicts a recipe, add the failure to
+[evals/evals.json](evals/evals.json) before changing the instruction. Re-run
+the command, update the recipe's dated verification line and cite a primary
+source. Keep raw transcripts and generated repositories outside the skill.
