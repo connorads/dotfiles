@@ -33,6 +33,7 @@
     "The skill does not manufacture residual doubt after the requested decision has enough evidence",
     "Mathematical proof, type-system proof and forward-looking choices remain routed elsewhere"
   ],
+  "cross_run_history": "2026-09-06 audit: one fresh pre-edit/candidate comparison in Claude Code 2.1.261 and Codex CLI 0.153.4 covered the duplicated-telemetry incident plus bundled probes for common-mode signals and base rates, detector coverage, harmful toggles, measurement-provenance revision and decision-value stopping. Both versions rejected the unique pooler claim when the failure-mode reference was explicitly supplied. The candidate was more explicit about calibrated strength, detector validity, safe comparability and stopping by decision value. One held-out description-only panel per client routed T4, T8 and T18 to prove-it and excluded T12 and T16 for both versions. These smoke results verify the observed failure repairs but do not constitute the three-repeat acceptance run specified above.",
   "evals": [
     {
       "id": 1,
