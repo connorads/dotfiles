@@ -36,6 +36,12 @@ bats = "1"
 rumdl = "0.2"
 gitleaks = "8"
 oxlint = "1"
+# oxlint's type-aware engine, shipped as a separate binary it shells out to.
+# A drift pair: oxlint 1.80.0 peers oxlint-tsgolint >= 7.0.2001, the two are
+# pinned independently, `up` bumps them independently, and tsgolint's version
+# line tracks typescript-go rather than oxlint - so the majors will never
+# agree and neither range constrains the other. `pin-audit` is the counterweight.
+"npm:oxlint-tsgolint" = "7"
 ruff = "0.16"
 typos = "1"
 vale = "3"
