@@ -320,12 +320,22 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/link-check.sh"
     }
 
-    // First-party JS/TS lint: default correctness rules only (no type-aware
-    // rules - several first-party dirs lack tsconfigs). --deny-warnings is
-    // load-bearing: oxlint exits 0 on warnings by default, so without it the
-    // step never blocks. Extension glob over the whole tree so future
-    // first-party TS is covered automatically; vendored mirrors and fixture/
-    // reference snippets are deliberately broken or upstream's style.
+    // First-party JS/TS lint, including the type-aware rules: on the 184-file
+    // gate set they turn 0 findings into 209, at 0.16s -> 1.15s. Enabled through
+    // .oxlintrc.json (options.typeAware) rather than --type-aware, so the editor
+    // and any wrapper that drops argv get the same rules; -c names the config
+    // explicitly rather than relying on cwd discovery.
+    //
+    // A type-aware rule needs project membership and degrades SILENTLY without
+    // it: a file inside a tsconfig `include` catches an unawaited writeFile(),
+    // and the same file outside one misses it with no error and no warning. So
+    // the cost of an unrooted dir is false negatives, which is why every
+    // first-party TS dir carries a tsconfig - .config/opencode included.
+    //
+    // --deny-warnings is load-bearing: oxlint exits 0 on warnings by default, so
+    // without it the step never blocks. Extension glob over the whole tree so
+    // future first-party TS is covered automatically; vendored mirrors and
+    // fixture/reference snippets are deliberately broken or upstream's style.
     ["oxlint"] {
         batch = true
         glob = List("**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs", "**/*.mts", "**/*.cts")
@@ -334,7 +344,7 @@ local fast_steps = new Mapping<String, Step> {
             "skills/**/references/**",
             ".config/skills/**/references/**"
         )
-        check = "oxlint --deny-warnings {{files}}"
+        check = "oxlint -c .oxlintrc.json --deny-warnings {{files}}"
     }
 
     // First-party Python lint + format (ruff via mise). Config passed with

@@ -1,0 +1,39 @@
+{
+  // Governs every oxlint run in this work-tree. Nested config discovery stays
+  // on, so a per-project .oxlintrc.json would merge over this one.
+  //
+  // typeAware turns on the rules that need type information, which oxlint runs
+  // by shelling out to the `tsgolint` binary (mise: npm:oxlint-tsgolint). On
+  // the 184-file gate set it turns 0 findings into 209, at 0.16s -> 1.15s.
+  //
+  // A type-aware rule degrades silently without project membership: a file
+  // inside a tsconfig `include` catches an unawaited writeFile(), and the same
+  // file outside one misses it with no error and no warning. So the cost of an
+  // unrooted tree is false negatives, not failures - which is why every
+  // first-party TS dir carries a tsconfig. skills/**/*.mjs stays unrooted: it
+  // is plain JS where type-aware buys little.
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    // node:test's `test()` returns a promise that the runner itself awaits, so
+    // 192 of the 209 findings were top-level `test(...)` calls in *.test.ts -
+    // noise, not defects. Exempting the call keeps the rule live inside test
+    // bodies, where an unawaited promise is a real bug. Both import forms are
+    // in use (`import test` and `import { test }`); a package specifier matches
+    // the declaration's source, so it covers both. `it`/`describe` are the same
+    // runner's API and are listed so a suite switching style stays quiet.
+    "typescript/no-floating-promises": [
+      "error",
+      {
+        "allowForKnownSafeCalls": [
+          {
+            "from": "package",
+            "name": ["test", "it", "describe"],
+            "package": "node:test"
+          }
+        ]
+      }
+    ]
+  }
+}

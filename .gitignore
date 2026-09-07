@@ -18,6 +18,7 @@
 !/.npmrc
 !/.yarnrc.yml
 !/.bunfig.toml
+!/.oxlintrc.json
 !/.rumdl.toml
 !/.typos.toml
 !/.vale.ini
