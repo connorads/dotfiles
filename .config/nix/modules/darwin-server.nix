@@ -27,14 +27,16 @@
   networking.hostName = "Connors-Mac-mini";
 
   # -- System Packages --
-  # Server's own subset (no GUI apps). The tailscaled daemon in darwin-shared.nix
-  # also needs pkgs.tailscale, but that is independent of this list.
+  # Server's own subset (no GUI apps: blender is here for its headless CLI, not
+  # its bundle). The tailscaled daemon in darwin-shared.nix also needs
+  # pkgs.tailscale, but that is independent of this list.
   environment.systemPackages = [
     pkgs.docker
     pkgs.colima
     pkgs.lazydocker
     pkgs.tart
     pkgs.tailscale
+    pkgs.blender
   ];
 
   # -- Power: stay awake, but blank + lock the idle display --
