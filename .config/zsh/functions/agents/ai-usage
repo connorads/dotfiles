@@ -154,7 +154,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path(os.environ.get("HOME", ""))
-NOW = datetime.now(timezone.utc)
+# AI_USAGE_NOW (epoch seconds) pins the clock so time-dependent output can be
+# asserted. Everything derived from a window's reset instant reads it.
+NOW = (datetime.fromtimestamp(int(os.environ["AI_USAGE_NOW"]), timezone.utc)
+       if os.environ.get("AI_USAGE_NOW") else datetime.now(timezone.utc))
 NOW_TS = NOW.timestamp()
 USE_COLOUR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
