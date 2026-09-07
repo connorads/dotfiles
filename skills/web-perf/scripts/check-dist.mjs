@@ -68,7 +68,7 @@ const FONT_DISPLAY_EXEMPT = [];
 // never be immutable-by-hash - they need their own explicit long-TTL rule in
 // the headers file (version the PATH when the file changes). Set to that
 // rule's path pattern (e.g. "/fonts/*"); null when all fonts ship hashed.
-const PUBLIC_FONT_PATH = null;
+const PUBLIC_FONT_PATH = /** @type {string | null} */ (null);
 // -----------------------------------------------------------------------------
 
 const failures = [];

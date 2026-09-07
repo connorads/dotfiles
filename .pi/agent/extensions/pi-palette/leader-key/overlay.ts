@@ -268,7 +268,7 @@ export async function openLeaderKey(
     try {
       await selected.action(ctx);
     } catch (err) {
-      ctx.ui.notify(`Action failed: ${err}`, "error");
+      ctx.ui.notify(`Action failed: ${String(err)}`, "error");
     }
   }
 }

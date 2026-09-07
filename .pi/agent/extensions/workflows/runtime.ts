@@ -534,7 +534,12 @@ function sanitiseBoundaryValue(
     }
     return output;
   }
-  return String(value);
+  // Only symbol and bigint reach here: every other typeof is handled above and
+  // isRecord claims every non-array object. Both stringify safely. The
+  // annotation is what proves that to no-base-to-string - a failed type
+  // predicate cannot subtract from `unknown`, so TS still sees the wide type
+  // and assumes a plain object could arrive and stringify to [object Object].
+  return String(value as symbol | bigint);
 }
 
 function cloneJson(value: JsonValue): JsonValue {
