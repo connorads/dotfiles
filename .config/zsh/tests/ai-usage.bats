@@ -101,6 +101,39 @@ def iso(delta):
 PY
 }
 
+# Fixed-clock fixture. AI_USAGE_NOW pins the dashboard's now, the cache mtime is
+# stamped at the same instant so nothing reads as stale, and every reset is
+# written as an absolute offset from it - so countdowns and wall clocks are
+# deterministic instead of depending on when the suite runs.
+PINNED_NOW=1767225600 # 2026-01-01T00:00:00Z
+write_pinned_claude_cache() {
+  local five_hour_secs="$1"
+  local seven_day_secs="$2"
+
+  python3 - "$HOME" "$PINNED_NOW" "$five_hour_secs" "$seven_day_secs" <<'PY'
+import json
+import os
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+home = Path(sys.argv[1])
+now, five, seven = (int(a) for a in sys.argv[2:5])
+
+
+def iso(offset):
+    return datetime.fromtimestamp(now + offset, timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+path = home / ".cache/claude-usage.json"
+path.write_text(json.dumps({
+    "five_hour": {"utilization": 19, "resets_at": iso(five)},
+    "seven_day": {"utilization": 68, "resets_at": iso(seven)},
+}))
+os.utime(path, (now, now))
+PY
+}
+
 set_codex_reset_credits() {
   local have="$1"
   local usable="$2"
@@ -433,6 +466,20 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Auth"*"Claude expired"* ]]
+}
+
+@test "AI_USAGE_NOW pins the clock every countdown is derived from" {
+  write_pinned_claude_cache 7980 259200
+
+  AI_USAGE_NOW=$PINNED_NOW TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  five_hour_row=$(printf '%s\n' "$output" | grep -a 'Claude.*5h' | head -n1)
+  [[ "$five_hour_row" == *"↻ 2h 13m"* ]]
+  seven_day_row=$(printf '%s\n' "$output" | grep -a 'Claude.*7d' | head -n1)
+  [[ "$seven_day_row" == *"↻ 3d 0h"* ]]
+  # Nothing reads as stale: the cache mtime is stamped at the pinned instant.
+  [[ "$output" != *"cache stale"* ]]
 }
 
 @test "the alert slice drops the least severe, not the last collected" {
