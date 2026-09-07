@@ -38,7 +38,7 @@ const FONT_PRELOAD_BUDGET = { min: 1, max: 3 };
 // Time to first flush, ms. The shell should leave the server before any data
 // fetch resolves; a budget here catches a route that lost its streaming shell
 // and reverted to blocking render. null skips the check.
-const TIME_TO_FIRST_FLUSH_BUDGET_MS = null; // e.g. 500
+const TIME_TO_FIRST_FLUSH_BUDGET_MS = /** @type {number | null} */ (null); // e.g. 500
 // Metric-matched fallback face names IF your fallback @font-face rules are
 // inlined into the shell; null skips (the usual external-CSS case).
 const FALLBACK_FACES = null; // e.g. ["Display fallback", "Sans fallback"]
@@ -127,7 +127,8 @@ try {
   console.error(`check-stream: unsupported charset '${charset}' in content-type; reading as utf-8`);
   decoder = new TextDecoder();
 }
-const flushes = []; // { i, at, bytes, from, to }  (from/to = decoded char offsets)
+// from/to = decoded char offsets
+const flushes = /** @type {{ i: number; at: number; bytes: number; from: number; to: number }[]} */ ([]);
 let text = "";
 try {
   for await (const chunk of res.body) {

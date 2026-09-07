@@ -83,8 +83,8 @@ function unquote(s) {
 }
 
 function readDecisions(yamlPath) {
-	if (!existsSync(yamlPath)) return new Set();
-	const decided = new Set();
+	if (!existsSync(yamlPath)) return /** @type {Set<string>} */ (new Set());
+	const decided = /** @type {Set<string>} */ (new Set());
 	const lines = readFileSync(yamlPath, "utf8").split("\n");
 
 	let block = null; // "map" | "list"

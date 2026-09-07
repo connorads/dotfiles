@@ -46,7 +46,10 @@ export function createModelsProvider(
     },
 
     async onSelect(item) {
-      pi.setModel(item.model);
+      // Awaited, not fired and forgotten: setModel returns a promise, so the
+      // unawaited call let the "Switched to" toast race ahead of the switch it
+      // reports.
+      await pi.setModel(item.model);
       ctx.ui.notify(`Switched to ${item.provider}/${item.id}`, "info");
     },
 

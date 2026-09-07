@@ -51,7 +51,7 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
     const list = Bun.spawnSync([process.execPath, CLI, "list", "--path", REPO]);
     expect(list.exitCode).toBe(0);
     const lines = list.stdout.toString().trim().split("\n");
-    const refs = lines.map((l) => l.split(/\s+/)[0]).sort();
+    const refs = lines.map((l) => l.split(/\s+/)[0] ?? "").sort();
     expect(refs).toEqual(["repo/alpha", "repo/beta", "repo/noname"]);
 
     // Stage 2: pipe two of those lines into `skl load --stdin` → real injection.

@@ -16,7 +16,7 @@ export const DRAFT_PREAMBLE = `<!-- annotate: write your correction under each e
 export const COMMENT_PLACEHOLDER = "<!-- your comment here -->";
 
 /** Where the excerpt came from, as a heading. */
-export const originLabel = (origin: StoredOrigin, home?: string | undefined): string => {
+export const originLabel = (origin: StoredOrigin, home?: string): string => {
   if (origin.kind === "unknown") {
     // Captured by a build that knows a source this one does not.
     return origin.raw.length > 0 ? `${origin.raw} (unrecognised source)` : "unrecognised source";
@@ -29,7 +29,7 @@ export const originLabel = (origin: StoredOrigin, home?: string | undefined): st
 };
 
 /** `$HOME/x` as `~/x`, so a heading stays readable at terminal width. */
-export const tildify = (path: string, home?: string | undefined): string => {
+export const tildify = (path: string, home?: string): string => {
   const base = home ?? "";
   if (base.length > 0 && (path === base || path.startsWith(`${base}/`))) {
     return `~${path.slice(base.length)}`;
@@ -38,7 +38,7 @@ export const tildify = (path: string, home?: string | undefined): string => {
 };
 
 /** One excerpt as a numbered section: heading, fenced text, room to comment. */
-export const renderExcerpt = (excerpt: Excerpt, index: number, home?: string | undefined): string => {
+export const renderExcerpt = (excerpt: Excerpt, index: number, home?: string): string => {
   const origin = originLabel(excerpt.origin, home);
   const fence = fenceFor(excerpt.text);
   const body = excerpt.text.endsWith("\n") ? excerpt.text.slice(0, -1) : excerpt.text;
@@ -51,7 +51,7 @@ export const renderExcerpt = (excerpt: Excerpt, index: number, home?: string | u
 export const renderSections = (
   excerpts: readonly Excerpt[],
   startIndex: number,
-  home?: string | undefined,
+  home?: string,
 ): string => excerpts.map((e, i) => renderExcerpt(e, startIndex + i, home)).join("\n");
 
 /**
@@ -62,7 +62,7 @@ export const renderSections = (
  * and callers test emptiness to decide whether there is anything to open an
  * editor on or send.
  */
-export const renderDraft = (excerpts: readonly Excerpt[], home?: string | undefined): string =>
+export const renderDraft = (excerpts: readonly Excerpt[], home?: string): string =>
   excerpts.length === 0 ? "" : `${DRAFT_PREAMBLE}\n\n${renderSections(excerpts, 1, home)}`;
 
 /**
@@ -100,7 +100,7 @@ export const updateDraft = (
   spool: readonly Excerpt[],
   draft: string | null,
   renderedThrough: string | null,
-  home?: string | undefined,
+  home?: string,
 ): DraftUpdate => {
   const newest = spool.length > 0 ? (spool[spool.length - 1] as Excerpt).id : renderedThrough;
   if (draft === null) {
@@ -126,7 +126,7 @@ export interface ListRow {
   readonly preview: string;
 }
 
-export const listRows = (spool: readonly Excerpt[], home?: string | undefined): ListRow[] =>
+export const listRows = (spool: readonly Excerpt[], home?: string): ListRow[] =>
   spool.map((excerpt, i) => ({
     index: i + 1,
     id: excerpt.id,

@@ -282,7 +282,10 @@ export async function openTelescope(
       state.loading = true;
       exitMode();
       if (!currentProvider.supportsDynamicSearch) {
-        loadItems();
+        // Fire-and-forget: switchProvider is a sync input handler, and awaiting
+        // here would block the keypath on a provider load. loadItems try/catches
+        // its whole body, so there is no rejection for a .catch() to surface.
+        void loadItems();
       } else {
         state.loading = false;
         tui.requestRender();
@@ -307,7 +310,7 @@ export async function openTelescope(
       return scored ? [scored.item] : [];
     };
 
-    const getCurrentItem = (): unknown | undefined => {
+    const getCurrentItem = (): unknown => {
       return state.filtered[state.selectedIndex]?.item;
     };
 
@@ -766,7 +769,10 @@ export async function openTelescope(
     // ── Init ─────────────────────────────────────
 
     if (!currentProvider.supportsDynamicSearch) {
-      loadItems();
+      // Same as switchProvider: the overlay factory is sync and must return its
+      // handles now, so the first load runs in the background and paints when
+      // it lands. loadItems swallows its own failures.
+      void loadItems();
     } else {
       state.loading = false;
     }
