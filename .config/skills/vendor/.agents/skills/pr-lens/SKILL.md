@@ -35,7 +35,7 @@ The diff or code is represented as one JSON document (lanes, nodes, edges, order
 
    Render dark as the default theme unless explicitly requested. The SVGs, the manifest and `drawn.graph.json` land in `.pr-lens/`, which the CLI adds to the repository's .gitignore. Do not commit any of it. These files are rebuilt from the diff whenever anyone wants them again. Each SVG is named after its view, the theme and a content hash; `manifest.json` lists them by lens and view, so read the names from there or from the directory.
 
-   Hand the local SVG back by default. Do not push a canvas unless the user explicitly asks to publish it to PR Lens. Before pushing, state that the complete `drawn.graph.json` goes to `prlens.dev` and the resulting view is public without a login. The document can expose repository identity, commit SHAs, file paths, line references and inferred architecture.
+   When a pull request exists, attach the SVG to that pull request on GitHub by default using step 5. When there is no pull request, hand the local SVG back. Do not push a canvas unless the user explicitly asks to publish it to PR Lens. Before pushing, state that the complete `drawn.graph.json` goes to `prlens.dev` and the resulting view is public without a login. The document can expose repository identity, commit SHAs, file paths, line references and inferred architecture.
 
    ```bash
    pnpm dlx @coldtea/pr-lens-cli@0.4.0 canvas push
