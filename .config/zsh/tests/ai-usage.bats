@@ -101,6 +101,26 @@ def iso(delta):
 PY
 }
 
+set_codex_reset_credits() {
+  local have="$1"
+  local usable="$2"
+
+  python3 - "$HOME" "$have" "$usable" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+home, have, usable = Path(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+path = home / ".cache/codex-usage.json"
+cache = json.loads(path.read_text())
+cache["rate_limit_reset_credits"] = {
+    "available_count": have,
+    "applicable_available_count": usable,
+}
+path.write_text(json.dumps(cache))
+PY
+}
+
 set_cache_age_hours() {
   python3 - "$1" "$2" <<'PY'
 import os
@@ -413,6 +433,62 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Auth"*"Claude expired"* ]]
+}
+
+@test "codex reset credits report how many are usable right now" {
+  write_usage_caches
+  set_codex_reset_credits 3 0
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Resets"*"Codex 3 · none usable now"* ]]
+}
+
+@test "codex reset credits name the usable count when one is spendable" {
+  write_usage_caches
+  set_codex_reset_credits 3 2
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Resets"*"Codex 3 · 2 usable now"* ]]
+}
+
+@test "the reset count survives more alerts than the alert slice renders" {
+  write_usage_caches
+  set_codex_reset_credits 3 0
+  # Five competing alerts: auth, extra usage, and three stale caches. The reset
+  # count is not an alert, so the alerts[:3] slice cannot evict it.
+  jq -n '{last_error:"auth_expired"}' >"$HOME/.cache/claude-usage.meta.json"
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]) / ".cache/claude-usage.json"
+cache = json.loads(path.read_text())
+cache["extra_usage"] = {"is_enabled": True, "monthly_limit": 5000, "used_credits": 1200}
+path.write_text(json.dumps(cache))
+PY
+  set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
+  set_cache_age_hours "$HOME/.cache/codex-usage.json" 9
+  set_cache_age_hours "$HOME/.cache/cosine-usage.json" 9
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Resets"*"Codex 3 · none usable now"* ]]
+}
+
+@test "no reset credits renders no Resets line at all" {
+  write_usage_caches
+  set_codex_reset_credits 0 0
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Resets"* ]]
 }
 
 @test "fresh local run history is summarised" {
