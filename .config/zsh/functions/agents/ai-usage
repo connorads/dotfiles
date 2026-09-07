@@ -542,6 +542,9 @@ def classify_codex_windows(obj):
 def collect_windows():
     rows = []
     alerts = []
+    # Lines that must always render: `alerts` is sliced to three at the display
+    # edge, so anything that has to be on screen goes here instead.
+    standing = []
 
     def add_claude_rows(path, label):
         # One Claude account (default ~/.claude, or a ~/.claude-profiles/code/*
@@ -690,12 +693,21 @@ def collect_windows():
                     "codex",
                     "codex-extra",
                 ))
-        reset_credits = ((codex.get("rate_limit_reset_credits") or {}).get("available_count") or 0)
+        # Usage-limit resets: `available_count` is what the account holds,
+        # `applicable_available_count` what is spendable right now. Both matter -
+        # holding three of which none is usable is not a reason to run /usage.
+        credits = codex.get("rate_limit_reset_credits") or {}
         try:
-            if int(reset_credits) > 0:
-                alerts.append(("Reset", f"Codex has {reset_credits} reset credit(s)", "green"))
+            have = int(credits.get("available_count") or 0)
+            usable = int(credits.get("applicable_available_count") or 0)
         except Exception:
-            pass
+            have, usable = 0, 0
+        # A zero count is not information, and a permanent `Resets Codex 0` line
+        # would cost a row of the box forever.
+        if have > 0:
+            suffix = f"{usable} usable now" if usable else "none usable now"
+            standing.append(("Resets", f"Codex {have} · {suffix}",
+                             "green" if usable else "muted"))
         if (codex.get("rate_limit") or {}).get("limit_reached"):
             alerts.append(("Limit", "Codex limit reached", "red"))
         if codex_age is not None and codex_age >= 900:
@@ -730,7 +742,7 @@ def collect_windows():
     elif not cosine_path.exists():
         alerts.append(("Missing", "Cosine usage cache", "yellow"))
 
-    return rows, alerts
+    return rows, alerts, standing
 
 
 def collect_recent():
@@ -854,8 +866,8 @@ def render():
     show_pace = inner >= 52
     row_reserved = 38 if show_pace else 29
     bar_width = max(8, inner - row_reserved)
-    rows, alerts = collect_windows()
-    insights = collect_insights(rows)
+    rows, alerts, standing = collect_windows()
+    insights = collect_insights(rows) + standing
     recent = collect_recent()
 
     def emit(line):
