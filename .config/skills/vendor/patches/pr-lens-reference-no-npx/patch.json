@@ -1,0 +1,6 @@
+{
+  "reason": "upstream reference pages execute a mutable npm package; use the audited pinned CLI through pnpm.",
+  "files": [
+    ".agents/skills/pr-lens/references/graph-document.md"
+  ]
+}

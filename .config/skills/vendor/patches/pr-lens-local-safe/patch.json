@@ -1,0 +1,6 @@
+{
+  "reason": "upstream runs a mutable npm package and defaults to public canvas upload; pin the CLI and keep provider, canvas, and GitHub network writes explicit.",
+  "files": [
+    ".agents/skills/pr-lens/SKILL.md"
+  ]
+}

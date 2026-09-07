@@ -344,6 +344,12 @@
       "skillPath": "skills/portless/SKILL.md",
       "computedHash": "4dd2cfba1475a35878d3936d4ce80047b800f7d7f65c9c6ddccb4638651d66a5"
     },
+    "pr-lens": {
+      "source": "coldteadotai/pr-lens",
+      "sourceType": "github",
+      "skillPath": "skills/pr-lens/SKILL.md",
+      "computedHash": "5cb468838959a36faedd5105a343fd8056a8bb44225b520679f864c9348ae944"
+    },
     "pr-to-video": {
       "source": "heygen-com/hyperframes",
       "sourceType": "github",

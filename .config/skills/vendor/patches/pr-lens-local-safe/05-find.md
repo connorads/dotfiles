@@ -1,0 +1,1 @@
+If you would rather not author the document yourself, `npx @coldtea/pr-lens-cli@latest analyze --base <ref>` does steps 1 and 2 by asking a provider — Gemini, OpenAI, or any endpoint speaking `/chat/completions` — with a key of your own. That is the only path here that needs one.
