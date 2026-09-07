@@ -1,4 +1,4 @@
-   Hand the local SVG back by default. Do not push a canvas unless the user explicitly asks to publish it to PR Lens. Before pushing, state that the complete `drawn.graph.json` goes to `prlens.dev` and the resulting view is public without a login. The document can expose repository identity, commit SHAs, file paths, line references and inferred architecture.
+   When a pull request exists, attach the SVG to that pull request on GitHub by default using step 5. When there is no pull request, hand the local SVG back. Do not push a canvas unless the user explicitly asks to publish it to PR Lens. Before pushing, state that the complete `drawn.graph.json` goes to `prlens.dev` and the resulting view is public without a login. The document can expose repository identity, commit SHAs, file paths, line references and inferred architecture.
 
    ```bash
    pnpm dlx @coldtea/pr-lens-cli@0.4.0 canvas push
