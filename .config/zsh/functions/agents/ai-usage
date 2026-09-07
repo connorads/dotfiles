@@ -903,8 +903,12 @@ def render():
         print_kv_lines(recent[:3], inner, box_width, left_pad)
 
     if alerts:
+        # Only three fit, so rank before slicing: a red must never be dropped in
+        # favour of the yellows that happen to be collected earlier. Python's
+        # sort is stable, so alerts of equal severity keep collection order.
+        ranked = sorted(alerts, key=lambda a: -severity_rank(a[2]))
         emit(c("border", "├" + "─" * (box_width - 2) + "┤"))
-        print_kv_lines(alerts[:3], inner, box_width, left_pad)
+        print_kv_lines(ranked[:3], inner, box_width, left_pad)
 
     sys.stdout.write(left_pad + c("border", "╰" + "─" * (box_width - 2) + "╯"))
     sys.stdout.flush()
