@@ -124,6 +124,12 @@ fnox = "1"
 # workflow attests nothing, so the exact pin is the only control: pre-1.0 and
 # experimental, where every release is a breaking one. Bump by hand.
 "github:vercel-labs/fx" = "0.0.3"
+# ripwire: ranked symbol map / call graph / blast radius over a repo. Install via
+# mise, never scripts/install.sh - that symlinks 18 bundled skills into
+# ~/.claude/skills and ~/.agents/skills unprompted, and hooks/ logs every matched
+# tool call to ~/.ripwire/. mise extracts the binary alone; both stay inert.
+# Nothing upstream is attested, so the quarantine is the only control here.
+"github:redhat-et/ripwire" = "0"
 
 # OS-level sandbox runtime (srt) wrapping CLI agents via agent-sandbox. Exact
 # pin: config schema is pre-1.0 and churns; the validate-before-mv render + the

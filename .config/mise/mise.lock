@@ -102,14 +102,17 @@ backend = "aqua:shenwei356/rush"
 [tools."aqua:shenwei356/rush"."platforms.linux-arm64"]
 checksum = "sha256:e8cf6a45eab9e67b952650ea90eb87f457ac1a95a2d7e338eea88a4da488da7b"
 url = "https://github.com/shenwei356/rush/releases/download/v0.9.0/rush_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/391416978"
 
 [tools."aqua:shenwei356/rush"."platforms.linux-x64"]
 checksum = "sha256:436d935bcd0dc263d20674201cd3e9c85059d331d8641f970e1e8958ad0af4fc"
 url = "https://github.com/shenwei356/rush/releases/download/v0.9.0/rush_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/391416899"
 
 [tools."aqua:shenwei356/rush"."platforms.macos-arm64"]
 checksum = "sha256:f5cd118ee7a04c70849c891e172ed1d3fb85fc5c14a7dacddb1d5c210b0f0613"
 url = "https://github.com/shenwei356/rush/releases/download/v0.9.0/rush_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/391416669"
 
 [[tools.ast-grep]]
 version = "0.45.3"
@@ -386,24 +389,24 @@ url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169108
 provenance = "github-attestations"
 provenance_verified = true
 
-[[tools."github:ogulcancelik/herdr"]]
-version = "0.7.5"
-backend = "github:ogulcancelik/herdr"
+[[tools."github:redhat-et/ripwire"]]
+version = "0.3.8"
+backend = "github:redhat-et/ripwire"
 
-[tools."github:ogulcancelik/herdr"."platforms.linux-arm64"]
-checksum = "sha256:32e763a1499a6b694b1d708e4f062b743be1da9f34fcfa4d212d6db6fe09a8b9"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.5/herdr-linux-aarch64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/484992543"
+[tools."github:redhat-et/ripwire"."platforms.linux-arm64"]
+checksum = "sha256:e6f61213d636b89da742758fb0dfe5fe183b61d05f64b122f56e974a90c5488c"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.3.8/ripwire-0.3.8-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/512472463"
 
-[tools."github:ogulcancelik/herdr"."platforms.linux-x64"]
-checksum = "sha256:3dc83288073e4c2d3c679a30e7be97bcca9141c6fd17dbbb9219142e95c59253"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.5/herdr-linux-x86_64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/484992544"
+[tools."github:redhat-et/ripwire"."platforms.linux-x64"]
+checksum = "sha256:9beac019bcd97924b5d7b0f0cf693859a91b4a3570a2acb6409245c3139b3da3"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.3.8/ripwire-0.3.8-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/512472459"
 
-[tools."github:ogulcancelik/herdr"."platforms.macos-arm64"]
-checksum = "sha256:37350546b0012555943b92eaf962665de4e264395baeb44227b8015e8ff5b0d6"
-url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.5/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/484992542"
+[tools."github:redhat-et/ripwire"."platforms.macos-arm64"]
+checksum = "sha256:0c5c34cbf2a2cbb2131c012c66d3f1ff06bcb7a6ffe6eb647052713189c0b4e5"
+url = "https://github.com/redhat-et/ripwire/releases/download/v0.3.8/ripwire-0.3.8-macos-arm64.tar.gz"
+url_api = "https://api.github.com/repos/redhat-et/ripwire/releases/assets/512472461"
 
 [[tools."github:tamnd/kage"]]
 version = "0.3.12"
@@ -450,14 +453,17 @@ backend = "aqua:gitleaks/gitleaks"
 [tools.gitleaks."platforms.linux-arm64"]
 checksum = "sha256:e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
 url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332057"
 
 [tools.gitleaks."platforms.linux-x64"]
 checksum = "sha256:551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
 url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz"
+url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332058"
 
 [tools.gitleaks."platforms.macos-arm64"]
 checksum = "sha256:b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
 url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332059"
 
 [[tools.hcloud]]
 version = "1.67.0"
@@ -787,7 +793,7 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "blake3:0fffab4211fa179caf8acb8324e08af1ba0c13288d5f1677c4f8eb2b40601cc0"
+checksum = "sha256:532645be202d3df8510ab318ca5faed92060a694c8327144e14fa81f31af0f6d"
 url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260807/cpython-3.14.7+20260807-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
@@ -836,7 +842,7 @@ url_api = "https://api.github.com/repos/rvben/rumdl/releases/assets/532322359"
 provenance = "github-attestations"
 
 [[tools.rust]]
-version = "1.98.0"
+version = "1.98.1"
 backend = "core:rust"
 
 [[tools.shellcheck]]
@@ -846,14 +852,17 @@ backend = "aqua:koalaman/shellcheck"
 [tools.shellcheck."platforms.linux-arm64"]
 checksum = "sha256:12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588"
 url = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.aarch64.tar.xz"
+url_api = "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056934"
 
 [tools.shellcheck."platforms.linux-x64"]
 checksum = "sha256:8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
 url = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz"
+url_api = "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056942"
 
 [tools.shellcheck."platforms.macos-arm64"]
 checksum = "sha256:56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79"
 url = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.xz"
+url_api = "https://api.github.com/repos/koalaman/shellcheck/releases/assets/279056932"
 
 [[tools.shfmt]]
 version = "3.14.0"
