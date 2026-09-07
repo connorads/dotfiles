@@ -23,7 +23,7 @@ unset GIT_DIR GIT_WORK_TREE
 # Invariant: these roots are duplicated in hk.pkl's `ts-tests-scoped` glob - a
 # root here that hk doesn't glob is never reached at commit time, and a root hk
 # globs but this misses is a silent skip. gate-coverage.py asserts both.
-ROOTS="src/skl src/pin-audit src/annotate src/opencode-plugins .pi/agent/extensions"
+ROOTS="src/skl src/pin-audit src/annotate src/opencode-plugins .pi/agent/extensions .config/opencode"
 
 # Whether a tool can actually RUN, not merely resolve. `command -v` is not
 # enough: mise plants a shim on PATH for every tool in its registry, so the name
