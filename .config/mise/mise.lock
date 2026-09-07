@@ -631,6 +631,10 @@ backend = "npm:hunkdiff"
 version = "0.0.14"
 backend = "npm:obsidian-headless"
 
+[[tools."npm:oxlint-tsgolint"]]
+version = "7.0.2001"
+backend = "npm:oxlint-tsgolint"
+
 [[tools."npm:playwright"]]
 version = "1.62.1"
 backend = "npm:playwright"
