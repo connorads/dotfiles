@@ -105,12 +105,13 @@ PY
 # stamped at the same instant so nothing reads as stale, and every reset is
 # written as an absolute offset from it - so countdowns and wall clocks are
 # deterministic instead of depending on when the suite runs.
-PINNED_NOW=1767225600 # 2026-01-01T00:00:00Z
+PINNED_NOW=1767225600 # 2026-01-01T00:00:00Z, a Thursday
 write_pinned_claude_cache() {
-  local five_hour_secs="$1"
-  local seven_day_secs="$2"
+  local now="$1"
+  local five_hour_secs="$2"
+  local seven_day_secs="$3"
 
-  python3 - "$HOME" "$PINNED_NOW" "$five_hour_secs" "$seven_day_secs" <<'PY'
+  python3 - "$HOME" "$now" "$five_hour_secs" "$seven_day_secs" <<'PY'
 import json
 import os
 import sys
@@ -514,7 +515,7 @@ PY
 }
 
 @test "AI_USAGE_NOW pins the clock every countdown is derived from" {
-  write_pinned_claude_cache 7980 259200
+  write_pinned_claude_cache "$PINNED_NOW" 7980 259200
 
   AI_USAGE_NOW=$PINNED_NOW TZ=UTC run_zsh_function "$AI_USAGE" --fancy
 
@@ -525,6 +526,44 @@ PY
   [[ "$seven_day_row" == *"↻ 3d 0h"* ]]
   # Nothing reads as stale: the cache mtime is stamped at the pinned instant.
   [[ "$output" != *"cache stale"* ]]
+}
+
+@test "a wide box renders the wall clock beside the countdown" {
+  write_pinned_claude_cache "$PINNED_NOW" 7980 266400
+
+  COLUMNS=200 AI_USAGE_NOW=$PINNED_NOW TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  # Same local day: the time alone.
+  five_hour_row=$(printf '%s\n' "$output" | grep -a 'Claude.*5h' | head -n1)
+  [[ "$five_hour_row" == *"↻ 2h 13m · 02:13"* ]]
+  # Three days out: the weekday too, which is what a 7-day window needs.
+  seven_day_row=$(printf '%s\n' "$output" | grep -a 'Claude.*7d' | head -n1)
+  [[ "$seven_day_row" == *"↻ 3d 2h · Sun 02:00"* ]]
+}
+
+@test "a narrow box renders the countdown alone" {
+  write_pinned_claude_cache "$PINNED_NOW" 7980 266400
+
+  COLUMNS=80 AI_USAGE_NOW=$PINNED_NOW TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  five_hour_row=$(printf '%s\n' "$output" | grep -a 'Claude.*5h' | head -n1)
+  [[ "$five_hour_row" == *"↻ 2h 13m"* ]]
+  [[ "$five_hour_row" != *" · "* ]]
+}
+
+@test "a reset before local midnight takes the weekday form under 24h out" {
+  # 22:00 local, resetting three hours later - under a day away, but a
+  # different day, which the countdown alone cannot say.
+  local near_midnight=$((PINNED_NOW + 79200))
+  write_pinned_claude_cache "$near_midnight" 10800 266400
+
+  COLUMNS=200 AI_USAGE_NOW=$near_midnight TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  five_hour_row=$(printf '%s\n' "$output" | grep -a 'Claude.*5h' | head -n1)
+  [[ "$five_hour_row" == *"↻ 3h 0m · Fri 01:00"* ]]
 }
 
 @test "the alert slice drops the least severe, not the last collected" {
