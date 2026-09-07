@@ -57,7 +57,7 @@ Hard-coupled, staying put:
 | `.config/nix/{voxtap,biokc,imagepaste}` | `${../voxtap/main.swift}` is a flake-root-relative path literal; nix copies only the flake dir to the store |
 | `.hk-hooks` | `core.hooksPath` is set to `.hk-hooks` |
 | `.claude/hooks` | Six scripts named by absolute path in `.claude/settings.json` |
-| `.config/opencode/plugin` | Directory convention; `opencode.json`'s `plugin` array takes npm refs |
+| `.config/opencode/{plugin,plugins-v1,plugins-v2,plugin-disabled}` | `opencode.json`'s `plugin` array names each file by `file://` absolute path, so a moved file stops loading with no error. `.config/opencode/tsconfig.json` follows the code rather than the reverse: its `include` covers all four dirs |
 
 Moving code between these trees is only safe once `mise run gate-coverage` passes. hk steps key on hard-coded path prefixes and fail **open**: a glob matching nothing exits 0, so a missed gate stops enforcing silently rather than failing the commit. A new `src/` project needs the `ts-typecheck-*` step, the `ts-tests-scoped` glob *and* `ts-tests.sh`'s `ROOTS` (Python: `py-typecheck-*`, the `py-tests-scoped` glob *and* `py-tests.sh`'s `ROOTS`), the `bats-scoped` glob *and* a `bats-tests.sh` case arm if it has a bats suite, `mise` checks, and a `.gitignore` un-ignore block.
 
@@ -89,6 +89,8 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [.config/sbx/Dockerfile](./.config/sbx/Dockerfile)                     | Image for `sbx` ([zsh/functions/agents/sbx](./.config/zsh/functions/agents/sbx)): VM-isolated (colima) container for running UNTRUSTED software. Inverse of `agentbox` - no host mounts, cap-drop ALL, offline by default. Capable toolbox baked in (build/net/trace tools); no host dotfiles |
 | [.vale.ini](./.vale.ini)                                               | Vale config for the house prose rules. `StylesPath` resolves relative to the file, so `prose` applies it from any cwd; the work-tree root is `$HOME`, so Vale's search-up finds it globally too |
 | [.config/vale/styles/Connorads/](./.config/vale/styles/Connorads/)     | The house style: `Dashes` (the em/en dash ban), `PlainWord`, `Spellings`. Named `Connorads`, not `House`, so it cannot shadow the client repos' own `House` via the global styles dir. Every rule carries `level: error` - without it the rule is a silent no-op under `MinAlertLevel = error`. Tests: [vale-style.bats](./.config/zsh/tests/vale-style.bats) |
+| [.oxlintrc.json](./.oxlintrc.json)                                     | oxlint config; the only one in the tree, so it governs every oxlint run in the work-tree. Turns on the type-aware rules (`options.typeAware`) and exempts `node:test`'s own `test`/`it`/`describe` from `no-floating-promises` |
+| [.config/opencode/package.json](./.config/opencode/package.json)       | Authored by us, consumed by opencode (it runs `bun install` on the config dir at startup), so the path is the interface. Pairs with a `tsconfig.json` covering the four plugin dirs; typecheck-only, no `test` script |
 | [.npmrc](./.npmrc)                                                     | npm quarantine (`min-release-age`, in days), Git dependency block (`allow-git=none`); also read by Deno npm installs |
 | [.config/pnpm/config.yaml](./.config/pnpm/config.yaml)                 | pnpm 11 quarantine + trust-policy + ignore-scripts (YAML). macOS reads it via a nix-managed symlink at `~/Library/Preferences/pnpm/config.yaml` ([darwin-shared.nix](./.config/nix/modules/darwin-shared.nix)) |
 | [.bunfig.toml](./.bunfig.toml)                                         | bun quarantine (`minimumReleaseAge`, in seconds) for direct `bun` use. Must live at `$HOME` - XDG path is ignored on bun 1.3.14 (oven-sh/bun#26408) |
@@ -497,6 +499,8 @@ The block suppresses a repo's own `preinstall`/`install`/`postinstall` just as s
 
 **Detective layer (osv-scanner)**: every control above is *preventive* and *time-based* - they slow adoption so the community can flag a bad release, but nothing detects malware that already slipped through (the 2026 worm wave shipped packages with *valid* SLSA provenance). `osv-scanner` (mise: `aqua:google/osv-scanner`) closes that gap: `mise run supply-audit` scans the current project's lockfiles (npm, Cargo, uv, …) against the OSV `MAL-*`/vuln database. Run it in a project dir; wire it into CI for repos that matter. The sweep also runs automatically on every non-frozen `up` via `lockfile-audit` (`mise run lockfile-audit`), which scans every dotfiles-tracked lockfile *before any mutation*: a `MAL-*` advisory (id or alias) aborts the update with the tree still clean, ordinary CVEs print a table but never block (triage separately), and scanner errors/offline only warn - a detective control must not brick updates. `up --no-audit` is the escape hatch. Note osv-scanner cannot parse `mise.lock`/`flake.lock`; the tool bump itself stays covered by the preventive layer (quarantine + attestations + SLSA + aube's bloom check), so this is a re-check of project lockfiles against an ever-growing advisory DB, not a guard on the bump.
 
+**Version-coupled tool pairs**: `oxlint` and `npm:oxlint-tsgolint` are pinned separately, `up` bumps them separately, and tsgolint's version line tracks typescript-go rather than oxlint - oxlint 1.80.0 peers `oxlint-tsgolint >= 7.0.2001`, so the two majors will never agree and neither range constrains the other. A skew there does not fail loudly; it turns the type-aware rules off. `pin-audit` is the counterweight for the range-drift half of this, but the peer relationship itself is not machine-checked - check it by hand after either tool crosses a major.
+
 **Cargo/Rust**: the one ecosystem without a stable proactive age-gate, and `build.rs` runs arbitrary code at build with no global off-switch (unlike npm's `ignore-scripts`). Native `-Zmin-publish-age` / `registry.global-min-publish-age` is nightly-only as of Cargo 1.96; revisit once [cargo#17009](https://github.com/rust-lang/cargo/issues/17009) stabilises. For now the cover is reactive: `mise run supply-audit` (osv-scanner) flags known-bad `Cargo.lock` entries, with `cargo audit` / `cargo deny` available on demand (no fast prebuilt in the mise registry, so not pinned). Cargo CLIs built from source via Nix ([packages/terminal-control.nix](./.config/nix/packages/terminal-control.nix)) dodge the gap proactively: a pinned+hashed source rev is the checkpoint, so the derivation builds one vetted revision rather than re-resolving crates.io at build time.
 
 **Ruby / Bundler**: system Bundler 1.17.2 has no cooldown support. If Ruby work becomes active, install modern Ruby/Bundler and set `bundle config set --global cooldown 4`.
@@ -603,8 +607,9 @@ them may name a path on this machine - `~/git/<repo>`, `/Users/<user>/`;
 angle-bracket placeholders and the generic users me/you/alice/bob pass; a
 worked example is embedded, never pointed at),
 `oxlint`
-(first-party JS/TS, default correctness rules, `--deny-warnings`; vendored
-skills and eval-fixture/reference snippets excluded), `ruff-check` +
+(first-party JS/TS, correctness **and type-aware** rules, `--deny-warnings`;
+vendored skills and eval-fixture/reference snippets excluded - see the
+type-aware section below), `ruff-check` +
 `ruff-format` (first-party Python lint + format, rule set `E,F,UP,B,SIM,I,RUF`;
 config `.hk-hooks/ruff.toml` passed with `--config` so it gates without becoming
 the global XDG default; same vendored/fixture exclude set as oxlint;
@@ -636,13 +641,55 @@ touch; the shared `~/.hk-hooks/skill-tests.sh` warns and exits 0 when a
 runner is absent, and `mise run skill-checks` runs every suite across all
 tiers (private included).
 
-The `ts-typecheck-*` steps gate first-party TS projects (skl, pin-audit, pi
-goal / workflows / pi-palette / agent-guard, and the small pi extensions) with
+The `ts-typecheck-*` steps gate first-party TS projects (skl, pin-audit,
+annotate, opencode-plugins, `.config/opencode`, pi goal / workflows /
+pi-palette / agent-guard, and the small pi extensions) with
 the global `tsc` (typescript 7),
 glob-scoped so only staged-project changes pay the cost. The shared
 `~/.hk-hooks/ts-typecheck.sh` warns and exits 0 when a project's
 `node_modules` is absent (fresh/offline machines); `mise run ts-checks`
 installs deps and runs typecheck + tests across all of them.
+
+`.config/opencode` is a **typecheck-only bun project**, and the one whose
+manifest is also an interface: opencode's docs say to author a `package.json` in
+the config dir and that opencode runs `bun install` on it at startup, so the file
+is taken over rather than replaced (ADR 0006). Every `@opencode-ai/*` import
+across all six plugins is `import type`, so the deps are devDependencies and no
+plugin needs a package to run. It declares no `test` script, which is why
+`ts-tests.sh` skips it. Two SDK event surfaces matter when editing the plugins:
+the root `@opencode-ai/sdk` export is v1 and has no `permission.asked`,
+`question.*` or `global.disposed`, while `@opencode-ai/sdk/v2/types` has all of
+them. `plugin/*` deliberately handles names from both so it survives either
+opencode version, so its event parameters are typed as the union - narrowing to
+v1 alone turns every v2 case into a "no overlap" error, and deleting those cases
+breaks the plugin.
+
+Type-aware oxlint is configured in **`~/.oxlintrc.json`**, the tree's only
+oxlint config, which therefore governs every oxlint run in the work-tree
+(nested discovery stays on, so a per-project config would merge over it).
+`options.typeAware` is used rather than the `--type-aware` flag so the rules
+hold for the editor and for any wrapper that drops argv. The rules live in a
+separate binary oxlint shells out to - `npm:oxlint-tsgolint`, whose bin is named
+`tsgolint`, so `mise which oxlint-tsgolint` errors while `mise which tsgolint`
+resolves. oxlint and tsgolint are a **drift pair**: pinned independently, bumped
+independently by `up`, and tsgolint's version line tracks typescript-go rather
+than oxlint, so the majors never agree and a skew turns the rules off rather
+than failing loudly.
+
+A type-aware rule needs project membership and **degrades silently without it**:
+a file inside a tsconfig `include` catches an unawaited `writeFile()`, and the
+same file outside one misses it with no error and no warning. So the cost of an
+unrooted first-party dir is false negatives, which is why every first-party TS
+dir carries a tsconfig. `skills/**/*.mjs` stays unrooted (plain JS, where
+type-aware buys little) - and there the declaration-form JSDoc
+`/** @type {...} */` above a `const` is **ignored**, while the inline-cast form
+`= /** @type {...} */ (value)` is honoured. Use the inline form in any file that
+belongs to no tsconfig.
+
+`no-floating-promises` carries `allowForKnownSafeCalls` for `test`/`it`/
+`describe` from `node:test`: the runner awaits its own `test(...)` promise, and
+those calls were 192 of the 209 findings. The rule stays live inside test
+bodies, where an unawaited promise is a real bug.
 
 The `ts-tests-scoped` step runs those projects' test suites at commit time,
 via `~/.hk-hooks/ts-tests.sh`. It is one **discovering** step rather than one
