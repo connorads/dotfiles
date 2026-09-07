@@ -248,6 +248,13 @@ def as_pct(value):
         return None
 
 
+def remaining_secs(row):
+    # None when unknown; negative when the window has already ended. Callers that
+    # want a countdown clamp at the display edge - the row keeps the fact.
+    ts = row.get("reset_ts")
+    return None if ts is None else ts - NOW_TS
+
+
 def stale_after(window_secs):
     # How old a reading may get before we distrust it, scaled to the window it
     # describes: a 7d utilisation barely moves in a few hours, a 5h one does.
@@ -323,7 +330,7 @@ def pool_note(row):
         return "credits warm", "yellow"
     pace = row.get("pace_ratio")
     projected = row.get("projected_exhaustion")
-    remaining = row.get("remaining")
+    remaining = remaining_secs(row)
     if pace is not None and pace >= 1.2:
         colour_name = "red" if pace >= 1.4 else "yellow"
         if projected is not None and remaining is not None and projected < remaining:
@@ -338,7 +345,7 @@ def burn_note(row):
     if row.get("stale"):
         return "cache stale", "yellow"
     pct = float(row.get("pct") or 0)
-    remaining = row.get("remaining")
+    remaining = remaining_secs(row)
     window_secs = int(row.get("window_secs") or 0)
     if pct >= 100:
         return "limit now", "red"
@@ -365,7 +372,7 @@ def attach_row_metadata(row):
     if row.get("kind") == "pool":
         row["colour"] = pool_colour(row["pct"], row["stale"], row.get("pace_ratio"))
     else:
-        row["colour"] = usage_colour(row["pct"], row["remaining"], row["window_secs"], row["stale"])
+        row["colour"] = usage_colour(row["pct"], remaining_secs(row), row["window_secs"], row["stale"])
     note, note_colour = burn_note(row)
     row["note"] = note
     row["note_colour"] = note_colour
@@ -376,14 +383,18 @@ def attach_row_metadata(row):
     return row
 
 
-def make_window_row(provider, window, pct, remaining, window_secs, stale, provider_colour, source):
+def make_window_row(provider, window, pct, reset_ts, window_secs, stale, provider_colour, source):
+    # The row stores the provider's own absolute reset instant, not a clamped
+    # duration: the countdown, the wall clock and "this window already ended"
+    # then all derive from one fact.
+    remaining = None if reset_ts is None else reset_ts - NOW_TS
     ideal = ideal_pct(remaining, window_secs, stale)
     row = {
         "kind": "window",
         "provider": provider,
         "window": window,
         "pct": pct,
-        "remaining": remaining,
+        "reset_ts": reset_ts,
         "window_secs": window_secs,
         "stale": stale,
         "ideal_pct": ideal,
@@ -396,7 +407,7 @@ def make_window_row(provider, window, pct, remaining, window_secs, stale, provid
     return attach_row_metadata(row)
 
 
-def make_pool_row(provider, window, pct, remaining, stale, provider_colour, source, start_ts=None, reset_ts=None):
+def make_pool_row(provider, window, pct, stale, provider_colour, source, start_ts=None, reset_ts=None):
     ideal = None
     delta = None
     ratio = None
@@ -418,7 +429,7 @@ def make_pool_row(provider, window, pct, remaining, stale, provider_colour, sour
         "provider": provider,
         "window": window,
         "pct": pct,
-        "remaining": remaining,
+        "reset_ts": reset_ts,
         "window_secs": period_secs or 0,
         "stale": stale,
         "ideal_pct": ideal,
@@ -572,13 +583,11 @@ def collect_windows():
                 pct = as_pct(obj.get("utilization"))
                 if pct is None:
                     continue
-                reset = iso_ts(obj.get("resets_at"))
-                remaining = max(0, reset - NOW_TS) if reset else None
                 rows.append(make_window_row(
                     label[:7],
                     "5h" if key == "five_hour" else "7d",
                     pct,
-                    remaining,
+                    iso_ts(obj.get("resets_at")),
                     window_secs,
                     claude_age is not None and claude_age >= stale_after(window_secs),
                     "claude",
@@ -589,13 +598,11 @@ def collect_windows():
             sonnet = claude.get("seven_day_sonnet") or {}
             sonnet_pct = as_pct(sonnet.get("utilization"))
             if sonnet_pct is not None:
-                reset = iso_ts(sonnet.get("resets_at"))
-                remaining = max(0, reset - NOW_TS) if reset else None
                 rows.append(make_window_row(
                     label[:7],
                     "7d·S",
                     sonnet_pct,
-                    remaining,
+                    iso_ts(sonnet.get("resets_at")),
                     604800,
                     claude_age is not None and claude_age >= stale_after(604800),
                     "claude",
@@ -610,13 +617,11 @@ def collect_windows():
                 pct = as_pct(lim.get("percent"))
                 if not model or pct is None:
                     continue
-                reset = iso_ts(lim.get("resets_at"))
-                remaining = max(0, reset - NOW_TS) if reset else None
                 rows.append(make_window_row(
                     label[:7],
                     f"7d·{model[:1].upper()}",
                     pct,
-                    remaining,
+                    iso_ts(lim.get("resets_at")),
                     604800,
                     claude_age is not None and claude_age >= stale_after(604800),
                     "claude",
@@ -655,19 +660,29 @@ def collect_windows():
     codex = load_json(codex_path)
     codex_mt = mtime(codex_path)
     codex_age = NOW_TS - codex_mt if codex_mt else None
+    def codex_reset_ts(obj):
+        # The API's own absolute instant when it sends one; otherwise the
+        # relative countdown read against the cache file's mtime, which is when
+        # that countdown was true.
+        reset_at = as_pct(obj.get("reset_at"))
+        if reset_at:
+            return reset_at
+        reset_secs = as_pct(obj.get("reset_after_seconds"))
+        if reset_secs is None or not codex_mt:
+            return None
+        return codex_mt + reset_secs
+
     if codex:
         for win in classify_codex_windows(codex):
             window_secs = win.get("seconds")
             pct = as_pct(win.get("used_percent"))
             if window_secs is None or pct is None:
                 continue
-            reset_secs = as_pct(win.get("reset_after_seconds"))
-            remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
             rows.append(make_window_row(
                 "Codex",
                 window_label(window_secs),
                 pct,
-                remaining,
+                codex_reset_ts(win),
                 window_secs,
                 codex_age is not None and codex_age >= stale_after(window_secs),
                 "codex",
@@ -684,13 +699,11 @@ def collect_windows():
                 if pct is None:
                     continue
                 window_secs = int(obj.get("limit_window_seconds") or fallback_secs)
-                reset_secs = as_pct(obj.get("reset_after_seconds"))
-                remaining = max(0, reset_secs - (NOW_TS - codex_mt)) if reset_secs is not None and codex_mt else None
                 rows.append(make_window_row(
                     limit_name,
                     window_label(window_secs),
                     pct,
-                    remaining,
+                    codex_reset_ts(obj),
                     window_secs,
                     codex_age is not None and codex_age >= stale_after(window_secs),
                     "codex",
@@ -727,13 +740,20 @@ def collect_windows():
         total = as_pct(cosine.get("totalAvailableTokens"))
         start = iso_ts(cosine.get("billingPeriodStartsAt"))
         reset = iso_ts(cosine.get("billingPeriodResetsAt"))
-        if used is not None and total is not None and total > 0:
+        # An elapsed billing period is a representable state now, so say it
+        # rather than rendering a pool whose countdown reads 0m. The payload's
+        # canInference / trialExhausted / tokenBillingEnabled flags all still
+        # read healthy on a dead subscription, so the elapsed period is the only
+        # honest evidence.
+        if reset and reset <= NOW_TS:
+            ended = datetime.fromtimestamp(reset).date().isoformat()
+            alerts.append(("Cosine", f"billing period ended {ended}", "muted"))
+        elif used is not None and total is not None and total > 0:
             pct = used * 100 / total
             rows.append(make_pool_row(
                 "Cosine",
                 "mo",
                 pct,
-                max(0, reset - NOW_TS) if reset else None,
                 cosine_age is not None and cosine_age >= 900,
                 "cosine",
                 "cosine",
@@ -828,7 +848,7 @@ def collect_insights(rows):
     note_colour = bottleneck.get("note_colour") or burn_note(bottleneck)[1]
     lines = [(
         "Bottleneck",
-        f"{bottleneck['provider']} {bottleneck['window']} {bottleneck['pct']:.0f}% · ↻ {fmt_duration(bottleneck.get('remaining'))} · {note}",
+        f"{bottleneck['provider']} {bottleneck['window']} {bottleneck['pct']:.0f}% · ↻ {fmt_duration(remaining_secs(bottleneck))} · {note}",
         note_colour,
     )]
 
@@ -884,12 +904,12 @@ def render():
     if rows:
         for row in rows:
             pct = row["pct"]
-            colour = row.get("colour") or usage_colour(pct, row["remaining"], row["window_secs"], row["stale"])
+            colour = row.get("colour") or usage_colour(pct, remaining_secs(row), row["window_secs"], row["stale"])
             ideal = row.get("ideal_pct")
             delta = row.get("pace_delta")
             provider = c(row["provider_colour"], f"{row['provider']:<7}")
             window = c("muted", f"{row['window']:<4}")
-            reset = fmt_duration(row["remaining"])
+            reset = fmt_duration(remaining_secs(row))
             pct_text = c(colour, f"{pct:>3.0f}%")
             pace_part = f" {pace_delta_label(delta)}" if show_pace and delta is not None else ""
             content = f"{provider} {window} {bar(pct, bar_width, colour, row['stale'], ideal)} {pct_text}{pace_part}  {c('muted', '↻')} {reset}"

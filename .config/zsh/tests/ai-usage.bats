@@ -446,6 +446,51 @@ EOF
   [[ "$cosine_row" != *"┃"* ]]
 }
 
+@test "an elapsed Cosine billing period drops the row and states the fact" {
+  write_usage_caches
+  # A dead subscription: the period ended five weeks ago. The liveness flags all
+  # still read healthy, which is why the elapsed period is the only evidence.
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":170,"totalAvailableTokens":1000,"billingPeriodStartsAt":"2026-06-30T00:00:00Z","billingPeriodResetsAt":"2026-07-30T00:00:00Z","canInference":true,"trialExhausted":false,"tokenBillingEnabled":true}
+EOF
+
+  TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  # No pool row at all, so no phantom "↻ 0m".
+  [ -z "$(printf '%s\n' "$output" | grep -a 'Cosine.*mo.*%')" ]
+  [[ "$output" == *"Cosine"*"billing period ended 2026-07-30"* ]]
+  # And a dead 17% pool can no longer win Headroom.
+  [[ "$output" == *"Headroom"*"Spark 5h has 100% free"* ]]
+}
+
+@test "the alert slice drops a muted alert before a red one" {
+  write_usage_caches
+  cat >"$HOME/.cache/cosine-usage.json" <<'EOF'
+{"usedTokens":170,"totalAvailableTokens":1000,"billingPeriodResetsAt":"2026-07-30T00:00:00Z"}
+EOF
+  jq -n '{last_error:"auth_expired"}' >"$HOME/.cache/claude-usage.meta.json"
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1]) / ".cache/codex-usage.json"
+cache = json.loads(path.read_text())
+cache["rate_limit"]["limit_reached"] = True
+path.write_text(json.dumps(cache))
+PY
+  set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
+
+  TZ=UTC run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Limit"*"Codex limit reached"* ]]
+  [[ "$output" == *"Auth"*"Claude expired"* ]]
+  [[ "$output" == *"Stale"*"Claude cache"* ]]
+  [[ "$output" != *"billing period ended"* ]]
+}
+
 @test "fancy dashboard alerts when Cosine cache is stale" {
   write_usage_caches
   set_cache_age_hours "$HOME/.cache/cosine-usage.json" 1
