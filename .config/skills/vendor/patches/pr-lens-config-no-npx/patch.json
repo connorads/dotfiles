@@ -1,0 +1,6 @@
+{
+  "reason": "upstream config reference executes a mutable npm package; use the audited pinned CLI through pnpm.",
+  "files": [
+    ".agents/skills/pr-lens/references/config.md"
+  ]
+}
