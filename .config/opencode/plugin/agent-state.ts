@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
-import type { Event } from "@opencode-ai/sdk"
+import type { Event as EventV1 } from "@opencode-ai/sdk"
+import type { Event as EventV2 } from "@opencode-ai/sdk/v2/types"
 import { spawn } from "node:child_process"
 import { homedir } from "node:os"
 import { join } from "node:path"
@@ -25,6 +26,15 @@ import { join } from "node:path"
 // age the dot out from under in-flight work.
 
 type AgentState = "working" | "blocked" | "done" | "clear"
+
+// The switch below routes event names from both of opencode's event surfaces:
+// `permission.updated` and `session.idle` exist only in v1, while
+// `permission.asked`, `question.*` and `global.disposed` exist only in v2. Both
+// are published depending on the running opencode version, so the handler stays
+// tolerant of either and the type is the union of the two. Narrowing this to the
+// v1 `Event` alone makes every v2 case a "no overlap" comparison error, and
+// deleting those cases is what would actually break the plugin.
+type AnyEvent = EventV1 | EventV2
 
 const CONFIG_HOME = process.env.XDG_CONFIG_HOME || join(homedir(), ".config")
 const SCRIPT = join(CONFIG_HOME, "tmux", "scripts", "agent-state.sh")
@@ -114,7 +124,7 @@ export const AgentStatePlugin: Plugin = async () => {
       markBusy(input?.sessionID ?? "")
     },
 
-    event: async ({ event }: { event: Event }) => {
+    event: async ({ event }: { event: AnyEvent }) => {
       const properties = (event?.properties ?? {}) as {
         sessionID?: string
         status?: { type: "busy" | "idle" | "retry" }

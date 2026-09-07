@@ -1,13 +1,19 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import type {
-  Event,
+  Event as EventV1,
   EventSessionCreated,
   EventSessionUpdated,
   EventSessionIdle,
   EventSessionError,
+} from "@opencode-ai/sdk"
+// `permission.asked` and `question.asked` exist only in opencode's v2 event
+// surface, so their payload types come from the v2 subpath and the guard widens
+// its input to the union of both. Same reasoning as plugin/agent-state.ts.
+import type {
+  Event as EventV2,
   EventPermissionAsked,
   EventQuestionAsked,
-} from "@opencode-ai/sdk"
+} from "@opencode-ai/sdk/v2/types"
 
 type MacOSSound =
   | "Basso"
@@ -33,7 +39,7 @@ type SessionEvent =
 
 type NotifiableEvent = SessionEvent | EventPermissionAsked | EventQuestionAsked
 
-const isNotifiableEvent = (event: Event): event is NotifiableEvent =>
+const isNotifiableEvent = (event: EventV1 | EventV2): event is NotifiableEvent =>
   event.type === "session.created" ||
   event.type === "session.updated" ||
   event.type === "session.idle" ||
@@ -64,11 +70,11 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
     const { questions, sessionID } = event.properties
     const label = formatSessionLabel(sessionID)
 
-    if (questions.length === 0) {
+    const [firstQuestion] = questions
+    if (!firstQuestion) {
       return `Question asked: ${label}`
     }
 
-    const [firstQuestion] = questions
     const header = firstQuestion.header.trim()
     const summary = header
       ? `${header} — ${firstQuestion.question}`
@@ -121,7 +127,10 @@ export const NotificationPlugin: Plugin = async ({ $, client }) => {
   }
 
   return {
-    event: async ({ event }) => {
+    // Annotated wider than the hook's own v1 `Event`: the guard narrows against
+    // the declared type, so a v1-only parameter drops the v2 members and leaves
+    // the permission/question branches below narrowed to `never`.
+    event: async ({ event }: { event: EventV1 | EventV2 }) => {
       if (!isNotifiableEvent(event)) {
         return
       }

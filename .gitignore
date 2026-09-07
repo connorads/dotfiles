@@ -85,6 +85,9 @@
 !/.config/opencode/plugin-disabled/**
 !/.config/opencode/opencode2.json
 !/.config/opencode/opencode2-yolo.json
+!/.config/opencode/package.json
+!/.config/opencode/tsconfig.json
+!/.config/opencode/bun.lock
 
 # skl config only; the implementation lives in /src/skl (docs/adr/0006)
 !/.config/skl/
