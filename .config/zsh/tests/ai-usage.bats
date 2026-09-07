@@ -435,6 +435,39 @@ EOF
   [[ "$output" == *"Auth"*"Claude expired"* ]]
 }
 
+@test "the alert slice drops the least severe, not the last collected" {
+  write_usage_caches
+  # Four alerts, the red collected last: Auth + Extra + Stale (yellow, Claude)
+  # then Limit (red, Codex). Unranked, the red is the one the [:3] slice drops.
+  jq -n '{last_error:"auth_expired"}' >"$HOME/.cache/claude-usage.meta.json"
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+cache_dir = Path(sys.argv[1]) / ".cache"
+claude = cache_dir / "claude-usage.json"
+cache = json.loads(claude.read_text())
+cache["extra_usage"] = {"is_enabled": True, "monthly_limit": 5000, "used_credits": 1200}
+claude.write_text(json.dumps(cache))
+
+codex = cache_dir / "codex-usage.json"
+cache = json.loads(codex.read_text())
+cache["rate_limit"]["limit_reached"] = True
+codex.write_text(json.dumps(cache))
+PY
+  set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Limit"*"Codex limit reached"* ]]
+  [[ "$output" == *"Auth"*"Claude expired"* ]]
+  [[ "$output" == *"Extra"*"Claude"*"enabled"* ]]
+  # The dropped one is the last yellow, not the red.
+  [[ "$output" != *"Stale"* ]]
+}
+
 @test "codex reset credits report how many are usable right now" {
   write_usage_caches
   set_codex_reset_credits 3 0
