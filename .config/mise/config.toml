@@ -3,25 +3,17 @@ experimental = true
 npm.package_manager = "aube"
 # `mise run` must not converge the global toolset as a side effect: a stale
 # mise.lock (pulled from another machine) otherwise blocks every task on
-# registry access, which hard-fails in sandboxed agent sessions (aube does
-# its own DNS over UDP:53, which the sandbox denies). Tasks run with the
-# tools already installed; provisioning stays with `up` / `mise install`.
+# registry access, which hard-fails in sandboxed agent sessions (aube's own DNS
+# over UDP:53 is denied there). Provisioning stays with `up` / `mise install`.
 task.run_auto_install = false
 # Prefer prebuilt binaries; compile-from-source fails on NixOS (no FHS toolchain)
 node.compile = false
 python.compile = false
-# Supply chain security: only install versions released 4+ days ago.
 minimum_release_age = "4d"
 minimum_release_age_excludes = ["claude", "codex", "amp"]
 github_attestations = true
 slsa = true
-# Re-verify SLSA/attestations at install time even when the lockfile already
-# has a checksum (otherwise verification is skipped on lockfile hits).
 locked_verify_provenance = true
-# Pin exact versions + checksums across platforms (the mise analogue of
-# flake.lock). lockfile_platforms records checksums for machines we don't
-# build on (current platform is always added regardless); other-platform
-# checksums come from registry metadata, no downloads.
 lockfile = true
 lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]
 
@@ -43,60 +35,33 @@ shellcheck = "0.11"
 bats = "1"
 rumdl = "0.2"
 gitleaks = "8"
-# oxlint: first-party JS/TS lint for the hk pipeline - default correctness
-# rules only, no type-aware rules (several first-party dirs lack tsconfigs).
 oxlint = "1"
-# ruff: first-party Python lint + format gate (hk ruff-check/ruff-format +
-# `mise run py-checks`). Registry-backed (aqua:astral-sh/ruff) so it carries
-# native attestation/checksums. Config: .hk-hooks/ruff.toml, passed with
-# --config so it stays a gate config, not the global XDG default.
 ruff = "0.16"
-# typos: spell gate for the hk pipeline (default locale - both en variants
-# pass, only genuine misspellings flag). Config: ~/.typos.toml.
 typos = "1"
-# vale: house prose gate for the hk pipeline and the `prose` command. Config
-# ~/.vale.ini, style .config/vale/styles/Connorads. No `Packages` key, so the
-# gate never needs `vale sync` and stays offline at commit time.
 vale = "3"
-# lychee: link checker for the hk `link-check` step. Runs --offline, so it
-# resolves relative paths and heading anchors against the tree and makes no
-# network call at commit time (same posture as zizmor below). File list and
-# exclusions live in .hk-hooks/link-check.sh, not here.
 lychee = "0.24"
-# actionlint + zizmor: GitHub workflow lint + security audit for the hk
-# pipeline (zizmor runs --offline in the hook; no network at commit time).
 actionlint = "1"
 zizmor = "1"
-# ast-grep: structural lint for the bats suite - the `bats-lint` hk step's two
-# rules (.hk-hooks/bats-lint/) block a fixed sleep used as synchronisation and
-# the multi-line `bash -c '...'` blob that would hide one. See docs/adr/0004.
+# Powers the hk `bats-lint` step's rules (.hk-hooks/bats-lint/, docs/adr/0004).
 ast-grep = "0.45"
-# 580+ needs Python >= 3.10 *to install*: the bundled urllib3 uses PEP 604
-# `bytes | str` at import time, and the vfox plugin's install script picks
-# /usr/bin/python3 (3.9.6 on macOS) over mise's own python. Every install runs
-# that script, so each new release breaks `up` here, not just a first install;
-# it fails with `TypeError: unsupported operand type(s) for |`. Recover with
-#   CLOUDSDK_PYTHON="$(mise which python)" mise upgrade gcloud
-# Deliberately not in [env]: gcloud ships its own interpreter and reports
-# `bundled-python3-unix` at runtime, so pinning CLOUDSDK_PYTHON globally would
-# override the interpreter it is actually tested against.
+# Every install runs the vfox plugin's install script, which picks
+# /usr/bin/python3 (3.9.6 on macOS) over mise's python; 580+ needs >= 3.10 to
+# install, so each release breaks `up` with `unsupported operand type(s) for |`.
+# Recover with: CLOUDSDK_PYTHON="$(mise which python)" mise upgrade gcloud
+# Not in [env]: gcloud ships its own interpreter (`bundled-python3-unix`) at
+# runtime, and a global CLOUDSDK_PYTHON would override the tested one.
 gcloud = "latest"
 aws = "2"
 codex = "latest"
 usage = "5"
 hcloud = "1"
 deno = "2"
-# Doc conversion: pandoc handles structured formats (EPUB/HTML/DOCX -> md);
-# companion to docling/markitdown below. Registry-backed (github:jgm/pandoc).
 pandoc = "3"
-# postinstall reapplies the --channels (master gate + allowlist), computer-use,
-# and session-reaper binary patches to each freshly installed bundle
-# (claude = "latest" drops an unpatched build on every update), then runs
-# claude-commit-note-check: a read-only guard that verifies the built-in
-# Bash-tool git note the ~/.claude/system-append.md override countermands still
-# exists. Each warns + drops a marker but exits 0 on a missing needle, so an
-# update is never blocked; chained with ; so later steps still run if an earlier
-# one warns.
+# `latest` drops an unpatched bundle on every update, so postinstall reapplies
+# the binary patches, then checks the built-in Bash-tool git note that
+# ~/.claude/system-append.md countermands still exists. Each step warns and
+# drops a marker but exits 0 on a missing needle, so an update never blocks;
+# chained with `;` so a warning doesn't skip the rest.
 claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-channels-allowlist-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 fnox = "1"
 
@@ -131,10 +96,9 @@ fnox = "1"
 # Nothing upstream is attested, so the quarantine is the only control here.
 "github:redhat-et/ripwire" = "0"
 
-# OS-level sandbox runtime (srt) wrapping CLI agents via agent-sandbox. Exact
-# pin: config schema is pre-1.0 and churns; the validate-before-mv render + the
-# policy pre-check in the dispatcher contain a breaking change. macOS runtime
-# dep: ripgrep (nix-provided). No install scripts (no aube allowlist needed).
+# srt, wrapping CLI agents via agent-sandbox. Exact pin: the config schema is
+# pre-1.0 and churns, and agent-sandbox's render + policy pre-check contain the
+# breaking changes. macOS runtime dep: ripgrep (nix-provided).
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "npm:@elevenlabs/cli" = "0"
 "npm:@kitlangton/ghui" = "latest"
@@ -142,19 +106,13 @@ fnox = "1"
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
 "npm:@playwright/cli" = "0"
-# TypeScript 7 (Go-native tsc) for first-party TS typecheck steps
-# (hk ts-typecheck-* + `mise run ts-checks`).
 "npm:typescript" = "7"
-# Local hybrid search (FTS + vector + rerank) over the kb Obsidian vault; also
-# pinned in ~/git/kb/mise.toml so the repo documents its own dependency.
-# aube blocks dependency build scripts by default, and qmd needs native ones:
-# better-sqlite3 compiles its addon, node-llama-cpp and the tree-sitter grammars
-# fetch or build theirs. `allow_builds` names the reviewed set; mise passes it to
-# the embedded aube, which walks the whole resolved graph and matches on package
-# name, so these reach qmd's transitive deps and run during `mise install`.
-# qmd itself needs no entry - it declares only `prepare`, which never runs for a
-# dependency. The list is explicit, so a native dep added by a future qmd bump
-# will not build until it is named here; `qmd doctor` is what reports that.
+# Also pinned in ~/git/kb/mise.toml so that repo documents its own dependency.
+# aube blocks dependency build scripts by default and qmd's native deps need
+# them; `allow_builds` names the reviewed set, matched against the whole
+# resolved graph. The list is explicit, so a native dep added by a future bump
+# will not build until named here - `qmd doctor` reports that. qmd itself needs
+# no entry: it declares only `prepare`, which never runs for a dependency.
 "npm:@tobilu/qmd" = { version = "2", allow_builds = [
   "better-sqlite3",
   "node-llama-cpp",
@@ -186,26 +144,21 @@ fnox = "1"
 "npm:skills" = "1"
 "npm:svgo" = "4"
 "npm:vercel" = "latest"
-# WebGPU doc browser (`vgpu docs`). The corpus is compiled into the package
-# (lib/docs imports a generated manifest), so this global serves ITS OWN pinned
-# docs - inside a repo that depends on vgpu, `pnpm exec vgpu` is the version-
-# matched one. Range "0" not "0.3": the payload is documentation, so newest is
-# always wanted and a 0.x minor is not a breaking change to anything here.
+# The doc corpus is compiled into the package, so this global serves its own
+# pinned docs - in a repo depending on vgpu, `pnpm exec vgpu` is the matched
+# one. Range "0" not "0.3": the payload is docs, so newest is always wanted.
 "npm:vgpu" = "0"
 "npm:wrangler" = "4"
 
 "pipx:batrachian-toad" = "0"
-# Tau docs install with `uv tool install tau-ai`; mise's pipx backend uses uv
-# when available and forwards minimum_release_age to uv's exclude-newer guard.
 "pipx:tau-ai" = "0"
 # extras: the document/media set. NOT "all" — that drags in az-doc-intel /
 # azure-ai-contentunderstanding which only ships as a pre-release, so the
 # resolver fails closed (no pre-releases enabled).
 "pipx:markitdown" = { version = "0", extras = "pdf,docx,pptx,xlsx,xls,outlook,audio-transcription,youtube-transcription" }
-# Better PDF->md engine than markitdown's pdfminer extra (layout/tables/OCR).
-# Pulls a torch closure; kept in pipx (not nix) so it stays off the system
-# profile. Downloads layout models at first run. For gnarly academic PDFs that
-# docling can't handle, reach for `uvx --from mineru mineru ...` on demand.
+# Better PDF->md than markitdown's pdfminer extra. Pulls a torch closure, so
+# kept in pipx (not nix) to stay off the system profile; downloads layout models
+# at first run. For PDFs it can't handle: `uvx --from mineru mineru ...`.
 "pipx:docling" = "2"
 # Pinned <2.0.70: rembg 2.0.70+ hard-pins numpy>=2.3, but its transitive
 # numba/llvmlite chain can't go that high, forcing the resolver onto ancient
@@ -214,11 +167,8 @@ fnox = "1"
 # numba 0.65.1 / llvmlite 0.47.0 stack (builds on 3.13/3.14). See upstream
 # danielgatis/rembg: numpy floor bump broke the numba dep chain.
 "pipx:rembg" = { version = "2.0.69", extras = "cli,cpu", uvx_args = "--with numpy<2.3" }
+# ty is for editor/LSP use; pyrefly owns the hk typecheck gate.
 "pipx:ty" = "0"
-# pyrefly: first-party Python typecheck gate (hk py-typecheck-*), scoped to the
-# two green hook dirs. No aqua registry entry, so pipx backend (mirrors pipx:ty)
-# - weaker provenance than aqua, but forwards minimum_release_age to uv's
-# --exclude-newer. ty above is kept for editor/LSP use; pyrefly owns the gate.
 "pipx:pyrefly" = "1"
 
 # Cargo tools (Rust): think twice before adding; builds are slow.
@@ -239,9 +189,8 @@ env = { BATS_PARALLEL_BINARY_NAME = "rush" }
 run = "cd \"$HOME\" && bats -j \"$(sysctl -n hw.logicalcpu 2>/dev/null || nproc)\" --no-parallelize-within-files --filter-tags '!integration' --recursive .config/zsh/tests"
 
 # Ordinary green is not evidence for a de-flake: a timing race passes on an idle
-# machine by definition. This runs the real pre-push gate repeatedly and reports
-# anything short of 100% stable, which is the only signal that says the class is
-# gone rather than dormant. Runs ~2min per iteration - background it.
+# machine by definition. Only 100% stable over N runs says the class is gone
+# rather than dormant. ~2min per iteration - background it.
 #   RUNS=10 mise run zsh-tests-stress
 [tasks.zsh-tests-stress]
 description = "Run the full BATS suite N times (RUNS, default 10) and report any non-deterministic file"
