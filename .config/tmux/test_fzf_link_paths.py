@@ -224,19 +224,48 @@ def test_interior_dot_segments_are_normalised_away(tree: Path) -> None:
 
 
 def test_the_first_match_of_a_file_is_the_row_it_gets() -> None:
-    assert core.claim(Path("/repo/a.png"), None) is True
-    assert core.claim(Path("/repo/a.png"), None) is False
+    assert core.claim(Path("/repo/a.png"), None, 40) is True
+    assert core.claim(Path("/repo/a.png"), None, 40) is False
 
 
 def test_two_line_numbers_in_one_file_stay_two_rows() -> None:
-    assert core.claim(Path("/repo/a.ts"), "10") is True
-    assert core.claim(Path("/repo/a.ts"), "42") is True
-    assert core.claim(Path("/repo/a.ts"), "42") is False
+    assert core.claim(Path("/repo/a.ts"), "10", 40) is True
+    assert core.claim(Path("/repo/a.ts"), "42", 40) is True
+    assert core.claim(Path("/repo/a.ts"), "42", 40) is False
 
 
 def test_two_files_do_not_collide() -> None:
-    assert core.claim(Path("/repo/a.png"), None) is True
-    assert core.claim(Path("/repo/b.png"), None) is True
+    assert core.claim(Path("/repo/a.png"), None, 40) is True
+    assert core.claim(Path("/repo/b.png"), None, 40) is True
+
+
+def test_rows_stop_being_claimed_once_the_budget_is_spent() -> None:
+    """Past the budget the popup command crosses tmux's 16KB limit and the
+    plugin blocks forever on a FIFO, wedging the server - so a refused row is
+    the safe answer, not a lost one."""
+    cost = 100
+    fit = core.ROW_BUDGET // cost
+    for i in range(fit):
+        assert core.claim(Path(f"/repo/{i}.ts"), None, cost) is True
+    assert core.claim(Path("/repo/one-too-many.ts"), None, cost) is False
+
+
+def test_a_refused_row_does_not_spend_the_budget() -> None:
+    assert core.claim(Path("/repo/huge.ts"), None, core.ROW_BUDGET + 1) is False
+    assert core.claim(Path("/repo/a.ts"), None, 40) is True
+
+
+def test_the_budget_is_refunded_by_a_reset() -> None:
+    assert core.claim(Path("/repo/a.ts"), None, core.ROW_BUDGET) is True
+    assert core.claim(Path("/repo/b.ts"), None, 40) is False
+    core.reset_claims()
+    assert core.claim(Path("/repo/b.ts"), None, 40) is True
+
+
+def test_the_budget_leaves_room_for_the_rest_of_the_popup_command() -> None:
+    """tmux refuses a command over ~16KB and the plugin then hangs, so our
+    share has to leave the scaffolding and the other schemes' rows room."""
+    assert core.ROW_BUDGET + 8000 < 16384
 
 
 # --------------------------------------------------------------------------
@@ -294,6 +323,30 @@ def test_the_pane_cwd_itself_displays_as_the_directory_it_names() -> None:
 
 def test_the_home_directory_displays_as_a_tilde() -> None:
     assert core.display_for(Path("/home/me"), cwd=CWD, home=Path("/home/me")) == "~"
+
+
+def test_a_repo_root_match_displays_gits_own_repo_relative_spelling() -> None:
+    """`:/src/a.ts` says why the path resolved, and is far shorter than the
+    absolute path - which matters because every row byte goes into a command
+    tmux refuses over 16KB."""
+    assert (
+        core.display_for(Path("/repo/src/a.ts"), cwd=CWD, repo_root=REPO, home=Path("/home/me"))
+        == ":/src/a.ts"
+    )
+
+
+def test_the_pane_cwd_still_beats_the_repo_root_in_the_row_text() -> None:
+    assert (
+        core.display_for(Path("/repo/sub/a.ts"), cwd=CWD, repo_root=REPO, home=Path("/home/me"))
+        == "a.ts"
+    )
+
+
+def test_a_path_outside_both_falls_back_to_the_home_shortened_form() -> None:
+    assert (
+        core.display_for(Path("/home/me/x/a.ts"), cwd=CWD, repo_root=REPO, home=Path("/home/me"))
+        == "~/x/a.ts"
+    )
 
 
 def test_a_line_number_is_part_of_the_row_text() -> None:

@@ -75,6 +75,13 @@ IMAGE_SUFFIXES: frozenset[str] = frozenset(
 
 Kind = Literal["image", "folder", "path"]
 
+# What the plugin adds around a row's text: `NNNN - [tag]  - `, a newline, and
+# - when colours are on - six SGR sequences around the index, dashes and tag.
+# Measured at 56 bytes/row coloured and 20 plain over a real 166-row capture.
+# They dominate the popup command, so the budget has to count them.
+ROW_OVERHEAD_COLOURED = 56
+ROW_OVERHEAD_PLAIN = 20
+
 _SPACE_RUN = re.compile(r" +")
 
 
@@ -167,11 +174,29 @@ def resolve(text: str, *, cwd: Path, repo_root: Path | None) -> Path | None:
     return None
 
 
+# Bytes of rendered rows our schemes may claim in one run. The plugin puts
+# every row inside the `tmux popup -E <command>` argument, and tmux refuses any
+# command over MAX_IMSGSIZE - measured on 3.7b as a cliff between 16000 and
+# 16400 bytes, reported as `command too long`. `run_fzf` then blocks forever
+# opening a FIFO the popup will never write, and because the key is a
+# **foreground** `run-shell`, tmux queues the client's keys and clicks behind
+# that job: the terminal looks dead and has to be killed. So a row budget is
+# not tidiness, it is the difference between a truncated picker and a wedged
+# server. The remainder of the 16KB is left for the command scaffolding and for
+# the default schemes' own rows (urls, git, hyperlinks), which we cannot see
+# from here - they are merged after ours, and are themselves unbounded, so this
+# bounds our contribution rather than guaranteeing the total. Measured on the
+# pane that wedged: stock schemes over 2000 lines of scrollback build 21244
+# bytes; ours build 13.6KB at this budget, and 1.6KB at the visible-screen
+# `@fzf-links-history-lines 0` the tmux.conf now sets.
+ROW_BUDGET = 7000
+
 _claimed: set[tuple[Path, str | None]] = set()
+_spent = 0
 
 
-def claim(path: Path, line: str | None) -> bool:
-    """Whether this match is the one row `path` gets, mutating what is claimed.
+def claim(path: Path, line: str | None, cost: int) -> bool:
+    """Whether this match is the one row `path` gets, and whether it fits.
 
     One file can be on a pane several times and in several forms - written
     absolutely in one line and relatively in another - and every form resolves
@@ -180,17 +205,30 @@ def claim(path: Path, line: str | None) -> bool:
 
     Keyed on the line number as well, so `src/a.ts:10` and `src/a.ts:42` stay
     two rows: jumping to the line is the point of matching it.
+
+    `cost` is what the row will add to the popup command, so the caller owns
+    the per-row overhead (the plugin's numbered prefix and colour codes) and
+    this owns the budget. Past `ROW_BUDGET` a claim is refused: a picker
+    missing its tail beats a tmux the user has to kill. The budget is sized so
+    it only bites on a pane far denser than one screen - keep
+    `@fzf-links-history-lines` small and it stays theoretical.
     """
+    global _spent  # noqa: PLW0603
     key = (path, line)
     if key in _claimed:
         return False
+    if _spent + cost > ROW_BUDGET:
+        return False
     _claimed.add(key)
+    _spent += cost
     return True
 
 
 def reset_claims() -> None:
-    """Forget every claim. For tests; a picker run is one process."""
+    """Forget every claim and refund the budget. A picker run is one process."""
+    global _spent  # noqa: PLW0603
     _claimed.clear()
+    _spent = 0
 
 
 def kind_for(path: Path, *, is_dir: bool) -> Kind:
@@ -206,14 +244,26 @@ def kind_for(path: Path, *, is_dir: bool) -> Kind:
     return "path"
 
 
-def display_for(path: Path, *, cwd: Path, line: str | None = None, home: Path | None = None) -> str:
+def display_for(
+    path: Path,
+    *,
+    cwd: Path,
+    line: str | None = None,
+    repo_root: Path | None = None,
+    home: Path | None = None,
+) -> str:
     """How `path` should read in the picker.
 
     The resolved path, not the matched text: a row built from a spaced match
     would otherwise show the pane chrome it was glued to, and a repository-root
-    match would show a path that does not exist relative to the pane. Shortened
-    against the pane's cwd and then the home directory, so the common case is
-    the text that was on screen anyway.
+    match would show a path that does not exist relative to the pane.
+
+    Shortened against the pane's cwd, then the repository root (as `:/src/a.ts`
+    - git's own spelling for repo-root-relative, so the row says *why* it
+    resolved), then the home directory. Shortening is not only for reading:
+    every byte of every row goes into the popup command, which tmux refuses
+    over 16KB, so a long row spends a budget shared with all the others (see
+    `claim`).
 
     `line` is carried into the text because it is carried into the row's
     identity (see `claim`): compiler output naming one file at ten lines is ten
@@ -229,6 +279,11 @@ def display_for(path: Path, *, cwd: Path, line: str | None = None, home: Path | 
         # directory the pane text actually named.
         try:
             return f"{path.relative_to(cwd)}{suffix}"
+        except ValueError:
+            pass
+    if repo_root is not None and repo_root != cwd:
+        try:
+            return f":/{path.relative_to(repo_root)}{suffix}"
         except ValueError:
             pass
     try:
@@ -250,6 +305,9 @@ def cd_command(path: Path) -> tuple[str, ...]:
 __all__ = [
     "IMAGE_SUFFIXES",
     "PATH_REGEXES",
+    "ROW_BUDGET",
+    "ROW_OVERHEAD_COLOURED",
+    "ROW_OVERHEAD_PLAIN",
     "Kind",
     "candidates",
     "cd_command",

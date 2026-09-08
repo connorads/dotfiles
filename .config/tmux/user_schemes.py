@@ -129,12 +129,15 @@ def _scheme(
         if path is None or core.kind_for(path, is_dir=path.is_dir()) != kind:
             return None
         line = match.group("line")
-        # Claimed after the kind check, so a scheme only ever claims its own.
-        if not core.claim(path, line):
-            return None
-        display_text = core.display_for(path, cwd=_cwd(), line=line)
+        display_text = core.display_for(path, cwd=_cwd(), line=line, repo_root=_repo_root())
         if colors.enabled:
             display_text = f"\033[{colors.get_file_color(path)}m{display_text}\033[0m"
+        # Claimed after the kind check, so a scheme only ever claims its own,
+        # and after the text is final, so the budget counts what the popup
+        # command will really carry - see `claim` for what overruns it.
+        overhead = core.ROW_OVERHEAD_COLOURED if colors.enabled else core.ROW_OVERHEAD_PLAIN
+        if not core.claim(path, line, len(display_text.encode()) + overhead):
+            return None
         return {"display_text": display_text, "tag": kind}
 
     return {
