@@ -184,9 +184,11 @@ def test_every_kind_of_path_gets_exactly_one_row(
             ("image", "walkies/.dream-loop/target.png"),
             # A path with spaces, which the token regexes cannot see at all.
             ("image", "walkies/my image.png"),
-            # Repo-root-relative, resolved from a subdirectory pane.
-            ("path", f"{tree}/src/index.ts:42"),
-            ("path", f"{tree}/archive.zip"),
+            # Repo-root-relative, resolved from a subdirectory pane, and shown
+            # in git's own repo-relative spelling rather than as a long
+            # absolute path - every row byte goes into the popup command.
+            ("path", ":/src/index.ts:42"),
+            ("path", ":/archive.zip"),
             ("folder", "notes"),
         ]
     )
@@ -214,7 +216,7 @@ def test_an_image_is_handed_to_the_system_opener(
 def test_a_source_file_is_handed_to_the_editor_with_its_line(
     merged: list[Any], adapter: ModuleType, tree: Path
 ) -> None:
-    scheme, match = _match_for(CONTENT, merged, adapter, "path", f"{tree}/src/index.ts:42")
+    scheme, match = _match_for(CONTENT, merged, adapter, "path", ":/src/index.ts:42")
     from tmux_fzf_links.opener import OpenerType
 
     assert scheme["opener"] == OpenerType.EDITOR
@@ -227,7 +229,7 @@ def test_a_binary_is_refused_by_the_editor_rather_than_opened_in_it(
     """The default file scheme hand-rolled its editor templating under
     CUSTOM_OPEN, so upstream's binary check never ran and a picked `.zip`
     really did open in nvim."""
-    scheme, match = _match_for(CONTENT, merged, adapter, "path", f"{tree}/archive.zip")
+    scheme, match = _match_for(CONTENT, merged, adapter, "path", ":/archive.zip")
     from tmux_fzf_links.errors_types import BinaryFileSelected
     from tmux_fzf_links.opener import open_link
 
@@ -244,3 +246,70 @@ def test_a_folder_walks_the_pane_shell_into_it(
         "args": ["send-keys", f"cd {tree}/sub/notes", "C-m"],
         "file": f"{tree}/sub/notes",
     }
+
+
+# --------------------------------------------------------------------------
+# the wedge: a popup command tmux refuses hangs the plugin forever
+# --------------------------------------------------------------------------
+
+# tmux refuses any command over MAX_IMSGSIZE with `command too long`. Measured
+# on 3.7b: 16000 bytes goes through, 17000 does not.
+TMUX_COMMAND_LIMIT = 16384
+
+
+def _colors() -> Any:
+    """Imported lazily like every other plugin symbol here, so collection works
+    with no checkout."""
+    from tmux_fzf_links.colors import colors
+
+    return colors
+
+
+def _popup_command_length(rows: list[tuple[str, str]]) -> int:
+    """How long the command `run_fzf` hands to `tmux popup -E` would be.
+
+    Mirrors `fzf_handler.run_fzf` and `__main__.run`: every row, with its
+    numbered and coloured prefix, is embedded in a single tmux command. A
+    change to either shape here is a change to the budget's arithmetic.
+    """
+    colors = _colors()
+    width = max((len(tag) for tag, _ in rows), default=0)
+    numbered = [
+        f"{colors.index_color}{idx:4d}{colors.reset_color} "
+        f"{colors.dash_color}-{colors.reset_color} "
+        f"{colors.tag_color}{('[' + tag + ']').ljust(width + 2)}{colors.reset_color} "
+        f"{colors.dash_color}-{colors.reset_color} {text}"
+        for idx, (tag, text) in enumerate(rows, 1)
+    ]
+    scaffolding = 600  # `tmux popup -E`, geometry, fzf args, header, FIFO paths
+    return scaffolding + len("\n".join(numbered))
+
+
+@pytest.fixture
+def dense(tree: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """A pane full of paths - the shape that wedged tmux on a codex pane."""
+    listing = tree / "many"
+    listing.mkdir()
+    for i in range(500):
+        (listing / f"module-with-a-realistic-name-{i:03d}.ts").write_text("x\n")
+    monkeypatch.setattr(_colors(), "enabled", True)
+    return "\n".join(f"many/{p.name}" for p in sorted(listing.iterdir())) + "\n"
+
+
+def test_a_pane_full_of_paths_cannot_wedge_tmux(
+    merged: list[Any], adapter: ModuleType, dense: str
+) -> None:
+    """500 paths on screen used to build a ~40KB command; tmux refuses it,
+    `run_fzf` then blocks forever on a FIFO nothing writes, and the foreground
+    `run-shell` binding queues every key - a terminal you have to kill."""
+    rows = _rows(dense, merged, adapter)
+    assert _popup_command_length(rows) < TMUX_COMMAND_LIMIT
+
+
+def test_the_budget_is_what_stops_it_and_it_does_drop_rows(
+    merged: list[Any], adapter: ModuleType, dense: str
+) -> None:
+    """Named so the trade is explicit: past the budget a path on screen gets no
+    row. That is the price of the picker opening at all."""
+    rows = _rows(dense, merged, adapter)
+    assert 0 < len(rows) < 500

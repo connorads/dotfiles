@@ -1531,6 +1531,50 @@ Findings that are load-bearing, not tidiness:
   wrong file. Only `cd_command`, which is ours, quotes properly. Fixing it means
   a CUSTOM_OPEN scheme with an explicit argv.
 
+### Too many rows wedges the tmux server
+
+**This is the failure mode to know about, because it looks like tmux has died.**
+Measured end to end on a throwaway server, and reproduced with the stock schemes
+too - it is upstream's, not ours:
+
+1. `run_fzf` embeds **every row** in the argument of one `tmux popup -E`
+   command, as `echo "<all rows>" | fzf …`.
+2. tmux refuses any command over `MAX_IMSGSIZE`, printing `command too long`.
+   The cliff sits between 16000 and 16400 bytes on 3.7b, so the popup never
+   starts and never runs its shell command.
+3. `run_fzf` then blocks **forever** in `open(stdout_pipe)` - a FIFO whose only
+   writer would have been that command. There is no timeout.
+4. The plugin binds its key with a **foreground `run-shell`**, so the client's
+   keys and clicks queue behind the job (see "A foreground `run-shell` queues
+   the client's keys" above). The terminal appears dead and has to be killed;
+   the python is still there afterwards, sleeping in `open`, and shows up under
+   `ps -Ao pid,ppid,command | grep tmux_fzf_links` parented by the server.
+
+The row count needed is low, because the plugin's own numbered and coloured
+prefix costs **56 bytes per row** (20 uncoloured) before any path text - it, not
+the display text, dominates the command. Two things keep us clear of the cliff:
+
+- **`@fzf-links-history-lines 0`** in [`tmux.conf`](./tmux.conf), the plugin's
+  own default: the picker offers the visible pane. It was 2000, which on a codex
+  pane in a repo turned a 40-line screen into 166 rows and a 21KB command.
+- **`ROW_BUDGET`** in [`fzf_link_paths.py`](./fzf_link_paths.py): `claim`
+  refuses a row once our rows have spent it. That bounds *our* contribution
+  only - the default schemes' rows (urls, hyperlinks) are unbounded and merged
+  after ours, so a screen densely packed with long URLs alone can still wedge.
+  A refused row is a path on screen with no picker row: silent, and deliberately
+  preferred to a tmux you have to kill.
+
+Measured on the pane that wedged (2000 lines of scrollback): stock 185 rows /
+21244 B (wedges); ours with the budget 13.6KB; ours at `history-lines 0`
+1583 B. `test_fzf_link_schemes.py` pins the arithmetic by rendering rows exactly
+as `__main__` does and asserting the command stays under the limit - the guard
+fails if the budget or the per-row overhead drifts.
+
+Not fixed here, and worth doing upstream: choices belong in a temp file rather
+than a command argument, and the FIFO open needs a timeout so a failed popup
+cannot hang. A `run-shell -b` binding would also turn any future hang from a
+dead terminal into a no-op.
+
 Gates and tests: `py-typecheck-tmux` (pyrefly strict, the **core only** - the
 adapter's `tmux_fzf_links` import resolves only beside the gitignored plugin
 checkout) and `py-tests-tmux` (pytest via `uv`, at commit time) in
