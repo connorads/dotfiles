@@ -8,11 +8,18 @@ from tmux_fzf_links.export import (
     PostHandledMatch,
     PreHandledMatch,
     SchemeEntry,
+    heuristic_find_file,
 )
 
 _IMAGE_EXTS = r"png|jpe?g|gif|bmp|webp|svg|ico|tiff?"
+# A path is one or more `/`-joined segments, optionally rooted at `/`, `~/` or
+# `./`. The lookbehind pins the match to a path boundary: without it the engine
+# starts mid-path at an interior `/`, so `walkies/.dream-loop/target.png`
+# matched as the absolute `/.dream-loop/target.png` — a phantom the opener
+# could never resolve, and a duplicate of the real relative path.
+_PATH = r"(?:~/|\.{1,2}/|/)?[\w.-]+(?:/[\w.-]+)*"
 _IMAGE_RE = re.compile(
-    rf"(?P<path>(?:[~/.][\w./-]*)?[\w.-]+\.(?:{_IMAGE_EXTS}))(?::(?P<line>\d+))?",
+    rf"(?<![\w./~-])(?P<path>{_PATH}\.(?:{_IMAGE_EXTS}))(?::(?P<line>\d+))?",
     re.IGNORECASE,
 )
 
@@ -20,11 +27,19 @@ _OPEN_CMD = "open" if platform.system() == "Darwin" else "xdg-open"
 
 
 def _pre(match: re.Match[str]) -> PreHandledMatch | None:
-    return {"display_text": match.group("path"), "tag": "image"}
+    path = match.group("path")
+    # Resolved against the pane's cwd (__main__ chdirs there before matching),
+    # so a relative path is honoured and an unresolvable one is dropped — the
+    # same existence gate the default file scheme applies.
+    if heuristic_find_file(path) is None:
+        return None
+    return {"display_text": path, "tag": "image"}
 
 
 def _post(match: re.Match[str]) -> PostHandledMatch:
-    return {"cmd": _OPEN_CMD, "args": [match.group("path")], "file": match.group("path")}
+    resolved = heuristic_find_file(match.group("path"))
+    path = str(resolved) if resolved else match.group("path")
+    return {"cmd": _OPEN_CMD, "args": [path], "file": path}
 
 
 image_scheme: SchemeEntry = {
