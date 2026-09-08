@@ -1,4 +1,4 @@
-## After picking — workflow skills are vendored locally
+## 4. Enter the workflow — skills are vendored locally
 
 {{marker}}
 

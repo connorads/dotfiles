@@ -1,0 +1,6 @@
+{
+  "reason": "upstream moved a `firecrawl setup build` install directive into SKILL.md, outside the rules/install.md the firecrawl-mise patch covers; skills are vendored through the review flow, not installed at task time.",
+  "files": [
+    ".agents/skills/firecrawl/SKILL.md"
+  ]
+}

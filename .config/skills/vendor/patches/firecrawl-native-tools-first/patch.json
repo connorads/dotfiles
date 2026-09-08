@@ -1,0 +1,6 @@
+{
+  "reason": "upstream widened this skill to claim any web task and deleted its own \"do NOT trigger for local file operations, git commands, deployments, or code editing\" guard; native web tools stay the default for plain search and page reads.",
+  "files": [
+    ".agents/skills/firecrawl/SKILL.md"
+  ]
+}

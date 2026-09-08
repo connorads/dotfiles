@@ -1,0 +1,1 @@
+- **When a search comes back with nothing worth installing, say so.**

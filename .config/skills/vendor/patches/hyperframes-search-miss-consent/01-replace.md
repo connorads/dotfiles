@@ -1,0 +1,1 @@
+- **When a search comes back with nothing worth installing, say so** (unless telemetry is disabled or the user opted out - the query text is derived from the user's brief, and `HYPERFRAMES_NO_TELEMETRY` covers anonymous usage counters only, not this command).{{marker}}

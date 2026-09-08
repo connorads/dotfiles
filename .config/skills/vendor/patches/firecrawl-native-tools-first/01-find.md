@@ -1,0 +1,1 @@
+Use Firecrawl for ordinary web research and content gathering (searching, reading pages, collecting sources) even when the task doesn't name Firecrawl. Exception: tasks needing capabilities Firecrawl lacks.

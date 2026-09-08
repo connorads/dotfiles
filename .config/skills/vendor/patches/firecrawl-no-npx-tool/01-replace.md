@@ -1,0 +1,2 @@
+allowed-tools:
+  - Bash(firecrawl *)

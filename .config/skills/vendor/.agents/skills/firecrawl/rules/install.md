@@ -15,7 +15,7 @@ description: |
 
 `firecrawl-cli` is owned by mise (`npm:firecrawl-cli` in `~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`) and is already on PATH. Do not install, update, or shadow it: no `npx firecrawl-cli`, no `npm install -g`, no `npm update -g`. It moves with the rest of the toolchain via `up`, or `mise upgrade npm:firecrawl-cli` for a one-off.
 
-Do not run `firecrawl setup skills` or `firecrawl setup workflows` either. Those install skills globally into every detected editor, which bypasses the vendored pin-and-review flow. Firecrawl skills are vendored under `~/.config/skills/vendor` and refreshed there.
+Do not run `firecrawl setup skills`, `firecrawl setup build` or `firecrawl setup workflows` either. Those install skills globally into every detected editor, which bypasses the vendored pin-and-review flow. Firecrawl skills are vendored under `~/.config/skills/vendor` and refreshed there.
 
 Authenticate with the binary already on PATH (see Authentication, below).
 
@@ -26,6 +26,8 @@ First check status:
 ```bash
 firecrawl --status
 ```
+
+`--status` shows auth state, concurrency (max parallel jobs — run parallel operations up to that limit), and remaining API credits.
 
 Then run one small real request to prove install, auth, and output all work:
 
@@ -46,6 +48,10 @@ firecrawl login --browser
 
 This opens the browser for OAuth authentication. Credentials are stored securely by the CLI.
 
+### Auth and credit errors are terminal
+
+An `Unauthorized: Invalid token` or insufficient-credits error is terminal for that call: verify config once with `firecrawl --status`, then report the blocking reason and stop. Retrying the same call yields the same error.
+
 ### If authentication fails
 
 Ask the user how they'd like to authenticate:
@@ -53,7 +59,7 @@ Ask the user how they'd like to authenticate:
 1. **Login with browser (Recommended)** - Run `firecrawl login --browser`
 2. **Enter API key manually** - Run `firecrawl login --api-key "<key>"` with a key from firecrawl.dev
 
-If you cannot obtain a key and the user cannot sign up, search, scrape, and interact still work without an API key on the keyless free tier (rate-limited). Browser login or an API key remains preferred for the best results. See [agent onboarding](https://www.firecrawl.dev/agent-onboarding/SKILL.md) for the full set of onboarding paths.
+If you cannot obtain a key and the user cannot sign up, search, scrape, and interact still work without an API key on the keyless free tier (rate-limited). Commands that need an account — `crawl`, `map`, `download`, `agent`, `monitor`, `credit-usage`, and the feedback commands — prompt an interactive login when no credentials are set. Browser login or an API key remains preferred for the best results. See [agent onboarding](https://www.firecrawl.dev/agent-onboarding/SKILL.md) for the full set of onboarding paths.
 
 ### Command not found
 

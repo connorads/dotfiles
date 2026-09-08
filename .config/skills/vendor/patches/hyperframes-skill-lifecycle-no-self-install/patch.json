@@ -1,0 +1,6 @@
+{
+  "reason": "upstream's skill-lifecycle reference is a set of task-time self-install/refresh commands; skills are vendored here and refreshed through the update-vendored-skills review flow.",
+  "files": [
+    ".agents/skills/hyperframes/references/skill-lifecycle.md"
+  ]
+}

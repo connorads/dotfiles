@@ -1,0 +1,6 @@
+{
+  "reason": "the frontmatter pre-authorised `npx firecrawl-cli`, the exact command the firecrawl-mise patch forbids; the mise-pinned binary on PATH is the only entry point.",
+  "files": [
+    ".agents/skills/firecrawl/SKILL.md"
+  ]
+}
