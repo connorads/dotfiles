@@ -1,0 +1,30 @@
+{
+  "reason": "upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent.",
+  "files": [
+    "expo/.agents/skills/{{skill}}/SKILL.md"
+  ],
+  "vars": {
+    "skill": [
+      "eas-app-stores",
+      "eas-hosting",
+      "eas-observe",
+      "eas-simulator",
+      "eas-update-insights",
+      "eas-workflows",
+      "expo-app-clip",
+      "expo-brownfield",
+      "expo-data-fetching",
+      "expo-dev-client",
+      "expo-dom",
+      "expo-examples",
+      "expo-migrate-module",
+      "expo-module",
+      "expo-native-ui",
+      "expo-project-structure",
+      "expo-router",
+      "expo-ui",
+      "expo-upgrade",
+      "expo-web-to-native"
+    ]
+  }
+}

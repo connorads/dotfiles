@@ -1,0 +1,3 @@
+{{marker}}
+
+Run the command separately for each changed workflow file. `eas` is owned by mise (`npm:eas-cli` in `~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`) and is already on PATH - do not run `npx -y eas-cli@latest`, which downloads an unpinned CLI past the release-age gate. Validation requires a logged-in EAS session and a linked Expo project, and uploads the workflow file: unlike schema-only validation it also checks build profile references against the project's `eas.json` and performs EAS server-side validation. Fix every reported error and rerun until it prints `Workflow configuration YAML is valid.`

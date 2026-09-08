@@ -87,7 +87,6 @@ When the user already has an app, **add only what the example introduces; never 
 
 ## Related skills
 
-- Tailwind / NativeWind styling → `expo-tailwind-setup`
 - Native UI components (@expo/ui package) → `expo-ui`
 - Styling and native-feeling screens → `expo-native-ui`
 - Navigation and routing → `expo-router`
@@ -104,3 +103,4 @@ If you encounter errors, misleading or outdated information in this skill, repor
 npx --yes submit-expo-feedback@latest --category skills --subject "expo-examples" "<actionable feedback>"
 ```
 Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
+<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.

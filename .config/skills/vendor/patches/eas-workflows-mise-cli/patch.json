@@ -1,0 +1,6 @@
+{
+  "reason": "the `eas` CLI is owned by mise (`npm:eas-cli`, pinned in mise.lock), so upstream's `npx -y eas-cli@latest` and the allowed-tools entry pre-authorising it are replaced by the pinned binary; upstream's \"do not replace this command with a local validator\" line is dropped as lock-in rather than information.",
+  "files": [
+    "expo/.agents/skills/eas-workflows/SKILL.md"
+  ]
+}

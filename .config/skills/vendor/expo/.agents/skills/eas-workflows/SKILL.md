@@ -1,7 +1,7 @@
 ---
 name: eas-workflows
 description: EAS service (paid). Helps understand and write EAS workflow YAML files for Expo projects. Use this skill when the user asks about CI/CD or workflows in an Expo or EAS context, mentions .eas/workflows/, or wants help with EAS build pipelines or deployment automation.
-allowed-tools: "Read,Write,Bash(node:*)"
+allowed-tools: "Read,Write,Bash(node:*),Bash(eas *)"
 version: 1.0.0
 license: MIT License
 ---
@@ -14,7 +14,7 @@ Help developers write and edit EAS CI/CD workflow YAML files.
 
 ## Reference Documentation
 
-Fetch these resources before generating or validating workflow files. First resolve this skill's directory, then use the fetch script in its `scripts/` directory. It is implemented using Node.js and caches responses using ETags for efficiency:
+Fetch these resources before generating or editing workflow files, or when answering syntax questions. First resolve this skill's directory, then use the fetch script in its `scripts/` directory. It is implemented using Node.js and caches responses using ETags for efficiency:
 
 ```bash
 # Fetch resources
@@ -23,7 +23,7 @@ node <skill-dir>/scripts/fetch.js <url>
 
 1. **JSON Schema** — https://api.expo.dev/v2/workflows/schema
    - It is NECESSARY to fetch this schema
-   - Source of truth for validation
+   - Source of truth for the workflow YAML structure; EAS CLI remains the authoritative final validator
    - All job types and their required/optional parameters
    - Trigger types and configurations
    - Runner types, VM images, and all enums
@@ -41,7 +41,7 @@ Do not rely on memorized values; these resources evolve as new features are adde
 
 ## Workflow File Location
 
-Workflows live in `.eas/workflows/*.yml` (or `.yaml`).
+Workflows live in `.eas/workflows/*.yml` (or `.yaml`). Each file must be 16 KiB or smaller.
 
 ## Top-Level Structure
 
@@ -78,16 +78,15 @@ When generating or editing workflows:
 
 ## Validation
 
-After generating or editing a workflow file, validate it against the schema:
+After generating or editing a workflow file, validate it with EAS CLI from the Expo project root:
 
 ```sh
-# Install dependencies if missing
-[ -d "<skill-dir>/scripts/node_modules" ] || npm install --prefix <skill-dir>/scripts
-
-node <skill-dir>/scripts/validate.js <workflow.yml> [workflow2.yml ...]
+eas workflow:validate .eas/workflows/<workflow.yml> --non-interactive
 ```
 
-The validator fetches the latest schema and checks the YAML structure. Fix any reported errors before considering the workflow complete.
+<!-- LOCAL PATCH (connorads dotfiles): the `eas` CLI is owned by mise (`npm:eas-cli`, pinned in mise.lock), so upstream's `npx -y eas-cli@latest` and the allowed-tools entry pre-authorising it are replaced by the pinned binary; upstream's "do not replace this command with a local validator" line is dropped as lock-in rather than information. -->
+
+Run the command separately for each changed workflow file. `eas` is owned by mise (`npm:eas-cli` in `~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`) and is already on PATH - do not run `npx -y eas-cli@latest`, which downloads an unpinned CLI past the release-age gate. Validation requires a logged-in EAS session and a linked Expo project, and uploads the workflow file: unlike schema-only validation it also checks build profile references against the project's `eas.json` and performs EAS server-side validation. Fix every reported error and rerun until it prints `Workflow configuration YAML is valid.`
 
 ## Answering Questions
 
@@ -99,3 +98,4 @@ If you encounter errors, misleading or outdated information in this skill, repor
 npx --yes submit-expo-feedback@latest --category skills --subject "eas-workflows" "<actionable feedback>"
 ```
 Only submit when you have something specific and actionable to report. Include as much relevant context as possible.
+<!-- LOCAL PATCH (connorads dotfiles): upstream points every expo skill at `expo-skill-feedback`, a skill that is not vendored here; loading unreviewed instructions is exactly what the vendoring review flow exists to prevent. --> `expo-skill-feedback` is not vendored here, so there is nothing to load - if an agent repeatedly failed or the user had to take over, say so in the run's summary and stop.
