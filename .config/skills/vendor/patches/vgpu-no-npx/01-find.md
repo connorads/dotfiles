@@ -1,5 +1,6 @@
+For read-only access, the exact selected version can be invoked
+explicitly instead:
+
 ```sh
-npx -y vgpu docs find <query>    # search doc paths + symbols
-npx -y vgpu docs grep -i <term>  # search doc CONTENT
-npx -y vgpu docs cat <symbol>    # print one doc, e.g. `cat Frame`, `cat performance-model`
+npx -y vgpu@<selected-version> docs cat getting-started.md
 ```

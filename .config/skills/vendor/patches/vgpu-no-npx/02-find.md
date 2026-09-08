@@ -1,1 +1,3 @@
- or `npx -y vgpu docs cat <symbol>`:
+```sh
+npx -y vgpu@latest docs cat getting-started.md
+```

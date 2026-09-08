@@ -48,6 +48,9 @@ npx emulate --port 3000
 # Use a seed config file
 npx emulate --seed config.yaml
 
+# Generate omitted service secrets into a private file
+npx emulate start --seed config.yaml --generated-secrets-file .emulate-secrets.json
+
 # Generate a starter config
 npx emulate init
 
@@ -67,8 +70,11 @@ npx emulate list
 | `--seed` | auto-detect | Path to seed config (YAML or JSON) |
 | `--base-url` | none | Override advertised base URL (supports `{service}` template) |
 | `--portless` | off | Serve over HTTPS via portless (auto-registers aliases) |
+| `--generated-secrets-file` | none | Generate omitted service secrets and write them to a new owner-only JSON file |
 
 The port can also be set via `EMULATE_PORT` or `PORT` environment variables.
+
+The generated-secrets destination must not exist. emulate removes inherited ACLs, verifies effective owner-only access, and publishes complete JSON before opening listeners or configuring portless. Handled startup failures remove the invocation-owned artifact. A hard termination can leave a complete artifact that must be removed manually after confirming no invocation is using it. Only service-generated values appear in the artifact. Linux requires `setfacl` and `getfacl` from the `acl` package. The flag fails closed when access controls cannot be verified and is not supported on Windows.
 
 The advertised base URL (used in OAuth redirects, webhook URLs, etc.) can be overridden via `--base-url`, the `EMULATE_BASE_URL` env var (supports `{service}` template), or per-service `baseUrl` in the seed config. When running under portless, the `PORTLESS_URL` env var is also detected automatically.
 
@@ -92,6 +98,8 @@ vercel.url   // 'http://localhost:4002'
 await github.close()
 await vercel.close()
 ```
+
+For GitHub App tests, inspect secret-free minted installation-token metadata at `GET /_emulate/installation-tokens`.
 
 ### Options
 
@@ -380,7 +388,7 @@ const kvAdapter: PersistenceAdapter = {
 }
 ```
 
-State is loaded on cold start and saved after every mutating request (POST, PUT, PATCH, DELETE). Saves are serialized to prevent race conditions.
+State is loaded on cold start and saved after every mutating request (POST, PUT, PATCH, DELETE). Saves are serialized to prevent race conditions. Generated GitHub App identities require `initialize` to atomically create the initial value or return the value another instance created first.
 
 ## Architecture
 

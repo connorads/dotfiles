@@ -1,1 +1,1 @@
-Install [`next-dev-loop`](https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop) before starting (`npx skills add https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop`).
+The development insight path and the post-flag URL-data sweep use [`next-dev-loop`](https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop); install it before either development pass unless it is already available (`npx skills add https://github.com/vercel/next.js/tree/canary/skills/next-dev-loop`).

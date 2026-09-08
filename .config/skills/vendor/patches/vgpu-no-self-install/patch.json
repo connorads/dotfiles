@@ -1,0 +1,6 @@
+{
+  "reason": "upstream advertises a task-time `npx skills add vercel-labs/vgpu`; this skill is vendored and refreshed through the update-vendored-skills review flow, not runtime installs.",
+  "files": [
+    ".agents/skills/vgpu/SKILL.md"
+  ]
+}

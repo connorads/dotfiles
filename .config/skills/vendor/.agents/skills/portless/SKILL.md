@@ -155,6 +155,10 @@ Set `PORTLESS=0` to run the command directly without the proxy:
 PORTLESS=0 pnpm dev   # Bypasses proxy, uses default port
 ```
 
+When a proxied command is stopped with Ctrl+C, portless waits for its process tree to exit. A second
+Ctrl+C forwards another interrupt, and remaining descendants are terminated after a short grace
+period.
+
 ## How It Works
 
 1. `portless proxy start` starts an HTTPS reverse proxy on port 443 as a background daemon. Auto-elevates with sudo on macOS/Linux; falls back to port 1355 if sudo is unavailable. Use `--no-tls` for plain HTTP on port 80. Configurable with `-p` / `--port` or the `PORTLESS_PORT` env var. The proxy also auto-starts when you run an app.
@@ -411,7 +415,7 @@ portless hosts sync    # Adds current routes to /etc/hosts
 portless hosts clean   # Remove entries later
 ```
 
-Auto-syncs `/etc/hosts` for route hostnames by default. Set `PORTLESS_SYNC_HOSTS=0` to disable.
+Auto-syncs `/etc/hosts` for route hostnames by default. Set `PORTLESS_SYNC_HOSTS=0` to disable. If a route hostname will not resolve, the command that registered it warns and points you to `portless hosts sync`.
 
 ### Browser shows certificate warning with --https
 
