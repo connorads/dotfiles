@@ -619,6 +619,10 @@ backend = "npm:ctx7"
 version = "2.3.8"
 backend = "npm:deepsec"
 
+[[tools."npm:eas-cli"]]
+version = "23.2.0"
+backend = "npm:eas-cli"
+
 [[tools."npm:executor"]]
 version = "1.6.7"
 backend = "npm:executor"

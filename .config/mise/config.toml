@@ -145,6 +145,7 @@ fnox = "1"
 "npm:critique" = "0"
 "npm:ctx7" = "0"
 "npm:deepsec" = "2"
+"npm:eas-cli" = "23"
 # Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so
 # `mise upgrade --bump` would regress to it. Do not bump past "1".
 "npm:executor" = "1"
