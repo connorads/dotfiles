@@ -1,0 +1,95 @@
+#!/usr/bin/env zsh
+# eraser: render Eraser diagram JSON to PNG/HTML with config discovery disabled
+#
+# Wrapper over `eraser-diagrams` (mise: npm:@eraserlabs/diagrams-cli). Two jobs,
+# both because the bare CLI is unsafe to leave on PATH for agents:
+#
+# 1. Injects `--no-config`. The CLI's `library` and `overrides` config keys are
+#    ES module paths it `await import()`s with no prompt, so an
+#    `eraser-diagrams.config.json` is a script that runs as you - on `render`,
+#    `validate`, `registry` and `schema` alike, `validate` included despite
+#    reading as a browser-free check. Discovery walks *up* from cwd and stops
+#    only at a `.git` directory, so outside a repo it reaches `~` and `/`.
+#    Opt back in per-invocation with `-c <path>`, or ERASER_ALLOW_CONFIG=1 for
+#    a checkout whose config file you have read.
+#
+# 2. Pins Chromium. The CLI otherwise probes install locations; naming the
+#    binary keeps rendering reproducible. Prefers Playwright's pinned Chrome for
+#    Testing (revision-stable, separate profile) over the daily Google Chrome,
+#    which auto-updates under you and shares your browser profile.
+#
+# The flag goes *after* the subcommand: inputs starting with `-` are passed
+# after `--`, so appending it would make it a positional input file instead.
+emulate -L zsh
+# numeric_glob_sort so chromium-1000 sorts above chromium-999. Splitting the
+# path on hyphens instead would key on `ms-playwright`, not the revision.
+setopt null_glob numeric_glob_sort
+
+if ! command -v eraser-diagrams >/dev/null 2>&1; then
+  print -u2 -- "eraser: eraser-diagrams not found on PATH (mise install npm:@eraserlabs/diagrams-cli)"
+  return 127
+fi
+
+local -a args
+args=("$@")
+
+# Insert --no-config after the subcommand, unless the caller opted in or is
+# already steering config. A bare/--help/--version invocation has no subcommand
+# and short-circuits in the CLI before option parsing, so leave it untouched.
+# Not `commands`: that name is zsh's special associative array of hashed
+# commands, and shadowing it fails with "attempt to set slice".
+local subcommands=" render validate registry schema init "
+if [[ ${ERASER_ALLOW_CONFIG:-0} != 1 && -n ${1:-} && $subcommands == *" ${1} "* ]]; then
+  local arg
+  local own_config=0
+  for arg in "$@"; do
+    case $arg in
+      --config|--config=*|-c|--no-config) own_config=1 ;;
+      --) break ;;
+    esac
+  done
+  (( own_config )) || args=("$1" --no-config "${@:2}")
+fi
+
+# Resolve a Chromium unless the caller already named one. --chromium-path beats
+# $CHROMIUM_PATH in the CLI's own precedence, so exporting here never overrides
+# an explicit flag.
+local chromium=${CHROMIUM_PATH:-}
+if [[ -z $chromium ]]; then
+  local -a revs
+  local root newest candidate
+  for root in "$HOME/Library/Caches/ms-playwright" "$HOME/.cache/ms-playwright"; do
+    [[ -d $root ]] || continue
+    # Revision dirs are chromium-<rev> and churn on upgrade, so never pin one by
+    # name; take the highest revision present. chromium_headless_shell-* does
+    # not match this glob.
+    revs=("$root"/chromium-*)
+    (( ${#revs} )) || continue
+    newest=${revs[-1]}
+    for candidate in \
+      "$newest/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
+      "$newest/chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
+      "$newest/chrome-linux/chrome"; do
+      [[ -x $candidate ]] && { chromium=$candidate; break }
+    done
+    [[ -n $chromium ]] && break
+  done
+fi
+if [[ -z $chromium ]]; then
+  for candidate in \
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+    /usr/bin/chromium \
+    /usr/bin/chromium-browser \
+    /usr/bin/google-chrome; do
+    [[ -x $candidate ]] && { chromium=$candidate; break }
+  done
+fi
+
+# No Chromium found: fall through without the env var and let the CLI report it.
+# `validate`, `registry` and `schema` need no browser at all.
+if [[ -n $chromium ]]; then
+  CHROMIUM_PATH=$chromium command eraser-diagrams "${args[@]}"
+else
+  command eraser-diagrams "${args[@]}"
+fi

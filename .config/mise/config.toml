@@ -109,6 +109,12 @@ fnox = "1"
 # breaking changes. macOS runtime dep: ripgrep (nix-provided).
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
 "npm:@elevenlabs/cli" = "0"
+# Diagram JSON -> PNG/HTML, rendered locally through a caller-supplied Chromium.
+# Pinned to the minor: pre-1.0, and 0.1.0 is the only release so far. Needs no
+# `allow_builds` - neither it nor any of the six `@eraserlabs/*` siblings nor
+# `playwright-core` declares an install script. The `eraser` wrapper in
+# functions/shell is the intended entry point; see its header for why.
+"npm:@eraserlabs/diagrams-cli" = "0.1"
 "npm:@kitlangton/ghui" = "latest"
 # Reapply local generated-JS image paste patch after Pi updates. The script
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
