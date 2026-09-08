@@ -21,6 +21,13 @@ allowedUnpopularPackages = [
   "remobi",
   "@kitlangton/ghui",
   "critique",
+  # Eraser's diagramming framework. Below the download threshold (~16/week) and
+  # under `minimumPackageAge` until 2026-09-18, so both gates fire. Scope glob
+  # rather than the CLI name alone: the six siblings arrive as transitive deps
+  # and are equally unpopular. Audited at 0.1.0 before listing - all 7 tarballs
+  # matched registry integrity, no install hooks, no telemetry, one egress host
+  # (storage.googleapis.com, icons only). Re-audit before crossing a minor.
+  "@eraserlabs/*",
   # Name-similarity false positives (ERR_AUBE_SIMILAR_PACKAGE_NAME, aube >= 1.38).
   # Both are well over the download threshold; the short name is the whole problem.
   "cf",       # Cloudflare CLI — resembles `co` (rank #1245, distance 1)
