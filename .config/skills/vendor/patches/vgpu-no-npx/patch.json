@@ -1,5 +1,5 @@
 {
-  "reason": "vgpu CLI is mise-pinned; npx bypasses the pin and is a network call per doc lookup",
+  "reason": "npx bypasses the pnpm quarantine and downloads per doc lookup; a mise-pinned global `vgpu` already bundles its docs offline",
   "files": [
     ".agents/skills/vgpu/SKILL.md"
   ]

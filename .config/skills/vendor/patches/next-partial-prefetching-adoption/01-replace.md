@@ -1,1 +1,1 @@
-{{marker}} `next-dev-loop` is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before starting.
+{{marker}} The development insight path and the post-flag URL-data sweep use `next-dev-loop`, which is vendored alongside this skill — read [`../next-dev-loop/SKILL.md`](../next-dev-loop/SKILL.md) before either development pass. Do **not** run `npx skills add`; if it is missing, surface that instead of installing it.
