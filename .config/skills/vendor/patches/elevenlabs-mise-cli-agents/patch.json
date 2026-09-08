@@ -1,0 +1,11 @@
+{
+  "reason": "the `elevenlabs` CLI is owned by mise (`npm:@elevenlabs/cli`, pinned in mise.lock); upstream's global npm/brew/scoop installs and its `curl | sh` bootstrap all bypass the release-age and checksum controls, so no task-time install path is wanted.",
+  "files": [
+    "elevenlabs/.agents/skills/{{skill}}/references/installation.md"
+  ],
+  "vars": {
+    "skill": [
+      "agents"
+    ]
+  }
+}

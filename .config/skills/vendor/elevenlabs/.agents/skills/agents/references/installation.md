@@ -2,27 +2,30 @@
 
 ## CLI (Recommended)
 
-The ElevenLabs CLI is the recommended way to create and manage agents:
+<!-- LOCAL PATCH (connorads dotfiles): the `elevenlabs` CLI is owned by mise (`npm:@elevenlabs/cli`, pinned in mise.lock); upstream's global npm/brew/scoop installs and its `curl | sh` bootstrap all bypass the release-age and checksum controls, so no task-time install path is wanted. -->
 
-```bash
-npm install -g @elevenlabs/cli
-# or
-pnpm add -g @elevenlabs/cli
-# or
-yarn global add @elevenlabs/cli
-```
-
-Requires Node.js 16.0.0 or higher.
+`elevenlabs` is already on PATH: the CLI is owned by mise (`npm:@elevenlabs/cli` in
+`~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`). Do not install,
+update, or shadow it - no `npm install -g`, no Homebrew tap, no Scoop bucket, and above all
+no `curl ... | sh` installer, which bypasses every release-age and checksum control in this
+toolchain. It moves with the rest of the toolchain via `up`, or
+`mise upgrade npm:@elevenlabs/cli` for a one-off.
 
 ### Authentication
 
+Set `ELEVENLABS_API_KEY` in your environment — the CLI picks it up automatically:
+
 ```bash
-elevenlabs auth login          # Authenticate with API key
+export ELEVENLABS_API_KEY="your-api-key"
+```
+
+Or authenticate with OAuth, which stores credentials in the OS keyring:
+
+```bash
+elevenlabs auth login          # Authenticate with OAuth
 elevenlabs auth whoami         # Verify current login status
 elevenlabs auth logout         # Remove stored credentials
 ```
-
-API keys are securely stored in `~/.agents/api_keys.json`.
 
 ### Quick Start
 
@@ -31,7 +34,7 @@ API keys are securely stored in `~/.agents/api_keys.json`.
 elevenlabs agents init
 
 # Create an agent from template
-elevenlabs agents add "My Assistant" --template complete
+elevenlabs agents add "My Assistant" --template default
 
 # Push to ElevenLabs platform
 elevenlabs agents push
@@ -74,20 +77,6 @@ npm install @elevenlabs/client@latest  # Vanilla JavaScript in the browser
 npm install @elevenlabs/react@latest   # React on the web
 ```
 
-### Temporary LiveKit WebSocket pin
-
-There is a known LiveKit server compatibility issue where WebRTC startup may hit the underlying LiveKit WebSocket path `/rtc/v1` and return 404, causing delays or failed sessions in React, Next.js, Electron, and other browser clients. Until the upstream issue is resolved, pin `livekit-client` to `2.16.1` when using `connectionType: "webrtc"` or when logs mention `wss://livekit.rtc.elevenlabs.io/rtc/v1`:
-
-```json
-{
-  "overrides": {
-    "livekit-client": "2.16.1"
-  }
-}
-```
-
-This belongs in the app's `package.json`. Apply it when logs include `/rtc/v1` 404s, `v1 RTC path not found`, or `could not establish pc connection`. Remove the override once the ElevenLabs LiveKit server or SDK no longer requires the workaround.
-
 **Import changes:**
 ```javascript
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
@@ -124,21 +113,15 @@ client = ElevenLabs()
 client = ElevenLabs(api_key="your-api-key")
 ```
 
-## cURL / REST API
+## CLI Usage
 
-Set your API key as an environment variable:
+Every REST endpoint is available as a CLI subcommand. Set your API key as an environment variable and the CLI picks it up automatically — no headers or key flags needed:
 
 ```bash
 export ELEVENLABS_API_KEY="your-api-key"
-```
 
-Include in requests via the `xi-api-key` header:
-
-```bash
-curl -X POST "https://api.elevenlabs.io/v1/convai/agents/create" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "My Agent", "conversation_config": {"agent": {"prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
+elevenlabs agents create \
+  --json '{"name": "My Agent", "conversation_config": {"agent": {"prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
 ```
 
 ## Getting an API Key
