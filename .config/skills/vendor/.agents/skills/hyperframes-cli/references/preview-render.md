@@ -5,8 +5,10 @@ Serve, render, and share commands.
 ## preview
 
 ```bash
-npx hyperframes preview                   # serve current directory
-npx hyperframes preview --port 4567       # custom port (default 3002)
+npx hyperframes preview                   # foreground on a TTY; persistent in agent shells
+npx hyperframes preview --background      # explicit persistent session
+npx hyperframes preview --foreground --json # ready JSON, then remain attached
+npx hyperframes preview --background --port 4567 # agent-safe custom port (default 3002)
 npx hyperframes preview --selection --json # print the current Studio selection and exit
 npx hyperframes preview --context --json  # print compact agent context from Studio
 ```
@@ -19,11 +21,11 @@ When handing a project back to the user, use the Studio project URL, not the sou
 http://localhost:<port>/#project/<project-name>
 ```
 
-Use the actual port and project directory name; treat `index.html` as source-code context, not the preview surface. For example, after `npx hyperframes preview --port 3017` in `codex-openai-video`, report `http://localhost:3017/#project/codex-openai-video`.
+Use the actual port and project directory name; treat `index.html` as source-code context, not the preview surface. For example, after `npx hyperframes preview --background --port 3017` in `codex-openai-video`, report `http://localhost:3017/#project/codex-openai-video`.
 
 To land the user on the **Storyboard view** instead of the timeline, put `?view=storyboard` ahead of the hash: `http://localhost:<port>/?view=storyboard#project/<project-name>`. Hand this URL whenever the storyboard is the thing to review and nothing is assembled yet — before `index.html` exists, the timeline stage has nothing to show, so the bare project URL opens on an empty player.
 
-Two ways a handed URL turns out dead — check both before handing it back: the URL is missing its `#project/<project-name>` hash (Studio loads but has no project to open), or the server is not actually running. `preview` is a long-running process — start it from the project directory as a background task, and if that task reports it exited ("completed"), the server is down: restart it, don't hand out the link.
+Two ways a handed URL turns out dead — check both before handing it back: the URL is missing its `#project/<project-name>` hash (Studio loads but has no project to open), or the server is not actually running. Bare `preview` automatically creates a managed persistent session in a non-TTY agent shell; `--background` remains the clearest explicit form. Verify the printed URL returns HTTP 200, keep it alive for the whole review, and stop it explicitly with `npx hyperframes preview --stop` afterward. Use the printed URL as-is: HyperFrames URL-encodes project names that contain route metacharacters.
 
 ### Agent context from Studio selection
 
@@ -57,7 +59,7 @@ Failure modes:
 
 | Code                       | Meaning                                                                    |
 | -------------------------- | -------------------------------------------------------------------------- |
-| `preview-not-running`      | Start Studio first with `npx hyperframes preview`.                         |
+| `preview-not-running`      | Start Studio first with `npx hyperframes preview --background`.            |
 | `ambiguous-preview-server` | Multiple matching Studio servers are open; rerun with one listed `--port`. |
 | `preview-port-mismatch`    | The requested `--port` is not one of the matching Studio servers.          |
 | `no-selection`             | Studio is open, but the user has not selected an element yet.              |
@@ -89,7 +91,7 @@ Both `preview` and `play` can open inside an explicit Chromium-compatible browse
 
 ```bash
 # Open preview in an isolated Chromium profile
-npx hyperframes preview --browser-path /usr/bin/chromium --user-data-dir /tmp/hf-profile
+npx hyperframes preview --background --browser-path /usr/bin/chromium --user-data-dir /tmp/hf-profile
 
 # Same plus a CDP endpoint on :9222 (attach DevTools / Playwright / etc.)
 npx hyperframes play --browser-path /usr/bin/chromium --user-data-dir /tmp/hf-profile --remote-debugging-port 9222
@@ -180,9 +182,10 @@ Hit a reproducible bug? Add `--file-issue` (optionally `--dir <project>` and `--
 ## publish
 
 ```bash
-npx hyperframes publish              # upload current project, return public URL
+npx hyperframes publish              # upload current project privately, return stable URL
 npx hyperframes publish ./my-video   # specific project
+npx hyperframes publish --public     # allow anyone with the URL to view the claimed project
 npx hyperframes publish --yes        # skip the confirmation prompt (scripts/CI)
 ```
 
-Uploads the project's source (HTML + assets) and returns a stable public URL that renders in the browser. Use this for sharing a draft for review before rendering MP4, or for embedding the composition elsewhere. Lint findings are surfaced before upload but do not block.
+Uploads the project's source (HTML + assets) and returns a stable hosted URL that renders in the browser. A fresh publish is private by default and requires authentication plus access to view. Use `--public` to allow anyone with the URL to view the claimed project. Updating a project in place keeps its existing visibility: re-publishing without `--public` never turns a public project private. `--yes` only skips the confirmation prompt; it does not change visibility. A signed-out publish returns an authentication-required claim URL rather than a public playback URL. Lint findings are surfaced before upload but do not block.

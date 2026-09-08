@@ -1,0 +1,6 @@
+{
+  "reason": "upstream's `feedback --search-miss` sends the user's catalog query with no opt-out caveat, unlike the render-rating directive in the same file; gate it the way upstream gates its sibling.",
+  "files": [
+    ".agents/skills/hyperframes-cli/SKILL.md"
+  ]
+}

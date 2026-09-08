@@ -1,0 +1,1 @@
+{{marker}} Capabilities marked with a home workflow live in that workflow's skill directory, and every such workflow is already vendored alongside this one. Do **not** run `npx hyperframes skills update` to reach across — resolve the sibling skill directory, invoke its script by absolute path, and pass the project root explicitly when the script accepts one.

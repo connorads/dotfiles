@@ -1,0 +1,6 @@
+{
+  "reason": "upstream tells the agent to apply `npx hyperframes@latest upgrade` and to \"act on the signal rather than relaying it to the user\"; a dependency-pin rewrite is the user's decision, so the probe stays report-only.",
+  "files": [
+    ".agents/skills/hyperframes/SKILL.md"
+  ]
+}

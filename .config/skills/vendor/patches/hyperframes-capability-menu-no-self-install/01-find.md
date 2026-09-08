@@ -1,0 +1,1 @@
+Capabilities marked with a home workflow live in that workflow's skill directory, and workflow skills install lazily. Before reaching across, run `npx hyperframes skills update <that-workflow>` with the bare name. Resolve the installed skill directory, invoke its script by absolute path, and pass the project root explicitly when the script accepts one.
