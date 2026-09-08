@@ -246,6 +246,9 @@
 !/.config/tmux/
 !/.config/tmux/**
 /.config/tmux/plugins/
+# The fzf-links path core is a Python module with a pytest suite beside it.
+/.config/tmux/__pycache__/
+/.config/tmux/.pytest_cache/
 
 !/.config/zellij/
 !/.config/zellij/**
