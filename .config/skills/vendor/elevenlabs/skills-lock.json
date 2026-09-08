@@ -5,31 +5,31 @@
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "agents/SKILL.md",
-      "computedHash": "f7f23cec9725eca6b1088e59d325015bca0cfe5b855cf2ac35153d6957207502"
+      "computedHash": "3af8972f82181f42ed4f7337d59cb4c2d7cb306638b0a9de3dee317c030b0031"
     },
     "music": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "music/SKILL.md",
-      "computedHash": "700db7e91072baece800c4ce3394b8dabd14442f25e9fa706fde34a2bdf58431"
+      "computedHash": "854aeb46665c39ed13ad5508e6ee69b382d7c700b98a2ce6661e09fb9038b645"
     },
     "sound-effects": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "sound-effects/SKILL.md",
-      "computedHash": "54ec05122413cbc956b28fbd81c676e44eb0fdbbf6459ee3b367b2c7a1350b02"
+      "computedHash": "4de004ec3405d836c33207320a477951ce3de2f3dcb68f5365734302b91ad72c"
     },
     "speech-to-text": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "speech-to-text/SKILL.md",
-      "computedHash": "35c563c43a694b292fa6ed069744820650844dcefe8b8dcb76552a0cc433c9f9"
+      "computedHash": "97533bfa34b7c2593043d5d838429e805d940c75bd31f98e02fd57dcbafa28dc"
     },
     "text-to-speech": {
       "source": "elevenlabs/skills",
       "sourceType": "github",
       "skillPath": "text-to-speech/SKILL.md",
-      "computedHash": "ce96454df84df2c8196ce7a650ac178185f3a62b32c2f1fd6250f05ec4982ff0"
+      "computedHash": "a07858869c331494278dc201fde7c002ab4155cf93b642cc0f712e8e86793be9"
     }
   }
 }

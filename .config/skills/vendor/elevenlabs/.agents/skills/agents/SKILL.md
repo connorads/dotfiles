@@ -1,6 +1,6 @@
 ---
 name: agents
-description: Build voice AI agents with ElevenLabs. Use when creating voice assistants, customer service bots, interactive voice characters, or any real-time voice conversation experience.
+description: Build voice AI agents with ElevenLabs. Use when creating voice assistants, customer service bots, interactive voice characters, or any real-time voice conversation experience, and when configuring an agent's tools, workflows, or procedures, including creating, editing, compiling, and publishing procedure drafts on an agent branch over the SDKs or REST API.
 license: MIT
 compatibility: Requires internet access and an ElevenLabs API key (ELEVENLABS_API_KEY).
 metadata: {"openclaw": {"requires": {"env": ["ELEVENLABS_API_KEY"]}, "primaryEnv": "ELEVENLABS_API_KEY"}}
@@ -16,9 +16,10 @@ Build voice AI agents with natural conversations, multiple LLM providers, custom
 
 The ElevenLabs CLI is the recommended way to create and manage agents:
 
+<!-- LOCAL PATCH (connorads dotfiles): the `elevenlabs` CLI is owned by mise (`npm:@elevenlabs/cli`, pinned in mise.lock); the quick-start's `npm install -g` would shadow the pinned binary. -->
+
 ```bash
-# Install CLI and authenticate
-npm install -g @elevenlabs/cli
+# `elevenlabs` is mise-owned and already on PATH - do not install it
 elevenlabs auth login
 
 # Initialize project and create an agent
@@ -78,29 +79,25 @@ const agent = await client.conversationalAi.agents.create({
 });
 ```
 
-### cURL
+### CLI
+
+The CLI reads `ELEVENLABS_API_KEY` from the environment automatically:
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/convai/agents/create" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
+elevenlabs agents create \
+  --json '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
 ```
 
 ## Starting Conversations
 
-### Temporary LiveKit WebSocket Pin
-
-Until the ElevenLabs LiveKit server supports `/rtc/v1`, browser clients using WebRTC can fail or stall during the underlying LiveKit WebSocket handshake with `livekit-client` versions newer than `2.16.1`. For React, Next.js, Electron, or other `@elevenlabs/client` / `@elevenlabs/react` integrations that use `connectionType: "webrtc"` or hit `wss://livekit.rtc.elevenlabs.io/rtc/v1`, add this temporary pin to `package.json`:
-
-```json
-{
-  "overrides": {
-    "livekit-client": "2.16.1"
-  }
-}
+**Authenticated WebRTC:** Request a session token from your backend. The response includes both
+the token and the conversation ID:
+```python
+session = client.conversational_ai.conversations.get_webrtc_token(
+    agent_id="your-agent-id",
+)
+print(session.token, session.conversation_id)
 ```
-
-Use the pin when the app logs `/rtc/v1` 404s, `v1 RTC path not found`, or `could not establish pc connection` during session startup. This is a LiveKit server compatibility workaround for WebRTC sessions, not the ElevenLabs `connectionType: "websocket"` transport. Remove it after the upstream LiveKit server or SDK issue is fixed.
 
 **Server-side (Python):** Get signed URL for client connection:
 ```python
@@ -121,6 +118,8 @@ const conversation = await Conversation.startSession({
   onMessage: (msg) => console.log("Agent:", msg.message),
   onUserTranscript: (t) => console.log("User:", t.message),
   onPing: (event) => console.log("Estimated latency:", event.ping_ms),
+  onContextUsage: ({ model, context_tokens, context_limit_tokens }) =>
+    console.log(`${model}: ${context_tokens}/${context_limit_tokens} context tokens`),
   onError: (e) => console.error(e)
 });
 ```
@@ -156,6 +155,9 @@ function App({ signedUrl }: { signedUrl: string }) {
     <ConversationProvider
       onError={(error) => console.error("Conversation error:", error)}
       onPing={(event) => console.log("Estimated latency:", event.ping_ms)}
+      onContextUsage={({ model, context_tokens, context_limit_tokens }) =>
+        console.log(`${model}: ${context_tokens}/${context_limit_tokens} context tokens`)
+      }
     >
       <Agent signedUrl={signedUrl} />
     </ConversationProvider>
@@ -169,7 +171,7 @@ function App({ signedUrl }: { signedUrl: string }) {
 |----------|--------|
 | OpenAI | `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-5.5`, `gpt-5.5-2026-04-23`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.4-2026-03-05`, `gpt-5.4-mini-2026-03-17`, `gpt-5.4-nano-2026-03-17`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo` |
 | Anthropic | `claude-opus-4-7`, `claude-sonnet-4-6`, `claude-sonnet-4-5`, `claude-sonnet-4`, `claude-haiku-4-5`, `claude-3-7-sonnet`, `claude-3-5-sonnet`, `claude-3-haiku` |
-| Google | `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
+| Google | `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.1-flash-lite-preview`, `gemini-3.1-pro-preview`, `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` |
 | ElevenLabs | `glm-45-air-fp8`, `qwen3-30b-a3b`, `qwen36-35b-a3b`, `qwen35-35b-a3b`, `qwen35-397b-a17b`, `gpt-oss-120b` |
 | Custom | `custom-llm` (bring your own endpoint) |
 
@@ -243,7 +245,7 @@ Set under `conversation_config.agent.prompt.built_in_tools`. `{}` enables defaul
 | `language_detection` | Multilingual agents |
 | `transfer_to_number` | Phone-based human escalation |
 | `transfer_to_agent` | Multi-agent workflows |
-| `start_procedure` | Procedure-guided conversations |
+| `start_procedure` | Procedure-guided conversations (see [Procedures](#procedures)) |
 | `end_procedure` | Completing active procedures |
 | `skip_turn` | Tutoring / coaching (silent listening) |
 | `voicemail_detection` | Outbound calling |
@@ -253,6 +255,23 @@ Set under `conversation_config.agent.prompt.built_in_tools`. `{}` enables defaul
 `conversation_config.agent.prompt.tools` with `params.system_tool_type: "run_subagent"` and an
 `agents` array. Each entry requires `agent_id` and `description`; `branch_id` and a JSON-schema
 `parameters` object are optional.
+
+`knowledge_base` is a system tool for letting the model choose how to inspect attached knowledge.
+Add it to `conversation_config.agent.prompt.tools` with `type: "system"`, a `name`, and
+`params.system_tool_type: "knowledge_base"`. Use `enabled_strategies` to expose any combination of
+`cat`, `keyword`, `semantic`, and `ls`:
+
+```json
+{
+  "type": "system",
+  "name": "knowledge_base",
+  "description": "Search the attached knowledge base.",
+  "params": {
+    "system_tool_type": "knowledge_base",
+    "enabled_strategies": ["semantic", "keyword"]
+  }
+}
+```
 
 ### Integration Tools
 
@@ -304,6 +323,30 @@ Use `entry_behavior` on `override_agent` nodes to choose whether a sub-agent spe
 
 For nested agent transfers, set `enable_nesting` on a `standalone_agent` node and
 `return_when_nested` on an `end` node that should return control to the parent workflow.
+
+## Procedures
+
+Reusable instruction blocks an agent runs when a trigger matches. A procedure is `free_form` (markdown guidance the agent adapts, and the only type that can reference knowledge base documents) or `deterministic` (ordered, typed steps for flows that must run consistently). See [Using the Procedure API](references/using-procedure-api.md) for the full CLI and SDK flow, and [Writing Procedures](references/writing-procedures.md) for the step schema and authoring rules.
+
+Procedures live on an agent branch, and every write stages a per-user draft:
+
+| Operation | Call |
+|-----------|------|
+| List, create, read, update, discard, remove | `/v1/convai/agents/{agent_id}/branches/{branch_id}/procedures...` (`procedures.*` and `procedures.drafts.*` in the SDKs) |
+| Compile | `POST .../procedures/compile` (`procedures.compile`) |
+| Publish | `PATCH /v1/convai/agents/{agent_id}?branch_id=...` (`agents.update`) |
+
+Semantics worth knowing before writing any of these calls:
+
+- Nothing reaches the live agent until you publish. Publishing is not a procedure endpoint; one PATCH on the agent versions every changed procedure draft on the branch.
+- `GET .../procedures/{procedure_id}` reads branch HEAD and returns `404` until that procedure's first publish. Read the `/draft` variant to see a procedure you just created; do not retry the create.
+- Compile only when structured (`deterministic`) procedures changed. Compilation turns them into workflow nodes, so the publish must carry the `workflow` that compile returned. Free-form-only changes publish without compiling, because the agent loads free-form procedures from their published versions.
+- Compile validates structured content and is the only way to check it. On `400` it returns `errors` keyed by procedure ID with the offending field `path`; repair the draft and compile again rather than publishing.
+- A draft update replaces the whole body. Read the draft first, then resend `name`, `type`, and `trigger` alongside the new `content`.
+- `content` is markdown for a `free_form` procedure, and a JSON-encoded object with a `trigger` and a `steps` array for a `deterministic` one. Serialize it; do not hand-escape quotes.
+- Routing is driven by the `trigger` text, not the procedure name. Write concrete, non-overlapping triggers that cover the phrasings a user would actually say.
+- To restrict the starting agent to selected procedures for one conversation, enable `platform_settings.overrides.enable_procedure_ids_from_client`, then pass their IDs as `procedure_ids` in conversation initiation data. An empty list disables all procedures for that starting agent.
+- Procedure APIs require `elevenlabs` (Python) or `@elevenlabs/elevenlabs-js` at `2.60.0` or newer.
 
 ## Guardrails
 
@@ -367,18 +410,21 @@ Three test types via `POST /v1/convai/agent-testing/create`, then attached with 
 
 Eval strategies: `exact`, `regex`, `llm`. Prompt evaluation criteria can use binary scoring or
 numeric scoring with `scoring_mode: "numeric_uniform"`, `max_score`, and `score_instructions`;
-numeric scores are normalized into the aggregate conversation success percentage. Attach via PATCH:
+numeric scores are normalized into the aggregate conversation success percentage. Attach via an agent update:
 
 ```bash
-curl -s -X PATCH "https://api.elevenlabs.io/v1/convai/agents/{agent_id}" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"platform_settings": {"testing": {"attached_tests": [{"test_id": "test_xxxx"}]}}}'
+elevenlabs agents update --agent-id "your-agent-id" \
+  --json '{"platform_settings": {"testing": {"attached_tests": [{"test_id": "test_xxxx"}]}}}'
 ```
 
 Run selected tests with `POST /v1/convai/agents/{agent_id}/run-tests`. The request
 body requires `tests` and accepts `repeat_count` from `1` to `50` for repeated runs.
 Simulation tests can define up to 30 `success_conditions` prompts; all criteria are
 evaluated and merged into the final result.
+Simulation tests can also define `tool_mock_overrides`, keyed by tool ID, to replace shared response
+mocks for one test. Each override is an array of mocks with a required `mock_result`; set
+`is_error: true` to exercise a tool-failure path. Overrides only apply to tools enabled for mocking
+through `tool_mock_config`.
 For completed conversations, rerun one evaluation criterion with `POST /v1/convai/conversations/{conversation_id}/analysis/evaluations/run` and a request body containing `evaluation_id`.
 
 ## Widget Embedding
@@ -396,7 +442,7 @@ See [Widget Embedding Reference](references/widget-embedding.md) for all options
 
 Make outbound phone calls using your agent via Twilio or Exotel integration:
 
-The examples below use Twilio. See the reference for Exotel REST usage.
+The examples below use Twilio. See the reference for Exotel usage.
 
 ### Python
 
@@ -421,12 +467,14 @@ const response = await client.conversationalAi.twilio.outboundCall({
 });
 ```
 
-### cURL
+### CLI
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/convai/twilio/outbound-call" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -H "Content-Type: application/json" \
-  -d '{"agent_id": "your-agent-id", "agent_phone_number_id": "your-phone-number-id", "to_number": "+1234567890", "call_recording_enabled": true}'
+elevenlabs agents twilio outbound_call \
+  --agent-id "your-agent-id" \
+  --agent-phone-number-id "your-phone-number-id" \
+  --to-number "+1234567890" \
+  --call-recording-enabled true
 ```
 
 See [Outbound Calls Reference](references/outbound-calls.md) for provider-specific endpoints, configuration overrides, and dynamic variables.
@@ -505,5 +553,7 @@ Common errors: **401** (invalid key), **404** (not found), **422** (invalid conf
 - [Installation Guide](references/installation.md) - SDK setup and migration
 - [Agent Configuration](references/agent-configuration.md) - All config options and CRUD examples
 - [Client Tools](references/client-tools.md) - Webhook, client, and system tools
+- [Using the Procedure API](references/using-procedure-api.md) - Procedure CLI and SDK flow, compile and publish
+- [Writing Procedures](references/writing-procedures.md) - Trigger and content authoring, step schema
 - [Widget Embedding](references/widget-embedding.md) - Website integration
 - [Outbound Calls](references/outbound-calls.md) - Phone call integrations

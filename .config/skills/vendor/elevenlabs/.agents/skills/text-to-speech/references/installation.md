@@ -1,5 +1,26 @@
 # Installation
 
+## CLI (Recommended)
+
+<!-- LOCAL PATCH (connorads dotfiles): the `elevenlabs` CLI is owned by mise (`npm:@elevenlabs/cli`, pinned in mise.lock); upstream's global npm/brew/scoop installs and its `curl | sh` bootstrap all bypass the release-age and checksum controls, so no task-time install path is wanted. -->
+
+`elevenlabs` is already on PATH: the CLI is owned by mise (`npm:@elevenlabs/cli` in
+`~/.config/mise/config.toml`, version and checksum pinned in `mise.lock`). Do not install,
+update, or shadow it - no `npm install -g`, no Homebrew tap, no Scoop bucket, and above all
+no `curl ... | sh` installer, which bypasses every release-age and checksum control in this
+toolchain. It moves with the rest of the toolchain via `up`, or
+`mise upgrade npm:@elevenlabs/cli` for a one-off.
+
+Authenticate with either:
+
+```bash
+# Option 1: Environment variable (picked up automatically)
+export ELEVENLABS_API_KEY="your-api-key"
+
+# Option 2: OAuth login (stores credentials in the OS keyring)
+elevenlabs auth login
+```
+
 ## JavaScript / TypeScript
 
 ```bash
@@ -57,21 +78,13 @@ client = ElevenLabs()
 client = ElevenLabs(api_key="your-api-key")
 ```
 
-## cURL / REST API
+## CLI Usage
 
-Set your API key as an environment variable:
-
-```bash
-export ELEVENLABS_API_KEY="your-api-key"
-```
-
-Include in requests via the `xi-api-key` header:
+Once installed and authenticated, no headers or keys are needed on the command line:
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello world", "model_id": "eleven_multilingual_v2"}'
+elevenlabs text-to-speech convert --voice-id JBFqnCBsd6RMkjVDRZzb \
+  --text "Hello world" --model-id eleven_multilingual_v2 --output output.mp3
 ```
 
 ## Getting an API Key

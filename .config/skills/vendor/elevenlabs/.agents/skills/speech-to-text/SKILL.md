@@ -41,11 +41,10 @@ const result = await client.speechToText.convert({
 console.log(result.text);
 ```
 
-### cURL
+### CLI
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" -F "file=@audio.mp3" -F "model_id=scribe_v2"
+elevenlabs speech-to-text convert --file audio.mp3 --model-id scribe_v2
 ```
 
 ## Models
@@ -91,13 +90,12 @@ For call recordings, the batch API can label diarized speakers as `agent` and `c
 If your workspace has registered speaker profiles, set `use_speaker_library=true` with `diarize=true` to match detected speakers against the speaker library.
 
 ```bash
-curl -X POST "https://api.elevenlabs.io/v1/speech-to-text" \
-  -H "xi-api-key: $ELEVENLABS_API_KEY" \
-  -F "file=@call.mp3" \
-  -F "model_id=scribe_v2" \
-  -F "diarize=true" \
-  -F "detect_speaker_roles=true" \
-  -F "use_speaker_library=true"
+elevenlabs speech-to-text convert \
+  --file call.mp3 \
+  --model-id scribe_v2 \
+  --diarize true \
+  --detect-speaker-roles true \
+  --use-speaker-library true
 ```
 
 ## Multichannel Audio
@@ -184,8 +182,8 @@ Common errors:
 Monitor usage via `request-id` response header:
 
 ```python
-response = client.speech_to_text.convert.with_raw_response(file=audio_file, model_id="scribe_v2")
-result = response.parse()
+response = client.speech_to_text.with_raw_response.convert(file=audio_file, model_id="scribe_v2")
+result = response.data
 print(f"Request ID: {response.headers.get('request-id')}")
 ```
 
@@ -263,8 +261,8 @@ function TranscriptionComponent() {
 | **Manual** | You call `commit()` when ready - use for file processing or when you control the audio segments |
 | **VAD** | Voice Activity Detection auto-commits when silence is detected - use for live microphone input |
 
-Set `includeLanguageDetection: true` to receive the detected language code on committed transcript
-events that include timestamps.
+Set `includeLanguageDetection: true` to receive the detected language code in delayed final
+transcript events.
 
 ```typescript
 // React: set commitStrategy on the hook (recommended for mic input)
@@ -299,8 +297,12 @@ const connection = await client.speechToText.realtime.connect({
 | Event | Description |
 |-------|-------------|
 | `partial_transcript` | Live interim results |
+| `final_transcript` | Stable segment result sent before the segment is committed |
+| `final_transcript_with_timestamps` | Delayed final result with timestamps and/or detected language |
 | `committed_transcript` | Final results after commit |
 | `committed_transcript_with_timestamps` | Final with word timing |
+| `committed_transcript_entities` | Entities detected in a committed segment |
+| `invalid_request` | Connection parameters were rejected and the session closes |
 | `error` | Error occurred |
 
 See real-time references for complete documentation.

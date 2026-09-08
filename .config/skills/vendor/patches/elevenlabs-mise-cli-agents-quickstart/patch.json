@@ -1,0 +1,6 @@
+{
+  "reason": "the `elevenlabs` CLI is owned by mise (`npm:@elevenlabs/cli`, pinned in mise.lock); the quick-start's `npm install -g` would shadow the pinned binary.",
+  "files": [
+    "elevenlabs/.agents/skills/agents/SKILL.md"
+  ]
+}

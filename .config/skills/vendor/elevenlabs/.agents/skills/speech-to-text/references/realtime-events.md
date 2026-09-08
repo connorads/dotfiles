@@ -53,6 +53,7 @@ Connection established successfully.
     "language_code": "en",
     "model_id": "scribe_v2_realtime",
     "commit_strategy": "manual",
+    "enable_logging": true,
     "include_timestamps": true
   }
 }
@@ -73,6 +74,34 @@ Interim transcription results, updates frequently as audio is processed.
 |-------|------|-------------|
 | `message_type` | string | `"partial_transcript"` |
 | `text` | string | Current partial transcription |
+
+### final_transcript
+
+A stable result for a segment after speech settles but before the segment is committed.
+
+```json
+{
+  "message_type": "final_transcript",
+  "text": "Hello, how are you today?"
+}
+```
+
+### final_transcript_with_timestamps
+
+A delayed final result sent when timestamps or language detection are enabled.
+
+```json
+{
+  "message_type": "final_transcript_with_timestamps",
+  "text": "Hello, how are you today?",
+  "language_code": "en",
+  "words": [
+    {"text": "Hello", "start": 0.0, "end": 0.32, "type": "word", "logprob": -0.03}
+  ]
+}
+```
+
+`language_code` and `words` are optional and depend on the enabled session options.
 
 ### committed_transcript
 
@@ -119,6 +148,35 @@ Final transcription with word-level timing. Sent after `committed_transcript` wh
 | `words[].type` | string | `"word"`, `"spacing"`, or `"audio_event"` |
 | `words[].speaker_id` | string | Speaker identifier (if diarization enabled) |
 
+### committed_transcript_entities
+
+Entities detected in a committed segment when the connection includes `entity_detection`.
+
+```json
+{
+  "message_type": "committed_transcript_entities",
+  "text": "My name is Alice.",
+  "entities": [
+    {
+      "text": "Alice",
+      "entity_type": "name_given",
+      "start_char": 11,
+      "end_char": 16
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_type` | string | `"committed_transcript_entities"` |
+| `text` | string | Committed transcript segment scanned for entities |
+| `entities` | array | Detected entities; empty when none are found |
+| `entities[].text` | string | Text identified as an entity |
+| `entities[].entity_type` | string | Detected entity type |
+| `entities[].start_char` | integer | Start character offset in `text` |
+| `entities[].end_char` | integer | End character offset in `text` |
+
 ## Error Events
 
 ### error
@@ -141,6 +199,7 @@ Sent when an error occurs.
 | `input_error` | Unsupported audio format or invalid input |
 | `rate_limited` | Too many requests |
 | `commit_throttled` | Commits sent too frequently |
+| `invalid_request` | Connection parameters were rejected; the session closes |
 | `session_time_limit_exceeded` | Session exceeded max duration |
 | `unaccepted_terms` | Terms not accepted in dashboard |
 | `resource_exhausted` | Server capacity reached |
@@ -171,6 +230,8 @@ async for event in connection:
         print(f"Session: {event.session_id}")
     elif event.type == "partial_transcript":
         print(f"Partial: {event.text}")
+    elif event.type == "final_transcript":
+        print(f"Stable segment: {event.text}")
     elif event.type == "committed_transcript":
         print(f"Final: {event.text}")
     elif event.type == "committed_transcript_with_timestamps":
@@ -178,6 +239,8 @@ async for event in connection:
             print(f"  {word.text}: {word.start}s - {word.end}s")
     elif event.type == "error":
         print(f"Error: {event.error}")
+    elif event.type == "invalid_request":
+        print(f"Connection rejected: {event.error}")
 ```
 
 ### JavaScript
@@ -193,6 +256,10 @@ connection.on("partial_transcript", (data) => {
   console.log("Partial:", data.text);
 });
 
+connection.on("final_transcript", (data) => {
+  console.log("Stable segment:", data.text);
+});
+
 connection.on("committed_transcript", (data) => {
   console.log("Final:", data.text);
 });
@@ -205,5 +272,9 @@ connection.on("committed_transcript_with_timestamps", (data) => {
 
 connection.on("error", (error) => {
   console.error("Error:", error);
+});
+
+connection.on("invalid_request", (error) => {
+  console.error("Connection rejected:", error.error);
 });
 ```
