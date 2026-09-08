@@ -786,6 +786,15 @@ local fast_steps = new Mapping<String, Step> {
         glob = List(".config/vox/*.py", ".config/vox/pyrefly.toml")
         check = "bash .hk-hooks/py-typecheck.sh .config/vox"
     }
+    // The fzf-links path core, stdlib-only for the same reason vox's filter
+    // is. The core alone, not `.config/tmux/*.py`: its adapter user_schemes.py
+    // imports `tmux_fzf_links`, which resolves only beside the gitignored
+    // plugin checkout, so gating it would report missing-import noise. That
+    // split is why the path logic lives in a plugin-free file at all.
+    ["py-typecheck-tmux"] {
+        glob = List(".config/tmux/fzf_link_paths.py", ".config/tmux/pyrefly.toml")
+        check = "bash .hk-hooks/py-typecheck.sh .config/tmux"
+    }
     ["py-typecheck-handoff"] {
         glob = List("src/handoff/src/**/*.py", "src/handoff/pyrefly.toml")
         check = "bash .hk-hooks/py-typecheck.sh src/handoff"
@@ -801,6 +810,20 @@ local fast_steps = new Mapping<String, Step> {
     ["py-tests-scoped"] {
         glob = List("src/handoff/**")
         check = "bash .hk-hooks/py-tests.sh {{files}}"
+    }
+
+    // A flat script dir has no pyproject.toml for py-tests.sh to discover, so
+    // its suite runs by naming the dir. The fzf-links path core is the first
+    // one gated at commit time rather than only from `mise run py-checks`: it
+    // decides which file `prefix + u` opens, and it is pure, so the suite
+    // needs nothing but uv. Missing uv warns and passes.
+    ["py-tests-tmux"] {
+        glob = List(
+            ".config/tmux/fzf_link_paths.py",
+            ".config/tmux/test_*.py",
+            ".config/tmux/pytest.ini"
+        )
+        check = "bash .hk-hooks/py-tests-dir.sh .config/tmux"
     }
 
     // Secret scan: block staged secrets before they enter this public repo.
