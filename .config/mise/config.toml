@@ -263,10 +263,11 @@ cd "$HOME"
 git --git-dir="$HOME/git/dotfiles" --work-tree="$HOME" ls-files '*.py' '*.pyi' \
   | grep -vE '/vendor/\\.agents/skills/|/\\.agents/skills/playwright-cli/|\\.config/skills/vendor/(patches|manual)/|/evals/fixtures/|^skills/.*/references/|\\.config/skills/.*/references/' \
   | xargs ruff check --config .hk-hooks/ruff.toml
-for d in .claude/hooks .hk-hooks .config/vox src/handoff; do (cd "$d" && pyrefly check -c pyrefly.toml); done
+for d in .claude/hooks .hk-hooks .config/vox .config/tmux src/handoff; do (cd "$d" && pyrefly check -c pyrefly.toml); done
 (cd .claude/hooks && uv run --with pytest python -m pytest)
 (cd .hk-hooks && uv run --with pytest python -m pytest)
 (cd .config/vox && uv run --with pytest python -m pytest)
+(cd .config/tmux && uv run --with pytest python -m pytest)
 bash "$HOME/.hk-hooks/py-tests.sh" --all
 """
 

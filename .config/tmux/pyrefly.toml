@@ -1,0 +1,22 @@
+# Typecheck gate for the fzf-links path core (hk py-typecheck-tmux).
+# Per-dir so this dir is its own project - the Python analogue of a per-project
+# tsconfig.json, matching .config/vox/pyrefly.toml and .hk-hooks/pyrefly.toml.
+#
+# The core alone, not `*.py`: user_schemes.py imports `tmux_fzf_links`, which
+# resolves only beside the plugin checkout (gitignored, absent in CI), so
+# including it would make the gate report missing-import noise. That split is
+# the whole reason the path logic lives in a plugin-free file.
+project-includes = ["fzf_link_paths.py"]
+project-excludes = ["test_*.py"] # tests run via pytest, not type-gated (mirrors ts-typecheck)
+# `strict` is the gate. A config file present here means the preset in effect
+# is `default` (the `basic` fallback only applies when no config is found, and
+# it silences every type diagnostic - which is why py-typecheck.sh passes -c).
+# strict adds implicit-Any reporting: unannotated `dict`, untyped lambda
+# parameters, empty containers. `all` is a moving target (new error kinds land
+# in minor releases at error severity), so name extra kinds under [errors].
+preset = "strict"
+
+[errors]
+# Stale suppressions must expire. strict expires `# pyrefly: ignore[...]` only;
+# mypy-style `# type: ignore[...]` needs this kind spelled out.
+unused-type-ignore = true

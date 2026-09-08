@@ -709,12 +709,18 @@ discovery roots are spelled in both `hk.pkl`'s glob and the script; the
 `gate-coverage` step asserts the two agree.
 
 The `py-typecheck-*` steps are the Python analogue: `pyrefly` (`preset =
-"strict"`, invoked with `-c`) gates the three script dirs (`.claude/hooks`,
-`.hk-hooks`, `.config/vox`) and `src/handoff`, one glob-scoped step per root
-with a per-root `pyrefly.toml` (each root its own project so intra-package
-imports resolve). tmux/skill scripts stay out - they import uninstalled deps,
-which would be `missing-import` noise. The shared `~/.hk-hooks/py-typecheck.sh`
-warns and exits 0 when `pyrefly` is absent.
+"strict"`, invoked with `-c`) gates the four script dirs (`.claude/hooks`,
+`.hk-hooks`, `.config/vox`, `.config/tmux`) and `src/handoff`, one glob-scoped
+step per root with a per-root `pyrefly.toml` (each root its own project so
+intra-package imports resolve). What is gated is decided by import
+resolvability, not by directory: a file importing an uninstalled third-party
+dep would be `missing-import` noise, so most tmux and skill scripts stay out,
+and in `.config/tmux` the `pyrefly.toml` names
+[`fzf_link_paths.py`](./.config/tmux/fzf_link_paths.py) alone - its adapter
+`user_schemes.py` imports `tmux_fzf_links`, which resolves only beside the
+gitignored plugin checkout. That split is why the path logic lives in a
+plugin-free file at all. The shared `~/.hk-hooks/py-typecheck.sh` warns and
+exits 0 when `pyrefly` is absent.
 
 The `py-tests-scoped` step is the Python `ts-tests-scoped`: each staged file
 resolves to its nearest `pyproject.toml` and `~/.hk-hooks/py-tests.sh` runs that
@@ -729,6 +735,14 @@ step. The script dirs carry a `pytest.ini` with the plugin-free strictness
 `filterwarnings = error`) and run from `mise run py-checks`, which also calls
 `py-tests.sh --all`. Missing `uv` warns and exits 0; the gate's own contract is
 `~/.config/zsh/tests/py-tests.bats`.
+
+A flat script dir has no `pyproject.toml` for that step to discover, so its
+suite is reached by naming the dir instead: `py-tests-dir.sh <root>` runs
+`uv run --with pytest python -m pytest` there, the same invocation `py-checks`
+uses. `py-tests-tmux` is the one step wired to it - the fzf-links path core
+decides which file `prefix + u` opens, and being pure it needs nothing but
+`uv`. The other script dirs still run only from `mise run py-checks`; add a
+step per dir if that stops being enough.
 
 The `bats-scoped` step (pre-commit) gates the zsh bats suite
 (`~/.config/zsh/tests`, 115 files) via `~/.hk-hooks/bats-tests.sh`, running only
