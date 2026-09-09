@@ -334,8 +334,14 @@ _up_reapply_patches() {
 }
 
 _up_report_codex_patch() {
+  # bootstrap stages and validates whatever mise has installed, so the 220MB
+  # copy and the codesign land here rather than in front of the first `codex`.
+  # It activates only from a virgin state; an upgrade still waits for a human.
+  local rc=0
+  codex-question-patch bootstrap || rc=$?
   codex-question-patch status
   print "Codex upgrades require explicit validation and activation."
+  return $rc
 }
 
 _up_brew() {
