@@ -151,20 +151,23 @@ dir exists. Each vendored set (`vendor/<name>`) is one more source, rooted at it
 `.agents/skills` exactly like the unsorted `vendor` bucket; the sets sit *above* the `vendor`
 source so a grouped skill wins over an unsorted singleton of the same name. The `manual`
 source roots directly at `vendor/manual`, a plain subtree with no `.agents/` nesting, so it
-never overlaps the CLI-managed sources; it stays last. All four vendored sources share the
-one `vendor/` root:
+never overlaps the CLI-managed sources; it stays last. Every vendored source shares the
+one `vendor/` root, so the shape is:
 
 ```json
 { "paths": [
-  { "path": "~/.config/skills/private",                         "name": "private" },
-  { "path": "~/.config/skills/personal",                        "name": "personal" },
-  { "path": "~/.config/skills/public",                          "name": "public" },
-  { "path": "~/.config/skills/vendor/elevenlabs/.agents/skills", "name": "elevenlabs" },
-  { "path": "~/.config/skills/vendor/expo/.agents/skills",       "name": "expo" },
-  { "path": "~/.config/skills/vendor/.agents/skills",           "name": "vendor" },
-  { "path": "~/.config/skills/vendor/manual",                   "name": "manual" }
+  { "path": "~/.config/skills/private",                      "name": "private" },
+  { "path": "~/.config/skills/personal",                     "name": "personal" },
+  { "path": "~/.config/skills/public",                       "name": "public" },
+  { "path": "~/.config/skills/vendor/<set>/.agents/skills",  "name": "<set>" },
+  { "path": "~/.config/skills/vendor/.agents/skills",        "name": "vendor" },
+  { "path": "~/.config/skills/vendor/manual",                "name": "manual" }
 ] }
 ```
+
+One `<set>` line per vendored set, all of them above `vendor`. Read the live list from
+`~/.config/skl/config.json` (`jq -r '.paths[].name'`) rather than from here - a set added
+later would leave a hard-coded list here silently wrong.
 
 ## How-to
 
