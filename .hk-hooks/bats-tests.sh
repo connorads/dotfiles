@@ -96,6 +96,12 @@ suites=$(
 		.hk-hooks/py-tests.sh)
 			echo "$TESTS_DIR/py-tests.bats"
 			;;
+		# The Codex patch manager sits under no functions/** root, so the stem
+		# rule cannot reach it. Its suite is the only gate on a script that
+		# stands between every `codex` invocation and the binary.
+		.local/libexec/codex-question-patch.py)
+			echo "$TESTS_DIR/codex-question-patch.bats"
+			;;
 		esac
 	done | sort -u
 )
