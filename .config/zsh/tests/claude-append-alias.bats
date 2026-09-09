@@ -51,11 +51,30 @@ run_alias_script() {
   [[ "$output" == *"ARGS:--append-system-prompt-file $HOME/$APPEND_REL --dangerously-skip-permissions"* ]]
 }
 
+# cyc is a function, not an alias - it also backgrounds claude-channels-check -
+# but it draws its flag set from the same shared owner, so it belongs here.
 @test "cyc preserves skip-permissions and channel flags after the append flag" {
-  run_alias_script 'cyc'
+  write_stub claude-channels-check <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  run_zsh_function "$FUNCTIONS_DIR/claude/cyc"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"ARGS:--append-system-prompt-file $HOME/$APPEND_REL --dangerously-skip-permissions --channels plugin:telegram@claude-plugins-official"* ]]
+}
+
+@test "cyc forwards extra arguments after the channel flag" {
+  write_stub claude-channels-check <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  run_zsh_function "$FUNCTIONS_DIR/claude/cyc" -p hello
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--channels plugin:telegram@claude-plugins-official -p hello"* ]]
 }
 
 @test "cspy appends the prompt and clears telemetry env vars" {

@@ -1,0 +1,30 @@
+#!/usr/bin/env zsh
+# cyc: launch Claude yolo with the Telegram channel, and verify it registered.
+# usage: cyc [claude-args...]
+#
+# A function rather than an alias because the launch has a second half: nothing
+# in the UI distinguishes a registered channel from a silently skipped one (the
+# startup allowlist line and /status's "Listening for messages" both render the
+# same either way), so a background claude-channels-check reads the plugin's own
+# debug log once the session is up. 15s is chosen to clear startup - registration
+# happens during connect, and the log line lands within a few seconds.
+#
+# Scoped to this launcher on purpose: the check is only meaningful where
+# --channels was actually passed, and the many sessions that never ask for
+# channels would otherwise trip it. Known gap: a resurrect-restored pane execs
+# bare `claude --channels ...`, so it inherits the fix (the env var is exported
+# in ~/.zshrc) but is not covered by the check.
+#
+# Flags come from the shared claude-launch-flags owner, same as c/cy/cspy.
+
+emulate -L zsh
+
+local channel=plugin:telegram@claude-plugins-official
+
+# Disowned so the check outlives this function without holding the job table.
+( sleep 15; claude-channels-check ) >/dev/null 2>&1 &!
+
+local -a flags
+flags=($(claude-launch-flags --yolo))
+
+claude "${flags[@]}" --channels "$channel" "$@"

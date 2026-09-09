@@ -62,7 +62,6 @@ exit 0
 EOF
 
   for cmd in brew macup-check tmux-upstream pin-audit \
-    claude-channels-patch claude-channels-allowlist-patch \
     claude-computer-use-patch claude-session-reaper-patch \
     claude-telegram-clear-patch; do
     write_stub "$cmd" <<EOF
