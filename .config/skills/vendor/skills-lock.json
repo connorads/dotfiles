@@ -483,6 +483,12 @@
       "skillPath": "skills/vgpu/SKILL.md",
       "computedHash": "c1fc06bfba28bfee65989e15e49fcf33bfb74648e0e098a17e926b151498305a"
     },
+    "wait-what": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/wait-what/SKILL.md",
+      "computedHash": "71a9a1f1773d4b1ff70a9d496db63855ef83a7fe906c72b70cdebf4815a2c4c1"
+    },
     "wayfinder": {
       "source": "mattpocock/skills",
       "sourceType": "github",
