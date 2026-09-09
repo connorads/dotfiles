@@ -5,7 +5,7 @@ description: Safely refresh the vendored third-party agent skills in this dotfil
 
 # Update Vendored Skills
 
-Refresh `~/.config/skills/vendor/.agents/skills/**` safely:
+Refresh `~/.config/skills/vendor/**` safely:
 **update → read the diff → commit clean, hold dodgy**.
 
 ## Why this exists
@@ -42,18 +42,35 @@ other. `cd ~` first if you want `$HOME`-relative paths.
 
 ### 2. Batch-discover what's stale, then handle per-skill
 
-Updating one skill at a time re-clones shared repos many times over (mattpocock,
-elevenlabs and vercel each back several skills), which is wasteful just to find out what's
-even stale - and most skills are usually already current. So **discover in one batch**, then
+`vendor/` is not one skills-CLI project - it holds several **buckets**, and a bucket is
+exactly a dir holding a `skills-lock.json`: the unsorted bucket at the vendor root, plus one
+per vendored set. Each has its own lockfile and needs its own `skills update` pass;
+`cd`-ing to the vendor root refreshes only the unsorted bucket and leaves every set silently
+stale. `manual/` is not a bucket - no upstream, no lockfile - so `skills update` must never
+run there.
+
+Updating one skill at a time re-clones shared repos many times over (mattpocock, elevenlabs
+and vercel each back several skills), which is wasteful just to find out what's even stale -
+and most skills are usually already current. So **discover in one batch per bucket**, then
 **handle the changed ones per-skill**:
 
 ```bash
 cd ~/.config/skills/vendor
-jq -r '.skills | to_entries[] | "\(.key)\t\(.value.source)"' skills-lock.json   # sources
-skills update -p -y                                                             # batch discover
-skill-patch apply                                                               # re-apply local patches the refresh clobbered
-dotfiles status --short -- .agents/skills skills-lock.json                      # what changed
+find . -name skills-lock.json -not -path './manual/*' -print   # the bucket list
 ```
+
+Then one pass per bucket dir, patches re-applied once at the end:
+
+```bash
+( cd <bucket> && skills update -p -y )   # repeat per bucket
+skill-patch apply                        # from vendor/: re-apply patches the refresh clobbered
+dotfiles status --short -- . ':!manual'  # what changed
+```
+
+**Confirm each bucket's pass actually did something.** A dir the CLI declines to treat as a
+project no-ops in silence, and silent staleness is the thing this skill exists to prevent -
+so check that every bucket's `skills-lock.json` moved (mtime, or its own `dotfiles status`
+line) before trusting the batch.
 
 `skill-patch apply` runs **before** reading diffs so they show pure upstream drift, not
 patch churn. Non-zero exit means a patch no longer matches (upstream drifted): re-derive
@@ -61,22 +78,34 @@ the named hunk in `patches/<name>/` during the diff review (procedure in
 `patches/README.md`) and stage the patch dir together with the skill. The hk
 `vendored-skill-patches` step blocks any commit that stages a clobbered skill.
 
-`skills update` prints `Failed to update <name>` for any skill it couldn't refresh. That's
-usually an **upstream removal/rename**, not a transient error - confirm by checking the
-source repo (e.g. its CHANGELOG). A removed skill can't be refreshed; surface it for a
-keep-or-remove curation call (per `~/.config/skills/CLAUDE.md`), don't auto-delete a skill
-the user vendored.
+**A new patch dir must land in the same commit as the content it patches.**
+`skill-patch check` is **global** - it inspects every patch under `patches/`, not the staged
+subset - and hk runs it against the stashed, staged-only tree. So a patch dir sitting in the
+work-tree for bucket B fails the gate on bucket A's commit: B's targets are unstaged, so the
+stashed tree still holds upstream text and B's hunks read as `pending`. **Author and commit
+one bucket at a time**, rather than writing every bucket's patches up front. Recovering from
+the wrong order means parking the not-yet-committed patch dirs outside the work-tree, then
+restoring them one bucket at a time.
+
+`skills update` prints `Failed to update <name>` for any skill it couldn't refresh, and its
+`Updated N skill(s)` tally can fall short of the bucket's skill count without naming which
+one missed. That's usually an **upstream removal/rename**, not a transient error - confirm by
+checking the source repo (e.g. its CHANGELOG). A removed skill can't be refreshed; surface it
+for a keep-or-remove curation call (per `~/.config/skills/CLAUDE.md`), don't auto-delete a
+skill the user vendored.
 
 Why the **commit** is still per-skill: `skills-lock.json` holds every skill's `computedHash`
 in one file, and the batch update has **already rewritten** every entry in the work-tree. A
 partial commit that stages the whole lockfile while holding some skills would record held
 skills' new hashes without their files - an inconsistent lockfile. Per-skill commits stage
-each skill's files plus *only its lockfile hunk* (via `dotfiles hunks`, step 4).
+each skill's files plus *only its bucket lockfile's hunk* (via `dotfiles hunks`, step 4).
 
-**Shortcut when nothing is held:** if *every* changed skill reviews clean, the
-entanglement can't happen - commit them as one batch (`dotfiles add .agents/skills
-skills-lock.json`). Only fall back to strict per-skill commits when you need to hold some
-skills back as dodgy.
+**Shortcut when nothing is held:** if *every* changed skill in a bucket reviews clean, the
+entanglement can't happen for that bucket - commit them as one batch (`dotfiles add
+<bucket>/.agents/skills <bucket>/skills-lock.json`). Only fall back to strict per-skill
+commits when you need to hold some skills back as dodgy. The entanglement is confined to the
+bucket's own lockfile, so **commit boundaries are per bucket**: a held skill in one bucket
+never blocks another bucket's commit.
 
 ### 3. Read the diff - is it dodgy?
 
@@ -109,11 +138,12 @@ documenting one. When unsure, treat it as dodgy and hold.
 
 ### 4. Decide
 
-- **All changed skills clean** → one batch commit (no entanglement when nothing's held):
+- **Every changed skill in a bucket clean** → one commit for that bucket (no entanglement
+  when nothing's held). Repeat per bucket:
 
   ```bash
   cd ~/.config/skills/vendor
-  dotfiles add .agents/skills skills-lock.json
+  dotfiles add <bucket>/.agents/skills <bucket>/skills-lock.json
   dotfiles commit -F - <<'EOF'
   chore(skills): refresh vendored skills
 
@@ -123,19 +153,35 @@ documenting one. When unsure, treat it as dodgy and hold.
   EOF
   ```
 
-- **Some clean, some held** → commit the clean ones per-skill. Do **not**
-  `dotfiles add skills-lock.json` - the batch update already rewrote every entry, so
-  staging the whole file commits the held skills' new hashes too. Stage the skill's
-  files, then only its lockfile hunk:
+- **Some clean, some held in a bucket** → commit that bucket's clean skills per-skill. Do
+  **not** `dotfiles add <bucket>/skills-lock.json` - the batch update already rewrote every
+  entry in it, so staging the whole file commits the held skills' new hashes too. Stage the
+  skill's files, then only its bucket lockfile's hunk:
 
   ```bash
-  dotfiles add .agents/skills/<name>
+  dotfiles add <bucket>/.agents/skills/<name>
   dotfiles hunks list                # find the skills-lock.json hunk with <name>'s entry
   dotfiles hunks add '<hunk-id>'     # e.g. '.config/skills/vendor/skills-lock.json:@-12,8+12,8'
   ```
 
   If two skills' entries share one hunk and only one is clean, hold both commits
-  rather than committing the dodgy skill's hash.
+  rather than committing the dodgy skill's hash. A held skill only entangles its **own**
+  bucket's lockfile; other buckets commit normally.
+
+  **Hunk ids shift as you stage.** Each `hunks add` re-bases the remaining ids against the
+  index, so a loop over ids collected from one `hunks list` fails partway with
+  `Hunk not found`. Re-run `hunks list` after every add - or, when many hunks are clean and
+  few are held, stage the intended lockfile content in one shot instead:
+
+  ```bash
+  # build /tmp/lock.json = the refreshed lockfile with each HELD entry reverted to its
+  # committed hash, then stage that content while the work-tree keeps the full refresh
+  hash=$(dotfiles hash-object -w --path <bucket>/skills-lock.json -- /tmp/lock.json)
+  dotfiles update-index --cacheinfo "100644,$hash,.config/skills/vendor/<bucket>/skills-lock.json"
+  ```
+
+  `json.dumps(..., indent=2)` round-trips the CLI's own formatting byte-for-byte - assert
+  that on the unmodified file before trusting the rebuild.
 
 - **Anything dodgy** → do **not** commit. Leave it in the work-tree, summarise what changed
   and why it's held, and ask the user to sign off. Commit only after explicit approval.
