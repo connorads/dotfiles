@@ -535,7 +535,11 @@ CODEX_WINDOWS_JQ = Path(
 
 def window_label(seconds):
     # Canonical wording for the known windows; adapt to any duration otherwise.
-    # Mirrors the rule codex-usage and the status pill apply in their own idioms.
+    # Mirrors the rule codex-usage and usage-debug apply in their own idioms.
+    # 0 means the payload carried no `limit_window_seconds`: the length is
+    # unknown, and naming one anyway is the bug the shared classifier prevents.
+    if not seconds:
+        return "?"
     if seconds == 18000:
         return "5h"
     if seconds == 604800:

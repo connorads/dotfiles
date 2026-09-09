@@ -20,8 +20,8 @@ seed_meta() {
 
 @test "renders 5h/7d windows on a fresh cache hit" {
   cat >"$HOME/.cache/codex-usage.json" <<'EOF'
-{"rate_limit":{"primary_window":{"used_percent":42,"reset_after_seconds":7200},
- "secondary_window":{"used_percent":7,"reset_after_seconds":86400}}}
+{"rate_limit":{"primary_window":{"used_percent":42,"limit_window_seconds":18000,"reset_after_seconds":7200},
+ "secondary_window":{"used_percent":7,"limit_window_seconds":604800,"reset_after_seconds":86400}}}
 EOF
   seed_meta 9999999999 0 0
 
@@ -51,6 +51,23 @@ EOF
   [[ "$output" != *"5-hour"* ]]
 }
 
+@test "a window the payload gives no duration for is labelled unknown" {
+  # The classifier reports seconds:0 rather than guessing the slot's usual
+  # length, so the label must say unknown instead of naming a duration.
+  cat >"$HOME/.cache/codex-usage.json" <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":14,"reset_after_seconds":559789},"secondary_window":null}}
+EOF
+  seed_meta 9999999999 0 0
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"unknown:"* ]]
+  [[ "$output" == *"14%"* ]]
+  [[ "$output" != *"5-hour"* ]]
+  [[ "$output" != *"7-day"* ]]
+}
+
 @test "reports paused refresh when there is no cache and retry is in the future" {
   seed_meta 9999999999 0 0
 
@@ -78,7 +95,7 @@ EOF
   printf '{"error":{"message":"unauthorized"}}' >"$BATS_TEST_TMPDIR/401.json"
   printf '{"access_token":"new","refresh_token":"r2","id_token":"id2"}' >"$BATS_TEST_TMPDIR/refresh.json"
   cat >"$BATS_TEST_TMPDIR/usage200.json" <<'EOF'
-{"rate_limit":{"primary_window":{"used_percent":55,"reset_after_seconds":3600},"secondary_window":{"used_percent":11,"reset_after_seconds":7200}}}
+{"rate_limit":{"primary_window":{"used_percent":55,"limit_window_seconds":18000,"reset_after_seconds":3600},"secondary_window":{"used_percent":11,"limit_window_seconds":604800,"reset_after_seconds":7200}}}
 EOF
   export CURL_1_KIND=hb CURL_1_CODE=401 CURL_1_BODY="$BATS_TEST_TMPDIR/401.json"
   export CURL_2_KIND=stdout CURL_2_OUT="$BATS_TEST_TMPDIR/refresh.json"

@@ -368,6 +368,32 @@ PY
   [ -z "$(printf '%s\n' "$output" | grep 'Codex' | grep '5h')" ]
 }
 
+@test "a codex window with no limit_window_seconds renders ? rather than a guessed length" {
+  write_usage_caches
+  python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+home = Path(sys.argv[1])
+(home / ".cache/codex-usage.json").write_text(json.dumps({
+    "rate_limit": {
+        "primary_window": {"used_percent": 14, "reset_after_seconds": 559789},
+        "secondary_window": None,
+    },
+    "additional_rate_limits": [],
+    "rate_limit_reset_credits": {"available_count": 0},
+}))
+PY
+
+  run_zsh_function "$AI_USAGE" --fancy
+
+  [ "$status" -eq 0 ]
+  codex_row=$(printf '%s\n' "$output" | grep 'Codex' | head -n1)
+  [[ "$codex_row" == *"Codex"*"?"*"14%"* ]]
+  [ -z "$(printf '%s\n' "$output" | grep 'Codex' | grep -E '5h|7d')" ]
+}
+
 @test "stale 7d reading still wins the bottleneck, flagged stale" {
   write_usage_caches
   set_cache_age_hours "$HOME/.cache/claude-usage.json" 9
