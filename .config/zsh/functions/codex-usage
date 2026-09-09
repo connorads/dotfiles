@@ -150,11 +150,13 @@ _fmt_remaining() {
 }
 
 # Canonical wording for the known windows; adapt to any duration otherwise so a
-# window at a new length still labels sensibly. Mirrors the rule the pill and the
-# fancy dashboard apply in their own idioms.
+# window at a new length still labels sensibly. Mirrors the rule the fancy
+# dashboard and usage-debug apply in their own idioms. A 0 means the payload
+# carried no `limit_window_seconds`, so say so rather than naming a length.
 _window_label() {
     local secs="$1"
     case "$secs" in
+        0) echo "unknown" ;;
         18000) echo "5-hour" ;;
         604800) echo "7-day" ;;
         *)

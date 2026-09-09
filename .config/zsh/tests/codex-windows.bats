@@ -31,12 +31,51 @@ EOF
   [ "$output" = '[{"seconds":18000,"used_percent":40,"reset_after_seconds":3600,"reset_at":0},{"seconds":604800,"used_percent":7,"reset_after_seconds":500000,"reset_at":0}]' ]
 }
 
-@test "no limit_window_seconds falls back to positional durations" {
+@test "no limit_window_seconds reports the duration as unknown, never the slot's default" {
+  # Guessing from the slot reproduces, one layer down, the very bug this file
+  # exists to prevent: a weekly figure in primary_window would come back 5h.
   classify <<'EOF'
 {"rate_limit":{"primary_window":{"used_percent":40,"reset_after_seconds":3600},"secondary_window":{"used_percent":7,"reset_after_seconds":500000}}}
 EOF
   [ "$status" -eq 0 ]
-  [ "$output" = '[{"seconds":18000,"used_percent":40,"reset_after_seconds":3600,"reset_at":0},{"seconds":604800,"used_percent":7,"reset_after_seconds":500000,"reset_at":0}]' ]
+  [ "$output" = '[{"seconds":0,"used_percent":40,"reset_after_seconds":3600,"reset_at":0},{"seconds":0,"used_percent":7,"reset_after_seconds":500000,"reset_at":0}]' ]
+}
+
+@test "duration absent in the primary slot is unknown, not 5h" {
+  classify <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":14,"reset_after_seconds":559789},"secondary_window":null}}
+EOF
+  [ "$status" -eq 0 ]
+  [ "$output" = '[{"seconds":0,"used_percent":14,"reset_after_seconds":559789,"reset_at":0}]' ]
+}
+
+@test "duration absent in the secondary slot is unknown, not 7d" {
+  classify <<'EOF'
+{"rate_limit":{"primary_window":null,"secondary_window":{"used_percent":37,"reset_after_seconds":3600}}}
+EOF
+  [ "$status" -eq 0 ]
+  [ "$output" = '[{"seconds":0,"used_percent":37,"reset_after_seconds":3600,"reset_at":0}]' ]
+}
+
+@test "unknown is encoded as zero seconds, never null" {
+  # Same @tsv contract as the reset_* fields: a null becomes an empty field and
+  # shifts every later column in codex-usage's TSV consumer. 0 is not a valid
+  # window length, so it is unambiguous and survives the read intact.
+  classify <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":14,"reset_after_seconds":559789},"secondary_window":null}}
+EOF
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"null"* ]]
+}
+
+@test "a known duration still sorts ahead of an unknown one it is longer than" {
+  # Unknown sorts first; the point is only that both windows survive and neither
+  # is silently assigned the other's length.
+  classify <<'EOF'
+{"rate_limit":{"primary_window":{"used_percent":40,"reset_after_seconds":3600},"secondary_window":{"used_percent":7,"limit_window_seconds":604800,"reset_after_seconds":500000}}}
+EOF
+  [ "$status" -eq 0 ]
+  [ "$output" = '[{"seconds":0,"used_percent":40,"reset_after_seconds":3600,"reset_at":0},{"seconds":604800,"used_percent":7,"reset_after_seconds":500000,"reset_at":0}]' ]
 }
 
 @test "output is duration-sorted even when the shorter window is in the secondary slot" {

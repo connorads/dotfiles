@@ -798,11 +798,14 @@ Codex windows are classified by their real `limit_window_seconds`, never by JSON
 slot. [`../zsh/functions/codex-windows.jq`](../zsh/functions/codex-windows.jq) is
 the shared pure core: it turns a raw Codex usage object into a duration-sorted
 `[{seconds, used_percent, reset_after_seconds, reset_at}]` list (shortest window
-first), using the `primary`/`secondary` slot only as a fallback duration when the API
-omits `limit_window_seconds`. Both surfaces render that list - `codex-usage`
-shells out to `jq -f`, while the fancy dashboard shells out from Python;
-`window_label(seconds)` gives canonical `5-hour`/`7-day` (`5h`/`7d`) wording and
-adapts to any other duration. Pace/colour maths uses each window's real length.
+first). A window the API gives no `limit_window_seconds` for reports `seconds: 0`,
+meaning unknown - the slot's usual length is never substituted, because doing so
+reproduces the positional bug one layer down. **No surface may name a window a
+duration the payload does not support.** Both surfaces render that list -
+`codex-usage` shells out to `jq -f`, while the fancy dashboard shells out from
+Python; `window_label(seconds)` gives canonical `5-hour`/`7-day` (`5h`/`7d`)
+wording, `unknown`/`?` for a 0, and adapts to any other duration. Pace/colour
+maths uses each window's real length, and skips a window whose length is unknown.
 
 Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
 no return date, collapsing usage to a single weekly window that arrives in the
