@@ -1,6 +1,10 @@
 # Exception discipline
 
-Every gate accumulates exceptions - native modules that need build scripts,
+This file governs permissions and bypasses. An explicit denial such as
+`allowBuilds: { esbuild: false }` enforces the baseline policy; it is not an
+exception, needs no approval, and has no expiry obligation.
+
+Every gate accumulates permission exceptions - native modules that need build scripts,
 publishers whose CI broke provenance, fast-moving tools exempted from the
 quarantine. Exceptions are where hardened setups rot: each one is a hole cut
 deliberately, and unmanaged holes outlive their reasons. The per-tool
@@ -78,5 +82,7 @@ tracked config edit - the per-tool table is in
 - **Never**: disabling a gate globally to make one package install, or
   bypassing via an untracked local config that makes machines diverge.
 
-Agents: the bypass decision is the user's, every time. Propose the narrowest
-vehicle with the template filled in; don't apply it unprompted.
+Agents: apply a repository's standing authority when it names observable
+conditions for the permission. Without standing authority, the bypass decision
+is the user's. Propose the narrowest vehicle with the template filled in;
+never turn a functional failure into permission automatically.

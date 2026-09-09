@@ -55,12 +55,16 @@ machine or global config, and an agent mid-task when a gate fires.
    machine without the mask. Reproducing it means turning the broad control
    off, which is a de-protection, not a check - assert the missing decision
    statically instead (read the config, run no install).
-5. **The agent proposes; the user decides; something boring verifies.**
-   Allowlisting, bypassing, and weakening are the user's security decisions.
-   Enforcement belongs in config, hooks, and CI - never in anyone's memory.
-6. **Every exception is scoped, reasoned, and has an exit criterion.** An
-   exception without an expiry condition is a permanent hole with a
-   historical excuse. See [references/exceptions.md](references/exceptions.md).
+5. **The user sets policy; the agent applies it; something boring verifies.**
+   Denial enforces the policy and needs no approval: record a package as
+   denied, verify the required behaviour, and continue. Granting execution or
+   weakening a gate requires either standing authority that names the
+   conditions or a user decision. Enforcement belongs in config, hooks, and
+   CI - never in anyone's memory.
+6. **Every permission exception is scoped, reasoned, and has an exit
+   criterion.** An exception without an expiry condition is a permanent hole
+   with a historical excuse. An explicit denial is the baseline, not an
+   exception. See [references/exceptions.md](references/exceptions.md).
 
 ## When to use this skill
 
@@ -149,12 +153,22 @@ working - the burden of proof is on the bypass.
 1. **Identify which control fired** and what it's protecting against. Read
    the error, not just past it (`ERR_PNPM_IGNORED_BUILDS` = script blocking;
    "no mature version" = age gate; trust/provenance = downgrade check).
-2. **Decide whether a bypass is even wanted.** Often the right move is to
-   wait out the quarantine, pick an older version, or drop the dependency.
-3. **Ask the user.** The security decision is theirs - never auto-bypass,
-   however small the exception seems. Present the narrowest option and what
-   it trades away.
-4. **Allowlist narrowly**: per-package `allowBuilds`/`approve-scripts`/
+2. **Try enforcement before exception.** For a blocked dependency script,
+   record the package as explicitly denied and run a clean install plus the
+   checks that exercise its required behaviour. Continue without asking when
+   denial works. Test every target platform whose package graph or native
+   artifact differs; a warm `node_modules` or side-effects cache is not a
+   clean contrast.
+3. **Investigate a functional failure.** A package failing without its script
+   proves only that it demands the script, not that executing it is safe or
+   necessary. Inspect the exact resolved artifact and lifecycle script, then
+   prefer removing the dependency, using a published artifact, or moving the
+   operation to an explicit setup step.
+4. **Apply standing authority or ask.** If repository policy delegates narrow
+   permission under observable conditions, apply it and record the evidence.
+   Otherwise ask before granting execution. Never ask merely to record a
+   denial.
+5. **Allowlist narrowly**: per-package `allowBuilds`/`approve-scripts`/
    scoped exclude - never a global disable, never `ignore-scripts=false`,
    never removing the gate. **Project-level is not the narrow option**: it
    is not per-package, and it re-arms scripts the per-package allowlist
@@ -163,10 +177,11 @@ working - the burden of proof is on the bypass.
    among other things), and every `allowBuilds: { x: true }` in the repo
    flips from inert to executing. Turning the mask off changes what runs;
    it is a de-protection, never a diagnostic.
-5. **Document scope, reason, and exit criterion in the config** where the
-   exception lives - see [references/exceptions.md](references/exceptions.md)
-   for the template and worked examples (publishing-bug-vs-attack, aged
-   backports).
+6. **Document a permission's scope, reason, and exit criterion in the config**
+   where the exception lives - see
+   [references/exceptions.md](references/exceptions.md) for the template and
+   worked examples (publishing-bug-vs-attack, aged backports). A denial may
+   record why required behaviour works without the script; it needs no expiry.
 
 Hard lines: never `--no-verify` past a supply-chain hook; never disable a
 gate globally *or project-wide* to save a round-trip; a one-off env/flag
