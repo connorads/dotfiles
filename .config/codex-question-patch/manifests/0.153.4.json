@@ -1,0 +1,24 @@
+{
+  "arch": "arm64",
+  "codex_version": "0.153.4",
+  "format_version": 1,
+  "intervention": {
+    "after_hex": "28008052",
+    "before_hex": "08010052",
+    "description": "Force RequestUserInputArgs.is_blocking to true for every collaboration mode",
+    "kind": "four-byte-patch",
+    "offset": 68855228,
+    "raw_patched_sha256": "8da74559eb04e327860abd37bf907949fe22c70183f52e6e111631f80a1d6007",
+    "window_sha256": "055dde7d2ebfa6ced846133e61e537217b20e6593e1bbd2150c0e82da1797efb",
+    "window_size": 68,
+    "window_start": 68855196
+  },
+  "os": "darwin",
+  "source_commit": "3d2ee51ca2d5db578f328aa75e20aa22c0197c9a",
+  "upstream": {
+    "identifier": "codex",
+    "sha256": "b973d440acac501fd2594a43e7ca9ce41e0a65b9dfb28d0d7a7837c99e1261e3",
+    "size": 220584000,
+    "team_identifier": "2DC432GLL2"
+  }
+}
