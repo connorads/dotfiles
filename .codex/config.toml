@@ -12,11 +12,6 @@ model_auto_compact_token_limit = 233000
 personality = "pragmatic"
 web_search = "live"
 plan_mode_reasoning_effort = "high"
-developer_instructions = """
-When using the `request_user_input` tool, never set `autoResolutionMs`.
-Use question cards when input is needed, and wait indefinitely for the user.
-Do not auto-resolve, default, or continue past unanswered question cards.
-"""
 
 # Defaults made explicit — sandbox is read-only (upgrades to workspace-write
 # after trust prompt), network blocked, approval based on trust decision
@@ -31,9 +26,13 @@ network_access = false
 "hide_gpt-5.1-codex-max_migration_prompt" = true
 
 [features]
-# request_user_input outside Plan mode (upstream stage: under development);
-# needed so grilling's structured-question rounds work in Default mode.
-default_mode_request_user_input = true
+# Off, because a question card only blocks in Plan mode: core computes
+# `is_blocking: mode == ModeKind::Plan` and nothing in config reaches it. This
+# flag admits cards into Default mode, where they are non-blocking and the TUI
+# auto-answers them empty after 60s hidden + 60s visible countdown. With it off,
+# Default mode has no question tool and Codex asks a plain-text question that
+# ends the turn, which blocks by construction; Plan mode keeps structured cards.
+default_mode_request_user_input = false
 unified_exec = true
 apply_patch_freeform = true
 skills = true
