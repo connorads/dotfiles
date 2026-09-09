@@ -214,6 +214,16 @@ def verified_candidate(version: str, *, require_validated: bool) -> tuple[Path, 
 
 def command_validate(version: str) -> int:
     binary, receipt = verified_candidate(version, require_validated=False)
+    manifest_path = MANIFEST_ROOT / f"{version}.json"
+    manifest = require_manifest(version)
+    if sha256(manifest_path.read_bytes()) != receipt.get("manifest_sha256"):
+        raise Refusal("reviewed manifest changed after staging")
+    intervention = manifest["intervention"]
+    candidate_data = binary.read_bytes()
+    if intervention.get("kind") == "four-byte-patch":
+        offset = intervention["offset"]
+        if candidate_data[offset : offset + 4] != bytes.fromhex(intervention["after_hex"]):
+            raise Refusal("signed candidate does not contain the reviewed instruction")
     process = subprocess.run(
         [str(binary), "--version"],
         stdout=subprocess.PIPE,
@@ -233,6 +243,53 @@ def command_validate(version: str) -> int:
     write_json(pending_dir(version) / "receipt.json", receipt)
     print(f"VALIDATED {version}")
     return 0
+
+
+def command_review(version: str | None) -> int:
+    if version is None:
+        candidates = sorted(
+            [
+                path.name
+                for root in (DATA_ROOT / "unreviewed", DATA_ROOT / "pending")
+                if root.is_dir()
+                for path in root.iterdir()
+            ]
+        )
+        if not candidates:
+            raise Refusal("no staged Codex candidate to review")
+        version = candidates[-1]
+    manifest_path = MANIFEST_ROOT / f"{version}.json"
+    source = DATA_ROOT / "unreviewed" / version / "codex"
+    if not source.exists():
+        source = pending_dir(version) / "upstream-codex"
+    print(f"Version: {version}")
+    print(f"Source: {source}")
+    print(f"Manifest: {manifest_path if manifest_path.exists() else 'missing'}")
+    if manifest_path.exists():
+        manifest = require_manifest(version)
+        print(f"Intervention: {manifest['intervention']['kind']}")
+        print(f"Source commit: {manifest['source_commit']}")
+    return 0
+
+
+def command_repair() -> int:
+    try:
+        binary = active_binary()
+        print(f"HEALTHY {binary.parent.name}")
+        return 0
+    except Refusal as active_error:
+        previous = read_json(DATA_ROOT / "previous.json")
+        version = str(previous.get("version"))
+        binary = version_dir(version) / "codex"
+        digest = sha256(binary.read_bytes())
+        if digest != previous.get("artefact_sha256"):
+            raise Refusal(
+                f"active failed ({active_error}); previous artefact also failed"
+            ) from active_error
+        verify_signature(binary)
+        write_json(DATA_ROOT / "active.json", previous)
+        print(f"RESTORED {version}")
+        return 0
 
 
 def command_activate(version: str) -> int:
@@ -289,10 +346,15 @@ def command_status() -> int:
             receipt = read_json(receipt_path)
             state = "VALIDATED" if receipt.get("validated") else "PENDING"
             print(f"{state} {receipt.get('version')}")
+            if receipt.get("validated"):
+                print(f"  Next: codex-question-patch activate {receipt.get('version')}")
+            else:
+                print(f"  Next: codex-question-patch validate {receipt.get('version')}")
     unreviewed = DATA_ROOT / "unreviewed"
     if unreviewed.is_dir():
         for path in sorted(unreviewed.iterdir()):
             print(f"REVIEW REQUIRED {path.name}")
+            print(f"  Next: codex-question-patch brief {path.name}")
     return 0
 
 
@@ -316,6 +378,9 @@ def parser() -> argparse.ArgumentParser:
     for name in ("validate", "activate", "brief"):
         command = commands.add_parser(name)
         command.add_argument("version")
+    review = commands.add_parser("review")
+    review.add_argument("version", nargs="?")
+    commands.add_parser("repair")
     commands.add_parser("status")
     execute = commands.add_parser("exec")
     execute.add_argument("arguments", nargs=argparse.REMAINDER)
@@ -332,6 +397,10 @@ def main() -> int:
         return command_activate(arguments.version)
     if arguments.command == "brief":
         return command_brief(arguments.version)
+    if arguments.command == "review":
+        return command_review(arguments.version)
+    if arguments.command == "repair":
+        return command_repair()
     if arguments.command == "status":
         return command_status()
     if arguments.command == "exec":

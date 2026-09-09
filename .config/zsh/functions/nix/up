@@ -333,6 +333,11 @@ _up_reapply_patches() {
   return $rc
 }
 
+_up_report_codex_patch() {
+  codex-question-patch status
+  print "Codex upgrades require explicit validation and activation."
+}
+
 _up_brew() {
   # Homebrew locates gh itself for bottle attestation. A project-installed mise
   # shim can otherwise shadow the global wrapper while having no active version
@@ -409,6 +414,13 @@ if [[ -z $up_blocked_by ]]; then
   _up_run required patches "reapply Claude patches" _up_reapply_patches
 else
   _up_not_run patches
+fi
+
+if [[ -z $up_blocked_by ]]; then
+  _up_run advisory "codex patch" "review staged Codex candidates" _up_report_codex_patch
+  _up_next "codex-question-patch status"
+else
+  _up_not_run "codex patch"
 fi
 
 if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then

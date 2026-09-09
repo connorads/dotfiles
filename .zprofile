@@ -1,5 +1,5 @@
 # mise-en-place
-export PATH="$HOME/.local/share/mise/shims:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
 # Fix for Sublime Merge to work with git-lfs
 if [[ -f /opt/homebrew/bin/brew ]]; then

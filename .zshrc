@@ -110,12 +110,15 @@ if command -v mise &>/dev/null; then
   eval "$(mise activate zsh)"
 fi
 
-# Keep the agent-sandbox shadow dir ahead of mise's install dirs so enrolled
-# agents resolve to their sandbox wrapper (mise re-prepends each prompt; this
-# runs after and wins). Inherited by subprocess execs an agent spawns.
+# Keep user wrappers and the agent-sandbox shadow dir ahead of mise's install
+# dirs. Mise re-prepends each prompt, so this hook restores both afterwards.
+# Inherited by subprocess execs an agent spawns.
 typeset -U path
 _agent_sandbox_shadow="$HOME/.local/share/shadow-bin"
-_agent_sandbox_prepend() { [ -d "$_agent_sandbox_shadow" ] && path=( "$_agent_sandbox_shadow" $path ) }
+_agent_sandbox_prepend() {
+  [[ -d "$HOME/.local/bin" ]] && path=( "$HOME/.local/bin" $path )
+  [[ -d "$_agent_sandbox_shadow" ]] && path=( "$_agent_sandbox_shadow" $path )
+}
 _agent_sandbox_prepend
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd _agent_sandbox_prepend

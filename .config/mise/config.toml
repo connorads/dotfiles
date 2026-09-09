@@ -58,7 +58,9 @@ ast-grep = "0.45"
 # runtime, and a global CLOUDSDK_PYTHON would override the tested one.
 gcloud = "latest"
 aws = "2"
-codex = "latest"
+# Stage each upgrade behind the reviewed patch gate. Unknown builds remain
+# inactive and the last validated version stays on PATH.
+codex = { version = "latest", postinstall = "$HOME/.local/libexec/codex-question-patch.py stage \"$MISE_TOOL_INSTALL_PATH/bin/codex\" \"$(basename \"$MISE_TOOL_INSTALL_PATH\")\" || true" }
 usage = "5"
 hcloud = "1"
 deno = "2"
