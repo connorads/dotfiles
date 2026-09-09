@@ -801,11 +801,21 @@ the shared pure core: it turns a raw Codex usage object into a duration-sorted
 first). A window the API gives no `limit_window_seconds` for reports `seconds: 0`,
 meaning unknown - the slot's usual length is never substituted, because doing so
 reproduces the positional bug one layer down. **No surface may name a window a
-duration the payload does not support.** Both surfaces render that list -
-`codex-usage` shells out to `jq -f`, while the fancy dashboard shells out from
-Python; `window_label(seconds)` gives canonical `5-hour`/`7-day` (`5h`/`7d`)
-wording, `unknown`/`?` for a 0, and adapts to any other duration. Pace/colour
-maths uses each window's real length, and skips a window whose length is unknown.
+duration the payload does not support.** Three surfaces render that list -
+`codex-usage` and `usage-debug` shell out to `jq -f`, while the fancy dashboard
+shells out from Python; `window_label(seconds)` gives canonical `5-hour`/`7-day`
+(`5h`/`7d`) wording, `unknown`/`?` for a 0, and adapts to any other duration.
+Pace/colour maths uses each window's real length, and skips a window whose
+length is unknown.
+
+`usage-debug` was the surface that never adopted the core, and read
+`primary_window` positionally with a hardcoded `5h=` label for its whole life -
+printing `5h=14% reset in 6d 11h` on today's weekly-only payload. That matters
+more than a wrong label: it is the independent read you reach for when the
+dashboard is the thing you cannot trust, so it misled during exactly the task it
+exists for. Its `// 0` fallbacks fabricated `0%` for a window whose data was
+simply absent, which reads as headroom. Claude stays positional there too, and
+both its windows are now read - only `.five_hour` was.
 
 Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
 no return date, collapsing usage to a single weekly window that arrives in the

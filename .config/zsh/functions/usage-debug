@@ -18,6 +18,18 @@ now=$(date +%s)
 ttl=300
 local lock_stale_after=600
 
+# Resolve this file's directory so the shared Codex window classifier is
+# reachable whether we were autoloaded, reached through the ~/.local/bin
+# symlink, or run directly. Mirrors codex-usage's idiom.
+local self_name="${funcstack[1]:-${${(%):-%N}:t}}"
+local self_file= candidate_dir
+for candidate_dir in $fpath; do
+  [[ -r "$candidate_dir/$self_name" ]] && { self_file="$candidate_dir/$self_name"; break }
+done
+[[ -n "$self_file" ]] || self_file="${${(%):-%N}:A}"
+[[ -r "$self_file" ]] || self_file="${0:A}"
+local codex_windows_jq="${self_file:A:h}/codex-windows.jq"
+
 _mtime() {
   local file="$1"
   stat -f%m "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || echo 0
@@ -75,6 +87,25 @@ _fmt_secs() {
   else
     echo "${m}m"
   fi
+}
+
+# Compact wording for the known Codex windows, matching the dashboard's idiom.
+# A 0 means the payload carried no `limit_window_seconds`, so the length is
+# unknown - say so rather than naming one.
+_window_label() {
+  local secs="$1"
+  case "$secs" in
+    0) print -r -- "?" ;;
+    18000) echo "5h" ;;
+    604800) echo "7d" ;;
+    *)
+      if (( secs % 86400 == 0 )); then
+        echo "$((secs / 86400))d"
+      else
+        echo "$((secs / 3600))h"
+      fi
+      ;;
+  esac
 }
 
 _fmt_epoch() {
@@ -187,28 +218,49 @@ _print_provider() {
 
   if [[ -f "$cache" ]]; then
     if [[ "$kind" == "claude" ]]; then
-      local u5 reset_iso reset_ts rem
-      u5=$(jq -r '.five_hour.utilization // 0' "$cache" 2>/dev/null)
-      reset_iso=$(jq -r '.five_hour.resets_at // empty' "$cache" 2>/dev/null)
-      reset_ts=$(_parse_iso_to_epoch "$reset_iso")
-      rem=$((reset_ts - now))
-      if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
-        echo "  usage: 5h=${u5}% reset=stale"
-      else
-        [[ "$rem" -lt 0 ]] && rem=0
-        echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
-      fi
+      # Claude stays positional - `five_hour`/`seven_day` are named keys and
+      # contractually fixed, so they cannot collapse into one slot the way
+      # Codex's did. Both are read: only the 5h one was, so the weekly figure
+      # never appeared here at all.
+      local pair key label util reset_iso reset_ts rem
+      for pair in five_hour:5h seven_day:7d; do
+        key="${pair%%:*}"
+        label="${pair##*:}"
+        util=$(jq -r --arg k "$key" '.[$k].utilization // empty' "$cache" 2>/dev/null)
+        [[ -n "$util" ]] || continue
+        reset_iso=$(jq -r --arg k "$key" '.[$k].resets_at // empty' "$cache" 2>/dev/null)
+        reset_ts=$(_parse_iso_to_epoch "$reset_iso")
+        rem=$((reset_ts - now))
+        if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
+          echo "  usage: ${label}=${util}% reset=stale"
+        else
+          [[ "$rem" -lt 0 ]] && rem=0
+          echo "  usage: ${label}=${util}% reset in $(_fmt_secs "$rem")"
+        fi
+      done
     elif [[ "$kind" == "codex" ]]; then
-      local u5 reset_after rem
-      u5=$(jq -r '.rate_limit.primary_window.used_percent // 0' "$cache" 2>/dev/null)
-      reset_after=$(jq -r '.rate_limit.primary_window.reset_after_seconds // 0' "$cache" 2>/dev/null)
-      rem=$((reset_after - cache_age))
-      if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
-        echo "  usage: 5h=${u5}% reset=stale"
-      else
-        [[ "$rem" -lt 0 ]] && rem=0
-        echo "  usage: 5h=${u5}% reset in $(_fmt_secs "$rem")"
-      fi
+      # One line per window that exists, classified by its real duration
+      # through the shared jq core - never by JSON slot, which is how this line
+      # came to call a weekly window resetting in six days a 5-hour one. A
+      # window the payload omits is simply not printed; nothing is invented.
+      local secs used reset_at reset_after rem
+      while IFS=$'\t' read -r secs used reset_at reset_after; do
+        [[ -n "$secs" ]] || continue
+        # The absolute instant wins: reset_after_seconds was only true when the
+        # cache was written, so it needs the cache's age subtracted back off.
+        if [[ "$reset_at" -gt 0 ]]; then
+          rem=$((reset_at - now))
+        else
+          rem=$((reset_after - cache_age))
+        fi
+        if [[ "$rem" -le 0 && "$cache_age" -ge "$ttl" ]]; then
+          echo "  usage: $(_window_label "$secs")=${used}% reset=stale"
+        else
+          [[ "$rem" -lt 0 ]] && rem=0
+          echo "  usage: $(_window_label "$secs")=${used}% reset in $(_fmt_secs "$rem")"
+        fi
+      done < <(jq -f "$codex_windows_jq" "$cache" 2>/dev/null \
+        | jq -r '.[] | [.seconds, .used_percent, .reset_at, .reset_after_seconds] | @tsv')
     elif [[ "$kind" == "cosine" ]]; then
       local used total pct reset_iso reset_ts rem
       if jq -e '(.usedTokens | type == "number") and (.totalAvailableTokens | type == "number") and (.totalAvailableTokens > 0) and (.billingPeriodResetsAt | type == "string" and length > 0)' "$cache" >/dev/null 2>&1; then
