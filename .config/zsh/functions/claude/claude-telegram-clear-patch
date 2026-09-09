@@ -14,9 +14,10 @@
 # inference, and it fires even when the session is stuck mid-turn.
 #
 # The plugin cache is overwritten on plugin update, so this is idempotent (keyed
-# on a sentinel comment) and safe to re-apply. Insertion, not a length-preserving
-# byte-swap, so it is a sibling of claude-channels-patch rather than a user of
-# _needle-patch-lib. Backup at <server.ts>.unpatched; --restore reverts.
+# on a sentinel comment) and safe to re-apply. Insertion into plain TypeScript,
+# not a length-preserving byte-swap inside a compiled binary, so it stands alone
+# rather than using _needle-patch-lib. Backup at <server.ts>.unpatched;
+# --restore reverts.
 
 emulate -L zsh
 setopt no_unset pipe_fail

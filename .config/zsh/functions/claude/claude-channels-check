@@ -1,0 +1,75 @@
+#!/usr/bin/env zsh
+# claude-channels-check: report whether the last --channels launch actually
+# registered its channel, and drop a stale marker when it did not.
+# usage: claude-channels-check   (no flags; always exits 0)
+#
+# Why a behaviour check rather than a binary check: --channels is held open by
+# CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF in ~/.zshrc, which lets the
+# feature-flag disk cache in ~/.claude.json be read while telemetry stays off.
+# Nothing refreshes that cache with telemetry off, so a reset ~/.claude.json
+# takes channels away with no other signal - and the previous binary-needle
+# patches reported "patched:" for weeks while the feature was dead (see
+# ~/docs/adr/0011). The only honest evidence is the plugin's own debug log.
+#
+# Evidence: the newest mcp-logs-plugin-telegram-telegram/*.jsonl under Claude
+# Code's cache root carries one line per registration attempt -
+#   {"debug":"Channel notifications registered",...}
+#   {"debug":"Channel notifications skipped: <reason>",...}
+# The last such line is the verdict. A skip writes ~/.cache/claude-channels.stale
+# in the shared marker format, which the glob at the top of ~/.zshrc prints on
+# the next shell start; anything else clears it.
+#
+# Exits 0 in every case, including missing log and missing tool: this is
+# launched in the background by `cyc` and must never fail a launch or a shell.
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+local check_name=claude-channels-check
+local marker="$HOME/.cache/claude-channels.stale"
+
+# Claude Code's cache root. Native on darwin, XDG elsewhere.
+local root
+case "$OSTYPE" in
+darwin*) root="$HOME/Library/Caches/claude-cli-nodejs" ;;
+*) root="${XDG_CACHE_HOME:-$HOME/.cache}/claude-cli-nodejs" ;;
+esac
+
+# One dir per project cwd, so glob across all of them and take the newest file:
+# the session just launched is the one writing.
+local -a logs
+logs=("$root"/*/mcp-logs-plugin-telegram-telegram/*.jsonl(N.om))
+(( ${#logs} )) || return 0
+
+local log="${logs[1]}" line state
+line=$(LC_ALL=C /usr/bin/grep -a '"debug":"Channel notifications' -- "$log" 2>/dev/null | tail -1) || line=""
+[[ -n $line ]] || return 0
+
+# {"debug":"Channel notifications skipped: <reason>",...} -> `skipped: <reason>`
+state=${line#*\"debug\":\"Channel notifications }
+state=${state%%\"*}
+
+# Only an explicit skip is failure. `registered`, `re-registered after
+# reconnect` and any future wording all mean the channel is live.
+if [[ $state != skipped:* ]]; then
+  rm -f "$marker" 2>/dev/null
+  print "ok: channels $state ($log)"
+  return 0
+fi
+
+local when
+when=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+mkdir -p "${marker:h}" 2>/dev/null || true
+{
+  print -r -- "$check_name: the last --channels launch did not register."
+  print -r -- "target: $log"
+  print -r -- "reason: $state"
+  print -r -- "when:   $when"
+  print -r -- "The feature-flag disk cache in ~/.claude.json is the only thing"
+  print -r -- "holding --channels open with telemetry off. Repopulate it with a"
+  print -r -- "\`cspy\` session (telemetry on, gates fetched live), then re-run"
+  print -r -- "\`cyc\` - this marker clears on the next successful registration."
+} > "$marker" 2>/dev/null || true
+
+print -u2 "$check_name: channels $state - marker: $marker"
+return 0

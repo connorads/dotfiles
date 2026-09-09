@@ -811,8 +811,8 @@ mode), read from its live argv (`ps -o args=`) through the same
 pane stays non-yolo, and a `cy`/`ccp` source carries its system-prompt append.
 The lib strips the source's own stale `-r`/`--fork-session`/`--continue`, so a
 fork-of-fork is clean; a source with no override (bare `claude --resume <id>`)
-forks bare. The origin launchers themselves - the `c`/`cy`/`cyc`/`cspy` aliases
-and `ccp` - no longer re-type the flag set: it lives once in the shared
+forks bare. The origin launchers themselves - the `c`/`cy`/`cspy` aliases, the
+`cyc` function and `ccp` - do not re-type the flag set: it lives once in the shared
 [`claude-launch-flags`](../zsh/functions/claude-launch-flags) owner, which they
 word-split.
 

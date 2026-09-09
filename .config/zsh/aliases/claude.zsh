@@ -7,15 +7,19 @@
 # subcommands like `claude update` and agent/script invocations stay vanilla.
 alias c='claude $(claude-launch-flags)'
 alias cy='claude $(claude-launch-flags --yolo)'
-alias cyc='claude $(claude-launch-flags --yolo) --channels plugin:telegram@claude-plugins-official'
+# cyc (yolo + the Telegram channel) is a function in functions/claude/, not an
+# alias: it also backgrounds the post-launch claude-channels-check.
 # cyf: yolo on fable. The flag is the durable form of the choice - the /model
 # picker writes `model` into .claude/settings.json, which the claude-settings
 # clean filter strips as machine-local state, so it never reaches other hosts.
 alias cyf='claude $(claude-launch-flags --yolo) --model fable'
-# cspy: launch with telemetry re-enabled so GrowthBook gates fetch and
-# preview/gated features (computer-use, channels) appear. We normally disable
-# telemetry (DISABLE_TELEMETRY/DO_NOT_TRACK in .zshrc), which puts the client in
-# no-telemetry mode and short-circuits gate eval to bundled defaults (all off).
+# cspy: launch with telemetry re-enabled so GrowthBook gates are evaluated
+# live against the server. Everything else reads the cached result of that
+# evaluation - CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF (in .zshrc) lets a
+# no-telemetry session read the gate cache in ~/.claude.json, and nothing else
+# refreshes it. So this is how the cache gets repopulated after a
+# ~/.claude.json reset, and the only way preview/gated features (computer-use,
+# channels) come back once it has gone stale.
 alias cspy='env -u DISABLE_TELEMETRY -u DO_NOT_TRACK claude $(claude-launch-flags)'
 alias cdp='claude-desktop-profile'
 # claude-usage is now a function in ~/.config/zsh/functions/

@@ -59,12 +59,14 @@ usage = "5"
 hcloud = "1"
 deno = "2"
 pandoc = "3"
-# `latest` drops an unpatched bundle on every update, so postinstall reapplies
-# the binary patches, then checks the built-in Bash-tool git note that
-# ~/.claude/system-append.md countermands still exists. Each step warns and
-# drops a marker but exits 0 on a missing needle, so an update never blocks;
-# chained with `;` so a warning doesn't skip the rest.
-claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-channels-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-channels-allowlist-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
+# mise owns the Claude install (docs/adr/0011). `latest` drops an unpatched
+# bundle on every update, so postinstall reapplies the computer-use and
+# session-reaper patches, then checks the built-in Bash-tool git note that
+# ~/.claude/system-append.md countermands still exists. --channels is not
+# patched: it is held open by CLAUDE_CODE_GB_DISK_CACHE_WHEN_TELEMETRY_OFF in
+# ~/.zshrc. Each step warns and drops a marker but exits 0 on a missing needle,
+# so an update never blocks; chained with `;` so a warning doesn't skip the rest.
+claude = { version = "latest", postinstall = "$HOME/.config/zsh/functions/claude/claude-computer-use-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-session-reaper-patch --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"; $HOME/.config/zsh/functions/claude/claude-commit-note-check --reapply \"$MISE_TOOL_INSTALL_PATH/claude\"" }
 fnox = "1"
 
 # github:/aqua tools: undateable releases slip the 4d gate, so the pin — not the
