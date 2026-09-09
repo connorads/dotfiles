@@ -318,6 +318,10 @@ __pycache__/
 /.local/bin/claude
 /.local/bin/browser-harness
 
+# The Codex question-patch manager, which ~/.local/bin/codex execs.
+!/.local/libexec/
+!/.local/libexec/**
+
 # agent-sandbox shadow-bin wrappers (symlinks to ~/.local/bin/agent-sandbox).
 # Two levels deep, so re-include the share parent dir then the subtree.
 !/.local/share/
