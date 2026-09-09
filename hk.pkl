@@ -320,6 +320,58 @@ local fast_steps = new Mapping<String, Step> {
         check = "bash .hk-hooks/link-check.sh"
     }
 
+    // Only .config/zsh/functions/codex-windows.jq may name a Codex rate-limit
+    // SLOT (`primary_window` / `secondary_window`). A slot is a position in the
+    // JSON, not a window length: OpenAI moved the weekly figure into
+    // `primary_window` when it removed the 5h window, so primary=5h mislabels
+    // it. Learned twice - codex-usage and the fancy dashboard adopted the
+    // shared classifier when it was written, usage-debug did not and printed
+    // "5h=14% reset in 6d 11h" for its whole life.
+    //
+    // GLOBLESS on the same reasoning as link-check, and here it is the whole
+    // point: what this guards against is a NEW surface file, which no glob can
+    // enumerate ahead of time and which a path-scoped step would fail open on.
+    // Whole-tree is ~0.15s. Deliberate sites carry a `codex-slot-ok: <reason>`
+    // comment, one at a time; the Spark extras in ai-usage are the only one.
+    ["codex-slot-read"] {
+        check = "bash .hk-hooks/codex-slot-read.sh"
+
+        // The checker owns its file list, reading the tracked set off cwd. So a
+        // {{tmp}}-scoped sandbox with its own git repo is what makes that read
+        // testable at all: the verdict below is only reachable if the sandbox's
+        // probe is the file that got scanned. `hk test` runs with GIT_DIR and
+        // GIT_WORK_TREE stripped (see the hk-test step), so `git init` here
+        // resolves to the sandbox rather than to ~/git/dotfiles.
+        tests {
+            ["a positional slot read fails"] {
+                run = "check"
+                write { ["{{tmp}}/probe.sh"] = "u=$(jq -r .rate_limit.primary_window.used_percent c)\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/codex-slot-read.sh .hk-hooks/ && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git init -q . && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f probe.sh"
+                expect {
+                    code = 1
+                    stderr = "reads a Codex rate-limit slot positionally"
+                }
+            }
+
+            ["a waived slot read passes"] {
+                run = "check"
+                write { ["{{tmp}}/probe.sh"] = "# codex-slot-ok: probe\nu=$(jq -r .rate_limit.primary_window.used_percent c)\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/codex-slot-read.sh .hk-hooks/ && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git init -q . && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f probe.sh"
+                expect { code = 0 }
+            }
+
+            // A bats fixture is a raw API payload - data to feed the
+            // classifier, not code that classifies - so it cannot mislabel a
+            // window and must not need a waiver.
+            ["a test fixture payload passes"] {
+                run = "check"
+                write { ["{{tmp}}/.config/zsh/tests/probe.bats"] = "echo '{\"rate_limit\":{\"primary_window\":{\"used_percent\":9}}}'\n" }
+                before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/codex-slot-read.sh .hk-hooks/ && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git init -q . && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git add -f .config/zsh/tests/probe.bats"
+                expect { code = 0 }
+            }
+        }
+    }
+
     // First-party JS/TS lint, including the type-aware rules: on the 184-file
     // gate set they turn 0 findings into 209, at 0.16s -> 1.15s. Enabled through
     // .oxlintrc.json (options.typeAware) rather than --type-aware, so the editor

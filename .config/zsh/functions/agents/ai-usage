@@ -706,8 +706,9 @@ def collect_windows():
         for extra_limit in (codex.get("additional_rate_limits") or [])[:2]:
             limit_name = short_limit_name(extra_limit.get("limit_name"))
             extra_rl = extra_limit.get("rate_limit") or {}
-            # Spark is low-stakes and not the failure mode, so apply the same
-            # limit_window_seconds // fallback rule inline rather than the jq core.
+            # Spark is low-stakes and not the failure mode, so it applies the
+            # limit_window_seconds // fallback rule inline rather than the jq
+            # core. codex-slot-ok: named slots, deliberately, for Spark only.
             for key, fallback_secs in (("primary_window", 18000), ("secondary_window", 604800)):
                 obj = extra_rl.get(key) or {}
                 pct = as_pct(obj.get("used_percent"))
