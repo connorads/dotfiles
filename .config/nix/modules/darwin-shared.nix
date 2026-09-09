@@ -56,32 +56,15 @@
 
   # -- pf Firewall: Block External Access to Dev Server Ports --
   #
-  # Problem: Many dev servers (Next.js, Vite, etc.) bind to 0.0.0.0 by default,
-  # exposing your development environment to all devices on your local network.
-  # This is a security risk - source maps, API keys in env vars, and debug
-  # endpoints become accessible to anyone on your WiFi/LAN.
+  # Dev servers bind 0.0.0.0 by default, so source maps, env vars and debug
+  # endpoints reach anyone on the LAN. These rules cover en0/en1 only:
+  # loopback still works, and Tailscale peers arrive on utun+ and DO reach
+  # these ports - use `ts serve <port>` for deliberate sharing.
   #
-  # Solution: Use macOS's pf (packet filter) to block incoming connections on
-  # the WiFi/Ethernet interface (en0). Localhost still works because we only
-  # block on en0, not lo0 (loopback).
-  #
-  # How it works:
-  # - Creates /etc/pf.anchors/dev-firewall with blocking rules for en0
-  # - LaunchDaemon loads rules on boot via pfctl
-  # - Rules block incoming TCP on dev ports from external network only
-  # - Loopback (localhost) is unaffected - rules only apply to en0
-  #
-  # To temporarily disable (e.g., for LAN testing):
+  # Disable for LAN testing:
   #   sudo pfctl -a 'com.apple/dev-firewall' -F rules
-  #
-  # To re-enable:
+  # Re-enable:
   #   sudo pfctl -a 'com.apple/dev-firewall' -f /etc/pf.anchors/dev-firewall
-  #
-  # Tailscale note: These rules block WiFi/Ethernet (en0) only. Tailscale uses
-  # utun+ interfaces, so Tailscale peers CAN access dev ports by default.
-  # If you want to block Tailscale too, use 'ts serve <port>' for explicit
-  # sharing, or add: block return in on utun+ proto tcp from any to any port { ... }
-  #
   environment.etc."pf.anchors/dev-firewall".text = ''
     # Block external access to common dev server ports on LAN interfaces
     # Localhost (lo0) and Tailscale (utun+) are unaffected
@@ -134,7 +117,6 @@
     };
   };
 
-  # Automatic daily GC to keep the store tidy.
   nix.gc = {
     automatic = true;
     options = "--delete-older-than 14d";
@@ -144,7 +126,6 @@
     };
   };
 
-  # Daily store optimization to deduplicate the store.
   nix.optimise = {
     automatic = true;
     interval = {

@@ -32,6 +32,5 @@
     pkgs.nerd-fonts.fira-code
   ];
 
-  # Let Home Manager manage itself
   programs.home-manager.enable = true;
 }

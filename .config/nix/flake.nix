@@ -38,7 +38,6 @@
       home-manager,
     }:
     let
-      # Apply overlays to a pkgs set
       mkPkgs =
         system:
         import nixpkgs {
@@ -89,10 +88,8 @@
           ];
         };
 
-      # Helper to create packages module for a given pkgs
       mkPackages = pkgs: import ./modules/packages.nix { inherit pkgs; };
 
-      # Helper to reduce darwinConfiguration boilerplate
       mkDarwin =
         extraModules:
         nix-darwin.lib.darwinSystem {
@@ -108,7 +105,6 @@
           ++ extraModules;
         };
 
-      # Helper to reduce homeConfiguration boilerplate
       mkHome =
         system: modules:
         let
