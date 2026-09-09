@@ -482,8 +482,14 @@ local fast_steps = new Mapping<String, Step> {
     // Staging a patched vendored skill whose LOCAL PATCH was clobbered by a
     // refresh must fail; deleting the patch dir/vars entry in the same commit
     // is the deliberate-removal escape hatch.
+    // The glob is the vendor root, not a list of bucket shapes: skill-patch
+    // resolves every target as `$HOME/.config/skills/vendor / rel`, so this is
+    // exactly the tool's reachable surface and no bucket layout invented later
+    // can fall outside it. Enumerating shapes is what let the set buckets
+    // (`vendor/<set>/.agents/skills/`) go ungated - hk globs fail open, so the
+    // gate went silent rather than erroring.
     ["vendored-skill-patches"] {
-        glob = List("**/vendor/.agents/skills/**", ".config/skills/vendor/patches/**")
+        glob = List(".config/skills/vendor/**")
         check = "zsh .config/zsh/functions/patch/skill-patch check"
     }
 

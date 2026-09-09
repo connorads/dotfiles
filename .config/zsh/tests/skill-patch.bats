@@ -83,6 +83,35 @@ Body text.'
   [ "$(cat "$VENDOR/.agents/skills/demo/SKILL.md")" = "$after_first" ]
 }
 
+@test "set bucket: a <set>/.agents/skills/ target resolves for apply and check" {
+  local dir="$VENDOR/patches/set-bucket"
+  mkdir -p "$dir" "$VENDOR/expo/.agents/skills/expo-router"
+  cat >"$dir/patch.json" <<'EOF'
+{
+  "reason": "unvendored skill reference removed.",
+  "files": ["expo/.agents/skills/expo-router/SKILL.md"]
+}
+EOF
+  printf 'load the expo-skill-feedback skill\n' >"$dir/01-find.md"
+  printf '{{marker}}\n' >"$dir/01-replace.md"
+  printf 'intro\nload the expo-skill-feedback skill\noutro\n' \
+    >"$VENDOR/expo/.agents/skills/expo-router/SKILL.md"
+
+  run_skill_patch check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"expo/.agents/skills/expo-router/SKILL.md"* ]]
+
+  run_skill_patch apply
+  [ "$status" -eq 0 ]
+  expected='intro
+<!-- LOCAL PATCH (connorads dotfiles): unvendored skill reference removed. -->
+outro'
+  [ "$(cat "$VENDOR/expo/.agents/skills/expo-router/SKILL.md")" = "$expected" ]
+
+  run_skill_patch check
+  [ "$status" -eq 0 ]
+}
+
 @test "check: pending exits 1 and names patch, target, remediation" {
   make_simple_patch
   write_pending_target
