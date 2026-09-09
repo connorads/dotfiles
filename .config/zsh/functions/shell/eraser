@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 # eraser: render Eraser diagram JSON to PNG/HTML with config discovery disabled
 #
-# Wrapper over `eraser-diagrams` (mise: npm:@eraserlabs/diagrams-cli). Two jobs,
-# both because the bare CLI is unsafe to leave on PATH for agents:
+# Wrapper over `eraser-diagrams` (mise: npm:@eraserlabs/diagrams-cli). Two of
+# its jobs exist because the bare CLI is unsafe to leave on PATH for agents:
 #
 # 1. Injects `--no-config`. The CLI's `library` and `overrides` config keys are
 #    ES module paths it `await import()`s with no prompt, so an
@@ -18,6 +18,12 @@
 #    Testing (revision-stable, separate profile) over the daily Google Chrome,
 #    which auto-updates under you and shares your browser profile.
 #
+# The other two are authoring aids the CLI does not offer: an `icons`
+# subcommand (the icon catalogue is unlistable, and a wrong name renders a
+# placeholder rather than failing) and an orientation block ahead of `--help`
+# (the central surprise is that there is no auto-layout, and nothing else on the
+# machine says so).
+#
 # The flag goes *after* the subcommand: inputs starting with `-` are passed
 # after `--`, so appending it would make it a positional input file instead.
 emulate -L zsh
@@ -28,6 +34,154 @@ setopt null_glob numeric_glob_sort
 if ! command -v eraser-diagrams >/dev/null 2>&1; then
   print -u2 -- "eraser: eraser-diagrams not found on PATH (mise install npm:@eraserlabs/diagrams-cli)"
   return 127
+fi
+
+# `icons` is the wrapper's own subcommand, never forwarded: the CLI has no way
+# to list the icon catalogue, so an unknown name is guessed at and degrades to a
+# placeholder glyph with a W_UNKNOWN_ICON warning rather than failing.
+if [[ ${1:-} == icons ]]; then
+  shift
+  local refresh=0 pattern=
+  local -a positional
+  while (( $# )); do
+    case $1 in
+      --refresh) refresh=1 ;;
+      -h|--help)
+        print -r -- "usage: eraser icons [--refresh] [pattern]"
+        print -r --
+        print -r -- "Print Eraser icon names, one per line. <pattern> is an unanchored,"
+        print -r -- "case-insensitive extended regex: 'postgres' matches as a substring,"
+        print -r -- "'^aws-s3' anchors. A pattern starting with '-' goes after '--'."
+        print -r --
+        print -r -- "Names are cached for 30 days; --refresh refetches."
+        print -r -- "Exit: 0 matched · 1 no match · 2 usage · 3 no catalogue available"
+        return 0
+        ;;
+      --) shift; positional+=("$@"); break ;;
+      -*) print -u2 -- "eraser icons: unknown option: $1"; return 2 ;;
+      *) positional+=("$1") ;;
+    esac
+    shift
+  done
+  if (( ${#positional} > 1 )); then
+    print -u2 -- "eraser icons: at most one pattern (got ${#positional})"
+    return 2
+  fi
+  pattern=${positional[1]:-}
+
+  local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}/eraser
+  local cache=$cache_dir/icon-names.txt
+  local -a fresh
+  # Glob qualifier rather than a `find -mtime`: BSD and GNU find disagree on the
+  # spelling, zsh does not.
+  fresh=($cache(Nm-30))
+
+  if (( refresh )) || (( ! ${#fresh} )); then
+    local -a missing
+    command -v curl >/dev/null 2>&1 || missing+=(curl)
+    command -v python3 >/dev/null 2>&1 || missing+=(python3)
+    if (( ${#missing} )); then
+      print -u2 -- "eraser icons: cannot refresh (${(j:, :)missing} not found)"
+    else
+      # The GCS JSON listing of the bucket the renderer's own loader fetches
+      # from. `fields` trims the response to the two keys used; the listing
+      # pages at 1000 objects, so nextPageToken is followed to the end.
+      local base=https://storage.googleapis.com/storage/v1/b/eraser-public-assets/o
+      # Names are filtered to the renderer's own ICON_NAME_RE at write time, so
+      # the cache only ever holds names that can actually render. The handful of
+      # objects carrying uppercase, a space or an underscore are unreachable by
+      # any document, and listing them would only mislead.
+      local py='
+import json, re, sys
+doc = json.load(sys.stdin)
+print(doc.get("nextPageToken", ""))
+ok = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+for item in doc.get("items", ()):
+    name = item.get("name", "")
+    if not name.startswith("canvas-icons/") or not name.endswith(".svg"):
+        continue
+    name = name[len("canvas-icons/"):-len(".svg")]
+    if ok.match(name):
+        print(name)
+'
+      local token= page out
+      local -a names lines curl_args
+      local ok=1 pages=0
+      while :; do
+        curl_args=(
+          -fsS --max-time 30 -G "$base"
+          --data-urlencode 'prefix=canvas-icons/'
+          --data-urlencode 'fields=items/name,nextPageToken'
+        )
+        # The page token is base64 and carries `=` padding, so it must be
+        # url-encoded rather than glued into the query string.
+        [[ -n $token ]] && curl_args+=(--data-urlencode "pageToken=$token")
+        page=$(command curl "${curl_args[@]}") || { ok=0; break }
+        out=$(print -r -- "$page" | command python3 -c "$py") || { ok=0; break }
+        lines=("${(@f)out}")
+        token=${lines[1]:-}
+        (( ${#lines} > 1 )) && names+=("${(@)lines[2,-1]}")
+        [[ -z $token ]] && break
+        (( ++pages > 50 )) && { ok=0; break }
+      done
+      # Only a complete pagination overwrites the cache: a half-fetched list
+      # would look authoritative and quietly omit whichever icon you wanted.
+      if (( ok )) && (( ${#names} )); then
+        mkdir -p "$cache_dir"
+        if print -rl -- "${names[@]}" >| "$cache.$$"; then
+          command mv -f "$cache.$$" "$cache"
+        else
+          command rm -f "$cache.$$"
+        fi
+      else
+        command rm -f "$cache.$$"
+        print -u2 -- "eraser icons: could not refresh the icon list; using the cached names if any"
+      fi
+    fi
+  fi
+
+  if [[ ! -s $cache ]]; then
+    print -u2 -- "eraser icons: no icon catalogue available (fetch failed, no cache at $cache)"
+    return 3
+  fi
+  if [[ -n $pattern ]]; then
+    grep -Ei -e "$pattern" "$cache"
+  else
+    cat "$cache"
+  fi
+  return $?
+fi
+
+# Orientation ahead of the CLI's own help, for an agent that never got the skill
+# pointer. Only for a bare -h/--help: `eraser <subcommand> --help` is per-command
+# flag help, which needs no preamble. No `return` - the CLI's help follows.
+if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+  cat <<'ORIENTATION'
+eraser renders Eraser diagram JSON to PNG or HTML. This wrapper adds
+--no-config (the CLI's config file is an ES module it imports) and pins
+Chromium.
+
+Vocabulary:
+  eraser registry            every tag, its kind and required props
+  eraser schema <tag>        the JSON Schema for one tag
+  eraser icons [pattern]     icon names, case-insensitive regex
+
+You own the layout. Every entity needs x and y; there is no auto-layout, only
+connection routing. First node at 15,15; 140-240 px between columns, 70-115 px
+between rows.
+
+The loop:
+  1. write the JSON            entities and connections are both required
+  2. eraser validate d.json    schema check, no browser
+  3. eraser render d.json -o d.png
+  4. read d.png                bad geometry is silent; the image is the only
+                               feedback, and no measured output exists here
+  5. fix the coordinates, repeat
+
+Full method: skl eraser-diagrams
+
+--- eraser-diagrams --help ---
+ORIENTATION
 fi
 
 local -a args

@@ -95,11 +95,23 @@ recorded() {
   ! grep -qx -- '--no-config' "$TEST_LOG"
 }
 
-@test "passes --help through untouched" {
+# The orientation block is half the contract here: asserting only the
+# passthrough would keep passing if the block were deleted.
+@test "passes --help through untouched, behind the orientation block" {
   argv --help
   [ "$status" -eq 0 ]
   [ "$(sed -n 1p "$TEST_LOG")" = "--help" ]
   ! grep -qx -- '--no-config' "$TEST_LOG"
+  [[ "$output" == *"no auto-layout"* ]]
+  [[ "$output" == *"eraser icons"* ]]
+  [[ "$output" == *"skl eraser-diagrams"* ]]
+}
+
+@test "a subcommand's own --help gets no orientation block" {
+  argv render --help
+  [ "$status" -eq 0 ]
+  [ "$(sed -n 1p "$TEST_LOG")" = "render" ]
+  [[ "$output" != *"no auto-layout"* ]]
 }
 
 @test "an unknown first word is forwarded for the CLI to reject" {
@@ -107,6 +119,170 @@ recorded() {
   [ "$status" -eq 0 ]
   [ "$(sed -n 1p "$TEST_LOG")" = "frobnicate" ]
   ! grep -qx -- '--no-config' "$TEST_LOG"
+}
+
+# --- icons -----------------------------------------------------------------
+#
+# The catalogue is a GCS bucket listing, so every case here drives the indexed
+# `curl` stub: page N of the fixture is served on the Nth call, and an index
+# left unset falls through to the stub's default (exit 7) to stand for a dead
+# network.
+
+ICON_CACHE_REL=".cache/eraser/icon-names.txt"
+
+# A GCS listing page: nextPageToken (empty = last page) then object names,
+# each relative to the canvas-icons/ prefix. Prints the file path.
+page_file() {
+  local path="$BATS_TEST_TMPDIR/page-$1.json"
+  local token=$2
+  shift 2
+
+  {
+    printf '{'
+    if [ -n "$token" ]; then printf '"nextPageToken":"%s",' "$token"; fi
+    printf '"items":['
+    local first=1 name
+    for name in "$@"; do
+      if [ "$first" -eq 0 ]; then printf ','; fi
+      first=0
+      printf '{"name":"canvas-icons/%s"}' "$name"
+    done
+    printf ']}'
+  } >"$path"
+  printf '%s' "$path"
+}
+
+# Serve $2.. as the single page returned by curl call $1.
+serve_page() {
+  local n=$1
+  shift
+  export "CURL_${n}_KIND=stdout"
+  export "CURL_${n}_OUT=$(page_file "$n" "" "$@")"
+}
+
+curl_calls() {
+  cat "$CURL_STATE" 2>/dev/null || echo 0
+}
+
+@test "icons fetches the catalogue and caches it" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg postgresql.svg
+  argv icons
+  [ "$status" -eq 0 ]
+  [ "$output" = "aws-s3
+postgresql" ]
+  [ "$(cat "$TEST_HOME/$ICON_CACHE_REL")" = "aws-s3
+postgresql" ]
+}
+
+@test "icons is answered from the cache without touching the network" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg
+  argv icons
+  [ "$status" -eq 0 ]
+  [ "$(curl_calls)" -eq 1 ]
+
+  argv icons
+  [ "$status" -eq 0 ]
+  [ "$output" = "aws-s3" ]
+  [ "$(curl_calls)" -eq 1 ]
+}
+
+@test "icons --refresh refetches over a warm cache" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg
+  serve_page 2 postgresql.svg
+  argv icons
+  [ "$status" -eq 0 ]
+
+  argv icons --refresh
+  [ "$status" -eq 0 ]
+  [ "$output" = "postgresql" ]
+  [ "$(curl_calls)" -eq 2 ]
+}
+
+# The renderer's loader rejects anything outside /^[a-z0-9][a-z0-9-]*$/, so a
+# listed object it cannot fetch must never reach the cache.
+@test "icons drops names the renderer's loader would reject" {
+  write_curl_stub
+  serve_page 1 "" aws-s3.svg Azure-arc.svg "my icon.svg" snake_case.svg -leading.svg readme.txt
+  argv icons
+  [ "$status" -eq 0 ]
+  [ "$output" = "aws-s3" ]
+}
+
+@test "icons follows nextPageToken to the end of the listing" {
+  write_curl_stub
+  export CURL_1_KIND=stdout
+  export CURL_1_OUT="$(page_file 1 tok-a aws-s3.svg)"
+  export CURL_2_KIND=stdout
+  export CURL_2_OUT="$(page_file 2 tok-b postgresql.svg)"
+  serve_page 3 redis.svg
+  argv icons
+  [ "$status" -eq 0 ]
+  [ "$output" = "aws-s3
+postgresql
+redis" ]
+  [ "$(curl_calls)" -eq 3 ]
+}
+
+@test "icons matches a pattern as an unanchored case-insensitive regex" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg aws-s3-glacier.svg postgresql.svg
+  argv icons POSTGRES
+  [ "$status" -eq 0 ]
+  [ "$output" = "postgresql" ]
+}
+
+@test "icons honours an anchored pattern" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg gcp-aws-s3.svg
+  argv icons '^aws-s3$'
+  [ "$status" -eq 0 ]
+  [ "$output" = "aws-s3" ]
+}
+
+@test "icons exits 1 with no output when nothing matches" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg
+  argv icons zzz-nothing
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+}
+
+@test "icons rejects a second pattern" {
+  write_curl_stub
+  argv icons one two
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"at most one pattern"* ]]
+}
+
+@test "icons serves a stale cache when the fetch fails, and says so" {
+  write_curl_stub
+  mkdir -p "$TEST_HOME/.cache/eraser"
+  printf 'aws-s3\n' >"$TEST_HOME/$ICON_CACHE_REL"
+  touch -t 202001010000 "$TEST_HOME/$ICON_CACHE_REL"
+
+  argv icons
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"could not refresh"* ]]
+  [[ "$output" == *"aws-s3"* ]]
+  [ "$(cat "$TEST_HOME/$ICON_CACHE_REL")" = "aws-s3" ]
+}
+
+@test "icons exits 3 when the fetch fails and there is no cache" {
+  write_curl_stub
+  argv icons
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"no icon catalogue available"* ]]
+}
+
+@test "icons is never forwarded to the CLI" {
+  write_curl_stub
+  serve_page 1 aws-s3.svg
+  argv icons
+  [ "$status" -eq 0 ]
+  [ ! -s "$TEST_LOG" ]
 }
 
 @test "exits 127 with an install hint when the CLI is absent" {
