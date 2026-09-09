@@ -143,3 +143,15 @@ PY
   [[ "$output" == *"REVIEW REQUIRED 0.0.2"* ]]
   grep -q '"version": "0.0.1"' "$HOME/.local/share/codex-question-patch/active.json"
 }
+
+@test "repair refuses a damaged active artefact when no verified previous exists" {
+  "$MANAGER" stage "$FIXTURE" 0.0.1
+  "$MANAGER" validate 0.0.1
+  "$MANAGER" activate 0.0.1
+  printf x >>"$HOME/.local/share/codex-question-patch/versions/0.0.1/codex"
+
+  run "$MANAGER" repair
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"previous.json"* ]]
+}
