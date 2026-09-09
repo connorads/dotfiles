@@ -94,6 +94,25 @@ Use `mechanical-enforcement` to choose rules and linters, `hk` to wire git hooks
 
 Document why when it would otherwise be lost; the what/how should usually be clear from code.
 Comments and docs (`AGENTS.md`, `README`, ADRs) describe the standing state, rule or constraint in timeless present tense. Change history - "replaced X", "now uses Y", "previously", "no longer" - belongs in commit messages, not the comment or doc body.
+
+In a config file (`.config/mise/config.toml`, `.config/nix/**`) the default home for the why is the commit message. A comment is earned only by a trap: an external fact the line cannot express, which would cause a wrong action if unknown. Restating the setting, naming what the change replaced, or repeating what `AGENTS.md` already says all fail that test. Section banners and file headers are navigation, not comments.
+
+Rejected, on a pinned tool:
+
+```toml
+# Owns the `eas` binary the vendored expo skills call. Pinned to the major so
+# `workflow:validate` runs from a checksummed install rather than upstream's
+# `npx -y eas-cli@latest`, which the eas-workflows-mise patch strips.
+"npm:eas-cli" = "23"
+```
+
+Accepted: the bare line, every word of that rationale in the commit message (`3a318a59`). Earned, because nothing else records it:
+
+```toml
+# Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so
+# `mise upgrade --bump` would regress to it. Do not bump past "1".
+```
+
 If the user's goal or reasoning is unclear, ask before encoding assumptions.
 When a decision has trade-offs or rejected alternatives worth preserving, write an ADR (the `adr` skill) or capture it in docs/commit messages. Supersede a changed record with a new one; never edit it into a changelog of itself.
 When something surprises you, capture it before continuing: changed hypothesis, abandoned approach, non-obvious fix, or corrected understanding.
