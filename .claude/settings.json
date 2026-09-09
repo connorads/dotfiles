@@ -12,6 +12,7 @@
   "env": {
     "CLAUDE_AFK_TIMEOUT_MS": "2147483647",
     "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "DISABLE_AUTOUPDATER": "1",
     "DISABLE_INSTALLATION_CHECKS": "1"
   },
   "hooks": {
