@@ -60,7 +60,7 @@ fi
 exit 0
 EOF
 
-  for cmd in brew macup-check tmux-upstream pin-audit \
+  for cmd in brew macup-check tmux-upstream pin-audit codex-question-patch \
     claude-channels-patch claude-channels-allowlist-patch \
     claude-computer-use-patch claude-session-reaper-patch \
     claude-telegram-clear-patch; do
@@ -475,6 +475,16 @@ EOF
   run_zsh_function "$UP"
   [ "$status" -eq 0 ]
   grep -qF 'pin-audit' "$TEST_LOG"
+}
+
+@test "up advances the codex patch gate before reporting it" {
+  run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  # Order matters: bootstrap stages and validates what mise installed, so the
+  # status that follows is the one a human acts on.
+  [ "$(grep -c 'codex-question-patch bootstrap' "$TEST_LOG")" -eq 1 ]
+  [ "$(grep -n 'codex-question-patch' "$TEST_LOG" | head -1)" = "$(grep -n 'codex-question-patch bootstrap' "$TEST_LOG")" ]
+  grep -qF 'codex-question-patch status' "$TEST_LOG"
 }
 
 @test "up --frozen skips pin-audit" {
