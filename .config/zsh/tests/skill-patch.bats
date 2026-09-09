@@ -225,6 +225,68 @@ EOF
   [[ "$output" == *"bad-json"* ]]
 }
 
+# patch.json is agent-written during a refresh, and `target = vendor_root / rel`
+# has no guard of its own: an absolute rel makes pathlib discard the root.
+@test "target escaping the vendor root with ../ exits 2 without writing" {
+  local dir="$VENDOR/patches/traversal"
+  local outside="$TEST_HOME/.claude/settings.json"
+  mkdir -p "$dir" "$TEST_HOME/.claude"
+  cat >"$dir/patch.json" <<'EOF'
+{
+  "reason": "escapes the vendor root.",
+  "files": ["../../.claude/settings.json"]
+}
+EOF
+  printf 'needle\n' >"$dir/01-find.md"
+  printf 'replacement\n' >"$dir/01-replace.md"
+  printf 'needle\n' >"$outside"
+
+  run_skill_patch apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"traversal"* ]]
+  [[ "$output" == *"escapes the vendor root"* ]]
+  [ "$(cat "$outside")" = "needle" ]
+}
+
+@test "absolute target exits 2 without writing" {
+  local dir="$VENDOR/patches/absolute"
+  local outside="$TEST_HOME/.claude/settings.json"
+  mkdir -p "$dir" "$TEST_HOME/.claude"
+  cat >"$dir/patch.json" <<EOF
+{
+  "reason": "absolute target.",
+  "files": ["$outside"]
+}
+EOF
+  printf 'needle\n' >"$dir/01-find.md"
+  printf 'replacement\n' >"$dir/01-replace.md"
+  printf 'needle\n' >"$outside"
+
+  run_skill_patch apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"absolute"* ]]
+  [[ "$output" == *"relative to the vendor root"* ]]
+  [ "$(cat "$outside")" = "needle" ]
+}
+
+@test "vars expanding to ../ exits 2" {
+  local dir="$VENDOR/patches/traversal-var"
+  mkdir -p "$dir"
+  cat >"$dir/patch.json" <<'EOF'
+{
+  "reason": "var escapes the vendor root.",
+  "files": ["{{set}}/.agents/skills/demo/SKILL.md"],
+  "vars": {"set": ["expo", "../../.claude"]}
+}
+EOF
+  printf 'needle\n' >"$dir/01-find.md"
+  printf 'replacement\n' >"$dir/01-replace.md"
+
+  run_skill_patch check
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"escapes the vendor root"* ]]
+}
+
 @test "unpaired hunk file exits 2" {
   make_simple_patch
   write_applied_target
