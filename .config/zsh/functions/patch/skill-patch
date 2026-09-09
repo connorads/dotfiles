@@ -12,7 +12,8 @@
 #   check   read-only; exit 0 iff all applied, exit 1 with offenders otherwise.
 #   status  per (patch, target, hunk) state table.
 #   list    patch names + reasons.
-# Exit 2: malformed patch.json / unpaired hunk files / bad usage.
+# Exit 2: malformed patch.json / unpaired hunk files / a target outside the
+#         vendor root / bad usage.
 #
 # Not a _needle-patch-lib wrapper: that lib is single-needle binary-patch
 # machinery (grep -aoF can't match multi-line, .unpatched backups, codesign,
@@ -57,6 +58,18 @@ def expand(text, combo):
     for name, value in combo.items():
         text = text.replace("{{%s}}" % name, value)
     return text
+
+
+def check_inside_vendor_root(patch_name, rel):
+    # Targets are resolved as `vendor_root / rel`, so an absolute path makes
+    # pathlib discard the root entirely and `..` walks out of the vendor tree.
+    # patch.json is agent-written during a refresh, and no hk glob can gate
+    # this: the path written is not the path staged.
+    if not rel or os.path.isabs(rel):
+        fail_config('{}: target "{}" must be a path relative to the vendor root'.format(
+            patch_name, rel))
+    if os.path.normpath(rel).split(os.sep)[0] == os.pardir:
+        fail_config('{}: target "{}" escapes the vendor root'.format(patch_name, rel))
 
 
 def load_patch(patch_dir):
@@ -130,6 +143,8 @@ def load_patch(patch_dir):
     targets = []
     for combo in combos:
         for rel in files:
+            expanded_rel = expand(rel, combo)
+            check_inside_vendor_root(patch_dir.name, expanded_rel)
             expanded_hunks = []
             for num, find_text, replace_text in hunks:
                 f = expand(find_text.decode(), combo).encode()
@@ -138,7 +153,7 @@ def load_patch(patch_dir):
                     fail_config("{}: hunk {} find and replace are identical after expansion".format(
                         patch_dir.name, num))
                 expanded_hunks.append((num, f, r))
-            targets.append((expand(rel, combo), expanded_hunks))
+            targets.append((expanded_rel, expanded_hunks))
     return {"name": patch_dir.name, "reason": reason, "targets": targets}
 
 
