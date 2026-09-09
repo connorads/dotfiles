@@ -4,14 +4,18 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +24,8 @@ DATA_ROOT = (
     Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "codex-question-patch"
 )
 MANIFEST_ROOT = CONFIG_ROOT / "codex-question-patch/manifests"
+STAGE_BY_HAND = "run: codex-question-patch stage <binary> <version>"
+VERSION_PREFIX = re.compile(r"^\d+\.\d+")
 
 
 class Refusal(RuntimeError):
@@ -329,8 +335,118 @@ def active_binary() -> Path:
     return binary
 
 
+def installed_upstream() -> tuple[Path, str]:
+    """The Codex binary mise has installed, and the version its install path names.
+
+    One mechanism - mise's own answer - rather than a glob over mise's install
+    layout that could disagree with it. The version comes from the path, so
+    staging stays static: an unreviewed binary is never executed to ask.
+    """
+    try:
+        process = subprocess.run(
+            ["mise", "which", "codex"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise Refusal(
+            f"cannot ask mise for the installed Codex ({error}); {STAGE_BY_HAND}"
+        ) from error
+    if process.returncode:
+        detail = (process.stderr or process.stdout).strip()
+        raise Refusal(f"mise reports no installed Codex: {detail}; {STAGE_BY_HAND}")
+    binary = Path(process.stdout.strip())
+    wrapper = Path.home() / ".local/bin/codex"
+    if binary.resolve() == wrapper.resolve():
+        raise Refusal(f"mise resolves codex to this gate's own wrapper {binary}; fix PATH")
+    if not binary.is_file():
+        raise Refusal(f"mise names {binary}, which is not a file; {STAGE_BY_HAND}")
+    version = binary.parent.parent.name
+    if not VERSION_PREFIX.match(version):
+        raise Refusal(f"cannot derive a Codex version from {binary}; {STAGE_BY_HAND}")
+    return binary, version
+
+
+def virgin_state() -> bool:
+    """True when no prior activation decision exists for bootstrap to override."""
+    versions = DATA_ROOT / "versions"
+    if (DATA_ROOT / "active.json").exists() or (DATA_ROOT / "previous.json").exists():
+        return False
+    return not (versions.is_dir() and any(versions.iterdir()))
+
+
+@contextlib.contextmanager
+def bootstrap_lock() -> Iterator[None]:
+    """Serialise bootstrap across processes.
+
+    Several panes launching codex at once would otherwise race command_stage's
+    rmtree + os.replace, leaving a window where pending/<version> is absent.
+    """
+    DATA_ROOT.mkdir(parents=True, exist_ok=True)
+    with (DATA_ROOT / ".lock").open("w") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+
+def bootstrap() -> tuple[int, str]:
+    """Advance the gate as far as the installed binary safely allows.
+
+    Activation happens only from a virgin state; an upgrade stays a human act.
+    The reused commands report on stderr so this function owns stdout, one
+    status line per run.
+    """
+    binary, version = installed_upstream()
+    active = DATA_ROOT / "active.json"
+    if active.is_file() and read_json(active).get("version") == version:
+        print(f"ACTIVE {version}")
+        return 0, version
+
+    with contextlib.redirect_stdout(sys.stderr):
+        if not (pending_dir(version) / "receipt.json").is_file():
+            status = command_stage(binary, version)
+            if status:
+                return status, version
+        if read_json(pending_dir(version) / "receipt.json").get("validated") is not True:
+            command_validate(version)
+        first_activation = virgin_state()
+        if first_activation:
+            command_activate(version)
+
+    if first_activation:
+        print(f"ACTIVE {version} (first activation)")
+        return 0, version
+    print(f"VALIDATED {version}")
+    print(f"Run: codex-question-patch activate {version}")
+    return 0, version
+
+
+def command_bootstrap() -> int:
+    with bootstrap_lock():
+        return bootstrap()[0]
+
+
 def command_exec(arguments: list[str]) -> int:
-    binary = active_binary()
+    try:
+        binary = active_binary()
+    except Refusal as error:
+        if (DATA_ROOT / "active.json").exists():
+            # A recorded decision whose artefact no longer matches it. Bootstrap
+            # must not paper over that; repair is the command that owns it.
+            raise Refusal(f"{error}; run: codex-question-patch repair") from error
+        # No decision recorded at all - the state dir has never been populated.
+        # Advance it, keeping every byte of chatter off the exec'd binary's stdout.
+        with contextlib.redirect_stdout(sys.stderr), bootstrap_lock():
+            status, version = bootstrap()
+        if status:
+            return status
+        if not (DATA_ROOT / "active.json").is_file():
+            raise Refusal(
+                f"Codex {version} is validated but not active; "
+                f"run: codex-question-patch activate {version}"
+            ) from error
+        binary = active_binary()
     os.execv(binary, [str(binary), *arguments])
 
 
@@ -380,6 +496,7 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("version")
     review = commands.add_parser("review")
     review.add_argument("version", nargs="?")
+    commands.add_parser("bootstrap")
     commands.add_parser("repair")
     commands.add_parser("status")
     execute = commands.add_parser("exec")
@@ -399,6 +516,8 @@ def main() -> int:
         return command_brief(arguments.version)
     if arguments.command == "review":
         return command_review(arguments.version)
+    if arguments.command == "bootstrap":
+        return command_bootstrap()
     if arguments.command == "repair":
         return command_repair()
     if arguments.command == "status":

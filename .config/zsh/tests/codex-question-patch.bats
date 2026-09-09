@@ -21,6 +21,18 @@ esac
 exit 0
 SH
   make_fixture
+  stub_mise "$FIXTURE"
+}
+
+# The manager asks mise where Codex is installed, and derives the version from
+# that path - so the fixture's <version>/bin/codex layout is the whole contract.
+stub_mise() {
+  local target=$1
+  write_stub mise <<SH
+#!/bin/sh
+[ "\$1" = which ] && [ "\$2" = codex ] || exit 1
+printf '%s\n' '$target'
+SH
 }
 
 make_fixture() {
@@ -130,6 +142,69 @@ PY
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"active artefact sha256 mismatch"* ]]
+}
+
+@test "exec does not bootstrap over a damaged active artefact" {
+  local root="$HOME/.local/share/codex-question-patch"
+  "$MANAGER" stage "$FIXTURE" 0.0.1
+  "$MANAGER" validate 0.0.1
+  "$MANAGER" activate 0.0.1
+  printf x >>"$root/versions/0.0.1/codex"
+
+  run "$MANAGER" exec -- --version
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"codex-question-patch repair"* ]]
+  # Untouched: a recorded decision with a mismatched artefact is repair's to
+  # answer, so nothing may be re-staged or silently re-signed over it.
+  [ "$(tail -c 1 "$root/versions/0.0.1/codex")" = "x" ]
+  [ "$(find "$root/pending" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" -eq 1 ]
+}
+
+@test "exec bootstraps and activates a virgin state" {
+  run "$MANAGER" exec -- --version
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"codex-cli 0.0.1"* ]]
+  grep -q '"version": "0.0.1"' "$HOME/.local/share/codex-question-patch/active.json"
+}
+
+@test "exec bootstraps but does not activate over prior state" {
+  local root="$HOME/.local/share/codex-question-patch"
+  "$MANAGER" stage "$FIXTURE" 0.0.1
+  "$MANAGER" validate 0.0.1
+  "$MANAGER" activate 0.0.1
+  mv "$root/active.json" "$root/previous.json"
+
+  run "$MANAGER" exec -- --version
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"codex-question-patch activate 0.0.1"* ]]
+  [ ! -e "$root/active.json" ]
+}
+
+@test "exec bootstrap refuses an unreviewed version" {
+  local other="$BATS_TEST_TMPDIR/0.0.2/bin/codex"
+  mkdir -p "${other%/*}"
+  cp "$FIXTURE" "$other"
+  stub_mise "$other"
+
+  run "$MANAGER" exec -- --version
+
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"REVIEW REQUIRED 0.0.2"* ]]
+  [[ "$output" == *"brief 0.0.2"* ]]
+  [ ! -e "$HOME/.local/share/codex-question-patch/active.json" ]
+}
+
+@test "bootstrap is idempotent" {
+  run "$MANAGER" bootstrap
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ACTIVE 0.0.1 (first activation)"* ]]
+
+  run "$MANAGER" bootstrap
+  [ "$status" -eq 0 ]
+  [ "$output" = "ACTIVE 0.0.1" ]
 }
 
 @test "unknown versions remain pending review and never replace active" {
