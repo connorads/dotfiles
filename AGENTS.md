@@ -428,6 +428,16 @@ project-specific tools, npm/pipx/aqua/github/cargo CLIs, fast-moving vendor CLIs
 like Claude/Codex, and tools needing direct upstream updates or postinstall
 patching.
 
+Claude Code is mise-owned, not natively installed: `~/.local/share/claude/` and
+its `~/.local/bin/claude` shim are absent, and `command -v claude` resolves
+through mise. `DISABLE_UPDATES` in [`.claude/settings.json`](./.claude/settings.json)'s
+`env` block is what holds the self-updater off - deliberately Claude-scoped,
+since the name is not namespaced and nothing outside Claude Code reads that
+file. The binary patches that survive (computer-use, session-reaper, plus the
+read-only commit-note check) are reapplied by the mise postinstall; `--channels`
+is **not** patched, and the reasoning is
+[docs/adr/0011](./docs/adr/0011-claude-binary-is-not-patched-and-mise-owns-the-install.md).
+
 Rule of thumb: host-global and well-packaged -> Nix; project/version-selected ->
 mise; macOS vendor bundle -> Homebrew.
 
