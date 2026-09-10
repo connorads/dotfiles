@@ -82,6 +82,31 @@ lint() {
   [ "$status" -eq 0 ]
 }
 
+@test "ChangeNarration flags a phrase narrating a past state" {
+  lint 'The lockfile previously was regenerated on every switch.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.ChangeNarration* ]]
+}
+
+@test "ChangeNarration ignores the ambiguous phrases dropped from the list" {
+  # `no longer`, `was missing` and the `silently *` set describe runtime
+  # behaviour far more often than a change here - 36 findings, ~2 genuine.
+  # Their absence from the token list is the calibration, so assert it.
+  lint 'The guard no longer matches once the token expires, and was missing a case where it silently skips.'
+  [ "$status" -eq 0 ]
+}
+
+@test "Hedging flags an unverified claim" {
+  lint 'The retry should work once the socket reconnects.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.Hedging* ]]
+}
+
+@test "Hedging ignores a hedge quoted inside a code span" {
+  lint 'The upstream README says `hopefully this is enough` verbatim.'
+  [ "$status" -eq 0 ]
+}
+
 @test "house prose passes clean" {
   lint 'Commit on the current branch by default - do not branch first unless asked.'
   [ "$status" -eq 0 ]

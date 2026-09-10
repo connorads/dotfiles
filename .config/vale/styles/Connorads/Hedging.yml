@@ -1,0 +1,43 @@
+extends: existence
+message: "'%s' hedges. State what was verified, or state the open question."
+# See Dashes.yml: without `level`, MinAlertLevel = error makes the rule inert.
+level: error
+ignorecase: true
+# AGENTS.md "Communication": if a sentence can't be restated as a concrete
+# instruction, fact or number, cut it. A hedge in a doc or a comment records
+# that nobody checked, and it stays true-sounding forever.
+#
+# Same provenance and same calibration sweep as ChangeNarration.yml. Seven
+# hedging findings in scope, none of them hedging - the phrase appearing inside
+# the rule that bans it, quoted maintainer guidance, quoted user speech in an
+# eval fixture, and the docs site's first-person essay voice:
+#
+#   - Never write "I believe / I think / I suspect" for a judgement
+#   Maintainer guidance: "It should be ok to use `executor` here"
+#
+# Vale skips code spans and fenced blocks but not quoted prose, so `i think`,
+# `i believe`, `probably safe` and `should be ok` are excluded by name. The
+# remaining 18 tokens have zero hits in scope.
+#
+# Highest-value scope is source comments rather than prose, which is where the
+# upstream tool aims; ~/.vale.ini scopes this style to markdown only, so a
+# hedge in a code comment is currently ungated.
+tokens:
+  - should work
+  - hopefully
+  - probably fine
+  - probably works
+  - not sure why
+  - not sure if
+  - not sure this
+  - as far as I can tell
+  - afaik
+  - seems to work
+  - should be fine
+  - should fix
+  - not 100% sure
+  - not entirely sure
+  - might not work
+  - for some reason
+  - no idea why
+  - in theory
