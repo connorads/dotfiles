@@ -589,17 +589,17 @@ in the pre-commit path. Vale skips fenced blocks and code spans natively, so a
 dash in a command or a diagram is never touched. `prose` is the advisory twin,
 callable from any repo.
 
-Scope is markdown **and code comments**. `~/.vale.ini` carries two format
-sections: markdown gets the whole style, and `.py .ts .tsx .js .jsx .rs .go .rb
-.lua` get it via Vale's comment extraction. That extension list is Vale's, not a
-preference - for anything else Vale lints the whole file as prose, so a string
-literal would be gated as English. Two consequences worth knowing:
-`.mjs`/`.cjs`/`.mts`/`.cts` cannot be brought in (`[formats] mjs = js` parses
-and then reports zero findings, a silent fail-open), and neither can shell,
-which leaves the tree's largest comment corpus ungated. The source sections name
-each rule instead of setting `BasedOnStyles`, because naming a style enables all
-of it and the built-in `Vale` style's error-level Spelling rule reads an
-identifier in a comment as a misspelling.
+Scope is markdown **and code comments**: `~/.vale.ini` carries two format
+sections, and both are `BasedOnStyles = Connorads`, so the same rules apply to a
+comment as to a doc. `.py .ts .tsx .js .jsx .rs .go .rb .lua` are the source
+half, and that extension list is Vale's, not a preference - for anything else
+Vale lints the whole file as prose, so a string literal would be gated as
+English. Three limits worth knowing: `.mjs`/`.cjs`/`.mts`/`.cts` cannot be
+brought in (`[formats] mjs = js` parses and then reports zero findings, a silent
+fail-open); neither can shell, which leaves the tree's largest comment corpus
+ungated; and Vale extracts Python `#` comments but not docstrings. Only
+`Connorads` is based on - adding the built-in `Vale` style would bring its
+error-level Spelling rule, which reads an identifier in a comment as a typo.
 
 Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
 host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever
