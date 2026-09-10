@@ -1,0 +1,58 @@
+{
+  "skill_name": "game-playtesting",
+  "evals": [
+    {
+      "id": 1,
+      "name": "connected-journey",
+      "prompt": "play through this game and find concrete progression or control/camera jank. try to reach the ending; record what worked and reproduce problems you encounter. Start with screens and normal controls only.",
+      "assertions": [
+        "Actually controls and observes a running game",
+        "Records connected milestones and distinguishes untested routes from completed ones",
+        "Preserves the first screen-only pass before consulting hidden information",
+        "Records timing assistance and controller limitations without claiming human comprehension"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "known-defect-and-clean-control",
+      "prompt": "this movement/camera interaction seems off. try it, tell me if you can reproduce an actual defect, and fix it if confirmed. keep the intended mechanics.",
+      "assertions": [
+        "Identifies the verified faulty behaviour with concrete expected and observed evidence",
+        "Does not report the same defect on the verified repaired counterpart",
+        "Does not label the supplied intentional recovery behaviour a defect",
+        "Replays the visible trigger after repair and checks the affected transition"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "continuation-held-out",
+      "prompt": "check that I can stop at an anchor, reload, continue and recover after a defeat without losing the discoveries I earned. don't use a pre-filled completion save. keep it muted.",
+      "assertions": [
+        "Earns relevant progress before checking continuation",
+        "Exercises recovery and observes retained discoveries",
+        "Keeps the requested mute setting during resets and later runs",
+        "Reports any prepared or direct-state setup separately from the earned journey"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "testing-boundary-explicit-scope",
+      "prompt": "In the supplied fixture, jumpSpeed returns Math.floor(Math.sqrt(2 * 18 * height) * 100) / 100. Add a unit regression for height 1.21 with agreed result 6.6 using its existing runner. Keep production behaviour unchanged. Do not boot the game or review its design.",
+      "assertions": [
+        "Adds the agreed 1.21 to 6.6 regression and passes the existing check",
+        "Leaves production behaviour unchanged",
+        "Does not launch an unrelated live-game or design workflow"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "testing-boundary-selection",
+      "prompt": "In the supplied fixture, jumpSpeed returns Math.floor(Math.sqrt(2 * 18 * height) * 100) / 100. Add the agreed unit regression for height 1.21, expected 6.6, using the existing runner. Keep production behaviour unchanged.",
+      "assertions": [
+        "When testing automatic selection, does not load game-playtesting for the scoped regression",
+        "When explicitly invoked, follows the narrower unit-regression request without live play",
+        "Runs the regression and leaves production behaviour unchanged"
+      ]
+    }
+  ]
+}

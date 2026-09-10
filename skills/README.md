@@ -12,6 +12,7 @@ Install any of them with the [`skills`](https://agentskills.io) CLI:
 | `refactoring` | Legacy rescue and incremental migration | `pnpm dlx skills add connorads/dotfiles -s refactoring` |
 | `design-forking` | Divergent design alternatives before committing | `pnpm dlx skills add connorads/dotfiles -s design-forking` |
 | `game-design` | Invent and improve distinctive game experiences | `pnpm dlx skills add connorads/dotfiles -s game-design` |
+| `game-playtesting` | Verify game journeys and reproduce gameplay defects | `pnpm dlx skills add connorads/dotfiles -s game-playtesting` |
 | `typescript` | Idiomatic, type-safe TypeScript | `pnpm dlx skills add connorads/dotfiles -s typescript` |
 | `testing` | Test strategy, TDD, test design | `pnpm dlx skills add connorads/dotfiles -s testing` |
 | `test-coverage` | Coverage audits and enforcement | `pnpm dlx skills add connorads/dotfiles -s test-coverage` |
