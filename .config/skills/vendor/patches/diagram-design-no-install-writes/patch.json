@@ -1,0 +1,6 @@
+{
+  "reason": "the vendored install is read-only; brand tokens go to a ~/.diagram-design profile, never into the tracked style-guide.md that `skills update` clobbers",
+  "files": [
+    ".agents/skills/diagram-design/SKILL.md"
+  ]
+}

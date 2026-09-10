@@ -80,6 +80,12 @@
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "computedHash": "37b5e9c624513551da790b52864dc8c84bff996a6d03a380cc6facdcc0a88354"
     },
+    "diagram-design": {
+      "source": "cathrynlavery/diagram-design",
+      "sourceType": "github",
+      "skillPath": "skills/diagram-design/SKILL.md",
+      "computedHash": "e01adcceff753d259c534500d993512bf4d37301fa507cd45f2d4c3eaf4c6163"
+    },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
