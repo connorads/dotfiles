@@ -1,0 +1,46 @@
+extends: existence
+message: "'%s' narrates a change. Docs and comments carry the standing rule; the history belongs in the commit message."
+# See Dashes.yml: without `level`, MinAlertLevel = error makes the rule inert.
+level: error
+ignorecase: true
+# AGENTS.md "Intent": comments and docs describe the standing state in timeless
+# present tense.
+#
+# The token list is the surviving half of a 46-phrase set (24 change-history +
+# 22 hedging) lifted from scale-venture-partners/windbag and measured against
+# the 323 markdown files this style actually gates before any of it landed. The
+# full set produced 36 findings across 12 tokens; reading every one, about two
+# were genuine and the rest were false positives, because this corpus documents
+# linters and failure modes for a living and the phrases are its subject
+# vocabulary rather than its narration:
+#
+#   "Codex silently skips this hook until it is trusted"   - runtime behaviour
+#   "a patch no longer matches (upstream drifted)"         - runtime predicate
+#   "delete rules that have never fired"                   - present-tense rule
+#   "fails install if a package previously had provenance" - what a tool checks
+#
+# `no longer` alone was 19 of the 36, including five copies of the AGENTS.md
+# sentence that bans the phrase and quotes it to do so. So every token that
+# fired is excluded by name: no longer, was missing, this fix, have never,
+# never actually, previously had, silently no-ops, and `used to be` (essay
+# prose on the docs site opens with it: "the workspace used to be the machine").
+#
+# What is left describes a *past state of this codebase* and cannot describe a
+# present one, which is why it has zero hits in scope. Like Spellings.yml this
+# is a ratchet, kept so the backlog can never start.
+#
+# Do not re-add a token without re-running the sweep. The upstream list is
+# calibrated on added lines of code comments, where these phrases are usually
+# genuine narration; on a mature documentation corpus they are not.
+tokens:
+  - previously was
+  - previously did
+  - before this fix
+  - before this change
+  - before this commit
+  - before this PR
+  - root-caused
+  - root caused
+  - the bug was
+  - was broken
+  - now correctly
