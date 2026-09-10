@@ -283,9 +283,10 @@ local fast_steps = new Mapping<String, Step> {
         exclude = vendored_skills + List(".config/skills/personal/summon/references/**")
     }
 
-    // House prose rules (~/.vale.ini + .config/vale/styles/Connorads). Vale
-    // skips fenced blocks and code spans natively, so a dash in a command or a
-    // diagram is untouched and only prose is gated.
+    // House prose rules (~/.vale.ini + .config/vale/styles/Connorads), over
+    // markdown and code comments alike. Vale skips fenced blocks and code spans
+    // in markdown and everything outside a comment in source, so a dash in a
+    // command, a diagram or a string literal is untouched.
     //
     // Two departures from Builtins.vale. It drops `vale sync`: the builtin runs
     // `vale sync && vale {{files}}`, and sync fetches remote style packages -
@@ -333,10 +334,16 @@ local fast_steps = new Mapping<String, Step> {
                 write { ["f.py"] = "# The retry should work once it reconnects.\n" }
                 expect { code = 1 }
             }
-            ["check ignores an em dash in a code comment"] {
+            ["check flags an em dash in a code comment"] {
                 run = "check"
                 tmpdir = true
                 write { ["f.py"] = "# A comment with an em dash \u{2014} like this.\n" }
+                expect { code = 1 }
+            }
+            ["check ignores an em dash in a string literal"] {
+                run = "check"
+                tmpdir = true
+                write { ["f.py"] = "msg = \"an em dash \u{2014} here\"\n" }
                 expect { code = 0 }
             }
             ["check flags an em dash in prose"] {

@@ -137,14 +137,28 @@ lint_src() {
   [[ $output == *Connorads.ChangeNarration* ]]
 }
 
+@test "Dashes flags an em dash in a code comment" {
+  lint_src ts '// The gate blocks the commit — that is the point.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.Dashes* ]]
+}
+
+# The scoping is what makes the rules safe to run over source at all: a format
+# Vale has no lexer for is linted whole, and every string literal in it becomes
+# prose. These two assert the extraction is real, not assumed.
 @test "a hedge in a string literal is not a comment, so it is ignored" {
   lint_src ts 'const msg = "this should work once it reconnects";'
   [ "$status" -eq 0 ]
 }
 
+@test "an em dash in a string literal is not a comment, so it is ignored" {
+  lint_src ts 'const msg = "the gate blocks the commit — that is the point";'
+  [ "$status" -eq 0 ]
+}
+
 @test "the built-in Vale style is off, so an identifier is not a spelling error" {
-  # BasedOnStyles would enable Vale.Spelling, which reads `lockfile` in a
-  # comment as a misspelling. The rules are named one at a time instead.
+  # Only Connorads is based on. Adding the built-in `Vale` style would bring its
+  # error-level Spelling rule, which reads `lockfile` in a comment as a typo.
   lint_src py '# Read the lockfile, then resolve each tool from the registry.'
   [ "$status" -eq 0 ]
 }

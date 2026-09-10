@@ -20,10 +20,10 @@ ignorecase: true
 # remaining 18 tokens have zero hits in scope.
 #
 # Highest-value scope is source comments rather than prose, which is where the
-# upstream tool aims. ~/.vale.ini enables this rule by name on the extensions
-# Vale extracts comments from, so a hedge in a comment is gated alongside one in
-# a doc. Shell is not on that list - Vale has no lexer for it - so the tree's
-# largest comment corpus stays out of reach.
+# upstream tool aims. ~/.vale.ini bases both its markdown and its source section
+# on this style, so a hedge in a comment is gated alongside one in a doc. Shell
+# is not on the source section's extension list - Vale has no lexer for it - so
+# the tree's largest comment corpus stays out of reach.
 tokens:
   - should work
   - hopefully
