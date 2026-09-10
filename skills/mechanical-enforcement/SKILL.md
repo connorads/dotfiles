@@ -42,6 +42,7 @@ The table names the defaults. The **Read** column is where each pick is justifie
 | HTML | - | html-validate | - | `references/web-delivery.md` (HTML conformance) |
 | Markdown; YAML; TOML | rumdl; oxfmt; taplo | rumdl; yamllint; taplo | - | `references/other-stacks.md` |
 | Commit messages | - | commitlint | - | Commit messages, below |
+| Comment & doc content | - | Vale (`existence` styles); windbag is a watch | - | `references/comment-hygiene.md` |
 | Secrets; typos; GitHub Actions | - | gitleaks; typos; zizmor + actionlint | - | Secrets & CI hardening, below |
 | API / event contracts | - | buf breaking; oasdiff; graphql-inspector; cargo-semver-checks; api-extractor | - | `references/contract-gates.md`; `references/architecture-boundaries.md` (Boundary contracts) |
 | Code duplication | - | jscpd | - | `references/complexity.md` (Duplication) |
@@ -123,6 +124,7 @@ Complexity gates are the archetype. If the number you want produces more than a 
 | Go, SQL, Postgres migrations, CSS / SCSS, Markdown, YAML, TOML | `references/other-stacks.md`; Go complexity drop-in `golangci-complexity.yml` |
 | Layer and graph boundaries, greppable invariants, purity, contract gates (any stack) | `references/architecture-boundaries.md`; drop-ins `typescript-arch-test.ts`, `dependency-cruiser.cjs`, `eslint-boundaries.mjs`, `purity-boundaries.mjs`; command patterns in `references/contract-gates.md` |
 | Complexity and duplication: what to gate on, the numbers, off-by-default traps, jscpd | `references/complexity.md` |
+| Comments and docs that narrate a change or hedge instead of stating the rule | `references/comment-hygiene.md` |
 | Adopting a gate on a codebase that already violates it | `references/ratcheting.md` |
 | Web delivery: runtime a11y, HTML conformance, structured data, Open Graph, broken links | `references/web-delivery.md` |
 | Wiring the tiers into hk | `references/hk-steps.pkl`; `commitlint.config.js`; the optional Biome preset `biome-ultracite.jsonc` |
