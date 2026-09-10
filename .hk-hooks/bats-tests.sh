@@ -54,11 +54,20 @@ suites=$(
 			fi
 			grep -rlw --include='*.bats' -- "$stem" "$TESTS_DIR" 2>/dev/null || true
 			;;
-		# The Connorads Vale style's only proof of life: two of its three rules
-		# have zero corpus hits, so a clean `vale` run says nothing about
-		# whether they load. Staging a rule runs the fixtures that do.
-		.config/vale/*)
+		# The Connorads Vale style's only proof of life: most of its rules have
+		# zero corpus hits, so a clean `vale` run says nothing about whether
+		# they load. Staging a rule runs the fixtures that do. .vale.ini is the
+		# other half - it decides which formats each rule is scoped to, and the
+		# suite lints through the real config rather than a copy.
+		.config/vale/* | .vale.ini)
 			echo "$TESTS_DIR/vale-style.bats"
+			;;
+		# .config/opencode declares no `test` script, so ts-tests-scoped skips
+		# it silently and only tsc runs at commit. Its agent-tracking plugin's
+		# contract is a bats suite driving the real plugin against a throwaway
+		# tmux server.
+		.config/opencode/*)
+			echo "$TESTS_DIR/opencode-agent-plugin.bats"
 			;;
 		# pin-audit's implementation is TypeScript under ~/src; the bats suite
 		# is still its CLI contract, so staged sources have to run it.
