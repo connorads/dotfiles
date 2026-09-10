@@ -37,6 +37,7 @@ typeset -g CLEANUP_CLAUDE_PROFILES_ROOT="${CLEANUP_CLAUDE_PROFILES_ROOT:-$HOME/.
 typeset -g CLEANUP_HIBERNATE_DIR="${AGENT_HIBERNATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-hibernate}"
 typeset -g CLEANUP_WORKTREE_ROOT="${CLEANUP_WORKTREE_ROOT:-$HOME/.trees}"
 typeset -g CLEANUP_PROBE_FAILED=0
+typeset -ga CLEANUP_PROBE_FAILED_TARGETS=()
 typeset -g CLEANUP_PROGRESS_ENABLED=0
 typeset -g CLEANUP_PROGRESS_START=0
 
@@ -1078,7 +1079,19 @@ _cleanup_probe_all() {
   for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do
     (( current += 1 ))
     _cleanup_progress_update "$current" "$total" "$target"
-    _cleanup_probe_target "$target" || CLEANUP_PROBE_FAILED=1
+    if ! _cleanup_probe_target "$target"; then
+      # A failed probe disables its own target and nothing else. It returns
+      # before writing its arrays, so write them here: an empty row renders as
+      # "not available on this host", which is the opposite of the truth.
+      CLEANUP_PROBE_FAILED=1
+      CLEANUP_PROBE_FAILED_TARGETS+=("$target")
+      CLEANUP_PROBE_APPLICABLE[$target]=0
+      CLEANUP_PROBE_KB[$target]=0
+      CLEANUP_PROBE_SIZE[$target]=$(_cleanup_human_kb 0)
+      CLEANUP_PROBE_KIND[$target]="probe-failed"
+      CLEANUP_PROBE_DETAILS[$target]="Probe could not verify what is safe to remove"
+      CLEANUP_PROBE_COMMAND[$target]=""
+    fi
     CLEANUP_ROW_CACHE+=("$(printf '%012d\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
       "${CLEANUP_PROBE_KB[$target]:-0}" \
       "$target" \
@@ -1101,12 +1114,30 @@ _cleanup_print_plan() {
   local total_kb=0
   local has_unknown=0
   local row kb target label size applicable estimate_kind detail command
+  local -a fields
 
   echo "Cleanup plan ($mode_label):"
-  while IFS=$'\t' read -r kb target label size applicable estimate_kind detail command; do
-    kb=$((10#$kb))
+  # Split on tab explicitly: tab is IFS whitespace, so `IFS=$'\t' read` collapses
+  # runs of tabs and shifts every field after an empty one leftwards.
+  while IFS= read -r row; do
+    fields=("${(@ps:\t:)row}")
+    kb=$((10#${fields[1]}))
+    target=${fields[2]}
+    label=${fields[3]}
+    size=${fields[4]}
+    applicable=${fields[5]}
+    estimate_kind=${fields[6]}
+    detail=${fields[7]}
+    command=${fields[8]}
     printf '  %-10s %-10s %s\n' "$size" "$target" "$label"
-    [[ "$applicable" == "1" ]] || { echo "      skip: not available on this host"; continue; }
+    if [[ "$applicable" != "1" ]]; then
+      if [[ "$estimate_kind" == "probe-failed" ]]; then
+        echo "      skip: probe failed - target disabled for this run"
+      else
+        echo "      skip: not available on this host"
+      fi
+      continue
+    fi
     (( total_kb += kb ))
     [[ "$estimate_kind" == "partial" ]] && has_unknown=1
     [[ -n "$detail" ]] && echo "      $detail"
@@ -1133,9 +1164,21 @@ _cleanup_print_json() {
   printf '"candidate_total_kb":%s,' "$candidate_total_kb"
   printf '"candidate_total_human":"%s",' "$(_cleanup_json_escape "$(_cleanup_human_kb "$candidate_total_kb")")"
   printf '"has_unknown_estimates":%s,' "$([[ "$has_unknown" == "1" ]] && echo true || echo false)"
+  printf '"probe_failed":%s,' "$([[ "$CLEANUP_PROBE_FAILED" == "1" ]] && echo true || echo false)"
   printf '"targets":['
   local row kb label size applicable estimate_kind detail command
-  while IFS=$'\t' read -r kb target label size applicable estimate_kind detail command; do
+  local -a fields
+  # Tab-split explicitly; see _cleanup_print_plan.
+  while IFS= read -r row; do
+    fields=("${(@ps:\t:)row}")
+    kb=${fields[1]}
+    target=${fields[2]}
+    label=${fields[3]}
+    size=${fields[4]}
+    applicable=${fields[5]}
+    estimate_kind=${fields[6]}
+    detail=${fields[7]}
+    command=${fields[8]}
     (( first )) || printf ','
     first=0
     printf '{'
@@ -1274,10 +1317,12 @@ else
   _cleanup_print_plan "$mode_label"
 fi
 
-(( CLEANUP_PROBE_FAILED )) && return 1
+# stderr, so stdout stays parseable under --json.
+(( CLEANUP_PROBE_FAILED )) && \
+  print -u2 "error: probe failed, target(s) skipped: ${(j:, :)CLEANUP_PROBE_FAILED_TARGETS}"
 
 if (( CLEANUP_DRY_RUN )); then
-  return 0
+  return $(( CLEANUP_PROBE_FAILED ? 1 : 0 ))
 fi
 
 if (( ! CLEANUP_ASSUME_YES )); then
@@ -1290,7 +1335,9 @@ if (( ! CLEANUP_ASSUME_YES )); then
 fi
 
 typeset target
-typeset failed=0
+# A failed probe still makes the run exit non-zero - after every other target
+# has had its turn.
+typeset failed=$(( CLEANUP_PROBE_FAILED ? 1 : 0 ))
 typeset volume_available_before_kb volume_available_after_kb volume_available_delta_kb
 volume_available_before_kb=$(_cleanup_available_kb)
 for target in "${CLEANUP_SELECTED_TARGETS[@]}"; do

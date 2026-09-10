@@ -964,6 +964,36 @@ setup_claude_temp_fixture() {
   [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
 }
 
+@test "a failed probe disables its own target without cancelling the run" {
+  setup_claude_temp_fixture
+  printf '{broken\n' >"$AGENT_HIBERNATE_DIR/broken.json"
+
+  run env CLEANUP_CLAUDE_TMP_ROOT="$CLEANUP_CLAUDE_TMP_ROOT" \
+    AGENT_HIBERNATE_DIR="$AGENT_HIBERNATE_DIR" \
+    BUN_PM_CACHE_FAIL=1 \
+    zsh --no-rcs "$CLEANUP" --yes --claude-temp --bun
+
+  [ "$status" -ne 0 ]
+  grep -F 'probe failed, target(s) skipped: claude-temp' <<<"$output"
+  [ -d "$CLEANUP_CLAUDE_TMP_ROOT/project/44444444-4444-4444-8444-444444444444" ]
+  [[ "$output" == *"=> bun"* ]]
+  [ ! -e "$HOME/.bun/install/cache" ]
+  [ ! -e "$HOME/.cache/.bun/install/cache" ]
+}
+
+@test "the plan names a failed probe instead of reporting it as unavailable" {
+  setup_claude_temp_fixture
+  printf '{broken\n' >"$AGENT_HIBERNATE_DIR/broken.json"
+
+  run env CLEANUP_CLAUDE_TMP_ROOT="$CLEANUP_CLAUDE_TMP_ROOT" \
+    AGENT_HIBERNATE_DIR="$AGENT_HIBERNATE_DIR" \
+    zsh --no-rcs "$CLEANUP" --dry-run --claude-temp
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"probe failed"* ]]
+  [[ "$output" != *"not available on this host"* ]]
+}
+
 setup_worktree_build_fixture() {
   mkdir -p "$CLEANUP_WORKTREE_ROOT/active/node_modules/pkg" \
     "$CLEANUP_WORKTREE_ROOT/parked/.next/cache" \
