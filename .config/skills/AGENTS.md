@@ -210,6 +210,13 @@ vendors the entire repo. Check what sits alongside the `SKILL.md` before adding;
 nothing packages it cleanly and the file is self-contained, the manual bucket is the
 right home (see the deepsec note under Caveats).
 
+Where the repo's *skill* content is all wanted and only a large binary is not, the CLI
+bucket plus a name-scoped ignore rule beats the manual bucket: the skill keeps its
+lockfile entry and its place in the batch refresh, and the ignore line stops the binary
+entering history. `dream-loop` is the worked case - nine skill files wanted, one 6.7 MB
+README demo GIF ignored by name at `~/.gitignore`. Scope the rule to the filename, not
+the directory, so a new asset upstream adds surfaces as untracked for review.
+
 ### Update vendored skills
 
 From `~/.config/skills/vendor`: `skills update -p` (project scope) refreshes **in place**
@@ -350,8 +357,8 @@ and diff-review clones against the prior vetted copy before trusting them.
 
 - Some vendored skills have **no recorded upstream** (manually moved in) → `skills update`
   can't refresh them, and they are **absent from any `skills-lock.json` by design**.
-  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs`, `product-description`,
-  `alchemy` and `dream-loop` live in the manual bucket at `vendor/manual/<name>/`
+  `govuk-style`, `ponytail`, `bro`, `deepsec`, `deepsec-docs`,
+  `product-description` and `alchemy` live in the manual bucket at `vendor/manual/<name>/`
   (depth 5 from `~`), not under `.agents/skills/`, so they are **discoverable by `skills add`
   / registerable on skills.sh** (the CLI's `findSkillDirs` caps at `maxDepth = 5`, which
   `vendor/manual/<name>` sits exactly at; depth 6 under `.agents/skills/` was never reached).
@@ -419,17 +426,6 @@ and diff-review clones against the prior vetted copy before trusting them.
   `references/upstream.json` pins the exact revision, subtree and exclusions, and
   `scripts/update.py` previews or applies a refresh against it (`scripts/search.py` is the
   skill's own doc search).
-
-  `dream-loop` - from [`achimala/dream-loop`](https://github.com/achimala/dream-loop)
-  (MIT, taken at `d113b78`), one `SKILL.md` plus `LICENSE` for attribution. Generate concept
-  art for a 3D scene, build it, then score live screenshots against the concept with a fresh
-  subagent judge on a gated 0-10 tier ladder until the score or a stall criterion says stop.
-  Manual because **`SKILL.md` sits at the repo root**: `skills add` copies the directory
-  containing the file, so the CLI route drags the 6.7 MB README demo GIF
-  (`assets/vesper-preview.gif`, 99% of the repo) and a stray root `.gitignore` into the tree -
-  verified by adding it into a throwaway project dir. The file is self-contained prose citing
-  only `.dream-loop/` inside the target project, never a vendored sibling. Refresh by
-  re-fetching the two files from upstream and diffing against these copies.
 
 - `connorads/skills` public repo is **deferred** - public skills are pre-staged at `~/skills`
   (top-level, dotfiles-tracked) so publishing is `cd ~/skills && git init` with no path churn,

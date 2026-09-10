@@ -86,6 +86,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "a11713c0ff7870efa3c331b2e273f09116158485246edc89ae5088eefd1b0b48"
     },
+    "dream-loop": {
+      "source": "achimala/dream-loop",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "a570baa1effd0c25035af0d2e83b80e794711bd8cf364c99f8373fc11d030c92"
+    },
     "effect": {
       "source": "kitlangton/skills",
       "sourceType": "github",
