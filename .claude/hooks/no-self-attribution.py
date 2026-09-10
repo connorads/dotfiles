@@ -125,7 +125,7 @@ def _read_file_arg(command: str, flag_pattern: str) -> str | None:
     return match.group(1)
 
 
-# NOTE: A commit bypassed this hook in Jan 2025 — root cause unclear
+# NOTE: A commit bypassed this hook in Jan 2025 - root cause unclear
 # (conversation context was compacted). Adding -F file checks as defence in depth.
 
 

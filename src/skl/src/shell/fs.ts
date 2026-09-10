@@ -56,8 +56,8 @@ export const siblingFiles = (skillDir: string): Promise<string[]> =>
 
 /**
  * Read a skill's text files for inlining, in `skill.files` order. Binary files
- * (images, etc.) are skipped — a NUL byte in the first 8 KB is the sniff — and
- * returned separately so the caller can report them. Pointless to paste binary
+ * (images, etc.) are skipped and returned separately so the caller can report
+ * them; a NUL byte in the first 8 KB is the sniff. Pointless to paste binary
  * into a web chat, and a TextDecoder would mangle it anyway.
  */
 export const readSkillFiles = async (

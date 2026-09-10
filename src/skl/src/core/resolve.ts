@@ -10,7 +10,7 @@ export const resolveRef = (
   ref: SkillRef,
   skills: readonly DiscoveredSkill[],
 ): Result<DiscoveredSkill, ResolveError> => {
-  // A source group ref resolves to many skills, not one — single-skill callers
+  // A source group ref resolves to many skills, not one - single-skill callers
   // (preview/inline) reject it. The picker never sends one (its rows are concrete).
   if (ref.kind === "source") return err({ kind: "expects-skill", source: ref.source });
 
@@ -44,7 +44,7 @@ export const resolveSourceRef = (
 // All-or-nothing batch resolution: parse and resolve every ref, short-circuiting
 // to `err` on the first failure. A source group ref (trailing slash) expands to
 // its members in place. Lets the shell resolve a whole batch up front (an impureim
-// sandwich) so a bad ref aborts BEFORE any injection — no partial injection.
+// sandwich) so a bad ref aborts BEFORE any injection - no partial injection.
 // Pure: parseRef/resolveRef do no I/O.
 export const resolveRefs = (
   refs: readonly string[],

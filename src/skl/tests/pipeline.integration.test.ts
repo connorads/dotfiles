@@ -1,5 +1,5 @@
 // Gated pipeline integration test: proves the real shell pipeline the popup
-// uses — `skl list | skl load --stdin --target PANE` — discovers, resolves and
+// uses. `skl list | skl load --stdin --target PANE` discovers, resolves and
 // injects pointers into a live pane. fzf sits in the middle in production, but
 // it only forwards selected lines verbatim, so piping `skl list` straight into
 // `skl load --stdin` exercises the exact list⇄load contract with no TTY needed.
@@ -10,7 +10,7 @@
 // would appear twice if we had pressed C-m.
 //
 // NOTE: tmux needs its server socket; run unsandboxed (the unix-socket connect
-// is blocked otherwise) — `/sandbox` or dangerouslyDisableSandbox.
+// is blocked otherwise) - `/sandbox` or dangerouslyDisableSandbox.
 
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";
 import { mkdtempSync } from "node:fs";
@@ -47,7 +47,7 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
   });
 
   test("lists all fixture skills, then injects each selected pointer", async () => {
-    // Stage 1: `skl list` — one `ref  description` line per discovered skill.
+    // Stage 1: `skl list` - one `ref  description` line per discovered skill.
     const list = Bun.spawnSync([process.execPath, CLI, "list", "--path", REPO]);
     expect(list.exitCode).toBe(0);
     const lines = list.stdout.toString().trim().split("\n");
@@ -94,7 +94,7 @@ describe.if(tmuxAvailable())("skl list | skl load --stdin (real tmux)", () => {
   });
 
   test("a whole-source ref loads every member of the group", async () => {
-    // `repo/` (trailing slash) expands to all three fixture skills — the un-spam
+    // `repo/` (trailing slash) expands to all three fixture skills - the un-spam
     // win: load a group in one keystroke, no cli.ts change (loadRefs batch-resolves).
     const historyFile = join(mkdtempSync(join(tmpdir(), "skl-group-hist-")), "history.jsonl");
     const load = Bun.spawnSync(

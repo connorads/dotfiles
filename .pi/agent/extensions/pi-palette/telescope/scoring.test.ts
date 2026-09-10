@@ -136,7 +136,7 @@ describe("parseQueryTokens", () => {
   });
 
   it("handles single-char modifier as fuzzy", () => {
-    // A bare ' or ^ with nothing after is too short — treated as fuzzy
+    // A bare ' or ^ with nothing after is too short - treated as fuzzy
     const tokens = parseQueryTokens("'");
     expect(tokens).toEqual([{ type: "fuzzy", text: "'" }]);
   });

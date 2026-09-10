@@ -9,7 +9,7 @@ watcher falls back to its fixed wait.
 Mirrors cheapestinference/claude-auto-retry's patterns.js + time-parser.js, but
 in stdlib-only Python (datetime + zoneinfo) so it's DST-safe and portable with
 no pip deps. The clock time and the timezone are captured by *separate* regexes
-(Claude prints "reset at 3pm (America/Santiago)" — hour/ampm in one place, the
+(Claude prints "reset at 3pm (America/Santiago)" - hour/ampm in one place, the
 IANA/offset zone in parens).
 
 Usage: reset-time.py [--now EPOCH] [--margin SECONDS]   (banner on stdin)
@@ -110,7 +110,7 @@ def compute(banner, now_epoch, margin):
     banner = strip_ansi(banner)
     now_dt = datetime.fromtimestamp(now_epoch, tz=UTC)
 
-    # Calendar date first (weekly/Opus "resets Oct 6, 1pm") — most specific, and
+    # Calendar date first (weekly/Opus "resets Oct 6, 1pm") - most specific, and
     # days-away so it trips the watcher's wait ceiling rather than a 5h fallback.
     cal = _RESET_DATE.search(banner)
     if cal:
@@ -139,7 +139,7 @@ def compute(banner, now_epoch, margin):
 
         tz = resolve_tz(banner)  # may raise on unknown IANA name
         if tz is None:
-            # No zone in banner — fall back to system local time (untested,
+            # No zone in banner - fall back to system local time (untested,
             # mirrors the reference; Claude always prints a zone in practice).
             tz = datetime.now().astimezone().tzinfo
 

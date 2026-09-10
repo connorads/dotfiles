@@ -2,7 +2,7 @@
  * Leader Key Entry Builder (Pure)
  *
  * Builds the top-level entry tree from pi state.
- * Pure function — no side effects, testable with fixture data.
+ * Pure function - no side effects, testable with fixture data.
  */
 
 import type { TopLevelEntry } from "./types.js";

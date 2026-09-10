@@ -117,7 +117,7 @@ class LeaderKeyOverlay {
       return;
     }
 
-    // Direct key press — use parseKey for Kitty protocol
+    // Direct key press - use parseKey for Kitty protocol
     const parsed = parseKey(data);
     if (parsed && parsed.length === 1 && parsed >= "a" && parsed <= "z") {
       this.handleKeyPress(parsed.toLowerCase());

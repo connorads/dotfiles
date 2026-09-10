@@ -1,4 +1,4 @@
-// Domain types for skl. All pure data — values passed across the core/shell
+// Domain types for skl. All pure data - values passed across the core/shell
 // boundary, never objects with behaviour.
 
 /** A configured root directory of skills, with a short label (the source name). */

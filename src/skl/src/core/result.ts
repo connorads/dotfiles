@@ -1,5 +1,5 @@
 // Explicit success/failure values for the pure core. No exceptions below the
-// imperative shell — every fallible core function returns a Result.
+// imperative shell - every fallible core function returns a Result.
 
 export type Result<T, E> =
   | { readonly ok: true; readonly value: T }

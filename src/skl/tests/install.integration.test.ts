@@ -1,5 +1,5 @@
 // Gated install integration test: proves `skl install` copies vetted local skill
-// bytes into a project by delegating to the real `skills add <local-path>` — the
+// bytes into a project by delegating to the real `skills add <local-path>` - the
 // `.agents/skills/<name>` copy, the `.claude/skills/<name>` symlink fan-out, and a
 // `skills-lock.json` entry with `sourceType: "local"` all appear. Also proves the
 // project guards (non-work-tree, $HOME) fail cleanly before any copy.

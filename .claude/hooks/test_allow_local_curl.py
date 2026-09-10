@@ -116,7 +116,7 @@ class TestIsLocalCurl:
         assert is_local_curl(command) is False
 
     def test_userinfo_at_trick(self) -> None:
-        """curl https://evil.com@localhost:3000 — urlparse says hostname=localhost.
+        """curl https://evil.com@localhost:3000 - urlparse says hostname=localhost.
 
         curl DOES connect to localhost here (evil.com is treated as userinfo).
         So allowing this is technically correct. We document the behaviour.

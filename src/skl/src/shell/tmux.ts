@@ -1,4 +1,4 @@
-// tmux adapter — the risky bit. Every call is argv-form Bun.spawn (no shell
+// tmux adapter - the risky bit. Every call is argv-form Bun.spawn (no shell
 // strings); the bulk payload travels via stdin (no argv/quoting), so arbitrary
 // bytes (newlines, quotes, $, ;, backticks, unicode) survive verbatim.
 //
@@ -100,7 +100,7 @@ export const injectPointer = async (
  * Copy text to the system clipboard via a tmux buffer. `load-buffer -w` pushes
  * to the outer clipboard through OSC52 (requires `set-clipboard on`); the tmux
  * buffer remains as a fallback. Named buffers sit OUTSIDE the automatic-buffer
- * stack (prefix + ] / bare show-buffer won't see them) — paste via choose-buffer
+ * stack (prefix + ] / bare show-buffer won't see them) - paste via choose-buffer
  * (prefix + =). Returns the buffer name so callers can reference it.
  */
 export const copyToClipboard = async (text: string): Promise<Result<string, TmuxError>> => {

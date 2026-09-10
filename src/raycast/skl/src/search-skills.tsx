@@ -31,8 +31,8 @@ interface Skill {
 
 /**
  * Raycast launches extensions with a minimal launchd PATH. `skl` is a Bun script
- * reached via the ~/.local/bin/skl shim, and that shim resolves `bun` off PATH —
- * the mise `bun` shim lives in ~/.local/share/mise/shims. Prepend both (plus the
+ * reached via the ~/.local/bin/skl shim, and that shim resolves `bun` off PATH.
+ * The mise `bun` shim lives in ~/.local/share/mise/shims. Prepend both (plus the
  * usual nix/homebrew dirs) so the child resolves skl and bun however Raycast was
  * started; skl itself is still invoked by absolute path.
  */
@@ -111,7 +111,7 @@ async function fetchPreview(
 }
 
 // The full content bundle (SKILL.md + every text file), for pasting where the
-// agent has no filesystem. stderr carries skipped-binary notes — ignored here.
+// agent has no filesystem. stderr carries skipped-binary notes - ignored here.
 async function fetchInline(
   ref: string,
   bin: string,
@@ -144,7 +144,7 @@ function splitPointer(preview: string): { name: string; bulk: string } {
 }
 
 /**
- * The text skl would put on the clipboard: `<name> <bulk>` — the same payload it
+ * The text skl would put on the clipboard: `<name> <bulk>` - the same payload it
  * injects into a pane (literal name, space, then the bracketed-paste body).
  */
 function pointerText(preview: string): string {

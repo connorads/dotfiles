@@ -5,7 +5,7 @@
 // Two things the unit tests can't cover: that all of a multi-file skill's text
 // files are inlined verbatim under <file> tags, and that a binary file is
 // skipped (NUL-byte sniff) with a note on stderr while the bundle on stdout
-// stays clean. The binary fixture is written at runtime — no committed blob.
+// stays clean. The binary fixture is written at runtime - no committed blob.
 
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";
 import { resolve } from "node:path";

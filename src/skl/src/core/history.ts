@@ -1,6 +1,6 @@
 // Pure usage-history logic: build one JSONL record per successful load, and
 // summarise a history file into per-skill usage counts. All ambient state
-// (clock, file path, file contents) stays in the shell — `ts` and the file
+// (clock, file path, file contents) stays in the shell - `ts` and the file
 // text arrive as parameters.
 
 import type { DiscoveredSkill } from "./types.ts";

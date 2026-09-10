@@ -1,6 +1,6 @@
 // Render the full inline bundle for a skill: SKILL.md plus every text file under
 // its dir, wrapped in XML-ish delimiters. The deliberate INVERSE of the pointer
-// (core/pointer.ts) — for a target with no filesystem access (a web chat), the
+// (core/pointer.ts) - for a target with no filesystem access (a web chat), the
 // agent can't "read SKILL.md at <path>", so the content is inlined verbatim.
 //
 // XML-style <file> tags, NOT ``` fences: skill files are themselves full of code

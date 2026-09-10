@@ -1,12 +1,12 @@
 // Usage-history integration tests. The no-tmux half proves `skl history` reads
 // the file named by SKL_HISTORY_FILE (the test seam) and prints sorted counts.
-// The gated half proves the real pipeline — `skl list | skl load --stdin` into
-// a live pane — appends one valid JSONL record per injected skill. The copy
+// The gated half proves the real pipeline - `skl list | skl load --stdin` into
+// a live pane - appends one valid JSONL record per injected skill. The copy
 // path is deliberately not exercised end-to-end: it would clobber the user's
 // clipboard (tmux load-buffer -w / OSC52).
 //
 // NOTE: the tmux half needs the server socket; run unsandboxed (the
-// unix-socket connect is blocked otherwise) — `/sandbox` or
+// unix-socket connect is blocked otherwise) - `/sandbox` or
 // dangerouslyDisableSandbox.
 
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";

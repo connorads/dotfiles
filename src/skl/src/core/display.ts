@@ -21,8 +21,8 @@ export const skillToLine = (skill: DiscoveredSkill): string => {
 export const skillsToLines = (skills: readonly DiscoveredSkill[]): string[] =>
   skills.map(skillToLine);
 
-// Like `skillsToLines`, but leads each source block with a folder row —
-// `source/  (count)` — so the group is a first-class, selectable row in the
+// Like `skillsToLines`, but leads each source block with a folder row,
+// `source/  (count)`, so the group is a first-class, selectable row in the
 // picker. The folder row's first whitespace token is `source/`, so it round-
 // trips through `linesToRefs` → `parseRef` → `{kind:"source"}` and `enter`/
 // install on it acts on the whole group. Skills arrive source-contiguous
