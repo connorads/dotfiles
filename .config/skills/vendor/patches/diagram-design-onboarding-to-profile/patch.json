@@ -1,0 +1,6 @@
+{
+  "reason": "onboarding writes brand tokens to a ~/.diagram-design profile plus a project marker, not to the read-only installed style-guide.md",
+  "files": [
+    ".agents/skills/diagram-design/references/onboarding.md"
+  ]
+}
