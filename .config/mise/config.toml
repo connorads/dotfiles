@@ -19,6 +19,9 @@ lockfile_platforms = ["macos-arm64", "linux-arm64", "linux-x64"]
 
 [env]
 PNPM_HOME = "{{env.HOME}}/.local/share/pnpm"
+# Google Cloud SDK archives outside Linux x64 need an external Python both
+# during installation and at runtime. The shim follows mise's configured Python.
+CLOUDSDK_PYTHON = "{% if os() == 'macos' or arch() == 'arm64' %}{{env.HOME}}/.local/share/mise/shims/python{% endif %}"
 
 [tools]
 python = "3.14"
@@ -50,8 +53,6 @@ actionlint = "1"
 zizmor = "1"
 # Powers the hk `bats-lint` step's rules (.hk-hooks/bats-lint/, docs/adr/0004).
 ast-grep = "0.45"
-# up supplies mise's Python during installation; the macOS installer otherwise
-# selects /usr/bin/python3. Runtime uses gcloud's bundled Python.
 gcloud = "latest"
 aws = "2"
 codex = "latest"
