@@ -384,6 +384,19 @@ _cleanup_rustup_removable() {
     | awk '!/\(/ { if ($1 != "") print $1 }'
 }
 
+# Print GOCACHE and GOMODCACHE, one per line, only when the toolchain answers.
+# A mise shim with no version set is on PATH and errors when run, so
+# `command -v go` is not evidence a toolchain exists - same trap the yarn
+# target dodges by never invoking `yarn`.
+_cleanup_go_env_dirs() {
+  command -v go >/dev/null 2>&1 || return 1
+  local -a dirs
+  dirs=("${(@f)$(go env GOCACHE GOMODCACHE 2>/dev/null)}")
+  dirs=("${(@)dirs:#}")
+  (( ${#dirs[@]} == 2 )) || return 1
+  print -rl -- "${dirs[@]}"
+}
+
 _cleanup_cargo_target_dirs() {
   local root
   local -a roots
@@ -606,16 +619,15 @@ _cleanup_probe_target() {
       command="rm -rf ~/.cargo/registry/cache"
       ;;
     go)
-      if command -v go >/dev/null 2>&1; then
-        dirs=("${(@f)$(go env GOCACHE GOMODCACHE 2>/dev/null)}")
-        dirs=("${(@)dirs:#}")
-        (( ${#dirs[@]} == 2 )) || return 1
+      dirs=("${(@f)$(_cleanup_go_env_dirs)}")
+      dirs=("${(@)dirs:#}")
+      if (( ${#dirs[@]} == 2 )); then
         command="go clean -cache -modcache"
         detail="Tool-resolved paths: ${dirs[1]}, ${dirs[2]}"
       else
         dirs=("$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod")
         command="rm -rf canonical Go cache roots"
-        detail="Go absent; paths: ${dirs[1]}, ${dirs[2]}; preserves ~/go/src and ~/go/bin"
+        detail="Go toolchain unusable; paths: ${dirs[1]}, ${dirs[2]}; preserves ~/go/src and ~/go/bin"
       fi
       kb=$(_cleanup_kb_sum "${dirs[@]}")
       (( kb > 0 )) || applicable=0
@@ -935,7 +947,9 @@ _cleanup_run_target() {
       command rm -rf -- "$HOME/.cargo/registry/cache"
       ;;
     go)
-      if command -v go >/dev/null 2>&1; then
+      # Same gate as the probe, so execution takes the branch the plan promised:
+      # a shim that cannot answer `go env` cannot run `go clean` either.
+      if _cleanup_go_env_dirs >/dev/null 2>&1; then
         go clean -cache -modcache
       else
         # The Go module cache deliberately stores downloaded files read-only.

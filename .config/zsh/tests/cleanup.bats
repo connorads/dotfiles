@@ -1067,6 +1067,28 @@ EOF
   grep -Fx 'go clean -cache -modcache' "$TEST_LOG"
 }
 
+@test "go cleanup treats an unusable shim as an absent toolchain" {
+  # A mise shim with no version set: on PATH, errors when run.
+  write_stub go <<'EOF'
+#!/usr/bin/env bash
+echo "mise ERROR No version is set for shim: go" >&2
+exit 1
+EOF
+  mkdir -p "$HOME/Library/Caches/go-build" "$HOME/go/pkg/mod" \
+    "$HOME/go/src/project" "$HOME/go/bin"
+  printf 'cache\n' >"$HOME/Library/Caches/go-build/object"
+  printf 'module\n' >"$HOME/go/pkg/mod/module"
+  touch "$HOME/go/src/project/main.go" "$HOME/go/bin/tool"
+
+  run zsh --no-rcs "$CLEANUP" --yes --go
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$HOME/Library/Caches/go-build" ]
+  [ ! -e "$HOME/go/pkg/mod" ]
+  [ -f "$HOME/go/src/project/main.go" ]
+  [ -f "$HOME/go/bin/tool" ]
+}
+
 @test "ui mode errors cleanly when fzf is unavailable" {
   run env CLEANUP_TMPDIR_ROOT="$CLEANUP_TMPDIR_ROOT" PATH="$TEST_BIN" "$(command -v zsh)" --no-rcs "$CLEANUP" ui
 
