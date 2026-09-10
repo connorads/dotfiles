@@ -1,0 +1,118 @@
+{
+  "skill_name": "game-design",
+  "evals": [
+    {
+      "id": 1,
+      "name": "invent-a-distinctive-game",
+      "prompt": "i want to make a small game about being a night courier in a city that's forgetting itself. i love the aha moments in Portal and finding stupid powerful combinations in Balatro, but don't just mash portals and poker together. give me a concept worth making and the first playable bit. one developer, desktop browser, maybe 20 minutes for a full playthrough. make a concrete recommendation, not homework for me.",
+      "assertions": [
+        "Recommends a distinctive playable mechanism tied to the premise, rather than a feature mashup",
+        "Explains what the player does and discovers in a concrete sequence",
+        "States a plausible first slice and why its experience could be compelling",
+        "Preserves creative ambition within the supplied scope"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "slow-discovery",
+      "prompt": "my archaeology game opens with five quiet minutes wandering an abandoned observatory. you're gradually realising the astronomer was studying their own disappearance. a friend said nothing happens. should i add a quest arrow and collectibles? i want it to stay quiet and a bit unsettling, and it's a one-play story. tell me what you'd actually change and how you'd judge it.",
+      "assertions": [
+        "Separates intended slow discovery from unproductive wandering",
+        "Offers a concrete design change or contrast that preserves the intended experience",
+        "Does not impose combat, loot, replay or immediate excitement",
+        "Distinguishes the friend's report from an established diagnosis"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "social-play",
+      "prompt": "design a silly local game for four friends sharing one screen and controllers. two play games constantly, two barely do. i like Hidden in Plain Sight and Ultimate Chicken Horse. sessions are about ten minutes. i want people laughing and blaming each other, not three people watching the best player win. give me a concrete original concept and a round i can prototype; i don't need a list of minigames.",
+      "assertions": [
+        "Rules create a specific relationship or dilemma between players",
+        "Provides one concrete round with actions, incentives and a resolution",
+        "Addresses skill spread and eliminated-player downtime through the rules",
+        "Names observations in an actual group beyond connectivity or win rate"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "shallow-upgrades",
+      "prompt": "my auto-attacking dog game has 12 dogs but most upgrades are damage or attack speed. people always buy damage first. i want some ridiculous combinations that make you feel clever like Slay the Spire, not perfect balance. should i add another 12 dogs and elemental set bonuses? propose a better direction with an example offer and what it'd look like in combat.",
+      "assertions": [
+        "Shows how run context can change an upgrade's value",
+        "Gives a concrete interaction and combat payoff with legible causes",
+        "Preserves deliberately powerful combinations rather than flattening everything",
+        "Does not equate catalogue size or recipe counts with depth"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "unclear-hit",
+      "prompt": "players say the terrier's bite misses. unit tests pass: damage is a circle around the dog with a 0.48-second per-enemy repeat gate. the jaw animation loops on a separate renderer clock; damage doesn't check which way the dog faces. i'd just make the radius 30 percent bigger and add shake. what would you do? i need a concrete next change and a small way to verify it.",
+      "assertions": [
+        "Identifies the animation, orientation and damage mismatch",
+        "Avoids treating a larger radius or shake as an established fix",
+        "Gives a discriminating observation and a specific presentation/rule alignment",
+        "Does not claim automated hits prove players understand them"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "late-run-boredom",
+      "prompt": "my survivors game gets boring after about seven minutes and players feel invincible. the boss waits until you've visited two park landmarks, which some people don't notice. you eventually own all upgrades; extra levels heal 25hp, and every 45 kills drops 15hp. i was going to double the spawns and halve all healing. work out the next tuning pass. players do enjoy finally becoming overpowered so don't delete that.",
+      "assertions": [
+        "Separates ending/navigation, progression exhaustion and recovery mechanisms",
+        "Recognises more spawns can generate more healing",
+        "Preserves an earned power phase while proposing an intentional run arc",
+        "Separates uncertain causal claims and proposes a targeted comparison"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "convincing-sequence",
+      "prompt": "i have a prototype where you can borrow a room's gravity for ten seconds, leaving that room weightless until it returns. walking and switching gravity works. help me turn this into a really good five-minute playable sequence, not just a mechanics test. no enemies or upgrade tree. atmosphere is curious and slightly eerie. describe the actual rooms, reveals and ending clearly enough that i can build it.",
+      "assertions": [
+        "Defines coherent spatial rules and a buildable room sequence",
+        "Develops learning, recombination and a satisfying discovery or ending",
+        "Combines atmosphere and mechanics rather than treating presentation only as decoration",
+        "Distinguishes isolated rule tests from testing the complete sequence"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "engineering-boundary",
+      "prompt": "we've already approved the game design. collision profiling shows the broad-phase all-pairs loop dominates. we're replacing just candidate lookup with a uniform grid; keep the exact circle narrow phase and collision results. outline the implementation and the important checks. don't reopen gameplay tuning or ask what experience we want.",
+      "assertions": [
+        "Delivers the requested technical approach without a design interview",
+        "Preserves exact collision semantics including multi-cell coverage and duplicate candidates",
+        "Proposes behaviour-equivalence and representative profiling checks",
+        "Does not prescribe unrelated systems or game changes"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "comfort-held-out",
+      "held_out": true,
+      "prompt": "i'm making a tiny evening garden game for winding down. same plants, same watering route each night, no winning. one tester calls it soothing, another says it's chores. i don't want to bolt on a quest system. what's a promising improvement and how would you decide if it's better?",
+      "assertions": [
+        "Treats comfort and repetition as valid intentions",
+        "Distinguishes unwanted labour from valued ritual without inventing audience consensus",
+        "Proposes a concrete improvement tied to that distinction",
+        "Does not force progression, novelty or retention"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "expressive-sport-held-out",
+      "held_out": true,
+      "prompt": "pitch a simple two-player browser sport where you steer little boats with bursts of wind. i love Rocket League's skill ceiling and last-second saves, but this should have its own identity and be playable by beginners. give me the rules, the expressive move players could learn, and a dramatic finish. no progression or unlocks.",
+      "assertions": [
+        "Gives an original sport with understandable core rules",
+        "Explains an expressive move arising from those rules rather than a separate upgrade",
+        "Designs a concrete dramatic finish consistent with the rules",
+        "Keeps beginner play viable without erasing mastery"
+      ]
+    }
+  ],
+  "how_to_run": "Use evals/README.md. Run each prompt in a fresh session in baseline, ad-hoc and skill arms. Cases 9-10 are held out during drafting. The trials ask for proposals, not file creation; inspect any implementation separately."
+}
