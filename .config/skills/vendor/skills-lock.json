@@ -230,6 +230,12 @@
       "skillPath": "skills/hyperframes-registry/SKILL.md",
       "computedHash": "0b2f695074d7a278b5a01610855c95a8eb92b8f52685e204d39e7b849d0858c4"
     },
+    "i-have-adhd": {
+      "source": "ayghri/i-have-adhd",
+      "sourceType": "github",
+      "skillPath": "skills/i-have-adhd/SKILL.md",
+      "computedHash": "2be8f3214ebd0907429eafacc95c1cc3b4f21fe9d1892a30df9be7f32dc09d65"
+    },
     "improve-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
