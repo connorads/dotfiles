@@ -1,18 +1,18 @@
 // Imperative shell for the /goal extension. Phase 2 turns the v1 static anchor into
 // a self-driving loop: setting an auto goal kicks a continuation each turn until the
-// objective is complete, blocked, or out of budget — bounded by a token budget, a
+// objective is complete, blocked, or out of budget - bounded by a token budget, a
 // max-iteration backstop, a no-progress guard, a context-full guard, and a cooldown.
 //
 // Structure follows functional-core / imperative-shell + ports & adapters:
-//   - core.ts      — all decisions (pure, event-sourced, deterministic)
-//   - runtime.ts   — the GoalRuntime port + the real pi adapter (the only pi/ctx touch)
-//   - this file    — the engine (volatile flags + orchestration over GoalRuntime) and
-//                    the pi wiring (pi.on / registerCommand / registerTool).
+//   - core.ts:    all decisions (pure, event-sourced, deterministic)
+//   - runtime.ts: the GoalRuntime port + the real pi adapter (the only pi/ctx touch)
+//   - this file:  the engine (volatile flags + orchestration over GoalRuntime) and
+//                 the pi wiring (pi.on / registerCommand / registerTool).
 //
 // The engine takes a GoalRuntime per call, so it is driven in tests by a type-honest
 // in-memory fake (no `as` cast). pi types are imported type-only (erased at runtime),
-// so — like core.ts, prompts.ts, and runtime.ts — this module's only runtime
-// dependencies are first-party (./core.ts, ./prompts.ts, ./runtime.ts).
+// so this module's only runtime dependencies are first-party (./core.ts,
+// ./prompts.ts, ./runtime.ts), as they are in core.ts, prompts.ts and runtime.ts.
 import type {
   AgentEndEvent,
   BeforeAgentStartEvent,
@@ -23,7 +23,7 @@ import type {
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 
-// pi's live message type — the element of ContextEvent.messages. Derived via
+// pi's live message type - the element of ContextEvent.messages. Derived via
 // indexed access because pi does not re-export the name from its package root.
 type PiMessage = ContextEvent["messages"][number];
 import type { TSchema } from "typebox";
@@ -131,14 +131,14 @@ interface ToolReply {
 }
 
 export function createGoalEngine(): GoalEngine {
-  // Volatile flags — intentionally NOT event-sourced; they reset on reload, which
+  // Volatile flags - intentionally NOT event-sourced; they reset on reload, which
   // is correct (an in-flight continuation or takeover does not survive a restart).
   let continuationInFlight = false;
   let humanTookOver = false;
   let tailGate = false;
   // Loop-ownership epoch: bumped by every event that re-claims or drops the loop
   // (agent_start, session_tree, set/resume/pause/clear). onAgentEnd captures it before
-  // its cooldown sleep and bails if it changed — so a command run during the ~2s
+  // its cooldown sleep and bails if it changed - so a command run during the ~2s
   // cooldown (which yields the event loop) cannot be double-kicked by a stale continuation.
   let epoch = 0;
   const bumpEpoch = (): void => {
@@ -214,7 +214,7 @@ export function createGoalEngine(): GoalEngine {
       });
       const state = reduceGoal(rt.readEvents());
       // The model may have flipped status via update_goal, or this was the budget
-      // wrap-up turn — either way, only an active goal keeps driving.
+      // wrap-up turn - either way, only an active goal keeps driving.
       if (!state || state.status !== "active") {
         syncUi(rt);
         return;
@@ -282,7 +282,7 @@ export function createGoalEngine(): GoalEngine {
     },
 
     applyEdit(rt, text) {
-      // Editing the objective does not change loop ownership — an in-flight
+      // Editing the objective does not change loop ownership - an in-flight
       // continuation should still fire (the kick is generic), so no epoch bump.
       rt.record({ kind: "edit", text, at: rt.now() });
       syncUi(rt);
@@ -339,7 +339,7 @@ export function createGoalEngine(): GoalEngine {
 }
 
 // ---------------------------------------------------------------------------
-// Tool schemas. Plain JSON Schema objects rather than TypeBox — pi's validator
+// Tool schemas. Plain JSON Schema objects rather than TypeBox - pi's validator
 // (pi-ai validation.js) has an explicit branch for schemas without TypeBox
 // metadata, so this keeps the extension's only runtime dependency ./core.ts and
 // keeps the tests free of a `typebox` import. See README "Phase 2" (ADR).

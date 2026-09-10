@@ -1,5 +1,6 @@
-// Render the pointer payload for a skill. Deliberately NOT the SKILL.md content
-// — just enough for the agent to find and read it (progressive disclosure).
+// Render the pointer payload for a skill. Deliberately NOT the SKILL.md
+// content, just enough for the agent to find and read it (progressive
+// disclosure).
 //
 // skillName is sent as visible literal keystrokes; bulk is sent as a bracketed
 // paste (collapses to "[Pasted text +N lines]") so stacked skills stay readable.

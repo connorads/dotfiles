@@ -4,7 +4,7 @@ Every case pins `--now` to a fixed epoch, so the expected reset epoch is
 exact and reproducible (no dependence on the wall clock / CI machine TZ).
 Expected epochs are constructed directly from datetime+zoneinfo here, which
 exercises a *different* path than the parser's regex + next-occurrence
-selection — so a bug in the parser still shows up as a mismatch.
+selection - so a bug in the parser still shows up as a mismatch.
 
 Run: python3 test-reset-time.py   (exits non-zero on any failure)
 """
@@ -53,7 +53,7 @@ def check_fail(name, banner, now_epoch):
         failures.append(f"{name}: expected non-zero exit (fixed fallback), got 0")
 
 
-# 1. Absolute time, same day, IANA zone — reset later today.
+# 1. Absolute time, same day, IANA zone - reset later today.
 now = epoch(2026, 5, 31, 12, 0, "America/Santiago")
 check(
     "santiago-3pm-today",

@@ -1,6 +1,6 @@
 // Pure core for the /goal extension: command/option parsing, event-sourced state,
 // the self-driving truth table, completion auditing, and token metering. No pi
-// imports, no I/O, no clock — every function here is deterministic so the whole
+// imports, no I/O, no clock - every function here is deterministic so the whole
 // decision surface is unit- and property-testable in isolation (functional core;
 // the imperative shell lives in index.ts/runtime.ts). The model-/UI-facing copy
 // (anchor, kicks, tail, status/widget renderers) lives in prompts.ts, which imports
@@ -21,13 +21,13 @@ export const DEFAULT_MAX_ITERATIONS = 25;
 export const NO_PROGRESS_OUTPUT_TOKENS = 50;
 /** Consecutive no-progress runs that pause the loop (stuck guard). */
 export const NO_PROGRESS_LIMIT = 3;
-/** Pause the loop once context usage reaches this percent (pi reports 0–100). */
+/** Pause the loop once context usage reaches this percent (pi reports 0-100). */
 export const CONTEXT_SAFETY_PERCENT = 95;
 /** Cooldown between a run ending and the next auto-continuation (hot-loop guard). */
 export const CONTINUATION_COOLDOWN_MS = 2_000;
 
 // ---------------------------------------------------------------------------
-// Domain model — tagged unions so illegal states are unrepresentable.
+// Domain model - tagged unions so illegal states are unrepresentable.
 // `mode` carries the auto-only counters: a steer-only goal cannot hold a budget
 // or iteration counter (it has nowhere to put one).
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ export type GoalMode =
 
 export type GoalState = { text: string; status: GoalStatus; mode: GoalMode } | null;
 
-/** Structured stop/pause reasons — never free text, so the widget and /goal status can surface them. */
+/** Structured stop/pause reasons - never free text, so the widget and /goal status can surface them. */
 export type StopReason =
   | "no_goal"
   | "steer_only"
@@ -202,7 +202,7 @@ export function parseGoalOptions(
 
 /**
  * Parse `/goal` arguments. A reserved word (status/edit/pause/resume/clear) only
- * counts as a subcommand when it is the entire argument — `/goal pause the build`
+ * counts as a subcommand when it is the entire argument - `/goal pause the build`
  * sets a goal whose text happens to start with "pause". Bare `/goal` shows.
  */
 export function parseGoalCommand(rawArgs: string, defaultAuto = true): GoalCommand {
@@ -341,7 +341,7 @@ function accumulateProgress(mode: GoalMode, promptCost: number, outputTokens: nu
 }
 
 /**
- * Apply one event to the current state — the fold step. Pulled out of reduceGoal's
+ * Apply one event to the current state - the fold step. Pulled out of reduceGoal's
  * loop so `state` is a parameter rather than a reassigned `let`: the latter defeats
  * TS's narrowing of the `GoalState` (`… | null`) union inside the loop and trips
  * TS2698 on the `{ ...state }` spreads, even though the narrowing is correct at
@@ -358,8 +358,8 @@ function applyGoalEvent(state: GoalState, event: GoalEvent): GoalState {
       return state && isDriving(state.status) ? { ...state, status: "paused" } : state;
     case "resume":
       // Resume re-activates from paused/budget_limited/blocked (a resumed blocked
-      // goal restarts its blocked audit). A `complete` goal stays complete — set a
-      // new goal to keep working — so a finished objective is never silently re-driven.
+      // goal restarts its blocked audit). A `complete` goal stays complete - set a
+      // new goal to keep working - so a finished objective is never silently re-driven.
       return state && (state.status === "paused" || state.status === "budget_limited" || state.status === "blocked")
         ? { ...state, status: "active", mode: resetRunway(state.mode) }
         : state;
@@ -387,7 +387,7 @@ export function reduceGoal(events: readonly GoalEvent[]): GoalState {
 }
 
 // ---------------------------------------------------------------------------
-// Token metering & error classification (structural typing — no pi-ai import).
+// Token metering & error classification (structural typing - no pi-ai import).
 // ---------------------------------------------------------------------------
 
 export interface UsageLike {
@@ -411,7 +411,7 @@ function assistantMessages(messages: readonly MessageLike[]): MessageLike[] {
  * Fresh (non-cached) prompt + output tokens spent across this run's assistant
  * messages: Σ max(0, input) + max(0, output). pi already reports `usage.input` net
  * of cache reads (cacheRead is a separate, much cheaper bucket across the Anthropic,
- * Google, and OpenAI providers), so we must NOT subtract cacheRead again — doing so
+ * Google, and OpenAI providers), so we must NOT subtract cacheRead again - doing so
  * collapses the cost to ~0 in the cache-stable steady state and silently defeats the
  * token budget. agent_end carries only the run's new messages, so summing here never
  * double-counts across turns.
@@ -426,7 +426,7 @@ export function computePromptCost(messages: readonly MessageLike[]): number {
   return total;
 }
 
-/** Output tokens produced this run — the signal behind the no-progress guard. */
+/** Output tokens produced this run - the signal behind the no-progress guard. */
 export function computeOutputTokens(messages: readonly MessageLike[]): number {
   let total = 0;
   for (const m of assistantMessages(messages)) {
@@ -454,7 +454,7 @@ const RETRYABLE_ERROR = /rate.?limit|overload|throttl|429|50[234]|timed?.?out|et
  * (aborts are handled separately). Transient/network errors are classified
  * retryable so the loop keeps going (still bounded by the hard caps in
  * decideContinuation); pi also auto-retries these at the provider layer. Anything
- * not recognisably transient is fatal — the safer default for a self-driving loop.
+ * not recognisably transient is fatal - the safer default for a self-driving loop.
  */
 export function classifyError(
   stopReason: string | undefined,
@@ -472,7 +472,7 @@ export function classifyError(
 export interface ContinuationSignals {
   /** Classification of the run's terminal error, if any. */
   errorClass: "none" | "retryable" | "fatal";
-  /** Context usage percent (0–100), or null when unknown. */
+  /** Context usage percent (0-100), or null when unknown. */
   contextPercent: number | null;
 }
 
@@ -506,7 +506,7 @@ export function goalToolsShouldBeActive(state: GoalState): boolean {
  * pauseFromLoop, before metering), so they never reach this function.
  *
  * Hard caps (budget/stuck/max-iter/context) sit ABOVE retryable errors so that a
- * persistently-erroring run cannot bypass them and run away — the whole point of
+ * persistently-erroring run cannot bypass them and run away - the whole point of
  * the guard set, since the runtime imposes no recursion limit of its own.
  */
 export function decideContinuation(state: GoalState, signals: ContinuationSignals): Decision {
@@ -605,7 +605,7 @@ export function decideCompletion(
   return { ok: true, event: { kind: "status", at, status, reason } };
 }
 
-/** Exhaustiveness guard — turns a new unhandled variant into a compile error. */
+/** Exhaustiveness guard - turns a new unhandled variant into a compile error. */
 export function assertNever(value: never): never {
   throw new Error(`Unreachable goal variant: ${JSON.stringify(value)}`);
 }

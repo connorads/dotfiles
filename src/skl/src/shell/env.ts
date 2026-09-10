@@ -16,14 +16,14 @@ export const env = {
     process.env["XDG_STATE_HOME"] ?? `${process.env["HOME"] ?? ""}/.local/state`,
   xdgConfigHome: (): string =>
     process.env["XDG_CONFIG_HOME"] ?? `${process.env["HOME"] ?? ""}/.config`,
-  /** `SKL_HISTORY_FILE` — usage-history path override (the test seam). */
+  /** `SKL_HISTORY_FILE` - usage-history path override (the test seam). */
   historyFileOverride: (): string | null => process.env["SKL_HISTORY_FILE"] ?? null,
-  /** `SKL_CONFIG` — config-file override. A different file, not `--path`'s different sources. */
+  /** `SKL_CONFIG` - config-file override. A different file, not `--path`'s different sources. */
   configFileOverride: (): string | null => process.env["SKL_CONFIG"] ?? null,
-  /** ISO-8601 UTC timestamp — the clock stays out of cli.ts and the core. */
+  /** ISO-8601 UTC timestamp - the clock stays out of cli.ts and the core. */
   now: (): string => new Date().toISOString(),
   argv: (): string[] => Bun.argv.slice(2),
-  /** Process cwd — where `skl install` resolves the enclosing project from. */
+  /** Process cwd - where `skl install` resolves the enclosing project from. */
   cwd: (): string => process.cwd(),
   stdout: (text: string): void => {
     process.stdout.write(text);
@@ -33,7 +33,7 @@ export const env = {
   },
   /** Read all of stdin (used by `skl load --stdin`). */
   stdin: (): Promise<string> => Bun.stdin.text(),
-  /** True when stdout is a real terminal — gates the install confirmation prompt. */
+  /** True when stdout is a real terminal - gates the install confirmation prompt. */
   isInteractive: (): boolean => Boolean(process.stdout.isTTY),
   /** Prompt once for a line of input; null on EOF/non-interactive (Bun global). */
   confirm: (question: string): string | null => prompt(question),

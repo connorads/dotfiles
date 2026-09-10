@@ -148,7 +148,7 @@ test("no-progress: three low-output runs pause the loop (stuck)", async () => {
 });
 
 test("max-iterations: the loop pauses at the cap (counters restored from events on reload)", async () => {
-  // Seed as if a prior session already ran two turns — simulates reload.
+  // Seed as if a prior session already ran two turns - simulates reload.
   const seed: GoalEvent[] = [
     { kind: "set", text: "Ship X", at: 1, mode: auto({ maxIterations: 3 }) },
     { kind: "progress", at: 2, promptCost: 10, outputTokens: 100 },
@@ -200,8 +200,8 @@ test("human takeover: an interactive message yields the loop; commands/extension
   const engine = createGoalEngine();
   engine.applySet(f.rt, "Ship X", auto());
   engine.onAgentStart();
-  engine.onInput("extension", "Continue working toward the active goal."); // our own kick — ignored
-  engine.onInput("interactive", "/goal status"); // slash command — ignored
+  engine.onInput("extension", "Continue working toward the active goal."); // our own kick - ignored
+  engine.onInput("interactive", "/goal status"); // slash command - ignored
   engine.onInput("interactive", "actually do it this way"); // human takeover
   await engine.onAgentEnd(f.rt, [asst(100)]);
   assert.equal(f.state()?.status, "paused");

@@ -166,8 +166,8 @@ const buildConfig = async (
   return { ok: true, value: parsed.value };
 };
 
-// Best-effort usage logging: warn on stderr but never change the exit code —
-// the load itself succeeded, and curation data is not worth failing it for.
+// Best-effort usage logging: warn on stderr but never change the exit code.
+// The load itself succeeded, and curation data is not worth failing it for.
 const recordLoad = async (
   skill: DiscoveredSkill,
   mode: "inject" | "copy" | "install",
@@ -189,7 +189,7 @@ const loadRefs = async (
 ): Promise<number> => {
   if (refs.length === 0) return 0; // nothing selected (e.g. fzf cancelled)
 
-  // Resolve the whole batch up front (pure) — bail before injecting anything.
+  // Resolve the whole batch up front (pure) - bail before injecting anything.
   const resolved = resolveRefs(refs, skills);
   if (!resolved.ok) {
     env.stderr(`skl: ${fmtResolveError(resolved.error)}\n`);
@@ -260,7 +260,7 @@ const installRefs = async (
     return 1;
   }
 
-  // A whole-source positional install is a big action — on a TTY, list the
+  // A whole-source positional install is a big action - on a TTY, list the
   // members and confirm once. Individual installs and --stdin (the picker,
   // where selection IS the confirmation) never prompt.
   const wholeSource = ref !== null && parseRef(ref).kind === "source";
@@ -292,7 +292,7 @@ const installRefs = async (
   const failed = outcomes.length - okRoots.size;
   if (failed > 0) return 1;
   // Progressive disclosure: the copy is on disk but the running agent hasn't
-  // read it — say how to use it now vs on next session.
+  // read it - say how to use it now vs on next session.
   env.stdout(
     "skl: restart the agent session to autoload, or `skl load <name>` to use now\n",
   );
@@ -312,7 +312,7 @@ const main = async (argv: readonly string[]): Promise<number> => {
     return 0;
   }
 
-  // History needs neither config nor discovery — just the machine-local file.
+  // History needs neither config nor discovery - just the machine-local file.
   if (command.kind === "history") {
     const rows = summariseHistory(await readHistoryFile());
     if (rows.length === 0) {

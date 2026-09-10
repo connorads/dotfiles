@@ -12,7 +12,7 @@ Input schema (`mw transcribe --format json`):
     {"segments": [{"id", "start", "end", "text", "words": [...]}]}
 
 `start`/`end` are integer **milliseconds**. `speaker` is present only when the
-transcription ran with `--speakers`, so it is treated as optional throughout —
+transcription ran with `--speakers`, so it is treated as optional throughout.
 vox transcribes the mic track with `--no-speakers` (it is definitionally you).
 
 Output is one line per utterance, sorted by start time:

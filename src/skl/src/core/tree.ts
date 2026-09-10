@@ -1,5 +1,5 @@
 // Render a deterministic ASCII tree from a flat list of relative file paths.
-// Pure and unit-testable — reuses the file list the glob already produced, so
+// Pure and unit-testable - reuses the file list the glob already produced, so
 // there's no shelling out to `tree`.
 
 interface Node {

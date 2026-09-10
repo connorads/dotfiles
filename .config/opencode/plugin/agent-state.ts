@@ -13,7 +13,7 @@ import { join } from "node:path"
 // done | clear. "idle"/"seen" demotion is owned by the helper and tmux hooks.
 //
 // tool.execute.before/after and chat.message are top-level plugin hook keys
-// (invoked via plugin trigger), NOT event-bus types — the rest arrive through
+// (invoked via plugin trigger), NOT event-bus types - the rest arrive through
 // the `event` hook.
 //
 // Subagents (Task tool) run as child sessions carrying info.parentID, learned
@@ -21,7 +21,7 @@ import { join } from "node:path"
 // so a running subagent keeps the dot working; their *idle* is suppressed so a
 // finished subagent can't demote the pane (the original "fake the pane idle"
 // hazard). The dot only goes `done` once the ROOT session is itself idle AND no
-// tracked child is still busy — a deferred done so a prematurely-idle root
+// tracked child is still busy - a deferred done so a prematurely-idle root
 // (e.g. opencode parking the parent while a foreground subagent drains) can't
 // age the dot out from under in-flight work.
 
@@ -83,8 +83,8 @@ export const AgentStatePlugin: Plugin = async () => {
   // A pinpoint of activity. For a child we record the busy slot so the
   // deferred-done gate keeps the dot up while it (or any sibling) drains; for
   // the root we clear rootIdle (a fresh user/tool action means the root is no
-  // longer quiet). Never invert: a child going busy must NOT clear rootIdle —
-  // only the root's own status owns that flag, else a background subagent's idle
+  // longer quiet). Never invert: a child going busy must NOT clear rootIdle.
+  // Only the root's own status owns that flag, else a background subagent's idle
   // could never retire the dot.
   const markBusy = (sessionID: string): void => {
     if (childSessions.has(sessionID)) {
@@ -95,7 +95,7 @@ export const AgentStatePlugin: Plugin = async () => {
     emit("working")
   }
 
-  // A session went idle. The ROOT going idle is the finish signal — gated behind
+  // A session went idle. The ROOT going idle is the finish signal - gated behind
   // childBusy so a parked-while-subagent-runs root can't age the dot out. A
   // CHILD going idle never demotes by itself; if it was the last in-flight
   // subagent and the root is already idle, the deferred done fires here.
@@ -113,7 +113,7 @@ export const AgentStatePlugin: Plugin = async () => {
   return {
     // Top-level hooks (plugin trigger, not the event bus): the turn/tool
     // critical path, our most reliable "working" signal. Now NOT gated to the
-    // root — a subagent's own tool calls/message flow ping the pane busy too.
+    // root - a subagent's own tool calls/message flow ping the pane busy too.
     "chat.message": async (input: { sessionID?: string }) => {
       markBusy(input?.sessionID ?? "")
     },
@@ -175,7 +175,7 @@ export const AgentStatePlugin: Plugin = async () => {
         // Real teardown only when the root (or the whole instance) is torn down;
         // a deleted subagent just retires its busy slot, never clears the pane.
         // Discriminate via the learned childSessions set (same as everywhere
-        // else), not the delete payload — the event need not carry parentID.
+        // else), not the delete payload - the event need not carry parentID.
         case "session.deleted":
         case "global.disposed":
           if (isChild(sid)) {

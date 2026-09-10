@@ -1,7 +1,7 @@
 // install adapter: copy vetted local skill bytes into a project by delegating to
 // `skills add <sourceRoot> --skill <names…>`. Every call is argv-form Bun.spawn
 // (no shell strings), mirroring shell/tmux.ts. `skills add` treats the source
-// root as a `sourceType: "local"` source and copies it in place — no fetch.
+// root as a `sourceType: "local"` source and copies it in place - no fetch.
 
 import { realpathSync } from "node:fs";
 import { ok, err, type Result } from "../core/result.ts";
@@ -11,7 +11,7 @@ import type { InstallGroup } from "../core/install.ts";
 export type ProjectError =
   // cwd is not inside a git work-tree (`git rev-parse --show-toplevel` failed).
   | { readonly kind: "not-a-work-tree"; readonly cwd: string }
-  // The work-tree root is $HOME — refuse (defence in depth; dotfiles' detached
+  // The work-tree root is $HOME - refuse (defence in depth; dotfiles' detached
   // git-dir already makes rev-parse fail in ~, but never install into home).
   | { readonly kind: "is-home"; readonly path: string };
 

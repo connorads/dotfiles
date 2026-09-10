@@ -377,7 +377,7 @@ test("classifyError: error vs transient vs none", () => {
 });
 
 // ---------------------------------------------------------------------------
-// decideContinuation — full truth table + precedence
+// decideContinuation - full truth table + precedence
 // ---------------------------------------------------------------------------
 
 const okSignals = (over: Partial<ContinuationSignals> = {}): ContinuationSignals => ({
@@ -497,7 +497,7 @@ test("summaryContradictsCompletion: negated success phrasing is NOT a contradict
 });
 
 test("summaryContradictsCompletion: marker words in the objective's own vocabulary are allowed", () => {
-  // Goal is literally about a TODO list / partial streaming — naming the deliverable is fine.
+  // Goal is literally about a TODO list / partial streaming - naming the deliverable is fine.
   assert.equal(summaryContradictsCompletion("Implemented the TODO list feature; all tests pass.", "Add a TODO list feature"), false);
   assert.equal(summaryContradictsCompletion("Added partial response streaming; verified.", "Implement partial response streaming"), false);
   // ...but the same word is still a contradiction when it is NOT part of the objective.

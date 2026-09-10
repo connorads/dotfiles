@@ -1,4 +1,4 @@
-// remobi configuration — tailored to local tmux bindings
+// remobi configuration - tailored to local tmux bindings
 
 const customDrawerButtons = [
 	{

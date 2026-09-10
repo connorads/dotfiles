@@ -8,13 +8,13 @@
 // permission event, so there is no `blocked` here.
 //
 // Constraints honoured:
-//   - Quiet no-op outside tmux (TMUX_PANE unset) — registers nothing.
+//   - Quiet no-op outside tmux (TMUX_PANE unset): registers nothing.
 //   - Fire-and-forget: never await, never throw into pi's lifecycle; a status
 //     dot must never block or slow the agent.
 //   - Only the root interactive (UI) session drives the pane; sub-sessions and
 //     print/json runs (ctx.hasUI !== true) are ignored.
 //   - Release (clear) only on a real quit. Pi tears down + rebinds extension
-//     runtimes for /reload, /new, /resume, /fork — those must NOT release.
+//     runtimes for /reload, /new, /resume, /fork - those must NOT release.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { spawn } from "node:child_process";

@@ -23,7 +23,7 @@ Usage
 
 Notes
 -----
-* Uses the raw ASGI class form (not BaseHTTPMiddleware) deliberately —
+* Uses the raw ASGI class form (not BaseHTTPMiddleware) deliberately.
   BaseHTTPMiddleware copies the context, so contextvars bound inside
   handlers are invisible in `finally`. See FastAPI #4696.
 * Requires structlog configured with `merge_contextvars` as the first

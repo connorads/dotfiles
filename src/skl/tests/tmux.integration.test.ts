@@ -10,7 +10,7 @@
 // would receive the terminator and re-emit that line → it would appear twice.
 //
 // NOTE: tmux needs its server socket; run unsandboxed (the unix-socket connect
-// is blocked otherwise) — `/sandbox` or dangerouslyDisableSandbox.
+// is blocked otherwise) - `/sandbox` or dangerouslyDisableSandbox.
 
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";
 import { copyToClipboard, injectPointer, capturePane } from "../src/shell/tmux.ts";
@@ -18,7 +18,7 @@ import type { Pointer } from "../src/core/types.ts";
 
 // Gate on actually being able to reach a tmux server (start-server needs the
 // unix socket). This both skips when tmux is absent AND when the socket is
-// blocked (e.g. a sandboxed test run) — the latter is not a real failure.
+// blocked (e.g. a sandboxed test run) - the latter is not a real failure.
 const tmuxAvailable = (): boolean => {
   try {
     return Bun.spawnSync(["tmux", "start-server"]).exitCode === 0;
@@ -59,7 +59,7 @@ describe.if(tmuxAvailable())("injectPointer (real tmux)", () => {
 
     const captured = await capturePane(pane);
     // Visible literal name + bulk bytes survived verbatim (newlines, backticks,
-    // ;, $HOME, unicode glyphs) — no shell interpretation.
+    // ;, $HOME, unicode glyphs) - no shell interpretation.
     expect(captured).toContain("alpha");
     expect(captured).toContain("(skl: repo/alpha)");
     expect(captured).toContain("├── SKILL.md");
@@ -71,7 +71,7 @@ describe.if(tmuxAvailable())("injectPointer (real tmux)", () => {
 
 // The OSC52 write itself needs an attached terminal to observe; what we can
 // prove against a real server is that the payload landed verbatim in the named
-// tmux buffer. Address it by the returned name — this may run against a LIVE
+// tmux buffer. Address it by the returned name - this may run against a LIVE
 // server, and bare show-buffer/delete-buffer act on the user's automatic-buffer
 // stack, not our named buffer (that mistake ate real yanks once).
 describe.if(tmuxAvailable())("copyToClipboard (real tmux)", () => {

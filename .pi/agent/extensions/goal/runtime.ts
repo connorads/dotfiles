@@ -1,7 +1,7 @@
 // The narrow boundary between the goal orchestration and pi (ports & adapters).
 //
-// The engine in index.ts depends only on the domain-named `GoalRuntime` port —
-// verbs like `record`, `sendContinuation`, `contextPercent` — never on pi's
+// The engine in index.ts depends only on the domain-named `GoalRuntime` port,
+// whose verbs are `record`, `sendContinuation`, `contextPercent`, never on pi's
 // `ExtensionAPI`/`ExtensionContext` directly. That keeps the engine testable with
 // a type-honest fake (no `as` cast) and confines every real pi/ctx touch (plus
 // the clock and timers) to `createPiRuntime` below.
@@ -30,7 +30,7 @@ export interface GoalRuntime {
   record(event: GoalEvent): void;
   /** Queue a follow-up user message that triggers the next auto turn. */
   sendContinuation(kick: string): void;
-  /** Current context usage percent (0–100), or null when unknown. */
+  /** Current context usage percent (0-100), or null when unknown. */
   contextPercent(): number | null;
   /** Add/remove the goal tools from the active set (read-modify-write). */
   setGoalToolsActive(active: boolean): void;

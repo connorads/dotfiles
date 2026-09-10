@@ -1,6 +1,6 @@
 // Usage-history file adapter: resolve the JSONL path, append lines, read the
 // file back. Machine-local state (XDG state dir), never dotfiles-tracked.
-// `SKL_HISTORY_FILE` overrides the path — the test seam.
+// `SKL_HISTORY_FILE` overrides the path - the test seam.
 
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";

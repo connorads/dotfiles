@@ -13,7 +13,7 @@
 //   skl history              → history (usage counts from the history file)
 //   skl --help | -h          → help
 // Verbs shadow bare skill names (a skill named "history" needs `skl load
-// history` or a qualified ref) — same precedence as list/preview/inline.
+// history` or a qualified ref) - same precedence as list/preview/inline.
 // Flags: --target <pane>, --path <dir> (repeatable), --submit, --stdin, --copy,
 // --all, --folders (list: folder rows lead each source block), --global (install
 // into autoload dir), --yes (skip install confirmation).

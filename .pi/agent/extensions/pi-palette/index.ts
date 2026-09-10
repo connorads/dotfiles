@@ -2,8 +2,8 @@
  * Pi Palette Extension
  *
  * Two complementary overlays for pi:
- *   Alt+X — leader-key chord palette (press / within to search)
- *   /telescope, /lk — slash command fallbacks
+ *   Alt+X - leader-key chord palette (press / within to search)
+ *   /telescope, /lk - slash command fallbacks
  */
 
 import type {

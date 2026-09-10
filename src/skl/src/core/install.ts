@@ -1,6 +1,6 @@
 // Pure planning for `skl install`: turn resolved skills into per-source install
 // groups. Each group maps to one `skills add <sourceRoot> --skill <names…>` call
-// in the shell — grouping by source root because that root is the local directory
+// in the shell - grouping by source root because that root is the local directory
 // `skills add` scans (it treats a local path as a `sourceType: "local"` source and
 // copies the vetted bytes in place, no fetch). Pure: no I/O, so it unit-tests
 // without a stub binary.

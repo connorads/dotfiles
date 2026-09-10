@@ -2,7 +2,7 @@
 // filesystem here. Hand-rolled by deliberate choice, not oversight: keeping the
 // core self-contained means it imports nothing outside core/ (enforced by
 // boundary.test.ts), and node:path/posix's `.`/`..` normalisation is something
-// these helpers specifically do NOT want — refs are simple relative segments.
+// these helpers specifically do NOT want - refs are simple relative segments.
 
 /** Expand a leading `~` or `$HOME` to the given home dir. Boundary-only. */
 export const expandTilde = (p: string, home: string): string => {

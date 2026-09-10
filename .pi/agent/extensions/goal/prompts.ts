@@ -13,9 +13,9 @@ import { type GoalMode, type GoalState, NO_PROGRESS_LIMIT } from "./core.ts";
 
 // ---------------------------------------------------------------------------
 // Rendered prompt blocks.
-//   anchor (renderGoalBlock) — system prompt, cache-stable per (text, mode.kind)
-//   kick (CONTINUATION_KICK / BUDGET_WRAPUP_KICK) — the turn trigger (no numbers)
-//   tail (renderGoalTail) — volatile budget + update_goal nudge, per turn
+//   anchor (renderGoalBlock) - system prompt, cache-stable per (text, mode.kind)
+//   kick (CONTINUATION_KICK / BUDGET_WRAPUP_KICK) - the turn trigger (no numbers)
+//   tail (renderGoalTail) - volatile budget + update_goal nudge, per turn
 // ---------------------------------------------------------------------------
 
 /** The followUp message that triggers a normal auto-continuation turn. */
@@ -102,7 +102,7 @@ function autoAnchor(text: string): string {
 
 /**
  * The block appended to the system prompt while a goal is active. A pure function
- * of (objective text, mode kind) only — no counters or timestamps — so the
+ * of (objective text, mode kind) only, with no counters or timestamps, so the
  * rendered system prompt is byte-stable across turns and stays prompt-cache
  * friendly. Auto mode adds the static completion/blocked audit; steer mode is the
  * v1 anchor (no audit, no tool).
