@@ -296,16 +296,56 @@ local fast_steps = new Mapping<String, Step> {
     //
     // skl/writing-skills test fixtures carry deliberately-malformed frontmatter;
     // Vale hard-errors (E201) rather than skipping, so they are excluded like
-    // the oxlint/ruff fixture set. summon references are verbatim quotes.
+    // the oxlint/ruff fixture set - and with `batch = true` ONE erroring file
+    // aborts the whole run, so the excludes are load-bearing rather than tidy.
+    // summon references are verbatim quotes.
+    //
+    // The source extensions are Vale's comment-extraction list, spelled the
+    // same way in ~/.vale.ini's second section; anything outside it is linted
+    // whole-file as prose, which would gate string literals as English. That
+    // rules out .mjs/.cjs/.mts/.cts and all shell, so oxlint's glob is wider
+    // than this one on purpose. references/** carries source snippets in
+    // upstream's style, same as the oxlint and ruff-* excludes.
     ["vale"] {
         batch = true
-        glob = List("**/*.md", "**/*.markdown", "**/*.mdx")
+        glob = List(
+            "**/*.md", "**/*.markdown", "**/*.mdx",
+            "**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx",
+            "**/*.rs", "**/*.go", "**/*.rb", "**/*.lua"
+        )
         exclude = vendored_skills + List(
             ".config/skills/personal/summon/references/**",
+            "skills/**/references/**",
+            ".config/skills/**/references/**",
             "**/tests/fixtures/**",
             "**/evals/fixtures/**"
         )
         check = "vale --no-global {{files}}"
+
+        // The builtin ships none, and the fixture's EXTENSION is the whole
+        // trick: hk renders {{files}} through the step's glob, so a `.txt`
+        // fixture is filtered out and the command runs with no files at all -
+        // the bug fix-smart-quotes records one glyph class over.
+        tests = new {
+            ["check flags a hedge in a code comment"] {
+                run = "check"
+                tmpdir = true
+                write { ["f.py"] = "# The retry should work once it reconnects.\n" }
+                expect { code = 1 }
+            }
+            ["check ignores an em dash in a code comment"] {
+                run = "check"
+                tmpdir = true
+                write { ["f.py"] = "# A comment with an em dash \u{2014} like this.\n" }
+                expect { code = 0 }
+            }
+            ["check flags an em dash in prose"] {
+                run = "check"
+                tmpdir = true
+                write { ["f.md"] = "The gate blocks the commit \u{2014} that is the point.\n" }
+                expect { code = 1 }
+            }
+        }
     }
 
     // Broken links in tracked markdown (lychee, offline).
