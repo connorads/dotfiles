@@ -111,3 +111,40 @@ lint() {
   lint 'Commit on the current branch by default - do not branch first unless asked.'
   [ "$status" -eq 0 ]
 }
+
+# ~/.vale.ini's second format section. Vale extracts comments from these
+# extensions and lints every other file whole, so the section's extension list
+# is the difference between gating a comment and gating a string literal. These
+# fixtures are what makes that scoping self-proving.
+
+# Lint a source fixture of the given extension through the deployed config.
+lint_src() {
+  local src="$BATS_TEST_TMPDIR/fixture.$1"
+  shift
+  printf '%s\n' "$@" >"$src"
+  run vale --no-global --config "$CONFIG" --output=line "$src"
+}
+
+@test "Hedging flags a hedge in a code comment" {
+  lint_src ts '// The retry should work once the socket reconnects.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.Hedging* ]]
+}
+
+@test "ChangeNarration flags a narrated change in a code comment" {
+  lint_src py '# The lockfile previously was regenerated on every switch.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.ChangeNarration* ]]
+}
+
+@test "a hedge in a string literal is not a comment, so it is ignored" {
+  lint_src ts 'const msg = "this should work once it reconnects";'
+  [ "$status" -eq 0 ]
+}
+
+@test "the built-in Vale style is off, so an identifier is not a spelling error" {
+  # BasedOnStyles would enable Vale.Spelling, which reads `lockfile` in a
+  # comment as a misspelling. The rules are named one at a time instead.
+  lint_src py '# Read the lockfile, then resolve each tool from the registry.'
+  [ "$status" -eq 0 ]
+}

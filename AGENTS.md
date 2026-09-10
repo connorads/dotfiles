@@ -87,7 +87,7 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [config.toml](./.config/mise/config.toml)                              | mise tools (gh, opencode, etc.)                                                           |
 | [.config/srt/base.json](./.config/srt/base.json)                       | `agent-sandbox` (`asb`) srt policies: opt-in OS sandbox for CLI agents. Subsystem docs: [.config/srt/AGENTS.md](./.config/srt/AGENTS.md) |
 | [.config/sbx/Dockerfile](./.config/sbx/Dockerfile)                     | Image for `sbx` ([zsh/functions/agents/sbx](./.config/zsh/functions/agents/sbx)): VM-isolated (colima) container for running UNTRUSTED software. Inverse of `agentbox` - no host mounts, cap-drop ALL, offline by default. Capable toolbox baked in (build/net/trace tools); no host dotfiles |
-| [.vale.ini](./.vale.ini)                                               | Vale config for the house prose rules. `StylesPath` resolves relative to the file, so `prose` applies it from any cwd; the work-tree root is `$HOME`, so Vale's search-up finds it globally too |
+| [.vale.ini](./.vale.ini)                                               | Vale config for the house prose rules. `StylesPath` resolves relative to the file, so `prose` applies it from any cwd; the work-tree root is `$HOME`, so Vale's search-up finds it globally too. Two format sections: markdown, and the extensions Vale extracts code comments from |
 | [.config/vale/styles/Connorads/](./.config/vale/styles/Connorads/)     | The house style: `Dashes` (the em/en dash ban), `PlainWord`, `Spellings`. Named `Connorads`, not `House`, so it cannot shadow the client repos' own `House` via the global styles dir. Every rule carries `level: error` - without it the rule is a silent no-op under `MinAlertLevel = error`. Tests: [vale-style.bats](./.config/zsh/tests/vale-style.bats) |
 | [.oxlintrc.json](./.oxlintrc.json)                                     | oxlint config; the only one in the tree, so it governs every oxlint run in the work-tree. Turns on the type-aware rules (`options.typeAware`) and exempts `node:test`'s own `test`/`it`/`describe` from `no-floating-promises` |
 | [.config/opencode/package.json](./.config/opencode/package.json)       | Authored by us, consumed by opencode (it runs `bun install` on the config dir at startup), so the path is the interface. Pairs with a `tsconfig.json` covering the four plugin dirs; typecheck-only, no `test` script |
@@ -255,7 +255,7 @@ git hooks status       # Which hooks a repo declares vs what actually fires (man
 mise run ts-checks     # Typecheck + test all first-party TS projects (installs deps as needed)
 mise run py-checks     # Lint (ruff) + typecheck (pyrefly strict) + test all first-party Python; handoff also runs lint-imports + deptry
 mise run skill-checks  # Run colocated skill-script tests (pytest/bats under <skill>/tests/, all tiers)
-prose [path...]        # Lint markdown against the house prose rules (Vale, Connorads style); paths default to markdown under cwd. Always uses ~/.vale.ini, so house rules apply in any repo and beat its own .vale.ini. Non-zero on findings; vale absent = warn + exit 0
+prose [path...]        # Lint markdown and code comments against the house rules (Vale, Connorads style); paths default to cwd, recursively. Always uses ~/.vale.ini, so house rules apply in any repo and beat its own .vale.ini. Non-zero on findings; vale absent = warn + exit 0
 eraser <cmd> [args]    # Eraser diagrams: JSON in, PNG/HTML/measured-JSON out, rendered locally in Chromium (render|validate|registry|schema|init). Wrapper over `eraser-diagrams` that injects --no-config and pins Chromium; never call the bare CLI - see the function header for why
 ccp [-y] [<name>|default]  # launch Claude Code on an account (bare = fzf picker; -y = cy flags: system-append + skip-perms); real names + 2-char aliases in ~/.zshrc.local
 ccp [<name>] --mcp <bundle>  # ...plus an mcpz MCP bundle (delegates the claude exec to `mcpz run claude`); tmux prefix + Alt+c picks account + bundle → new window
@@ -588,6 +588,18 @@ only the tracked style can block a commit, and it drops the builtin's
 in the pre-commit path. Vale skips fenced blocks and code spans natively, so a
 dash in a command or a diagram is never touched. `prose` is the advisory twin,
 callable from any repo.
+
+Scope is markdown **and code comments**. `~/.vale.ini` carries two format
+sections: markdown gets the whole style, and `.py .ts .tsx .js .jsx .rs .go .rb
+.lua` get it via Vale's comment extraction. That extension list is Vale's, not a
+preference - for anything else Vale lints the whole file as prose, so a string
+literal would be gated as English. Two consequences worth knowing:
+`.mjs`/`.cjs`/`.mts`/`.cts` cannot be brought in (`[formats] mjs = js` parses
+and then reports zero findings, a silent fail-open), and neither can shell,
+which leaves the tree's largest comment corpus ungated. The source sections name
+each rule instead of setting `BasedOnStyles`, because naming a style enables all
+of it and the built-in `Vale` style's error-level Spelling rule reads an
+identifier in a comment as a misspelling.
 
 Custom steps include `nix-eval` (`~/.hk-hooks/nix-eval.sh`: evaluates every
 host configuration's `.drvPath` - 2 darwin, 4 home-manager - whenever

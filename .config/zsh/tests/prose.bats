@@ -31,12 +31,22 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
-@test "with no arguments lints markdown under the current directory" {
+@test "with no arguments lints the current directory recursively" {
   mkdir -p nested
   printf '%s\n' 'A nested file — with a dash.' >nested/doc.md
   run "$PROSE"
   [ "$status" -eq 1 ]
   [[ $output == *Connorads.Dashes* ]]
+}
+
+# The command carries no extension list of its own: ~/.vale.ini's format
+# sections decide the scope, so the advisory twin reaches the same files the
+# gate does. A --glob here would be a second list to drift.
+@test "with no arguments reaches code comments, not only markdown" {
+  printf '%s\n' '// The retry should work once the socket reconnects.' >mod.ts
+  run "$PROSE"
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.Hedging* ]]
 }
 
 # --config is what makes the house rules travel: a repo with its own .vale.ini

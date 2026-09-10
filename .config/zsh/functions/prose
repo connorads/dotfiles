@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# prose: lint markdown against the house prose rules (Vale, Connorads style).
-# Usage: prose [path...]   - paths default to markdown under the current dir.
+# prose: lint prose and code comments against the house rules (Vale, Connorads).
+# Usage: prose [path...]   - paths default to the current dir, recursively.
 #
 # Always passes --config ~/.vale.ini, whose StylesPath resolves relative to
 # itself, so the house rules apply from any cwd and beat a repo's own .vale.ini.
@@ -27,8 +27,11 @@ if [[ ! -f $config ]]; then
   return 0
 fi
 
+# No --glob: the config's format sections already decide what is in scope, and a
+# second list here is a place for the two to drift. Vale walks the tree and
+# skips any extension no section matches.
 if (( $# )); then
   vale --config "$config" "$@"
 else
-  vale --config "$config" --glob='*.md' .
+  vale --config "$config" .
 fi
