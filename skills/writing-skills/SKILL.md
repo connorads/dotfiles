@@ -46,10 +46,12 @@ The cheapest fix is often not writing a skill at all.
 5. **Revise** - feed gaps back; prune as deliberately as you add
 6. **Re-test**; stop on convergence
 
-One invariant holds the loop together: **no instruction without a failing
-observation**. It stops you documenting imagined problems, and it gives every
-line in the skill a reason you can point to when deciding later whether to
-keep it.
+One rule holds the loop together: **no instruction without an observation that
+it changes something**. Usually that observation is a failing run - which stops
+you documenting imagined problems, and gives every line a reason you can point
+to later when deciding whether to keep it. What counts as a positive result
+varies by archetype (step 1); "I predict the agent would get this wrong" is
+never one of them.
 
 ### 1. Watch it fail
 
@@ -64,7 +66,14 @@ The two need opposite instruction forms - read
 [references/instruction-forms.md](references/instruction-forms.md) before
 drafting if the answer isn't obvious.
 
-**Recipe skills invert this.** When the payload is commands the agent runs,
+**Stance skills read the baseline differently.** When the payload is accumulated
+taste rather than a correction - an ordering of preferences, a default with an
+escape hatch, borrowed judgement - the baseline rarely fails. It produces a
+defensible answer that isn't the call you'd make. That **divergence** is the
+observation. Where the baseline already makes your call unprompted, the content
+is redundant even though nothing failed.
+
+**Recipe skills skip the baseline.** When the payload is commands the agent runs,
 there's no baseline failure to watch - it lives in your own unrun commands. Run
 every fragile line live before it ships, ideally via a fresh-context agent that
 shares none of your drafting assumptions. A run that hangs, times out, or
@@ -82,9 +91,11 @@ every sentence:
 
 - **"Can I assume the model knows this?"** If yes, delete it. Gotchas,
   non-obvious edge cases, house conventions, and exact tool invocations are
-  the high-signal content; general knowledge is padding. Calibrate this test
-  to trigger mode: it applies at full strength to autoloaded skills, where
-  every sentence costs every session. A deliberately-invoked skill
+  the high-signal content; general knowledge is padding. Calibrate this test to
+  what the line costs when unused: an autoloaded body pays in every session of
+  every tool, a `references/` file pays only once something routes to it, and a
+  catalogue skill pays nothing until invoked. Strictest at the top of that
+  ladder, loosest at the bottom. A deliberately-invoked skill
   (catalogue/command-style) is a steering mode - knowledge the model holds
   but demonstrably won't apply unprompted (shown by a baseline run, not
   predicted) is fair content there, and the bar shifts to "does invoking
