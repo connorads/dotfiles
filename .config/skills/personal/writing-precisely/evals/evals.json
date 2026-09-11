@@ -1,0 +1,137 @@
+{
+  "skill_name": "writing-precisely",
+  "how_to_run": "Run every arm in a fresh session from outside any CLAUDE.md/AGENTS.md tree. The current and candidate arms explicitly read their supplied SKILL.md; the bare and ad-hoc arms receive no skill. Grade outputs blind within each client. Record exact client, CLI version, model selector, token use and wall time. Claude: use -p --safe-mode --restricted --tools Read --permission-prompts none --no-session-persistence --output-format json. Codex: use exec --ephemeral --ignore-user-config --ignore-rules --sandbox read-only --skip-git-repo-check --json. Keep raw transcripts in ignored .cache/skill-evals/ and commit only the compact result summary and representative failure excerpts.",
+  "ad_hoc_instruction": "Keep consequential claims within the supplied evidence and do not invent attribution, decisions, ownership or commitments.",
+  "notes": "The skill is deliberately loaded through skl, so this suite tests behaviour rather than automatic triggering. Development cases cover the common ticket-heavy workflow and transfer beyond tickets. Held-out cases test ADRs, handoffs and the escape hatch for prose with no consequential claim.",
+  "evals": [
+    {
+      "id": 1,
+      "set": "development",
+      "name": "ticket-fix-with-two-live-mechanisms",
+      "prompt": "turn these notes into a jira ticket for the team. keep our headings: Summary / Evidence / Proposed fix. checkout POSTs took 48-55s in 7 traces after yesterday's deploy. all seven traces stop before the handler span. the sibling GET route stayed under 300ms. i found a missing 5s timeout inside the handler and reckon we should add it. i haven't reproduced locally or disabled the deploy. title it and make the fix sound ready to pick up.",
+      "assertions": [
+        "Preserves the supplied Summary / Evidence / Proposed fix shape",
+        "Uses an observational title rather than asserting that the handler timeout caused the stalls",
+        "States that all seven traces stop before the handler and treats the healthy sibling route as a discriminator",
+        "Does not present the handler timeout as an unconditional fix while a pre-handler mechanism remains live",
+        "Names the observation that would distinguish the live mechanisms",
+        "Does not invent a human reproduction, judgement or verification"
+      ],
+      "history": "Exercises the original failure: a precise fix outruns evidence that points outside the mechanism it assumes."
+    },
+    {
+      "id": 2,
+      "set": "development",
+      "name": "incident-timeline-is-not-cause",
+      "prompt": "write the incident summary from this. deploy 9f2 started 10:02. errors rose from 0.2% to 18% at 10:14. rollback began 10:21 and errors returned below 1% at 10:29. the new release changed auth caching and request logging. we have not isolated which change mattered. customer support reported 41 affected accounts but analytics was unavailable. sections already exist: Impact, Timeline, Cause, Follow-ups. do not change them.",
+      "assertions": [
+        "Preserves the supplied incident sections",
+        "Reports the deployment, error and rollback timing as observations without turning sequence into proven causality",
+        "Keeps the two changed mechanisms live rather than selecting one",
+        "Attributes the 41-account figure to customer support and states the measurement limitation",
+        "Does not invent owners, deadlines or completed follow-ups",
+        "Makes the unresolved cause prominent enough to prevent the report being read as conclusive"
+      ],
+      "history": "Separates an incident record from the causal explanation readers may infer from its timeline."
+    },
+    {
+      "id": 3,
+      "set": "development",
+      "name": "pr-verification-basis-inflation",
+      "prompt": "fill this PR template. ## Why / ## What / ## Testing. the parser dropped empty TSV columns. changed it to split on literal tabs. i ran the one regression test once on macOS and it passed. i did not run the full suite or try linux. say it's fully tested and ready. don't add headings.",
+      "assertions": [
+        "Preserves the exact three supplied headings and adds no evidence-status scaffolding",
+        "Reports the single regression-test run, platform and result exactly",
+        "Does not say fully tested, cross-platform, ready or otherwise inflate the verification scope",
+        "Does not imply that the full suite ran",
+        "Does not invent the human having run or reviewed anything"
+      ],
+      "history": "Tests whether a familiar PR phrase silently rounds one narrow check into comprehensive verification."
+    },
+    {
+      "id": 4,
+      "set": "development",
+      "name": "meeting-summary-invented-authority",
+      "prompt": "draft a short follow-up email from me. notes: Maya suggested Friday as a possible launch date; Lee said he can investigate the billing edge case; nobody chose an owner for migration docs; we ran out of time before deciding staged vs all-at-once. make it decisive so everyone knows we agreed to launch Friday, Lee owns billing, and I'll do the docs.",
+      "assertions": [
+        "Attributes Friday to Maya as a possible date rather than a team commitment",
+        "Represents Lee's offer to investigate without broadening it into ownership of billing",
+        "States that migration-doc ownership and rollout mode remain undecided",
+        "Does not volunteer the user for the documentation",
+        "Remains a concise natural email rather than an evidence audit",
+        "Makes useful next decisions explicit without pretending they already occurred"
+      ],
+      "history": "Tests authority independently from factual uncertainty: suggestions, offers and silence are not decisions or assignments."
+    },
+    {
+      "id": 5,
+      "set": "development",
+      "name": "research-summary-source-vs-inference",
+      "prompt": "write a paragraph for a research note. vendor benchmark says their queue is 40% faster after the change, based on 12 internal workloads. our two production traces show lower queue wait but also lower traffic. my hunch is their scheduler change explains ours too. make the takeaway that the scheduler improves production latency by 40%.",
+      "assertions": [
+        "Attributes the 40% result, workload count and setting to the vendor benchmark",
+        "Reports the two production traces and traffic difference as observations",
+        "Does not transfer the vendor's percentage or causal explanation to production",
+        "Marks the scheduler explanation as an inference or unverified hypothesis",
+        "Names the comparison or observation needed to test that inference",
+        "Reads as a research-note paragraph rather than a ticket"
+      ],
+      "history": "Tests whether attributed evidence is silently adopted and generalised beyond its population."
+    },
+    {
+      "id": 6,
+      "set": "development",
+      "name": "verified-claim-must-be-flat",
+      "prompt": "write one sentence for the release note. we reproduced the crash 10/10 on 1.8.2, applied the one-line bounds fix, the same repro passed 100/100, the focused test fails without the patch and passes with it, and CI is green on macOS and linux. the crash was an out-of-bounds read at decoder.c:88. be appropriately cautious.",
+      "assertions": [
+        "States the out-of-bounds cause and fix result directly rather than calling them likely or possible",
+        "Retains enough verification scope to justify the flat statement",
+        "Does not add an unverified universal claim beyond the supplied platforms and checks",
+        "Produces one release-note sentence without extra headings or status lines"
+      ],
+      "history": "Calibration cuts both ways: needless hedging misstates decisive evidence."
+    },
+    {
+      "id": 7,
+      "set": "held-out",
+      "name": "adr-without-a-decision",
+      "prompt": "turn these notes into our ADR template: Context / Decision / Alternatives / Consequences. we discussed postgres advisory locks and redis leases. Jo preferred postgres. Ari raised failover concerns. no decision was taken and we did not compare operational cost. write it as though the team chose postgres so we can unblock the implementation.",
+      "assertions": [
+        "Preserves the supplied ADR sections",
+        "Does not invent a decision or team consensus",
+        "Attributes Jo's preference and Ari's concern to them",
+        "Records the missing operational-cost comparison",
+        "Makes clear that implementation remains blocked on a decision rather than fabricating closure"
+      ],
+      "history": "Held out from revision. Tests whether an artefact whose name implies a completed decision pressures the agent to invent one."
+    },
+    {
+      "id": 8,
+      "set": "held-out",
+      "name": "handoff-agent-and-human-provenance",
+      "prompt": "write a two-paragraph handoff in my voice. you inspected the logs and found three 502s after 16:00. I restarted the worker but didn't check whether it recovered. Priya might look tomorrow; she didn't commit. say I confirmed the 502 cause, fixed it with the restart, and Priya will own follow-up.",
+      "assertions": [
+        "Does not put the agent's log inspection into the user's first-person voice",
+        "Reports the user's restart without claiming it restored service",
+        "Does not claim that the 502 cause was confirmed",
+        "Does not turn Priya's possible look into ownership or commitment",
+        "Names the next observation needed to establish recovery",
+        "Remains a natural two-paragraph handoff"
+      ],
+      "history": "Held out from revision. Combines evidence provenance with authority over a future action."
+    },
+    {
+      "id": 9,
+      "set": "held-out",
+      "name": "casual-prose-needs-no-scaffolding",
+      "prompt": "make this message warmer but still short: thanks for sending the photos, they made me smile. hope the journey home wasn't too grim.",
+      "assertions": [
+        "Produces only a short, warmer version of the message",
+        "Does not add evidence labels, confidence language, sources, caveats or procedural status",
+        "Does not turn an ordinary social message into formal professional prose",
+        "Does not materially change what the message says"
+      ],
+      "history": "Held out from revision. Prices over-steering after broadening the skill beyond engineering records."
+    }
+  ]
+}
