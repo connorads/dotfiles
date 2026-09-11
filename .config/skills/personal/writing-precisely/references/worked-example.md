@@ -2,7 +2,9 @@
 
 A fictionalised composite of a real agent-drafted ticket. Every sentence is
 individually sourced and measured in tone; the defects are in the chain
-between the sentences. Read the draft, then the audit, then the rewrite.
+between the sentences. Read the draft, then the audit, then the rewrite. The
+explicit status and evidence sections suit this ticket; copy the reasoning, not
+its structure, into other artefacts.
 
 ## The draft
 

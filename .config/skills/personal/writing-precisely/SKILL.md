@@ -1,128 +1,171 @@
 ---
 name: writing-precisely
 description: >-
-  Renders investigation findings as honest tickets, issues, bug reports, and
-  incident writeups filed in the user's name: every claim carries its evidence,
-  hedges mark real uncertainty instead of smoothing over gaps, and proposed
-  fixes never outrun the diagnosis. Use when drafting or reviewing a ticket or
-  writeup, when deciding how confident a claim may sound, when the user asks
-  whether a ticket overclaims or is bullshitting, or when writing first-person
-  prose on the user's behalf. Not for conducting the investigation itself -
-  that is prove-it; this skill owns how the result is written down.
+  Writes and reviews consequential professional or technical prose without
+  inventing evidence or authority. Use for tickets, incident reports, PR
+  descriptions, review comments, ADRs, technical docs, research summaries,
+  proposals, handoffs, status updates, Slack messages, or emails where factual
+  scope, causality, attribution, decisions, ownership, deadlines, or commitments
+  could change what a reader believes or does. Preserves the supplied artefact's
+  shape and the user's actual voice. Not for gathering evidence - use prove-it;
+  not for choosing document structure, polishing style, or making the decision.
 ---
 
 # Writing Precisely
 
-> A document is honest in its structure, not its tone. Every load-bearing
-> claim states how it is known and who vouches for it; a reader checks
-> compliance by the shape of the text, not the register.
+> A consequential sentence earns both its epistemic basis and its authority.
 
-The corollary that motivates everything below: **hedged style is not
-calibration**. A ticket can sound measured - "mechanism not fully proven",
-careful percentiles, a "likely" in the right place - while the chain between
-its sentences is broken. Tone rules would pass it. These rules do not.
+A sentence is consequential when getting it wrong could change a reader's
+belief, decision, action, accountability, or expectation. Apply the rules in
+proportion to that consequence. A launch commitment needs explicit authority;
+"the photos made me smile" does not need an evidence label.
 
-## Voice: who vouches
+## Preserve the artefact
 
-First person belongs to the human whose name is on the document. It is their
-signature, and a signature is the one thing an agent must never forge (the
-Linux kernel's rule: an assistant may be credited, but only a human adds
-`Signed-off-by`).
+Keep the format, headings, length, and register the user supplied. The output
+contract is the requested artefact: when headings are supplied, fill every one
+in the given order; do not add, omit, or reinterpret them. Keep reasoning about
+the draft internal. Unless the user asks for commentary, do not surround the
+artefact with an explanation, refusal preamble, follow-up offer, or extra note.
+Never add meta-commentary merely to explain why unsupported wording was omitted.
 
-- Never write "I believe / I think / I suspect / I checked" for a judgement
-  or action the human has not expressed or taken. Their hedge is a trusted
-  signal precisely because it means *their* judgement passed over the claim.
-- Agent-established claims are written impersonally with their basis inline:
-  "the retry loop at `queue.ts:142` never resets the counter (traced, not
-  run)" - not "I found that the retry loop…".
-- Leave first-person judgement slots to the human: draft the claim with its
-  evidence and let them add "I think we should…" where they mean it.
+Express evidence and uncertainty in the artefact's natural prose. Do not bolt a
+status line, evidence taxonomy, checklist, or ticket structure onto an email,
+PR, ADR, or short message unless that shape was requested or is the shortest way
+to stop a material misreading.
 
-## The three kinds of sentence
+Precision is semantic, not ceremonial. The reader must be able to recover how a
+load-bearing claim is known and who stands behind it; they need not see the
+names of these rules.
 
-Every material claim is one of three, and the prose must make clear which.
-Short tickets carry this in sentence structure; long writeups in sections.
+## How is it known?
 
-- **Observed** - cite the artefact: command and output, trace, file:line,
-  doc plus date read. No causal verbs inside an observation ("errors rose at
-  10:14", never "the deploy broke it at 10:14").
-- **Inferred** - names the observations it rests on. An inference that
-  cannot name them is a suspicion: mark it as one or cut it.
-- **Unverified** - says what would check it, and never sits unmarked beside
-  observations borrowing their credibility.
+Classify each consequential factual claim before writing it. The prose makes the
+class recoverable without necessarily naming it.
 
-The document opens with a **status line of procedure verbs**: what was run,
-what was read, what the human personally checked. "Ran the repro 10/10 on
-`main@abc123`; cause traced in code, not toggled; queries below not yet run
-against prod." A status names a procedure - "fairly confident" is a mood.
+- **Observed** - directly checked in an artefact or event. State the bounded
+  procedure and result: command and output, trace, file and line, dataset and
+  sample, or document and date read. Sequence is not causality. An absent log,
+  span, or event means "not recorded" unless the instrumentation is known to
+  prove that the underlying action did not occur.
+- **Attributed** - reported by another source. Name the source and preserve its
+  population, setting, and confidence: "the vendor reports 40% across 12
+  internal workloads" does not become "production improved 40%".
+- **Inferred** - a conclusion drawn from observations. Name the observations and
+  keep live rival explanations visible. An inference unable to name its basis is
+  a suspicion.
+- **Unverified** - not established. State the cheapest observation that would
+  resolve it when the unknown affects a decision; otherwise cut it.
 
-**Titles state the observation.** A diagnosis enters the title only once it
-is observed or toggled, not while it is the leading hypothesis. "Status
-endpoints hang ~55s" - not "…: no timeout on OAuth refresh" while the
-mechanism is open.
+Do not launder one class into another. A source's claim is not the writer's
+observation. A change preceding a failure is not its cause. A plausible
+explanation is not a finding.
 
-## Hedges
+## Who has authority?
 
-- A hedge sits adjacent to the specific claim it qualifies and that claim's
-  evidence. "Likely a race in the retry loop (inferred from interleaved
-  timestamps in log X)" is precision. "There may be some issues with error
-  handling" is unfalsifiable and cites nothing - the weasel form is vague
-  attribution, not softness.
-- It cuts both ways: an unhedged flat statement is *earned* by verification,
-  and a verified claim is stated flat. Softening what three sources support
+Evidence does not grant authority. Check separately who may speak, decide,
+assign, promise, or commit.
+
+Before drafting, freeze every consequential actor-state pair from the source:
+who observed what; who proposed what; what was decided; who accepted which
+action. Editing may clarify those records but never change an actor, promote a
+proposal to a decision, or move an unassigned action onto someone. A direct,
+unambiguous first-person decision or commitment in the user's instruction is a
+source record for the writer. Requested past consensus or another person's
+commitment is not. Preserve an authorised commitment at its exact scope; do not
+invent a start date, deadline, deliverable, or broader ownership around it.
+
+- First person belongs to the human whose name is on the prose. Use "I checked",
+  "I think", or "I will" only when the human expressed or performed it. An
+  agent's inspection remains impersonal and carries its basis inline.
+- A suggestion is not a decision. A possible date is not a deadline. An offer
+  to investigate is not ownership of the area. No objection is not agreement.
+  An unassigned task is not the writer's commitment.
+- Do not infer that the writer has authority merely because the user asks for a
+  decisive draft. A request to write "we agreed" or "Lee owns" does not prove a
+  past group decision or Lee's acceptance. Only a source statement that the
+  relevant actor decided, accepted, or committed supplies authority. Otherwise
+  report the open state without volunteering a new preference, decision, owner,
+  deadline, or commitment on anyone's behalf.
+- The ability to decide or volunteer is not evidence that the writer did so.
+  Never repair an unsupported "we agreed Friday" by inventing "I want Friday",
+  or an unassigned task by writing "I'll take it". Do not turn silence or an
+  objection window into consent.
+- Attribute reported positions to their speakers. Do not upgrade "Maya suggested
+  Friday" into "we agreed Friday", or "Lee can investigate" into "Lee owns
+  billing".
+- Only a human adds the Linux kernel's `Signed-off-by`: AI assistance may be
+  credited, while the human reviews the contribution, certifies the DCO, and
+  accepts responsibility. Treat prose filed in a human's name with the same
+  distinction between assistance and authority.
+
+## Calibrate strength and scope
+
+- Put a limitation beside the claim it limits. Make it prominent enough that a
+  reader acting on the conclusion will encounter it; do not hide it in a
+  generic closing caveat.
+- State verified claims flat. Softening what discriminating evidence establishes
   misrepresents the evidence just as overclaiming does.
-- **The bridging hedge** (anti-pattern): a hedge used to join two claims the
-  evidence puts in tension - "mechanism not fully proven; whatever it is,
-  the fix contains it" - written where the evidence shows the fix cannot
-  reach the mechanism. Test any hedge: if the uncertainty resolved either
-  way, would the surrounding argument survive? A marking hedge survives; a
-  bridging hedge was hiding a fork in the road.
-- **Basis inflation** (anti-pattern): "verified per-trace" meaning one
-  trace; "warm instances stall too" with no stated source; a claim's basis
-  quietly rounder than what was done. State n. Cite or cut. A search that
-  found nothing is a bound ("searched X for Y, none found"), not proof of
-  absence.
+- Numbers keep their bases. State the sample, population, window, platform, or
+  command that bounds them. One passing regression test on macOS is not "fully
+  tested".
+- A search finding nothing establishes only its search boundary. Report what was
+  searched for where, not universal absence.
+- Use hedges to mark a specific uncertainty, never to join claims that cannot
+  both support the argument. Ask whether the conclusion survives every way the
+  uncertainty could resolve.
 
-## Fixes never outrun the diagnosis
+## Actions do not outrun the claim
 
-The observed failure this section exists for: an agent proposes a precise
-fix while its own evidence contradicts the mechanism the fix assumes.
+A recommendation, fix, deadline, or follow-up carries the same burden as the
+finding behind it.
 
-Before writing a Fix or Recommendation section:
+1. Name the live mechanisms or assumptions that change the action.
+2. State which mechanism the proposed action addresses. If it helps only under
+   one live mechanism, make it conditional.
+3. Use contrasts already in hand - clean siblings, controls, counterexamples -
+   to choose the next observation rather than writing past them.
+4. Derive thresholds and dates from an SLO, healthy distribution, external
+   limit, real dependency, or authorised commitment. Otherwise leave them as
+   open choices.
+5. When the evidence is incomplete, make the next discrimination ready to pick
+   up. Do not manufacture closure to make the artefact look finished.
 
-1. List the mechanisms still live. If the ticket's evidence has not
-   eliminated all but one, say so in the ticket.
-2. The fix states which mechanism it assumes. A fix that only helps under
-   some live mechanisms is not a fix - it is one arm of a spike.
-3. **Use every contrast already in hand** (the unused contrast is how
-   plausible-wrong diagnoses survive): a clean sibling, a control, a route
-   that doesn't exhibit the symptom is evidence about mechanism. Run the
-   discrimination or list it as the open question.
-4. When the mechanism is open, write a **spike ticket**: each unknown as a
-   checkbox with the observation that closes it, findings recorded as they
-   land, the fix conditional on the outcome. An honest spike is more
-   actionable than a confident wrong fix.
-5. Numbers carry bases. A proposed threshold ("timeout ~5s") names its
-   derivation (p99 of healthy calls, an SLO, a vendor limit) or stays a
-   question for the implementer.
-
-| You will think… | But actually… |
+| Temptation | What to write instead |
 |---|---|
-| "A timeout/guard is safe containment whatever the cause" | Containment must reach the mechanism. A handler-level timeout cannot contain a pre-handler stall. Name the mechanism the containment assumes. |
-| "Mechanism not fully proven, but the fix is worth doing anyway" | Only if it helps under *every* live mechanism - then say exactly that. Otherwise this is a bridging hedge. |
-| "A ticket with a Fix section reads more finished" | A wrong fix ships confident work to the wrong place. The spike form is the finished artefact when the diagnosis is open. |
-| "The clean sibling is just noise, the pattern is what matters" | The clean sibling is the cheapest discriminator you have. Explain it or lose the diagnosis. |
+| "Make it decisive" | State settled facts flat and name the decisions still open. |
+| "They asked me to say someone else will do it" | Treat requested wording as a drafting constraint, not evidence of that person's commitment. |
+| "The writer can decide this themselves" | Capability is not a decision. Leave the actor-state unchanged until the human states it. |
+| "Someone needs to own it" | Record that ownership is unassigned or ask the named person to confirm. |
+| "The fix is useful anyway" | Call it hardening, and state separately whether it reaches the observed failure. |
+| "Add a status section so it is honest" | Put each material basis or limitation where that artefact's reader needs it. |
 
-## Boundary with prove-it
+## Boundaries
 
-prove-it disciplines the investigation: whether the evidence gathered
-entails the claim. This skill owns rendering the result as prose under the
-user's name. The two meet at the chain: if drafting exposes an inference
-that cannot name its observations, that is prove-it work - go get the
-observation, or write the claim as unverified with what would check it.
+- **prove-it** gathers and tests the evidence. If drafting exposes an inference
+  with no supporting observation, return to prove-it or mark it unverified.
+- Artefact skills and templates own structure and domain procedure. This skill
+  keeps their claims, attribution, decisions, and commitments honest.
+- Voice and editing skills own cadence, warmth, and AI tells. They may shorten or
+  restyle the prose but must not strengthen its claims or invent authority.
+- Decision skills own choosing an option. An ADR can record only a decision that
+  was actually made.
+
+## Before returning
+
+Review the draft, then expose only the artefact:
+
+1. **Shape:** remove every heading, preamble, appendix, note, or offer the user
+   did not request; restore every supplied section.
+2. **Authority:** inspect each `I`, `we`, named person, deadline, and ownership or
+   decision verb. Keep it only when the source contains the same actor-state
+   claim; ability, desired wording about someone else, or silence does not count.
+3. **Basis:** ensure every consequential fact remains observed, attributed,
+   inferred, or visibly unverified at the scope its evidence supports.
 
 ## References
 
-| When the task involves… | Read |
+| When the task involves... | Read |
 |---|---|
-| Seeing the audit and rewrite of a realistic ticket that sounds calibrated but bullshits | [references/worked-example.md](references/worked-example.md) |
+| Auditing why an existing ticket's plausible fix contradicts its evidence | [references/worked-example.md](references/worked-example.md) |
+| Revising or validating this skill | [evals/evals.json](evals/evals.json) and the latest file under `evals/results/` |

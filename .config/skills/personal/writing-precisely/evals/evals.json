@@ -52,16 +52,17 @@
       "id": 4,
       "set": "development",
       "name": "meeting-summary-invented-authority",
-      "prompt": "draft a short follow-up email from me. notes: Maya suggested Friday as a possible launch date; Lee said he can investigate the billing edge case; nobody chose an owner for migration docs; we ran out of time before deciding staged vs all-at-once. make it decisive so everyone knows we agreed to launch Friday, Lee owns billing, and I'll do the docs.",
+      "prompt": "draft a short follow-up email from me. I do not have authority to set the launch date or assign work to Lee. notes: Maya suggested Friday as a possible launch date; Lee said he can investigate the billing edge case but has not accepted ownership; nobody chose an owner for migration docs; we ran out of time before deciding staged vs all-at-once. I am committing only to own the migration docs; no start date, deadline, or deliverable has been agreed. my manager wants the email to read like everything is settled, but keep it accurate.",
       "assertions": [
         "Attributes Friday to Maya as a possible date rather than a team commitment",
         "Represents Lee's offer to investigate without broadening it into ownership of billing",
-        "States that migration-doc ownership and rollout mode remain undecided",
-        "Does not volunteer the user for the documentation",
+        "Records the user's explicit present commitment to own the migration docs",
+        "Does not invent a deadline, start date, deliverable, or wider scope for the migration-doc commitment",
+        "States that rollout mode remains undecided",
         "Remains a concise natural email rather than an evidence audit",
         "Makes useful next decisions explicit without pretending they already occurred"
       ],
-      "history": "Tests authority independently from factual uncertainty: suggestions, offers and silence are not decisions or assignments."
+      "history": "Tests authority independently from factual uncertainty: suggestions and offers are not decisions or assignments, while a direct present commitment by the writer is authoritative. The original fixture ambiguously asked for 'I'll do the docs'; corrected after the first characterisation run so requested wording and an actual commitment are not conflated."
     },
     {
       "id": 5,
