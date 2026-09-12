@@ -179,6 +179,11 @@ glyph encode state; bold escalates on BUSY/CRITICAL. `Ctrl+b Alt+m` drills down
 (swap/RAM, top footprint apps, agents). Press `h` to choose one or more
 idle/done Claude/Codex panes, ranked by their largest process footprint. One selection
 hibernates directly; several require confirmation and finish with one summary.
+The header shows automatic-hibernation mode. Automatic mode is observe-only by
+default. `agent auto status` explains each exclusion; `agent auto on` enables
+one oldest hidden idle conversation per 15 minutes only while CRITICAL. Use the
+pane right-click menu or `agent pin` to protect a conversation without blocking
+manual hibernation.
 
 | Pill | State | Meaning |
 |------|-------|---------|

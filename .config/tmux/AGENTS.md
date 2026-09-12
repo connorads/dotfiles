@@ -469,9 +469,9 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
   skips a hibernated pane for a related reason: killing claude fires *its own*
   `SessionEnd` hook, which lands mid-park (observed one second before park
   re-armed the state), and a lost dot drops the pane out of the resurrect save.
-  Note the sweep daemon parses its script once at start, so a long-lived daemon
-  keeps running the code it was launched with - restart it after changing the
-  sweep, or the exemption is not in force.
+  The sweep daemon launches a fresh `tick` child on every poll. Its versioned
+  PID record lets a config reload replace a legacy or structurally changed
+  parent loop.
 - **Restore survival.** Three pieces keep a parked pane parked across a tmux
   restart: [`resurrect-save-sessions.sh`](./scripts/resurrect-save-sessions.sh)
   rewrites hibernated `session_ids.json` entries fresh from the record store
@@ -497,6 +497,25 @@ alternatives live in [`docs/adr/0009`](../../docs/adr/0009-hibernate-agent-panes
   [`scripts/agent-hibernate-action.sh`](./scripts/agent-hibernate-action.sh)
   turns engine output into client-targeted status feedback. Window-tab menus
   omit lifecycle actions because a window can contain several agent panes.
+
+### Automatic hibernation
+
+[`scripts/agent-autohibernate.sh`](./scripts/agent-autohibernate.sh) is the sole
+automatic policy owner. The sweep invokes it after reconciliation. It acts only
+after sustained `CRITICAL` memory state, requires 24 hours of uninterrupted
+`@agent_idle_since`, and excludes visible, unread, working, blocked, pinned,
+unsupported, unknown, or unresumable panes. Missing macOS pressure telemetry
+reads `OK`, so non-macOS hosts never act automatically.
+
+Pins persist by `kind:session-id`; `@agent_hibernate_pinned` is display-only.
+`agent-hibernate.sh probe` is the read-only recovery-identity port shared by
+pinning and policy. Its `--auto` commit compares the prepared identity, idle
+instant, visibility and pin revision after a short claim window immediately
+before shutdown. It cannot combine with `--force`.
+
+The tracked mode is `observe`. `agent auto status [--json]`, `agent auto
+off|observe|on`, and `agent pin|unpin [target]` are the public controls. The
+right-click pane menu exposes the pin. Manual hibernation ignores it.
 
 Tests: [`../zsh/tests/agent-hibernate.bats`](../zsh/tests/agent-hibernate.bats)
 drives a real private server end to end. Its fake claude is a **symlink to a nix
