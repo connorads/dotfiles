@@ -15,6 +15,7 @@
 # is preserved rather than guessed absent.
 #
 #   agent-sweep.sh            # one-shot sweep (default)
+#   agent-sweep.sh tick       # fresh-code daemon child
 #   agent-sweep.sh daemon     # single per-server background loop (≤POLL clearing)
 #
 # Quiet no-op when there is no tmux or no running server.
@@ -30,6 +31,7 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 AGENT_PRESENCE_GRACE=${AGENT_PRESENCE_GRACE:-10}
 AGENT_PS=${AGENT_PS:-ps}
+AGENT_SWEEP_DAEMON_VERSION=2
 
 # sweep_once — reconcile every dot in one pass: read all panes once, clear panes
 # whose agent died (shell foreground), age a `done` dot you are currently looking
@@ -294,6 +296,12 @@ _is_sweep() {
 	fi
 }
 
+cleanup_daemon_pidfile() {
+	_current_record=$(cat "$_pidfile" 2>/dev/null || true)
+	_current_pid=${_current_record#*"$(printf '\t')"}
+	[ "$_current_pid" = "$$" ] && rm -f "$_pidfile" 2>/dev/null || true
+}
+
 # daemon — one background loop per tmux server. Clears stale dots every POLL
 # while a client is attached; self-terminates when the server dies.
 daemon() {
@@ -304,12 +312,31 @@ daemon() {
 	_server_pid=$(tmux display-message -p '#{pid}' 2>/dev/null)
 	[ -n "$_server_pid" ] || return 0
 	_pidfile="$_state_dir/server-$_server_pid.pid"
+	mkdir -p "$_state_dir"
 
-	# Single-instance guard: a live agent-sweep daemon already owns this server.
+	# A matching version owns this server. A live legacy or mismatched daemon is
+	# stopped before replacement so a config reload deploys changed loop logic.
 	if [ -f "$_pidfile" ]; then
-		_old=$(cat "$_pidfile" 2>/dev/null || true)
+		_record=$(cat "$_pidfile" 2>/dev/null || true)
+		case $_record in
+		*"$(printf '\t')"*)
+			_old_version=${_record%%"$(printf '\t')"*}
+			_old=${_record#*"$(printf '\t')"}
+			;;
+		*)
+			_old_version=legacy
+			_old=$_record
+			;;
+		esac
 		if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null && _is_sweep "$_old"; then
-			return 0
+			[ "$_old_version" = "$AGENT_SWEEP_DAEMON_VERSION" ] && return 0
+			kill "$_old" 2>/dev/null || return 0
+			_i=0
+			while kill -0 "$_old" 2>/dev/null && [ "$_i" -lt 50 ]; do
+				sleep 0.1
+				_i=$((_i + 1))
+			done
+			kill -0 "$_old" 2>/dev/null && return 0
 		fi
 	fi
 
@@ -320,27 +347,30 @@ daemon() {
 		AGENT_SWEEP_SETSID=1 exec setsid "$SELF_DIR/$(basename -- "$0")" daemon
 	fi
 
-	mkdir -p "$_state_dir"
-	printf '%s\n' "$$" >"$_pidfile"
+	_tmp="$_pidfile.$$"
+	printf '%s\t%s\n' "$AGENT_SWEEP_DAEMON_VERSION" "$$" >"$_tmp"
+	mv "$_tmp" "$_pidfile"
 	# EXIT cleans the pidfile; INT/TERM must *exit* (a bare signal trap would run
 	# then resume the loop) so the EXIT trap fires.
-	trap 'rm -f "$_pidfile" 2>/dev/null' EXIT
+	trap cleanup_daemon_pidfile EXIT
 	trap 'exit 143' TERM
 	trap 'exit 130' INT
 
 	while :; do
 		sleep "${AGENT_SWEEP_POLL:-10}"
 		tmux list-sessions >/dev/null 2>&1 || break
-		sweep_once
+		# Re-exec the file for every tick. Reloaded dotfiles take effect without
+		# leaving a daemon with old function bodies resident for days.
+		sh "$SELF_DIR/$(basename -- "$0")" tick
 	done
 }
 
 case "${1:-}" in
-"" | sweep | sweep_once) sweep_once ;;
+"" | sweep | sweep_once | tick) sweep_once ;;
 sync) sync_agent_rollups ;;
 daemon) daemon ;;
 *)
-	printf 'usage: %s [sweep|sync|daemon]\n' "$(basename -- "$0")" >&2
+	printf 'usage: %s [sweep|tick|sync|daemon]\n' "$(basename -- "$0")" >&2
 	exit 2
 	;;
 esac
