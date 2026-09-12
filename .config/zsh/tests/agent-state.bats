@@ -49,6 +49,28 @@ large_hook_payload() {
   [ "$(wstate "$win")" = working ]
 }
 
+@test "idle evidence starts on entry, survives repeats, and clears on activity" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  run env AGENT_STATE_NOW=100 AGENT_STATE_PANE="$pane" sh "$SCRIPT" idle claude
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_idle_since)" = 100 ]
+
+  run env AGENT_STATE_NOW=200 AGENT_STATE_PANE="$pane" sh "$SCRIPT" idle claude
+  [ "$(tx show-options -pqv -t "$pane" @agent_idle_since)" = 100 ]
+
+  run env AGENT_STATE_NOW=300 AGENT_STATE_PANE="$pane" sh "$SCRIPT" working claude
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_idle_since)" ]
+}
+
+@test "seen starts a fresh idle interval and unread clears it" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  ason "$pane" unread
+  run env AGENT_STATE_NOW=400 AGENT_STATE_PANE="$pane" sh "$SCRIPT" seen
+  [ "$(tx show-options -pqv -t "$pane" @agent_idle_since)" = 400 ]
+  run env AGENT_STATE_NOW=500 AGENT_STATE_PANE="$pane" sh "$SCRIPT" unread
+  [ -z "$(tx show-options -pqv -t "$pane" @agent_idle_since)" ]
+}
+
 @test "hook activity cancels pending process absence" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   tx set-option -p -t "$pane" @agent_presence_absent_since 100

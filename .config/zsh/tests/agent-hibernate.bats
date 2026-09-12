@@ -128,6 +128,74 @@ EOF
   printf '%s\n' "$pane"
 }
 
+@test "probe returns exact resumable identity without changing the pane" {
+  pane=$(launch_claude_pane "$HOME/.claude/sessions")
+  tx set-option -p -t "$pane" @agent_state idle
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_idle_since 100
+
+  run "$SCRIPT" probe "$pane"
+
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.pane' <<<"$output")" = "$pane" ]
+  [ "$(jq -r '.kind' <<<"$output")" = claude ]
+  [ "$(jq -r '.sessionId' <<<"$output")" = sid-test ]
+  [ "$(jq -r '.idleSince' <<<"$output")" = 100 ]
+  kill -0 "$(jq -r '.pid' <<<"$output")"
+}
+
+@test "automatic claim refuses a pane that becomes working before commit" {
+  pane=$(launch_claude_pane "$HOME/.claude/sessions")
+  tx set-option -p -t "$pane" @agent_state idle
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_idle_since 100
+  probe=$("$SCRIPT" probe "$pane")
+  pid=$(jq -r '.pid' <<<"$probe")
+  expected=$(jq -c '. + {pinRevision:"none"}' <<<"$probe")
+
+  AGENT_HIBERNATE_CLAIM_WAIT=1 AGENT_HIBERNATE_AUTO_EXPECTED="$expected" \
+    "$SCRIPT" hibernate "$pane" --auto >"$BATS_TEST_TMPDIR/auto.out" 2>&1 &
+  auto_pid=$!
+  wait_until -i 0.05 '[ -n "$(tx show-options -pqv -t "$pane" @agent_hibernate_claim)" ]'
+  tx set-option -p -t "$pane" @agent_state working
+  set +e
+  wait "$auto_pid"
+  rc=$?
+  set -e
+
+  [ "$rc" -eq 6 ]
+  kill -0 "$pid"
+  [ ! -e "$AGENT_HIBERNATE_DIR/sid-test.json" ]
+  grep -q 'automatic pane state changed before commit' "$BATS_TEST_TMPDIR/auto.out"
+}
+
+@test "automatic claim refuses a pin written before commit" {
+  pane=$(launch_claude_pane "$HOME/.claude/sessions")
+  tx set-option -p -t "$pane" @agent_state idle
+  tx set-option -p -t "$pane" @agent_kind claude
+  tx set-option -p -t "$pane" @agent_idle_since 100
+  pins="$BATS_TEST_TMPDIR/pins.json"
+  printf '{}\n' >"$pins"
+  revision=$(cksum "$pins" | awk '{ print $1 ":" $2 }')
+  probe=$("$SCRIPT" probe "$pane")
+  pid=$(jq -r '.pid' <<<"$probe")
+  expected=$(jq -c --arg revision "$revision" '. + {pinRevision:$revision}' <<<"$probe")
+
+  AGENT_HIBERNATE_CLAIM_WAIT=1 AGENT_HIBERNATE_AUTO_EXPECTED="$expected" AGENT_AUTO_PINS_FILE="$pins" \
+    "$SCRIPT" hibernate "$pane" --auto >"$BATS_TEST_TMPDIR/auto-pin.out" 2>&1 &
+  auto_pid=$!
+  wait_until -i 0.05 '[ -n "$(tx show-options -pqv -t "$pane" @agent_hibernate_claim)" ]'
+  printf '{"claude:sid-test":true}\n' >"$pins"
+  set +e
+  wait "$auto_pid"
+  rc=$?
+  set -e
+
+  [ "$rc" -eq 6 ]
+  kill -0 "$pid"
+  grep -q 'automatic pin state changed during commit' "$BATS_TEST_TMPDIR/auto-pin.out"
+}
+
 @test "hibernate refuses a working pane with exit 6 and leaves it alive" {
   pane=$(launch_claude_pane)
   tx set-option -p -t "$pane" @agent_state working

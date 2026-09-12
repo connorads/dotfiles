@@ -585,6 +585,29 @@ EOF
   [ "$(cat "$HIB_LOG")" = "hibernate $p1 --force" ]
 }
 
+@test "agent auto and session pins delegate through the resolved pane" {
+  log="$BATS_TEST_TMPDIR/auto.log"
+  auto="$BATS_TEST_TMPDIR/auto"
+  write_executable "$auto" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >>"$AUTO_LOG"
+EOF
+  export AGENT_AUTO_HIBERNATE_SH="$auto" AUTO_LOG="$log"
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$pane" @agent_state idle
+
+  run zsh "$AGENT" auto observe
+  [ "$status" -eq 0 ]
+  run zsh "$AGENT" pin "$pane"
+  [ "$status" -eq 0 ]
+  TMUX_PANE="$pane" run zsh "$AGENT" unpin
+  [ "$status" -eq 0 ]
+
+  [ "$(sed -n '1p' "$log")" = 'mode observe' ]
+  [ "$(sed -n '2p' "$log")" = "pin $pane" ]
+  [ "$(sed -n '3p' "$log")" = "unpin $pane" ]
+}
+
 @test "agent hibernate defaults to this pane and surfaces the refusal code" {
   write_hibernate_recorder
   p1=$(tx display-message -p -t s '#{pane_id}')

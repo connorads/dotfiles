@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
-# agent: orchestrate coding-agent panes over @agent_state (ls/state/wait/prompt/name/pick/hibernate/thaw)
-# usage: agent <ls|state|wait|prompt|name|unname|pick|hibernate|thaw> [args]
+# agent: orchestrate coding-agent panes, lifecycle, and automatic hibernation.
+# usage: agent <ls|state|wait|prompt|name|unname|pick|hibernate|thaw|auto|pin|unpin> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -10,6 +10,7 @@ local _agent_cli_lib=${AGENT_CLI_LIB:-$_agent_scripts/agent-cli-lib.sh}
 local _agent_state_sh=${AGENT_STATE_SH:-$_agent_scripts/agent-state.sh}
 local _agent_sweep=${AGENT_SWEEP:-$_agent_scripts/agent-sweep.sh}
 local _agent_hibernate=${AGENT_HIBERNATE_SH:-$_agent_scripts/agent-hibernate.sh}
+local _agent_auto=${AGENT_AUTO_HIBERNATE_SH:-$_agent_scripts/agent-autohibernate.sh}
 local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
 
 [[ -r $_agent_cli_lib ]] || {
@@ -44,6 +45,12 @@ usage: agent <subcommand> [args]
                     idle/done panes hibernate without --force
   thaw [<target>]   resume a hibernated pane (or, with no target, pick from
                     parked panes plus orphaned records)
+  auto status [--json]
+                    show pressure, mode, candidates, and exclusion reasons
+  auto off|observe|on
+                    disable, simulate, or enable pressure-gated hibernation
+  pin [<target>]    exclude this conversation from automatic hibernation
+  unpin [<target>]  remove that exclusion
 
 <target> = %pane_id | session:win.pane | agent name (@agent_name exact match)
 
@@ -387,6 +394,32 @@ _agent_thaw() {
   fi
 }
 
+_agent_auto_command() {
+  [[ -x $_agent_auto ]] || {
+    print -u2 "agent auto: script not found: $_agent_auto"
+    return 1
+  }
+  local action=${1:-status}
+  (( $# )) && shift
+  case $action in
+    status) "$_agent_auto" status "$@" ;;
+    off|observe|on)
+      (( $# == 0 )) || { print -u2 "usage: agent auto off|observe|on"; return 2; }
+      "$_agent_auto" mode "$action"
+      ;;
+    *) print -u2 "usage: agent auto <status [--json] | off | observe | on>"; return 2 ;;
+  esac
+}
+
+_agent_pin_command() {
+  local action=$1 target=${2:-}
+  (( $# <= 2 )) || { print -u2 "usage: agent $action [<target>]"; return 2; }
+  [[ -x $_agent_auto ]] || { print -u2 "agent $action: script not found: $_agent_auto"; return 1; }
+  local pane
+  pane=$(_agent_pane_or_self "$target") || return $?
+  "$_agent_auto" "$action" "$pane"
+}
+
 # agent pick — the shell-callable "wts for agents": delegate to the popup
 # script's pick (sweep + shared enumerator + fzf + jump) on this TTY. The
 # prefix + A binding keeps its display-popup; running from a shell needs none.
@@ -415,6 +448,9 @@ case ${_agent_sub:-ls} in
   pick) _agent_pick "$@" ;;
   hibernate) _agent_hibernate "$@" ;;
   thaw) _agent_thaw "$@" ;;
+  auto) _agent_auto_command "$@" ;;
+  pin) _agent_pin_command pin "$@" ;;
+  unpin) _agent_pin_command unpin "$@" ;;
   help|-h|--help) _agent_usage ;;
   *)
     print -u2 "agent: unknown subcommand: $_agent_sub"

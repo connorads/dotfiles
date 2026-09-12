@@ -6,6 +6,35 @@
 # are _underscore-prefixed and always assigned before use so `set -u` callers
 # (agent-sweep.sh) are not clobbered or tripped.
 
+# agent_set_state PANE STATE [NOW] - the only writer for @agent_state and its
+# uninterrupted-idle evidence. Repeating idle preserves the original instant;
+# every other state invalidates it. Unusable timestamps restart at NOW rather
+# than becoming destructive evidence.
+agent_set_state() {
+	_as_pane=$1
+	_as_state=$2
+	_as_now=${3:-${AGENT_STATE_NOW:-$(date +%s)}}
+	case $_as_now in '' | *[!0-9]*) _as_now=0 ;; esac
+	_as_previous=$(tmux show-options -pqv -t "$_as_pane" @agent_state 2>/dev/null) || _as_previous=
+	_as_since=$(tmux show-options -pqv -t "$_as_pane" @agent_idle_since 2>/dev/null) || _as_since=
+	tmux set-option -p -t "$_as_pane" @agent_state "$_as_state"
+	if [ "$_as_state" = idle ]; then
+		case $_as_since in '' | *[!0-9]*) _as_since=$_as_now ;; esac
+		if [ "$_as_previous" != idle ] || [ "$_as_since" -gt "$_as_now" ] 2>/dev/null; then
+			_as_since=$_as_now
+		fi
+		tmux set-option -p -t "$_as_pane" @agent_idle_since "$_as_since"
+	else
+		tmux set-option -pu -t "$_as_pane" @agent_idle_since 2>/dev/null || true
+	fi
+}
+
+agent_clear_state() {
+	tmux set-option -pu -t "$1" @agent_state 2>/dev/null || true
+	tmux set-option -pu -t "$1" @agent_idle_since 2>/dev/null || true
+	tmux set-option -pu -t "$1" @agent_hibernate_pinned 2>/dev/null || true
+}
+
 # Attention ranking — the window dot shows the worst (highest) of its panes:
 # blocked (needs you now) > done (finished, unseen) > working > idle >
 # hibernated (parked, resumable). hibernated ranks lowest-but-nonzero so a

@@ -17,6 +17,7 @@ if [ "$1" = "display-message" ]; then
     *client_height*) printf '%s\n' "${TMUX_CLIENT_HEIGHT:-14}" ;;
     *'#{@agent_state}'*) printf '%s\n' "${TMUX_AGENT_STATE:-idle}" ;;
     *'#{@agent_kind}'*) printf '%s\n' "${TMUX_AGENT_KIND:-claude}" ;;
+    *'#{@agent_hibernate_pinned}'*) printf '%s\n' "${TMUX_AGENT_PINNED:-}" ;;
     *window_linked*)
       if [ -n "${TMUX_WINDOW_INFO:-}" ]; then printf '%s\n' "$TMUX_WINDOW_INFO"; else printf '$1\tsource @name\t@7\t1\twin ##{x}\t0\t1\t2\n'; fi
       ;;
@@ -79,6 +80,21 @@ EOF
 
   [ "$status" -eq 0 ]
   grep -q 'hibernate (free RAM)' "$TEST_LOG"
+}
+
+@test "pane menu toggles the automatic hibernation pin" {
+  export TMUX_AGENT_STATE=idle TMUX_AGENT_KIND=claude
+
+  run "$ORG" pane clientA "%5" 1 2
+  [ "$status" -eq 0 ]
+  grep -q 'protect from auto-hibernate' "$TEST_LOG"
+  grep -q 'agent-autohibernate.sh.*pin.*%5' "$TEST_LOG"
+
+  : >"$TEST_LOG"
+  export TMUX_AGENT_PINNED=on
+  run "$ORG" pane clientA "%5" 1 2
+  grep -q 'allow auto-hibernate' "$TEST_LOG"
+  grep -q 'agent-autohibernate.sh.*unpin.*%5' "$TEST_LOG"
 }
 
 @test "pane menu omits lifecycle actions for unsupported panes" {
