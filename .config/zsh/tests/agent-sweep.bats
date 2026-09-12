@@ -35,7 +35,7 @@ teardown() {
   fi
   for f in "$BATS_TEST_TMPDIR"/server-*.pid; do
     [ -f "$f" ] || continue
-    p=$(cat "$f" 2>/dev/null || true)
+    p=$(awk -F '\t' '{ print $NF }' "$f" 2>/dev/null || true)
     [ -n "$p" ] && kill "$p" 2>/dev/null || true
   done
   [ -n "${ATTACH_PID:-}" ] && kill "$ATTACH_PID" 2>/dev/null || true
@@ -59,7 +59,9 @@ launch_daemon() {
 # creates the file before the daemon writes to it, and an empty read makes every
 # check downstream vacuous (read_pidfile, test_helper.bash).
 daemon_pid() {
-  read_pidfile "$1"
+  local file=$1 pid=
+  wait_until -i 0.1 'pid=$(awk -F "\t" '\''{ print $NF }'\'' "$file" 2>/dev/null); [[ $pid =~ ^[0-9]+$ ]]'
+  printf '%s\n' "$pid"
 }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
@@ -393,7 +395,22 @@ respawn_wrapped_codex() {
   # A second invocation finds the live daemon and no-ops without touching the pidfile.
   run env AGENT_SWEEP_STATE_DIR="$BATS_TEST_TMPDIR" AGENT_SWEEP_POLL=1 sh "$SCRIPT" daemon
   [ "$status" -eq 0 ]
-  [ "$(cat "$pidfile")" = "$first" ]
+  [ "$(cut -f2 "$pidfile")" = "$first" ]
+  [ "$(cut -f1 "$pidfile")" = 2 ]
+}
+
+@test "daemon replaces a live legacy daemon record" {
+  pidfile="$BATS_TEST_TMPDIR/server-$(tx display-message -p '#{pid}').pid"
+  launch_daemon
+  legacy=$(daemon_pid "$pidfile")
+  printf '%s\n' "$legacy" >"$pidfile"
+
+  launch_daemon
+  wait_until -i 0.2 '[ "$(cut -f1 "$pidfile")" = 2 ]'
+  replacement=$(daemon_pid "$pidfile")
+  [ "$replacement" != "$legacy" ]
+  ! kill -0 "$legacy" 2>/dev/null
+  kill -0 "$replacement"
 }
 
 @test "daemon clears a stale dot on its interval" {
