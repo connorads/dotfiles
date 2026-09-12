@@ -146,6 +146,8 @@ choose_agents_to_hibernate() {
 
 render_header() {
 	_state=$(mem_state)
+	_auto=$(tmux show-options -gqv @agent_auto_hibernate 2>/dev/null || true)
+	case $_auto in off | observe | on) ;; *) _auto=observe ;; esac
 	_colour=$(mem_state_colour "$_state")
 	_glyph=$(mem_state_glyph "$_state")
 	_level=$(mem_pressure_level)
@@ -159,6 +161,7 @@ render_header() {
 	printf '  Wired  %s    Compressed %s\n\n' \
 		"$(mem_human_mb "$(vm_stat_mb 'Pages wired down')")" \
 		"$(mem_human_mb "$(vm_stat_mb 'Pages occupied by compressor')")"
+	printf '  Agent auto-hibernate  %s\n\n' "$_auto"
 }
 
 render_apps() {

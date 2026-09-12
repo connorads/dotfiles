@@ -63,7 +63,7 @@ case $state in
 blocked)
 	# Ring only on entry (not re-emits); see ring_bell.
 	prev=$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)
-	tmux set-option -p -t "$pane" @agent_state "$state"
+	agent_set_state "$pane" "$state"
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	should_ring "$prev" && ring_bell "$pane"
 	;;
@@ -71,7 +71,7 @@ working | idle | hibernated)
 	# hibernated: the pane's agent was killed by agent-hibernate.sh and a parked
 	# thawer holds its place; the sweep exempts it from the shell-foreground
 	# death-clear, and thaw ages it back to idle.
-	tmux set-option -p -t "$pane" @agent_state "$state"
+	agent_set_state "$pane" "$state"
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 done)
@@ -86,16 +86,16 @@ done)
 		'#{pane_active} #{window_active} #{session_attached}' 2>/dev/null)
 	# shellcheck disable=SC2086  # deliberate word-split of the three flag fields
 	if is_viewing ${pflags:-0 0 0}; then
-		tmux set-option -p -t "$pane" @agent_state idle
+		agent_set_state "$pane" idle
 	else
-		tmux set-option -p -t "$pane" @agent_state "done"
+		agent_set_state "$pane" "done"
 	fi
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 seen)
 	# Focusing a finished pane ages done → idle; nothing else changes.
 	if [ "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" = "done" ]; then
-		tmux set-option -p -t "$pane" @agent_state idle
+		agent_set_state "$pane" idle
 	else
 		journal=0
 	fi
@@ -104,7 +104,7 @@ unread)
 	# "Mark as unread": force done (finished, unseen) even on the active window
 	# — the manual inverse of seen, driven by the dot menu. The blue dot then
 	# persists after you leave; re-focusing the window ages it back to idle.
-	tmux set-option -p -t "$pane" @agent_state "done"
+	agent_set_state "$pane" "done"
 	[ -n "$kind" ] && tmux set-option -p -t "$pane" @agent_kind "$kind"
 	;;
 clear)
@@ -117,7 +117,7 @@ clear)
 	if [ "$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)" = hibernated ]; then
 		journal=0
 	else
-		tmux set-option -pu -t "$pane" @agent_state 2>/dev/null || true
+		agent_clear_state "$pane"
 		tmux set-option -pu -t "$pane" @agent_kind 2>/dev/null || true
 		tmux set-option -pu -t "$pane" @agent_name 2>/dev/null || true
 	fi

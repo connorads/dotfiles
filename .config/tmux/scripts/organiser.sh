@@ -60,6 +60,15 @@ hibernate_action_command() {
 	printf 'run-shell -b "%s"' "$(tmux_quote "$command")"
 }
 
+auto_hibernate_command() {
+	local action=$1 pane=$2 command arg
+	command="$(shell_quote "$dir/agent-autohibernate.sh")"
+	for arg in "$action" "$pane"; do
+		command+=" $(shell_quote "$arg")"
+	done
+	printf 'run-shell -b "%s"' "$(tmux_quote "$command")"
+}
+
 format_label() {
 	local value=$1
 	value=${value//#/##}
@@ -68,9 +77,10 @@ format_label() {
 
 append_agent_dot_items() {
 	local pane=$1 lifecycle=${2:-0} client=${3:-}
-	local state kind
+	local state kind pinned
 	state=$(tmux display-message -p -t "$pane" '#{@agent_state}' 2>/dev/null || true)
 	kind=$(tmux display-message -p -t "$pane" '#{@agent_kind}' 2>/dev/null || true)
+	pinned=$(tmux display-message -p -t "$pane" '#{@agent_hibernate_pinned}' 2>/dev/null || true)
 	if [ "$state" = hibernated ]; then
 		menu+=("hibernated #[fg=#585b70]◌#[default]" "" "")
 		if [ "$lifecycle" = 1 ]; then
@@ -92,6 +102,11 @@ append_agent_dot_items() {
 		return 0
 	fi
 	menu+=("")
+	if [ "$pinned" = on ]; then
+		menu+=("allow auto-hibernate" p "$(auto_hibernate_command unpin "$pane")")
+	else
+		menu+=("protect from auto-hibernate" p "$(auto_hibernate_command pin "$pane")")
+	fi
 	case "$state" in
 	idle | done) menu+=("hibernate (free RAM)" h "$(hibernate_action_command hibernate "$pane" "$client")") ;;
 	working | blocked) menu+=("-hibernate ($state)" "" "") ;;

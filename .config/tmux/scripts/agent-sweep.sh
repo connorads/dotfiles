@@ -32,6 +32,7 @@ SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 AGENT_PRESENCE_GRACE=${AGENT_PRESENCE_GRACE:-10}
 AGENT_PS=${AGENT_PS:-ps}
 AGENT_SWEEP_DAEMON_VERSION=2
+AGENT_AUTO_HIBERNATE=${AGENT_AUTO_HIBERNATE:-$SELF_DIR/agent-autohibernate.sh}
 
 # sweep_once — reconcile every dot in one pass: read all panes once, clear panes
 # whose agent died (shell foreground), age a `done` dot you are currently looking
@@ -45,7 +46,7 @@ sweep_once() {
 	# pane_title is last because it is freeform (a stray tab in a title can't then
 	# misalign the earlier columns).
 	_rows=$(tmux list-panes -a -F \
-		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{pane_title}" \
+		"#{window_id}	#{pane_id}	#{@agent_state}	#{pane_current_command}	#{@win_agent_state}	#{pane_active}	#{window_active}	#{session_attached}	#{@agent_kind}	#{@agent_presence_absent_since}	#{pane_pid}	#{@agent_idle_since}	#{pane_title}" \
 		2>/dev/null) || return 0
 
 	# Sanitise the process table immediately: only ids plus an exact argv0 class
@@ -164,6 +165,8 @@ EOF
 		_absent_since=${_line%%"$_tab"*}
 		_line=${_line#*"$_tab"}
 		_pane_pid=${_line%%"$_tab"*}
+		_line=${_line#*"$_tab"}
+		_idle_since=${_line%%"$_tab"*}
 		_ptitle=${_line#*"$_tab"}
 
 		if [ "$_astate" != hibernated ]; then
@@ -181,9 +184,10 @@ EOF
 					if [ -n "$_kind" ] && [ "$_kind" != "$_observed_kind" ]; then
 						tmux set-option -pu -t "$_pane" @agent_name 2>/dev/null || true
 						tmux set-option -pu -t "$_pane" @claude_profile 2>/dev/null || true
+						tmux set-option -pu -t "$_pane" @agent_hibernate_pinned 2>/dev/null || true
 					fi
 					tmux set-option -p -t "$_pane" @agent_kind "$_observed_kind" 2>/dev/null || true
-					tmux set-option -p -t "$_pane" @agent_state idle 2>/dev/null || true
+					agent_set_state "$_pane" idle "$_now" 2>/dev/null || true
 					_kind=$_observed_kind
 					_astate=idle
 					journal_presence_event "$_reason" "$_pane" "$_win" \
@@ -191,6 +195,11 @@ EOF
 					_windows="$_windows$_win
 "
 					_changed=1
+				fi
+				if [ "$_astate" = idle ]; then
+					case $_idle_since in '' | *[!0-9]*) agent_set_state "$_pane" idle "$_now" 2>/dev/null || true ;;
+					*) [ "$_idle_since" -le "$_now" ] 2>/dev/null || agent_set_state "$_pane" idle "$_now" 2>/dev/null || true ;;
+					esac
 				fi
 				;;
 			absent)
@@ -204,7 +213,7 @@ EOF
 							_age=$((_now - _absent_since))
 							_previous_state=$_astate
 							_previous_kind=$_kind
-							tmux set-option -pu -t "$_pane" @agent_state 2>/dev/null || true
+							agent_clear_state "$_pane"
 							tmux set-option -pu -t "$_pane" @agent_kind 2>/dev/null || true
 							tmux set-option -pu -t "$_pane" @agent_name 2>/dev/null || true
 							tmux set-option -pu -t "$_pane" @agent_poll_absent 2>/dev/null || true
@@ -234,7 +243,7 @@ EOF
 		# Agent still present (or conservatively unknown): age a viewed done dot.
 		if [ -n "$_astate" ] && [ "$_observation" != absent ] &&
 			[ "$_astate" = "done" ] && is_viewing "$_pactive" "$_wactive" "$_sattached"; then
-			tmux set-option -p -t "$_pane" @agent_state idle 2>/dev/null || true
+			agent_set_state "$_pane" idle "$_now" 2>/dev/null || true
 			_astate=idle
 			_windows="$_windows$_win
 "
@@ -252,7 +261,7 @@ EOF
 			_nstate=${_step% *}
 			_nabsent=${_step##* }
 			if [ "$_nstate" != "$_astate" ]; then
-				tmux set-option -p -t "$_pane" @agent_state "$_nstate" 2>/dev/null || true
+				agent_set_state "$_pane" "$_nstate" "$_now" 2>/dev/null || true
 				_windows="$_windows$_win
 "
 				_changed=1
@@ -284,6 +293,11 @@ EOF
 	done
 
 	tmux refresh-client -S 2>/dev/null || true
+}
+
+tick_once() {
+	sweep_once
+	[ -x "$AGENT_AUTO_HIBERNATE" ] && "$AGENT_AUTO_HIBERNATE" tick >/dev/null 2>&1 || true
 }
 
 # _is_sweep PID — true if PID is an agent-sweep process (guards the pidfile
@@ -366,7 +380,8 @@ daemon() {
 }
 
 case "${1:-}" in
-"" | sweep | sweep_once | tick) sweep_once ;;
+"" | sweep | sweep_once) sweep_once ;;
+tick) tick_once ;;
 sync) sync_agent_rollups ;;
 daemon) daemon ;;
 *)

@@ -152,6 +152,18 @@ respawn_wrapped_codex() {
   [ "$(tx show-options -pqv -t "$pane" @agent_kind)" = codex ]
 }
 
+@test "sweep starts idle evidence for an existing live idle pane" {
+  pane=$(tx display-message -p -t s '#{pane_id}')
+  respawn_wrapped_codex "$pane"
+  tx set-option -p -t "$pane" @agent_kind codex
+  tx set-option -p -t "$pane" @agent_state idle
+
+  run env AGENT_PRESENCE_NOW=500 sh "$SCRIPT"
+
+  [ "$status" -eq 0 ]
+  [ "$(tx show-options -pqv -t "$pane" @agent_idle_since)" = 500 ]
+}
+
 @test "codex in a later argument cannot claim an untracked pane" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   tx respawn-pane -k -t "$pane" "zsh -f -c 'sleep 300' codex"

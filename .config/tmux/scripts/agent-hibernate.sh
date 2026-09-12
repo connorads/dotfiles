@@ -67,6 +67,12 @@ CODEX_ARGV=${AGENT_HIBERNATE_CODEX_ARGV:-$SELF_DIR/codex-process-argv.py}
 # shellcheck source=lib/resurrect-argv.sh disable=SC1091
 . "$SELF_DIR/lib/resurrect-argv.sh"
 
+AUTO_CLAIM_PANE=""
+cleanup_auto_claim() {
+	[ -n "$AUTO_CLAIM_PANE" ] && tmux set-option -pu -t "$AUTO_CLAIM_PANE" @agent_hibernate_claim 2>/dev/null || true
+}
+trap cleanup_auto_claim EXIT
+
 die() {
 	local code="$1"
 	shift
@@ -277,16 +283,69 @@ record_label() {
 
 # --- hibernate --------------------------------------------------------------
 
+# cmd_probe PANE - resolve the exact live recovery identity without writing a
+# record or changing the process. Automatic policy and pins consume this narrow
+# metadata surface rather than copying the Claude/Codex resolver rules.
+cmd_probe() {
+	local pane="${1:-}" info pane_pid pane_tty cwd pane_key state declared pid kind meta sid
+	[ -n "$pane" ] || die 2 "usage: agent-hibernate.sh probe <pane>"
+	command -v jq >/dev/null 2>&1 || die 1 "jq required"
+	info=$(tmux display-message -p -t "$pane" \
+		$'#{pane_id}\t#{pane_pid}\t#{pane_tty}\t#{pane_current_path}\t#{session_name}:#{window_index}.#{pane_index}\t#{@agent_state}\t#{@agent_kind}\t#{@agent_idle_since}' 2>/dev/null)
+	[ -n "$info" ] || die 3 "no such pane: $pane"
+	IFS=$'\t' read -r pane pane_pid pane_tty cwd pane_key state declared idle_since <<<"$info"
+	case "$declared" in claude | codex) ;; *) die 6 "unsupported agent kind: ${declared:-unknown}" ;; esac
+	pid=$(agent_foreground_pid_for_tty "$pane_tty" "$declared" "$pane_pid")
+	[ -n "$pid" ] || die 6 "no matching $declared process in pane $pane"
+	kind=$declared
+	if [ "$kind" = claude ]; then
+		local config_dir
+		config_dir=$(claude_config_dir_for_pid "$pid")
+		meta=$(claude_session_meta_for_pid "$pid" "${config_dir:-$HOME/.claude}")
+		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		if [ -z "$sid" ]; then
+			meta=$(claude_session_resolve_for_pid "$pid" "$pane" "$cwd" "$config_dir" 2>/dev/null) || meta=""
+			[ "$(jq -r '.status // empty' <<<"$meta" 2>/dev/null)" = resolved ] &&
+				sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		fi
+		[ -n "$sid" ] || die 6 "cannot resolve the Claude session for pane $pane"
+	else
+		if [ -n "${AGENT_HIBERNATE_CODEX_META:-}" ]; then
+			meta=$("$AGENT_HIBERNATE_CODEX_META" "$pid" "$cwd" 2>/dev/null) || meta=""
+		else
+			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" 2>/dev/null) || meta=""
+		fi
+		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
+		local rollout flags_json mcp_bundle
+		rollout=$(jq -r '.rolloutPath // empty' <<<"$meta" 2>/dev/null)
+		[ -n "$sid" ] && [ -s "$rollout" ] || die 6 "cannot resolve a materialised local Codex thread for pane $pane"
+		flags_json=$(codex_flags_json "$pid") || die 6 "cannot preserve the Codex launch arguments safely"
+		jq -e 'any(.[]; . == "--remote" or startswith("--remote="))' <<<"$flags_json" >/dev/null 2>&1 &&
+			die 6 "remote Codex sessions are not supported"
+		mcp_bundle=$(process_env_value "$pid" MCPZ_BUNDLE)
+		if jq -e 'any(.[]; startswith("mcp_servers."))' <<<"$flags_json" >/dev/null 2>&1 && [ -z "$mcp_bundle" ]; then
+			die 6 "Codex mcpz identity is incomplete"
+		fi
+	fi
+	jq -n --arg pane "$pane" --argjson pid "$pid" --arg kind "$kind" \
+		--arg sid "$sid" --arg cwd "$cwd" --arg key "$pane_key" \
+		--arg state "$state" --arg idle "$idle_since" \
+		'{pane: $pane, pid: $pid, kind: $kind, sessionId: $sid, cwd: $cwd,
+		  paneKey: $key, state: $state, idleSince: $idle}'
+}
+
 cmd_hibernate() {
-	local force=0 pane="" arg
+	local force=0 auto=0 pane="" arg
 	for arg in "$@"; do
 		case "$arg" in
 		--force) force=1 ;;
+		--auto) auto=1 ;;
 		-*) die 2 "unknown flag: $arg" ;;
 		*) pane="$arg" ;;
 		esac
 	done
 	[ -n "$pane" ] || die 2 "usage: agent-hibernate.sh hibernate <pane> [--force]"
+	[ "$auto" -eq 0 ] || [ "$force" -eq 0 ] || die 2 "--auto cannot be combined with --force"
 	command -v jq >/dev/null 2>&1 || die 1 "jq required"
 
 	local info pane_pid pane_tty cwd pane_key window_name
@@ -300,13 +359,15 @@ cmd_hibernate() {
 	# state is an untracked unknown - all need a deliberate --force.
 	local state
 	state=$(tmux display-message -p -t "$pane" '#{@agent_state}' 2>/dev/null)
-	case "$state" in
-	idle | done) ;;
-	*)
-		[ "$force" -eq 1 ] ||
-			die 6 "refusing: pane $pane is '${state:-untracked}' (blocked = pending prompt, working = in-flight tool call); --force overrides"
-		;;
-	esac
+	if [ "$auto" -eq 1 ]; then
+		[ "$state" = idle ] || die 6 "automatic hibernation requires exact idle state"
+	else case "$state" in
+		idle | done) ;;
+		*)
+			[ "$force" -eq 1 ] ||
+				die 6 "refusing: pane $pane is '${state:-untracked}' (blocked = pending prompt, working = in-flight tool call); --force overrides"
+			;;
+		esac fi
 
 	local pid kind=claude
 	pid=$(agent_foreground_pid_for_tty "$pane_tty" claude "$pane_pid")
@@ -373,6 +434,53 @@ print(json.dumps(kept, ensure_ascii=False))
 PY
 			) || die 1 "cannot normalise the mcpz launch arguments"
 		fi
+	fi
+
+	# Automatic execution carries the controller's prepared identity vector.
+	# Claim, pause briefly, then re-read every mutable fact immediately before
+	# capture and shutdown. Unknown topology or pin data always refuses.
+	if [ "$auto" -eq 1 ]; then
+		local expected expected_pane expected_pid expected_kind expected_sid expected_idle expected_revision
+		local current_idle current_kind current_state current_revision pins key claim visible_rows
+		expected=${AGENT_HIBERNATE_AUTO_EXPECTED:-}
+		jq -e 'type == "object"' <<<"$expected" >/dev/null 2>&1 || die 6 "missing automatic preconditions"
+		expected_pane=$(jq -r '.pane // empty' <<<"$expected")
+		expected_pid=$(jq -r '.pid // empty' <<<"$expected")
+		expected_kind=$(jq -r '.kind // empty' <<<"$expected")
+		expected_sid=$(jq -r '.sessionId // empty' <<<"$expected")
+		expected_idle=$(jq -r '.idleSince // empty' <<<"$expected")
+		expected_revision=$(jq -r '.pinRevision // empty' <<<"$expected")
+		[ "$pane" = "$expected_pane" ] && [ "$pid" = "$expected_pid" ] &&
+			[ "$kind" = "$expected_kind" ] && [ "$sid" = "$expected_sid" ] ||
+			die 6 "automatic identity changed before commit"
+		pins=${AGENT_AUTO_PINS_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-autohibernate/pins.json}
+		if [ -f "$pins" ]; then
+			jq -e 'type == "object" and all(to_entries[]; .value == true)' "$pins" >/dev/null 2>&1 ||
+				die 6 "automatic pin store is malformed"
+			current_revision=$(cksum "$pins" | awk '{ print $1 ":" $2 }')
+		else
+			current_revision=none
+		fi
+		[ "$current_revision" = "$expected_revision" ] || die 6 "automatic pin state changed before commit"
+		key="$kind:$sid"
+		[ ! -f "$pins" ] || ! jq -e --arg key "$key" '.[$key] == true' "$pins" >/dev/null ||
+			die 6 "automatic hibernation is pinned"
+		claim="$$-$(date +%s)"
+		AUTO_CLAIM_PANE=$pane
+		tmux set-option -p -t "$pane" @agent_hibernate_claim "$claim" || die 6 "cannot claim pane"
+		sleep "${AGENT_HIBERNATE_CLAIM_WAIT:-0.1}"
+		current_state=$(tmux show-options -pqv -t "$pane" @agent_state 2>/dev/null)
+		current_kind=$(tmux show-options -pqv -t "$pane" @agent_kind 2>/dev/null)
+		current_idle=$(tmux show-options -pqv -t "$pane" @agent_idle_since 2>/dev/null)
+		[ "$current_state" = idle ] && [ "$current_kind" = "$kind" ] && [ "$current_idle" = "$expected_idle" ] ||
+			die 6 "automatic pane state changed before commit"
+		visible_rows=$(tmux list-panes -a -F $'#{pane_id}\t#{pane_active}\t#{window_active}\t#{session_attached}' 2>/dev/null) ||
+			die 6 "cannot read automatic visibility"
+		if awk -F '\t' -v pane="$pane" '$1 == pane && $2 == 1 && $3 == 1 && $4 > 0 { found=1 } END { exit !found }' <<<"$visible_rows"; then
+			die 6 "automatic hibernation refuses a visible pane"
+		fi
+		if [ -f "$pins" ]; then current_revision=$(cksum "$pins" | awk '{ print $1 ":" $2 }'); else current_revision=none; fi
+		[ "$current_revision" = "$expected_revision" ] || die 6 "automatic pin state changed during commit"
 	fi
 
 	local name rss_kb pgid
@@ -469,7 +577,7 @@ PY
 	done
 
 	tmux respawn-pane -k -t "$pane" -c "$cwd" "$SELF" park ||
-		die 1 "record written but respawn-pane failed; recover with: agent thaw"
+		die 7 "record written but respawn-pane failed; recover with: agent thaw"
 	# Back to default close-on-exit now that park owns the pane.
 	tmux set-option -pu -t "$pane" remain-on-exit 2>/dev/null || true
 
@@ -591,12 +699,13 @@ thaw_record() {
 		recorded_version=$(jq -r '.cliVersion // empty' "$recfile" 2>/dev/null)
 		current_version=$(codex --version 2>/dev/null | awk '{print $2}')
 		if [ -n "$recorded_version" ] && [ -n "$current_version" ] &&
-			python3 - "$current_version" "$recorded_version" <<'PY' >/dev/null 2>&1; then
+			python3 - "$current_version" "$recorded_version" <<'PY' >/dev/null 2>&1
 import re, sys
 def version(value):
     return tuple(int(x) for x in re.findall(r"\d+", value)[:3])
 raise SystemExit(0 if version(sys.argv[1]) < version(sys.argv[2]) else 1)
 PY
+		then
 			printf 'agent-hibernate: warning: available Codex %s is older than recorded %s; attempting resume\n' "$current_version" "$recorded_version" >&2
 		fi
 		bundle=$(jq -r '.mcpBundle // empty' "$recfile" 2>/dev/null)
@@ -720,6 +829,10 @@ cmd_list() {
 }
 
 case "${1:-}" in
+probe)
+	shift
+	cmd_probe "${1:-}"
+	;;
 hibernate)
 	shift
 	cmd_hibernate "$@"
@@ -731,7 +844,7 @@ thaw)
 park) cmd_park ;;
 list) cmd_list ;;
 *)
-	echo "usage: agent-hibernate.sh <hibernate <pane> [--force] | thaw [pane|sid] | park | list>" >&2
+	echo "usage: agent-hibernate.sh <probe <pane> | hibernate <pane> [--force] | thaw [pane|sid] | park | list>" >&2
 	exit 2
 	;;
 esac

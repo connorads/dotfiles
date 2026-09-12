@@ -88,6 +88,7 @@ EOF
   [[ "$output" == *"[a] all sampled apps"* ]]
   [[ "$output" == *"[k] manage process"* ]]
   [[ "$output" == *"[h] hibernate agents"* ]]
+  [[ "$output" == *"Agent auto-hibernate  observe"* ]]
 }
 
 @test "hibernate candidates include safe Claude and Codex panes and rank by footprint" {
