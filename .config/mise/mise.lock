@@ -604,7 +604,7 @@ version = "1.10.0"
 backend = "npm:apify-cli"
 
 [[tools."npm:cf"]]
-version = "0.9.1"
+version = "0.10.0"
 backend = "npm:cf"
 
 [[tools."npm:critique"]]
@@ -676,7 +676,7 @@ version = "7.0.2"
 backend = "npm:typescript"
 
 [[tools."npm:vercel"]]
-version = "59.14.0"
+version = "59.15.0"
 backend = "npm:vercel"
 
 [[tools."npm:vgpu"]]
@@ -746,7 +746,7 @@ version = "0.4.1"
 backend = "pipx:tau-ai"
 
 [[tools."pipx:ty"]]
-version = "0.0.79"
+version = "0.0.80"
 backend = "pipx:ty"
 
 [[tools.pkl]]
@@ -956,23 +956,23 @@ url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/553169165"
 provenance = "github-attestations"
 
 [[tools.vale]]
-version = "3.20.0"
+version = "3.21.0"
 backend = "aqua:vale-cli/vale"
 
 [tools.vale."platforms.linux-arm64"]
-checksum = "sha256:d49e89479a40dbe6a6fe44a2963abef0ee39d89453f3c7100bdd1c5dd0708961"
-url = "https://github.com/vale-cli/vale/releases/download/v3.20.0/vale_3.20.0_Linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/541889563"
+checksum = "sha256:90ffb06fe58db5be96c7d86f65d38213e5fc66b6e3c4eb3baa65b14a5830513e"
+url = "https://github.com/vale-cli/vale/releases/download/v3.21.0/vale_3.21.0_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/553684353"
 
 [tools.vale."platforms.linux-x64"]
-checksum = "sha256:f59e7030c5d4ace6cf915497d0d076a1699d61e876142765963237e6867c9712"
-url = "https://github.com/vale-cli/vale/releases/download/v3.20.0/vale_3.20.0_Linux_64-bit.tar.gz"
-url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/541889564"
+checksum = "sha256:96997d19a4ca6981673b0d4c5ca7f3ede4a9f97964a96edc29fba9e28a328336"
+url = "https://github.com/vale-cli/vale/releases/download/v3.21.0/vale_3.21.0_Linux_64-bit.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/553684318"
 
 [tools.vale."platforms.macos-arm64"]
-checksum = "sha256:6b32df1a7d7b2ab01c07c1c4dd5fd84d775ac7a8f4101084cb5cc7df76bdc65e"
-url = "https://github.com/vale-cli/vale/releases/download/v3.20.0/vale_3.20.0_macOS_arm64.tar.gz"
-url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/541889565"
+checksum = "sha256:8080df46d74b82f0e725fb2949f31ade3dbd2987fd3fc506f9d9ed92e4a8002d"
+url = "https://github.com/vale-cli/vale/releases/download/v3.21.0/vale_3.21.0_macOS_arm64.tar.gz"
+url_api = "https://api.github.com/repos/vale-cli/vale/releases/assets/553684323"
 
 [[tools.zizmor]]
 version = "1.30.1"
