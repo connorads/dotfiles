@@ -133,55 +133,71 @@ agent_lsof_command() {
 	return 0
 }
 
-# codex_session_file_for_pid <pid>
-# Return the active Codex rollout held open by Codex. The path may sit below a
-# custom CODEX_HOME, so validate the file by name and session metadata rather
-# than assuming ~/.codex.
-codex_session_file_for_pid() {
+# codex_open_rollouts_for_pid <pid>
+# Every rollout the Codex process holds open, one path per line in lsof order.
+# The path may sit below a custom CODEX_HOME, so match by name rather than
+# assuming ~/.codex. A process holds more than one: the user's thread plus each
+# subagent or feature thread it has spawned, and a child's rollout stays open
+# after the child finishes. lsof lists by fd and a later open() reuses a freed
+# lower fd, so the order carries no information about which thread is current.
+codex_open_rollouts_for_pid() {
 	local pid="$1"
-	local pane="${2:-}"
 	local lsof_bin=""
-	local candidates=""
-	local published=""
-	local file=""
 
 	[ -n "$pid" ] || return 0
 	lsof_bin=$(agent_lsof_command)
 	[ -n "$lsof_bin" ] || return 0
 
-	# A Codex process holds every thread's rollout open: the user's thread plus
-	# each subagent it has spawned, and a subagent's rollout stays open after the
-	# subagent finishes. lsof lists by fd, and a subagent's later open() reuses a
-	# freed lower fd, so "first listed" names the wrong thread for the rest of any
-	# session that ever spawned one.
-	candidates=$("$lsof_bin" -p "$pid" 2>/dev/null |
+	"$lsof_bin" -p "$pid" 2>/dev/null |
 		grep '/sessions/.*/rollout-.*\.jsonl$' |
-		awk '{print $NF}')
+		awk '{print $NF}'
+}
+
+# codex_rollout_is_user_thread <file>
+# True when the rollout's session_meta (always its first line) names the
+# user's own thread. Codex's ThreadSource is user | subagent |
+# memory_consolidation | <feature label> (guardian_review is one), and only
+# the first is a thread the TUI can be on; rollouts older than the field are
+# all user threads.
+codex_rollout_is_user_thread() {
+	head -1 "$1" 2>/dev/null |
+		jq -e '.type == "session_meta" and (.payload.thread_source // "user") == "user"' >/dev/null 2>&1
+}
+
+# codex_session_file_for_pid <pid> [pane]
+# The rollout of the thread the pane's Codex TUI is on. Exact answer first:
+# Codex's own SessionStart hook publishes it to the pane as @codex_rollout_path
+# (agent-codex-session.sh). The hook fires for the parent thread only -
+# subagents get SubagentStart - and re-fires on resume, /new and compaction, so
+# it names the current thread. Trusted only while this process holds that file
+# open (compared by inode, since the hook's spelling and lsof's need not agree),
+# so a value left by an earlier Codex in the same pane cannot name a dead
+# thread. Without a usable option (no pane, a launch that predates the hook,
+# hooks untrusted, a foreign CODEX_HOME) fall back to the first open user
+# thread, which cannot tell two user threads apart, then to the first listed.
+codex_session_file_for_pid() {
+	local pid="$1"
+	local pane="${2:-}"
+	local candidates=""
+	local published=""
+	local file=""
+
+	candidates=$(codex_open_rollouts_for_pid "$pid")
 	[ -n "$candidates" ] || return 0
 
-	# Exact answer first: Codex's own SessionStart hook publishes the thread's
-	# rollout to the pane (@codex_rollout_path, agent-codex-session.sh). The hook
-	# runs at thread scope for the parent thread only - subagents get
-	# SubagentStart - and re-runs on resume, /new and compaction, so it names the
-	# thread the TUI is on. Trust it only while this process holds that file
-	# open, so a value left by an earlier Codex in the same pane cannot name a
-	# dead thread.
-	if [ -n "$pane" ]; then
-		published=$(tmux show-options -pqv -t "$pane" @codex_rollout_path 2>/dev/null || true)
-		if [ -n "$published" ] && grep -qxF -- "$published" <<<"$candidates"; then
-			printf '%s\n' "$published"
-			return 0
-		fi
+	[ -n "$pane" ] && published=$(tmux show-options -pqv -t "$pane" @codex_rollout_path 2>/dev/null || true)
+	if [ -n "$published" ]; then
+		while IFS= read -r file; do
+			if [ "$file" -ef "$published" ]; then
+				printf '%s\n' "$file"
+				return 0
+			fi
+		done <<<"$candidates"
 	fi
 
-	# No usable pane option (pre-hook launch, hooks untrusted, foreign
-	# CODEX_HOME): pick by session_meta, skipping subagent threads. The first
-	# candidate stays the fallback when none can be read (file gone, jq absent).
 	if command -v jq >/dev/null 2>&1; then
 		while IFS= read -r file; do
-			[ -f "$file" ] || continue
-			if head -1 "$file" 2>/dev/null |
-				jq -e 'select(.type == "session_meta") | (.payload.thread_source // "user") != "subagent"' >/dev/null 2>&1; then
+			if codex_rollout_is_user_thread "$file"; then
 				printf '%s\n' "$file"
 				return 0
 			fi

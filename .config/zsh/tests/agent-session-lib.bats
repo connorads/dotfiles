@@ -372,3 +372,35 @@ EOF2
   [ "$status" -eq 0 ]
   [ "$output" = "$OLD" ]
 }
+
+# Codex's ThreadSource has more than two values: feature threads such as
+# guardian_review are children too, and they list first for the same fd reason.
+@test "codex_session_file_for_pid skips a feature-thread rollout listed ahead of the user thread" {
+  mkdir -p "$HOME/.codex/sessions/2026/06/24"
+  local review="$HOME/.codex/sessions/2026/06/24/rollout-review.jsonl"
+  local main="$HOME/.codex/sessions/2026/06/24/rollout-main.jsonl"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"review-thread","cwd":"/w","thread_source":"guardian_review"}}' >"$review"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"user-thread","cwd":"/w","thread_source":"user"}}' >"$main"
+  cat >"$TEST_BIN/lsof" <<EOF2
+#!/usr/bin/env bash
+printf 'codex 901 user 44u REG 1,2 0 1 %s\n' "$review"
+printf 'codex 901 user 56u REG 1,2 0 1 %s\n' "$main"
+EOF2
+  chmod +x "$TEST_BIN/lsof"
+
+  run codex_session_file_for_pid 901
+  [ "$status" -eq 0 ]
+  [ "$output" = "$main" ]
+}
+
+# The hook publishes the path Codex handed it; lsof prints the kernel's. Under a
+# symlinked CODEX_HOME the two spellings differ for the same file.
+@test "codex_session_file_for_pid matches a published rollout by inode, not spelling" {
+  write_two_user_threads
+  ln -s "$HOME/.codex" "$HOME/codex-link"
+  stub_tmux_published_rollout "$HOME/codex-link/sessions/2026/06/24/rollout-new.jsonl"
+
+  run codex_session_file_for_pid 901 %7
+  [ "$status" -eq 0 ]
+  [ "$output" = "$NEW" ]
+}

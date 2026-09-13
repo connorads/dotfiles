@@ -13,13 +13,16 @@ event=${1:-}
 rollout=$(printf '%s' "$payload" | jq -r '.transcript_path // empty' 2>/dev/null)
 thread=""
 if [ -n "$rollout" ] && [ -s "$rollout" ]; then
+	# session_meta is the rollout's first line; nothing below it is needed here.
+	meta=$(head -1 "$rollout" 2>/dev/null)
 	# Codex documents SessionStart as parent-thread only (subagents get
-	# SubagentStart), so a subagent transcript here would be a Codex change;
+	# SubagentStart), so a child thread here - subagent, memory consolidation
+	# or a feature label such as guardian_review - would be a Codex change;
 	# publishing it would point every consumer at the wrong thread.
-	if jq -e 'select(.type == "session_meta") | .payload.thread_source == "subagent"' "$rollout" >/dev/null 2>&1; then
+	if printf '%s' "$meta" | jq -e '.type == "session_meta" and (.payload.thread_source // "user") != "user"' >/dev/null 2>&1; then
 		exit 0
 	fi
-	thread=$(jq -r 'select(.type == "session_meta") | .payload.id // empty' "$rollout" 2>/dev/null | head -1)
+	thread=$(printf '%s' "$meta" | jq -r 'select(.type == "session_meta") | .payload.id // empty' 2>/dev/null)
 fi
 [ -n "$rollout" ] && tmux set-option -p -t "$pane" @codex_rollout_path "$rollout" 2>/dev/null || true
 [ -n "$thread" ] && tmux set-option -p -t "$pane" @codex_thread_id "$thread" 2>/dev/null || true
