@@ -394,6 +394,55 @@ EOF
   [[ "$output" == *"full log:"* ]]
 }
 
+@test "up surfaces buried disk exhaustion and preserves Homebrew partial success" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+case "${1:-}" in
+  outdated)
+    if [ -f "$HOME/.brew-upgrade-ran" ]; then
+      echo '{"formulae":[{"name":"podman"}],"casks":[]}'
+    else
+      echo '{"formulae":[{"name":"podman"}],"casks":[{"name":"chatgpt"}]}'
+    fi
+    ;;
+  upgrade)
+    : >"$HOME/.brew-upgrade-ran"
+    echo 'ditto: LM Studio.app: No space left on device' >&2
+    for ((i = 0; i < 25; i++)); do
+      echo 'trailing cleanup output' >&2
+    done
+    exit 1
+    ;;
+esac
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"disk space exhausted"*"recent output:"* ]] || false
+  [[ "$output" == *"Failed"*"1 upgraded; remaining: podman; disk space exhausted"* ]] || false
+  [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"*"rerun up"* ]] || false
+  [[ "$output" == *"full log:"* ]] || false
+  ! grep -qF 'nfu' "$TEST_LOG"
+  ! grep -qF 'drs' "$TEST_LOG"
+
+  run_zsh_function "$UP" --no-audit --verbose
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Failed"*"0 upgraded; remaining: podman; disk space exhausted"* ]] || false
+  [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"* ]] || false
+}
+
+@test "up does not diagnose disk exhaustion from an earlier successful phase" {
+  write_stub claude-channels-patch <<'EOF'
+#!/usr/bin/env bash
+echo 'No space left on device' >&2
+exit 0
+EOF
+  BREW_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"disk space exhausted"* ]] || false
+  [[ "$output" != *"Free disk space before retrying"* ]] || false
+}
+
 @test "up logs successful command output instead of streaming it by default" {
   write_stub mise <<'EOF'
 #!/usr/bin/env bash
