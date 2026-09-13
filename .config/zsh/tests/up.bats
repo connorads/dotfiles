@@ -189,7 +189,9 @@ EOF
 run_linux_up() {
   # zsh initialises OSTYPE itself; assign it inside the isolated shell.
   OSTYPE=linux-gnu
-  source "$1" "${@:2}"
+  local up_script=$1
+  shift
+  source "$up_script" "$@"
 }
 
 @test "up Linux cleanup summary reports APT success failure and frozen skip" {
@@ -215,7 +217,7 @@ EOF
   declare -f run_linux_up >"$driver"
   printf '\nrun_linux_up "$@"\n' >>"$driver"
 
-  run zsh --no-rcs "$driver" "$UP" --no-audit
+  run zsh --no-rcs "$driver" "$UP"
   [ "$status" -eq 0 ]
   [[ "$output" == *"APT autoremove: completed"* ]] || false
   [[ "$output" != *"Homebrew automatic cleanup:"* ]] || false
@@ -223,8 +225,9 @@ EOF
   grep -qF 'apt-get autoremove -y' "$TEST_LOG"
 
   : >"$TEST_HOME/.config/nix/flake.lock"
+  ! grep -qE "^brew (vulns|doctor)" "$TEST_LOG"
   : >"$TEST_LOG"
-  APT_FAIL=upgrade run zsh --no-rcs "$driver" "$UP" --no-audit
+  APT_FAIL=upgrade run zsh --no-rcs "$driver" "$UP"
   [ "$status" -ne 0 ]
   [[ "$output" == *"APT autoremove: APT phase failed; cleanup completion unknown"* ]] || false
   ! grep -qF 'apt-get autoremove' "$TEST_LOG"
@@ -232,6 +235,7 @@ EOF
   run zsh --no-rcs "$driver" "$UP" --frozen
   [ "$status" -eq 0 ]
   [[ "$output" == *"APT autoremove: not attempted (frozen mode)"* ]] || false
+  ! grep -qE "^brew (vulns|doctor)" "$TEST_LOG"
 }
 
 @test "up bumps both lockfiles: commit each, brew, flake; no separate mise lock" {
@@ -406,6 +410,7 @@ case "${1:-}" in
       echo '{"formulae":[{"name":"podman"}],"casks":[{"name":"chatgpt"}]}'
     fi
     ;;
+  doctor) echo "doctor context"; exit 1 ;;
   upgrade)
     : >"$HOME/.brew-upgrade-ran"
     echo 'ditto: LM Studio.app: No space left on device' >&2
@@ -421,6 +426,7 @@ EOF
   [[ "$output" == *"disk space exhausted"*"recent output:"* ]] || false
   [[ "$output" == *"Failed"*"1 no longer outdated; remaining after upgrade: formula/podman; disk space exhausted"* ]] || false
   [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"*"rerun up"* ]] || false
+  [[ "$output" == *"doctor context"*"Failed"*"disk space exhausted"* ]] || false
   [[ "$output" == *"full log:"* ]] || false
   ! grep -qF 'nfu' "$TEST_LOG"
   ! grep -qF 'drs' "$TEST_LOG"
@@ -726,4 +732,116 @@ EOF
   [ "$status" -eq 1 ]
   ! grep -qF 'brew upgrade' "$TEST_LOG"
   ! grep -qF 'brew outdated' "$TEST_LOG"
+}
+
+_brew_report_fixture() {
+  write_stub brew <<'STUB'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+case "$1" in
+  update) exit "${REPORT_UPDATE_EXIT:-0}" ;;
+  upgrade) exit "${REPORT_UPGRADE_EXIT:-0}" ;;
+  outdated) echo '{"formulae":[],"casks":[]}' ;;
+  doctor|vulns)
+    echo "report-auto-update=${HOMEBREW_NO_AUTO_UPDATE:-unset}" >>"$TEST_LOG"
+    command -v gh >>"$TEST_LOG"
+    echo "$1 native report"
+    echo "$1 coverage warning" >&2
+    exit "${REPORT_EXIT:-0}" ;;
+esac
+STUB
+}
+
+@test "up Brew scan follows rebuild and lock commit with native output logged" {
+  _brew_report_fixture
+  run_zsh_function "$UP"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"vulns native report"*"Advisories"*"brew vulns"* ]]
+  [[ "$output" == *"vulns coverage warning"* ]]
+  grep -qF 'vulns native report' "$XDG_CACHE_HOME"/up/*.log
+  grep -qF 'vulns coverage warning' "$XDG_CACHE_HOME"/up/*.log
+  local commit_line scan_line
+  commit_line=$(grep -nF 'dotfiles commit -m chore(nix)' "$TEST_LOG" | cut -d: -f1)
+  scan_line=$(grep -nF 'brew vulns --list-skipped' "$TEST_LOG" | cut -d: -f1)
+  [ "$commit_line" -lt "$scan_line" ]
+  ! grep -qF 'brew doctor' "$TEST_LOG"
+  grep -qFx 'report-auto-update=1' "$TEST_LOG"
+}
+
+@test "up Brew scan findings and unavailable scans remain advisory" {
+  _brew_report_fixture
+  local report_exit
+  for report_exit in 1 127; do
+    : >"$TEST_HOME/.config/nix/flake.lock"
+    REPORT_EXIT=$report_exit run_zsh_function "$UP"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"UPDATE COMPLETE"* ]]
+    [[ "$output" == *"brew vulns: advisory returned exit $report_exit"* ]]
+    [[ "$output" != *"brew vulns failed"* ]]
+    [[ "$output" == *"Next"*"brew vulns --list-skipped"* ]]
+    [[ "$output" == *"Homebrew automatic cleanup:"*"upgrade completed"* ]]
+  done
+}
+
+@test "up Brew scan still reports after a failed rebuild" {
+  _brew_report_fixture
+  DRS_FAIL=1 run_zsh_function "$UP"
+  [ "$status" -eq 1 ]
+  grep -qF 'brew vulns --list-skipped' "$TEST_LOG"
+  ! grep -qF 'brew doctor' "$TEST_LOG"
+  ! grep -qF 'dotfiles commit -m chore(nix)' "$TEST_LOG"
+  [[ "$output" == *"rebuild failed; cleanup completion unknown"* ]]
+}
+
+@test "up Brew advisories honour audit opt-out frozen mode and earlier blocking" {
+  _brew_report_fixture
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  ! grep -qF 'brew vulns' "$TEST_LOG"
+  ! grep -qF 'osv-scanner scan source' "$TEST_LOG"
+  : >"$TEST_HOME/.config/nix/flake.lock"
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  ! grep -qF 'brew vulns' "$TEST_LOG"
+  MISE_FAIL_UPGRADE=1 run_zsh_function "$UP"
+  [ "$status" -eq 1 ]
+  ! grep -qF 'brew vulns' "$TEST_LOG"
+  ! grep -qF 'brew doctor' "$TEST_LOG"
+}
+
+@test "up Brew doctor warnings preserve the original failure and gh lookup" {
+  _brew_report_fixture
+  mkdir -p "$HOME/.local/bin" "$HOME/stale-shims"
+  write_executable "$HOME/.local/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+exit 0
+STUB
+  write_executable "$HOME/stale-shims/gh" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+  export PATH="$HOME/stale-shims:$PATH"
+  REPORT_UPDATE_EXIT=1 REPORT_EXIT=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  grep -qFx 'brew doctor' "$TEST_LOG"
+  grep -qFx "$HOME/.local/bin/gh" "$TEST_LOG"
+  ! grep -qFx "$HOME/stale-shims/gh" "$TEST_LOG"
+  ! grep -qF 'brew vulns' "$TEST_LOG"
+  [[ "$output" == *"brew failed - recent output:"* ]]
+  [[ "$output" == *"Advisories"*"brew doctor"* ]]
+  [[ "$output" == *"upgrade failed; cleanup completion unknown"* ]]
+  [[ "$output" != *"brew doctor failed"* ]]
+}
+
+@test "up Brew scan runs after upgrade failure and doctor" {
+  _brew_report_fixture
+  REPORT_UPGRADE_EXIT=1 REPORT_EXIT=127 run_zsh_function "$UP"
+  [ "$status" -eq 1 ]
+  local doctor_line scan_line
+  doctor_line=$(grep -nFx 'brew doctor' "$TEST_LOG" | cut -d: -f1)
+  scan_line=$(grep -nFx 'brew vulns --list-skipped' "$TEST_LOG" | cut -d: -f1)
+  [ "$doctor_line" -lt "$scan_line" ]
+  ! grep -qF 'drs' "$TEST_LOG"
+  [[ "$output" == *"brew doctor: advisory returned exit 127"* ]]
+  [[ "$output" == *"brew vulns: advisory returned exit 127"* ]]
 }

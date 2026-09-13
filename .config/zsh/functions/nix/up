@@ -9,14 +9,15 @@
 #        --os               also install no-restart macOS updates (macOS only);
 #                           restart-required (OS) updates are only reported, never
 #                           applied, so a headless FileVault box is never rebooted.
-#        --no-audit         skip the lockfile-audit OSV sweep (escape hatch; the
-#                           sweep itself already warns-not-blocks when offline).
+#        --no-audit         skip lockfile and Brew vulnerability scans;
+#                           keep Brew failure diagnostics enabled.
 #        --verbose / -v     stream full command output as well as logging it.
 emulate -L zsh
 
 _up_usage() {
   print "usage: up [--frozen|-s|--skip-flake] [--os] [--no-audit] [--verbose|-v]"
   print "       up -h|--help"
+  print "       --no-audit skips both vulnerability scans; Brew diagnostics remain enabled"
 }
 
 local frozen=0 do_os=0 no_audit=0 verbose=0
@@ -46,7 +47,7 @@ local up_mode=update up_failed=0 up_started=$SECONDS up_blocked_by="" up_sudo_fa
 local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next up_dirty_locks
 local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
 local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
-local up_brew_detail="" up_brew_resolved=0
+local up_brew_detail="" up_brew_resolved=0 up_brew_attempted=0
 local up_phase_diagnosis=""
 
 (umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
@@ -417,6 +418,25 @@ _up_brew() {
   return $rc
 }
 
+_up_brew_advisory() {
+  local name=$1 detail=$2
+  shift 2
+  local started=$SECONDS rc report_state=REPORTED
+  local verbose=1
+
+  print "=> $name"
+  HOMEBREW_NO_AUTO_UPDATE=1 PATH="$HOME/.local/bin:$PATH" _up_logged "$name" brew "$@"
+  rc=$?
+  if ((rc)); then
+    report_state=WARN
+    detail="$detail; exit $rc; see report"
+    print -u2 "!! $name: advisory returned exit $rc; see report"
+    [[ $name == "brew vulns" ]] && _up_next "brew vulns --list-skipped"
+  fi
+  _up_record "$name" "$report_state" $((SECONDS - started)) "$detail"
+  return 0
+}
+
 _up_apt() {
   sudo apt-get update -y &&
     sudo env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y &&
@@ -472,6 +492,7 @@ fi
 
 if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
   if [[ -z $up_blocked_by ]]; then
+    up_brew_attempted=1
     _up_run required brew "update and upgrade" _up_brew
     local brew_rc=$?
     if [[ -n $up_brew_detail ]]; then
@@ -487,6 +508,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
       fi
       _up_next "PATH=\"\$HOME/.local/bin:\$PATH\" brew update && PATH=\"\$HOME/.local/bin:\$PATH\" brew upgrade --no-ask"
       _up_next "rerun up"
+      _up_brew_advisory "brew doctor" "diagnostics" doctor
     fi
   else
     _up_not_run brew
@@ -561,6 +583,18 @@ elif [[ -n $up_blocked_by ]]; then
   fi
 else
   _up_commit_lock "flake lock" "$flake_lock" "chore(nix): update flake lock"
+fi
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  if ((frozen)); then
+    _up_skip "brew vulns" "frozen mode"
+  elif ((no_audit)); then
+    _up_skip "brew vulns" "--no-audit"
+  elif ((!up_brew_attempted)); then
+    _up_skip "brew vulns" "Brew phase not attempted"
+  else
+    _up_brew_advisory "brew vulns" "installed formulae; see coverage report" vulns --list-skipped
+  fi
 fi
 
 if [[ "$OSTYPE" == "darwin"* ]]; then

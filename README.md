@@ -78,6 +78,8 @@ up
 
 On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and `zap` removal of undeclared packages and associated cask files.
 
+On normal macOS runs, `up` runs `brew vulns --list-skipped` after the rebuild if the standalone Brew phase was attempted. It reports findings and coverage gaps for installed formulae, including installed formula dependencies. It does not scan casks or libraries bundled inside formulae. A failed standalone Brew update or upgrade also runs `brew doctor`. Both reports are advisory and retain their native output in the terminal and log. `--no-audit` skips both the lockfile and Brew vulnerability scans; it keeps failure diagnostics enabled. Frozen mode skips the Brew scan. These checks target Homebrew 7; unavailable commands warn without failing the update.
+
 #### Linux (home-manager)
 
 Build and activate home-manager config. This will update packages as per [`flake.nix`](.config/nix/flake.nix)
