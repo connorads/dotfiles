@@ -27,6 +27,8 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
+      # Guards --force-with-lease only (what lazygit sends); plain --force bypasses it.
+      push.useForceIfIncludes = true;
       rebase.autosquash = true;
       rebase.updateRefs = true;
       fetch.prune = true;

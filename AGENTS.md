@@ -541,6 +541,17 @@ git config guard.allowNonGithubEmail true
 Requires git >= 2.54; older git silently ignores the `hook.*` keys, so `git hooks status`
 is how you check what actually fires.
 
+### Force-push guard
+
+`push.useForceIfIncludes = true` (same nix module) adds `--force-if-includes` to
+every `--force-with-lease`, which is what lazygit's "branch has diverged" prompt
+sends. Git then requires the remote tip to appear in the local branch's reflog,
+so a lease that matches only because `fetch` just ran no longer lets the push
+discard commits never integrated locally. The rejection reads `[rejected] ...
+(stale info)`. Integrate first (`git pull --rebase`) and the same push goes
+through; fast-forwards, merges and rebased-branch force pushes are unaffected.
+Plain `git push --force` or `--no-force-if-includes` is the typed escape hatch.
+
 ## Git Hooks (hk)
 
 Dotfiles commit hooks are tracked in `~/.hk-hooks/` and configured via:
