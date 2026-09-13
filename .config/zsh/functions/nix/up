@@ -46,7 +46,7 @@ local up_mode=update up_failed=0 up_started=$SECONDS up_blocked_by="" up_sudo_fa
 local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_next up_dirty_locks
 local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
 local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
-local up_brew_detail=""
+local up_brew_detail="" up_brew_resolved=0
 local up_phase_diagnosis=""
 
 (umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
@@ -385,25 +385,34 @@ _up_reapply_patches() {
 
 _up_brew() {
   # Homebrew locates gh itself for bottle attestation. A project-installed mise
-  # shim can otherwise shadow the global wrapper while having no active version
-  # outside that project. Keep the wrapper first for both Homebrew processes.
-  local brew_path="$HOME/.local/bin:$PATH" before="" after="" rc resolved remaining
-  before=$(PATH="$brew_path" brew outdated --json=v2 2>/dev/null) || before=""
-  PATH="$brew_path" brew update && PATH="$brew_path" brew upgrade --no-ask
-  rc=$?
-  after=$(PATH="$brew_path" brew outdated --json=v2 2>/dev/null) || after=""
+  # shim can otherwise shadow the global wrapper without an active version.
+  local brew_path="$HOME/.local/bin:$PATH" before="" after="" rc remaining
+  local snapshot_filter='type == "object" and
+    (.formulae | type == "array") and (.casks | type == "array") and
+    all(.formulae[], .casks[]; type == "object" and (.name | type == "string"))'
 
-  if [[ -n $before && -n $after ]] && print -r -- "$before" | jq -e '.formulae and .casks' >/dev/null 2>&1 && print -r -- "$after" | jq -e '.formulae and .casks' >/dev/null 2>&1; then
-    resolved=$(jq -nr --argjson before "$before" --argjson after "$after" '
-      (($before.formulae + $before.casks) | map(.name) | unique) as $b
-      | (($after.formulae + $after.casks) | map(.name) | unique) as $a
-      | ($b - $a) | length')
-    remaining=$(print -r -- "$after" | jq -r '[.formulae[].name, .casks[].name] | unique | join(", ")')
+  PATH="$brew_path" brew update || return $?
+  before=$(HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew outdated --json=v2) || before=""
+  HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew upgrade --no-ask
+  rc=$?
+  after=$(HOMEBREW_NO_AUTO_UPDATE=1 PATH="$brew_path" brew outdated --json=v2) || after=""
+
+  up_brew_detail="package counts unavailable"
+  if [[ -n $before && -n $after ]] &&
+    print -r -- "$before" | jq -e "$snapshot_filter" >/dev/null &&
+    print -r -- "$after" | jq -e "$snapshot_filter" >/dev/null; then
+    up_brew_resolved=$(jq -nr --argjson before "$before" --argjson after "$after" '
+      def packages: [.formulae[] | ["formula", .name]] + [.casks[] | ["cask", .name]];
+      ($before | packages | unique) - ($after | packages | unique) | length')
+    remaining=$(print -r -- "$after" | jq -r '
+      [.formulae[] | "formula/" + .name] + [.casks[] | "cask/" + .name] | unique | join(", ")')
     if [[ -n $remaining ]]; then
-      up_brew_detail="$resolved upgraded; remaining: $remaining"
+      up_brew_detail="$up_brew_resolved no longer outdated; remaining after upgrade: $remaining"
     else
-      up_brew_detail="$resolved upgraded; none remaining"
+      up_brew_detail="$up_brew_resolved no longer outdated; none remaining after upgrade"
     fi
+  else
+    print -u2 "up: Homebrew package snapshots unavailable or invalid; counts unavailable"
   fi
   return $rc
 }
@@ -468,7 +477,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
     if [[ -n $up_brew_detail ]]; then
       up_phase_details[-1]=$up_brew_detail
       [[ -n $up_phase_diagnosis ]] && up_phase_details[-1]+="; $up_phase_diagnosis"
-      if ((brew_rc)) && [[ $up_brew_detail != "0 upgraded;"* ]]; then
+      if ((brew_rc && up_brew_resolved > 0)); then
         up_phase_states[-1]=PARTIAL
       fi
     fi
@@ -476,7 +485,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
       if grep -qF 'No version is set for shim: gh' "$up_log"; then
         up_phase_details[-1]="${up_phase_details[-1]}; inactive mise gh shim selected"
       fi
-      _up_next "PATH=\"\$HOME/.local/bin:\$PATH\" brew update && brew upgrade --no-ask"
+      _up_next "PATH=\"\$HOME/.local/bin:\$PATH\" brew update && PATH=\"\$HOME/.local/bin:\$PATH\" brew upgrade --no-ask"
       _up_next "rerun up"
     fi
   else

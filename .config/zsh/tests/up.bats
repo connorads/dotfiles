@@ -372,9 +372,9 @@ EOF
 @test "up reports Homebrew partial success from before and after state" {
   BREW_PARTIAL=1 run_zsh_function "$UP" --no-audit
   [ "$status" -ne 0 ]
-  [[ "$output" == *"brew"*"1 upgraded; remaining: podman"* ]] || false
+  [[ "$output" == *"brew"*"1 no longer outdated; remaining after upgrade: formula/podman"* ]] || false
   [[ "$output" == *"Not attempted"*"flake update"*"blocked by brew"* ]] || false
-  [[ "$output" == *'PATH="$HOME/.local/bin:$PATH" brew update && brew upgrade --no-ask'*"rerun up"* ]] || false
+  [[ "$output" == *'PATH="$HOME/.local/bin:$PATH" brew update && PATH="$HOME/.local/bin:$PATH" brew upgrade --no-ask'*"rerun up"* ]] || false
 }
 
 @test "up diagnoses an inactive mise gh shim from the captured Homebrew failure" {
@@ -419,7 +419,7 @@ EOF
   run_zsh_function "$UP" --no-audit
   [ "$status" -ne 0 ]
   [[ "$output" == *"disk space exhausted"*"recent output:"* ]] || false
-  [[ "$output" == *"Failed"*"1 upgraded; remaining: podman; disk space exhausted"* ]] || false
+  [[ "$output" == *"Failed"*"1 no longer outdated; remaining after upgrade: formula/podman; disk space exhausted"* ]] || false
   [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"*"rerun up"* ]] || false
   [[ "$output" == *"full log:"* ]] || false
   ! grep -qF 'nfu' "$TEST_LOG"
@@ -427,7 +427,7 @@ EOF
 
   run_zsh_function "$UP" --no-audit --verbose
   [ "$status" -ne 0 ]
-  [[ "$output" == *"Failed"*"0 upgraded; remaining: podman; disk space exhausted"* ]] || false
+  [[ "$output" == *"Failed"*"0 no longer outdated; remaining after upgrade: formula/podman; disk space exhausted"* ]] || false
   [[ "$output" == *"Next"*"Free disk space before retrying"*"brew update"* ]] || false
 }
 
@@ -675,4 +675,55 @@ EOF
   [ "$status" -eq 0 ]
   grep -qFx "mise-python=$TEST_HOME/custom python" "$TEST_LOG"
   ! grep -qF 'mise which python' "$TEST_LOG"
+}
+
+@test "up refreshes metadata before counting formula and cask progress" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+case "$1" in
+  update) : >"$HOME/refreshed" ;;
+  outdated)
+    [ "${HOMEBREW_NO_AUTO_UPDATE:-}" = 1 ] || exit 9
+    if [ -f "$HOME/refreshed" ] && [ ! -f "$HOME/upgraded" ]; then
+      echo '{"formulae":[{"name":"same"}],"casks":[{"name":"same"}]}'
+    else
+      echo '{"formulae":[],"casks":[]}'
+    fi ;;
+  upgrade)
+    [ "${HOMEBREW_NO_AUTO_UPDATE:-}" = 1 ] || exit 9
+    : >"$HOME/upgraded" ;;
+esac
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"2 no longer outdated; none remaining after upgrade"* ]]
+}
+
+@test "up snapshot errors do not fail an upgrade or invent progress" {
+  write_stub brew <<'EOF'
+#!/usr/bin/env bash
+echo "brew $*" >>"$TEST_LOG"
+if [ "$1" = outdated ]; then
+  echo 'snapshot unavailable' >&2
+  echo '{"formulae":{},"casks":[]}'
+  exit "${SNAPSHOT_EXIT:-0}"
+fi
+exit 0
+EOF
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"counts unavailable"* ]]
+  grep -qF 'snapshot unavailable' "$XDG_CACHE_HOME"/up/*.log
+  : >"$TEST_HOME/.config/nix/flake.lock"
+  SNAPSHOT_EXIT=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"counts unavailable"* ]]
+}
+
+@test "up failed refresh never upgrades or captures misleading snapshots" {
+  BREW_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 1 ]
+  ! grep -qF 'brew upgrade' "$TEST_LOG"
+  ! grep -qF 'brew outdated' "$TEST_LOG"
 }
