@@ -47,6 +47,7 @@ local -a up_phase_names up_phase_states up_phase_details up_phase_durations up_n
 local up_log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/up"
 local up_log="$up_log_dir/$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.log"
 local up_brew_detail=""
+local up_phase_diagnosis=""
 
 (umask 077 && mkdir -p "$up_log_dir" && : >"$up_log") || {
   print -u2 "up: cannot create log: $up_log"
@@ -124,6 +125,7 @@ _up_mise() {
 
 _up_failure_excerpt() {
   local name=$1
+  [[ -n $up_phase_diagnosis ]] && print -u2 "!! $name failed - $up_phase_diagnosis"
   print -u2 "!! $name failed - recent output:"
   tail -n 20 "$up_log" >&2
   print -u2 "   full log: $up_log"
@@ -132,7 +134,9 @@ _up_failure_excerpt() {
 _up_run() {
   local policy=$1 name=$2 detail=$3
   shift 3
-  local started=$SECONDS rc state
+  local started=$SECONDS rc state log_start log_end
+  up_phase_diagnosis=""
+  log_start=$(( $(wc -l <"$up_log") + 1 ))
 
   print "=> $name"
   if [[ $policy == advisory ]]; then
@@ -143,6 +147,11 @@ _up_run() {
   fi
   rc=$?
   if ((rc)); then
+    log_end=$(( $(wc -l <"$up_log") ))
+    if sed -n "${log_start},${log_end}p" "$up_log" | grep -F 'No space left on device' >/dev/null; then
+      up_phase_diagnosis="disk space exhausted"
+      _up_next "Free disk space before retrying"
+    fi
     if [[ $policy == required ]]; then
       state=FAILED
       _up_block "$name"
@@ -150,6 +159,7 @@ _up_run() {
       state=WARN
     fi
     [[ -n $detail ]] && detail="$detail; exit $rc" || detail="exit $rc"
+    [[ -n $up_phase_diagnosis ]] && detail="$detail; $up_phase_diagnosis"
     _up_failure_excerpt "$name"
   elif [[ $policy == required ]]; then
     state=DONE
@@ -457,6 +467,7 @@ if ((!frozen)) && [[ "$OSTYPE" == "darwin"* ]]; then
     local brew_rc=$?
     if [[ -n $up_brew_detail ]]; then
       up_phase_details[-1]=$up_brew_detail
+      [[ -n $up_phase_diagnosis ]] && up_phase_details[-1]+="; $up_phase_diagnosis"
       if ((brew_rc)) && [[ $up_brew_detail != "0 upgraded;"* ]]; then
         up_phase_states[-1]=PARTIAL
       fi
