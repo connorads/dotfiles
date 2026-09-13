@@ -428,7 +428,7 @@ if [[ "$agent" == claude ]]; then
   [[ -f "$transcript" ]] || { _atp_die "transcript not found: $transcript"; return 1; }
 else
   local cmeta
-  cmeta=$(_atp_lib "$session_lib" codex_session_resolve_for_pid "$apid" "" 2>/dev/null)
+  cmeta=$(_atp_lib "$session_lib" codex_session_resolve_for_pid "$apid" "" "$opt_pane" 2>/dev/null)
   [[ -n "$cmeta" ]] || { _atp_die "cannot resolve the Codex rollout for pid $apid"; return 1; }
   sid=$(print -r -- "$cmeta" | jq -r '.sessionId // empty' 2>/dev/null)
   origin_cwd=$(print -r -- "$cmeta" | jq -r '.cwd // empty' 2>/dev/null)
