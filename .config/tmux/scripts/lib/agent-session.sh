@@ -139,27 +139,67 @@ agent_lsof_command() {
 # than assuming ~/.codex.
 codex_session_file_for_pid() {
 	local pid="$1"
+	local pane="${2:-}"
 	local lsof_bin=""
+	local candidates=""
+	local published=""
+	local file=""
 
 	[ -n "$pid" ] || return 0
 	lsof_bin=$(agent_lsof_command)
 	[ -n "$lsof_bin" ] || return 0
 
-	"$lsof_bin" -p "$pid" 2>/dev/null |
-		grep '\.jsonl$' |
+	# A Codex process holds every thread's rollout open: the user's thread plus
+	# each subagent it has spawned, and a subagent's rollout stays open after the
+	# subagent finishes. lsof lists by fd, and a subagent's later open() reuses a
+	# freed lower fd, so "first listed" names the wrong thread for the rest of any
+	# session that ever spawned one.
+	candidates=$("$lsof_bin" -p "$pid" 2>/dev/null |
 		grep '/sessions/.*/rollout-.*\.jsonl$' |
-		awk '{print $NF}' |
-		head -1 || true
+		awk '{print $NF}')
+	[ -n "$candidates" ] || return 0
+
+	# Exact answer first: Codex's own SessionStart hook publishes the thread's
+	# rollout to the pane (@codex_rollout_path, agent-codex-session.sh). The hook
+	# runs at thread scope for the parent thread only - subagents get
+	# SubagentStart - and re-runs on resume, /new and compaction, so it names the
+	# thread the TUI is on. Trust it only while this process holds that file
+	# open, so a value left by an earlier Codex in the same pane cannot name a
+	# dead thread.
+	if [ -n "$pane" ]; then
+		published=$(tmux show-options -pqv -t "$pane" @codex_rollout_path 2>/dev/null || true)
+		if [ -n "$published" ] && grep -qxF -- "$published" <<<"$candidates"; then
+			printf '%s\n' "$published"
+			return 0
+		fi
+	fi
+
+	# No usable pane option (pre-hook launch, hooks untrusted, foreign
+	# CODEX_HOME): pick by session_meta, skipping subagent threads. The first
+	# candidate stays the fallback when none can be read (file gone, jq absent).
+	if command -v jq >/dev/null 2>&1; then
+		while IFS= read -r file; do
+			[ -f "$file" ] || continue
+			if head -1 "$file" 2>/dev/null |
+				jq -e 'select(.type == "session_meta") | (.payload.thread_source // "user") != "subagent"' >/dev/null 2>&1; then
+				printf '%s\n' "$file"
+				return 0
+			fi
+		done <<<"$candidates"
+	fi
+
+	printf '%s\n' "${candidates%%$'\n'*}"
 }
 
-# codex_session_resolve_for_pid <pid> [cwd]
+# codex_session_resolve_for_pid <pid> [cwd] [pane]
 # Emit resolver JSON. status=resolved includes sessionId/cwd/rolloutPath.
 codex_session_resolve_for_pid() {
 	local pid="$1"
 	local cwd="${2:-}"
+	local pane="${3:-}"
 	local session_file=""
 
-	session_file=$(codex_session_file_for_pid "$pid")
+	session_file=$(codex_session_file_for_pid "$pid" "$pane")
 	[ -n "$session_file" ] || return 1
 	[ -f "$session_file" ] || return 1
 	command -v jq >/dev/null 2>&1 || return 1
@@ -184,7 +224,8 @@ codex_session_resolve_for_pid() {
 codex_session_id_for_pid() {
 	local pid="$1"
 	local cwd="${2:-}"
+	local pane="${3:-}"
 
-	codex_session_resolve_for_pid "$pid" "$cwd" |
+	codex_session_resolve_for_pid "$pid" "$cwd" "$pane" |
 		jq -r '.sessionId // empty' 2>/dev/null | head -1 || true
 }

@@ -289,3 +289,86 @@ lsofless_path() { path_without lsof; }
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+@test "codex_session_file_for_pid skips a subagent rollout listed ahead of the user thread" {
+  mkdir -p "$HOME/.codex/sessions/2026/06/24"
+  local sub="$HOME/.codex/sessions/2026/06/24/rollout-sub.jsonl"
+  local main="$HOME/.codex/sessions/2026/06/24/rollout-main.jsonl"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"subagent-thread","cwd":"/w","thread_source":"subagent"}}' >"$sub"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"user-thread","cwd":"/w","thread_source":"user"}}' >"$main"
+  cat >"$TEST_BIN/lsof" <<EOF2
+#!/usr/bin/env bash
+printf 'codex 901 user 44u REG 1,2 0 1 %s\n' "$sub"
+printf 'codex 901 user 56u REG 1,2 0 1 %s\n' "$main"
+EOF2
+  chmod +x "$TEST_BIN/lsof"
+
+  run codex_session_file_for_pid 901
+  [ "$status" -eq 0 ]
+  [ "$output" = "$main" ]
+
+  run codex_session_id_for_pid 901 /w
+  [ "$output" = "user-thread" ]
+}
+
+# Two user threads open in one process - the shape after /new in the TUI, where
+# the old rollout stays open and lists first. Only the pane option can tell
+# them apart.
+write_two_user_threads() {
+  mkdir -p "$HOME/.codex/sessions/2026/06/24"
+  OLD="$HOME/.codex/sessions/2026/06/24/rollout-old.jsonl"
+  NEW="$HOME/.codex/sessions/2026/06/24/rollout-new.jsonl"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"old-thread","cwd":"/w","thread_source":"user"}}' >"$OLD"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"new-thread","cwd":"/w","thread_source":"user"}}' >"$NEW"
+  cat >"$TEST_BIN/lsof" <<EOF2
+#!/usr/bin/env bash
+printf 'codex 901 user 44u REG 1,2 0 1 %s\n' "$OLD"
+printf 'codex 901 user 56u REG 1,2 0 1 %s\n' "$NEW"
+EOF2
+  chmod +x "$TEST_BIN/lsof"
+}
+
+# tmux stub answering @codex_rollout_path for the pane with $1.
+stub_tmux_published_rollout() {
+  export PUBLISHED_ROLLOUT="$1"
+  write_stub tmux <<'EOF2'
+#!/usr/bin/env bash
+case "$*" in
+  *show-options*@codex_rollout_path*) printf '%s\n' "$PUBLISHED_ROLLOUT" ;;
+esac
+EOF2
+}
+
+@test "codex_session_file_for_pid prefers the rollout Codex published to the pane" {
+  write_two_user_threads
+  stub_tmux_published_rollout "$NEW"
+
+  run codex_session_file_for_pid 901 %7
+  [ "$status" -eq 0 ]
+  [ "$output" = "$NEW" ]
+
+  run codex_session_id_for_pid 901 /w %7
+  [ "$output" = "new-thread" ]
+}
+
+@test "codex_session_file_for_pid ignores a published rollout the process no longer holds open" {
+  write_two_user_threads
+  stub_tmux_published_rollout "$HOME/.codex/sessions/2026/06/24/rollout-gone.jsonl"
+
+  run codex_session_file_for_pid 901 %7
+  [ "$status" -eq 0 ]
+  [ "$output" = "$OLD" ]
+}
+
+@test "codex_session_file_for_pid without a pane never consults tmux" {
+  write_two_user_threads
+  write_stub tmux <<'EOF2'
+#!/usr/bin/env bash
+echo "tmux must not be called: $*" >&2
+exit 99
+EOF2
+
+  run codex_session_file_for_pid 901
+  [ "$status" -eq 0 ]
+  [ "$output" = "$OLD" ]
+}

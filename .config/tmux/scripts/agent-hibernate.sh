@@ -313,7 +313,7 @@ cmd_probe() {
 		if [ -n "${AGENT_HIBERNATE_CODEX_META:-}" ]; then
 			meta=$("$AGENT_HIBERNATE_CODEX_META" "$pid" "$cwd" 2>/dev/null) || meta=""
 		else
-			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" 2>/dev/null) || meta=""
+			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" "$pane" 2>/dev/null) || meta=""
 		fi
 		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
 		local rollout flags_json mcp_bundle
@@ -399,7 +399,7 @@ cmd_hibernate() {
 		if [ -n "${AGENT_HIBERNATE_CODEX_META:-}" ]; then
 			meta=$("$AGENT_HIBERNATE_CODEX_META" "$pid" "$cwd" 2>/dev/null) || meta=""
 		else
-			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" 2>/dev/null) || meta=""
+			meta=$(codex_session_resolve_for_pid "$pid" "$cwd" "$pane" 2>/dev/null) || meta=""
 		fi
 		sid=$(jq -r '.sessionId // empty' <<<"$meta" 2>/dev/null)
 		rollout_path=$(jq -r '.rolloutPath // empty' <<<"$meta" 2>/dev/null)
@@ -741,7 +741,7 @@ PY
 			IFS=$'\t' read -r pane_tty pane_pid < <(tmux display-message -p -t "$pane" '#{pane_tty}\t#{pane_pid}' 2>/dev/null)
 			live_pid=$(agent_foreground_pid_for_tty "$pane_tty" codex "$pane_pid")
 			if [ -n "$live_pid" ]; then
-				live_sid=$(codex_session_id_for_pid "$live_pid" "$cwd")
+				live_sid=$(codex_session_id_for_pid "$live_pid" "$cwd" "$pane")
 				if [ "$live_sid" = "$sid" ]; then
 					verified=1
 					break

@@ -41,3 +41,12 @@ EOF
 
   ! grep -q '^agent-state' "$HOOK_LOG"
 }
+
+@test "SessionStart from a subagent transcript publishes nothing to the pane" {
+  rollout="$BATS_TEST_TMPDIR/rollout.jsonl"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"subagent-thread","thread_source":"subagent"}}' >"$rollout"
+  jq -n --arg path "$rollout" '{hook_event_name:"SessionStart", transcript_path:$path}' | "$HOOK"
+
+  ! grep -q '@codex_' "$HOOK_LOG"
+  ! grep -q 'subagent-thread' "$HOOK_LOG"
+}

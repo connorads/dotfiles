@@ -437,3 +437,78 @@ EOF
   assert_log_missing "wt-add"
   assert_log_missing "new-window"
 }
+
+# lsof stub: the process also holds a spawned subagent's rollout open, and it
+# lands first (a lower fd, reused after an MCP pipe closed). Codex keeps the
+# subagent rollout open after the subagent finishes, so this shape persists for
+# the rest of the session.
+stub_lsof_rollouts_subagent_first() {
+  export CODEX_ROLLOUT="$HOME/.codex/sessions/2026/06/24/rollout-one.jsonl"
+  export CODEX_SUBAGENT_ROLLOUT="$HOME/.codex/sessions/2026/06/24/rollout-sub.jsonl"
+  write_stub lsof <<'EOF2'
+#!/usr/bin/env bash
+case "$*" in
+  *-p\ 811*)
+    printf 'codex 811 user 44u REG 1,2 0 1 %s\n' "$CODEX_SUBAGENT_ROLLOUT"
+    printf 'codex 811 user 56u REG 1,2 0 1 %s\n' "$CODEX_ROLLOUT"
+    ;;
+  *) exit 1 ;;
+esac
+EOF2
+}
+
+write_subagent_rollout() {
+  cat >"$CODEX_SUBAGENT_ROLLOUT" <<'EOF2'
+{"type":"session_meta","payload":{"id":"subagent-thread","cwd":"/Users/connorads","cli_version":"0.153.4","thread_source":"subagent","source":{"subagent":{"thread_spawn":{"parent_thread_id":"codex-thread","depth":1}}},"forked_from_id":"codex-thread"}}
+{"type":"response_item","payload":{"text":"ignored"}}
+EOF2
+}
+
+@test "fork targets the pane's user thread, not an open subagent rollout" {
+  stub_ps_with_foreground_codex
+  stub_lsof_rollouts_subagent_first
+  write_valid_rollout
+  write_subagent_rollout
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -q "display-menu" "$TEST_LOG"
+  grep -q -- "codex -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  assert_log_missing "subagent-thread"
+}
+
+# After /new in the TUI both rollouts are user threads and the old one lists
+# first; only the rollout Codex's SessionStart hook published to the pane can
+# name the thread the TUI is on.
+@test "fork targets the thread Codex published to the pane over lsof order" {
+  stub_ps_with_foreground_codex
+  export CODEX_ROLLOUT="$HOME/.codex/sessions/2026/06/24/rollout-one.jsonl"
+  export CODEX_OLD_ROLLOUT="$HOME/.codex/sessions/2026/06/24/rollout-old.jsonl"
+  write_stub lsof <<'EOF2'
+#!/usr/bin/env bash
+case "$*" in
+  *-p\ 811*)
+    printf 'codex 811 user 44u REG 1,2 0 1 %s\n' "$CODEX_OLD_ROLLOUT"
+    printf 'codex 811 user 56u REG 1,2 0 1 %s\n' "$CODEX_ROLLOUT"
+    ;;
+  *) exit 1 ;;
+esac
+EOF2
+  write_valid_rollout
+  cat >"$CODEX_OLD_ROLLOUT" <<'EOF2'
+{"type":"session_meta","payload":{"id":"old-thread","cwd":"/Users/connorads","cli_version":"0.154.0","thread_source":"user"}}
+EOF2
+  write_stub tmux <<'EOF2'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$TEST_LOG"
+case "$*" in
+  *show-options*@codex_rollout_path*) printf '%s\n' "$CODEX_ROLLOUT" ;;
+esac
+EOF2
+
+  run "$MENU" "%1" "/dev/ttys010" "/Users/connorads" ""
+  [ "$status" -eq 0 ]
+  grep -q -- "show-options -pqv -t %1 @codex_rollout_path" "$TEST_LOG"
+  grep -q -- "codex -C /Users/connorads fork codex-thread" "$TEST_LOG"
+  assert_log_missing "old-thread"
+}
