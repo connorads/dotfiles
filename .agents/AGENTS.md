@@ -70,6 +70,12 @@ When writing plans, include how each step will be verified.
 
 When `rm -rf` is blocked, do not route around it with another permanent-deletion command. Outside `/tmp`, `/private/tmp`, `/var/tmp` and `$TMPDIR`, move the target to Trash with `trash`. Inside those, leave agent-created data for system cleanup and `mktemp -d` a fresh directory if needed. For generated output, prefer the project's native clean command.
 
+## Scope
+
+Before editing, state the change in one sentence: `<verb> <one thing> so that <observable outcome>`. Every hunk in the diff must be required by that sentence.
+Apply the deletion test to each addition before keeping it: remove it, and if the stated outcome still holds, it is out. A parameter no caller passes, an export with no second importer, a branch for a case no input produces, a dependency the standard library covers, all fail the test.
+Work the sentence does not name ("also", "while here", "for later") is a separate change. Name it in the summary; do not make it.
+
 ## Design
 
 Sketch domain types, workflows and ports before substantial implementation.
