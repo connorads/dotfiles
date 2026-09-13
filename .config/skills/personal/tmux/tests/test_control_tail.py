@@ -1,8 +1,13 @@
-"""Unit tests for control-tail.py's pure parsing helpers."""
+"""Parsing and subprocess tests for the tmux control stream."""
 
 import importlib.util
+import os
+import signal
+import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).parent.parent / "scripts" / "control-tail.py"
 spec = importlib.util.spec_from_file_location("control_tail", SCRIPT)
@@ -12,6 +17,53 @@ spec.loader.exec_module(control_tail)
 
 decode_tmux_payload = control_tail.decode_tmux_payload
 parse_output_line = control_tail.parse_output_line
+
+
+@pytest.mark.parametrize(
+    ("burst", "expected_status", "message"),
+    [
+        (
+            b"%begin 0 0 0\n%end 0 0 0\n%output %1 ignored\n%output %2 target-only\n",
+            0,
+            "Pattern 'target-only' found",
+        ),
+        (b"%output %2 " + b"x" * 65536 + b"target-only\n", 0, "Pattern 'target-only' found"),
+        (b"%output %1 target-only\n", 1, "Timeout after"),
+        (b"%output %2 incomplete", 1, "Timeout after"),
+    ],
+    ids=["burst", "line-spans-reads", "other-pane", "incomplete-line"],
+)
+def test_control_stream_handles_bursts_and_incomplete_lines(
+    tmp_path, burst, expected_status, message
+):
+    fake_tmux = tmp_path / "tmux"
+    fake_tmux.write_text(
+        f"#!{sys.executable}\n"
+        "import os, sys\n"
+        "if sys.argv[1] == 'display-message':\n"
+        "    print('%2|$1')\n"
+        "elif sys.argv[1] == '-C':\n"
+        f"    os.write(1, {burst!r})\n"
+        "    sys.stdin.readline()\n"
+    )
+    fake_tmux.chmod(0o755)
+    process = subprocess.Popen(
+        [sys.executable, str(SCRIPT), "-t", "%2", "-p", "target-only", "--no-seed", "-T", "1"],
+        env=dict(os.environ, TMUX_BIN=str(fake_tmux)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=5)
+        assert process.returncode == expected_status, stdout + stderr
+        assert message in stdout + stderr
+    finally:
+        # A blocked reader must not leave its fake tmux child behind.
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
 
 
 class TestDecodeTmuxPayload:
