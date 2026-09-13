@@ -140,6 +140,100 @@ exit 0
 EOF
 }
 
+@test "up cleanup summary separates policy from successful phase outcomes" {
+  local cmd
+  for cmd in nix-store nix-collect-garbage launchctl systemctl du df; do
+    write_stub "$cmd" <<'EOF'
+#!/usr/bin/env bash
+echo "${0##*/} $*" >>"$TEST_LOG"
+exit 99
+EOF
+  done
+  run_zsh_function "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cleanup"*"Nix GC: scheduled separately; not run by up (see Nix configuration)"* ]] || false
+  [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade completed"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy removes undeclared packages with zap, including associated cask files"* ]] || false
+  [[ "$output" == *"mise: unused versions and caches are not explicitly pruned by up"* ]] || false
+  [[ "$output" != *"APT autoremove:"* ]] || false
+  ! grep -E 'brew cleanup|mise (prune|cache)|nix-store|nix-collect-garbage|launchctl|systemctl|^du |^df ' "$TEST_LOG"
+}
+
+@test "up frozen cleanup summary retains rebuild policy" {
+  run_zsh_function "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade not attempted (frozen mode)"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild completed; policy removes undeclared packages with zap"* ]] || false
+  ! grep -qF 'brew upgrade' "$TEST_LOG"
+}
+
+@test "up cleanup summary does not claim success after partial Homebrew failure" {
+  BREW_PARTIAL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade failed; cleanup completion unknown"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild not attempted; policy"* ]] || false
+}
+
+@test "up cleanup summary distinguishes failed rebuild from early blocking" {
+  DRS_FAIL=1 run_zsh_function "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Homebrew declared packages: rebuild failed; cleanup completion unknown; policy"* ]] || false
+
+  : >"$TEST_HOME/.config/nix/flake.lock"
+  OSV_STUB_MODE=mal run_zsh_function "$UP"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Homebrew automatic cleanup: managed by Homebrew; upgrade not attempted"* ]] || false
+  [[ "$output" == *"Homebrew declared packages: rebuild not attempted; policy"* ]] || false
+}
+
+run_linux_up() {
+  # zsh initialises OSTYPE itself; assign it inside the isolated shell.
+  OSTYPE=linux-gnu
+  source "$1" "${@:2}"
+}
+
+@test "up Linux cleanup summary reports APT success failure and frozen skip" {
+  write_stub apt-get <<'EOF'
+#!/usr/bin/env bash
+echo "apt-get $*" >>"$TEST_LOG"
+[ "${APT_FAIL:-}" = "${1:-}" ] && exit 1
+exit 0
+EOF
+  write_stub sudo <<'EOF'
+#!/usr/bin/env bash
+echo "sudo $*" >>"$TEST_LOG"
+[ "${1:-}" = "-v" ] && exit 0
+[ "${1:-}" = "-n" ] && exit 0
+exec "$@"
+EOF
+  write_stub hms <<'EOF'
+#!/usr/bin/env bash
+echo hms >>"$TEST_LOG"
+EOF
+  # Export the helper as source text rather than relying on inherited OSTYPE.
+  local driver="$TEST_HOME/linux-up.zsh"
+  declare -f run_linux_up >"$driver"
+  printf '\nrun_linux_up "$@"\n' >>"$driver"
+
+  run zsh --no-rcs "$driver" "$UP" --no-audit
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"APT autoremove: completed"* ]] || false
+  [[ "$output" != *"Homebrew automatic cleanup:"* ]] || false
+  [[ "$output" == *"Nix GC: scheduled separately; not run by up"* ]] || false
+  grep -qF 'apt-get autoremove -y' "$TEST_LOG"
+
+  : >"$TEST_HOME/.config/nix/flake.lock"
+  : >"$TEST_LOG"
+  APT_FAIL=upgrade run zsh --no-rcs "$driver" "$UP" --no-audit
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"APT autoremove: APT phase failed; cleanup completion unknown"* ]] || false
+  ! grep -qF 'apt-get autoremove' "$TEST_LOG"
+
+  run zsh --no-rcs "$driver" "$UP" --frozen
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"APT autoremove: not attempted (frozen mode)"* ]] || false
+}
+
 @test "up bumps both lockfiles: commit each, brew, flake; no separate mise lock" {
   MISE_SIMULATE_BUMP=1 run_zsh_function "$UP"
   [ "$status" -eq 0 ]
