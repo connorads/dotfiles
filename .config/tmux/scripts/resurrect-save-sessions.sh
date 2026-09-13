@@ -126,6 +126,7 @@ find_codex_session() {
 	local dir="$1"
 	local pane_pid="$2"
 	local tty="$3"
+	local pane="${4:-}"
 	local session_id=""
 	local codex_pid=""
 
@@ -135,7 +136,7 @@ find_codex_session() {
 		return
 	fi
 
-	session_id=$(codex_session_id_for_pid "$codex_pid" "$dir")
+	session_id=$(codex_session_id_for_pid "$codex_pid" "$dir" "$pane")
 
 	echo "$session_id"
 }
@@ -242,7 +243,7 @@ while IFS=$'\t' read -r pane_key pid cmd dir tty; do
 		fi
 		;;
 	codex)
-		sid=$(find_codex_session "$dir" "$pid" "$tty")
+		sid=$(find_codex_session "$dir" "$pid" "$tty" "$pane_key")
 		if [ -n "$sid" ]; then
 			found_sessions=1
 			CODEX_PANE_SESSIONS["$pane_key"]="$sid"

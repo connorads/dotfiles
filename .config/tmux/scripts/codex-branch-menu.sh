@@ -305,7 +305,7 @@ command -v lsof >/dev/null 2>&1 || {
 codex_pid=$(agent_foreground_pid_for_tty "$pane_tty" "codex" "$pane_pid")
 [ -n "$codex_pid" ] || no_session
 
-resolved=$(codex_session_resolve_for_pid "$codex_pid" "$pane_path" 2>/dev/null || true)
+resolved=$(codex_session_resolve_for_pid "$codex_pid" "$pane_path" "$pane_id" 2>/dev/null || true)
 [ -n "$resolved" ] || not_forkable "$codex_pid" "no active rollout"
 
 sid=$(printf '%s' "$resolved" | jq -r '.sessionId // empty' 2>/dev/null || true)

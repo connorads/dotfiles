@@ -631,6 +631,33 @@ kept resolving. `agent_lsof_command` therefore falls back to `/usr/sbin/lsof`
 (`AGENT_LSOF_FALLBACK` overrides for tests), and the keepalive plist lists
 `/usr/sbin` too - defence in depth, since either alone closes the gap.
 
+**The process holds more than one rollout open, so the exact answer comes from
+Codex, not from `lsof` order.** A spawned subagent writes its own rollout under
+the same PID, and that file stays open after the subagent finishes; after `/new`
+the old thread's rollout stays open too. `lsof` lists by fd, and a later
+`open()` reuses a freed lower fd, so the first file listed names the wrong
+thread for the rest of any such session - and a fork of that id
+(`prefix + Alt+b`) opens the subagent's thread, not the pane's.
+`codex_session_file_for_pid <pid> [pane]` therefore resolves in two tiers:
+
+1. **Exact.** Codex's own `SessionStart` hook
+   ([`scripts/agent-codex-session.sh`](./scripts/agent-codex-session.sh), wired
+   in [`~/.codex/hooks.json`](../../.codex/hooks.json)) publishes the thread's
+   rollout to the pane as `@codex_rollout_path`. Codex documents the event as
+   thread-scoped for the parent thread only - subagents get `SubagentStart` -
+   and re-fires it with `source` `resume`, `clear` and `compact`, so the option
+   names the thread the TUI is on. It is trusted only while the live process
+   still holds that file open, so a value left by an earlier Codex in the same
+   pane can never name a dead thread. The hook itself refuses to publish a
+   transcript whose `session_meta` says `subagent`, in case that contract moves.
+2. **Heuristic.** With no usable pane option (a launch that predates the hook,
+   untrusted hooks, a foreign `CODEX_HOME`), pick the first open rollout whose
+   `session_meta` is not `thread_source: subagent`; the first listed is the last
+   resort when none can be read. This tier cannot tell two user threads apart.
+
+Every consumer - the branch menu, resurrect saves, hibernate and thaw - passes
+its pane through, so all of them share the exact tier.
+
 **Every pane running an agent is saved with a command.** The `foreground`
 save-command strategy
 ([`save_command_strategies/foreground.sh`](./save_command_strategies/foreground.sh),

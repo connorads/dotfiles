@@ -13,6 +13,12 @@ event=${1:-}
 rollout=$(printf '%s' "$payload" | jq -r '.transcript_path // empty' 2>/dev/null)
 thread=""
 if [ -n "$rollout" ] && [ -s "$rollout" ]; then
+	# Codex documents SessionStart as parent-thread only (subagents get
+	# SubagentStart), so a subagent transcript here would be a Codex change;
+	# publishing it would point every consumer at the wrong thread.
+	if jq -e 'select(.type == "session_meta") | .payload.thread_source == "subagent"' "$rollout" >/dev/null 2>&1; then
+		exit 0
+	fi
 	thread=$(jq -r 'select(.type == "session_meta") | .payload.id // empty' "$rollout" 2>/dev/null | head -1)
 fi
 [ -n "$rollout" ] && tmux set-option -p -t "$pane" @codex_rollout_path "$rollout" 2>/dev/null || true
