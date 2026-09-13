@@ -50,12 +50,8 @@ actionlint = "1"
 zizmor = "1"
 # Powers the hk `bats-lint` step's rules (.hk-hooks/bats-lint/, docs/adr/0004).
 ast-grep = "0.45"
-# Every install runs the vfox plugin's install script, which picks
-# /usr/bin/python3 (3.9.6 on macOS) over mise's python; 580+ needs >= 3.10 to
-# install, so each release breaks `up` with `unsupported operand type(s) for |`.
-# Recover with: CLOUDSDK_PYTHON="$(mise which python)" mise upgrade gcloud
-# Not in [env]: gcloud ships its own interpreter (`bundled-python3-unix`) at
-# runtime, and a global CLOUDSDK_PYTHON would override the tested one.
+# up supplies mise's Python during installation; the macOS installer otherwise
+# selects /usr/bin/python3. Runtime uses gcloud's bundled Python.
 gcloud = "latest"
 aws = "2"
 codex = "latest"
@@ -117,7 +113,9 @@ fnox = "1"
 # Reapply local generated-JS image paste patch after Pi updates. The script
 # exits 0 on a missing needle so update is never blocked; it drops a stale marker.
 "npm:@earendil-works/pi-coding-agent" = { version = "latest", postinstall = "$HOME/.config/zsh/functions/pi/pi-image-paste-patch --reapply \"$MISE_TOOL_INSTALL_PATH\"" }
-"npm:@playwright/cli" = "0"
+# 0.1.19 lacks provenance after an ESRP publishing switch. Hold until a
+# trusted release follows microsoft/playwright-cli#459.
+"npm:@playwright/cli" = "0.1.18"
 "npm:typescript" = "7"
 # Also pinned in ~/git/kb/mise.toml so that repo documents its own dependency.
 # aube blocks dependency build scripts by default and qmd's native deps need
