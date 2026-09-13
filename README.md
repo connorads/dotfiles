@@ -71,10 +71,12 @@ Update everything: bump `mise.lock` + `flake.lock` (committing each), upgrade br
 
 ```sh
 up
-# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/brew/commit
+# up -s / up --frozen   # frozen: install clean mise.lock, rebuild current flake.lock; no bumps/commit
 ```
 
 `up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `brew upgrade`, `mise upgrade`) can still be run individually.
+
+On macOS, frozen mode skips the standalone Homebrew upgrade. The rebuild still runs Homebrew Bundle with the declared package policy, including upgrades and `zap` removal of undeclared packages and associated cask files.
 
 #### Linux (home-manager)
 
@@ -93,6 +95,12 @@ up
 ```
 
 `up` is the canonical updater; see [`AGENTS.md`](AGENTS.md) for the lockfile-commit posture and supply-chain quarantine it enforces. The underlying steps (`nfu` for `flake.lock`, `mise upgrade`) can still be run individually.
+
+#### Cleanup
+
+The `up` summary separates cleanup policy from update results. Homebrew manages automatic cleanup during upgrades. A successful upgrade or rebuild does not report what cleanup removed. On non-NixOS Linux with APT, `up` runs autoremove after a successful upgrade; frozen mode skips this phase. `up` does not explicitly prune mise versions or caches.
+
+Nix garbage collection runs separately each day at 03:15 with `--delete-older-than 14d`. macOS also schedules store optimisation at 03:30. Linux home-manager schedules collection for user profiles; the rpi5 repo owns its system collection policy. See [macOS policy](.config/nix/modules/darwin-shared.nix) and [Linux policy](.config/nix/modules/linux-base.nix). The summary does not check scheduler health or scan reclaimable space.
 
 ## Setup
 

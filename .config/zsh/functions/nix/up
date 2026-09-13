@@ -2,9 +2,10 @@
 # up: update tools, lockfiles, and rebuild for current OS
 # flags: --frozen / -s / --skip-flake
 #                           frozen rebuild: bump nothing. Require a clean
-#                           mise.lock, install it, skip brew/apt and the flake
-#                           bump/commit, then rebuild. A dirty flake.lock is
-#                           allowed so a failed rebuild can be retried.
+#                           mise.lock, install it, skip standalone brew/apt and
+#                           the flake bump/commit, then rebuild. On macOS the
+#                           rebuild includes brew. A dirty flake.lock is allowed
+#                           so a failed rebuild can be retried.
 #        --os               also install no-restart macOS updates (macOS only);
 #                           restart-required (OS) updates are only reported, never
 #                           applied, so a headless FileVault box is never rebooted.
@@ -159,6 +160,35 @@ _up_run() {
   return $rc
 }
 
+_up_cleanup_outcome() {
+  local index=${up_phase_names[(Ie)$1]}
+  if ((index == 0)); then
+    print 'not attempted'
+    return
+  fi
+  case ${up_phase_states[$index]} in
+  DONE) print 'completed' ;;
+  FAILED | PARTIAL) print 'failed; cleanup completion unknown' ;;
+  SKIPPED) print "not attempted (${up_phase_details[$index]})" ;;
+  *) print 'not attempted' ;;
+  esac
+}
+
+_up_cleanup_summary() {
+  print ''
+  print 'Cleanup'
+  print '  Nix GC: scheduled separately; not run by up (see Nix configuration)'
+  if [[ $OSTYPE == darwin* ]]; then
+    print "  Homebrew automatic cleanup: managed by Homebrew; upgrade $(_up_cleanup_outcome brew)"
+    print "  Homebrew declared packages: rebuild $(_up_cleanup_outcome rebuild); policy removes undeclared packages with zap, including associated cask files"
+  elif [[ $OSTYPE == linux-gnu && ! -f /etc/NIXOS ]] && command -v apt-get &>/dev/null; then
+    local outcome=$(_up_cleanup_outcome apt)
+    [[ $outcome == failed* ]] && outcome="APT phase $outcome"
+    print "  APT autoremove: $outcome"
+  fi
+  print '  mise: unused versions and caches are not explicitly pruned by up'
+}
+
 _up_summary() {
   local i detail number=1
   print ""
@@ -198,6 +228,8 @@ _up_summary() {
     fi
     printf '  %-13s  %s\n' "${up_phase_names[$i]}" "${up_phase_details[$i]}"
   done
+
+  _up_cleanup_summary
 
   printed=0
   for ((i = 1; i <= ${#up_phase_names}; i++)); do
