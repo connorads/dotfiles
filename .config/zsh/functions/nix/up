@@ -87,8 +87,8 @@ _up_dirty_lock() {
 }
 
 _up_track_lock_if_dirty() {
-  local label=$1 path=$2
-  if ! dotfiles diff --quiet -- "$path" || ! dotfiles diff --cached --quiet -- "$path"; then
+  local label=$1 lock_path=$2
+  if ! dotfiles diff --quiet -- "$lock_path" || ! dotfiles diff --cached --quiet -- "$lock_path"; then
     _up_dirty_lock "$label"
   fi
 }
@@ -111,6 +111,14 @@ _up_logged() {
   else
     "$@" >>"$up_log" 2>&1
   fi
+}
+
+_up_mise() {
+  local install_python=${CLOUDSDK_PYTHON:-}
+  if [[ -z $install_python ]]; then
+    install_python=$(mise which python) || return $?
+  fi
+  CLOUDSDK_PYTHON="$install_python" mise "$@"
 }
 
 _up_failure_excerpt() {
@@ -387,10 +395,10 @@ fi
 
 local mise_ok=1
 if ((frozen)); then
-  _up_run required mise "install committed mise.lock" mise install || mise_ok=0
+  _up_run required mise "install committed mise.lock" _up_mise install || mise_ok=0
   _up_skip "mise lock" "frozen mode"
 else
-  _up_run required mise "upgrade within ranges" mise upgrade || mise_ok=0
+  _up_run required mise "upgrade within ranges" _up_mise upgrade || mise_ok=0
   if ((mise_ok)); then
     _up_commit_lock "mise lock" "$mise_lock" "chore(mise): update tool lock"
   else
