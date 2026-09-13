@@ -61,7 +61,7 @@ EOF
 
 write_valid_rollout() {
   cat >"$CODEX_ROLLOUT" <<'EOF'
-{"type":"session_meta","payload":{"id":"codex-thread","session_id":"wrong-session","cwd":"/Users/connorads","cli_version":"0.142.5","thread_source":"resume"}}
+{"type":"session_meta","payload":{"id":"codex-thread","session_id":"wrong-session","cwd":"/Users/connorads","cli_version":"0.142.5","thread_source":"user"}}
 {"type":"response_item","payload":{"text":"ignored"}}
 EOF
 }

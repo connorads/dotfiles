@@ -50,3 +50,11 @@ EOF
   ! grep -q '@codex_' "$HOOK_LOG"
   ! grep -q 'subagent-thread' "$HOOK_LOG"
 }
+
+@test "SessionStart from a feature-thread transcript publishes nothing to the pane" {
+  rollout="$BATS_TEST_TMPDIR/rollout.jsonl"
+  printf '%s\n' '{"type":"session_meta","payload":{"id":"review-thread","thread_source":"guardian_review"}}' >"$rollout"
+  jq -n --arg path "$rollout" '{hook_event_name:"SessionStart", transcript_path:$path}' | "$HOOK"
+
+  ! grep -q '@codex_' "$HOOK_LOG"
+}
