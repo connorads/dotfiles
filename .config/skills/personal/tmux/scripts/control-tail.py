@@ -212,12 +212,14 @@ def iter_pane_text(args: argparse.Namespace, target: Target):
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     pane_id_bytes = target.pane_id.encode()
     deadline = control_deadline(args)
+    pending = b""
 
     process = subprocess.Popen(
         tmux_command(args, ["-C", "attach", "-t", target.session_id]),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        bufsize=0,
     )
 
     try:
@@ -238,24 +240,29 @@ def iter_pane_text(args: argparse.Namespace, target: Target):
             if deadline is not None and time.monotonic() >= deadline:
                 raise ControlTimeout
 
-            line = process.stdout.readline()
-            if not line:
+            # select observes the OS pipe, not a BufferedReader's unread bytes.
+            # Read chunks so an incomplete line cannot block past the deadline.
+            chunk = os.read(process.stdout.fileno(), 65536)
+            if not chunk:
                 raise_if_exited(process)
                 time.sleep(0.05)
                 continue
 
-            parsed = parse_output_line(line)
-            if parsed is None:
-                continue
+            lines = (pending + chunk).split(b"\n")
+            pending = lines.pop()
+            for line in lines:
+                parsed = parse_output_line(line)
+                if parsed is None:
+                    continue
 
-            output_pane, payload = parsed
-            if output_pane != pane_id_bytes:
-                continue
+                output_pane, payload = parsed
+                if output_pane != pane_id_bytes:
+                    continue
 
-            text = decoder.decode(decode_tmux_payload(payload))
-            if not text:
-                continue
-            yield text
+                text = decoder.decode(decode_tmux_payload(payload))
+                if not text:
+                    continue
+                yield text
     finally:
         stop_control_client(process)
 
