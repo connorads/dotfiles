@@ -34,7 +34,9 @@ patches/<name>/
 - `reason` (string, single line) - why the patch exists. Also generates the
   marker comment (see tokens below), so it is never hand-maintained.
 - `files` (string array) - target paths relative to this dir's parent
-  (the vendor root), e.g. `.agents/skills/figma/SKILL.md`.
+  (the vendor root), so a skill in the unsorted bucket reads
+  `.agents/skills/<name>/SKILL.md` and one in a set carries the set prefix,
+  `hyperframes/.agents/skills/figma/SKILL.md`.
 - `vars` (optional object) - each key maps to a string array; the engine takes
   the cross-product and expands `{{key}}` in both `files` entries and hunk
   text. Lets N identical per-skill edits live as one patch with an explicit,
