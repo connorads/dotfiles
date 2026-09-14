@@ -418,7 +418,15 @@ CLI above; `coord` only calls `agent name` and `agent goto`, so it never writes
   not the agent name, so a goto found by window re-applies it. At launch the
   name is applied by a detached `agent wait && agent name`, because the
   mutator refuses a stateless pane and a foreground child would hold
-  `run-shell`'s pipe, and the key press with it.
+  `run-shell`'s pipe, and the key press with it. **For Codex that name lasts
+  until the first prompt**: Codex creates its thread lazily on the first
+  submit, `SessionStart` fires then, and
+  [`scripts/agent-codex-session.sh`](./scripts/agent-codex-session.sh) resets
+  the pane (`clear`, which drops the name) in the same second as
+  `UserPromptSubmit` sets `working` - 282 such pairs in one month of journal.
+  So after the coordinator's first turn it is findable by window only, and
+  the next key press re-names it. Anything addressing `coord` by agent name
+  across that boundary gets exit 3; address it by pane id, or press the key.
 - **Launch spec** is `~/.config/coord/config`, a `KEY=value` file sourced by
   the function (`COORD_KIND` codex|claude, `COORD_MODEL`, `COORD_DIR`,
   `COORD_WINDOW`, `COORD_FLAGS`); an exported `COORD_*` wins, an empty one
