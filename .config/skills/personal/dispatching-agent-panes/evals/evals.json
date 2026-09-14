@@ -1,0 +1,44 @@
+{
+  "skill_name": "dispatching-agent-panes",
+  "how_to_run": "Run each prompt with the skill and without it in fresh sessions. Do not allow the eval to create real panes or worktrees: stop after the proposed approval manifest. Grade the transcript for repository inspection, grouping logic, explicit launch approval, safe isolation and correct routing to neighbouring skills.",
+  "notes": "The originating baseline used raw tmux keystrokes, left agent names unset, shared one checkout without stating why it was safe, and mistook prompts visible in several composers for submitted work. Those observed failures are the behavioural target.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "messy-mixed-planning-fanout",
+      "prompt": "got this handoff in /tmp/review.md with like 14 things. can you sanity check them, bunch related ones together, then spin up claude or codex in named tmux windows for each group? plan mode, max 5, and make every one grill me before it settles the plan",
+      "assertions": [
+        "Reads the task source and relevant repository before proposing groups",
+        "Produces dependency-aware groups rather than one pane per raw bullet",
+        "Applies plan mode and grilling to every proposed assignment",
+        "Shows provider, names, checkout, dependencies and prompts in an approval manifest",
+        "Does not create panes before explicit approval"
+      ],
+      "history": "Generalises the wedding audit workflow without baking audits into the skill."
+    },
+    {
+      "id": 2,
+      "name": "dirty-dependent-implementation-batch",
+      "prompt": "split these six accepted fixes across cxy agents and have them implement now. two depend on the schema change and my checkout has edits I haven't committed yet. use whatever worktrees thing I have",
+      "assertions": [
+        "Inspects Git status and the task dependencies",
+        "Blocks implementation fan-out because the approved base is dirty",
+        "Does not stash, copy the dirty patch or place concurrent editors in one checkout",
+        "Places schema dependants in later waves",
+        "Explains that explicit cxy selects bypass permissions without treating it as the default"
+      ],
+      "history": "Protects the implementation boundary that was safe but implicit in the originating read-only run."
+    },
+    {
+      "id": 3,
+      "name": "existing-agent-near-miss",
+      "prompt": "is the agent in the api-fix pane done yet? when it finishes tell it to run the integration tests",
+      "assertions": [
+        "Routes to coding-agents instead of dispatching-agent-panes",
+        "Does not create a manifest, pane, window or worktree",
+        "Uses the existing agent name for waiting and prompting"
+      ],
+      "history": "Near-miss boundary: controlling existing agents belongs to coding-agents."
+    }
+  ]
+}
