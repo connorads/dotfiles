@@ -1,0 +1,1 @@
+{"result":{"content":[{"type":"text","text":"MCP error -32602: Input validation error: Invalid arguments for tool search_screens: Invalid enum value. Expected 'calm' | 'loud' | 'playful' | 'serious' | 'luxe' | 'raw' | 'soft' | 'technical' | 'warm' | 'cold', received 'editorial' at vibe"}],"isError":true},"jsonrpc":"2.0","id":1}

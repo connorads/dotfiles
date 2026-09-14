@@ -1,0 +1,22 @@
+{
+  "skill_name": "inspo",
+  "notes": "The skill is loaded deliberately (skl), so eval 1 tests behaviour rather than automatic triggering; eval 2 tests that an agent holding the description does not reach for it. Run each arm in a fresh session with network access. Grade eval 1 from the trace, not the prose.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "design-brief-triggers-and-pixels-precede-markup",
+      "prompt": "i'm building a landing page for a solo consultancy - strategy work for fintech founders. needs to feel expensive and quiet, not startup-loud. can you put together the hero and the first two sections? react + tailwind is fine",
+      "should_trigger": true,
+      "expected_output": "Calls recommend (or search_screens with structured filters) with the user's brief, downloads captures with shots, and Reads at least three of them BEFORE writing any JSX. Design decisions cite specific slugs.",
+      "grading": "Deterministic trace check: the first Read of a capture file (a path under captures/ ending .webp or .png) must precede the first Write/Edit containing markup. Reading an autopsy from get_screen without any prior image Read is a fail, however good the resulting page looks."
+    },
+    {
+      "id": 2,
+      "name": "existing-design-system-does-not-trigger",
+      "prompt": "add a settings page to our admin app. use the existing Card, Toggle and SectionHeader components from src/components/ui and follow the spacing scale in tailwind.config.ts",
+      "should_trigger": false,
+      "expected_output": "Reads the project's own components and config and builds the page from them. No call to any inspo command: the visual direction is already decided and the archive would only introduce a second, conflicting one.",
+      "grading": "Fail if any scripts/inspo.py invocation appears in the trace."
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"result":{"content":[{"type":"text","text":"{\n \"error\": \"No screen with slug 'nope-xyz'.\",\n \"hint\": \"Slugs come from search_screens / recommend / find_similar results.\"\n}"}]},"jsonrpc":"2.0","id":1}

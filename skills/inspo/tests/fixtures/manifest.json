@@ -1,0 +1,9 @@
+{
+  "https://0nme3pk5am3urwa9.public.blob.vercel-storage.com/captures/karocrafts-com/hero.1440.webp": "captures/karocrafts-com/hero.1440.webp",
+  "tools/call {\"arguments\": {\"limit\": 2, \"query\": \"a designer portfolio\", \"style\": \"editorial\"}, \"name\": \"search_screens\"} maxTokens=4000": "search.json",
+  "tools/call {\"arguments\": {\"limit\": 8, \"query\": \"a designer's portfolio\"}, \"name\": \"search_screens\"} maxTokens=200": "search-budget.json",
+  "tools/call {\"arguments\": {\"query\": \"x\", \"vibe\": \"editorial\"}, \"name\": \"search_screens\"} maxTokens=4000": "error-bad-enum.json",
+  "tools/call {\"arguments\": {\"slug\": \"karocrafts-com\"}, \"name\": \"get_screen\"} maxTokens=4000": "get-screen.json",
+  "tools/call {\"arguments\": {\"slug\": \"nope-xyz\"}, \"name\": \"get_screen\"} maxTokens=4000": "error-unknown-slug.json",
+  "tools/list {} maxTokens=4000": "tools-list.json"
+}
