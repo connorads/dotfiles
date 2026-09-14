@@ -50,7 +50,7 @@ Format with `gofmt`, or `gofumpt` for the stricter superset; lint with
 | Format | Biome or oxfmt, format-only | Either formatter owns whitespace and property placement, leaving stylelint the semantic rules. |
 | Lint | `stylelint "**/*.css" --max-warnings=0` | `--max-warnings=0` is what makes a warning fail the gate. |
 | Already on Biome | Biome's own CSS linter | Recommended-tier and vanilla CSS only - no SCSS, no property order - so it supplements stylelint rather than replacing it. |
-| Tailwind | `eslint-plugin-better-tailwindcss` | Validation rules only: `no-unknown-classes` and `no-conflicting-classes`. |
+| Tailwind | `eslint-plugin-better-tailwindcss` | Validation rules only: `no-unknown-classes` and `no-conflicting-classes`, and they cover every file the linter reads, JSX or not. Design-system rules - whether a call site may restyle a component it imported - are a different job: `references/typescript.md` (UI hygiene) owns them, and its `@shadcn/lint` entry duplicates `no-unknown-classes` while being JSX-scoped, so run one of the two. |
 
 - Extend `stylelint-config-standard` (v40 is ESM-only and needs stylelint 17 on
   Node >= 20.19), plus `stylelint-order` for property order and
