@@ -122,12 +122,6 @@
       "skillPath": "skills/local-ci/SKILL.md",
       "computedHash": "1aef09c4bd7cd48779cefa61c75103b0a828b63f9229e6c876909a90e7021dd4"
     },
-    "make-interfaces-feel-better": {
-      "source": "jakubkrehel/make-interfaces-feel-better",
-      "sourceType": "github",
-      "skillPath": "skills/make-interfaces-feel-better/SKILL.md",
-      "computedHash": "c8b15b529e088a318b2d3c17f0a97e15a7b1ce9ddab8bbdf9209e6ab7315cbde"
-    },
     "manim-composer": {
       "source": "adithya-s-k/manim_skill",
       "sourceType": "github",
