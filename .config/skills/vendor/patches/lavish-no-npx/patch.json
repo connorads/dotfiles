@@ -1,0 +1,6 @@
+{
+  "reason": "npx is banned here; pnpm dlx runs the same CLI under the pnpm quarantine and ignore-scripts posture",
+  "files": [
+    ".agents/skills/lavish/SKILL.md"
+  ]
+}
