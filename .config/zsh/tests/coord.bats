@@ -208,6 +208,16 @@ STUB
   [ "$(tx list-windows -t s -F '#{window_name}' | grep -c '^coord$')" = 1 ]
 }
 
+@test "toggle: finds a restored window under pane-base-index 1, the live config's value" {
+  tx set-option -g pane-base-index 1
+  tx new-window -d -t s: -n coord 'sleep 300'
+  restored=$(coord_pane)
+  [ "$(tx display-message -p -t "$restored" '#{pane_index}')" = 1 ]
+  p1=$(active_pane)
+  run_coord status "$p1"
+  [ "$output" = "coord=$restored found_by=window origin=none alive=0" ]
+}
+
 @test "toggle: resolves by agent name before window name" {
   tx new-window -d -t s: -n coord 'sleep 300'
   decoy=$(coord_pane)

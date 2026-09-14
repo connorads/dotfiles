@@ -81,10 +81,11 @@ valid_agent_name "$COORD_WINDOW" || {
 # --- gather ------------------------------------------------------------------
 
 # _coord_window_pane — the first pane of the first window named $COORD_WINDOW,
-# across sessions; empty when none.
+# across sessions; empty when none. First in list order, not pane index 0:
+# the live config sets pane-base-index 1.
 _coord_window_pane() {
-  tmux list-panes -a -F "#{window_name}	#{pane_index}	#{pane_id}" 2>/dev/null |
-    awk -F '\t' -v w="$COORD_WINDOW" '$1 == w && $2 == 0 { print $3; exit }'
+  tmux list-panes -a -F "#{window_name}	#{pane_id}" 2>/dev/null |
+    awk -F '\t' -v w="$COORD_WINDOW" '$1 == w { print $2; exit }'
 }
 
 # _coord_pane_alive PANE — true iff PANE still exists (display-message on a
