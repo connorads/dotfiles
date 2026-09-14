@@ -30,6 +30,7 @@ agent prompt <target> [--force] [--] <text...>
                                   # refuses blocked/working panes unless --force
 agent name [<target>] <name>      # label a pane (unique; [a-z][a-z0-9_-]{0,31}); unname clears
 agent pick                        # fzf jump picker (humans)
+agent goto <target>               # focus a pane by id, address or name (no picker)
 ```
 
 `<target>` = `%pane_id` | `session:win.pane` | agent name. Exit codes:

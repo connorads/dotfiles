@@ -634,6 +634,43 @@ EOF
   [ "$(cat "$HIB_LOG")" = "thaw 3f2a-not-a-pane" ]
 }
 
+# --- agent goto (real server; jump tolerates the headless no-client) ---
+
+@test "agent goto by pane id makes it the active pane" {
+  tx split-window -t s
+  set -- $(tx list-panes -t s -F '#{pane_id}')
+  p1=$1
+  p2=$2
+  tx select-pane -t "$p1"
+  [ "$(tx display-message -p -t s '#{pane_id}')" = "$p1" ]
+  run_zsh_function "$AGENT" goto "$p2"
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p -t s '#{pane_id}')" = "$p2" ]
+}
+
+@test "agent goto by name resolves through @agent_name and ages done to idle" {
+  tx new-window -t s
+  p2=$(tx display-message -p -t s '#{pane_id}')
+  tx set-option -p -t "$p2" @agent_state done
+  tx set-option -p -t "$p2" @agent_name backend
+  tx select-window -t s:1
+  run_zsh_function "$AGENT" goto backend
+  [ "$status" -eq 0 ]
+  [ "$(tx display-message -p -t s '#{pane_id}')" = "$p2" ]
+  [ "$(tx show-options -pqv -t "$p2" @agent_state)" = idle ]
+}
+
+@test "agent goto with an unknown name exits 3" {
+  run_zsh_function "$AGENT" goto nosuchagent
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"no agent named"* ]]
+}
+
+@test "agent goto without a target exits 2" {
+  run_zsh_function "$AGENT" goto
+  [ "$status" -eq 2 ]
+}
+
 @test "agent rejects an unknown subcommand with exit 2" {
   run_zsh_function "$AGENT" frobnicate
   [ "$status" -eq 2 ]
