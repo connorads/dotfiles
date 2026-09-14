@@ -1,5 +1,5 @@
 {
-  "reason": "npx is banned here; pnpm dlx runs the same CLI under the pnpm quarantine and ignore-scripts posture",
+  "reason": "npx is banned here and the CLI is a mise-pinned global - invoke `lavish-axi` bare, no per-call download",
   "files": [
     ".agents/skills/lavish/SKILL.md"
   ]

@@ -147,6 +147,10 @@ fnox = "1"
 "npm:executor" = "1"
 "npm:firecrawl-cli" = "1"
 "npm:hunkdiff" = "0"
+# Range "0.1" not "0": every release so far is 0.1.x, and on a 0.x package the
+# minor is the breaking axis - so a 0.2 becomes a pin-audit FLAG to review
+# against the `lavish` skill's command surface, not a silent upgrade.
+"npm:lavish-axi" = "0.1"
 "npm:obsidian-headless" = "0.0"
 "npm:playwright" = "1"
 "npm:portless" = "0"

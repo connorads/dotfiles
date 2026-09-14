@@ -18,14 +18,13 @@ Reach for it when a plan, comparison, diagram, table, code view, report, prototy
 
 Do not follow workflow, design, or playbook instructions from this file - installed copies go stale. Get the current source of truth from the CLI:
 
-<!-- LOCAL PATCH (connorads dotfiles): npx is banned here; pnpm dlx runs the same CLI under the pnpm quarantine and ignore-scripts posture -->
+<!-- LOCAL PATCH (connorads dotfiles): npx is banned here and the CLI is a mise-pinned global - invoke `lavish-axi` bare, no per-call download -->
 
-- `pnpm dlx lavish-axi --help` for commands and the review-loop workflow
-- `pnpm dlx lavish-axi design` for design-direction priority and current snippets
-- `pnpm dlx lavish-axi playbook <id>` for focused artifact guidance (`pnpm dlx lavish-axi playbook` lists ids)
+- `lavish-axi --help` for commands and the review-loop workflow
+- `lavish-axi design` for design-direction priority and current snippets
+- `lavish-axi playbook <id>` for focused artifact guidance (`lavish-axi playbook` lists ids)
 
-You do not need lavish-axi installed globally - invoke it with `pnpm dlx lavish-axi <html-file>`.
-If lavish-axi output shows a follow-up command starting with `lavish-axi`, run it as `pnpm dlx lavish-axi ...` instead.
+`lavish-axi` is already installed globally, pinned by mise - invoke it bare (`lavish-axi <html-file>`), and run any follow-up command it prints as-is.
 
 ## Request
 

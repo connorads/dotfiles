@@ -635,6 +635,10 @@ backend = "npm:firecrawl-cli"
 version = "0.21.1"
 backend = "npm:hunkdiff"
 
+[[tools."npm:lavish-axi"]]
+version = "0.1.67"
+backend = "npm:lavish-axi"
+
 [[tools."npm:obsidian-headless"]]
 version = "0.0.14"
 backend = "npm:obsidian-headless"
