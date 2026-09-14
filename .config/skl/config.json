@@ -5,8 +5,13 @@
     { "path": "~/.config/skills/personal", "name": "personal" },
     { "path": "~/.config/skills/public", "name": "public" },
     { "path": "~/.config/skills/vendor/elevenlabs/.agents/skills", "name": "elevenlabs" },
+    { "path": "~/.config/skills/vendor/emilkowalski/.agents/skills", "name": "emilkowalski" },
     { "path": "~/.config/skills/vendor/expo/.agents/skills", "name": "expo" },
+    { "path": "~/.config/skills/vendor/hyperframes/.agents/skills", "name": "hyperframes" },
     { "path": "~/.config/skills/vendor/jakubkrehel/.agents/skills", "name": "jakubkrehel" },
+    { "path": "~/.config/skills/vendor/mattpocock/.agents/skills", "name": "mattpocock" },
+    { "path": "~/.config/skills/vendor/nextjs/.agents/skills", "name": "nextjs" },
+    { "path": "~/.config/skills/vendor/vercel-labs-agent-skills/.agents/skills", "name": "vercel-labs-agent-skills" },
     { "path": "~/.config/skills/vendor/.agents/skills", "name": "vendor" },
     { "path": "~/.config/skills/vendor/manual", "name": "manual" }
   ]

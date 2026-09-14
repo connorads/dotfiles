@@ -61,9 +61,10 @@ promoted*, not in where they come from:
 - **set** (`vendor/<name>/`) - a *cohesive* multi-skill upstream, one skills-CLI project dir
   with its **own lockfile**. `skills update -p` from the set dir refreshes it as a unit, and
   `skl install <set>/` copies the whole set into a matching-stack repo. Examples: `expo`,
-  `elevenlabs`.
-- **unsorted bucket** (`vendor/.agents/skills/`) - CLI-vendored *singletons* sharing one
-  lockfile (`vendor/skills-lock.json`). Skills that don't belong to a cohesive upstream group.
+  `elevenlabs`, `mattpocock`, `hyperframes`.
+- **unsorted bucket** (`vendor/.agents/skills/`) - CLI-vendored skills from upstreams
+  backing fewer than four, sharing one lockfile (`vendor/skills-lock.json`). Mostly
+  singletons, plus the two- and three-skill groups the threshold below leaves here.
 - **manual bucket** (`vendor/manual/<name>/`) - hand-placed skills with **no skills-CLI
   upstream and no lockfile** (gist / tweet / distillation, or a locally-authored skill
   wrapped around third-party reference material). A source repository may exist even when
@@ -76,10 +77,41 @@ status is that a set is the unit you `skl install <set>/` into a repo whose stac
 the whole cohesive group travels together as vetted bytes. Update-isolation (its own
 lockfile) is a consequence, not the point.
 
-**Threshold - when a vendored group becomes a set:** a vendored *single* stays in the
-unsorted bucket. Promote a group to a set **iff** it is a cohesive multi-skill upstream you
-will `skills update` / `skl install` as one unit - either a generic-name collision risk (as
-elevenlabs's `agents` / `music`) or a whole stack you enter and leave as a unit (as `expo`).
+**Threshold - when a vendored group becomes a set: every upstream backing four or more
+vendored skills is a set.** Count by the lockfile `source` field, which is the grouping
+criterion:
+
+```bash
+jq -r '.skills|to_entries|group_by(.value.source)|map(select(length>=4))
+  |.[]|"\(length)\t\(.[0].value.source)"' ~/.config/skills/vendor/skills-lock.json
+```
+
+Any group that reaches four and is still in the bucket is a set waiting to be made.
+Fewer than four stays in the bucket. The rule is mechanical on purpose - the earlier
+judgement call ("cohesive enough?") let 91 skills from 38 upstreams pile into one flat
+dir, where names collide and no group can travel or be topped up. Four is where the
+three failures below all start to bite at once, not a measured optimum; move it if
+experience says otherwise, but keep it a count.
+
+What the flat bucket costs, and what a set buys:
+
+- **Names collide, and one dir has one winner.** `mattpocock/skills` and
+  `emilkowalski/skills` both ship a `prototype`, so the second could not be vendored at
+  all until they were separated.
+- **A group cannot travel.** `skl install <set>/` copies a whole cohesive group into a
+  matching-stack repo; scattered through the bucket there is nothing to name.
+- **A group cannot be topped up.** `setup-matt-pocock-skills` tells the agent to run it
+  before the other engineering skills and names `triage`, `to-tickets` and `to-spec` -
+  none of them vendored, so a referenced flow dead-ends.
+
+A set may hold entries from several `owner/repo` sources: `skills update -p` groups by
+`(source, ref)` at refresh time, so `jakubkrehel` refreshes its twelfth entry from
+`jakubkrehel/make-interfaces-feel-better` alongside the eleven from `jakubkrehel/skills`.
+
+Name a set for the **repo it came from, not the org**, wherever the org publishes more
+than one: `vercel-labs-agent-skills`, not `vercel-labs`, because six other
+`vercel-labs/*` sources stay in the bucket and a bare org name would promise all seven.
+
 The **manual** skills are a bucket regardless of count: they share only provenance (no
 upstream, no lockfile, refreshed individually), so they never become a set.
 
@@ -122,7 +154,7 @@ above) are curation calls.
                              history - commit in the resolved repo, not via dotfiles; its
                              root AGENTS.md documents the wiring · skl source 'private'
   personal/<name>/         authored, personal (public-in-dotfiles, not showcased) · skl source 'personal'
-  vendor/                  single third-party (VENDORED) root · skl sources 'expo'/'elevenlabs'/'vendor'/'manual'
+  vendor/                  single third-party (VENDORED) root · skl sources: one per set, plus 'vendor'/'manual'
     <set>/                 vendored SET = one skills-CLI project dir per cohesive group · skl source '<set>'
       .agents/skills/<name>/  real CLI-cloned files (CLI-managed, project scope)
       skills-lock.json     the set's own lockfile (`skills update -p` from here refreshes in place)
@@ -221,6 +253,55 @@ the directory, so a new asset upstream adds surfaces as untracked for review.
 
 From `~/.config/skills/vendor`: `skills update -p` (project scope) refreshes **in place**
 against `skills-lock.json`. No global/symlink resurrection problem.
+
+### Promote a bucket group to a set
+
+Move the bytes and port the lockfile entries. **Never `skills add`** - it re-fetches
+(shallow clone, or a skills.sh snapshot when no `ref` is pinned, so "same upstream
+commit" is not guaranteed), `rm -rf`s the target dir first, and clobbers every local
+patch. Run from `$HOME` so the `dotfiles` git-dir/work-tree split sees plain
+`$HOME`-relative paths:
+
+```bash
+V=.config/skills/vendor; SET=<set>; SRC=<owner/repo>
+jq -r --arg s "$SRC" '.skills|to_entries[]|select(.value.source==$s)|.key' $V/skills-lock.json > /tmp/names
+mkdir -p "$V/$SET/.agents/skills"    # git mv will not create the parent
+while read -r n; do dotfiles mv "$V/.agents/skills/$n" "$V/$SET/.agents/skills/$n"; done < /tmp/names
+```
+
+Split the lockfile with a filter that sorts the `skills` keys and preserves each entry's
+internal field order - that is the CLI's own `writeLocalLock` serialisation, so it
+round-trips byte-identically and adds no incidental diff. Derive members from the
+`source` field rather than a hand-typed list, and assert conservation (nothing lost,
+nothing duplicated) **before** overwriting the bucket file:
+
+```bash
+for m in '==' '!='; do
+  jq --indent 2 --arg s "$SRC" "{version: .version, skills: (.skills|to_entries|map(select(.value.source $m \$s))|sort_by(.key)|from_entries)}" \
+    $V/skills-lock.json
+done   # first output → $V/$SET/skills-lock.json, second → $V/skills-lock.json
+```
+
+Carry `computedHash` **verbatim**. It is write-once at add time and never recomputed or
+verified by `skills update`, so recomputing it would be meaningless. It is already stale
+for most bucket entries, which means the first real `skills update -p` per set rewrites
+every entry's hash at once - a large lockfile diff that is not a supply-chain signal.
+
+Re-prefix any patch targeting the group: `files` paths are vendor-root-relative, so
+`.agents/skills/<name>/…` becomes `<set>/.agents/skills/<name>/…`. No hunk body names a
+path, so this is a `patch.json` edit only, and an anchored single-shot `sub` also handles
+a templated `{{skill}}` entry without touching its `vars`.
+
+**The `git mv` and the patch re-prefix must land in the same commit.** The hk
+`vendored-skill-patches` step runs `skill-patch check` over the whole vendor tree against
+a stash of the *staged-only* tree, so a half-migrated group cannot be left staged - and a
+green local `skill-patch check` (which reads the work tree) does not predict the gate.
+Keep index and work tree identical at every commit boundary.
+
+Finally add the `skl` source line (above `vendor`, see the config shape above) and verify
+the set is a real skills-CLI project: `( cd $V/$SET && skills list )` reads lockfile and
+disk only, no network, and must print every member. A dir the CLI declines to treat as a
+project no-ops in silence on the next refresh.
 
 ### Install a catalogue skill/group into a project (frozen local copy)
 
