@@ -273,6 +273,8 @@ agent prompt <target> <text> [--force]         # paste prompt + Enter, verify th
 agent name [<target>] <name>                   # label a pane (unique among live agents); unname clears
 agent pick             # fzf jump picker over live agents (tmux keys: prefix + A popup, Alt+a cycle)
 agent goto <target>    # focus a pane by id, address or agent name; the picker's jump without the picker
+coord                  # jump to the coordinator agent, launching it (codex in ~/git/coord) if absent; from inside it, return to the pane you came from (tmux: prefix + Alt+d). Launch spec ~/.config/coord/config, COORD_* env wins
+coord status           # the coord pane, how it was found (name|window), and the recorded origin
 agent hibernate [<target>] [--force]  # stop an idle Claude/Codex pane to reclaim RAM/swap and park a thawer in it; the conversation resumes in full on thaw. Only idle/done go without --force (refusal = exit 6)
 agent thaw [<target>]  # resume a hibernated pane; bare = pick from parked panes plus orphaned records (a lost pane never strands its session)
 agent auto status [--json] | agent auto off|observe|on  # pressure-gated auto-hibernation; tracked default observe, automatic action only under sustained CRITICAL memory

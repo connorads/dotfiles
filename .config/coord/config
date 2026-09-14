@@ -1,0 +1,9 @@
+# coord: launch spec for the coordinator agent (sourced by the `coord` zsh
+# function; an exported COORD_* variable wins over a line here).
+# COORD_WINDOW doubles as the pane's agent name, so it must fit the name
+# grammar [a-z][a-z0-9_-]{0,31}.
+COORD_KIND=codex
+COORD_MODEL=gpt-5.6-sol
+COORD_DIR=$HOME/git/coord
+COORD_WINDOW=coord
+COORD_FLAGS=--dangerously-bypass-approvals-and-sandbox

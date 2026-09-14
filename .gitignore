@@ -123,6 +123,10 @@
 /.config/vox/__pycache__/
 /.config/vox/.pytest_cache/
 
+# coord: launch spec for the coordinator agent (read by the `coord` function)
+!/.config/coord/
+!/.config/coord/**
+
 # vale: the Connorads prose style. Nix symlinks it into the macOS global styles
 # dir, so this is the one real copy every consumer resolves through.
 !/.config/vale/
