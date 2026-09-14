@@ -50,6 +50,30 @@ agent_prompt_gate() {
 	esac
 }
 
+# coord_next_action CURRENT COORD ORIGIN_ALIVE — echo what one press of the
+# coordinator key does from pane CURRENT when the coord pane is COORD (empty
+# when none exists) and the recorded origin is alive (1) or not (0/empty):
+#   launch       no coord pane exists
+#   goto         a coord pane exists and CURRENT is not it
+#   return       CURRENT is the coord pane and the origin is alive
+#   return-lost  CURRENT is the coord pane and there is nowhere to return to
+# Pure decision core - the `coord` shell performs exactly one tmux effect per
+# verdict.
+coord_next_action() {
+	_cur=${1:-}
+	_coord=${2:-}
+	_alive=${3:-0}
+	if [ -z "$_coord" ]; then
+		echo launch
+	elif [ "$_cur" != "$_coord" ]; then
+		echo goto
+	elif [ "$_alive" = 1 ]; then
+		echo return
+	else
+		echo return-lost
+	fi
+}
+
 # agent_resolve_target TARGET — echo TARGET's canonical pane_id (%N). TARGET is
 # a pane id (%N), a tmux target address (session:win.pane), or an exact
 # @agent_name match. 0-match and ambiguous-name both diagnose to stderr and

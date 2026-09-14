@@ -392,6 +392,47 @@ Tests (run `mise run zsh-tests`):
 
 Keep the dot legend in [`help.md`](./help.md) in sync with `@agent_dotfmt`.
 
+### Coordinator key (`coord`)
+
+One key reaches a dispatcher agent and comes back:
+[`../zsh/functions/agents/coord`](../zsh/functions/agents/coord) (dual-mode,
+`prefix + Alt+d`) launches the coordinator in a window named `coord` when none
+exists, jumps to it when one does, and from inside it returns to the pane the
+key was pressed in. The coordinator itself drives the fleet through the `agent`
+CLI above; `coord` only calls `agent name` and `agent goto`, so it never writes
+`@agent_state`.
+
+- **All branching is `coord_next_action`** in
+  [`scripts/agent-cli-lib.sh`](./scripts/agent-cli-lib.sh): `launch` |
+  `goto` | `return` | `return-lost`, from (current pane, coord pane, origin
+  alive). The shell gathers, decides once, and performs one tmux effect.
+- **The origin is a pane option on the coord pane**, `@coord_return`. tmux has
+  no client-scoped options, so this is the nearest lifetime: it dies with the
+  pane it serves. Two clients pressing the key share one origin (single-user
+  compromise). Liveness is `display-message -p -t <origin> '#{pane_id}'`, the
+  same probe `agent wait` uses; a dead origin leaves you in coord with a
+  status-line message.
+- **Identity resolves `@agent_name` first, then the first window named
+  `$COORD_WINDOW`.** A resurrect restore keeps the window name (upstream
+  `restore_window_properties`) and the Codex flags (`resurrect-argv.sh`), but
+  not the agent name, so a goto found by window re-applies it. At launch the
+  name is applied by a detached `agent wait && agent name`, because the
+  mutator refuses a stateless pane and a foreground child would hold
+  `run-shell`'s pipe, and the key press with it.
+- **Launch spec** is `~/.config/coord/config`, a `KEY=value` file sourced by
+  the function (`COORD_KIND` codex|claude, `COORD_MODEL`, `COORD_DIR`,
+  `COORD_WINDOW`, `COORD_FLAGS`); an exported `COORD_*` wins, an empty one
+  included. Codex takes `-c 'projects."<dir>".trust_level="trusted"'` on argv so
+  the first launch meets no trust prompt and resurrect keeps it (`[projects]`
+  trust in `config.toml` is machine-local, stripped on commit). Claude takes
+  the shared `claude-launch-flags` baseline; posture is `COORD_FLAGS` for both.
+  `-c` on a missing directory succeeds silently in tmux, so the function checks
+  `COORD_DIR` itself (exit 2).
+
+Tests: [`../zsh/tests/coord.bats`](../zsh/tests/coord.bats) - the verdict
+table, and launch/goto/return/return-lost, the restored-window rename, the
+argv per kind and the env override against a private server with stub agents.
+
 ## Agent hibernate / thaw (custom subsystem)
 
 Stop an idle Claude or Codex pane to reclaim RAM and swap, park a thawer in its

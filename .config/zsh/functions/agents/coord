@@ -1,0 +1,219 @@
+#!/usr/bin/env zsh
+# coord: jump to the coordinator agent, launching it if absent; press again to return
+# usage: coord [toggle|status] [pane]
+#
+# One key, three outcomes. From any pane: launch the coordinator in a window
+# named $COORD_WINDOW (cwd $COORD_DIR) and jump to it, or jump to the one that
+# exists. From inside it: return to the pane the key was pressed in. The origin
+# lives on the coord pane as @coord_return, so it dies with the pane it serves
+# (tmux has no client-scoped options; one origin per coord pane is the
+# single-user compromise). Identity resolves @agent_name first, then the first
+# window named $COORD_WINDOW - a resurrect restore keeps the window name but
+# not the agent name, so a goto found by window re-applies the name.
+#
+# The branching is coord_next_action in agent-cli-lib.sh (pure, bats-tested);
+# this shell gathers, decides once, and performs one tmux effect per verdict.
+# It never writes @agent_state: naming goes through `agent name`, movement
+# through `agent goto`.
+emulate -L zsh
+setopt local_options pipe_fail
+
+# Path seams (the `agent` CLI's env-var style) so bats can inject.
+local _coord_scripts=${AGENT_SCRIPTS_DIR:-$HOME/.config/tmux/scripts}
+local _coord_cli_lib=${AGENT_CLI_LIB:-$_coord_scripts/agent-cli-lib.sh}
+local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_coord_scripts/agent-state-lib.sh}
+local _coord_agent=${AGENT_BIN:-$HOME/.local/bin/agent}
+local _coord_cfg=${COORD_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/coord/config}
+
+[[ -r $_coord_cli_lib ]] || {
+  print -u2 "coord: lib not found: $_coord_cli_lib"
+  return 1
+}
+# shellcheck disable=SC1090
+source "$_coord_cli_lib"
+
+_coord_usage() {
+  cat <<'USAGE'
+usage: coord [toggle|status] [pane]
+
+  toggle [pane]   (default) launch the coordinator, jump to it, or - pressed
+                  from inside it - return to the pane the key came from
+  status [pane]   print the coord pane, how it was found, and the origin
+
+[pane] defaults to $TMUX_PANE. Launch spec: ~/.config/coord/config
+(COORD_KIND codex|claude, COORD_MODEL, COORD_DIR, COORD_WINDOW, COORD_FLAGS);
+an exported COORD_* variable wins over the file.
+
+exit codes: 0 ok · 1 tmux failure · 2 usage/config · 3 pane gone
+USAGE
+}
+
+# --- config: the file's KEY=value lines, an exported COORD_* winning ---------
+# Exported values (an empty one included: `COORD_FLAGS= coord` is a one-off
+# launch without the posture flag) are saved before the locals shadow them.
+# Declared local so sourcing the file assigns here, not into an interactive
+# caller's shell; the saved values are restored after.
+local -a _coord_keys=(COORD_KIND COORD_MODEL COORD_DIR COORD_WINDOW COORD_FLAGS)
+local -A _coord_env
+local _k
+for _k in $_coord_keys; do
+  (( ${+parameters[$_k]} )) && _coord_env[$_k]=${(P)_k}
+done
+local COORD_KIND= COORD_MODEL= COORD_DIR= COORD_WINDOW= COORD_FLAGS=
+if [[ -r $_coord_cfg ]]; then
+  # shellcheck disable=SC1090
+  source "$_coord_cfg"
+fi
+for _k in $_coord_keys; do
+  (( ${+_coord_env[$_k]} )) && : "${(P)_k::=${_coord_env[$_k]}}"
+done
+for _k in COORD_KIND COORD_MODEL COORD_DIR COORD_WINDOW; do
+  [[ -n ${(P)_k} ]] || {
+    print -u2 "coord: $_k is unset (config: $_coord_cfg)"
+    return 2
+  }
+done
+valid_agent_name "$COORD_WINDOW" || {
+  print -u2 "coord: COORD_WINDOW '$COORD_WINDOW' must fit the agent-name grammar [a-z][a-z0-9_-]{0,31}"
+  return 2
+}
+
+# --- gather ------------------------------------------------------------------
+
+# _coord_window_pane — the first pane of the first window named $COORD_WINDOW,
+# across sessions; empty when none.
+_coord_window_pane() {
+  tmux list-panes -a -F "#{window_name}	#{pane_index}	#{pane_id}" 2>/dev/null |
+    awk -F '\t' -v w="$COORD_WINDOW" '$1 == w && $2 == 0 { print $3; exit }'
+}
+
+# _coord_pane_alive PANE — true iff PANE still exists (display-message on a
+# dead id prints empty and exits 0, so the output is the test).
+_coord_pane_alive() {
+  [[ -n ${1:-} && -n $(tmux display-message -p -t "$1" '#{pane_id}' 2>/dev/null) ]]
+}
+
+# _coord_notify MSG — status-line message when a client is present (the key
+# binding), stderr otherwise (a shell). display-message with no client exits 0
+# and shows nothing, so presence is checked, not the exit status.
+_coord_notify() {
+  if [[ -n $(tmux display-message -p '#{client_name}' 2>/dev/null) ]]; then
+    tmux display-message "$1"
+  else
+    print -u2 "$1"
+  fi
+}
+
+# _coord_launch_cmd — the coordinator's argv, one word per line, by kind.
+# Codex takes the trust override on argv so the first launch in $COORD_DIR
+# meets no "trust this directory?" prompt and resurrect keeps it (config.toml's
+# [projects] trust is machine-local and stripped on commit). Claude takes the
+# shared interactive baseline from claude-launch-flags; posture comes from
+# COORD_FLAGS for both kinds.
+_coord_launch_cmd() {
+  case $COORD_KIND in
+    codex)
+      print -rl -- codex -m "$COORD_MODEL" ${=COORD_FLAGS} \
+        -c "projects.\"$COORD_DIR\".trust_level=\"trusted\""
+      ;;
+    claude)
+      print -rl -- claude ${=$(claude-launch-flags)} --model "$COORD_MODEL" ${=COORD_FLAGS}
+      ;;
+    *)
+      print -u2 "coord: unknown COORD_KIND '$COORD_KIND' (codex|claude)"
+      return 2
+      ;;
+  esac
+}
+
+local _coord_sub=${1:-toggle}
+(( $# )) && shift
+case $_coord_sub in
+  toggle|status) ;;
+  help|-h|--help) _coord_usage; return 0 ;;
+  *)
+    print -u2 "coord: unknown subcommand: $_coord_sub"
+    _coord_usage >&2
+    return 2
+    ;;
+esac
+(( $# <= 1 )) || {
+  print -u2 "usage: coord [toggle|status] [pane]"
+  return 2
+}
+local current=${1:-${TMUX_PANE:-}}
+[[ -n $current ]] || {
+  print -u2 "coord: not inside tmux; pass a pane"
+  return 2
+}
+[[ -x $_coord_agent ]] || {
+  print -u2 "coord: agent CLI not found: $_coord_agent"
+  return 1
+}
+
+local coord_pane= found_by= origin= alive=0
+if coord_pane=$(agent_resolve_target "$COORD_WINDOW" 2>/dev/null); then
+  found_by=name
+elif coord_pane=$(_coord_window_pane) && [[ -n $coord_pane ]]; then
+  found_by=window
+fi
+if [[ -n $coord_pane ]]; then
+  origin=$(tmux show-options -pqv -t "$coord_pane" @coord_return 2>/dev/null)
+  _coord_pane_alive "$origin" && alive=1
+fi
+
+if [[ $_coord_sub == status ]]; then
+  print -r -- "coord=${coord_pane:-none} found_by=${found_by:-none} origin=${origin:-none} alive=$alive"
+  return 0
+fi
+
+# --- decide, then one effect per verdict --------------------------------------
+local verdict
+verdict=$(coord_next_action "$current" "$coord_pane" "$alive")
+case $verdict in
+  launch)
+    [[ -d $COORD_DIR ]] || {
+      print -u2 "coord: COORD_DIR is not a directory: $COORD_DIR"
+      return 2
+    }
+    local -a cmd
+    cmd=("${(@f)$(_coord_launch_cmd)}") || return $?
+    local sess new
+    sess=$(tmux display-message -p -t "$current" '#{session_id}' 2>/dev/null)
+    [[ -n $sess ]] || {
+      print -u2 "coord: no such pane: $current"
+      return 3
+    }
+    # -P -F prints the new pane id; the command runs as the pane process (the
+    # branch menu's shape), so the window closes when the agent exits.
+    new=$(tmux new-window -d -t "$sess:" -n "$COORD_WINDOW" -c "$COORD_DIR" \
+      -P -F '#{pane_id}' "${(j: :)${(@qq)cmd}}") || return 1
+    tmux set-option -p -t "$new" @coord_return "$current"
+    # Name it once its hooks report a state - `agent name` refuses a stateless
+    # pane. Detached with stdio closed: a foreground child holding run-shell's
+    # pipe would hold the key press with it. Until then the window name is the
+    # identity, which the goto branch turns into the agent name.
+    ( "$_coord_agent" wait "$new" --timeout 60 && "$_coord_agent" name "$new" "$COORD_WINDOW" ) \
+      >/dev/null 2>&1 </dev/null &!
+    "$_coord_agent" goto "$new"
+    ;;
+  goto)
+    tmux set-option -p -t "$coord_pane" @coord_return "$current"
+    if [[ $found_by == window ]]; then
+      "$_coord_agent" name "$coord_pane" "$COORD_WINDOW" 2>/dev/null || true
+    fi
+    "$_coord_agent" goto "$coord_pane"
+    ;;
+  return)
+    tmux set-option -pu -t "$coord_pane" @coord_return 2>/dev/null
+    "$_coord_agent" goto "$origin"
+    ;;
+  return-lost)
+    tmux set-option -pu -t "$coord_pane" @coord_return 2>/dev/null
+    _coord_notify "coord: no pane to return to"
+    ;;
+  *)
+    print -u2 "coord: unexpected verdict '$verdict'"
+    return 1
+    ;;
+esac
