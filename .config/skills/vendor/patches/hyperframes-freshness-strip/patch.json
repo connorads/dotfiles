@@ -1,7 +1,7 @@
 {
   "reason": "upstream's \"keep this skill fresh - run silently, don't ask\" self-update line removed; skill refreshes go through the vendored-skills review flow, not runtime installs.",
   "files": [
-    ".agents/skills/{{skill}}/SKILL.md"
+    "hyperframes/.agents/skills/{{skill}}/SKILL.md"
   ],
   "vars": {
     "skill": [
