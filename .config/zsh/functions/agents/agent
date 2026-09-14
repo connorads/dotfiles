@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # agent: orchestrate coding-agent panes, lifecycle, and automatic hibernation.
-# usage: agent <ls|state|wait|prompt|name|unname|pick|hibernate|thaw|auto|pin|unpin> [args]
+# usage: agent <ls|state|wait|prompt|name|unname|pick|goto|hibernate|thaw|auto|pin|unpin> [args]
 emulate -L zsh
 setopt local_options pipe_fail
 
@@ -11,6 +11,7 @@ local _agent_state_sh=${AGENT_STATE_SH:-$_agent_scripts/agent-state.sh}
 local _agent_sweep=${AGENT_SWEEP:-$_agent_scripts/agent-sweep.sh}
 local _agent_hibernate=${AGENT_HIBERNATE_SH:-$_agent_scripts/agent-hibernate.sh}
 local _agent_auto=${AGENT_AUTO_HIBERNATE_SH:-$_agent_scripts/agent-autohibernate.sh}
+local _agent_popup=${AGENT_POPUP:-$_agent_scripts/agent-popup.sh}
 local AGENT_STATE_LIB=${AGENT_STATE_LIB:-$_agent_scripts/agent-state-lib.sh}
 
 [[ -r $_agent_cli_lib ]] || {
@@ -39,6 +40,7 @@ usage: agent <subcommand> [args]
                     agents, grammar [a-z][a-z0-9_-]{0,31}
   unname [<target>] remove a pane's label (default: this pane)
   pick              fzf picker over live agents; Enter jumps to the pane
+  goto <target>     focus a pane by id, address or agent name (ages done -> idle)
   hibernate [<target>] [--force]
                     stop a Claude/Codex pane to reclaim RAM/swap and park a thawer
                     in it; the conversation resumes in full on thaw. Only
@@ -428,12 +430,29 @@ _agent_pick() {
     print -u2 "agent pick: fzf required"
     return 1
   }
-  local popup=${AGENT_POPUP:-$_agent_scripts/agent-popup.sh}
-  [[ -r $popup ]] || {
-    print -u2 "agent pick: script not found: $popup"
+  [[ -r $_agent_popup ]] || {
+    print -u2 "agent pick: script not found: $_agent_popup"
     return 1
   }
-  sh "$popup" pick
+  sh "$_agent_popup" pick
+}
+
+# agent goto — pick without the picker: resolve the target (name, %N or
+# address) and hand it to the popup's jump, so a script can focus a pane by
+# the same names `agent prompt` accepts. Reuses jump verbatim, including its
+# done → idle ageing: moving to a pane is viewing it.
+_agent_goto() {
+  (( $# == 1 )) || {
+    print -u2 "usage: agent goto <target>"
+    return 2
+  }
+  [[ -r $_agent_popup ]] || {
+    print -u2 "agent goto: script not found: $_agent_popup"
+    return 1
+  }
+  local pane
+  pane=$(agent_resolve_target "$1") || return $?
+  sh "$_agent_popup" jump "$pane"
 }
 
 local _agent_sub=${1:-}
@@ -446,6 +465,7 @@ case ${_agent_sub:-ls} in
   name) _agent_name "$@" ;;
   unname) _agent_unname "$@" ;;
   pick) _agent_pick "$@" ;;
+  goto) _agent_goto "$@" ;;
   hibernate) _agent_hibernate "$@" ;;
   thaw) _agent_thaw "$@" ;;
   auto) _agent_auto_command "$@" ;;

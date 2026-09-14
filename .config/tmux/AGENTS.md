@@ -350,7 +350,8 @@ The logic is spread across several files - change them as a set:
   on PATH via `~/.local/bin`) - the scripting front-end so one agent can drive
   others: `ls`/`state`/`wait` (poll `@agent_state`), `prompt` (gated
   buffer-paste + separate Enter + stall verify with one submit retry), `name`/`unname`,
-  `pick`. It never writes `@agent_state` directly - all mutation goes through
+  `pick`, `goto` (the popup's `jump` by target, so a script can focus a pane by
+  the same names `prompt` accepts). It never writes `@agent_state` directly - all mutation goes through
   `agent-state.sh`; `prompt` only sends keystrokes and observes the option the
   agent's own hooks set. `ls` reconciles once before reading, so a live direct or
   wrapped Claude/Codex appears before its first lifecycle hook; its text and JSON
