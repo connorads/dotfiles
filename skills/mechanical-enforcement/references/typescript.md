@@ -199,6 +199,29 @@ through, but nullable primitives already error).
 
 No current TypeScript lint stack provides a must-use gate for a data-only house
 `Result`; review dropped results explicitly or choose a library with a live rule.
+Writing the rule yourself is not the way out, because **no custom type-aware
+lint rule can be written on TS 7 at all**. oxlint's JS plugins are AST-only -
+oxc's own js-plugins docs list type-aware rules under *not supported yet* - and
+typescript-eslint refuses TS 7 outright (see [Type checking](#type-checking)).
+So ast-grep and the `oxlint-plugin-eslint` bridge are both syntactic, and a
+"dropped `Result`" rule needs to know that the discarded expression *is* a
+`Result`, which is a type question. Custom rules on TS 7 are limited to what a
+syntax tree can prove until typescript-eslint ships TS 7.1 support.
+
+**lintcn is the one route through that, and stays a watch.** It vendors
+tsgolint's rules into `.lintcn/` as Go source and compiles a project-local
+binary, so a custom rule is Go with the type checker in hand; its README's
+worked example is `no-unhandled-error`, this exact gap. The costs are why it is
+not a pick: a Go toolchain on every machine and CI runner plus a roughly 30s
+cold compile; rules written against tsgolint's `internal/` packages, a private
+API with no stability promise, so the README itself says pin exactly and re-run
+`lintcn build` after any bump; npm publishing that has fallen behind the repo
+(v0.10.1 on 2026-06-02 against repo pushes into 2026-09-04) and a README whose
+import paths still name typescript-eslint after tsgolint moved to oxc-project;
+628 downloads/week, below a 1000/week floor. Registry-verified 2026-09-14,
+behaviour unverified. Running it beside oxlint also means two tsgolint binaries
+at different versions checking one program, which is the divergence
+[Type checking](#type-checking) already flags, doubled.
 
 Configuration mechanics that decide whether any of it is armed:
 
@@ -290,9 +313,10 @@ has the same blind spot.
 
 | Rule | Encode with | Prevents | Notes |
 |---|---|---|---|
-| No raw `<input>` / `<button>` / `<a>` outside the component library | ast-grep rule scoped to app and feature code | Drift from the design system | oxlint has no `no-restricted-syntax`, so this is ast-grep or the `oxlint-plugin-eslint` JS-plugin bridge, not a native rule. Exempt `src/components/ui/**`. |
+| No raw `<input>` / `<button>` / `<a>` outside the component library | ast-grep rule scoped to app and feature code | Drift from the design system | oxlint has no `no-restricted-syntax`, so this is ast-grep or the `oxlint-plugin-eslint` JS-plugin bridge, not a native rule. Exempt `src/components/ui/**`. Catches the element, not what a call site does to a component it imported correctly - that is the row below. |
 | Accessibility regressions | oxlint `jsx-a11y` rules, named individually, with `"jsx-a11y"` in `plugins` | Missing labels, roles and keyboard handlers | Verified 2026-09-03: without the plugin entry, `jsx-a11y/alt-text` at `"error"` exits 0 on a bare `<img>`. Turn off `no-noninteractive-tabindex`: it conflicts with the axe-mandated `scrollable-region-focusable` pattern. |
-| No inline styles | Biome `noInlineStyles`, or an ast-grep rule | Design-system bypass | Allow `style` on charting components with a per-site suppression. |
+| Component restyling at the call site | `@shadcn/lint` `no-restyle` via oxlint `jsPlugins` | A page overriding padding, size or shape a component owns | Tailwind v4 + JSX only. The stronger form of the raw-element rule above: ast-grep cannot express it, because it needs class-family semantics plus import resolution. Contracts are per component (`^Button$` allows `w-full`, `mt-*`), so the policy is authored, not a preset. See below. |
+| No inline styles | Biome `noInlineStyles`, or an ast-grep rule | Design-system bypass | Allow `style` on charting components with a per-site suppression. On a Tailwind v4 project `@shadcn/lint`'s `no-inline-styles` is the same rule - run one of the two, not both. |
 | Imports stay sorted and grouped | Biome `assist.actions.source.organizeImports` + `biome check` | Merge conflicts on import blocks | It is an **assist** action, not a lint rule: `biome lint` never runs it. `biome check` does, and reports it at error severity. |
 
 `useTopLevelRegex` is a **performance** rule, not a correctness or ReDoS one: it
@@ -304,6 +328,44 @@ wrong. It says nothing about catastrophic backtracking - see
 `jsx-a11y` is static-only. Its runtime complement - colour contrast, computed
 ARIA, focus order - is the axe/pa11y gate in `references/web-delivery.md`. Run
 both.
+
+**`@shadcn/lint`** (MIT) is six rules enforcing a per-component Tailwind v4
+class contract, `no-restyle` being the one nothing else in this catalogue
+reaches. You declare which class families each component owns; a call site that
+overrides one fails, and the diagnostic is templated from your own components
+and theme, so it names the prop to use instead. Wire it through `jsPlugins` in
+`.oxlintrc.json` with the contracts under `settings.shadcn`. No ESLint and no TS
+6 alias are involved. It needs oxlint 1.80+ and Node 20.19+. Four traps, and the
+first two decide whether it is adoptable at all:
+
+- **Registry-verified 2026-09-14, behaviour unverified.** v0.1.0 published that
+  same day, one version, repo created 2026-09-02. It clears a 4-day release-age
+  quarantine, a 30-day new-package-age gate and a 1000/week download floor only
+  around mid-October, so under the supply-chain posture in the
+  **supply-chain-hardening** skill it is currently uninstallable rather than
+  merely new.
+- **It declares `@typescript-eslint/parser` `^8.40.0` as a hard dependency**,
+  not a peer and not optional. That parser peers `typescript >=4.8.4 <6.1.0`, so
+  installing the plugin drags a TS-6-max parser into a TS 7 project. The oxlint
+  path does not escape it; the dependency is unconditional.
+- **`jsPlugins` is documented by oxc as alpha.** An alpha plugin surface on a
+  linter whose default severity is warn is exactly the fail-open class
+  [Gate integrity](#gate-integrity) collects, so treat it as unproven until a
+  canary shows a known `no-restyle` violation exiting non-zero *with the rule
+  name in the output*, and the same violation at an exempt path exiting 0.
+- **`require-static-classes` is a gate-integrity rule, not a style rule.** It
+  exists so the other five can see the classes at all: a `className` built at
+  runtime is invisible to every one of them. Turning it off to quieten a
+  dynamic-class file silently disarms `no-restyle` on that file.
+
+Two of the six overlap picks this catalogue already makes: `no-unknown-classes`
+duplicates `eslint-plugin-better-tailwindcss` (`references/other-stacks.md`,
+CSS / SCSS) and `no-inline-styles` duplicates Biome `noInlineStyles`. One owner
+per job - pick the tool, then turn the duplicate off on the other side.
+
+The project claims 150 eval runs showing agent-written UI 10-48% cheaper with
+the rules on. That is vendor-run and unreplicated; treat it as the motivation
+for the rule, not as a number to quote.
 
 ## Import hygiene
 
@@ -418,7 +480,10 @@ TypeScript itself is Microsoft's, and oxc (oxlint, oxfmt, tsgolint) sits under
 VoidZero, acquired by Cloudflare with a neutrality pledge and adopted by
 vuejs/core, turborepo and sentry-javascript. Biome is a community foundation with
 corporate sponsors. Everything else here is effectively bus-factor one: knip,
-publint, attw, sherif, ultracite, dependency-cruiser, fallow, anti-slop.
+publint, attw, sherif, ultracite, dependency-cruiser, fallow, anti-slop,
+`@shadcn/lint`, lintcn. The last two are the youngest in the list - one version
+and one month of repo history for `@shadcn/lint`, a stalled npm release line for
+lintcn - so neither has a cadence to review yet, only a decision to revisit.
 
 That sets a review cadence, not a veto. Pin exact versions and let the 4-day
 release-age quarantine hold the newest back - which is why oxlint pins 1.80.0
