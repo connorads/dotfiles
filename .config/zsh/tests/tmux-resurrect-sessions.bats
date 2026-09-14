@@ -720,6 +720,23 @@ wait_for_pane_command() {
   [ "$output" = "/bin/sleep 300" ]
 }
 
+@test "foreground strategy records an exec'd process over its own helper child" {
+  # Codex 0.154 keeps a `codex-code-mode-host` child open for the life of the
+  # session, so a pane whose top process IS codex has a child for the ppid scan
+  # to find - the wrong one. perl stands in: pane_pid is perl, its child is a
+  # distinctly-numbered sleep.
+  command -v perl >/dev/null 2>&1 || skip "perl not installed"
+  start_private_server 'exec perl -e '"'"'if (fork) { sleep 300 } else { exec "/bin/sleep", "299" }'"'"
+  # shellcheck disable=SC2016  # a wait_until predicate expands per poll, not here
+  wait_until -i 0.1 -d 'ps -ao ppid=,args=' 'ps -ao ppid=,args= | grep -q "[/]bin/sleep 299"'
+
+  run "$REAL_BASH" "$FOREGROUND_STRATEGY" "$(pane_pid_of)"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == perl\ -e* ]]
+  [[ "$output" != *"/bin/sleep 299"* ]]
+}
+
 @test "bundled ps strategy records nothing for an exec'd pane (the regression)" {
   [ -f "$REAL_PS_STRATEGY" ] || skip "tmux-resurrect plugin not checked out"
   # /bin/sleep, not a bare `sleep`: the nix coreutils multi-call binary reports

@@ -13,9 +13,13 @@
 # `agent_foreground_pid_for_tty` with the session-id save hook, so both halves of
 # the subsystem agree on how to find a pane's agent.
 #
-# The child scan stays primary, so panes upstream already handles keep
-# byte-identical output. A missing copy of this file in the plugin's
-# save_command_strategies/ dir falls back to the bundled `ps` strategy.
+# The pane's own process is checked first: when it is not a shell it IS the
+# command (an exec'd agent), and its children are its helpers - Codex keeps a
+# `codex-code-mode-host` child open, which the child scan would save in its
+# place, and restore would then run the helper. A shell pane skips straight to
+# the child scan, so panes upstream already handles keep byte-identical output.
+# A missing copy of this file in the plugin's save_command_strategies/ dir
+# falls back to the bundled `ps` strategy.
 
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -103,6 +107,18 @@ hibernate_command() {
 	done
 }
 
+# The pane's own top process, when it is not a shell: its args are the command.
+# A login shell reports `-zsh`; the dash is stripped before the shell check.
+own_command() {
+	local cmd
+	cmd=$(ps -o comm= -p "$PANE_PID" 2>/dev/null)
+	cmd=${cmd##*/}
+	cmd=${cmd#-}
+	[ -n "$cmd" ] || return 0
+	is_shell "$cmd" && return 0
+	ps -o args= -p "$PANE_PID" 2>/dev/null
+}
+
 # tmux's own idea of the pane: its tty and foreground command name.
 foreground_command() {
 	local row tty cmd pid
@@ -128,6 +144,7 @@ main() {
 	# The hibernate check runs first: the parked pane's child scan finds nothing
 	# and its foreground is a shell, so both other paths would report empty.
 	full_command=$(hibernate_command)
+	[ -n "$full_command" ] || full_command=$(own_command)
 	[ -n "$full_command" ] || full_command=$(child_command)
 	[ -n "$full_command" ] || full_command=$(foreground_command)
 	[ -n "$full_command" ] || return 0
