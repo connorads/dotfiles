@@ -72,6 +72,7 @@
 | `Ctrl+b D` | hunk git diff / stage (hunk.dev) |
 | `Ctrl+b C` | critique git diff (no changes → status-line message, no float) |
 | `Ctrl+b Alt+e` | annotate draft: everything `a` stashed → one prompt, in `$EDITOR`. Save+quit sends; save then `:cq` keeps it unsent |
+| `Ctrl+b Alt+d` | coordinator: jump to the `coord` agent (launched in `~/git/coord` if absent); press again inside it to return to the pane you came from |
 | `Ctrl+b Alt+Shift+E` | annotate transcript picker: stash a Claude message *untruncated* (the screen elides; the session JSONL does not) |
 | `Ctrl+b v` | neovim |
 | `Ctrl+b V` | neovim help |
