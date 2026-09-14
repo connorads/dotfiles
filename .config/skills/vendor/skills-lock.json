@@ -158,30 +158,6 @@
       "skillPath": "claude/.claude/skills/mutation-testing/SKILL.md",
       "computedHash": "b32e0bc74fdd240e258bee45cea16b49907610fe762a436545e993a938c7da5c"
     },
-    "next-cache-components-adoption": {
-      "source": "vercel/next.js",
-      "sourceType": "github",
-      "skillPath": "skills/next-cache-components-adoption/SKILL.md",
-      "computedHash": "ea3275e24fc88ab7464563bbe6be87b8b5c0a2e44f753572fb94193bea91e863"
-    },
-    "next-cache-components-optimizer": {
-      "source": "vercel/next.js",
-      "sourceType": "github",
-      "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "894d00267e8793b218eaa9c5b157ad1a57419a975baf4d9959e9633cfdd7cf49"
-    },
-    "next-dev-loop": {
-      "source": "vercel/next.js",
-      "sourceType": "github",
-      "skillPath": "skills/next-dev-loop/SKILL.md",
-      "computedHash": "fcfd05ce87d9edafda2e454f3f998bc45cb96fa2a3b695a4c3c144a9a13e7c39"
-    },
-    "next-partial-prefetching-adoption": {
-      "source": "vercel/next.js",
-      "sourceType": "github",
-      "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
-      "computedHash": "b6373f5d9e18c4fcb9e1ce8b63dd76de62e7e3b6bad53961e5d6de4753a08c0c"
-    },
     "no-ai-slop": {
       "source": "petergyang/no-ai-slop",
       "sourceType": "github",
