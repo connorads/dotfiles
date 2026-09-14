@@ -1,0 +1,3 @@
+- `npx -y lavish-axi --help` for commands and the review-loop workflow
+- `npx -y lavish-axi design` for design-direction priority and current snippets
+- `npx -y lavish-axi playbook <id>` for focused artifact guidance (`npx -y lavish-axi playbook` lists ids)
