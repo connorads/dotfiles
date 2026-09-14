@@ -16,6 +16,7 @@ gates.
 | import-linter | exact-edge `ignore_imports` entries under `unmatched_ignore_imports_alerting = "error"` | No baseline file. Entries self-expire (a stale edge fails the run), which a dependency-cruiser baseline never does - but a wildcard edge silently absorbs every new violation it matches, so never wildcard an ignore. |
 | ruff | `ruff check --select CODE --add-ignore`; expire stale ones with `--extend-select RUF100 --fix` | Bulk inline suppression, not a baseline file - scope per rule and prefer a reason on manually added suppressions. Requires Ruff 0.16+. |
 | golangci-lint | `--new-from-merge-base` / `--new-from-rev` | Git-diff gating, so there is no baseline file to maintain; the flags and their CI wiring are under Complexity gates below. |
+| lintcn | per-rule `// lintcn:severity warn`, shown only for files in `git diff` plus untracked | Diff-scoped severity, not a baseline: nothing is committed and nothing expires. Weaker than every vehicle above it - the set never shrinks, and reverting a file hides its violations again, so it cannot report debt or prove it is being paid. Adopt-as-you-touch only. |
 | complexipy (Python) | `--snapshot-create` → committed `complexipy-snapshot.json`, then `--snapshot-ignore` to opt out | The only per-site Python complexity baseline, keyed by (path, file, function name), so fixing one function and adding another is still caught. A passing run rewrites the snapshot merged with current results, so it ratchets down by itself. Renaming or moving a grandfathered function reads as a new violation, and the file resolves against the invocation directory, so a run from a subdirectory silently drops grandfathering. |
 | lizard | `lizard -i <today's count>` | Coarse: a bare warning **count**, not a per-site baseline, so fixing one function and adding another nets zero. Use only for languages with no linter baseline. |
 | knip | per-issue-type severity in the `rules` key (`"error"` / `"warn"` / `"off"`) | No baseline file exists. `"warn"` keeps a type in the report and out of the exit code, so adopt type by type; `"off"` drops it from the report as well. `--max-issues N` counts what survives `--include` and `--production` filtering, so a per-category budget takes one scoped run each, and a number tuned in one mode does not hold in the other. The non-numeric `--max-issues` fail-open and its version floor: `references/typescript.md`, Dead code (knip). Verified 2026-09-03 against knip 6.33.0. |
@@ -30,6 +31,14 @@ all-oxc repo neither is reachable. Betterer, the generic snapshot-ratchet
 wrapper, is dormant, so avoid it. Where no vehicle exists, fall back to
 severity: gate at *warning* first, escalate to *error* after a grace window,
 and tighten the number release by release.
+
+Diff-scoping refines that fallback: show the warning only for files the current
+change already touches (`git diff` plus untracked, as golangci-lint and lintcn
+both do), so the noise a legacy tree would generate never reaches the author.
+It is an adoption aid, not a ratchet. A ratchet produces a number that has to go
+down and a run that fails when it goes up; diff-scoped severity produces
+neither, so pair it with a reporting run over the whole tree if the debt has to
+be tracked.
 
 ## Traps in the vehicles
 
