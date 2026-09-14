@@ -17,6 +17,7 @@ A **content skill**, not a tool: rules and snippets. Wiring them into git hooks 
 4. **Auto-fix where possible, gate where not**. Formatters and whitespace fixers run with `fix = true` and re-stage. Correctness rules gate the commit.
 5. **Own the rule list where the rules are the point, take a preset where they are not**. `@commitlint/config-conventional` for commits and `next/core-web-vitals` for Next are presets worth inheriting; the lint set that backs an idiom is a config this catalogue owns, because a preset that silences one of those rules does it silently. Override either only with a comment saying *why*.
 6. **The *why* lives with the rule**. Every non-obvious override has an inline comment saying what would break if it were removed.
+7. **The diagnostic is part of the gate**. A rule that says what is banned but not what to use instead costs a correction round - for a reviewer and for an agent. Where the linter takes a custom message, name the replacement and where it lives.
 
 ## When to use this skill
 
@@ -100,7 +101,7 @@ When a bug escapes to review or production, the retro question is: **what rule w
 
 1. Identify the smallest AST pattern, import, or type flag that expresses the rule.
 2. Pick the linter that already owns that concern (the picks table).
-3. Add it, with an inline comment explaining the failure mode it prevents.
+3. Add it, with an inline comment explaining the failure mode it prevents. Where the rule takes a custom message, make the message name the replacement and where it lives, not just the ban.
 4. Record it with the same rationale in the matching `references/` stack file (inline above only for a cross-stack concern), and as a drop-in if it is a new *type* of rule.
 
 ### Ratcheting a gate onto non-conforming code
