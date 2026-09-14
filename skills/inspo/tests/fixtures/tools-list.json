@@ -1,0 +1,374 @@
+{
+ "result": {
+  "tools": [
+   {
+    "name": "search_screens",
+    "description": "Search the archive of real website screenshots. Returns screens with palette, fonts, components and image URLs.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "query": {
+       "type": "string",
+       "description": "Natural-language description of what you're looking for. e.g. 'minimalist editorial agency portfolio'",
+       "default": ""
+      },
+      "style": {
+       "type": "string",
+       "enum": [
+        "minimalism",
+        "editorial",
+        "brutalism",
+        "glassmorphism",
+        "swiss",
+        "maximalism",
+        "playful",
+        "dark-mode",
+        "monochrome",
+        "vintage",
+        "futurist"
+       ],
+       "description": "Filter to one visual style (e.g. 'minimalism', 'editorial')"
+      },
+      "industry": {
+       "type": "string",
+       "enum": [
+        "agency",
+        "ai",
+        "architecture",
+        "automotive",
+        "consumer-tech",
+        "creator",
+        "crypto",
+        "culture",
+        "developer-tools",
+        "ecommerce",
+        "education",
+        "fashion",
+        "fintech",
+        "food-beverage",
+        "furniture",
+        "gaming",
+        "health",
+        "media",
+        "music",
+        "non-profit",
+        "portfolio",
+        "saas",
+        "travel",
+        "type-foundry"
+       ],
+       "description": "Filter to one industry (e.g. 'saas', 'fintech', 'portfolio')"
+      },
+      "macrostructure": {
+       "type": "string",
+       "enum": [
+        "bento-grid",
+        "long-document",
+        "marquee-hero",
+        "stat-led",
+        "conversational-faq",
+        "manifesto",
+        "photographic",
+        "specimen",
+        "catalogue",
+        "letter",
+        "index-first",
+        "narrative-workflow",
+        "split-studio",
+        "feature-stack",
+        "type-specimen",
+        "portfolio-grid",
+        "map-diagram",
+        "ecosystem-index",
+        "component-playground"
+       ],
+       "description": "Filter to a macrostructure (e.g. 'bento-grid')"
+      },
+      "mode": {
+       "type": "string",
+       "enum": [
+        "light",
+        "dark"
+       ],
+       "description": "light or dark"
+      },
+      "vibe": {
+       "type": "string",
+       "enum": [
+        "calm",
+        "loud",
+        "playful",
+        "serious",
+        "luxe",
+        "raw",
+        "soft",
+        "technical",
+        "warm",
+        "cold"
+       ],
+       "description": "Mood / vibe - 'calm', 'loud', 'luxe', 'technical', 'soft', etc."
+      },
+      "color": {
+       "type": "string",
+       "enum": [
+        "warm",
+        "cool",
+        "monochrome",
+        "neon",
+        "earthy",
+        "pastel",
+        "saturated",
+        "muted",
+        "high-contrast"
+       ],
+       "description": "Color word - 'warm', 'cool', 'monochrome', 'neon', 'earthy'"
+      },
+      "pageType": {
+       "type": "string",
+       "enum": [
+        "landing",
+        "pricing",
+        "features",
+        "auth",
+        "about",
+        "blog",
+        "changelog",
+        "docs",
+        "other"
+       ],
+       "description": "Filter to a page kind: 'landing' (default homepages), 'pricing', 'features', 'auth', 'about', 'blog', 'changelog', 'docs', 'other'"
+      },
+      "paperBand": {
+       "type": "string",
+       "enum": [
+        "dark",
+        "mid",
+        "light"
+       ],
+       "description": "Surface lightness, measured from the capture: 'dark' (<30% L), 'mid' (30-85%), 'light' (>85%). More reliable than `mode`, which is tagged and disagrees with the measurement on ~15% of rows."
+      },
+      "displayClass": {
+       "type": "string",
+       "enum": [
+        "grotesk-sans",
+        "geometric-sans",
+        "roman-serif",
+        "italic-serif",
+        "slab-serif",
+        "mono",
+        "display-condensed-bold",
+        "display-heavy",
+        "system-native",
+        "handwritten"
+       ],
+       "description": "Construction of the display face: 'grotesk-sans', 'geometric-sans', 'roman-serif', 'mono', 'display-condensed-bold', etc."
+      },
+      "accentHue": {
+       "type": "string",
+       "enum": [
+        "warm",
+        "cool",
+        "neutral",
+        "chromatic-other"
+       ],
+       "description": "Accent temperature: 'warm' (10-60\u00b0), 'cool' (200-300\u00b0), 'neutral' (unsaturated), 'chromatic-other' (greens, magentas, everything else)."
+      },
+      "device": {
+       "type": "string",
+       "enum": [
+        "desktop",
+        "mobile"
+       ],
+       "description": "'mobile' restricts to sites with a 375px capture pair and inlines the mobile thumbnail. Default: desktop."
+      },
+      "limit": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 20,
+       "default": 6
+      },
+      "detail": {
+       "type": "string",
+       "enum": [
+        "concise",
+        "standard",
+        "full"
+       ],
+       "description": "'standard' (default): northstar, palette, fonts, axes, macro and tags per row, plus the fold-by-fold autopsy on the top 3. 'full': the autopsy on every row (~300 tokens each; only if you will read them all). 'concise': northstar, palette, fonts. Text profile defaults to concise."
+      },
+      "maxTokens": {
+       "type": "integer",
+       "minimum": 300,
+       "maximum": 200000,
+       "description": "Approximate token ceiling for this response. Trims lower-ranked results and thumbnails; the top result and all URLs survive."
+      }
+     }
+    },
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": false
+    },
+    "execution": {
+     "taskSupport": "forbidden"
+    }
+   },
+   {
+    "name": "get_screen",
+    "description": "Fetch the full record for one screen by slug - every viewport variant, palette, fonts, tech stack, designer credit.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "slug": {
+       "type": "string",
+       "description": "Screen slug, e.g. 'atelier-mira'"
+      }
+     },
+     "required": [
+      "slug"
+     ]
+    },
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": false
+    },
+    "execution": {
+     "taskSupport": "forbidden"
+    }
+   },
+   {
+    "name": "recommend",
+    "description": "Orchestrator - start here for a brief. One call returns a macrostructure pick, 5 real exemplars, matching reference components (source via get_reference_jsx), a palette suggestion, and an `evidence` packet measuring the genre's paper band / display class / accent hue. Pass a macrostructure to skip the pick step. No LLM call.",
+    "inputSchema": {
+     "type": "object",
+     "properties": {
+      "brief": {
+       "type": "string",
+       "minLength": 2,
+       "description": "The user's design brief in plain English. E.g. 'calm meditation app', 'dark dev-tool that helps teams ship faster'."
+      },
+      "macrostructure": {
+       "type": "string",
+       "enum": [
+        "bento-grid",
+        "long-document",
+        "marquee-hero",
+        "stat-led",
+        "conversational-faq",
+        "manifesto",
+        "photographic",
+        "specimen",
+        "catalogue",
+        "letter",
+        "index-first",
+        "narrative-workflow",
+        "split-studio",
+        "feature-stack",
+        "type-specimen",
+        "portfolio-grid",
+        "map-diagram",
+        "ecosystem-index",
+        "component-playground"
+       ],
+       "description": "Optional: a macrostructure already picked. Skips the pick step."
+      },
+      "pageType": {
+       "type": "string",
+       "enum": [
+        "landing",
+        "pricing",
+        "features",
+        "auth",
+        "about",
+        "blog",
+        "changelog",
+        "docs",
+        "other"
+       ],
+       "description": "Optional: 'landing', 'pricing', 'features', etc."
+      },
+      "mode": {
+       "type": "string",
+       "enum": [
+        "light",
+        "dark"
+       ],
+       "description": "Optional: 'light' or 'dark'."
+      },
+      "vibe": {
+       "type": "string",
+       "enum": [
+        "calm",
+        "loud",
+        "playful",
+        "serious",
+        "luxe",
+        "raw",
+        "soft",
+        "technical",
+        "warm",
+        "cold"
+       ],
+       "description": "Optional vibe filter."
+      },
+      "color": {
+       "type": "string",
+       "enum": [
+        "warm",
+        "cool",
+        "monochrome",
+        "neon",
+        "earthy",
+        "pastel",
+        "saturated",
+        "muted",
+        "high-contrast"
+       ],
+       "description": "Optional colour word."
+      },
+      "device": {
+       "type": "string",
+       "enum": [
+        "desktop",
+        "mobile"
+       ],
+       "description": "'mobile' restricts to sites with a 375px capture pair and inlines the mobile thumbnail. Default: desktop."
+      },
+      "detail": {
+       "type": "string",
+       "enum": [
+        "concise",
+        "standard",
+        "full"
+       ],
+       "description": "'standard' (default): northstar, palette, fonts, axes, macro and tags per row, plus the fold-by-fold autopsy on the top 3. 'full': the autopsy on every row (~300 tokens each; only if you will read them all). 'concise': northstar, palette, fonts. Text profile defaults to concise."
+      },
+      "maxTokens": {
+       "type": "integer",
+       "minimum": 300,
+       "maximum": 200000,
+       "description": "Approximate token ceiling for this response. Trims lower-ranked results and thumbnails; the top result and all URLs survive."
+      }
+     },
+     "required": [
+      "brief"
+     ]
+    },
+    "annotations": {
+     "readOnlyHint": true,
+     "destructiveHint": false,
+     "idempotentHint": true,
+     "openWorldHint": false
+    },
+    "execution": {
+     "taskSupport": "forbidden"
+    }
+   }
+  ]
+ },
+ "jsonrpc": "2.0",
+ "id": 1
+}
