@@ -1,0 +1,2 @@
+{{marker}}
+Installing this skill is not the only setup step here; three house gates sit in the bootstrap path and that reference carries all of them: `npm` is blocked bare and needs an `NPM_OK=1` prefix, a 4-day release-age gate makes a fresh Clapper release fail `ETARGET` until it ages, and the several-hundred-MB managed-runtime download is an ask rather than an assumption. Perform the remaining setup yourself within those.

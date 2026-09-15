@@ -1,0 +1,6 @@
+{
+  "reason": "upstream treats setup as unattended; here `npm` is blocked bare, a 4-day release-age gate refuses fresh versions, and the managed-runtime download is an ask",
+  "files": [
+    ".agents/skills/clapper/SKILL.md"
+  ]
+}

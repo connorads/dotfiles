@@ -1,0 +1,1 @@
+For the rest of this skill, `clapper` means the exact command prefix resolved during bootstrap (possibly `npm exec --yes --package=@archastro/clapper@<resolved-version> -- clapper`, or an absolute native launcher path). It does not assume a global executable.
