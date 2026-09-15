@@ -32,6 +32,13 @@
       "skillPath": "skills/cloudflare/SKILL.md",
       "computedHash": "c9b25ff6c3be26e74162e7df183990f8ee76ad6d1ee37d9ca50b4dd23cb06ad1"
     },
+    "code-simplification": {
+      "source": "addyosmani/agent-skills",
+      "ref": "0.6.9",
+      "sourceType": "github",
+      "skillPath": "skills/code-simplification/SKILL.md",
+      "computedHash": "7973e746e8e2ea5004d520da970c15a106824b8d6be1bcff48908aec021f3677"
+    },
     "competitor-analysis": {
       "source": "aaron-he-zhu/aaron-marketing-skills",
       "sourceType": "github",
