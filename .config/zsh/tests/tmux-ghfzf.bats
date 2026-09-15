@@ -17,7 +17,14 @@ TMUX_DIR="$TESTS_DIR/../../tmux"
 
 @test "help and tmux AGENTS document the ghfzf binding" {
   grep -F '| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |' "$TMUX_DIR/help.md"
-  grep -F '| `Ctrl+b T` | Tools launcher (fzf: tmux join-all/burst, Git review, claude-watch, Claude plan viewer, connections, ports, pclose, bandwhich, tsp, tpm-clean) |' "$TMUX_DIR/help.md"
+  # The Tools row summarises tools.tsv in prose, so assert the items this
+  # test guards moved there - not the whole enumeration, which rots on
+  # every tools.tsv addition.
+  tools_row=$(grep -F '| `Ctrl+b T` | Tools launcher' "$TMUX_DIR/help.md")
+  [[ $tools_row == *'Git review'* ]]
+  [[ $tools_row == *'claude-watch'* ]]
+  [[ $tools_row == *'Claude plan viewer'* ]]
+  [[ $tools_row == *'tpm-clean'* ]]
 
   grep -F '`M-g` ghfzf' "$TMUX_DIR/AGENTS.md"
 }
