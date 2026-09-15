@@ -109,6 +109,12 @@
       "skillPath": "skills/in-progress/writing-beats/SKILL.md",
       "computedHash": "220b163698de9c1e551b801795cc8ca38132b69018f82188875b3675226fc888"
     },
+    "writing-for-agents": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
+      "computedHash": "95da47fc97af998e85b7d7e6d57b3ac76727c1e290cfe9ea09005aacb826959f"
+    },
     "writing-fragments": {
       "source": "mattpocock/skills",
       "sourceType": "github",
