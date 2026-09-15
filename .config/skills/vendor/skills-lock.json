@@ -165,6 +165,12 @@
       "skillPath": "skills/no-ai-slop/SKILL.md",
       "computedHash": "77d287e3c8e09874e144ee35f6fb0ee1adcf609012c7c3273e9c8fe2054ce5af"
     },
+    "page-mascot": {
+      "source": "nilbuild/page-mascot",
+      "sourceType": "github",
+      "skillPath": "skills/page-mascot/SKILL.md",
+      "computedHash": "e41157b77505a36c62f334226df0c1b63538d48671de9a5cc7a1924b522ba2d7"
+    },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",
       "sourceType": "github",

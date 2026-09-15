@@ -1,0 +1,6 @@
+{
+  "reason": "the build scripts run under `uv`, which resolves their dependencies per-run from requirements.txt; upstream's bare `pip install` targets whatever python3 is on PATH and creates no environment of its own.",
+  "files": [
+    ".agents/skills/page-mascot/SKILL.md"
+  ]
+}
