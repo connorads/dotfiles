@@ -1,0 +1,6 @@
+{
+  "reason": "the npm bootstrap route runs blocked-bare `npm`, resolves `latest` into the 4-day release-age gate, and downloads a several-hundred-MB unmanaged runtime",
+  "files": [
+    ".agents/skills/clapper/references/bootstrap.md"
+  ]
+}
