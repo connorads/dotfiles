@@ -46,7 +46,7 @@ for f in "$@"; do
 
 	if ((dual)) && ((has_marker)); then
 		err "$f" "dual-mode (shebang) files must not carry a '# zsh-only:' marker"
-	elif ((!dual)) && ((!has_marker)); then
+	elif ((! dual)) && ((! has_marker)); then
 		err "$f" "add '#!/usr/bin/env zsh' (dual-mode) or a '# zsh-only: <reason>' marker"
 	fi
 
