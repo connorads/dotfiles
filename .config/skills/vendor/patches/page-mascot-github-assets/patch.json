@@ -1,0 +1,6 @@
+{
+  "reason": "character sheets are fetched from the upstream repo on raw.githubusercontent.com rather than the author's separate site, so the assets come from the same host the skill itself is vendored from and survive that domain lapsing.",
+  "files": [
+    ".agents/skills/page-mascot/SKILL.md"
+  ]
+}
