@@ -1,0 +1,55 @@
+{
+  "skill_name": "video-clipping",
+  "how_to_run": "Run each prompt with the skill and without it in fresh sessions. Use generated or user-owned fixtures. Grade the transcript for exact-source transcription, two-pass timestamp confirmation, caption interval verification and correct routing to neighbouring skills.",
+  "notes": "The originating failure timed one upload from a related lyric video, accepted a transcription window that ended before the requested words, and checked caption appearance in one frame instead of checking synchronisation. Fixtures use neutral wording; the behavioural mechanism is the regression target.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "approximate-quote-from-url",
+      "prompt": "can you grab this yt clip where she says something like 'pack my bag now you're lifting it'? want a tight mp4 and burn the actual words in, not my rough wording",
+      "assertions": [
+        "Loads video-clipping and uses scripts/clip-video.py",
+        "Transcribes the exact downloaded source rather than timing from a related upload or transcript page",
+        "Uses prompted and unprompted word timestamps and refuses an ambiguous match",
+        "Keeps locator wording separate from verified caption wording",
+        "Checks caption absence, presence and absence around the reported interval before delivery"
+      ],
+      "history": "Neutral regression for the related-source and early-caption failures. Supply a generated fixture URL when running it."
+    },
+    {
+      "id": 2,
+      "name": "local-file-explicit-timestamps",
+      "prompt": "Downloads/interview final.mp4 - cut 42.4 to 47.1, one sec handles, caption should read `We can ship this on Friday.` and save next to it",
+      "assertions": [
+        "Uses explicit source timestamps without unnecessary quote discovery",
+        "Burns the supplied caption only from 1.0 to 5.7 seconds in the output clip",
+        "Verifies duration plus audio and video streams",
+        "Does not alter the source file"
+      ],
+      "history": "Covers the deterministic timestamp path and punctuation-safe caption file."
+    },
+    {
+      "id": 3,
+      "name": "clean-clip-without-captions",
+      "prompt": "clip the bit in demo.mov where he says 'open the settings panel' - half a second either side, no subs please",
+      "assertions": [
+        "Uses quote timing from the exact local source",
+        "Passes --before 0.5, --after 0.5 and --no-captions",
+        "Still confirms the quote survives in the final clip",
+        "Does not invent caption or styling work"
+      ],
+      "history": "Tests the caption escape hatch without weakening quote verification."
+    },
+    {
+      "id": 4,
+      "name": "thumbnail-near-miss",
+      "prompt": "pull a strong frame from this interview and make a YouTube thumbnail with the guest cut out and a big three-word headline",
+      "assertions": [
+        "Routes to video-thumbnails instead of video-clipping",
+        "Does not transcribe speech or create a short video excerpt",
+        "Produces the requested still-image workflow"
+      ],
+      "history": "Near-miss boundary with the existing video-thumbnails skill."
+    }
+  ]
+}
