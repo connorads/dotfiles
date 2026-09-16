@@ -728,7 +728,7 @@ p.write_text(json.dumps(data))
 PY
 }
 
-@test "reset expiry shows the earliest available deadline and its count at narrow width" {
+@test "reset expiries show every available deadline in order with grouped counts at narrow width" {
   seed_reset_expiries
   export COLUMNS=70
 
@@ -736,8 +736,8 @@ PY
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Codex 3 · none usable now"* ]]
-  [[ "$output" == *"2 expire in"*"04 Oct 03:11"* ]]
-  [[ "$output" != *"05 Oct"* ]]
+  [[ "$output" == *"2 expire in"*"04 Oct 03:11"*"1 expires in"*"05 Oct 05:18"* ]]
+  [[ "$output" != *"17 Sep"* ]]
 }
 
 @test "elapsed reset expiry asks for refresh instead of counting down to zero" {
@@ -748,6 +748,7 @@ PY
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"2 expired · refresh needed"* ]]
+  [[ "$output" == *"1 expires in"*"05 Oct 05:18"* ]]
   [[ "$output" != *"expire in 0m"* ]]
 }
 

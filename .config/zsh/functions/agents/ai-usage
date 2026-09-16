@@ -746,15 +746,15 @@ def collect_windows():
                         if credit.get("status") == "available"]
             known = [ts for ts in expiries if ts is not None]
             if known:
-                deadline = min(known)
-                count = known.count(deadline)
-                if deadline <= NOW_TS:
-                    expiry = f"{count} expired · refresh needed"
-                else:
-                    verb = "expires" if count == 1 else "expire"
-                    date = datetime.fromtimestamp(deadline).strftime("%d %b %H:%M")
-                    expiry = f"{count} {verb} in {fmt_duration(deadline - NOW_TS)} · {date}"
-                standing.append(("", expiry, "muted"))
+                for deadline in sorted(set(known)):
+                    count = known.count(deadline)
+                    if deadline <= NOW_TS:
+                        expiry = f"{count} expired · refresh needed"
+                    else:
+                        verb = "expires" if count == 1 else "expire"
+                        date = datetime.fromtimestamp(deadline).strftime("%d %b %H:%M")
+                        expiry = f"{count} {verb} in {fmt_duration(deadline - NOW_TS)} · {date}"
+                    standing.append(("", expiry, "muted"))
             else:
                 standing.append(("", "Expiry unavailable", "muted"))
         if (codex.get("rate_limit") or {}).get("limit_reached"):
