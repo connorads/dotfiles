@@ -707,3 +707,77 @@ PY
   [[ "$output" == *"Today"*"1 runs"* ]]
   [[ "$output" == *"cached 175.2k"* ]]
 }
+
+seed_reset_expiries() {
+  write_usage_caches
+  set_codex_reset_credits 3 0
+  export AI_USAGE_NOW=1789552800 TZ=Europe/London
+  python3 - "$HOME/.cache/codex-usage.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+data = json.loads(p.read_text())
+data['_reset_credit_details'] = {'credits': [
+    {'status': 'available', 'expires_at': '2026-10-05T04:18:57Z'},
+    {'status': 'available', 'expires_at': '2026-10-04T02:11:09Z'},
+    {'status': 'available', 'expires_at': '2026-10-04T02:11:09Z'},
+    {'status': 'redeemed', 'expires_at': '2026-09-17T00:00:00Z'},
+]}
+p.write_text(json.dumps(data))
+PY
+}
+
+@test "reset expiry shows the earliest available deadline and its count at narrow width" {
+  seed_reset_expiries
+  export COLUMNS=70
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Codex 3 · none usable now"* ]]
+  [[ "$output" == *"2 expire in"*"04 Oct 03:11"* ]]
+  [[ "$output" != *"05 Oct"* ]]
+}
+
+@test "elapsed reset expiry asks for refresh instead of counting down to zero" {
+  seed_reset_expiries
+  export AI_USAGE_NOW=1791158400
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"2 expired · refresh needed"* ]]
+  [[ "$output" != *"expire in 0m"* ]]
+}
+
+@test "missing reset expiry is explicit without inventing a deadline" {
+  write_usage_caches
+  set_codex_reset_credits 2 0
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Expiry unavailable"* ]]
+}
+
+@test "unknown reset dates do not hide a known expiry or become a false deadline" {
+  seed_reset_expiries
+  python3 - "$HOME/.cache/codex-usage.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+data = json.loads(p.read_text())
+credits = data['_reset_credit_details']['credits']
+credits[1]['expires_at'] = None
+credits[2]['expires_at'] = 'not-a-date'
+p.write_text(json.dumps(data))
+PY
+
+  run_zsh_function "$AI_USAGE" --cache-only
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1 expires in"*"05 Oct 05:18"* ]]
+  [[ "$output" != *"04 Oct"* ]]
+}

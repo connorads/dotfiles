@@ -104,12 +104,23 @@ if [[ "$should_fetch" -eq 1 ]] && _acquire_lock; then
                     .last_refresh = $lr' "$auth_file" > "$tmp" && mv "$tmp" "$auth_file"
                 chmod 600 "$auth_file"
                 usage_ok=0
+                token="$new_access"
                 _fetch_usage "$new_access"
             fi
         fi
     fi
 
     if [[ "$usage_ok" -eq 1 ]]; then
+        local reset_details
+        if print -r -- "$usage_resp" | jq -e '.rate_limit_reset_credits.available_count > 0' >/dev/null 2>&1; then
+            if reset_details=$(curl -fsS --max-time 5 \
+                "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits" \
+                -H "Authorization: Bearer $token" 2>/dev/null) \
+                && print -r -- "$reset_details" | jq -e '.credits | type == "array"' >/dev/null 2>&1; then
+                usage_resp=$(print -r -- "$usage_resp" | jq --argjson details "$reset_details" \
+                    '._reset_credit_details = $details')
+            fi
+        fi
         mkdir -p "$(dirname "$cache")"
         print -r -- "$usage_resp" > "${cache}.tmp.$$"
         mv "${cache}.tmp.$$" "$cache"

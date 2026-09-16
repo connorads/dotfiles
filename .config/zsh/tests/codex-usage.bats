@@ -134,3 +134,63 @@ EOF
   run jq -r '.last_success_at' "$HOME/.cache/codex-usage.meta.json"
   [ "$output" = "1700000000" ]
 }
+
+seed_reset_fetch() {
+  printf '{"tokens":{"access_token":"test-token"}}' >"$HOME/.codex/auth.json"
+  seed_meta 0 0 0
+  write_curl_stub
+  printf '{"rate_limit":{},"rate_limit_reset_credits":{"available_count":2,"applicable_available_count":0}}' >"$BATS_TEST_TMPDIR/usage.json"
+  export CURL_1_KIND=hb CURL_1_CODE=200 CURL_1_BODY="$BATS_TEST_TMPDIR/usage.json"
+}
+
+@test "fetches reset details into the usage cache when resets are held" {
+  seed_reset_fetch
+  printf '{"credits":[{"status":"available","expires_at":"2026-10-04T02:11:09Z"}]}' >"$BATS_TEST_TMPDIR/details.json"
+  export CURL_2_KIND=stdout CURL_2_OUT="$BATS_TEST_TMPDIR/details.json"
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  run jq -r '._reset_credit_details.credits[0].expires_at' "$HOME/.cache/codex-usage.json"
+  [ "$output" = "2026-10-04T02:11:09Z" ]
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$CURL_STATE")" = 2 ]
+}
+
+@test "no reset credits skips the details request" {
+  seed_reset_fetch
+  printf '{"rate_limit":{},"rate_limit_reset_credits":{"available_count":0}}' >"$BATS_TEST_TMPDIR/usage.json"
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$CURL_STATE")" = 1 ]
+}
+
+@test "failed reset details do not fail usage or retain previous expiry data" {
+  seed_reset_fetch
+  printf '{"_reset_credit_details":{"credits":[{"expires_at":"2026-10-04T02:11:09Z"}]}}' >"$HOME/.cache/codex-usage.json"
+  touch -t 202001010000 "$HOME/.cache/codex-usage.json"
+  export CURL_2_KIND=net
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  run jq -r '[.rate_limit_reset_credits.available_count, has("_reset_credit_details")] | @json' "$HOME/.cache/codex-usage.json"
+  [ "$output" = '[2,false]' ]
+}
+
+@test "malformed reset details are not cached" {
+  seed_reset_fetch
+  printf '{"credits":"invalid"}' >"$BATS_TEST_TMPDIR/details.json"
+  export CURL_2_KIND=stdout CURL_2_OUT="$BATS_TEST_TMPDIR/details.json"
+
+  run_zsh_function "$CODEX_USAGE"
+
+  [ "$status" -eq 0 ]
+  run jq 'has("_reset_credit_details")' "$HOME/.cache/codex-usage.json"
+  [ "$output" = false ]
+}

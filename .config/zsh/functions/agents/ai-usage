@@ -740,6 +740,23 @@ def collect_windows():
             suffix = f"{usable} usable now" if usable else "none usable now"
             standing.append(("Resets", f"Codex {have} · {suffix}",
                              "green" if usable else "muted"))
+            details = codex.get("_reset_credit_details") or {}
+            expiries = [iso_ts(credit.get("expires_at"))
+                        for credit in details.get("credits", [])
+                        if credit.get("status") == "available"]
+            known = [ts for ts in expiries if ts is not None]
+            if known:
+                deadline = min(known)
+                count = known.count(deadline)
+                if deadline <= NOW_TS:
+                    expiry = f"{count} expired · refresh needed"
+                else:
+                    verb = "expires" if count == 1 else "expire"
+                    date = datetime.fromtimestamp(deadline).strftime("%d %b %H:%M")
+                    expiry = f"{count} {verb} in {fmt_duration(deadline - NOW_TS)} · {date}"
+                standing.append(("", expiry, "muted"))
+            else:
+                standing.append(("", "Expiry unavailable", "muted"))
         if (codex.get("rate_limit") or {}).get("limit_reached"):
             alerts.append(("Limit", "Codex limit reached", "red"))
         if codex_age is not None and codex_age >= 900:

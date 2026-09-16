@@ -963,6 +963,15 @@ always-render `standing` list, not `alerts`, which is sliced to three - ranked b
 severity, so a red is never dropped for a yellow. Claude's `/api/oauth/usage`
 carries no reset-credit field, so this stays Codex-only.
 
+When resets are held, `codex-usage` fetches
+`GET /backend-api/wham/rate-limit-reset-credits` and stores the response in the
+optional `_reset_credit_details` cache field. The next expiry appears beneath
+the count, with the number of available resets sharing that deadline, a
+countdown and the local date/time. Only the server's `expires_at` supplies the
+deadline; missing dates report `Expiry unavailable`. An elapsed deadline says
+`expired · refresh needed`. Details fetch failures leave usage available and
+omit expiry details from the new cache, rather than retaining an old grant list.
+
 Surfaces:
 
 - [`../zsh/functions/agents/ai-usage`](../zsh/functions/agents/ai-usage)
