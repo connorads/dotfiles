@@ -965,10 +965,10 @@ carries no reset-credit field, so this stays Codex-only.
 
 When resets are held, `codex-usage` fetches
 `GET /backend-api/wham/rate-limit-reset-credits` and stores the response in the
-optional `_reset_credit_details` cache field. The next expiry appears beneath
-the count, with the number of available resets sharing that deadline, a
-countdown and the local date/time. Only the server's `expires_at` supplies the
-deadline; missing dates report `Expiry unavailable`. An elapsed deadline says
+optional `_reset_credit_details` cache field. Every available expiry appears
+beneath the count, earliest first, with resets sharing a deadline grouped on one
+line. Each line shows the count, countdown and local date/time. Only the server's
+`expires_at` supplies the deadline; missing dates report `Expiry unavailable`. An elapsed deadline says
 `expired · refresh needed`. Details fetch failures leave usage available and
 omit expiry details from the new cache, rather than retaining an old grant list.
 
