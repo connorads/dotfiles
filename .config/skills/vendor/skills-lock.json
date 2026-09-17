@@ -251,6 +251,12 @@
       "skillPath": "skills/vgpu/SKILL.md",
       "computedHash": "c1fc06bfba28bfee65989e15e49fcf33bfb74648e0e098a17e926b151498305a"
     },
+    "visual-pr": {
+      "source": "humanlayer/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/visual-pr/skills/visual-pr/SKILL.md",
+      "computedHash": "197904ade976018d9ce28e706323f969a6a87947994f46e3ffad78c46e70a716"
+    },
     "web-animation-design": {
       "source": "vercel-labs/open-agents",
       "sourceType": "github",
