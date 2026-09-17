@@ -93,6 +93,8 @@ tokens:
   - the bug was
   - was broken
   - now correctly
+  - (is|are|was|were|has|have|had) now
+  - now (uses?|holds?|lives?|is|are|reads?|runs?|sits?|belongs?)
 ```
 
 ```yaml
@@ -163,6 +165,17 @@ Expect the ambiguous half to be dropped. The tokens with real yield in *code
 comments* on *added lines* are the same ones with catastrophic precision in
 mature prose, because the ambiguity is between "this changed" and "this
 predicate is false".
+
+The productive `now` shapes are the verb-adjacent ones: an auxiliary followed
+by `now` (`is now exact`, 11 hits all genuine over 429 gated files) and `now`
+followed by a state verb (`now uses aube`, 12 hits with 4 genuine). Bare or
+sentence-final `now` and `currently` are essay prose or subject vocabulary at
+0-10% precision, and `does` stays out of the verb alternation because `what the
+model now does` names a subject, not a change. Switch the rule off by
+`.vale.ini` section for two scopes: ADRs, where `is now testable` is relative
+to the decision date and never rots, and first-person essay, where `there are
+now two panes` is narrative. Put a rule's own quoted examples in code spans,
+because Vale skips code spans but not quotes.
 
 ## windbag - the reference implementation, and why it is a watch
 
