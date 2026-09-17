@@ -84,6 +84,7 @@ fnox = "1"
 # staying unclaimed - name the real owner so the pin can't be repointed by
 # someone re-registering it.
 "github:herdrdev/herdr" = "0.8"
+"github:ahkohd/oyo" = "0.1.57"
 "github:can1357/oh-my-pi" = "17"
 "github:tamnd/kage" = "0.3"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.

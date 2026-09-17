@@ -347,6 +347,25 @@ checksum = "sha256:50bf455a9fdc5546af982b2568c9f4566157a138021bf689c808857ff9132
 url = "https://github.com/CosineAI/cli/releases/download/2.0.28/cos-darwin-arm64.zip"
 url_api = "https://api.github.com/repos/CosineAI/cli/releases/assets/542470177"
 
+[[tools."github:ahkohd/oyo"]]
+version = "0.1.57"
+backend = "github:ahkohd/oyo"
+
+[tools."github:ahkohd/oyo"."platforms.linux-arm64"]
+checksum = "sha256:7e2cf5cb09f652e7008d0546bcf0453e005387e6087d138ea722e3ce77e9a3d2"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776440"
+
+[tools."github:ahkohd/oyo"."platforms.linux-x64"]
+checksum = "sha256:76f9095dd18aff8a540bfdda7737468a2900b26c7d976bbaa071341db02aa8b3"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776437"
+
+[tools."github:ahkohd/oyo"."platforms.macos-arm64"]
+checksum = "sha256:28abd8543de0eec11457d6dcc27f2c545e022ee6430bfe7e8d5b14b3d0fa6e6f"
+url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
+
 [[tools."github:can1357/oh-my-pi"]]
 version = "17.4.2"
 backend = "github:can1357/oh-my-pi"
