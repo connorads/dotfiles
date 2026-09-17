@@ -177,7 +177,10 @@ These bindings must stay popups, with the blocker each hits:
 | `prefix + Alt+Shift+I` shotpath remote | pastes the remote path into the origin pane |
 
 `prefix + Alt+g` → `t` (ghfzf triage) stays a popup as a transaction - pick one
-thing, act, done - while the `d`/`u` dashboards on the same menu are floats.
+thing, act, done - while the `d`/`u` dashboards and `o` Oyo review on the same menu are floats.
+Oyo opens the current open GitHub PR and pulls its comments. With no open PR
+or a detached HEAD it opens the local review. It needs the PR history locally;
+lookup and sync failures remain visible until a key is pressed.
 The three origin-pane cases above are unblockable via the `#{pane_id}`
 pattern, but each needs its own script change.
 
