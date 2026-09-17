@@ -116,7 +116,7 @@ way back (`-v` to join below rather than beside).
 | `Ctrl+b Alt+Shift+V` | recordings (vox) - pick a recording, preview its transcript (enter copies it, `ctrl-y` pastes the path, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals, `ctrl-p` plays, `ctrl-d` deletes, `ctrl-x` reclaims audio, `tab` multi-selects) |
 | `Ctrl+b O` | open cwd in… (palette: Zed/VS Code/Finder) |
 | `Ctrl+b Alt+Shift+G` | GitHub access grant/revoke (gh-gate) |
-| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui) |
+| `Ctrl+b Alt+g` | GitHub menu (ghfzf triage · gh-dash · ghui · `o` Oyo current PR/local review) |
 | `Ctrl+b u` | fzf-links (open URLs/files/images from pane) |
 | `Ctrl+b Alt+u` | fingers (quick-copy text with hints) |
 
