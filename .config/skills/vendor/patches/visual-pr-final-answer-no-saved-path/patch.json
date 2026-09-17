@@ -1,0 +1,6 @@
+{
+  "reason": "the body is published over stdin, so there is no saved description file and no humanlayer cloud hook to permalink it",
+  "files": [
+    ".agents/skills/visual-pr/references/describe_pr_final_answer.md"
+  ]
+}

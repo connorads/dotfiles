@@ -1,0 +1,6 @@
+{
+  "reason": "publish the body over stdin instead of writing a description file into a .humanlayer/tasks/ tree that only humanlayer's own harness creates",
+  "files": [
+    ".agents/skills/visual-pr/SKILL.md"
+  ]
+}
