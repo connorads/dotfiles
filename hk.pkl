@@ -1,6 +1,6 @@
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.0/hk@2.0.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.0/hk@2.0.0#/Builtins.pkl"
 
 // `.local` is deliberately absent. It excluded 128 TRACKED entries from every
 // gate - 6 real scripts on PATH plus the 122 zfn-link shims - and the untracked
@@ -950,6 +950,7 @@ hooks {
 
     ["fix"] {
         fix = true
+        stage = true
         stash = "git"
         steps = fast_steps
     }
