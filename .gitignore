@@ -177,6 +177,10 @@
 !/src/dotfiles-docs/
 !/src/dotfiles-docs/**
 
+# oyp: shared terminal PR review command
+!/src/oyp/
+!/src/oyp/**
+
 # handoff: Claude Code <-> Codex session translator
 !/src/handoff/
 !/src/handoff/**

@@ -69,6 +69,9 @@ suites=$(
 		.config/opencode/*)
 			echo "$TESTS_DIR/opencode-agent-plugin.bats"
 			;;
+		src/oyp/*)
+			echo "$TESTS_DIR/oyo.bats"
+			;;
 		# pin-audit's implementation is TypeScript under ~/src; the bats suite
 		# is still its CLI contract, so staged sources have to run it.
 		src/pin-audit/*)

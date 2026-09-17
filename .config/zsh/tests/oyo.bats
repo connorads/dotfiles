@@ -8,7 +8,7 @@ bats_require_minimum_version 1.5.0
 # shellcheck disable=SC1091
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
-OYO="$TESTS_DIR/../../tmux/scripts/oyo.sh"
+OYO="$TESTS_DIR/../../../.local/bin/oyp"
 
 setup() {
   setup_test_home
