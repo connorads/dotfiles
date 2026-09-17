@@ -127,6 +127,9 @@ Moving code between these trees is only safe once `mise run gate-coverage` passe
 | [~/src/annotate](./src/annotate/CONTEXT.md)                            | `annotate`'s implementation: bun/TS, zero runtime deps, own [ADRs](./src/annotate/docs/adr/). Batch several corrections into one agent prompt - a spool with a slot per excerpt, each keeping its own provenance. Append-only JSONL at `~/.local/state/agents/annotate.jsonl`; wrapper in `functions/agents`, tmux glue in `.config/tmux/scripts/annotate-{stash,pick,lib}.sh`. Tests: `cd ~/src/annotate && bun test`, plus `.config/zsh/tests/annotate.bats` (CLI contract + capture key) and `annotate-lib.bats` (status pill) |
 | [~/src/raycast/skl](./src/raycast/skl/README.md)                       | Local Raycast extension over the `skl` catalogue: copy or paste a pointer outside tmux. Couples to the `~/.local/bin/skl` shim, not to skl's source tree |
 
+`oyp` opens the current PR in the terminal through `src/oyp/oyp.sh` and its
+`.local/bin/oyp` symlink. The tmux Oyo launcher adds the error pause for floats.
+
 ## Shell Function Conventions
 
 ### Dual-mode functions (PATH commands)

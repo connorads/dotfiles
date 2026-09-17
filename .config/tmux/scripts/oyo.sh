@@ -25,4 +25,10 @@ fi
 unset TMUX_BASH5_REEXEC _b5
 # --- end bash5 preamble ---
 
-exec "$HOME/.local/bin/oyp" "$@"
+"$HOME/.local/bin/oyp" "$@"
+result=$?
+if ((result != 0)) && [[ -t 0 ]]; then
+	printf '\nPress any key to close...'
+	read -rsn1 || true
+fi
+exit "$result"

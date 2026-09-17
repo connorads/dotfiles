@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oyo.sh: open the current GitHub PR in Oyo, or the local review when no PR exists
+# oyp: open the current GitHub PR in Oyo, or the local review when no PR exists
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
 # the nix bash 5 that is already installed but ordered behind /bin in PATH.
@@ -111,9 +111,3 @@ main() {
 }
 
 main
-result=$?
-if ((result != 0)) && [[ -t 0 ]]; then
-	printf '\nPress any key to close...'
-	read -rsn1 || true
-fi
-exit "$result"
