@@ -178,7 +178,7 @@ These bindings must stay popups, with the blocker each hits:
 
 `prefix + Alt+g` → `t` (ghfzf triage) stays a popup as a transaction - pick one
 thing, act, done - while the `d`/`u` dashboards on the same menu are floats.
-The three origin-pane cases above are now unblockable via the `#{pane_id}`
+The three origin-pane cases above are unblockable via the `#{pane_id}`
 pattern, but each needs its own script change.
 
 **Floats do not survive a resurrect restore as floats.** tmux 3.7 emits a float
@@ -653,7 +653,7 @@ even interactively, collapsing multiple panes onto one conversation.
 
 Safe cwd fallback: on an exact-key miss the launcher resumes only when *exactly
 one* recorded `.panes[]` entry has `.dir == $PWD`; 0 or >1 → `--continue` /
-`--last`, never a guessed resume. Because resolution is now exact, no save-time
+`--last`, never a guessed resume. Because resolution is exact, no save-time
 disambiguation is needed - the save hook just records `.panes[$key] = {dir,
 claude|codex, claudeConfigDir?}`.
 
@@ -921,7 +921,7 @@ more than a wrong label: it is the independent read you reach for when the
 dashboard is the thing you cannot trust, so it misled during exactly the task it
 exists for. Its `// 0` fallbacks fabricated `0%` for a window whose data was
 simply absent, which reads as headroom. Claude stays positional there too, and
-both its windows are now read - only `.five_hour` was.
+both its windows are read.
 
 Why: OpenAI temporarily removed the 5h window (2026-07-12, Plus/Pro/Business) with
 no return date, collapsing usage to a single weekly window that arrives in the
