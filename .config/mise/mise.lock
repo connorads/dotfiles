@@ -367,44 +367,44 @@ url = "https://github.com/ahkohd/oyo/releases/download/v0.1.57/oy-aarch64-apple-
 url_api = "https://api.github.com/repos/ahkohd/oyo/releases/assets/511776438"
 
 [[tools."github:can1357/oh-my-pi"]]
-version = "17.4.2"
+version = "18.1.20"
 backend = "github:can1357/oh-my-pi"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-arm64"]
-checksum = "sha256:a4fde8f82a6a229b815b5291dc111db4c60532cb2df8484b4ac2654116cbdbfc"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v17.4.2/omp-linux-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/524226017"
+checksum = "sha256:87a776561e73076d87c56b41db03db7b2103ee1e2b7502b687f65d092e41ecae"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-linux-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868424"
 
 [tools."github:can1357/oh-my-pi"."platforms.linux-x64"]
-checksum = "sha256:218a8684c2b11256b47e28ba131adfb2a03e988eddd8567bd836b7c51dd02005"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v17.4.2/omp-linux-x64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/524226016"
+checksum = "sha256:f4eb8e037c4104e97da3bc2023ecae24acd4f5264736a91fbee577171fe9edaf"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-linux-x64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868431"
 
 [tools."github:can1357/oh-my-pi"."platforms.macos-arm64"]
-checksum = "sha256:357d5e7a00ec3d352cac5dfcfeba15781e1e2d0a9074479222717a7b5ddd0406"
-url = "https://github.com/can1357/oh-my-pi/releases/download/v17.4.2/omp-darwin-arm64"
-url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/524226018"
+checksum = "sha256:f96e404908d16f548bafb852be67c5ea94d6a044b5ca3e1177d764280c18e01d"
+url = "https://github.com/can1357/oh-my-pi/releases/download/v18.1.20/omp-darwin-arm64"
+url_api = "https://api.github.com/repos/can1357/oh-my-pi/releases/assets/561868427"
 
 [[tools."github:herdrdev/herdr"]]
-version = "0.8.2"
+version = "0.9.0"
 backend = "github:herdrdev/herdr"
 
 [tools."github:herdrdev/herdr"."platforms.linux-arm64"]
-checksum = "sha256:f55610658e1c2e0d2aaef730b4b2ab885f7f8ba00285ab372bfb14f2e3d5b40d"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-linux-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169113"
+checksum = "sha256:9c8db20fb7e7427b138d5367113f1621ffd319f2f65d6f009e2594029115f0d2"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-aarch64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270160"
 provenance = "github-attestations"
 
 [tools."github:herdrdev/herdr"."platforms.linux-x64"]
-checksum = "sha256:976150a14d490c94b243ea2e1a7eb2dfb67f12e36b182db90936f6728e6aecf4"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-linux-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169107"
+checksum = "sha256:4fa1a01158dd8043da92d31b270780b0dcc10603038d9b61cac4d81ab63fb71f"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-x86_64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270163"
 provenance = "github-attestations"
 
 [tools."github:herdrdev/herdr"."platforms.macos-arm64"]
-checksum = "sha256:a5d4f4d504d8b309c91f811050559300faba31258425f53c50852fc96f6ae574"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.8.2/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/521169108"
+checksum = "sha256:32b53df09872628059c789a69f02a6b8e29e14ddf26711421f3463f70c1aef17"
+url = "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-aarch64"
+url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/549270162"
 provenance = "github-attestations"
 provenance_verified = true
 
@@ -639,7 +639,7 @@ version = "2.3.9"
 backend = "npm:deepsec"
 
 [[tools."npm:eas-cli"]]
-version = "23.2.0"
+version = "24.3.0"
 backend = "npm:eas-cli"
 
 [[tools."npm:executor"]]
@@ -683,7 +683,7 @@ version = "0.1.46"
 backend = "npm:serve-sim"
 
 [[tools."npm:sharp-cli"]]
-version = "5.3.0"
+version = "6.1.0"
 backend = "npm:sharp-cli"
 
 [[tools."npm:skills"]]
@@ -938,23 +938,23 @@ url = "https://github.com/crate-ci/typos/releases/download/v1.50.1/typos-v1.50.1
 url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/539861019"
 
 [[tools.usage]]
-version = "5.1.0"
+version = "6.9.0"
 backend = "aqua:jdx/usage"
 
 [tools.usage."platforms.linux-arm64"]
-checksum = "sha256:e2056b06c8d13f109389d53e758b4e79208f01360dec996751bc48ce658eb200"
-url = "https://github.com/jdx/usage/releases/download/v5.1.0/usage-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/usage/releases/assets/507608014"
+checksum = "sha256:6de188b39e85cbdb487281812c2bb3b158d852bc4b12260f19b5a926b8b7bdf7"
+url = "https://github.com/jdx/usage/releases/download/v6.9.0/usage-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/usage/releases/assets/559446298"
 
 [tools.usage."platforms.linux-x64"]
-checksum = "sha256:a702c639f8e25d1e10f42ab37e09b8f73634c09b23c7abe2ebd6ab6f9665e99c"
-url = "https://github.com/jdx/usage/releases/download/v5.1.0/usage-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/jdx/usage/releases/assets/507608023"
+checksum = "sha256:8693c8adebfac36211e9a7066d394ca0b08a10ae5794408e8791bf32c12eece0"
+url = "https://github.com/jdx/usage/releases/download/v6.9.0/usage-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/jdx/usage/releases/assets/559445273"
 
 [tools.usage."platforms.macos-arm64"]
-checksum = "sha256:ca35e60afd2895ec0b5be9162dbef155a76384ce43573b1ab8a04fbb46e70cd9"
-url = "https://github.com/jdx/usage/releases/download/v5.1.0/usage-universal-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/usage/releases/assets/507609560"
+checksum = "sha256:9e5315149d5a08d7d1b863b4e94729aa36240353f2847529d06ac21fac7c6c01"
+url = "https://github.com/jdx/usage/releases/download/v6.9.0/usage-universal-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/usage/releases/assets/559448529"
 
 [[tools.uv]]
 version = "0.12.12"
