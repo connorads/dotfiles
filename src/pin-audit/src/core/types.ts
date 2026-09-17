@@ -23,7 +23,7 @@ export interface MiseConfig {
 
 /** What the config currently says about a conditional pin. */
 export type PinState =
-  /** The escape hatch has been removed - the check itself is now droppable. */
+  /** The escape hatch is gone from the config, so the check itself is droppable. */
   | { readonly kind: "gone" }
   /** An exact version pin. */
   | { readonly kind: "pinned"; readonly version: string }

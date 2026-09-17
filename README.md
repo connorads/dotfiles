@@ -312,5 +312,5 @@ pamu2fcfg -n >> ~/.config/Yubico/u2f_keys
 Inspired by
 
 - [StreakyCobra's comment on Hacker News for idea to avoid symlinks with bare repo](https://news.ycombinator.com/item?id=11071754)
-- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo) (historical reference; I now use LazyGit day-to-day)
+- [zwyx's blog post for Sublime Merge integration](https://zwyx.dev/blog/your-dotfiles-in-a-git-repo) (historical reference; lazygit is the day-to-day tool)
 - [Using a YubiKey (or other security key) for sudo via pam](https://neilzone.co.uk/2022/11/using-a-yubikey-or-other-security-key-for-sudo-via-pam/)

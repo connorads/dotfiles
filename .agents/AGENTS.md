@@ -99,7 +99,7 @@ Use `mechanical-enforcement` to choose rules and linters, `hk` to wire git hooks
 ## Intent
 
 Document why when it would otherwise be lost; the what/how should usually be clear from code.
-Comments and docs (`AGENTS.md`, `README`, ADRs) describe the standing state, rule or constraint in timeless present tense. Change history - "replaced X", "now uses Y", "previously", "no longer" - belongs in commit messages, not the comment or doc body.
+Comments and docs (`AGENTS.md`, `README`, ADRs) describe the standing state, rule or constraint in timeless present tense. Change history - `replaced X`, `now uses Y`, `previously`, `no longer` - belongs in commit messages, not the comment or doc body.
 
 In a config file (`.config/mise/config.toml`, `.config/nix/**`) the default home for the why is the commit message. A comment is earned only by a trap: an external fact the line cannot express, which would cause a wrong action if unknown. Restating the setting, naming what the change replaced, or repeating what `AGENTS.md` already says all fail that test. Section banners and file headers are navigation, not comments.
 
