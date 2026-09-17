@@ -6,4 +6,3 @@ trustPolicy: no-downgrade
 # this check's main false-positive class. Fresh publishes stay fully gated.
 trustPolicyIgnoreAfter: 525600
 ignoreScripts: true
-blockExoticSubdeps: true    # default true in v11; explicit ⇒ auditable + drift-proof

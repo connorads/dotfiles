@@ -7,7 +7,7 @@
   "npmCommand": [
     "mise",
     "exec",
-    "pnpm@11",
+    "pnpm@12",
     "--",
     "pnpm"
   ],
