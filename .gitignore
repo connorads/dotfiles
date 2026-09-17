@@ -280,6 +280,9 @@
 !/.config/mise/
 !/.config/mise/**
 
+!/.config/oyo/
+!/.config/oyo/config.toml
+
 !/.config/uv/
 !/.config/uv/uv.toml
 
