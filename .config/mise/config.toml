@@ -56,7 +56,7 @@ ast-grep = "0.45"
 gcloud = "latest"
 aws = "2"
 codex = "latest"
-usage = "5"
+usage = "6"
 hcloud = "1"
 deno = "2"
 pandoc = "3"
@@ -83,9 +83,9 @@ fnox = "1"
 # GitHub redirects the old path, but a redirect is only as good as the old name
 # staying unclaimed - name the real owner so the pin can't be repointed by
 # someone re-registering it.
-"github:herdrdev/herdr" = "0.8"
+"github:herdrdev/herdr" = "0.9"
 "github:ahkohd/oyo" = "0.1.57"
-"github:can1357/oh-my-pi" = "17"
+"github:can1357/oh-my-pi" = "18"
 "github:tamnd/kage" = "0.3"
 # prerelease=true: all releases are flagged pre-release. bin=cos: chmods it executable.
 "github:CosineAI/cli" = { version = "2", bin = "cos", prerelease = true }
@@ -145,7 +145,7 @@ fnox = "1"
 "npm:critique" = "0"
 "npm:ctx7" = "0"
 "npm:deepsec" = "2"
-"npm:eas-cli" = "23"
+"npm:eas-cli" = "24"
 # Hold on 1.x: npm `latest` is 1.5.x; 2.0.0 is a stray off-`latest` major, so
 # `mise upgrade --bump` would regress to it. Do not bump past "1".
 "npm:executor" = "1"
@@ -159,7 +159,7 @@ fnox = "1"
 "npm:playwright" = "1"
 "npm:portless" = "0"
 "npm:remobi" = "1"
-"npm:sharp-cli" = "5"
+"npm:sharp-cli" = "6"
 "npm:skills" = "1"
 "npm:svgo" = "4"
 "npm:vercel" = "latest"
