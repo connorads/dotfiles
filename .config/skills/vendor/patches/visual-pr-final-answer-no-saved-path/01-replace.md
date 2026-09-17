@@ -1,0 +1,2 @@
+- PR: [#{number} - {title}]({pr_url})
+- Ticket: [{TICKET_ID}]({ticket_url}) (if applicable)

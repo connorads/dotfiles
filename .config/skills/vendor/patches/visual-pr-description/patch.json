@@ -1,0 +1,6 @@
+{
+  "reason": "upstream's description is an invocation guard, not a description; the catalogue tier is deliberate-invoke-only already, so the skl picker row needs to say what the skill does",
+  "files": [
+    ".agents/skills/visual-pr/SKILL.md"
+  ]
+}

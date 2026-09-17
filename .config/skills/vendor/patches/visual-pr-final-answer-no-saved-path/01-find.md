@@ -1,0 +1,3 @@
+- PR: [#{number} - {title}]({pr_url})
+- Description saved: [.humanlayer/tasks/{task-dir}/pr-description.md](cloud permalink from hook)
+- Ticket: [{TICKET_ID}]({ticket_url}) (if applicable)

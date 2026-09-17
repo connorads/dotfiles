@@ -1,6 +1,6 @@
 ---
 name: visual-pr
-description: Only use when the user explicitly invokes this skill by name.
+description: Create or update a pull request with a concise visual outline for reviewers - one-sentence why, 1-3 reviewer notes, then a structural change outline rather than a file-by-file changelog.
 ---
 
 # Describe a Pull Request
@@ -39,14 +39,14 @@ Create or update the pull request for the current task with a concise descriptio
    - Keep each view focused on what a reviewer needs. Omit categories that did not change.
    - optionaL: if you are aware of a ticket id/url, a humanlayer task url, or related plan/document urls, or other relevant links, include them in the header, otherwise omit the header
 
-5. Save and publish the description:
-   - Use `.humanlayer/tasks/{task-slug}/pr-description.md` when the task directory exists; otherwise use `.humanlayer/tasks/pr-{number}/description.md`.
-   - Update the PR with `gh pr edit {number} --body-file {output-path}`.
+5. Publish the description:
+   <!-- LOCAL PATCH (connorads dotfiles): publish the body over stdin instead of writing a description file into a .humanlayer/tasks/ tree that only humanlayer's own harness creates -->
+   - Pass the body on stdin, writing no file: `gh pr edit {number} --body-file - <<'EOF'`, the body, then `EOF`. Write a file only when the user asks for one.
    - Confirm the update succeeded.
 
 6. Report completion:
    - Read `{SKILLBASE}/references/describe_pr_final_answer.md`.
-   - Respond using that final answer template with the PR URL, saved description URL, and concise list of changed files.
+   - Respond using that final answer template with the PR URL and a concise list of changed files.
 
 Always read and follow `{SKILLBASE}/references/pr_description_template.md`. Do not expand the PR body beyond that template.
 
