@@ -96,6 +96,28 @@ lint() {
   [ "$status" -eq 0 ]
 }
 
+@test "ChangeNarration flags an auxiliary followed by now" {
+  lint 'The picker pipeline is now a plain process spawn.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.ChangeNarration* ]]
+}
+
+@test "ChangeNarration ignores now as subject vocabulary" {
+  # `now does` is what skill-freshness and writing-skills mean literally
+  # (`whatever the model now does unaided`), so `does` is absent from the
+  # verb alternation on purpose.
+  lint 'Cut whatever the model now does unaided.'
+  [ "$status" -eq 0 ]
+}
+
+@test "ChangeNarration is off under docs/adr, where a dated record never rots" {
+  local adr="$BATS_TEST_TMPDIR/docs/adr/0001-fixture.md"
+  mkdir -p "${adr%/*}"
+  printf '%s\n' 'The picker pipeline is now a plain process spawn.' >"$adr"
+  run vale --no-global --config "$CONFIG" --output=line "$adr"
+  [ "$status" -eq 0 ]
+}
+
 @test "Hedging flags an unverified claim" {
   lint 'The retry should work once the socket reconnects.'
   [ "$status" -eq 1 ]
@@ -133,6 +155,12 @@ lint_src() {
 
 @test "ChangeNarration flags a narrated change in a code comment" {
   lint_src py '# The lockfile previously was regenerated on every switch.'
+  [ "$status" -eq 1 ]
+  [[ $output == *Connorads.ChangeNarration* ]]
+}
+
+@test "ChangeNarration flags now plus a verb in a code comment" {
+  lint_src ts '// mise now uses aube as the npm backend.'
   [ "$status" -eq 1 ]
   [[ $output == *Connorads.ChangeNarration* ]]
 }

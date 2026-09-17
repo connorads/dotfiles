@@ -29,6 +29,28 @@ ignorecase: true
 # present one, which is why it has zero hits in scope. Like Spellings.yml this
 # is a ratchet, kept so the backlog can never start.
 #
+# Two `now` shapes are in the list, each measured the same way over the 157
+# gated markdown files and 272 gated source files, every hit read:
+#
+#   auxiliary + now  (`is now exact`, `are now read`)     11 hits, 11 genuine
+#   now + verb       (`now uses aube`, `now holds the`)   12 hits,  4 genuine
+#
+# The second shape's misses were the AGENTS.md Intent sentence quoting the
+# phrase it bans (4) and subject vocabulary (`what the model now does`, 3),
+# which is why `does`, `has`, `have` and `also` are absent from its verb
+# alternation. Every other `now` shape - bare or sentence-final `now`,
+# `currently`, `supersede`, `moved to`, `new X`, `now` with a verb gap - is
+# essay prose or subject vocabulary at 0-10% precision and stays out.
+#
+# ~/.vale.ini switches this rule off under docs/adr/ and src/dotfiles-docs/:
+# an ADR is a dated record, so `is now testable` in its Consequences is
+# relative to the decision date and never rots, and the docs site is
+# first-person essay where `there are now two panes` is narrative.
+#
+# A rule that quotes its own banned phrases must put them in code spans. Vale
+# skips code spans but not double quotes, so a quoted `now uses Y` in prose is
+# a finding against the sentence that states the rule.
+#
 # Do not re-add a token without re-running the sweep. The upstream list is
 # calibrated on added lines of code comments, where these phrases are usually
 # genuine narration; on a mature documentation corpus they are not.
@@ -44,3 +66,5 @@ tokens:
   - the bug was
   - was broken
   - now correctly
+  - (is|are|was|were|has|have|had) now
+  - now (uses?|holds?|lives?|is|are|reads?|runs?|sits?|belongs?)
