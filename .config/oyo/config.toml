@@ -1,0 +1,7 @@
+[ui]
+
+[ui.theme]
+name = "catppuccin"
+
+[ui.syntax]
+theme = "catppuccin-mocha"
