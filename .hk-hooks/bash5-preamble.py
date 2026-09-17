@@ -37,6 +37,7 @@ SCRIPT_DIRS: tuple[str, ...] = (
     ".config/tmux/scripts",
     ".config/tmux/strategies",
     ".config/tmux/save_command_strategies",
+    "src/oyp",
 )
 LIB_DIR = ".config/tmux/scripts/lib"
 

@@ -122,3 +122,15 @@ PY
   [ "$status" -eq 1 ]
   [[ "$output" == *"found no files to check"* ]]
 }
+
+@test "the shared oyp command is covered outside the tmux tree" {
+  fixture_tree
+  mkdir -p src/oyp
+  cp .config/tmux/scripts/entry.sh src/oyp/oyp.sh
+  strip_block src/oyp/oyp.sh \
+    '# --- bash5 re-exec preamble:' '# --- end bash5 preamble ---'
+  run python3 "$CHECK"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"src/oyp/oyp.sh"* ]]
+  [[ "$output" == *"missing the bash5 re-exec preamble"* ]]
+}

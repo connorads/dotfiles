@@ -650,7 +650,7 @@ local fast_steps = new Mapping<String, Step> {
     // sh-shebang files must carry neither. See docs/adr/0001. Self-path in the
     // glob so editing the checker re-triggers it.
     ["bash5-preamble"] {
-        glob = List(".config/tmux/scripts/**/*", ".config/tmux/strategies/**/*", ".config/tmux/save_command_strategies/**/*", ".hk-hooks/bash5-preamble.py")
+        glob = List(".config/tmux/scripts/**/*", ".config/tmux/strategies/**/*", ".config/tmux/save_command_strategies/**/*", "src/oyp/**", ".hk-hooks/bash5-preamble.py")
         check = "python3 .hk-hooks/bash5-preamble.py"
     }
 
@@ -788,7 +788,7 @@ local fast_steps = new Mapping<String, Step> {
     // never-brick posture as ts-typecheck.sh; `mise run zsh-tests` runs
     // everything by hand.
     ["bats-scoped"] {
-        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", ".config/vale/**", ".vale.ini", ".config/opencode/**", "src/pin-audit/**", "src/skl/**", "src/annotate/**", ".zshenv", ".zshrc", ".hk-hooks/ts-tests.sh", ".hk-hooks/py-tests.sh")
+        glob = List(".config/zsh/functions/**", ".config/tmux/scripts/**", ".config/zsh/tests/**", "src/oyp/**", ".config/vale/**", ".vale.ini", ".config/opencode/**", "src/pin-audit/**", "src/skl/**", "src/annotate/**", ".zshenv", ".zshrc", ".hk-hooks/ts-tests.sh", ".hk-hooks/py-tests.sh")
         check = "bash .hk-hooks/bats-tests.sh {{files}}"
     }
 
