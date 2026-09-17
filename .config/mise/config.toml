@@ -106,7 +106,7 @@ fnox = "1"
 # pre-1.0 and churns, and agent-sandbox's render + policy pre-check contain the
 # breaking changes. macOS runtime dep: ripgrep (nix-provided).
 "npm:@anthropic-ai/sandbox-runtime" = "0.0.62"
-"npm:@elevenlabs/cli" = "0"
+"npm:@elevenlabs/cli" = "1"
 # Diagram JSON -> PNG/HTML, rendered locally through a caller-supplied Chromium.
 # Pinned to the minor: pre-1.0, and 0.1.0 is the only release so far. Needs no
 # `allow_builds` - neither it nor any of the six `@eraserlabs/*` siblings nor
