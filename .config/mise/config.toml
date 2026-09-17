@@ -197,6 +197,24 @@ fnox = "1"
 # Amp is pinned globally; aube exempts @ampcode/* from the age gate.
 amp = { version = "0.0.1783547350-gd57707", allow_builds = ["@ampcode/cli"] }
 
+[tasks.kbi-install]
+description = "Install or update the local KB ingestion command"
+run = """
+set -eu
+kbi_repo="$HOME/git/kb-capture"
+if [ ! -e "$kbi_repo" ]; then
+  mkdir -p "$HOME/git"
+  git clone git@github.com:connorads/kb-capture.git "$kbi_repo"
+else
+  git -C "$kbi_repo" pull --ff-only --no-rebase
+fi
+cd "$kbi_repo"
+mise install node pnpm
+mise exec node pnpm -- pnpm install:kbi
+"$HOME/.local/bin/kbi" --version
+echo 'Installed kbi. On first use, run kbi setup. Stop the Claude loop before running kbi.'
+"""
+
 [tasks.zsh-tests]
 description = "Run BATS tests for zsh functions (parallel)"
 env = { BATS_PARALLEL_BINARY_NAME = "rush" }
