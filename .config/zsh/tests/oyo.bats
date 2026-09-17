@@ -9,9 +9,12 @@ bats_require_minimum_version 1.5.0
 source "$BATS_TEST_DIRNAME/test_helper.bash"
 
 OYO="$TESTS_DIR/../../../.local/bin/oyp"
+OYO_TMUX="$TESTS_DIR/../../tmux/scripts/oyo.sh"
 
 setup() {
   setup_test_home
+  mkdir -p "$HOME/.local/bin"
+  ln -s "$OYO" "$HOME/.local/bin/oyp"
   export GH_ERROR=""
   export GH_LOG="$BATS_TEST_TMPDIR/gh.log" OY_LOG="$BATS_TEST_TMPDIR/oy.log"
   export GH_PR='{"number":42,"state":"OPEN","url":"https://github.com/team/project/pull/42"}'
@@ -142,4 +145,87 @@ STUB
   run "$OYO"
   [ "$status" -ne 0 ]
   [ "$(wc -l <"$OY_LOG" | tr -d ' ')" -eq 1 ]
+}
+
+# Exercise the real terminal boundary: pipe-only tests cannot exercise the terminal-only pause.
+run_review_tty() {
+  run python3 - "$1" "$2" "$3" <<'PYTHON'
+import os
+import pty
+import select
+import signal
+import sys
+import time
+
+command, should_pause, expected = sys.argv[1:]
+pid, fd = pty.fork()
+if pid == 0:
+    os.execv(command, [command])
+
+output = bytearray()
+status = None
+paused = False
+deadline = time.monotonic() + 5
+try:
+    while status is None:
+        assert time.monotonic() < deadline, "command did not exit"
+        ready, _, _ = select.select([fd], [], [], 0.05)
+        if ready:
+            try:
+                output.extend(os.read(fd, 4096))
+            except OSError:
+                pass
+        if not paused and b"Press any key to close..." in output:
+            assert should_pause == "pause", "terminal command unexpectedly paused"
+            done, _ = os.waitpid(pid, os.WNOHANG)
+            assert not done, "launcher exited before a key was pressed"
+            paused = True
+            os.write(fd, b"q")
+        done, child_status = os.waitpid(pid, os.WNOHANG)
+        if done:
+            status = child_status
+    assert paused == (should_pause == "pause"), "wrong pause behaviour"
+    assert os.waitstatus_to_exitcode(status) == int(expected), "exit status changed"
+    sys.stdout.buffer.write(output)
+finally:
+    if status is None:
+        os.kill(pid, signal.SIGKILL)
+        os.waitpid(pid, 0)
+    os.close(fd)
+PYTHON
+}
+
+@test "oyp resolves from PATH without shell aliases" {
+  PATH="$HOME/.local/bin:$PATH" run "$BASH5" --noprofile --norc -c oyp
+  [ "$status" -eq 0 ]
+  grep -F 'args=--range abc123...def456' "$OY_LOG"
+}
+
+@test "direct terminal errors return without waiting for a key" {
+  export GH_ERROR='HTTP 401: Bad credentials'
+  run_review_tty "$OYO" no-pause 1
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'HTTP 401: Bad credentials'* ]]
+}
+
+@test "tmux terminal errors wait for a key and preserve the exit status" {
+  export GH_ERROR='HTTP 401: Bad credentials'
+  run_review_tty "$OYO_TMUX" pause 1
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'HTTP 401: Bad credentials'* ]]
+}
+
+@test "a successful tmux review exits without a pause" {
+  run_review_tty "$OYO_TMUX" no-pause 0
+  [ "$status" -eq 0 ]
+  grep -F "cwd=$REPO " "$OY_LOG"
+  grep -F 'args=--range abc123...def456' "$OY_LOG"
+}
+
+@test "tmux errors without a terminal return directly" {
+  export GH_ERROR='HTTP 401: Bad credentials'
+  run "$OYO_TMUX"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'HTTP 401: Bad credentials'* ]]
+  [[ "$output" != *'Press any key'* ]]
 }
