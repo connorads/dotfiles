@@ -332,6 +332,7 @@ __pycache__/
 !/.local/bin/**
 /.local/bin/claude
 /.local/bin/browser-harness
+/.local/bin/kbi
 
 # agent-sandbox shadow-bin wrappers (symlinks to ~/.local/bin/agent-sandbox).
 # Two levels deep, so re-include the share parent dir then the subtree.
