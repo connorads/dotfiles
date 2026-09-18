@@ -1,0 +1,6 @@
+{
+  "reason": "Catalogue helper definitions are instructions, not registered agent types",
+  "files": [
+    "impeccable/.agents/skills/impeccable/SKILL.md"
+  ]
+}

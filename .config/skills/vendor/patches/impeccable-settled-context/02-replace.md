@@ -1,0 +1,1 @@
+Honour the runtime's interaction constraints. Do not probe for answers when interaction is unavailable or prohibited. Infer only what the explicit brief supports, label inferred facts in PRODUCT.md, and disclose material unresolved gaps.

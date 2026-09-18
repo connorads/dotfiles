@@ -1,0 +1,6 @@
+{
+  "reason": "Live mode respects the active runtime permissions and portable helper handoffs",
+  "files": [
+    "impeccable/.agents/skills/impeccable/reference/live.md"
+  ]
+}

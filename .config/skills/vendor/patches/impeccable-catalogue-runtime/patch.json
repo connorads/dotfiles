@@ -1,0 +1,6 @@
+{
+  "reason": "Catalogue skill works without an engine; engine installation and maintenance are separate tasks",
+  "files": [
+    "impeccable/.agents/skills/impeccable/SKILL.md"
+  ]
+}

@@ -1,0 +1,98 @@
+#!/bin/sh
+# Impeccable launcher. Runs the platform binary shipped next to this script:
+#   <this dir>/bin/<os>-<arch>/impeccable
+# Order: $IMPECCABLE_BIN, the sibling binary, ~/.impeccable/bin/impeccable,
+# the version-pinned cache, then `impeccable` on PATH. Never needs Node.
+# The unversioned home binary and the PATH candidate are validated with the
+# engine-probe handshake first: the retired 3.x npm CLI also installed a bin
+# named `impeccable`, and exec'ing it would fail every verb with
+# "Unknown command". Trusted candidates (IMPECCABLE_BIN, the sibling binary,
+# the version-pinned cache) are exec'd without a probe: hooks run them on
+# every edit and must stay fast.
+set -e
+set -u
+
+# LOCAL PATCH: catalogue maintenance owns installation and updates.
+export IMPECCABLE_NO_UPDATE_CHECK=1 IMPECCABLE_NO_TELEMETRY=1
+case "${1:-}" in
+  install|link|update)
+    echo "impeccable: use the reviewed catalogue maintenance workflow for installation and updates" >&2
+    exit 2 ;;
+esac
+
+# True when the candidate answers the engine handshake (prints
+# "impeccable-engine <version>", exit 0). Quiet and fast (<100ms).
+# IMPECCABLE_LAUNCHER_PROBE marks the child as a probe: a copy of this
+# launcher reached recursively (e.g. symlinked onto PATH as `impeccable`)
+# then skips its own probes and refuses to download, so probing stays cheap
+# and can never loop.
+probe_ok() {
+  case "$(IMPECCABLE_LAUNCHER_PROBE=1 "$1" engine-probe 2>/dev/null || true)" in
+    impeccable-engine*) return 0 ;;
+  esac
+  return 1
+}
+probing=${IMPECCABLE_LAUNCHER_PROBE:-}
+
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+# What the binary needs to know about its home: the skill directory (for
+# reference/*.md and command-metadata.json) and how to name itself in the
+# commands it prints. Exported BEFORE any exec below, including the
+# IMPECCABLE_BIN override: an engine binary reached with no IMPECCABLE_SKILL_DIR
+# cannot find reference/*.md (so native platform refs never inline) or read its
+# own version (so UPDATE_AVAILABLE never fires). Setting it here covers every
+# candidate the launcher can exec.
+: "${IMPECCABLE_SKILL_DIR:=$(CDPATH= cd -- "$dir/.." && pwd)}"
+: "${IMPECCABLE_SELF:=$0}"
+export IMPECCABLE_SKILL_DIR IMPECCABLE_SELF
+
+if [ -n "${IMPECCABLE_BIN:-}" ] && [ -x "${IMPECCABLE_BIN}" ]; then
+  exec "${IMPECCABLE_BIN}" "$@"
+fi
+
+case "$(uname -s 2>/dev/null || echo unknown)" in
+  Darwin) os=darwin ;;
+  Linux) os=linux ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT) os=windows ;;
+  *) os=unknown ;;
+esac
+case "$(uname -m 2>/dev/null || echo unknown)" in
+  arm64|aarch64) arch=arm64 ;;
+  x86_64|amd64) arch=x64 ;;
+  *) arch=unknown ;;
+esac
+
+bin="$dir/bin/$os-$arch/impeccable"
+[ "$os" = windows ] && bin="$bin.exe"
+
+if [ -x "$bin" ]; then
+  exec "$bin" "$@"
+fi
+if [ -f "$bin" ]; then
+  # Lost the executable bit in transit (zip extraction, some copiers).
+  chmod +x "$bin" 2>/dev/null && exec "$bin" "$@"
+fi
+# On Windows (an MSYS/Git Bash shell) the cached names carry .exe so this
+# launcher and impeccable.cmd share one cache.
+exe=""
+[ "$os" = windows ] && exe=".exe"
+home_bin="${HOME:-/nonexistent}/.impeccable/bin/impeccable$exe"
+if [ -z "$probing" ] && [ -x "$home_bin" ] && probe_ok "$home_bin"; then
+  exec "$home_bin" "$@"
+fi
+# Existing version-pinned user cache; this launcher never fills it.
+version=""
+[ -f "$dir/VERSION" ] && version=$(tr -d '[:space:]' < "$dir/VERSION")
+cache_root="${IMPECCABLE_HOME:-${HOME:-/nonexistent}/.impeccable}"
+cached="$cache_root/bin/$version/impeccable$exe"
+if [ -n "$version" ] && [ -x "$cached" ]; then
+  exec "$cached" "$@"
+fi
+if [ -z "$probing" ] && command -v impeccable >/dev/null 2>&1 && probe_ok impeccable; then
+  exec impeccable "$@"
+fi
+
+# LOCAL PATCH: never fetch an engine during a design task.
+echo "impeccable: no installed engine found; use project files and design references directly. Engine setup is a separate task." >&2
+exit 127

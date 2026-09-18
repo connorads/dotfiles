@@ -1,0 +1,6 @@
+{
+  "reason": "Hook commands use the reviewed launcher rather than fetching npm packages",
+  "files": [
+    "impeccable/.agents/skills/impeccable/reference/hooks.md"
+  ]
+}

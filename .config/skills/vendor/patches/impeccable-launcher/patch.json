@@ -1,0 +1,6 @@
+{
+  "reason": "Catalogue maintenance owns installation; existing engines run without update checks or choice telemetry",
+  "files": [
+    "impeccable/.agents/skills/impeccable/scripts/impeccable"
+  ]
+}
