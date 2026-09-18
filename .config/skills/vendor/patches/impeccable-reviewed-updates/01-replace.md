@@ -1,0 +1,1 @@
+- **Tool version.** Refresh the vendored skill through the catalogue maintenance workflow, review upstream changes, and replay local patches. Never run an upstream self-updater during a design task.

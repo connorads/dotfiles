@@ -1,0 +1,6 @@
+{
+  "reason": "Ask only for material missing context and honour runtime interaction constraints",
+  "files": [
+    "impeccable/.agents/skills/impeccable/reference/init.md"
+  ]
+}

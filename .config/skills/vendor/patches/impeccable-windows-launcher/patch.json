@@ -1,0 +1,6 @@
+{
+  "reason": "Windows launcher uses existing engines only and suppresses update checks and choice telemetry",
+  "files": [
+    "impeccable/.agents/skills/impeccable/scripts/impeccable.cmd"
+  ]
+}

@@ -1,0 +1,1 @@
+Before implementation, ask through the structured question tool only about material decisions the request and repository have not settled. Existing instructions and answers remain authoritative; do not require a confirmation round for a precise request.

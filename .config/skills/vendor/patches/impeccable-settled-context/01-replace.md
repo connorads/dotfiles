@@ -1,0 +1,1 @@
+Use the structured question tool when available; otherwise ask in chat. Keep rounds to at most three focused questions. Ask only for material gaps; a complete explicit brief needs no additional approval round before writing PRODUCT.md.

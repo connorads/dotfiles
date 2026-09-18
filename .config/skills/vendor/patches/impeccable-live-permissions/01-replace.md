@@ -1,0 +1,1 @@
+Run live helper commands, the app dev server and setup through the active runtime's permitted execution path. Request escalation only if an observed failure requires it and the runtime permits approval. Never require an unavailable permission mode.

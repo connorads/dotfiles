@@ -1,0 +1,1 @@
+- If the finding has no value-specific command, such as `side-tab`, scope that one rule to the file: `ignore-value <id> "*" --file <path>`. Run `<skill-base-dir>/scripts/impeccable detect <path>` first to see what actually fires there.

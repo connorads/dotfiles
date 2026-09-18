@@ -93,6 +93,24 @@ dir, where names collide and no group can travel or be topped up. Four is where 
 three failures below all start to bite at once, not a measured optimum; move it if
 experience says otherwise, but keep it a count.
 
+`impeccable` is an explicit singleton exception: one skill with command references and
+helper roles has its own folder and lockfile at the user's request. It stays catalogue-only;
+its native engine is not provisioned. The launchers use existing engines, refuse automatic
+installation and updates, and disable upstream update checks and choice telemetry.
+
+After refreshing this set, restore the upstream attribution files into the skill payload
+before review and installation into a project:
+
+```bash
+cd ~/.config/skills/vendor/impeccable
+cp LICENSE NOTICE.md .agents/skills/impeccable/
+skill-patch apply
+bats ~/.config/zsh/tests/impeccable.bats
+```
+
+When changing the pinned tag, refresh the folder's `LICENSE` and `NOTICE.md` from that
+same tag before copying them. The copies travel with `skl install impeccable/`.
+
 What the flat bucket costs, and what a set buys:
 
 - **Names collide, and one dir has one winner.** `mattpocock/skills` and

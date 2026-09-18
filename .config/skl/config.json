@@ -8,6 +8,7 @@
     { "path": "~/.config/skills/vendor/emilkowalski/.agents/skills", "name": "emilkowalski" },
     { "path": "~/.config/skills/vendor/expo/.agents/skills", "name": "expo" },
     { "path": "~/.config/skills/vendor/hyperframes/.agents/skills", "name": "hyperframes" },
+    { "path": "~/.config/skills/vendor/impeccable/.agents/skills", "name": "impeccable" },
     { "path": "~/.config/skills/vendor/jakubkrehel/.agents/skills", "name": "jakubkrehel" },
     { "path": "~/.config/skills/vendor/mattpocock/.agents/skills", "name": "mattpocock" },
     { "path": "~/.config/skills/vendor/nextjs/.agents/skills", "name": "nextjs" },
