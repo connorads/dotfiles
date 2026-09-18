@@ -11,8 +11,9 @@ description: >-
 # Disk reclaim
 
 Every byte is **rebuildable**, **re-downloadable**, or **irreplaceable**.
-Reclaim the first freely, the second with a nod, the third never. Sort anything
-this skill doesn't name into one of those three and act accordingly.
+Reclaim the first freely, the second with a nod, the third only with explicit
+approval of the selected files. Sort anything this skill doesn't name into one
+of those three and act accordingly.
 
 The biggest number is rarely the right first target: a 60G game is one click to
 restore, a 6G photo library is gone forever.
@@ -27,6 +28,9 @@ restore, a 6G photo library is gone forever.
    bare non-interactive shell without mise shims or `/opt/homebrew/bin` reports
    those as `not available on this host` and silently drops them from the
    total.
+   A failed, timed-out or interrupted probe leaves its target **unknown**, even
+   if the wrapper prints zero. Keep completed measurements; do not turn missing
+   evidence into a zero-sized candidate.
 3. Then probe `~/Library/Caches` as well as the large home directories.
    Individual tools use different cache roots - for example, a browser cache
    can live there while `cleanup` checks only `~/.cache`.
@@ -59,7 +63,11 @@ restore, a 6G photo library is gone forever.
    (`/nix` is its own volume, so it is outside the Data figure entirely).
    Until the accounted total approaches *Volume Used*, the survey is
    unfinished: a large unexplained remainder is not a footnote, it is the
-   reclaim target - keep drilling before presenting any plan.
+   reclaim target - keep drilling before presenting a complete disk breakdown.
+   An unknown probe does not block independently measured cleanup candidates;
+   label the unmeasured remainder instead of claiming the survey is complete.
+   If directory totals exceed physical usage, check for shared APFS blocks
+   before adding them together; see the code-signing clone gotcha below.
 
 Quote a reclaim estimate only for things you have actually probed - and that
 binds the *options you offer* as much as the totals you report. Bucket a tree
@@ -118,12 +126,18 @@ expensive-to-rebuild artefacts or irreplaceable captures, so sort its contents
 by the three classes - don't clear it wholesale because git ignores it. A
 project cleaner or its docs, where present, is the fastest classifier.
 
+When removing MacWhisper recordings while retaining transcripts, read
+[references/macwhisper.md](references/macwhisper.md) before preparing the
+audio manifest or deleting files.
+
 ## Gotchas
 
 - **`rm -rf` is denied by settings.** Reach for the idiomatic cleaner instead:
   `cleanup --target <id> --yes`, `cargo clean`, `uv cache clean`, `pnpm store
   prune`. `rm -f` on named files is allowed. Bundling several removals into one
   command gets the whole command denied, so keep them separate.
+  After a deletion rejection, follow its required route. Do not evade it with
+  another deletion API or by moving the target through a temporary directory.
 - **Hibernated agents still own their scratch state.** Conversation persistence
   does not prove that scratch files are disposable. `cleanup --target
   claude-temp` fails closed if any live-agent query or hibernation record is
@@ -137,8 +151,13 @@ project cleaner or its docs, where present, is the fastest classifier.
   figure report **apparent** size: `cargo clean` printed `Removed 704697 files,
   219.3GiB total` for a tree `du` and `df` both put at 63 GiB - a 3.5x
   overstatement from hardlinks and sparse files. Never pass a cleaner's own
-  number to the user. After any delete/clean, re-check `df` (or the target's
-  `du`) - that is ground truth, not exit status.
+  number to the user. After any delete/clean, re-check `df` for physical free
+  space. Target `du` confirms that files left the target, not that physical
+  blocks were freed. Record free space
+  immediately before and after each cleanup, running cleanups sequentially.
+  Report candidate size, observed interval change and current free space
+  separately. Other agents, downloads and user actions can change the same
+  volume; a whole-session increase is not attributable cleanup savings.
 - **Trashing frees nothing until the Trash is emptied, on a GUI Mac too.** The
   bytes leave `du ~` and never reach `df`, so a session that trashes its way to
   a result cannot show the result. An agent can neither read `~/.Trash` (TCC)
@@ -158,11 +177,9 @@ project cleaner or its docs, where present, is the fastest classifier.
   AppleEvent `-1712`. That code means missing consent, not a wedged Finder:
   `killall Finder` changes nothing, and polling `df` for it wastes the whole
   timeout. Recovery hangs on knowing the exact names, so run `trash -v` and
-  keep its `Moved "<src>" to "/Users/<you>/.Trash/<name>"` lines - the
-  directory is writable even when unreadable, so `mv ~/.Trash/<name>
-  /private/tmp/<name>` retrieves an item by name, and it can be deleted there.
-  Where the deletion is plainly rebuildable and the box is headless, prefer a
-  cleaner or an in-tmp delete over `trash` in the first place.
+  keep its `Moved "<src>" to "/Users/<you>/.Trash/<name>"` lines for recovery.
+  Report trashed bytes as pending; leave emptying to the user. Prefer a
+  supported cleaner when permitted, without bypassing a deletion rejection.
 - **`~/Library/Containers` stalls every `du` and is never the answer.** It is
   hundreds of `com.apple.*` sandboxes (600 on this machine, all Apple, largest
   44K). It is the one directory where a stall means TCC-protected paths, not
@@ -231,6 +248,14 @@ project cleaner or its docs, where present, is the fastest classifier.
   `~/.local/share/mise/http-tarballs` dir still exists
   (`[ -d ~/.local/share/mise/http-tarballs ]`), the same applies there - read
   an entry's `metadata.json` before removing it.
+- **Chrome code-signing clones share APFS blocks.** A directory under
+  `/private/var/folders/*/X/*.code_sign_clone/` can report hundreds of GiB
+  through `du` while sharing blocks with app bundles and other clones. Do not
+  add that total to physical usage or quote it as reclaimable space. Check
+  running owners before proposing removal: a live process can depend on its
+  clone for code-signature checks. Measure physical change with `df`, not by
+  summing clone sizes. The mechanism and sources are in the KB note
+  `apfs-clone-disk-accounting.md`; consult it when investigating this case.
 - **APFS local snapshots pin deleted blocks.** After big deletions the `df`
   figure can refuse to move: Time Machine local snapshots keep the old blocks
   live. Inspect with `tmutil listlocalsnapshots /`; reclaim with
@@ -269,3 +294,8 @@ project cleaner or its docs, where present, is the fastest classifier.
   cleaner. Use `yarn cache --help` to inspect the parent command instead.
 - Don't pipe a long-running background command through `tail`: the output is
   lost to buffering and you end up polling for a result that never lands.
+
+## Skill validation
+
+When revising these rules, use [evals/regressions.md](evals/regressions.md)
+for synthetic decision checks. These cases require no real cleanup.
