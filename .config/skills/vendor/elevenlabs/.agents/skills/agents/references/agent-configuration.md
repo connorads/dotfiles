@@ -66,7 +66,7 @@ conversation_config={
 ```python
 conversation_config={
     "tts": {
-        "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+        "voice_id": "selected_voice_id",
         "model_id": "eleven_flash_v2_5",
         "stability": 0.5,
         "similarity_boost": 0.8,
@@ -464,7 +464,7 @@ agent = client.conversational_ai.agents.create(
                 }
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}
+        "tts": {"voice_id": "selected_voice_id"}
     }
 )
 ```
@@ -612,7 +612,7 @@ client.conversational_ai.agents.update(agent_id="id", name="New Name")
 
 # Update TTS voice
 client.conversational_ai.agents.update(agent_id="id", conversation_config={
-    "tts": {"voice_id": "EXAVITQu4vr4xnSDxMaL", "model_id": "eleven_flash_v2_5"}
+    "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"}
 })
 
 # Update prompt/LLM (nested in agent)
@@ -635,7 +635,7 @@ client.conversational_ai.agents.update(agent_id="id", platform_settings={
 ```javascript
 await client.conversationalAi.agents.update("id", { name: "New Name" });
 await client.conversationalAi.agents.update("id", {
-  conversationConfig: { tts: { voiceId: "EXAVITQu4vr4xnSDxMaL" } }
+  conversationConfig: { tts: { voiceId: "selected_voice_id" } }
 });
 await client.conversationalAi.agents.update("id", {
   conversationConfig: { agent: { prompt: { prompt: "New instructions.", llm: "claude-sonnet-4" } } }
@@ -712,7 +712,7 @@ agent = client.conversational_ai.agents.create(
                 }
             }
         },
-        "tts": {"voice_id": "XB0fDUnXU5powFXDhCwa", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"},
         "turn": {"turn_eagerness": "normal", "turn_timeout": 7},
         "conversation": {"max_duration_seconds": 900}
     }
@@ -734,7 +734,7 @@ agent = client.conversational_ai.agents.create(
                 "max_tokens": 100
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_flash_v2_5"},
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"},
         "turn": {"turn_eagerness": "eager", "turn_timeout": 3}
     }
 )

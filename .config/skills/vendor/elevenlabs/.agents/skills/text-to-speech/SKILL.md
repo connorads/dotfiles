@@ -12,7 +12,20 @@ Generate natural speech from text - supports 70+ languages, multiple models for 
 
 > **Setup:** See [Installation Guide](references/installation.md). For JavaScript, use `@elevenlabs/*` packages only.
 
-## Quick Start
+## Voice selection
+
+<!-- LOCAL PATCH (connorads dotfiles): Voice casting follows the brief and project choices; example voices are not defaults, and George requires an explicit request. -->
+
+- Use the voice the user requests. Use George only when explicitly requested for this project or character; an inherited example ID is not a request.
+- Otherwise, reuse the recorded voice for this project or character, unless the brief changes or the user asks to recast. Do not carry casting between unrelated projects.
+- For new casting, inspect the available voices and match the brief's language, accent, delivery and character. Never select a voice because it appears first in a list or example.
+- When the brief gives enough direction, select a suitable voice and state its name and why it fits. Proceed without asking for approval.
+- When the brief leaves the voice unclear, offer three suitable candidates with available preview links and ask the user to choose. Do not generate paid auditions unless requested.
+- Record the chosen voice name, ID and casting rationale in the project's existing configuration or notes, per character where needed. Reuse that choice on later runs.
+
+`selected_voice_id` in examples is a placeholder. Replace it with the chosen voice's actual ID before calling the API; always pass the selected voice explicitly.
+
+## Quick start examples
 
 ### Python
 
@@ -23,7 +36,7 @@ client = ElevenLabs()
 
 audio = client.text_to_speech.convert(
     text="Hello, welcome to ElevenLabs!",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",  # George
+    voice_id="selected_voice_id",
     model_id="eleven_multilingual_v2"
 )
 
@@ -40,7 +53,7 @@ import { createWriteStream } from "fs";
 import { Readable } from "stream";
 
 const client = new ElevenLabsClient();
-const audio = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
+const audio = await client.textToSpeech.convert("selected_voice_id", {
   text: "Hello, welcome to ElevenLabs!",
   modelId: "eleven_multilingual_v2",
 });
@@ -51,7 +64,7 @@ Readable.fromWeb(audio).pipe(createWriteStream("output.mp3"));
 ### CLI
 
 ```bash
-elevenlabs text-to-speech convert --voice-id JBFqnCBsd6RMkjVDRZzb \
+elevenlabs text-to-speech convert --voice-id selected_voice_id \
   --text "Hello!" --model-id eleven_multilingual_v2 --output output.mp3
 ```
 
@@ -72,11 +85,7 @@ The CLI reads `ELEVENLABS_API_KEY` from the environment automatically.
 
 Use pre-made voices or create custom voices in the dashboard.
 
-**Popular voices:**
-- `JBFqnCBsd6RMkjVDRZzb` - George (male, narrative)
-- `EXAVITQu4vr4xnSDxMaL` - Sarah (female, soft)
-- `onwK4e9ZLuTAKqWW03F9` - Daniel (male, authoritative)
-- `XB0fDUnXU5powFXDhCwa` - Charlotte (female, conversational)
+Choose from the available voices using the voice selection rules above.
 
 ```python
 voices = client.voices.get_all()
@@ -98,7 +107,7 @@ from elevenlabs import VoiceSettings
 
 audio = client.text_to_speech.convert(
     text="Customize my voice settings.",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     voice_settings=VoiceSettings(
         stability=0.5,
         similarity_boost=0.75,
@@ -116,7 +125,7 @@ Use `language_code` with models that support language enforcement to guide pronu
 ```python
 audio = client.text_to_speech.convert(
     text="Bonjour, comment allez-vous?",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     model_id="eleven_v3",
     language_code="fr"  # ISO 639-1 code
 )
@@ -133,7 +142,7 @@ Controls how numbers, dates, and abbreviations are converted to spoken words. Fo
 ```python
 audio = client.text_to_speech.convert(
     text="Call 1-800-555-0123 on 01/15/2026",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     apply_text_normalization="on"
 )
 ```
@@ -146,14 +155,14 @@ When generating long audio in multiple requests, the audio can have pops, unnatu
 # First request
 audio1 = client.text_to_speech.convert(
     text="This is the first part.",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     next_text="And this continues the story."
 )
 
 # Second request using previous context
 audio2 = client.text_to_speech.convert(
     text="And this continues the story.",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     previous_text="This is the first part."
 )
 ```
@@ -183,7 +192,7 @@ For real-time applications, use the `stream` method (returns audio chunks as the
 ```python
 audio_stream = client.text_to_speech.stream(
     text="This text will be streamed as audio.",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     model_id="eleven_flash_v2_5"  # Ultra-low latency
 )
 
@@ -216,7 +225,7 @@ Monitor character usage via response headers (`x-character-count`, `request-id`)
 
 ```python
 response = client.text_to_speech.convert.with_raw_response(
-    text="Hello!", voice_id="JBFqnCBsd6RMkjVDRZzb", model_id="eleven_multilingual_v2"
+    text="Hello!", voice_id="selected_voice_id", model_id="eleven_multilingual_v2"
 )
 audio = response.parse()
 print(f"Characters used: {response.headers.get('x-character-count')}")
