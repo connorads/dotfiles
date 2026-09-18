@@ -38,10 +38,6 @@ dotfiles add .somefile
 dotfiles rm --cached .somefile
 ```
 
-### KB ingestion
-
-Run `mise run kbi-install` to clone or update `~/git/kb-capture`, build the CLI and install `kbi` in `~/.local/bin`. Run `kbi setup` once on each machine to choose the KB checkout and sign in. Stop the Claude loop before running `kbi` in tmux. Repeat `mise run kbi-install` to update.
-
 ### Code quality hooks (hk)
 
 Dotfiles use [`hk`](https://hk.jdx.dev/) for fast staged-file checks on commit.
