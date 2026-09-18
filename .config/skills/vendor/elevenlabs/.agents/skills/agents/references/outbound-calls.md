@@ -76,7 +76,7 @@ response = client.conversational_ai.twilio.outbound_call(
                 "language": "en"
             },
             "tts": {
-                "voice_id": "JBFqnCBsd6RMkjVDRZzb"
+                "voice_id": "selected_voice_id"
             }
         },
         "dynamic_variables": {
@@ -104,7 +104,7 @@ const response = await client.conversationalAi.twilio.outboundCall({
         language: "en",
       },
       tts: {
-        voiceId: "JBFqnCBsd6RMkjVDRZzb",
+        voiceId: "selected_voice_id",
       },
     },
     dynamicVariables: {

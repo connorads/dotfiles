@@ -83,7 +83,7 @@ client = ElevenLabs(api_key="your-api-key")
 Once installed and authenticated, no headers or keys are needed on the command line:
 
 ```bash
-elevenlabs text-to-speech convert --voice-id JBFqnCBsd6RMkjVDRZzb \
+elevenlabs text-to-speech convert --voice-id selected_voice_id \
   --text "Hello world" --model-id eleven_multilingual_v2 --output output.mp3
 ```
 

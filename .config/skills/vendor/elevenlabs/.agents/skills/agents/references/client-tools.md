@@ -70,7 +70,7 @@ agent = client.conversational_ai.agents.create(
                 }]
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}
+        "tts": {"voice_id": "selected_voice_id"}
     }
 )
 ```
@@ -359,7 +359,7 @@ When users want to go somewhere, use navigate_to.""",
                 ]
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}
+        "tts": {"voice_id": "selected_voice_id"}
     }
 )
 ```
@@ -612,7 +612,7 @@ Always verify order ID before lookup. Offer transfer for complex issues.""",
                 }
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb", "model_id": "eleven_flash_v2_5"}
+        "tts": {"voice_id": "selected_voice_id", "model_id": "eleven_flash_v2_5"}
     }
 )
 ```

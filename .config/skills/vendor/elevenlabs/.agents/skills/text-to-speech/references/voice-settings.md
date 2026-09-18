@@ -22,7 +22,7 @@ client = ElevenLabs()
 
 audio = client.text_to_speech.convert(
     text="Testing different voice settings.",
-    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    voice_id="selected_voice_id",
     model_id="eleven_v3",
     voice_settings=VoiceSettings(
         stability=0.5,
@@ -36,7 +36,7 @@ audio = client.text_to_speech.convert(
 ## JavaScript Example
 
 ```javascript
-const audio = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
+const audio = await client.textToSpeech.convert("selected_voice_id", {
   text: "Testing different voice settings.",
   modelId: "eleven_v3",
   voiceSettings: {
@@ -52,7 +52,7 @@ const audio = await client.textToSpeech.convert("JBFqnCBsd6RMkjVDRZzb", {
 
 ```bash
 elevenlabs text-to-speech convert \
-  --voice-id JBFqnCBsd6RMkjVDRZzb \
+  --voice-id selected_voice_id \
   --text "Testing different voice settings." \
   --model-id eleven_v3 \
   --params '{"voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.0, "use_speaker_boost": true}}' \

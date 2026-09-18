@@ -12,7 +12,20 @@ Build voice AI agents with natural conversations, multiple LLM providers, custom
 
 > **Setup:** See [Installation Guide](references/installation.md) for CLI and SDK setup.
 
-## Quick Start with CLI
+## Voice selection
+
+<!-- LOCAL PATCH (connorads dotfiles): Voice casting follows the brief and project choices; example voices are not defaults, and George requires an explicit request. -->
+
+- Use the voice the user requests. Use George only when explicitly requested for this project or character; an inherited example ID is not a request.
+- Otherwise, reuse the recorded voice for this project or character, unless the brief changes or the user asks to recast. Do not carry casting between unrelated projects.
+- For new casting, inspect the available voices and match the brief's language, accent, delivery and character. Never select a voice because it appears first in a list or example.
+- When the brief gives enough direction, select a suitable voice and state its name and why it fits. Proceed without asking for approval.
+- When the brief leaves the voice unclear, offer three suitable candidates with available preview links and ask the user to choose. Do not generate paid auditions unless requested.
+- Record the chosen voice name, ID and casting rationale in the project's existing configuration or notes, per character where needed. Reuse that choice on later runs.
+
+`selected_voice_id` in examples is a placeholder. Replace it with the chosen voice's actual ID before calling the API; always pass the selected voice explicitly.
+
+## Quick start examples with CLI
 
 The ElevenLabs CLI is the recommended way to create and manage agents:
 
@@ -51,7 +64,7 @@ agent = client.conversational_ai.agents.create(
                 "temperature": 0.7
             }
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}
+        "tts": {"voice_id": "selected_voice_id"}
     }
 )
 ```
@@ -74,7 +87,7 @@ const agent = await client.conversationalAi.agents.create({
         temperature: 0.7
       }
     },
-    tts: { voiceId: "JBFqnCBsd6RMkjVDRZzb" }
+    tts: { voiceId: "selected_voice_id" }
   }
 });
 ```
@@ -85,7 +98,7 @@ The CLI reads `ELEVENLABS_API_KEY` from the environment automatically:
 
 ```bash
 elevenlabs agents create \
-  --json '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"}}}'
+  --json '{"name": "My Assistant", "conversation_config": {"agent": {"first_message": "Hello!", "language": "en", "prompt": {"prompt": "You are helpful.", "llm": "gemini-2.0-flash"}}, "tts": {"voice_id": "selected_voice_id"}}}'
 ```
 
 ## Starting Conversations
@@ -177,7 +190,7 @@ function App({ signedUrl }: { signedUrl: string }) {
 
 Use `GET /v1/convai/llm/list` to inspect the current model catalog, including deprecation state, token/context limits, capability flags such as image-input support, and model-specific reasoning effort support.
 
-**Popular voices:** `JBFqnCBsd6RMkjVDRZzb` (George), `EXAVITQu4vr4xnSDxMaL` (Sarah), `onwK4e9ZLuTAKqWW03F9` (Daniel), `XB0fDUnXU5powFXDhCwa` (Charlotte)
+Choose from the available voices using the voice selection rules above.
 
 **Turn eagerness:** `patient` (waits longer for user to finish), `normal`, or `eager` (responds quickly)
 

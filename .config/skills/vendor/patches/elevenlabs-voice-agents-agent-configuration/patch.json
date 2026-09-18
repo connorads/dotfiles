@@ -1,0 +1,6 @@
+{
+  "reason": "Voice casting follows the brief and project choices; example voices are not defaults, and George requires an explicit request.",
+  "files": [
+    "elevenlabs/.agents/skills/agents/references/agent-configuration.md"
+  ]
+}
