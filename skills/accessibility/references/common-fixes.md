@@ -103,6 +103,8 @@ For inline errors, `aria-invalid` + `aria-describedby` is sufficient - the error
 
 ## 4. Form error summary at top of page
 
+Choose the destination using [Failed-submit focus](focus-management.md#failed-submit-focus). This example implements the summary branch.
+
 ```html
 <!-- ✅ Error summary that receives focus after failed submit -->
 <div

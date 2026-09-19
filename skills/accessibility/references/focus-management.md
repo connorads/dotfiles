@@ -343,12 +343,16 @@ The **roving tabindex pattern** (used for widgets like tab lists, menus, radio g
 | Modal opens | First focusable element inside modal, or modal container (tabindex="-1") |
 | Modal closes | Element that triggered the modal |
 | Inline confirmation appears | The confirmation element (with tabindex="-1") |
-| Form error summary appears | Error summary container (with tabindex="-1") |
+| Form submission fails validation | Follow the failed-submit focus policy below |
 | SPA navigation | Page `<h1>` or `<main>` (with tabindex="-1") |
 | Accordion opens | Leave focus on the accordion toggle (do not move) |
 | Infinite scroll loads | Leave focus in place; announce count via live region |
 | Toast/notification appears | Leave focus in place; use live region |
 | Deleted item in list | Next item in list, or the list container if last item |
+
+### Failed-submit focus
+
+Follow the form's established error-summary pattern when present. For errors spread across a substantial form, provide a summary with links to the affected fields and focus that summary. For a local error without a summary, focus the invalid field. Move focus once after rendering the errors; never focus the summary and then the first invalid field in the same submission. Summary links move focus to their fields when the user activates them.
 
 ---
 

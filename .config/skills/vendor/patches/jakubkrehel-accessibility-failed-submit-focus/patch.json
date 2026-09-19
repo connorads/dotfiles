@@ -1,0 +1,6 @@
+{
+  "reason": "failed-submit focus follows the form's error structure without skipping an established summary",
+  "files": [
+    "jakubkrehel/.agents/skills/better-accessibility/forms.md"
+  ]
+}
