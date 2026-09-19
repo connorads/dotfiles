@@ -40,7 +40,7 @@ The complete pattern:
 - `aria-invalid="true"` on the failing field, removed once fixed.
 - `aria-describedby` links the field to its inline error so screen readers announce it with the field.
 - Errors render inline beside their fields, with an icon or text. Never a red border alone, which is a color-only cue.
-- On submit, focus the first invalid field.
+- On failed submit, follow the form's established error-summary pattern when present. For errors spread across a substantial form, provide a summary with links to the affected fields and focus that summary. For a local error without a summary, focus the invalid field. Move focus once after rendering the errors; never focus the summary and then the first invalid field in the same submission. Summary links move focus to their fields when the user activates them.
 - Allow incomplete submission so validation can surface. Never disable submit until valid (see below).
 - Accept free text and validate after. Never block typing or filter characters as the user types. Trim values before validating, because autocomplete and text expansion add trailing spaces.
 
@@ -79,6 +79,8 @@ Disable spellcheck on emails, codes and usernames: `spellcheck="false"`.
 ## Submit behavior
 
 - Keep submit enabled until the request starts, then disable it and show a spinner *beside the original label*. "Save" with a spinner, not a bare spinner. The label is what tells assistive tech which button is busy.
-- Announce results. Success goes through a polite live region. On failure, focus the first invalid field, which is itself the announcement. Reserve `role="alert"` for form-level errors not tied to a field ([screen-readers.md](screen-readers.md)).
+- Announce results. Success goes through a polite live region. On validation failure, use the focus policy under [Error messaging](#error-messaging). Reserve `role="alert"` for form-level errors not tied to a field ([screen-readers.md](screen-readers.md)).
+
+<!-- LOCAL PATCH (connorads dotfiles): failed-submit focus follows the form's error structure without skipping an established summary -->
 - Warn on unsaved changes before navigation, and never lose typed input to a re-render. Hydration must preserve focus and value.
 - Enter submits from any focused input; in `<textarea>`, ⌘/Ctrl+Enter submits.

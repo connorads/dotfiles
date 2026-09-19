@@ -77,7 +77,7 @@ background-image: url(pattern.svg); /* pattern ~5-10% lighter than the base */
 
 **Make empty states engaging.** Add an image or illustration and emphasise the call-to-action that moves the user forward. An inviting empty state encourages the first action instead of looking broken.
 
-**Hide supporting UI that does nothing.** When there is no content, hide tabs, filters, and other controls that have no effect until data exists. Showing actions that do nothing only confuses and clutters the first experience.
+**Hide supporting UI that does nothing.** When the underlying collection is empty, hide only controls that have no useful action until data exists. When a search or filter returns zero matches, keep the query, selected filters, and controls for changing or clearing them so users can recover.
 
 ## Separation without borders
 

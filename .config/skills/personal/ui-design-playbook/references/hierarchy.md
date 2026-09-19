@@ -48,6 +48,8 @@ Hierarchy is the lever that makes an interface feel designed. Rank what matters,
 
 ### Labels
 
+These rules concern captions on displayed data. Input controls keep their labels; a recognisable value or placeholder does not replace a form label.
+
 - **Drop labels when format reveals type.** Omit a label when the value's own format identifies it - an email, phone number, or price needs no caption. Redundant labels force every datum into equal emphasis and kill hierarchy.
 - **Let context replace labels.** Skip the label when surrounding context already makes meaning clear, e.g. a department shown under a person's name. Label-free data is far easier to style with emphasis.
 - **Fold the label into the value.** When a bare value is ambiguous, add a clarifying word to it rather than a separate label - "12 left in stock" over "In stock: 12", "3 bedrooms" over "Bedrooms: 3". One combined phrase styles freely while staying clear.
