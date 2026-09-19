@@ -140,20 +140,20 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   grep -q '^\[00:00:' "$output/transcript.md"
 }
 
-@test "trimming a zero-padded tail leaves the speech mw hears intact" {
+@test "a zero-padded tail transcribes with no pre-processing at all" {
   require_mw
   command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
   # voxtap pads silence with digital ZEROS to a monotonic clock (docs/adr/0003),
-  # and Parakeet returns an EMPTY transcript for a clip ending in enough of them
-  # (NVIDIA-NeMo/Speech#15757), so vox trims that tail off mw's input. What the
-  # trim must never do is eat the speech, and only the real mw can say whether
-  # it did.
+  # so this is the exact shape of a system track whose far side goes quiet. vox
+  # used to trim that tail off mw's input, because Parakeet once returned an
+  # EMPTY transcript for a clip ending in enough zeros
+  # (NVIDIA-NeMo/Speech#15757). It no longer does - re-measured against the
+  # pinned model at 5, 12, 24, 60 and 120 s of verified-exact zeros, at four
+  # levels down to -60 dB mean - so the trim is gone and this is what says so.
   #
-  # This is a guard on the trim, NOT a reproduction of the model bug: the `say`
-  # fixture is clean enough to survive the padding untrimmed. Blanking needs a
-  # marginal recording (measured: a 2.6 s quiet utterance at -48 dB mean vanishes
-  # under 12 s of zeros, survives 5 s), which no synthetic fixture imitates —
-  # `vox.bats` guards the trim itself, deterministically.
+  # The guard is one-sided by construction: only the real mw can fail it, and a
+  # failure here means the model regressed and the audio now needs handling
+  # again. It is the test to look at before re-adding any trim.
   ffmpeg -hide_banner -loglevel error -i "$VOX_CONTRACT_WAV" \
     -af 'apad=pad_dur=12' -c:a pcm_s16le -y "$BATS_TEST_TMPDIR/padded.wav"
   export VOX_STORE="$BATS_TEST_TMPDIR/padded-store"
