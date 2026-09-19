@@ -1518,23 +1518,39 @@ Change as a set:
   seconds, not zeros - so `voxtap` pads to a monotonic clock on a 100 ms timer.
   Without it every quiet stretch would vanish and the two tracks would drift
   apart. The padding invariant is regression-tested in `vox-contract.bats`.
-- **That padding is digital zeros, and Parakeet blanks on a zero-padded tail.**
-  A clip ending in enough of them transcribes to an EMPTY string
-  ([NVIDIA-NeMo/Speech#15757](https://github.com/NVIDIA-NeMo/Speech/issues/15757)).
-  Measured on one 2.6 s quiet utterance: intact at +5 s of zeros, gone at +12,
-  and fine at +12 or +24 s of *real room tone* - so it is the zeros, not the
-  length and not the level. A live mic never emits zeros, so `mic.wav` is immune;
-  `sys.wav` is speech followed by exactly that shape, so **on a call whose far
-  side speaks briefly then goes quiet, their words were silently dropped**.
-  `_vox_trim_tail` therefore hands `mw` a trimmed COPY of each track (one
-  `silenceremove` with a POSITIVE `stop_periods`, which trims the end alone - a
-  negative one strips internal silence and shifts every timestamp `merge.py`
-  interleaves on), at the existing `VOX_SILENCE_DB` threshold. The stored WAV is
-  the archive and is never modified. Measured: 14.60 s → 4.61 s on the padded
-  case, and 15.38 s → 15.38 s on a real mic track that transcribes identically.
-  A synthetic fixture cannot reproduce the blanking (clean `say` speech survives
-  60 s of zeros), so the regression guard in `vox.bats` measures **what mw was
-  handed** instead, with a fake mw that keeps its input.
+- **Nothing pre-processes the audio, and the guard against losing speech is a
+  detector rather than a filter.** `mw` reads each stored WAV directly.
+  vox used to hand it a `silenceremove`d copy, because Parakeet once returned an
+  EMPTY transcript for a clip ending in enough digital zeros
+  ([NVIDIA-NeMo/Speech#15757](https://github.com/NVIDIA-NeMo/Speech/issues/15757)) -
+  which is exactly the shape voxtap's padding gives a far side who speaks and then
+  goes quiet. Two things ended that arrangement:
+  - **The premise no longer holds.** Re-measured against the pinned model
+    (`parakeet-pro:nvidia_parakeet-v3_494MB`) with padding verified as exact zeros
+    (`astats` Max level 0.000000): a 4 s utterance transcribes under 5, 12, 24, 60
+    and 120 s of zeros, and still does attenuated to -40, -50 and -60 dB mean; so
+    does the exact 2.6 s / -46 dB shape the original measurement used. `mw` is a
+    self-updating GUI app outside mise and nix, so the likeliest account is an
+    upstream fix, but "fixed" and "misdiagnosed" are not discriminable now and the
+    action is the same either way.
+  - **The filter was destroying data.** A POSITIVE `stop_periods=1` stops output
+    at the FIRST silence run of `stop_duration` or longer, counted from the start -
+    it does not trim the end alone, whatever the old comment here said. Two
+    recordings on 2026-09-14 lost most of their speech to it: a 2158 s system track
+    reached `mw` as 7.91 s (`{"segments":[],"text":""}`, and `vox_session_kind` then
+    reported the 36-minute call as `solo`), and a 1158 s mic track as 88.97 s,
+    keeping 4 of 43 segments. The internal gaps it cut on measure ±6 LSB, so they
+    were the far side's real near-silence, not padding.
+
+  In its place, `_vox_report_blanked` measures each stored track after
+  transcription and warns - to stderr and `vox.log`, naming the track and its mean
+  level - when `vox_track_blanked` finds audible audio behind an empty transcript.
+  It covers the same loss from any cause, including a future model regression,
+  which a filter aimed at zeros cannot. The zero-padded case still has a real-`mw`
+  regression guard in `vox-contract.bats`; it is one-sided by construction, and
+  failing it is what would justify re-adding pre-processing.
+  What it deliberately does not catch is a PARTIAL truncation - deleting the
+  filter removes that failure rather than detecting it.
 - **`pan`, not `-ac 1`, on the mic.** A multichannel input would get a surround
   downmix matrix (LFE and height coefficients) instead of the channels apps
   actually write. The tap needs none of it: it is mono at source.
