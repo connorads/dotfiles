@@ -282,28 +282,6 @@ _vox_cancel() {
 	fi
 }
 
-# _vox_trim_tail SRC DEST LOG - a copy of SRC with its trailing silence removed,
-# for mw's eyes only. Fails (leaving the caller with the original) when ffmpeg is
-# absent or cannot read the source.
-#
-# Parakeet returns an EMPTY transcript for a clip that ends in enough digital
-# zeros - measured: a 2.6 s utterance survives 5 s of zeros and vanishes under 12
-# (NVIDIA-NeMo/Speech#15757). A live mic never emits zeros, but voxtap pads
-# silence with exactly those to a monotonic clock by design (docs/adr/0003), so
-# without this a far side who speaks briefly and then goes quiet is dropped.
-#
-# stop_periods is POSITIVE, which trims the end alone; a negative one strips
-# internal silence too and would shift every timestamp merge.py interleaves on.
-# The threshold is VOX_SILENCE_DB, already calibrated for this exact distinction
-# (-91 dB digital silence vs -55 dB for a quiet room), so real room tone is left
-# alone and this is a no-op on the mic track.
-_vox_trim_tail() {
-	command -v ffmpeg >/dev/null 2>&1 || return 1
-	ffmpeg -hide_banner -loglevel error -y -i "$1" -vn \
-		-af "silenceremove=stop_periods=1:stop_duration=2:stop_threshold=${VOX_SILENCE_DB}dB" \
-		-ar 16000 -ac 1 -c:a pcm_s16le "$2" 2>>"$3" && [[ -s "$2" ]]
-}
-
 # _vox_audio_secs DIR - the recording's length in whole seconds, read from
 # whichever track survives: a capture's own tracks, or the source an imported
 # file is symlinked to. Best-effort: no ffprobe, or a track it cannot measure,
@@ -336,6 +314,31 @@ _vox_require_transcript() {
 	return 1
 }
 
+# _vox_report_blanked DIR - warn about a track whose audio is audible but whose
+# transcript holds no segments at all. Best-effort: no ffmpeg, no measurement,
+# no warning.
+#
+# mw exits 0 whatever it heard, so nothing downstream can tell a blanked track
+# from a quiet one - and vox_session_kind reads a blanked system track as `solo`,
+# which turns a lost far side into a fact about the meeting. The audio is the
+# only witness that there was speech to lose, which is why the check is a
+# measurement rather than a rule about any particular cause.
+_vox_report_blanked() {
+	local dir=$1 track measured mean msg
+	command -v ffmpeg >/dev/null 2>&1 || return 0
+	for track in mic sys; do
+		[[ -s "$dir/$track.wav" ]] || continue
+		measured=$(ffmpeg -hide_banner -nostats -i "$dir/$track.wav" \
+			-af volumedetect -f null - 2>&1)
+		print -r -- "$measured" | vox_track_blanked "$dir" "$track" || continue
+		# Audible is what it just concluded, so the level always parses here.
+		mean=$(print -r -- "$measured" | vox_mean_volume)
+		msg="vox: $track.wav is audible (${mean} dB mean) but transcribed to no segments — the speech was lost, not absent; see $dir/vox.log"
+		print -u2 -- "$msg"
+		print -r -- "$msg" >>"$dir/vox.log"
+	done
+}
+
 # _vox_transcribe DIR - transcribe whichever tracks exist, then merge. The
 # per-track JSON is kept so a re-merge (new vocabulary, changed gap) never
 # re-transcribes.
@@ -343,26 +346,18 @@ _vox_transcribe() {
 	local dir=$1
 	_vox_need mw "$vox_python" || return 1
 
-	# mw reads a TRIMMED COPY of each track. The stored WAV is the archive and is
-	# never modified; the copy goes when this returns.
-	local scratch
-	scratch=$(mktemp -d) || return 1
-	trap "rm -rf ${(q)scratch}" EXIT
-
-	local track speakers input
+	local track speakers
 	for track in mic sys; do
 		[[ -s "$dir/$track.wav" ]] || continue
 		# --no-speakers on the mic track: it is definitionally you, and asking
 		# for diarisation would only invent a second speaker out of noise.
 		[[ "$track" == sys ]] && speakers=--speakers || speakers=--no-speakers
 		print -u2 -- "vox: transcribing $track…"
-		input="$dir/$track.wav"
-		_vox_trim_tail "$input" "$scratch/$track.wav" "$dir/vox.log" &&
-			input="$scratch/$track.wav"
-		mw transcribe "$input" --model "$vox_model" --format json "$speakers" \
+		mw transcribe "$dir/$track.wav" --model "$vox_model" --format json "$speakers" \
 			>"$dir/$track.json" 2>>"$dir/vox.log" ||
 			print -u2 -- "vox: transcribing $track failed — see $dir/vox.log"
 	done
+	_vox_report_blanked "$dir"
 
 	local -a merge_args=(--me "$dir/mic.json" --them "$dir/sys.json")
 	[[ -r "$vox_vocab" ]] && merge_args+=(--vocab "$vox_vocab")
@@ -387,16 +382,10 @@ _vox_transcribe_file() {
 	ln -sfn "${file:A}" "$dir/source.${file:e}" 2>/dev/null
 
 	print -u2 -- "vox: transcribing ${file:t}…"
-	# The same trimmed copy as a live recording's tracks: an exported meeting
-	# ends in digital silence as readily as a padded system track does, and a
-	# file ffmpeg cannot read simply goes to mw as it is.
-	local scratch input="$file"
-	scratch=$(mktemp -d) || return 1
-	trap "rm -rf ${(q)scratch}" EXIT
-	_vox_trim_tail "$file" "$scratch/audio.wav" "$dir/vox.log" &&
-		input="$scratch/audio.wav"
-
-	mw transcribe "$input" --model "$vox_model" --format json --speakers \
+	# Straight to mw, in whatever container and rate it arrived in: mw resamples
+	# and demuxes for itself (verified on 48 kHz stereo AAC-in-MP4), so there is
+	# nothing here to normalise and nothing to leave the caller waiting on.
+	mw transcribe "$file" --model "$vox_model" --format json --speakers \
 		>"$dir/mic.json" 2>>"$dir/vox.log" || {
 		_vox_die "transcription failed — see $dir/vox.log"
 		return 1

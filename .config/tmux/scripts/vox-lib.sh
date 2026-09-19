@@ -380,6 +380,19 @@ vox_mean_volume() {
 	'
 }
 
+# vox_has_segments FILE — true when an mw transcript holds at least one segment.
+#
+# A POSITIVE test for a segment object, not for the word "text": real mw output
+# carries a TOP-LEVEL "text" key that is present (and empty) even when nothing
+# was transcribed, so looking for the word alone calls every silent track
+# spoken-on. Whitespace is stripped first because mw pretty-prints, so the array
+# and its first brace are on different lines. Anything unrecognisable reads as no
+# segments, the conservative call.
+vox_has_segments() {
+	[ -s "$1" ] || return 1
+	tr -d ' \t\n' <"$1" | grep -q '"segments":\[{'
+}
+
 # vox_session_kind DIR — "2-way" when the system track produced transcript
 # segments, else "solo".
 #
@@ -388,22 +401,15 @@ vox_mean_volume() {
 # missing or empty system track reads "solo", the conservative call (a missing
 # other side, not a fabricated one) — and the one `VOX_MIC_ONLY=1` produces.
 vox_session_kind() {
-	_vox_sys="$1/sys.json"
-	# A POSITIVE test for a segment object, not for the word "text": real mw
-	# output carries a TOP-LEVEL "text" key that is present (and empty) even when
-	# nothing was transcribed, so looking for the word alone calls every silent
-	# system track 2-way. Whitespace is stripped first because mw pretty-prints,
-	# so the array and its first brace are on different lines. Anything
-	# unrecognisable reads solo, the conservative call.
-	if [ -s "$_vox_sys" ] && tr -d ' \t\n' <"$_vox_sys" | grep -q '"segments":\[{'; then
+	if vox_has_segments "$1/sys.json"; then
 		echo 2-way
 	else
 		echo solo
 	fi
 }
 
-# vox_classify_track — read `ffmpeg -af volumedetect` output for the *system*
-# track on stdin and print MONOLOGUE (silent — nobody else was on the call) or
+# vox_classify_track — read `ffmpeg -af volumedetect` output for a track on
+# stdin and print MONOLOGUE (silent — nobody else was on the call) or
 # MEETING (audible). Silence is the classifier, not an error: it is what removes
 # any need to declare a mode when starting. An unmeasurable track reads
 # MONOLOGUE, the conservative reading (a missing other side, not a fabricated
@@ -416,4 +422,22 @@ vox_classify_track() {
 	awk -v mean="$_vox_mean" -v floor="$VOX_SILENCE_DB" 'BEGIN {
 		print (mean + 0 > floor + 0) ? "MEETING" : "MONOLOGUE"
 	}'
+}
+
+# vox_track_blanked DIR TRACK — true when TRACK's audio is audible but its
+# transcript holds no segments. `ffmpeg -af volumedetect` output for the stored
+# WAV arrives on stdin, so this stays testable with a fixture and no audio.
+#
+# Audible-but-empty is a transcription FAILURE, not a monologue, and nothing
+# downstream can tell it from one: mw exits 0 whatever it heard, and
+# vox_session_kind reads a blanked system track as "solo" — reporting the loss as
+# a fact about the meeting. Silence stays a label (a genuine monologue's system
+# track is quiet, so this is false on it); audible silence is the failure.
+vox_track_blanked() {
+	_vox_blanked_kind=$(vox_classify_track)
+	[ "$_vox_blanked_kind" = MEETING ] || return 1
+	if vox_has_segments "$1/$2.json"; then
+		return 1
+	fi
+	return 0
 }

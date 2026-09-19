@@ -559,6 +559,51 @@ JSON
   [ "$output" = "MONOLOGUE" ]
 }
 
+# --- a blanked track: audible, but nothing transcribed ----------------------
+#
+# The failure `vox` now warns on. It fires on the loss whatever caused it, which
+# is the point: the model, the audio, or a filter of our own can all produce it,
+# and only the audio says the speech was there to lose.
+
+@test "an audible track with no segments reads blanked" {
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[],"text":""}' >"$HOME/rec/sys.json"
+  lib_stdin "$FIXTURES/vox-volumedetect-speech.txt" vox_track_blanked "'$HOME/rec'" sys
+  [ "$status" -eq 0 ]
+}
+
+@test "a silent track with no segments is a monologue, not a failure" {
+  # The one false positive that would matter: a real monologue's system track is
+  # correctly quiet and correctly transcribes to nothing.
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[],"text":""}' >"$HOME/rec/sys.json"
+  lib_stdin "$FIXTURES/vox-volumedetect-silent.txt" vox_track_blanked "'$HOME/rec'" sys
+  [ "$status" -ne 0 ]
+}
+
+@test "an audible track that transcribed is not blanked" {
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[{"id":0,"start":0,"end":1,"text":"yes hello"}]}' >"$HOME/rec/sys.json"
+  lib_stdin "$FIXTURES/vox-volumedetect-speech.txt" vox_track_blanked "'$HOME/rec'" sys
+  [ "$status" -ne 0 ]
+}
+
+@test "an audible track with no transcript at all reads blanked" {
+  # mw fell over rather than returning nothing: same loss, same warning.
+  mkdir -p "$HOME/rec"
+  lib_stdin "$FIXTURES/vox-volumedetect-speech.txt" vox_track_blanked "'$HOME/rec'" sys
+  [ "$status" -eq 0 ]
+}
+
+@test "an unmeasurable track is never blanked" {
+  # No measurement means no evidence the speech was there, and a warning with no
+  # evidence behind it is noise.
+  mkdir -p "$HOME/rec"
+  printf '{"segments":[],"text":""}' >"$HOME/rec/sys.json"
+  run bash -c "source '$VOX_LIB'; printf '' | vox_track_blanked '$HOME/rec' sys"
+  [ "$status" -ne 0 ]
+}
+
 @test "the floor sits between digital silence and a quiet room" {
   # Measured on real recordings: a system track that captured nothing reads
   # -91 dB, a microphone in a quiet room about -55 dB. A floor above the latter

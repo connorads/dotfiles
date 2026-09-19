@@ -71,14 +71,25 @@ if "-list_devices" in argv:
         sys.stderr.write(fh.read())
     sys.exit(1)
 
-# The OUTPUT is always the last argument, and only it may be written: the
-# pre-transcription trim reads a stored WAV, which is the archive.
+# volumedetect measures a stored WAV, and this stub's four-byte "RIFF" cannot
+# answer for one, so the measurement is a captured fixture the test chooses.
+# With none named nothing is measurable, which is what every test that does not
+# care about loudness wants.
+if "volumedetect" in " ".join(argv):
+    fixture = os.environ.get("VOX_VOLUMEDETECT_FIXTURE")
+    if fixture:
+        with open(fixture) as fh:
+            sys.stderr.write(fh.read())
+    sys.exit(0)
+
+# The OUTPUT is always the last argument, and only it may be written: a stored
+# WAV is the archive.
 if argv and argv[-1].endswith(".wav"):
     with open(argv[-1], "w") as fh:
         fh.write("RIFF")
 
-# Only a capture stays alive to be signalled. Everything else — the trim — is a
-# one-shot filter run that must return before its caller can use the result.
+# Only a capture stays alive to be signalled. Everything else is a one-shot
+# filter run that must return before its caller can use the result.
 if "avfoundation" not in argv and "f32le" not in argv:
     sys.exit(0)
 
@@ -574,13 +585,12 @@ aged_recording() {
   [ "$(sed -n 1p "$dir/transcript.md")" = "[00:00:00] Me: hello there" ]
   [ "$(sed -n 2p "$dir/transcript.md")" = "[00:00:02] Speaker 1: yes hello" ]
   # --no-speakers on the mic track (it is definitionally you), --speakers on
-  # the system track, and the model pinned per invocation. The path is whatever
-  # trimmed copy mw was handed, never the stored WAV.
+  # the system track, and the model pinned per invocation.
   grep -q "^mw transcribe .*/mic.wav --model .* --format json --no-speakers$" "$TEST_LOG"
   grep -q "^mw transcribe .*/sys.wav --model .* --format json --speakers$" "$TEST_LOG"
 }
 
-@test "transcribing trims a copy and leaves the stored WAV byte-identical" {
+@test "transcribing reads the stored WAV and leaves it byte-identical" {
   require_macos
   stub_ffmpeg
   stub_mw
@@ -591,11 +601,10 @@ aged_recording() {
   before=$(cksum <"$dir/mic.wav")
   vox stop
 
-  # The WAV is the archive: Parakeet's zero-padding blindness is worked around
-  # on mw's input alone, so what is on disk is still what was captured.
+  # mw is handed the archive itself - nothing pre-processes the audio, so what
+  # the model hears is exactly what was captured.
+  grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
   [ "$(cksum <"$dir/mic.wav")" = "$before" ]
-  # And what mw read was a copy, somewhere else entirely.
-  ! grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
 }
 
 @test "stop clears the capture state and leaves a transcript to read" {
@@ -729,41 +738,46 @@ EOF
   [[ "$stderr" == *"2s of audio"* ]]
 }
 
-# --- the trailing silence mw is never handed --------------------------------
+# --- a track that lost its speech before anyone could read it ---------------
+#
+# mw exits 0 whatever it heard, so a track that transcribed to nothing is
+# indistinguishable from one nobody spoke on — and `vox_session_kind` reads the
+# system track's silence as `solo`, turning a transcription failure into a fact
+# about the meeting. The audio is the only witness that the speech was there.
 
-# mw stub that keeps whatever file it was given, so a test can measure it. argv
-# is `transcribe <file> --model ...`, so the file is $2.
-stub_mw_keeping_input() {
-  write_stub mw <<'EOF'
-#!/usr/bin/env bash
-cp "$2" "$MW_INPUT_COPY"
-printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hello there"}]}\n'
-EOF
+@test "a track that is audible but transcribed to nothing is reported" {
+  require_macos
+  stub_ffmpeg
+  stub_mw_silent
+  stub_voxtap
+  export VOX_VOLUMEDETECT_FIXTURE="$FIXTURES/vox-volumedetect-speech.txt"
+
+  vox
+  vox stop
+  dir=$output
+
+  # Named track and measured level, because the next question is always "which
+  # one, and was there really anything on it".
+  [[ "$stderr" == *"sys.wav is audible"* ]]
+  [[ "$stderr" == *"-27.3"* ]]
+  [[ "$stderr" == *"no segments"* ]]
+  # And in the log, which is where the recording's own history lives.
+  grep -q 'sys.wav is audible' "$dir/vox.log"
 }
 
-@test "a tail of digital silence never reaches mw" {
-  command -v ffmpeg >/dev/null 2>&1 || skip "ffmpeg not on PATH"
-  command -v ffprobe >/dev/null 2>&1 || skip "ffprobe not on PATH"
-  # voxtap pads silence with digital ZEROS to a monotonic clock, so the system
-  # track of a call whose far side goes quiet ends exactly like this — and
-  # Parakeet returns an EMPTY transcript for a clip ending in enough of them
-  # (NVIDIA-NeMo/Speech#15757), silently dropping what they did say. Real ffmpeg
-  # here: the trim is the thing under test.
-  export MW_INPUT_COPY="$BATS_TEST_TMPDIR/mw-input.wav"
-  stub_mw_keeping_input
-  ffmpeg -hide_banner -loglevel error -f lavfi -i 'sine=frequency=300:duration=1' \
-    -af 'apad=pad_dur=12' -ar 16000 -ac 1 -c:a pcm_s16le -y "$HOME/padded.wav"
-  before=$(cksum <"$HOME/padded.wav")
+@test "a silent track that transcribed to nothing is left alone" {
+  require_macos
+  stub_ffmpeg
+  stub_mw_silent
+  stub_voxtap
+  export VOX_VOLUMEDETECT_FIXTURE="$FIXTURES/vox-volumedetect-silent.txt"
 
-  vox "$HOME/padded.wav"
+  vox
+  vox stop
 
-  [ "$status" -eq 0 ]
-  secs=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$MW_INPUT_COPY")
-  # 13 s in; out is the second of tone plus the stop_duration window before the
-  # silence counts, and nothing like the 12 s of zeros.
-  [ "$(printf '%.0f' "$secs")" -le 4 ]
-  # The stored file is the archive: only the copy mw reads is ever trimmed.
-  [ "$(cksum <"$HOME/padded.wav")" = "$before" ]
+  # A real monologue: the system track is correctly quiet and correctly
+  # transcribes to nothing. Warning here would cry wolf on every monologue.
+  [[ "$stderr" != *"audible"* ]]
 }
 
 # --- transcribing a file that already exists --------------------------------
