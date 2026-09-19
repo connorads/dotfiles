@@ -61,8 +61,12 @@ confirmation.
 
 Start spacious then tighten · constrain to a ratio-based spacing scale · don't
 fill the full width - size each section to its content · split into columns
-instead of stretching · fixed sidebar + flexible content, cap with max-width ·
-more space between groups than within · tie labels to their inputs.
+instead of stretching · container-responsive columns, cap with max-width ·
+parent-owned spacing and wrapping action groups · more space between groups
+than within · tie labels to their inputs.
+
+For runnable spacing and container-width examples, open
+[examples/responsive-layout.html](examples/responsive-layout.html).
 
 ### Typography → `references/typography.md`
 

@@ -48,13 +48,21 @@ How to size and space a UI in code: a density philosophy, a spacing scale, width
 
 **Not everything should be fluid.** Reserve percentage widths for elements you actually want to scale; give the rest fixed widths tuned to their contents. Outsourcing every width to a grid forces relative sizing onto elements that have a single ideal size.
 
-**Fixed sidebar, flexible content.** Give a sidebar a fixed width optimised for its contents and let the main area flex to fill the rest. A percentage sidebar wastes space when wide and wraps or truncates awkwardly when narrow.
+**Let the container decide when columns fit.** Keep the main content first in the DOM and stack supporting content below it by default. When the containing panel has room for both, give supporting content a bounded column and the main content the remaining space. A viewport breakpoint cannot tell whether the same component sits in a narrow panel on a wide screen.
 
 ```css
-.layout { display: flex; }
-.sidebar { width: 280px; flex: none; }
-.content { flex: 1; }
+.panel { container: detail / inline-size; }
+.layout { display: grid; gap: var(--space-5); }
+.layout > * { min-inline-size: 0; overflow-wrap: anywhere; }
+
+@container detail (inline-size >= 48rem) {
+  .layout { grid-template-columns: minmax(0, 1fr) 18rem; }
+}
 ```
+
+Choose the threshold by testing the actual contents. Here `48rem` leaves `28.5rem` for the main column after the `18rem` support column and `1.5rem` gap at the default font size. The query measures `.panel` and styles its descendant `.layout`; a size query cannot resize its own query container. Reuse existing project tokens for gaps and component widths. The one-column base remains usable without container queries.
+
+**Allow the content to shrink and wrap.** Grid and flex children can retain a minimum width derived from their contents. Use `min-inline-size: 0` on shrinking children and `minmax(0, 1fr)` for a flexible grid track. Wrap long identifiers with `overflow-wrap: anywhere`; keep readable content available instead of hiding overflow to conceal a broken layout.
 
 **Cap with max-width, shrink late.** Don't shrink an element before you must. Give it a max-width so it stops growing at its ideal size, and let it shrink only once the screen is narrower than that. Fluid grid widths can make an element wider on medium screens than large ones; a max-width keeps it optimal whenever there's room.
 
@@ -75,25 +83,51 @@ How to size and space a UI in code: a density philosophy, a spacing scale, width
 
 ## Grouping
 
+**Let the parent own the space between children.** Use `gap` on a stack or row and clear direct children's outer margins within that layout. Children keep their internal padding. This gives the container one spacing rule when children are added, removed or reordered, without a trailing child margin or accumulated nested margins. Reuse the project's spacing tokens; the names here refer to the scale above.
+
+```css
+.stack { display: flex; flex-direction: column; gap: var(--space-5); }
+.stack > * { margin: 0; }
+.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field > * { margin: 0; }
+```
+
 **More space around a group than within.** When spacing alone does the grouping, always leave more space around a group than between its members. Equal inner and outer spacing makes related items read as disconnected and forces the user to work harder.
 
 ```css
-.field { margin-bottom: 8px; }
-.field-group { margin-bottom: 24px; }
+.field-group { display: flex; flex-direction: column; gap: var(--space-4); }
+.form-sections { display: flex; flex-direction: column; gap: var(--space-6); }
 ```
 
 **Connect labels to their inputs.** In stacked forms, keep each label tight to its own input and add clear separation between groups. If the gap below a label equals the gap below its input, users misread which label owns which field and enter data in the wrong place.
 
-```css
-label { margin-bottom: 4px; }
-.field { margin-bottom: 24px; }
-```
-
 **Separate headings and list items.** Give section headings noticeably more space above than below, and set list-item gaps larger than a single line's height. When a heading sits as close to the previous section as to its own, or bullets are spaced like wrapped lines, grouping turns ambiguous.
 
 ```css
-h2 { margin-top: 48px; margin-bottom: 12px; }
-li { margin-bottom: 12px; line-height: 1.4; }
+.sections { display: flex; flex-direction: column; gap: var(--space-7); }
+.section { display: flex; flex-direction: column; gap: var(--space-3); }
+.section > * { margin: 0; }
+.section ul { display: flex; flex-direction: column; gap: var(--space-3); }
+.section li { margin: 0; line-height: 1.4; }
 ```
 
 **Spacing groups horizontally too.** Apply the more-around-than-within rule to horizontal layouts, not just vertical stacks. Side-by-side items suffer the same grouping confusion when the space between items matches the space within a group.
+
+**Let action groups wrap in reading order.** Use a wrapping flex row with a parent-owned gap. Keep each control within the available width and allow its label to wrap. Avoid CSS ordering or a fixed group height, which can make the visual order diverge from keyboard order or clip a second row.
+
+```css
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.actions > * {
+  margin: 0;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+```
+
+## Runnable example and checks
+
+Open [examples/responsive-layout.html](../examples/responsive-layout.html) directly in a browser. It combines these recipes with long content and working section links. Resize to `320px`, `768px` and `1280px`, then narrow the panel independently of the viewport. Check that columns stack when their container narrows, action labels remain complete, DOM order matches reading order, and neither the page nor its controls overflow horizontally. Remove a stack child and confirm the remaining gaps stay equal with no trailing gap.
+
+The layout approach draws on *Every Layout*, by Heydon Pickering and Andy Bell, particularly Stack, Cluster and Sidebar. For CSS behaviour, see MDN's [container queries](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Containment/Container_queries), [gap](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/gap), [flex-wrap](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/flex-wrap) and [overflow-wrap](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/overflow-wrap).
