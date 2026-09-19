@@ -14,7 +14,7 @@ web_search = "live"
 plan_mode_reasoning_effort = "high"
 # Anonymous usage/health metrics to OpenAI, on by default; applies to CLI, the
 # ChatGPT desktop app and the IDE extension alike.
-analytics = false
+analytics.enabled = false
 
 # Defaults made explicit — sandbox is read-only (upgrades to workspace-write
 # after trust prompt), network blocked, approval based on trust decision
