@@ -172,11 +172,38 @@ export HYPERFRAMES_NO_TELEMETRY=1
 # The full skill set is vendored + diff-reviewed in ~/.config/skills/vendor.
 export HYPERFRAMES_SKIP_SKILLS=1
 
+# GitHub CLI (gh): telemetry shipped default-on from v2.91.0 (2026-04-22).
+# DO_NOT_TRACK is honoured too, but the tool-specific var is documented and
+# survives if that generic check ever gets dropped.
+export GH_TELEMETRY=false
+
+# Cloudflare Wrangler: anonymous usage pings to sparrow.cloudflare.com, on by
+# default; not covered by DO_NOT_TRACK.
+export WRANGLER_SEND_METRICS=false
+
+# Google Cloud SDK (gcloud): usage-statistics reporting, off by default until
+# opted in at install, but the property survives a fresh gcloud install/reset.
+export CLOUDSDK_CORE_DISABLE_USAGE_REPORTING=true
+
+# Expo/EAS CLI: anonymous usage analytics, not covered by DO_NOT_TRACK.
+export EXPO_NO_TELEMETRY=1
+
+# Apify CLI: usage telemetry, not covered by DO_NOT_TRACK.
+export APIFY_CLI_DISABLE_TELEMETRY=1
+
+# Hugging Face Hub (pulled in by docling/markitdown/rembg for model downloads):
+# DO_NOT_TRACK is documented as equivalent, but the explicit var survives if
+# that check is ever dropped.
+export HF_HUB_DISABLE_TELEMETRY=1
+
 # micro editor true colour support
 export MICRO_TRUECOLOR=1
 
 # Homebrew supply chain: verify bottle provenance via Sigstore/GitHub attestations
 [[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_VERIFY_ATTESTATIONS=1
+
+# Homebrew analytics: anonymous InfluxDB usage events, on by default.
+[[ "$OSTYPE" == "darwin"* ]] && export HOMEBREW_NO_ANALYTICS=1
 
 # uv supply chain: abort sync if a locked dependency matches an OSV MAL-* malware
 # advisory. Runs before download, incl. `uv sync --frozen` - the one path
