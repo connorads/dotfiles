@@ -16,7 +16,6 @@ MENU="$HOME/.config/tmux/scripts/vox-menu.sh"
 setup() {
   setup_test_home
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_STORE="$HOME/Recordings/vox"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
@@ -44,8 +43,9 @@ recording_state() {
 }
 
 transcribing_state() {
-  printf '%s %s %s\n' "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312" \
-    >"$VOX_JOBFILE"
+  mkdir -p "$VOX_STORE/2026-07-28-140312"
+  printf '%s %s\n' "$(spawn)" "$(date +%s)" \
+    >"$VOX_STORE/2026-07-28-140312/transcribing.pid"
 }
 
 ready_state() {
@@ -54,7 +54,7 @@ ready_state() {
 }
 
 menu() {
-  run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+  run env VOX_STATEFILE="$VOX_STATEFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" TEST_LOG="$TEST_LOG" \
     "$MENU" "${1:-client0}" "${2:-10}" "${3:-S}"
 }

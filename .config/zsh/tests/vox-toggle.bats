@@ -29,7 +29,6 @@ TMUX_BIN="$(command -v tmux)"
 setup() {
   setup_test_home
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_BIN="$TEST_BIN/vox"
@@ -108,7 +107,7 @@ live_capture() {
 }
 
 toggle() {
-  run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+  run env VOX_STATEFILE="$VOX_STATEFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
     TEST_LOG="$TEST_LOG" VOX_TOGGLE_GATE="${VOX_TOGGLE_GATE:-}" "$TOGGLE" "$@"
 }
@@ -131,7 +130,7 @@ toggle_answering() {
   attach_pty_client s "$typescript" || skip "could not attach a pty client"
   local client
   client=$("$TMUX_BIN" -L "$SOCK" list-clients -F '#{client_name}' | head -1)
-  env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+  env VOX_STATEFILE="$VOX_STATEFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
     TEST_LOG="$TEST_LOG" VOX_TOGGLE_GATE="${VOX_TOGGLE_GATE:-}" \
     "$TOGGLE" "$@" >"$BATS_TEST_TMPDIR/toggle.out" 2>&1 &
@@ -325,7 +324,7 @@ toggle_answering() {
   # `vox stop` returns non-zero for a transcript with nothing in it as well as
   # for one that fell over, and announcing either as ready is the lie here.
   export VOX_STUB_STOP_FAILS=1
-  run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+  run env VOX_STATEFILE="$VOX_STATEFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
     TEST_LOG="$TEST_LOG" VOX_STUB_STOP_FAILS=1 \
     "$TOGGLE" finish "$VOX_STORE/2026-07-28-140312" "$PANE"
@@ -344,7 +343,7 @@ toggle_answering() {
   # worked, not less. ring_bell reaches the clients through tmux, so the lookup
   # is what says it ran.
   export VOX_STUB_STOP_FAILS=1
-  run env VOX_STATEFILE="$VOX_STATEFILE" VOX_JOBFILE="$VOX_JOBFILE" \
+  run env VOX_STATEFILE="$VOX_STATEFILE" \
     VOX_SEENFILE="$VOX_SEENFILE" VOX_STORE="$VOX_STORE" VOX_BIN="$VOX_BIN" \
     TEST_LOG="$TEST_LOG" VOX_STUB_STOP_FAILS=1 \
     "$TOGGLE" finish "$VOX_STORE/2026-07-28-140312" "$PANE"
@@ -357,7 +356,8 @@ toggle_answering() {
   stub_vox
   sleep 30 >/dev/null 2>&1 &
   echo $! >>"$BATS_TEST_TMPDIR/spawned"
-  printf '%s %s %s\n' "$!" "$(date +%s)" "$VOX_STORE/earlier" >"$VOX_JOBFILE"
+  mkdir -p "$VOX_STORE/2026-07-27-090000-earlier"
+  printf '%s %s\n' "$!" "$(date +%s)" >"$VOX_STORE/2026-07-27-090000-earlier/transcribing.pid"
 
   toggle "$PANE"
 

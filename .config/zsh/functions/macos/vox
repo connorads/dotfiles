@@ -27,6 +27,7 @@
 #       mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
 #       transcript.md         merged, name-fixed - the artefact everything consumes
 #       vox.log               ffmpeg + mw stderr (mw reports progress there)
+#       transcribing.pid      only while mw runs: "pid start_epoch"
 #
 # The directory name IS the title - no metadata file holding a duplicate that
 # can drift - so renaming is `mv`, and Finder, hand and the tmux picker are one
@@ -248,17 +249,17 @@ _vox_halt() {
 
 # _vox_stop - halt the capture, then transcribe and merge.
 #
-# The job file is written around the transcription, not by whoever called stop,
-# so the pill says TRANSCRIBING whether this was typed in a pane or detached by
-# the tmux toggle. $$ is this process: if it dies mid-transcription the file
-# reads as finished by pid liveness alone.
+# The job marker is written into the recording around the transcription, not by
+# whoever called stop, so the pill says TRANSCRIBING whether this was typed in a
+# pane or detached by the tmux toggle. $$ is this process: if it dies
+# mid-transcription the marker reads as finished by pid liveness alone.
 _vox_stop() {
 	local dir
 	dir=$(_vox_halt) || return 1
 	vox_write_job "$$" "$(date +%s)" "$dir"
 	_vox_transcribe "$dir"
 	local rc=$?
-	vox_clear_job
+	vox_clear_job "$dir"
 	# The path even when the transcript came back empty: the recording exists and
 	# its audio is intact, so there is somewhere to go and look either way.
 	print -r -- "$dir"
@@ -413,7 +414,7 @@ _vox_transcribe_file() {
 # wrong - a track transcribed to nothing, a model since improved - without
 # minting a second directory.
 #
-# Same job-file contract as `_vox_stop`: the pill reads TRANSCRIBING for the
+# Same job-marker contract as `_vox_stop`: the pill reads TRANSCRIBING for the
 # duration, and a crash mid-run reads as finished by pid liveness alone. The
 # seen marker is left alone on purpose - a fresh transcript is unread.
 _vox_retranscribe() {
@@ -434,7 +435,7 @@ _vox_retranscribe() {
 	vox_write_job "$$" "$(date +%s)" "$rec"
 	_vox_transcribe "$rec"
 	local rc=$?
-	vox_clear_job
+	vox_clear_job "$rec"
 	print -r -- "$rec"
 	return "$rc"
 }

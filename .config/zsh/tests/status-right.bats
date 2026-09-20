@@ -500,8 +500,9 @@ vox_recording() {
 vox_transcribing() {
   sleep 100 >/dev/null 2>&1 &
   echo $! >>"$BATS_TEST_TMPDIR/vox-pids"
-  printf '%s %s %s\n' "$!" "$(($(date +%s) - $1))" "$HOME/rec" \
-    >"$HOME/.cache/tmux-vox.job"
+  mkdir -p "$HOME/Recordings/vox/2026-07-28-140312"
+  printf '%s %s\n' "$!" "$(($(date +%s) - $1))" \
+    >"$HOME/Recordings/vox/2026-07-28-140312/transcribing.pid"
 }
 
 reap_vox() {
