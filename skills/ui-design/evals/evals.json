@@ -1,0 +1,65 @@
+{
+  "skill_name": "ui-design",
+  "common_prompt": "Implement one self-contained index.html with inline CSS/JS and no external dependencies. Read the supplied guidance and applicable references in guidance/. Use system fonts and realistic fixture content. All mutations stay in this run directory. Do not inspect other runs or any UI-design candidate outside this directory. Do not use subagents or install packages. Do not commit. Use at most 12,000 output tokens and 12 minutes. You have Python and playwright-cli available; name disposable browser sessions uniquely and close them. Create NOTES.md with design decisions, exact checks run, limitations and source files read. Start a local server if needed. This is a runnable prototype.\n",
+  "adhoc_instruction": "Design around the complete user task: choose screen structure and controls from the information and actions needed, reduce repeated work, preserve context, and make progress, errors and recovery clear. Verify a normal task, an alternative and a consequential failure in the browser.",
+  "evals": [
+    {
+      "id": "queue",
+      "split": "development",
+      "prompt": "Build a polished working review queue for a small publisher. Editors review several submissions each day, checking title, author, word count, topic and excerpt before accepting or requesting changes. There are 36 submissions; use fixture.json. They often find a topic, inspect several non-adjacent items, return to one, and continue working. It must work on a phone too. Simulate the first attempt to accept submission 7 failing, and allow a later attempt to succeed. Make concrete UI decisions and implement them. No authentication or backend.",
+      "assertions": [
+        "Find climate submissions and inspect three non-adjacent matches without rebuilding the query",
+        "Return from detail with query, selection and useful list position retained",
+        "Enter query with zero matches and recover using visible controls",
+        "Observe failed accept of item 7, retain context, retry successfully",
+        "Complete same inspection at 360px without horizontal page overflow"
+      ]
+    },
+    {
+      "id": "import",
+      "split": "development",
+      "prompt": "Build a polished working multi-file import screen for a researcher collecting interview transcripts from different folders. They choose files, check the collection, remove mistaken choices and finish importing. Use a real multiple file picker, local simulated processing and fixture-rules.json. Good .txt files succeed after 700ms; names containing broken fail on the first attempt then succeed if attempted again; other extensions are rejected. There is no backend. The researcher needs to know what made it into the collection and what to do next. Make concrete decisions and implement them. Work on phone and desktop.",
+      "assertions": [
+        "Choose files in two separate selections and retain the first collection",
+        "Observe independent success and failure without clearing successful files",
+        "Remove a mistaken accepted file and see updated collection",
+        "Recover broken file without duplicating accepted files",
+        "Finish with an unambiguous count of imported files, no false claim for rejected or removed files",
+        "Operate picker and removal by keyboard at 360px without overflow"
+      ]
+    },
+    {
+      "id": "form",
+      "split": "held-out",
+      "prompt": "Build a polished working travel reimbursement application for an occasional user. They enter claimant name/email, travel purpose, then choose domestic or international travel. Domestic needs destination and rail or car; car needs mileage. International needs country and currency. Both need amount and a receipt reference. Users can be interrupted and return on the same browser later, then review their application and submit. An email containing fail must cause a simulated server rejection; other valid submissions succeed. No backend. Use local browser storage for this prototype, state that honestly, and use the validation rules in fixture.json. Make concrete decisions and implement them; support phones.",
+      "assertions": [
+        "Complete domestic rail happy path with review and clear success",
+        "Select car and require mileage; changing to rail removes stale mileage from final submission",
+        "Select international and require country/currency without domestic-only fields",
+        "Keep valid answers after invalid submit and simulated server rejection",
+        "Reload halfway and resume with stored answers and understandable position",
+        "Edit earlier domestic answer to international and update dependent steps/review without stale submission values",
+        "Operate error recovery by keyboard at 360px without overflow"
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "prompt": "Make this conference landing page look more distinctive. Keep its sections and booking flow.",
+      "expected": "Visual design only; do not redesign application workflows."
+    },
+    {
+      "prompt": "Users abandon our claims form. We only have aggregate analytics. Help work out why before changing it.",
+      "expected": "Research diagnosis; do not invent user findings or build a speculative redesign."
+    },
+    {
+      "prompt": "The error summary already renders. Make its links focus their fields on keyboard activation. Keep the current layout.",
+      "expected": "Implement the specified accessibility fix without expanding the screen design."
+    },
+    {
+      "prompt": "Change the primary button colour to our existing teal token. Nothing else.",
+      "expected": "Make only the requested cosmetic change."
+    }
+  ],
+  "standalone_prompt": "Use ui-design to build the multi-file import case with no companion skills available. Deliver a working prototype and browser evidence; do not install companions."
+}

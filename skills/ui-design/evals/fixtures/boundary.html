@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workshop day</title>
+<style>
+:root { --teal: #126957; }
+body { max-width: 60rem; margin: auto; padding: 2rem; font: 1rem/1.5 system-ui; }
+section { margin-block: 3rem; }
+label, input { display: block; }
+input { margin-block-end: 1rem; }
+.primary { background: #333; color: white; padding: .75rem 1rem; border: 0; }
+</style>
+</head>
+<body>
+<main>
+<section><h1>Workshop day</h1><p>Practical sessions for local organisers.</p><a href="#booking">Book a place</a></section>
+<section><h2>Programme</h2><p>Morning planning workshop. Afternoon feedback clinic.</p></section>
+<section id="booking"><h2>Book a place</h2>
+<div class="summary" tabindex="-1"><h3>Check your answers</h3><a href="#email-group">Enter a valid email address</a></div>
+<form>
+<div id="email-group"><label for="email">Email address</label><input id="email" type="email" aria-invalid="true" aria-describedby="email-error"><p id="email-error">Enter a valid email address</p></div>
+<button class="primary" type="submit">Book a place</button>
+</form>
+</section>
+</main>
+<script>
+document.querySelector('.summary a').addEventListener('click', event => event.preventDefault());
+document.querySelector('form').addEventListener('submit', event => event.preventDefault());
+</script>
+</body>
+</html>

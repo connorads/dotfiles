@@ -1,0 +1,21 @@
+{
+  "required": [
+    "name",
+    "email",
+    "purpose",
+    "travelType",
+    "amount",
+    "receiptReference"
+  ],
+  "email": "valid email address",
+  "amount": "positive number",
+  "mileage": "positive number when domestic car",
+  "international": [
+    "country",
+    "currency"
+  ],
+  "domestic": [
+    "destination",
+    "mode"
+  ]
+}
