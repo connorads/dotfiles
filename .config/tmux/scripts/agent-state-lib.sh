@@ -74,15 +74,16 @@ EOF
 	fi
 }
 
-# roll_session SESSION_ID - recompute the session's attention-only summary from
-# its window rollups. Working and idle deliberately collapse to no session dot:
-# the bottom rail routes interruptions, while the top window row shows activity.
+# roll_session SESSION_ID - recompute the session's summary from its window
+# rollups: blocked > done > working. Idle and hibernated collapse to no session
+# dot, so a bare session on the bottom rail reads as "nothing running"; the top
+# window row still shows every state.
 roll_session() {
 	_session=$1
 	_best=
 	_best_rank=0
 	while IFS= read -r _s; do
-		case $_s in blocked | done) ;; *) continue ;; esac
+		case $_s in blocked | done | working) ;; *) continue ;; esac
 		_r=$(rank "$_s")
 		[ "$_r" -gt "$_best_rank" ] && {
 			_best_rank=$_r
@@ -93,9 +94,9 @@ $(tmux list-windows -t "$_session" -F '#{@win_agent_state}' 2>/dev/null)
 EOF
 
 	if [ -n "$_best" ]; then
-		tmux set-option -t "$_session" @session_agent_attention "$_best"
+		tmux set-option -t "$_session" @session_agent_state "$_best"
 	else
-		tmux set-option -u -t "$_session" @session_agent_attention 2>/dev/null || true
+		tmux set-option -u -t "$_session" @session_agent_state 2>/dev/null || true
 	fi
 }
 
