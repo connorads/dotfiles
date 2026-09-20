@@ -1,20 +1,17 @@
 # Testing hk steps (`tests {}` + `hk test`)
 
-Every hk step fails **open**: a glob that matches nothing exits 0, so a checker
-that has quietly stopped detecting anything is indistinguishable from a clean
-tree. A `tests {}` block on the step is what tells the two apart. `hk test` runs
-them all; `Builtins.hk_test` wires that into the hook so they run whenever
-`hk.pkl` is staged.
-
-Available since hk 1.51.0.
+Use step tests to prove a checker rejects a bad fixture and accepts a good one.
+A green hook with no matching files does not prove the checker ran. Tests are
+available from hk 1.51.0; the behaviour below is verified on 2026-09-20 against hk 2.0.1.
 
 - [The fields](#the-fields)
 - [Fixture paths must be sandboxed](#fixture-paths-must-be-sandboxed)
 - [Testing a whole-repo checker](#testing-a-whole-repo-checker)
-- [Globs and `{{files}}`](#globs-and-files)
-- [Wiring it into the hook](#wiring-it-into-the-hook)
-- [Builtins bring their own tests](#builtins-bring-their-own-tests)
-- [Strip the git environment](#strip-the-git-environment)
+- [Globs and explicit files](#globs-and-explicit-files)
+- [Wiring and test discovery](#wiring-and-test-discovery)
+- [Inherited builtin tests](#inherited-builtin-tests)
+- [Strip the Git environment](#strip-the-git-environment)
+- [Sources](#sources)
 
 ## The fields
 
@@ -25,13 +22,12 @@ Available since hk 1.51.0.
 
     tests {
         ["a bad file fails"] {
-            run = "check"                       // "check" | "fix" | "command"
-            write { ["{{tmp}}/bad.sh"] = "..." } // inline fixtures
-            before = "chmod +x {{tmp}}/bad.sh"   // runs after write
-            files = List("{{tmp}}/bad.sh")       // what renders {{files}}
+            run = "check"
+            write { ["{{tmp}}/bad.sh"] = "..." }
+            before = "mkdir -p .hk-hooks && cp '{{root}}/.hk-hooks/my-check.sh' .hk-hooks/"
             expect {
                 code = 1
-                stderr = "must be executable"    // substring match
+                stderr = "must be executable"
             }
         }
     }
@@ -40,62 +36,48 @@ Available since hk 1.51.0.
 
 | Field | Meaning |
 |---|---|
-| `run` | `check`, `fix`, or `command`. Defaults to `check` |
-| `write` | Inline files to create in the sandbox, path to contents |
-| `before` | Shell command run after `write`, before the step's own command |
-| `after` | Shell command run after the step, before expectations are checked |
-| `files` | Explicit list rendering `{{files}}`. Defaults to the `write` keys |
-| `fixture` | A path copied into the sandbox instead of inline `write` |
+| `run` | `check` or `fix`. Defaults to `check`; `command` is invalid |
+| `write` | Paths and inline contents to create before the command |
+| `before` | Shell command after `write`, before the step command |
+| `after` | Shell command after the step, before expectations |
+| `files` | Explicit arguments for `{{files}}`; bypasses step filters in v2.0.1. Omit to filter the `write` keys |
+| `fixture` | Directory copied into the test's working directory; set `tmpdir = true` |
 | `env` | Extra environment variables for this test |
-| `tmpdir` | Force sandbox on/off. Auto-detected from `{{tmp}}` when unset |
+| `tmpdir` | Force sandbox on/off; otherwise inferred from `{{tmp}}` paths in the selected file list |
 | `expect.code` | Expected exit code, default 0 |
 | `expect.stdout` / `expect.stderr` | Substring that must appear |
-| `expect.files` | Path to **full** expected contents, exact match |
+| `expect.files` | Paths and full expected contents, exact match |
 
 ## Fixture paths must be sandboxed
 
-A bare relative fixture path with no `tmpdir = true` writes the fixture **into
-the work tree and leaves it there**. Verified on 1.51.0 and again on 1.56.1: a
-test writing `fixture-marker.txt` left that file in the repo after a green
-`hk test`.
+Prefer `write { ["{{tmp}}/file.md"] = "..." }`. Without `tmpdir = true`
+or a `{{tmp}}` path in `files` (or the `write` keys when `files` is omitted),
+hk runs from the repo root. A bare `write` path can overwrite a real file and
+remain after the test. Parallel tests can also race on that path.
 
-Where the work tree is `$HOME` - a dotfiles repo using the git-dir/work-tree
-split - that is destructive rather than untidy. `write { [".npmrc"] = "..." }`
-overwrites the real `.npmrc`.
-
-Two spellings avoid it. Prefer the first:
+For fixtures with bare relative paths, set `tmpdir = true` explicitly:
 
 ```pkl
-write { ["{{tmp}}/file.md"] = "..." }   // {{tmp}} auto-detects the sandbox
+tmpdir = true
+write { ["file.md"] = "..." }
 ```
 
-```pkl
-tmpdir = true                            // explicit; then a bare name is safe
-write { ["file.md"] = "..." }            // this is what the builtins do
-```
-
-Tests also run in parallel, so two of them sharing one bare path race for the
-same file. A `{{tmp}}` path is per-test.
+A sandbox changes the working directory; it does not restrict filesystem
+access or sanitise inherited environment variables. Avoid absolute write
+paths outside `{{tmp}}`.
 
 ## Testing a whole-repo checker
 
-A `{{tmp}}`-scoped fixture makes hk run the step **from the sandbox directory**,
-which is the only reason a cwd-relative whole-repo checker is testable at all:
-the checker reads the sandbox's files rather than the real ones.
-
-That leaves the checker itself outside the sandbox. `{{root}}` is the repo root
-and keeps pointing there inside a test, so `before` copies the single source in
-rather than duplicating it into the fixture:
+A sandboxed test runs its command from the sandbox. `{{root}}` still names the
+real repo root, so copy the checker into the sandbox before running it:
 
 ```pkl
 ["quarantine-drift"] {
-    check = "python3 .hk-hooks/quarantine-drift.py"   // no {{files}}
-
+    check = "python3 .hk-hooks/quarantine-drift.py"
     tests {
         ["one config out of step fails"] {
-            run = "check"
             write { ["{{tmp}}/.npmrc"] = "min-release-age=9\n" }
-            before = "mkdir -p .hk-hooks && cp {{root}}/.hk-hooks/quarantine-drift.py .hk-hooks/"
+            before = "mkdir -p .hk-hooks && cp '{{root}}/.hk-hooks/quarantine-drift.py' .hk-hooks/"
             expect {
                 code = 1
                 stderr = "min-release-age"
@@ -105,81 +87,83 @@ rather than duplicating it into the fixture:
 }
 ```
 
-`{{root}}` expands in a step's own `check` too.
+Prove the test discriminates in a disposable copy: make the checker always
+pass, run the test, and confirm the bad-fixture case fails.
 
-Prove the test discriminates: break the checker so it always passes, run
-`hk test`, and confirm the matching cases go red. A test that never fails is
-the same fail-open it was written to close.
+## Globs and explicit files
 
-## Globs and `{{files}}`
+In v2.0.1, omitted `files` means hk filters the `write` keys using the step's
+filters. If every written file is excluded, hk fails the test before running
+the command with a diagnostic naming the filters. An explicit `files` list
+bypasses that filtering, so it cannot prove the step's glob matches a fixture.
 
-The step's `glob` does **not** decide whether a test runs - a step with a glob
-matching nothing still runs its tests. But the glob **is** applied when
-rendering `{{files}}`, so a fixture the glob excludes reaches the command as
-nothing at all.
+When narrowing a builtin's glob or types, replace incompatible inherited
+fixtures with matching ones. For example, `fix_smart_quotes` fixtures named
+`file.txt` do not exercise a step narrowed to Markdown. Keep `files` omitted
+when the test needs to cover file selection.
 
-That combination bites when a step narrows an inherited glob. `Builtins.fix_smart_quotes`
-ships tests writing `file.txt`; narrowing the step to `**/*.md` filtered that
-fixture out, `{{files}}` rendered empty, and `hk util fix-smart-quotes` exited 2
-on its own usage error - a failure about the harness, not the checker.
-
-So a test pins a glob only by asserting a fixture reached the command.
-
-## Wiring it into the hook
+## Wiring and test discovery
 
 ```pkl
 ["hk-test"] = (Builtins.hk_test) {}
 ```
 
-Its glob is `hk.pkl` / `.config/hk.pkl`, so the suite runs whenever the config
-is staged.
+The builtin matches `hk.pkl` and `.config/hk.pkl`. Before trusting it, run:
 
-## Builtins bring their own tests
+```bash
+hk test --list
+hk test --step my-step
+```
 
-Adding that step activates **every** builtin's bundled tests, not just the ones
-you wrote. Two classes fail on contact:
+Check that every intended case appears. In v2.0.1, `hk test` skips steps nested
+inside `Group`; keep tested steps at hook level and use `depends` for ordering.
+Identical step/test pairs shared across hooks are deduplicated.
 
-- **Tests invalidated by your own override.** Narrowing a `glob` or `types`
-  breaks fixtures written for the unscoped builtin (the `fix_smart_quotes` case
-  above). Replace them with equivalents scoped to your step - same coverage, now
-  describing what you actually run.
-- **Tests pinned to a tool version you do not have.** `Builtins.rumdl`'s
-  `fix bad file violations remain` writes a fixture with no top-level heading
-  and expects `fix` to exit 1 with MD041 unfixed; rumdl 0.2.52 does not flag
-  MD041 there, fixes everything and exits 0. `Builtins.zizmor`'s fixtures all
-  write `uses: actions/checkout@v4`, which zizmor 1.29's unpinned-uses policy
-  flags, so even the "good" fixture exits 14. Neither says anything about your
-  wiring. Drop them, with the reason at the step:
+## Inherited builtin tests
 
-  ```pkl
-  ["zizmor"] = (Builtins.zizmor) {
-      // Upstream's fixtures use an unpinned action, which the pinned zizmor
-      // flags; our own workflows are SHA-pinned and the step passes on them.
-      tests = new {}
-  }
-  ```
+`hk test` includes the configured builtins' tests. Overrides to globs, types or
+commands can invalidate their fixtures; test them before copying a workaround.
+`tests {}` amends the inherited mapping. `tests = new {}` clears it.
 
-  `tests {}` amends the inherited mapping and clears nothing. `tests = new {}`
-  replaces it.
+If a tool-version mismatch makes an inherited case invalid, prefer replacing
+the test mapping with cases for the configured tool. If clearing it is
+necessary, record the exact failing case and tool version beside the override.
+There is no per-case skip field in v2.0.1.
 
-  It is all or nothing: a Test has no skip field, and a pkl Mapping entry cannot
-  be removed by an amend, so one stale case costs every sibling case in that
-  builtin. Say which case failed and why in the comment, so the next tool bump
-  has something to retest against.
+Version-specific examples:
 
-## Strip the git environment
+- hk 1.56.1's zizmor fixtures use an unpinned checkout action. hk 2.0.1's
+  fixtures SHA-pin it, so that old reason for clearing the tests does not apply.
+- hk 2.0.1's rumdl fixture `fix bad file violations remain` still expects a
+  headingless document to fail after fixes. Check that expectation against the
+  installed rumdl before retaining or replacing the case.
 
-A test's `before` runs bare `git` with whatever git environment the hook
-inherited. `Builtins.actionlint`'s tests carry `before = "git init"`.
+## Strip the Git environment
 
-In a dotfiles repo whose wrapper exports `GIT_DIR`/`GIT_WORK_TREE`, hk hands
-that environment to every step - and `GIT_DIR` beats cwd discovery, so running
-in a sandbox directory is no defence. At commit time that `git init`
-re-initialised the real repo and tried to rewrite `core.filemode` in it; it
-failed only because the commit in progress held the config lock.
+A test's `before` inherits Git variables. Even inside a sandbox, `git init`
+can target the real repo when `GIT_DIR` or `GIT_WORK_TREE` is set. For a
+repo wrapper that exports those variables, sanitise the nested test process.
+
+For v2, amend the builtin command to preserve its declared `effect = "write"`:
 
 ```pkl
 ["hk-test"] = (Builtins.hk_test) {
-    check = "env -u GIT_DIR -u GIT_WORK_TREE hk test --quiet"
+    check {
+        command = "env -u GIT_DIR -u GIT_WORK_TREE hk test --quiet"
+    }
 }
 ```
+
+For v1 maintenance, inspect the tagged builtin's command type too: hk 1.56.1's
+`hk_test` also declares a `CommandSpec`. Replacing that object with a plain
+string loses its effect metadata. Confirm the override with
+`hk check --plan --json --step hk-test hk.pkl`.
+
+## Sources
+
+- [v2.0.1 test schema](https://github.com/jdx/hk/blob/v2.0.1/pkl/Config.pkl)
+- [Test execution and filtering](https://github.com/jdx/hk/blob/v2.0.1/src/test_runner.rs)
+- [Test discovery](https://github.com/jdx/hk/blob/v2.0.1/src/cli/test.rs)
+- [Sandbox tests](https://github.com/jdx/hk/blob/v2.0.1/test/hk_test_tmpdir.bats)
+- [Zizmor fixtures](https://github.com/jdx/hk/blob/v2.0.1/pkl/builtins/zizmor.pkl)
+- [Rumdl fixtures](https://github.com/jdx/hk/blob/v2.0.1/pkl/builtins/rumdl.pkl)

@@ -5,29 +5,31 @@ description: Set up and maintain hk git hook manager in any repository. Use when
 
 # hk - Git Hook Manager
 
-[hk](https://hk.jdx.dev) by jdx runs linters and formatters as git hooks with **built-in parallelism**, **file locking** (no race conditions), and **staged-file-only** operation (no separate lint-staged needed). Config is in Pkl - Apple's typed configuration language.
+[hk](https://hk.jdx.dev) runs linters and formatters as git hooks. It coordinates
+file access and isolates staged changes when stashing is enabled. Configuration
+is Pkl. Commands still need accurate file selection and declared effects.
 
 ## Mental Model
 
-Every hk setup is three steps: **detect** what the project has → **compose** steps from tiers → **wire** the hooks in.
-
-```text
-detect project type + tools
-         ↓
-compose hk.pkl (tiered steps)
-         ↓
-wire: mise.toml + .hk-hooks/ + prepare script
-```
+Detect the repository's version and hook contract before composing steps or
+wiring hooks. A maintenance task preserves that contract unless the user asks
+to change it.
 
 ## Setup Workflow
 
 ### 1. Detect
 
 ```bash
-hk --version                    # get current version for amends URL
+hk --version                    # compare with the repo pin and schema URLs
 ls package.json go.mod Cargo.toml pyproject.toml flake.nix Makefile
 cat mise.toml package.json      # existing tools, package manager, scripts
 ```
+
+For new setups use hk v2. For existing setups inspect the tool pin and lockfile,
+`hk.pkl` imports, local overrides and `git config --show-origin core.hooksPath`.
+Resolve version mismatches before editing; do not silently upgrade the repo.
+For v1 maintenance or any major upgrade, read `references/versions-and-migration.md`.
+Preserve hook membership, staging expectations and secret-scanning scope.
 
 Identify:
 
@@ -85,7 +87,7 @@ Identify:
 
 Three files to create/update, plus optional extras:
 
-1. `mise.toml` - add hk, pkl, tool binaries
+1. `mise.toml` - add hk and tool binaries; v2 embeds its Pkl evaluator
 2. `hk.pkl` - configuration
 3. `.hk-hooks/pre-commit` - tracked hook wrapper (runs `hk run pre-commit -q`; `-q` quiets every step on success - see `references/output-noise.md`)
 4. `.hk-hooks/pre-push` - **optional**, for push-time checks or branch guards. For advisory private-repo branch protection, copy from `assets/soft-protected-branch-pre-push.sh`.
@@ -97,7 +99,7 @@ chmod +x .hk-hooks/*
 git config --local core.hooksPath .hk-hooks
 ```
 
-And add to `package.json` prepare script (JS projects):
+Merge into the existing `package.json` prepare script (JS projects):
 
 ```json
 "prepare": "[ -n \"$CI\" ] && exit 0 || git config --local core.hooksPath .hk-hooks"
@@ -111,37 +113,52 @@ the tracked one. hk needn't be installed at prepare time - the wrapper
 discovers it at commit time and errors clearly if missing.
 
 For non-JS projects, set `core.hooksPath` manually or via a Makefile `setup` target.
+Keep native package scripts as the task runner. Do not use `hk init --mise` to
+seed replacement mise tasks in a JS project. Existing installation mechanisms
+need a deliberate transition, not a second launcher layered on top.
 
 ### 4. Validate
 
 ```bash
-hk check --all      # verify all steps pass on existing files
-hk validate         # verify hk.pkl is valid Pkl
+hk validate                         # check schema and configuration
+hk run pre-commit --plan             # inspect steps and selected files
+hk check --all                       # execute the check hook, if defined
 ```
 
 ---
 
 ## Preferred Patterns
 
-### hk.pkl global settings
+### Shared steps for new v2 configurations
 
-Always use these at the top (after the amends/import lines):
-
-```pkl
-exclude = List("node_modules", "dist", ".next", ".git")  // add project-specific dirs
-display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // disable OSC terminal-progress escape sequences (NOT stdout noise — see references/output-noise.md)
-```
-
-Always use these on the pre-commit hook:
+Use top-level steps when check, fix and pre-commit share the same checks.
+The URLs below illustrate 2.0.1; match both to the selected installed release.
 
 ```pkl
-["pre-commit"] {
-    fix = true        // auto-fix and re-stage
-    stash = "git"     // isolate staged changes
-    steps { ... }
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
+
+exclude = List("node_modules", "dist", ".next", ".git")
+display_skip_reasons = List()
+terminal_progress = false
+
+steps {
+    ["trailing-whitespace"] = Builtins.trailing_whitespace
+    ["newlines"] = Builtins.newlines
+    ["check-merge-conflict"] = Builtins.check_merge_conflict
 }
 ```
+
+This creates check, fix and pre-commit hooks. Pre-commit fixes, stages and
+stashes; check and fix leave the index alone. No pre-push hook is created.
+Keep branch guards, commit-message checks and other event-specific steps in
+their explicit hooks. Hook overrides replace same-named shared steps entirely;
+other shared steps still apply.
+
+Explicit hook-only configurations remain valid. Retain their layout during
+maintenance; declare `fix = true` and `stash = "git"` on an explicit pre-commit
+hook. Use `stage = true` on another hook only when staging is intended.
+See `references/complete-examples.md` for configurations with distinct hooks.
 
 ### Binary file excludes
 
@@ -160,21 +177,9 @@ local binary_excludes = List(
 
 ### Keeping steps quiet - one flag on the hook wrapper
 
-On hk ≥ 1.51.0 the quiet lever is **`hk run <hook> -q`** on the `.hk-hooks/pre-commit`
-wrapper. `-q` natively quiets *every* step on success: **success → 0 bytes**,
-**failure → the failing step's full stdout+stderr survives** (only hk's progress chrome is
-dropped). No per-step wrapping, no per-tool tiering - steps run their plain commands.
-
-```pkl
-["vitest"] {
-    check = "pnpm exec vitest run"   // chatty on success — silenced by wrapper-level -q
-}
-```
-
-**Never use `--silent`**: it reaches 0 bytes on success too, but on failure it drops the
-diagnostics (you get only `See .../output.log`). `-q` is the only safe choice. `-n`,
-`HK_LOG`, `RUST_LOG` are no-ops on step success output. See `references/output-noise.md` for
-the mechanism, the TTY-vs-no-TTY nuance, and measured numbers.
+Use `hk run <hook> -q` with normal output summaries. Do not pair it with
+`output_summary = "hide"` or use `--silent`: both hide failure diagnostics.
+For supported versions and output verification, read `references/output-noise.md`.
 
 ### Whole-graph checks
 
@@ -214,14 +219,13 @@ the added latency is acceptable for normal commits.
 ### The .hk-hooks/pre-commit wrapper
 
 This is the file git actually executes. It's tracked in git (unlike `.git/hooks/`).
-Don't capture hk's output - `exec` it so colour, progress, and failure diagnostics stream
-through. The `-q` flag drops only *success* chrome (0 bytes on a clean run); a failing step
-still streams its full stdout+stderr. The wrapper also adds an `HK=0` bypass and discovers hk
-via mise when it isn't on `PATH`:
+Use `exec` so exit status and diagnostics reach Git. The wrapper adds an `HK=0`
+bypass and discovers hk via mise when it is absent from `PATH`. Its output
+contract is in `references/output-noise.md`.
 
 ```sh
 #!/bin/sh
-# hk pre-commit hook — tracked wrapper. Streams hk output directly.
+# hk pre-commit hook - tracked wrapper. Streams hk output directly.
 
 # HK=0 bypasses all hooks (mirrors `HK=0 git commit`).
 if [ "${HK:-1}" = "0" ]; then
@@ -327,16 +331,8 @@ target platform closes that gap.
 
 ## Pkl Syntax Reference
 
-### Required first lines
-
-```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
-```
-
-**Always match the version in `amends` and `import` to the installed hk version** (`hk --version`),
-and require **hk ≥ 1.51.0** - the wrapper-level `-q` success quieting (see above) needs it. The
-skill installs `hk = "latest"`, so fresh setups qualify; for an older pinned repo, upgrade hk.
+Use the versioned `amends` and `import` pair shown above. Builtin availability
+comes from that schema package, not merely from the executable on `PATH`.
 
 ### Builtin step (use as-is)
 
@@ -353,38 +349,29 @@ skill installs `hk = "latest"`, so fresh setups qualify; for an older pinned rep
 }
 ```
 
-### Output controls
+### Overriding builtin commands in v2
 
-**Run-level (preferred):** flags on `hk run <hook>`.
-
-| Flag | Effect |
-|------|--------|
-| `-q` | **Quiet-on-success** (hk ≥ 1.51.0): success → 0 bytes; failure keeps the failing step's full stdout+stderr. Put this on the wrapper. |
-| `--silent` | 0 bytes on success **and on failure** - drops diagnostics. **Never use it.** |
-| `-n` / `--no-progress` | No-op on step success output (touches progress rendering only). |
-
-**Per-step:** two knobs that trim *hk's* chrome - neither suppresses a command's own output
-(only wrapper-level `-q` does that):
+Preserve a builtin's `CommandSpec` effect when changing only its command:
 
 ```pkl
-["typecheck"] {
-    check = "pnpm exec tsc --noEmit"
-    output_summary = "stderr"   // end-of-run summary stream: "stderr" (default) | "stdout" | "combined" | "hide"
-    hide = false                // true removes this step's status markers (the ✔/✖ lines)
+["hk-test"] = (Builtins.hk_test) {
+    check {
+        command = "env -u GIT_DIR -u GIT_WORK_TREE hk test --quiet"
+    }
 }
 ```
 
-Without `-q`, on failure hk prints the output **twice** (live stream + end summary), and
-`output_summary = "hide"` drops the duplicate summary but is **only safe under head-keeping
-output truncation**. Wrapper-level `-q` sidesteps this: it yields a single small failure copy,
-safe under both head- and tail-keeping truncation. See `references/output-noise.md`.
+A plain string assignment replaces the object and loses its declared effect.
+Check the selected builtin definition before amending it; not every command is
+an object. For structured argv commands, a launcher prefix is an argv list,
+such as `prefix = List("pnpm", "exec")`, not a shell string.
 
 ### Custom step
 
 ```pkl
 ["typecheck"] {
     glob = List("*.ts", "*.tsx")       // optional: only run when these files staged
-    check = "pnpm exec tsc --noEmit"   // silent on success — no wrapper needed
+    check = "pnpm exec tsc --noEmit"   // silent on success - no wrapper needed
     // fix = "command to auto-fix"     // optional
 }
 ```
@@ -393,71 +380,26 @@ safe under both head- and tail-keeping truncation. See `references/output-noise.
 
 | Variable | Value |
 |----------|-------|
-| `{{files}}` | Space-separated list of staged files matching the step's glob |
+| `{{files}}` | Selected file arguments after step filters; selection depends on the hook and flags |
 | `{{commit_msg_file}}` | Path to commit message file (commit-msg hook only) |
 | `{{workspace}}` | Directory containing `workspace_indicator` file |
 | `{{workspace_files}}` | Files relative to workspace directory |
 | `{{root}}` | Repo root. Inside a `tests {}` block it still points at the real root, not the sandbox - that is what lets `before` copy a checker in |
 | `{{tmp}}` | Per-test sandbox directory. `tests {}` only; using it auto-enables `tmpdir` |
 
-### Multi-line inline script
+### Separate hook memberships
 
-```pkl
-["no-commit-to-branch"] {
-    check = """
-      branch=$(git rev-parse --abbrev-ref HEAD)
-      if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
-        echo "Direct commits to '$branch' are not allowed."
-        exit 1
-      fi
-      """
-}
-```
+Use explicit hooks and local `Mapping<String, Step>` values when hooks need
+different checks. See `references/complete-examples.md`; the v1 equivalent is
+in `references/versions-and-migration.md`.
 
-### Local variable (share steps across hooks)
+### Ordering steps
 
-```pkl
-local fast_steps = new Mapping<String, Step> {
-    ["trailing-whitespace"] = Builtins.trailing_whitespace
-    ["shfmt"] = (Builtins.shfmt) { batch = true }
-}
-
-hooks {
-    ["pre-commit"] { fix = true; stash = "git"; steps = fast_steps }
-    ["check"] { steps = fast_steps }
-    ["fix"] { fix = true; stash = "git"; steps = fast_steps }
-}
-```
-
-### Sequential ordering with Groups
-
-Steps within a group run in parallel; groups run sequentially:
-
-```pkl
-steps {
-    ["format"] = new Group {
-        steps = new Mapping<String, Step> {
-            ["prettier"] { ... }
-            ["eslint"] { ... }
-        }
-    }
-    ["validate"] = new Group {   // runs after format completes
-        steps = new Mapping<String, Step> {
-            ["typecheck"] { ... }
-            ["test"] { ... }
-        }
-    }
-}
-```
-
-Or use `depends` for fine-grained ordering:
-
-```pkl
-["eslint"] {
-    depends = List("prettier")   // waits for prettier to finish
-    ...
-}
-```
+Use `depends = List("prettier")` to order an ordinary step after prettier.
+Groups create sequential boundaries between parallel step collections; see
+[hook ordering](https://hk.jdx.dev/hooks#order-steps-deliberately) for syntax.
+Before relying on tests inside groups, check `hk test --list` against the
+expected cases. See `references/testing-steps.md` for the group-discovery limit.
 
 ---
 
@@ -465,8 +407,7 @@ Or use `depends` for fine-grained ordering:
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"        # required for hk.pkl parsing
+hk = "2"
 
 # Add as needed based on detected steps:
 typos = "latest"      # Tier 2: spell check
@@ -485,16 +426,10 @@ Insert into `hk.pkl` under the appropriate section. Check `hk builtins` for avai
 
 ### Update hk version
 
-```bash
-hk --version   # check current
-```
-
-Bump both URLs in `hk.pkl` to the installed version (minimum **v1.51.0**), e.g.:
-
-```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
-```
+For a requested upgrade, follow `references/versions-and-migration.md` before
+changing the tool pin and both schema URLs. Validate the config and inspect
+hook plans with the selected binary, then run the relevant checks. A matching
+version number alone does not verify staging or hook membership.
 
 ### Bypass hooks temporarily
 
@@ -513,20 +448,10 @@ hk run pre-commit -v                 # simulate hook run
 
 ### Local developer overrides
 
-Create `hk.local.pkl` (gitignored) to override settings locally:
-
-```pkl
-amends "./hk.pkl"
-hooks {
-    ["pre-commit"] {
-        steps {
-            ["vitest"] {
-                check = "pnpm exec vitest run --testPathPattern=fast"
-            }
-        }
-    }
-}
-```
+Use a gitignored `hk.local.pkl` beginning with `amends "./hk.pkl"`.
+Amend only the intended hook or step. Replacing a hook's steps mapping does not
+remove inherited top-level steps; replace the top-level mapping too when
+removing all shared steps. See the [local override reference](https://hk.jdx.dev/configuration#hk-local-pkl).
 
 ---
 
@@ -534,19 +459,19 @@ hooks {
 
 | Issue | Fix |
 |-------|-----|
-| `pkl: command not found` | Add `pkl = "latest"` to `mise.toml`, run `mise install` |
+| `pkl: command not found` | V2 embeds its evaluator. Inspect the failing command or v1 backend before adding a standalone Pkl dependency |
 | `amends` version mismatch | Match amends/import URL version to `hk --version` output |
 | Builtins snake_case vs step names kebab-case | `Builtins.trailing_whitespace` → `["trailing-whitespace"]` |
 | Hook runs but matches nothing | Check glob patterns; use `hk check -v` to see file matching |
 | Step fails when `{{files}}` holds nothing the tool handles | A glob decides what the step *runs on*, not what the tool *accepts*: several exit non-zero on an empty target set rather than no-op. `oxfmt` errors "Expected at least one target file" when every passed path sits in its own `ignorePatterns`; `oxlint` does the same given no lintable file. Glob each step to what that tool actually handles, and keep lint and format as separate steps - a combined one globbing `*.json` fails on a JSON-only commit |
 | Binary files fail spell check | Add binary excludes to typos/trailing-whitespace/newlines steps |
 | Git worktrees: `hk install` fails | Automatic since v1.35.0; if using older version use `.hk-hooks/` + `core.hooksPath` |
-| Fix auto-stages wrong files | Use explicit `stage` glob on the step, or ensure step `glob` covers fixed files |
-| Noisy output on success | Add `-q` to the pre-commit wrapper (`hk run pre-commit -q`, hk ≥ 1.51.0): 0 bytes on success, full failing-step output on failure. **Never `--silent`** (drops failure diagnostics). See `references/output-noise.md` |
+| Fix staging differs from expectations | V2 stages by default only in pre-commit. Hook `stage` enables staging; step `stage` filters paths. See `references/versions-and-migration.md` |
+| Noisy output on success | Use the wrapper and summary settings in `references/output-noise.md` |
 | Hook runs in CI unnecessarily | Add `[ -n "$CI" ] && exit 0` to `prepare` script |
 | `hk.local.pkl` uses amends not being honoured | First line must be `amends "./hk.pkl"` |
 | A builtin named in the docs does not resolve | The builtin set is tied to the version in your `amends`/`import` URL, not to the installed `hk`. Check that tag's `pkl/builtins/` before reaching for one - `statix`, for instance, is absent at 1.56.1 while `deadnix`, `lychee`, `check_symlinks`, `check_case_conflict` and `hk_test` are all present |
-| `hk --all` seems to miss files | It selects **tracked** files only. An untracked tree under a directory you excluded for size was never in scope, so the exclude may be hiding tracked files for nothing - check with `hk check --all --stats` before keeping it |
+| `hk check --all` seems to miss files | It selects tracked and eligible untracked files. Stashing excludes untracked files; `HK_STASH_UNTRACKED=0` disables their discovery. Inspect the plan and effective settings before changing excludes |
 | `vale` fails on a deliberately-malformed frontmatter fixture | Vale hard-errors (E201) on unparseable frontmatter rather than skipping the file, so test fixtures that are invalid *on purpose* have to be excluded from the step, the same way lint fixtures are |
 | `pinact` fails whenever the machine is offline | It resolves every action ref through the GitHub API (`/repos/<owner>/<repo>/commits/<ref>`) and has no offline mode, so an unreachable API is a hard failure (exit 1 on 3.10.1), identical to the one it reports for a genuinely unpinned action. Put it in CI, not pre-commit - the same reason `zizmor` runs `--offline` in the hook |
 | Step tests write fixtures into the work tree | A bare relative path with no `tmpdir = true` writes into the repo and leaves the file there. Use `{{tmp}}/...`. See `references/testing-steps.md` |
@@ -555,13 +480,15 @@ hooks {
 
 ## References
 
+- `references/versions-and-migration.md` - read for v1 maintenance, version mismatches or requested upgrades to v2
 - `references/builtins-by-language.md` - step selection by ecosystem
 - `references/complete-examples.md` - full hk.pkl configs for different stacks
-- `references/output-noise.md` - how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, harness-truncation caveat)
+- `references/output-noise.md` - how to keep steps quiet correctly (wrapper-level `-q`, hk's native controls, failure-summary caveat)
 - `references/testing-steps.md` - `tests {}` and `hk test`: the fields, the `{{tmp}}` sandbox rule, testing a whole-repo checker with `before` + `{{root}}`, and what `Builtins.hk_test` drags in
 - `assets/soft-protected-branch-pre-push.sh` - copy to `.hk-hooks/pre-push` for advisory local branch protection with clone-local owner opt-out
 - `tests/soft-protected-branch-pre-push.bats` - behavioural tests for the advisory branch-protection asset
 - `assets/pnpm-build-scripts-check.mjs` - copy to `.hk-hooks/` to fail a commit when a dependency's build script has no `allowBuilds` decision
 - `tests/pnpm-build-scripts-check.bats` - behavioural tests for the build-script decision checker
+- `evals/prompts.md` - setup, maintenance and migration prompts with acceptance criteria
 - [hk docs](https://hk.jdx.dev) - official documentation
 - `hk builtins` - list all available built-in linters
