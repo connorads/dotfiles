@@ -64,6 +64,7 @@
             (_final: prev: {
               redress = prev.callPackage ./packages/redress.nix { };
               rift = prev.callPackage ./packages/rift.nix { };
+              footswitch = prev.callPackage ./packages/footswitch.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
 
               # TODO(pipx-check): remove once nixpkgs ships a pipx whose test
@@ -147,7 +148,12 @@
         ./modules/darwin-desktop.nix
         {
           homebrew.casks = [ "logitech-camera-settings" ];
-          home-manager.users.connorads.home.packages = [ (mkPkgs "aarch64-darwin").rift ];
+          # Overlay packages: nix-darwin's own `pkgs` has no overlay, so
+          # `pkgs.footswitch` in a module would be nixpkgs' Linux-only one.
+          home-manager.users.connorads.home.packages = with (mkPkgs "aarch64-darwin"); [
+            rift
+            footswitch # PCsensor foot pedal flasher, driven by `pedal-flash`
+          ];
         }
       ];
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
