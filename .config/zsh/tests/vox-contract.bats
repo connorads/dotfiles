@@ -9,14 +9,13 @@
 #      `segments[].{start,end,text}` with start/end as integer MILLISECONDS, and
 #      `speaker` present only under --speakers. A MacWhisper update can change
 #      any of that silently while every faked test in vox.bats stays green.
-#   2. voxtap's padding invariant — one second of stream is one second of
-#      wall-clock even when nothing is playing. The tap delivers no callbacks at
-#      all through silence, so without padding the system track would compress
-#      every quiet stretch out of existence and drift away from the mic track it
-#      is merged against. Needs no audio to check, and holds regardless of what
-#      the Mac happens to be doing: the probe reports the clock it answers to,
-#      so the assertion is a relation between two reported numbers rather than a
-#      guess about how long the run should have taken.
+#   2. voxtap's alignment invariant — the microphone and the tap deliver the
+#      same frame count per IO cycle of the one aggregate device that carries
+#      both, through silence too, and that count follows the microphone's clock.
+#      Needs no audio to check, and holds regardless of what the Mac happens to
+#      be doing: the probe reports the clock it answers to, so the assertion is
+#      a relation between reported numbers rather than a guess about how long
+#      the run should have taken.
 #
 # Each half skips when its binary is absent (Linux, or a machine without
 # MacWhisper / before `drs`), keeping the fast subset fast: `mise run
@@ -184,25 +183,22 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [ "$output" = "solo" ]
 }
 
-# --- voxtap: the padding invariant ------------------------------------------
+# --- voxtap: the alignment invariant -----------------------------------------
 #
-# `--probe N` measures the stream instead of writing it, so these need no audio
-# playing and no pipe reader. The frame count is the assertion because it is the
-# invariant: whatever the tap did or did not deliver, a second of stream holds
-# 48000 frames.
+# `--probe N` runs the same aggregate `record` uses - the microphone as clock
+# master, the tap beside it - and reports instead of writing. Two relations
+# between reported numbers, so nothing here depends on how long the run took:
 #
-# The comparison is against the `elapsed` the probe reports, never against N.
-# The stream's clock starts at process start, so it spans the Core Audio tap
-# setup, which sits outside the probe's N-second sleep and takes 0.15–0.60 s
-# depending on load. Against N the padder's back-fill of that window reads as
-# frames the machine's busyness put there, which is a load-dependent verdict on
-# a load-independent property. Against `elapsed` the setup time sits inside both
-# terms and cancels exactly.
+#   mic_frames == sys_frames   the tap delivered a full buffer for every
+#                              microphone cycle, through silence too (the probe
+#                              plays nothing), so the tracks cannot drift apart
+#   mic_frames ~ elapsed*rate  the microphone's clock is the one being followed
 #
-# The lag budget is absolute, not proportional, for the same reason: what the
-# padder owes is bounded by its 0.2 s threshold plus scheduling, not by how long
-# the probe ran. A regression is total — 0 frames through silence, so lag equals
-# elapsed — which the budget clears by ~6x at a 3 s probe.
+# The comparison is against the `elapsed` the probe reports, never against N:
+# it spans AudioDeviceStart to AudioDeviceStop and nothing else, so the device
+# setup sits outside both terms. The lag budget is absolute, not proportional:
+# what is owed is bounded by the first cycle's latency plus scheduling, not by
+# how long the probe ran.
 
 @test "voxtap --check verifies the tap without emitting anything" {
   require_voxtap
@@ -213,29 +209,25 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
   [ -z "$output" ]
 }
 
-@test "voxtap's stream tracks the clock through silence" {
+@test "voxtap's probe shows one clock for both tracks" {
   require_voxtap
 
   run --separate-stderr voxtap --probe 3
   [ "$status" -eq 0 ]
 
-  frames=$(printf '%s\n' "$stderr" | sed -n 's/.*frames: \([0-9]*\).*/\1/p')
+  mic=$(printf '%s\n' "$stderr" | sed -n 's/.*mic_frames: \([0-9]*\).*/\1/p')
+  sys=$(printf '%s\n' "$stderr" | sed -n 's/.*sys_frames: \([0-9]*\).*/\1/p')
   elapsed=$(printf '%s\n' "$stderr" | sed -n 's/.*elapsed: \([0-9.]*\).*/\1/p')
-  [ -n "$elapsed" ] || skip "voxtap predates the elapsed field - run drs"
-  [ -n "$frames" ]
-  # Nothing may be playing, so padded frames are not asserted non-zero — only
-  # that the figure is reported, which is what makes a silent run diagnosable.
-  [[ "$stderr" == *"padded: "* ]]
+  rate=$(printf '%s\n' "$stderr" | sed -n 's/.*rate: \([0-9]*\).*/\1/p')
+  [ -n "$mic" ] || skip "voxtap predates the aggregate probe - run drs"
+  [ -n "$sys" ] && [ -n "$elapsed" ] && [ -n "$rate" ]
+  [ "$mic" = "$sys" ]
 
-  # Behind: the padder tops up only once the stream is 0.2 s short, plus timer
-  # and teardown scheduling. Ahead: in silence the top-up cannot overshoot at
-  # all, so the tight bound catches double-counted frames and a wrong-rate
-  # resample; the slack covers one real callback landing mid-tick.
   python3 -c '
 import sys
-frames, elapsed = int(sys.argv[1]), float(sys.argv[2])
-owed = elapsed * 48000
-assert frames <= owed + 0.1 * 48000, f"{frames} frames ran ahead of {elapsed:.3f}s of clock"
-assert frames >= owed - 0.5 * 48000, f"{frames} frames fell behind {elapsed:.3f}s of clock"
-' "$frames" "$elapsed"
+mic, elapsed, rate = int(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3])
+owed = elapsed * rate
+assert mic <= owed + 0.1 * rate, f"{mic} frames ran ahead of {elapsed:.3f}s of clock"
+assert mic >= owed - 0.5 * rate, f"{mic} frames fell behind {elapsed:.3f}s of clock"
+' "$mic" "$elapsed" "$rate"
 }

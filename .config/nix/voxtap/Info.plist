@@ -8,5 +8,7 @@
 	<string>voxtap</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>vox captures system audio so the other side of a call appears in your transcript.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>vox records your microphone so your side of a call appears in your transcript.</string>
 </dict>
 </plist>
