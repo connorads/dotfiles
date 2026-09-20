@@ -66,8 +66,9 @@ OSC52="$SELF_DIR/osc52-copy-to-client.sh"
 . "$SELF_DIR/vox-lib.sh"
 
 # preview DIR — the transcript, or an honest note about what is there instead.
-# Three cases, not two: a transcript that exists and is empty is FINISHED, and
-# saying "not yet" about it reads as still-pending forever.
+# Four cases, not two: a transcript that exists and is empty is FINISHED, and
+# saying "not yet" about it reads as still-pending forever; one being written
+# right now says so, since its marker is live.
 preview() {
 	local dir=${1:-}
 	[ -d "$dir" ] || return 0
@@ -75,6 +76,9 @@ preview() {
 		cat "$dir/transcript.md"
 	elif [ -e "$dir/transcript.md" ]; then
 		printf 'Transcribed to nothing — no speech recognised.\n\n'
+		[ -s "$dir/vox.log" ] && tail -n 10 "$dir/vox.log"
+	elif vox_job_live "$dir"; then
+		printf 'Transcribing…\n\n'
 		[ -s "$dir/vox.log" ] && tail -n 10 "$dir/vox.log"
 	else
 		printf 'No transcript yet.\n\n'

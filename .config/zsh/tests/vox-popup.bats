@@ -18,7 +18,6 @@ VOX_LIB_REAL="$HOME/.config/tmux/scripts/vox-lib.sh"
 setup() {
   setup_test_home
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_BIN="$TEST_BIN/vox"
@@ -115,7 +114,7 @@ EOF
 popup() {
   run env HOME="$HOME" PATH="$PATH" VOX_BIN="$VOX_BIN" VOX_STORE="$VOX_STORE" \
     VOX_STATEFILE="$VOX_STATEFILE" VOX_SEENFILE="$VOX_SEENFILE" \
-    VOX_JOBFILE="$VOX_JOBFILE" TEST_LOG="$TEST_LOG" FZF_ROWS="$FZF_ROWS" \
+    TEST_LOG="$TEST_LOG" FZF_ROWS="$FZF_ROWS" \
     FZF_QUEUE="$FZF_QUEUE" \
     "$POPUP" <<<"${1:-}"
 }
@@ -157,6 +156,20 @@ popup() {
   run "$POPUP" preview "$absent"
   # "No transcript yet" over a finished recording reads as still-pending forever.
   [[ "$output" == *"No transcript yet"* ]]
+}
+
+@test "the preview says a transcription is running while its marker is live" {
+  dir=$(recording 2026-07-28-150000)
+  rm -f "$dir/transcript.md"
+  sleep 100 >/dev/null 2>&1 &
+  job=$!
+  printf '%s %s\n' "$job" "$(date +%s)" >"$dir/transcribing.pid"
+
+  run "$POPUP" preview "$dir"
+  kill "$job" 2>/dev/null || true
+
+  [[ "$output" == *"Transcribing"* ]]
+  [[ "$output" != *"No transcript yet"* ]]
 }
 
 @test "enter on an empty transcript says so rather than copying nothing" {

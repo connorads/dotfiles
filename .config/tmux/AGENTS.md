@@ -1341,6 +1341,7 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
     mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
     transcript.md         merged, name-fixed - the artefact everything consumes
     vox.log               ffmpeg + mw stderr (mw reports progress there)
+    transcribing.pid      only while mw runs: "pid start_epoch"
 ```
 
 The directory name **is** the title - no metadata file holding a duplicate that
@@ -1365,10 +1366,17 @@ Change as a set:
   `vox_token` elapsed via the
   shared `human_age`, or the unread/empty count). Every state is derived from a file
   whose staleness cannot lie, so none of them needs a reaper:
-  **`${VOX_JOBFILE:-~/.cache/tmux-vox.job}`** holds `pid start_epoch dir` for the
-  transcription `vox stop` is spending minutes on - written by `stop` and
-  `transcribe` themselves, so the pill says TRANSCRIBING whether it was typed in
-  a pane or detached by the toggle, and a crashed `mw` reads as finished by pid liveness alone.
+  **`<dir>/transcribing.pid`** holds `pid start_epoch` for the transcription
+  `vox stop` or `vox transcribe` is spending minutes on, inside the recording it
+  is working on - written and removed by those commands themselves, so the pill
+  says TRANSCRIBING whether the stop was typed in a pane or detached by the
+  toggle, and a crashed `mw` reads as finished by pid liveness alone. Per
+  recording, not one global file, because two transcriptions overlap whenever a
+  stop lands while an earlier one is still running: a shared file let each
+  overwrite the other's record and the first to finish delete it for both, so
+  the pill dropped `≈` early. `vox_job_dirs` scans the store for live markers
+  (newest first); the token is the longest-running job's elapsed time, or the
+  count when more than one is running.
   **`${VOX_SEENFILE:-~/.cache/tmux-vox.seen}`** is a marker whose *mtime* is the
   last time you looked: READY is "a non-empty `transcript.md` is newer than
   this", which covers any number of finished recordings without tracking one of
@@ -1458,8 +1466,9 @@ Change as a set:
   library over `vox ls`, previewing each transcript and carrying the derived
   `solo`/`2-way` column - or `empty`, for a recording that transcribed to
   nothing, which `solo` would make indistinguishable from a real monologue. The
-  preview is three-way for the same reason: a transcript that exists and is empty
-  is *finished*, so "No transcript yet" over it reads as pending forever. Enter
+  preview is four-way for the same reason: a transcript that exists and is empty
+  is *finished*, so "No transcript yet" over it reads as pending forever, and one
+  whose marker is live says "Transcribing…". Enter
   opens an **action list** - every action with its shortcut, copy first so
   enter-enter copies, esc back to the recordings - and the shortcuts work from
   either stage: copy (tmux buffer plus OSC52), `ctrl-y` pastes the path into the

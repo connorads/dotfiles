@@ -32,11 +32,15 @@
 # it to an isolated HOME without spawning a real capture.
 VOX_STATEFILE=${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}
 
-# Transcribe-job file holding "pid start_epoch dir" — written by `vox stop`
-# around the transcription it is about to spend minutes on, so the pill can say
-# TRANSCRIBING whether the stop was typed in a pane or detached by the toggle. A
-# dead pid reads as not transcribing, so a crashed `mw` needs no reaper either.
-VOX_JOBFILE=${VOX_JOBFILE:-$HOME/.cache/tmux-vox.job}
+# A transcription in flight is marked INSIDE the recording it is working on:
+# `<dir>/transcribing.pid` holds "pid start_epoch", written by `vox stop` and
+# `vox transcribe` around the minutes they spend in mw, so the pill can say
+# TRANSCRIBING whether the stop was typed in a pane or detached by the toggle.
+# Per recording rather than one global file because two transcriptions can
+# overlap (a stop while an earlier stop is still running) and a shared file
+# would let each overwrite the other's record and the first to finish delete
+# it for both. A dead pid reads as finished, so a crashed `mw` needs no reaper.
+VOX_JOB_MARKER=transcribing.pid
 
 # Marker whose MTIME is the last time you looked at the recordings. READY is
 # "the newest transcript is newer than this", which handles any number of
@@ -138,42 +142,55 @@ vox_active() {
 	kill -0 "$_vox_pid" 2>/dev/null
 }
 
-# vox_read_job — load the transcribe-job file into _vox_job_pid /
-# _vox_job_start / _vox_job_dir. Returns 1 (fields zeroed) when there is none.
-vox_read_job() {
+# vox_job_live DIR — true while DIR's marker names a live pid. Loads
+# _vox_job_pid / _vox_job_start as a side effect for the callers that want them.
+vox_job_live() {
 	_vox_job_pid=""
 	_vox_job_start=0
-	_vox_job_dir=""
-	[ -f "$VOX_JOBFILE" ] || return 1
-	IFS=' ' read -r _vox_job_pid _vox_job_start _vox_job_dir <"$VOX_JOBFILE" || return 1
+	[ -f "$1/$VOX_JOB_MARKER" ] || return 1
+	IFS=' ' read -r _vox_job_pid _vox_job_start <"$1/$VOX_JOB_MARKER" || return 1
 	: "${_vox_job_start:=0}"
-	return 0
-}
-
-# vox_job_dir — the recording being transcribed, empty when none is.
-vox_job_dir() {
-	vox_read_job || true
-	printf '%s' "$_vox_job_dir"
-}
-
-# vox_job_active — true while the transcribe job's pid is alive. A job that died
-# (mw crashed, the machine rebooted) reads as finished, so this self-clears the
-# same way the capture state does.
-vox_job_active() {
-	vox_read_job || return 1
 	[ -n "$_vox_job_pid" ] || return 1
 	kill -0 "$_vox_job_pid" 2>/dev/null
 }
 
-# vox_write_job PID START_EPOCH DIR — record a running transcription.
-vox_write_job() {
-	mkdir -p "$(dirname "$VOX_JOBFILE")"
-	printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_JOBFILE"
+# vox_job_dirs — every recording being transcribed right now, newest first, one
+# per line. The store is scanned rather than a list kept: the markers ARE the
+# list, and a dead pid drops out of it by itself.
+vox_job_dirs() {
+	[ -d "$VOX_STORE" ] || return 0
+	find "$VOX_STORE" -maxdepth 2 -name "$VOX_JOB_MARKER" 2>/dev/null | sort -r |
+		while IFS= read -r _vox_marker; do
+			_vox_mdir=${_vox_marker%/*}
+			vox_job_live "$_vox_mdir" && printf '%s\n' "$_vox_mdir"
+		done
 }
 
-# vox_clear_job — drop the transcribe-job file.
+# vox_job_count — how many transcriptions are running.
+vox_job_count() {
+	vox_job_dirs | wc -l | tr -d ' '
+}
+
+# vox_job_dir — the newest recording being transcribed, empty when none is.
+vox_job_dir() {
+	vox_job_dirs | head -n 1
+}
+
+# vox_job_active — true while any transcription's pid is alive. A job that died
+# (mw crashed, the machine rebooted) reads as finished, so this self-clears the
+# same way the capture state does.
+vox_job_active() {
+	[ -n "$(vox_job_dir)" ]
+}
+
+# vox_write_job PID START_EPOCH DIR — mark DIR as being transcribed.
+vox_write_job() {
+	printf '%s %s\n' "$1" "$2" >"$3/$VOX_JOB_MARKER"
+}
+
+# vox_clear_job DIR — drop DIR's marker.
 vox_clear_job() {
-	rm -f "$VOX_JOBFILE" 2>/dev/null || true
+	rm -f "$1/$VOX_JOB_MARKER" 2>/dev/null || true
 }
 
 # vox_touch_seen — mark everything as looked-at. One write, no list of what was
@@ -243,23 +260,18 @@ vox_state() {
 	fi
 }
 
-# vox_job_elapsed_secs — seconds the current transcription has been running; 0
-# when none is.
+# vox_job_elapsed_secs — seconds the longest-running transcription has been
+# going; 0 when none is. The oldest, because that is the one you are waiting on.
 vox_job_elapsed_secs() {
-	vox_read_job || {
-		echo 0
-		return
-	}
-	case "${_vox_job_start:-}" in
-	'' | *[!0-9]*)
-		echo 0
-		return
-		;;
-	esac
-	_vox_now=$(date +%s)
-	_vox_el=$((_vox_now - _vox_job_start))
-	[ "$_vox_el" -lt 0 ] && _vox_el=0
-	echo "$_vox_el"
+	vox_job_dirs | while IFS= read -r _vox_mdir; do
+		vox_job_live "$_vox_mdir" && printf '%s\n' "$_vox_job_start"
+	done | awk -v now="$(date +%s)" '
+		$1 ~ /^[0-9]+$/ {
+			el = now - $1
+			if (el < 0) el = 0
+			if (!found || el > max) { max = el; found = 1 }
+		}
+		END { print (found ? max : 0) }'
 }
 
 # vox_elapsed_secs — seconds since the capture started; 0 when idle or when the
@@ -316,13 +328,21 @@ vox_state_glyph() {
 }
 
 # vox_token [STATE] — figure-slot content: elapsed while capturing or
-# transcribing, and how many transcripts are waiting once one is ready or came
-# back empty. The state is an argument so a caller that already computed it does
-# not pay for it twice; omitted, it is derived.
+# transcribing (or, with several transcriptions running, how many), and how
+# many transcripts are waiting once one is ready or came back empty. The state
+# is an argument so a caller that already computed it does not pay for it
+# twice; omitted, it is derived.
 vox_token() {
 	_vox_state=${1:-$(vox_state)}
 	case "$_vox_state" in
-	TRANSCRIBING) vox_human_age "$(vox_job_elapsed_secs)" ;;
+	TRANSCRIBING)
+		_vox_jobs=$(vox_job_count)
+		if [ "$_vox_jobs" -gt 1 ] 2>/dev/null; then
+			printf '%s' "$_vox_jobs"
+		else
+			vox_human_age "$(vox_job_elapsed_secs)"
+		fi
+		;;
 	EMPTY) vox_empty_count ;;
 	READY) vox_unread_count ;;
 	IDLE) printf '' ;;

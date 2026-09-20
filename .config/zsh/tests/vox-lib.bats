@@ -15,15 +15,16 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 setup() {
   setup_test_home
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_STORE="$HOME/Recordings/vox"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
 }
 
-# Write "pid start_epoch dir" to the transcribe-job file.
+# jobfile PID START_EPOCH DIR - mark DIR (a recording under the store) as being
+# transcribed: "pid start_epoch" in its transcribing.pid.
 jobfile() {
-  printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_JOBFILE"
+  mkdir -p "$3"
+  printf '%s %s\n' "$1" "$2" >"$3/transcribing.pid"
 }
 
 # transcript NAME - a finished recording in the store. Ages are set with touch,
@@ -187,15 +188,16 @@ statefile() {
 # --- the four states, and their precedence -----------------------------------
 
 @test "TRANSCRIBING while the transcribe job's pid is alive" {
-  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
   lib vox_state
   [ "$output" = "TRANSCRIBING" ]
 }
 
 @test "a dead transcribe job reads as finished, not stuck" {
   # mw crashed, or the machine rebooted: pid liveness self-clears the state, so
-  # there is no reaper and no way to be pinned at TRANSCRIBING forever.
-  jobfile "$(dead_pid)" "$(date +%s)" "$HOME/rec"
+  # there is no reaper and no way to be pinned at TRANSCRIBING forever. The
+  # stale marker stays on disk and is harmless.
+  jobfile "$(dead_pid)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
   lib vox_state
   [ "$output" = "IDLE" ]
 }
@@ -284,7 +286,7 @@ empty() {
 
 @test "transcribing outranks empty" {
   empty 2026-07-28-140312 >/dev/null
-  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
   lib vox_state
   [ "$output" = "TRANSCRIBING" ]
 }
@@ -316,7 +318,7 @@ empty() {
 }
 
 @test "recording outranks transcribing, ready and idle" {
-  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
   transcript 2026-07-28-140312 >/dev/null
   statefile "$(spawn)" "$(date +%s)" "$HOME/rec"
   lib vox_state
@@ -327,13 +329,13 @@ empty() {
   # The recording that just finished is exactly the one being transcribed, so
   # showing it as ready to read would be a lie for the length of the job.
   transcript 2026-07-28-140312 >/dev/null
-  jobfile "$(spawn)" "$(date +%s)" "$HOME/rec"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
   lib vox_state
   [ "$output" = "TRANSCRIBING" ]
 }
 
 @test "the transcribing token is the job's elapsed time" {
-  jobfile "$(spawn)" "$(($(date +%s) - 90))" "$HOME/rec"
+  jobfile "$(spawn)" "$(($(date +%s) - 90))" "$VOX_STORE/2026-07-28-140312"
   lib 'vox_token TRANSCRIBING'
   [ "$output" = "1m" ]
 }
@@ -346,10 +348,60 @@ empty() {
   [ "$output" = "1" ]
 }
 
-@test "the transcribed recording is readable from the job file" {
-  jobfile 123 "$(date +%s)" "$HOME/Recordings/vox/2026-07-28-140312-triver kickoff"
+@test "the transcribed recording is readable from its marker" {
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312-triver kickoff"
   lib vox_job_dir
-  [ "$output" = "$HOME/Recordings/vox/2026-07-28-140312-triver kickoff" ]
+  [ "$output" = "$VOX_STORE/2026-07-28-140312-triver kickoff" ]
+}
+
+# --- several transcriptions at once ------------------------------------------
+#
+# A stop pressed while an earlier stop is still transcribing. The marker lives
+# in each recording, so neither can overwrite the other's record or clear it.
+
+@test "two live markers read TRANSCRIBING with the count as the token" {
+  jobfile "$(spawn)" "$(($(date +%s) - 90))" "$VOX_STORE/2026-07-28-140312"
+  jobfile "$(spawn)" "$(($(date +%s) - 5))" "$VOX_STORE/2026-07-28-150000"
+  lib vox_state
+  [ "$output" = "TRANSCRIBING" ]
+  lib 'vox_token TRANSCRIBING'
+  [ "$output" = "2" ]
+}
+
+@test "job dirs list the live transcriptions newest first" {
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-150000"
+  lib vox_job_dirs
+  [ "${lines[0]}" = "$VOX_STORE/2026-07-28-150000" ]
+  [ "${lines[1]}" = "$VOX_STORE/2026-07-28-140312" ]
+  lib vox_job_count
+  [ "$output" = "2" ]
+}
+
+@test "a dead marker beside a live one is ignored" {
+  # mw crashed on one recording while another is still going: the dead one
+  # drops out by pid liveness, the live one keeps the pill honest.
+  jobfile "$(dead_pid)" "$(date +%s)" "$VOX_STORE/2026-07-28-150000"
+  jobfile "$(spawn)" "$(($(date +%s) - 90))" "$VOX_STORE/2026-07-28-140312"
+  lib vox_job_dir
+  [ "$output" = "$VOX_STORE/2026-07-28-140312" ]
+  lib 'vox_token TRANSCRIBING'
+  [ "$output" = "1m" ]
+}
+
+@test "the transcribing token is the longest-running job's elapsed time" {
+  jobfile "$(spawn)" "$(($(date +%s) - 3700))" "$VOX_STORE/2026-07-28-140312"
+  lib vox_job_elapsed_secs
+  [ "$output" -ge 3700 ]
+  [ "$output" -lt 3710 ]
+}
+
+@test "clearing a marker clears only that recording's" {
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-140312"
+  jobfile "$(spawn)" "$(date +%s)" "$VOX_STORE/2026-07-28-150000"
+  lib "vox_clear_job '$VOX_STORE/2026-07-28-150000'; vox_job_dirs"
+  [ "$output" = "$VOX_STORE/2026-07-28-140312" ]
+  [ ! -e "$VOX_STORE/2026-07-28-150000/transcribing.pid" ]
 }
 
 @test "TRANSCRIBING and READY carry their own glyph, RECORDING keeps the tilde" {

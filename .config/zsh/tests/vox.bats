@@ -17,7 +17,6 @@ setup() {
   export VOX_MERGE="$MERGE_REAL"
   export VOX_STORE="$HOME/Recordings/vox"
   export VOX_STATEFILE="$HOME/.cache/tmux-vox.state"
-  export VOX_JOBFILE="$HOME/.cache/tmux-vox.job"
   export VOX_SEENFILE="$HOME/.cache/tmux-vox.seen"
   export VOX_VOCAB="$HOME/vocab.tsv"
   mkdir -p "$HOME/.cache" "$VOX_STORE"
@@ -623,7 +622,7 @@ aged_recording() {
   [ "$output" = "READY 1" ]
 }
 
-@test "stop leaves no transcribe job behind" {
+@test "stop leaves no transcribe marker behind" {
   require_macos
   stub_ffmpeg
   stub_mw
@@ -632,9 +631,31 @@ aged_recording() {
   vox
   vox stop
 
-  # The job file exists only while mw is running, so nothing can be left
+  # The marker exists only while mw is running, so nothing can be left
   # claiming to transcribe.
-  [ ! -f "$VOX_JOBFILE" ]
+  [ ! -f "$output/transcribing.pid" ]
+}
+
+@test "a stop leaves another recording's live transcription alone" {
+  require_macos
+  stub_ffmpeg
+  stub_mw
+  stub_voxtap
+  # An earlier stop still transcribing while this one finishes: with one global
+  # job file the second stop overwrote the first's record and the first to finish
+  # deleted it for both, so the pill dropped TRANSCRIBING early.
+  recording 2026-07-26-090000-standup
+  sleep 100 >/dev/null 2>&1 &
+  other=$!
+  printf '%s %s\n' "$other" "$(date +%s)" >"$VOX_STORE/2026-07-26-090000-standup/transcribing.pid"
+
+  vox
+  vox stop
+  vox status
+  kill "$other" 2>/dev/null || true
+
+  [ -f "$VOX_STORE/2026-07-26-090000-standup/transcribing.pid" ]
+  [[ "$output" == "TRANSCRIBING "* ]]
 }
 
 @test "starting a capture marks earlier recordings as looked at" {
@@ -830,13 +851,14 @@ blanked_recording() {
   [ "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
 }
 
-@test "transcribe holds the job file while mw runs and drops it after" {
+@test "transcribe holds the recording's marker while mw runs and drops it after" {
   dir=$(blanked_recording)
-  # The stub records whether the job file existed at the moment it was called:
-  # that is what makes the pill read TRANSCRIBING for the duration.
+  # The stub records whether the marker existed at the moment it was called:
+  # that is what makes the pill read TRANSCRIBING for the duration. $2 is the
+  # track being transcribed, so its directory is the recording.
   write_stub mw <<'EOF'
 #!/usr/bin/env bash
-if [ -f "$VOX_JOBFILE" ]; then
+if [ -f "${2%/*}/transcribing.pid" ]; then
   printf 'mw job-present\n' >>"$TEST_LOG"
 else
   printf 'mw job-absent\n' >>"$TEST_LOG"
@@ -849,7 +871,7 @@ EOF
   [ "$status" -eq 0 ]
   grep -q '^mw job-present$' "$TEST_LOG"
   ! grep -q '^mw job-absent$' "$TEST_LOG"
-  [ ! -f "$VOX_JOBFILE" ]
+  [ ! -f "$dir/transcribing.pid" ]
 }
 
 @test "transcribe on a missing directory fails and creates nothing" {
