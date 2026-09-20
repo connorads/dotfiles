@@ -1678,7 +1678,10 @@ Findings that are load-bearing, not tidiness:
   image.png` resolves. Trailing chrome is not handled (`wrote a/my b.png ok`
   finds nothing): dropping trailing words too would square the probe count and
   invent paths out of prose. A spaceless tail is left to the token regex, or one
-  file would get two rows.
+  file would get two rows. Prose punctuation (`(path)`, `[path]`, a trailing
+  `.`, `,` or `;`) is trimmed as a second candidate per form, verbatim first, so
+  a filename that really contains a bracket still wins; backticks end a match
+  like quotes.
 - **An apostrophe in a filename is not openable**, and that is upstream's
   quoting, not ours: both SYSTEM_OPEN and EDITOR build a shell string
   (`open '%file'`) and `shlex.split` it, so a `'` raises rather than opening the

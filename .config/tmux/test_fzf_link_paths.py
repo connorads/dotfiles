@@ -52,6 +52,8 @@ TOKEN, RUN = 0, 1
         # A quoted path needs no pattern of its own: the quotes end a match, so
         # the token inside one is matched on its own.
         ("'my file.png'", ["my", "file.png"]),
+        # A backtick ends a match like a quote: markdown code spans wrap paths.
+        ("`src/a.ts`", ["src/a.ts"]),
     ],
 )
 def test_token_regex_matches(line: str, expected: list[str]) -> None:
@@ -151,6 +153,29 @@ def test_a_spaced_match_keeps_interior_spacing_verbatim() -> None:
     )
 
 
+def test_prose_punctuation_is_trimmed_as_a_second_candidate() -> None:
+    """`(a.png).` is how prose wraps a path; the verbatim form is probed first
+    so a filename that really has a bracket in it still wins."""
+    assert core.candidates("(a.png).", cwd=CWD, repo_root=REPO) == (
+        Path("/repo/sub/(a.png)."),
+        Path("/repo/(a.png)."),
+        Path("/repo/sub/a.png"),
+        Path("/repo/a.png"),
+    )
+
+
+@pytest.mark.parametrize("text", ["[a.png],", "<a.png>;", "a.png."])
+def test_each_prose_wrapper_and_sentence_ender_is_trimmed(text: str) -> None:
+    assert Path("/repo/sub/a.png") in core.candidates(text, cwd=CWD, repo_root=None)
+
+
+@pytest.mark.parametrize("text", ["(.)", "[..]"])
+def test_a_wrapped_text_that_names_nothing_yields_no_candidates(text: str) -> None:
+    """Trimming `(.)` leaves `.`, which is the same nothing as an unwrapped
+    `.` - so the pathish check has to apply per form, not once to the text."""
+    assert core.candidates(text, cwd=CWD, repo_root=REPO) == ()
+
+
 # --------------------------------------------------------------------------
 # resolve: the one filesystem probe
 # --------------------------------------------------------------------------
@@ -165,6 +190,7 @@ def tree(tmp_path: Path) -> Path:
     (sub / "walkies/.dream-loop").mkdir(parents=True)
     (sub / "walkies/.dream-loop/target.png").write_bytes(b"\x89PNG")
     (sub / "walkies/my image.png").write_bytes(b"\x89PNG")
+    (sub / "walkies/shot (1).png").write_bytes(b"\x89PNG")
     (sub / "notes").mkdir()
     return tmp_path
 
@@ -181,6 +207,20 @@ def test_resolves_a_repo_root_relative_path_from_a_subdirectory(tree: Path) -> N
 def test_resolves_a_path_with_spaces(tree: Path) -> None:
     resolved = core.resolve("M  walkies/my image.png", cwd=tree / "sub", repo_root=tree)
     assert resolved == tree / "sub/walkies/my image.png"
+
+
+def test_resolves_a_spaced_path_wrapped_in_prose_punctuation(tree: Path) -> None:
+    """The run form and the trim work together: the suffix walk finds where
+    the path starts, the trim takes the bracket and full stop off its ends."""
+    resolved = core.resolve("(walkies/my image.png).", cwd=tree / "sub", repo_root=tree)
+    assert resolved == tree / "sub/walkies/my image.png"
+
+
+def test_a_real_interior_bracket_survives_because_verbatim_is_probed_first(tree: Path) -> None:
+    verbatim = core.resolve("walkies/shot (1).png", cwd=tree / "sub", repo_root=tree)
+    wrapped = core.resolve("(walkies/shot (1).png)", cwd=tree / "sub", repo_root=tree)
+    assert verbatim == tree / "sub/walkies/shot (1).png"
+    assert wrapped == verbatim
 
 
 def test_a_path_that_does_not_exist_resolves_to_nothing(tree: Path) -> None:
