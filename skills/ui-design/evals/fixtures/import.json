@@ -1,0 +1,6 @@
+{
+  "delayMs": 700,
+  "acceptedExtension": ".txt",
+  "transientFailureNameIncludes": "broken",
+  "transientFailureAttempts": 1
+}
