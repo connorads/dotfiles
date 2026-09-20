@@ -249,6 +249,7 @@ pin-audit              # recheck conditional pins/excludes + flag range pins the
 mise-npm-where [TOOL]  # print the installed package dir for an npm-backed mise tool, probing the three layouts mise's npm backend has shipped. Use `mise which <cmd>` for a bin (mise's own probe order); this is for the package dir. --install-dir/--package override
 macup                  # install macOS updates by hand (macOS); offers OS reboot path near the machine
 macup-check            # report pending macOS updates (cached daily scan; --scan to force)
+pedal-flash            # flash the PCsensor foot pedal (left Esc, centre right Option = MacWhisper hold-to-talk, right Enter) and verify by readback; --read / --dry-run
 nfu                    # nix flake update
 dotfiles add .file     # Track new file (after un-ignoring in ~/.gitignore)
 dotfiles status        # See changes
