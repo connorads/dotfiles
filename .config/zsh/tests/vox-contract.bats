@@ -200,15 +200,6 @@ assert all(isinstance(s.get("speaker", ""), str) for s in segments)
 # what is owed is bounded by the first cycle's latency plus scheduling, not by
 # how long the probe ran.
 
-@test "voxtap --check verifies the tap without emitting anything" {
-  require_voxtap
-
-  run --separate-stderr voxtap --check
-
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
 @test "voxtap's probe shows one clock for both tracks" {
   require_voxtap
 

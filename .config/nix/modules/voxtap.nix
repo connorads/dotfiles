@@ -5,10 +5,8 @@
 # Small Swift CLI (see ../voxtap/main.swift) that captures the microphone and
 # the system's audio output through one aggregate device holding a Core Audio
 # process tap, writing both as 16 kHz WAVs (`voxtap record`), so the other side
-# of a call lands in the transcript with no audio routing to set up. It also
-# still streams the tap alone to stdout, which `vox` reads as an ffmpeg input.
-# ExtAudioFile does the WAV muxing and resampling; it lives in AudioToolbox,
-# already linked.
+# of a call lands in the transcript with no audio routing to set up.
+# ExtAudioFile does the WAV muxing and resampling; it lives in AudioToolbox.
 #
 # Built here, not vendored or pulled from nixpkgs, for the same reason as
 # biokc/imagepaste: the tap API (AudioHardwareCreateProcessTap, macOS 14.2+) is
@@ -19,8 +17,8 @@
 # /usr/bin/swiftc and the SDK.
 #
 # The Info.plist is linked into __TEXT,__info_plist rather than living in a
-# bundle: TCC reads the usage description from the Mach-O section for a plain
-# executable, and vox needs a bare binary it can put on a pipe.
+# bundle: TCC reads the usage descriptions from the Mach-O section for a plain
+# executable, and vox needs a bare binary it can detach.
 #
 # Desktop-only: the headless server has neither audio nor the CLT.
 { pkgs, ... }:

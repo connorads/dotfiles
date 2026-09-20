@@ -487,34 +487,6 @@ empty() {
   [ "$output" = "2d" ]
 }
 
-# --- pure parser: audio device index ----------------------------------------
-#
-# Driven by a captured `ffmpeg -list_devices` listing, so device resolution is
-# tested with no audio hardware at all.
-
-@test "device index resolves an audio input by name" {
-  lib_stdin "$FIXTURES/vox-avfoundation-devices.txt" vox_audio_device_index BlackHole
-  [ "$status" -eq 0 ]
-  [ "$output" = "2" ]
-}
-
-@test "device index ignores the video section, whose indices repeat" {
-  # "Logitech BRIO" is video [0] and audio [3]; only the audio index is valid.
-  lib_stdin "$FIXTURES/vox-avfoundation-devices.txt" vox_audio_device_index "Logitech BRIO"
-  [ "$output" = "3" ]
-}
-
-@test "device index matches the first audio device containing the name" {
-  lib_stdin "$FIXTURES/vox-avfoundation-devices.txt" vox_audio_device_index Microphone
-  [ "$output" = "0" ]
-}
-
-@test "device index fails when nothing matches" {
-  lib_stdin "$FIXTURES/vox-avfoundation-devices.txt" vox_audio_device_index Soundflower
-  [ "$status" -ne 0 ]
-  [ -z "$output" ]
-}
-
 # --- solo / 2-way, derived from the system track's transcript ---------------
 
 @test "a system track with segments makes the session 2-way" {
@@ -586,7 +558,7 @@ JSON
 }
 
 @test "mean volume fails when the measurement is absent" {
-  lib_stdin "$FIXTURES/vox-avfoundation-devices.txt" vox_mean_volume
+  run bash -c "source '$VOX_LIB'; printf 'nothing measured here\n' | vox_mean_volume"
   [ "$status" -ne 0 ]
 }
 

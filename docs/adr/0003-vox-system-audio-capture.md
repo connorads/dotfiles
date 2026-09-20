@@ -1,5 +1,7 @@
 # 0003: vox captures system audio with a Core Audio process tap, in its own process
 
+> Superseded by [ADR 0012](./0012-vox-captures-both-tracks-in-one-voxtap-aggregate.md): one `voxtap record` process captures both tracks through a single aggregate device.
+
 `vox` records the system's own output through
 [`voxtap`](../../.config/nix/voxtap/main.swift), a Core Audio process tap, and gives
 that tap **its own ffmpeg**, started only after the microphone capture is already

@@ -34,20 +34,40 @@ recording() {
   printf '%s\n' "[00:00:00] Me: $1" >"$VOX_STORE/$1/transcript.md"
 }
 
-# ffmpeg stub: answers -list_devices from the captured fixture, otherwise
-# behaves like a capture — touch the output WAVs, then stay alive until it is
-# signalled, recording WHICH signal it got. That is what lets a test assert the
-# stop path uses SIGINT.
+# ffmpeg stub: vox no longer captures with ffmpeg, but it still measures and
+# re-encodes with it. volumedetect answers from a captured fixture the test
+# chooses (with none named nothing is measurable, which is what every test that
+# does not care about loudness wants); anything else is a one-shot run.
+stub_ffmpeg() {
+  write_stub ffmpeg <<'EOF'
+#!/usr/bin/env bash
+printf 'ffmpeg %s\n' "$*" >>"$TEST_LOG"
+case "$*" in
+*volumedetect*)
+  if [ -n "${VOX_VOLUMEDETECT_FIXTURE:-}" ]; then
+    cat "$VOX_VOLUMEDETECT_FIXTURE" >&2
+  fi
+  ;;
+esac
+exit 0
+EOF
+}
+
+# voxtap stub: `record <dir>` writes sys.wav then mic.wav (mic last, as the
+# real one does, so the file vox waits for implies both) and stays alive until
+# it is signalled, recording WHICH signal it got; --no-sys writes the mic alone.
+# VOXTAP_STUB_UNAVAILABLE=1 makes it refuse the way the real one refuses a
+# missing tap or mic: one line, exit 1, no files.
 #
 # Written in Python, not shell, and that is load-bearing. A background job
 # started by a NON-interactive shell inherits SIGINT (and SIGQUIT) as SIG_IGN —
 # POSIX requires it — and a shell cannot then trap them, so a `trap ... INT`
-# fake would appear to prove vox stop is broken. Real ffmpeg calls
-# signal(SIGINT, ...) unconditionally, which overrides the inherited ignore
-# (verified: a backgrounded ffmpeg exits on INT and leaves a valid WAV header).
+# fake would appear to prove vox stop is broken. The real voxtap installs a
+# dispatch signal source, which fires regardless of the inherited disposition
+# (verified: a backgrounded voxtap exits on INT and finalises both WAVs).
 # Python's signal.signal does the same, so this fake models the real binary.
-stub_ffmpeg() {
-  write_stub ffmpeg <<'EOF'
+stub_voxtap() {
+  write_stub voxtap <<'EOF'
 #!/usr/bin/env python3
 import os
 import signal
@@ -63,40 +83,27 @@ def note(line):
         fh.write(line + "\n")
 
 
-note("ffmpeg " + " ".join(argv))
+note("voxtap " + " ".join(argv))
 
-if "-list_devices" in argv:
-    with open(os.environ["VOX_DEVICES_FIXTURE"]) as fh:
-        sys.stderr.write(fh.read())
+if not argv or argv[0] != "record":
+    sys.exit(0)
+
+if os.environ.get("VOXTAP_STUB_UNAVAILABLE"):
+    sys.stderr.write("voxtap: AudioHardwareCreateProcessTap failed (OSStatus 1852797029)\n")
     sys.exit(1)
 
-# volumedetect measures a stored WAV, and this stub's four-byte "RIFF" cannot
-# answer for one, so the measurement is a captured fixture the test chooses.
-# With none named nothing is measurable, which is what every test that does not
-# care about loudness wants.
-if "volumedetect" in " ".join(argv):
-    fixture = os.environ.get("VOX_VOLUMEDETECT_FIXTURE")
-    if fixture:
-        with open(fixture) as fh:
-            sys.stderr.write(fh.read())
-    sys.exit(0)
-
-# The OUTPUT is always the last argument, and only it may be written: a stored
-# WAV is the archive.
-if argv and argv[-1].endswith(".wav"):
-    with open(argv[-1], "w") as fh:
+directory = argv[1]
+if "--no-sys" not in argv:
+    with open(os.path.join(directory, "sys.wav"), "w") as fh:
         fh.write("RIFF")
-
-# Only a capture stays alive to be signalled. Everything else is a one-shot
-# filter run that must return before its caller can use the result.
-if "avfoundation" not in argv and "f32le" not in argv:
-    sys.exit(0)
+with open(os.path.join(directory, "mic.wav"), "w") as fh:
+    fh.write("RIFF")
 
 
 def handler(sig, _frame):
     name = "INT" if sig == signal.SIGINT else "TERM"
-    note("ffmpeg-signal " + name)
-    sys.exit(0 if sig == signal.SIGINT else 1)
+    note("voxtap-signal " + name)
+    sys.exit(0)
 
 
 signal.signal(signal.SIGINT, handler)
@@ -105,49 +112,12 @@ signal.signal(signal.SIGTERM, handler)
 # running past the suite.
 time.sleep(60)
 EOF
-  export VOX_DEVICES_FIXTURE="$FIXTURES/vox-avfoundation-devices.txt"
 }
 
-# voxtap stub: --check answers "is the tap usable" with its exit status
-# (VOXTAP_STUB_UNAVAILABLE=1 makes it say no), otherwise it streams f32le zeros
-# at the real rate until the reader goes away.
-#
-# Python for the same reason the ffmpeg stub is: it has to emit binary at a
-# genuine 48 kHz, which no shell fake can model. It also has to die quietly on a
-# closed pipe, which is exactly how the real one is reaped.
-stub_voxtap() {
-  write_stub voxtap <<'EOF'
-#!/usr/bin/env python3
-import os
-import sys
-import time
-
-argv = sys.argv[1:]
-with open(os.environ["TEST_LOG"], "a") as fh:
-    fh.write(" ".join(["voxtap", *argv]) + "\n")
-
-if "--check" in argv:
-    sys.exit(1 if os.environ.get("VOXTAP_STUB_UNAVAILABLE") else 0)
-
-chunk = b"\x00" * (4 * 4800)  # 100 ms of 48 kHz mono float32
-try:
-    while True:
-        sys.stdout.buffer.write(chunk)
-        sys.stdout.buffer.flush()
-        time.sleep(0.1)
-except (BrokenPipeError, KeyboardInterrupt):
-    pass
-EOF
-}
-
-# kill_capture - reap every process a start left behind. The statefile's first
-# field is a comma-separated pid list (mic capture first, system capture second).
+# kill_capture - reap the capture a start left behind.
 kill_capture() {
   [ -f "${VOX_STATEFILE:-}" ] || return 0
-  local pids
-  pids=$(awk 'NR == 1 { print $1 }' "$VOX_STATEFILE" | tr ',' ' ')
-  # shellcheck disable=SC2086  # deliberate word splitting: one kill for the set
-  kill $pids 2>/dev/null || true
+  kill "$(awk 'NR == 1 { print $1 }' "$VOX_STATEFILE")" 2>/dev/null || true
 }
 
 # Reap any capture a test left running, so a failure cannot leak a process.
@@ -174,7 +144,7 @@ EOF
 }
 
 require_macos() {
-  [[ "$OSTYPE" == darwin* ]] || skip "capture needs macOS (avfoundation)"
+  [[ "$OSTYPE" == darwin* ]] || skip "capture needs macOS (Core Audio)"
 }
 
 # Like vox(), but answering the confirmation prompt from stdin.
@@ -332,150 +302,99 @@ aged_recording() {
   [ ! -f "$VOX_STATEFILE" ]
 }
 
-# --- capture: the ffmpeg invocation -----------------------------------------
+# --- capture: the voxtap invocation -----------------------------------------
 #
 # PATH-shadow fakes rather than function mocks, so real command lookup and
 # argument passing are exercised and the logged argv is the assertion target.
 
-@test "start launches one capture per source and records both pids" {
+@test "start launches one voxtap for both tracks and records its pid" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
 
   vox
-  micargv=$(grep '^ffmpeg ' "$TEST_LOG" | grep avfoundation | grep -v list_devices)
-  sysargv=$(grep '^ffmpeg ' "$TEST_LOG" | grep f32le)
   kill_capture
 
   [ "$status" -eq 0 ]
-  [ "$(grep -c '^ffmpeg ' "$TEST_LOG")" -eq 3 ] # listing probe, mic, system
-  [[ "$micargv" == *"-f avfoundation -i :0"* ]] # mic, resolved by name
-  [[ "$micargv" == *"$output/mic.wav"* ]]
-  [[ "$micargv" != *"sys.wav"* ]]
-  # System audio is voxtap on a pipe, at the format voxtap fixes: no device
-  # lookup, no BlackHole, nothing to route by hand.
-  [[ "$sysargv" == *"-f f32le -ar 48000 -ac 1 -i /dev/fd/"* ]]
-  [[ "$sysargv" == *"$output/sys.wav"* ]]
-  # Leader first, so a reader that wants "is it recording" reads the mic.
-  [[ "$(awk '{ print $1 }' "$VOX_STATEFILE")" == *,* ]]
+  # One process, one aggregate device: no device listing, no tap check, no
+  # ffmpeg anywhere in the start path.
+  grep -q "^voxtap record $output --mic Microphone$" "$TEST_LOG"
+  [ "$(grep -c '^voxtap ' "$TEST_LOG")" -eq 1 ]
+  ! grep -q '^ffmpeg ' "$TEST_LOG"
+  [ -f "$output/mic.wav" ]
+  [ -f "$output/sys.wav" ]
+  [ "$(awk '{ print $1 }' "$VOX_STATEFILE")" != "" ]
+  [[ "$(awk '{ print $1 }' "$VOX_STATEFILE")" != *,* ]]
 }
 
-@test "the system capture starts only once the microphone is open" {
+@test "the microphone is named on the command line, never as an index" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
+  export VOX_MIC_DEVICE="USB Audio CODEC"
 
   vox
   kill_capture
 
-  # While a process tap is live, avfoundation blocks on opening any audio
-  # input, so a tap created first would hang the mic capture forever.
-  micline=$(grep -n '^ffmpeg .*avfoundation -i :0' "$TEST_LOG" | grep -v list_devices | cut -d: -f1)
-  tapline=$(grep -n '^voxtap$' "$TEST_LOG" | cut -d: -f1)
-  [ -n "$micline" ]
-  [ -n "$tapline" ]
-  [ "$micline" -lt "$tapline" ]
+  # Device order changes whenever one appears or disappears, so the name is
+  # resolved by voxtap at start; vox stores nothing about the device.
+  grep -q -- "--mic USB Audio CODEC" "$TEST_LOG"
 }
 
-@test "start verifies the tap before opening a recording" {
+@test "start refuses when the capture cannot begin, leaving nothing behind" {
   require_macos
-  stub_ffmpeg
-  stub_voxtap
-
-  vox
-  kill_capture
-
-  grep -q '^voxtap --check$' "$TEST_LOG"
-}
-
-@test "capture downmixes the mic with pan, never -ac 1" {
-  require_macos
-  stub_ffmpeg
-  stub_voxtap
-
-  vox
-  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill_capture
-
-  # A mic ffmpeg reports as multichannel would get a surround downmix matrix
-  # from -ac 1 instead of the channel apps actually write. The tap needs none of
-  # this: it is mono at source, so the only -ac 1 here is the pipe's format.
-  [[ "$argv" == *"pan=mono"* ]]
-  [[ "$argv" != *"avfoundation -i :0 -ac 1"* ]]
-}
-
-@test "capture passes no -t: duration is driven by vox stop" {
-  require_macos
-  stub_ffmpeg
-  stub_voxtap
-
-  vox
-  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill_capture
-
-  # -t misbehaves alongside -use_wallclock_as_timestamps: the first pts starts
-  # at device uptime, so the recording is truncated to nothing.
-  [[ "$argv" != *" -t "* ]]
-  [[ "$argv" == *"-use_wallclock_as_timestamps 1 -f avfoundation"* ]]
-}
-
-@test "the wallclock timestamp flag is never applied to the pipe" {
-  require_macos
-  stub_ffmpeg
-  stub_voxtap
-
-  vox
-  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill_capture
-
-  # Same first-pts trap as -t, and on a pipe it produces an empty output file.
-  [[ "$argv" != *"-use_wallclock_as_timestamps 1 -f f32le"* ]]
-}
-
-@test "start refuses when system audio capture is unavailable" {
-  require_macos
-  stub_ffmpeg
   stub_voxtap
   export VOXTAP_STUB_UNAVAILABLE=1
 
   vox
 
-  # A meeting half-captured by accident is worse than one not started.
+  # A meeting half-captured by accident is worse than one not started, and the
+  # reason voxtap gave is the message.
   [ "$status" -ne 0 ]
   [ ! -f "$VOX_STATEFILE" ]
   [ -z "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1)" ]
+  [[ "$stderr" == *"did not start"* ]]
+  [[ "$stderr" == *"AudioHardwareCreateProcessTap failed"* ]]
 }
 
 @test "start refuses when the helper is not installed" {
   require_macos
-  stub_ffmpeg
   export VOX_VOXTAP=definitely-not-installed
 
   vox
 
   [ "$status" -ne 0 ]
   [ ! -f "$VOX_STATEFILE" ]
+  [[ "$stderr" == *"run drs"* ]]
 }
 
-@test "VOX_MIC_ONLY records the mic alone, with no tap and no sys track" {
+@test "VOX_MIC_ONLY records the mic alone through the same helper" {
   require_macos
-  stub_ffmpeg
+  stub_voxtap
+  export VOX_MIC_ONLY=1
+
+  vox
+  kill_capture
+
+  [ "$status" -eq 0 ]
+  grep -q -- "^voxtap record $output --mic Microphone --no-sys$" "$TEST_LOG"
+  [ -f "$output/mic.wav" ]
+  [ ! -e "$output/sys.wav" ]
+}
+
+@test "VOX_MIC_ONLY still needs the helper" {
+  require_macos
   export VOX_VOXTAP=definitely-not-installed
   export VOX_MIC_ONLY=1
 
   vox
-  argv=$(grep '^ffmpeg ' "$TEST_LOG" | grep -v list_devices)
-  kill_capture
 
-  [ "$status" -eq 0 ]
-  [[ "$argv" == *"$output/mic.wav"* ]]
-  [[ "$argv" != *"sys.wav"* ]]
-  [[ "$argv" != *"f32le"* ]]
+  # One backend, per docs/adr/0003's own argument: the mic is captured by voxtap
+  # too, so there is no ffmpeg path to fall back to.
+  [ "$status" -ne 0 ]
+  [ ! -f "$VOX_STATEFILE" ]
 }
 
 @test "start refuses a second capture while one is live" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
 
   vox
@@ -491,7 +410,6 @@ aged_recording() {
 
 @test "--name titles the recording at the moment it starts" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
 
   vox --name "Triver Kickoff"
@@ -512,7 +430,6 @@ aged_recording() {
 
 @test "renaming the live recording moves the statefile with it" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
 
   vox
@@ -521,7 +438,7 @@ aged_recording() {
   renamed=$output
   kill_capture
 
-  # ffmpeg's fds follow the inode, so the capture is unharmed - but the pill and
+  # voxtap's fds follow the inode, so the capture is unharmed - but the pill and
   # `vox stop` read the statefile, which would otherwise point at a dead path.
   [ "$status" -eq 0 ]
   [ -d "$renamed" ]
@@ -532,7 +449,6 @@ aged_recording() {
 
 @test "cancel stops the capture and removes the recording" {
   require_macos
-  stub_ffmpeg
   stub_mw
   stub_voxtap
 
@@ -554,18 +470,21 @@ aged_recording() {
 
 # --- stop: signal, transcription and merge ----------------------------------
 
-@test "stop signals the capture with INT, never TERM" {
+@test "stop signals the capture with INT and waits for it to finish" {
   require_macos
   stub_ffmpeg
   stub_mw
   stub_voxtap
 
   vox
+  pid=$(awk '{ print $1 }' "$VOX_STATEFILE")
   vox stop
 
-  # SIGTERM makes ffmpeg exit immediately, leaving a WAV with no valid header.
-  grep -q '^ffmpeg-signal INT$' "$TEST_LOG"
-  ! grep -q '^ffmpeg-signal TERM$' "$TEST_LOG"
+  # INT is the stop signal voxtap finalises both tracks on; the wait is what
+  # lets mw read a WAV with a real length in its header.
+  grep -q '^voxtap-signal INT$' "$TEST_LOG"
+  ! grep -q '^voxtap-signal TERM$' "$TEST_LOG"
+  ! kill -0 "$pid" 2>/dev/null
 }
 
 @test "stop transcribes each track and merges them into transcript.md" {
@@ -660,7 +579,6 @@ aged_recording() {
 
 @test "starting a capture marks earlier recordings as looked at" {
   require_macos
-  stub_ffmpeg
   stub_voxtap
   recording 2026-07-26-090000-standup
   vox status
