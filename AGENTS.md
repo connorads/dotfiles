@@ -293,6 +293,7 @@ vox [--name <title>]   # record mic + system audio (Core Audio tap, no setup); `
 vox cancel             # stop and discard, without transcribing
 vox ls | vox last      # recording paths, newest first (`cat "$(vox last)/transcript.md"` is the whole integration story)
 vox <file>             # transcribe an audio/video file that already exists
+vox transcribe <path>  # re-run transcription on a recording, in place (what the picker's ctrl-t calls)
 vox rename <path> <slug>   # retitle a recording, keeping its timestamp prefix
 vox compact [--older 30d]  # WAV -> Opus 32k mono, preview + confirm (--dry-run/--force)
 vox prune   [--older 90d]  # delete audio, keep transcripts (destructive; preview + confirm)

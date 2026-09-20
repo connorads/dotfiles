@@ -14,6 +14,7 @@
 #   vox ls                   every recording, newest first, one path per line
 #   vox last                 newest recording's path
 #   vox <file>               transcribe an audio/video file that already exists
+#   vox transcribe <path>    re-run transcription on a recording, in place
 #   vox rename <path> <slug> retitle, preserving the timestamp prefix
 #   vox compact [--older 30d]  WAV -> Opus 32k mono, preview + confirm
 #   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
@@ -405,6 +406,39 @@ _vox_transcribe_file() {
 	return "$rc"
 }
 
+# _vox_retranscribe REC - re-run transcription on a recording that already
+# exists, in place: the stored WAVs are the source of truth and the per-track
+# JSON and transcript.md are regenerable from them, so they are overwritten
+# without a backup. The path out of `vox stop` for a transcript that went
+# wrong - a track transcribed to nothing, a model since improved - without
+# minting a second directory.
+#
+# Same job-file contract as `_vox_stop`: the pill reads TRANSCRIBING for the
+# duration, and a crash mid-run reads as finished by pid liveness alone. The
+# seen marker is left alone on purpose - a fresh transcript is unread.
+_vox_retranscribe() {
+	local rec=${1:-}
+	[[ -n "$rec" ]] || {
+		_vox_die "usage: vox transcribe <path>"
+		return 1
+	}
+	[[ -d "$rec" ]] || {
+		_vox_die "no such recording: $rec"
+		return 1
+	}
+	local -a wavs=("$rec"/{mic,sys}.wav(N.))
+	(( $#wavs )) || {
+		_vox_die "no WAV tracks in ${rec:t} (compacted?)"
+		return 1
+	}
+	vox_write_job "$$" "$(date +%s)" "$rec"
+	_vox_transcribe "$rec"
+	local rc=$?
+	vox_clear_job
+	print -r -- "$rec"
+	return "$rc"
+}
+
 # _vox_ls - every recording, newest first. Names start with the timestamp, so
 # reverse name order IS reverse chronological - no stat call per entry.
 _vox_ls() {
@@ -721,6 +755,7 @@ _vox_help() {
   vox ls                   every recording, newest first
   vox last                 newest recording
   vox <file>               transcribe an existing audio/video file
+  vox transcribe <path>    re-run transcription on a recording, in place
   vox rename <path> <slug> retitle, keeping the timestamp prefix
   vox compact [--older 30d]  WAV -> Opus 32k mono (preview + confirm)
   vox prune   [--older 90d]  delete audio, keep transcripts (destructive)
@@ -730,8 +765,8 @@ _vox_help() {
 Both reclaim commands take --dry-run and --force (skip the confirmation).
 There is deliberately no `vox rm`: `rm -rf` is already correct.
 
-`stop` and `<file>` exit 0 only when the transcript has content. They print the
-path either way; an empty transcript means no speech was recognised.
+`stop`, `transcribe` and `<file>` exit 0 only when the transcript has content.
+They print the path either way; an empty transcript means no speech was recognised.
 
 System audio is captured by voxtap (a Core Audio process tap), so there is
 nothing to route by hand. vox refuses to start without it; VOX_MIC_ONLY=1
@@ -761,6 +796,10 @@ rename)
 	;;
 compact | prune)
 	_vox_reclaim "$@"
+	;;
+transcribe)
+	shift
+	_vox_retranscribe "${1:-}"
 	;;
 -h | --help | help) _vox_help ;;
 *)
