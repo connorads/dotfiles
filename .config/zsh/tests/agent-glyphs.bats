@@ -5,7 +5,7 @@ bats_require_minimum_version 1.5.0
 load test_helper
 
 # The state → glyph + colour mapping is rendered five ways: the tab dots,
-# session attention dots, the prefix+Alt+. menu literals, organiser menus, and
+# session rail dots, the prefix+Alt+. menu literals, organiser menus, and
 # the prefix+A popup. They drifted once because nothing
 # enforced agreement. agent-state-lib.sh is now the single source of truth;
 # this suite derives EVERY expectation from the lib (agent_hex/agent_char/
@@ -28,16 +28,16 @@ setup() {
   "$TMUX_BIN" -L "$SOCK" -f /dev/null new-session -d -s s -x 120 -y 24
 }
 
-@test "inactive session attention dots match blocked and done canonical glyphs" {
+@test "inactive session dots match blocked, done and working canonical glyphs" {
   conf="$BATS_TEST_TMPDIR/session-dot.conf"
-  grep -E '^set -g @session_agent_attention_fmt ' "$CONF" >"$conf"
+  grep -E '^set -g @session_agent_state_fmt ' "$CONF" >"$conf"
   tx source-file "$conf"
   for state in blocked done working idle; do
-    tx set-option -t s @session_agent_attention "$state"
-    got=$(tx display-message -p -t s '#{E:@session_agent_attention_fmt}')
-    if [ "$state" = blocked ] || [ "$state" = done ]; then
+    tx set-option -t s @session_agent_state "$state"
+    got=$(tx display-message -p -t s '#{E:@session_agent_state_fmt}')
+    if [ "$state" = blocked ] || [ "$state" = done ] || [ "$state" = working ]; then
       # Leading pad space: the format emits one before the glyph, as the
-      # sibling `current session attention` test asserts.
+      # sibling `current session state` test asserts.
       want="#[fg=#$(agent_hex "$state")] $(agent_char "$state")"
       [[ "$got" == *"$want"* ]]
     else
@@ -46,20 +46,25 @@ setup() {
   done
 }
 
-@test "current session attention stays on the selected background" {
+@test "current session state stays on the selected background" {
   conf="$BATS_TEST_TMPDIR/current-session-dot.conf"
-  grep -E '^set -g @session_agent_attention_current_fmt ' "$CONF" >"$conf"
+  grep -E '^set -g @session_agent_state_current_fmt ' "$CONF" >"$conf"
   tx source-file "$conf"
 
-  tx set-option -t s @session_agent_attention blocked
-  blocked=$(tx display-message -p -t s '#{E:@session_agent_attention_current_fmt}')
+  tx set-option -t s @session_agent_state blocked
+  blocked=$(tx display-message -p -t s '#{E:@session_agent_state_current_fmt}')
   [[ "$blocked" == *"#[fg=#$(agent_hex blocked)] ◆"* ]]
   [[ "$blocked" != *"bg="* ]]
 
-  tx set-option -t s @session_agent_attention done
-  done=$(tx display-message -p -t s '#{E:@session_agent_attention_current_fmt}')
+  tx set-option -t s @session_agent_state done
+  done=$(tx display-message -p -t s '#{E:@session_agent_state_current_fmt}')
   [[ "$done" == *"#[fg=#1e1e2e] ●"* ]]
   [[ "$done" != *"bg="* ]]
+
+  tx set-option -t s @session_agent_state working
+  working=$(tx display-message -p -t s '#{E:@session_agent_state_current_fmt}')
+  [[ "$working" == *"#[fg=#1e1e2e] ◐"* ]]
+  [[ "$working" != *"bg="* ]]
 }
 
 teardown() {

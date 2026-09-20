@@ -35,7 +35,7 @@ ason() { run env AGENT_STATE_PANE="$1" sh "$SCRIPT" "$2" "${3:-}"; }
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
-sstate() { tx show-options -qv -t "$1" @session_agent_attention; }
+sstate() { tx show-options -qv -t "$1" @session_agent_state; }
 large_hook_payload() {
   awk 'BEGIN { for (i = 0; i < 5000; i++) print "{\"tool\":\"PostToolUse\",\"payload\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}" }'
 }
@@ -153,13 +153,15 @@ large_hook_payload() {
   [ "$(sstate s)" = blocked ]
 }
 
-@test "session rollup includes attention only and clears once seen" {
+@test "session rollup shows working, done and clears once seen" {
   pane=$(tx display-message -p -t s '#{pane_id}')
   ason "$pane" working
-  [ -z "$(sstate s)" ]
+  [ "$(sstate s)" = working ]
   ason "$pane" unread
   [ "$(sstate s)" = done ]
   ason "$pane" seen
+  [ -z "$(sstate s)" ]
+  ason "$pane" idle
   [ -z "$(sstate s)" ]
 }
 

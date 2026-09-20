@@ -182,8 +182,8 @@ assert_tab_label() {
   [[ "$row" == *"#{S:"* ]]
   [[ "$row" == *"range=session|#{session_id}"* ]]
   [[ "$row" == *"list=focus"* ]]
-  [[ "$row" == *"#{E:@session_agent_attention_fmt}"* ]]
-  [[ "$row" == *"#{E:@session_agent_attention_current_fmt}"* ]]
+  [[ "$row" == *"#{E:@session_agent_state_fmt}"* ]]
+  [[ "$row" == *"#{E:@session_agent_state_current_fmt}"* ]]
   [[ "$border" == *"range=control|7"* ]]
   [[ "$border" == *"range=control|8"* ]]
 }

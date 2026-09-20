@@ -66,7 +66,7 @@ daemon_pid() {
 
 pstate() { tx show-options -pqv -t "$1" @agent_state; }
 wstate() { tx show-options -wqv -t "$1" @win_agent_state; }
-sstate() { tx show-options -qv -t "$1" @session_agent_attention; }
+sstate() { tx show-options -qv -t "$1" @session_agent_state; }
 
 # Wait until a pane's foreground command is no longer a bare shell — i.e. the
 # respawned child has taken over. Returns non-zero on timeout so callers
@@ -266,7 +266,7 @@ respawn_wrapped_codex() {
   dest_pane=$(tx display-message -p -t "$dest_win" '#{pane_id}')
   tx set-option -p -t "$source_pane" @agent_state blocked
   tx set-option -w -t "$source_win" @win_agent_state blocked
-  tx set-option -t s @session_agent_attention blocked
+  tx set-option -t s @session_agent_state blocked
 
   tx join-pane -s "$source_pane" -t "$dest_pane"
   run sh "$SCRIPT" sync
@@ -276,11 +276,11 @@ respawn_wrapped_codex() {
   [ "$(sstate s)" = blocked ]
 }
 
-@test "sync clears stale session attention after its agent window disappears" {
+@test "sync clears stale session state after its agent window disappears" {
   agent_win=$(tx display-message -p -t s '#{window_id}')
   tx new-window -d -t s
   tx set-option -w -t "$agent_win" @win_agent_state done
-  tx set-option -t s @session_agent_attention done
+  tx set-option -t s @session_agent_state done
   tx kill-window -t "$agent_win"
 
   run sh "$SCRIPT" sync

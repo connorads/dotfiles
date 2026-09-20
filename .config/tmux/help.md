@@ -160,10 +160,10 @@ it `done` (blue) before you leave - like marking an email unread.
 
 ### Cross-session agents (status bar)
 
-The bottom session rail adds attention-only summaries beside each session:
-red `◆` for blocked, blue `●` for finished and unseen. Working and idle stay at
-window level, so the rail answers where attention lives without becoming fleet
-telemetry. Linked agent windows mark every session through which they are reachable.
+The bottom session rail adds a summary dot beside each session: red `◆` for
+blocked, blue `●` for finished and unseen, peach `◐` for working. Idle and
+hibernated stay at window level, so a session with no dot has no agent running.
+Linked agent windows mark every session through which they are reachable.
 
 Below 80 columns, where the session rail is likely to trim, the right side also
 shows the worst blocked/done state plus a count from *other* sessions (`◆1`). The

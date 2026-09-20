@@ -246,10 +246,11 @@ The logic is spread across several files - change them as a set:
   (`agent_attrs`/`agent_hex`/`agent_char`/`agent_glyph`). **Shape** encodes state as well as colour so it reads on a
   colour clash and for colour-blind use; `working` is peach (not yellow) so it
   clears the same-yellow active-tab text. See [`help.md`](./help.md) for the
-  legend. `@session_agent_attention` caches each session's attention-only
-  `blocked > done` summary; working/idle deliberately render only on window tabs.
-  The bottom rail shows that glyph beside every session, including each session
-  containing a linked agent window. Topology hooks call `agent-sweep.sh sync` to
+  legend. `@session_agent_state` caches each session's `blocked > done >
+  working` summary; idle and hibernated render only on window tabs, so a
+  session with no rail dot has no agent running. The bottom rail shows that
+  glyph beside every session, including each session containing a linked
+  agent window. Topology hooks call `agent-sweep.sh sync` to
   rebuild both cached levels after pane/window moves. The lib also hosts
   **`other_sessions_badge`** - the read-only cross-session fallback (worst of
   blocked>done + a count of such agent panes in sessions other than the attached
@@ -614,7 +615,7 @@ Design rules:
 - The second status row stays the only bottom row. It contains a native `S:`
   session rail on the left and the existing status-right chrome on the right.
   The rail uses `range=session|#{session_id}`, native list trimming with `<`/`>`
-  markers, and attention-only blocked/done dots. The sub-80 cross-session
+  markers, and blocked/done/working dots. The sub-80 cross-session
   fallback badge and memory pill are
   `range=user|agents` / `range=user|mem`; `MouseDown1Status` handles those and
   falls back to tmux's stock `switch-client -t =` for every other status click.
