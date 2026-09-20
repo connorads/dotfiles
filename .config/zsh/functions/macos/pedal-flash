@@ -1,0 +1,66 @@
+#!/usr/bin/env zsh
+# pedal-flash: flash the PCsensor 3-pedal USB foot switch (left Esc, centre right Option, right Enter)
+#
+# Centre emits right Option, MacWhisper's hold-to-talk trigger. MacWhisper's
+# hotkey is a single enum (rightOption | function | custom | none), so a
+# Custom key for the pedal would retire the keyboard's right Option; emitting
+# the same modifier keeps both working with no middleware and no MacWhisper
+# change. Esc and Enter live in firmware so they work in every app; a
+# Karabiner `device_if` on 3553:b001 is the per-app override layer if needed.
+#
+# Verifies by readback: `footswitch` exits 0 even when a write does not stick.
+emulate -L zsh
+setopt pipefail
+
+local -r LEFT=esc      # -k: key slot
+local -r CENTRE=r_alt  # -m: modifier bits (no key)
+local -r RIGHT=enter   # -k: key slot
+
+local -a flash_args=(-1 -k $LEFT -2 -m $CENTRE -3 -k $RIGHT)
+local -a want=($LEFT $CENTRE $RIGHT)
+
+usage() {
+  print -r -- "usage: pedal-flash [--read|-r] [--dry-run|-n] [--help|-h]
+  (no args)   flash left=$LEFT centre=$CENTRE right=$RIGHT, then verify by readback
+  --read, -r  readback only
+  --dry-run   print the footswitch command, run nothing"
+}
+
+local mode=flash
+case "$1" in
+  "") ;;
+  --read|-r) mode=read ;;
+  --dry-run|-n) mode=dry ;;
+  --help|-h) usage; return 0 ;;
+  *) print -u2 "pedal-flash: unknown arg: $1"; usage >&2; return 2 ;;
+esac
+
+if [[ $mode == dry ]]; then
+  print -r -- "footswitch ${flash_args[*]}"
+  print -r -- "footswitch -r"
+  return 0
+fi
+
+if ! command -v footswitch >/dev/null 2>&1; then
+  print -u2 "pedal-flash: footswitch not on PATH (nix package footswitch, .config/nix/packages/footswitch.nix; run drs)"
+  return 1
+fi
+
+if [[ $mode == flash ]]; then
+  footswitch "${flash_args[@]}" || return 1
+fi
+
+local readback
+readback=$(footswitch -r) || return 1
+print -r -- "$readback"
+[[ $mode == read ]] && return 0
+
+local i got rc=0
+for i in 1 2 3; do
+  got=$(print -r -- "$readback" | sed -n "s/^\[switch $i\]: //p")
+  if [[ $got != "${want[$i]}" ]]; then
+    print -u2 "pedal-flash: pedal $i reads back '$got', expected '${want[$i]}'"
+    rc=1
+  fi
+done
+return $rc
