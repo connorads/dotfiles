@@ -5,20 +5,24 @@
 # else was on the call: `solo` or `2-way`, derived from the system track rather
 # than stored — or `empty`, for one that transcribed to nothing at all.
 #
-#   enter    copy the transcript to the clipboard (tmux buffer + OSC52)
+#   enter    the action list: every action below with its shortcut; enter on
+#            a row runs it, esc comes back here, and copy is the first row so
+#            enter-enter still copies
 #   ctrl-y   paste the recording's path into the pane you opened this from
 #   ctrl-e   open the transcript in $EDITOR
 #   ctrl-r   rename, keeping the timestamp prefix
 #   ctrl-o   reveal the recording in Finder
 #   ctrl-p   play it (both tracks mixed, when there are two)
+#   ctrl-t   retranscribe the selection in place (`vox transcribe`)
 #   ctrl-d   delete the selection outright (confirmed)
 #   ctrl-x   reclaim the selection's audio, keeping its transcripts (confirmed)
-#   tab      add to the selection; ctrl-d/ctrl-x act on all of it
+#   tab      add to the selection; ctrl-t/ctrl-d/ctrl-x act on all of it
 #   ctrl-/   toggle the preview
 #
 # Actions run *after* fzf exits (--expect), not inside --bind execute(), so each
 # one owns the popup's real tty — which $EDITOR, the rename prompt and both
-# confirmations need.
+# confirmations need. The action list is a second --expect stage for the same
+# reason: it only decides which key, and the action still runs out here.
 #
 # Deleting is `rm -rf`, but reclaiming defers to `vox prune <path>...` rather
 # than removing audio here: one implementation of "which files are the audio,
@@ -109,26 +113,62 @@ if [ -z "$rows" ]; then
 	exit 0
 fi
 
-out=$(printf '%s' "$rows" | fzf \
-	--reverse --multi --info=hidden \
-	--delimiter=$'\t' --with-nth=2.. \
-	--prompt='recording › ' \
-	--header='enter: copy · ctrl-y: path · ctrl-e: edit · ctrl-r: rename · ctrl-o: reveal · ctrl-p: play · ctrl-d: delete · ctrl-x: reclaim audio · tab: select' \
-	--preview "'$0' preview {1}" \
-	--preview-window='right,60%,wrap' \
-	--bind 'ctrl-/:toggle-preview' \
-	--expect 'ctrl-y,ctrl-e,ctrl-r,ctrl-o,ctrl-p,ctrl-d,ctrl-x') || exit 0
+# The action list, `label<TAB>shortcut`. Copy stays first so enter-enter copies;
+# the shortcut column is what a chosen row maps back to, `enter` meaning the
+# default branch below. The --expect set is spelled out in both fzf calls, not
+# held in a variable, so fzf-bind-lint sees every key it needs to check.
+actions='copy transcript	enter
+paste path into pane	ctrl-y
+edit transcript	ctrl-e
+rename	ctrl-r
+reveal in Finder	ctrl-o
+play	ctrl-p
+retranscribe	ctrl-t
+delete	ctrl-d
+reclaim audio	ctrl-x'
 
-# Line 1 is the expected key ("" for enter); every line after it is a selected
-# row, one per tab-marked entry.
-mapfile -t lines <<<"$out"
-key=${lines[0]}
-dirs=()
-for line in "${lines[@]:1}"; do
-	[ -n "$line" ] || continue
-	dirs+=("${line%%$'\t'*}")
+while :; do
+	out=$(printf '%s' "$rows" | fzf \
+		--reverse --multi --info=hidden \
+		--delimiter=$'\t' --with-nth=2.. \
+		--prompt='recording › ' \
+		--header='enter: actions · tab: select · ctrl-/: preview' \
+		--preview "'$0' preview {1}" \
+		--preview-window='right,60%,wrap' \
+		--bind 'ctrl-/:toggle-preview' \
+		--expect 'ctrl-y,ctrl-e,ctrl-r,ctrl-o,ctrl-p,ctrl-t,ctrl-d,ctrl-x') || exit 0
+
+	# Line 1 is the expected key ("" for enter); every line after it is a
+	# selected row, one per tab-marked entry.
+	mapfile -t lines <<<"$out"
+	key=${lines[0]}
+	dirs=()
+	for line in "${lines[@]:1}"; do
+		[ -n "$line" ] || continue
+		dirs+=("${line%%$'\t'*}")
+	done
+	((${#dirs[@]})) || exit 0
+	[ -z "$key" ] || break
+
+	# Enter: the action list. A shortcut pressed here acts directly; enter on a
+	# row acts as its shortcut; esc goes back to the recordings.
+	choice=$(printf '%s\n' "$actions" | fzf \
+		--reverse --no-multi --info=hidden \
+		--delimiter=$'\t' --tabstop=24 \
+		--prompt='action › ' \
+		--header="${#dirs[@]} selected · esc: back" \
+		--expect 'ctrl-y,ctrl-e,ctrl-r,ctrl-o,ctrl-p,ctrl-t,ctrl-d,ctrl-x') || continue
+	mapfile -t picked <<<"$choice"
+	key=${picked[0]}
+	if [ -z "$key" ]; then
+		shortcut=${picked[1]:-}
+		shortcut=${shortcut##*$'\t'}
+		[ -n "$shortcut" ] || continue
+		[ "$shortcut" = enter ] && shortcut=""
+		key=$shortcut
+	fi
+	break
 done
-((${#dirs[@]})) || exit 0
 dir=${dirs[0]}
 
 # confirm PROMPT — y/N on the popup's own tty. Only the two destructive actions
@@ -190,6 +230,20 @@ ctrl-p)
 		fi
 		rm -rf "$scratch"
 	fi
+	;;
+ctrl-t)
+	# Unconfirmed: the WAVs stay, so a rerun costs time and nothing else. stderr
+	# stays on the tty so mw's per-track progress shows while it runs.
+	for d in "${dirs[@]}"; do
+		if "$VOX_BIN" transcribe "$d" >/dev/null; then
+			tmux display-message "vox: retranscribed ${d##*/}" 2>/dev/null || true
+		elif [ -e "$d/transcript.md" ] && [ ! -s "$d/transcript.md" ]; then
+			tmux display-message "vox: ${d##*/} still transcribed to nothing" 2>/dev/null || true
+		else
+			tmux display-message "vox: could not retranscribe ${d##*/}" 2>/dev/null || true
+		fi
+	done
+	sleep 1
 	;;
 ctrl-d)
 	printf 'Delete %d recording(s), transcripts included:\n' "${#dirs[@]}"

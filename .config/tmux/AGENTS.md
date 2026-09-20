@@ -1453,17 +1453,22 @@ Change as a set:
   nothing, which `solo` would make indistinguishable from a real monologue. The
   preview is three-way for the same reason: a transcript that exists and is empty
   is *finished*, so "No transcript yet" over it reads as pending forever. Enter
-  copies it (tmux buffer plus OSC52), `ctrl-y`
-  pastes the path into the calling pane, `ctrl-e` edits, `ctrl-r` renames,
-  `ctrl-o` reveals in Finder, `ctrl-p` plays (both tracks mixed when there are
-  two, via a temp file because `afplay` cannot read a pipe), `ctrl-d` deletes and
-  `ctrl-x` reclaims audio, both confirmed and both over the whole `tab`
-  selection. Reclaiming shells out to **`vox prune <path>...`** rather than
-  deleting audio here - which files count as audio and what survives has one
-  owner, and that is why the CLI grew explicit paths. Opening it is what marks
-  everything looked-at, so it is the thing that clears the READY pill. Actions
-  run **after** fzf exits (`--expect`), not inside `--bind execute()`, so each
-  owns the popup's real tty.
+  opens an **action list** - every action with its shortcut, copy first so
+  enter-enter copies, esc back to the recordings - and the shortcuts work from
+  either stage: copy (tmux buffer plus OSC52), `ctrl-y` pastes the path into the
+  calling pane, `ctrl-e` edits, `ctrl-r` renames, `ctrl-o` reveals in Finder,
+  `ctrl-p` plays (both tracks mixed when there are two, via a temp file because
+  `afplay` cannot read a pipe), `ctrl-t` retranscribes in place (unconfirmed: the
+  WAVs stay), `ctrl-d` deletes and `ctrl-x` reclaims audio, the last two
+  confirmed; `ctrl-t`, `ctrl-d` and `ctrl-x` act over the whole `tab` selection.
+  Retranscribing and reclaiming shell out to **`vox transcribe <path>`** and
+  **`vox prune <path>...`** rather than doing it here - which files count as
+  audio, what survives and how a track is transcribed each have one owner, and
+  that is why the CLI grew explicit paths. Opening it is what marks everything
+  looked-at, so it is the thing that clears the READY pill. Actions run
+  **after** fzf exits (`--expect`), not inside `--bind execute()`, so each owns
+  the popup's real tty; the action list is a second `--expect` stage for the
+  same reason - it only decides the key, the action still runs outside fzf.
 - [`scripts/status-right.sh`](./scripts/status-right.sh) - `vox_segment()`, a
   **self-hiding** pill (width ≥ 80) following one capture from start to read:
   IDLE prints nothing, then `~ 12m` recording, `≈ 40s` transcribing, `✓ 2`

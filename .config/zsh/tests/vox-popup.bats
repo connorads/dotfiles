@@ -62,34 +62,61 @@ recording() {
   printf '%s\n' "$dir"
 }
 
-# stub_fzf KEY [MATCH...] - answer with KEY and every input row whose name
-# contains one of MATCH (all rows when none is given). The rows arrive on stdin
-# exactly as the picker built them, so the fixture also captures the columns.
+# stub_fzf KEY [MATCH...] - queue one answer: KEY (or `esc`, which aborts with
+# fzf's 130) and every input row containing one of MATCH (all rows when none is
+# given). Each fzf invocation consumes the next answer in order, so a two-stage
+# pick is two calls. The rows arrive on stdin exactly as the picker built them;
+# invocation N dumps them to $FZF_ROWS.N and appends them to $FZF_ROWS, so the
+# fixture also captures the columns of every stage.
 stub_fzf() {
   local key=$1
   shift
-  export FZF_STUB_KEY="$key" FZF_STUB_MATCH="$*"
+  export FZF_QUEUE="$BATS_TEST_TMPDIR/fzf-queue" FZF_ROWS="$BATS_TEST_TMPDIR/rows"
+  printf '%s\t%s\n' "$key" "$*" >>"$FZF_QUEUE"
   write_stub fzf <<'EOF'
 #!/usr/bin/env bash
 rows=$(cat)
-printf '%s\n' "$rows" >"$FZF_ROWS"
-printf '%s\n' "$FZF_STUB_KEY"
-if [ -z "$FZF_STUB_MATCH" ]; then
+n=$(($(cat "$FZF_ROWS.count" 2>/dev/null || echo 0) + 1))
+printf '%s' "$n" >"$FZF_ROWS.count"
+printf '%s\n' "$rows" >"$FZF_ROWS.$n"
+printf '%s\n' "$rows" >>"$FZF_ROWS"
+IFS= read -r answer <"$FZF_QUEUE" || exit 130
+tail -n +2 "$FZF_QUEUE" >"$FZF_QUEUE.rest" && mv "$FZF_QUEUE.rest" "$FZF_QUEUE"
+key=${answer%%$'\t'*}
+match=${answer#*$'\t'}
+[ "$key" = esc ] && exit 130
+printf '%s\n' "$key"
+if [ -z "$match" ]; then
   printf '%s\n' "$rows"
 else
-  for want in $FZF_STUB_MATCH; do
+  for want in $match; do
     printf '%s\n' "$rows" | grep -- "$want"
   done
 fi
 EOF
-  export FZF_ROWS="$BATS_TEST_TMPDIR/rows"
+}
+
+# stub_vox_transcribe - a `vox` whose `transcribe` only logs and echoes the
+# path, everything else reaching the real command. Retranscribing needs mw;
+# the picker's contract is which paths it hands over.
+stub_vox_transcribe() {
+  write_stub vox <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in
+transcribe)
+  printf 'vox %s\n' "\$*" >>"\$TEST_LOG"
+  printf '%s\n' "\$2"
+  ;;
+*) exec zsh --no-rcs "$VOX_REAL" "\$@" ;;
+esac
+EOF
 }
 
 popup() {
   run env HOME="$HOME" PATH="$PATH" VOX_BIN="$VOX_BIN" VOX_STORE="$VOX_STORE" \
     VOX_STATEFILE="$VOX_STATEFILE" VOX_SEENFILE="$VOX_SEENFILE" \
     VOX_JOBFILE="$VOX_JOBFILE" TEST_LOG="$TEST_LOG" FZF_ROWS="$FZF_ROWS" \
-    FZF_STUB_KEY="$FZF_STUB_KEY" FZF_STUB_MATCH="$FZF_STUB_MATCH" \
+    FZF_QUEUE="$FZF_QUEUE" \
     "$POPUP" <<<"${1:-}"
 }
 
@@ -136,6 +163,7 @@ popup() {
   dir=$(recording 2026-07-28-140312)
   : >"$dir/transcript.md"
   stub_fzf ""
+  stub_fzf "" copy
 
   popup
 
@@ -239,4 +267,103 @@ popup() {
   popup n
 
   [ -s "$dir/mic.wav" ]
+}
+
+# --- retranscribe and the action list ---------------------------------------
+
+@test "ctrl-t retranscribes the recording through the CLI" {
+  dir=$(recording 2026-07-28-140312)
+  stub_vox_transcribe
+  stub_fzf ctrl-t
+
+  popup
+
+  [ "$status" -eq 0 ]
+  grep -q "^vox transcribe $dir$" "$TEST_LOG"
+  grep -q '^tmux display-message vox: retranscribed 2026-07-28-140312$' "$TEST_LOG"
+}
+
+@test "ctrl-t retranscribes every tab-selected recording" {
+  one=$(recording 2026-07-28-140312-one)
+  two=$(recording 2026-07-28-150000-two)
+  three=$(recording 2026-07-28-160000-three)
+  stub_vox_transcribe
+  stub_fzf ctrl-t one two
+
+  popup
+
+  grep -q "^vox transcribe $one$" "$TEST_LOG"
+  grep -q "^vox transcribe $two$" "$TEST_LOG"
+  ! grep -q "^vox transcribe $three$" "$TEST_LOG"
+}
+
+@test "enter opens the action list, every action with its shortcut" {
+  recording 2026-07-28-140312 >/dev/null
+  stub_fzf ""
+  stub_fzf esc
+  stub_fzf esc
+
+  popup
+
+  [ "$status" -eq 0 ]
+  list=$(cat "$FZF_ROWS.2")
+  [ "$(sed -n 1p "$FZF_ROWS.2")" = $'copy transcript\tenter' ]
+  for pair in $'paste path into pane\tctrl-y' $'edit transcript\tctrl-e' \
+    $'rename\tctrl-r' $'reveal in Finder\tctrl-o' $'play\tctrl-p' \
+    $'retranscribe\tctrl-t' $'delete\tctrl-d' $'reclaim audio\tctrl-x'; do
+    [[ "$list" == *"$pair"* ]] || {
+      printf 'missing action row: %q\n' "$pair" >&2
+      false
+    }
+  done
+}
+
+@test "choosing retranscribe from the action list calls the CLI" {
+  dir=$(recording 2026-07-28-140312)
+  stub_vox_transcribe
+  stub_fzf ""
+  stub_fzf "" retranscribe
+
+  popup
+
+  grep -q "^vox transcribe $dir$" "$TEST_LOG"
+}
+
+@test "a shortcut pressed inside the action list acts directly" {
+  dir=$(recording 2026-07-28-140312)
+  stub_fzf ""
+  stub_fzf ctrl-o
+
+  popup
+
+  grep -q "^open -R $dir$" "$TEST_LOG"
+}
+
+@test "esc in the action list returns to the recordings" {
+  recording 2026-07-28-140312 >/dev/null
+  stub_fzf ""
+  stub_fzf esc
+  stub_fzf esc
+
+  popup
+
+  # The recording list was shown again, with the same rows, and esc there
+  # leaves without doing anything.
+  [ "$status" -eq 0 ]
+  [ -f "$FZF_ROWS.3" ]
+  cmp -s "$FZF_ROWS.1" "$FZF_ROWS.3"
+  ! grep -q '^tmux load-buffer' "$TEST_LOG"
+  # The pane query at startup is also a display-message; an action's is not -p.
+  ! grep -q '^tmux display-message [^-]' "$TEST_LOG"
+}
+
+@test "enter then enter still copies the transcript" {
+  recording 2026-07-28-140312 >/dev/null
+  stub_fzf ""
+  stub_fzf "" copy
+
+  popup
+
+  grep -q '^tmux load-buffer' "$TEST_LOG"
+  grep -q 'copied transcript: 2026-07-28-140312' "$TEST_LOG"
 }
