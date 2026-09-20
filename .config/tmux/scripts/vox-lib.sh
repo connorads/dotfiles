@@ -4,31 +4,25 @@
 # speak one language — IDLE | RECORDING, one colour/glyph/token set — defined
 # once here. Mirrors caffeine-lib.sh / mem-lib.sh's one-lib-many-surfaces role.
 #
-# What it drives: `vox` runs one detached ffmpeg per source - the mic through
-# avfoundation, the system's own output through `voxtap` on a pipe - writing two
-# WAVs, then transcribes each locally with the MacWhisper CLI. State is those
-# capture processes, tracked by a statefile holding "pids start_epoch dir", where
-# pids is a comma-separated list whose FIRST entry is the mic capture, the leader
-# that defines whether a recording is running.
+# What it drives: `vox` runs one detached `voxtap record`, which captures the mic
+# and the system's own output through one aggregate device into two WAVs, then
+# transcribes each locally with the MacWhisper CLI. State is that capture
+# process, tracked by a statefile holding "pid start_epoch dir". See
+# docs/adr/0012.
 #
-# Two processes rather than one because a single ffmpeg cannot fairly read two
-# real-time inputs whose timestamps start in different epochs: it reads whichever
-# is "behind" and starves the other (measured: the mic delivered 2 s of audio in
-# 8 s of wall-clock). See docs/adr/0003.
-#
-# The statefile is the only state: a dead leader pid reads IDLE, so the state
+# The statefile is the only state: a dead pid reads IDLE, so the state
 # self-clears without a reaper (as caffeine-lib's pidfile does).
 #
-# It also owns the two *pure text parsers* the capture path needs — audio device
-# index and track loudness. Both take command output on stdin rather than
-# touching hardware, so every branch is testable without a microphone.
+# It also owns the *pure text parser* the reclaim path needs — track loudness
+# over `volumedetect` output on stdin rather than hardware, so every branch is
+# testable without a microphone.
 #
 # Function-locals are _underscore-prefixed and always assigned before use so
 # `set -u` callers (status-right.sh) are neither clobbered nor tripped. Colours
 # are bare 6-hex (no leading #), `#`-prefixed at the call site, matching
 # mem_state_colour / caffeine_state_colour.
 
-# Statefile holding "pids start_epoch dir". Env-overridable so bats can redirect
+# Statefile holding "pid start_epoch dir". Env-overridable so bats can redirect
 # it to an isolated HOME without spawning a real capture.
 VOX_STATEFILE=${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}
 
@@ -100,7 +94,8 @@ VOX_SILENCE_DB=${VOX_SILENCE_DB:--70}
 # vox_read_state — load the statefile into _vox_pids / _vox_pid / _vox_start /
 # _vox_dir. Returns 1 (with the fields zeroed) when there is no statefile. `read`
 # with three names puts the whole remainder in the last, so a directory
-# containing spaces survives.
+# containing spaces survives. The first field may still be a comma-separated pid
+# list (the leader first), though one capture process writes one pid.
 vox_read_state() {
 	_vox_pids=""
 	_vox_pid=""
@@ -108,14 +103,14 @@ vox_read_state() {
 	_vox_dir=""
 	[ -f "$VOX_STATEFILE" ] || return 1
 	IFS=' ' read -r _vox_pids _vox_start _vox_dir <"$VOX_STATEFILE" || return 1
-	# The leader is the mic capture: it is what "recording" means, and the one
-	# whose death makes the state stale.
+	# The leader is what "recording" means, and the one whose death makes the
+	# state stale.
 	_vox_pid=${_vox_pids%%,*}
 	: "${_vox_start:=0}"
 	return 0
 }
 
-# vox_pid — the leading (mic) capture pid, empty when there is no statefile.
+# vox_pid — the leading capture pid, empty when there is no statefile.
 vox_pid() {
 	vox_read_state || true
 	printf '%s' "$_vox_pid"
@@ -134,7 +129,7 @@ vox_dir() {
 }
 
 # vox_active — true when the recorded pid is a live process. A stale statefile
-# (ffmpeg crashed, or the machine rebooted) reads as inactive, so the state
+# (voxtap crashed, or the machine rebooted) reads as inactive, so the state
 # self-clears without a separate reaper.
 vox_active() {
 	vox_read_state || return 1
@@ -350,8 +345,7 @@ vox_token() {
 	esac
 }
 
-# vox_write_state PIDS START_EPOCH DIR — record a live capture. PIDS is the
-# comma-separated capture pid list, leader (mic) first.
+# vox_write_state PID START_EPOCH DIR — record a live capture.
 vox_write_state() {
 	mkdir -p "$(dirname "$VOX_STATEFILE")"
 	printf '%s %s %s\n' "$1" "$2" "$3" >"$VOX_STATEFILE"
@@ -362,35 +356,9 @@ vox_clear_state() {
 	rm -f "$VOX_STATEFILE" 2>/dev/null || true
 }
 
-# vox_audio_device_index NAME — read `ffmpeg -f avfoundation -list_devices true`
-# output on stdin and print the index of the first *audio* device whose name
-# contains NAME; print nothing (and return 1) when there is no match.
-#
-# Pure over text so device resolution is testable with a captured listing and no
-# audio hardware. Resolving by name is load-bearing: avfoundation indices shift
-# whenever a device appears or disappears (connecting AirPods renumbers
-# everything), so a recorded index would silently capture the wrong input.
-#
-# The listing carries a video section first, with its own indices from 0, so the
-# section header gates matching. Every line is prefixed "[AVFoundation indev @
-# 0x...]", which never matches the all-digits bracket the index uses.
-vox_audio_device_index() {
-	awk -v want="$1" '
-		/AVFoundation video devices:/ { audio = 0; next }
-		/AVFoundation audio devices:/ { audio = 1; next }
-		!audio { next }
-		match($0, /\[[0-9]+\] /) {
-			idx = substr($0, RSTART + 1, RLENGTH - 3)
-			name = substr($0, RSTART + RLENGTH)
-			if (index(name, want)) { print idx; found = 1; exit }
-		}
-		END { if (!found) exit 1 }
-	'
-}
-
 # vox_mean_volume — read `ffmpeg -af volumedetect` output on stdin and print the
 # mean_volume in dBFS (e.g. "-91.0"); print nothing and return 1 when the
-# measurement is absent. Pure over text, like vox_audio_device_index.
+# measurement is absent. Pure over text, so it is testable with a fixture.
 vox_mean_volume() {
 	awk '
 		/mean_volume:/ {

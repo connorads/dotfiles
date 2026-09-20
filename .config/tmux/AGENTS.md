@@ -1318,19 +1318,22 @@ window. Keep the pill legend in [`help.md`](./help.md) in sync with the lib.
 ## vox (recording + transcription, custom subsystem)
 
 Local audio capture and on-device transcription, in the same
-one-lib-many-surfaces shape as the caffeine toggle. Two detached `ffmpeg`s
-capture the mic (avfoundation) and the system's own output (a Core Audio process
-tap, via [`voxtap`](../nix/voxtap/main.swift)) to two mono 16 kHz WAVs; `vox
-stop` finalises them, transcribes each with the MacWhisper CLI (`mw`) and merges
-them into one timestamped `transcript.md`. General-purpose by design - meetings,
+one-lib-many-surfaces shape as the caffeine toggle. One detached
+[`voxtap record`](../nix/voxtap/main.swift) captures the mic and the system's own
+output (a Core Audio process tap) through one aggregate device to two mono
+16 kHz WAVs; `vox stop` finalises them, transcribes each with the MacWhisper CLI
+(`mw`) and merges them into one timestamped `transcript.md`. General-purpose by design - meetings,
 monologues, dictation - with no consumer baked in: integration is
 `cat "$(vox last)/transcript.md" | claude -p …`.
 
 **System audio needs no setup at all** - no loopback driver, no Multi-Output
 Device, no default-output switch, headphones optional. `vox` *refuses to start*
-when the tap is unavailable rather than half-capturing a meeting;
-`VOX_MIC_ONLY=1` is the named escape hatch. Why a tap, why no fallback, and why
-two ffmpegs: [`docs/adr/0003`](../../docs/adr/0003-vox-system-audio-capture.md).
+when the tap or the mic is unavailable rather than half-capturing a meeting;
+`VOX_MIC_ONLY=1` is the named escape hatch (the same helper, the tap left out).
+Why a tap and why no fallback:
+[`docs/adr/0003`](../../docs/adr/0003-vox-system-audio-capture.md); why one
+process and one clock, and what was measured before building it:
+[`docs/adr/0012`](../../docs/adr/0012-vox-captures-both-tracks-in-one-voxtap-aggregate.md).
 
 **The store convention is the load-bearing decision.** One directory per
 recording under `${VOX_STORE:-~/Recordings/vox}`:
@@ -1340,7 +1343,7 @@ recording under `${VOX_STORE:-~/Recordings/vox}`:
     mic.wav  sys.wav      you / them (sys silent => it was a monologue)
     mic.json sys.json     per-track mw output, so a re-merge never re-transcribes
     transcript.md         merged, name-fixed - the artefact everything consumes
-    vox.log               ffmpeg + mw stderr (mw reports progress there)
+    vox.log               voxtap + mw stderr (mw reports progress there)
     transcribing.pid      only while mw runs: "pid start_epoch"
 ```
 
@@ -1389,14 +1392,12 @@ Change as a set:
   nothing is the one that needs you, and it masks an unread good one only until
   the picker is opened. **Statefile contract**:
   `${VOX_STATEFILE:-$HOME/.cache/tmux-vox.state}` holds one line
-  `pids start_epoch dir`, where `pids` is comma-separated with the **mic capture
-  first** - it is the leader, and the one whose liveness means RECORDING (`read`
-  puts the remainder in the last field, so a directory with spaces survives). It
-  also owns the two **pure text parsers** the capture path needs -
-  `vox_audio_device_index` (over `ffmpeg -list_devices` output) and
-  `vox_mean_volume` / `vox_classify_track` (over `volumedetect` output) - so
-  device resolution and the monologue/meeting call are testable with fixtures and
-  no audio hardware. Sourced, never run.
+  `pid start_epoch dir` - the capture process, whose liveness means RECORDING
+  (`read` puts the remainder in the last field, so a directory with spaces
+  survives; a comma-separated pid list is still read, leader first). It also
+  owns the **pure text parser** the reclaim path needs - `vox_mean_volume` /
+  `vox_classify_track` (over `volumedetect` output) - so the monologue/meeting
+  call is testable with fixtures and no audio hardware. Sourced, never run.
 - [`../zsh/functions/macos/vox`](../zsh/functions/macos/vox) - the dual-mode
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
   `<file>` / `transcribe` / `rename` / `compact` / `prune`). Every subcommand
@@ -1411,12 +1412,21 @@ Change as a set:
   and is the production caller of the lib's loudness parsers. It measures only
   its candidates, at the moment you ask, and refuses a recording whose every
   track is silent: that is a delete-the-recording decision, not a reclaim one.
-- [`../nix/voxtap/main.swift`](../nix/voxtap/main.swift) - the system-audio
-  helper, built by [`../nix/modules/voxtap.nix`](../nix/modules/voxtap.nix) with
-  the system `swiftc` (desktop-only, like `biokc`/`imagepaste`). Streams 48 kHz
-  mono float32 to stdout; `--check` answers "is the tap usable" with its exit
-  status, which is what lets `vox` refuse to start; `--probe N` measures instead
-  of streaming.
+- [`../nix/voxtap/main.swift`](../nix/voxtap/main.swift) - the capture engine,
+  built by [`../nix/modules/voxtap.nix`](../nix/modules/voxtap.nix) with the
+  system `swiftc` (desktop-only, like `biokc`/`imagepaste`). `voxtap record
+  <dir> --mic <name> [--no-sys]` puts the microphone (named by a case-insensitive
+  substring of its Core Audio name, or its exact UID) and a process tap in one
+  aggregate device with the mic as clock master, and writes `mic.wav` and
+  `sys.wav` from one IO proc, so the tracks are aligned by construction; SIGINT
+  or SIGTERM finalises both. It refuses with one line and no files when the tap
+  or the mic is unavailable, which is what lets `vox` refuse to start. A mic
+  that disappears is rebuilt through the same selection rule ten times, then
+  the files are finalised and it exits 1. `--probe N` runs the same aggregate
+  and reports frames, elapsed and levels instead of writing. **First run after
+  `drs`**: `voxtap --probe 1` in the foreground takes the microphone TCC prompt
+  (a detached first start would sit behind it until the 10 s wait expired; the
+  grant is to the terminal and persists across rebuilds).
 - [`../vox/merge.py`](../vox/merge.py) - a real Unix filter: two `mw` JSON files
   in, interleaved `[hh:mm:ss] Name: text` markdown out, no side effects.
   Stdlib-only so the directory stays eligible for the `py-typecheck-vox` pyrefly
@@ -1533,31 +1543,31 @@ Change as a set:
   Note that `source-file` *does* expand `$VAR` inside such a string where the
   prompt's own path does not, so a test must drive the real prompt rather than
   replay its template.
-- **Stop must be SIGINT, never SIGTERM.** ffmpeg treats TERM as "immediate exit
-  requested" and leaves a WAV with **no valid header** - an unreadable recording.
-  INT is the clean-shutdown path that rewrites the header with the real length.
+- **Stop is SIGINT, and the wait for the pid is the wait for the files.**
+  voxtap answers INT (and TERM) by flushing both tracks and writing their RIFF
+  sizes before it exits; transcribing before that would read a WAV that claims
+  to be empty.
 - **A background job from a non-interactive shell inherits SIGINT as `SIG_IGN`**
-  (POSIX), and a shell cannot then `trap` it. Real ffmpeg calls
-  `signal(SIGINT, …)` unconditionally, which overrides the inherited ignore - so
-  `vox stop` works - but a `trap … INT` shell *fake* cannot model that and would
-  appear to prove the opposite. The ffmpeg stub in
-  [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) is therefore Python.
-- **A live tap blocks avfoundation from OPENING an audio input.** Not from
-  running one - a capture already in flight survives the tap's creation - but
-  `ffmpeg -f avfoundation -i :0` started while a tap exists blocks forever, with
-  no error. So `_vox_start` starts the mic capture, waits for `mic.wav` to appear
-  (ffmpeg opens outputs only once every input is open, so the file appearing *is*
-  "the mic is live"), and only then starts the tap. Reversed, `vox` hangs with
-  nothing on disk.
-- **One ffmpeg cannot read both sources fairly.** It reads whichever input is
-  behind, and the two start in different timestamp epochs, so the other starves:
-  measured, the mic delivered **2.0 s of audio over 8 s of wall-clock**.
-  Wall-clock stamps on the pipe invert it exactly (mic 7.0 s, system 0.26 s) -
-  the same first-pts trap as `-t`. Hence one single-input ffmpeg per source.
-- **The tap delivers nothing at all through silence** - 0 bytes over 4 idle
-  seconds, not zeros - so `voxtap` pads to a monotonic clock on a 100 ms timer.
-  Without it every quiet stretch would vanish and the two tracks would drift
-  apart. The padding invariant is regression-tested in `vox-contract.bats`.
+  (POSIX), and a shell cannot then `trap` it. voxtap's dispatch signal source
+  fires regardless of the inherited disposition - so `vox stop` works - but a
+  `trap … INT` shell *fake* cannot model that and would appear to prove the
+  opposite. The voxtap stub in [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats)
+  is therefore Python.
+- **A `DispatchSourceSignal` must be held for the life of the process.** Swift
+  releases a local after its *last use*, not at scope end, and a released source
+  is cancelled: held in a block-local `let`, the SIGINT source was gone before
+  the run loop started and the signal was silently ignored. voxtap keeps its
+  sources in a global.
+- **The tap buffer through silence is full-size zeros when the tap shares an
+  aggregate with a hardware clock** - 2048 bytes per 512-frame cycle, not
+  `mDataByteSize 0` and not an absent callback (measured; the tap alone in its
+  aggregate delivers nothing through silence, which is why the old stream mode
+  needed a padding timer). The mic and the tap deliver the same frame count
+  every cycle, at 48 kHz and with a 44.1 kHz mic as master alike; the alignment
+  invariant is regression-tested in `vox-contract.bats`.
+- **A global process tap follows a default-output switch on its own.** Measured
+  with the output switched to the built-in speakers mid-capture and back: the
+  tone resumed in the tap both times. Nothing rebuilds on that event.
 - **Nothing pre-processes the audio, and the guard against losing speech is a
   detector rather than a filter.** `mw` reads each stored WAV directly.
   vox used to hand it a `silenceremove`d copy, because Parakeet once returned an
@@ -1591,15 +1601,14 @@ Change as a set:
   failing it is what would justify re-adding pre-processing.
   What it deliberately does not catch is a PARTIAL truncation - deleting the
   filter removes that failure rather than detecting it.
-- **`pan`, not `-ac 1`, on the mic.** A multichannel input would get a surround
-  downmix matrix (LFE and height coefficients) instead of the channels apps
-  actually write. The tap needs none of it: it is mono at source.
-- **No `-t`.** Duration is driven externally by `vox stop`, because `-t`
-  misbehaves alongside `-use_wallclock_as_timestamps 1` (the first pts starts at
-  device uptime).
-- **The mic is resolved by name at start**, never by a recorded index:
-  avfoundation renumbers every input when one appears or disappears (connecting
-  AirPods is enough). System audio needs no lookup at all.
+- **The mic track is channel 0 of the mic's first buffer**, never a downmix: a
+  multichannel input would otherwise get a surround matrix (LFE and height
+  coefficients) instead of the channel apps actually write. The tap is mono at
+  source.
+- **The mic is resolved by name at start**, never by a recorded index: device
+  ids and orderings change when one appears or disappears (connecting AirPods
+  is enough). HAL names equal avfoundation's, so `VOX_MIC_DEVICE=Microphone`
+  selects the same device it always did. System audio needs no lookup at all.
 - **`local path=…` in zsh empties `$PATH`.** zsh ties the `path` array to `PATH`,
   so a scalar local of that name kills external command lookup for the whole
   function. `_vox_rename` uses `rec`/`full` for exactly this reason.
@@ -1620,21 +1629,13 @@ Change as a set:
   mic's floor and `prune --empty` finds a monologue's *mic* track silent too,
   and skips the recording as having captured nothing.
 
-### Known skew
-
-The system track starts ~0.3 s after the mic - the gate above, plus the tap's own
-setup - and both end together, so the two files differ slightly in length. Larger
-skew, or drift over a long call, would show up as an `ffprobe` duration gap that
-grows with the recording; the fix would be one aggregate device carrying both the
-input device and the tap (see the ADR), not a second clock.
-
 Tests: [`../zsh/tests/vox-lib.bats`](../zsh/tests/vox-lib.bats) (pure lib: the
 four states and their precedence via real statefiles and marker mtimes, elapsed,
-colour/glyph/token, and both text parsers against captured fixtures),
+colour/glyph/token, and the loudness parser against captured fixtures),
 [`../zsh/tests/vox.bats`](../zsh/tests/vox.bats) (the command:
-ls/last/status/rename/cancel/compact/prune, plus the ffmpeg argv and SIGINT stop
-via PATH-shadow fakes - both the ffmpeg and voxtap fakes are Python, for the
-reasons in the findings above),
+ls/last/status/rename/cancel/compact/prune, plus the voxtap argv and SIGINT stop
+via PATH-shadow fakes - the voxtap fake is Python, for the reasons in the
+findings above),
 [`../zsh/tests/vox-toggle.bats`](../zsh/tests/vox-toggle.bats) (the binding, on a
 bare server with a real pty client answering the real prompt: prompt-before-start
 order, Esc/Enter/title outcomes, the no-client path and the detached stop),
@@ -1643,7 +1644,7 @@ per state), [`../zsh/tests/vox-popup.bats`](../zsh/tests/vox-popup.bats) (the
 library's actions, driven through a stubbed fzf), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)
 (integration-tagged: drives the **real** `mw` against the JSON schema `merge.py`
 parses - the one contract here that is not ours to keep - and the **real**
-`voxtap` against the padding invariant) and
+`voxtap` against the alignment invariant) and
 [`../vox/test_merge.py`](../vox/test_merge.py) (the filter). Keep the pill legend
 in [`help.md`](./help.md) in sync with the lib.
 
