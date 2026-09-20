@@ -63,6 +63,7 @@
             # See ./patches/README.md for lineage and bump procedure.
             (_final: prev: {
               redress = prev.callPackage ./packages/redress.nix { };
+              rift = prev.callPackage ./packages/rift.nix { };
               terminal-control = prev.callPackage ./packages/terminal-control.nix { };
 
               # TODO(pipx-check): remove once nixpkgs ships a pipx whose test
@@ -144,7 +145,10 @@
       # Air = desktop workstation; mini = headless Tailscale-only dev server.
       darwinConfigurations."Connors-MacBook-Air" = mkDarwin [
         ./modules/darwin-desktop.nix
-        { homebrew.casks = [ "logitech-camera-settings" ]; }
+        {
+          homebrew.casks = [ "logitech-camera-settings" ];
+          home-manager.users.connorads.home.packages = [ (mkPkgs "aarch64-darwin").rift ];
+        }
       ];
       darwinConfigurations."Connors-Mac-mini" = mkDarwin [
         ./modules/darwin-server.nix
