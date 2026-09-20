@@ -5,7 +5,7 @@
 # reachable only by typing `vox` / `vox stop` in a pane, while the rare journey
 # (browsing old recordings) had the binding; prefix + Alt+Shift+V now owns that.
 #
-#   idle / ready / transcribing   start a capture, then prompt for a title
+#   idle / ready / transcribing   prompt for a title while the capture starts
 #   recording                     stop, and transcribe in the background
 #
 # Pressed while a transcription is running it starts a new capture: transcription
@@ -13,18 +13,26 @@
 #
 # Two orderings are deliberate:
 #
-#   Capture starts BEFORE the prompt appears, and the title is applied with `vox
-#   rename` afterwards. Same prompt, no lost audio, and escaping the prompt
-#   leaves the recording running rather than reading as "cancel" — which is why
-#   the prompt says "recording".
+#   The prompt appears AT ONCE, with the capture starting behind it, and how the
+#   prompt is dismissed decides the recording's fate: Esc discards, Enter keeps
+#   (a title renames, an empty answer leaves the timestamp). Starting costs a
+#   second or more of device setup and gives nothing to look at meanwhile, so
+#   asking first is what makes the key feel instant; the answer is only applied
+#   once the capture is confirmed live, so no audio is lost to typing.
 #
 #   Stopping DETACHES. `vox stop` is synchronous by contract (so
 #   `cat "$(vox stop)/transcript.md"` still works), and a key press has nowhere
 #   to put the minutes of transcription that follow. The pill covers the wait.
 #
+# The answer travels through a tmux user option, never a shell command line.
+# `%%`/`%%%` splice the typed text into the template, tmux parses the result and
+# `run-shell` hands it to `sh -c`, so a backtick in a title would execute and a
+# single quote would break the command and lose the answer - which, with Esc
+# meaning discard, would throw the recording away. `set-option` is parsed by tmux
+# alone, and `%%%`'s quote escaping survives that parser for every title tried.
+#
 #   vox-toggle.sh [PANE]               # the binding's entry point
 #   vox-toggle.sh prompt DIR [CLIENT]  # the title prompt, also the menu's Name…
-#   vox-toggle.sh name DIR TITLE       # internal: the command-prompt's callback
 #   vox-toggle.sh finish DIR PANE      # internal: the detached stop
 # --- bash5 re-exec preamble: keep 3.2-parseable, keep above `set -u` ---
 # macOS ships bash 3.2 at /bin/bash and tmux hands it to run-shell. Re-exec under
@@ -68,48 +76,51 @@ VOX_BIN=${VOX_BIN:-$HOME/.local/bin/vox}
 
 note() { tmux display-message "$1" 2>/dev/null || true; }
 
-# raise_prompt DIR [CLIENT] — the title question, asked in one place. The pill
-# menu's Name… row asks the same thing and reaches it through the `prompt`
-# subcommand, so the wording, the flags and the callback have a single owner.
+# ask_title PROMPT [CLIENT] — raise the title prompt and wait for its answer.
+# Prints the title (possibly empty) and returns 0 when the prompt was answered
+# with Enter, 1 when it was escaped, 2 when there was no client to ask.
 #
-# The prompt appears over a capture that is already running, so escaping it
-# costs nothing. %% is tmux's substitution for what you typed. CLIENT is the one
-# that pressed the key or clicked the pill, so with several clients attached the
-# question lands where it was asked for.
-raise_prompt() {
-	local dir=$1 client=${2:-}
-	# -l: `-p` splits on commas into a *sequence* of prompts, so without it this
-	# wording asks twice and the second question eats your keys.
-	local -a cmd=(command-prompt -l -p 'title (recording, empty = none)')
+# CLIENT is the one that pressed the key or clicked the pill, so with several
+# clients attached the question lands where it was asked for.
+#
+# No `-b`: without it the CLI returns only once the prompt is dismissed, and
+# only after the template has run (measured on 3.7c: the option is set at the
+# moment of return, every time), so one read is the whole wait. With `-b` the
+# CLI returns at once, whatever the man page says about it, and Esc could not be
+# told from a prompt still open. The CLI exits 0 for Esc and Enter alike, so the
+# option's presence is the only thing that tells them apart; it is keyed by this
+# pid so two prompts can never read each other's answer, and prefixed with a
+# character so an empty answer is still an answer.
+ask_title() {
+	local prompt=$1 client=${2:-} opt="@vox_answer_$$" answer
+	# -l: `-p` splits on commas into a *sequence* of prompts, so without it a
+	# wording holding a comma asks twice and the second question eats your keys.
+	local -a cmd=(command-prompt -l -p "$prompt")
 	[ -n "$client" ] && cmd+=(-t "$client")
-	# If no client can be prompted the recording is still running, and saying so
-	# beats reporting the start as failed.
-	# -b on the callback for the same reason as the binding: a foreground
-	# run-shell queues the keys pressed while it lives, and no vox path needs an
-	# exit status - they all report with display-message.
-	tmux "${cmd[@]}" "run-shell -b '\"$SELF\" name \"$dir\" \"%%\"'" 2>/dev/null ||
-		note "vox: recording ${dir##*/}"
+	tmux "${cmd[@]}" "set-option -g $opt \"x%%%\"" 2>/dev/null || return 2
+	answer=$(tmux show-options -gqv "$opt" 2>/dev/null)
+	tmux set-option -gu "$opt" 2>/dev/null || true
+	[ -n "$answer" ] || return 1
+	printf '%s' "${answer#x}"
 }
 
-# prompt DIR [CLIENT] — the menu's door to the same question.
-if [ "${1:-}" = prompt ]; then
-	[ -n "${2:-}" ] || exit 0
-	raise_prompt "$2" "${3:-}"
-	exit 0
-fi
-
-# name DIR TITLE — the command-prompt callback. An empty title is the common
-# case (you pressed enter), and means "leave it at the timestamp".
-if [ "${1:-}" = name ]; then
-	dir=${2:-}
-	shift 2 || true
-	title="$*"
-	[ -n "$dir" ] || exit 0
-	[ -n "$title" ] || exit 0
+# rename_to DIR TITLE — apply a title to a recording and say how it went.
+rename_to() {
+	local dir=$1 title=$2 new
 	if new=$("$VOX_BIN" rename "$dir" "$title" 2>/dev/null); then
 		note "vox: recording ${new##*/}"
 	else
 		note "vox: could not rename ${dir##*/}"
+	fi
+}
+
+# prompt DIR [CLIENT] — the menu's door to the title question, over a recording
+# that is already running. Escaping it here means "no rename", never discard:
+# the capture was not started by this prompt, so it is not this prompt's to end.
+if [ "${1:-}" = prompt ]; then
+	[ -n "${2:-}" ] || exit 0
+	if title=$(ask_title 'title (recording, empty = none)' "${3:-}") && [ -n "$title" ]; then
+		rename_to "$2" "$title"
 	fi
 	exit 0
 fi
@@ -149,15 +160,45 @@ if [ "$(vox_state)" = RECORDING ]; then
 	exit 0
 fi
 
-# Start, keeping stdout (the path) and stderr (the diagnostic) apart: vox
-# refuses to start when system audio is unavailable, and that reason is the
-# whole message.
-err=$(mktemp)
-if dir=$("$VOX_BIN" 2>"$err"); then
-	rm -f "$err"
-	raise_prompt "$dir"
-else
-	note "vox: $(tail -1 "$err")"
-	rm -f "$err"
+# Start: the capture in the background, the prompt in front of it, then one
+# decision from the two results. stdout (the path) and stderr (the diagnostic)
+# are kept apart because vox refuses to start when system audio is unavailable,
+# and that reason is the whole message.
+scratch=$(mktemp -d)
+"$VOX_BIN" >"$scratch/dir" 2>"$scratch/err" &
+start_pid=$!
+
+title=$(ask_title 'title · esc discards · enter keeps')
+prompt_rc=$?
+
+wait "$start_pid"
+start_rc=$?
+dir=$(cat "$scratch/dir")
+err=$(tail -1 "$scratch/err")
+rm -rf "$scratch"
+
+if [ "$start_rc" -ne 0 ]; then
+	# Nothing to discard or keep; the prompt, if any, was answered for nothing.
+	# vox's own last line already carries the prefix.
+	note "$err"
 	exit 1
 fi
+
+case "$prompt_rc" in
+0)
+	if [ -n "$title" ]; then
+		rename_to "$dir" "$title"
+	else
+		note "vox: recording ${dir##*/}"
+	fi
+	;;
+1)
+	"$VOX_BIN" cancel >/dev/null 2>&1
+	note "vox: discarded ${dir##*/}"
+	;;
+*)
+	# No client to ask: the recording is running, and saying so beats reporting
+	# the start as failed.
+	note "vox: recording ${dir##*/}"
+	;;
+esac

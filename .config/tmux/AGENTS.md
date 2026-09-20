@@ -1417,23 +1417,30 @@ Change as a set:
   `--vocabulary`/`--prompt` flag and no replacement dictionary in its prefs.
 - [`scripts/vox-toggle.sh`](./scripts/vox-toggle.sh) - `prefix + Alt+v`, the
   key the subsystem is actually used through: idle starts, recording stops. Two
-  orderings are the design. **Capture starts before the title prompt appears**
-  and the answer is applied with `vox rename`, so no audio is lost to typing and
-  escaping the prompt leaves the recording running (hence the prompt says
-  "recording", not "name"). **Stopping detaches**: `vox stop` stays synchronous
-  by contract, and a key press has nowhere to put minutes of transcription, so
-  the pill carries the wait and a `display-message` plus `ring_bell` reports the
-  end. It reports the **exit code**, not merely whether the command ran: a
-  transcript with nothing in it says "no speech transcribed" and names the log,
-  and the bell rings either way - a recording that produced nothing needs you
-  more than one that worked. Pressed while TRANSCRIBING it starts a new capture - transcription is
-  per-directory and detached, so the two never contend. **The title prompt is one
-  literal question** (`command-prompt -l`, see the findings below) and the script
-  owns it: `vox-toggle.sh prompt DIR [CLIENT]` is the single door, so the pill
-  menu asks the same wording with the same flags. **The key runs detached**
-  (`run-shell -b`, in [`tmux.conf`](./tmux.conf) and on the prompt's own `name`
-  callback): a foreground job queues every key pressed while it lives, and the
-  job lives for as long as the prompt is open.
+  orderings are the design. **The title prompt appears at once, with the capture
+  starting behind it**, and how the prompt is dismissed decides the recording's
+  fate: Enter keeps it (a title is applied with `vox rename`, an empty answer
+  leaves the timestamp), Esc discards it with `vox cancel`. Starting costs a
+  second or more of device setup with nothing to look at, so asking first is
+  what makes the key feel instant; the answer is acted on only once the start
+  has returned, so a start that fails is reported and neither renames nor
+  cancels. With no client to ask the recording is kept and said so. Every
+  outcome ends in a `display-message`. **Stopping detaches**: `vox stop` stays
+  synchronous by contract, and a key press has nowhere to put minutes of
+  transcription, so the pill carries the wait and a `display-message` plus
+  `ring_bell` reports the end. It reports the **exit code**, not merely whether
+  the command ran: a transcript with nothing in it says "no speech transcribed"
+  and names the log, and the bell rings either way - a recording that produced
+  nothing needs you more than one that worked. Pressed while TRANSCRIBING it
+  starts a new capture - transcription is per-directory and detached, so the two
+  never contend. **The title prompt is one literal question** (`command-prompt
+  -l`, see the findings below) and the script owns it: `ask_title` raises it
+  and reads the answer back through a tmux user option, and `vox-toggle.sh
+  prompt DIR [CLIENT]` is the single door for the pill menu's Name…, where Esc
+  means "no rename" - that prompt did not start the capture, so it is not its to
+  end. **The key runs detached** (`run-shell -b`, in [`tmux.conf`](./tmux.conf)):
+  the script lives for as long as the prompt is open, and a foreground job
+  queues every key pressed while it lives.
 - [`scripts/vox-menu.sh`](./scripts/vox-menu.sh) - the menu behind a click on
   the pill (`#[range=user|vox]`, dispatched from the `MouseDown1Status` chain in
   [`tmux.conf`](./tmux.conf) beside `agents` and `mem`). **Its rows match the
@@ -1498,6 +1505,25 @@ Change as a set:
   that raises a `command-prompt` or `display-menu` from the CLI lives until that
   prompt or menu closes. A binding whose script prompts therefore needs
   `run-shell -b`, unless something genuinely needs the exit status.
+- **`command-prompt` without `-b` blocks the CLI until the prompt is dismissed,
+  and its template has run by the time the CLI returns** (measured on 3.7c:
+  five of five). `-b` makes the CLI return at once - the man page's "the
+  invoking client does not exit until it is dismissed" reads as the opposite,
+  and is not what happens - so a script that needs the answer must not pass it.
+  The CLI exits 0 for Esc and Enter alike; only the template's side effect
+  tells them apart.
+- **A prompt's answer must never be spliced into a shell command line.** `%%`
+  and `%%%` substitute the typed text into the template, tmux parses the result,
+  and `run-shell` hands it to `sh -c`: measured, a backtick in a title ran `id`
+  and `$HOME` expanded, and every shell-quoted form loses a title holding a
+  single quote - the callback never runs, which under Esc-discards reads as Esc
+  and deletes the recording. `set-option -g @name "x%%%"` is parsed by tmux
+  alone and survived every title tried (quotes of both kinds, `$`, backticks,
+  `;`, `#`, `\`, `%%`, UTF-8); the script reads the option back and unsets it.
+  The `x` prefix is what makes an empty answer distinguishable from no answer.
+  Note that `source-file` *does* expand `$VAR` inside such a string where the
+  prompt's own path does not, so a test must drive the real prompt rather than
+  replay its template.
 - **Stop must be SIGINT, never SIGTERM.** ffmpeg treats TERM as "immediate exit
   requested" and leaves a WAV with **no valid header** - an unreadable recording.
   INT is the clean-shutdown path that rewrites the header with the real length.
@@ -1601,7 +1627,8 @@ ls/last/status/rename/cancel/compact/prune, plus the ffmpeg argv and SIGINT stop
 via PATH-shadow fakes - both the ffmpeg and voxtap fakes are Python, for the
 reasons in the findings above),
 [`../zsh/tests/vox-toggle.bats`](../zsh/tests/vox-toggle.bats) (the binding, on a
-bare server: start-then-prompt order and the detached stop),
+bare server with a real pty client answering the real prompt: prompt-before-start
+order, Esc/Enter/title outcomes, the no-client path and the detached stop),
 [`../zsh/tests/vox-menu.bats`](../zsh/tests/vox-menu.bats) (the pill menu's rows
 per state), [`../zsh/tests/vox-popup.bats`](../zsh/tests/vox-popup.bats) (the
 library's actions, driven through a stubbed fzf), [`../zsh/tests/vox-contract.bats`](../zsh/tests/vox-contract.bats)

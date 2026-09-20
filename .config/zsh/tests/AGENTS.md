@@ -177,9 +177,12 @@ run_on_pty y zsh --no-rcs "$SOME_FN" --some-flag   # then assert $status / $outp
 ```
 
 **`script(1)` cannot do this, and neither of its failures says so.** Handed a FIFO
-on stdin - the `attach_pty_client` fd-9 pattern, which is the spelling that looks
-right - BSD `script` calls `tcgetattr` on its own stdin and aborts with
-`tcgetattr/ioctl: Operation not supported on socket`, so the child never runs.
+on stdin - the spelling that looks right - BSD `script` calls `tcgetattr` on its
+own stdin and aborts with `tcgetattr/ioctl: Operation not supported on socket`,
+so the child never runs - and it does so whenever bats is not itself on a terminal
+(an agent's shell, CI), which is why `attach_pty_client` is a Python pty driver
+rather than `script`: under `script`, every suite needing a client silently
+skipped there.
 Handed a heredoc it starts, but the pty reaches EOF before the child's `read`, so
 the prompt sees `^D`, the answer parses as empty, and **every answer reads as
 "no"**. An abort test then passes for entirely the wrong reason while its proceed
