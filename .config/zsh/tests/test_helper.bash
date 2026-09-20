@@ -238,42 +238,58 @@ sock.close()
 PY
 }
 
-# attach_pty_client [SESSION] - attach a real background client over a pseudo-tty
-# to SESSION (default `s`) on the private server named by $TMUX_BIN and $SOCK, so
-# commands that need a real client (switch-client, popups, the sweep's
-# "someone is viewing" gate) have one. Sets ATTACH_PID for teardown; returns
-# non-zero if no client appears, so callers can `skip` - some CI environments
-# refuse to allocate a pty.
+# attach_pty_client [SESSION] [TYPESCRIPT] - attach a real background client over
+# a pseudo-tty to SESSION (default `s`) on the private server named by $TMUX_BIN
+# and $SOCK, so commands that need a real client (switch-client, popups, the
+# sweep's "someone is viewing" gate) have one. Sets ATTACH_PID for teardown;
+# returns non-zero if no client appears, so callers can `skip` - some CI
+# environments refuse to allocate a pty.
 #
-# Two `script` spellings because BSD (macOS) and util-linux take different flags.
+# TYPESCRIPT (default /dev/null) receives everything tmux draws on the client,
+# which is the only observable for client-side state tmux exposes no format
+# for - a command prompt being open, say: poll the file for the prompt's text.
+#
+# A Python pty driver, not script(1): BSD `script` runs tcgetattr on its own
+# stdin and aborts with "Operation not supported on socket" whenever bats is
+# not itself on a terminal (an agent's shell, CI), so every caller silently
+# skipped there. The driver owns the pty outright, keeps the client's stdin
+# open for as long as it lives, and takes the client down with it on SIGTERM.
 # TERM is forced: CI leaves it unset, tmux then fails to open the terminal, and
-# the test would silently skip rather than fail. 3>&- closes bats's status fd so
-# the backgrounded client cannot hang the run.
-#
-# **Stdin is a FIFO this shell holds open on fd 9, never the caller's.** `script`
-# exits the instant its input reaches EOF and takes the pty client down with it,
-# so a backgrounded client inheriting an already-drained stdin lives only a few
-# milliseconds - long enough for `#{session_attached}` to flip, not long enough
-# to still be attached when the test uses it. The client's lifetime has to be
-# owned, not inferred: without this the caller is racing a process it never
-# asked to be short-lived, and wins only by accident. tmux-render-smoke.bats
-# reaches the same conclusion from the other direction.
+# the test would silently skip rather than fail. 3>&- closes bats's status fd
+# so the backgrounded client cannot hang the run.
 attach_pty_client() {
-  local sess=${1:-s}
-  local fifo="$BATS_TEST_TMPDIR/attach-stdin.fifo"
+  local sess=${1:-s} typescript=${2:-/dev/null}
 
-  rm -f "$fifo"
-  mkfifo "$fifo"
-  # Read-write, so this shell is itself the writer keeping the pipe from EOF.
-  exec 9<>"$fifo"
+  TERM=${TERM:-screen} python3 - "$typescript" "$TMUX_BIN" -L "$SOCK" attach -t "$sess" \
+    >/dev/null 2>&1 3>&- <<'PY' &
+import os
+import pty
+import signal
+import sys
 
-  if script --help 2>&1 | grep -q 'illegal option'; then # BSD
-    TERM=${TERM:-screen} script -q /dev/null "$TMUX_BIN" -L "$SOCK" attach -t "$sess" \
-      <&9 >/dev/null 2>&1 3>&- &
-  else # util-linux
-    TERM=${TERM:-screen} script -qec "$TMUX_BIN -L $SOCK attach -t $sess" /dev/null \
-      <&9 >/dev/null 2>&1 3>&- &
-  fi
+typescript, argv = sys.argv[1], sys.argv[2:]
+pid, master = pty.fork()
+if pid == 0:
+    os.execvp(argv[0], argv)
+
+
+def down(*_):
+    os.kill(pid, signal.SIGHUP)
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, down)
+with open(typescript, "ab", buffering=0) as out:
+    while True:
+        try:
+            data = os.read(master, 65536)
+        except OSError:
+            break
+        if not data:
+            break
+        out.write(data)
+os.waitpid(pid, 0)
+PY
   # shellcheck disable=SC2034  # read by the calling .bats file's teardown
   ATTACH_PID=$!
 
