@@ -6,11 +6,12 @@ the one that exists. [`user_schemes.py`](./user_schemes.py) is the adapter that
 wires this into the plugin; nothing here imports the plugin, so this file is
 typecheckable, testable and runnable on a machine with no plugin checkout.
 
-Three shapes of text produce a row in the picker:
+Four shapes of text produce a row in the picker:
 
     walkies/target.png              a token - no spaces, the common case
     M  walkies/my image.png         a path with spaces, glued to pane chrome
     src/index.ts:42                 either of those, with a line number
+    (walkies/target.png).           a path wrapped in prose punctuation
 
 and each is looked for in two places: as written (absolute, `~`-expanded, or
 relative to the pane's cwd) and then, only when it is relative, under the
@@ -37,10 +38,11 @@ from typing import Literal
 _MAX_PATH_LENGTH = 4096
 
 # Characters no match may contain. Control characters (which include TAB and
-# NEWLINE) end a match, as do the shell quotes and the redirection/glob
-# metacharacters that surround paths far more often than they appear in one.
-# `:` is excluded so the optional `:<line>` suffix can be captured separately.
-_FORBIDDEN = r"\\'\"<>|?*:\x00-\x1f"
+# NEWLINE) end a match, as do the shell quotes and backticks and the
+# redirection/glob metacharacters that surround paths far more often than they
+# appear in one. `:` is excluded so the optional `:<line>` suffix can be
+# captured separately.
+_FORBIDDEN = r"\\'\"`<>|?*:\x00-\x1f"
 
 # A token: the whole match is one path, so spaces end it.
 _TOKEN_REGEX = re.compile(rf"(?P<link>[^ {_FORBIDDEN}]{{1,{_MAX_PATH_LENGTH}}})(?::(?P<line>\d+))?")
@@ -120,6 +122,36 @@ def _suffixes(text: str) -> tuple[str, ...]:
     return tuple(form for form in (text[start:] for start in starts) if " " in form)
 
 
+def _trim(form: str) -> str:
+    """`form` without the wrappers prose puts round a path and the punctuation
+    that ends a sentence: `(a.png).` -> `a.png`.
+
+    These characters can occur *inside* a real path (`Screenshot (1).png`),
+    which is why they are trimmed as a second candidate rather than forbidden
+    by the regex: the verbatim form is probed first and wins if it exists.
+    """
+    return form.lstrip("([<").rstrip(")]>.,;").strip()
+
+
+def _forms(text: str) -> tuple[str, ...]:
+    """Every spelling of a path `text` could be, best first.
+
+    For each suffix form, longest first: the form as written, then its trimmed
+    variant when that differs. Whether a form names anything is judged on the
+    trimmed variant, so `(.)` is dropped in both spellings: its verbatim form
+    is only ever prose punctuation round a nothing.
+    """
+    forms: list[str] = []
+    for suffix in _suffixes(text):
+        trimmed = _trim(suffix)
+        if not _is_pathish(trimmed):
+            continue
+        for form in (suffix, trimmed):
+            if form not in forms:
+                forms.append(form)
+    return tuple(forms)
+
+
 def _roots(form: str, cwd: Path, repo_root: Path | None) -> tuple[Path, ...]:
     """The absolute paths `form` could name, in the order to try them."""
     try:
@@ -143,10 +175,7 @@ def candidates(text: str, *, cwd: Path, repo_root: Path | None) -> tuple[Path, .
     Pure: the caller probes the filesystem, so the ordering this returns is the
     whole of the resolution policy and can be asserted without a temp tree.
     """
-    stripped = text.strip()
-    if not _is_pathish(stripped):
-        return ()
-    return tuple(path for form in _suffixes(stripped) for path in _roots(form, cwd, repo_root))
+    return tuple(path for form in _forms(text.strip()) for path in _roots(form, cwd, repo_root))
 
 
 def _exists(path: Path) -> bool:
