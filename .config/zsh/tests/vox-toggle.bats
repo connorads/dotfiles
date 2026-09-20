@@ -379,7 +379,9 @@ EOF
 
   toggle_answering 'esc discards' '' Escape -- "$PANE"
 
-  [ "$status" -ne 0 ]
+  # Exit 0 even so: under `run-shell -b` a non-zero exit makes tmux print
+  # `'<cmd>' returned N` over the reason the script just displayed.
+  [ "$status" -eq 0 ]
   [ ! -f "$VOX_STATEFILE" ]
   ! grep -q '^vox cancel$' "$TEST_LOG"
   grep -q 'display-message vox: system audio capture is unavailable' "$TEST_LOG"

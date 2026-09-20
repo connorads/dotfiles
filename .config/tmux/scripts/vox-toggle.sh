@@ -31,6 +31,11 @@
 # meaning discard, would throw the recording away. `set-option` is parsed by tmux
 # alone, and `%%%`'s quote escaping survives that parser for every title tried.
 #
+# The binding runs this under `run-shell -b`, and a non-zero exit makes tmux
+# print `'<cmd>' returned N` after - and over - any display-message the script
+# made, so the reason is lost. Every path reports with display-message and
+# exits 0; nothing reads the status.
+#
 #   vox-toggle.sh [PANE]               # the binding's entry point
 #   vox-toggle.sh prompt DIR [CLIENT]  # the title prompt, also the menu's Name…
 #   vox-toggle.sh finish DIR PANE      # internal: the detached stop
@@ -181,7 +186,7 @@ if [ "$start_rc" -ne 0 ]; then
 	# Nothing to discard or keep; the prompt, if any, was answered for nothing.
 	# vox's own last line already carries the prefix.
 	note "$err"
-	exit 1
+	exit 0
 fi
 
 case "$prompt_rc" in

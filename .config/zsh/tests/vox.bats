@@ -57,7 +57,8 @@ EOF
 # real one does, so the file vox waits for implies both) and stays alive until
 # it is signalled, recording WHICH signal it got; --no-sys writes the mic alone.
 # VOXTAP_STUB_UNAVAILABLE=1 makes it refuse the way the real one refuses a
-# missing tap or mic: one line, exit 1, no files.
+# missing tap or mic: one line, exit 1, no files. VOXTAP_STUB_OLD=1 answers
+# the way a voxtap built before `record` does: its usage line, exit 1.
 #
 # Written in Python, not shell, and that is load-bearing. A background job
 # started by a NON-interactive shell inherits SIGINT (and SIGQUIT) as SIG_IGN —
@@ -90,6 +91,10 @@ if not argv or argv[0] != "record":
 
 if os.environ.get("VOXTAP_STUB_UNAVAILABLE"):
     sys.stderr.write("voxtap: AudioHardwareCreateProcessTap failed (OSStatus 1852797029)\n")
+    sys.exit(1)
+
+if os.environ.get("VOXTAP_STUB_OLD"):
+    sys.stderr.write("voxtap: usage: voxtap [--check | --probe <seconds>]\n")
     sys.exit(1)
 
 directory = argv[1]
@@ -353,6 +358,25 @@ aged_recording() {
   [ -z "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1)" ]
   [[ "$stderr" == *"did not start"* ]]
   [[ "$stderr" == *"AudioHardwareCreateProcessTap failed"* ]]
+}
+
+@test "an old voxtap is named as the reason, with the fix" {
+  require_macos
+  stub_voxtap
+  export VOXTAP_STUB_OLD=1
+
+  vox
+
+  # vox is a dotfile, live at once; voxtap is installed by drs. A usage line
+  # back from `record` means the two disagree on the CLI, and the usage text
+  # itself says nothing about what to do.
+  [ "$status" -ne 0 ]
+  [ ! -f "$VOX_STATEFILE" ]
+  [ -z "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1)" ]
+  [[ "$stderr" == *"did not start"* ]]
+  [[ "$stderr" == *"predates"* ]]
+  [[ "$stderr" == *"run drs"* ]]
+  [[ "$stderr" != *"usage:"* ]]
 }
 
 @test "start refuses when the helper is not installed" {

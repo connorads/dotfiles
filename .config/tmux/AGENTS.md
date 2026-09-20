@@ -1525,6 +1525,10 @@ Change as a set:
   that raises a `command-prompt` or `display-menu` from the CLI lives until that
   prompt or menu closes. A binding whose script prompts therefore needs
   `run-shell -b`, unless something genuinely needs the exit status.
+- **`run-shell -b` prints `'<cmd>' returned N` for a non-zero exit**, after
+  and over any `display-message` the script made, so the script's own reason
+  is the message that gets replaced. A binding script reports with
+  `display-message` and exits 0 on every path.
 - **`command-prompt` without `-b` blocks the CLI until the prompt is dismissed,
   and its template has run by the time the CLI returns** (measured on 3.7c:
   five of five). `-b` makes the CLI return at once - the man page's "the

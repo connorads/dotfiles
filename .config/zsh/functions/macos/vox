@@ -158,7 +158,15 @@ _vox_start() {
 		reason=$(tail -n 1 "$dir/vox.log" 2>/dev/null)
 		rm -f "$dir"/{vox.log,mic.wav,sys.wav}
 		rmdir "$dir" 2>/dev/null
-		_vox_die "the capture did not start${reason:+ — ${reason#voxtap: }}"
+		reason=${reason#voxtap: }
+		# A usage line means voxtap does not know `record`: vox is a dotfile and
+		# live at once, the helper is nix-built and installed by drs, so between
+		# a commit and the next switch the two disagree on the CLI. Relaying the
+		# usage text says nothing about what to do.
+		case $reason in
+		usage:*) reason='voxtap predates `record` (run drs)' ;;
+		esac
+		_vox_die "the capture did not start${reason:+ — $reason}"
 		return 1
 	}
 
