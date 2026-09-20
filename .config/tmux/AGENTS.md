@@ -1366,9 +1366,9 @@ Change as a set:
   shared `human_age`, or the unread/empty count). Every state is derived from a file
   whose staleness cannot lie, so none of them needs a reaper:
   **`${VOX_JOBFILE:-~/.cache/tmux-vox.job}`** holds `pid start_epoch dir` for the
-  transcription `vox stop` is spending minutes on - written by `stop` itself, so
-  the pill says TRANSCRIBING whether it was typed in a pane or detached by the
-  toggle, and a crashed `mw` reads as finished by pid liveness alone.
+  transcription `vox stop` is spending minutes on - written by `stop` and
+  `transcribe` themselves, so the pill says TRANSCRIBING whether it was typed in
+  a pane or detached by the toggle, and a crashed `mw` reads as finished by pid liveness alone.
   **`${VOX_SEENFILE:-~/.cache/tmux-vox.seen}`** is a marker whose *mtime* is the
   last time you looked: READY is "a non-empty `transcript.md` is newer than
   this", which covers any number of finished recordings without tracking one of
@@ -1391,10 +1391,10 @@ Change as a set:
   no audio hardware. Sourced, never run.
 - [`../zsh/functions/macos/vox`](../zsh/functions/macos/vox) - the dual-mode
   command (`vox` / `--name` / `stop` / `cancel` / `status` / `ls` / `last` /
-  `<file>` / `rename` / `compact` / `prune`). Every subcommand prints **bare
-  paths to stdout, one per line**, with progress and diagnostics on stderr, so it
-  composes without glue. **Exit 0 means the transcript has content**: `stop` and
-  `<file>` print the recording's path either way - the audio is intact, so there
+  `<file>` / `transcribe` / `rename` / `compact` / `prune`). Every subcommand
+  prints **bare paths to stdout, one per line**, with progress and diagnostics on
+  stderr, so it composes without glue. **Exit 0 means the transcript has
+  content**: `stop`, `transcribe` and `<file>` print the recording's path either way - the audio is intact, so there
   is somewhere to look - but return non-zero, with one line naming what was not
   recognised, how long the audio was and where the log is. `mw` exits 0 whatever
   it heard, so nothing upstream of this check can tell "no speech" from "mw fell

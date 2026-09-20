@@ -795,6 +795,106 @@ EOF
   [ -L "$output/source.wav" ]
 }
 
+# --- transcribe: redoing a recording in place --------------------------------
+#
+# The stored WAVs are the source of truth; JSON and transcript are regenerable.
+# So a recording whose far side was transcribed to nothing is redone where it
+# is, not minted again as a one-track import.
+
+# A recording with both tracks stored and a system track that transcribed to
+# nothing - the shape `transcribe` exists for.
+blanked_recording() {
+  local dir="$VOX_STORE/2026-07-28-140312-mikey"
+  mkdir -p "$dir"
+  printf 'RIFFmic' >"$dir/mic.wav"
+  printf 'RIFFsys' >"$dir/sys.wav"
+  printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hello there"}]}\n' >"$dir/mic.json"
+  printf '{"segments":[]}\n' >"$dir/sys.json"
+  printf '[00:00:00] Me: hello there\n' >"$dir/transcript.md"
+  printf '%s\n' "$dir"
+}
+
+@test "transcribe re-runs every stored track and re-merges in place" {
+  stub_mw
+  dir=$(blanked_recording)
+
+  vox transcribe "$dir"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$dir" ]
+  grep -q "^mw transcribe $dir/mic.wav " "$TEST_LOG"
+  grep -q "^mw transcribe $dir/sys.wav " "$TEST_LOG"
+  [[ "$(cat "$dir/sys.json")" == *'"segments":[{'* ]]
+  [[ "$(cat "$dir/transcript.md")" == *"Speaker 1: yes hello"* ]]
+  # No second directory: the recording was redone, not imported.
+  [ "$(find "$VOX_STORE" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]
+}
+
+@test "transcribe holds the job file while mw runs and drops it after" {
+  dir=$(blanked_recording)
+  # The stub records whether the job file existed at the moment it was called:
+  # that is what makes the pill read TRANSCRIBING for the duration.
+  write_stub mw <<'EOF'
+#!/usr/bin/env bash
+if [ -f "$VOX_JOBFILE" ]; then
+  printf 'mw job-present\n' >>"$TEST_LOG"
+else
+  printf 'mw job-absent\n' >>"$TEST_LOG"
+fi
+printf '{"segments":[{"id":0,"start":0,"end":1000,"text":"hi"}]}\n'
+EOF
+
+  vox transcribe "$dir"
+
+  [ "$status" -eq 0 ]
+  grep -q '^mw job-present$' "$TEST_LOG"
+  ! grep -q '^mw job-absent$' "$TEST_LOG"
+  [ ! -f "$VOX_JOBFILE" ]
+}
+
+@test "transcribe on a missing directory fails and creates nothing" {
+  stub_mw
+
+  vox transcribe "$VOX_STORE/2026-07-28-140312-nowhere"
+
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"no such recording"* ]]
+  [ -z "$output" ]
+  [ -z "$(ls -A "$VOX_STORE")" ]
+  ! grep -q '^mw ' "$TEST_LOG"
+}
+
+@test "transcribe without a path prints usage" {
+  vox transcribe
+
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"usage: vox transcribe <path>"* ]]
+}
+
+@test "transcribe refuses a recording with no WAV tracks" {
+  stub_mw
+  dir="$VOX_STORE/2026-07-28-140312-old"
+  mkdir -p "$dir"
+  printf 'OggS' >"$dir/mic.opus"
+  printf '[00:00:00] Me: hello\n' >"$dir/transcript.md"
+
+  vox transcribe "$dir"
+
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"no WAV tracks"* ]]
+  [[ "$stderr" == *"compacted"* ]]
+  ! grep -q '^mw ' "$TEST_LOG"
+  # Nothing was touched on the way out.
+  [ "$(cat "$dir/transcript.md")" = "[00:00:00] Me: hello" ]
+}
+
+@test "help lists transcribe" {
+  vox help
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"vox transcribe <path>"* ]]
+}
+
 # --- compact / prune: reclaiming disk ---------------------------------------
 #
 # Selection is by the directory's TIMESTAMP PREFIX, not its mtime: transcribing,
