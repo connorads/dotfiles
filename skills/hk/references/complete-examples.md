@@ -8,7 +8,13 @@
 - Go Service
 - Python (ruff + mypy)
 
-Real configurations for different tech stacks. Bump the version in the `amends`/`import` URLs to match `hk --version`.
+V2 examples verified against 2.0.1 on 2026-09-20. Match the schema URLs to the
+selected installed release. For v1 maintenance read `versions-and-migration.md`.
+
+These explicit hooks retain distinct memberships. Most define only pre-commit;
+`hk check` needs an explicit check hook or shared top-level steps. Preview with
+`hk run pre-commit --plan` before running a fixing hook. Keep new common checks
+in top-level steps only when all three default hooks should receive them.
 
 ---
 
@@ -18,13 +24,13 @@ Real configurations for different tech stacks. Bump the version in the `amends`/
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".wrangler")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` - see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -72,8 +78,7 @@ hooks {
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"
+hk = "2"
 typos = "latest"
 gitleaks = "latest"
 ```
@@ -82,18 +87,18 @@ gitleaks = "latest"
 
 ## Payload CMS + Next.js 15 + Biome + pnpm
 
-16 pre-commit steps + commit-msg hook. Comprehensive setup for a team repo. Add
+Pre-commit checks and a separate commit-msg hook. Comprehensive setup for a team repo. Add
 the soft-protected pre-push asset when advisory branch push protection is needed.
 
 ```pkl
 // hk configuration - https://hk.jdx.dev/
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 exclude = List("node_modules", "dist", ".next", ".open-next", "storybook-static")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` - see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -188,8 +193,7 @@ the remote ref Git is about to update and supports clone-local owner opt-out.
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"
+hk = "2"
 typos = "latest"
 gitleaks = "latest"
 rumdl = "latest"
@@ -200,17 +204,19 @@ yamllint = "latest"
 
 ## Dotfiles (Shell + Nix)
 
-No package.json. Uses local variable to share steps across pre-commit/fix/check hooks. No JS tools - focused on shell, nix, and markdown.
+No package.json. Explicit hooks share a local mapping. This example's fix hook
+stashes and stages by design, so it declares `stage = true` in v2. A new manual
+fix workflow normally leaves fixes unstaged.
 
 ```pkl
 // Dotfiles hk configuration - fast pre-commit checks for staged files.
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 exclude = List(".git", "git", "node_modules", ".cache", ".local", ".npm", ".cargo", ".rustup", ".vscode-server")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` - see references/output-noise.md
 
 local fast_steps = new Mapping<String, Step> {
     ["trailing-whitespace"] = (Builtins.trailing_whitespace) {}
@@ -250,6 +256,7 @@ hooks {
 
     ["fix"] {
         fix = true
+        stage = true
         stash = "git"
         steps = fast_steps
     }
@@ -264,8 +271,7 @@ hooks {
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"
+hk = "2"
 rumdl = "latest"
 ```
 
@@ -280,11 +286,11 @@ git config --local core.hooksPath .hk-hooks
 ## Go Service
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` - see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -315,8 +321,7 @@ hooks {
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"
+hk = "2"
 typos = "latest"
 gitleaks = "latest"
 ```
@@ -326,13 +331,13 @@ gitleaks = "latest"
 ## Python (ruff + mypy)
 
 ```pkl
-amends "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.56.1/hk@1.56.1#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 exclude = List(".venv", "__pycache__", ".mypy_cache", ".ruff_cache", "dist")
 
 display_skip_reasons = List()   // suppress skip noise
-terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` — see references/output-noise.md
+terminal_progress = false        // OSC progress sequences, not stdout noise; quiet success output with `hk run -q` - see references/output-noise.md
 
 hooks {
     ["pre-commit"] {
@@ -347,10 +352,8 @@ hooks {
                 check = "gitleaks detect --no-banner --redact --log-level=error"  // silent on success
             }
             ["ruff-format"] = (Builtins.ruff_format) {}   // builtin passes --quiet (silent)
-            ["ruff"] = (Builtins.ruff) {
-                check = "ruff check -q --force-exclude {{files}}"   // -q silences `All checks passed!`
-            }
-            ["mypy"] = (Builtins.mypy) { stomp = true }
+            ["ruff"] = Builtins.ruff
+            ["mypy"] = Builtins.mypy
             ["pytest"] {
                 check = "pytest"   // chatty on success; wrapper-level -q drops it
             }
@@ -363,8 +366,7 @@ hooks {
 
 ```toml
 [tools]
-hk = "latest"
-pkl = "latest"
+hk = "2"
 typos = "latest"
 gitleaks = "latest"
 ```

@@ -32,11 +32,8 @@
 
 Reference for choosing steps when setting up hk in a new repo. Run `hk builtins` for the full list.
 
-**On keeping output quiet:** steps below run their plain commands. Success noise is dropped at
-the hook level by `hk run pre-commit -q` (hk ≥ 1.51.0: 0 bytes on success, full failing-step
-output on failure) - no per-step wrapper. Harmless tool-native flags (`ruff check -q`,
-`gitleaks --log-level=error`) are kept where they also cut redundant output. See
-`references/output-noise.md`.
+Check builtin availability against the selected schema version. Use the wrapper
+and summary settings in `references/output-noise.md` for quiet output.
 
 ## Universal (always add)
 
@@ -104,6 +101,10 @@ is a real problem only in code, prefer scoping via `[type.<ext>]` /
 ```
 
 Requires `gitleaks = "latest"` in `mise.toml`.
+
+This command scans Git history. Preserve its scope during migration. The v2
+`Builtins.gitleaks` default scans the working tree; `scan = "staged"` scans the
+index. Neither is an equivalent replacement for a history scan.
 
 ### Markdown linting (rumdl)
 
@@ -302,12 +303,8 @@ Tests:
 ### Formatter + linter: Ruff (preferred, signal: `ruff.toml` or `[tool.ruff]` in `pyproject.toml`)
 
 ```pkl
-["ruff-format"] = (Builtins.ruff_format) {}   // builtin already passes --quiet (silent on success)
-["ruff"] = (Builtins.ruff) {
-    // Builtins.ruff runs `ruff check`, which prints `All checks passed!`.
-    // Keep its native -q (0 bytes on success); wrapper-level -q covers it too.
-    check = "ruff check -q --force-exclude {{files}}"
-}
+["ruff-format"] = Builtins.ruff_format
+["ruff"] = Builtins.ruff
 ```
 
 ### Legacy: Black + Flake8
