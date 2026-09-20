@@ -2,10 +2,13 @@
 # voxtap — system-audio capture helper for vox (desktop only)
 # ==============================================================================
 #
-# Tiny Swift CLI (see ../voxtap/main.swift) that streams the system's audio
-# output to stdout as 48 kHz mono float32, via a Core Audio process tap. `vox`
-# reads it as a second ffmpeg input, so the other side of a call lands in the
-# transcript with no audio routing to set up.
+# Small Swift CLI (see ../voxtap/main.swift) that captures the microphone and
+# the system's audio output through one aggregate device holding a Core Audio
+# process tap, writing both as 16 kHz WAVs (`voxtap record`), so the other side
+# of a call lands in the transcript with no audio routing to set up. It also
+# still streams the tap alone to stdout, which `vox` reads as an ffmpeg input.
+# ExtAudioFile does the WAV muxing and resampling; it lives in AudioToolbox,
+# already linked.
 #
 # Built here, not vendored or pulled from nixpkgs, for the same reason as
 # biokc/imagepaste: the tap API (AudioHardwareCreateProcessTap, macOS 14.2+) is
